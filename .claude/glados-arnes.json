@@ -1,0 +1,114 @@
+{
+  "plantilla": 1,
+  "params": {
+    "pm": "npm",
+    "srcDir": "src"
+  },
+  "piezas": {
+    "docs": {
+      "creados": [
+        {
+          "path": "docs/TASKS.md",
+          "hash": "59f3cc2b85263f3ccfefc737de35c4d6a188ffdda824712361718a1b7cae385f"
+        },
+        {
+          "path": "docs/INDEX.md",
+          "hash": "65598e6237555109a269cd607d7a433ebde57b0591860ca507d3299de84509db"
+        },
+        {
+          "path": "docs/specs/TEMPLATE.md",
+          "hash": "d6f37aad3827979972cc9f265e3e0b4fcf83901d6ccb0ee5d0edf49e8bd3a4b5"
+        },
+        {
+          "path": "docs/adr/.gitkeep",
+          "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "apartados": []
+    },
+    "claude-md": {
+      "creados": [
+        {
+          "path": "CLAUDE.md",
+          "hash": "084c6879a2d3074b375f5f00c2d8294e3cce0ef976b6afd27737b3d9e0f98e97"
+        }
+      ],
+      "apartados": []
+    },
+    "handoff": {
+      "creados": [
+        {
+          "path": ".claude/skills/handoff/SKILL.md",
+          "hash": "a00b10ce5d3fe93c48c26ff3f273b73a10b68fb8a8962249b6be30954aaca638"
+        }
+      ],
+      "apartados": []
+    },
+    "hooks": {
+      "creados": [
+        {
+          "path": ".claude/hooks/verify.sh",
+          "hash": "c4b9bb109acb86088e9263d355520d7f8098f10952c603c17cb9e721f470d62a"
+        },
+        {
+          "path": ".claude/hooks/tasks-fresh.sh",
+          "hash": "d139552fd5691083e9d0ec37a39823f21c963335082d80e5e0559b6141c4411f"
+        },
+        {
+          "path": ".claude/hooks/file-size.sh",
+          "hash": "33e01c491445802e6c9f645011d2ec365bb84691c4c7644b2206fc57cda90d92"
+        },
+        {
+          "path": ".claude/hooks/context-budget.sh",
+          "hash": "ea8f9a13cbe305b50b6739c57f7a6370602f45112b314dd8a6554c640e9810a7"
+        },
+        {
+          "path": ".claude/hooks/pre-compact.sh",
+          "hash": "29d546a41af7c5d30ed97f0f6bca65bc28ac461929848a11be4e5e42a50a4f60"
+        }
+      ],
+      "apartados": [],
+      "settings": {
+        "allow": [],
+        "deny": [],
+        "hookCommands": [
+          "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify.sh\"",
+          "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/tasks-fresh.sh\"",
+          "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/file-size.sh\"",
+          "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/context-budget.sh\"",
+          "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-compact.sh\""
+        ]
+      }
+    },
+    "permisos": {
+      "creados": [],
+      "apartados": [],
+      "settings": {
+        "allow": [
+          "Bash(npm run typecheck*)",
+          "Bash(npm run lint*)",
+          "Bash(npm run test*)",
+          "Bash(npm run build*)",
+          "Bash(npm test*)",
+          "Bash(git status*)",
+          "Bash(git log*)",
+          "Bash(git diff*)",
+          "Bash(git show*)",
+          "Bash(git branch*)",
+          "Bash(ls *)"
+        ],
+        "deny": [
+          "Bash(sudo *)",
+          "Bash(rm -rf *)",
+          "Bash(rm -fr *)",
+          "Bash(git push --force*)",
+          "Bash(git push -f*)",
+          "Read(**/.env)",
+          "Read(**/.env.local)",
+          "Read(~/.ssh/**)"
+        ],
+        "hookCommands": []
+      }
+    }
+  }
+}
