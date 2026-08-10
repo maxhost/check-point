@@ -19,8 +19,8 @@ La V1 de Mi Pasaporte está planificada para consumidor, comercio y administrado
 plataforma: wallet/QR, backoffice y wizard, app de operación, ruleta, métricas y
 rutas/eventos curados. La propuesta de arquitectura está documentada en
 `docs/ARCHITECTURE.md` y ADRs 0011–0017. El lanzamiento del entorno está ordenado en
-`docs/SCAFFOLD-PLAN.md`. La Spec 0010 de scaffold ya está en `borrador` para revisión;
-sólo después de cerrarla se crea código. Las specs siguen en `borrador` hasta validar la arquitectura, incluyendo
+`docs/SCAFFOLD-PLAN.md`. La Spec 0010 de scaffold está `cerrada` y en implementación con
+el protocolo de agentes. Las specs de producto siguen en `borrador` hasta validar la arquitectura, incluyendo
 entrega/costo de OTP en Ecuador. La Spec 0003 fue rediseñada alrededor de un Incentive
 Engine interno (ADR 0018): reglas tipadas, efectos, presupuestos, versiones y simulación;
 no se implementará un DSL libre ni lógica especial por pantalla.
@@ -38,8 +38,8 @@ stack transversal antes de cerrar specs para implementación.
 | # | Tarea | Spec | Estado | Notas |
 |---|---|---|---|---|
 | 1 | Validar propuesta de stack y publicar remoto GitHub | ADR 0011–0017 | pendiente | Remoto público `maxhost/check-point` definido; falta reautenticar GitHub antes del primer push a main |
-| 2 | Crear y cerrar Spec 0010 de scaffold | 0010 | pendiente | Repositorio, tooling, CI y DoD; sin comportamiento de producto |
-| 3 | Implementar scaffold con protocolo de agentes | 0010 | bloqueado | Sólo tras Spec 0010 cerrada |
+| 2 | Crear y cerrar Spec 0010 de scaffold | 0010 | hecho | Spec cerrada el 2026-08-10; sin comportamiento de producto |
+| 3 | Implementar scaffold con protocolo de agentes | 0010 | en curso | Orquestador → implementador → revisor independiente |
 | 4 | Cerrar alcance y arquitectura técnica de V1 | 0001–0009 | pendiente | 0003 rediseñada; resolver abiertos y cambiar specs a `cerrada` antes de código |
 
 ## Hecho

@@ -1,7 +1,7 @@
 ---
 spec: 0010
 fecha: 2026-08-10
-estado: borrador
+estado: cerrada
 resumen: Inicializa el monorepo reproducible, tres aplicaciones aisladas y controles de calidad, sin comportamiento de producto.
 disjunta: no
 archivos: raiz del repositorio, apps/consumer, apps/merchant, apps/platform, tests/e2e, .github/workflows
@@ -159,4 +159,6 @@ El implementador y el revisor usan el formato de `docs/AGENT-WORKFLOW.md`. El re
 
 ## Abierto
 
-- Confirmar el nombre y visibilidad del repositorio GitHub que se creará después de reautenticar la cuenta; GitHub Actions y Dependabot sí entran en el scaffold.
+No hay abiertos que bloqueen esta implementación. El remoto público canónico es
+`https://github.com/maxhost/check-point.git`; la publicación queda condicionada sólo por
+la conectividad/autenticación externa disponible al terminar.

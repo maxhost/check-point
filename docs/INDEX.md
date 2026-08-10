@@ -48,7 +48,7 @@ desactualizado es peor que no tenerlo.
 | 0007 | 2026-08-09 | Tablero y medición del piloto | borrador | no | `specs/0007-tablero-y-medicion-del-piloto.md` |
 | 0008 | 2026-08-09 | Administrador, rutas, categorías y eventos | borrador | no | `specs/0008-administrador-rutas-y-eventos.md` |
 | 0009 | 2026-08-09 | Check-in QR por local | borrador | no | `specs/0009-checkin-qr-por-local.md` |
-| 0010 | 2026-08-10 | Scaffold production grade de la plataforma | borrador | no | `specs/0010-scaffold-production-grade.md` |
+| 0010 | 2026-08-10 | Scaffold production grade de la plataforma | cerrada | no | `specs/0010-scaffold-production-grade.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
