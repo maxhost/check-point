@@ -55,6 +55,19 @@ Better Auth migra sus esquemas y Drizzle migra sólo `core`. Puntos, créditos, 
 
 No se usa Neon Auth gestionado: usa Better Auth internamente, pero no sustituye Better Auth autoalojado para los flujos extensibles que requiere el producto.
 
+## Incentive Engine
+
+Las campañas no escriben puntos, cupones o créditos desde la interfaz. Un evento de
+dominio confiable —check-in válido, compra acreditada o finalización de juego— entra al
+Incentive Engine, que evalúa reglas tipadas de la versión activa de una campaña, sus
+condiciones, presupuesto, guardrail económico y política de acumulación. La decisión se
+aplica una vez, de forma transaccional e idempotente, y deja activos de wallet, auditoría
+y métricas con snapshots de campaña/regla/efecto.
+
+La V1 ofrece plantillas y bloques cerrados, no un DSL de promociones. El motor vive en
+`packages/domain`; la capa de datos aplica sus decisiones en `packages/db`; wizard,
+consola, juegos y métricas consumen el mismo contrato. Ver ADR 0018 y Spec 0003.
+
 ## SMS, email y tareas
 
 El OTP de consumidor será de seis dígitos, cinco minutos de vigencia y pocos intentos. `OtpProvider` expone enviar/verificar; antes de producción se prueba Telnyx y Twilio con operadores ecuatorianos y se compara costo efectivo por verificación.

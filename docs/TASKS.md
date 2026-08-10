@@ -21,7 +21,9 @@ rutas/eventos curados. La propuesta de arquitectura está documentada en
 `docs/ARCHITECTURE.md` y ADRs 0011–0017. El lanzamiento del entorno está ordenado en
 `docs/SCAFFOLD-PLAN.md`. La Spec 0010 de scaffold ya está en `borrador` para revisión;
 sólo después de cerrarla se crea código. Las specs siguen en `borrador` hasta validar la arquitectura, incluyendo
-entrega/costo de OTP en Ecuador.
+entrega/costo de OTP en Ecuador. La Spec 0003 fue rediseñada alrededor de un Incentive
+Engine interno (ADR 0018): reglas tipadas, efectos, presupuestos, versiones y simulación;
+no se implementará un DSL libre ni lógica especial por pantalla.
 
 El remoto canónico es `https://github.com/maxhost/check-point.git`, documentado en
 `docs/REPOSITORY.md`. La rama de publicación acordada es `main`; la autenticación local de
@@ -38,7 +40,7 @@ stack transversal antes de cerrar specs para implementación.
 | 1 | Validar propuesta de stack y publicar remoto GitHub | ADR 0011–0017 | pendiente | Remoto público `maxhost/check-point` definido; falta reautenticar GitHub antes del primer push a main |
 | 2 | Crear y cerrar Spec 0010 de scaffold | 0010 | pendiente | Repositorio, tooling, CI y DoD; sin comportamiento de producto |
 | 3 | Implementar scaffold con protocolo de agentes | 0010 | bloqueado | Sólo tras Spec 0010 cerrada |
-| 4 | Cerrar alcance y arquitectura técnica de V1 | 0001–0009 | pendiente | Resolver abiertos y cambiar specs a `cerrada` antes de código |
+| 4 | Cerrar alcance y arquitectura técnica de V1 | 0001–0009 | pendiente | 0003 rediseñada; resolver abiertos y cambiar specs a `cerrada` antes de código |
 
 ## Hecho
 
@@ -60,6 +62,7 @@ stack transversal antes de cerrar specs para implementación.
 | 2026-08-10 | Owner definido como único administrador de merchant staff | Revisión de ADR 0008 y spec 0001 |
 | 2026-08-10 | Cierre de local y validación de beneficios definidos | Revisión de ADR 0009 y specs 0002/0003/0006 |
 | 2026-08-10 | Dominios de acceso de consumidor, plataforma y comercio separados | Revisión de ADR 0010 y spec 0001 |
+| 2026-08-10 | Modelo de campañas compuesto mediante Incentive Engine definido | Revisión de ADR 0018 y Spec 0003 rediseñada |
 | 2026-08-10 | Handoff para fase de arquitectura | Revisión de `docs/HANDOFF.md` |
 | 2026-08-10 | Repositorio remoto canónico documentado y commit inicial local creado | `git log --oneline -1` muestra `6467628` |
 

@@ -11,8 +11,10 @@ Leer en este orden:
 2. `docs/INDEX.md`
 3. `docs/TASKS.md`
 4. este archivo
-5. `docs/ARCHITECTURE.md`
-6. `docs/specs/0010-scaffold-production-grade.md`
+5. `docs/adr/0018-incentive-engine-de-campanas-compuestas.md`
+6. `docs/specs/0003-wizard-de-campana-y-guardrails.md`
+7. `docs/ARCHITECTURE.md`
+8. `docs/specs/0010-scaffold-production-grade.md`
 
 ## Próximo trabajo
 
@@ -24,6 +26,17 @@ Revisar y cerrar la Spec 0010; después implementar el scaffold con el protocolo
 4. Sólo PASS marca la spec como implementada.
 
 No crear código antes de que 0010 esté en `cerrada`.
+
+## Actualización: campañas
+
+La Spec 0003 fue rediseñada según ADR 0018. Las campañas se componen de una o más
+reglas tipadas: un disparador confiable, condiciones `AND`, efectos tipados, límites y
+política de acumulación. El servidor ejecuta la decisión de forma transaccional e
+idempotente; el wizard sólo configura y simula. Se usarán plantillas, no un DSL libre.
+Las versiones publicadas son inmutables y cada activo conserva su snapshot. V1 contempla
+check-in, compra acreditada y fin de juego como disparadores; puntos, créditos de juego y
+cupones como efectos. Reservas, atributos libres, descuentos de carro y experimentos no
+entran.
 
 ## Arquitectura propuesta
 

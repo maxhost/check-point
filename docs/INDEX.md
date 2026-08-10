@@ -33,6 +33,7 @@ desactualizado es peor que no tenerlo.
 | 0015 | 2026-08-10 | Juegos web y AR como fase experimental | propuesta | `adr/0015-juegos-web-y-ar-como-fase-experimental.md` |
 | 0016 | 2026-08-10 | Operación de merchant staff rápida y consistente | propuesta | `adr/0016-operacion-de-merchant-staff-rapida-y-consistente.md` |
 | 0017 | 2026-08-10 | Estándar de entrega production grade | aceptada | `adr/0017-estandar-production-grade.md` |
+| 0018 | 2026-08-10 | Incentive Engine de campañas compuestas | aceptada | `adr/0018-incentive-engine-de-campanas-compuestas.md` |
 
 ## Specs — que se construye
 
@@ -40,7 +41,7 @@ desactualizado es peor que no tenerlo.
 |---|---|---|---|---|---|
 | 0001 | 2026-08-09 | Acceso de backoffice, membresías y auditoría | borrador | no | `specs/0001-fundacion-identidad-y-roles.md` |
 | 0002 | 2026-08-09 | Local, personal y catálogo económico | borrador | no | `specs/0002-local-personal-y-catalogo.md` |
-| 0003 | 2026-08-09 | Wizard de campaña y guardrails | borrador | no | `specs/0003-wizard-de-campana-y-guardrails.md` |
+| 0003 | 2026-08-10 | Wizard de campañas e Incentive Engine | borrador | no | `specs/0003-wizard-de-campana-y-guardrails.md` |
 | 0004 | 2026-08-09 | Cuenta de consumidor, OTP y wallet | borrador | no | `specs/0004-consumidor-checkin-y-wallet.md` |
 | 0005 | 2026-08-09 | Consola de personal y compra acreditada | borrador | no | `specs/0005-consola-de-personal-y-compra-acreditada.md` |
 | 0006 | 2026-08-09 | Ruleta, cupones y canje atómico | borrador | no | `specs/0006-ruleta-cupones-y-canje-atomico.md` |
