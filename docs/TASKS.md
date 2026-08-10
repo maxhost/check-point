@@ -25,7 +25,8 @@ entrega/costo de OTP en Ecuador.
 
 El remoto canónico es `https://github.com/maxhost/check-point.git`, documentado en
 `docs/REPOSITORY.md`. La rama de publicación acordada es `main`; la autenticación local de
-GitHub debe revalidarse antes del primer push.
+GitHub debe revalidarse antes del primer push. El commit inicial local `6467628` está listo
+para publicar; el intento de conexión no resolvió `github.com` desde este entorno.
 
 Handoff guardado en `docs/HANDOFF.md`. Próxima fase acordada: definir la arquitectura y
 stack transversal antes de cerrar specs para implementación.
@@ -60,6 +61,7 @@ stack transversal antes de cerrar specs para implementación.
 | 2026-08-10 | Cierre de local y validación de beneficios definidos | Revisión de ADR 0009 y specs 0002/0003/0006 |
 | 2026-08-10 | Dominios de acceso de consumidor, plataforma y comercio separados | Revisión de ADR 0010 y spec 0001 |
 | 2026-08-10 | Handoff para fase de arquitectura | Revisión de `docs/HANDOFF.md` |
+| 2026-08-10 | Repositorio remoto canónico documentado y commit inicial local creado | `git log --oneline -1` muestra `6467628` |
 
 ## Descartado (y por que)
 
