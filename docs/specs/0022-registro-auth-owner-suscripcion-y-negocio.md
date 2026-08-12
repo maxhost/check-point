@@ -64,7 +64,9 @@ después debe poder crear su primer negocio y local con dirección verificable.
 /onboarding
   → registro válido → cuenta Owner + sesión merchant
   → negocio + local inicial en una transacción
-  → elegir Free | Plus, con selector mensual | anual para Plus
+  → carrusel de planes: Plus mensual visible/seleccionado por defecto; Free a la izquierda
+  → si Plus está activo, selector mensual | anual dentro de su card
+  → CTA dentro de la card activa confirma el plan elegido
   → Free: home con suscripción Free
   → Plus: crear Checkout Session asociado al negocio → Stripe Checkout alojado
        → retorno UX de éxito/cancelación
@@ -224,8 +226,10 @@ onboarding y pruebas con casi todas las specs futuras. Se implementa serialmente
 - [ ] El formulario actual registra nombre completo, email, contraseña y confirmación con
   validación cliente/servidor; crear cuenta no depende de completar un pago.
 - [ ] Tras guardar el negocio/local inicial, Free permite abrir el backoffice sin Stripe.
-  Plus ofrece un selector mensual/anual y crea un Stripe Checkout Session alojado con los
-  Price IDs configurados, sin tarjetas ni importes manejados por Mi Pasaporte.
+  El selector es un carrusel de una card: Plus mensual aparece seleccionado por defecto,
+  Free se alcanza por la flecha izquierda, y el CTA se ubica dentro del plan activo. Plus
+  ofrece un selector mensual/anual y crea un Stripe Checkout Session alojado con los Price
+  IDs configurados, sin tarjetas ni importes manejados por Mi Pasaporte.
 - [ ] Webhook Stripe verifica firma, es idempotente y es la única autoridad que habilita o
   cambia Plus; retorno, cancelación, pago fallido y reintentos muestran estados correctos.
 - [ ] Test/live se configuran por secretos de entorno y configuración no secreta separada

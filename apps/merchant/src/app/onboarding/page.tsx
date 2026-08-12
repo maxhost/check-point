@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeClosed } from "iconoir-react";
+import { Eye, EyeClosed, NavArrowLeft, NavArrowRight } from "iconoir-react";
 import { useState } from "react";
 import {
   AddressAutofillField,
@@ -33,7 +33,7 @@ export default function OnboardingPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [plan, setPlan] = useState<Plan>("free");
+  const [plan, setPlan] = useState<Plan>("plus");
   const [billingInterval, setBillingInterval] =
     useState<BillingInterval>("month");
   const [businessName, setBusinessName] = useState("");
@@ -280,58 +280,37 @@ export default function OnboardingPage() {
                 Podrás cambiarlo más adelante. Plus activa campañas y
                 herramientas avanzadas.
               </p>
-              <PlanOption
-                value="free"
-                selected={plan}
-                onChange={setPlan}
-                title="Free · USD 0"
-                text="1 local y programa de fidelización."
-              />
-              <PlanOption
-                value="plus"
-                selected={plan}
-                onChange={setPlan}
-                title={
-                  billingInterval === "year"
-                    ? "Plus · USD 200/año"
-                    : "Plus · USD 20/mes"
-                }
-                text={
-                  billingInterval === "year"
-                    ? "Ahorra USD 40 por año."
-                    : "Campañas y herramientas avanzadas."
-                }
-              />
-              <fieldset className="billing-cycle" disabled={plan !== "plus"}>
-                <legend>Facturación de Plus</legend>
+              <div className="plan-carousel" aria-label="Selector de planes">
                 <button
+                  className="plan-carousel-arrow"
                   type="button"
-                  className={billingInterval === "month" ? "active" : ""}
-                  aria-pressed={billingInterval === "month"}
-                  onClick={() => setBillingInterval("month")}
+                  disabled={plan === "free"}
+                  onClick={() => setPlan("free")}
+                  aria-label="Ver plan Free"
                 >
-                  Mensual · USD 20
+                  <NavArrowLeft aria-hidden="true" />
                 </button>
+                <PlanCard
+                  plan={plan}
+                  billingInterval={billingInterval}
+                  onBillingInterval={setBillingInterval}
+                  onContinue={continueWithPlan}
+                  submitting={submitting}
+                />
                 <button
+                  className="plan-carousel-arrow"
                   type="button"
-                  className={billingInterval === "year" ? "active" : ""}
-                  aria-pressed={billingInterval === "year"}
-                  onClick={() => setBillingInterval("year")}
+                  disabled={plan === "plus"}
+                  onClick={() => setPlan("plus")}
+                  aria-label="Ver plan Plus"
                 >
-                  Anual · USD 200
+                  <NavArrowRight aria-hidden="true" />
                 </button>
-              </fieldset>
-              <button
-                className="button"
-                disabled={submitting}
-                onClick={continueWithPlan}
-              >
-                {submitting
-                  ? "Abriendo Stripe…"
-                  : plan === "free"
-                    ? "Abrir mi Backoffice"
-                    : "Continuar a Stripe"}
-              </button>
+              </div>
+              <p className="plan-carousel-status" aria-live="polite">
+                Plan {plan === "plus" ? "Plus" : "Free"} ·{" "}
+                {plan === "plus" ? "2" : "1"} de 2
+              </p>
             </>
           )}
         </section>
@@ -375,26 +354,75 @@ function PasswordField({
   );
 }
 
-function PlanOption({
-  value,
-  selected,
-  onChange,
-  title,
-  text,
+function PlanCard({
+  plan,
+  billingInterval,
+  onBillingInterval,
+  onContinue,
+  submitting,
 }: {
-  value: Plan;
-  selected: Plan;
-  onChange: (plan: Plan) => void;
-  title: string;
-  text: string;
+  plan: Plan;
+  billingInterval: BillingInterval;
+  onBillingInterval: (interval: BillingInterval) => void;
+  onContinue: () => void;
+  submitting: boolean;
 }) {
+  const isPlus = plan === "plus";
   return (
-    <button
-      className={`plan ${selected === value ? "selected" : ""}`}
-      onClick={() => onChange(value)}
+    <article
+      className="plan-card"
+      aria-label={`Plan ${isPlus ? "Plus" : "Free"}`}
     >
-      <strong>{title}</strong>
-      <span>{text}</span>
-    </button>
+      <p className="plan-card-eyebrow">
+        {isPlus ? "Para hacer crecer tu negocio" : "Para empezar"}
+      </p>
+      <h2>{isPlus ? "Plus" : "Free"}</h2>
+      <p className="plan-card-price">
+        {isPlus ? (billingInterval === "year" ? "USD 200" : "USD 20") : "USD 0"}
+        {isPlus && (
+          <small> / {billingInterval === "year" ? "año" : "mes"}</small>
+        )}
+      </p>
+      {isPlus ? (
+        <>
+          <div className="billing-toggle" aria-label="Período de facturación">
+            <button
+              type="button"
+              className={billingInterval === "month" ? "active" : ""}
+              aria-pressed={billingInterval === "month"}
+              onClick={() => onBillingInterval("month")}
+            >
+              Mensual
+            </button>
+            <button
+              type="button"
+              className={billingInterval === "year" ? "active" : ""}
+              aria-pressed={billingInterval === "year"}
+              onClick={() => onBillingInterval("year")}
+            >
+              Anual <span>Ahorra USD 40</span>
+            </button>
+          </div>
+          <ul className="plan-card-features">
+            <li>Todo lo incluido en Free</li>
+            <li>Campañas y beneficios avanzados</li>
+            <li>Analíticas para hacer crecer el negocio</li>
+          </ul>
+        </>
+      ) : (
+        <ul className="plan-card-features">
+          <li>1 local</li>
+          <li>Programa de fidelización</li>
+          <li>Analíticas básicas</li>
+        </ul>
+      )}
+      <button className="button" disabled={submitting} onClick={onContinue}>
+        {submitting
+          ? "Abriendo Stripe…"
+          : isPlus
+            ? "Continuar a Stripe"
+            : "Abrir mi Backoffice"}
+      </button>
+    </article>
   );
 }
