@@ -20,6 +20,9 @@ Los health checks quedan disponibles en:
 - `http://localhost:3001/api/health` — merchant
 - `http://localhost:3002/api/health` — platform
 
+El checklist para desplegar y probar el registro real de Owner está en
+[docs/DEPLOY-OWNER-TEST.md](docs/DEPLOY-OWNER-TEST.md).
+
 ## Controles
 
 ```sh
