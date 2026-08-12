@@ -171,7 +171,12 @@ export default function OnboardingPage() {
         />
         <section className="panel">
           {step === "owner" && (
-            <>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void createAccount();
+              }}
+            >
               <h1>Tus datos como owner</h1>
               <p>
                 Estos datos son tuyos como owner. Podrás crear tu negocio
@@ -208,14 +213,10 @@ export default function OnboardingPage() {
                 onShow={setShowPassword}
                 onChange={setConfirmPassword}
               />
-              <button
-                className="button"
-                disabled={submitting}
-                onClick={createAccount}
-              >
+              <button type="submit" className="button" disabled={submitting}>
                 {submitting ? "Creando cuenta…" : "Continuar"}
               </button>
-            </>
+            </form>
           )}
           {step === "business" && (
             <>

@@ -78,61 +78,68 @@ export async function POST(request: Request) {
   const businessId = randomUUID();
   const locationId = randomUUID();
   const verificationId = randomUUID();
-  const db = getDb();
-  const [existingMembership] = await db
-    .select({ businessId: memberships.businessId })
-    .from(memberships)
-    .where(eq(memberships.userId, session.user.id))
-    .limit(1);
-  if (existingMembership) {
+  try {
+    const db = getDb();
+    const [existingMembership] = await db
+      .select({ businessId: memberships.businessId })
+      .from(memberships)
+      .where(eq(memberships.userId, session.user.id))
+      .limit(1);
+    if (existingMembership) {
+      return NextResponse.json(
+        { error: "Tu negocio inicial ya fue creado." },
+        { status: 409 },
+      );
+    }
+    await db.batch([
+      db
+        .insert(ownerProfiles)
+        .values({
+          userId: session.user.id,
+          fullName: session.user.name,
+        })
+        .onConflictDoNothing(),
+      db.insert(businesses).values({ id: businessId, name, countryCode }),
+      db.insert(memberships).values({
+        businessId,
+        userId: session.user.id,
+        role: "owner",
+      }),
+      db.insert(locations).values({
+        id: locationId,
+        businessId,
+        name: locationName,
+        addressLabel: address.label,
+        longitude: address.longitude,
+        latitude: address.latitude,
+        countryCode: address.countryCode,
+        activeVerificationId: verificationId,
+        addressSnapshot: address.snapshot,
+      }),
+      db.insert(locationVerifications).values({
+        id: verificationId,
+        locationId,
+        source: address.source,
+        provider: address.provider,
+        providerPlaceId: address.providerPlaceId,
+        normalizedAddress: address.label,
+        longitude: address.longitude,
+        latitude: address.latitude,
+        countryCode: address.countryCode,
+        providerSnapshot: address.snapshot,
+        attribution: address.attribution,
+      }),
+      db.insert(subscriptions).values({
+        businessId,
+        plan: "free",
+        status: "active",
+      }),
+    ]);
+    return NextResponse.json({ businessId }, { status: 201 });
+  } catch {
     return NextResponse.json(
-      { error: "Tu negocio inicial ya fue creado." },
-      { status: 409 },
+      { error: "No pudimos guardar tu negocio. Intenta nuevamente." },
+      { status: 503 },
     );
   }
-  await db.batch([
-    db
-      .insert(ownerProfiles)
-      .values({
-        userId: session.user.id,
-        fullName: session.user.name,
-      })
-      .onConflictDoNothing(),
-    db.insert(businesses).values({ id: businessId, name, countryCode }),
-    db.insert(memberships).values({
-      businessId,
-      userId: session.user.id,
-      role: "owner",
-    }),
-    db.insert(locations).values({
-      id: locationId,
-      businessId,
-      name: locationName,
-      addressLabel: address.label,
-      longitude: address.longitude,
-      latitude: address.latitude,
-      countryCode: address.countryCode,
-      activeVerificationId: verificationId,
-      addressSnapshot: address.snapshot,
-    }),
-    db.insert(locationVerifications).values({
-      id: verificationId,
-      locationId,
-      source: address.source,
-      provider: address.provider,
-      providerPlaceId: address.providerPlaceId,
-      normalizedAddress: address.label,
-      longitude: address.longitude,
-      latitude: address.latitude,
-      countryCode: address.countryCode,
-      providerSnapshot: address.snapshot,
-      attribution: address.attribution,
-    }),
-    db.insert(subscriptions).values({
-      businessId,
-      plan: "free",
-      status: "active",
-    }),
-  ]);
-  return NextResponse.json({ businessId }, { status: 201 });
 }
