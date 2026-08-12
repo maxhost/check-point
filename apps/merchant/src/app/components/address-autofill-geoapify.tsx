@@ -27,15 +27,23 @@ export default function GeoapifyPlaceSearch({
   const [results, setResults] = useState<GeoapifyResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [useMapboxFallback, setUseMapboxFallback] = useState(false);
+  const [selectionFinalized, setSelectionFinalized] = useState(false);
   const listId = useId();
 
   useEffect(() => {
     setQuery("");
     setResults([]);
     setUseMapboxFallback(false);
+    setSelectionFinalized(false);
   }, [countryCode]);
 
   useEffect(() => {
+    if (selectionFinalized) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
     const text = query.trim();
     if (text.length < 3) {
       setResults([]);
@@ -75,7 +83,7 @@ export default function GeoapifyPlaceSearch({
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [countryCode, query, renderMapboxFallback, token]);
+  }, [countryCode, query, renderMapboxFallback, selectionFinalized, token]);
 
   function select(result: GeoapifyResult) {
     if (
@@ -85,8 +93,9 @@ export default function GeoapifyPlaceSearch({
     ) {
       return;
     }
-    setQuery(result.formatted);
+    setSelectionFinalized(true);
     setResults([]);
+    setQuery(result.formatted);
     onSelect({
       label: result.formatted,
       longitude: result.lon,
@@ -112,6 +121,7 @@ export default function GeoapifyPlaceSearch({
         <input
           value={query}
           onChange={(event) => {
+            setSelectionFinalized(false);
             setQuery(event.target.value);
           }}
           placeholder="Busca un local, lugar o dirección"
