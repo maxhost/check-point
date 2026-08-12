@@ -4,7 +4,8 @@ Monorepo de las aplicaciones web separadas de consumidor, comercio y plataforma.
 
 ## Requisitos
 
-- Node.js 24.19.0 LTS (ver `.node-version`)
+- Node.js 24 LTS. Desarrollo local usa 24.19.0 (ver `.node-version`); Vercel puede
+  ejecutar una revisión 24.x compatible.
 - pnpm 11.4.0
 
 ## Inicio local

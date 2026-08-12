@@ -44,7 +44,7 @@ Cada aplicación se identifica sólo por un nombre público fijo para su health 
 
 Las aplicaciones usan Next.js App Router, TypeScript estricto y runtime Node. El único artefacto de aplicación es la ruta de health; no se crea página raíz ni layout visual. La PWA de consumidor no registra aún service worker ni manifiesto; esto llega con la Spec 0004, cuando se definan los requisitos de instalación, cache y sesión. Los backoffices no comparten cookies ni configuración de dominio: esta separación se concreta al introducir autenticación en Spec 0001.
 
-Las dependencias de producción y desarrollo se fijan mediante rangos exactos en manifests y el lockfile de pnpm se versiona. Node queda fijado en `.node-version` y el campo `engines`; pnpm queda fijado en el campo `packageManager`. La actualización de dependencias se hace sólo mediante pull request y controles completos, nunca por instalación implícita.
+Las dependencias de producción y desarrollo se fijan mediante rangos exactos en manifests y el lockfile de pnpm se versiona. Node queda fijado en `.node-version` para desarrollo y CI; `engines` acepta el rango compatible Node 24 LTS para permitir revisiones administradas por Vercel. pnpm queda fijado en el campo `packageManager`. La actualización de dependencias se hace sólo mediante pull request y controles completos, nunca por instalación implícita.
 
 El código debe pasar TypeScript, lint y formato desde la raíz. Vitest cubre el contrato puro del endpoint de salud y Playwright realiza solicitudes HTTP contra los tres health checks arrancados localmente. La ejecución E2E levanta las tres apps con los scripts declarados, espera disponibilidad y las detiene al finalizar.
 
