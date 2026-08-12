@@ -281,15 +281,26 @@ export default function OnboardingPage() {
                 herramientas avanzadas.
               </p>
               <div className="plan-carousel" aria-label="Selector de planes">
-                <button
-                  className="plan-carousel-arrow"
-                  type="button"
-                  disabled={plan === "free"}
-                  onClick={() => setPlan("free")}
-                  aria-label="Ver plan Free"
-                >
-                  <NavArrowLeft aria-hidden="true" />
-                </button>
+                <div className="plan-carousel-controls">
+                  <button
+                    className="plan-carousel-arrow"
+                    type="button"
+                    disabled={plan === "free"}
+                    onClick={() => setPlan("free")}
+                    aria-label="Ver plan Free"
+                  >
+                    <NavArrowLeft aria-hidden="true" />
+                  </button>
+                  <button
+                    className="plan-carousel-arrow"
+                    type="button"
+                    disabled={plan === "plus"}
+                    onClick={() => setPlan("plus")}
+                    aria-label="Ver plan Plus"
+                  >
+                    <NavArrowRight aria-hidden="true" />
+                  </button>
+                </div>
                 <PlanCard
                   plan={plan}
                   billingInterval={billingInterval}
@@ -297,15 +308,6 @@ export default function OnboardingPage() {
                   onContinue={continueWithPlan}
                   submitting={submitting}
                 />
-                <button
-                  className="plan-carousel-arrow"
-                  type="button"
-                  disabled={plan === "plus"}
-                  onClick={() => setPlan("plus")}
-                  aria-label="Ver plan Plus"
-                >
-                  <NavArrowRight aria-hidden="true" />
-                </button>
               </div>
               <p className="plan-carousel-status" aria-live="polite">
                 Plan {plan === "plus" ? "Plus" : "Free"} ·{" "}

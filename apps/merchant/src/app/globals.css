@@ -473,10 +473,12 @@ input:focus {
 }
 .plan-carousel {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 42px;
-  align-items: center;
-  gap: 8px;
+  gap: 12px;
   margin-top: 24px;
+}
+.plan-carousel-controls {
+  display: flex;
+  justify-content: space-between;
 }
 .plan-carousel-arrow {
   display: grid;
