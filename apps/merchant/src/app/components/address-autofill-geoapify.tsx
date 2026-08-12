@@ -3,6 +3,7 @@
 import { Search } from "iconoir-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import type { SelectedAddress } from "./address-autofill";
+import { canonicalAddress } from "../../lib/location-address";
 
 type GeoapifyResult = {
   formatted?: string;
@@ -86,8 +87,9 @@ export default function GeoapifyPlaceSearch({
   }, [countryCode, query, renderMapboxFallback, selectionFinalized, token]);
 
   function select(result: GeoapifyResult) {
+    const label = canonicalAddress(result);
     if (
-      !result.formatted ||
+      !label ||
       typeof result.lon !== "number" ||
       typeof result.lat !== "number"
     ) {
@@ -95,9 +97,9 @@ export default function GeoapifyPlaceSearch({
     }
     setSelectionFinalized(true);
     setResults([]);
-    setQuery(result.formatted);
+    setQuery(label);
     onSelect({
-      label: result.formatted,
+      label,
       longitude: result.lon,
       latitude: result.lat,
       provider: "geoapify",

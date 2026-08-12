@@ -74,7 +74,7 @@ async function verifyGeoapify(
   };
   const result = body.results?.[0];
   const resultCountry = country(result?.country_code);
-  const label = nonEmpty(result?.formatted);
+  const label = result ? canonicalAddress(result) : null;
   const verifiedLongitude = coordinate(result?.lon);
   const verifiedLatitude = coordinate(result?.lat);
   if (
@@ -180,3 +180,4 @@ export async function verifyLocation(
 export function isSupportedCountryCode(value: unknown) {
   return Boolean(country(value));
 }
+import { canonicalAddress } from "../lib/location-address";

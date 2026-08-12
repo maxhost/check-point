@@ -36,6 +36,9 @@ owner aporta nombre del negocio + nombre del local
 - El país elegido por el owner limita ambas consultas y el servidor vuelve a validarlo.
 - El nombre del negocio/local es `owner_submitted`; una respuesta de proveedor sólo
   normaliza/verifica la ubicación.
+- La dirección canónica excluye el nombre de POI/comercio aunque el autocomplete lo muestre.
+  Se compone de calle, código postal, localidad y país; el resultado original del proveedor
+  permanece únicamente en el snapshot de procedencia.
 - La base conserva dirección normalizada, coordenadas verificadas, proveedor, ID externo
   si existe, fecha de verificación, atribución requerida y un snapshot permitido del
   resultado. Se conserva historial de verificaciones, no sólo el último valor.

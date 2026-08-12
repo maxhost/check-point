@@ -56,6 +56,10 @@ El owner siempre conserva el control del nombre del negocio y local. La copia no
 de dirección no sobrescribe esos nombres. Tras selección, la UI muestra la dirección,
 proveedor que la verificó y una acción para cambiarla antes de guardar.
 
+Cuando el resultado es un POI, la dirección canónica se construye desde sus componentes
+postales (calle, código postal, localidad y país), nunca a partir del nombre del POI. El
+nombre mostrado por el proveedor se conserva sólo en el snapshot de procedencia.
+
 ## Modelo y contratos
 
 La implementación sustituye referencias específicas a Mapbox por un modelo neutral:
