@@ -41,6 +41,7 @@ desactualizado es peor que no tenerlo.
 | 0023 | 2026-08-11 | Disparadores independientes de objetivos de campaña | aceptada | `adr/0023-disparadores-independientes-de-objetivos.md` |
 | 0024 | 2026-08-11 | Secretos en entorno y configuración no secreta | aceptada | `adr/0024-secretos-en-entorno-y-configuracion-no-secreta.md` |
 | 0025 | 2026-08-11 | Búsqueda de locales con proveedores y procedencia | aceptada | `adr/0025-busqueda-de-locales-con-proveedores-y-procedencia.md` |
+| 0026 | 2026-08-12 | Versiones, transiciones y términos de programas | aceptada | `adr/0026-versiones-transiciones-y-terminos-de-programas.md` |
 
 ## Specs — que se construye
 
@@ -69,6 +70,7 @@ desactualizado es peor que no tenerlo.
 | 0021 | 2026-08-11 | Catálogo único de beneficios | borrador | no | `specs/0021-catalogo-unico-de-beneficios.md` |
 | 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | cerrada | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
 | 0023 | 2026-08-11 | Búsqueda y procedencia de locales | en revisión | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
+| 0024 | 2026-08-12 | Programa de fidelización real y términos | cerrada | no | `specs/0024-programa-fidelizacion-real-y-terminos.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
