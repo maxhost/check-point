@@ -30,9 +30,10 @@ términos comerciales claros sin obligar a cada negocio a redactarlos desde cero
   | `earning_ends_at` | Después de esa fecha ya no recibe nueva acumulación. |
   | `redemption_ends_at` | Hasta esa fecha se puede consultar/canjear lo ya emitido. |
 
-- Al publicar V2, V1 debe recibir ambas fechas. La nueva acumulación se asignará a V2 desde
-  su `effective_from`; V1 se conserva para consulta, canje y futuras notificaciones hasta
-  su cierre. Nunca se borra ni se convierte automáticamente actividad previa.
+- Al publicar V2, el owner indica `effective_from` de V2 y `redemption_ends_at` de V1.
+  El sistema deriva `earning_ends_at` de V1 desde el inicio de V2. V1 se conserva para
+  consulta, canje y futuras notificaciones hasta su cierre. Nunca se borra ni se convierte
+  automáticamente actividad previa.
 - Todo programa publicado incluye una versión inmutable de términos comerciales. Se compone
   de cláusulas de biblioteca, cláusulas custom y variables permitidas resueltas con el
   contexto del negocio/programa. Editar una cláusula nunca modifica la plantilla base.

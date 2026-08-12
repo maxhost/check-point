@@ -25,8 +25,9 @@ publicada y estable a la que referenciar.
 - Activar Puntos o Sellos; nunca ambos. El modelo tipado incluye `tiers` y `cashback`, sin
   hacerlos seleccionables u operables.
 - Publicar una primera versión y nuevas versiones de la misma modalidad.
-- Al sustituir una versión o cambiar modalidad, exigir `earning_ends_at` y
-  `redemption_ends_at` futuros para la versión anterior.
+- Al sustituir una versión o cambiar modalidad, pedir fecha de entrada en vigencia de la
+  nueva versión y fecha de canje final de la anterior; el sistema deriva su fin de
+  acumulación desde la entrada en vigencia.
 - Configurar Puntos (nombre singular/plural) o Sellos (nombre, objetivo 2–50 e imagen
   opcional preparada para R2).
 - Biblioteca inicial de cláusulas de términos, selección, orden, copia editable por owner,
@@ -92,8 +93,9 @@ Invariantes:
 
 - Un negocio tiene una única fila de programa y a lo sumo una versión `active`.
 - `active_version_id` refiere una versión del mismo programa con estado `active`.
-- Una transición exige `earning_ends_at <= redemption_ends_at`, ambas posteriores a su
-  creación y a la activación de la versión saliente.
+- Una transición exige `effective_from <= redemption_ends_at`, ambas posteriores a su
+  creación y a la activación de la versión saliente. `earning_ends_at` de la versión
+  saliente es igual a `effective_from` de la entrante.
 - Al activar una nueva versión, la anterior pasa a `retiring`; no admite acumulación tras
   `earning_ends_at` y permanece canjeable hasta `redemption_ends_at`.
 - `configuration_json` se valida antes de persistir: Puntos exige unidades; Sellos exige
@@ -112,8 +114,9 @@ Invariantes:
 - `GET /api/loyalty-program`: devuelve el programa, versión activa, versiones retirándose y
   términos publicados sólo para el Owner del negocio de sesión.
 - `POST /api/loyalty-program/drafts`: crea/actualiza un borrador tipado del programa.
-- `POST /api/loyalty-program/publish`: publica V1 o Vn. Para reemplazo recibe ambas fechas
-  de transición y términos finales; el servidor valida e inserta de forma transaccional.
+- `POST /api/loyalty-program/publish`: publica V1 o Vn. Para reemplazo recibe la entrada
+  en vigencia de Vn, la fecha final de canje de Vn−1 y términos finales; el servidor deriva
+  el cierre de acumulación y persiste de forma transaccional.
 - `POST /api/loyalty-program/deactivate`: exige fechas de cierre y deja el programa sin
   versión activa; la historia sigue disponible.
 - `GET /api/loyalty-terms/templates?locale=es&country=EC`: entrega sólo plantillas

@@ -19,7 +19,7 @@ export type PublishInput = {
   kind: LoyaltyKind;
   configuration: unknown;
   clauses: ClauseInput[];
-  earningEndsAt?: string;
+  effectiveFrom?: string;
   redemptionEndsAt?: string;
 };
 
@@ -76,7 +76,8 @@ export async function programForOwner(userId: string) {
     .from(loyaltyPrograms)
     .where(eq(loyaltyPrograms.businessId, business.id))
     .limit(1);
-  if (!program) return { business, program: null, activeVersion: null };
+  if (!program)
+    return { business, program: null, activeVersion: null, activeTerms: [] };
   const [activeVersion] = program.activeVersionId
     ? await getDb()
         .select()
@@ -84,7 +85,23 @@ export async function programForOwner(userId: string) {
         .where(eq(loyaltyProgramVersions.id, program.activeVersionId))
         .limit(1)
     : [];
-  return { business, program, activeVersion: activeVersion ?? null };
+  const activeTerms = activeVersion
+    ? await getDb()
+        .select({ renderedClause: loyaltyTermsClauses.renderedClause })
+        .from(loyaltyTermsVersions)
+        .innerJoin(
+          loyaltyTermsClauses,
+          eq(loyaltyTermsClauses.termsVersionId, loyaltyTermsVersions.id),
+        )
+        .where(eq(loyaltyTermsVersions.programVersionId, activeVersion.id))
+        .orderBy(loyaltyTermsClauses.position)
+    : [];
+  return {
+    business,
+    program,
+    activeVersion: activeVersion ?? null,
+    activeTerms,
+  };
 }
 
 function date(value: string | undefined) {
@@ -112,11 +129,13 @@ export async function publishProgram(userId: string, input: PublishInput) {
   const context = await programForOwner(userId);
   if (!context) throw new LoyaltyError(403, "No tienes un negocio como owner.");
   const { business, program, activeVersion } = context;
-  const earningEndsAt = date(input.earningEndsAt);
+  const effectiveFrom = date(input.effectiveFrom) ?? new Date();
+  const earningEndsAt = activeVersion ? effectiveFrom : null;
   const redemptionEndsAt = date(input.redemptionEndsAt);
   if (
     activeVersion &&
-    (!earningEndsAt ||
+    (!input.effectiveFrom ||
+      !earningEndsAt ||
       !redemptionEndsAt ||
       earningEndsAt > redemptionEndsAt ||
       earningEndsAt <= new Date())
@@ -144,7 +163,7 @@ export async function publishProgram(userId: string, input: PublishInput) {
         ? String((input.configuration as Record<string, unknown>).unitPlural)
         : "tarjeta de sellos",
     program_kind: input.kind,
-    effective_from: new Date().toLocaleDateString("es-EC"),
+    effective_from: effectiveFrom.toLocaleDateString("es-EC"),
     earning_ends_at: earningEndsAt?.toLocaleDateString("es-EC") ?? "No aplica",
     redemption_ends_at:
       redemptionEndsAt?.toLocaleDateString("es-EC") ?? "No aplica",
@@ -154,6 +173,12 @@ export async function publishProgram(userId: string, input: PublishInput) {
     const template = clause.templateId
       ? templates.find((item) => item.id === clause.templateId)
       : null;
+    if (clause.templateId && !template) {
+      throw new LoyaltyError(
+        422,
+        "La plantilla seleccionada no está disponible.",
+      );
+    }
     const text =
       nonEmpty(clause.text) ?? (template ? template.templateMarkdown : null);
     if (!text) throw new LoyaltyError(422, "Cada cláusula debe tener texto.");
@@ -204,7 +229,7 @@ export async function publishProgram(userId: string, input: PublishInput) {
       programId,
       kind: input.kind,
       configuration: input.configuration as Record<string, unknown>,
-      effectiveFrom: new Date(),
+      effectiveFrom,
       status: "active",
       publishedAt: new Date(),
       createdBy: userId,

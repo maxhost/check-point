@@ -18,6 +18,7 @@ type Program = {
     configuration: Record<string, unknown>;
     effectiveFrom: string;
   } | null;
+  activeTerms: { renderedClause: string }[];
 };
 
 export default function LoyaltyProgramPage() {
@@ -31,8 +32,9 @@ export default function LoyaltyProgramPage() {
     Record<string, string>
   >({});
   const [customClause, setCustomClause] = useState("");
-  const [earningEndsAt, setEarningEndsAt] = useState("");
+  const [effectiveFrom, setEffectiveFrom] = useState("");
   const [redemptionEndsAt, setRedemptionEndsAt] = useState("");
+  const [editingVersion, setEditingVersion] = useState(false);
   const [program, setProgram] = useState<Program | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +45,22 @@ export default function LoyaltyProgramPage() {
       fetch("/api/loyalty-program"),
       fetch("/api/loyalty-terms/templates"),
     ]);
-    if (programResponse.ok)
-      setProgram((await programResponse.json()) as Program);
+    if (programResponse.ok) {
+      const nextProgram = (await programResponse.json()) as Program;
+      setProgram(nextProgram);
+      if (nextProgram.activeVersion && !editingVersion) {
+        const config = nextProgram.activeVersion.configuration;
+        if (nextProgram.activeVersion.kind === "points") {
+          setKind("points");
+          setSingular(String(config.unitSingular ?? "Punto"));
+          setPlural(String(config.unitPlural ?? "Puntos"));
+        } else if (nextProgram.activeVersion.kind === "stamps") {
+          setKind("stamps");
+          setStampName(String(config.unitName ?? "Sello"));
+          setTarget(Number(config.target ?? 10));
+        }
+      }
+    }
     if (templatesResponse.ok)
       setTemplates(
         ((await templatesResponse.json()) as { templates: Template[] })
@@ -74,7 +90,7 @@ export default function LoyaltyProgramPage() {
           })),
           ...(customClause.trim() ? [{ text: customClause }] : []),
         ],
-        earningEndsAt: earningEndsAt || undefined,
+        effectiveFrom: effectiveFrom || undefined,
         redemptionEndsAt: redemptionEndsAt || undefined,
       }),
     });
@@ -87,6 +103,7 @@ export default function LoyaltyProgramPage() {
       return;
     }
     setNotice("Programa publicado. Esta versión ya queda protegida.");
+    setEditingVersion(false);
     await load();
   }
 
@@ -97,7 +114,13 @@ export default function LoyaltyProgramPage() {
         <Toast message={notice} onDismiss={() => setNotice(null)} />
         <ModuleHeader
           eyebrow="Programa de fidelización"
-          title={active ? "Publica una nueva versión" : "Premia a tus clientes"}
+          title={
+            active && !editingVersion
+              ? "Tu programa está activo"
+              : active
+                ? "Crear nueva versión"
+                : "Premia a tus clientes"
+          }
           description={
             active
               ? `Versión ${active.kind === "points" ? "de Puntos" : "de Sellos"} activa desde ${new Date(active.effectiveFrom).toLocaleDateString("es-EC")}. Publicar no modifica su historia.`
@@ -105,169 +128,205 @@ export default function LoyaltyProgramPage() {
           }
           closeHref="/backoffice"
         />
-        <section className="panel loyalty-panel">
-          <h2>Modalidad</h2>
-          <div className="loyalty-types" role="radiogroup">
-            {(["points", "stamps"] as const).map((value) => (
-              <label
-                className={`plan ${kind === value ? "selected" : ""}`}
-                key={value}
-              >
-                <input
-                  className="sr-only"
-                  type="radio"
-                  checked={kind === value}
-                  onChange={() => setKind(value)}
-                />
-                <span className="loyalty-choice-content">
-                  <strong>{value === "points" ? "Puntos" : "Sellos"}</strong>
-                  <span>
-                    {value === "points"
-                      ? "Una unidad flexible para premios."
-                      : "Una tarjeta que se completa con visitas."}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-          {kind === "points" ? (
-            <>
-              <label>
-                Nombre singular
-                <input
-                  value={singular}
-                  onChange={(event) => setSingular(event.target.value)}
-                />
-              </label>
-              <label>
-                Nombre plural
-                <input
-                  value={plural}
-                  onChange={(event) => setPlural(event.target.value)}
-                />
-              </label>
-            </>
-          ) : (
-            <>
-              <label>
-                Nombre del sello
-                <input
-                  value={stampName}
-                  onChange={(event) => setStampName(event.target.value)}
-                />
-              </label>
-              <label>
-                Sellos para completar
-                <input
-                  type="number"
-                  min="2"
-                  max="50"
-                  value={target}
-                  onChange={(event) => setTarget(Number(event.target.value))}
-                />
-              </label>
-            </>
-          )}
-          {active && (
-            <div className="transition-fields">
-              <h3>Cierre de la versión actual</h3>
+        {active && !editingVersion ? (
+          <>
+            <section className="panel loyalty-panel">
+              <h2>Versión activa</h2>
               <p>
-                Los nuevos beneficios entrarán en la nueva versión. Define hasta
-                cuándo deja de acumular y hasta cuándo puede canjearse la
-                actual.
+                Programa de {active.kind === "points" ? "Puntos" : "Sellos"}.
+                Sus términos publicados quedan disponibles para las personas que
+                lo usan.
               </p>
-              <label>
-                Fin de acumulación
-                <input
-                  type="datetime-local"
-                  value={earningEndsAt}
-                  onChange={(event) => setEarningEndsAt(event.target.value)}
-                />
-              </label>
-              <label>
-                Fin de canje
-                <input
-                  type="datetime-local"
-                  value={redemptionEndsAt}
-                  onChange={(event) => setRedemptionEndsAt(event.target.value)}
-                />
-              </label>
-            </div>
-          )}
-        </section>
-        <section className="panel loyalty-panel">
-          <h2>Términos y condiciones</h2>
-          <p>
-            Selecciona cláusulas de la biblioteca y edita o añade texto propio.
-            Las plantillas son borradores editoriales y deben revisarse para tu
-            jurisdicción.
-          </p>
-          {templates.map((template) => (
-            <Fragment key={template.id}>
-              <label className="terms-template">
-                <input
-                  type="checkbox"
-                  checked={template.id in selectedTemplates}
-                  onChange={() =>
-                    setSelectedTemplates((current) =>
-                      template.id in current
-                        ? Object.fromEntries(
-                            Object.entries(current).filter(
-                              ([id]) => id !== template.id,
-                            ),
-                          )
-                        : {
-                            ...current,
-                            [template.id]: template.templateMarkdown,
-                          },
-                    )
-                  }
-                />
-                <span>
-                  <strong>{template.title}</strong>
-                  <small>{template.templateMarkdown}</small>
-                </span>
-              </label>
-              {template.id in selectedTemplates && (
-                <label className="terms-clause-editor">
-                  Editar copia de “{template.title}”
-                  <textarea
-                    value={selectedTemplates[template.id]}
-                    onChange={(event) =>
-                      setSelectedTemplates((current) => ({
-                        ...current,
-                        [template.id]: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
+              <button
+                className="button"
+                onClick={() => setEditingVersion(true)}
+              >
+                Crear nueva versión
+              </button>
+            </section>
+            <section className="panel loyalty-panel">
+              <h2>Términos publicados</h2>
+              {program?.activeTerms.map((term, index) => (
+                <p key={index} className="published-term">
+                  {term.renderedClause}
+                </p>
+              ))}
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="panel loyalty-panel">
+              <h2>Modalidad</h2>
+              <div className="loyalty-types" role="radiogroup">
+                {(["points", "stamps"] as const).map((value) => (
+                  <label
+                    className={`plan ${kind === value ? "selected" : ""}`}
+                    key={value}
+                  >
+                    <input
+                      className="sr-only"
+                      type="radio"
+                      checked={kind === value}
+                      onChange={() => setKind(value)}
+                    />
+                    <span className="loyalty-choice-content">
+                      <strong>
+                        {value === "points" ? "Puntos" : "Sellos"}
+                      </strong>
+                      <span>
+                        {value === "points"
+                          ? "Una unidad flexible para premios."
+                          : "Una tarjeta que se completa con visitas."}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {kind === "points" ? (
+                <>
+                  <label>
+                    Nombre singular
+                    <input
+                      value={singular}
+                      onChange={(event) => setSingular(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Nombre plural
+                    <input
+                      value={plural}
+                      onChange={(event) => setPlural(event.target.value)}
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label>
+                    Nombre del sello
+                    <input
+                      value={stampName}
+                      onChange={(event) => setStampName(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Sellos para completar
+                    <input
+                      type="number"
+                      min="2"
+                      max="50"
+                      value={target}
+                      onChange={(event) =>
+                        setTarget(Number(event.target.value))
+                      }
+                    />
+                  </label>
+                </>
               )}
-            </Fragment>
-          ))}
-          <label>
-            Cláusula adicional
-            <textarea
-              value={customClause}
-              onChange={(event) => setCustomClause(event.target.value)}
-              placeholder="Añade una condición específica de tu negocio"
-            />
-          </label>
-          {error && <p className="form-error">{error}</p>}
-          <button
-            className="button"
-            disabled={saving}
-            onClick={() => void publish()}
-          >
-            {saving
-              ? "Publicando…"
-              : active
-                ? "Publicar nueva versión"
-                : "Publicar programa"}
-          </button>
-        </section>
-        <p className="field-help">
-          <Link href="/backoffice">Volver al Backoffice</Link>
-        </p>
+              {active && (
+                <div className="transition-fields">
+                  <h3>Vigencia de la nueva versión</h3>
+                  <p>
+                    Desde la fecha de entrada en vigencia, las nuevas
+                    acumulaciones irán a esta versión. La anterior deja de
+                    acumular ese día y sus beneficios podrán canjearse hasta la
+                    fecha que indiques.
+                  </p>
+                  <label>
+                    Entrada en vigencia
+                    <input
+                      type="datetime-local"
+                      value={effectiveFrom}
+                      onChange={(event) => setEffectiveFrom(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Fin de canje
+                    <input
+                      type="datetime-local"
+                      value={redemptionEndsAt}
+                      onChange={(event) =>
+                        setRedemptionEndsAt(event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+            </section>
+            <section className="panel loyalty-panel">
+              <h2>Términos y condiciones</h2>
+              <p>
+                Selecciona cláusulas de la biblioteca y edita o añade texto
+                propio. Las plantillas son borradores editoriales y deben
+                revisarse para tu jurisdicción.
+              </p>
+              {templates.map((template) => (
+                <Fragment key={template.id}>
+                  <label className="terms-template">
+                    <input
+                      type="checkbox"
+                      checked={template.id in selectedTemplates}
+                      onChange={() =>
+                        setSelectedTemplates((current) =>
+                          template.id in current
+                            ? Object.fromEntries(
+                                Object.entries(current).filter(
+                                  ([id]) => id !== template.id,
+                                ),
+                              )
+                            : {
+                                ...current,
+                                [template.id]: template.templateMarkdown,
+                              },
+                        )
+                      }
+                    />
+                    <span>
+                      <strong>{template.title}</strong>
+                      <small>{template.templateMarkdown}</small>
+                    </span>
+                  </label>
+                  {template.id in selectedTemplates && (
+                    <label className="terms-clause-editor">
+                      Editar copia de “{template.title}”
+                      <textarea
+                        value={selectedTemplates[template.id]}
+                        onChange={(event) =>
+                          setSelectedTemplates((current) => ({
+                            ...current,
+                            [template.id]: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
+                  )}
+                </Fragment>
+              ))}
+              <label>
+                Cláusula adicional
+                <textarea
+                  value={customClause}
+                  onChange={(event) => setCustomClause(event.target.value)}
+                  placeholder="Añade una condición específica de tu negocio"
+                />
+              </label>
+              {error && <p className="form-error">{error}</p>}
+              <button
+                className="button"
+                disabled={saving}
+                onClick={() => void publish()}
+              >
+                {saving
+                  ? "Publicando…"
+                  : active
+                    ? "Publicar nueva versión"
+                    : "Publicar programa"}
+              </button>
+            </section>
+            <p className="field-help">
+              <Link href="/backoffice">Volver al Backoffice</Link>
+            </p>
+          </>
+        )}
       </div>
     </main>
   );

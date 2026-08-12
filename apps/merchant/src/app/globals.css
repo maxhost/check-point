@@ -877,6 +877,19 @@ input:focus {
 .loyalty-choice-content {
   display: block;
 }
+.loyalty-choice-content strong,
+.loyalty-choice-content > span {
+  display: block;
+}
+.loyalty-choice-content > span {
+  margin-top: 4px;
+  color: #647168;
+}
+.published-term {
+  padding: 12px;
+  border-left: 3px solid #176548;
+  background: #f5f7f4;
+}
 .loyalty-types input:focus-visible + .loyalty-choice-content {
   outline: 3px solid #176548;
   outline-offset: 5px;
