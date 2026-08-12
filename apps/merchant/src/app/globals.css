@@ -394,6 +394,88 @@ input:focus {
   outline: 3px solid #c9ead7;
   border-radius: 11px;
 }
+.geoapify-place-search {
+  position: relative;
+  width: 100%;
+}
+.geoapify-input-wrap {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  border: 1px solid #cbd7ce;
+  border-radius: 11px;
+  background: #fff;
+}
+.geoapify-input-wrap:focus-within {
+  border-color: #176548;
+  outline: 3px solid #c9ead7;
+}
+.geoapify-input-wrap svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-left: 13px;
+  color: #5e6c63;
+}
+.geoapify-input-wrap input {
+  min-height: 44px;
+  padding: 13px 13px 13px 10px;
+  border: 0;
+  outline: 0;
+}
+.geoapify-input-wrap input:focus {
+  border: 0;
+  outline: 0;
+}
+.geoapify-results {
+  position: absolute;
+  z-index: 5;
+  width: 100%;
+  max-height: 260px;
+  margin: 5px 0 0;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #cbd7ce;
+  border-radius: 11px;
+  list-style: none;
+  background: #fff;
+  box-shadow: 0 12px 28px #1630201f;
+}
+.geoapify-results button {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  color: #17251d;
+  text-align: left;
+  background: transparent;
+}
+.geoapify-results button:hover,
+.geoapify-results button:focus-visible {
+  background: #edf8f0;
+}
+.address-fallback {
+  margin-top: 10px;
+}
+.address-fallback .field-help {
+  margin: 0 0 8px;
+}
+.address-fallback .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.address-fallback .text-button svg {
+  width: 17px;
+  height: 17px;
+}
+.address-fallback-search {
+  margin-top: 10px;
+}
+.location-attribution {
+  margin: 8px 0 0;
+  color: #647168;
+  font-size: 12px;
+}
 .button {
   width: 100%;
   margin-top: 22px;

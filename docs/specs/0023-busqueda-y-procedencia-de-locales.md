@@ -1,7 +1,7 @@
 ---
 spec: 0023
 fecha: 2026-08-11
-estado: borrador
+estado: en revisión
 resumen: Alta y edición de locales con Geoapify como autocomplete principal, fallback Mapbox por dirección exacta y procedencia persistente de la ubicación.
 disjunta: no
 archivos: apps/merchant, packages/db, packages/contracts, pruebas y docs

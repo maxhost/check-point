@@ -78,6 +78,7 @@ export default function MapboxPlaceSearch({
             label,
             longitude: coordinates[0],
             latitude: coordinates[1],
+            provider: "mapbox",
             featureId: feature.properties?.mapbox_id,
             snapshot: feature.properties as Record<string, unknown>,
           });

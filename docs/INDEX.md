@@ -68,7 +68,7 @@ desactualizado es peor que no tenerlo.
 | 0020 | 2026-08-11 | Analíticas owner demo multirubro | cerrada | no | `specs/0020-analiticas-owner-demo-multirubro.md` |
 | 0021 | 2026-08-11 | Catálogo único de beneficios | borrador | no | `specs/0021-catalogo-unico-de-beneficios.md` |
 | 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | cerrada | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
-| 0023 | 2026-08-11 | Búsqueda y procedencia de locales | borrador | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
+| 0023 | 2026-08-11 | Búsqueda y procedencia de locales | en revisión | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

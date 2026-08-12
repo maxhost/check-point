@@ -1,6 +1,7 @@
 import {
   boolean,
   jsonb,
+  numeric,
   pgSchema,
   primaryKey,
   text,
@@ -126,13 +127,34 @@ export const locations = core.table("location", {
     .references(() => businesses.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   addressLabel: text("address_label").notNull(),
-  longitude: text("longitude").notNull(),
-  latitude: text("latitude").notNull(),
-  mapboxFeatureId: text("mapbox_feature_id"),
+  longitude: numeric("longitude", { precision: 10, scale: 7 }).notNull(),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }).notNull(),
+  countryCode: text("country_code").notNull(),
+  activeVerificationId: uuid("active_verification_id"),
   addressSnapshot: jsonb("address_snapshot").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+});
+
+export const locationVerifications = core.table("location_verification", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  locationId: uuid("location_id")
+    .notNull()
+    .references(() => locations.id, { onDelete: "cascade" }),
+  source: text("source").notNull(),
+  provider: text("provider"),
+  providerPlaceId: text("provider_place_id"),
+  normalizedAddress: text("normalized_address").notNull(),
+  longitude: numeric("longitude", { precision: 10, scale: 7 }).notNull(),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }).notNull(),
+  countryCode: text("country_code").notNull(),
+  providerSnapshot: jsonb("provider_snapshot").notNull(),
+  attribution: text("attribution"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  supersededAt: timestamp("superseded_at", { withTimezone: true }),
 });
 
 export const subscriptions = core.table(

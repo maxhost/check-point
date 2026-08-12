@@ -39,12 +39,17 @@ Cuando habilites cobros reales, repetir la creación de producto/precios y webho
 `STRIPE_WEBHOOK_SECRET_LIVE`; por último, cambiar sólo `STRIPE_ENVIRONMENT=live` en el
 entorno Production y redeployar. Mantén el selector `test` en Preview.
 
-## 3. Mapbox
+## 3. Geoapify y Mapbox
 
+- [ ] En Geoapify → **MyProjects**, crear una clave pública para el autocomplete y
+  restringirla a `http://localhost:3001` y a tus dominios Preview/Production de Vercel.
+  Guardarla como `NEXT_PUBLIC_GEOAPIFY_API_KEY`.
+- [ ] Crear una segunda clave para verificación server-side, sin prefijo `NEXT_PUBLIC_`, y
+  guardarla como `GEOAPIFY_API_KEY`. No incluirla en código, navegador ni logs.
 - [ ] En Mapbox → **Access tokens** → **Create a token**, crear un token **público**
   separado para Search JS. En URL restrictions, añadir `http://localhost:3001` y
   `https://<tu-dominio-merchant>/*`; guardar el valor `pk.…` en
-  `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`.
+  `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`. Se usa sólo como fallback de dirección exacta.
 - [ ] Crear otro token **secreto** (`sk.…`) para el servidor, con el mínimo permiso para
   Geocoding/Search y sin restricciones de navegador; guardar en
   `MAPBOX_SERVER_ACCESS_TOKEN`. Nunca usar este token con `NEXT_PUBLIC_`.
