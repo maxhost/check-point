@@ -13,6 +13,7 @@ import {
 
 type CreateBusinessInput = {
   name?: unknown;
+  countryCode?: unknown;
   locationName?: unknown;
   address?: {
     label?: unknown;
@@ -22,6 +23,17 @@ type CreateBusinessInput = {
     snapshot?: unknown;
   };
 };
+
+const supportedCountryCodes = new Set([
+  "AR",
+  "BR",
+  "CL",
+  "CO",
+  "EC",
+  "UY",
+  "PY",
+  "PE",
+]);
 
 type MapboxFeature = {
   geometry?: { coordinates?: unknown[] };
@@ -94,9 +106,12 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as CreateBusinessInput;
   const name = nonEmpty(body.name);
+  const countryCode = nonEmpty(body.countryCode)?.toUpperCase();
   const locationName = nonEmpty(body.locationName);
   if (
     !name ||
+    !countryCode ||
+    !supportedCountryCodes.has(countryCode) ||
     !locationName ||
     !body.address ||
     !coordinate(body.address.longitude) ||
@@ -144,7 +159,7 @@ export async function POST(request: Request) {
         fullName: session.user.name,
       })
       .onConflictDoNothing(),
-    db.insert(businesses).values({ id: businessId, name }),
+    db.insert(businesses).values({ id: businessId, name, countryCode }),
     db.insert(memberships).values({
       businessId,
       userId: session.user.id,

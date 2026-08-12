@@ -100,7 +100,7 @@ como mínimo:
 
 ```text
 owner_profile(user_id PK → merchant_auth.user, full_name, timestamps)
-business(id, name, logo_object_key?, timestamps)
+business(id, name, country_code, logo_object_key?, timestamps)
 business_membership(business_id, user_id, role = owner, timestamps)
 location(id, business_id, name, address_label, longitude, latitude,
          mapbox_feature_id?, address_snapshot, timestamps)
@@ -121,8 +121,9 @@ integration_setting(provider, environment, key, value_json, audited timestamps)
   no se reducen a un booleano `paid`.
 - Sólo se guarda geodato persistente obtenido/confirmado mediante Mapbox permanent
   geocoding. No se persiste una dirección manual sin coordenadas/sugerencia válida. Los
-  países habilitados inicialmente son Ecuador, Argentina, Chile, Paraguay, Uruguay, Perú,
-  Colombia, México y Brasil.
+  países habilitados inicialmente son Argentina, Brasil, Chile, Colombia, Ecuador,
+  Uruguay, Paraguay y Perú. El país elegido al crear el negocio se persiste y limita las
+  sugerencias de Mapbox del local inicial.
 - `integration_setting` sólo guarda valores no secretos, segregados por `test|live` y con
   auditoría. Sus credenciales privadas permanecen en secretos de entorno según ADR 0024.
 

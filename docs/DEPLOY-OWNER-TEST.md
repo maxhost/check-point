@@ -50,8 +50,8 @@ entorno Production y redeployar. Mantén el selector `test` en Preview.
   `MAPBOX_SERVER_ACCESS_TOKEN`. Nunca usar este token con `NEXT_PUBLIC_`.
 - [ ] Tener método de pago activo: el backend solicita `permanent=true` porque almacena
   dirección y coordenadas. Mapbox exige ese modo para guardar geocodes.
-- [ ] Verificar una dirección real en uno de los países iniciales: Ecuador, Argentina,
-  Chile, Paraguay, Uruguay, Perú, Colombia, México o Brasil.
+- [ ] Verificar un local, lugar o dirección real en el país elegido: Argentina, Brasil,
+  Chile, Colombia, Ecuador, Uruguay, Paraguay o Perú.
 
 ## 4. Better Auth
 

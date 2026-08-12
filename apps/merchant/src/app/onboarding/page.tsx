@@ -14,6 +14,16 @@ type Plan = "free" | "plus-month" | "plus-year";
 type Notice = { kind: "success" | "warning" | "error"; text: string } | null;
 
 const steps: Step[] = ["owner", "plan", "business"];
+const countries = [
+  ["AR", "Argentina"],
+  ["BR", "Brasil"],
+  ["CL", "Chile"],
+  ["CO", "Colombia"],
+  ["EC", "Ecuador"],
+  ["UY", "Uruguay"],
+  ["PY", "Paraguay"],
+  ["PE", "Perú"],
+] as const;
 
 export default function OnboardingPage() {
   const [step, setStep] = useState<Step>("owner");
@@ -24,6 +34,7 @@ export default function OnboardingPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [plan, setPlan] = useState<Plan>("free");
   const [businessName, setBusinessName] = useState("");
+  const [countryCode, setCountryCode] = useState("EC");
   const [locationName, setLocationName] = useState("");
   const [address, setAddress] = useState<SelectedAddress | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
@@ -70,7 +81,12 @@ export default function OnboardingPage() {
     const response = await fetch("/api/onboarding/business", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: businessName, locationName, address }),
+      body: JSON.stringify({
+        name: businessName,
+        countryCode,
+        locationName,
+        address,
+      }),
     });
     const payload = (await response.json()) as {
       businessId?: string;
@@ -222,6 +238,22 @@ export default function OnboardingPage() {
                 />
               </label>
               <label>
+                País
+                <select
+                  value={countryCode}
+                  onChange={(event) => {
+                    setCountryCode(event.target.value);
+                    setAddress(null);
+                  }}
+                >
+                  {countries.map(([code, country]) => (
+                    <option key={code} value={code}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Nombre del primer local
                 <input
                   value={locationName}
@@ -230,6 +262,7 @@ export default function OnboardingPage() {
               </label>
               <label>Ubicación del local</label>
               <AddressAutofillField
+                countryCode={countryCode}
                 onSelect={(selected) => {
                   setAddress(selected);
                   setNotice({ kind: "success", text: "Dirección verificada." });

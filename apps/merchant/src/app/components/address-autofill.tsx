@@ -17,8 +17,10 @@ const MapboxPlaceSearch = dynamic(() => import("./address-autofill-mapbox"), {
 
 export function AddressAutofillField({
   onSelect,
+  countryCode,
 }: {
   onSelect: (address: SelectedAddress) => void;
+  countryCode: string;
 }) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   if (!token) {
@@ -28,5 +30,11 @@ export function AddressAutofillField({
       </p>
     );
   }
-  return <MapboxPlaceSearch token={token} onSelect={onSelect} />;
+  return (
+    <MapboxPlaceSearch
+      token={token}
+      countryCode={countryCode}
+      onSelect={onSelect}
+    />
+  );
 }

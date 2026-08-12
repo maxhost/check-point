@@ -92,6 +92,7 @@ export const ownerProfiles = core.table("owner_profile", {
 export const businesses = core.table("business", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
+  countryCode: text("country_code").notNull(),
   logoObjectKey: text("logo_object_key"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

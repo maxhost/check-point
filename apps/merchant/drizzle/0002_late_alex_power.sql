@@ -1,0 +1,1 @@
+ALTER TABLE "core"."business" ADD COLUMN "country_code" text NOT NULL;
