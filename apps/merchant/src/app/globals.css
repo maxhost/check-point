@@ -327,6 +327,10 @@ button:disabled {
   width: min(100%, 540px);
   margin: 0 auto;
 }
+.login-panel {
+  width: min(100%, 540px);
+  margin: 0 auto;
+}
 .brand {
   color: #176548;
   font-weight: 800;
