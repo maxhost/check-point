@@ -3,16 +3,27 @@ import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../server/db";
 import { stripeWebhookEvents, subscriptions } from "../../../../server/schema";
+import {
+  getStripeClient,
+  getStripeConfiguration,
+} from "../../../../server/stripe-config";
 
 export async function POST(request: Request) {
-  const key = process.env.STRIPE_SECRET_KEY;
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
   const signature = request.headers.get("stripe-signature");
-  if (!key || !secret || !signature)
+  let stripe: Stripe;
+  let secret: string | undefined;
+  try {
+    const configuration = getStripeConfiguration();
+    stripe = getStripeClient(configuration);
+    secret = configuration.webhookSecret;
+  } catch {
+    return new NextResponse("Webhook no configurado.", { status: 400 });
+  }
+  if (!secret || !signature)
     return new NextResponse("Webhook no configurado.", { status: 400 });
   let event: Stripe.Event;
   try {
-    event = new Stripe(key).webhooks.constructEvent(
+    event = stripe.webhooks.constructEvent(
       await request.text(),
       signature,
       secret,

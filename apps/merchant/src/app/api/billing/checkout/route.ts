@@ -1,24 +1,14 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { and, eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../server/auth";
 import { getDb } from "../../../../server/db";
 import { memberships } from "../../../../server/schema";
+import {
+  getStripeClient,
+  getStripeConfiguration,
+} from "../../../../server/stripe-config";
 
 type Input = { businessId?: unknown; interval?: unknown };
-
-function stripeClient() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("Stripe no está configurado.");
-  const environment = process.env.STRIPE_ENVIRONMENT;
-  if (environment !== "test" && environment !== "live") {
-    throw new Error("STRIPE_ENVIRONMENT debe ser test o live.");
-  }
-  if ((environment === "test") !== key.startsWith("sk_test_")) {
-    throw new Error("La clave Stripe no coincide con STRIPE_ENVIRONMENT.");
-  }
-  return new Stripe(key);
-}
 
 export async function POST(request: Request) {
   const session = await getMerchantAuth().api.getSession({
@@ -51,17 +41,28 @@ export async function POST(request: Request) {
   if (!membership)
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
 
-  const price =
-    interval === "month"
-      ? process.env.STRIPE_PRICE_PLUS_MONTHLY
-      : process.env.STRIPE_PRICE_PLUS_YEARLY;
-  if (!price)
+  let stripe;
+  let price: string;
+  try {
+    const configuration = getStripeConfiguration();
+    stripe = getStripeClient(configuration);
+    price =
+      interval === "month"
+        ? configuration.monthlyPriceId
+        : configuration.yearlyPriceId;
+  } catch (error) {
     return NextResponse.json(
-      { error: "El plan Plus aún no está configurado." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "El plan Plus aún no está configurado.",
+      },
       { status: 503 },
     );
+  }
   const origin = new URL(request.url).origin;
-  const checkout = await stripeClient().checkout.sessions.create(
+  const checkout = await stripe.checkout.sessions.create(
     {
       mode: "subscription",
       line_items: [{ price, quantity: 1 }],
