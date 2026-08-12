@@ -35,7 +35,12 @@ export default function MapboxPlaceSearch({
         value={value}
         onChange={(nextValue) => setValue(nextValue)}
         placeholder="Busca un local, lugar o dirección"
-        options={{ country: countryCode }}
+        options={{
+          country: countryCode,
+          language: "es",
+          limit: 10,
+          types: "poi,address,street,place,locality,neighborhood",
+        }}
         theme={{
           variables: {
             unit: "16px",

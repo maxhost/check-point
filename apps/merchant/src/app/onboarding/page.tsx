@@ -260,7 +260,7 @@ export default function OnboardingPage() {
                 disabled={submitting}
                 onClick={createBusiness}
               >
-                {submitting ? "Guardando…" : "Continuar al plan"}
+                {submitting ? "Guardando…" : "Continuar"}
               </button>
             </>
           )}
