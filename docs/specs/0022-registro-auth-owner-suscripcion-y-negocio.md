@@ -63,8 +63,8 @@ después debe poder crear su primer negocio y local con dirección verificable.
 ```text
 /onboarding
   → registro válido → cuenta Owner + sesión merchant
-  → elegir Free | Plus mensual | Plus anual
   → negocio + local inicial en una transacción
+  → elegir Free | Plus, con selector mensual | anual para Plus
   → Free: home con suscripción Free
   → Plus: crear Checkout Session asociado al negocio → Stripe Checkout alojado
        → retorno UX de éxito/cancelación
@@ -223,9 +223,9 @@ onboarding y pruebas con casi todas las specs futuras. Se implementa serialmente
   contraseña; no existe acceso de navegador a Neon ni cruce de sesión con otros dominios.
 - [ ] El formulario actual registra nombre completo, email, contraseña y confirmación con
   validación cliente/servidor; crear cuenta no depende de completar un pago.
-- [ ] Free permite continuar al negocio inicial sin Stripe. Plus mensual/anual crea un
-  Stripe Checkout Session alojado con los Price IDs configurados, sin tarjetas ni importes
-  manejados por Mi Pasaporte.
+- [ ] Tras guardar el negocio/local inicial, Free permite abrir el backoffice sin Stripe.
+  Plus ofrece un selector mensual/anual y crea un Stripe Checkout Session alojado con los
+  Price IDs configurados, sin tarjetas ni importes manejados por Mi Pasaporte.
 - [ ] Webhook Stripe verifica firma, es idempotente y es la única autoridad que habilita o
   cambia Plus; retorno, cancelación, pago fallido y reintentos muestran estados correctos.
 - [ ] Test/live se configuran por secretos de entorno y configuración no secreta separada
@@ -254,8 +254,8 @@ onboarding y pruebas con casi todas las specs futuras. Se implementa serialmente
   checkout completado sin webhook no habilita Plus; `invoice.paid`, fallo y cancelación
   dejan el estado esperado.
 - [ ] UI: errores por campo, submit doble, estados de red/checkout y retorno pendiente.
-- [ ] E2E móvil: registro → Free → negocio/local → backoffice; registro → Plus →
-  negocio/local → Checkout test → webhook fixture → backoffice protegido.
+- [ ] E2E móvil: registro → negocio/local → Free → backoffice; registro → negocio/local
+  → Plus mensual/anual → Checkout test → webhook fixture → backoffice protegido.
 - [ ] Manual: cookies/sesiones por dominio, foco/lectores de pantalla, Mapbox teclado,
   bloqueo de dirección no seleccionada, archivos de logo R2 y banner de verificación.
 - [ ] Comandos: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`,

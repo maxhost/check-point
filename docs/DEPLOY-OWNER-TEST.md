@@ -73,8 +73,9 @@ entorno Production y redeployar. Mantén el selector `test` en Preview.
   real. `RESEND_*` y `R2_*` permanecen vacíos: esas features no están activadas.
 - [ ] Deploy. Al tener URL, volver a Stripe para crear el webhook y a Mapbox para añadir
   el origen definitivo al token público.
-- [ ] Abrir `/onboarding`: registrar Owner → Free → negocio → seleccionar dirección
-  Mapbox → `/backoffice`; repetir con Plus y confirmar el estado sólo después del webhook.
+- [ ] Abrir `/onboarding`: registrar Owner → negocio/local → seleccionar dirección Mapbox
+  → Free → `/backoffice`; repetir con Plus mensual/anual y confirmar el estado sólo
+  después del webhook.
 
 ## 6. R2 y Resend: no necesarios para esta prueba
 

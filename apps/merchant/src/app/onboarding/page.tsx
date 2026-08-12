@@ -9,11 +9,12 @@ import {
 import { Toast } from "../components/ui";
 import { merchantAuthClient } from "../../lib/auth-client";
 
-type Step = "owner" | "plan" | "business";
-type Plan = "free" | "plus-month" | "plus-year";
+type Step = "owner" | "business" | "plan";
+type Plan = "free" | "plus";
+type BillingInterval = "month" | "year";
 type Notice = { kind: "success" | "warning" | "error"; text: string } | null;
 
-const steps: Step[] = ["owner", "plan", "business"];
+const steps: Step[] = ["owner", "business", "plan"];
 const countries = [
   ["AR", "Argentina"],
   ["BR", "Brasil"],
@@ -33,10 +34,13 @@ export default function OnboardingPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [plan, setPlan] = useState<Plan>("free");
+  const [billingInterval, setBillingInterval] =
+    useState<BillingInterval>("month");
   const [businessName, setBusinessName] = useState("");
   const [countryCode, setCountryCode] = useState("EC");
   const [locationName, setLocationName] = useState("");
   const [address, setAddress] = useState<SelectedAddress | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,7 +70,7 @@ export default function OnboardingPage() {
       });
       return;
     }
-    setStep("plan");
+    setStep("business");
   }
 
   async function createBusiness() {
@@ -100,16 +104,31 @@ export default function OnboardingPage() {
       });
       return;
     }
+    setBusinessId(payload.businessId);
+    setSubmitting(false);
+    setStep("plan");
+  }
+
+  async function continueWithPlan() {
+    if (!businessId) {
+      setNotice({
+        kind: "error",
+        text: "Primero necesitamos guardar los datos de tu negocio.",
+      });
+      setStep("business");
+      return;
+    }
     if (plan === "free") {
       window.location.assign("/backoffice?toast=ready");
       return;
     }
+    setSubmitting(true);
     const checkout = await fetch("/api/billing/checkout", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        businessId: payload.businessId,
-        interval: plan === "plus-year" ? "year" : "month",
+        businessId,
+        interval: billingInterval,
       }),
     });
     const checkoutPayload = (await checkout.json()) as {
@@ -145,7 +164,7 @@ export default function OnboardingPage() {
         <section className="panel">
           {step === "owner" && (
             <>
-              <h1>Crea tu cuenta de negocio</h1>
+              <h1>Tus datos como owner</h1>
               <p>
                 Estos datos son tuyos como owner. Podrás crear tu negocio
                 después.
@@ -186,46 +205,13 @@ export default function OnboardingPage() {
                 disabled={submitting}
                 onClick={createAccount}
               >
-                {submitting ? "Creando cuenta…" : "Continuar al plan"}
-              </button>
-            </>
-          )}
-          {step === "plan" && (
-            <>
-              <h1>Elige tu plan</h1>
-              <p>
-                Free te permite crear un negocio, un local y tu programa de
-                fidelización.
-              </p>
-              <PlanOption
-                value="free"
-                selected={plan}
-                onChange={setPlan}
-                title="Free · USD 0"
-                text="1 local y programa de fidelización."
-              />
-              <PlanOption
-                value="plus-month"
-                selected={plan}
-                onChange={setPlan}
-                title="Plus · USD 20/mes"
-                text="Campañas y herramientas avanzadas."
-              />
-              <PlanOption
-                value="plus-year"
-                selected={plan}
-                onChange={setPlan}
-                title="Plus · USD 200/año"
-                text="Ahorra USD 40 por año."
-              />
-              <button className="button" onClick={() => setStep("business")}>
-                Continuar
+                {submitting ? "Creando cuenta…" : "Continuar"}
               </button>
             </>
           )}
           {step === "business" && (
             <>
-              <h1>Configura tu negocio</h1>
+              <h1>Tu negocio y primer local</h1>
               <p>
                 El logo es opcional y podrás añadirlo cuando R2 esté
                 configurado.
@@ -274,8 +260,65 @@ export default function OnboardingPage() {
                 disabled={submitting}
                 onClick={createBusiness}
               >
+                {submitting ? "Guardando…" : "Continuar al plan"}
+              </button>
+            </>
+          )}
+          {step === "plan" && (
+            <>
+              <h1>Elige tu plan</h1>
+              <p>
+                Podrás cambiarlo más adelante. Plus activa campañas y
+                herramientas avanzadas.
+              </p>
+              <PlanOption
+                value="free"
+                selected={plan}
+                onChange={setPlan}
+                title="Free · USD 0"
+                text="1 local y programa de fidelización."
+              />
+              <PlanOption
+                value="plus"
+                selected={plan}
+                onChange={setPlan}
+                title={
+                  billingInterval === "year"
+                    ? "Plus · USD 200/año"
+                    : "Plus · USD 20/mes"
+                }
+                text={
+                  billingInterval === "year"
+                    ? "Ahorra USD 40 por año."
+                    : "Campañas y herramientas avanzadas."
+                }
+              />
+              <fieldset className="billing-cycle" disabled={plan !== "plus"}>
+                <legend>Facturación de Plus</legend>
+                <button
+                  type="button"
+                  className={billingInterval === "month" ? "active" : ""}
+                  aria-pressed={billingInterval === "month"}
+                  onClick={() => setBillingInterval("month")}
+                >
+                  Mensual · USD 20
+                </button>
+                <button
+                  type="button"
+                  className={billingInterval === "year" ? "active" : ""}
+                  aria-pressed={billingInterval === "year"}
+                  onClick={() => setBillingInterval("year")}
+                >
+                  Anual · USD 200
+                </button>
+              </fieldset>
+              <button
+                className="button"
+                disabled={submitting}
+                onClick={continueWithPlan}
+              >
                 {submitting
-                  ? "Guardando…"
+                  ? "Abriendo Stripe…"
                   : plan === "free"
                     ? "Abrir mi Backoffice"
                     : "Continuar a Stripe"}

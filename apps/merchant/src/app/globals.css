@@ -428,6 +428,39 @@ input:focus {
   margin-top: 4px;
   color: #647168;
 }
+.billing-cycle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin: 16px 0 0;
+  padding: 4px;
+  border: 1px solid #cbd7ce;
+  border-radius: 12px;
+  background: #f5f7f4;
+}
+.billing-cycle:disabled {
+  opacity: 0.5;
+}
+.billing-cycle legend {
+  padding: 0 4px;
+  color: #344238;
+  font-size: 14px;
+  font-weight: 700;
+}
+.billing-cycle button {
+  min-height: 42px;
+  padding: 8px;
+  border-radius: 8px;
+  color: #5e6c63;
+  font-size: 14px;
+  font-weight: 700;
+  background: transparent;
+}
+.billing-cycle button.active {
+  color: #175c35;
+  background: #fff;
+  box-shadow: 0 1px 3px #16302014;
+}
 .stripe {
   padding: 28px;
   border-radius: 18px;
