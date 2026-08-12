@@ -453,24 +453,6 @@ input:focus {
 .geoapify-results button:focus-visible {
   background: #edf8f0;
 }
-.address-fallback {
-  margin-top: 10px;
-}
-.address-fallback .field-help {
-  margin: 0 0 8px;
-}
-.address-fallback .text-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.address-fallback .text-button svg {
-  width: 17px;
-  height: 17px;
-}
-.address-fallback-search {
-  margin-top: 10px;
-}
 .location-attribution {
   margin: 8px 0 0;
   color: #647168;

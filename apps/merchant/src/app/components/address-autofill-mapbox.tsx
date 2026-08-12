@@ -1,7 +1,8 @@
 "use client";
 
 import { SearchBox } from "@mapbox/search-js-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { SearchBoxRefType } from "@mapbox/search-js-react";
 import type { SelectedAddress } from "./address-autofill";
 
 type Retrieval = {
@@ -21,16 +22,27 @@ export default function MapboxPlaceSearch({
   token,
   countryCode,
   onSelect,
+  initialQuery = "",
 }: {
   token: string;
   countryCode: string;
   onSelect: (address: SelectedAddress) => void;
+  initialQuery?: string;
 }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialQuery);
+  const searchRef = useRef<SearchBoxRefType>(null);
+
+  useEffect(() => {
+    if (!initialQuery) return;
+    setValue(initialQuery);
+    searchRef.current?.search(initialQuery);
+  }, [initialQuery]);
+
   return (
     <div className="mapbox-place-search">
       <SearchBox
-        key={countryCode}
+        ref={searchRef}
+        key={`${countryCode}-${initialQuery}`}
         accessToken={token}
         value={value}
         onChange={(nextValue) => setValue(nextValue)}
@@ -39,7 +51,7 @@ export default function MapboxPlaceSearch({
           country: countryCode,
           language: "es",
           limit: 10,
-          types: "poi,address,street,place,locality,neighborhood",
+          types: "address,street,place,locality,neighborhood",
         }}
         theme={{
           variables: {

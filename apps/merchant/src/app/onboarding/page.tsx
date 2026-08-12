@@ -255,7 +255,7 @@ export default function OnboardingPage() {
                   onChange={(event) => setLocationName(event.target.value)}
                 />
               </label>
-              <label>Ubicación del local</label>
+              <label>Dirección del local</label>
               <AddressAutofillField
                 countryCode={countryCode}
                 onSelect={(selected) => {

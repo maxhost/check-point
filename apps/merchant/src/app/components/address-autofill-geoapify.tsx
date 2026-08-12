@@ -1,6 +1,6 @@
 "use client";
 
-import { NavArrowDown, Search } from "iconoir-react";
+import { Search } from "iconoir-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import type { SelectedAddress } from "./address-autofill";
 
@@ -16,32 +16,29 @@ export default function GeoapifyPlaceSearch({
   token,
   countryCode,
   onSelect,
-  renderFallback,
+  renderMapboxFallback,
 }: {
   token: string;
   countryCode: string;
   onSelect: (address: SelectedAddress) => void;
-  renderFallback?: () => ReactNode;
+  renderMapboxFallback?: (query: string) => ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeoapifyResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [useMapboxFallback, setUseMapboxFallback] = useState(false);
   const listId = useId();
 
   useEffect(() => {
     setQuery("");
     setResults([]);
-    setSearched(false);
-    setFallbackOpen(false);
+    setUseMapboxFallback(false);
   }, [countryCode]);
 
   useEffect(() => {
     const text = query.trim();
     if (text.length < 3) {
       setResults([]);
-      setSearched(false);
       return;
     }
     const controller = new AbortController();
@@ -62,11 +59,13 @@ export default function GeoapifyPlaceSearch({
         );
         const body = (await response.json()) as { results?: GeoapifyResult[] };
         setResults(response.ok ? (body.results ?? []) : []);
-        setSearched(true);
+        if (!response.ok) {
+          setUseMapboxFallback(Boolean(renderMapboxFallback));
+        }
       } catch (error) {
         if ((error as { name?: string }).name !== "AbortError") {
           setResults([]);
-          setSearched(true);
+          setUseMapboxFallback(Boolean(renderMapboxFallback));
         }
       } finally {
         setLoading(false);
@@ -76,7 +75,7 @@ export default function GeoapifyPlaceSearch({
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [countryCode, query, token]);
+  }, [countryCode, query, renderMapboxFallback, token]);
 
   function select(result: GeoapifyResult) {
     if (
@@ -98,6 +97,14 @@ export default function GeoapifyPlaceSearch({
     });
   }
 
+  if (useMapboxFallback && renderMapboxFallback) {
+    return (
+      <div className="geoapify-place-search provider-fallback">
+        {renderMapboxFallback(query)}
+      </div>
+    );
+  }
+
   return (
     <div className="geoapify-place-search">
       <div className="geoapify-input-wrap">
@@ -106,7 +113,6 @@ export default function GeoapifyPlaceSearch({
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
-            setFallbackOpen(false);
           }}
           placeholder="Busca un local, lugar o dirección"
           autoComplete="off"
@@ -127,24 +133,6 @@ export default function GeoapifyPlaceSearch({
             </li>
           ))}
         </ul>
-      )}
-      {searched && !loading && results.length === 0 && renderFallback && (
-        <div className="address-fallback">
-          <p className="field-help">
-            No encontramos ese lugar. Puedes ingresar su dirección exacta.
-          </p>
-          <button
-            className="text-button"
-            type="button"
-            aria-expanded={fallbackOpen}
-            onClick={() => setFallbackOpen(!fallbackOpen)}
-          >
-            Buscar dirección exacta <NavArrowDown aria-hidden="true" />
-          </button>
-          {fallbackOpen && (
-            <div className="address-fallback-search">{renderFallback()}</div>
-          )}
-        </div>
       )}
       <p className="location-attribution">
         Datos de ubicación © OpenStreetMap contributors, © Geoapify

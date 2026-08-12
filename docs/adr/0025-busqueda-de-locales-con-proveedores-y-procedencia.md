@@ -1,6 +1,6 @@
 ---
 fecha: 2026-08-11
-resumen: Geoapify es el buscador principal de POIs y direcciones; Mapbox valida una dirección exacta sólo como fallback, con procedencia persistida por local.
+resumen: Geoapify es el buscador principal de POIs y direcciones; Mapbox sólo releva un fallo técnico de Geoapify y conserva procedencia por local.
 estado: aceptada
 ---
 
@@ -22,16 +22,17 @@ El flujo de alta y edición de un local usa una cadena ordenada:
 owner aporta nombre del negocio + nombre del local
   → Geoapify autocomplete (POI/dirección), país limitado
   → selección y validación Geoapify
-  → sin resultado seleccionable: fallback visible de dirección exacta en Mapbox
+  → error técnico de Geoapify: fallback automático a Mapbox con el mismo texto
   → selección y validación permanente de Mapbox
   → local canónico de Mi Pasaporte + procedencia de ubicación
 ```
 
 - **Geoapify** es el autocomplete principal para POIs y direcciones. No se consulta
   Mapbox en paralelo ni por cada tecla.
-- El fallback se ofrece sólo cuando Geoapify no devuelve un resultado útil y el owner
-  ingresa una **dirección exacta**. Mapbox se usa para geocoding, no para buscar el nombre
-  de un comercio.
+- Mapbox sólo se invoca si la petición de Geoapify falla técnica o remotamente. La UI conserva
+  el mismo campo y consulta automáticamente Mapbox con el texto ya escrito, mostrando carga
+  dentro del control. Una respuesta válida, incluso sin resultados, no activa Mapbox.
+- Mapbox se limita a geocoding de dirección, no a buscar el nombre de un comercio.
 - El país elegido por el owner limita ambas consultas y el servidor vuelve a validarlo.
 - El nombre del negocio/local es `owner_submitted`; una respuesta de proveedor sólo
   normaliza/verifica la ubicación.
@@ -48,8 +49,8 @@ owner aporta nombre del negocio + nombre del local
 
 - Aumenta la probabilidad de encontrar comercios pequeños sin sacrificar la validación de
   una dirección real cuando el POI no exista.
-- El usuario ve un camino explícito de fallback en vez de resultados mezclados o un fallo
-  ambiguo.
+- El usuario conserva un único campo de dirección y no debe repetir texto ni decidir entre
+  proveedores ante un fallo técnico.
 - La dependencia queda encapsulada detrás de un contrato de búsqueda/validación, de modo
   que un proveedor puede ser reemplazado sin migrar locales existentes.
 - La migración desde el campo actual `mapbox_feature_id` requiere convertirlo en una

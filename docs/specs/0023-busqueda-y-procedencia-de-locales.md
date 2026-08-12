@@ -2,7 +2,7 @@
 spec: 0023
 fecha: 2026-08-11
 estado: en revisión
-resumen: Alta y edición de locales con Geoapify como autocomplete principal, fallback Mapbox por dirección exacta y procedencia persistente de la ubicación.
+resumen: Alta y edición de locales con Geoapify como autocomplete principal, fallback automático Mapbox ante error y procedencia persistente de la ubicación.
 disjunta: no
 archivos: apps/merchant, packages/db, packages/contracts, pruebas y docs
 ---
@@ -20,8 +20,8 @@ conocer su origen para operar check-ins y permitir correcciones futuras.
 **Entra:**
 
 - Geoapify como autocomplete principal de POIs y direcciones, limitado al país del local.
-- Fallback explícito a Mapbox cuando Geoapify no retorna una selección útil; el fallback
-  pide dirección exacta, no nombre comercial.
+- Fallback automático a Mapbox sólo ante un error técnico o HTTP de Geoapify. Reutiliza el
+  mismo texto y el mismo campo; una respuesta válida sin resultados no dispara Mapbox.
 - Validación server-side de país, dirección y coordenadas antes de crear o editar un local.
 - Persistencia de dirección normalizada, coordenadas, proveedor, ID externo, fuente,
   instante de verificación, atribución y snapshot permitido.
@@ -46,8 +46,8 @@ Paso 1: owner escribe el nombre del local o dirección
 Paso 2a: owner selecciona resultado Geoapify
   └─ servidor valida y guarda ubicación + procedencia geoapify
 
-Paso 2b: no hay resultado útil
-  └─ CTA «Ingresar dirección exacta» abre fallback Mapbox
+Paso 2b: Geoapify falla técnica o remotamente
+  └─ el mismo control muestra carga y consulta Mapbox con el texto actual
        └─ owner selecciona dirección → servidor valida permanentemente y guarda
           ubicación + procedencia mapbox
 ```
@@ -84,7 +84,7 @@ location_verification
 
 | Archivo | Acción |
 |---|---|
-| `apps/merchant/src/app/components/address-autofill*` | reemplazar componente Mapbox específico por selector con Geoapify y fallback explícito |
+| `apps/merchant/src/app/components/address-autofill*` | selector Geoapify y fallback automático Mapbox ante fallo técnico |
 | `apps/merchant/src/app/api/onboarding/business/route.ts` | validar proveedor/país en servidor y persistir la procedencia neutral |
 | `apps/merchant/src/app/backoffice/**/locations/**` | reutilizar el selector al crear o editar local |
 | `apps/merchant/src/server/location-providers/**` | crear contrato y adaptadores Geoapify/Mapbox |
@@ -96,8 +96,9 @@ location_verification
 
 - [ ] Geoapify devuelve POIs y direcciones para el país seleccionado con un autocomplete
   accesible y responsive.
-- [ ] No se consulta Mapbox mientras Geoapify ofrece resultados; si no hay selección útil,
-  la UI ofrece el fallback de dirección exacta de forma visible.
+- [ ] No se consulta Mapbox mientras Geoapify responde correctamente; ante un error de
+  Geoapify, la UI conserva el único campo, muestra carga y consulta Mapbox automáticamente
+  con el mismo texto.
 - [ ] El servidor valida país, respuesta y coordenadas para ambos proveedores; ninguna
   coordenada arbitraria enviada por el navegador crea o modifica un local.
 - [ ] Cada local conserva una ubicación activa y su historial de procedencia: fuente,
@@ -118,14 +119,14 @@ location_verification
 
 - [ ] Unidad: normalizar selección de Geoapify y Mapbox; rechazar país no soportado,
   coordenadas fuera de país y respuesta incompleta.
-- [ ] Unidad: resolver no invoca fallback hasta recibir señal explícita de ausencia de
-  selección útil.
+- [ ] Unidad: resolver no invoca Mapbox cuando Geoapify responde correctamente, aunque no
+  devuelva resultados; lo invoca sólo frente a error técnico o HTTP.
 - [ ] Integración: crear local por cada proveedor y comprobar `location_verification`,
   procedencia y referencia activa; una actualización conserva el historial.
 - [ ] Integración: solicitud manipulada con proveedor, ID, país o coordenadas falsos es
   rechazada por servidor.
-- [ ] E2E móvil: buscar POI Geoapify; fallback Mapbox con dirección exacta; crear y editar
-  un local desde el backoffice.
+- [ ] E2E móvil: buscar POI Geoapify; simular su error y comprobar el fallback automático
+  Mapbox en el mismo control; crear y editar un local desde el backoffice.
 - [ ] Benchmark manual: al menos 100 consultas representativas de Ecuador y los países
   soportados, con tasa de hallazgo de POI y dirección por proveedor documentada antes de
   activar el flujo para todos los owners.

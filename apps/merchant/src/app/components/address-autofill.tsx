@@ -44,13 +44,14 @@ export function AddressAutofillField({
       token={geoapifyToken}
       countryCode={countryCode}
       onSelect={onSelect}
-      renderFallback={
+      renderMapboxFallback={
         mapboxToken
-          ? () => (
+          ? (query) => (
               <MapboxPlaceSearch
                 token={mapboxToken}
                 countryCode={countryCode}
                 onSelect={onSelect}
+                initialQuery={query}
               />
             )
           : undefined
