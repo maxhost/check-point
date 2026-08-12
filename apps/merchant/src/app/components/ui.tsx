@@ -36,11 +36,13 @@ export function ModuleHeader({
   title,
   description,
   closeHref,
+  onClose,
 }: {
   eyebrow: string;
   title: string;
   description?: string;
   closeHref: string;
+  onClose?: () => void;
 }) {
   return (
     <div className="module-topline">
@@ -49,13 +51,24 @@ export function ModuleHeader({
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
-      <Link
-        className="close-module"
-        href={closeHref}
-        aria-label={`Cerrar ${eyebrow}`}
-      >
-        <Xmark aria-hidden="true" />
-      </Link>
+      {onClose ? (
+        <button
+          className="close-module"
+          type="button"
+          onClick={onClose}
+          aria-label={`Cerrar ${eyebrow}`}
+        >
+          <Xmark aria-hidden="true" />
+        </button>
+      ) : (
+        <Link
+          className="close-module"
+          href={closeHref}
+          aria-label={`Cerrar ${eyebrow}`}
+        >
+          <Xmark aria-hidden="true" />
+        </Link>
+      )}
     </div>
   );
 }

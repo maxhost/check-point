@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
+import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ModuleHeader, Toast } from "../../components/ui";
 
 type Kind = "points" | "stamps";
@@ -40,6 +41,7 @@ export default function LoyaltyProgramPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -136,6 +138,7 @@ export default function LoyaltyProgramPage() {
               : "Elige una única forma de acumular beneficios en tu negocio."
           }
           closeHref="/backoffice"
+          onClose={editingVersion ? () => setConfirmDiscard(true) : undefined}
         />
         {active && !editingVersion ? (
           <>
@@ -336,6 +339,17 @@ export default function LoyaltyProgramPage() {
             </p>
           </>
         )}
+        <ConfirmDialog
+          open={confirmDiscard}
+          title="¿Salir sin publicar esta versión?"
+          description="Los cambios que hiciste no se aplicarán. Tu programa activo seguirá igual."
+          confirmLabel="Salir sin guardar"
+          onCancel={() => setConfirmDiscard(false)}
+          onConfirm={() => {
+            setConfirmDiscard(false);
+            setEditingVersion(false);
+          }}
+        />
       </div>
     </main>
   );
