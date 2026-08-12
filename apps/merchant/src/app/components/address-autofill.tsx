@@ -10,15 +10,10 @@ export type SelectedAddress = {
   snapshot: Record<string, unknown>;
 };
 
-const MapboxAddressAutofill = dynamic(
-  () => import("./address-autofill-mapbox"),
-  {
-    ssr: false,
-    loading: () => (
-      <p className="field-help">Cargando búsqueda de dirección…</p>
-    ),
-  },
-);
+const MapboxPlaceSearch = dynamic(() => import("./address-autofill-mapbox"), {
+  ssr: false,
+  loading: () => <p className="field-help">Cargando buscador de lugares…</p>,
+});
 
 export function AddressAutofillField({
   onSelect,
@@ -33,5 +28,5 @@ export function AddressAutofillField({
       </p>
     );
   }
-  return <MapboxAddressAutofill token={token} onSelect={onSelect} />;
+  return <MapboxPlaceSearch token={token} onSelect={onSelect} />;
 }

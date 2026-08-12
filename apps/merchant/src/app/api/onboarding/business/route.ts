@@ -42,36 +42,45 @@ async function verifyPermanentMapboxAddress(
   address: NonNullable<CreateBusinessInput["address"]>,
 ) {
   const token = process.env.MAPBOX_SERVER_ACCESS_TOKEN;
-  const featureId = nonEmpty(address.featureId);
-  if (!token || !featureId) {
+  const longitude = coordinate(address.longitude);
+  const latitude = coordinate(address.latitude);
+  if (!token || !longitude || !latitude) {
     throw new Error("La validación permanente de Mapbox no está configurada.");
   }
   const params = new URLSearchParams({
-    q: featureId,
+    longitude,
+    latitude,
     access_token: token,
     permanent: "true",
     country: "EC,AR,CL,PY,UY,PE,CO,MX,BR",
     limit: "1",
   });
   const response = await fetch(
-    `https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`,
+    `https://api.mapbox.com/search/geocode/v6/reverse?${params.toString()}`,
   );
   const body = (await response.json()) as { features?: MapboxFeature[] };
   const feature = body.features?.[0];
   const coordinates = feature?.geometry?.coordinates;
-  const longitude = coordinate(coordinates?.[0]);
-  const latitude = coordinate(coordinates?.[1]);
+  const verifiedLongitude = coordinate(coordinates?.[0]);
+  const verifiedLatitude = coordinate(coordinates?.[1]);
   const label =
     nonEmpty(feature?.properties?.full_address) ??
     nonEmpty(feature?.properties?.place_formatted);
-  if (!response.ok || !feature || !longitude || !latitude || !label) {
+  if (
+    !response.ok ||
+    !feature ||
+    !verifiedLongitude ||
+    !verifiedLatitude ||
+    !label
+  ) {
     throw new Error("No pudimos verificar esa dirección con Mapbox.");
   }
   return {
     label,
-    longitude,
-    latitude,
-    featureId: nonEmpty(feature.properties?.mapbox_id) ?? featureId,
+    longitude: verifiedLongitude,
+    latitude: verifiedLatitude,
+    featureId:
+      nonEmpty(address.featureId) ?? nonEmpty(feature.properties?.mapbox_id),
     snapshot: feature.properties ?? {},
   };
 }
@@ -90,7 +99,8 @@ export async function POST(request: Request) {
     !name ||
     !locationName ||
     !body.address ||
-    !nonEmpty(body.address.featureId)
+    !coordinate(body.address.longitude) ||
+    !coordinate(body.address.latitude)
   ) {
     return NextResponse.json(
       { error: "Selecciona una dirección válida de Mapbox." },

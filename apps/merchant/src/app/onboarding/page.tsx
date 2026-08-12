@@ -228,7 +228,7 @@ export default function OnboardingPage() {
                   onChange={(event) => setLocationName(event.target.value)}
                 />
               </label>
-              <label>Dirección del local</label>
+              <label>Ubicación del local</label>
               <AddressAutofillField
                 onSelect={(selected) => {
                   setAddress(selected);
