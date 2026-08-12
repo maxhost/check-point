@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateConfiguration } from "./loyalty-program";
+import { renderTermsText, validateConfiguration } from "./loyalty-program";
 
 describe("loyalty program configuration", () => {
   it("accepts valid points and stamps", () => {
@@ -20,5 +20,18 @@ describe("loyalty program configuration", () => {
       validateConfiguration("stamps", { unitName: "Sello", target: 51 }),
     ).toBeTruthy();
     expect(validateConfiguration("tiers", {})).toBeTruthy();
+  });
+
+  it("renders only explicitly allowed terms variables", () => {
+    expect(
+      renderTermsText(
+        "Programa de {{business_legal_name}}.",
+        { business_legal_name: "LaCraft" },
+        ["business_legal_name"],
+      ),
+    ).toBe("Programa de LaCraft.");
+    expect(() =>
+      renderTermsText("{{unknown}}", {}, ["business_legal_name"]),
+    ).toThrow("no está permitida");
   });
 });

@@ -93,11 +93,17 @@ function date(value: string | undefined) {
   return Number.isNaN(result.valueOf()) ? null : result;
 }
 
-function render(text: string, variables: Record<string, string>) {
-  return text.replace(
-    /{{([a-z_]+)}}/g,
-    (_, key: string) => variables[key] ?? `{{${key}}}`,
-  );
+export function renderTermsText(
+  text: string,
+  variables: Record<string, string>,
+  allowedVariables: readonly string[],
+) {
+  return text.replace(/{{([a-z_]+)}}/g, (_, key: string) => {
+    if (!allowedVariables.includes(key) || !variables[key]) {
+      throw new LoyaltyError(422, `La variable {{${key}}} no está permitida.`);
+    }
+    return variables[key];
+  });
 }
 
 export async function publishProgram(userId: string, input: PublishInput) {
@@ -155,7 +161,15 @@ export async function publishProgram(userId: string, input: PublishInput) {
       id: randomUUID(),
       position: String(position + 1),
       template,
-      rendered: render(text, variables),
+      rendered: renderTermsText(
+        text,
+        variables,
+        Array.isArray(template?.variablesAllowlist)
+          ? template.variablesAllowlist.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [],
+      ),
       edited: Boolean(clause.text),
     };
   });
@@ -183,15 +197,6 @@ export async function publishProgram(userId: string, input: PublishInput) {
             .update(loyaltyProgramVersions)
             .set({ status: "retiring", earningEndsAt, redemptionEndsAt })
             .where(eq(loyaltyProgramVersions.id, activeVersion.id)),
-          db.insert(loyaltyProgramTransitions).values({
-            id: randomUUID(),
-            programId,
-            fromVersionId: activeVersion.id,
-            toVersionId: versionId,
-            earningEndsAt: earningEndsAt!,
-            redemptionEndsAt: redemptionEndsAt!,
-            createdBy: userId,
-          }),
         ]
       : []),
     db.insert(loyaltyProgramVersions).values({
@@ -204,6 +209,19 @@ export async function publishProgram(userId: string, input: PublishInput) {
       publishedAt: new Date(),
       createdBy: userId,
     }),
+    ...(activeVersion
+      ? [
+          db.insert(loyaltyProgramTransitions).values({
+            id: randomUUID(),
+            programId,
+            fromVersionId: activeVersion.id,
+            toVersionId: versionId,
+            earningEndsAt: earningEndsAt!,
+            redemptionEndsAt: redemptionEndsAt!,
+            createdBy: userId,
+          }),
+        ]
+      : []),
     db.insert(loyaltyTermsVersions).values({
       id: termsId,
       programVersionId: versionId,

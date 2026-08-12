@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
 
 type Kind = "points" | "stamps";
@@ -27,7 +27,9 @@ export default function LoyaltyProgramPage() {
   const [stampName, setStampName] = useState("Sello");
   const [target, setTarget] = useState(10);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
+  const [selectedTemplates, setSelectedTemplates] = useState<
+    Record<string, string>
+  >({});
   const [customClause, setCustomClause] = useState("");
   const [earningEndsAt, setEarningEndsAt] = useState("");
   const [redemptionEndsAt, setRedemptionEndsAt] = useState("");
@@ -66,7 +68,10 @@ export default function LoyaltyProgramPage() {
             ? { unitSingular: singular, unitPlural: plural }
             : { unitName: stampName, target },
         clauses: [
-          ...selectedTemplates.map((templateId) => ({ templateId })),
+          ...Object.entries(selectedTemplates).map(([templateId, text]) => ({
+            templateId,
+            text,
+          })),
           ...(customClause.trim() ? [{ text: customClause }] : []),
         ],
         earningEndsAt: earningEndsAt || undefined,
@@ -198,23 +203,46 @@ export default function LoyaltyProgramPage() {
             jurisdicción.
           </p>
           {templates.map((template) => (
-            <label className="terms-template" key={template.id}>
-              <input
-                type="checkbox"
-                checked={selectedTemplates.includes(template.id)}
-                onChange={() =>
-                  setSelectedTemplates((current) =>
-                    current.includes(template.id)
-                      ? current.filter((id) => id !== template.id)
-                      : [...current, template.id],
-                  )
-                }
-              />
-              <span>
-                <strong>{template.title}</strong>
-                <small>{template.templateMarkdown}</small>
-              </span>
-            </label>
+            <Fragment key={template.id}>
+              <label className="terms-template">
+                <input
+                  type="checkbox"
+                  checked={template.id in selectedTemplates}
+                  onChange={() =>
+                    setSelectedTemplates((current) =>
+                      template.id in current
+                        ? Object.fromEntries(
+                            Object.entries(current).filter(
+                              ([id]) => id !== template.id,
+                            ),
+                          )
+                        : {
+                            ...current,
+                            [template.id]: template.templateMarkdown,
+                          },
+                    )
+                  }
+                />
+                <span>
+                  <strong>{template.title}</strong>
+                  <small>{template.templateMarkdown}</small>
+                </span>
+              </label>
+              {template.id in selectedTemplates && (
+                <label className="terms-clause-editor">
+                  Editar copia de “{template.title}”
+                  <textarea
+                    value={selectedTemplates[template.id]}
+                    onChange={(event) =>
+                      setSelectedTemplates((current) => ({
+                        ...current,
+                        [template.id]: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              )}
+            </Fragment>
           ))}
           <label>
             Cláusula adicional
