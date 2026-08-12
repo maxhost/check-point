@@ -82,31 +82,39 @@ export default function OnboardingPage() {
       return;
     }
     setSubmitting(true);
-    const response = await fetch("/api/onboarding/business", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: businessName,
-        countryCode,
-        locationName,
-        address,
-      }),
-    });
-    const payload = (await response.json()) as {
-      businessId?: string;
-      error?: string;
-    };
-    if (!response.ok || !payload.businessId) {
+    try {
+      const response = await fetch("/api/onboarding/business", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: businessName,
+          countryCode,
+          locationName,
+          address,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        businessId?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !payload?.businessId) {
+        setNotice({
+          kind: "error",
+          text: payload?.error ?? "No pudimos guardar tu negocio.",
+        });
+        return;
+      }
+      setBusinessId(payload.businessId);
+      setStep("plan");
+    } catch {
       setSubmitting(false);
       setNotice({
         kind: "error",
-        text: payload.error ?? "No pudimos guardar tu negocio.",
+        text: "No pudimos conectar para guardar tu negocio. Intenta otra vez.",
       });
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    setBusinessId(payload.businessId);
-    setSubmitting(false);
-    setStep("plan");
   }
 
   async function continueWithPlan() {

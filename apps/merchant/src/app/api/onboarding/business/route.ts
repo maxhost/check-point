@@ -90,23 +90,21 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   }
-  await db.transaction(async (transaction) => {
-    await transaction
+  await db.batch([
+    db
       .insert(ownerProfiles)
       .values({
         userId: session.user.id,
         fullName: session.user.name,
       })
-      .onConflictDoNothing();
-    await transaction
-      .insert(businesses)
-      .values({ id: businessId, name, countryCode });
-    await transaction.insert(memberships).values({
+      .onConflictDoNothing(),
+    db.insert(businesses).values({ id: businessId, name, countryCode }),
+    db.insert(memberships).values({
       businessId,
       userId: session.user.id,
       role: "owner",
-    });
-    await transaction.insert(locations).values({
+    }),
+    db.insert(locations).values({
       id: locationId,
       businessId,
       name: locationName,
@@ -116,8 +114,8 @@ export async function POST(request: Request) {
       countryCode: address.countryCode,
       activeVerificationId: verificationId,
       addressSnapshot: address.snapshot,
-    });
-    await transaction.insert(locationVerifications).values({
+    }),
+    db.insert(locationVerifications).values({
       id: verificationId,
       locationId,
       source: address.source,
@@ -129,12 +127,12 @@ export async function POST(request: Request) {
       countryCode: address.countryCode,
       providerSnapshot: address.snapshot,
       attribution: address.attribution,
-    });
-    await transaction.insert(subscriptions).values({
+    }),
+    db.insert(subscriptions).values({
       businessId,
       plan: "free",
       status: "active",
-    });
-  });
+    }),
+  ]);
   return NextResponse.json({ businessId }, { status: 201 });
 }
