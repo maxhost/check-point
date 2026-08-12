@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+.turbo/
+.next/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+apps/consumer/public/qa-checkin.png
+*.tsbuildinfo

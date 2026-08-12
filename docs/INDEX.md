@@ -34,6 +34,12 @@ desactualizado es peor que no tenerlo.
 | 0016 | 2026-08-10 | Operación de merchant staff rápida y consistente | propuesta | `adr/0016-operacion-de-merchant-staff-rapida-y-consistente.md` |
 | 0017 | 2026-08-10 | Estándar de entrega production grade | aceptada | `adr/0017-estandar-production-grade.md` |
 | 0018 | 2026-08-10 | Incentive Engine de campañas compuestas | aceptada | `adr/0018-incentive-engine-de-campanas-compuestas.md` |
+| 0019 | 2026-08-10 | Branding temático por negocio y primera experiencia consumer | aceptada | `adr/0019-branding-tematico-por-negocio.md` |
+| 0020 | 2026-08-10 | Programa de fidelización único por negocio | aceptada | `adr/0020-programa-de-fidelizacion-unico-por-negocio.md` |
+| 0021 | 2026-08-11 | Analíticas universales y lentes por rubro | aceptada | `adr/0021-analiticas-universales-y-lentes-por-rubro.md` |
+| 0022 | 2026-08-11 | Objetivos de campaña y capacidades medibles | aceptada | `adr/0022-objetivos-de-campana-y-capacidades-medibles.md` |
+| 0023 | 2026-08-11 | Disparadores independientes de objetivos de campaña | aceptada | `adr/0023-disparadores-independientes-de-objetivos.md` |
+| 0024 | 2026-08-11 | Secretos en entorno y configuración no secreta | aceptada | `adr/0024-secretos-en-entorno-y-configuracion-no-secreta.md` |
 
 ## Specs — que se construye
 
@@ -49,6 +55,18 @@ desactualizado es peor que no tenerlo.
 | 0008 | 2026-08-09 | Administrador, rutas, categorías y eventos | borrador | no | `specs/0008-administrador-rutas-y-eventos.md` |
 | 0009 | 2026-08-09 | Check-in QR por local | borrador | no | `specs/0009-checkin-qr-por-local.md` |
 | 0010 | 2026-08-10 | Scaffold production grade de la plataforma | cerrada | no | `specs/0010-scaffold-production-grade.md` |
+| 0011 | 2026-08-10 | Prototipo QA de check-in consumer v0.1 | cerrada | no | `specs/0011-prototipo-qa-checkin-consumer.md` |
+| 0012 | 2026-08-10 | Onboarding demo de owner, negocio y sucursales | cerrada | no | `specs/0012-onboarding-owner-y-negocio-demo.md` |
+| 0013 | 2026-08-10 | Home demo del Backoffice owner | cerrada | no | `specs/0013-home-backoffice-owner-demo.md` |
+| 0014 | 2026-08-10 | Marca de negocio demo | cerrada | no | `specs/0014-marca-negocio-demo.md` |
+| 0015 | 2026-08-10 | Locales del owner demo | cerrada | no | `specs/0015-locales-owner-demo.md` |
+| 0016 | 2026-08-10 | Staff del owner demo | cerrada | no | `specs/0016-staff-owner-demo.md` |
+| 0017 | 2026-08-10 | Campañas del owner demo | cerrada | no | `specs/0017-campanas-owner-demo.md` |
+| 0018 | 2026-08-10 | Fundación UI production-grade de merchant demo | cerrada | no | `specs/0018-fundacion-ui-merchant-demo.md` |
+| 0019 | 2026-08-10 | Programa de fidelización del owner demo | cerrada | no | `specs/0019-programa-fidelizacion-owner-demo.md` |
+| 0020 | 2026-08-11 | Analíticas owner demo multirubro | cerrada | no | `specs/0020-analiticas-owner-demo-multirubro.md` |
+| 0021 | 2026-08-11 | Catálogo único de beneficios | borrador | no | `specs/0021-catalogo-unico-de-beneficios.md` |
+| 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | cerrada | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

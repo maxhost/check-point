@@ -1,0 +1,365 @@
+:root {
+  color-scheme: light;
+  font-family: Arial, sans-serif;
+  background: #f7f6f2;
+  color: #18221c;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+a {
+  color: inherit;
+}
+.screen {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.card {
+  width: min(100%, 430px);
+  overflow: hidden;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 16px 50px #20312622;
+}
+.hero {
+  min-height: 190px;
+  padding: 24px;
+  display: flex;
+  align-items: end;
+  color: #fff;
+  background: linear-gradient(135deg, #154d3a, #e78132);
+}
+.content {
+  padding: 28px 24px;
+}
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #68736b;
+}
+h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.08;
+}
+h2 {
+  margin: 0 0 12px;
+  font-size: 25px;
+}
+p {
+  line-height: 1.5;
+}
+.muted {
+  color: #657168;
+}
+button,
+.button {
+  width: 100%;
+  display: block;
+  border: 0;
+  border-radius: 14px;
+  padding: 16px;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  color: white;
+  background: #176548;
+  cursor: pointer;
+  text-decoration: none;
+}
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.secondary {
+  margin-top: 12px;
+  color: #176548;
+  background: #e9f4ed;
+}
+.notice {
+  padding: 13px;
+  border-radius: 12px;
+  background: #fff2db;
+  color: #754300;
+}
+.success {
+  background: #e5f5e9;
+  color: #175c35;
+}
+.qr {
+  display: block;
+  width: min(100%, 280px);
+  margin: 20px auto;
+  background: white;
+}
+.asset {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 15px;
+  background: #f3f6f2;
+}
+.asset strong,
+.asset span {
+  display: block;
+}
+.section-title {
+  margin-top: 28px;
+}
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #176548;
+  font-weight: 700;
+  text-decoration: none;
+}
+.merchant-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.merchant-header h1 {
+  font-size: 28px;
+}
+.merchant-header .eyebrow {
+  margin-bottom: 4px;
+}
+.merchant-header .muted {
+  margin: 4px 0;
+  font-size: 14px;
+}
+.merchant-logo {
+  display: grid;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 18px;
+  color: #fff;
+  font-weight: 800;
+  background: linear-gradient(145deg, #176548, #e78132);
+}
+.location {
+  margin: 8px 0 0;
+  color: #176548;
+  font-size: 14px;
+  font-weight: 700;
+}
+.points-card {
+  display: grid;
+  gap: 3px;
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 20px;
+  color: #fff;
+  background: #176548;
+}
+.points-card strong {
+  font-size: 45px;
+  line-height: 1;
+}
+.points-card small {
+  opacity: 0.82;
+}
+.horizontal-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-width: thin;
+}
+.coupon-card {
+  display: grid;
+  flex: 0 0 250px;
+  min-height: 152px;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 18px;
+  color: #fff;
+}
+.coupon-card strong {
+  font-size: 19px;
+}
+.coupon-card small {
+  opacity: 0.82;
+}
+.coupon-primary {
+  background: linear-gradient(145deg, #e78132, #ba4e30);
+}
+.coupon-secondary {
+  background: linear-gradient(145deg, #315f8c, #233a67);
+}
+.redemptions {
+  display: grid;
+  gap: 10px;
+}
+.merchant-wallet {
+  min-height: 100svh;
+  background: #f7f6f2;
+}
+.merchant-cover {
+  min-height: 195px;
+  color: #fff;
+  background: linear-gradient(135deg, #123d30, #176548 58%, #e78132);
+}
+.cover-content,
+.wallet-content {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 24px;
+}
+.wallet-content {
+  padding-top: 20px;
+  padding-bottom: 42px;
+}
+.merchant-cover .back-link {
+  color: #fff;
+  opacity: 0.9;
+}
+.merchant-cover .merchant-header .eyebrow,
+.merchant-cover .merchant-header .muted {
+  color: #e4f0e8;
+}
+.merchant-cover .location {
+  color: #fff;
+}
+.promotion-banner {
+  display: grid;
+  gap: 5px;
+  padding: 18px;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(120deg, #cf642c, #e78132);
+}
+.promotion-banner span {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.promotion-banner strong {
+  font-size: 18px;
+}
+.promotion-banner small {
+  opacity: 0.86;
+}
+.points-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid #dbe6dc;
+  border-radius: 16px;
+  background: #fff;
+}
+.points-summary span,
+.points-summary small {
+  display: block;
+  color: #637067;
+}
+.checkin-page {
+  min-height: 100svh;
+  background: #f7f6f2;
+}
+.checkin-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.checkin-rewards span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: #176548;
+  font-size: 13px;
+  font-weight: 700;
+  background: #e9f4ed;
+}
+.checkin-cover {
+  min-height: 205px;
+}
+.checkin-content {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 20px 24px 42px;
+}
+.checkin-campaign {
+  display: grid;
+  gap: 7px;
+  padding: 20px;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(120deg, #cf642c, #e78132);
+}
+.checkin-campaign span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.checkin-campaign strong {
+  font-size: 20px;
+  line-height: 1.2;
+}
+.checkin-campaign small {
+  opacity: 0.88;
+}
+.checkin-action,
+.result-panel {
+  margin-top: 16px;
+  padding: 4px 0;
+}
+.checkin-action h2,
+.result-panel h2 {
+  margin-top: 20px;
+}
+.permission-copy {
+  margin: 15px 6px 0;
+  color: #637067;
+  font-size: 13px;
+  text-align: center;
+}
+.points-summary strong {
+  display: block;
+  margin-top: 3px;
+  color: #176548;
+  font-size: 25px;
+}
+.points-summary small {
+  max-width: 130px;
+  font-size: 12px;
+  text-align: right;
+}
+.redemption-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f3f6f2;
+}
+.redemption-card span {
+  color: #526058;
+}
+.redemption-card button {
+  width: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #637067;
+  background: #e1e6e1;
+}
+.asset span {
+  margin-top: 4px;
+  color: #637067;
+}

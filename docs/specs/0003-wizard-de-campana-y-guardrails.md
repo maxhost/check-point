@@ -32,7 +32,7 @@ por pantalla causaría beneficios duplicados, campañas a pérdida o imposibles 
 - Condiciones V1: locales asignados/activos, calendario y horario, mínimo de compra,
   producto o categoría acreditada, primera compra/check-in dentro de la campaña y
   límites por consumidor, compra o campaña.
-- Efectos V1: `grant_points`, `grant_game_credit`, `issue_coupon` y
+- Efectos V1: `grant_points`, `grant_stamp`, `grant_game_credit`, `issue_coupon` y
   `record_campaign_outcome` para la trazabilidad que no entrega valor.
 - Límites/presupuestos por campaña, local, consumidor, compra, cupón o crédito de
   juego; guardrails de coste y margen para efectos con beneficio económico.
@@ -52,8 +52,12 @@ por pantalla causaría beneficios duplicados, campañas a pérdida o imposibles 
 
 ## Diseño
 
-El owner no escribe reglas desde cero. Elige una plantilla y el wizard genera una o más
-reglas legibles. Ejemplos iniciales:
+El owner no escribe reglas desde cero. Elige un objetivo de negocio medible y el wizard
+genera una o más reglas legibles conforme a ADR 0022. Check-in, puntos, sellos, cupones,
+juegos y distribución son mecánicas/efectos, no objetivos. Cada objetivo declara evento
+verificable y métrica primaria antes de seleccionar el incentivo; sólo se habilita si el
+negocio posee los datos mínimos necesarios.
+Ejemplos iniciales:
 
 - **Compra y juega:** compra acreditada de al menos X → crédito de ruleta.
 - **Fidelización:** compra acreditada de al menos X → puntos del negocio.
@@ -62,14 +66,16 @@ reglas legibles. Ejemplos iniciales:
   durante el evento.
 
 Una campaña puede tener varias reglas porque un mismo evento, como un aniversario, puede
-requerir compra → puntos, compra → crédito de ruleta y check-in → cupón. Cada regla tiene
+requerir compra → puntos o sellos del programa activo, compra → crédito de ruleta y
+check-in → cupón. Cada regla tiene
 un único disparador y condiciones unidas por `AND`; una alternativa `OR` se representa con
 otra regla. Esto mantiene el resultado explicable y comprobable.
 
-El wizard sigue este recorrido: objetivo y plantilla → locales y calendario → reglas y
-disparadores → condiciones → efectos/premios → límites y economía → política de
-acumulación → simulación → publicar. Siempre muestra el alcance efectivo y qué bloques
-no están disponibles en V1.
+El wizard sigue este recorrido: constructor guiado de regla (el objetivo se elige dentro
+de la frase y recomienda, pero no bloquea, la configuración; selectores cerrados para
+disparador, condiciones, distribución, efecto y límite) → fechas/horarios/locales →
+revisión, simulación y publicación. Siempre muestra el alcance efectivo y qué bloques no
+están disponibles en V1; no expone un DSL o texto libre.
 
 Una campaña no se borra físicamente desde el flujo normal. `archived` la oculta de la
 operación futura y conserva su historia. Si pierde todos sus locales activos, pasa a
@@ -93,7 +99,9 @@ las reglas de elegibilidad de ADR 0009.
 #### Modelo de datos e invariantes
 
 `campaign` pertenece a un `business_id`, contiene `type`, `objective`, estado, rango de
-fechas/horario, locales asignados y el número de versión publicada. `campaign_location`
+fechas/horario, locales asignados y el número de versión publicada. Un efecto de programa
+debe ser compatible con la modalidad activa/versionada definida en ADR 0020.
+`campaign_location`
 relaciona la campaña con N locales. Sólo locales `active` son operativos.
 
 `campaign_version` guarda una definición completa e inmutable con su número de revisión,

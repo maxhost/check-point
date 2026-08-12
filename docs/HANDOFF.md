@@ -1,110 +1,107 @@
 # Handoff — Mi Pasaporte
 
-**Fecha:** 2026-08-10
-**Estado:** documentación y arquitectura preparadas; scaffold aún no implementado.
+**Fecha:** 2026-08-11
+**Estado:** fase de mockups merchant cerrada para diseño; el próximo trabajo es iniciar
+backend por el registro y autenticación real de Owner. No se ha creado backend, base de
+datos, proveedor de auth ni secreto alguno.
 
-## Punto de retorno
+## Objetivo de la próxima sesión
 
-Leer en este orden:
+Después de `/clear`, definir —antes de escribir código— la nueva **Spec 0022: Registro y
+autenticación de Owner**. Será la primera feature de backend.
 
-1. `CLAUDE.md`
-2. `docs/INDEX.md`
-3. `docs/TASKS.md`
-4. este archivo
-5. `docs/adr/0018-incentive-engine-de-campanas-compuestas.md`
-6. `docs/specs/0003-wizard-de-campana-y-guardrails.md`
-7. `docs/ARCHITECTURE.md`
-8. `docs/specs/0010-scaffold-production-grade.md`
+La Spec 0001 ya existe, pero es la fundación amplia de identidades, membresías y auditoría
+para merchant/platform. La Spec 0012 está cerrada y sólo describe el onboarding **mock**:
+no debe reutilizarse como contrato de backend. La nueva spec debe acotar el primer corte
+real: alta por email/contraseña, sesión merchant, owner inicial y transición segura desde
+la UI de onboarding actual.
 
-## Próximo trabajo
+## Leer en este orden
 
-Revisar y cerrar la Spec 0010; después implementar el scaffold con el protocolo obligatorio:
+1. `docs/TASKS.md`
+2. este archivo
+3. `docs/ARCHITECTURE.md`
+4. `docs/adr/0010-dominios-de-acceso-separados.md`
+5. `docs/adr/0012-neon-better-auth-y-esquemas-de-identidad-separados.md`
+6. `docs/adr/0017-estandar-production-grade.md`
+7. `docs/specs/0001-fundacion-identidad-y-roles.md`
+8. `docs/specs/0012-onboarding-owner-y-negocio-demo.md`
 
-1. Orquestador revisa spec, ADRs, árbol y diff.
-2. Implementador crea sólo lo autorizado por la spec.
-3. Revisor independiente ejecuta pruebas y emite PASS/FAIL.
-4. Sólo PASS marca la spec como implementada.
+## Alcance que debe cerrar la Spec 0022
 
-No crear código antes de que 0010 esté en `cerrada`.
+- Registro real de Owner con nombre completo, email, contraseña y confirmación.
+- Validación server-side, normalización/unicidad de email y hash de contraseña; nunca
+  persistir o registrar contraseña en claro.
+- Sesión exclusiva del dominio merchant y protección inicial de rutas merchant.
+- Modelo mínimo de cuenta merchant/owner compatible con N owners por negocio, sin crear
+  todavía staff, negocio, locales, Stripe ni campañas reales salvo que la spec lo incluya
+  explícitamente.
+- Estados y errores de registro/login seguros; no revelar si un email existe cuando no
+  corresponda.
+- Migraciones Neon/Drizzle, aislamiento de esquemas y auditoría mínima sólo si el
+  contrato cerrado lo exige.
+- Adaptación de la UI actual para sustituir el estado mock únicamente en la parte que la
+  spec apruebe; preservar el diseño y componentes reutilizables.
+- Pruebas unitarias, integración y E2E, protección anti-abuso proporcional, observabilidad
+  y plan de rollback.
 
-## Actualización: campañas
+## Preguntas que la spec debe resolver antes de implementación
 
-La Spec 0003 fue rediseñada según ADR 0018. Las campañas se componen de una o más
-reglas tipadas: un disparador confiable, condiciones `AND`, efectos tipados, límites y
-política de acumulación. El servidor ejecuta la decisión de forma transaccional e
-idempotente; el wizard sólo configura y simula. Se usarán plantillas, no un DSL libre.
-Las versiones publicadas son inmutables y cada activo conserva su snapshot. V1 contempla
-check-in, compra acreditada y fin de juego como disparadores; puntos, créditos de juego y
-cupones como efectos. Reservas, atributos libres, descuentos de carro y experimentos no
-entran.
+1. ¿El primer registro crea únicamente la cuenta, o también el primer negocio y su
+   membresía owner? Mantenerlo explícito y transaccional.
+2. ¿Se exige verificación de email antes de iniciar sesión o se difiere? Definir amenaza,
+   proveedor y UX; no inventar envío de correos sin proveedor/configuración.
+3. ¿Cómo se maneja recuperación de contraseña y rate limiting en el primer corte?
+4. ¿Qué parte de Better Auth se usa y cómo se separa `merchant_auth` de consumer/platform
+   según ADR 0012?
+5. ¿Stripe se mantiene fuera de esta feature? La respuesta por defecto es sí: el checkout
+   mock no autoriza integración real de cobro.
 
-## Arquitectura propuesta
+## Estado entregado — UI y producto
 
-- Monorepo TypeScript: pnpm + Turborepo.
-- Tres Next.js aislados: consumer PWA, merchant backoffice y platform backoffice.
-- Neon Postgres + Drizzle; Better Auth autoalojado, no Neon Auth gestionado.
-- Esquemas de identidad separados: `consumer_auth`, `merchant_auth`, `platform_auth`; datos de producto en `core`.
-- Consumidor: guest/anónimo + teléfono OTP, sin contraseña. Comercio/plataforma: email/contraseña.
-- OTP abstraído: piloto Telnyx Verify y fallback Twilio Verify; aún sin credenciales.
-- Desarrollo local ahora; Vercel Pro sólo cuando exista piloto comercial.
-- Cron futuro: Vercel Cron + ejecuciones idempotentes.
-- QR: local, cuenta y cupón separados; token de cuenta opaco/revocable; canje atómico.
-- Check-in: QR estático inicia `checkin_challenge` único de vida corta + geo puntual, precisión, distancia y frecuencia. Esto reduce fraude, no prueba presencia infalible.
-- Operación merchant: superficie distinta al dashboard; escaneo + máximo dos toques + confirmación objetivo menor a dos segundos, siempre online e idempotente.
-- Production grade es obligatorio por ADR 0017.
+- Merchant demo incluye onboarding, home, marca, locales, staff, fidelización, campañas y
+  analíticas; sigue siendo `sessionStorage`, sin backend.
+- Campañas usa un constructor de reglas guiado: objetivo editable dentro de la frase,
+  disparador, condición, distribución y límite; luego fechas/horarios y revisión.
+- ADR 0022 define objetivos, capacidades y métricas. ADR 0023 aclara que objetivo sólo
+  recomienda: los disparadores son independientes y se habilitan según capacidades
+  verificables (check-in, compra, canje, juego, referido).
+- Spec 0021 define un catálogo único de beneficios. Beneficio es reutilizable; campaña,
+  juego o canje define los términos de distribución. Aún no está implementado.
+- Nunca incentivar reseñas de Google; feedback es una solicitud neutral sin premio.
+- Branding, wallet por comercio y programa de fidelización siguen las decisiones
+  documentadas en ADRs 0019–0020.
 
-## AR y juegos
+## No retroceder
 
-- V1 sólo ruleta y raspadita web; resultado autorizado por servidor antes de la animación.
-- AR posterior: cámara **dentro de la PWA/browser**, no app nativa externa.
-- Dirección elegida: 8th Wall autoalojado para tracking + three.js para render/objetos virtuales; WebXR no es requisito.
-- Vaso/dardos/tesoro: un marcador visual con branding ancla el objetivo físico; bola o dardo es virtual. No se rastrean objetos físicos reales en primera versión AR.
-- Antes de AR: spike en Safari iOS y Chrome Android de los teléfonos objetivo; medir permisos, tracking, FPS, calor y batería. Todo juego AR tiene alternativa 2D y no emite premios altos sólo por física del cliente.
+- No convertir el onboarding mock de Spec 0012 en auth real sin una spec nueva cerrada.
+- No mezclar sesión merchant con consumer ni platform.
+- No usar el cliente para autorización, hashes, unicidad ni creación de membresías.
+- No añadir Stripe, catálogo, campañas, staff, OTP o recuperación de contraseña por
+  conveniencia mientras se implementa el primer corte.
+- No introducir estados mock duplicados junto al origen real de identidad.
+- Mantener el estándar de ADR 0017: componentes reutilizables, validación en servidor,
+  accesibilidad, estados de error y controles automatizados.
 
-## Spec 0010 — estado
+## Verificación más reciente
 
-Archivo: `docs/specs/0010-scaffold-production-grade.md`
-Estado: `borrador`.
+Último gate local PASS tras el ajuste de ancho del wizard y ADR 0023:
 
-Decisiones ya incorporadas:
+```text
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test     # 9 tests
+pnpm build
+```
 
-- Node **24.19.0 LTS**, pnpm **11.4.0**, Next.js **16.3.0**, React/React DOM **19.2.8**.
-- Tres apps en puertos 3000/3001/3002.
-- Sin páginas, UI, auth, DB, secretos ni paquetes vacíos.
-- Únicamente `GET /api/health` por app.
-- TypeScript estricto, ESLint, Prettier, Vitest, Playwright, GitHub Actions y Dependabot.
-- Los smoke tests validan los tres health checks.
-- Todos los scripts: install congelado, format check, lint, typecheck, test, E2E y build.
-- Abierto únicamente el cierre formal de la spec antes de código.
+`pnpm test:e2e` debe ejecutarse localmente con puertos 3000–3002 libres. El repositorio
+declara Node 24.19.0; la última ejecución disponible usó Node 22.22.2 y emitió el warning
+de engine, aunque los gates pasaron. Antes del backend, usar la versión declarada.
 
-## Producto vigente
+## Estado del repositorio
 
-- Wallet consumidor separa activos de Mi Pasaporte (check-in, sellos, coleccionables) de activos por comercio (puntos, cupones, créditos de juego). No hay puntos globales ni transferencias.
-- Guest: inactivo a 6 meses de actividad iniciada por usuario; eliminación a 12 meses; cuentas registradas no siguen esa eliminación.
-- Owner: N negocios; negocio: N owners y locales. Programa/campañas viven a nivel negocio; campañas se asignan a N locales; evento es campaña.
-- Cierre de local preserva historia y vuelve beneficios no elegibles si aplican sólo allí.
-- Dominios separados: consumer, merchant (owner/staff), platform (admin/staff). Sólo owner administra merchant staff.
-- Auditoría conserva snapshots aunque fuente se elimine.
-
-## Repositorio
-
-Canónico: https://github.com/maxhost/check-point.git
-Política: commits y pushes directos a `main` con autorización explícita del fundador. Ver `docs/REPOSITORY.md`.
-
-Estado local:
-
-- `origin` está configurado correctamente.
-- `main` tiene los commits:
-  - `6467628 document product architecture and scaffold plan`
-  - `80a5d2b record initial repository publication state`
-- Push bloqueado: este entorno no resuelve `github.com`; MCP GitHub requiere reautenticación y `gh auth status` reporta tokens inválidos.
-- Cuando red/autenticación estén disponibles: `git push -u origin main`.
-
-## Documentos clave
-
-- Arquitectura: `docs/ARCHITECTURE.md`
-- Plan de scaffold: `docs/SCAFFOLD-PLAN.md`
-- Spec de scaffold: `docs/specs/0010-scaffold-production-grade.md`
-- Proceso agentes: `docs/AGENT-WORKFLOW.md`
-- Estado actual: `docs/TASKS.md`
-- Índice: `docs/INDEX.md`
+- Remoto canónico: `https://github.com/maxhost/check-point.git`.
+- Política: push directo a `main` sólo con autorización explícita del fundador.
+- No asumir que los cambios locales están publicados; verificar `git status`, rama,
+  autenticación y conectividad antes de cualquier push.

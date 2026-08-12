@@ -1,0 +1,12 @@
+# Generado — no se formatea a mano
+pnpm-lock.yaml
+.next/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+
+# Documentacion de producto y notas: prosa, fuera del alcance del formateo del scaffold.
+docs/
+*.md
+!README.md

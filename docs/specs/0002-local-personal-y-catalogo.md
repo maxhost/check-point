@@ -17,6 +17,7 @@ El wizard no puede proteger margen si el local no declara qué vende, a qué pre
 
 **Entra:**
 - Perfil de negocio/local: nombre, logo, colores, descripción, dirección de texto y QR de check-in.
+- Programa de fidelización a nivel negocio, opcional y único activo, conforme a ADR 0020.
 - Estado operativo de local: `active` o `closed`, conservando historial al cerrar.
 - Alta, desactivación y listado de miembros de personal.
 - Catálogo manual: nombre, categoría, precio de venta, coste unitario y estado activo/inactivo.

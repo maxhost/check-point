@@ -1,0 +1,40 @@
+{
+  "name": "mi-pasaporte",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.4.0",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": "11.4.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:consumer": "turbo run dev --filter=@mi-pasaporte/consumer",
+    "dev:merchant": "turbo run dev --filter=@mi-pasaporte/merchant",
+    "dev:platform": "turbo run dev --filter=@mi-pasaporte/platform",
+    "db:migrate": "pnpm --filter @mi-pasaporte/merchant db:migrate",
+    "qa:qr": "CLANG_MODULE_CACHE_PATH=/tmp/mi-pasaporte-swift-module-cache swift scripts/generate-qa-qr.swift",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "build": "turbo run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "@playwright/test": "1.57.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "9.39.1",
+    "globals": "16.5.0",
+    "prettier": "3.7.4",
+    "turbo": "2.8.17",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.46.0",
+    "vitest": "4.0.18"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2"
+  }
+}

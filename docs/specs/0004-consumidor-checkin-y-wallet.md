@@ -77,11 +77,15 @@ Tus comercios
 | `session` | Cuenta, dispositivo, expiración a 30 días, revocable. Cookie segura HttpOnly; ninguna credencial de sesión en QR. |
 | `wallet_pass` | Cuenta registrada, token aleatorio no adivinable, estado activo/revocado, serial por proveedor. El token es el contenido del QR del pass y no incluye PII. |
 | `merchant_points_balance` | Cuenta, comercio, saldo no negativo y registro contable de movimientos con política/fecha de expiración; no existe un saldo global. |
+| `merchant_stamp_progress` | Cuenta, comercio y versión de programa, cantidad acumulada y objetivo de tarjeta; representa sellos comerciales, no activos de plataforma. |
 | `merchant_entitlement` | Cuenta, comercio/local, tipo (`coupon`/`game_credit`), condiciones, vigencia, estado (`available`, `used`, `expired`, `revoked`) y emisor de campaña. |
 | `passport_asset` | Cuenta, tipo (`stamp`/`collectible`), emisor `platform`, reto/ruta opcional, estado y metadatos de presentación. |
 | `checkin` | Cuenta, local, hora y resultado; evento de Pasaporte, no cupón ni punto. |
 
-Los puntos son un saldo por comercio; los sellos y coleccionables son activos de plataforma; cupones y créditos de juego son derechos concretos de un comercio. El wallet es una proyección de estas entidades, no una tabla genérica que mezcle sus reglas.
+Los puntos son un saldo por comercio; los sellos comerciales son progreso de una tarjeta
+del programa del comercio; los sellos y coleccionables de Mi Pasaporte son activos de
+plataforma. Cupones y créditos de juego son derechos concretos de un comercio. El wallet
+es una proyección de estas entidades, no una tabla genérica que mezcle sus reglas.
 
 #### Operaciones y autorización
 

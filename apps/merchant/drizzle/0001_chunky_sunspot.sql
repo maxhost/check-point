@@ -1,0 +1,10 @@
+ALTER TABLE "core"."business_membership" ADD CONSTRAINT "business_membership_business_id_user_id_pk" PRIMARY KEY("business_id","user_id");--> statement-breakpoint
+ALTER TABLE "merchant_auth"."account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "merchant_auth"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "core"."location" ADD CONSTRAINT "location_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "core"."business_membership" ADD CONSTRAINT "business_membership_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "core"."business_membership" ADD CONSTRAINT "business_membership_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "merchant_auth"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "core"."owner_profile" ADD CONSTRAINT "owner_profile_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "merchant_auth"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "merchant_auth"."session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "merchant_auth"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "core"."subscription" ADD CONSTRAINT "subscription_business_id_business_id_fk" FOREIGN KEY ("business_id") REFERENCES "core"."business"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "core_subscription_customer_unique" ON "core"."subscription" USING btree ("stripe_customer_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "core_subscription_stripe_unique" ON "core"."subscription" USING btree ("stripe_subscription_id");
