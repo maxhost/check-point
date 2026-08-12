@@ -47,8 +47,16 @@ export default function MapboxPlaceSearch({
             colorBackgroundHover: "#edf8f0",
             border: "1px solid #cbd7ce",
             borderRadius: "11px",
+            boxShadow: "none",
+            lineHeight: "normal",
             fontFamily: "Arial, sans-serif",
+            fontWeight: "400",
           },
+          cssText: `
+            .SearchBox { min-height: 46px; }
+            .Input { height: 44px; }
+            .Input:focus { border: 0; outline: 0; }
+          `,
         }}
         onClear={() => setValue("")}
         onRetrieve={(response) => {
