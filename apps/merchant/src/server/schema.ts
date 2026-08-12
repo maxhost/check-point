@@ -193,3 +193,125 @@ export const stripeWebhookEvents = core.table("stripe_webhook_event", {
   processedAt: timestamp("processed_at", { withTimezone: true }),
   payloadVersion: text("payload_version").notNull(),
 });
+
+export const loyaltyPrograms = core.table(
+  "loyalty_program",
+  {
+    id: uuid("id").primaryKey(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("inactive"),
+    activeVersionId: uuid("active_version_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("core_loyalty_program_business_unique").on(table.businessId),
+  ],
+);
+
+export const loyaltyProgramVersions = core.table("loyalty_program_version", {
+  id: uuid("id").primaryKey(),
+  programId: uuid("program_id")
+    .notNull()
+    .references(() => loyaltyPrograms.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  schemaVersion: text("schema_version").notNull().default("1"),
+  configuration: jsonb("configuration").notNull(),
+  effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull(),
+  earningEndsAt: timestamp("earning_ends_at", { withTimezone: true }),
+  redemptionEndsAt: timestamp("redemption_ends_at", { withTimezone: true }),
+  status: text("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const loyaltyProgramTransitions = core.table(
+  "loyalty_program_transition",
+  {
+    id: uuid("id").primaryKey(),
+    programId: uuid("program_id")
+      .notNull()
+      .references(() => loyaltyPrograms.id, { onDelete: "cascade" }),
+    fromVersionId: uuid("from_version_id")
+      .notNull()
+      .references(() => loyaltyProgramVersions.id),
+    toVersionId: uuid("to_version_id").references(
+      () => loyaltyProgramVersions.id,
+    ),
+    earningEndsAt: timestamp("earning_ends_at", {
+      withTimezone: true,
+    }).notNull(),
+    redemptionEndsAt: timestamp("redemption_ends_at", {
+      withTimezone: true,
+    }).notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+export const termsTemplates = core.table("terms_template", {
+  id: uuid("id").primaryKey(),
+  key: text("key").notNull(),
+  jurisdictionScope: text("jurisdiction_scope").notNull(),
+  locale: text("locale").notNull(),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  templateMarkdown: text("template_markdown").notNull(),
+  variablesAllowlist: jsonb("variables_allowlist").notNull(),
+  version: text("version").notNull(),
+  status: text("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+});
+
+export const loyaltyTermsVersions = core.table(
+  "loyalty_terms_version",
+  {
+    id: uuid("id").primaryKey(),
+    programVersionId: uuid("program_version_id")
+      .notNull()
+      .references(() => loyaltyProgramVersions.id, { onDelete: "cascade" }),
+    renderedMarkdown: text("rendered_markdown").notNull(),
+    contentHash: text("content_hash").notNull(),
+    acceptanceRequired: boolean("acceptance_required").notNull().default(true),
+    publishedAt: timestamp("published_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("core_loyalty_terms_program_version_unique").on(
+      table.programVersionId,
+    ),
+  ],
+);
+
+export const loyaltyTermsClauses = core.table("loyalty_terms_clause", {
+  id: uuid("id").primaryKey(),
+  termsVersionId: uuid("terms_version_id")
+    .notNull()
+    .references(() => loyaltyTermsVersions.id, { onDelete: "cascade" }),
+  position: text("position").notNull(),
+  sourceTemplateId: uuid("source_template_id").references(
+    () => termsTemplates.id,
+  ),
+  sourceTemplateVersion: text("source_template_version"),
+  renderedClause: text("rendered_clause").notNull(),
+  editedByOwner: boolean("edited_by_owner").notNull().default(false),
+});

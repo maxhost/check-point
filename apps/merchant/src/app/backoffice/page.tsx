@@ -63,7 +63,7 @@ export default async function BackofficePage() {
           <p className="eyebrow">Siguiente paso</p>
           <h2>Configura tu programa de fidelización</h2>
           <p>Con Free puedes empezar a premiar visitas en tu primer local.</p>
-          <Link href="/backoffice/demo/loyalty">Configurar programa →</Link>
+          <Link href="/backoffice/loyalty">Configurar programa →</Link>
         </section>
         <section className="owner-modules">
           <h2>Gestiona tu negocio</h2>
@@ -71,7 +71,11 @@ export default async function BackofficePage() {
             {modules.map(([title, description, slug]) => (
               <Link
                 className="module-card"
-                href={`/backoffice/demo/${slug}`}
+                href={
+                  slug === "loyalty"
+                    ? "/backoffice/loyalty"
+                    : `/backoffice/demo/${slug}`
+                }
                 key={slug}
               >
                 <strong>{title}</strong>
