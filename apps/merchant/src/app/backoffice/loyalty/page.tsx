@@ -39,13 +39,18 @@ export default function LoyaltyProgramPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [programResponse, templatesResponse] = await Promise.all([
-      fetch("/api/loyalty-program"),
-      fetch("/api/loyalty-terms/templates"),
-    ]);
-    if (programResponse.ok) {
+    setLoading(true);
+    try {
+      const [programResponse, templatesResponse] = await Promise.all([
+        fetch("/api/loyalty-program"),
+        fetch("/api/loyalty-terms/templates"),
+      ]);
+      if (!programResponse.ok || !templatesResponse.ok) {
+        throw new Error("No pudimos cargar el programa.");
+      }
       const nextProgram = (await programResponse.json()) as Program;
       setProgram(nextProgram);
       if (nextProgram.activeVersion && !editingVersion) {
@@ -60,12 +65,15 @@ export default function LoyaltyProgramPage() {
           setTarget(Number(config.target ?? 10));
         }
       }
-    }
-    if (templatesResponse.ok)
       setTemplates(
         ((await templatesResponse.json()) as { templates: Template[] })
           .templates,
       );
+    } catch {
+      setError("No pudimos cargar tu programa. Intenta recargar la página.");
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => {
     void load();
@@ -108,6 +116,7 @@ export default function LoyaltyProgramPage() {
   }
 
   const active = program?.activeVersion;
+  if (loading) return <LoyaltySkeleton />;
   return (
     <main className="merchant-shell">
       <div className="brand-page loyalty-page">
@@ -327,6 +336,27 @@ export default function LoyaltyProgramPage() {
             </p>
           </>
         )}
+      </div>
+    </main>
+  );
+}
+
+function LoyaltySkeleton() {
+  return (
+    <main
+      className="merchant-shell"
+      aria-busy="true"
+      aria-label="Cargando programa de fidelización"
+    >
+      <div className="brand-page loyalty-page loyalty-skeleton">
+        <span className="skeleton-line skeleton-eyebrow" />
+        <span className="skeleton-line skeleton-title" />
+        <span className="skeleton-line skeleton-description" />
+        <section className="panel loyalty-panel">
+          <span className="skeleton-line skeleton-section-title" />
+          <span className="skeleton-line skeleton-card" />
+          <span className="skeleton-line skeleton-card" />
+        </section>
       </div>
     </main>
   );
