@@ -45,7 +45,10 @@ entorno Production y redeployar. Mantén el selector `test` en Preview.
   restringirla a `http://localhost:3001` y a tus dominios Preview/Production de Vercel.
   Guardarla como `NEXT_PUBLIC_GEOAPIFY_API_KEY`.
 - [ ] Crear una segunda clave para verificación server-side, sin prefijo `NEXT_PUBLIC_`, y
-  guardarla como `GEOAPIFY_API_KEY`. No incluirla en código, navegador ni logs.
+  guardarla como `GEOAPIFY_API_KEY`. No incluirla en código, navegador ni logs. No aplicar
+  restricciones de referrer/CORS a esta clave: las llamadas server-side no las envían. Si
+  el hosting ofrece IP de salida fija, restringirla a esa IP; en Vercel estándar, mantenerla
+  sólo en entorno, activar alertas de uso y rotarla si fuera necesario.
 - [ ] En Mapbox → **Access tokens** → **Create a token**, crear un token **público**
   separado para Search JS. En URL restrictions, añadir `http://localhost:3001` y
   `https://<tu-dominio-merchant>/*`; guardar el valor `pk.…` en
