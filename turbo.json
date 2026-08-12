@@ -1,5 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "DATABASE_URL",
+    "DATABASE_URL_UNPOOLED",
+    "MAPBOX_SERVER_ACCESS_TOKEN",
+    "NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN",
+    "STRIPE_ENVIRONMENT",
+    "STRIPE_PRICE_PLUS_MONTHLY",
+    "STRIPE_PRICE_PLUS_YEARLY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
