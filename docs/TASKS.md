@@ -65,6 +65,17 @@ producción con `drizzle-kit migrate` (verificada) y el código se pusheó (`188
 residual es el E2E `loyalty-real.spec.ts`, que requiere un entorno desplegado con un owner de
 prueba sembrado (`E2E_MERCHANT_BASE_URL`/`EMAIL`/`PASSWORD`).
 
+El 2026-08-13, durante el QA en vivo del programa de fidelización, el owner reportó que «los
+términos seleccionados al crear no persisten al editar». Diagnóstico: el texto sí persistía
+(`terms_markdown`), pero el modelo de **checkboxes de plantilla** se reseteaba al reabrir la
+edición y, peor, re-marcar una plantilla **duplicaba** su texto (ya incrustado en el markdown).
+Contradecía el intento de la spec 0024 («partir de una plantilla y editar el texto antes de
+guardar»). Fix production-grade (UI): las plantillas dejan de ser selección persistente y pasan
+a ser botones **«+ Insertar»** que copian su texto ya renderizado (variables resueltas contra el
+formulario vivo) al textarea editable; al guardar sólo viaja `[{ text }]`. Round-trip idéntico al
+editar, sin duplicación ni estado fantasma. Typecheck 3/3, unit de loyalty 6/6, e2e sin impacto
+(usan el textarea directo). El servidor sigue aceptando cláusulas por `templateId` (no-breaking).
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -86,7 +97,7 @@ prueba sembrado (`E2E_MERCHANT_BASE_URL`/`EMAIL`/`PASSWORD`).
 | 15 | Diseñar e implementar Catálogo único de beneficios | 0021 | pendiente | Reutilizable entre campañas, juegos y canjes; los términos de uso pertenecen a cada distribución |
 | 16 | Implementar registro y autenticación real de Owner | 0022 | hecho | Registro/login, alta de negocio/local, Stripe Checkout y webhook implementados y desplegados; QA manual contra Neon y gates locales verdes. El selector final de planes es carrusel con Plus mensual por defecto. |
 | 17 | Implementar búsqueda y procedencia de locales | 0023 | en revisión | Geoapify principal y fallback automático Mapbox sólo ante fallo de Geoapify implementados; migración 0003 aplicada. Pendientes QA real/E2E y PASS independiente |
-| 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. |
+| 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. QA en vivo 2026-08-13: fix de persistencia de términos al editar (plantillas como botones «+ Insertar» que copian texto renderizado al textarea, sin duplicación); typecheck/unit verdes, pendiente reverificar en el deploy. |
 | 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner; 3 de 6 casilleros del DoD quedan sin marcar (casos límite de subida, concurrencia, e integración R2/Neon + E2E de `brand`, que no existe todavía) — ver DoD de la spec. |
 
 ## Hecho

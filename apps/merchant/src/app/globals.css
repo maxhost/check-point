@@ -622,27 +622,23 @@ input:focus {
   border-color: #176548;
   background: #edf8f0;
 }
-.terms-template {
+.template-actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 12px;
-  padding: 14px;
-  border: 1px solid #dce6de;
-  border-radius: 12px;
 }
-.terms-template input {
-  width: 18px;
-  min-height: 18px;
-  margin-top: 2px;
+.terms-template-insert {
+  padding: 8px 14px;
+  border: 1px solid #cfe0d4;
+  border-radius: 999px;
+  color: #176548;
+  font-weight: 700;
+  background: #eef7f1;
+  cursor: pointer;
 }
-.terms-template strong,
-.terms-template small {
-  display: block;
-}
-.terms-template small {
-  margin-top: 4px;
-  color: #647168;
-  line-height: 1.45;
+.terms-template-insert:hover {
+  background: #e2f1e7;
 }
 .transition-fields {
   margin-top: 22px;

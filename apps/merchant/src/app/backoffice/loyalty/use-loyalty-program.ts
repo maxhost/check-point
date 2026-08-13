@@ -13,7 +13,7 @@ export type Program = {
   termsMarkdown: string;
 };
 export type Context = {
-  business: { timezone: string };
+  business: { name: string; countryCode: string; timezone: string };
   program: Program | null;
 };
 
@@ -26,7 +26,6 @@ export function useLoyaltyProgram() {
   const [stampName, setStampName] = useState("Sello");
   const [target, setTarget] = useState(10);
   const [terms, setTerms] = useState("");
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [closing, setClosing] = useState(false);
   const [earningEndsAt, setEarningEndsAt] = useState("");
@@ -43,13 +42,9 @@ export function useLoyaltyProgram() {
   const isClosing = program?.status === "closing";
 
   function populate(next: Context) {
-    if (!next.program) {
-      setSelectedTemplateIds([]);
-      return;
-    }
+    if (!next.program) return;
     setKind(next.program.kind);
     setTerms(next.program.termsMarkdown);
-    setSelectedTemplateIds([]);
     if (next.program.kind === "points") {
       setSingular(String(next.program.configuration.unitSingular ?? "Punto"));
       setPlural(String(next.program.configuration.unitPlural ?? "Puntos"));
@@ -82,7 +77,28 @@ export function useLoyaltyProgram() {
     void load();
   }, []);
 
+  /** Resolves the terms variables against the live form so the inserted copy is final text. */
+  function insertTemplate(template: Template) {
+    const variables: Record<string, string> = {
+      business_legal_name: context?.business.name ?? "",
+      program_name: kind === "points" ? plural : stampName,
+      program_kind: kind,
+      country_code: context?.business.countryCode ?? "",
+    };
+    const rendered = template.templateMarkdown.replace(
+      /{{([a-z_]+)}}/g,
+      (whole, variable: string) => variables[variable] ?? whole,
+    );
+    setTerms((current) =>
+      current.trim() ? `${current.trim()}\n\n${rendered}` : rendered,
+    );
+  }
+
   async function save() {
+    if (!terms.trim()) {
+      setError("Añade al menos una cláusula de términos antes de guardar.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -95,10 +111,7 @@ export function useLoyaltyProgram() {
             kind === "points"
               ? { unitSingular: singular, unitPlural: plural }
               : { unitName: stampName, target },
-          clauses: [
-            ...selectedTemplateIds.map((templateId) => ({ templateId })),
-            ...(terms.trim() ? [{ text: terms }] : []),
-          ],
+          clauses: [{ text: terms }],
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -186,7 +199,6 @@ export function useLoyaltyProgram() {
     stampName,
     target,
     terms,
-    selectedTemplateIds,
     editing,
     closing,
     earningEndsAt,
@@ -206,7 +218,7 @@ export function useLoyaltyProgram() {
     setStampName,
     setTarget,
     setTerms,
-    setSelectedTemplateIds,
+    insertTemplate,
     setEditing,
     setClosing,
     setEarningEndsAt,

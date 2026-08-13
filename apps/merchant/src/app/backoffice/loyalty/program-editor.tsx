@@ -10,7 +10,6 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
     target,
     terms,
     templates,
-    selectedTemplateIds,
     saving,
     error,
     setKind,
@@ -19,7 +18,7 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
     setStampName,
     setTarget,
     setTerms,
-    setSelectedTemplateIds,
+    insertTemplate,
     save,
   } = vm;
   return (
@@ -100,25 +99,19 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
       <section className="panel loyalty-panel">
         <h2>Términos y condiciones</h2>
         <p>
-          Son informativos. Puedes partir de una plantilla y editar el texto
-          antes de guardar.
+          Son informativos. Inserta una plantilla como punto de partida y edita
+          el texto antes de guardar.
         </p>
         <div className="template-actions">
           {templates.map((template) => (
-            <label key={template.id} className="terms-template">
-              <input
-                type="checkbox"
-                checked={selectedTemplateIds.includes(template.id)}
-                onChange={() =>
-                  setSelectedTemplateIds((current) =>
-                    current.includes(template.id)
-                      ? current.filter((id) => id !== template.id)
-                      : [...current, template.id],
-                  )
-                }
-              />
-              <span>{template.title}</span>
-            </label>
+            <button
+              key={template.id}
+              type="button"
+              className="terms-template-insert"
+              onClick={() => insertTemplate(template)}
+            >
+              + {template.title}
+            </button>
           ))}
         </div>
         <label>
@@ -126,7 +119,7 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
           <textarea
             value={terms}
             onChange={(event) => setTerms(event.target.value)}
-            placeholder="Escribe o añade una plantilla"
+            placeholder="Escribe los términos o inserta una plantilla"
           />
         </label>
         {error && <p className="form-error">{error}</p>}
