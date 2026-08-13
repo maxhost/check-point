@@ -76,6 +76,15 @@ formulario vivo) al textarea editable; al guardar sólo viaja `[{ text }]`. Roun
 editar, sin duplicación ni estado fantasma. Typecheck 3/3, unit de loyalty 6/6, e2e sin impacto
 (usan el textarea directo). El servidor sigue aceptando cláusulas por `templateId` (no-breaking).
 
+Segunda ronda de QA (2026-08-13), cinco ajustes UX del programa (todo UI, sin tocar el servicio):
+(1) el textarea de términos crece con el contenido (`AutoGrowTextarea`) y arranca alto; (2) el
+TOS guardado respeta saltos de línea y espacios al mostrarse (`white-space: pre-wrap` en
+`.published-term`); (3) los inputs `datetime-local` de cierre traen `min` (fin de acumulación ≥
+ahora en la zona del negocio; canje ≥ fin de acumulación) para no ofrecer fechas pasadas; (4) los
+errores de cerrar/cancelar/cargar salen como **toast de error** (`Toast kind="error"`), no debajo
+del formulario; (5) el modal de confirmación se cierra siempre al confirmar (antes quedaba abierto
+si el cierre fallaba). Typecheck 3/3 y unit de loyalty 6/6 verdes.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |

@@ -17,6 +17,7 @@ export default function LoyaltyProgramPage() {
     isClosing,
     timezone,
     notice,
+    errorToast,
     confirmDiscard,
     confirmClose,
     confirmCancel,
@@ -25,6 +26,7 @@ export default function LoyaltyProgramPage() {
     setConfirmDiscard,
     setConfirmClose,
     setConfirmCancel,
+    setErrorToast,
     populate,
     closeProgram,
     cancelClose,
@@ -35,6 +37,11 @@ export default function LoyaltyProgramPage() {
     <main className="merchant-shell">
       <div className="brand-page loyalty-page">
         <Toast message={notice} onDismiss={() => setNotice(null)} />
+        <Toast
+          message={errorToast}
+          kind="error"
+          onDismiss={() => setErrorToast(null)}
+        />
         <ModuleHeader
           eyebrow="Programa de fidelización"
           title={

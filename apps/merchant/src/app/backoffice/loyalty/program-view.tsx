@@ -1,4 +1,4 @@
-import { formatDate } from "./ui";
+import { formatDate, localDateTimeInput } from "./ui";
 import type { LoyaltyVm } from "./use-loyalty-program";
 
 export function ProgramView({ vm }: { vm: LoyaltyVm }) {
@@ -8,7 +8,6 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
     timezone,
     closing,
     saving,
-    error,
     earningEndsAt,
     redemptionEndsAt,
     setEditing,
@@ -19,6 +18,7 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
     setConfirmCancel,
   } = vm;
   if (!program) return null;
+  const minDateTime = localDateTimeInput(timezone);
   return (
     <>
       <section className="panel loyalty-panel">
@@ -77,6 +77,7 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
                   Fin de acumulación
                   <input
                     type="datetime-local"
+                    min={minDateTime}
                     value={earningEndsAt}
                     onChange={(event) => setEarningEndsAt(event.target.value)}
                   />
@@ -85,6 +86,7 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
                   Fecha final de canje
                   <input
                     type="datetime-local"
+                    min={earningEndsAt || minDateTime}
                     value={redemptionEndsAt}
                     onChange={(event) =>
                       setRedemptionEndsAt(event.target.value)
@@ -104,7 +106,6 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
             )}
           </>
         )}
-        {error && <p className="form-error">{error}</p>}
       </section>
       <section className="panel loyalty-panel">
         <h2>Términos y condiciones</h2>

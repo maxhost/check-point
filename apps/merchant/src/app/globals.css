@@ -941,6 +941,23 @@ input:focus {
   padding: 12px;
   border-left: 3px solid #176548;
   background: #f5f7f4;
+  white-space: pre-wrap;
+}
+.loyalty-terms-input {
+  width: 100%;
+  min-height: 160px;
+  padding: 13px;
+  border: 1px solid #cbd7ce;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: vertical;
+  overflow: hidden;
+}
+.loyalty-terms-input:focus {
+  outline: 3px solid #c9ead7;
+  border-color: #176548;
 }
 .danger-text {
   margin-top: 18px;

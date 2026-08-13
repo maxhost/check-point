@@ -36,6 +36,7 @@ export function useLoyaltyProgram() {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const program = context?.program ?? null;
   const timezone = context?.business.timezone ?? "America/Guayaquil";
@@ -69,7 +70,9 @@ export function useLoyaltyProgram() {
           .templates,
       );
     } catch {
-      setError("No pudimos cargar tu programa. Intenta recargar la página.");
+      setErrorToast(
+        "No pudimos cargar tu programa. Intenta recargar la página.",
+      );
     }
   }
 
@@ -134,8 +137,9 @@ export function useLoyaltyProgram() {
   }
 
   async function closeProgram() {
+    setConfirmClose(false);
     setSaving(true);
-    setError(null);
+    setErrorToast(null);
     try {
       const response = await fetch("/api/loyalty-program", {
         method: "DELETE",
@@ -148,11 +152,10 @@ export function useLoyaltyProgram() {
       if (!response.ok)
         throw new Error(payload?.error ?? "No pudimos iniciar el cierre.");
       setClosing(false);
-      setConfirmClose(false);
       setNotice("El cierre del programa fue programado.");
       await load();
     } catch (reason) {
-      setError(
+      setErrorToast(
         reason instanceof Error
           ? reason.message
           : "No pudimos iniciar el cierre.",
@@ -163,8 +166,9 @@ export function useLoyaltyProgram() {
   }
 
   async function cancelClose() {
+    setConfirmCancel(false);
     setSaving(true);
-    setError(null);
+    setErrorToast(null);
     try {
       const response = await fetch("/api/loyalty-program", {
         method: "PATCH",
@@ -176,11 +180,10 @@ export function useLoyaltyProgram() {
       } | null;
       if (!response.ok)
         throw new Error(payload?.error ?? "No pudimos cancelar el cierre.");
-      setConfirmCancel(false);
       setNotice("El cierre fue cancelado. El programa vuelve a estar activo.");
       await load();
     } catch (reason) {
-      setError(
+      setErrorToast(
         reason instanceof Error
           ? reason.message
           : "No pudimos cancelar el cierre.",
@@ -209,6 +212,7 @@ export function useLoyaltyProgram() {
     saving,
     notice,
     error,
+    errorToast,
     program,
     timezone,
     isClosing,
@@ -227,6 +231,7 @@ export function useLoyaltyProgram() {
     setConfirmClose,
     setConfirmCancel,
     setNotice,
+    setErrorToast,
     populate,
     save,
     closeProgram,

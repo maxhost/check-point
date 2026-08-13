@@ -1,3 +1,4 @@
+import { AutoGrowTextarea } from "./ui";
 import type { LoyaltyVm } from "./use-loyalty-program";
 
 export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
@@ -116,7 +117,8 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
         </div>
         <label>
           Texto de términos
-          <textarea
+          <AutoGrowTextarea
+            className="loyalty-terms-input"
             value={terms}
             onChange={(event) => setTerms(event.target.value)}
             placeholder="Escribe los términos o inserta una plantilla"
