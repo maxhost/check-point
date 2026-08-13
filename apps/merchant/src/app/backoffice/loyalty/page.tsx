@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ModuleHeader, Toast } from "../../components/ui";
+import { ProgramClosing } from "./program-closing";
 import { ProgramEditor } from "./program-editor";
 import { ProgramView } from "./program-view";
 import { LoyaltySkeleton } from "./ui";
@@ -14,6 +15,7 @@ export default function LoyaltyProgramPage() {
     context,
     program,
     editing,
+    closing,
     isClosing,
     timezone,
     notice,
@@ -23,6 +25,7 @@ export default function LoyaltyProgramPage() {
     confirmCancel,
     setNotice,
     setEditing,
+    setClosing,
     setConfirmDiscard,
     setConfirmClose,
     setConfirmCancel,
@@ -33,6 +36,7 @@ export default function LoyaltyProgramPage() {
   } = vm;
 
   if (!context) return <LoyaltySkeleton />;
+  const closingForm = Boolean(program) && !editing && !isClosing && closing;
   return (
     <main className="merchant-shell">
       <div className="brand-page loyalty-page">
@@ -47,22 +51,34 @@ export default function LoyaltyProgramPage() {
           title={
             isClosing
               ? "Tu programa está en cierre"
-              : program && !editing
-                ? "Tu programa está activo"
-                : "Premia a tus clientes"
+              : closingForm
+                ? "Cerrar programa"
+                : program && !editing
+                  ? "Tu programa está activo"
+                  : "Premia a tus clientes"
           }
           description={
             isClosing
               ? `No se podrá modificar. Los horarios se muestran en ${timezone}.`
-              : "Elige una única forma de acumular beneficios en tu negocio."
+              : closingForm
+                ? "Define hasta cuándo se acumula y se puede canjear."
+                : "Elige una única forma de acumular beneficios en tu negocio."
           }
           closeHref="/backoffice"
-          onClose={editing ? () => setConfirmDiscard(true) : undefined}
+          onClose={
+            editing
+              ? () => setConfirmDiscard(true)
+              : closingForm
+                ? () => setClosing(false)
+                : undefined
+          }
         />
-        {program && !editing ? (
-          <ProgramView vm={vm} />
-        ) : isClosing ? null : (
+        {editing || !program ? (
           <ProgramEditor vm={vm} />
+        ) : closingForm ? (
+          <ProgramClosing vm={vm} />
+        ) : (
+          <ProgramView vm={vm} />
         )}
         <p className="field-help">
           <Link href="/backoffice">Volver al Backoffice</Link>

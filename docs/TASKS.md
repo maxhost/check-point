@@ -91,6 +91,12 @@ a panel con etiquetas en mayúsculas atenuadas y valores prominentes—; el bot�
 deja de tener borde sin fondo y pasa a texto rojo sin borde con subrayado en hover
 (`.close-program-link`).
 
+Cuarto ajuste (2026-08-13): el formulario de cierre deja de ser inline (`.transition-fields`
+colgado bajo el botón) y pasa a una pantalla propia con el mismo formato del editor —nuevo
+`program-closing.tsx` como `section.panel.loyalty-panel`—. `page.tsx` alterna vista/editor/cierre
+y el header cambia título y la X para volver, igual que en «Editar». `ProgramView` queda sólo con
+la vista activa y el enlace «Cerrar programa» que abre esa pantalla.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |

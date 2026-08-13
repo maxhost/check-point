@@ -1,4 +1,4 @@
-import { formatDate, localDateTimeInput } from "./ui";
+import { formatDate } from "./ui";
 import type { LoyaltyVm } from "./use-loyalty-program";
 
 export function ProgramView({ vm }: { vm: LoyaltyVm }) {
@@ -6,19 +6,12 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
     program,
     isClosing,
     timezone,
-    closing,
     saving,
-    earningEndsAt,
-    redemptionEndsAt,
     setEditing,
     setClosing,
-    setEarningEndsAt,
-    setRedemptionEndsAt,
-    setConfirmClose,
     setConfirmCancel,
   } = vm;
   if (!program) return null;
-  const minDateTime = localDateTimeInput(timezone);
   return (
     <>
       <section className="panel loyalty-panel">
@@ -61,49 +54,10 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
             <button
               className="close-program-link"
               type="button"
-              onClick={() => setClosing(!closing)}
+              onClick={() => setClosing(true)}
             >
               Cerrar programa
             </button>
-            {closing && (
-              <div className="transition-fields">
-                <h3>Cierre del programa</h3>
-                <p>
-                  Desde el fin de acumulación no se otorgarán más beneficios.
-                  Las personas podrán canjear los ya obtenidos hasta la fecha
-                  final.
-                </p>
-                <label>
-                  Fin de acumulación
-                  <input
-                    type="datetime-local"
-                    min={minDateTime}
-                    value={earningEndsAt}
-                    onChange={(event) => setEarningEndsAt(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Fecha final de canje
-                  <input
-                    type="datetime-local"
-                    min={earningEndsAt || minDateTime}
-                    value={redemptionEndsAt}
-                    onChange={(event) =>
-                      setRedemptionEndsAt(event.target.value)
-                    }
-                  />
-                </label>
-                <p className="field-help">Zona horaria: {timezone}.</p>
-                <button
-                  className="button danger"
-                  type="button"
-                  disabled={saving || !earningEndsAt || !redemptionEndsAt}
-                  onClick={() => setConfirmClose(true)}
-                >
-                  Continuar con el cierre
-                </button>
-              </div>
-            )}
           </>
         )}
       </section>
