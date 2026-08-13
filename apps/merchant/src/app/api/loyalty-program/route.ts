@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../server/auth";
 import {
   LoyaltyError,
+  cancelClose,
   closeProgram,
   programForOwner,
   saveProgram,
@@ -62,6 +63,32 @@ export async function DELETE(request: Request) {
       );
     return NextResponse.json(
       { error: "No pudimos retirar el programa." },
+      { status: 503 },
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  const session = await sessionUser(request);
+  if (!session)
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const body = (await request.json().catch(() => null)) as {
+    action?: string;
+  } | null;
+  if (body?.action !== "cancel-close") {
+    return NextResponse.json({ error: "Acción no válida." }, { status: 422 });
+  }
+  try {
+    await cancelClose(session.user.id);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof LoyaltyError)
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    return NextResponse.json(
+      { error: "No pudimos cancelar el cierre." },
       { status: 503 },
     );
   }

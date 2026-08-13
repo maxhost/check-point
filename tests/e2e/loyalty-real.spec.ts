@@ -51,5 +51,15 @@ test.describe("programa de fidelización real", () => {
     await expect(
       page.getByRole("heading", { name: "Tu programa está en cierre" }),
     ).toBeVisible();
+
+    // Cancelar el cierre lo devuelve a activo antes de la fecha de canje.
+    await page.getByRole("button", { name: "Cancelar cierre" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Cancelar cierre" })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Tu programa está activo" }),
+    ).toBeVisible();
   });
 });

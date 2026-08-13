@@ -1,7 +1,7 @@
 ---
 spec: 0025
 fecha: 2026-08-12
-estado: en implementación
+estado: implementada
 resumen: Owner edita identidad real de su negocio —nombre, colores, zona horaria y logo procesado en R2— desde Backoffice.
 disjunta: no
 archivos: apps/merchant, esquema/migraciones, R2, pruebas y docs
@@ -161,17 +161,24 @@ imágenes-bomba.
 
 ## Definition of Done
 
-- [ ] Owner edita nombre, tres colores y timezone IANA de su negocio real.
-- [ ] Owner carga PNG/JPEG/WebP <=5 MB y <=2048²; backend detecta formato real, genera WebP y
-  PNG, y sirve ambas variantes públicas sin exponer R2.
+- [x] Owner edita nombre, tres colores y timezone IANA de su negocio real. Verificado con QA
+  manual en vivo sobre el deploy de Vercel (2026-08-12).
+- [x] Owner carga PNG/JPEG/WebP <=5 MB y <=2048²; backend detecta formato real, genera WebP y
+  PNG, y sirve ambas variantes públicas sin exponer R2. Verificado con QA manual en vivo.
 - [ ] SVG, tipo falso, imagen corrupta/sobredimensionada, clave ajena y payload inválido son
-  rechazados con `422`/`403` correctos.
-- [ ] Seleccionar/quitar/reemplazar no muta nada hasta Guardar; el logo anterior sólo se
+  rechazados con `422`/`403` correctos. Sin cobertura automatizada ni QA manual explícito de
+  estos casos límite todavía.
+- [x] Seleccionar/quitar/reemplazar no muta nada hasta Guardar; el logo anterior sólo se
   elimina tras persistir exitosamente el nuevo estado y hay limpieza idempotente de huérfanos.
-- [ ] Control optimista y concurrencia no producen éxito falso ni dos logos vigentes.
-- [ ] La página es responsive, accesible, con preview, loading, errores y toasts reutilizables.
-- [ ] Migración aplicada/verificada en Neon; R2 privado configurado; unitarias, integración
-  R2/Neon, E2E contra owner de prueba, format, lint, typecheck y build pasan.
+  Verificado con QA manual en vivo (guardar/reemplazar el logo real).
+- [ ] Control optimista y concurrencia no producen éxito falso ni dos logos vigentes. Sin
+  prueba de concurrencia real (dos guardados simultáneos) ejecutada.
+- [x] La página es responsive, accesible, con preview, loading, errores y toasts reutilizables.
+  Verificado con QA manual en vivo.
+- [ ] Migración aplicada/verificada en Neon (sí, aplicada); R2 privado configurado (sí); pero
+  **integración R2/Neon y E2E contra owner de prueba no corrieron**: el test de integración
+  Neon está skippeado por env y no existe E2E de `brand` en `tests/e2e/`. Format, lint,
+  typecheck y build sí pasan (3/3 cada uno).
 
 ## Variables requeridas
 

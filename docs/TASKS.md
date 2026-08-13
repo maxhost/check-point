@@ -45,6 +45,25 @@ simulada → recompensa → wallet guest temporal. Requiere URL HTTPS temporal p
 teléfono pueda conceder geolocalización. La arquitectura y stack transversal siguen
 pendientes de validación antes de cerrar las features reales de V1.
 
+El 2026-08-12 se cerraron las tareas 18 (Spec 0024, programa de fidelización real) y 19
+(Spec 0025, marca real y assets R2): gates locales verdes (typecheck 3/3, unit 22/23 con
+1 skip por env, lint, build 3/3), fix de fixture e2e (`tests/e2e/support/demo.ts`,
+seed-once para que `sessionStorage` sobreviva a `page.reload()` sin pisar el estado que
+persiste la app), push a `main` (`b576a4b`) y QA manual en vivo sobre el deploy de Vercel
+confirmado por el owner. La Spec 0024 sigue `en curso` en su frontmatter — cerrarla
+formalmente pide el PASS del revisor independiente de `AGENT-WORKFLOW.md`, que esta sesión
+no corrió. La Spec 0025 se marcó `implementada` a pedido explícito del owner con 3 de 6
+casilleros de su DoD sin marcar (casos límite de subida, concurrencia, e integración
+R2/Neon + E2E de `brand`, inexistente); no hubo PASS de revisor independiente tampoco.
+
+El 2026-08-12 se revisó la feature de fidelización (Spec 0024) contra el comportamiento
+deseado del Owner. Decisión confirmada: el cierre fechado es el único mecanismo de apagado
+(no se agrega «desactivar» inmediato). Se cerraron los huecos production-grade en ADR 0028
+y se implementaron localmente con gates verdes (ver tarea 18). El próximo paso operativo es
+aplicar la migración 0010 en Neon y correr integración + E2E real con credenciales de test
+antes de pushear; esos dos controles no se pudieron ejecutar en el entorno de esta sesión
+(driver Neon HTTP, sin `DATABASE_URL` ni owner de prueba disponibles).
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -66,8 +85,8 @@ pendientes de validación antes de cerrar las features reales de V1.
 | 15 | Diseñar e implementar Catálogo único de beneficios | 0021 | pendiente | Reutilizable entre campañas, juegos y canjes; los términos de uso pertenecen a cada distribución |
 | 16 | Implementar registro y autenticación real de Owner | 0022 | hecho | Registro/login, alta de negocio/local, Stripe Checkout y webhook implementados y desplegados; QA manual contra Neon y gates locales verdes. El selector final de planes es carrusel con Plus mensual por defecto. |
 | 17 | Implementar búsqueda y procedencia de locales | 0023 | en revisión | Geoapify principal y fallback automático Mapbox sólo ante fallo de Geoapify implementados; migración 0003 aplicada. Pendientes QA real/E2E y PASS independiente |
-| 18 | Implementar programa de fidelización real y términos | 0024 | en curso | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado en timezone del negocio; ADR 0027 supersede el anterior modelo de versiones. |
-| 19 | Implementar marca real y assets R2 | 0025 | en ejecución | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. |
+| 18 | Implementar programa de fidelización real y términos | 0024 | en curso | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027); base desplegada y QA en vivo el 2026-08-12 (`b576a4b`). Endurecimiento production-grade (ADR 0028) aplicado localmente: cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`, migración 0010), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts` y la página se dividieron por el límite de tamaño. Gates locales verdes (typecheck 3/3, unit 25 + lógica pura nueva, lint, format, build 3/3, e2e demo). Integración Neon verde contra rama de test aislada (`br-raspy-mode-axl70axv`, efímera): migración 0010 aplicada con `drizzle-kit migrate` y ciclo de vida completo + auditoría + 409 de éxito-falso ejercitados contra Postgres real (2026-08-12). **Falta**: aplicar migración 0010 en `main` de producción, pushear el código, y correr el E2E real (necesita entorno desplegado con owner de prueba). |
+| 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner; 3 de 6 casilleros del DoD quedan sin marcar (casos límite de subida, concurrencia, e integración R2/Neon + E2E de `brand`, que no existe todavía) — ver DoD de la spec. |
 
 ## Hecho
 
@@ -95,6 +114,9 @@ pendientes de validación antes de cerrar las features reales de V1.
 | 2026-08-10 | Scaffold instalado y verificado: lockfile, install congelado, format/lint/typecheck, unit 3/3, build 3/3, contrato health exacto + 405, Playwright verde | Comandos corridos con Node 24.19.0 / pnpm 11.4.0 |
 | 2026-08-10 | Diseño v0.1 de wallet contextual por comercio | Revisión manual: cover compacto, promoción futura, puntos, cupones, canjes y progreso de Bar Demo |
 | 2026-08-10 | Diseño v0.1 de llegada desde QR y check-in | Revisión manual: pantalla simple, beneficios visibles y CTA único con explicación de ubicación |
+| 2026-08-12 | Fix de fixture e2e: `seedDemo` con semántica seed-once (clave y tipo importados de la app) | `pnpm test:e2e` 5 passed / 1 skipped; antes fallaba en `loyalty.spec.ts` tras `page.reload()` |
+| 2026-08-12 | Programa de fidelización real desplegado (Spec 0024, ADR 0027) | Gates locales (typecheck 3/3, unit 22/23, lint, build 3/3) + QA manual en vivo del owner sobre Vercel |
+| 2026-08-12 | Marca real y assets R2 desplegados (Spec 0025) | Gates locales (typecheck 3/3, unit 22/23, lint, build 3/3) + QA manual en vivo del owner sobre Vercel |
 
 ## Descartado (y por que)
 

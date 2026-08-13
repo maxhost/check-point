@@ -13,5 +13,14 @@ describe.skipIf(!run)(
         await run!`SELECT indexname FROM pg_indexes WHERE schemaname = 'core' AND indexname = 'core_loyalty_program_one_operational'`;
       expect(indexes).toHaveLength(1);
     });
+
+    it("has the append-only event table for the audit trail", async () => {
+      const tables =
+        await run!`SELECT tablename FROM pg_tables WHERE schemaname = 'core' AND tablename = 'loyalty_program_event'`;
+      expect(tables).toHaveLength(1);
+      const indexes =
+        await run!`SELECT indexname FROM pg_indexes WHERE schemaname = 'core' AND indexname IN ('core_loyalty_program_event_program_idx', 'core_loyalty_program_event_business_idx')`;
+      expect(indexes).toHaveLength(2);
+    });
   },
 );

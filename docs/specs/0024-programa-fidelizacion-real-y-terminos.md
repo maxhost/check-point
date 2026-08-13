@@ -79,6 +79,8 @@ Invariantes:
 - `PUT /api/loyalty-program`: crea el programa activo o actualiza configuración/TOS del
   programa activo. Rechaza una modalidad distinta: requiere cerrar e iniciar nuevo ciclo.
 - `DELETE /api/loyalty-program`: inicia el cierre con ambas fechas.
+- `PATCH /api/loyalty-program`: cancela un cierre programado (`{ action: "cancel-close" }`)
+  mientras el programa esté `closing` y no se haya superado la fecha de canje.
 - `GET /api/loyalty-terms/templates`: biblioteca `published` para owners autenticados.
 
 ## UI
@@ -86,7 +88,7 @@ Invariantes:
 ```text
 sin programa → elegir Puntos/Sellos → configurar → TOS → activar
 activo → editar configuración/TOS | iniciar cierre
-closing → fechas de vigencia y aviso; no permite editar ni crear otro
+closing → fechas de vigencia y aviso; no permite editar ni crear otro | cancelar cierre
 inactivo → crear nuevo programa
 ```
 
@@ -126,6 +128,39 @@ versiones ni transiciones, porque no existen en el modelo.
 - [ ] Los TOS se guardan sólo al guardar, son editables e informativos; no crean versiones.
 - [ ] No quedan tablas, índices, rutas, UI ni documentación de versiones/transiciones.
 - [ ] Migración aplicada y verificada en Neon; unitarias, integración, E2E y build pasan.
+
+## Enmienda 2026-08-12 — Endurecimiento production-grade (ADR 0028)
+
+Tras revisión con el Owner se confirma que el cierre fechado es el único mecanismo de apagado
+(no se agrega «desactivar» inmediato) y se cierran estos huecos:
+
+- **Sin éxito falso.** Guardar, cerrar y cancelar usan `RETURNING id`; si la actualización
+  guardada por estado no cambió ninguna fila, la operación falla con `409` y no emite evento.
+- **Cancelar cierre.** Nueva transición `closing → active` mientras `ahora < redemption_ends_at`;
+  limpia ambas fechas y conserva el invariante de un solo programa operativo.
+- **Auditoría por eventos.** `core.loyalty_program_event` (append-only) registra `created`,
+  `edited`, `closing_scheduled`, `closing_canceled` y `expired`, con actor (nulo = sistema),
+  acción y `details` jsonb. Preparado para múltiples usuarios por negocio.
+- **Ediciones concurrentes: last-write-wins.** Decisión consciente en esta etapa sin saldos;
+  sin control optimista de versión. La auditoría deja rastro de cada edición.
+- **Normalización de `configuration`.** Sólo se persisten las claves válidas por modalidad;
+  las claves desconocidas del cliente se descartan.
+
+### DoD adicional
+
+- [ ] Guardar/cerrar/cancelar sobre un estado inesperado devuelve `409`, nunca un éxito falso.
+- [ ] El Owner cancela un cierre programado antes de la fecha de canje y el programa vuelve a
+  `active` sin dejar dos filas operativas.
+- [ ] Cada operación relevante deja un evento en `loyalty_program_event` con actor y detalle.
+- [ ] `configuration` persiste sólo claves válidas; el cliente no puede inyectar otras.
+- [x] Unitarias de la lógica pura (ventanas de cierre/cancelación, normalización) verdes.
+- [x] Integración Neon verde contra una **rama de test aislada**: migración `0010` aplicada con
+  `drizzle-kit migrate`; ciclo de vida completo (crear→editar→cerrar→cancelar→recerrar→expirar)
+  ejercitado contra Postgres real, verificando el rastro de auditoría atribuido, los `409` de
+  éxito-falso y la normalización de `configuration` (2026-08-12).
+- [ ] E2E real (`loyalty-real.spec.ts`) queda listo pero pendiente de un entorno desplegado con
+  owner de prueba (`E2E_MERCHANT_BASE_URL`/`EMAIL`/`PASSWORD` + `E2E_LOYALTY_MUTATION_TEST`).
+- [ ] Aplicar la migración `0010` en la rama `main` de producción y desplegar.
 
 ## Abierto
 
