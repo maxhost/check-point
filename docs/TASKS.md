@@ -97,6 +97,11 @@ colgado bajo el botón) y pasa a una pantalla propia con el mismo formato del ed
 y el header cambia título y la X para volver, igual que en «Editar». `ProgramView` queda sólo con
 la vista activa y el enlace «Cerrar programa» que abre esa pantalla.
 
+Quinto ajuste (2026-08-13): el mensaje único «Indica una ventana futura válida en la zona horaria
+del negocio» era confuso porque cubría tres fallas distintas. `validateClosingWindow` ahora lanza
+un mensaje específico por caso (fechas inválidas / fin de acumulación no futuro / fin de canje no
+posterior al fin de acumulación); test unitario actualizado a los textos nuevos.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
