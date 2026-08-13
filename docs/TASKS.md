@@ -59,10 +59,11 @@ R2/Neon + E2E de `brand`, inexistente); no hubo PASS de revisor independiente ta
 El 2026-08-12 se revisó la feature de fidelización (Spec 0024) contra el comportamiento
 deseado del Owner. Decisión confirmada: el cierre fechado es el único mecanismo de apagado
 (no se agrega «desactivar» inmediato). Se cerraron los huecos production-grade en ADR 0028
-y se implementaron localmente con gates verdes (ver tarea 18). El próximo paso operativo es
-aplicar la migración 0010 en Neon y correr integración + E2E real con credenciales de test
-antes de pushear; esos dos controles no se pudieron ejecutar en el entorno de esta sesión
-(driver Neon HTTP, sin `DATABASE_URL` ni owner de prueba disponibles).
+y se implementaron localmente con gates verdes (ver tarea 18). La integración Neon se corrió contra una rama de test
+aislada y efímera (creada y borrada vía Neon MCP), la migración 0010 se aplicó a `main` de
+producción con `drizzle-kit migrate` (verificada) y el código se pusheó (`1887db8`). El único
+residual es el E2E `loyalty-real.spec.ts`, que requiere un entorno desplegado con un owner de
+prueba sembrado (`E2E_MERCHANT_BASE_URL`/`EMAIL`/`PASSWORD`).
 
 ## Siguiente
 
@@ -85,7 +86,7 @@ antes de pushear; esos dos controles no se pudieron ejecutar en el entorno de es
 | 15 | Diseñar e implementar Catálogo único de beneficios | 0021 | pendiente | Reutilizable entre campañas, juegos y canjes; los términos de uso pertenecen a cada distribución |
 | 16 | Implementar registro y autenticación real de Owner | 0022 | hecho | Registro/login, alta de negocio/local, Stripe Checkout y webhook implementados y desplegados; QA manual contra Neon y gates locales verdes. El selector final de planes es carrusel con Plus mensual por defecto. |
 | 17 | Implementar búsqueda y procedencia de locales | 0023 | en revisión | Geoapify principal y fallback automático Mapbox sólo ante fallo de Geoapify implementados; migración 0003 aplicada. Pendientes QA real/E2E y PASS independiente |
-| 18 | Implementar programa de fidelización real y términos | 0024 | en curso | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027); base desplegada y QA en vivo el 2026-08-12 (`b576a4b`). Endurecimiento production-grade (ADR 0028) aplicado localmente: cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`, migración 0010), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts` y la página se dividieron por el límite de tamaño. Gates locales verdes (typecheck 3/3, unit 25 + lógica pura nueva, lint, format, build 3/3, e2e demo). Integración Neon verde contra rama de test aislada (`br-raspy-mode-axl70axv`, efímera): migración 0010 aplicada con `drizzle-kit migrate` y ciclo de vida completo + auditoría + 409 de éxito-falso ejercitados contra Postgres real (2026-08-12). **Falta**: aplicar migración 0010 en `main` de producción, pushear el código, y correr el E2E real (necesita entorno desplegado con owner de prueba). |
+| 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. |
 | 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner; 3 de 6 casilleros del DoD quedan sin marcar (casos límite de subida, concurrencia, e integración R2/Neon + E2E de `brand`, que no existe todavía) — ver DoD de la spec. |
 
 ## Hecho
