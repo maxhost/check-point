@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../server/auth";
 import {
   LoyaltyError,
+  closeProgram,
   programForOwner,
-  publishProgram,
-  type PublishInput,
+  saveProgram,
 } from "../../../server/loyalty-program";
 
 async function sessionUser(request: Request) {
@@ -21,16 +21,13 @@ export async function GET(request: Request) {
   return NextResponse.json(result);
 }
 
-export async function POST(request: Request) {
+export async function PUT(request: Request) {
   const session = await sessionUser(request);
   if (!session)
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   try {
-    const result = await publishProgram(
-      session.user.id,
-      (await request.json()) as PublishInput,
-    );
-    return NextResponse.json(result, { status: 201 });
+    const result = await saveProgram(session.user.id, await request.json());
+    return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error) {
     if (error instanceof LoyaltyError)
       return NextResponse.json(
@@ -38,7 +35,33 @@ export async function POST(request: Request) {
         { status: error.status },
       );
     return NextResponse.json(
-      { error: "No pudimos publicar el programa." },
+      { error: "No pudimos guardar el programa." },
+      { status: 503 },
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const session = await sessionUser(request);
+  if (!session)
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  try {
+    await closeProgram(
+      session.user.id,
+      (await request.json()) as {
+        earningEndsAt?: string;
+        redemptionEndsAt?: string;
+      },
+    );
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    if (error instanceof LoyaltyError)
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    return NextResponse.json(
+      { error: "No pudimos retirar el programa." },
       { status: 503 },
     );
   }

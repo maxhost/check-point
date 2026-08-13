@@ -14,7 +14,6 @@ type ProgramType = "points" | "stamps";
 
 export default function LoyaltyPage() {
   const [data, setData] = useState<DemoState | null>(null);
-  const [selectedType, setSelectedType] = useState<ProgramType | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
@@ -22,11 +21,7 @@ export default function LoyaltyPage() {
   const imageInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const stored = read();
-    setData(stored);
-    if (stored?.loyaltyProgram.status === "active") {
-      setSelectedType(stored.loyaltyProgram.type);
-    }
+    setData(read());
   }, []);
 
   useEffect(() => {
@@ -49,20 +44,28 @@ export default function LoyaltyPage() {
 
   const program = data.loyaltyProgram;
   const isActive = program.status === "active" && program.type !== null;
+  const chosenType = program.type;
   const updateProgram = (next: Partial<DemoState["loyaltyProgram"]>) =>
-    setData({ ...data, loyaltyProgram: { ...program, ...next } });
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            loyaltyProgram: { ...current.loyaltyProgram, ...next },
+          }
+        : current,
+    );
 
   const activate = () => {
-    if (!selectedType) {
+    if (!chosenType) {
       setError("Elige Puntos o Sellos para continuar.");
       return;
     }
     const nextProgram = normalizedLoyaltyProgram({
       ...program,
       status: "active",
-      type: selectedType,
+      type: chosenType,
     });
-    const validation = validateLoyaltyProgram(nextProgram, selectedType);
+    const validation = validateLoyaltyProgram(nextProgram, chosenType);
     if (validation) {
       setError(validation);
       return;
@@ -95,14 +98,12 @@ export default function LoyaltyPage() {
       loyaltyProgram: { ...program, status: "inactive" as const, type: null },
     };
     setData(nextData);
-    setSelectedType(null);
     setConfirmDeactivate(false);
     save(nextData);
     setToast("Programa de fidelización desactivado.");
   };
 
   const chooseType = (type: ProgramType) => {
-    setSelectedType(type);
     updateProgram({ type });
     setError(null);
   };
@@ -134,14 +135,14 @@ export default function LoyaltyPage() {
               aria-labelledby="loyalty-choice-title"
             >
               <label
-                className={`plan ${selectedType === "points" ? "selected" : ""}`}
+                className={`plan ${chosenType === "points" ? "selected" : ""}`}
               >
                 <input
                   className="sr-only"
                   type="radio"
                   name="loyalty-program-type"
                   value="points"
-                  checked={selectedType === "points"}
+                  checked={chosenType === "points"}
                   onChange={() => chooseType("points")}
                 />
                 <span className="loyalty-choice-content">
@@ -152,14 +153,14 @@ export default function LoyaltyPage() {
                 </span>
               </label>
               <label
-                className={`plan ${selectedType === "stamps" ? "selected" : ""}`}
+                className={`plan ${chosenType === "stamps" ? "selected" : ""}`}
               >
                 <input
                   className="sr-only"
                   type="radio"
                   name="loyalty-program-type"
                   value="stamps"
-                  checked={selectedType === "stamps"}
+                  checked={chosenType === "stamps"}
                   onChange={() => chooseType("stamps")}
                 />
                 <span className="loyalty-choice-content">
@@ -171,9 +172,9 @@ export default function LoyaltyPage() {
           </section>
         )}
 
-        {(selectedType || isActive) && (
+        {(chosenType || isActive) && (
           <section className="panel loyalty-panel">
-            {selectedType === "points" && (
+            {chosenType === "points" && (
               <>
                 <h2>Configura tus puntos</h2>
                 <label>
@@ -199,7 +200,7 @@ export default function LoyaltyPage() {
               </>
             )}
 
-            {selectedType === "stamps" && (
+            {chosenType === "stamps" && (
               <>
                 <h2>Configura tu tarjeta de sellos</h2>
                 <label>

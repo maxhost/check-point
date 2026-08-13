@@ -1,25 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { renderTermsText, validateConfiguration } from "./loyalty-program";
+import {
+  LoyaltyError,
+  renderTermsText,
+  validateProgramInput,
+  zonedDateTimeToUtc,
+} from "./loyalty-program";
+import { isIanaTimezone } from "./timezone";
 
-describe("loyalty program configuration", () => {
-  it("accepts valid points and stamps", () => {
+describe("loyalty program contract", () => {
+  it("accepts Puntos and Sellos and rejects malformed payloads with 422", () => {
     expect(
-      validateConfiguration("points", {
-        unitSingular: "Punto",
-        unitPlural: "Puntos",
+      validateProgramInput({
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: [{ text: "Términos." }],
       }),
-    ).toBeNull();
+    ).toMatchObject({ kind: "points" });
     expect(
-      validateConfiguration("stamps", { unitName: "Sello", target: 10 }),
-    ).toBeNull();
+      validateProgramInput({
+        kind: "stamps",
+        configuration: { unitName: "Sello", target: 10 },
+        clauses: [{ text: "Términos." }],
+      }),
+    ).toMatchObject({ kind: "stamps" });
+    expect(() =>
+      validateProgramInput({
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: "hola",
+      }),
+    ).toThrow(LoyaltyError);
+    expect(() =>
+      validateProgramInput({
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: "hola",
+      }),
+    ).toThrow("cláusulas");
   });
 
-  it("rejects invalid configuration and modalities not yet enabled", () => {
-    expect(validateConfiguration("points", { unitSingular: "" })).toBeTruthy();
+  it("converts business-local times to UTC and rejects a DST gap", () => {
+    expect(isIanaTimezone("America/Guayaquil")).toBe(true);
+    expect(isIanaTimezone("not-a-timezone")).toBe(false);
     expect(
-      validateConfiguration("stamps", { unitName: "Sello", target: 51 }),
-    ).toBeTruthy();
-    expect(validateConfiguration("tiers", {})).toBeTruthy();
+      zonedDateTimeToUtc(
+        "2026-08-12T15:00",
+        "America/Guayaquil",
+      )?.toISOString(),
+    ).toBe("2026-08-12T20:00:00.000Z");
+    expect(
+      zonedDateTimeToUtc("2026-09-06T00:30", "America/Santiago"),
+    ).toBeNull();
   });
 
   it("renders only explicitly allowed terms variables", () => {

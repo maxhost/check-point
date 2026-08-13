@@ -1,8 +1,8 @@
 ---
 spec: 0024
 fecha: 2026-08-12
-estado: cerrada
-resumen: Owner configura un programa real versionado de Puntos o Sellos, con transición fechada y términos comerciales compuestos desde biblioteca editable.
+estado: en curso
+resumen: Owner administra un ciclo de fidelización mutable de Puntos o Sellos y lo cierra con fechas expresadas en la zona horaria del negocio.
 disjunta: no
 archivos: apps/merchant, migraciones Drizzle, Neon, pruebas y docs
 ---
@@ -11,206 +11,124 @@ archivos: apps/merchant, migraciones Drizzle, Neon, pruebas y docs
 
 ## Problema
 
-El programa demo sólo existe en `sessionStorage`; no tiene aislamiento por negocio,
-autorización, versiones, transición de beneficios ni términos que puedan mostrarse y
-auditarse en la wallet. Las campañas y el check-in futuros necesitan una configuración
-publicada y estable a la que referenciar.
+El programa demo vive en `sessionStorage`. El Owner necesita un único programa operativo
+para su negocio, configurable sin crear versiones artificiales, y una forma clara de cerrarlo
+para informar hasta cuándo se puede acumular y canjear.
 
 ## Alcance
 
 **Entra:**
 
-- Sustituir la configuración demo por un programa real por negocio, visible y editable por
-  el Owner autenticado desde `/backoffice/loyalty`.
-- Activar Puntos o Sellos; nunca ambos. El modelo tipado incluye `tiers` y `cashback`, sin
-  hacerlos seleccionables u operables.
-- Publicar una primera versión y nuevas versiones de la misma modalidad.
-- Al sustituir una versión o cambiar modalidad, pedir fecha de entrada en vigencia de la
-  nueva versión y fecha de canje final de la anterior; el sistema deriva su fin de
-  acumulación desde la entrada en vigencia.
-- Configurar Puntos (nombre singular/plural) o Sellos (nombre, objetivo 2–50 e imagen
-  opcional preparada para R2).
-- Biblioteca inicial de cláusulas de términos, selección, orden, copia editable por owner,
-  cláusula custom, variables permitidas y publicación de una copia renderizada inmutable.
-- Autorización por sesión/membresía owner, aislamiento por `business_id`, toasts, estados
-  de carga/error, responsive y accesibilidad.
+- Puntos o Sellos, nunca ambos dentro del mismo programa; `tiers` y `cashback` quedan como
+  modalidades reservadas y no operables.
+- Un programa mutable por ciclo y a lo sumo uno operativo por negocio.
+- Edición de configuración y términos informativos mientras está activo.
+- Cierre con fecha de fin de acumulación y fecha final de canje; creación de un ciclo nuevo
+  sólo después del cierre completo.
+- `business.timezone` IANA obligatorio: onboarding, API, persistencia UTC y presentación
+  local consistente.
+- Biblioteca de cláusulas editoriales, copia editable y texto adicional. Las cláusulas sólo
+  se guardan al guardar el programa, no al seleccionarlas.
+- Autorización owner, contrato HTTP estricto, responsive, accesibilidad, toasts y skeleton.
 
 **No entra:**
 
-- Acumulación, saldo, progreso, canje, campañas conectadas, wallet consumer, notificaciones
-  reales, aceptación consumer, Niveles operables, Cashback operable o migración automática
-  de saldos.
-- Subida real a R2: se persiste `stamp_image_object_key` sólo cuando el flujo de R2 exista;
-  esta primera entrega muestra el campo preparado sin aceptar archivos persistentes.
-- Publicar plantillas como asesoría legal o habilitar nuevas jurisdicciones sin aprobación
-  editorial/jurídica.
+- Ledger, saldo, canje, campañas conectadas, wallet consumer, notificaciones y aceptación
+  afirmativa de TOS.
+- Convertir TOS textuales en reglas bloqueantes; eso pertenece al motor de campañas y sus
+  restricciones.
+- Carga de imagen de sello: `stampImageObjectKey` queda reservado hasta configurar R2.
+- Operación de Niveles/Cashback.
 
-## Diseño
-
-```text
-/backoffice/loyalty
-  → sin programa: elegir Puntos | Sellos → configuración → términos → publicar V1
-  → programa activo: editar → publicar nueva versión de la misma modalidad
-  → cambiar modalidad o desactivar: transición con cierre de acumulación/canje de Vn
-```
-
-La página carga el negocio de la sesión; nunca acepta un `business_id` como autoridad del
-navegador. Una versión publicada se vuelve inmutable. El Owner puede guardar un borrador,
-pero sólo una publicación cambia la versión activa.
-
-### Modelo de datos
+## Modelo de datos
 
 ```text
+business
+  timezone IANA NOT NULL
+
 loyalty_program
-  id, business_id UNIQUE, status(active|inactive), active_version_id, timestamps
-
-loyalty_program_version
-  id, program_id, kind(points|stamps|tiers|cashback), schema_version,
-  configuration_json, effective_from, earning_ends_at?, redemption_ends_at?,
-  status(draft|active|retiring|retired), published_at?, created_by, timestamps
-
-loyalty_program_transition
-  id, program_id, from_version_id, to_version_id?, earning_ends_at,
-  redemption_ends_at, created_by, created_at
+  id, business_id,
+  kind(points|stamps|tiers|cashback), schema_version, configuration_json,
+  status(active|closing|inactive),
+  activated_at, earning_ends_at?, redemption_ends_at?,
+  terms_markdown, terms_hash, terms_updated_at,
+  created_by, created_at, updated_at
 
 terms_template
-  id, key, jurisdiction_scope, locale, category, title, template_markdown,
-  variables_allowlist, version, status(draft|published|retired), published_at
-
-loyalty_terms_version
-  id, program_version_id UNIQUE, rendered_markdown, content_hash,
-  acceptance_required, published_at
-
-loyalty_terms_clause
-  id, terms_version_id, position, source_template_id?, source_template_version?,
-  rendered_clause, edited_by_owner
-
-loyalty_terms_acceptance (futuro)
-  id, terms_version_id, consumer_identity_id, accepted_at, acceptance_channel
+  biblioteca editorial publicada; no es estado del programa
 ```
 
 Invariantes:
 
-- Un negocio tiene una única fila de programa y a lo sumo una versión `active`.
-- `active_version_id` refiere una versión del mismo programa con estado `active`.
-- Una transición exige `effective_from <= redemption_ends_at`, ambas posteriores a su
-  creación y a la activación de la versión saliente. `earning_ends_at` de la versión
-  saliente es igual a `effective_from` de la entrante.
-- Al activar una nueva versión, la anterior pasa a `retiring`; no admite acumulación tras
-  `earning_ends_at` y permanece canjeable hasta `redemption_ends_at`.
-- `configuration_json` se valida antes de persistir: Puntos exige unidades; Sellos exige
-  unidad y entero 2–50. Los esquemas de Niveles/Cashback existen como contratos cerrados,
-  pero las rutas rechazan su publicación hasta una spec posterior.
-- Las variables de términos se resuelven sólo desde allowlist:
-  `business_legal_name`, `program_name`, `program_kind`, `effective_from`,
-  `earning_ends_at`, `redemption_ends_at`, `country_code`. No se evalúa HTML, JS ni
-  variables arbitrarias.
-- Al publicar, se persiste el markdown renderizado, hash SHA-256, cláusulas finales y la
-  procedencia de plantilla. La plantilla posterior puede cambiar sin alterar el texto ya
-  publicado.
+- Puede haber múltiples ciclos históricos, pero un único programa `active` o `closing` por
+  negocio mediante índice parcial.
+- `closing` exige ambas fechas, convertidas desde la timezone IANA del negocio, con
+  `earning_ends_at < redemption_ends_at`.
+- El programa acumula si es `active`, o si es `closing` y aún no llegó `earning_ends_at`;
+  puede canjear si es `active`, o si es `closing` y no superó `redemption_ends_at`.
+- `inactive` sólo se alcanza después del final de canje. La tarea programada es idempotente;
+  la elegibilidad usa fechas como defensa ante retrasos.
+- Puntos exige unidad singular/plural. Sellos exige unidad, objetivo entero 2–50 y admite
+  `stampImageObjectKey` no vacío cuando exista R2.
+- Términos son texto informativo con hash. El payload se valida como datos de API, no como
+  reglas ejecutables de negocio.
 
-### Contratos y rutas
+## Rutas
 
-- `GET /api/loyalty-program`: devuelve el programa, versión activa, versiones retirándose y
-  términos publicados sólo para el Owner del negocio de sesión.
-- `POST /api/loyalty-program/drafts`: crea/actualiza un borrador tipado del programa.
-- `POST /api/loyalty-program/publish`: publica V1 o Vn. Para reemplazo recibe la entrada
-  en vigencia de Vn, la fecha final de canje de Vn−1 y términos finales; el servidor deriva
-  el cierre de acumulación y persiste de forma transaccional.
-- `POST /api/loyalty-program/deactivate`: exige fechas de cierre y deja el programa sin
-  versión activa; la historia sigue disponible.
-- `GET /api/loyalty-terms/templates?locale=es&country=EC`: entrega sólo plantillas
-  `published` aplicables. En esta entrega se siembran cláusulas internas de ejemplo para
-  desarrollo, claramente etiquetadas como borrador editorial.
+- `GET /api/loyalty-program`: programa operativo y términos para el owner de sesión.
+- `PUT /api/loyalty-program`: crea el programa activo o actualiza configuración/TOS del
+  programa activo. Rechaza una modalidad distinta: requiere cerrar e iniciar nuevo ciclo.
+- `DELETE /api/loyalty-program`: inicia el cierre con ambas fechas.
+- `GET /api/loyalty-terms/templates`: biblioteca `published` para owners autenticados.
 
-Las respuestas no exponen borradores ni programas de otro negocio. `409` indica conflicto
-de publicación concurrente; `422` validación de configuración/transición; `403` falta de
-membresía owner.
+## UI
 
-### UI
+```text
+sin programa → elegir Puntos/Sellos → configurar → TOS → activar
+activo → editar configuración/TOS | iniciar cierre
+closing → fechas de vigencia y aviso; no permite editar ni crear otro
+inactivo → crear nuevo programa
+```
 
-- La home real enlaza a `/backoffice/loyalty`; la pantalla demo permanece aislada hasta
-  que las otras rutas demo se sustituyan.
-- Sin programa se elige Puntos/Sellos y se configura la primera versión. La sección de
-  términos permite añadir plantillas, editar su copia y añadir texto custom; muestra una
-  previsualización de variables resueltas.
-- Con programa se visualiza versión activa, fechas de acumulación/canje y términos
-  publicados. Editar crea borrador; publicar una nueva versión solicita la ventana de
-  transición. Cambiar modalidad/desactivar usa `ConfirmDialog` reutilizable.
-- En móvil, acciones y formulario tienen una columna, controles táctiles >=44px y el texto
-  de términos se conserva legible; el guardado no navega ni pierde borrador ante error.
+La UI utiliza la zona horaria del negocio en etiquetas y campos de fecha. No muestra
+versiones ni transiciones, porque no existen en el modelo.
 
-### Arquitectura de referencia
+## Plan production-grade
 
-- ADR 0020, ADR 0026, ADR 0005, ADR 0018 y ADR 0017.
-- Spec 0003 (campañas), Spec 0004 (wallet) y Spec 0021 (catálogo) consumirán las versiones
-  publicadas, sin acoplar esta entrega a sus tablas futuras.
-
-## Archivos
-
-| Archivo | Acción |
-|---|---|
-| `apps/merchant/src/server/schema.ts` | añadir tablas, estados y relaciones de programa/términos |
-| `apps/merchant/drizzle/0004_*`, `meta/*` | migración versionada y snapshot |
-| `apps/merchant/src/server/loyalty-program.ts` | contratos, validación, publicación transaccional y autorización |
-| `apps/merchant/src/server/loyalty-terms.ts` | render seguro, hash y biblioteca de cláusulas |
-| `apps/merchant/src/app/api/loyalty-*/**` | rutas autenticadas |
-| `apps/merchant/src/app/backoffice/loyalty/**` | UI real client/server y estados |
-| `apps/merchant/src/app/backoffice/page.tsx` | enlazar acceso real |
-| `apps/merchant/src/app/components/**`, `globals.css` | reutilizar UI; sólo estilos necesarios |
-| `apps/merchant/src/**/*.test.*`, `tests/e2e/**` | unitarias, integración y E2E |
-| `docs/INDEX.md`, `docs/TASKS.md`, `docs/HANDOFF.md` | estado, handoff y cierre |
-
-### Disjunta?
-
-No. Comparte `schema.ts`, migraciones, backoffice y estilos con Specs 0022/0023 y con el
-backoffice real futuro. Se implementa en serie.
+1. **Contrato y datos.** Definir validadores de payload discriminados por modalidad y zona
+   horaria IANA; añadir `business.timezone` nullable, completar explícitamente cada negocio
+   existente y sólo entonces convertirla en `NOT NULL`.
+2. **Migración sin pérdida del programa actual.** Copiar a `loyalty_program` la configuración,
+   modalidad y términos de la versión activa actual; reemplazar el índice único histórico por
+   un índice parcial de programa operativo; eliminar puntero, tablas e índices de versiones y
+   transiciones. Se valida conteo y hash antes y después en Neon.
+3. **Servicio y API.** Reemplazar publicación/versionado por crear, editar y cerrar. La
+   operación de cierre se protege con condición de estado y constraint; requests malformados
+   reciben `422`, nunca un falso `503`.
+4. **Timezone.** Convertir `datetime-local` en UTC con la timezone IANA del negocio y mostrar
+   las fechas desde UTC usando esa misma timezone. Cubrir zonas sin DST y con DST.
+5. **UI.** Quitar creación de V2 y tabla de versiones; conservar confirmación de cierre,
+   términos editables y skeleton; bloquear edición mientras el programa está `closing`.
+6. **Pruebas reales.** Unitarias de payload/zonas/ventanas; integración contra la rama Neon
+   persistente de desarrollo autorizada; E2E login → crear → editar TOS → cerrar → verificar
+   bloqueo/fechas con un owner de prueba nuevo. Se habilita explícitamente con
+   `E2E_LOYALTY_MUTATION_TEST=true`; no toca owners de uso manual.
+7. **Entrega.** Ejecutar format, lint, typecheck, test, E2E y build; verificar migración y
+   datos en Neon antes del despliegue.
 
 ## Definition of Done
 
-- [ ] Owner autenticado puede crear un programa real de Puntos o Sellos para su negocio y
-  sólo uno queda activo.
-- [ ] La primera publicación y cada actualización crean una versión inmutable con
-  configuración validada, fecha de vigencia y términos renderizados con hash.
-- [ ] Sustituir versión o modalidad exige una ventana de cierre válida para la versión
-  anterior; la base conserva ambos límites y la transición auditable.
-- [ ] El modelo reconoce Puntos, Sellos, Niveles y Cashback, pero rutas/UI rechazan operar
-  los dos últimos hasta su spec propia.
-- [ ] Owner puede seleccionar plantillas publicadas, editar su copia, añadir cláusula
-  custom y previsualizar variables permitidas; ningún cambio altera una plantilla o unos
-  términos ya publicados.
-- [ ] Owner sin membresía no puede leer ni mutar programa, borrador, términos o transición
-  de otro negocio; solicitudes manipuladas son rechazadas.
-- [ ] La UI es mobile-first, accesible y mantiene el borrador frente a errores; muestra
-  loading, error, confirmación y éxito con componentes reutilizables.
-- [ ] Migración reproducible aplicada a Neon; format, lint, typecheck, unitarias,
-  integración, E2E y build pasan; revisión independiente emite PASS.
-
-## Plan de pruebas y verificación
-
-- [ ] Unidad: validadores aceptan Puntos/Sellos válidos y rechazan tipo no habilitado,
-  campos vacíos, objetivo fuera de 2–50, variable no permitida y markdown no resuelto.
-- [ ] Unidad: render de términos sustituye sólo allowlist y produce el mismo hash para el
-  mismo contenido; editar copia no modifica la plantilla.
-- [ ] Integración Neon: publicar V1 crea programa, versión activa y términos inmutables;
-  publicar V2 marca V1 `retiring` con ambas fechas y referencia activa atómica.
-- [ ] Integración: dos publicaciones concurrentes no dejan dos versiones activas; una
-  transición inválida revierte por completo.
-- [ ] Autorización: owner A no puede leer/modificar el negocio B ni inyectar `business_id`.
-- [ ] E2E móvil: Owner crea Sellos, añade/edita cláusula, publica, prepara V2 con fecha de
-  canje y comprueba ambas versiones visibles.
-- [ ] Manual: teclado, foco de confirmación, texto largo, previsualización de variables y
-  recarga con borrador/versión publicada.
-- [ ] Comandos: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-  `pnpm test:e2e` y `pnpm --filter @mi-pasaporte/merchant build`.
-
-## Handoff requerido
-
-Implementador y revisor siguen `docs/AGENT-WORKFLOW.md`; el revisor aporta un PASS
-independiente antes de marcar la spec como implementada.
+- [ ] Un owner crea, consulta y edita un único programa operativo Puntos o Sellos.
+- [ ] La API valida su payload completo y devuelve `422` ante estructura inválida.
+- [ ] Un programa se cierra con ambas fechas en la timezone IANA del negocio; deja de
+  acumular y canjear según esas fechas.
+- [ ] Sólo después de estar `inactive` se puede crear un nuevo ciclo para el negocio.
+- [ ] Los TOS se guardan sólo al guardar, son editables e informativos; no crean versiones.
+- [ ] No quedan tablas, índices, rutas, UI ni documentación de versiones/transiciones.
+- [ ] Migración aplicada y verificada en Neon; unitarias, integración, E2E y build pasan.
 
 ## Abierto
 
-No bloquea esta entrega: revisión editorial/jurídica y activación por jurisdicción de
-plantillas reales; R2; aceptación consumer; economía y operación de Niveles/Cashback;
-notificaciones reales de transición.
+R2, ledger/saldos, wallet y aceptación de TOS se abordan en sus specs propias antes de
+exponerlos a consumidores. El scheduler idempotente de cierre queda disponible como cron
+protegido por `CRON_SECRET`.

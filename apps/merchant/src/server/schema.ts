@@ -1,6 +1,8 @@
 import {
   boolean,
+  check,
   jsonb,
+  integer,
   numeric,
   pgSchema,
   primaryKey,
@@ -9,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const merchantAuth = pgSchema("merchant_auth");
 export const core = pgSchema("core");
@@ -90,18 +93,96 @@ export const ownerProfiles = core.table("owner_profile", {
     .defaultNow(),
 });
 
-export const businesses = core.table("business", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  countryCode: text("country_code").notNull(),
-  logoObjectKey: text("logo_object_key"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const businesses = core.table(
+  "business",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    countryCode: text("country_code").notNull(),
+    timezone: text("timezone").notNull(),
+    brandPrimaryColor: text("brand_primary_color").notNull().default("#176548"),
+    brandComplementaryColor: text("brand_complementary_color")
+      .notNull()
+      .default("#2D8B68"),
+    brandAccentColor: text("brand_accent_color").notNull().default("#E78132"),
+    logoObjectKey: text("logo_object_key"),
+    /** Optimistic-lock revision for owner edits. */
+    brandRevision: integer("brand_revision").notNull().default(1),
+    /** Cache version for the currently published logo variants. */
+    logoVersion: integer("logo_version").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "business_primary_color_check",
+      sql`${table.brandPrimaryColor} ~ '^#[0-9A-Fa-f]{6}$'`,
+    ),
+    check(
+      "business_complementary_color_check",
+      sql`${table.brandComplementaryColor} ~ '^#[0-9A-Fa-f]{6}$'`,
+    ),
+    check(
+      "business_accent_color_check",
+      sql`${table.brandAccentColor} ~ '^#[0-9A-Fa-f]{6}$'`,
+    ),
+    check("business_brand_revision_check", sql`${table.brandRevision} >= 1`),
+    check("business_logo_version_check", sql`${table.logoVersion} >= 0`),
+  ],
+);
+
+/** A short-lived, private object uploaded before the owner confirms Save. */
+export const brandAssetUploads = core.table(
+  "brand_asset_upload",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    objectKey: text("object_key").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("core_brand_asset_upload_object_key_unique").on(
+      table.objectKey,
+    ),
+  ],
+);
+
+/** Durable retry queue: failures cleaning obsolete private R2 prefixes never break a saved brand. */
+export const brandAssetCleanups = core.table(
+  "brand_asset_cleanup",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    objectPrefix: text("object_prefix").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    notBefore: timestamp("not_before", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("core_brand_asset_cleanup_prefix_unique").on(
+      table.objectPrefix,
+    ),
+  ],
+);
 
 export const memberships = core.table(
   "business_membership",
@@ -201,8 +282,23 @@ export const loyaltyPrograms = core.table(
     businessId: uuid("business_id")
       .notNull()
       .references(() => businesses.id, { onDelete: "cascade" }),
-    status: text("status").notNull().default("inactive"),
-    activeVersionId: uuid("active_version_id"),
+    kind: text("kind").notNull(),
+    schemaVersion: text("schema_version").notNull().default("1"),
+    configuration: jsonb("configuration").notNull(),
+    status: text("status").notNull().default("active"),
+    activatedAt: timestamp("activated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    earningEndsAt: timestamp("earning_ends_at", { withTimezone: true }),
+    redemptionEndsAt: timestamp("redemption_ends_at", { withTimezone: true }),
+    termsMarkdown: text("terms_markdown").notNull(),
+    termsHash: text("terms_hash").notNull(),
+    termsUpdatedAt: timestamp("terms_updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -211,107 +307,49 @@ export const loyaltyPrograms = core.table(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("core_loyalty_program_business_unique").on(table.businessId),
+    check(
+      "loyalty_program_status_check",
+      sql`${table.status} in ('active', 'closing', 'inactive')`,
+    ),
+    check(
+      "loyalty_program_kind_check",
+      sql`${table.kind} in ('points', 'stamps', 'tiers', 'cashback')`,
+    ),
+    check(
+      "loyalty_program_closing_window_check",
+      sql`(${table.status} <> 'closing') OR (${table.earningEndsAt} IS NOT NULL AND ${table.redemptionEndsAt} IS NOT NULL AND ${table.earningEndsAt} < ${table.redemptionEndsAt})`,
+    ),
+    uniqueIndex("core_loyalty_program_one_operational")
+      .on(table.businessId)
+      .where(sql`${table.status} in ('active', 'closing')`),
+    uniqueIndex("core_loyalty_program_business_created_unique").on(
+      table.businessId,
+      table.createdAt,
+    ),
   ],
 );
 
-export const loyaltyProgramVersions = core.table("loyalty_program_version", {
-  id: uuid("id").primaryKey(),
-  programId: uuid("program_id")
-    .notNull()
-    .references(() => loyaltyPrograms.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull(),
-  schemaVersion: text("schema_version").notNull().default("1"),
-  configuration: jsonb("configuration").notNull(),
-  effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull(),
-  earningEndsAt: timestamp("earning_ends_at", { withTimezone: true }),
-  redemptionEndsAt: timestamp("redemption_ends_at", { withTimezone: true }),
-  status: text("status").notNull().default("draft"),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdBy: text("created_by")
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
-export const loyaltyProgramTransitions = core.table(
-  "loyalty_program_transition",
+export const termsTemplates = core.table(
+  "terms_template",
   {
     id: uuid("id").primaryKey(),
-    programId: uuid("program_id")
-      .notNull()
-      .references(() => loyaltyPrograms.id, { onDelete: "cascade" }),
-    fromVersionId: uuid("from_version_id")
-      .notNull()
-      .references(() => loyaltyProgramVersions.id),
-    toVersionId: uuid("to_version_id").references(
-      () => loyaltyProgramVersions.id,
-    ),
-    earningEndsAt: timestamp("earning_ends_at", {
-      withTimezone: true,
-    }).notNull(),
-    redemptionEndsAt: timestamp("redemption_ends_at", {
-      withTimezone: true,
-    }).notNull(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => users.id),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-);
-
-export const termsTemplates = core.table("terms_template", {
-  id: uuid("id").primaryKey(),
-  key: text("key").notNull(),
-  jurisdictionScope: text("jurisdiction_scope").notNull(),
-  locale: text("locale").notNull(),
-  category: text("category").notNull(),
-  title: text("title").notNull(),
-  templateMarkdown: text("template_markdown").notNull(),
-  variablesAllowlist: jsonb("variables_allowlist").notNull(),
-  version: text("version").notNull(),
-  status: text("status").notNull().default("draft"),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-});
-
-export const loyaltyTermsVersions = core.table(
-  "loyalty_terms_version",
-  {
-    id: uuid("id").primaryKey(),
-    programVersionId: uuid("program_version_id")
-      .notNull()
-      .references(() => loyaltyProgramVersions.id, { onDelete: "cascade" }),
-    renderedMarkdown: text("rendered_markdown").notNull(),
-    contentHash: text("content_hash").notNull(),
-    acceptanceRequired: boolean("acceptance_required").notNull().default(true),
-    publishedAt: timestamp("published_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    key: text("key").notNull(),
+    jurisdictionScope: text("jurisdiction_scope").notNull(),
+    locale: text("locale").notNull(),
+    category: text("category").notNull(),
+    title: text("title").notNull(),
+    templateMarkdown: text("template_markdown").notNull(),
+    variablesAllowlist: jsonb("variables_allowlist").notNull(),
+    version: text("version").notNull(),
+    status: text("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex("core_loyalty_terms_program_version_unique").on(
-      table.programVersionId,
+    uniqueIndex("core_terms_template_key_version_unique").on(
+      table.key,
+      table.locale,
+      table.jurisdictionScope,
+      table.version,
     ),
   ],
 );
-
-export const loyaltyTermsClauses = core.table("loyalty_terms_clause", {
-  id: uuid("id").primaryKey(),
-  termsVersionId: uuid("terms_version_id")
-    .notNull()
-    .references(() => loyaltyTermsVersions.id, { onDelete: "cascade" }),
-  position: text("position").notNull(),
-  sourceTemplateId: uuid("source_template_id").references(
-    () => termsTemplates.id,
-  ),
-  sourceTemplateVersion: text("source_template_version"),
-  renderedClause: text("rendered_clause").notNull(),
-  editedByOwner: boolean("edited_by_owner").notNull().default(false),
-});

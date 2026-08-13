@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { type DemoState, seedDemo } from "./support/demo";
 
 const demoBusiness = {
   ownerName: "Maxi Demo",
@@ -10,14 +11,12 @@ const demoBusiness = {
   timezone: "America/Guayaquil",
   applyTimezoneToAllLocations: true,
   branches: [{ name: "Bar Demo Centro", address: "Centro" }],
-};
+} satisfies Partial<DemoState>;
 
 test("owner activates and deactivates a stamp loyalty program", async ({
   page,
 }) => {
-  await page.addInitScript((state) => {
-    sessionStorage.setItem("merchant-demo", JSON.stringify(state));
-  }, demoBusiness);
+  await seedDemo(page, demoBusiness);
 
   await page.goto("http://127.0.0.1:3001/backoffice/demo");
   await page.getByRole("link", { name: /Programa de fidelización/i }).click();

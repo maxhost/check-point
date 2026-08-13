@@ -36,6 +36,41 @@
       "when": 1786508520106,
       "tag": "0004_polite_turbo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786562889529,
+      "tag": "0005_easy_mysterio",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786563050063,
+      "tag": "0006_tough_serpent_society",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786573731914,
+      "tag": "0007_loyalty_program_cycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786574149809,
+      "tag": "0008_chemical_screwball",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786580973086,
+      "tag": "0009_curious_metal_master",
+      "breakpoints": true
     }
   ]
 }

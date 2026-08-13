@@ -2,5 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm build"
+  "buildCommand": "pnpm build",
+  "crons": [
+    {
+      "path": "/api/internal/loyalty-expiry",
+      "schedule": "5 5 * * *"
+    },
+    {
+      "path": "/api/internal/assets-cleanup",
+      "schedule": "17 5 * * *"
+    }
+  ]
 }

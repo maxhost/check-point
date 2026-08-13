@@ -66,7 +66,8 @@ pendientes de validación antes de cerrar las features reales de V1.
 | 15 | Diseñar e implementar Catálogo único de beneficios | 0021 | pendiente | Reutilizable entre campañas, juegos y canjes; los términos de uso pertenecen a cada distribución |
 | 16 | Implementar registro y autenticación real de Owner | 0022 | hecho | Registro/login, alta de negocio/local, Stripe Checkout y webhook implementados y desplegados; QA manual contra Neon y gates locales verdes. El selector final de planes es carrusel con Plus mensual por defecto. |
 | 17 | Implementar búsqueda y procedencia de locales | 0023 | en revisión | Geoapify principal y fallback automático Mapbox sólo ante fallo de Geoapify implementados; migración 0003 aplicada. Pendientes QA real/E2E y PASS independiente |
-| 18 | Implementar programa de fidelización real y términos | 0024 | en curso | Versiones inmutables, transición con cierre, Puntos/Sellos y biblioteca editable de cláusulas; reemplaza el mock de 0019. |
+| 18 | Implementar programa de fidelización real y términos | 0024 | en curso | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado en timezone del negocio; ADR 0027 supersede el anterior modelo de versiones. |
+| 19 | Implementar marca real y assets R2 | 0025 | en ejecución | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. |
 
 ## Hecho
 

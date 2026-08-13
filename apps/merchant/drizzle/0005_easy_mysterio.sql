@@ -1,0 +1,5 @@
+-- Schema metadata checkpoint.
+-- The constraints represented by this snapshot were intentionally added in
+-- 0004_polite_turbo.sql, which is already applied in every environment.
+-- Keeping this migration empty prevents a duplicate DDL attempt while bringing
+-- Drizzle's snapshot in sync with the physical schema for future migrations.

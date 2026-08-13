@@ -1,0 +1,3 @@
+-- Schema metadata checkpoint.
+-- 0007_loyalty_program_cycle.sql intentionally contains the complete custom DDL.
+-- This migration records the generated Drizzle snapshot without repeating that DDL.

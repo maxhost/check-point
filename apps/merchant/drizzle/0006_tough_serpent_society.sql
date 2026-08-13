@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "core_loyalty_transition_from_version_unique" ON "core"."loyalty_program_transition" USING btree ("from_version_id");

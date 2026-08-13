@@ -1,17 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { seedDemo } from "./support/demo";
 
 test("owner changes the analytics demo sector without changing the business fixture", async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    sessionStorage.setItem(
-      "merchant-demo",
-      JSON.stringify({
-        businessName: "Demo",
-        branches: [{ name: "Centro", address: "Centro" }],
-      }),
-    ),
-  );
+  await seedDemo(page, {
+    businessName: "Demo",
+    branches: [{ name: "Centro", address: "Centro" }],
+  });
   await page.goto("http://127.0.0.1:3001/backoffice/demo/analytics");
   await expect(
     page.getByRole("heading", { name: "Entiende lo que está funcionando" }),

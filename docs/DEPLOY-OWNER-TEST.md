@@ -78,19 +78,48 @@ entorno Production y redeployar. Mantén el selector `test` en Preview.
 - [ ] En Settings → Environment Variables, cargar los valores anteriores para Production
   y Preview. En Preview usa sólo valores `*_TEST` y `STRIPE_ENVIRONMENT=test`; en
   Production puedes cargar ambos conjuntos, pero deja `live` sólo cuando actives el cobro
-  real. `RESEND_*` y `R2_*` permanecen vacíos: esas features no están activadas.
+  real. `RESEND_*` permanece vacío hasta activar email; `R2_*` debe cargarse para la pantalla
+  de Marca.
+- [ ] Generar `CRON_SECRET` con `openssl rand -base64 32` y cargarlo en Production y Preview.
+  Protege los crons diarios de fidelización y limpieza de assets. El horario se eligió para
+  ser compatible con Vercel Hobby; los crons sólo se ejecutan en Production.
 - [ ] Deploy. Al tener URL, volver a Stripe para crear el webhook y a Mapbox para añadir
   el origen definitivo al token público.
 - [ ] Abrir `/onboarding`: registrar Owner → negocio/local → seleccionar dirección Mapbox
   → Free → `/backoffice`; repetir con Plus mensual/anual y confirmar el estado sólo
   después del webhook.
 
-## 6. R2 y Resend: no necesarios para esta prueba
+## 6. R2 para logos privados
 
-R2 se conecta cuando se implemente el uploader real de logo. Entonces crear un bucket,
-generar credenciales S3 de **Object Read & Write** limitadas a ese bucket y cargar
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` y `R2_BUCKET`. Resend queda
-desactivado hasta verificar un dominio remitente.
+- [ ] Mantener **Public access desactivado**: no activar `r2.dev` ni conectar dominio público.
+  Los logos se entregan por `/api/public/brands/...`, nunca directamente desde R2.
+- [ ] La API token de R2 debe tener únicamente **Object Read & Write**, limitada a este bucket.
+  No usar Global API Key ni exponer ninguna credencial como `NEXT_PUBLIC_*`.
+- [ ] Cargar en Production y Preview: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+  `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_ENDPOINT` (exactamente
+  `https://<account-id>.r2.cloudflarestorage.com`) y `R2_REGION=auto`.
+- [ ] En R2 → bucket → Settings → CORS Policy, añadir la política del dominio de Merchant y
+  localhost. Sustituir el dominio por el de Production real, sin barra final:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://check-point-pied.vercel.app",
+      "http://localhost:3001"
+    ],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+- [ ] Crear una lifecycle rule para borrar objetos con prefijo `brand-uploads/` después de un
+  día. Es defensa adicional al cron de la aplicación para uploads temporales abandonados.
+
+Resend queda desactivado hasta verificar un dominio remitente.
 
 ## Referencias oficiales
 
@@ -98,3 +127,4 @@ desactivado hasta verificar un dominio remitente.
 - [Stripe subscriptions and webhooks](https://docs.stripe.com/billing/subscriptions/webhooks)
 - [Mapbox permanent geocoding](https://docs.mapbox.com/api/search/geocoding/)
 - [Cloudflare R2 S3 credentials](https://developers.cloudflare.com/r2/get-started/s3/)
+- [Cloudflare R2 CORS con URLs firmadas](https://developers.cloudflare.com/r2/buckets/cors/)

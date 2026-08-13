@@ -74,7 +74,9 @@ export default async function BackofficePage() {
                 href={
                   slug === "loyalty"
                     ? "/backoffice/loyalty"
-                    : `/backoffice/demo/${slug}`
+                    : slug === "brand"
+                      ? "/backoffice/brand"
+                      : `/backoffice/demo/${slug}`
                 }
                 key={slug}
               >

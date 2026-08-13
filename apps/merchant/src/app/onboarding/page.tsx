@@ -25,6 +25,28 @@ const countries = [
   ["PY", "Paraguay"],
   ["PE", "Perú"],
 ] as const;
+const timezones = [
+  "America/Argentina/Buenos_Aires",
+  "America/Argentina/Bariloche",
+  "America/Sao_Paulo",
+  "America/Santiago",
+  "America/Bogota",
+  "America/Guayaquil",
+  "Pacific/Galapagos",
+  "America/Montevideo",
+  "America/Asuncion",
+  "America/Lima",
+] as const;
+const defaultTimezoneByCountry: Record<string, (typeof timezones)[number]> = {
+  AR: "America/Argentina/Buenos_Aires",
+  BR: "America/Sao_Paulo",
+  CL: "America/Santiago",
+  CO: "America/Bogota",
+  EC: "America/Guayaquil",
+  UY: "America/Montevideo",
+  PY: "America/Asuncion",
+  PE: "America/Lima",
+};
 
 export default function OnboardingPage() {
   const [step, setStep] = useState<Step>("owner");
@@ -38,6 +60,7 @@ export default function OnboardingPage() {
     useState<BillingInterval>("month");
   const [businessName, setBusinessName] = useState("");
   const [countryCode, setCountryCode] = useState("EC");
+  const [timezone, setTimezone] = useState("America/Guayaquil");
   const [locationName, setLocationName] = useState("");
   const [address, setAddress] = useState<SelectedAddress | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -89,6 +112,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({
           name: businessName,
           countryCode,
+          timezone,
           locationName,
           address,
         }),
@@ -237,13 +261,28 @@ export default function OnboardingPage() {
                 <select
                   value={countryCode}
                   onChange={(event) => {
-                    setCountryCode(event.target.value);
+                    const nextCountry = event.target.value;
+                    setCountryCode(nextCountry);
+                    setTimezone(defaultTimezoneByCountry[nextCountry]);
                     setAddress(null);
                   }}
                 >
                   {countries.map(([code, country]) => (
                     <option key={code} value={code}>
                       {country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Zona horaria del negocio
+                <select
+                  value={timezone}
+                  onChange={(event) => setTimezone(event.target.value)}
+                >
+                  {timezones.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
                     </option>
                   ))}
                 </select>

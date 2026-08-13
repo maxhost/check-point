@@ -1,9 +1,9 @@
-import { and, eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../../server/auth";
 import { getDb } from "../../../../server/db";
-import { ownerBusiness } from "../../../../server/loyalty-program";
 import { termsTemplates } from "../../../../server/schema";
+import { ownerBusiness } from "../../../../server/loyalty-program";
 
 export async function GET(request: Request) {
   const session = await getMerchantAuth().api.getSession({
@@ -11,8 +11,7 @@ export async function GET(request: Request) {
   });
   if (!session)
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const business = await ownerBusiness(session.user.id);
-  if (!business)
+  if (!(await ownerBusiness(session.user.id)))
     return NextResponse.json({ error: "Sin negocio." }, { status: 403 });
   const templates = await getDb()
     .select({
@@ -23,14 +22,6 @@ export async function GET(request: Request) {
       version: termsTemplates.version,
     })
     .from(termsTemplates)
-    .where(
-      and(
-        eq(termsTemplates.status, "published"),
-        or(
-          eq(termsTemplates.jurisdictionScope, "global-draft"),
-          eq(termsTemplates.jurisdictionScope, business.countryCode),
-        ),
-      ),
-    );
+    .where(eq(termsTemplates.status, "published"));
   return NextResponse.json({ templates });
 }

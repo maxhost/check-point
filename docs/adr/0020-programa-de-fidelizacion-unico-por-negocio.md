@@ -62,4 +62,3 @@ progresos pendientes. No se migran ni convierten automáticamente en V1.
 - Cashback requiere revisión legal, contable y económica antes de habilitarse; niveles
   requiere cerrar su métrica calificadora y beneficios. Ambos quedan fuera de la UI demo
   inicial, no fuera del modelo de producto.
-

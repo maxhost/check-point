@@ -100,6 +100,9 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@24.10.1)
       stripe:
         specifier: ^22.5.0
         version: 22.5.0(@types/node@24.10.1)

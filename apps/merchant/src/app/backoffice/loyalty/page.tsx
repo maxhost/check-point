@@ -1,124 +1,159 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ModuleHeader, Toast } from "../../components/ui";
 
 type Kind = "points" | "stamps";
-type Template = {
-  id: string;
-  title: string;
-  category: string;
-  templateMarkdown: string;
-  version: string;
-};
+type Template = { id: string; title: string; templateMarkdown: string };
 type Program = {
-  activeVersion: {
-    kind: string;
-    configuration: Record<string, unknown>;
-    effectiveFrom: string;
-  } | null;
-  activeTerms: { renderedClause: string }[];
+  id: string;
+  kind: Kind;
+  configuration: Record<string, unknown>;
+  status: "active" | "closing" | "inactive";
+  activatedAt: string;
+  earningEndsAt: string | null;
+  redemptionEndsAt: string | null;
+  termsMarkdown: string;
+};
+type Context = {
+  business: { timezone: string };
+  program: Program | null;
 };
 
 export default function LoyaltyProgramPage() {
+  const [context, setContext] = useState<Context | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [kind, setKind] = useState<Kind>("points");
   const [singular, setSingular] = useState("Punto");
   const [plural, setPlural] = useState("Puntos");
   const [stampName, setStampName] = useState("Sello");
   const [target, setTarget] = useState(10);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplates, setSelectedTemplates] = useState<
-    Record<string, string>
-  >({});
-  const [customClause, setCustomClause] = useState("");
-  const [effectiveFrom, setEffectiveFrom] = useState("");
+  const [terms, setTerms] = useState("");
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [earningEndsAt, setEarningEndsAt] = useState("");
   const [redemptionEndsAt, setRedemptionEndsAt] = useState("");
-  const [editingVersion, setEditingVersion] = useState(false);
-  const [program, setProgram] = useState<Program | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  const program = context?.program ?? null;
+  const timezone = context?.business.timezone ?? "America/Guayaquil";
+
+  function populate(next: Context) {
+    if (!next.program) {
+      setSelectedTemplateIds([]);
+      return;
+    }
+    setKind(next.program.kind);
+    setTerms(next.program.termsMarkdown);
+    setSelectedTemplateIds([]);
+    if (next.program.kind === "points") {
+      setSingular(String(next.program.configuration.unitSingular ?? "Punto"));
+      setPlural(String(next.program.configuration.unitPlural ?? "Puntos"));
+    } else {
+      setStampName(String(next.program.configuration.unitName ?? "Sello"));
+      setTarget(Number(next.program.configuration.target ?? 10));
+    }
+  }
 
   async function load() {
-    setLoading(true);
     try {
-      const [programResponse, templatesResponse] = await Promise.all([
+      const [programResponse, templateResponse] = await Promise.all([
         fetch("/api/loyalty-program"),
         fetch("/api/loyalty-terms/templates"),
       ]);
-      if (!programResponse.ok || !templatesResponse.ok) {
-        throw new Error("No pudimos cargar el programa.");
-      }
-      const nextProgram = (await programResponse.json()) as Program;
-      setProgram(nextProgram);
-      if (nextProgram.activeVersion && !editingVersion) {
-        const config = nextProgram.activeVersion.configuration;
-        if (nextProgram.activeVersion.kind === "points") {
-          setKind("points");
-          setSingular(String(config.unitSingular ?? "Punto"));
-          setPlural(String(config.unitPlural ?? "Puntos"));
-        } else if (nextProgram.activeVersion.kind === "stamps") {
-          setKind("stamps");
-          setStampName(String(config.unitName ?? "Sello"));
-          setTarget(Number(config.target ?? 10));
-        }
-      }
+      if (!programResponse.ok || !templateResponse.ok) throw new Error();
+      const next = (await programResponse.json()) as Context;
+      setContext(next);
+      populate(next);
       setTemplates(
-        ((await templatesResponse.json()) as { templates: Template[] })
+        ((await templateResponse.json()) as { templates: Template[] })
           .templates,
       );
     } catch {
       setError("No pudimos cargar tu programa. Intenta recargar la página.");
-    } finally {
-      setLoading(false);
     }
   }
+
   useEffect(() => {
     void load();
   }, []);
 
-  async function publish() {
+  async function save() {
     setSaving(true);
     setError(null);
-    const response = await fetch("/api/loyalty-program", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        kind,
-        configuration:
-          kind === "points"
-            ? { unitSingular: singular, unitPlural: plural }
-            : { unitName: stampName, target },
-        clauses: [
-          ...Object.entries(selectedTemplates).map(([templateId, text]) => ({
-            templateId,
-            text,
-          })),
-          ...(customClause.trim() ? [{ text: customClause }] : []),
-        ],
-        effectiveFrom: effectiveFrom || undefined,
-        redemptionEndsAt: redemptionEndsAt || undefined,
-      }),
-    });
-    const payload = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    setSaving(false);
-    if (!response.ok) {
-      setError(payload?.error ?? "No pudimos publicar el programa.");
-      return;
+    try {
+      const response = await fetch("/api/loyalty-program", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind,
+          configuration:
+            kind === "points"
+              ? { unitSingular: singular, unitPlural: plural }
+              : { unitName: stampName, target },
+          clauses: [
+            ...selectedTemplateIds.map((templateId) => ({ templateId })),
+            ...(terms.trim() ? [{ text: terms }] : []),
+          ],
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok)
+        throw new Error(payload?.error ?? "No pudimos guardar el programa.");
+      setEditing(false);
+      setNotice(program ? "Programa actualizado." : "Programa activado.");
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos guardar el programa.",
+      );
+    } finally {
+      setSaving(false);
     }
-    setNotice("Programa publicado. Esta versión ya queda protegida.");
-    setEditingVersion(false);
-    await load();
   }
 
-  const active = program?.activeVersion;
-  if (loading) return <LoyaltySkeleton />;
+  async function closeProgram() {
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/loyalty-program", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ earningEndsAt, redemptionEndsAt }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok)
+        throw new Error(payload?.error ?? "No pudimos iniciar el cierre.");
+      setClosing(false);
+      setConfirmClose(false);
+      setNotice("El cierre del programa fue programado.");
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "No pudimos iniciar el cierre.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!context) return <LoyaltySkeleton />;
+  const isClosing = program?.status === "closing";
   return (
     <main className="merchant-shell">
       <div className="brand-page loyalty-page">
@@ -126,74 +161,135 @@ export default function LoyaltyProgramPage() {
         <ModuleHeader
           eyebrow="Programa de fidelización"
           title={
-            active && !editingVersion
-              ? "Tu programa está activo"
-              : active
-                ? "Crear nueva versión"
+            isClosing
+              ? "Tu programa está en cierre"
+              : program && !editing
+                ? "Tu programa está activo"
                 : "Premia a tus clientes"
           }
           description={
-            active
-              ? `Versión ${active.kind === "points" ? "de Puntos" : "de Sellos"} activa desde ${new Date(active.effectiveFrom).toLocaleDateString("es-EC")}. Publicar no modifica su historia.`
+            isClosing
+              ? `No se podrá modificar. Los horarios se muestran en ${timezone}.`
               : "Elige una única forma de acumular beneficios en tu negocio."
           }
           closeHref="/backoffice"
-          onClose={editingVersion ? () => setConfirmDiscard(true) : undefined}
+          onClose={editing ? () => setConfirmDiscard(true) : undefined}
         />
-        {active && !editingVersion ? (
+        {program && !editing ? (
           <>
             <section className="panel loyalty-panel">
-              <h2>Versión activa</h2>
+              <h2>
+                {program.kind === "points"
+                  ? "Programa de puntos"
+                  : "Programa de sellos"}
+              </h2>
               <p>
-                Programa de {active.kind === "points" ? "Puntos" : "Sellos"}.
-                Sus términos publicados quedan disponibles para las personas que
-                lo usan.
+                {isClosing
+                  ? "El programa conserva los beneficios ya otorgados hasta su fecha final de canje."
+                  : "Puedes actualizar su configuración y sus términos mientras permanezca activo."}
               </p>
-              <button
-                className="button"
-                onClick={() => setEditingVersion(true)}
-              >
-                Crear nueva versión
-              </button>
+              {isClosing ? (
+                <dl className="closing-summary">
+                  <div>
+                    <dt>Fin de acumulación</dt>
+                    <dd>{formatDate(program.earningEndsAt, timezone)}</dd>
+                  </div>
+                  <div>
+                    <dt>Canje hasta</dt>
+                    <dd>{formatDate(program.redemptionEndsAt, timezone)}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <>
+                  <button className="button" onClick={() => setEditing(true)}>
+                    Editar programa
+                  </button>
+                  <button
+                    className="text-button danger-text"
+                    type="button"
+                    onClick={() => setClosing(!closing)}
+                  >
+                    Cerrar programa
+                  </button>
+                  {closing && (
+                    <div className="transition-fields">
+                      <h3>Cierre del programa</h3>
+                      <p>
+                        Desde el fin de acumulación no se otorgarán más
+                        beneficios. Las personas podrán canjear los ya obtenidos
+                        hasta la fecha final.
+                      </p>
+                      <label>
+                        Fin de acumulación
+                        <input
+                          type="datetime-local"
+                          value={earningEndsAt}
+                          onChange={(event) =>
+                            setEarningEndsAt(event.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        Fecha final de canje
+                        <input
+                          type="datetime-local"
+                          value={redemptionEndsAt}
+                          onChange={(event) =>
+                            setRedemptionEndsAt(event.target.value)
+                          }
+                        />
+                      </label>
+                      <p className="field-help">Zona horaria: {timezone}.</p>
+                      <button
+                        className="button danger"
+                        type="button"
+                        disabled={saving || !earningEndsAt || !redemptionEndsAt}
+                        onClick={() => setConfirmClose(true)}
+                      >
+                        Continuar con el cierre
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+              {error && <p className="form-error">{error}</p>}
             </section>
             <section className="panel loyalty-panel">
-              <h2>Términos publicados</h2>
-              {program?.activeTerms.map((term, index) => (
-                <p key={index} className="published-term">
-                  {term.renderedClause}
-                </p>
-              ))}
+              <h2>Términos y condiciones</h2>
+              <p className="published-term">{program.termsMarkdown}</p>
             </section>
           </>
-        ) : (
+        ) : isClosing ? null : (
           <>
             <section className="panel loyalty-panel">
-              <h2>Modalidad</h2>
-              <div className="loyalty-types" role="radiogroup">
-                {(["points", "stamps"] as const).map((value) => (
-                  <label
-                    className={`plan ${kind === value ? "selected" : ""}`}
-                    key={value}
-                  >
-                    <input
-                      className="sr-only"
-                      type="radio"
-                      checked={kind === value}
-                      onChange={() => setKind(value)}
-                    />
-                    <span className="loyalty-choice-content">
-                      <strong>
-                        {value === "points" ? "Puntos" : "Sellos"}
-                      </strong>
-                      <span>
-                        {value === "points"
-                          ? "Una unidad flexible para premios."
-                          : "Una tarjeta que se completa con visitas."}
+              <h2>{program ? "Editar programa" : "Modalidad"}</h2>
+              {!program && (
+                <div className="loyalty-types" role="radiogroup">
+                  {(["points", "stamps"] as const).map((value) => (
+                    <label
+                      className={`plan ${kind === value ? "selected" : ""}`}
+                      key={value}
+                    >
+                      <input
+                        className="sr-only"
+                        type="radio"
+                        checked={kind === value}
+                        onChange={() => setKind(value)}
+                      />
+                      <span className="loyalty-choice-content">
+                        <strong>
+                          {value === "points" ? "Puntos" : "Sellos"}
+                        </strong>
+                        <span>
+                          {value === "points"
+                            ? "Una unidad flexible para premios."
+                            : "Una tarjeta que se completa con visitas."}
+                        </span>
                       </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
+                    </label>
+                  ))}
+                </div>
+              )}
               {kind === "points" ? (
                 <>
                   <label>
@@ -232,143 +328,110 @@ export default function LoyaltyProgramPage() {
                       }
                     />
                   </label>
+                  <div className="stamp-image-field">
+                    <strong>Diseño del sello</strong>
+                    <p className="field-help">
+                      La carga se habilitará con R2. El modelo ya reserva la
+                      referencia segura de imagen.
+                    </p>
+                  </div>
                 </>
-              )}
-              {active && (
-                <div className="transition-fields">
-                  <h3>Vigencia de la nueva versión</h3>
-                  <p>
-                    Desde la fecha de entrada en vigencia, las nuevas
-                    acumulaciones irán a esta versión. La anterior deja de
-                    acumular ese día y sus beneficios podrán canjearse hasta la
-                    fecha que indiques.
-                  </p>
-                  <label>
-                    Entrada en vigencia
-                    <input
-                      type="datetime-local"
-                      value={effectiveFrom}
-                      onChange={(event) => setEffectiveFrom(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Fin de canje
-                    <input
-                      type="datetime-local"
-                      value={redemptionEndsAt}
-                      onChange={(event) =>
-                        setRedemptionEndsAt(event.target.value)
-                      }
-                    />
-                  </label>
-                </div>
               )}
             </section>
             <section className="panel loyalty-panel">
               <h2>Términos y condiciones</h2>
               <p>
-                Selecciona cláusulas de la biblioteca y edita o añade texto
-                propio. Las plantillas son borradores editoriales y deben
-                revisarse para tu jurisdicción.
+                Son informativos. Puedes partir de una plantilla y editar el
+                texto antes de guardar.
               </p>
-              {templates.map((template) => (
-                <Fragment key={template.id}>
-                  <label className="terms-template">
+              <div className="template-actions">
+                {templates.map((template) => (
+                  <label key={template.id} className="terms-template">
                     <input
                       type="checkbox"
-                      checked={template.id in selectedTemplates}
+                      checked={selectedTemplateIds.includes(template.id)}
                       onChange={() =>
-                        setSelectedTemplates((current) =>
-                          template.id in current
-                            ? Object.fromEntries(
-                                Object.entries(current).filter(
-                                  ([id]) => id !== template.id,
-                                ),
-                              )
-                            : {
-                                ...current,
-                                [template.id]: template.templateMarkdown,
-                              },
+                        setSelectedTemplateIds((current) =>
+                          current.includes(template.id)
+                            ? current.filter((id) => id !== template.id)
+                            : [...current, template.id],
                         )
                       }
                     />
-                    <span>
-                      <strong>{template.title}</strong>
-                      <small>{template.templateMarkdown}</small>
-                    </span>
+                    <span>{template.title}</span>
                   </label>
-                  {template.id in selectedTemplates && (
-                    <label className="terms-clause-editor">
-                      Editar copia de “{template.title}”
-                      <textarea
-                        value={selectedTemplates[template.id]}
-                        onChange={(event) =>
-                          setSelectedTemplates((current) => ({
-                            ...current,
-                            [template.id]: event.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                  )}
-                </Fragment>
-              ))}
+                ))}
+              </div>
               <label>
-                Cláusula adicional
+                Texto de términos
                 <textarea
-                  value={customClause}
-                  onChange={(event) => setCustomClause(event.target.value)}
-                  placeholder="Añade una condición específica de tu negocio"
+                  value={terms}
+                  onChange={(event) => setTerms(event.target.value)}
+                  placeholder="Escribe o añade una plantilla"
                 />
               </label>
               {error && <p className="form-error">{error}</p>}
               <button
                 className="button"
                 disabled={saving}
-                onClick={() => void publish()}
+                onClick={() => void save()}
               >
                 {saving
-                  ? "Publicando…"
-                  : active
-                    ? "Publicar nueva versión"
-                    : "Publicar programa"}
+                  ? "Guardando…"
+                  : program
+                    ? "Guardar cambios"
+                    : "Activar programa"}
               </button>
             </section>
-            <p className="field-help">
-              <Link href="/backoffice">Volver al Backoffice</Link>
-            </p>
           </>
         )}
+        <p className="field-help">
+          <Link href="/backoffice">Volver al Backoffice</Link>
+        </p>
         <ConfirmDialog
           open={confirmDiscard}
-          title="¿Salir sin publicar esta versión?"
-          description="Los cambios que hiciste no se aplicarán. Tu programa activo seguirá igual."
+          title="¿Salir sin guardar?"
+          description="Los cambios no se aplicarán al programa activo."
           confirmLabel="Salir sin guardar"
           onCancel={() => setConfirmDiscard(false)}
           onConfirm={() => {
             setConfirmDiscard(false);
-            setEditingVersion(false);
+            setEditing(false);
+            populate(context);
           }}
+        />
+        <ConfirmDialog
+          open={confirmClose}
+          title="¿Programar el cierre?"
+          description="No podrás editar el programa después de confirmar. Los beneficios se conservarán sólo hasta la fecha final de canje."
+          confirmLabel="Programar cierre"
+          onCancel={() => setConfirmClose(false)}
+          onConfirm={() => void closeProgram()}
         />
       </div>
     </main>
   );
 }
 
+function formatDate(value: string | null, timezone: string) {
+  return value
+    ? new Intl.DateTimeFormat("es-EC", {
+        timeZone: timezone,
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(value))
+    : "—";
+}
+
 function LoyaltySkeleton() {
   return (
-    <main
-      className="merchant-shell"
-      aria-busy="true"
-      aria-label="Cargando programa de fidelización"
-    >
+    <main className="merchant-shell" aria-busy="true">
       <div className="brand-page loyalty-page loyalty-skeleton">
         <span className="skeleton-line skeleton-eyebrow" />
         <span className="skeleton-line skeleton-title" />
         <span className="skeleton-line skeleton-description" />
         <section className="panel loyalty-panel">
           <span className="skeleton-line skeleton-section-title" />
-          <span className="skeleton-line skeleton-card" />
           <span className="skeleton-line skeleton-card" />
         </section>
       </div>
