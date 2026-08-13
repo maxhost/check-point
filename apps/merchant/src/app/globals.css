@@ -964,6 +964,45 @@ input:focus {
   color: #a23730;
   font-weight: 800;
 }
+.closing-summary {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0 22px;
+  padding: 16px 18px;
+  border: 1px solid #dce6de;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+.closing-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.closing-summary dt {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #647168;
+}
+.closing-summary dd {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1c2b22;
+}
+.close-program-link {
+  margin-top: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #a23730;
+  font-weight: 700;
+  cursor: pointer;
+}
+.close-program-link:hover {
+  text-decoration: underline;
+}
 .version-table-wrap {
   overflow-x: auto;
 }

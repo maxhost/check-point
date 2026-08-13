@@ -85,6 +85,12 @@ errores de cerrar/cancelar/cargar salen como **toast de error** (`Toast kind="er
 del formulario; (5) el modal de confirmación se cierra siempre al confirmar (antes quedaba abierto
 si el cierre fallaba). Typecheck 3/3 y unit de loyalty 6/6 verdes.
 
+Tercera pasada de pulido visual (2026-08-13, sólo CSS + una clase): la tarjeta de «programa en
+cierre» gana jerarquía —`.closing-summary` pasa de `<dl>` por defecto (con sangría del navegador)
+a panel con etiquetas en mayúsculas atenuadas y valores prominentes—; el botón «Cerrar programa»
+deja de tener borde sin fondo y pasa a texto rojo sin borde con subrayado en hover
+(`.close-program-link`).
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |

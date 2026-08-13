@@ -59,7 +59,7 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
               Editar programa
             </button>
             <button
-              className="text-button danger-text"
+              className="close-program-link"
               type="button"
               onClick={() => setClosing(!closing)}
             >
