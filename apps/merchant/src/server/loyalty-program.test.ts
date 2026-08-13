@@ -122,6 +122,17 @@ describe("loyalty program contract", () => {
         now,
       ),
     ).toThrow(LoyaltyError);
+    // earning end in the past has its own message
+    expect(() =>
+      validateClosingWindow(
+        {
+          earningEndsAt: "2026-08-01T12:00",
+          redemptionEndsAt: "2026-09-01T12:00",
+        },
+        tz,
+        now,
+      ),
+    ).toThrow("fecha y hora futuras");
     // earning end not before redemption end
     expect(() =>
       validateClosingWindow(
@@ -132,7 +143,7 @@ describe("loyalty program contract", () => {
         tz,
         now,
       ),
-    ).toThrow("ventana futura válida");
+    ).toThrow("posterior al fin de acumulación");
     // malformed datetime
     expect(() =>
       validateClosingWindow(

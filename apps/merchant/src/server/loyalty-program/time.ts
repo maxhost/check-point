@@ -83,15 +83,19 @@ export function validateClosingWindow(
 ) {
   const earningEndsAt = zonedDateTimeToUtc(input.earningEndsAt, timezone);
   const redemptionEndsAt = zonedDateTimeToUtc(input.redemptionEndsAt, timezone);
-  if (
-    !earningEndsAt ||
-    !redemptionEndsAt ||
-    earningEndsAt <= now ||
-    earningEndsAt >= redemptionEndsAt
-  ) {
+  if (!earningEndsAt || !redemptionEndsAt) {
+    throw new LoyaltyError(422, "Revisa las fechas de cierre: no son válidas.");
+  }
+  if (earningEndsAt <= now) {
     throw new LoyaltyError(
       422,
-      "Indica una ventana futura válida en la zona horaria del negocio.",
+      "El fin de acumulación debe ser una fecha y hora futuras.",
+    );
+  }
+  if (earningEndsAt >= redemptionEndsAt) {
+    throw new LoyaltyError(
+      422,
+      "El fin del canje debe ser posterior al fin de acumulación.",
     );
   }
   return { earningEndsAt, redemptionEndsAt };
