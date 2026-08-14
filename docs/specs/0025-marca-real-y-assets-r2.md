@@ -171,8 +171,10 @@ imágenes-bomba.
 - [x] Seleccionar/quitar/reemplazar no muta nada hasta Guardar; el logo anterior sólo se
   elimina tras persistir exitosamente el nuevo estado y hay limpieza idempotente de huérfanos.
   Verificado con QA manual en vivo (guardar/reemplazar el logo real).
-- [ ] Control optimista y concurrencia no producen éxito falso ni dos logos vigentes. Sin
-  prueba de concurrencia real (dos guardados simultáneos) ejecutada.
+- [x] Control optimista implementado: `UPDATE … WHERE brand_revision = revision` → `409`
+  ante guardado obsoleto, nunca éxito falso (`brand.ts:316-343`). **A futuro** (decisión del
+  owner 2026-08-13): la prueba de concurrencia real con dos guardados simultáneos queda
+  diferida hasta que exista más de un owner por negocio (no habrá hasta dentro de meses).
 - [x] La página es responsive, accesible, con preview, loading, errores y toasts reutilizables.
   Verificado con QA manual en vivo.
 - [ ] Migración aplicada/verificada en Neon (sí, aplicada); R2 privado configurado (sí); pero
