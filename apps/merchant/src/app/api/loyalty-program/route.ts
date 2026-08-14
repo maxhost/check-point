@@ -7,6 +7,7 @@ import {
   programForOwner,
   saveProgram,
 } from "../../../server/loyalty-program";
+import { toClientProgram } from "../../../server/loyalty-program/client-view";
 
 async function sessionUser(request: Request) {
   return getMerchantAuth().api.getSession({ headers: request.headers });
@@ -18,21 +19,6 @@ async function readJson(request: Request) {
   } catch {
     throw new LoyaltyError(400, "El cuerpo de la solicitud no es válido.");
   }
-}
-
-/** Never leaks the internal `stampImageObjectKey`; exposes only a public stamp path. */
-function toClientProgram(
-  program: NonNullable<Awaited<ReturnType<typeof programForOwner>>>["program"],
-  businessId: string,
-) {
-  if (!program) return null;
-  const { stampImageObjectKey, ...rest } = program;
-  return {
-    ...rest,
-    stampImagePath: stampImageObjectKey
-      ? `/api/public/loyalty/${businessId}/${program.id}/stamp?v=${program.stampImageVersion}`
-      : null,
-  };
 }
 
 export async function GET(request: Request) {

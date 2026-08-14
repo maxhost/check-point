@@ -8,6 +8,7 @@ import {
   zonedDateTimeToUtc,
 } from "./loyalty-program";
 import { isIanaTimezone } from "./timezone";
+import { toClientProgram } from "./loyalty-program/client-view";
 
 describe("loyalty program contract", () => {
   it("accepts Puntos and Sellos and rejects malformed payloads with 422", () => {
@@ -200,5 +201,29 @@ describe("loyalty program contract", () => {
     expect(() =>
       renderTermsText("{{unknown}}", {}, ["business_legal_name"]),
     ).toThrow("no está permitida");
+  });
+
+  it("never serializes the internal stamp key, only a public path", () => {
+    const base = {
+      id: "prog-1",
+      kind: "stamps",
+      stampImageVersion: 3,
+      termsMarkdown: "t",
+    };
+    const withStamp = toClientProgram(
+      { ...base, stampImageObjectKey: "loyalty/b/p/a" },
+      "biz-1",
+    );
+    expect(withStamp).not.toHaveProperty("stampImageObjectKey");
+    expect(withStamp).toMatchObject({
+      stampImagePath: "/api/public/loyalty/biz-1/prog-1/stamp?v=3",
+    });
+    const withoutStamp = toClientProgram(
+      { ...base, stampImageObjectKey: null },
+      "biz-1",
+    );
+    expect(withoutStamp).not.toHaveProperty("stampImageObjectKey");
+    expect(withoutStamp).toMatchObject({ stampImagePath: null });
+    expect(toClientProgram(null, "biz-1")).toBeNull();
   });
 });

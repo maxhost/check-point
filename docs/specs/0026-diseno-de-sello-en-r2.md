@@ -1,7 +1,7 @@
 ---
 spec: 0026
 fecha: 2026-08-13
-estado: cerrada
+estado: implementada
 resumen: El Owner sube el diseño de imagen del sello de un programa de Sellos, procesado y servido desde R2 con el mismo pipeline seguro de la marca y borrado diferido al guardar.
 disjunta: no
 archivos: apps/merchant, esquema/migraciones, R2, pruebas y docs
@@ -133,7 +133,24 @@ modalidad Puntos el campo no aparece.
 - [x] Migración `0012` aplicada/verificada en Neon (rama efímera + **prod**: 2 columnas, 2 tablas,
   check); unitarias 7/7 e integración Neon **9/9** (incluye defaults de sello + lectura pública
   gateada); build vía Vercel.
-- [ ] PASS de revisor independiente antes de marcar `implementada` (pendiente).
+- [x] PASS de revisor independiente (2026-08-13): sin bloqueantes ni importantes.
+
+## Enmienda 2026-08-13 — Revisión independiente (PASS)
+
+Una revisión independiente (`AGENT-WORKFLOW.md`) dio **PASS**: verificó que `stampImageObjectKey`
+no se filtra al navegador (`toClientProgram` lo omite; único lector del row completo es
+`programForOwner`, uso interno), que el aislamiento multi-tenant y el traversal están cerrados
+(claves server-side, `uuidPattern` en la ruta pública, `404` sin enumerar), la validación por
+bytes con alfa conservada, y la orquestación R2+DB que preserva la referencia vigente con borrado
+diferido idempotente y rollback del prefijo nuevo ante fallo de la escritura. Se agregó un test
+que afirma que el `GET` del programa nunca serializa `stampImageObjectKey`.
+
+Menores **diferidos** (consistentes con lo ya diferido en ADR 0029, no bloquean): la URL firmada
+no acota `Content-Length` (tamaño enforced server-side por `readObjectAtMost`); dos `replace`
+concurrentes del mismo owner pueden dejar un prefijo huérfano en R2 (sin perder la referencia
+vigente ni romper auditoría/invariante) — atado a la concurrencia diferida a futuro; falta test
+del rollback de `resolveStampChange` (requiere mock de R2). El camino feliz de subida real a R2
+queda para QA manual en vivo, como en marca.
 
 ## Abierto
 
