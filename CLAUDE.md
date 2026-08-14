@@ -57,6 +57,10 @@ chequear con un comando, es un hook — no la escribas aca tambien.
 - No editar ni borrar tests para que el gate pase: un test rojo se arregla o se discute.
 - Nada de andamiaje sin su tarea: codigo que no se usa hoy va con su fila en
   `docs/TASKS.md` que lo va a consumir, o se borra.
+- **Una ruta que devuelve una entidad al navegador NUNCA serializa claves internas de R2**
+  (`*ObjectKey`): devolver un DTO que las omite y expone sólo el `*Path` publico (ver
+  `toClientProgram` en loyalty, `brandResponse` en marca). Blindar con un test por entidad.
+  Un revisor independiente ya cazo esta fuga en marca (spec 0025); no repetirla.
 
 ## Gotchas
 
