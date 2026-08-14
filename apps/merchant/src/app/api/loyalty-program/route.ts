@@ -12,6 +12,14 @@ async function sessionUser(request: Request) {
   return getMerchantAuth().api.getSession({ headers: request.headers });
 }
 
+async function readJson(request: Request) {
+  try {
+    return await request.json();
+  } catch {
+    throw new LoyaltyError(400, "El cuerpo de la solicitud no es válido.");
+  }
+}
+
 export async function GET(request: Request) {
   const session = await sessionUser(request);
   if (!session)
@@ -27,7 +35,7 @@ export async function PUT(request: Request) {
   if (!session)
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   try {
-    const result = await saveProgram(session.user.id, await request.json());
+    const result = await saveProgram(session.user.id, await readJson(request));
     return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error) {
     if (error instanceof LoyaltyError)
@@ -49,7 +57,7 @@ export async function DELETE(request: Request) {
   try {
     await closeProgram(
       session.user.id,
-      (await request.json()) as {
+      (await readJson(request)) as {
         earningEndsAt?: string;
         redemptionEndsAt?: string;
       },

@@ -102,6 +102,19 @@ del negocio» era confuso porque cubría tres fallas distintas. `validateClosing
 un mensaje específico por caso (fechas inválidas / fin de acumulación no futuro / fin de canje no
 posterior al fin de acumulación); test unitario actualizado a los textos nuevos.
 
+Revisión independiente (2026-08-13, `AGENT-WORKFLOW.md`) sobre la feature completa: veredicto
+FAIL estrecho (sin bloqueantes) por dos IMPORTANTES, ya resueltos y reverificados contra Neon
+real: (1) **atomicidad de auditoría** —el cambio de estado y el evento eran dos round-trips;
+ahora cada transición es un CTE `UPDATE … RETURNING` + `INSERT event` en una sola sentencia, y
+la creación usa `db.batch` (rollback ante el índice único), ver enmienda ADR 0028—; (2) **tests
+del núcleo** —se agregaron índice único (`23505`→`409`) y autorización (`403`) al test de
+integración—. MENORES arreglados de paso: JSON inválido → `400` (antes `503`), guard de fecha de
+`cancelClose` movido al `WHERE` (elimina TOCTOU), `isUniqueViolation` recorre `.cause`. Gates:
+unit 25/25, typecheck 3/3, lint, e integración Neon 3/3 (rama aislada efímera, creada y borrada
+vía MCP). MENORES no accionados hoy (documentados, no bloqueantes): `ownerBusiness` ordena
+`desc` vs `asc` en brand —inalcanzable con 1 negocio/owner—, validación de formato de
+`stampImageObjectKey` (reservado hasta R2), y `program_kind` como literal en inglés en términos.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |

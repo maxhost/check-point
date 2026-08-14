@@ -148,16 +148,20 @@ Tras revisión con el Owner se confirma que el cierre fechado es el único mecan
 
 ### DoD adicional
 
-- [ ] Guardar/cerrar/cancelar sobre un estado inesperado devuelve `409`, nunca un éxito falso.
-- [ ] El Owner cancela un cierre programado antes de la fecha de canje y el programa vuelve a
+- [x] Guardar/cerrar/cancelar sobre un estado inesperado devuelve `409`, nunca un éxito falso.
+- [x] El Owner cancela un cierre programado antes de la fecha de canje y el programa vuelve a
   `active` sin dejar dos filas operativas.
-- [ ] Cada operación relevante deja un evento en `loyalty_program_event` con actor y detalle.
-- [ ] `configuration` persiste sólo claves válidas; el cliente no puede inyectar otras.
+- [x] Cada operación relevante deja un evento en `loyalty_program_event` con actor y detalle,
+  atómico con el cambio de estado (una sola sentencia CTE por transición; `db.batch` al crear).
+- [x] `configuration` persiste sólo claves válidas; el cliente no puede inyectar otras.
 - [x] Unitarias de la lógica pura (ventanas de cierre/cancelación, normalización) verdes.
 - [x] Integración Neon verde contra una **rama de test aislada**: migración `0010` aplicada con
   `drizzle-kit migrate`; ciclo de vida completo (crear→editar→cerrar→cancelar→recerrar→expirar)
   ejercitado contra Postgres real, verificando el rastro de auditoría atribuido, los `409` de
-  éxito-falso y la normalización de `configuration` (2026-08-12).
+  éxito-falso y la normalización de `configuration` (2026-08-12). Reverificado el 2026-08-13 con
+  la auditoría **atómica** (CTE por transición; `db.batch` al crear) y dos casos nuevos: índice
+  parcial único bloquea un segundo programa operativo (`23505`→`409`) y autorización sin negocio
+  (`403`).
 - [ ] E2E real (`loyalty-real.spec.ts`) queda listo pero pendiente de un entorno desplegado con
   owner de prueba (`E2E_MERCHANT_BASE_URL`/`EMAIL`/`PASSWORD` + `E2E_LOYALTY_MUTATION_TEST`).
 - [ ] Aplicar la migración `0010` en la rama `main` de producción y desplegar.

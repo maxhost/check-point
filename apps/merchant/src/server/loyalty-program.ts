@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "./db";
 import {
   businesses,
@@ -37,31 +37,54 @@ type Db = ReturnType<typeof getDb>;
 const STATE_CHANGED =
   "El programa cambió de estado; recarga e intenta de nuevo.";
 
+/** Walks the `.cause` chain because drizzle wraps the pg error (code isn't top-level). */
 function isUniqueViolation(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "23505"
-  );
+  let current: unknown = error;
+  for (let depth = 0; current && depth < 5; depth += 1) {
+    if ((current as { code?: string }).code === "23505") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
 }
 
-async function recordEvent(
+function rowsOf(result: unknown): unknown[] {
+  if (Array.isArray(result)) return result;
+  const rows = (result as { rows?: unknown[] } | null)?.rows;
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * Applies a guarded status UPDATE and appends its audit event in one atomic
+ * statement, so a state change can never persist without its event (neon-http
+ * has no interactive transactions). Returns how many rows the guard matched.
+ */
+async function updateWithEvent(
   db: Db,
-  event: {
-    programId: string;
-    businessId: string;
+  opts: {
+    set: ReturnType<typeof sql>;
+    where: ReturnType<typeof sql>;
     actorId: string | null;
     action: EventAction;
     details?: Record<string, unknown>;
   },
 ) {
-  await db.insert(loyaltyProgramEvents).values({
-    programId: event.programId,
-    businessId: event.businessId,
-    actorId: event.actorId,
-    action: event.action,
-    details: event.details ?? {},
-  });
+  const result = await db.execute(sql`
+    WITH updated AS (
+      UPDATE core.loyalty_program
+      SET ${opts.set}
+      WHERE ${opts.where}
+      RETURNING id, business_id
+    ),
+    logged AS (
+      INSERT INTO core.loyalty_program_event
+        (program_id, business_id, actor_id, action, details)
+      SELECT id, business_id, ${opts.actorId}, ${opts.action},
+             ${JSON.stringify(opts.details ?? {})}::jsonb
+      FROM updated
+    )
+    SELECT id FROM updated
+  `);
+  return rowsOf(result).length;
 }
 
 export async function ownerBusiness(userId: string) {
@@ -84,25 +107,13 @@ export async function programForOwner(userId: string) {
   const business = await ownerBusiness(userId);
   if (!business) return null;
   const db = getDb();
-  const expired = await db
-    .update(loyaltyPrograms)
-    .set({ status: "inactive", updatedAt: new Date() })
-    .where(
-      and(
-        eq(loyaltyPrograms.businessId, business.id),
-        eq(loyaltyPrograms.status, "closing"),
-        lte(loyaltyPrograms.redemptionEndsAt, new Date()),
-      ),
-    )
-    .returning({ id: loyaltyPrograms.id });
-  for (const row of expired) {
-    await recordEvent(db, {
-      programId: row.id,
-      businessId: business.id,
-      actorId: null,
-      action: "expired",
-    });
-  }
+  // Self-heal expiry on read as a safety net for a late cron; atomic with audit.
+  await updateWithEvent(db, {
+    set: sql`status = 'inactive', updated_at = now()`,
+    where: sql`business_id = ${business.id} AND status = 'closing' AND redemption_ends_at <= now()`,
+    actorId: null,
+    action: "expired",
+  });
   const [program] = await db
     .select()
     .from(loyaltyPrograms)
@@ -137,44 +148,38 @@ export async function saveProgram(userId: string, rawInput: unknown) {
   const terms = await renderedTerms(input, business);
   const db = getDb();
   if (program) {
-    const updated = await db
-      .update(loyaltyPrograms)
-      .set({
-        configuration: input.configuration,
-        termsMarkdown: terms.markdown,
-        termsHash: terms.hash,
-        termsUpdatedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(loyaltyPrograms.id, program.id),
-          eq(loyaltyPrograms.status, "active"),
-        ),
-      )
-      .returning({ id: loyaltyPrograms.id });
-    if (!updated.length) throw new LoyaltyError(409, STATE_CHANGED);
-    await recordEvent(db, {
-      programId: program.id,
-      businessId: business.id,
+    const matched = await updateWithEvent(db, {
+      set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()`,
+      where: sql`id = ${program.id} AND status = 'active'`,
       actorId: userId,
       action: "edited",
       details: { termsHash: terms.hash },
     });
+    if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
     return { programId: program.id, created: false };
   }
   const id = randomUUID();
   try {
-    await db.insert(loyaltyPrograms).values({
-      id,
-      businessId: business.id,
-      kind: input.kind,
-      configuration: input.configuration,
-      status: "active",
-      termsMarkdown: terms.markdown,
-      termsHash: terms.hash,
-      createdBy: userId,
-    });
+    // One transaction: a unique-index clash rolls back the event too.
+    await db.batch([
+      db.insert(loyaltyPrograms).values({
+        id,
+        businessId: business.id,
+        kind: input.kind,
+        configuration: input.configuration,
+        status: "active",
+        termsMarkdown: terms.markdown,
+        termsHash: terms.hash,
+        createdBy: userId,
+      }),
+      db.insert(loyaltyProgramEvents).values({
+        programId: id,
+        businessId: business.id,
+        actorId: userId,
+        action: "created",
+        details: { kind: input.kind },
+      }),
+    ]);
   } catch (error) {
     if (isUniqueViolation(error))
       throw new LoyaltyError(
@@ -183,13 +188,6 @@ export async function saveProgram(userId: string, rawInput: unknown) {
       );
     throw error;
   }
-  await recordEvent(db, {
-    programId: id,
-    businessId: business.id,
-    actorId: userId,
-    action: "created",
-    details: { kind: input.kind },
-  });
   return { programId: id, created: true };
 }
 
@@ -203,26 +201,9 @@ export async function closeProgram(userId: string, input: CloseInput) {
     context.business.timezone,
     new Date(),
   );
-  const db = getDb();
-  const updated = await db
-    .update(loyaltyPrograms)
-    .set({
-      status: "closing",
-      earningEndsAt,
-      redemptionEndsAt,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(loyaltyPrograms.id, context.program.id),
-        eq(loyaltyPrograms.status, "active"),
-      ),
-    )
-    .returning({ id: loyaltyPrograms.id });
-  if (!updated.length) throw new LoyaltyError(409, STATE_CHANGED);
-  await recordEvent(db, {
-    programId: context.program.id,
-    businessId: context.business.id,
+  const matched = await updateWithEvent(getDb(), {
+    set: sql`status = 'closing', earning_ends_at = ${earningEndsAt.toISOString()}::timestamptz, redemption_ends_at = ${redemptionEndsAt.toISOString()}::timestamptz, updated_at = now()`,
+    where: sql`id = ${context.program.id} AND status = 'active'`,
     actorId: userId,
     action: "closing_scheduled",
     details: {
@@ -230,6 +211,7 @@ export async function closeProgram(userId: string, input: CloseInput) {
       redemptionEndsAt: redemptionEndsAt.toISOString(),
     },
   });
+  if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
 }
 
 /** Reverts a scheduled close back to active while redemption has not ended yet. */
@@ -247,54 +229,23 @@ export async function cancelClose(userId: string) {
       "El periodo de canje ya terminó; no se puede cancelar.",
     );
   }
-  const db = getDb();
-  const updated = await db
-    .update(loyaltyPrograms)
-    .set({
-      status: "active",
-      earningEndsAt: null,
-      redemptionEndsAt: null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(loyaltyPrograms.id, context.program.id),
-        eq(loyaltyPrograms.status, "closing"),
-      ),
-    )
-    .returning({ id: loyaltyPrograms.id });
-  if (!updated.length) throw new LoyaltyError(409, STATE_CHANGED);
-  await recordEvent(db, {
-    programId: context.program.id,
-    businessId: context.business.id,
+  // The `redemption_ends_at > now()` guard makes the revert race-safe, not just
+  // the JS check above (which only shapes the error message).
+  const matched = await updateWithEvent(getDb(), {
+    set: sql`status = 'active', earning_ends_at = NULL, redemption_ends_at = NULL, updated_at = now()`,
+    where: sql`id = ${context.program.id} AND status = 'closing' AND redemption_ends_at > now()`,
     actorId: userId,
     action: "closing_canceled",
   });
+  if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
 }
 
 /** Idempotent job for Vercel Cron; reads also enforce expiry as a safety net. */
 export async function expireClosingPrograms(now = new Date()) {
-  const db = getDb();
-  const expired = await db
-    .update(loyaltyPrograms)
-    .set({ status: "inactive", updatedAt: now })
-    .where(
-      and(
-        eq(loyaltyPrograms.status, "closing"),
-        lte(loyaltyPrograms.redemptionEndsAt, now),
-      ),
-    )
-    .returning({
-      id: loyaltyPrograms.id,
-      businessId: loyaltyPrograms.businessId,
-    });
-  for (const row of expired) {
-    await recordEvent(db, {
-      programId: row.id,
-      businessId: row.businessId,
-      actorId: null,
-      action: "expired",
-    });
-  }
-  return expired.length;
+  return updateWithEvent(getDb(), {
+    set: sql`status = 'inactive', updated_at = ${now.toISOString()}::timestamptz`,
+    where: sql`status = 'closing' AND redemption_ends_at <= ${now.toISOString()}::timestamptz`,
+    actorId: null,
+    action: "expired",
+  });
 }

@@ -49,6 +49,27 @@ al Owner bloqueado toda la ventana de canje.
 - `last-write-wins` es una decisión consciente para esta fase sin saldos; si en el futuro la
   edición concurrente causa pérdida de trabajo real, se reevaluará con control optimista.
 
+## Enmienda 2026-08-13 — Atomicidad de la auditoría (revisión independiente)
+
+Una revisión independiente señaló que el cambio de estado y el `INSERT` del evento eran dos
+round-trips HTTP separados (el driver `neon-http` no tiene transacciones interactivas): un
+fallo parcial podía persistir el cambio de estado **sin** su evento, rompiendo la garantía
+append-only. Se cierra así:
+
+- **Transiciones (`edited`/`closing_scheduled`/`closing_canceled`/`expired`)**: una sola
+  sentencia atómica `WITH updated AS (UPDATE … WHERE status = … RETURNING id) INSERT INTO
+  loyalty_program_event SELECT … FROM updated`. El evento se inserta si y sólo si el `UPDATE`
+  guardado afectó una fila; el conteo devuelto decide el `409`.
+- **Creación (`created`)**: `db.batch([...])`, una transacción; si el índice parcial único
+  choca (`23505`), el rollback descarta también el evento.
+- **`cancelClose`**: el guard de fecha (`redemption_ends_at > now()`) pasó al `WHERE`, no sólo
+  al chequeo en JS, eliminando el TOCTOU.
+- **`isUniqueViolation`** recorre la cadena `.cause` porque drizzle envuelve el error de pg.
+- **API**: un cuerpo JSON inválido devuelve `400`, no un `503` de infraestructura.
+
+Verificado contra Postgres real (rama Neon aislada y efímera): ciclo de vida completo con el
+rastro de auditoría atómico correcto, el `409` por índice único y el `403` de autorización.
+
 ## Relación
 
 Complementa ADR 0027 (programa mutable con cierre fechado) y sigue el énfasis de auditoría de

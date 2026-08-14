@@ -181,4 +181,82 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
     });
     expect(recreated.created).toBe(true);
   }, 60_000);
+
+  it("rejects a user without an owner business with 403", async () => {
+    await expect(
+      saveProgram(`ghost-${randomUUID()}`, {
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: [{ text: "Términos." }],
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("blocks a second operational program via the partial unique index", async () => {
+    const otherUser = `idx-${randomUUID()}`;
+    const otherBusiness = randomUUID();
+    const db = getDb();
+    await db.insert(users).values({
+      id: otherUser,
+      name: "Owner Índice",
+      email: `${otherUser}@example.test`,
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await db.insert(businesses).values({
+      id: otherBusiness,
+      name: "Índice QA",
+      countryCode: "EC",
+      timezone: "America/Guayaquil",
+    });
+    await db
+      .insert(memberships)
+      .values({ businessId: otherBusiness, userId: otherUser, role: "owner" });
+    try {
+      await saveProgram(otherUser, {
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: [{ text: "Primero." }],
+      });
+      // A direct second operational row must hit the partial unique index.
+      const error = await db
+        .insert(loyaltyPrograms)
+        .values({
+          id: randomUUID(),
+          businessId: otherBusiness,
+          kind: "stamps",
+          configuration: { unitName: "Sello", target: 5 },
+          status: "active",
+          termsMarkdown: "x",
+          termsHash: "y",
+          createdBy: otherUser,
+        })
+        .then(
+          () => null,
+          (reason: unknown) => reason,
+        );
+      // drizzle wraps the pg error, so the 23505 code lives down the cause chain.
+      let current: unknown = error;
+      let isUnique = false;
+      for (let depth = 0; current && depth < 5; depth += 1) {
+        if ((current as { code?: string }).code === "23505") isUnique = true;
+        current = (current as { cause?: unknown }).cause;
+      }
+      expect(error).not.toBeNull();
+      expect(isUnique).toBe(true);
+    } finally {
+      await db
+        .delete(loyaltyProgramEvents)
+        .where(eq(loyaltyProgramEvents.businessId, otherBusiness));
+      await db
+        .delete(loyaltyPrograms)
+        .where(eq(loyaltyPrograms.businessId, otherBusiness));
+      await db
+        .delete(memberships)
+        .where(eq(memberships.businessId, otherBusiness));
+      await db.delete(businesses).where(eq(businesses.id, otherBusiness));
+      await db.delete(users).where(eq(users.id, otherUser));
+    }
+  }, 30_000);
 });
