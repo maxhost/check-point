@@ -167,8 +167,16 @@ el entorno de test (self-signed Apple + service account de demo Google).
 > integración Neon **4/4** (wallet) y **9/9** (regresión 0028) en rama efímera. Migración `0016`
 > aplicada y verificada por SQL en la rama efímera **y en prod** (17 migraciones; `web_view_token`
 > NOT NULL/único, 2 cuentas backfilleadas con tokens distintos y URL-safe, ninguno igual al
-> `qr_token`; `wallet_pass` + 3 uniques; `core`(14)/`merchant_auth`(4) intactos). Residuales
-> aceptados: install en iPhone real ($99) y verificación manual en Android real.
+> `qr_token`; `wallet_pass` + 3 uniques; `core`(14)/`merchant_auth`(4) intactos).
+>
+> **QA en vivo del owner (2026-08-14):** **Google Wallet** verificado en **Android real**
+> (issuer demo gratuito, class `approved`, pase con QR + "Ver mis programas"). **Apple Wallet**
+> verificado en **iPhone real** con certificado Pass Type ID real (Apple Developer personal,
+> Team `SN489AVGUD`, `pass.com.checkpass.identity`, cadena WWDR G4): el `.pkpass` instala y se
+> agrega a la Wallet. Ambos pases en producción sobre el deploy. Residuales abiertos (fuera de
+> la 0029): diseño/arte del pase (tarea futura), pasaje de la cuenta Apple personal → org
+> (regenerar cert), publishing access de Google para salir de demo, y el canal de push (spec
+> 0033). Ver `docs/wallet-go-live.md`.
 
 - [x] La superficie de consumer post-enrolamiento **renderiza el QR** del `qr_token` (escaneable,
       SVG server-side) y **ya no** muestra "Listo" sin QR.

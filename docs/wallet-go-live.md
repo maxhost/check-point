@@ -4,9 +4,10 @@ Runbook operativo del pase de Wallet (spec 0029 / ADR 0033). El **código ya est
 implementado y no cambia entre demo y producción**: ir a prod es puramente trámite de
 cuenta + secretos + arte final. Nada acá bloquea el código; son pasos del owner.
 
-Estado al 2026-08-14: **Google en demo, funcionando end-to-end** (QA en Android real OK).
-Apple: builder verificado con firma self-signed; **sin integrar en iPhone real** (falta el
-alta de pago).
+Estado al 2026-08-14: **ambos pases funcionando en producción sobre el deploy.** Google en
+**demo** (QA en Android real OK; falta publishing access para salir de demo). Apple **integrado
+con cert real** y verificado en **iPhone real** (cuenta Developer personal; pendiente el pasaje
+a organización). Falta el diseño/arte final de los dos y el canal de push (spec 0033).
 
 ## Prerrequisito común: marca + arte final
 
@@ -48,17 +49,21 @@ Federation + `signJwt`** (cambio de código → ADR+spec). Ver memoria del proye
 **Costo: $99/año** (Apple Developer Program). Es el único gate; no hay "review" de branding
 como en Google — con el certificado, el `.pkpass` instala en cualquier iPhone.
 
-- [ ] **Alta Apple Developer Program** ($99/año).
-- [ ] Crear un **Pass Type ID** en el portal de Apple Developer.
-- [ ] Generar el **certificado** del Pass Type ID → exportar como **`.p12`**.
-- [ ] Descargar el **cert intermedio WWDR** de Apple.
-- [ ] Anotar **Team ID** y **Pass Type ID**.
-- [ ] **Secretos en Vercel (Production):** `APPLE_PASS_CERT_P12` (base64 del `.p12`),
-      `APPLE_WWDR_CERT` (base64), `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, y
-      `APPLE_PASS_CERT_PASSWORD` si el `.p12` tiene clave.
-- [ ] Con esos secretos presentes en prod, el provider usa `certSigner` (firma real) en vez
-      de `selfSignedSigner` → el pase deja de dar 503 y se instala en iPhone real.
-- [ ] Arte final del pase (logo/icon, colores, opcional `strip`).
+**Hecho 2026-08-14** (cuenta personal, verificado en iPhone real):
+- [x] **Alta Apple Developer Program** ($99/año) — cuenta personal (pasaje a org solicitado).
+- [x] **Pass Type ID** creado: `pass.com.checkpass.identity`.
+- [x] **Certificado** generado (CSR con openssl) → `.p12` (con `-legacy` para node-forge).
+- [x] **WWDR G4** descargado (emisor del cert).
+- [x] **Team ID** `SN489AVGUD` + **Pass Type ID** anotados.
+- [x] **Secretos en Vercel (Production):** `APPLE_PASS_CERT_P12`, `APPLE_WWDR_CERT`,
+      `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_PASS_CERT_PASSWORD` cargados.
+- [x] Provider usando `certSigner` (firma real) → `.pkpass` **instala en iPhone real**.
+
+Pendiente:
+- [ ] **Pasaje cuenta personal → organización:** al aprobarse, **regenerar** Pass Type ID +
+      cert bajo el nuevo Team ID y actualizar los 5 secretos (mismo proceso). Material de firma
+      local vive en `.secrets-apple/` (gitignoreado + pre-commit hook).
+- [ ] Arte final del pase (logo/icon, colores, opcional `strip`) — tarea futura de diseño.
 
 No hay trabajo de código: `apps/merchant/src/server/wallet/apple.ts` ya construye y firma el
 `.pkpass`; solo cambia el firmante según los secretos. El **canal de push/actualización**

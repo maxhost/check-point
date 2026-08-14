@@ -11,10 +11,7 @@ test-results/
 apps/consumer/public/qa-checkin.png
 *.tsbuildinfo
 
-# Secreto local — SA de Google Wallet (NO commitear)
-tests/Wallet Issuer.json
-
-# Secretos locales de firma Apple Wallet (NO commitear)
+# Secretos locales de Wallet (SA de Google + firma Apple) — NO commitear
 .secrets-apple/
 
 # Material de firma / secretos — NUNCA se commitea (defensa en profundidad).
