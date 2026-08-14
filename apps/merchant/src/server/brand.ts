@@ -1,14 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, lt, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getDb } from "./db";
+import { brandAssetUploads, businesses, memberships } from "./schema";
 import {
-  brandAssetCleanups,
-  brandAssetUploads,
-  businesses,
-  memberships,
-} from "./schema";
-import {
-  deleteLogoPrefix,
   deleteObjectKeys,
   getPrivateObject,
   logoObjectPrefix,
@@ -17,50 +12,16 @@ import {
   putLogoVariants,
   readObjectAtMost,
 } from "./r2";
-import { isIanaTimezone } from "./timezone";
+import { AssetImageError, normalizeImage } from "./assets/image";
+import { BrandError, type BrandRecord, imageTypes } from "./brand/core";
+import { validateBrandInput } from "./brand/validation";
+import { cleanupPrefixNow } from "./brand/cleanup";
 
-const colorPattern = /^#[0-9a-fA-F]{6}$/;
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-type LogoAction = "keep" | "replace" | "remove";
-export type BrandRecord = {
-  id: string;
-  name: string;
-  timezone: string;
-  brandPrimaryColor: string;
-  brandComplementaryColor: string;
-  brandAccentColor: string;
-  logoObjectKey: string | null;
-  brandRevision: number;
-  logoVersion: number;
-};
-
-export class BrandError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
-function nonEmpty(value: unknown, field: string) {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new BrandError(422, `${field} es obligatorio.`);
-  }
-  const normalized = value.trim().replace(/\s+/g, " ");
-  if (normalized.length > 120) {
-    throw new BrandError(422, `${field} no puede superar 120 caracteres.`);
-  }
-  return normalized;
-}
-
-function color(value: unknown, field: string) {
-  if (typeof value !== "string" || !colorPattern.test(value)) {
-    throw new BrandError(422, `${field} debe ser un color hexadecimal válido.`);
-  }
-  return value.toUpperCase();
-}
+export { BrandError } from "./brand/core";
+export type { BrandRecord } from "./brand/core";
+export { validateBrandInput } from "./brand/validation";
+export { cleanupExpiredBrandAssets } from "./brand/cleanup";
+export { normalizeImage } from "./assets/image";
 
 export async function ownerBusiness(
   userId: string,
@@ -135,47 +96,6 @@ export async function createLogoUpload(userId: string, value: unknown) {
   }
 }
 
-export function validateBrandInput(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new BrandError(422, "Los datos de marca no son válidos.");
-  }
-  const input = value as Record<string, unknown>;
-  const logoAction = input.logoAction;
-  if (
-    logoAction !== "keep" &&
-    logoAction !== "replace" &&
-    logoAction !== "remove"
-  ) {
-    throw new BrandError(422, "La acción del logo no es válida.");
-  }
-  if (!Number.isInteger(input.revision) || Number(input.revision) < 1) {
-    throw new BrandError(422, "La revisión de marca no es válida.");
-  }
-  const uploadId = input.uploadId;
-  if (logoAction === "replace" && (typeof uploadId !== "string" || !uploadId)) {
-    throw new BrandError(422, "Selecciona un logo válido antes de guardar.");
-  }
-  if (logoAction !== "replace" && uploadId !== undefined) {
-    throw new BrandError(422, "La carga de logo no corresponde a esta acción.");
-  }
-  const timezone = nonEmpty(input.timezone, "La zona horaria");
-  if (!isIanaTimezone(timezone))
-    throw new BrandError(422, "La zona horaria no es válida.");
-  return {
-    name: nonEmpty(input.name, "El nombre"),
-    timezone,
-    brandPrimaryColor: color(input.brandPrimaryColor, "El color primario"),
-    brandComplementaryColor: color(
-      input.brandComplementaryColor,
-      "El color complementario",
-    ),
-    brandAccentColor: color(input.brandAccentColor, "El color de acento"),
-    revision: Number(input.revision),
-    logoAction: logoAction as LogoAction,
-    uploadId: uploadId as string | undefined,
-  };
-}
-
 async function consumeUpload(businessId: string, uploadId: string) {
   const [upload] = await getDb()
     .update(brandAssetUploads)
@@ -197,76 +117,6 @@ async function consumeUpload(businessId: string, uploadId: string) {
   return upload;
 }
 
-export async function normalizeLogo(input: Buffer) {
-  try {
-    // sharp validates the real binary format; the Content-Type supplied by a browser is never trusted.
-    const sharp = (await import("sharp")).default;
-    const transformer = sharp(input, {
-      limitInputPixels: 2048 * 2048,
-      failOn: "error",
-    }).rotate();
-    const metadata = await transformer.metadata();
-    if (
-      !metadata.format ||
-      !["jpeg", "png", "webp"].includes(metadata.format)
-    ) {
-      throw new BrandError(
-        422,
-        "El archivo no es una imagen PNG, JPEG o WebP válida.",
-      );
-    }
-    if (
-      !metadata.width ||
-      !metadata.height ||
-      metadata.width > 2048 ||
-      metadata.height > 2048
-    ) {
-      throw new BrandError(
-        422,
-        "El logo no puede superar 2048 × 2048 píxeles.",
-      );
-    }
-    const resized = transformer.resize({
-      width: 2048,
-      height: 2048,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
-    const [webp, png] = await Promise.all([
-      resized.clone().webp({ quality: 82, effort: 4 }).toBuffer(),
-      resized
-        .clone()
-        .png({ compressionLevel: 9, adaptiveFiltering: true })
-        .toBuffer(),
-    ]);
-    return { webp, png };
-  } catch (error) {
-    if (error instanceof BrandError) throw error;
-    throw new BrandError(
-      422,
-      "El archivo no es una imagen PNG, JPEG o WebP válida.",
-    );
-  }
-}
-
-async function enqueueCleanup(businessId: string, objectPrefix: string) {
-  await getDb()
-    .insert(brandAssetCleanups)
-    .values({ businessId, objectPrefix })
-    .onConflictDoNothing();
-}
-
-async function cleanupPrefixNow(businessId: string, prefix: string) {
-  try {
-    await deleteLogoPrefix(prefix);
-    await getDb()
-      .delete(brandAssetCleanups)
-      .where(eq(brandAssetCleanups.objectPrefix, prefix));
-  } catch {
-    await enqueueCleanup(businessId, prefix).catch(() => undefined);
-  }
-}
-
 export async function saveBrand(userId: string, value: unknown) {
   const input = validateBrandInput(value);
   const business = await ownerBusiness(userId);
@@ -281,12 +131,14 @@ export async function saveBrand(userId: string, value: unknown) {
         object.Body as AsyncIterable<Uint8Array>,
         MAX_LOGO_BYTES,
       );
-      const variants = await normalizeLogo(bytes);
+      const variants = await normalizeImage(bytes);
       newPrefix = logoObjectPrefix(business.id, randomUUID());
       await putLogoVariants(newPrefix, variants.webp, variants.png);
     } catch (error) {
       if (newPrefix) await cleanupPrefixNow(business.id, newPrefix);
       if (error instanceof BrandError) throw error;
+      if (error instanceof AssetImageError)
+        throw new BrandError(error.status, error.message);
       throw new BrandError(422, "No pudimos procesar ese archivo como logo.");
     } finally {
       await deleteObjectKeys([upload.objectKey]).catch(() => undefined);
@@ -353,8 +205,10 @@ export async function logoForPublicBusiness(
   businessId: string,
   version: unknown,
 ) {
-  if (!/^[0-9a-f-]{36}$/i.test(businessId) || !/^[0-9]+$/.test(String(version)))
-    return null;
+  // Strict UUID: a regex-valid-but-not-a-uuid id would make Postgres throw 22P02.
+  const uuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(businessId) || !/^[0-9]+$/.test(String(version))) return null;
   const [business] = await getDb()
     .select({
       logoObjectKey: businesses.logoObjectKey,
@@ -366,55 +220,4 @@ export async function logoForPublicBusiness(
   if (!business?.logoObjectKey || business.logoVersion !== Number(version))
     return null;
   return business;
-}
-
-export async function cleanupExpiredBrandAssets() {
-  const now = new Date();
-  const expiredUploads = await getDb()
-    .select()
-    .from(brandAssetUploads)
-    .where(lt(brandAssetUploads.expiresAt, now))
-    .limit(100);
-  for (const upload of expiredUploads) {
-    try {
-      await deleteObjectKeys([upload.objectKey]);
-      await getDb()
-        .delete(brandAssetUploads)
-        .where(eq(brandAssetUploads.id, upload.id));
-    } catch {
-      // Retain metadata so this object remains eligible for the next cron run.
-    }
-  }
-  const cleanups = await getDb()
-    .select()
-    .from(brandAssetCleanups)
-    .where(lt(brandAssetCleanups.notBefore, now))
-    .orderBy(asc(brandAssetCleanups.createdAt))
-    .limit(100);
-  for (const cleanup of cleanups) {
-    try {
-      await deleteLogoPrefix(cleanup.objectPrefix);
-      await getDb()
-        .delete(brandAssetCleanups)
-        .where(eq(brandAssetCleanups.id, cleanup.id));
-    } catch (error) {
-      const attempts = cleanup.attemptCount + 1;
-      const delayMinutes = Math.min(24 * 60, 2 ** Math.min(attempts, 10));
-      await getDb()
-        .update(brandAssetCleanups)
-        .set({
-          attemptCount: attempts,
-          notBefore: new Date(Date.now() + delayMinutes * 60 * 1000),
-          lastError:
-            error instanceof Error
-              ? error.message.slice(0, 500)
-              : "R2 cleanup failed",
-        })
-        .where(eq(brandAssetCleanups.id, cleanup.id));
-    }
-  }
-  return {
-    expiredUploads: expiredUploads.length,
-    cleanupJobs: cleanups.length,
-  };
 }

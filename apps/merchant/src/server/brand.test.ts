@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { BrandError, normalizeLogo, validateBrandInput } from "./brand";
+import { BrandError, validateBrandInput } from "./brand";
+import { normalizeImage } from "./assets/image";
 import { isIanaTimezone } from "./timezone";
 
 const valid = {
@@ -52,7 +53,7 @@ describe("brand contract", () => {
     })
       .png()
       .toBuffer();
-    const variants = await normalizeLogo(source);
+    const variants = await normalizeImage(source);
     await expect(sharp(variants.webp).metadata()).resolves.toMatchObject({
       format: "webp",
     });
@@ -60,7 +61,7 @@ describe("brand contract", () => {
       format: "png",
     });
     await expect(
-      normalizeLogo(Buffer.from("not-an-image")),
+      normalizeImage(Buffer.from("not-an-image")),
     ).rejects.toMatchObject({ status: 422 });
   });
 
@@ -69,7 +70,7 @@ describe("brand contract", () => {
     const svg = Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
     );
-    await expect(normalizeLogo(svg)).rejects.toMatchObject({ status: 422 });
+    await expect(normalizeImage(svg)).rejects.toMatchObject({ status: 422 });
 
     // A real PNG larger than 2048² must be rejected (dimension + pixel-limit guard).
     const oversized = await sharp({
@@ -77,7 +78,7 @@ describe("brand contract", () => {
     })
       .png()
       .toBuffer();
-    await expect(normalizeLogo(oversized)).rejects.toMatchObject({
+    await expect(normalizeImage(oversized)).rejects.toMatchObject({
       status: 422,
     });
   });
