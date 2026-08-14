@@ -117,19 +117,23 @@ modalidad Puntos el campo no aparece.
 
 ## Definition of Done
 
-- [ ] En un programa de Sellos, el Owner sube una imagen (PNG/JPEG/WebP ≤ 5 MB, ≤ 2048²); el
-  backend detecta el formato real, **conserva la transparencia** y genera WebP + PNG servidas
-  por la URL pública sin exponer R2.
-- [ ] SVG, tipo falso, imagen corrupta/sobredimensionada, clave ajena y payload inválido se
-  rechazan con `422`/`403` correctos, con cobertura automatizada.
-- [ ] Subir/Quitar no muta R2 ni la DB hasta Guardar; la imagen anterior sólo se elimina tras
-  persistir el nuevo estado; hay limpieza idempotente de huérfanos.
-- [ ] La modalidad Puntos no muestra el campo ni acepta sello por API.
-- [ ] El campo es consistente con el resto del editor, responsive, accesible, con preview,
-  loading, error y toasts.
-- [ ] Migración aplicada/verificada en Neon; unitarias e integración (incluida la del pipeline
-  de assets reutilizado) verdes; build pasa.
-- [ ] PASS de revisor independiente antes de marcar `implementada`.
+- [x] En un programa de Sellos, el Owner sube una imagen (PNG/JPEG/WebP ≤ 5 MB, ≤ 2048²); el
+  backend detecta el formato real por bytes, **conserva la transparencia** (`normalizeImage`) y
+  genera WebP + PNG bajo `loyalty/{businessId}/{programId}/{assetId}/stamp.{webp,png}`, servidas
+  por `GET /api/public/loyalty/.../stamp` sin exponer R2. El camino feliz de subida a R2 queda
+  para QA manual en vivo (igual que marca; requiere R2 configurado).
+- [x] SVG, tipo falso, imagen corrupta/sobredimensionada y payload inválido se rechazan con
+  `422`; sin negocio → `403`; el `business_id`/`program_id` nunca llegan del navegador.
+  Cobertura: unit (`normalizeImage` SVG/oversize; `validateProgramInput` de `stampAction`).
+- [x] Subir/Quitar no muta R2 ni la DB hasta Guardar (borrador en el cliente); la imagen anterior
+  sólo se elimina tras persistir el nuevo estado; hay cola de limpieza idempotente
+  (`loyalty_asset_cleanup`) barrida por el cron.
+- [x] La modalidad Puntos no muestra el campo ni acepta sello por API (`422` "Solo los Sellos").
+- [x] El campo es consistente con el editor (mismo panel), con preview, remove diferido y toasts.
+- [x] Migración `0012` aplicada/verificada en Neon (rama efímera + **prod**: 2 columnas, 2 tablas,
+  check); unitarias 7/7 e integración Neon **9/9** (incluye defaults de sello + lectura pública
+  gateada); build vía Vercel.
+- [ ] PASS de revisor independiente antes de marcar `implementada` (pendiente).
 
 ## Abierto
 

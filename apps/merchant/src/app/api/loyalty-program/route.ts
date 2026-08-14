@@ -20,6 +20,21 @@ async function readJson(request: Request) {
   }
 }
 
+/** Never leaks the internal `stampImageObjectKey`; exposes only a public stamp path. */
+function toClientProgram(
+  program: NonNullable<Awaited<ReturnType<typeof programForOwner>>>["program"],
+  businessId: string,
+) {
+  if (!program) return null;
+  const { stampImageObjectKey, ...rest } = program;
+  return {
+    ...rest,
+    stampImagePath: stampImageObjectKey
+      ? `/api/public/loyalty/${businessId}/${program.id}/stamp?v=${program.stampImageVersion}`
+      : null,
+  };
+}
+
 export async function GET(request: Request) {
   const session = await sessionUser(request);
   if (!session)
@@ -27,7 +42,10 @@ export async function GET(request: Request) {
   const result = await programForOwner(session.user.id);
   if (!result)
     return NextResponse.json({ error: "Sin negocio." }, { status: 403 });
-  return NextResponse.json(result);
+  return NextResponse.json({
+    business: result.business,
+    program: toClientProgram(result.program, result.business.id),
+  });
 }
 
 export async function PUT(request: Request) {

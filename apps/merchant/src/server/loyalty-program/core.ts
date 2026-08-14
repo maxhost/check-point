@@ -1,9 +1,12 @@
 export type LoyaltyKind = "points" | "stamps" | "tiers" | "cashback";
 export type ClauseInput = { templateId?: string; text?: string };
+export type StampAction = "keep" | "replace" | "remove";
 export type ProgramInput = {
   kind: LoyaltyKind;
   configuration: Record<string, unknown>;
   clauses: ClauseInput[];
+  stampAction: StampAction;
+  stampUploadId?: string;
 };
 export type CloseInput = {
   earningEndsAt?: unknown;

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { AutoGrowTextarea } from "./ui";
 import type { LoyaltyVm } from "./use-loyalty-program";
 
@@ -13,6 +14,7 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
     templates,
     saving,
     error,
+    stamp,
     setKind,
     setSingular,
     setPlural,
@@ -20,8 +22,13 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
     setTarget,
     setTerms,
     insertTemplate,
+    setErrorToast,
     save,
   } = vm;
+  const stampInput = useRef<HTMLInputElement>(null);
+  const stampPreview =
+    stamp.preview ??
+    (!stamp.removed ? (program?.stampImagePath ?? null) : null);
   return (
     <>
       <section className="panel loyalty-panel">
@@ -89,10 +96,37 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
             </label>
             <div className="stamp-image-field">
               <strong>Diseño del sello</strong>
+              {stampPreview && (
+                <img
+                  className="stamp-image-preview"
+                  src={stampPreview}
+                  alt="Vista previa del sello"
+                />
+              )}
+              <input
+                ref={stampInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(event) =>
+                  stamp.choose(event.target.files?.[0], setErrorToast)
+                }
+              />
               <p className="field-help">
-                La carga se habilitará con R2. El modelo ya reserva la
-                referencia segura de imagen.
+                PNG, JPEG o WebP · máximo 5 MB · hasta 2048 × 2048 px. Se aplica
+                al guardar.
               </p>
+              {stampPreview && (
+                <button
+                  type="button"
+                  className="small-button"
+                  onClick={() => {
+                    stamp.remove();
+                    if (stampInput.current) stampInput.current.value = "";
+                  }}
+                >
+                  Quitar sello
+                </button>
+              )}
             </div>
           </>
         )}

@@ -46,6 +46,18 @@ export function logoObjectPrefix(businessId: string, assetId: string) {
   return `brands/${businessId}/${assetId}`;
 }
 
+export function stampTemporaryObjectKey(businessId: string, uploadId: string) {
+  return `stamp-uploads/${businessId}/${uploadId}`;
+}
+
+export function stampObjectPrefix(
+  businessId: string,
+  programId: string,
+  assetId: string,
+) {
+  return `loyalty/${businessId}/${programId}/${assetId}`;
+}
+
 export async function createTemporaryUploadUrl(input: {
   objectKey: string;
   contentType: "image/jpeg" | "image/png" | "image/webp";
@@ -135,8 +147,9 @@ export function objectBodyToWebStream(
   });
 }
 
-export async function putLogoVariants(
+async function putImageVariants(
   prefix: string,
+  basename: string,
   webp: Buffer,
   png: Buffer,
 ) {
@@ -145,7 +158,7 @@ export async function putLogoVariants(
     s3.send(
       new PutObjectCommand({
         Bucket: bucket,
-        Key: `${prefix}/logo.webp`,
+        Key: `${prefix}/${basename}.webp`,
         Body: webp,
         ContentType: "image/webp",
         CacheControl: "public, max-age=31536000, immutable",
@@ -154,13 +167,21 @@ export async function putLogoVariants(
     s3.send(
       new PutObjectCommand({
         Bucket: bucket,
-        Key: `${prefix}/logo.png`,
+        Key: `${prefix}/${basename}.png`,
         Body: png,
         ContentType: "image/png",
         CacheControl: "public, max-age=31536000, immutable",
       }),
     ),
   ]);
+}
+
+export function putLogoVariants(prefix: string, webp: Buffer, png: Buffer) {
+  return putImageVariants(prefix, "logo", webp, png);
+}
+
+export function putStampVariants(prefix: string, webp: Buffer, png: Buffer) {
+  return putImageVariants(prefix, "stamp", webp, png);
 }
 
 export async function deleteObjectKeys(keys: string[]) {
@@ -176,6 +197,10 @@ export async function deleteObjectKeys(keys: string[]) {
 
 export async function deleteLogoPrefix(prefix: string) {
   await deleteObjectKeys([`${prefix}/logo.webp`, `${prefix}/logo.png`]);
+}
+
+export async function deleteStampPrefix(prefix: string) {
+  await deleteObjectKeys([`${prefix}/stamp.webp`, `${prefix}/stamp.png`]);
 }
 
 export { MAX_LOGO_BYTES };

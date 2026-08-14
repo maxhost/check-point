@@ -663,6 +663,16 @@ input:focus {
 .stamp-image-field .field-help {
   margin: 0;
 }
+.stamp-image-preview {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  padding: 8px;
+  border: 1px solid #dce6de;
+  border-radius: 14px;
+  /* The card renders stamp slots on white; preview on white to match. */
+  background: #ffffff;
+}
 .stripe {
   padding: 28px;
   border-radius: 18px;

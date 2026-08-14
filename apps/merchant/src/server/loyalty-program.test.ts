@@ -67,21 +67,17 @@ describe("loyalty program contract", () => {
       normalizeConfiguration("stamps", {
         unitName: "Sello",
         target: 8,
-        stampImageObjectKey: "",
         extra: 1,
       }),
     ).toEqual({ unitName: "Sello", target: 8 });
+    // The stamp image is a dedicated column now, never persisted in configuration.
     expect(
       normalizeConfiguration("stamps", {
         unitName: "Sello",
         target: 8,
-        stampImageObjectKey: "brands/x/logo.webp",
+        stampImageObjectKey: "loyalty/x/y/z",
       }),
-    ).toEqual({
-      unitName: "Sello",
-      target: 8,
-      stampImageObjectKey: "brands/x/logo.webp",
-    });
+    ).toEqual({ unitName: "Sello", target: 8 });
   });
 
   it("strips unknown configuration keys when validating a full payload", () => {
@@ -96,6 +92,45 @@ describe("loyalty program contract", () => {
         clauses: [{ text: "Términos." }],
       }).configuration,
     ).toEqual({ unitSingular: "Punto", unitPlural: "Puntos" });
+  });
+
+  it("validates the stamp action per modality", () => {
+    const stamps = {
+      kind: "stamps" as const,
+      configuration: { unitName: "Sello", target: 8 },
+      clauses: [{ text: "Términos." }],
+    };
+    // Points cannot carry a stamp action.
+    expect(() =>
+      validateProgramInput({
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: [{ text: "Términos." }],
+        stampAction: "replace",
+        stampUploadId: "u",
+      }),
+    ).toThrow("Solo los Sellos");
+    // replace requires an upload id.
+    expect(() =>
+      validateProgramInput({ ...stamps, stampAction: "replace" }),
+    ).toThrow("Selecciona una imagen");
+    // an upload id without replace is rejected.
+    expect(() =>
+      validateProgramInput({
+        ...stamps,
+        stampAction: "keep",
+        stampUploadId: "u",
+      }),
+    ).toThrow("no corresponde");
+    // a valid replace and the default keep.
+    expect(
+      validateProgramInput({
+        ...stamps,
+        stampAction: "replace",
+        stampUploadId: "u",
+      }),
+    ).toMatchObject({ stampAction: "replace", stampUploadId: "u" });
+    expect(validateProgramInput(stamps)).toMatchObject({ stampAction: "keep" });
   });
 
   it("validates the closing window against the business zone and clock", () => {

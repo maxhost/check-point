@@ -15,6 +15,10 @@ import {
 import { validateProgramInput } from "./loyalty-program/validation";
 import { validateClosingWindow } from "./loyalty-program/time";
 import { renderedTerms } from "./loyalty-program/terms";
+import {
+  cleanupStampPrefixNow,
+  resolveStampChange,
+} from "./loyalty-program/stamp";
 
 export { LoyaltyError } from "./loyalty-program/core";
 export type {
@@ -32,6 +36,11 @@ export {
   validateClosingWindow,
   zonedDateTimeToUtc,
 } from "./loyalty-program/time";
+export {
+  cleanupExpiredLoyaltyAssets,
+  createStampUpload,
+  stampForPublicProgram,
+} from "./loyalty-program/stamp";
 
 type Db = ReturnType<typeof getDb>;
 const STATE_CHANGED =
@@ -147,48 +156,65 @@ export async function saveProgram(userId: string, rawInput: unknown) {
   }
   const terms = await renderedTerms(input, business);
   const db = getDb();
-  if (program) {
-    const matched = await updateWithEvent(db, {
-      set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()`,
-      where: sql`id = ${program.id} AND status = 'active'`,
-      actorId: userId,
-      action: "edited",
-      details: { termsHash: terms.hash },
-    });
-    if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
-    return { programId: program.id, created: false };
-  }
-  const id = randomUUID();
+  const id = program ? program.id : randomUUID();
+  // R2 work (process + upload) happens before the DB write, mirroring brand; the
+  // caller rolls back the new prefix if the guarded write does not land.
+  const stamp = await resolveStampChange({
+    businessId: business.id,
+    programId: id,
+    currentKey: program?.stampImageObjectKey ?? null,
+    action: input.stampAction,
+    uploadId: input.stampUploadId,
+  });
   try {
-    // One transaction: a unique-index clash rolls back the event too.
-    await db.batch([
-      db.insert(loyaltyPrograms).values({
-        id,
-        businessId: business.id,
-        kind: input.kind,
-        configuration: input.configuration,
-        status: "active",
-        termsMarkdown: terms.markdown,
-        termsHash: terms.hash,
-        createdBy: userId,
-      }),
-      db.insert(loyaltyProgramEvents).values({
-        programId: id,
-        businessId: business.id,
+    if (program) {
+      const stampSet = stamp
+        ? sql`, stamp_image_object_key = ${stamp.objectKey}, stamp_image_version = stamp_image_version + 1`
+        : sql``;
+      const matched = await updateWithEvent(db, {
+        set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()${stampSet}`,
+        where: sql`id = ${program.id} AND status = 'active'`,
         actorId: userId,
-        action: "created",
-        details: { kind: input.kind },
-      }),
-    ]);
+        action: "edited",
+        details: { termsHash: terms.hash, stampAction: input.stampAction },
+      });
+      if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
+    } else {
+      // One transaction: a unique-index clash rolls back the event too.
+      await db.batch([
+        db.insert(loyaltyPrograms).values({
+          id,
+          businessId: business.id,
+          kind: input.kind,
+          configuration: input.configuration,
+          status: "active",
+          termsMarkdown: terms.markdown,
+          termsHash: terms.hash,
+          createdBy: userId,
+          stampImageObjectKey: stamp?.objectKey ?? null,
+          stampImageVersion: stamp?.objectKey ? 1 : 0,
+        }),
+        db.insert(loyaltyProgramEvents).values({
+          programId: id,
+          businessId: business.id,
+          actorId: userId,
+          action: "created",
+          details: { kind: input.kind },
+        }),
+      ]);
+    }
   } catch (error) {
-    if (isUniqueViolation(error))
+    if (stamp?.rollback)
+      await cleanupStampPrefixNow(business.id, stamp.rollback);
+    if (!program && isUniqueViolation(error))
       throw new LoyaltyError(
         409,
         "Ya existe un programa operativo para este negocio.",
       );
     throw error;
   }
-  return { programId: id, created: true };
+  if (stamp?.previous) await cleanupStampPrefixNow(business.id, stamp.previous);
+  return { programId: id, created: !program };
 }
 
 export async function closeProgram(userId: string, input: CloseInput) {

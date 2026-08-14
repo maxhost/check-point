@@ -1,4 +1,9 @@
-import { LoyaltyError, type LoyaltyKind, type ProgramInput } from "./core";
+import {
+  LoyaltyError,
+  type LoyaltyKind,
+  type ProgramInput,
+  type StampAction,
+} from "./core";
 
 type SupportedKind = "points" | "stamps";
 const enabledKinds = new Set<SupportedKind>(["points", "stamps"]);
@@ -23,13 +28,11 @@ export function normalizeConfiguration(
       unitPlural: String(configuration.unitPlural).trim(),
     };
   }
-  const normalized: Record<string, unknown> = {
+  // The stamp image lives in dedicated columns (spec 0026), never in configuration jsonb.
+  return {
     unitName: String(configuration.unitName).trim(),
     target: Number(configuration.target),
   };
-  const stampImageObjectKey = nonEmpty(configuration.stampImageObjectKey);
-  if (stampImageObjectKey) normalized.stampImageObjectKey = stampImageObjectKey;
-  return normalized;
 }
 
 export function validateProgramInput(value: unknown): ProgramInput {
@@ -91,9 +94,7 @@ export function validateProgramInput(value: unknown): ProgramInput {
       !nonEmpty(configuration.unitName) ||
       !Number.isInteger(configuration.target) ||
       Number(configuration.target) < 2 ||
-      Number(configuration.target) > 50 ||
-      (configuration.stampImageObjectKey !== undefined &&
-        !nonEmpty(configuration.stampImageObjectKey))
+      Number(configuration.target) > 50
     ) {
       throw new LoyaltyError(
         422,
@@ -101,10 +102,36 @@ export function validateProgramInput(value: unknown): ProgramInput {
       );
     }
   }
+  const stampAction = (input.stampAction ?? "keep") as StampAction;
+  if (
+    stampAction !== "keep" &&
+    stampAction !== "replace" &&
+    stampAction !== "remove"
+  ) {
+    throw new LoyaltyError(422, "La acción del sello no es válida.");
+  }
+  if (input.kind !== "stamps" && stampAction !== "keep") {
+    throw new LoyaltyError(422, "Solo los Sellos aceptan una imagen de sello.");
+  }
+  const stampUploadId = nonEmpty(input.stampUploadId) ?? undefined;
+  if (stampAction === "replace" && !stampUploadId) {
+    throw new LoyaltyError(
+      422,
+      "Selecciona una imagen de sello antes de guardar.",
+    );
+  }
+  if (stampAction !== "replace" && stampUploadId) {
+    throw new LoyaltyError(
+      422,
+      "La carga de sello no corresponde a esta acción.",
+    );
+  }
   return {
     kind: input.kind,
     configuration: normalizeConfiguration(input.kind, configuration),
     clauses,
+    stampAction,
+    stampUploadId,
   };
 }
 

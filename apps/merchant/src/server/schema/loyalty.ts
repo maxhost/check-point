@@ -1,6 +1,7 @@
 import {
   check,
   index,
+  integer,
   jsonb,
   text,
   timestamp,
@@ -33,6 +34,9 @@ export const loyaltyPrograms = core.table(
     termsUpdatedAt: timestamp("terms_updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Stamp design (Sellos only): the internal R2 key prefix and a version for cache-busting.
+    stampImageObjectKey: text("stamp_image_object_key"),
+    stampImageVersion: integer("stamp_image_version").notNull().default(0),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),
@@ -55,6 +59,10 @@ export const loyaltyPrograms = core.table(
     check(
       "loyalty_program_closing_window_check",
       sql`(${table.status} <> 'closing') OR (${table.earningEndsAt} IS NOT NULL AND ${table.redemptionEndsAt} IS NOT NULL AND ${table.earningEndsAt} < ${table.redemptionEndsAt})`,
+    ),
+    check(
+      "loyalty_program_stamp_version_check",
+      sql`${table.stampImageVersion} >= 0`,
     ),
     uniqueIndex("core_loyalty_program_one_operational")
       .on(table.businessId)
@@ -126,6 +134,55 @@ export const termsTemplates = core.table(
       table.locale,
       table.jurisdictionScope,
       table.version,
+    ),
+  ],
+);
+
+/** Short-lived authorized uploads for a stamp design, scoped by business (mirrors brand). */
+export const loyaltyAssetUploads = core.table(
+  "loyalty_asset_upload",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    objectKey: text("object_key").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("core_loyalty_asset_upload_object_key_unique").on(
+      table.objectKey,
+    ),
+  ],
+);
+
+/** Durable retry queue: failures cleaning obsolete stamp R2 prefixes never break a saved program. */
+export const loyaltyAssetCleanups = core.table(
+  "loyalty_asset_cleanup",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    objectPrefix: text("object_prefix").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    notBefore: timestamp("not_before", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("core_loyalty_asset_cleanup_prefix_unique").on(
+      table.objectPrefix,
     ),
   ],
 );

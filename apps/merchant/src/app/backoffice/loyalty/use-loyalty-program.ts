@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useStampUpload } from "./use-stamp-upload";
 
 export type Kind = "points" | "stamps";
 export type Template = { id: string; title: string; templateMarkdown: string };
@@ -11,6 +12,7 @@ export type Program = {
   earningEndsAt: string | null;
   redemptionEndsAt: string | null;
   termsMarkdown: string;
+  stampImagePath: string | null;
 };
 export type Context = {
   business: { name: string; countryCode: string; timezone: string };
@@ -37,12 +39,14 @@ export function useLoyaltyProgram() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
+  const stamp = useStampUpload();
 
   const program = context?.program ?? null;
   const timezone = context?.business.timezone ?? "America/Guayaquil";
   const isClosing = program?.status === "closing";
 
   function populate(next: Context) {
+    stamp.reset();
     if (!next.program) return;
     setKind(next.program.kind);
     setTerms(next.program.termsMarkdown);
@@ -105,6 +109,9 @@ export function useLoyaltyProgram() {
     setSaving(true);
     setError(null);
     try {
+      const stampAction = kind === "stamps" ? stamp.action : "keep";
+      const stampUploadId =
+        stampAction === "replace" ? await stamp.upload() : null;
       const response = await fetch("/api/loyalty-program", {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -115,6 +122,8 @@ export function useLoyaltyProgram() {
               ? { unitSingular: singular, unitPlural: plural }
               : { unitName: stampName, target },
           clauses: [{ text: terms }],
+          stampAction,
+          ...(stampUploadId ? { stampUploadId } : {}),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -122,6 +131,7 @@ export function useLoyaltyProgram() {
       } | null;
       if (!response.ok)
         throw new Error(payload?.error ?? "No pudimos guardar el programa.");
+      stamp.reset();
       setEditing(false);
       setNotice(program ? "Programa actualizado." : "Programa activado.");
       await load();
@@ -216,6 +226,7 @@ export function useLoyaltyProgram() {
     program,
     timezone,
     isClosing,
+    stamp,
     setKind,
     setSingular,
     setPlural,
