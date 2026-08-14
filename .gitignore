@@ -13,3 +13,16 @@ apps/consumer/public/qa-checkin.png
 
 # Secreto local — SA de Google Wallet (NO commitear)
 tests/Wallet Issuer.json
+
+# Secretos locales de firma Apple Wallet (NO commitear)
+.secrets-apple/
+
+# Material de firma / secretos — NUNCA se commitea (defensa en profundidad).
+# La carpeta tests/ NO se ignora entera (tiene los e2e reales); solo secretos.
+*.p12
+*.key
+*.pem
+*.cer
+*.der
+*.mobileprovision
+Wallet Issuer.json
