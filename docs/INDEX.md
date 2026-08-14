@@ -72,7 +72,7 @@ desactualizado es peor que no tenerlo.
 | 0021 | 2026-08-11 | Catálogo único de beneficios | borrador | no | `specs/0021-catalogo-unico-de-beneficios.md` |
 | 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | cerrada | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
 | 0023 | 2026-08-11 | Búsqueda y procedencia de locales | en revisión | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
-| 0024 | 2026-08-12 | Programa de fidelización real y términos | en curso | no | `specs/0024-programa-fidelizacion-real-y-terminos.md` |
+| 0024 | 2026-08-12 | Programa de fidelización real y términos | implementada | no | `specs/0024-programa-fidelizacion-real-y-terminos.md` |
 | 0025 | 2026-08-12 | Marca real del negocio y assets R2 | implementada | no | `specs/0025-marca-real-y-assets-r2.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que

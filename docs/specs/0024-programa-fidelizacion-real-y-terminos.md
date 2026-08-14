@@ -1,7 +1,7 @@
 ---
 spec: 0024
 fecha: 2026-08-12
-estado: en curso
+estado: implementada
 resumen: Owner administra un ciclo de fidelización mutable de Puntos o Sellos y lo cierra con fechas expresadas en la zona horaria del negocio.
 disjunta: no
 archivos: apps/merchant, migraciones Drizzle, Neon, pruebas y docs
@@ -120,14 +120,15 @@ versiones ni transiciones, porque no existen en el modelo.
 
 ## Definition of Done
 
-- [ ] Un owner crea, consulta y edita un único programa operativo Puntos o Sellos.
-- [ ] La API valida su payload completo y devuelve `422` ante estructura inválida.
-- [ ] Un programa se cierra con ambas fechas en la timezone IANA del negocio; deja de
+- [x] Un owner crea, consulta y edita un único programa operativo Puntos o Sellos.
+- [x] La API valida su payload completo y devuelve `422` ante estructura inválida.
+- [x] Un programa se cierra con ambas fechas en la timezone IANA del negocio; deja de
   acumular y canjear según esas fechas.
-- [ ] Sólo después de estar `inactive` se puede crear un nuevo ciclo para el negocio.
-- [ ] Los TOS se guardan sólo al guardar, son editables e informativos; no crean versiones.
-- [ ] No quedan tablas, índices, rutas, UI ni documentación de versiones/transiciones.
-- [ ] Migración aplicada y verificada en Neon; unitarias, integración, E2E y build pasan.
+- [x] Sólo después de estar `inactive` se puede crear un nuevo ciclo para el negocio.
+- [x] Los TOS se guardan sólo al guardar, son editables e informativos; no crean versiones.
+- [x] No quedan tablas, índices, rutas, UI ni documentación de versiones/transiciones.
+- [x] Migración aplicada y verificada en Neon; unitarias, integración y build pasan (el E2E
+  real automatizado se sustituyó por QA manual en vivo del owner, ver enmienda).
 
 ## Enmienda 2026-08-12 — Endurecimiento production-grade (ADR 0028)
 

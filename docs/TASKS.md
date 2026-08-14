@@ -115,6 +115,14 @@ vía MCP). MENORES no accionados hoy (documentados, no bloqueantes): `ownerBusin
 `desc` vs `asc` en brand —inalcanzable con 1 negocio/owner—, validación de formato de
 `stampImageObjectKey` (reservado hasta R2), y `program_kind` como literal en inglés en términos.
 
+Re-revisión independiente (2026-08-13): **PASS**. Verificó los arreglos contra el código real
+del driver (`db.batch` = transacción en neon-http; semántica CTE de Postgres) y confirmó los dos
+IMPORTANTES resueltos correcta y suficientemente; solo MENORES no bloqueantes. Con el PASS
+verificable, la **Spec 0024 pasa a `implementada`** (frontmatter + INDEX + DoD marcados; commit
+`50228a7`). Cierra la tarea 18 como production-grade. Único residual documentado: el E2E real
+automatizado (`loyalty-real.spec.ts`) sustituido por QA manual en vivo del owner (crear/editar/
+cerrar/cancelar/ciclo completo/términos con saltos de línea, todo OK sobre el deploy de Vercel).
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -136,7 +144,7 @@ vía MCP). MENORES no accionados hoy (documentados, no bloqueantes): `ownerBusin
 | 15 | Diseñar e implementar Catálogo único de beneficios | 0021 | pendiente | Reutilizable entre campañas, juegos y canjes; los términos de uso pertenecen a cada distribución |
 | 16 | Implementar registro y autenticación real de Owner | 0022 | hecho | Registro/login, alta de negocio/local, Stripe Checkout y webhook implementados y desplegados; QA manual contra Neon y gates locales verdes. El selector final de planes es carrusel con Plus mensual por defecto. |
 | 17 | Implementar búsqueda y procedencia de locales | 0023 | en revisión | Geoapify principal y fallback automático Mapbox sólo ante fallo de Geoapify implementados; migración 0003 aplicada. Pendientes QA real/E2E y PASS independiente |
-| 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. QA en vivo 2026-08-13: fix de persistencia de términos al editar (plantillas como botones «+ Insertar» que copian texto renderizado al textarea, sin duplicación); typecheck/unit verdes, pendiente reverificar en el deploy. |
+| 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. QA en vivo 2026-08-13: fix de persistencia de términos al editar (plantillas como botones «+ Insertar» que copian texto renderizado al textarea, sin duplicación) + ronda de UX. Endurecimiento post-revisión (auditoría atómica, tests de núcleo, 400/TOCTOU) y **PASS de revisor independiente**; Spec 0024 → `implementada` (commit `50228a7`). |
 | 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner; 3 de 6 casilleros del DoD quedan sin marcar (casos límite de subida, concurrencia, e integración R2/Neon + E2E de `brand`, que no existe todavía) — ver DoD de la spec. |
 
 ## Hecho
