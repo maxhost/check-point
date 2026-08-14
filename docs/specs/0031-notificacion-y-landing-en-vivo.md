@@ -10,8 +10,16 @@ archivos: por definir (depende de 0028, 0029 y 0030)
 # 0031 — Notificación y landing en vivo
 
 > **Stub — reserva de alcance.** No cerrada. Cuarta rebanada del camino A (ADR 0031).
-> Cierra el loop: depende de **0028** (identidad/landing), **0029** (pase + canal de push) y
-> **0030** (el otorgamiento que dispara el aviso).
+> Cierra el loop: depende de **0028** (identidad/landing), **0029** (pase) y **0030** (el
+> otorgamiento que dispara el aviso). El **canal de push** se separó a la **spec 0033**; esta
+> spec lo consume.
+>
+> **Alcance heredado del ADR 0033 (2026-08-14):** el enlace **"Ver mis programas"** del pase
+> (spec 0029, con `web_view_token` dedicado y revocable) apunta a esta superficie web. Aquí vive
+> el **dashboard rico de consumidor**: cada programa con su `CardPreview` (spec 0027), su
+> progreso (puntos/sellos) y sus **términos accesibles** (soporta el consentimiento del
+> auto-enrolamiento de la 0030). La 0029 solo entrega la ruta mínima que resuelve el token; el
+> render rico es de esta spec.
 
 ## Problema
 
@@ -35,7 +43,8 @@ marketing/campañas (futuro, tier Plus).
 ## Dependencias
 
 - **Spec 0030** — evento de otorgamiento que dispara el aviso.
-- **Spec 0029** — canal de push del pase de Wallet.
+- **Spec 0033** — canal de push del pase de Wallet (separado de la 0029).
+- **Spec 0029** — pase emitido + enlace "Ver mis programas" (esta superficie).
 - **Spec 0028** — landing y sesión de consumer para la actualización en vivo.
 - **Spec 0027** — diseño de tarjeta para renderizar el resultado.
 

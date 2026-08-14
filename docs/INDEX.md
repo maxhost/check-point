@@ -48,6 +48,7 @@ desactualizado es peor que no tenerlo.
 | 0030 | 2026-08-13 | Modelo de datos del diseño de tarjeta de fidelización | aceptada | `adr/0030-modelo-de-datos-del-diseno-de-tarjeta-de-fidelizacion.md` |
 | 0031 | 2026-08-14 | Merchant-first, Wallet nativa como superficie de consumidor e identidad de consumidor compartida | aceptada; supersede la "red curada" de 0003 y reencuadra 0019 | `adr/0031-merchant-first-wallet-nativa-e-identidad-de-consumidor.md` |
 | 0032 | 2026-08-14 | Identidad de consumidor: esquema pg propio `consumer`, auth phone-OTP purpose-built y DB compartida para analítica aislada por negocio | aceptada; refina 0012 | `adr/0032-identidad-de-consumidor-esquema-propio-y-auth-phone-otp.md` |
+| 0033 | 2026-08-14 | Proveedor de Wallet: Apple PassKit + Google Wallet, emisor único, UN pase de identidad por consumidor (barcode = `qr_token`), dev sin pagar Apple, push separado | aceptada; consume 0014/0024 | `adr/0033-proveedor-de-wallet-apple-passkit-y-google-wallet.md` |
 
 ## Specs — que se construye
 
@@ -81,10 +82,11 @@ desactualizado es peor que no tenerlo.
 | 0026 | 2026-08-13 | Diseño de sello del programa de fidelización en R2 | implementada | no | `specs/0026-diseno-de-sello-en-r2.md` |
 | 0027 | 2026-08-13 | Wizard de creación y diseño visual de la tarjeta de fidelización | implementada | sí | `specs/0027-wizard-y-diseno-de-tarjeta-de-fidelizacion.md` |
 | 0028 | 2026-08-14 | Identidad de consumidor y enrolamiento (landing pública sin verificar, membresía aislada, QR personal) | implementada | sí | `specs/0028-identidad-de-consumidor-y-enrolamiento.md` |
-| 0029 | 2026-08-14 | Pase de Wallet (Apple / Google) + canal de push | borrador | no | `specs/0029-pase-de-wallet-apple-google.md` |
-| 0030 | 2026-08-14 | Acreditación en mostrador (consola de staff, puntos/sellos por reglas) | borrador | no | `specs/0030-acreditacion-en-mostrador.md` |
-| 0031 | 2026-08-14 | Notificación y landing en vivo al otorgar puntos/sellos | borrador | no | `specs/0031-notificacion-y-landing-en-vivo.md` |
+| 0029 | 2026-08-14 | Pase de Wallet (Apple / Google): UN pase de identidad por consumidor (barcode = `qr_token`), "Ver mis programas", provider intercambiable | cerrada | sí | `specs/0029-pase-de-wallet-apple-google.md` |
+| 0030 | 2026-08-14 | Acreditación en mostrador (consola de staff, puntos/sellos por reglas) + auto-enrolamiento por escaneo | borrador | no | `specs/0030-acreditacion-en-mostrador.md` |
+| 0031 | 2026-08-14 | Notificación y landing en vivo al otorgar + dashboard "Ver mis programas" | borrador | no | `specs/0031-notificacion-y-landing-en-vivo.md` |
 | 0032 | 2026-08-14 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp, canal `deliverOtp`) | borrador | no | `specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` |
+| 0033 | 2026-08-14 | Canal de actualización y push de Wallet (web service PassKit + APNs, `PATCH`/`addMessage` de Google) | borrador | no | `specs/0033-canal-de-actualizacion-y-push-de-wallet.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

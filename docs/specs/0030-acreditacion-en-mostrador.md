@@ -12,6 +12,17 @@ archivos: por definir (depende de 0028 y del catálogo económico, specs 0002/00
 > **Stub — reserva de alcance.** No cerrada. Tercera rebanada del camino A (ADR 0031).
 > Depende de la spec **0028** (QR personal + membresía) y de un **catálogo económico de
 > productos** (specs 0002/0021, hoy en borrador).
+>
+> **Decisiones heredadas del ADR 0033 (2026-08-14), a incorporar al cerrar:**
+> - **Resolución del QR desambiguada por el negocio que escanea.** El barcode del pase lleva el
+>   `qr_token` **global** del consumidor (una sola credencial "Mi Pasaporte" para todos los
+>   programas). El staff resuelve `qr_token` → consumidor, y la membresía se resuelve por el
+>   **negocio en el que se escanea** (`(consumidor, programa del negocio)`), no por el token.
+> - **Auto-enrolamiento por escaneo.** Si el consumidor ya existe (se enroló en otro comercio)
+>   pero **no** es miembro del programa de este negocio, escanear su credencial lo **da de alta
+>   on-the-fly** (crea la membresía) sin re-registro — efecto de red, cero fricción. Matiz de
+>   consentimiento: el escaneo es un gesto físico consentido y los **términos del programa quedan
+>   siempre accesibles** en "Ver mis programas" (spec 0031).
 
 ## Problema
 
