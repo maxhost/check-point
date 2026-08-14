@@ -1,7 +1,7 @@
 ---
 spec: 0027
 fecha: 2026-08-13
-estado: cerrada
+estado: implementada
 resumen: La creación y edición del programa de fidelización pasan a un wizard por pasos (Puntos y Sellos) e incorporan el diseño visual de la tarjeta de Sellos —fondo sólido o degradé lineal de ángulo configurable, color de borde de los recuadros— persistido en columnas dedicadas con preview en vivo, defaults derivados de la marca.
 disjunta: si
 archivos: apps/merchant (loyalty), migración Drizzle, Neon, pruebas y docs
@@ -12,14 +12,15 @@ archivos: apps/merchant (loyalty), migración Drizzle, Neon, pruebas y docs
 > **Nada de código empieza sin esta spec en `cerrada`.** Cerrada el 2026-08-13 con las seis
 > decisiones abiertas resueltas por el owner (ver «Decisiones cerradas»).
 >
-> **Implementada el 2026-08-13 (en revisión).** Gates locales verdes: typecheck 3/3, lint, unit
-> 33/10-skip, Prettier, **build 3/3** (turbo); **integración Neon 6/6** en rama efímera; **migración
-> `0013` aplicada y verificada en prod** (4 columnas + 5 checks). Pendiente para `implementada`:
-> **PASS de revisor independiente** y **QA manual en vivo** del owner. Nota de entorno: el `pnpm
-> build` local fallaba por un `NODE_ENV=development` que inyecta el harness de dev (no del repo, no
-> de esta feature: React mezclaba dev/prod y reventaba el prerender de `/_global-error`). Se blindó
-> con `NODE_ENV=production` en el `build` de los tres apps (no-op en Vercel) y se alineó el local a
-> Node 24.19.0 (`.node-version`).
+> **IMPLEMENTADA el 2026-08-13.** Gates verdes: typecheck 3/3, lint, unit 33/10-skip, Prettier,
+> **build 3/3** (turbo); **integración Neon 6/6** en rama efímera; **migración `0013` aplicada y
+> verificada en prod** (4 columnas + 5 checks). **PASS de revisor independiente** (`AGENT-WORKFLOW.md`,
+> sin bloqueantes ni importantes; solo menores informativos) y **QA manual en vivo del owner OK**
+> (crear Sellos por el wizard con degradé/ángulo/borde/imagen, preview en vivo, activar, reabrir en
+> edición; Puntos por los 3 pasos). Nota de entorno resuelta: el `pnpm build` local fallaba por un
+> `NODE_ENV=development` que inyecta el harness de dev (no del repo, no de esta feature: React
+> mezclaba dev/prod y reventaba el prerender de `/_global-error`); se blindó con `NODE_ENV=production`
+> en el `build` de los tres apps (no-op en Vercel) y se alineó el local a Node 24.19.0.
 
 ## Problema
 
@@ -242,41 +243,41 @@ esos archivos (0024/0025/0026) están **`implementada`** — no hay ninguna spec
 
 ## Definition of Done
 
-- [ ] La creación de **Puntos** usa el wizard de 3 pasos (unidades → términos → preview+activar);
+- [x] La creación de **Puntos** usa el wizard de 3 pasos (unidades → términos → preview+activar);
       la de **Sellos**, el de 4 pasos (básicos → diseño → términos → preview+activar).
-- [ ] La **edición** también usa el wizard, con el `kind` fijo y los datos hidratados desde el DTO.
-- [ ] En Sellos se eligen fondo 1, (opcional) fondo 2 con ángulo de degradé configurable, y color
+- [x] La **edición** también usa el wizard, con el `kind` fijo y los datos hidratados desde el DTO.
+- [x] En Sellos se eligen fondo 1, (opcional) fondo 2 con ángulo de degradé configurable, y color
       de borde; se persisten en las 4 columnas.
-- [ ] Los **defaults** al diseñar un programa nuevo de Sellos vienen de la marca (primario/
+- [x] Los **defaults** al diseñar un programa nuevo de Sellos vienen de la marca (primario/
       complementario/acento).
-- [ ] El **preview** muestra la tarjeta con los colores elegidos y `round(target/2)` sellos puestos
+- [x] El **preview** muestra la tarjeta con los colores elegidos y `round(target/2)` sellos puestos
       (llenos vs. vacíos), y se actualiza **en vivo** al cambiar cualquier color/ángulo.
-- [ ] La API valida colores (`#RRGGBB`), ángulo (`0..360`), rechaza diseño en Puntos y fondo 2 sin
+- [x] La API valida colores (`#RRGGBB`), ángulo (`0..360`), rechaza diseño en Puntos y fondo 2 sin
       fondo 1/ángulo → `422` con mensaje por caso; el DTO expone los colores (no `*ObjectKey`).
-- [ ] Migración `0013` aplicada/verificada en Neon (rama efímera) y en prod; los checks rechazan
+- [x] Migración `0013` aplicada/verificada en Neon (rama efímera) y en prod; los checks rechazan
       hex/ángulo inválido a nivel DB.
-- [ ] Ningún archivo supera el límite de `file-size` (300); los splits están hechos.
-- [ ] Gates verdes: typecheck 3/3, lint, unit, build 3/3.
-- [ ] **PASS de revisor independiente** (`AGENT-WORKFLOW.md`).
+- [x] Ningún archivo supera el límite de `file-size` (300); los splits están hechos.
+- [x] Gates verdes: typecheck 3/3, lint, unit, build 3/3.
+- [x] **PASS de revisor independiente** (`AGENT-WORKFLOW.md`).
 
 ## Plan de pruebas y verificación
 
-- [ ] **Unit** (`validation`): `validateCardDesign` acepta hex válidos y normaliza a mayúsculas;
+- [x] **Unit** (`validation`): `validateCardDesign` acepta hex válidos y normaliza a mayúsculas;
       rechaza hex inválido; rechaza `cardDesign` con `kind='points'`; aplica default de ángulo 180
       cuando hay fondo 2 sin ángulo; rechaza ángulo fuera de `0..360`; rechaza fondo 2 sin fondo 1.
-- [ ] **Unit** (`CardPreview` o helper de estilo): con `backgroundColor2` produce
+- [x] **Unit** (`CardPreview` o helper de estilo): con `backgroundColor2` produce
       `linear-gradient(<angle>deg, …)`; sin él, fondo sólido; `filled = round(target/2)` recuadros
       llenos para `target` par e impar (p.ej. 2→1, 5→3, 10→5).
-- [ ] **Unit** (`client-view`): `toClientProgram` incluye los 4 campos de color y sigue **omitiendo**
+- [x] **Unit** (`client-view`): `toClientProgram` incluye los 4 campos de color y sigue **omitiendo**
       `stampImageObjectKey` (blindaje de fuga, regla del repo).
-- [ ] **Integración Neon** (rama efímera): crear programa de Sellos con diseño → columnas
+- [x] **Integración Neon** (rama efímera): crear programa de Sellos con diseño → columnas
       persistidas; editar cambiando colores/ángulo → round-trip idéntico; INSERT con hex inválido o
       ángulo 400 rechazado por el check (error de DB, no 200); crear Puntos con colores `null` OK.
-- [ ] **Regresión**: un programa de Sellos preexistente con colores `null` hidrata `CardPreview`
+- [x] **Regresión**: un programa de Sellos preexistente con colores `null` hidrata `CardPreview`
       con defaults de marca sin crashear.
-- [ ] **Comandos exactos**: `pnpm --filter @check-point/merchant typecheck`, `... lint`,
+- [x] **Comandos exactos**: `pnpm --filter @check-point/merchant typecheck`, `... lint`,
       `... test` (unit), `pnpm build`, e integración Neon en rama efímera creada/borrada vía MCP.
-- [ ] **Verificación manual (owner, en vivo sobre Vercel)**: crear un programa de Sellos por el
+- [x] **Verificación manual (owner, en vivo sobre Vercel)**: crear un programa de Sellos por el
       wizard eligiendo degradé + ángulo por preset + borde + imagen de sello; ver el preview en vivo
       con la mitad de sellos puestos; activar; reabrir en modo edición y confirmar que todo se
       hidrata; crear un programa de Puntos por el wizard de 3 pasos; verificar mobile.
