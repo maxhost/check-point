@@ -29,6 +29,7 @@ export type {
 export {
   normalizeConfiguration,
   renderTermsText,
+  validateCardDesign,
   validateProgramInput,
 } from "./loyalty-program/validation";
 export {
@@ -103,6 +104,9 @@ export async function ownerBusiness(userId: string) {
       name: businesses.name,
       countryCode: businesses.countryCode,
       timezone: businesses.timezone,
+      brandPrimaryColor: businesses.brandPrimaryColor,
+      brandComplementaryColor: businesses.brandComplementaryColor,
+      brandAccentColor: businesses.brandAccentColor,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -171,8 +175,11 @@ export async function saveProgram(userId: string, rawInput: unknown) {
       const stampSet = stamp
         ? sql`, stamp_image_object_key = ${stamp.objectKey}, stamp_image_version = stamp_image_version + 1`
         : sql``;
+      const cardSet = input.cardDesign
+        ? sql`, card_background_color = ${input.cardDesign.backgroundColor}, card_background_color_2 = ${input.cardDesign.backgroundColor2}, card_background_gradient_angle = ${input.cardDesign.gradientAngle}, card_border_color = ${input.cardDesign.borderColor}`
+        : sql``;
       const matched = await updateWithEvent(db, {
-        set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()${stampSet}`,
+        set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()${stampSet}${cardSet}`,
         where: sql`id = ${program.id} AND status = 'active'`,
         actorId: userId,
         action: "edited",
@@ -193,6 +200,10 @@ export async function saveProgram(userId: string, rawInput: unknown) {
           createdBy: userId,
           stampImageObjectKey: stamp?.objectKey ?? null,
           stampImageVersion: stamp?.objectKey ? 1 : 0,
+          cardBackgroundColor: input.cardDesign?.backgroundColor ?? null,
+          cardBackgroundColor2: input.cardDesign?.backgroundColor2 ?? null,
+          cardBackgroundGradientAngle: input.cardDesign?.gradientAngle ?? null,
+          cardBorderColor: input.cardDesign?.borderColor ?? null,
         }),
         db.insert(loyaltyProgramEvents).values({
           programId: id,

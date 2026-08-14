@@ -225,5 +225,23 @@ describe("loyalty program contract", () => {
     expect(withoutStamp).not.toHaveProperty("stampImageObjectKey");
     expect(withoutStamp).toMatchObject({ stampImagePath: null });
     expect(toClientProgram(null, "biz-1")).toBeNull();
+    // Card colors are public design, not secrets: they pass straight through.
+    const withCard = toClientProgram(
+      {
+        ...base,
+        stampImageObjectKey: null,
+        cardBackgroundColor: "#111111",
+        cardBackgroundColor2: "#222222",
+        cardBackgroundGradientAngle: 135,
+        cardBorderColor: "#333333",
+      },
+      "biz-1",
+    );
+    expect(withCard).toMatchObject({
+      cardBackgroundColor: "#111111",
+      cardBackgroundColor2: "#222222",
+      cardBackgroundGradientAngle: 135,
+      cardBorderColor: "#333333",
+    });
   });
 });

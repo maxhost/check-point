@@ -1446,3 +1446,126 @@ input:focus {
   color: #647168;
   font-size: 13px;
 }
+
+/* --- Loyalty wizard + card design (spec 0027) --- */
+.loyalty-wizard .wizard-progress {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #647168;
+}
+.wizard-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+}
+.wizard-nav .button {
+  margin-top: 0;
+}
+.button.wizard-back {
+  background: #eef2ee;
+  color: #1c2b22;
+}
+.card-design-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .card-design-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.card-design-controls {
+  display: grid;
+  gap: 14px;
+}
+.color-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 600;
+}
+.color-field input[type="color"] {
+  width: 52px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #cbd7ce;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+.toggle-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.toggle-field input {
+  width: 18px;
+  height: 18px;
+}
+.angle-field {
+  display: grid;
+  gap: 8px;
+}
+.angle-field > span:first-child {
+  font-weight: 600;
+}
+.angle-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.angle-presets .chip {
+  padding: 6px 12px;
+  border: 1px solid #cbd7ce;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.angle-presets .chip.selected {
+  border-color: #176548;
+  background: #e7f3ec;
+  color: #135239;
+  font-weight: 700;
+}
+.card-design-preview {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+.card-preview {
+  width: 100%;
+  max-width: 320px;
+  padding: 20px;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(20, 40, 30, 0.18);
+}
+.card-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.card-slot {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.card-slot img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+}

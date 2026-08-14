@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-12.
+Ultima actualizacion: 2026-08-13.
 
 ## Ahora
 
@@ -135,6 +135,30 @@ reutilizable ya disponible: pipeline de imagen en `server/assets/image.ts` y el 
 borrado diferido (marca/sello); las features nuevas se verifican con rama Neon efímera + revisor
 independiente antes de `implementada`.
 
+**Actualización 2026-08-13 — spec 0027 CERRADA.** Se resolvieron las seis decisiones abiertas con
+el owner (columnas dedicadas nullable con checks hex/ángulo a nivel DB, no jsonb; degradé lineal de
+**ángulo configurable**; crear **y editar** por wizard; preview con `round(target/2)` sellos;
+defaults de color derivados de la marca; Puntos sin diseño, columnas `null`). Se escribió **ADR
+0030** (modelo de datos de la tarjeta), se pasó la spec 0027 a `cerrada` en INDEX (`disjunta: sí` —
+ninguna spec abierta toca loyalty) y se ancló la spec técnica al código real (mapa de archivos:
+create+update comparten `PUT`, colores no son secretos → van al DTO, splits por `file-size`).
+
+**Implementación 2026-08-13 (spec 0027, en revisión).** Hecho: 4 columnas `card_*` + 5 checks
+hex/ángulo/pareja en `schema/loyalty.ts` (migración **`0013_broad_turbo`**); `validateCardDesign`
+(server, 422 por caso) y `CardDesignInput` en `core.ts`; `saveProgram` escribe las columnas en
+INSERT/UPDATE; `ownerBusiness` ahora expone los colores de marca al cliente para los defaults; UI
+reescrita como **wizard** (`program-editor.tsx` contenedor + `steps/{units,stamp-basics,card-design,
+terms,review}.tsx`), `CardPreview` puro-props compartido (`card-preview.tsx`) con helpers
+`cardBackground`/`filledCount`, hook `use-card-design.ts` (split para no cruzar `file-size`), CSS
+del wizard/tarjeta en `globals.css`. Tests: `card-preview.test.ts` (helpers), `loyalty-card-design.
+test.ts` (validación), integración `loyalty-card-design.neon.integration.test.ts`. **Verificación:**
+typecheck 3/3, lint, Prettier, **unit 33/10-skip**, **integración Neon 6/6** en rama efímera
+(`br-cold-mountain`, auto-expira), y **migración `0013` aplicada + verificada en prod** (columnas +
+checks presentes). `pnpm build` local NO corre (Node 22 vs Node 24 del repo; falla idéntico en
+`main` limpio en `/_global-error`, ajeno a esta feature — Vercel builda con Node 24). **Pendiente
+para `implementada`:** PASS de revisor independiente (`AGENT-WORKFLOW.md`) y QA manual en vivo del
+owner sobre el deploy.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -159,7 +183,7 @@ independiente antes de `implementada`.
 | 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. QA en vivo 2026-08-13: fix de persistencia de términos al editar (plantillas como botones «+ Insertar» que copian texto renderizado al textarea, sin duplicación) + ronda de UX. Endurecimiento post-revisión (auditoría atómica, tests de núcleo, 400/TOCTOU) y **PASS de revisor independiente**; Spec 0024 → `implementada` (commit `50228a7`). |
 | 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner. 2026-08-13: **revisión independiente** (FAIL estrecho) resuelta — fuga de `logo_object_key` en `/api/brand` (ahora DTO sin la clave), JSON malformado → `400` (antes 503), UUID inválido → `404`, y tests agregados: `normalizeLogo` SVG/oversize + integración Neon (`409` optimista/`403`/`422`) verde en rama efímera. Concurrencia real **a futuro** (>1 owner). Núcleo de seguridad verificado correcto por el revisor. **Re-revisión: PASS** — 0025 al mismo estándar que 0024. |
 | 20 | Diseño de sello del programa de fidelización en R2 | 0026 | hecho | Input para subir el diseño de la imagen del sello (modalidad Sellos): PNG/JPEG/WebP, **conserva transparencia** (decisión B del owner 2026-08-13; la tarjeta pinta los recuadros en blanco), borrado diferido a Guardar (igual que marca). Spec **cerrada** + **ADR 0029** (módulo de imagen compartido `server/assets/image.ts`; tabla `loyalty_asset_upload` paralela; `brand.ts` se divide). Implementación por fases: **(a) hecha** — `server/assets/image.ts` (`normalizeImage`, conserva alfa) extraído y `brand.ts` dividido (`brand/core|validation|cleanup`, 221 líneas), sin cambio de comportamiento (unit 26/26 + integración brand 3/3 verde en rama efímera). **(b–e) hechas**: columnas `stamp_image_object_key`/`stamp_image_version` + tablas `loyalty_asset_upload`/`loyalty_asset_cleanup` (migración `0012`); módulo `loyalty-program/stamp.ts` (upload firmado, procesamiento con `normalizeImage` que conserva alfa, resolución del cambio con rollback y borrado diferido, cron de limpieza, lectura pública); endpoints `POST /stamp-upload`, `stampAction` en el `PUT`, `GET /api/public/loyalty/.../stamp`; el `GET` del programa **oculta** `stampImageObjectKey` y expone `stampImagePath`; UI: campo de sello en el editor (solo Sellos) con subir/quitar diferido (`use-stamp-upload.ts`). Verificado: unit 7/7, typecheck 3/3, lint, integración Neon **9/9** en rama efímera, **migración 0012 aplicada a prod** (verificada). **Revisión independiente: PASS** (2026-08-13, sin bloqueantes ni importantes); se agregó un test que blinda que el `GET` nunca serializa `stampImageObjectKey`. Spec 0026 → `implementada`. Menores diferidos (URL firmada sin content-length, huérfano bajo edición concurrente del mismo owner — atado a la concurrencia a futuro; test de rollback con mock de R2). Residual: QA manual del camino de subida R2 en vivo (como en marca). Pulido QA 2026-08-13: botón "Quitar" del sello ahora al lado del preview (fila flex) y de tamaño normal, no full-width. |
-| 21 | Wizard de creación + diseño visual de la tarjeta de fidelización | 0027 | pendiente | **PRÓXIMA FEATURE.** Convertir la creación del programa en un wizard por pasos (Puntos: unidades → TOS → preview/activar; Sellos: nombre+cantidad → diseño de tarjeta → TOS → preview/activar). El diseño de tarjeta (Sellos) agrega colores de fondo (1 o 2 en degradé) + color de borde de los recuadros, con preview en vivo de la tarjeta con/sin sellos; reutiliza la imagen de sello de 0026. Spec **0027 en BORRADOR** con requisitos capturados; **cerrar la sección «Abierto» con el owner** (modelo de datos: columnas vs jsonb; degradé; si la edición también es wizard; defaults de color) **antes de tocar código**. Requiere migración aditiva + `CardPreview` compartido. |
+| 21 | Wizard de creación + diseño visual de la tarjeta de fidelización | 0027 | en revisión | **PRÓXIMA FEATURE — spec CERRADA (2026-08-13), lista para implementar.** Wizard por pasos para crear **y editar** (Puntos: unidades → TOS → preview/activar; Sellos: básicos → diseño de tarjeta → TOS → preview/activar). Diseño de tarjeta (Sellos): fondo 1 + fondo 2 opcional en **degradé lineal de ángulo configurable** + color de borde, **preview en vivo** con `round(target/2)` sellos puestos; reutiliza la imagen de sello de 0026. Las 6 decisiones abiertas cerradas con el owner: **columnas dedicadas nullable** (no jsonb) con checks hex/ángulo a nivel DB (ADR **0030**), defaults derivados de la marca, Puntos sin diseño (columnas `null`). Requiere **migración `0013` aditiva** + `CardPreview` compartido + splits por `file-size` (`use-loyalty-program.ts`, `program-editor.tsx` → `steps/*`). Implementar con protocolo `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente antes de `implementada`. |
 
 ## Hecho
 

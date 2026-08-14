@@ -1,110 +1,294 @@
 ---
 spec: 0027
 fecha: 2026-08-13
-estado: en curso
-resumen: La creación del programa de fidelización pasa a un wizard por pasos (Puntos y Sellos) e incorpora el diseño visual de la tarjeta de Sellos (colores de fondo con degradé, color de borde de los recuadros) con preview en vivo.
-disjunta: no
-archivos: apps/merchant, migración Drizzle, Neon, pruebas y docs
+estado: cerrada
+resumen: La creación y edición del programa de fidelización pasan a un wizard por pasos (Puntos y Sellos) e incorporan el diseño visual de la tarjeta de Sellos —fondo sólido o degradé lineal de ángulo configurable, color de borde de los recuadros— persistido en columnas dedicadas con preview en vivo, defaults derivados de la marca.
+disjunta: si
+archivos: apps/merchant (loyalty), migración Drizzle, Neon, pruebas y docs
 ---
 
 # 0027 — Wizard de creación y diseño visual de la tarjeta de fidelización
 
-> **Estado: BORRADOR.** Requisitos capturados del owner al cierre de la sesión del 2026-08-13.
-> Falta cerrar las decisiones de la sección «Abierto» con el owner antes de tocar código
-> (protocolo del repo: spec cerrada → implementación).
+> **Nada de código empieza sin esta spec en `cerrada`.** Cerrada el 2026-08-13 con las seis
+> decisiones abiertas resueltas por el owner (ver «Decisiones cerradas»).
+>
+> **Implementada el 2026-08-13 (en revisión).** Gates locales verdes (typecheck 3/3, lint, unit
+> 33/10-skip, Prettier); **integración Neon 6/6** en rama efímera; **migración `0013` aplicada y
+> verificada en prod** (4 columnas + 5 checks). Pendiente para `implementada`: **PASS de revisor
+> independiente** y **QA manual en vivo** del owner. Nota: `pnpm build` local no corre por el
+> entorno (Node 22 vs Node 24 que exige el repo; falla idéntico en `main` limpio, en
+> `/_global-error`, sin relación con esta feature; Vercel builda con Node 24).
 
 ## Problema
 
-Hoy la creación del programa de fidelización es un formulario único (`program-editor.tsx`).
-El owner quiere un **wizard por pasos** para crear (tanto Puntos como Sellos) y, para Sellos,
-poder **diseñar la tarjeta** (colores de fondo, borde de los recuadros del sello) y ver un
-**preview en vivo** de cómo queda con y sin sellos puestos. La imagen del sello ya existe
-(spec 0026); esta feature agrega el resto del aspecto visual de la tarjeta.
+Hoy la creación y la edición del programa de fidelización son un formulario único de scroll
+(`program-editor.tsx` + `use-loyalty-program.ts`): la modalidad, la configuración, el sello y
+los términos se ven todos a la vez. El owner quiere:
+
+1. Un **wizard por pasos** para crear y editar (Puntos y Sellos), con navegación adelante/atrás
+   y validación por paso.
+2. Para **Sellos**, poder **diseñar la tarjeta** —color(es) de fondo y color de borde de los
+   recuadros del sello— y ver un **preview en vivo** de cómo queda con y sin sellos puestos.
+
+La imagen del sello ya existe (spec 0026); esta feature agrega el resto del aspecto visual de la
+tarjeta y reorganiza el flujo en pasos.
+
+## Decisiones cerradas (owner, 2026-08-13)
+
+1. **Modelo de datos: columnas dedicadas** (no `jsonb`), siguiendo el criterio de 0026 para el
+   sello y el precedente de checks hex de `business.ts`. Ver ADR 0030.
+2. **Degradé lineal con dirección configurable**: se persiste el ángulo en grados; la UI ofrece
+   presets (vertical/horizontal/diagonal) que setean el ángulo. Sólo aplica cuando hay 2º color.
+3. **Crear y editar usan el wizard.** El paso «diseño de tarjeta» es un componente compartido.
+4. **El preview muestra la mitad del objetivo con sellos puestos** (`round(target/2)`), el resto
+   vacíos.
+5. **Defaults de color derivados de la marca del negocio** (`business.brand*Color` de 0025):
+   fondo = primario, fondo 2 = complementario (degradé activado por default), borde = acento.
+6. **Puntos sin diseño de tarjeta**: no hay tarjeta de sellos que pintar. Las columnas de diseño
+   son nullable, así la DB queda preparada para un futuro visual de Puntos sin trabajo hoy y sin
+   romper programas existentes.
 
 ## Alcance
 
 **Entra:**
 
-- Convertir el **flujo de creación** del programa en un wizard por pasos, con navegación
-  adelante/atrás y validación por paso. Aplica a Puntos y a Sellos.
-- **Puntos** — pasos:
-  1. Nombre de las unidades (singular / plural).
-  2. Términos y condiciones.
-  3. Preview + Activar.
-- **Sellos** — pasos:
-  1. Nombre del sello + cantidad de sellos (objetivo 2–50).
-  2. **Diseño de la tarjeta**:
-     - Color(es) de **fondo** de la tarjeta (NO el recuadro donde va el sello): uno o dos
-       colores combinados en **degradé** (si es uno solo, sin degradé).
-     - **Color de borde** de los recuadros de los sellos (los recuadros tienen fondo blanco).
-     - Upload de la **imagen del sello** (reutiliza el pipeline de la spec 0026).
-     - **Preview en vivo** de la tarjeta con los colores elegidos y algunos sellos puestos
-       (recuadros llenos vs. vacíos).
-  3. Términos y condiciones.
-  4. Preview + Activar.
-- Persistir el diseño de la tarjeta (colores) además de la imagen del sello ya existente.
-- Componente de **tarjeta reutilizable** que renderiza el fondo (con/sin degradé), los N
-  recuadros (llenos/vacíos, con el color de borde y fondo blanco) y la imagen del sello.
+- Convertir creación **y** edición del programa en un **wizard por pasos** con navegación
+  adelante/atrás y validación por paso, para Puntos y Sellos.
+- **Puntos** — pasos: (1) nombre de unidades singular/plural → (2) términos → (3) preview +
+  Activar/Guardar.
+- **Sellos** — pasos: (1) nombre del sello + cantidad (objetivo 2–50) → (2) **diseño de la
+  tarjeta** (fondo 1 obligatorio, fondo 2 opcional con ángulo de degradé, color de borde, upload
+  de imagen del sello reutilizando 0026, **preview en vivo**) → (3) términos → (4) preview +
+  Activar/Guardar.
+- Nuevas **columnas de diseño** en `core.loyalty_program` (nullable) + validación server + checks
+  hex/ángulo a nivel DB. Migración aditiva verificada en Neon efímero y aplicada a prod.
+- Componente **`CardPreview`** reutilizable que renderiza el fondo (sólido o degradé lineal en el
+  ángulo elegido), los N recuadros (llenos vs. vacíos, con color de borde y fondo blanco) y la
+  imagen del sello en los llenos. Se usa en el paso de diseño (vivo) y en el paso final.
+- `toClientProgram` expone las columnas de color (son diseño público, no secretos).
 
-**No entra (a confirmar):**
+**No entra (explícito):**
 
-- Rediseñar el **flujo de edición** de un programa activo (esta spec es sobre creación; la
-  edición puede seguir con el editor actual o reusar los pasos — decidir en «Abierto»).
-- El wallet consumer que consumirá la tarjeta (spec propia).
-- Animaciones de la tarjeta, plantillas de diseño predefinidas, temas.
+- El **wallet consumer** que consumirá la tarjeta (spec propia). `CardPreview` se diseña pensando
+  en reusarse ahí, pero no se mueve a un paquete compartido en esta spec.
+- **Diseño visual para Puntos** (no hay tarjeta; columnas quedan `null`).
+- Animaciones, plantillas de diseño predefinidas, temas, degradés radiales o de 3+ colores.
+- Cambiar la modalidad (`kind`) de un programa existente: la edición mantiene el `kind` fijo, como
+  hoy.
+- Tocar el flujo de **cierre** del programa (`program-closing.tsx`, `closeProgram`, `cancelClose`)
+  ni la auditoría por eventos.
 
-## Modelo de datos (propuesta, a confirmar)
+## Diseño
 
-Nuevos campos de diseño de tarjeta en `core.loyalty_program` (sólo Sellos; nullables):
+### Arquitectura de referencia
+
+- ADR 0020 — programa de fidelización único por negocio.
+- ADR 0026/0027 — versiones, transiciones, términos y cierre fechado (no se modifican).
+- ADR 0029 — módulo de assets compartido para imágenes en R2 (el upload del sello se reutiliza tal
+  cual: `useStampUpload` + `resolveStampChange`).
+- **ADR 0030 (nuevo)** — modelo de datos del diseño de tarjeta (columnas dedicadas + ángulo
+  configurable + defaults desde marca).
+
+### Modelo de datos
+
+Cuatro columnas nuevas en `core.loyalty_program` (archivo `server/schema/loyalty.ts`), **todas
+nullable** (Puntos y programas de Sellos previos las dejan en `null`):
+
+| Columna (TS) | Columna SQL | Tipo | Notas |
+|---|---|---|---|
+| `cardBackgroundColor` | `card_background_color` | `text` nullable | Fondo 1. `#RRGGBB` |
+| `cardBackgroundColor2` | `card_background_color_2` | `text` nullable | Fondo 2 del degradé; `null` = fondo sólido |
+| `cardBackgroundGradientAngle` | `card_background_gradient_angle` | `integer` nullable | Grados 0–360; sólo relevante con fondo 2 |
+| `cardBorderColor` | `card_border_color` | `text` nullable | Borde de los recuadros del sello. `#RRGGBB` |
+
+Constraints a nivel DB (mismo estilo que `business_*_color_check` en `business.ts:36-64`,
+tolerando `NULL`):
+
+- `loyalty_program_card_bg_color_check`: `card_background_color IS NULL OR card_background_color ~ '^#[0-9A-Fa-f]{6}$'`.
+- `loyalty_program_card_bg_color2_check`: idem `card_background_color_2`.
+- `loyalty_program_card_border_color_check`: idem `card_border_color`.
+- `loyalty_program_card_gradient_angle_check`: `card_background_gradient_angle IS NULL OR (card_background_gradient_angle >= 0 AND card_background_gradient_angle <= 360)`.
+- `loyalty_program_card_gradient_pair_check`: `card_background_color_2 IS NULL OR (card_background_color IS NOT NULL AND card_background_gradient_angle IS NOT NULL)` — no se persiste un fondo 2 sin fondo 1 ni sin ángulo.
+
+**Invariantes (validadas en server + reforzadas por checks):**
+
+- Si `kind = 'stamps'` y hay diseño, `cardBackgroundColor` y `cardBorderColor` son obligatorios.
+- Si `cardBackgroundColor2` presente ⇒ `cardBackgroundGradientAngle` presente (server default 180
+  si el cliente lo omite) y `cardBackgroundColor` presente.
+- Si `kind = 'points'` ⇒ las cuatro columnas deben ser `null` (el server rechaza diseño en Puntos
+  con `422`).
+- Colores normalizados a **mayúsculas** (`#RRGGBB`).
+
+La imagen del sello sigue en sus columnas dedicadas (`stamp_image_object_key`/`stamp_image_version`,
+0026); el color **no** va en `configuration` jsonb (mismo criterio: `validation.ts:31`).
+
+### API / acciones
+
+No hay endpoint nuevo. La creación y la edición siguen yendo por `PUT /api/loyalty-program`
+(`route.ts`, 201 create / 200 update). El payload de entrada (`ProgramInput`, `core.ts`) gana un
+campo opcional:
 
 ```text
-card_background_color      #RRGGBB (fondo 1)
-card_background_color_2?    #RRGGBB (fondo 2 para degradé; null = sin degradé)
-card_border_color          #RRGGBB (borde de los recuadros del sello)
+cardDesign?: {
+  backgroundColor: string        // #RRGGBB
+  backgroundColor2?: string|null  // #RRGGBB | null
+  gradientAngle?: number|null     // 0..360; default 180 si hay backgroundColor2
+  borderColor: string             // #RRGGBB
+}
 ```
 
-- Alternativa: un único `card_design` jsonb. La spec 0026 promovió el sello a columnas; seguir
-  ese criterio (columnas) da constraints de patrón `#RRGGBB` en Drizzle y queries simples.
-- Validación server: colores `#RRGGBB` normalizados a mayúsculas; degradé opcional.
-- Requiere migración Drizzle aditiva + verificación en Neon (rama efímera) + aplicar a prod.
+- **Entrada válida (stamps con diseño):** `cardDesign` presente y bien formado → persiste las 4
+  columnas.
+- **Errores esperados:** color con formato inválido, ángulo fuera de `0..360`, `cardDesign` en un
+  programa `points`, o `backgroundColor2` sin `backgroundColor` → `422` con mensaje específico por
+  caso (mismo patrón que `validateClosingWindow`).
+- **Salida:** `toClientProgram` (`client-view.ts`) agrega los 4 campos de color al DTO (spread
+  directo; no son secretos). El consumidor de la UI los usa para hidratar el wizard al editar.
 
-## UI / Wizard
+### Validación (server)
 
-- Un contenedor de wizard con estado de paso, barra de progreso, botones Atrás/Siguiente y,
-  en el último paso, Preview + Activar. Reutiliza toasts/skeleton existentes.
-- La modalidad (Puntos/Sellos) se elige antes del paso 1 (o es el paso 0), como hoy.
-- El preview de la tarjeta es un componente compartido (`CardPreview`) que se usa en el paso de
-  diseño (vivo) y en el paso final. Pensado para reutilizarse luego en el wallet consumer.
-- Consistencia visual con el resto del editor (paneles `loyalty-panel`).
+Nueva función `validateCardDesign(kind, cardDesign)` en `loyalty-program/validation.ts`, llamada
+desde `validateProgramInput`:
 
-## Plan production-grade (borrador)
+- `points` + `cardDesign` presente → `LoyaltyError` 422.
+- `stamps` + `cardDesign` ausente → permitido (programa de Sellos sin diseño; el DTO devuelve
+  colores `null` y `CardPreview` usa defaults). El wizard, sin embargo, exige el diseño en su paso
+  2 antes de avanzar (validación de UI); el server no lo obliga para no romper programas viejos.
+- Normaliza colores a mayúsculas, valida `^#[0-9A-Fa-f]{6}$`, valida ángulo entero `0..360`,
+  aplica el default de ángulo (180) cuando hay 2º color y falta.
+- Devuelve la tripleta/cuádrupla normalizada que `saveProgram` escribe en las columnas.
 
-1. Cerrar «Abierto» con el owner (modelo de datos, degradé, edición, límites de color).
-2. Migración de columnas de diseño + validación server (patrón de color, degradé opcional).
-3. `CardPreview` compartido; wizard de creación para Puntos y Sellos con validación por paso.
-4. Integrar con `saveProgram` (los colores viajan en el payload de creación/edición).
-5. Pruebas: unit de validación de color/degradé; integración Neon de persistencia; el preview
-   se verifica con QA manual en vivo. Revisor independiente antes de `implementada`.
+`saveProgram` (`loyalty-program.ts`) incluye las 4 columnas en el INSERT (creación) y en el CTE
+`UPDATE … RETURNING` (edición). Sin cambios en la lógica de R2/sello ni en la de eventos.
 
-## Definition of Done (borrador)
+### UI / Wizard
 
-- [ ] La creación de Puntos usa el wizard de 3 pasos descrito; la de Sellos, el de 4 pasos.
-- [ ] En Sellos se eligen fondo (1 o 2 colores en degradé) y color de borde; se persisten.
-- [ ] El preview muestra la tarjeta con los colores y con sellos llenos/vacíos, en vivo.
-- [ ] La API valida los colores (`#RRGGBB`) y el degradé; `422` ante inválido.
-- [ ] Migración aplicada/verificada en Neon; unit + integración + build verdes.
-- [ ] PASS de revisor independiente.
+Reorganización de `apps/merchant/src/app/backoffice/loyalty/`:
 
-## Abierto (resolver con el owner antes de implementar)
+- **Contenedor de wizard** (`program-editor.tsx` se reescribe como orquestador de pasos): estado
+  de paso actual, barra de progreso, botones **Atrás/Siguiente**, y en el último paso **Activar
+  programa** (create) o **Guardar cambios** (edit). Reutiliza `Toast` y `LoyaltySkeleton`.
+- **Selección de modalidad** (`points`/`stamps`) como paso 0 sólo en **creación** (el radiogroup
+  `loyalty-types` actual). En **edición** el `kind` está fijo y el wizard arranca en el paso 1.
+- **Pasos como componentes** bajo `loyalty/steps/` (para respetar `file-size` LIMIT=300):
+  - `step-units.tsx` (Puntos: singular/plural).
+  - `step-stamp-basics.tsx` (Sellos: nombre + cantidad 2–50).
+  - `step-card-design.tsx` (Sellos: fondo 1, toggle degradé + fondo 2 + presets de ángulo, borde,
+    upload de sello vía `useStampUpload`, `CardPreview` en vivo).
+  - `step-terms.tsx` (términos; reutiliza `AutoGrowTextarea` + «+ Insertar» de plantillas).
+  - `step-review.tsx` (preview final con `CardPreview` para Sellos + resumen + botón final).
+- **`CardPreview`** (`loyalty/card-preview.tsx`): props `{ backgroundColor, backgroundColor2, gradientAngle, borderColor, target, filled, stampImagePath }`. Fondo = `background: linear-gradient(<angle>deg, c1, c2)` si hay `backgroundColor2`, si no `background: c1`. Renderiza `target` recuadros: los primeros `filled = round(target/2)` (o el valor que le pase el paso) con fondo blanco + imagen del sello; el resto vacíos, todos con `border-color`. Sin dependencias del backend: sólo props. Pensado para portarse al wallet consumer luego.
+- **Defaults desde marca**: al entrar por primera vez al paso de diseño de un programa **nuevo** de
+  Sellos, se prellenan `backgroundColor = brandPrimaryColor`, `backgroundColor2 = brandComplementaryColor`
+  (degradé activado), `borderColor = brandAccentColor`. Los colores de marca se obtienen del negocio
+  del owner (fetch a `/api/brand` o exposición vía el loader del programa; ver «Archivos
+  compartidos»). Al **editar**, se hidratan desde el DTO del programa; si el programa viejo tiene
+  colores `null`, se caen a los defaults de marca.
+- **Validación por paso** (UI): unidades no vacías; cantidad entera 2–50; en diseño, los 3 colores
+  activos con formato válido; términos según regla actual. El botón «Siguiente» se deshabilita
+  hasta que el paso valida.
 
-- **Modelo de datos**: ¿columnas (`card_background_color`, `..._2`, `card_border_color`) o un
-  `card_design` jsonb? (Propuesta: columnas, siguiendo 0026.)
-- **Degradé**: ¿dirección fija (p.ej. vertical/diagonal) o configurable? ¿Sólo lineal?
-- **Edición**: ¿el flujo de edición de un programa activo también pasa a wizard, o queda con el
-  editor actual?
-- **Cantidad de sellos en el preview**: ¿cuántos «puestos» de ejemplo se muestran (p.ej. la
-  mitad del objetivo)?
-- **Defaults de color**: valores iniciales (¿derivados de la marca del negocio — colores de
-  `business` de la spec 0025 — o fijos?).
-- **Puntos**: ¿tiene alguna personalización visual futura, o su wizard es sólo unidades + TOS +
-  activar como se listó?
+### Split de archivos (hook `file-size`, LIMIT=300)
+
+- `use-loyalty-program.ts` (253) → extraer el estado de wizard/diseño a un hook nuevo
+  (`use-card-design.ts` y/o `use-wizard.ts`) para no cruzar 300.
+- `program-editor.tsx` (176) → contenedor + `steps/*` (arriba).
+- `validation.ts` (149) → cabe la `validateCardDesign`; vigilar el límite.
+- `loyalty-program.ts` (277) → la validación de color vive en `validation.ts`, así `saveProgram`
+  sólo suma nombres de columnas; vigilar que no cruce 300 (si lo hace, mover un helper a un
+  submódulo).
+
+## Archivos
+
+| Archivo | Acción |
+|---|---|
+| `apps/merchant/src/server/schema/loyalty.ts` | editar — 4 columnas + 5 checks |
+| `apps/merchant/drizzle/0013_*.sql` + `meta/` | crear — migración aditiva |
+| `apps/merchant/src/server/loyalty-program/core.ts` | editar — `cardDesign` en `ProgramInput`; tipo `CardDesignInput` |
+| `apps/merchant/src/server/loyalty-program/validation.ts` | editar — `validateCardDesign` |
+| `apps/merchant/src/server/loyalty-program.ts` | editar — columnas de color en INSERT/UPDATE de `saveProgram` |
+| `apps/merchant/src/server/loyalty-program/client-view.ts` | editar — exponer colores en el DTO |
+| `apps/merchant/src/app/backoffice/loyalty/program-editor.tsx` | reescribir — contenedor de wizard |
+| `apps/merchant/src/app/backoffice/loyalty/steps/step-units.tsx` | crear |
+| `apps/merchant/src/app/backoffice/loyalty/steps/step-stamp-basics.tsx` | crear |
+| `apps/merchant/src/app/backoffice/loyalty/steps/step-card-design.tsx` | crear |
+| `apps/merchant/src/app/backoffice/loyalty/steps/step-terms.tsx` | crear |
+| `apps/merchant/src/app/backoffice/loyalty/steps/step-review.tsx` | crear |
+| `apps/merchant/src/app/backoffice/loyalty/card-preview.tsx` | crear — `CardPreview` compartido |
+| `apps/merchant/src/app/backoffice/loyalty/use-loyalty-program.ts` | editar — payload `cardDesign`, hidratación al editar |
+| `apps/merchant/src/app/backoffice/loyalty/use-card-design.ts` | crear — estado del diseño/wizard (split) |
+| `apps/merchant/src/app/backoffice/loyalty/page.tsx` | editar — pasar defaults de marca / branch wizard |
+| `apps/merchant/src/app/backoffice/loyalty/*.css` (o el CSS del panel) | editar — estilos de wizard/tarjeta |
+| `apps/merchant/src/server/loyalty-program/*.test.ts` | editar/crear — unit de `validateCardDesign` |
+| `apps/merchant/tests/integration/*loyalty*` | editar/crear — persistencia de columnas |
+| `docs/adr/0030-*.md`, `docs/INDEX.md`, `docs/TASKS.md` | crear/editar |
+
+### Disjunta?
+
+**Sí.** Todos los archivos son de la feature loyalty en `apps/merchant`. Las specs que comparten
+esos archivos (0024/0025/0026) están **`implementada`** — no hay ninguna spec **abierta** que toque
+`apps/merchant/src/{server,app}/…loyalty…`. Las specs abiertas restantes (0001–0009 borrador, 0021,
+0023) no tocan loyalty. Podría paralelizarse, pero se implementa sola (es la única feature activa).
+
+### Archivos compartidos (deja listos el orquestador antes de despachar)
+
+| Qué | Quién | Cuándo |
+|---|---|---|
+| Contrato de `CardDesignInput` (tipo TS en `core.ts`) | orquestador | antes de despachar |
+| Forma de props de `CardPreview` (colores + `target`/`filled` + `stampImagePath`) | orquestador | antes de despachar |
+| Cómo llegan los colores de marca al cliente (fetch `/api/brand` existente vs. loader) | orquestador | antes de despachar |
+
+## Definition of Done
+
+- [ ] La creación de **Puntos** usa el wizard de 3 pasos (unidades → términos → preview+activar);
+      la de **Sellos**, el de 4 pasos (básicos → diseño → términos → preview+activar).
+- [ ] La **edición** también usa el wizard, con el `kind` fijo y los datos hidratados desde el DTO.
+- [ ] En Sellos se eligen fondo 1, (opcional) fondo 2 con ángulo de degradé configurable, y color
+      de borde; se persisten en las 4 columnas.
+- [ ] Los **defaults** al diseñar un programa nuevo de Sellos vienen de la marca (primario/
+      complementario/acento).
+- [ ] El **preview** muestra la tarjeta con los colores elegidos y `round(target/2)` sellos puestos
+      (llenos vs. vacíos), y se actualiza **en vivo** al cambiar cualquier color/ángulo.
+- [ ] La API valida colores (`#RRGGBB`), ángulo (`0..360`), rechaza diseño en Puntos y fondo 2 sin
+      fondo 1/ángulo → `422` con mensaje por caso; el DTO expone los colores (no `*ObjectKey`).
+- [ ] Migración `0013` aplicada/verificada en Neon (rama efímera) y en prod; los checks rechazan
+      hex/ángulo inválido a nivel DB.
+- [ ] Ningún archivo supera el límite de `file-size` (300); los splits están hechos.
+- [ ] Gates verdes: typecheck 3/3, lint, unit, build 3/3.
+- [ ] **PASS de revisor independiente** (`AGENT-WORKFLOW.md`).
+
+## Plan de pruebas y verificación
+
+- [ ] **Unit** (`validation`): `validateCardDesign` acepta hex válidos y normaliza a mayúsculas;
+      rechaza hex inválido; rechaza `cardDesign` con `kind='points'`; aplica default de ángulo 180
+      cuando hay fondo 2 sin ángulo; rechaza ángulo fuera de `0..360`; rechaza fondo 2 sin fondo 1.
+- [ ] **Unit** (`CardPreview` o helper de estilo): con `backgroundColor2` produce
+      `linear-gradient(<angle>deg, …)`; sin él, fondo sólido; `filled = round(target/2)` recuadros
+      llenos para `target` par e impar (p.ej. 2→1, 5→3, 10→5).
+- [ ] **Unit** (`client-view`): `toClientProgram` incluye los 4 campos de color y sigue **omitiendo**
+      `stampImageObjectKey` (blindaje de fuga, regla del repo).
+- [ ] **Integración Neon** (rama efímera): crear programa de Sellos con diseño → columnas
+      persistidas; editar cambiando colores/ángulo → round-trip idéntico; INSERT con hex inválido o
+      ángulo 400 rechazado por el check (error de DB, no 200); crear Puntos con colores `null` OK.
+- [ ] **Regresión**: un programa de Sellos preexistente con colores `null` hidrata `CardPreview`
+      con defaults de marca sin crashear.
+- [ ] **Comandos exactos**: `pnpm --filter @check-point/merchant typecheck`, `... lint`,
+      `... test` (unit), `pnpm build`, e integración Neon en rama efímera creada/borrada vía MCP.
+- [ ] **Verificación manual (owner, en vivo sobre Vercel)**: crear un programa de Sellos por el
+      wizard eligiendo degradé + ángulo por preset + borde + imagen de sello; ver el preview en vivo
+      con la mitad de sellos puestos; activar; reabrir en modo edición y confirmar que todo se
+      hidrata; crear un programa de Puntos por el wizard de 3 pasos; verificar mobile.
+
+## Handoff requerido
+
+Implementador y revisor usan el formato de `docs/AGENT-WORKFLOW.md`. El revisor produce un `PASS`
+independiente —verificado contra Neon real y contra los checks de DB— antes de pasar la spec a
+`implementada`.
+
+## Abierto
+
+Nada bloqueante. Las seis decisiones de diseño están cerradas (ver «Decisiones cerradas»). Detalle
+menor a resolver **en implementación** (no bloquea): la UI exacta del selector de ángulo (presets
+vs. presets + slider fino) y si los colores de marca llegan por el fetch `/api/brand` ya existente o
+se exponen en el loader del programa — ambas son decisiones de implementación sin impacto en el
+contrato ni en el modelo de datos.

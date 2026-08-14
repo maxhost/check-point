@@ -102,6 +102,9 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
       unitSingular: "Punto",
       unitPlural: "Puntos",
     });
+    // Puntos leaves the card-design columns null (DB prepared, no UI).
+    expect(ctx?.program?.cardBackgroundColor).toBeNull();
+    expect(ctx?.program?.cardBackgroundGradientAngle).toBeNull();
 
     // edit
     const edited = await saveProgram(userId, {

@@ -1,0 +1,9 @@
+ALTER TABLE "core"."loyalty_program" ADD COLUMN "card_background_color" text;--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD COLUMN "card_background_color_2" text;--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD COLUMN "card_background_gradient_angle" integer;--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD COLUMN "card_border_color" text;--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD CONSTRAINT "loyalty_program_card_bg_color_check" CHECK ("core"."loyalty_program"."card_background_color" IS NULL OR "core"."loyalty_program"."card_background_color" ~ '^#[0-9A-Fa-f]{6}$');--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD CONSTRAINT "loyalty_program_card_bg_color2_check" CHECK ("core"."loyalty_program"."card_background_color_2" IS NULL OR "core"."loyalty_program"."card_background_color_2" ~ '^#[0-9A-Fa-f]{6}$');--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD CONSTRAINT "loyalty_program_card_border_color_check" CHECK ("core"."loyalty_program"."card_border_color" IS NULL OR "core"."loyalty_program"."card_border_color" ~ '^#[0-9A-Fa-f]{6}$');--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD CONSTRAINT "loyalty_program_card_gradient_angle_check" CHECK ("core"."loyalty_program"."card_background_gradient_angle" IS NULL OR ("core"."loyalty_program"."card_background_gradient_angle" >= 0 AND "core"."loyalty_program"."card_background_gradient_angle" <= 360));--> statement-breakpoint
+ALTER TABLE "core"."loyalty_program" ADD CONSTRAINT "loyalty_program_card_gradient_pair_check" CHECK ("core"."loyalty_program"."card_background_color_2" IS NULL OR ("core"."loyalty_program"."card_background_color" IS NOT NULL AND "core"."loyalty_program"."card_background_gradient_angle" IS NOT NULL));

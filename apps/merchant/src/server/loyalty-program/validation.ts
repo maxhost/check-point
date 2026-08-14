@@ -1,4 +1,5 @@
 import {
+  type CardDesignInput,
   LoyaltyError,
   type LoyaltyKind,
   type ProgramInput,
@@ -16,6 +17,70 @@ const isLoyaltyKind = (value: unknown): value is LoyaltyKind =>
 
 const nonEmpty = (value: unknown) =>
   typeof value === "string" && value.trim() ? value.trim() : null;
+
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+const normHex = (value: unknown) =>
+  typeof value === "string" && HEX_COLOR.test(value.trim())
+    ? value.trim().toUpperCase()
+    : null;
+
+/**
+ * Validates the optional card design. Points must not carry a design (`422`); Sellos
+ * may omit it (returns null — the DTO shows null colors and the UI falls back to brand).
+ * A second background requires a valid first color and an integer angle 0..360
+ * (defaults to 180 when omitted); without a second color the angle is dropped.
+ */
+export function validateCardDesign(
+  kind: LoyaltyKind,
+  raw: unknown,
+): CardDesignInput | null {
+  const provided = raw !== undefined && raw !== null;
+  if (kind !== "stamps") {
+    if (provided)
+      throw new LoyaltyError(422, "Solo los Sellos tienen diseño de tarjeta.");
+    return null;
+  }
+  if (!provided) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new LoyaltyError(422, "El diseño de la tarjeta no es válido.");
+  }
+  const design = raw as Record<string, unknown>;
+  const backgroundColor = normHex(design.backgroundColor);
+  if (!backgroundColor)
+    throw new LoyaltyError(422, "El color de fondo debe ser #RRGGBB.");
+  const borderColor = normHex(design.borderColor);
+  if (!borderColor)
+    throw new LoyaltyError(422, "El color de borde debe ser #RRGGBB.");
+  let backgroundColor2: string | null = null;
+  let gradientAngle: number | null = null;
+  if (
+    design.backgroundColor2 !== undefined &&
+    design.backgroundColor2 !== null
+  ) {
+    backgroundColor2 = normHex(design.backgroundColor2);
+    if (!backgroundColor2)
+      throw new LoyaltyError(
+        422,
+        "El segundo color de fondo debe ser #RRGGBB.",
+      );
+    const rawAngle = design.gradientAngle;
+    if (rawAngle === undefined || rawAngle === null) {
+      gradientAngle = 180;
+    } else if (
+      !Number.isInteger(rawAngle) ||
+      (rawAngle as number) < 0 ||
+      (rawAngle as number) > 360
+    ) {
+      throw new LoyaltyError(
+        422,
+        "El ángulo del degradé debe ser un entero entre 0 y 360.",
+      );
+    } else {
+      gradientAngle = rawAngle as number;
+    }
+  }
+  return { backgroundColor, backgroundColor2, gradientAngle, borderColor };
+}
 
 /** Keeps only the fields that belong to a modality, so clients cannot persist arbitrary jsonb. */
 export function normalizeConfiguration(
@@ -126,12 +191,14 @@ export function validateProgramInput(value: unknown): ProgramInput {
       "La carga de sello no corresponde a esta acción.",
     );
   }
+  const cardDesign = validateCardDesign(input.kind, input.cardDesign);
   return {
     kind: input.kind,
     configuration: normalizeConfiguration(input.kind, configuration),
     clauses,
     stampAction,
     stampUploadId,
+    cardDesign,
   };
 }
 

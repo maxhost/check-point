@@ -37,6 +37,13 @@ export const loyaltyPrograms = core.table(
     // Stamp design (Sellos only): the internal R2 key prefix and a version for cache-busting.
     stampImageObjectKey: text("stamp_image_object_key"),
     stampImageVersion: integer("stamp_image_version").notNull().default(0),
+    // Card design (Sellos only, spec 0027): background 1, optional background 2 for a
+    // linear gradient at `card_background_gradient_angle`, and the stamp-slot border color.
+    // All nullable — Puntos and pre-0027 Sellos leave them null (CardPreview falls back to brand).
+    cardBackgroundColor: text("card_background_color"),
+    cardBackgroundColor2: text("card_background_color_2"),
+    cardBackgroundGradientAngle: integer("card_background_gradient_angle"),
+    cardBorderColor: text("card_border_color"),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),
@@ -63,6 +70,27 @@ export const loyaltyPrograms = core.table(
     check(
       "loyalty_program_stamp_version_check",
       sql`${table.stampImageVersion} >= 0`,
+    ),
+    check(
+      "loyalty_program_card_bg_color_check",
+      sql`${table.cardBackgroundColor} IS NULL OR ${table.cardBackgroundColor} ~ '^#[0-9A-Fa-f]{6}$'`,
+    ),
+    check(
+      "loyalty_program_card_bg_color2_check",
+      sql`${table.cardBackgroundColor2} IS NULL OR ${table.cardBackgroundColor2} ~ '^#[0-9A-Fa-f]{6}$'`,
+    ),
+    check(
+      "loyalty_program_card_border_color_check",
+      sql`${table.cardBorderColor} IS NULL OR ${table.cardBorderColor} ~ '^#[0-9A-Fa-f]{6}$'`,
+    ),
+    check(
+      "loyalty_program_card_gradient_angle_check",
+      sql`${table.cardBackgroundGradientAngle} IS NULL OR (${table.cardBackgroundGradientAngle} >= 0 AND ${table.cardBackgroundGradientAngle} <= 360)`,
+    ),
+    // A second background (gradient) never persists without background 1 and an angle.
+    check(
+      "loyalty_program_card_gradient_pair_check",
+      sql`${table.cardBackgroundColor2} IS NULL OR (${table.cardBackgroundColor} IS NOT NULL AND ${table.cardBackgroundGradientAngle} IS NOT NULL)`,
     ),
     uniqueIndex("core_loyalty_program_one_operational")
       .on(table.businessId)

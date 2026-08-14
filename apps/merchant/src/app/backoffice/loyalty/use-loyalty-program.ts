@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useStampUpload } from "./use-stamp-upload";
+import { type BrandDefaults, useCardDesign } from "./use-card-design";
 
 export type Kind = "points" | "stamps";
 export type Template = { id: string; title: string; templateMarkdown: string };
@@ -13,11 +14,29 @@ export type Program = {
   redemptionEndsAt: string | null;
   termsMarkdown: string;
   stampImagePath: string | null;
+  cardBackgroundColor: string | null;
+  cardBackgroundColor2: string | null;
+  cardBackgroundGradientAngle: number | null;
+  cardBorderColor: string | null;
+};
+export type Business = {
+  name: string;
+  countryCode: string;
+  timezone: string;
+  brandPrimaryColor: string;
+  brandComplementaryColor: string;
+  brandAccentColor: string;
 };
 export type Context = {
-  business: { name: string; countryCode: string; timezone: string };
+  business: Business;
   program: Program | null;
 };
+
+const brandDefaultsOf = (business: Business): BrandDefaults => ({
+  primary: business.brandPrimaryColor,
+  complementary: business.brandComplementaryColor,
+  accent: business.brandAccentColor,
+});
 
 export function useLoyaltyProgram() {
   const [context, setContext] = useState<Context | null>(null);
@@ -40,6 +59,7 @@ export function useLoyaltyProgram() {
   const [error, setError] = useState<string | null>(null);
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const stamp = useStampUpload();
+  const card = useCardDesign();
 
   const program = context?.program ?? null;
   const timezone = context?.business.timezone ?? "America/Guayaquil";
@@ -47,7 +67,11 @@ export function useLoyaltyProgram() {
 
   function populate(next: Context) {
     stamp.reset();
-    if (!next.program) return;
+    const brand = brandDefaultsOf(next.business);
+    if (!next.program) {
+      card.applyDefaults(brand);
+      return;
+    }
     setKind(next.program.kind);
     setTerms(next.program.termsMarkdown);
     if (next.program.kind === "points") {
@@ -57,6 +81,7 @@ export function useLoyaltyProgram() {
       setStampName(String(next.program.configuration.unitName ?? "Sello"));
       setTarget(Number(next.program.configuration.target ?? 10));
     }
+    card.hydrate(next.program, brand);
   }
 
   async function load() {
@@ -124,6 +149,7 @@ export function useLoyaltyProgram() {
           clauses: [{ text: terms }],
           stampAction,
           ...(stampUploadId ? { stampUploadId } : {}),
+          cardDesign: kind === "stamps" ? card.payload() : null,
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -227,6 +253,7 @@ export function useLoyaltyProgram() {
     timezone,
     isClosing,
     stamp,
+    card,
     setKind,
     setSingular,
     setPlural,
