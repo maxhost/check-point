@@ -11,6 +11,7 @@ desactualizado es peor que no tenerlo.
 [ARCHITECTURE.md](ARCHITECTURE.md) reúne las decisiones transversales y enlaza sus ADRs.
 [SCAFFOLD-PLAN.md](SCAFFOLD-PLAN.md) define el recorrido y DoD para preparar el repositorio antes de implementar una feature.
 [REPOSITORY.md](REPOSITORY.md) identifica el remoto canónico y la política de publicación.
+[wallet-go-live.md](wallet-go-live.md) es el checklist de go-live de los pases de Wallet (Google demo→prod gratis; Apple $99); el código ya está listo, es trámite de cuenta + arte.
 
 ## ADR — decisiones
 
