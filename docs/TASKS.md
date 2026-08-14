@@ -153,11 +153,18 @@ terms,review}.tsx`), `CardPreview` puro-props compartido (`card-preview.tsx`) co
 del wizard/tarjeta en `globals.css`. Tests: `card-preview.test.ts` (helpers), `loyalty-card-design.
 test.ts` (validación), integración `loyalty-card-design.neon.integration.test.ts`. **Verificación:**
 typecheck 3/3, lint, Prettier, **unit 33/10-skip**, **integración Neon 6/6** en rama efímera
-(`br-cold-mountain`, auto-expira), y **migración `0013` aplicada + verificada en prod** (columnas +
-checks presentes). `pnpm build` local NO corre (Node 22 vs Node 24 del repo; falla idéntico en
-`main` limpio en `/_global-error`, ajeno a esta feature — Vercel builda con Node 24). **Pendiente
-para `implementada`:** PASS de revisor independiente (`AGENT-WORKFLOW.md`) y QA manual en vivo del
-owner sobre el deploy.
+(`br-cold-mountain`, auto-expira), **migración `0013` aplicada + verificada en prod** (columnas +
+checks presentes) y **build 3/3** (turbo, Node 24). **Pendiente para `implementada`:** PASS de
+revisor independiente (`AGENT-WORKFLOW.md`) y QA manual en vivo del owner sobre el deploy.
+
+**Fix de entorno 2026-08-13 (build local).** El `pnpm build` fallaba en `/_global-error`
+(`useContext` null) — diagnosticado mal al principio como «Node 22 vs 24». Causa real: el harness de
+dev inyecta `NODE_ENV=development` en el proceso, y `next build` con ese valor mezcla los builds
+dev/prod de React y revienta el prerender. No es del repo (ningún dotfile lo setea; con `env -i` el
+build pasa) ni de la feature (falla en `main` limpio). **Fix durable:** `NODE_ENV=production` en el
+script `build` de los tres apps (no-op en Vercel, que ya es production) + local alineado a Node
+24.19.0 vía nvm (`.node-version`) + corepack pnpm 11.4.0. Verificado: `pnpm build` = 3/3 con
+`NODE_ENV=development` en el entorno.
 
 ## Siguiente
 

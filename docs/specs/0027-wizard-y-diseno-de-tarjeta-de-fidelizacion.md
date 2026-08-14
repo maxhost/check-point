@@ -12,12 +12,14 @@ archivos: apps/merchant (loyalty), migración Drizzle, Neon, pruebas y docs
 > **Nada de código empieza sin esta spec en `cerrada`.** Cerrada el 2026-08-13 con las seis
 > decisiones abiertas resueltas por el owner (ver «Decisiones cerradas»).
 >
-> **Implementada el 2026-08-13 (en revisión).** Gates locales verdes (typecheck 3/3, lint, unit
-> 33/10-skip, Prettier); **integración Neon 6/6** en rama efímera; **migración `0013` aplicada y
-> verificada en prod** (4 columnas + 5 checks). Pendiente para `implementada`: **PASS de revisor
-> independiente** y **QA manual en vivo** del owner. Nota: `pnpm build` local no corre por el
-> entorno (Node 22 vs Node 24 que exige el repo; falla idéntico en `main` limpio, en
-> `/_global-error`, sin relación con esta feature; Vercel builda con Node 24).
+> **Implementada el 2026-08-13 (en revisión).** Gates locales verdes: typecheck 3/3, lint, unit
+> 33/10-skip, Prettier, **build 3/3** (turbo); **integración Neon 6/6** en rama efímera; **migración
+> `0013` aplicada y verificada en prod** (4 columnas + 5 checks). Pendiente para `implementada`:
+> **PASS de revisor independiente** y **QA manual en vivo** del owner. Nota de entorno: el `pnpm
+> build` local fallaba por un `NODE_ENV=development` que inyecta el harness de dev (no del repo, no
+> de esta feature: React mezclaba dev/prod y reventaba el prerender de `/_global-error`). Se blindó
+> con `NODE_ENV=production` en el `build` de los tres apps (no-op en Vercel) y se alineó el local a
+> Node 24.19.0 (`.node-version`).
 
 ## Problema
 

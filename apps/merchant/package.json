@@ -6,7 +6,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "dev": "next dev --port 3001",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
