@@ -82,7 +82,7 @@ desactualizado es peor que no tenerlo.
 | 0026 | 2026-08-13 | Diseño de sello del programa de fidelización en R2 | implementada | no | `specs/0026-diseno-de-sello-en-r2.md` |
 | 0027 | 2026-08-13 | Wizard de creación y diseño visual de la tarjeta de fidelización | implementada | sí | `specs/0027-wizard-y-diseno-de-tarjeta-de-fidelizacion.md` |
 | 0028 | 2026-08-14 | Identidad de consumidor y enrolamiento (landing pública sin verificar, membresía aislada, QR personal) | implementada | sí | `specs/0028-identidad-de-consumidor-y-enrolamiento.md` |
-| 0029 | 2026-08-14 | Pase de Wallet (Apple / Google): UN pase de identidad por consumidor (barcode = `qr_token`), "Ver mis programas", provider intercambiable | cerrada | sí | `specs/0029-pase-de-wallet-apple-google.md` |
+| 0029 | 2026-08-14 | Pase de Wallet (Apple / Google): UN pase de identidad por consumidor (barcode = `qr_token`), "Ver mis programas", provider intercambiable | implementada | sí | `specs/0029-pase-de-wallet-apple-google.md` |
 | 0030 | 2026-08-14 | Acreditación en mostrador (consola de staff, puntos/sellos por reglas) + auto-enrolamiento por escaneo | borrador | no | `specs/0030-acreditacion-en-mostrador.md` |
 | 0031 | 2026-08-14 | Notificación y landing en vivo al otorgar + dashboard "Ver mis programas" | borrador | no | `specs/0031-notificacion-y-landing-en-vivo.md` |
 | 0032 | 2026-08-14 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp, canal `deliverOtp`) | borrador | no | `specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` |

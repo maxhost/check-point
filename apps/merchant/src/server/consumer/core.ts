@@ -52,6 +52,7 @@ export type ConsumerAccountRow = {
   lastName: string;
   countryIso: string | null;
   qrToken: string;
+  webViewToken: string;
   createdAt: Date;
   updatedAt: Date;
 };

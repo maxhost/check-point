@@ -21,6 +21,12 @@ export const consumerAccounts = consumer.table(
     // identity key (the phone is) — nullable and never cross-checked vs. phone.
     countryIso: text("country_iso"),
     qrToken: text("qr_token").notNull(),
+    // Opaque bearer token for the "Ver mis programas" magic-link (spec 0029).
+    // Emitted at creation, distinct from `qrToken` so "que me escaneen" and
+    // "ver mis programas" revoke independently (ADR 0033). base64url, PII-free,
+    // ≥128 bits. Stored in the clear as the stable handle for `/c/[token]` but
+    // NEVER serialized in a DTO.
+    webViewToken: text("web_view_token").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -31,6 +37,42 @@ export const consumerAccounts = consumer.table(
   (table) => [
     uniqueIndex("consumer_account_phone_unique").on(table.phoneE164),
     uniqueIndex("consumer_account_qr_token_unique").on(table.qrToken),
+    uniqueIndex("consumer_account_web_view_token_unique").on(
+      table.webViewToken,
+    ),
+  ],
+);
+
+/**
+ * One wallet pass per (consumer, provider) — the identity pass of spec 0029.
+ * `serialNumber` is stable (Apple `serialNumber` / Google object id); it and the
+ * unique on (consumer, provider) make pass emission create-or-reuse. `authTokenHash`
+ * holds the sha256 of the Apple web-service `authenticationToken` (compared in spec
+ * 0033; null for Google) — NEVER serialized in the clear.
+ */
+export const walletPasses = consumer.table(
+  "wallet_pass",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    consumerId: uuid("consumer_id")
+      .notNull()
+      .references(() => consumerAccounts.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    serialNumber: text("serial_number").notNull(),
+    authTokenHash: text("auth_token_hash"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("wallet_pass_serial_number_unique").on(table.serialNumber),
+    uniqueIndex("wallet_pass_consumer_provider_unique").on(
+      table.consumerId,
+      table.provider,
+    ),
   ],
 );
 

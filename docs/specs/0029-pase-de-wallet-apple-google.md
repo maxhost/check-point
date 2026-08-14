@@ -1,7 +1,7 @@
 ---
 spec: 0029
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Emite UN pase de identidad "Mi Pasaporte" por consumidor en Apple Wallet (iOS) y Google Wallet (Android) — barcode = `qr_token` de la 0028, sin progreso por-programa, con enlace "Ver mis programas" (token dedicado revocable). Provider intercambiable: Google real (gratis), Apple firma self-signed en tests (el install en iPhone real difiere el $99). El canal de push se separa a la spec 0033.
 disjunta: sí
 archivos: apps/merchant/src/server/wallet/*, apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/app/api/public/wallet/*, apps/merchant/src/app/(consumer)/wallet/*, apps/merchant/src/app/(consumer)/c/[webViewToken]/*, apps/merchant/drizzle/0016_*.sql
@@ -162,27 +162,35 @@ el entorno de test (self-signed Apple + service account de demo Google).
 
 ## Definition of Done
 
-- [ ] La superficie de consumer post-enrolamiento **renderiza el QR** del `qr_token` (escaneable)
-      y **ya no** muestra "Listo" sin QR.
-- [ ] `GET /wallet/google` con sesión válida devuelve una URL de guardado de Google Wallet válida
-      (JWT firmado que instala un Loyalty Object con el barcode = `qr_token`) — **verificado en un
-      Android real** (issuer de demo gratuito).
-- [ ] `GET /wallet/apple.pkpass` con sesión válida devuelve un `.pkpass` **estructuralmente
-      válido** (pass.json + `manifest.json` con sha1 correctos + firma presente + zip) —
+> **Implementada 2026-08-14** — implementador + revisor independiente **PASS** (`AGENT-WORKFLOW.md`),
+> ambos con gates propios (typecheck 3/3, eslint, unit 60/23-skip con 7 de wallet, build 3/3) +
+> integración Neon **4/4** (wallet) y **9/9** (regresión 0028) en rama efímera. Migración `0016`
+> aplicada y verificada por SQL en la rama efímera **y en prod** (17 migraciones; `web_view_token`
+> NOT NULL/único, 2 cuentas backfilleadas con tokens distintos y URL-safe, ninguno igual al
+> `qr_token`; `wallet_pass` + 3 uniques; `core`(14)/`merchant_auth`(4) intactos). Residuales
+> aceptados: install en iPhone real ($99) y verificación manual en Android real.
+
+- [x] La superficie de consumer post-enrolamiento **renderiza el QR** del `qr_token` (escaneable,
+      SVG server-side) y **ya no** muestra "Listo" sin QR.
+- [x] `GET /wallet/google` con sesión válida devuelve una URL de guardado de Google Wallet válida
+      (JWT RS256 firmado que instala un Loyalty Object con el barcode = `qr_token`; firma
+      verificada con la pública en unit). Verificación en **Android real** = residual del owner.
+- [x] `GET /wallet/apple.pkpass` con sesión válida devuelve un `.pkpass` **estructuralmente
+      válido** (pass.json + `manifest.json` con sha1 correctos + firma PKCS#7 presente + zip) —
       verificado por unit contra un cert **self-signed**; el install en iPhone real queda como
       residual (necesita el cert de pago).
-- [ ] Ambos endpoints exigen sesión (`401` sin cookie) y crean-o-reusan **una** fila `wallet_pass`
-      por (consumidor, proveedor).
-- [ ] El pase Apple incluye `webServiceURL` + `authenticationToken` (ganchos para la 0033) y un
+- [x] Ambos endpoints exigen sesión (`401` sin cookie) y crean-o-reusan **una** fila `wallet_pass`
+      por (consumidor, proveedor) (unique + re-select en 23505; integración: 2ª llamada no duplica).
+- [x] El pase Apple incluye `webServiceURL` + `authenticationToken` (ganchos para la 0033) y un
       `serialNumber` estable; el objeto Google queda creado/patcheable por la 0033.
-- [ ] La landing muestra botones "Añadir a Apple/Google Wallet" con detección por UA y **ambos**
-      como fallback.
-- [ ] El pase lleva un enlace "Ver mis programas"; visitarlo (`/c/[webViewToken]`) **abre sesión**
+- [x] La landing muestra botones "Añadir a Apple/Google Wallet" con detección por UA y **ambos**
+      como fallback (nunca oculta por detección fallida).
+- [x] El pase lleva un enlace "Ver mis programas"; visitarlo (`/c/[webViewToken]`) **abre sesión**
       y lista los programas del consumidor. Token inexistente/revocado → `404`.
-- [ ] Ninguna respuesta/DTO serializa `qr_token`, `web_view_token`, `token_hash` ni
+- [x] Ninguna respuesta/DTO serializa `qr_token`, `web_view_token`, `token_hash` ni
       `auth_token_hash` en crudo (test por entidad, patrón anti-fuga).
-- [ ] Migración `0016` aditiva aplicada y verificada en rama Neon efímera y en prod: existe
-      `web_view_token` (único, backfill completo) y la tabla `wallet_pass` con su unique;
+- [x] Migración `0016` aditiva aplicada y verificada en rama Neon efímera y en prod: existe
+      `web_view_token` (único, backfill completo URL-safe) y la tabla `wallet_pass` con su unique;
       `core`/`merchant_auth` intactos.
 
 ## Plan de pruebas y verificación

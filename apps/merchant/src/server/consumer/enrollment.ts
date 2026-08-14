@@ -88,6 +88,9 @@ export async function enroll(
           lastName: input.lastName,
           countryIso: input.countryIso,
           qrToken: generateOpaqueToken(),
+          // Distinct opaque token for the "Ver mis programas" magic-link (0029),
+          // independently revocable from the qrToken.
+          webViewToken: generateOpaqueToken(),
         })
         .returning();
     } catch (error) {

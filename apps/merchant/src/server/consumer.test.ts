@@ -41,15 +41,18 @@ describe("consumer DTOs never leak secrets", () => {
     lastName: "Pérez",
     countryIso: "EC",
     qrToken: "SUPER-SECRET-QR-TOKEN",
+    webViewToken: "SUPER-SECRET-WEB-VIEW-TOKEN",
     createdAt: new Date("2026-08-14T00:00:00Z"),
     updatedAt: new Date("2026-08-14T00:00:00Z"),
   };
 
-  it("account DTO omits the raw qrToken and derives phoneVerified", () => {
+  it("account DTO omits the raw qrToken/webViewToken and derives phoneVerified", () => {
     const dto = consumerAccountResponse(account);
     expect(dto).not.toHaveProperty("qrToken");
+    expect(dto).not.toHaveProperty("webViewToken");
     expect(dto).not.toHaveProperty("tokenHash");
     expect(JSON.stringify(dto)).not.toContain("SUPER-SECRET-QR-TOKEN");
+    expect(JSON.stringify(dto)).not.toContain("SUPER-SECRET-WEB-VIEW-TOKEN");
     expect(dto).toMatchObject({
       id: "acc-1",
       firstName: "Marcos",

@@ -1,5 +1,6 @@
 # Generado — no se formatea a mano
 pnpm-lock.yaml
+apps/merchant/drizzle/meta/
 .next/
 .turbo/
 coverage/

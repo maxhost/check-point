@@ -49,6 +49,7 @@ export async function resolveSession(
       lastName: consumerAccounts.lastName,
       countryIso: consumerAccounts.countryIso,
       qrToken: consumerAccounts.qrToken,
+      webViewToken: consumerAccounts.webViewToken,
       createdAt: consumerAccounts.createdAt,
       updatedAt: consumerAccounts.updatedAt,
     })

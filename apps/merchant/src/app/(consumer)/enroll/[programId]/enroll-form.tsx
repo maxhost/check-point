@@ -94,6 +94,25 @@ export function EnrollForm({
         <p style={{ color: "#333", marginTop: 8 }}>
           Ya sos parte del programa de <strong>{businessName}</strong>.
         </p>
+        {/* Session cookie is already set by the POST — go straight to the pass. */}
+        <a
+          href="/wallet"
+          style={{
+            display: "block",
+            textAlign: "center",
+            marginTop: 20,
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "13px 14px",
+            fontSize: 16,
+            borderRadius: 10,
+            background: "#2563eb",
+            color: "#fff",
+            textDecoration: "none",
+          }}
+        >
+          Ver mi tarjeta y código QR
+        </a>
       </section>
     );
   }
