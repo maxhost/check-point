@@ -97,11 +97,23 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
             <div className="stamp-image-field">
               <strong>Diseño del sello</strong>
               {stampPreview && (
-                <img
-                  className="stamp-image-preview"
-                  src={stampPreview}
-                  alt="Vista previa del sello"
-                />
+                <div className="stamp-image-row">
+                  <img
+                    className="stamp-image-preview"
+                    src={stampPreview}
+                    alt="Vista previa del sello"
+                  />
+                  <button
+                    type="button"
+                    className="small-button"
+                    onClick={() => {
+                      stamp.remove();
+                      if (stampInput.current) stampInput.current.value = "";
+                    }}
+                  >
+                    Quitar
+                  </button>
+                </div>
               )}
               <input
                 ref={stampInput}
@@ -115,18 +127,6 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
                 PNG, JPEG o WebP · máximo 5 MB · hasta 2048 × 2048 px. Se aplica
                 al guardar.
               </p>
-              {stampPreview && (
-                <button
-                  type="button"
-                  className="small-button"
-                  onClick={() => {
-                    stamp.remove();
-                    if (stampInput.current) stampInput.current.value = "";
-                  }}
-                >
-                  Quitar sello
-                </button>
-              )}
             </div>
           </>
         )}

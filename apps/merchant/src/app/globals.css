@@ -663,6 +663,16 @@ input:focus {
 .stamp-image-field .field-help {
   margin: 0;
 }
+.stamp-image-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.stamp-image-row .small-button {
+  min-height: 0;
+  margin-top: 0;
+  width: auto;
+}
 .stamp-image-preview {
   width: 96px;
   height: 96px;
