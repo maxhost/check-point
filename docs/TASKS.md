@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-13.
+Ultima actualizacion: 2026-08-14.
 
 ## Ahora
 
@@ -214,6 +214,32 @@ la 0028 queda implementable y lanzable HOY sin ningún proveedor de SMS** —el 
 siendo implementarla, ahora sin bloqueo de proveedor—. El ADR 0032 se ajustó (verificación
 diferida); el ADR 0013 lo consume la 0032, no la 0028.
 
+**Spec 0028 IMPLEMENTADA (2026-08-14) — identidad de consumidor y enrolamiento (camino A, 1ª
+rebanada).** Primera noción de consumidor de plataforma: esquema pg `consumer` con 4 tablas
+(`consumer_account` con teléfono E.164 único **sin verificar** + `qr_token` opaco; `program_membership`
+aislada por `business_id`, unique `(consumer_id, program_id)`; `consumer_session` opaca con
+`token_hash` sha256, cookie `HttpOnly` 30d; `enroll_attempt` para el rate-limit). Rutas públicas
+`POST /api/public/enroll/:programId` (crea-o-reusa cuenta sin pisar perfil, membresía, abre sesión)
+y `GET /api/public/enroll/me` (scopeado a la cookie); landing `(consumer)/enroll/[programId]`.
+**Tres decisiones del owner (2026-08-14) bajadas a la spec antes de codear:** (1) reenrolar el
+**mismo** programa con el mismo teléfono → **`409 already_member`** con CTA a recuperación (spec 0032),
+sin duplicar membresía ni reabrir sesión (el teléfono no verificado no reabre acceso a una tarjeta
+emitida en otro dispositivo — eso pasa por 0032); (2) **rate-limit 3 intentos/hora por teléfono**
+(no por IP, para no bloquear al 4º cliente de la WiFi del local) → `429`; (3) enrolamiento permitido
+en `active` **y** `closing`, solo `inactive`/inexistente → `404`. **Verificación:** implementador +
+**revisor independiente PASS** (`AGENT-WORKFLOW.md`), ambos con gates propios (typecheck 3/3, lint,
+prettier, **unit 46/19-skip** con 10 nuevos, build 3/3) e **integración Neon 9/9** en ramas efímeras
+propias (no-fuga de `qr_token`/`token_hash`, aislamiento por negocio, seguridad del token de sesión
+verificados). **Migración `0014_peaceful_harpoon` aplicada a prod** (`drizzle-kit migrate`;
+verificado por SQL: esquema `consumer` con 4 tablas + 10 índices + 3 FK incl. cross-schema a
+`core.loyalty_program`; `core`(14)/`merchant_auth`(4) intactos; 15 migraciones registradas). Ramas
+Neon efímeras borradas. **Residual (post-deploy):** QA manual en teléfono sobre Vercel. Menores no
+bloqueantes documentados por el revisor (TOCTOU del rate-limit ante concurrencia exacta del mismo
+teléfono; intento contado también en 404/409 → consume slot del propio atacante; `23505` por colisión
+de `qr_token` ~2⁻²⁵⁶ → 503) — todos dentro de los límites que la spec acepta y endurece la 0032.
+**La próxima rebanada del camino A es la spec 0029** (pase de Wallet Apple/Google + push), bloqueada
+por un ADR de proveedor de Wallet por escribir; reusa el `qr_token` ya emitido.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -238,7 +264,7 @@ diferida); el ADR 0013 lo consume la 0032, no la 0028.
 | 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. QA en vivo 2026-08-13: fix de persistencia de términos al editar (plantillas como botones «+ Insertar» que copian texto renderizado al textarea, sin duplicación) + ronda de UX. Endurecimiento post-revisión (auditoría atómica, tests de núcleo, 400/TOCTOU) y **PASS de revisor independiente**; Spec 0024 → `implementada` (commit `50228a7`). |
 | 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner. 2026-08-13: **revisión independiente** (FAIL estrecho) resuelta — fuga de `logo_object_key` en `/api/brand` (ahora DTO sin la clave), JSON malformado → `400` (antes 503), UUID inválido → `404`, y tests agregados: `normalizeLogo` SVG/oversize + integración Neon (`409` optimista/`403`/`422`) verde en rama efímera. Concurrencia real **a futuro** (>1 owner). Núcleo de seguridad verificado correcto por el revisor. **Re-revisión: PASS** — 0025 al mismo estándar que 0024. |
 | 20 | Diseño de sello del programa de fidelización en R2 | 0026 | hecho | Input para subir el diseño de la imagen del sello (modalidad Sellos): PNG/JPEG/WebP, **conserva transparencia** (decisión B del owner 2026-08-13; la tarjeta pinta los recuadros en blanco), borrado diferido a Guardar (igual que marca). Spec **cerrada** + **ADR 0029** (módulo de imagen compartido `server/assets/image.ts`; tabla `loyalty_asset_upload` paralela; `brand.ts` se divide). Implementación por fases: **(a) hecha** — `server/assets/image.ts` (`normalizeImage`, conserva alfa) extraído y `brand.ts` dividido (`brand/core|validation|cleanup`, 221 líneas), sin cambio de comportamiento (unit 26/26 + integración brand 3/3 verde en rama efímera). **(b–e) hechas**: columnas `stamp_image_object_key`/`stamp_image_version` + tablas `loyalty_asset_upload`/`loyalty_asset_cleanup` (migración `0012`); módulo `loyalty-program/stamp.ts` (upload firmado, procesamiento con `normalizeImage` que conserva alfa, resolución del cambio con rollback y borrado diferido, cron de limpieza, lectura pública); endpoints `POST /stamp-upload`, `stampAction` en el `PUT`, `GET /api/public/loyalty/.../stamp`; el `GET` del programa **oculta** `stampImageObjectKey` y expone `stampImagePath`; UI: campo de sello en el editor (solo Sellos) con subir/quitar diferido (`use-stamp-upload.ts`). Verificado: unit 7/7, typecheck 3/3, lint, integración Neon **9/9** en rama efímera, **migración 0012 aplicada a prod** (verificada). **Revisión independiente: PASS** (2026-08-13, sin bloqueantes ni importantes); se agregó un test que blinda que el `GET` nunca serializa `stampImageObjectKey`. Spec 0026 → `implementada`. Menores diferidos (URL firmada sin content-length, huérfano bajo edición concurrente del mismo owner — atado a la concurrencia a futuro; test de rollback con mock de R2). Residual: QA manual del camino de subida R2 en vivo (como en marca). Pulido QA 2026-08-13: botón "Quitar" del sello ahora al lado del preview (fila flex) y de tamaño normal, no full-width. |
-| 22 | Identidad de consumidor y enrolamiento (esquema `consumer`, landing pública sin verificar, membresía aislada) | 0028 | pendiente | **PRÓXIMA FEATURE — spec CERRADA (2026-08-14), lista para implementar, SIN dependencia de proveedor.** Primera rebanada del camino A (ADR 0031/0032). Esquema pg `consumer` nuevo + `POST /api/public/enroll/:programId` (crea-o-reusa cuenta **sin verificar**, `phone_verified_at=null`) + `GET /enroll/me` + `program_membership` aislada por `business_id` + sesión opaca + `qr_token`. **No envía SMS** (OTP diferido a la 0032). Disjunta. Implementar con `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente (foco en aislamiento por negocio, no-fuga de `qr_token`/`token_hash`, seguridad del token de sesión) antes de `implementada`. |
+| 22 | Identidad de consumidor y enrolamiento (esquema `consumer`, landing pública sin verificar, membresía aislada) | 0028 | hecho | Esquema pg `consumer` (4 tablas) + `POST /api/public/enroll/:programId` (crea-o-reusa cuenta **sin verificar**, `phone_verified_at=null`; **`409 already_member`** con CTA a recuperación al reenrolar el mismo programa; **rate-limit 3/h por teléfono** → `429`; enrola en `active`/`closing`, `inactive`→`404`) + `GET /enroll/me` scopeado + `program_membership` aislada por `business_id` + sesión opaca (`token_hash` sha256, cookie `HttpOnly` 30d) + `qr_token` opaco (nunca serializado). Landing `(consumer)/enroll/[programId]`. **No envía SMS** (OTP diferido a la 0032). Implementador + **revisor independiente PASS**; gates verdes (typecheck 3/3, lint, prettier, unit 46/19-skip, build 3/3), integración Neon 9/9 en rama efímera, **migración `0014` aplicada a prod y verificada por SQL**. Ramas efímeras borradas. Residual: QA manual en teléfono sobre el deploy. |
 | 23 | Pase de Wallet (Apple / Google) + canal de push | 0029 | pendiente | Stub/borrador. 2ª rebanada. Render del QR + botones "Añadir a Wallet" + canal de push. Bloqueada por un ADR de proveedor de Wallet (Apple PassKit / Google Wallet) por escribir. Depende de 0028. |
 | 24 | Acreditación en mostrador (consola de staff, puntos/sellos por reglas) | 0030 | pendiente | Stub/borrador. 3ª rebanada. Escanear QR del consumidor → carrito → otorgar puntos/sellos (puntos por producto; sello 1-por-compra; sello 1-por-cada-$X). Prerequisito duro: catálogo económico (0002/0021). Depende de 0028. |
 | 25 | Notificación y landing en vivo al otorgar | 0031 | pendiente | Stub/borrador. 4ª rebanada, cierra el loop. Push del pase o actualización en vivo de la landing sobre la tarjeta del programa. Depende de 0028/0029/0030. |
@@ -276,6 +302,7 @@ diferida); el ADR 0013 lo consume la 0032, no la 0028.
 | 2026-08-12 | Programa de fidelización real desplegado (Spec 0024, ADR 0027) | Gates locales (typecheck 3/3, unit 22/23, lint, build 3/3) + QA manual en vivo del owner sobre Vercel |
 | 2026-08-12 | Marca real y assets R2 desplegados (Spec 0025) | Gates locales (typecheck 3/3, unit 22/23, lint, build 3/3) + QA manual en vivo del owner sobre Vercel |
 | 2026-08-13 | Wizard de creación/edición + diseño visual de tarjeta de Sellos (Spec 0027, ADR 0030) | Gates (typecheck 3/3, lint, unit 33/10-skip, build 3/3) + integración Neon 6/6 + migración 0013 en prod + PASS de revisor independiente + QA manual del owner. Commits `4388662`/`967a080` |
+| 2026-08-14 | Identidad de consumidor y enrolamiento (Spec 0028, camino A 1ª rebanada) | Esquema `consumer` (4 tablas) + rutas `enroll`/`me` + landing; `409 already_member`, rate-limit 3/h por teléfono, `closing` habilitado. Gates (typecheck 3/3, lint, prettier, unit 46/19-skip, build 3/3) + integración Neon 9/9 + **PASS de revisor independiente** + migración `0014` aplicada y verificada en prod (esquema `consumer` 4 tablas/10 índices/3 FK; `core`/`merchant_auth` intactos). Residual: QA manual en teléfono |
 
 ## Descartado (y por que)
 

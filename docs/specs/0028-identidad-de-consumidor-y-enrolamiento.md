@@ -1,7 +1,7 @@
 ---
 spec: 0028
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Landing pública de enrolamiento (nombre+apellido+teléfono → cuenta de consumidor de plataforma SIN verificar + membresía aislada al programa + QR personal + sesión) en un esquema pg `consumer`. La verificación de teléfono por OTP se difiere a la spec de recuperación (0032); no se envía ningún mensaje al enrolar.
 disjunta: sí
 archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/consumer/*, apps/merchant/src/app/api/public/enroll/*, apps/merchant/src/app/(consumer)/enroll/*, apps/merchant/drizzle/00XX_*.sql
@@ -52,8 +52,13 @@ reusarse entre comercios manteniendo cada membresía aislada.
   (`business_id` denormalizado), única por (consumidor, programa). Idempotente.
 - **Reuso de identidad**: si el teléfono ya tiene cuenta, se reusa el perfil (no se pisa) y se
   agrega solo la nueva membresía; la sesión se abre sobre esa cuenta.
-- Validación de que el programa **existe y admite enrolamiento** (activo, no cerrado según
-  ADR 0027/0028).
+- Validación de que el programa **existe y admite enrolamiento** (`status` `active` o
+  `closing` según ADR 0027/0028 — un programa en cierre fechado sigue acumulando hasta
+  `earning_ends_at`; solo `inactive` rechaza → `404`).
+- **Rate-limit por teléfono**: máximo **3 intentos de enrolamiento por número de teléfono
+  por hora**; al 4º → `429`. Se keyea por **teléfono, no por IP** (en el local muchos
+  clientes se enrolan desde la misma IP/WiFi del comercio; un límite por IP bloquearía al
+  cliente legítimo Nº4).
 
 **No entra (cada uno su spec):**
 
@@ -86,6 +91,7 @@ independiente de la de merchant (cookie distinta, namespace distinto).
 | `consumer_account` | `id` uuid PK; `phone_e164` text **único, not null** (clave de identidad); `phone_verified_at` timestamptz **nullable** (en esta spec siempre `null`); `first_name`, `last_name` text not null (≤120); `qr_token` text **único, not null**, opaco, sin PII, aleatorio no adivinable (≥128 bits); `created_at`, `updated_at`. |
 | `program_membership` | `id` uuid PK; `consumer_id` → `consumer_account.id`; `program_id` → `core.loyalty_program.id`; `business_id` uuid **denormalizado** (scoping de analítica); `enrolled_at` timestamptz; **unique (`consumer_id`, `program_id`)**. En esta spec es la *pertenencia*; los saldos de puntos/sellos los agregan specs posteriores. |
 | `consumer_session` | `id` uuid PK; `consumer_id` → `consumer_account.id`; `token_hash` text único (token opaco, cookie `HttpOnly`); `expires_at` timestamptz (**30 días**); `revoked_at` null; `created_at`. |
+| `enroll_attempt` | `id` uuid PK; `phone_e164` text not null (indexado por `phone_e164`); `created_at` timestamptz. Registro **append-only** para el rate-limit: cada `POST /enroll` cuenta cuántas filas del mismo teléfono hay en la última hora; **≥3 → `429`**. Filas fuera de la ventana no cuentan (limpieza diferida por poda). Sin FK al perfil (el teléfono puede no existir aún como cuenta). |
 
 FK cross-schema `program_membership.program_id → core.loyalty_program.id`: válido dentro de
 la misma DB Postgres. (No hay `enrollment_challenge`: sin OTP en esta spec.)
@@ -94,7 +100,7 @@ la misma DB Postgres. (No hay `enrollment_challenge`: sin OTP en esta spec.)
 
 | Método · Ruta | Entrada | Salida OK | Errores |
 |---|---|---|---|
-| `POST /api/public/enroll/:programId` | `{ firstName, lastName, phoneE164 }` | `201 { account, membership }` (DTO sin claves internas ni `qr_token` en crudo); crea-o-reusa cuenta por teléfono, crea membresía, abre sesión (cookie `HttpOnly`) | `404` programa inexistente/cerrado; `422` datos inválidos (nombre vacío/largo, teléfono no E.164); `429` rate-limit por teléfono/IP |
+| `POST /api/public/enroll/:programId` | `{ firstName, lastName, phoneE164 }` | `201 { account, membership }` (DTO sin claves internas ni `qr_token` en crudo); crea-o-reusa cuenta por teléfono, crea membresía **nueva**, abre sesión (cookie `HttpOnly`) | `404` programa inexistente/`inactive`; `409` **ya es socio de este programa** (payload con `code` p.ej. `already_member` para que la landing ofrezca el CTA de recuperación → spec 0032; **no** abre sesión ni duplica membresía); `422` datos inválidos (nombre vacío/largo, teléfono no E.164); `429` rate-limit **por teléfono** (>3 intentos/hora) |
 | `GET /api/public/enroll/me` | cookie de sesión | `200 { account, memberships[] }` (solo del consumidor de la sesión) | `401` sin sesión válida |
 
 **DTO / no-fuga.** Ninguna respuesta serializa `token_hash` ni el `qr_token` en crudo (el
@@ -116,14 +122,36 @@ no contra el teléfono: un teléfono ajeno/mal tipeado **no le entrega los punto
 tercero**. El teléfono solo habilita **recuperar la tarjeta en otro dispositivo** y el reuso de
 perfil entre comercios; ambos se endurecen con la verificación de la **spec 0032**.
 
-**Idempotencia.** `POST /enroll` crea-o-encuentra `consumer_account` por `phone_e164` (si
-existía, **reusa** el perfil sin pisarlo con los datos del formulario nuevo), crea la
-`program_membership` si no existe (la unique la protege → reenrolar al mismo programa es no-op),
-abre sesión. Un mismo teléfono en dos programas = **una** cuenta, **dos** membresías.
+**Reuso de identidad e idempotencia.** `POST /enroll` busca `consumer_account` por
+`phone_e164`. Si no existe, la crea (con `qr_token` nuevo); si existe, **reusa** el perfil sin
+pisarlo con los datos del formulario. Luego:
+
+- Si el consumidor **ya es socio** de ese programa (colisión de la unique
+  `(consumer_id, program_id)`) → **`409`** con un `code` (`already_member`) y mensaje claro
+  («ya sos parte de este programa; si perdiste el acceso a tu tarjeta, recuperala desde
+  aquí»), que la landing usa para ofrecer el CTA de **recuperación (spec 0032, diferida)**.
+  **No** se abre sesión ni se crea una segunda membresía. **Decisión de seguridad:** el
+  teléfono **no verificado** no alcanza para reabrir el acceso a una tarjeta ya emitida en
+  otro dispositivo; ese camino pasa por la verificación de la 0032. La unique respalda la
+  carrera check-then-act (`23505` → `409`).
+- Si **no** es socio de ese programa (alta nueva, con cuenta nueva o reusada) → crea la
+  `program_membership` y **abre sesión**.
+
+Un mismo teléfono en dos programas distintos = **una** cuenta, **dos** membresías.
+Reenrolarse al **mismo** programa nunca crea una segunda membresía.
+
+**Rate-limit (`429`).** Antes de crear nada, `POST /enroll` cuenta las filas de
+`enroll_attempt` del mismo `phone_e164` en la **última hora**; si ya hay **≥3**, responde
+`429` sin tocar el resto. Si no, registra el intento y sigue. Se keyea por **teléfono, no por
+IP** a propósito (ver Alcance). **Límite conocido:** no frena la creación masiva con teléfonos
+**distintos** desde un script — ese vector lo cierra la verificación por OTP de la **spec
+0032**. Umbral y ventana (3 / 1h) son constantes del módulo.
 
 **Estados de interfaz (móvil-first).** La landing: (1) formulario nombre+apellido+teléfono;
 (2) confirmación con nombre + programa + negocio + el aviso de recuperación. Errores como
-toast. Programa cerrado/inexistente → pantalla clara "este programa no está disponible".
+toast. Programa cerrado/inexistente → pantalla clara "este programa no está disponible". Ya
+socio (`409 already_member`) → mensaje "ya formás parte de este programa" con el CTA
+"recuperar mi tarjeta" (deshabilitado / "próximamente" hasta la spec 0032).
 
 ### Arquitectura de referencia
 
@@ -141,8 +169,10 @@ toast. Programa cerrado/inexistente → pantalla clara "este programa no está d
 | `apps/merchant/src/server/schema.ts` | editar (reexportar `consumer`) |
 | `apps/merchant/drizzle.config.ts` | editar (`schemaFilter` suma `"consumer"`) |
 | `apps/merchant/drizzle/00XX_*.sql` | crear (migración aditiva: `CREATE SCHEMA consumer` + 3 tablas) |
-| `apps/merchant/src/server/consumer/core.ts` | crear (tipos, errores, generación de `qr_token`/token de sesión) |
-| `apps/merchant/src/server/consumer/enrollment.ts` | crear (crear-o-reusar cuenta, membresía) |
+| `apps/merchant/src/server/consumer/core.ts` | crear (tipos, `ConsumerError`, generación de `qr_token`/token de sesión, DTOs anti-fuga) |
+| `apps/merchant/src/server/consumer/validation.ts` | crear (validación de input: E.164, longitudes ≤120) |
+| `apps/merchant/src/server/consumer/enrollment.ts` | crear (crear-o-reusar cuenta, membresía, `409` already_member) |
+| `apps/merchant/src/server/consumer/rate-limit.ts` | crear (conteo de `enroll_attempt` por teléfono/ventana → `429`) |
 | `apps/merchant/src/server/consumer/session.ts` | crear (emisión/validación de sesión opaca) |
 | `apps/merchant/src/app/api/public/enroll/[programId]/route.ts` | crear (`POST`) |
 | `apps/merchant/src/app/api/public/enroll/me/route.ts` | crear (`GET`) |
@@ -162,39 +192,47 @@ ni un emisor de prueba; se implementa y verifica sin ningún proveedor.
 
 ## Definition of Done
 
-- [ ] Abrir la URL de enrolamiento de un programa **activo** muestra el formulario
-      nombre+apellido+teléfono y nada más.
-- [ ] `POST /enroll` con datos válidos crea la cuenta (`phone_verified_at = null`), la
+- [x] Abrir la URL de enrolamiento de un programa **activo** muestra el formulario
+      nombre+apellido+teléfono y nada más. *(ruta `/enroll/[programId]` + `EnrollForm`; build
+      emite la ruta; render visual en teléfono = QA manual residual.)*
+- [x] `POST /enroll` con datos válidos crea la cuenta (`phone_verified_at = null`), la
       membresía, abre sesión y devuelve la confirmación con el aviso de recuperación. **No se
-      envía ningún mensaje.**
-- [ ] Teléfono no-E.164 o nombre inválido → `422`; programa cerrado/inexistente → `404`.
-- [ ] Enrolar con un teléfono que **ya existe** reusa el perfil (no lo pisa) y solo agrega la
-      membresía.
-- [ ] Reenrolarse al **mismo** programa es idempotente: no crea una segunda membresía.
-- [ ] Un mismo teléfono enrolado en **dos** programas distintos tiene **una** cuenta y **dos**
+      envía ningún mensaje.** *(integración Neon; sin proveedor de SMS en el código.)*
+- [x] Teléfono no-E.164 o nombre inválido → `422`; programa cerrado/inexistente → `404`.
+- [x] Enrolar con un teléfono que **ya existe** (en otro programa) reusa el perfil (no lo pisa)
+      y solo agrega la membresía.
+- [x] Reenrolarse al **mismo** programa devuelve `409 already_member`, **no** crea una segunda
+      membresía y **no** abre sesión.
+- [x] Un mismo teléfono enrolado en **dos** programas distintos tiene **una** cuenta y **dos**
       membresías, cada una con su `business_id`.
-- [ ] `me` con sesión válida devuelve solo la cuenta y membresías del consumidor; sin sesión
+- [x] El **4º** `POST /enroll` con el mismo teléfono dentro de la hora devuelve `429` (los 3
+      primeros pasan); un teléfono distinto no se ve afectado.
+- [x] `me` con sesión válida devuelve solo la cuenta y membresías del consumidor; sin sesión
       `401`.
-- [ ] Ninguna respuesta serializa `token_hash` ni el `qr_token` en crudo (test por entidad,
+- [x] Ninguna respuesta serializa `token_hash` ni el `qr_token` en crudo (test por entidad,
       patrón anti-fuga del proyecto).
-- [ ] Migración aditiva aplicada y verificada en rama Neon efímera y en prod: existe el
-      esquema `consumer` con las tres tablas y sus índices/uniques; `core`/`merchant_auth`
-      intactos.
+- [x] Migración aditiva aplicada y verificada en rama Neon efímera y en prod: existe el
+      esquema `consumer` con las **cuatro** tablas y sus índices/uniques; `core`/`merchant_auth`
+      intactos. *(prod: 4 tablas, 10 índices, 3 FK, migración 0014 registrada; `core`(14)/
+      `merchant_auth`(4) intactos.)*
 
 ## Plan de pruebas y verificación
 
-- [ ] Unidad: `qr_token` y token de sesión son aleatorios no adivinables (≥128 bits) y no
+- [x] Unidad: `qr_token` y token de sesión son aleatorios no adivinables (≥128 bits) y no
       contienen PII.
-- [ ] Unidad: DTO por entidad no expone `token_hash`/`qr_token`.
-- [ ] Integración (Neon, rama efímera): programa activo → enroll → cuenta+membresía; teléfono
-      repetido en 2º programa → 1 cuenta / 2 membresías; reenrol mismo programa → idempotente;
-      programa cerrado → `404`.
-- [ ] Integración de aislamiento: la membresía de negocio A no aparece al consultar/analizar el
+- [x] Unidad: DTO por entidad no expone `token_hash`/`qr_token`.
+- [x] Integración (Neon, rama efímera): programa activo → enroll → cuenta+membresía; teléfono
+      repetido en 2º programa → 1 cuenta / 2 membresías; reenrol mismo programa → `409`
+      `already_member` (sin 2ª membresía ni sesión); programa `inactive` → `404`; programa
+      `closing` → enrola OK.
+- [x] Integración: 4º intento con el mismo teléfono en < 1h → `429`; un teléfono distinto en
+      la misma ventana no se ve afectado.
+- [x] Integración de aislamiento: la membresía de negocio A no aparece al consultar/analizar el
       negocio B (query scopeada por `business_id`).
-- [ ] Integración de sesión: cookie válida abre `me`; cookie ausente/revocada/expirada → `401`.
-- [ ] Comandos exactos: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit), integración Neon en
-      rama efímera, `pnpm build`, y aplicación de la migración con `drizzle-kit migrate`
-      verificada.
+- [x] Integración de sesión: cookie válida abre `me`; cookie ausente/revocada/expirada → `401`.
+- [x] Comandos exactos: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit), integración Neon en
+      rama efímera (9/9), `pnpm build`, y aplicación de la migración con `drizzle-kit migrate`
+      verificada (implementador + revisor independiente PASS).
 - [ ] Verificación manual en teléfono (deploy): abrir la URL de un programa real, completar el
       formulario, ver la confirmación con el nombre, el programa y el aviso de recuperación.
       **Sin dependencia de proveedor de SMS.**
@@ -210,3 +248,7 @@ Implementador y revisor usan el formato de `docs/AGENT-WORKFLOW.md`. El revisor 
 - **Colisión de identidad por teléfono no verificado**: límite conocido y aceptado en v1 (ver
   "Identidad no verificada"); lo resuelve la **spec 0032** (verificación/recuperación por OTP).
   **No bloquea** el cierre de esta spec.
+- **Creación masiva con teléfonos distintos**: el rate-limit por teléfono no la frena (keyear
+  por IP rompería la WiFi del local — decisión explícita del owner 2026-08-14). Vector de bajo
+  impacto en piloto; lo cierra la verificación por OTP de la **spec 0032**. **No bloquea** el
+  cierre.
