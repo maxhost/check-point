@@ -176,6 +176,44 @@ INDEX + DoD marcados; tarea 21 → `hecho`). Commits en `main`: `4388662` (featu
 build). **La próxima feature es el wallet consumer que consumirá la tarjeta** (spec propia; reusar
 `CardPreview` puro-props ya preparado para portarse).
 
+**Pivote de posicionamiento 2026-08-14 — ADR 0031/0032, camino A.** Antes de arrancar el
+"brand kit" (afiche imprimible con QR) se hizo un parate estratégico: el QR de "sumarse al
+programa" no tenía flujo detrás (no existe enrolamiento ni wallet consumer). Se decidió
+**merchant-first**: Mi Pasaporte es una herramienta de fidelización/marketing para comercios,
+con la **Wallet nativa (Apple/Google) como superficie de consumidor** —no una app propia de
+descubrimiento (esa "red Foursquare × Niantic" se **difiere** a una fase futura encendida
+sobre densidad)—. Los juegos/AR/notificaciones son de **esta** etapa (tier Plus). **ADR 0031**
+(posicionamiento + identidad de consumidor: cuenta única con N membresías, **identidad
+compartida / membresías aisladas**, driver de analítica por-owner scopeada por negocio;
+supersede la "red curada" de 0003 y reencuadra 0019). **ADR 0032** (dónde vive: esquema pg
+propio **`consumer`**, auth **phone-OTP purpose-built**, DB única compartida, hospedado por
+ahora en el backend de `apps/merchant`; refina 0012). La spec 0004 quedó **reencuadrada**.
+
+El caso de uso del owner (Marcos escanea en "La Gringa" → landing nombre+apellido+teléfono →
+OTP → QR personal + "Añadir a Wallet"; el encargado escanea el QR, arma carrito y otorga
+puntos/sellos; el consumidor recibe aviso en el pase o la landing se actualiza) se **rebanó en
+4 specs**: **0028** identidad+enrolamiento (**CERRADA**, lista para implementar), **0029** pase
+de Wallet, **0030** acreditación en mostrador, **0031** notificación+landing en vivo (las tres
+en `borrador`/stub). **El próximo paso es implementar la spec 0028** con el protocolo de
+`AGENT-WORKFLOW.md` (rama Neon efímera + revisor independiente antes de `implementada`). El
+**brand kit** queda **downstream**: su afiche recién tiene valor cuando el QR resuelve (0028+).
+Nada de esto está commiteado aún (docs sin código). Dependencia dura de 0030: un **catálogo
+económico de productos** (specs 0002/0021, en borrador).
+
+**Ajuste 2026-08-14 — OTP diferido, 0028 sin proveedor.** Se decidió que el enrolamiento (0028)
+**no verifica** el teléfono ni envía SMS: crea la cuenta con `phone_verified_at = null`
+(gratis, sin fricción), porque el valor se acredita contra el **QR al portador**, no contra el
+teléfono, y un SMS a Ecuador cuesta ~$0.25–0.34. Aclaración: "OTP" no es un SMS más caro —lo
+caro son las *Verify API*; nuestro OTP es DIY (envío crudo). La **verificación/recuperación por
+OTP** se movió a la **spec 0032** (nueva, `borrador`), que se quedó con la investigación de
+proveedores (Twilio EC $0.339/BR $0.0599/ES $0.0875; Plivo más barato; Telnyx/Bird/AWS por
+verificar; WhatsApp-auth más barato en BR/ES; Brasil ~10 semanas de alta de sender; España
+registro CNMC desde 2026-09-15). Diseño agnóstico ya fijado: interfaz **`OtpChannel.deliverOtp`**
+(SMS o WhatsApp bajo el mismo contrato) + canales `Console`/`Fake` para dev/test. **Consecuencia:
+la 0028 queda implementable y lanzable HOY sin ningún proveedor de SMS** —el próximo paso sigue
+siendo implementarla, ahora sin bloqueo de proveedor—. El ADR 0032 se ajustó (verificación
+diferida); el ADR 0013 lo consume la 0032, no la 0028.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -200,6 +238,12 @@ build). **La próxima feature es el wallet consumer que consumirá la tarjeta** 
 | 18 | Implementar programa de fidelización real y términos | 0024 | hecho | Ciclo mutable Puntos/Sellos, TOS editables y cierre fechado (ADR 0027) + endurecimiento production-grade (ADR 0028): cancelar cierre (`PATCH`), auditoría por eventos (`loyalty_program_event`), fin del éxito falso (`RETURNING`+409), normalización de `configuration`, last-write-wins. `schema.ts`/`loyalty-program.ts`/página divididos por el límite de tamaño. Gates locales verdes; **integración Neon verde** (schema + ciclo de vida completo + auditoría + 409) contra rama de test aislada; **migración 0010 aplicada a `main` de producción** (11 migraciones registradas, tabla+índices verificados) y **código pusheado** (`1887db8`) el 2026-08-12. Residual: el E2E `loyalty-real.spec.ts` queda listo pero pendiente de correr contra el entorno desplegado con owner de prueba. QA en vivo 2026-08-13: fix de persistencia de términos al editar (plantillas como botones «+ Insertar» que copian texto renderizado al textarea, sin duplicación) + ronda de UX. Endurecimiento post-revisión (auditoría atómica, tests de núcleo, 400/TOCTOU) y **PASS de revisor independiente**; Spec 0024 → `implementada` (commit `50228a7`). |
 | 19 | Implementar marca real y assets R2 | 0025 | hecho | Nombre, colores, timezone y logo privado procesado/servido desde R2; reemplaza el mock de Marca. Gates locales verdes, pusheado a `main` (`b576a4b`) y QA manual en vivo confirmado por el owner el 2026-08-12. Spec cerrada a `implementada` a pedido del owner. 2026-08-13: **revisión independiente** (FAIL estrecho) resuelta — fuga de `logo_object_key` en `/api/brand` (ahora DTO sin la clave), JSON malformado → `400` (antes 503), UUID inválido → `404`, y tests agregados: `normalizeLogo` SVG/oversize + integración Neon (`409` optimista/`403`/`422`) verde en rama efímera. Concurrencia real **a futuro** (>1 owner). Núcleo de seguridad verificado correcto por el revisor. **Re-revisión: PASS** — 0025 al mismo estándar que 0024. |
 | 20 | Diseño de sello del programa de fidelización en R2 | 0026 | hecho | Input para subir el diseño de la imagen del sello (modalidad Sellos): PNG/JPEG/WebP, **conserva transparencia** (decisión B del owner 2026-08-13; la tarjeta pinta los recuadros en blanco), borrado diferido a Guardar (igual que marca). Spec **cerrada** + **ADR 0029** (módulo de imagen compartido `server/assets/image.ts`; tabla `loyalty_asset_upload` paralela; `brand.ts` se divide). Implementación por fases: **(a) hecha** — `server/assets/image.ts` (`normalizeImage`, conserva alfa) extraído y `brand.ts` dividido (`brand/core|validation|cleanup`, 221 líneas), sin cambio de comportamiento (unit 26/26 + integración brand 3/3 verde en rama efímera). **(b–e) hechas**: columnas `stamp_image_object_key`/`stamp_image_version` + tablas `loyalty_asset_upload`/`loyalty_asset_cleanup` (migración `0012`); módulo `loyalty-program/stamp.ts` (upload firmado, procesamiento con `normalizeImage` que conserva alfa, resolución del cambio con rollback y borrado diferido, cron de limpieza, lectura pública); endpoints `POST /stamp-upload`, `stampAction` en el `PUT`, `GET /api/public/loyalty/.../stamp`; el `GET` del programa **oculta** `stampImageObjectKey` y expone `stampImagePath`; UI: campo de sello en el editor (solo Sellos) con subir/quitar diferido (`use-stamp-upload.ts`). Verificado: unit 7/7, typecheck 3/3, lint, integración Neon **9/9** en rama efímera, **migración 0012 aplicada a prod** (verificada). **Revisión independiente: PASS** (2026-08-13, sin bloqueantes ni importantes); se agregó un test que blinda que el `GET` nunca serializa `stampImageObjectKey`. Spec 0026 → `implementada`. Menores diferidos (URL firmada sin content-length, huérfano bajo edición concurrente del mismo owner — atado a la concurrencia a futuro; test de rollback con mock de R2). Residual: QA manual del camino de subida R2 en vivo (como en marca). Pulido QA 2026-08-13: botón "Quitar" del sello ahora al lado del preview (fila flex) y de tamaño normal, no full-width. |
+| 22 | Identidad de consumidor y enrolamiento (esquema `consumer`, landing pública sin verificar, membresía aislada) | 0028 | pendiente | **PRÓXIMA FEATURE — spec CERRADA (2026-08-14), lista para implementar, SIN dependencia de proveedor.** Primera rebanada del camino A (ADR 0031/0032). Esquema pg `consumer` nuevo + `POST /api/public/enroll/:programId` (crea-o-reusa cuenta **sin verificar**, `phone_verified_at=null`) + `GET /enroll/me` + `program_membership` aislada por `business_id` + sesión opaca + `qr_token`. **No envía SMS** (OTP diferido a la 0032). Disjunta. Implementar con `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente (foco en aislamiento por negocio, no-fuga de `qr_token`/`token_hash`, seguridad del token de sesión) antes de `implementada`. |
+| 23 | Pase de Wallet (Apple / Google) + canal de push | 0029 | pendiente | Stub/borrador. 2ª rebanada. Render del QR + botones "Añadir a Wallet" + canal de push. Bloqueada por un ADR de proveedor de Wallet (Apple PassKit / Google Wallet) por escribir. Depende de 0028. |
+| 24 | Acreditación en mostrador (consola de staff, puntos/sellos por reglas) | 0030 | pendiente | Stub/borrador. 3ª rebanada. Escanear QR del consumidor → carrito → otorgar puntos/sellos (puntos por producto; sello 1-por-compra; sello 1-por-cada-$X). Prerequisito duro: catálogo económico (0002/0021). Depende de 0028. |
+| 25 | Notificación y landing en vivo al otorgar | 0031 | pendiente | Stub/borrador. 4ª rebanada, cierra el loop. Push del pase o actualización en vivo de la landing sobre la tarjeta del programa. Depende de 0028/0029/0030. |
+| 27 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp) | 0032 | pendiente | Stub/borrador. Endurece la identidad no verificada de la 0028: verificar teléfono + reclamar la tarjeta en otro dispositivo, vía la interfaz agnóstica `deliverOtp` (SMS o WhatsApp). Primera pieza que necesita un proveedor de mensajería (ADR 0013). Guarda la investigación de proveedores (2026-08-14). Depende de 0028. |
+| 26 | Brand kit (afiche imprimible con QR de enrolamiento) | — | pendiente | **Downstream del loop.** Plantillas para un afiche imprimible con el QR que apunta a la landing de enrolamiento (0028). Reusa marca (colores/logo) y el pipeline R2. Sin spec aún; se abre cuando el QR resuelva. Las 6 decisiones abiertas ya relevadas en la conversación previa (plantillas curadas pintadas con la marca, PDF vs PNG, QR server-side, efímero vs persistido, sub-ruta en `/brand`). |
 | 21 | Wizard de creación + diseño visual de la tarjeta de fidelización | 0027 | hecho | **PRÓXIMA FEATURE — spec CERRADA (2026-08-13), lista para implementar.** Wizard por pasos para crear **y editar** (Puntos: unidades → TOS → preview/activar; Sellos: básicos → diseño de tarjeta → TOS → preview/activar). Diseño de tarjeta (Sellos): fondo 1 + fondo 2 opcional en **degradé lineal de ángulo configurable** + color de borde, **preview en vivo** con `round(target/2)` sellos puestos; reutiliza la imagen de sello de 0026. Las 6 decisiones abiertas cerradas con el owner: **columnas dedicadas nullable** (no jsonb) con checks hex/ángulo a nivel DB (ADR **0030**), defaults derivados de la marca, Puntos sin diseño (columnas `null`). Requiere **migración `0013` aditiva** + `CardPreview` compartido + splits por `file-size` (`use-loyalty-program.ts`, `program-editor.tsx` → `steps/*`). Implementar con protocolo `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente antes de `implementada`. |
 
 ## Hecho

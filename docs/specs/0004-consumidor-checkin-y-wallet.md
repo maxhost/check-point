@@ -9,6 +9,14 @@ archivos: depende de 0001, 0002 y 0009; rutas concretas se completan tras las de
 
 # 0004 — Cuenta de consumidor, OTP y wallet
 
+> **Reencuadrada por el ADR 0031 (2026-08-14).** Esta spec se escribió bajo el
+> posicionamiento viejo (descubridor "Foursquare × Niantic": wallet como cuenta general de
+> descubrimiento, activos de plataforma, rutas/coleccionables, app consumer propia). El ADR
+> 0031 movió el producto a **merchant-first** con la **Wallet nativa** como superficie. Su
+> núcleo de identidad se rehace, acotado y alineado, en las specs **0028–0031**. Las partes
+> de descubrimiento/rutas/activos de plataforma quedan **diferidas** a la fase futura del ADR
+> 0031. No implementar esta spec tal cual: es material de referencia histórica.
+
 ## Problema
 
 El primer contacto ocurre en el local y no debe exigir descargar una app ni completar un formulario. A la vez, los beneficios ganados no pueden perderse silenciosamente y el usuario debe entender qué pertenece a Mi Pasaporte y qué a cada comercio.

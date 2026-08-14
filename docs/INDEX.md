@@ -46,6 +46,8 @@ desactualizado es peor que no tenerlo.
 | 0028 | 2026-08-12 | Auditoría y cancelación de cierre de fidelización | aceptada | `adr/0028-auditoria-y-cancelacion-de-cierre-de-fidelizacion.md` |
 | 0029 | 2026-08-13 | Módulo de assets compartido para imágenes en R2 | aceptada | `adr/0029-modulo-de-assets-compartido-para-imagenes-en-r2.md` |
 | 0030 | 2026-08-13 | Modelo de datos del diseño de tarjeta de fidelización | aceptada | `adr/0030-modelo-de-datos-del-diseno-de-tarjeta-de-fidelizacion.md` |
+| 0031 | 2026-08-14 | Merchant-first, Wallet nativa como superficie de consumidor e identidad de consumidor compartida | aceptada; supersede la "red curada" de 0003 y reencuadra 0019 | `adr/0031-merchant-first-wallet-nativa-e-identidad-de-consumidor.md` |
+| 0032 | 2026-08-14 | Identidad de consumidor: esquema pg propio `consumer`, auth phone-OTP purpose-built y DB compartida para analítica aislada por negocio | aceptada; refina 0012 | `adr/0032-identidad-de-consumidor-esquema-propio-y-auth-phone-otp.md` |
 
 ## Specs — que se construye
 
@@ -54,7 +56,7 @@ desactualizado es peor que no tenerlo.
 | 0001 | 2026-08-09 | Acceso de backoffice, membresías y auditoría | borrador | no | `specs/0001-fundacion-identidad-y-roles.md` |
 | 0002 | 2026-08-09 | Local, personal y catálogo económico | borrador | no | `specs/0002-local-personal-y-catalogo.md` |
 | 0003 | 2026-08-10 | Wizard de campañas e Incentive Engine | borrador | no | `specs/0003-wizard-de-campana-y-guardrails.md` |
-| 0004 | 2026-08-09 | Cuenta de consumidor, OTP y wallet | borrador | no | `specs/0004-consumidor-checkin-y-wallet.md` |
+| 0004 | 2026-08-09 | Cuenta de consumidor, OTP y wallet | reencuadrada por ADR 0031 | no | `specs/0004-consumidor-checkin-y-wallet.md` |
 | 0005 | 2026-08-09 | Consola de personal y compra acreditada | borrador | no | `specs/0005-consola-de-personal-y-compra-acreditada.md` |
 | 0006 | 2026-08-09 | Ruleta, cupones y canje atómico | borrador | no | `specs/0006-ruleta-cupones-y-canje-atomico.md` |
 | 0007 | 2026-08-09 | Tablero y medición del piloto | borrador | no | `specs/0007-tablero-y-medicion-del-piloto.md` |
@@ -78,6 +80,11 @@ desactualizado es peor que no tenerlo.
 | 0025 | 2026-08-12 | Marca real del negocio y assets R2 | implementada | no | `specs/0025-marca-real-y-assets-r2.md` |
 | 0026 | 2026-08-13 | Diseño de sello del programa de fidelización en R2 | implementada | no | `specs/0026-diseno-de-sello-en-r2.md` |
 | 0027 | 2026-08-13 | Wizard de creación y diseño visual de la tarjeta de fidelización | implementada | sí | `specs/0027-wizard-y-diseno-de-tarjeta-de-fidelizacion.md` |
+| 0028 | 2026-08-14 | Identidad de consumidor y enrolamiento (landing pública sin verificar, membresía aislada, QR personal) | cerrada | sí | `specs/0028-identidad-de-consumidor-y-enrolamiento.md` |
+| 0029 | 2026-08-14 | Pase de Wallet (Apple / Google) + canal de push | borrador | no | `specs/0029-pase-de-wallet-apple-google.md` |
+| 0030 | 2026-08-14 | Acreditación en mostrador (consola de staff, puntos/sellos por reglas) | borrador | no | `specs/0030-acreditacion-en-mostrador.md` |
+| 0031 | 2026-08-14 | Notificación y landing en vivo al otorgar puntos/sellos | borrador | no | `specs/0031-notificacion-y-landing-en-vivo.md` |
+| 0032 | 2026-08-14 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp, canal `deliverOtp`) | borrador | no | `specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
