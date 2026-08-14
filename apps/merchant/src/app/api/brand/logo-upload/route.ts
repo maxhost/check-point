@@ -10,11 +10,19 @@ export async function POST(request: Request) {
   });
   if (!session)
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  let body: unknown;
   try {
+    body = await request.json();
+  } catch {
     return NextResponse.json(
-      await createLogoUpload(session.user.id, await request.json()),
-      { status: 201 },
+      { error: "El cuerpo de la solicitud no es válido." },
+      { status: 400 },
     );
+  }
+  try {
+    return NextResponse.json(await createLogoUpload(session.user.id, body), {
+      status: 201,
+    });
   } catch (error) {
     if (error instanceof BrandError)
       return NextResponse.json(

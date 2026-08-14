@@ -63,4 +63,22 @@ describe("brand contract", () => {
       normalizeLogo(Buffer.from("not-an-image")),
     ).rejects.toMatchObject({ status: 422 });
   });
+
+  it("rejects SVG (even renamed) and oversized images with 422", async () => {
+    // An SVG — the real format is detected from bytes, not from any client MIME.
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
+    );
+    await expect(normalizeLogo(svg)).rejects.toMatchObject({ status: 422 });
+
+    // A real PNG larger than 2048² must be rejected (dimension + pixel-limit guard).
+    const oversized = await sharp({
+      create: { width: 2049, height: 2049, channels: 3, background: "#000000" },
+    })
+      .png()
+      .toBuffer();
+    await expect(normalizeLogo(oversized)).rejects.toMatchObject({
+      status: 422,
+    });
+  });
 });

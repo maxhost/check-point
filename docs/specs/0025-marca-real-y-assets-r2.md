@@ -134,8 +134,11 @@ imágenes-bomba.
   de longitud y se normaliza whitespace.
 - `updated_at`/versión de marca proveen control optimista: un guardado obsoleto recibe `409`,
   nunca un éxito falso.
-- R2 credentials son server-only; URL firmada de subida tiene TTL, método, tamaño y clave
-  restringidos. Ningún secreto llega a `NEXT_PUBLIC_*`.
+- R2 credentials son server-only; la URL firmada de subida restringe método (`PUT`), TTL corto
+  y clave. El **tamaño** no se firma en la URL sino que se enforcea en el servidor al procesar
+  (`readObjectAtMost` corta la lectura a 5 MB → `422`); el riesgo residual es sólo almacenamiento
+  transitorio en R2, acotado por el `expiresAt` del upload y el cron de limpieza. Ningún secreto
+  llega a `NEXT_PUBLIC_*`.
 
 ## Migración
 
@@ -165,9 +168,11 @@ imágenes-bomba.
   manual en vivo sobre el deploy de Vercel (2026-08-12).
 - [x] Owner carga PNG/JPEG/WebP <=5 MB y <=2048²; backend detecta formato real, genera WebP y
   PNG, y sirve ambas variantes públicas sin exponer R2. Verificado con QA manual en vivo.
-- [ ] SVG, tipo falso, imagen corrupta/sobredimensionada, clave ajena y payload inválido son
-  rechazados con `422`/`403` correctos. Sin cobertura automatizada ni QA manual explícito de
-  estos casos límite todavía.
+- [x] SVG, tipo falso, imagen corrupta/sobredimensionada, clave ajena y payload inválido son
+  rechazados con `422`/`403` correctos. Cobertura automatizada (2026-08-13): `normalizeLogo`
+  rechaza SVG (renombrado o no), imagen corrupta y > 2048² con `422` (`brand.test.ts`);
+  autorización sin negocio → `403` y payload malformado → `422` en la integración Neon; el
+  `business_id` nunca llega desde el navegador (derivado de la sesión).
 - [x] Seleccionar/quitar/reemplazar no muta nada hasta Guardar; el logo anterior sólo se
   elimina tras persistir exitosamente el nuevo estado y hay limpieza idempotente de huérfanos.
   Verificado con QA manual en vivo (guardar/reemplazar el logo real).
@@ -177,10 +182,34 @@ imágenes-bomba.
   diferida hasta que exista más de un owner por negocio (no habrá hasta dentro de meses).
 - [x] La página es responsive, accesible, con preview, loading, errores y toasts reutilizables.
   Verificado con QA manual en vivo.
-- [ ] Migración aplicada/verificada en Neon (sí, aplicada); R2 privado configurado (sí); pero
-  **integración R2/Neon y E2E contra owner de prueba no corrieron**: el test de integración
-  Neon está skippeado por env y no existe E2E de `brand` en `tests/e2e/`. Format, lint,
-  typecheck y build sí pasan (3/3 cada uno).
+- [x] Migración aplicada/verificada en Neon; R2 privado configurado. Integración Neon del
+  servicio de marca **verde** contra rama aislada efímera (2026-08-13): control optimista
+  `409` en guardado obsoleto, autorización `403` y payload `422`. Format, lint, typecheck y
+  unit pasan; build vía Vercel en cada push. Residual: no existe E2E de `brand` automatizado
+  (el camino feliz de subida/serrado se cubrió con QA manual en vivo del owner).
+
+## Enmienda 2026-08-13 — Revisión independiente
+
+Una revisión independiente (`AGENT-WORKFLOW.md`) confirmó el núcleo de seguridad —validación por
+bytes reales con `sharp` (SVG/tipo falso/corrupta/bomba → `422`), aislamiento multi-tenant (el
+negocio se deriva de la sesión; ninguna clave R2 viene del navegador), atomicidad de assets (una
+versión tiene WebP y PNG o no se publica; el logo anterior se borra sólo tras persistir; cola de
+limpieza idempotente) y control optimista (`409`)— y devolvió FAIL estrecho por tres defectos, ya
+resueltos:
+
+- **Fuga de `logo_object_key`**: `GET`/`PUT /api/brand` serializaban el objeto completo,
+  violando la invariante escrita. Ahora la ruta responde un DTO que omite la clave interna y sólo
+  expone `logoPath` público.
+- **JSON malformado → `503`**: `PUT /api/brand` y `POST /api/brand/logo-upload` parseaban el body
+  dentro del `try` genérico. Ahora un cuerpo inválido devuelve `400`, no un falso 503.
+- **Tests ausentes**: se agregaron unitarios de `normalizeLogo` (SVG renombrado y > 2048² → `422`)
+  e integración Neon del servicio (`409` optimista, `403` sin negocio, `422` malformado), verde
+  contra una rama aislada efímera.
+- **Menor**: un `businessId` con formato válido pero UUID inválido daba `500` en la ruta pública;
+  ahora la llamada está dentro del `try` → `404` limpio.
+
+Queda documentado que la URL firmada no restringe el tamaño en la firma (se enforcea server-side)
+y que la prueba de concurrencia real es **a futuro** (ver DoD).
 
 ## Variables requeridas
 

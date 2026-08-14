@@ -14,10 +14,12 @@ export async function GET(
 ) {
   const { businessId } = await params;
   const version = new URL(request.url).searchParams.get("v");
-  const business = await logoForPublicBusiness(businessId, version);
-  if (!business) return new NextResponse(null, { status: 404 });
   const webp = request.headers.get("accept")?.includes("image/webp") ?? false;
   try {
+    // Inside the try so a regex-valid-but-invalid uuid (Postgres 22P02) becomes a
+    // clean 404 instead of a 500.
+    const business = await logoForPublicBusiness(businessId, version);
+    if (!business) return new NextResponse(null, { status: 404 });
     const object = await getPrivateObject(
       `${business.logoObjectKey}/logo.${webp ? "webp" : "png"}`,
     );
