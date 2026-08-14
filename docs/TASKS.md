@@ -255,6 +255,18 @@ evita duplicar el código si se pega un internacional con `+`, sin despojar díg
 Brasil dial `55`/DDD `55`). **Migración `0015` aplicada a prod y verificada** (`country_iso` text
 nullable; `core`/`merchant_auth` intactos). El QR sigue sin renderizar a propósito (es la 0029).
 
+**Cierre de sesión 2026-08-14 — punto de retorno.** La **spec 0028 (identidad de consumidor +
+enrolamiento) + su enmienda 2026-08-14b (selector de país + `country_iso`)** quedan
+**`implementada` con doble PASS de revisor independiente y QA manual del owner en vivo**: registro
+real de **Marcos (`+49…`)** y **Julio (`+55…`/`country_iso=BR`)** sobre el deploy de Vercel,
+verificados por MCP — selector de país OK, E.164 sin duplicar código, `country_iso` persistido.
+Migraciones **`0014` + `0015` en prod**; commits **`b1f60d1`** (feature) + **`341f230`** (enmienda
+país) en `main`. Gate verde (typecheck 3/3, lint, prettier, unit 53, build 3/3). Ramas Neon
+efímeras borradas. **La próxima feature es la tarea 23 / spec 0029** (pase de Wallet Apple/Google +
+canal de push): está en `borrador`/stub y **el primer paso es escribir el ADR de proveedor de
+Wallet** (Apple PassKit / Google Wallet) que hoy la bloquea, y recién después cerrar la spec con el
+owner. Reutiliza el `qr_token` ya emitido por la 0028 (no hay que re-emitirlo).
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |

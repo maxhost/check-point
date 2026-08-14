@@ -233,9 +233,11 @@ ni un emisor de prueba; se implementa y verifica sin ningún proveedor.
 - [x] Comandos exactos: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit), integración Neon en
       rama efímera (9/9), `pnpm build`, y aplicación de la migración con `drizzle-kit migrate`
       verificada (implementador + revisor independiente PASS).
-- [ ] Verificación manual en teléfono (deploy): abrir la URL de un programa real, completar el
+- [x] Verificación manual en teléfono (deploy): abrir la URL de un programa real, completar el
       formulario, ver la confirmación con el nombre, el programa y el aviso de recuperación.
-      **Sin dependencia de proveedor de SMS.**
+      **Sin dependencia de proveedor de SMS.** *(QA en vivo del owner 2026-08-14 sobre Vercel:
+      Marcos `+49…` y Julio `+55…`/`BR` — selector de país OK, E.164 sin duplicar código,
+      `country_iso` persistido, verificado por MCP.)*
 
 ## Handoff requerido
 

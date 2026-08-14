@@ -90,3 +90,20 @@ chequear con un comando, es un hook — no la escribas aca tambien.
     "paquete no encontrado", no DNS).
   - **`pnpm fetch` purga `node_modules` sin preguntar salvo `CI=true`** (falla con
     `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` sin TTY, p.ej. corrido por un agente).
+
+- **`git push` a `main` falla con "Invalid username or token" aunque `gh` este logueado.**
+  Hay un `GH_TOKEN` **invalido** en el entorno que tapa las credenciales validas del keyring
+  (`gh auth status` muestra `X Failed to log in ... using token (GH_TOKEN)` y ademas dos
+  cuentas keyring OK: `maxhost` —dueña del repo— y `no-code-company-max`). El remoto es HTTPS
+  y ya no acepta password. **Fix verificado (sin exponer el token):**
+  `export GH_TOKEN=; gh auth switch --hostname github.com --user maxhost` y despues
+  `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push origin main`. Cada Bash
+  es un shell nuevo, asi que el `GH_TOKEN=` inline va en el MISMO comando del push. No es bug
+  del repo — es el entorno; no reintentar el push pelado.
+- **Migracion a prod (Neon):** `DATABASE_URL_UNPOOLED='<conn de la rama default, host SIN
+  -pooler>' pnpm --filter @mi-pasaporte/merchant db:migrate`. `drizzle-kit migrate` aplica
+  solo las pendientes (lleva su propia tabla `drizzle.__drizzle_migrations`). Verificar
+  siempre por MCP (`run_sql`) que el esquema quedo y que `core`/`merchant_auth` estan
+  intactos ANTES de marcar la spec. Aplicar a prod = paso del orquestador DESPUES del PASS
+  del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
+  pedir confirmacion del owner antes de borrar ramas efimeras.
