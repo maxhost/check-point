@@ -20,6 +20,7 @@ export type EnrollInput = {
   firstName: string;
   lastName: string;
   phoneE164: string;
+  countryIso: string;
 };
 
 /** Opaque, PII-free, unguessable token: 32 random bytes (256 bits) as base64url. */
@@ -49,6 +50,7 @@ export type ConsumerAccountRow = {
   phoneVerifiedAt: Date | null;
   firstName: string;
   lastName: string;
+  countryIso: string | null;
   qrToken: string;
   createdAt: Date;
   updatedAt: Date;
@@ -72,6 +74,7 @@ export function consumerAccountResponse(account: ConsumerAccountRow) {
     firstName: account.firstName,
     lastName: account.lastName,
     phoneE164: account.phoneE164,
+    countryIso: account.countryIso,
     phoneVerified: account.phoneVerifiedAt !== null,
   };
 }

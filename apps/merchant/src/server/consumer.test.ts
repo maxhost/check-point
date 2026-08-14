@@ -8,6 +8,7 @@ import {
   membershipResponse,
 } from "./consumer/core";
 import { validateEnrollInput } from "./consumer/validation";
+import { composeE164, flagEmoji, isValidCountryIso } from "../lib/countries";
 
 describe("consumer opaque tokens", () => {
   it("emits unguessable tokens of at least 128 bits with no PII", () => {
@@ -38,6 +39,7 @@ describe("consumer DTOs never leak secrets", () => {
     phoneVerifiedAt: null,
     firstName: "Marcos",
     lastName: "Pérez",
+    countryIso: "EC",
     qrToken: "SUPER-SECRET-QR-TOKEN",
     createdAt: new Date("2026-08-14T00:00:00Z"),
     updatedAt: new Date("2026-08-14T00:00:00Z"),
@@ -46,14 +48,23 @@ describe("consumer DTOs never leak secrets", () => {
   it("account DTO omits the raw qrToken and derives phoneVerified", () => {
     const dto = consumerAccountResponse(account);
     expect(dto).not.toHaveProperty("qrToken");
+    expect(dto).not.toHaveProperty("tokenHash");
     expect(JSON.stringify(dto)).not.toContain("SUPER-SECRET-QR-TOKEN");
     expect(dto).toMatchObject({
       id: "acc-1",
       firstName: "Marcos",
       lastName: "Pérez",
       phoneE164: "+593987654321",
+      countryIso: "EC",
       phoneVerified: false,
     });
+  });
+
+  it("account DTO exposes countryIso (metadata, not a secret) incl. null", () => {
+    expect(consumerAccountResponse(account).countryIso).toBe("EC");
+    expect(
+      consumerAccountResponse({ ...account, countryIso: null }).countryIso,
+    ).toBeNull();
   });
 
   it("account DTO reports phoneVerified true once verified", () => {
@@ -81,11 +92,47 @@ describe("consumer DTOs never leak secrets", () => {
   });
 });
 
+describe("countries", () => {
+  it("derives flag emoji from ISO-2 via regional indicators", () => {
+    expect(flagEmoji("EC")).toBe("🇪🇨");
+    expect(flagEmoji("BR")).toBe("🇧🇷");
+    expect(flagEmoji("ec")).toBe("🇪🇨"); // lower-case is upper-cased
+    expect(flagEmoji("X")).toBe(""); // not two letters
+  });
+
+  it("recognizes valid ISO codes and rejects unknown/empty", () => {
+    expect(isValidCountryIso("EC")).toBe(true);
+    expect(isValidCountryIso("BR")).toBe(true);
+    expect(isValidCountryIso("XX")).toBe(false);
+    expect(isValidCountryIso("")).toBe(false);
+  });
+});
+
+describe("composeE164", () => {
+  it("prepends the dial to a national number, stripping non-digits and trunk zeros", () => {
+    expect(composeE164("593", "0987654321")).toBe("+593987654321"); // trunk 0 dropped
+    expect(composeE164("593", "98 765-4321")).toBe("+593987654321"); // spaces/dashes
+    expect(composeE164("34", "612345678")).toBe("+34612345678"); // ES
+  });
+
+  it("respects a full international number pasted with '+' (no double dial)", () => {
+    expect(composeE164("593", "+593987654321")).toBe("+593987654321");
+    expect(composeE164("55", "+55 11 99999-8888")).toBe("+5511999998888");
+  });
+
+  it("does NOT strip a bare-digit dial prefix that is really a local area code", () => {
+    // Brazil dial 55, area code 55 (Rio Grande do Sul): "55 9999-8888" typed local
+    // must still get the country code prepended → not treated as duplicated dial.
+    expect(composeE164("55", "5599998888")).toBe("+55" + "5599998888");
+  });
+});
+
 describe("validateEnrollInput", () => {
   const valid = {
     firstName: "Marcos",
     lastName: "Pérez",
     phoneE164: "+593987654321",
+    countryIso: "EC",
   };
 
   it("accepts and trims a valid payload", () => {
@@ -93,8 +140,22 @@ describe("validateEnrollInput", () => {
       firstName: "  Marcos ",
       lastName: " Pérez ",
       phoneE164: " +593987654321 ",
+      countryIso: " ec ",
     });
     expect(out).toEqual(valid);
+  });
+
+  it("accepts a known countryIso and rejects an unknown one with 422", () => {
+    expect(validateEnrollInput({ ...valid, countryIso: "br" }).countryIso).toBe(
+      "BR",
+    );
+    for (const iso of ["XX", "", "123", undefined]) {
+      expect(() =>
+        validateEnrollInput({ ...valid, countryIso: iso }),
+      ).toThrowError(
+        expect.objectContaining({ status: 422, code: "invalid_country" }),
+      );
+    }
   });
 
   it("rejects a non-E.164 phone with 422 invalid_phone", () => {

@@ -1,0 +1,1 @@
+ALTER TABLE "consumer"."consumer_account" ADD COLUMN "country_iso" text;

@@ -1,3 +1,4 @@
+import { isValidCountryIso } from "../../lib/countries";
 import { ConsumerError, type EnrollInput } from "./core";
 
 /** E.164: a leading '+', a non-zero first digit, then up to 14 more digits. */
@@ -34,5 +35,18 @@ export function validateEnrollInput(raw: unknown): EnrollInput {
       "El teléfono debe estar en formato internacional, por ejemplo +593987654321.",
     );
   }
-  return { firstName, lastName, phoneE164 };
+  // Country is the selector choice (analytics), NOT derived from the phone and
+  // NOT cross-validated against it: foreign numbers are allowed on purpose.
+  const countryIso =
+    typeof input.countryIso === "string"
+      ? input.countryIso.trim().toUpperCase()
+      : "";
+  if (!isValidCountryIso(countryIso)) {
+    throw new ConsumerError(
+      422,
+      "invalid_country",
+      "Elegí un país válido de la lista.",
+    );
+  }
+  return { firstName, lastName, phoneE164, countryIso };
 }

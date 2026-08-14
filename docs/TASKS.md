@@ -240,6 +240,21 @@ de `qr_token` ~2⁻²⁵⁶ → 503) — todos dentro de los límites que la spe
 **La próxima rebanada del camino A es la spec 0029** (pase de Wallet Apple/Google + push), bloqueada
 por un ADR de proveedor de Wallet por escribir; reusa el `qr_token` ya emitido.
 
+**Ronda QA 2026-08-14b sobre la spec 0028 (enmienda) — implementada + PASS.** QA en vivo del owner
+sobre el deploy detectó tres ajustes (todo landing/UX + 1 columna): (1) **selector de país** con
+banderita (emoji derivado del ISO) + código, **lista estática empaquetada** (`src/lib/countries.ts`
++ `countries.data.ts`, ~239 países; NO API ni tabla en DB — decisión del owner), número local que
+compone el E.164; **default = país del negocio** (`core.business.country_code`, ISO-2; fallback `EC`);
+(2) **`country_iso`** persistido para analítica (columna nullable en `consumer_account`, migración
+**`0015_yummy_tusk`** aditiva; validado contra la lista → `422` si es desconocido; se guarda al crear,
+**no se pisa en reuso**; entra al DTO, sin filtrar `qr_token`/`token_hash`); (3) **aviso de
+recuperación movido al formulario** (junto al teléfono). **Implementador + revisor independiente
+PASS**; gates verdes (typecheck 3/3, lint, prettier, unit 50→**53**, build 3/3) + integración Neon
+9/9 en ramas efímeras. **Menor 1 resuelto post-PASS por el orquestador** (con tests): `composeE164`
+evita duplicar el código si se pega un internacional con `+`, sin despojar dígitos pelados (colisión
+Brasil dial `55`/DDD `55`). **Migración `0015` aplicada a prod y verificada** (`country_iso` text
+nullable; `core`/`merchant_auth` intactos). El QR sigue sin renderizar a propósito (es la 0029).
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |

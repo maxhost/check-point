@@ -86,6 +86,7 @@ export async function enroll(
           phoneE164: input.phoneE164,
           firstName: input.firstName,
           lastName: input.lastName,
+          countryIso: input.countryIso,
           qrToken: generateOpaqueToken(),
         })
         .returning();
@@ -131,6 +132,8 @@ export async function enroll(
 export type EnrollLanding = {
   programId: string;
   businessName: string;
+  /** Business country (ISO-2) — the form's default selection. May be null/empty. */
+  countryCode: string | null;
 };
 
 /** Public landing info for a program that admits enrollment, or null (unavailable). */
@@ -142,6 +145,7 @@ export async function getEnrollLanding(
       .select({
         programId: loyaltyPrograms.id,
         businessName: businesses.name,
+        countryCode: businesses.countryCode,
       })
       .from(loyaltyPrograms)
       .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))

@@ -139,9 +139,12 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
       firstName: "Marcos",
       lastName: "Pérez",
       phoneE164: phoneMain,
+      countryIso: "EC",
     });
     expect(account.phoneVerifiedAt).toBeNull();
     expect(account.qrToken).toBeTruthy();
+    // The selected country is persisted at creation.
+    expect(account.countryIso).toBe("EC");
     expect(membership.businessId).toBe(businessA);
     expect(membership.programId).toBe(programActive);
   });
@@ -152,9 +155,12 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
       firstName: "OTRO",
       lastName: "NOMBRE",
       phoneE164: phoneMain,
+      countryIso: "BR",
     });
     expect(account.firstName).toBe("Marcos");
     expect(account.lastName).toBe("Pérez");
+    // Reuse must not overwrite the country either (still the create-time "EC").
+    expect(account.countryIso).toBe("EC");
     const accounts = await getDb()
       .select()
       .from(consumerAccounts)
@@ -195,6 +201,7 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
         firstName: "Marcos",
         lastName: "Pérez",
         phoneE164: phoneMain,
+        countryIso: "EC",
       }),
     ).rejects.toMatchObject({ status: 409, code: "already_member" });
     const after = await getDb()
@@ -210,6 +217,7 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
         firstName: "Ana",
         lastName: "Gómez",
         phoneE164: phoneOther,
+        countryIso: "EC",
       }),
     ).rejects.toMatchObject({ status: 404, code: "program_unavailable" });
   });
@@ -220,6 +228,7 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
         firstName: "Ana",
         lastName: "Gómez",
         phoneE164: phoneOther,
+        countryIso: "EC",
       }),
     ).rejects.toMatchObject({ status: 404 });
   });

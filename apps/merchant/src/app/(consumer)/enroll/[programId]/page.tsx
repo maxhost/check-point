@@ -48,7 +48,11 @@ export default async function EnrollPage({
         Sumate al programa de fidelidad. Solo necesitamos tu nombre y tu
         teléfono.
       </p>
-      <EnrollForm programId={programId} businessName={landing.businessName} />
+      <EnrollForm
+        programId={programId}
+        businessName={landing.businessName}
+        defaultCountryIso={landing.countryCode ?? "EC"}
+      />
     </main>
   );
 }

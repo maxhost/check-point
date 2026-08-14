@@ -252,3 +252,55 @@ Implementador y revisor usan el formato de `docs/AGENT-WORKFLOW.md`. El revisor 
   por IP rompería la WiFi del local — decisión explícita del owner 2026-08-14). Vector de bajo
   impacto en piloto; lo cierra la verificación por OTP de la **spec 0032**. **No bloquea** el
   cierre.
+
+## Enmienda 2026-08-14b — selección de país, `country_iso` y aviso de recuperación (ronda QA)
+
+QA en vivo del owner sobre el deploy. Tres ajustes; migración aditiva **`0015`**. No cambian el
+modelo de identidad ni la seguridad (el `phone_e164` sigue siendo la clave; `country_iso` es
+metadato no secreto).
+
+1. **Selector de país en vez de escribir el formato internacional a mano.** La landing pasa a
+   tener un **dropdown de país buscable** (banderita + código telefónico) + un campo para el
+   **número local**; el cliente compone el `phone_e164` (`+<código><número local sin prefijo de
+   troncal>`). El servidor **sigue validando E.164** como backstop.
+   - **Datos de países = lista estática empaquetada en la app** (`iso2` + código telefónico +
+     nombre), **no** una API en runtime ni una tabla en DB (decisión del owner 2026-08-14:
+     dato estático de ~250 filas, casi inmutable; API/DB agregan latencia y modos de falla sin
+     ganancia). La **banderita es un emoji derivado del `iso2`** (regional indicators), sin
+     imágenes ni CDN. Módulo compartido cliente-seguro (`src/lib/countries.ts`).
+   - **Default = país del negocio**: `core.business.country_code` (ISO-2, ya en DB; p.ej. `BR`,
+     `EC`). `getEnrollLanding` lo expone; si falta o es desconocido → fallback `EC`.
+   - **Sin cross-validación** teléfono↔país: el número puede ser extranjero (un turista con
+     número de otro país). `country_iso` es el país **elegido en el selector**, no se deriva del
+     teléfono.
+2. **Persistir el país para analítica** (`country_iso`, ISO-2, nullable en `consumer_account`).
+   Se valida contra la lista estática (ISO desconocido → `422`). Se guarda **al crear** la
+   cuenta; en **reuso de perfil no se pisa** (coherente con "reusa sin pisar"). Entra al DTO
+   `consumerAccountResponse` (no es secreto). El `qr_token`/`token_hash` **siguen sin salir**.
+3. **Aviso de recuperación movido al formulario**, junto al campo de teléfono, explicando por
+   qué lo pedimos (antes aparecía recién en la confirmación post-registro).
+
+**Nota (no es esta spec):** el QR personal no se renderiza todavía — la confirmación muestra
+"Listo" sin QR **a propósito**; el render del QR + "Añadir a Wallet" es la **spec 0029**.
+**Nota (futuro):** personalizar la landing por negocio/local (marca: colores/logo de la spec
+0025) es una spec aparte; la ruta pública `/enroll/[programId]` ya lo habilita.
+
+**DoD de la enmienda:**
+- [x] La landing muestra dropdown de país (banderita+código) + número local; por defecto el país
+      del negocio; el número enviado es E.164 válido.
+- [x] `country_iso` desconocido → `422`; se guarda al crear y **no** se pisa en reuso.
+- [x] `consumerAccountResponse` incluye `countryIso` y **sigue** sin exponer `qr_token`/`token_hash`.
+- [x] El aviso de recuperación aparece **en el formulario** (junto al teléfono).
+- [x] Migración `0015` aditiva (columna `country_iso` nullable) aplicada y verificada en rama
+      efímera y en prod; `core`/`merchant_auth` intactos.
+
+**Revisión independiente: PASS** (typecheck/lint/prettier/build, unit 50, integración Neon 9/9
+en rama efímera). Dos menores:
+- **Menor 1 (resuelto post-PASS):** la composición del E.164 en el cliente podía **duplicar el
+  código de país** si el usuario pegaba un internacional completo en el campo local. Se extrajo
+  `composeE164(dial, raw)` (puro, testeado): si el input arranca con `+` se respeta verbatim (sin
+  reanteponer el dial); si no, se trata como número nacional (drop de troncal `0` + dial). **No**
+  se despoja un prefijo de dial en *dígitos pelados* a propósito, porque colisionaría con áreas
+  locales legítimas (Brasil dial `55` / DDD `55`). 3 unit nuevos (`composeE164`), unit total **53**.
+- **Menor 2 (no-issue):** el default de país es case-sensitive, inocuo porque onboarding persiste
+  `country_code` en mayúsculas.

@@ -17,6 +17,9 @@ export const consumerAccounts = consumer.table(
     phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
+    // Country selected in the enroll form (ISO-2). Analytics metadata, not the
+    // identity key (the phone is) — nullable and never cross-checked vs. phone.
+    countryIso: text("country_iso"),
     qrToken: text("qr_token").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

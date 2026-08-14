@@ -1,6 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import {
+  COUNTRIES,
+  composeE164,
+  dialByIso,
+  flagEmoji,
+  isValidCountryIso,
+} from "../../../../lib/countries";
 
 type Screen =
   | { kind: "form" }
@@ -27,14 +34,20 @@ const inputStyle: React.CSSProperties = {
 export function EnrollForm({
   programId,
   businessName,
+  defaultCountryIso,
 }: {
   programId: string;
   businessName: string;
+  defaultCountryIso: string;
 }) {
+  const initialIso = isValidCountryIso(defaultCountryIso)
+    ? defaultCountryIso
+    : "EC";
   const [screen, setScreen] = useState<Screen>({ kind: "form" });
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phoneE164, setPhoneE164] = useState("");
+  const [countryIso, setCountryIso] = useState(initialIso);
+  const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -44,10 +57,11 @@ export function EnrollForm({
     setSubmitting(true);
     setToast(null);
     try {
+      const phoneE164 = composeE164(dialByIso(countryIso) ?? "", phone);
       const res = await fetch(`/api/public/enroll/${programId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, phoneE164 }),
+        body: JSON.stringify({ firstName, lastName, phoneE164, countryIso }),
       });
       if (res.status === 201) {
         setScreen({ kind: "done", firstName: firstName.trim() });
@@ -79,20 +93,6 @@ export function EnrollForm({
         <h2 style={{ fontSize: 20 }}>¡Listo, {screen.firstName}! 🎉</h2>
         <p style={{ color: "#333", marginTop: 8 }}>
           Ya sos parte del programa de <strong>{businessName}</strong>.
-        </p>
-        <p
-          style={{
-            marginTop: 16,
-            padding: "12px 14px",
-            background: "#fff8e1",
-            border: "1px solid #ffe082",
-            borderRadius: 10,
-            color: "#5d4037",
-            fontSize: 14,
-          }}
-        >
-          Guardá tu teléfono: lo vas a necesitar para recuperar tu tarjeta si
-          cambiás o perdés este dispositivo.
         </p>
       </section>
     );
@@ -163,19 +163,39 @@ export function EnrollForm({
         autoComplete="family-name"
         required
       />
+      <label style={label} htmlFor="country">
+        País
+      </label>
+      <select
+        id="country"
+        style={inputStyle}
+        value={countryIso}
+        onChange={(e) => setCountryIso(e.target.value)}
+        required
+      >
+        {COUNTRIES.map((c) => (
+          <option key={c.iso2} value={c.iso2}>
+            {flagEmoji(c.iso2)} {c.name} (+{c.dial})
+          </option>
+        ))}
+      </select>
       <label style={label} htmlFor="phone">
         Teléfono
       </label>
       <input
         id="phone"
         style={inputStyle}
-        value={phoneE164}
-        onChange={(e) => setPhoneE164(e.target.value)}
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
         inputMode="tel"
-        autoComplete="tel"
-        placeholder="+593987654321"
+        autoComplete="tel-national"
+        placeholder="987654321"
         required
       />
+      <p style={{ fontSize: 13, color: "#666", marginTop: 6 }}>
+        Guardá tu teléfono: lo vas a necesitar para recuperar tu tarjeta si
+        cambiás o perdés este dispositivo.
+      </p>
       {toast ? (
         <p
           role="alert"
