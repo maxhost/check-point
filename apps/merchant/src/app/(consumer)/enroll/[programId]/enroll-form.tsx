@@ -8,6 +8,7 @@ import {
   flagEmoji,
   isValidCountryIso,
 } from "../../../../lib/countries";
+import { WalletButtons } from "../../wallet-cta";
 
 type Screen =
   | { kind: "form" }
@@ -88,27 +89,31 @@ export function EnrollForm({
   }
 
   if (screen.kind === "done") {
+    // Client-side UA detection only reorders the buttons; both are always shown.
+    const isIos =
+      typeof navigator !== "undefined" &&
+      /iphone|ipad|ipod/i.test(navigator.userAgent);
     return (
       <section>
         <h2 style={{ fontSize: 20 }}>¡Listo, {screen.firstName}! 🎉</h2>
         <p style={{ color: "#333", marginTop: 8 }}>
-          Ya sos parte del programa de <strong>{businessName}</strong>.
+          Ya sos parte del programa de <strong>{businessName}</strong>. Sumá tu
+          pase a la billetera de tu teléfono:
         </p>
-        {/* Session cookie is already set by the POST — go straight to the pass. */}
+        {/* Session cookie is already set by the POST — the buttons hit the
+            session-authorized endpoints directly, no extra navigation. */}
+        <div style={{ marginTop: 20 }}>
+          <WalletButtons isIos={isIos} />
+        </div>
         <a
           href="/wallet"
           style={{
             display: "block",
             textAlign: "center",
-            marginTop: 20,
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "13px 14px",
-            fontSize: 16,
-            borderRadius: 10,
-            background: "#2563eb",
-            color: "#fff",
-            textDecoration: "none",
+            marginTop: 16,
+            fontSize: 14,
+            color: "#2563eb",
+            textDecoration: "underline",
           }}
         >
           Ver mi tarjeta y código QR

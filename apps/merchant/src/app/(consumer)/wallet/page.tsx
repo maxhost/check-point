@@ -9,6 +9,7 @@ import {
 import { SESSION_COOKIE } from "../../../server/consumer/core";
 import { resolveSession } from "../../../server/consumer/session";
 import { renderQrSvg } from "../../../server/wallet/core";
+import { WalletButtons } from "../wallet-cta";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,18 +19,6 @@ const page: React.CSSProperties = {
   margin: "0 auto",
   padding: "32px 20px",
   fontFamily: "system-ui, sans-serif",
-};
-
-const walletButton: React.CSSProperties = {
-  display: "block",
-  width: "100%",
-  boxSizing: "border-box",
-  textAlign: "center",
-  padding: "13px 14px",
-  fontSize: 16,
-  borderRadius: 10,
-  textDecoration: "none",
-  marginTop: 12,
 };
 
 export default async function WalletPage() {
@@ -74,25 +63,6 @@ export default async function WalletPage() {
     .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))
     .where(eq(programMemberships.consumerId, account.id));
 
-  const appleButton = (
-    <a
-      key="apple"
-      href="/api/public/wallet/apple.pkpass"
-      style={{ ...walletButton, background: "#000", color: "#fff" }}
-    >
-      Añadir a Apple Wallet
-    </a>
-  );
-  const googleButton = (
-    <a
-      key="google"
-      href="/api/public/wallet/google"
-      style={{ ...walletButton, background: "#0f2a3a", color: "#fff" }}
-    >
-      Añadir a Google Wallet
-    </a>
-  );
-
   return (
     <main style={page}>
       <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
@@ -123,7 +93,7 @@ export default async function WalletPage() {
       />
 
       <div style={{ marginTop: 24 }}>
-        {isIos ? [appleButton, googleButton] : [googleButton, appleButton]}
+        <WalletButtons isIos={isIos} />
       </div>
 
       <section style={{ marginTop: 32 }}>

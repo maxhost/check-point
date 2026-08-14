@@ -10,3 +10,6 @@ test-results/
 !.env.example
 apps/consumer/public/qa-checkin.png
 *.tsbuildinfo
+
+# Secreto local — SA de Google Wallet (NO commitear)
+tests/Wallet Issuer.json
