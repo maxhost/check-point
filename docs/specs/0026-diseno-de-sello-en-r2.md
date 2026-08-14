@@ -1,7 +1,7 @@
 ---
 spec: 0026
 fecha: 2026-08-13
-estado: en curso
+estado: cerrada
 resumen: El Owner sube el diseño de imagen del sello de un programa de Sellos, procesado y servido desde R2 con el mismo pipeline seguro de la marca y borrado diferido al guardar.
 disjunta: no
 archivos: apps/merchant, esquema/migraciones, R2, pruebas y docs
@@ -28,9 +28,9 @@ explícitamente el logo de sellos a su propia spec: esta.
   versionada definitiva, endpoint público de lectura y limpieza idempotente de huérfanos.
 - Formatos de entrada: **PNG, JPEG/JPG y WebP**; hasta 5 MB y 2048 × 2048 px; validación del
   formato real por bytes (nunca por el `Content-Type` del cliente); SVG rechazado.
-- **Sin fondo transparente**: la alfa se aplana sobre fondo blanco al procesar, para un sello
-  de aspecto sólido y consistente en la tarjeta. *(Decisión a confirmar con el Owner; ver
-  «Abierto». Si se prefiere conservar transparencia es un cambio de una línea en el pipeline.)*
+- **Conserva la transparencia** (canal alfa preservado en las variantes WebP y PNG). Decisión
+  del Owner 2026-08-13: la tarjeta renderizará los recuadros del sello siempre en **blanco**
+  (feature aparte), así que el sello compone sobre ese fondo blanco sin aplanarlo en el asset.
 - **Borrado diferido, igual que la marca**: seleccionar una imagen nueva **no** elimina la
   anterior de R2; un botón **«Quitar»** marca la remoción en el borrador. El cambio efectivo
   (promover la nueva versión o borrar la anterior) ocurre **sólo al Guardar el programa**.
@@ -47,14 +47,15 @@ explícitamente el logo de sellos a su propia spec: esta.
 
 ## Decisiones de diseño
 
-### Reutilización del pipeline (ADR aparte)
+### Reutilización del pipeline (ADR 0029)
 
 El procesamiento (`normalizeLogo` con `sharp`) y el firmado/claves de R2 (`server/r2.ts`) de la
-0025 son genéricos. Lo específico de marca es el cableado a `businesses` y `brandAssetUploads`.
-Se **extrae un módulo de assets reutilizable** (sesión de upload firmada + normalización +
-promoción a clave versionada + borrado diferido + cleanup) parametrizado por entidad y prefijo
-de clave, y el sello se apoya en él. Evita duplicar el endurecimiento ya revisado. La decisión
-y su alcance van a un ADR.
+0025 son genéricos. **ADR 0029** fija la arquitectura: se extrae el pipeline de imagen
+endurecido a `server/assets/image.ts` (`normalizeImage`, que **conserva el alfa**), compartido
+por marca y sello; se reutilizan las primitivas de `server/r2.ts`; y el rastreo de uploads
+temporales usa una tabla **por entidad** (`core.loyalty_asset_upload`, paralela a la de marca)
+en lugar de generalizar las tablas de marca ya en producción, para minimizar el riesgo de
+migración. `brand.ts` se divide para consumir el módulo y bajar del límite de tamaño.
 
 ### Esquema
 
@@ -117,8 +118,8 @@ modalidad Puntos el campo no aparece.
 ## Definition of Done
 
 - [ ] En un programa de Sellos, el Owner sube una imagen (PNG/JPEG/WebP ≤ 5 MB, ≤ 2048²); el
-  backend detecta el formato real, aplana la transparencia y genera WebP + PNG servidas por la
-  URL pública sin exponer R2.
+  backend detecta el formato real, **conserva la transparencia** y genera WebP + PNG servidas
+  por la URL pública sin exponer R2.
 - [ ] SVG, tipo falso, imagen corrupta/sobredimensionada, clave ajena y payload inválido se
   rechazan con `422`/`403` correctos, con cobertura automatizada.
 - [ ] Subir/Quitar no muta R2 ni la DB hasta Guardar; la imagen anterior sólo se elimina tras
@@ -132,8 +133,7 @@ modalidad Puntos el campo no aparece.
 
 ## Abierto
 
-- **Transparencia**: la spec asume aplanar la alfa sobre **fondo blanco** («sin fondo
-  transparente», pedido del Owner). Alternativas: conservar transparencia (alfa en WebP/PNG) o
-  aplanar sobre un color de marca. Confirmar antes de implementar.
+- **Transparencia**: resuelto — se **conserva** el alfa (decisión del Owner 2026-08-13; la
+  tarjeta renderiza los recuadros en blanco en una feature aparte).
 - **Endpoint público ahora vs. después**: se define la URL pública estable ya, aunque el wallet
   consumer que la consumirá llegue en otra spec.

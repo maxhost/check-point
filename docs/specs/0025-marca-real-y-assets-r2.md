@@ -211,6 +211,11 @@ resueltos:
 Queda documentado que la URL firmada no restringe el tamaño en la firma (se enforcea server-side)
 y que la prueba de concurrencia real es **a futuro** (ver DoD).
 
+**Re-revisión independiente: PASS** (2026-08-13). Verificó que los cinco hallazgos quedaron
+resueltos correcta y suficientemente, sin regresiones (la UI sigue recibiendo `logoPath` y
+`brandRevision`; el filtrado de `logo_object_key` vive en la ruta, no en el servicio). Con el
+PASS, la 0025 queda al mismo estándar production-grade que la 0024.
+
 ## Variables requeridas
 
 ```text

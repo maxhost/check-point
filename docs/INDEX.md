@@ -44,6 +44,7 @@ desactualizado es peor que no tenerlo.
 | 0026 | 2026-08-12 | Versiones, transiciones y términos de programas | aceptada | `adr/0026-versiones-transiciones-y-terminos-de-programas.md` |
 | 0027 | 2026-08-12 | Programa mutable con cierre fechado | aceptada; supersede 0026 | `adr/0027-programa-mutable-con-cierre-fechado.md` |
 | 0028 | 2026-08-12 | Auditoría y cancelación de cierre de fidelización | aceptada | `adr/0028-auditoria-y-cancelacion-de-cierre-de-fidelizacion.md` |
+| 0029 | 2026-08-13 | Módulo de assets compartido para imágenes en R2 | aceptada | `adr/0029-modulo-de-assets-compartido-para-imagenes-en-r2.md` |
 
 ## Specs — que se construye
 
@@ -74,7 +75,7 @@ desactualizado es peor que no tenerlo.
 | 0023 | 2026-08-11 | Búsqueda y procedencia de locales | en revisión | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
 | 0024 | 2026-08-12 | Programa de fidelización real y términos | implementada | no | `specs/0024-programa-fidelizacion-real-y-terminos.md` |
 | 0025 | 2026-08-12 | Marca real del negocio y assets R2 | implementada | no | `specs/0025-marca-real-y-assets-r2.md` |
-| 0026 | 2026-08-13 | Diseño de sello del programa de fidelización en R2 | en curso | no | `specs/0026-diseno-de-sello-en-r2.md` |
+| 0026 | 2026-08-13 | Diseño de sello del programa de fidelización en R2 | cerrada | no | `specs/0026-diseno-de-sello-en-r2.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
