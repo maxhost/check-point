@@ -24,6 +24,21 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 > `sending`: al reclamar se estampa `not_before = now + STALE_CLAIM_MS` y el worker barre las
 > `sending` vencidas, cerrando la ventana en que un crash entre claim y entrega dejaría un aviso
 > huérfano (at-least-once del ADR 0037 §1). Migración `0021` aplicada y verificada por SQL en prod.
+>
+> **Enmienda de despliegue 2026-08-15 (QA del owner):** el cron nativo `/api/internal/wallet-push`
+> **se quitó de `apps/merchant/vercel.json`** porque el plan **Vercel Hobby** limita a 2 cron jobs y
+> a frecuencia diaria — un 3er cron `*/5` **rechazaba el deploy entero** (Production quedaba clavado
+> en el commit anterior). Interino sin costo: (1) el push transaccional del momento de la venta se
+> dispara **inline y confiable** con **`after()`** (Next 16), que mantiene viva la invocación
+> serverless hasta que el push termina (antes era fire-and-forget → Vercel lo congelaba al devolver
+> la respuesta); (2) la **red de reintentos/campañas** la cubre un **scheduler externo gratuito** que
+> pega al endpoint autenticado (`Authorization: Bearer ${CRON_SECRET}`) cada ~5 min —
+> `.github/workflows/wallet-push-cron.yml` (GitHub Actions) o cron-job.org. **Al pasar a Vercel Pro:
+> re-agregar el cron nativo a `vercel.json` y borrar el workflow.** El endpoint `/api/internal/wallet-push`
+> no cambió: sirve igual al cron nativo, al scheduler externo o a un `workflow_dispatch` manual.
+>
+> **Otro hallazgo del QA (Google):** `addMessage` solo dispara notificación con
+> `messageType: "TEXT_AND_NOTIFY"` — sin ese campo el aviso se agrega al pase en silencio. Corregido.
 
 ## Problema
 

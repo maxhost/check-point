@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { consumerAccounts, walletPasses, walletPushDevices } from "../schema";
@@ -226,15 +227,24 @@ export async function dispatchInline(
 }
 
 /**
- * Fire-and-forget best-effort dispatch for the grant path (ADR 0037): dispatches the
- * just-enqueued row when present, selecting the channel from the environment. Never
- * blocks the caller and never throws — the cron worker is the durability net.
+ * Best-effort dispatch for the grant path (ADR 0037): delivers the just-enqueued row
+ * without blocking the response and never throws. On Vercel a fire-and-forget promise
+ * is frozen the moment the response returns, so the push is scheduled with `after()`,
+ * which keeps the serverless invocation alive until it finishes — this is what makes
+ * "te dieron puntos" reach the phone at the moment of the sale. Outside a request scope
+ * (the cron worker, unit tests) `after()` throws and we fall back to an inline dispatch.
  */
 export function dispatchGranted(pushQueueId: string | null | undefined): void {
   if (!pushQueueId) return;
-  void dispatchInline(pushQueueId, { channel: pushChannelFromEnv() }).catch(
-    () => {},
-  );
+  const run = () =>
+    dispatchInline(pushQueueId, { channel: pushChannelFromEnv() }).catch(
+      () => {},
+    );
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
 }
 
 /** Claims and delivers a specific row for the cron worker (shares the inline path). */
