@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { QrScanner } from "./qr-scanner";
 import { Console, DoneStage, LocationGate, ResolvedStage } from "./stages";
 import {
@@ -61,13 +61,6 @@ export function CounterConsole({
     setStage("scanning");
     setScanKey((k) => k + 1);
   }, []);
-
-  // Auto-restart to the scanner after a confirmed grant (spec 0030).
-  useEffect(() => {
-    if (stage !== "done") return;
-    const timer = setTimeout(reset, 4000);
-    return () => clearTimeout(timer);
-  }, [stage, reset]);
 
   const onDecode = useCallback(async (qrToken: string) => {
     setBusy(true);

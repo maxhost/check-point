@@ -34,7 +34,9 @@ El comportamiento que el owner necesita, punta a punta:
 5. Confirma.
 6. El consumidor recibe el aviso de lo que sumó (puntos/sellos) — la **entrega** es la spec
    0031; 0030 **registra y emite** el evento.
-7. La UI se **reinicia** para escanear el próximo QR.
+7. La UI se **reinicia** para escanear el próximo QR — el operador toca **"Escanear
+   siguiente"** en la pantalla de confirmación (sin temporizador automático; enmienda
+   QA 2026-08-15, ver abajo).
 
 ## Alcance
 
@@ -47,7 +49,7 @@ El comportamiento que el owner necesita, punta a punta:
   nota opcional, unidades otorgadas, saldo resultante, actor (staff/owner) y local.
 - **Consola web móvil** (`/backoffice/counter`) bajo auth de `merchant_auth`: escaneo por
   cámara (`BarcodeDetector` nativo con fallback JS), toggle detallada/rápida, carrito,
-  confirmación y **reinicio automático** tras confirmar.
+  confirmación y **reinicio manual** (botón "Escanear siguiente") tras confirmar.
 - **Resolución del QR** desambiguada por negocio + **auto-enrolamiento por escaneo** (ADR 0033).
 - **Otorgamiento atómico, idempotente y auditado**: `computeAccrual(total)` → incremento de saldo
   + inserción de la orden en **una sola transacción**; idempotencia por `client_request_id`.
@@ -233,3 +235,10 @@ Nada bloquea el cierre. Las cuatro decisiones técnicas quedaron **ratificadas p
    obligatorio elegirlo si el negocio tiene >1 local.
 4. **Decodificación del QR**: `BarcodeDetector` nativo + fallback a lib JS empaquetada
    (re-warm del store de pnpm antes de codear).
+
+**Enmienda QA 2026-08-15 (post-`implementada`).** El QA en vivo del owner pidió tres ajustes de
+UX (toast "Cliente identificado" al resolver, preview de referencia de puntos/sellos por venta,
+fix de estilo del buscador) y un cambio de comportamiento: la pantalla "hecho" **ya no se
+reinicia sola a los 4 segundos** — quedaba muy poco tiempo para leer el resultado. El reinicio
+ahora es **100% manual**: el operador toca "Escanear siguiente". El DoD ("la UI se reinicia al
+escáner tras confirmar") se sigue cumpliendo, solo cambia el disparador de automático a manual.
