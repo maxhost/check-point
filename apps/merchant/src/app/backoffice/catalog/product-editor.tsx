@@ -187,12 +187,15 @@ export function ProductEditor({
           onChange={(event) => image.choose(event.target.files?.[0], onError)}
         />
       </label>
+      <div className="stock-or">o</div>
       <button
         type="button"
-        className="small-button"
+        className="small-button stock-library-button"
         onClick={() => setShowPicker(true)}
       >
-        Elegir de biblioteca
+        {image.visible
+          ? "Elegir otra imagen de biblioteca"
+          : "Elegir de biblioteca"}
       </button>
       {image.visible && (
         <div className="catalog-image-row">
