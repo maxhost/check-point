@@ -29,12 +29,16 @@ export type FakeCall =
 
 /**
  * In-memory channel for dev/test. Records every call; never touches the network.
- * `goneTokens` lets a test drive the 410 → device-deletion path deterministically.
+ * `goneTokens` drives the 410 → device-deletion path; `failTokens` drives a generic
+ * (non-410) APNs failure so a test can assert it is recorded, not swallowed.
  */
 export class FakePushChannel implements PushChannel {
   readonly kind = "fake" as const;
   readonly calls: FakeCall[] = [];
-  constructor(private readonly goneTokens: Set<string> = new Set()) {}
+  constructor(
+    private readonly goneTokens: Set<string> = new Set(),
+    private readonly failTokens: Set<string> = new Set(),
+  ) {}
 
   async sendApple(target: AppleTarget): Promise<void> {
     this.calls.push({
@@ -44,6 +48,8 @@ export class FakePushChannel implements PushChannel {
     });
     if (this.goneTokens.has(target.pushToken))
       throw new ApnsGoneError(target.pushToken);
+    if (this.failTokens.has(target.pushToken))
+      throw new Error("APNs responded 403");
   }
 
   async sendGoogle(serialNumber: string, message: PushMessage): Promise<void> {

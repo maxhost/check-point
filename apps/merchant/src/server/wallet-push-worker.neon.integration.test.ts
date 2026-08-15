@@ -5,6 +5,7 @@ import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
+import { enqueue, queueRow } from "./wallet-push-integration-support";
 import { getDb } from "./db";
 import {
   consumerAccounts,
@@ -19,41 +20,6 @@ import { COOLDOWN_MS, dispatchInline, deliverRow } from "./wallet/push";
 import { runPushWorker } from "./wallet/push-worker";
 
 const consumerIds: string[] = [];
-
-/** A distinct-per-call epoch tag so `not_before` values never collide across tests. */
-type EnqueueOpts = {
-  title?: string;
-  body?: string;
-  notBefore?: Date;
-  status?: "pending" | "sending" | "sent" | "failed";
-};
-
-async function enqueue(
-  consumerId: string,
-  klass: "transactional" | "campaign",
-  opts: EnqueueOpts = {},
-): Promise<string> {
-  const [row] = await getDb()
-    .insert(walletPushQueue)
-    .values({
-      consumerId,
-      class: klass,
-      title: opts.title ?? "La Gringa",
-      body: opts.body ?? "+1 sello",
-      status: opts.status ?? "pending",
-      notBefore: opts.notBefore ?? new Date(0),
-    })
-    .returning({ id: walletPushQueue.id });
-  return row.id;
-}
-
-async function queueRow(id: string) {
-  const [row] = await getDb()
-    .select()
-    .from(walletPushQueue)
-    .where(eq(walletPushQueue.id, id));
-  return row;
-}
 
 async function newConsumer() {
   const consumer = await seedConsumer();
@@ -226,6 +192,33 @@ describe.skipIf(!integrationEnabled)(
           (c) => c.kind === "apple" && c.pushToken === "gone-token",
         ),
       ).toBe(true);
+    }, 30_000);
+
+    it("records a non-410 APNs failure on the row instead of a silent sent", async () => {
+      const consumer = await newConsumer();
+      const apple = await ensureWalletPass(consumer.id, "apple");
+      await registerDevice({
+        passId: apple.id,
+        deviceLibraryId: `dev-${randomUUID()}`,
+        pushToken: "bad-token",
+      });
+      const id = await enqueue(consumer.id, "transactional");
+
+      const now = new Date();
+      const fake = new FakePushChannel(new Set(), new Set(["bad-token"]));
+      await runPushWorker({ channel: fake, now, consumerIds: [consumer.id] });
+
+      // A non-410 error does NOT prune the device and the row still closes as sent
+      // (delivery is best-effort)...
+      const devices = await getDb()
+        .select()
+        .from(walletPushDevices)
+        .where(eq(walletPushDevices.walletPassId, apple.id));
+      expect(devices).toHaveLength(1);
+      const row = await queueRow(id);
+      expect(row.status).toBe("sent");
+      // ...but the APNs error is recorded on the row, not swallowed.
+      expect(row.lastError).toContain("apple:");
     }, 30_000);
 
     it("reaps a stale in-flight row but leaves a fresh in-flight one alone (Fix 2)", async () => {

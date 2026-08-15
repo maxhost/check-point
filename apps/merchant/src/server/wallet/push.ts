@@ -2,7 +2,6 @@ import { after } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { consumerAccounts, walletPasses, walletPushDevices } from "../schema";
-import { generateOpaqueToken } from "../consumer/core";
 import {
   ApnsGoneError,
   type PushChannel,
@@ -124,34 +123,45 @@ async function appleTargets(consumerId: string) {
     );
 }
 
+/** Pushes to every Apple device of the consumer. A dead token (410) is pruned; any
+ * other per-device error does NOT abort the rest (one bad device never blocks the
+ * others) but IS returned so the caller can record it — silent APNs failures (403
+ * InvalidProviderToken, 400 TopicDisallowed/BadDeviceToken) were invisible before and
+ * made "el push salió pero no llegó" undiagnosable. Returns the collected error strings. */
 async function sendApple(
   consumerId: string,
   message: PushMessage,
   channel: PushChannel,
-): Promise<void> {
+): Promise<string[]> {
   void message; // Apple push is empty; the pulled pass carries the new field.
   const targets = await appleTargets(consumerId);
   const passTypeId = passTypeIdFromEnv();
+  const errors: string[] = [];
   for (const t of targets) {
     try {
       await channel.sendApple({ pushToken: t.pushToken, passTypeId });
     } catch (error) {
-      // A dead token (410) is pruned; any other per-device error is swallowed so
-      // one bad device never aborts the rest (spec 0033).
       if (error instanceof ApnsGoneError) {
         await getDb()
           .delete(walletPushDevices)
           .where(eq(walletPushDevices.id, t.id));
+      } else {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error("[wallet-push] APNs send failed", msg);
+        errors.push(`apple: ${msg}`);
       }
     }
   }
+  return errors;
 }
 
+/** Pushes to the consumer's Google pass via `addMessage`. Returns the error string on
+ * failure (recorded by the caller) so a misconfigured issuer/SA is visible, not silent. */
 async function sendGoogle(
   consumerId: string,
   message: PushMessage,
   channel: PushChannel,
-): Promise<void> {
+): Promise<string[]> {
   const [pass] = await getDb()
     .select({ serialNumber: walletPasses.serialNumber })
     .from(walletPasses)
@@ -162,7 +172,15 @@ async function sendGoogle(
       ),
     )
     .limit(1);
-  if (pass) await channel.sendGoogle(pass.serialNumber, message);
+  if (!pass) return [];
+  try {
+    await channel.sendGoogle(pass.serialNumber, message);
+    return [];
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[wallet-push] Google addMessage failed", msg);
+    return [`google: ${msg}`];
+  }
 }
 
 /** Materializes the notice on the consumer and pushes it on both providers, then
@@ -180,11 +198,20 @@ async function deliverClaimed(
       .update(consumerAccounts)
       .set({ latestMessage: latest, messageUpdatedAt: now, updatedAt: now })
       .where(eq(consumerAccounts.id, claim.consumerId));
-    await sendApple(claim.consumerId, message, channel);
-    await sendGoogle(claim.consumerId, message, channel);
+    // Per-transport delivery is best-effort (one bad transport never blocks the pass
+    // update or the other transport); but any APNs/Google error is recorded on the row
+    // so a misconfigured provider is visible in the DB instead of a silent `sent`.
+    const deliveryErrors = [
+      ...(await sendApple(claim.consumerId, message, channel)),
+      ...(await sendGoogle(claim.consumerId, message, channel)),
+    ];
+    const deliveryError = deliveryErrors.length
+      ? deliveryErrors.join(" | ").slice(0, 500)
+      : null;
     await getDb().execute(sql`
       UPDATE consumer.wallet_push_queue
-      SET status = 'sent', sent_at = ${now.toISOString()}
+      SET status = 'sent', sent_at = ${now.toISOString()},
+          last_error = ${deliveryError}
       WHERE id = ${id}`);
     await getDb()
       .update(consumerAccounts)
@@ -265,35 +292,6 @@ export async function deliverRow(
   return true;
 }
 
-/**
- * Rotates the pass credentials of one consumer (spec 0032 invokes this on recovery):
- * in a single statement rotates BOTH `qr_token` and `web_view_token`, deletes the
- * consumer's push devices (old devices stop receiving push), and enqueues a
- * `transactional` re-emission push (forces a pull of the pass with the new token).
- * The old `qr_token` no longer resolves in the counter scan (0030).
- */
-export async function rotatePassCredentials(
-  consumerId: string,
-): Promise<{ qrToken: string; webViewToken: string }> {
-  const qrToken = generateOpaqueToken();
-  const webViewToken = generateOpaqueToken();
-  await getDb().execute(sql`
-    WITH rotated AS (
-      UPDATE consumer.consumer_account
-      SET qr_token = ${qrToken}, web_view_token = ${webViewToken}, updated_at = now()
-      WHERE id = ${consumerId}
-      RETURNING id
-    ),
-    wiped AS (
-      DELETE FROM consumer.wallet_push_device
-      USING consumer.wallet_pass
-      WHERE consumer.wallet_push_device.wallet_pass_id = consumer.wallet_pass.id
-        AND consumer.wallet_pass.consumer_id = ${consumerId}
-    )
-    INSERT INTO consumer.wallet_push_queue
-      (consumer_id, class, title, body, status, not_before)
-    SELECT id, 'transactional', 'Mi Pasaporte',
-           'Actualizá tu pase', 'pending', now()
-    FROM rotated`);
-  return { qrToken, webViewToken };
-}
+// The rotation mechanism (spec 0032 invokes it) lives in `./rotate`; re-exported here
+// so existing importers keep using `./push`. Split out to stay under the file-size hook.
+export { rotatePassCredentials } from "./rotate";
