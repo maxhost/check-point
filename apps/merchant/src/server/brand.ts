@@ -31,6 +31,7 @@ export async function ownerBusiness(
       id: businesses.id,
       name: businesses.name,
       timezone: businesses.timezone,
+      currencyCode: businesses.currencyCode,
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
       brandAccentColor: businesses.brandAccentColor,
@@ -161,6 +162,7 @@ export async function saveBrand(userId: string, value: unknown) {
     .set({
       name: input.name,
       timezone: input.timezone,
+      currencyCode: input.currencyCode ?? businesses.currencyCode,
       brandPrimaryColor: input.brandPrimaryColor,
       brandComplementaryColor: input.brandComplementaryColor,
       brandAccentColor: input.brandAccentColor,
@@ -181,6 +183,7 @@ export async function saveBrand(userId: string, value: unknown) {
       id: businesses.id,
       name: businesses.name,
       timezone: businesses.timezone,
+      currencyCode: businesses.currencyCode,
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
       brandAccentColor: businesses.brandAccentColor,

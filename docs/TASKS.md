@@ -387,9 +387,20 @@ migraciones; 5 tablas `product*`; `currency_code` sin nulls, backfill AR→ARS/E
 `server/assets/image.ts`), no hizo falta re-warm de pnpm. **Menores del revisor (no bloquean):**
 la ruta de prep es `product/image-upload` (business-scoped, no `[id]/…`); `requireOwner` da 403
 para sesión sin negocio (más correcto que 401). **Residual:** QA manual del owner sobre el deploy
-(subida R2 en vivo + crear/editar/borrar producto/categoría + restringir por local). **Commit
-local hecho; falta el `git push` a `main`** (outward-facing, espera OK del owner; recordar el
-fix `GH_TOKEN=` de CLAUDE.md). **La próxima rebanada del camino A es la spec 0030**
+(subida R2 en vivo + crear/editar/borrar producto/categoría + restringir por local). Commit
+`3ca3f98`, pusheado a `main`.
+
+**Enmienda 2026-08-14b (QA del owner) — moneda→Marca + rework de UI del catálogo, PASS.** Cuatro
+ajustes sin cambio de esquema: (1) **la moneda pasó del catálogo a Marca** —se deriva del país
+en el alta (`currencyForCountry` en `POST /api/onboarding/business`) y se edita en
+`/backoffice/brand` (`saveBrand` la persiste, `currencyCode` opcional → conserva si falta); el
+catálogo solo la lee; se borró `PUT /api/catalog/currency`, `updateCurrency` y `validateCurrencyCode`
+(la validación ISO vive ahora en `brand/validation.ts`)—; (2) **catálogo con pestañas**
+Productos/Categorías; (3) producto con form propio, categoría inline; (4) **buscador + filtro por
+categoría** en Productos. Split por `file-size`: `brand/page.tsx` se dividió en `regional-fields.tsx`
++ `use-brand-logo.ts`. **Implementador + revisor independiente PASS**; gates verdes (typecheck 3/3,
+lint, prettier, **unit+integración 100/100** con round-trip de moneda en Marca, build 3/3). Sin
+migración. **Commit local hecho; falta `git push`.** **La próxima rebanada del camino A es la spec 0030**
 (acreditación en mostrador), ahora **desbloqueada** por el catálogo.
 
 ## Siguiente

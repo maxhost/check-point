@@ -16,6 +16,7 @@ import {
   verifyLocation,
 } from "../../../../server/location-providers";
 import { isIanaTimezone } from "../../../../server/timezone";
+import { currencyForCountry } from "../../../../lib/currencies";
 
 type CreateBusinessInput = {
   name?: unknown;
@@ -104,9 +105,13 @@ export async function POST(request: Request) {
           fullName: session.user.name,
         })
         .onConflictDoNothing(),
-      db
-        .insert(businesses)
-        .values({ id: businessId, name, countryCode, timezone }),
+      db.insert(businesses).values({
+        id: businessId,
+        name,
+        countryCode,
+        timezone,
+        currencyCode: currencyForCountry(countryCode),
+      }),
       db.insert(memberships).values({
         businessId,
         userId: session.user.id,

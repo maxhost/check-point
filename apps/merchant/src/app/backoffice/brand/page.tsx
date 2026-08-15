@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
+import { RegionalFields } from "./regional-fields";
+import { useBrandLogo } from "./use-brand-logo";
 
 type Brand = {
   id: string;
   name: string;
   timezone: string;
+  currencyCode: string;
   brandPrimaryColor: string;
   brandComplementaryColor: string;
   brandAccentColor: string;
@@ -15,17 +18,6 @@ type Brand = {
   logoPath: string | null;
 };
 
-const timezones = [
-  "America/Argentina/Buenos_Aires",
-  "America/Asuncion",
-  "America/Bogota",
-  "America/Guayaquil",
-  "America/Lima",
-  "America/Mexico_City",
-  "America/Montevideo",
-  "America/Santiago",
-  "America/Sao_Paulo",
-];
 const colors = [
   ["brandPrimaryColor", "Primario"],
   ["brandComplementaryColor", "Complementario"],
@@ -36,24 +28,14 @@ const validColor = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value);
 export default function BrandPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
   const [draft, setDraft] = useState<Brand | null>(null);
-  const [selectedLogo, setSelectedLogo] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [removedLogo, setRemovedLogo] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const logo = useBrandLogo();
 
   useEffect(() => {
     void load();
   }, []);
-
-  useEffect(
-    () => () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    },
-    [previewUrl],
-  );
 
   async function load() {
     try {
@@ -79,65 +61,6 @@ export default function BrandPage() {
     }
   }
 
-  function chooseLogo(file: File | undefined) {
-    if (!file) return;
-    if (!new Set(["image/jpeg", "image/png", "image/webp"]).has(file.type)) {
-      setError("El logo debe ser PNG, JPEG o WebP.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("El logo debe pesar como máximo 5 MB.");
-      return;
-    }
-    setError(null);
-    setSelectedLogo(file);
-    setRemovedLogo(false);
-    setPreviewUrl((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return URL.createObjectURL(file);
-    });
-  }
-
-  function removeLogo() {
-    setSelectedLogo(null);
-    setRemovedLogo(true);
-    setPreviewUrl((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return null;
-    });
-    if (fileInput.current) fileInput.current.value = "";
-  }
-
-  async function uploadSelectedLogo() {
-    if (!selectedLogo) return null;
-    const prepared = await fetch("/api/brand/logo-upload", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contentType: selectedLogo.type,
-        byteSize: selectedLogo.size,
-      }),
-    });
-    const preparation = (await prepared.json().catch(() => null)) as {
-      uploadId?: string;
-      uploadUrl?: string;
-      error?: string;
-    } | null;
-    if (!prepared.ok || !preparation?.uploadId || !preparation.uploadUrl) {
-      throw new Error(
-        preparation?.error ?? "No pudimos preparar la carga del logo.",
-      );
-    }
-    const uploaded = await fetch(preparation.uploadUrl, {
-      method: "PUT",
-      headers: { "content-type": selectedLogo.type },
-      body: selectedLogo,
-    });
-    if (!uploaded.ok)
-      throw new Error("No pudimos cargar el logo. Intenta nuevamente.");
-    return preparation.uploadId;
-  }
-
   async function save() {
     if (!brand || !draft) return;
     if (
@@ -150,23 +73,19 @@ export default function BrandPage() {
     setSaving(true);
     setError(null);
     try {
-      const logoAction = selectedLogo
-        ? "replace"
-        : removedLogo
-          ? "remove"
-          : "keep";
-      const uploadId = await uploadSelectedLogo();
+      const uploadId = await logo.upload();
       const response = await fetch("/api/brand", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: draft.name,
           timezone: draft.timezone,
+          currencyCode: draft.currencyCode,
           brandPrimaryColor: draft.brandPrimaryColor,
           brandComplementaryColor: draft.brandComplementaryColor,
           brandAccentColor: draft.brandAccentColor,
           revision: brand.brandRevision,
-          logoAction,
+          logoAction: logo.action,
           ...(uploadId ? { uploadId } : {}),
         }),
       });
@@ -182,13 +101,7 @@ export default function BrandPage() {
       }
       setBrand(saved);
       setDraft(saved);
-      setSelectedLogo(null);
-      setRemovedLogo(false);
-      setPreviewUrl((current) => {
-        if (current) URL.revokeObjectURL(current);
-        return null;
-      });
-      if (fileInput.current) fileInput.current.value = "";
+      logo.reset();
       setNotice("Marca guardada.");
     } catch (reason) {
       setError(
@@ -202,7 +115,7 @@ export default function BrandPage() {
   }
 
   if (!brand || !draft) return <BrandSkeleton error={error} />;
-  const visibleLogo = previewUrl ?? (!removedLogo ? brand.logoPath : null);
+  const visibleLogo = logo.preview ?? (!logo.removed ? brand.logoPath : null);
   return (
     <main className="merchant-shell">
       <div className="brand-page">
@@ -253,17 +166,23 @@ export default function BrandPage() {
           <label>
             Logo
             <input
-              ref={fileInput}
+              ref={logo.fileInput}
               type="file"
               accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => chooseLogo(event.target.files?.[0])}
+              onChange={(event) =>
+                logo.choose(event.target.files?.[0], setError)
+              }
             />
           </label>
           <p className="field-help">
             PNG, JPEG o WebP · máximo 5 MB · hasta 2048 × 2048 px.
           </p>
           {visibleLogo && (
-            <button type="button" className="small-button" onClick={removeLogo}>
+            <button
+              type="button"
+              className="small-button"
+              onClick={logo.remove}
+            >
               Quitar logo
             </button>
           )}
@@ -293,33 +212,14 @@ export default function BrandPage() {
               </span>
             </label>
           ))}
-          <section
-            className="timezone-settings"
-            aria-labelledby="timezone-title"
-          >
-            <h2 id="timezone-title" className="color-heading">
-              Zona horaria
-            </h2>
-            <label>
-              Zona horaria del negocio
-              <select
-                value={draft.timezone}
-                onChange={(event) =>
-                  setDraft({ ...draft, timezone: event.target.value })
-                }
-              >
-                {timezones.map((timezone) => (
-                  <option key={timezone} value={timezone}>
-                    {timezone}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="field-help">
-              Las fechas y horarios de tus programas y campañas se interpretan
-              en esta zona.
-            </p>
-          </section>
+          <RegionalFields
+            timezone={draft.timezone}
+            currencyCode={draft.currencyCode}
+            onTimezoneChange={(timezone) => setDraft({ ...draft, timezone })}
+            onCurrencyChange={(currencyCode) =>
+              setDraft({ ...draft, currencyCode })
+            }
+          />
           <button
             className="button"
             type="button"

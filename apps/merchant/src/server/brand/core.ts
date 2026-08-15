@@ -4,6 +4,7 @@ export type BrandRecord = {
   id: string;
   name: string;
   timezone: string;
+  currencyCode: string;
   brandPrimaryColor: string;
   brandComplementaryColor: string;
   brandAccentColor: string;

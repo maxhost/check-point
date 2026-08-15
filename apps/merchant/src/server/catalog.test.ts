@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { CatalogError, toProductDTO, type ProductRecord } from "./catalog/core";
 import {
   validateCategoryName,
-  validateCurrencyCode,
   validateProductInput,
 } from "./catalog/validation";
 import { currencyForCountry, isSupportedCurrency } from "../lib/currencies";
@@ -84,20 +83,10 @@ describe("validateProductInput", () => {
   });
 });
 
-describe("validateCategoryName / validateCurrencyCode", () => {
+describe("validateCategoryName", () => {
   it("requires a category name", () => {
     expect(() => validateCategoryName({ name: "" })).toThrow(CatalogError);
     expect(validateCategoryName({ name: " Bebidas " })).toBe("Bebidas");
-  });
-
-  it("accepts only supported ISO 4217 codes", () => {
-    expect(validateCurrencyCode({ currencyCode: "USD" })).toBe("USD");
-    expect(() => validateCurrencyCode({ currencyCode: "ZZZ" })).toThrow(
-      CatalogError,
-    );
-    expect(() => validateCurrencyCode({ currencyCode: "usd" })).toThrow(
-      CatalogError,
-    );
   });
 });
 

@@ -199,7 +199,8 @@ que la consume.
 - [x] Cada producto es visible en todos los locales por defecto; el owner puede restringirlo
   a un subconjunto y esa visibilidad se respeta por local.
 - [x] `currency_code` existe por negocio (default derivado del país), se muestra junto al
-  precio y el owner puede cambiarla.
+  precio y el owner puede cambiarla — **desde Marca** (ver enmienda 2026-08-14b), no desde
+  el catálogo; el catálogo solo la lee para formatear.
 - [x] Precio/coste negativos → 422; categoría/local de otro negocio → 422; producto de otro
   negocio → 404. Todo aislado por `business_id`.
 - [x] Ningún endpoint serializa `image_object_key`; el cliente recibe solo `imagePath`
@@ -229,6 +230,30 @@ unit + integración). **Migración `0017` aplicada a prod y verificada por SQL**
 `consumer`(5)/`merchant_auth`(4) intactos). Rama Neon efímera `br-rapid-moon-axlw221y`
 (auto-expira 2026-08-17). Residual: QA manual del owner sobre el deploy (subida R2 en vivo +
 crear/editar/borrar producto y categoría, restringir por local).
+
+### Enmienda 2026-08-14b (QA del owner)
+
+Cuatro ajustes tras el QA en vivo (sin cambio de esquema — la columna `currency_code`
+sigue igual, sólo cambia **quién la edita** y la **UI**):
+
+1. **La moneda pertenece a Marca, no al catálogo.** Se **deriva del país en el alta**
+   (`currencyForCountry(countryCode)` en `POST /api/onboarding/business`) y se **edita en
+   `/backoffice/brand`** (nuevo campo en el form de Marca, junto a la zona horaria; `saveBrand`
+   la persiste, `currencyCode` opcional en el payload → si falta, conserva el valor). El
+   catálogo **solo la lee** (vía `GET /api/catalog`) para formatear precios. Se eliminó la
+   sección de moneda del catálogo, el endpoint `PUT /api/catalog/currency`, `updateCurrency`
+   y `validateCurrencyCode` (la validación ISO 4217 vive ahora en `brand/validation.ts`).
+2. **Catálogo con pestañas.** "Productos" y "Categorías" ya no comparten pantalla
+   (`catalog-tabs`, `role=tablist`).
+3. **Producto con form propio** (pantalla dedicada, sin cambios); **categoría con form
+   inline** en su pestaña (`CategoryManager`).
+4. **Buscar + filtrar productos.** La pestaña Productos suma un **buscador por nombre** y un
+   **filtro por categoría** (`ProductsTab`, filtrado en cliente) para encontrar rápido.
+
+Split por `file-size` colateral: `brand/page.tsx` (ya estaba sobre 300) se dividió extrayendo
+`regional-fields.tsx` (zona horaria + moneda) y `use-brand-logo.ts` (hook del logo diferido,
+espejo de `use-catalog-image`). Gates: typecheck 3/3, lint, prettier, **unit+integración
+100/100** (catálogo 6/6 + round-trip de moneda en Marca), build 3/3. Sin migración.
 
 ## Plan de pruebas y verificación
 

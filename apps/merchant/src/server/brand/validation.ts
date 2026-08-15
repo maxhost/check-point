@@ -1,4 +1,5 @@
 import { isIanaTimezone } from "../timezone";
+import { isSupportedCurrency } from "../../lib/currencies";
 import { BrandError, colorPattern, type LogoAction } from "./core";
 
 function nonEmpty(value: unknown, field: string) {
@@ -45,9 +46,19 @@ export function validateBrandInput(value: unknown) {
   const timezone = nonEmpty(input.timezone, "La zona horaria");
   if (!isIanaTimezone(timezone))
     throw new BrandError(422, "La zona horaria no es válida.");
+  // Currency is optional in the payload (legacy callers keep the current value);
+  // when present it must be a supported ISO 4217 code.
+  let currencyCode: string | undefined;
+  if (input.currencyCode !== undefined) {
+    if (!isSupportedCurrency(input.currencyCode)) {
+      throw new BrandError(422, "La moneda no es válida.");
+    }
+    currencyCode = input.currencyCode;
+  }
   return {
     name: nonEmpty(input.name, "El nombre"),
     timezone,
+    currencyCode,
     brandPrimaryColor: color(input.brandPrimaryColor, "El color primario"),
     brandComplementaryColor: color(
       input.brandComplementaryColor,

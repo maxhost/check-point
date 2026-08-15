@@ -10,7 +10,7 @@ if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "./db";
 import { businesses, memberships, users } from "./schema";
-import { BrandError, saveBrand } from "./brand";
+import { BrandError, ownerBusiness, saveBrand } from "./brand";
 
 const brandInput = (revision: number) => ({
   name: "Marca Integración",
@@ -78,5 +78,16 @@ describe.skipIf(!enabled)("brand service against Neon", () => {
     await expect(
       saveBrand(userId, { ...brandInput(3), brandPrimaryColor: "green" }),
     ).rejects.toBeInstanceOf(BrandError);
+  });
+
+  it("round-trips the currency now owned by brand config", async () => {
+    const before = await ownerBusiness(userId);
+    // Seeded without an explicit currency → the column default applies.
+    expect(before?.currencyCode).toBe("USD");
+    const saved = await saveBrand(userId, {
+      ...brandInput(before!.brandRevision),
+      currencyCode: "BRL",
+    });
+    expect(saved.currencyCode).toBe("BRL");
   });
 });

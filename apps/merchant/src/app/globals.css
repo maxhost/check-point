@@ -1575,10 +1575,33 @@ input:focus {
   width: min(100%, 860px);
   margin: 0 auto;
 }
-.catalog-currency select,
 .catalog-editor select,
 .catalog-editor input {
   width: 100%;
+}
+.catalog-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #d9e2dc;
+}
+.catalog-tabs button {
+  padding: 10px 14px;
+  color: #647168;
+  font-weight: 700;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.catalog-tabs button.active {
+  color: #176548;
+  border-bottom-color: #176548;
+}
+.catalog-search,
+.catalog-filter {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
 }
 .catalog-inline-add {
   display: flex;
@@ -1643,15 +1666,22 @@ input:focus {
 }
 .catalog-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 22px;
+  gap: 10px;
+  margin-top: 4px;
+}
+.catalog-toolbar .catalog-search {
+  flex: 1 1 160px;
+}
+.catalog-toolbar .catalog-filter {
+  flex: 1 1 140px;
 }
 .catalog-toolbar .button {
   width: auto;
   margin-top: 0;
   padding: 10px 16px;
+  flex-shrink: 0;
 }
 .catalog-list {
   list-style: none;

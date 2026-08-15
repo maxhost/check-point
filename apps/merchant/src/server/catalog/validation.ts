@@ -1,4 +1,3 @@
-import { isSupportedCurrency } from "../../lib/currencies";
 import { CatalogError, uuidPattern } from "./core";
 
 export type ImageAction = "keep" | "replace" | "remove";
@@ -112,15 +111,4 @@ export function validateCategoryName(value: unknown): string {
     );
   }
   return name;
-}
-
-export function validateCurrencyCode(value: unknown): string {
-  const code =
-    value && typeof value === "object" && !Array.isArray(value)
-      ? (value as Record<string, unknown>).currencyCode
-      : undefined;
-  if (!isSupportedCurrency(code)) {
-    throw new CatalogError(422, "La moneda no es válida.");
-  }
-  return code;
 }

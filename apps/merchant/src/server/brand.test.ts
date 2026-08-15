@@ -47,6 +47,22 @@ describe("brand contract", () => {
     expect(isIanaTimezone("Ecuador/Cuenca")).toBe(false);
   });
 
+  it("handles the optional currency: absent keeps it, supported passes, unknown is 422", () => {
+    // Absent → undefined (the service keeps the current value).
+    expect(validateBrandInput(valid).currencyCode).toBeUndefined();
+    // Supported ISO 4217 → echoed back.
+    expect(
+      validateBrandInput({ ...valid, currencyCode: "BRL" }).currencyCode,
+    ).toBe("BRL");
+    // Unknown/lowercase → 422.
+    expect(() => validateBrandInput({ ...valid, currencyCode: "ZZZ" })).toThrow(
+      BrandError,
+    );
+    expect(() => validateBrandInput({ ...valid, currencyCode: "usd" })).toThrow(
+      BrandError,
+    );
+  });
+
   it("validates real image bytes and creates both browser variants", async () => {
     const source = await sharp({
       create: { width: 64, height: 40, channels: 4, background: "#176548" },

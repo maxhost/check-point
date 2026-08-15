@@ -18,7 +18,6 @@ import {
   deleteProduct,
   listCatalog,
   ownerBusiness,
-  updateCurrency,
   updateProduct,
 } from "./catalog";
 
@@ -142,15 +141,8 @@ describe.skipIf(!enabled)("catalog service against Neon", () => {
     expect(await deleteProduct(ownerA, product.id)).toEqual({ ok: true });
   }, 30_000);
 
-  it("edits the business currency and rejects invalid codes", async () => {
-    expect(await updateCurrency(ownerA, { currencyCode: "BRL" })).toEqual({
-      currencyCode: "BRL",
-    });
-    const refreshed = (await ownerBusiness(a.userId))!;
-    expect(refreshed.currencyCode).toBe("BRL");
-    expect((await listCatalog(refreshed)).currencyCode).toBe("BRL");
-    await expect(
-      updateCurrency(ownerA, { currencyCode: "ZZZ" }),
-    ).rejects.toMatchObject({ status: 422 });
+  it("exposes the business currency for price formatting", async () => {
+    // Currency lives in brand config now; the catalog only reads it.
+    expect((await listCatalog(ownerA)).currencyCode).toBe("USD");
   }, 30_000);
 });

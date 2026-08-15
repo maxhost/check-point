@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ModuleHeader, Toast } from "../../components/ui";
-import { SUPPORTED_CURRENCIES } from "../../../lib/currencies";
-import { CatalogList } from "./catalog-list";
 import { CategoryManager } from "./category-manager";
 import { ProductEditor } from "./product-editor";
+import { ProductsTab } from "./products-tab";
 import type { Catalog, Category, Product, ProductPayload } from "./types";
 
 type Confirm =
   | { kind: "product"; product: Product }
   | { kind: "category"; category: Category };
 
+type Tab = "products" | "categories";
+
 export default function CatalogPage() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [tab, setTab] = useState<Tab>("products");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -132,6 +134,11 @@ export default function CatalogPage() {
     }
   }
 
+  function closeEditor() {
+    setCreating(false);
+    setEditing(null);
+  }
+
   if (!catalog) {
     return (
       <main className="merchant-shell">
@@ -163,14 +170,7 @@ export default function CatalogPage() {
           title="Tu catálogo de productos"
           description="Lo que vende tu negocio. El valor en puntos lo define tu programa."
           closeHref="/backoffice"
-          onClose={
-            editorOpen
-              ? () => {
-                  setCreating(false);
-                  setEditing(null);
-                }
-              : undefined
-          }
+          onClose={editorOpen ? closeEditor : undefined}
         />
         {editorOpen ? (
           <ProductEditor
@@ -179,80 +179,65 @@ export default function CatalogPage() {
             locations={catalog.locations}
             onCreateCategory={createCategory}
             onSave={saveProduct}
-            onCancel={() => {
-              setCreating(false);
-              setEditing(null);
-            }}
+            onCancel={closeEditor}
             onError={setError}
           />
         ) : (
           <>
-            <section className="panel catalog-currency">
-              <label>
-                Moneda del negocio
-                <select
-                  value={catalog.currencyCode}
-                  onChange={(event) =>
-                    void mutate(
-                      "/api/catalog/currency",
-                      jsonInit("PUT", { currencyCode: event.target.value }),
-                      "Moneda actualizada.",
-                      "No pudimos actualizar la moneda.",
-                    )
-                  }
-                >
-                  {SUPPORTED_CURRENCIES.map((currency) => (
-                    <option key={currency.code} value={currency.code}>
-                      {currency.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </section>
-            <CategoryManager
-              categories={catalog.categories}
-              onCreate={(name) =>
-                createCategory(name).then((cat) => cat !== null)
-              }
-              onRename={(id, name) =>
-                mutate(
-                  `/api/catalog/category/${id}`,
-                  jsonInit("PUT", { name }),
-                  "Categoría renombrada.",
-                  "No pudimos renombrar la categoría.",
-                )
-              }
-              onDelete={(category) =>
-                setConfirm({ kind: "category", category })
-              }
-            />
-            <div className="catalog-toolbar">
-              <h2>Productos</h2>
+            <div className="catalog-tabs" role="tablist">
               <button
-                className="button"
                 type="button"
-                onClick={() => {
+                role="tab"
+                aria-selected={tab === "products"}
+                className={tab === "products" ? "active" : ""}
+                onClick={() => setTab("products")}
+              >
+                Productos
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "categories"}
+                className={tab === "categories" ? "active" : ""}
+                onClick={() => setTab("categories")}
+              >
+                Categorías
+              </button>
+            </div>
+            {tab === "products" ? (
+              <ProductsTab
+                products={catalog.products}
+                categories={catalog.categories}
+                currencyCode={catalog.currencyCode}
+                onNew={() => {
                   setEditing(null);
                   setCreating(true);
                 }}
-              >
-                Nuevo producto
-              </button>
-            </div>
-            <CatalogList
-              products={catalog.products}
-              categories={catalog.categories}
-              currencyCode={catalog.currencyCode}
-              onNew={() => {
-                setEditing(null);
-                setCreating(true);
-              }}
-              onEdit={(product) => {
-                setCreating(false);
-                setEditing(product);
-              }}
-              onDelete={(product) => setConfirm({ kind: "product", product })}
-            />
+                onEdit={(product) => {
+                  setCreating(false);
+                  setEditing(product);
+                }}
+                onDelete={(product) => setConfirm({ kind: "product", product })}
+              />
+            ) : (
+              <CategoryManager
+                categories={catalog.categories}
+                onCreate={(name) =>
+                  createCategory(name).then((cat) => cat !== null)
+                }
+                onRename={(id, name) =>
+                  mutate(
+                    `/api/catalog/category/${id}`,
+                    jsonInit("PUT", { name }),
+                    "Categoría renombrada.",
+                    "No pudimos renombrar la categoría.",
+                  )
+                }
+                onDelete={(category) =>
+                  setConfirm({ kind: "category", category })
+                }
+              />
+            )}
           </>
         )}
       </div>

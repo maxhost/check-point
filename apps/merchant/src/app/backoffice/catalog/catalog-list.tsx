@@ -7,7 +7,6 @@ type Props = {
   products: Product[];
   categories: Category[];
   currencyCode: string;
-  onNew: () => void;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
 };
@@ -16,23 +15,10 @@ export function CatalogList({
   products,
   categories,
   currencyCode,
-  onNew,
   onEdit,
   onDelete,
 }: Props) {
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
-
-  if (products.length === 0) {
-    return (
-      <section className="panel catalog-empty">
-        <h2>Aún no tienes productos</h2>
-        <p>Crea el primero para armar tu catálogo de venta.</p>
-        <button className="button" type="button" onClick={onNew}>
-          Crear producto
-        </button>
-      </section>
-    );
-  }
 
   return (
     <ul className="catalog-list">
