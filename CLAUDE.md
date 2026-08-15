@@ -106,4 +106,10 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   siempre por MCP (`run_sql`) que el esquema quedo y que `core`/`merchant_auth` estan
   intactos ANTES de marcar la spec. Aplicar a prod = paso del orquestador DESPUES del PASS
   del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
-  pedir confirmacion del owner antes de borrar ramas efimeras.
+  pedir confirmacion del owner antes de borrar ramas efimeras. Alternativa sin gate: crear la
+  rama efimera con `expiresAt` (ISO) para que Neon la borre sola.
+- **Al BORRAR una ruta API (`app/api/.../route.ts`), `pnpm typecheck` puede fallar con
+  `.next/types/validator.ts(...): Cannot find module '.../route.js'`** — es un tipo GENERADO
+  que quedo viejo apuntando a la ruta borrada, no un error del codigo. Fix: `rm -f
+  apps/merchant/.next/types/validator.ts` (o borrar `.next`); el proximo `next build`/`dev` lo
+  regenera sin la ruta. No editar el archivo generado a mano.

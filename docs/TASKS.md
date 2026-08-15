@@ -420,6 +420,25 @@ intactos). **Residual (go-live):** setear `PEXELS_API_KEY` en Vercel (el owner y
 manual (buscar/elegir/guardar/reeditar contra R2 real). **Con esto el catálogo (0034+0035) queda
 cerrado; la próxima rebanada del camino A es la spec 0030** (acreditación en mostrador), desbloqueada.
 
+**Cierre de sesión 2026-08-14 — punto de retorno. Catálogo (0034 + 0035) CERRADO con QA en vivo
+del owner.** Estado en `main` (último commit `5f1ec5b`), árbol limpio, gate verde (typecheck 3/3,
+lint, unit 75/31-skip; integración 106/106 y build 3/3 corridos en la sesión). En prod: migraciones
+`0017` (catálogo + `currency_code`) y `0018` (4 columnas de atribución de stock) aplicadas y
+verificadas por SQL (19 migraciones; `core`(19)/`consumer`(5)/`merchant_auth`(4) intactos). Commits
+de la sesión: `3ca3f98` (spec 0034), `69e04f5` (enmienda moneda→Marca + UI), `4ea982a`/`445d937`
+(pulidos UI), `336426d` (spec 0035 stock), `5f1ec5b` (input mobile cámara/galería + HEIC). **Todo
+con doble PASS de revisor independiente** (0034, enmienda 0034b, 0035) salvo los pulidos de UI
+puros y el último ajuste HEIC (aditivo, cubierto por la regresión de integración). **La moneda vive
+en Marca** (`/backoffice/brand`), derivada del país en el alta; el catálogo la lee. **Buscador de
+stock**: `PEXELS_API_KEY` ya seteada por el owner y QA en vivo OK. **Rama Neon efímera
+`br-rapid-moon-axlw221y` (auto-expira 2026-08-17)** — no requiere borrado manual. **Próxima sesión:
+implementar la spec 0030 (acreditación en mostrador / tarea 24)** con el protocolo de
+`AGENT-WORKFLOW.md`: es `borrador`/stub, así que **el primer paso es cerrar la spec con el owner**
+(consola de staff: escanear QR del consumidor → carrito con productos del catálogo → otorgar
+puntos por equivalencia `$X = Y puntos` / sellos por reglas; **auto-enrolamiento por escaneo** y
+resolución del `qr_token` global desambiguada por el negocio, heredado del ADR 0033). Depende de
+0028 (hecha) y del catálogo (hecho). Re-warm del store de pnpm si sumara algún paquete.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
