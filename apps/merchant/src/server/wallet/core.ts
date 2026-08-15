@@ -49,6 +49,62 @@ export function walletPassResponse(pass: WalletPassRow) {
   };
 }
 
+export type WalletPushDeviceRow = {
+  id: string;
+  walletPassId: string;
+  deviceLibraryId: string;
+  pushToken: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/**
+ * Client-facing shape of a push device. Explicit allow-list so it can NEVER
+ * serialize the APNs `pushToken` (a device secret). `deviceLibraryId` is the
+ * device's own opaque handle, not a token of ours.
+ */
+export function walletPushDeviceResponse(row: WalletPushDeviceRow) {
+  return {
+    id: row.id,
+    deviceLibraryId: row.deviceLibraryId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export type WalletPushQueueRow = {
+  id: string;
+  consumerId: string;
+  class: string;
+  title: string;
+  body: string;
+  status: string;
+  notBefore: Date;
+  attempts: number;
+  lastError: string | null;
+  createdAt: Date;
+  sentAt: Date | null;
+};
+
+/**
+ * Client-facing shape of a queued notice. The queue carries no token columns, but
+ * the DTO is still an explicit allow-list (omits `consumerId`) so no consumer
+ * identifier or future secret leaks through an observability surface.
+ */
+export function walletPushQueueResponse(row: WalletPushQueueRow) {
+  return {
+    id: row.id,
+    class: row.class,
+    title: row.title,
+    body: row.body,
+    status: row.status,
+    notBefore: row.notBefore,
+    attempts: row.attempts,
+    createdAt: row.createdAt,
+    sentAt: row.sentAt,
+  };
+}
+
 /**
  * Renders the consumer's `qrToken` as a standalone, scannable QR as an SVG string
  * (no canvas — pure string output, safe in the Node runtime). The SVG is inlined

@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { orders } from "../schema";
 import { rowsOf } from "./core";
+import { buildTransactionalBody } from "../wallet/push";
 
 export type GrantItem = {
   productId: string | null;
@@ -33,6 +34,9 @@ export type GrantedOrder = {
   unitsGranted: number;
   balanceAfter: number;
   accrualKind: string;
+  /** The `wallet_push_queue` row enqueued in the same tx (spec 0033); null on the
+   * idempotent-retry/reread path so no re-dispatch happens. */
+  pushQueueId: string | null;
 };
 
 /** A `(VALUES …)` list for the order items, every column explicitly cast. */
@@ -52,6 +56,7 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
     unitsGranted: Number(row.units_granted),
     balanceAfter: Number(row.balance_after),
     accrualKind: String(row.accrual_kind),
+    pushQueueId: row.push_queue_id == null ? null : String(row.push_queue_id),
   };
 }
 
@@ -66,6 +71,10 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
  *  2. `ins` inserts the order FROM `bumped`, snapshotting `balance_after` from the new
  *     balance. `ON CONFLICT DO NOTHING` makes a retry insert nothing.
  *  3. `items` inserts the detailed lines FROM `ins` (only when a new order was created).
+ *  4. `pushq` (spec 0033) inserts ONE `wallet_push_queue` `transactional` row FROM
+ *     `ins` — so it fires only when a NEW order was created: a grant rollback leaves no
+ *     push row, and an idempotent retry (`ins` empty via ON CONFLICT DO NOTHING) never
+ *     duplicates it. The queued id rides back on the final SELECT for the inline dispatch.
  *
  * When the statement returns no row (retry/idempotent hit), the caller rereads and
  * returns the existing order via {@link readOrderByRequest} — no re-grant.
@@ -75,6 +84,7 @@ export async function persistGrant(
 ): Promise<GrantedOrder | null> {
   const pointsDelta = input.accrualKind === "points" ? input.units : 0;
   const stampsDelta = input.accrualKind === "stamps" ? input.units : 0;
+  const pushBody = buildTransactionalBody(input.units, input.accrualKind);
   const itemsCte = input.items.length
     ? sql`, items AS (
         INSERT INTO core.order_item
@@ -116,8 +126,20 @@ export async function persistGrant(
       FROM bumped
       ON CONFLICT (business_id, client_request_id) DO NOTHING
       RETURNING id, units_granted, balance_after, accrual_kind
-    )${itemsCte}
-    SELECT id, units_granted, balance_after, accrual_kind FROM ins
+    )${itemsCte},
+    pushq AS (
+      INSERT INTO consumer.wallet_push_queue
+        (consumer_id, class, title, body, status, not_before)
+      SELECT ${input.consumerId}::uuid, 'transactional'::text,
+             COALESCE((SELECT name FROM core.business
+                       WHERE id = ${input.businessId}::uuid), 'Mi Pasaporte'),
+             ${pushBody}::text, 'pending'::text, now()
+      FROM ins
+      RETURNING id
+    )
+    SELECT ins.id, ins.units_granted, ins.balance_after, ins.accrual_kind,
+           pushq.id AS push_queue_id
+    FROM ins LEFT JOIN pushq ON true
   `);
 
   const [row] = rowsOf(result) as Record<string, unknown>[];
@@ -144,5 +166,5 @@ export async function readOrderByRequest(
       ),
     )
     .limit(1);
-  return row ?? null;
+  return row ? { ...row, pushQueueId: null } : null;
 }

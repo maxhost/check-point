@@ -17,6 +17,7 @@ import {
   persistGrant,
   readOrderByRequest,
 } from "./orders";
+import { dispatchGranted } from "../wallet/push";
 
 const MAX_MONEY = 9_999_999_999.99;
 const uuidPattern =
@@ -282,6 +283,10 @@ export async function grantAccrual(
       "No pudimos acreditar. Probá de nuevo.",
     );
   }
+
+  // Best-effort inline dispatch of the transactional push (ADR 0037); only fires when
+  // THIS call created the order (retry/reread has no pushQueueId). Non-blocking.
+  dispatchGranted(granted.pushQueueId);
 
   return {
     order: {

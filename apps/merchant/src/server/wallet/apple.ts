@@ -63,7 +63,17 @@ export function buildPassJson(
       primaryFields: [
         { key: "holder", label: "Titular", value: holder || "Mi Pasaporte" },
       ],
-      secondaryFields: [],
+      // The single "Última novedad" slot (ADR 0033). `changeMessage` makes iOS raise
+      // a notification with the new value when the pulled pass differs from the cached
+      // one (spec 0033) — that pull is what the empty APNs push wakes.
+      secondaryFields: [
+        {
+          key: "latest",
+          label: "Última novedad",
+          value: input.latestMessage || "—",
+          changeMessage: "%@",
+        },
+      ],
       auxiliaryFields: [],
       backFields: [
         {

@@ -36,6 +36,14 @@ export const consumerAccounts = consumer.table(
     // ≥128 bits. Stored in the clear as the stable handle for `/c/[token]` but
     // NEVER serialized in a DTO.
     webViewToken: text("web_view_token").notNull(),
+    // Wallet push channel (spec 0033). The single visible "Última novedad" slot of
+    // the shared pass: `latestMessage` is the last notice text shown (e.g. "La
+    // Gringa: +1 sello"); `messageUpdatedAt` is the "pass changed" tag backing the
+    // Apple `Last-Modified`/`passesUpdatedSince`; `lastPushAt` is the base for the
+    // per-consumer push cooldown (ADR 0037). None are ever serialized in a DTO.
+    latestMessage: text("latest_message"),
+    messageUpdatedAt: timestamp("message_updated_at", { withTimezone: true }),
+    lastPushAt: timestamp("last_push_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -166,6 +174,85 @@ export const enrollAttempts = consumer.table(
     index("consumer_enroll_attempt_phone_idx").on(
       table.phoneE164,
       table.createdAt,
+    ),
+  ],
+);
+
+/**
+ * PassKit device registration (spec 0033). Each iOS device that adds an Apple pass
+ * registers a `device_library_id` + APNs `push_token` via the web service; the
+ * worker sends the empty APNs push to each. Unique (device_library_id, wallet_pass_id)
+ * makes the register endpoint an idempotent upsert. `pushToken` is a device secret —
+ * NEVER serialized in a DTO. Rows cascade with the pass and are wiped on rotation.
+ */
+export const walletPushDevices = consumer.table(
+  "wallet_push_device",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    walletPassId: uuid("wallet_pass_id")
+      .notNull()
+      .references(() => walletPasses.id, { onDelete: "cascade" }),
+    deviceLibraryId: text("device_library_id").notNull(),
+    pushToken: text("push_token").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("wallet_push_device_library_pass_unique").on(
+      table.deviceLibraryId,
+      table.walletPassId,
+    ),
+    index("wallet_push_device_pass_idx").on(table.walletPassId),
+  ],
+);
+
+/**
+ * Push outbox (ADR 0037). One row per notice. `class` sets priority (`transactional`
+ * preempts and skips cooldown; `campaign` is deferred, respects the cooldown). The
+ * `transactional` row is enqueued INSIDE `persistGrant`'s transaction (0030), so an
+ * accredited order ⇔ its push row. The worker claims a row (`pending` → `sending`),
+ * delivers it, and closes it (`sent`) or backs it off (`pending`, then `failed` after
+ * N attempts). `not_before` gates when it may go out (default now); the worker never
+ * sends earlier. No token/secret columns — the whole row is safe to serialize.
+ */
+export const walletPushQueue = consumer.table(
+  "wallet_push_queue",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    consumerId: uuid("consumer_id")
+      .notNull()
+      .references(() => consumerAccounts.id, { onDelete: "cascade" }),
+    class: text("class").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("pending"),
+    notBefore: timestamp("not_before", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("wallet_push_queue_status_not_before_idx").on(
+      table.status,
+      table.notBefore,
+    ),
+    index("wallet_push_queue_consumer_idx").on(table.consumerId),
+    check(
+      "wallet_push_queue_class_check",
+      sql`${table.class} in ('transactional', 'campaign')`,
+    ),
+    check(
+      "wallet_push_queue_status_check",
+      sql`${table.status} in ('pending', 'sending', 'sent', 'failed')`,
     ),
   ],
 );

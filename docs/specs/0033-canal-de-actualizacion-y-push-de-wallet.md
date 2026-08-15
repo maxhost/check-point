@@ -1,7 +1,7 @@
 ---
 spec: 0033
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Canal de actualización y push del pase de Wallet — web service REST de PassKit (registro de dispositivos + APNs) para Apple y `addMessage`/`PATCH` para Google, alimentado por una cola `wallet_push_queue` (outbox transaccional escrito en el grant de 0030) con prioridad transaccional > campaña y cooldown por-consumidor (ADR 0037); un único slot "Última novedad" en el pase; más el mecanismo de rotación/revocación del pase (rotar `qr_token`/`web_view_token`) que invocará la recuperación por OTP de la 0032.
 disjunta: no
 archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/wallet/*, apps/merchant/src/server/counter/orders.ts, apps/merchant/src/app/api/public/wallet/passkit/*, apps/merchant/src/app/api/internal/wallet-push/route.ts, apps/merchant/drizzle/0021_*.sql, apps/merchant/vercel.json
@@ -15,6 +15,15 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 > destinatario, ciclo de vida como identidad) y del **ADR 0037** (cola de push con prioridad y
 > cooldown, outbox transaccional). El disparador de la rotación es la **spec 0032** (recuperación
 > por OTP), aún en borrador: la 0033 provee el **mecanismo**, no la UX de recuperación.
+>
+> **Implementada 2026-08-15** con doble PASS de revisor independiente (implementación + pase de
+> corrección por un FAIL inicial). Ajustes production-grade sobre el modelo cerrado, verificados con
+> tests: (1) el `status` de `wallet_push_queue` gana un estado transitorio **`sending`** para el
+> **claim race-safe** (`pending→sending` con `UPDATE … RETURNING`) que impide doble envío entre el
+> dispatch inline y el cron; (2) `not_before` **dobla como deadline de reclamo** de una fila
+> `sending`: al reclamar se estampa `not_before = now + STALE_CLAIM_MS` y el worker barre las
+> `sending` vencidas, cerrando la ventana en que un crash entre claim y entrega dejaría un aviso
+> huérfano (at-least-once del ADR 0037 §1). Migración `0021` aplicada y verificada por SQL en prod.
 
 ## Problema
 
@@ -213,49 +222,49 @@ entorno para que los tests corran sin APNs real.
 La feature está terminada solo con estos criterios observables, verificados por el revisor
 independiente:
 
-- [ ] Acreditar en mostrador (0030) **encola** una fila `wallet_push_queue` `transactional` en la
+- [x] Acreditar en mostrador (0030) **encola** una fila `wallet_push_queue` `transactional` en la
       **misma transacción** del grant; un rollback del grant **no** deja fila; un retry idempotente
       (mismo `clientRequestId`) **no** duplica la fila.
-- [ ] El worker `/api/internal/wallet-push` drena `pending`: envía el `transactional` de inmediato
+- [x] El worker `/api/internal/wallet-push` drena `pending`: envía el `transactional` de inmediato
       y **preempta** un `campaign` en cola del mismo consumidor (el campaign sale recién tras el
       cooldown). Verificado con reloj inyectable en integración.
-- [ ] Cooldown por-consumidor respetado: dos `campaign` seguidos al mismo consumidor no salen a
+- [x] Cooldown por-consumidor respetado: dos `campaign` seguidos al mismo consumidor no salen a
       menos de `COOLDOWN_MINUTES`; un `transactional` siempre sale sin esperar.
-- [ ] Web service PassKit: `POST/DELETE registrations` hace upsert/borrado idempotente de
+- [x] Web service PassKit: `POST/DELETE registrations` hace upsert/borrado idempotente de
       `wallet_push_device`; `GET registrations?passesUpdatedSince` lista los seriales cambiados (o
       `204`); `GET passes/...` sirve el `.pkpass` con "Última novedad" actual y responde `304` con
       `If-Modified-Since`. Sin `Authorization: ApplePass` válido → `401`.
-- [ ] APNs: se arma el JWT ES256 con la `.p8` (verificado con la pública en unit) y se envía un
+- [x] APNs: se arma el JWT ES256 con la `.p8` (verificado con la pública en unit) y se envía un
       push vacío por HTTP/2; un `410` borra el `wallet_push_device`. Con canal `fake` end-to-end
       sin APNs real.
-- [ ] Google: `addMessage`/`PATCH` sobre el objeto con el service account de emisión; verificado
+- [x] Google: `addMessage`/`PATCH` sobre el objeto con el service account de emisión; verificado
       con canal `fake` (llamada bien formada), real como residual de QA.
-- [ ] `rotatePassCredentials` rota `qr_token` **y** `web_view_token`, borra los
+- [x] `rotatePassCredentials` rota `qr_token` **y** `web_view_token`, borra los
       `wallet_push_device` del consumidor y encola un push de re-emisión; el `qr_token` viejo deja
       de resolver (0030) y los tokens nuevos son distintos y URL-safe.
-- [ ] Rate-limit por serial (no IP) en el web service; supera el límite → `429`.
-- [ ] Ningún DTO/respuesta serializa `qr_token`/`web_view_token`/`token_hash`/`auth_token_hash`/
+- [x] Rate-limit por serial (no IP) en el web service; supera el límite → `429`.
+- [x] Ningún DTO/respuesta serializa `qr_token`/`web_view_token`/`token_hash`/`auth_token_hash`/
       `push_token` en crudo (test por entidad).
-- [ ] Migración `0021` aditiva aplicada y verificada en rama Neon efímera **y** en prod: existen
+- [x] Migración `0021` aditiva aplicada y verificada en rama Neon efímera **y** en prod: existen
       las 3 columnas + `wallet_push_device` + `wallet_push_queue` con sus índices/uniques;
       `core`/`merchant_auth` intactos.
 
 ## Plan de pruebas y verificación
 
-- [ ] Unidad: el JWT APNs es ES256, `apns-topic` = Pass Type ID, payload PassKit vacío; firma
+- [x] Unidad: el JWT APNs es ES256, `apns-topic` = Pass Type ID, payload PassKit vacío; firma
       verificable con la pública.
-- [ ] Unidad: el drenado de la cola ordena por prioridad y respeta/saltea el cooldown según clase
+- [x] Unidad: el drenado de la cola ordena por prioridad y respeta/saltea el cooldown según clase
       (reloj inyectable); la preempción empuja el `not_before` del campaign.
-- [ ] Unidad: DTOs de `wallet_push_device`/`wallet_push_queue` no exponen `push_token` ni tokens.
-- [ ] Integración (Neon, rama efímera): `persistGrant` deja pedido **y** fila de cola atómicamente;
+- [x] Unidad: DTOs de `wallet_push_device`/`wallet_push_queue` no exponen `push_token` ni tokens.
+- [x] Integración (Neon, rama efímera): `persistGrant` deja pedido **y** fila de cola atómicamente;
       rollback no deja fila; retry idempotente no duplica.
-- [ ] Integración: `POST registrations` upsert idempotente; `GET registrations?passesUpdatedSince`
+- [x] Integración: `POST registrations` upsert idempotente; `GET registrations?passesUpdatedSince`
       devuelve el serial tras un cambio; `GET passes` responde `200`/`304`; `401` sin token.
-- [ ] Integración: `rotatePassCredentials` rota ambos tokens, borra devices y encola re-emisión;
+- [x] Integración: `rotatePassCredentials` rota ambos tokens, borra devices y encola re-emisión;
       el `qr_token` viejo no resuelve en el escaneo de 0030.
-- [ ] Autorización/aislamiento: token ApplePass de un pase no accede al pase de otro; rate-limit
+- [x] Autorización/aislamiento: token ApplePass de un pase no accede al pase de otro; rate-limit
       por serial → `429`.
-- [ ] Comandos exactos: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit), integración Neon en rama
+- [x] Comandos exactos: `pnpm typecheck`, `pnpm lint`, `pnpm test` (unit), integración Neon en rama
       efímera, `pnpm build`, `drizzle-kit migrate` de la `0021` verificada por SQL.
 - [ ] Verificación manual (residual, no gate del PASS): **Android real** — acreditar y ver la
       notificación de Google Wallet con el aviso. **iPhone real** — con la `.p8` cargada, acreditar

@@ -15,6 +15,8 @@ export type PassBuildInput = {
   origin: string;
   /** Bearer token for the "Ver mis programas" magic-link (`${origin}/c/${webViewToken}`). */
   webViewToken: string;
+  /** Current "Última novedad" text (spec 0033); null/absent renders the em-dash default. */
+  latestMessage?: string | null;
 };
 
 export type ApplePassResult = {

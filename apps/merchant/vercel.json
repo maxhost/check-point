@@ -11,6 +11,10 @@
     {
       "path": "/api/internal/assets-cleanup",
       "schedule": "17 5 * * *"
+    },
+    {
+      "path": "/api/internal/wallet-push",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
