@@ -196,7 +196,13 @@ describe("Google addMessage request shape", () => {
       "/loyaltyObject/3388000000012345678.serial-xyz/addMessage",
     );
     expect(req.body).toMatchObject({
-      message: { header: "La Gringa", body: "+1 sello" },
+      // messageType TEXT_AND_NOTIFY is what makes Google raise a push notification
+      // (plain TEXT appends silently) — assert it so a regression can't mute the push.
+      message: {
+        header: "La Gringa",
+        body: "+1 sello",
+        messageType: "TEXT_AND_NOTIFY",
+      },
     });
   });
 });

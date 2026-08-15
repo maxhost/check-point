@@ -66,6 +66,10 @@ const WALLETOBJECTS = "https://walletobjects.googleapis.com/walletobjects/v1";
  * The `addMessage` request for one Loyalty Object (spec 0033): a POST that appends a
  * dated message to the object so Google Wallet raises a notification. Pure so the
  * URL/body can be asserted without a network call (the fake channel uses this shape).
+ *
+ * `messageType: TEXT_AND_NOTIFY` is REQUIRED for a push notification — the default
+ * (`TEXT`) only appends the message to the pass silently, with no notification. This is
+ * what makes "te dieron puntos" actually reach the phone.
  */
 export function buildAddMessageRequest(
   issuerId: string,
@@ -80,6 +84,7 @@ export function buildAddMessageRequest(
         header: message.header,
         body: message.body,
         id: `msg-${Date.now()}`,
+        messageType: "TEXT_AND_NOTIFY",
       },
     },
   };
