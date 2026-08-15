@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { Category, Location, Product, ProductPayload } from "./types";
 import { useCatalogImage } from "./use-catalog-image";
+import { useIsTouch } from "./use-is-touch";
 import { StockPicker } from "./stock-picker";
 
 type Props = {
@@ -47,6 +48,8 @@ export function ProductEditor({
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  // Touch devices get the native camera/gallery chooser; desktop stays strict.
+  const isTouch = useIsTouch();
   const image = useCatalogImage(
     product?.imagePath ?? null,
     product
@@ -183,10 +186,15 @@ export function ProductEditor({
         <input
           ref={fileInput}
           type="file"
-          accept="image/png,image/jpeg,image/webp"
+          accept={isTouch ? "image/*" : "image/png,image/jpeg,image/webp"}
           onChange={(event) => image.choose(event.target.files?.[0], onError)}
         />
       </label>
+      {isTouch && (
+        <p className="field-help">
+          Podés tomar una foto o elegir una de tu galería.
+        </p>
+      )}
       <div className="stock-or">o</div>
       <button
         type="button"

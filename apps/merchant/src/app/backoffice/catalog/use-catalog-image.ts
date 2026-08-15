@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ImageCredit, StockPhoto } from "./types";
 
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-
 type StockChoice = {
   provider: string;
   photoId: string;
@@ -43,8 +41,10 @@ export function useCatalogImage(
 
   function choose(file: File | undefined, onError: (message: string) => void) {
     if (!file) return;
-    if (!imageTypes.has(file.type)) {
-      onError("La imagen debe ser PNG, JPEG o WebP.");
+    // The server sniffs the real bytes; here we only reject obvious non-images.
+    // Empty type is allowed (some mobile pickers report "" for HEIC/camera files).
+    if (file.type && !file.type.startsWith("image/")) {
+      onError("Debe ser un archivo de imagen.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {

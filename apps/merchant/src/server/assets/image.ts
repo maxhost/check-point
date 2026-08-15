@@ -8,11 +8,12 @@ export class AssetImageError extends Error {
 }
 
 /**
- * Hardened image normalization shared by brand and loyalty-stamp assets. The real
- * format is detected from the bytes with `sharp` (a browser Content-Type is never
- * trusted): SVG and fake/corrupt types are rejected, dimensions and total pixels are
- * bounded, and both a WebP and a PNG variant are produced. Alpha is preserved by
- * default; pass `flatten` with a color to composite onto a solid background instead.
+ * Hardened image normalization shared by brand, loyalty-stamp and catalog assets. The
+ * real format is detected from the bytes with `sharp` (a browser Content-Type is never
+ * trusted): JPEG/PNG/WebP/HEIC(HEIF) are accepted (HEIC covers iPhone photos), SVG and
+ * fake/corrupt types are rejected, dimensions and total pixels are bounded, and both a
+ * WebP and a PNG variant are produced. Alpha is preserved by default; pass `flatten` with
+ * a color to composite onto a solid background instead.
  */
 export async function normalizeImage(
   input: Buffer,
@@ -27,11 +28,11 @@ export async function normalizeImage(
     const metadata = await transformer.metadata();
     if (
       !metadata.format ||
-      !["jpeg", "png", "webp"].includes(metadata.format)
+      !["jpeg", "png", "webp", "heif"].includes(metadata.format)
     ) {
       throw new AssetImageError(
         422,
-        "El archivo no es una imagen PNG, JPEG o WebP válida.",
+        "El archivo no es una imagen válida (PNG, JPEG, WebP o HEIC).",
       );
     }
     if (
@@ -66,7 +67,7 @@ export async function normalizeImage(
     if (error instanceof AssetImageError) throw error;
     throw new AssetImageError(
       422,
-      "El archivo no es una imagen PNG, JPEG o WebP válida.",
+      "El archivo no es una imagen válida (PNG, JPEG, WebP o HEIC).",
     );
   }
 }

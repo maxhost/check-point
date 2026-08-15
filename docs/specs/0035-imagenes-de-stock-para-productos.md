@@ -172,6 +172,14 @@ con `fake`), build 3/3. **Migración `0018` aplicada a prod y verificada por SQL
 4 columnas nullable; `core`(19)/`consumer`(5)/`merchant_auth`(4) intactos). **Residual (go-live):**
 `PEXELS_API_KEY` en Vercel + QA manual del owner (buscar/elegir/guardar/reeditar contra R2 real).
 
+**Ajuste UI 2026-08-14 (QA):** el input de archivo del producto es **device-aware** (hook
+`useIsTouch`, `pointer: coarse`): en desktop filtra `png/jpeg/webp`; en mobile usa `accept="image/*"`
+(sin `capture`) para que el selector nativo ofrezca **cámara o galería**. Para no rechazar las
+fotos de iPhone se habilitó **HEIC/HEIF** en el pipeline compartido `server/assets/image.ts`
+(sharp lo decodifica; la salida sigue siendo WebP+PNG con los mismos límites de dimensión/píxeles);
+el guard del cliente pasa a rechazar sólo no-imágenes (el server sniffa los bytes). Beneficia
+también a marca/sello. Sin migración; gates 106/106 + build 3/3.
+
 ## Plan de pruebas y verificación
 
 - [ ] Unidad: validación de `imageAction: "stock"` (requiere `provider`+`photoId`); selección de
