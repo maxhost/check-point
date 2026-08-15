@@ -64,11 +64,19 @@ describe("APNs provider JWT (ES256)", () => {
 });
 
 describe("buildTransactionalBody", () => {
-  it("pluralizes points/stamps by count", () => {
-    expect(buildTransactionalBody(1, "stamps")).toBe("+1 sello");
-    expect(buildTransactionalBody(3, "stamps")).toBe("+3 sellos");
-    expect(buildTransactionalBody(1, "points")).toBe("+1 punto");
-    expect(buildTransactionalBody(20, "points")).toBe("+20 puntos");
+  it("reads as a full sentence, agreeing verb/noun with the count", () => {
+    expect(buildTransactionalBody(1, "stamps")).toBe(
+      "Se acreditó 1 sello en tu cuenta 🎉",
+    );
+    expect(buildTransactionalBody(3, "stamps")).toBe(
+      "Se acreditaron 3 sellos en tu cuenta 🎉",
+    );
+    expect(buildTransactionalBody(1, "points")).toBe(
+      "Se acreditó 1 punto en tu cuenta 🎉",
+    );
+    expect(buildTransactionalBody(20, "points")).toBe(
+      "Se acreditaron 20 puntos en tu cuenta 🎉",
+    );
   });
 });
 

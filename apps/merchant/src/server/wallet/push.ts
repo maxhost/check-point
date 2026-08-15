@@ -43,20 +43,27 @@ function rowsOf(result: unknown): Record<string, unknown>[] {
   return (Array.isArray(rows) ? rows : []) as Record<string, unknown>[];
 }
 
-/** The pluralized transactional notice body, e.g. `+1 sello` / `+3 puntos`. */
+/**
+ * The transactional notice body as a full sentence, e.g. `Se acreditó 1 sello en tu
+ * cuenta 🎉` / `Se acreditaron 30 puntos en tu cuenta 🎉`. A complete sentence (not a
+ * `+N` fragment) reads clearly both inside the Wallet pass and, where the platform
+ * surfaces it, in the notification itself — the business name rides in the title/header.
+ */
 export function buildTransactionalBody(
   units: number,
   kind: "points" | "stamps",
 ): string {
+  const singular = units === 1;
   const noun =
     kind === "points"
-      ? units === 1
+      ? singular
         ? "punto"
         : "puntos"
-      : units === 1
+      : singular
         ? "sello"
         : "sellos";
-  return `+${units} ${noun}`;
+  const verb = singular ? "Se acreditó" : "Se acreditaron";
+  return `${verb} ${units} ${noun} en tu cuenta 🎉`;
 }
 
 // The pure drain planner lives in `push-plan.ts` (kept DB-free + under the file-size
