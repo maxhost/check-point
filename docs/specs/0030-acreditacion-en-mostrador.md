@@ -56,14 +56,21 @@ notificación al consumidor (0031, aunque este otorgamiento la dispara).
 - **ADR 0002/0007** — aislamiento y auditoría por comercio; **ADR 0027/0028** — versiones y
   reglas del programa de sellos.
 
+> **RESUELTO por la spec 0036 (implementada 2026-08-14), a consumir al cerrar:** la
+> «equivalencia `$X = Y puntos`» ya existe como la **mecánica de acumulación** del programa
+> (`accrual_grant`/`accrual_block_amount`), y las «reglas de sello `1-por-compra` /
+> `1-por-cada-$X`» son `accrual_mode` (`per_purchase`/`per_amount`). El **cálculo del
+> otorgamiento** está fijado en `computeAccrual` (`server/loyalty-program/accrual.ts`:
+> `per_amount = floor(total/Y)×X` sin arrastre; `per_purchase = X`) y los **premios canjeables**
+> viven en `core.loyalty_reward` (con `points_cost`). 0030 los **consume**, no los redefine.
+
 ## Abierto (bloquea el cierre)
 
-- Modelo de saldo de puntos y progreso de sellos por membresía (tablas nuevas en `consumer`
-  o `core`), con auditoría por evento (patrón de la spec 0024).
-- Reglas de sello configurables por programa (1-por-compra vs 1-por-cada-$X): dónde se
-  configuran (extiende el modelo de programa de la 0027) y su validación.
-- Autorización del staff sobre el QR de un consumidor (qué ve, qué puede otorgar).
-- Equivalencia `$X = Y puntos` y reglas de sello (`1-por-compra` / `1-por-cada-$X`) como
-  extensión del modelo de programa (0024/0027): dónde se configuran y su validación. El
-  catálogo de productos ya está cerrado (spec 0034); esta pieza es del programa, no del
-  catálogo.
+- Modelo de **saldo de puntos y progreso de sellos por membresía** (tablas nuevas en `consumer`,
+  con auditoría por evento — patrón de la spec 0024). **Es el núcleo nuevo de 0030.**
+- **Ejecución del canje**: descontar puntos / resetear la tarjeta de sellos (atómico + auditoría),
+  usando las definiciones de `core.loyalty_reward` (0036). 0036 define; 0030 ejecuta.
+- **Resolución del `qr_token` → consumidor** desambiguada por el negocio que escanea +
+  **auto-enrolamiento por escaneo** (ADR 0033).
+- **Autorización del staff** sobre el QR de un consumidor (qué ve, qué puede otorgar; ADR 0002/0007).
+- **UI de carrito** con productos del catálogo (0034) → `total` → `computeAccrual` (0036).

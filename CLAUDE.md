@@ -64,6 +64,15 @@ chequear con un comando, es un hook — no la escribas aca tambien.
 
 ## Gotchas
 
+- **Gates: Node 24 + scripts de ROOT.** El shell arranca en Node 22 pero el repo pide 24
+  (`typecheck`/`build` fallan si no): `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm
+  use 24.19.0` antes de cualquier gate. `lint`, `test`, `format:check`, `build` son scripts de
+  **root** (`pnpm run <script>`), NO del paquete — `pnpm --filter @mi-pasaporte/merchant lint`
+  tira `None of the selected packages has a "lint" script`. El paquete merchant solo define
+  `typecheck` (y `db:migrate`); para unit de un archivo suelto: `pnpm --filter
+  @mi-pasaporte/merchant exec vitest run <path>`. El Stop hook (`.claude/hooks/verify.sh`) corre
+  typecheck+lint+test de root (no prettier ni build).
+
 - **`pnpm install`/`pnpm add` bajo codex + Auto fallan por DNS, aunque `git commit` ande
   (analogo al fix de GlaDOS ADR-0046/spec 0035, pero para paquetes en vez de `.git`).**
   Dos bloqueos independientes, apilados, NINGUNO es bug — son el sandbox
