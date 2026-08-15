@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-14 (spec 0034 catálogo de productos CERRADA + ADR 0034; 0002 reencuadrada, 0021 diferida).
+Ultima actualizacion: 2026-08-14 (spec 0034 catálogo de productos IMPLEMENTADA con PASS de revisor independiente; migración 0017 en prod).
 
 ## Ahora
 
@@ -363,6 +363,35 @@ commiteado aún (solo docs). **Próximo paso: implementar la spec 0034** con el 
 `AGENT-WORKFLOW.md` (rama Neon efímera + revisor independiente), o 0030 en paralelo (0034 la
 desbloquea). Re-warm del store de pnpm si se suma algún paquete.
 
+**Spec 0034 IMPLEMENTADA (2026-08-14) — catálogo de productos del negocio.** Primer catálogo
+real: dominio nuevo `apps/merchant/src/server/catalog/*` (barrel `catalog.ts` +
+`core`/`validation`/`image`/`cleanup`/`products`/`categories`, todos < 300 líneas) sobre el
+esquema `core` (`product` con precio/coste `numeric(12,2)` opcionales + checks `>=0 or null`,
+`product_category` con unique `(business_id, lower(name))`, `product_location` para la
+visibilidad opt-out, + `product_asset_upload`/`_cleanup` del pipeline de imagen). **`currency_code`
+por negocio** en `business` (migración **`0017_opposite_cassandra_nova`**, backfill por país vía
+CASE coherente con `lib/currencies.ts`; default `USD`). Rutas `api/catalog/**` (list/producto
+CRUD/categoría CRUD/moneda + prep de subida **business-scoped** `product/image-upload` —soporta
+imagen en el create, patrón diferido de stamp) + `api/public/catalog/[productId]/image`. UI real
+en `backoffice/catalog/*` (lista mobile-first, editor con categoría inline + visibilidad por
+local + imagen diferida, gestor de categorías, selector de moneda, estado vacío, `ConfirmDialog`,
+toasts) + tarjeta "Catálogo" en el home. **El valor en puntos NO vive acá** (lo pone el programa
+por equivalencia en 0030). **Anti-fuga blindada:** `toProductDTO` allow-list, ningún endpoint
+serializa `image_object_key`; test unit + integración por entidad. **Implementador + revisor
+independiente PASS** (`AGENT-WORKFLOW.md`), ambos con gates propios (typecheck 3/3, eslint,
+prettier, **unit 70** con 10 nuevos, build 3/3) + **integración Neon 6/6 catálogo y 99/99 total**
+(regresión de brand/consumer/wallet/loyalty verde) en rama efímera `br-rapid-moon-axlw221y`
+(auto-expira 2026-08-17). **Migración `0017` aplicada a prod y verificada por SQL** (18
+migraciones; 5 tablas `product*`; `currency_code` sin nulls, backfill AR→ARS/EC→USD/BR→BRL;
+`core`(19)/`consumer`(5)/`merchant_auth`(4) intactos). **Sin paquetes nuevos** (reusa
+`server/assets/image.ts`), no hizo falta re-warm de pnpm. **Menores del revisor (no bloquean):**
+la ruta de prep es `product/image-upload` (business-scoped, no `[id]/…`); `requireOwner` da 403
+para sesión sin negocio (más correcto que 401). **Residual:** QA manual del owner sobre el deploy
+(subida R2 en vivo + crear/editar/borrar producto/categoría + restringir por local). **Commit
+local hecho; falta el `git push` a `main`** (outward-facing, espera OK del owner; recordar el
+fix `GH_TOKEN=` de CLAUDE.md). **La próxima rebanada del camino A es la spec 0030**
+(acreditación en mostrador), ahora **desbloqueada** por el catálogo.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -396,7 +425,7 @@ desbloquea). Re-warm del store de pnpm si se suma algún paquete.
 | 26 | Brand kit (afiche imprimible con QR de enrolamiento) | — | pendiente | **Downstream del loop.** Plantillas para un afiche imprimible con el QR que apunta a la landing de enrolamiento (0028). Reusa marca (colores/logo) y el pipeline R2. Sin spec aún; se abre cuando el QR resuelva. Las 6 decisiones abiertas ya relevadas en la conversación previa (plantillas curadas pintadas con la marca, PDF vs PNG, QR server-side, efímero vs persistido, sub-ruta en `/brand`). |
 | 29 | Rebrand (¿CheckPass?) + diseño visual de los pases de Wallet | — | pendiente | **"Otra cosa" (post-QA 0029).** Dos piezas atadas: (a) **decidir la marca de consumidor** (hoy "Mi Pasaporte" en toda la app: `layout`, enroll, login, onboarding, wallet — es rebrand app-wide, amerita ADR); (b) **diseño de los pases** dentro del techo de cada plataforma (Google `heroImage` + `hexBackgroundColor` + logo; Apple `strip` + logo/icon + colores; sin diseño libre — ver ADR 0033: es pase de **identidad**, la stamp card rica es 0031). Requiere arte final (logo + banner) servido desde **dominio estable**. Conviene hacerlo antes del **publishing access de Google** (revisan branding). Sin spec aún. |
 | 21 | Wizard de creación + diseño visual de la tarjeta de fidelización | 0027 | hecho | **PRÓXIMA FEATURE — spec CERRADA (2026-08-13), lista para implementar.** Wizard por pasos para crear **y editar** (Puntos: unidades → TOS → preview/activar; Sellos: básicos → diseño de tarjeta → TOS → preview/activar). Diseño de tarjeta (Sellos): fondo 1 + fondo 2 opcional en **degradé lineal de ángulo configurable** + color de borde, **preview en vivo** con `round(target/2)` sellos puestos; reutiliza la imagen de sello de 0026. Las 6 decisiones abiertas cerradas con el owner: **columnas dedicadas nullable** (no jsonb) con checks hex/ángulo a nivel DB (ADR **0030**), defaults derivados de la marca, Puntos sin diseño (columnas `null`). Requiere **migración `0013` aditiva** + `CardPreview` compartido + splits por `file-size` (`use-loyalty-program.ts`, `program-editor.tsx` → `steps/*`). Implementar con protocolo `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente antes de `implementada`. |
-| 30 | Catálogo de productos del negocio | 0034 | pendiente | **Spec CERRADA (2026-08-14, ADR 0034), lista para implementar — prerequisito duro de 0030.** Catálogo de **productos** (no de beneficios) en `core`: `product`/`product_category`/`product_location` + `currency_code` en `business`. Global por negocio, **visibilidad opt-out por local**; **precio y coste opcionales** (el valor en puntos lo pone el programa por equivalencia, no el producto); **categorías gestionadas libres**; **sin estados** (borrado directo, historia en el snapshot de 0030); imágenes a R2 (pipeline ADR 0029, DTO sin `*ObjectKey`). Superficie real en `/backoffice/catalog` + tarjeta de nav. `disjunta: sí` (toca `business.ts` y `backoffice/page.tsx` de forma acotada). Migración aditiva. Implementar con protocolo `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente antes de `implementada`. |
+| 30 | Catálogo de productos del negocio | 0034 | hecho | **IMPLEMENTADA (2026-08-14) con PASS de revisor independiente.** Catálogo de **productos** en `core`: `product`/`product_category`/`product_location` (+ `product_asset_upload`/`_cleanup`) + `currency_code` en `business`. Global por negocio, **visibilidad opt-out por local**; **precio/coste opcionales** (el valor en puntos lo pone el programa por equivalencia); **categorías libres**; **sin estados** (borrado directo); imágenes a R2 (pipeline ADR 0029, DTO sin `*ObjectKey`, test por entidad). Dominio `server/catalog/*`, rutas `api/catalog/**` + `api/public/catalog/[productId]/image`, UI `/backoffice/catalog` + tarjeta de nav. Gates (typecheck 3/3, eslint, prettier, **unit 70**, build 3/3) + **integración Neon 6/6 + 99/99 total** en rama efímera; **migración `0017` aplicada y verificada en prod** (18 migraciones, backfill de moneda por país, `core`/`consumer`/`merchant_auth` intactos). Residual: QA manual del owner en deploy. Falta `git push` a `main` (espera OK del owner). Desbloquea la spec 0030. |
 
 ## Hecho
 
@@ -431,6 +460,7 @@ desbloquea). Re-warm del store de pnpm si se suma algún paquete.
 | 2026-08-14 | Pase de Wallet Apple/Google (Spec 0029, ADR 0033, camino A 2ª rebanada) | Dominio `server/wallet/*` (provider apple/google/fake), rutas `wallet/{apple.pkpass,google}` + `/c/[token]` + página `/wallet` (QR SVG + botones). Gates (typecheck 3/3, eslint, unit 60/23-skip, build 3/3) + integración Neon 4/4 wallet + 9/9 regresión 0028 + **PASS de revisor independiente** + migración `0016` aplicada y verificada por SQL en efímera y **en prod**. Commits `4e4ba0b`/`72081e5`. |
 | 2026-08-14 | Wallet en prod: Google en Android real + Apple en iPhone real (QA del owner) | Google Wallet (issuer demo gratis, class `approved`, secretos en Vercel) guarda el pase con QR en Android; Apple Wallet (cert Pass Type ID real, Team `SN489AVGUD`, WWDR G4, 5 secretos `APPLE_*`) instala el `.pkpass` en iPhone. Ambos vistos en pantalla por el owner. Setup en `docs/wallet-go-live.md`; secretos locales en `.secrets-apple/` (gitignore + pre-commit hook) |
 | 2026-08-14 | Identidad de consumidor y enrolamiento (Spec 0028, camino A 1ª rebanada) | Esquema `consumer` (4 tablas) + rutas `enroll`/`me` + landing; `409 already_member`, rate-limit 3/h por teléfono, `closing` habilitado. Gates (typecheck 3/3, lint, prettier, unit 46/19-skip, build 3/3) + integración Neon 9/9 + **PASS de revisor independiente** + migración `0014` aplicada y verificada en prod (esquema `consumer` 4 tablas/10 índices/3 FK; `core`/`merchant_auth` intactos). Residual: QA manual en teléfono |
+| 2026-08-14 | Catálogo de productos del negocio (Spec 0034, ADR 0034) | Dominio `server/catalog/*` + esquema `core` (`product`/`product_category`/`product_location` + upload/cleanup) + `currency_code` en `business`; rutas `api/catalog/**` + imagen pública; UI `/backoffice/catalog` + tarjeta de nav; anti-fuga `*ObjectKey`. Gates (typecheck 3/3, eslint, prettier, unit 70, build 3/3) + **integración Neon 6/6 catálogo + 99/99 total** + **PASS de revisor independiente** + migración `0017` aplicada y verificada por SQL en prod (18 migraciones; backfill de moneda por país; `core`(19)/`consumer`(5)/`merchant_auth`(4) intactos). Residual: QA manual del owner en deploy. Commit local hecho, pendiente `git push` a `main` |
 
 ## Descartado (y por que)
 

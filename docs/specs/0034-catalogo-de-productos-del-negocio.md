@@ -1,7 +1,7 @@
 ---
 spec: 0034
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Catálogo de productos por negocio (nombre, categoría, precio y coste opcionales, imagen R2) con visibilidad opt-out por local; alimenta el carrito de la acreditación en mostrador (0030). El valor en puntos NO vive acá: lo define el programa por equivalencia.
 disjunta: sí
 archivos: apps/merchant (backoffice/catalog, server/catalog, api/catalog, api/public/catalog, schema/catalog), migración drizzle, tests
@@ -192,23 +192,43 @@ que la consume.
 
 ## Definition of Done
 
-- [ ] El owner puede crear, editar y **borrar** productos con nombre, precio y coste
+- [x] El owner puede crear, editar y **borrar** productos con nombre, precio y coste
   **opcionales**, categoría opcional e imagen opcional, desde móvil.
-- [ ] El owner crea/renombra/borra **categorías** del negocio y asigna productos; borrar una
+- [x] El owner crea/renombra/borra **categorías** del negocio y asigna productos; borrar una
   categoría deja sus productos sin categoría, no los borra.
-- [ ] Cada producto es visible en todos los locales por defecto; el owner puede restringirlo
+- [x] Cada producto es visible en todos los locales por defecto; el owner puede restringirlo
   a un subconjunto y esa visibilidad se respeta por local.
-- [ ] `currency_code` existe por negocio (default derivado del país), se muestra junto al
+- [x] `currency_code` existe por negocio (default derivado del país), se muestra junto al
   precio y el owner puede cambiarla.
-- [ ] Precio/coste negativos → 422; categoría/local de otro negocio → 422; producto de otro
+- [x] Precio/coste negativos → 422; categoría/local de otro negocio → 422; producto de otro
   negocio → 404. Todo aislado por `business_id`.
-- [ ] Ningún endpoint serializa `image_object_key`; el cliente recibe solo `imagePath`
+- [x] Ningún endpoint serializa `image_object_key`; el cliente recibe solo `imagePath`
   (test por entidad).
-- [ ] Imagen sube a R2 con borrado diferido (sin huérfanos al reemplazar/quitar/borrar).
-- [ ] Tarjeta "Catálogo" en el home lleva a `/backoffice/catalog`; UI responsive/accesible,
+- [x] Imagen sube a R2 con borrado diferido (sin huérfanos al reemplazar/quitar/borrar) —
+  código verificado por el revisor; el camino R2 en vivo queda como QA residual del owner
+  (igual que marca/sello 0025/0026).
+- [x] Tarjeta "Catálogo" en el home lleva a `/backoffice/catalog`; UI responsive/accesible,
   estado vacío, `ConfirmDialog` al borrar, errores como toast.
-- [ ] Format, lint, typecheck, unit, integración Neon y build pasan; **revisor independiente
-  emite PASS**.
+- [x] Format, lint, typecheck, unit, integración Neon y build pasan; **revisor independiente
+  emite PASS** (2026-08-14; typecheck 3/3, lint, prettier, unit 70, integración Neon 99/99
+  con catálogo 6/6, build 3/3).
+
+## Implementación
+
+Implementada el 2026-08-14 con el protocolo de `AGENT-WORKFLOW.md` (implementador +
+**revisor independiente PASS**). Dominio nuevo `server/catalog/*` (barrel `catalog.ts` +
+`core`/`validation`/`image`/`cleanup`/`products`/`categories`), esquema `core`
+(`product`/`product_category`/`product_location` + `product_asset_upload`/`_cleanup`),
+`currency_code` en `business` (migración **`0017_opposite_cassandra_nova`**, backfill por país
+vía CASE coherente con `lib/currencies.ts`). Rutas `api/catalog/**` (+ prep de subida
+business-scoped `product/image-upload`, desviación aceptada por el revisor para soportar
+imagen en el create) y `api/public/catalog/[productId]/image`. UI real en
+`backoffice/catalog/*` + tarjeta de nav. Anti-fuga blindada (`toProductDTO` allow-list, test
+unit + integración). **Migración `0017` aplicada a prod y verificada por SQL** (18 migraciones;
+5 tablas `product*`; `currency_code` sin nulls, backfill AR→ARS/EC→USD/BR→BRL; `core`(19)/
+`consumer`(5)/`merchant_auth`(4) intactos). Rama Neon efímera `br-rapid-moon-axlw221y`
+(auto-expira 2026-08-17). Residual: QA manual del owner sobre el deploy (subida R2 en vivo +
+crear/editar/borrar producto y categoría, restringir por local).
 
 ## Plan de pruebas y verificación
 

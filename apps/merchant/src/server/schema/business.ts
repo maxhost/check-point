@@ -32,6 +32,8 @@ export const businesses = core.table(
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
     countryCode: text("country_code").notNull(),
+    /** ISO 4217 currency for prices; default derived from the country at migration time. */
+    currencyCode: text("currency_code").notNull().default("USD"),
     timezone: text("timezone").notNull(),
     brandPrimaryColor: text("brand_primary_color").notNull().default("#176548"),
     brandComplementaryColor: text("brand_complementary_color")
@@ -65,6 +67,10 @@ export const businesses = core.table(
     ),
     check("business_brand_revision_check", sql`${table.brandRevision} >= 1`),
     check("business_logo_version_check", sql`${table.logoVersion} >= 0`),
+    check(
+      "business_currency_code_check",
+      sql`${table.currencyCode} ~ '^[A-Z]{3}$'`,
+    ),
   ],
 );
 

@@ -40,6 +40,7 @@ export default async function BackofficePage() {
       "Configura puntos o sellos para tus visitantes.",
       "loyalty",
     ],
+    ["Catálogo", "Declara los productos que vende tu negocio.", "catalog"],
     ["Locales", "Gestiona las sucursales de tu negocio.", "locations"],
     ["Staff", "Organiza el equipo que opera tus locales.", "staff"],
     ["Marca", "Personaliza cómo se ve tu negocio.", "brand"],
@@ -76,7 +77,9 @@ export default async function BackofficePage() {
                     ? "/backoffice/loyalty"
                     : slug === "brand"
                       ? "/backoffice/brand"
-                      : `/backoffice/demo/${slug}`
+                      : slug === "catalog"
+                        ? "/backoffice/catalog"
+                        : `/backoffice/demo/${slug}`
                 }
                 key={slug}
               >

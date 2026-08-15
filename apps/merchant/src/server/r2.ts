@@ -58,6 +58,17 @@ export function stampObjectPrefix(
   return `loyalty/${businessId}/${programId}/${assetId}`;
 }
 
+export function productTemporaryObjectKey(
+  businessId: string,
+  uploadId: string,
+) {
+  return `product-uploads/${businessId}/${uploadId}`;
+}
+
+export function productObjectPrefix(businessId: string, assetId: string) {
+  return `products/${businessId}/${assetId}`;
+}
+
 export async function createTemporaryUploadUrl(input: {
   objectKey: string;
   contentType: "image/jpeg" | "image/png" | "image/webp";
@@ -184,6 +195,10 @@ export function putStampVariants(prefix: string, webp: Buffer, png: Buffer) {
   return putImageVariants(prefix, "stamp", webp, png);
 }
 
+export function putProductVariants(prefix: string, webp: Buffer, png: Buffer) {
+  return putImageVariants(prefix, "product", webp, png);
+}
+
 export async function deleteObjectKeys(keys: string[]) {
   if (!keys.length) return;
   const { s3, bucket } = client();
@@ -201,6 +216,10 @@ export async function deleteLogoPrefix(prefix: string) {
 
 export async function deleteStampPrefix(prefix: string) {
   await deleteObjectKeys([`${prefix}/stamp.webp`, `${prefix}/stamp.png`]);
+}
+
+export async function deleteProductPrefix(prefix: string) {
+  await deleteObjectKeys([`${prefix}/product.webp`, `${prefix}/product.png`]);
 }
 
 export { MAX_LOGO_BYTES };

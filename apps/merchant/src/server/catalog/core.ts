@@ -1,0 +1,73 @@
+import { and, asc, eq } from "drizzle-orm";
+import { getDb } from "../db";
+import { businesses, memberships } from "../schema";
+
+export class CatalogError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+export const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type OwnerBusiness = { id: string; currencyCode: string };
+
+/** Service-side product row, including the internal R2 key the DTO strips. */
+export type ProductRecord = {
+  id: string;
+  name: string;
+  categoryId: string | null;
+  unitPrice: string | null;
+  unitCost: string | null;
+  imageObjectKey: string | null;
+  imageVersion: number;
+  availableAllLocations: boolean;
+  locationIds: string[];
+};
+
+export type CategoryRecord = { id: string; name: string };
+export type LocationRecord = { id: string; name: string };
+
+/** Client-facing product: never leaks `imageObjectKey`, only a public `imagePath`. */
+export type ProductDTO = {
+  id: string;
+  name: string;
+  categoryId: string | null;
+  unitPrice: number | null;
+  unitCost: number | null;
+  imagePath: string | null;
+  imageVersion: number;
+  availableAllLocations: boolean;
+  locationIds: string[];
+};
+
+export function toProductDTO(product: ProductRecord): ProductDTO {
+  const { imageObjectKey, unitPrice, unitCost, ...rest } = product;
+  return {
+    ...rest,
+    unitPrice: unitPrice === null ? null : Number(unitPrice),
+    unitCost: unitCost === null ? null : Number(unitCost),
+    imagePath: imageObjectKey
+      ? `/api/public/catalog/${product.id}/image?v=${product.imageVersion}`
+      : null,
+  };
+}
+
+/** Resolves the owner's business (id + currency). Returns null when the user owns none. */
+export async function ownerBusiness(
+  userId: string,
+): Promise<OwnerBusiness | null> {
+  const [business] = await getDb()
+    .select({ id: businesses.id, currencyCode: businesses.currencyCode })
+    .from(memberships)
+    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
+    .where(and(eq(memberships.userId, userId), eq(memberships.role, "owner")))
+    .orderBy(asc(businesses.createdAt))
+    .limit(1);
+  return business ?? null;
+}

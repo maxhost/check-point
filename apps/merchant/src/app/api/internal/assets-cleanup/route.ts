@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cleanupExpiredBrandAssets } from "../../../../server/brand";
 import { cleanupExpiredLoyaltyAssets } from "../../../../server/loyalty-program";
+import { cleanupExpiredCatalogAssets } from "../../../../server/catalog";
 
 export const runtime = "nodejs";
 
@@ -9,9 +10,10 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
-  const [brand, loyalty] = await Promise.all([
+  const [brand, loyalty, catalog] = await Promise.all([
     cleanupExpiredBrandAssets(),
     cleanupExpiredLoyaltyAssets(),
+    cleanupExpiredCatalogAssets(),
   ]);
-  return NextResponse.json({ ok: true, brand, loyalty });
+  return NextResponse.json({ ok: true, brand, loyalty, catalog });
 }

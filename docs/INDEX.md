@@ -89,7 +89,7 @@ desactualizado es peor que no tenerlo.
 | 0031 | 2026-08-14 | Notificación y landing en vivo al otorgar + dashboard "Ver mis programas" | borrador | no | `specs/0031-notificacion-y-landing-en-vivo.md` |
 | 0032 | 2026-08-14 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp, canal `deliverOtp`) | borrador | no | `specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` |
 | 0033 | 2026-08-14 | Canal de actualización y push de Wallet (web service PassKit + APNs, `PATCH`/`addMessage` de Google) | borrador | no | `specs/0033-canal-de-actualizacion-y-push-de-wallet.md` |
-| 0034 | 2026-08-14 | Catálogo de productos del negocio (precio/coste opcionales, categorías, visibilidad por local, imagen R2) — alimenta el carrito de 0030 | cerrada | sí | `specs/0034-catalogo-de-productos-del-negocio.md` |
+| 0034 | 2026-08-14 | Catálogo de productos del negocio (precio/coste opcionales, categorías, visibilidad por local, imagen R2) — alimenta el carrito de 0030 | implementada | sí | `specs/0034-catalogo-de-productos-del-negocio.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
