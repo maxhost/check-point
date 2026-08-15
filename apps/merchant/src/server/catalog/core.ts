@@ -26,6 +26,10 @@ export type ProductRecord = {
   unitCost: string | null;
   imageObjectKey: string | null;
   imageVersion: number;
+  imageSource: string | null;
+  imageAuthor: string | null;
+  imageAuthorUrl: string | null;
+  imageSourceUrl: string | null;
   availableAllLocations: boolean;
   locationIds: string[];
 };
@@ -42,11 +46,16 @@ export type ProductDTO = {
   unitCost: number | null;
   imagePath: string | null;
   imageVersion: number;
+  imageSource: string | null;
+  imageAuthor: string | null;
+  imageAuthorUrl: string | null;
+  imageSourceUrl: string | null;
   availableAllLocations: boolean;
   locationIds: string[];
 };
 
 export function toProductDTO(product: ProductRecord): ProductDTO {
+  // Drop the internal R2 key; attribution fields are public and flow through `rest`.
   const { imageObjectKey, unitPrice, unitCost, ...rest } = product;
   return {
     ...rest,

@@ -12,7 +12,9 @@ import {
   putProductVariants,
   readObjectAtMost,
 } from "../r2";
+import { getStockProvider, StockError } from "../stock/provider";
 import { CatalogError, imageTypes, uuidPattern } from "./core";
+import type { ProductInput } from "./validation";
 
 /** Prepares a signed R2 upload for a product image; the id travels with the product save. */
 export async function createProductUpload(businessId: string, value: unknown) {
@@ -117,6 +119,121 @@ export async function resolveProductImageUpload(args: {
       .delete(productAssetUploads)
       .where(eq(productAssetUploads.id, upload.id));
   }
+}
+
+/**
+ * Resolves a stock photo by id via the active provider (anti-SSRF lives in the provider),
+ * processes it and stores the variants under a fresh R2 prefix. Returns the prefix plus the
+ * attribution to persist. The caller rolls the prefix back if the DB write fails.
+ */
+export async function resolveProductStock(args: {
+  businessId: string;
+  provider: string;
+  photoId: string;
+}): Promise<{
+  prefix: string;
+  source: string;
+  author: string;
+  authorUrl: string;
+  sourceUrl: string;
+}> {
+  try {
+    const provider = await getStockProvider();
+    if (provider.id !== args.provider) {
+      throw new CatalogError(
+        422,
+        "El proveedor de imágenes no está disponible.",
+      );
+    }
+    const resolved = await provider.resolve(args.photoId);
+    const variants = await normalizeImage(resolved.bytes);
+    const prefix = productObjectPrefix(args.businessId, randomUUID());
+    await putProductVariants(prefix, variants.webp, variants.png);
+    return {
+      prefix,
+      source: provider.id,
+      author: resolved.author,
+      authorUrl: resolved.authorUrl,
+      sourceUrl: resolved.sourceUrl,
+    };
+  } catch (error) {
+    if (error instanceof CatalogError) throw error;
+    if (error instanceof StockError)
+      throw new CatalogError(error.status, error.message);
+    if (error instanceof AssetImageError)
+      throw new CatalogError(error.status, error.message);
+    throw new CatalogError(422, "No pudimos procesar esa imagen.");
+  }
+}
+
+type Attribution = {
+  source: string | null;
+  author: string | null;
+  authorUrl: string | null;
+  sourceUrl: string | null;
+};
+const NO_ATTRIBUTION: Attribution = {
+  source: null,
+  author: null,
+  authorUrl: null,
+  sourceUrl: null,
+};
+
+/** The image columns to write plus the R2 prefixes to roll back / defer-delete. `null` = keep. */
+export type ImageChange = {
+  nextKey: string | null;
+  rollback: string | null;
+  previous: string | null;
+  attribution: Attribution;
+} | null;
+
+/**
+ * Processes the R2 side of an image change (own upload or stock pick) before the DB write and
+ * returns the columns to set. The caller rolls back `rollback` if the write fails and
+ * defer-deletes `previous` on success. Mirrors the brand pipeline.
+ */
+export async function resolveImageChange(
+  businessId: string,
+  input: ProductInput,
+  currentKey: string | null,
+): Promise<ImageChange> {
+  if (input.imageAction === "keep") return null;
+  if (input.imageAction === "remove") {
+    return {
+      nextKey: null,
+      rollback: null,
+      previous: currentKey,
+      attribution: NO_ATTRIBUTION,
+    };
+  }
+  if (input.imageAction === "replace") {
+    const prefix = await resolveProductImageUpload({
+      businessId,
+      uploadId: input.uploadId!,
+    });
+    return {
+      nextKey: prefix,
+      rollback: prefix,
+      previous: currentKey,
+      attribution: NO_ATTRIBUTION,
+    };
+  }
+  const stock = await resolveProductStock({
+    businessId,
+    provider: input.provider!,
+    photoId: input.photoId!,
+  });
+  return {
+    nextKey: stock.prefix,
+    rollback: stock.prefix,
+    previous: currentKey,
+    attribution: {
+      source: stock.source,
+      author: stock.author,
+      authorUrl: stock.authorUrl,
+      sourceUrl: stock.sourceUrl,
+    },
+  };
 }
 
 /** Public read: resolves a product's current image prefix if the version matches. */

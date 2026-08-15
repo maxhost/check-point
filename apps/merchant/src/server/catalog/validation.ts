@@ -1,6 +1,6 @@
 import { CatalogError, uuidPattern } from "./core";
 
-export type ImageAction = "keep" | "replace" | "remove";
+export type ImageAction = "keep" | "replace" | "remove" | "stock";
 
 export type ProductInput = {
   name: string;
@@ -11,6 +11,8 @@ export type ProductInput = {
   locationIds: string[];
   imageAction: ImageAction;
   uploadId: string | null;
+  provider: string | null;
+  photoId: string | null;
 };
 
 /** numeric(12,2) range: prices/costs must fit and be non-negative. */
@@ -45,16 +47,33 @@ function parseCategoryId(value: unknown): string | null {
 function parseImage(input: Record<string, unknown>): {
   imageAction: ImageAction;
   uploadId: string | null;
+  provider: string | null;
+  photoId: string | null;
 } {
   const action = input.imageAction;
-  if (action === "remove") return { imageAction: "remove", uploadId: null };
+  const base = { uploadId: null, provider: null, photoId: null };
+  if (action === "remove") return { imageAction: "remove", ...base };
   if (action === "replace") {
     if (typeof input.uploadId !== "string" || !input.uploadId) {
       throw new CatalogError(422, "Falta la imagen cargada.");
     }
-    return { imageAction: "replace", uploadId: input.uploadId };
+    return { imageAction: "replace", ...base, uploadId: input.uploadId };
   }
-  return { imageAction: "keep", uploadId: null };
+  if (action === "stock") {
+    if (typeof input.provider !== "string" || !input.provider) {
+      throw new CatalogError(422, "Falta el proveedor de la imagen.");
+    }
+    if (typeof input.photoId !== "string" || !input.photoId) {
+      throw new CatalogError(422, "Falta la imagen seleccionada.");
+    }
+    return {
+      imageAction: "stock",
+      ...base,
+      provider: input.provider,
+      photoId: input.photoId,
+    };
+  }
+  return { imageAction: "keep", ...base };
 }
 
 export function validateProductInput(value: unknown): ProductInput {

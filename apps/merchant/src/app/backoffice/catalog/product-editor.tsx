@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { Category, Location, Product, ProductPayload } from "./types";
 import { useCatalogImage } from "./use-catalog-image";
+import { StockPicker } from "./stock-picker";
 
 type Props = {
   product: Product | null;
@@ -45,7 +46,18 @@ export function ProductEditor({
   );
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
-  const image = useCatalogImage(product?.imagePath ?? null);
+  const [showPicker, setShowPicker] = useState(false);
+  const image = useCatalogImage(
+    product?.imagePath ?? null,
+    product
+      ? {
+          source: product.imageSource,
+          author: product.imageAuthor,
+          authorUrl: product.imageAuthorUrl,
+          sourceUrl: product.imageSourceUrl,
+        }
+      : null,
+  );
   const fileInput = useRef<HTMLInputElement>(null);
 
   function toggleLocation(id: string) {
@@ -86,6 +98,9 @@ export function ProductEditor({
         locationIds: availableAll ? [] : locationIds,
         imageAction: image.action,
         ...(uploadId ? { uploadId } : {}),
+        ...(image.action === "stock" && image.stock
+          ? { provider: image.stock.provider, photoId: image.stock.photoId }
+          : {}),
       };
       const ok = await onSave(payload, product?.id ?? null);
       if (!ok) setSaving(false);
@@ -172,6 +187,13 @@ export function ProductEditor({
           onChange={(event) => image.choose(event.target.files?.[0], onError)}
         />
       </label>
+      <button
+        type="button"
+        className="small-button"
+        onClick={() => setShowPicker(true)}
+      >
+        Elegir de biblioteca
+      </button>
       {image.visible && (
         <div className="catalog-image-row">
           <img
@@ -190,6 +212,36 @@ export function ProductEditor({
             Quitar
           </button>
         </div>
+      )}
+      {image.credit?.author && (
+        <p className="field-help catalog-credit">
+          Foto de{" "}
+          <a
+            href={image.credit.sourceUrl ?? "https://www.pexels.com"}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Pexels.com
+          </a>{" "}
+          · Autor:{" "}
+          <a
+            href={image.credit.authorUrl ?? "https://www.pexels.com"}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {image.credit.author}
+          </a>
+        </p>
+      )}
+      {showPicker && (
+        <StockPicker
+          onApply={(provider, photo) => {
+            image.chooseStock(provider, photo);
+            setShowPicker(false);
+          }}
+          onClose={() => setShowPicker(false)}
+          onError={onError}
+        />
       )}
       <fieldset className="catalog-visibility">
         <legend>Disponibilidad</legend>

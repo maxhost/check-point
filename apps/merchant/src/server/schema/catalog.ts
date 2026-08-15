@@ -52,6 +52,11 @@ export const products = core.table(
     /** Internal R2 prefix. NEVER serialized to the client. */
     imageObjectKey: text("image_object_key"),
     imageVersion: integer("image_version").notNull().default(0),
+    /** Stock-photo attribution (spec 0035); null when the owner uploaded their own file. */
+    imageSource: text("image_source"),
+    imageAuthor: text("image_author"),
+    imageAuthorUrl: text("image_author_url"),
+    imageSourceUrl: text("image_source_url"),
     availableAllLocations: boolean("available_all_locations")
       .notNull()
       .default(true),

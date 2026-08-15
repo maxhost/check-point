@@ -15,7 +15,7 @@ import {
   uuidPattern,
 } from "./core";
 import { validateProductInput } from "./validation";
-import { resolveProductImageUpload } from "./image";
+import { resolveImageChange } from "./image";
 import { cleanupProductPrefixNow } from "./cleanup";
 
 const productColumns = {
@@ -26,6 +26,10 @@ const productColumns = {
   unitCost: products.unitCost,
   imageObjectKey: products.imageObjectKey,
   imageVersion: products.imageVersion,
+  imageSource: products.imageSource,
+  imageAuthor: products.imageAuthor,
+  imageAuthorUrl: products.imageAuthorUrl,
+  imageSourceUrl: products.imageSourceUrl,
   availableAllLocations: products.availableAllLocations,
 };
 
@@ -138,13 +142,7 @@ export async function createProduct(business: OwnerBusiness, value: unknown) {
     input.availableAllLocations,
     input.locationIds,
   );
-  const newPrefix =
-    input.imageAction === "replace"
-      ? await resolveProductImageUpload({
-          businessId: business.id,
-          uploadId: input.uploadId!,
-        })
-      : null;
+  const change = await resolveImageChange(business.id, input, null);
   try {
     const [row] = await getDb()
       .insert(products)
@@ -155,8 +153,12 @@ export async function createProduct(business: OwnerBusiness, value: unknown) {
         unitPrice: input.unitPrice,
         unitCost: input.unitCost,
         availableAllLocations: input.availableAllLocations,
-        imageObjectKey: newPrefix,
-        imageVersion: newPrefix ? 1 : 0,
+        imageObjectKey: change?.nextKey ?? null,
+        imageVersion: change?.nextKey ? 1 : 0,
+        imageSource: change?.attribution.source ?? null,
+        imageAuthor: change?.attribution.author ?? null,
+        imageAuthorUrl: change?.attribution.authorUrl ?? null,
+        imageSourceUrl: change?.attribution.sourceUrl ?? null,
       })
       .returning(productColumns);
     await syncLocations(row.id, input.availableAllLocations, input.locationIds);
@@ -165,7 +167,8 @@ export async function createProduct(business: OwnerBusiness, value: unknown) {
       locationIds: input.availableAllLocations ? [] : input.locationIds,
     } as ProductRecord);
   } catch (error) {
-    if (newPrefix) await cleanupProductPrefixNow(business.id, newPrefix);
+    if (change?.rollback)
+      await cleanupProductPrefixNow(business.id, change.rollback);
     throw error;
   }
 }
@@ -194,20 +197,11 @@ export async function updateProduct(
     input.locationIds,
   );
 
-  const replaced =
-    input.imageAction === "replace"
-      ? await resolveProductImageUpload({
-          businessId: business.id,
-          uploadId: input.uploadId!,
-        })
-      : null;
-  const changed = input.imageAction !== "keep";
-  const nextKey =
-    input.imageAction === "replace"
-      ? replaced
-      : input.imageAction === "remove"
-        ? null
-        : current.imageObjectKey;
+  const change = await resolveImageChange(
+    business.id,
+    input,
+    current.imageObjectKey,
+  );
   try {
     const [row] = await getDb()
       .update(products)
@@ -217,10 +211,16 @@ export async function updateProduct(
         unitPrice: input.unitPrice,
         unitCost: input.unitCost,
         availableAllLocations: input.availableAllLocations,
-        imageObjectKey: nextKey,
-        imageVersion: changed
-          ? sql`${products.imageVersion} + 1`
-          : products.imageVersion,
+        ...(change
+          ? {
+              imageObjectKey: change.nextKey,
+              imageVersion: sql`${products.imageVersion} + 1`,
+              imageSource: change.attribution.source,
+              imageAuthor: change.attribution.author,
+              imageAuthorUrl: change.attribution.authorUrl,
+              imageSourceUrl: change.attribution.sourceUrl,
+            }
+          : {}),
         updatedAt: new Date(),
       })
       .where(
@@ -232,15 +232,17 @@ export async function updateProduct(
       input.availableAllLocations,
       input.locationIds,
     );
-    if (changed && current.imageObjectKey) {
-      await cleanupProductPrefixNow(business.id, current.imageObjectKey);
+    if (change?.previous) {
+      await cleanupProductPrefixNow(business.id, change.previous);
     }
     return toProductDTO({
       ...row,
       locationIds: input.availableAllLocations ? [] : input.locationIds,
     } as ProductRecord);
   } catch (error) {
-    if (replaced) await cleanupProductPrefixNow(business.id, replaced);
+    if (change?.rollback) {
+      await cleanupProductPrefixNow(business.id, change.rollback);
+    }
     throw error;
   }
 }

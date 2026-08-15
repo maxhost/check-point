@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-14 (spec 0034 catálogo de productos IMPLEMENTADA con PASS de revisor independiente; migración 0017 en prod).
+Ultima actualizacion: 2026-08-14 (specs 0034 catálogo + 0035 imágenes de stock IMPLEMENTADAS con PASS de revisor; migraciones 0017/0018 en prod).
 
 ## Ahora
 
@@ -403,6 +403,23 @@ lint, prettier, **unit+integración 100/100** con round-trip de moneda en Marca,
 migración. **Commit local hecho; falta `git push`.** **La próxima rebanada del camino A es la spec 0030**
 (acreditación en mostrador), ahora **desbloqueada** por el catálogo.
 
+**Spec 0035 IMPLEMENTADA (2026-08-14) — imágenes de stock para productos (ADR 0035).** Sobre la
+imagen del catálogo (0034) se sumó una biblioteca de fotos gratis: botón **"Elegir de biblioteca"**
+→ modal `StockPicker` (buscar on-submit + "cargar más") → elegir → preview desde la URL del
+proveedor + atribución "Foto de Pexels.com · Autor: <nombre>"; al Guardar el servidor baja la foto
+**por id** (anti-SSRF: allow-list `images.pexels.com` + `redirect:error` + tope 5 MB),
+`normalizeImage` → R2, y persiste la atribución. Dominio `server/stock/*` (interfaz
+`StockPhotoProvider` intercambiable: `pexels` + `fake` por `STOCK_PROVIDER`; la **API key nunca va
+al cliente**, búsqueda proxeada `GET /api/catalog/stock/search`, 503 sin key). `resolveImageChange`
+unifica keep/replace/remove/stock con rollback + borrado diferido. **Migración `0018`** (4 columnas
+de atribución nullable en `core.product`; DTO las expone, **sigue sin serializar `image_object_key`**).
+**Implementador + revisor independiente PASS**; gates (typecheck 3/3, lint, prettier, **unit+integración
+106/106** con anti-SSRF unit + atribución→DTO en integración con `fake`, build 3/3). **Migración `0018`
+aplicada y verificada por SQL en prod** (19 migraciones; `core`(19)/`consumer`(5)/`merchant_auth`(4)
+intactos). **Residual (go-live):** setear `PEXELS_API_KEY` en Vercel (el owner ya tiene la key) + QA
+manual (buscar/elegir/guardar/reeditar contra R2 real). **Con esto el catálogo (0034+0035) queda
+cerrado; la próxima rebanada del camino A es la spec 0030** (acreditación en mostrador), desbloqueada.
+
 ## Siguiente
 
 | # | Tarea | Spec | Estado | Notas |
@@ -471,7 +488,9 @@ migración. **Commit local hecho; falta `git push`.** **La próxima rebanada del
 | 2026-08-14 | Pase de Wallet Apple/Google (Spec 0029, ADR 0033, camino A 2ª rebanada) | Dominio `server/wallet/*` (provider apple/google/fake), rutas `wallet/{apple.pkpass,google}` + `/c/[token]` + página `/wallet` (QR SVG + botones). Gates (typecheck 3/3, eslint, unit 60/23-skip, build 3/3) + integración Neon 4/4 wallet + 9/9 regresión 0028 + **PASS de revisor independiente** + migración `0016` aplicada y verificada por SQL en efímera y **en prod**. Commits `4e4ba0b`/`72081e5`. |
 | 2026-08-14 | Wallet en prod: Google en Android real + Apple en iPhone real (QA del owner) | Google Wallet (issuer demo gratis, class `approved`, secretos en Vercel) guarda el pase con QR en Android; Apple Wallet (cert Pass Type ID real, Team `SN489AVGUD`, WWDR G4, 5 secretos `APPLE_*`) instala el `.pkpass` en iPhone. Ambos vistos en pantalla por el owner. Setup en `docs/wallet-go-live.md`; secretos locales en `.secrets-apple/` (gitignore + pre-commit hook) |
 | 2026-08-14 | Identidad de consumidor y enrolamiento (Spec 0028, camino A 1ª rebanada) | Esquema `consumer` (4 tablas) + rutas `enroll`/`me` + landing; `409 already_member`, rate-limit 3/h por teléfono, `closing` habilitado. Gates (typecheck 3/3, lint, prettier, unit 46/19-skip, build 3/3) + integración Neon 9/9 + **PASS de revisor independiente** + migración `0014` aplicada y verificada en prod (esquema `consumer` 4 tablas/10 índices/3 FK; `core`/`merchant_auth` intactos). Residual: QA manual en teléfono |
-| 2026-08-14 | Catálogo de productos del negocio (Spec 0034, ADR 0034) | Dominio `server/catalog/*` + esquema `core` (`product`/`product_category`/`product_location` + upload/cleanup) + `currency_code` en `business`; rutas `api/catalog/**` + imagen pública; UI `/backoffice/catalog` + tarjeta de nav; anti-fuga `*ObjectKey`. Gates (typecheck 3/3, eslint, prettier, unit 70, build 3/3) + **integración Neon 6/6 catálogo + 99/99 total** + **PASS de revisor independiente** + migración `0017` aplicada y verificada por SQL en prod (18 migraciones; backfill de moneda por país; `core`(19)/`consumer`(5)/`merchant_auth`(4) intactos). Residual: QA manual del owner en deploy. Commit local hecho, pendiente `git push` a `main` |
+| 2026-08-14 | Catálogo de productos del negocio (Spec 0034, ADR 0034) | Dominio `server/catalog/*` + esquema `core` (`product`/`product_category`/`product_location` + upload/cleanup) + `currency_code` en `business`; rutas `api/catalog/**` + imagen pública; UI `/backoffice/catalog` + tarjeta de nav; anti-fuga `*ObjectKey`. Gates (typecheck 3/3, eslint, prettier, unit 70, build 3/3) + **integración Neon 6/6 catálogo + 99/99 total** + **PASS de revisor independiente** + migración `0017` aplicada y verificada por SQL en prod (18 migraciones; backfill de moneda por país; `core`(19)/`consumer`(5)/`merchant_auth`(4) intactos). Residual: QA manual del owner en deploy. Pusheado (`3ca3f98`); enmienda moneda→Marca + UI (`69e04f5`); fix botón (`4ea982a`) |
+| 2026-08-14 | Imágenes de stock para productos (Spec 0035, ADR 0035) | Buscador Pexels server-proxied + import a R2 diferido anti-SSRF (allow-list host + `redirect:error` + tope) + atribución persistida; interfaz `StockPhotoProvider` (`pexels`/`fake`). Dominio `server/stock/*`, ruta `api/catalog/stock/search`, modal `StockPicker`. DTO sin `image_object_key`. Gates (typecheck 3/3, eslint, prettier, **unit+integración 106/106**, build 3/3) + **PASS de revisor independiente** + migración `0018` aplicada y verificada por SQL en prod (19 migraciones; esquemas vecinos intactos). Residual: `PEXELS_API_KEY` en Vercel + QA manual |
+| 31 | Imágenes de stock para productos (buscador Pexels) | 0035 | hecho | **IMPLEMENTADA (2026-08-14, ADR 0035) con PASS de revisor independiente.** Botón "Elegir de biblioteca" + modal `StockPicker` (buscar on-submit + "cargar más") en el editor de producto; interfaz `StockPhotoProvider` intercambiable (`pexels`+`fake` por `STOCK_PROVIDER`), búsqueda **server-proxied** (`GET /api/catalog/stock/search`, la API key nunca al cliente, 503 sin key), import **por id anti-SSRF** (allow-list `images.pexels.com` + `redirect:error` + tope 5 MB) → `normalizeImage` → R2, diferido a Guardar; atribución persistida (4 columnas en `core.product`, migración `0018`) y mostrada ("Foto de Pexels.com · Autor: X"). DTO sin `image_object_key`. Gates (typecheck 3/3, lint, prettier, unit+integración **106/106** con anti-SSRF unit + atribución→DTO, build 3/3); **migración `0018` en prod verificada por SQL** (19 migraciones; esquemas vecinos intactos). Residual go-live: `PEXELS_API_KEY` en Vercel (owner ya la tiene) + QA manual. Cierra el catálogo (0034+0035). |
 
 ## Descartado (y por que)
 

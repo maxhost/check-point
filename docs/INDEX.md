@@ -51,6 +51,7 @@ desactualizado es peor que no tenerlo.
 | 0032 | 2026-08-14 | Identidad de consumidor: esquema pg propio `consumer`, auth phone-OTP purpose-built y DB compartida para analítica aislada por negocio | aceptada; refina 0012 | `adr/0032-identidad-de-consumidor-esquema-propio-y-auth-phone-otp.md` |
 | 0033 | 2026-08-14 | Proveedor de Wallet: Apple PassKit + Google Wallet, emisor único, UN pase de identidad por consumidor (barcode = `qr_token`), dev sin pagar Apple, push separado | aceptada; consume 0014/0024 | `adr/0033-proveedor-de-wallet-apple-passkit-y-google-wallet.md` |
 | 0034 | 2026-08-14 | Catálogo de productos (no de beneficios) en `core`, global por negocio con visibilidad opt-out por local; precio/coste opcionales, puntos por equivalencia en el programa, snapshot en acreditación | aceptada; reencuadra el catálogo de 0002 y difiere 0021 | `adr/0034-catalogo-de-productos-por-negocio.md` |
+| 0035 | 2026-08-14 | Imágenes de stock para productos: interfaz `StockPhotoProvider` intercambiable (Pexels primero), server-proxied (key en env) y anti-SSRF (resolución por id + allow-list de host), import a R2 diferido a Guardar, atribución persistida y visible | aceptada; extiende la spec 0034 | `adr/0035-imagenes-de-stock-para-productos.md` |
 
 ## Specs — que se construye
 
@@ -90,6 +91,7 @@ desactualizado es peor que no tenerlo.
 | 0032 | 2026-08-14 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp, canal `deliverOtp`) | borrador | no | `specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` |
 | 0033 | 2026-08-14 | Canal de actualización y push de Wallet (web service PassKit + APNs, `PATCH`/`addMessage` de Google) | borrador | no | `specs/0033-canal-de-actualizacion-y-push-de-wallet.md` |
 | 0034 | 2026-08-14 | Catálogo de productos del negocio (precio/coste opcionales, categorías, visibilidad por local, imagen R2) — alimenta el carrito de 0030 | implementada | sí | `specs/0034-catalogo-de-productos-del-negocio.md` |
+| 0035 | 2026-08-14 | Imágenes de stock para productos (buscador Pexels server-proxied, import a R2 diferido, atribución) — extiende la imagen de 0034 | implementada | no | `specs/0035-imagenes-de-stock-para-productos.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

@@ -9,7 +9,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "./db";
-import { businesses, locations, memberships, users } from "./schema";
+import { businesses, locations, memberships, products, users } from "./schema";
 import {
   type OwnerBusiness,
   createCategory,
@@ -144,5 +144,30 @@ describe.skipIf(!enabled)("catalog service against Neon", () => {
   it("exposes the business currency for price formatting", async () => {
     // Currency lives in brand config now; the catalog only reads it.
     expect((await listCatalog(ownerA)).currencyCode).toBe("USD");
+  }, 30_000);
+
+  it("carries stock attribution in the DTO without leaking the R2 key", async () => {
+    // The stock create path needs R2 (verified live); here we assert the columns
+    // round-trip to the DTO and that the internal key never leaks.
+    const id = randomUUID();
+    await getDb().insert(products).values({
+      id,
+      businessId: a.businessId,
+      name: "Con foto de stock",
+      imageObjectKey: "products/x/y",
+      imageVersion: 1,
+      imageSource: "pexels",
+      imageAuthor: "Ada Lovelace",
+      imageAuthorUrl: "https://www.pexels.com/@ada",
+      imageSourceUrl: "https://www.pexels.com/photo/1",
+      availableAllLocations: true,
+    });
+    const found = (await listCatalog(ownerA)).products.find(
+      (p) => p.id === id,
+    )!;
+    expect(found).not.toHaveProperty("imageObjectKey");
+    expect(found.imageSource).toBe("pexels");
+    expect(found.imageAuthor).toBe("Ada Lovelace");
+    expect(found.imagePath).toContain(`/api/public/catalog/${id}/image`);
   }, 30_000);
 });

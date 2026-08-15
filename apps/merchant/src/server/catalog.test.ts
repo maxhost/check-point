@@ -81,6 +81,28 @@ describe("validateProductInput", () => {
     });
     expect(replace.uploadId).toBe("abc");
   });
+
+  it("parses the stock image action (needs provider + photoId)", () => {
+    expect(() =>
+      validateProductInput({ ...base, imageAction: "stock" }),
+    ).toThrow(CatalogError);
+    expect(() =>
+      validateProductInput({
+        ...base,
+        imageAction: "stock",
+        provider: "pexels",
+      }),
+    ).toThrow(CatalogError);
+    const stock = validateProductInput({
+      ...base,
+      imageAction: "stock",
+      provider: "pexels",
+      photoId: "12345",
+    });
+    expect(stock.imageAction).toBe("stock");
+    expect(stock.provider).toBe("pexels");
+    expect(stock.photoId).toBe("12345");
+  });
 });
 
 describe("validateCategoryName", () => {
@@ -110,11 +132,15 @@ describe("toProductDTO anti-leak", () => {
     unitCost: "1.00",
     imageObjectKey: "products/biz/asset",
     imageVersion: 4,
+    imageSource: "pexels",
+    imageAuthor: "Ada Lovelace",
+    imageAuthorUrl: "https://www.pexels.com/@ada",
+    imageSourceUrl: "https://www.pexels.com/photo/1",
     availableAllLocations: true,
     locationIds: [],
   };
 
-  it("never serializes imageObjectKey and exposes only imagePath", () => {
+  it("never serializes imageObjectKey and exposes imagePath + attribution", () => {
     const dto = toProductDTO(record);
     expect(dto).not.toHaveProperty("imageObjectKey");
     expect(dto.imagePath).toBe(
@@ -122,6 +148,9 @@ describe("toProductDTO anti-leak", () => {
     );
     expect(dto.unitPrice).toBe(3.5);
     expect(dto.unitCost).toBe(1);
+    // Attribution is public and flows to the client.
+    expect(dto.imageSource).toBe("pexels");
+    expect(dto.imageAuthor).toBe("Ada Lovelace");
   });
 
   it("returns a null imagePath when there is no image", () => {
