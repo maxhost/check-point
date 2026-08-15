@@ -2082,3 +2082,271 @@ input:focus {
   color: #176548;
   text-decoration: underline;
 }
+
+/* ── Mostrador / counter (spec 0030) ─────────────────────────────────── */
+.counter-shell {
+  width: min(100%, 560px);
+  margin: 0 auto;
+}
+.counter-panel {
+  padding: 20px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 32px #16302014;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.counter-scanner {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0c1a12;
+}
+.counter-video {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  display: block;
+}
+.counter-reticle {
+  position: absolute;
+  inset: 18% 14%;
+  border: 3px solid #ffffffcc;
+  border-radius: 16px;
+  box-shadow: 0 0 0 100vmax #00000055;
+}
+.counter-scan-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #fff;
+  font-weight: 600;
+  margin: 0;
+  text-shadow: 0 1px 4px #000;
+}
+.counter-scan-error {
+  padding: 16px;
+  border-radius: 14px;
+  background: #fdecec;
+  color: #8f1d1d;
+  margin: 0;
+}
+.counter-consumer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.counter-consumer h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.counter-badge {
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: #e5f4ec;
+  color: #176548;
+  font-weight: 700;
+  font-size: 13px;
+}
+.counter-balance {
+  color: #4a5b50;
+  font-weight: 700;
+}
+.counter-toggle {
+  display: flex;
+  gap: 6px;
+  background: #eef3ef;
+  padding: 4px;
+  border-radius: 14px;
+}
+.counter-toggle button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 10px;
+  border-radius: 11px;
+  font-weight: 700;
+  color: #4a5b50;
+}
+.counter-toggle button.is-active {
+  background: #fff;
+  color: #176548;
+  box-shadow: 0 2px 8px #16302015;
+}
+.counter-detailed,
+.counter-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.counter-cart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.counter-cart-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f6f9f7;
+}
+.counter-cart-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.counter-line-price {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #4a5b50;
+}
+.counter-line-price input {
+  width: 110px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #cfdbd3;
+}
+.counter-qty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.counter-qty button {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #cfdbd3;
+  background: #fff;
+  font-size: 20px;
+  line-height: 1;
+}
+.counter-total {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+}
+.counter-search {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #cfdbd3;
+}
+.counter-picker {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.counter-picker button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e3ebe5;
+  background: #fff;
+  text-align: left;
+}
+.counter-picker small {
+  color: #4a5b50;
+  white-space: nowrap;
+}
+.counter-empty {
+  padding: 12px;
+  color: #4a5b50;
+  text-align: center;
+}
+.counter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #33413a;
+}
+.counter-field input {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #cfdbd3;
+  font-size: 18px;
+}
+.counter-hint {
+  margin: 0;
+  color: #4a5b50;
+  font-size: 14px;
+}
+.counter-actions {
+  display: flex;
+  gap: 10px;
+}
+.counter-primary,
+.counter-secondary {
+  flex: 1;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 800;
+  border: 0;
+}
+.counter-primary {
+  background: #176548;
+  color: #fff;
+}
+.counter-primary:disabled {
+  opacity: 0.5;
+}
+.counter-secondary {
+  background: #eef3ef;
+  color: #33413a;
+  flex: 0 0 40%;
+}
+.counter-locations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.counter-locations button {
+  padding: 15px;
+  border-radius: 14px;
+  border: 1px solid #cfdbd3;
+  background: #fff;
+  font-weight: 700;
+  text-align: left;
+}
+.counter-done {
+  align-items: center;
+  text-align: center;
+}
+.counter-check {
+  width: 64px;
+  height: 64px;
+  margin: 4px 0 0;
+  border-radius: 99px;
+  background: #e5f4ec;
+  color: #176548;
+  font-size: 34px;
+  line-height: 64px;
+}
+.counter-granted {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #176548;
+}

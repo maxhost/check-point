@@ -7,3 +7,4 @@ export * from "./schema/loyalty";
 export * from "./schema/loyalty-reward";
 export * from "./schema/consumer";
 export * from "./schema/catalog";
+export * from "./schema/order";

@@ -30,6 +30,7 @@ export default async function BackofficePage() {
   if (!business) redirect("/onboarding");
 
   const modules = [
+    ["Mostrador", "Escanea el QR del cliente y acredita su compra.", "counter"],
     [
       "Campañas",
       "Crea beneficios y experiencias para tus clientes.",
@@ -79,7 +80,9 @@ export default async function BackofficePage() {
                       ? "/backoffice/brand"
                       : slug === "catalog"
                         ? "/backoffice/catalog"
-                        : `/backoffice/demo/${slug}`
+                        : slug === "counter"
+                          ? "/backoffice/counter"
+                          : `/backoffice/demo/${slug}`
                 }
                 key={slug}
               >

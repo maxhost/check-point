@@ -1,4 +1,13 @@
-import { index, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { consumer } from "./_schemas";
 import { loyaltyPrograms } from "./loyalty";
 
@@ -92,6 +101,12 @@ export const programMemberships = consumer.table(
       .notNull()
       .references(() => loyaltyPrograms.id),
     businessId: uuid("business_id").notNull(),
+    // Live balance per membership (spec 0030). A program of an enabled modality uses
+    // exactly one of the two (Puntos → points_balance, Sellos → stamps_count). The
+    // counter increments it atomically on each grant; the decrement/reset is the
+    // future redemption feature, not this spec.
+    pointsBalance: integer("points_balance").notNull().default(0),
+    stampsCount: integer("stamps_count").notNull().default(0),
     enrolledAt: timestamp("enrolled_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -102,6 +117,14 @@ export const programMemberships = consumer.table(
       table.programId,
     ),
     index("consumer_program_membership_business_idx").on(table.businessId),
+    check(
+      "consumer_program_membership_points_balance_check",
+      sql`${table.pointsBalance} >= 0`,
+    ),
+    check(
+      "consumer_program_membership_stamps_count_check",
+      sql`${table.stampsCount} >= 0`,
+    ),
   ],
 );
 

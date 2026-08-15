@@ -1,7 +1,7 @@
 ---
 spec: 0030
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Consola web móvil de mostrador (URL del backoffice, cámara del teléfono) — escanea el QR del consumidor, resuelve/auto-enrola su membresía y acredita puntos/sellos por venta detallada (carrito del catálogo) o venta rápida (importe + nota), atómico y auditado como orden. Solo acreditación; el canje es otra feature.
 disjunta: no
 archivos: `src/server/counter/*`, `src/server/schema/order.ts`, `src/server/schema/consumer.ts` (saldo), `app/api/counter/*`, `app/backoffice/counter/*`, migración aditiva
@@ -177,16 +177,29 @@ schema compartido. Contra las specs *implementadas* (0028/0034/0036) no hay coli
 
 ## Definition of Done
 
-- [ ] Escanear el QR de un consumidor **no miembro** lo auto-enrola y abre la acreditación.
-- [ ] Venta detallada: carrito de N productos → total correcto → puntos/sellos según
+- [x] Escanear el QR de un consumidor **no miembro** lo auto-enrola y abre la acreditación.
+- [x] Venta detallada: carrito de N productos → total correcto → puntos/sellos según
       `computeAccrual` → `order` + `order_item[]` con snapshot + saldo incrementado.
-- [ ] Venta rápida: importe + nota → `order` sin items, `mode='quick'`, saldo incrementado.
-- [ ] `stamps per_purchase` otorga 1 sin importar el total; `per_amount` = `floor(total/block)*grant`.
-- [ ] Reintento del `grant` con el mismo `client_request_id` **no** duplica saldo ni orden.
-- [ ] Operador de otro negocio → `403`; negocio sin programa acreditable → `404`.
-- [ ] Ningún DTO serializa `qr_token`/`token_hash`/`web_view_token`/`auth_token_hash`.
-- [ ] La UI se reinicia al escáner tras confirmar.
-- [ ] Migración aditiva verificada en prod; `core`/`merchant_auth`/`consumer` intactos.
+- [x] Venta rápida: importe + nota → `order` sin items, `mode='quick'`, saldo incrementado.
+- [x] `stamps per_purchase` otorga 1 sin importar el total; `per_amount` = `floor(total/block)*grant`.
+- [x] Reintento del `grant` con el mismo `client_request_id` **no** duplica saldo ni orden.
+- [x] Operador de otro negocio → `403`; negocio sin programa acreditable → `404`.
+- [x] Ningún DTO serializa `qr_token`/`token_hash`/`web_view_token`/`auth_token_hash`.
+- [x] La UI se reinicia al escáner tras confirmar.
+- [x] Migración aditiva verificada en prod; `core`/`merchant_auth`/`consumer` intactos.
+
+> **Implementada 2026-08-15** (implementador + **revisor independiente PASS**, `AGENT-WORKFLOW.md`).
+> Dominio `server/counter/*` + rutas `api/counter/{resolve,grant}` + UI `/backoffice/counter`
+> (scanner `BarcodeDetector`+`jsqr`, venta detallada/rápida, Confirmar deshabilitado al primer
+> tap + idempotencia DB por `client_request_id`). Otorgamiento atómico vía CTE guardado
+> (`orders.persistGrant`: bump con guard `NOT EXISTS(order)` + `ON CONFLICT DO NOTHING`, sin
+> doble-bump bajo concurrencia real — verificado por el revisor con sonda 8-way). Migración
+> aditiva **`0020_harsh_venus`** aplicada y verificada por SQL en prod (21 migraciones;
+> `core.order`/`order_item` + `points_balance`/`stamps_count` con checks; `core`(22)/`consumer`(5)/
+> `merchant_auth`(4) intactos). Gates: typecheck 3/3, lint, unit 106/44-skip (7 nuevos de counter),
+> build 3/3, integración Neon **8/8** (counter) + regresión **25/25** (0028/0034/0036/wallet) en
+> rama efímera. **Residual (no gate):** QA manual del owner en teléfono sobre el deploy (HTTPS +
+> cámara). **La notificación al consumidor (paso 6) sigue siendo la spec 0031.**
 
 ## Plan de pruebas y verificación
 
