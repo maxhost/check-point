@@ -26,6 +26,30 @@ const emptyReward = (): RewardDraft => ({
 });
 
 /**
+ * Referential points cost for a catalog-product reward: enough points that redeeming
+ * it requires the customer to spend at least the product's price, so a giveaway never
+ * loses money. Rounds the required spend up to the next accrual block (`$Y`), so the
+ * cost lands on a clean, reachable multiple of `grant` (`X`). Owner can still override.
+ * Returns 0 when it can't be computed (no price / no rate).
+ */
+export function suggestPointsCost(
+  price: number,
+  grant: number,
+  block: number,
+): number {
+  if (
+    !Number.isFinite(price) ||
+    !Number.isFinite(grant) ||
+    !Number.isFinite(block) ||
+    price <= 0 ||
+    grant <= 0 ||
+    block <= 0
+  )
+    return 0;
+  return Math.ceil(price / block) * grant;
+}
+
+/**
  * Owns the accrual mechanics + reward list + the catalog used to pick a product
  * reward (spec 0036). Split out of `use-loyalty-program` to stay within file-size.
  */
@@ -40,6 +64,22 @@ export function useRewards() {
     setRewards((list) =>
       list.map((reward, i) => (i === index ? { ...reward, ...next } : reward)),
     );
+  }
+
+  /**
+   * Picks a catalog product for a reward and re-seeds its points cost from the product
+   * price + current rate (referential floor; the owner can still edit it afterwards).
+   * A product without a price leaves the current cost untouched.
+   */
+  function selectProduct(index: number, product: CatalogProduct | null) {
+    const suggested = product
+      ? suggestPointsCost(product.unitPrice ?? 0, grant, Number(blockAmount))
+      : 0;
+    patch(index, {
+      productId: product?.id ?? null,
+      label: product?.name ?? "",
+      ...(suggested > 0 ? { pointsCost: suggested } : {}),
+    });
   }
   const add = () => setRewards((list) => [...list, emptyReward()]);
   const remove = (index: number) =>
@@ -124,6 +164,7 @@ export function useRewards() {
     setGrant,
     setBlockAmount,
     patch,
+    selectProduct,
     add,
     remove,
     loadCatalog,

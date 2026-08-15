@@ -66,13 +66,11 @@ function RewardCard({
             <select
               value={reward.productId ?? ""}
               onChange={(event) => {
-                const product = earn.products.find(
-                  (item) => item.id === event.target.value,
-                );
-                patch({
-                  productId: product?.id ?? null,
-                  label: product?.name ?? "",
-                });
+                const product =
+                  earn.products.find(
+                    (item) => item.id === event.target.value,
+                  ) ?? null;
+                earn.selectProduct(index, product);
               }}
             >
               <option value="">Elegí un producto…</option>
