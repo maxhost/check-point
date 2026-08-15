@@ -1133,6 +1133,18 @@ input:focus {
   margin: 6px 0 0;
   padding-left: 20px;
 }
+.review-rewards li {
+  margin-bottom: 6px;
+}
+.review-reward-name {
+  font-weight: 600;
+}
+.review-reward-sales {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #35473c;
+}
 .value-metric {
   margin-top: 18px;
   padding: 14px 16px;
@@ -1148,6 +1160,17 @@ input:focus {
   font-size: 16px;
   font-weight: 700;
   color: #135239;
+}
+.value-metric-pct {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f7a4a;
+}
+.value-metric-caution {
+  margin: 6px 0 0;
+  font-weight: 700;
+  color: #a23730;
 }
 .value-metric-spend {
   margin: 6px 0 0;

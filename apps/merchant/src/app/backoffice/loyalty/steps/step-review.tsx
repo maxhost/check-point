@@ -1,18 +1,38 @@
 import { CardPreview } from "../card-preview";
 import { formatMoney, spendToRedeem } from "../format";
+import type { RewardDraft } from "../use-rewards";
 import type { LoyaltyVm } from "../use-loyalty-program";
 
 type Metric = {
-  ratioLine: string | null;
+  headline: string | null;
+  pct: string | null;
+  caution: string | null;
   spendLines: string[];
   note: string | null;
 };
 
+/** Sales a single redemption of `reward` drives (0 when there is no $ figure, e.g. Sellos por compra). */
+function rewardSpend(vm: LoyaltyVm, reward: RewardDraft): number {
+  const earn = vm.earn;
+  if (vm.kind === "points") {
+    return spendToRedeem(reward.pointsCost, earn.blockAmount, earn.grant);
+  }
+  const block = Number(earn.blockAmount);
+  return earn.effectiveMode("stamps") === "per_amount" && Number.isFinite(block)
+    ? vm.target * block
+    : 0;
+}
+
+/** `+51%` / `-20%`, the sales generated over the reward value (ratio − 1). */
+function pctOver(ratio: number): number {
+  return Math.round((ratio - 1) * 100);
+}
+
 /**
  * Value metric shown in the preview (spec 0036, paso 5). All derived, nothing persisted:
- * - per_amount with monetary rewards → "por cada $1 en premios, ~$N en ventas".
- * - Sellos per_purchase → "N compras por premio", sin ratio en $.
- * - Rewards without a reference price → "hay que gastar ~$X", sin ratio.
+ * frames the sales a reward drives against its value — as an absolute figure, a "$1 →
+ * $N" ratio and a "+X% over what you give away" return. Warns when a reward gives away
+ * more than it drives (so the owner never loses money). Sellos por compra → "N compras".
  */
 function buildValueMetric(vm: LoyaltyVm): Metric | null {
   const earn = vm.earn;
@@ -22,46 +42,56 @@ function buildValueMetric(vm: LoyaltyVm): Metric | null {
 
   if (vm.kind === "stamps" && mode === "per_purchase") {
     return {
-      ratioLine: `${vm.target} compras por cada premio.`,
+      headline: `Cada premio se gana con ${vm.target} compras.`,
+      pct: null,
+      caution: null,
       spendLines: [],
       note: null,
     };
   }
 
-  const block = Number(earn.blockAmount);
-  const stampSpend = vm.target * (Number.isFinite(block) ? block : 0);
   const ratios: number[] = [];
   const spendLines: string[] = [];
   for (const reward of earn.rewards) {
-    const spend =
-      vm.kind === "points"
-        ? spendToRedeem(reward.pointsCost, earn.blockAmount, earn.grant)
-        : stampSpend;
+    const spend = rewardSpend(vm, reward);
     const value =
       reward.type === "catalog_product" ? priceOf(reward.productId) : null;
     if (value && value > 0 && spend > 0) {
       ratios.push(spend / value);
     } else if (spend > 0) {
       spendLines.push(
-        `${reward.label || "Premio"}: hay que gastar ~${formatMoney(spend, vm.currencyCode)}.`,
+        `${reward.label || "Premio"}: el cliente gasta ~${formatMoney(spend, vm.currencyCode)} para ganarlo.`,
       );
     }
   }
 
-  let ratioLine: string | null = null;
+  let headline: string | null = null;
+  let pct: string | null = null;
+  let caution: string | null = null;
   let note: string | null = null;
   if (ratios.length > 0) {
     const one = formatMoney(1, vm.currencyCode);
     const min = Math.min(...ratios);
     const max = Math.max(...ratios);
-    ratioLine =
-      Math.abs(min - max) < 0.005
-        ? `Por cada ${one} en premios, tu programa te genera ~${formatMoney(min, vm.currencyCode)} en ventas.`
-        : `Por cada ${one} en premios, tu programa te genera entre ~${formatMoney(min, vm.currencyCode)} y ~${formatMoney(max, vm.currencyCode)} en ventas.`;
-    note = "Asume que todos canjean; los que no, son ganancia.";
+    const same = Math.abs(min - max) < 0.005;
+    headline = same
+      ? `Cada ${one} en premios mueve ~${formatMoney(min, vm.currencyCode)} en ventas.`
+      : `Cada ${one} en premios mueve entre ~${formatMoney(min, vm.currencyCode)} y ~${formatMoney(max, vm.currencyCode)} en ventas.`;
+    if (min >= 1) {
+      const lo = pctOver(min);
+      const hi = pctOver(max);
+      pct =
+        lo === hi
+          ? `Generás un ${lo}% más en ventas de lo que regalás en premios.`
+          : `Generás entre un ${lo}% y un ${hi}% más en ventas de lo que regalás.`;
+    } else {
+      caution =
+        "En al menos un premio entregás más valor del que genera en ventas. Subí su costo en puntos para no perder dinero.";
+    }
+    note = "Asume que todos canjean; los que no, son ganancia extra.";
   }
-  if (!ratioLine && spendLines.length === 0) return null;
-  return { ratioLine, spendLines, note };
+  if (!headline && spendLines.length === 0) return null;
+  return { headline, pct, caution, spendLines, note };
 }
 
 export function StepReview({ vm }: { vm: LoyaltyVm }) {
@@ -91,21 +121,37 @@ export function StepReview({ vm }: { vm: LoyaltyVm }) {
       )}
       <h3>Premios</h3>
       <ul className="review-rewards">
-        {vm.earn.rewards.map((reward, index) => (
-          <li key={index}>
-            {reward.label ||
-              (reward.type === "discount"
-                ? `${reward.discountPercent}% de descuento`
-                : "Premio")}
-            {vm.kind === "points" ? ` — ${reward.pointsCost} pts` : ""}
-          </li>
-        ))}
+        {vm.earn.rewards.map((reward, index) => {
+          const spend = rewardSpend(vm, reward);
+          const label =
+            reward.label ||
+            (reward.type === "discount"
+              ? `${reward.discountPercent}% de descuento`
+              : "Premio");
+          return (
+            <li key={index}>
+              <span className="review-reward-name">
+                {label}
+                {vm.kind === "points" ? ` — ${reward.pointsCost} pts` : ""}
+              </span>
+              {spend > 0 && (
+                <span className="review-reward-sales">
+                  Cada canje ≈ {formatMoney(spend, vm.currencyCode)} en ventas
+                </span>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {metric && (
         <section className="value-metric">
           <h3>Valor del programa</h3>
-          {metric.ratioLine && (
-            <p className="value-metric-headline">{metric.ratioLine}</p>
+          {metric.headline && (
+            <p className="value-metric-headline">{metric.headline}</p>
+          )}
+          {metric.pct && <p className="value-metric-pct">{metric.pct}</p>}
+          {metric.caution && (
+            <p className="value-metric-caution">{metric.caution}</p>
           )}
           {metric.spendLines.map((line, index) => (
             <p key={index} className="value-metric-spend">
