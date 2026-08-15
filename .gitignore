@@ -23,3 +23,7 @@ apps/consumer/public/qa-checkin.png
 *.der
 *.mobileprovision
 Wallet Issuer.json
+
+# macOS junk (mistake→rule 2026-08-15: tests/.DS_Store aparecía como untracked)
+.DS_Store
+**/.DS_Store
