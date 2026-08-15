@@ -1,13 +1,19 @@
 ---
 spec: 0002
 fecha: 2026-08-09
-estado: borrador
+estado: reencuadrada por ADR 0034
 resumen: Permite al dueño preparar su negocio, personal, identidad de marca y catálogo con datos económicos.
 disjunta: no
 archivos: depende de 0001 y del stack elegido
 ---
 
 # 0002 — Backoffice del negocio y catálogo económico
+
+> **Reencuadrada (2026-08-14, ADR 0034).** Esta spec es de antes del pivote merchant-first
+> y su alcance ya está implementado por otras specs: marca→0025, staff→0016, programa→0024,
+> negocio/local→0022. Lo único vivo y sin implementar —el **catálogo de productos**— migró a
+> la **spec 0034** (por negocio, visibilidad por local, precio/coste opcionales). No
+> implementar esta spec: usar 0034.
 
 ## Problema
 

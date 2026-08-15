@@ -50,13 +50,14 @@ desactualizado es peor que no tenerlo.
 | 0031 | 2026-08-14 | Merchant-first, Wallet nativa como superficie de consumidor e identidad de consumidor compartida | aceptada; supersede la "red curada" de 0003 y reencuadra 0019 | `adr/0031-merchant-first-wallet-nativa-e-identidad-de-consumidor.md` |
 | 0032 | 2026-08-14 | Identidad de consumidor: esquema pg propio `consumer`, auth phone-OTP purpose-built y DB compartida para analítica aislada por negocio | aceptada; refina 0012 | `adr/0032-identidad-de-consumidor-esquema-propio-y-auth-phone-otp.md` |
 | 0033 | 2026-08-14 | Proveedor de Wallet: Apple PassKit + Google Wallet, emisor único, UN pase de identidad por consumidor (barcode = `qr_token`), dev sin pagar Apple, push separado | aceptada; consume 0014/0024 | `adr/0033-proveedor-de-wallet-apple-passkit-y-google-wallet.md` |
+| 0034 | 2026-08-14 | Catálogo de productos (no de beneficios) en `core`, global por negocio con visibilidad opt-out por local; precio/coste opcionales, puntos por equivalencia en el programa, snapshot en acreditación | aceptada; reencuadra el catálogo de 0002 y difiere 0021 | `adr/0034-catalogo-de-productos-por-negocio.md` |
 
 ## Specs — que se construye
 
 | # | Fecha | Spec | Estado | Disjunta? | Archivos |
 |---|---|---|---|---|---|
 | 0001 | 2026-08-09 | Acceso de backoffice, membresías y auditoría | borrador | no | `specs/0001-fundacion-identidad-y-roles.md` |
-| 0002 | 2026-08-09 | Local, personal y catálogo económico | borrador | no | `specs/0002-local-personal-y-catalogo.md` |
+| 0002 | 2026-08-09 | Local, personal y catálogo económico | reencuadrada por ADR 0034 | no | `specs/0002-local-personal-y-catalogo.md` |
 | 0003 | 2026-08-10 | Wizard de campañas e Incentive Engine | borrador | no | `specs/0003-wizard-de-campana-y-guardrails.md` |
 | 0004 | 2026-08-09 | Cuenta de consumidor, OTP y wallet | reencuadrada por ADR 0031 | no | `specs/0004-consumidor-checkin-y-wallet.md` |
 | 0005 | 2026-08-09 | Consola de personal y compra acreditada | borrador | no | `specs/0005-consola-de-personal-y-compra-acreditada.md` |
@@ -75,7 +76,7 @@ desactualizado es peor que no tenerlo.
 | 0018 | 2026-08-10 | Fundación UI production-grade de merchant demo | cerrada | no | `specs/0018-fundacion-ui-merchant-demo.md` |
 | 0019 | 2026-08-10 | Programa de fidelización del owner demo | cerrada | no | `specs/0019-programa-fidelizacion-owner-demo.md` |
 | 0020 | 2026-08-11 | Analíticas owner demo multirubro | cerrada | no | `specs/0020-analiticas-owner-demo-multirubro.md` |
-| 0021 | 2026-08-11 | Catálogo único de beneficios | borrador | no | `specs/0021-catalogo-unico-de-beneficios.md` |
+| 0021 | 2026-08-11 | Catálogo único de beneficios | diferida (con campañas) por ADR 0034 | no | `specs/0021-catalogo-unico-de-beneficios.md` |
 | 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | cerrada | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
 | 0023 | 2026-08-11 | Búsqueda y procedencia de locales | en revisión | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
 | 0024 | 2026-08-12 | Programa de fidelización real y términos | implementada | no | `specs/0024-programa-fidelizacion-real-y-terminos.md` |
@@ -88,6 +89,7 @@ desactualizado es peor que no tenerlo.
 | 0031 | 2026-08-14 | Notificación y landing en vivo al otorgar + dashboard "Ver mis programas" | borrador | no | `specs/0031-notificacion-y-landing-en-vivo.md` |
 | 0032 | 2026-08-14 | Recuperación de cuenta y verificación por OTP (SMS/WhatsApp, canal `deliverOtp`) | borrador | no | `specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` |
 | 0033 | 2026-08-14 | Canal de actualización y push de Wallet (web service PassKit + APNs, `PATCH`/`addMessage` de Google) | borrador | no | `specs/0033-canal-de-actualizacion-y-push-de-wallet.md` |
+| 0034 | 2026-08-14 | Catálogo de productos del negocio (precio/coste opcionales, categorías, visibilidad por local, imagen R2) — alimenta el carrito de 0030 | cerrada | sí | `specs/0034-catalogo-de-productos-del-negocio.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

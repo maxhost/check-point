@@ -1,13 +1,20 @@
 ---
 spec: 0021
 fecha: 2026-08-11
-estado: borrador
+estado: diferida (con campañas) por ADR 0034
 resumen: El negocio administra un catálogo único de beneficios reutilizables; campañas, juegos y canjes definen de forma independiente cómo y cuándo se distribuyen.
 disjunta: no
 archivos: apps/merchant, packages/contracts, packages/domain, packages/db, pruebas y docs
 ---
 
 # 0021 — Catálogo único de beneficios
+
+> **Diferida (2026-08-14, ADR 0034).** Este es el catálogo de **beneficios** (cupones/
+> premios), distinto del catálogo de **productos** (precio/coste) que sirve a la acreditación
+> en mostrador — ese se cerró en la **spec 0034**. Todos los consumidores de esta spec —el
+> wizard de campañas y el Incentive Engine— están diferidos con la fase de campañas.
+> Cerrarla hoy sería andamiaje sin tarea que lo consuma; revive cuando arranquen las
+> campañas.
 
 ## Problema
 
