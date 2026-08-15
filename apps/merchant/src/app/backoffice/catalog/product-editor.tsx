@@ -173,8 +173,12 @@ export function ProductEditor({
         />
       </label>
       {image.visible && (
-        <div className="catalog-image-preview">
-          <img src={image.visible} alt={`Imagen de ${name || "producto"}`} />
+        <div className="catalog-image-row">
+          <img
+            className="catalog-image-preview"
+            src={image.visible}
+            alt={`Imagen de ${name || "producto"}`}
+          />
           <button
             type="button"
             className="small-button"
@@ -183,7 +187,7 @@ export function ProductEditor({
               if (fileInput.current) fileInput.current.value = "";
             }}
           >
-            Quitar imagen
+            Quitar
           </button>
         </div>
       )}
