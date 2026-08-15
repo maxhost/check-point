@@ -4,5 +4,6 @@ export * from "./schema/_schemas";
 export * from "./schema/auth";
 export * from "./schema/business";
 export * from "./schema/loyalty";
+export * from "./schema/loyalty-reward";
 export * from "./schema/consumer";
 export * from "./schema/catalog";

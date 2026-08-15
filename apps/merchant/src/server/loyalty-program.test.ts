@@ -17,6 +17,8 @@ describe("loyalty program contract", () => {
         kind: "points",
         configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
         clauses: [{ text: "Términos." }],
+        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+        rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
       }),
     ).toMatchObject({ kind: "points" });
     expect(
@@ -24,6 +26,8 @@ describe("loyalty program contract", () => {
         kind: "stamps",
         configuration: { unitName: "Sello", target: 10 },
         clauses: [{ text: "Términos." }],
+        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+        rewards: [{ type: "custom", label: "Café gratis" }],
       }),
     ).toMatchObject({ kind: "stamps" });
     expect(() =>
@@ -91,6 +95,8 @@ describe("loyalty program contract", () => {
           injected: "nope",
         },
         clauses: [{ text: "Términos." }],
+        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+        rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
       }).configuration,
     ).toEqual({ unitSingular: "Punto", unitPlural: "Puntos" });
   });
@@ -100,6 +106,8 @@ describe("loyalty program contract", () => {
       kind: "stamps" as const,
       configuration: { unitName: "Sello", target: 8 },
       clauses: [{ text: "Términos." }],
+      accrual: { mode: "per_purchase" as const, grant: 1, blockAmount: null },
+      rewards: [{ type: "custom" as const, label: "Café gratis" }],
     };
     // Points cannot carry a stamp action.
     expect(() =>

@@ -30,7 +30,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Sin negocio." }, { status: 403 });
   return NextResponse.json({
     business: result.business,
-    program: toClientProgram(result.program, result.business.id),
+    program: toClientProgram(
+      result.program,
+      result.business.id,
+      result.rewards,
+    ),
   });
 }
 

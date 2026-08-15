@@ -1,5 +1,20 @@
 import { type ComponentProps, useLayoutEffect, useRef } from "react";
 
+/** Money in the business currency; rounds to whole units when the amount is integral. */
+export function formatMoney(amount: number, currency: string) {
+  const fractionDigits = Number.isInteger(amount) ? 0 : 2;
+  try {
+    return new Intl.NumberFormat("es", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(fractionDigits)}`;
+  }
+}
+
 export function formatDate(value: string | null, timezone: string) {
   return value
     ? new Intl.DateTimeFormat("es-EC", {

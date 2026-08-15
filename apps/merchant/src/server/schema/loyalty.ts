@@ -3,6 +3,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   text,
   timestamp,
   uniqueIndex,
@@ -44,6 +45,16 @@ export const loyaltyPrograms = core.table(
     cardBackgroundColor2: text("card_background_color_2"),
     cardBackgroundGradientAngle: integer("card_background_gradient_angle"),
     cardBorderColor: text("card_border_color"),
+    // Accrual mechanics (spec 0036), nullable so the migration is additive: `per_amount`
+    // grants `accrual_grant` units per `accrual_block_amount` of spend (floor, no carry);
+    // `per_purchase` (Sellos only) grants `accrual_grant` per transaction (block amount null).
+    // A pre-0036 program leaves all three null — the server refuses to save without them.
+    accrualMode: text("accrual_mode"),
+    accrualGrant: integer("accrual_grant"),
+    accrualBlockAmount: numeric("accrual_block_amount", {
+      precision: 12,
+      scale: 2,
+    }),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),
@@ -91,6 +102,29 @@ export const loyaltyPrograms = core.table(
     check(
       "loyalty_program_card_gradient_pair_check",
       sql`${table.cardBackgroundColor2} IS NULL OR (${table.cardBackgroundColor} IS NOT NULL AND ${table.cardBackgroundGradientAngle} IS NOT NULL)`,
+    ),
+    // Accrual mechanics (spec 0036); every check tolerates NULL so pre-0036 rows survive.
+    check(
+      "loyalty_program_accrual_mode_check",
+      sql`${table.accrualMode} IS NULL OR ${table.accrualMode} IN ('per_amount', 'per_purchase')`,
+    ),
+    check(
+      "loyalty_program_accrual_grant_check",
+      sql`${table.accrualGrant} IS NULL OR ${table.accrualGrant} > 0`,
+    ),
+    check(
+      "loyalty_program_accrual_block_amount_check",
+      sql`${table.accrualBlockAmount} IS NULL OR ${table.accrualBlockAmount} > 0`,
+    ),
+    // per_amount needs a block amount; per_purchase forbids one.
+    check(
+      "loyalty_program_accrual_pair_check",
+      sql`(${table.accrualMode} = 'per_amount' AND ${table.accrualBlockAmount} IS NOT NULL) OR (${table.accrualMode} = 'per_purchase' AND ${table.accrualBlockAmount} IS NULL) OR ${table.accrualMode} IS NULL`,
+    ),
+    // Puntos never accrues per_purchase.
+    check(
+      "loyalty_program_accrual_points_mode_check",
+      sql`${table.kind} <> 'points' OR ${table.accrualMode} IS NULL OR ${table.accrualMode} = 'per_amount'`,
     ),
     uniqueIndex("core_loyalty_program_one_operational")
       .on(table.businessId)

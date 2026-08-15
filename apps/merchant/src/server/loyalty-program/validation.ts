@@ -5,6 +5,8 @@ import {
   type ProgramInput,
   type StampAction,
 } from "./core";
+import { validateAccrual } from "./accrual";
+import { validateRewardsInput } from "./rewards";
 
 type SupportedKind = "points" | "stamps";
 const enabledKinds = new Set<SupportedKind>(["points", "stamps"]);
@@ -192,6 +194,9 @@ export function validateProgramInput(value: unknown): ProgramInput {
     );
   }
   const cardDesign = validateCardDesign(input.kind, input.cardDesign);
+  const accrual = validateAccrual(input.kind, input.accrual);
+  // Form-only: catalog_product ownership + label snapshot resolve in saveProgram (needs DB).
+  const rewards = validateRewardsInput(input.kind, input.rewards);
   return {
     kind: input.kind,
     configuration: normalizeConfiguration(input.kind, configuration),
@@ -199,6 +204,8 @@ export function validateProgramInput(value: unknown): ProgramInput {
     stampAction,
     stampUploadId,
     cardDesign,
+    accrual,
+    rewards,
   };
 }
 

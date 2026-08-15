@@ -1,5 +1,6 @@
 import { AutoGrowTextarea } from "../ui";
 import type { LoyaltyVm } from "../use-loyalty-program";
+import { AccrualFields } from "./accrual-fields";
 
 export function StepTerms({ vm }: { vm: LoyaltyVm }) {
   return (
@@ -30,6 +31,7 @@ export function StepTerms({ vm }: { vm: LoyaltyVm }) {
           placeholder="Escribe los términos o inserta una plantilla"
         />
       </label>
+      <AccrualFields vm={vm} />
     </>
   );
 }

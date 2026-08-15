@@ -5,14 +5,19 @@ import {
   businesses,
   loyaltyProgramEvents,
   loyaltyPrograms,
+  loyaltyRewards,
   memberships,
 } from "./schema";
-import {
-  type CloseInput,
-  type EventAction,
-  LoyaltyError,
-} from "./loyalty-program/core";
+import { type CloseInput, LoyaltyError } from "./loyalty-program/core";
 import { validateProgramInput } from "./loyalty-program/validation";
+import { resolveRewards } from "./loyalty-program/rewards";
+import {
+  STATE_CHANGED,
+  isUniqueViolation,
+  loadBusinessProducts,
+  loadProgramRewards,
+  updateWithEvent,
+} from "./loyalty-program/persistence";
 import { validateClosingWindow } from "./loyalty-program/time";
 import { renderedTerms } from "./loyalty-program/terms";
 import {
@@ -43,66 +48,13 @@ export {
   stampForPublicProgram,
 } from "./loyalty-program/stamp";
 
-type Db = ReturnType<typeof getDb>;
-const STATE_CHANGED =
-  "El programa cambió de estado; recarga e intenta de nuevo.";
-
-/** Walks the `.cause` chain because drizzle wraps the pg error (code isn't top-level). */
-function isUniqueViolation(error: unknown) {
-  let current: unknown = error;
-  for (let depth = 0; current && depth < 5; depth += 1) {
-    if ((current as { code?: string }).code === "23505") return true;
-    current = (current as { cause?: unknown }).cause;
-  }
-  return false;
-}
-
-function rowsOf(result: unknown): unknown[] {
-  if (Array.isArray(result)) return result;
-  const rows = (result as { rows?: unknown[] } | null)?.rows;
-  return Array.isArray(rows) ? rows : [];
-}
-
-/**
- * Applies a guarded status UPDATE and appends its audit event in one atomic
- * statement, so a state change can never persist without its event (neon-http
- * has no interactive transactions). Returns how many rows the guard matched.
- */
-async function updateWithEvent(
-  db: Db,
-  opts: {
-    set: ReturnType<typeof sql>;
-    where: ReturnType<typeof sql>;
-    actorId: string | null;
-    action: EventAction;
-    details?: Record<string, unknown>;
-  },
-) {
-  const result = await db.execute(sql`
-    WITH updated AS (
-      UPDATE core.loyalty_program
-      SET ${opts.set}
-      WHERE ${opts.where}
-      RETURNING id, business_id
-    ),
-    logged AS (
-      INSERT INTO core.loyalty_program_event
-        (program_id, business_id, actor_id, action, details)
-      SELECT id, business_id, ${opts.actorId}, ${opts.action},
-             ${JSON.stringify(opts.details ?? {})}::jsonb
-      FROM updated
-    )
-    SELECT id FROM updated
-  `);
-  return rowsOf(result).length;
-}
-
 export async function ownerBusiness(userId: string) {
   const [business] = await getDb()
     .select({
       id: businesses.id,
       name: businesses.name,
       countryCode: businesses.countryCode,
+      currencyCode: businesses.currencyCode,
       timezone: businesses.timezone,
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
@@ -138,7 +90,8 @@ export async function programForOwner(userId: string) {
     )
     .orderBy(desc(loyaltyPrograms.createdAt))
     .limit(1);
-  return { business, program: program ?? null };
+  const rewards = program ? await loadProgramRewards(program.id) : [];
+  return { business, program: program ?? null, rewards };
 }
 
 export async function saveProgram(userId: string, rawInput: unknown) {
@@ -158,9 +111,16 @@ export async function saveProgram(userId: string, rawInput: unknown) {
       "Cierra el programa actual antes de cambiar su modalidad.",
     );
   }
+  // Resolve catalog_product rewards against the owner's real products (ownership +
+  // name snapshot); a productId from another business is rejected here with a 422.
+  const rewards = resolveRewards(
+    input.rewards,
+    await loadBusinessProducts(business.id),
+  );
   const terms = await renderedTerms(input, business);
   const db = getDb();
   const id = program ? program.id : randomUUID();
+  const accrualSet = sql`, accrual_mode = ${input.accrual.mode}, accrual_grant = ${input.accrual.grant}, accrual_block_amount = ${input.accrual.blockAmount}`;
   // R2 work (process + upload) happens before the DB write, mirroring brand; the
   // caller rolls back the new prefix if the guarded write does not land.
   const stamp = await resolveStampChange({
@@ -178,16 +138,20 @@ export async function saveProgram(userId: string, rawInput: unknown) {
       const cardSet = input.cardDesign
         ? sql`, card_background_color = ${input.cardDesign.backgroundColor}, card_background_color_2 = ${input.cardDesign.backgroundColor2}, card_background_gradient_angle = ${input.cardDesign.gradientAngle}, card_border_color = ${input.cardDesign.borderColor}`
         : sql``;
+      // The reward rewrite (delete-all + re-insert) rides the same guarded CTE as the
+      // config/status update and its event, so it is atomic and skips entirely if the
+      // `status = 'active'` guard matches 0 rows (a losing edit never wipes rewards).
       const matched = await updateWithEvent(db, {
-        set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()${stampSet}${cardSet}`,
+        set: sql`configuration = ${JSON.stringify(input.configuration)}::jsonb, terms_markdown = ${terms.markdown}, terms_hash = ${terms.hash}, terms_updated_at = now(), updated_at = now()${stampSet}${cardSet}${accrualSet}`,
         where: sql`id = ${program.id} AND status = 'active'`,
         actorId: userId,
         action: "edited",
         details: { termsHash: terms.hash, stampAction: input.stampAction },
+        rewards,
       });
       if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
     } else {
-      // One transaction: a unique-index clash rolls back the event too.
+      // One transaction: a unique-index clash rolls back the event and rewards too.
       await db.batch([
         db.insert(loyaltyPrograms).values({
           id,
@@ -204,6 +168,9 @@ export async function saveProgram(userId: string, rawInput: unknown) {
           cardBackgroundColor2: input.cardDesign?.backgroundColor2 ?? null,
           cardBackgroundGradientAngle: input.cardDesign?.gradientAngle ?? null,
           cardBorderColor: input.cardDesign?.borderColor ?? null,
+          accrualMode: input.accrual.mode,
+          accrualGrant: input.accrual.grant,
+          accrualBlockAmount: input.accrual.blockAmount,
         }),
         db.insert(loyaltyProgramEvents).values({
           programId: id,
@@ -212,6 +179,18 @@ export async function saveProgram(userId: string, rawInput: unknown) {
           action: "created",
           details: { kind: input.kind },
         }),
+        db.insert(loyaltyRewards).values(
+          rewards.map((r) => ({
+            programId: id,
+            businessId: business.id,
+            rewardType: r.type,
+            label: r.label,
+            productId: r.productId,
+            discountPercent: r.discountPercent,
+            pointsCost: r.pointsCost,
+            position: r.position,
+          })),
+        ),
       ]);
     }
   } catch (error) {

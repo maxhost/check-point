@@ -3,7 +3,7 @@ spec: 0036
 fecha: 2026-08-14
 resumen: El wizard del programa de fidelización gana dos piezas que la acreditación en mostrador (0030) necesita para validar y ejecutar: la mecánica de acumulación (otorgar X por bloque de $Y, por bloques con floor y sin arrastre; Sellos además "1 por compra") en el paso de términos, y un paso de premios (producto del catálogo / premio libre / % de descuento) con costo en puntos auto-sugerido y editable, más una métrica de valor en el preview.
 disjunta: no
-estado: cerrada
+estado: implementada
 archivos: apps/merchant (loyalty), migración Drizzle, Neon, pruebas y docs
 ---
 
@@ -283,25 +283,25 @@ Las specs 0024/0025/0026/0027 que comparten estos archivos están `implementada`
 
 ## Definition of Done
 
-- [ ] El wizard de **Puntos** incluye, en el paso de términos, la mecánica `X puntos cada $Y` con
+- [x] El wizard de **Puntos** incluye, en el paso de términos, la mecánica `X puntos cada $Y` con
       ejemplo en vivo; y un **paso de premios** con 1..N canjes, cada uno con costo en puntos
       auto-sugerido/editable y **$-equivalente en vivo**.
-- [ ] El wizard de **Sellos** incluye el toggle `por compra` / `por monto` (con X/Y cuando aplica) y
+- [x] El wizard de **Sellos** incluye el toggle `por compra` / `por monto` (con X/Y cuando aplica) y
       ejemplo en vivo; y **1 premio** (producto/libre/descuento) sin costo por-premio.
-- [ ] La mecánica se persiste en `accrual_mode`/`accrual_grant`/`accrual_block_amount`; los premios en
+- [x] La mecánica se persiste en `accrual_mode`/`accrual_grant`/`accrual_block_amount`; los premios en
       `loyalty_reward`; ambos en la **misma transacción** que `saveProgram`.
-- [ ] La API valida mecánica y premios con las invariantes por `kind` → `422` con mensaje por caso;
+- [x] La API valida mecánica y premios con las invariantes por `kind` → `422` con mensaje por caso;
       el server **exige** la mecánica para guardar una modalidad habilitada.
-- [ ] El DTO expone `accrual` + `rewards` (ordenados) e incluye `imagePath` del producto en premios de
+- [x] El DTO expone `accrual` + `rewards` (ordenados) e incluye `imagePath` del producto en premios de
       catálogo; **no** serializa ningún `*ObjectKey`.
-- [ ] El **preview** muestra la métrica de valor (ventas por $1 de premio, o "N compras por premio" en
+- [x] El **preview** muestra la métrica de valor (ventas por $1 de premio, o "N compras por premio" en
       Sellos `per_purchase`), con la nota de que asume canje total.
-- [ ] `floor(total / Y) × X`, sin arrastre, verificado por unit del cálculo de otorgamiento.
-- [ ] Migración `0019` aplicada/verificada en Neon efímero **y** en prod; los checks rechazan
+- [x] `floor(total / Y) × X`, sin arrastre, verificado por unit del cálculo de otorgamiento.
+- [x] Migración `0019` aplicada/verificada en Neon efímero **y** en prod; los checks rechazan
       mecánica/premio inválidos a nivel DB.
-- [ ] Ningún archivo supera `file-size` (300); los splits están hechos.
-- [ ] Gates verdes: typecheck 3/3, lint, prettier, unit, build 3/3.
-- [ ] **PASS de revisor independiente** (`AGENT-WORKFLOW.md`).
+- [x] Ningún archivo supera `file-size` (300); los splits están hechos.
+- [x] Gates verdes: typecheck 3/3, lint, prettier, unit, build 3/3.
+- [x] **PASS de revisor independiente** (`AGENT-WORKFLOW.md`).
 
 ## Plan de pruebas y verificación
 
@@ -324,7 +324,7 @@ Las specs 0024/0025/0026/0027 que comparten estos archivos están `implementada`
       crashear y **no** es acreditable (documentado para 0030).
 - [ ] **Aislamiento**: el selector de premio de catálogo solo ofrece productos del negocio del owner;
       un `productId` de otro negocio → 422.
-- [ ] **Comandos exactos**: `pnpm --filter @check-point/merchant typecheck`, `... lint`, `... test`
+- [ ] **Comandos exactos**: `pnpm --filter @mi-pasaporte/merchant typecheck`, `... lint`, `... test`
       (unit), `pnpm build`, e integración Neon en rama efímera creada/borrada vía MCP.
 - [ ] **Verificación manual (owner, en vivo sobre Vercel)**: crear un programa de Puntos con
       `10 pts cada $3`, agregar café (producto del catálogo, 50 pts) y una cerveza (100 pts), ver el

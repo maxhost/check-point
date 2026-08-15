@@ -93,7 +93,7 @@ desactualizado es peor que no tenerlo.
 | 0033 | 2026-08-14 | Canal de actualización y push de Wallet (web service PassKit + APNs, `PATCH`/`addMessage` de Google) | borrador | no | `specs/0033-canal-de-actualizacion-y-push-de-wallet.md` |
 | 0034 | 2026-08-14 | Catálogo de productos del negocio (precio/coste opcionales, categorías, visibilidad por local, imagen R2) — alimenta el carrito de 0030 | implementada | sí | `specs/0034-catalogo-de-productos-del-negocio.md` |
 | 0035 | 2026-08-14 | Imágenes de stock para productos (buscador Pexels server-proxied, import a R2 diferido, atribución) — extiende la imagen de 0034 | implementada | no | `specs/0035-imagenes-de-stock-para-productos.md` |
-| 0036 | 2026-08-14 | Mecánica de acumulación (X por bloque de $Y, floor sin arrastre; Sellos "1 por compra") + premios del programa (producto catálogo / libre / % descuento, costo en puntos = gasto-objetivo) en el wizard — prerequisito duro de la acreditación 0030 | cerrada | no | `specs/0036-mecanica-y-premios-del-programa.md` |
+| 0036 | 2026-08-14 | Mecánica de acumulación (X por bloque de $Y, floor sin arrastre; Sellos "1 por compra") + premios del programa (producto catálogo / libre / % descuento, costo en puntos = gasto-objetivo) en el wizard — prerequisito duro de la acreditación 0030 | implementada | no | `specs/0036-mecanica-y-premios-del-programa.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

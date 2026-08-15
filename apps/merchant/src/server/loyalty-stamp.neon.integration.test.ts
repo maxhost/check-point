@@ -63,6 +63,8 @@ describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
       kind: "stamps",
       configuration: { unitName: "Sello", target: 8 },
       clauses: [{ text: "Términos del sello." }],
+      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+      rewards: [{ type: "custom", label: "Café gratis" }],
     });
     const ctx = await programForOwner(userId);
     expect(ctx?.program?.stampImageObjectKey).toBeNull();
@@ -76,6 +78,8 @@ describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
       kind: "stamps",
       configuration: { unitName: "Sello", target: 10 },
       clauses: [{ text: "Términos actualizados." }],
+      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+      rewards: [{ type: "custom", label: "Café gratis" }],
     });
     const after = await programForOwner(userId);
     expect(after?.program?.stampImageObjectKey).toBeNull();

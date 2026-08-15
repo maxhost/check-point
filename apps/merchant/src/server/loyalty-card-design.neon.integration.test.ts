@@ -66,6 +66,8 @@ describe.skipIf(!enabled)("loyalty card design against Neon", () => {
         gradientAngle: 135,
         borderColor: "#445566",
       },
+      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+      rewards: [{ type: "custom", label: "Café gratis" }],
     });
     let ctx = await programForOwner(userId);
     expect(ctx?.program).toMatchObject({
@@ -86,6 +88,8 @@ describe.skipIf(!enabled)("loyalty card design against Neon", () => {
         gradientAngle: null,
         borderColor: "#0a0b0c",
       },
+      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+      rewards: [{ type: "custom", label: "Café gratis" }],
     });
     ctx = await programForOwner(userId);
     expect(ctx?.program).toMatchObject({

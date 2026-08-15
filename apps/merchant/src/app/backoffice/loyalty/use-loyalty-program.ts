@@ -1,36 +1,18 @@
 import { useEffect, useState } from "react";
 import { useStampUpload } from "./use-stamp-upload";
 import { type BrandDefaults, useCardDesign } from "./use-card-design";
+import { useRewards } from "./use-rewards";
+import type { Business, Context, Kind, Template } from "./loyalty-types";
 
-export type Kind = "points" | "stamps";
-export type Template = { id: string; title: string; templateMarkdown: string };
-export type Program = {
-  id: string;
-  kind: Kind;
-  configuration: Record<string, unknown>;
-  status: "active" | "closing" | "inactive";
-  activatedAt: string;
-  earningEndsAt: string | null;
-  redemptionEndsAt: string | null;
-  termsMarkdown: string;
-  stampImagePath: string | null;
-  cardBackgroundColor: string | null;
-  cardBackgroundColor2: string | null;
-  cardBackgroundGradientAngle: number | null;
-  cardBorderColor: string | null;
-};
-export type Business = {
-  name: string;
-  countryCode: string;
-  timezone: string;
-  brandPrimaryColor: string;
-  brandComplementaryColor: string;
-  brandAccentColor: string;
-};
-export type Context = {
-  business: Business;
-  program: Program | null;
-};
+export type {
+  Business,
+  Context,
+  Kind,
+  Program,
+  ProgramAccrual,
+  ProgramReward,
+  Template,
+} from "./loyalty-types";
 
 const brandDefaultsOf = (business: Business): BrandDefaults => ({
   primary: business.brandPrimaryColor,
@@ -60,9 +42,11 @@ export function useLoyaltyProgram() {
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const stamp = useStampUpload();
   const card = useCardDesign();
+  const earn = useRewards();
 
   const program = context?.program ?? null;
   const timezone = context?.business.timezone ?? "America/Guayaquil";
+  const currencyCode = context?.business.currencyCode ?? "USD";
   const isClosing = program?.status === "closing";
 
   function populate(next: Context) {
@@ -70,6 +54,7 @@ export function useLoyaltyProgram() {
     const brand = brandDefaultsOf(next.business);
     if (!next.program) {
       card.applyDefaults(brand);
+      earn.reset();
       return;
     }
     setKind(next.program.kind);
@@ -82,6 +67,7 @@ export function useLoyaltyProgram() {
       setTarget(Number(next.program.configuration.target ?? 10));
     }
     card.hydrate(next.program, brand);
+    earn.hydrate(next.program);
   }
 
   async function load() {
@@ -93,6 +79,7 @@ export function useLoyaltyProgram() {
       if (!programResponse.ok || !templateResponse.ok) throw new Error();
       const next = (await programResponse.json()) as Context;
       setContext(next);
+      void earn.loadCatalog();
       populate(next);
       setTemplates(
         ((await templateResponse.json()) as { templates: Template[] })
@@ -150,6 +137,8 @@ export function useLoyaltyProgram() {
           stampAction,
           ...(stampUploadId ? { stampUploadId } : {}),
           cardDesign: kind === "stamps" ? card.payload() : null,
+          accrual: earn.accrualPayload(kind),
+          rewards: earn.rewardsPayload(kind),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -251,9 +240,11 @@ export function useLoyaltyProgram() {
     errorToast,
     program,
     timezone,
+    currencyCode,
     isClosing,
     stamp,
     card,
+    earn,
     setKind,
     setSingular,
     setPlural,

@@ -94,6 +94,8 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
       kind: "points",
       configuration: { unitSingular: "Punto", unitPlural: "Puntos", junk: "x" },
       clauses: [{ text: "Términos iniciales." }],
+      accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+      rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
     });
     expect(created.created).toBe(true);
     let ctx = await programForOwner(userId);
@@ -111,6 +113,8 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
       kind: "points",
       configuration: { unitSingular: "Estrella", unitPlural: "Estrellas" },
       clauses: [{ text: "Términos actualizados." }],
+      accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+      rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
     });
     expect(edited.created).toBe(false);
 
@@ -134,6 +138,8 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
         kind: "points",
         configuration: { unitSingular: "No", unitPlural: "Noes" },
         clauses: [{ text: "x" }],
+        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+        rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
       }),
     ).rejects.toBeInstanceOf(LoyaltyError);
 
@@ -181,6 +187,8 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
       kind: "stamps",
       configuration: { unitName: "Sello", target: 8 },
       clauses: [{ text: "Términos del nuevo ciclo." }],
+      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+      rewards: [{ type: "custom", label: "Café gratis" }],
     });
     expect(recreated.created).toBe(true);
   }, 60_000);
@@ -191,6 +199,8 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
         kind: "points",
         configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
         clauses: [{ text: "Términos." }],
+        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+        rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
       }),
     ).rejects.toMatchObject({ status: 403 });
   });
@@ -221,6 +231,8 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
         kind: "points",
         configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
         clauses: [{ text: "Primero." }],
+        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+        rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
       });
       // A direct second operational row must hit the partial unique index.
       const error = await db
