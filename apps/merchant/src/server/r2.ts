@@ -71,7 +71,10 @@ export function productObjectPrefix(businessId: string, assetId: string) {
 
 export async function createTemporaryUploadUrl(input: {
   objectKey: string;
-  contentType: "image/jpeg" | "image/png" | "image/webp";
+  // The real validation is upstream: the caller's allow-list (shared
+  // `ACCEPTED_IMAGE_CONTENT_TYPE_SET`) plus the byte-sniff in
+  // `server/assets/image.ts`. This only sets the presigned PUT's Content-Type.
+  contentType: string;
   byteSize: number;
 }) {
   if (

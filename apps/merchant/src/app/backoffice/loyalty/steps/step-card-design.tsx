@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { CardPreview } from "../card-preview";
 import type { LoyaltyVm } from "../use-loyalty-program";
+import { useIsTouch } from "../../catalog/use-is-touch";
+import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../../lib/image-formats";
 
 const ANGLE_PRESETS = [
   { label: "Vertical", angle: 180 },
@@ -12,6 +14,7 @@ const ANGLE_PRESETS = [
 export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
   const { card, stamp } = vm;
   const stampInput = useRef<HTMLInputElement>(null);
+  const isTouch = useIsTouch();
   const stampPreview =
     stamp.preview ??
     (!stamp.removed ? (vm.program?.stampImagePath ?? null) : null);
@@ -110,14 +113,14 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
             <input
               ref={stampInput}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
               onChange={(event) =>
                 stamp.choose(event.target.files?.[0], vm.setErrorToast)
               }
             />
             <p className="field-help">
-              PNG, JPEG o WebP · máximo 5 MB · hasta 2048 × 2048 px. Se aplica
-              al guardar.
+              PNG, JPEG, WebP, HEIC o AVIF · máximo 5 MB · hasta 2048 × 2048 px.
+              Se aplica al guardar.
             </p>
           </div>
         </div>

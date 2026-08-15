@@ -18,8 +18,11 @@ import {
   stampTemporaryObjectKey,
 } from "../r2";
 import { LoyaltyError, type StampAction } from "./core";
+import {
+  ACCEPTED_IMAGE_CONTENT_TYPE_SET,
+  ACCEPTED_IMAGE_LABEL,
+} from "../../lib/image-formats";
 
-const stampImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,9 +40,9 @@ export async function createStampUpload(businessId: string, value: unknown) {
   const input = value as Record<string, unknown>;
   if (
     typeof input.contentType !== "string" ||
-    !stampImageTypes.has(input.contentType)
+    !ACCEPTED_IMAGE_CONTENT_TYPE_SET.has(input.contentType)
   ) {
-    throw new LoyaltyError(422, "El sello debe ser PNG, JPEG o WebP.");
+    throw new LoyaltyError(422, `El sello debe ser ${ACCEPTED_IMAGE_LABEL}.`);
   }
   if (
     !Number.isInteger(input.byteSize) ||
@@ -65,10 +68,7 @@ export async function createStampUpload(businessId: string, value: unknown) {
     const { createTemporaryUploadUrl } = await import("../r2");
     const uploadUrl = await createTemporaryUploadUrl({
       objectKey,
-      contentType: input.contentType as
-        | "image/jpeg"
-        | "image/png"
-        | "image/webp",
+      contentType: input.contentType,
       byteSize: Number(input.byteSize),
     });
     return { uploadId: id, uploadUrl, expiresAt: expiresAt.toISOString() };

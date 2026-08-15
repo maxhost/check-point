@@ -1,6 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { businesses, memberships } from "../schema";
+import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
 
 export class CatalogError extends Error {
   constructor(
@@ -11,7 +12,8 @@ export class CatalogError extends Error {
   }
 }
 
-export const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+/** Re-exported under the historical name; the source of truth lives in `lib/image-formats`. */
+export const imageTypes = ACCEPTED_IMAGE_CONTENT_TYPE_SET;
 export const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

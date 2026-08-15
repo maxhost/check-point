@@ -13,6 +13,7 @@ import {
   readObjectAtMost,
 } from "../r2";
 import { getStockProvider, StockError } from "../stock/provider";
+import { ACCEPTED_IMAGE_LABEL } from "../../lib/image-formats";
 import { CatalogError, imageTypes, uuidPattern } from "./core";
 import type { ProductInput } from "./validation";
 
@@ -26,7 +27,7 @@ export async function createProductUpload(businessId: string, value: unknown) {
     typeof input.contentType !== "string" ||
     !imageTypes.has(input.contentType)
   ) {
-    throw new CatalogError(422, "La imagen debe ser PNG, JPEG o WebP.");
+    throw new CatalogError(422, `La imagen debe ser ${ACCEPTED_IMAGE_LABEL}.`);
   }
   if (
     !Number.isInteger(input.byteSize) ||
@@ -52,10 +53,7 @@ export async function createProductUpload(businessId: string, value: unknown) {
     const { createTemporaryUploadUrl } = await import("../r2");
     const uploadUrl = await createTemporaryUploadUrl({
       objectKey,
-      contentType: input.contentType as
-        | "image/jpeg"
-        | "image/png"
-        | "image/webp",
+      contentType: input.contentType,
       byteSize: Number(input.byteSize),
     });
     return { uploadId: id, uploadUrl, expiresAt: expiresAt.toISOString() };
