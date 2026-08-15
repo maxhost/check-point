@@ -10,20 +10,26 @@ import {
   type GrantResponse,
   type ResolveResponse,
   balanceFor,
+  cartTotal,
+  previewUnits,
   unitLabel,
 } from "./types";
 
 type Mode = "detailed" | "quick";
 
-/** Shell + header + error toast, shared by every stage. */
+/** Shell + header + toasts, shared by every stage. */
 export function Console({
   children,
   error,
-  onDismiss,
+  onDismissError,
+  notice,
+  onDismissNotice,
 }: {
   children: ReactNode;
   error: string | null;
-  onDismiss: () => void;
+  onDismissError: () => void;
+  notice?: string | null;
+  onDismissNotice?: () => void;
 }) {
   return (
     <main className="merchant-shell counter-shell">
@@ -34,7 +40,12 @@ export function Console({
         closeHref="/backoffice"
       />
       {children}
-      {error && <Toast kind="error" message={error} onDismiss={onDismiss} />}
+      {notice && onDismissNotice && (
+        <Toast kind="success" message={notice} onDismiss={onDismissNotice} />
+      )}
+      {error && (
+        <Toast kind="error" message={error} onDismiss={onDismissError} />
+      )}
     </main>
   );
 }
@@ -152,6 +163,14 @@ export function ResolvedStage({
         />
       )}
 
+      <PointsPreview
+        accrual={resolved.program.accrual}
+        kind={resolved.program.kind}
+        total={
+          mode === "detailed" ? cartTotal(cart) : Number(quick.amount) || 0
+        }
+      />
+
       <div className="counter-actions">
         <button type="button" className="counter-secondary" onClick={onCancel}>
           Cancelar
@@ -166,6 +185,29 @@ export function ResolvedStage({
         </button>
       </div>
     </section>
+  );
+}
+
+/** Read-only reference of what the current sale would grant — helps the operator
+ * catch a pricing/catalog mistake before confirming (spec 0030 QA feedback). */
+function PointsPreview({
+  accrual,
+  kind,
+  total,
+}: {
+  accrual: {
+    mode: string | null;
+    grant: number | null;
+    blockAmount: number | null;
+  };
+  kind: string;
+  total: number;
+}) {
+  const units = previewUnits(accrual, total);
+  return (
+    <p className="counter-points-preview">
+      Esta venta otorga <strong>{units}</strong> {unitLabel(kind, units)}
+    </p>
   );
 }
 

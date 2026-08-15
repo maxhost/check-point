@@ -45,6 +45,7 @@ export function CounterConsole({
   const [requestId, setRequestId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [result, setResult] = useState<GrantResponse | null>(null);
 
   const reset = useCallback(() => {
@@ -54,6 +55,7 @@ export function CounterConsole({
     setNote("");
     setResult(null);
     setError(null);
+    setNotice(null);
     setMode("detailed");
     setRequestId("");
     setStage("scanning");
@@ -85,6 +87,11 @@ export function CounterConsole({
       setRequestId(crypto.randomUUID());
       setMode(data.catalog.products.length > 0 ? "detailed" : "quick");
       setStage("resolved");
+      setNotice(
+        data.membership.justEnrolled
+          ? "Cliente identificado · nuevo miembro"
+          : "Cliente identificado",
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "No pudimos leer el código.");
       setScanKey((k) => k + 1); // remount the scanner to try again
@@ -181,18 +188,24 @@ export function CounterConsole({
     }
   }
 
-  const dismiss = () => setError(null);
+  const dismissError = () => setError(null);
+  const dismissNotice = () => setNotice(null);
 
   if (locations.length > 1 && !locationId) {
     return (
-      <Console error={error} onDismiss={dismiss}>
+      <Console error={error} onDismissError={dismissError}>
         <LocationGate locations={locations} onPick={setLocationId} />
       </Console>
     );
   }
 
   return (
-    <Console error={error} onDismiss={dismiss}>
+    <Console
+      error={error}
+      onDismissError={dismissError}
+      notice={notice}
+      onDismissNotice={dismissNotice}
+    >
       {stage === "scanning" && (
         <section className="counter-panel">
           <QrScanner key={scanKey} onDecode={onDecode} />

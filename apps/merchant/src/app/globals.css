@@ -2218,6 +2218,8 @@ input:focus {
   padding: 6px 8px;
   border-radius: 8px;
   border: 1px solid #cfdbd3;
+  background: #fff;
+  color: #1c2b22;
 }
 .counter-qty {
   display: flex;
@@ -2243,6 +2245,10 @@ input:focus {
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid #cfdbd3;
+  background: #fff;
+  color: #1c2b22;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .counter-picker {
   list-style: none;
@@ -2287,6 +2293,17 @@ input:focus {
   border-radius: 12px;
   border: 1px solid #cfdbd3;
   font-size: 18px;
+  background: #fff;
+  color: #1c2b22;
+}
+.counter-points-preview {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f6f9f7;
+  color: #176548;
+  font-weight: 700;
+  text-align: center;
 }
 .counter-hint {
   margin: 0;

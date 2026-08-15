@@ -75,6 +75,25 @@ export function balanceFor(
   return kind === "stamps" ? membership.stampsCount : membership.pointsBalance;
 }
 
+/** Client-side preview of the units a sale would grant, mirroring the server's
+ * `computeAccrual` (spec 0036). Informational only — never editable, never sent;
+ * helps the operator catch pricing/catalog mistakes before confirming. */
+export function previewUnits(
+  accrual: {
+    mode: string | null;
+    grant: number | null;
+    blockAmount: number | null;
+  },
+  total: number,
+): number {
+  if (accrual.grant === null) return 0;
+  if (accrual.mode === "per_purchase") return accrual.grant;
+  if (accrual.mode !== "per_amount") return 0;
+  const block = accrual.blockAmount;
+  if (!block || block <= 0 || total <= 0) return 0;
+  return Math.floor(total / block) * accrual.grant;
+}
+
 export const unitLabel = (kind: string, n: number): string =>
   kind === "stamps"
     ? n === 1
