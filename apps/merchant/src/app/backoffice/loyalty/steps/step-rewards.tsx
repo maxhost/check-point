@@ -133,14 +133,23 @@ function RewardCard({
               });
             }}
           />
-          <span className="reward-equiv">
-            ≈{" "}
-            {formatMoney(
-              spendToRedeem(reward.pointsCost, earn.blockAmount, earn.grant),
-              vm.currencyCode,
-            )}{" "}
-            de compra para canjear
-          </span>
+          {reward.pointsCost > 0 && (
+            <span className="reward-equiv">
+              El cliente gasta{" "}
+              <strong>
+                ≈{" "}
+                {formatMoney(
+                  spendToRedeem(
+                    reward.pointsCost,
+                    earn.blockAmount,
+                    earn.grant,
+                  ),
+                  vm.currencyCode,
+                )}
+              </strong>{" "}
+              para juntar {reward.pointsCost} {vm.plural} y ganar este premio.
+            </span>
+          )}
         </label>
       )}
     </li>
@@ -151,14 +160,30 @@ function RewardCard({
 export function StepRewards({ vm }: { vm: LoyaltyVm }) {
   const earn = vm.earn;
   const isPoints = vm.kind === "points";
+  const blockAmount = Number(earn.blockAmount);
+  const rateReady =
+    isPoints &&
+    Number.isFinite(blockAmount) &&
+    blockAmount > 0 &&
+    earn.grant > 0;
   return (
     <>
       <h2>Premios</h2>
       <p>
         {isPoints
-          ? "Definí uno o más canjes; cada uno con su costo en puntos y su equivalente en dinero."
+          ? "Poné el costo en puntos de cada premio. Debajo te mostramos cuánto tiene que gastar el cliente para llegar a ese costo, según tu tasa."
           : "Elegí el premio que gana el cliente al completar la tarjeta."}
       </p>
+      {rateReady && (
+        <p className="reward-rate">
+          Tu tasa de acumulación:{" "}
+          <strong>
+            {earn.grant} {vm.plural}
+          </strong>{" "}
+          por cada <strong>{formatMoney(blockAmount, vm.currencyCode)}</strong>{" "}
+          que gasta el cliente.
+        </p>
+      )}
       <ul className="reward-list">
         {earn.rewards.map((reward, index) => (
           <RewardCard key={index} vm={vm} reward={reward} index={index} />

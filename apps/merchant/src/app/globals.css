@@ -1081,9 +1081,27 @@ input:focus {
   border-color: #176548;
 }
 .reward-equiv {
+  display: block;
+  margin-top: 6px;
   font-size: 13px;
-  font-weight: 600;
+  line-height: 1.45;
   color: #647168;
+}
+.reward-equiv strong {
+  color: #135239;
+}
+.reward-rate {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: #eef5f0;
+  border: 1px solid #d3e6da;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #35473c;
+}
+.reward-rate strong {
+  color: #135239;
 }
 .reward-remove {
   padding: 6px 12px;
