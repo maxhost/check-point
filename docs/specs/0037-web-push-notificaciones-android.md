@@ -1,7 +1,7 @@
 ---
 spec: 0037
 fecha: 2026-08-15
-estado: cerrada
+estado: implementada
 resumen: Segundo transporte de notificación — Web Push del navegador (Push API + Service Worker + VAPID), **iOS + Android** — separado del canal wallet (0033) bajo el modelo de aviso común (ADR 0038/0039). En **Android** se suscribe en la pestaña y da el contenido rico que el banner de Google no controla. En **iOS** vive en **dos contextos** (ADR 0039): la landing de Safari muestra cómo añadir a inicio + un **escape hatch** que da el pase de Wallet sin instalar; el **micro-portal** (la página `(consumer)/wallet` ya existente, hecha instalable) es el único lugar donde se pide permiso y se crea la `PushSubscription`. Tabla `web_push_subscription`, canal `PushChannel` `webpush` (cripto `node:crypto`, sin dependencia, verificada contra el vector del RFC 8291), service worker + manifest, fan-out del aviso transaccional, purge de suscripciones en la rotación del pase, y la dimensión de transporte provisionada para las campañas futuras.
 disjunta: no
 archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/push/vapid.ts, apps/merchant/src/server/push/webpush-channel.ts, apps/merchant/src/server/push/subscriptions.ts, apps/merchant/src/server/wallet/push.ts, apps/merchant/src/server/wallet/rotate.ts, apps/merchant/src/app/api/public/push/subscribe/route.ts, apps/merchant/src/app/(consumer)/wallet/*, apps/merchant/public/sw.js, apps/merchant/public/manifest.webmanifest, apps/merchant/drizzle/0022_*.sql
@@ -9,8 +9,14 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 
 # 0037 — Web Push (notificaciones de navegador, iOS + Android)
 
-> **Cerrada.** Diseño acordado con el owner (2026-08-15). Reencuadrada por el **ADR 0039**:
-> incluye iOS (no solo Android). Implementar con el protocolo de `AGENT-WORKFLOW.md`.
+> **Implementada** (2026-08-15) con el protocolo de `AGENT-WORKFLOW.md`: implementador →
+> revisor independiente **PASS** (sin bloqueantes). Diseño acordado con el owner (2026-08-15),
+> reencuadrada por el **ADR 0039** (incluye iOS, no solo Android). **Dos correcciones al texto
+> aplicadas en la implementación:** (1) la migración es **`0023_round_shape`** — `0022` ya estaba
+> tomado; (2) el `manifest` se sirve como **route dinámica** (`(consumer)/wallet/manifest.webmanifest/
+> route.ts`), no como archivo estático en `public/`, porque el `start_url` debe encapsular el
+> `web_view_token` per-consumidor (ADR 0039 §5: rotar el token deja el ícono viejo en 404); el
+> revisor la evaluó y aceptó como cumpliendo la intención del ADR. `public/sw.js` sí es estático.
 >
 > Cuarta rebanada del canal de notificación. Depende de la spec **0033** (cola + worker +
 > canal de push), del **ADR 0037** (outbox/prioridad/cooldown), del **ADR 0038** (dos
@@ -168,35 +174,46 @@ portal. 0033 y 0029 ya están implementadas (retoque aditivo). **Serializar con 
 
 ## Definition of Done
 
-- [ ] **Android** suscripto recibe, al acreditarle puntos (0030), una **notificación de contenido
+- [x] **Android** suscripto recibe, al acreditarle puntos (0030), una **notificación de contenido
       controlado** ("Se acreditaron X puntos en tu cuenta 🎉") **además** del aviso del pase.
-- [ ] **iOS**: la página `(consumer)/wallet` es **instalable** (manifest + SW); abierta como PWA
+      *(fan-out `webpush`+`wallet` en `deliverTransports`; integración lo verifica con canal `fake`.
+      QA en Android real = residual.)*
+- [x] **iOS**: la página `(consumer)/wallet` es **instalable** (manifest + SW); abierta como PWA
       standalone pide permiso y crea la suscripción; la landing de Safari muestra el instructivo de
-      "añadir a inicio" **y** el **escape hatch** que da el pase de Wallet sin instalar.
-- [ ] En iOS, el permiso/suscripción **no** se intentan desde la pestaña de Safari (solo standalone).
-- [ ] `POST /api/public/push/subscribe` hace upsert por `endpoint` contra la sesión del consumidor;
-      no permite suscribir a otro consumidor; deriva `platform`.
-- [ ] Un `404`/`410` del push service borra la `web_push_subscription`.
-- [ ] `rotatePassCredentials` borra las `web_push_subscription` del consumidor al rotar.
-- [ ] El JWT VAPID es válido (verificable con la clave pública) y el payload va cifrado (RFC 8291),
-      **verificado contra el vector del Apéndice A**.
-- [ ] El cooldown cuenta un aviso multi-transporte como **uno**.
-- [ ] Ningún DTO serializa `endpoint`/`p256dh_key`/`auth_key` (test por entidad).
-- [ ] Migración `0022` aditiva aplicada y verificada en rama efímera y prod; `core`/`merchant_auth`
-      intactos.
+      "añadir a inicio" **y** el **escape hatch** que da el pase de Wallet sin instalar. *(QA en
+      iPhone real = residual.)*
+- [x] En iOS, el permiso/suscripción **no** se intentan desde la pestaña de Safari (solo standalone).
+      *(gate `ios && !standalone` en `push-prompt.tsx`.)*
+- [x] `POST /api/public/push/subscribe` hace upsert por `endpoint` contra la sesión del consumidor;
+      no permite suscribir a otro consumidor; deriva `platform`. *(401 sin sesión, 400 body inválido,
+      test de aislamiento A→B.)*
+- [x] Un `404`/`410` del push service borra la `web_push_subscription`.
+- [x] `rotatePassCredentials` borra las `web_push_subscription` del consumidor al rotar. *(plegado en
+      el CTE de rotación — atómico; integración lo verifica.)*
+- [x] El JWT VAPID es válido (verificable con la clave pública) y el payload va cifrado (RFC 8291),
+      **verificado contra el vector del Apéndice A** *(reproducido byte-a-byte en `push.test.ts`).*
+- [x] El cooldown cuenta un aviso multi-transporte como **uno** *(una fila de cola cerrada, un
+      `lastPushAt`; integración `summary.sent == 1` con los 3 transportes golpeados).*
+- [x] Ningún DTO serializa `endpoint`/`p256dh_key`/`auth_key` (test por entidad).
+- [x] Migración **`0023`** aditiva aplicada y verificada en rama efímera y **prod** (24 migraciones;
+      `consumer` 7→8 tablas, 9 cols + 3 índices; `core`(22)/`merchant_auth`(4) intactos).
 
 ## Plan de pruebas y verificación
 
-- [ ] Unidad: JWT VAPID (firma verificable con la pública); **cifrado RFC 8291 contra el vector
-      del Apéndice A** (oráculo externo); DTO de suscripción sin keys.
-- [ ] Integración (Neon): `subscribe` upsert idempotente por `endpoint`; aislamiento por sesión;
+- [x] Unidad: JWT VAPID (firma verificable con la pública); **cifrado RFC 8291 contra el vector
+      del Apéndice A** (oráculo externo); DTO de suscripción sin keys. *(`push.test.ts`, 6/6.)*
+- [x] Integración (Neon): `subscribe` upsert idempotente por `endpoint`; aislamiento por sesión;
       `410` → borrado; `rotatePassCredentials` → purge de suscripciones; fan-out entrega por
-      `webpush` + `wallet` con canal `fake` y cuenta un cooldown.
-- [ ] Autorización: no se puede suscribir contra la sesión de otro consumidor.
-- [ ] Comandos: `pnpm typecheck`, `pnpm lint`, `pnpm test`, integración Neon efímera, `pnpm build`.
+      `webpush` + `wallet` con canal `fake` y cuenta un cooldown. *(`web-push.neon.integration.test.ts`,
+      6/6 en rama efímera.)*
+- [x] Autorización: no se puede suscribir contra la sesión de otro consumidor.
+- [x] Comandos: `pnpm run typecheck` (3/3), `pnpm run lint`, `pnpm run test` (136), integración Neon
+      efímera (6/6), `pnpm run build` (3/3) — todos verdes por el implementador y por el revisor
+      independiente por su cuenta.
 - [ ] Manual (residual): **Android real** — suscribir en la pestaña, acreditar, ver la notificación
       rica con el browser cerrado. **iOS real** — añadir a inicio, abrir la PWA, dar permiso,
       acreditar, ver la notificación; y confirmar que el **escape hatch** da el pase sin instalar.
+      *(Requiere cargar el secreto VAPID en Vercel — ver más abajo.)*
 
 ## Handoff requerido
 

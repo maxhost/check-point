@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { getDb } from "../db";
 import { consumerAccounts, walletPushQueue } from "../schema";
 import { type PushChannel } from "./push-channel";
+import { type WebPushChannel } from "../push/webpush-channel";
 import {
   COOLDOWN_MS,
   type QueueRow,
@@ -84,6 +85,8 @@ async function lastPushAt(consumerId: string): Promise<Date | null> {
  */
 export async function runPushWorker(opts: {
   channel: PushChannel;
+  /** Web Push transport; omit to resolve from env, null to disable (spec 0037). */
+  webPushChannel?: WebPushChannel | null;
   now?: Date;
   /** Test scope: restrict the drain to these consumers (prod passes none = all). */
   consumerIds?: string[];
@@ -106,6 +109,7 @@ export async function runPushWorker(opts: {
       }
       const delivered = await deliverRow(action.row.id, {
         channel: opts.channel,
+        webPushChannel: opts.webPushChannel,
         now,
       });
       if (delivered) summary.sent += 1;

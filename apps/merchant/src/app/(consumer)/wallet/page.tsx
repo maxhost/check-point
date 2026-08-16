@@ -9,10 +9,24 @@ import {
 import { SESSION_COOKIE } from "../../../server/consumer/core";
 import { resolveSession } from "../../../server/consumer/session";
 import { renderQrSvg } from "../../../server/wallet/core";
+import { vapidFromEnv } from "../../../server/push/vapid";
 import { WalletButtons } from "../wallet-cta";
+import { PushPrompt } from "../push-prompt";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+// PWA hooks (spec 0037): the per-consumer dynamic manifest (start_url carries the
+// web_view_token, ADR 0039) + the iOS `apple-mobile-web-app-capable` meta that lets the
+// installed icon open standalone (the only iOS context where Web Push works).
+export const metadata = {
+  manifest: "/wallet/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Mi Pasaporte",
+    statusBarStyle: "default",
+  },
+} as const;
 
 const page: React.CSSProperties = {
   maxWidth: 420,
@@ -95,6 +109,8 @@ export default async function WalletPage() {
       <div style={{ marginTop: 24 }}>
         <WalletButtons isIos={isIos} />
       </div>
+
+      <PushPrompt vapidPublicKey={vapidFromEnv()?.publicKey ?? null} />
 
       <section style={{ marginTop: 32 }}>
         <h2 style={{ fontSize: 18 }}>Tus programas</h2>

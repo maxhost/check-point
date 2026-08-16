@@ -1,14 +1,17 @@
 import { after } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
-import { consumerAccounts, walletPasses, walletPushDevices } from "../schema";
+import { consumerAccounts } from "../schema";
 import {
-  ApnsGoneError,
   type PushChannel,
   type PushMessage,
-  passTypeIdFromEnv,
   pushChannelFromEnv,
 } from "./push-channel";
+import {
+  type WebPushChannel,
+  webPushChannelFromEnv,
+} from "../push/webpush-channel";
+import { deliverTransports } from "./push-transports";
 
 /** Minimum spacing between two pushes to the same consumer (ADR 0037). */
 export const COOLDOWN_MINUTES = Number(
@@ -104,93 +107,26 @@ async function claimRow(id: string, now: Date): Promise<Claim | null> {
   };
 }
 
-async function appleTargets(consumerId: string) {
-  return getDb()
-    .select({
-      id: walletPushDevices.id,
-      pushToken: walletPushDevices.pushToken,
-    })
-    .from(walletPushDevices)
-    .innerJoin(
-      walletPasses,
-      eq(walletPushDevices.walletPassId, walletPasses.id),
-    )
-    .where(
-      and(
-        eq(walletPasses.consumerId, consumerId),
-        eq(walletPasses.provider, "apple"),
-      ),
-    );
-}
+/**
+ * Delivery context threaded from the claim path: the wallet channel (Apple/Google),
+ * the Web Push channel (null when Web Push is disabled — no VAPID), and the clock.
+ */
+type DeliverOpts = {
+  channel: PushChannel;
+  webPushChannel: WebPushChannel | null;
+  now: Date;
+};
 
-/** Pushes to every Apple device of the consumer. A dead token (410) is pruned; any
- * other per-device error does NOT abort the rest (one bad device never blocks the
- * others) but IS returned so the caller can record it — silent APNs failures (403
- * InvalidProviderToken, 400 TopicDisallowed/BadDeviceToken) were invisible before and
- * made "el push salió pero no llegó" undiagnosable. Returns the collected error strings. */
-async function sendApple(
-  consumerId: string,
-  message: PushMessage,
-  channel: PushChannel,
-): Promise<string[]> {
-  void message; // Apple push is empty; the pulled pass carries the new field.
-  const targets = await appleTargets(consumerId);
-  const passTypeId = passTypeIdFromEnv();
-  const errors: string[] = [];
-  for (const t of targets) {
-    try {
-      await channel.sendApple({ pushToken: t.pushToken, passTypeId });
-    } catch (error) {
-      if (error instanceof ApnsGoneError) {
-        await getDb()
-          .delete(walletPushDevices)
-          .where(eq(walletPushDevices.id, t.id));
-      } else {
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error("[wallet-push] APNs send failed", msg);
-        errors.push(`apple: ${msg}`);
-      }
-    }
-  }
-  return errors;
-}
-
-/** Pushes to the consumer's Google pass via `addMessage`. Returns the error string on
- * failure (recorded by the caller) so a misconfigured issuer/SA is visible, not silent. */
-async function sendGoogle(
-  consumerId: string,
-  message: PushMessage,
-  channel: PushChannel,
-): Promise<string[]> {
-  const [pass] = await getDb()
-    .select({ serialNumber: walletPasses.serialNumber })
-    .from(walletPasses)
-    .where(
-      and(
-        eq(walletPasses.consumerId, consumerId),
-        eq(walletPasses.provider, "google"),
-      ),
-    )
-    .limit(1);
-  if (!pass) return [];
-  try {
-    await channel.sendGoogle(pass.serialNumber, message);
-    return [];
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error("[wallet-push] Google addMessage failed", msg);
-    return [`google: ${msg}`];
-  }
-}
-
-/** Materializes the notice on the consumer and pushes it on both providers, then
- * closes the row (`sent`) and preempts pending campaigns — or backs off on failure. */
+/** Materializes the notice on the consumer and fans it out to ALL transports (pass +
+ * Web Push), then closes the row (`sent`) and preempts pending campaigns — or backs off
+ * on failure. The fan-out is ONE notice: exactly one queue row closes, so the
+ * per-consumer cooldown counts a multi-transport notice as a single push (ADR 0038). */
 async function deliverClaimed(
   id: string,
   claim: Claim,
-  opts: { channel: PushChannel; now: Date },
+  opts: DeliverOpts,
 ): Promise<void> {
-  const { channel, now } = opts;
+  const { channel, webPushChannel, now } = opts;
   const message: PushMessage = { header: claim.title, body: claim.body };
   const latest = claim.title ? `${claim.title}: ${claim.body}` : claim.body;
   try {
@@ -199,12 +135,12 @@ async function deliverClaimed(
       .set({ latestMessage: latest, messageUpdatedAt: now, updatedAt: now })
       .where(eq(consumerAccounts.id, claim.consumerId));
     // Per-transport delivery is best-effort (one bad transport never blocks the pass
-    // update or the other transport); but any APNs/Google error is recorded on the row
-    // so a misconfigured provider is visible in the DB instead of a silent `sent`.
-    const deliveryErrors = [
-      ...(await sendApple(claim.consumerId, message, channel)),
-      ...(await sendGoogle(claim.consumerId, message, channel)),
-    ];
+    // update or another transport); every APNs/Google/Web Push error is recorded on the
+    // row so a misconfigured transport is visible in the DB instead of a silent `sent`.
+    const deliveryErrors = await deliverTransports(claim.consumerId, message, {
+      channel,
+      webPushChannel,
+    });
     const deliveryError = deliveryErrors.length
       ? deliveryErrors.join(" | ").slice(0, 500)
       : null;
@@ -245,7 +181,11 @@ async function deliverClaimed(
  */
 export async function dispatchInline(
   id: string,
-  opts: { channel: PushChannel; now?: Date },
+  opts: {
+    channel: PushChannel;
+    webPushChannel?: WebPushChannel | null;
+    now?: Date;
+  },
 ): Promise<void> {
   try {
     const now = opts.now ?? new Date();
@@ -253,11 +193,19 @@ export async function dispatchInline(
     if (claim)
       await deliverClaimed(id, claim, {
         channel: opts.channel,
+        webPushChannel: resolveWebPushChannel(opts.webPushChannel),
         now,
       });
   } catch {
     // swallow — the row stays claimable/retryable by the cron.
   }
+}
+
+/** Uses the injected Web Push channel when given (tests), else resolves from env. */
+function resolveWebPushChannel(
+  channel: WebPushChannel | null | undefined,
+): WebPushChannel | null {
+  return channel === undefined ? webPushChannelFromEnv() : channel;
 }
 
 /**
@@ -284,11 +232,19 @@ export function dispatchGranted(pushQueueId: string | null | undefined): void {
 /** Claims and delivers a specific row for the cron worker (shares the inline path). */
 export async function deliverRow(
   id: string,
-  opts: { channel: PushChannel; now: Date },
+  opts: {
+    channel: PushChannel;
+    webPushChannel?: WebPushChannel | null;
+    now: Date;
+  },
 ): Promise<boolean> {
   const claim = await claimRow(id, opts.now);
   if (!claim) return false;
-  await deliverClaimed(id, claim, opts);
+  await deliverClaimed(id, claim, {
+    channel: opts.channel,
+    webPushChannel: resolveWebPushChannel(opts.webPushChannel),
+    now: opts.now,
+  });
   return true;
 }
 
