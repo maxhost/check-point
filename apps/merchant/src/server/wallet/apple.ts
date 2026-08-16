@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import forge from "node-forge";
 import { zipSync } from "fflate";
 import { WALLET_BRAND } from "./core";
-import type { PassBuildInput } from "./provider";
+import type { ApplePassBuildInput } from "./provider";
 
 /**
  * A signing identity for the `.pkpass` manifest. `signManifest` returns the raw
@@ -13,10 +13,9 @@ export type AppleSigner = {
   signManifest(manifest: Buffer): Buffer;
 };
 
-export type ApplePkpassInput = PassBuildInput & {
+export type ApplePkpassInput = ApplePassBuildInput & {
   passTypeIdentifier: string;
   teamIdentifier: string;
-  authenticationToken: string;
 };
 
 // A minimal valid PNG (solid brand square) so the archive carries the required

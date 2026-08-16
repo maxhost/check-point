@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { buildApplePkpass, certSigner, selfSignedSigner } from "./apple";
 import { buildGoogleSaveUrl as buildRealGoogleSaveUrl } from "./google";
 import { fakeBuildGoogleSaveUrl } from "./fake";
@@ -19,11 +18,21 @@ export type PassBuildInput = {
   latestMessage?: string | null;
 };
 
+/**
+ * Apple-only build input. The STABLE Apple web-service `authenticationToken` (spec
+ * 0033 fix) is a REQUIRED input: the caller owns it (minted once per pass in
+ * `ensureWalletPass`) and passes the SAME value on every emission + serve; the
+ * provider only embeds it, it never mints one. It is written verbatim into
+ * `pass.json` and matched by `authorizePass` on incoming PassKit requests. Google
+ * has no such token, so this lives here and not on the shared `PassBuildInput`.
+ */
+export type ApplePassBuildInput = PassBuildInput & {
+  authenticationToken: string;
+};
+
 export type ApplePassResult = {
   bytes: Buffer;
   mime: "application/vnd.apple.pkpass";
-  /** Raw Apple web-service authenticationToken — caller stores only its hash. */
-  authenticationToken: string;
 };
 
 /**
@@ -34,7 +43,7 @@ export type ApplePassResult = {
 export interface WalletProvider {
   readonly appleConfigured: boolean;
   readonly googleConfigured: boolean;
-  buildApplePass(input: PassBuildInput): Promise<ApplePassResult>;
+  buildApplePass(input: ApplePassBuildInput): Promise<ApplePassResult>;
   buildGoogleSaveUrl(input: PassBuildInput): Promise<string>;
 }
 
@@ -105,15 +114,14 @@ export function walletProviderFromEnv(env: Env = process.env): WalletProvider {
       const passTypeIdentifier =
         apple?.passTypeId ?? "pass.com.mipasaporte.dev";
       const teamIdentifier = apple?.teamId ?? "MIPASAPORTE0";
-      const authenticationToken = randomBytes(32).toString("base64url");
+      // The token is an INPUT (stable per pass); the provider only embeds it.
       const bytes = await buildApplePkpass(
-        { ...input, passTypeIdentifier, teamIdentifier, authenticationToken },
+        { ...input, passTypeIdentifier, teamIdentifier },
         signer,
       );
       return {
         bytes,
         mime: "application/vnd.apple.pkpass",
-        authenticationToken,
       };
     },
     async buildGoogleSaveUrl(input) {

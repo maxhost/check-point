@@ -1,11 +1,10 @@
 import { toString as qrToStringCb } from "qrcode";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { consumerAccounts, walletPasses } from "../schema";
 import {
   type ConsumerAccountRow,
   generateOpaqueToken,
-  hashToken,
   pgErrorCode,
 } from "../consumer/core";
 
@@ -29,15 +28,22 @@ export type WalletPassRow = {
   consumerId: string;
   provider: string;
   serialNumber: string;
+  /** STABLE Apple web-service token (spec 0033 fix); null only on un-backfilled legacy rows. */
+  authToken: string | null;
+  /** DEPRECATED legacy per-emission sha256 (authorize fallback only). */
   authTokenHash: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
+/** A pass guaranteed to carry a non-null stable `authToken` (post-`ensureWalletPass`). */
+export type EnsuredWalletPass = WalletPassRow & { authToken: string };
+
 /**
  * Client-facing shape of a wallet pass. Built by explicit allow-list so it can
- * NEVER serialize the raw `authTokenHash` (nor any future secret column). The
- * `serialNumber` is a public identifier carried in the pass itself, not a secret.
+ * NEVER serialize the stable `authToken` nor the legacy `authTokenHash` (nor any
+ * future secret column). The `serialNumber` is a public identifier carried in the
+ * pass itself, not a secret.
  */
 export function walletPassResponse(pass: WalletPassRow) {
   return {
@@ -138,17 +144,41 @@ async function selectPass(
 }
 
 /**
+ * Guarantees the row carries a STABLE, non-null `authToken` (spec 0033 fix). New
+ * rows already have one from the insert; legacy rows (`authToken` null, only the
+ * deprecated `authTokenHash`) are backfilled ONCE. The `coalesce` makes the update
+ * race-safe: concurrent backfills serialize on the row lock and all converge on the
+ * first committed token, so the value never diverges from the installed pass.
+ */
+async function ensureAuthToken(row: WalletPassRow): Promise<EnsuredWalletPass> {
+  if (row.authToken) return { ...row, authToken: row.authToken };
+  const candidate = generateOpaqueToken();
+  const [updated] = await getDb()
+    .update(walletPasses)
+    .set({
+      authToken: sql`coalesce(${walletPasses.authToken}, ${candidate})`,
+      updatedAt: new Date(),
+    })
+    .where(eq(walletPasses.id, row.id))
+    .returning();
+  const authToken = updated?.authToken ?? candidate;
+  return { ...(updated ?? row), authToken };
+}
+
+/**
  * Create-or-reuse the single `wallet_pass` row for (consumer, provider). The
- * `serialNumber` is generated once and stays stable across re-emissions (the
- * unique on (consumer_id, provider) backs idempotency; a race also lands on the
- * existing row via 23505 → re-select). Never duplicates.
+ * `serialNumber` AND the Apple web-service `authToken` are generated once and stay
+ * stable across re-emissions (the unique on (consumer_id, provider) backs
+ * idempotency; a race also lands on the existing row via 23505 → re-select). The
+ * returned pass always carries a non-null `authToken` (legacy rows are backfilled).
+ * Never duplicates.
  */
 export async function ensureWalletPass(
   consumerId: string,
   provider: WalletProviderId,
-): Promise<WalletPassRow> {
+): Promise<EnsuredWalletPass> {
   const existing = await selectPass(consumerId, provider);
-  if (existing) return existing;
+  if (existing) return ensureAuthToken(existing);
   try {
     const [row] = await getDb()
       .insert(walletPasses)
@@ -156,30 +186,17 @@ export async function ensureWalletPass(
         consumerId,
         provider,
         serialNumber: generateOpaqueToken(),
+        authToken: generateOpaqueToken(),
       })
       .returning();
-    return row;
+    return ensureAuthToken(row);
   } catch (error) {
     if (pgErrorCode(error) === "23505") {
       const raced = await selectPass(consumerId, provider);
-      if (raced) return raced;
+      if (raced) return ensureAuthToken(raced);
     }
     throw error;
   }
-}
-
-/**
- * Persists the sha256 of the Apple web-service `authenticationToken` (compared in
- * spec 0033). The raw token lives only inside the pass; only its hash is stored.
- */
-export async function setAuthTokenHash(
-  passId: string,
-  rawAuthToken: string,
-): Promise<void> {
-  await getDb()
-    .update(walletPasses)
-    .set({ authTokenHash: hashToken(rawAuthToken), updatedAt: new Date() })
-    .where(eq(walletPasses.id, passId));
 }
 
 /**

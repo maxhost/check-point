@@ -29,7 +29,8 @@ export function parseApplePassToken(header: string | null): string | null {
   return match ? match[1].trim() : null;
 }
 
-function constantTimeEqualHex(a: string, b: string): boolean {
+/** Length-guarded constant-time string compare (utf8 bytes). */
+function constantTimeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) return false;
@@ -38,9 +39,13 @@ function constantTimeEqualHex(a: string, b: string): boolean {
 
 /**
  * Authorizes a PassKit request for `serialNumber` with its `Authorization: ApplePass`
- * token: fetches the Apple pass, compares `sha256(token)` in **constant time** against
- * the stored `auth_token_hash`. `401` on a missing/mismatched token (incl. one pass's
- * token used on another's serial), `404` when the serial is unknown.
+ * token: fetches the Apple pass and compares the raw token in **constant time**
+ * against the STABLE `auth_token` (spec 0033 fix — minted once, embedded verbatim in
+ * the pass, so the stored value always matches the installed pass). Legacy rows with
+ * no `auth_token` yet fall back to comparing `sha256(token)` against the deprecated
+ * `auth_token_hash` (they migrate to the stable token the next time they are served).
+ * `401` on a missing/mismatched token (incl. one pass's token used on another's
+ * serial), `404` when the serial is unknown.
  */
 export async function authorizePass(
   serialNumber: string,
@@ -53,6 +58,7 @@ export async function authorizePass(
       id: walletPasses.id,
       consumerId: walletPasses.consumerId,
       serialNumber: walletPasses.serialNumber,
+      authToken: walletPasses.authToken,
       authTokenHash: walletPasses.authTokenHash,
     })
     .from(walletPasses)
@@ -64,9 +70,12 @@ export async function authorizePass(
     )
     .limit(1);
   if (!pass) return { status: "not_found" };
-  if (!pass.authTokenHash) return { status: "unauthorized" };
-  if (!constantTimeEqualHex(hashToken(token), pass.authTokenHash))
-    return { status: "unauthorized" };
+  const authorized = pass.authToken
+    ? constantTimeEqual(token, pass.authToken)
+    : pass.authTokenHash
+      ? constantTimeEqual(hashToken(token), pass.authTokenHash)
+      : false;
+  if (!authorized) return { status: "unauthorized" };
   return {
     status: "ok",
     pass: {
@@ -157,6 +166,8 @@ export type PassServeData = {
   webViewToken: string;
   latestMessage: string | null;
   messageUpdatedAt: Date | null;
+  /** STABLE Apple web-service token embedded in the served pass; null only on un-backfilled legacy rows. */
+  authToken: string | null;
 };
 
 /** Loads everything needed to (re)build a consumer's Apple pass for the serve route. */
@@ -173,6 +184,7 @@ export async function passServeData(
       webViewToken: consumerAccounts.webViewToken,
       latestMessage: consumerAccounts.latestMessage,
       messageUpdatedAt: consumerAccounts.messageUpdatedAt,
+      authToken: walletPasses.authToken,
     })
     .from(walletPasses)
     .innerJoin(

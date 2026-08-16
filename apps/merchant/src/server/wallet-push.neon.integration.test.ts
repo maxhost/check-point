@@ -17,8 +17,8 @@ import {
 } from "./schema";
 import { resolveScan } from "./counter/resolve";
 import { type PersistGrantInput, persistGrant } from "./counter/orders";
-import { ensureWalletPass, setAuthTokenHash } from "./wallet/core";
-import { hashToken, generateOpaqueToken } from "./consumer/core";
+import { ensureWalletPass } from "./wallet/core";
+import { hashToken } from "./consumer/core";
 import {
   authorizePass,
   listUpdatedSerials,
@@ -146,10 +146,11 @@ describe.skipIf(!integrationEnabled)(
       const b = await enrolledMembership(seed);
       const passA = await ensureWalletPass(a.consumer.id, "apple");
       const passB = await ensureWalletPass(b.consumer.id, "apple");
-      const tokenA = generateOpaqueToken();
-      const tokenB = generateOpaqueToken();
-      await setAuthTokenHash(passA.id, tokenA);
-      await setAuthTokenHash(passB.id, tokenB);
+      // Stable per-pass token minted by ensureWalletPass (spec 0033 fix) — no re-mint.
+      const tokenA = passA.authToken;
+      const tokenB = passB.authToken;
+      expect(tokenA).toBeTruthy();
+      expect(tokenB).not.toBe(tokenA);
 
       expect(
         (await authorizePass(passA.serialNumber, `ApplePass ${tokenA}`)).status,

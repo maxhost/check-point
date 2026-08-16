@@ -39,6 +39,22 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 >
 > **Otro hallazgo del QA (Google):** `addMessage` solo dispara notificación con
 > `messageType: "TEXT_AND_NOTIFY"` — sin ese campo el aviso se agrega al pase en silencio. Corregido.
+>
+> **Enmienda production-grade 2026-08-15 (`authenticationToken` estable) + PASS de revisor:** el QA
+> iOS mostró un pase clavado en "—" tras varias re-emisiones. Causa: el `authenticationToken` se
+> **re-acuñaba en cada emisión y cada serve** (solo se guardaba el hash), así que re-agregar el pase
+> o dos serves en carrera divergían el hash guardado del token embebido en el pase instalado →
+> **401** en el web service → iOS no podía volver a tirar el pase. Fix: token **estable por pase** —
+> se acuña una vez en `ensureWalletPass`, se persiste en `wallet_pass.auth_token` (migración aditiva
+> **`0022`**) y se **reusa** en emisión y serve (se eliminó el re-mint); `authorizePass` compara en
+> tiempo constante contra `auth_token`, con **fallback legacy** (`sha256` vs `auth_token_hash`) +
+> backfill hacia adelante de los pases viejos en su primer serve. Verificado con test de estabilidad
+> (dos ciclos de build → mismo token, `authorizePass` acepta a través de la re-emisión). **Residual
+> menor (revisor):** un pase legacy que no alcance a aplicar el token backfilleado necesita
+> re-agregarse una vez (inherente —el token viejo nunca se guardó en crudo—, recuperable, y
+> estrictamente mejor que el re-mint previo). **QA en vivo del owner:** push + "Última novedad" con
+> texto rico verificado en **Android** (Google) e **iPhone** (Apple) con pases frescos; la latencia
+> de un 2º push seguido es el throttling de background de APNs (comportamiento de Apple).
 
 ## Problema
 

@@ -63,9 +63,14 @@ export const consumerAccounts = consumer.table(
 /**
  * One wallet pass per (consumer, provider) — the identity pass of spec 0029.
  * `serialNumber` is stable (Apple `serialNumber` / Google object id); it and the
- * unique on (consumer, provider) make pass emission create-or-reuse. `authTokenHash`
- * holds the sha256 of the Apple web-service `authenticationToken` (compared in spec
- * 0033; null for Google) — NEVER serialized in the clear.
+ * unique on (consumer, provider) make pass emission create-or-reuse. `authToken`
+ * holds the STABLE Apple web-service `authenticationToken` (spec 0033 correction):
+ * minted once per pass in `ensureWalletPass` and reused on every emission + serve,
+ * so the value stored always matches the token embedded in the installed pass. It
+ * is a bearer credential — NEVER serialized in a DTO (see `walletPassResponse`).
+ * `authTokenHash` is DEPRECATED: the old per-emission sha256 (kept nullable only
+ * for backward-compat with legacy rows that predate `authToken`); not written on
+ * new passes and only read as an authorize fallback until a legacy pass migrates.
  */
 export const walletPasses = consumer.table(
   "wallet_pass",
@@ -76,6 +81,10 @@ export const walletPasses = consumer.table(
       .references(() => consumerAccounts.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
     serialNumber: text("serial_number").notNull(),
+    // Stable Apple web-service authenticationToken (see table comment). Nullable:
+    // legacy rows carry only `authTokenHash`; backfilled lazily by ensureWalletPass.
+    authToken: text("auth_token"),
+    // DEPRECATED — legacy per-emission sha256; read-only authorize fallback.
     authTokenHash: text("auth_token_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

@@ -5,7 +5,7 @@ import {
 } from "../../../../../../../../../server/wallet/passkit";
 import { passKitLimiter } from "../../../../../../../../../server/wallet/pass-rate-limit";
 import { getWalletProvider } from "../../../../../../../../../server/wallet/provider";
-import { setAuthTokenHash } from "../../../../../../../../../server/wallet/core";
+import { ensureWalletPass } from "../../../../../../../../../server/wallet/core";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -53,7 +53,13 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const provider = getWalletProvider();
   if (!provider.appleConfigured) return new NextResponse(null, { status: 503 });
-  const { bytes, mime, authenticationToken } = await provider.buildApplePass({
+  // Reuse the STABLE per-pass authToken so the served pass matches the installed
+  // one. Legacy rows (authToken null) are backfilled once via ensureWalletPass,
+  // migrating them forward to the stable token on this serve.
+  const authenticationToken =
+    data.authToken ??
+    (await ensureWalletPass(data.consumerId, "apple")).authToken;
+  const { bytes, mime } = await provider.buildApplePass({
     serialNumber: data.serialNumber,
     qrToken: data.qrToken,
     firstName: data.firstName,
@@ -61,8 +67,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     origin: request.nextUrl.origin,
     webViewToken: data.webViewToken,
     latestMessage: data.latestMessage,
+    authenticationToken,
   });
-  await setAuthTokenHash(auth.pass.id, authenticationToken);
 
   const headers: Record<string, string> = {
     "Content-Type": mime,

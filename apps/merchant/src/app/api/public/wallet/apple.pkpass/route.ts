@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "../../../../../server/consumer/core";
 import { resolveSession } from "../../../../../server/consumer/session";
-import {
-  ensureWalletPass,
-  setAuthTokenHash,
-} from "../../../../../server/wallet/core";
+import { ensureWalletPass } from "../../../../../server/wallet/core";
 import { getWalletProvider } from "../../../../../server/wallet/provider";
 
 export const dynamic = "force-dynamic";
@@ -28,18 +25,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // One pass per (consumer, apple) — create-or-reuse the row, then (re)build bytes.
+  // One pass per (consumer, apple) — create-or-reuse the row (with its STABLE
+  // authToken), then (re)build bytes embedding that same token every time.
   const pass = await ensureWalletPass(account.id, "apple");
-  const { bytes, mime, authenticationToken } = await provider.buildApplePass({
+  const { bytes, mime } = await provider.buildApplePass({
     serialNumber: pass.serialNumber,
     qrToken: account.qrToken,
     firstName: account.firstName,
     lastName: account.lastName,
     origin: request.nextUrl.origin,
     webViewToken: account.webViewToken,
+    authenticationToken: pass.authToken,
   });
-  // Store only the hash of the web-service authenticationToken (compared in 0033).
-  await setAuthTokenHash(pass.id, authenticationToken);
 
   return new NextResponse(new Uint8Array(bytes), {
     status: 200,

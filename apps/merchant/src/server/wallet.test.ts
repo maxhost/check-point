@@ -139,18 +139,21 @@ describe("wallet tokens & DTOs never leak secrets", () => {
     expect(web).not.toEqual(qr);
   });
 
-  it("walletPassResponse omits authTokenHash and consumerId", () => {
+  it("walletPassResponse omits authToken, authTokenHash and consumerId", () => {
     const dto = walletPassResponse({
       id: "pass-1",
       consumerId: "consumer-1",
       provider: "apple",
       serialNumber: "serial-1",
+      authToken: "SECRET-STABLE-AUTH-TOKEN",
       authTokenHash: "SECRET-AUTH-TOKEN-HASH",
       createdAt: new Date("2026-08-14T00:00:00Z"),
       updatedAt: new Date("2026-08-14T00:00:00Z"),
     });
+    expect(dto).not.toHaveProperty("authToken");
     expect(dto).not.toHaveProperty("authTokenHash");
     expect(dto).not.toHaveProperty("consumerId");
+    expect(JSON.stringify(dto)).not.toContain("SECRET-STABLE-AUTH-TOKEN");
     expect(JSON.stringify(dto)).not.toContain("SECRET-AUTH-TOKEN-HASH");
     expect(dto).toMatchObject({
       id: "pass-1",

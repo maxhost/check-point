@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
+import { unzipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const url = process.env.NEON_INTEGRATION_DATABASE_URL;
@@ -19,11 +20,9 @@ import {
   walletPasses,
 } from "./schema";
 import { enroll } from "./consumer/enrollment";
-import {
-  ensureWalletPass,
-  resolveWebViewToken,
-  setAuthTokenHash,
-} from "./wallet/core";
+import { ensureWalletPass, resolveWebViewToken } from "./wallet/core";
+import { authorizePass } from "./wallet/passkit";
+import { walletProviderFromEnv } from "./wallet/provider";
 
 describe.skipIf(!enabled)("wallet passes against Neon", () => {
   const userId = `int-${randomUUID()}`;
@@ -116,15 +115,60 @@ describe.skipIf(!enabled)("wallet passes against Neon", () => {
     );
   });
 
-  it("stores only the hash of the Apple authenticationToken (never the raw)", async () => {
-    const pass = await ensureWalletPass(consumerId, "apple");
-    await setAuthTokenHash(pass.id, "raw-auth-token-value");
+  it("mints a STABLE authenticationToken: re-emission embeds the SAME token and authorizePass accepts it across the re-emit (spec 0033 fix)", async () => {
+    // fake provider stands in outside production (NODE_ENV=test).
+    const provider = walletProviderFromEnv({ NODE_ENV: "test" });
+    const baseInput = {
+      qrToken: "QR-STABLE",
+      firstName: "Marcos",
+      lastName: "Pérez",
+      origin: "https://app.mipasaporte.test",
+      webViewToken: "WEB-VIEW-STABLE",
+    };
+
+    // Two independent ensure+build cycles = "Add to Wallet" pressed twice.
+    const pass1 = await ensureWalletPass(consumerId, "apple");
+    const built1 = await provider.buildApplePass({
+      ...baseInput,
+      serialNumber: pass1.serialNumber,
+      authenticationToken: pass1.authToken,
+    });
+    const pass2 = await ensureWalletPass(consumerId, "apple");
+    const built2 = await provider.buildApplePass({
+      ...baseInput,
+      serialNumber: pass2.serialNumber,
+      authenticationToken: pass2.authToken,
+    });
+
+    // The stored token is stable across re-emission (this is the bug the fix closes).
+    expect(pass2.id).toBe(pass1.id);
+    expect(pass2.authToken).toBe(pass1.authToken);
+    expect(pass1.authToken).toBeTruthy();
+
+    // And the token embedded in the pass.json is identical both times.
+    const tokenOf = (bytes: Buffer) => {
+      const files = unzipSync(new Uint8Array(bytes));
+      return JSON.parse(Buffer.from(files["pass.json"]).toString())
+        .authenticationToken as string;
+    };
+    expect(tokenOf(built1.bytes)).toBe(pass1.authToken);
+    expect(tokenOf(built2.bytes)).toBe(pass1.authToken);
+
+    // The DB never stored a hash for the new stable-token contract.
     const [row] = await getDb()
       .select()
       .from(walletPasses)
-      .where(eq(walletPasses.id, pass.id));
-    expect(row.authTokenHash).toBeTruthy();
-    expect(row.authTokenHash).not.toBe("raw-auth-token-value");
+      .where(eq(walletPasses.id, pass1.id));
+    expect(row.authToken).toBe(pass1.authToken);
+
+    // authorizePass accepts the stable token even after the re-emission; a wrong one is 401.
+    expect(
+      (await authorizePass(pass1.serialNumber, `ApplePass ${pass1.authToken}`))
+        .status,
+    ).toBe("ok");
+    expect(
+      (await authorizePass(pass1.serialNumber, "ApplePass wrong-token")).status,
+    ).toBe("unauthorized");
   });
 
   it("resolveWebViewToken: valid → account; unknown/revoked → null (route 404s)", async () => {

@@ -1,0 +1,1 @@
+ALTER TABLE "consumer"."wallet_pass" ADD COLUMN "auth_token" text;
