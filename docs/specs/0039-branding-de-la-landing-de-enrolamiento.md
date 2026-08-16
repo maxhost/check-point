@@ -31,6 +31,18 @@ archivos: apps/merchant/src/server/consumer/enrollment.ts, apps/merchant/src/lib
 > `ACCEPTED_IMAGE_CONTENT_TYPES` como alias — `sharp` ya lo decodifica sin problema, el bug era
 > puramente del gate de content-type antes de llegar al server-prep. Sumado a `MOBILE_TYPES` del
 > guard (`upload-image-formats.test.ts`, ahora 15 tests). typecheck 3/3, unit 158, build 3/3.
+>
+> **Enmienda post-QA 3 (2026-08-16, owner, log de Vercel `PUT /api/brand` 422):** el `.jpg` seguía
+> fallando, pero el gate era **otro**: `normalizeImage` (compartida por marca/sello/catálogo)
+> **rechazaba toda imagen > 2048×2048** (`limitInputPixels: 2048²` + hard-reject de dimensiones) →
+> cualquier foto de cámara de teléfono (~12 MP, 4000×3000) daba 422 **después** del presign, en el
+> guardado. Irónicamente el `resize(fit:inside, 2048)` justo debajo existía para achicarlas pero era
+> inalcanzable. **Fix:** `MAX_INPUT_PIXELS = 50 MP` (cubre cámaras de teléfono, sigue acotando bombas
+> de descompresión), se quita el hard-reject de dimensiones y el `resize` **achica** las grandes a
+> ≤2048. Afecta las 3 superficies (correcto: todas deben aceptar fotos y achicarlas). Test de
+> `brand.test.ts` re-encuadrado (antes fijaba el rechazo >2048; ahora afirma downscale 4000×3000 →
+> 2048×1536, aspecto preservado). Texto de ayuda de marca: "hasta 2048 px" → "se ajusta a 2048 px".
+> typecheck 3/3, unit 159, build 3/3, prettier.
 
 ## Problema
 

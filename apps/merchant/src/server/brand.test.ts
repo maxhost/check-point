@@ -81,21 +81,28 @@ describe("brand contract", () => {
     ).rejects.toMatchObject({ status: 422 });
   });
 
-  it("rejects SVG (even renamed) and oversized images with 422", async () => {
+  it("rejects SVG (even renamed) with 422", async () => {
     // An SVG — the real format is detected from bytes, not from any client MIME.
     const svg = Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
     );
     await expect(normalizeImage(svg)).rejects.toMatchObject({ status: 422 });
+  });
 
-    // A real PNG larger than 2048² must be rejected (dimension + pixel-limit guard).
-    const oversized = await sharp({
-      create: { width: 2049, height: 2049, channels: 3, background: "#000000" },
+  it("downscales a phone-size photo (larger than 2048²) instead of rejecting it", async () => {
+    // Regression: brand/stamp/catalog rejected any image over 2048² with 422, which
+    // bounced every Android/iPhone camera photo. They are now scaled down to fit.
+    const photo = await sharp({
+      create: { width: 4000, height: 3000, channels: 3, background: "#123456" },
     })
-      .png()
+      .jpeg()
       .toBuffer();
-    await expect(normalizeImage(oversized)).rejects.toMatchObject({
-      status: 422,
-    });
+    const variants = await normalizeImage(photo);
+    const meta = await sharp(variants.png).metadata();
+    expect(meta.width).toBeLessThanOrEqual(2048);
+    expect(meta.height).toBeLessThanOrEqual(2048);
+    // Aspect ratio preserved (4:3 → 2048×1536).
+    expect(meta.width).toBe(2048);
+    expect(meta.height).toBe(1536);
   });
 });

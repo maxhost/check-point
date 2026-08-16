@@ -181,7 +181,7 @@ export default function BrandPage() {
             />
           </label>
           <p className="field-help">
-            {ACCEPTED_IMAGE_LABEL} · máximo 5 MB · hasta 2048 × 2048 px.
+            {ACCEPTED_IMAGE_LABEL} · máximo 5 MB · se ajusta a 2048 px.
           </p>
           {visibleLogo && (
             <button
