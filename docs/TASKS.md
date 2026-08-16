@@ -25,11 +25,18 @@ en los archivos de la spec. **Integración Neon 3/3** de `listConsumerPrograms` 
 última actividad, aislamiento (`[]` para otro consumidor), detección de Web Push. **El test de
 integración cazó un bug de su propio fixture** (insertaba un programa `status:"closing"` sin la
 ventana de cierre → violaba el check `loyalty_program_closing_window_check`); se corrigió el
-fixture agregando `earningEndsAt`/`redemptionEndsAt` (assertions intactas). **Commit pusheado a
-`main` para QA en vivo del owner.** **PENDIENTE para marcar la spec `implementada`:** PASS del
-revisor independiente (`AGENT-WORKFLOW.md`) — no se corrió esta sesión — y el QA en vivo del owner
-sobre el deploy. La rama Neon efímera queda para limpiar (owner borra o expira). Detalle previo de
-la spec (diseño) abajo.)
+fixture agregando `earningEndsAt`/`redemptionEndsAt` (assertions intactas). **Commit `cb647d9` pusheado a
+`main` para QA en vivo del owner.** **Revisor independiente (`AGENT-WORKFLOW.md`): PASS** — corrió
+por su cuenta los 5 gates (typecheck 3/3, lint, unit 163/72-skip, build 3/3) + integración Neon 3/3,
+verificó el DoD ítem por ítem, la no-fuga de `*ObjectKey` (test que pinnea el DTO), el aislamiento
+por `consumerId` de sesión, la no-regresión de "Mi QR", la reubicación de `card-preview.tsx` y la
+legitimidad del fix de fixture; **sin bloqueantes ni importantes**, solo 2 menores cosméticos (test
+de aislamiento con B sin membresía propia; `readableTextColor` calculado solo contra el primary del
+degradé). **Con el PASS, la spec 0031 pasa a `implementada`** (frontmatter + INDEX + DoD marcados).
+**Rama Neon efímera `spec-0031-programs` borrada** (con OK del owner). **Único residual: QA en vivo
+del owner sobre el deploy de Vercel** (checklist Manual del Plan de pruebas: 2 membresías reales,
+una Puntos y una Sellos, en iOS/Android instalado desde el home). Detalle previo de la spec (diseño)
+abajo.)
 
 Ultima actualizacion previa: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) CERRADA con el
 owner — solo diseño, sin código, punto de retorno.** Sesión de definición de spec (no se tocó

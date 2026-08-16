@@ -1,7 +1,7 @@
 ---
 spec: 0031
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Micro-portal instalable del consumidor (único acceso hoy = agregar a inicio, ADR 0039), estilo iOS, con nav inferior de 2 pestañas — "Programas" (una tarjeta brandeada por membresía, ordenadas por última actividad, filtro para ver cerrados/inactivos; Sellos reusa CardPreview 0027, Puntos usa colores+logo de marca; ícono info → popup de T&C) y "Mi QR" (código + alta a Wallet + PushPrompt). "Mi QR" es la pestaña inicial hasta confirmar notificaciones, luego "Programas". Reemplaza el alcance original de notificación/landing en vivo, ya cubierto de punta a punta por el canal de push (0030/0033/0037/0038/0040).
 disjunta: sí
 archivos: ver sección Archivos
@@ -299,49 +299,49 @@ ambas corren a la vez, `subscriptions.ts` es el único punto de contacto y es ad
 
 ## Definition of Done
 
-- [ ] `/wallet` muestra nav inferior con 2 pestañas, ambas alcanzables desde la nav.
-- [ ] La pestaña inicial es "Mi QR" para un consumidor **sin** suscripción Web Push, y
+- [x] `/wallet` muestra nav inferior con 2 pestañas, ambas alcanzables desde la nav.
+- [x] La pestaña inicial es "Mi QR" para un consumidor **sin** suscripción Web Push, y
       "Programas" para uno **con** suscripción; al confirmar el permiso desde el prompt, la
       vista cambia a "Programas" sin recargar.
-- [ ] Un consumidor con membresías en 2+ negocios ve una tarjeta por membresía, cada una
+- [x] Un consumidor con membresías en 2+ negocios ve una tarjeta por membresía, cada una
       con el branding de su propio negocio (logo + colores), no el del último visto.
-- [ ] Las tarjetas se ordenan por última actividad (la usada más recientemente arriba);
+- [x] Las tarjetas se ordenan por última actividad (la usada más recientemente arriba);
       un programa sin grants ordena por `enrolledAt`.
-- [ ] Una membresía `stamps` muestra la grilla real de sellos (`filled = stampsCount`,
+- [x] Una membresía `stamps` muestra la grilla real de sellos (`filled = stampsCount`,
       no la mitad simulada) con el mismo diseño configurado en el wizard (spec 0027).
-- [ ] Una membresía `points` muestra una tarjeta compuesta con logo + nombre + balance
+- [x] Una membresía `points` muestra una tarjeta compuesta con logo + nombre + balance
       real sobre degradé de marca, sin depender de columnas `card*` (que son Sellos-only).
-- [ ] El ícono info de una tarjeta abre un popup con los T&C del programa y se cierra por
+- [x] El ícono info de una tarjeta abre un popup con los T&C del programa y se cierra por
       backdrop, Escape y botón.
-- [ ] Por defecto se ven solo programas activos; el toggle "Ver programas cerrados" suma
+- [x] Por defecto se ven solo programas activos; el toggle "Ver programas cerrados" suma
       las membresías `closing`/`inactive`, atenuadas + etiqueta.
-- [ ] "Mi QR" conserva el comportamiento actual: QR, botón de Wallet por plataforma,
+- [x] "Mi QR" conserva el comportamiento actual: QR, botón de Wallet por plataforma,
       prompt de notificaciones — sin regresión.
-- [ ] Ningún DTO de `listConsumerPrograms` serializa `stampImageObjectKey` ni
+- [x] Ningún DTO de `listConsumerPrograms` serializa `stampImageObjectKey` ni
       `logoObjectKey` — test por entidad en verde.
-- [ ] Un consumidor no puede ver membresías de otro (`consumerId` viene de la sesión, no
+- [x] Un consumidor no puede ver membresías de otro (`consumerId` viene de la sesión, no
       del cliente) — test de aislamiento en verde.
-- [ ] Gates: typecheck 3/3, lint, unit, build 3/3.
+- [x] Gates: typecheck 3/3, lint, unit, build 3/3.
 
 ## Plan de pruebas y verificación
 
-- [ ] Unitaria: `programs.test.ts` — DTO sin `*ObjectKey`; incluye `termsMarkdown` y
+- [x] Unitaria: `programs.test.ts` — DTO sin `*ObjectKey`; incluye `termsMarkdown` y
       `programStatus`; `kind = 'points'` no incluye `cardDesign`.
-- [ ] Unitaria: `programs-tab` — con `showClosed=false` oculta membresías no-activas; con
+- [x] Unitaria: `programs-tab` — con `showClosed=false` oculta membresías no-activas; con
       `showClosed=true` las incluye.
-- [ ] Unitaria: `card-preview` (reubicado) sigue pasando sus tests existentes tal cual,
+- [x] Unitaria: `card-preview` (reubicado) sigue pasando sus tests existentes tal cual,
       solo con el import nuevo.
-- [ ] Integración (Neon efímera): consumidor con membresías en 2 negocios distintos →
+- [x] Integración (Neon efímera): consumidor con membresías en 2 negocios distintos →
       `listConsumerPrograms` devuelve 2 filas con branding correcto por fila; consumidor
       sin membresías → `[]`.
-- [ ] Integración: orden por última actividad — dos membresías, un grant reciente en la
+- [x] Integración: orden por última actividad — dos membresías, un grant reciente en la
       más vieja por `enrolledAt` la manda arriba (`MAX(order.created_at)` manda sobre
       `enrolledAt`).
-- [ ] Integración: `hasWebPushSubscription` → `false` sin filas, `true` con ≥1
+- [x] Integración: `hasWebPushSubscription` → `false` sin filas, `true` con ≥1
       suscripción del consumidor.
-- [ ] Aislamiento: consumidor A no puede obtener membresías de consumidor B (query
+- [x] Aislamiento: consumidor A no puede obtener membresías de consumidor B (query
       filtrado por `consumerId` de sesión).
-- [ ] Comandos: `pnpm --filter @mi-pasaporte/merchant exec vitest run src/server/consumer/programs.test.ts`,
+- [x] Comandos: `pnpm --filter @mi-pasaporte/merchant exec vitest run src/server/consumer/programs.test.ts`,
       `pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run build`.
 - [ ] Manual: abrir `/wallet` instalado desde el home (iOS y Android) con un consumidor
       con 2 membresías reales (una Puntos, una Sellos) — arranca en "Mi QR", activar
