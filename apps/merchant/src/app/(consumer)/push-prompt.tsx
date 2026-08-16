@@ -13,7 +13,11 @@
 // A null `vapidPublicKey` means Web Push is disabled (no VAPID env) → render nothing.
 
 import { useEffect, useState } from "react";
+import { readableTextColor } from "../../lib/brand-color";
 import { IosInstallHint } from "./ios-install-hint";
+
+// Neutral button color used when no brand accent is passed (e.g. rendered by `/wallet`).
+const DEFAULT_BUTTON_BG = "#0f2a3a";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -36,8 +40,12 @@ const card: React.CSSProperties = {
 
 export function PushPrompt({
   vapidPublicKey,
+  accentColor,
 }: {
   vapidPublicKey: string | null;
+  /** Optional `#RRGGBB` brand color for the "Activar notificaciones" button (and the
+   * install hint when rendered on iOS Safari). Absent → neutral colors (`/wallet`). */
+  accentColor?: string;
 }) {
   const [isIos, setIsIos] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -103,7 +111,8 @@ export function PushPrompt({
   }
 
   // iOS Safari (not installed): instruct to install; the escape hatch is the Wallet button.
-  if (isIos && !isStandalone) return <IosInstallHint />;
+  if (isIos && !isStandalone)
+    return <IosInstallHint accentColor={accentColor} />;
 
   if (!pushSupported) return null;
 
@@ -130,8 +139,8 @@ export function PushPrompt({
               fontSize: 15,
               borderRadius: 10,
               border: "none",
-              background: "#0f2a3a",
-              color: "#fff",
+              background: accentColor ?? DEFAULT_BUTTON_BG,
+              color: accentColor ? readableTextColor(accentColor) : "#fff",
               cursor: "pointer",
             }}
           >

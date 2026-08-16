@@ -1,10 +1,10 @@
 ---
 spec: 0039
 fecha: 2026-08-16
-estado: cerrada
+estado: implementada
 resumen: La landing pública de enrolamiento (`/enroll/[programId]`) y su pantalla de confirmación muestran el branding del negocio — logo (servido por la ruta pública que ya existe, sin exponer la clave R2) y color de marca en los botones de acción (form + "Activar notificaciones" + acento del instructivo iOS), con color de texto elegido por luminancia para contraste legible. Sin logo → fallback al nombre del negocio (como hoy). No re-diseña `/wallet` (arco separado, spec 0031). Sin migración ni secreto nuevo.
 disjunta: si
-archivos: apps/merchant/src/server/consumer/enrollment.ts, apps/merchant/src/lib/brand-color.ts, apps/merchant/src/lib/brand-color.test.ts, apps/merchant/src/app/(consumer)/enroll/[programId]/page.tsx, apps/merchant/src/app/(consumer)/enroll/[programId]/enroll-form.tsx, apps/merchant/src/app/(consumer)/ios-install-hint.tsx, apps/merchant/src/app/(consumer)/push-prompt.tsx, apps/merchant/src/server/consumer-enrollment.neon.integration.test.ts
+archivos: apps/merchant/src/server/consumer/enrollment.ts, apps/merchant/src/lib/brand-color.ts, apps/merchant/src/lib/brand-color.test.ts, apps/merchant/src/app/(consumer)/enroll/[programId]/page.tsx, apps/merchant/src/app/(consumer)/enroll/[programId]/enroll-form.tsx, apps/merchant/src/app/(consumer)/ios-install-hint.tsx, apps/merchant/src/app/(consumer)/push-prompt.tsx, apps/merchant/src/server/consumer-enrollment-landing.neon.integration.test.ts (nuevo, split por hook file-size)
 ---
 
 # 0039 — Branding de la landing de enrolamiento
@@ -123,7 +123,7 @@ se introducen dependencias; no hay React Aria disponible.
 | `apps/merchant/src/app/(consumer)/enroll/[programId]/enroll-form.tsx` | editar — botón form branded + `accentColor` a los hijos |
 | `apps/merchant/src/app/(consumer)/ios-install-hint.tsx` | editar — prop opcional `accentColor` |
 | `apps/merchant/src/app/(consumer)/push-prompt.tsx` | editar — prop opcional `accentColor` |
-| `apps/merchant/src/server/consumer-enrollment.neon.integration.test.ts` | editar — `getEnrollLanding` devuelve branding con/sin logo, sin `logoObjectKey` |
+| `apps/merchant/src/server/consumer-enrollment-landing.neon.integration.test.ts (nuevo, split por hook file-size)` | editar — `getEnrollLanding` devuelve branding con/sin logo, sin `logoObjectKey` |
 
 ### Disjunta?
 

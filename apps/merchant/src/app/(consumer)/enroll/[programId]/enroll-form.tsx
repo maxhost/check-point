@@ -8,6 +8,7 @@ import {
   flagEmoji,
   isValidCountryIso,
 } from "../../../../lib/countries";
+import { readableTextColor } from "../../../../lib/brand-color";
 import { WalletButtons } from "../../wallet-cta";
 import { IosInstallHint, isIosSafariBrowser } from "../../ios-install-hint";
 import { PushPrompt } from "../../push-prompt";
@@ -38,11 +39,13 @@ export function EnrollForm({
   programId,
   businessName,
   defaultCountryIso,
+  brandPrimaryColor,
   vapidPublicKey,
 }: {
   programId: string;
   businessName: string;
   defaultCountryIso: string;
+  brandPrimaryColor: string;
   vapidPublicKey: string | null;
 }) {
   const initialIso = isValidCountryIso(defaultCountryIso)
@@ -109,9 +112,12 @@ export function EnrollForm({
             Push permission button so the transactional fallback becomes real; `PushPrompt`
             renders nothing when Web Push is disabled (`vapidPublicKey === null`). */}
         {isIosSafariBrowser() ? (
-          <IosInstallHint />
+          <IosInstallHint accentColor={brandPrimaryColor} />
         ) : (
-          <PushPrompt vapidPublicKey={vapidPublicKey} />
+          <PushPrompt
+            vapidPublicKey={vapidPublicKey}
+            accentColor={brandPrimaryColor}
+          />
         )}
         {/* Session cookie is already set by the POST — the buttons hit the
             session-authorized endpoint directly, no extra navigation. */}
@@ -264,8 +270,9 @@ export function EnrollForm({
             fontSize: 16,
             borderRadius: 10,
             border: "none",
-            background: submitting ? "#7aa7ff" : "#2563eb",
-            color: "#fff",
+            background: brandPrimaryColor,
+            color: readableTextColor(brandPrimaryColor),
+            opacity: submitting ? 0.6 : 1,
             cursor: submitting ? "default" : "pointer",
           }}
         >

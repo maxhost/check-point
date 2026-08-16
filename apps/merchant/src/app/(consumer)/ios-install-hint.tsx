@@ -11,6 +11,11 @@
 
 "use client";
 
+import { readableTextColor } from "../../lib/brand-color";
+
+// Neutral accent used when no brand color is passed (e.g. rendered by `/wallet`).
+const DEFAULT_ACCENT = "#2563eb";
+
 const card: React.CSSProperties = {
   marginTop: 20,
   padding: 18,
@@ -20,14 +25,14 @@ const card: React.CSSProperties = {
 };
 
 // Safari's "Share" glyph (rounded square with an up-arrow) — the icon the user must tap.
-function ShareGlyph() {
+function ShareGlyph({ stroke }: { stroke: string }) {
   return (
     <svg
       width="20"
       height="20"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#2563eb"
+      stroke={stroke}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -42,14 +47,14 @@ function ShareGlyph() {
 }
 
 // "Add to Home Screen" glyph (rounded square with a plus).
-function AddGlyph() {
+function AddGlyph({ stroke }: { stroke: string }) {
   return (
     <svg
       width="20"
       height="20"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#2563eb"
+      stroke={stroke}
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -74,8 +79,6 @@ const stepNum: React.CSSProperties = {
   width: 24,
   height: 24,
   borderRadius: "50%",
-  background: "#2563eb",
-  color: "#fff",
   fontSize: 13,
   fontWeight: 700,
   display: "flex",
@@ -90,7 +93,15 @@ const stepText: React.CSSProperties = {
   margin: 0,
 };
 
-export function IosInstallHint() {
+/** Optional `accentColor` (a `#RRGGBB` brand color) tints the step number badges and the
+ * step glyphs; without it the component keeps its neutral blue (so `/wallet` is untouched). */
+export function IosInstallHint({ accentColor }: { accentColor?: string }) {
+  const accent = accentColor ?? DEFAULT_ACCENT;
+  const stepNumStyle: React.CSSProperties = {
+    ...stepNum,
+    background: accent,
+    color: readableTextColor(accent),
+  };
   return (
     <section style={card}>
       <h3 style={{ fontSize: 17, margin: 0, color: "#172554" }}>
@@ -111,21 +122,22 @@ export function IosInstallHint() {
 
       <div style={{ marginTop: 6 }}>
         <div style={stepRow}>
-          <span style={stepNum}>1</span>
+          <span style={stepNumStyle}>1</span>
           <p style={stepText}>
-            Tocá el ícono <ShareGlyph /> <strong>Compartir</strong> en la barra
-            de Safari (abajo, o arriba a la derecha).
+            Tocá el ícono <ShareGlyph stroke={accent} />{" "}
+            <strong>Compartir</strong> en la barra de Safari (abajo, o arriba a
+            la derecha).
           </p>
         </div>
         <div style={stepRow}>
-          <span style={stepNum}>2</span>
+          <span style={stepNumStyle}>2</span>
           <p style={stepText}>
-            Deslizá hacia abajo y tocá <AddGlyph />{" "}
+            Deslizá hacia abajo y tocá <AddGlyph stroke={accent} />{" "}
             <strong>Añadir a pantalla de inicio</strong>.
           </p>
         </div>
         <div style={stepRow}>
-          <span style={stepNum}>3</span>
+          <span style={stepNumStyle}>3</span>
           <p style={stepText}>
             Tocá <strong>Añadir</strong>. Listo: ya tenés el ícono de Mi
             Pasaporte en tu teléfono.

@@ -44,11 +44,27 @@ export default async function EnrollPage({
       <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
         Mi Pasaporte
       </p>
-      <h1 style={{ fontSize: 24, marginTop: 4 }}>{landing.businessName}</h1>
+      {landing.hasLogo ? (
+        // Public logo route serves from R2 without exposing the object key.
+        <img
+          alt={landing.businessName}
+          src={`/api/public/brands/${landing.businessId}/logo?v=${landing.logoVersion}`}
+          style={{
+            display: "block",
+            height: 64,
+            maxWidth: "100%",
+            objectFit: "contain",
+            marginTop: 8,
+          }}
+        />
+      ) : (
+        <h1 style={{ fontSize: 24, marginTop: 4 }}>{landing.businessName}</h1>
+      )}
       <EnrollForm
         programId={programId}
         businessName={landing.businessName}
         defaultCountryIso={landing.countryCode ?? "EC"}
+        brandPrimaryColor={landing.brandPrimaryColor}
         vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
       />
     </main>

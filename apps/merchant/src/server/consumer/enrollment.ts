@@ -134,9 +134,18 @@ export async function enroll(
 
 export type EnrollLanding = {
   programId: string;
+  /** Public business id — used to build the public logo URL. */
+  businessId: string;
   businessName: string;
   /** Business country (ISO-2) — the form's default selection. May be null/empty. */
   countryCode: string | null;
+  brandPrimaryColor: string;
+  brandComplementaryColor: string;
+  brandAccentColor: string;
+  logoVersion: number;
+  /** Whether the business has a published logo. Derived from `logoObjectKey`;
+   * the internal R2 key is NEVER serialized to the client. */
+  hasLogo: boolean;
 };
 
 /** Public landing info for a program that admits enrollment, or null (unavailable). */
@@ -147,8 +156,16 @@ export async function getEnrollLanding(
     const [row] = await getDb()
       .select({
         programId: loyaltyPrograms.id,
+        businessId: businesses.id,
         businessName: businesses.name,
         countryCode: businesses.countryCode,
+        brandPrimaryColor: businesses.brandPrimaryColor,
+        brandComplementaryColor: businesses.brandComplementaryColor,
+        brandAccentColor: businesses.brandAccentColor,
+        logoVersion: businesses.logoVersion,
+        // Selected only to derive `hasLogo`; the internal R2 key is stripped below
+        // and never leaves the server (anti-leak rule, CLAUDE.md).
+        logoObjectKey: businesses.logoObjectKey,
       })
       .from(loyaltyPrograms)
       .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))
@@ -159,7 +176,9 @@ export async function getEnrollLanding(
         ),
       )
       .limit(1);
-    return row ?? null;
+    if (!row) return null;
+    const { logoObjectKey, ...rest } = row;
+    return { ...rest, hasLogo: logoObjectKey != null };
   } catch (error) {
     if (pgErrorCode(error) === "22P02") return null;
     throw error;
