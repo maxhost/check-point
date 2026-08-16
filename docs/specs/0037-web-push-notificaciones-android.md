@@ -150,6 +150,13 @@ cooldown, y la migración aditiva. Rama Neon efímera + migración `0022` verifi
 
 ## Abierto
 
+**⚠️ REENCUADRE PENDIENTE (directiva del owner 2026-08-15): la 0037 va a incluir iOS también, no
+solo Android.** Antes de cerrar esta spec hay que rehacer el alcance con el owner y revisar el ADR
+0038 (hoy dice "Web Push solo Android"). Lo específico de iOS a resolver: Web Push en iOS **exige que
+el sitio se agregue a la pantalla de inicio** (PWA instalada, iOS 16.4+) — decidir cómo se pide/guía
+esa instalación, cómo convive con el pase de Apple (que ya notifica rico), y si vale la fricción. El
+título/scope de este archivo ("…Android") se corrige cuando se cierre el reencuadre.
+
 Bloquea el cierre hasta resolverlo con el owner:
 
 - **Dónde vive el prompt de permiso** y su UX: ¿landing de enrolamiento (0028, pantalla `done`) o el

@@ -122,3 +122,18 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   que quedo viejo apuntando a la ruta borrada, no un error del codigo. Fix: `rm -f
   apps/merchant/.next/types/validator.ts` (o borrar `.next`); el proximo `next build`/`dev` lo
   regenera sin la ruta. No editar el archivo generado a mano.
+- **Vercel plan Hobby: MAXIMO 2 cron jobs y SOLO frecuencia diaria.** Un 3er cron en
+  `apps/merchant/vercel.json`, o un `schedule` sub-diario (`*/5 * * * *`), hace que Vercel
+  **rechace el deploy entero** (Production queda clavado en el commit anterior, el commit status
+  de GitHub muestra `Vercel: failure`). Los 2 crons existentes son diarios a propósito. Si una
+  feature necesita un worker frecuente sin pagar Pro: dejar el endpoint autenticado por
+  `CRON_SECRET` y dispararlo desde un **scheduler externo gratis** (GitHub Actions programado en
+  `.github/workflows/`, o cron-job.org) — patrón ya usado por `wallet-push` (spec 0033). Al pasar a
+  Pro se re-agrega el cron nativo. Diagnóstico del deploy sin acceso a Vercel: `gh api
+  repos/maxhost/check-point/commits/<sha>/status`.
+- **Formatos de imagen aceptados en subidas: viven en UN solo lugar,
+  `apps/merchant/src/lib/image-formats.ts`** (jpeg/png/webp/**heic/heif/avif** — las fotos de
+  cámara/galería de Android e iPhone son HEIC/HEIF, `sharp` las decodifica). Lo consumen los guards
+  del cliente y los allow-lists del prep de marca/sello/catálogo. **No dupliques la lista** (un
+  allow-list angosto por-feature ya causó que el sello rechazara fotos de Android — spec 0033 QA).
+  Mantener en sync con la lista de formatos de `sharp` en `server/assets/image.ts`.
