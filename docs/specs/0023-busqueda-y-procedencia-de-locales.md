@@ -1,13 +1,20 @@
 ---
 spec: 0023
 fecha: 2026-08-11
-estado: en revisión
-resumen: Alta y edición de locales con Geoapify como autocomplete principal, fallback automático Mapbox ante error y procedencia persistente de la ubicación.
+estado: implementada
+resumen: Alta y edición de locales con Geoapify como autocomplete único (Mapbox retirado por costo, 2026-08-16) y procedencia persistente de la ubicación.
 disjunta: no
 archivos: apps/merchant, packages/db, packages/contracts, pruebas y docs
 ---
 
 # 0023 — Búsqueda y procedencia de locales
+
+> **Cierre 2026-08-16 — Geoapify único, Mapbox retirado por costo.** Geoapify resuelve
+> POIs y direcciones perfectamente en producción; su fallback Mapbox se eliminó porque el
+> autocomplete de Mapbox facturó USD 5 por una sola consulta (ver ADR 0025, actualización
+> 2026-08-16). El contrato `verifyLocation`/`LocationProvider` sigue siendo provider-neutral
+> para reintroducir otro proveedor sin migrar locales. Los apartados que mencionan Mapbox
+> abajo describen el diseño original; hoy sólo Geoapify está activo.
 
 ## Problema
 
@@ -19,9 +26,10 @@ conocer su origen para operar check-ins y permitir correcciones futuras.
 
 **Entra:**
 
-- Geoapify como autocomplete principal de POIs y direcciones, limitado al país del local.
-- Fallback automático a Mapbox sólo ante un error técnico o HTTP de Geoapify. Reutiliza el
-  mismo texto y el mismo campo; una respuesta válida sin resultados no dispara Mapbox.
+- Geoapify como autocomplete único de POIs y direcciones, limitado al país del local.
+  (El fallback automático a Mapbox del diseño original se retiró por costo el 2026-08-16;
+  ante un error técnico de Geoapify la UI conserva el campo y muestra un aviso para
+  reintentar, sin consultar un segundo proveedor.)
 - Validación server-side de país, dirección y coordenadas antes de crear o editar un local.
 - Persistencia de dirección normalizada, coordenadas, proveedor, ID externo, fuente,
   instante de verificación, atribución y snapshot permitido.
@@ -47,9 +55,8 @@ Paso 2a: owner selecciona resultado Geoapify
   └─ servidor valida y guarda ubicación + procedencia geoapify
 
 Paso 2b: Geoapify falla técnica o remotamente
-  └─ el mismo control muestra carga y consulta Mapbox con el texto actual
-       └─ owner selecciona dirección → servidor valida permanentemente y guarda
-          ubicación + procedencia mapbox
+  └─ el mismo control conserva el texto y muestra un aviso para reintentar
+       (sin fallback a un segundo proveedor — Mapbox retirado por costo 2026-08-16)
 ```
 
 El owner siempre conserva el control del nombre del negocio y local. La copia normalizada
@@ -100,11 +107,10 @@ location_verification
 
 - [ ] Geoapify devuelve POIs y direcciones para el país seleccionado con un autocomplete
   accesible y responsive.
-- [ ] No se consulta Mapbox mientras Geoapify responde correctamente; ante un error de
-  Geoapify, la UI conserva el único campo, muestra carga y consulta Mapbox automáticamente
-  con el mismo texto.
-- [ ] El servidor valida país, respuesta y coordenadas para ambos proveedores; ninguna
-  coordenada arbitraria enviada por el navegador crea o modifica un local.
+- [x] Sólo se consulta Geoapify; ante un error de Geoapify la UI conserva el único campo y
+  muestra un aviso para reintentar (Mapbox retirado por costo 2026-08-16).
+- [x] El servidor valida país, respuesta y coordenadas de Geoapify; ninguna coordenada
+  arbitraria enviada por el navegador crea o modifica un local.
 - [ ] Cada local conserva una ubicación activa y su historial de procedencia: fuente,
   proveedor, ID externo cuando exista, dirección normalizada, coordenadas, atribución y
   fecha de verificación.
@@ -123,14 +129,15 @@ location_verification
 
 - [ ] Unidad: normalizar selección de Geoapify y Mapbox; rechazar país no soportado,
   coordenadas fuera de país y respuesta incompleta.
-- [ ] Unidad: resolver no invoca Mapbox cuando Geoapify responde correctamente, aunque no
-  devuelva resultados; lo invoca sólo frente a error técnico o HTTP.
+- [x] Unidad: `verifyLocation` rechaza país no soportado antes de llamar al proveedor,
+  normaliza la verificación de Geoapify con su procedencia y rechaza una selección sin
+  proveedor válido. (El caso de fallback Mapbox se eliminó junto con el adaptador.)
 - [ ] Integración: crear local por cada proveedor y comprobar `location_verification`,
   procedencia y referencia activa; una actualización conserva el historial.
 - [ ] Integración: solicitud manipulada con proveedor, ID, país o coordenadas falsos es
   rechazada por servidor.
-- [ ] E2E móvil: buscar POI Geoapify; simular su error y comprobar el fallback automático
-  Mapbox en el mismo control; crear y editar un local desde el backoffice.
+- [ ] E2E móvil: buscar POI Geoapify; simular su error y comprobar que el control conserva
+  el campo y muestra el aviso de reintento; crear y editar un local desde el backoffice.
 - [ ] Benchmark manual: al menos 100 consultas representativas de Ecuador y los países
   soportados, con tasa de hallazgo de POI y dirección por proveedor documentada antes de
   activar el flujo para todos los owners.

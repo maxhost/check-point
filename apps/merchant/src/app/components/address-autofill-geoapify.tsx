@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "iconoir-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState } from "react";
 import type { SelectedAddress } from "./address-autofill";
 import { canonicalAddress } from "../../lib/location-address";
 
@@ -17,24 +17,22 @@ export default function GeoapifyPlaceSearch({
   token,
   countryCode,
   onSelect,
-  renderMapboxFallback,
 }: {
   token: string;
   countryCode: string;
   onSelect: (address: SelectedAddress) => void;
-  renderMapboxFallback?: (query: string) => ReactNode;
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GeoapifyResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [useMapboxFallback, setUseMapboxFallback] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [selectionFinalized, setSelectionFinalized] = useState(false);
   const listId = useId();
 
   useEffect(() => {
     setQuery("");
     setResults([]);
-    setUseMapboxFallback(false);
+    setFailed(false);
     setSelectionFinalized(false);
   }, [countryCode]);
 
@@ -68,13 +66,11 @@ export default function GeoapifyPlaceSearch({
         );
         const body = (await response.json()) as { results?: GeoapifyResult[] };
         setResults(response.ok ? (body.results ?? []) : []);
-        if (!response.ok) {
-          setUseMapboxFallback(Boolean(renderMapboxFallback));
-        }
+        setFailed(!response.ok);
       } catch (error) {
         if ((error as { name?: string }).name !== "AbortError") {
           setResults([]);
-          setUseMapboxFallback(Boolean(renderMapboxFallback));
+          setFailed(true);
         }
       } finally {
         setLoading(false);
@@ -84,7 +80,7 @@ export default function GeoapifyPlaceSearch({
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [countryCode, query, renderMapboxFallback, selectionFinalized, token]);
+  }, [countryCode, query, selectionFinalized, token]);
 
   function select(result: GeoapifyResult) {
     const label = canonicalAddress(result);
@@ -97,6 +93,7 @@ export default function GeoapifyPlaceSearch({
     }
     setSelectionFinalized(true);
     setResults([]);
+    setFailed(false);
     setQuery(label);
     onSelect({
       label,
@@ -108,14 +105,6 @@ export default function GeoapifyPlaceSearch({
     });
   }
 
-  if (useMapboxFallback && renderMapboxFallback) {
-    return (
-      <div className="geoapify-place-search provider-fallback">
-        {renderMapboxFallback(query)}
-      </div>
-    );
-  }
-
   return (
     <div className="geoapify-place-search">
       <div className="geoapify-input-wrap">
@@ -124,6 +113,7 @@ export default function GeoapifyPlaceSearch({
           value={query}
           onChange={(event) => {
             setSelectionFinalized(false);
+            setFailed(false);
             setQuery(event.target.value);
           }}
           placeholder="Busca un local, lugar o dirección"
@@ -135,6 +125,12 @@ export default function GeoapifyPlaceSearch({
         />
       </div>
       {loading && <p className="field-help">Buscando lugares…</p>}
+      {failed && !loading && (
+        <p className="field-help">
+          No pudimos buscar lugares ahora. Revisá tu conexión y volvé a
+          intentar.
+        </p>
+      )}
       {results.length > 0 && (
         <ul className="geoapify-results" id={listId} role="listbox">
           {results.map((result) => (

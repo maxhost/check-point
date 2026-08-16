@@ -6,7 +6,7 @@ export type SelectedAddress = {
   label: string;
   longitude: number;
   latitude: number;
-  provider: "geoapify" | "mapbox";
+  provider: "geoapify";
   featureId?: string;
   snapshot: Record<string, unknown>;
 };
@@ -18,10 +18,6 @@ const GeoapifyPlaceSearch = dynamic(
     loading: () => <p className="field-help">Cargando buscador de lugares…</p>,
   },
 );
-const MapboxPlaceSearch = dynamic(() => import("./address-autofill-mapbox"), {
-  ssr: false,
-  loading: () => <p className="field-help">Cargando buscador de lugares…</p>,
-});
 
 export function AddressAutofillField({
   onSelect,
@@ -31,7 +27,6 @@ export function AddressAutofillField({
   countryCode: string;
 }) {
   const geoapifyToken = process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   if (!geoapifyToken) {
     return (
       <p className="field-help">
@@ -44,18 +39,6 @@ export function AddressAutofillField({
       token={geoapifyToken}
       countryCode={countryCode}
       onSelect={onSelect}
-      renderMapboxFallback={
-        mapboxToken
-          ? (query) => (
-              <MapboxPlaceSearch
-                token={mapboxToken}
-                countryCode={countryCode}
-                onSelect={onSelect}
-                initialQuery={query}
-              />
-            )
-          : undefined
-      }
     />
   );
 }

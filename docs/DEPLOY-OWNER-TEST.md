@@ -39,7 +39,10 @@ Cuando habilites cobros reales, repetir la creación de producto/precios y webho
 `STRIPE_WEBHOOK_SECRET_LIVE`; por último, cambiar sólo `STRIPE_ENVIRONMENT=live` en el
 entorno Production y redeployar. Mantén el selector `test` en Preview.
 
-## 3. Geoapify y Mapbox
+## 3. Geoapify
+
+> Mapbox se retiró como fallback el 2026-08-16 por costo (su autocomplete facturó USD 5 por
+> una sola consulta). Geoapify es el único proveedor; ya no hacen falta tokens de Mapbox.
 
 - [ ] En Geoapify → **MyProjects**, crear una clave pública para el autocomplete y
   restringirla a `http://localhost:3001` y a tus dominios Preview/Production de Vercel.
@@ -49,15 +52,6 @@ entorno Production y redeployar. Mantén el selector `test` en Preview.
   restricciones de referrer/CORS a esta clave: las llamadas server-side no las envían. Si
   el hosting ofrece IP de salida fija, restringirla a esa IP; en Vercel estándar, mantenerla
   sólo en entorno, activar alertas de uso y rotarla si fuera necesario.
-- [ ] En Mapbox → **Access tokens** → **Create a token**, crear un token **público**
-  separado para Search JS. En URL restrictions, añadir `http://localhost:3001` y
-  `https://<tu-dominio-merchant>/*`; guardar el valor `pk.…` en
-  `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`. Se usa sólo como fallback de dirección exacta.
-- [ ] Crear otro token **secreto** (`sk.…`) para el servidor, con el mínimo permiso para
-  Geocoding/Search y sin restricciones de navegador; guardar en
-  `MAPBOX_SERVER_ACCESS_TOKEN`. Nunca usar este token con `NEXT_PUBLIC_`.
-- [ ] Tener método de pago activo: el backend solicita `permanent=true` porque almacena
-  dirección y coordenadas. Mapbox exige ese modo para guardar geocodes.
 - [ ] Verificar un local, lugar o dirección real en el país elegido: Argentina, Brasil,
   Chile, Colombia, Ecuador, Uruguay, Paraguay o Perú.
 
@@ -83,9 +77,9 @@ entorno Production y redeployar. Mantén el selector `test` en Preview.
 - [ ] Generar `CRON_SECRET` con `openssl rand -base64 32` y cargarlo en Production y Preview.
   Protege los crons diarios de fidelización y limpieza de assets. El horario se eligió para
   ser compatible con Vercel Hobby; los crons sólo se ejecutan en Production.
-- [ ] Deploy. Al tener URL, volver a Stripe para crear el webhook y a Mapbox para añadir
-  el origen definitivo al token público.
-- [ ] Abrir `/onboarding`: registrar Owner → negocio/local → seleccionar dirección Mapbox
+- [ ] Deploy. Al tener URL, volver a Stripe para crear el webhook y a Geoapify para añadir
+  el origen definitivo a la clave pública.
+- [ ] Abrir `/onboarding`: registrar Owner → negocio/local → seleccionar dirección Geoapify
   → Free → `/backoffice`; repetir con Plus mensual/anual y confirmar el estado sólo
   después del webhook.
 
@@ -125,6 +119,6 @@ Resend queda desactivado hasta verificar un dominio remitente.
 
 - [Vercel monorepos](https://vercel.com/docs/monorepos)
 - [Stripe subscriptions and webhooks](https://docs.stripe.com/billing/subscriptions/webhooks)
-- [Mapbox permanent geocoding](https://docs.mapbox.com/api/search/geocoding/)
+- [Geoapify Geocoding API](https://apidocs.geoapify.com/docs/geocoding/)
 - [Cloudflare R2 S3 credentials](https://developers.cloudflare.com/r2/get-started/s3/)
 - [Cloudflare R2 CORS con URLs firmadas](https://developers.cloudflare.com/r2/buckets/cors/)

@@ -1,10 +1,19 @@
 ---
 fecha: 2026-08-11
-resumen: Geoapify es el buscador principal de POIs y direcciones; Mapbox sólo releva un fallo técnico de Geoapify y conserva procedencia por local.
+resumen: Geoapify es el buscador único de POIs y direcciones y conserva procedencia por local. El fallback Mapbox se descartó por costo (2026-08-16); el contrato queda listo para otro proveedor si hiciera falta.
 estado: aceptada
 ---
 
 # ADR 0025 — Búsqueda de locales con proveedores y procedencia
+
+> **Actualización 2026-08-16 — Mapbox retirado por costo.** En producción Geoapify
+> resuelve POIs y direcciones perfectamente para los mercados iniciales, incluido Ecuador.
+> Mapbox se conservaba sólo como fallback ante un fallo técnico de Geoapify, pero su
+> autocomplete tiene un tope bajo y facturó USD 5 por una sola consulta. Se elimina el
+> adaptador y el fallback Mapbox del flujo. El contrato de búsqueda/validación sigue siendo
+> provider-neutral (`LocationProvider`, `verifyLocation`), de modo que un proveedor
+> alternativo puede reintroducirse sin migrar locales existentes. Lo que sigue describe el
+> diseño original de dos proveedores; hoy sólo Geoapify está activo.
 
 ## Contexto
 

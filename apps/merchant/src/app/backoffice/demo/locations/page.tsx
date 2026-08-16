@@ -99,7 +99,7 @@ export default function LocationsPage() {
             <div className="map-placeholder">
               <strong>Mapa del local</strong>
               <span>
-                Marcador de demostración · Mapbox se conectará más adelante.
+                Marcador de demostración · el mapa se conectará más adelante.
               </span>
             </div>
             <button className="button" onClick={saveLocation}>

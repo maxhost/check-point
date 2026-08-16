@@ -1,4 +1,4 @@
-export type LocationProvider = "geoapify" | "mapbox";
+export type LocationProvider = "geoapify";
 
 export type LocationSelection = {
   provider?: unknown;
@@ -100,68 +100,6 @@ async function verifyGeoapify(
   };
 }
 
-async function verifyMapbox(
-  selection: LocationSelection,
-  countryCode: string,
-): Promise<VerifiedLocation> {
-  const token = process.env.MAPBOX_SERVER_ACCESS_TOKEN;
-  const longitude = coordinate(selection.longitude);
-  const latitude = coordinate(selection.latitude);
-  if (!token || !longitude || !latitude) {
-    throw new Error("La validación de Mapbox no está configurada.");
-  }
-  const params = new URLSearchParams({
-    longitude,
-    latitude,
-    access_token: token,
-    permanent: "true",
-    country: countryCode,
-    limit: "1",
-  });
-  const response = await fetch(
-    `https://api.mapbox.com/search/geocode/v6/reverse?${params.toString()}`,
-  );
-  const body = (await response.json()) as {
-    features?: Array<{
-      geometry?: { coordinates?: unknown[] };
-      properties?: {
-        full_address?: unknown;
-        place_formatted?: unknown;
-        mapbox_id?: unknown;
-        [key: string]: unknown;
-      };
-    }>;
-  };
-  const feature = body.features?.[0];
-  const coordinates = feature?.geometry?.coordinates;
-  const label =
-    nonEmpty(feature?.properties?.full_address) ??
-    nonEmpty(feature?.properties?.place_formatted);
-  const verifiedLongitude = coordinate(coordinates?.[0]);
-  const verifiedLatitude = coordinate(coordinates?.[1]);
-  if (
-    !response.ok ||
-    !feature ||
-    !label ||
-    !verifiedLongitude ||
-    !verifiedLatitude
-  ) {
-    throw new Error("No pudimos verificar esa dirección con Mapbox.");
-  }
-  return {
-    source: "provider_verified",
-    provider: "mapbox",
-    providerPlaceId:
-      nonEmpty(selection.featureId) ?? nonEmpty(feature.properties?.mapbox_id),
-    label,
-    longitude: verifiedLongitude,
-    latitude: verifiedLatitude,
-    countryCode,
-    snapshot: feature.properties ?? {},
-    attribution: null,
-  };
-}
-
 export async function verifyLocation(
   selection: LocationSelection,
   rawCountryCode: unknown,
@@ -170,9 +108,6 @@ export async function verifyLocation(
   if (!countryCode) throw new Error("El país seleccionado no está soportado.");
   if (selection.provider === "geoapify") {
     return verifyGeoapify(selection, countryCode);
-  }
-  if (selection.provider === "mapbox") {
-    return verifyMapbox(selection, countryCode);
   }
   throw new Error("Selecciona una ubicación desde el buscador.");
 }

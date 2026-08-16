@@ -386,14 +386,6 @@ input:focus {
   outline: 3px solid #c9ead7;
   border-color: #176548;
 }
-.mapbox-place-search {
-  display: block;
-  width: 100%;
-}
-.mapbox-place-search:focus-within {
-  outline: 3px solid #c9ead7;
-  border-radius: 11px;
-}
 .geoapify-place-search {
   position: relative;
   width: 100%;
