@@ -24,6 +24,13 @@ archivos: apps/merchant/src/server/consumer/enrollment.ts, apps/merchant/src/lib
 > la fuente única `lib/image-formats.ts` (mismo bug que ya cazamos en el sello, spec 0033 QA). Migrada
 > a `ACCEPTED_IMAGE_*` (cliente + server + `accept` con `image/*` en touch) y **blindada** en
 > `upload-image-formats.test.ts` (mistake→rule: ahora el guard cubre sello + catálogo + marca).
+>
+> **Enmienda post-QA 2 (2026-08-16, owner):** el fix anterior no alcanzaba — un `.jpg` seguía
+> rechazado. Causa: `image/jpg` (el MIME **no-IANA** que varios selectores de Android/apps de galería
+> de terceros reportan para `.jpg`; el registrado es `image/jpeg`) no estaba en la lista. Agregado a
+> `ACCEPTED_IMAGE_CONTENT_TYPES` como alias — `sharp` ya lo decodifica sin problema, el bug era
+> puramente del gate de content-type antes de llegar al server-prep. Sumado a `MOBILE_TYPES` del
+> guard (`upload-image-formats.test.ts`, ahora 15 tests). typecheck 3/3, unit 158, build 3/3.
 
 ## Problema
 

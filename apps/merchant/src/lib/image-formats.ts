@@ -7,9 +7,15 @@
  * of these, so the byte-sniff in `server/assets/image.ts` accepts them — this list must
  * stay in sync with that sharp-format allow-list (`["jpeg","png","webp","heif","avif"]`;
  * HEIC and HEIF both decode via the `heif` codec).
+ *
+ * `image/jpg` is NOT the IANA-registered type (`image/jpeg` is) but several Android file
+ * pickers/third-party gallery apps and some browsers report it anyway for `.jpg` files —
+ * rejecting it here would bounce a real JPEG before it ever reaches `sharp` (verified: a
+ * `.jpg` upload in brand was rejected with this list missing the alias).
  */
 export const ACCEPTED_IMAGE_CONTENT_TYPES = [
   "image/jpeg",
+  "image/jpg",
   "image/png",
   "image/webp",
   "image/heic",

@@ -50,7 +50,14 @@ import { createLogoUpload } from "./brand";
 const BUSINESS = "11111111-1111-4111-8111-111111111111";
 const byteSize = 1024;
 
-const MOBILE_TYPES = ["image/heic", "image/heif", "image/avif"] as const;
+// image/jpg is the non-IANA alias several Android pickers/gallery apps report for .jpg
+// files (image/jpeg is the registered type) — a real jpeg was bounced before it was added.
+const MOBILE_TYPES = [
+  "image/heic",
+  "image/heif",
+  "image/avif",
+  "image/jpg",
+] as const;
 
 describe("stamp prep upload accepts mobile photo formats", () => {
   for (const contentType of MOBILE_TYPES) {
