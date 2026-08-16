@@ -3,8 +3,9 @@ import { SESSION_COOKIE } from "../../../server/consumer/core";
 import { resolveSession } from "../../../server/consumer/session";
 import { renderQrSvg } from "../../../server/wallet/core";
 import { vapidFromEnv } from "../../../server/push/vapid";
-import { WalletButtons } from "../wallet-cta";
-import { PushPrompt } from "../push-prompt";
+import { listConsumerPrograms } from "../../../server/consumer/programs";
+import { hasWebPushSubscription } from "../../../server/push/subscriptions";
+import { WalletShell } from "./wallet-shell";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,47 +50,23 @@ export default async function WalletPage() {
     );
   }
 
-  const [qrSvg, ua] = await Promise.all([
+  const [qrSvg, ua, programs, hasSubscription] = await Promise.all([
     renderQrSvg(account.qrToken),
     headers().then((h) => h.get("user-agent") ?? ""),
+    listConsumerPrograms(account.id),
+    hasWebPushSubscription(account.id),
   ]);
   // Show only the Wallet platform supported by the current device.
   const isIos = /iphone|ipad|ipod/i.test(ua);
 
   return (
-    <main style={page}>
-      <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-        Mi Pasaporte
-      </p>
-      <h1 style={{ fontSize: 24, marginTop: 4 }}>
-        ¡Hola, {account.firstName}!
-      </h1>
-      <p style={{ color: "#555", marginTop: 8 }}>
-        Mostrá este código en el local para sumar tus beneficios.
-      </p>
-
-      <div
-        aria-label="Tu código QR"
-        style={{
-          marginTop: 20,
-          padding: 16,
-          background: "#fff",
-          border: "1px solid #eee",
-          borderRadius: 16,
-          width: 240,
-          maxWidth: "100%",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-        // Server-rendered SVG string from the qrToken (never exposed as text).
-        dangerouslySetInnerHTML={{ __html: qrSvg }}
-      />
-
-      <div style={{ marginTop: 24 }}>
-        <WalletButtons isIos={isIos} />
-      </div>
-
-      <PushPrompt vapidPublicKey={vapidFromEnv()?.publicKey ?? null} />
-    </main>
+    <WalletShell
+      firstName={account.firstName}
+      programs={programs}
+      initialTab={hasSubscription ? "programs" : "qr"}
+      qrSvg={qrSvg}
+      isIos={isIos}
+      vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
+    />
   );
 }

@@ -41,11 +41,13 @@ const card: React.CSSProperties = {
 export function PushPrompt({
   vapidPublicKey,
   accentColor,
+  onSubscribed,
 }: {
   vapidPublicKey: string | null;
   /** Optional `#RRGGBB` brand color for the "Activar notificaciones" button (and the
    * install hint when rendered on iOS Safari). Absent → neutral colors (`/wallet`). */
   accentColor?: string;
+  onSubscribed?: () => void;
 }) {
   const [isIos, setIsIos] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -104,7 +106,12 @@ export function PushPrompt({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
       });
-      setStatus(res.ok ? "subscribed" : "error");
+      if (res.ok) {
+        setStatus("subscribed");
+        onSubscribed?.();
+      } else {
+        setStatus("error");
+      }
     } catch {
       setStatus("error");
     }

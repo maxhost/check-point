@@ -107,6 +107,18 @@ export async function listConsumerSubscriptions(
   return rows as WebPushSubscriptionRow[];
 }
 
+/** True when the consumer has confirmed Web Push on at least one device. */
+export async function hasWebPushSubscription(
+  consumerId: string,
+): Promise<boolean> {
+  const rows = await getDb()
+    .select({ id: webPushSubscriptions.id })
+    .from(webPushSubscriptions)
+    .where(eq(webPushSubscriptions.consumerId, consumerId))
+    .limit(1);
+  return rows.length > 0;
+}
+
 /**
  * Purges every Web Push subscription of one consumer — called by `rotatePassCredentials`
  * on account recovery (spec 0032), symmetric with the device wipe: the old installed PWA

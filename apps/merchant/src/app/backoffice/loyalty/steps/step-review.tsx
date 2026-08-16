@@ -1,4 +1,4 @@
-import { CardPreview } from "../card-preview";
+import { CardPreview } from "../../../../components/loyalty/card-preview";
 import { formatMoney, spendToRedeem } from "../format";
 import type { RewardDraft } from "../use-rewards";
 import type { LoyaltyVm } from "../use-loyalty-program";

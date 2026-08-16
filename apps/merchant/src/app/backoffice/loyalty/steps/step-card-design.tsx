@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { CardPreview } from "../card-preview";
+import { CardPreview } from "../../../../components/loyalty/card-preview";
 import type { LoyaltyVm } from "../use-loyalty-program";
 import { useIsTouch } from "../../catalog/use-is-touch";
 import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../../lib/image-formats";

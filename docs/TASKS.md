@@ -8,7 +8,30 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) CERRADA con el
+Ultima actualizacion: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) IMPLEMENTADA en
+código, gates + integración Neon verdes, commiteada y pusheada a `main` para QA en vivo del owner
+— punto de retorno.** Se construyó la experiencia de dos pestañas sobre `(consumer)/wallet`:
+`wallet-shell.tsx` (estado de pestaña en cliente + gate de pestaña inicial por opt-in de push),
+`bottom-nav.tsx`, `programs-tab.tsx` (tarjeta por membresía ordenada por última actividad, filtro
+"ver cerrados", `terms-modal.tsx` de T&C), `program-card.tsx`/`points-card.tsx` (Sellos reusa
+`CardPreview` reubicado a `components/loyalty/`, Puntos usa colores+logo de marca), `qr-tab.tsx`
+(QR + Wallet + PushPrompt). Query nuevo `listConsumerPrograms` (`server/consumer/programs.ts`) con
+DTO anti-fuga R2 (reusa `toClientProgram`, sin `*ObjectKey`) + aislamiento por `consumerId`;
+`push/subscriptions.ts` gana `hasWebPushSubscription` (aditivo, único punto de contacto). **Sin
+migración ni secreto nuevo** (usa tablas ya en prod). **Gates verdes:** typecheck 3/3, lint, unit
+163/72-skip (nuevos `programs.test.ts` + `programs-tab.test.ts`), build 3/3, format:check limpio
+en los archivos de la spec. **Integración Neon 3/3** de `listConsumerPrograms` en rama efímera
+`spec-0031-programs` (`br-lucky-night-axoyd81l`, off prod `main`): branding por-negocio, orden por
+última actividad, aislamiento (`[]` para otro consumidor), detección de Web Push. **El test de
+integración cazó un bug de su propio fixture** (insertaba un programa `status:"closing"` sin la
+ventana de cierre → violaba el check `loyalty_program_closing_window_check`); se corrigió el
+fixture agregando `earningEndsAt`/`redemptionEndsAt` (assertions intactas). **Commit pusheado a
+`main` para QA en vivo del owner.** **PENDIENTE para marcar la spec `implementada`:** PASS del
+revisor independiente (`AGENT-WORKFLOW.md`) — no se corrió esta sesión — y el QA en vivo del owner
+sobre el deploy. La rama Neon efímera queda para limpiar (owner borra o expira). Detalle previo de
+la spec (diseño) abajo.)
+
+Ultima actualizacion previa: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) CERRADA con el
 owner — solo diseño, sin código, punto de retorno.** Sesión de definición de spec (no se tocó
 código). Se **reencuadró la 0031**: nació como "notificación + landing en vivo", pero ese
 mecanismo YA está implementado end-to-end (verificado en código, no asumido): `counter/orders.ts`

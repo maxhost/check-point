@@ -1,9 +1,4 @@
-/**
- * Shared visual of a Sellos card: a background (solid, or a linear gradient at a
- * configurable angle when a second color is present) and `target` stamp slots with a
- * white fill and a colored border; the first `filled` slots show the stamp image.
- * Pure-props so it can be reused in the wizard preview and, later, the consumer wallet.
- */
+/** Shared visual for the configured stamp card, used by backoffice and consumer wallet. */
 export type CardDesignColors = {
   backgroundColor: string;
   backgroundColor2: string | null;
@@ -11,7 +6,6 @@ export type CardDesignColors = {
   borderColor: string;
 };
 
-/** CSS `background` value for the card: linear gradient when a 2nd color exists, else solid. */
 export function cardBackground(design: CardDesignColors): string {
   if (design.backgroundColor2) {
     return `linear-gradient(${design.gradientAngle ?? 180}deg, ${design.backgroundColor}, ${design.backgroundColor2})`;
@@ -19,7 +13,6 @@ export function cardBackground(design: CardDesignColors): string {
   return design.backgroundColor;
 }
 
-/** How many slots the preview shows filled: half the objective, rounded (2→1, 5→3, 10→5). */
 export function filledCount(target: number): number {
   if (!Number.isFinite(target) || target <= 0) return 0;
   return Math.min(target, Math.round(target / 2));
