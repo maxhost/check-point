@@ -8,7 +8,39 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-16 (**Spec 0023 (búsqueda y procedencia de locales) — Mapbox
+Ultima actualizacion: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) CERRADA con el
+owner — solo diseño, sin código, punto de retorno.** Sesión de definición de spec (no se tocó
+código). Se **reencuadró la 0031**: nació como "notificación + landing en vivo", pero ese
+mecanismo YA está implementado end-to-end (verificado en código, no asumido): `counter/orders.ts`
+encola la fila `transactional` en `consumer.wallet_push_queue` DENTRO de la misma transacción del
+grant (CTE `pushq`, spec 0030), y el worker + ruteo por clase (0033/0038/0040) la entrega por pase
+o Web Push. Así que la "landing en vivo" pre-pase se cae del alcance sin reemplazo. La 0031 pasa a
+ser el **contenido rico del micro-portal** que el ADR 0039 §4 le había reservado: la superficie
+instalable `(consumer)/wallet` (hoy shell mínimo QR+botones, spec 0037) se convierte en experiencia
+**estilo iOS con nav inferior de 2 pestañas**. **Decisiones cerradas con el owner:** (1) pestaña
+**"Programas"** = una tarjeta por `program_membership`, ordenadas por **última actividad** (la usada
+más recientemente arriba = `MAX(core.order.created_at)` por membership, fallback `enrolledAt`, SIN
+migración); **Sellos** reusa `CardPreview` (spec 0027) con `filled=stampsCount` real; **Puntos** —que
+nunca tuvo diseño propio (columnas `card*` son Sellos-only)— usa colores de marca + **logo** del
+negocio en tarjeta grande compuesta; **ícono info → popup de T&C** (`termsMarkdown`, texto plano SIN
+parser de markdown —el repo no tiene ninguno, CLAUDE.md desaconseja deps—; el popup es contenedor
+extensible a futuro); **filtro** "Ver programas cerrados" (default solo `active`, revela
+`closing`/`inactive` atenuados). (2) pestaña **"Mi QR"** = el contenido actual (QR + `WalletButtons`
++ `PushPrompt`), sin regresión. (3) **Gate de pestaña inicial:** "Mi QR" primero hasta que el
+consumidor confirma notificaciones, luego "Programas" (señal = suscripción Web Push:
+`hasWebPushSubscription` para SSR sin flash + callback `onSubscribed` en `PushPrompt`; el gate elige
+default, NO bloquea —ambas pestañas tocables desde la nav—). **Query nuevo** `listConsumerPrograms`
+(`server/consumer/programs.ts`) con DTO anti-fuga R2 (reusa `toClientProgram`, sin `*ObjectKey`, test
+por entidad) + aislamiento por `consumerId` de sesión. **`card-preview.tsx` se reubica** a
+`components/loyalty/` (sus estilos viven en `globals.css` del layout raíz → aplican en la ruta del
+consumidor sin tocar nada). **Sin migración ni secreto nuevo.** Estado de docs: spec 0031 `cerrada`,
+INDEX actualizado. Nada commiteado aún (commit autorizado por el owner en esta sesión). **Próximo
+paso: implementar la spec 0031** con el protocolo de `AGENT-WORKFLOW.md` (implementador → revisor
+independiente; rama Neon efímera para el test de integración de `listConsumerPrograms`). **Disjunta**
+frente a 0032/0040 —único punto de contacto: agrega `hasWebPushSubscription` a `push/subscriptions.ts`,
+aditivo—. Sin dependencias nuevas → no hace falta re-warmear el store de pnpm.)
+
+Ultima actualizacion previa: 2026-08-16 (**Spec 0023 (búsqueda y procedencia de locales) — Mapbox
 retirado por costo, Geoapify único proveedor, QA en vivo del owner CERRADO, punto de retorno.**
 El owner reportó que Geoapify resuelve locales/direcciones perfectamente en producción (incl.
 Ecuador) y que el fallback Mapbox facturó USD 5 por una sola consulta de autocomplete. Se
