@@ -27,6 +27,50 @@ const BLACK = "#111111";
 const WHITE_LUMINANCE = 1; // luminance of pure white (#ffffff)
 const BLACK_LUMINANCE = relativeLuminance(0x11, 0x11, 0x11);
 
+/** Parses a `#RRGGBB` hex to 8-bit r/g/b, or null when it is not a valid hex color. */
+function parseHex(hex: string): { r: number; g: number; b: number } | null {
+  const match = /^#([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!match) return null;
+  const h = match[1];
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
+}
+
+function toHex(n: number): string {
+  return Math.max(0, Math.min(255, Math.round(n)))
+    .toString(16)
+    .padStart(2, "0");
+}
+
+/**
+ * Mixes `hex` toward a target channel value by `amount` (0 = unchanged, 1 = fully the
+ * target). Used to derive tints (toward white) and shades (toward black) of a brand color
+ * so a branded card's background/border/ink stay coherent with any accent. Invalid input
+ * returns the original string unchanged (harmless as a CSS value).
+ */
+function mix(hex: string, target: number, amount: number): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  const a = Math.max(0, Math.min(1, amount));
+  const r = rgb.r + (target - rgb.r) * a;
+  const g = rgb.g + (target - rgb.g) * a;
+  const b = rgb.b + (target - rgb.b) * a;
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/** A lighter version of `hex`: mixes it toward white by `amount` (0..1). */
+export function tint(hex: string, amount: number): string {
+  return mix(hex, 255, amount);
+}
+
+/** A darker version of `hex`: mixes it toward black by `amount` (0..1). */
+export function shade(hex: string, amount: number): string {
+  return mix(hex, 0, amount);
+}
+
 /**
  * Picks the readable text color (`'#111111'` or `'#ffffff'`) over a `#RRGGBB` background,
  * by WCAG contrast ratio: compares the ratio against white and against near-black and

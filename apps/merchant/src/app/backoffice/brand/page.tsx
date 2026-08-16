@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
+import { useIsTouch } from "../catalog/use-is-touch";
+import {
+  ACCEPTED_IMAGE_ACCEPT_ATTR,
+  ACCEPTED_IMAGE_LABEL,
+} from "../../../lib/image-formats";
 import { RegionalFields } from "./regional-fields";
 import { useBrandLogo } from "./use-brand-logo";
 
@@ -32,6 +37,7 @@ export default function BrandPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const logo = useBrandLogo();
+  const isTouch = useIsTouch();
 
   useEffect(() => {
     void load();
@@ -168,14 +174,14 @@ export default function BrandPage() {
             <input
               ref={logo.fileInput}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
               onChange={(event) =>
                 logo.choose(event.target.files?.[0], setError)
               }
             />
           </label>
           <p className="field-help">
-            PNG, JPEG o WebP · máximo 5 MB · hasta 2048 × 2048 px.
+            {ACCEPTED_IMAGE_LABEL} · máximo 5 MB · hasta 2048 × 2048 px.
           </p>
           {visibleLogo && (
             <button

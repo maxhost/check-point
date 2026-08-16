@@ -135,5 +135,9 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   `apps/merchant/src/lib/image-formats.ts`** (jpeg/png/webp/**heic/heif/avif** — las fotos de
   cámara/galería de Android e iPhone son HEIC/HEIF, `sharp` las decodifica). Lo consumen los guards
   del cliente y los allow-lists del prep de marca/sello/catálogo. **No dupliques la lista** (un
-  allow-list angosto por-feature ya causó que el sello rechazara fotos de Android — spec 0033 QA).
-  Mantener en sync con la lista de formatos de `sharp` en `server/assets/image.ts`.
+  allow-list angosto por-feature ya causó que el sello rechazara fotos de Android — spec 0033 QA, y
+  **de nuevo en marca/backoffice — spec 0039 QA**: la lista angosta estaba hardcodeada en 3 lugares
+  (guard cliente, allow-list server, `accept` del input)). Mantener en sync con la lista de formatos
+  de `sharp` en `server/assets/image.ts`. **Guard:** `server/upload-image-formats.test.ts` pinnea
+  sello + catálogo + marca aceptando HEIC/HEIF/AVIF — si agregás una superficie de subida nueva,
+  sumala a ese test.

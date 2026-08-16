@@ -11,17 +11,15 @@
 
 "use client";
 
-import { readableTextColor } from "../../lib/brand-color";
+import { readableTextColor, shade, tint } from "../../lib/brand-color";
 
 // Neutral accent used when no brand color is passed (e.g. rendered by `/wallet`).
 const DEFAULT_ACCENT = "#2563eb";
 
-const card: React.CSSProperties = {
+const cardBase: React.CSSProperties = {
   marginTop: 20,
   padding: 18,
-  border: "1px solid #bfdbfe",
   borderRadius: 14,
-  background: "#eff6ff",
 };
 
 // Safari's "Share" glyph (rounded square with an up-arrow) — the icon the user must tap.
@@ -87,16 +85,27 @@ const stepNum: React.CSSProperties = {
   lineHeight: 1,
 };
 const stepText: React.CSSProperties = {
-  color: "#1e3a5f",
   fontSize: 14,
   lineHeight: 1.5,
   margin: 0,
 };
 
-/** Optional `accentColor` (a `#RRGGBB` brand color) tints the step number badges and the
- * step glyphs; without it the component keeps its neutral blue (so `/wallet` is untouched). */
+/** Optional `accentColor` (a `#RRGGBB` brand color) themes the whole card — background,
+ * border, heading/glyph ink and the step badges are all derived from it so the surface
+ * stays coherent with ANY brand color. Without it the component keeps its neutral blue
+ * (so `/wallet` is untouched: the same tints of `#2563eb` reproduce the old palette). */
 export function IosInstallHint({ accentColor }: { accentColor?: string }) {
   const accent = accentColor ?? DEFAULT_ACCENT;
+  // Derived, coherent surface: very light tint as the fill, a light tint as the border,
+  // and a dark shade as the ink (readable heading/glyph strokes on the tinted fill).
+  const cardBg = tint(accent, 0.9);
+  const cardBorder = tint(accent, 0.68);
+  const ink = shade(accent, 0.5);
+  const card: React.CSSProperties = {
+    ...cardBase,
+    background: cardBg,
+    border: `1px solid ${cardBorder}`,
+  };
   const stepNumStyle: React.CSSProperties = {
     ...stepNum,
     background: accent,
@@ -104,12 +113,12 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
   };
   return (
     <section style={card}>
-      <h3 style={{ fontSize: 17, margin: 0, color: "#172554" }}>
+      <h3 style={{ fontSize: 17, margin: 0, color: ink }}>
         Instalá tu pasaporte en la pantalla de inicio
       </h3>
       <p
         style={{
-          color: "#1e3a5f",
+          color: "#334155",
           marginTop: 8,
           fontSize: 14,
           lineHeight: 1.5,
@@ -123,22 +132,21 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
       <div style={{ marginTop: 6 }}>
         <div style={stepRow}>
           <span style={stepNumStyle}>1</span>
-          <p style={stepText}>
-            Tocá el ícono <ShareGlyph stroke={accent} />{" "}
-            <strong>Compartir</strong> en la barra de Safari (abajo, o arriba a
-            la derecha).
+          <p style={{ ...stepText, color: "#334155" }}>
+            Tocá el ícono <ShareGlyph stroke={ink} /> <strong>Compartir</strong>{" "}
+            en la barra de Safari (abajo, o arriba a la derecha).
           </p>
         </div>
         <div style={stepRow}>
           <span style={stepNumStyle}>2</span>
-          <p style={stepText}>
-            Deslizá hacia abajo y tocá <AddGlyph stroke={accent} />{" "}
+          <p style={{ ...stepText, color: "#334155" }}>
+            Deslizá hacia abajo y tocá <AddGlyph stroke={ink} />{" "}
             <strong>Añadir a pantalla de inicio</strong>.
           </p>
         </div>
         <div style={stepRow}>
           <span style={stepNumStyle}>3</span>
-          <p style={stepText}>
+          <p style={{ ...stepText, color: "#334155" }}>
             Tocá <strong>Añadir</strong>. Listo: ya tenés el ícono de Mi
             Pasaporte en tu teléfono.
           </p>

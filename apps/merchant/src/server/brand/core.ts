@@ -23,4 +23,7 @@ export class BrandError extends Error {
 }
 
 export const colorPattern = /^#[0-9a-fA-F]{6}$/;
-export const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+// Single source of truth (CLAUDE.md): the brand logo accepts the same formats as the
+// stamp/catalog uploads — including the mobile-camera HEIC/HEIF/AVIF that `sharp` decodes.
+// A narrow per-feature list here already rejected Android/iPhone photos before (QA).
+export { ACCEPTED_IMAGE_CONTENT_TYPE_SET as imageTypes } from "../../lib/image-formats";

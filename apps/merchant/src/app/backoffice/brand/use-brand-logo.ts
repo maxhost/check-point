@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-
-const imageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+import {
+  ACCEPTED_IMAGE_CONTENT_TYPE_SET,
+  ACCEPTED_IMAGE_LABEL,
+} from "../../../lib/image-formats";
 
 /**
  * Client state for the deferred brand logo: choosing or removing only changes the
@@ -22,8 +24,8 @@ export function useBrandLogo() {
 
   function choose(file: File | undefined, onError: (message: string) => void) {
     if (!file) return;
-    if (!imageTypes.has(file.type)) {
-      onError("El logo debe ser PNG, JPEG o WebP.");
+    if (!ACCEPTED_IMAGE_CONTENT_TYPE_SET.has(file.type)) {
+      onError(`El logo debe ser ${ACCEPTED_IMAGE_LABEL}.`);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {

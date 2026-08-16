@@ -13,6 +13,7 @@ import {
   readObjectAtMost,
 } from "./r2";
 import { AssetImageError, normalizeImage } from "./assets/image";
+import { ACCEPTED_IMAGE_LABEL } from "../lib/image-formats";
 import { BrandError, type BrandRecord, imageTypes } from "./brand/core";
 import { validateBrandInput } from "./brand/validation";
 import { cleanupPrefixNow } from "./brand/cleanup";
@@ -58,7 +59,7 @@ export async function createLogoUpload(userId: string, value: unknown) {
     typeof input.contentType !== "string" ||
     !imageTypes.has(input.contentType)
   ) {
-    throw new BrandError(422, "El logo debe ser PNG, JPEG o WebP.");
+    throw new BrandError(422, `El logo debe ser ${ACCEPTED_IMAGE_LABEL}.`);
   }
   if (
     !Number.isInteger(input.byteSize) ||
@@ -84,10 +85,7 @@ export async function createLogoUpload(userId: string, value: unknown) {
     const { createTemporaryUploadUrl } = await import("./r2");
     const uploadUrl = await createTemporaryUploadUrl({
       objectKey,
-      contentType: input.contentType as
-        | "image/jpeg"
-        | "image/png"
-        | "image/webp",
+      contentType: input.contentType,
       byteSize: Number(input.byteSize),
     });
     return { uploadId: id, uploadUrl, expiresAt: expiresAt.toISOString() };

@@ -12,6 +12,18 @@ archivos: apps/merchant/src/server/consumer/enrollment.ts, apps/merchant/src/lib
 > Completa la superficie pública de la spec **0028** (enrolamiento) con el branding del negocio
 > (spec **0025**: colores + logo en R2). El `/wallet` rico (dashboard multi-programa con tarjetas
 > por diseño) es la spec **0031** y queda **fuera** de acá.
+>
+> **Enmienda post-QA (2026-08-16, owner):** dos fixes hallados al probar. (1) **Card del instructivo
+> iOS con acento de marca se veía roto:** el fondo/borde estaban fijos en una paleta azul que solo
+> combinaba con el azul neutro; con un acento arbitrario chocaban. Ahora el card **deriva** su
+> fondo (`tint(accent, 0.9)`), borde (`tint(accent, 0.68)`) y tinta de encabezado/glifos
+> (`shade(accent, 0.5)`) del acento → coherente con cualquier color (helpers `tint`/`shade` puros en
+> `lib/brand-color.ts`, unit-testeados; con el azul neutro reproducen la paleta previa, `/wallet`
+> intacto). (2) **Bug de formatos de imagen en marca (backoffice):** subir una foto de Android/iPhone
+> (HEIC/HEIF) daba "no compatible" — marca tenía la lista angosta hardcodeada en 3 lugares en vez de
+> la fuente única `lib/image-formats.ts` (mismo bug que ya cazamos en el sello, spec 0033 QA). Migrada
+> a `ACCEPTED_IMAGE_*` (cliente + server + `accept` con `image/*` en touch) y **blindada** en
+> `upload-image-formats.test.ts` (mistake→rule: ahora el guard cubre sello + catálogo + marca).
 
 ## Problema
 
