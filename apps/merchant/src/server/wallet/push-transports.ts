@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { walletPasses, walletPushDevices } from "../schema";
 import {
@@ -93,24 +93,94 @@ async function sendGoogle(
 }
 
 /**
- * Fan-out of one notice to ALL transports the consumer has (ADR 0038): the wallet pass
- * (Apple APNs + Google `addMessage`, spec 0033) AND Web Push (spec 0037). Each transport
- * is best-effort — one failing transport never blocks the others — and every error is
- * collected so the caller records it on the queue row. This is a SINGLE notice: the
- * per-consumer cooldown counts it once (the caller closes exactly one queue row).
+ * Is there a wallet pass of this consumer that can actually notify? (ADR 0040). True iff
+ * EITHER an Apple pass has a registered `wallet_push_device` (an APNs token to wake) OR a
+ * Google pass exists (Google delivers via `addMessage`, no device row needed). A generated
+ * Apple pass with NO device registered is NOT reachable — that is the exact case the
+ * transactional fallback must catch to reach the consumer by Web Push instead. Resolved in
+ * ONE query (two `EXISTS`, no rows pulled).
+ */
+export async function consumerHasReachableWallet(
+  consumerId: string,
+): Promise<boolean> {
+  const res = await getDb().execute(sql`
+    SELECT (
+      EXISTS (
+        SELECT 1
+        FROM consumer.wallet_push_device d
+        JOIN consumer.wallet_pass p ON p.id = d.wallet_pass_id
+        WHERE p.consumer_id = ${consumerId} AND p.provider = 'apple'
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM consumer.wallet_pass g
+        WHERE g.consumer_id = ${consumerId} AND g.provider = 'google'
+      )
+    ) AS reachable`);
+  const rows = Array.isArray(res)
+    ? (res as Record<string, unknown>[])
+    : (((res as { rows?: unknown[] } | null)?.rows ?? []) as Record<
+        string,
+        unknown
+      >[]);
+  return rows[0]?.reachable === true;
+}
+
+/** Which transports carry one notice, decided by its class (ADR 0040). Pure so the
+ * routing is unit-testable without a DB — the effectful send lives in
+ * {@link deliverTransports}. `transactional` goes ONLY by wallet when it is reachable, and
+ * falls back to Web Push ONLY when it is not (the two never coexist → never a duplicate).
+ * `campaign` keeps the provisional fan-out until the campaign spec refines it. */
+export type TransportPlan = {
+  apple: boolean;
+  google: boolean;
+  webPush: boolean;
+};
+export function planTransports(
+  noticeClass: string,
+  reachableWallet: boolean,
+): TransportPlan {
+  if (noticeClass === "transactional") {
+    return reachableWallet
+      ? { apple: true, google: true, webPush: false }
+      : { apple: false, google: false, webPush: true };
+  }
+  // `campaign` (provisional, no rows in prod): keep the ADR 0038 fan-out.
+  return { apple: true, google: true, webPush: true };
+}
+
+/**
+ * Delivers one notice over the transports selected by its `class` (ADR 0040, supersedes
+ * the ADR 0038 §3 fan-out). A `transactional` goes by wallet (Apple APNs + Google
+ * `addMessage`, spec 0033) when the consumer has a reachable pass, else falls back to Web
+ * Push (spec 0037) — never both, so no duplicate. `campaign` keeps the provisional
+ * fan-out. Each transport is best-effort — one failing transport never blocks the others —
+ * and every error is collected so the caller records it on the queue row. This is a SINGLE
+ * notice: the per-consumer cooldown counts it once (the caller closes exactly one row).
  */
 export async function deliverTransports(
   consumerId: string,
   message: PushMessage,
+  noticeClass: string,
   opts: { channel: PushChannel; webPushChannel: WebPushChannel | null },
 ): Promise<string[]> {
-  return [
-    ...(await sendApple(consumerId, message, opts.channel)),
-    ...(await sendGoogle(consumerId, message, opts.channel)),
-    ...(await deliverWebPush(
-      consumerId,
-      { title: message.header, body: message.body, url: NOTICE_URL },
-      opts.webPushChannel,
-    )),
-  ];
+  const reachable =
+    noticeClass === "transactional"
+      ? await consumerHasReachableWallet(consumerId)
+      : false;
+  const plan = planTransports(noticeClass, reachable);
+  const errors: string[] = [];
+  if (plan.apple)
+    errors.push(...(await sendApple(consumerId, message, opts.channel)));
+  if (plan.google)
+    errors.push(...(await sendGoogle(consumerId, message, opts.channel)));
+  if (plan.webPush)
+    errors.push(
+      ...(await deliverWebPush(
+        consumerId,
+        { title: message.header, body: message.body, url: NOTICE_URL },
+        opts.webPushChannel,
+      )),
+    );
+  return errors;
 }

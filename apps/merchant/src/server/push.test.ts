@@ -13,6 +13,7 @@ import {
   derivePlatform,
   webPushSubscriptionResponse,
 } from "./push/subscriptions";
+import { planTransports } from "./wallet/push-transports";
 
 /** A raw web-push-style VAPID pair: public = 65-byte uncompressed b64url, private = d b64url. */
 function vapidPair() {
@@ -155,6 +156,41 @@ describe("web push subscription DTO never leaks secrets", () => {
     expect(json).not.toContain("SECRET-P256DH");
     expect(json).not.toContain("SECRET-AUTH");
     expect(dto).toMatchObject({ id: "sub-1", platform: "android" });
+  });
+});
+
+// The pure transport router (ADR 0040). `consumerHasReachableWallet` needs a DB, so the
+// end-to-end fake-channel assertions live in the Neon integration; here we pin the pure
+// class→transport decision that guarantees no transactional ever emits by two transports.
+describe("transport routing by class (spec 0038 / ADR 0040)", () => {
+  it("transactional + reachable wallet → wallet only, NEVER Web Push", () => {
+    expect(planTransports("transactional", true)).toEqual({
+      apple: true,
+      google: true,
+      webPush: false,
+    });
+  });
+
+  it("transactional + NO reachable wallet → Web Push fallback only (no wallet)", () => {
+    expect(planTransports("transactional", false)).toEqual({
+      apple: false,
+      google: false,
+      webPush: true,
+    });
+  });
+
+  it("wallet and Web Push never coexist for a transactional (no duplicate)", () => {
+    for (const reachable of [true, false]) {
+      const plan = planTransports("transactional", reachable);
+      const wallet = plan.apple || plan.google;
+      expect(wallet && plan.webPush).toBe(false);
+    }
+  });
+
+  it("campaign keeps the provisional fan-out regardless of reachability", () => {
+    const fanOut = { apple: true, google: true, webPush: true };
+    expect(planTransports("campaign", true)).toEqual(fanOut);
+    expect(planTransports("campaign", false)).toEqual(fanOut);
   });
 });
 

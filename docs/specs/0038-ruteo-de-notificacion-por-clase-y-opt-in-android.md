@@ -1,10 +1,10 @@
 ---
 spec: 0038
 fecha: 2026-08-16
-estado: cerrada
+estado: implementada
 resumen: El aviso transaccional se entrega SOLO por wallet (Apple/Google) y cae a Web Push por fallback si el consumidor no tiene un pase alcanzable — elimina las notificaciones duplicadas del QA iOS (pase + Web Push). Web Push deja de ser transporte por defecto del transaccional. Además, la confirmación del enroll ofrece el opt-in de notificación por plataforma: iOS mantiene el instructivo "añadir a inicio"; Android suma un botón de permiso de notificación (única vía para que el fallback de Android sea real). Sin migración ni secreto nuevo.
 disjunta: si
-archivos: apps/merchant/src/server/wallet/push.ts, apps/merchant/src/server/wallet/push-transports.ts, apps/merchant/src/app/(consumer)/enroll/[programId]/page.tsx, apps/merchant/src/app/(consumer)/enroll/[programId]/enroll-form.tsx, apps/merchant/src/server/push.test.ts, apps/merchant/src/server/wallet-push-worker.neon.integration.test.ts
+archivos: apps/merchant/src/server/wallet/push.ts, apps/merchant/src/server/wallet/push-transports.ts, apps/merchant/src/app/(consumer)/enroll/[programId]/page.tsx, apps/merchant/src/app/(consumer)/enroll/[programId]/enroll-form.tsx, apps/merchant/src/server/push.test.ts, apps/merchant/src/server/wallet-push-routing.neon.integration.test.ts (nuevo), apps/merchant/src/server/web-push.neon.integration.test.ts (reencuadre a campaign)
 ---
 
 # 0038 — Ruteo de notificación por clase de aviso + opt-in de Android
@@ -134,8 +134,9 @@ ya viaja en el `Claim`.
 | `apps/merchant/src/server/wallet/push.ts` | editar — `Claim.class`, `claimRow` RETURNING, `deliverClaimed` pasa la clase |
 | `apps/merchant/src/app/(consumer)/enroll/[programId]/page.tsx` | editar — pasa `vapidPublicKey` a `EnrollForm` |
 | `apps/merchant/src/app/(consumer)/enroll/[programId]/enroll-form.tsx` | editar — `PushPrompt` para Android / `IosInstallHint` para iOS |
-| `apps/merchant/src/server/push.test.ts` | editar — unit del ruteo por clase (con canales `fake`) |
-| `apps/merchant/src/server/wallet-push-worker.neon.integration.test.ts` | editar — integración: transaccional con/ sin pase alcanzable |
+| `apps/merchant/src/server/push.test.ts` | editar — unit del ruteo puro (`planTransports`) |
+| `apps/merchant/src/server/wallet-push-routing.neon.integration.test.ts` | crear — integración: `consumerHasReachableWallet` (4 casos) + transaccional con/sin pase alcanzable (nuevo archivo, split por hook `file-size`; el worker test quedó intacto) |
+| `apps/merchant/src/server/web-push.neon.integration.test.ts` | editar — el test del fan-out del transaccional se reencuadra a la clase `campaign` (la que conserva el fan-out por ADR 0040) |
 
 ### Disjunta?
 

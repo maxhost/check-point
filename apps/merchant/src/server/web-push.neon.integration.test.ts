@@ -167,7 +167,11 @@ describe.skipIf(!integrationEnabled)(
       expect(await purgeConsumerSubscriptions(consumer.id)).toBe(0);
     }, 30_000);
 
-    it("fan-out delivers by webpush AND wallet and counts as ONE cooldown/queue row", async () => {
+    // A `campaign` keeps the ADR 0038 fan-out (wallet + Web Push). The transactional NO
+    // LONGER fans out (spec 0038 / ADR 0040 routes it by class: wallet, else Web Push
+    // fallback — never both); that contract is proven in
+    // `wallet-push-routing.neon.integration.test.ts`.
+    it("a campaign fans out by webpush AND wallet and counts as ONE cooldown/queue row", async () => {
       const consumer = await newConsumer();
       const apple = await ensureWalletPass(consumer.id, "apple");
       await ensureWalletPass(consumer.id, "google");
@@ -184,7 +188,7 @@ describe.skipIf(!integrationEnabled)(
         authKey: "auth",
         userAgent: "UA",
       });
-      const id = await enqueue(consumer.id, "transactional");
+      const id = await enqueue(consumer.id, "campaign");
 
       const walletFake = new FakePushChannel();
       const webFake = new FakeWebPushChannel();

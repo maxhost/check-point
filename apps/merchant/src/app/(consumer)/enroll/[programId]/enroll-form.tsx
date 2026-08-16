@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/countries";
 import { WalletButtons } from "../../wallet-cta";
 import { IosInstallHint, isIosSafariBrowser } from "../../ios-install-hint";
+import { PushPrompt } from "../../push-prompt";
 
 type Screen =
   | { kind: "form" }
@@ -37,10 +38,12 @@ export function EnrollForm({
   programId,
   businessName,
   defaultCountryIso,
+  vapidPublicKey,
 }: {
   programId: string;
   businessName: string;
   defaultCountryIso: string;
+  vapidPublicKey: string | null;
 }) {
   const initialIso = isValidCountryIso(defaultCountryIso)
     ? defaultCountryIso
@@ -100,9 +103,16 @@ export function EnrollForm({
         <p style={{ color: "#333", marginTop: 8 }}>
           Ya sos parte del programa de <strong>{businessName}</strong>.
         </p>
-        {/* On iOS, installing the portal is the primary next step; the Wallet pass
-            remains available immediately below it. */}
-        {isIosSafariBrowser() ? <IosInstallHint /> : null}
+        {/* Opt-in by platform (spec 0038 / ADR 0040). iOS Safari keeps the "add to home
+            screen" hint (decoupled from Web Push being configured — it stands for the
+            portal/pass even when `vapidPublicKey` is null). Android/desktop get the Web
+            Push permission button so the transactional fallback becomes real; `PushPrompt`
+            renders nothing when Web Push is disabled (`vapidPublicKey === null`). */}
+        {isIosSafariBrowser() ? (
+          <IosInstallHint />
+        ) : (
+          <PushPrompt vapidPublicKey={vapidPublicKey} />
+        )}
         {/* Session cookie is already set by the POST — the buttons hit the
             session-authorized endpoint directly, no extra navigation. */}
         <div style={{ marginTop: 20 }}>

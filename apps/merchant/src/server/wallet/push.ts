@@ -76,7 +76,12 @@ export {
   planConsumerDrain,
 } from "./push-plan";
 
-type Claim = { consumerId: string; title: string; body: string };
+type Claim = {
+  consumerId: string;
+  title: string;
+  body: string;
+  class: string;
+};
 
 /**
  * Race-safe claim: flips exactly one due row to `sending` and returns its payload, or
@@ -97,13 +102,14 @@ async function claimRow(id: string, now: Date): Promise<Claim | null> {
     WHERE id = ${id}
       AND status IN ('pending', 'sending')
       AND not_before <= ${now.toISOString()}
-    RETURNING consumer_id, title, body`);
+    RETURNING consumer_id, title, body, class`);
   const [row] = rowsOf(res);
   if (!row) return null;
   return {
     consumerId: String(row.consumer_id),
     title: String(row.title),
     body: String(row.body),
+    class: String(row.class),
   };
 }
 
@@ -117,10 +123,11 @@ type DeliverOpts = {
   now: Date;
 };
 
-/** Materializes the notice on the consumer and fans it out to ALL transports (pass +
- * Web Push), then closes the row (`sent`) and preempts pending campaigns — or backs off
- * on failure. The fan-out is ONE notice: exactly one queue row closes, so the
- * per-consumer cooldown counts a multi-transport notice as a single push (ADR 0038). */
+/** Materializes the notice on the consumer and delivers it over the transports selected
+ * by its `class` (ADR 0040: transactional → wallet, else Web Push fallback), then closes
+ * the row (`sent`) and preempts pending campaigns — or backs off on failure. It is ONE
+ * notice: exactly one queue row closes, so the per-consumer cooldown counts it as a single
+ * push (ADR 0038) regardless of how many transports the class selected. */
 async function deliverClaimed(
   id: string,
   claim: Claim,
@@ -137,10 +144,12 @@ async function deliverClaimed(
     // Per-transport delivery is best-effort (one bad transport never blocks the pass
     // update or another transport); every APNs/Google/Web Push error is recorded on the
     // row so a misconfigured transport is visible in the DB instead of a silent `sent`.
-    const deliveryErrors = await deliverTransports(claim.consumerId, message, {
-      channel,
-      webPushChannel,
-    });
+    const deliveryErrors = await deliverTransports(
+      claim.consumerId,
+      message,
+      claim.class,
+      { channel, webPushChannel },
+    );
     const deliveryError = deliveryErrors.length
       ? deliveryErrors.join(" | ").slice(0, 500)
       : null;

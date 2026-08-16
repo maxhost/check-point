@@ -1,4 +1,5 @@
 import { getEnrollLanding } from "../../../../server/consumer/enrollment";
+import { vapidFromEnv } from "../../../../server/push/vapid";
 import { EnrollForm } from "./enroll-form";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,7 @@ export default async function EnrollPage({
         programId={programId}
         businessName={landing.businessName}
         defaultCountryIso={landing.countryCode ?? "EC"}
+        vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
       />
     </main>
   );
