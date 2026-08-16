@@ -90,6 +90,20 @@ export function vapidAuthHeader(jwt: string, publicKey: string): string {
 type Env = Record<string, string | undefined>;
 
 /**
+ * Normalizes the VAPID `sub` claim to a URI. RFC 8292 §2.1 requires `sub` to be a
+ * `mailto:` or `https:` URI; Apple's push service **rejects a bare email with 403**
+ * (verified in prod QA — `WEB_PUSH_VAPID_SUBJECT=hola@…` silently 403'd every Web Push
+ * while wallet push kept working). A plain `foo@bar` (no scheme) is coerced to
+ * `mailto:foo@bar` so a misconfigured env var can never disable the channel. An already
+ * schemed value (`mailto:`/`https:`/`http:`) passes through untouched.
+ */
+export function normalizeVapidSubject(subject: string): string {
+  const trimmed = subject.trim();
+  if (/^(mailto:|https?:)/i.test(trimmed)) return trimmed;
+  return `mailto:${trimmed}`;
+}
+
+/**
  * Reads the VAPID key pair from the environment, or null when unconfigured — the caller
  * then treats Web Push as a disabled provider (no prompt, no send), analogous to a 503
  * from an unconfigured wallet provider (ADR 0024).
@@ -98,7 +112,8 @@ export function vapidFromEnv(env: Env = process.env): VapidKeys | null {
   const publicKey = env.WEB_PUSH_VAPID_PUBLIC_KEY;
   const privateKey = env.WEB_PUSH_VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return null;
-  const subject =
-    env.WEB_PUSH_VAPID_SUBJECT ?? "mailto:soporte@mipasaporte.app";
+  const subject = normalizeVapidSubject(
+    env.WEB_PUSH_VAPID_SUBJECT ?? "mailto:soporte@mipasaporte.app",
+  );
   return { publicKey, privateKey, subject };
 }

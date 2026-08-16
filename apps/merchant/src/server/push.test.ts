@@ -4,6 +4,7 @@ import {
   audienceOf,
   buildVapidJwt,
   importVapidKey,
+  normalizeVapidSubject,
   vapidAuthHeader,
   vapidFromEnv,
 } from "./push/vapid";
@@ -77,6 +78,31 @@ describe("VAPID JWT (ES256, RFC 8292)", () => {
     });
     expect(cfg).toMatchObject({ publicKey: "pub", privateKey: "priv" });
     expect(cfg?.subject).toMatch(/^mailto:/);
+  });
+
+  it("normalizes a bare-email subject to a mailto: URI (Apple 403 guard)", () => {
+    // A bare email in WEB_PUSH_VAPID_SUBJECT made Apple's push service 403 every send
+    // (prod QA). It must be coerced to a mailto: URI so the channel can't be disabled by
+    // a missing scheme.
+    expect(normalizeVapidSubject("hola@nocodecompany.co")).toBe(
+      "mailto:hola@nocodecompany.co",
+    );
+    expect(normalizeVapidSubject("  hola@nocodecompany.co  ")).toBe(
+      "mailto:hola@nocodecompany.co",
+    );
+    // Already-schemed values pass through untouched.
+    expect(normalizeVapidSubject("mailto:a@b.co")).toBe("mailto:a@b.co");
+    expect(normalizeVapidSubject("https://mipasaporte.app")).toBe(
+      "https://mipasaporte.app",
+    );
+    // Applied through the env reader.
+    expect(
+      vapidFromEnv({
+        WEB_PUSH_VAPID_PUBLIC_KEY: "pub",
+        WEB_PUSH_VAPID_PRIVATE_KEY: "priv",
+        WEB_PUSH_VAPID_SUBJECT: "hola@nocodecompany.co",
+      })?.subject,
+    ).toBe("mailto:hola@nocodecompany.co");
   });
 });
 

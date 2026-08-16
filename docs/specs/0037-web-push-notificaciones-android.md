@@ -36,6 +36,17 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 > la sección "Tus programas"** de `(consumer)/wallet/page.tsx` (con su query de memberships e imports
 > muertos). UI-only; typecheck 3/3, lint, unit 136, build 3/3, prettier. **Falta re-QA del owner.**
 >
+> **Enmienda post-QA 3 (2026-08-16, QA iOS real):** el Web Push **no llegaba en iOS** (el wallet
+> sí). Diagnóstico por SQL en prod: la suscripción se creó bien (`web_push_subscription` con la
+> `ios`), la fila de cola quedó `sent`, pero `last_error = "webpush: push service responded 403"`
+> — Apple `web.push.apple.com` rechazaba la **autenticación VAPID**. Causa raíz: el
+> `WEB_PUSH_VAPID_SUBJECT` estaba cargado como **email pelado** (`hola@nocodecompany.co`) sin
+> el esquema `mailto:` que exige RFC 8292 §2.1; el par de claves era válido (verificado derivando
+> la pública desde la privada con ECDH). **Fix de config (owner):** `mailto:hola@nocodecompany.co`
+> en Vercel. **Fix estructural (mistake→rule):** `normalizeVapidSubject()` en `push/vapid.ts`
+> antepone `mailto:` a cualquier subject sin esquema, así una env var mal cargada nunca puede
+> deshabilitar el canal en silencio; test unitario nuevo (unit 137). typecheck 3/3, lint, prettier.
+>
 > Cuarta rebanada del canal de notificación. Depende de la spec **0033** (cola + worker +
 > canal de push), del **ADR 0037** (outbox/prioridad/cooldown), del **ADR 0038** (dos
 > transportes `wallet`/`webpush`) y del **ADR 0039** (iOS vía PWA + micro-portal + escape
