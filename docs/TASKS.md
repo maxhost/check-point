@@ -8,7 +8,41 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) IMPLEMENTADA en
+Ultima actualizacion: 2026-08-16 (**Spec 0041 (brand kit — afiche de enrolamiento por local)
+CERRADA con el owner + ADR 0042 aceptado — solo diseño, sin código, punto de retorno.** Sesión de
+definición de spec (no se tocó código de producto). El owner pidió retomar el **brand kit**: un
+generador en el backoffice de "Marca" del afiche imprimible con el QR que los consumidores escanean
+en el local para enrolarse. Se ancló todo al código real (mapa por subagente Explore): hoy el QR de
+enrolamiento **no se genera en ningún lado** (la ruta `/enroll/<programId>` existe y está brandeada,
+0028/0039, pero no hay superficie que dibuje el QR), el enrolamiento **no guarda de qué local vino**
+(solo la venta lo tiene, `order.location_id`, 0030) y **un negocio tiene un solo programa operativo**
+(índice único) → "Marca ↔ programa" es 1:1, sin selector de programa. **Decisión de fondo (ADR
+0042): la atribución por local es una dimensión UNIVERSAL de todo evento de valor** (alta, venta,
+acumulación, canje futuro), capturada de dos fuentes — **counter** para eventos del operador
+(venta/acumulación ya cubiertas por `order.location_id`; el canje, que aún NO existe como
+transacción, nacerá con `location_id`) y **QR escaneado** para el alta self-service. "Separar stats
+por local" = `GROUP BY location_id`; el **tablero** es otra feature. **Spec 0041 (cerrada)
+implementa la primera pieza:** wizard de 3 pasos (elegir plantilla → chequear logo/colores → preview
+editable) en `/backoffice/brand/kit`; **5 plantillas** curadas por rubro pintadas con logo+colores de
+marca; **QR server-side** reusando `renderQrSvg` (lib `qrcode`, SVG, **sin dep nueva**) a **EC nivel
+H**, con estilos básicos dep-free (negro / teñido de marca / **logo al centro**); salida = **HTML/SVG
++ CSS `@media print` A4/A5** → "Guardar como PDF" del navegador (sin librería de PDF); alcance
+**Global o por local** (oculto con 1 local), el QR por local codifica `/enroll/<programId>?loc=<localId>`;
+**atribución del alta** = nueva columna nullable **`origin_location_id`** en `program_membership`
+(FK `set null`, migración aditiva ~`0024`), validada contra el negocio del programa (un `loc` ajeno
+se ignora, el alta nunca se rompe), sin pisar en re-alta idempotente. **Decisiones del owner
+cerradas:** un solo programa por marca; PDF por impresión del navegador (A4+A5); 5 plantillas por
+rubro; textos/CTA con default por `kind` editables en el preview; wizard; estilos de QR básicos sin
+dep. **Estado de docs:** ADR 0042 escrito (`aceptada`), spec 0041 `cerrada`, INDEX actualizado (filas
+0042 + 0041). **`disjunta: no`** — único punto de contacto con specs abiertas: `brand/page.tsx`
+(comparte con la 0040/cropper, ambos aditivos → serializar esa edición si 0040 corre en paralelo);
+0032 (OTP) no toca `program_membership` ni el enroll. **Próximo paso: implementar la spec 0041** con
+el protocolo de `AGENT-WORKFLOW.md` (implementador → revisor independiente; rama Neon efímera para la
+integración de atribución `origin_location_id` + migración `0024` verificada). Sin dependencias
+nuevas → no hace falta re-warmear el store de pnpm. **Residual heredado pendiente: QA en vivo del
+owner de la spec 0031** (checklist Manual, ver entrada previa). Detalle de la 0031 abajo.)
+
+Ultima actualizacion previa: 2026-08-16 (**Spec 0031 (micro-portal del consumidor) IMPLEMENTADA en
 código, gates + integración Neon verdes, commiteada y pusheada a `main` para QA en vivo del owner
 — punto de retorno.** Se construyó la experiencia de dos pestañas sobre `(consumer)/wallet`:
 `wallet-shell.tsx` (estado de pestaña en cliente + gate de pestaña inicial por opt-in de push),
