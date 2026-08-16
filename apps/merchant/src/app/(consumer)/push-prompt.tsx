@@ -13,6 +13,7 @@
 // A null `vapidPublicKey` means Web Push is disabled (no VAPID env) → render nothing.
 
 import { useEffect, useState } from "react";
+import { IosInstallHint } from "./ios-install-hint";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -102,24 +103,7 @@ export function PushPrompt({
   }
 
   // iOS Safari (not installed): instruct to install; the escape hatch is the Wallet button.
-  if (isIos && !isStandalone) {
-    return (
-      <section style={card}>
-        <h3 style={{ fontSize: 15, margin: 0 }}>
-          Sumá Mi Pasaporte a tu pantalla de inicio
-        </h3>
-        <p style={{ color: "#555", marginTop: 8, fontSize: 14 }}>
-          Tocá Compartir <span aria-hidden>⎋</span> y elegí{" "}
-          <strong>Añadir a inicio</strong> → <strong>Añadir</strong>. Vas a
-          tener tus programas, cupones y tu QR a mano — y recibir avisos.
-        </p>
-        <p style={{ color: "#888", marginTop: 8, fontSize: 13 }}>
-          ¿Solo querés el pase? Usá el botón de Apple Wallet de arriba, sin
-          instalar nada.
-        </p>
-      </section>
-    );
-  }
+  if (isIos && !isStandalone) return <IosInstallHint />;
 
   if (!pushSupported) return null;
 

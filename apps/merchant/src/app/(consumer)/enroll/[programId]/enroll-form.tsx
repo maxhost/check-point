@@ -9,6 +9,7 @@ import {
   isValidCountryIso,
 } from "../../../../lib/countries";
 import { WalletButtons } from "../../wallet-cta";
+import { IosInstallHint, isIosSafariBrowser } from "../../ios-install-hint";
 
 type Screen =
   | { kind: "form" }
@@ -105,6 +106,10 @@ export function EnrollForm({
         <div style={{ marginTop: 20 }}>
           <WalletButtons isIos={isIos} />
         </div>
+        {/* iOS Safari lands here right after registering (ADR 0039 §2(1)): show HOW to
+            add to the home screen and WHY, inline — not hidden behind a later click. The
+            Wallet buttons above double as the escape hatch. */}
+        {isIosSafariBrowser() ? <IosInstallHint /> : null}
         <a
           href="/wallet"
           style={{

@@ -18,6 +18,14 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 > `web_view_token` per-consumidor (ADR 0039 §5: rotar el token deja el ícono viejo en 404); el
 > revisor la evaluó y aceptó como cumpliendo la intención del ADR. `public/sw.js` sí es estático.
 >
+> **Enmienda post-QA (2026-08-16, owner en iPhone real):** el instructivo de "añadir a inicio"
+> vivía solo en `/wallet` (detrás del link "Ver mi tarjeta"), pero el ADR 0039 §2(1) lo ubica en
+> la **landing de Safari post-registro** = la pantalla "¡Listo!" del enroll (spec 0028). Se extrajo
+> a un componente presentacional reusable `(consumer)/ios-install-hint.tsx` (+ `isIosSafariBrowser()`)
+> y se renderiza inline en la confirmación del enroll (`enroll-form.tsx`, screen `done`) para iOS
+> Safari, junto a los botones de Wallet (escape hatch). `push-prompt.tsx` reusa el mismo componente.
+> UI-only; typecheck 3/3, lint, unit 136, build 3/3.
+>
 > Cuarta rebanada del canal de notificación. Depende de la spec **0033** (cola + worker +
 > canal de push), del **ADR 0037** (outbox/prioridad/cooldown), del **ADR 0038** (dos
 > transportes `wallet`/`webpush`) y del **ADR 0039** (iOS vía PWA + micro-portal + escape
