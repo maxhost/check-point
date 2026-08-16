@@ -26,6 +26,16 @@ archivos: apps/merchant/src/server/schema/consumer.ts, apps/merchant/src/server/
 > Safari, junto a los botones de Wallet (escape hatch). `push-prompt.tsx` reusa el mismo componente.
 > UI-only; typecheck 3/3, lint, unit 136, build 3/3.
 >
+> **Enmienda post-QA 2 (2026-08-16, owner en iPhone real):** ajustes de UX sobre el instructivo
+> y la confirmación. (1) Se **quitó el botón "Abrir Compartir"** de `ios-install-hint.tsx`: usaba
+> `navigator.share()`, que abre la hoja de compartir *del contenido* (mandar-un-link) — NUNCA
+> contiene "Añadir a pantalla de inicio", esa acción vive solo en el menú de Safari; el botón
+> confundía. (2) Se **rehízo el paso a paso**: beneficio fuerte arriba (un toque = QR + avisos +
+> beneficio esperando) + 3 pasos numerados con los glifos de Compartir y Añadir dibujados como
+> **SVG inline** (sin assets externos; se pueden swapear por capturas reales luego). (3) Se **quitó
+> la sección "Tus programas"** de `(consumer)/wallet/page.tsx` (con su query de memberships e imports
+> muertos). UI-only; typecheck 3/3, lint, unit 136, build 3/3, prettier. **Falta re-QA del owner.**
+>
 > Cuarta rebanada del canal de notificación. Depende de la spec **0033** (cola + worker +
 > canal de push), del **ADR 0037** (outbox/prioridad/cooldown), del **ADR 0038** (dos
 > transportes `wallet`/`webpush`) y del **ADR 0039** (iOS vía PWA + micro-portal + escape

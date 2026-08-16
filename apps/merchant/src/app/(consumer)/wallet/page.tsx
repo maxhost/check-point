@@ -1,11 +1,4 @@
 import { cookies, headers } from "next/headers";
-import { eq } from "drizzle-orm";
-import { getDb } from "../../../server/db";
-import {
-  businesses,
-  loyaltyPrograms,
-  programMemberships,
-} from "../../../server/schema";
 import { SESSION_COOKIE } from "../../../server/consumer/core";
 import { resolveSession } from "../../../server/consumer/session";
 import { renderQrSvg } from "../../../server/wallet/core";
@@ -63,20 +56,6 @@ export default async function WalletPage() {
   // Show only the Wallet platform supported by the current device.
   const isIos = /iphone|ipad|ipod/i.test(ua);
 
-  const memberships = await getDb()
-    .select({
-      membershipId: programMemberships.id,
-      programId: programMemberships.programId,
-      businessName: businesses.name,
-    })
-    .from(programMemberships)
-    .innerJoin(
-      loyaltyPrograms,
-      eq(loyaltyPrograms.id, programMemberships.programId),
-    )
-    .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))
-    .where(eq(programMemberships.consumerId, account.id));
-
   return (
     <main style={page}>
       <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
@@ -111,31 +90,6 @@ export default async function WalletPage() {
       </div>
 
       <PushPrompt vapidPublicKey={vapidFromEnv()?.publicKey ?? null} />
-
-      <section style={{ marginTop: 32 }}>
-        <h2 style={{ fontSize: 18 }}>Tus programas</h2>
-        {memberships.length === 0 ? (
-          <p style={{ color: "#777", marginTop: 8 }}>
-            Todavía no tenés programas.
-          </p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, marginTop: 8 }}>
-            {memberships.map((m) => (
-              <li
-                key={m.membershipId}
-                style={{
-                  padding: "12px 14px",
-                  border: "1px solid #eee",
-                  borderRadius: 10,
-                  marginTop: 8,
-                }}
-              >
-                {m.businessName}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </main>
   );
 }
