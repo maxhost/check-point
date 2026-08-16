@@ -44,10 +44,6 @@ export default async function EnrollPage({
         Mi Pasaporte
       </p>
       <h1 style={{ fontSize: 24, marginTop: 4 }}>{landing.businessName}</h1>
-      <p style={{ color: "#555", marginTop: 8, marginBottom: 24 }}>
-        Sumate al programa de fidelidad. Solo necesitamos tu nombre y tu
-        teléfono.
-      </p>
       <EnrollForm
         programId={programId}
         businessName={landing.businessName}

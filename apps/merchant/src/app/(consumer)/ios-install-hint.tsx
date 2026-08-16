@@ -1,34 +1,70 @@
 // Shared iOS "add to home screen" instructions (spec 0037, ADR 0039 §2(1)). Shown on
 // the Safari landing after registering (the enroll confirmation, spec 0028) AND on the
 // `/wallet` portal when opened in Safari — the two places an iOS user lands before the
-// app is installed. Pure/presentational (no hooks): each parent decides WHEN to render it
-// (only when iOS && !standalone), so it never appears where the Push API is actually
-// reachable. It sells the value of the portal and points at the always-rendered Apple
-// Wallet button as the escape hatch ("solo dame mi pase" — no install needed).
+// app is installed. Each parent decides WHEN to render it (only when iOS && !standalone),
+// so it never appears where the Push API is actually reachable.
+
+"use client";
 
 const card: React.CSSProperties = {
   marginTop: 20,
-  padding: 16,
-  border: "1px solid #eee",
-  borderRadius: 12,
-  background: "#fafafa",
+  padding: 18,
+  border: "1px solid #bfdbfe",
+  borderRadius: 14,
+  background: "#eff6ff",
 };
 
 export function IosInstallHint() {
+  function openShareSheet() {
+    if (navigator.share) {
+      void navigator
+        .share({ title: "Mi Pasaporte", url: window.location.href })
+        .catch(() => {});
+    }
+  }
+
   return (
     <section style={card}>
-      <h3 style={{ fontSize: 15, margin: 0 }}>
-        Sumá Mi Pasaporte a tu pantalla de inicio
+      <h3 style={{ fontSize: 17, margin: 0, color: "#172554" }}>
+        Tené Mi Pasaporte siempre a mano
       </h3>
-      <p style={{ color: "#555", marginTop: 8, fontSize: 14 }}>
-        Tocá Compartir <span aria-hidden>⎋</span> y elegí{" "}
-        <strong>Añadir a inicio</strong> → <strong>Añadir</strong>. Vas a tener
-        tus programas, cupones y tu QR a mano — y recibir avisos cuando sumás
-        puntos o sellos.
+      <p style={{ color: "#1e3a5f", marginTop: 8, fontSize: 14 }}>
+        Agregala a la pantalla de inicio para acceder a tu QR y beneficios como
+        una app.
       </p>
-      <p style={{ color: "#888", marginTop: 8, fontSize: 13 }}>
-        ¿Solo querés el pase? Usá el botón de Apple Wallet de arriba, sin
-        instalar nada.
+      {typeof navigator !== "undefined" && "share" in navigator ? (
+        <button
+          type="button"
+          onClick={openShareSheet}
+          style={{
+            marginTop: 4,
+            width: "100%",
+            padding: "11px 14px",
+            border: "none",
+            borderRadius: 9,
+            background: "#2563eb",
+            color: "#fff",
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Abrir Compartir
+        </button>
+      ) : null}
+      <p
+        style={{
+          color: "#334155",
+          marginTop: 12,
+          fontSize: 13,
+          lineHeight: 1.45,
+        }}
+      >
+        Si no aparece la opción, tocá los tres puntitos, luego{" "}
+        <strong>Compartir</strong>,<strong> Ver más</strong> y{" "}
+        <strong>Añadir a la pantalla de inicio</strong>. En inglés:{" "}
+        <strong>Share</strong> → <strong>View More</strong> →{" "}
+        <strong>Add to Home Screen</strong>.
       </p>
     </section>
   );

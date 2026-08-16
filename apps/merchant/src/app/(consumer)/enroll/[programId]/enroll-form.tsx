@@ -90,7 +90,7 @@ export function EnrollForm({
   }
 
   if (screen.kind === "done") {
-    // Client-side UA detection only reorders the buttons; both are always shown.
+    // Client-side detection selects the Wallet platform available on this device.
     const isIos =
       typeof navigator !== "undefined" &&
       /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -98,18 +98,16 @@ export function EnrollForm({
       <section>
         <h2 style={{ fontSize: 20 }}>¡Listo, {screen.firstName}! 🎉</h2>
         <p style={{ color: "#333", marginTop: 8 }}>
-          Ya sos parte del programa de <strong>{businessName}</strong>. Sumá tu
-          pase a la billetera de tu teléfono:
+          Ya sos parte del programa de <strong>{businessName}</strong>.
         </p>
+        {/* On iOS, installing the portal is the primary next step; the Wallet pass
+            remains available immediately below it. */}
+        {isIosSafariBrowser() ? <IosInstallHint /> : null}
         {/* Session cookie is already set by the POST — the buttons hit the
-            session-authorized endpoints directly, no extra navigation. */}
+            session-authorized endpoint directly, no extra navigation. */}
         <div style={{ marginTop: 20 }}>
           <WalletButtons isIos={isIos} />
         </div>
-        {/* iOS Safari lands here right after registering (ADR 0039 §2(1)): show HOW to
-            add to the home screen and WHY, inline — not hidden behind a later click. The
-            Wallet buttons above double as the escape hatch. */}
-        {isIosSafariBrowser() ? <IosInstallHint /> : null}
         <a
           href="/wallet"
           style={{
@@ -169,95 +167,101 @@ export function EnrollForm({
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      <label style={label} htmlFor="firstName">
-        Nombre
-      </label>
-      <input
-        id="firstName"
-        style={inputStyle}
-        value={firstName}
-        onChange={(e) => setFirstName(e.target.value)}
-        autoComplete="given-name"
-        required
-      />
-      <label style={label} htmlFor="lastName">
-        Apellido
-      </label>
-      <input
-        id="lastName"
-        style={inputStyle}
-        value={lastName}
-        onChange={(e) => setLastName(e.target.value)}
-        autoComplete="family-name"
-        required
-      />
-      <label style={label} htmlFor="country">
-        País
-      </label>
-      <select
-        id="country"
-        style={inputStyle}
-        value={countryIso}
-        onChange={(e) => setCountryIso(e.target.value)}
-        required
-      >
-        {COUNTRIES.map((c) => (
-          <option key={c.iso2} value={c.iso2}>
-            {flagEmoji(c.iso2)} {c.name} (+{c.dial})
-          </option>
-        ))}
-      </select>
-      <label style={label} htmlFor="phone">
-        Teléfono
-      </label>
-      <input
-        id="phone"
-        style={inputStyle}
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-        inputMode="tel"
-        autoComplete="tel-national"
-        placeholder="987654321"
-        required
-      />
-      <p style={{ fontSize: 13, color: "#666", marginTop: 6 }}>
-        Guardá tu teléfono: lo vas a necesitar para recuperar tu tarjeta si
-        cambiás o perdés este dispositivo.
+    <section>
+      <p style={{ color: "#555", marginTop: 8, marginBottom: 24 }}>
+        Sumate al programa de fidelidad. Solo necesitamos tu nombre y tu
+        teléfono.
       </p>
-      {toast ? (
-        <p
-          role="alert"
+      <form onSubmit={onSubmit}>
+        <label style={label} htmlFor="firstName">
+          Nombre
+        </label>
+        <input
+          id="firstName"
+          style={inputStyle}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          autoComplete="given-name"
+          required
+        />
+        <label style={label} htmlFor="lastName">
+          Apellido
+        </label>
+        <input
+          id="lastName"
+          style={inputStyle}
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          autoComplete="family-name"
+          required
+        />
+        <label style={label} htmlFor="country">
+          País
+        </label>
+        <select
+          id="country"
+          style={inputStyle}
+          value={countryIso}
+          onChange={(e) => setCountryIso(e.target.value)}
+          required
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.iso2} value={c.iso2}>
+              {flagEmoji(c.iso2)} {c.name} (+{c.dial})
+            </option>
+          ))}
+        </select>
+        <label style={label} htmlFor="phone">
+          Teléfono
+        </label>
+        <input
+          id="phone"
+          style={inputStyle}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          inputMode="tel"
+          autoComplete="tel-national"
+          placeholder="987654321"
+          required
+        />
+        <p style={{ fontSize: 13, color: "#666", marginTop: 6 }}>
+          Guardá tu teléfono: lo vas a necesitar para recuperar tu tarjeta si
+          cambiás o perdés este dispositivo.
+        </p>
+        {toast ? (
+          <p
+            role="alert"
+            style={{
+              marginTop: 12,
+              padding: "10px 12px",
+              background: "#fdecea",
+              border: "1px solid #f5c6cb",
+              borderRadius: 10,
+              color: "#a1352c",
+              fontSize: 14,
+            }}
+          >
+            {toast}
+          </p>
+        ) : null}
+        <button
+          type="submit"
+          disabled={submitting}
           style={{
-            marginTop: 12,
-            padding: "10px 12px",
-            background: "#fdecea",
-            border: "1px solid #f5c6cb",
+            marginTop: 20,
+            width: "100%",
+            padding: "13px 14px",
+            fontSize: 16,
             borderRadius: 10,
-            color: "#a1352c",
-            fontSize: 14,
+            border: "none",
+            background: submitting ? "#7aa7ff" : "#2563eb",
+            color: "#fff",
+            cursor: submitting ? "default" : "pointer",
           }}
         >
-          {toast}
-        </p>
-      ) : null}
-      <button
-        type="submit"
-        disabled={submitting}
-        style={{
-          marginTop: 20,
-          width: "100%",
-          padding: "13px 14px",
-          fontSize: 16,
-          borderRadius: 10,
-          border: "none",
-          background: submitting ? "#7aa7ff" : "#2563eb",
-          color: "#fff",
-          cursor: submitting ? "default" : "pointer",
-        }}
-      >
-        {submitting ? "Registrando…" : "Sumarme al programa"}
-      </button>
-    </form>
+          {submitting ? "Registrando…" : "Sumarme al programa"}
+        </button>
+      </form>
+    </section>
   );
 }

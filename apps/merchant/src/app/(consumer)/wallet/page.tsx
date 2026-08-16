@@ -60,7 +60,7 @@ export default async function WalletPage() {
     renderQrSvg(account.qrToken),
     headers().then((h) => h.get("user-agent") ?? ""),
   ]);
-  // Detection reorders the buttons; both are ALWAYS shown (fallback), never hidden.
+  // Show only the Wallet platform supported by the current device.
   const isIos = /iphone|ipad|ipod/i.test(ua);
 
   const memberships = await getDb()
