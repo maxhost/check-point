@@ -3684,6 +3684,46 @@ input:focus {
   font-weight: 800;
 }
 
+/* Poster fit guard: the QR is an action, not decoration. Each design keeps a
+   bounded quiet zone so the code remains entirely inside A4 and A5 prints. */
+.poster,
+.poster * {
+  box-sizing: border-box;
+}
+.poster-qr {
+  flex: none;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+.poster-qr svg {
+  width: 100%;
+  height: 100%;
+}
+.tpl-bar,
+.tpl-retail,
+.tpl-services,
+.tpl-minimal,
+.tpl-lodging {
+  min-height: 0;
+}
+.tpl-bar-qrcard .poster-qr { width: min(50cqw, 100%); }
+.tpl-lodging-qr .poster-qr { width: min(46cqw, 100%); }
+.tpl-retail-qr .poster-qr { width: min(48cqw, 100%); }
+.tpl-services-qr .poster-qr { width: 100%; }
+.tpl-minimal-qr .poster-qr { width: min(52cqw, 100%); }
+
+@media print {
+  .brand-kit-print-page {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .brand-kit-print-page .poster {
+    width: 100%;
+    max-height: 100%;
+  }
+}
+
 /* ==========================================================================
    Print — leave only the poster(s) on the page at the chosen size. The active
    @page size (A4/A5) is injected inline by the preview step. `visibility`

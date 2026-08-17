@@ -19,6 +19,7 @@ export type PosterPreviewProps = {
   /** Base black-module, EC-H QR SVG for the active scope (global or a local). */
   qrSvg: string;
   qrStyle: QrStyle;
+  label: string;
   headline: string;
   subheadline: string;
 };
@@ -36,6 +37,7 @@ type TemplateProps = {
   logoPath: string | null;
   colors: PosterColors;
   qrSvg: string;
+  label: string;
   headline: string;
   subheadline: string;
 };

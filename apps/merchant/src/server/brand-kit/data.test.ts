@@ -37,6 +37,7 @@ describe("kitBusinessDTO", () => {
 describe("kitDefaults", () => {
   it("gives stamp-flavored copy for a stamps program", () => {
     const d = kitDefaults("stamps");
+    expect(d.label).toBeTruthy();
     expect(d.headline).toMatch(/sello|tarjeta/i);
     expect(d.subheadline).toBeTruthy();
   });

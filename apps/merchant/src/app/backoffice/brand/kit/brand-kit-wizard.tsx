@@ -41,6 +41,7 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
     complementary: data.business.brandComplementaryColor,
     accent: data.business.brandAccentColor,
   });
+  const [label, setLabel] = useState(data.defaults.label);
   const [headline, setHeadline] = useState(data.defaults.headline);
   const [subheadline, setSubheadline] = useState(data.defaults.subheadline);
   const [qrStyle, setQrStyle] = useState<QrStyle>("black");
@@ -101,6 +102,8 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
               business={data.business}
               colors={colors}
               onColors={setColors}
+              label={label}
+              onLabel={setLabel}
               headline={headline}
               onHeadline={setHeadline}
               subheadline={subheadline}

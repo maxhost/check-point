@@ -15,6 +15,8 @@ export type PosterProps = {
   colors: PosterColors;
   /** QR SVG string, already run through `styleQr` (black | tinted | logo). Inlined. */
   qrSvg: string;
+  /** Small line next to the logo. It is owner-editable, never template copy. */
+  label: string;
   headline: string;
   subheadline: string;
 };

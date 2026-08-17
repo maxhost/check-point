@@ -23,6 +23,8 @@ export function StepPreview({
   business,
   colors,
   onColors,
+  label,
+  onLabel,
   headline,
   onHeadline,
   subheadline,
@@ -42,6 +44,8 @@ export function StepPreview({
   business: KitBusiness;
   colors: PosterColors;
   onColors: (c: PosterColors) => void;
+  label: string;
+  onLabel: (v: string) => void;
   headline: string;
   onHeadline: (v: string) => void;
   subheadline: string;
@@ -80,6 +84,7 @@ export function StepPreview({
         colors={colors}
         qrSvg={scope.qrSvg}
         qrStyle={qrStyle}
+        label={label}
         headline={headline}
         subheadline={subheadline}
       />
@@ -139,6 +144,15 @@ export function StepPreview({
           </label>
         </div>
 
+        <label className="brand-kit-field">
+          Texto junto al logo
+          <input
+            type="text"
+            value={label}
+            maxLength={48}
+            onChange={(e) => onLabel(e.target.value)}
+          />
+        </label>
         <label className="brand-kit-field">
           Título
           <input

@@ -3,12 +3,12 @@ import { posterVars, type PosterProps } from "./types";
 
 // Alojamiento: a calm, premium welcome card for reception or room folders.
 export function TemplateLodging(props: PosterProps) {
-  const { businessName, logoPath, colors, qrSvg, headline, subheadline } =
+  const { businessName, logoPath, colors, qrSvg, label, headline, subheadline } =
     props;
   return (
     <div className="poster tpl-lodging" style={posterVars(colors)}>
       <PosterLogo logoPath={logoPath} businessName={businessName} />
-      <span className="tpl-lodging-kicker">Invitación para huéspedes</span>
+      <span className="tpl-lodging-kicker">{label}</span>
       <span className="tpl-lodging-name">{businessName}</span>
       <h1 className="tpl-lodging-headline">{headline}</h1>
       <p className="tpl-lodging-sub">{subheadline}</p>

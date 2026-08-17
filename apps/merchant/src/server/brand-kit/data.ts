@@ -39,7 +39,7 @@ export type BrandKitReady = {
   globalScope: KitScope;
   /** Empty when the business has fewer than 2 locales (no per-local posters). */
   locationScopes: KitScope[];
-  defaults: { headline: string; subheadline: string };
+  defaults: { label: string; headline: string; subheadline: string };
 };
 
 /** No operational program (`active`/`closing`) → the whole wizard is blocked. The
@@ -71,22 +71,26 @@ export function kitBusinessDTO(row: BusinessRow): KitBusiness {
 
 /** Default poster copy by program `kind`. Editable in the preview (never persisted). */
 export function kitDefaults(kind: string): {
+  label: string;
   headline: string;
   subheadline: string;
 } {
   if (kind === "stamps") {
     return {
+      label: "Beneficios para clientes",
       headline: "Juntá sellos. Llevate premios.",
       subheadline: "Sumate gratis y recibí tu primer sello.",
     };
   }
   if (kind === "points") {
     return {
+      label: "Beneficios para clientes",
       headline: "Sumá puntos en cada visita",
       subheadline: "Sumate gratis y empezá a acumular puntos.",
     };
   }
   return {
+    label: "Beneficios para clientes",
     headline: "Tus visitas tienen premio",
     subheadline: "Sumate gratis y empezá a recibir beneficios.",
   };

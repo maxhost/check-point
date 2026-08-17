@@ -3,14 +3,14 @@ import { posterVars, type PosterProps } from "./types";
 
 // Minimalista genérica: editorial and extremely legible, with one oversized action.
 export function TemplateMinimal(props: PosterProps) {
-  const { businessName, logoPath, colors, qrSvg, headline, subheadline } =
+  const { businessName, logoPath, colors, qrSvg, label, headline, subheadline } =
     props;
   return (
     <div className="poster tpl-minimal" style={posterVars(colors)}>
       <header className="tpl-minimal-head">
         <PosterLogo logoPath={logoPath} businessName={businessName} />
         <div>
-          <span className="tpl-minimal-kicker">Programa de fidelización</span>
+          <span className="tpl-minimal-kicker">{label}</span>
           <span className="tpl-minimal-name">{businessName}</span>
         </div>
       </header>

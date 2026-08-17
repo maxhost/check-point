@@ -3,14 +3,14 @@ import { posterVars, type PosterProps } from "./types";
 
 // Retail: an offer-ticket composition designed to stop the eye in a busy checkout.
 export function TemplateRetail(props: PosterProps) {
-  const { businessName, logoPath, colors, qrSvg, headline, subheadline } =
+  const { businessName, logoPath, colors, qrSvg, label, headline, subheadline } =
     props;
   return (
     <div className="poster tpl-retail" style={posterVars(colors)}>
       <header className="tpl-retail-band">
         <PosterLogo logoPath={logoPath} businessName={businessName} />
         <div>
-          <span className="tpl-retail-kicker">Club de clientes</span>
+          <span className="tpl-retail-kicker">{label}</span>
           <span className="tpl-retail-name">{businessName}</span>
         </div>
       </header>

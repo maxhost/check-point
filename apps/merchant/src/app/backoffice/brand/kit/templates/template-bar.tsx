@@ -3,14 +3,14 @@ import { posterVars, type PosterProps } from "./types";
 
 // Bar & gastronomía: benefit first, with a deliberately obvious scan zone for the counter.
 export function TemplateBar(props: PosterProps) {
-  const { businessName, logoPath, colors, qrSvg, headline, subheadline } =
+  const { businessName, logoPath, colors, qrSvg, label, headline, subheadline } =
     props;
   return (
     <div className="poster tpl-bar" style={posterVars(colors)}>
       <header className="tpl-bar-head">
         <PosterLogo logoPath={logoPath} businessName={businessName} />
         <div>
-          <span className="tpl-bar-kicker">Club de beneficios</span>
+          <span className="tpl-bar-kicker">{label}</span>
           <span className="tpl-bar-name">{businessName}</span>
         </div>
       </header>
