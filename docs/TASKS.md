@@ -41,13 +41,12 @@ negocio del `loc` (validado contra `program.businessId`, no lanza), la no-regres
 migración aditiva; sin bloqueantes ni importantes, 2 menores (newline de `_journal.json` preexistente;
 escaneo del QR impreso = QA en vivo). **Migración `0024` APLICADA Y VERIFICADA EN PROD por SQL**
 (`db:migrate` host unpooled; 24→25 migraciones; `consumer` 8 tablas; `origin_location_id` uuid nullable
-+ FK `set null` + índice; `core`(22)/`merchant_auth`(4) intactos). **Residuales:** (a) **falta el commit
-+ `git push` a `main`** (el owner dispara commit/push; recordar el fix `GH_TOKEN=`+`gh auth switch
-maxhost` de CLAUDE.md); (b) **QA en vivo del owner** sobre el deploy: recorrer el wizard con 2+ locales,
-cambiar color/headline, probar los 3 estilos de QR, A4/A5, imprimir a PDF, **escanear el QR impreso** y
-verificar por SQL que `origin_location_id` quedó en el local; (c) **rama efímera `spec-0041-brand-kit`
-sin borrar** — `delete_branch` está gateado (destructivo): el owner confirma antes de borrarla. Detalle
-de la spec (diseño) abajo.)
++ FK `set null` + índice; `core`(22)/`merchant_auth`(4) intactos). **Commit `f82a551` pusheado a `main`**
+(con el fix `GH_TOKEN=`+`gh auth switch maxhost` de CLAUDE.md; 38 archivos). **Rama efímera
+`spec-0041-brand-kit` (`br-silent-rice-axvr9ctw`) BORRADA** con OK del owner. **Único residual: QA en
+vivo del owner** sobre el deploy de Vercel: recorrer el wizard con 2+ locales, cambiar color/headline,
+probar los 3 estilos de QR, A4/A5, imprimir a PDF, **escanear el QR impreso** y verificar por SQL que
+`origin_location_id` quedó en el local. Detalle de la spec (diseño) abajo.)
 
 Ultima actualizacion previa: 2026-08-16 (**Spec 0041 (brand kit — afiche de enrolamiento por local)
 CERRADA con el owner + ADR 0042 aceptado — solo diseño, sin código, punto de retorno.** Sesión de
