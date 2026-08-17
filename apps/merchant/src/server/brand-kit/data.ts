@@ -76,19 +76,19 @@ export function kitDefaults(kind: string): {
 } {
   if (kind === "stamps") {
     return {
-      headline: "Completá tu tarjeta y llevate premios",
-      subheadline: "Escaneá el código y sumá tu primer sello.",
+      headline: "Juntá sellos. Llevate premios.",
+      subheadline: "Sumate gratis y recibí tu primer sello.",
     };
   }
   if (kind === "points") {
     return {
       headline: "Sumá puntos en cada visita",
-      subheadline: "Escaneá el código y empezá a ganar.",
+      subheadline: "Sumate gratis y empezá a acumular puntos.",
     };
   }
   return {
-    headline: "Sumate a nuestro programa",
-    subheadline: "Escaneá el código y registrate en segundos.",
+    headline: "Tus visitas tienen premio",
+    subheadline: "Sumate gratis y empezá a recibir beneficios.",
   };
 }
 
@@ -100,7 +100,13 @@ async function buildScope(
   locationId: string | null,
 ): Promise<KitScope> {
   const url = enrollUrl(origin, programId, locationId);
-  return { key, label, locationId, enrollUrl: url, qrSvg: await renderEnrollQr(url) };
+  return {
+    key,
+    label,
+    locationId,
+    enrollUrl: url,
+    qrSvg: await renderEnrollQr(url),
+  };
 }
 
 /**
