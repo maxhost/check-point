@@ -10,6 +10,7 @@ import {
 import { sql } from "drizzle-orm";
 import { consumer } from "./_schemas";
 import { loyaltyPrograms } from "./loyalty";
+import { locations } from "./business";
 
 /**
  * Platform-level consumer identity (spec 0028). The phone is the identity key
@@ -118,6 +119,14 @@ export const programMemberships = consumer.table(
       .notNull()
       .references(() => loyaltyPrograms.id),
     businessId: uuid("business_id").notNull(),
+    // Local where the self-service enrollment originated (ADR 0042, spec 0041). Captured
+    // from the `?loc=` of the brand-kit poster QR and validated against the program's
+    // business at enroll time; a foreign/invalid loc lands as null (the alta never breaks).
+    // `set null` mirrors `order.location_id` so deleting a local never loses the alta.
+    // Set only on FIRST enroll — a re-alta (idempotent 409) never overwrites it.
+    originLocationId: uuid("origin_location_id").references(() => locations.id, {
+      onDelete: "set null",
+    }),
     // Live balance per membership (spec 0030). A program of an enabled modality uses
     // exactly one of the two (Puntos → points_balance, Sellos → stamps_count). The
     // counter increments it atomically on each grant; the decrement/reset is the
@@ -134,6 +143,10 @@ export const programMemberships = consumer.table(
       table.programId,
     ),
     index("consumer_program_membership_business_idx").on(table.businessId),
+    // Additive index for the future per-local attribution report (ADR 0042).
+    index("consumer_program_membership_origin_location_idx").on(
+      table.originLocationId,
+    ),
     check(
       "consumer_program_membership_points_balance_check",
       sql`${table.pointsBalance} >= 0`,

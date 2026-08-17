@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import {
   businesses,
   consumerAccounts,
+  locations,
   loyaltyPrograms,
   programMemberships,
 } from "../schema";
@@ -51,6 +52,32 @@ async function loadEnrollableProgram(programId: string) {
   }
 }
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolves the origin local for a self-service alta (ADR 0042). Unlike the counter's
+ * `assertLocationInBusiness` (which THROWS 422 on a foreign local), the alta must NEVER
+ * break on a stale/foreign/malformed `loc` from a printed poster — an unresolvable loc
+ * simply attributes `null`. The uuid format is checked before the query so a malformed
+ * value never reaches Postgres (avoids a 22P02). Only a local that belongs to the
+ * program's business resolves; anything else → null (no cross-business attribution).
+ */
+async function resolveOriginLocation(
+  businessId: string,
+  loc: string | null | undefined,
+): Promise<string | null> {
+  if (typeof loc !== "string") return null;
+  const candidate = loc.trim();
+  if (!UUID_PATTERN.test(candidate)) return null;
+  const [row] = await getDb()
+    .select({ id: locations.id })
+    .from(locations)
+    .where(and(eq(locations.id, candidate), eq(locations.businessId, businessId)))
+    .limit(1);
+  return row?.id ?? null;
+}
+
 async function accountByPhone(
   phoneE164: string,
 ): Promise<ConsumerAccountRow | undefined> {
@@ -69,13 +96,22 @@ async function accountByPhone(
  * Creates a new membership, or throws 409 `already_member` (backed by the unique
  * on `consumer_id, program_id`, so a race also lands on 409). Never opens a session
  * here — the caller does that only on success.
+ *
+ * `originLocationId` (raw, optional; ADR 0042/spec 0041) is the `loc` from the poster
+ * QR: validated against the program's business, persisted only on the FIRST alta. A
+ * re-alta (409) throws before the insert, so the original `origin_location_id` stays.
  */
 export async function enroll(
   programId: string,
   input: EnrollInput,
+  originLocationId?: string | null,
 ): Promise<EnrollResult> {
   const db = getDb();
   const program = await loadEnrollableProgram(programId);
+  const resolvedOriginLocationId = await resolveOriginLocation(
+    program.businessId,
+    originLocationId,
+  );
 
   let account = await accountByPhone(input.phoneE164);
   if (!account) {
@@ -117,6 +153,7 @@ export async function enroll(
         consumerId: account.id,
         programId: program.id,
         businessId: program.businessId,
+        originLocationId: resolvedOriginLocationId,
       })
       .returning();
     return { account, membership };

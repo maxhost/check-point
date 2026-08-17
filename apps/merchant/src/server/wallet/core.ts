@@ -112,15 +112,22 @@ export function walletPushQueueResponse(row: WalletPushQueueRow) {
 }
 
 /**
- * Renders the consumer's `qrToken` as a standalone, scannable QR as an SVG string
+ * Renders a string payload as a standalone, scannable QR as an SVG string
  * (no canvas — pure string output, safe in the Node runtime). The SVG is inlined
- * in the consumer surface; the token itself is never exposed as text.
+ * in the consumer surface; the payload itself is never exposed as text.
+ *
+ * `errorCorrectionLevel` defaults to `"M"` (the consumer pass QR). The brand-kit
+ * enrolment poster passes `"H"` so a logo can be overlaid at the center without
+ * breaking the code (higher redundancy tolerates the occlusion).
  */
-export function renderQrSvg(qrToken: string): Promise<string> {
+export function renderQrSvg(
+  payload: string,
+  errorCorrectionLevel: "M" | "H" = "M",
+): Promise<string> {
   return new Promise((resolve, reject) => {
     qrToStringCb(
-      qrToken,
-      { type: "svg", margin: 1, errorCorrectionLevel: "M" },
+      payload,
+      { type: "svg", margin: 1, errorCorrectionLevel },
       (err, svg) => (err ? reject(err) : resolve(svg)),
     );
   });

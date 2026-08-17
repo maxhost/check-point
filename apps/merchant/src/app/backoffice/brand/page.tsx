@@ -139,6 +139,9 @@ export default function BrandPage() {
           description="Así se verá tu negocio en Mi Pasaporte."
           closeHref="/backoffice"
         />
+        <a className="brand-kit-cta-link" href="/backoffice/brand/kit">
+          Generar afiche de enrolamiento
+        </a>
         <section
           className="brand-preview"
           style={

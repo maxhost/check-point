@@ -37,12 +37,15 @@ const inputStyle: React.CSSProperties = {
 
 export function EnrollForm({
   programId,
+  loc,
   businessName,
   defaultCountryIso,
   brandPrimaryColor,
   vapidPublicKey,
 }: {
   programId: string;
+  /** Origin local from the poster QR `?loc=` (ADR 0042); null for a global QR. */
+  loc: string | null;
   businessName: string;
   defaultCountryIso: string;
   brandPrimaryColor: string;
@@ -69,7 +72,13 @@ export function EnrollForm({
       const res = await fetch(`/api/public/enroll/${programId}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, phoneE164, countryIso }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          phoneE164,
+          countryIso,
+          ...(loc ? { loc } : {}),
+        }),
       });
       if (res.status === 201) {
         setScreen({ kind: "done", firstName: firstName.trim() });

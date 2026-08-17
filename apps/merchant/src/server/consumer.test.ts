@@ -84,9 +84,12 @@ describe("consumer DTOs never leak secrets", () => {
       programId: "prog-1",
       businessId: "biz-1",
       enrolledAt: new Date("2026-08-14T00:00:00Z"),
+      originLocationId: "loc-1",
     });
     expect(dto).not.toHaveProperty("tokenHash");
     expect(dto).not.toHaveProperty("qrToken");
+    // origin_location_id is internal attribution (ADR 0042); never in the client DTO.
+    expect(dto).not.toHaveProperty("originLocationId");
     expect(dto).toMatchObject({
       id: "mem-1",
       programId: "prog-1",

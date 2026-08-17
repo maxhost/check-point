@@ -9,6 +9,47 @@ Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comand
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-08-16 (**Spec 0041 (brand kit — afiche de enrolamiento por local)
+IMPLEMENTADA con PASS de revisor independiente + migración `0024` aplicada y verificada en PROD —
+punto de retorno.** Flujo `AGENT-WORKFLOW.md` completo (implementador → revisor independiente PASS →
+orquestador aplica a prod y cierra). **Contexto de la sesión:** el árbol ya traía trabajo parcial de
+sesiones previas cuyos agentes en background murieron con el cierre de sesión (patrón observado 3×:
+los agentes async NO sobreviven el corte de sesión); el server-side de atribución + dominio
+`brand-kit/*` + helpers `qr-render` ya estaban en disco. El orquestador **completó el trabajo
+directamente** (cada Write aterriza en disco, sobrevive el crash): wizard de 3 pasos
+(`brand-kit-wizard.tsx` + `steps/{step-template,step-brand-check,step-preview}.tsx`), **5 plantillas**
+por rubro (`templates/template-{bar,lodging,retail,services,minimal}.tsx` + `parts.tsx`/`types.ts`),
+`poster-preview.tsx`, `page.tsx` server (sesión→negocio→`getBrandKitData`, estados guía sin
+programa/sin logo), link "Generar afiche" en `brand/page.tsx`, estilos + `@media print` A4/A5
+(aislamiento por `visibility`, `@page` inyectado) en `globals.css`, migración **`0024_absurd_romulus.sql`**
+(aditiva: ADD COLUMN `origin_location_id` uuid nullable + FK `set null` cross-schema consumer→core +
+índice), test de integración de atribución en **archivo separado** (`consumer-enrollment-attribution.neon.integration.test.ts`
+— el hook `file-size` bloqueó extender el base: dividir, no extender), y un test que **ancla
+`qr-render` contra la salida REAL de `qrcode`** (`brand-kit/qr.test.ts` — confirmado: `qrcode` emite
+`stroke="#000000"` + `viewBox`; los helpers operan sobre eso, no un fixture inventado). Fixes de gate:
+`MembershipRow.originLocationId?` interno (opcional; el DTO `membershipResponse` NO lo serializa —
+`consumer.test.ts` lo pinnea), quitados `eslint-disable` de reglas no configuradas
+(`@next/next/no-img-element`/`react/no-danger`). **Estilos de QR (3, sin dep):** negro / teñido con
+primary / logo al centro a **EC-H**. **`renderQrSvg` parametrizado** por el orquestador
+(`payload,ec="M"` default → el pase intacto; el afiche pide `"H"`). **Gates verdes:** typecheck 3/3,
+lint, unit **187/76-skip** (24 nuevos brand-kit+kit), build 3/3. **Integración Neon en rama efímera
+`spec-0041-brand-kit` (`br-silent-rice-axvr9ctw`, off prod):** atribución **4/4** (loc válido→origin;
+sin loc→null; ajeno→null y alta creada; re-alta 409 conserva) + enroll base **9/9** (la 1ª corrida tuvo
+un timeout aislado por cold-start del compute 0.25 CU, NO un assert — re-corrido tibio 9/9). **Revisor
+independiente: PASS** — corrió los 5 gates + integración **13/13** por su cuenta, verificó el DoD ítem
+por ítem, la anti-fuga (`logoObjectKey`/`origin_location_id` fuera de todo DTO), el aislamiento por
+negocio del `loc` (validado contra `program.businessId`, no lanza), la no-regresión del pase y la
+migración aditiva; sin bloqueantes ni importantes, 2 menores (newline de `_journal.json` preexistente;
+escaneo del QR impreso = QA en vivo). **Migración `0024` APLICADA Y VERIFICADA EN PROD por SQL**
+(`db:migrate` host unpooled; 24→25 migraciones; `consumer` 8 tablas; `origin_location_id` uuid nullable
++ FK `set null` + índice; `core`(22)/`merchant_auth`(4) intactos). **Residuales:** (a) **falta el commit
++ `git push` a `main`** (el owner dispara commit/push; recordar el fix `GH_TOKEN=`+`gh auth switch
+maxhost` de CLAUDE.md); (b) **QA en vivo del owner** sobre el deploy: recorrer el wizard con 2+ locales,
+cambiar color/headline, probar los 3 estilos de QR, A4/A5, imprimir a PDF, **escanear el QR impreso** y
+verificar por SQL que `origin_location_id` quedó en el local; (c) **rama efímera `spec-0041-brand-kit`
+sin borrar** — `delete_branch` está gateado (destructivo): el owner confirma antes de borrarla. Detalle
+de la spec (diseño) abajo.)
+
+Ultima actualizacion previa: 2026-08-16 (**Spec 0041 (brand kit — afiche de enrolamiento por local)
 CERRADA con el owner + ADR 0042 aceptado — solo diseño, sin código, punto de retorno.** Sesión de
 definición de spec (no se tocó código de producto). El owner pidió retomar el **brand kit**: un
 generador en el backoffice de "Marca" del afiche imprimible con el QR que los consumidores escanean

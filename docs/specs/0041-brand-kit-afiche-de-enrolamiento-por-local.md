@@ -1,7 +1,7 @@
 ---
 spec: 0041
 fecha: 2026-08-16
-estado: cerrada
+estado: implementada
 resumen: Brand kit — generador (wizard) en el backoffice de "Marca" del afiche imprimible con el QR de enrolamiento. Wizard de 3 pasos (elegir plantilla → chequear logo/colores → preview editable) con 5 plantillas curadas por rubro (bar/alojamiento/retail/…), pintadas con logo + colores de marca, QR generado server-side (lib `qrcode` ya presente, SVG, sin dep nueva) con un par de estilos básicos (negro / teñido de marca / con logo al centro a EC nivel H). Salida = vista HTML/SVG con CSS de impresión A4 y A5 (imprimir → "Guardar como PDF" del navegador, sin dep nueva). Alcance del QR: Global, o por local si el negocio tiene 2+ locales (oculto con 1 local). El QR por local codifica `/enroll/<programId>?loc=<locationId>` y el alta lo persiste en `program_membership.origin_location_id` (nueva columna nullable) — atribución de la primera pieza del ADR 0042. NO incluye el tablero de estadísticas por local ni el evento de canje.
 disjunta: no
 archivos: ver sección Archivos
@@ -239,49 +239,51 @@ puede cross-atribuir.
 
 ## Definition of Done
 
-- [ ] Desde `/backoffice/brand` hay un acceso a **"Generar afiche de enrolamiento"** que
+- [x] Desde `/backoffice/brand` hay un acceso a **"Generar afiche de enrolamiento"** que
       abre `/backoffice/brand/kit` (owner-only, scopeado a su negocio).
-- [ ] El wizard tiene 3 pasos (plantilla → chequeo de marca → preview) y ofrece **5
+- [x] El wizard tiene 3 pasos (plantilla → chequeo de marca → preview) y ofrece **5
       plantillas** visualmente diferenciadas.
-- [ ] Con **1 local** no se muestra el selector de alcance; con **2+ locales** se elige
+- [x] Con **1 local** no se muestra el selector de alcance; con **2+ locales** se elige
       Global o un local, y el preview permite recorrer los locales.
-- [ ] El afiche se pinta con el **logo y los 3 colores de la marca**; en el preview se pueden
+- [x] El afiche se pinta con el **logo y los 3 colores de la marca**; en el preview se pueden
       **modificar colores y textos** (headline/subheadline) sin alterar la marca guardada.
-- [ ] Hay **≥2 estilos de QR** seleccionables (negro / teñido de marca / logo al centro), sin
+- [x] Hay **≥2 estilos de QR** seleccionables (negro / teñido de marca / logo al centro), sin
       dependencia nueva; el QR con logo al centro **sigue escaneando** (EC nivel H).
-- [ ] El botón **Imprimir** deja en la página **solo el afiche**, al tamaño **A4 o A5**
+- [x] El botón **Imprimir** deja en la página **solo el afiche**, al tamaño **A4 o A5**
       elegido, apto para "Guardar como PDF" del navegador (verificado con el diálogo de
-      impresión).
-- [ ] El QR "Global" codifica `/enroll/<programId>`; el QR "por local" codifica
+      impresión). *(escaneo del PDF impreso = QA en vivo del owner)*
+- [x] El QR "Global" codifica `/enroll/<programId>`; el QR "por local" codifica
       `/enroll/<programId>?loc=<locationId>` (verificable en el SVG/URL).
-- [ ] Un alta hecha desde un QR con `?loc=<localId>` **válido** persiste
+- [x] Un alta hecha desde un QR con `?loc=<localId>` **válido** persiste
       `program_membership.origin_location_id = localId`; sin `loc` o con `loc` inválido/ajeno,
-      queda `null` y **el alta se completa igual**.
-- [ ] Una re-alta idempotente **no** cambia el `origin_location_id` ya guardado.
-- [ ] Estados guía: sin logo → bloquea en el paso de marca; sin programa operativo → bloquea
+      queda `null` y **el alta se completa igual**. *(integración Neon 4/4)*
+- [x] Una re-alta idempotente **no** cambia el `origin_location_id` ya guardado. *(integración)*
+- [x] Estados guía: sin logo → bloquea en el paso de marca; sin programa operativo → bloquea
       el wizard; ambos con enlace a la sección que lo resuelve.
-- [ ] Ningún DTO del kit serializa `logoObjectKey` (reusa `brandResponse`).
-- [ ] Migración aditiva aplicada y verificada; `core`/`merchant_auth` intactos.
-- [ ] Gates: typecheck 3/3, lint, unit, build 3/3.
+- [x] Ningún DTO del kit serializa `logoObjectKey` (reusa `brandResponse`). *(data.test / consumer.test)*
+- [x] Migración aditiva aplicada y verificada; `core`/`merchant_auth` intactos. *(prod: 25 migr, core 22/auth 4)*
+- [x] Gates: typecheck 3/3, lint, unit 187/76-skip, build 3/3.
 
 ## Plan de pruebas y verificación
 
-- [ ] Unitaria: `enroll-url.test.ts` — `enrollUrl` con y sin `loc` produce la URL esperada
-      (absoluta, param opcional).
-- [ ] Unitaria: `qr-render.test.ts` — recoloreo de módulos y overlay de logo sobre un SVG de
-      muestra producen SVG válido; el helper no rompe la matriz del QR.
-- [ ] Unitaria: `data.test.ts` — el DTO del kit no incluye `logoObjectKey`; incluye
-      `logoPath`, colores, `kind` y la lista de locales.
-- [ ] Integración (Neon efímera): alta con `loc` válido → `origin_location_id` = ese local;
+- [x] Unitaria: `enroll-url.test.ts` — `enrollUrl` con y sin `loc` produce la URL esperada
+      (absoluta, param opcional). *(6/6)*
+- [x] Unitaria: `qr-render.test.ts` — recoloreo de módulos y overlay de logo sobre un SVG de
+      muestra producen SVG válido; el helper no rompe la matriz del QR. *(10/10 + `brand-kit/qr.test.ts`
+      ancla contra la salida REAL de `renderEnrollQr`)*
+- [x] Unitaria: `data.test.ts` — el DTO del kit no incluye `logoObjectKey`; incluye
+      `logoPath`, colores, `kind` y la lista de locales. *(6/6)*
+- [x] Integración (Neon efímera): alta con `loc` válido → `origin_location_id` = ese local;
       alta sin `loc` → `null`; alta con `loc` de **otro negocio** → `null` (no cross-atribuye)
-      y el alta igual se crea; re-alta no pisa el valor previo.
-- [ ] Integración: aislamiento — el `loc` se valida contra el negocio del programa (un local
-      ajeno no se persiste).
-- [ ] Regresión: el QR del **pase** del consumidor (`renderQrSvg` con el `qr_token`) sigue
-      funcionando tras parametrizar el EC level (no cambia su comportamiento).
-- [ ] Comandos: `pnpm --filter @mi-pasaporte/merchant exec vitest run src/server/brand-kit`,
-      `pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run build`.
-- [ ] Manual: en `/backoffice/brand/kit`, recorrer el wizard con un negocio de 2+ locales;
+      y el alta igual se crea; re-alta no pisa el valor previo. *(4/4 en `br-silent-rice-axvr9ctw`)*
+- [x] Integración: aislamiento — el `loc` se valida contra el negocio del programa (un local
+      ajeno no se persiste). *(caso "foreign loc")*
+- [x] Regresión: el QR del **pase** del consumidor (`renderQrSvg` con el `qr_token`) sigue
+      funcionando tras parametrizar el EC level (no cambia su comportamiento). *(default "M" intacto;
+      enroll base 9/9)*
+- [x] Comandos: `pnpm --filter @mi-pasaporte/merchant exec vitest run src/server/brand-kit`,
+      `pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run build`. *(todos verdes)*
+- [ ] Manual (residual, QA en vivo del owner): en `/backoffice/brand/kit`, recorrer el wizard con un negocio de 2+ locales;
       elegir una plantilla, cambiar un color y el headline, probar los 3 estilos de QR,
       alternar A4/A5, imprimir a PDF y **escanear el QR impreso** para confirmar que abre
       `/enroll/<programId>?loc=<localId>`; completar un alta y verificar por SQL que

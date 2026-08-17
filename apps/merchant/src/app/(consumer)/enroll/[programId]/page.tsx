@@ -6,10 +6,16 @@ export const dynamic = "force-dynamic";
 
 export default async function EnrollPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ programId: string }>;
+  searchParams: Promise<{ loc?: string | string[] }>;
 }) {
   const { programId } = await params;
+  // `loc` (ADR 0042): the origin local encoded by the brand-kit poster QR. Carried
+  // into the form so it travels in the POST body; validated server-side at enroll.
+  const rawLoc = (await searchParams).loc;
+  const loc = Array.isArray(rawLoc) ? rawLoc[0] : (rawLoc ?? null);
   const landing = await getEnrollLanding(programId);
 
   if (!landing) {
@@ -62,6 +68,7 @@ export default async function EnrollPage({
       )}
       <EnrollForm
         programId={programId}
+        loc={loc}
         businessName={landing.businessName}
         defaultCountryIso={landing.countryCode ?? "EC"}
         brandPrimaryColor={landing.brandPrimaryColor}

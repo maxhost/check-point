@@ -35,7 +35,15 @@ export async function POST(
     // Rate limit is checked (and recorded) before any write, keyed by phone.
     const input = validateEnrollInput(body);
     await enforceEnrollRateLimit(input.phoneE164);
-    const { account, membership } = await enroll(programId, input);
+    // Origin local (ADR 0042): from the body (`loc`, sent by the branded form) or,
+    // as a fallback, the query string. Validated/ignored inside `enroll` — a foreign
+    // or malformed loc never breaks the alta, it just attributes null.
+    const bodyLoc = (body as { loc?: unknown } | null)?.loc;
+    const loc =
+      typeof bodyLoc === "string"
+        ? bodyLoc
+        : request.nextUrl.searchParams.get("loc");
+    const { account, membership } = await enroll(programId, input, loc);
     // Only a successful enroll opens a session (a 409 never reaches here).
     const token = await issueSession(account.id);
     const response = NextResponse.json(

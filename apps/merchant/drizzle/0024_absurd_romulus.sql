@@ -1,0 +1,3 @@
+ALTER TABLE "consumer"."program_membership" ADD COLUMN "origin_location_id" uuid;--> statement-breakpoint
+ALTER TABLE "consumer"."program_membership" ADD CONSTRAINT "program_membership_origin_location_id_location_id_fk" FOREIGN KEY ("origin_location_id") REFERENCES "core"."location"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "consumer_program_membership_origin_location_idx" ON "consumer"."program_membership" USING btree ("origin_location_id");

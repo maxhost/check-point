@@ -2592,3 +2592,724 @@ input:focus {
   font-weight: 800;
   color: #176548;
 }
+
+/* ==========================================================================
+   Brand kit — enrolment poster wizard (spec 0041)
+   ========================================================================== */
+
+.brand-kit {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.brand-kit-cta-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 4px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #176548;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+}
+.brand-kit-cta-link:hover {
+  background: #12543b;
+}
+
+.brand-kit-hint {
+  margin: 0 0 12px;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+/* Stepper */
+.brand-kit-steps {
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.brand-kit-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+}
+.brand-kit-step.is-active {
+  background: #e7f2ec;
+  color: #176548;
+}
+.brand-kit-step.is-done {
+  color: #176548;
+}
+.brand-kit-step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid currentColor;
+  font-size: 12px;
+}
+
+.brand-kit-body {
+  min-height: 260px;
+}
+
+/* Nav */
+.brand-kit-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.brand-kit-back,
+.brand-kit-next {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+}
+.brand-kit-next {
+  margin-left: auto;
+  border-color: #176548;
+  background: #176548;
+  color: #fff;
+}
+.brand-kit-back:disabled,
+.brand-kit-next:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Blocking states (no logo / no program) */
+.brand-kit-block {
+  text-align: center;
+  padding: 40px 24px;
+  border: 1px dashed #d1d5db;
+  border-radius: 14px;
+  background: #fafafa;
+}
+.brand-kit-block h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.brand-kit-block p {
+  margin: 0 auto 16px;
+  max-width: 420px;
+  color: #4b5563;
+}
+.brand-kit-block-cta {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: #176548;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Step 1 — templates */
+.brand-kit-template-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 0;
+}
+.brand-kit-template {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.brand-kit-template.is-selected {
+  border-color: #176548;
+  box-shadow: 0 0 0 3px #e7f2ec;
+}
+.brand-kit-template strong {
+  font-size: 14px;
+}
+.brand-kit-template small {
+  color: #6b7280;
+  font-size: 12px;
+}
+.brand-kit-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 210 / 297;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+.brand-kit-thumb-qr {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  width: 34%;
+  aspect-ratio: 1;
+  background:
+    repeating-linear-gradient(90deg, #111 0 12%, #fff 12% 24%),
+    #fff;
+  border: 2px solid #fff;
+}
+.thumb-bar {
+  background: #b91c1c;
+}
+.thumb-lodging {
+  background: #d6cbb6;
+}
+.thumb-retail {
+  background: #1d4ed8;
+}
+.thumb-services {
+  background: #0f766e;
+}
+.thumb-minimal {
+  background: #e5e7eb;
+}
+
+/* Scope selector */
+.brand-kit-scope {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.brand-kit-scope legend {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 6px;
+}
+.brand-kit-scope label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+}
+.brand-kit-scope label span {
+  display: flex;
+  flex-direction: column;
+}
+.brand-kit-scope small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* Step 2 — brand check */
+.brand-kit-brandcheck-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+}
+.brand-kit-logo-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.brand-kit-logo-preview img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 8px;
+}
+.brand-kit-swatches {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.brand-kit-swatch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-kit-swatch-chip {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+.brand-kit-swatch-meta {
+  display: flex;
+  flex-direction: column;
+}
+.brand-kit-swatch-meta small {
+  color: #6b7280;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.brand-kit-editlink,
+.brand-kit-brandcheck .brand-kit-editlink {
+  display: inline-block;
+  margin-top: 16px;
+  color: #176548;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Step 3 — preview + controls */
+.brand-kit-preview {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+.brand-kit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.brand-kit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+.brand-kit-field input[type="text"],
+.brand-kit-field textarea,
+.brand-kit-field select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-weight: 400;
+}
+.brand-kit-field input[type="color"] {
+  width: 100%;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+}
+.brand-kit-colors {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.brand-kit-qrstyle,
+.brand-kit-paper {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.brand-kit-qrstyle legend,
+.brand-kit-paper legend {
+  font-size: 12px;
+  padding: 0 4px;
+}
+.brand-kit-qrstyle label,
+.brand-kit-paper label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  padding: 3px 0;
+}
+.brand-kit-url {
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-all;
+}
+.brand-kit-url code {
+  color: #176548;
+}
+.brand-kit-print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.brand-kit-print,
+.brand-kit-print-all {
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #176548;
+}
+.brand-kit-print {
+  background: #176548;
+  color: #fff;
+}
+.brand-kit-print-all {
+  background: #fff;
+  color: #176548;
+}
+.brand-kit-stage {
+  max-width: 380px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Poster — shared base + parts. Internal sizing uses cqw so the layout scales
+   identically in the small on-screen stage and at full A4/A5 on print.
+   ========================================================================== */
+
+.poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 210 / 297;
+  background: #ffffff;
+  color: #14181f;
+  overflow: hidden;
+  container-type: inline-size;
+}
+.poster-qr {
+  width: 100%;
+  line-height: 0;
+}
+.poster-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.poster-logo {
+  display: block;
+  width: 18cqw;
+  height: 18cqw;
+  object-fit: contain;
+}
+.poster-logo-mono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18cqw;
+  height: 18cqw;
+  border-radius: 4cqw;
+  background: var(--poster-primary);
+  color: #fff;
+  font-weight: 800;
+  font-size: 7cqw;
+}
+
+/* Bar & gastronomía */
+.tpl-bar {
+  display: flex;
+  flex-direction: column;
+  padding: 8cqw;
+  background: var(--poster-primary);
+  color: #fff;
+}
+.tpl-bar .poster-logo-mono {
+  background: var(--poster-accent);
+}
+.tpl-bar-head {
+  display: flex;
+  align-items: center;
+  gap: 4cqw;
+}
+.tpl-bar-name {
+  font-size: 5cqw;
+  font-weight: 700;
+}
+.tpl-bar-body {
+  flex: 1;
+  margin-top: 8cqw;
+}
+.tpl-bar-headline {
+  margin: 0;
+  font-size: 11cqw;
+  line-height: 1.02;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.tpl-bar-sub {
+  margin: 3cqw 0 0;
+  font-size: 5cqw;
+  opacity: 0.92;
+}
+.tpl-bar-qrcard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3cqw;
+  padding: 6cqw;
+  border-radius: 5cqw;
+  background: #fff;
+  color: var(--poster-primary);
+}
+.tpl-bar-qrcard .poster-qr {
+  width: 54cqw;
+}
+.tpl-bar-cta {
+  font-size: 4.5cqw;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* Alojamiento */
+.tpl-lodging {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10cqw 8cqw;
+  gap: 3cqw;
+  background: var(--poster-complementary);
+  color: #1c2430;
+  font-family: Georgia, "Times New Roman", serif;
+}
+.tpl-lodging-name {
+  margin-top: 3cqw;
+  font-size: 5cqw;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.tpl-lodging-rule {
+  width: 16cqw;
+  height: 0.6cqw;
+  margin: 3cqw 0;
+  background: var(--poster-accent);
+}
+.tpl-lodging-headline {
+  margin: 0;
+  font-size: 8.5cqw;
+  font-weight: 600;
+}
+.tpl-lodging-sub {
+  margin: 0;
+  font-size: 4.6cqw;
+}
+.tpl-lodging-qr {
+  width: 48cqw;
+  margin-top: 4cqw;
+  padding: 4cqw;
+  background: #fff;
+  border: 0.4cqw solid var(--poster-accent);
+}
+.tpl-lodging-foot {
+  margin-top: 2cqw;
+  font-size: 3.8cqw;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Retail */
+.tpl-retail {
+  display: flex;
+  flex-direction: column;
+}
+.tpl-retail-band {
+  display: flex;
+  align-items: center;
+  gap: 4cqw;
+  padding: 7cqw 8cqw;
+  background: var(--poster-primary);
+  color: #fff;
+}
+.tpl-retail-name {
+  font-size: 5.5cqw;
+  font-weight: 800;
+}
+.tpl-retail-tag {
+  align-self: flex-start;
+  margin: 8cqw;
+  padding: 4cqw 6cqw;
+  border-radius: 2cqw;
+  background: var(--poster-accent);
+  color: #fff;
+}
+.tpl-retail-headline {
+  margin: 0;
+  font-size: 9cqw;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.tpl-retail-sub {
+  margin: 0 8cqw;
+  font-size: 5cqw;
+  color: #374151;
+}
+.tpl-retail-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3cqw;
+  margin: 6cqw 8cqw;
+  padding: 6cqw;
+  border-radius: 3cqw;
+  background: #fff;
+  border: 1cqw solid var(--poster-primary);
+}
+.tpl-retail-qr .poster-qr {
+  width: 52cqw;
+}
+.tpl-retail-cta {
+  font-size: 4.6cqw;
+  font-weight: 800;
+  color: var(--poster-primary);
+}
+
+/* Servicios */
+.tpl-services {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4cqw;
+  padding: 9cqw 8cqw 9cqw 12cqw;
+}
+.tpl-services-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4cqw;
+  background: var(--poster-accent);
+}
+.tpl-services-head {
+  display: flex;
+  align-items: center;
+  gap: 4cqw;
+}
+.tpl-services-name {
+  font-size: 5.5cqw;
+  font-weight: 800;
+  color: var(--poster-primary);
+}
+.tpl-services-headline {
+  margin: 0;
+  font-size: 8cqw;
+  font-weight: 800;
+}
+.tpl-services-sub {
+  margin: 0;
+  font-size: 4.6cqw;
+  color: #4b5563;
+}
+.tpl-services-panel {
+  display: flex;
+  align-items: center;
+  gap: 5cqw;
+  margin-top: 4cqw;
+}
+.tpl-services-steps {
+  margin: 0;
+  padding-left: 5cqw;
+  font-size: 4.4cqw;
+  color: #1f2937;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5cqw;
+}
+.tpl-services-qr {
+  flex: none;
+  width: 42cqw;
+}
+
+/* Minimalista */
+.tpl-minimal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 5cqw;
+  padding: 10cqw 8cqw;
+}
+.tpl-minimal-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2cqw;
+}
+.tpl-minimal-name {
+  font-size: 5cqw;
+  font-weight: 700;
+  color: var(--poster-primary);
+}
+.tpl-minimal-headline {
+  margin: 0;
+  font-size: 8cqw;
+  font-weight: 800;
+}
+.tpl-minimal-qr {
+  width: 52cqw;
+}
+.tpl-minimal-sub {
+  margin: 0;
+  font-size: 4.6cqw;
+  color: #4b5563;
+}
+
+/* ==========================================================================
+   Print — leave only the poster(s) on the page at the chosen size. The active
+   @page size (A4/A5) is injected inline by the preview step. `visibility`
+   isolation keeps the poster visible even though it lives inside the wizard.
+   ========================================================================== */
+
+.brand-kit-print-area {
+  display: none;
+}
+.print-only {
+  display: none;
+}
+
+@media print {
+  body {
+    visibility: hidden;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .brand-kit-print-area {
+    display: block !important;
+    visibility: visible;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .brand-kit-print-area * {
+    visibility: visible;
+  }
+  .brand-kit-print-area .poster {
+    box-shadow: none;
+  }
+  .brand-kit-print-page {
+    break-after: page;
+  }
+  .brand-kit-print-page:last-child {
+    break-after: auto;
+  }
+}

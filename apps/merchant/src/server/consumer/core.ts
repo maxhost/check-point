@@ -62,6 +62,10 @@ export type MembershipRow = {
   programId: string;
   businessId: string;
   enrolledAt: Date;
+  // Origin local of the alta (ADR 0042 / spec 0041). Internal only — the client DTO
+  // `membershipResponse` deliberately does NOT serialize it. Optional: read paths that
+  // don't need attribution (e.g. the `me` list) select a narrower row without it.
+  originLocationId?: string | null;
 };
 
 /**
