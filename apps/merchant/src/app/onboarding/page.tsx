@@ -182,7 +182,7 @@ export default function OnboardingPage() {
   return (
     <main className="merchant-shell">
       <div className="wizard">
-        <div className="brand">Mi Pasaporte · Negocios</div>
+        <div className="brand">CheckPass Club · Negocios</div>
         <div className="progress" aria-label="Progreso">
           {steps.map((item, index) => (
             <i className={index <= current ? "active" : ""} key={item} />

@@ -8,7 +8,7 @@ export function BottomNav({
   onChange: (tab: WalletTab) => void;
 }) {
   return (
-    <nav className="consumer-bottom-nav" aria-label="Secciones de Mi Pasaporte">
+    <nav className="consumer-bottom-nav" aria-label="Secciones de CheckPass Club">
       <button
         type="button"
         aria-current={activeTab === "programs" ? "page" : undefined}

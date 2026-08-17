@@ -11,10 +11,10 @@ import {
 /** Provider ids for a wallet pass (one pass per provider per consumer). */
 export type WalletProviderId = "apple" | "google";
 
-/** Branding of the identity pass — "Mi Pasaporte", not a per-business brand (ADR 0033). */
+/** Branding of the identity pass — "CheckPass Club", not a per-business brand (ADR 0033). */
 export const WALLET_BRAND = {
-  organizationName: "Mi Pasaporte",
-  description: "Mi Pasaporte",
+  organizationName: "CheckPass Club",
+  description: "CheckPass Club",
   /** Deep-teal foreground/background/label used by both Apple and Google passes. */
   backgroundColor: "rgb(15, 42, 58)",
   foregroundColor: "rgb(255, 255, 255)",

@@ -23,7 +23,7 @@ export default function DemoWalletPage() {
       <header className="merchant-cover">
         <div className="cover-content">
           <Link className="back-link" href="/check-in/demo-bar">
-            ← Mi Pasaporte
+            ← CheckPass Club
           </Link>
           <header className="merchant-header">
             <div className="merchant-logo" aria-hidden="true">
@@ -93,7 +93,7 @@ export default function DemoWalletPage() {
         </div>
         <div className="asset">
           <strong>Logro desbloqueado: Primera visita</strong>
-          <span>Tu primer lugar en Mi Pasaporte</span>
+          <span>Tu primer lugar en CheckPass Club</span>
         </div>
         {isPreview && (
           <p className="notice">

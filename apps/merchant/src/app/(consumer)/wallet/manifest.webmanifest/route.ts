@@ -19,8 +19,8 @@ export async function GET() {
   const startUrl = account ? `/c/${account.webViewToken}` : "/wallet";
 
   const manifest = {
-    name: "Mi Pasaporte",
-    short_name: "Mi Pasaporte",
+    name: "CheckPass Club",
+    short_name: "CheckPass",
     description:
       "Tu pase, tus programas y tu código QR en la pantalla de inicio.",
     id: "/wallet",

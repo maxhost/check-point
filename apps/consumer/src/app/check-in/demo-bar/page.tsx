@@ -32,7 +32,7 @@ export default function DemoCheckinPage() {
         <div className="content">
           {state === "success" ? (
             <>
-              <p className="eyebrow">Mi Pasaporte</p>
+              <p className="eyebrow">CheckPass Club</p>
               <h2>¡Listo! Ganaste 10 puntos</h2>
               <p>
                 Tu visita y beneficios quedaron guardados temporalmente en este

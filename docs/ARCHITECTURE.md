@@ -1,4 +1,4 @@
-# Arquitectura — Mi Pasaporte
+# Arquitectura — CheckPass Club
 
 Este documento reúne las decisiones técnicas transversales. No define alcance de producto; cada decisión concreta se registra como un ADR y las specs la consumen por referencia.
 
@@ -21,10 +21,10 @@ Consumidor, comercio y plataforma son productos con sesiones, riesgos y superfic
 | Auth | Better Auth autoalojado sobre Neon | Permite guest, OTP y tres dominios de identidad. |
 | Consumer | sesión guest/anónima + teléfono OTP de 30 días | Sin contraseña; el guest se vincula al alta confirmada. |
 | Comercio/plataforma | email, contraseña e invitaciones | Cuentas totalmente separadas del consumidor. |
-| SMS | `OtpProvider`; Telnyx Verify piloto, Twilio Verify fallback | Elegir entrega real y costo en Ecuador, sin acoplamiento. |
+| SMS | OTP propio; `OtpChannel` con ClickSend y Twilio | ClickSend activo inicialmente; selección explícita global y futura por país, sin Verify API ni fallback automático. |
 | Email | Resend detrás de `EmailProvider` | Invitaciones y recuperación por email. |
 | Cron | Vercel Cron + `core.job_runs` idempotente | Expiraciones, lifecycle guest y campañas de V1. |
-| Rate limit | Upstash Redis | Límites por IP/teléfono/cuenta para OTP, QR y check-in. |
+| Rate limit | Postgres para OTP; Upstash donde ya aplique | Recovery OTP persiste límites solo por teléfono; otros flujos conservan su política propia. |
 | Errores | Sentry + Vercel logs | Observabilidad técnica separada de métricas de producto. |
 
 ## Estructura de repositorio
@@ -70,7 +70,7 @@ consola, juegos y métricas consumen el mismo contrato. Ver ADR 0018 y Spec 0003
 
 ## SMS, email y tareas
 
-El OTP de consumidor será de seis dígitos, cinco minutos de vigencia y pocos intentos. `OtpProvider` expone enviar/verificar; antes de producción se prueba Telnyx y Twilio con operadores ecuatorianos y se compara costo efectivo por verificación.
+El OTP de recovery del consumidor es propio: seis dígitos, cinco minutos y dos intentos. `OtpChannel` solo entrega el SMS; ClickSend y Twilio son intercambiables y ClickSend inicia activo. La selección futura podrá variar por país desde administración de plataforma. El enrolamiento normal no envía SMS.
 
 Vercel Cron llama endpoints protegidos por secreto. Cada ejecución adquiere una protección de concurrencia y deja evidencia idempotente en `core.job_runs`. V1 cubre expiración de activos, guest inactivo/eliminable y transiciones temporales de campañas. No se incorpora una cola hasta que una feature realmente exija trabajos frecuentes o prolongados. En desarrollo, estas tareas se ejecutan manualmente o desde un script local.
 

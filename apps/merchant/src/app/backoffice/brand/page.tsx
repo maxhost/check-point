@@ -136,7 +136,7 @@ export default function BrandPage() {
         <ModuleHeader
           eyebrow="Marca"
           title="La identidad de tu negocio"
-          description="Así se verá tu negocio en Mi Pasaporte."
+          description="Así se verá tu negocio en CheckPass Club."
           closeHref="/backoffice"
         />
         <a className="brand-kit-cta-link" href="/backoffice/brand/kit">

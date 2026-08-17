@@ -2,7 +2,7 @@ import { createSign } from "node:crypto";
 import { WALLET_BRAND } from "./core";
 import type { PassBuildInput } from "./provider";
 
-/** Class suffix under the issuer — the single Mi Pasaporte identity Loyalty Class. */
+/** Class suffix under the issuer — the single CheckPass Club identity Loyalty Class. */
 export const GOOGLE_CLASS_SUFFIX = "mipasaporte_identity";
 
 /** Fully-qualified Loyalty Class id (`<issuerId>.<suffix>`). */
@@ -161,7 +161,7 @@ function base64url(input: string | Buffer): string {
 
 /**
  * Signs the "Add to Google Wallet" JWT (RS256) with the service-account private
- * key using node:crypto directly (no JWT lib). The JWT references the Mi Pasaporte
+ * key using node:crypto directly (no JWT lib). The JWT references the CheckPass Club
  * Loyalty Class and carries the per-consumer Loyalty Object.
  */
 export function buildGoogleSaveJwt(

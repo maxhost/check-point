@@ -1,51 +1,50 @@
-# Handoff — cierre de onboarding real / próxima fase Staff
+# Handoff — Spec 0032 cerrada / próxima implementación
 
-**Fecha:** 2026-08-12
-**Estado:** Spec 0022 cerrada y desplegada. Próximo arco: CRUD real de Staff.
+**Fecha:** 2026-08-17
+**Estado:** diseño cerrado, sin código de OTP. Próximo paso: implementar spec 0032.
 
-## Cerrado
+## Punto de retorno
 
-- Registro y login Owner con Better Auth autoalojado y Neon.
-- Alta inicial transaccional de negocio, membresía `owner`, suscripción Free y local.
-- Stripe Checkout Plus y webhook firmado/idempotente preparados para test/live.
-- Selector de planes del onboarding: carrusel de una card, Plus mensual visible y activo por
-  defecto, Free a la izquierda, flechas agrupadas arriba a la derecha y CTA dentro de la
-  card activa.
-- Dirección de local: Geoapify busca POI/dirección; Mapbox sólo toma relevo automático
-  ante error técnico de Geoapify. Al elegir un resultado no se vuelve a buscar.
-- Las direcciones canónicas excluyen el nombre del POI. Caso validado en Neon:
-  `LaCraft` → `Rafael Torres Beltrán, 010204, Cuenca, Ecuador`,
-  `-2.9125413, -78.9989325`, procedencia Geoapify conservada.
+Leer, en este orden:
 
-## Cambios recientes que deben estar desplegados
+1. `docs/TASKS.md` — entrada superior del 2026-08-17.
+2. `docs/specs/0032-recuperacion-de-cuenta-y-verificacion-por-otp.md` — contrato completo cerrado.
+3. `docs/adr/0013-otp-y-tareas-programadas-con-proveedores-intercambiables.md` — proveedor/canal.
+4. ADR 0032 (identidad), ADR 0037/0039 (rotación Wallet/Web Push) y spec 0033.
+5. `docs/AGENT-WORKFLOW.md` — implementador y después revisor independiente.
 
-- `8a9c60a` — dirección canónica sin nombre del POI.
-- `8272839` — carrusel de planes en onboarding.
-- `7db67a2` — controles del carrusel sobre la card.
-- El ajuste final de flechas agrupadas arriba a la derecha queda en el commit actual.
+## Decisiones que no debe reinventar el implementador
 
-## Verificación realizada
+- Recovery por SMS únicamente; enrolamiento normal sigue sin SMS.
+- OTP propio: 6 dígitos, HMAC para verificar, AES-256-GCM para reenviar el mismo código, 5 minutos,
+  2 intentos y uso único.
+- SMS inicial + un único reenvío después de 60 segundos. Challenge nuevo invalida anterior.
+- 3 entregas/hora y 5/24h por teléfono en Postgres; inicial y reenvío cuentan; sin límite por IP.
+- ClickSend y Twilio implementan `OtpChannel`; ClickSend activo. Sin fallback automático.
+- Número existente recupera la cuenta única y rota/revoca todo; número inexistente valida OTP y
+  completa onboarding antes de crear cuenta verificada sin membresía.
+- Países soberanos de América menos Guyana/Surinam + España. ES/PT/EN según la spec.
+- WhatsApp, UI admin de proveedor y soporte WhatsApp quedan fuera.
 
-- `pnpm format:check` — PASS
-- `pnpm lint` — PASS
-- `pnpm typecheck` — PASS
-- `pnpm test` — PASS (15 pruebas)
-- `pnpm --filter @mi-pasaporte/merchant build` — PASS con Node 24.19.0
-- QA manual en Vercel: selección Geoapify de LaCraft y persistencia comprobada en Neon.
+## Trabajo de implementación
 
-## Próximo arco: CRUD real de Staff
+- Agregar `otp_challenge` y `otp_delivery` mediante migración aditiva.
+- Crear dominio `server/otp`, adaptadores ClickSend/Twilio/fake y resolver por entorno.
+- Crear recovery transaccional y hacer que `rotatePassCredentials` acepte el executor de la
+  transacción, sin abrir ventanas parciales.
+- Crear las cuatro rutas públicas, `/recover`, onboarding corto y enlace desde `already_member`.
+- Ejecutar los gates y la matriz de integración Neon detallada en la spec.
+- Entregar a un revisor independiente; solo después de PASS el orquestador aplica migración a prod y
+  cambia la spec a `implementada`.
 
-Crear una spec nueva para reemplazar el demo de Spec 0016. Debe partir de membresías y
-autorización real: Owner crea/invita, define permisos, reenvía invitación/reset, archiva
-sin borrar acceso histórico y elimina cuando corresponda. Mantener el patrón de UI y los
-componentes existentes; no implementar hasta fijar el modelo de invitación, tokens,
-expiración, roles/permisos, auditoría y email (Resend sigue pendiente de dominio).
+## Estado del árbol y commit
 
-## Seguridad a conservar
+Este commit de handoff también incluye el rebranding previo de “Mi Pasaporte” a **CheckPass Club**
+en UI, PWA, Wallet, scripts y documentación principal. Sus verificaciones ya ejecutadas fueron:
 
-- Nunca conceder Plus desde `success_url`; sólo webhook Stripe firmado.
-- Secretos sólo en Vercel/local, nunca navegador, commits ni logs.
-- El usuario de sesión autoriza negocio, checkout y futuros cambios de Staff; no IDs de
-  owner recibidos del navegador.
-- Una ubicación sólo se crea desde selección verificada con coordenadas; mantener la
-  procedencia en `location_verification`.
+- `pnpm typecheck` — PASS 3/3.
+- `pnpm lint` — PASS.
+- Wallet unit `src/server/wallet.test.ts` — PASS 7/7.
+
+Para la documentación de 0032 se debe ejecutar al menos `git diff --check` y validar que INDEX,
+TASKS, ARCHITECTURE, ADR y spec coincidan antes del commit. No hay migración ni secretos todavía.

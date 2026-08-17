@@ -12,7 +12,7 @@ export default function LoginPage() {
   return (
     <main className="merchant-shell">
       <section className="panel login-panel">
-        <p className="eyebrow">Mi Pasaporte · Negocios</p>
+        <p className="eyebrow">CheckPass Club · Negocios</p>
         <h1>Inicia sesión</h1>
         <label>
           Email

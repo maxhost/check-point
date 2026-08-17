@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// One-time provisioning of the Mi Pasaporte "identity" Loyalty Class in Google
+// One-time provisioning of the CheckPass Club "identity" Loyalty Class in Google
 // Wallet (spec 0029 / ADR 0033). The app's google.ts creates a Loyalty *Object*
 // per consumer via the "Save to Wallet" JWT, but Google requires the *Class* to
 // exist first. Run this ONCE per issuer (re-run is idempotent: it PATCHes the
@@ -69,8 +69,8 @@ async function accessToken(sa) {
 function classBody(issuerId, logoUrl) {
   return {
     id: `${issuerId}.${CLASS_SUFFIX}`,
-    issuerName: "Mi Pasaporte",
-    programName: "Mi Pasaporte",
+    issuerName: "CheckPass Club",
+    programName: "CheckPass Club",
     programLogo: { sourceUri: { uri: logoUrl } },
     reviewStatus: "UNDER_REVIEW",
     hexBackgroundColor: "#0f2a3a",

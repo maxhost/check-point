@@ -1,4 +1,4 @@
-# Mi Pasaporte
+# CheckPass Club
 
 Monorepo de las aplicaciones web separadas de consumidor, comercio y plataforma.
 

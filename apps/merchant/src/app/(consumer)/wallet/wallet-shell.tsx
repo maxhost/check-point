@@ -25,7 +25,7 @@ export function WalletShell({
   return (
     <main className="consumer-wallet-shell">
       <header>
-        <p>Mi Pasaporte</p>
+        <p>CheckPass Club</p>
         <h1>¡Hola, {firstName}!</h1>
       </header>
       {activeTab === "programs" ? (

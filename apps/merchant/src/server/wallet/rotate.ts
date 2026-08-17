@@ -38,7 +38,7 @@ export async function rotatePassCredentials(
     )
     INSERT INTO consumer.wallet_push_queue
       (consumer_id, class, title, body, status, not_before)
-    SELECT id, 'transactional', 'Mi Pasaporte',
+    SELECT id, 'transactional', 'CheckPass Club',
            'Actualizá tu pase', 'pending', now()
     FROM rotated`);
   return { qrToken, webViewToken };

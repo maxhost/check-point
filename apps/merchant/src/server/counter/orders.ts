@@ -132,7 +132,7 @@ export async function persistGrant(
         (consumer_id, class, title, body, status, not_before)
       SELECT ${input.consumerId}::uuid, 'transactional'::text,
              COALESCE((SELECT name FROM core.business
-                       WHERE id = ${input.businessId}::uuid), 'Mi Pasaporte'),
+                       WHERE id = ${input.businessId}::uuid), 'CheckPass Club'),
              ${pushBody}::text, 'pending'::text, now()
       FROM ins
       RETURNING id

@@ -48,7 +48,7 @@ export default async function EnrollPage({
       }}
     >
       <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-        Mi Pasaporte
+        CheckPass Club
       </p>
       {landing.hasLogo ? (
         // Public logo route serves from R2 without exposing the object key.

@@ -13,7 +13,7 @@ export default function QaPage() {
           </h1>
         </div>
         <div className="content">
-          <p className="eyebrow">Mi Pasaporte · prototipo</p>
+          <p className="eyebrow">CheckPass Club · prototipo</p>
           {url ? (
             <>
               <p>

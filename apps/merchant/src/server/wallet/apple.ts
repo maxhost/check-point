@@ -60,7 +60,7 @@ export function buildPassJson(
     barcodes: [barcode],
     storeCard: {
       primaryFields: [
-        { key: "holder", label: "Titular", value: holder || "Mi Pasaporte" },
+        { key: "holder", label: "Titular", value: holder || "CheckPass Club" },
       ],
       // The single "Última novedad" slot (ADR 0033). `changeMessage` makes iOS raise
       // a notification with the new value when the pulled pass differs from the cached
@@ -194,7 +194,7 @@ export function selfSignedSigner(): AppleSigner {
   cert.validity.notAfter = new Date();
   cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + 1);
   const attrs = [
-    { name: "commonName", value: "Mi Pasaporte Dev Pass" },
+    { name: "commonName", value: "CheckPass Club Dev Pass" },
     { name: "organizationName", value: WALLET_BRAND.organizationName },
   ];
   cert.setSubject(attrs);

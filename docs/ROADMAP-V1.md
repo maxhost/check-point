@@ -1,4 +1,4 @@
-# Roadmap V1 — Mi Pasaporte
+# Roadmap V1 — CheckPass Club
 
 ## Meta de la V1
 
@@ -13,7 +13,7 @@ En dos bares aliados, demostrar que el dueño puede configurar su propio program
 5. App web operativa para dueño/personal: escanear el QR del consumidor, asignar puntos, oportunidades, premios o cupones y validar un cupón.
 6. Catálogo de mecánicas de juego; ruleta implementada. Raspadita definida como siguiente mecánica, sin construir aún.
 7. Métricas de valor para el negocio: clientes identificados, visitas/check-ins, beneficios asignados, partidas, premios/cupones emitidos y canjeados, retorno y coste/margen cuando el local cargue esos datos.
-8. Administrador de Mi Pasaporte: alta de negocios, categorías, rutas y eventos curados; exploración pública de esa red.
+8. Administrador de CheckPass Club: alta de negocios, categorías, rutas y eventos curados; exploración pública de esa red.
 
 ## Fuera de V1
 

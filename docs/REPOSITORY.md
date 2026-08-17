@@ -1,6 +1,6 @@
 # Repositorio remoto
 
-Repositorio canónico de Mi Pasaporte:
+Repositorio canónico de CheckPass Club:
 
 - https://github.com/maxhost/check-point.git
 

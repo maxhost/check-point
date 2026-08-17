@@ -17,7 +17,7 @@ export const metadata = {
   manifest: "/wallet/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Mi Pasaporte",
+    title: "CheckPass Club",
     statusBarStyle: "default",
   },
 } as const;
@@ -37,7 +37,7 @@ export default async function WalletPage() {
     return (
       <main style={{ ...page, textAlign: "center" }}>
         <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-          Mi Pasaporte
+          CheckPass Club
         </p>
         <h1 style={{ fontSize: 22, marginTop: 4 }}>
           Tu tarjeta no está abierta
