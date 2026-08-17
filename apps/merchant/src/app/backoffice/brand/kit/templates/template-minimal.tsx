@@ -3,8 +3,15 @@ import { posterVars, type PosterProps } from "./types";
 
 // Minimalista genérica: editorial and extremely legible, with one oversized action.
 export function TemplateMinimal(props: PosterProps) {
-  const { businessName, logoPath, colors, qrSvg, label, headline, subheadline } =
-    props;
+  const {
+    businessName,
+    logoPath,
+    colors,
+    qrSvg,
+    label,
+    headline,
+    subheadline,
+  } = props;
   return (
     <div className="poster tpl-minimal" style={posterVars(colors)}>
       <header className="tpl-minimal-head">
@@ -14,13 +21,21 @@ export function TemplateMinimal(props: PosterProps) {
           <span className="tpl-minimal-name">{businessName}</span>
         </div>
       </header>
-      <h1 className="tpl-minimal-headline">{headline}</h1>
-      <div className="tpl-minimal-qr">
-        <span className="tpl-minimal-scan">Escaneá para sumarte</span>
-        <QrBlock svg={qrSvg} />
+      <div className="tpl-minimal-message">
+        <span className="poster-eyebrow">Cada visita cuenta</span>
+        <h1 className="tpl-minimal-headline">{headline}</h1>
+        <p className="tpl-minimal-sub">{subheadline}</p>
+        <ul className="poster-benefits tpl-minimal-benefits">
+          <li>Sumá</li>
+          <li>Canjeá</li>
+          <li>Disfrutá</li>
+        </ul>
       </div>
-      <p className="tpl-minimal-sub">{subheadline}</p>
-      <span className="tpl-minimal-proof">Gratis · desde tu celular</span>
+      <div className="tpl-minimal-qr">
+        <span className="tpl-minimal-scan">Escaneá. Sumate. Listo.</span>
+        <QrBlock svg={qrSvg} />
+        <span className="tpl-minimal-proof">Gratis · sin descargar nada</span>
+      </div>
     </div>
   );
 }

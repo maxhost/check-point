@@ -3,8 +3,15 @@ import { posterVars, type PosterProps } from "./types";
 
 // Servicios: professional and procedural, reducing uncertainty around the scan.
 export function TemplateServices(props: PosterProps) {
-  const { businessName, logoPath, colors, qrSvg, label, headline, subheadline } =
-    props;
+  const {
+    businessName,
+    logoPath,
+    colors,
+    qrSvg,
+    label,
+    headline,
+    subheadline,
+  } = props;
   return (
     <div className="poster tpl-services" style={posterVars(colors)}>
       <span className="tpl-services-bar" />
@@ -17,6 +24,11 @@ export function TemplateServices(props: PosterProps) {
       </header>
       <h1 className="tpl-services-headline">{headline}</h1>
       <p className="tpl-services-sub">{subheadline}</p>
+      <div className="tpl-services-promise">
+        <span>Más visitas</span>
+        <span>Más beneficios</span>
+        <span>Cero aplicaciones</span>
+      </div>
       <div className="tpl-services-panel">
         <ol className="tpl-services-steps">
           <li>
@@ -30,8 +42,9 @@ export function TemplateServices(props: PosterProps) {
           </li>
         </ol>
         <div className="tpl-services-qr">
-          <span>Sumate gratis</span>
+          <span>Empezá acá</span>
           <QrBlock svg={qrSvg} />
+          <small>Escaneá con tu cámara</small>
         </div>
       </div>
     </div>

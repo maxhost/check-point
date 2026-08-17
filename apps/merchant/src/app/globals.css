@@ -2797,6 +2797,81 @@ input:focus {
 .thumb-minimal {
   background: #e5e7eb;
 }
+.brand-kit-thumb::before,
+.brand-kit-thumb::after {
+  content: "";
+  position: absolute;
+  display: block;
+}
+.thumb-bar::before {
+  inset: 12% 35% 57% 10%;
+  border-top: 5px solid #fff;
+  border-bottom: 16px solid #fff;
+}
+.thumb-bar .brand-kit-thumb-qr {
+  left: 67%;
+  bottom: 8%;
+  width: 42%;
+}
+.thumb-lodging::before {
+  inset: 10% 14% 52%;
+  border: 1px solid #8c765c;
+  background: rgba(255, 255, 255, 0.35);
+}
+.thumb-lodging::after {
+  inset: 58% 8% 7%;
+  border: 1px solid #8c765c;
+  background: #faf8f3;
+}
+.thumb-lodging .brand-kit-thumb-qr {
+  left: 67%;
+  bottom: 11%;
+  width: 31%;
+}
+.thumb-retail::before {
+  inset: 12% 12% 53%;
+  background: #f59e0b;
+  box-shadow: 5px 5px 0 #111827;
+}
+.thumb-retail::after {
+  inset: 53% 12% 33%;
+  background: repeating-linear-gradient(90deg, #fff 0 29%, transparent 29% 34%);
+}
+.thumb-retail .brand-kit-thumb-qr {
+  left: 68%;
+  bottom: 7%;
+  width: 35%;
+}
+.thumb-services::before {
+  inset: 0 auto 0 0;
+  width: 7%;
+  background: #f59e0b;
+}
+.thumb-services::after {
+  inset: 18% 12% 50% 18%;
+  border-top: 6px solid #fff;
+  border-bottom: 16px solid #fff;
+}
+.thumb-services .brand-kit-thumb-qr {
+  left: 68%;
+  bottom: 10%;
+  width: 36%;
+}
+.thumb-minimal::before {
+  inset: 0 0 auto;
+  height: 4%;
+  background: #176548;
+}
+.thumb-minimal::after {
+  inset: 22% 55% 22% 12%;
+  border-top: 7px solid #111827;
+  border-bottom: 24px solid #111827;
+}
+.thumb-minimal .brand-kit-thumb-qr {
+  left: 70%;
+  bottom: 22%;
+  width: 39%;
+}
 
 /* Scope selector */
 .brand-kit-scope {
@@ -3706,11 +3781,406 @@ input:focus {
 .tpl-lodging {
   min-height: 0;
 }
-.tpl-bar-qrcard .poster-qr { width: min(50cqw, 100%); }
-.tpl-lodging-qr .poster-qr { width: min(46cqw, 100%); }
-.tpl-retail-qr .poster-qr { width: min(48cqw, 100%); }
-.tpl-services-qr .poster-qr { width: 100%; }
-.tpl-minimal-qr .poster-qr { width: min(52cqw, 100%); }
+.tpl-bar-qrcard .poster-qr {
+  width: min(50cqw, 100%);
+}
+.tpl-lodging-qr .poster-qr {
+  width: min(46cqw, 100%);
+}
+.tpl-retail-qr .poster-qr {
+  width: min(48cqw, 100%);
+}
+.tpl-services-qr .poster-qr {
+  width: 100%;
+}
+.tpl-minimal-qr .poster-qr {
+  width: min(52cqw, 100%);
+}
+
+/* Brand-kit posters v3 — five conversion-led compositions. */
+.poster-eyebrow {
+  font-size: 2.8cqw;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.poster-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 1.7cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.poster-benefits li {
+  position: relative;
+  padding-left: 4.5cqw;
+  font-size: 3.7cqw;
+  font-weight: 750;
+  line-height: 1.15;
+}
+.poster-benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 3.2cqw;
+  height: 3.2cqw;
+  border-radius: 50%;
+  background: var(--poster-accent);
+  color: #fff;
+  font-size: 2cqw;
+}
+.poster-qr-copy {
+  display: flex;
+  align-items: center;
+  gap: 2cqw;
+}
+.poster-step {
+  display: grid;
+  place-items: center;
+  width: 6cqw;
+  height: 6cqw;
+  border-radius: 50%;
+  background: var(--poster-accent);
+  color: #fff;
+  font-size: 2.5cqw;
+  font-weight: 900;
+}
+
+/* Gastronomía: split editorial, energetic and readable on a counter. */
+.tpl-bar {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 7cqw;
+  background: var(--poster-primary);
+}
+.tpl-bar::before {
+  width: 70cqw;
+  height: 70cqw;
+  right: -45cqw;
+  top: 18cqw;
+  border-width: 8cqw;
+}
+.tpl-bar .poster-logo {
+  width: 12cqw;
+  height: 12cqw;
+}
+.tpl-bar-body {
+  justify-content: flex-start;
+  margin: 6cqw 0 4cqw;
+}
+.tpl-bar-body .poster-eyebrow {
+  color: var(--poster-accent);
+}
+.tpl-bar-headline {
+  margin-top: 2.5cqw;
+  font-size: 10.5cqw;
+  line-height: 0.92;
+}
+.tpl-bar-sub {
+  max-width: 73cqw;
+  font-size: 4.1cqw;
+}
+.tpl-bar-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5cqw;
+  margin-top: 4cqw;
+}
+.tpl-bar-benefits li {
+  padding: 5.5cqw 1.5cqw 1.8cqw;
+  border-top: 0.4cqw solid rgba(255, 255, 255, 0.5);
+  font-size: 2.9cqw;
+}
+.tpl-bar-benefits li::before {
+  top: 1cqw;
+}
+.tpl-bar-qrcard {
+  display: grid;
+  grid-template-columns: 1fr 42cqw;
+  grid-template-rows: 1fr auto;
+  gap: 2cqw 4cqw;
+  padding: 3.5cqw;
+  text-align: left;
+}
+.tpl-bar-qrcard .poster-qr {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 42cqw;
+  padding: 0;
+}
+.tpl-bar-qrcard .poster-qr-copy {
+  align-self: end;
+}
+.tpl-bar-scan {
+  font-size: 4.2cqw;
+  line-height: 1;
+}
+.tpl-bar-cta {
+  align-self: start;
+  font-size: 2.7cqw;
+  text-transform: none;
+}
+
+/* Alojamiento: welcome letter with a two-column membership card. */
+.tpl-lodging {
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 5cqw;
+  padding: 8cqw;
+  text-align: left;
+}
+.tpl-lodging > .poster-logo {
+  position: absolute;
+  top: 8cqw;
+  right: 8cqw;
+  width: 13cqw;
+  height: 13cqw;
+}
+.tpl-lodging-intro {
+  max-width: 72cqw;
+}
+.tpl-lodging-kicker {
+  display: block;
+}
+.tpl-lodging-name {
+  display: block;
+  margin: 2cqw 0 6cqw;
+  font-size: 4cqw;
+}
+.tpl-lodging-headline {
+  max-width: 76cqw;
+  font-size: 9cqw;
+}
+.tpl-lodging-sub {
+  margin-top: 3cqw;
+  max-width: 70cqw;
+  font-size: 4cqw;
+}
+.tpl-lodging-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 43cqw;
+  gap: 3.5cqw;
+  margin-top: auto;
+  padding: 4cqw;
+  border: 0.5cqw solid var(--poster-accent);
+  background: #fff;
+  box-shadow: 1.4cqw 1.4cqw 0 var(--poster-accent);
+}
+.tpl-lodging-perks {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3cqw;
+  font-family: Inter, sans-serif;
+}
+.tpl-lodging-perks .poster-eyebrow {
+  color: var(--poster-primary);
+}
+.tpl-lodging-perks .poster-benefits li {
+  padding-left: 4cqw;
+  font-size: 2.8cqw;
+}
+.tpl-lodging-perks .poster-benefits li::before {
+  width: 2.8cqw;
+  height: 2.8cqw;
+  font-size: 1.8cqw;
+}
+.tpl-lodging-qr {
+  width: 43cqw;
+  margin: 0;
+  padding: 2cqw;
+  border: 0;
+}
+.tpl-lodging-qr .poster-qr {
+  width: 100%;
+}
+.tpl-lodging-foot {
+  font-size: 2.3cqw;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+}
+
+/* Retail: promotional ticket plus horizontal scan dock. */
+.tpl-retail {
+  background: var(--poster-complementary);
+}
+.tpl-retail-band {
+  padding: 6cqw 7cqw;
+}
+.tpl-retail-tag {
+  margin: 6cqw 7cqw 2cqw;
+  padding: 4cqw;
+}
+.tpl-retail-headline {
+  font-size: 8.3cqw;
+}
+.tpl-retail-sub {
+  margin: 3cqw 7cqw;
+  font-size: 3.8cqw;
+}
+.tpl-retail-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5cqw;
+  margin: 2cqw 7cqw 4cqw;
+}
+.tpl-retail-benefits li {
+  display: flex;
+  flex-direction: column;
+  gap: 1cqw;
+  padding: 2.2cqw;
+  min-height: 15cqw;
+  background: #fff;
+  border: 0.35cqw solid var(--poster-primary);
+  font-size: 2.8cqw;
+}
+.tpl-retail-benefits li::before {
+  display: none;
+}
+.tpl-retail-benefits b {
+  color: var(--poster-primary);
+  font-size: 2.4cqw;
+  letter-spacing: 0.12em;
+}
+.tpl-retail-qr {
+  display: grid;
+  grid-template-columns: 1fr 43cqw;
+  margin: auto 7cqw 6cqw;
+  padding: 3cqw;
+}
+.tpl-retail-qr .poster-qr {
+  grid-column: 2;
+  grid-row: 1;
+  width: 43cqw;
+  padding: 0;
+}
+.tpl-retail-qr .poster-qr-copy {
+  align-items: flex-start;
+  flex-direction: column;
+  padding: 3cqw;
+}
+.tpl-retail-scan {
+  font-size: 4.5cqw;
+  line-height: 1;
+}
+.tpl-retail-qr small {
+  font-size: 2.7cqw;
+  color: #4b5563;
+}
+
+/* Servicios: reassuring checklist and precise onboarding module. */
+.tpl-services {
+  padding: 7cqw 7cqw 7cqw 11cqw;
+  gap: 3cqw;
+}
+.tpl-services-headline {
+  margin-top: 2cqw;
+  font-size: 8.5cqw;
+}
+.tpl-services-sub {
+  font-size: 3.8cqw;
+}
+.tpl-services-promise {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1cqw;
+  margin-top: 1cqw;
+}
+.tpl-services-promise span {
+  padding: 2cqw 1cqw;
+  border: 0.3cqw solid var(--poster-primary);
+  color: var(--poster-primary);
+  font-size: 2.5cqw;
+  font-weight: 850;
+  text-align: center;
+}
+.tpl-services-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38cqw;
+  margin-top: auto;
+  padding: 3cqw;
+}
+.tpl-services-steps {
+  justify-content: center;
+  gap: 3.5cqw;
+  font-size: 3.2cqw;
+}
+.tpl-services-steps b {
+  width: 5cqw;
+  height: 5cqw;
+}
+.tpl-services-qr {
+  width: 38cqw;
+  gap: 1cqw;
+  padding: 2cqw;
+}
+.tpl-services-qr > span {
+  font-size: 3.2cqw;
+}
+.tpl-services-qr small {
+  font-size: 2.1cqw;
+  color: #64748b;
+}
+
+/* Minimal: asymmetric magazine layout with the QR as a deliberate second column. */
+.tpl-minimal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 47cqw;
+  grid-template-rows: auto 1fr;
+  align-items: stretch;
+  gap: 7cqw 4cqw;
+  padding: 8cqw;
+  text-align: left;
+}
+.tpl-minimal-head {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+.tpl-minimal-message {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3cqw;
+}
+.tpl-minimal-message .poster-eyebrow {
+  color: var(--poster-primary);
+}
+.tpl-minimal-headline {
+  max-width: none;
+  font-size: 8.8cqw;
+  line-height: 0.95;
+}
+.tpl-minimal-sub {
+  max-width: none;
+  font-size: 3.6cqw;
+}
+.tpl-minimal-benefits {
+  gap: 1.5cqw;
+  margin-top: 2cqw;
+}
+.tpl-minimal-benefits li {
+  font-size: 3.2cqw;
+}
+.tpl-minimal-qr {
+  align-self: center;
+  width: 47cqw;
+  padding: 2.5cqw;
+  text-align: center;
+}
+.tpl-minimal-qr .poster-qr {
+  width: 100%;
+  padding: 0;
+}
+.tpl-minimal-scan {
+  font-size: 3.3cqw;
+}
+.tpl-minimal-proof {
+  font-size: 2.4cqw;
+}
 
 @media print {
   .brand-kit-print-page {
