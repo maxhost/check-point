@@ -22,12 +22,14 @@ export function TemplateServices(props: PosterProps) {
           <span className="tpl-services-name">{businessName}</span>
         </div>
       </header>
-      <h1 className="tpl-services-headline">{headline}</h1>
-      <p className="tpl-services-sub">{subheadline}</p>
-      <div className="tpl-services-promise">
-        <span>Más visitas</span>
-        <span>Más beneficios</span>
-        <span>Cero aplicaciones</span>
+      <div className="tpl-services-body">
+        <h1 className="tpl-services-headline">{headline}</h1>
+        <p className="tpl-services-sub">{subheadline}</p>
+        <div className="tpl-services-promise">
+          <span>Más visitas</span>
+          <span>Más beneficios</span>
+          <span>Cero aplicaciones</span>
+        </div>
       </div>
       <div className="tpl-services-panel">
         <ol className="tpl-services-steps">

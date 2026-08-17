@@ -3056,212 +3056,448 @@ input:focus {
 }
 
 /* ==========================================================================
-   Poster — shared base + parts. Internal sizing uses cqw so the layout scales
-   identically in the small on-screen stage and at full A4/A5 on print.
+   Brand-kit posters v4 — ONE coherent block. Every internal length uses cqw
+   (1cqw = 1% of the poster width) so the layout is identical on the 380px
+   on-screen stage and at full A4/A5 print. RULE: never use cqw in a grid/flex
+   track ON the .poster element itself — it is its own container and would
+   resolve cqw against the viewport (this blanked the old minimal). cqw is only
+   used on descendants of .poster.
    ========================================================================== */
 
 .poster {
   position: relative;
   width: 100%;
   aspect-ratio: 210 / 297;
-  background: #ffffff;
+  background: #fff;
   color: #14181f;
   overflow: hidden;
   container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  font-family: Inter, system-ui, sans-serif;
+}
+.poster,
+.poster * {
+  box-sizing: border-box;
+}
+.poster h1 {
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.poster p {
+  margin: 0;
+}
+
+/* Shared parts ------------------------------------------------------------ */
+.poster-logo {
+  flex: none;
+  object-fit: contain;
+  background: #fff;
+}
+.poster-logo-mono {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--poster-accent);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+.poster-eyebrow {
+  font-size: 3cqw;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.poster-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 2.2cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.poster-benefits li {
+  position: relative;
+  padding-left: 6cqw;
+  font-size: 4.2cqw;
+  font-weight: 750;
+  line-height: 1.12;
+}
+.poster-benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  display: grid;
+  place-items: center;
+  width: 4cqw;
+  height: 4cqw;
+  border-radius: 50%;
+  background: var(--poster-accent);
+  color: #fff;
+  font-size: 2.6cqw;
+  font-weight: 900;
 }
 .poster-qr {
-  width: 100%;
-  line-height: 0;
+  flex: none;
+  aspect-ratio: 1;
+  overflow: visible;
+  background: #fff;
 }
 .poster-qr svg {
   display: block;
   width: 100%;
-  height: auto;
-}
-.poster-logo {
-  display: block;
-  width: 18cqw;
-  height: 18cqw;
-  object-fit: contain;
-}
-.poster-logo-mono {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18cqw;
-  height: 18cqw;
-  border-radius: 4cqw;
-  background: var(--poster-primary);
-  color: #fff;
-  font-weight: 800;
-  font-size: 7cqw;
+  height: 100%;
 }
 
-/* Bar & gastronomía */
-.tpl-bar {
+/* Copy column that sits beside a QR (bar + retail markup). */
+.poster-qr-copy {
   display: flex;
   flex-direction: column;
-  padding: 8cqw;
+  gap: 2cqw;
+  min-width: 0;
+}
+.poster-step {
+  display: inline-grid;
+  place-items: center;
+  width: 7cqw;
+  height: 7cqw;
+  border-radius: 50%;
+  background: var(--poster-accent);
+  color: #fff;
+  font-size: 3cqw;
+  font-weight: 900;
+}
+
+/* =========================================================================
+   1) BAR & GASTRONOMÍA — full-bleed green, benefit-first, huge scan card.
+   ========================================================================= */
+.tpl-bar {
+  padding: 8%;
   background: var(--poster-primary);
   color: #fff;
+  justify-content: space-between;
 }
-.tpl-bar .poster-logo-mono {
-  background: var(--poster-accent);
+.tpl-bar::before {
+  content: "";
+  position: absolute;
+  right: -30cqw;
+  top: -30cqw;
+  width: 60cqw;
+  height: 60cqw;
+  border: 8cqw solid var(--poster-accent);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.tpl-bar > * {
+  position: relative;
 }
 .tpl-bar-head {
   display: flex;
   align-items: center;
-  gap: 4cqw;
+  gap: 3.5cqw;
+}
+.tpl-bar-head .poster-logo {
+  width: 14cqw;
+  height: 14cqw;
+  font-size: 5cqw;
+}
+.tpl-bar-head > div {
+  display: flex;
+  flex-direction: column;
+}
+.tpl-bar-kicker {
+  font-size: 2.9cqw;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
 }
 .tpl-bar-name {
   font-size: 5cqw;
-  font-weight: 700;
+  font-weight: 900;
 }
 .tpl-bar-body {
-  flex: 1;
-  margin-top: 8cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 3cqw;
+}
+.tpl-bar-body .poster-eyebrow {
+  color: var(--poster-accent);
 }
 .tpl-bar-headline {
-  margin: 0;
-  font-size: 11cqw;
-  line-height: 1.02;
-  font-weight: 900;
-  text-transform: uppercase;
+  font-size: 15cqw;
+  line-height: 0.9;
 }
 .tpl-bar-sub {
-  margin: 3cqw 0 0;
-  font-size: 5cqw;
-  opacity: 0.92;
+  max-width: 78cqw;
+  font-size: 4.6cqw;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.88);
+}
+.tpl-bar-benefits {
+  gap: 2.6cqw;
+  margin-top: 1cqw;
+}
+.tpl-bar-benefits li {
+  font-size: 4.4cqw;
 }
 .tpl-bar-qrcard {
-  display: flex;
-  flex-direction: column;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: 1fr auto;
+  gap: 2cqw 5cqw;
   align-items: center;
-  gap: 3cqw;
-  padding: 6cqw;
-  border-radius: 5cqw;
+  padding: 5cqw;
   background: #fff;
-  color: var(--poster-primary);
+  border-radius: 3cqw;
+  color: #14181f;
+}
+.tpl-bar-qrcard .poster-qr-copy {
+  grid-column: 1;
+  grid-row: 1;
+  gap: 3cqw;
 }
 .tpl-bar-qrcard .poster-qr {
-  width: 54cqw;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 44cqw;
+}
+.tpl-bar-qrcard .poster-step {
+  color: #fff;
+}
+.tpl-bar-scan {
+  font-size: 6cqw;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--poster-primary);
 }
 .tpl-bar-cta {
-  font-size: 4.5cqw;
-  font-weight: 800;
-  text-transform: uppercase;
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 3.2cqw;
+  font-weight: 700;
+  color: #5b6472;
 }
 
-/* Alojamiento */
+/* =========================================================================
+   2) ALOJAMIENTO — calm cream welcome, framed membership card at the base.
+   ========================================================================= */
 .tpl-lodging {
+  padding: 9%;
+  background: var(--poster-complementary);
+  justify-content: space-between;
+}
+.tpl-lodging > .poster-logo {
+  position: absolute;
+  top: 9cqw;
+  right: 9cqw;
+  width: 15cqw;
+  height: 15cqw;
+  font-size: 5.5cqw;
+}
+.tpl-lodging-intro {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 10cqw 8cqw;
-  gap: 3cqw;
-  background: var(--poster-complementary);
-  color: #1c2430;
-  font-family: Georgia, "Times New Roman", serif;
+  max-width: 74cqw;
 }
-.tpl-lodging-name {
-  margin-top: 3cqw;
-  font-size: 5cqw;
+.tpl-lodging-kicker {
+  font-size: 3cqw;
+  font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  color: var(--poster-primary);
 }
-.tpl-lodging-rule {
-  width: 16cqw;
-  height: 0.6cqw;
-  margin: 3cqw 0;
-  background: var(--poster-accent);
+.tpl-lodging-name {
+  margin: 2cqw 0 6cqw;
+  font-size: 4.4cqw;
+  font-weight: 700;
+  color: #5b6472;
 }
 .tpl-lodging-headline {
-  margin: 0;
-  font-size: 8.5cqw;
-  font-weight: 600;
+  font-size: 13cqw;
+  line-height: 0.95;
+  color: #14181f;
 }
 .tpl-lodging-sub {
-  margin: 0;
-  font-size: 4.6cqw;
-}
-.tpl-lodging-qr {
-  width: 48cqw;
   margin-top: 4cqw;
-  padding: 4cqw;
+  max-width: 72cqw;
+  font-size: 4.6cqw;
+  line-height: 1.3;
+  color: #3a424e;
+}
+.tpl-lodging-card {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5cqw;
+  align-items: center;
+  padding: 6cqw;
   background: #fff;
-  border: 0.4cqw solid var(--poster-accent);
+  border-radius: 3cqw;
+  box-shadow: 1.6cqw 1.6cqw 0 var(--poster-accent);
 }
-.tpl-lodging-foot {
-  margin-top: 2cqw;
-  font-size: 3.8cqw;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-/* Retail */
-.tpl-retail {
+.tpl-lodging-perks {
   display: flex;
   flex-direction: column;
+  gap: 3.5cqw;
+  min-width: 0;
+}
+.tpl-lodging-perks .poster-eyebrow {
+  color: var(--poster-primary);
+}
+.tpl-lodging-perks .poster-benefits li {
+  font-size: 3.5cqw;
+  padding-left: 5cqw;
+}
+.tpl-lodging-perks .poster-benefits li::before {
+  width: 3.4cqw;
+  height: 3.4cqw;
+  font-size: 2.2cqw;
+}
+.tpl-lodging-foot {
+  font-size: 3cqw;
+  font-weight: 700;
+  color: #5b6472;
+}
+.tpl-lodging-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2cqw;
+}
+.tpl-lodging-qr > span {
+  font-size: 3.4cqw;
+  font-weight: 900;
+  color: var(--poster-primary);
+}
+.tpl-lodging-qr .poster-qr {
+  width: 40cqw;
+}
+
+/* =========================================================================
+   3) RETAIL — promotional ticket on cream, header band + offer + scan dock.
+   ========================================================================= */
+.tpl-retail {
+  background: var(--poster-complementary);
+  justify-content: space-between;
 }
 .tpl-retail-band {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 4cqw;
-  padding: 7cqw 8cqw;
+  gap: 3.5cqw;
+  padding: 6cqw 8cqw;
   background: var(--poster-primary);
   color: #fff;
 }
-.tpl-retail-name {
-  font-size: 5.5cqw;
+.tpl-retail-band .poster-logo {
+  width: 13cqw;
+  height: 13cqw;
+  font-size: 4.6cqw;
+}
+.tpl-retail-band > div {
+  display: flex;
+  flex-direction: column;
+}
+.tpl-retail-kicker {
+  font-size: 2.9cqw;
   font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+.tpl-retail-name {
+  font-size: 5cqw;
+  font-weight: 900;
 }
 .tpl-retail-tag {
-  align-self: flex-start;
-  margin: 8cqw;
-  padding: 4cqw 6cqw;
-  border-radius: 2cqw;
+  margin: 4.5cqw 8cqw 0;
+  padding: 4cqw 5cqw;
   background: var(--poster-accent);
   color: #fff;
+  box-shadow: 1.8cqw 1.8cqw 0 var(--poster-primary);
 }
-.tpl-retail-headline {
-  margin: 0;
-  font-size: 9cqw;
+.tpl-retail-taglabel {
+  font-size: 3.2cqw;
   font-weight: 900;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
+.tpl-retail-headline {
+  margin-top: 1cqw;
+  font-size: 9.6cqw;
+  line-height: 0.92;
+}
 .tpl-retail-sub {
-  margin: 0 8cqw;
+  margin: 5.5cqw 8cqw 0;
+  font-size: 4.4cqw;
+  font-weight: 650;
+  color: #3a424e;
+}
+.tpl-retail-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5cqw;
+  margin: 3.5cqw 8cqw 0;
+}
+.tpl-retail-benefits li {
+  display: flex;
+  flex-direction: column;
+  gap: 1cqw;
+  padding: 3cqw 2.6cqw;
+  min-height: 0;
+  background: #fff;
+  border-radius: 2cqw;
+  border-top: 1.2cqw solid var(--poster-primary);
+  font-size: 3.3cqw;
+  font-weight: 750;
+  line-height: 1.1;
+}
+.tpl-retail-benefits li::before {
+  display: none;
+}
+.tpl-retail-benefits b {
+  color: var(--poster-accent);
   font-size: 5cqw;
-  color: #374151;
 }
 .tpl-retail-qr {
-  display: flex;
-  flex-direction: column;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 3cqw;
-  margin: 6cqw 8cqw;
-  padding: 6cqw;
-  border-radius: 3cqw;
+  gap: 4cqw;
+  margin: 3.5cqw 8cqw;
+  padding: 3.5cqw;
   background: #fff;
-  border: 1cqw solid var(--poster-primary);
+  border-radius: 2cqw;
+  border: 0.6cqw dashed #cbb89a;
 }
 .tpl-retail-qr .poster-qr {
-  width: 52cqw;
+  width: 32cqw;
 }
-.tpl-retail-cta {
-  font-size: 4.6cqw;
-  font-weight: 800;
+.tpl-retail-scan {
+  font-size: 5.6cqw;
+  font-weight: 900;
+  line-height: 1;
   color: var(--poster-primary);
 }
+.tpl-retail-qr small {
+  font-size: 3cqw;
+  font-weight: 650;
+  color: #5b6472;
+}
 
-/* Servicios */
+/* =========================================================================
+   4) SERVICIOS — clean white, side rule, numbered onboarding + scan panel.
+   ========================================================================= */
 .tpl-services {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4cqw;
-  padding: 9cqw 8cqw 9cqw 12cqw;
+  padding: 8% 8% 8% 11%;
+  background: #fff;
+  justify-content: space-between;
 }
 .tpl-services-bar {
   position: absolute;
@@ -3274,912 +3510,207 @@ input:focus {
 .tpl-services-head {
   display: flex;
   align-items: center;
-  gap: 4cqw;
-}
-.tpl-services-name {
-  font-size: 5.5cqw;
-  font-weight: 800;
-  color: var(--poster-primary);
-}
-.tpl-services-headline {
-  margin: 0;
-  font-size: 8cqw;
-  font-weight: 800;
-}
-.tpl-services-sub {
-  margin: 0;
-  font-size: 4.6cqw;
-  color: #4b5563;
-}
-.tpl-services-panel {
-  display: flex;
-  align-items: center;
-  gap: 5cqw;
-  margin-top: 4cqw;
-}
-.tpl-services-steps {
-  margin: 0;
-  padding-left: 5cqw;
-  font-size: 4.4cqw;
-  color: #1f2937;
-  display: flex;
-  flex-direction: column;
-  gap: 2.5cqw;
-}
-.tpl-services-qr {
-  flex: none;
-  width: 42cqw;
-}
-
-/* Minimalista */
-.tpl-minimal {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 5cqw;
-  padding: 10cqw 8cqw;
-}
-.tpl-minimal-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2cqw;
-}
-.tpl-minimal-name {
-  font-size: 5cqw;
-  font-weight: 700;
-  color: var(--poster-primary);
-}
-.tpl-minimal-headline {
-  margin: 0;
-  font-size: 8cqw;
-  font-weight: 800;
-}
-.tpl-minimal-qr {
-  width: 52cqw;
-}
-.tpl-minimal-sub {
-  margin: 0;
-  font-size: 4.6cqw;
-  color: #4b5563;
-}
-
-/*
- * Conversion-focused poster refresh. Every layout reads in the same order from a
- * counter: benefit → reassurance/context → one large, high-contrast scan action.
- * The five visual systems deliberately differ, but all reserve a white quiet zone
- * around the QR for reliable printed scans.
- */
-.poster {
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-}
-.poster-logo {
-  width: 14cqw;
-  height: 14cqw;
-}
-.poster-logo-mono {
-  width: 14cqw;
-  height: 14cqw;
-  border-radius: 50%;
-  font-size: 5.5cqw;
-}
-
-/* Bar & gastronomía — energetic night-market card */
-.tpl-bar {
-  padding: 8cqw;
-  background: var(--poster-primary);
-  isolation: isolate;
-}
-.tpl-bar::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  width: 78cqw;
-  height: 78cqw;
-  right: -37cqw;
-  top: 23cqw;
-  border: 10cqw solid var(--poster-accent);
-  border-radius: 50%;
-  opacity: 0.72;
-}
-.tpl-bar-head {
   gap: 3.5cqw;
 }
-.tpl-bar-head > div,
-.tpl-retail-band > div,
+.tpl-services-head .poster-logo {
+  width: 13cqw;
+  height: 13cqw;
+  font-size: 4.6cqw;
+}
 .tpl-services-head > div {
   display: flex;
   flex-direction: column;
-  gap: 0.8cqw;
-}
-.tpl-bar-kicker,
-.tpl-retail-kicker,
-.tpl-services-kicker,
-.tpl-minimal-kicker,
-.tpl-lodging-kicker {
-  font-size: 2.9cqw;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-}
-.tpl-bar-name {
-  font-size: 5cqw;
-  line-height: 1;
-}
-.tpl-bar-body {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  margin: 4cqw 0 5cqw;
-}
-.tpl-bar-headline {
-  font-size: 12cqw;
-  letter-spacing: -0.065em;
-  line-height: 0.91;
-  text-wrap: balance;
-}
-.tpl-bar-sub {
-  max-width: 67cqw;
-  margin: 4cqw 0 0;
-  font-size: 4.7cqw;
-  line-height: 1.25;
-  font-weight: 600;
-}
-.tpl-bar-proof {
-  align-self: flex-start;
-  margin-top: 4cqw;
-  padding: 1.7cqw 2.6cqw;
-  border: 0.35cqw solid rgba(255, 255, 255, 0.65);
-  border-radius: 99px;
-  font-size: 3.2cqw;
-  font-weight: 800;
-}
-.tpl-bar-qrcard {
-  gap: 2.5cqw;
-  padding: 4.5cqw;
-  border-radius: 4cqw;
-  box-shadow: 0 2cqw 0 rgba(0, 0, 0, 0.16);
-}
-.tpl-bar-qrcard .poster-qr {
-  width: 51cqw;
-  padding: 1.2cqw;
-  background: #fff;
-}
-.tpl-bar-scan,
-.tpl-retail-scan,
-.tpl-minimal-scan {
-  font-size: 4.4cqw;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-}
-.tpl-bar-cta {
-  font-size: 3.1cqw;
-  letter-spacing: 0.04em;
-}
-
-/* Alojamiento — quiet, premium welcome note */
-.tpl-lodging {
-  position: relative;
-  justify-content: center;
-  padding: 9cqw 9cqw 8cqw;
-  gap: 3cqw;
-  background: #f7f4ed;
-  color: #25322f;
-  font-family: Georgia, "Times New Roman", serif;
-}
-.tpl-lodging::before,
-.tpl-lodging::after {
-  content: "";
-  position: absolute;
-  width: 16cqw;
-  height: 16cqw;
-  border-color: var(--poster-accent);
-  border-style: solid;
-  opacity: 0.75;
-}
-.tpl-lodging::before {
-  top: 5cqw;
-  left: 5cqw;
-  border-width: 0.7cqw 0 0 0.7cqw;
-}
-.tpl-lodging::after {
-  right: 5cqw;
-  bottom: 5cqw;
-  border-width: 0 0.7cqw 0.7cqw 0;
-}
-.tpl-lodging .poster-logo {
-  width: 16cqw;
-  height: 16cqw;
-}
-.tpl-lodging-kicker {
-  color: var(--poster-primary);
-  font-family: Inter, sans-serif;
-  font-size: 2.8cqw;
-}
-.tpl-lodging-name {
-  margin: 0;
-  font-size: 5cqw;
-  letter-spacing: 0.1em;
-}
-.tpl-lodging-headline {
-  max-width: 70cqw;
-  font-size: 9.5cqw;
-  line-height: 1.03;
-  letter-spacing: -0.045em;
-  text-wrap: balance;
-}
-.tpl-lodging-sub {
-  max-width: 63cqw;
-  font-family: Inter, sans-serif;
-  font-size: 4.1cqw;
-  line-height: 1.35;
-}
-.tpl-lodging-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2cqw;
-  width: 53cqw;
-  margin: 2cqw 0 0;
-  padding: 3.5cqw;
-  border: 0.5cqw solid var(--poster-accent);
-  background: #fff;
-}
-.tpl-lodging-qr > span {
-  font-family: Inter, sans-serif;
-  font-size: 3.9cqw;
-  font-weight: 800;
-  color: var(--poster-primary);
-}
-.tpl-lodging-foot {
-  margin: 0;
-  font-family: Inter, sans-serif;
-  font-size: 2.8cqw;
-  letter-spacing: 0.08em;
-}
-
-/* Retail — bold ticket with a single, framed action */
-.tpl-retail {
-  background: #fff8ec;
-}
-.tpl-retail-band {
-  gap: 3.5cqw;
-  padding: 7cqw 8cqw;
-}
-.tpl-retail-kicker {
-  font-size: 2.7cqw;
-  opacity: 0.78;
-}
-.tpl-retail-name {
-  font-size: 5.2cqw;
-  line-height: 1;
-}
-.tpl-retail-tag {
-  position: relative;
-  margin: 7cqw 8cqw 4cqw;
-  padding: 5cqw 5cqw 4.5cqw;
-  border-radius: 0;
-  box-shadow: 1.8cqw 1.8cqw 0 var(--poster-primary);
-}
-.tpl-retail-taglabel {
-  display: block;
-  margin-bottom: 2cqw;
-  font-size: 3cqw;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.tpl-retail-headline {
-  font-size: 9.3cqw;
-  line-height: 0.94;
-  letter-spacing: -0.055em;
-  text-wrap: balance;
-}
-.tpl-retail-sub {
-  margin: 2cqw 8cqw;
-  font-size: 4.4cqw;
-  line-height: 1.3;
-  font-weight: 600;
-}
-.tpl-retail-qr {
-  gap: 2cqw;
-  margin: auto 8cqw 7cqw;
-  padding: 4cqw;
-  border: 0.8cqw solid var(--poster-primary);
-  border-radius: 0;
-}
-.tpl-retail-qr .poster-qr {
-  width: 49cqw;
-  padding: 1cqw;
-}
-.tpl-retail-scan {
-  color: var(--poster-primary);
-  font-size: 4cqw;
-}
-.tpl-retail-cta {
-  font-size: 3.2cqw;
-  color: #374151;
-}
-
-/* Servicios — structured, trustworthy and easy to understand */
-.tpl-services {
-  gap: 4cqw;
-  padding: 8cqw 7cqw 8cqw 12cqw;
-  background: #fbfcfb;
-}
-.tpl-services-bar {
-  width: 3.5cqw;
-}
-.tpl-services-head {
-  gap: 3.5cqw;
 }
 .tpl-services-kicker {
-  font-size: 2.7cqw;
-  color: #64748b;
-}
-.tpl-services-name {
-  font-size: 5.2cqw;
-  line-height: 1;
-}
-.tpl-services-headline {
-  max-width: 70cqw;
-  font-size: 9.5cqw;
-  line-height: 0.98;
-  letter-spacing: -0.055em;
-  text-wrap: balance;
-}
-.tpl-services-sub {
-  max-width: 67cqw;
-  font-size: 4.3cqw;
-  line-height: 1.35;
-}
-.tpl-services-panel {
-  align-items: stretch;
-  gap: 3cqw;
-  margin-top: auto;
-  padding: 3cqw;
-  background: var(--poster-complementary);
-  border-radius: 3cqw;
-}
-.tpl-services-steps {
-  flex: 1;
-  gap: 2.8cqw;
-  padding: 1cqw 0;
-  list-style: none;
-  font-size: 3.4cqw;
-  line-height: 1.17;
-}
-.tpl-services-steps li {
-  display: flex;
-  align-items: center;
-  gap: 1.5cqw;
-}
-.tpl-services-steps b {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 4.5cqw;
-  height: 4.5cqw;
-  border-radius: 50%;
-  background: var(--poster-primary);
-  color: #fff;
-  font-size: 2.6cqw;
-}
-.tpl-services-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1cqw;
-  width: 35cqw;
-  padding: 1.8cqw;
-  background: #fff;
-}
-.tpl-services-qr > span {
-  font-size: 2.7cqw;
-  font-weight: 900;
-  color: var(--poster-primary);
-}
-
-/* Minimal — pared-back editorial poster where the code is the hero */
-.tpl-minimal {
-  justify-content: center;
-  gap: 4cqw;
-  padding: 9cqw 8cqw;
-  background: #fff;
-}
-.tpl-minimal::before {
-  content: "";
-  position: absolute;
-  width: 100%;
-  height: 2.5cqw;
-  top: 0;
-  background: var(--poster-primary);
-}
-.tpl-minimal-head {
-  flex-direction: row;
-  text-align: left;
-  align-items: center;
-  gap: 3cqw;
-}
-.tpl-minimal-head > div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8cqw;
-}
-.tpl-minimal-kicker {
-  color: #6b7280;
-  font-size: 2.7cqw;
-}
-.tpl-minimal-name {
-  font-size: 5cqw;
-  line-height: 1;
-}
-.tpl-minimal-headline {
-  max-width: 80cqw;
-  font-size: 10.3cqw;
-  line-height: 0.93;
-  letter-spacing: -0.07em;
-  text-wrap: balance;
-}
-.tpl-minimal-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2.5cqw;
-  width: 61cqw;
-  padding: 4cqw;
-  border: 0.6cqw solid #171717;
-}
-.tpl-minimal-qr .poster-qr {
-  padding: 1cqw;
-}
-.tpl-minimal-scan {
-  font-size: 4.2cqw;
-  color: var(--poster-primary);
-}
-.tpl-minimal-sub {
-  max-width: 66cqw;
-  font-size: 4.1cqw;
-  line-height: 1.3;
-}
-.tpl-minimal-proof {
-  padding: 1.6cqw 3cqw;
-  border-radius: 99px;
-  background: var(--poster-complementary);
-  font-size: 3cqw;
+  font-size: 2.9cqw;
   font-weight: 800;
-}
-
-/* Poster fit guard: the QR is an action, not decoration. Each design keeps a
-   bounded quiet zone so the code remains entirely inside A4 and A5 prints. */
-.poster,
-.poster * {
-  box-sizing: border-box;
-}
-.poster-qr {
-  flex: none;
-  aspect-ratio: 1;
-  overflow: visible;
-}
-.poster-qr svg {
-  width: 100%;
-  height: 100%;
-}
-.tpl-bar,
-.tpl-retail,
-.tpl-services,
-.tpl-minimal,
-.tpl-lodging {
-  min-height: 0;
-}
-.tpl-bar-qrcard .poster-qr {
-  width: min(50cqw, 100%);
-}
-.tpl-lodging-qr .poster-qr {
-  width: min(46cqw, 100%);
-}
-.tpl-retail-qr .poster-qr {
-  width: min(48cqw, 100%);
-}
-.tpl-services-qr .poster-qr {
-  width: 100%;
-}
-.tpl-minimal-qr .poster-qr {
-  width: min(52cqw, 100%);
-}
-
-/* Brand-kit posters v3 — five conversion-led compositions. */
-.poster-eyebrow {
-  font-size: 2.8cqw;
-  font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--poster-primary);
 }
-.poster-benefits {
-  display: flex;
-  flex-direction: column;
-  gap: 1.7cqw;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.poster-benefits li {
-  position: relative;
-  padding-left: 4.5cqw;
-  font-size: 3.7cqw;
-  font-weight: 750;
-  line-height: 1.15;
-}
-.poster-benefits li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  display: grid;
-  place-items: center;
-  width: 3.2cqw;
-  height: 3.2cqw;
-  border-radius: 50%;
-  background: var(--poster-accent);
-  color: #fff;
-  font-size: 2cqw;
-}
-.poster-qr-copy {
-  display: flex;
-  align-items: center;
-  gap: 2cqw;
-}
-.poster-step {
-  display: grid;
-  place-items: center;
-  width: 6cqw;
-  height: 6cqw;
-  border-radius: 50%;
-  background: var(--poster-accent);
-  color: #fff;
-  font-size: 2.5cqw;
+.tpl-services-name {
+  font-size: 5cqw;
   font-weight: 900;
 }
-
-/* Gastronomía: split editorial, energetic and readable on a counter. */
-.tpl-bar {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  padding: 7cqw;
-  background: var(--poster-primary);
-}
-.tpl-bar::before {
-  width: 70cqw;
-  height: 70cqw;
-  right: -45cqw;
-  top: 18cqw;
-  border-width: 8cqw;
-}
-.tpl-bar .poster-logo {
-  width: 12cqw;
-  height: 12cqw;
-}
-.tpl-bar-body {
-  justify-content: flex-start;
-  margin: 6cqw 0 4cqw;
-}
-.tpl-bar-body .poster-eyebrow {
-  color: var(--poster-accent);
-}
-.tpl-bar-headline {
-  margin-top: 2.5cqw;
-  font-size: 10.5cqw;
-  line-height: 0.92;
-}
-.tpl-bar-sub {
-  max-width: 73cqw;
-  font-size: 4.1cqw;
-}
-.tpl-bar-benefits {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5cqw;
-  margin-top: 4cqw;
-}
-.tpl-bar-benefits li {
-  padding: 5.5cqw 1.5cqw 1.8cqw;
-  border-top: 0.4cqw solid rgba(255, 255, 255, 0.5);
-  font-size: 2.9cqw;
-}
-.tpl-bar-benefits li::before {
-  top: 1cqw;
-}
-.tpl-bar-qrcard {
-  display: grid;
-  grid-template-columns: 1fr 42cqw;
-  grid-template-rows: 1fr auto;
-  gap: 2cqw 4cqw;
-  padding: 3.5cqw;
-  text-align: left;
-}
-.tpl-bar-qrcard .poster-qr {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  width: 42cqw;
-  padding: 0;
-}
-.tpl-bar-qrcard .poster-qr-copy {
-  align-self: end;
-}
-.tpl-bar-scan {
-  font-size: 4.2cqw;
-  line-height: 1;
-}
-.tpl-bar-cta {
-  align-self: start;
-  font-size: 2.7cqw;
-  text-transform: none;
-}
-
-/* Alojamiento: welcome letter with a two-column membership card. */
-.tpl-lodging {
-  justify-content: flex-start;
-  align-items: stretch;
-  gap: 5cqw;
-  padding: 8cqw;
-  text-align: left;
-}
-.tpl-lodging > .poster-logo {
-  position: absolute;
-  top: 8cqw;
-  right: 8cqw;
-  width: 13cqw;
-  height: 13cqw;
-}
-.tpl-lodging-intro {
-  max-width: 72cqw;
-}
-.tpl-lodging-kicker {
-  display: block;
-}
-.tpl-lodging-name {
-  display: block;
-  margin: 2cqw 0 6cqw;
-  font-size: 4cqw;
-}
-.tpl-lodging-headline {
-  max-width: 76cqw;
-  font-size: 9cqw;
-}
-.tpl-lodging-sub {
-  margin-top: 3cqw;
-  max-width: 70cqw;
-  font-size: 4cqw;
-}
-.tpl-lodging-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 43cqw;
-  gap: 3.5cqw;
-  margin-top: auto;
-  padding: 4cqw;
-  border: 0.5cqw solid var(--poster-accent);
-  background: #fff;
-  box-shadow: 1.4cqw 1.4cqw 0 var(--poster-accent);
-}
-.tpl-lodging-perks {
+.tpl-services-body {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 3cqw;
-  font-family: Inter, sans-serif;
-}
-.tpl-lodging-perks .poster-eyebrow {
-  color: var(--poster-primary);
-}
-.tpl-lodging-perks .poster-benefits li {
-  padding-left: 4cqw;
-  font-size: 2.8cqw;
-}
-.tpl-lodging-perks .poster-benefits li::before {
-  width: 2.8cqw;
-  height: 2.8cqw;
-  font-size: 1.8cqw;
-}
-.tpl-lodging-qr {
-  width: 43cqw;
-  margin: 0;
-  padding: 2cqw;
-  border: 0;
-}
-.tpl-lodging-qr .poster-qr {
-  width: 100%;
-}
-.tpl-lodging-foot {
-  font-size: 2.3cqw;
-  line-height: 1.2;
-  letter-spacing: 0.05em;
-}
-
-/* Retail: promotional ticket plus horizontal scan dock. */
-.tpl-retail {
-  background: var(--poster-complementary);
-}
-.tpl-retail-band {
-  padding: 6cqw 7cqw;
-}
-.tpl-retail-tag {
-  margin: 6cqw 7cqw 2cqw;
-  padding: 4cqw;
-}
-.tpl-retail-headline {
-  font-size: 8.3cqw;
-}
-.tpl-retail-sub {
-  margin: 3cqw 7cqw;
-  font-size: 3.8cqw;
-}
-.tpl-retail-benefits {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5cqw;
-  margin: 2cqw 7cqw 4cqw;
-}
-.tpl-retail-benefits li {
-  display: flex;
-  flex-direction: column;
-  gap: 1cqw;
-  padding: 2.2cqw;
-  min-height: 15cqw;
-  background: #fff;
-  border: 0.35cqw solid var(--poster-primary);
-  font-size: 2.8cqw;
-}
-.tpl-retail-benefits li::before {
-  display: none;
-}
-.tpl-retail-benefits b {
-  color: var(--poster-primary);
-  font-size: 2.4cqw;
-  letter-spacing: 0.12em;
-}
-.tpl-retail-qr {
-  display: grid;
-  grid-template-columns: 1fr 43cqw;
-  margin: auto 7cqw 6cqw;
-  padding: 3cqw;
-}
-.tpl-retail-qr .poster-qr {
-  grid-column: 2;
-  grid-row: 1;
-  width: 43cqw;
-  padding: 0;
-}
-.tpl-retail-qr .poster-qr-copy {
-  align-items: flex-start;
-  flex-direction: column;
-  padding: 3cqw;
-}
-.tpl-retail-scan {
-  font-size: 4.5cqw;
-  line-height: 1;
-}
-.tpl-retail-qr small {
-  font-size: 2.7cqw;
-  color: #4b5563;
-}
-
-/* Servicios: reassuring checklist and precise onboarding module. */
-.tpl-services {
-  padding: 7cqw 7cqw 7cqw 11cqw;
-  gap: 3cqw;
+  gap: 4cqw;
 }
 .tpl-services-headline {
-  margin-top: 2cqw;
-  font-size: 8.5cqw;
+  font-size: 13cqw;
+  line-height: 0.92;
 }
 .tpl-services-sub {
-  font-size: 3.8cqw;
+  max-width: 80cqw;
+  font-size: 4.6cqw;
+  line-height: 1.25;
+  color: #3a424e;
 }
 .tpl-services-promise {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1cqw;
-  margin-top: 1cqw;
+  gap: 2.5cqw;
 }
 .tpl-services-promise span {
-  padding: 2cqw 1cqw;
-  border: 0.3cqw solid var(--poster-primary);
+  padding: 3cqw 1.5cqw;
+  border-radius: 2cqw;
+  background: var(--poster-complementary);
   color: var(--poster-primary);
-  font-size: 2.5cqw;
+  font-size: 3cqw;
   font-weight: 850;
   text-align: center;
 }
 .tpl-services-panel {
+  flex: none;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 38cqw;
-  margin-top: auto;
-  padding: 3cqw;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 5cqw;
+  padding: 6cqw;
+  background: var(--poster-primary);
+  border-radius: 3cqw;
+  color: #fff;
 }
 .tpl-services-steps {
-  justify-content: center;
+  display: flex;
+  flex-direction: column;
   gap: 3.5cqw;
-  font-size: 3.2cqw;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+.tpl-services-steps li {
+  display: flex;
+  align-items: center;
+  gap: 3cqw;
+  font-size: 3.8cqw;
+  font-weight: 700;
 }
 .tpl-services-steps b {
-  width: 5cqw;
-  height: 5cqw;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 6.5cqw;
+  height: 6.5cqw;
+  border-radius: 50%;
+  background: var(--poster-accent);
+  font-size: 3.4cqw;
 }
 .tpl-services-qr {
-  width: 38cqw;
-  gap: 1cqw;
-  padding: 2cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6cqw;
 }
 .tpl-services-qr > span {
-  font-size: 3.2cqw;
+  font-size: 3.6cqw;
+  font-weight: 900;
+}
+.tpl-services-qr .poster-qr {
+  width: 40cqw;
 }
 .tpl-services-qr small {
-  font-size: 2.1cqw;
-  color: #64748b;
+  font-size: 2.6cqw;
+  color: rgba(255, 255, 255, 0.75);
 }
 
-/* Minimal: asymmetric magazine layout with the QR as a deliberate second column. */
+/* =========================================================================
+   5) MINIMALISTA — editorial, oversized headline, giant single QR. The QR is
+   a normal centered block (NO cqw grid track on .poster — that blanked it).
+   ========================================================================= */
 .tpl-minimal {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 47cqw;
-  grid-template-rows: auto 1fr;
-  align-items: stretch;
-  gap: 7cqw 4cqw;
-  padding: 8cqw;
+  padding: 10% 9%;
+  background: #fff;
+  justify-content: space-between;
   text-align: left;
 }
+.tpl-minimal::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 3cqw;
+  background: var(--poster-primary);
+}
 .tpl-minimal-head {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 3.5cqw;
+}
+.tpl-minimal-head .poster-logo {
+  width: 13cqw;
+  height: 13cqw;
+  font-size: 4.6cqw;
+}
+.tpl-minimal-head > div {
+  display: flex;
+  flex-direction: column;
+}
+.tpl-minimal-kicker {
+  font-size: 2.9cqw;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.tpl-minimal-name {
+  font-size: 5cqw;
+  font-weight: 900;
 }
 .tpl-minimal-message {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 3cqw;
+  gap: 4cqw;
 }
 .tpl-minimal-message .poster-eyebrow {
   color: var(--poster-primary);
 }
 .tpl-minimal-headline {
-  max-width: none;
-  font-size: 8.8cqw;
-  line-height: 0.95;
+  font-size: 13.5cqw;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
 }
 .tpl-minimal-sub {
-  max-width: none;
-  font-size: 3.6cqw;
+  max-width: 78cqw;
+  font-size: 4.8cqw;
+  line-height: 1.3;
+  color: #3a424e;
 }
 .tpl-minimal-benefits {
-  gap: 1.5cqw;
+  flex-direction: row;
+  gap: 5cqw;
   margin-top: 2cqw;
 }
 .tpl-minimal-benefits li {
-  font-size: 3.2cqw;
+  font-size: 3.6cqw;
 }
 .tpl-minimal-qr {
-  align-self: center;
-  width: 47cqw;
-  padding: 2.5cqw;
-  text-align: center;
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 5cqw;
+  padding: 6cqw;
+  border-radius: 3cqw;
+  background: var(--poster-complementary);
 }
 .tpl-minimal-qr .poster-qr {
-  width: 100%;
-  padding: 0;
+  width: 42cqw;
 }
 .tpl-minimal-scan {
-  font-size: 3.3cqw;
+  font-size: 6cqw;
+  font-weight: 900;
+  line-height: 1.02;
+  color: var(--poster-primary);
 }
 .tpl-minimal-proof {
-  font-size: 2.4cqw;
+  margin-top: 2.5cqw;
+  font-size: 3.2cqw;
+  font-weight: 700;
+  color: #5b6472;
 }
 
 @media print {
