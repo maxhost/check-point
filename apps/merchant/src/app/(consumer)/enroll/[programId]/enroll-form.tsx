@@ -160,8 +160,13 @@ export function EnrollForm({
         </p>
         <button
           type="button"
-          disabled
-          title="Disponible próximamente"
+          onClick={() => {
+            sessionStorage.setItem(
+              "checkpass_recovery_input",
+              JSON.stringify({ phone, countryIso }),
+            );
+            window.location.assign("/recover");
+          }}
           style={{
             marginTop: 16,
             width: "100%",
@@ -169,12 +174,12 @@ export function EnrollForm({
             fontSize: 16,
             borderRadius: 10,
             border: "1px solid #ccc",
-            background: "#eee",
-            color: "#999",
-            cursor: "not-allowed",
+            background: brandPrimaryColor,
+            color: readableTextColor(brandPrimaryColor),
+            cursor: "pointer",
           }}
         >
-          Recuperar mi tarjeta (próximamente)
+          Recuperar mi tarjeta
         </button>
       </section>
     );

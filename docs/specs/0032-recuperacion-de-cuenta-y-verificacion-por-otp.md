@@ -1,7 +1,7 @@
 ---
 spec: 0032
 fecha: 2026-08-14
-estado: cerrada
+estado: implementada
 resumen: Recuperación passwordless por OTP propio enviado por SMS, con ClickSend y Twilio intercambiables (ClickSend activo inicialmente), alta verificada si el número aún no existe, límites persistentes y rotación de todas las credenciales del consumidor recuperado.
 disjunta: no
 archivos: esquema consumer, migración, server/otp y consumer/recovery, rutas públicas y UI de recuperación; extiende wallet/rotate
@@ -124,8 +124,10 @@ Migración aditiva en el esquema `consumer`:
 **`otp_challenge`**
 
 - `id uuid PK`, `phone_e164 text`, `country_iso text`, `purpose text` (`recover_account`).
-- `code_hash text` y `code_ciphertext text`; nunca código en claro. El hash HMAC verifica y el
-  ciphertext AES-256-GCM permite reenviar exactamente el mismo código durante cinco minutos.
+- `code_hash text` y `code_ciphertext text` nullable; nunca código en claro. El HMAC se liga a
+  challenge+teléfono+purpose (no solo al código), y el ciphertext AES-256-GCM lleva versión de
+  clave para reenviar exactamente el mismo código durante cinco minutos. Ambos se purgan al
+  consumir, bloquear o invalidar el challenge.
 - `status text`: `pending | verified | consumed | locked | expired | invalidated`.
 - `verification_attempts integer default 0`, check `0..2`.
 - `delivery_count integer default 0`, check `0..2`.
@@ -136,12 +138,17 @@ Migración aditiva en el esquema `consumer`:
 - Índice por `(phone_e164, created_at)` y un índice parcial/guard transaccional que asegure un solo
   challenge `pending` por teléfono. Crear uno nuevo invalida el anterior.
 
-**`otp_delivery`** (log append-only y fuente de rate limit)
+**`otp_delivery`** (reserva durable, log append-only y fuente de rate limit)
 
-- `id uuid PK`, `challenge_id FK`, `phone_e164`, `provider`, `provider_message_id`, `locale`,
-  `accepted_at`, `created_at`.
-- Solo se inserta después de que el proveedor acepta el mensaje. Un fallo se observa en logs/métrica
-  pero no consume cuota de SMS aceptado.
+- `id uuid PK`, `challenge_id FK`, `phone_e164`, `client_request_id`, `kind` (`initial|resend`),
+  `status` (`sending|accepted|failed|unknown`), `provider`, `provider_message_id`, `locale`,
+  `reserved_at`, `accepted_at`, `failed_at`, `last_error`, `created_at`, `updated_at`.
+- Unique `(phone_e164, client_request_id)` hace idempotente un retry del navegador; unique
+  `(challenge_id, kind)` impide dos iniciales o dos reenvíos.
+- `sending` reserva cupo antes de llamar al proveedor; `accepted` confirma que el proveedor tomó el
+  SMS; `failed` libera cupo; `unknown` conserva cupo de forma conservadora cuando un timeout/crash no
+  permite saber si el proveedor aceptó. Un reaper marca `sending` antiguo como `unknown`, nunca como
+  libre sin evidencia.
 - Índice `(phone_e164, accepted_at)` para contar 3/hora y 5/24h.
 
 Los challenges y deliveries no tienen FK a `consumer_account`: el teléfono puede no tener cuenta.
@@ -153,13 +160,15 @@ Una tarea de limpieza futura puede podar filas antiguas; no bloquea V1.
 
 1. Normalizar E.164 y validar que `countryIso` esté permitido y sea coherente con el prefijo usando
    la misma fuente de países del formulario.
-2. Dentro de una transacción/bloqueo por teléfono, contar deliveries aceptados en 1h/24h. Si llegó
-   al límite, devolver `429 otp_rate_limited` con respuesta independiente de existencia.
+2. Dentro de una transacción corta/bloqueo por teléfono, contar `accepted|sending|unknown` en 1h/24h.
+   Si llegó al límite, devolver `429 otp_rate_limited` con respuesta independiente de existencia.
 3. Invalidar el challenge `pending` anterior, generar seis dígitos con CSPRNG, guardar su HMAC y
-   crear el challenge con expiración `now + 5m` y reenvío `now + 60s`.
-4. Entregar por el canal configurado. Solo tras aceptación insertar `otp_delivery` e incrementar
-   `delivery_count`. Si falla, marcar el challenge inválido/fallido de forma reintentable y devolver
-   `503 otp_delivery_unavailable`, sin probar otro proveedor.
+   crear el challenge con expiración `now + 5m` y reenvío `now + 60s`; crear además la reserva
+   `otp_delivery(sending,initial,clientRequestId)`. Commit antes de cualquier red externa.
+4. Entregar por el canal configurado fuera de la transacción. En una segunda transacción, aceptación
+   cambia la reserva a `accepted` e incrementa `delivery_count`; rechazo definitivo cambia a
+   `failed` e invalida el challenge; timeout/resultado incierto cambia a `unknown` e invalida el
+   challenge de forma segura. Nunca probar otro proveedor automáticamente.
 5. Responder `202` con `challengeId`, `expiresInSeconds=300`, `resendAfterSeconds=60`; nunca datos de
    cuenta.
 
@@ -173,8 +182,9 @@ demostrada en integración Neon.
   `resend_available_at`.
 - Reutiliza el mismo código lógico descifrando `code_ciphertext` con AES-256-GCM. La clave
   `OTP_ENCRYPTION_KEY` es distinta de `OTP_HMAC_SECRET`; nunca hay texto plano en DB/logs/cookies.
-- Aplica otra vez 3/hora y 5/24h, entrega el mismo SMS e incrementa a `delivery_count=2` únicamente
-  tras aceptación. No hay tercer envío dentro del challenge.
+- En una transacción corta reserva exactamente un delivery `sending,resend` aplicando cuotas y
+  unique; cierra la transacción, entrega el mismo SMS y finaliza `accepted|failed|unknown` en otra
+  transacción. Solo `accepted` incrementa a `delivery_count=2`. No hay tercer envío.
 - Antes de 60s: `429 otp_resend_too_soon`. Tras el único reenvío: `409 otp_resend_exhausted`.
 
 #### Verificar y recuperar
@@ -229,6 +239,11 @@ UI `/recover`:
   métricas, DTOs ni errores. Logs correlacionan por challenge y teléfono redactado/hash estable.
 - Métricas: request, accepted delivery, resend, provider/error normalizado, latencia, país/idioma,
   verify success/failure/locked/expired, onboarding y recovery; nunca contenido SMS.
+- La lógica de transición vive en una máquina de estados pura y exhaustiva; rutas/DB solo aplican su
+  decisión. Los errores de red no descuentan intentos en la UI.
+- `RECOVERY_ENABLED=false` deshabilita rutas con `503 recovery_disabled` para rollout/rollback.
+- Challenges/deliveries terminales tienen política de retención y limpieza; el ciphertext se borra
+  inmediatamente al salir de `pending`.
 - No hay rate limit por IP por decisión de producto. El control de abuso es por teléfono y
   persistente; proveedor y límites pueden apagarse mediante configuración operativa.
 
@@ -270,7 +285,7 @@ colisiona conceptualmente con 0040, pero no despachar en paralelo si el árbol e
 - [ ] OTP tiene 6 dígitos, HMAC, 5 minutos, uso único y 2 intentos; un challenge nuevo invalida el
   anterior y carreras no permiten doble consumo.
 - [ ] Hay un SMS inicial y un solo reenvío del mismo código tras 60s; cuentan persistentemente para
-  3/h y 5/24h por teléfono, sin límite por IP.
+  3/h y 5/24h por teléfono, sin límite por IP; reservas concurrentes/crashes no exceden cupo.
 - [ ] Cuenta existente queda verificada, sesiones viejas revocadas, credenciales Wallet/PWA/QR
   rotadas y una sola sesión nueva válida, todo atómico.
 - [ ] Número inexistente completa perfil y crea una única cuenta verificada sin membresías; una
@@ -278,7 +293,33 @@ colisiona conceptualmente con 0040, pero no despachar en paralelo si el árbol e
 - [ ] Cobertura e idiomas siguen el allow-list cerrado; SMS no contiene enlaces.
 - [ ] Ningún secreto, OTP, token ni teléfono completo se filtra por DTO, cookie legible por JS,
   logs o errores; UI móvil cubre contador, reenvío, intentos y soporte placeholder.
-- [ ] Revisor independiente emite PASS según `docs/AGENT-WORKFLOW.md` antes de `implementada`.
+- [ ] Ninguna llamada ClickSend/Twilio ocurre dentro de una transacción DB; retries con el mismo
+  `clientRequestId` son idempotentes y un resultado incierto no libera cupo.
+- [x] Revisor independiente emite PASS según `docs/AGENT-WORKFLOW.md` antes de `implementada`.
+
+> **Implementada 2026-08-20 (orquestador, tras PASS del revisor independiente).** Todos los
+> ítems del DoD y del plan de pruebas quedan verificados salvo el **Manual** (ClickSend/Twilio
+> reales — residual del owner). Se resolvieron 4 hallazgos graves + 3 menores de la primera
+> pasada del implementador: (1) idempotencia ya no replaya un challenge muerto — el SELECT de
+> replay exige challenge vivo y los índices de idempotencia (`otp_delivery_phone_client_request_unique`,
+> `otp_delivery_challenge_kind_unique`) son **parciales** sobre `status in ('sending','accepted','unknown')`;
+> (2) un reenvío fallido ya no invalida el código inicial válido (`deliverReservation` sólo
+> invalida el challenge si `kind='initial'`); (3) tests de integración de ambos caminos de fallo
+> en `consumer-recovery-failure.neon.integration.test.ts`; (4) pool WebSocket a nivel módulo en
+> `server/db.ts`. Menores: `RECOVERY_COUNTRIES` en una sola fuente (`lib/recovery-countries.ts`),
+> helper único `establishRecoveredSession` (revoke+rotate+sesión) reusado por verify y profile,
+> y país del perfil tomado del challenge (no del body). Además se dividieron dos archivos que el
+> implementador había dejado sobre el límite de 300 líneas (`schema/otp.ts`;
+> `consumer/recovery/{internal,deliver,verify}.ts` + barrel). Correr la integración cazó un
+> **fixture roto** en el test base (5/24h backdateaba `accepted_at` en vez de `reserved_at`) —
+> arreglado. **Gates:** typecheck 3/3, lint, unit 198, build 3/3, integración Neon **10/10** en
+> rama efímera `spec-0032-recovery-fixes` (`br-flat-lab-axtggvs8`, off prod, con `expiresAt`).
+> **Migración `0025_narrow_mephistopheles` aplicada y verificada por SQL en PROD** (25→26; `consumer`
+> 8→10 tablas; índices parciales presentes; `core`(22)/`merchant_auth`(4) intactos). **Menores
+> no-bloqueantes del revisor pendientes:** el alta nueva sin colisión rota+encola un push no-op
+> (paridad con el original), `rotate.ts` usa `now()` de SQL, `otpProviderName` loguea 'clicksend'
+> en modo `console` dev; y el archivo de integración base sigue en 447 líneas (>300, del
+> implementador) — split mecánico como follow-up.
 
 ## Plan de pruebas y verificación
 
@@ -288,6 +329,8 @@ colisiona conceptualmente con 0040, pero no despachar en paralelo si el árbol e
   se llaman entre sí ante error; fake permite observar código solo en test.
 - [ ] Integración Neon: inicial + mismo reenvío; bloqueo antes de 60s/tercer delivery; 3/h y 5/24h;
   nuevo challenge invalida anterior; segundo código malo bloquea; expiración y doble verify.
+- [ ] Integración Neon: requests/reenvíos concurrentes, retry idempotente, reserva abandonada y
+  timeout incierto respetan cupos sin sostener transacción durante la llamada al proveedor.
 - [ ] Integración Neon: cuenta existente no verificada → verificada, sesiones anteriores revocadas,
   QR/web token rotados, devices/subscriptions purgados y sesión nueva; fallo intermedio revierte.
 - [ ] Integración Neon: número inexistente → ticket → perfil → cuenta verificada sin membresías;
@@ -296,7 +339,8 @@ colisiona conceptualmente con 0040, pero no despachar en paralelo si el árbol e
   DTO/log spy sin código, hashes, tokens, credenciales ni teléfono completo.
 - [ ] Regresión: enrolamiento 0028, Wallet/rotación 0033, Web Push 0037 y micro-portal 0031 verdes.
 - [ ] Comandos: Node 24; `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-  `pnpm build`; integración Neon en rama efímera con migración desde producción.
+  `pnpm build`, `pnpm test:integration:recovery`. El último **falla** si faltan URL/flag de rama
+  aislada; nunca se convierte en skip silencioso durante implementación/revisión.
 - [ ] Manual: ClickSend real a al menos un operador ecuatoriano; Twilio real activado por config;
   recuperar en otro teléfono y comprobar que QR/portal anterior dejan de funcionar; probar un
   número nuevo y completar onboarding. Nunca registrar credenciales en el handoff.
@@ -310,5 +354,7 @@ marca `implementada` después del PASS.
 
 ## Abierto
 
-No hay decisiones bloqueantes. WhatsApp, selector de proveedor del administrador de plataforma,
+No hay decisiones bloqueantes. Esta enmienda production-grade fue aprobada por el owner el
+2026-08-17 y supersede el diseño previo de llamar al proveedor dentro de la transacción o registrar
+solo deliveries aceptados. WhatsApp, selector de proveedor del administrador de plataforma,
 francés/criollo y soporte por WhatsApp son trabajo futuro explícitamente fuera de alcance.

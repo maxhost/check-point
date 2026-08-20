@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { getDb } from "../db";
 import { generateOpaqueToken } from "../consumer/core";
 
@@ -16,10 +16,11 @@ import { generateOpaqueToken } from "../consumer/core";
  */
 export async function rotatePassCredentials(
   consumerId: string,
+  executor: { execute(query: SQL): PromiseLike<unknown> } = getDb(),
 ): Promise<{ qrToken: string; webViewToken: string }> {
   const qrToken = generateOpaqueToken();
   const webViewToken = generateOpaqueToken();
-  await getDb().execute(sql`
+  await executor.execute(sql`
     WITH rotated AS (
       UPDATE consumer.consumer_account
       SET qr_token = ${qrToken}, web_view_token = ${webViewToken}, updated_at = now()

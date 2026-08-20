@@ -124,9 +124,12 @@ export const programMemberships = consumer.table(
     // business at enroll time; a foreign/invalid loc lands as null (the alta never breaks).
     // `set null` mirrors `order.location_id` so deleting a local never loses the alta.
     // Set only on FIRST enroll — a re-alta (idempotent 409) never overwrites it.
-    originLocationId: uuid("origin_location_id").references(() => locations.id, {
-      onDelete: "set null",
-    }),
+    originLocationId: uuid("origin_location_id").references(
+      () => locations.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     // Live balance per membership (spec 0030). A program of an enabled modality uses
     // exactly one of the two (Puntos → points_balance, Sellos → stamps_count). The
     // counter increments it atomically on each grant; the decrement/reset is the
@@ -199,6 +202,9 @@ export const enrollAttempts = consumer.table(
     ),
   ],
 );
+
+// Recovery OTP tables (spec 0032) live in ./otp to keep this file within the
+// file-size budget (same split pattern as ./web-push). Re-exported by the barrel.
 
 /**
  * PassKit device registration (spec 0033). Each iOS device that adds an Apple pass

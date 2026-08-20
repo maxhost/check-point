@@ -8,7 +8,47 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-17 (**Spec 0032 (recuperación passwordless por OTP SMS) CERRADA con
+Ultima actualizacion: 2026-08-20 (**Spec 0032 (recuperación passwordless por OTP SMS) IMPLEMENTADA con
+PASS de revisor independiente + migración `0025` aplicada y verificada en PROD — punto de retorno.**
+Sesión de review + hardening: el árbol ya traía la implementación del implementador (sin commitear) y
+el owner pidió auditarla. **Se hallaron 4 bugs graves + 3 menores y se corrigieron todos con el flujo
+`AGENT-WORKFLOW.md`** (orquestador implementa → revisor independiente PASS → aplica a prod). **Los 4
+graves:** (1) **idempotencia replayaba un challenge muerto** — tras un fallo de envío el SELECT de
+replay matcheaba la delivery `failed`/challenge `invalidated` y devolvía 202 con un `challengeId` que
+jamás verificaba; fix: el replay exige `c.status='pending' AND c.expires_at>now` y los índices
+`otp_delivery_phone_client_request_unique` + `otp_delivery_challenge_kind_unique` pasan a **parciales**
+(`WHERE status in ('sending','accepted','unknown')`) para que una `failed` libere la clave. (2) **un
+reenvío fallido mataba el código inicial válido** — `deliverReservation` compartía la rama de error;
+fix: sólo invalida el challenge si `kind='initial'`. (3) **sin corrida de integración** (el implementador
+nunca la corrió — se probó al correrla: cazó un **fixture roto**, el test 5/24h backdateaba `accepted_at`
+en vez de `reserved_at` y se auto-rate-limitaba por 3/h). (4) **`withDbTransaction` abría/cerraba un Pool
+WS por request** → singleton por connection string en `server/db.ts` + guard de `webSocketConstructor`.
+**Menores:** `RECOVERY_COUNTRIES` a fuente única `lib/recovery-countries.ts` (server+cliente); helper
+`establishRecoveredSession` (revoke+`rotatePassCredentials`+sesión) reusado por verify-wallet y profile
+(mata la duplicación de la rotación); país del perfil desde el challenge, no del body. **Además** el
+implementador había dejado 2 archivos >300 líneas → split: `schema/otp.ts` (otp fuera de
+`schema/consumer.ts`) y `consumer/recovery/{internal,deliver,verify}.ts` + barrel `recovery.ts` (patrón
+del repo). **Gates verdes:** typecheck 3/3, lint, unit **198**, build 3/3, **integración Neon 10/10** en
+rama efímera `spec-0032-recovery-fixes` (`br-flat-lab-axtggvs8`, off prod `main`, con `expiresAt` →
+auto-borra, sin gate destructivo). Los 2 tests de regresión nuevos viven en archivo separado
+`consumer-recovery-failure.neon.integration.test.ts` (dividir, no extender). **Revisor independiente:
+PASS** — corrió los 4 gates + integración 10/10 por su cuenta, verificó los 7 hallazgos arreglados
+uno por uno, la anti-fuga (ningún `*_hash`/`*token`/ciphertext/teléfono en DTO/log), la atomicidad
+(revoke+rotate+sesión en una tx interactiva con `FOR UPDATE`), la carrera de alta sin overwrite; 3
+menores no-bloqueantes nuevos (alta nueva sin colisión rota+encola push no-op —paridad con el original—;
+`rotate.ts` usa `now()` de SQL; `otpProviderName` loguea 'clicksend' en modo `console` dev). **Migración
+`0025_narrow_mephistopheles` (regenerada limpia, reemplazó el `0025_pretty_madame_web` del implementador)
+APLICADA Y VERIFICADA EN PROD por SQL** (`db:migrate` host unpooled; 25→26 migraciones; `consumer` 8→10
+tablas; ambos índices parciales presentes en `otp_delivery`; `core`(22)/`merchant_auth`(4) intactos).
+**Residuales:** (a) **QA manual del owner** — ClickSend real a un operador ecuatoriano + Twilio por config
++ recuperar en otro teléfono y ver QR/portal viejo morir + onboarding de número nuevo; secretos OTP a
+cargar en Vercel (`RECOVERY_ENABLED`, `OTP_HMAC_SECRET`, `OTP_ENCRYPTION_KEY` base64-32, ClickSend/Twilio);
+(b) el archivo de integración **base** sigue en 447 líneas (>300, del implementador) — split mecánico
+como follow-up; (c) los 3 menores no-bloqueantes del revisor. **`RECOVERY_ENABLED=false` por defecto** →
+la feature queda oscura en prod hasta que el owner cargue secretos y la active. Commit + push a `main` en
+esta sesión. Detalle de diseño abajo.)
+
+Ultima actualizacion previa: 2026-08-17 (**Spec 0032 (recuperación passwordless por OTP SMS) CERRADA con
 el owner + ADR 0013 revisado — solo diseño, sin código, punto de retorno.** Decisiones cerradas:
 CheckPass Club genera/verifica OTP propio; `OtpChannel` transporta SMS común mediante
 `ClickSendOtpChannel` o `TwilioOtpChannel`, **ClickSend activo inicialmente**, Twilio seleccionable
