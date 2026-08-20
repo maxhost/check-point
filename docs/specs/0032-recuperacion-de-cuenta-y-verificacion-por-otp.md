@@ -315,11 +315,13 @@ colisiona conceptualmente con 0040, pero no despachar en paralelo si el árbol e
 > arreglado. **Gates:** typecheck 3/3, lint, unit 198, build 3/3, integración Neon **10/10** en
 > rama efímera `spec-0032-recovery-fixes` (`br-flat-lab-axtggvs8`, off prod, con `expiresAt`).
 > **Migración `0025_narrow_mephistopheles` aplicada y verificada por SQL en PROD** (25→26; `consumer`
-> 8→10 tablas; índices parciales presentes; `core`(22)/`merchant_auth`(4) intactos). **Menores
-> no-bloqueantes del revisor pendientes:** el alta nueva sin colisión rota+encola un push no-op
-> (paridad con el original), `rotate.ts` usa `now()` de SQL, `otpProviderName` loguea 'clicksend'
-> en modo `console` dev; y el archivo de integración base sigue en 447 líneas (>300, del
-> implementador) — split mecánico como follow-up.
+> 8→10 tablas; índices parciales presentes; `core`(22)/`merchant_auth`(4) intactos). **Los 3 menores
+> no-bloqueantes del revisor quedaron RESUELTOS en un segundo pase:** (1) el alta nueva sin colisión
+> toma un camino barato (`insertConsumerSession`) sin rotación ni push no-op — sólo la carrera con
+> cuenta existente rota; (2) `rotatePassCredentials` recibe `now` y no usa más `now()` de SQL; (3) el
+> `provider` de la delivery finalizada sale del receipt real del canal. Único follow-up mecánico: el
+> archivo de integración **base** sigue en 447 líneas (>300, del implementador) — split pendiente.
+> Gates + integración 10/10 re-verificados tras el segundo pase.
 
 ## Plan de pruebas y verificación
 

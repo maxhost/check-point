@@ -130,7 +130,7 @@ export async function deliverReservation(
     });
     await withDbTransaction(async (db) => {
       await db.execute(sql`WITH finalized AS (
-        UPDATE consumer.otp_delivery SET status='accepted', provider_message_id=${receipt.providerMessageId}, accepted_at=${receipt.acceptedAt}, updated_at=${receipt.acceptedAt}
+        UPDATE consumer.otp_delivery SET status='accepted', provider=${receipt.provider}, provider_message_id=${receipt.providerMessageId}, accepted_at=${receipt.acceptedAt}, updated_at=${receipt.acceptedAt}
         WHERE id=${reservation.deliveryId} AND status='sending' RETURNING challenge_id
       ) UPDATE consumer.otp_challenge SET delivery_count=delivery_count+1, updated_at=${receipt.acceptedAt}
         WHERE id IN (SELECT challenge_id FROM finalized) AND status='pending'`);
@@ -168,15 +168,8 @@ export async function deliverReservation(
   }
 }
 
-/**
- * Shared tail of every successful recovery into an EXISTING (or just-created) account:
- * mark the phone verified, revoke all live sessions, rotate the pass credentials
- * (`rotatePassCredentials` also wipes push devices + Web Push subs and enqueues a
- * re-emission — a single source of truth, spec 0032/0037), then mint the new session.
- * Runs inside the caller's interactive transaction so it is atomic with the challenge
- * state change.
- */
-export async function establishRecoveredSession(
+/** Mints one consumer session row. Shared by the fresh-account and recovered paths. */
+export async function insertConsumerSession(
   db: RecoveryExecutor,
   consumerId: string,
   sessionToken: string,
@@ -184,13 +177,31 @@ export async function establishRecoveredSession(
 ) {
   const expires = new Date(now.getTime() + SESSION_TTL_DAYS * 86_400_000);
   await db.execute(
+    sql`INSERT INTO consumer.consumer_session (consumer_id,token_hash,expires_at,created_at) VALUES (${consumerId},${hashToken(sessionToken)},${expires},${now})`,
+  );
+}
+
+/**
+ * Shared tail of recovering an EXISTING account: mark the phone verified, revoke all
+ * live sessions, rotate the pass credentials (`rotatePassCredentials` also wipes push
+ * devices + Web Push subs and enqueues a re-emission — a single source of truth, spec
+ * 0032/0037), then mint the new session. Runs inside the caller's interactive
+ * transaction so it is atomic with the challenge state change. A brand-new account has
+ * no old sessions/devices/subs and gets its tokens at INSERT, so it takes the cheaper
+ * `insertConsumerSession` path directly instead of a no-op rotation + push.
+ */
+export async function establishRecoveredSession(
+  db: RecoveryExecutor,
+  consumerId: string,
+  sessionToken: string,
+  now: Date,
+) {
+  await db.execute(
     sql`UPDATE consumer.consumer_account SET phone_verified_at=coalesce(phone_verified_at,${now}), updated_at=${now} WHERE id=${consumerId}`,
   );
   await db.execute(
     sql`UPDATE consumer.consumer_session SET revoked_at=${now} WHERE consumer_id=${consumerId} AND revoked_at IS NULL`,
   );
-  await rotatePassCredentials(consumerId, db);
-  await db.execute(
-    sql`INSERT INTO consumer.consumer_session (consumer_id,token_hash,expires_at,created_at) VALUES (${consumerId},${hashToken(sessionToken)},${expires},${now})`,
-  );
+  await rotatePassCredentials(consumerId, db, now);
+  await insertConsumerSession(db, consumerId, sessionToken, now);
 }

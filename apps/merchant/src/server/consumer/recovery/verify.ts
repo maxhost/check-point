@@ -13,6 +13,7 @@ import {
   assertEnabled,
   establishRecoveredSession,
   INVALID,
+  insertConsumerSession,
   observe,
   secrets,
 } from "./internal";
@@ -178,7 +179,8 @@ export async function completeRecoveryProfile(
           VALUES (${row.phone_e164},${now},${firstName},${lastName},${row.country_iso},${qrToken},${webViewToken},${now},${now})
           ON CONFLICT (phone_e164) DO NOTHING RETURNING id`,
     );
-    let id = inserted.rows[0]?.id;
+    const freshId = inserted.rows[0]?.id;
+    let id = freshId;
     if (!id) {
       const existing = await db.execute<{ id: string }>(
         sql`SELECT id FROM consumer.consumer_account WHERE phone_e164=${row.phone_e164} LIMIT 1`,
@@ -191,7 +193,11 @@ export async function completeRecoveryProfile(
         "invalid_onboarding",
         "Volvé a verificar tu teléfono.",
       );
-    await establishRecoveredSession(db, id, sessionToken, now);
+    // A brand-new account already has its tokens + verified phone from the INSERT and
+    // no old sessions/devices/subs — just mint the session. An account that appeared
+    // concurrently (alta race) is a real recovery: revoke + rotate + session.
+    if (freshId) await insertConsumerSession(db, id, sessionToken, now);
+    else await establishRecoveredSession(db, id, sessionToken, now);
     return id;
   });
   observe("profile_completed", { consumerId });

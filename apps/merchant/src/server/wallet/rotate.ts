@@ -17,13 +17,14 @@ import { generateOpaqueToken } from "../consumer/core";
 export async function rotatePassCredentials(
   consumerId: string,
   executor: { execute(query: SQL): PromiseLike<unknown> } = getDb(),
+  now: Date = new Date(),
 ): Promise<{ qrToken: string; webViewToken: string }> {
   const qrToken = generateOpaqueToken();
   const webViewToken = generateOpaqueToken();
   await executor.execute(sql`
     WITH rotated AS (
       UPDATE consumer.consumer_account
-      SET qr_token = ${qrToken}, web_view_token = ${webViewToken}, updated_at = now()
+      SET qr_token = ${qrToken}, web_view_token = ${webViewToken}, updated_at = ${now}
       WHERE id = ${consumerId}
       RETURNING id
     ),
@@ -40,7 +41,7 @@ export async function rotatePassCredentials(
     INSERT INTO consumer.wallet_push_queue
       (consumer_id, class, title, body, status, not_before)
     SELECT id, 'transactional', 'CheckPass Club',
-           'Actualizá tu pase', 'pending', now()
+           'Actualizá tu pase', 'pending', ${now}
     FROM rotated`);
   return { qrToken, webViewToken };
 }
