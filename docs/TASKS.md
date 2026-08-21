@@ -40,13 +40,24 @@ menores no-bloqueantes nuevos (alta nueva sin colisión rota+encola push no-op �
 `0025_narrow_mephistopheles` (regenerada limpia, reemplazó el `0025_pretty_madame_web` del implementador)
 APLICADA Y VERIFICADA EN PROD por SQL** (`db:migrate` host unpooled; 25→26 migraciones; `consumer` 8→10
 tablas; ambos índices parciales presentes en `otp_delivery`; `core`(22)/`merchant_auth`(4) intactos).
-**Residuales:** (a) **QA manual del owner** — ClickSend real a un operador ecuatoriano + Twilio por config
-+ recuperar en otro teléfono y ver QR/portal viejo morir + onboarding de número nuevo; secretos OTP a
-cargar en Vercel (`RECOVERY_ENABLED`, `OTP_HMAC_SECRET`, `OTP_ENCRYPTION_KEY` base64-32, ClickSend/Twilio);
+**Residuales:** (a) **QA en vivo del owner — PENDIENTE (se decidió NO bloquear por esto).** Camino barato
+sin cargar saldo: **ClickSend da $2 AUD de crédito trial al registrarse** (14 días; alcanza para varios
+OTP a Ecuador; **dejar `CLICKSEND_FROM` vacío** para que use número compartido y evitar rechazo de
+sender-ID alfanumérico a EC — el código sólo manda `from` si está seteado), o **Twilio trial** (SMS gratis
+sólo a número verificado, hasta 5). Para activarlo hay que **cargar en Vercel**: `RECOVERY_ENABLED=true`,
+`OTP_HMAC_SECRET`(≥32B), `OTP_ENCRYPTION_KEY`(base64 de 32B, `openssl rand -base64 32`), y las credenciales
+del provider (`CLICKSEND_USERNAME`/`CLICKSEND_API_KEY` o las de Twilio). Con `RECOVERY_ENABLED=false`
+(default) `/recover` responde 503 y la feature queda oscura. Checklist QA: SMS real a un operador
+ecuatoriano + recuperar en otro teléfono y ver morir el QR/portal viejo + onboarding de número nuevo;
 (b) el archivo de integración **base** sigue en 447 líneas (>300, del implementador) — split mecánico
 como follow-up; (c) los 3 menores no-bloqueantes del revisor. **`RECOVERY_ENABLED=false` por defecto** →
 la feature queda oscura en prod hasta que el owner cargue secretos y la active. Commit + push a `main` en
-esta sesión. Detalle de diseño abajo.)
+esta sesión (`d72997f` + `4b2db73`). **Próximo paso de la próxima sesión: revisar el siguiente spec
+pendiente** — candidato natural **spec 0040** (cropper de imagen en el cliente, `borrador`, implementa
+ADR 0041; el owner lo tenía como "trabajo futuro para retomar cuando se priorice"), o alguno de los
+borradores fundacionales `0001`–`0009` (siguen en `borrador` hasta validar arquitectura). Empezar leyendo
+la spec candidata + su ADR, cerrar diseño con el owner si hace falta, y recién ahí `AGENT-WORKFLOW.md`.
+Detalle de diseño abajo.)
 
 Ultima actualizacion previa: 2026-08-17 (**Spec 0032 (recuperación passwordless por OTP SMS) CERRADA con
 el owner + ADR 0013 revisado — solo diseño, sin código, punto de retorno.** Decisiones cerradas:
