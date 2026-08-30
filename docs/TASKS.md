@@ -8,7 +8,23 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-30 (**Fix de dominio custom `checkpass.club` (trustedOrigins de
+Ultima actualizacion: 2026-08-30 (**QA en vivo del owner sobre `checkpass.club` CERRADO + fix de CORS
+de Geoapify — punto de retorno.** El owner completó los pasos de dashboard (Vercel `BETTER_AUTH_URL`
++ CORS de R2) y corrió el QA en producción: **landing (0045), creación de staff, login de staff y scan
+del mostrador — todo funciona.** Registro/login/subidas de imagen andan en el dominio custom.
+**Bloqueante encontrado y resuelto en el QA: el buscador de direcciones/locales (Geoapify) daba 401 y
+después CORS.** Diagnóstico (verificado por terminal, no adivinado): la clave pública
+`NEXT_PUBLIC_GEOAPIFY_API_KEY` restringida por origen devuelve un `Access-Control-Allow-Origin` **FIJO**
+(un solo dominio, sin `Vary: Origin`, sin echo del `Origin`) → por CORS sólo servía `check-point-pied.vercel.app`;
+desde `www.checkpass.club` el browser bloqueaba. **Fix (owner, sin código): quitó TODAS las Allowed
+Origins de la clave pública → Geoapify responde `*` → el autocomplete anda desde cualquier dominio.**
+Verificado en vivo por el owner. Sin cambios de código en esta sesión (`git status` limpio → no
+corresponde gate). Gotcha completo + comando de diagnóstico + fix durable pendiente (Opción B: proxear
+por el server con `GEOAPIFY_API_KEY`) documentados en `CLAUDE.md` (Gotchas). **Residual/backlog:** spec
+Opción B (proxy server-side del autocomplete) para no depender de la clave pública sin restricción; y
+spec 0032 (recovery OTP) sigue pendiente de env vars/provider. Nada por commitear salvo estos docs.)
+
+Ultima actualizacion previa: 2026-08-30 (**Fix de dominio custom `checkpass.club` (trustedOrigins de
 better-auth) — punto de retorno; QA en vivo es el próximo paso.** El owner reportó que registrarse
 desde `checkpass.club` fallaba. Diagnóstico: **no era Neon** (Neon es solo la DB; su "trusted domain"
 es de *Neon Auth*, producto que este repo no usa) — la auth es **better-auth**, que sólo confía en
@@ -29,17 +45,24 @@ retrocompatible — sin la env nueva se comporta igual que antes). Documentado e
 
 ## Ahora
 
-**El owner va a hacer el QA en vivo en la próxima sesión.** Antes de arrancar, confirmar que hizo los
-2 pasos de arriba (env var de Vercel + CORS de R2); si el registro sigue fallando después de setear
-`BETTER_AUTH_URL`, pedir el texto exacto del error (podría ser cookie/sameSite, no origin).
+**QA en vivo del owner sobre `checkpass.club` CERRADO (2026-08-30).** El owner hizo los 2 pasos de
+dashboard (Vercel `BETTER_AUTH_URL` + CORS de R2) y verificó en producción: **landing (0045), alta de
+staff, login de staff y scan del mostrador (0043) — todo OK.** Registro/login/subidas andan en el
+dominio custom. El buscador de direcciones (Geoapify) se destrabó quitando las Allowed Origins de la
+clave pública (ver última actualización + Gotcha de Geoapify en `CLAUDE.md`).
 
-Checklist de QA pendiente, tres specs recién implementadas:
-- **Spec 0045 (landing):** entrar a `checkpass.club` sin sesión → ver la landing (no el registro
-  directo) → "Acceder" lleva a login, "Crea tu negocio" a registro; con sesión → `/backoffice`.
-- **Spec 0043 (staff):** el owner crea un staff (nombre/email/contraseña) en `/backoffice/staff` →
-  loguearlo en OTRO dispositivo → debe caer directo en la consola de mostrador y NO ver marca/
-  programa/catálogo/personal → escanear y acreditar puntos/sellos → aparece en el historial del día
-  → el owner lo desactiva → el staff pierde acceso.
+Pendiente (no bloquea lo ya cerrado):
+- **Backlog — spec Opción B (proxy server-side de Geoapify):** hoy el autocomplete pega directo del
+  navegador con la clave pública SIN restricción de origen (scrapeable). El fix durable es proxearlo
+  por el server del merchant con `GEOAPIFY_API_KEY` (same-origin, cero CORS, clave oculta). Requiere
+  spec cerrada antes de tocar código. No urgente — el `*` funciona.
+- **Spec 0032 (recovery OTP):** sigue pendiente de env vars/provider (detalle abajo).
+
+Checklist de QA — specs ya verificadas en vivo (✅) y la que falta:
+- ✅ **Spec 0045 (landing):** entrar a `checkpass.club` sin sesión → landing → "Acceder"/"Crea tu
+  negocio"; con sesión → `/backoffice`.
+- ✅ **Spec 0043 (staff):** owner crea staff → login en otro dispositivo → consola de mostrador
+  (sin ver marca/programa/catálogo/personal) → escanear y acreditar → historial del día → desactivar.
 - **Spec 0032 (recovery OTP):** requiere ANTES cargar en Vercel `RECOVERY_ENABLED=true` +
   `OTP_HMAC_SECRET`(≥32B) + `OTP_ENCRYPTION_KEY`(base64 32B) + credenciales ClickSend/Twilio.
   Camino barato sin cargar saldo: **ClickSend da $2 AUD de crédito trial** al registrarse (14 días,

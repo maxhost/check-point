@@ -141,3 +141,16 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   de `sharp` en `server/assets/image.ts`. **Guard:** `server/upload-image-formats.test.ts` pinnea
   sello + catálogo + marca aceptando HEIC/HEIF/AVIF — si agregás una superficie de subida nueva,
   sumala a ese test.
+- **Geoapify autocomplete pega DIRECTO del navegador (`address-autofill-geoapify.tsx`) con la clave
+  pública `NEXT_PUBLIC_GEOAPIFY_API_KEY`.** Con **Allowed Origins** seteadas en la clave, Geoapify
+  devuelve un `Access-Control-Allow-Origin` **FIJO** (un solo origen, SIN `Vary: Origin`, sin *echo*
+  del `Origin` del request): por CORS **sólo funciona UN dominio**; desde cualquier otro (`www.` vs
+  apex vs `.vercel.app`) el browser bloquea con "ACAO ... not equal to the supplied origin". No es la
+  config del owner ni caché — verificado por terminal: mismo ACAO para todo `Origin`,
+  `cf-cache-status: DYNAMIC`. Diagnóstico: `curl -s -D - -H 'Origin: https://X' 'https://api.geoapify.com/v1/geocode/autocomplete?text=cuenca&apiKey=<KEY>' | grep -i access-control-allow-origin`.
+  **Fix operativo (owner, sin código, ya aplicado): quitar TODAS las Allowed Origins de la clave
+  pública → Geoapify responde `*` y anda desde cualquier dominio** (contra: clave usable desde
+  cualquier sitio, mitigado por la cuota diaria). **Fix durable pendiente (spec, Opción B): proxear el
+  autocomplete por el server del merchant con la clave server `GEOAPIFY_API_KEY` — el browser pega
+  same-origin (cero CORS) y la clave nunca viaja al cliente.** Reordenar orígenes NO sirve: un ACAO
+  fijo no cubre apex + www + vercel a la vez.
