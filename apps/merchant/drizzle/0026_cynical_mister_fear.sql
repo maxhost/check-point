@@ -1,0 +1,3 @@
+ALTER TABLE "core"."business_membership" ADD COLUMN "status" text DEFAULT 'active' NOT NULL;--> statement-breakpoint
+ALTER TABLE "core"."business_membership" ADD CONSTRAINT "business_membership_role_check" CHECK ("core"."business_membership"."role" in ('owner', 'staff'));--> statement-breakpoint
+ALTER TABLE "core"."business_membership" ADD CONSTRAINT "business_membership_status_check" CHECK ("core"."business_membership"."status" in ('active', 'disabled'));

@@ -41,6 +41,16 @@ export type GrantResponse = {
   order: { unitsGranted: number; balanceAfter: number; kind: string };
 };
 
+/** One row of the day's accreditation history shown on the idle console. */
+export type AccreditationRow = {
+  id: string;
+  createdAt: string;
+  operator: string;
+  consumer: string;
+  accrualKind: string;
+  unitsGranted: number;
+};
+
 /** A cart line. `hasStoredPrice` is false when the catalog product has no price and
  * the operator must type the line amount (the server snapshots it either way). */
 export type CartLine = {

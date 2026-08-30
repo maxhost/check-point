@@ -133,11 +133,23 @@ export const memberships = core.table(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").notNull().default("owner"),
+    /** `active` operates; `disabled` keeps identity + audit but has no access (ADR 0044). */
+    status: text("status").notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.businessId, table.userId] })],
+  (table) => [
+    primaryKey({ columns: [table.businessId, table.userId] }),
+    check(
+      "business_membership_role_check",
+      sql`${table.role} in ('owner', 'staff')`,
+    ),
+    check(
+      "business_membership_status_check",
+      sql`${table.status} in ('active', 'disabled')`,
+    ),
+  ],
 );
 
 export const locations = core.table("location", {

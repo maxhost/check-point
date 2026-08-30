@@ -297,7 +297,7 @@ colisiona conceptualmente con 0040, pero no despachar en paralelo si el árbol e
   `clientRequestId` son idempotentes y un resultado incierto no libera cupo.
 - [x] Revisor independiente emite PASS según `docs/AGENT-WORKFLOW.md` antes de `implementada`.
 
-> **Implementada 2026-08-20 (orquestador, tras PASS del revisor independiente).** Todos los
+> **Implementada 2026-08-30 (orquestador, tras PASS del revisor independiente).** Todos los
 > ítems del DoD y del plan de pruebas quedan verificados salvo el **Manual** (ClickSend/Twilio
 > reales — residual del owner). Se resolvieron 4 hallazgos graves + 3 menores de la primera
 > pasada del implementador: (1) idempotencia ya no replaya un challenge muerto — el SELECT de

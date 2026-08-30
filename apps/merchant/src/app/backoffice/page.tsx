@@ -1,33 +1,26 @@
 import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { SignOutButton } from "../components/sign-out-button";
-import { getMerchantAuth } from "../../server/auth";
+import { requireOwner } from "../../server/auth-guards";
 import { getDb } from "../../server/db";
-import { businesses, memberships, subscriptions } from "../../server/schema";
+import { subscriptions } from "../../server/schema";
 
 export const dynamic = "force-dynamic";
 
 export default async function BackofficePage() {
-  const session = await getMerchantAuth().api.getSession({
-    headers: await headers(),
-  });
-  if (!session) redirect("/login");
-  const [business] = await getDb()
-    .select({
-      id: businesses.id,
-      name: businesses.name,
-      plan: subscriptions.plan,
-      status: subscriptions.status,
-    })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .leftJoin(subscriptions, eq(subscriptions.businessId, businesses.id))
-    .where(eq(memberships.userId, session.user.id))
-    .orderBy(desc(businesses.createdAt))
+  // Owner-only home (ADR 0044): a staff member is redirected to the counter console.
+  const { business: owned } = await requireOwner();
+  const [subscription] = await getDb()
+    .select({ plan: subscriptions.plan, status: subscriptions.status })
+    .from(subscriptions)
+    .where(eq(subscriptions.businessId, owned.id))
     .limit(1);
-  if (!business) redirect("/onboarding");
+  const business = {
+    id: owned.id,
+    name: owned.name,
+    plan: subscription?.plan ?? "free",
+    status: subscription?.status ?? "active",
+  };
 
   const modules = [
     ["Mostrador", "Escanea el QR del cliente y acredita su compra.", "counter"],
@@ -82,7 +75,9 @@ export default async function BackofficePage() {
                         ? "/backoffice/catalog"
                         : slug === "counter"
                           ? "/backoffice/counter"
-                          : `/backoffice/demo/${slug}`
+                          : slug === "staff"
+                            ? "/backoffice/staff"
+                            : `/backoffice/demo/${slug}`
                 }
                 key={slug}
               >

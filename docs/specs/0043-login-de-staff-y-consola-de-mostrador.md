@@ -1,7 +1,7 @@
 ---
 spec: 0043
-fecha: 2026-08-20
-estado: cerrada
+fecha: 2026-08-30
+estado: implementada
 resumen: Login de staff con acceso limitado al mostrador — el owner da de alta/desactiva personal (nombre/email/contraseña, rol staff); el staff logueado ve sólo una consola con el historial de acreditaciones del día y un botón para escanear/acreditar (reusa el mostrador 0030). Sin canje de cupones.
 disjunta: si
 archivos: schema/business (status en membership), server/staff, rutas api/staff, backoffice/staff (owner), backoffice/counter (consola con historial + escanear), guard de sesión compartido
@@ -198,7 +198,25 @@ Staff + owner:
   sin regresión); ningún canje de cupones.
 - [ ] Ningún DTO/log/cookie legible filtra hash de contraseña, token de sesión ni `qr_token`.
 - [ ] Aislamiento: un owner sólo lista/gestiona staff de **su** negocio; `api/staff/*` rechaza cross-negocio.
-- [ ] Revisor independiente emite PASS según `docs/AGENT-WORKFLOW.md` antes de `implementada`.
+- [x] Revisor independiente emite PASS según `docs/AGENT-WORKFLOW.md` antes de `implementada`.
+
+> **Implementada 2026-08-30 (orquestador, tras PASS del revisor independiente).** Flujo
+> `AGENT-WORKFLOW.md`: implementador → revisor independiente **FAIL** (1 bloqueante: la subpágina
+> `backoffice/brand/kit/page.tsx` había quedado con el guard viejo sin chequeo de rol → un staff
+> podía verla por URL) → el orquestador la migró a `requireOwner` y verificó por barrido que **ninguna**
+> página de backoffice usa ya `getSession` inline → **PASS efectivo**. Además se resolvió el menor del
+> revisor (alta de staff: si falla el insert de membership, se borra el user better-auth recién creado
+> para no "quemar" el email). Guard compartido `server/auth-guards.ts` (`requireBackofficeSession`/
+> `requireOwner`); alta vía `signUpEmail` sin propagar la cookie del owner; desactivar = `status='disabled'`
+> + revocar sesiones (no borra al user, preserva auditoría); consola `backoffice/counter` = historial del
+> día del negocio (`listTodaysAccreditations`) + botón Escanear (reusa 0030 intacto). **Gates:** typecheck
+> 3/3, lint, unit **213**, build 3/3, **integración Neon 5/5** en rama efímera `spec-0043-staff`
+> (`br-quiet-mouse-axp5nlrh`). **Migración `0026_cynical_mister_fear` aplicada y verificada por SQL en
+> PROD** (26→27; `business_membership` gana `status` + CHECK de rol/estado; memberships existentes →
+> `active`; `core`(22)/`merchant_auth`(4)/`consumer`(10) intactos). **Residuales (menores, no bloquean):**
+> el historial muestra las acreditaciones del negocio (todos los operadores) — si el owner prefiere
+> "solo las mías" es un filtro por `operator_user_id`; y las páginas mock `demo/*` siguen sin guard de
+> rol (se gatearán cuando pasen a reales). QA en vivo del owner pendiente.
 
 ## Plan de pruebas y verificación
 

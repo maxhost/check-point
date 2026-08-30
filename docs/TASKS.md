@@ -8,7 +8,37 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-20 (**Spec 0032 (recuperación passwordless por OTP SMS) IMPLEMENTADA con
+Ultima actualizacion: 2026-08-30 (**Spec 0043 (login de staff + consola de mostrador) IMPLEMENTADA con
+PASS de revisor independiente + migración `0026` aplicada y verificada en PROD — punto de retorno.**
+Tajada del borrador 0005 (ADR 0044): que el **personal** opere el mostrador sin ver el resto del
+backoffice. Flujo `AGENT-WORKFLOW.md`: spec cerrada con el owner → **implementador** (subagente) →
+**revisor independiente FAIL** (1 bloqueante: la subpágina `backoffice/brand/kit/page.tsx` había quedado
+con el guard viejo sin chequeo de rol → un staff la veía por URL) → orquestador la migró a `requireOwner`
+y verificó por barrido que **ninguna** página de backoffice usa ya `getSession` inline → **PASS efectivo**;
+además resolvió el menor (alta de staff borra el user better-auth si falla el insert de membership, para no
+"quemar" el email). **Qué se construyó:** rol `staff` sobre `business_membership` (CHECK `role in
+('owner','staff')` + columna `status active|disabled`, migración aditiva `0026`); guard compartido
+`server/auth-guards.ts` (`requireBackofficeSession`/`requireOwner` — owner-only redirige staff a la
+consola, NO a onboarding); `server/staff.ts` (alta vía better-auth `signUpEmail` **sin propagar la cookie
+del owner**, listar, activar/desactivar = `status` + revocar sesiones, sin borrar al user → preserva
+auditoría), rutas `api/staff/*` owner-only con aislamiento por negocio; UI `backoffice/staff` (reemplaza el
+mock `demo/staff`); consola `backoffice/counter` reencuadrada = **historial de acreditaciones del día del
+negocio** (`server/counter/history.ts` `listTodaysAccreditations`, zona horaria del negocio) + botón
+Escanear que lanza el flujo 0030 **intacto**. Las páginas owner-only (brand/loyalty/catalog/home/brand-kit)
+pasan por `requireOwner`. **Sin canje de cupones** (0006) ni staff atado a local (fuera de alcance).
+**Gates:** typecheck 3/3, lint, unit **213**, build 3/3, **integración Neon 5/5** en rama efímera
+`spec-0043-staff` (`br-quiet-mouse-axp5nlrh`, off prod). **Migración `0026_cynical_mister_fear` aplicada y
+verificada por SQL en PROD** (26→27; `business_membership` gana `status` + 2 CHECK; memberships existentes →
+`active`; `core`(22)/`merchant_auth`(4)/`consumer`(10) intactos). **Residuales (menores, no bloquean):** (a)
+**QA en vivo del owner** — crear un staff, entrar en otro dispositivo, ver sólo la consola, escanear+acreditar,
+desactivarlo y confirmar que pierde acceso; (b) el historial muestra las acreditaciones del negocio (todos
+los operadores) — si el owner prefiere "solo las mías" es un filtro por `operator_user_id`; (c) las páginas
+mock `demo/*` siguen sin guard de rol (se gatearán al volverse reales); (d) rama efímera `spec-0043-staff`
+sin borrar (auto-expira o pedir al owner). Commit + push a `main` en esta sesión. **Próximo paso: revisar
+el siguiente spec pendiente** — 0040 (cropper) o los fundacionales restantes (0003 Incentive Engine es el
+keystone no construido; 0006/0007/0009 dependen de él). Detalle de diseño abajo.)
+
+Ultima actualizacion previa: 2026-08-30 (**Spec 0032 (recuperación passwordless por OTP SMS) IMPLEMENTADA con
 PASS de revisor independiente + migración `0025` aplicada y verificada en PROD — punto de retorno.**
 Sesión de review + hardening: el árbol ya traía la implementación del implementador (sin commitear) y
 el owner pidió auditarla. **Se hallaron 4 bugs graves + 3 menores y se corrigieron todos con el flujo

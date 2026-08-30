@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { QrScanner } from "./qr-scanner";
+import { CounterHome } from "./counter-home";
 import { Console, DoneStage, LocationGate, ResolvedStage } from "./stages";
 import {
+  type AccreditationRow,
   type CartLine,
   type CounterLocation,
   type CounterProduct,
@@ -11,20 +14,25 @@ import {
   type ResolveResponse,
 } from "./types";
 
-type Stage = "scanning" | "resolved" | "done";
+type Stage = "idle" | "scanning" | "resolved" | "done";
 type Mode = "detailed" | "quick";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
 export function CounterConsole({
   currencyCode,
+  operatorName,
+  history,
   locations,
   preselectedLocationId,
 }: {
   currencyCode: string;
+  operatorName: string;
+  history: AccreditationRow[];
   locations: CounterLocation[];
   preselectedLocationId?: string;
 }) {
+  const router = useRouter();
   const soleLocation = locations.length === 1 ? locations[0].id : null;
   const validPreselect =
     preselectedLocationId &&
@@ -35,7 +43,7 @@ export function CounterConsole({
     validPreselect ?? soleLocation,
   );
 
-  const [stage, setStage] = useState<Stage>("scanning");
+  const [stage, setStage] = useState<Stage>("idle");
   const [scanKey, setScanKey] = useState(0);
   const [resolved, setResolved] = useState<ResolveResponse | null>(null);
   const [mode, setMode] = useState<Mode>("detailed");
@@ -58,9 +66,11 @@ export function CounterConsole({
     setNotice(null);
     setMode("detailed");
     setRequestId("");
-    setStage("scanning");
+    setStage("idle");
     setScanKey((k) => k + 1);
-  }, []);
+    // Re-run the server component so the day history reflects the fresh accreditation.
+    router.refresh();
+  }, [router]);
 
   const onDecode = useCallback(async (qrToken: string) => {
     setBusy(true);
@@ -183,6 +193,16 @@ export function CounterConsole({
 
   const dismissError = () => setError(null);
   const dismissNotice = () => setNotice(null);
+
+  if (stage === "idle") {
+    return (
+      <CounterHome
+        operatorName={operatorName}
+        history={history}
+        onScan={() => setStage("scanning")}
+      />
+    );
+  }
 
   if (locations.length > 1 && !locationId) {
     return (

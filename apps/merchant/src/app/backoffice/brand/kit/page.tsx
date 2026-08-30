@@ -1,9 +1,5 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
-import { getMerchantAuth } from "../../../../server/auth";
-import { getDb } from "../../../../server/db";
-import { businesses, memberships } from "../../../../server/schema";
+import { requireOwner } from "../../../../server/auth-guards";
 import { getBrandKitData } from "../../../../server/brand-kit/data";
 import { ModuleHeader } from "../../../components/ui";
 import { BrandKitWizard } from "./brand-kit-wizard";
@@ -11,18 +7,9 @@ import { BrandKitWizard } from "./brand-kit-wizard";
 export const dynamic = "force-dynamic";
 
 export default async function BrandKitPage() {
+  // Owner-only (ADR 0044): a staff member is redirected to the counter console.
+  const { business } = await requireOwner();
   const headerList = await headers();
-  const session = await getMerchantAuth().api.getSession({ headers: headerList });
-  if (!session) redirect("/login");
-
-  const [business] = await getDb()
-    .select({ id: businesses.id })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(eq(memberships.userId, session.user.id))
-    .orderBy(asc(businesses.createdAt))
-    .limit(1);
-  if (!business) redirect("/onboarding");
 
   // Absolute origin for the poster QR (the code must encode an absolute enroll URL).
   // Derived from the request — there is no env-based URL helper in this repo.

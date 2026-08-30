@@ -1,6 +1,6 @@
 ---
 adr: 0044
-fecha: 2026-08-20
+fecha: 2026-08-30
 estado: aceptada
 resumen: Modelo de roles a nivel negocio — owner (backoffice completo) y staff (solo mostrador), con acceso gateado por rol, desactivación por estado (sin borrar, preserva auditoría) y provisión vía better-auth.
 ---

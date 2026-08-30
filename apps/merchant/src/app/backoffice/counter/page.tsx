@@ -1,9 +1,8 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
-import { getMerchantAuth } from "../../../server/auth";
+import { requireBackofficeSession } from "../../../server/auth-guards";
 import { getDb } from "../../../server/db";
-import { businesses, locations, memberships } from "../../../server/schema";
+import { locations } from "../../../server/schema";
+import { listTodaysAccreditations } from "../../../server/counter";
 import { CounterConsole } from "./counter-console";
 
 export const dynamic = "force-dynamic";
@@ -13,19 +12,8 @@ export default async function CounterPage({
 }: {
   searchParams: Promise<{ location?: string }>;
 }) {
-  const session = await getMerchantAuth().api.getSession({
-    headers: await headers(),
-  });
-  if (!session) redirect("/login");
-
-  const [business] = await getDb()
-    .select({ id: businesses.id, currencyCode: businesses.currencyCode })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(eq(memberships.userId, session.user.id))
-    .orderBy(asc(businesses.createdAt))
-    .limit(1);
-  if (!business) redirect("/onboarding");
+  // Owner or active staff may operate the counter (ADR 0044).
+  const { business, userName } = await requireBackofficeSession();
 
   const locationList = await getDb()
     .select({ id: locations.id, name: locations.name })
@@ -33,11 +21,19 @@ export default async function CounterPage({
     .where(eq(locations.businessId, business.id))
     .orderBy(asc(locations.name));
 
+  const history = await listTodaysAccreditations(
+    business.id,
+    business.timezone,
+    new Date(),
+  );
+
   const { location } = await searchParams;
 
   return (
     <CounterConsole
       currencyCode={business.currencyCode}
+      operatorName={userName}
+      history={history}
       locations={locationList}
       preselectedLocationId={location}
     />
