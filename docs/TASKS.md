@@ -8,7 +8,24 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-30 (**QA en vivo del owner sobre `checkpass.club` CERRADO + fix de CORS
+Ultima actualizacion: 2026-08-30 (**ADR 0045 + spec 0046 CERRADA: recovery de owner/staff por OTP al
+email (Resend) — lista para implementar.** Owner/staff hoy NO tienen recuperación de contraseña
+(`auth.ts` no configura olvido); el email ya es su identidad en better-auth. Diseño cerrado con el
+owner: OTP de 6 dígitos al email con el plugin `emailOTP` de better-auth (posee el OTP y el set de
+contraseña — hashing + revocación de sesiones correctos, NO se toca `account.password` a mano),
+**Resend** como proveedor activo detrás de un contrato `EmailChannel` intercambiable (ahí vive el
+"cambiar de canal a futuro"; SMS para owner/staff queda como costura, no se construye). Resistente a
+enumeración, rate-limit persistente por email/IP (tabla nueva `merchant_auth.password_reset_attempt`,
+migración 0027), gate `PASSWORD_RECOVERY_ENABLED` (off → 503). El OTP del **consumidor** (SMS, spec
+0032) queda intacto y aislado. Spec disjunta (única otra abierta, 0031, no solapa). **Próximo paso:
+implementar 0046** con el protocolo `AGENT-WORKFLOW.md` (implementador → revisor independiente; rama
+Neon efímera para el test de integración). **OJO implementador:** verificar la API del plugin
+`emailOTP` contra la versión instalada de better-auth leyendo `node_modules` — no asumir de memoria
+(regla del `AGENTS.md` de merchant). Dependencia nueva `resend` → correr `pnpm fetch` en terminal con
+red antes de la sesión de implementación bajo codex/Auto (gotcha del store offline en `CLAUDE.md`).
+Nada commiteado aún de 0046 salvo los docs de esta sesión.)
+
+Ultima actualizacion previa: 2026-08-30 (**QA en vivo del owner sobre `checkpass.club` CERRADO + fix de CORS
 de Geoapify — punto de retorno.** El owner completó los pasos de dashboard (Vercel `BETTER_AUTH_URL`
 + CORS de R2) y corrió el QA en producción: **landing (0045), creación de staff, login de staff y scan
 del mostrador — todo funciona.** Registro/login/subidas de imagen andan en el dominio custom.
@@ -52,6 +69,10 @@ dominio custom. El buscador de direcciones (Geoapify) se destrabó quitando las 
 clave pública (ver última actualización + Gotcha de Geoapify en `CLAUDE.md`).
 
 Pendiente (no bloquea lo ya cerrado):
+- **Spec 0046 (recovery owner/staff por OTP al email) — CERRADA, lista para implementar.** ADR 0045.
+  Próximo trabajo grande. Implementar con `AGENT-WORKFLOW.md`. Ver última actualización arriba para el
+  diseño y las trampas (verificar API de `emailOTP` contra el better-auth instalado; `pnpm fetch` de
+  `resend` antes de sesión codex/Auto). Owner: dar de alta remitente en Resend + cargar secretos.
 - **Backlog — spec Opción B (proxy server-side de Geoapify):** hoy el autocomplete pega directo del
   navegador con la clave pública SIN restricción de origen (scrapeable). El fix durable es proxearlo
   por el server del merchant con `GEOAPIFY_API_KEY` (same-origin, cero CORS, clave oculta). Requiere
