@@ -8,7 +8,17 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-30 (**Spec 0043 (login de staff + consola de mostrador) IMPLEMENTADA con
+Ultima actualizacion: 2026-08-30 (**Spec 0045 (landing de entrada) IMPLEMENTADA — punto de retorno.**
+Spec chica: la raíz `/` (checkpass.club) redirigía directo al wizard de registro de negocio. Ahora, sin
+sesión, `/` muestra una **landing mínima** (estructura, sin diseño; reusa `panel/button`) con "Acceder"
+(→ `/login`) y "Crea tu negocio" (→ `/onboarding`); con sesión sigue yendo a `/backoffice`. Login y
+registro ya existían y se enlazan. Único archivo: `app/page.tsx` (de redirect a landing). Sin ADR (no
+hay decisión de arquitectura). **Gates:** typecheck 3/3, lint, unit 213, build 3/3. Implementado directo
+por el orquestador (cambio de 1 archivo, bajo riesgo, sin ciclo implementador/revisor). Commit `fe8e68d`
+en `main`. **Residual:** diseño real de la landing (fuera de alcance). **Contexto:** el owner está
+configurando el dominio `checkpass.club` en Vercel. Detalle en `docs/specs/0045-*.md`.)
+
+Ultima actualizacion previa: 2026-08-30 (**Spec 0043 (login de staff + consola de mostrador) IMPLEMENTADA con
 PASS de revisor independiente + migración `0026` aplicada y verificada en PROD — punto de retorno.**
 Tajada del borrador 0005 (ADR 0044): que el **personal** opere el mostrador sin ver el resto del
 backoffice. Flujo `AGENT-WORKFLOW.md`: spec cerrada con el owner → **implementador** (subagente) →
