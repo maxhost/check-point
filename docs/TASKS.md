@@ -8,7 +8,45 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-30 (**Spec 0045 (landing de entrada) IMPLEMENTADA — punto de retorno.**
+Ultima actualizacion: 2026-08-30 (**Fix de dominio custom `checkpass.club` (trustedOrigins de
+better-auth) — punto de retorno; QA en vivo es el próximo paso.** El owner reportó que registrarse
+desde `checkpass.club` fallaba. Diagnóstico: **no era Neon** (Neon es solo la DB; su "trusted domain"
+es de *Neon Auth*, producto que este repo no usa) — la auth es **better-auth**, que sólo confía en
+`BETTER_AUTH_URL`; en Vercel esa env var seguía apuntando al dominio viejo. Fix en código
+(`server/auth.ts`): `trustedOrigins = [BETTER_AUTH_URL, ...BETTER_AUTH_TRUSTED_ORIGINS.split(",")]`
+(env nueva opcional, coma-separada, acepta comodines de better-auth tipo `https://*.vercel.app`;
+retrocompatible — sin la env nueva se comporta igual que antes). Documentado en `.env.example`.
+**Gates:** typecheck 3/3, lint, build 3/3. Commit `11c5f26` en `main`.
+
+**Acción pendiente del OWNER en dashboards (no bloquea código, son pasos manuales):**
+1. **Vercel** → Environment Variables (Production) → `BETTER_AUTH_URL=https://checkpass.club`
+   (+ opcional `BETTER_AUTH_TRUSTED_ORIGINS=https://www.checkpass.club,https://*.vercel.app`) →
+   **redeploy**. Esto es lo que arregla el registro/login.
+2. **R2 (Cloudflare)** → bucket → CORS → agregar `https://checkpass.club` (+ `www`) a
+   `AllowedOrigins` con métodos `GET,PUT`. Necesario porque las subidas de imagen (logo/producto/
+   sello) hacen `PUT` **directo del navegador** a la URL firmada (`use-brand-logo.ts`,
+   `use-catalog-image.ts`, etc.) — sin este CORS, subir imágenes falla en el dominio nuevo.
+
+## Ahora
+
+**El owner va a hacer el QA en vivo en la próxima sesión.** Antes de arrancar, confirmar que hizo los
+2 pasos de arriba (env var de Vercel + CORS de R2); si el registro sigue fallando después de setear
+`BETTER_AUTH_URL`, pedir el texto exacto del error (podría ser cookie/sameSite, no origin).
+
+Checklist de QA pendiente, tres specs recién implementadas:
+- **Spec 0045 (landing):** entrar a `checkpass.club` sin sesión → ver la landing (no el registro
+  directo) → "Acceder" lleva a login, "Crea tu negocio" a registro; con sesión → `/backoffice`.
+- **Spec 0043 (staff):** el owner crea un staff (nombre/email/contraseña) en `/backoffice/staff` →
+  loguearlo en OTRO dispositivo → debe caer directo en la consola de mostrador y NO ver marca/
+  programa/catálogo/personal → escanear y acreditar puntos/sellos → aparece en el historial del día
+  → el owner lo desactiva → el staff pierde acceso.
+- **Spec 0032 (recovery OTP):** requiere ANTES cargar en Vercel `RECOVERY_ENABLED=true` +
+  `OTP_HMAC_SECRET`(≥32B) + `OTP_ENCRYPTION_KEY`(base64 32B) + credenciales ClickSend/Twilio.
+  Camino barato sin cargar saldo: **ClickSend da $2 AUD de crédito trial** al registrarse (14 días,
+  alcanza para varios OTP a Ecuador; dejar `CLICKSEND_FROM` vacío) — o Twilio trial (SMS gratis sólo
+  a número verificado). Sin esto, `/recover` responde 503 (oscuro a propósito).
+
+Ultima actualizacion previa: 2026-08-30 (**Spec 0045 (landing de entrada) IMPLEMENTADA — punto de retorno.**
 Spec chica: la raíz `/` (checkpass.club) redirigía directo al wizard de registro de negocio. Ahora, sin
 sesión, `/` muestra una **landing mínima** (estructura, sin diseño; reusa `panel/button`) con "Acceder"
 (→ `/login`) y "Crea tu negocio" (→ `/onboarding`); con sesión sigue yendo a `/backoffice`. Login y
