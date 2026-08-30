@@ -1,10 +1,10 @@
 ---
 spec: 0046
 fecha: 2026-08-30
-estado: cerrada
+estado: implementada
 resumen: Recuperación de contraseña de owner y staff por OTP de 6 dígitos al email (Resend, intercambiable), usando el plugin emailOTP de better-auth para OTP y set de contraseña; resistente a enumeración, con rate-limit persistente y gate por env. Consumidor (SMS, 0032) intacto.
 disjunta: si
-archivos: server/auth.ts, server/email/** (nuevo), server/recovery/merchant-recovery.ts (nuevo), server/schema/merchant-recovery.ts (nuevo), migración, app/api/merchant/recovery/** (nuevo), app/forgot-password (nuevo UI), .env.example, tests
+archivos: server/auth.ts (plugin emailOTP + disabledPaths + revokeSessionsOnPasswordReset), server/email/**, server/recovery/{internal,merchant-recovery}.ts, server/schema/merchant-recovery.ts, drizzle/0027_good_drax.sql, app/api/merchant/recovery/**, app/forgot-password/**, middleware.ts (503 del gate), .env.example, tests
 ---
 
 # 0046 — Recuperación de owner/staff por OTP al email
@@ -176,21 +176,21 @@ una spec abierta). Puede implementarse en paralelo sin colisión de archivos.
 
 ## Criterios de aceptación (verificables)
 
-- [ ] Con `PASSWORD_RECOVERY_ENABLED=true` + Resend configurado: pedir código en
+- [x] Con `PASSWORD_RECOVERY_ENABLED=true` + Resend configurado: pedir código en
   `/forgot-password` con un email de owner existente entrega un email con OTP de 6 dígitos.
-- [ ] Ingresar el OTP + contraseña nueva válida cambia la contraseña; el owner loguea con la
+- [x] Ingresar el OTP + contraseña nueva válida cambia la contraseña; el owner loguea con la
   nueva y **las sesiones previas quedan revocadas** (verificable en integración Neon).
-- [ ] Email inexistente en `/request` responde **200 genérico** y **no** envía email
+- [x] Email inexistente en `/request` responde **200 genérico** y **no** envía email
   (enumeración). Mismo cuerpo/timing que un email existente.
-- [ ] OTP incorrecto/vencido y email inexistente en `/reset` responden el **mismo** 400
+- [x] OTP incorrecto/vencido y email inexistente en `/reset` responden el **mismo** 400
   genérico. Tras `allowedAttempts` fallidos, el código queda bloqueado.
-- [ ] Rate-limit: 4ª solicitud del mismo email dentro de la hora → **429**; persiste tras
+- [x] Rate-limit: 4ª solicitud del mismo email dentro de la hora → **429**; persiste tras
   reiniciar el proceso (tabla, no memoria). Cap por IP frena barridos.
-- [ ] Con `PASSWORD_RECOVERY_ENABLED` ausente/false: `/forgot-password` y ambas rutas → **503**.
-- [ ] `RESEND_API_KEY` no aparece en el bundle del cliente (no es `NEXT_PUBLIC`); grep del
+- [x] Con `PASSWORD_RECOVERY_ENABLED` ausente/false: `/forgot-password` y ambas rutas → **503**.
+- [x] `RESEND_API_KEY` no aparece en el bundle del cliente (no es `NEXT_PUBLIC`); grep del
   build lo confirma. El OTP y la contraseña nunca se loguean.
-- [ ] Staff deshabilitado no recibe email ni puede resetear (respuesta genérica igual).
-- [ ] El flujo del **consumidor** (0032, SMS) no se tocó: sus tests siguen verdes.
+- [x] Staff deshabilitado no recibe email ni puede resetear (respuesta genérica igual).
+- [x] El flujo del **consumidor** (0032, SMS) no se tocó: sus tests siguen verdes.
 
 ## Pruebas
 

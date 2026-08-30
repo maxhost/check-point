@@ -8,7 +8,89 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-30 (**ADR 0045 + spec 0046 CERRADA: recovery de owner/staff por OTP al
+Ultima actualizacion: 2026-08-30 (**Spec 0046 (recovery de owner/staff por OTP al email) IMPLEMENTADA con
+PASS de revisor independiente (en 2 rondas: FAIL → fixes → PASS) + migración `0027` aplicada y verificada en
+PROD — punto de retorno.** Flujo `AGENT-WORKFLOW.md` completo. Spec `implementada`, INDEX actualizado.
+
+**EL HALLAZGO QUE IMPORTA (bloqueante del revisor, ronda 1): las rutas propias de better-auth salteaban TODA
+la protección.** El orquestador había blindado `/api/merchant/recovery/*` (gate, rate-limit persistente,
+chequeo de staff deshabilitado, auditoría), pero el catch-all **preexistente** `app/api/auth/[...all]/route.ts`
+publica TODOS los endpoints del plugin `emailOTP` — una puerta con candado al lado de una pared abierta. El
+revisor lo demostró end-to-end contra la rama Neon: con el gate APAGADO `/api/auth/email-otp/request-password-reset`
+devolvía 200 y entregaba el OTP; un **staff deshabilitado** recibía el código y **cambiaba su contraseña**; una
+ráfaga de 8 mandaba **8 emails** contra un cap de 3/h, con **0 filas de auditoría**. **Fix:** `disabledPaths`
+en `getMerchantAuth()` con los 9 paths HTTP del plugin. Verificado en `node_modules` (`dist/api/index.mjs:164-166`)
+que se aplica en el `onRequest` del router (→404) y **NO** afecta las llamadas server-side `auth.api.*`, que es
+lo que usan nuestras rutas. **Lección general: agregar un plugin de better-auth agrega SUPERFICIE HTTP por el
+catch-all — no alcanza con envolverlo en una ruta propia.**
+Otros 3 fixes de la ronda 1: `middleware.ts` (matcher `/forgot-password`) para el **503 real** de la página —un
+server component de Next NO puede fijar status—; `audit(...,"reset_ok")` en try/catch (un fallo de log ya no
+reporta 503 sobre una contraseña YA cambiada, que dejaba al usuario reintentando con un OTP consumido); e
+intervalo explícito en el `FILTER` de `email_day`.
+**Qué se construyó:** plugin `emailOTP` de better-auth en `server/auth.ts` (OTP de 6 dígitos, `expiresIn`
+600s, `allowedAttempts` 3, `disableSignUp: true` para que `/sign-in/email-otp` no auto-cree cuentas, y el
+callback `sendVerificationOTP` envía SÓLO para `type === "forget-password"`); contrato `EmailChannel`
+(`server/email/{channel,console,resend,provider}.ts`) con **Resend por `fetch` a `https://api.resend.com/emails`,
+SIN dependencia npm** — espeja el patrón de `ClickSendOtpChannel` (decisión del orquestador: mismo contrato
+y proveedor que pide el ADR 0045, sin la fricción del store offline de pnpm); orquestación
+`server/recovery/{internal,merchant-recovery}.ts` (gate, normalización, rate-limit persistente, enumeración,
+mapeo de errores); tabla nueva `merchant_auth.password_reset_attempt` (migración **aditiva** `0027_good_drax`,
+generada con `db:generate`, no a mano); rutas `api/merchant/recovery/{request,reset}`; UI `/forgot-password`
+de 2 pasos + link desde `/login`; envs documentadas en `.env.example`.
+**HALLAZGO CRÍTICO verificado en `node_modules` (no asumido):** better-auth 1.6.26 `resetPasswordEmailOTP`
+revoca sesiones **sólo si `emailAndPassword.revokeSessionsOnPasswordReset === true`** (leído en
+`dist/plugins/email-otp/routes.mjs`). Sin ese flag el DoD "sesiones revocadas" NO se cumple aunque todo lo
+demás ande. El flag está puesto y la revocación quedó verificada contra DB real.
+**Decisiones de seguridad que la spec no detallaba:** (a) si el envío de email falla, `/request` igual
+responde 200 — si el error saliera sólo para cuentas reales, el fallo del proveedor se volvería un oráculo de
+enumeración; (b) la validación de contraseña corta ocurre ANTES de canjear el OTP para no quemar un código
+válido; (c) `isRecoverable` deja recuperar al owner sin membership todavía (onboarding a medias) pero no al
+staff cuyo único membership está `disabled`.
+**Gates finales (corridos, salida real):** typecheck **3/3**, lint limpio, unit **254** (213 previos + 41
+nuevos; los del consumidor 0032 intactos), build **3/3** (`ƒ Proxy (Middleware)` presente). **Integración Neon
+5/5** en rama efímera `spec-0046-merchant-recovery` (`br-holy-wave-ax5s6c9w`, off prod): entrega del código +
+fila de auditoría con IP hasheada, email desconocido no envía nada, código incorrecto rechazado, **cambio de
+contraseña + TODAS las sesiones previas revocadas + login viejo falla y el nuevo anda**, y el cap horario
+aplicado desde la DB. Anti-fuga verificada por grep de un build con sentinel: `RESEND_API_KEY` **0 archivos**
+en `.next/static`.
+**Revisor independiente: PASS (ronda 2).** Corrió los 4 gates **sin caché** (`--force`, `0 cached`) +
+integración 5/5 por su cuenta; reprodujo el escenario del staff deshabilitado end-to-end (ahora 404 + 0 emails
++ **la contraseña vieja sigue siendo válida**); y —lo más valioso— **comprobó que el test del guard no es
+tautológico** construyendo un `betterAuth` SIN `disabledPaths`: los 9 paths dan 400/200, ninguno 404, así que
+los strings son rutas reales. Además leyó el **chunk edge compilado** para confirmar que
+`process.env.PASSWORD_RECOVERY_ENABLED` **no quedó inlineado en build-time** (gotcha clásico del edge
+middleware): el flag se evalúa en runtime.
+**Migración `0027_good_drax` APLICADA Y VERIFICADA EN PROD por SQL** (host unpooled; 27→28 migraciones;
+`merchant_auth` 4→5 tablas con `password_reset_attempt`: 5 columnas, 3 índices, CHECK de `kind`;
+`core`(22)/`consumer`(10) intactos; los 18 usuarios existentes sin tocar).
+**Residuales (menores, del revisor, ninguno bloqueante):** (a) con el gate ENCENDIDO pero sin
+`RESEND_API_KEY`/`EMAIL_FROM` la página da 200 con panel oscuro en vez de 503 (las 2 rutas API sí dan 503; el
+middleware sólo mira el flag); (b) oráculo de **timing** en `/request` —sólo las cuentas reales pagan el
+round-trip a Resend— acotado por 3/h y 5/día por email; (c) el cap por IP no está serializado (el advisory
+lock es por email), así que una ráfaga concurrente desde una IP contra emails distintos puede pasar levemente
+el 10/h; (d) `/reset` sin rate-limit propio, acotado por `allowedAttempts: 3` × 5 OTP/día ⇒ ≤15 intentos
+diarios contra 10⁶.
+**PENDIENTE DEL OWNER (bloquea el uso, no el código):** (1) alta del **remitente en Resend** (verificar
+`checkpass.club`) + cargar en Vercel `PASSWORD_RECOVERY_ENABLED=true`, `EMAIL_PROVIDER=resend`,
+`RESEND_API_KEY`, `EMAIL_FROM` — **sin esto `/forgot-password` responde 503 a propósito**; (2) **QA en vivo**:
+pedir reset del propio email, recibir el OTP, cambiar la clave, re-loguear y confirmar que las sesiones viejas
+murieron.
+**Ramas Neon efímeras BORRADAS** con OK del owner: `spec-0046-merchant-recovery` (`br-holy-wave-ax5s6c9w`) y
+la residual `spec-0043-staff` (`br-quiet-mouse-axp5nlrh`, arrastrada de la sesión anterior). `list_branches`
+verifica que **solo queda `main`** (default/primary = prod).
+
+**HALLAZGO GRANDE DE ESTA SESIÓN, FUERA DE 0046 → spec 0047 `borrador`: EL CI ESTÁ ROJO Y NO VERIFICA NADA.**
+`.github/workflows/ci.yml` corre `pnpm format:check` como **primer** paso y falla con 20 archivos sin
+formatear; como Actions corta al primer exit≠0, **`lint`, `typecheck`, `test`, `test:e2e` y `build` NUNCA se
+ejecutan en GitHub**. Verificado, no inferido: 3 corridas seguidas en `failure` sobre `main` (`33329183454`,
+`33328757578`, `33328440371`) y el log termina en `Code style issues found in 19 files`. Los 20 archivos son
+de specs viejas (0028/0031/0032/0041/0045) — **ninguno de 0046**, que quedó formateado. Agravante: **no existe
+el script `format` (escritura) en el `package.json` de root**, sólo `format:check` — causa estructural de que
+la deuda se acumulara. **Ojo al implementarla:** el formateo puede empujar un archivo sobre las 300 líneas del
+hook `file-size` (le pasó a `merchant-recovery.test.ts` en esta sesión, hubo que dividirlo) → dividir, no
+exceptuar. Y `test:e2e` **nunca corrió en esta máquina**: podría estar roto sin que nadie lo sepa.)
+
+Ultima actualizacion previa: 2026-08-30 (**ADR 0045 + spec 0046 CERRADA: recovery de owner/staff por OTP al
 email (Resend) — lista para implementar.** Owner/staff hoy NO tienen recuperación de contraseña
 (`auth.ts` no configura olvido); el email ya es su identidad en better-auth. Diseño cerrado con el
 owner: OTP de 6 dígitos al email con el plugin `emailOTP` de better-auth (posee el OTP y el set de
@@ -62,17 +144,29 @@ retrocompatible — sin la env nueva se comporta igual que antes). Documentado e
 
 ## Ahora
 
-**QA en vivo del owner sobre `checkpass.club` CERRADO (2026-08-30).** El owner hizo los 2 pasos de
-dashboard (Vercel `BETTER_AUTH_URL` + CORS de R2) y verificó en producción: **landing (0045), alta de
-staff, login de staff y scan del mostrador (0043) — todo OK.** Registro/login/subidas andan en el
-dominio custom. El buscador de direcciones (Geoapify) se destrabó quitando las Allowed Origins de la
-clave pública (ver última actualización + Gotcha de Geoapify en `CLAUDE.md`).
+**Spec 0046 (recovery de owner/staff por OTP al email) CERRADA end-to-end (2026-08-30):** implementada,
+PASS de revisor independiente en 2 rondas, migración `0027` en PROD, ramas Neon efímeras borradas, docs
+sincronizados. **Lo único que falta es del owner: Resend + 4 envs en Vercel + QA en vivo** (detalle en la
+última actualización). Antes de esto, el QA de `checkpass.club` ya había cerrado OK (landing 0045, staff y
+mostrador 0043, Geoapify destrabado).
+
+**Lo próximo recomendado: spec 0047 (`borrador`) — el CI está rojo y no verifica nada.** Es el ítem de
+mayor palanca: barato, mecánico, sin cambio de comportamiento, y devuelve el gate de CI que hoy no existe.
 
 Pendiente (no bloquea lo ya cerrado):
-- **Spec 0046 (recovery owner/staff por OTP al email) — CERRADA, lista para implementar.** ADR 0045.
-  Próximo trabajo grande. Implementar con `AGENT-WORKFLOW.md`. Ver última actualización arriba para el
-  diseño y las trampas (verificar API de `emailOTP` contra el better-auth instalado; `pnpm fetch` de
-  `resend` antes de sesión codex/Auto). Owner: dar de alta remitente en Resend + cargar secretos.
+- **Spec 0046 (recovery owner/staff por OTP al email) — IMPLEMENTADA, PASS del revisor, migración `0027`
+  en PROD.** ADR 0045. Detalle completo en la última actualización arriba. **Lo único que falta es del
+  owner:** alta del remitente en Resend + las 4 envs en Vercel (`PASSWORD_RECOVERY_ENABLED=true`,
+  `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `EMAIL_FROM`), QA en vivo, OK para borrar la rama efímera
+  `br-holy-wave-ax5s6c9w`, y autorizar el commit. Hasta que carguen las envs, `/forgot-password` responde
+  **503 a propósito** (la feature queda oscura).
+  Nota: al final NO hizo falta la dependencia npm `resend` (el adaptador usa `fetch`, como los canales SMS),
+  así que el `pnpm fetch` de re-warm del store fue innecesario para esta spec.
+- **Spec 0047 (deuda de formato + CI rojo) — `borrador`, candidata a lo próximo.** Descubierta en esta
+  sesión. **Es el trabajo de mayor palanca pendiente:** hoy el CI de GitHub no verifica NADA porque muere
+  en `format:check`. Es higiene mecánica (20 archivos + un script + prevención), sin cambio de
+  comportamiento, y devuelve el gate de CI. Ver `docs/specs/0047-deuda-de-formato-y-ci-rojo.md`; la única
+  decisión abierta es la prevención (reordenar gates / hook de formato / ambas).
 - **Backlog — spec Opción B (proxy server-side de Geoapify):** hoy el autocomplete pega directo del
   navegador con la clave pública SIN restricción de origen (scrapeable). El fix durable es proxearlo
   por el server del merchant con `GEOAPIFY_API_KEY` (same-origin, cero CORS, clave oculta). Requiere

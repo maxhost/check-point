@@ -131,6 +131,22 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   `.github/workflows/`, o cron-job.org) — patrón ya usado por `wallet-push` (spec 0033). Al pasar a
   Pro se re-agrega el cron nativo. Diagnóstico del deploy sin acceso a Vercel: `gh api
   repos/maxhost/check-point/commits/<sha>/status`.
+- **Agregar un plugin de better-auth AGREGA SUPERFICIE HTTP: el catch-all `app/api/auth/[...all]/route.ts`
+  publica TODOS sus endpoints.** Envolver el plugin en una ruta propia con gate/rate-limit/permisos NO
+  protege nada — queda una puerta con candado al lado de una pared abierta. Cazado por un revisor
+  independiente en la spec 0046 y demostrado end-to-end: con `PASSWORD_RECOVERY_ENABLED` **apagado**,
+  `/api/auth/email-otp/request-password-reset` devolvía 200 y entregaba el OTP; un **staff deshabilitado**
+  cambiaba su contraseña; una ráfaga de 8 mandaba 8 emails contra un cap de 3/h, con 0 filas de auditoría.
+  **Fix: `disabledPaths: [...]` en `betterAuth({...})`** con los paths HTTP del plugin — se aplica en el
+  `onRequest` del router (→404, `dist/api/index.mjs`) y **NO** afecta las llamadas server-side `auth.api.*`,
+  así que las rutas propias siguen funcionando. **Guard:** `server/merchant-auth-disabled-paths.test.ts`
+  pinnea los 9 paths de `emailOTP` en 404 + `/sign-in/email` vivo; si sumás un plugin, sumá sus paths ahí.
+  Al escribir el test, ojo con el falso verde: un path mal escrito también da 404 — verificá que sin el
+  guard esos paths respondan algo distinto de 404.
+- **Un server component de Next NO puede fijar el status HTTP.** Si una spec pide que una *página* responda
+  503/404 (no solo su API), va por `src/middleware.ts` con `matcher` acotado. Ojo: el middleware corre en
+  **edge runtime** — no importes cadenas que arrastren `node:crypto` (leé la env directo). Verificá que la
+  env no quede inlineada en build-time inspeccionando el chunk edge compilado.
 - **Formatos de imagen aceptados en subidas: viven en UN solo lugar,
   `apps/merchant/src/lib/image-formats.ts`** (jpeg/png/webp/**heic/heif/avif** — las fotos de
   cámara/galería de Android e iPhone son HEIC/HEIF, `sharp` las decodifica). Lo consumen los guards
