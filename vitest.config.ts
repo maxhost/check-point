@@ -6,6 +6,7 @@ export default defineConfig({
       "apps/consumer/vitest.config.ts",
       "apps/merchant/vitest.config.ts",
       "apps/platform/vitest.config.ts",
+      "tools/vitest.config.ts",
     ],
   },
 });
