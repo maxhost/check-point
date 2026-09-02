@@ -1,7 +1,7 @@
 ---
 spec: 0049
 fecha: 2026-09-02
-estado: borrador
+estado: cerrada
 resumen: Plan por fases para poner el proyecto en la última Active LTS de Node (24.20.0) y dejar la migración a 26 barata y agendada. Implementa el ADR 0046. Node 26 NO entra: Vercel no lo ofrece como runtime, así que migrar ahora dejaría el CI probando un runtime que nadie despliega. Cada fase es un commit independiente con su verificación y su rollback.
 disjunta: si
 archivos: .node-version, package.json (engines + script del guard), apps/*/package.json (@types/node), pnpm-lock.yaml, .github/workflows/ci.yml, scripts/ (guard anti-drift)
@@ -191,19 +191,17 @@ versión de Node).
   producción. No hay cambio funcional que probar en pantalla; si algo se ve distinto, el
   bump de Node no fue sólo un bump de Node.
 
-## Decisiones abiertas (a cerrar antes de pasar a `cerrada`)
+## Decisiones cerradas (2026-09-02, delegadas por el owner al orquestador)
 
-1. **Forma del guard de la Fase 3.** Dos caminos razonables:
-   - **(a) Script + step de CI** (`scripts/check-node-pins.mjs` + `pnpm run verify:node-pins`).
-     Simple, sin plumbing, alineado con la doctrina de `CLAUDE.md` ("si una regla se puede
-     chequear con un comando, es un hook/comando"). Contra: no corre con `pnpm test`, así
-     que localmente sólo se ve si alguien lo invoca.
-   - **(b) Un 4º project de vitest** (`vitest.config.ts` de root ya usa `projects` con las
-     3 apps; sumar uno de tooling es una línea). Ventaja concreta: corre con `pnpm test`, o
-     sea también en el **Stop hook** de `.claude/settings.json`, que es donde el drift se
-     cazaría en el acto. Contra: un poco más de plumbing.
-   - **Recomendación: (b)**, porque el drift lo introduce un agente editando un pin, y (b)
-     es el único de los dos que lo detecta en ese mismo turno.
-2. **¿Se ejecutan las 4 fases en una sesión o se corta después de la 3?** La Fase 4
-   (actions) es la de mayor superficie y la de menor beneficio (saca un warning). Es
-   defendible dejarla para después. Decisión del owner.
+1. **Forma del guard: (b), un 4º project de vitest.** `vitest.config.ts` de root ya usa
+   `projects` con las 3 apps; se suma `tools/vitest.config.ts` y el test vive en `tools/`.
+   **Motivo:** el drift lo introduce un agente editando un pin, y de las dos opciones ésta
+   es la única que lo detecta **en ese mismo turno** — corre con `pnpm test`, que es lo que
+   ejecuta el **Stop hook** de `.claude/settings.json`. Un guard que sólo corre en CI avisa
+   minutos después, cuando el contexto ya se movió. El costo es una línea de config.
+   El guard corre además en CI sin agregar ningún step: ya está dentro de `pnpm test`.
+2. **Se ejecutan las 4 fases.** La Fase 4 (actions) tiene poco beneficio inmediato —saca un
+   warning— pero es riesgo acotado y reversible con un `revert`, y dejarla pendiente
+   significa arrastrarla a la migración de octubre, que es cuando menos se quiere ruido.
+   Se hace **al final y sola**, para que un rojo suyo no contamine el diagnóstico de las
+   otras tres. Si sale roja, se revierte y se levanta como spec propia.
