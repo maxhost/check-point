@@ -100,3 +100,28 @@ nadie despliega.
   versión de hoy, sino que la de mañana sea barata.
 - **Queda una fecha en el calendario, no un pendiente difuso.** Si nadie la mira, el peor
   caso es seguir en una LTS soportada hasta 2028.
+
+### Corolario aplicado el 2026-09-02: Dependabot y `@types/node`
+
+Esta decisión se puso a prueba el mismo día. Dependabot tenía abierto el **PR #8**
+(`@types/node` 24.13.3 → **26.4.0**). Se **cerró**, y conviene que quede escrito el porqué,
+porque a simple vista parece "no estar al día":
+
+`@types/node` no es Node: es la **descripción de la API de Node para TypeScript**. Su major
+tiene que seguir al Node que **corremos**, no al último publicado. Con tipos de 26 sobre un
+runtime 24, TypeScript acepta llamadas a APIs que en producción **no existen** — sin error
+de compilación, fallando recién en runtime, que es la peor forma de fallar. No es una
+mejora bloqueada por prolijidad: mergearlo habría **introducido** un riesgo que hoy no está.
+
+Lo relevante para la confianza en el sistema: **el guard de la spec 0049 lo frenó solo**, en
+CI, contra un PR de un tercero, sin que nadie lo revisara a mano:
+
+```
+FAIL tools node-version-pins.test.ts > `@types/node` sigue el major de Node en las 3 apps
+AssertionError: expected 'apps/consumer: 26' to be 'apps/consumer: 24'
+```
+
+Se agregó además una regla `ignore` en `.github/dependabot.yml` para los majors de
+`@types/node`, de modo que la propuesta no se repita cada semana. **Esa regla se levanta —
+no se olvida— en la Fase 5**, cuando se migre a Node 26; en ese momento el bump deja de ser
+un riesgo y pasa a ser parte de la migración.

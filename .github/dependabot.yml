@@ -5,6 +5,17 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # El major de @types/node tiene que seguir al Node que CORREMOS, no al
+      # ultimo publicado: son la descripcion de la API de Node para TypeScript.
+      # Con tipos de 26 sobre un runtime 24, TS acepta APIs que en produccion no
+      # existen y el fallo aparece recien en runtime. Hoy estamos en Node 24
+      # (Active LTS) y no podemos pasar a 26: Vercel solo ofrece 24.x/22.x/20.x.
+      # El guard `tools/node-version-pins.test.ts` ya frena estos PRs en CI;
+      # esto evita ademas que se reabran todas las semanas.
+      # Se levanta cuando migremos a Node 26 (ADR 0046, fase 5 de la spec 0049).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

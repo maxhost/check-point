@@ -76,6 +76,23 @@ con el fix -> `v24.20.0`. Y probado que NO anulo el guard: con `@types/node` en 
 la version no esta instalada, no se silencia nada: sigue con el Node que haya y el guard falla, que es la
 señal correcta.
 
+**EL GUARD YA SE PROBO SOLO CONTRA UN CASO REAL, no de laboratorio: Dependabot PR #8** (`@types/node`
+24.13.3 → **26.4.0**). El CI del PR quedo en **failure** por el guard —`expected 'apps/consumer: 26' to be
+'apps/consumer: 24'`— **antes de llegar a `main`, sin que nadie lo revisara a mano**. `main` siguio en
+`success`. **PR #8 CERRADO** con comentario explicando el motivo y linkeando el ADR.
+
+**Por que se cerro (no es "quedarse atras"):** `@types/node` no es Node, es la **descripcion de la API de Node
+para TypeScript**. Su major debe seguir al Node que CORREMOS, no al ultimo publicado. Con tipos de 26 sobre
+runtime 24, TS acepta APIs que en produccion **no existen**, sin error de compilacion, fallando recien en
+runtime. Mergearlo habria INTRODUCIDO un riesgo que hoy no existe.
+
+**Regla `ignore` agregada en `.github/dependabot.yml`** para majors de `@types/node`, asi la propuesta no vuelve
+cada semana. **SE LEVANTA en la Fase 5**, al migrar a Node 26 — esta escrito en el comentario del archivo y en
+el ADR 0046 para que no se olvide.
+
+**Los otros 4 PRs de Dependabot NO tienen este problema** (turbo, playwright, typescript-eslint,
+@types/react-dom): ninguno toca la version de Node. Quedan **abiertos**, sin revisar — decision del owner.
+
 **Efecto lateral bueno del re-link de pnpm:** el lockfile tenia **dos** `@types/node` (la vieja 24.10.1 seguia
 referenciada por `@types/node-forge`); quedaron consolidadas en 24.13.3.
 
