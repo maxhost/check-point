@@ -16,6 +16,26 @@ cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" 
 # Proyecto todavia sin scaffold: no bloquear.
 [ -f package.json ] || exit 0
 
+# El shell del hook arranca en el Node del SISTEMA (22), no en el que pide el
+# repo (.node-version, hoy 24). Correr los gates en otro runtime que el de CI y
+# produccion es verificar otra cosa: el verde de aca no dice nada del verde de
+# alla. Lo destapo el guard de pines de la spec 0049, que fallo justamente aca
+# con "expected '22' to be '24'" — el hook llevaba corriendo en 22 sin que nadie
+# lo notara.
+#
+# Si nvm no esta, o la version pedida no esta instalada, NO se silencia: se
+# sigue con el Node que haya y el guard de pines falla, que es la señal correcta.
+if [ -s .node-version ]; then
+  _nvm="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+  if [ -s "$_nvm" ]; then
+    set +u
+    # shellcheck disable=SC1090
+    . "$_nvm" >/dev/null 2>&1
+    nvm use "$(cat .node-version)" >/dev/null 2>&1
+    set -u
+  fi
+fi
+
 fail=0
 out=""
 

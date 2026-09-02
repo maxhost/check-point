@@ -63,6 +63,22 @@ spec **NO paso por revisor independiente** como manda `AGENT-WORKFLOW.md` (la 00
 por fase (4 corridas en `success`) mas la prueba negativa del guard. Si se quiere el PASS formal, falta esa
 pasada.
 
+**HALLAZGO REAL DEL GUARD, EN SU PRIMER USO: el Stop hook (`.claude/hooks/verify.sh`) venia corriendo los
+gates en Node 22, no en el 24 que pide el repo.** El guard lo cazo apenas se instalo (`expected '22' to be
+'24'`) y bloqueo el fin del turno. **No es un falso positivo ni un test mal escrito: el hook llevaba tiempo
+verificando contra un runtime DISTINTO del de CI y produccion**, o sea su verde no decia nada del verde de
+GitHub. Causa: el shell del hook arranca en el Node del sistema y `verify.sh` nunca hacia `nvm use` (el gotcha
+de `CLAUDE.md` estaba documentado para las corridas a mano, pero el hook quedo afuera). **Fix aplicado en
+`verify.sh`, no en el test** (editarlo para que pase es exactamente lo que prohibe el propio hook): carga nvm
+y hace `nvm use "$(cat .node-version)"` antes de los gates. Verificado: shell nuevo sin el fix -> `v22.22.2`;
+con el fix -> `v24.20.0`. Y probado que NO anulo el guard: con `@types/node` en 26 el hook bloquea con
+`HOOK_EXIT=2` nombrando la app (`expected 'apps/merchant: 26'`), restaurado deja pasar con 0. Si nvm no esta o
+la version no esta instalada, no se silencia nada: sigue con el Node que haya y el guard falla, que es la
+señal correcta.
+
+**Efecto lateral bueno del re-link de pnpm:** el lockfile tenia **dos** `@types/node` (la vieja 24.10.1 seguia
+referenciada por `@types/node-forge`); quedaron consolidadas en 24.13.3.
+
 **Limite conocido (menor, no bloqueante):** `tools/` no esta cubierto por `pnpm typecheck` (turbo corre los
 tsconfig de las 3 apps), asi que un error de tipos en el guard no lo caza el gate — vitest transpila sin
 chequear tipos. El guard igual falla en runtime si se rompe.)
