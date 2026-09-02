@@ -1,7 +1,7 @@
 ---
 spec: 0004
 fecha: 2026-08-09
-estado: borrador
+estado: reencuadrada por ADR 0031
 resumen: Crea cuentas guest y registradas por OTP, permite recuperación por email y muestra un wallet con activos de plataforma y comercios.
 disjunta: no
 archivos: depende de 0001, 0002 y 0009; rutas concretas se completan tras las decisiones de arquitectura
