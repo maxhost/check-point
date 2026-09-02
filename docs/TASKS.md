@@ -8,7 +8,63 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-02 (**SPEC 0049 IMPLEMENTADA: Node en 24.20.0, las 4 fases aplicadas, cada una
+Ultima actualizacion: 2026-09-02 (**SPEC 0040 CERRADA + ADR 0047 — LISTA PARA IMPLEMENTAR. Nada de codigo
+tocado todavia. PROXIMO PASO: implementarla con el protocolo de `AGENT-WORKFLOW.md`.**
+
+**Que es:** cropper de imagen en el cliente, recuadro **1:1** con drag+zoom (touch y desktop), en las 3
+superficies de subida (logo de marca, sello del programa, producto de catalogo). Ultima spec pendiente del
+backlog: las otras 8 en `borrador` son specs fundacionales de agosto, material historico.
+
+**EL HALLAZGO QUE CAMBIO EL DISEÑO (y obligo a un ADR nuevo): los navegadores NO pueden decodificar HEIC.**
+Chrome, Firefox y Edge no licencian **HEVC** (esta bajo patente); Safari si, pero solo porque delega en el
+decoder del SO. Un cropper NECESITA mostrar la imagen para que el usuario la encuadre — si el navegador no
+puede decodificarla, no hay nada que dibujar. Y HEIC es el formato de las fotos de galeria de **Android** e
+iPhone: es el caso exacto que ya costo **dos rondas de QA** (specs 0033 y 0039) y que esta en `CLAUDE.md`. Un
+cropper obligatorio lo rompia por tercera vez.
+
+**Por eso va el ADR 0047, que ENMIENDA el punto 2 del ADR 0041** (los ADR son inmutables: si la decision
+cambia, va uno nuevo). El 0041 prometia que con el cropper el server volvia a un `limitInputPixels` estricto
+**global**. No es alcanzable: mientras exista el fallback —y es obligatorio— por ese camino entra una foto
+entera. El cropper pasa a ser **best-effort** y el estricto aplica solo al camino con recorte.
+
+**Se evaluo y DESCARTO convertir HEIC en el browser** (fue la idea del owner, y es la salida correcta si el
+costo cerrara): implica embarcar un decoder HEVC en WASM. `heic2any` 2.59 MB pero **sin publicar desde
+2023-03-29**; `libheif-js` 6.1 MB y `heic-to` 23.2 MB, ambos **LGPL-3.0**. Aun diferido son 1-2 MB reales que
+paga el usuario de Android justo cuando espera ver su foto, con una licencia cuya obligacion de relinkeo queda
+difusa en un bundle propietario — y **sin saber todavia con que frecuencia llega HEIC crudo** (los pickers de
+Android a veces entregan JPEG ya convertido). **Reapertura CONDICIONAL al QA, no agendada** (ADR 0047 §4).
+
+**LAS 6 DECISIONES, cerradas con evidencia:**
+1. **Aspecto 1:1 en las tres.** No es preferencia — lo decidio el CSS: `.brand-logo img` 56×56, `.stamp-preview
+   img` 54×54 y `.catalog-image-preview` 120×120 **ya usan `object-fit: cover`**. El recorte cuadrado YA ocurre,
+   a ciegas y al centro; el cropper solo se lo da al usuario. (A verificar al implementar: el logo tambien va al
+   pase de Wallet y al afiche del brand kit.)
+2. **`react-easy-crop` 6.2.3, UNA sola** (verificado en el registry: publicada 2026-07-24, unica dep
+   `normalize-wheel`, peer react >=16.4 → ok con React 19). Se descarta el "dos librerias segun plataforma" del
+   ADR 0041: la deteccion siempre falla en hibridos (notebooks tactiles).
+3. **Fallback por COMPORTAMIENTO, no por user-agent:** se intenta decodificar y si falla se sube el original.
+   Pregunta lo unico que importa y sigue andando el dia que un navegador agregue HEIC.
+4. **Salida WebP q0.85, borde 2048** (= el `MAX_OUTPUT_EDGE` que el server ya usa). **Ojo con el alpha:** el
+   respaldo es **PNG** en logo/sello (transparencia) y JPEG solo en catalogo — un PNG transparente que caiga a
+   JPEG sale con fondo negro.
+5. **`limitInputPixels` parametrizado:** 4.2 MP en el camino con recorte, 50 MP en el fallback. Elegir mal solo
+   puede terminar en un rechazo, nunca en aceptar algo mas grande.
+6. **Orden: marca → QA en telefono real → sello → catalogo.** Ese QA produce el dato que decide el ADR 0047 §4.
+
+**DEUDA METIDA EN EL ALCANCE a pedido del owner:** el `accept` del catalogo en desktop esta hardcodeado angosto
+(`"image/png,image/jpeg,image/webp"`) mientras marca y sello usan `ACCEPTED_IMAGE_ACCEPT_ATTR` — **tercera**
+aparicion del mismo bug que `CLAUDE.md` ya documenta de las specs 0033 y 0039. Ademas `use-catalog-image.ts`
+valida con `file.type.startsWith("image/")` en vez del set compartido, mas laxo que sus dos pares.
+
+**OJO AL IMPLEMENTAR:**
+- **Dependencia nueva** → correr **`pnpm fetch`** con red despues de agregarla, o la proxima sesion offline
+  falla. Y despues de `pnpm fetch`, acordarse del gotcha del `Already up to date` con `node_modules` vacio.
+- El cropper es **UX y ahorro de bytes, NO un control de seguridad**: ninguna validacion del server se relaja.
+- El criterio del fallback exige **probarlo forzando el fallo de decode**, no asumirlo.
+
+**Estado del repo:** todo pusheado, `main` verde, prod 200, Node 24.20.0, 259 tests. Sin trabajo a medias.)
+
+Ultima actualizacion previa: 2026-09-02 (**SPEC 0049 IMPLEMENTADA: Node en 24.20.0, las 4 fases aplicadas, cada una
 con su corrida de CI en `success`. Prod desplegada y sana. Punto de retorno.**
 
 **Lo que se logro:** el repo corre la **ultima Active LTS (24.20.0)**, la version dejo de estar duplicada sin
