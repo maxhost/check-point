@@ -1,7 +1,7 @@
 ---
 spec: 0047
 fecha: 2026-08-30
-estado: cerrada
+estado: implementada
 resumen: El CI de GitHub está rojo desde hace commits porque `pnpm format:check` falla con 20 archivos sin formatear; como es el PRIMER paso del workflow, lint/typecheck/test/e2e/build nunca llegan a correr. Formatear la deuda, agregar el script `format` que falta y prevenir la recaída.
 disjunta: si
 archivos: 19 archivos a formatear (lista abajo menos settings.local.json), package.json (script `format`), .prettierignore, .github/workflows/ci.yml (format:check al final), .claude/hooks/format-on-write.sh + .claude/settings.json

@@ -1,7 +1,7 @@
 ---
 spec: 0048
 fecha: 2026-09-02
-estado: cerrada
+estado: implementada
 resumen: El job de CI falla en `pnpm test:e2e` porque el workflow nunca instala los binarios de browser de Playwright (`pnpm install` trae el paquete, no los browsers). Destapado por la spec 0047, que sacó el `format:check` del primer paso y dejó que el CI corriera de verdad por primera vez.
 disjunta: si
 archivos: .github/workflows/ci.yml

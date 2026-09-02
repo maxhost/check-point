@@ -1,7 +1,7 @@
 ---
 spec: 0049
 fecha: 2026-09-02
-estado: cerrada
+estado: implementada
 resumen: Plan por fases para poner el proyecto en la última Active LTS de Node (24.20.0) y dejar la migración a 26 barata y agendada. Implementa el ADR 0046. Node 26 NO entra: Vercel no lo ofrece como runtime, así que migrar ahora dejaría el CI probando un runtime que nadie despliega. Cada fase es un commit independiente con su verificación y su rollback.
 disjunta: si
 archivos: .node-version, package.json (engines + script del guard), apps/*/package.json (@types/node), pnpm-lock.yaml, .github/workflows/ci.yml, scripts/ (guard anti-drift)
