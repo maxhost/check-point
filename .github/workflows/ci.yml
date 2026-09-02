@@ -25,6 +25,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Los browsers NO vienen con `pnpm install`: el paquete @playwright/test trae la
+      # libreria, los binarios se bajan aparte a ~/.cache/ms-playwright, vacio en un
+      # runner limpio (spec 0048). Solo chromium: playwright.config.ts no declara
+      # `projects`, asi que corre con el default.
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - run: pnpm build
       # Ultimo a proposito (spec 0047): el estilo es la falla menos informativa del set.

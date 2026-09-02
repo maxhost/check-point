@@ -1,7 +1,7 @@
 ---
 spec: 0048
 fecha: 2026-09-02
-estado: borrador
+estado: cerrada
 resumen: El job de CI falla en `pnpm test:e2e` porque el workflow nunca instala los binarios de browser de Playwright (`pnpm install` trae el paquete, no los browsers). Destapado por la spec 0047, que sacó el `format:check` del primer paso y dejó que el CI corriera de verdad por primera vez.
 disjunta: si
 archivos: .github/workflows/ci.yml
@@ -49,11 +49,32 @@ limpio ese caché está vacío.
 Los 3 tests que pasan son los que no abren browser; los que fallan son los que sí
 (`analytics.spec.ts`, `loyalty.spec.ts`, `loyalty-real.spec.ts` usan `page`).
 
-**Nota importante sobre el estado real de los e2e:** este fallo es de **infraestructura
-del runner**, no dice nada sobre si los tests pasan. Nunca se ejecutaron con browser: ni
-en CI (tapados por el `format:check`) ni en esta máquina. Que arreglar la instalación deje
-el CI verde **no está garantizado** — puede destapar fallas reales de los propios tests.
-Eso es información que hoy no tenemos y que esta spec va a producir.
+**RESUELTO (2026-09-02): los tests están sanos. Se corrieron localmente con browser real
+por primera vez.** Era la incógnita que bloqueaba esta spec, y la respuesta es buena:
+
+```
+Running 6 tests using 4 workers
+  ✓ platform exposes its health contract        (40ms)
+  ✓ consumer exposes its health contract        (37ms)
+  ✓ merchant exposes its health contract        (38ms)
+  ✓ owner changes the analytics demo sector...  (716ms)   ← el que fallaba en CI
+  ✓ owner activates and deactivates a stamp...  (907ms)   ← el que fallaba en CI
+  -  programa de fidelización real › ...                   (skipped, ver abajo)
+  1 skipped, 5 passed (5.3s)
+```
+
+Los 2 que el CI daba por rojos **pasan**: era exclusivamente el browser faltante. El fallo
+es de infraestructura del runner y no había ninguna falla real de test detrás.
+
+**Descubrimiento colateral: el caché de browsers YA ESTABA en la máquina de desarrollo**
+(`~/Library/Caches/ms-playwright` con `chromium_headless_shell-1200`, exactamente el build
+que el runner reclamaba). Estos tests se podían correr en local desde siempre; lo que
+faltaba era correrlos. Lo que impidió correrlos hoy no fue Playwright: eran los puertos
+**3000** y **3001** ocupados por dev servers de **otros proyectos** (`next dev` de
+`gym-app` y `55mas`), contra los que la suite choca con `EADDRINUSE` y aborta antes de
+ejecutar un solo test. Los puertos son fijos en los scripts `dev` (consumer 3000, merchant
+3001, platform 3002). Es fricción local conocida, no un problema de CI (allá siempre están
+libres), pero conviene saberlo antes de perder media hora diagnosticando Playwright.
 
 ## Alcance
 
@@ -70,23 +91,38 @@ Eso es información que hoy no tenemos y que esta spec va a producir.
 - Cambiar `playwright.config.ts`, salvo que la investigación demuestre que ahí está el
   problema (y en ese caso vuelve a `borrador` con el hallazgo).
 
-## Diseño (a cerrar)
+## Diseño
 
-Un step nuevo en `.github/workflows/ci.yml`, antes de `- run: pnpm test:e2e`. Decisiones
-abiertas, a resolver con evidencia, no por costumbre:
+Un step nuevo en `.github/workflows/ci.yml`, antes de `- run: pnpm test:e2e`:
 
-1. **Qué se instala.** `playwright install --with-deps chromium` (sólo el browser que se
-   usa) vs `--with-deps` (los tres). Hay que **verificar qué proyectos declara
-   `playwright.config.ts`** — hoy no declara `projects`, así que usa el default; confirmar
-   contra qué browser corre de verdad antes de elegir. Instalar de más es minutos de CI
-   regalados en cada push; instalar de menos es el mismo error con otro nombre.
-2. **Caché.** `~/.cache/ms-playwright` con `actions/cache` keyeado por la versión de
-   Playwright del lockfile. Baja el tiempo de cada corrida, pero suma una pieza que puede
-   dar falsos verdes si la key queda vieja. Decidir si entra ahora o después.
-3. **`loyalty-real.spec.ts` toca DB.** Verificar si necesita `DATABASE_URL` en CI y qué
-   hace hoy sin ella (¿se salta, o falla?). De los 6 tests, 3 pasaron y 2 fallaron: falta
-   **1**, probablemente skippeado — confirmar qué pasa con ese, porque un test que se
-   auto-saltea en silencio es un gate que no gatea.
+```yaml
+- run: pnpm exec playwright install --with-deps chromium
+```
+
+Las tres decisiones que estaban abiertas, cerradas con evidencia:
+
+1. **Qué se instala: sólo `chromium`.** `playwright.config.ts` no declara `projects`, así
+   que corre con el default de Playwright, que es chromium. Confirmado por la corrida
+   local: los 5 tests que se ejecutan usan chromium, y el error del runner pedía
+   `chromium_headless_shell`. `playwright install chromium` baja el headless shell junto
+   al chromium completo (verificado en el caché local: conviven `chromium-1200` y
+   `chromium_headless_shell-1200`). Instalar los tres browsers sería regalar minutos de CI
+   en cada push por dos que nadie usa. `--with-deps` sí hace falta: el runner de Ubuntu no
+   trae las libs del sistema que chromium necesita.
+2. **Caché: NO entra en esta spec.** `actions/cache` sobre `~/.cache/ms-playwright`
+   ahorraría ~20-30s por corrida, pero agrega una pieza que puede dar **falsos verdes** si
+   la key queda vieja respecto de la versión de Playwright — y el problema que estamos
+   arreglando es justamente un CI que mentía. Primero verde y confiable; la optimización
+   se mide después, cuando haya un tiempo de corrida real contra el cual comparar.
+3. **`loyalty-real.spec.ts` no es un gate que no gatea: es opt-in deliberado.** Se saltea
+   con una condición explícita y documentada en el propio archivo — requiere
+   `E2E_MERCHANT_BASE_URL`, `E2E_MERCHANT_EMAIL`, `E2E_MERCHANT_PASSWORD` y
+   `E2E_LOYALTY_MUTATION_TEST=true`, con el motivo escrito: *"requiere owner de prueba
+   nuevo y aislado de la rama de desarrollo"*. Es un test que **muta datos reales**, apagado
+   a propósito salvo que alguien lo encienda. **No se enciende en CI**: sin owner de prueba
+   aislado, correrlo escribiría contra un entorno real desde cada push. Que quede skippeado
+   es la conducta correcta, no deuda. (Es el único `skip` de toda la suite — verificado con
+   `grep -rn skip tests/e2e/`.)
 
 ## Archivos
 
@@ -102,8 +138,9 @@ abiertas, a resolver con evidencia, no por costumbre:
 
 - [ ] `pnpm test:e2e` corre en CI con browser real: cero errores `browserType.launch:
   Executable doesn't exist`.
-- [ ] Se sabe y está escrito **qué hace cada uno de los 6 tests** en CI: pasa, falla o se
-  saltea, y por qué. Ningún test queda en "no sé".
+- [x] Se sabe y está escrito **qué hace cada uno de los 6 tests**: 5 pasan (3 de health +
+  analytics + loyalty), 1 se saltea por opt-in deliberado (`loyalty-real`, muta datos
+  reales). Ninguno queda en "no sé". **Verificado corriéndolos, no leyéndolos.**
 - [ ] Los steps `pnpm build` y `pnpm format:check` **llegan a ejecutarse** (hoy no llegan).
 - [ ] La corrida de CI del commit de esta spec queda en `success`
   (`gh run list --limit 1`). Si no se puede sin tocar tests, la spec vuelve a `borrador`
@@ -112,10 +149,11 @@ abiertas, a resolver con evidencia, no por costumbre:
 
 ## Pruebas
 
-- **Automatizada:** la corrida de GitHub Actions. Es la única señal que vale acá — el
-  fallo es específico del runner limpio y **no se reproduce en local**, donde los browsers
-  ya están descargados. Correr los e2e en esta máquina es útil como información pero **no
-  es evidencia** de que el CI queda verde.
+- **Automatizada:** la corrida de GitHub Actions. Es la única señal que vale para el
+  criterio de verde, porque el fallo es específico del runner limpio y **no se reproduce en
+  local** (acá los browsers ya están descargados). La corrida local **sí es evidencia** de
+  otra cosa distinta y necesaria: que los tests en sí funcionan (5/5 verdes), así que si el
+  CI sigue rojo después de este cambio, la causa está en el runner, no en los tests.
 - **Manual:** ninguna.
 
 ## Notas
