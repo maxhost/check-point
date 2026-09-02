@@ -9,9 +9,7 @@ export function enrollPath(
   locationId?: string | null,
 ): string {
   const path = `/enroll/${encodeURIComponent(programId)}`;
-  return locationId
-    ? `${path}?loc=${encodeURIComponent(locationId)}`
-    : path;
+  return locationId ? `${path}?loc=${encodeURIComponent(locationId)}` : path;
 }
 
 /**

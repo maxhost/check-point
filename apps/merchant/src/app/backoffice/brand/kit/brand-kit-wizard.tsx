@@ -7,7 +7,10 @@ import { StepBrandCheck } from "./steps/step-brand-check";
 import { StepPreview } from "./steps/step-preview";
 import { StepTemplate } from "./steps/step-template";
 import type { PosterColors, TemplateId } from "./templates/types";
-import type { BrandKitReady, KitScope } from "../../../../server/brand-kit/data";
+import type {
+  BrandKitReady,
+  KitScope,
+} from "../../../../server/brand-kit/data";
 
 // Brand kit wizard (spec 0041): 3 steps — choose template (+ scope when 2+ locales) →
 // check logo/colors → preview & print. The state is central (same pattern as the loyalty

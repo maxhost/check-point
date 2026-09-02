@@ -73,7 +73,9 @@ async function resolveOriginLocation(
   const [row] = await getDb()
     .select({ id: locations.id })
     .from(locations)
-    .where(and(eq(locations.id, candidate), eq(locations.businessId, businessId)))
+    .where(
+      and(eq(locations.id, candidate), eq(locations.businessId, businessId)),
+    )
     .limit(1);
   return row?.id ?? null;
 }

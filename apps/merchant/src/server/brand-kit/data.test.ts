@@ -30,7 +30,9 @@ describe("kitBusinessDTO", () => {
   });
 
   it("logoPath is null when the business has no logo", () => {
-    expect(kitBusinessDTO({ ...baseRow, logoObjectKey: null }).logoPath).toBeNull();
+    expect(
+      kitBusinessDTO({ ...baseRow, logoObjectKey: null }).logoPath,
+    ).toBeNull();
   });
 });
 

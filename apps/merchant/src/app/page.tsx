@@ -20,14 +20,15 @@ export default async function MerchantEntryPage() {
         <p className="eyebrow">CheckPass Club · Negocios</p>
         <h1>Fidelización simple para tu negocio</h1>
         <p>
-          Sumá clientes con tu programa de puntos o sellos, acreditá desde el mostrador
-          y llegá a tus clientes por su billetera.
+          Sumá clientes con tu programa de puntos o sellos, acreditá desde el
+          mostrador y llegá a tus clientes por su billetera.
         </p>
         <Link className="button" href="/login">
           Acceder
         </Link>
         <p>
-          ¿Aún no tienes cuenta? <Link href="/onboarding">Crea tu negocio</Link>.
+          ¿Aún no tienes cuenta? <Link href="/onboarding">Crea tu negocio</Link>
+          .
         </p>
       </section>
     </main>

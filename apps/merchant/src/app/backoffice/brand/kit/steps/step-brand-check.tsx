@@ -28,8 +28,8 @@ export function StepBrandCheck({
       <div className="brand-kit-block">
         <h2>Falta el logo de tu negocio</h2>
         <p>
-          Subí el logo de tu negocio para generar el afiche: es la pieza central del
-          diseño.
+          Subí el logo de tu negocio para generar el afiche: es la pieza central
+          del diseño.
         </p>
         <a className="brand-kit-block-cta" href="/backoffice/brand">
           Ir a Marca para subir el logo
@@ -41,7 +41,8 @@ export function StepBrandCheck({
   return (
     <div className="brand-kit-brandcheck">
       <p className="brand-kit-hint">
-        El afiche usa el logo y los colores de tu marca. Para cambiarlos, editá tu marca.
+        El afiche usa el logo y los colores de tu marca. Para cambiarlos, editá
+        tu marca.
       </p>
       <div className="brand-kit-brandcheck-grid">
         <div className="brand-kit-logo-preview">
@@ -50,7 +51,10 @@ export function StepBrandCheck({
         </div>
         <div className="brand-kit-swatches">
           <Swatch label="Primario" color={business.brandPrimaryColor} />
-          <Swatch label="Complementario" color={business.brandComplementaryColor} />
+          <Swatch
+            label="Complementario"
+            color={business.brandComplementaryColor}
+          />
           <Swatch label="Acento" color={business.brandAccentColor} />
         </div>
       </div>

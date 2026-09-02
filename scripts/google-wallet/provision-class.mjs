@@ -21,7 +21,8 @@ import { readFileSync as readFile } from "node:fs";
 const CLASS_SUFFIX = "mipasaporte_identity"; // keep in sync with google.ts GOOGLE_CLASS_SUFFIX
 const SCOPE = "https://www.googleapis.com/auth/wallet_object.issuer";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
-const API = "https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass";
+const API =
+  "https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass";
 
 function arg(name, envKey) {
   const i = process.argv.indexOf(`--${name}`);
@@ -62,7 +63,9 @@ async function accessToken(sa) {
   });
   const body = await res.json();
   if (!res.ok)
-    throw new Error(`token exchange failed (${res.status}): ${JSON.stringify(body)}`);
+    throw new Error(
+      `token exchange failed (${res.status}): ${JSON.stringify(body)}`,
+    );
   return body.access_token;
 }
 
@@ -89,7 +92,9 @@ async function main() {
   }
   const sa = JSON.parse(readFile(saPath, "utf8"));
   if (!sa.client_email || !sa.private_key)
-    throw new Error("El JSON de la service account no tiene client_email/private_key.");
+    throw new Error(
+      "El JSON de la service account no tiene client_email/private_key.",
+    );
 
   const token = await accessToken(sa);
   const classId = `${issuerId}.${CLASS_SUFFIX}`;
@@ -113,7 +118,9 @@ async function main() {
         );
       throw new Error(`create failed (${res.status}): ${JSON.stringify(body)}`);
     }
-    console.log(`✓ Loyalty Class creada: ${body.id} (reviewStatus=${body.reviewStatus})`);
+    console.log(
+      `✓ Loyalty Class creada: ${body.id} (reviewStatus=${body.reviewStatus})`,
+    );
     return;
   }
 
@@ -124,7 +131,8 @@ async function main() {
       body: JSON.stringify(classBody(issuerId, logoUrl)),
     });
     const body = await res.json();
-    if (!res.ok) throw new Error(`patch failed (${res.status}): ${JSON.stringify(body)}`);
+    if (!res.ok)
+      throw new Error(`patch failed (${res.status}): ${JSON.stringify(body)}`);
     console.log(`✓ Loyalty Class ya existía; actualizada: ${body.id}`);
     return;
   }

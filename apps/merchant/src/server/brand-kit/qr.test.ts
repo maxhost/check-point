@@ -11,7 +11,9 @@ import {
 // break loudly instead of the client transforms silently no-op'ing in production.
 describe("qr-render over real renderEnrollQr output", () => {
   it("tints the dark modules of a real EC-H QR", async () => {
-    const svg = await renderEnrollQr("https://app.example.com/enroll/abc?loc=xyz");
+    const svg = await renderEnrollQr(
+      "https://app.example.com/enroll/abc?loc=xyz",
+    );
     // The real output must be tint-able: it carries stroked black modules.
     expect(svg).toContain('stroke="#000000"');
     const tinted = tintQrModules(svg, "#176548");
@@ -28,6 +30,8 @@ describe("qr-render over real renderEnrollQr output", () => {
     expect(withLogo.match(/<\/svg>/g)).toHaveLength(1);
     // Real qrcode output ends with a trailing newline; the overlay stays before </svg>.
     expect(withLogo.trimEnd().endsWith("</svg>")).toBe(true);
-    expect(withLogo.indexOf("<image ")).toBeLessThan(withLogo.indexOf("</svg>"));
+    expect(withLogo.indexOf("<image ")).toBeLessThan(
+      withLogo.indexOf("</svg>"),
+    );
   });
 });

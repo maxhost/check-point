@@ -8,7 +8,11 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled && url) process.env.DATABASE_URL = url;
 
-import { requestRecovery, resendRecovery, verifyRecovery } from "./consumer/recovery";
+import {
+  requestRecovery,
+  resendRecovery,
+  verifyRecovery,
+} from "./consumer/recovery";
 import { getDb } from "./db";
 import { FakeOtpChannel } from "./otp/fake";
 import { OtpProviderError } from "./otp/core";

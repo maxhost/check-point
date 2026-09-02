@@ -135,13 +135,16 @@ export async function deliverReservation(
       ) UPDATE consumer.otp_challenge SET delivery_count=delivery_count+1, updated_at=${receipt.acceptedAt}
         WHERE id IN (SELECT challenge_id FROM finalized) AND status='pending'`);
     });
-    observe(reservation.kind === "resend" ? "resend_accepted" : "request_accepted", {
-      challengeId: reservation.challengeId,
-      provider: receipt.provider,
-      latencyMs: Date.now() - started,
-      countryIso: reservation.countryIso,
-      locale: reservation.locale,
-    });
+    observe(
+      reservation.kind === "resend" ? "resend_accepted" : "request_accepted",
+      {
+        challengeId: reservation.challengeId,
+        provider: receipt.provider,
+        latencyMs: Date.now() - started,
+        countryIso: reservation.countryIso,
+        locale: reservation.locale,
+      },
+    );
   } catch (error) {
     const status =
       error instanceof OtpProviderError && error.reason === "timeout"
@@ -159,11 +162,14 @@ export async function deliverReservation(
           sql`UPDATE consumer.otp_challenge SET status='invalidated', code_hash=NULL, code_ciphertext=NULL, updated_at=${finished} WHERE id=${reservation.challengeId} AND status='pending'`,
         );
     });
-    observe(reservation.kind === "resend" ? "resend_failed" : "request_failed", {
-      challengeId: reservation.challengeId,
-      providerResult: status,
-      latencyMs: Date.now() - started,
-    });
+    observe(
+      reservation.kind === "resend" ? "resend_failed" : "request_failed",
+      {
+        challengeId: reservation.challengeId,
+        providerResult: status,
+        latencyMs: Date.now() - started,
+      },
+    );
     throw DELIVERY_UNAVAILABLE();
   }
 }

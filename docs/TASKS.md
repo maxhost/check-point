@@ -8,7 +8,65 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-08-30 (**Spec 0046 (recovery de owner/staff por OTP al email) IMPLEMENTADA con
+Ultima actualizacion: 2026-09-01 (**Spec 0047 (deuda de formato y CI rojo) IMPLEMENTADA con PASS de revisor
+independiente — punto de retorno. FALTA UNA COSA: pushear y confirmar que la corrida de CI queda en `success`,
+que es el criterio que cierra el problema de fondo.** Flujo `AGENT-WORKFLOW.md` completo (spec cerrada por el
+orquestador → implementador → revisor → 1 fix → re-revision del delta → PASS).
+
+**Que se arreglo:** el CI corria `pnpm format:check` como PRIMER paso y fallaba, asi que
+`lint`/`typecheck`/`test`/`test:e2e`/`build` NUNCA se ejecutaban en GitHub. Se formatearon los **19** archivos
+versionados en deuda (0028/0031/0032/0041/0045), se agrego el script `format` que faltaba en el root
+(`prettier --write .` — su ausencia era la causa estructural de que la deuda se acumulara), y `format:check`
+paso a ser el **ULTIMO** step de `ci.yml` (sigue siendo bloqueante, pero ya no tapa las fallas que importan).
+
+**Las 2 decisiones que estaban abiertas en el borrador, cerradas por el orquestador con evidencia:**
+(1) **`.claude/settings.local.json` va a `.prettierignore`, no se formatea** — `git check-ignore -v` lo resuelve
+contra el ignore global del usuario (`~/.config/git/ignore`), o sea es untracked y **nunca llega a GitHub**. Eso
+explica la discrepancia que nadie habia atado: el log de CI decia `19 files` y el `format:check` local decia `20`.
+Ojo: desaparecio del `format:check` por el `.prettierignore`, NO por estar untracked — **prettier no mira git,
+escanea el filesystem**. (2) **Prevencion (c), ambas**: reordenar el CI + hook.
+
+**Hook nuevo `.claude/hooks/format-on-write.sh`** (`PostToolUse` en `Write|Edit`, registrado DESPUES de
+`file-size.sh` para que el aviso de tamaño se siga viendo). Es el fix estructural (mistake→rule): cada escritura
+sale formateada y la deuda no se re-acumula. **Sale 0 SIEMPRE y en silencio** — es higiene, no un gate; un exit≠0
+bloquearia ediciones validas (parse error transitorio a mitad de una edicion multi-paso, prettier ausente).
+
+**LOS 3 GOTCHAS DEL HOOK, todos verificados corriendolo, no razonados:**
+- **Prettier resuelve `.prettierignore` desde el CWD, NO desde la ruta del archivo.** Con `cwd=/tmp`,
+  `prettier --write <ruta absoluta>` **reescribe** `.claude/settings.local.json` — es decir, un hook ingenuo
+  reintroduce en cada sesion justo la deuda que esta spec saca. Por eso el hook hace `cd` a la raiz
+  (`CLAUDE_PROJECT_DIR`, con fallback que busca `.prettierignore` hacia arriba).
+- **NO se pasa `--ignore-path`** (la spec original lo pedia; se corrigio). En Prettier 3 el default es
+  `{.gitignore, .prettierignore}`; fijar la flag perderia el `.gitignore`. Sin ella el hook aplica exactamente
+  el mismo criterio que `pnpm format:check`.
+- **Guard de contencion (hallazgo del revisor, corregido en 2ª ronda): sin el, el hook reformatea archivos de
+  OTROS proyectos con la config de prettier de este** (reproducido con `/tmp/otro-proyecto/x.ts`). Se normalizan
+  ambos paths con `fs.realpathSync` (cubre relativos, `..`, trailing slash, symlinks y el `/tmp`→`/private/tmp`
+  de macOS) y si el archivo cae fuera de la raiz, sale 0 sin tocar nada.
+
+**Verificacion (salida real, corrida por el revisor por su cuenta):** `format:check` **exit 0**, lint exit 0,
+typecheck **3/3 sin cache** (`TURBO_FORCE=true`, `0 cached`), test **254 passed** (identico al baseline — no bajo),
+build exit 0. **El diff de los 19 es SOLO formato**, probado con dos oraculos independientes: (a)
+`prettier(git show HEAD:<f>) == worktree` byte a byte, **19/19** —concluyente, porque prettier es funcion pura del
+AST—, y (b) comparacion de token stream con el parser de TypeScript. Ningun archivo paso las 300 lineas del hook
+`file-size` (maximos: `recovery/deliver.ts` 263, `step-preview.tsx` 253). **Falso verde descartado**: se
+desformateo a proposito un archivo de `apps/merchant/src` y `format:check` lo cazo, o sea el `.prettierignore` no
+se ensancho de mas. El hook se probo adversarialmente (formatea lo del repo desde 2 caminos de raiz y CWD ajeno,
+deja intactos los ignorados y todo lo de afuera, exit 0 en 8 casos degenerados) y se verifico que **no es
+decorativo** corriendo la version SIN guard sobre el mismo caso.
+
+**RIESGO ABIERTO QUE ESTA SPEC DESTAPA (no es fallo suyo): `pnpm test:e2e` va a correr de verdad en GitHub por
+primera vez.** Estaba oculto detras del `format:check` rojo y **nunca se ejecuto ni en esta maquina ni en CI**.
+`npx playwright test --list` confirma que compila: **6 tests en 4 archivos** (`health`, `analytics`, `loyalty`,
+`loyalty-real`), levantan 3 dev servers y `loyalty-real` toca DB. **Si la corrida post-push sale roja en
+`test:e2e`, no es regresion de 0047 — es la deuda que 0047 saca a la luz, y va a su propia spec.**
+
+**PENDIENTE INMEDIATO:** push a `main` y `gh api repos/maxhost/check-point/commits/<sha>/status` (o
+`gh run list --limit 1`) para cerrar el ultimo criterio de aceptacion. Ojo con el gotcha de `GH_TOKEN` invalido
+del entorno (ver `CLAUDE.md`): el push va con `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push
+origin main` en el MISMO comando.)
+
+Ultima actualizacion previa: 2026-08-30 (**Spec 0046 (recovery de owner/staff por OTP al email) IMPLEMENTADA con
 PASS de revisor independiente (en 2 rondas: FAIL → fixes → PASS) + migración `0027` aplicada y verificada en
 PROD — punto de retorno.** Flujo `AGENT-WORKFLOW.md` completo. Spec `implementada`, INDEX actualizado.
 

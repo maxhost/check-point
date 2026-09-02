@@ -48,5 +48,7 @@ export function PosterPreview(props: PosterPreviewProps) {
   // public logo path (only when present — else falls back to black modules).
   const styledQr = styleQr(qrSvg, qrStyle, colors.primary, logoPath);
   const Layout = LAYOUTS[templateId];
-  return <Layout colors={colors} qrSvg={styledQr} logoPath={logoPath} {...rest} />;
+  return (
+    <Layout colors={colors} qrSvg={styledQr} logoPath={logoPath} {...rest} />
+  );
 }

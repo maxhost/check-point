@@ -11,3 +11,6 @@ test-results/
 docs/
 *.md
 !README.md
+
+# Config local del arnes: untracked (ignore global del usuario), nunca llega a CI y el arnes la reescribe sola.
+.claude/settings.local.json

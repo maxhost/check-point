@@ -29,7 +29,11 @@ export const TEMPLATES: {
   label: string;
   rubro: string;
 }[] = [
-  { id: "bar", label: "Bar & Gastronomía", rubro: "Bares, cafés, restaurantes" },
+  {
+    id: "bar",
+    label: "Bar & Gastronomía",
+    rubro: "Bares, cafés, restaurantes",
+  },
   { id: "lodging", label: "Alojamiento", rubro: "Hoteles, hostales, cabañas" },
   { id: "retail", label: "Retail", rubro: "Tiendas y comercios" },
   { id: "services", label: "Servicios", rubro: "Estudios, salones, oficios" },

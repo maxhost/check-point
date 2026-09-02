@@ -164,7 +164,8 @@ export async function resendRecovery(
   const requestId = parseClientRequestId(
     body.clientRequestId ?? crypto.randomUUID(),
   );
-  const challengeId = typeof body.challengeId === "string" ? body.challengeId : "";
+  const challengeId =
+    typeof body.challengeId === "string" ? body.challengeId : "";
   const result: Reservation = await withDbTransaction(async (db) => {
     const [first] = await db
       .select()

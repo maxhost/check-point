@@ -5,7 +5,10 @@ import { PosterPreview } from "../poster-preview";
 import type { QrStyle } from "../qr-render";
 import type { PosterColors, TemplateId } from "../templates/types";
 import type { Paper } from "../brand-kit-wizard";
-import type { KitBusiness, KitScope } from "../../../../../server/brand-kit/data";
+import type {
+  KitBusiness,
+  KitScope,
+} from "../../../../../server/brand-kit/data";
 
 // Step 3 (spec 0041): live preview + print. Colors/texts/QR-style are override-only (never
 // persisted to the marca). Print leaves ONLY the poster on the page at the chosen size

@@ -20,7 +20,8 @@ export function StepTemplate({
   return (
     <div className="brand-kit-templates">
       <p className="brand-kit-hint">
-        Elegí una plantilla. Vas a poder ajustar colores y textos en la vista previa.
+        Elegí una plantilla. Vas a poder ajustar colores y textos en la vista
+        previa.
       </p>
       <ul className="brand-kit-template-grid">
         {TEMPLATES.map((t) => (
@@ -33,7 +34,10 @@ export function StepTemplate({
               aria-pressed={t.id === templateId}
               onClick={() => onTemplate(t.id)}
             >
-              <span className={`brand-kit-thumb thumb-${t.id}`} aria-hidden="true">
+              <span
+                className={`brand-kit-thumb thumb-${t.id}`}
+                aria-hidden="true"
+              >
                 <span className="brand-kit-thumb-qr" />
               </span>
               <strong>{t.label}</strong>
@@ -67,7 +71,9 @@ export function StepTemplate({
             />
             <span>
               <strong>Por local</strong>
-              <small>Un afiche por local; cada alta queda atribuida a su local.</small>
+              <small>
+                Un afiche por local; cada alta queda atribuida a su local.
+              </small>
             </span>
           </label>
         </fieldset>
