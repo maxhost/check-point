@@ -8,7 +8,58 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-01 (**Spec 0047 (deuda de formato y CI rojo) IMPLEMENTADA con PASS de revisor
+Ultima actualizacion: 2026-09-02 (**EL CI ESTA VERDE. Specs 0047 y 0048 IMPLEMENTADAS. Corrida `33579163212`
+en `success` — la PRIMERA verde en 101 corridas de CI, desde que el workflow existe (2026-08-12). Punto de
+retorno.**
+
+```
+lint ✓  typecheck ✓  test ✓  playwright install ✓  test:e2e ✓  build ✓  format:check ✓
+```
+
+Ningun paso saltado. **Por primera vez el repo tiene un gate de CI que efectivamente verifica.** Antes: 100
+corridas, 100 en failure, muriendo en ~25s en el paso 1 (`format:check`) sin ejecutar nada mas — un CI
+decorativo detras del cual cualquier regresion de tipos, test roto o build caido habria pasado sin ser vista.
+
+**Que faltaba (spec 0048): el workflow nunca instalaba los browsers de Playwright.** `pnpm install
+--frozen-lockfile` trae el paquete `@playwright/test`, pero los binarios se bajan aparte a
+`~/.cache/ms-playwright`, vacio en un runner limpio. Fix = un step
+`pnpm exec playwright install --with-deps chromium` antes de `test:e2e`. **Solo chromium**:
+`playwright.config.ts` no declara `projects`, asi que corre con el default (instalar los tres seria regalar
+minutos de CI en cada push). **`--with-deps`** porque el runner de Ubuntu no trae las libs del sistema.
+**Sin cache de `~/.cache/ms-playwright` a proposito**: ahorraria ~20-30s pero suma una pieza que puede dar
+falsos verdes con una key vieja, y el problema que se estaba arreglando era justamente un CI que mentia. Se
+puede medir despues, ahora que hay un tiempo real de corrida (2m0s) contra el cual comparar.
+
+**LOS TESTS E2E ESTABAN SANOS — verificado corriendolos, no razonandolo.** Se ejecutaron con browser real por
+primera vez (ni en CI ni en esta maquina habian corrido nunca): **5 passed, 1 skipped en 5.3s**. Los 2 que el
+CI daba por rojos (`analytics`, `loyalty`) pasan sin tocarles una linea: era exclusivamente el browser
+faltante. Ningun test fue editado ni borrado para conseguir el verde.
+
+**El unico skip de la suite NO es deuda: es opt-in deliberado.** `loyalty-real.spec.ts` se saltea con una
+condicion explicita y documentada en el propio archivo — exige `E2E_MERCHANT_BASE_URL`, `E2E_MERCHANT_EMAIL`,
+`E2E_MERCHANT_PASSWORD` y `E2E_LOYALTY_MUTATION_TEST=true`, con el motivo escrito: "requiere owner de prueba
+nuevo y aislado de la rama de desarrollo". **Muta datos reales**, asi que no se enciende en CI a proposito:
+sin owner de prueba aislado, escribiria contra un entorno real desde cada push. Es el unico `test.skip` de
+`tests/e2e/` (verificado por grep).
+
+**GOTCHA LOCAL QUE CUESTA MEDIA HORA SI NO SE SABE: los e2e no arrancan si 3000/3001/3002 estan ocupados.**
+La suite levanta las 3 apps en puertos FIJOS (consumer 3000, merchant 3001, platform 3002, hardcodeados en el
+script `dev` de cada `package.json`). Si algo mas los ocupa, Playwright choca con `EADDRINUSE` y aborta
+**antes de ejecutar un solo test** — el error no menciona puertos de entrada y se parece a un problema de
+Playwright. Paso de verdad en esta sesion: `next dev` de **otros dos proyectos** (`gym-app` en 3000 desde el
+31/ago, `55mas` en 3001) tenian los puertos tomados. Diagnostico: `lsof -nP -iTCP:3000 -sTCP:LISTEN` y
+`lsof -a -p <pid> -d cwd -Fn` para ver de que proyecto es. Y **el cache de browsers YA ESTABA** en la Mac
+(`~/Library/Caches/ms-playwright`, con el `chromium_headless_shell-1200` que el runner reclamaba): estos
+tests se podian correr en local desde siempre, lo que faltaba era correrlos.
+
+**Estado del repo:** todo pusheado a `main` (`c7e64cf`). Nada pendiente de estas dos specs.
+
+**Deuda conocida que queda, sin spec todavia (no bloquea nada):** las GitHub Actions tiran warning de
+deprecacion de Node 20 (`actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4` forzadas a
+correr en Node 24). Estuvo explicitamente fuera de alcance de 0047 y 0048. Y sigue en pie el **pendiente del
+owner de la spec 0046**: alta del remitente en Resend + envs en Vercel + QA en vivo del recovery.)
+
+Ultima actualizacion previa: 2026-09-01 (**Spec 0047 (deuda de formato y CI rojo) IMPLEMENTADA con PASS de revisor
 independiente — punto de retorno. FALTA UNA COSA: pushear y confirmar que la corrida de CI queda en `success`,
 que es el criterio que cierra el problema de fondo.** Flujo `AGENT-WORKFLOW.md` completo (spec cerrada por el
 orquestador → implementador → revisor → 1 fix → re-revision del delta → PASS).
