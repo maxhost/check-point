@@ -8,7 +8,68 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-02 (**EL CI ESTA VERDE. Specs 0047 y 0048 IMPLEMENTADAS. Corrida `33579163212`
+Ultima actualizacion: 2026-09-02 (**PLAN DE MIGRACION DE NODE ESCRITO: ADR 0046 `aceptada` + spec 0049
+`borrador`. Nada de codigo tocado todavia — falta cerrar 2 decisiones abiertas. Punto de retorno.**
+
+**EL HALLAZGO QUE CAMBIA EL PEDIDO: "subir a la ultima estable" NO es ir a Node 26.** Datos verificados el
+2026-09-02 contra `nodejs.org/dist/index.json`, el `schedule.json` oficial y la cuenta real de Vercel — no de
+memoria:
+
+| Version | Estado | Fechas |
+|---|---|---|
+| **26.8.1** | Current | salio 2026-08-26 · **LTS el 2026-10-28** · EOL 2029-04-30 |
+| 25.9.0 | **EOL** | murio 2026-06-01 |
+| **24.20.0** | **Active LTS** (Krypton) | maintenance 2026-10-20 · EOL **2028-04-30** |
+
+**Vercel solo ofrece 24.x (default) / 22.x / 20.x. Node 26 NO existe como runtime ahi**
+(`vercel.com/docs/functions/runtimes/node-js/node-js-versions`). `vercel project ls` confirma que
+`check-point` corre **24.x**, igual que los otros 9 proyectos de la cuenta. **El techo no es negociable desde
+el repo:** no hay `engines` ni `.node-version` que haga desplegar Node 26.
+
+**Por eso el ADR 0046 decide seguir la LTS de Vercel, no la Current de Node.** El argumento decisivo es el
+**skew, no la novedad**: si local y CI corren 26 y produccion corre 24, **el CI deja de probar lo que se
+despliega** — seria reintroducir, en silencio y con todo en verde, el mismo problema del que este repo acaba
+de salir con 0047/0048. Y no hay urgencia: Node 24 tiene soporte hasta **2028-04-30**.
+
+**Estado real del repo: la version esta escrita en 4 lugares y NADA verifica que coincidan.**
+
+| Lugar | Hoy | Objetivo |
+|---|---|---|
+| `.node-version` | `24.19.0` | `24.20.0` |
+| `package.json` → `engines.node` | `>=24.15.0 <25` | `>=24.20.0 <25` |
+| `@types/node` (×3 apps) | `24.10.1` | `24.13.3` |
+| Vercel Project Settings | `24.x` | `24.x` (**sin cambio**) |
+
+Ese drift es el costo que hace cara la migracion a 26 cuando llegue; el guard de la Fase 3 es el entregable
+que la vuelve barata.
+
+**Spec 0049 — 4 fases ahora + 1 agendada, cada una un commit con su verificacion y su rollback** (separadas a
+proposito: si el CI se pone rojo, tiene que quedar claro cual cambio lo hizo):
+1. Pin a **24.20.0** (`.node-version` + `engines`). Riesgo bajo. **Prod NO cambia**: Vercel ya sirve la ultima
+   24.x. Lo que se corrige es que local y CI dejen de probar contra una version MAS VIEJA que la desplegada.
+   Prerrequisito: `nvm install 24.20.0` (la maquina solo tiene 24.15.0 y 24.19.0).
+2. **`@types/node` → 24.13.3. LA FASE MAS RIESGOSA, y no es obvio:** tipos mas nuevos pueden romper
+   `typecheck` sin que cambie una linea de codigo. Si pasa, NO se baja el tipo ni se tapa con `any`. Es ademas
+   **la unica fase que mueve el lockfile** → exige `pnpm install` con red y despues **`pnpm fetch`** para
+   re-calentar `.pnpm-store` (sin eso, la proxima sesion bajo codex/Auto falla el install offline).
+3. **Guard anti-drift** sobre los 4 pines (+ el de pnpm, que tambien esta duplicado: `packageManager` en
+   `package.json` vs `version: 11.4.0` hardcodeado en `ci.yml`). **Se prueba rompiendolo a proposito** —
+   un guard que nunca falla es decorativo.
+4. Actions al dia: `checkout@v4→v7`, `setup-node@v4→v7`, `pnpm/action-setup@v4→v6` (ultimas verificadas por
+   `gh api`). Mata el warning de Node 20. **Es un salto de 3 majors de terceros = la mayor superficie de la
+   spec**, por eso va sola y al final. OJO: es el runtime DE LAS ACTIONS, no el del proyecto — cosas distintas
+   que se parecen.
+5. **Node 26: AGENDADA, no se ejecuta.** Disparador de DOS condiciones: (a) 26 en LTS el **2026-10-28** y
+   (b) **Vercel lo ofrece** en Project Settings. **Manda la (b)**: la (a) sin la (b) no habilita nada.
+   Verificable con `vercel project ls` (columna Node Version) sin entrar al dashboard.
+
+**PENDIENTE ANTES DE IMPLEMENTAR — 2 decisiones abiertas del owner (la spec sigue en `borrador`):**
+(1) **Forma del guard**: script + step de CI, o un 4º project de vitest. **Recomendado: vitest**, porque asi
+corre con `pnpm test` y por lo tanto tambien en el **Stop hook** — el drift lo introduce un agente editando un
+pin, y vitest es el unico de los dos que lo caza en ese mismo turno. (2) **Si se ejecutan las 4 fases o se
+corta despues de la 3**: la 4 es la de mayor superficie y menor beneficio (saca un warning).)
+
+Ultima actualizacion previa: 2026-09-02 (**EL CI ESTA VERDE. Specs 0047 y 0048 IMPLEMENTADAS. Corrida `33579163212`
 en `success` — la PRIMERA verde en 101 corridas de CI, desde que el workflow existe (2026-08-12). Punto de
 retorno.**
 
