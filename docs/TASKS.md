@@ -8,7 +8,66 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-02 (**PLAN DE MIGRACION DE NODE ESCRITO: ADR 0046 `aceptada` + spec 0049
+Ultima actualizacion: 2026-09-02 (**SPEC 0049 IMPLEMENTADA: Node en 24.20.0, las 4 fases aplicadas, cada una
+con su corrida de CI en `success`. Prod desplegada y sana. Punto de retorno.**
+
+**Lo que se logro:** el repo corre la **ultima Active LTS (24.20.0)**, la version dejo de estar duplicada sin
+control en 4 lugares, y la migracion a Node 26 quedo reducida a cambiar un numero. Tests **254 → 259**.
+
+**Lo que NO se hizo, a proposito: NO se migro a Node 26** (ver ADR 0046). Es la ultima estable de Node
+(26.8.1), pero **Vercel solo ofrece 24.x/22.x/20.x**: con local y CI en 26 y prod en 24, el CI dejaria de
+probar lo que se despliega. Node 24 tiene soporte hasta **2028-04-30**, no hay urgencia.
+
+**Las 4 fases, cada una un commit + una corrida verde:**
+1. `72dd8cf` pin a **24.20.0** (`.node-version` + `engines >=24.20.0 <25`). Prod no cambio: Vercel ya servia
+   la ultima 24.x, o sea el pin local estaba MAS VIEJO que produccion. CI: `node: v24.20.0` (verificado en el
+   log de `setup-node`, no inferido).
+2. `7e180d0` **`@types/node` 24.10.1 → 24.13.3** + lockfile. Era la fase con mas riesgo real (tipos nuevos
+   pueden romper `typecheck` sin tocar codigo): **no paso**, typecheck 3/3 sin cache, sin bajar ningun tipo ni
+   tapar nada con `any`.
+3. `f90324f` **guard anti-drift** como 4º project de vitest (`tools/`), 5 chequeos. **Probado rompiendolo**:
+   desincronizar `.node-version` falla; desincronizar `@types/node` de UNA app falla nombrandola
+   (`expected 'apps/platform: 22' to be 'apps/platform: 24'`).
+4. `b9bf954` **actions al dia** (`checkout@v7`, `setup-node@v7`, `pnpm/action-setup@v6`). El warning de Node
+   20 **desaparecio de las anotaciones** (verificado con `gh run view`, que es lo que pedia el criterio — que
+   el CI pase no alcanzaba).
+
+**EL FALSO VERDE QUE SE CAZO EN LA FASE 3, y como:** el guard **no corria** y la suite daba verde igual. Causa:
+**el `include` de un project de vitest se resuelve relativo al DIRECTORIO DE SU CONFIG, no a la raiz** — con
+`include: ["tools/**/*.test.ts"]` en `tools/vitest.config.ts` buscaba en `tools/tools/`. Se detecto **porque el
+conteo de tests no subio** (seguia en 254). Leccion general: al sumar tests, el conteo es el oraculo de que
+efectivamente corren; un test que no corre pasa siempre.
+
+**GOTCHA NUEVO, ya en `CLAUDE.md` (mistake→rule): despues de `pnpm fetch`, `pnpm install --offline` MIENTE.**
+Dice `Already up to date` y deja el `node_modules` de la RAIZ vacio (sin symlinks ni `.bin`), asi que
+`typecheck`/`build` fallan con **`sh: turbo: command not found`** — parece turbo roto y es un link faltante.
+`--force` tampoco alcanza. Fix verificado: `rm -f node_modules/.modules.yaml
+node_modules/.pnpm-workspace-state-v1.json && pnpm install --offline` (los paquetes siguen en
+`node_modules/.pnpm`, o sea sigue siendo 100% offline). Paso de verdad en esta sesion al re-calentar el store
+tras la Fase 2. **`.pnpm-store` quedo re-calentado y verificado**: `node_modules` reconstruido sin red y los 5
+gates verdes.
+
+**Verificacion final (salida real, Node 24.20.0):** lint, typecheck, build y format:check exit 0; test
+**259 passed** / 96 skipped; e2e **5 passed / 1 skipped**. Prod: `checkpass.club/api/health` **200**, commit
+status `Vercel: success`, `vercel project ls` sigue en **24.x**.
+
+**AGENDADO — FASE 5, Node 26. Disparador de DOS condiciones, manda la segunda:**
+(a) Node 26 entra en LTS el **2026-10-28** (calendario oficial) y (b) **Vercel lo ofrece** en Project Settings.
+La (a) sin la (b) no habilita nada. Chequeo sin entrar al dashboard: `vercel project ls` (columna Node Version).
+**Cuando se dispare:** cambiar `.node-version`, `engines`, `@types/node` y el dashboard — el guard de la Fase 3
+dice cual falto. Verificar ademas **`sharp`** (binarios nativos por version de Node) y hacer un **preview
+deploy** antes de promover.
+
+**Desvio de protocolo declarado:** el owner delego las decisiones y pidio implementar directo, asi que esta
+spec **NO paso por revisor independiente** como manda `AGENT-WORKFLOW.md` (la 0047 si). El oraculo fue el CI
+por fase (4 corridas en `success`) mas la prueba negativa del guard. Si se quiere el PASS formal, falta esa
+pasada.
+
+**Limite conocido (menor, no bloqueante):** `tools/` no esta cubierto por `pnpm typecheck` (turbo corre los
+tsconfig de las 3 apps), asi que un error de tipos en el guard no lo caza el gate — vitest transpila sin
+chequear tipos. El guard igual falla en runtime si se rompe.)
+
+Ultima actualizacion previa: 2026-09-02 (**PLAN DE MIGRACION DE NODE ESCRITO: ADR 0046 `aceptada` + spec 0049
 `borrador`. Nada de codigo tocado todavia — falta cerrar 2 decisiones abiertas. Punto de retorno.**
 
 **EL HALLAZGO QUE CAMBIA EL PEDIDO: "subir a la ultima estable" NO es ir a Node 26.** Datos verificados el

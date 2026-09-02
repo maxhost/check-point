@@ -99,6 +99,16 @@ chequear con un comando, es un hook — no la escribas aca tambien.
     "paquete no encontrado", no DNS).
   - **`pnpm fetch` purga `node_modules` sin preguntar salvo `CI=true`** (falla con
     `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` sin TTY, p.ej. corrido por un agente).
+  - **Despues de `pnpm fetch`, `pnpm install --offline` MIENTE: dice `Already up to date`
+    y deja el `node_modules` de la RAIZ vacio** (sin symlinks ni `.bin`), asi que
+    `pnpm run typecheck`/`build` fallan con **`sh: turbo: command not found`** — parece
+    que se rompio turbo y en realidad falta el link. `--force` tampoco alcanza: el
+    chequeo de estado de pnpm lo da por hecho. **Fix verificado:** borrar los dos
+    archivos de estado y reinstalar —
+    `rm -f node_modules/.modules.yaml node_modules/.pnpm-workspace-state-v1.json && pnpm install --offline`
+    (`node_modules/.pnpm` conserva los paquetes, asi que sigue siendo 100% offline; no
+    hace falta red). Ojo: `rm -rf` esta en el deny de `.claude/settings.json`, usar `rm -f`
+    sobre los archivos.
 
 - **`git push` a `main` falla con "Invalid username or token" aunque `gh` este logueado.**
   Hay un `GH_TOKEN` **invalido** en el entorno que tapa las credenciales validas del keyring
