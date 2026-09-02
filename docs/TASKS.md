@@ -61,10 +61,38 @@ primera vez.** Estaba oculto detras del `format:check` rojo y **nunca se ejecuto
 `loyalty-real`), levantan 3 dev servers y `loyalty-real` toca DB. **Si la corrida post-push sale roja en
 `test:e2e`, no es regresion de 0047 — es la deuda que 0047 saca a la luz, y va a su propia spec.**
 
-**PENDIENTE INMEDIATO:** push a `main` y `gh api repos/maxhost/check-point/commits/<sha>/status` (o
-`gh run list --limit 1`) para cerrar el ultimo criterio de aceptacion. Ojo con el gotcha de `GH_TOKEN` invalido
-del entorno (ver `CLAUDE.md`): el push va con `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push
-origin main` en el MISMO comando.)
+**PUSH HECHO** (commit `8e0d7c0`; el push subio 4 commits — la implementacion de 0046 tambien estaba sin
+pushear). El gotcha de `GH_TOKEN` invalido del `CLAUDE.md` sigue vigente y el fix documentado funciono tal cual:
+`export GH_TOKEN=; gh auth switch --hostname github.com --user maxhost` y despues
+`GH_TOKEN= git -c credential.helper='!gh auth git-credential' push origin main`.
+
+**RESULTADO DEL CI (corrida `33575852432`): ROJO. El ultimo criterio de aceptacion de 0047 NO se cumplio y
+migro a la spec 0048.** Pero el arreglo funciono en lo que importaba: **`lint`, `typecheck` y `test` corrieron
+y pasaron en GitHub POR PRIMERA VEZ** (antes el job moria en el step 1 y no verificaba nada). El job ahora
+muere en `test:e2e`, y `build`/`format:check` no llegan a correr.
+
+```
+lint ✓  typecheck ✓  test ✓  test:e2e ✗ ← corta aca  build -  format:check -
+```
+
+**Causa, verificada: el workflow nunca instala los browsers de Playwright.** `grep -n playwright
+.github/workflows/*.yml` no devuelve NINGUNA linea. `pnpm install --frozen-lockfile` instala el paquete
+`@playwright/test@1.57.0`, pero los binarios se bajan aparte a `~/.cache/ms-playwright`, que en un runner
+limpio esta vacio → `Error: browserType.launch: Executable doesn't exist ... chrome-headless-shell`.
+De 6 tests: **3 pasan** (los que no abren browser), **2 fallan**, 1 sin explicar todavia (probablemente
+skippeado — hay que confirmarlo, un test que se auto-saltea en silencio es un gate que no gatea).
+
+**ESTO ES DEUDA DESTAPADA, NO REGRESION DE 0047** — es exactamente el riesgo que la spec 0047 anticipo por
+escrito antes del push. Y ojo con la lectura facil: **el fallo es de infraestructura del runner y NO dice nada
+sobre si los e2e pasan.** Nunca corrieron con browser, ni en CI ni en esta maquina. Arreglar la instalacion
+puede destapar fallas reales de los tests; el verde no esta garantizado. No se reproduce en local (aca los
+browsers ya estan bajados), asi que la unica señal valida es la corrida de Actions.
+
+**PROXIMO PASO: spec 0048 (`borrador`, escrita, INDEX actualizado) — el step de `playwright install` en
+`ci.yml`.** Decisiones abiertas ahi: que browsers instalar (`playwright.config.ts` no declara `projects`, hay
+que confirmar contra cual corre de verdad antes de elegir entre `chromium` y los tres), si entra caché de
+`~/.cache/ms-playwright`, y que hace `loyalty-real.spec.ts` (toca DB) sin `DATABASE_URL` en CI. Regla dura
+heredada de `CLAUDE.md`: **ningun test e2e se edita ni se borra para conseguir el verde.**)
 
 Ultima actualizacion previa: 2026-08-30 (**Spec 0046 (recovery de owner/staff por OTP al email) IMPLEMENTADA con
 PASS de revisor independiente (en 2 rondas: FAIL → fixes → PASS) + migración `0027` aplicada y verificada en
