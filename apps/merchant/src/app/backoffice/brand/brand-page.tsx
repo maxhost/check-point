@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { useIsTouch } from "../catalog/use-is-touch";
 import {
@@ -29,6 +30,12 @@ const colors = [
   ["brandAccentColor", "Acento"],
 ] as const;
 const validColor = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value);
+
+// Deferred on purpose: `react-easy-crop` must not ride in the initial bundle of this page
+// (ADR 0041 §3). `ssr: false` because the cropper is canvas/DOM-only.
+const ImageCropper = dynamic(() => import("../../components/image-cropper"), {
+  ssr: false,
+});
 
 export default function BrandPage() {
   const [brand, setBrand] = useState<Brand | null>(null);
@@ -92,7 +99,7 @@ export default function BrandPage() {
           brandAccentColor: draft.brandAccentColor,
           revision: brand.brandRevision,
           logoAction: logo.action,
-          ...(uploadId ? { uploadId } : {}),
+          ...(uploadId ? { uploadId, cropped: logo.cropped } : {}),
         }),
       });
       const saved = (await response.json().catch(() => null)) as
@@ -178,9 +185,9 @@ export default function BrandPage() {
               ref={logo.fileInput}
               type="file"
               accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
-              onChange={(event) =>
-                logo.choose(event.target.files?.[0], setError)
-              }
+              onChange={(event) => {
+                void logo.choose(event.target.files?.[0], setError);
+              }}
             />
           </label>
           <p className="field-help">
@@ -238,6 +245,14 @@ export default function BrandPage() {
             {saving ? "Guardando…" : "Guardar marca"}
           </button>
         </section>
+        {logo.pending && (
+          <ImageCropper
+            file={logo.pending}
+            surface="logo"
+            onDone={logo.applyCrop}
+            onCancel={logo.cancelCrop}
+          />
+        )}
       </div>
     </main>
   );

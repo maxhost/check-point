@@ -53,6 +53,8 @@ export type ProductPayload = {
   locationIds: string[];
   imageAction: "keep" | "replace" | "remove" | "stock";
   uploadId?: string;
+  /** Only travels with `replace`: the blob came from the 1:1 client cropper (spec 0040). */
+  cropped?: boolean;
   provider?: string;
   photoId?: string;
 };

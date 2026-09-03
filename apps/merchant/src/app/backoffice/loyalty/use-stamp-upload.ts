@@ -1,17 +1,29 @@
 import { useEffect, useState } from "react";
 import {
-  ACCEPTED_IMAGE_CONTENT_TYPE_SET,
   ACCEPTED_IMAGE_LABEL,
+  isAcceptedImageType,
 } from "../../../lib/image-formats";
+import {
+  canDecodeImage,
+  croppedFileName,
+  decideImageChoice,
+} from "../../../lib/crop-image";
 
 /**
  * Client state for the deferred stamp image: choosing or removing only changes the
  * draft. `upload()` pushes the selected file to R2 via a signed URL and returns the
  * temporary upload id to send with the program save; nothing touches R2 or the DB
  * until the program itself is saved.
+ *
+ * Same crop flow as `useBrandLogo` (spec 0040): a decodable file waits in `pending` for the
+ * 1:1 cropper, an undecodable one (HEIC outside Safari — ADR 0047) falls back silently to
+ * uploading the original. The `<input>` lives in the step component, so `cancelCrop` only
+ * drops the candidate and the caller clears its own input.
  */
 export function useStampUpload() {
   const [selected, setSelected] = useState<File | null>(null);
+  const [pending, setPending] = useState<File | null>(null);
+  const [cropped, setCropped] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
 
@@ -22,9 +34,19 @@ export function useStampUpload() {
     [preview],
   );
 
-  function choose(file: File | undefined, onError: (message: string) => void) {
+  function show(file: File) {
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(file);
+    });
+  }
+
+  async function choose(
+    file: File | undefined,
+    onError: (message: string) => void,
+  ) {
     if (!file) return;
-    if (!ACCEPTED_IMAGE_CONTENT_TYPE_SET.has(file.type)) {
+    if (!isAcceptedImageType(file.type)) {
       onError(`El sello debe ser ${ACCEPTED_IMAGE_LABEL}.`);
       return;
     }
@@ -32,16 +54,38 @@ export function useStampUpload() {
       onError("El sello debe pesar como máximo 5 MB.");
       return;
     }
+    const choice = decideImageChoice(file, await canDecodeImage(file));
+    if (choice.mode === "crop") {
+      setPending(choice.pending);
+      return;
+    }
+    // Fallback (ADR 0047 §1): the original file is uploaded untouched.
+    setPending(null);
+    setCropped(choice.cropped);
+    setSelected(choice.selected);
+    setRemoved(false);
+    show(choice.selected);
+  }
+
+  function applyCrop(blob: Blob, type: string) {
+    const source = pending;
+    if (!source) return;
+    const file = new File([blob], croppedFileName(source.name, type), { type });
+    setPending(null);
+    setCropped(true);
     setSelected(file);
     setRemoved(false);
-    setPreview((current) => {
-      if (current) URL.revokeObjectURL(current);
-      return URL.createObjectURL(file);
-    });
+    show(file);
+  }
+
+  function cancelCrop() {
+    setPending(null);
   }
 
   function remove() {
     setSelected(null);
+    setPending(null);
+    setCropped(false);
     setRemoved(true);
     setPreview((current) => {
       if (current) URL.revokeObjectURL(current);
@@ -51,6 +95,8 @@ export function useStampUpload() {
 
   function reset() {
     setSelected(null);
+    setPending(null);
+    setCropped(false);
     setRemoved(false);
     setPreview((current) => {
       if (current) URL.revokeObjectURL(current);
@@ -89,7 +135,20 @@ export function useStampUpload() {
   }
 
   const action = selected ? "replace" : removed ? "remove" : "keep";
-  return { selected, preview, removed, action, choose, remove, reset, upload };
+  return {
+    selected,
+    pending,
+    cropped,
+    preview,
+    removed,
+    action,
+    choose,
+    applyCrop,
+    cancelCrop,
+    remove,
+    reset,
+    upload,
+  };
 }
 
 export type StampUpload = ReturnType<typeof useStampUpload>;

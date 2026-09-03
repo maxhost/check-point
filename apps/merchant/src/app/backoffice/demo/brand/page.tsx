@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { read, save, type DemoState } from "../../../demo";
 import { ModuleHeader, Toast } from "../../../components/ui";
+import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../../lib/image-formats";
 const valid = (v: string) => /^#[0-9a-fA-F]{6}$/.test(v);
 const timezones = [
   "America/Guayaquil",
@@ -93,7 +94,7 @@ export default function BrandPage() {
             <input
               ref={file}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
               onChange={(e) => {
                 const selected = e.target.files?.[0];
                 if (selected) {

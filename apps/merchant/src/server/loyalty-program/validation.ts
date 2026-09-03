@@ -193,6 +193,18 @@ export function validateProgramInput(value: unknown): ProgramInput {
       "La carga de sello no corresponde a esta acción.",
     );
   }
+  // `stampCropped` marks a blob produced by the 1:1 client cropper so the server can decode
+  // it under the strict pixel bound; only meaningful with `replace`, like `stampUploadId`.
+  const stampCropped = input.stampCropped;
+  if (stampCropped !== undefined && typeof stampCropped !== "boolean") {
+    throw new LoyaltyError(422, "La marca de recorte no es válida.");
+  }
+  if (stampAction !== "replace" && stampCropped !== undefined) {
+    throw new LoyaltyError(
+      422,
+      "La marca de recorte no corresponde a esta acción.",
+    );
+  }
   const cardDesign = validateCardDesign(input.kind, input.cardDesign);
   const accrual = validateAccrual(input.kind, input.accrual);
   // Form-only: catalog_product ownership + label snapshot resolve in saveProgram (needs DB).
@@ -203,6 +215,7 @@ export function validateProgramInput(value: unknown): ProgramInput {
     clauses,
     stampAction,
     stampUploadId,
+    stampCropped: stampCropped === true,
     cardDesign,
     accrual,
     rewards,

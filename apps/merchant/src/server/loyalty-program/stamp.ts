@@ -6,7 +6,12 @@ import {
   loyaltyAssetUploads,
   loyaltyPrograms,
 } from "../schema";
-import { AssetImageError, normalizeImage } from "../assets/image";
+import {
+  AssetImageError,
+  MAX_INPUT_PIXELS_CROPPED,
+  MAX_INPUT_PIXELS_FALLBACK,
+  normalizeImage,
+} from "../assets/image";
 import {
   MAX_LOGO_BYTES,
   deleteObjectKeys,
@@ -112,6 +117,8 @@ export async function resolveStampChange(args: {
   currentKey: string | null;
   action: StampAction;
   uploadId?: string;
+  /** Client declared a 1:1 crop → strict decode bound (spec 0040, decision 5). */
+  cropped?: boolean;
 }): Promise<StampChange> {
   if (args.action === "keep") return null;
   if (args.action === "remove") {
@@ -124,7 +131,11 @@ export async function resolveStampChange(args: {
       object.Body as AsyncIterable<Uint8Array>,
       MAX_LOGO_BYTES,
     );
-    const variants = await normalizeImage(bytes);
+    const variants = await normalizeImage(bytes, {
+      maxInputPixels: args.cropped
+        ? MAX_INPUT_PIXELS_CROPPED
+        : MAX_INPUT_PIXELS_FALLBACK,
+    });
     const prefix = stampObjectPrefix(
       args.businessId,
       args.programId,

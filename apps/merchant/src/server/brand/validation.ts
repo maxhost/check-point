@@ -43,6 +43,19 @@ export function validateBrandInput(value: unknown) {
   if (logoAction !== "replace" && uploadId !== undefined) {
     throw new BrandError(422, "La carga de logo no corresponde a esta acción.");
   }
+  // `cropped` says the blob came from the 1:1 client cropper, so the server can decode it
+  // under the strict pixel bound. Same shape rule as `uploadId`: only meaningful with
+  // `replace`. Declaring it can only tighten the bound, never loosen it (spec 0040).
+  const cropped = input.cropped;
+  if (cropped !== undefined && typeof cropped !== "boolean") {
+    throw new BrandError(422, "La marca de recorte no es válida.");
+  }
+  if (logoAction !== "replace" && cropped !== undefined) {
+    throw new BrandError(
+      422,
+      "La marca de recorte no corresponde a esta acción.",
+    );
+  }
   const timezone = nonEmpty(input.timezone, "La zona horaria");
   if (!isIanaTimezone(timezone))
     throw new BrandError(422, "La zona horaria no es válida.");
@@ -68,5 +81,6 @@ export function validateBrandInput(value: unknown) {
     revision: Number(input.revision),
     logoAction: logoAction as LogoAction,
     uploadId: uploadId as string | undefined,
+    cropped: cropped === true,
   };
 }

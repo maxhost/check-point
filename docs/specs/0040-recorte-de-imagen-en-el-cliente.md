@@ -1,10 +1,10 @@
 ---
 spec: 0040
 fecha: 2026-08-16
-estado: cerrada
+estado: implementada
 resumen: Cropper 1:1 en el cliente (drag + zoom, touch y desktop) para las 3 superficies de subida (logo de marca, sello, producto de catálogo). Best-effort por el ADR 0047 — si el navegador no puede decodificar la imagen (HEIC fuera de Safari) se sube el original y el server hace lo de hoy. `react-easy-crop` cargada de forma diferida, salida WebP 2048 px. Incluye el arreglo del `accept` angosto del catálogo.
 disjunta: no
-archivos: cropper cliente reusable (nuevo) + los 3 hooks de subida + brand-page/step-card-design/product-editor + server/assets/image.ts + lib/image-formats.ts (accept) + tests
+archivos: apps/merchant/src/lib/crop-image.ts (nuevo), crop-image.test.ts (nuevo), crop-image-decode.test.ts (nuevo), lib/image-formats.ts, app/components/image-cropper.tsx (nuevo), app/backoffice/catalog/product-image-field.tsx (nuevo, split por hook file-size), los 3 hooks de subida + brand-page/step-card-design/product-editor, app/backoffice/demo/{brand,loyalty}/page.tsx (4a y 5a aparicion del accept angosto), server/assets/image.ts + image.test.ts (nuevo), server/cropped-input-validation.test.ts (nuevo), server/upload-image-formats.test.ts, los 3 validators + brand.ts/catalog/image.ts/loyalty-program/stamp.ts, globals.css, apps/merchant/package.json
 ---
 
 # 0040 — Recorte de imagen en el cliente
@@ -196,3 +196,53 @@ hay otra spec abierta.
   de agregarla, o la próxima sesión offline falla.
 - El cropper es **UX y ahorro de bytes, no un control de seguridad** (ADR 0047 §3). Ninguna
   validación del server se relaja porque el cliente recorte.
+
+## Resultado de la implementación (2026-09-02)
+
+**PASS de revisor independiente en la segunda pasada.** Protocolo completo de
+`AGENT-WORKFLOW.md`: implementación → revisor **FAIL** (5 hallazgos) → ronda de
+correcciones → re-review **PASS**. Tests **259 → 310**. Los 5 gates verdes.
+
+### Desvío de la decisión 5, autorizado por el orquestador
+
+La spec decía que el server distingue el camino estricto **por el presign**. Se implementó
+con el flag `cropped` en el **payload de guardado**: el bound se aplica al *guardar*, no al
+presignar, así que por presign habría que persistirlo → migración en 3 tablas que esta spec
+no lista en sus archivos. El modelo de confianza es el que la spec justifica y el revisor lo
+auditó: **no existe input que consiga un bound más permisivo que los 50 MP de hoy**; los 3
+validators rechazan con 422 el flag no-booleano y el flag fuera de `replace`. **Sin migración.**
+
+### Lo que el FAIL cazó (y por qué valió la pasada)
+
+1. **El fallback de decode estaba *asumido*, no probado** — justo lo que el criterio prohibía
+   con todas las letras. `canDecodeImage` no tenía un solo test.
+2. **El guard nuevo del `accept` era ciego a `accept="…"`** (sólo veía la forma con llaves), y
+   dejaba pasar dos listas angostas en `demo/brand` y `demo/loyalty` — **4ª y 5ª aparición**
+   del bug de `CLAUDE.md`. El regex se amplió y las dos páginas se arreglaron.
+3. **Faltaba la mitad del pinneo del DoD**: revertir `use-catalog-image` a
+   `startsWith("image/")` dejaba la suite verde.
+4. **Un `isAcceptedImageType` que toleraba `file.type === ""` aflojó marca y sello** sin ganar
+   nada: los 3 presign validan contra el mismo set, que no contiene `""`, así que ese archivo
+   moría igual, sólo que más tarde y con peor mensaje. Revertido.
+5. El DoD de la cuadratura quedó **parcial a propósito** (ver abajo).
+
+### Criterios NO cerrados
+
+- **La mitad cliente del blob cuadrado ≤2048.** Lo que está probado es que el pipeline del
+  server no rompe la cuadratura (dimensiones leídas de los bytes de ambas variantes con
+  `sharp`). Que el `toBlob` de un navegador real *produzca* ese blob no es reproducible sin
+  navegador, y **el server no valida cuadratura a propósito**: ADR 0047 §3, el cropper es UX y
+  ahorro de bytes, no un control de seguridad.
+- **QA en vivo con teléfono real** — del owner. Sigue siendo el dato que decide el ADR 0047 §4.
+
+### Seguimiento abierto (no entra acá)
+
+- **Un picker que reporta `contentType: ""` no puede subir.** Preexistente, no regresión: los
+  3 presign nunca aceptaron `""`. Con el arreglo de (4) el rechazo ahora ocurre en el cliente
+  con mensaje claro en vez de en el presign con "No pudimos preparar la carga". **Merece spec
+  propia** (¿deducir el tipo por extensión/bytes antes del presign?).
+- `demo/loyalty/page.tsx` quedó en **302 líneas** (límite 300). Ya estaba en **301 en HEAD**;
+  el `import` suma 1. Infracción preexistente, partir una página de demo es un refactor propio.
+- Dos notas de fragilidad del revisor: el piso `attributes >= 5` del barrido está justo sobre
+  el valor actual, y el pin del bound por regex sobre el fuente se rompería con un refactor
+  del tipo `pixelBoundFor(input.cropped)` (sí caza la inversión de bounds — verificado).

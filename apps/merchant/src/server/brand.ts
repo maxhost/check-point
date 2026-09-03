@@ -12,7 +12,12 @@ import {
   putLogoVariants,
   readObjectAtMost,
 } from "./r2";
-import { AssetImageError, normalizeImage } from "./assets/image";
+import {
+  AssetImageError,
+  MAX_INPUT_PIXELS_CROPPED,
+  MAX_INPUT_PIXELS_FALLBACK,
+  normalizeImage,
+} from "./assets/image";
 import { ACCEPTED_IMAGE_LABEL } from "../lib/image-formats";
 import { BrandError, type BrandRecord, imageTypes } from "./brand/core";
 import { validateBrandInput } from "./brand/validation";
@@ -130,7 +135,11 @@ export async function saveBrand(userId: string, value: unknown) {
         object.Body as AsyncIterable<Uint8Array>,
         MAX_LOGO_BYTES,
       );
-      const variants = await normalizeImage(bytes);
+      const variants = await normalizeImage(bytes, {
+        maxInputPixels: input.cropped
+          ? MAX_INPUT_PIXELS_CROPPED
+          : MAX_INPUT_PIXELS_FALLBACK,
+      });
       newPrefix = logoObjectPrefix(business.id, randomUUID());
       await putLogoVariants(newPrefix, variants.webp, variants.png);
     } catch (error) {

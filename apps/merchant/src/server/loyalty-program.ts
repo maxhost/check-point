@@ -129,6 +129,7 @@ export async function saveProgram(userId: string, rawInput: unknown) {
     currentKey: program?.stampImageObjectKey ?? null,
     action: input.stampAction,
     uploadId: input.stampUploadId,
+    cropped: input.stampCropped,
   });
   try {
     if (program) {

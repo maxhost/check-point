@@ -8,7 +8,60 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-02 (**SPEC 0040 CERRADA + ADR 0047 — LISTA PARA IMPLEMENTAR. Nada de codigo
+Ultima actualizacion: 2026-09-02 (**SPEC 0040 IMPLEMENTADA con PASS de revisor independiente. Codigo SIN COMMITEAR
+en el arbol, esperando OK del owner. PROXIMO PASO: QA en vivo con telefono real + commit.**
+
+**Que se logro:** cropper 1:1 con drag+zoom en las 3 superficies de subida (logo de marca, sello, producto). Tests
+**259 → 310**. Los 5 gates verdes. **Sin migracion** y sin secreto nuevo.
+
+**EL PROTOCOLO DE `AGENT-WORKFLOW.md` SE CUMPLIO ENTERO Y VALIO LA PENA:** implementacion → revisor independiente
+**FAIL con 5 hallazgos** → ronda de correcciones → **re-review PASS** (28 mutaciones muertas en un worktree de
+`/tmp`, arbol intacto). **El FAIL no fue ceremonia** — cazo cuatro cosas reales:
+1. **El fallback de decode estaba ASUMIDO, no probado.** `canDecodeImage` no tenia un solo test, y el criterio de
+   la spec lo prohibia con todas las letras ("probado de verdad, forzando el fallo de decode — no asumido").
+2. **El guard nuevo del `accept` era CIEGO a `accept="..."`** (el regex solo veia la forma con llaves `{...}`), asi
+   que tapaba dos listas angostas mas en `demo/brand/page.tsx` y `demo/loyalty/page.tsx` — **4a y 5a aparicion** del
+   mismo bug que `CLAUDE.md` ya documenta de las specs 0033 y 0039. Un guard ciego es peor que ninguno: da una
+   seguridad que no tiene.
+3. **Faltaba la mitad del pinneo del DoD**: revertir `use-catalog-image` a `startsWith("image/")` dejaba la suite verde.
+4. **Un `isAcceptedImageType` nuevo que toleraba `file.type === ""` AFLOJO marca y sello sin ganar nada.** Se
+   justificaba diciendo que si no "el server nunca llega a olfatear los bytes" — **falso, verificado**: los 3 presign
+   validan contra `ACCEPTED_IMAGE_CONTENT_TYPE_SET`, que no contiene `""`, asi que ese archivo moria igual, solo que
+   mas tarde y con peor mensaje. Revertido.
+
+**DESVIO DE LA SPEC AUTORIZADO POR EL ORQUESTADOR (queda registrado, no se arreglo en silencio):** la decision 5
+decia que el server distingue el camino estricto **por el presign**. Se implemento con el flag `cropped` en el
+**payload de guardado**, porque el bound se aplica al GUARDAR, no al presignar → por presign habria que persistirlo
+= migracion en 3 tablas que la spec no lista. El revisor auditó el modelo de confianza: **no existe input que
+consiga un bound mas permisivo que los 50 MP de hoy**; los 3 validators tiran 422 con el flag no-booleano o fuera
+de `replace`. `normalizeImage` quedo parametrizado: **4.2 MP** con recorte, **50 MP** en el fallback.
+
+**Chunk diferido verificado contra manifests reales** (no de palabra): `static/chunks/1-5vd4y9_pvjp.js` (27K) aparece
+solo en los 3 `react-loadable-manifest.json` y esta **ausente** de `build-manifest.json`. `react-easy-crop` se importa
+en **un solo** modulo.
+
+**RESIDUAL DEL OWNER, Y ES EL QUE IMPORTA: QA EN VIVO CON EL TELEFONO REAL** (el que produjo el bug de la 0039).
+Subir una foto de galeria en **marca**, encuadrarla, verla guardada, y **registrar si aparecio el cropper o si cayo
+al fallback**. Ese es el dato que decide el **ADR 0047 §4**: si el fallback se dispara, HEIC crudo llega de verdad y
+se reevalua el decoder HEVC en WASM; si no, el tema queda cerrado. Ningun test local lo reproduce.
+
+**Otro criterio NO cerrado, dicho sin maquillaje:** la mitad *cliente* del "blob cuadrado ≤2048". Lo probado es que
+el pipeline del server no rompe la cuadratura (dimensiones leidas de los bytes de ambas variantes con `sharp`). Que
+el `toBlob` de un navegador real PRODUZCA ese blob no es reproducible sin navegador, y **el server no valida
+cuadratura a proposito** (ADR 0047 §3: el cropper es UX y ahorro de bytes, NO un control de seguridad).
+
+**SEGUIMIENTO → SPEC PROPIA, no se arreglo aca:** un picker que reporta `contentType: ""` para una foto real **no
+puede subir**. Preexistente, no regresion (los 3 presign nunca aceptaron `""`). Opciones para esa spec: deducir el
+tipo por extension/bytes antes del presign.
+
+**GOTCHA CORREGIDO (mistake→rule): `pnpm fetch` NO hacia falta.** `CLAUDE.md` decia "cuando se agreguen dependencias
+nuevas, correr `pnpm fetch`". Con el store local al repo, **el propio `pnpm add` ya lo poblo** — verificado:
+`.pnpm-store/v11/index.db` contiene `react-easy-crop@6.2.3` y `normalize-wheel@1.0.1`. Correr `pnpm fetch` de mas
+habria PURGADO `node_modules` (y disparado el gotcha del `Already up to date` con la raiz vacia) a cambio de nada.
+
+**Estado del repo: codigo SIN COMMITEAR** (24 modificados + 7 untracked), main verde, Node 24.20.0, 310 tests.
+
+Ultima actualizacion previa: 2026-09-02 (**SPEC 0040 CERRADA + ADR 0047 — LISTA PARA IMPLEMENTAR. Nada de codigo
 tocado todavia. PROXIMO PASO: implementarla con el protocolo de `AGENT-WORKFLOW.md`.**
 
 **Que es:** cropper de imagen en el cliente, recuadro **1:1** con drag+zoom (touch y desktop), en las 3
@@ -1354,7 +1407,7 @@ end-to-end con el canal `fake`, APNs/Google reales quedan como QA residual).
 | 33 | Web Push (notificaciones de navegador, iOS + Android) | 0037 | hecho | **IMPLEMENTADA + PASS de revisor independiente + QA en vivo del owner CERRADO (2026-08-16).** Dominio `server/push/*` (VAPID JWT ES256, cifrado RFC 8291 verificado vs el Apéndice A), tabla `web_push_subscription`, PWA (`public/sw.js` + manifest dinámico), UI `push-prompt.tsx`/`ios-install-hint.tsx`. Migración `0023` aplicada y verificada en prod. Post-QA: subject VAPID normalizado a `mailto:` (`normalizeVapidSubject`, Apple daba 403 sin esquema) e instructivo iOS rehecho (sin botón "Abrir Compartir", pasos numerados). Detalle completo en `specs/0037-web-push-notificaciones-android.md`. |
 | 34 | Ruteo de notificación por clase de aviso (transaccional=wallet, fallback Web Push) + opt-in Android en la confirmación | 0038 | hecho | **IMPLEMENTADA + PASS de revisor independiente + QA en vivo del owner CERRADO (2026-08-16).** ADR 0040: `transactional` sale solo por wallet, con fallback a Web Push si no hay pase alcanzable (`consumerHasReachableWallet`) — nunca los dos a la vez (mata el duplicado hallado en el QA de iOS). `campaign` conserva el fan-out provisional. Botón "Activar notificaciones" en Android en la confirmación del enroll. Sin migración. Detalle en `specs/0038-ruteo-de-notificacion-por-clase-y-opt-in-android.md`. |
 | 35 | Branding de la landing de enrolamiento (logo + color de marca) | 0039 | hecho | **IMPLEMENTADA + PASS de revisor independiente + QA en vivo del owner CERRADO (2026-08-16).** Logo del negocio (ruta pública sin exponer `logoObjectKey`) + color de marca en botones, con texto por luminancia (`readableTextColor`); card del instructivo iOS coherente con cualquier acento (`tint`/`shade`, `lib/brand-color.ts`). `/wallet` queda neutro (arco 0031). Post-QA se cazaron y corrigieron **2 bugs de subida de imagen que afectan también sello y catálogo** (comparten `lib/image-formats.ts`/`server/assets/image.ts`): alias no-IANA `image/jpg` faltante, y `normalizeImage` rechazaba fotos de teléfono >2048² en vez de achicarlas (fix paliativo `MAX_INPUT_PIXELS=50MP`; la solución de fondo —recorte en el cliente— quedó en **ADR 0041 + spec 0040**, tarea 36). Detalle en `specs/0039-branding-de-la-landing-de-enrolamiento.md`. |
-| 36 | Recorte de imagen en el cliente antes de subir (cropper drag+zoom, mobile+desktop) | 0040 | pendiente (borrador) | **Trabajo futuro, sin implementar.** Nace del paliativo de la tarea 35: el server tuvo que subir su límite de decode a 50MP para poder achicar fotos de teléfono en vez de rechazarlas; la solución de fondo es recortar/reducir en el **cliente** antes de subir (así el server puede volver a un límite estricto). ADR **0041** fija la dirección (mobile+desktop, cropper cargado diferido). Abierto: librería (una liviana touch+mouse vs dos por plataforma — candidata `react-easy-crop`), aspecto por superficie, borde de salida, fallback. Afecta las 3 superficies de subida (marca/sello/catálogo). Ver `specs/0040-recorte-de-imagen-en-el-cliente.md`. |
+| 36 | Recorte de imagen en el cliente antes de subir (cropper drag+zoom, mobile+desktop) | 0040 | hecho (QA en vivo del owner PENDIENTE) | **IMPLEMENTADA (2026-09-02) con PASS de revisor independiente en la 2ª pasada** (flujo `AGENT-WORKFLOW.md`: implementación → revisor **FAIL** por 5 hallazgos → corrección → re-review **PASS**). Cropper 1:1 `react-easy-crop` 6.2.3 en `app/components/image-cropper.tsx`, montado con `next/dynamic({ssr:false})` desde las 3 superficies; helper puro `lib/crop-image.ts` (`canDecodeImage`, `decideImageChoice`, `cropImageToBlob` con canvas inyectable). **SIN MIGRACIÓN**: el flag `cropped` viaja en el payload de guardado, no en el presign (desvío de la decisión 5 autorizado por el orquestador — por presign habría que persistirlo en 3 tablas). `normalizeImage` parametrizado: **4.2 MP** en el camino con recorte, **50 MP** en el fallback. Gates: lint, typecheck 3/3, prettier, build 3/3, **tests 259 → 310**. **Chunk diferido verificado contra manifests reales**: `static/chunks/1-5vd4y9_pvjp.js` (27K) sólo en los 3 `react-loadable-manifest.json`, **ausente** de `build-manifest.json`. **Lo que el FAIL cazó:** (1) el fallback de decode estaba *asumido* y el criterio lo prohibía explícitamente; (2) el guard del `accept` era ciego a `accept="…"` y tapaba **2 listas angostas más** en `demo/brand` y `demo/loyalty` — 4ª y 5ª aparición del bug de `CLAUDE.md`; (3) revertir `use-catalog-image` a `startsWith("image/")` dejaba la suite verde; (4) un `isAcceptedImageType` que toleraba `file.type == ""` **aflojó marca y sello** sin ganar nada (los 3 presign rechazan `""` igual). El revisor de la 2ª pasada mató **28 mutaciones** en un worktree de `/tmp`. **RESIDUAL DEL OWNER: QA en vivo con el teléfono real de la 0039** — subir una foto de galería en marca, encuadrarla, verla guardada, y **registrar si apareció el cropper o si cayó al fallback**: ese es el dato que decide el **ADR 0047 §4** (reabrir o cerrar el decoder HEVC en WASM). No cerrado tampoco: la mitad *cliente* del blob cuadrado ≤2048 (el server no valida cuadratura **a propósito**, ADR 0047 §3). **Seguimiento → spec propia:** un picker que reporta `contentType: ""` no puede subir (preexistente, no regresión). `pnpm fetch` **NO hace falta**: el store local ya quedó caliente con `react-easy-crop@6.2.3` (verificado en `.pnpm-store/v11/index.db`). Detalle en `specs/0040-recorte-de-imagen-en-el-cliente.md`. |
 | 26 | Brand kit (afiche imprimible con QR de enrolamiento) | — | pendiente | **Downstream del loop.** Plantillas para un afiche imprimible con el QR que apunta a la landing de enrolamiento (0028). Reusa marca (colores/logo) y el pipeline R2. Sin spec aún; se abre cuando el QR resuelva. Las 6 decisiones abiertas ya relevadas en la conversación previa (plantillas curadas pintadas con la marca, PDF vs PNG, QR server-side, efímero vs persistido, sub-ruta en `/brand`). |
 | 29 | Rebrand CheckPass Club + diseño visual de los pases de Wallet | — | parcial | **Marca decidida y cambio app-wide hecho en el commit de cierre de 0032:** UI consumer/merchant, metadata, PWA, notificaciones, Wallet y provisionador Google usan CheckPass Club. Se conservan package names e IDs técnicos históricos por compatibilidad. **Pendiente:** abrir spec para arte final de pases (Google `heroImage` + logo; Apple `strip` + logo/icon + colores), servir assets desde dominio estable y actualizar la Loyalty Class real antes del publishing access. |
 | 21 | Wizard de creación + diseño visual de la tarjeta de fidelización | 0027 | hecho | **PRÓXIMA FEATURE — spec CERRADA (2026-08-13), lista para implementar.** Wizard por pasos para crear **y editar** (Puntos: unidades → TOS → preview/activar; Sellos: básicos → diseño de tarjeta → TOS → preview/activar). Diseño de tarjeta (Sellos): fondo 1 + fondo 2 opcional en **degradé lineal de ángulo configurable** + color de borde, **preview en vivo** con `round(target/2)` sellos puestos; reutiliza la imagen de sello de 0026. Las 6 decisiones abiertas cerradas con el owner: **columnas dedicadas nullable** (no jsonb) con checks hex/ángulo a nivel DB (ADR **0030**), defaults derivados de la marca, Puntos sin diseño (columnas `null`). Requiere **migración `0013` aditiva** + `CardPreview` compartido + splits por `file-size` (`use-loyalty-program.ts`, `program-editor.tsx` → `steps/*`). Implementar con protocolo `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente antes de `implementada`. |

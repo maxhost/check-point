@@ -32,6 +32,8 @@ export type ProgramInput = {
   clauses: ClauseInput[];
   stampAction: StampAction;
   stampUploadId?: string;
+  /** True when the blob came from the 1:1 client cropper → strict decode bound (spec 0040). */
+  stampCropped: boolean;
   cardDesign: CardDesignInput | null;
   accrual: AccrualInput;
   rewards: RewardInput[];

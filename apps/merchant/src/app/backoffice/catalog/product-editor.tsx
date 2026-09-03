@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Category, Location, Product, ProductPayload } from "./types";
 import { useCatalogImage } from "./use-catalog-image";
-import { useIsTouch } from "./use-is-touch";
-import { StockPicker } from "./stock-picker";
+import { ProductImageField } from "./product-image-field";
 
 type Props = {
   product: Product | null;
@@ -47,9 +46,6 @@ export function ProductEditor({
   );
   const [newCategory, setNewCategory] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
-  // Touch devices get the native camera/gallery chooser; desktop stays strict.
-  const isTouch = useIsTouch();
   const image = useCatalogImage(
     product?.imagePath ?? null,
     product
@@ -61,7 +57,6 @@ export function ProductEditor({
         }
       : null,
   );
-  const fileInput = useRef<HTMLInputElement>(null);
 
   function toggleLocation(id: string) {
     setLocationIds((current) =>
@@ -100,7 +95,7 @@ export function ProductEditor({
         availableAllLocations: availableAll,
         locationIds: availableAll ? [] : locationIds,
         imageAction: image.action,
-        ...(uploadId ? { uploadId } : {}),
+        ...(uploadId ? { uploadId, cropped: image.cropped } : {}),
         ...(image.action === "stock" && image.stock
           ? { provider: image.stock.provider, photoId: image.stock.photoId }
           : {}),
@@ -181,79 +176,7 @@ export function ProductEditor({
       <p className="field-help">
         Cargar el precio habilita puntos por consumo y analítica de ticket.
       </p>
-      <label>
-        Imagen (opcional)
-        <input
-          ref={fileInput}
-          type="file"
-          accept={isTouch ? "image/*" : "image/png,image/jpeg,image/webp"}
-          onChange={(event) => image.choose(event.target.files?.[0], onError)}
-        />
-      </label>
-      {isTouch && (
-        <p className="field-help">
-          Podés tomar una foto o elegir una de tu galería.
-        </p>
-      )}
-      <div className="stock-or">o</div>
-      <button
-        type="button"
-        className="small-button stock-library-button"
-        onClick={() => setShowPicker(true)}
-      >
-        {image.visible
-          ? "Elegir otra imagen de biblioteca"
-          : "Elegir de biblioteca"}
-      </button>
-      {image.visible && (
-        <div className="catalog-image-row">
-          <img
-            className="catalog-image-preview"
-            src={image.visible}
-            alt={`Imagen de ${name || "producto"}`}
-          />
-          <button
-            type="button"
-            className="small-button"
-            onClick={() => {
-              image.remove();
-              if (fileInput.current) fileInput.current.value = "";
-            }}
-          >
-            Quitar
-          </button>
-        </div>
-      )}
-      {image.credit?.author && (
-        <p className="field-help catalog-credit">
-          Foto de{" "}
-          <a
-            href={image.credit.sourceUrl ?? "https://www.pexels.com"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Pexels.com
-          </a>{" "}
-          · Autor:{" "}
-          <a
-            href={image.credit.authorUrl ?? "https://www.pexels.com"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {image.credit.author}
-          </a>
-        </p>
-      )}
-      {showPicker && (
-        <StockPicker
-          onApply={(provider, photo) => {
-            image.chooseStock(provider, photo);
-            setShowPicker(false);
-          }}
-          onClose={() => setShowPicker(false)}
-          onError={onError}
-        />
-      )}
+      <ProductImageField image={image} name={name} onError={onError} />
       <fieldset className="catalog-visibility">
         <legend>Disponibilidad</legend>
         <label className="catalog-check">

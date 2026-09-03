@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { productAssetUploads, products } from "../schema";
-import { AssetImageError, normalizeImage } from "../assets/image";
+import {
+  AssetImageError,
+  MAX_INPUT_PIXELS_CROPPED,
+  MAX_INPUT_PIXELS_FALLBACK,
+  normalizeImage,
+} from "../assets/image";
 import {
   MAX_LOGO_BYTES,
   deleteObjectKeys,
@@ -94,6 +99,8 @@ async function consumeProductUpload(businessId: string, uploadId: string) {
 export async function resolveProductImageUpload(args: {
   businessId: string;
   uploadId: string;
+  /** Client declared a 1:1 crop → strict decode bound (spec 0040, decision 5). */
+  cropped?: boolean;
 }): Promise<string> {
   const upload = await consumeProductUpload(args.businessId, args.uploadId);
   try {
@@ -102,7 +109,11 @@ export async function resolveProductImageUpload(args: {
       object.Body as AsyncIterable<Uint8Array>,
       MAX_LOGO_BYTES,
     );
-    const variants = await normalizeImage(bytes);
+    const variants = await normalizeImage(bytes, {
+      maxInputPixels: args.cropped
+        ? MAX_INPUT_PIXELS_CROPPED
+        : MAX_INPUT_PIXELS_FALLBACK,
+    });
     const prefix = productObjectPrefix(args.businessId, randomUUID());
     await putProductVariants(prefix, variants.webp, variants.png);
     return prefix;
@@ -144,7 +155,11 @@ export async function resolveProductStock(args: {
       );
     }
     const resolved = await provider.resolve(args.photoId);
-    const variants = await normalizeImage(resolved.bytes);
+    // Stock photos never pass through the cropper (out of scope, spec 0040), so they keep
+    // the fallback bound.
+    const variants = await normalizeImage(resolved.bytes, {
+      maxInputPixels: MAX_INPUT_PIXELS_FALLBACK,
+    });
     const prefix = productObjectPrefix(args.businessId, randomUUID());
     await putProductVariants(prefix, variants.webp, variants.png);
     return {
@@ -208,6 +223,7 @@ export async function resolveImageChange(
     const prefix = await resolveProductImageUpload({
       businessId,
       uploadId: input.uploadId!,
+      cropped: input.cropped,
     });
     return {
       nextKey: prefix,

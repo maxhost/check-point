@@ -13,6 +13,8 @@ export type ProductInput = {
   uploadId: string | null;
   provider: string | null;
   photoId: string | null;
+  /** True when the blob came from the 1:1 client cropper → strict decode bound (spec 0040). */
+  cropped: boolean;
 };
 
 /** numeric(12,2) range: prices/costs must fit and be non-negative. */
@@ -49,15 +51,39 @@ function parseImage(input: Record<string, unknown>): {
   uploadId: string | null;
   provider: string | null;
   photoId: string | null;
+  cropped: boolean;
 } {
   const action = input.imageAction;
-  const base = { uploadId: null, provider: null, photoId: null };
+  const base = {
+    uploadId: null,
+    provider: null,
+    photoId: null,
+    cropped: false,
+  };
+  // `cropped` only travels with `replace` (same rule as `uploadId`): it marks a blob the
+  // client cropper already bounded to 2048², and can only tighten the server's decode
+  // bound, never widen it (spec 0040, decision 5).
+  const cropped = input.cropped;
+  if (cropped !== undefined && typeof cropped !== "boolean") {
+    throw new CatalogError(422, "La marca de recorte no es válida.");
+  }
+  if (action !== "replace" && cropped !== undefined) {
+    throw new CatalogError(
+      422,
+      "La marca de recorte no corresponde a esta acción.",
+    );
+  }
   if (action === "remove") return { imageAction: "remove", ...base };
   if (action === "replace") {
     if (typeof input.uploadId !== "string" || !input.uploadId) {
       throw new CatalogError(422, "Falta la imagen cargada.");
     }
-    return { imageAction: "replace", ...base, uploadId: input.uploadId };
+    return {
+      imageAction: "replace",
+      ...base,
+      uploadId: input.uploadId,
+      cropped: cropped === true,
+    };
   }
   if (action === "stock") {
     if (typeof input.provider !== "string" || !input.provider) {

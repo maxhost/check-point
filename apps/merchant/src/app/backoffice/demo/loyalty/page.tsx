@@ -9,6 +9,7 @@ import {
 } from "../../../loyalty";
 import { ConfirmDialog } from "../../../components/confirm-dialog";
 import { ModuleHeader, Toast } from "../../../components/ui";
+import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../../lib/image-formats";
 
 type ProgramType = "points" | "stamps";
 
@@ -231,7 +232,7 @@ export default function LoyaltyPage() {
                   <input
                     ref={imageInput}
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept={ACCEPTED_IMAGE_ACCEPT_ATTR}
                     onChange={(event) => {
                       const selected = event.target.files?.[0];
                       if (!selected) return;

@@ -135,7 +135,9 @@ export function useLoyaltyProgram() {
               : { unitName: stampName, target },
           clauses: [{ text: terms }],
           stampAction,
-          ...(stampUploadId ? { stampUploadId } : {}),
+          ...(stampUploadId
+            ? { stampUploadId, stampCropped: stamp.cropped }
+            : {}),
           cardDesign: kind === "stamps" ? card.payload() : null,
           accrual: earn.accrualPayload(kind),
           rewards: earn.rewardsPayload(kind),

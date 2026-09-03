@@ -92,11 +92,17 @@ chequear con un comando, es un hook — no la escribas aca tambien.
     NI escritura fuera del sandbox — verificado end-to-end: `node_modules` borrado y
     reconstruido 100% offline (268 paquetes, `downloaded 0`) + `pnpm run typecheck`
     real, 3/3 paquetes verdes.
-  - **Operatoria hacia adelante: cuando se agreguen dependencias nuevas, correr `pnpm
-    fetch` (puebla el store DESDE el lockfile, sin tocar `node_modules`) en una terminal
-    normal (con red) ANTES de la proxima sesion de codex bajo Auto.** Sin ese re-warm,
-    el store local queda desactualizado y el offline install vuelve a fallar (con
-    "paquete no encontrado", no DNS).
+  - **Operatoria hacia adelante: el re-warm hace falta MENOS de lo que decia esta linea.**
+    Si la dependencia se agrega **en una sesion CON red** (`pnpm add`), el propio install ya
+    escribe en el store local y no hace falta nada mas — verificado en la spec 0040:
+    `.pnpm-store/v11/index.db` ya contenia `react-easy-crop@6.2.3` + `normalize-wheel@1.0.1`
+    recien agregados. Chequeo barato antes de tocar nada:
+    `strings .pnpm-store/v11/index.db | grep '<paquete>@<version>'`.
+    **`pnpm fetch` es solo para cuando el lockfile cambio en OTRO entorno** (pull con deps
+    nuevas que nunca se instalaron aca): ahi si el store queda desactualizado y el offline
+    install falla con "paquete no encontrado" (no DNS). **Correrlo de mas no es gratis: PURGA
+    `node_modules`** (ver la linea de abajo) y te deja arreglando el `Already up to date` con
+    la raiz vacia a cambio de nada.
   - **`pnpm fetch` purga `node_modules` sin preguntar salvo `CI=true`** (falla con
     `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` sin TTY, p.ej. corrido por un agente).
   - **Despues de `pnpm fetch`, `pnpm install --offline` MIENTE: dice `Already up to date`
@@ -165,8 +171,16 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   **de nuevo en marca/backoffice — spec 0039 QA**: la lista angosta estaba hardcodeada en 3 lugares
   (guard cliente, allow-list server, `accept` del input)). Mantener en sync con la lista de formatos
   de `sharp` en `server/assets/image.ts`. **Guard:** `server/upload-image-formats.test.ts` pinnea
-  sello + catálogo + marca aceptando HEIC/HEIF/AVIF — si agregás una superficie de subida nueva,
-  sumala a ese test.
+  sello + catálogo + marca aceptando HEIC/HEIF/AVIF **y barre TODO `.tsx` bajo `app/` buscando
+  listas MIME hardcodeadas** — si agregás una superficie de subida nueva, sumala a ese test.
+  **OJO AL ESCRIBIR ESE TIPO DE BARRIDO (spec 0040): la primera version del regex solo matcheaba
+  `accept={...}` y era CIEGA a `accept="..."`, asi que tapaba dos listas angostas mas en
+  `demo/brand` y `demo/loyalty` — 4a y 5a aparicion del mismo bug, con el test en verde diciendo
+  "no hay ninguna otra".** Un guard que solo ve una de las dos ortografias de JSX es peor que
+  ninguno: da seguridad que no tiene. Al escribir un barrido estatico, (a) probá las dos formas,
+  (b) aseverá un **piso de archivos escaneados** (`scanned > 50`) para que un barrido vacio no
+  quede verde, y (c) verificá que se pone rojo con el codigo viejo (`git show HEAD:<archivo>` a
+  `/tmp`), no solo que pasa con el nuevo.
 - **Geoapify autocomplete pega DIRECTO del navegador (`address-autofill-geoapify.tsx`) con la clave
   pública `NEXT_PUBLIC_GEOAPIFY_API_KEY`.** Con **Allowed Origins** seteadas en la clave, Geoapify
   devuelve un `Access-Control-Allow-Origin` **FIJO** (un solo origen, SIN `Vary: Origin`, sin *echo*

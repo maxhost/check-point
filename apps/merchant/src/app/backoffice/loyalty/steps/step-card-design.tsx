@@ -1,8 +1,16 @@
 import { useRef } from "react";
+import dynamic from "next/dynamic";
 import { CardPreview } from "../../../../components/loyalty/card-preview";
 import type { LoyaltyVm } from "../use-loyalty-program";
 import { useIsTouch } from "../../catalog/use-is-touch";
 import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../../lib/image-formats";
+
+// Deferred on purpose: `react-easy-crop` must not ride in the initial bundle of the
+// loyalty editor (ADR 0041 §3). `ssr: false` because the cropper is canvas/DOM-only.
+const ImageCropper = dynamic(
+  () => import("../../../components/image-cropper"),
+  { ssr: false },
+);
 
 const ANGLE_PRESETS = [
   { label: "Vertical", angle: 180 },
@@ -114,9 +122,9 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
               ref={stampInput}
               type="file"
               accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
-              onChange={(event) =>
-                stamp.choose(event.target.files?.[0], vm.setErrorToast)
-              }
+              onChange={(event) => {
+                void stamp.choose(event.target.files?.[0], vm.setErrorToast);
+              }}
             />
             <p className="field-help">
               PNG, JPEG, WebP, HEIC o AVIF · máximo 5 MB · hasta 2048 × 2048 px.
@@ -135,6 +143,17 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
           </p>
         </div>
       </div>
+      {stamp.pending && (
+        <ImageCropper
+          file={stamp.pending}
+          surface="stamp"
+          onDone={stamp.applyCrop}
+          onCancel={() => {
+            stamp.cancelCrop();
+            if (stampInput.current) stampInput.current.value = "";
+          }}
+        />
+      )}
     </>
   );
 }

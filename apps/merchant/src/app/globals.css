@@ -3713,6 +3713,49 @@ input:focus {
   color: #5b6472;
 }
 
+/* Recorte 1:1 en el cliente (spec 0040) */
+.image-cropper {
+  width: min(100%, 480px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+}
+.image-cropper-head h2 {
+  margin: 0;
+}
+.image-cropper-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: #17251d;
+  overflow: hidden;
+  touch-action: none;
+}
+.image-cropper-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.image-cropper-zoom input {
+  flex: 1;
+}
+.image-cropper-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.image-cropper-actions .button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 16px;
+}
+
 @media print {
   .brand-kit-print-page {
     width: 100%;
