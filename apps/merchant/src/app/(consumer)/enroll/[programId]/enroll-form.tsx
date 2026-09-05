@@ -10,7 +10,7 @@ import {
 } from "../../../../lib/countries";
 import { readableTextColor } from "../../../../lib/brand-color";
 import { WalletButtons } from "../../wallet-cta";
-import { IosInstallHint, isIosSafariBrowser } from "../../ios-install-hint";
+import { isIosSafariBrowser } from "../../ios-install-hint";
 import { PushPrompt } from "../../push-prompt";
 
 type Screen =
@@ -115,37 +115,38 @@ export function EnrollForm({
         <p style={{ color: "#333", marginTop: 8 }}>
           Ya sos parte del programa de <strong>{businessName}</strong>.
         </p>
-        {/* Opt-in by platform (spec 0038 / ADR 0040). iOS Safari keeps the "add to home
-            screen" hint (decoupled from Web Push being configured — it stands for the
-            portal/pass even when `vapidPublicKey` is null). Android/desktop get the Web
-            Push permission button so the transactional fallback becomes real; `PushPrompt`
-            renders nothing when Web Push is disabled (`vapidPublicKey === null`). */}
-        {isIosSafariBrowser() ? (
-          <IosInstallHint accentColor={brandPrimaryColor} />
-        ) : (
-          <PushPrompt
-            vapidPublicKey={vapidPublicKey}
-            accentColor={brandPrimaryColor}
-          />
-        )}
-        {/* Session cookie is already set by the POST — the buttons hit the
-            session-authorized endpoint directly, no extra navigation. */}
-        <div style={{ marginTop: 20 }}>
-          <WalletButtons isIos={isIos} />
-        </div>
+        {/* Spec 0050: installing from HERE made iOS take the enroll URL as the icon's
+            start_url (this page links no manifest), so the icon reopened the signup form.
+            The action now sends the consumer to `/wallet` (the POST already set the
+            session cookie): there the hint lives and the manifest carries the token. */}
         <a
           href="/wallet"
           style={{
             display: "block",
             textAlign: "center",
-            marginTop: 16,
-            fontSize: 14,
-            color: "#2563eb",
-            textDecoration: "underline",
+            marginTop: 20,
+            padding: "13px 14px",
+            fontSize: 16,
+            borderRadius: 10,
+            background: brandPrimaryColor,
+            color: readableTextColor(brandPrimaryColor),
+            textDecoration: "none",
           }}
         >
           Ver mi tarjeta y código QR
         </a>
+        {/* Web Push opt-in for Android/desktop (spec 0038), renders nothing when Web Push
+            is off. iOS Safari short-circuits: `PushPrompt` would render back the hint. */}
+        {isIosSafariBrowser() ? null : (
+          <PushPrompt
+            vapidPublicKey={vapidPublicKey}
+            accentColor={brandPrimaryColor}
+          />
+        )}
+        {/* The buttons hit the session-authorized endpoint directly. */}
+        <div style={{ marginTop: 20 }}>
+          <WalletButtons isIos={isIos} />
+        </div>
       </section>
     );
   }

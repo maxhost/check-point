@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { SESSION_COOKIE } from "../../../server/consumer/core";
 import { resolveSession } from "../../../server/consumer/session";
@@ -10,17 +11,30 @@ import { WalletShell } from "./wallet-shell";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// PWA hooks (spec 0037): the per-consumer dynamic manifest (start_url carries the
-// web_view_token, ADR 0039) + the iOS `apple-mobile-web-app-capable` meta that lets the
+// PWA hooks (spec 0037/0050): the per-consumer dynamic manifest (start_url carries the
+// web_view_token, ADR 0039 §5) + the iOS `apple-mobile-web-app-capable` meta that lets the
 // installed icon open standalone (the only iOS context where Web Push works).
-export const metadata = {
-  manifest: "/wallet/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: "CheckPass Club",
-    statusBarStyle: "default",
-  },
-} as const;
+//
+// The manifest URL carries the token (`?c=`) because the browser fetches
+// `<link rel="manifest">` WITHOUT cookies (ADR 0048): this page is the last place that
+// still has the session, so it has to hand the token over in the href. Resolving the
+// session here duplicates the one in the body on purpose — `cookies()` is deduped by Next
+// and `resolveSession` is a single indexed lookup; sharing state across
+// `generateMetadata` and the component is not worth the indirection.
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const account = await resolveSession(store.get(SESSION_COOKIE)?.value);
+  return {
+    manifest: account
+      ? `/wallet/manifest.webmanifest?c=${encodeURIComponent(account.webViewToken)}`
+      : "/wallet/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      title: "CheckPass Club",
+      statusBarStyle: "default",
+    },
+  };
+}
 
 const page: React.CSSProperties = {
   maxWidth: 420,

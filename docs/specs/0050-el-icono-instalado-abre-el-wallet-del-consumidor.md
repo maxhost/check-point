@@ -1,7 +1,7 @@
 ---
 spec: 0050
 fecha: 2026-09-05
-estado: cerrada
+estado: implementada
 resumen: El ícono de inicio instalado desde iOS abre el wallet del consumidor y no el formulario de registro. Tras enrolarse el usuario va a `/wallet` (vía `/c/<token>`, que abre sesión) en lugar de que se le pida instalar en la confirmación del enroll; el instructivo iOS ya vive en `/wallet` y ya se oculta en standalone. Implementa el ADR 0048: el manifest recibe el token por su URL (`?c=`) porque el `<link rel="manifest">` se pide sin cookies.
 disjunta: si
 archivos: apps/merchant/src/app/(consumer)/wallet/page.tsx (generateMetadata), wallet/manifest.webmanifest/route.ts, enroll/[programId]/enroll-form.tsx, + tests
@@ -103,3 +103,57 @@ raíz: si nadie instala desde el enroll, iOS nunca captura esa URL.
   `/wallet` — correcto igual, sólo sin re-bootstrap de sesión. Es degradación aceptable
   (ADR 0048), no motivo de FAIL de esta spec.
 - Sin migración, sin secreto nuevo, sin dependencia nueva.
+
+## Resultado de la implementación (2026-09-05)
+
+**PASS de revisor independiente a la primera.** Tests **310 → 325**, los 5 gates verdes,
+sin migración ni secreto ni dependencia nueva.
+
+### Lo verificado que más importa
+
+- **El corazón del ADR 0048 está probado, no leído:** el test construye un `NextRequest`
+  real, asevera `headers.get("cookie") === null`, y el mock de `next/headers` **tira** si
+  alguien llama `cookies()`. Contra el código viejo explota con
+  `Error: next/headers cookies() must not be read here` — es un oráculo, no una lectura.
+- **Sin inyección ni open-redirect:** `start_url` se arma con `account.webViewToken` (el de
+  la base), nunca con el crudo de la query. El revisor lo probó con 12 payloads hostiles
+  (`https://evil.tld`, `//evil.tld`, `%00`, `../../`, `javascript:`, `?c=` repetido, 20 KB):
+  14/14 → `start_url === "/wallet"`, cero reflejo. Refuerzo estructural: los tokens se
+  generan con `randomBytes(32).toString("base64url")`, así que el alfabeto guardado no puede
+  contener `"`, `\`, `/`, `.` ni `%`.
+- **La premisa del ADR 0048 confirmada en el fuente de Next 16.3.0**
+  (`lib/metadata/metadata.js:291-297`): `crossOrigin: "use-credentials"` se agrega **sólo**
+  con `VERCEL_ENV === 'preview'`; en producción es `undefined`.
+- **11 de los 15 tests nuevos se ponen rojos contra `HEAD`** (los 9 del manifest, 2 del
+  enroll). Los otros 4 son guards de comportamiento preexistente y están declarados como
+  tales, no como cobertura del cambio.
+
+### La trampa que cazó el implementador
+
+Dejar el `PushPrompt` renderizándose en iOS habría **reintroducido el instructivo por la
+puerta de atrás**: `push-prompt.tsx:121` devuelve `<IosInstallHint/>` cuando
+`isIos && !isStandalone`. Se cortocircuitó (`isIosSafariBrowser() ? null : <PushPrompt/>`)
+y quedó pinneado. No rompe iOS standalone: ahí `isIosSafariBrowser()` es `false`, así que el
+`PushPrompt` sí se renderiza y ofrece el permiso.
+
+### Por qué el CTA va a `/wallet` a secas
+
+`consumerAccountResponse` es un allow-list explícito sin `webViewToken`. Devolverlo para
+armar `/c/<token>` habría cambiado el contrato de la API **y** metido un token at-bearer en
+un JSON de respuesta, contra la regla de DTOs de `CLAUDE.md`. El link directo funciona
+porque el POST del enroll ya setea `SESSION_COOKIE`.
+
+### Criterio NO cerrado
+
+- **QA en vivo en iPhone real** — del owner. Ningún test local prueba que Safari honre
+  `start_url` al "Agregar a inicio". Si lo ignorara, degrada a `/wallet`: aceptable por el
+  ADR 0048, no un fallo.
+
+### Seguimiento abierto (tarea 38, no entra acá)
+
+- **El instructivo iOS quedó acoplado a que VAPID esté configurado.** `push-prompt.tsx:82`
+  hace `if (!vapidPublicKey) return null` **antes** del check de iOS. El código borrado del
+  enroll lo renderizaba directo y su comentario declaraba ese desacople a propósito. Hoy no
+  muerde (VAPID está en prod desde la 0037), pero es una dependencia nueva no declarada.
+- **Falta un guard de que la página del enroll siga sin enlazar el manifest** — el ADR 0048
+  dice que no debe hacerlo, y hoy nada lo pinnea.
