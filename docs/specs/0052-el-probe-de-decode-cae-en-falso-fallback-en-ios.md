@@ -1,7 +1,7 @@
 ---
 spec: 0052
 fecha: 2026-09-05
-estado: borrador
+estado: cerrada
 resumen: El cropper (spec 0040) funciona en iPhone con fotos de cámara pero NUNCA aparece con archivos de la galería — ni siquiera con un PNG, que Safari decodifica sin duda. El probe `canDecodeImage` da un falso negativo para archivos del Photo Library y el flujo cae en el fallback silencioso. Fix por capas: `decode()` pierde el veto (si `onload` disparó con `naturalWidth>0`, es decodificable), retry con data URL si el blob URL falla, timeout para nunca colgar, y el probe devuelve el src utilizable para que el cropper consuma el mismo camino que funcionó.
 disjunta: si
 archivos: apps/merchant/src/lib/crop-image.ts, crop-image-decode.test.ts, app/components/image-cropper.tsx, los 3 hooks (pasar el src resuelto), + tests
