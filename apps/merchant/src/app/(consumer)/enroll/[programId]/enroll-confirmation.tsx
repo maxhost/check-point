@@ -11,12 +11,17 @@ import { PushPrompt } from "../../push-prompt";
  * from here must open the consumer's wallet, so the manifest handed over by the 201
  * (`walletManifestPath`, `start_url = /c/<token>`) is injected below.
  */
+/** Exact copy decided by the owner (ADR 0051): informs why the stored data won. */
+const EXISTING_ACCOUNT_NOTICE =
+  "Ya tienes una cuenta con ese teléfono: te enrolaste en el programa con tus datos.";
+
 export function EnrollConfirmation({
   firstName,
   businessName,
   brandPrimaryColor,
   vapidPublicKey,
   walletManifestPath,
+  existingAccount,
 }: {
   firstName: string;
   businessName: string;
@@ -24,6 +29,9 @@ export function EnrollConfirmation({
   vapidPublicKey: string | null;
   /** Per-consumer manifest path from the enroll 201; null when the response lacked it. */
   walletManifestPath: string | null;
+  /** From the enroll 201 (spec 0054 / ADR 0051): the phone already had an account and
+   * the profile was reused as-is. Shows a non-blocking notice; a fresh alta shows none. */
+  existingAccount: boolean;
 }) {
   // ADR 0049: inject `<link rel="manifest">` only while the confirmation is mounted.
   // Before the 201 the page has NO manifest on purpose — an icon added from the form
@@ -47,6 +55,24 @@ export function EnrollConfirmation({
 
   return (
     <section>
+      {/* Toast-style notice (spec 0054 / ADR 0051): informational and non-blocking,
+          fixed above the felicitación — never rendered on a fresh alta. */}
+      {existingAccount ? (
+        <p
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: "10px 12px",
+            background: "#eef6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: 10,
+            color: "#1e40af",
+            fontSize: 14,
+          }}
+        >
+          {EXISTING_ACCOUNT_NOTICE}
+        </p>
+      ) : null}
       <h2 style={{ fontSize: 20 }}>¡Listo, {firstName}! 🎉</h2>
       <p style={{ color: "#333", marginTop: 8 }}>
         Ya sos parte del programa de <strong>{businessName}</strong>.

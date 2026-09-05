@@ -14,7 +14,14 @@ import { EnrollConfirmation } from "./enroll-confirmation";
 type Screen =
   | { kind: "form" }
   // `walletManifestPath` comes from the 201 (spec 0051/ADR 0049); null if absent.
-  | { kind: "done"; firstName: string; walletManifestPath: string | null }
+  // `existingAccount` too (spec 0054/ADR 0051): true → the phone already had an
+  // account and the profile was reused as-is, so the confirmation shows the toast.
+  | {
+      kind: "done";
+      firstName: string;
+      walletManifestPath: string | null;
+      existingAccount: boolean;
+    }
   | { kind: "already_member" }
   | { kind: "unavailable" };
 
@@ -85,6 +92,7 @@ export function EnrollForm({
         // confirmation then simply injects no manifest.
         const data = (await res.json().catch(() => null)) as {
           walletManifestPath?: unknown;
+          existingAccount?: unknown;
         } | null;
         setScreen({
           kind: "done",
@@ -93,6 +101,9 @@ export function EnrollForm({
             typeof data?.walletManifestPath === "string"
               ? data.walletManifestPath
               : null,
+          // Only an explicit true shows the toast — an absent/odd field means a
+          // fresh alta (or an older server) and the confirmation stays as-is.
+          existingAccount: data?.existingAccount === true,
         });
         return;
       }
@@ -124,6 +135,7 @@ export function EnrollForm({
         brandPrimaryColor={brandPrimaryColor}
         vapidPublicKey={vapidPublicKey}
         walletManifestPath={screen.walletManifestPath}
+        existingAccount={screen.existingAccount}
       />
     );
   }

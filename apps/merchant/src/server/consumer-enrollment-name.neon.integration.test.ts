@@ -21,19 +21,20 @@ import {
 import { enroll } from "./consumer/enrollment";
 
 /**
- * The re-enroll refreshes the account name (ADR 0050 / spec 0053). This is an effect on
- * the DATABASE — a unit test with mocks cannot prove the UPDATE lands — so it runs
- * against a real Neon branch. It also pins what must NOT move: `phone_e164`,
- * `country_iso`, `qr_token` and `web_view_token` are compared row-by-row before/after,
- * and an enroll rejected with 409 `already_member` leaves the WHOLE row untouched — the
- * refresh only runs once the membership insert succeeded.
+ * The re-enroll leaves the account row untouched (ADR 0051 / spec 0054 — the exact
+ * inverse of the spec 0053 criterion these tests asserted before; the inversion is
+ * authorized by the ADR 0051, which supersedes the 0050). This is an effect on the
+ * DATABASE — a unit test with mocks cannot prove no UPDATE lands — so it runs against
+ * a real Neon branch: the whole row (all 13 columns, `updated_at` included) is
+ * compared byte for byte before/after a successful re-enroll into a second program,
+ * and an enroll rejected with 409 `already_member` leaves it untouched too.
  *
  * Isolated fixtures (own owner, two businesses, one operational program each — the
  * partial unique index allows a single operational program per business) so it can run
  * alongside the base enrollment suite without sharing state.
  */
 describe.skipIf(!enabled)(
-  "re-enroll refreshes the account name on Neon",
+  "re-enroll leaves the account untouched on Neon",
   () => {
     const userId = `name-${randomUUID()}`;
     const businessA = randomUUID();
@@ -133,8 +134,8 @@ describe.skipIf(!enabled)(
       await db.delete(users).where(eq(users.id, userId));
     }, 30_000);
 
-    it("first alta persists the typed name (the baseline the re-enroll will move)", async () => {
-      const { account } = await enroll(programA, {
+    it("first alta persists the typed name and is not flagged as existing", async () => {
+      const { account, existingAccount } = await enroll(programA, {
         firstName: "Cliente iOS 4",
         lastName: "QA",
         phoneE164: phoneExisting,
@@ -144,38 +145,36 @@ describe.skipIf(!enabled)(
       expect(stored.firstName).toBe("Cliente iOS 4");
       expect(stored.lastName).toBe("QA");
       expect(stored.id).toBe(account.id);
+      expect(existingAccount).toBe(false);
     });
 
-    it("re-enroll with an existing phone and a different name → the DB keeps the NEW name", async () => {
+    it("re-enroll with an existing phone → membership created, account byte for byte identical", async () => {
       const before = await readAccount(phoneExisting);
 
-      const { account } = await enroll(programB, {
+      const { account, membership, existingAccount } = await enroll(programB, {
+        // A different name and country on purpose: NOTHING of it may land (ADR 0051 —
+        // the typed data is discarded on a reused account; the toast says why).
         firstName: "Logan",
         lastName: "Wolf",
         // Same phone, so `accountByPhone` resolves the account created above.
         phoneE164: phoneExisting,
-        // A different country on purpose: it must NOT be adopted (out of ADR 0050).
         countryIso: "AR",
       });
 
-      // The value handed back is the UPDATED row — the 201, the Wallet pass and the
-      // portal read the name off here, so a stale row would resurface the old name.
-      expect(account.firstName).toBe("Logan");
-      expect(account.lastName).toBe("Wolf");
+      // The caller is told the account pre-existed — that is ALL that changes for it.
+      expect(existingAccount).toBe(true);
+      expect(membership.programId).toBe(programB);
 
+      // The value handed back is the STORED row — the 201, the Wallet pass and the
+      // portal read off here, so it must carry the saved data, not the typed one.
+      expect(account.id).toBe(before.id);
+      expect(account.firstName).toBe("Cliente iOS 4");
+      expect(account.lastName).toBe("QA");
+
+      // The whole row, compared byte for byte (all 13 columns, `updated_at`
+      // included): a successful re-enroll writes NOTHING to the account.
       const after = await readAccount(phoneExisting);
-      expect(after.firstName).toBe("Logan");
-      expect(after.lastName).toBe("Wolf");
-
-      // Identity and credentials are byte-identical before/after (spec 0053).
-      expect(after.id).toBe(before.id);
-      expect(after.phoneE164).toBe(before.phoneE164);
-      expect(after.countryIso).toBe(before.countryIso);
-      expect(after.countryIso).toBe("EC");
-      expect(after.qrToken).toBe(before.qrToken);
-      expect(after.webViewToken).toBe(before.webViewToken);
-      // Phone verification state is not touched either (tarea 41, out of scope).
-      expect(after.phoneVerifiedAt).toBe(before.phoneVerifiedAt);
+      expect(after).toEqual(before);
 
       // Still one account, now with two memberships.
       const accounts = await getDb()
@@ -191,9 +190,9 @@ describe.skipIf(!enabled)(
     });
 
     it("409 already_member: the account row is NOT modified — not the name, not anything", async () => {
-      // The criterion born from the owner's correction (ADR 0050 / spec 0053): a
-      // rejected operation leaves no effects. The first implementation updated the name
-      // and only then hit the duplicate — this test is red against that order.
+      // The invariant the owner DID validate of the 0050 era, conserved by the ADR
+      // 0051: a rejected operation leaves no effects. Now trivial (no path writes to
+      // the account) but still a guard against a regression that reintroduces one.
       const before = await readAccount(phoneExisting);
 
       await expect(
@@ -208,8 +207,8 @@ describe.skipIf(!enabled)(
       const after = await readAccount(phoneExisting);
       // Whole row compared, not just the name: no column moved, `updated_at` included.
       expect(after).toEqual(before);
-      expect(after.firstName).toBe("Logan");
-      expect(after.lastName).toBe("Wolf");
+      expect(after.firstName).toBe("Cliente iOS 4");
+      expect(after.lastName).toBe("QA");
 
       // No extra membership was created by the rejected attempt.
       const memberships = await getDb()

@@ -44,13 +44,22 @@ export async function POST(
       typeof bodyLoc === "string"
         ? bodyLoc
         : request.nextUrl.searchParams.get("loc");
-    const { account, membership } = await enroll(programId, input, loc);
+    const { account, membership, existingAccount } = await enroll(
+      programId,
+      input,
+      loc,
+    );
     // Only a successful enroll opens a session (a 409 never reaches here).
     const token = await issueSession(account.id);
     const response = NextResponse.json(
       {
         account: consumerAccountResponse(account),
         membership: membershipResponse(membership),
+        // Spec 0054 / ADR 0051: tells the confirmation the profile was reused as-is so
+        // it can show the "ya tienes una cuenta" toast. Same criterion as
+        // `walletManifestPath` below: it travels ONLY in this 201 — the response that
+        // issues the session, to the owner of that session — never on an error path.
+        existingAccount,
         // Spec 0051 / ADR 0049: lets the confirmation inject the per-consumer manifest
         // so the icon installed THERE opens the wallet. Safe to hand over precisely
         // (and only) here: this 201 is the same response that issues the session —

@@ -21,6 +21,12 @@ const PROGRAM_UNAVAILABLE = "Este programa no está disponible.";
 export type EnrollResult = {
   account: ConsumerAccountRow;
   membership: MembershipRow;
+  /**
+   * True when the phone already had an account — including the race path (23505),
+   * where another request created it an instant before this one. The 201 exposes it
+   * so the confirmation can show the "ya tienes una cuenta" toast (ADR 0051).
+   */
+  existingAccount: boolean;
 };
 
 /** Reads a program that admits enrollment (active | closing). A malformed uuid
@@ -92,39 +98,6 @@ async function accountByPhone(
 }
 
 /**
- * Applies the freshest typed name to an already existing account (ADR 0050 / spec 0053)
- * and returns the UPDATED row — the 201, the Wallet pass and the portal all read the
- * name off this row, so returning the pre-update one would keep showing the stale name.
- *
- * Call this ONLY after the membership insert succeeded: a rejected enroll must not leave
- * effects (ADR 0050).
- *
- * Deliberately narrow: touches ONLY `first_name`/`last_name` (plus the row's
- * `updated_at`). `phone_e164`, `country_iso`, `qr_token`, `web_view_token` and the
- * verification state are identity and credentials — explicitly out of scope for this
- * decision (ADR 0050) and asserted unchanged by the integration test.
- *
- * Returns `undefined` if no row matched (the account vanished between the read and the
- * update); the caller keeps the row it already has rather than failing an alta that
- * already landed.
- */
-async function applyFreshName(
-  accountId: string,
-  input: EnrollInput,
-): Promise<ConsumerAccountRow | undefined> {
-  const [updated] = await getDb()
-    .update(consumerAccounts)
-    .set({
-      firstName: input.firstName,
-      lastName: input.lastName,
-      updatedAt: new Date(),
-    })
-    .where(eq(consumerAccounts.id, accountId))
-    .returning();
-  return updated;
-}
-
-/**
  * Enrolls a consumer into a program. Validates the program admits enrollment
  * (active/closing → continue; inactive/missing → 404). Reuses the account by
  * phone — or creates it with a fresh `qrToken` — and then creates the membership, or
@@ -132,11 +105,11 @@ async function applyFreshName(
  * race also lands on 409). Never opens a session here — the caller does that only on
  * success.
  *
- * On a reused account the name just typed wins (ADR 0050), but the UPDATE runs **after**
- * the membership insert succeeded: a rejected operation leaves NO effects. An enroll that
- * ends in 409 `already_member` (or in any other error) leaves the account exactly as it
- * was — name included. A brand-new phone needs no update at all: the typed name goes in
- * the insert itself.
+ * An existing account is reused AS-IS (ADR 0051, superseding the 0050): the enroll
+ * writes NOTHING to `consumer_account` — not the name, not any column. The name just
+ * typed is deliberately discarded on a reused account; the 201 carries
+ * `existingAccount: true` so the confirmation can say why the stored data won. The
+ * only write to the account table is the `insert` of a brand-new phone.
  *
  * `originLocationId` (raw, optional; ADR 0042/spec 0041) is the `loc` from the poster
  * QR: validated against the program's business, persisted only on the FIRST alta. A
@@ -156,13 +129,12 @@ export async function enroll(
   );
 
   const existing = await accountByPhone(input.phoneE164);
-  // The phone already has an account → reuse that identity as-is for now. The name the
-  // user just typed wins (ADR 0050), but only once the membership landed, so nothing is
-  // written on a path that ends in 409.
+  // The phone already has an account → reuse that identity as-is, byte for byte. The
+  // profile is never rewritten here (ADR 0051) — the caller informs instead of mutating.
   let account: ConsumerAccountRow | undefined = existing;
-  // True while `account` is a pre-existing row still carrying the stored (stale) name.
-  // An account created below already goes in with the typed name — nothing to refresh.
-  let nameIsStale = existing !== undefined;
+  // True when the account pre-existed this request — including the race below, where
+  // another request created it an instant earlier. Exposed on the result (ADR 0051).
+  let existingAccount = existing !== undefined;
   if (!existing) {
     try {
       [account] = await db
@@ -179,14 +151,13 @@ export async function enroll(
         })
         .returning();
     } catch (error) {
-      // Concurrent enroll created the account first → reuse THAT row (its id, tokens
-      // and country stay as created; they are never overwritten). The name is the one
-      // exception: the value just typed wins here too (ADR 0050) — refreshed after the
-      // membership insert, like any other reused account — so the outcome does not
-      // depend on who won the race.
+      // Concurrent enroll created the account first → reuse THAT row exactly as it was
+      // created (id, name, tokens, country — nothing is overwritten, ADR 0051). For the
+      // caller this is an existing account too: it pre-existed this request, even if
+      // only by an instant.
       if (pgErrorCode(error) === "23505") {
         account = await accountByPhone(input.phoneE164);
-        nameIsStale = account !== undefined;
+        existingAccount = account !== undefined;
       } else {
         throw error;
       }
@@ -212,8 +183,8 @@ export async function enroll(
       })
       .returning();
   } catch (error) {
-    // Nothing was written to the account before this point, so a rejected enroll — the
-    // 409 below or any other failure — leaves it untouched (ADR 0050).
+    // The account is never written on a reused phone (ADR 0051), so a rejected
+    // enroll — the 409 below or any other failure — leaves it untouched.
     if (pgErrorCode(error) === "23505") {
       throw new ConsumerError(
         409,
@@ -224,12 +195,7 @@ export async function enroll(
     throw error;
   }
 
-  // The alta succeeded → and only now the freshest typed name wins on a reused account.
-  // If the row vanished under us the alta still stands: keep the row we have (stale
-  // name) instead of failing an enrollment that already landed.
-  if (nameIsStale)
-    account = (await applyFreshName(account.id, input)) ?? account;
-  return { account, membership };
+  return { account, membership, existingAccount };
 }
 
 export type EnrollLanding = {

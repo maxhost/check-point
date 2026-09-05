@@ -1,7 +1,7 @@
 ---
 spec: 0054
 fecha: 2026-09-05
-estado: cerrada
+estado: implementada
 resumen: Revierte la spec 0053 e implementa el ADR 0051. Enrolarse con un teléfono ya registrado NO modifica nada del perfil — la membresía se crea con los datos que ya están en la base — y la confirmación avisa con un toast ("Ya tienes una cuenta con ese teléfono: te enrolaste en el programa con tus datos"). El 201 suma un booleano `existingAccount`. Se conserva de la 0053 el invariante "una operación no exitosa no deja efectos" y sus tests. Sin migración.
 disjunta: si
 archivos: apps/merchant/src/server/consumer/enrollment.ts, app/api/public/enroll/[programId]/route.ts, enroll/[programId]/enroll-form.tsx + enroll-confirmation.tsx, + tests (los de la 0053 se invierten/adaptan, autorizado por el ADR 0051)
@@ -61,3 +61,26 @@ archivos: apps/merchant/src/server/consumer/enrollment.ts, app/api/public/enroll
 - Ningún doc queda afirmando la decisión vieja: ADR 0050 marcado supersedido, spec 0053
   marcada revertida, INDEX y TASKS actualizados en el mismo commit.
 - Sin migración, sin secreto, sin dependencia nueva.
+
+## Resultado de la implementación (2026-09-05)
+
+**PASS de revisor independiente sin hallazgos.** Tests **357 → 370**, los 5 gates verdes.
+`enrollment.ts` **achicó** de 286 a 252 líneas — se fue código, no vino más.
+
+- **La conducta central está blindada en dos niveles:** reintroducir el update de la 0053
+  pone 4 unit y **3 tests de Neon real** en rojo (byte-for-byte, 409-no-modifica, y la
+  assertion Marcos/Pérez restaurada). Grep en todo `src/`: cero `update(consumerAccounts)`
+  fuera de la rotación de tokens de wallet, que es ajena al enroll.
+- **`existingAccount` veraz en todos los caminos**: `true` también en la carrera `23505`,
+  `false` explícito (`toHaveProperty`) en el alta nueva, ausente en los 6 caminos de error
+  (mutación sobre la rama de error → 4 rojos).
+- **El toast degrada seguro**: `data?.existingAccount === true` — un server viejo que no
+  mande el campo no lo muestra por accidente.
+- **Nada de la 0051-instalación ni de la 0052 se tocó**: `enroll-install-hint.test.ts` con
+  0 líneas de diff; manifest, hint iOS, PushPrompt y WalletButtons intactos.
+- El revisor corrió la suite Neon **completa** (23 archivos, 100/100) contra la rama
+  efímera, no sólo la del cambio.
+
+**Criterio NO cerrado — QA en vivo (owner):** re-enrolarse con un teléfono ya registrado en
+otro programa → ver el toast "Ya tienes una cuenta con ese teléfono: te enrolaste en el
+programa con tus datos." y el pase/portal con los datos guardados.

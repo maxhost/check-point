@@ -1,22 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Unit coverage for the name refresh of the re-enroll (ADR 0050 / spec 0053).
+ * Unit coverage for the re-enroll leaving the profile alone (ADR 0051 / spec 0054,
+ * reverting the ADR 0050 / spec 0053 name refresh — the inversion of these tests is
+ * authorized by the ADR 0051 itself).
  *
- * The DB effect itself is proven against a real Neon branch
+ * The DB effect is proven against a real Neon branch
  * (`consumer-enrollment-name.neon.integration.test.ts`); what is checked HERE is the
- * shape of the value `enroll()` hands back — the 201, the Wallet pass and the portal
- * all read the name off `result.account`, so returning the pre-update row would keep
- * showing the stale name even with the UPDATE landing correctly.
- *
- * It also pins the ORDER: the refresh must run after the membership insert, so an enroll
- * that ends in 409 issues no UPDATE at all (a rejected operation leaves no effects).
+ * shape of what `enroll()` hands back — the 201, the Wallet pass and the portal all
+ * read off `result.account`, so it must be the STORED row (typed name discarded) plus
+ * the `existingAccount` flag the confirmation toast depends on.
  *
  * The fake db is a recording chain: it answers `select … limit` from a per-table queue
- * and resolves `update … returning` by merging the `set` payload onto the stored row,
- * which is what Postgres does. Every statement is recorded so the test can assert that
- * the update targets `consumer_account`, carries ONLY the two name columns and happens
- * after the membership insert.
+ * and records every statement, so the tests can assert that `enroll()` issues NO write
+ * on `consumer_account` other than the insert of a brand-new alta — no UPDATE exists
+ * on any path, successful or not.
  */
 
 type Row = Record<string, unknown>;
@@ -153,6 +151,13 @@ function queueProgram() {
   state.reads.loyalty_program = [[{ id: "program-1", businessId: "biz-1" }]];
 }
 
+/** Every recorded write (insert/update/delete) touching consumer_account. */
+function accountWrites(): Statement[] {
+  return state.statements.filter(
+    (s) => s.kind !== "select" && s.table === "consumer_account",
+  );
+}
+
 afterEach(() => {
   state.reads = {};
   state.rows = {};
@@ -161,74 +166,81 @@ afterEach(() => {
   state.statements = [];
 });
 
-describe("enroll() returns the refreshed name — spec 0053", () => {
-  it("the account it hands back carries the name just typed, not the stored one", async () => {
+describe("enroll() reuses the stored profile as-is — spec 0054 / ADR 0051", () => {
+  it("hands back the stored row untouched: the typed name is discarded", async () => {
     const existing = storedAccount();
     queueProgram();
     state.reads.consumer_account = [[existing]];
 
-    const { account } = await enroll("program-1", INPUT);
+    const { account, existingAccount } = await enroll("program-1", INPUT);
 
-    expect(account.firstName).toBe("Logan");
-    expect(account.lastName).toBe("Wolf");
-    // Same identity: it is a refresh of the existing account, not a new one.
+    // Same identity, same data — including the name the user did NOT get to change.
     expect(account.id).toBe("acc-existing");
+    expect(account.firstName).toBe("Cliente iOS 4");
+    expect(account.lastName).toBe("QA");
+    expect(existingAccount).toBe(true);
   });
 
-  it("updates consumer_account with ONLY the two name columns (no phone/country/tokens)", async () => {
+  it("issues NO write on consumer_account when the phone already has one", async () => {
     const existing = storedAccount();
     queueProgram();
     state.reads.consumer_account = [[existing]];
 
     const { account } = await enroll("program-1", INPUT);
 
-    const updates = state.statements.filter((s) => s.kind === "update");
-    expect(updates).toHaveLength(1);
-    expect(updates[0].table).toBe("consumer_account");
-    expect(Object.keys(updates[0].payload ?? {}).sort()).toEqual([
-      "firstName",
-      "lastName",
-      "updatedAt",
-    ]);
+    expect(accountWrites()).toHaveLength(0);
     // Identity and credentials survive untouched in the returned row.
     expect(account.phoneE164).toBe(PHONE);
     expect(account.countryIso).toBe("EC");
     expect(account.qrToken).toBe("qr-token-original");
     expect(account.webViewToken).toBe("web-view-token-original");
     expect(account.phoneVerifiedAt).toBeNull();
+    // And the stored row itself never moved.
+    expect(state.rows["acc-existing"].firstName).toBe("Cliente iOS 4");
+    expect(state.rows["acc-existing"].updatedAt).toEqual(
+      new Date("2026-08-16T00:00:00Z"),
+    );
   });
 
-  it("the concurrent-race path (23505 on insert) also ends with the new name", async () => {
+  it("the concurrent-race path (23505 on insert) also reuses the row as-is, flagged existing", async () => {
     const raced = storedAccount();
     queueProgram();
     // First read finds nothing → insert → 23505 (a concurrent enroll won) → re-read.
     state.reads.consumer_account = [[], [raced]];
     state.insertAccountError = { code: "23505" };
 
-    const { account } = await enroll("program-1", INPUT);
+    const { account, existingAccount } = await enroll("program-1", INPUT);
 
     expect(account.id).toBe("acc-existing");
-    expect(account.firstName).toBe("Logan");
-    expect(account.lastName).toBe("Wolf");
-    // The row created by the race keeps its own tokens; only the name was refreshed.
+    // The row created by the race wins whole: name, tokens, everything.
+    expect(account.firstName).toBe("Cliente iOS 4");
+    expect(account.lastName).toBe("QA");
     expect(account.qrToken).toBe("qr-token-original");
-    expect(state.statements.filter((s) => s.kind === "update")).toHaveLength(1);
+    // It pre-existed this request (by an instant) → the toast applies here too.
+    expect(existingAccount).toBe(true);
+    expect(state.statements.filter((s) => s.kind === "update")).toHaveLength(0);
   });
 
-  it("a brand-new phone still inserts the account and never issues an update", async () => {
+  it("a brand-new phone inserts the account (the ONLY account write) and is not flagged existing", async () => {
     queueProgram();
     state.reads.consumer_account = [[]];
 
-    const { account, membership } = await enroll("program-1", INPUT);
+    const { account, membership, existingAccount } = await enroll(
+      "program-1",
+      INPUT,
+    );
 
-    expect(state.statements.filter((s) => s.kind === "update")).toHaveLength(0);
+    const writes = accountWrites();
+    expect(writes).toHaveLength(1);
+    expect(writes[0].kind).toBe("insert");
     expect(account.firstName).toBe("Logan");
     expect(account.countryIso).toBe("AR");
     expect(account.qrToken).toBeTruthy();
     expect(membership.programId).toBe("program-1");
+    expect(existingAccount).toBe(false);
   });
 
-  it("the refresh runs AFTER the membership insert, never before", async () => {
+  it("a successful re-enroll writes ONLY the membership — no statement ever targets the account", async () => {
     const existing = storedAccount();
     queueProgram();
     state.reads.consumer_account = [[existing]];
@@ -238,7 +250,6 @@ describe("enroll() returns the refreshed name — spec 0053", () => {
     const writes = state.statements.filter((s) => s.kind !== "select");
     expect(writes.map((s) => `${s.kind} ${s.table}`)).toEqual([
       "insert program_membership",
-      "update consumer_account",
     ]);
   });
 
@@ -253,7 +264,7 @@ describe("enroll() returns the refreshed name — spec 0053", () => {
       code: "already_member",
     });
 
-    expect(state.statements.filter((s) => s.kind === "update")).toHaveLength(0);
+    expect(accountWrites()).toHaveLength(0);
     // The stored row is the one the fake db would have mutated — still the old name.
     expect(state.rows["acc-existing"].firstName).toBe("Cliente iOS 4");
     expect(state.rows["acc-existing"].lastName).toBe("QA");
