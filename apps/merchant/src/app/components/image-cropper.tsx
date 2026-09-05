@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Cropper from "react-easy-crop";
 import {
   cropImageToBlob,
@@ -10,7 +10,14 @@ import {
 } from "../../lib/crop-image";
 
 type Props = {
-  file: File;
+  /**
+   * The `src` the decode probe itself loaded successfully (`resolveDecodableImage`, spec
+   * 0052 §3). **This component must not mint its own object URL**: the probe approving
+   * through one URL while the modal rendered through another is exactly the divergence that
+   * left iPhone gallery files with no cropper at all. The owner of the `src` is the hook,
+   * which also revokes it.
+   */
+  src: string;
   surface: CropSurface;
   onDone: (blob: Blob, type: string) => void;
   onCancel: () => void;
@@ -30,32 +37,25 @@ type Props = {
  * a constraint — it hands the user control over a centre-crop that already happened blind.
  */
 export default function ImageCropper({
-  file,
+  src,
   surface,
   onDone,
   onCancel,
 }: Props) {
-  const [url, setUrl] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<CropArea | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const objectUrl = URL.createObjectURL(file);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
-
   async function confirm() {
-    if (!url || !area) return;
+    if (!area) return;
     setBusy(true);
     setError(null);
     try {
-      // Re-loading the same object URL is cache-cheap and gives us an <img> the browser has
+      // Re-loading the very same src is cache-cheap and gives us an <img> the browser has
       // already oriented via EXIF, which is what `drawImage` must receive.
-      const image = await loadImageElement(url);
+      const image = await loadImageElement(src);
       const result = await cropImageToBlob({ image, area, surface });
       onDone(result.blob, result.type);
     } catch (reason) {
@@ -80,22 +80,20 @@ export default function ImageCropper({
           <h2>Encuadra tu imagen</h2>
         </header>
         <div className="image-cropper-stage">
-          {url && (
-            <Cropper
-              image={url}
-              aspect={1}
-              crop={crop}
-              zoom={zoom}
-              minZoom={1}
-              maxZoom={4}
-              showGrid
-              restrictPosition
-              zoomWithScroll
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={(_, pixels) => setArea(pixels)}
-            />
-          )}
+          <Cropper
+            image={src}
+            aspect={1}
+            crop={crop}
+            zoom={zoom}
+            minZoom={1}
+            maxZoom={4}
+            showGrid
+            restrictPosition
+            zoomWithScroll
+            onCropChange={setCrop}
+            onZoomChange={setZoom}
+            onCropComplete={(_, pixels) => setArea(pixels)}
+          />
         </div>
         <label className="image-cropper-zoom">
           Zoom

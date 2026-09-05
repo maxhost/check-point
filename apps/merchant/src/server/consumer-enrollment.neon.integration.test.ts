@@ -151,14 +151,16 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
 
   it("reuses the same account across a second program: 1 account / 2 memberships", async () => {
     const { account } = await enroll(programClosing, {
-      // Different form data must NOT overwrite the reused profile.
+      // The NAME typed now wins over the stored one (ADR 0050 / spec 0053) — this
+      // assertion was inverted before that decision. The rest of the profile is
+      // still never overwritten.
       firstName: "OTRO",
       lastName: "NOMBRE",
       phoneE164: phoneMain,
       countryIso: "BR",
     });
-    expect(account.firstName).toBe("Marcos");
-    expect(account.lastName).toBe("Pérez");
+    expect(account.firstName).toBe("OTRO");
+    expect(account.lastName).toBe("NOMBRE");
     // Reuse must not overwrite the country either (still the create-time "EC").
     expect(account.countryIso).toBe("EC");
     const accounts = await getDb()

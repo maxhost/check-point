@@ -116,6 +116,18 @@ chequear con un comando, es un hook — no la escribas aca tambien.
     hace falta red). Ojo: `rm -rf` esta en el deny de `.claude/settings.json`, usar `rm -f`
     sobre los archivos.
 
+- **Worktrees en este monorepo: SI para leer y para vitest directo, NO para `pnpm run <script>`.**
+  **NI `pnpm run` NI `pnpm exec` son seguros adentro de un worktree con `node_modules`
+  symlinkeado al repo real**: los dos disparan `runDepsStatusCheck` → `pnpm install` → **intenta
+  purgar ese `node_modules`**, que por el symlink son las dependencias posta. Pasó dos veces en la
+  spec 0053: un implementador lo abortó a tiempo y un revisor se comió el
+  `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` (que sin TTY es lo que te salva). Nadie perdió
+  `node_modules`, pero el camino estaba armado las dos veces.
+  **Para probar mutaciones, la opcion segura es hacerlo IN-PLACE en el repo real con backup y
+  verificacion de hash** (`shasum` antes/despues), o invocar el binario directo sin pnpm
+  (`node node_modules/vitest/vitest.mjs run <path>`). Los worktrees siguen siendo utiles para
+  **leer** codigo viejo (`git show HEAD:<archivo>` alcanza casi siempre y es mas barato).
+
 - **`git push` a `main` falla con "Invalid username or token" aunque `gh` este logueado.**
   Hay un `GH_TOKEN` **invalido** en el entorno que tapa las credenciales validas del keyring
   (`gh auth status` muestra `X Failed to log in ... using token (GH_TOKEN)` y ademas dos

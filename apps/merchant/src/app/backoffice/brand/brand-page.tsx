@@ -245,9 +245,9 @@ export default function BrandPage() {
             {saving ? "Guardando…" : "Guardar marca"}
           </button>
         </section>
-        {logo.pending && (
+        {logo.pending && logo.pendingSrc && (
           <ImageCropper
-            file={logo.pending}
+            src={logo.pendingSrc}
             surface="logo"
             onDone={logo.applyCrop}
             onCancel={logo.cancelCrop}

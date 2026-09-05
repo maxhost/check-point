@@ -1,13 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_IMAGE_LABEL,
   isAcceptedImageType,
 } from "../../../lib/image-formats";
-import {
-  canDecodeImage,
-  croppedFileName,
-  decideImageChoice,
-} from "../../../lib/crop-image";
+import { croppedFileName, decideImageChoice } from "../../../lib/crop-image";
+import { resolveDecodableImage } from "../../../lib/image-decode-probe";
 import type { ImageCredit, StockPhoto } from "./types";
 
 type StockChoice = {
@@ -31,6 +28,10 @@ export function useCatalogImage(
 ) {
   const [selected, setSelected] = useState<File | null>(null);
   const [pending, setPending] = useState<File | null>(null);
+  // The src the probe proved loadable, handed straight to the cropper (spec 0052 §3), plus
+  // its release function: this hook owns the object URL, the modal only renders it.
+  const [pendingSrc, setPendingSrc] = useState<string | null>(null);
+  const releasePending = useRef<(() => void) | null>(null);
   const [cropped, setCropped] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
@@ -42,6 +43,17 @@ export function useCatalogImage(
     },
     [preview],
   );
+
+  // Unmounting mid-crop must not leak the probe's object URL either.
+  useEffect(() => () => releasePending.current?.(), []);
+
+  /** Drops the crop candidate and releases the src the probe resolved for it. */
+  function dropPending() {
+    releasePending.current?.();
+    releasePending.current = null;
+    setPending(null);
+    setPendingSrc(null);
+  }
 
   function clearPreview() {
     setPreview((current) => {
@@ -75,12 +87,18 @@ export function useCatalogImage(
     }
     // Decodable → park it for the 1:1 cropper. Undecodable (HEIC outside Safari, ADR 0047)
     // → silent fallback to the pre-cropper behaviour: the original file, untouched.
-    const choice = decideImageChoice(file, await canDecodeImage(file));
+    const resolved = await resolveDecodableImage(file);
+    const choice = decideImageChoice(file, resolved !== null);
     if (choice.mode === "crop") {
+      // `crop` is returned exactly when the probe resolved; the guard is for the compiler.
+      if (!resolved) return;
+      releasePending.current?.();
+      releasePending.current = resolved.cleanup;
       setPending(choice.pending);
+      setPendingSrc(resolved.src);
       return;
     }
-    setPending(null);
+    dropPending();
     setCropped(choice.cropped);
     setStock(null);
     setSelected(choice.selected);
@@ -92,7 +110,7 @@ export function useCatalogImage(
     const source = pending;
     if (!source) return;
     const file = new File([blob], croppedFileName(source.name, type), { type });
-    setPending(null);
+    dropPending();
     setCropped(true);
     setStock(null);
     setSelected(file);
@@ -101,12 +119,12 @@ export function useCatalogImage(
   }
 
   function cancelCrop() {
-    setPending(null);
+    dropPending();
   }
 
   function chooseStock(provider: string, photo: StockPhoto) {
     setSelected(null);
-    setPending(null);
+    dropPending();
     setCropped(false);
     setRemoved(false);
     clearPreview();
@@ -122,7 +140,7 @@ export function useCatalogImage(
 
   function remove() {
     setSelected(null);
-    setPending(null);
+    dropPending();
     setCropped(false);
     setStock(null);
     setRemoved(true);
@@ -186,6 +204,7 @@ export function useCatalogImage(
   return {
     selected,
     pending,
+    pendingSrc,
     cropped,
     stock,
     visible,

@@ -110,9 +110,9 @@ export function ProductImageField({
           onError={onError}
         />
       )}
-      {image.pending && (
+      {image.pending && image.pendingSrc && (
         <ImageCropper
-          file={image.pending}
+          src={image.pendingSrc}
           surface="catalog"
           onDone={image.applyCrop}
           onCancel={() => {

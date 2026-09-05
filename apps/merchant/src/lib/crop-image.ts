@@ -63,8 +63,8 @@ export function croppedFileName(original: string, type: string): string {
 }
 
 /**
- * Loads an object URL into an `<img>`. Used both to probe decodability and to feed
- * `drawImage`, so the browser — not us — applies EXIF orientation: an `<img>` renders with
+ * Loads the resolved `src` of `image-decode-probe.ts` into an `<img>` to feed `drawImage`,
+ * so the browser — not us — applies EXIF orientation: an `<img>` renders with
  * `image-orientation: from-image` by default, and `naturalWidth/Height` already reflect the
  * rotation. `createImageBitmap` does **not** do that unless it gets
  * `{ imageOrientation: "from-image" }`, and a sideways preview means the user frames the
@@ -80,36 +80,7 @@ export function loadImageElement(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Asks the browser the only question that matters: "can you open this file?".
- *
- * Detection is **by behaviour, never by user-agent** (spec 0040, decision 3). Chrome,
- * Firefox and Edge cannot decode HEIC (HEVC is patent-encumbered — ADR 0047), which is the
- * format of Android and iPhone gallery photos; when this returns `false` the caller falls
- * back silently to uploading the original file, exactly like before the cropper existed.
- */
-export async function canDecodeImage(file: Blob): Promise<boolean> {
-  if (typeof URL === "undefined" || typeof Image === "undefined") return false;
-  let url: string;
-  try {
-    url = URL.createObjectURL(file);
-  } catch {
-    return false;
-  }
-  try {
-    const image = await loadImageElement(url);
-    // `decode()` catches formats that fire `load` but fail to rasterize; not all
-    // browsers implement it, hence the guard.
-    if (typeof image.decode === "function") await image.decode();
-    return image.naturalWidth > 0 && image.naturalHeight > 0;
-  } catch {
-    return false;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/**
- * What `choose()` must do with a picked file, given the answer of `canDecodeImage`.
+ * What `choose()` must do with a picked file, given the answer of `resolveDecodableImage`.
  *
  * `crop` parks the file until the user frames it; `fallback` is the **pre-cropper**
  * behaviour — the very same `File` object is uploaded, untouched (ADR 0047 §1: "if it

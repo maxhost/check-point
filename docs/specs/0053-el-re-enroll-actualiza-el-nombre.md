@@ -1,7 +1,7 @@
 ---
 spec: 0053
 fecha: 2026-09-05
-estado: cerrada
+estado: implementada
 resumen: Enrolarse con un teléfono ya registrado actualiza `first_name`/`last_name` de la cuenta con lo tipeado, en vez de descartarlo en silencio (implementa el ADR 0050). El pase de Wallet y el portal pasan a mostrar el nombre que el usuario acaba de escribir. No toca teléfono, país ni tokens. Sin migración.
 disjunta: si
 archivos: apps/merchant/src/server/consumer/enrollment.ts, + tests (unidad e integración Neon)
@@ -27,7 +27,8 @@ base — el bug está en el enroll, no en el pase.
 
 **Entra:**
 - En `enroll()`, cuando la cuenta ya existe: `UPDATE` de `first_name` y `last_name` con los
-  valores **validados** del input, y seguir con el alta de membresía.
+  valores **validados** del input, **después de que el alta de membresía haya tenido éxito**.
+  El orden importa: una operación que termina en 409 **no debe escribir nada**.
 - Que el `account` devuelto (y por lo tanto el 201, el pase y el portal) lleve **el nombre
   nuevo**, no el viejo.
 - Que aplique también en el camino de la **carrera concurrente** (`23505` → re-lectura de la
@@ -36,17 +37,16 @@ base — el bug está en el enroll, no en el pase.
 
 **No entra:**
 - Tocar `phone_e164`, `country_iso`, `qr_token`, `web_view_token` ni `verified`.
-- El **409 de ya-miembro**: lanza en el insert de membresía, después del update del nombre.
-  Que el nombre se actualice y la membresía sea rechazada es aceptable (el usuario ya es
-  miembro y acaba de decir cómo se llama). **Declararlo en el handoff**, no cambiarlo.
+- Cambiar el **409 de ya-miembro** en sí (su status, su mensaje o su pantalla): fuera de
+  alcance. Lo que **sí** entra es que ese camino **no deje efectos** (ver abajo).
 - Verificación del teléfono en el re-enroll. Es el hallazgo preexistente de la tarea 41 y
   necesita su propia decisión — **no se resuelve acá ni se agrava**.
 - El arte visual del pase (tarea 29).
 
 ## Criterios de aceptación (verificables)
 
-- [ ] Enrolar con un teléfono **ya registrado** y un nombre distinto → la cuenta queda con el
-  nombre nuevo en la base. **Test de integración Neon** (es un efecto sobre la base; un
+- [ ] Enrolar con un teléfono **ya registrado** en un programa **nuevo** → alta exitosa y la
+  cuenta queda con el nombre nuevo en la base. **Test de integración Neon** (es un efecto sobre la base; un
   unit test con mocks no lo prueba).
 - [ ] El `account` devuelto por `enroll()` trae el nombre **nuevo** (no el de antes del
   update), así que el 201 y el pase lo reflejan. **Test.**
@@ -54,6 +54,9 @@ base — el bug está en el enroll, no en el pase.
 - [ ] `phone_e164`, `country_iso`, `qr_token` y `web_view_token` **no cambian** en el
   re-enroll. **Test que los compara antes/después.**
 - [ ] El camino de carrera concurrente (`23505`) también deja el nombre nuevo. **Test.**
+- [ ] **Un enroll que termina en `409 already_member` NO modifica el nombre** (ni ninguna
+  otra columna): la cuenta queda byte a byte como estaba. **Test de integración Neon** que
+  compara la fila antes/después — es el criterio que nació de la corrección del owner.
 - [ ] Los 5 gates verdes; el conteo de tests **no baja** de 340.
 
 ## Pruebas

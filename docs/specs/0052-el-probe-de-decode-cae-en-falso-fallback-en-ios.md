@@ -1,7 +1,7 @@
 ---
 spec: 0052
 fecha: 2026-09-05
-estado: cerrada
+estado: implementada
 resumen: El cropper (spec 0040) funciona en iPhone con fotos de cámara pero NUNCA aparece con archivos de la galería — ni siquiera con un PNG, que Safari decodifica sin duda. El probe `canDecodeImage` da un falso negativo para archivos del Photo Library y el flujo cae en el fallback silencioso. Fix por capas: `decode()` pierde el veto (si `onload` disparó con `naturalWidth>0`, es decodificable), retry con data URL si el blob URL falla, timeout para nunca colgar, y el probe devuelve el src utilizable para que el cropper consuma el mismo camino que funcionó.
 disjunta: si
 archivos: apps/merchant/src/lib/crop-image.ts, crop-image-decode.test.ts, app/components/image-cropper.tsx, los 3 hooks (pasar el src resuelto), + tests
@@ -89,3 +89,44 @@ sin feedback.
 - El dato del **ADR 0047 §4** (¿llega HEIC crudo?) sigue **abierto**: en iOS el fallback de
   galería era este bug, no HEIC; falta el QA de Android con esta spec ya desplegada.
 - Sin migración, sin secreto, sin dependencia nueva.
+
+## Resultado de la implementación (2026-09-05)
+
+**PASS de revisor independiente.** Tests **340 → 357**, los 5 gates verdes. Sin migración,
+secreto ni dependencia nueva.
+
+> El implementador **fue interrumpido y nunca entregó handoff**, así que el revisor auditó
+> el código desde cero asumiendo trabajo a medias, en vez de contrastar un auto-reporte.
+
+### Lo verificado que más importa
+
+- **El fallback REAL sigue vivo, que era el riesgo grande.** Sacarle el veto a `decode()`
+  podía volver "decodificable" a todo y romper la 0040 y el ADR 0047. No pasó: un formato
+  indecodificable dispara `error` en ambos caminos → `null`. Pinneado por 3 tests que caen
+  si se muta el probe para aceptar todo.
+- **6 mutaciones aplicadas por el revisor.** Devolver el veto de `decode()` → 6 rojos,
+  incluidos los dos casos estrella. Quitar el retry por data URL → 5. No revocar el blob
+  fallido → 2. Quitar el `clearTimeout` → 1. Los tests nuevos contra `HEAD` → 4/4 rojos.
+- **Propiedad del object URL auditada** (el riesgo de la decisión 3): el dueño es el hook.
+  Se revoca al cancelar, confirmar, `remove`/`reset`/`chooseStock`, desmontar **y al
+  re-elegir archivo**. Sin usar-después-de-liberar y sin fuga.
+- Los 3 hooks quedaron completos: ningún `setPending(null)` suelto, todos pasaron a
+  `dropPending()`.
+
+### Deuda de cobertura detectada por el revisor (tarea 42, no bloqueante)
+
+Dos líneas **sobrevivieron** a la mutación, o sea están sin oráculo:
+1. **El timeout TOTAL** (`image-decode-probe.ts:154`) — borrarlo deja los 15 tests verdes,
+   porque las rodajas por paso cubren todo lo testeado. **El código igual lo necesita**: el
+   revisor escribió un test scratch para el único camino descubierto (`FileReader` OK pero
+   el `<img>` del data URL nunca contesta) y confirmó que sólo el timeout total lo cierra.
+2. **`if (!resolved) cleanup()`** (`:155`) — red de seguridad real para un éxito tardío que
+   perdió la carrera, hoy sin test.
+
+### Criterio NO cerrado
+
+- **QA en iPhone real (owner):** en marca, una foto de galería y un PNG de galería tienen
+  que abrir "Encuadra tu imagen", y la cámara tiene que seguir funcionando.
+- El dato del **ADR 0047 §4** sigue abierto: falta el QA de Android con esto desplegado.
+  Ojo al costo nuevo de ese camino: un HEIC en Chrome ahora hace blob→error, lee el archivo
+  entero a data URL (~6,7 MB de string para 5 MB) y recién ahí cae al fallback.

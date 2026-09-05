@@ -143,9 +143,9 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
           </p>
         </div>
       </div>
-      {stamp.pending && (
+      {stamp.pending && stamp.pendingSrc && (
         <ImageCropper
-          file={stamp.pending}
+          src={stamp.pendingSrc}
           surface="stamp"
           onDone={stamp.applyCrop}
           onCancel={() => {

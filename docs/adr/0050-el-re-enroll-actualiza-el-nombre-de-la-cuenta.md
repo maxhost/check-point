@@ -19,9 +19,15 @@ la carrera de inserción concurrente (23505), no como decisión de producto sobr
 
 ## Decisión
 
-**El re-enroll actualiza `first_name` y `last_name`** con los valores validados del form.
-El dato más fresco gana: si el usuario se toma el trabajo de escribir su nombre, es el que
-quiere ver en su tarjeta.
+**Un enroll EXITOSO sobre una cuenta existente actualiza `first_name` y `last_name`** con
+los valores validados del form. El dato más fresco gana: si el usuario se toma el trabajo de
+escribir su nombre, es el que quiere ver en su tarjeta.
+
+**El nombre se escribe SÓLO si el alta de membresía tuvo éxito.** Una operación rechazada no
+deja efectos: si el enroll termina en `409 already_member` (o en cualquier otro error), la
+cuenta queda intacta. Esto se declara acá porque la primera implementación hizo lo contrario
+—actualizaba el nombre y después rechazaba— y **eso nunca fue una decisión del owner**: fue
+un efecto del orden del código que se documentó por error como si estuviera acordado.
 
 Se descartan las otras dos opciones que se le presentaron al owner:
 - *Avisar "ya tenés cuenta" con el nombre guardado* — agrega una pantalla a un flujo cuyo
