@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
-import { SESSION_COOKIE } from "../../../server/consumer/core";
+import {
+  SESSION_COOKIE,
+  WALLET_MANIFEST_PATH,
+  walletManifestPathFor,
+} from "../../../server/consumer/core";
 import { resolveSession } from "../../../server/consumer/session";
 import { renderQrSvg } from "../../../server/wallet/core";
 import { vapidFromEnv } from "../../../server/push/vapid";
@@ -26,8 +30,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const account = await resolveSession(store.get(SESSION_COOKIE)?.value);
   return {
     manifest: account
-      ? `/wallet/manifest.webmanifest?c=${encodeURIComponent(account.webViewToken)}`
-      : "/wallet/manifest.webmanifest",
+      ? walletManifestPathFor(account.webViewToken)
+      : WALLET_MANIFEST_PATH,
     appleWebApp: {
       capable: true,
       title: "CheckPass Club",

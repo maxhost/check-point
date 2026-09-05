@@ -1,7 +1,7 @@
 ---
 spec: 0051
 fecha: 2026-09-05
-estado: cerrada
+estado: implementada
 resumen: Restaura el flujo que el owner pidió y la 0050 rompió — la confirmación del enroll vuelve a mostrar la felicitación con el instructivo "Agregar a inicio" y el botón de Apple Wallet, y el ícono instalado AHÍ abre el wallet del consumidor. Implementa el ADR 0049 — el 201 del enroll devuelve `walletManifestPath` y la confirmación lo inyecta como `<link rel="manifest">`. El invariante de seguridad — el path viaja SOLO en el 201, la misma respuesta que ya setea la cookie de sesión.
 disjunta: si
 archivos: apps/merchant/src/app/api/public/enroll/[programId]/route.ts, server/consumer (helper del path), enroll/[programId]/enroll-form.tsx, server/enroll-install-hint.test.ts (se reescribe, autorizado), + tests
@@ -71,3 +71,28 @@ archivos: apps/merchant/src/app/api/public/enroll/[programId]/route.ts, server/c
 - La tarea 38 (acoplamiento instructivo↔VAPID en `push-prompt.tsx`) queda **parcialmente
   resuelta** para el enroll (el hint vuelve directo); sigue abierta para `/wallet`.
 - Sin migración, sin secreto nuevo, sin dependencia nueva.
+
+## Resultado de la implementación (2026-09-05)
+
+**PASS de revisor independiente a la primera.** Tests **325 → 340** (−6 autorizados por §3,
++21). Los 5 gates verdes. Sin migración, secreto ni dependencia nueva.
+
+- **El invariante del ADR 0049 está blindado por mutación, no por lectura:** mutar la ruta
+  para incluir el path en la rama `ConsumerError` pone **5 tests rojos**. Cada camino de
+  error (400×2, 409, 404, 429, 503) asevera además que `issueSession` no fue llamado y que
+  "manifest" no aparece en ningún campo del body.
+- **El argumento "mismo destinatario, mismo poder" se sostiene concretamente:** el revisor
+  verificó que la sesión del 201 es preexistente (el diff sólo suma el campo) y que esa
+  sesión **ya podía leer el token** vía el HTML de `/wallet` (el `generateMetadata` de la
+  0050). El 201 no amplía a quién se le entrega nada. El 409 de ya-miembro lanza en
+  `enrollment.ts:163` antes de la sesión.
+- **Encoding round-trip probado** con `+`, `=`, espacios, `&`, `#`, unicode; y la ruta del
+  manifest hace eco del token ALMACENADO, nunca del query crudo.
+- El barrido del enroll caza las **dos** ortografías JSX (mutación por cada una — lección
+  de la 0040) y tiene pisos anti-barrido-vacío.
+- Split por file-size: `enroll-form.tsx` 276 + `enroll-confirmation.tsx` 88.
+
+**Criterio NO cerrado — QA en vivo en iPhone real (owner):** enrolarse → UNA pantalla con
+felicitación + instructivo + Apple Wallet → agregar a inicio → el ícono abre MI wallet.
+Único oráculo del `<link rel="manifest">` inyectado dinámicamente; si Safari lo ignora,
+plan B del ADR 0049 (confirmación server-renderizada).

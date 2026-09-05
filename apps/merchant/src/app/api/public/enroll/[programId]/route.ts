@@ -5,6 +5,7 @@ import {
   SESSION_TTL_DAYS,
   consumerAccountResponse,
   membershipResponse,
+  walletManifestPathFor,
 } from "../../../../../server/consumer/core";
 import { validateEnrollInput } from "../../../../../server/consumer/validation";
 import { enforceEnrollRateLimit } from "../../../../../server/consumer/rate-limit";
@@ -50,6 +51,11 @@ export async function POST(
       {
         account: consumerAccountResponse(account),
         membership: membershipResponse(membership),
+        // Spec 0051 / ADR 0049: lets the confirmation inject the per-consumer manifest
+        // so the icon installed THERE opens the wallet. Safe to hand over precisely
+        // (and only) here: this 201 is the same response that issues the session —
+        // same recipient, same power. No error path ever includes it.
+        walletManifestPath: walletManifestPathFor(account.webViewToken),
       },
       { status: 201 },
     );

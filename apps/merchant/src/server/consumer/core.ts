@@ -44,6 +44,19 @@ export function pgErrorCode(error: unknown): string | null {
   return null;
 }
 
+/** Public path of the consumer PWA manifest (the tokenless, anonymous fallback). */
+export const WALLET_MANIFEST_PATH = "/wallet/manifest.webmanifest";
+
+/**
+ * Relative URL of the per-consumer manifest (ADR 0048/0049). The token rides in the
+ * URL because browsers fetch `<link rel="manifest">` WITHOUT cookies. Single builder
+ * shared by the two producers — the enroll 201 (`walletManifestPath`) and `/wallet`'s
+ * `generateMetadata` — so the shape can never fork.
+ */
+export function walletManifestPathFor(webViewToken: string): string {
+  return `${WALLET_MANIFEST_PATH}?c=${encodeURIComponent(webViewToken)}`;
+}
+
 export type ConsumerAccountRow = {
   id: string;
   phoneE164: string;

@@ -9,13 +9,12 @@ import {
   isValidCountryIso,
 } from "../../../../lib/countries";
 import { readableTextColor } from "../../../../lib/brand-color";
-import { WalletButtons } from "../../wallet-cta";
-import { isIosSafariBrowser } from "../../ios-install-hint";
-import { PushPrompt } from "../../push-prompt";
+import { EnrollConfirmation } from "./enroll-confirmation";
 
 type Screen =
   | { kind: "form" }
-  | { kind: "done"; firstName: string }
+  // `walletManifestPath` comes from the 201 (spec 0051/ADR 0049); null if absent.
+  | { kind: "done"; firstName: string; walletManifestPath: string | null }
   | { kind: "already_member" }
   | { kind: "unavailable" };
 
@@ -81,7 +80,20 @@ export function EnrollForm({
         }),
       });
       if (res.status === 201) {
-        setScreen({ kind: "done", firstName: firstName.trim() });
+        // The 201 hands over the per-consumer manifest path (spec 0051/ADR 0049).
+        // A body that cannot be read or lacks the field degrades to null — the
+        // confirmation then simply injects no manifest.
+        const data = (await res.json().catch(() => null)) as {
+          walletManifestPath?: unknown;
+        } | null;
+        setScreen({
+          kind: "done",
+          firstName: firstName.trim(),
+          walletManifestPath:
+            typeof data?.walletManifestPath === "string"
+              ? data.walletManifestPath
+              : null,
+        });
         return;
       }
       const data = (await res.json().catch(() => ({}))) as {
@@ -105,49 +117,14 @@ export function EnrollForm({
   }
 
   if (screen.kind === "done") {
-    // Client-side detection selects the Wallet platform available on this device.
-    const isIos =
-      typeof navigator !== "undefined" &&
-      /iphone|ipad|ipod/i.test(navigator.userAgent);
     return (
-      <section>
-        <h2 style={{ fontSize: 20 }}>¡Listo, {screen.firstName}! 🎉</h2>
-        <p style={{ color: "#333", marginTop: 8 }}>
-          Ya sos parte del programa de <strong>{businessName}</strong>.
-        </p>
-        {/* Spec 0050: installing from HERE made iOS take the enroll URL as the icon's
-            start_url (this page links no manifest), so the icon reopened the signup form.
-            The action now sends the consumer to `/wallet` (the POST already set the
-            session cookie): there the hint lives and the manifest carries the token. */}
-        <a
-          href="/wallet"
-          style={{
-            display: "block",
-            textAlign: "center",
-            marginTop: 20,
-            padding: "13px 14px",
-            fontSize: 16,
-            borderRadius: 10,
-            background: brandPrimaryColor,
-            color: readableTextColor(brandPrimaryColor),
-            textDecoration: "none",
-          }}
-        >
-          Ver mi tarjeta y código QR
-        </a>
-        {/* Web Push opt-in for Android/desktop (spec 0038), renders nothing when Web Push
-            is off. iOS Safari short-circuits: `PushPrompt` would render back the hint. */}
-        {isIosSafariBrowser() ? null : (
-          <PushPrompt
-            vapidPublicKey={vapidPublicKey}
-            accentColor={brandPrimaryColor}
-          />
-        )}
-        {/* The buttons hit the session-authorized endpoint directly. */}
-        <div style={{ marginTop: 20 }}>
-          <WalletButtons isIos={isIos} />
-        </div>
-      </section>
+      <EnrollConfirmation
+        firstName={screen.firstName}
+        businessName={businessName}
+        brandPrimaryColor={brandPrimaryColor}
+        vapidPublicKey={vapidPublicKey}
+        walletManifestPath={screen.walletManifestPath}
+      />
     );
   }
 
