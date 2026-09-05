@@ -1,11 +1,16 @@
 ---
 adr: 0050
 fecha: 2026-09-05
-estado: aceptada
+estado: supersedido por el ADR 0051
 resumen: Enrolarse con un teléfono ya registrado actualiza el nombre de la cuenta con lo que se acaba de tipear, en vez de descartarlo en silencio. Decisión del owner tras el QA (se enroló como "Logan Wolf" y el pase salió "Cliente iOS 4"). El dato más fresco gana. NO cambia el modelo de identidad — la cuenta se sigue resolviendo por teléfono — y el margen de abuso que agrega es despreciable frente a lo que ese mismo camino ya concede (una sesión completa), que queda como hallazgo separado.
 ---
 
 # 0050 — El re-enroll actualiza el nombre de la cuenta
+
+> **SUPERSEDIDO ENTERO por el ADR 0051 (2026-09-05, mismo día).** El owner rechazó esta
+> decisión al verla implementada: el re-enroll NO debe tocar el perfil; en su lugar, la
+> confirmación avisa con un toast que la cuenta ya existía. Este archivo queda como
+> registro histórico — no implementar nada de lo que dice.
 
 ## Contexto
 

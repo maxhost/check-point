@@ -1,13 +1,18 @@
 ---
 spec: 0053
 fecha: 2026-09-05
-estado: implementada
+estado: implementada y REVERTIDA por la spec 0054
 resumen: Enrolarse con un teléfono ya registrado actualiza `first_name`/`last_name` de la cuenta con lo tipeado, en vez de descartarlo en silencio (implementa el ADR 0050). El pase de Wallet y el portal pasan a mostrar el nombre que el usuario acaba de escribir. No toca teléfono, país ni tokens. Sin migración.
 disjunta: si
 archivos: apps/merchant/src/server/consumer/enrollment.ts, + tests (unidad e integración Neon)
 ---
 
 # 0053 — El re-enroll actualiza el nombre
+
+> **REVERTIDA por la spec 0054 (2026-09-05, mismo día).** El ADR 0050 que esta spec
+> implementa fue supersedido por el **ADR 0051**: el owner decidió que el re-enroll NO toca
+> el perfil y que la confirmación avisa con un toast. Lo único de esta spec que sobrevive
+> es el invariante "una operación no exitosa no deja efectos" y sus tests.
 
 > Implementa el **ADR 0050**. Nace del QA en vivo del owner (2026-09-05, tarea 39): se
 > enroló como "Logan Wolf" y el pase de Apple salió como "Cliente iOS 4" — el nombre que esa
