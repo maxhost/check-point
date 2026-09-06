@@ -10,10 +10,14 @@
 // - iOS installed as a PWA (standalone) OR Android/desktop in the tab: we register the
 //   SW and offer the permission prompt on a user gesture, then POST the subscription.
 //
-// A null `vapidPublicKey` means Web Push is disabled (no VAPID env) → render nothing.
+// A null `vapidPublicKey` means Web Push is disabled (no VAPID env) → render nothing, EXCEPT
+// the iOS-Safari install hint, which is about installing the app and not about Web Push.
+// That rule is decided by `choosePushPromptView` (lib/push-prompt-view.ts), where it is
+// testable; this file only renders the verdict.
 
 import { useEffect, useState } from "react";
 import { readableTextColor } from "../../lib/brand-color";
+import { choosePushPromptView } from "../../lib/push-prompt-view";
 import { IosInstallHint } from "./ios-install-hint";
 
 // Neutral button color used when no brand accent is passed (e.g. rendered by `/wallet`).
@@ -79,8 +83,6 @@ export function PushPrompt({
       .catch(() => {});
   }, []);
 
-  if (!vapidPublicKey) return null;
-
   async function enable() {
     setStatus("working");
     try {
@@ -117,11 +119,22 @@ export function PushPrompt({
     }
   }
 
+  // The branching lives in `choosePushPromptView` so it has a real oracle (task 38): the
+  // rule that the iOS install hint outranks a missing VAPID env is the whole point, and
+  // three static guards over this file's shape were evaded by three reviewers before it
+  // was extracted. Add cases there, not here.
+  const view = choosePushPromptView({
+    isIos,
+    isStandalone,
+    vapidPublicKey,
+    pushSupported,
+  });
+
   // iOS Safari (not installed): instruct to install; the escape hatch is the Wallet button.
-  if (isIos && !isStandalone)
+  if (view === "install-hint")
     return <IosInstallHint accentColor={accentColor} />;
 
-  if (!pushSupported) return null;
+  if (view === "nothing") return null;
 
   return (
     <section style={card}>

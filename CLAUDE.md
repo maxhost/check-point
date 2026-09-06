@@ -47,6 +47,27 @@ typecheck, exit code. La auto-revision sin oraculo es negativa neta.
 permanente — un hook si se chequea con un comando, una linea aca si es advisory. Nunca
 la misma correccion dos veces a mano.
 
+**Antes de pedirle QA al owner, verificar que prod tenga EL COMMIT que se va a probar** —
+no que "prod este verde". `GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status
+--jq '.state'` tiene que decir `success` para el sha exacto. Paso de verdad (spec 0040): se
+commiteo sin pushear y el owner probo el build anterior; dos items del QA fueron invalidos y
+el diagnostico arranco persiguiendo un bug que no existia.
+
+**Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Si al
+implementar aparece un efecto lateral que nadie acordo (orden de statements, un caso borde),
+va como *hallazgo a decidir*, nunca como "aceptado, declarado en el handoff". Paso en la spec
+0053: se dedujo del orden del codigo que el 409 actualizaba el nombre y despues rechazaba, se
+escribio en la spec y el ADR como acordado, y el owner lo rechazo **dos veces** — la segunda
+obligo a revertir la spec entera (ADR 0050 supersedido por el 0051). Una spec que inventa un
+acuerdo es peor que una spec incompleta: la incompleta se pregunta, la inventada se implementa.
+
+**Un residual heredado puede estar YA SALDADO por una spec posterior — verificalo antes de trabajarlo, y aplica
+la misma sospecha a TODOS los items de esa nota.** Los hallazgos de un revisor quedan escritos con la foto del
+dia; las specs siguen. Paso en la tarea 38: el item (2) ya lo habia resuelto la spec 0051 (se detecto y se
+verifico por mutacion), pero **la premisa del item (1) estaba viciada por la misma spec y eso no se chequeo** —
+se implemento el fix correcto con un "por que" falso, escrito en la tarea y en un comentario del codigo. Lo cazo
+el revisor independiente. Si un item de una nota vieja resulto obsoleto, sus hermanos son sospechosos.
+
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto,
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.
@@ -191,8 +212,28 @@ chequear con un comando, es un hook — no la escribas aca tambien.
   "no hay ninguna otra".** Un guard que solo ve una de las dos ortografias de JSX es peor que
   ninguno: da seguridad que no tiene. Al escribir un barrido estatico, (a) probá las dos formas,
   (b) aseverá un **piso de archivos escaneados** (`scanned > 50`) para que un barrido vacio no
-  quede verde, y (c) verificá que se pone rojo con el codigo viejo (`git show HEAD:<archivo>` a
-  `/tmp`), no solo que pasa con el nuevo.
+  quede verde, (c) verificá que se pone rojo con el codigo viejo (`git show HEAD:<archivo>` a
+  `/tmp`), no solo que pasa con el nuevo, y (d) **si la propiedad es de COMPORTAMIENTO, ningun
+  barrido estatico la pinnea: extrae la decision a una funcion pura y testeala.** Un barrido sirve
+  para propiedades que SON sintacticas ("ningun `.tsx` bajo `app/` hardcodea una lista MIME",
+  "esta pagina no enlaza un manifest"). Para "en iOS Safari sin VAPID el instructivo se
+  renderiza" **no alcanza ninguno**: la sintaxis es un proxy y todo proxy tiene preimagen. La
+  tarea 38 lo pago con **tres guards rotos por tres revisores**, cada uno con los 5 gates verdes:
+  `indexOf(A) < indexOf(B)` (evadido con una 2da ortografia del guard); `matchAll` +
+  `toHaveLength(1)` (evadido de 5 formas: llaves, `Boolean(x) === false`, hoist a un `const`,
+  comentario señuelo, y un refactor idiomatico); y un mini-parser "el primer `return` del cuerpo
+  devuelve X" (evadido metiendo la clave **dentro de la condicion** —que ningun chequeo de orden
+  ve— y gateando el componente **en el llamador**; ademas disparaba en 4 refactors legitimos).
+  Lo que funciono fue `choosePushPromptView`: la decision como funcion pura, con una tabla de
+  casos como oraculo. **Pero ojo con lo que compra extraer, porque no es lo que parece: convierte
+  una propiedad de COMPORTAMIENTO ("el usuario ve X") en una de DECISION ("la decision dice X"),
+  y deja el CABLEADO sin oraculo.** En la tarea 38 ese hueco resulto de una linea: un revisor
+  reintrodujo el bug exacto con `setIsIos(ios && vapidPublicKey !== null)` en el efecto, con los
+  5 gates verdes. Corolarios: **extraer no cierra la propiedad — nombra explicitamente que queda
+  afuera**; **lo que quede sin cubrir se declara en el test**, no se tapa con un regex; y **si
+  igual escribis un proxy, etiquetalo como proxy, decí cual de sus partes hace el trabajo y cual
+  es decorativa**, y escribi vos 3 evasiones antes de darlo por bueno — las de la tarea 38 las
+  encontraron los revisores, nunca el autor.
 - **Geoapify autocomplete pega DIRECTO del navegador (`address-autofill-geoapify.tsx`) con la clave
   pública `NEXT_PUBLIC_GEOAPIFY_API_KEY`.** Con **Allowed Origins** seteadas en la clave, Geoapify
   devuelve un `Access-Control-Allow-Origin` **FIJO** (un solo origen, SIN `Vary: Origin`, sin *echo*

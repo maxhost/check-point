@@ -107,11 +107,47 @@ describe("the per-consumer manifest link is injected only on the confirmation (A
 });
 
 describe("the iOS install hint still lives on /wallet (spec 0050 stays intact)", () => {
-  it("qr-tab renders PushPrompt, which renders the hint outside standalone", () => {
+  it("qr-tab renders PushPrompt, which renders the hint on the decision's verdict", () => {
     expect(source("wallet/qr-tab.tsx")).toContain("<PushPrompt");
     const pushPrompt = source("push-prompt.tsx");
     expect(pushPrompt).toContain("<IosInstallHint");
-    expect(pushPrompt).toMatch(/isIos\s*&&\s*!isStandalone/);
+    // The branching itself moved to `lib/push-prompt-view.ts`, where it has a real
+    // oracle (`lib/push-prompt-view.test.ts`) instead of a sweep over this file's shape.
+    // That the component WIRES the verdict faithfully is deliberately not asserted here:
+    // it needs a DOM test environment, and every syntactic stand-in tried for it was
+    // either evaded or fired on a legitimate refactor. See the note at the bottom of
+    // `lib/push-prompt-view.test.ts`.
+    expect(pushPrompt).toContain("choosePushPromptView");
+  });
+
+  it("qr-tab renders <PushPrompt> UNCONDITIONALLY — the key must not gate it at the caller", () => {
+    // A reviewer reintroduced the task 38 bug from here, not from PushPrompt: wrapping
+    // the element in `{vapidPublicKey ? … : null}` hides the install hint on /wallet
+    // again, and the decision test in `lib/push-prompt-view.test.ts` cannot see it.
+    //
+    // This is a PROXY and is labelled as one. Its two halves, and which does the work:
+    //
+    // - The exact-line `toContain` is what actually blocks the known attacks. Wrapping
+    //   the element in anything pushes it past prettier's 80 columns, so `format:check`
+    //   forces a reflow and the string stops matching. A reviewer confirmed this is the
+    //   half that caught a gate written with a NEW identifier (`pushEnabled`), which the
+    //   count below cannot see at all.
+    // - The count (`vapidPublicKey` exactly four times: the destructured prop, its type,
+    //   and both halves of the `x={x}` pass-through) only catches gates that reuse THAT
+    //   name.
+    //
+    // Known limitation, accepted: renaming the prop is a legitimate refactor and turns
+    // this red. Neither half proves the render is unconditional — they prove the file
+    // stopped looking the way it looks today, which is the cheapest honest signal
+    // available without a DOM test environment.
+    const qrTab = source("wallet/qr-tab.tsx");
+    expect(qrTab).toContain(
+      "<PushPrompt vapidPublicKey={vapidPublicKey} onSubscribed={onSubscribed} />",
+    );
+    expect(
+      qrTab.split("vapidPublicKey").length - 1,
+      "a new vapidPublicKey reference in qr-tab may be gating <PushPrompt>",
+    ).toBe(4);
   });
 
   it("standalone detection still covers both display-mode and navigator.standalone", () => {

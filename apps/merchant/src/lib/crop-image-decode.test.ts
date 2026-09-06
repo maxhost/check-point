@@ -233,6 +233,52 @@ describe("resolveDecodableImage", () => {
     }
   });
 
+  it("settles on the TOTAL budget when the data URL load is the one that never answers", async () => {
+    // Task 42: the only path the per-step slices do not cover. `probeSrc(dataUrl)` is
+    // awaited bare — the retry gets no slice of its own — so if that `<img>` never fires
+    // `load` nor `error`, `attempt()` never settles and ONLY the total timeout closes it.
+    // Without it `choose()` hangs forever: no modal and no fallback either.
+    vi.useFakeTimers();
+    try {
+      onBlobUrl = FAILS; // fails fast, so the retry starts with the budget nearly intact
+      dataUrlResult = "ok"; // the FileReader answers; the <img> it feeds does not
+      onDataUrl = HANGS;
+      const pending = resolveDecodableImage(FILE, 8_000);
+      let settled = false;
+      void pending.then(() => {
+        settled = true;
+      });
+      // Long past both per-step slices (4 s each) and still nothing has resolved it.
+      await vi.advanceTimersByTimeAsync(7_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await pending).toBeNull();
+      expect(loaded).toEqual([OBJECT_URL, DATA_URL]);
+      expect(revoked).toEqual([OBJECT_URL]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("releases the object URL even when the budget expires before the first step can", async () => {
+    // Task 42: the `if (!resolved) cleanup()` safety net. With a budget smaller than one
+    // step (`step` floors at 1 ms) the total race is lost while the blob URL is still live
+    // and `attempt()` has not reached its own `revoke` — the net is the only thing that
+    // frees it. A leaked object URL pins the whole picked file in a phone's memory.
+    vi.useFakeTimers();
+    try {
+      onBlobUrl = HANGS;
+      const pending = resolveDecodableImage(FILE, 0);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(await pending).toBeNull();
+      // The load was started and never answered, so nothing inside `attempt` revoked it.
+      expect(loaded).toEqual([OBJECT_URL]);
+      expect(revoked).toEqual([OBJECT_URL]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not leave the timer running once an answer arrives", async () => {
     vi.useFakeTimers();
     try {

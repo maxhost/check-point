@@ -80,8 +80,12 @@ export function EnrollConfirmation({
       {/* Opt-in by platform (spec 0038 / ADR 0040), restored by ADR 0049. iOS Safari
           gets the "add to home screen" hint DIRECTLY — decoupled from Web Push being
           configured, it stands for the portal/pass even when `vapidPublicKey` is null.
-          Android/desktop get the Web Push permission button; `PushPrompt` renders
-          nothing when Web Push is disabled (`vapidPublicKey === null`). */}
+          Everyone else — Android, desktop, and iOS already installed as a PWA — gets the
+          Web Push permission button, and on THIS branch `PushPrompt` renders nothing when
+          Web Push is disabled (`vapidPublicKey === null`). Not a claim about `PushPrompt`
+          in general: since task 38 its own iOS-Safari branch outlives a null key too, but
+          that branch is unreachable from here — the ternary tests the same predicate and
+          already took that case. */}
       {isIosSafariBrowser() ? (
         <IosInstallHint accentColor={brandPrimaryColor} />
       ) : (
