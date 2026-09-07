@@ -68,6 +68,21 @@ verifico por mutacion), pero **la premisa del item (1) estaba viciada por la mis
 se implemento el fix correcto con un "por que" falso, escrito en la tarea y en un comentario del codigo. Lo cazo
 el revisor independiente. Si un item de una nota vieja resulto obsoleto, sus hermanos son sospechosos.
 
+**Un comentario que afirma "atomico e idempotente por EvalPlanQual" no es una prueba —
+demostralo con `EXPLAIN` + una carrera real que asevere el saldo por SQL.** `orders.ts`
+(spec 0030) documentaba que un `NOT EXISTS` sin correlacionar, dentro de un CTE junto al
+`UPDATE`, se re-evaluaba bajo concurrencia (EvalPlanQual) y por eso el otorgamiento nunca
+duplicaba. **Es falso, y estaba en produccion:** Postgres lo planea como `InitPlan` +
+`One-Time Filter` — se evalua UNA vez, ANTES del lock. Verificado al disenar la spec 0055
+(canje): dos requests concurrentes con el MISMO `client_request_id` acreditaron el saldo
+DOS veces, con una sola fila de auditoria que reportaba el saldo intermedio — la API
+mentia con total confianza (ADR 0054, spec 0056). El guard que si se re-evalua es el que
+vive en el `WHERE`/`Filter` del scan que se actualiza (ej. `saldo >= costo`), nunca un
+`NOT EXISTS` de otra tabla en un CTE previo. Cualquier claim de "esto es idempotente/atomico
+bajo concurrencia" en SQL nuevo se cierra con un `EXPLAIN` del plan real **y** un test que
+lance el statement dos veces en simultaneo y lea el estado final por SQL — nunca con una
+lectura del codigo, por mas que "EvalPlanQual deberia cubrirlo".
+
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto,
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.

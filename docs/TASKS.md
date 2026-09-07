@@ -8,7 +8,22 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-05 (**QA DEL OWNER CORRIDO CASI ENTERO. 15 de 17 items PASAN. Los 2 que fallan son
+Ultima actualizacion: 2026-09-07 (**SOLO DOCS, CERO CODIGO TOCADO. Spec 0055 (canje, tarea 44) cerrada punta a
+punta con el owner + ADR 0053. Al escribirla en detalle, una revision independiente del PLAN (no del codigo, que
+todavia no existe) dio NO PASA y encontro algo mas grande que la spec: un BUG DE PRODUCCION en la acreditacion
+(spec 0030) que la 0055 iba a copiar. Reproducido a mano por mi (Postgres 17 en Docker efimero, NO Neon, NO
+prod): `persistGrant` puede acreditar DOS VECES el mismo `client_request_id` bajo concurrencia, porque el
+`NOT EXISTS` de idempotencia se planea como `InitPlan`/`One-Time Filter` (se evalua UNA vez, ANTES del lock) y
+no bajo `EvalPlanQual` como decia el comentario del codigo. Sale como ADR 0054 + **spec 0056 (tarea 46, `cerrada`,
+fix de una linea ya verificado): va ANTES que el canje**, decision del owner. La 0055 se corrigio el mismo dia
+para nacer con `withDbTransaction` en vez del patron roto. Commit `93caac7`, local, SIN PUSHEAR.**
+
+**PROXIMO PASO AL RETOMAR: implementar la spec 0056 primero** (`docs/AGENT-WORKFLOW.md`: implementador + revisor
+independiente, rama Neon efimera — el revisor tiene que reproducir la carrera el mismo antes de firmar PASS, es
+el unico oraculo que distingue el fix de un no-op). **Recien despues, la spec 0055** (canje). Los dos ya estan
+`cerrada`: no hace falta cerrar nada con el owner para arrancar.
+
+Ultima actualizacion previa: 2026-09-05 (**QA DEL OWNER CORRIDO CASI ENTERO. 15 de 17 items PASAN. Los 2 que fallan son
 EL MISMO: el canje no existe (tarea 44). Commit `e79305b` hecho y SIN PUSHEAR; prod sigue en `8f52d36`, que es lo
 que se probo.**
 
