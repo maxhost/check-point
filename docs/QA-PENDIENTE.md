@@ -1,90 +1,98 @@
-# QA pendiente del owner
+# QA del owner — resultados y lo que queda
 
-**Estado al 2026-09-05.** Todo lo de acá está **desplegado en prod** (`8f52d36`, Vercel
-`success`, health 200). Este archivo es el punto de retorno del QA: se tacha lo probado y se
-anota el resultado **acá**, no en el chat.
+**Corrido el 2026-09-05 contra `8f52d36`** (el commit que estaba en prod: status `success`,
+health 200). **15 de 17 ítems pasan.** Los 2 que fallan son el mismo hallazgo: el canje no
+existe.
 
-> **Antes de empezar:** verificar que prod tenga el commit que vas a probar.
+> **Al retomar:** verificar contra qué commit se prueba.
 > `GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'` → `success`.
-> Ya pasó una vez que se hizo QA contra un build viejo y los resultados no valían.
+> Ya pasó una vez que se hizo QA contra un build viejo y los resultados no valieron.
+> Hoy `main` = `e79305b` **sin pushear**; prod = `8f52d36`.
 
 ---
 
-## Bloque A — Verificar los 3 arreglos de hoy (cortos, son los que desbloquean decisiones)
+## Bloque A — Los 3 arreglos ✅ TODO PASA
 
-### A1. El toast del re-enroll (spec 0054 / ADR 0051)
-- [ ] Re-enrolarse con un teléfono **ya registrado** (sirve `+593998877654321`, cuenta
-      "Cliente iOS 4") en un programa **distinto** al que ya tiene.
-- [ ] **Esperado:** aparece el toast **"Ya tienes una cuenta con ese teléfono: te enrolaste
-      en el programa con tus datos."**
-- [ ] **Esperado:** el pase y el portal muestran los datos **guardados** ("Cliente iOS 4"),
-      no lo que se acaba de tipear. Eso ahora es correcto y el toast lo explica.
-- [ ] Con un teléfono **nuevo**: el toast **NO** debe aparecer.
+### A1. El toast del re-enroll (spec 0054 / ADR 0051) — ✅ 4/4
+Toast correcto, datos guardados en pase y portal, y no aparece con teléfono nuevo.
+**La spec 0054 queda confirmada en vivo.**
 
-### A2. El cropper con archivos de galería en iOS (spec 0052)
-En **marca** (`/backoffice/brand`), desde el iPhone:
-- [ ] Foto de **galería** → debe abrir el modal **"Encuadra tu imagen"** (con botones
-      Cancelar / Usar). Si no ves ese título, no es el cropper.
-- [ ] **PNG** de galería → ídem.
-- [ ] **Cámara** ("Tomar foto") → tiene que **seguir** funcionando (ya andaba; es la
-      regresión a vigilar).
-- [ ] Si tarda y no pasa nada: anotarlo. El probe tiene hasta **8 s** de presupuesto y **no
-      muestra ninguna señal en pantalla** mientras trabaja (observación conocida, tarea 42).
+### A2. El cropper con galería en iOS (spec 0052) — ✅ 4/4
+Galería, PNG y cámara: los tres abren "Encuadra tu imagen". Sin demoras ni fallback.
+**La spec 0052 queda confirmada en vivo.**
 
-### A3. Android — **el dato que cierra el ADR 0047 §4**
-- [ ] En marca, subir una foto de **galería** desde el Android.
-- [ ] **Anotar cuál de los dos pasa:**
-  - Abre el cropper → HEIC crudo **no** llega desde Android; el tema del decoder HEVC en
-    WASM queda **cerrado definitivamente**.
-  - Cae al fallback (sube directo, sin modal) → HEIC crudo **sí** llega; se **reabre** la
-    evaluación del decoder WASM (ADR 0047 §4).
-- [ ] Verificar que la imagen **se guarda igual** en los dos casos (el fallback no debe
-      bloquear la subida).
+### A3. Android — ✅ **cerró el ADR 0047 §4**
+El cropper **abre** con foto de galería y **el fallback no se disparó nunca**. La imagen se
+guarda bien. → HEIC crudo **no llega** desde Android → **ADR 0052: el decoder HEVC en WASM
+queda cerrado, no diferido.** Se evitan 1–2 MB de WASM con LGPL-3.0.
+
+**Hallazgo lateral → tarea 45:** en Android el selector ofrece **sólo galería, nunca la
+cámara** (en iPhone sí aparece "Tomar foto").
 
 ---
 
-## Bloque B — El E2E que quedó a mitad de camino
+## Bloque B — El E2E
 
-El recorrido de comercio + cliente se probó hasta el paso 2.5 y **nunca se llegó al canje**.
-Esto es lo que falta, y es el corazón del producto.
+### B1. Mostrador (staff) — ✅ 4/4
+Login, escaneo, venta rápida y venta detallada: todo acredita y el saldo sube.
 
-### B1. Mostrador (staff)
-- [ ] Login de staff y entrar a `/backoffice/counter`.
-- [ ] Escanear el QR del cliente (el del pase de Wallet **o** el de "Mi QR" en `/wallet`).
-- [ ] **Acreditar** puntos: probar **venta rápida** y **venta detallada**.
-- [ ] Verificar que el saldo sube en el pase de Wallet (puede tardar unos segundos por el
-      push de actualización) **y** en `/wallet` del cliente.
+**Dos observaciones del owner, ninguna es bug nuevo:**
+- **`/wallet` no se actualiza en vivo:** con el portal ya abierto hay que cerrarlo y
+  reabrirlo para ver el saldo. Es la **tarea 25 / spec 0031**, que sigue `pendiente`. El QA
+  confirma que el hueco es visible para el usuario.
+- En iOS el aviso llega por **Wallet**, no dentro del ícono de inicio. **El owner lo declaró
+  aceptable.**
 
-### B2. Canje
-- [ ] Escanear de nuevo y **canjear la recompensa** configurada.
-- [ ] Verificar que el saldo **baja** correctamente en el pase y en `/wallet`.
+### B2. Canje — ❌ **NO EXISTE** → tarea 44
+El mostrador sólo ofrece venta y venta rápida. No hay forma de escanear para entregar una
+recompensa y descontar puntos o resetear sellos.
 
-### B3. Notificaciones (la regresión a vigilar)
-- [ ] **iOS**: al acreditar, confirmar que llega **una sola** notificación — no el duplicado
-      pase + Web Push que la spec 0038 cerró. Si reaparece, es regresión.
-- [ ] **Android**: ídem, una sola.
+**Verificado en el código:** `app/api/counter/` tiene sólo `resolve` y `grant`;
+`server/counter/` no tiene ningún `redeem`; la UI ofrece exactamente dos acciones. Los
+premios **sí** existen y están persistidos (`core.loyalty_reward`, migración `0019`): **se
+pueden configurar recompensas que nadie puede canjear.**
 
-### B4. Cierre del recorrido en Android
-- [ ] Enrolarse en Chrome de Android, agregar a **Google Wallet**, activar notificaciones, y
-      hacer el ciclo acreditar → canjear.
+**Causa raíz:** las specs 0030 y 0036 se delegaron el canje **mutuamente**. La 0036 §8 dice
+*"La ejecución del canje es de la 0030"*; la 0030 dice *"Solo acreditación; el canje es otra
+feature, otra URL"*. Las dos cerradas, las dos coherentes — el agujero está **entre** ellas.
+No es regresión. **Necesita spec propia.**
+
+### B3. Notificaciones — ✅ 2/2, sin la regresión de la 0038
+Una sola notificación en iOS y en Android, por el lado del wallet. En Android tardó bastante.
+
+### B4. Cierre del recorrido en Android — ✅
+
+---
+
+## Lo que queda por probar
+
+- [ ] **El fallback a Web Push sin pase en el wallet** — la pregunta del owner en B3.2:
+      *"¿qué pasa si no agrego el pase? ¿cómo sé si las push funcionan?"* Por el **ADR 0040**
+      lo transaccional sale **sólo** por wallet, con fallback a Web Push **si no hay pase
+      alcanzable** (`consumerHasReachableWallet`); nunca los dos, que es lo que mató el
+      duplicado de la spec 0038. **Ese camino nunca se probó en vivo.**
+      **Cómo probarlo:** enrolarse con un teléfono nuevo → activar notificaciones →
+      **NO** agregar el pase al wallet → acreditar desde el mostrador → debería llegar una
+      notificación del **navegador** (no de Wallet).
+- [ ] **Re-QA de B2** cuando exista el canje (tarea 44).
+- [ ] **Android: por qué tardó bastante** la notificación en B3.2 — sin medir, puede ser el
+      cooldown del worker o el propio Google. Anotarlo si se repite.
 
 ---
 
-## Cosas que ya se probaron y **funcionan** (no repetir)
-
-- Onboarding, marca (colores), programa, catálogo, staff.
-- Enrolamiento en iOS, branding de la landing, **Apple Wallet**.
-- **El ícono de inicio abre el wallet del consumidor** (specs 0050/0051) — probado y
-  confirmado por el owner.
-- El cropper con **cámara** en iPhone.
-
----
+## Ya probado y funcionando — no repetir
+Onboarding, marca (colores), programa, catálogo, staff · Enrolamiento en iOS, branding de la
+landing, **Apple Wallet** · El ícono de inicio abre el wallet del consumidor (specs
+0050/0051) · Cropper con cámara y con galería en iPhone (specs 0040/0052) · Cropper con
+galería en Android · Toast del re-enroll (spec 0054) · Mostrador: escaneo + acreditación,
+venta rápida y detallada · Una sola notificación por acreditación en ambas plataformas ·
+Google Wallet en Android.
 
 ## Residuales conocidos que NO son bugs del QA
-
-- **Tarea 29** — el arte visual del pase (logo/strip/colores reales) es todavía un
-  placeholder hardcodeado. Que el pase se vea genérico es esperado, no un hallazgo.
-- **Tarea 41** — el enroll entrega una sesión completa a quien conozca un teléfono ya
-  registrado, sin verificarlo. **Preexistente**, pendiente de decisión del owner.
-- **Tarea 42** — deuda de cobertura de la 0052 (2 líneas del probe sin test) y la falta de
-  señal en pantalla durante el probe.
+- **Tarea 29** — el arte del pase es un placeholder. Que se vea genérico es esperado.
+- **Tarea 41** — el enroll entrega sesión completa a quien conozca un teléfono ya
+  registrado. Preexistente, **esperando decisión del owner**.
+- **Tarea 43** — el probe sin señal en pantalla hasta 8 s. **Esperando decisión del owner.**
+  El ADR 0052 **abarató la mitad de esta tarea**: el costo del base64 casi no tiene a quién
+  afectar, porque en Android ese camino no se recorre. Queda en pie sólo lo de la UX.
+- **Tarea 25 / spec 0031** — `/wallet` sin actualización en vivo (confirmado en B1.4).
