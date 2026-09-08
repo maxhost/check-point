@@ -102,7 +102,10 @@ chequear con un comando, es un hook — no la escribas aca tambien.
 
 - **Gates: Node 24 + scripts de ROOT.** El shell arranca en Node 22 pero el repo pide 24
   (`typecheck`/`build` fallan si no): `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm
-  use 24.19.0` antes de cualquier gate. `lint`, `test`, `format:check`, `build` son scripts de
+  use 24.20.0` antes de cualquier gate. **La version sale de `.node-version` — desde la spec
+  0049 es 24.20.0, no 24.19.0**; con la vieja los gates pasan igual pero pnpm tira
+  `WARN Unsupported engine: wanted {"node":">=24.20.0 <25"}` en cada corrida (paso al
+  implementar la 0056: esta linea habia quedado vieja). `lint`, `test`, `format:check`, `build` son scripts de
   **root** (`pnpm run <script>`), NO del paquete — `pnpm --filter @mi-pasaporte/merchant lint`
   tira `None of the selected packages has a "lint" script`. El paquete merchant solo define
   `typecheck` (y `db:migrate`); para unit de un archivo suelto: `pnpm --filter

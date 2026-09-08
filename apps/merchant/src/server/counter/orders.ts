@@ -61,23 +61,33 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
 }
 
 /**
- * Atomic, idempotent grant (spec 0030) in one statement:
+ * Grant (spec 0030) in one statement, made idempotent by the unique index (spec 0056):
  *
  *  1. `bumped` increments the membership balance (points or stamps) — but only when
- *     NO order with this `(business_id, client_request_id)` exists yet. Under exact
- *     concurrency the second writer blocks on the row lock and, after the first
- *     commits, re-evaluates its `NOT EXISTS` qual (EvalPlanQual) against the now-present
- *     order → skips the bump. So the balance is never double-incremented.
+ *     NO order with this `(business_id, client_request_id)` exists yet. **That guard
+ *     handles the SEQUENTIAL retry only.** It is an UNCORRELATED `NOT EXISTS`, which
+ *     Postgres plans as `InitPlan` + `One-Time Filter`: it is evaluated ONCE, BEFORE the
+ *     row lock, so it is NOT re-checked under EvalPlanQual (only a qual living in the
+ *     scan's own `Filter` is). Two concurrent writers with the same key therefore both
+ *     see "no order" and both bump — see ADR 0054.
  *  2. `ins` inserts the order FROM `bumped`, snapshotting `balance_after` from the new
- *     balance. `ON CONFLICT DO NOTHING` makes a retry insert nothing.
+ *     balance. **No `ON CONFLICT` clause, on purpose (spec 0056):** the concurrent
+ *     loser must hit `core_order_business_client_request_unique` and raise `23505`,
+ *     which aborts this whole statement — one statement is one implicit transaction, so
+ *     the bump in (1) is rolled back with it. That, not (1), is what keeps the balance
+ *     from being credited twice under concurrency. `grant.ts` catches the `23505` and
+ *     rereads the winner's order via {@link readOrderByRequest}. Swallowing the
+ *     conflict with `DO NOTHING` used to hide the extra bump and made the API report a
+ *     balance that did not exist.
  *  3. `items` inserts the detailed lines FROM `ins` (only when a new order was created).
  *  4. `pushq` (spec 0033) inserts ONE `wallet_push_queue` `transactional` row FROM
- *     `ins` — so it fires only when a NEW order was created: a grant rollback leaves no
- *     push row, and an idempotent retry (`ins` empty via ON CONFLICT DO NOTHING) never
- *     duplicates it. The queued id rides back on the final SELECT for the inline dispatch.
+ *     `ins` — so it fires only when a NEW order was created: a grant rollback (including
+ *     the `23505` abort above) leaves no push row, and a sequential retry (`bumped`
+ *     empty → `ins` empty) never duplicates it. The queued id rides back on the final
+ *     SELECT for the inline dispatch.
  *
- * When the statement returns no row (retry/idempotent hit), the caller rereads and
- * returns the existing order via {@link readOrderByRequest} — no re-grant.
+ * When the statement returns no row (sequential retry / idempotent hit), the caller
+ * rereads and returns the existing order via {@link readOrderByRequest} — no re-grant.
  */
 export async function persistGrant(
   input: PersistGrantInput,
@@ -124,7 +134,6 @@ export async function persistGrant(
                    THEN bumped.points_balance ELSE bumped.stamps_count END)::integer,
              ${input.createdByUserId}::text, ${input.clientRequestId}::uuid
       FROM bumped
-      ON CONFLICT (business_id, client_request_id) DO NOTHING
       RETURNING id, units_granted, balance_after, accrual_kind
     )${itemsCte},
     pushq AS (

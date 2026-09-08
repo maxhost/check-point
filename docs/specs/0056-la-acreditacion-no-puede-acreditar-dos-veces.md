@@ -1,7 +1,7 @@
 ---
 spec: 0056
 fecha: 2026-09-07
-estado: cerrada
+estado: implementada
 resumen: Fix del bug de producción de la acreditación (0030) — con el mismo `client_request_id` en dos requests concurrentes, `persistGrant` incrementa el saldo DOS veces y deja una sola orden que reporta el saldo intermedio. Se quita el `ON CONFLICT DO NOTHING` para que el 23505 aborte el statement y revierta el incremento (camino de 23505 ya existente en `grant.ts`), y se agrega el test de carrera que asevera el SALDO por SQL, no la respuesta de la API.
 disjunta: sí
 archivos: `apps/merchant/src/server/counter/orders.ts`, test de integración Neon del dominio counter
