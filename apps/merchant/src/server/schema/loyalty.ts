@@ -1,4 +1,5 @@
 import {
+  boolean,
   check,
   index,
   integer,
@@ -55,6 +56,13 @@ export const loyaltyPrograms = core.table(
       precision: 12,
       scale: 2,
     }),
+    // Advanced setting (spec 0055 §5): when true the counter may hand a reward over
+    // even without enough balance — the balance then falls to 0, never negative, and
+    // the redemption row records `insufficient_override`. Additive with a `false`
+    // default so existing programs keep the blocking behaviour without data migration.
+    redeemAllowInsufficient: boolean("redeem_allow_insufficient")
+      .notNull()
+      .default(false),
     createdBy: text("created_by")
       .notNull()
       .references(() => users.id),

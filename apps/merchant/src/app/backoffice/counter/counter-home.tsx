@@ -43,26 +43,38 @@ export function CounterHome({
         Escanear
       </button>
       <section className="locations-list">
-        <h2>Acreditaciones de hoy</h2>
+        <h2>Movimientos de hoy</h2>
         {history.length === 0 ? (
-          <p className="counter-hint">Todavía no hay acreditaciones hoy.</p>
+          <p className="counter-hint">Todavía no hay movimientos hoy.</p>
         ) : (
-          history.map((row) => (
-            <article className="location-card" key={row.id}>
-              <div>
-                <strong>{row.consumer || "Cliente"}</strong>
-                <span>
-                  {formatTime(row.createdAt)} ·{" "}
-                  {row.accrualKind === "stamps" ? "Sellos" : "Puntos"}
-                </span>
-                <small>Operó {row.operator}</small>
-              </div>
-              <div className="counter-history-units">
-                +{row.unitsGranted}{" "}
-                {unitLabel(row.accrualKind, row.unitsGranted)}
-              </div>
-            </article>
-          ))
+          history.map((row) => {
+            // A redemption DEBITS (spec 0055): same row, opposite sign, and it is the
+            // only kind that names the reward that was handed over.
+            const isRedemption = row.entryKind === "redemption";
+            return (
+              <article className="location-card" key={row.id}>
+                <div>
+                  <strong>{row.consumer || "Cliente"}</strong>
+                  <span>
+                    {formatTime(row.createdAt)} ·{" "}
+                    {isRedemption
+                      ? `Canje${row.rewardLabel ? ` · ${row.rewardLabel}` : ""}`
+                      : row.accrualKind === "stamps"
+                        ? "Sellos"
+                        : "Puntos"}
+                  </span>
+                  <small>Operó {row.operator}</small>
+                </div>
+                <div
+                  className={`counter-history-units ${isRedemption ? "is-debit" : ""}`}
+                >
+                  {isRedemption ? "−" : "+"}
+                  {row.unitsGranted}{" "}
+                  {unitLabel(row.accrualKind, row.unitsGranted)}
+                </div>
+              </article>
+            );
+          })
         )}
       </section>
     </main>

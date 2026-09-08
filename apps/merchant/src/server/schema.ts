@@ -11,3 +11,4 @@ export * from "./schema/otp";
 export * from "./schema/web-push";
 export * from "./schema/catalog";
 export * from "./schema/order";
+export * from "./schema/reward-redemption";

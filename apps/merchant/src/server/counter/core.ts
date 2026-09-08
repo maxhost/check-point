@@ -32,8 +32,30 @@ export function rowsOf(result: unknown): unknown[] {
   return Array.isArray(rows) ? rows : [];
 }
 
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A uuid straight from the request body. Anything else is a 422 `invalid_input`.
+ * Lives here (not in `grant.ts`) because `redeem.ts` validates the same shapes and a
+ * second copy of a validator is how two places that decide the same thing diverge. */
+export function parseUuid(value: unknown, field: string): string {
+  if (typeof value === "string" && uuidPattern.test(value.trim())) {
+    return value.trim();
+  }
+  throw new CounterError(
+    422,
+    "invalid_input",
+    `El campo ${field} no es válido.`,
+  );
+}
+
 /** The counter operator's business (id + snapshot currency). Any membership role
- * (owner or staff) may operate the counter; returns null when the user owns none. */
+ * (owner or staff) may operate the counter; returns null when the user owns none.
+ *
+ * The `status = 'active'` filter is load-bearing (ADR 0044, spec 0055): a `disabled`
+ * member keeps their identity and their audit trail but loses access — and the counter
+ * hands over merchandise and destroys balance, so a dismissed employee must not be able
+ * to accredit or redeem. It gates all three endpoints (`resolve`/`grant`/`redeem`). */
 export type OperatorBusiness = { id: string; currencyCode: string };
 
 export async function operatorBusiness(
@@ -43,7 +65,9 @@ export async function operatorBusiness(
     .select({ id: businesses.id, currencyCode: businesses.currencyCode })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(eq(memberships.userId, userId))
+    .where(
+      and(eq(memberships.userId, userId), eq(memberships.status, "active")),
+    )
     .orderBy(asc(businesses.createdAt))
     .limit(1);
   return business ?? null;
@@ -86,6 +110,13 @@ export type CardDesignDTO = {
 export type ProgramRow = {
   id: string;
   kind: string;
+  /** Raw `configuration` jsonb — `target` lives here (Sellos), never in a column.
+   * The jsonb itself is NEVER serialized: `programDTO` is an allow-list, and the only
+   * key of it that reaches the client is `target` (via {@link rawTarget}). Adding a
+   * second one is a decision, not a detail — `counter-redeem-surfaces` asserts the DTO
+   * carries no `configuration` and no `*ObjectKey`, and goes red if that changes. */
+  configuration: unknown;
+  redeemAllowInsufficient: boolean;
   accrualMode: string | null;
   accrualGrant: number | null;
   accrualBlockAmount: string | null;
@@ -97,12 +128,31 @@ export type ProgramRow = {
   stampImageVersion: number;
 };
 
+/** `configuration.target` straight out of the program jsonb, untouched. Validating it is
+ * the job of whoever consumes it (`planRedemption` on the server, `rewardState` on the
+ * client): `Number(null) === 0` would be a free redemption. ONE definition, used by
+ * `redeem.ts` and by `programDTO` — two copies of a validator is how two places that
+ * decide the same thing diverge. */
+export function rawTarget(program: ProgramRow): unknown {
+  const configuration = program.configuration;
+  if (!configuration || typeof configuration !== "object") return undefined;
+  return (configuration as Record<string, unknown>).target;
+}
+
 /** Program DTO for the counter: kind + accrual + card design. Never serializes the
- * internal `stampImageObjectKey` (allow-list) — only the public stamp path. */
+ * internal `stampImageObjectKey` nor the raw `configuration` jsonb (allow-list) — only
+ * the public stamp path and the ONE key of `configuration` the console needs. */
 export function programDTO(program: ProgramRow) {
   return {
     id: program.id,
     kind: program.kind,
+    redeemAllowInsufficient: program.redeemAllowInsufficient,
+    // The Sellos card size, RAW and never normalized (spec 0055 «UI — consola de
+    // mostrador»): the console draws `stamps_count` / `target` and decides with the same
+    // semantics the server enforces, so it can never show "Canjeable" on a program the
+    // redemption answers `422 invalid_program` to. This is a single key of
+    // `configuration`, NOT the jsonb: nothing else of it is serialized.
+    target: rawTarget(program),
     accrual: {
       mode: program.accrualMode,
       grant: program.accrualGrant,

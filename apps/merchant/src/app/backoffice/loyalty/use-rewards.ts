@@ -59,6 +59,11 @@ export function useRewards() {
   const [blockAmount, setBlockAmount] = useState("3");
   const [rewards, setRewards] = useState<RewardDraft[]>([emptyReward()]);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
+  /** Advanced setting of the program (spec 0055 §5), not of a single reward: may the
+   * counter hand a reward over without enough balance? Default `false` = the redemption
+   * is blocked. Lives here (and not in `use-loyalty-program`) because that hook is at
+   * 273 of the 300-line budget and this is part of the rewards step. */
+  const [allowInsufficient, setAllowInsufficient] = useState(false);
 
   function patch(index: number, next: Partial<RewardDraft>) {
     setRewards((list) =>
@@ -98,8 +103,10 @@ export function useRewards() {
     }
   }
 
-  /** Rehydrates accrual + rewards when editing an existing program (null-safe). */
+  /** Rehydrates accrual + rewards + the advanced flag when editing an existing
+   * program (null-safe). */
   function hydrate(program: Program) {
+    setAllowInsufficient(program.redeemAllowInsufficient === true);
     if (program.accrual) {
       setAccrualMode(program.accrual.mode);
       setGrant(program.accrual.grant);
@@ -127,6 +134,7 @@ export function useRewards() {
     setGrant(10);
     setBlockAmount("3");
     setRewards([emptyReward()]);
+    setAllowInsufficient(false);
   }
 
   /** Effective mode: Puntos always accrues per amount. */
@@ -160,6 +168,8 @@ export function useRewards() {
     blockAmount,
     rewards,
     products,
+    allowInsufficient,
+    setAllowInsufficient,
     setAccrualMode,
     setGrant,
     setBlockAmount,

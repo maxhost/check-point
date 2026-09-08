@@ -8,6 +8,7 @@ import {
   type OperatorBusiness,
   type ProgramRow,
   assertLocationInBusiness,
+  parseUuid,
   pgErrorCode,
 } from "./core";
 import { accreditableProgram } from "./resolve";
@@ -20,19 +21,6 @@ import {
 import { dispatchGranted } from "../wallet/push";
 
 const MAX_MONEY = 9_999_999_999.99;
-const uuidPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function parseUuid(value: unknown, field: string): string {
-  if (typeof value === "string" && uuidPattern.test(value.trim())) {
-    return value.trim();
-  }
-  throw new CounterError(
-    422,
-    "invalid_input",
-    `El campo ${field} no es válido.`,
-  );
-}
 
 /** numeric(12,2), non-negative. Throws 422 on anything else. */
 function parseMoney(value: unknown, label: string): string {

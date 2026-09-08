@@ -141,6 +141,8 @@ export function useLoyaltyProgram() {
           cardDesign: kind === "stamps" ? card.payload() : null,
           accrual: earn.accrualPayload(kind),
           rewards: earn.rewardsPayload(kind),
+          // Advanced setting of the program, not of a reward (spec 0055 §5).
+          redeemAllowInsufficient: earn.allowInsufficient,
         }),
       });
       const payload = (await response.json().catch(() => null)) as {

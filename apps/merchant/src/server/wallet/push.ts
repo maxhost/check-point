@@ -68,6 +68,29 @@ export function buildTransactionalBody(
   return `${verb} ${units} ${noun} en tu cuenta 🎉`;
 }
 
+/**
+ * The redemption notice (spec 0055), same `transactional` class as the accreditation:
+ * what was handed over plus the balance that is left, as a full sentence. The reward
+ * label is the snapshot the log stored, so the notice says exactly what the row says.
+ */
+export function buildRedemptionBody(
+  label: string,
+  kind: "points" | "stamps",
+  balanceAfter: number,
+): string {
+  const singular = balanceAfter === 1;
+  const noun =
+    kind === "points"
+      ? singular
+        ? "punto"
+        : "puntos"
+      : singular
+        ? "sello"
+        : "sellos";
+  const verb = singular ? "Te queda" : "Te quedan";
+  return `Canjeaste «${label}» 🎁 ${verb} ${balanceAfter} ${noun}.`;
+}
+
 // The pure drain planner lives in `push-plan.ts` (kept DB-free + under the file-size
 // budget); re-exported here so existing importers keep using `./push`.
 export {

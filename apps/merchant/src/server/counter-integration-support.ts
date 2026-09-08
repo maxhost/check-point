@@ -14,9 +14,11 @@ import {
   consumerAccounts,
   locations,
   loyaltyPrograms,
+  loyaltyRewards,
   memberships,
   orders,
   programMemberships,
+  rewardRedemptions,
   users,
 } from "./schema";
 import type { OperatorBusiness } from "./counter";
@@ -35,6 +37,12 @@ export async function seedBusiness(opts: {
   mode: "per_amount" | "per_purchase";
   grant: number;
   blockAmount: string | null;
+  /** Program `configuration` jsonb. Sellos read `target` from here (spec 0055): the
+   * default `{}` is the shape the pre-0055 corpus already inserts, and the exact one
+   * that `Number(undefined)` would have turned into a free redemption. */
+  configuration?: Record<string, unknown>;
+  /** `core.loyalty_program.redeem_allow_insufficient` (spec 0055 §5). */
+  redeemAllowInsufficient?: boolean;
 }): Promise<Seed> {
   const db = getDb();
   const userId = `counter-int-${randomUUID()}`;
@@ -71,7 +79,7 @@ export async function seedBusiness(opts: {
     id: programId,
     businessId,
     kind: opts.kind,
-    configuration: {},
+    configuration: opts.configuration ?? {},
     status: "active",
     termsMarkdown: "TOS",
     termsHash: "hash",
@@ -79,6 +87,7 @@ export async function seedBusiness(opts: {
     accrualMode: opts.mode,
     accrualGrant: opts.grant,
     accrualBlockAmount: opts.blockAmount,
+    redeemAllowInsufficient: opts.redeemAllowInsufficient ?? false,
   });
   return {
     business: { id: businessId, currencyCode: "USD" },
@@ -86,6 +95,94 @@ export async function seedBusiness(opts: {
     locationId,
     programId,
   };
+}
+
+/** Seeds one reward of a program and returns its id. `pointsCost` may be null on
+ * purpose: `loyalty_reward.points_cost` is nullable and its check only says
+ * `IS NULL OR > 0`, so a Puntos reward without a cost is representable in the DB. */
+export async function seedReward(opts: {
+  programId: string;
+  businessId: string;
+  type?: "catalog_product" | "custom" | "discount";
+  label?: string;
+  pointsCost: number | null;
+  discountPercent?: number | null;
+  position?: number;
+}): Promise<string> {
+  const [row] = await getDb()
+    .insert(loyaltyRewards)
+    .values({
+      programId: opts.programId,
+      businessId: opts.businessId,
+      rewardType: opts.type ?? "custom",
+      label: opts.label ?? "Café gratis",
+      discountPercent: opts.discountPercent ?? null,
+      pointsCost: opts.pointsCost,
+      position: opts.position ?? 0,
+    })
+    .returning({ id: loyaltyRewards.id });
+  return row.id;
+}
+
+/** Seeds an extra member of a business (ADR 0044) and returns its user id. A
+ * `disabled` member keeps identity and audit but must not operate the counter. */
+export async function seedMember(opts: {
+  businessId: string;
+  role?: "owner" | "staff";
+  status?: "active" | "disabled";
+}): Promise<string> {
+  const userId = `counter-int-${randomUUID()}`;
+  await getDb()
+    .insert(users)
+    .values({
+      id: userId,
+      name: `Staff ${userId.slice(-6)}`,
+      email: `${userId}@example.test`,
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  await getDb()
+    .insert(memberships)
+    .values({
+      businessId: opts.businessId,
+      userId,
+      role: opts.role ?? "staff",
+      status: opts.status ?? "active",
+    });
+  return userId;
+}
+
+/** Forces a membership balance. Used to reach a redeemable state without running a
+ * whole accreditation, so the redemption tests do not depend on the grant path. */
+export async function setBalance(
+  membershipId: string,
+  balance: { points?: number; stamps?: number },
+): Promise<void> {
+  await getDb()
+    .update(programMemberships)
+    .set({
+      ...(balance.points === undefined
+        ? {}
+        : { pointsBalance: balance.points }),
+      ...(balance.stamps === undefined ? {} : { stampsCount: balance.stamps }),
+    })
+    .where(eq(programMemberships.id, membershipId));
+}
+
+/** Both balances of a membership, read by SQL. The API response is NOT an oracle
+ * (ADR 0054 §4): with the idempotency bug it reported a balance that did not exist. */
+export async function readBalances(
+  membershipId: string,
+): Promise<{ points: number; stamps: number }> {
+  const [row] = await getDb()
+    .select({
+      points: programMemberships.pointsBalance,
+      stamps: programMemberships.stampsCount,
+    })
+    .from(programMemberships)
+    .where(eq(programMemberships.id, membershipId));
+  return row;
 }
 
 /** Seeds a global consumer account and returns its id + raw qr_token. */
@@ -106,11 +203,15 @@ export async function seedConsumer(): Promise<{ id: string; qrToken: string }> {
 
 /**
  * Removes a seeded business. `consumer.program_membership` has a non-cascading FK to
- * `loyalty_program`, and `core.order` non-cascading FKs to both — so tear down orders
- * (cascades items) and memberships first, then the business (cascades program/location).
+ * `loyalty_program`, and `core.order` / `core.reward_redemption` non-cascading FKs to
+ * both — so tear down redemptions and orders (cascades items) and memberships first,
+ * then the business (cascades program/location/rewards).
  */
 export async function dropBusiness(businessId: string): Promise<void> {
   const db = getDb();
+  await db
+    .delete(rewardRedemptions)
+    .where(eq(rewardRedemptions.businessId, businessId));
   await db.delete(orders).where(eq(orders.businessId, businessId));
   await db
     .delete(programMemberships)

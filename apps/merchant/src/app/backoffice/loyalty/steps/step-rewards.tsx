@@ -192,6 +192,39 @@ export function StepRewards({ vm }: { vm: LoyaltyVm }) {
           + Agregar premio
         </button>
       )}
+      <AdvancedRedeem vm={vm} />
     </>
+  );
+}
+
+/**
+ * Advanced setting of the program (spec 0055 §5), decided by the owner and not by the
+ * system: may the counter hand a reward over to someone who has not reached its cost?
+ * Off by default — the redemption is blocked. On, the balance is spent down to 0 and
+ * never below (§9), and every such redemption is recorded as an override so the owner
+ * can audit exactly how much was given away.
+ */
+function AdvancedRedeem({ vm }: { vm: LoyaltyVm }) {
+  const earn = vm.earn;
+  const unit = vm.kind === "points" ? "puntos" : "sellos";
+  return (
+    <section className="reward-advanced">
+      <h3>Configuración avanzada</h3>
+      <label className="reward-advanced-toggle">
+        <input
+          type="checkbox"
+          checked={earn.allowInsufficient}
+          onChange={(event) => earn.setAllowInsufficient(event.target.checked)}
+        />
+        <span>
+          <strong>Permitir canjes sin saldo suficiente</strong>
+          <small>
+            Si está activo, tu mostrador puede entregar un premio aunque al
+            cliente le falten {unit}: se descuenta lo que tenga y su saldo queda
+            en 0. Queda registrado como entrega sin saldo.
+          </small>
+        </span>
+      </label>
+    </section>
   );
 }

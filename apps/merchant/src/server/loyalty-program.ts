@@ -120,7 +120,7 @@ export async function saveProgram(userId: string, rawInput: unknown) {
   const terms = await renderedTerms(input, business);
   const db = getDb();
   const id = program ? program.id : randomUUID();
-  const accrualSet = sql`, accrual_mode = ${input.accrual.mode}, accrual_grant = ${input.accrual.grant}, accrual_block_amount = ${input.accrual.blockAmount}`;
+  const accrualSet = sql`, accrual_mode = ${input.accrual.mode}, accrual_grant = ${input.accrual.grant}, accrual_block_amount = ${input.accrual.blockAmount}, redeem_allow_insufficient = ${input.redeemAllowInsufficient}`;
   // R2 work (process + upload) happens before the DB write, mirroring brand; the
   // caller rolls back the new prefix if the guarded write does not land.
   const stamp = await resolveStampChange({
@@ -172,6 +172,7 @@ export async function saveProgram(userId: string, rawInput: unknown) {
           accrualMode: input.accrual.mode,
           accrualGrant: input.accrual.grant,
           accrualBlockAmount: input.accrual.blockAmount,
+          redeemAllowInsufficient: input.redeemAllowInsufficient,
         }),
         db.insert(loyaltyProgramEvents).values({
           programId: id,

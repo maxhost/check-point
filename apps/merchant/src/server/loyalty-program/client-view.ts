@@ -10,6 +10,7 @@ type ProgramRow = {
 
 /** Service-side reward row (joined to its product image); the DTO strips the R2 key. */
 type RewardRow = {
+  id: string;
   rewardType: string;
   label: string;
   productId: string | null;
@@ -20,9 +21,30 @@ type RewardRow = {
   imageVersion: number | null;
 };
 
+/**
+ * The ONE client-facing shape of a reward (contract fixed in
+ * `docs/specs/0055-contratos-del-orquestador.md` §1), shared by the loyalty wizard,
+ * `counter/resolve` and the consumer wallet summary. There is deliberately no second
+ * reward DTO: two places that decide the same thing diverge — that is how the
+ * `*ObjectKey` leak of spec 0025 and the duplicated MIME lists of 0033/0039/0040
+ * happened. `id` exists because `/api/counter/redeem` takes a `rewardId`.
+ */
+export type RewardDTO = {
+  id: string;
+  type: string;
+  label: string;
+  productId: string | null;
+  discountPercent: number | null;
+  pointsCost: number | null;
+  position: number;
+  /** Public path only — NEVER `imageObjectKey`. */
+  imagePath: string | null;
+};
+
 /** Client-facing reward: never serializes the internal R2 key, only a public `imagePath`. */
-function toRewardDTO(reward: RewardRow) {
+export function toRewardDTO(reward: RewardRow): RewardDTO {
   return {
+    id: reward.id,
     type: reward.rewardType,
     label: reward.label,
     productId: reward.productId,

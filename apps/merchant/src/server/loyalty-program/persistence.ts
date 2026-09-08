@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { loyaltyRewards, products } from "../schema";
 import type { EventAction, RewardInput } from "./core";
@@ -100,6 +100,10 @@ export async function loadBusinessProducts(businessId: string) {
 
 /** Program's rewards ordered by position, joined to the product image for the DTO. */
 export type RewardRow = {
+  /** `core.loyalty_reward.id`. Part of the shared reward DTO (spec 0055 annex §1):
+   * `/api/counter/redeem` takes a `rewardId`. NOT stable across saves — `saveProgram`
+   * deletes and re-inserts every reward, which is why the redemption log snapshots. */
+  id: string;
   rewardType: string;
   label: string;
   productId: string | null;
@@ -115,6 +119,7 @@ export async function loadProgramRewards(
 ): Promise<RewardRow[]> {
   return getDb()
     .select({
+      id: loyaltyRewards.id,
       rewardType: loyaltyRewards.rewardType,
       label: loyaltyRewards.label,
       productId: loyaltyRewards.productId,
@@ -127,5 +132,31 @@ export async function loadProgramRewards(
     .from(loyaltyRewards)
     .leftJoin(products, eq(products.id, loyaltyRewards.productId))
     .where(eq(loyaltyRewards.programId, programId))
+    .orderBy(asc(loyaltyRewards.position));
+}
+
+/** Same shape as {@link loadProgramRewards} but for several programs at once, tagged
+ * with their `programId` — the consumer wallet lists N programs in one page (spec 0055).
+ * Ordered by `position` inside each program, which is part of the reward DTO contract. */
+export async function loadRewardsForPrograms(
+  programIds: string[],
+): Promise<(RewardRow & { programId: string })[]> {
+  if (programIds.length === 0) return [];
+  return getDb()
+    .select({
+      programId: loyaltyRewards.programId,
+      id: loyaltyRewards.id,
+      rewardType: loyaltyRewards.rewardType,
+      label: loyaltyRewards.label,
+      productId: loyaltyRewards.productId,
+      discountPercent: loyaltyRewards.discountPercent,
+      pointsCost: loyaltyRewards.pointsCost,
+      position: loyaltyRewards.position,
+      imageObjectKey: products.imageObjectKey,
+      imageVersion: products.imageVersion,
+    })
+    .from(loyaltyRewards)
+    .leftJoin(products, eq(products.id, loyaltyRewards.productId))
+    .where(inArray(loyaltyRewards.programId, programIds))
     .orderBy(asc(loyaltyRewards.position));
 }

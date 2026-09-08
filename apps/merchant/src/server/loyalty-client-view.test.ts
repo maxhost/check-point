@@ -16,6 +16,7 @@ describe("toClientProgram accrual + rewards (spec 0036)", () => {
   };
   const rewards = [
     {
+      id: "22222222-2222-4222-8222-222222222222",
       rewardType: "custom",
       label: "Cerveza",
       productId: null,
@@ -26,6 +27,7 @@ describe("toClientProgram accrual + rewards (spec 0036)", () => {
       imageVersion: null,
     },
     {
+      id: "33333333-3333-4333-8333-333333333333",
       rewardType: "catalog_product",
       label: "Café",
       productId: PRODUCT_ID,

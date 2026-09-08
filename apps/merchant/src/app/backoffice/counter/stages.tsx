@@ -3,11 +3,14 @@
 import type { ReactNode } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { DetailedSale, QuickSale } from "./sale-forms";
+import { RedeemDone, RedeemPanel } from "./redeem-panel";
 import {
   type CartLine,
   type CounterLocation,
   type CounterProduct,
   type GrantResponse,
+  type Mode,
+  type RedeemResponse,
   type ResolveResponse,
   balanceFor,
   cartTotal,
@@ -15,7 +18,13 @@ import {
   unitLabel,
 } from "./types";
 
-type Mode = "detailed" | "quick";
+/** The three actions of a resolved scan: two sales (spec 0030) and the redemption
+ * (spec 0055). Rendered from a list so a fourth one never means a fourth copy. */
+const MODE_TABS: { id: Mode; label: string }[] = [
+  { id: "detailed", label: "Venta detallada" },
+  { id: "quick", label: "Venta rápida" },
+  { id: "redeem", label: "Canjear" },
+];
 
 /** Shell + header + toasts, shared by every stage. */
 export function Console({
@@ -85,6 +94,8 @@ export function ResolvedStage({
   onQty,
   onLinePrice,
   quick,
+  selectedRewardId,
+  onSelectReward,
   busy,
   canConfirm,
   onConfirm,
@@ -104,6 +115,8 @@ export function ResolvedStage({
     note: string;
     onNote: (v: string) => void;
   };
+  selectedRewardId: string | null;
+  onSelectReward: (rewardId: string) => void;
   busy: boolean;
   canConfirm: boolean;
   onConfirm: () => void;
@@ -124,27 +137,27 @@ export function ResolvedStage({
       </header>
 
       <div className="counter-toggle" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "detailed"}
-          className={mode === "detailed" ? "is-active" : ""}
-          onClick={() => setMode("detailed")}
-        >
-          Venta detallada
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "quick"}
-          className={mode === "quick" ? "is-active" : ""}
-          onClick={() => setMode("quick")}
-        >
-          Venta rápida
-        </button>
+        {MODE_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={mode === tab.id}
+            className={mode === tab.id ? "is-active" : ""}
+            onClick={() => setMode(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {mode === "detailed" ? (
+      {mode === "redeem" ? (
+        <RedeemPanel
+          resolved={resolved}
+          selectedRewardId={selectedRewardId}
+          onSelect={onSelectReward}
+        />
+      ) : mode === "detailed" ? (
         <DetailedSale
           products={resolved.catalog.products}
           currencyCode={currencyCode}
@@ -163,13 +176,15 @@ export function ResolvedStage({
         />
       )}
 
-      <PointsPreview
-        accrual={resolved.program.accrual}
-        kind={resolved.program.kind}
-        total={
-          mode === "detailed" ? cartTotal(cart) : Number(quick.amount) || 0
-        }
-      />
+      {mode !== "redeem" && (
+        <PointsPreview
+          accrual={resolved.program.accrual}
+          kind={resolved.program.kind}
+          total={
+            mode === "detailed" ? cartTotal(cart) : Number(quick.amount) || 0
+          }
+        />
+      )}
 
       <div className="counter-actions">
         <button type="button" className="counter-secondary" onClick={onCancel}>
@@ -181,7 +196,11 @@ export function ResolvedStage({
           disabled={!canConfirm}
           onClick={onConfirm}
         >
-          {busy ? "Acreditando…" : "Confirmar"}
+          {busy
+            ? mode === "redeem"
+              ? "Canjeando…"
+              : "Acreditando…"
+            : "Confirmar"}
         </button>
       </div>
     </section>
@@ -211,15 +230,29 @@ function PointsPreview({
   );
 }
 
+/** Done screen of the resolved stage. A scan ends in exactly one of the two events of
+ * value, so the redemption takes over the whole panel when it is the one that happened. */
 export function DoneStage({
   result,
+  redeemed,
   displayName,
   onNext,
 }: {
-  result: GrantResponse;
+  result: GrantResponse | null;
+  redeemed: RedeemResponse | null;
   displayName: string;
   onNext: () => void;
 }) {
+  if (redeemed) {
+    return (
+      <RedeemDone
+        redeemed={redeemed}
+        displayName={displayName}
+        onNext={onNext}
+      />
+    );
+  }
+  if (!result) return null;
   return (
     <section className="counter-panel counter-done">
       <p className="counter-check" aria-hidden>

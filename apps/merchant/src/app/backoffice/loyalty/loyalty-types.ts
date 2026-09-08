@@ -30,6 +30,9 @@ export type Program = {
   cardBorderColor: string | null;
   accrual: ProgramAccrual | null;
   rewards: ProgramReward[];
+  /** Advanced setting (spec 0055 §5): whether the counter may hand a reward over to a
+   * member without enough balance. The balance then falls to 0, never below. */
+  redeemAllowInsufficient: boolean;
 };
 export type Business = {
   name: string;

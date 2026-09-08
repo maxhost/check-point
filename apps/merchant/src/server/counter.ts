@@ -6,5 +6,7 @@ export { resolveScan } from "./counter/resolve";
 export type { ResolveResult } from "./counter/resolve";
 export { grantAccrual } from "./counter/grant";
 export type { GrantResult } from "./counter/grant";
+export { redeemReward } from "./counter/redeem";
+export type { RedeemResult } from "./counter/redeem";
 export { listTodaysAccreditations } from "./counter/history";
 export type { AccreditationDTO } from "./counter/history";

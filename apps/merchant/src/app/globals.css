@@ -1082,6 +1082,39 @@ input:focus {
 .reward-equiv strong {
   color: #135239;
 }
+/* Configuración avanzada del paso de premios (spec 0055 §5) */
+.reward-advanced {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #e2e6ea;
+  border-radius: 14px;
+  background: #fafbfc;
+}
+.reward-advanced h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #4a5b50;
+}
+.reward-advanced-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.reward-advanced-toggle input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.reward-advanced-toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reward-advanced-toggle small {
+  color: #687078;
+  line-height: 1.45;
+}
 .reward-rate {
   margin: 0 0 14px;
   padding: 10px 12px;
@@ -1997,6 +2030,69 @@ input:focus {
   line-height: 1.55;
 }
 
+/* Hoja de información del programa + catálogo de premios (spec 0055) */
+.consumer-info-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+}
+.consumer-info-options button {
+  padding: 16px;
+  border: 1px solid #dfe3e7;
+  border-radius: 14px;
+  background: #fff;
+  color: #172126;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.consumer-rewards {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.consumer-reward {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e9ebee;
+  border-radius: 14px;
+}
+.consumer-reward img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+.consumer-reward > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.consumer-reward-cost {
+  color: #687078;
+  font-size: 13px;
+}
+.consumer-reward-gap {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8a5a12;
+  text-align: right;
+}
+.consumer-reward-gap.is-ready {
+  color: #176548;
+}
+
 /* Catálogo de productos (spec 0034) */
 .catalog-page {
   width: min(100%, 860px);
@@ -2591,6 +2687,82 @@ input:focus {
   font-size: 20px;
   font-weight: 800;
   color: #176548;
+}
+
+/* Modo Canjear del mostrador (spec 0055) */
+.counter-rewards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.counter-reward {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #cfdbd3;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+}
+.counter-reward:disabled {
+  opacity: 0.55;
+}
+.counter-reward.is-selected {
+  border-color: #176548;
+  box-shadow: 0 0 0 2px #17654833;
+}
+.counter-reward img {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+.counter-reward-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.counter-reward-body strong {
+  font-size: 15px;
+  color: #1c2b22;
+}
+.counter-reward-cost {
+  font-size: 13px;
+  color: #4a5b50;
+}
+.counter-reward-state {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #eef3ef;
+  color: #4a5b50;
+}
+.counter-reward-state.is-redeemable {
+  background: #e5f4ec;
+  color: #176548;
+}
+.counter-reward-state.is-short {
+  background: #fdf3e6;
+  color: #8a5a12;
+}
+.counter-reward-delivered {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #1c2b22;
+}
+.counter-history-units.is-debit {
+  color: #8f1d1d;
 }
 
 /* ==========================================================================

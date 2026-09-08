@@ -4,10 +4,10 @@ import { useState } from "react";
 import { CardPreview } from "../../../components/loyalty/card-preview";
 import type { ConsumerProgramSummary } from "../../../server/consumer/programs";
 import { PointsCard } from "./points-card";
-import { TermsModal } from "./terms-modal";
+import { ProgramInfoSheet } from "./program-info-sheet";
 
 export function ProgramCard({ program }: { program: ConsumerProgramSummary }) {
-  const [showTerms, setShowTerms] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const statusLabel =
     program.programStatus === "closing"
       ? "Cerrado"
@@ -52,16 +52,15 @@ export function ProgramCard({ program }: { program: ConsumerProgramSummary }) {
       <button
         className="consumer-info-button"
         type="button"
-        aria-label={`Ver términos de ${program.businessName}`}
-        onClick={() => setShowTerms(true)}
+        aria-label={`Ver información de ${program.businessName}`}
+        onClick={() => setShowInfo(true)}
       >
         i
       </button>
-      {showTerms && (
-        <TermsModal
-          businessName={program.businessName}
-          termsMarkdown={program.termsMarkdown}
-          onClose={() => setShowTerms(false)}
+      {showInfo && (
+        <ProgramInfoSheet
+          program={program}
+          onClose={() => setShowInfo(false)}
         />
       )}
     </article>

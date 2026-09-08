@@ -487,21 +487,40 @@ hay conflicto: las extiende aditivamente.
       Es el test que la spec 0056 exige para el grant, replicado del lado del débito.
 - [ ] **Regresión**: acreditación (0030), historial del día (0043) y wallet (0031/0054)
       siguen verdes; la lista de programas ordena por actividad incluyendo canjes.
-- [ ] **Mutaciones** (evidencia de que cada test muerde; **cada una nombra qué test cubre**,
-      porque no son intercambiables):
-      (a) sacar el `FOR UPDATE` del paso (1) → **rojo** la carrera de mismo `clientRequestId`
-      (sin el lock, el read del paso (2) deja de ser seguro);
-      (b) mover `planRedemption` a un pre-read **fuera** de la transacción → **rojo** el test de
-      `insufficient_override` bajo concurrencia (y **verde** el resto: por eso hace falta ese
-      test específico, no alcanza con "el saldo nunca queda negativo");
-      (c) devolver el `reward_id` a `NOT NULL`/sin snapshot → **rojo** el de supervivencia al
-      `saveProgram`;
-      (d) aceptar `points_cost` nulo en `planRedemption` → **rojo** el del premio sin costo;
-      (e) sacar el filtro `status = 'active'` de `operatorBusiness` → **rojo** el del operador
-      deshabilitado.
-      **Anti-falso-verde declarado:** una mutación que sólo mueva el saldo final no distingue
-      (a) de (b) — el saldo puede terminar bien y el **log** mentir. Las aserciones de (a) y (b)
-      son sobre la **fila del log**, no sobre el saldo.
+- [x] **Mutaciones** (evidencia de que cada test muerde). **CORREGIDO EL 2026-09-08 CONTRA LA
+      EJECUCIÓN REAL: la predicción de (a) y (b) que esta spec traía escrita era FALSA.** Se deja
+      el texto viejo tachado abajo a propósito, porque el error es instructivo.
+      - **(a) sacar el `FOR UPDATE` del paso (1) → rojo el de 8 CONCURRENTES con saldo para uno**
+        (pasa de *1 éxito / 7 `422`* a **8 éxitos**), y rojo el de `insufficient_override`.
+        **La carrera de mismo `clientRequestId` queda VERDE.** Verificado por el revisor y
+        re-verificado por el orquestador ejecutándolo.
+      - **(b) mover `planRedemption` a un pre-read fuera de la transacción → EL MISMO conjunto
+        rojo que (a)**, idéntico. (a) y (b) **no son distinguibles por esta suite.**
+      - (c) devolver el `reward_id` a `NOT NULL`/sin snapshot → **rojo** el de supervivencia al
+        `saveProgram` (`23503`, una sola roja).
+      - (d) aceptar `points_cost` nulo en `planRedemption` → **rojo** los casos 6 y 7 del unit
+        **y** el de integración. Bonus: el que falla en integración es el *check de tabla*
+        `reward_points_cost IS NOT NULL OR accrual_kind = 'stamps'` — la segunda red también muerde.
+      - (e) sacar el filtro `status = 'active'` de `operatorBusiness` → **rojo** el del operador
+        deshabilitado.
+
+      > ~~(a) sacar el `FOR UPDATE` → **rojo** la carrera de mismo `clientRequestId` (sin el lock,
+      > el read del paso (2) deja de ser seguro); (b) → **rojo** el test de `insufficient_override`
+      > y **verde el resto**: por eso hace falta ese test específico.~~
+
+      **Por qué estaba mal, y por qué importa más que el error en sí.** Con el mismo
+      `client_request_id`, las dos transacciones chocan igual contra
+      `unique (business_id, client_request_id)`: el `23505` aborta y **revierte** el `UPDATE` del
+      saldo (no hay `ON CONFLICT DO NOTHING` — ésa es justamente la diferencia con el bug del ADR
+      0054). O sea **para ese caso el índice único solo ya alcanza, y el lock no es lo que lo
+      salva**. El `FOR UPDATE` sí es load-bearing, pero su oráculo es **el test de 8 concurrentes**,
+      no la carrera homónima. Escribir lo contrario habría dejado en la spec la misma clase de
+      defecto que causó el ADR 0054: **un documento afirmando un invariante que el test no pinnea**,
+      y el próximo lector creyéndole. La lección se generaliza: *el nombre de un test no es
+      evidencia de qué propiedad pinnea* — sólo la mutación lo dice.
+
+      **Anti-falso-verde (verificado, se sostiene):** las aserciones de las dos rojas son sobre la
+      **fila del log** (`insufficientOverride`, `unitsDebited`, `balanceBefore`), no sobre el saldo.
 - [ ] **Comandos exactos** (Node 24, scripts de ROOT): `pnpm run typecheck && pnpm run lint &&
       pnpm run test && pnpm run build` + integración Neon del dominio `counter`.
 - [ ] **Manual (owner, teléfono real sobre Vercel)**: crear un programa con premios, acreditar

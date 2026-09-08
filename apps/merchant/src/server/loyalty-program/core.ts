@@ -37,6 +37,9 @@ export type ProgramInput = {
   cardDesign: CardDesignInput | null;
   accrual: AccrualInput;
   rewards: RewardInput[];
+  /** Advanced setting (spec 0055 §5): may the counter hand a reward over without
+   * enough balance? Defaults to `false` (the redemption is blocked). Per program. */
+  redeemAllowInsufficient: boolean;
 };
 export type CloseInput = {
   earningEndsAt?: unknown;

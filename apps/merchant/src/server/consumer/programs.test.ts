@@ -26,6 +26,7 @@ function row(overrides: Partial<ConsumerProgramRow> = {}): ConsumerProgramRow {
     stampsCount: 3,
     enrolledAt: new Date("2026-01-01T00:00:00Z"),
     lastOrderAt: null,
+    lastRedemptionAt: null,
     ...overrides,
   };
 }
@@ -43,6 +44,46 @@ describe("consumer program DTO", () => {
       lastActivityAt: "2026-01-01T00:00:00.000Z",
     });
     expect(JSON.stringify(dto)).not.toMatch(/ObjectKey/);
+  });
+
+  it("a redemption counts as activity and can be the newest one (spec 0055)", () => {
+    // Without `reward_redemption` in the calculation, redeeming would not reorder the
+    // wallet list: `lastActivityAt` would stay pinned to the last order/enroll.
+    expect(
+      toConsumerProgramSummary(
+        row({
+          lastOrderAt: new Date("2026-02-01T00:00:00Z"),
+          lastRedemptionAt: new Date("2026-03-01T00:00:00Z"),
+        }),
+      ).lastActivityAt,
+    ).toBe("2026-03-01T00:00:00.000Z");
+    // …and an older redemption never pulls the activity backwards.
+    expect(
+      toConsumerProgramSummary(
+        row({
+          lastOrderAt: new Date("2026-02-01T00:00:00Z"),
+          lastRedemptionAt: new Date("2026-01-15T00:00:00Z"),
+        }),
+      ).lastActivityAt,
+    ).toBe("2026-02-01T00:00:00.000Z");
+  });
+
+  it("carries the reward catalog and never an object key in it", () => {
+    const dto = toConsumerProgramSummary(row(), [
+      {
+        id: "reward-1",
+        type: "custom",
+        label: "Café gratis",
+        productId: null,
+        discountPercent: null,
+        pointsCost: 50,
+        position: 0,
+        imagePath: null,
+      },
+    ]);
+    expect(dto.rewards.map((reward) => reward.label)).toEqual(["Café gratis"]);
+    expect(JSON.stringify(dto)).not.toMatch(/ObjectKey/);
+    expect(toConsumerProgramSummary(row()).rewards).toEqual([]);
   });
 
   it("points never receives a stamps card design", () => {

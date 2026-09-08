@@ -1,4 +1,4 @@
-import { desc, eq, max } from "drizzle-orm";
+import { desc, eq, max, sql } from "drizzle-orm";
 import type { CardDesignColors } from "../../components/loyalty/card-preview";
 import { getDb } from "../db";
 import {
@@ -6,8 +6,14 @@ import {
   loyaltyPrograms,
   orders,
   programMemberships,
+  rewardRedemptions,
 } from "../schema";
-import { toClientProgram } from "../loyalty-program/client-view";
+import {
+  type RewardDTO,
+  toClientProgram,
+  toRewardDTO,
+} from "../loyalty-program/client-view";
+import { loadRewardsForPrograms } from "../loyalty-program/persistence";
 
 export type ConsumerProgramSummary = {
   membershipId: string;
@@ -29,6 +35,9 @@ export type ConsumerProgramSummary = {
   stampsCount: number;
   enrolledAt: string;
   lastActivityAt: string;
+  /** The program's reward catalog (spec 0055), ordered by `position`. Same DTO the
+   * wizard and the counter use — public `imagePath` only, never an R2 object key. */
+  rewards: RewardDTO[];
 };
 
 export type ConsumerProgramRow = {
@@ -55,6 +64,9 @@ export type ConsumerProgramRow = {
   stampsCount: number;
   enrolledAt: Date;
   lastOrderAt: Date | null;
+  /** A redemption IS activity (spec 0055): without it, redeeming would not reorder the
+   * wallet list. `lastActivityAt` is the newest of enroll / order / redemption. */
+  lastRedemptionAt: Date | null;
 };
 
 function configurationOf(value: unknown): {
@@ -66,8 +78,17 @@ function configurationOf(value: unknown): {
   return value && typeof value === "object" ? value : {};
 }
 
+/** Newest of the timestamps given, ignoring nulls. */
+function newest(...dates: (Date | null)[]): Date {
+  return dates.reduce<Date>(
+    (acc, date) => (date && date > acc ? date : acc),
+    dates[0] as Date,
+  );
+}
+
 export function toConsumerProgramSummary(
   row: ConsumerProgramRow,
+  rewards: RewardDTO[] = [],
 ): ConsumerProgramSummary {
   const configuration = configurationOf(row.configuration);
   const unitName =
@@ -118,7 +139,12 @@ export function toConsumerProgramSummary(
     pointsBalance: row.pointsBalance,
     stampsCount: row.stampsCount,
     enrolledAt: row.enrolledAt.toISOString(),
-    lastActivityAt: (row.lastOrderAt ?? row.enrolledAt).toISOString(),
+    lastActivityAt: newest(
+      row.enrolledAt,
+      row.lastOrderAt,
+      row.lastRedemptionAt ?? null,
+    ).toISOString(),
+    rewards,
   };
 }
 
@@ -126,6 +152,7 @@ export async function listConsumerPrograms(
   consumerId: string,
 ): Promise<ConsumerProgramSummary[]> {
   const lastOrderAt = max(orders.createdAt);
+  const lastRedemptionAt = max(rewardRedemptions.createdAt);
   const rows = await getDb()
     .select({
       membershipId: programMemberships.id,
@@ -151,6 +178,7 @@ export async function listConsumerPrograms(
       stampsCount: programMemberships.stampsCount,
       enrolledAt: programMemberships.enrolledAt,
       lastOrderAt,
+      lastRedemptionAt,
     })
     .from(programMemberships)
     .innerJoin(
@@ -159,10 +187,34 @@ export async function listConsumerPrograms(
     )
     .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))
     .leftJoin(orders, eq(orders.membershipId, programMemberships.id))
+    // Two LEFT JOINs on the same membership fan out into the cartesian product of its
+    // orders and its redemptions — which is harmless HERE and only here, because every
+    // selected column of both is inside a `max()`, and `max` is idempotent over
+    // duplicates. Do not add a non-aggregated column from either join.
+    .leftJoin(
+      rewardRedemptions,
+      eq(rewardRedemptions.membershipId, programMemberships.id),
+    )
     .where(eq(programMemberships.consumerId, consumerId))
     .groupBy(programMemberships.id, loyaltyPrograms.id, businesses.id)
-    .orderBy(desc(max(orders.createdAt)), desc(programMemberships.enrolledAt));
-  return (rows as ConsumerProgramRow[])
-    .map(toConsumerProgramSummary)
+    .orderBy(
+      desc(sql`greatest(${lastOrderAt}, ${lastRedemptionAt})`),
+      desc(programMemberships.enrolledAt),
+    );
+
+  const typed = rows as ConsumerProgramRow[];
+  const rewardsByProgram = new Map<string, RewardDTO[]>();
+  for (const reward of await loadRewardsForPrograms([
+    ...new Set(typed.map((row) => row.programId)),
+  ])) {
+    const list = rewardsByProgram.get(reward.programId) ?? [];
+    list.push(toRewardDTO(reward));
+    rewardsByProgram.set(reward.programId, list);
+  }
+
+  return typed
+    .map((row) =>
+      toConsumerProgramSummary(row, rewardsByProgram.get(row.programId) ?? []),
+    )
     .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt));
 }

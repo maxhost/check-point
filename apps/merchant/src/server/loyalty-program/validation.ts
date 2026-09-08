@@ -205,6 +205,20 @@ export function validateProgramInput(value: unknown): ProgramInput {
       "La marca de recorte no corresponde a esta acción.",
     );
   }
+  // Advanced setting (spec 0055 §5), strictly boolean: absent means `false`, and a
+  // truthy non-boolean ("false", 0, "on") is a 422 rather than a silent coercion — a
+  // flag that decides whether balance may be destroyed does not get to degrade quietly.
+  const redeemAllowInsufficient = input.redeemAllowInsufficient;
+  if (
+    redeemAllowInsufficient !== undefined &&
+    redeemAllowInsufficient !== null &&
+    typeof redeemAllowInsufficient !== "boolean"
+  ) {
+    throw new LoyaltyError(
+      422,
+      "La opción de canje sin saldo suficiente no es válida.",
+    );
+  }
   const cardDesign = validateCardDesign(input.kind, input.cardDesign);
   const accrual = validateAccrual(input.kind, input.accrual);
   // Form-only: catalog_product ownership + label snapshot resolve in saveProgram (needs DB).
@@ -219,6 +233,7 @@ export function validateProgramInput(value: unknown): ProgramInput {
     cardDesign,
     accrual,
     rewards,
+    redeemAllowInsufficient: redeemAllowInsufficient === true,
   };
 }
 

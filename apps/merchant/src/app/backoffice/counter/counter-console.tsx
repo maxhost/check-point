@@ -5,17 +5,20 @@ import { useRouter } from "next/navigation";
 import { QrScanner } from "./qr-scanner";
 import { CounterHome } from "./counter-home";
 import { Console, DoneStage, LocationGate, ResolvedStage } from "./stages";
+import { postRedeem } from "./redeem-panel";
 import {
   type AccreditationRow,
   type CartLine,
   type CounterLocation,
   type CounterProduct,
   type GrantResponse,
+  type Mode,
+  type RedeemResponse,
   type ResolveResponse,
+  canRedeem,
 } from "./types";
 
 type Stage = "idle" | "scanning" | "resolved" | "done";
-type Mode = "detailed" | "quick";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -55,6 +58,8 @@ export function CounterConsole({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [result, setResult] = useState<GrantResponse | null>(null);
+  const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
+  const [redeemed, setRedeemed] = useState<RedeemResponse | null>(null);
 
   const reset = useCallback(() => {
     setResolved(null);
@@ -62,6 +67,8 @@ export function CounterConsole({
     setAmount("");
     setNote("");
     setResult(null);
+    setSelectedRewardId(null);
+    setRedeemed(null);
     setError(null);
     setNotice(null);
     setMode("detailed");
@@ -148,16 +155,32 @@ export function CounterConsole({
 
   const canConfirm =
     !busy &&
-    (mode === "detailed"
-      ? cart.length > 0 &&
-        cart.every((l) => l.hasStoredPrice || l.unitPrice > 0)
-      : Number(amount) > 0);
+    (mode === "redeem"
+      ? canRedeem(resolved, selectedRewardId)
+      : mode === "detailed"
+        ? cart.length > 0 &&
+          cart.every((l) => l.hasStoredPrice || l.unitPrice > 0)
+        : Number(amount) > 0);
 
   async function confirm() {
     if (!canConfirm || !resolved) return;
     setBusy(true); // disables Confirm on the first tap (UI layer of idempotency)
     setError(null);
     try {
+      if (mode === "redeem") {
+        // Same `clientRequestId` as a grant would use: minted once per scan. The
+        // server's locked transaction is the real idempotency; this is layer two.
+        setRedeemed(
+          await postRedeem({
+            clientRequestId: requestId,
+            membershipId: resolved.membership.id,
+            rewardId: selectedRewardId,
+            locationId,
+          }),
+        );
+        setStage("done");
+        return;
+      }
       const res = await fetch("/api/counter/grant", {
         method: "POST",
         headers: JSON_HEADERS,
@@ -185,7 +208,9 @@ export function CounterConsole({
       setResult(payload as GrantResponse);
       setStage("done");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No pudimos acreditar.");
+      const fallback =
+        mode === "redeem" ? "No pudimos canjear." : "No pudimos acreditar.";
+      setError(e instanceof Error ? e.message : fallback);
     } finally {
       setBusy(false);
     }
@@ -237,6 +262,8 @@ export function CounterConsole({
           onQty={changeQty}
           onLinePrice={setLinePrice}
           quick={{ amount, onAmount: setAmount, note, onNote: setNote }}
+          selectedRewardId={selectedRewardId}
+          onSelectReward={setSelectedRewardId}
           busy={busy}
           canConfirm={canConfirm}
           onConfirm={confirm}
@@ -244,9 +271,10 @@ export function CounterConsole({
         />
       )}
 
-      {stage === "done" && result && resolved && (
+      {stage === "done" && resolved && (
         <DoneStage
           result={result}
+          redeemed={redeemed}
           displayName={resolved.consumer.displayName}
           onNext={reset}
         />

@@ -87,6 +87,38 @@ lectura del codigo, por mas que "EvalPlanQual deberia cubrirlo".
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.
 
+**Que un test MUERDA no dice QUE propiedad pinnea — eso solo lo dice la mutacion, y la
+atribucion equivocada es tan peligrosa como la ausencia de test.** La spec 0055 declaraba que
+sacar el `FOR UPDATE` ponia roja «la carrera de mismo `clientRequestId`». Se ejecuto: esa carrera
+queda **VERDE** sin el lock, porque para ese caso el **indice unico solo ya alcanza** (el `23505`
+aborta y revierte el `UPDATE` del saldo). El `FOR UPDATE` si es load-bearing, pero su oraculo es
+**otro** test —el de 8 canjes concurrentes, que pasa de 1 exito a 8—, y las mutaciones (a) y (b)
+de esa spec resultaron **indistinguibles** entre si, contra lo que el plan afirmaba. Nadie lo
+habria notado: la suite estaba verde y el nombre del test sonaba a que cubria el lock. Es el ADR
+0054 otra vez —un documento afirmando un invariante que el test no pinnea— pero del lado del plan
+de pruebas. **Corolario: al escribir un plan de mutaciones, la fila «mutacion X → rojo el test Y»
+no se predice, se EJECUTA y se transcribe el resultado.** Un par mutacion↔test escrito de memoria
+le regala a quien herede el arbol una cobertura que no existe.
+
+**Una mutacion se revierte SIEMPRE, y se etiqueta mientras esta puesta.** Un implementador de
+la spec 0055 murio a mitad de sus mutaciones y dejo `counter/core.ts` sin el filtro
+`status = 'active'`: la integracion daba 25/26 y **el rojo parecia un bug real del producto**
+(«un miembro `disabled` puede operar el mostrador»). **Un rojo de mutacion y un rojo de bug son
+indistinguibles desde afuera**, y el default de quien hereda el arbol es creerle al sintoma —
+perseguir un bug que no existe, o «arreglarlo» tapando la mutacion. Enforced por el hook
+`no-mutations-left.sh` (Stop), que **solo ve mutaciones ETIQUETADAS** con `MUTATION`: no es un
+detector de codigo mutado, es el cierre de esa convencion. Por eso todo encargo a un
+implementador exige etiquetar la mutacion y revertir con `shasum` antes de cualquier otra cosa.
+
+**Un hook tambien es un guard, y un guard sin prueba de que MUERDE es peor que ninguno.**
+`tasks-fresh.sh` guardaba con `[ -d src ] || exit 0`, pero `src/` **no existe en la raiz de
+este monorepo** (vive en `apps/*/src`): salia en 0 **siempre** y no bloqueo un turno en toda
+su vida, mientras `CLAUDE.md` y `docs/TASKS.md` citaban su existencia como garantia. Es la
+leccion de los tres guards rotos de la tarea 38, ahora del lado del harness. Al escribir o
+tocar un hook: corrolo contra un estado que **debe** bloquear y verifica el `exit 2` **y** el
+mensaje, no solo que salga 0 cuando todo esta bien. Un exit 0 puede significar "paso" o
+"nunca miro nada", y desde afuera son indistinguibles.
+
 ## Codigo
 
 - Si un archivo supera el limite de tamaño (hook `file-size`): dividir, no extender.

@@ -14,6 +14,8 @@ import {
   pgErrorCode,
   programDTO,
 } from "./core";
+import { loadProgramRewards } from "../loyalty-program/persistence";
+import { type RewardDTO, toRewardDTO } from "../loyalty-program/client-view";
 
 const QR_UNRESOLVED = "No pudimos leer este código. Probá de nuevo.";
 const NO_PROGRAM =
@@ -29,6 +31,8 @@ export async function accreditableProgram(
     .select({
       id: loyaltyPrograms.id,
       kind: loyaltyPrograms.kind,
+      configuration: loyaltyPrograms.configuration,
+      redeemAllowInsufficient: loyaltyPrograms.redeemAllowInsufficient,
       accrualMode: loyaltyPrograms.accrualMode,
       accrualGrant: loyaltyPrograms.accrualGrant,
       accrualBlockAmount: loyaltyPrograms.accrualBlockAmount,
@@ -99,13 +103,19 @@ function buildResolveResult(opts: {
   };
   program: ProgramRow;
   catalog: Awaited<ReturnType<typeof businessCatalog>>;
+  rewards: RewardDTO[];
 }) {
   return {
     // Allow-list: the consumer's display name only — never the qr_token.
     consumer: { displayName: opts.displayName },
     membership: opts.membership,
+    // `programDTO` is an allow-list: it exposes `redeemAllowInsufficient` and never the
+    // raw `configuration` jsonb nor `stampImageObjectKey`.
     program: programDTO(opts.program),
     catalog: opts.catalog,
+    // Rewards for the Canjear mode (spec 0055), ordered by `position` — the order the
+    // owner configured in step 4. Same DTO as the wizard and the wallet: no R2 key.
+    rewards: opts.rewards,
   };
 }
 
@@ -141,12 +151,14 @@ export async function resolveScan(
     business.id,
   );
   const catalog = await businessCatalog(business.id);
+  const rewards = (await loadProgramRewards(program.id)).map(toRewardDTO);
 
   return buildResolveResult({
     displayName: `${account.firstName} ${account.lastName}`.trim(),
     membership,
     program,
     catalog,
+    rewards,
   });
 }
 

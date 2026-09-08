@@ -8,7 +8,242 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-08 (**SPEC 0056 IMPLEMENTADA, CON PASS DE REVISOR INDEPENDIENTE, PUSHEADA Y
+Ultima actualizacion: 2026-09-08 (**SPEC 0055 (CANJE, TAREA 44): PASS DEL REVISOR + LOS 3 HUECOS DE TEST CERRADOS
+Y VERIFICADOS POR MUTACION. TODO VERDE. FALTA: commit, migracion a prod, push y QA del owner — NINGUNO HECHO,
+ESPERANDO OK DEL OWNER.**
+
+**Numeros finales, corridos por el orquestador:** 5 gates de ROOT verdes (`typecheck`, `lint`, `test` **453 passed
+/137 skipped**, `format:check`, `build`) + **48/48 de integracion Neon** = 27 del canje (`counter-redeem` 7,
+`-races` **8**, `-guards` 8, `-surfaces` 4) + 21 de regresion. Coincide con el criterio que esta nota dejo escrito
+antes de la pasada: `-races` subio de 7 a 8 (entro el test del DoD 8) y el total del canje de 26 a 27.
+
+**EL CUARTO AGENTE MURIO — y esta vez el hook lo cazo.** El implementador de la pasada de tests murio con una
+mutacion aplicada **en codigo de PRODUCCION** (`redemptions.ts`: un push encolado en el camino de FALLO y fuera de
+la transaccion). `no-mutations-left.sh` —escrito hoy, a raiz de que el implementador del backend hizo exactamente
+lo mismo— dio `exit 2` nombrando archivo y linea. **Sin ese hook, esa mutacion se commiteaba**: el arbol quedaba
+mandando un push fantasma en cada canje rechazado, y su sintoma habria parecido un bug de producto. Revertida a
+mano (el archivo es untracked, no habia `git checkout` posible) y verificada por `shasum`.
+
+**Los 3 huecos, cerrados y cada uno probado por mutacion POR EL ORQUESTADOR** (el implementador murio antes de
+probar ninguno, y en este repo un test sin su mutacion no es evidencia):
+1. **DoD 8 — «con la dispensa activa no hay tope»**: test nuevo de 5 canjes concurrentes sobre saldo 0 → 5 filas
+   con `units_debited = 0`. Mutacion: ponerle un tope a la dispensa → **rojo solo ese test**, con el mensaje
+   «no redemption may be rejected: the dispensation renounces the cap». Pinnea una **decision del owner**, no un
+   invariante tecnico: quien lo vea rojo esta por revertir producto, y el test se lo dice.
+2. **El guard de fuga de DTO que el revisor habia EVADIDO 2 de 3 veces**: ahora es allow-list positiva sobre el
+   conjunto exacto de claves. **Reproduje las dos evasiones exactas** (`stampKey` = clave real de R2 con otro
+   nombre, `config` = el jsonb entero con otro nombre) y el guard nuevo las caza **nombrandolas** en el diff de la
+   asercion. Antes las dos pasaban en verde.
+3. **La asercion de «sin push»** que faltaba en el canje bloqueado. Mutacion: encolar el push en el camino de fallo
+   → **rojas las dos** aserciones hermanas.
+
+Todas las mutaciones revertidas y verificadas por `shasum`; `no-mutations-left.sh` en 0.
+
+**PROXIMO PASO — REQUIERE OK DEL OWNER, no se hace solo:** (1) commit; (2) `db:migrate` de la `0028` sobre la rama
+**default** de Neon (hoy solo esta en la efimera `spec-0055-redeem`) + verificacion por SQL de que `core`/`consumer`/
+`merchant_auth` quedaron intactos; (3) push a `main`; (4) verificar que **prod tenga EL COMMIT** con
+`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'` → `success`; (5) recien ahi, QA del
+owner. **La spec NO se marca `implementada` todavia**: su DoD 21 exige la migracion aplicada y verificada en prod.
+
+**Limite declarado:** el PASS del revisor es sobre el estado ANTERIOR a estos 3 fixes. Los fixes son solo-tests
+(mas correcciones de comentarios) y los verifique por mutacion uno por uno, pero **no hubo una segunda pasada
+independiente sobre ellos**. Queda dicho, no tapado.
+
+**EL HALLAZGO GRANDE DE LA REVISION — la propia spec 0055 afirmaba algo FALSO sobre su plan de pruebas, y era del
+genero exacto del ADR 0054.** La spec predecia que sacar el `FOR UPDATE` ponia roja «la carrera de mismo
+`clientRequestId`». **Es falso: esa carrera queda VERDE sin el lock** — para ese caso el **indice unico solo ya
+alcanza**, porque el `23505` aborta y revierte el `UPDATE` del saldo (no hay `ON CONFLICT DO NOTHING`; esa es
+justo la diferencia con el bug del 0054). Lo verifico el revisor **y lo re-verifique yo ejecutandolo**: las 4
+carreras siguen verdes y lo que se rompe es el test de **8 concurrentes** (1 exito → **8 exitos**). Ademas las
+mutaciones (a) y (b) resultaron **indistinguibles**: mismo conjunto rojo. El `FOR UPDATE` **si** es load-bearing,
+pero su oraculo es otro test del que la spec decia. **Nadie lo habria notado**: la suite estaba verde y el nombre
+del test sonaba a que cubria el lock. Corregido en la spec (con el texto viejo tachado a proposito, porque el error
+es instructivo), en el JSDoc de `redemptions.ts` —que es donde alguien lo va a leer— y como regla nueva en
+`CLAUDE.md`: **una fila «mutacion X → rojo el test Y» no se predice, se EJECUTA y se transcribe.**
+
+**Evidencia que produjo el revisor (la que ningun implementador entrego):** las 5 mutaciones corridas in-place con
+`shasum`, ninguna dejada puesta. (c) da UNA sola roja, la predicha (`23503` sobre el FK). (d) da 3 rojas, y de
+yapa se verifico que la **segunda red** tambien muerde: el check de tabla `reward_points_cost IS NOT NULL OR
+accrual_kind = 'stamps'`. (e) confirmada. **El anti-falso-verde de la spec se sostiene**: las aserciones de las
+rojas son sobre la **fila del log**, no sobre el saldo.
+
+**DoD: 18 de 23 con evidencia observable.** Los que NO: (8) «con la dispensa activa no hay tope» —declarado en
+prosa, sin test: si alguien lo "arregla" creyendo que es un bug, nada se pone rojo—; (19) el `i` del wallet y (20)
+el render del historial —comportamiento de UI, sin oraculo automatizado, van al QA manual del owner—; (21) la
+migracion en prod, **correctamente pendiente por protocolo**; (12) parcial, le falta aseverar «sin push».
+
+**EN CURSO — pasada de tests focalizada** (avanzo: ya toco `-races` —hueco 1— y `-surfaces` —hueco 2—) con los 3 huecos: (1) el test del DoD 8; (2) el guard de fuga de DTO, que
+**promete mas de lo que cubre y el revisor lo EVADIO en 2 de 3 intentos** —agregando `stampKey` (clave real de R2
+con otro nombre) y `config` (el jsonb entero con otro nombre) el test seguia VERDE—, se convierte en allow-list
+positiva sobre el conjunto exacto de claves; (3) la asercion de «sin push» que falta.
+
+**Estado de referencia para comparar cuando termine la pasada** (medido por el orquestador, con la rama efimera):
+**453 unit** (`pnpm run test`, 136 skipped) + **26 de integracion Neon del canje** (`counter-redeem` 7, `-races` 7,
+`-guards` 8, `-surfaces` 4) + **21 de regresion** (`counter`, `counter-idempotency` —las 8 carreras del grant—,
+`counter-guards`, `consumer/programs`). Los 5 gates de ROOT en verde. Si al cerrar la pasada estos numeros bajan,
+algo se rompio; si el de `-races` no sube, el test del DoD 8 no entro.
+
+**Menores ya cerrados por el orquestador:** el comentario del caso 25 de `redeem-state-cases.ts` decia que el DTO
+«no serializa `target` todavia» cuando en el mismo diff pasó a serializarlo (mismo genero que el ADR 0054) — y al
+corregirlo el hook `file-size` me freno a MI en 302 lineas, asi que el comentario se ajusto a 296. Y este archivo
+tenia dos bloques duplicados textualmente (error mio al insertar), deduplicado.
+
+Ultima actualizacion previa: 2026-09-08 (**SPEC 0055 (CANJE, TAREA 44): BACKEND + UI COMPLETOS Y VERDES. FALTA EL
+REVISOR INDEPENDIENTE. SIN COMMITEAR, SIN PUSHEAR.**
+
+**REVISION EN CURSO — el revisor esta corriendo las mutaciones (a)/(b)/(d) sobre `redemptions.ts` y
+`redeem-plan.ts` en este momento.** SIN VEREDICTO TODAVIA. **Tres agentes murieron sin handoff en esta spec** (dos
+implementadores y el revisor una vez). Cada muerte se auditó antes de asumir nada, y el arbol quedo verificado
+limpio: `no-mutations-left.sh` en 0, **453 unit + 26 de integracion Neon**, los mismos numeros que antes de
+despachar al revisor —o sea, ninguna mutacion sin etiquetar quedo puesta—. **Al revisor se le cambio el metodo:
+entrega por BLOQUES (mutaciones → DoD → veredicto), no un handoff unico al final**, porque un bloque entregado vale
+mas que una revision completa que se pierde.
+
+**REVISOR INDEPENDIENTE DESPACHADO** sobre el diff completo (backend + UI), con el encargo de producir el la
+evidencia de las mutaciones **(a) FOR UPDATE, (b) pre-read fuera de la transaccion, (c) reward_id NOT NULL,
+(d) points_cost nulo**, que ningun implementador entrego. La (e) ya esta demostrada (ver mas abajo). Se le advirtio
+explicitamente que `pnpm run test` **NO es oraculo de la integracion**: sin env los Neon corren skipped y la suite
+sale verde igual.
+
+**Desbloqueo de Sellos cerrado** dentro del alcance autorizado: `rawTarget` quedo como **UNA sola definicion** en
+`counter/core.ts` (la consumen `redeem.ts` y `programDTO`), y el DTO expone unicamente `target` **crudo**, nunca el
+jsonb. B lo verifico por mutacion: agregar `configuration` al DTO → rojo; agregar `stampImageObjectKey` → rojo
+**aunque su valor fuera `null`**, porque el guard asevera sobre el NOMBRE de la clave en el serializado y no sobre
+un valor presente por casualidad. Ademas sondeo el cableado `resolveScan → rewardState` (con `target` → `canRedeem`
+true; sin `target` → `unavailable`, deshabilitado, ni tira ni habilita) con una sonda descartable que borro.
+
+**Comentario corregido por el orquestador:** `ProgramRow.configuration` decia «NEVER serialized: `programDTO` is an
+allow-list and does not include it», y con `target` ya en el DTO esa frase se leia ambigua. Ahora dice exactamente
+cual es la unica clave que sale y que sumar una segunda es una decision, no un detalle. **No es cosmetica:** el peor
+bug de este repo (ADR 0054) nacio de un comentario que documentaba un invariante falso y de que alguien le creyo.
+
+**Gates de ROOT tras todo lo anterior, corridos por el orquestador: los 5 en verde — 453 tests.**
+
+**Pasada B (UI) entregada:** modo Canjear en la consola de mostrador (`redeem-panel.tsx` nuevo, para no engordar
+`counter-console.tsx`/`stages.tsx` contra el tope de 300), configuracion avanzada `redeemAllowInsufficient` en el
+paso 4 del wizard (viaja en el PUT y se hidrata al editar), y en el wallet el boton `i` que ahora abre una hoja con
+**Terminos** + **Catalogo de premios** (`TermsModal` quedo INTACTO, no se reuso como contenedor: tiene titulo y copy
+hardcodeados). Historial del dia con el canje distinguido (`entryKind`, signo `-`, etiqueta del premio). Gates de
+ROOT verdes: **453 tests** (venian de 421). El estado por premio salio como funcion pura `rewardState` en `types.ts`
+con **tabla de 28 casos**, probada por 4 mutaciones con `shasum` de ida y vuelta.
+
+**El bloqueo que B paro bien, y por que se destrabo:** el modo Canjear de **Sellos** no se podia pintar porque
+`programDTO` no serializa `configuration.target` — sin eso la UI no sabe el tope de la tarjeta. B se detuvo en vez
+de inventarlo (el encargo le prohibia tocar `src/server/**`). **No era una decision de producto:** la spec dice
+textual que Sellos muestra «el progreso `stamps_count` / `target`», asi que el dato TIENE que llegar al cliente —
+mecanismo ya decidido. Autorizado con tres condiciones: (1) el `target` va **crudo**, no normalizado, para que
+cliente y server validen con la MISMA semantica (si el cliente normalizara, podria pintar «Canjeable» donde el
+server responde `422 invalid_program` — la trampa `Number(null) === 0`); (2) **nunca** el `configuration` jsonb
+entero, que `programDTO` promete ser allow-list; (3) correr la integracion de superficies y **confirmar que sigue
+aseverando lo que promete**, no solo que pasa.
+
+**Aceptado tal cual del handoff de B, para que no se rehaga:** la duplicacion consciente entre `rewards-modal.tsx`
+y `rewardState` (son decisiones distintas —el mostrador decide habilitacion con dispensa, el wallet solo muestra
+cuanto falta— y cruzar backoffice→consumer seria peor), y el historial del dia (es la seccion «Historial del dia»
+de la spec, no alcance nuevo).
+
+**Sin oraculo, declarado y NO tapado con un regex** (leccion de la tarea 38): el **cableado** de la UI — que el panel
+renderice el estado que devuelve `rewardState`, que la consola postee el premio seleccionado, y que el
+`clientRequestId` sea el del escaneo. Es comportamiento, no sintaxis. Va al QA manual del owner.
+
+**El implementador del backend murio DOS VECES sin dejar handoff.** Las dos veces se auditó lo que quedó en disco
+antes de asumir nada, y la segunda vez eso pagó:
+
+**EL HALLAZGO DE LA SESION — el implementador murio CON UNA MUTACION APLICADA.** `counter/core.ts` tenia el filtro
+`status = 'active'` de `operatorBusiness` **borrado**, con el comentario `// MUTATION (e): the status filter is gone.`
+todavia puesto. La integracion daba 25/26 con **un rojo que parecia un bug real del producto** («un miembro
+`disabled` puede operar el mostrador»). No lo era: era la mutacion (e) a medio correr. Se barrio el arbol entero
+buscando `MUTATION` (era la unica), se restauro el filtro y el archivo volvio a 26/26. **Efecto lateral util: ese
+rojo accidental ES la evidencia de que la mutacion (e) muerde**, que era uno de los 5 items de evidencia pedidos.
+**Regla nueva para todo encargo de implementador: si interrumpis, NUNCA dejes una mutacion aplicada en el arbol** —
+un rojo de mutacion y un rojo de bug son indistinguibles desde afuera, y el default de quien lo hereda es creerle al
+sintoma.
+
+**Verificado por el orquestador, corriendo los comandos (no de palabra):**
+- `file-size`: limpio en los 31 archivos tocados/nuevos (mayor `counter-redeem-guards.neon.integration.test.ts` 274;
+  `redemptions.ts` 273; **`grant.ts` BAJO 298→286**).
+- Gates de ROOT en Node 24.20.0: `typecheck` 3/3, `lint` limpio, `test` **421 passed**, `format:check` limpio.
+- **Integracion Neon del canje: 26/26** en 4 archivos (`counter-redeem` 7, `-races` 7, `-guards` 8, `-surfaces` 4),
+  contra la rama efimera `spec-0055-redeem`. Incluye las 4 carreras de mismo `clientRequestId` (un solo debito),
+  las 8 concurrentes con saldo para uno, `insufficient_override` bajo concurrencia, el snapshot sobreviviendo a
+  `saveProgram`, y `target` 0/ausente → 422.
+- **Regresion del dominio: 21/21** (`counter` 10, `counter-idempotency` 10 —las 8 carreras del grant siguen verdes—,
+  `counter-guards`, `consumer/programs`).
+- Migracion `0028_fixed_maestro.sql` aplicada a la rama efimera y verificada por SQL (19 columnas, nullables y
+  defaults correctos). **Todavia NO aplicada a la rama default (prod)** — eso va despues del PASS.
+- Sin fugas de `*ObjectKey`/`qr_token` en los DTOs nuevos; `resolve` reusa el `toRewardDTO` compartido.
+
+**PROXIMO PASO:** (1) que llegue la pasada B (UI: modo Canjear, config avanzada del wizard, catalogo en el `i` del
+wallet); (2) **revisor independiente** sobre todo el diff — le queda la evidencia de las mutaciones **(a) FOR UPDATE,
+(b) pre-read fuera de la transaccion, (c) reward_id NOT NULL, (d) points_cost nulo**, que el implementador nunca
+entrego (la (e) ya esta demostrada, ver arriba); (3) con el PASS: migracion a la rama default de Neon, push, y QA del
+owner **verificando antes que prod tenga EL COMMIT** a probar.
+
+**HALLAZGO DEL HARNESS, arreglado y ya probado en vivo: `.claude/hooks/tasks-fresh.sh` NUNCA bloqueo un turno.**
+Guardaba con `[ -d src ] || exit 0` y `src/` **no existe en la raiz de este monorepo** (vive en `apps/*/src`): salia
+en 0 siempre, mientras `CLAUDE.md` y este archivo citaban su existencia como garantia. Arreglado (resuelve el glob),
+**probado por mutacion** (sobre un cambio real en `apps/platform/src` el hook nuevo da `exit 2` nombrando el archivo
+y el viejo da `0` sobre el estado identico; restaurado con `shasum`), y **desde entonces ya bloqueo un turno real de
+esta sesion** — el primero de su vida. Regla agregada a `CLAUDE.md`: `exit 0` puede significar «paso» o «nunca miro
+nada», y desde afuera son indistinguibles.
+
+**DOS HOOKS NUEVOS/ARREGLADOS ESTA SESION, los dos probados por mutacion (nunca "deberia andar"):**
+- `tasks-fresh.sh` — (1) arreglado el guard `[ -d src ]` que lo hacia un no-op en este monorepo; (2) **afinado para
+  no acusar en falso**: miraba el mtime de TODO el arbol de src, y un `git checkout -- <f>` que restaura un archivo
+  le bumpea el mtime sin cambiar una linea — denunciaba archivos INTACTOS (paso en vivo, con el archivo que use de
+  victima para probar el otro hook). Ahora cruza el mtime **contra lo que git reporta como cambiado**. Probado en
+  tres direcciones: intacto-con-mtime-nuevo → 0 (el viejo daba 2), modificado-de-verdad → 2 nombrando el archivo,
+  y tras actualizar TASKS.md → 0. *Un guard que acusa en falso entrena a ignorarlo, que es la otra forma de no
+  servir para nada.*
+- `no-mutations-left.sh` — **NUEVO**. Bloquea el turno si queda una mutacion etiquetada (`MUTATION`) en el arbol.
+  Nace del implementador que murio con la mutacion (e) puesta. Declara su limite en el propio archivo: **solo ve
+  mutaciones ETIQUETADAS**, no es un detector de codigo mutado — es el cierre de la convencion que los encargos
+  exigen. Probado: arbol limpio → 0, mutacion puesta → 2 nombrando el archivo, restaurado → 0.
+
+**Contratos del orquestador** (los exige «Archivos compartidos» de la spec) en
+`docs/specs/0055-contratos-del-orquestador.md`: `RewardDTO` **extiende** el `toRewardDTO` existente en vez de crear un
+segundo DTO de premio, y `planRedemption` con su **tabla de 24 casos** como oraculo del unit.)
+
+**Lo hecho como orquestador antes de despachar** (lo exige la seccion «Archivos compartidos» de la spec): los dos
+contratos compartidos quedaron fijados en `docs/specs/0055-contratos-del-orquestador.md` — (1) **`RewardDTO`**: se
+EXTIENDE el `toRewardDTO` que ya existia en `client-view.ts` con el `id` que le faltaba, en vez de crear un segundo
+DTO de premio (dos lugares que deciden lo mismo divergen: es el mecanismo de la fuga de `*ObjectKey` de la 0025 y de
+las listas MIME duplicadas 4 veces); (2) **`planRedemption`**: firma, orden de evaluacion normativo y **tabla de 24
+casos** como oraculo del unit, incluidos los casos trampa (`Number(null) === 0` → canje gratis ilimitado; `points_cost`
+nulo; y el caso 24, que separa «el programa permite la dispensa» de «esta operacion la uso»). Rama Neon efimera
+`spec-0055-redeem` (`br-shy-art-axolrd4v`) creada; credenciales en `.env.integration.local` (gitignored).
+
+**El implementador del backend murio sin dejar handoff.** Se auditó lo que quedó en disco antes de asumir nada
+(leccion ya escrita en memoria: al heredar trabajo sin commitear, correr los chequeos uno mismo):
+`file-size` limpio en los 25 archivos tocados (mayor: `redemptions.ts` 273; `grant.ts` **bajo** 298→286);
+gates de ROOT en Node 24.20.0 verdes (**421 tests**, venia de 385); migracion `0028_fixed_maestro.sql` aplicada a la
+rama efimera y verificada **por SQL** (las 19 columnas de la spec, con nullables y defaults correctos); sin fugas de
+`*ObjectKey`/`qr_token` en los DTOs nuevos; y `redeem-plan.ts`/`redemptions.ts`/`redeem.ts` fieles al anexo
+(`FOR UPDATE` real, idempotencia bajo el lock, y el `UPDATE` escribe `plan.balanceAfter` **literal**, sin aritmetica
+en SQL que pueda discrepar con el unit).
+
+**EL HUECO, Y ERA INVISIBLE EN EL VERDE: no existe NINGUN test de integracion Neon del canje.** Como todos los
+`*.neon.integration.test.ts` corren *skipped* sin env, `pnpm run test` sale verde con 421 tests igual — la ausencia
+**no se ve en el reporte de la suite**; se detecto buscando el archivo por nombre. Falta tambien la evidencia de las
+5 mutaciones. Es justo la mitad que carga el peso del DoD: sin la carrera concurrente aseverada **por SQL**, el canje
+tendria el mismo agujero que el ADR 0054 documento en la acreditacion. El implementador fue retomado con su contexto
+intacto y la lista exacta de lo que falta.
+
+**PROXIMO PASO:** (1) que llegue la integracion Neon + mutaciones; (2) despachar la **pasada B: UI** (modo Canjear en
+la consola, config avanzada en el paso 4 del wizard, catalogo de premios en el `i` del wallet) — se despacha DESPUES
+a proposito, porque las mutaciones rompen codigo fuente in-place y dos agentes corriendo gates sobre el mismo arbol
+en ese momento producen rojos que no significan nada; (3) **revisor independiente** sobre todo; (4) recien con el PASS,
+migracion a la rama default de Neon y push.
+
+**HALLAZGO DEL HARNESS, ya arreglado: `.claude/hooks/tasks-fresh.sh` NUNCA bloqueo un turno en toda su vida.**
+Guardaba con `[ -d src ] || exit 0`, pero `src/` **no existe en la raiz de este monorepo** (vive en `apps/*/src`):
+salia en 0 siempre, mientras `CLAUDE.md` y este archivo citaban su existencia como garantia de que el estado no queda
+viejo. Arreglado (resuelve el glob en vez de asumir la ruta) y **probado por mutacion**: sobre un cambio real en
+`apps/platform/src`, el hook nuevo da `exit 2` nombrando el archivo y el viejo da `0` sobre el estado identico; el
+archivo se restauro con `shasum` verificado. Regla agregada a `CLAUDE.md`: un hook es un guard, y `exit 0` puede
+significar «paso» o «nunca miro nada» — desde afuera son indistinguibles.)
+
+Ultima actualizacion previa: 2026-09-08 (**SPEC 0056 IMPLEMENTADA, CON PASS DE REVISOR INDEPENDIENTE, PUSHEADA Y
 DESPLEGADA. El bug de doble acreditacion esta CERRADO en prod** — commit `a322ac7` en `main`, `Vercel: success`
 verificado por `gh api repos/maxhost/check-point/commits/a322ac7/status`, y la verificacion post-deploy por SQL
 (MCP Neon, `red-violet-38772073`, rama default) dio **0 filas**: ninguna `program_membership` con
@@ -1712,7 +1947,7 @@ end-to-end con el canal `fake`, APNs/Google reales quedan como QA residual).
 | 40 | El cropper no aparece con archivos de la GALERIA en iOS (ni siquiera PNG) — falso fallback del probe | 0052 | hecho (QA en vivo del owner PENDIENTE) | **HALLAZGO DEL QA DE LA 0040 EN IPHONE REAL (2026-09-05), con el dato que absuelve a casi todo: con la CAMARA el cropper funciona perfecto; con la galeria (Photo Library) el modal no aparece nunca, ni con un PNG.** O sea: chunk, react-easy-crop, canvas y guard de tipos andan — el falso negativo esta en `canDecodeImage`. Dos quirks conocidos de WebKit como sospechosos: `img.decode()` que rechaza espuriamente aunque `onload` haya disparado con dimensiones reales (y nuestro probe le da veto: `catch → false`), y/o la carga flaky por blob URL de archivos del Photo Library (si no responde, `choose()` CUELGA). Fix por capas en `specs/0052-...md`: decode() pierde el veto, retry con data URL, timeout de 8s, y el probe devuelve el src utilizable para que el cropper consuma el MISMO camino que funciono. **OJO: el dato del ADR 0047 §4 sigue abierto** — el fallback de galeria en iOS era este bug, no HEIC crudo; falta el QA de Android con la 0052 desplegada. |
 | 42 | Deuda de cobertura de la 0052: dos lineas del probe sobreviven a la mutacion | — | **hecho (2026-09-05)** — las 2 lineas quedaron con oraculo, cada test probado ROMPIENDO el codigo | **CERRADO.** Los 2 tests van en `lib/crop-image-decode.test.ts` (11 → 13). **(1) Timeout TOTAL:** el camino que las rodajas por paso no cubren es `FileReader` OK + el `<img>` del data URL que nunca contesta — `probeSrc(dataUrl)` (linea 148) se espera **pelado**, sin rodaja propia, asi que `attempt()` no settlea nunca y solo el timeout total lo cierra. **(2) `if (!resolved) cleanup()`:** unica ventana en que la carrera total se pierde con el object URL todavia vivo — `step` tiene piso de 1 ms (`Math.max(1, …)`), asi que con presupuesto 0 el timer total vence ANTES de que `attempt` llegue a su propio `revoke`. **Mutacion verificada in-place (backup + `shasum -c`, sin worktree):** borrar `if (!resolved) cleanup()` → cae **solo** el test (2) (`expected [] to deeply equal [blob:…]`); sacar el `within(attempt(), timeoutMs, null)` → caen **los 2** por `Test timed out` y **ninguno de los 11 viejos**, que es exactamente lo que el revisor habia reportado. **NO se toco `image-decode-probe.ts`** (solo tests). **Las 2 observaciones de UX/costo de la misma revision siguen abiertas y NO se resolvieron aca** (son decision del owner, ver tarea 43): hasta 8 s sin ninguna señal en pantalla, y el fallback real paga un base64 de hasta ~6,7 MB de string antes de rendirse. Notas originales: **HALLAZGO DEL REVISOR DE LA 0052.** Dos lineas de `lib/image-decode-probe.ts` estan **sin oraculo** (borrarlas deja los 15 tests en verde): (1) el **timeout TOTAL** (linea ~154) — las rodajas por paso cubren todo lo testeado, pero el codigo lo necesita igual: el revisor escribio un test scratch del unico camino descubierto (`FileReader` resuelve OK pero el `<img>` del data URL NUNCA contesta, porque `probeSrc(dataUrl)` no tiene rodaja propia) y confirmo que solo el timeout total lo cierra; (2) **`if (!resolved) cleanup()`** (~155), red de seguridad para un exito tardio que perdio la carrera. Sumar esos 2 tests. **Ademas, 2 observaciones de UX/costo de la misma revision:** durante hasta 8s no hay ninguna señal en pantalla mientras el probe trabaja (si el QA del iPhone reporta "tarda y no pasa nada", es esto), y el fallback real ahora paga un base64 de hasta 5 MB antes de rendirse (un HEIC en Chrome hace blob→error, lee ~6,7 MB de string, falla y recien ahi cae al fallback). |
 | 43 | El probe de decode no muestra ninguna señal en pantalla (hasta 8 s) y el fallback paga un base64 de ~6,7 MB | — | pendiente (decision del owner) | **HALLAZGO A DECIDIR, NO ACORDADO CON NADIE.** Las 2 observaciones de UX/costo que el revisor de la 0052 dejo junto a la deuda de cobertura, separadas aca porque **no son deuda de tests**: la 42 se cerro y estas siguen abiertas. (1) **Sin señal en pantalla:** entre que el usuario elige la foto y que aparece el modal pueden pasar hasta **8 s** (`DECODE_PROBE_TIMEOUT_MS`) sin spinner ni texto. Es el sintoma exacto que el checklist de QA (`QA-PENDIENTE.md` A2) pide anotar como «tarda y no pasa nada» — si el owner lo reporta, **es esto, no un bug nuevo**. (2) **Costo del fallback real:** un HEIC en Chrome hace blob→error y recien despues lee el archivo entero a base64 (~6,7 MB de string para una foto de 5 MB) para fallar de nuevo. Se paga en el camino que **siempre** falla. Opciones a decidir, ninguna elegida: (a) spinner/texto mientras el probe corre; (b) bajar el presupuesto total; (c) saltear el retry por data URL cuando el `type` del archivo ya es HEIC/HEIF (los unicos que ningun navegador salvo Safari abre); (d) aceptarlo como esta. **Depende del dato del QA A3 (Android)**: si HEIC crudo no llega desde Android, (c) casi no tiene a quien ahorrarle nada. |
-| 44 | **El canje no existe: el loop del producto no cierra.** Brecha entre dos specs cerradas, no una regresión | 0055 | **spec 0055 `cerrada` + ADR 0053** (2026-09-07) — diseño cerrado punta a punta con el owner. Cerrado por el owner: contabilidad propia (premio + tarjeta que reclama + operador + local), Puntos resta / Sellos reinicia **con arrastre**, un premio por operación, push al canjear, saldo insuficiente como **config avanzada del programa**, y **catálogo de premios en el wallet** (el botón `i` pasa a ofrecer Términos + Catálogo). Los 2 items que estaban abiertos los cerró el owner: **(A) el saldo vuelve a 0, nunca negativo** — 9 sellos de 10 → 0, 80 puntos contra un premio de 100 → 0; el invariante vive en el `SET` (`GREATEST(saldo - costo, 0)`), no en una validación, y los checks `>= 0` de 0030 quedan como red; **(B) flujo ratificado** (el mostrador escanea; el inbox de solicitudes queda descartado y aditivo). **La revision independiente del plan dio NO PASA** (5 bloqueantes, todos de mecanismo — ninguna decision del owner cambio) y la spec se corrigio el mismo dia: el debito pasa a **transaccion interactiva** (`withDbTransaction`), `insufficient_override` sale del saldo **bloqueado**, se rechazan `points_cost` nulo y `target` 0 (los dos borraban el saldo en silencio via `GREATEST(x - NULL, 0) = 0`), y `operatorBusiness` gana `status = 'active'` (hoy un empleado **deshabilitado** puede operar el mostrador). **BLOQUEADA POR LA TAREA 46 / spec 0056**: el canje iba a copiar el patron de idempotencia de `persistGrant`, que resulto estar roto. **Proximo paso: implementar 0056, despues 0055, con `AGENT-WORKFLOW.md`** — rama Neon efímera + revisor independiente, y la migración a prod recién después del PASS | **HALLAZGO DEL QA DEL OWNER (2026-09-05), bloque B2, y es el mas importante de la sesion: es el corazon del producto.** El owner reporto que el mostrador solo ofrece venta/venta rapida y que no hay forma de escanear para entregar una recompensa y descontar los puntos o resetear los sellos. **Verificado en el codigo, no de palabra:** `app/api/counter/` tiene solo `resolve` y `grant`; `server/counter/` tiene core/grant/history/orders/resolve y ningun `redeem`; la UI (`counter/stages.tsx`) ofrece exactamente dos acciones, ambas de venta. Los premios SI existen y estan persistidos (tabla `core.loyalty_reward`, migracion `0019`, `loyalty-program/rewards.ts` con validacion por tipo) — o sea el owner **puede configurar** recompensas que **nadie puede canjear**. **LA CAUSA RAIZ, que vale mas que el sintoma: las dos specs se delegaron el canje MUTUAMENTE y ninguna lo construyo.** La spec 0036 §8 dice textual *«La ejecucion del canje es de la 0030»*; la spec 0030 dice en su `resumen` *«Solo acreditacion; el canje es otra feature»* y en el cuerpo *«Descontar puntos / resetear la tarjeta de sellos es otra feature, otra URL»*. **Las dos estan cerradas y las dos son internamente coherentes**: el agujero esta ENTRE ellas, que es donde ningun revisor de spec mira. No es un bug ni una implementacion incompleta. **Nada que decidir todavia: necesita spec propia** (que descuenta, atomicidad e idempotencia como en `persistGrant`, auditoria en `core.order` o tabla nueva, quien puede canjear, que pasa con saldo insuficiente, y el reset de la tarjeta de sellos vs. el decremento de puntos). |
+| 44 | **El canje no existe: el loop del producto no cierra.** Brecha entre dos specs cerradas, no una regresión | 0055 | **en implementacion (2026-09-08)** — backend en disco y AUDITADO por el orquestador (file-size limpio, gates de ROOT verdes 421 tests, migracion 0028 aplicada a la rama efimera y verificada por SQL, sin fugas de DTO); **falta la integracion Neon del canje y las 5 mutaciones** —su ausencia es invisible en el verde porque los Neon corren skipped sin env—. Contratos compartidos fijados en `specs/0055-contratos-del-orquestador.md`. Despues: pasada B (UI) y revisor independiente; migracion a prod y push solo con el PASS | **HALLAZGO DEL QA DEL OWNER (2026-09-05), bloque B2, y es el mas importante de la sesion: es el corazon del producto.** El owner reporto que el mostrador solo ofrece venta/venta rapida y que no hay forma de escanear para entregar una recompensa y descontar los puntos o resetear los sellos. **Verificado en el codigo, no de palabra:** `app/api/counter/` tiene solo `resolve` y `grant`; `server/counter/` tiene core/grant/history/orders/resolve y ningun `redeem`; la UI (`counter/stages.tsx`) ofrece exactamente dos acciones, ambas de venta. Los premios SI existen y estan persistidos (tabla `core.loyalty_reward`, migracion `0019`, `loyalty-program/rewards.ts` con validacion por tipo) — o sea el owner **puede configurar** recompensas que **nadie puede canjear**. **LA CAUSA RAIZ, que vale mas que el sintoma: las dos specs se delegaron el canje MUTUAMENTE y ninguna lo construyo.** La spec 0036 §8 dice textual *«La ejecucion del canje es de la 0030»*; la spec 0030 dice en su `resumen` *«Solo acreditacion; el canje es otra feature»* y en el cuerpo *«Descontar puntos / resetear la tarjeta de sellos es otra feature, otra URL»*. **Las dos estan cerradas y las dos son internamente coherentes**: el agujero esta ENTRE ellas, que es donde ningun revisor de spec mira. No es un bug ni una implementacion incompleta. **Nada que decidir todavia: necesita spec propia** (que descuenta, atomicidad e idempotencia como en `persistGrant`, auditoria en `core.order` o tabla nueva, quien puede canjear, que pasa con saldo insuficiente, y el reset de la tarjeta de sellos vs. el decremento de puntos). |
 | 45 | En Android el selector de imagen ofrece SOLO galeria, nunca la camara | — | pendiente (necesita decision + spec chica) | **HALLAZGO DEL QA DEL OWNER (2026-09-05), bloque A3, lateral al dato que se buscaba.** En el iPhone el selector muestra «Tomar foto»; en Android solo deja elegir de la galeria. **Verificado en el codigo:** no existe el atributo `capture` en **ningun** archivo del repo (`grep -rn capture apps/merchant/src/app` → vacio). Las 3 superficies usan `accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}`. En iOS, `accept="image/*"` produce el menu nativo con «Tomar foto»; en **Android 13+ Chrome rutea `image/*` al Photo Picker del sistema, que es solo galeria y no tiene camara** — mismo atributo, comportamiento distinto por plataforma. **Efecto colateral ya visible:** el texto de ayuda del catalogo promete *«Podes tomar una foto o elegir una de tu galeria»* (`product-image-field.tsx`, dentro de `{isTouch && …}`), que en Android es **falso**. Fix candidato: un input/boton aparte con `capture="environment"`, decision del owner porque agrega UI a las 3 superficies. |
 | 46 | **BUG DE PRODUCCION EN LA ACREDITACION (spec 0030): `persistGrant` puede acreditar DOS VECES el mismo `client_request_id`** | 0056 | **hecho (2026-09-08) — implementada con PASS de revisor independiente, COMMITEADA Y SIN PUSHEAR: el bug sigue vivo en prod hasta el deploy** (no hay migracion; el deploy ES el fix). Evidencia que no genero el modelo: (1) **la carrera se reprodujo sobre `neon-http`** —reponer el `ON CONFLICT` da `points_balance` 40/60/80 donde debe haber 20— asi que la **condicion de reapertura de la spec NO se disparo**: el 23505 aborta y revierte el bump tambien sobre HTTP; (2) `EXPLAIN` del plan real sobre Neon = `InitPlan` + `One-Time Filter` (el ADR 0054 queda demostrado, no argumentado); (3) mutacion roja 4/4 corridas; (4) 5 gates verdes + 15/15 de regresion del dominio counter. **El probe `neon-http` es la mitad DETERMINISTA del oraculo** (con el `ON CONFLICT` puesto el 23505 es imposible → el loop agota los 12 intentos y falla siempre); los 8 races son la mitad probabilistica (cazan entre 3 y 7 de 8): **no borrar ese test por lento**. **Auditoria del DoD: ningun test viejo del dominio ejercia concurrencia** — el "is idempotent by client_request_id" de 0030 era ciego por partida doble (secuencial, y sus dos aserciones —respuesta de la API y conteo de ordenes— son justo las dos cosas que seguian bien con el bug). **Verificacion post-deploy corrida (2026-09-08, commit `a322ac7`, Vercel `success`): 0 filas** — ningun saldo por SQL diverge de la suma de `units_granted` de sus ordenes; el bug no llego a corromper datos reales. Limite declarado en el test: solo cubre `mode: "quick"` — el `detailed` (con rollback de `core.order_item`) lo verifico el revisor a mano, no quedo pinneado | **HALLAZGO DE LA REVISION INDEPENDIENTE DE LA SPEC 0055 (2026-09-07), y REPRODUCIDO A MANO contra la forma real de `persistGrant` en Postgres 17 (Docker efimero, NO Neon, NO prod).** La idempotencia de 0030 descansa en el `NOT EXISTS` del CTE `bumped`, y `orders.ts:66-71` documenta que EvalPlanQual lo re-evalua bajo concurrencia. **Es falso.** El `EXPLAIN` muestra que ese `NOT EXISTS` no correlacionado se planea como **`InitPlan` + `One-Time Filter`**: se evalua UNA sola vez, ANTES de tomar el lock de fila. El guard de saldo si esta en el `Filter` del scan y ese si se re-evalua — por eso el bug pasa desapercibido. **Reproducido:** saldo 100, dos requests concurrentes con el MISMO `clientRequestId`, +40 cada uno → **saldo final 180** con **UNA sola** fila en `core.order` que dice `balance_after = 140`. El `ON CONFLICT DO NOTHING` se traga el segundo INSERT y **oculta el dano**: la API responde 'reintento idempotente, saldo 140' mientras el saldo real es 180. La UI mintea el `requestId` en el escaneo (`counter-console.tsx:90`) y lo mantiene estable, asi que el disparador realista es un reintento de red o un doble submit, no un caso de laboratorio. **FIX VERIFICADO (misma sonda): quitar el `ON CONFLICT (business_id, client_request_id) DO NOTHING`.** El 23505 aborta el statement entero y revierte el bump → saldo 140, 1 orden; y `grant.ts:270` **ya** captura 23505 y re-lee, asi que el camino de reintento no cambia. El reintento SECUENCIAL sigue devolviendo 0 filas sin debitar ni explotar. **Falta:** confirmarlo sobre **neon-http** (la sonda fue Postgres local) y un test de integracion que asevere **el saldo por SQL**, no la respuesta de la API (que en este caso miente). La spec 0055 arrastra el mismo patron al **debito**, donde en vez de regalar puntos los **destruye** — por eso se corrige antes de implementarla. |
 | 41 | El enroll entrega una SESION COMPLETA a quien conozca un telefono ya registrado, sin verificarlo | — | pendiente (decision del owner) | **HALLAZGO PREEXISTENTE, salio a la luz al especificar la 0053. No lo introdujo ninguna spec de esta sesion.** `enroll()` resuelve la cuenta por `phone_e164` y la reutiliza; la ruta despues llama `issueSession(account.id)` y setea la cookie. **El enroll NO verifica el telefono** (no hay OTP en ese camino), asi que cualquiera que conozca un telefono ajeno puede enrolarse a cualquier programa y quedarse con una sesion de consumidor sobre la cuenta existente: leer sus programas, su QR, su saldo. El rate-limit del enroll acota el volumen, no el hecho. Verificado leyendo `server/consumer/enrollment.ts` (reuso por telefono) y `app/api/public/enroll/[programId]/route.ts` (issueSession en el 201). **El ADR 0050 lo deja anotado explicitamente para que "margen despreciable" no se lea como "no hay problema": la 0053 no lo agrava ni lo salda.** Opciones a decidir: (a) OTP cuando el telefono YA existe; (b) enrolar sin abrir sesion si la cuenta ya existe (y ofrecer recuperar por OTP, spec 0032); (c) aceptarlo explicitamente como parte del modelo at-bearer del ADR 0014 y documentarlo. |
