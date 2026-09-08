@@ -80,6 +80,39 @@ Una sola notificación en iOS y en Android, por el lado del wallet. En Android t
 
 ---
 
+## NUEVO — Canje de premios (spec 0055, desplegada 2026-09-08, commit `a9cbf3f`)
+
+**Es la feature que cierra el loop del producto: hasta hoy podias configurar premios que
+nadie podia canjear.** Todo lo de abajo esta verificado contra Neon del lado del servidor
+(48 tests de integracion); lo que NO tiene oraculo automatizado es el **comportamiento de la
+UI**, que es exactamente lo que estos items prueban.
+
+- [ ] **C1. Canje de Puntos.** Escanear el QR del cliente → modo **Canjear** → elegir un
+      premio → confirmar. Verificar: la pantalla dice **que premio entregar**, y el saldo baja
+      exactamente el costo del premio.
+- [ ] **C2. Canje de Sellos con ARRASTRE.** Con la tarjeta pasada del tope (ej. 12 sellos en
+      una de 10): canjear tiene que consumir **10 y dejar 2**, no dejarla en 0. Es la decision
+      explicita del owner (la tarjeta nueva del mundo fisico).
+- [ ] **C3. Premio que no alcanza.** Con saldo insuficiente y la configuracion por defecto, el
+      premio se ve **deshabilitado** con «faltan N». No tiene que poder canjearse.
+- [ ] **C4. La dispensa (config avanzada del programa, paso 4).** Activarla y canjear sin
+      saldo: el canje ocurre y el saldo **queda en 0, nunca negativo**. **OJO, es a proposito:
+      con la dispensa activa NO hay tope** — se puede canjear varias veces seguidas dejando
+      filas de 0 unidades. Es consecuencia directa de tu decision §9; si te molesta al verlo,
+      es otra spec.
+- [ ] **C5. El push del canje** llega al pase de Wallet, y **un reintento no re-notifica**.
+- [ ] **C6. El `i` del wallet ahora ofrece DOS accesos**: «Terminos y condiciones» (lo de
+      antes) y **«Catalogo de premios»** (nuevo), con el costo y cuanto falta para cada premio.
+      *(DoD sin oraculo automatizado — este item ES la verificacion.)*
+- [ ] **C7. El canje aparece en el historial del dia** de la consola, distinguible de una
+      acreditacion (signo `−` y la etiqueta del premio). *(Idem: el servidor esta verificado
+      end-to-end, el render no.)*
+- [ ] **C8. Empleado deshabilitado.** Si tenes un staff en `disabled`, no tiene que poder
+      operar el mostrador — **ni canjear ni acreditar**. Esto cambio en esta spec: antes SI
+      podia (hueco de autorizacion preexistente que la 0055 cerro).
+
+---
+
 ## Ya probado y funcionando — no repetir
 Onboarding, marca (colores), programa, catálogo, staff · Enrolamiento en iOS, branding de la
 landing, **Apple Wallet** · El ícono de inicio abre el wallet del consumidor (specs

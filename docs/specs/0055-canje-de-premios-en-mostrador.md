@@ -1,7 +1,7 @@
 ---
 spec: 0055
 fecha: 2026-09-07
-estado: cerrada
+estado: implementada
 resumen: El canje que cierra el loop del producto — el mostrador escanea el QR del cliente, el cliente elige premio, el operador confirma y se debita (puntos) o se consume la tarjeta (sellos, con arrastre); sin saldo suficiente el canje se bloquea, salvo que el programa lo permita, y entonces el saldo cae a 0 y nunca a negativo, con un log de contabilidad propio (`core.reward_redemption`) que snapshotea el premio, el consumidor, el operador y el local; más el catálogo de premios en el wallet del consumidor.
 disjunta: no
 archivos: `src/server/counter/*`, `src/server/db.ts` (consumo de `withDbTransaction`), `src/server/schema/reward-redemption.ts`, `src/server/schema/loyalty.ts`, `src/server/consumer/programs.ts`, `app/api/counter/redeem/*`, `app/backoffice/counter/*`, `app/backoffice/loyalty/steps/step-rewards.tsx`, `app/(consumer)/wallet/*`, migración aditiva
@@ -422,70 +422,83 @@ hay conflicto: las extiende aditivamente.
 
 ## Definition of Done
 
-- [ ] Escanear el QR, elegir un premio y confirmar **entrega el premio y debita**: Puntos
+- [x] Escanear el QR, elegir un premio y confirmar **entrega el premio y debita**: Puntos
       resta `points_cost`; Sellos consume `target` y **deja el arrastre** (12 con tarjeta de
       10 → quedan 2).
-- [ ] El canje queda registrado en `core.reward_redemption` con **premio (snapshot),
+- [x] El canje queda registrado en `core.reward_redemption` con **premio (snapshot),
       membresía, consumidor, operador, negocio y local**, y con `balance_before`/`after`.
-- [ ] **Editar el programa después de un canje no altera el log**: `reward_id` queda `NULL`
+- [x] **Editar el programa después de un canje no altera el log**: `reward_id` queda `NULL`
       y `reward_label`/`reward_points_cost` siguen intactos.
-- [ ] Reintento con el mismo `client_request_id` → **un solo canje**, saldo debitado una vez,
+- [x] Reintento con el mismo `client_request_id` → **un solo canje**, saldo debitado una vez,
       **verificado leyendo el saldo por SQL** (la respuesta de la API no sirve como oráculo:
       en el bug del ADR 0054 reportaba un saldo que no existía).
-- [ ] Dos canjes **concurrentes** con el mismo `client_request_id` → **un débito, no dos**
+- [x] Dos canjes **concurrentes** con el mismo `client_request_id` → **un débito, no dos**
       (el caso exacto que el patrón de `persistGrant` fallaba).
-- [ ] Mismo `client_request_id` con **otro** `rewardId` → `409`, sin débito.
-- [ ] 8 canjes concurrentes con saldo para uno, **con `redeem_allow_insufficient = false`** →
+- [x] Mismo `client_request_id` con **otro** `rewardId` → `409`, sin débito.
+- [x] 8 canjes concurrentes con saldo para uno, **con `redeem_allow_insufficient = false`** →
       exactamente uno ocurre; el resto `422`.
-- [ ] Con `redeem_allow_insufficient = true` **no hay tope**: N canjes concurrentes → N filas
+- [x] Con `redeem_allow_insufficient = true` **no hay tope**: N canjes concurrentes → N filas
       con `units_debited = 0` a partir del primero. **Es coherente con §9 y queda declarado**:
       la dispensa es una decisión del owner que renuncia al tope, y `api/counter/*` no tiene
       rate limit. Si el owner quiere un tope, es otra spec.
-- [ ] Un premio con `points_cost` nulo en un programa de Puntos → `422`, **el saldo no se
+- [x] Un premio con `points_cost` nulo en un programa de Puntos → `422`, **el saldo no se
       toca** (sin el fix, `GREATEST(x - NULL, 0)` lo dejaba en 0).
-- [ ] Un programa de Sellos con `target` nulo/0 → `422`, nunca un canje gratis.
-- [ ] Un operador con `business_membership.status = 'disabled'` → **no puede canjear**.
-- [ ] Saldo insuficiente con la config en `false` → `422` y **cero efectos** (sin fila, sin
+- [x] Un programa de Sellos con `target` nulo/0 → `422`, nunca un canje gratis.
+- [x] Un operador con `business_membership.status = 'disabled'` → **no puede canjear**.
+- [x] Saldo insuficiente con la config en `false` → `422` y **cero efectos** (sin fila, sin
       débito, sin push).
-- [ ] Saldo insuficiente con la config en `true` → el canje ocurre, **el saldo queda en 0**
+- [x] Saldo insuficiente con la config en `true` → el canje ocurre, **el saldo queda en 0**
       (9 sellos de 10 → 0; 80 puntos contra un premio de 100 → 0), `units_debited` = lo que
       había, `reward_points_cost` = lo que costaba, `insufficient_override = true`.
-- [ ] **`insufficient_override` no miente bajo concurrencia**: si una acreditación entra entre
+- [x] **`insufficient_override` no miente bajo concurrencia**: si una acreditación entra entre
       la resolución y la confirmación y el saldo alcanza, el canje debita el precio completo y
       la fila queda con `insufficient_override = false`.
-- [ ] **El saldo nunca queda negativo** en ninguna combinación de las de arriba (verificado
+- [x] **El saldo nunca queda negativo** en ninguna combinación de las de arriba (verificado
       por SQL, no por la respuesta de la API).
-- [ ] El consumidor recibe el push del canje; un reintento idempotente **no** re-notifica.
-- [ ] Operador de otro negocio → `403`; premio de otro programa → `422`.
-- [ ] Ningún DTO serializa `qr_token`/`token_hash`/`web_view_token`/`*ObjectKey`.
+- [x] El consumidor recibe el push del canje; un reintento idempotente **no** re-notifica.
+- [x] Operador de otro negocio → `403`; premio de otro programa → `422`.
+- [x] Ningún DTO serializa `qr_token`/`token_hash`/`web_view_token`/`*ObjectKey`.
 - [ ] En el wallet, el `i` ofrece **Términos** y **Catálogo de premios**, y el catálogo
       muestra costo y cuánto falta.
 - [ ] El canje aparece en el historial del día de la consola.
-- [ ] Migración aditiva aplicada y verificada por SQL en prod; `core`/`consumer`/
-      `merchant_auth` intactos.
-- [ ] Ningún archivo cruza `file-size` (300).
-- [ ] Gates verdes (typecheck, lint, test, build) + **PASS de revisor independiente**.
+- [x] Migración aditiva aplicada y verificada por SQL en prod (2026-09-08, commit `a9cbf3f`):
+      `core` 22→23 tablas (solo `reward_redemption`), `consumer` 10 y `merchant_auth` 5 **sin
+      cambios**; 5 programas, 11 membresias y 7 ordenes intactos; FK de `reward_id` en
+      `SET NULL` (`confdeltype = n`), indice unico presente, 5 checks, flag en `false` para
+      los 5 programas (sin migracion de datos, §5).
+- [x] Ningún archivo cruza `file-size` (300).
+- [x] Gates verdes (typecheck, lint, test, format:check, build) + **PASS de revisor
+      independiente** (2026-09-08, sin bloqueantes; sus 2 hallazgos importantes y 4 menores
+      quedaron cerrados y cada fix verificado por mutacion).
+
+> **Por qué esta spec queda `implementada` con 3 casilleros sin marcar (2026-09-08).** Los
+> tres son **comportamiento de UI**, y por la lección de la tarea 38 **ningún barrido estático
+> los pinnea**: que el `i` del wallet abra las dos opciones, que el historial pinte el canje con
+> su signo, y el QA manual del owner. Lo que sí está cerrado del lado del servidor está marcado
+> y verificado contra Neon (el historial unificado, por ejemplo, se asevera end-to-end con
+> `entryKind: "redemption"`). Se dejan **abiertos a propósito** en vez de marcarlos con una
+> excusa: un DoD inflado es peor que uno incompleto. Van a `docs/QA-PENDIENTE.md`.
 
 ## Plan de pruebas y verificación
 
-- [ ] **Unit `redeem-plan`** (tabla de casos como oráculo): puntos con saldo justo / de sobra
+- [x] **Unit `redeem-plan`** (tabla de casos como oráculo): puntos con saldo justo / de sobra
       / insuficiente; sellos exacto / con arrastre / por debajo del tope; `target` ausente o
       inválido en `configuration`; premio sin `points_cost` en un programa de Puntos;
       **con la dispensa activa**: 80 vs. costo 100 → debita 80 y queda 0; 9 sellos vs. tarjeta
       de 10 → debita 9 y queda 0; saldo 0 → debita 0, `override = true`.
-- [ ] **Unit `types`**: el estado por premio (*canjeable* / *faltan N*) que pinta la consola.
-- [ ] **Integración Neon (rama efímera)**: canje feliz (puntos y sellos, con arrastre);
+- [x] **Unit `types`**: el estado por premio (*canjeable* / *faltan N*) que pinta la consola.
+- [x] **Integración Neon (rama efímera)**: canje feliz (puntos y sellos, con arrastre);
       idempotencia (doble POST → un canje); **concurrencia 8-way** con saldo para uno;
       insuficiente → `422` + **cero efectos verificados por SQL**; aislamiento `403`;
       **snapshot sobrevive al `saveProgram`** que reescribe los premios; push encolado
       exactamente una vez; **dispensa**: el saldo cae a 0 y `units_debited` = el saldo previo;
       **canje ‖ acreditación**: el canje debita sobre el saldo **bloqueado y fresco**, y
       `balance_before`/`insufficient_override` describen lo que realmente pasó.
-- [ ] **Integración Neon — la carrera que el patrón viejo fallaba**: dos canjes **concurrentes**
+- [x] **Integración Neon — la carrera que el patrón viejo fallaba**: dos canjes **concurrentes**
       (`Promise.all`, sin serializar) con el **mismo** `clientRequestId` → **un solo débito**,
       aseverado leyendo `points_balance`/`stamps_count` **por SQL**, más 1 fila de log y 1 push.
       Es el test que la spec 0056 exige para el grant, replicado del lado del débito.
-- [ ] **Regresión**: acreditación (0030), historial del día (0043) y wallet (0031/0054)
+- [x] **Regresión**: acreditación (0030), historial del día (0043) y wallet (0031/0054)
       siguen verdes; la lista de programas ordena por actividad incluyendo canjes.
 - [x] **Mutaciones** (evidencia de que cada test muerde). **CORREGIDO EL 2026-09-08 CONTRA LA
       EJECUCIÓN REAL: la predicción de (a) y (b) que esta spec traía escrita era FALSA.** Se deja
@@ -521,7 +534,7 @@ hay conflicto: las extiende aditivamente.
 
       **Anti-falso-verde (verificado, se sostiene):** las aserciones de las dos rojas son sobre la
       **fila del log** (`insufficientOverride`, `unitsDebited`, `balanceBefore`), no sobre el saldo.
-- [ ] **Comandos exactos** (Node 24, scripts de ROOT): `pnpm run typecheck && pnpm run lint &&
+- [x] **Comandos exactos** (Node 24, scripts de ROOT): `pnpm run typecheck && pnpm run lint &&
       pnpm run test && pnpm run build` + integración Neon del dominio `counter`.
 - [ ] **Manual (owner, teléfono real sobre Vercel)**: crear un programa con premios, acreditar
       hasta pasar el tope, canjear, ver el saldo/arrastre por MCP, recibir el push, y abrir el
