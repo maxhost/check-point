@@ -90,33 +90,117 @@ esta spec, pero sí entra en su plan de pruebas.
 
 ## Diseño
 
-Pendiente de cerrar «Abierto». La forma prevista, sujeta a esas decisiones:
+### Modelo de datos
 
-- `server/locations/` con el dominio (listar, crear, renombrar, re-verificar dirección),
-  espejando `server/catalog/` y `server/staff/`.
-- `app/api/locations/**` detrás de `requireOwner()` (o del guard que decida el punto 4).
-- `app/backoffice/locations/` con el patrón de las otras pantallas del backoffice.
-- La edición de dirección es **una sola sentencia**: insertar la verificación nueva, marcar
-  `superseded_at` en la anterior y mover `location.active_verification_id`. Si se hace en
-  varios round-trips queda una ventana donde el local apunta a una verificación superseded.
+**Migración aditiva, una sola:**
+
+| Cambio | Tabla | Por qué |
+|---|---|---|
+| `status text NOT NULL DEFAULT 'active'` + check `in ('active','archived')` | `core.location` | Decisión 1. Hoy no hay columna de estado |
+| `longitude`/`latitude` → **DROP NOT NULL** | `core.location` | Decisión 3: un local de solo texto no tiene georreferencia |
+| `longitude`/`latitude` → **DROP NOT NULL** | `core.location_verification` | idem |
+
+El `DEFAULT 'active'` deja a los 11 locales de prod activos sin backfill. Nada más cambia:
+`provider`, `provider_place_id` y `attribution` ya son nulables.
+
+### El guard del mostrador va en el SERVIDOR, no solo en la UI
+
+**Esto es lo que hace que «un local archivado no puede operar» sea cierto y no una
+intención.** Sacarlo del selector es un gate de interfaz; el que decide es el servidor.
+
+Verificado en el árbol:
+
+- `backoffice/counter/page.tsx:21` lista los locales con `where(eq(locations.businessId, …))`
+  — **sin filtro de estado**. Un local archivado seguiría apareciendo en el `LocationGate`.
+- `backoffice/counter/page.tsx:13` acepta **`?location=<uuid>`** por query param y lo
+  preselecciona. Un link guardado en favoritos por el staff —que es exactamente para lo que
+  existe ese parámetro— sigue cargando el id de un local ya archivado.
+- `server/counter/core.ts:78` — `assertLocationInBusiness()` valida que el local **pertenezca
+  al negocio** (defiende el FK contra un `?location` de otro negocio) pero **no mira el
+  estado**, porque hasta esta spec no existía.
+
+Sin el filtro server-side, una pestaña vieja del mostrador que ya tenía el local seleccionado
+puede seguir **acreditando y canjeando contra un local archivado**, aunque la UI ya no lo
+ofrezca. Es el patrón de «una puerta con candado al lado de una pared abierta» que ya
+apareció con el plugin de better-auth (spec 0046).
+
+**Los dos cambios son obligatorios y el load-bearing es el segundo:**
+
+1. `counter/page.tsx` lista sólo `status = 'active'`.
+2. **`assertLocationInBusiness()` suma `eq(locations.status, "active")` al `WHERE`** — y
+   entonces un `locationId` archivado cae en el `422 unknown_location` que ya existe.
+
+### Dominio, rutas y pantalla
+
+- `server/locations/` con el dominio (listar, crear, renombrar, re-verificar dirección,
+  archivar, reactivar), espejando `server/catalog/` y `server/staff/`.
+- **Tope por plan en código, no en la base:** `free: 1`, `plus: 3`. `enterprise` no se crea
+  (decisión 2) — sin código muerto que lo anticipe. El tope se evalúa **contando locales
+  `active`** y se aplica en el servidor, no solo escondiendo el botón.
+- `app/api/locations/**` detrás de `requireOwner()` (decisión 4).
+- `app/backoffice/locations/` con el patrón de las otras pantallas del backoffice, y el tile
+  «Locales» de `backoffice/page.tsx:80` re-enrutado a la ruta real.
+- **La edición de dirección es UNA sola sentencia**: insertar la verificación nueva, marcar
+  `superseded_at` en la anterior y mover `location.active_verification_id`. En varios
+  round-trips queda una ventana donde el local apunta a una verificación superseded.
 
 ## Definition of Done
 
-- [ ] Pendiente de cerrar la sección «Abierto».
+- [ ] El owner ve en `/backoffice/locations` los locales **activos** y **archivados** de su
+      negocio, separados, y el tile «Locales» del backoffice lleva ahí (ya no al mock).
+- [ ] Puede **crear** un local eligiendo la dirección en Geoapify: se guarda con coordenadas
+      y `source = 'provider_verified'`.
+- [ ] Puede **crear** un local con una dirección tipeada que Geoapify no encuentra: se guarda
+      con `source = 'owner_typed'`, `provider = NULL` y **coordenadas nulas**. No se fabrica
+      ninguna coordenada.
+- [ ] Puede **renombrar** un local sin tocar su dirección ni su verificación activa.
+- [ ] Puede **cambiar la dirección**: queda exactamente una verificación con
+      `superseded_at IS NULL` —la nueva—, la anterior conserva su fila con `superseded_at`
+      puesto, y `location.active_verification_id` apunta a la nueva.
+- [ ] Puede **archivar** un local y **reactivarlo**. Al reactivar vuelve como estaba,
+      incluida su visibilidad de productos.
+- [ ] **No puede archivar el último local activo**: el servidor lo rechaza con un error
+      explícito.
+- [ ] **El tope por plan se aplica en el servidor** contando locales activos: `free` no puede
+      crear un segundo, `plus` no puede crear un cuarto. Esconder el botón no alcanza.
+- [ ] **Un local archivado no aparece en el selector del mostrador NI puede recibir una
+      acreditación o un canje**, aunque el `locationId` llegue en el request.
+- [ ] Un owner no puede listar, editar ni archivar un local de otro negocio.
+- [ ] Ninguna ruta devuelve al navegador más de lo necesario del local (sin snapshots crudos
+      del proveedor).
+- [ ] Tests, typecheck, lint, formato y build pasan; revisión independiente emite **PASS**.
 
 ## Plan de pruebas y verificación
 
-- [ ] Pendiente. **Regla dura del repo:** la tabla «mutación X → rojo el test Y» no se
-      predice, se **ejecuta** y se transcribe el resultado real.
-- [ ] **Integración Neon obligatoria** para la edición de dirección: aseverar **por SQL** que
-      tras editar hay exactamente una verificación con `superseded_at IS NULL`, que es la
-      nueva, y que la vieja sigue existiendo con su `superseded_at` puesto. Leer el estado
-      final por SQL, no confiar en la respuesta de la API — es la lección del ADR 0054.
-- [ ] **Aislamiento:** un owner no puede listar ni editar un local de otro negocio (403/404),
-      con test propio.
-- [ ] **Regresión del mostrador:** crear un segundo local y verificar que el `LocationGate`
-      aparece y que la acreditación queda atribuida al local elegido. Es el camino que nunca
-      se ejercitó en prod.
+**Regla dura del repo: la tabla «mutación X → rojo el test Y» no se predice, se EJECUTA y se
+transcribe el resultado real.** El implementador la completa corriéndola.
+
+- [ ] **Integración Neon — la edición de dirección.** Editar y aseverar **por SQL** que hay
+      exactamente una verificación con `superseded_at IS NULL`, que es la nueva, que la vieja
+      sigue existiendo con su `superseded_at`, y que `active_verification_id` apunta a la
+      nueva. Leer el estado final por SQL, nunca la respuesta de la API (ADR 0054).
+- [ ] **Integración Neon — local de solo texto.** Crear sin coincidencia de Geoapify y
+      aseverar por SQL `longitude IS NULL AND latitude IS NULL AND source = 'owner_typed'`.
+      Es el DoD que la decisión 3 vuelve verificable.
+- [ ] **Integración Neon — el guard del mostrador (el más importante).** Archivar un local y
+      **POSTear una acreditación y un canje con ese `locationId`**, saltándose la UI: los dos
+      tienen que fallar. **Mutación obligatoria:** sacar `eq(locations.status, "active")` de
+      `assertLocationInBusiness` tiene que poner ese test en rojo. Si queda verde, el test no
+      pinnea lo que dice pinnear.
+- [ ] **Integración Neon — el tope por plan.** Un negocio `free` con 1 activo no puede crear
+      el segundo; un `plus` con 3 activos no puede crear el cuarto; **archivar uno libera el
+      cupo** (el tope cuenta activos).
+- [ ] **Integración Neon — el último local.** Archivar el único activo tiene que fallar.
+- [ ] **Aislamiento:** owner del negocio A no puede listar/editar/archivar un local de B.
+- [ ] **Regresión del mostrador con 2 locales.** Crear un segundo local y verificar que el
+      `LocationGate` aparece y que la acreditación queda atribuida al local elegido. **Es un
+      camino que NUNCA se ejercitó en producción** (los 11 negocios tienen 1 local): no
+      asumir que funciona porque el código está.
+- [ ] Comandos: `pnpm run typecheck`, `pnpm run lint`, `pnpm run format:check`,
+      `pnpm run test`, `pnpm run build` (Node 24.20.0, `nvm use`).
+- [ ] **Verificación manual del owner**, en el deploy: crear un local con Geoapify, crear uno
+      tipeado, renombrar, cambiar dirección, archivar, reactivar, y comprobar en el mostrador
+      que el archivado no se puede elegir.
 
 ## Decisiones del owner (2026-09-09)
 
@@ -167,20 +251,34 @@ Consultado por SQL en prod: **10 negocios en `free` y 1 en `plus`**, todos con e
 - `core.subscription.plan` sólo toma `free` y `plus`. **`enterprise` no se crea en esta
   spec**: queda como fila futura, sin código muerto que lo anticipe.
 
-### Consecuencias derivadas — el owner puede vetarlas
+### Consecuencias derivadas — CONFIRMADAS por el owner (2026-09-09)
 
-No son decisiones suyas: se siguen de las de arriba. Van explícitas para que pueda rechazarlas.
+Se le presentaron como derivadas de sus decisiones, no como decisiones suyas, y las confirmó
+una por una:
 
 - **El tope cuenta locales ACTIVOS.** Si contara los archivados, archivar sería un callejón
   sin salida: un `plus` con 3 archivados no podría abrir ninguno.
-- **No se puede archivar el último local activo.** Un negocio sin local no puede operar el
-  mostrador ni atribuir nada (ADR 0042).
-- **Un local archivado desaparece del `LocationGate` del mostrador** y no se puede elegir para
-  acreditar.
-- **Archivar NO toca `product_location`.** Como no se borra, sus filas de visibilidad
-  sobreviven intactas y reactivar el local lo devuelve como estaba.
-- **La historia no se toca:** `order.location_id` y `reward_redemption.location_id` siguen
-  apuntando al local archivado, así que el histórico y las analíticas no pierden atribución.
+- **No se puede archivar el ÚLTIMO local activo.** Un negocio sin local no puede operar el
+  mostrador ni atribuir nada (ADR 0042). *(El owner respondió «no se puede archivar un local
+  activo: correcto»; se interpreta como confirmación del enunciado que se le presentó —el
+  **último** activo—, ya que la lectura literal impediría archivar cualquier cosa. Si la
+  intención era otra, es lo único a corregir antes de implementar.)*
+- **Un local archivado desaparece del selector del mostrador**; sólo los activos se pueden
+  elegir.
+- **Archivar NO toca `product_location`**: como no se borra, la visibilidad de productos
+  sobrevive intacta y reactivar devuelve el local como estaba.
+- **La historia queda intacta:** `order.location_id` y `reward_redemption.location_id` siguen
+  apuntando al local archivado. Es un log inalterable y no pierde atribución.
+
+**Sobre el razonamiento del owner en `product_location` —«no hay forma de canjear ni cargar
+venta si el local no está activo»— la intención es correcta pero HOY no es cierta sola.**
+Verificado en el árbol: `assertLocationInBusiness()` (`server/counter/core.ts:78`) valida que
+el local pertenezca al negocio pero **no mira el estado**, y `backoffice/counter/page.tsx:13`
+acepta el local por query param `?location=<uuid>` — justo el parámetro que existe para que
+el staff guarde el mostrador en favoritos. Sin el filtro server-side, una pestaña vieja o un
+link guardado siguen acreditando contra un local archivado. Por eso el guard entra en el DoD
+con su mutación obligatoria (ver «Diseño» y «Plan de pruebas»). Con ese filtro puesto, el
+razonamiento del owner pasa a ser cierto.
 
 ## Abierto
 
