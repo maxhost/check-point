@@ -115,6 +115,27 @@ UI**, que es exactamente lo que estos items prueban.
 
 ---
 
+## NUEVO — El login avisa al staff desactivado (spec 0057, desplegada 2026-09-08, commit `239f271`)
+
+Sale de tu propio hallazgo en C8. **Ojo: no era solo el cartel** — el login de un miembro
+desactivado ademas **dejaba una sesion viva**, porque better-auth autentica sin saber nada de
+las membresias. Ahora se revoca en el mismo paso.
+
+- [ ] **S1. El cartel.** Con el staff desactivado del QA anterior, intenta entrar con su email
+      y su contraseña **correcta**. Tiene que aparecer **«Miembro del staff desactivado»**.
+- [ ] **S2. El reintento pisa el aviso.** Sin recargar, volve a intentar con la contraseña
+      **mal**. El mensaje tiene que cambiar al de credenciales invalidas, **no** quedarse con
+      el de staff desactivado ni apilar los dos. *(Este es el unico item que un test no puede
+      cerrar del todo — el probe automatico cubre el mecanismo, no el navegador real.)*
+- [ ] **S3. Nadie mas ve el cartel.** Entra normal con tu usuario owner: **no** tiene que
+      aparecer ningun aviso.
+- [ ] **S4. Presentacion.** Vos pediste «un toast»; esto es un **mensaje dentro del
+      formulario**, en el mismo lugar donde sale el error de contraseña — a proposito, para que
+      el reintento lo pise (S2). **Si lo preferis como toast flotante, decilo**: es un cambio
+      chico, pero hay que decidir que pasa cuando conviven los dos mensajes.
+
+---
+
 ## Ya probado y funcionando — no repetir
 Onboarding, marca (colores), programa, catálogo, staff · Enrolamiento en iOS, branding de la
 landing, **Apple Wallet** · El ícono de inicio abre el wallet del consumidor (specs

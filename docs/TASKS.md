@@ -8,7 +8,33 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-08 (**QA DEL OWNER SOBRE EL CANJE: 7 de 8 items PASAN. El unico que falta (C2,
+Ultima actualizacion: 2026-09-08 (**SPEC 0057 IMPLEMENTADA, PUSHEADA Y DESPLEGADA — commit `239f271`, `Vercel:
+success` verificado para ESE sha. TRES revisiones independientes: FAIL, FAIL, PASS.**
+
+**Los dos FAIL fueron por EL MISMO defecto, y ninguno era del codigo de produccion: un LIMITE DECLARADO SIN
+INTENTARLO.** Primero «el aviso no se puede testear, vitest de merchant corre en `node` sin jsdom» — falso, se
+pinnea con `react-dom/server`. Corregido el limite, la version nueva decia «queda afuera la interaccion, requiere
+disparar un evento» — **tambien falso**, se pinnea con un stub de `useState`, ~45 lineas, cero paquetes. Las dos
+veces el revisor lo demostro **escribiendo el test**, y la segunda ademas probo con una mutacion que **se podia
+romper el DoD exacto CON LOS 5 GATES VERDES**. Yo habia propagado el primer limite falso a `INDEX.md` y a esta
+nota sin verificarlo.
+
+**Lo que quedo en `CLAUDE.md` (mistake→rule), y es lo que mas vale de esta spec:** un limite declarado es una
+afirmacion como cualquier otra y se verifica **intentandolo**; y su corolario, que costo la segunda vuelta:
+**sub-corregir un limite se SIENTE como rigor** y deja el mismo agujero mas chico. La cuarta version del limite
+quedo partida en dos categorias —«alcanzable pero fuera de alcance» vs «inalcanzable con este andamiaje»— para que
+nadie pueda esconder un «no lo intente» adentro de un «no se puede».
+
+**Los tests nuevos declaran su alcance DENTRO del archivo:** `login-form-retry.test.ts` se etiqueta como **proxy**,
+dice que no renderiza React y que lo load-bearing es que el handler escriba en el mismo slot que siembra
+`initialError`. Su stub **recorre los exports de React** y bloquea todo hook que no sea `useState` con un error que
+nombra las dos causas posibles: hook legitimo, o **el bug de la tarea 38 volviendo dentro de un efecto**. 471 tests
+(venian de 469).
+
+**QA del owner pendiente: bloque S1..S4** en `docs/QA-PENDIENTE.md`. S4 le pregunta si prefiere toast flotante — el
+pidio «un toast» y quedo un mensaje inline, a proposito para que el reintento lo pise.
+
+Ultima actualizacion previa: 2026-09-08 (**QA DEL OWNER SOBRE EL CANJE: 7 de 8 items PASAN. El unico que falta (C2,
 sellos con arrastre) esta BLOQUEADO POR DATOS, no por codigo. Sale la spec 0057 + ADR 0055 del hallazgo C8.**
 
 **RESULTADO DEL QA (owner, en prod sobre el commit `a9cbf3f`):** C1 canje de Puntos ✅ · C3 premio que no alcanza ✅ ·
