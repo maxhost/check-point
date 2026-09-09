@@ -1,7 +1,7 @@
 ---
 spec: 0061
 fecha: 2026-09-09
-estado: borrador
+estado: cerrada
 resumen: El owner ve, crea y edita los locales de su negocio desde el backoffice, con Geoapify y procedencia versionada; reemplaza el mock de la spec 0015 al que hoy apunta el tile «Locales».
 disjunta: sí (ninguna spec abierta toca `backoffice/locations` ni `location-providers.ts`)
 archivos: `apps/merchant/src/app/backoffice/locations/**`, `apps/merchant/src/app/api/locations/**`, `apps/merchant/src/server/locations/**`, `apps/merchant/src/app/backoffice/page.tsx`
@@ -9,8 +9,6 @@ archivos: `apps/merchant/src/app/backoffice/locations/**`, `apps/merchant/src/ap
 
 # 0061 — Locales en el backoffice
 
-> **BORRADOR — no se toca código hasta que la sección «Abierto» esté vacía.**
->
 > Cierra la parte abierta de la **spec 0023**, que quedó re-etiquetada
 > `implementada parcialmente` el 2026-09-09. La 0023 se conserva como registro de lo que sí
 > se construyó (el contrato de proveedor y la verificación server-side) y de su diseño
@@ -146,8 +144,10 @@ apareció con el plugin de better-auth (spec 0046).
 
 ## Definition of Done
 
-- [ ] El owner ve en `/backoffice/locations` los locales **activos** y **archivados** de su
-      negocio, separados, y el tile «Locales» del backoffice lleva ahí (ya no al mock).
+- [ ] El owner ve en `/backoffice/locations` los locales de su negocio con **nombre,
+      dirección y estado** (activo/archivado) — y nada más: la pantalla **no** revela la
+      clase del local ni el historial de verificaciones (decisión 5). El tile «Locales» del
+      backoffice lleva ahí, ya no al mock.
 - [ ] Puede **crear** un local eligiendo la dirección en Geoapify: se guarda con coordenadas
       y `source = 'provider_verified'`.
 - [ ] Puede **crear** un local con una dirección tipeada que Geoapify no encuentra: se guarda
@@ -218,7 +218,15 @@ transcribe el resultado real.** El implementador la completa corriéndola.
    veces el costo de un dato que afirma algo que no es cierto (ADR 0054). Que falte es
    información; que esté mal es una mentira.
 4. **Solo el owner** administra locales.
-5. Pendiente de confirmar — ver «Abierto».
+5. **La pantalla NO muestra a qué clase pertenece cada local.** El owner ve **nombre,
+   dirección y estado** (activo/archivado), y nada más. La procedencia
+   (`location_verification`, incluido el historial de mudanzas) queda como **auditoría
+   interna**: se sigue registrando, no se expone.
+
+   *Consecuencia para quien construya el geofencing del ADR 0057 §2: los locales de solo
+   texto no tienen coordenadas y van a quedar afuera, y el owner no tiene hoy ninguna
+   señal en pantalla de cuáles son. Esa señal, si hace falta, es parte de la spec de
+   geofencing — se decidió a propósito que no entra acá.*
 
 ### Consecuencias verificadas de la decisión 3
 
@@ -282,19 +290,5 @@ razonamiento del owner pasa a ser cierto.
 
 ## Abierto
 
-**Queda una. La spec no se cierra hasta resolverla.**
-
-### ¿El owner ve de qué clase es cada local?
-
-Con la decisión 3, la diferencia dejó de ser una etiqueta y pasó a ser **estructural**: un
-local de solo texto no tiene coordenadas, y por lo tanto **no va a poder entrar en el
-geofencing/check-in** del ADR 0057 cuando se construya.
-
-**Recomendación, para confirmar o corregir:**
-
-- **Sí se muestra la clase.** En la lista, un local sin georreferencia se ve distinto (algo
-  como «sin ubicación verificada») y al editarlo se le ofrece volver a buscar en Geoapify.
-  El motivo no es cosmético: es la única forma de que el owner sepa cuáles de sus locales van
-  a quedar afuera del geofencing, **antes** de que esa feature exista y sea tarde.
-- **No se muestra el historial de mudanzas.** Las verificaciones superseded quedan como
-  auditoría interna; nadie pidió verlas y no cambian ninguna decisión del owner.
+Nada. Las cinco decisiones están cerradas y las consecuencias derivadas fueron confirmadas
+por el owner.
