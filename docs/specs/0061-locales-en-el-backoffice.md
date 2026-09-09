@@ -83,6 +83,10 @@ esta spec, pero sí entra en su plan de pruebas.
   tal como está hoy** y no empeora ni mejora esa situación.
 - Visibilidad de productos por local (`product_location` ya existe y se administra desde
   Catálogo).
+- **Geocodificar el texto tipeado para rellenar coordenadas.** Decisión 3: un local sin
+  coincidencia de Geoapify queda sin georreferencia, no con una inventada.
+- Geofencing / check-in por cercanía. Es el ADR 0057 §2 y necesita su propia spec; esta sólo
+  deja el dato en condiciones de alimentarlo.
 
 ## Diseño
 
@@ -114,32 +118,85 @@ Pendiente de cerrar «Abierto». La forma prevista, sujeta a esas decisiones:
       aparece y que la acreditación queda atribuida al local elegido. Es el camino que nunca
       se ejercitó en prod.
 
+## Decisiones del owner (2026-09-09)
+
+1. **No se elimina: se desactiva/archiva.** Pide migración — `core.location` no tiene columna
+   de estado.
+2. **Tope de locales por plan:** `free` = **1**, plan de pago (hoy `plus`) = **3**,
+   `enterprise` (a futuro) = **sin límite**.
+3. **Un local es de una de dos clases, y no se mezclan:**
+   - **Georreferenciado** — la dirección se eligió de Geoapify: texto **y** coordenadas.
+   - **Solo texto** — la dirección se tipeó y Geoapify no la encontró: **texto plano, sin
+     ninguna georreferencia**.
+
+   **No se fabrican coordenadas aproximadas para el caso tipeado.** Un punto inventado por
+   geocodificación directa *parecería* una georreferencia sin serlo, y este repo ya pagó dos
+   veces el costo de un dato que afirma algo que no es cierto (ADR 0054). Que falte es
+   información; que esté mal es una mentira.
+4. **Solo el owner** administra locales.
+5. Pendiente de confirmar — ver «Abierto».
+
+### Consecuencias verificadas de la decisión 3
+
+Las coordenadas pasan a ser **nulables** en `core.location` y `core.location_verification`
+(hoy son `NOT NULL` en las dos). **El radio de impacto es cero, verificado en el árbol:
+nadie lee esas columnas.** Sólo se escriben, en `api/onboarding/business/route.ts`. No hay
+cálculo de distancia, geofencing, mapa ni consumo en `apps/consumer` — se buscó
+`haversine|distance|geofenc|ST_|radius|proximity` en las dos apps y sólo matchea
+`border-radius` del CSS. El único consumidor futuro es el geofencing del ADR 0057 §2, que
+todavía no existe.
+
+Las demás columnas **no** necesitan migración: `provider`, `provider_place_id` y
+`attribution` ya son nulables; `country_code` se sabe siempre (lo elige el owner);
+`normalized_address` es el texto tipeado; `address_snapshot` y `provider_snapshot` son
+`jsonb NOT NULL` y admiten `{}`.
+
+Un local de solo texto se registra con `source = 'owner_typed'` y `provider = NULL`, frente
+al `source = 'provider_verified'` que usan hoy las 11 filas de prod (9 Geoapify, 2 Mapbox
+heredadas).
+
+### Consecuencias verificadas de la decisión 2
+
+Consultado por SQL en prod: **10 negocios en `free` y 1 en `plus`**, todos con exactamente
+**1 local**.
+
+- **Nadie queda por encima del tope nuevo**: la migración no necesita backfill.
+- **Los 10 negocios `free` quedan EXACTAMENTE en su tope**, así que para 10 de 11 owners la
+  pantalla nace sin botón de «agregar». Es la decisión, no un defecto, pero es lo que va a
+  ver la mayoría y condiciona el diseño de la pantalla.
+- `core.subscription.plan` sólo toma `free` y `plus`. **`enterprise` no se crea en esta
+  spec**: queda como fila futura, sin código muerto que lo anticipe.
+
+### Consecuencias derivadas — el owner puede vetarlas
+
+No son decisiones suyas: se siguen de las de arriba. Van explícitas para que pueda rechazarlas.
+
+- **El tope cuenta locales ACTIVOS.** Si contara los archivados, archivar sería un callejón
+  sin salida: un `plus` con 3 archivados no podría abrir ninguno.
+- **No se puede archivar el último local activo.** Un negocio sin local no puede operar el
+  mostrador ni atribuir nada (ADR 0042).
+- **Un local archivado desaparece del `LocationGate` del mostrador** y no se puede elegir para
+  acreditar.
+- **Archivar NO toca `product_location`.** Como no se borra, sus filas de visibilidad
+  sobreviven intactas y reactivar el local lo devuelve como estaba.
+- **La historia no se toca:** `order.location_id` y `reward_redemption.location_id` siguen
+  apuntando al local archivado, así que el histórico y las analíticas no pierden atribución.
+
 ## Abierto
 
-**Decisiones del owner. La spec no se cierra hasta que estén resueltas.**
+**Queda una. La spec no se cierra hasta resolverla.**
 
-1. **¿Se puede eliminar o archivar un local, o la v1 es solo crear y editar?**
-   Las tres opciones tienen costos distintos y conviene verlos juntos:
-   - **Solo crear/editar** — cero migración, es lo más barato.
-   - **Archivar** — necesita una **migración** (`core.location` **no tiene** columna de
-     estado) y hay que decidir qué pasa en cada lugar que lista locales: el `LocationGate`
-     del mostrador, la visibilidad de productos, el brand kit.
-   - **Borrar** — el esquema ya lo soporta y preserva la historia: `order.location_id` y
-     `reward_redemption.location_id` son `ON DELETE SET NULL`, igual que
-     `program_membership.origin_location_id`. **Pero `product_location` es `CASCADE`**: al
-     borrar un local se pierde silenciosamente su configuración de visibilidad de productos.
+### ¿El owner ve de qué clase es cada local?
 
-2. **¿Hay tope de locales, y depende del plan?** Hoy `subscription.plan` es `free`/`plus` y
-   nadie tiene más de uno. ¿Free puede abrir sucursales o eso es Plus? Es una decisión
-   comercial con plata atrás, y si hay tope hay que decidir qué ve el owner al chocarlo.
+Con la decisión 3, la diferencia dejó de ser una etiqueta y pasó a ser **estructural**: un
+local de solo texto no tiene coordenadas, y por lo tanto **no va a poder entrar en el
+geofencing/check-in** del ADR 0057 cuando se construya.
 
-3. **Al editar la dirección, ¿se re-verifica siempre contra Geoapify?** O sea: ¿el owner
-   puede guardar una dirección tipeada a mano sin elegir una sugerencia? La 0023 fijó que
-   ninguna coordenada arbitraria del navegador crea o modifica un local; confirmá que eso
-   sigue valiendo para la edición.
+**Recomendación, para confirmar o corregir:**
 
-4. **¿Quién puede administrar locales: solo el owner, o también el staff?** Hoy `requireOwner`
-   existe y el staff está limitado al mostrador (spec 0043).
-
-5. **¿Qué se muestra de la procedencia?** El historial de verificaciones queda guardado. ¿El
-   owner lo ve (cuándo se verificó, con qué proveedor), o es solo auditoría interna?
+- **Sí se muestra la clase.** En la lista, un local sin georreferencia se ve distinto (algo
+  como «sin ubicación verificada») y al editarlo se le ofrece volver a buscar en Geoapify.
+  El motivo no es cosmético: es la única forma de que el owner sepa cuáles de sus locales van
+  a quedar afuera del geofencing, **antes** de que esa feature exista y sea tarde.
+- **No se muestra el historial de mudanzas.** Las verificaciones superseded quedan como
+  auditoría interna; nadie pidió verlas y no cambian ninguna decisión del owner.
