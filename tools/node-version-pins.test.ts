@@ -21,6 +21,7 @@ const json = (p: string) => JSON.parse(read(p));
 const APPS = ["apps/consumer", "apps/merchant", "apps/platform"];
 
 const nodeVersion = read(".node-version").trim();
+const nvmrcVersion = read(".nvmrc").trim();
 const rootPkg = json("package.json");
 
 describe("pines de version de Node (spec 0049)", () => {
@@ -44,11 +45,38 @@ describe("pines de version de Node (spec 0049)", () => {
     }
   });
 
-  it("el Node que corre satisface `engines.node`", () => {
+  it("`.nvmrc` coincide con `.node-version`", () => {
+    // `.nvmrc` existe para que `nvm use` sin argumentos funcione en el repo
+    // (nvm NO lee `.node-version`). Un pin mas es una fuente de drift mas: se
+    // guarda o no se agrega.
+    expect(nvmrcVersion).toBe(nodeVersion);
+  });
+
+  it("el Node que corre satisface `engines.node` COMPLETO, no solo el major", () => {
     // Sin esto el resto compara archivos entre si y pasaria igual con un Node
     // equivocado en la terminal — que es como empezo este problema.
-    expect(process.version.replace(/^v/, "").split(".")[0]).toBe(
-      nodeVersion.split(".")[0],
+    //
+    // Comparar solo el major NO alcanza, y es el agujero por el que se colo el
+    // drift original: con `.node-version` en 24.20.0, un Node **24.19.0** local
+    // pasaba este guard con los dos majors en "24" mientras violaba
+    // `engines.node` (`>=24.20.0`) y pnpm avisaba `WARN Unsupported engine` en
+    // cada corrida. Se compara la version entera contra el piso.
+    const cmp = (a: string, b: string) => {
+      const pa = a.split(".").map(Number);
+      const pb = b.split(".").map(Number);
+      for (let i = 0; i < 3; i += 1) {
+        if (pa[i] !== pb[i]) return pa[i] - pb[i];
+      }
+      return 0;
+    };
+    const running = process.version.replace(/^v/, "");
+    expect(`${running} >= ${nodeVersion}`).toBe(
+      cmp(running, nodeVersion) >= 0
+        ? `${running} >= ${nodeVersion}`
+        : `FALSO: el Node de esta terminal es anterior al pin del repo`,
+    );
+    expect(Number(running.split(".")[0])).toBe(
+      Number(nodeVersion.split(".")[0]),
     );
   });
 

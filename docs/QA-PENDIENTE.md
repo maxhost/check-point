@@ -121,14 +121,28 @@ Sale de tu propio hallazgo en C8. **Ojo: no era solo el cartel** — el login de
 desactivado ademas **dejaba una sesion viva**, porque better-auth autentica sin saber nada de
 las membresias. Ahora se revoca en el mismo paso.
 
-- [ ] **S1. El cartel.** Con el staff desactivado del QA anterior, intenta entrar con su email
-      y su contraseña **correcta**. Tiene que aparecer **«Miembro del staff desactivado»**.
-- [ ] **S2. El reintento pisa el aviso.** Sin recargar, volve a intentar con la contraseña
-      **mal**. El mensaje tiene que cambiar al de credenciales invalidas, **no** quedarse con
-      el de staff desactivado ni apilar los dos. *(Este es el unico item que un test no puede
-      cerrar del todo — el probe automatico cubre el mecanismo, no el navegador real.)*
-- [ ] **S3. Nadie mas ve el cartel.** Entra normal con tu usuario owner: **no** tiene que
-      aparecer ningun aviso.
+> **QA CERRADO — el owner probo S1, S2 y S3 el 2026-09-09 y los tres PASAN.**
+> Probado contra **prod = `fc2bfb5`** (verificado `success` en Vercel antes del QA).
+>
+> **Que quedo verificado:** el mecanismo completo de la spec 0057 — el guard detecta al
+> miembro desactivado, revoca su sesion y redirige con motivo; el login traduce el motivo
+> por allow-list y lo muestra; el reintento reemplaza el aviso en vez de apilarlo; y ningun
+> otro usuario lo ve.
+>
+> **Lo unico que NO cubre este QA, y hay que decirlo:** `fc2bfb5` sirve la presentacion de
+> la **0057** (un `<p class="form-error" role="alert">` bajo el formulario) — verificado por
+> terminal contra el servidor real. El **toast flotante** de la spec 0058 (item S4) esta
+> implementado pero **sin desplegar**. Cuando se pushee, el mensaje y el comportamiento son
+> los mismos ya validados; lo que cambia es **como se ve**. Es un re-chequeo visual de un
+> minuto, no un QA nuevo.
+
+- [x] **S1. El cartel — PASA (2026-09-09).** Con el staff desactivado, email y contraseña
+      **correcta**: aparece **«Miembro del staff desactivado»**.
+- [x] **S2. El reintento pisa el aviso — PASA (2026-09-09).** Sin recargar y con la
+      contraseña **mal**, el mensaje cambia al de credenciales invalidas: no se queda con el
+      de staff desactivado ni apila los dos.
+- [x] **S3. Nadie mas ve el cartel — PASA (2026-09-09).** El owner entra normal y no aparece
+      ningun aviso.
 - [x] **S4. Presentacion.** Decidido por el owner el 2026-09-08 y aplicado por la spec 0058:
       el aviso es un **toast flotante**. El reintento conserva un solo estado de mensaje, así
       que el error de contraseña reemplaza el aviso previo en vez de apilar ambos.

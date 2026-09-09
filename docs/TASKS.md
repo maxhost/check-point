@@ -8,7 +8,35 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-09 (**DOCUMENTACION ALINEADA CON EL CODIGO. Tres hallazgos, los tres verificados
+Ultima actualizacion: 2026-09-09 (**QA S1-S3 CERRADO POR EL OWNER: LOS TRES PASAN. NODE LOCAL ALINEADO A 24.20.0.**
+
+**QA del login (spec 0057), probado contra prod = `fc2bfb5`:** S1 el cartel ✅ · S2 el reintento pisa el aviso ✅ ·
+S3 nadie mas lo ve ✅. Queda verificado el mecanismo completo: el guard detecta al miembro desactivado, revoca su
+sesion y redirige con motivo; el login lo traduce por allow-list y lo muestra; el reintento reemplaza en vez de
+apilar. **La spec 0057 queda confirmada en vivo.** Lo unico fuera de este QA: `fc2bfb5` sirve la presentacion de la
+0057 (`<p class="form-error">`, verificado por terminal contra el servidor real); el **toast flotante** de la 0058
+(item S4) esta implementado y **sin desplegar**. Mismo texto y mismo comportamiento, distinto aspecto — re-chequeo
+visual de un minuto cuando se pushee, no un QA nuevo.
+
+**NODE LOCAL ALINEADO, y el diagnostico inicial estaba mal.** La nota anterior decia «el entorno ejecuta Node 22».
+Falso: **ese 22 es el Node del harness de Claude Code**, que se antepone en el `PATH` de las shells del agente. La
+terminal real del owner estaba en **24.19.0** — un patch atras del pin del repo, que es el drift que hacia que pnpm
+tirara `WARN Unsupported engine` en cada corrida. Aplicado: `nvm alias default` → **24.20.0** (verificado en shell
+limpia con `env -i ... zsh -i -c 'node -v'`) y **`.nvmrc` en la raiz**, porque **nvm no lee `.node-version`** — sin
+el, `nvm use` sin argumento no servia de nada dentro del repo.
+
+**Y de paso se destapo que el guard de pines era ciego al drift que existia para cazar.**
+`tools/node-version-pins.test.ts` decia comprobar «el Node que corre satisface `engines.node`» pero **solo comparaba
+el MAJOR**: 24.19.0 pasaba 5/5 mientras violaba `>=24.20.0`. Corregido a comparar la version completa contra el
+piso, y **probado que muerde ejecutando, no prediciendo**: guard nuevo con 24.20.0 → 6/6 verde; guard nuevo con
+24.19.0 → **rojo**; **guard VIEJO con 24.19.0 → pasaba 5/5** (esto es lo que prueba que el cambio es load-bearing);
+`.nvmrc` desincronizado a mano → rojo, revertido con `shasum` identico. Es la leccion de `tasks-fresh.sh` otra vez:
+un `exit 0` puede significar «paso» o «nunca miro nada», y desde afuera son indistinguibles.
+
+**Lo proximo: spec 0023 / tarea 47 — locales en el backoffice.** Acordado con el owner: se junta con lo ya
+commiteado y **recien ahi se pushea todo junto**.
+
+Ultima actualizacion previa: 2026-09-09 (**DOCUMENTACION ALINEADA CON EL CODIGO. Tres hallazgos, los tres verificados
 contra el arbol y no asumidos.**
 
 **(1) El limite de Node era falso, por tercera vez consecutiva.** La nota anterior decia que «la suite completa no

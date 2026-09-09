@@ -158,12 +158,22 @@ mensaje, no solo que salga 0 cuando todo esta bien. Un exit 0 puede significar "
 
 ## Gotchas
 
-- **Gates: Node 24 + scripts de ROOT.** El shell arranca en Node 22 pero el repo pide 24
-  (`typecheck`/`build` fallan si no): `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm
-  use 24.20.0` antes de cualquier gate. **La version sale de `.node-version` — desde la spec
-  0049 es 24.20.0, no 24.19.0**; con la vieja los gates pasan igual pero pnpm tira
-  `WARN Unsupported engine: wanted {"node":">=24.20.0 <25"}` en cada corrida (paso al
-  implementar la 0056: esta linea habia quedado vieja). `lint`, `test`, `format:check`, `build` son scripts de
+- **Gates: Node 24 + scripts de ROOT.** El shell del AGENTE arranca en Node 22 —es el Node del
+  harness de Claude Code, que se antepone en el `PATH`, **no la terminal del owner**— y el repo
+  pide 24: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` antes de cualquier gate.
+  **Desde 2026-09-09 `nvm use` va SIN argumento**: hay un `.nvmrc` en la raiz (nvm **no** lee
+  `.node-version`). Los dos pines los mantiene sincronizados `tools/node-version-pins.test.ts`.
+  **Al diagnosticar "que Node corre", ojo con confundir tres shells distintos:** la del agente
+  (22, del harness), `zsh -l -c` (26.7.0 de Homebrew — `-c` **no** sourcea `.zshrc`, asi que nvm
+  nunca carga) y la terminal interactiva real del owner (la que importa). Para ver la de verdad:
+  `env -i HOME="$HOME" TERM=xterm /bin/zsh -i -c 'node -v'`. **La version sale de `.node-version`
+  — desde la spec 0049 es 24.20.0, no 24.19.0**; con la vieja los gates pasan igual pero pnpm
+  tira `WARN Unsupported engine: wanted {"node":">=24.20.0 <25"}` en cada corrida (paso al
+  implementar la 0056: esta linea habia quedado vieja). **Ese drift estuvo vivo en esta maquina
+  hasta el 2026-09-09** (`nvm alias default` = 24.19.0) **y el guard de pines NO lo cazaba: solo
+  comparaba el MAJOR**, asi que 24.19.0 pasaba 5/5 mientras violaba `engines.node` — verificado
+  corriendo el guard viejo bajo 24.19.0. Ahora compara la version completa contra el piso.
+  `lint`, `test`, `format:check`, `build` son scripts de
   **root** (`pnpm run <script>`), NO del paquete — `pnpm --filter @mi-pasaporte/merchant lint`
   tira `None of the selected packages has a "lint" script`. El paquete merchant solo define
   `typecheck` (y `db:migrate`); para unit de un archivo suelto: `pnpm --filter
