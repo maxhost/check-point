@@ -3,7 +3,14 @@ import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "./auth";
 import { getDb } from "./db";
-import { businesses, memberships } from "./schema";
+import { businesses, memberships, sessions } from "./schema";
+
+/**
+ * Reason code the guard puts on `/login?e=…` when it bounces a deactivated staff
+ * member (ADR 0055). The login page translates it through an allow-list
+ * (`app/login/login-notice.ts`); it never renders the raw query param.
+ */
+export const STAFF_DISABLED = "staff_disabled";
 
 /** The business the current backoffice session operates on (its first business). */
 export type GuardBusiness = {
@@ -30,8 +37,8 @@ export type BackofficeSession = {
  * business + membership (role + status), redirecting when there is no access:
  *  - no session → `/login`;
  *  - session but no membership at all → `/onboarding` (a brand-new owner);
- *  - membership `status='disabled'` → `/login` (a deactivated staff; sessions are already
- *    revoked at deactivation, this is defense in depth).
+ *  - membership `status='disabled'` → revokes the session and sends the member to
+ *    `/login?e=staff_disabled`, so the login can say why (ADR 0055).
  * Never returns a disabled or sessionless caller.
  */
 export async function requireBackofficeSession(): Promise<BackofficeSession> {
@@ -56,7 +63,20 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
     .limit(1);
 
   if (!row) redirect("/onboarding");
-  if (row.status !== "active") redirect("/login");
+  if (row.status !== "active") {
+    // ADR 0055 §3: better-auth authenticates against merchant_auth and knows nothing
+    // about core.business_membership, so a deactivated member still gets a fresh
+    // session on sign-in. Revoke it here with a DELETE identical in shape and scope to
+    // the one in `setStaffStatus` (staff.ts) — this adds no new revocation mechanism of
+    // its own. (Other revocation paths do exist and are better-auth's, not ours:
+    // `revokeSessionsOnPasswordReset` in auth.ts, and better-auth's CORE `/sign-out`
+    // route — `dist/api/routes/sign-out.mjs`, `internalAdapter.deleteSession`; it is
+    // not contributed by any plugin.)
+    // The await MUST come before `redirect()`: redirect throws NEXT_REDIRECT, so
+    // anything written after it never runs.
+    await getDb().delete(sessions).where(eq(sessions.userId, session.user.id));
+    redirect(`/login?e=${STAFF_DISABLED}`);
+  }
 
   return {
     userId: session.user.id,

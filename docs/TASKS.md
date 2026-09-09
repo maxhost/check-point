@@ -8,7 +8,130 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-08 (**SPEC 0055 (CANJE, TAREA 44) IMPLEMENTADA, CON PASS DE REVISOR INDEPENDIENTE,
+Ultima actualizacion: 2026-09-08 (**QA DEL OWNER SOBRE EL CANJE: 7 de 8 items PASAN. El unico que falta (C2,
+sellos con arrastre) esta BLOQUEADO POR DATOS, no por codigo. Sale la spec 0057 + ADR 0055 del hallazgo C8.**
+
+**RESULTADO DEL QA (owner, en prod sobre el commit `a9cbf3f`):** C1 canje de Puntos ✅ · C3 premio que no alcanza ✅ ·
+C4 dispensa ✅ · C5 push ✅ · C6 catalogo en el `i` del wallet ✅ · C7 historial del dia ✅ · C8 staff desactivado ✅.
+**El loop del producto cierra en produccion: se puede canjear.**
+
+**C2 (sellos con arrastre) — PENDIENTE, bloqueado por datos.** El negocio de prueba (Taj Bakery) tiene un programa
+de **Puntos** activo, y el indice `core_loyalty_program_one_operational` permite **UN solo** programa `active`/
+`closing` por negocio. Para probar Sellos hay que cerrar el actual. **Se le explico al owner el camino por la UI y
+NO se toco por SQL a proposito:** el ADR acordado con el fija que el cierre es **siempre fechado**, nunca un
+«desactivar» inmediato, y hacerlo por atras se saltearia el evento de auditoria (`loyalty_program_event`). El
+camino: panel «Cierre del programa» → fin de acumulacion ahora → fecha final de canje 2-3 min despues → confirmar
+→ esperar el vencimiento → recargar `/backoffice/loyalty` (el `programForOwner` hace self-heal a `inactive` al leer)
+→ ya deja crear el programa de Sellos.
+
+**HALLAZGO C8, y era mas grande que el toast que el owner pidio.** Reporto: «no me deja loguearme con staff
+desactivado asi que esta correcto, pero deberiamos poner un toast que diga "Miembro del staff desactivado" por que
+hoy no muestra nada». Al investigar el mecanismo (no de palabra): **better-auth autentica contra `merchant_auth`,
+que no sabe nada de `core.business_membership`**, asi que el staff desactivado con la contraseña correcta **se
+loguea CON EXITO y se le crea una sesion nueva**; recien despues `requireBackofficeSession` lo rebota a `/login`
+**sin parametro ni motivo**. O sea: (1) el silencio que el owner vio, y (2) **una sesion viva de un miembro
+desactivado**, que contradice a `setStaffStatus` —que al desactivar borra explicitamente todas las sesiones del
+usuario— porque el siguiente login las vuelve a crear.
+
+**SPEC 0057 + ADR 0055, cerradas e IMPLEMENTADAS (en revision independiente, sin commitear).** El guard revoca la
+sesion **y despues** redirige con motivo (`?e=staff_disabled`); el login pasa a server component que traduce el
+motivo **por allow-list** (el valor crudo del query param nunca llega al DOM) + `login-form.tsx` cliente. La
+decision de seguridad esta en el ADR y es explicita: **se acepta a proposito que el mensaje revele el estado de la
+cuenta, porque solo lo ve quien YA probo conocer email y contraseña** — no abre ningun canal de enumeracion.
+Gates verdes: **467 tests** (venian de 453). Las 4 mutaciones corridas; el implementador declaro que (b) «no
+revocar» y (c) «revocar despues del redirect» son **indistinguibles** (mismo test, mismo mensaje) porque
+`redirect()` lanza — declarado en vez de fingir dos oraculos.
+
+**DOS COSAS ESPERANDO DECISION DEL OWNER:**
+1. **`api/billing/checkout` no filtra por `status`** — resuelve la membresia por `businessId` + `userId` y nada mas,
+   asi que un staff desactivado con sesion fresca puede iniciar un checkout de Stripe del negocio del que lo
+   sacaron. **Misma familia** que el hueco que la 0055 cerro en `operatorBusiness`; el fix es una linea. **NO se
+   toco: el owner no lo decidio** (regla de `CLAUDE.md`). Anotado en «Abierto» de la spec 0057. Severidad baja
+   (terminaria pagando, no extrayendo valor) pero real. *(El resto de las rutas de backoffice resuelve con
+   `ownerBusiness`, que filtra `role='owner'`, y no se puede desactivar a un owner: correcto por composicion, no
+   por diseño explicito. Si algun dia se permite desactivar owners, esas rutas se vuelven un hueco.)*
+2. **El owner pidio «un toast» y se implemento un mensaje INLINE** en el formulario, en el mismo slot que el error
+   de credenciales — a proposito, porque asi el error de un reintento **pisa** al cartel viejo. Con un toast
+   flotante hay que decidir que pasa cuando conviven los dos. Pendiente de su preferencia.
+
+**LA 0057 VOLVIO EN FAIL DEL REVISOR INDEPENDIENTE, y el hallazgo bloqueante fue MIO: escribi un LIMITE FALSO
+en esta nota y en `docs/INDEX.md`.** Habia relatado que «el error de credenciales pisa al aviso» no tiene oraculo
+porque vitest de merchant corre en `environment: "node"` sin jsdom. **Es cierto solo para la INTERACCION.** El
+**renderizado del aviso** —que es el DoD #1 y el pedido literal del owner— **si es pinneable, con CERO dependencias
+nuevas**: el revisor lo demostro escribiendo el test con `react-dom/server` (`renderToStaticMarkup`, React 19.2.8),
+mockeando solo el cliente de auth, y paso 2/2 bajo el mismo `environment: "node"` — funciona gracias al
+`esbuild.jsx` que el propio implementador habia agregado. Lo borro para no implementar por su cuenta.
+
+**Es exactamente el patron del ADR 0054 —un documento afirmando un invariante que el test no pinnea— y esta vez lo
+escribi yo, tomando la declaracion del implementador sin verificarla.** La leccion no es «el implementador
+exagero»: es que **un limite declarado es una afirmacion como cualquier otra y necesita su verificacion**. Un
+limite sobredimensionado se ve virtuoso (parece honestidad) y hace exactamente el mismo daño que un `[x]` inflado:
+le regala a quien hereda el arbol la creencia de que algo no se puede probar.
+
+**Segundo hallazgo que tambien habia relatado mal: (b) «no revocar» y (c) «revocar despues del redirect» NO son
+indistinguibles.** Las separa `pnpm run typecheck`: con (c), `tsc` da `TS18047: 'session' is possibly 'null'` en la
+linea muerta (exit 2); con (b) sale 0. La afirmacion valia para vitest, no para los gates.
+
+**Resto del FAIL (importantes):** la tabla de mutaciones de la spec sigue siendo una **prediccion** con los
+checkboxes en `[ ]` —la regla que la propia 0055 dejo en `CLAUDE.md`— y ademas predice **dos tests que no existen**
+((a), (b) y (c) enrojecen el MISMO `it`); un comentario en `auth-guards.ts:70` afirma «one way to kill sessions in
+the product, not two», falso (existen `revokeSessionsOnPasswordReset` y el `/sign-out` de better-auth); y la tabla
+«Archivos» de la spec quedo vieja (no lista `login-notice.ts` ni `vitest.config.ts`, y lista `globals.css` que no
+se toco). **Todo en correccion.**
+
+**SEGUNDO FAIL DEL REVISOR (2a pasada), un solo bloqueante — y es EL MISMO ERROR UN NIVEL MAS ABAJO: la
+correccion del limite TAMBIEN estaba sobredimensionada.** El limite reescrito decia que el «pisa» queda afuera
+«porque requiere disparar un evento y vitest de merchant corre en `node` sin jsdom». El revisor aplico la regla
+que este mismo changeset acababa de escribir en `CLAUDE.md` por su hallazgo anterior —*antes de decir que no se
+puede testear, intentalo*— y **lo testeo**: ~45 lineas, **cero paquetes nuevos**, `vi.mock("react")` con un
+`useState` controlable, invocar `LoginForm(props)` como funcion, caminar el arbol hasta el `<button>` y disparar
+su `onClick`. **Paso 1/1.** Y probo que muerde con la mutacion **(h)** (el aviso viejo gana): su probe rojo
+**mientras los 5 gates quedan VERDES**. Es decir: **hoy se puede romper el DoD #5 exacto y todo el harness
+aplaude.**
+
+**La leccion, agregada a `CLAUDE.md`: sub-corregir un limite se SIENTE como rigor** (se acoto, se admitio parte) y
+deja el mismo agujero mas chico. La pregunta no es «¿suena honesto?» sino «¿intente exactamente esto que estoy
+declarando imposible?».
+
+**Todo lo demas de la 1a pasada quedo CONFIRMADO por el revisor, reproduciendolo:** las **7 filas** de la matriz
+de mutaciones reproducen una por una; (c) da `TS18047` en la linea y columna exactas; el test de render es
+load-bearing —lo cerro con una **(g2)** propia, mejor que la (g) del implementador porque (g) muerde el lint y
+(g2) no: typecheck y lint verdes, unico rojo `login-form.test.ts`—; la tabla «Archivos» y las «Consecuencias
+asumidas» estan bien. **Menores nuevos:** el comentario dice «the plugin's `/sign-out`» y `/sign-out` es ruta
+**core** de better-auth, no del plugin (`grep -c` da 0 en los 6 archivos de `emailOTP`); y `login-form.test.ts`
+no cubre el prop **ausente** (`undefined`), solo `null`.
+
+**EN CURSO — el implementador esta cerrando los hallazgos de las dos pasadas.** Ya entro
+`login-form-retry.test.ts`: el arbol esta en **471 tests** (venian de 469) con los 5 gates verdes, y el archivo
+**se declara a si mismo como PROXY en su encabezado** —dice que NO renderiza React (stubea `useState`, llama a
+`LoginForm(props)` como funcion y dispara el `onClick` a mano), que lo load-bearing es «el handler escribe en el
+MISMO slot que siembra `initialError`», y que lo decorativo es el re-render real, el batching y el orden de hooks
+bajo Strict Mode—. Es la regla de `CLAUDE.md` sobre proxies aplicada donde sirve: en el archivo, no en un handoff
+que nadie relee. Falta la 3a pasada del revisor. Ya aparecio `login-form.test.ts` (el test de
+render que el revisor demostro posible) y el arbol esta en **469 tests**, lint limpio. Corrio ademas mutaciones
+que no estaban en el plan: una **(g)** «el form ignora `initialError`», que es justo el oraculo del cableado que
+faltaba. Cuando termine **vuelve a revision independiente**: un FAIL no se cierra con auto-revision del mismo
+agente (`AGENT-WORKFLOW.md`).
+
+**NOTA OPERATIVA para quien herede esto — dos caras del mismo problema, y la segunda es peor:**
+1. **Los hooks `Stop` se disparan cuando un subagente esta a mitad de una mutacion.** El `no-mutations-left.sh`
+   cazo la (b) **en vuelo**. **No revertir a mano:** pisarle el arbol al agente le rompe su propia verificacion
+   por `shasum` y lo hace reportar resultados falsos. Se comprueba si sigue vivo (`ListAgents`) y se espera.
+2. **NINGUN resultado de gate vale si se toma mientras el subagente edita.** Paso aca: corri `pnpm run test`
+   con el implementador todavia trabajando y dio **1 rojo**; tres corridas posteriores dieron **63/63 y 471
+   passed**, y el agente seguia vivo todo el tiempo. **No era la suite: era mi verificacion corriendo contra un
+   arbol a medio escribir.** Perdi el nombre del test que fallo, asi que **no se afirma la causa** — solo que no
+   reprodujo en 3 corridas. Es el mismo genero que la mutacion abandonada: un rojo cuyo sintoma miente sobre su
+   origen. **Regla: antes de creerle a un gate, verificar que no haya subagentes corriendo.**
+
+**Lo que el revisor SI verifico y quedo limpio:** el codigo de produccion es correcto; `Object.hasOwn` en la
+allow-list es load-bearing (escribio 2 evasiones propias, `in` y `?? null`, y las dos caen con `__proto__` y
+`constructor`); el cambio de `vitest.config.ts` es **solo de tests** (Next compila con SWC y el `build` forzado
+pasa igual) y es load-bearing (sin el, 3 tests dan `ReferenceError: React is not defined`); si el `DELETE` falla
+**falla cerrado** (la excepcion sube, Next da 500, el `return` con sesion valida es inalcanzable); y la revocacion
+es efectiva de inmediato porque `auth.ts` no configura `session.cookieCache`.
+
+Ultima actualizacion previa: 2026-09-08 (**SPEC 0055 (CANJE, TAREA 44) IMPLEMENTADA, CON PASS DE REVISOR INDEPENDIENTE,
 COMMITEADA, MIGRADA A PROD, PUSHEADA Y DESPLEGADA. El loop del producto CIERRA: ya se puede canjear.**
 Commit `a9cbf3f` en `main`, **`Vercel: success` verificado para ESE sha exacto** (no «prod esta verde») con
 `gh api repos/maxhost/check-point/commits/a9cbf3f/status`.

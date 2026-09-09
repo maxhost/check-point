@@ -87,6 +87,32 @@ lectura del codigo, por mas que "EvalPlanQual deberia cubrirlo".
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.
 
+**UN LIMITE DECLARADO ES UNA AFIRMACION COMO CUALQUIER OTRA: verificalo antes de escribirlo.**
+Un limite sobredimensionado **se ve virtuoso** —parece honestidad— y hace exactamente el mismo
+daño que un `[x]` inflado: le regala a quien herede el arbol la creencia de que algo no se puede
+probar, y nadie vuelve a intentarlo. Paso en la spec 0057: se declaro que «el aviso del login no
+tiene oraculo porque el vitest de merchant corre en `environment: "node"` sin jsdom», y de ahi
+viajo a `docs/TASKS.md` y a `docs/INDEX.md`. **Era cierto solo para la INTERACCION.** El
+**renderizado** —que era el DoD #1 y el pedido literal del owner— se pinnea **sin instalar
+nada**, con `react-dom/server` (`renderToStaticMarkup`) bajo ese mismo `environment: "node"`; el
+revisor independiente lo demostro escribiendolo, 2/2 en verde. Es el ADR 0054 otra vez, en su
+version mas dificil de ver: no un invariante falso afirmado de mas, sino una **imposibilidad
+falsa afirmada de menos**. Antes de escribir «esto no se puede testear», **intenta testearlo**;
+y si el limite es real, acotalo a la parte exacta que lo es (aca: la interaccion, no el render).
+**Corolario para el orquestador: un limite que te reporta un subagente no se relata al owner ni
+se baja a un doc sin verificarlo** — es una afirmacion de exito («ya lo pense, no se puede»)
+disfrazada de cautela.
+
+**Y el corolario que costo una segunda vuelta: al CORREGIR un limite sobredimensionado, el
+limite nuevo tampoco vale sin intentarlo.** En la misma spec 0057, la correccion del limite
+—«queda afuera la interaccion, porque requiere disparar un evento y no hay jsdom»— resulto
+igual de falsa: el revisor la pinneo con `vi.mock("react")` sobre `useState`, ~45 lineas, cero
+paquetes nuevos, y demostro con una mutacion que **se podia romper ese DoD con los 5 gates en
+verde**. Sub-corregir se siente como rigor (se acoto el limite, se admitio parte) y deja el
+mismo agujero mas chico. **La pregunta al escribir un limite no es «¿suena honesto?» sino
+«¿intente exactamente esto que estoy declarando imposible?»** — y la respuesta se demuestra con
+el intento, aunque termine descartado por invasivo.
+
 **Que un test MUERDA no dice QUE propiedad pinnea — eso solo lo dice la mutacion, y la
 atribucion equivocada es tan peligrosa como la ausencia de test.** La spec 0055 declaraba que
 sacar el `FOR UPDATE` ponia roja «la carrera de mismo `clientRequestId`». Se ejecuto: esa carrera

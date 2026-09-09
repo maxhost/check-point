@@ -107,9 +107,11 @@ UI**, que es exactamente lo que estos items prueban.
 - [ ] **C7. El canje aparece en el historial del dia** de la consola, distinguible de una
       acreditacion (signo `−` y la etiqueta del premio). *(Idem: el servidor esta verificado
       end-to-end, el render no.)*
-- [ ] **C8. Empleado deshabilitado.** Si tenes un staff en `disabled`, no tiene que poder
-      operar el mostrador — **ni canjear ni acreditar**. Esto cambio en esta spec: antes SI
-      podia (hueco de autorizacion preexistente que la 0055 cerro).
+- [x] **C8. Empleado deshabilitado — VERIFICADO por el owner (2026-09-08).** No puede
+      loguearse, correcto. **Hallazgo nuevo, no bloqueante:** el login falla en **silencio**,
+      sin ningun mensaje — parece que el login esta roto, no que la cuenta esta desactivada.
+      Necesita spec propia (toast "Miembro del staff desactivado" o similar) antes de
+      implementarse; no se toca a mano.
 
 ---
 
