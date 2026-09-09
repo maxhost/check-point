@@ -1,13 +1,15 @@
 ---
 spec: 0011
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — superada (prototipo QA; sin código vivo)
 resumen: Prototipo local de QA para probar en un teléfono el QR, permiso de ubicación, check-in simulado y wallet guest sin backend.
 disjunta: no
 archivos: apps/consumer, .env.example, README.md, pruebas consumer y e2e, docs
 ---
 
 # 0011 — Prototipo QA de check-in consumer v0.1
+
+> **Estado real 2026-09-09 — verificado contra el código.** El prototipo de QA ya no existe en el árbol: `app/(consumer)/` contiene el flujo real (`enroll`, `wallet`, `c`, `recover`) de las specs 0028/0029/0031/0037. Se conserva como antecedente.
 
 > **Nada de código empieza sin esta spec en `cerrada`.**
 

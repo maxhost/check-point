@@ -1,13 +1,15 @@
 ---
 spec: 0012
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — superada por la spec 0022
 resumen: Prototipo responsive sin backend para registrar un owner, simular Stripe Checkout, configurar un negocio con sucursales iniciales y llegar al Backoffice.
 disjunta: no
 archivos: apps/merchant, README.md, .env.example, pruebas merchant y e2e, docs
 ---
 
 # 0012 — Onboarding demo de owner, negocio y sucursales
+
+> **Estado real 2026-09-09 — verificado contra el código.** `app/onboarding/page.tsx` es hoy el onboarding **real** (registro de owner, Stripe Checkout y alta de negocio, spec 0022). Este mock ya no tiene código propio.
 
 > **Nada de código empieza sin esta spec en `cerrada`.**
 

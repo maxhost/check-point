@@ -1,13 +1,15 @@
 ---
 spec: 0016
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — superada por la spec 0043
 resumen: Owner gestiona Staff demo: invita, reenvía acceso, asigna permisos, archiva y elimina miembros sin backend.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0016 — Staff del owner demo
+
+> **Estado real 2026-09-09 — verificado contra el código.** El staff real vive en `app/backoffice/staff/` con alta, desactivación y login (specs 0043 y 0057). Este mock no llegó a tener ruta propia bajo `demo/`.
 
 ## Alcance
 

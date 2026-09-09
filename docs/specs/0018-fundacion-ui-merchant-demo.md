@@ -1,13 +1,15 @@
 ---
 spec: 0018
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — implementada y en uso
 resumen: Refactoriza los mockups merchant en componentes UI reutilizables, estados accesibles y fixtures separados de las páginas.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0018 — Fundación UI production-grade de merchant demo
+
+> **Estado real 2026-09-09 — verificado contra el código.** Los componentes de esta spec son producción real: `app/components/ui.tsx` y hermanos los consume todo el backoffice. No es un mock.
 
 ## Alcance
 

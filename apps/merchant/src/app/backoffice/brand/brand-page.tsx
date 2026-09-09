@@ -185,14 +185,38 @@ export default function BrandPage() {
               ref={logo.fileInput}
               type="file"
               accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
+              disabled={logo.isAnalyzing}
               onChange={(event) => {
                 void logo.choose(event.target.files?.[0], setError);
               }}
             />
           </label>
+          {isTouch && (
+            <>
+              <input
+                className="sr-only"
+                ref={logo.cameraInput}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => {
+                  void logo.choose(event.target.files?.[0], setError);
+                }}
+              />
+              <button
+                className="small-button"
+                type="button"
+                disabled={logo.isAnalyzing}
+                onClick={() => logo.cameraInput.current?.click()}
+              >
+                Tomar foto
+              </button>
+            </>
+          )}
           <p className="field-help">
             {ACCEPTED_IMAGE_LABEL} · máximo 5 MB · se ajusta a 2048 px.
           </p>
+          {logo.isAnalyzing && <p className="field-help">Preparando imagen…</p>}
           {visibleLogo && (
             <button
               type="button"

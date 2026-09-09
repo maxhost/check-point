@@ -33,6 +33,7 @@ export function useCatalogImage(
   const [pendingSrc, setPendingSrc] = useState<string | null>(null);
   const releasePending = useRef<(() => void) | null>(null);
   const [cropped, setCropped] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
   const [stock, setStock] = useState<StockChoice | null>(null);
@@ -87,7 +88,10 @@ export function useCatalogImage(
     }
     // Decodable → park it for the 1:1 cropper. Undecodable (HEIC outside Safari, ADR 0047)
     // → silent fallback to the pre-cropper behaviour: the original file, untouched.
-    const resolved = await resolveDecodableImage(file);
+    setIsAnalyzing(true);
+    const resolved = await resolveDecodableImage(file).finally(() =>
+      setIsAnalyzing(false),
+    );
     const choice = decideImageChoice(file, resolved !== null);
     if (choice.mode === "crop") {
       // `crop` is returned exactly when the probe resolved; the guard is for the compiler.
@@ -205,6 +209,7 @@ export function useCatalogImage(
     selected,
     pending,
     pendingSrc,
+    isAnalyzing,
     cropped,
     stock,
     visible,

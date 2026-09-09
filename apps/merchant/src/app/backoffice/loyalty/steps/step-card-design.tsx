@@ -22,6 +22,7 @@ const ANGLE_PRESETS = [
 export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
   const { card, stamp } = vm;
   const stampInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const isTouch = useIsTouch();
   const stampPreview =
     stamp.preview ??
@@ -122,14 +123,43 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
               ref={stampInput}
               type="file"
               accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
+              disabled={stamp.isAnalyzing}
               onChange={(event) => {
                 void stamp.choose(event.target.files?.[0], vm.setErrorToast);
               }}
             />
+            {isTouch && (
+              <>
+                <input
+                  className="sr-only"
+                  ref={cameraInput}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(event) => {
+                    void stamp.choose(
+                      event.target.files?.[0],
+                      vm.setErrorToast,
+                    );
+                  }}
+                />
+                <button
+                  className="small-button"
+                  type="button"
+                  disabled={stamp.isAnalyzing}
+                  onClick={() => cameraInput.current?.click()}
+                >
+                  Tomar foto
+                </button>
+              </>
+            )}
             <p className="field-help">
               PNG, JPEG, WebP, HEIC o AVIF · máximo 5 MB · hasta 2048 × 2048 px.
               Se aplica al guardar.
             </p>
+            {stamp.isAnalyzing && (
+              <p className="field-help">Preparando imagen…</p>
+            )}
           </div>
         </div>
         <div className="card-design-preview">

@@ -22,7 +22,8 @@ describe("login form renders the notice it is handed (ADR 0055)", () => {
   it("shows the copy, announced to assistive tech", () => {
     const html = markupOf(STAFF_DISABLED_COPY);
     expect(html).toContain(STAFF_DISABLED_COPY);
-    expect(html).toContain('role="alert"');
+    expect(html).toContain('class="toast error"');
+    expect(html).toContain('role="status"');
   });
 
   // Two ways to say "nothing to announce": an explicit null, and the prop simply
@@ -31,9 +32,9 @@ describe("login form renders the notice it is handed (ADR 0055)", () => {
   it.each([
     ["an explicit null", null],
     ["the prop left out entirely", undefined],
-  ])("shows no alert at all on a plain /login — %s", (_name, initialError) => {
+  ])("shows no toast at all on a plain /login — %s", (_name, initialError) => {
     const html = markupOf(initialError);
-    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain('class="toast error"');
     expect(html).not.toContain(STAFF_DISABLED_COPY);
     // The form itself still rendered — guards against a vacuous pass above.
     expect(html).toContain("Contraseña");

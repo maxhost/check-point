@@ -1,13 +1,15 @@
 ---
 spec: 0019
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — superada por las specs 0024 y 0027
 resumen: Owner activa, configura o desactiva un único programa demo de Puntos o Sellos, con unidades, meta y diseño de sello fixture.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0019 — Programa de fidelización del owner demo
+
+> **Estado real 2026-09-09 — verificado contra el código.** El programa de fidelización real vive en `app/backoffice/loyalty/` (wizard, diseño de tarjeta, premios y cierre fechado). El mock `backoffice/demo/loyalty/page.tsx` sigue en el árbol, alcanzable sólo desde `/backoffice/demo`.
 
 ## Problema
 

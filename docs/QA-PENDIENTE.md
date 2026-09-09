@@ -129,10 +129,9 @@ las membresias. Ahora se revoca en el mismo paso.
       cerrar del todo — el probe automatico cubre el mecanismo, no el navegador real.)*
 - [ ] **S3. Nadie mas ve el cartel.** Entra normal con tu usuario owner: **no** tiene que
       aparecer ningun aviso.
-- [ ] **S4. Presentacion.** Vos pediste «un toast»; esto es un **mensaje dentro del
-      formulario**, en el mismo lugar donde sale el error de contraseña — a proposito, para que
-      el reintento lo pise (S2). **Si lo preferis como toast flotante, decilo**: es un cambio
-      chico, pero hay que decidir que pasa cuando conviven los dos mensajes.
+- [x] **S4. Presentacion.** Decidido por el owner el 2026-09-08 y aplicado por la spec 0058:
+      el aviso es un **toast flotante**. El reintento conserva un solo estado de mensaje, así
+      que el error de contraseña reemplaza el aviso previo en vez de apilar ambos.
 
 ---
 

@@ -1,8 +1,8 @@
 ---
 spec: 0023
 fecha: 2026-08-11
-estado: implementada
-resumen: Alta y edición de locales con Geoapify como autocomplete único (Mapbox retirado por costo, 2026-08-16) y procedencia persistente de la ubicación.
+estado: implementada parcialmente (solo el alta en onboarding)
+resumen: ALTA de locales en el onboarding con Geoapify como autocomplete único (Mapbox retirado por costo, 2026-08-16) y validación server-side de la ubicación; la EDICIÓN desde el backoffice y la procedencia versionada NO existen — el tile «Locales» del backoffice sigue apuntando al mock de la spec 0015.
 disjunta: no
 archivos: apps/merchant, packages/db, packages/contracts, pruebas y docs
 ---
@@ -15,6 +15,25 @@ archivos: apps/merchant, packages/db, packages/contracts, pruebas y docs
 > 2026-08-16). El contrato `verifyLocation`/`LocationProvider` sigue siendo provider-neutral
 > para reintroducir otro proveedor sin migrar locales. Los apartados que mencionan Mapbox
 > abajo describen el diseño original; hoy sólo Geoapify está activo.
+
+> **Corrección de estado 2026-09-09 — verificado contra el código, no asumido.** Esta spec
+> figuraba `implementada` con **7 de 9 casilleros de DoD sin marcar**, y el código confirma
+> que el estado era optimista. Lo que **sí** existe: `AddressAutofillField` con Geoapify y la
+> validación server-side de país/coordenadas. Lo que **no** existe:
+>
+> - **No hay ninguna ruta de locales en el backoffice.** `apps/merchant/src/app/backoffice/`
+>   contiene `brand`, `catalog`, `counter`, `demo`, `loyalty` y `staff` — nada de `locations`.
+> - **El autocomplete se usa en un solo lugar:** `app/onboarding/page.tsx`. Es decir, un local
+>   se puede crear al dar de alta el negocio y **nunca más se puede editar**.
+> - **El tile «Locales» del backoffice real enlaza al mock:** `backoffice/page.tsx:80` cae al
+>   `/backoffice/demo/${slug}` de la spec 0015 para `locations`, `campaigns` y `analytics`.
+> - **El DoD «tokens públicos restringidos por origen» es hoy FALSO en producción**, y a
+>   propósito: para destrabar el CORS de Geoapify se le quitaron **todas** las Allowed Origins
+>   a la clave pública (ver `CLAUDE.md`). El fix durable —proxear el autocomplete por el server
+>   con `GEOAPIFY_API_KEY`— no tiene spec todavía.
+>
+> Cerrar esta spec pide una spec de continuación (edición de locales en backoffice +
+> procedencia versionada), no marcar casilleros.
 
 ## Problema
 

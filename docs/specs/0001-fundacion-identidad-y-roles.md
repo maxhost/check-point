@@ -1,13 +1,17 @@
 ---
 spec: 0001
 fecha: 2026-08-09
-estado: borrador
-resumen: Define dominios de acceso, roles de backoffice, membresías de comercio y auditoría base; la identidad de consumidor vive en la spec 0004.
+estado: deprecada (informativa)
+resumen: Documento histórico de la fundación de identidad y roles; la implementación posterior (en especial ADR 0044/spec 0043) es la fuente vigente.
 disjunta: no
 archivos: por definir tras elegir el stack web y base de datos
 ---
 
 # 0001 — Acceso de backoffice, membresías y auditoría
+
+> **DEPRECADA — solo informativa.** No usar esta spec para decidir ni implementar: el
+> modelo real fue cerrado por ADR 0044/spec 0043 y las specs posteriores. Se conserva como
+> antecedente histórico.
 
 ## Problema
 

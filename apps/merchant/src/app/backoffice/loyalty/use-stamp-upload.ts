@@ -25,6 +25,7 @@ export function useStampUpload() {
   const [pendingSrc, setPendingSrc] = useState<string | null>(null);
   const releasePending = useRef<(() => void) | null>(null);
   const [cropped, setCropped] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
 
@@ -66,7 +67,10 @@ export function useStampUpload() {
       onError("El sello debe pesar como máximo 5 MB.");
       return;
     }
-    const resolved = await resolveDecodableImage(file);
+    setIsAnalyzing(true);
+    const resolved = await resolveDecodableImage(file).finally(() =>
+      setIsAnalyzing(false),
+    );
     const choice = decideImageChoice(file, resolved !== null);
     if (choice.mode === "crop") {
       // `crop` is returned exactly when the probe resolved; the guard is for the compiler.
@@ -157,6 +161,7 @@ export function useStampUpload() {
     selected,
     pending,
     pendingSrc,
+    isAnalyzing,
     cropped,
     preview,
     removed,

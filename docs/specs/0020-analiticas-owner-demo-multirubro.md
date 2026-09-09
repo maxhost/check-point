@@ -1,13 +1,15 @@
 ---
 spec: 0020
 fecha: 2026-08-11
-estado: cerrada
+estado: cerrada — **demo TODAVÍA EN USO** — no hay analíticas reales
 resumen: Dashboard owner demo multirubro con núcleo universal, embudo de campaña, calidad de dato y lentes Bar/Restaurante, Hotel y Retail.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0020 — Analíticas owner demo multirubro
+
+> **Estado real 2026-09-09 — verificado contra el código.** **Este mock no fue superado: es el destino real del tile «Analíticas»** (`backoffice/page.tsx:80` → `/backoffice/demo/analytics`) y además lo ejercita `tests/e2e/analytics.spec.ts`. No existe ninguna analítica real; su rediseño es la spec 0007.
 
 ## Problema
 

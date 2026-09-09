@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { merchantAuthClient } from "../../lib/auth-client";
+import { Toast } from "../components/ui";
 
 /**
  * The sign-in form. `initialError` is the reason the server already knows about
@@ -38,11 +39,7 @@ export function LoginForm({ initialError }: { initialError?: string | null }) {
             onChange={(event) => setPassword(event.target.value)}
           />
         </label>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
+        <Toast message={error} kind="error" onDismiss={() => setError(null)} />
         <button
           className="button"
           disabled={loading}

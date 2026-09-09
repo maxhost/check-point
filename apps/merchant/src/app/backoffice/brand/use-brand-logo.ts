@@ -24,9 +24,11 @@ export function useBrandLogo() {
   const [pendingSrc, setPendingSrc] = useState<string | null>(null);
   const releasePending = useRef<(() => void) | null>(null);
   const [cropped, setCropped] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [removed, setRemoved] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
 
   useEffect(
     () => () => {
@@ -66,7 +68,10 @@ export function useBrandLogo() {
       onError("El logo debe pesar como máximo 5 MB.");
       return;
     }
-    const resolved = await resolveDecodableImage(file);
+    setIsAnalyzing(true);
+    const resolved = await resolveDecodableImage(file).finally(() =>
+      setIsAnalyzing(false),
+    );
     const choice = decideImageChoice(file, resolved !== null);
     if (choice.mode === "crop") {
       // `crop` is returned exactly when the probe resolved; the guard is for the compiler.
@@ -171,6 +176,8 @@ export function useBrandLogo() {
     removed,
     action,
     fileInput,
+    cameraInput,
+    isAnalyzing,
     choose,
     applyCrop,
     cancelCrop,

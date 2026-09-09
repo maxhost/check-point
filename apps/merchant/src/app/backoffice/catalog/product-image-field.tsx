@@ -32,6 +32,7 @@ export function ProductImageField({
   // allow-list (a narrow hardcoded list here rejected Android/iPhone photos three times).
   const isTouch = useIsTouch();
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
 
   return (
     <>
@@ -41,16 +42,38 @@ export function ProductImageField({
           ref={fileInput}
           type="file"
           accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
+          disabled={image.isAnalyzing}
           onChange={(event) => {
             void image.choose(event.target.files?.[0], onError);
           }}
         />
       </label>
       {isTouch && (
-        <p className="field-help">
-          Podés tomar una foto o elegir una de tu galería.
-        </p>
+        <>
+          <input
+            className="sr-only"
+            ref={cameraInput}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(event) => {
+              void image.choose(event.target.files?.[0], onError);
+            }}
+          />
+          <button
+            type="button"
+            className="small-button"
+            disabled={image.isAnalyzing}
+            onClick={() => cameraInput.current?.click()}
+          >
+            Tomar foto
+          </button>
+          <p className="field-help">
+            Elegí una imagen de tu galería o tomá una foto.
+          </p>
+        </>
       )}
+      {image.isAnalyzing && <p className="field-help">Preparando imagen…</p>}
       <div className="stock-or">o</div>
       <button
         type="button"

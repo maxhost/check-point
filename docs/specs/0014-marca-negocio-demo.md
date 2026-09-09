@@ -1,13 +1,15 @@
 ---
 spec: 0014
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — superada por la spec 0025
 resumen: Pantalla demo responsive para que el owner edite nombre, logo, paleta y zona horaria de su negocio.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0014 — Marca de negocio demo
+
+> **Estado real 2026-09-09 — verificado contra el código.** La pantalla de Marca real vive en `app/backoffice/brand/` con assets en R2 (spec 0025). El mock `backoffice/demo/brand/page.tsx` sigue en el árbol, alcanzable sólo desde `/backoffice/demo`.
 
 ## Alcance
 

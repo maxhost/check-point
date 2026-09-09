@@ -1,13 +1,15 @@
 ---
 spec: 0013
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — superada por el backoffice real; su mock sigue servido
 resumen: Home mock responsive del Backoffice owner con campaña activa visible y navegación a locales, equipo, marca, configuración, campañas y analíticas.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0013 — Home demo del Backoffice owner
+
+> **Estado real 2026-09-09 — verificado contra el código.** El backoffice real es `app/backoffice/page.tsx`. El mock de esta spec **sigue desplegado** en `/backoffice/demo` (alcanzable por URL directa y usado por `tests/e2e/loyalty.spec.ts`), y desde él cuelgan los demás mocks demo.
 
 > **Nada de código empieza sin esta spec en `cerrada`.**
 

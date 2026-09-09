@@ -77,13 +77,18 @@ vi.mock("../../lib/auth-client", () => ({
 }));
 
 import { LoginForm } from "./login-form";
+import { Toast } from "../components/ui";
 
 const STAFF_DISABLED_COPY = "Miembro del staff desactivado";
 const CREDENTIALS_ERROR = "Invalid email or password";
 
 type Element = {
   type?: unknown;
-  props?: { className?: unknown; children?: unknown; onClick?: unknown };
+  props?: {
+    children?: unknown;
+    message?: unknown;
+    onClick?: unknown;
+  };
 };
 
 function walk(node: unknown, hit: (el: Element) => boolean): Element | null {
@@ -107,12 +112,12 @@ function render(initialError?: string | null): {
 } {
   cursor = 0;
   const tree = LoginForm({ initialError }) as unknown;
-  const alert = walk(tree, (el) => el.props?.className === "form-error");
+  const toast = walk(tree, (el) => el.type === Toast);
   const button = walk(tree, (el) => el.type === "button");
   const onClick = button?.props?.onClick;
   if (typeof onClick !== "function") throw new Error("no submit button found");
   return {
-    notice: alert?.props?.children ?? null,
+    notice: toast?.props?.message ?? null,
     click: onClick as () => Promise<void>,
   };
 }

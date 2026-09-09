@@ -1,13 +1,17 @@
 ---
 spec: 0005
 fecha: 2026-08-09
-estado: borrador
-resumen: El personal escanea al consumidor para asignar y validar beneficios sin interrumpir el servicio.
+estado: deprecada
+resumen: La consola de fidelización ya vive en specs 0030 y 0055; lo restante se solapa con el futuro motor de campañas de la spec 0003.
 disjunta: no
 archivos: depende de 0001, 0002, 0003 y 0004; rutas concretas por definir
 ---
 
 # 0005 — App operativa: asignación y validación
+
+> **DEPRECADA.** Acreditación y canje ya se implementaron en 0030/0055. La asignación de
+> beneficios por campañas se diseña dentro de 0003, para no mantener dos consolas ni dos
+> motores de decisión.
 
 ## Problema
 

@@ -1,13 +1,15 @@
 ---
 spec: 0015
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — **demo TODAVÍA EN USO** — no hay locales reales en el backoffice
 resumen: Owner gestiona locales demo: ve, añade, edita y archiva locales con búsqueda y mapa de Mapbox.
 disjunta: no
 archivos: apps/merchant, .env.example, pruebas merchant y e2e, docs
 ---
 
 # 0015 — Locales del owner demo
+
+> **Estado real 2026-09-09 — verificado contra el código.** **Este mock no fue superado: es el destino real del tile «Locales».** `backoffice/page.tsx:80` enruta `locations` a `/backoffice/demo/locations`. No existe ninguna ruta de locales real; el alta con Geoapify sólo ocurre en el onboarding (ver la corrección de estado de la spec 0023). La edición de locales necesita spec propia.
 
 ## Alcance
 

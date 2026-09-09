@@ -1,13 +1,15 @@
 ---
 spec: 0017
 fecha: 2026-08-10
-estado: cerrada
+estado: cerrada — **demo TODAVÍA EN USO** — campañas no existen como feature real
 resumen: Owner gestiona campañas demo con plantillas cerradas, calendario, locales, recompensas, resultados mock y transiciones de estado.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
 ---
 
 # 0017 — Campañas del owner demo
+
+> **Estado real 2026-09-09 — verificado contra el código.** **Este mock no fue superado: es el destino real del tile «Campañas»** (`backoffice/page.tsx:80` → `/backoffice/demo/campaigns`). Las campañas reales están **diferidas** (ADR 0034) y su rediseño vive en la spec 0003, dentro de la capa de marketing del ADR 0057.
 
 ## Alcance
 

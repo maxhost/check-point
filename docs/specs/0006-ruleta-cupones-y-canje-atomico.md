@@ -1,13 +1,17 @@
 ---
 spec: 0006
 fecha: 2026-08-09
-estado: borrador
-resumen: Define el catálogo de mecánicas; implementa ruleta y cupones únicos, dejando raspadita como siguiente juego.
+estado: deprecada
+resumen: Juegos, ruleta y raspadita salen del roadmap; canje de fidelización vive en la spec 0055 y el marketing futuro prioriza geofencing, segmentación y push.
 disjunta: no
 archivos: depende de 0001, 0003, 0004 y 0005; rutas concretas por definir
 ---
 
 # 0006 — Juegos, ruleta, cupones y canje atómico
+
+> **DEPRECADA.** Decisión del owner (ADR 0057): no se implementan juegos. El canje de
+> puntos/sellos ya vive en 0055; el marketing futuro se centra en geofencing, fidelización,
+> analítica, segmentos y notificaciones Wallet.
 
 ## Problema
 

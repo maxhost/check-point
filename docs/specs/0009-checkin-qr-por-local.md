@@ -9,6 +9,9 @@ archivos: depende de 0001, 0002 y 0004; rutas concretas por definir
 
 # 0009 — Check-in QR por local
 
+> **EN REVISIÓN DE DISEÑO.** El owner evalúa que el check-in sea un disparador de campañas
+> (geofencing/visita) dentro de la 0003. No implementar esta spec hasta cerrar ese modelo.
+
 ## Problema
 
 El check-in conecta al consumidor con el local y permite medir visitas o activar campañas diseñadas para presencia. No puede fingir ser una compra ni permitir repetición ilimitada.

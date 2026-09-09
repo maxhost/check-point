@@ -166,6 +166,9 @@ describe("the file inputs of the three upload surfaces share the accept list", (
       );
       // No comma-joined MIME list anywhere in the file: that is the bug shape.
       expect(source).not.toMatch(/image\/[a-z+]+,image\//);
+      expect(source).toContain('capture="environment"');
+      expect(source).toContain("Tomar foto");
+      expect(source).toContain("Preparando imagen…");
     });
   }
 
@@ -191,7 +194,9 @@ describe("the file inputs of the three upload surfaces share the accept list", (
       for (const match of source.matchAll(ACCEPT_ATTR)) {
         attributes += 1;
         const value = match[1] ?? match[2] ?? "";
-        if (!value.includes("ACCEPTED_IMAGE_ACCEPT_ATTR")) {
+        const isCameraInput =
+          value === "image/*" && source.includes('capture="environment"');
+        if (!value.includes("ACCEPTED_IMAGE_ACCEPT_ATTR") && !isCameraInput) {
           offenders.push(`${path}: ${match[0]}`);
         }
       }

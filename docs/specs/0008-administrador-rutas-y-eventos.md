@@ -1,13 +1,16 @@
 ---
 spec: 0008
 fecha: 2026-08-09
-estado: borrador
+estado: diferida a largo plazo
 resumen: Permite al administrador de Mi Pasaporte cargar negocios y curar categorías, rutas y eventos explorables.
 disjunta: no
 archivos: depende de 0001, 0002 y 0004; rutas concretas por definir
 ---
 
 # 0008 — Administrador, rutas, categorías y eventos
+
+> **DIFERIDA A LARGO PLAZO.** Sigue siendo una línea de producto válida, pero no compite con
+> fidelización, campañas ni analítica en el roadmap actual.
 
 ## Problema
 
