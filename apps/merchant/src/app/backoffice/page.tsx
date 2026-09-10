@@ -22,6 +22,17 @@ export default async function BackofficePage() {
     status: subscription?.status ?? "active",
   };
 
+  // Modules with a REAL screen. Anything not listed here still falls back to the
+  // sessionStorage mock of spec 0015 (`/backoffice/demo/<slug>`) — today `campaigns` and
+  // `analytics`. `locations` left that list in spec 0061.
+  const realModules = new Set([
+    "counter",
+    "loyalty",
+    "catalog",
+    "locations",
+    "staff",
+    "brand",
+  ]);
   const modules = [
     ["Mostrador", "Escanea el QR del cliente y acredita su compra.", "counter"],
     [
@@ -67,17 +78,9 @@ export default async function BackofficePage() {
               <Link
                 className="module-card"
                 href={
-                  slug === "loyalty"
-                    ? "/backoffice/loyalty"
-                    : slug === "brand"
-                      ? "/backoffice/brand"
-                      : slug === "catalog"
-                        ? "/backoffice/catalog"
-                        : slug === "counter"
-                          ? "/backoffice/counter"
-                          : slug === "staff"
-                            ? "/backoffice/staff"
-                            : `/backoffice/demo/${slug}`
+                  realModules.has(slug)
+                    ? `/backoffice/${slug}`
+                    : `/backoffice/demo/${slug}`
                 }
                 key={slug}
               >

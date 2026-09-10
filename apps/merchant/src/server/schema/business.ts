@@ -152,22 +152,42 @@ export const memberships = core.table(
   ],
 );
 
-export const locations = core.table("location", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  businessId: uuid("business_id")
-    .notNull()
-    .references(() => businesses.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  addressLabel: text("address_label").notNull(),
-  longitude: numeric("longitude", { precision: 10, scale: 7 }).notNull(),
-  latitude: numeric("latitude", { precision: 10, scale: 7 }).notNull(),
-  countryCode: text("country_code").notNull(),
-  activeVerificationId: uuid("active_verification_id"),
-  addressSnapshot: jsonb("address_snapshot").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+/**
+ * A branch of a business. Spec 0061:
+ *  - `status` ('active' | 'archived'): a location is never deleted, it is archived, so
+ *    `order.location_id` / `reward_redemption.location_id` keep pointing at it (ADR 0042)
+ *    and `product_location` survives untouched. `default 'active'` leaves every existing
+ *    row active without a backfill.
+ *  - `longitude`/`latitude` are NULLABLE: a location whose address was typed and that
+ *    Geoapify could not find has plain text and NO georeference. Decision 3 of the spec
+ *    forbids fabricating an approximate coordinate — missing is information, wrong is a lie.
+ */
+export const locations = core.table(
+  "location",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    addressLabel: text("address_label").notNull(),
+    longitude: numeric("longitude", { precision: 10, scale: 7 }),
+    latitude: numeric("latitude", { precision: 10, scale: 7 }),
+    countryCode: text("country_code").notNull(),
+    status: text("status").notNull().default("active"),
+    activeVerificationId: uuid("active_verification_id"),
+    addressSnapshot: jsonb("address_snapshot").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "location_status_check",
+      sql`${table.status} in ('active', 'archived')`,
+    ),
+  ],
+);
 
 export const locationVerifications = core.table("location_verification", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -178,8 +198,10 @@ export const locationVerifications = core.table("location_verification", {
   provider: text("provider"),
   providerPlaceId: text("provider_place_id"),
   normalizedAddress: text("normalized_address").notNull(),
-  longitude: numeric("longitude", { precision: 10, scale: 7 }).notNull(),
-  latitude: numeric("latitude", { precision: 10, scale: 7 }).notNull(),
+  // Nullable for the same reason as `location.longitude`/`latitude` (spec 0061,
+  // decision 3): an `owner_typed` verification records the text, never a made-up point.
+  longitude: numeric("longitude", { precision: 10, scale: 7 }),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }),
   countryCode: text("country_code").notNull(),
   providerSnapshot: jsonb("provider_snapshot").notNull(),
   attribution: text("attribution"),

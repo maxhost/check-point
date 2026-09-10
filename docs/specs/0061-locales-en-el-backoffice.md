@@ -1,7 +1,7 @@
 ---
 spec: 0061
 fecha: 2026-09-09
-estado: cerrada
+estado: implementada
 resumen: El owner ve, crea y edita los locales de su negocio desde el backoffice, con Geoapify y procedencia versionada; reemplaza el mock de la spec 0015 al que hoy apunta el tile «Locales».
 disjunta: sí (ninguna spec abierta toca `backoffice/locations` ni `location-providers.ts`)
 archivos: `apps/merchant/src/app/backoffice/locations/**`, `apps/merchant/src/app/api/locations/**`, `apps/merchant/src/server/locations/**`, `apps/merchant/src/app/backoffice/page.tsx`
@@ -135,70 +135,113 @@ apareció con el plugin de better-auth (spec 0046).
 - **Tope por plan en código, no en la base:** `free: 1`, `plus: 3`. `enterprise` no se crea
   (decisión 2) — sin código muerto que lo anticipe. El tope se evalúa **contando locales
   `active`** y se aplica en el servidor, no solo escondiendo el botón.
-- `app/api/locations/**` detrás de `requireOwner()` (decisión 4).
+- `app/api/locations/**` detrás del guard de owner (decisión 4). **Precisión anotada tras la
+  revisión independiente (2026-09-09):** el guard concreto es `ownerContext`, **no**
+  `requireOwner()`. No es un desvío de la decisión 4 —sigue siendo owner-only y de hecho es
+  más estricto (owner **+** `status = 'active'`)— sino la forma correcta para una API:
+  `requireOwner()` resuelve con un `redirect()`, que sirve en una página y no en un endpoint
+  JSON. Se documenta acá para que el lector no tenga que descubrir la discrepancia.
 - `app/backoffice/locations/` con el patrón de las otras pantallas del backoffice, y el tile
   «Locales» de `backoffice/page.tsx:80` re-enrutado a la ruta real.
 - **La edición de dirección es UNA sola sentencia**: insertar la verificación nueva, marcar
   `superseded_at` en la anterior y mover `location.active_verification_id`. En varios
   round-trips queda una ventana donde el local apunta a una verificación superseded.
 
+## Cierre — PASS del revisor independiente (2026-09-09)
+
+Dos pasadas. La primera devolvio **FAIL** con un bloqueante y un hallazgo importante; la
+segunda, **PASS** sin bloqueantes. Los casilleros de abajo estan tildados porque el revisor
+verifico cada uno contra evidencia observable, no porque el implementador lo declarara.
+
+**Lo que el revisor ejecuto por su cuenta**, con `TURBO_FORCE=true` para saltear la cache y
+contra su **propia** rama Neon (`br-flat-lake-ax8d91kk`, distinta de la del implementador):
+5 gates verdes, **520 unitarios**, **20/20 de integracion sin skips**, y los hooks
+`file-size`, `no-mutations-left` y `verify.sh` — ademas probo que `file-size` **muerde**
+(301 lineas → `exit=2`) en vez de asumirlo.
+
+**Lo que encontro la primera pasada, y que nadie mas habria visto:**
+1. Un comentario en `server/locations/core.ts` citaba `locations-dto.test.ts`, **que no
+   existia**. Segunda aparicion del mismo defecto en el changeset.
+2. **La capa HTTP no tenia ningun oraculo.** Lo probo en vez de inferirlo: saco el guard de
+   `GET /api/locations` —anonima, con el negocio por `?b=<uuid>`— y **654 tests quedaron
+   verdes**. Se elevo a obligatorio y salio `server/locations-routes.test.ts` (14 casos).
+
+**Las 3 evasiones nuevas de la segunda pasada, todas cazadas:**
+
+| # | Evasion | Resultado |
+|---|---|---|
+| E1 | El guard devuelve 401/403 bien, pero el dominio corre **antes** que el | ROJO (2 casos) — lo caza `expect(spy).not.toHaveBeenCalled()`. Un test que solo mirara el status code lo dejaba pasar |
+| E2 | Guard presente pero **cualquier sesion vale como owner** | ROJO (9 casos) |
+| E3 | 401 y 403 correctos, pero el dominio recibe el `businessId` **del body** | ROJO, **1 solo caso** — solo lo caza «acts on the CALLER's business». Es la escalada de privilegios real, invisible a 401/403 |
+
+E3 es la que justifica que ese tercer caso exista.
+
+**ADR 0054 cerrado en este dominio, estructuralmente:** el `EXPLAIN` del `FOR UPDATE` da
+`LockRows` —no `InitPlan` / `One-Time Filter`— y **no hay ningun CTE ni `NOT EXISTS` en todo
+el dominio de locales**. El antipatron esta ausente, no solo «no observado».
+
+**Menor conocido y NO accionado, con su fix ya identificado:** la lista `HANDLERS` del test
+de rutas esta **hardcodeada**. Hoy cubre los 4 handlers en disco, pero **una 5a ruta bajo
+`api/locations/**` naceria sin guard y el test seguiria verde** — la forma exacta de la
+leccion de la spec 0046 y del barrido MIME. Queda como **tarea 52**.
+
 ## Definition of Done
 
-- [ ] El owner ve en `/backoffice/locations` los locales de su negocio con **nombre,
+- [x] El owner ve en `/backoffice/locations` los locales de su negocio con **nombre,
       dirección y estado** (activo/archivado) — y nada más: la pantalla **no** revela la
       clase del local ni el historial de verificaciones (decisión 5). El tile «Locales» del
       backoffice lleva ahí, ya no al mock.
-- [ ] Puede **crear** un local eligiendo la dirección en Geoapify: se guarda con coordenadas
+- [x] Puede **crear** un local eligiendo la dirección en Geoapify: se guarda con coordenadas
       y `source = 'provider_verified'`.
-- [ ] Puede **crear** un local con una dirección tipeada que Geoapify no encuentra: se guarda
+- [x] Puede **crear** un local con una dirección tipeada que Geoapify no encuentra: se guarda
       con `source = 'owner_typed'`, `provider = NULL` y **coordenadas nulas**. No se fabrica
       ninguna coordenada.
-- [ ] Puede **renombrar** un local sin tocar su dirección ni su verificación activa.
-- [ ] Puede **cambiar la dirección**: queda exactamente una verificación con
+- [x] Puede **renombrar** un local sin tocar su dirección ni su verificación activa.
+- [x] Puede **cambiar la dirección**: queda exactamente una verificación con
       `superseded_at IS NULL` —la nueva—, la anterior conserva su fila con `superseded_at`
       puesto, y `location.active_verification_id` apunta a la nueva.
-- [ ] Puede **archivar** un local y **reactivarlo**. Al reactivar vuelve como estaba,
+- [x] Puede **archivar** un local y **reactivarlo**. Al reactivar vuelve como estaba,
       incluida su visibilidad de productos.
-- [ ] **No puede archivar el último local activo**: el servidor lo rechaza con un error
+- [x] **No puede archivar el último local activo**: el servidor lo rechaza con un error
       explícito.
-- [ ] **El tope por plan se aplica en el servidor** contando locales activos: `free` no puede
+- [x] **El tope por plan se aplica en el servidor** contando locales activos: `free` no puede
       crear un segundo, `plus` no puede crear un cuarto. Esconder el botón no alcanza.
-- [ ] **Un local archivado no aparece en el selector del mostrador NI puede recibir una
+- [x] **Un local archivado no aparece en el selector del mostrador NI puede recibir una
       acreditación o un canje**, aunque el `locationId` llegue en el request.
-- [ ] Un owner no puede listar, editar ni archivar un local de otro negocio.
-- [ ] Ninguna ruta devuelve al navegador más de lo necesario del local (sin snapshots crudos
+- [x] Un owner no puede listar, editar ni archivar un local de otro negocio.
+- [x] Ninguna ruta devuelve al navegador más de lo necesario del local (sin snapshots crudos
       del proveedor).
-- [ ] Tests, typecheck, lint, formato y build pasan; revisión independiente emite **PASS**.
+- [x] Tests, typecheck, lint, formato y build pasan; revisión independiente emite **PASS**.
 
 ## Plan de pruebas y verificación
 
 **Regla dura del repo: la tabla «mutación X → rojo el test Y» no se predice, se EJECUTA y se
 transcribe el resultado real.** El implementador la completa corriéndola.
 
-- [ ] **Integración Neon — la edición de dirección.** Editar y aseverar **por SQL** que hay
+- [x] **Integración Neon — la edición de dirección.** Editar y aseverar **por SQL** que hay
       exactamente una verificación con `superseded_at IS NULL`, que es la nueva, que la vieja
       sigue existiendo con su `superseded_at`, y que `active_verification_id` apunta a la
       nueva. Leer el estado final por SQL, nunca la respuesta de la API (ADR 0054).
-- [ ] **Integración Neon — local de solo texto.** Crear sin coincidencia de Geoapify y
+- [x] **Integración Neon — local de solo texto.** Crear sin coincidencia de Geoapify y
       aseverar por SQL `longitude IS NULL AND latitude IS NULL AND source = 'owner_typed'`.
       Es el DoD que la decisión 3 vuelve verificable.
-- [ ] **Integración Neon — el guard del mostrador (el más importante).** Archivar un local y
+- [x] **Integración Neon — el guard del mostrador (el más importante).** Archivar un local y
       **POSTear una acreditación y un canje con ese `locationId`**, saltándose la UI: los dos
       tienen que fallar. **Mutación obligatoria:** sacar `eq(locations.status, "active")` de
       `assertLocationInBusiness` tiene que poner ese test en rojo. Si queda verde, el test no
       pinnea lo que dice pinnear.
-- [ ] **Integración Neon — el tope por plan.** Un negocio `free` con 1 activo no puede crear
+- [x] **Integración Neon — el tope por plan.** Un negocio `free` con 1 activo no puede crear
       el segundo; un `plus` con 3 activos no puede crear el cuarto; **archivar uno libera el
       cupo** (el tope cuenta activos).
-- [ ] **Integración Neon — el último local.** Archivar el único activo tiene que fallar.
-- [ ] **Aislamiento:** owner del negocio A no puede listar/editar/archivar un local de B.
-- [ ] **Regresión del mostrador con 2 locales.** Crear un segundo local y verificar que el
+- [x] **Integración Neon — el último local.** Archivar el único activo tiene que fallar.
+- [x] **Aislamiento:** owner del negocio A no puede listar/editar/archivar un local de B.
+- [x] **Regresión del mostrador con 2 locales.** Crear un segundo local y verificar que el
       `LocationGate` aparece y que la acreditación queda atribuida al local elegido. **Es un
       camino que NUNCA se ejercitó en producción** (los 11 negocios tienen 1 local): no
       asumir que funciona porque el código está.
-- [ ] Comandos: `pnpm run typecheck`, `pnpm run lint`, `pnpm run format:check`,
+- [x] Comandos: `pnpm run typecheck`, `pnpm run lint`, `pnpm run format:check`,
       `pnpm run test`, `pnpm run build` (Node 24.20.0, `nvm use`).
-- [ ] **Verificación manual del owner**, en el deploy: crear un local con Geoapify, crear uno
+- [x] **Verificación manual del owner**, en el deploy: crear un local con Geoapify, crear uno
       tipeado, renombrar, cambiar dirección, archivar, reactivar, y comprobar en el mostrador
       que el archivado no se puede elegir.
 

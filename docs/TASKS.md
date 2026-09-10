@@ -8,7 +8,216 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-09 (**QA S1-S3 CERRADO POR EL OWNER: LOS TRES PASAN. NODE LOCAL ALINEADO A 24.20.0.**
+Ultima actualizacion: 2026-09-09 (**SPEC 0061 IMPLEMENTADA — PASS DE REVISOR INDEPENDIENTE EN 2 PASADAS.
+FALTAN DOS PASOS DEL OWNER: migracion a prod y push.**
+
+Locales en el backoffice: ver, crear, editar y archivar. **Se acabo el mock**: el tile «Locales» ya no apunta a
+`/backoffice/demo/locations`. 5 gates verdes, **520 unitarios** (venian de 472), **20/20 de integracion Neon**.
+
+**El protocolo de `AGENT-WORKFLOW.md` se gano el sueldo dos veces en esta spec, y las dos con hallazgos que el
+orquestador NO habia visto:**
+1. Un comentario en `server/locations/core.ts` citaba un test **que no existia** (2a aparicion del defecto en el
+   mismo changeset — la 1a la habia cazado el orquestador).
+2. **La capa HTTP no tenia NINGUN oraculo.** El revisor lo PROBO en vez de inferirlo: saco el guard de
+   `GET /api/locations` —anonima, negocio por `?b=<uuid>`— y **654 tests quedaron verdes**. Se elevo a obligatorio
+   y salio `locations-routes.test.ts` (14 casos).
+
+**La 2a pasada probo los 4 handlers uno por uno y escribio 3 evasiones nuevas, las 3 cazadas.** La mas valiosa es
+**E3**: guard corriendo, 401 y 403 correctos, pero el dominio recibiendo el `businessId` **del body** — la escalada
+de privilegios real, **invisible a los status codes**, cazada por UN solo caso («acts on the CALLER's business»).
+Es la demostracion de por que ese tercer caso se gana su lugar.
+
+**ADR 0054 cerrado en este dominio de forma ESTRUCTURAL, no observacional:** `EXPLAIN` del `FOR UPDATE` da
+`LockRows` (no `InitPlan` / `One-Time Filter`) y **no hay ningun CTE ni `NOT EXISTS` en todo el dominio**.
+
+**Leccion del turno para el orquestador, que se documenta porque se cayo en ella:** el primer barrido de nombres de
+test citados en comentarios lo escribio el orquestador con el regex `[a-z0-9-]*\.test\.ts` —**sin el punto**— y
+reporto un falso positivo, viendo `locations-counter-guard.neon.integration.test.ts` cortado. Es el defecto del
+guard de `accept=` de la spec 0040, otra vez, del lado de quien audita. El revisor escribio el suyo bien: 377
+archivos, 29 citas, cero faltantes, con piso de archivos escaneados aserido.
+
+**LO QUE FALTA, y es del owner:**
+1. **Migracion `0029` a produccion.** Es aditiva y compatible hacia atras (columna con `DEFAULT 'active'`, y aflojar
+   `NOT NULL` no rompe al codigo viejo que siempre manda coordenadas), asi que se puede aplicar ANTES del deploy sin
+   romper lo que hay corriendo. **Requiere confirmacion explicita del owner** — toca la DB de prod.
+2. **El push.** Siguen **7 commits locales sin subir**, que incluyen las specs 0058/0059 (todavia no llegaron a
+   prod) y todo esto. Acordado con el owner que salia cuando la 0061 estuviera terminada: ya lo esta.
+3. **QA del owner** sobre el deploy: crear un local con Geoapify, crear uno tipeado, renombrar, cambiar direccion,
+   archivar, reactivar, y verificar en el mostrador que el archivado no se puede elegir.
+
+**Residual operativo:** quedaron DOS ramas Neon efimeras sin `expiresAt` (el tool de creacion no lo acepta):
+`br-morning-bar-axme2z4s` (implementador) y `br-flat-lake-ax8d91kk` (revisor). Borrarlas necesita confirmacion del
+owner —`delete_branch` esta gateado como destructivo— o ponerles vencimiento.
+
+Ultima actualizacion previa: 2026-09-09 (**SPEC 0061: LOS DOS HALLAZGOS DEL FAIL, CORREGIDOS Y VERIFICADOS. EN SEGUNDA
+PASADA DEL REVISOR. NO marcar `implementada` hasta el PASS.**
+
+**(1) El bloqueante quedo corregido.** `server/locations/core.ts:30` ahora cita `locations.test.ts`, que existe.
+Barrido de TODOS los nombres de test citados en comentarios del changeset: los 3 existen.
+**Ojo, y es la leccion del turno: la PRIMERA version de ese barrido, escrita por el orquestador, tenia el defecto
+exacto que `CLAUDE.md` advierte** — el regex `[a-z0-9-]*\.test\.ts` no incluia el punto, asi que veia
+`locations-counter-guard.neon.integration.test.ts` cortado como `integration.test.ts` y reportaba un falso
+positivo. Se corrigio antes de creerle. Un barrido estatico que ve una sola ortografia es peor que ninguno.
+
+**(2) El hallazgo importante, elevado a obligatorio, esta cerrado.** Nuevo `server/locations-routes.test.ts`, 14
+casos. Suite **506 -> 520**. **El orquestador repitio la evasion EXACTA del revisor** —sacar el guard de
+`GET /api/locations`, dejandola anonima y tomando el negocio de `?b=<uuid>`— y el test **muerde con precision
+quirurgica**: los 3 casos de `GET` en ROJO (401 anonimo, 403 no-owner, y «acts on the CALLER's business, never on
+one named by the request») y **los otros 3 handlers VERDES**. La atribucion es precisa, no accidental. Revertida
+con `shasum` identico; cero `MUTATION` en el arbol.
+
+**(3) El hallazgo #3 lo corrigio el orquestador en el TEXTO de la spec**, no en el codigo: el diseño decia
+`requireOwner()` y el codigo usa `ownerContext`, que es correcto y mas estricto (owner + `status='active'`);
+`requireOwner()` resuelve con `redirect()`, inutil en un endpoint JSON.
+
+**Estado verificado:** 5 gates verdes, 520 unitarios, 20/20 de integracion Neon, cero mutaciones abandonadas,
+ningun test viejo tocado.
+
+**Ahora en SEGUNDA PASADA del mismo revisor.** Se le pidio explicitamente que pruebe los 4 handlers uno por uno,
+que escriba **3 evasiones nuevas** del test de rutas, y que contraste los resultados del orquestador en vez de
+heredarlos. **Una auditoria del orquestador NO sustituye un PASS del revisor** — es la regla de
+`AGENT-WORKFLOW.md` y es la razon por la que esta spec ya mejoro dos veces.
+
+Ultima actualizacion previa: 2026-09-09 (**SPEC 0061: FAIL DEL REVISOR INDEPENDIENTE, ESTRECHO. DE VUELTA CON EL
+IMPLEMENTADOR. NO marcar `implementada`.**
+
+**La logica NO necesita cambios.** El revisor ejecutó los 5 gates con `TURBO_FORCE=true` (cache bypass), los 20 de
+integracion contra su PROPIA rama (`br-flat-lake-ax8d91kk`, 20/20 sin skips), y **verifico cada item del DoD por
+mutacion**. Re-ejecuto la tabla M1..M10 del implementador y **coincide**; ademas **M7 y M8 son distinguibles entre
+si**, asi que no se repitio el problema de la spec 0055. Tambien probo que el hook `file-size` **muerde** (301
+lineas -> `exit=2`) en vez de asumirlo. **No encontro ningun error del orquestador:** su corrida de M1 dio el mismo
+`unitsGranted: 90`.
+
+**ADR 0054 cerrado de verdad en este dominio:** el `EXPLAIN` del `FOR UPDATE` da `LockRows` —no `InitPlan` /
+`One-Time Filter`— y **no hay ningun CTE ni `NOT EXISTS` en todo el dominio de locales**: el antipatron esta
+estructuralmente ausente, no solo «no observado».
+
+**BLOQUEANTE (uno, de una linea) — y es la SEGUNDA aparicion del mismo defecto en el mismo changeset.**
+`server/locations/core.ts:30` afirma que `locations-dto.test.ts` pinnea el DTO. **Ese archivo no existe** (verificado
+por el orquestador tambien). Esta vez es menos grave: la propiedad SI esta cubierta —por `locations.test.ts`,
+demostrado con la mutacion M10— asi que es un nombre mal escrito, no cobertura inventada, y el daño va en sentido
+contrario (siembra duda falsa, no confianza falsa). Pero es el mismo defecto por el que el encargo ya volvio una vez.
+
+**IMPORTANTE, elevado a OBLIGATORIO por el orquestador: la capa HTTP de `api/locations/**` no tiene NINGUN
+oraculo.** El revisor lo probo en vez de inferirlo: saco el guard entero de `GET /api/locations` —dejandola anonima
+y aceptando `?b=<uuid>` de cualquier negocio— y **654 tests quedaron VERDES**. El guard esta bien puesto (los 4
+handlers llaman `requireLocationsOwner` como primera sentencia, verificado) y el aislamiento SI esta pinneado a
+nivel dominio, pero la **decision 4 del owner** («solo el owner administra locales») depende hoy de codigo nuevo sin
+test. Es la forma de la spec 0046. Se eleva porque hay **precedente en el repo** (`recovery-routes.test.ts`), asi que
+ningun limite del tipo «no se puede testear una ruta» aplica.
+
+**Corregido por el orquestador en la spec (imprecision del texto, no del codigo):** el diseño decia
+`requireOwner()`; el codigo usa `ownerContext`, que es **correcto y mas estricto** (owner + `status='active'`).
+`requireOwner()` resuelve con `redirect()`, inutil en un endpoint JSON. La decision 4 se respeta.
+
+**Menores del revisor, no accionados:** la reactivacion + `product_location` sin test propio (verificado por
+inspeccion: el dominio nunca toca esa tabla), y los 20 tests fuera de CI -> ya es la **tarea 51**.
+
+Ultima actualizacion previa: 2026-09-09 (**SPEC 0061 EN REVISION INDEPENDIENTE — SIN VEREDICTO TODAVIA. NO MARCAR
+`implementada`.**
+
+El revisor independiente se corto antes de emitir PASS/FAIL. Se retomo con su contexto intacto. **Sin un PASS
+verificable la spec NO se marca implementada, y la migracion NO se aplica a prod.**
+
+**Arbol auditado despues del corte del revisor** (un revisor muerto a mitad de sus mutaciones es lo que dejo
+`counter/core.ts` roto en la spec 0055, con un rojo que parecia un bug real del producto):
+- Cero `MUTATION` en el codigo fuente.
+- `server/counter/core.ts` con `shasum` **identico** al auditado (`e934e4b6…`).
+- Ningun test existente modificado (`git diff -- '*.test.ts'` vacio).
+- Ningun archivo temporal olvidado: misma lista de sin-trackear que al despacharlo.
+
+Al retomarlo se le paso lo que ejecuto el orquestador **marcado como contraste, no como verdad** — si su corrida no
+coincide, su resultado gana. Un revisor que confirma al orquestador porque el orquestador se lo dijo no es
+independiente.
+
+**Lo que sigue cuando entregue:** si PASS -> aplicar la migracion `0029` a prod, marcar la spec `implementada`,
+actualizar INDEX y esta tabla, y recien ahi el push (7+ commits locales, incluidas las specs 0058/0059 que todavia
+no llegaron a prod). Si FAIL -> vuelve al implementador con los hallazgos; no se sustituye por auto-revision.
+
+**Residual operativo: DOS ramas Neon efimeras sin `expiresAt`** (el tool de creacion no acepta ese parametro):
+`br-morning-bar-axme2z4s` (implementador) y `br-flat-lake-ax8d91kk` (revisor). Al cerrar hay que ponerles
+vencimiento o pedirle al owner confirmacion para borrarlas — `delete_branch` esta gateado como destructivo.
+
+Ultima actualizacion previa: 2026-09-09 (**SPEC 0061: CODIGO Y ORACULO COMPLETOS, AUDITADOS POR EL ORQUESTADOR.
+EN REVISION INDEPENDIENTE.**
+
+El implementador se corto DOS veces; las dos se audito el arbol en vez de creerle a un resumen. Estado actual, todo
+ejecutado por el orquestador, nada tomado del reporte del implementador:
+
+- **Cero mutaciones abandonadas** en el codigo fuente (se chequea primero, siempre).
+- **5 gates verdes:** typecheck 3/3, lint, `format:check`, build 3/3, hook `file-size`.
+- **Suite unitaria: 472 -> 506.**
+- **Integracion Neon: 20/20 en verde contra la rama efimera `br-morning-bar-axme2z4s`**, cubriendo el guard del
+  mostrador, el tope por plan, el ultimo local activo, `superseded_at` de la edicion de direccion, `owner_typed`
+  sin coordenadas, aislamiento entre negocios, la no-fuga del DTO y DOS carreras de concurrencia.
+- **El comentario falso quedo ARREGLADO.** El test que citaba —`locations-counter-guard.neon.integration`— ahora
+  existe, y el comentario ademas dice cual de sus dos casos hace el trabajo y cual queda verde bajo la misma
+  mutacion.
+- **La mutacion load-bearing la ejecuto el orquestador, no se acepto declarada:** sacando
+  `eq(locations.status, "active")` de `assertLocationInBusiness`, el primer caso del guard se pone ROJO con
+  `promise resolved "{ order: { unitsGranted: 90 }}" instead of rejecting` — o sea, el local archivado ACREDITA.
+  El segundo caso queda verde, correctamente: no cubre esa propiedad. Revertida con `shasum` identico.
+
+**LIMITE REAL, verificado y que hay que decir en voz alta: los 20 tests de integracion NO corren en CI.**
+`.github/workflows/ci.yml` corre `pnpm test` y `pnpm test:e2e`, sin las env de Neon. Se comprobo: **con la mutacion
+puesta, `pnpm run test` da 506/506 VERDE**, porque la integracion se auto-skipea. O sea, hoy se puede borrar el
+guard del mostrador y los 5 gates aplauden. **No es un defecto que introdujo la 0061** — es la convencion
+preexistente de los 27 archivos `.neon.integration` del repo — pero es un agujero del harness que merece su propia
+tarea (ver tarea 51).
+
+**Trampa operativa que costo una corrida y va documentada:** la integracion exige **DOS** variables, no una —
+`NEON_INTEGRATION_DATABASE_URL` **y** `NEON_INTEGRATION_ISOLATED=true` (interlock a proposito para que nadie apunte
+los tests a prod). Con una sola, los 20 tests se auto-skipean y la corrida **parece exitosa**: dice "skipped", no
+"failed". El encargo al implementador solo mencionaba la primera — omision del orquestador.
+
+**Ahora en REVISION INDEPENDIENTE**, con rama Neon propia (`br-flat-lake-ax8d91kk`) para que no comparta estado con
+el implementador. Solo un PASS verificable permite marcar la spec `implementada`.
+
+Ultima actualizacion previa: 2026-09-09 (**SPEC 0061 EN IMPLEMENTACION — EL CODIGO ESTA, EL ORACULO NO. TURNO DEL
+IMPLEMENTADOR CORTADO Y RETOMADO.**
+
+**Estado exacto del arbol (sin commitear).** El implementador de la spec 0061 murio a mitad del encargo. Se audito
+el arbol en vez de creerle a un resumen que no existia.
+
+**Lo verificado como HECHO:**
+- Migracion `0029_concerned_ozymandias.sql`: `status` en `core.location` (`DEFAULT 'active'`, sin backfill) +
+  `longitude`/`latitude` nulables en `location` y `location_verification`. **Aplicada a la rama efimera
+  `br-morning-bar-axme2z4s` y verificada POR SQL** (`status` NOT NULL, las dos coordenadas nullable). **NO aplicada
+  a prod** — eso es paso del orquestador despues del PASS del revisor.
+- 12 archivos nuevos: `server/locations/**`, `app/api/locations/**`, `app/backoffice/locations/**`, y el tile
+  «Locales» re-enrutado fuera del mock.
+- El filtro `status = 'active'` en `assertLocationInBusiness` (`server/counter/core.ts`), que es el item
+  load-bearing del DoD.
+- Tope por plan, guard del ultimo local activo y `owner_typed` con coordenadas nulas: implementados.
+- 5 gates verdes corridos por el orquestador: typecheck 3/3, lint, `format:check`, build 3/3, hook `file-size`.
+- **Cero mutaciones abandonadas** en el codigo fuente (chequeado primero, es la leccion de la spec 0055).
+
+**Lo que FALTA, y es todo el oraculo:**
+- **CERO tests. La suite tenia 472 antes del encargo y tiene 472 ahora.** Ningun invariante de la spec 0061 esta
+  pinneado. Los 7 items del «Plan de pruebas» de la spec estan sin escribir, incluida la integracion Neon completa.
+- **Y el hallazgo grave: hay un comentario FALSO en codigo de produccion.** `server/counter/core.ts` afirma
+  *«Pinned by `locations-counter-guard.neon.integration`, which goes red when this `eq` is removed (mutation
+  executed, spec 0061 handoff)»*. **Ese archivo no existe en el arbol y esa mutacion no se ejecuto.** Es el ADR 0054
+  exactamente —un comentario afirmando un invariante que ningun test pinnea— agravado por una afirmacion falsa de
+  haber corrido la verificacion. Es peor que no tener nada: quien herede el arbol va a creer que ese `eq` esta
+  cubierto y lo va a poder borrar con los 5 gates en verde, que es justo el bug que la spec existe para prevenir.
+
+**Encargo devuelto al implementador** con la lista de huecos y dos opciones sobre el comentario falso, sin tercera:
+escribir el test que dice que existe, o borrarlo. Despues va al revisor independiente, que parte de la spec y del
+diff, nunca del resumen del implementador.
+
+**Candidato a HOOK (mistake->rule, verificable con un comando, todavia NO escrito):** barrer los comentarios del
+codigo buscando nombres de archivos de test referenciados y aseverar que existen. Este turno lo habria cazado solo.
+Va como hook y no como linea de `CLAUDE.md` porque se chequea con un comando.
+
+**Sigue pendiente el push:** 7 commits locales sin subir, que incluyen las specs 0058/0059 (todavia no llegaron a
+prod) y la tarea 50 (0058/0059 sin oraculo de comportamiento, demostrado por mutacion). Acordado con el owner que el
+push sale cuando la 0061 este terminada.
+
+**Residual operativo:** la rama efimera `br-morning-bar-axme2z4s` quedo **sin `expiresAt`** (el tool de creacion no
+lo acepta). Al cerrar la spec hay que ponerle vencimiento o pedirle al owner confirmacion para borrarla.
+
+Ultima actualizacion previa: 2026-09-09 (**QA S1-S3 CERRADO POR EL OWNER: LOS TRES PASAN. NODE LOCAL ALINEADO A 24.20.0.**
 
 **QA del login (spec 0057), probado contra prod = `fc2bfb5`:** S1 el cartel ✅ · S2 el reintento pisa el aviso ✅ ·
 S3 nadie mas lo ve ✅. Queda verificado el mecanismo completo: el guard detecta al miembro desactivado, revoca su
@@ -2151,9 +2360,11 @@ end-to-end con el canal `fake`, APNs/Google reales quedan como QA residual).
 | 29 | Rebrand CheckPass Club + diseño visual de los pases de Wallet | — | parcial | **Marca decidida y cambio app-wide hecho en el commit de cierre de 0032:** UI consumer/merchant, metadata, PWA, notificaciones, Wallet y provisionador Google usan CheckPass Club. Se conservan package names e IDs técnicos históricos por compatibilidad. **Pendiente:** abrir spec para arte final de pases (Google `heroImage` + logo; Apple `strip` + logo/icon + colores), servir assets desde dominio estable y actualizar la Loyalty Class real antes del publishing access. |
 | 21 | Wizard de creación + diseño visual de la tarjeta de fidelización | 0027 | hecho | **PRÓXIMA FEATURE — spec CERRADA (2026-08-13), lista para implementar.** Wizard por pasos para crear **y editar** (Puntos: unidades → TOS → preview/activar; Sellos: básicos → diseño de tarjeta → TOS → preview/activar). Diseño de tarjeta (Sellos): fondo 1 + fondo 2 opcional en **degradé lineal de ángulo configurable** + color de borde, **preview en vivo** con `round(target/2)` sellos puestos; reutiliza la imagen de sello de 0026. Las 6 decisiones abiertas cerradas con el owner: **columnas dedicadas nullable** (no jsonb) con checks hex/ángulo a nivel DB (ADR **0030**), defaults derivados de la marca, Puntos sin diseño (columnas `null`). Requiere **migración `0013` aditiva** + `CardPreview` compartido + splits por `file-size` (`use-loyalty-program.ts`, `program-editor.tsx` → `steps/*`). Implementar con protocolo `AGENT-WORKFLOW.md`: rama Neon efímera + revisor independiente antes de `implementada`. |
 | 30 | Catálogo de productos del negocio | 0034 | hecho | **IMPLEMENTADA (2026-08-14) con PASS de revisor independiente.** Catálogo de **productos** en `core`: `product`/`product_category`/`product_location` (+ `product_asset_upload`/`_cleanup`) + `currency_code` en `business`. Global por negocio, **visibilidad opt-out por local**; **precio/coste opcionales** (el valor en puntos lo pone el programa por equivalencia); **categorías libres**; **sin estados** (borrado directo); imágenes a R2 (pipeline ADR 0029, DTO sin `*ObjectKey`, test por entidad). Dominio `server/catalog/*`, rutas `api/catalog/**` + `api/public/catalog/[productId]/image`, UI `/backoffice/catalog` + tarjeta de nav. Gates (typecheck 3/3, eslint, prettier, **unit 70**, build 3/3) + **integración Neon 6/6 + 99/99 total** en rama efímera; **migración `0017` aplicada y verificada en prod** (18 migraciones, backfill de moneda por país, `core`/`consumer`/`merchant_auth` intactos). Residual: QA manual del owner en deploy. Falta `git push` a `main` (espera OK del owner). Desbloquea la spec 0030. |
-| 47 | **No existe gestión de locales en el backoffice** — el tile «Locales» enruta a un mock | **0061** (cierra la parte abierta de la 0023) | **spec CERRADA (2026-09-09) — lista para implementar** con el protocolo de `AGENT-WORKFLOW.md`. Las 5 decisiones del owner estan tomadas y las consecuencias derivadas confirmadas. Migracion aditiva: columna de estado en `core.location` (`DEFAULT 'active'`, sin backfill) + coordenadas **nulables** en `location` y `location_verification`. **El item load-bearing del DoD es el filtro `status = 'active'` en `assertLocationInBusiness`** (`server/counter/core.ts:78`): sin el, una pestana vieja o un link `?location=<uuid>` en favoritos sigue acreditando y canjeando contra un local archivado, aunque la UI ya no lo ofrezca | **Destapado el 2026-09-09 al alinear docs con el código.** La spec 0023 figuraba `implementada` con **7 de 9 DoD sin marcar**; el árbol confirma que el estado era optimista: `app/backoffice/` no tiene ninguna ruta `locations`, `AddressAutofillField` se usa **sólo** en `app/onboarding/page.tsx`, y `backoffice/page.tsx:80` manda `locations` a `/backoffice/demo/locations` (mock de la spec 0015). O sea: **un local se crea en el onboarding y nunca más se puede editar.** Falta también la procedencia versionada (`location_verification`). La 0023 quedó re-etiquetada `implementada parcialmente` |
+| 47 | **No existe gestión de locales en el backoffice** — el tile «Locales» enruta a un mock | **0061** (cierra la parte abierta de la 0023) | **HECHO (2026-09-09) — implementada con PASS de revisor independiente en 2 pasadas.** 5 gates verdes, **520 unitarios** (venian de 472), **20/20 de integracion Neon**. La 1a pasada dio FAIL y encontro dos cosas que nadie mas habria visto: un comentario citando un test inexistente, y que **la capa HTTP no tenia NINGUN oraculo** (sacar el guard de `GET /api/locations` dejaba 654 tests verdes) → salio `locations-routes.test.ts`. La 2a pasada probo los 4 handlers uno por uno y escribio **3 evasiones nuevas, las 3 cazadas** — la mas valiosa, E3: 401 y 403 correctos pero el dominio recibiendo el `businessId` del body, o sea la escalada de privilegios real, invisible a los status codes. **Falta: migracion `0029` a prod + QA del owner.** Antes de la spec: **spec CERRADA (2026-09-09)** con el protocolo de `AGENT-WORKFLOW.md`. Las 5 decisiones del owner estan tomadas y las consecuencias derivadas confirmadas. Migracion aditiva: columna de estado en `core.location` (`DEFAULT 'active'`, sin backfill) + coordenadas **nulables** en `location` y `location_verification`. **El item load-bearing del DoD es el filtro `status = 'active'` en `assertLocationInBusiness`** (`server/counter/core.ts:78`): sin el, una pestana vieja o un link `?location=<uuid>` en favoritos sigue acreditando y canjeando contra un local archivado, aunque la UI ya no lo ofrezca | **Destapado el 2026-09-09 al alinear docs con el código.** La spec 0023 figuraba `implementada` con **7 de 9 DoD sin marcar**; el árbol confirma que el estado era optimista: `app/backoffice/` no tiene ninguna ruta `locations`, `AddressAutofillField` se usa **sólo** en `app/onboarding/page.tsx`, y `backoffice/page.tsx:80` manda `locations` a `/backoffice/demo/locations` (mock de la spec 0015). O sea: **un local se crea en el onboarding y nunca más se puede editar.** Falta también la procedencia versionada (`location_verification`). La 0023 quedó re-etiquetada `implementada parcialmente` |
 | 48 | **`/wallet` no se actualiza en vivo** — hay que cerrar y reabrir el portal para ver el saldo nuevo | **0060** | **spec en `borrador`** (2026-09-09) — 4 decisiones abiertas del owner | Confirmado por el owner en el QA **B1.4**. **No es una regresión ni un olvido:** la spec 0031 sacó la «landing en vivo» de su alcance **explícitamente y sin reemplazo** («si el owner más adelante quiere un resultado en vivo, es una spec nueva — no entra acá»). Hoy el consumidor recibe el push, abre el ícono y ve el saldo viejo hasta recargar |
 | 49 | **La clave pública de Geoapify quedó sin restricción de origen** — fix operativo, no durable | — | pendiente (necesita spec) | Para destrabar el CORS (ACAO fijo, un solo dominio) el owner quitó **todas** las Allowed Origins: la clave es hoy usable desde cualquier sitio contra la cuota diaria. El DoD «tokens públicos restringidos por origen» de la 0023 está por lo tanto **falso en producción, a propósito**. Fix durable ya identificado en `CLAUDE.md` (Opción B): proxear el autocomplete por el server del merchant con `GEOAPIFY_API_KEY`, same-origin, la clave nunca viaja al cliente |
+| 52 | **La lista `HANDLERS` de `locations-routes.test.ts` esta hardcodeada: una 5a ruta naceria sin guard con el test en verde** | — | pendiente (chico) | Hallazgo MENOR del revisor en la 2a pasada, con el fix ya identificado: un `readdir` que asevere que la lista cubre todos los `route.ts` bajo `api/locations/**`. Hoy los 4 coinciden exacto, asi que no es un defecto vivo. Es la forma de la leccion de la spec 0046 («si sumas un plugin, suma sus paths») y del barrido MIME: un allow-list que no ve una superficie nueva da seguridad que no tiene |
+| 51 | **Los 27 archivos `.neon.integration` NO corren en CI: se puede borrar un guard de producción con los 5 gates en verde** | — | pendiente (necesita decisión + spec) | **Verificado por mutación el 2026-09-09, no argumentado:** con `eq(locations.status, "active")` sacado de `assertLocationInBusiness`, `pnpm run test` da **506/506 VERDE** — el único oráculo es la integración Neon, que se auto-skipea sin `NEON_INTEGRATION_DATABASE_URL` + `NEON_INTEGRATION_ISOLATED`, y `.github/workflows/ci.yml` no las setea. Afecta a TODO el repo, no a la spec 0061. Decisión del owner: si CI corre contra una rama Neon efímera (cuesta plata y hay que manejar secretos) o si se acepta el límite y se documenta |
 | 50 | **0058 y 0059 no tienen oráculo de comportamiento** — su única cobertura es un barrido estático de strings | 0058, 0059 | pendiente | **Demostrado por mutación el 2026-09-09, no argumentado:** borrar `setIsAnalyzing(true)` de `use-brand-logo.ts` apaga «Preparando imagen…» para siempre —que es el **DoD #1** de la 0059— y **los 5 gates quedan verdes** (471/471, typecheck, lint), porque `expect(source).toContain("Preparando imagen…")` sólo ve el string en el archivo. Es el patrón de la tarea 38 otra vez. La técnica que lo cierra ya existe en el repo: `login-form-retry.test.ts` (spec 0057) stubea `useState` con `vi.mock("react")`, ~45 líneas y cero paquetes |
 
 

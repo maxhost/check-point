@@ -73,8 +73,21 @@ export async function operatorBusiness(
   return business ?? null;
 }
 
-/** Confirms a location belongs to the operator's business (defends the FK against a
- * spoofed `?location`); returns the id, or throws 422 on a foreign/unknown location. */
+/** Confirms a location belongs to the operator's business AND is still `active`;
+ * returns the id, or throws 422 on a foreign/unknown/archived location.
+ *
+ * The `status = 'active'` filter is load-bearing (spec 0061). Dropping the location from
+ * the counter's selector is an INTERFACE gate: `backoffice/counter/page.tsx` also accepts
+ * `?location=<uuid>` — the parameter exists precisely so the staff can bookmark their
+ * branch's counter — so an old tab or a saved link would keep accrediting and redeeming
+ * against an archived location. That is «a locked door next to an open wall», the same
+ * shape as the better-auth plugin of spec 0046. The list filter and this one both ship;
+ * this is the one that decides.
+ *
+ * Pinned by the first case of `locations-counter-guard.neon.integration.test.ts`, and the
+ * pairing was EXECUTED, not assumed: with this `eq` removed that test goes red because the
+ * archived location accredited 90 points and the balance moved. Its second case (two
+ * locations, attribution) stays green under the same removal — it does not cover this. */
 export async function assertLocationInBusiness(
   businessId: string,
   locationId: string,
@@ -83,7 +96,11 @@ export async function assertLocationInBusiness(
     .select({ id: locations.id })
     .from(locations)
     .where(
-      and(eq(locations.id, locationId), eq(locations.businessId, businessId)),
+      and(
+        eq(locations.id, locationId),
+        eq(locations.businessId, businessId),
+        eq(locations.status, "active"),
+      ),
     )
     .limit(1);
   if (!row) {
