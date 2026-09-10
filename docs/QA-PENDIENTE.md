@@ -170,24 +170,17 @@ activo, **no va a haber botón de agregar** — es la decisión, no un bug.
 - [x] **L2. Crear tipeado — PASA (2026-09-10).** Escribir una dirección que Geoapify NO encuentre y guardar igual.
       Tiene que aceptarla como texto plano. *(Por dentro queda sin coordenadas, a propósito:
       no se inventan. En pantalla no se distingue — decisión 5.)*
-> **QA parcial del owner (2026-09-10): 4 de 8 PASAN — L1, L2, L7 y L8.**
-> Probado contra prod = `398d3ce` (`Vercel: success` para ese sha).
->
-> **Quedan L3, L4, L5 y L6 sin probar en pantalla.** No estan sin oraculo: los cuatro tienen
-> cobertura de integracion contra Neon —renombrar sin tocar la verificacion activa, la mudanza
-> de direccion con su `superseded_at`, archivar/reactivar, y el rechazo de archivar el ultimo
-> activo—, asi que el riesgo que queda es de **UI**, no de servidor. Pero nadie los vio
-> funcionando todavia, y esa es justamente la parte que ningun test cubre.
->
-> **Ojo con L6 si lo retomas:** exige que el negocio tenga **UN solo** local activo. Si A1
-> quedo con 2 o 3, hay que archivar hasta dejar uno antes de poder probarlo.
+> **QA CERRADO — el owner probó los 8 ítems el 2026-09-10 y los 8 PASAN.**
+> Contra prod = `398d3ce` (`Vercel: success` para ese sha). La spec 0061 queda confirmada en vivo
+> de punta a punta: crear (Geoapify y tipeado), renombrar, mudar dirección, archivar, reactivar,
+> el guard del último activo, el archivado fuera del mostrador y el tope del plan.
 
-- [ ] **L3. Renombrar.** Cambiar sólo el nombre. La dirección no se toca.
-- [ ] **L4. Mudar la dirección.** Cambiar la dirección de un local existente y verificar que
+- [x] **L3. Renombrar — PASA (2026-09-10).** Cambiar sólo el nombre. La dirección no se toca.
+- [x] **L4. Mudar la dirección — PASA (2026-09-10).** Cambiar la dirección de un local existente y verificar que
       queda la nueva.
-- [ ] **L5. Archivar y reactivar.** Archivar un local y volver a activarlo: tiene que volver
+- [x] **L5. Archivar y reactivar — PASA (2026-09-10).** Archivar un local y volver a activarlo: tiene que volver
       como estaba.
-- [ ] **L6. El último local no se archiva.** Con un solo local activo, archivarlo tiene que
+- [x] **L6. El último local no se archiva — PASA (2026-09-10).** Con un solo local activo, archivarlo tiene que
       fallar con un mensaje claro.
 - [x] **L7. El archivado no opera — PASA (2026-09-10).** Con 2+ locales activos ademas se estreno el **selector de local** del mostrador, un camino que nunca se habia ejercitado en produccion. Con un local archivado, abrí el **mostrador**: no tiene
       que poder elegirse. *(El guard server-side ya está pinneado por tests: sin él, un link

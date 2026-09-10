@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# La integracion corre contra UNA rama Neon persistente (`ci-integration`, spec 0062). Dos
+# jobs a la vez sobre la misma rama se pisarian los FOR UPDATE y el estado; se serializan.
+concurrency:
+  group: ci-integration
+  cancel-in-progress: false
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -24,7 +30,32 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test
+      # Spec 0062: los 27 archivos `.neon.integration` se auto-skipean sin estas dos
+      # variables, y un "skipped" se ve igual que un "passed" desde afuera. Antes de la
+      # 0062 se podia borrar un guard de produccion con los 5 gates en verde (probado por
+      # mutacion en la spec 0061). Por eso este paso FALLA FUERTE si el secret no llego —
+      # nunca degrada a "sin integracion".
+      - name: La integracion Neon tiene que correr, no skipearse
+        env:
+          NEON_INTEGRATION_DATABASE_URL: ${{ secrets.NEON_CI_DATABASE_URL }}
+        run: |
+          if [ -z "$NEON_INTEGRATION_DATABASE_URL" ]; then
+            echo "::error::NEON_CI_DATABASE_URL ausente: la integracion se skipearia en silencio"
+            exit 1
+          fi
+      # La rama de CI nace de `main` y se queda atras cuando llega una migracion nueva:
+      # drizzle-kit aplica solo las pendientes (idempotente), asi que se corre siempre.
+      - name: Migrar la rama Neon de CI
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.NEON_CI_DATABASE_URL_UNPOOLED }}
+        run: pnpm db:migrate
+      - name: Unit + integracion Neon
+        env:
+          NEON_INTEGRATION_DATABASE_URL: ${{ secrets.NEON_CI_DATABASE_URL }}
+          # Interlock deliberado del repo: sin `true` explicito, los tests no apuntan a
+          # ninguna base aunque tengan la URL. Evita correrlos contra prod por accidente.
+          NEON_INTEGRATION_ISOLATED: "true"
+        run: pnpm test
       # Los browsers NO vienen con `pnpm install`: el paquete @playwright/test trae la
       # libreria, los binarios se bajan aparte a ~/.cache/ms-playwright, vacio en un
       # runner limpio (spec 0048). Solo chromium: playwright.config.ts no declara

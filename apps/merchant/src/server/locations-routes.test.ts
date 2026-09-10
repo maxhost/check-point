@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { basename, dirname, join, sep } from "node:path";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -239,5 +241,53 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
         },
       ],
     });
+  });
+});
+
+/**
+ * Tarea 52 — the `HANDLERS` list above is hand-written, so a fifth route under
+ * `api/locations/**` would be born WITHOUT a guard while this file stays green: the exact
+ * shape of the spec 0046 lesson («if you add a plugin, add its paths») and of the MIME
+ * sweep. This block derives the expected `METHOD /path` set from the FILESYSTEM and
+ * demands it equals the covered set — so a new `route.ts`, a new exported method in an
+ * existing one, or a handler silently dropped from the list all go red.
+ *
+ * Proxy, and labelled as such: it pins that every handler is LISTED, not that its guard is
+ * correct — the `it.each` blocks above do that. Both spellings of a Next handler are read
+ * (`export async function GET` and `export const GET =`), and a floor is asserted so an
+ * empty walk cannot pass by seeing nothing.
+ */
+describe("every handler under api/locations/** is covered by HANDLERS", () => {
+  it("the filesystem and the list agree exactly", () => {
+    const root = join(import.meta.dirname, "../app/api/locations");
+    const files = readdirSync(root, { recursive: true, encoding: "utf8" })
+      .filter((f) => basename(f) === "route.ts")
+      .sort();
+    expect(files.length).toBeGreaterThanOrEqual(3);
+
+    const expected = new Set<string>();
+    for (const file of files) {
+      const source = readFileSync(join(root, file), "utf8");
+      const url = ["/api/locations", ...dirname(file).split(sep)]
+        .filter((s) => s && s !== ".")
+        .map((s) => s.replace(/^\[(.+)\]$/, ":$1"))
+        .join("/");
+      const methods = new Set<string>();
+      for (const m of source.matchAll(
+        /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE)\b/g,
+      ))
+        methods.add(m[1]);
+      for (const m of source.matchAll(
+        /export\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=/g,
+      ))
+        methods.add(m[1]);
+      expect(methods.size, `${file} exports no HTTP handler`).toBeGreaterThan(
+        0,
+      );
+      for (const method of methods) expected.add(`${method} ${url}`);
+    }
+
+    const covered = new Set(HANDLERS.map((h) => h.name));
+    expect([...covered].sort()).toEqual([...expected].sort());
   });
 });
