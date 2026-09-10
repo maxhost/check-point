@@ -8,7 +8,46 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-10 (**SPEC 0062 IMPLEMENTADA Y VERIFICADA EN CI. Tareas 51 y 52 hechas, 53 abierta.
+Ultima actualizacion: 2026-09-10 (**HANDOFF — proxima sesion: DISEÑAR e implementar la spec de cambio de
+plan (upgrade/downgrade), tarea 53. Sin cambios de codigo en esta sesion — arbol limpio, nada que gatear.**
+
+**Numero de spec a usar: 0063** (0062 es la ultima existente).
+
+**Lo que se investigo para dejar el punto de partida exacto, sin escribir la spec todavia:**
+
+- **Hoy NO existe ningun camino de upgrade/downgrade en el producto — ni UI ni API propia.**
+  `api/billing/checkout/route.ts` es la UNICA ruta de billing y su UNICO llamador es
+  `app/onboarding/page.tsx:158`. No hay boton de "cambiar de plan" en el backoffice; `plan`
+  solo se LEE (`backoffice/page.tsx`), nunca se escribe desde el producto.
+- **`core.subscription`**: `plan` (`text default 'free'`), `interval`, `status`
+  (`text default 'active'`), `stripe_customer_id`, `stripe_subscription_id`. Sin check de
+  valores permitidos a nivel DB — `plan` es cualquier string.
+- **HALLAZGO NUEVO, no inventado como aceptado — a decidir:** `api/stripe/webhook/route.ts`
+  escribe `plan: "plus"` a secas para **CUALQUIER** evento `customer.subscription.*`,
+  incluido `customer.subscription.deleted` (cancelacion). O sea: **si alguien cancela su
+  suscripcion en Stripe hoy, `status` pasa a `canceled` pero `plan` se queda en `"plus"`
+  PARA SIEMPRE** — nunca vuelve a `"free"`. Es un bug latente, no bloqueante porque nadie
+  cancelo todavia (verificar con SQL antes de asumirlo tambien acierto), pero la spec de
+  cambio de plan tiene que decidir que hacer con el: lo arregla la misma spec, o es un
+  hallazgo aparte con su propia tarea. **No se resuelve solo -- es justamente el tipo de
+  cosa que la tarea 53 exige: un downgrade real (cancelacion) sin bajar los locales primero
+  dejaria un negocio con 3 locales activos y plan `free` (tope 1).**
+- **El guard de tope ya existe y es reusable:** `PLAN_LOCATION_LIMITS` en
+  `server/locations/core.ts` (`{ free: 1, plus: 3 }`) + `planLocationLimit()` /
+  `activeLocationCount()` en `server/locations/shared.ts`. La spec de plan no reinventa el
+  conteo, lo consume para decidir si un downgrade es directo o si necesita que el owner
+  elija que locales archivar primero.
+- **A1 sigue en `plus`** (cambiado a mano por SQL para QA de la 0061), con locales de sobra
+  para ejercitar el downgrade real cuando la spec este implementada.
+
+**Lo que la proxima sesion tiene que decidir con el owner antes de escribir codigo (no
+inventarlo):** flujo de downgrade (¿portal de Stripe, o UI propia que primero exige archivar
+locales de sobra?); que pasa con el webhook de cancelacion (¿la spec lo arregla?); si el
+upgrade sigue siendo Stripe Checkout (como hoy) o cambia; y si hace falta un estado
+intermedio ("downgrade pendiente, elegi que locales archivar") o se bloquea el cambio de
+plan hasta que el owner archive manualmente desde `/backoffice/locations`.
+
+Ultima actualizacion previa: 2026-09-10 (**SPEC 0062 IMPLEMENTADA Y VERIFICADA EN CI. Tareas 51 y 52 hechas, 53 abierta.
 QA de la 0061 cerrado 8/8. Rama `spec-0055-redeem` borrada.**
 
 **El agujero del harness esta cerrado, y se verifico con el resumen de vitest en el log real, no con el check:**
