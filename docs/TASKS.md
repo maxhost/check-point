@@ -8,7 +8,34 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-10 (**SPEC 0061 CERRADA: implementada, con PASS de revisor, desplegada y con QA del
+Ultima actualizacion: 2026-09-10 (**SPEC 0062 IMPLEMENTADA Y VERIFICADA EN CI. Tareas 51 y 52 hechas, 53 abierta.
+QA de la 0061 cerrado 8/8. Rama `spec-0055-redeem` borrada.**
+
+**El agujero del harness esta cerrado, y se verifico con el resumen de vitest en el log real, no con el check:**
+en CI `Tests 678 passed (678)`, **cero skipped**; en local sin Neon `521 passed | 157 skipped`. Esos 157 son los
+`.neon.integration` que hasta hoy se auto-skipeaban — y con ellos, el guard del mostrador que en la 0061 se pudo
+borrar con los 5 gates verdes. Tres pasos nuevos en `ci.yml`, los tres `completed / success`: (1) un guard que
+**FALLA FUERTE si el secret falta** (para que un skip no vuelva a parecer un pass), (2) migrar la rama de CI en
+cada corrida, (3) `pnpm test` con las DOS env. `concurrency` serializa porque la rama es compartida. 49 s.
+
+**`ci-integration` (`br-icy-hat-axsfqc8k`) es INFRAESTRUCTURA PERSISTENTE — NO borrarla en ninguna limpieza de
+ramas efimeras.** Las efimeras de la 0061 y la `spec-0055-redeem` ya se borraron; en el proyecto quedan `main` y
+`ci-integration`, y asi tiene que quedar.
+
+**Tarea 52 hecha:** barrido por filesystem en `locations-routes.test.ts` (dos ortografias de handler, piso de
+archivos, igualdad exacta con `HANDLERS`). Probado que muerde con una ruta falsa sin guard; revertida.
+
+**Tarea 53 NUEVA (decision del owner):** no puede existir downgrade de plan sin llevar antes los locales activos al
+tope del plan nuevo — el usuario elige cuales quedan. Hoy no hay ningun camino de downgrade en el codigo (el webhook
+solo hace `plan: "plus"`); es el invariante que toda ruta futura tiene que respetar.
+
+**Leccion del turno, para leer logs de Actions:** `sed 's/\x1b\[[0-9;]*m//g'` ANTES de parsear (los ANSI y los tabs
+desplazan columnas: un `awk` propio dio «0 passed» con 678 corriendo), y la conclusion de un paso se lee de
+`actions/runs/<id>/jobs`, no de un `grep error` (conto el `::error::` del propio script como falla).
+
+**A1 sigue en `plus`** con locales de sobra para volver a `free` — es el caso vivo de la tarea 53.
+
+Ultima actualizacion previa: 2026-09-10 (**SPEC 0061 CERRADA: implementada, con PASS de revisor, desplegada y con QA del
 owner PARCIAL — 4 de 8. La tarea 47 queda HECHA.**
 
 **QA del owner (2026-09-10), contra prod = `398d3ce`:** L1 crear con Geoapify ✅ · L2 crear tipeado ✅ · L7 el
@@ -2417,7 +2444,7 @@ end-to-end con el canal `fake`, APNs/Google reales quedan como QA residual).
 | 49 | **La clave pública de Geoapify quedó sin restricción de origen** — fix operativo, no durable | — | pendiente (necesita spec) | Para destrabar el CORS (ACAO fijo, un solo dominio) el owner quitó **todas** las Allowed Origins: la clave es hoy usable desde cualquier sitio contra la cuota diaria. El DoD «tokens públicos restringidos por origen» de la 0023 está por lo tanto **falso en producción, a propósito**. Fix durable ya identificado en `CLAUDE.md` (Opción B): proxear el autocomplete por el server del merchant con `GEOAPIFY_API_KEY`, same-origin, la clave nunca viaja al cliente |
 | 53 | **Downgrade de plan sin bajar los locales primero: NO puede existir** | — | pendiente (guard para cuando se construya) | **Decisión del owner (2026-09-10):** al bajar de plan, el usuario tiene que **elegir qué locales siguen activos** para entrar en el tope del plan nuevo; **no se puede hacer downgrade sin llevar primero los locales activos al número que ese plan permite.** Hoy NO hay ningún camino de downgrade en el código —el webhook de Stripe solo hace `plan: "plus"` al completar el checkout— así que no es un bug vivo, es un **invariante que toda futura ruta de downgrade (webhook de cancelación, UI de cambio de plan) tiene que respetar**. Sin esto, un `plus` con 3 locales que cae a `free` queda con 2 por encima del tope y el sistema no sabría cuál dejar. Quedó demostrado en la práctica: A1 está en `plus` con locales de sobra para volver a `free` |
 | 52 | **La lista `HANDLERS` de `locations-routes.test.ts` esta hardcodeada: una 5a ruta naceria sin guard con el test en verde** | — | **hecho (2026-09-10)** — barrido por filesystem que deriva `METHOD /path` de cada `route.ts` (las dos ortografias: `export async function` y `export const`), asevera un piso de archivos y exige igualdad exacta con `HANDLERS`. **Probado que muerde:** una ruta falsa `zz-mutation/route.ts` sin guard lo puso rojo nombrandola (`- "GET /api/locations/zz-mutation"`); revertida, 15/15, `file-size` en 0 | Hallazgo MENOR del revisor en la 2a pasada, con el fix ya identificado: un `readdir` que asevere que la lista cubre todos los `route.ts` bajo `api/locations/**`. Hoy los 4 coinciden exacto, asi que no es un defecto vivo. Es la forma de la leccion de la spec 0046 («si sumas un plugin, suma sus paths») y del barrido MIME: un allow-list que no ve una superficie nueva da seguridad que no tiene |
-| 51 | **Los 27 archivos `.neon.integration` NO corren en CI: se puede borrar un guard de producción con los 5 gates en verde** | **0062** | **hecho (2026-09-10) — pendiente de VER la corrida de CI en verde con la integración corriendo, no skipeada** | **Verificado por mutación el 2026-09-09, no argumentado:** con `eq(locations.status, "active")` sacado de `assertLocationInBusiness`, `pnpm run test` da **506/506 VERDE** — el único oráculo es la integración Neon, que se auto-skipea sin `NEON_INTEGRATION_DATABASE_URL` + `NEON_INTEGRATION_ISOLATED`, y `.github/workflows/ci.yml` no las setea. Afecta a TODO el repo, no a la spec 0061. Decisión del owner: si CI corre contra una rama Neon efímera (cuesta plata y hay que manejar secretos) o si se acepta el límite y se documenta |
+| 51 | **Los 27 archivos `.neon.integration` NO corren en CI: se puede borrar un guard de producción con los 5 gates en verde** | **0062** | **hecho (2026-09-10) — VERIFICADO en la corrida real** `34529269621`: en CI `Tests 678 passed (678)`, **cero skipped**; en local sin Neon `521 \| 157 skipped`. Los 157 que se skipeaban corren. 33 archivos `.neon.integration` en `✓`, ninguno `↓`. Los 3 pasos nuevos `completed / success` por la API de jobs. Integración: 49 s | **Verificado por mutación el 2026-09-09, no argumentado:** con `eq(locations.status, "active")` sacado de `assertLocationInBusiness`, `pnpm run test` da **506/506 VERDE** — el único oráculo es la integración Neon, que se auto-skipea sin `NEON_INTEGRATION_DATABASE_URL` + `NEON_INTEGRATION_ISOLATED`, y `.github/workflows/ci.yml` no las setea. Afecta a TODO el repo, no a la spec 0061. Decisión del owner: si CI corre contra una rama Neon efímera (cuesta plata y hay que manejar secretos) o si se acepta el límite y se documenta |
 | 50 | **0058 y 0059 no tienen oráculo de comportamiento** — su única cobertura es un barrido estático de strings | 0058, 0059 | pendiente | **Demostrado por mutación el 2026-09-09, no argumentado:** borrar `setIsAnalyzing(true)` de `use-brand-logo.ts` apaga «Preparando imagen…» para siempre —que es el **DoD #1** de la 0059— y **los 5 gates quedan verdes** (471/471, typecheck, lint), porque `expect(source).toContain("Preparando imagen…")` sólo ve el string en el archivo. Es el patrón de la tarea 38 otra vez. La técnica que lo cierra ya existe en el repo: `login-form-retry.test.ts` (spec 0057) stubea `useState` con `vi.mock("react")`, ~45 líneas y cero paquetes |
 
 

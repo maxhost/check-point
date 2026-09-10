@@ -1,7 +1,7 @@
 ---
 spec: 0062
 fecha: 2026-09-10
-estado: cerrada
+estado: implementada
 resumen: Los 27 archivos `.neon.integration` pasan a correr en CI contra una rama Neon persistente `ci-integration`, con un paso que FALLA si el secret falta, para que un "skipped" no pueda volver a parecer un "passed".
 disjunta: sí
 archivos: `.github/workflows/ci.yml`, secrets del repo en GitHub, rama Neon `ci-integration`
@@ -50,22 +50,50 @@ entrega secrets, así que ese paso fallaría. Hoy el repo no recibe PRs de forks
 los recibe, el paso se condiciona a `github.event_name == 'push'`. Se deja como está a
 propósito: preferible un rojo explicable a un skip silencioso.
 
+## Cierre — verificado en la corrida real de CI (2026-09-10)
+
+Corrida `34529269621` sobre `a335e28`, `success`. **La evidencia es el resumen de vitest en
+el log, no el check verde ni un parser propio:**
+
+| Dónde | Resultado |
+|---|---|
+| **CI** (`Unit + integracion Neon`) | `Test Files 99 passed (99)` · **`Tests 678 passed (678)` — cero skipped** |
+| Local, sin Neon, mismo commit | `Tests 521 passed \| 157 skipped` |
+
+Los **157** tests que se auto-skipeaban son exactamente los que ahora corren en CI. Los 33
+archivos `.neon.integration` (los 27 previos + los 5 de la 0061 + `consumer/programs`)
+muestran `✓` con conteo y tiempo; **ninguno `↓ skipped`**. Por la API de jobs, los tres
+pasos nuevos dan `completed / success`: el guard del secret, `Migrar la rama Neon de CI`
+(`migrations applied successfully`) y `Unit + integracion Neon`.
+
+**Costo medido:** la integración tardó 49 s (20:56:35 → 20:57:24). Tolerable en cada push.
+
+**Trampa propia, anotada para quien lea el log después:** un primer extracto con `awk`
+reportó «0 passed / 0 skipped» porque los códigos ANSI y los tabs del log desplazan las
+columnas; y un `grep -c error` sobre el paso guardia contó **1** — era el texto `::error::`
+del propio script, no una falla. **Para leer un log de Actions: `sed 's/\x1b\[[0-9;]*m//g'`
+primero, y la conclusión de un paso se lee de `actions/runs/<id>/jobs`, no de un grep.**
+
+**`ci-integration` (`br-icy-hat-axsfqc8k`) es INFRAESTRUCTURA, no una rama efímera.** No
+entra en ninguna limpieza de ramas: borrarla rompe CI en el siguiente push (el guard
+fallaría fuerte, que es lo correcto — pero sería un rojo evitable).
+
 ## Definition of Done
 
-- [ ] Una corrida de CI en `main` muestra los `.neon.integration` **corriendo** — con
+- [x] Una corrida de CI en `main` muestra los `.neon.integration` **corriendo** — con
       `passed`, no `skipped` — verificado leyendo el log real de la corrida, no el check
       verde.
-- [ ] El paso de guardia falla si el secret está ausente (se verifica leyéndolo; probarlo
+- [x] El paso de guardia falla si el secret está ausente (se verifica leyéndolo; probarlo
       borrando el secret en prod de CI no vale la pena por el costo de una corrida rota).
-- [ ] La migración corre en CI antes de los tests sin error.
-- [ ] Los 5 gates locales siguen verdes; `format:check` acepta el `ci.yml`.
+- [x] La migración corre en CI antes de los tests sin error.
+- [x] Los 5 gates locales siguen verdes; `format:check` acepta el `ci.yml`.
 
 ## Plan de pruebas y verificación
 
-- [ ] `gh run view <id> --log` de la corrida que introduce esto: buscar los archivos
+- [x] `gh run view <id> --log` de la corrida que introduce esto: buscar los archivos
       `.neon.integration` y confirmar `✓` con conteo de tests, y **cero `↓ skipped`** en
       ellos.
-- [ ] `gh api repos/maxhost/check-point/commits/<sha>/status` en `success`.
+- [x] `gh api repos/maxhost/check-point/commits/<sha>/status` en `success`.
 
 ## Abierto
 
