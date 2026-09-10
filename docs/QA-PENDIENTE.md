@@ -165,11 +165,23 @@ un local se creaba en el onboarding y no se podía editar nunca más.
 probar el alta hay que estar en `plus` (tope 3) o archivar primero. Con `free` y 1 local
 activo, **no va a haber botón de agregar** — es la decisión, no un bug.
 
-- [ ] **L1. Crear con Geoapify.** Agregar un local eligiendo la dirección de las sugerencias.
+- [x] **L1. Crear con Geoapify — PASA (2026-09-10).** Agregar un local eligiendo la dirección de las sugerencias.
       Tiene que guardarse y aparecer en la lista.
-- [ ] **L2. Crear tipeado.** Escribir una dirección que Geoapify NO encuentre y guardar igual.
+- [x] **L2. Crear tipeado — PASA (2026-09-10).** Escribir una dirección que Geoapify NO encuentre y guardar igual.
       Tiene que aceptarla como texto plano. *(Por dentro queda sin coordenadas, a propósito:
       no se inventan. En pantalla no se distingue — decisión 5.)*
+> **QA parcial del owner (2026-09-10): 4 de 8 PASAN — L1, L2, L7 y L8.**
+> Probado contra prod = `398d3ce` (`Vercel: success` para ese sha).
+>
+> **Quedan L3, L4, L5 y L6 sin probar en pantalla.** No estan sin oraculo: los cuatro tienen
+> cobertura de integracion contra Neon —renombrar sin tocar la verificacion activa, la mudanza
+> de direccion con su `superseded_at`, archivar/reactivar, y el rechazo de archivar el ultimo
+> activo—, asi que el riesgo que queda es de **UI**, no de servidor. Pero nadie los vio
+> funcionando todavia, y esa es justamente la parte que ningun test cubre.
+>
+> **Ojo con L6 si lo retomas:** exige que el negocio tenga **UN solo** local activo. Si A1
+> quedo con 2 o 3, hay que archivar hasta dejar uno antes de poder probarlo.
+
 - [ ] **L3. Renombrar.** Cambiar sólo el nombre. La dirección no se toca.
 - [ ] **L4. Mudar la dirección.** Cambiar la dirección de un local existente y verificar que
       queda la nueva.
@@ -177,10 +189,10 @@ activo, **no va a haber botón de agregar** — es la decisión, no un bug.
       como estaba.
 - [ ] **L6. El último local no se archiva.** Con un solo local activo, archivarlo tiene que
       fallar con un mensaje claro.
-- [ ] **L7. El archivado no opera.** Con un local archivado, abrí el **mostrador**: no tiene
+- [x] **L7. El archivado no opera — PASA (2026-09-10).** Con 2+ locales activos ademas se estreno el **selector de local** del mostrador, un camino que nunca se habia ejercitado en produccion. Con un local archivado, abrí el **mostrador**: no tiene
       que poder elegirse. *(El guard server-side ya está pinneado por tests: sin él, un link
       `?location=<uuid>` guardado en favoritos seguiría acreditando contra el archivado.)*
-- [ ] **L8. El tope del plan.** Al llegar al máximo de tu plan, el alta tiene que rechazarse
+- [x] **L8. El tope del plan — PASA (2026-09-10).** Probado con A1 en `plus` (tope 3). Al llegar al máximo de tu plan, el alta tiene que rechazarse
       con un mensaje, no fallar en silencio.
 
 ---

@@ -8,7 +8,32 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-10 (**SPEC 0061 DESPLEGADA A PRODUCCION. Migracion aplicada, push hecho, ramas
+Ultima actualizacion: 2026-09-10 (**SPEC 0061 CERRADA: implementada, con PASS de revisor, desplegada y con QA del
+owner PARCIAL — 4 de 8. La tarea 47 queda HECHA.**
+
+**QA del owner (2026-09-10), contra prod = `398d3ce`:** L1 crear con Geoapify ✅ · L2 crear tipeado ✅ · L7 el
+archivado no opera ✅ · L8 el tope del plan ✅. **El loop de locales cierra en produccion: se puede crear y editar
+un local, y el mock murio.** Con L7 ademas se estreno el **selector de local del mostrador**, un camino que nunca
+se habia ejercitado en prod porque hasta ayer ningun negocio tuvo mas de un local.
+
+**Para probar el tope se cambio A1 de `free` a `plus` por SQL** (`core.subscription`, acotado por el id de la
+suscripcion). Fue seguro porque A1 **no tiene `stripe_customer_id` ni `stripe_subscription_id`** —nunca paso por el
+checkout— asi que no hay una suscripcion real de Stripe contradiciendo a la base ni un webhook que lo pise. **A1
+sigue en `plus`**: si se lo baja a `free` con 2 o 3 locales activos, quedan por encima del tope (el sistema no los
+archiva solos, solo impide crear mas).
+
+**QUEDAN 4 ITEMS DE QA SIN PROBAR EN PANTALLA: L3 (renombrar), L4 (mudar direccion), L5 (archivar y reactivar) y
+L6 (no se archiva el ultimo activo).** No estan sin oraculo —los cuatro tienen integracion contra Neon, incluida la
+mudanza con su `superseded_at`— asi que **el riesgo remanente es de UI, no de servidor**. Pero nadie los vio
+funcionando, y esa es exactamente la parte que ningun test cubre. **No se marcan como probados.**
+
+**Residuales de la spec, ninguno bloqueante:**
+- **Tarea 52:** la lista `HANDLERS` de `locations-routes.test.ts` esta hardcodeada — una 5a ruta bajo
+  `api/locations/**` naceria sin guard con el test en verde.
+- **Tarea 51:** los 27 `.neon.integration` no corren en CI.
+- **Rama efimera vieja sin borrar:** `br-shy-art-axolrd4v` (`spec-0055-redeem`), esperando OK del owner.
+
+Ultima actualizacion previa: 2026-09-10 (**SPEC 0061 DESPLEGADA A PRODUCCION. Migracion aplicada, push hecho, ramas
 efimeras borradas. Falta solo el QA del owner.**
 
 **Secuencia respetada, y el orden importaba:** migracion PRIMERO, push despues. El codigo nuevo consulta
