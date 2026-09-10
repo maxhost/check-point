@@ -149,6 +149,42 @@ las membresias. Ahora se revoca en el mismo paso.
 
 ---
 
+---
+
+## NUEVO — Locales en el backoffice (spec 0061, desplegada 2026-09-10, commit `398d3ce`)
+
+**Se acabó el mock:** el tile «Locales» ya no abre `/backoffice/demo/locations`. Hasta ahora
+un local se creaba en el onboarding y no se podía editar nunca más.
+
+**Migración `0029` aplicada a prod y verificada por SQL** (11 locales, los 11 quedaron
+`active` solos por el `DEFAULT`; coordenadas ya nulables; los 3 esquemas intactos).
+**Verificado en vivo, sin sesión:** `/backoffice/locations` rebota al login (307) y
+`GET /api/locations` responde `401 {"error":"No autorizado."}`.
+
+**Ojo con tu plan:** tu negocio de prueba está en `free`, que tiene tope de **1 local**. Para
+probar el alta hay que estar en `plus` (tope 3) o archivar primero. Con `free` y 1 local
+activo, **no va a haber botón de agregar** — es la decisión, no un bug.
+
+- [ ] **L1. Crear con Geoapify.** Agregar un local eligiendo la dirección de las sugerencias.
+      Tiene que guardarse y aparecer en la lista.
+- [ ] **L2. Crear tipeado.** Escribir una dirección que Geoapify NO encuentre y guardar igual.
+      Tiene que aceptarla como texto plano. *(Por dentro queda sin coordenadas, a propósito:
+      no se inventan. En pantalla no se distingue — decisión 5.)*
+- [ ] **L3. Renombrar.** Cambiar sólo el nombre. La dirección no se toca.
+- [ ] **L4. Mudar la dirección.** Cambiar la dirección de un local existente y verificar que
+      queda la nueva.
+- [ ] **L5. Archivar y reactivar.** Archivar un local y volver a activarlo: tiene que volver
+      como estaba.
+- [ ] **L6. El último local no se archiva.** Con un solo local activo, archivarlo tiene que
+      fallar con un mensaje claro.
+- [ ] **L7. El archivado no opera.** Con un local archivado, abrí el **mostrador**: no tiene
+      que poder elegirse. *(El guard server-side ya está pinneado por tests: sin él, un link
+      `?location=<uuid>` guardado en favoritos seguiría acreditando contra el archivado.)*
+- [ ] **L8. El tope del plan.** Al llegar al máximo de tu plan, el alta tiene que rechazarse
+      con un mensaje, no fallar en silencio.
+
+---
+
 ## Ya probado y funcionando — no repetir
 Onboarding, marca (colores), programa, catálogo, staff · Enrolamiento en iOS, branding de la
 landing, **Apple Wallet** · El ícono de inicio abre el wallet del consumidor (specs

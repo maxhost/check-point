@@ -8,7 +8,34 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-09 (**SPEC 0061 IMPLEMENTADA — PASS DE REVISOR INDEPENDIENTE EN 2 PASADAS.
+Ultima actualizacion: 2026-09-10 (**SPEC 0061 DESPLEGADA A PRODUCCION. Migracion aplicada, push hecho, ramas
+efimeras borradas. Falta solo el QA del owner.**
+
+**Secuencia respetada, y el orden importaba:** migracion PRIMERO, push despues. El codigo nuevo consulta
+`location.status` en 5 lugares (incluido `counter/page.tsx`), asi que pushear antes de migrar habria dejado el
+**mostrador caido** — la pantalla con la que el staff acredita ventas.
+
+1. **Migracion `0029` aplicada a prod** (`DATABASE_URL_UNPOOLED`, host sin `-pooler`). **Verificada POR SQL, no por
+   el mensaje del comando:** 11 locales y los 11 quedaron `active` solos por el `DEFAULT` (sin backfill),
+   `longitude`/`latitude` ya nulables, `status` NOT NULL con su check presente, 11 verificaciones intactas y los 3
+   esquemas (`core`/`consumer`/`merchant_auth`) sanos.
+2. **Push a `main`:** `fc2bfb5..398d3ce`, 8 commits. **`Vercel: success` para el sha EXACTO** (`398d3ce`), no «prod
+   esta verde».
+3. **Humo real contra prod:** `/api/health`, `/login`, `/backoffice/counter` y `/backoffice/locations` responden
+   200. **Y los guards verificados EN VIVO:** `/backoffice/locations` sin sesion da 307 al login, y
+   `GET /api/locations` da **401 `{"error":"No autorizado."}`** — es la propiedad que pinnearon las evasiones E1/E2/E3
+   del revisor, ahora confirmada en produccion y no solo en tests.
+4. **Ramas efimeras borradas:** `br-morning-bar-axme2z4s` (implementador) y `br-flat-lake-ax8d91kk` (revisor).
+   `main` intacta.
+
+**QUEDA UNA RAMA EFIMERA VIEJA QUE NO SE TOCO: `br-shy-art-axolrd4v` (`spec-0055-redeem`, del 2026-09-08).** No
+estaba en las dos que se le describieron al owner, asi que borrarla excede lo autorizado. **Esperando su OK.**
+
+**QA del owner pendiente: bloque L1..L8** en `docs/QA-PENDIENTE.md`. **Aviso practico que sale de su propia
+decision 2:** el negocio de prueba esta en `free`, con tope de **1 local**, asi que la pantalla **no va a mostrar
+boton de agregar** hasta pasar a `plus` o archivar. Es la decision, no un bug — pero sin saberlo parece uno.
+
+Ultima actualizacion previa: 2026-09-09 (**SPEC 0061 IMPLEMENTADA — PASS DE REVISOR INDEPENDIENTE EN 2 PASADAS.
 FALTAN DOS PASOS DEL OWNER: migracion a prod y push.**
 
 Locales en el backoffice: ver, crear, editar y archivar. **Se acabo el mock**: el tile «Locales» ya no apunta a
