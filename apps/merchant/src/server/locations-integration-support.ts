@@ -22,9 +22,31 @@ export { integrationEnabled };
  * `seedBusiness` alone leaves the location without provenance, which would make the
  * address-edit test start from a state that does not exist in prod.
  */
+export type SeededSubscription = {
+  status?: string;
+  interval?: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  pendingPlan?: string | null;
+  pendingPlanAt?: Date | null;
+  downgradeRequestedAt?: Date | null;
+  lastEventAt?: Date | null;
+};
+
 export async function seedLocationsBusiness(
   name: string,
-  plan: "free" | "plus",
+  plan: "free" | "plus" | "none",
+  /**
+   * Spec 0063 [R2-I7]: EL SEED ACEPTA EL ESTADO COMPLETO DE LA SUSCRIPCIÓN, no sólo el plan.
+   * Sin esto no se pueden sembrar los estados que la spec tiene que cubrir —A1 (`plus` SIN
+   * `stripe_subscription_id`, `interval` NULL), una baja ya programada
+   * (`pending_plan='free'` + `downgrade_requested_at`), un `last_event_at` anterior— y el
+   * test tendría que construirlos con el código bajo prueba, que es el pre-chequeo
+   * circular. `plan` queda como 2.º posicional para no tocar a los llamadores de la spec
+   * 0061; todo lo demás entra por acá y el default es el de prod (`status='active'`, el
+   * resto NULL).
+   */
+  subscription: SeededSubscription = {},
 ): Promise<Seed> {
   const seed = await seedBusiness({
     name,
@@ -35,7 +57,12 @@ export async function seedLocationsBusiness(
   });
   await getDb()
     .insert(subscriptions)
-    .values({ businessId: seed.business.id, plan, status: "active" });
+    .values({
+      businessId: seed.business.id,
+      plan,
+      status: "active",
+      ...subscription,
+    });
   const verificationId = randomUUID();
   await getDb().insert(locationVerifications).values({
     id: verificationId,

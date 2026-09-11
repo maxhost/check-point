@@ -364,9 +364,20 @@ declaraba inaceptable, disparado por un evento que ya esta en la base. Y
 | `checkout.session.completed` | `checkout.sessions.retrieve(id, { expand: ["subscription"] })` | **solo bindea ids**: `businessId` de `client_reference_id`, y escribe `stripe_customer_id` / `stripe_subscription_id`. **No** toca el plan (una sesion puede completarse con `payment_status: 'unpaid'`). |
 | cualquier otro | nada | claim + `processed_at` + `ignored_reason='event_type_not_handled'` |
 
-Campos del payload que se leen, enumerados: `type`, `id`, `created` — y nada mas. (El DoD
+Campos del payload que se leen, enumerados: **CINCO** — `type`, `id`, `created`, el
+`data.object.id` que esta misma tabla prescribe para el `retrieve`, y **`api_version`**. (El DoD
 anterior decia «ninguno mas que `type` e `id`», y era **inalcanzable con el propio diseño de la
 spec**, porque el guard de orden necesita `created`.)
+
+> **[fase B, correccion del revisor] La lista decia «`type`, `id`, `created` — y nada mas» y era
+> FALSA POR OMISION en dos campos que el diseño exige**: el `data.object.id` (que la tabla de arriba
+> manda leer) y `api_version`, que el claim escribe en `payload_version`. Un `grep` del codigo da los
+> cinco. El uso de `api_version` no solo es correcto sino **deseable** —es el unico dato que prueba en
+> que version serializo Stripe ESE payload, o sea lo que hace diagnosticable el desfase que motiva
+> todo D5— pero enumerarlo de menos convierte una lista normativa en una afirmacion falsa: quien
+> herede el arbol la usa para auditar por `grep` y encuentra un campo «no autorizado» que en realidad
+> lo esta. La distincion que importa se mantiene: del payload no sale NINGUN dato de ESTADO de la
+> suscripcion; `api_version` describe al sobre, no al contenido.
 
 **(b) Orden de operaciones y de locks.**
 
@@ -514,6 +525,60 @@ siguen haciendo falta dos reglas de **pertenencia**:
    distinto puede volver a mover el plan»), que leida literal deja que un `deleted` tardio de
    `sub_1` ponga `free` sobre `sub_2` **viva y facturando**;
 2. se ignora todo evento con `event.created` **menor** que `last_event_at`.
+
+**[m1 — CIERRE DEL HALLAZGO DE LA FASE A. Es una DECISION DEL ORQUESTADOR (n.º 7), no del owner;
+el revisor independiente coincidio en el diagnostico y en la ubicacion del fix.] La regla 1, escrita
+asi, no alcanza: la ADOPCION es una puerta abierta.** Sobre una fila **adoptable**
+(`stripe_subscription_id IS NULL` o status en `DEAD_STRIPE_STATUS` — **el caso de A1 en prod**, que
+esta en `plus` sin suscripcion), el guard no frena nada, porque solo dispara si `!adoptable`.
+Compuesto con la precedencia «lo terminal gana sobre el price desconocido» que pinnea
+`planFromSubscription`, **un `customer.subscription.deleted` de una suscripcion AJENA con un price
+AJENO escribe A1 → `plan='none'`**: un negocio vivo apagado por un evento que nunca fue suyo. El
+test de la fase A pinnea solo la mitad benigna (con `downgrade_requested_at` seteado aterriza en
+`free`); la mitad peligrosa es el **mismo camino de codigo** y no tenia fila.
+
+**La regla de adopcion, que se agrega:** cuando `subscription.id` **≠** `row.stripeSubscriptionId`
+(incluido el caso `NULL`), la fila se adopta **solo si la suscripcion RECUPERADA es nuestra y no
+esta muerta**:
+
+```
+sameSubscription = row.stripeSubscriptionId === subscription.id
+si sameSubscription            →  no es una adopcion: sigue la regla 2 (orden)
+si no y !adoptable             →  ignorado, 'foreign_subscription'        (regla 1, ya existia)
+si no y (ningun item.price.id ∈ {monthly, yearly}  o  status ∈ DEAD_STRIPE_STATUS)
+                               →  ignorado, 'not_adoptable'               (NUEVO)
+```
+
+**La asimetria ES la regla, y es el enunciado que hay que conservar: un evento puede CREAR o
+CONFIRMAR una adopcion, NUNCA TERMINARLA.** El `deleted` de fin de periodo de la **propia**
+suscripcion de la fila sigue aplicando, porque ahi `sameSubscription` es verdadero y no hay
+adopcion ninguna.
+
+**El atajo obvio esta MAL y el revisor lo dejo anotado antes de que se escribiera: la regla NO puede
+ser «adoptable solo por `customer.subscription.created`».** Un `updated` legitimo puede ser el
+primer evento que veamos si el `created` se perdio, y el diseño entero de D5 dice que **el tipo de
+evento es un disparador, no un hecho**. El discriminante sale del **estado de la suscripcion
+recuperada** —price nuestro + status no muerto—, que es dato que da Stripe por `retrieve` y que el
+actor del que hay que defenderse **no controla**. Es la regla de `CLAUDE.md` sobre discriminantes
+(«preguntá quien mas puede escribir el campo»), aplicada: `price.id` lo fija nuestra cuenta, a
+diferencia de `cancel_at_period_end`, que lo escribe tambien el boton del dashboard.
+
+**Donde va, y por que NO va en la derivacion:** en `assessEventApplicability`, que ya es la funcion
+que puede decir «no escribas nada». `SubscriptionWrite` tiene `status` **obligatorio** y no puede
+expresar eso; meter el guard en `planFromSubscription` repetiria el error que motivo separarlas.
+Cuesta dos cambios de firma de fase A, declarados: `assessEventApplicability` recibe `priceIds` y su
+`subscription` pasa de `Pick<…, "id">` a `Pick<…, "id" | "status" | "items">`, y `EventApplicability`
+suma `'not_adoptable'` al vocabulario de `IgnoredReason`.
+
+**[m1-b, MISMA decision del orquestador, por el mismo motivo] El binding de
+`checkout.session.completed` tampoco puede escribir sobre una fila no adoptable.** Ese camino no
+pasa por la derivacion (solo bindea ids) pero **si** escribe `stripe_subscription_id`, asi que una
+sesion vieja que se completa tarde podria repuntar la fila a una suscripcion distinta de la que esta
+viva y facturando. Regla: el binding escribe **solo si la fila es adoptable** (`NULL` o status
+muerto) o si el id **coincide** con el que ya tiene; en otro caso `processed_at` +
+`ignored_reason='foreign_subscription'` y no se escribe nada. El `businessId` de ese camino sale de
+`client_reference_id`, que **solo lo escribe nuestro checkout** — ese si es un discriminante
+legitimo.
 
 **[R2-M3]** Un evento **ignorado** (por tipo, pertenencia u orden) **no mueve `last_event_at`**:
 si lo moviera, el guard (2) podria tapar un evento legitimo posterior con `created` menor.
@@ -785,10 +850,12 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/server/billing/plan-change.ts` | crear — tipos de D4 + `decidePlanChange` con las guardas ordenadas |
 | `apps/merchant/src/server/billing/derive.ts` | crear — `planFromSubscription` + jerarquia de `pending_plan` + guard de pertenencia |
 | `apps/merchant/src/server/billing/derive-rules.ts` | crear — **[fase A] NO estaba en esta tabla.** Los conjuntos y helpers puros de D5.d-f, sacados de `derive.ts` porque el contrato normativo de ese archivo ya ocupa ~200 lineas y el limite es 300 (`file-size`): dividir, no extender |
+| `apps/merchant/src/server/billing/applicability.ts` | crear — **[fase B] NO estaba en esta tabla. El corte lo decide el orquestador ANTES de despachar, no el implementador a mitad de la tarea.** `assessEventApplicability` + su contrato normativo se mudan aca desde `derive.ts`, porque el guard de adopcion de m1 agrega ~35 lineas a un archivo que ya esta en **281** y el limite es 300 (`file-size`: dividir, no extender). El barrel reexporta, asi que ningun consumidor cambia de import. `billing-applicability.test.ts` ya existe y apunta al barrel |
 | `apps/merchant/src/server/billing/gateway.ts` | crear — **NO estaba en esta tabla.** La costura `StripeGateway` de §Archivos compartidos necesitaba un archivo; el orquestador la puso aca |
 | `apps/merchant/src/server/billing/view.ts` | crear — `toSubscriptionView` + allow-list de presentacion (la usan la seccion **y** la home) |
 | `apps/merchant/src/server/billing/store.ts` | crear — `readSubscription`, `scheduleDowngrade`, `clearPendingPlan`, `settleToFree`, `reconcileFromStripe` |
 | `apps/merchant/src/server/billing/webhook.ts` | crear — allow-list de tipos, claim, locks, escritura |
+| `apps/merchant/src/server/billing/webhook-apply.ts` | crear — **[fase B] NO estaba en esta tabla.** Lo que pasa DENTRO de la segunda transaccion: `applySubscriptionEvent` (camino `customer.subscription.*`), `bindCheckoutSession` (camino m1-b), la resolucion del `businessId` de D5.c y `markProcessed`. Se partio porque `webhook.ts` con todo adentro daba **358 lineas** y el limite es 300 (`file-size`: dividir, no extender). `webhook.ts` queda con la orquestacion HTTP (firma, claim, allow-list, 500) y el contrato normativo del orden de operaciones |
 | `apps/merchant/src/server/billing/index.ts` | crear — barrel |
 | `apps/merchant/src/server/locations/core.ts` | editar — `effectiveLocationLimit` + `none: 1` |
 | `apps/merchant/src/server/locations/shared.ts` | editar — `planLocationLimit` lee `pending_plan`; `limitReached` gana el mensaje de baja programada |
@@ -813,12 +880,18 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/server/billing-derive-support.ts` | crear — **[fase A] NO estaba en esta tabla.** Constructores de `Stripe.Subscription` y de filas para los units; corte por el limite de 300 |
 | `apps/merchant/src/server/billing-plan-change-rows.test.ts` | crear — **[fase A] NO estaba en esta tabla.** «Las filas que mataron una regla», separadas de la matriz por el limite de 300 |
 | `apps/merchant/src/server/billing-applicability.test.ts` | crear — **[fase A] NO estaba en esta tabla, y NACE DE UN HALLAZGO REAL:** al correr **M15** por primera vez la suite entera quedaba VERDE — el guard de pertenencia de D5.h no tenia NINGUN oraculo. Con este archivo, M15 pone 8 rojos |
+| `apps/merchant/src/server/billing-adoption.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Los casos del guard de ADOPCION (m1) y de `canBindSubscriptionId` (m1-b), incluida la fila **anti-degeneracion** (mismo id + status muerto + `deleted` → APLICA: sin ella, «no adoptar nunca» pasaria el resto). Sibling de `billing-applicability.test.ts` porque los dos bloques juntos daban **349 lineas** |
 | `apps/merchant/src/server/billing-view.test.ts` | crear — allow-list exacta + render del HTML |
 | `apps/merchant/src/server/billing-routes.test.ts` | crear — capa HTTP de las 5 rutas |
 | `apps/merchant/src/server/locations.test.ts` | editar — extender con `effectiveLocationLimit` |
 | `apps/merchant/src/server/locations-plan-cap.test.ts` | crear — **[fase A] NO estaba en esta tabla, y CIERRA EL BLOQUEANTE B1 de la 1a revision.** El oraculo de `limitReached` + `planLocationLimit`: sin el, anular la rama `pendingDowngrade` dejaba la suite en **620/620 VERDE** y el owner con una baja programada volvia a leer «Mejora tu plan». Va en un sibling y no dentro de `locations.test.ts` porque ese archivo esta en 233 lineas y el bloque ocupa ~90 (`file-size`, limite 300: dividir, no extender); `locations.test.ts` quedo con el puntero |
 | `apps/merchant/src/server/billing.neon.integration.test.ts` | crear |
-| `apps/merchant/src/server/billing-webhook.neon.integration.test.ts` | crear |
+| `apps/merchant/src/server/billing-webhook.neon.integration.test.ts` | crear — claim, allow-list y diagnosticabilidad (D5.a-b/g): tipo ignorado sin `retrieve`, firma invalida sin fila, `retrieve` fallido + reintento, reentrega de un evento ya procesado (**el observable de M3/M7**), dos entregas simultaneas, `unknown_business` |
+| `apps/merchant/src/server/billing-webhook-writes.neon.integration.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Lo que el webhook ESCRIBE en `core.subscription`, por SQL: el bloqueante R2-1 (las dos filas de `deleted`) y el cableado del guard de adopcion (**M18**). Sibling del anterior porque los dos bloques juntos pasaban de 300 lineas |
+| `apps/merchant/src/server/billing-webhook-binding.neon.integration.test.ts` | crear — **[fase B] NO estaba en esta tabla.** El cableado del binding de `checkout.session.completed` (**m1-b / M19**): una sesion tardia no repunta una suscripcion viva; sobre una fila adoptable bindea los ids y NO el plan. Archivo propio por el limite de 300 y porque es OTRO guard (`canBindSubscriptionId`, no `assessEventApplicability`) |
+| `apps/merchant/src/server/billing-webhook-support.ts` | crear — **[fase B] NO estaba en esta tabla.** El preambulo compartido de los tres archivos de integracion del webhook (secreto, registro de ids de evento para el `afterAll`, `deliver` por la ruta real, seed con estado completo). El `vi.mock` de `stripe-config` NO puede vivir aca: va en cada `.test.ts` |
+| `apps/merchant/src/server/billing-store.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Unit de `store.ts` con un doble del `tx` (patron de `locations-plan-cap.test.ts`): el CONJUNTO EXACTO de claves de cada `SET` — en D10 la propiedad load-bearing es una AUSENCIA (`stripe_customer_id` se conserva) y un test de valores no ve una clave que sobra — mas la allow-list de columnas del `select` |
+| `apps/merchant/src/server/billing-store.neon.integration.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Lo que el doble del `tx` no puede ver: el `coalesce` de `downgrade_requested_at` contra Postgres, el `where` por `businessId` (con un segundo negocio sembrado), `reconcileFromStripe` completo (**M16**) y la carrera `cancel` vs. webhook (**M4**) |
 | `apps/merchant/src/server/locations-races.neon.integration.test.ts` | editar |
 
 ### Disjunta?
@@ -864,10 +937,23 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
       **no** otorga `plus`.
 - [ ] **`invoice.paid` y cualquier tipo fuera de la allow-list** quedan `processed_at` +
       `ignored_reason`, **sin** llamar a `subscriptions.retrieve`.
+- [ ] **[m1, fase B] Una fila ADOPTABLE (`stripe_subscription_id IS NULL` o status muerto — el caso
+      de A1) NO acepta un `customer.subscription.deleted` de una suscripcion AJENA con price AJENO:**
+      queda `ignored_reason='not_adoptable'`, **el plan NO se toca** y se verifica por SQL que la fila
+      sigue en `plus`. El mismo evento con price **nuestro** y status **vivo** (`created` o `updated`)
+      **si** adopta. Mutacion M18.
+- [ ] **[m1-b, fase B] Un `checkout.session.completed` tardio NO repunta el
+      `stripe_subscription_id` de una fila cuya suscripcion esta VIVA** — `ignored_reason` y ninguna
+      escritura; sobre una fila adoptable **si** bindea.
 - [ ] Un evento cuyo `retrieve` falla deja **fila con `processed_at IS NULL`** y el reintento lo
       procesa.
 - [ ] Dos entregas simultaneas del mismo evento: **una sola gana el claim** (observable abajo),
-      con el `EXPLAIN` transcripto **corrido sobre Neon**.
+      con el `EXPLAIN` transcripto **corrido sobre Neon**. **OJO — ESTE ITEM ESTA ABIERTO: la parte
+      del `EXPLAIN` esta CUMPLIDA y verificada sobre Neon, pero «una sola gana el claim» NO se
+      cumple en el solape real** (si en la reentrega secuencial, que es el caso de Stripe). Ver
+      §Plan de mutaciones → «HALLAZGO DE LA FASE B», con el precio REAL de cerrarlo. **Decision
+      del owner, no tomada:** reescribir este item o implementar el lease. Escribir cualquiera de
+      las dos sin que el owner elija seria inventarle la decision.
 - [ ] Un `cancel` concurrente con el webhook **no pierde** ninguna de las dos escrituras.
 - [ ] **mensual → anual** cobra la diferencia en el acto y la fila queda `interval='year'`
       (escrito por el webhook). Con `items` ambiguo → 409 `interval_ambiguous` sin tocar nada.
@@ -889,7 +975,10 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
 - [ ] La **home** muestra «Sin plan» para `none` y no dice «confirmando pago» para un `free` con
       `status='canceled'`.
 - [ ] La `api_version` real del endpoint de Stripe queda **verificada y anotada** en el handoff,
-      y el codigo no lee del payload ningun campo fuera de `type`, `id` y `created`.
+      y el codigo no lee del payload ningun campo fuera de **los cinco enumerados en D5.a**
+      (`type`, `id`, `created`, `data.object.id` y `api_version`) — ninguno de ellos es estado de
+      la suscripcion. **[fase B] El texto anterior decia «fuera de `type`, `id` y `created`» y era
+      falso por omision**; ver la correccion en D5.a.
 - [ ] Migracion `0030` aplicada a prod **antes del push** (§Handoff) y verificada por SQL: 4
       columnas + `core_subscription_business_unique` + `ignored_reason`;
       `core`/`consumer`/`merchant_auth` intactos en cantidad de tablas.
@@ -958,6 +1047,12 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
 - [ ] Guard de pertenencia: evento de `sub_1` con la fila en `sub_2` **viva** → ignorado; con
       `sub_2` **muerta** → adoptado; evento con `created < last_event_at` → ignorado **y
       `last_event_at` no se mueve**.
+- [ ] **[m1, fase B] Guard de ADOPCION** (`billing-applicability.test.ts`): fila adoptable + evento
+      `deleted` con price **ajeno** → `not_adoptable`; fila adoptable + `deleted` con price
+      **nuestro** pero status muerto → `not_adoptable`; fila adoptable + `created`/`updated` con
+      price nuestro y status vivo → **adoptado**; **fila con el MISMO id y status muerto + `deleted`
+      → aplica** (el fin de periodo normal no se rompe: no es una adopcion). La ultima fila es
+      anti-degeneracion — sin ella, «no adoptar nunca» pasaria el resto.
 
 **Unit — `billing-view.test.ts`:**
 
@@ -1013,11 +1108,11 @@ coincide**. Toda mutacion se etiqueta con `MUTATION` mientras esta puesta y se r
 |---|---|---|
 | M1 | `effectiveLocationLimit` ignora `pendingPlan` | **EJECUTADA 2026-09-11 (orquestador). La hipotesis era MITAD FALSA y se corrige aca.** Rojo: 3 casos de `locations.test.ts` (`plan plus + pendiente free → 1`, `plan plus + pendiente enterprise → 1`, `un pending_plan vacio NO es una baja programada [R1-N8]`). **La «carrera de desarchivado» quedo VERDE**, y no porque el guard falle: esa carrera **todavia no existe** — es el `locations-races.neon.integration.test.ts | editar` de la FASE C. Escrita como estaba, la fila prometia un oraculo de concurrencia que en fase A no se puede correr. Re-ejecutar M1 al cerrar la fase C |
 | M2 | `planFromSubscription` vuelve a `plus` fijo | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, mas amplia que la hipotesis.** 17 rojos en `billing-derive.test.ts` (la hipotesis decia 9+2): los 7 status no-`plus`, las dos filas de `deleted`, el par [R2-7], `pause_collection`, `unknown_price`, el intervalo del price que matcheo y las 3 de la jerarquia de pendiente |
-| M3 | sacar el `WHERE processed_at IS NULL` del claim | el observable del claim (**no** el estado final) |
-| M4 | **quitar `lockBusiness` del webhook** | la carrera `cancel` vs. webhook (escritura perdida). **NO** la de desarchivado: ahi el lock serializa pero no ordena, asi que ese test pasa igual — **corregido respecto de la version anterior, donde esta fila era falsa** |
+| M3 | sacar el `WHERE processed_at IS NULL` del claim | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, exacta.** 1 rojo en `billing-webhook.neon.integration.test.ts`: `reentregar un evento YA PROCESADO contesta {duplicate:true} y no lo vuelve a aplicar` — `AssertionError: expected { received: true } to deeply equal { received: true, duplicate: true }`. **El test de dos entregas SIMULTANEAS queda VERDE, y eso es correcto**: ver el hallazgo del claim abajo. Revertida con `shasum` (`bc2c88de…` antes y despues) |
+| M4 | **quitar `lockBusiness` del webhook** | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, exacta.** 1 rojo en `billing-store.neon.integration.test.ts`: `un cancel concurrente con el webhook NO pierde ninguna de las dos escrituras` — `AssertionError: expected 'none' to be 'free'`, que es literalmente la escritura perdida (el webhook decidio con un `downgrade_requested_at` leido antes del commit del `cancel`). Los 16 tests restantes de los 3 archivos de integracion quedan verdes, incluido todo lo de tope de locales: confirma que el motivo NO es el sobre-tope. Revertida con `shasum` (`df9ecd68…`) |
 | M5 | invertir el orden de `cancel` (Stripe antes de escribir) | el fake dispara un desarchivado durante el `update` y asevera que ya ve `pending_plan` |
 | M6 | `checkout` vuelve al chequeo «existe fila en `memberships`» | los casos de staff |
-| M7 | `WHERE excluded.processed_at IS NULL` en vez de la tabla | el observable del claim (un revisor lo ejecuto: **otorga** el claim) |
+| M7 | `WHERE excluded.processed_at IS NULL` en vez de la tabla | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, exacta y con EL MISMO rojo que M3** (`reentregar un evento YA PROCESADO…`, misma asercion literal). Confirma lo que la tabla ya decia: M3 y M7 son dos mutaciones honestas de UNA propiedad, no de dos. Revertida con `shasum` (`bc2c88de…`) |
 | M8 | mirar solo `cancel_at_period_end`, sin `cancel_at` | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, exacta.** 1 rojo: `` `cancel_at` seteado con `cancel_at_period_end: false` programa la baja igual`` |
 | M9 | `items.data[0].current_period_end` sin optional chaining | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, exacta.** 1 rojo: `` `items.data` vacio NO tira: `pending_plan` puesto y la fecha en null`` |
 | M10 | `deleted` a `free` ignorando `downgrade_requested_at` | **EJECUTADA 2026-09-11 (orquestador): CONFIRMADA y de mas alcance que la hipotesis.** 4 rojos en `billing-derive.test.ts`, incluido el caso literal `SIN downgrade_requested_at (baja hecha desde el dashboard) → none` — el bloqueante R2-1 — mas `el mismo incomplete_expired sobre un plan PAGO → none`, `status canceled` y `status incomplete_expired`. Revertida con `shasum` verificado (`e4af225f…` antes y despues) |
@@ -1026,12 +1121,65 @@ coincide**. Toda mutacion se etiqueta con `MUTATION` mientras esta puesta y se r
 | M13 | `hasLiveSubscription` con allow-list **positiva** de vivos | **EJECUTADA 2026-09-11 (orquestador): CONFIRMADA.** 2 rojos: `un status DESCONOCIDO con id bloquea el checkout: lo no muerto cuenta como vivo` (`billing-plan-change-rows.test.ts`) y `cada punto del dominio cae en la guarda declarada` (la matriz). Revertida con `shasum` verificado (`0cdb0eb8…` antes y despues) |
 | M14 | `settle_to_free` deja el `stripe_subscription_id` | «desde `none`, despues de bajar a free, `checkout` procede» |
 | M15 | invertir el guard de pertenencia de D5.h | **EJECUTADA 2026-09-11: CONFIRMADA, mucho mas amplia — y ANTES cazo un agujero real.** Cuando el implementador la corrio por primera vez, **la suite entera quedaba VERDE**: no habia ningun oraculo del guard de pertenencia. De ahi nacio `billing-applicability.test.ts` (archivo fuera de la tabla §Archivos). Re-ejecutada por el revisor con ese archivo puesto: **8 rojos**, incluido el literal `un evento de sub_1 sobre una fila con sub_2 VIVA se ignora` |
-| M16 | `reconcileFromStripe` escribe con la lista vacia | «lista vacia → no escribe nada» |
+| M16 | `reconcileFromStripe` escribe con la lista vacia | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, pero AL SEGUNDO INTENTO, y el primero es el hallazgo.** (a) La primera version de la mutacion fabricaba una suscripcion sintetica con id propio: el **guard de adopcion de m1 la frenaba** (`not_adoptable`) y la asercion de estado quedaba VERDE — o sea que ese oraculo lo sostenia OTRO guard. (b) La version fiel —con la lista vacia, degradar la suscripcion DE LA FILA— si muerde: 1 rojo, `reconcileFromStripe con la lista VACIA no escribe NADA`, `expected {…} to deeply equal {…}` con `- "plan": "plus"` / `+ "plan": "none"` y `- "status": "active"` / `+ "status": "canceled"`. (c) Ademas hubo que **reordenar el test**: con el `outcome` aseverado antes que la fila, el rojo caia en el valor de retorno y M16 quedaba atribuida a otra cosa. Revertida con `shasum` (`a9bfa417…`) |
 | M17 | `interval` sin `payment_behavior: error_if_incomplete` | «tarjeta rechazada → 402 y nada aplicado» |
+| M18 | **[m1, fase B]** sacar el guard de adopcion (una fila adoptable acepta cualquier suscripcion) | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, mas amplia que la hipotesis — 6 rojos.** 5 units en `billing-adoption.test.ts` (`A1: fila adoptable (plus SIN suscripcion) + suscripcion ajena con price ajeno → not_adoptable`, `fila adoptable + price AJENO pero status VIVO`, las dos de `price NUESTRO pero status muerto (canceled / incomplete_expired)` y `PRECEDENCIA declarada: adopcion ANTES que orden`, esta ultima con `- "ignoredReason": "not_adoptable"` / `+ "stale_event"`) **mas 1 de CABLEADO** en `billing-webhook-writes.neon.integration.test.ts`: `[m1] una fila ADOPTABLE no acepta un deleted AJENO con price ajeno` — `expected { received: true } to deeply equal { received: true, ignored: "not_adoptable" }`. Las dos filas ANTI-DEGENERACION quedan VERDES, que es la otra mitad de la propiedad. Revertida con `shasum` (`8303892a…`) |
+| M19 | **[m1-b, fase B]** el binding de `checkout.session.completed` escribe sin mirar si la fila es adoptable | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA — 3 rojos.** 2 units en `billing-adoption.test.ts` (`una fila con una suscripcion VIVA no acepta el binding de otra` y `un status DESCONOCIDO no vuelve bindeable la fila`, los dos `expected true to be false`) **mas 1 de CABLEADO** en `billing-webhook-binding.neon.integration.test.ts`: `[m1-b] un checkout.session.completed tardio NO repunta una suscripcion VIVA` — `expected [Array(2)] to deeply equal ['sub_viva','cus_viva']`, recibido `['sub_de_la_sesion_vieja','cus_otro']`: la repunta, demostrada. **Tambien hubo que reordenar** ese test (la fila antes del cuerpo de la respuesta) para que el rojo no quedara atribuido a la RESPUESTA. Revertida con `shasum` (`8303892a…`) |
 
 **M3 y M7 comparten observable** (las dos hacen que el claim se otorgue siempre): son dos
 mutaciones honestas de la **misma** propiedad, no dos propiedades. Se anota para que nadie lea la
 tabla como «17 propiedades distintas pinneadas».
+
+> **HALLAZGO DE LA FASE B, medido — QUE GARANTIZA EL CLAIM Y QUE NO.** El DoD pide «dos entregas
+> simultaneas: una sola gana el claim, la segunda responde `{duplicate:true}`». **Eso vale para el
+> reintento de Stripe (entrega SECUENCIAL, el caso real y el bug del §Problema-4), pero NO para dos
+> entregas que se solapan** — y es consecuencia directa de [R1-M1], no un descuido: el claim es su
+> **propia transaccion corta** y commitea antes del `retrieve`, asi que la segunda entrega encuentra
+> `processed_at IS NULL` (la primera todavia esta en la red) y **tambien gana**. Lo que si vale
+> siempre, y es lo que el test asevera: **una sola fila de evento, procesada, y el estado final
+> correcto** (el efecto es un `UPDATE` idempotente). El test `reentregar un evento YA PROCESADO…` es
+> el que pinnea el claim y el que muerde con M3/M7; el de dos entregas simultaneas queda verde con y
+> sin el guard **y lo dice en su propio comentario**, para que nadie lo lea como el oraculo del claim.
+>
+> **EL COSTO DE CERRARLO ES MUCHO MAS BAJO DE LO QUE DIJO LA PRIMERA VERSION DE ESTE PARRAFO, y la
+> correccion es el hallazgo.** El implementador de la fase B declaro que costaria «un lock explicito
+> o una columna `processing_at`», y eso viajo a `docs/TASKS.md`. **Es falso: no hace falta ninguna de
+> las dos.** El lease entra en la columna **`received_at` QUE YA EXISTE**, como un predicado mas en
+> el **mismo** `setWhere` — sin columna nueva, sin migracion, sin lock explicito y sin violar
+> [R1-M1]. Es el error que `CLAUDE.md` describe: un limite sobredimensionado **se ve virtuoso** y
+> hace el mismo daño que un `[x]` inflado, y aca ademas **cambiaba la decision del owner**, que
+> quedaba apoyada en un precio que no es el real. Lo falsifico el revisor independiente de la fase B
+> y lo re-verificaron el orquestador y el implementador, cada uno con su propia corrida sobre Neon y
+> **con un control** (el claim actual, sin lease, sobre los mismos 4 casos):
+>
+> ```sql
+> ON CONFLICT (event_id) DO UPDATE SET received_at = now()
+> WHERE core.stripe_webhook_event.processed_at IS NULL
+>   AND core.stripe_webhook_event.received_at < now() - interval '1 minute'
+> ```
+>
+> | caso | claim actual | con lease |
+> |---|---|---|
+> | 1a entrega | gana | gana |
+> | 2a entrega **solapada** | **gana** ← el agujero | **pierde** |
+> | reintento de Stripe (lease vencido) | gana | gana |
+> | reentrega de uno YA PROCESADO | pierde | pierde |
+>
+> Y el `EXPLAIN` sobre Neon muestra que **el lease no rompe la premisa del ADR 0054**: los dos
+> predicados viven en el MISMO nodo post-lock, no en un `InitPlan` —
+> `Conflict Filter: ((stripe_webhook_event.processed_at IS NULL) AND (stripe_webhook_event.received_at < (now() - '00:01:00'::interval)))`.
+>
+> **El trade-off que si tiene, y por eso sigue siendo una decision y no una mejora gratis:** un
+> reintento de Stripe que llegue **dentro** de la ventana del lease recibiria `{duplicate:true}` y el
+> evento esperaria al reintento siguiente. Es tolerable porque los reintentos de Stripe estan a
+> minutos/horas, pero hay que elegir la ventana (1 min es el valor probado) y es una decision, no un
+> detalle. El mismo predicado es lo que hace que un proceso que muere a mitad no deje el evento
+> clavado: pasada la ventana, el reintento lo vuelve a tomar — igual que hoy.
+>
+> **Queda como DECISION PENDIENTE del owner/orquestador, con este precio. La fase B NO lo
+> implemento** (no estaba en la spec cerrada y la entrega duplicada simultanea no esta documentada
+> por Stripe como comportamiento); si se decide que entra, es una spec de correccion de una linea de
+> SQL mas su test de solape.
 
 **Comandos exactos** (**[R2-I8]**: la version anterior usaba `DATABASE_URL`, con lo cual
 `integrationEnabled` era falso y **la integracion se skipeaba en silencio** — el falso verde que
@@ -1130,6 +1278,45 @@ explicitamente no se escribe como decision suya).
 5. **El `stripe_customer_id` se persiste en el checkout** (antes solo lo escribia el webhook).
    Es lo que hace que D8 no sea un no-op.
 6. **No hay auditoria de los cambios de plan por ruta** (D11).
+7. **[2026-09-11, al cerrar la fase A] El guard de ADOPCION de D5.h (m1) y el del binding de
+   `checkout.session.completed` (m1-b).** No son pedidos del owner ni estaban en la spec cerrada:
+   salieron de implementar la fase A —el implementador desarrollo la consecuencia al pinnear la
+   precedencia «lo terminal gana»— y el revisor independiente coincidio en el diagnostico y en la
+   ubicacion. Se escriben porque sin ellos **un evento ajeno apaga un negocio vivo** (`plan='none'`
+   sobre A1), que es la clase de estado que toda la spec existe para prohibir. Cuestan dos cambios
+   de firma en archivos de la fase A (`assessEventApplicability` recibe `priceIds`; `IgnoredReason`
+   suma `not_adoptable`), declarados en D5.h. **Si el owner prefiere dejarlo abierto, se revierte el
+   guard y la fila de A1 queda expuesta: la decision es suya, pero no se puede implementar «sin
+   decidir», porque el camino ya esta escrito.**
+
+### Decisiones del IMPLEMENTADOR de la fase B, NO del owner ni del orquestador
+
+Vivian solo en comentarios del codigo; las baja aca el pedido del revisor, porque un lector de la
+spec no las veia. Ninguna cambia una decision de producto: las cuatro son bordes que el diseño no
+fijaba y que HAY que resolver para que el webhook funcione.
+
+1. **El binding de `checkout.session.completed` NO mueve `last_event_at` y NO aplica el guard de
+   orden.** No deriva ningun plan —solo bindea ids— y adelantar la marca seria PELIGROSO:
+   `checkout.session.completed` y `customer.subscription.created` llegan casi juntos y **sin orden
+   garantizado entre sus `created`**, asi que moverla dejaria al evento de suscripcion clasificado
+   `stale_event` y **el plan no se otorgaria nunca**. Es [R2-M3] aplicado a este camino.
+2. **`reconcileFromStripe` aplica el guard de pertenencia/adopcion pero NEUTRALIZA el de orden por
+   construccion**: se le pasa `created = ahora`, asi que nunca puede ser «stale» — no hay ningun
+   evento cuyo orden respetar, lo que se lee es el estado ACTUAL de Stripe. Y por lo mismo **no
+   mueve `last_event_at`**: si lo adelantara a `now`, un evento legitimo que llegara despues con un
+   `created` anterior quedaria `stale_event` y se perderia. D8 decia «el mismo guard» sin distinguir
+   las dos reglas; esta es la lectura que se implemento.
+3. **Vocabulario nuevo de `ignored_reason`: `session_without_subscription`** — un
+   `checkout.session.completed` que no creo ninguna suscripcion (no era `mode: "subscription"`). Sin
+   el, ese caso quedaba marcado procesado con un motivo PRESTADO (`unknown_business`) que manda a
+   diagnosticar otra cosa. `derive.ts` ya preveia que el implementador pudiera sumar uno y lo
+   declarara. **Por el mismo motivo, `reconcileFromStripe` distingue `no_subscription_row` de
+   `no_customer`** (la primera version los confundia; lo cazo el revisor).
+4. **`scheduleDowngrade` cubre los pasos 2 Y 4 de D6 en una sola funcion**, con
+   `pendingPlanAt` opcional, en vez de una sexta funcion en `store.ts`; y escribe
+   `downgrade_requested_at` con `coalesce(columna, $now)` para **conservar** la marca, que es de lo
+   que cuelga la `idempotencyKey` del reintento de D6. **Lo consume la fase C**: `cancel` llama dos
+   veces, sin `pendingPlanAt` en el paso 2 y con la fecha de Stripe en el paso 4.
 
 ### Requisito de configuracion que hay que verificar, o el ADR 0059 no se cumple
 

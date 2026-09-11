@@ -8,7 +8,406 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-11 (**FASE A de la spec 0063: PASS del revisor independiente. Cerrada y COMMITEADA en
+Ultima actualizacion: 2026-09-11 (**FASE B de la spec 0063 EN CURSO. El primer implementador MURIO a mitad y dejo el
+arbol ROJO con codigo de produccion SIN UN SOLO TEST; se lo retomo con su contexto y la auditoria hecha.**
+
+**AUDITORIA DEL ARBOL HEREDADO, corrida por el orquestador — no relatada por nadie:**
+- **`grep -rn MUTATION apps/merchant/src` VACIO.** Era lo primero a chequear: un implementador muerto a mitad de sus
+  mutaciones deja un rojo indistinguible de un bug real del producto (paso en la spec 0055 con `counter/core.ts`).
+- **`pnpm run typecheck` ROJO, 3 errores.** Uno es `billing-applicability.test.ts(27,5)`: el test de fase A quedo sin
+  actualizar contra la firma nueva de `assessEventApplicability` (la de m1). Los otros dos son
+  `billing/webhook.ts:108` y `:113` — se le pasa el `db` crudo donde la firma pide forma de transaccion
+  (`NeonHttpQueryResult` sin `oid` contra `QueryResult`). **Al implementador se le advirtio explicitamente que NO lo
+  arregle con un cast:** eso apaga el typecheck que el contrato compro.
+- **Escribio codigo de produccion y CERO tests.** Creados `billing/applicability.ts` (145), `billing/store.ts` (284),
+  `billing/webhook-apply.ts` (216), `billing/webhook.ts` (181); modificados `billing/derive.ts` (248),
+  `billing/index.ts` y `app/api/stripe/webhook/route.ts`. **Es el estado mas peligroso posible**: en cuanto el
+  typecheck se ponga verde, queda codigo sin oraculo que parece terminado.
+- **`billing/webhook-apply.ts` NO esta en la tabla §Archivos de la spec** — split no declarado. Se le pidio la fila
+  con el motivo, como ya se hizo con `derive-rules.ts` y `applicability.ts`. Un archivo que nadie declaro se lee como
+  alcance inventado.
+- **`store.ts` esta en 284 lineas**, a 16 del limite de 300: lo que se le sume parte el archivo.
+
+**FASE B DE LA SPEC 0063: PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 2 pasadas). COMMITEADA. Falta la fase C.
+NADA DESPLEGADO A PROD: no se pusheo y la migracion 0030 NO esta aplicada a prod — solo a la rama efimera
+`spec-0063-billing`.**
+
+**ARRANCAR LA FASE C DESDE ACA.** Base de integracion: la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`),
+credenciales en `.env.integration.local` (gitignored), migracion `0030` YA aplicada — **pero corre algo antes de
+creerle al `.env`**: una rama borrada y una sana son indistinguibles desde el archivo. **Ese archivo tiene SOLO las 3
+variables `NEON_INTEGRATION_*`, no las 5 `STRIPE_*`**: los tests usan `vi.stubEnv`, y el revisor verifico que eso no
+produce un verde por el motivo equivocado (el test de firma invalida asevera el texto literal `"Firma invalida."`,
+distinguible del de «Webhook no configurado»).
+
+**GATES CORRIDOS POR EL ORQUESTADOR, no auto-reportados:** typecheck **forzado** (`TURBO_FORCE=true`, `0 cached` — un
+cache hit no es evidencia), lint, format:check, build forzado, y `pnpm test` con `.env.integration.local`:
+**111 archivos / 821 tests / 0 skipped**. `grep MUTATION` vacio. **Ningun archivo NUEVO sobre 300 lineas** (los 5 que
+pasan son preexistentes: `onboarding/page.tsx` 469, `consumer-recovery` 447, etc.). **Ningun test preexistente
+perdido**: `billing-applicability.test.ts` 9→9 `it(`, `locations-plan-cap.test.ts` 7→7.
+
+**LO QUE HAY QUE LEER DE ESTA FASE ANTES DE EMPEZAR LA C, porque los dos bloqueantes NO eran bugs de codigo:**
+1. **B1 — un comentario de produccion afirmaba un invariante que ningun test pinnea.** El docblock de `claimEvent`
+   decia en mayusculas «UNA SOLA ENTREGA GANA EL CLAIM». **Falso para el solape**: el claim commitea antes del
+   `retrieve` ([R1-M1] lo exige), asi que dos entregas solapadas ganan las dos y la segunda contesta `{received:true}`
+   sin `duplicate`. Vale para la reentrega **SECUENCIAL**, que es el reintento de Stripe y el bug del §Problema-4. El
+   comentario del TEST estaba bien acotado; el de PRODUCCION no, y estaba tres lineas arriba del statement.
+2. **B2 — EL MAS CARO, y es el ADR 0054 en su version mas dificil de ver: una IMPOSIBILIDAD afirmada de mas.** El costo
+   declarado para cerrar el solape («un lock explicito o una columna `processing_at` con lease») **era falso**: el lease
+   entra en la columna **`received_at` QUE YA EXISTE**, como un predicado mas en el **mismo** `setWhere` — sin columna,
+   sin migracion, sin lock, sin violar [R1-M1]. Medido sobre Neon con control por el revisor, por el implementador y por
+   el orquestador. Y el `EXPLAIN` da los **dos** predicados en el **mismo nodo post-lock**
+   (`Conflict Filter: ((processed_at IS NULL) AND (received_at < (now() - '00:01:00'::interval)))`), asi que el lease
+   **no rompe la premisa del ADR 0054**: es un guard que se re-evalua, no un pre-chequeo.
+   **Y la leccion de metodo: el ORQUESTADOR relato ese costo al owner y lo bajo a este archivo SIN verificarlo**, y
+   encima apoyaba una recomendacion («aceptar el limite»). Es la regla de `CLAUDE.md` —un limite que reporta un
+   subagente no se relata ni se documenta sin verificarlo— violada por quien la tenia que hacer cumplir. Lo cazo el
+   revisor.
+3. **Lo mejor de la revision fue una mutacion que NO estaba en la tabla: MUT-B, anular la ASIMETRIA** del guard de
+   adopcion (que corriera tambien cuando `subscription.id === row.stripeSubscriptionId`). Demostro que **las DOS
+   mitades de m1 tienen oraculo**, no solo la benigna: 2 rojos unit + **2 de integracion por SQL** (`una cancelacion
+   hecha desde el DASHBOARD termina en none` → `expected 'plus' to be 'none'`). La pregunta que la genero —«¿esta
+   pinneada la mitad peligrosa o solo la que el test nombra?»— es la que conviene repetir en la fase C.
+4. **Un oraculo puede estar sostenido por OTRO guard del que uno cree** (M16): la primera version de esa mutacion
+   quedaba verde porque el guard de adopcion la frenaba. Y en M16/M19 hubo que **reordenar las aserciones** para que el
+   rojo no quedara atribuido al valor de retorno en vez de a la fila.
+
+**DOS DECISIONES DEL OWNER, PLANTEADAS Y NO TOMADAS. Ninguna bloquea la fase C:**
+1. **El item del DoD «dos entregas simultaneas: una sola gana el claim» quedo marcado ABIERTO en la spec**, con el
+   precio real escrito: **reescribir el item** (el efecto es un `UPDATE` idempotente, asi que el doble procesamiento no
+   corrompe estado) **o implementar el lease** (un predicado, sin migracion; trade-off: un reintento de Stripe DENTRO de
+   la ventana recibe `{duplicate:true}` y espera al siguiente — hay que elegir la ventana, 1 min es el valor probado).
+   El orquestador **retiro** su recomendacion anterior porque estaba apoyada en el costo inflado.
+2. **`ADR 0059 §5` sigue nombrando `pending_plan='free'` como discriminante** del `deleted` «esperado» — el
+   discriminante **falsificable** que la 2a ronda reemplazo por `downgrade_requested_at`. Drift **preexistente**, pero es
+   texto vivo que puede recrear el bug que toda la spec existe para prohibir. Los ADR son **inmutables**: el arreglo es
+   un ADR nuevo que supersede ese punto.
+
+**FILAS QUE HEREDA LA FASE C (del revisor, ninguna bloqueante):**
+- **`no_subscription_row`, `no_customer` e `ignored` no tienen oraculo** (solo `no_subscriptions`, via M16). El delta no
+  empeoro nada —corrigio un valor engañoso—, pero la fase C **traduce esos cuatro motivos a lo que ve el owner**, asi
+  que va una fila ahi. **El revisor YA DEMOSTRO que se puede pinnear** (escribio una sonda de ~35 lineas y la borro):
+  **no hay limite que declarar.**
+- **Presupuesto de tamaño casi agotado:** `store.ts` en **295**/300 y `billing-store.neon.integration.test.ts` en
+  **300** exactas. Lo proximo que se le sume a cualquiera de los dos **parte el archivo** — y la fase C consume
+  `scheduleDowngrade` y `reconcileFromStripe`.
+- **Endurecimiento, no defecto:** si un mismo `sub_X` resolviera a dos negocios distintos, `applySubscriptionState`
+  chocaria `core_subscription_stripe_unique` → `23505` → 500 → Stripe reintenta para siempre. No alcanzable por el actor
+  del que m1 defiende.
+- **Las decisiones del IMPLEMENTADOR de la fase B estan en una seccion propia de la spec** (4 entradas), etiquetadas
+  como suyas. **La 4a —la forma de `scheduleDowngrade`, pasos 2 y 4 de D6 con `coalesce`— la consume la fase C.**
+
+**LO QUE SIGUE:** **fase C** (5 rutas + `_auth.ts` + UI + D8 + D10 + render del HTML + `locations-races`; mutaciones M5,
+M6, M14, M17 y **re-ejecutar M1**) → revisor independiente → despliegue.
+
+**Y DESPUES del PASS final, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
+del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios
+pierden el modulo Locales; el `next build` NO lo caza porque esas paginas son `force-dynamic`), y setear
+**`MERCHANT_PUBLIC_ORIGIN`** en Vercel (Production y Preview) antes de pushear.
+
+**Pendiente del owner, sin bloquear:** el chequeo en Stripe de que al agotar los reintentos de cobro la suscripcion
+quede en **`unpaid`** y no cancelada (Billing → Manage failed payments). Sin eso el ADR 0059 no se cumple.
+
+**ESTADO PREVIO (2026-09-11, noche). Los 2 bloqueantes y los 4 menores del FAIL atendidos; el delta en
+RE-REVISION con el MISMO revisor (conserva el contexto de toda la fase B, incluida MUT-B).**
+
+**Lo que corrigio el implementador, y que de los menores salio mas de lo esperado:**
+- **B1 / B2** como se describe abajo.
+- **El menor (1) era mas amplio de lo que el revisor reporto: la lista normativa falsa estaba en TRES lugares**, no
+  dos — `webhook.ts:22`, D5.a de la spec **y un item del DoD que repetia la lista vieja**. Los tres corregidos a los
+  cinco campos reales (`type`, `id`, `created`, `data.object.id`, `api_version`), con la nota de que `api_version`
+  describe al SOBRE, no al contenido.
+- **El menor (3) toco PRODUCCION, no solo texto:** `ReconcileOutcome` gana `no_subscription_row` y `store.ts` lo
+  devuelve cuando falta **la fila** (antes decia `no_customer`, que mandaba a diagnosticar otra cosa). `store.ts` paso
+  de 284 a **295** lineas. Por eso la re-revision tiene que correr los gates y una mutacion sobre
+  `reconcileFromStripe` (M16): **un vocabulario que crece sin oraculo seria un agujero nuevo introducido arreglando un
+  menor.**
+- **El menor (4) crecio a 4 entradas:** el implementador agrego por su cuenta la forma de `scheduleDowngrade` (pasos 2
+  y 4 de D6 con `coalesce`) **porque la consume la FASE C y no estaba escrita en ningun lado**. Van en una seccion
+  nueva de la spec, «Decisiones del IMPLEMENTADOR de la fase B, NO del owner ni del orquestador».
+
+**EVIDENCIA NUEVA, verificada por el orquestador con su propia corrida (no relatada):** el `EXPLAIN` del claim **con el
+lease** da `Conflict Filter: ((stripe_webhook_event.processed_at IS NULL) AND (stripe_webhook_event.received_at <
+(now() - '00:01:00'::interval)))` — **los dos predicados en el MISMO nodo post-lock**, o sea que el lease **no rompe la
+premisa del ADR 0054**. Eso no estaba en el analisis original y es lo que hace que la opcion de cerrar el solape sea
+tecnicamente limpia, no solo barata.
+
+**Gates que reporta el implementador al cerrar:** los 5 verdes, `pnpm test` con `.env.integration.local` →
+**111 files / 821 passed / 0 skipped**, `grep MUTATION` 0, ningun archivo sobre 300 lineas.
+
+**ESTADO PREVIO (2026-09-11, noche). Los 2 bloqueantes del FAIL corregidos y verificados en el arbol. Sin PASS: nada se marca `implementada`, nada commiteado, nada desplegado.**
+
+**Verificado leyendo el arbol, no el relato:**
+- **B1 corregido** en `billing/webhook.ts`: el docblock del claim ahora tiene un bloque «QUE GARANTIZA ESTE GUARD Y QUE
+  NO», acotado a lo **medido** contra Neon, que **nombra que la version anterior afirmaba «UNA SOLA ENTREGA GANA EL
+  CLAIM» y que eso es falso para el solape** (ADR 0054 del lado del comentario). Separa el «SI» (reentrega SECUENCIAL,
+  el reintento de Stripe, el bug del §Problema-4, lo que muerde con M3/M7) del solape.
+- **B2 corregido** en la spec (bloque «HALLAZGO DE LA FASE B», ~linea 1140): dice que el costo declarado era falso, que
+  viajo a `docs/TASKS.md`, y escribe el statement real con el predicado sobre `received_at`. `docs/TASKS.md` ya tenia su
+  propia correccion escrita por el orquestador.
+- Arbol QUIETO (3 `shasum` iguales en dos pasadas consecutivas), **typecheck VERDE**, `grep MUTATION` **vacio**.
+
+**LO QUE SIGUE, EN ORDEN:** (1) handoff corto del implementador con que cambio por cada punto; (2) **RE-REVISION del
+delta con el MISMO revisor** (conserva el contexto de toda la fase B, incluida MUT-B); (3) con el PASS, **commit de la
+fase B**; (4) **fase C** (5 rutas + UI + D8 + D10 + render del HTML + `locations-races`; mutaciones M5, M6, M14, M17 y
+**re-ejecutar M1**) → revisor; (5) despliegue, con el orden invertido de siempre: **migracion `0030` a prod ANTES del
+push** y `MERCHANT_PUBLIC_ORIGIN` seteada en Vercel antes de pushear.
+
+**DOS DECISIONES ABIERTAS DEL OWNER, las dos planteadas y ninguna resuelta:**
+1. **El solape del claim**, ahora con el PRECIO REAL (un predicado en el `setWhere`, sin migracion): aceptar el limite y
+   **reescribir el item del DoD**, o cerrarlo. El orquestador **retiro** su recomendacion anterior («aceptar») porque
+   estaba apoyada en el costo inflado, y no la reemplazo hasta que el owner decida.
+2. **El drift del `ADR 0059 §5`** (nombra el discriminante falsificable que la 2a ronda reemplazo). Los ADR son
+   inmutables: el arreglo es un ADR nuevo que supersede ese punto.
+
+**ESTADO PREVIO (2026-09-11). El revisor independiente habia devuelto **FAIL** — 2 bloqueantes, los DOS de afirmaciones
+escritas que el arbol no sostiene. El codigo de produccion lo encontro CORRECTO y bien pinneado. Ya despachados al
+implementador. Sin PASS: nada se marca `implementada`, nada commiteado, nada desplegado.**
+
+**LO MEJOR QUE HIZO EL REVISOR, y cierra el riesgo n.º 1 de la fase: escribio una mutacion que NO estaba en la tabla
+(MUT-B) — anular la ASIMETRIA, que el guard de adopcion corra tambien cuando `subscription.id ===
+row.stripeSubscriptionId`.** Demostro que **las dos mitades de m1 tienen oraculo**, no solo la benigna: 2 rojos unit +
+**2 de integracion por SQL** (`una cancelacion hecha desde el DASHBOARD termina en none` → `expected 'plus' to be
+'none'`, y `un deleted CON downgrade_requested_at deja free` → `expected 'plus' to be 'free'`). O sea que «un evento
+puede crear o confirmar una adopcion, nunca terminarla» esta pinneado de los dos lados, y romper el fin de periodo
+normal **no** pasa con los gates en verde.
+
+**B1 — `billing/webhook.ts:151-154` afirma un invariante que el arbol no sostiene.** El docblock de `claimEvent` dice
+en mayusculas que el observable es «UNA SOLA ENTREGA GANA EL CLAIM». Falso para el solape, medido. El comentario del
+TEST esta bien acotado; el de PRODUCCION no — y esta tres lineas arriba del statement. ADR 0054 del lado del
+comentario. Fix: acotar a la reentrega SECUENCIAL y nombrar que el solape queda afuera.
+
+**B2 — el costo declarado para cerrar el solape era FALSO.** Ver la correccion mas abajo en esta misma nota. Bloquea
+porque **cambia la decision del owner**.
+
+**MENORES del revisor, despachados:** (1) la enumeracion «y nada mas» del payload **omite `event.api_version`** — el
+`grep` da CINCO campos leidos, y la lista falsa esta en `webhook.ts:22-23` y en D5.a; (2) punteros de oraculo mal
+atribuidos en `billing-store.test.ts:20` y `:241` (apuntan al test del webhook; el oraculo real es el de store); (3) un
+`reason` prestado **no declarado**: `store.ts:248` devuelve `no_customer` cuando lo que falta es **la fila**; (4) tres
+decisiones de implementacion viven **solo en comentarios** y no en la spec (el binding no mueve `last_event_at`, la
+neutralizacion del guard de orden en `reconcileFromStripe`, y el vocabulario `session_without_subscription` — 0
+apariciones en la spec).
+
+**DOS MENORES QUE SE RESERVO EL ORQUESTADOR, NO DESPACHADOS:**
+- **(6) `ADR 0059 §5` sigue nombrando `pending_plan='free'` como discriminante** del `deleted` «esperado» — **es
+  exactamente el discriminante FALSIFICABLE que la 2a ronda de revision reemplazo por `downgrade_requested_at`**.
+  Drift **preexistente**, no lo introdujo la fase B, pero es texto VIVO que puede recrear el bug que toda la spec
+  existe para prohibir. **Los ADR son inmutables** (`CLAUDE.md`): el arreglo es un ADR nuevo que supersede ese punto, y
+  eso es del tamaño de una decision → **queda para el owner**, no se toca a mano.
+- **(7) Endurecimiento, no defecto:** si un mismo `sub_X` resolviera a dos negocios distintos (inconsistencia de
+  `metadata.businessId`), `applySubscriptionState` chocaria `core_subscription_stripe_unique` → `23505` → 500 → Stripe
+  reintenta para siempre. No es alcanzable por el actor del que m1 defiende y la spec no lo trata. Anotado.
+
+**LO QUE EL REVISOR NO PUDO VERIFICAR, declarado por el:** no re-ejecuto M4, M7 ni M19 (corrio M3, M16, M18 + MUT-B, y
+priorizo el guard de adopcion); la `api_version` real del endpoint de Stripe (no tiene acceso al dashboard); el
+comportamiento contra el Stripe real. **E intento falsificar dos limites y no pudo:** que el stub de env produjera un
+verde por el motivo equivocado (el test de firma invalida asevera el texto literal `"Firma invalida."`, distinguible
+del de configuracion) y que el solape se pudiera cerrar **sin ningun** costo (sin lease ni lock es estructural).
+
+**ESTADO PREVIO (2026-09-11, tarde). El revisor se habia caido antes de emitir veredicto y se
+lo retomo. Sigue SIN PASS: nada se marca `implementada`, nada commiteado, nada desplegado.**
+
+**AUDITORIA DEL ARBOL TRAS LA CAIDA DEL REVISOR (un revisor tambien pone mutaciones — es el mismo riesgo):**
+`grep -rn MUTATION apps/merchant/src` **vacio**, y el `shasum` de los cuatro archivos de produccion es **identico** al
+que el implementador reporto post-revert: `applicability.ts 8303892a…`, `store.ts a9bfa417…`, `webhook.ts
+bc2c88de…` (este ya lo habia verificado el orquestador al re-ejecutar M3), `webhook-apply.ts df9ecd68…`. **El delta
+esta intacto**: el revisor no dejo nada colgado y puede seguir sin limpiar.
+
+**ESTADO (2026-09-11). FASE B IMPLEMENTADA Y EN REVISION INDEPENDIENTE. Sin PASS todavia: nada se marca
+`implementada` y nada esta commiteado ni desplegado.**
+
+**Gates que reporta el implementador:** typecheck/lint/format:check/build verdes; `pnpm test` con integracion
+**111 files / 821 passed / 0 skipped** (venia de 779). Archivos nuevos de produccion: `billing/applicability.ts`,
+`billing/store.ts`, `billing/webhook.ts`, `billing/webhook-apply.ts`; la ruta del webhook ahora delega.
+
+**LO QUE VERIFICO EL ORQUESTADOR CON SUS MANOS, no relatado:**
+1. **El `EXPLAIN` del claim sobre Neon**, statement literal: `Conflict Resolution: UPDATE` /
+   **`Conflict Filter: (stripe_webhook_event.processed_at IS NULL)`** — **no** `InitPlan` ni `One-Time Filter`. Misma
+   salida que reporto el implementador.
+2. **M3 RE-EJECUTADA por el orquestador** (`setWhere` del claim sacado, etiquetada `MUTATION`, revertida con `shasum`
+   `bc2c88de…` identico antes y despues): **exactamente 1 rojo**, `reentregar un evento YA PROCESADO contesta
+   {duplicate:true} y no lo vuelve a aplicar`, con la asercion literal
+   `expected { received: true } to deeply equal { received: true, duplicate: true }` — **igual a lo transcripto**. Y el
+   test de dos entregas simultaneas **queda VERDE sin el guard**, o sea que **el limite del claim es REAL** y ese test
+   no es el oraculo del claim. Su nombre es honesto: dice «dejan UNA sola fila y el estado correcto», no «una gana el
+   claim».
+
+**LA DECISION QUE SIGUE ABIERTA Y ES DEL OWNER (no se toco):** el DoD pide «dos entregas simultaneas: una sola gana el
+claim» y **el diseño no lo da** — el claim commitea antes del `retrieve`, asi que una segunda entrega solapada tambien
+gana. Vale para el reintento SECUENCIAL de Stripe, que es el caso real y el bug del §Problema-4. **CORRECCION (2026-09-11): el costo que esta nota declaraba era FALSO y lo
+falsifico el revisor independiente; el orquestador lo re-verifico con su propia corrida.** Decia «costaria un lock
+explicito o una columna `processing_at` con lease» — **no hace falta ninguna de las dos: el lease entra en la columna
+`received_at` QUE YA EXISTE, como un predicado mas en el MISMO `setWhere`** (`and received_at < now() - interval '1
+minute'`). Sin columna nueva, sin migracion, sin lock explicito y sin violar [R1-M1]. Medido sobre Neon con control:
+2a entrega solapada **pierde** (con el claim actual **gana** — el agujero), reintento de Stripe con lease vencido
+**gana**, reentrega de uno ya procesado **pierde**. El trade-off real: un reintento de Stripe DENTRO de la ventana del
+lease recibiria `{duplicate:true}` y el evento esperaria al reintento siguiente (tolerable: los reintentos estan a
+minutos/horas, pero es una decision, no gratis). **El limite EXISTE; lo falso era su PRECIO.**
+**Y la leccion de metodo, que es la regla de `CLAUDE.md` que el orquestador violo en esta misma sesion: un limite que
+reporta un subagente NO se relata al owner ni se baja a un doc sin verificarlo.** Este costo se relato al owner y se
+escribio aca tal como vino del handoff del implementador, y apoyaba la recomendacion «aceptar el limite». Lo cazo el
+revisor. **Dos salidas: (a) aceptar el limite y REESCRIBIR el item del DoD** para que no prometa lo que el test
+no pinnea (dejarlo como esta es el ADR 0054 otra vez), **o (b) pedir el cierre del solape como trabajo extra.**
+
+**SEÑALADO AL REVISOR, sin tocarlo para no ensuciar el delta:** `billing/webhook.ts:151-153` tiene un comentario que
+afirma que el observable es «UNA SOLA ENTREGA GANA EL CLAIM». Es cierto para la reentrega secuencial y se lee como
+afirmacion general — posible ADR 0054 del lado del comentario. Lo juzga el revisor.
+
+**Hallazgos del implementador que conviene no perder:** (a) la 1a version de M16 quedaba VERDE porque **el guard de
+adopcion de m1 la frenaba** — el oraculo lo sostenia OTRO guard; (b) en M16 y M19 hubo que **reordenar las
+aserciones** para que el rojo no quedara atribuido al valor de retorno en vez de a la fila; (c)
+`core_subscription_stripe_unique` es un unique GLOBAL y vitest paraleliza archivos: dos literales iguales dan un
+`23505` que **parece bug de producto**; (d) vocabulario nuevo `session_without_subscription`, declarado; (e) menor sin
+resolver: si `event.data.object.id` no fuera string, la rama defensiva marca `unknown_business`, un motivo prestado.
+
+**LO QUE SIGUE:** PASS/FAIL del revisor → (si PASS) commit de la fase B → **fase C** (5 rutas + UI + D8 + D10 + render
+del HTML + `locations-races`; mutaciones M5, M6, M14, M17 y **re-ejecutar M1**) → revisor → despliegue.
+
+**ESTADO PREVIO (2026-09-12, madrugada), cuando las 6 mutaciones recien se habian transcripto (6/6 por el chequeo
+`grep -cE '^\| M(3|4|7|16|18|19) \|.*EJECUTADA'`). El implementador sigue cerrando su handoff; el arbol esta QUIETO y
+VERDE (typecheck + lint, `grep MUTATION` vacio).** Nada revisado todavia, nada commiteado.
+
+**DOS COSAS QUE VERIFICO EL ORQUESTADOR POR SU CUENTA, no relatadas:**
+1. **El `EXPLAIN` del claim, corrido sobre Neon con el statement literal** (DoD): da
+   `Conflict Resolution: UPDATE` / `Conflict Arbiter Indexes: stripe_webhook_event_pkey` /
+   **`Conflict Filter: (stripe_webhook_event.processed_at IS NULL)`** — **no** `InitPlan` ni `One-Time Filter`. Es el
+   nodo que se evalua sobre la fila ya lockeada, que es la distincion del ADR 0054. Falta bajarlo a la spec (el
+   implementador estaba editandola, asi que el orquestador no escribio para no pisarlo).
+2. **El limite del claim esta declarado DENTRO del propio test** (`billing-webhook.neon.integration.test.ts:196-202`),
+   no solo en el handoff — que es lo que el repo exige de un limite.
+
+**EL HALLAZGO MAS IMPORTANTE DE LA FASE B, Y CONTRADICE UN ITEM DEL DoD. NO ES DECISION DEL OWNER NI DEL ORQUESTADOR
+TODAVIA:** el DoD pide «dos entregas simultaneas: una sola gana el claim». **Eso vale para el reintento de Stripe
+(entrega SECUENCIAL, que es el caso real y el bug del §Problema-4), pero NO para dos entregas que se solapan de
+verdad** — y es consecuencia directa de [R1-M1], no un bug: el claim es su propia transaccion corta y **commitea antes
+del `retrieve`**, asi que la segunda entrega encuentra `processed_at IS NULL` y **tambien gana**. Para que la segunda
+perdiera habria que dejar el claim abierto durante todo el procesamiento, que es justo lo que [R1-M1] prohibe (la fila
+queda lockeada hasta el commit; un revisor lo ejecuto). El orquestador confirmo el razonamiento de forma analitica y
+**queda pendiente re-ejecutar M3 para verificar la atribucion con las manos** — no se hizo todavia porque el
+implementador estaba en vuelo y una mutacion puesta mientras otro edita es el rojo indistinguible de la spec 0055.
+- **Lo que el test SI asevera y vale siempre:** una sola fila de evento, procesada, y el estado final correcto (el
+  efecto es un `UPDATE` idempotente).
+- **A DECIDIR (owner/orquestador), no resuelto:** si hace falta cerrar tambien el solape real (costaria un lock
+  explicito o una columna `processing_at` con lease). La spec no lo pedia y la entrega duplicada SIMULTANEA de Stripe
+  no esta documentada como comportamiento suyo. **Si se acepta el limite, el ITEM DEL DoD hay que reescribirlo** para
+  que no prometa una propiedad que el diseño no da — un DoD que afirma lo que el test no pinnea es el ADR 0054 otra
+  vez.
+
+**OTRO HALLAZGO QUE VALE GUARDAR (de M16):** la primera version de esa mutacion quedaba VERDE porque **el guard de
+adopcion de m1 la frenaba** (`not_adoptable`) — o sea que ese oraculo lo sostenia OTRO guard, no el que la mutacion
+apuntaba. Recien la version fiel (degradar la suscripcion DE LA FILA) muerde. Es la leccion de la atribucion
+equivocada, encontrada en vivo. Y en M16/M19 hubo que **reordenar las aserciones** del test para que el rojo no
+quedara atribuido al valor de retorno en vez de a la fila.
+
+**EN CURSO PREVIO (2026-09-11, 23:45):** el implementador fue retomado por TERCERA vez y esta editando
+(`billing-store.neon.integration.test.ts` entre otros), asi que el arbol esta EN VUELO y un rojo cualquiera puede ser
+trabajo a medias. **Chequeo barato para saber si termino, corrido por el orquestador y que vale mas que cualquier
+relato:** `grep -cE '^\| M(3|4|7|16|18|19) \|.*EJECUTADA' docs/specs/0063-*.md` — a esta hora devuelve **0 de 6**. La
+fase B NO esta cerrada hasta que eso de 6 y el `EXPLAIN` del claim este transcripto. El orquestador dejo ese mismo
+chequeo corriendo en espera.
+
+**MEDICION DEL ORQUESTADOR (2026-09-11, 23:24) — el implementador se cayo por SEGUNDA vez, y esta vez dejo mucho
+mas. Todo esto es corrido, no relatado:**
+- `grep -rn MUTATION apps/merchant/src` **vacio**. `pnpm run typecheck` **VERDE**.
+- `pnpm test` **con `.env.integration.local` cargado: 821 tests, 820 passed, 1 failed, CERO skipped.** Subio de 779 a
+  821 y los 0 skipped prueban que la integracion corrio de verdad (no el falso verde de la 0062).
+- **El unico rojo es de codigo de TEST, no del producto**, y queda anotado para que nadie lo persiga como bug:
+  `billing-webhook-writes.neon.integration.test.ts:230` → `seedLocationsBusiness` → `23505`,
+  `constraint: core_subscription_stripe_unique`, `Key (stripe_subscription_id)=(sub_viva) already exists`. El test
+  siembra el literal `sub_viva` dos veces (lineas 231 y 258) y ese unique es **GLOBAL** (viene de una spec anterior):
+  dos negocios no pueden compartir `stripe_subscription_id`. Devuelto al implementador con la indicacion de NO taparlo
+  con `onConflictDoNothing` en el seed — eso haria que un seed fallado parezca uno que funciono.
+- **Observacion lateral que salio de ese rojo** (va como observacion, no como decision): ese unique global implica que
+  un id ajeno no puede escribirse encima de una segunda fila si otra ya lo tiene, o sea que la DB da algo de defensa en
+  profundidad para m1-b — **pero NO equivale al guard**, porque la suscripcion ajena puede no estar en ninguna fila.
+- **LO QUE FALTA, verificado leyendo el diff de la spec y no el relato de nadie: las 6 mutaciones M3/M4/M7/M16/M18/M19
+  NO se ejecutaron.** La tabla de mutaciones no tiene un solo resultado transcripto; las unicas lineas nuevas ahi son
+  las que agrego el orquestador al escribir m1. Tampoco esta el **`EXPLAIN` del claim sobre Neon**.
+- **Seis archivos creados que NO estan en la tabla §Archivos de la spec** y hay que declarar:
+  `billing/webhook-apply.ts`, `billing-adoption.test.ts`, `billing-webhook-support.ts`, `billing-store.test.ts`,
+  `billing-store.neon.integration.test.ts`, `billing-webhook-writes.neon.integration.test.ts`. El ultimo esta en
+  **300 lineas exactas** (el hook muerde a partir de 301): al filo.
+- El minor **n1** parece hecho (`locations-plan-cap.test.ts` modificado) — a verificar en la revision.
+
+**Medicion previa (23:10), cuando el arbol estaba verde pero SIN oraculo nuevo:** typecheck
+**VERDE** y `pnpm test` **VERDE — 622 passed / 0 failed / 157 skipped (779)**, `grep MUTATION` vacio. **PERO el total
+de tests sigue en 779, el MISMO numero con el que cerro la fase A**, asi que lo unico que paso es que se arreglaron
+los 3 rojos y los errores de tipo: **todavia no hay ningun oraculo nuevo en el arbol**. Un verde aca NO significa fase
+B terminada — significa «sin regresiones». Los archivos que faltan (`billing-integration-support.ts`,
+`billing-webhook.neon.integration.test.ts`, units de `store.ts`) siguen sin existir, verificado por `git status`.
+**Es exactamente el estado que hay que no confundir: codigo de produccion nuevo (`applicability.ts`, `store.ts`,
+`webhook-apply.ts`, `webhook.ts`) con los gates en verde y sin oraculo propio.**
+
+**Medicion previa del Stop hook (23:09), conservada porque explica un rojo que NO era un bug:**
+typecheck sigue ROJO pero **los errores CAMBIARON** —`webhook.ts:108/113` resueltos, apareció
+`webhook-apply.ts(44,24): Cannot find name 'SQL'`— o sea que el trabajo esta en vuelo sobre esos mismos archivos. La
+suite da **619 passed / 3 failed / 157 skipped (779)**, y los 3 rojos son de `billing-applicability.test.ts`: el caso
+`una fila SIN suscripcion tambien es adoptable (el alta por Checkout)` ahora devuelve
+`{apply:false, ignoredReason:'not_adoptable'}`. **Eso es esperado y es el trabajo pendiente, no un bug**: con el guard
+de m1 la adopcion exige price nuestro + status vivo, y el stub de ese test de fase A pasa solo `{ id }`. El arreglo es
+completar el stub, NUNCA debilitar el guard. **Cualquiera que herede esto: no persigas esos 3 rojos como un bug del
+producto.**
+
+**LO QUE EL IMPLEMENTADOR DEBE TODAVIA:** los 3 errores de typecheck; `billing-applicability.test.ts` con los casos
+de adopcion **incluida la fila anti-degeneracion** (mismo id + status muerto + `deleted` → **aplica**, para que «no
+adoptar nunca» no pase); `billing-integration-support.ts`; el seed de `locations-integration-support.ts`;
+`billing-webhook.neon.integration.test.ts`; units de `store.ts`; el minor **n1**; las **6 mutaciones M3/M4/M7/M16/M18/M19**
+con resultado real transcripto; y el **`EXPLAIN` del claim sobre Neon**.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE B de la spec 0063 despachada a un implementador. Antes de despacharla
+el orquestador cerro el hallazgo m1 EN LA SPEC — no en codigo — y verifico el entorno de integracion.**
+
+**Lo que hizo el orquestador en esta sesion, con evidencia:**
+1. **La rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`) esta VIVA y con la migracion `0030` aplicada** —
+   consultada por SQL, no leida del `.env`: columnas `downgrade_requested_at`, `pending_plan`, `pending_plan_at`,
+   `last_event_at`; indices `core_subscription_business_unique` + los dos unique viejos; `core.stripe_webhook_event`
+   con `ignored_reason`; 31 migraciones; 23 tablas en `core`. (La leccion de la sesion anterior: un `.env` heredado no
+   distingue una rama borrada de una sana.)
+2. **DATO NUEVO que el encargo lleva escrito: `.env.integration.local` tiene SOLO las 3 variables
+   `NEON_INTEGRATION_*`, NO las 5 `STRIPE_*`** que pide §Comandos exactos. Sin ellas la ruta del webhook contesta
+   **400 «Webhook no configurado»** y un test puede quedar verde aseverando el 400 equivocado — el falso verde que la
+   spec 0062 existe para matar. Camino indicado: `vi.stubEnv` con valores que pasen la validacion de prefijo, y
+   verificar que el test se pone ROJO si el secret no coincide.
+3. **m1 y m1-b escritos en la spec como DECISION DEL ORQUESTADOR n.º 7, etiquetada, NO como decision del owner.**
+   Va en D5.h (la regla de adopcion completa, con el atajo prohibido y el por que), dos filas de DoD, las mutaciones
+   **M18/M19**, una fila nueva en §Plan de pruebas y la fila de `billing/applicability.ts` en §Archivos. Fila en
+   `docs/INDEX.md` actualizada en el mismo commit.
+   - **La regla:** cuando `subscription.id ≠ row.stripeSubscriptionId`, la fila se adopta **solo si la suscripcion
+     RECUPERADA es nuestra y no esta muerta** (algun `item.price.id` ∈ {monthly, yearly} **y** status ∉
+     `DEAD_STRIPE_STATUS`); si no, `ignored_reason='not_adoptable'`. **La asimetria ES la regla: un evento puede CREAR
+     o CONFIRMAR una adopcion, NUNCA TERMINARLA.**
+   - **m1-b:** el binding de `checkout.session.completed` escribe `stripe_subscription_id` solo si la fila es
+     adoptable o el id coincide — una sesion tardia no puede repuntar una fila cuya suscripcion esta viva.
+   - **ESTO ES REVERSIBLE Y ES DECISION DEL OWNER SI LO QUIERE ABIERTO.** Esta escrito porque el camino ya existe en
+     el codigo de la fase A y «no decidir» equivale a dejarlo expuesto.
+4. **El corte de archivo lo decidio el orquestador ANTES de despachar, no el implementador a mitad de tarea:**
+   `assessEventApplicability` se muda a `billing/applicability.ts` porque `derive.ts` esta en **281** lineas y el
+   limite es 300. El barrel reexporta y `billing-applicability.test.ts` ya importa desde `./billing`, asi que la
+   mudanza es transparente. Ojo tambien con `billing-derive.test.ts` (**284**).
+
+**Alcance despachado a la fase B:** `billing/applicability.ts` (nuevo), `billing/derive.ts`, `billing/store.ts`,
+`billing/webhook.ts`, `billing/index.ts`, `app/api/stripe/webhook/route.ts`, `billing-integration-support.ts`,
+`locations-integration-support.ts`, `billing-applicability.test.ts`, `billing-webhook.neon.integration.test.ts`,
+units de `store.ts`, y el minor **n1** en `locations-plan-cap.test.ts`. Mutaciones **M3, M4, M7, M16, M18, M19** con
+resultado REAL transcripto. **Explicitamente fuera:** las 5 rutas, la UI, `billing-routes.test.ts`,
+`billing.neon.integration.test.ts`, `locations-races.neon.integration.test.ts` — eso es fase C.
+
+**SI ESTA SESION SE CAE:** el arbol estaba limpio y verde en `f03adb2` antes de despachar; los unicos cambios del
+orquestador son `docs/specs/0063-*.md`, `docs/INDEX.md` y este archivo. Lo que haya de mas es del implementador de la
+fase B, sin commitear y sin revisar. **Nada se marca implementado sin PASS de un revisor independiente**, y
+**NADA esta desplegado a prod**: la migracion `0030` NO esta aplicada a prod y no se pusheo.
+
+**LO QUE SIGUE:** handoff del implementador → **revisor independiente de la fase B** → **fase C** (5 rutas + UI + D8 +
+D10 + render del HTML + `locations-races`; mutaciones M5, M6, M14, M17 y **re-ejecutar M1**) → revisor → despliegue.
+
+**Y DESPUES del PASS final, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
+del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios
+pierden el modulo Locales; el `next build` NO lo caza porque esas paginas son `force-dynamic`), y setear
+**`MERCHANT_PUBLIC_ORIGIN`** en Vercel (Production y Preview) antes de pushear.
+
+**Pendiente del owner, sin bloquear:** el chequeo en Stripe de que al agotar los reintentos de cobro la suscripcion
+quede en **`unpaid`** y no cancelada (Billing → Manage failed payments). Sin eso el ADR 0059 no se cumple.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE A de la spec 0063: PASS del revisor independiente. Cerrada y COMMITEADA en
 `6921c94` (`feat: spec 0063 fase A — fundacion del cambio de plan, con PASS de revisor`). Faltan las fases B y C. NADA desplegado a prod: no se pusheo y la migracion 0030 NO esta aplicada a prod
 — solo a la rama Neon efimera `spec-0063-billing`.**
 

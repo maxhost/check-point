@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { assessEventApplicability } from "./billing";
-import { subscriptionRow } from "./billing-derive-support";
+import {
+  PRICE_IDS,
+  subscriptionFake,
+  subscriptionRow,
+} from "./billing-derive-support";
 
 /**
  * Spec 0063, D5.h — guard de PERTENENCIA y de ORDEN. Archivo nuevo, y la razón de que
@@ -17,15 +21,30 @@ import { subscriptionRow } from "./billing-derive-support";
 
 const EVENT_AT = Math.floor(Date.UTC(2026, 8, 10) / 1000);
 
+/**
+ * `subscription` es la suscripción RECUPERADA por `subscriptions.retrieve`, no el payload.
+ * Desde m1 el guard mira además su `status` y sus `items`: el discriminante de adopción es
+ * el estado de la suscripción recuperada, no el tipo de evento (que es un disparador, no un
+ * hecho — un `updated` legítimo puede ser el primero que vemos si el `created` se perdió).
+ * Por eso este helper NO tiene parámetro de tipo de evento: el guard es ciego a él a
+ * propósito.
+ */
 const assess = (args: {
   created?: number;
   subscriptionId?: string;
+  status?: string;
+  items?: { priceId: string }[];
   row?: ReturnType<typeof subscriptionRow>;
 }) =>
   assessEventApplicability({
     event: { created: args.created ?? EVENT_AT },
-    subscription: { id: args.subscriptionId ?? "sub_1" },
+    subscription: subscriptionFake({
+      id: args.subscriptionId ?? "sub_1",
+      status: args.status,
+      items: args.items,
+    }),
     row: args.row ?? subscriptionRow(),
+    priceIds: PRICE_IDS,
   });
 
 describe("assessEventApplicability — pertenencia (spec 0063, D5.h regla 1)", () => {
@@ -159,7 +178,8 @@ describe("assessEventApplicability — orden (spec 0063, D5.h regla 2)", () => {
 /**
  * LO QUE ESTE ARCHIVO NO PINNEA, declarado: que el WEBHOOK llame a esta función antes de
  * escribir, y que un evento ignorado NO mueva `last_event_at` ([R2-M3]). Las dos son
- * propiedades del cableado, viven en `billing/webhook.ts` —que es fase B y todavía no
- * existe— y su oráculo es la integración Neon del plan de pruebas. Acá está la decisión,
- * no el cableado.
+ * propiedades del CABLEADO, viven en `billing/webhook-apply.ts` y su oráculo es
+ * `billing-webhook.neon.integration.test.ts` (fase B, escrito). Acá está la decisión, no el
+ * cableado. El guard de ADOPCIÓN (m1) y el del binding (m1-b) están en el sibling
+ * `billing-adoption.test.ts`.
  */

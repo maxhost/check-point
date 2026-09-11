@@ -7,7 +7,6 @@ import {
   TERMINAL_STATUS,
   pendingPlanFor,
 } from "./derive-rules";
-import { DEAD_STRIPE_STATUS } from "./plan-change";
 
 /**
  * Spec 0063, D5 — CONTRATO. Lo dejó el orquestador antes de despachar; el implementador
@@ -93,6 +92,15 @@ export type IgnoredReason =
   | "unknown_price"
   | "unknown_status"
   | "foreign_subscription"
+  /** [m1, fase B] La fila era adoptable, pero la suscripción recuperada no es nuestra o ya
+   * está muerta: un evento puede CREAR o CONFIRMAR una adopción, nunca terminarla. El
+   * vocabulario y el guard viven en `applicability.ts`. */
+  | "not_adoptable"
+  /** [fase B] Un `checkout.session.completed` que no creó ninguna suscripción (no era
+   * `mode: "subscription"`): no hay nada que bindear. Lo nombró el IMPLEMENTADOR de la fase
+   * B y está declarado en su handoff — sin él, ese caso quedaba marcado procesado con un
+   * motivo prestado («unknown_business») que habría mandado a diagnosticar otra cosa. */
+  | "session_without_subscription"
   | "stale_event";
 
 export type PlanFromSubscriptionArgs = {
@@ -171,37 +179,16 @@ export type PlanFromSubscription = (
 ) => SubscriptionWrite;
 
 /**
- * GUARD DE PERTENENCIA Y DE ORDEN (D5.h), separado de `planFromSubscription`.
+ * EL GUARD DE PERTENENCIA, ADOPCIÓN Y ORDEN (D5.h) YA NO VIVE ACÁ: se mudó a
+ * `applicability.ts` en la fase B, con su contrato normativo completo. El motivo es de
+ * tamaño, no de diseño — este archivo llegó a 281 líneas y el guard de adopción (m1) suma
+ * ~35, contra el límite de 300 del hook `file-size`. El barrel reexporta
+ * `assessEventApplicability`, así que ningún consumidor cambió de import.
  *
- * Está aparte por una razón que el orquestador anota como HALLAZGO al materializar el
- * contrato, no como algo que la spec ya dijera: `SubscriptionWrite` tiene `status`
- * OBLIGATORIO, así que no puede expresar «no escribas nada». Si el guard de pertenencia
- * viviera dentro de `planFromSubscription`, un evento de `sub_1` llegado sobre una fila que
- * ya está en `sub_2` viva escribiría igual el status de `sub_1` encima — que es justo lo
- * que D5.h prohíbe. Como función propia, además, tiene su propio oráculo, que es lo que la
- * mutación M15 necesita para morder.
- *
- * Reglas, las dos de PERTENENCIA y ORDEN, no de contenido:
- *
- *  1. se ignora todo evento cuyo `subscription.id` ≠ `row.stripeSubscriptionId`, SALVO que
- *     la fila no tenga uno o que su status esté en `DEAD_STRIPE_STATUS` — solo ahí una
- *     suscripción nueva puede adoptar la fila. [R1-I8] La v1 decía lo contrario («solo un
- *     id distinto puede volver a mover el plan»), que leída literal deja que un `deleted`
- *     tardío de `sub_1` ponga `free` sobre `sub_2` VIVA Y FACTURANDO.
- *  2. se ignora todo evento con `event.created` MENOR que `row.lastEventAt`.
- *
- * [R2-M3] UN EVENTO IGNORADO (por tipo, pertenencia u orden) NO MUEVE `last_event_at`: si
- * lo moviera, la regla 2 podría tapar un evento legítimo posterior con `created` menor.
+ * La razón por la que es una función APARTE de `planFromSubscription` sigue siendo la
+ * misma, y está escrita allá: `SubscriptionWrite` tiene `status` obligatorio, así que no
+ * puede expresar «no escribas nada».
  */
-export type EventApplicability =
-  | { apply: true }
-  | { apply: false; ignoredReason: "foreign_subscription" | "stale_event" };
-
-export type AssessEventApplicability = (args: {
-  event: { created: number };
-  subscription: Pick<Stripe.Subscription, "id">;
-  row: Pick<SubscriptionRow, "stripeSubscriptionId" | "status" | "lastEventAt">;
-}) => EventApplicability;
 
 export const planFromSubscription: PlanFromSubscription = ({
   event,
@@ -258,24 +245,4 @@ export const planFromSubscription: PlanFromSubscription = ({
   // `past_due` | `incomplete` | `unpaid` | `paused`, y `active`/`trialing` con el cobro
   // pausado: el plan NO se toca (ADR 0059 — el impago bloquea el acceso, no degrada).
   return write;
-};
-
-export const assessEventApplicability: AssessEventApplicability = ({
-  event,
-  subscription,
-  row,
-}) => {
-  // Sólo una fila SIN suscripción, o con la suya ya muerta, puede ser adoptada por otra.
-  const adoptable =
-    row.stripeSubscriptionId === null || DEAD_STRIPE_STATUS.has(row.status);
-  if (!adoptable && row.stripeSubscriptionId !== subscription.id) {
-    return { apply: false, ignoredReason: "foreign_subscription" };
-  }
-  if (
-    row.lastEventAt !== null &&
-    event.created * 1000 < row.lastEventAt.getTime()
-  ) {
-    return { apply: false, ignoredReason: "stale_event" };
-  }
-  return { apply: true };
 };

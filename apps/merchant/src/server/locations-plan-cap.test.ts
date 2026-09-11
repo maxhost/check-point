@@ -18,7 +18,11 @@ import { limitReached, planLocationLimit } from "./locations/shared";
  *  - el CABLEADO: que `address.ts:43` y `store.ts:71` le pasen a `limitReached` el `cap`
  *    que salió de `planLocationLimit` bajo `lockBusiness`. Eso es integración y es fase B.
  *  - el SQL: el `tx` de abajo es un DOBLE. Fija la DERIVACIÓN de `pendingDowngrade` y las
- *    COLUMNAS que la lectura pide, no que Postgres devuelva esa fila.
+ *    COLUMNAS que la lectura pide, no que Postgres devuelva esa fila. **Entre lo invisible
+ *    está el `where` por `businessId`**: el doble ignora la condición, así que una lectura que
+ *    trajera la suscripción de OTRO negocio pasaría estas tablas enteras. Dónde SÍ está
+ *    cubierto, verificado por el revisor de la fase A sacando `.where(eq(businessId))`: este
+ *    unit queda VERDE y la integración Neon se pone en **6 rojos**.
  */
 
 type Chain = {
