@@ -49,6 +49,14 @@ re-ejecutar M1), ninguna corrida todavia**.
 **UNA MINA PUESTA, que es la de la fase C otra vez:** `billing-stripe-fake.ts` quedo en **299/300** medido **con el
 hook y post-prettier**. Una linea de margen. Lo proximo que se le sume lo pasa; el corte lo decide el orquestador.
 
+**SNAPSHOT DEL ARBOL EN VUELO (el implementador esta trabajando AHORA; estos numeros son de `wc` sobre un arbol que se
+mueve y se RE-MIDEN con el hook al cerrar, no se copian de aca):** aterrizo ademas **`resume/route.ts` (82)**, y
+`billing-integration-support.ts` bajo de 151 a **148** — o sea que le paso prettier y el unico rojo que habia
+(`format:check`) deberia estar saldado; **verificalo corriendolo, no lo des por hecho**. Sigue faltando **`interval`,
+la edicion de `checkout`, los 3 archivos de test, `locations-races` y las 5 mutaciones**. Si esta sesion se cae aca, el
+orden de lectura es: auditoria (`grep MUTATION` + los 3 `shasum` del baseline) → `pnpm test` con integracion para ver
+si se perdio algo → seguir por `checkout`, que es el que tiene dos DoD colgando.
+
 **UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
 `cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
 FILA y no la URL) es bueno, pero **no esta en la spec**. Se le pidio bajarla a una seccion «Decisiones del
