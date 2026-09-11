@@ -185,7 +185,13 @@ nunca re-medido, o sea que el archivo creado para respetar el limite lo violaba.
 cazan: `file-size` es **PostToolUse, no Stop**. **Un numero que va a un doc se re-mide en el momento
 de escribirlo, y para los que tienen hook se pregunta AL HOOK, no a `wc`** —
 `echo '{"tool_input":{"file_path":"<abs>"}}' | .claude/hooks/file-size.sh; echo "EXIT=$?"`, con un
-control sobre un archivo sano para probar que discrimina.
+control sobre un archivo sano para probar que discrimina. **Y el caso de esta familia que mas
+duele, cazado en el handoff de esa misma fase: un `shasum` BASELINE guardado en `docs/TASKS.md`
+para que la proxima sesion audite el arbol habia quedado viejo** (era de antes de un refactor del
+mismo archivo). Un baseline podrido no falla ruidoso: la sesion fresca corre la auditoria, ve el
+mismatch y concluye **«alguien dejo una mutacion puesta»** — el sintoma exacto que esa auditoria
+existe para descartar, ahora fabricado por el propio doc. **Todo baseline (`shasum`, conteo de
+tests, tamaño) se RE-MIDE en el handoff, no se copia del mensaje anterior.**
 
 ## Codigo
 

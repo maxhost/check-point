@@ -10,9 +10,14 @@ cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-09-11.
 
-**ESTADO: la FASE B de la spec 0063 esta CERRADA con PASS de revisor y commiteada. La FASE C es NUEVA
-—la creo una decision del owner del 2026-09-11— y arranca ahora; lo que era la fase C paso a ser la
-FASE D.** Nada desplegado a prod.
+**ESTADO: las FASES A, B y C de la spec 0063 estan CERRADAS, las tres con PASS de revisor independiente y
+commiteadas. LO QUE SIGUE ES LA FASE D**, que es el grueso que resta (5 rutas + `_auth.ts` + UI + D8 + D10 +
+`locations-races`). **Nada desplegado a prod: no se pusheo y la migracion `0030` NO esta aplicada a prod**, solo a la
+rama efimera.
+
+**Ojo con la numeracion de fases al leer lo de abajo:** la fase C **es nueva** —la creo una decision del owner del
+2026-09-11 (ADR 0061)— y lo que originalmente se llamaba «fase C» paso a ser la **fase D**. Los bloques historicos
+viejos pueden decir «fase C» refiriendose a la actual D; los que se renumeraron ya dicen D.
 
 <details><summary><b>HISTORICO de la fase B (auditoria del arbol heredado: el primer implementador murio a mitad y dejo el arbol ROJO con codigo de produccion sin un solo test)</b></summary>
 
@@ -51,12 +56,20 @@ el que el ORQUESTADOR verifico corriendo comandos, no el que relato nadie. **Si 
 al volver es repetir esa auditoria** (`grep -rn MUTATION apps/merchant/src` + `shasum` de los archivos mutados): un
 agente muerto a mitad de una mutacion deja un rojo indistinguible de un bug real del producto.
 
-**Baseline de `shasum` para esa auditoria** (arbol sin mutar, el que hay que ver siempre):
-- `billing/claim.ts` → `877dcc4f9ec099ef6746168e923bb2c0bdb60490`
+**Baseline de `shasum` para esa auditoria — RE-MEDIDO al cerrar la fase C (2026-09-11), arbol limpio en `a85a7d8`:**
+- `billing/claim.ts` → `edb7b41473e555c677556d2a3f14382dba97d9a4`
 - `billing/webhook.ts` → `36163aef06cc066d622c7d95eeba446ed0113770`
+- `app/api/stripe/webhook/route.ts` → `a5c0b68bfd3a9786ce368185e434c3a94dc7f090`
 
-Tamanos esperados: `claim.ts` **171**, `billing-webhook-claim.neon.integration.test.ts` **262**, `billing-claim.test.ts` 61,
-`billing-webhook-support.ts` 101, `billing-webhook.neon.integration.test.ts` 269.
+**El de `claim.ts` habia quedado VIEJO en este archivo** (`877dcc4f…`, de antes de extraer `claimStatement`), y es el
+peor lugar posible para un numero podrido: una sesion fresca corre la auditoria, ve el mismatch y concluye que el
+arbol esta mutado — **persiguiendo un bug que no existe**, que es exactamente el sintoma que la auditoria existe para
+descartar. Cazado al hacer el handoff, re-midiendo. Es la misma familia de los tres errores de la fase C que ya estan
+en `CLAUDE.md`.
+
+**Tamanos, re-medidos con el hook (`file-size.sh`), los seis en `EXIT=0`:** `billing/claim.ts` 171,
+`billing/webhook.ts` 158, `billing-claim.test.ts` 61, `billing-webhook-claim.neon.integration.test.ts` 262,
+`billing-webhook.neon.integration.test.ts` 273, `billing-webhook-support.ts` 101.
 
 **AUDITORIA DEL ARBOL HEREDADO, corrida por el orquestador — no relatada por nadie:**
 - **`grep -rn MUTATION apps/merchant/src` VACIO** y `shasum` identico al baseline en los dos archivos mutados.
@@ -119,7 +132,7 @@ lint, format:check, build **forzado**, y `pnpm test` con `.env.integration.local
 fallados / 0 skipped** (la fase B cerro en 111/821: **ningun test preexistente perdido**).
 `grep MUTATION` vacio.
 
-**ARRANCAR LA FASE C DESDE ACA (y despues la D).** Base de integracion: la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`),
+**ARRANCAR LA FASE D DESDE ACA.** Base de integracion: la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`),
 credenciales en `.env.integration.local` (gitignored), migracion `0030` YA aplicada — **pero corre algo antes de
 creerle al `.env`**: una rama borrada y una sana son indistinguibles desde el archivo. **Ese archivo tiene SOLO las 3
 variables `NEON_INTEGRATION_*`, no las 5 `STRIPE_*`**: los tests usan `vi.stubEnv`, y el revisor verifico que eso no
@@ -210,11 +223,14 @@ perdido**: `billing-applicability.test.ts` 9→9 `it(`, `locations-plan-cap.test
 - **Las decisiones del IMPLEMENTADOR de la fase B estan en una seccion propia de la spec** (4 entradas), etiquetadas
   como suyas. **La 4a —la forma de `scheduleDowngrade`, pasos 2 y 4 de D6 con `coalesce`— la consume la fase D.**
 
-**LO QUE SIGUE:** **fase C** (D12: tri-estado del claim en `billing/claim.ts` + lease + 409 + `maxDuration` en la ruta;
-mutaciones **M20-M23**, de las cuales **M21 es la mas importante de la fase** —contestar 200 en `in_flight`— porque es
-exactamente el bug que D12 existe para prevenir y con la suite verde seria invisible) → revisor independiente →
-**fase D** (5 rutas + `_auth.ts` + UI + D8 + D10 + render del HTML + `locations-races`; mutaciones M5, M6, M14, M17 y
-**re-ejecutar M1**) → revisor independiente → despliegue.
+**LO QUE SIGUE:** **fase D** — 5 rutas + `_auth.ts` + UI + D8 + D10 + render del HTML + `locations-races`;
+mutaciones **M5, M6, M14, M17** y **re-ejecutar M1** (su mitad de concurrencia no existia en fase A: la carrera de
+desarchivado es el `locations-races.neon.integration.test.ts` de esta fase) → revisor independiente → despliegue.
+
+**Lo que la fase D consume de las anteriores, y conviene leer antes de despachar:** la 4a entrada de §Decisiones del
+IMPLEMENTADOR de la fase B (la forma de `scheduleDowngrade`, pasos 2 y 4 de D6 con `coalesce`), y la nota de la spec
+(~linea 1183) de que la dependencia real es «**D8 o el boton de salida de D10**» — el revisor de la fase D tiene que
+vigilar **las dos salidas**, no solo D8.
 
 **Y DESPUES del PASS final, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
 del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios
