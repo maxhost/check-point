@@ -281,6 +281,34 @@ inventada para un sintoma**, escrita en este archivo y relatada al owner sin bus
 linea la habria matado. Es el ADR 0054 del lado del diagnostico: **un sintoma no es una causa, y nombrar una causa
 plausible se siente igual de bien que haberla verificado.**
 
+### ⚠️ MUTACION VIVA AHORA MISMO: MUT-A, del implementador, cerrando B1
+
+`apps/merchant/src/app/api/billing/cancel/route.ts:129` →
+`// MUTATION MUT-A — el revert ignora si ESTA peticion creo el estado.`
+
+- **Hash MUTADO (lo que vas a ver si heredas esto):** `ac4585ce30248966face3cdbef04cef75e899e49`
+- **Hash LIMPIO al que hay que volver:** `1fa5bbf9d80ee940d00c35d1655b462c99f9a911`
+
+**No se revierte bajo un agente vivo** (lo haria transcribir un resultado falso). Esta etiquetada y atribuida; **lo
+que no puede pasar es que sobreviva a la sesion.** Si heredas el arbol con `ac4585ce…`, **no persigas un bug:
+revertilo** y verifica que vuelve a `1fa5bbf9…`. Y recorda que `cancel/route.ts` es **untracked**: `git checkout` no
+lo arregla, hay que reconstruirlo — por eso existe este par de hashes.
+
+### EL DELTA DEL FAIL, EN CURSO
+
+**Ya aterrizo `billing-cancel-guards.neon.integration.test.ts`** —el corte por naturaleza que decidio el orquestador—
+con **los dos tests de los bloqueantes**: `un REINTENTO de cancel que falla determinista NO borra la baja ya pedida`
+(B1) y `` `settle-free` sobre una suscripcion VIVA programa la baja EN STRIPE, no en local`` (B2). **149 lineas,
+preguntado al hook: `EXIT=0`.**
+
+**Falta:** verificar que las dos sondas MUERDEN leyendo la asercion (MUT-A esta corriendo ahora; MUT-D despues),
+transcribir las dos filas a la tabla de la spec, y los **7 menores** — de los cuales dos son ADR 0054 del lado del
+comentario: el docblock de `gateway.ts` lista **cuatro funciones que no existen** (`cancelSubscription`,
+`resumeSubscription`, `changeInterval`, `createCheckoutSession` — las rutas llaman a `gateway.subscriptions.update`
+directo) y la §Archivos compartidos de la spec lo repite.
+
+**Despues del delta: RE-REVISION con el MISMO revisor**, que conserva el contexto de toda la fase D1.
+
 ### BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED — el unico punto de retorno que tienen
 
 **Re-medido en el momento de escribirlo, con el arbol limpio (`grep MUTATION` vacio).** Es la regla nueva de
