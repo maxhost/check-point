@@ -161,6 +161,20 @@ perseguir un bug que no existe, o «arreglarlo» tapando la mutacion. Enforced p
 detector de codigo mutado, es el cierre de esa convencion. Por eso todo encargo a un
 implementador exige etiquetar la mutacion y revertir con `shasum` antes de cualquier otra cosa.
 
+**Y el corolario que costo caro, porque rompe el salvavidas que todo el mundo asume: MUTAR UN
+ARCHIVO UNTRACKED DEJA A GIT SIN NADA A QUE VOLVER.** El reflejo ante una mutacion abandonada es
+`git checkout <archivo>`, y sobre un `??` **no hace nada** — no hay blob. Paso en la fase D1 de la
+spec 0063: un revisor murio con M5 puesta en `app/api/billing/cancel/route.ts`, que todavia no
+estaba commiteado, y el unico camino fue **reconstruir la version limpia a mano**. Se pudo
+**solo porque el implementador habia dejado el `shasum` de cada archivo mutado en su handoff**: la
+reconstruccion dio `1fa5bbf9d80ee940…`, identico al reportado, y eso la convirtio de adivinanza en
+verificacion. Sin ese numero no habia oraculo y el arbol quedaba con una mutacion indistinguible
+de codigo legitimo. **Dos reglas que salen de ahi:** (1) el `shasum` de un archivo que se va a
+mutar se registra ANTES de mutarlo y se escribe en el handoff, **sobre todo si el archivo es
+nuevo** — es el unico punto de retorno que existe; y (2) antes de mutar, mirá si el archivo esta
+trackeado (`git status --short`), porque si sale `??` el `git checkout` de emergencia **no existe**
+y conviene sacar una copia a `/tmp` primero.
+
 **Un hook tambien es un guard, y un guard sin prueba de que MUERDE es peor que ninguno.**
 `tasks-fresh.sh` guardaba con `[ -d src ] || exit 0`, pero `src/` **no existe en la raiz de
 este monorepo** (vive en `apps/*/src`): salia en 0 **siempre** y no bloqueo un turno en toda

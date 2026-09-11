@@ -201,6 +201,28 @@ M6 mordiera** no haya aflojado el guard (¿queda un caso con `businessId` AJENO?
 `billingStateResponse` adentro** (un archivo llamado `_auth` que decide planes bajo lock miente sobre su contenido); y
 **mutaciones fuera de la tabla** — en las fases B y C ahi estuvo todo el valor.
 
+### EL REVISOR TAMBIEN MURIO, Y CON M5 PUESTA SOBRE UN ARCHIVO UNTRACKED (modo de fallo NUEVO)
+
+**`grep MUTATION` la cazo** (`// MUTATION M5 (revisor)`) en `app/api/billing/cancel/route.ts`. **Pero ese archivo
+todavia NO esta commiteado (`??`), asi que `git checkout` no revierte NADA: no hay blob.** Es el salvavidas que todo el
+mundo asume y que sobre un untracked no existe.
+
+**Se reconstruyo a mano y se VERIFICO contra un oraculo, no se adivino:** la mutacion habia reemplazado el paso 2 por
+`const downgradeRequestedAt = now;`; el original es
+`const { downgradeRequestedAt } = await scheduleDowngrade(tx, businessId, { now });`. **La reconstruccion da
+`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`, identico al `shasum` limpio que el implementador habia dejado en su
+handoff** — byte a byte la original. Confirmado ademas por comportamiento: `billing.neon.integration.test.ts` **6/6
+verdes**, incluidos los dos que M5 pone rojos.
+
+**Sin ese numero en el handoff no habia oraculo** y el arbol quedaba con una mutacion indistinguible de codigo
+legitimo. **Ya esta como regla en `CLAUDE.md`:** el `shasum` se registra ANTES de mutar y se escribe en el handoff,
+sobre todo si el archivo es NUEVO; y antes de mutar se mira `git status --short`, porque si sale `??` conviene sacar
+copia a `/tmp` primero. **En esta fase eso aplica a casi todo**: las 5 rutas, `_auth.ts`, `billing-stripe-fake.ts` y
+los 4 archivos de test nuevos son untracked.
+
+**Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
+`format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
+
 **LO QUE SIGUE:** PASS/FAIL del revisor → (si PASS) commit de la D1 → **fase D2 (UI + D8 + render del HTML)**, cuyo
 revisor tiene que vigilar **las dos salidas** (D8 **y** el boton de D10), porque la particion las mando a fases
 distintas y ningun revisor las ve juntas.
