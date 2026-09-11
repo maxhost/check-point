@@ -23,6 +23,39 @@ viejos pueden decir «fase C» refiriendose a la actual D; los que se renumeraro
 
 **D1 (servidor) DESPACHADA a un implementador el 2026-09-11.** D2 (UI) todavia no: depende de que las rutas existan.
 
+### EL IMPLEMENTADOR DE LA D1 MURIO A MITAD (3a muerte de la spec) y se lo RETOMO desde su transcripcion
+
+**Nada se perdio y el arbol quedo SANO. Esto lo verifico el orquestador con comandos, no lo relato el agente:**
+- `grep -rn MUTATION apps/merchant/src` **vacio** y los 3 `shasum` del baseline de la fase C **identicos**.
+- `typecheck` (forzado, `0 cached`), `lint` y `build` (forzado) **verdes**.
+- `pnpm test` con `.env.integration.local`: **113 archivos / 827 tests / 0 failed / 0 skipped**, **identico al cierre
+  de la fase C** — o sea que mudar el doble de Stripe a `billing-stripe-fake.ts` **no perdio ni un test preexistente**,
+  que era el riesgo principal de ese refactor.
+- **El build EMITE las dos rutas nuevas** (`/api/billing/cancel`, `/api/billing/settle-free`) y el validador generado
+  de Next las acepta. Importa porque `settle-free` es `export const POST = downgradeToFree` importado de
+  `../cancel/route`, y un export extra en un `route.ts` es justo lo que Next rechaza: **verificado en
+  `.next/types/validator.ts` y en `app-paths-manifest.json`, no leyendo codigo.**
+- **Lo unico ROJO: `format:check`** sobre `billing-integration-support.ts`.
+
+**ESTADO PELIGROSO, dicho sin maquillaje: hay codigo de produccion con CERO tests y los gates en verde.** Es
+textualmente lo que la fase B llamo «el estado mas peligroso posible». Lo que aterrizo: `billing-stripe-fake.ts`,
+`billing-integration-support.ts` (refactorizado a 151 con reexports), `_auth.ts`, `cancel/route.ts`,
+`settle-free/route.ts`. **Lo que falta es la mayor parte del encargo:** `resume`, `interval`, **la edicion de
+`checkout`** (sigue siendo el de prod: lee `businessId` del body y usa `new URL(request.url).origin`, asi que los DoD
+de `MERCHANT_PUBLIC_ORIGIN` y «ninguna ruta actua sobre un negocio nombrado en el body» estan ABIERTOS y M6 no tiene
+contra que morder), los 3 archivos de test, la edicion de `locations-races`, y **las 5 mutaciones (M5, M6, M14, M17 y
+re-ejecutar M1), ninguna corrida todavia**.
+
+**UNA MINA PUESTA, que es la de la fase C otra vez:** `billing-stripe-fake.ts` quedo en **299/300** medido **con el
+hook y post-prettier**. Una linea de margen. Lo proximo que se le sume lo pasa; el corte lo decide el orquestador.
+
+**UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
+`cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
+FILA y no la URL) es bueno, pero **no esta en la spec**. Se le pidio bajarla a una seccion «Decisiones del
+IMPLEMENTADOR de la fase D1», calcada de la que ya existe para la fase B. Mismo pedido para `_auth.ts`, que quedo en
+**237** lineas contra las **51** del `app/api/locations/_auth.ts` que la spec manda calcar: si la diferencia es
+contrato normativo escrito, se declara; si es alcance que crecio, es un hallazgo.
+
 **Por que se parte, y es una decision del orquestador que el owner puede revertir:** la fase D como estaba escrita son
 ~12 archivos (5 rutas + `_auth.ts` + 3 de UI + 3 paginas editadas + 4 de test) sobre una spec de 1553 lineas. **En esta
 spec ya murieron dos agentes a mitad de fase** (el implementador de la B y el implementador y el revisor de la C), y un
