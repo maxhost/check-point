@@ -49,13 +49,33 @@ re-ejecutar M1), ninguna corrida todavia**.
 **UNA MINA PUESTA, que es la de la fase C otra vez:** `billing-stripe-fake.ts` quedo en **299/300** medido **con el
 hook y post-prettier**. Una linea de margen. Lo proximo que se le sume lo pasa; el corte lo decide el orquestador.
 
-**SNAPSHOT DEL ARBOL EN VUELO (el implementador esta trabajando AHORA; estos numeros son de `wc` sobre un arbol que se
-mueve y se RE-MIDEN con el hook al cerrar, no se copian de aca):** aterrizo ademas **`resume/route.ts` (82)**, y
-`billing-integration-support.ts` bajo de 151 a **148** — o sea que le paso prettier y el unico rojo que habia
-(`format:check`) deberia estar saldado; **verificalo corriendolo, no lo des por hecho**. Sigue faltando **`interval`,
-la edicion de `checkout`, los 3 archivos de test, `locations-races` y las 5 mutaciones**. Si esta sesion se cae aca, el
-orden de lectura es: auditoria (`grep MUTATION` + los 3 `shasum` del baseline) → `pnpm test` con integracion para ver
-si se perdio algo → seguir por `checkout`, que es el que tiene dos DoD colgando.
+### 2a MUERTE DEL MISMO IMPLEMENTADOR (4a de la spec). Retomado otra vez; el arbol quedo sano y AVANZO MUCHO
+
+**Auditoria del orquestador, con comandos:** `grep MUTATION` **vacio**, los 3 `shasum` del baseline **identicos**,
+`typecheck` (forzado, `0 cached`) y `lint` **verdes**, y `pnpm test` con integracion en **115 archivos / 852 tests / 0
+failed / 0 skipped** — venia de 113/827, o sea **+2 archivos y +25 tests sin perder ningun preexistente**.
+
+**Ya estan las CINCO rutas** (`_auth.ts`, `checkout` editada, `cancel`, `resume`, `interval`, `settle-free`), el barrel,
+`billing-routes.test.ts` (18 tests, con el barrido del filesystem y su piso de archivos) y
+`billing.neon.integration.test.ts` (7 tests).
+
+**BLOQUEANTE DE TAMAÑO, y es EL DE LA FASE C REPETIDO: `billing.neon.integration.test.ts` esta en 303 y YA VIOLA el
+limite.** Preguntado **al hook**, no a `wc`: `EXIT=2`, con control sobre `billing-routes.test.ts` (294, `EXIT=0`) que
+prueba que discrimina. Los 5 gates no lo cazan porque `file-size` es **PostToolUse, no Stop**. **Corte decidido por el
+orquestador y por NATURALEZA, no por tamaño:** los dos tests de `interval` salen a
+`billing-interval.neon.integration.test.ts` — D9 es su propia seccion de diseño, con sus propios modos de falla, y es
+**el unico consumidor de `updateError`/`updateParams` del fake**.
+
+**El otro rojo:** `format:check` sobre `interval/route.ts`.
+
+**LO QUE FALTA, y es donde esta el valor:** `billing-routes-auth.neon.integration.test.ts` (staff activo y
+desactivado x 5 rutas con **sesiones reales**), la edicion de `locations-races` (las dos carreras), **las 5 mutaciones
+—M5, M6, M14, M17 y re-ejecutar M1—, NINGUNA corrida todavia**, y la seccion «Decisiones del IMPLEMENTADOR de la fase
+D1» en la spec. **Sin las mutaciones no hay evidencia de que nada de lo escrito tenga oraculo.**
+
+**M1 es la que mas importa:** en fase A dio 3 rojos en `locations.test.ts` pero su mitad de concurrencia quedo verde
+porque la carrera **no existia** — la escribe esta fase. **Si con M1 puesta la carrera nueva sigue verde, es un
+hallazgo**, no un detalle: querria decir que no pinnea lo que su nombre dice.
 
 **UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
 `cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
