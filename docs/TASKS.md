@@ -312,27 +312,31 @@ directo) y la §Archivos compartidos de la spec lo repite.
 
 **Despues del delta: RE-REVISION con el MISMO revisor**, que conserva el contexto de toda la fase D1.
 
-### BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED — el unico punto de retorno que tienen
+### BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED — RE-MEDIDO 2026-09-11, arbol sin mutaciones
 
-**Re-medido en el momento de escribirlo, con el arbol limpio (`grep MUTATION` vacio).** Es la regla nueva de
-`CLAUDE.md` aplicada a esta fase: ninguno de estos archivos esta commiteado todavia, asi que **`git checkout` sobre
-cualquiera de ellos no hace nada** y esta lista es lo unico que permite distinguir «mutado» de «legitimo» si un agente
-vuelve a morir. **El revisor esta VIVO y mutando ahora mismo**, asi que un mismatch en esta lista puede ser una
-mutacion en curso y no un problema — pero al cerrar la fase tienen que coincidir los diez.
+**Re-medido en el momento de escribirlo, no copiado del bloque anterior.** El del fake **habia quedado viejo**
+(`df152f8f…`) porque el implementador lo edito al cerrar el menor 6 — un cambio **legitimo**, no una mutacion, pero un
+baseline podrido es exactamente el veneno que `CLAUDE.md` documenta: la sesion fresca corre la auditoria, ve el
+mismatch y concluye «alguien dejo una mutacion puesta».
+
+**Ninguno de estos archivos esta commiteado**, asi que **`git checkout` sobre cualquiera no hace nada** y esta lista es
+lo unico que permite distinguir «mutado» de «legitimo». `grep MUTATION` estaba **vacio** al medir.
 
 - `app/api/billing/_auth.ts` -> `06b1e16a624f90bb3854474da70e1a3c1bf427fd`
 - `app/api/billing/cancel/route.ts` -> `1fa5bbf9d80ee940d00c35d1655b462c99f9a911`
-- `app/api/billing/resume/route.ts` -> `95cebd1091a4287efff5bc7be20351c45b1ff7c7`
 - `app/api/billing/interval/route.ts` -> `65fe4f3c3c071636d247495ee2fef7fc58d6d0bc`
+- `app/api/billing/resume/route.ts` -> `95cebd1091a4287efff5bc7be20351c45b1ff7c7`
 - `app/api/billing/settle-free/route.ts` -> `eeaa9e0cbe64281c0463d53451d117d2e5377bf3`
-- `server/billing-stripe-fake.ts` -> `df152f8fbdea051abb23e8c3044d2870ed62a0c4`
-- `server/billing-routes.test.ts` -> `cdc562bce35ba049fa0ec544fa84193beb5b0b7a`
-- `server/billing.neon.integration.test.ts` -> `c51eb5c66d04bfba25e570cd15c04eb03a187ffc`
+- `server/billing-cancel-guards.neon.integration.test.ts` -> `e6d90da9c60e513a099bbee288cc9646aabbd843`
 - `server/billing-interval.neon.integration.test.ts` -> `605d98ce61339d32299edc1b9672921fa8207bcf`
 - `server/billing-routes-auth.neon.integration.test.ts` -> `30446c3cf8aecdb26dcc234048bda4a911d217ee`
+- `server/billing-routes.test.ts` -> `a9f37644dde32c1f4303b35e7a48635d2d6f6ab0`
+- `server/billing-stripe-fake.ts` -> `fc5535270ac77700095ab70c38eead89800f6843`
+- `server/billing.neon.integration.test.ts` -> `df19f535173e946a7a48a5551630eb1ca74db9bd`
 
-**El revisor ya puso y revirtio M5 bien:** el hook `no-mutations-left.sh` la vio en vuelo, y al mirarla el archivo ya
-estaba de vuelta en `1fa5bbf9d80ee940…`. La convencion funciona; lo que faltaba era este baseline.
+**Tamaños al hook, tambien re-medidos:** `billing-stripe-fake.ts` **299** (`EXIT=0`) — el menor 6 se cerro **sin
+hacerlo crecer**, que era el riesgo; `billing.neon.integration.test.ts` **299**; `billing-routes.test.ts` 294;
+`billing-cancel-guards.neon.integration.test.ts` **149**. **Los dos de 299 siguen a UNA linea del limite.**
 
 **LO QUE SIGUE:** PASS/FAIL del revisor → (si PASS) commit de la D1 → **fase D2 (UI + D8 + render del HTML)**, cuyo
 revisor tiene que vigilar **las dos salidas** (D8 **y** el boton de D10), porque la particion las mando a fases
