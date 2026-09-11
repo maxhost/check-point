@@ -43,7 +43,7 @@ NADA DESPLEGADO A PROD: no se pusheo y la migracion 0030 NO esta aplicada a prod
 **PROMPT PARA RETOMAR:** «retomamos: despacha la fase D de la spec 0063 a un implementador».
 
 **FASE C (D12 / ADR 0061): PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 3 pasadas: PASS con 5 menores → FAIL del
-delta por 1 bloqueante → PASS final sin hallazgos abiertos). COMMITEADA. Falta la FASE D.**
+delta por 1 bloqueante → PASS final sin hallazgos abiertos). COMMITEADA en `71499f5`. Falta la FASE D.**
 **NADA DESPLEGADO A PROD:** no se pusheo y la migracion `0030` sigue sin aplicarse a prod — solo a la rama efimera.
 
 **DOS AGENTES MURIERON A MITAD EN ESTA FASE** —el implementador y despues el revisor—, asi que el estado de abajo es
