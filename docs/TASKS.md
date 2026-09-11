@@ -223,6 +223,43 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### DELTA DEL FAIL CERRADO — EN RE-REVISION con el MISMO revisor (2026-09-11). Sigue SIN PASS
+
+**Nada commiteado del codigo, nada desplegado.** Lo de abajo son corridas del ORQUESTADOR, no el relato del
+implementador.
+
+- `grep MUTATION` **vacio**; baseline de la fase C **intacto**; `locations/core.ts` y `store.ts` **identicos a git**.
+- **Los 5 gates verdes**: `typecheck` y `build` **forzados** (`0 cached` los dos), `lint`, `format:check`, y
+  `pnpm test` con integracion en **118 archivos / 862 tests / 0 failed / 0 skipped** (venia de 117/860).
+- **Tamaños al hook CON CONTROL que discrimina** (`onboarding/page.tsx` 469 → `EXIT=2`):
+  `billing-routes.test.ts` **300**, `billing.neon…` **300**, `billing-stripe-fake.ts` **299**,
+  `billing-cancel-guards…` 149 — todos `EXIT=0`. **Los tres primeros sin margen real.**
+
+**LOS DOS BLOQUEANTES, pinneados** en `billing-cancel-guards.neon.integration.test.ts` (nuevo, 149 lineas, literales
+unicos con `randomUUID`): MUT-A → `expected null to be 'free'` sobre `pendingPlan` **leido por SQL**; MUT-D →
+`expected [] to include 'subscriptions.update:sub_vivo…'`. **Cada mutacion roja solo en su propio test**, o sea
+atribucion verificada. Las dos revertidas con `shasum` identico.
+
+**EL HALLAZGO MAS VALIOSO DEL DELTA, y es una familia NUEVA: un VERDE por el motivo equivocado.** Al pinnear el menor
+3 (`readBody`), la primera sonda mandaba el request sin body a **`cancel`** — que **no llama a `readBody`**. **MUT-B
+quedaba VERDE**, y se leia como «el guard no hace falta». Es el **espejo** de la regla que ya esta en `CLAUDE.md` («un
+ROJO puede ser por el motivo equivocado»): **un VERDE tambien puede serlo, y es peor, porque un verde no invita a
+mirar**. Con el oraculo corregido a `interval` (que si lee el body): `expected 503 to be 400`. **Lo encontro el
+implementador solo, y lo reporto en vez de quedarse con el verde.**
+
+**Los otros menores:** `gateway.ts` corregido a las 3 funciones que existen (+ la celda de §Archivos compartidos);
+el texto de `store.ts` ahora dice **el costo es real, la imposibilidad no**; `resume` **nombra la ventana** del ADR
+0060 y el renglon a re-mirar (`derive.ts:222`); **`customers.create` gana `idempotencyKey`** con oraculo; el fake
+**separa las canastas** (`sessionKeys`/`customerKeys`/`updateKeys`); y el «14 / 3 sin fila» reconocido como error
+propio. Declarados en §Archivos los 4 archivos que faltaban en la tabla.
+
+**LO QUE SE LE PIDIO A LA RE-REVISION, porque tres menores TOCARON PRODUCCION Y EL FAKE:** que **mute** el
+`idempotencyKey` del customer y la separacion de canastas —la leccion de la fase B es que «un vocabulario que crece sin
+oraculo seria un agujero nuevo introducido arreglando un menor»—, que **verifique que `cancel` realmente no lee el
+body** (si lo leyera, la explicacion del verde seria falsa y el oraculo nuevo estaria mal atribuido), y que juzgue los
+**docblocks nuevos** de `gateway.ts` y `resume`, que son texto que **afirma** cosas — ADR 0054, que en esta spec ya
+mordio cuatro veces.
+
 ### REVISOR INDEPENDIENTE: **FAIL** (2026-09-11). 2 bloqueantes, los DOS del tipo ADR 0054. Despachados
 
 **Sin PASS: nada se marca implementada, nada commiteado, nada desplegado.** El revisor **no encontro bugs en el
