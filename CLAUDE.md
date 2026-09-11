@@ -151,6 +151,25 @@ de pruebas. **Corolario: al escribir un plan de mutaciones, la fila «mutacion X
 no se predice, se EJECUTA y se transcribe el resultado.** Un par mutacion↔test escrito de memoria
 le regala a quien herede el arbol una cobertura que no existe.
 
+**Y el corolario que solo se ve despues de varias rondas: LA TABLA DE MUTACIONES SE ESCRIBE DESDE
+EL DISEÑO, ASI QUE SISTEMATICAMENTE NO VE LO QUE EL CODIGO TERMINO AFIRMANDO.** La fase D1 de la
+spec 0063 cerro con **CUATRO bloqueantes consecutivos de la MISMA familia** —un invariante
+declarado que ningun test pinnea— y **los cuatro salieron de mutaciones FUERA de la tabla**: el
+guard `createdNow` del revert, el alias de `settle-free` sobre una suscripcion viva, la
+`idempotencyKey` fija del `checkout`, y el `cancel_at: null` de `resume`. Ninguno estaba en el plan
+de pruebas, porque el plan se escribio antes de que existieran esos docblocks. **Un docblock
+normativo es una AFIRMACION, y cada afirmacion necesita un oraculo o una declaracion explicita de
+que no lo tiene.** Regla practica al cerrar una fase: **listá los comentarios del codigo nuevo que
+afirman un invariante —los que dicen «esto es lo que hace que X», «sin esto pasaria Y»— y mutá cada
+uno.** Los que queden verdes son el trabajo que falta.
+**Dos agravantes reales, los dos de esa misma fase:** (1) el cuarto bloqueante vivia en un docblock
+que **el delta anterior acababa de editar** para cerrar un menor — o sea que tocar un comentario no
+lo verifica, y la mano que lo edita es la que menos lo duda; y (2) un docblock falso **no es
+pasivo: causa errores de metodo**. El de `readBody` decia que `cancel`, `resume` y `settle-free`
+usaban la tolerancia —**ninguna de las tres la llama**— y esa frase fue exactamente la que hizo que
+la primera sonda se escribiera contra `cancel` y **saliera VERDE por el motivo equivocado**. Un
+comentario mentiroso no espera a que alguien lo lea mal: lo induce.
+
 **Una mutacion se revierte SIEMPRE, y se etiqueta mientras esta puesta.** Un implementador de
 la spec 0055 murio a mitad de sus mutaciones y dejo `counter/core.ts` sin el filtro
 `status = 'active'`: la integracion daba 25/26 y **el rojo parecia un bug real del producto**

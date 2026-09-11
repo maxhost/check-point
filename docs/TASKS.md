@@ -223,6 +223,47 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### 2o FAIL DEL REVISOR: **B4**, CUARTO bloqueante de la MISMA familia. Despachado
+
+**Lo que el delta arreglo esta BIEN y el revisor lo verifico**: B1, B2 y B3 cerrados con oraculos que muerden **por el
+motivo correcto**, cada mutacion roja **solo en su propio test** (37-38 verdes al lado), y los 7 menores checan. B4 no
+es una falla de esos arreglos: es otro docblock que nadie habia mutado.
+
+**Auditoria del orquestador:** `grep MUTATION` **vacio**, ninguna sonda en `src/`, y los **cinco hashes identicos** al
+baseline (`checkout` `98e4e7c9`, `resume` `4e396b5e`, fake `fc553527`, `_auth` `06b1e16a`, `interval` `65fe4f3c`).
+Gates del revisor: **119 archivos / 863 tests / 0 skipped** y los 5 en `EXIT=0`.
+
+**B4 — `resume` limpia `cancel_at`, el docblock dice que eso es lo que hace que «reanudar reanude de verdad», y nada lo
+pinnea.** `MUT-J` (sacar `cancel_at: null`) → **38/38 VERDE** contra los 7 archivos que pueden verla. **Verificado por
+el orquestador con `grep`:** `resume/route.ts:64-66` afirma exactamente eso y `cancel_at: null` esta en la 67.
+**Consecuencia, no cosmetica:** con un `cancel_at` **explicito** —el del dashboard, el actor por el que existe el ADR
+0060— un `resume` que no lo limpia deja a Stripe con la baja viva mientras `clearPendingPlan` borra las tres columnas
+**incluida `downgrade_requested_at`**; el webhook repone `pending_plan` pero **no la marca**, y al cerrar el periodo el
+`deleted` llega sin marca → **`plan='none'`**: el owner que reanudo termina bloqueado. **Calibracion honesta del
+revisor, conservada:** si el `cancel_at` lo genero nuestro propio `cancel_at_period_end`, Stripe lo limpia solo; el
+guard es load-bearing **para el explicito**, que es el caso que el docblock nombra. **Ya pinneado** (~20 lineas); corte
+decidido: va a `billing-cancel-guards…` (**149**, tiene lugar), ampliando su docblock al ciclo `cancel`/`resume`.
+
+**LOS 4 MENORES**, y dos son de la familia «el numero/el texto viejo»: `MUT-I` verde (`has_more` es la tercera
+condicion de `interval_ambiguous` y **no tiene oraculo**, mientras el docblock afirma las tres); **se corrigio el doc
+LEJANO y no el CERCANO** (la spec ya dice «el costo es real, la imposibilidad no», pero el comentario de
+`createCustomer` en `checkout/route.ts` sigue con la version vieja); el docblock de `readBody` (`_auth.ts:101`) **nombra
+a `cancel`, `resume` y `settle-free`** —**verificado por el orquestador: los unicos llamadores son `interval` y
+`checkout`**—; y el docblock de `billing-cancel-guards…` dice «299/300» de un archivo que esta en **300**.
+
+### EL PATRON DE FONDO, que ya no es de esta fase sino del METODO → bajado a `CLAUDE.md`
+
+**Cuatro bloqueantes consecutivos, los CUATRO de la misma familia, los CUATRO de mutaciones FUERA de la tabla.** La
+tabla se escribe **desde el diseño**, asi que no ve lo que el codigo **termino afirmando**: esos cuatro docblocks no
+existian cuando se escribio el plan de pruebas. **Regla nueva:** al cerrar una fase, **listar los comentarios del
+codigo nuevo que afirman un invariante y mutar cada uno**; los que queden verdes son el trabajo que falta.
+
+**Con dos agravantes de esta misma fase:** (1) B4 vivia en un docblock que **el delta anterior acababa de editar** para
+cerrar un menor — tocar un comentario no lo verifica, y la mano que lo edita es la que menos lo duda; y (2) **un
+docblock falso no es pasivo: causa errores de metodo.** El de `readBody` es la frase que hizo que la primera sonda se
+escribiera contra `cancel` y **saliera VERDE por el motivo equivocado**. Un comentario mentiroso no espera a que
+alguien lo lea mal: **lo induce.**
+
 ### B3 CERRADO. EN RE-REVISION FINAL con el MISMO revisor (2026-09-11). Sigue SIN PASS
 
 **Corridas del ORQUESTADOR, no el relato:** `grep MUTATION` **vacio**, **ninguna sonda suelta en `src/`**, baseline de
