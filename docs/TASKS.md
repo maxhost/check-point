@@ -19,6 +19,49 @@ rama efimera.
 2026-09-11 (ADR 0061)— y lo que originalmente se llamaba «fase C» paso a ser la **fase D**. Los bloques historicos
 viejos pueden decir «fase C» refiriendose a la actual D; los que se renumeraron ya dicen D.
 
+## FASE D — DESPACHADA EN DOS ENCARGOS SERIALES (decision del ORQUESTADOR, no del owner)
+
+**D1 (servidor) DESPACHADA a un implementador el 2026-09-11.** D2 (UI) todavia no: depende de que las rutas existan.
+
+**Por que se parte, y es una decision del orquestador que el owner puede revertir:** la fase D como estaba escrita son
+~12 archivos (5 rutas + `_auth.ts` + 3 de UI + 3 paginas editadas + 4 de test) sobre una spec de 1553 lineas. **En esta
+spec ya murieron dos agentes a mitad de fase** (el implementador de la B y el implementador y el revisor de la C), y un
+agente que muere a mitad de una mutacion deja un rojo indistinguible de un bug real. Partirla acota el radio.
+
+- **D1 (servidor, en curso):** `app/api/billing/_auth.ts` + las 5 rutas (`checkout` editada, `cancel`, `resume`,
+  `interval`, `settle-free`), `billing-routes.test.ts`, `billing.neon.integration.test.ts`,
+  `billing-routes-auth.neon.integration.test.ts`, `locations-races.neon.integration.test.ts` (editar).
+  Mutaciones **M5, M6, M14, M17** + **re-ejecutar M1**.
+- **D2 (UI, pendiente):** `backoffice/subscription/{page,subscription-console,cancel-dialog}`, **D8** (reconciliacion al
+  abrir la pagina), `backoffice/page.tsx` (tarjeta + presentacion de `none`/`canceled`), `backoffice/locations/page.tsx`,
+  `onboarding/page.tsx` ([R2-I8]), y el **render del HTML** con `renderToStaticMarkup` (el DoD de que los tres campos
+  sensibles no salen en el markup).
+
+**AVISO PARA EL REVISOR DE LA D2, porque la particion crea un riesgo que la fase entera no tenia:** la spec (~linea
+1214) dice que la salida del estado «`plus` con la suscripcion muerta» cuelga de «**D8 o el boton de salida de D10**».
+D10 cae en D1 y D8 en D2, asi que **ninguno de los dos revisores ve las dos salidas juntas**. El revisor de la D2 tiene
+que verificar las DOS.
+
+**CORTES DE TAMAÑO DECIDIDOS ANTES DE DESPACHAR** (la spec exige que los decida el orquestador, no el implementador a
+mitad de la tarea). Tamaños re-medidos hoy con el hook, no copiados:
+- **`billing-integration-support.ts` 297/300 y la fase D TIENE que extender el fake** (hoy `checkout.sessions.create` y
+  `customers.create` tiran «La fase B no crea…», y `subscriptions.update` ignora los params y no puede fallar — M17 lo
+  necesita). Corte: **`billing-stripe-fake.ts` nuevo** con el doble de Stripe; el archivo viejo lo **reexporta**, asi que
+  ningun test de las fases B/C —que tienen PASS— cambia de import.
+- **`store.ts` 295/300 y `billing-store.neon.integration.test.ts` 300 exactas: PROHIBIDOS.** Las 5 funciones que las
+  rutas consumen ya existen. Si una ruta necesita algo mas, es un hallazgo para el orquestador, no un corte del
+  implementador.
+- Los tests de integracion de la D1 van en **tres** archivos, cortados **por naturaleza** y no por tamaño: las 5 rutas
+  contra Neon / staff activo y desactivado con **sesiones reales** (el unit con `ownerContext` mockeado no ve esa
+  distincion) / las dos carreras en `locations-races`.
+- **`onboarding/page.tsx` esta en 469** (preexistente, sobre el limite): el hook va a dar `EXIT=2` en cuanto se lo
+  toque. Es la D2 y no es una violacion nueva — pero el edit de [R2-I8] no puede hacerlo crecer.
+
+**AUDITORIA DEL ARBOL ANTES DE DESPACHAR, corrida por el orquestador (no relatada):** `grep -rn MUTATION
+apps/merchant/src` **vacio**; los tres `shasum` **identicos** al baseline de mas abajo; y la rama efimera de Neon
+**VIVA con la migracion `0030` puesta** — verificado corriendo `billing-store.neon.integration.test.ts`, **5/5 verdes**,
+que es el unico chequeo que distingue una rama sana de una borrada (el `.env` se lee igual en los dos casos).
+
 <details><summary><b>HISTORICO de la fase B (auditoria del arbol heredado: el primer implementador murio a mitad y dejo el arbol ROJO con codigo de produccion sin un solo test)</b></summary>
 
 **AUDITORIA DEL ARBOL HEREDADO, corrida por el orquestador — no relatada por nadie:**
