@@ -9,10 +9,10 @@ Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comand
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-09-11 (**FASE A de la spec 0063: PASS del revisor independiente. Cerrada y COMMITEADA en
-`ac4f5a3`. Faltan las fases B y C. NADA desplegado a prod: no se pusheo y la migracion 0030 NO esta aplicada a prod
+`6921c94` (`feat: spec 0063 fase A — fundacion del cambio de plan, con PASS de revisor`). Faltan las fases B y C. NADA desplegado a prod: no se pusheo y la migracion 0030 NO esta aplicada a prod
 — solo a la rama Neon efimera `spec-0063-billing`.**
 
-**ARRANCAR LA FASE B DESDE ACA.** El arbol esta limpio (`git status` vacio) y verde en `ac4f5a3`. La base de
+**ARRANCAR LA FASE B DESDE ACA.** El arbol esta limpio (`git status` vacio) y verde en `6921c94`. La base de
 integracion es la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`), credenciales en `.env.integration.local`
 (gitignored), con la migracion `0030` YA aplicada: `set -a; . ./.env.integration.local; set +a`. **Ojo al heredar un
 `.env` de integracion: una rama efimera BORRADA y una sana son indistinguibles desde el archivo — corre algo antes de
