@@ -223,6 +223,38 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### B3 — LA CLAVE FIJA DEL `checkout` NO TIENE ORACULO. Tercer bloqueante de la MISMA familia. Despachado
+
+**El revisor murio a mitad de la re-revision con MUT-K puesta; la termino el ORQUESTADOR.** Todo lo de abajo son
+corridas propias.
+
+**MUT-K** (romperle la clave fija al Checkout agregandole `:${Date.now()}`) → **la suite ENTERA queda VERDE: 118
+archivos / 862 tests, CERO rojos.**
+
+**No es estilo: es una decision DECLARADA de esta spec.** §Decisiones del orquestador punto 3 dice «**la clave fija se
+conserva**», y el docblock de `confirmAtStripe` en `cancel/route.ts` la usa como **contraejemplo normativo** («con una
+clave FIJA —el patron que `checkout` usa y esta spec denuncia»—). Hay texto en **produccion** razonando sobre esa
+propiedad y **nada la sostiene**. Es B1/B2 otra vez: ADR 0054.
+
+**No es un limite — ya esta pinneado y VERIFICADO EN LAS DOS DIRECCIONES**, que es el estandar de este repo:
+- con MUT-K → **ROJO**, `expected [ …(2) ] to deeply equal [ …(2) ]` sobre `fake.sessionKeys`: la asercion habla de
+  **la propiedad**, no del setup;
+- con el codigo limpio → **VERDE**, 1/1.
+
+**Corte decidido por el orquestador antes de despachar:** va a **`billing-checkout-guards.neon.integration.test.ts`**
+(nuevo), hermano del `billing-cancel-guards`. **No entra en los existentes: `billing.neon…` y `billing-routes.test.ts`
+estan en 300 EXACTAS —cero margen— y el fake en 299.**
+
+**LA TRAMPA NUEVA, y es peor que la del untracked: `checkout/route.ts` esta TRACKED Y MODIFICADO (` M`).** Ahi el
+`git checkout` de emergencia **si hace algo — y es lo PEOR que puede hacer: borra tambien el trabajo del
+implementador**, no solo la mutacion. La del untracked no revierte nada y se nota; esta revierte de mas y **se ve como
+si hubiera funcionado**. Se reconstruyo a mano y se verifico contra el oraculo: **`98e4e7c9aa7228b96338ebe32871ff37de6ac37c`**,
+identico al que el implementador habia dejado en su handoff. **Tercera vez en esta fase que ese numero es lo unico que
+separa una reconstruccion de una adivinanza.**
+
+**La sonda del revisor quedo FUERA del arbol** (en `/tmp`): era un `.neon.integration.test.ts` suelto en `src/server/`
+que la suite **corre**, o sea un contaminante con forma de test.
+
 ### DELTA DEL FAIL CERRADO — EN RE-REVISION con el MISMO revisor (2026-09-11). Sigue SIN PASS
 
 **Nada commiteado del codigo, nada desplegado.** Lo de abajo son corridas del ORQUESTADOR, no el relato del
