@@ -223,6 +223,31 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### B3 CERRADO. EN RE-REVISION FINAL con el MISMO revisor (2026-09-11). Sigue SIN PASS
+
+**Corridas del ORQUESTADOR, no el relato:** `grep MUTATION` **vacio**, **ninguna sonda suelta en `src/`**, baseline de
+la fase C intacto, `checkout/route.ts` de vuelta en `98e4e7c9…`. **Los 5 gates verdes** (`typecheck` y `build`
+forzados, `0 cached`) y `pnpm test` con integracion en **119 archivos / 863 tests / 0 failed / 0 skipped** (venia de
+118/862). **Tamaños al hook con control que discrimina**: `billing-checkout-guards…` 97 `EXIT=0`; siguen sin margen
+`billing-routes.test.ts` **300**, `billing.neon…` **300** y el fake **299**.
+
+**B3 cerrado en `billing-checkout-guards.neon.integration.test.ts`** (97 lineas). MUT-K corrida por el implementador
+**contra la suite completa**: **1 solo rojo en 119 archivos**, con el diff literal
+(`checkout:<id>:month` esperado vs `checkout:<id>:month:1789151976243` recibido) — la asercion habla de **las claves**.
+La decision 3 del orquestador **ahora apunta a su oraculo**.
+
+**Y el implementador le encontro un DEFECTO REAL a la sonda del revisor antes de adoptarla:** dejaba que el fake
+devolviera el literal fijo `cus_creado_por_el_checkout`, que **se escribe en `core.subscription`** — cuyo unique de
+customer es **GLOBAL** —, asi que habria chocado con el test de `checkout` de `billing.neon…` al correr en paralelo.
+Ahora sale de un `randomUUID()`. **Es el `23505` que ya costo una vuelta en esta fase, cazado esta vez ANTES de
+pagarlo** — o sea que la leccion viajo. Y agrego una asercion gratis: **el intervalo SI forma parte de la clave**.
+
+**LO QUE LE QUEDA A LA RE-REVISION FINAL** (su pasada anterior quedo a mitad): verificar que las sondas de B1/B2/B3
+pinnean lo que dicen y no una version debilitada; que `cancel` **realmente** no lee el body (si lo leyera, la
+explicacion del «verde por el motivo equivocado» seria falsa y el oraculo nuevo estaria mal atribuido); **mutar** los
+menores que tocaron produccion y el fake (`idempotencyKey` del customer, separacion de canastas); y juzgar los
+**docblocks nuevos** de `gateway.ts` y `resume`, que afirman cosas — **el ADR 0054 ya mordio CINCO veces en esta spec**.
+
 ### B3 — LA CLAVE FIJA DEL `checkout` NO TIENE ORACULO. Tercer bloqueante de la MISMA familia. Despachado
 
 **El revisor murio a mitad de la re-revision con MUT-K puesta; la termino el ORQUESTADOR.** Todo lo de abajo son
