@@ -223,26 +223,63 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### ⚠️ MUTACION VIVA AHORA MISMO — el revisor esta barriendo mutaciones FUERA DE LA TABLA
+### REVISOR INDEPENDIENTE: **FAIL** (2026-09-11). 2 bloqueantes, los DOS del tipo ADR 0054. Despachados
 
-**Viva en este momento: MUT-B**, en `apps/merchant/src/app/api/billing/_auth.ts:108` →
-`// MUTATION MUT-B (revisor): sin tolerancia a la AUSENCIA de body…`
+**Sin PASS: nada se marca implementada, nada commiteado, nada desplegado.** El revisor **no encontro bugs en el
+codigo**: los dos bloqueantes son **invariantes que la spec y los docblocks declaran y que ningun test pinnea**, y los
+dos vienen **demostrados cerrables** —el revisor escribio la sonda, verifico que muerde por el motivo correcto y la
+borro—, asi que **no hay ningun limite que declarar**.
 
-- **Hash MUTADO (lo que vas a ver si heredas esto):** `983e3bf496f9e5b6bbfed3eb02edf9e1a9f2cf92`
-- **Hash LIMPIO al que hay que volver:** `06b1e16a624f90bb3854474da70e1a3c1bf427fd` (del baseline de abajo)
+**AUDITORIA DEL ARBOL TRAS LA REVISION, corrida por el orquestador:** `grep MUTATION` **vacio**, **los 5 hashes de las
+rutas IDENTICOS al baseline** (`_auth` `06b1e16a`, `cancel` `1fa5bbf9`, `settle-free` `eeaa9e0c`, `interval`
+`65fe4f3c`, `resume` `95cebd10`), sin sondas colgadas y `git status` igual al de antes. **El revisor limpio perfecto —
+y el baseline de abajo es lo que permitio verificarlo en vez de suponerlo.**
 
-**YA CERRADA: MUT-D** (`settle-free` deja de ser el alias de `cancel`). **Revertida por el revisor y verificado por el
-orquestador**: el archivo volvio a `eeaa9e0cbe64281c0463d53451d117d2e5377bf3`, identico al baseline.
+**B1 — el guard `createdNow` del revert de `cancel` no tiene NINGUN oraculo.** `MUT-A` (sacarlo) → **35/35 VERDE**. Es
+la decision 3 del implementador, con un docblock de 8 lineas afirmando que sin ella «un revert borraria una baja
+legitima… exactamente el daño que [R1-B3] existe para impedir». Los dos tests que parecen cubrirlo son **los dos
+primeros pedidos** (`createdNow === true`), o sea **indistinguibles con y sin el guard**. Sonda de ~25 lineas, sin
+paquetes: con MUT-A da `expected null to be 'free'`.
 
-**El orquestador NO corta una mutacion bajo un agente vivo:** lo haria transcribir un resultado falso, y una fila de
-mutacion mal medida es lo que esta spec ya pago tres veces. Estan **etiquetadas y atribuidas**, que es lo que la
-convencion pide; **lo que no puede pasar es que sobrevivan a la sesion.** Si heredas el arbol con un hash que no
-coincide con el baseline de abajo, **no persigas un bug: revertilo** y verifica el hash.
+**B2 — «`settle-free` sobre una suscripcion VIVA programa la baja en Stripe» no tiene oraculo.** `MUT-D` (romper el
+alias y settlear SIEMPRE en local) → **35/35 VERDE**: ningun test llama a `settle-free` con una suscripcion viva.
+**El daño es de plata** —dejar de cobrarle a un negocio el plan que Stripe le sigue facturando— y **el barrido del
+filesystem no lo ve**, porque mira que exista el `export POST`, no el cuerpo.
 
-**Las dos son mutaciones FUERA de la tabla** —MUT-D ataca si el alias `settle-free`=`cancel` tiene oraculo propio;
-MUT-B, la tolerancia de `readBody`—, que es exactamente donde estuvo todo el valor en las fases B y C. **Y las dos caen
-sobre archivos UNTRACKED**, o sea el caso que la regla nueva de `CLAUDE.md` existe para cubrir: sin el baseline de
-abajo no tendrian punto de retorno, porque `git checkout` sobre un `??` no hace nada.
+**CORTE DECIDIDO POR EL ORQUESTADOR ANTES DE DESPACHAR:** `billing.neon.integration.test.ts` esta en **299/300**
+(preguntado al hook), asi que **cualquier** linea nueva lo pasa. Los dos tests van a
+**`billing-cancel-guards.neon.integration.test.ts`**, cortado **por naturaleza**: los dos pinnean las dos decisiones
+que protegen **una baja legitima de ser destruida**.
+
+**LO MEJOR DE LA REVISION, otra vez fuera de la tabla:** de 7 mutaciones, **MUT-A y MUT-D quedaron VERDES** (los dos
+bloqueantes) y **MUT-F** —sacarle `status='active'` a `ownerContext`, corrida contra **la suite entera**— dio **1 solo
+rojo en 117 archivos**, en `billing-routes-auth.neon`. O sea que ese filtro **si tiene oraculo propio, y antes de esta
+fase no lo tenia en NINGUNA parte del repo**: `api/staff/*` y `api/locations/*` dependen de el y ninguno muerde. Es un
+aporte neto de la D1.
+
+### CORRECCION A UNA AFIRMACION DEL ORQUESTADOR: los `fetch failed` NO eran reintentos absorbidos
+
+Este archivo decia que la suite seguia escupiendo `fetch failed` dentro de corridas verdes «absorbidos por
+reintentos», y que el flaky estaba «tapado, no cerrado». **Era falso, y lo falsifico el revisor. Verificado por el
+orquestador con `grep`, no aceptado de palabra:**
+- Esos `fetch failed` salen de **`merchant-auth-disabled-paths.test.ts:32`**, que pone a proposito
+  `process.env.DATABASE_URL ??= "postgresql://user:pass@localhost/db"`. Son **benignos**, preexistentes de la spec
+  0046, y **no tocan la rama de Neon**.
+- **No hay ninguna capa de retry**: `grep -niE "retry|reintent|backoff|attempt" server/db.ts` no devuelve **nada**. La
+  hipotesis de «absorbidos» no tenia mecanismo.
+- **El flaky SI es real, pero es OTRO y es AJENO a esta fase**: 1 de 3 corridas del revisor fallo **por una
+  ASERCION**, en `consumer-recovery.neon.integration.test.ts` (spec 0032). **Causa raiz:** ese archivo usa `phones[4]`
+  en **dos** tests y el segundo hace el `select` de `otpDeliveries` **sin `order by`** y despues `.at(-1)`
+  (lineas 269, 350, 366-367 — verificado). Con dos filas para ese telefono, **el orden del heap decide**. Es una
+  moneda al aire, preexistente.
+- **Riesgo de CI (spec 0062): real y doble** — ese `.at(-1)` sin `order by`, y el compute de la rama efimera con
+  `suspend_timeout_seconds: 0` mientras ~27 archivos arrancan en paralelo contra un compute que puede estar frio.
+  **El revisor declara que NO reprodujo** los `fetch failed` contra Neon, con los intentos hechos escritos.
+
+**Leccion de metodo, y es del orquestador contra si mismo:** «absorbidos por reintentos» era una **explicacion
+inventada para un sintoma**, escrita en este archivo y relatada al owner sin buscar el mecanismo. Un `grep` de una
+linea la habria matado. Es el ADR 0054 del lado del diagnostico: **un sintoma no es una causa, y nombrar una causa
+plausible se siente igual de bien que haberla verificado.**
 
 ### BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED — el unico punto de retorno que tienen
 
