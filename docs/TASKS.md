@@ -82,6 +82,52 @@ D1» en la spec. **Sin las mutaciones no hay evidencia de que nada de lo escrito
 porque la carrera **no existia** — la escribe esta fase. **Si con M1 puesta la carrera nueva sigue verde, es un
 hallazgo**, no un detalle: querria decir que no pinnea lo que su nombre dice.
 
+### 3a MUERTE DEL MISMO IMPLEMENTADOR (5a de la spec), Y ESTA VEZ MURIO CON UNA MUTACION PUESTA
+
+**`billing/store.ts` aparecio modificado — y era la mutacion M14.** La cazo `grep -rn MUTATION` en el acto **porque
+estaba bien ETIQUETADA** (`// MUTATION M14 — el stripe_subscription_id NO se limpia.`). Es exactamente el escenario de
+la spec 0055 que `CLAUDE.md` documenta: sin la etiqueta, esos 4 rojos se leian como un bug real del producto («el
+`settle-free` no limpia el id»). **La convencion funciono.**
+
+**M14 — EJECUTADA por el ORQUESTADOR (2026-09-11), no predicha: CONFIRMADA y MAS AMPLIA que la hipotesis. 4 rojos en 3
+archivos**, corrida contra **los 7 archivos que pueden verla**:
+- `billing-store.test.ts` → **2 rojos**: `escribe las 7 columnas de la spec y NO stripe_customer_id` →
+  `expected [ 'downgradeRequestedAt', …(6) ] to deeply equal [ 'downgradeRequestedAt', …(7) ]`; y `limpia el id de
+  Stripe y el intervalo, y deja free / active`.
+- `billing-store.neon.integration.test.ts` → **1 rojo**: `settleToFree escribe el SET de D10 y CONSERVA el customer` →
+  **`expected 'sub_muerta' to be null`**, literalmente el id que no se limpio.
+- `billing.neon.integration.test.ts` → **1 rojo**: el test de D10.
+- **LA HIPOTESIS ATRIBUIA MAL:** decia «desde `none`, despues de bajar a free, `checkout` procede». El test que nombra
+  si se pone rojo, **pero falla en la comparacion del `SET`, ANTES de llegar al paso del `checkout`** — el oraculo que
+  muerde es el **conjunto exacto de claves**, que es justo lo que la spec dice que es load-bearing porque la propiedad
+  de D10 es una **AUSENCIA**.
+- **Revertida con `shasum` verificado:** `9038c1a7…` (mutada) → `73902c5dbe9a0edf300c81131011ab5470aeeaa2` (identica al
+  blob de git). `grep MUTATION` vacio.
+
+**EL ROJO QUE DEJO NO ES UN BUG — ES UN `23505` POR LITERALES COMPARTIDOS, y es la trampa que `CLAUDE.md` ya documenta
+en OTRA columna.** La suite completa da **117 archivos / 860 tests con 1 rojo** en `locations-races`. Diagnostico
+hecho **leyendo la asercion**, no adivinando:
+- **Aislado el archivo pasa 4/4**; en la suite falla. **Y falla en un test DISTINTO segun la corrida** (suite completa:
+  `a cancel concurrent with the webhook`; 7 archivos juntos: `eight simultaneous reactivations`). **Esa
+  no-determinacion es la firma de una colision, no de un bug.**
+- Muere en el **seed** (`locations-integration-support.ts:58`), o sea en el setup y **antes de cualquier asercion de
+  comportamiento**: `duplicate key value violates unique constraint "core_subscription_customer_unique"`,
+  `Key (stripe_customer_id)=(cus_race) already exists.`
+- **El par exacto:** `billing-webhook.neon.integration.test.ts:213` (fase B, con PASS) y
+  `locations-races.neon.integration.test.ts:191` usan **los mismos literales `cus_race`/`sub_race`**, y el unique es
+  **GLOBAL** (`schema/business.ts:250`). Vitest paraleliza archivos. Se arregla en el archivo NUEVO, no en el que tiene
+  PASS, y **se verifica con la suite completa**: aislado ya pasaba.
+- **Consecuencia que importa: la carrera de los 8 desarchivados nunca corrio limpia dentro de la suite**, asi que el
+  verde aislado no vale hasta que la suite entera este verde.
+
+**Estado del arbol ya revertido, verificado por el orquestador:** `typecheck` (forzado, `0 cached`), `lint` y
+`format:check` **verdes**; los 3 `shasum` del baseline **identicos**; `grep MUTATION` **vacio**. Ya estan
+`billing-routes-auth.neon.integration.test.ts` (5 tests, incluye `owner DESACTIVADO` — mas de lo que pedia el DoD) y
+`locations-races` extendido a 4 tests.
+
+**FALTA:** el `23505`, **M5 / M6 / M17 y re-ejecutar M1** (M14 ya esta hecha), la seccion «Decisiones del IMPLEMENTADOR
+de la fase D1» en la spec (**verificado con `grep`: todavia no existe**) y el handoff.
+
 **UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
 `cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
 FILA y no la URL) es bueno, pero **no esta en la spec**. Se le pidio bajarla a una seccion «Decisiones del
