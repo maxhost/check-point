@@ -281,25 +281,21 @@ inventada para un sintoma**, escrita en este archivo y relatada al owner sin bus
 linea la habria matado. Es el ADR 0054 del lado del diagnostico: **un sintoma no es una causa, y nombrar una causa
 plausible se siente igual de bien que haberla verificado.**
 
-### ARBOL ROJO AHORA MISMO — `gateway.ts` roto por un `*/` dentro de un comentario
+### CERRADO: el `*/` de un glob dentro de un comentario de bloque (vale guardarlo, es sutil)
 
-**No es una mutacion** (`grep MUTATION` **vacio**; MUT-A y MUT-D ya revertidas y verificadas: `cancel/route.ts` en
-`1fa5bbf9d80ee940…` y `settle-free/route.ts` en `eeaa9e0cbe64281c…`, identicos al baseline). **Es un defecto real,
-introducido al corregir el menor 1.**
+Al corregir el menor 1, `server/billing/gateway.ts:42` quedo con la ruta **`app/api/billing/*/route.ts` DENTRO de un
+bloque `/** … */`**: el `*/` del glob **cerraba el comentario ahi mismo** y toda la prosa que seguia se parseaba como
+codigo. `typecheck` daba `TS1443` x10 + `TS1160: Unterminated template literal`, `lint` un `Parsing error`, y **19
+archivos de test caian con `esbuild: Expected ";" but found "stripeContext"`**.
 
-`server/billing/gateway.ts:42` escribe la ruta **`app/api/billing/*/route.ts` DENTRO de un bloque `/** … */`**. El
-`*/` del glob **cierra el comentario ahi mismo**, y todo lo que sigue se parsea como codigo:
-- `typecheck` → `gateway.ts(42,38): error TS1443: Module declaration names may only use ' or " quoted strings`, +10 en
-  cascada.
-- `lint` → `42:37 Parsing error: …`.
-- Balance en el archivo: **3 `/**` contra 4 `*/`** — el cierre de mas es el del glob.
+**No era una mutacion** —`grep MUTATION` vacio y los dos hashes en el baseline—, era un defecto real. **Arreglado**
+escribiendo `app/api/billing/<ruta>/route.ts`. **Verificado por el orquestador tras el fix:** `typecheck` (forzado,
+`0 cached`), `lint` y `format:check` **los tres verdes**, y el balance del archivo en **3 `/**` / 3 `*/`**.
 
-**Arreglo:** escribir la ruta sin `*/` literal (`app/api/billing/<ruta>/route.ts`, o enumerando las cinco). Ya
-despachado al implementador, que esta vivo — **no lo toca el orquestador para no pisarle la edicion**.
-
-**Y el detalle que lo hace traicionero: `format:check` NO lo caza.** Prettier formatea igual un archivo que parsea mal
-de esta forma, asi que un «formato verde» no dice nada acá. Los gates que muerden son `typecheck` y `lint`, y hay que
-mirar **los dos**.
+**LO QUE CONVIENE NO PERDER, porque es lo traicionero del caso: `format:check` NO lo caza.** Prettier formatea igual un
+archivo que parsea mal de esta forma, asi que «formato verde» no dice nada. Los gates que muerden son **`typecheck` y
+`lint`** —y el sintoma mas ruidoso (19 archivos de test rojos) apuntaba a `checkout/route.ts`, que **no tenia nada que
+ver**: era la cascada de un import.
 
 ### EL DELTA DEL FAIL, EN CURSO
 
