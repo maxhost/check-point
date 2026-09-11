@@ -163,6 +163,50 @@ para el owner**, y mientras tanto la regla operativa es: **un rojo de integracio
 creerle**, y el handoff de la D1 tiene que declarar esto explicitamente en vez de reportar un verde de una sola
 corrida.
 
+### FASE D1 IMPLEMENTADA Y EN REVISION INDEPENDIENTE (2026-09-11). SIN PASS: nada commiteado, nada desplegado
+
+**El implementador entrego tras 3 muertes.** Lo de abajo **NO es su relato: son las corridas del orquestador.**
+
+- `grep MUTATION` **vacio**; los 3 `shasum` del baseline de la fase C **identicos**; **`locations/core.ts` y `store.ts`
+  identicos a git**, o sea que M1 y M14 quedaron bien revertidas.
+- **Tamaños PREGUNTADOS AL HOOK** (no `wc`), con control que discrimina: `billing-stripe-fake.ts` **299** `EXIT=0`,
+  `billing.neon.integration.test.ts` **299** `EXIT=0`, `billing-routes.test.ts` 294, `locations-races` 288, `_auth.ts`
+  237. **Coinciden con lo declarado** — por primera vez en esta spec un tamaño reportado reprodujo.
+  **Pero dos archivos quedan a UNA linea del limite: lo proximo que se les sume necesita corte decidido antes.**
+- `typecheck` (forzado, `0 cached`), `lint`, `format:check`, `build` (forzado, `0 cached`): **los cuatro verdes**.
+- `pnpm test` con integracion, **DOS corridas**: **117 archivos / 860 tests / 0 failed / 0 skipped** las dos (venia de
+  113/827: **+4 archivos, +33 tests, ningun preexistente perdido**).
+
+**LO MEJOR DEL HANDOFF, y conviene no perderlo: en M6 el implementador reporto que 5 de sus 8 rojos eran POR EL MOTIVO
+EQUIVOCADO** (morian en `DATABASE_URL no esta configurada` y en `invalid input syntax for type uuid: ""`), y que el
+oraculo real son 3 en `billing-routes-auth.neon…` con `checkout: expected 409 to be 403`. Es exactamente la regla de
+`CLAUDE.md` aplicada por quien podria haberla escondido.
+
+**DOS COSAS QUE EL ORQUESTADOR NO DA POR BUENAS Y QUE VAN AL REVISOR:**
+1. **La suite es FLAKY y el verde puede ser suerte.** Antes del ultimo tramo hubo **tres corridas fallando en TRES
+   conjuntos DISTINTOS** de archivos (incluidos dos de la spec 0055, que esta fase no toca) con
+   `NeonDbError: fetch failed` —no una asercion— y todos verdes aislados. Ahora da 2/2 verde **pero los `fetch failed`
+   SIGUEN EN LA SALIDA de la corrida verde**, absorbidos por reintentos. **No esta cerrado: esta tapado.** Amenaza a CI
+   (spec 0062 corre estos archivos alla).
+2. **UN NUMERO DEL HANDOFF NO REPRODUCE.** Declaro que tras limpiar la rama efimera «quedan **14 negocios** … **y 3 sin
+   fila de suscripcion**». **Medido por SQL: 11 negocios y 11 filas de `core.subscription`** (9 `free/active` + 2
+   `plus/active`), o sea **cero sin fila**. La parte sustantiva —la copia de prod sobrevivio— **si reproduce**, y los
+   schemas estan intactos (core 23 tablas, consumer 10, merchant_auth 5). **Aviso honesto: yo medi DESPUES de dos
+   corridas completas, asi que la rama se movio entre su medicion y la mia** — puede ser benigno. Lo re-mide el revisor.
+   Y de paso: **borro 48 filas de una base por su cuenta**; que confirme que no se llevo nada real.
+
+**Los otros cuatro focos que se le pidieron al revisor:** el **costo declarado** de `store.ts` (dice que la 6.a funcion
+lo lleva a 314 y `EXIT=2` — esta spec ya tuvo dos bloqueantes por costos falsos); que el **test que se modifico para que
+M6 mordiera** no haya aflojado el guard (¿queda un caso con `businessId` AJENO?); **`_auth.ts` con `decideUnderLock` y
+`billingStateResponse` adentro** (un archivo llamado `_auth` que decide planes bajo lock miente sobre su contenido); y
+**mutaciones fuera de la tabla** — en las fases B y C ahi estuvo todo el valor.
+
+**LO QUE SIGUE:** PASS/FAIL del revisor → (si PASS) commit de la D1 → **fase D2 (UI + D8 + render del HTML)**, cuyo
+revisor tiene que vigilar **las dos salidas** (D8 **y** el boton de D10), porque la particion las mando a fases
+distintas y ningun revisor las ve juntas.
+
+<details><summary><b>HISTORICO: la mutacion M1 que estuvo viva durante la sesion (ya revertida, verificado)</b></summary>
+
 ### ⚠️ HAY UNA MUTACION PUESTA A PROPOSITO EN ESTE MOMENTO — M1, Y ESTA VIVA
 
 **Si estas leyendo esto en una sesion fresca, NO es un bug y NO persigas el rojo.** El implementador de la D1 esta
@@ -184,6 +228,7 @@ vivo lo haria transcribir un resultado falso — y una fila de mutacion mal medi
 veces. La mutacion esta **etiquetada y atribuida**, que es lo que la convencion pide; lo que NO puede pasar es que
 sobreviva a la sesion.
 
+</details>
 **UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
 `cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
 FILA y no la URL) es bueno, pero **no esta en la spec**. Se le pidio bajarla a una seccion «Decisiones del
