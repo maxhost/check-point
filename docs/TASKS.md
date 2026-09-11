@@ -223,6 +223,24 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### ⚠️ HAY UNA MUTACION VIVA AHORA MISMO: MUT-D, del revisor, sobre un archivo UNTRACKED
+
+`apps/merchant/src/app/api/billing/settle-free/route.ts:10` →
+`// MUTATION MUT-D (revisor): settle-free deja de ser el alias de cancel y settlea…`
+
+- **Hash MUTADO (el que vas a ver si heredas esto):** `a33cccbf4022bf8f7062d11fbc351e51898fd493`
+- **Hash LIMPIO al que hay que volver:** `eeaa9e0cbe64281c0463d53451d117d2e5377bf3` (del baseline de abajo)
+
+**El orquestador NO la revierte a proposito:** el revisor esta VIVO y cortarsela lo haria transcribir un resultado
+falso — y una fila de mutacion mal medida es lo que esta spec ya pago tres veces. Esta **etiquetada y atribuida**, que
+es lo que la convencion pide; **lo que no puede pasar es que sobreviva a la sesion.** Si heredas el arbol con ese
+`a33cccbf…`, **no persigas un bug: revertila** y verifica que el hash vuelve a `eeaa9e0c…`.
+
+**Y es exactamente el caso que la regla nueva existe para cubrir:** sobre un archivo untracked `git checkout` **no
+hace nada**, asi que sin el baseline de abajo esta mutacion no tendria punto de retorno. MUT-D es ademas una mutacion
+**FUERA de la tabla** —ataca si el alias `settle-free` = `cancel` tiene oraculo propio—, que es donde estuvo todo el
+valor en las fases B y C.
+
 ### BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED — el unico punto de retorno que tienen
 
 **Re-medido en el momento de escribirlo, con el arbol limpio (`grep MUTATION` vacio).** Es la regla nueva de
