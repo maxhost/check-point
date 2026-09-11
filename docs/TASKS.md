@@ -281,21 +281,25 @@ inventada para un sintoma**, escrita en este archivo y relatada al owner sin bus
 linea la habria matado. Es el ADR 0054 del lado del diagnostico: **un sintoma no es una causa, y nombrar una causa
 plausible se siente igual de bien que haberla verificado.**
 
-### ⚠️ MUTACION VIVA AHORA MISMO: MUT-D, del implementador, cerrando B2
+### ARBOL ROJO AHORA MISMO — `gateway.ts` roto por un `*/` dentro de un comentario
 
-`apps/merchant/src/app/api/billing/settle-free/route.ts:24` →
-`// MUTATION MUT-D — cuerpo propio que settlea SIEMPRE en local, aunque Stripe siga facturando.`
+**No es una mutacion** (`grep MUTATION` **vacio**; MUT-A y MUT-D ya revertidas y verificadas: `cancel/route.ts` en
+`1fa5bbf9d80ee940…` y `settle-free/route.ts` en `eeaa9e0cbe64281c…`, identicos al baseline). **Es un defecto real,
+introducido al corregir el menor 1.**
 
-- **Hash MUTADO (lo que vas a ver si heredas esto):** `81d1527cc2e6cf4da8789b79efa135dcd13eed7f`
-- **Hash LIMPIO al que hay que volver:** `eeaa9e0cbe64281c0463d53451d117d2e5377bf3`
+`server/billing/gateway.ts:42` escribe la ruta **`app/api/billing/*/route.ts` DENTRO de un bloque `/** … */`**. El
+`*/` del glob **cierra el comentario ahi mismo**, y todo lo que sigue se parsea como codigo:
+- `typecheck` → `gateway.ts(42,38): error TS1443: Module declaration names may only use ' or " quoted strings`, +10 en
+  cascada.
+- `lint` → `42:37 Parsing error: …`.
+- Balance en el archivo: **3 `/**` contra 4 `*/`** — el cierre de mas es el del glob.
 
-**YA CERRADA: MUT-A.** Revertida por el implementador y **verificado por el orquestador**: `cancel/route.ts` volvio a
-`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`, identico al baseline.
+**Arreglo:** escribir la ruta sin `*/` literal (`app/api/billing/<ruta>/route.ts`, o enumerando las cinco). Ya
+despachado al implementador, que esta vivo — **no lo toca el orquestador para no pisarle la edicion**.
 
-**No se revierte una mutacion bajo un agente vivo** (lo haria transcribir un resultado falso). Estan etiquetadas y
-atribuidas; **lo que no puede pasar es que sobrevivan a la sesion.** Si heredas el arbol con un hash que no coincide
-con el baseline de abajo, **no persigas un bug: revertilo.** Y recorda que **las dos rutas son untracked**:
-`git checkout` no las arregla, hay que reconstruirlas — por eso existe este par de hashes.
+**Y el detalle que lo hace traicionero: `format:check` NO lo caza.** Prettier formatea igual un archivo que parsea mal
+de esta forma, asi que un «formato verde» no dice nada acá. Los gates que muerden son `typecheck` y `lint`, y hay que
+mirar **los dos**.
 
 ### EL DELTA DEL FAIL, EN CURSO
 
