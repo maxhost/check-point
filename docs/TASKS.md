@@ -163,6 +163,27 @@ para el owner**, y mientras tanto la regla operativa es: **un rojo de integracio
 creerle**, y el handoff de la D1 tiene que declarar esto explicitamente en vez de reportar un verde de una sola
 corrida.
 
+### ⚠️ HAY UNA MUTACION PUESTA A PROPOSITO EN ESTE MOMENTO — M1, Y ESTA VIVA
+
+**Si estas leyendo esto en una sesion fresca, NO es un bug y NO persigas el rojo.** El implementador de la D1 esta
+**corriendo** (verificado, no supuesto) y va por las mutaciones en orden. Estado al momento de escribir esto:
+
+- **M17 — ya REVERTIDA** por el implementador: `payment_behavior: "error_if_incomplete"` volvio a
+  `app/api/billing/interval/route.ts:75` y no queda etiqueta `MUTATION` en ese archivo. **Ojo con ese archivo: es
+  UNTRACKED, asi que una mutacion ahi NO tiene blob de git contra el cual revertir** — se deshace a mano leyendo la
+  etiqueta. Vale para las 5 rutas nuevas mientras no se commiteen.
+- **M1 — PUESTA AHORA MISMO** en `apps/merchant/src/server/locations/core.ts:98`
+  (`// MUTATION M1 — el tope ignora pendingPlan.`): `effectiveLocationLimit` devuelve `current` y se comio el guard de
+  `pendingPlan` **y** el `[R1-N8]` del string vacio.
+  - **Ese archivo SI esta trackeado**, asi que se revierte con `git checkout apps/merchant/src/server/locations/core.ts`.
+  - **`shasum` LIMPIO (blob de git): `869a842a8e417eba2aa25e0771aa838865108199`.** Mutado ahora:
+    `6a6766698415f4314fd574cc4062728abb93a3aa`. **Si la sesion se cayo, reverti y verifica contra el limpio.**
+
+**El orquestador NO la revirtio a proposito:** el hook `no-mutations-left.sh` la marco, pero cortarla bajo un agente
+vivo lo haria transcribir un resultado falso — y una fila de mutacion mal medida es justo lo que esta spec ya pago tres
+veces. La mutacion esta **etiquetada y atribuida**, que es lo que la convencion pide; lo que NO puede pasar es que
+sobreviva a la sesion.
+
 **UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
 `cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
 FILA y no la URL) es bueno, pero **no esta en la spec**. Se le pidio bajarla a una seccion «Decisiones del
