@@ -334,9 +334,16 @@ lo unico que permite distinguir «mutado» de «legitimo». `grep MUTATION` esta
 - `server/billing-stripe-fake.ts` -> `fc5535270ac77700095ab70c38eead89800f6843`
 - `server/billing.neon.integration.test.ts` -> `df19f535173e946a7a48a5551630eb1ca74db9bd`
 
-**Tamaños al hook, tambien re-medidos:** `billing-stripe-fake.ts` **299** (`EXIT=0`) — el menor 6 se cerro **sin
-hacerlo crecer**, que era el riesgo; `billing.neon.integration.test.ts` **299**; `billing-routes.test.ts` 294;
-`billing-cancel-guards.neon.integration.test.ts` **149**. **Los dos de 299 siguen a UNA linea del limite.**
+**⚠️ DOS ARCHIVOS EN 300 EXACTAS — cero margen.** Medido al hook: `billing-routes.test.ts` **300** (`EXIT=0`),
+`billing.neon.integration.test.ts` **300** (`EXIT=0`), `billing-stripe-fake.ts` 299, `billing-cancel-guards` 149. El
+hook muerde en **>300**, asi que pasan por un pelo, pero **la proxima linea que se le sume a cualquiera de los dos lo
+rompe** — y `file-size` es **PostToolUse, no Stop**: los 5 gates NO lo cazan. Es el bloqueante que costo la 3a pasada
+de la fase C. **Avisado al implementador; si le falta agregar algo ahi, el corte lo decide el orquestador.**
+
+**LOS HASHES Y TAMAÑOS DE ARRIBA SE MUEVEN MIENTRAS EL IMPLEMENTADOR TRABAJA — no los copies al handoff.** Ya paso
+dentro de esta misma sesion: re-medi el baseline y **tres hashes habian cambiado** por ediciones legitimas de los
+menores. **Todo numero que vaya al handoff o a un doc se re-mide al cerrar, despues de la ultima pasada de prettier y
+preguntandole AL HOOK, con un control que demuestre que discrimina.**
 
 **LO QUE SIGUE:** PASS/FAIL del revisor → (si PASS) commit de la D1 → **fase D2 (UI + D8 + render del HTML)**, cuyo
 revisor tiene que vigilar **las dos salidas** (D8 **y** el boton de D10), porque la particion las mando a fases
