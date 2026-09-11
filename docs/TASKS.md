@@ -128,6 +128,41 @@ hecho **leyendo la asercion**, no adivinando:
 **FALTA:** el `23505`, **M5 / M6 / M17 y re-ejecutar M1** (M14 ya esta hecha), la seccion «Decisiones del IMPLEMENTADOR
 de la fase D1» en la spec (**verificado con `grep`: todavia no existe**) y el handoff.
 
+### EL `23505` ESTA CERRADO — Y APARECIO ALGO PEOR: LA SUITE DE INTEGRACION SE VOLVIO FLAKY
+
+**El arreglo del `23505` entro bien:** `locations-races` ya deriva sus literales (`cus_${tag}`/`sub_${tag}`) y
+**NO se toco** el archivo de la fase B que tiene PASS. Correcto.
+
+**Pero la suite completa NO esta verde de forma estable, y NO es un bug ni una regresion.** Evidencia, toda de
+corridas propias del orquestador:
+- **Tres corridas seguidas de `pnpm run test` fallaron en TRES CONJUNTOS DISTINTOS de archivos:** (1) `locations-races`;
+  (2) `billing-webhook-claim` + `billing-webhook-writes` (fases C y B, **con PASS**); (3) `counter-redeem` +
+  `counter-redeem-surfaces` (**spec 0055 — esta fase no los toco ni de cerca**).
+- **La causa no es una asercion: es `NeonDbError: Error connecting to database: TypeError: fetch failed`.**
+- **Aislados pasan todos.** Corridos los 4 sospechosos juntos: **4 archivos / 19 tests, 19/19 verdes.**
+- `grep MUTATION` **vacio** y los `shasum` del baseline **identicos** en el momento de cada corrida: no hay mutacion
+  puesta que lo explique.
+
+**Lectura:** la rama efimera de Neon se satura con la suite completa. Esta fase sumo **3 archivos de integracion
+nuevos** (`billing.neon`, `billing-routes-auth.neon`, `billing-interval.neon`) **y dos tests de concurrencia que
+disparan 8 requests simultaneos**, y eso volteo el equilibrio. *(Lo que esta MEDIDO es la lista de sintomas de arriba;
+que la causa raiz sea saturacion y no una intermitencia de Neon es la lectura mas probable, no algo verificado —
+cerrarlo pide correr la suite con concurrencia limitada y comparar.)*
+
+**POR QUE ESTO IMPORTA MAS QUE EL BUG QUE NO ERA:**
+1. **Un oraculo flaky es PEOR que ninguno.** Un rojo intermitente se le atribuye a lo ultimo que alguien toco — es
+   exactamente el modo de falla que todo `CLAUDE.md` existe para prevenir, ahora del lado de la infraestructura.
+2. **Un VERDE tampoco prueba nada mientras dure esto**: la proxima corrida puede estar verde por suerte, y un handoff
+   que reporte «5 gates verdes» sin decir esto estaria afirmando exito sobre una señal que no es estable.
+3. **Amenaza a CI**: la spec 0062 corre estos archivos en CI. Si la saturacion es la causa, CI va a empezar a fallar
+   por motivos que no son del codigo — y ahi el default de quien mire es perseguir un bug que no existe.
+
+**NO se arregla dentro de esta fase sin decidirlo**: acotar la concurrencia de vitest para los `.neon.integration`, o
+serializarlos, es una decision que toca al harness de tests de todo el repo (y a la spec 0062). **Queda como hallazgo
+para el owner**, y mientras tanto la regla operativa es: **un rojo de integracion se re-corre AISLADO antes de
+creerle**, y el handoff de la D1 tiene que declarar esto explicitamente en vez de reportar un verde de una sola
+corrida.
+
 **UNA DECISION DEL IMPLEMENTADOR QUE VIVE SOLO EN UN COMENTARIO:** `settle-free` es un **alias literal** del handler de
 `cancel` — el argumento (D10 dice que es la MISMA rama de `decidePlanChange`, y lo que decide si se toca Stripe es la
 FILA y no la URL) es bueno, pero **no esta en la spec**. Se le pidio bajarla a una seccion «Decisiones del
