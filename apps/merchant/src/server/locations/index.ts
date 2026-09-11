@@ -2,6 +2,7 @@
 // file-size budget; every `from "../locations"` import resolves here.
 export {
   LocationError,
+  effectiveLocationLimit,
   isProviderSelection,
   locationLimitForPlan,
   parseLocationName,
@@ -20,3 +21,4 @@ export type {
 export { createLocation, updateLocation } from "./address";
 export { listLocations, setLocationStatus } from "./store";
 export { parseLocationId } from "./shared";
+export type { ActiveLocationCap } from "./shared";

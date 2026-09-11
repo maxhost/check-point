@@ -67,8 +67,8 @@ export async function setLocationStatus(
       );
     }
     if (rawStatus === "active") {
-      const limit = await planLocationLimit(tx, business.id);
-      if (active >= limit) throw limitReached(limit);
+      const cap = await planLocationLimit(tx, business.id);
+      if (active >= cap.limit) throw limitReached(cap);
     }
 
     const [row] = await tx

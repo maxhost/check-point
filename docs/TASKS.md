@@ -8,7 +8,327 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-10 (**SPEC 0063 `cerrada` tras DOS rondas de revision independiente (4 revisores) y
+Ultima actualizacion: 2026-09-11 (**FASE A de la spec 0063: PASS del revisor independiente. Cerrada y COMMITEADA en
+`ac4f5a3`. Faltan las fases B y C. NADA desplegado a prod: no se pusheo y la migracion 0030 NO esta aplicada a prod
+— solo a la rama Neon efimera `spec-0063-billing`.**
+
+**ARRANCAR LA FASE B DESDE ACA.** El arbol esta limpio (`git status` vacio) y verde en `ac4f5a3`. La base de
+integracion es la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`), credenciales en `.env.integration.local`
+(gitignored), con la migracion `0030` YA aplicada: `set -a; . ./.env.integration.local; set +a`. **Ojo al heredar un
+`.env` de integracion: una rama efimera BORRADA y una sana son indistinguibles desde el archivo — corre algo antes de
+creerle.** (Paso en esta sesion: apuntaba a `spec-0055-redeem`, que ya no existia.)
+
+**PASS sobre el delta, con el codigo de produccion SIN TOCAR** — el revisor lo probo por `shasum` contra sus propias
+copias de la ronda 1, no contra el relato del implementador: `derive.ts` cambio 7 lineas, **todas de comentario**;
+`derive-rules.ts`, `plan-change.ts`, `locations/shared.ts` y `locations/core.ts` **identicos**. Se agrego oraculo, que
+era exactamente lo que el FAIL pedia. Gates finales: **105 archivos / 779 tests / 0 skipped**, typecheck + lint +
+format:check + build verdes, `no-mutations-left` y `file-size` en exit 0.
+
+**Las 9 mutaciones de la fase A tienen resultado REAL transcripto en la spec.** Lo que se aprendio ejecutandolas, y
+que ninguna prediccion habria dado:
+- **M15**: en su primera corrida **la suite entera quedo VERDE** — el guard de pertenencia de D5.h no tenia NINGUN
+  oraculo. De ahi nacio `billing-applicability.test.ts` (8 rojos ahora).
+- **M1 y M11**: las dos hipotesis estaban **mal atribuidas**; prometian rojos en tests de concurrencia/integracion
+  que **no existen en fase A**.
+- **B1** (el bloqueante): anular la rama `pendingDowngrade` dejaba **620/620 verde**. Hoy pone 1 rojo con la asercion
+  literal. Re-verificado por el orquestador, no relatado.
+
+**Tres cosas que el revisor verifico y conviene NO re-litigar en la fase B:**
+1. El doble del `tx` de `locations-plan-cap.test.ts` **es ciego al `where`** — sacar `.where(eq(businessId))` deja ese
+   unit verde. **Pero pone 6 rojos en la integracion Neon**, asi que el aislamiento por negocio SI tiene oraculo en el
+   arbol; el doble no lo tapa, solo no lo mira.
+2. El test anti-degeneracion (`SIN baja programada, el tope 1 SI manda a mejorar el plan`) **no es relleno**: sin el,
+   un mensaje unico para los dos casos pasaria el test principal y la rama volveria a quedar sin oraculo.
+3. Las **ocho** citas muestreadas de los `.d.ts` de Stripe en los comentarios normativos son **exactas**.
+
+**EL RIESGO QUE HEREDA LA FASE B (m1), con el revisor coincidiendo en el diagnostico Y en la ubicacion del fix. NO
+implementado, NO acordado por el owner.** Sobre una fila **adoptable** (`stripe_subscription_id IS NULL` o status
+muerto — **el caso de A1**), `assessEventApplicability` no frena nada, porque el guard solo dispara si `!adoptable`.
+Compuesto con la precedencia «terminal gana sobre price desconocido», **un `deleted` de una suscripcion AJENA con
+price AJENO escribiria A1 → `plan='none'`**: un negocio vivo apagado por un evento que nunca fue suyo. El test nuevo
+pinnea solo la **mitad benigna** (con `downgradeRequestedAt` seteado aterriza en `free`); la mitad peligrosa es el
+mismo camino de codigo y **no tiene fila**.
+- **Donde va el fix:** en la **ADOPCION**, no en la derivacion. `SubscriptionWrite` tiene `status` obligatorio y **no
+  puede expresar «no escribas nada»** — por eso `assessEventApplicability` se separo; meterlo en
+  `planFromSubscription` repetiria ese error. La asimetria ES la regla: un evento puede **crear o confirmar** una
+  adopcion, **nunca terminarla**.
+- **CAVEAT QUE EL REVISOR DEJO Y QUE HAY QUE LEER ANTES DE ESCRIBIRLO, porque el atajo obvio esta MAL:** la regla NO
+  puede ser «adoptable solo por `customer.subscription.created`». Un `updated` legitimo puede ser el primer evento que
+  veamos si el `created` se perdio — y el diseño entero de esta spec dice que **el tipo de evento es un disparador, no
+  un hecho**. El discriminante tiene que salir del estado de la suscripcion **recuperada** (price nuestro + status no
+  muerto), que es dato que da Stripe y que el actor del que hay que defenderse **no controla**. Es la regla de
+  CLAUDE.md sobre discriminantes, otra vez.
+- **Para que no se evapore:** va como linea en **D5.h**, fila del **DoD de la fase B** y **mutacion propia** («una
+  fila adoptable acepta un `deleted` ajeno») con su resultado transcripto.
+
+**Dos menores para el implementador de la fase B, sin bloquear:** (n1) el limite declarado en
+`locations-plan-cap.test.ts:17-21` es cierto pero no nombra que el `where` por `businessId` esta entre lo invisible ni
+donde SI esta cubierto — una frase lo deja autocontenido. (n3) **`billing-derive.test.ts` (284) y `billing/derive.ts`
+(281) quedaron a menos de 20 lineas del limite de 300**: el proximo agregado parte el archivo. Saberlo ANTES de
+empezar, no a mitad.
+
+**LO QUE SIGUE:** **fase B** (webhook + `store.ts` + `billing-integration-support.ts` + integracion; mutaciones M3,
+M4, M7, M16 + **resolver m1**) → revisor → **fase C** (5 rutas + UI + D8 + D10 + render del HTML + `locations-races`;
+mutaciones M5, M6, M14, M17 y **re-ejecutar M1**) → revisor.
+
+**Y DESPUES del PASS final, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
+del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios
+pierden el modulo Locales; el `next build` NO lo caza porque esas paginas son `force-dynamic`), y setear
+**`MERCHANT_PUBLIC_ORIGIN`** en Vercel (Production y Preview) antes de pushear.
+
+**Pendiente del owner, sin bloquear:** el chequeo en Stripe de que al agotar los reintentos de cobro la suscripcion
+quede en **`unpaid`** y no cancelada (Billing → Manage failed payments). Sin eso el ADR 0059 no se cumple.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE A de la spec 0063: el bloqueante B1 esta CERRADO y VERIFICADO por el
+orquestador; el delta esta en RE-REVISION con el mismo revisor. Sigue sin PASS.**
+
+**B1 cerrado, y lo verifique yo re-ejecutando la mutacion del revisor, no leyendo el handoff:** con
+`if (false && cap.pendingDowngrade)` puesta, ahora se pone rojo **1 test** —`con una baja programada NO manda a
+«Mejora tu plan»`— con la asercion literal `expected 'Tu plan permite 1 local activo. Mejor…' not to contain 'Mejora
+tu plan'`. Antes esa misma mutacion dejaba la suite en **620/620 verde**. `shasum` de `shared.ts` = `51f6501d…`
+identico antes y despues. Gates: **105 archivos / 779 tests / 0 skipped** (venia de 768), typecheck+lint+format+build
+verdes, `grep MUTATION` vacio.
+
+**El oraculo vive en `locations-plan-cap.test.ts` (NUEVO, 105 lineas), no dentro de `locations.test.ts` como pedia el
+encargo** — el implementador declaro el desvio: ese archivo esta en 233 lineas y el bloque ocupa ~90 (`file-size`,
+limite 300: dividir, no extender). `locations.test.ts` quedo con un puntero para que nadie lo lea como cubierto. Ya
+esta en la tabla §Archivos de la spec.
+
+**EL HALLAZGO m1 CRECIO, y ahora es el riesgo mas concreto que hereda la fase B. NO esta implementado ni acordado por
+el owner.** Al pinnear la precedencia «terminal gana sobre price desconocido», el implementador desarrollo la
+consecuencia: sobre una fila **adoptable** (`stripe_subscription_id IS NULL` o status muerto — **el caso de A1**, que
+esta en `plus` sin suscripcion), `assessEventApplicability` **no frena nada**, porque el guard de pertenencia solo
+dispara si `!adoptable`. Compuesto con la precedencia recien pinneada, **un `customer.subscription.deleted` de una
+suscripcion AJENA con un price AJENO escribiria A1 → `plan='none'`**: un negocio vivo apagado por un evento que nunca
+fue suyo. Propuesta del implementador, a decidir: el guard extra va en la **ADOPCION**, no en la derivacion — una
+fila adoptable deberia adoptarse solo por eventos que **crean o confirman** una suscripcion con **price nuestro**
+(`created`/`updated` con match, o el binding de `checkout.session.completed`), nunca por un terminal; un `deleted`
+sobre una fila adoptable deberia salir con `ignored_reason`. **Se le pregunto al revisor si coincide y si puede
+esperar a la fase B.**
+
+**EN CURSO:** re-revision del delta (mismo revisor, conserva el contexto de toda la fase A). **LO QUE SIGUE:** PASS →
+**fase B** (webhook + `store.ts` + integracion; mutaciones M3, M4, M7, M16 + **resolver m1**) → revisor → **fase C**
+(5 rutas + UI + D8 + D10 + render del HTML + `locations-races`; mutaciones M5, M6, M14, M17 y **re-ejecutar M1**) →
+revisor.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE A de la spec 0063: el revisor independiente devolvio FAIL. UN bloqueante,
+acotado, ya despachado al implementador. Todo lo demas del DoD de la fase A verificado y correcto. Sin PASS: nada se
+marca `implementada`.**
+
+**EL BLOQUEANTE B1 — `limitReached` tenia la rama correcta y NINGUN oraculo.** `locations/shared.ts:105-118`. El
+revisor no lo argumento: **anulo la rama** (`if (false && cap.pendingDowngrade)`), de modo que una baja programada
+volviera a decir «Mejora tu plan» —el texto que D2 [R2] dice que manda al owner a la accion contraria— y la suite
+quedo **620/620 VERDE**, incluida la integracion Neon. El codigo estaba bien; la cobertura era imaginaria. **Lo que
+lo vuelve bloqueante y no menor:** los otros cuatro artefactos de la fase A **declaran con precision lo que NO
+pinnean** (`billing-view.test.ts:12-29`, `billing-applicability.test.ts:159-165`, `locations.test.ts`), asi que este
+terreno se lee como cubierto sin estarlo. Y el limite era **refutable hoy sin instalar nada**: `limitReached` es pura
+y `shared.ts` ya se evalua en un unit verde. Despachado: escribir el test **y demostrar que muerde** antes de darlo
+por bueno.
+
+**EL REVISOR EJECUTO LAS 6 MUTACIONES QUE FALTABAN (M2, M8, M9, M11, M12, M15). Las 6 CONFIRMADAS, y DOS hipotesis
+de la spec estaban MAL ATRIBUIDAS — las filas ya estan corregidas con el resultado real:**
+- **M11:** la hipotesis prometia rojo en «3 activos desde `none`». **Ese caso es de INTEGRACION y no existe en fase
+  A.** Los 4 rojos reales son otros (precedencia, `archiveCount`, y 2 de la matriz).
+- **M15:** el hallazgo mas valioso de toda la fase. Cuando el implementador la corrio por primera vez **la suite
+  entera quedo VERDE**: el guard de pertenencia de D5.h **no tenia ningun oraculo**. De ahi nacio
+  `billing-applicability.test.ts`. Re-ejecutada con ese archivo: **8 rojos**.
+- M2 (17 rojos, la hipotesis decia 9+2), M8 y M9 exactas, M12 con 3.
+
+**Con esto las 9 mutaciones de la fase A tienen resultado REAL transcripto en la spec.** La unica que queda pendiente
+de re-ejecucion es **M1 al cerrar la fase C** (su mitad de concurrencia no existe todavia).
+
+**EL REVISOR ME CORRIGIO A MI, y tenia razon (hallazgo m2).** Yo habia escrito que la correccion de las filas
+`plus/canceled/upgrade` «cuelga de D8». **Sobre-atribui:** hay una **segunda salida que NO depende de D8** — sobre
+ese estado, `intent:"downgrade"` no matchea las guardas 1-3 y cae a la **guarda 4 → `settle_to_free`**, que limpia
+`stripe_subscription_id` y deja pasar el `checkout` (es **D10**, no D8). Lo verifique leyendo `decideDowngrade` antes
+de aceptarlo. Nota corregida en la spec: la dependencia real es «**D8 o la salida de D10**». Importa porque el
+revisor de la fase C iba a vigilar **una sola** de las dos.
+
+**Tambien cerre el hallazgo m3: CINCO archivos existian sin estar en la tabla §Archivos de la spec** (uno es mio, el
+`gateway.ts`; los otros son cortes por el limite de 300 y el `billing-applicability.test.ts` nacido de M15). Ya estan
+listados con su motivo — quien diffee contra la spec no los va a leer como no autorizados.
+
+**HALLAZGO ABIERTO PARA LA FASE B, deliberadamente NO resuelto en codigo (m1).** `planFromSubscription` evalua la
+rama **terminal** ANTES de mirar el price, asi que un evento terminal escribe el plan **aunque ningun `price.id` sea
+nuestro**. D5.d enumera «price desconocido → no tocar el plan» pero **no declara precedencia** contra la regla
+terminal. El riesgo concreto: sobre una fila **adoptable** (sin `stripe_subscription_id` — el caso de **A1**, que
+esta en `plus` sin suscripcion), `assessEventApplicability` no frena el evento, asi que **un `deleted` con price
+ajeno llevaria A1 a `none`**. Se pidio documentar la precedencia + un test que la pinnee, y dejar el guard extra como
+*hallazgo a decidir* — **no arreglarlo en silencio**.
+
+**Hallazgos menores ya resueltos o descartados:** m4 (`asStripeGateway` sin consumidor: es andamiaje CON su fila en
+tareas, lo confirma el revisor de la fase B), m5 (`locations/{address,store}.ts` **no** son scope creep: consecuencia
+obligada del cambio de firma de `planLocationLimit`).
+
+**Nota de calidad del revisor, que vale registrar:** muestreo **ocho** citas de los `.d.ts` de Stripe en los
+comentarios normativos (`Subscriptions.d.ts:473` terminando en `| OtherString`, `:129`, `:132`, `:195`, `:221`,
+`:252`, `SubscriptionItems.d.ts:54` y `:90`) y **las ocho son exactas**. Ningun comentario afirma un invariante que
+el codigo no tenga — que es el ADR 0054 de este repo.
+
+**EN CURSO:** implementador cerrando B1 + m1. **LO QUE SIGUE:** re-revision del delta → PASS → **fase B** (webhook +
+`store.ts` + integracion; mutaciones M3, M4, M7, M16) → revisor → **fase C** (5 rutas + UI + D8 + D10 + el render del
+HTML + `locations-races`; mutaciones M5, M6, M14, M17 y **re-ejecutar M1**) → revisor.
+
+**Y DESPUES del PASS final, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
+del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios
+pierden el modulo Locales; el `next build` NO lo caza porque esas paginas son `force-dynamic`), y setear
+**`MERCHANT_PUBLIC_ORIGIN`** en Vercel (Production y Preview) antes de pushear.
+
+**Pendiente del owner, sin bloquear:** el chequeo en Stripe de que al agotar los reintentos de cobro la suscripcion
+quede en **`unpaid`** y no cancelada (Billing → Manage failed payments). Sin eso el ADR 0059 no se cumple.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE A de la spec 0063 COMPLETA y EN REVISION INDEPENDIENTE. Murieron DOS
+implementadores a mitad; el orquestador auditó lo heredado las dos veces, ejecuto mutaciones el mismo y despacho al
+revisor. Sigue SIN PASS: nada se marca `implementada` todavia.**
+
+**Gates corridos por el orquestador, no auto-reportados:** `typecheck` + `lint` + `format:check` + `build` verdes y
+**`pnpm test` = 768/768 con CERO skipped** (104 archivos, con las env de integracion puestas). `grep MUTATION` sobre
+`apps/merchant/src` = **0**: el arbol quedo limpio.
+
+**TRES MUTACIONES EJECUTADAS POR EL ORQUESTADOR y transcriptas en la tabla de la spec** — ninguna se predijo:
+- **M10** (el bloqueante R2-1, el peor de la spec): **CONFIRMADA y de mas alcance que la hipotesis.** 4 rojos,
+  incluido el caso literal `SIN downgrade_requested_at (baja hecha desde el dashboard) → none`. Revertida con
+  `shasum` verificado (`e4af225f…` antes y despues).
+- **M13** (la polaridad del guard de vivos): **CONFIRMADA.** 2 rojos, incluida la fila del status desconocido.
+  Revertida con `shasum` verificado (`0cdb0eb8…`).
+- **M1: LA HIPOTESIS ERA MITAD FALSA, y la fila de la spec se corrigio.** Pone rojos 3 casos del unit, pero **la
+  «carrera de desarchivado» que la fila prometia quedo VERDE — porque esa carrera TODAVIA NO EXISTE**: es la edicion
+  de `locations-races.neon.integration.test.ts` de la fase C. Escrita como estaba, la fila regalaba un oraculo de
+  concurrencia que en fase A no se puede correr. **Hay que re-ejecutar M1 al cerrar la fase C.**
+
+**Las otras 6 mutaciones de la fase A (M2, M8, M9, M11, M12, M15) SIGUEN SIN RESULTADO REAL.** No estan ejecutadas:
+los dos implementadores murieron antes. La tabla las marca como hipotesis. Se le pidio al revisor que ejecute las que
+pueda y que reporte explicitamente cuales quedan sin ejecutar. **No las leas como cobertura hasta que tengan
+resultado transcripto** — es literalmente el error que la spec 0055 pago.
+
+**CORRECCION DEL ORQUESTADOR A LA SPEC (2026-09-11), y esta sujeta a que el revisor la confirme.** Las filas del
+§Plan de pruebas `plus/canceled/upgrade` y `plus/incomplete_expired/upgrade` decian **`checkout`** y
+**contradecian las guardas ordenadas de D4, que la propia spec etiqueta «Es normativo»**: con la suscripcion muerta
+la guarda 1 no dispara y gana la **guarda 2** → **`already_on_plan`**. Eran filas **predichas en vez de derivadas**,
+el mismo error de metodo que una tabla de mutaciones escrita de memoria. Lo encontro el implementador y lo marco como
+HALLAZGO en el nombre de dos tests **en vez de doblar el codigo para que coincidiera con el plan de pruebas**, que es
+lo correcto. **DE QUE CUELGA:** «plan `plus` con la suscripcion muerta» solo es transitorio si la **reconciliacion de
+D8** lo repara al abrir la pagina. **Si la fase C recorta o debilita D8, estas dos filas vuelven a estar abiertas** y
+`already_on_plan` pasa a ser un callejon sin salida. Queda como item explicito del revisor de la fase C.
+
+**Un limite que el implementador VERIFICO en vez de declarar, y conviene imitarlo:** `billing-view.test.ts` dice que
+el render del HTML es fase C, pero aclara que **el limite es de INEXISTENCIA, no de herramienta** — no hay
+directorio `app/backoffice/subscription/` y las funciones no tienen consumidor fuera de `server/billing/` (grep
+transcripto); el `environment: "node"` del vitest **si** alcanza para `renderToStaticMarkup`. Es la leccion de la
+spec 0057 aplicada bien: intentarlo antes de declararlo imposible, y acotar el limite a la parte exacta que lo es.
+
+**EN CURSO: revisor independiente de la fase A.** Se le pidio ademas que audite las dos intervenciones del
+orquestador (la correccion de la spec y las 3 mutaciones) como cualquier otro hallazgo.
+
+**LO QUE SIGUE:** PASS del revisor → **fase B** (webhook + `store.ts` + integracion; mutaciones M3, M4, M7, M16) →
+revisor → **fase C** (5 rutas + UI + D8 + el render del HTML + `locations-races`; mutaciones M5, M6, M14, M17, y
+**re-ejecutar M1**) → revisor. **No se paralelizan:** B y C comparten `store.ts` y los implementadores trabajan
+IN-PLACE en el mismo arbol.
+
+**Y DESPUES del PASS final, el orden de despliegue, que es al reves del reflejo natural:** migracion `0030` a prod
+**ANTES** del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11
+negocios pierden el modulo Locales; el `next build` NO lo caza porque esas paginas son `force-dynamic`), y setear
+**`MERCHANT_PUBLIC_ORIGIN`** en Vercel (Production y Preview) antes de pushear.
+
+**Pendiente del owner, sin bloquear:** el chequeo en Stripe de que al agotar los reintentos de cobro la suscripcion
+quede en **`unpaid`** y no cancelada (Billing → Manage failed payments). Sin eso el ADR 0059 no se cumple.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE A de la spec 0063 CASI COMPLETA. El primer implementador MURIO a mitad;
+el orquestador AUDITO el arbol heredado, lo puso en verde y despacho el remanente. Sigue sin haber PASS de nadie.**
+
+**Verificado por el orquestador, corrido, no auto-reportado:** sin mutaciones colgadas (`grep MUTATION` = 0), ningun
+archivo pasa 300 lineas, `typecheck` + `lint` + `format:check` verdes y **`pnpm test` = 717/717 con CERO skipped**
+(con las env de integracion puestas).
+
+**EL ARBOL HEREDADO ESTABA ROJO Y EL MOTIVO VALE LA PENA: 17 tests fallaban con `42703 column "pending_plan" does
+not exist`.** La migracion `0030` estaba GENERADA pero nunca APLICADA a la rama efimera — el codigo iba adelante del
+esquema. Es exactamente el peligro que el §Handoff de la spec describe para el despliegue a prod, reproducido en
+local: el sintoma no dice «falta migrar», dice que una tabla no tiene una columna, y se parece a un bug del codigo.
+Aplicada con `db:migrate` a la rama efimera y **verificada por SQL** (5 columnas nullable + el indice
+`core_subscription_business_unique`). Confirma la memoria heredada: al auditar a un implementador que no commiteo,
+corre la integracion Neon de verdad — es donde deja el desastre.
+
+**HECHO y revisado a mano por el orquestador** (falta el PASS independiente): migracion `0030`;
+`schema/business.ts`; `effectiveLocationLimit` + `none: 1`; `planLocationLimit` devolviendo un `ActiveLocationCap`
+(`{limit, pendingDowngrade}`) y `limitReached` con el mensaje de baja programada; `app/backoffice/locations/page.tsx`
+con el tope efectivo; `billing/{plan-change,derive,derive-rules,view,index}.ts` con `decidePlanChange` (guardas en el
+orden normativo), `planFromSubscription`, `assessEventApplicability`, `toSubscriptionView`, `planLabel`,
+`statusLabel`; y los units `billing-plan-change`, `billing-plan-change-rows` y `billing-derive`. Los toques a
+`locations/{address,store}.ts` NO son scope creep: son la consecuencia obligada del cambio de firma de
+`planLocationLimit`.
+
+**EN CURSO, despachado:** `billing-view.test.ts` (no existia), la extension de `locations.test.ts` con
+`effectiveLocationLimit`, y **las 9 mutaciones de la fase A (M1, M2, M8-M13, M15), que NO se ejecutaron** — la tabla
+de la spec sigue siendo hipotesis pura. Es el punto exacto donde la 0055 se comio una cobertura inexistente.
+
+**CONTRADICCION INTERNA DE LA SPEC 0063, encontrada por el implementador y PENDIENTE de resolver (no la toques sin
+leer esto).** El §Plan de pruebas declara la fila «`plus`/`canceled`/con id/`upgrade` → **`checkout`**» (y la
+analoga con `incomplete_expired`). **Es incompatible con las guardas ORDENADAS de D4, que la propia spec etiqueta
+«Es normativo»:** con `canceled` la guarda 1 no dispara (no hay suscripcion viva), asi que gana la **guarda 2**
+(`currentPlan === 'plus'`) → **`already_on_plan`**, no `checkout`. El implementador implemento las guardas y lo
+marco como HALLAZGO en el nombre de dos tests, que es lo correcto. Es una fila del plan de pruebas **predicha en vez
+de derivada** — el mismo error que la tabla de mutaciones. **Resolucion propuesta por el orquestador, a confirmar
+por el revisor:** manda la seccion normativa y se corrige la fila del plan de pruebas, porque el caso «plan `plus`
+con suscripcion muerta» lo repara la **reconciliacion de D8** antes de renderizar la pagina (fase C), que reescribe
+la fila a `none`/`free` y ahi `checkout` si procede. **Sin D8 ese estado seria un callejon** («Ya estas en el plan
+Plus» sobre una suscripcion muerta), asi que la correccion de la fila **cuelga de que D8 exista de verdad**: si la
+fase C recorta D8, esta fila vuelve a estar abierta.
+
+Ultima actualizacion previa: 2026-09-11 (**FASE A de la spec 0063 EN CURSO con un implementador. El orquestador dejo los
+4 archivos de contrato, reparo el entorno de integracion y despacho. Nada revisado todavia: NO hay PASS.**
+
+**Lo que quedo HECHO y verificado (typecheck + lint + format:check en verde, corridos):** los 4 archivos compartidos
+que la spec exigia del orquestador antes de despachar, en `apps/merchant/src/server/billing/` —
+`plan-change.ts` (`PlanIntent` discriminado, `PlanChangeInput/Decision`, `BlockCode`, `DEAD_STRIPE_STATUS` +
+`hasLiveSubscription`, y las guardas ORDENADAS de los 4 intents como comentario normativo), `derive.ts`
+(`SubscriptionRow`, `SubscriptionWrite`, `IgnoredReason`, derivacion del plan y jerarquia de `pending_plan`),
+`view.ts` (`SubscriptionView` de 5 claves con `pendingPlanAt` como ISO + props extra de D7) y `gateway.ts`
+(`StripeGateway` como interfaz minima propia). Solo tipos y comentarios normativos: las implementaciones las
+escribe el implementador en esos mismos archivos. Entre 60 y 195 lineas cada uno (limite 300).
+
+**HALLAZGO DEL ORQUESTADOR al materializar el contrato — es MIO, no una decision del owner ni algo que la spec
+dijera, y esta pendiente de que el owner decida si se baja a la spec.** `SubscriptionWrite` tiene `status`
+OBLIGATORIO, asi que **no puede expresar «no escribas nada»**. Si el guard de pertenencia de D5.h viviera dentro de
+`planFromSubscription` —y la tabla de Archivos de la spec dice que derive.ts lo contiene—, un evento de `sub_1`
+llegado sobre una fila ya en `sub_2` VIVA escribiria igual el status de `sub_1` encima, que es exactamente lo que
+D5.h prohibe. Lo separe en `assessEventApplicability`, con su propio tipo de retorno (`EventApplicability`). Es un
+cambio ADITIVO al contrato declarado en la spec; ademas le da oraculo propio, que es lo que la mutacion M15 necesita
+para morder.
+
+**ENTORNO DE INTEGRACION REPARADO, y era un bloqueante silencioso:** la rama Neon `spec-0055-redeem`
+(`br-shy-art-axolrd4v`) a la que apuntaba `.env.integration.local` **YA NO EXISTE** — fue borrada, asi que la
+integracion local no tenia base contra la cual correr. Se creo **`spec-0063-billing` (`br-shy-king-axu5s3ze`)**
+desde `main`, se recableo el archivo (sigue gitignored por `.env.*`) y se **verifico de verdad**:
+`locations-races.neon.integration.test.ts` = 2/2 en verde. Ojo al heredar esto: una rama efimera borrada y una rama
+sana son indistinguibles desde el `.env` — hay que correr algo.
+
+**Dato que la spec no contemplaba y que ahorra una vuelta:** no hay claves de Stripe test en disco y **no hacen
+falta**. El gateway va fakeado y `generateTestHeaderString` firma con el MISMO secreto que verifica, asi que
+`vi.stubEnv` (patron de `stripe-config.test.ts:10-16`) alcanza para toda la integracion. El owner no tiene que
+tocar nada en Stripe para que corran los tests.
+
+**EN CURSO: fase A** (fundacion, sin red) — migracion `0030`, `decidePlanChange`, `planFromSubscription` +
+`assessEventApplicability`, `toSubscriptionView` + allow-list de presentacion, `effectiveLocationLimit` + `none: 1`,
+`planLocationLimit` leyendo `pending_plan`, `limitReached` con el mensaje de baja programada, la pagina de locales, y
+los units `billing-plan-change` / `billing-derive` / `billing-view` (solo DTO) / `locations` extendido. Mutaciones de
+esta fase: **M1, M2, M8, M9, M10, M11, M12, M13, M15**, a EJECUTAR y transcribir, no a predecir.
+
+**LO QUE SIGUE, en este orden (serializado a proposito):** revisor independiente de la fase A → **fase B** (webhook +
+`store.ts` + `billing-integration-support.ts` + la integracion del webhook; mutaciones M3, M4, M7, M16) → revisor →
+**fase C** (`_auth.ts` + las 5 rutas + UI de `/backoffice/subscription` + home + onboarding + el render del HTML del
+DTO + `locations-races`; mutaciones M5, M6, M14, M17) → revisor. **No se paralelizan:** B y C comparten `store.ts` y
+los implementadores trabajan IN-PLACE en el mismo arbol (nada de worktrees con `pnpm run` — CLAUDE.md).
+
+**Y DESPUES del PASS, el orden de despliegue de la spec, que es al reves del reflejo natural:** migracion `0030` a
+prod **ANTES** del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y
+los 11 negocios pierden el modulo Locales; el `next build` no lo caza porque esas paginas son `force-dynamic`), y
+setear **`MERCHANT_PUBLIC_ORIGIN`** en Vercel (Production y Preview) antes de pushear.
+
+**Pendiente del owner, sin bloquear la implementacion:** el chequeo en Stripe de que al agotar los reintentos de
+cobro la suscripcion quede en **`unpaid`** y no cancelada (Billing → Manage failed payments). Sin eso el ADR 0059 no
+se cumple y un impago manda el negocio a `plan='none'`.
+
+Ultima actualizacion previa: 2026-09-10 (**SPEC 0063 `cerrada` tras DOS rondas de revision independiente (4 revisores) y
 verificacion empirica. La 2a ronda encontro 7 bloqueantes y la spec se reescribio otra vez. Sin codigo tocado.
 Salieron el ADR 0059 y las tareas 54 y 55.**
 
@@ -2654,7 +2974,7 @@ end-to-end con el canal `fake`, APNs/Google reales quedan como QA residual).
 | 47 | **No existe gestión de locales en el backoffice** — el tile «Locales» enruta a un mock | **0061** (cierra la parte abierta de la 0023) | **HECHO (2026-09-09) — implementada con PASS de revisor independiente en 2 pasadas.** 5 gates verdes, **520 unitarios** (venian de 472), **20/20 de integracion Neon**. La 1a pasada dio FAIL y encontro dos cosas que nadie mas habria visto: un comentario citando un test inexistente, y que **la capa HTTP no tenia NINGUN oraculo** (sacar el guard de `GET /api/locations` dejaba 654 tests verdes) → salio `locations-routes.test.ts`. La 2a pasada probo los 4 handlers uno por uno y escribio **3 evasiones nuevas, las 3 cazadas** — la mas valiosa, E3: 401 y 403 correctos pero el dominio recibiendo el `businessId` del body, o sea la escalada de privilegios real, invisible a los status codes. **Falta: migracion `0029` a prod + QA del owner.** Antes de la spec: **spec CERRADA (2026-09-09)** con el protocolo de `AGENT-WORKFLOW.md`. Las 5 decisiones del owner estan tomadas y las consecuencias derivadas confirmadas. Migracion aditiva: columna de estado en `core.location` (`DEFAULT 'active'`, sin backfill) + coordenadas **nulables** en `location` y `location_verification`. **El item load-bearing del DoD es el filtro `status = 'active'` en `assertLocationInBusiness`** (`server/counter/core.ts:78`): sin el, una pestana vieja o un link `?location=<uuid>` en favoritos sigue acreditando y canjeando contra un local archivado, aunque la UI ya no lo ofrezca | **Destapado el 2026-09-09 al alinear docs con el código.** La spec 0023 figuraba `implementada` con **7 de 9 DoD sin marcar**; el árbol confirma que el estado era optimista: `app/backoffice/` no tiene ninguna ruta `locations`, `AddressAutofillField` se usa **sólo** en `app/onboarding/page.tsx`, y `backoffice/page.tsx:80` manda `locations` a `/backoffice/demo/locations` (mock de la spec 0015). O sea: **un local se crea en el onboarding y nunca más se puede editar.** Falta también la procedencia versionada (`location_verification`). La 0023 quedó re-etiquetada `implementada parcialmente` |
 | 48 | **`/wallet` no se actualiza en vivo** — hay que cerrar y reabrir el portal para ver el saldo nuevo | **0060** | **spec en `borrador`** (2026-09-09) — 4 decisiones abiertas del owner | Confirmado por el owner en el QA **B1.4**. **No es una regresión ni un olvido:** la spec 0031 sacó la «landing en vivo» de su alcance **explícitamente y sin reemplazo** («si el owner más adelante quiere un resultado en vivo, es una spec nueva — no entra acá»). Hoy el consumidor recibe el push, abre el ícono y ve el saldo viejo hasta recargar |
 | 49 | **La clave pública de Geoapify quedó sin restricción de origen** — fix operativo, no durable | — | pendiente (necesita spec) | Para destrabar el CORS (ACAO fijo, un solo dominio) el owner quitó **todas** las Allowed Origins: la clave es hoy usable desde cualquier sitio contra la cuota diaria. El DoD «tokens públicos restringidos por origen» de la 0023 está por lo tanto **falso en producción, a propósito**. Fix durable ya identificado en `CLAUDE.md` (Opción B): proxear el autocomplete por el server del merchant con `GEOAPIFY_API_KEY`, same-origin, la clave nunca viaja al cliente |
-| 53 | **Cambio de plan (upgrade/downgrade) + cancelar suscripcion** | ADR **0058**, spec **0063** | **spec 0063 escrita, revisada por 2 agentes independientes y verificada empiricamente; en `borrador` con 4 decisiones del owner abiertas.** Orden decidido: va ANTES de campanas | **Decisión del owner (2026-09-10):** al bajar de plan, el usuario tiene que **elegir qué locales siguen activos** para entrar en el tope del plan nuevo; **no se puede hacer downgrade sin llevar primero los locales activos al número que ese plan permite.** Hoy NO hay ningún camino de downgrade en el código —el webhook de Stripe solo hace `plan: "plus"` al completar el checkout— así que no es un bug vivo, es un **invariante que toda futura ruta de downgrade (webhook de cancelación, UI de cambio de plan) tiene que respetar**. Sin esto, un `plus` con 3 locales que cae a `free` queda con 2 por encima del tope y el sistema no sabría cuál dejar. Quedó demostrado en la práctica: A1 está en `plus` con locales de sobra para volver a `free`. **AMPLIADO 2026-09-10 — el owner cerro el alcance completo, esta en el ADR 0058:** una **seccion de gestion de suscripcion** en el backoffice para elegir plan A → B; **upgrade por Stripe Checkout** como hoy, aplicado al confirmarse el pago; **downgrade de bloqueo duro** (sin estado intermedio: si no cumple, no se ejecuta — primero archiva y elige cuales quedan), con bloqueantes **un local activo** + **sin campanas corriendo**; **boton de cancelar suscripcion** que baja a `free` al terminar el periodo pagado; y **el bug del webhook se arregla en este mismo arco**. **Dos hallazgos a decidir, NO acordados con nadie** (detalle en el ADR 0058): (a) el chequeo al apretar cancelar **no** sostiene el invariante, porque mientras siga en `plus` reactivar locales hasta 3 es valido (`locations/store.ts:70` mide contra el plan **vigente**) y al cerrar el periodo queda `free` con 3 activos → hay que sostenerlo tambien en el webhook; (b) la **premisa del ADR 0056 queda invalidada** — no restringio checkout por rol porque «no existe una UI de upgrade posterior», y esta seccion la crea; la ruta no filtra ni rol ni `status` y el staff vive en la misma tabla, asi que un staff **incluso desactivado** podria cambiar el plan (ya estaba anotado como abierto en la fila de la spec 0057) |
+| 53 | **Cambio de plan (upgrade/downgrade) + cancelar suscripcion** | ADR **0058**, spec **0063** | **spec 0063 `cerrada` (2 rondas, 4 revisores). EN IMPLEMENTACION: fase A en curso, sin PASS de nadie todavia.** Contratos compartidos escritos y en verde; rama Neon efimera `spec-0063-billing` creada y verificada (la vieja `spec-0055-redeem` estaba borrada). Fases B y C pendientes, serializadas. Orden decidido: va ANTES de campanas | **Decisión del owner (2026-09-10):** al bajar de plan, el usuario tiene que **elegir qué locales siguen activos** para entrar en el tope del plan nuevo; **no se puede hacer downgrade sin llevar primero los locales activos al número que ese plan permite.** Hoy NO hay ningún camino de downgrade en el código —el webhook de Stripe solo hace `plan: "plus"` al completar el checkout— así que no es un bug vivo, es un **invariante que toda futura ruta de downgrade (webhook de cancelación, UI de cambio de plan) tiene que respetar**. Sin esto, un `plus` con 3 locales que cae a `free` queda con 2 por encima del tope y el sistema no sabría cuál dejar. Quedó demostrado en la práctica: A1 está en `plus` con locales de sobra para volver a `free`. **AMPLIADO 2026-09-10 — el owner cerro el alcance completo, esta en el ADR 0058:** una **seccion de gestion de suscripcion** en el backoffice para elegir plan A → B; **upgrade por Stripe Checkout** como hoy, aplicado al confirmarse el pago; **downgrade de bloqueo duro** (sin estado intermedio: si no cumple, no se ejecuta — primero archiva y elige cuales quedan), con bloqueantes **un local activo** + **sin campanas corriendo**; **boton de cancelar suscripcion** que baja a `free` al terminar el periodo pagado; y **el bug del webhook se arregla en este mismo arco**. **Dos hallazgos a decidir, NO acordados con nadie** (detalle en el ADR 0058): (a) el chequeo al apretar cancelar **no** sostiene el invariante, porque mientras siga en `plus` reactivar locales hasta 3 es valido (`locations/store.ts:70` mide contra el plan **vigente**) y al cerrar el periodo queda `free` con 3 activos → hay que sostenerlo tambien en el webhook; (b) la **premisa del ADR 0056 queda invalidada** — no restringio checkout por rol porque «no existe una UI de upgrade posterior», y esta seccion la crea; la ruta no filtra ni rol ni `status` y el staff vive en la misma tabla, asi que un staff **incluso desactivado** podria cambiar el plan (ya estaba anotado como abierto en la fila de la spec 0057) |
 | 54 | **El impago bloquea el acceso (backoffice + cuenta + mostrador)** | ADR **0059**, spec pendiente | pendiente (necesita spec; NO entra en la 0063) | **Decision del owner (2026-09-10), nacida de una pregunta abierta de la 0063:** si llega la fecha de cobro y no paga, se esperan **3 reintentos en la misma semana** y despues **se bloquea el acceso** con un modal que pide pagar para rehabilitar. **El plan NO baja y los locales no se tocan** — por eso el «downgrade involuntario» deja de existir y el invariante de locales de la 0063 se sostiene sin tolerar sobre-tope. Disparador = el estado de Stripe (`unpaid`, o `past_due` con `next_payment_attempt: null`), **no** un contador propio. **Va aparte de la 0063 a proposito:** el bloqueo vive en `requireBackofficeSession`, el guard compartido de 8 paginas **y del mostrador** (`backoffice/counter/page.tsx:16`) — un bug ahi deja a TODOS los comercios afuera de su panel, es el radio de daño mas grande del producto. **Chequeo previo obligatorio en Stripe:** el default al agotar reintentos es **cancelar** (lo que haria caer el plan a `free` y el ADR no se cumpliria); la cuenta tiene que dejar la suscripcion en **`unpaid`** (Billing → Manage failed payments). **Estado interino hasta que esta tarea se implemente:** un moroso conserva `plus` y el acceso completo — igual que hoy, no es una regresion; y un negocio en `plan='none'` (sin suscripcion) queda con el tope en 1 pero sigue operando. **AMPLIADA 2026-09-10 (ADR 0058 §12 / 0059 §5): el bloqueo tiene DOS causas con salidas distintas** — impago (`status='unpaid'`, salida = pagar) y **sin suscripcion** (`plan='none'`, salidas = bajar a `free` ajustandose, o pagar). **Requisito que es el mas facil de romper:** el bloqueo **tiene** que dejar pasar `/backoffice/subscription` y `/backoffice/locations`, o el comercio no puede ejecutar sus propias salidas (pagar, o archivar para bajar a free). La **salida** a `free` la entrega la spec 0063 (`settle_to_free`); lo que falta aca es el **bloqueo**. |
 | 55 | **Cambio de intervalo anual → mensual** | ADR **0058** §10, spec pendiente | pendiente (recorte explicito del owner el 2026-09-10; NO entra en la 0063) | El owner puso el cambio de intervalo en alcance en las **dos** direcciones y despues lo acoto: «**entregamos mensual a anual, no anual a mensual**». El motivo tecnico esta verificado en la doc del SDK de Stripe: el sentido inverso no tiene forma barata. Hacerlo «ahora» exige **devolver ~11 meses en credito** (el owner excluyo los reembolsos) o usar `proration_behavior: 'none'`, que **no** es «al final del periodo» — «we don't generate any credits for the old subscription's unused time. We still reset the billing date and **bill immediately**» (`cjs/resources/Subscriptions.d.ts:50`), o sea que el cliente **pierde lo que ya pago y se le cobra de nuevo**. Agendarlo al fin del año exige **`subscription_schedules`**, una superficie nueva de la API. La 0063 deja el rechazo explicito (`interval_downgrade_unsupported`, 409) en la **funcion pura**, asi que cuando esta tarea se haga hay un solo lugar donde cambiarlo y ya tiene su fila en la tabla de casos. |
 | 52 | **La lista `HANDLERS` de `locations-routes.test.ts` esta hardcodeada: una 5a ruta naceria sin guard con el test en verde** | — | **hecho (2026-09-10)** — barrido por filesystem que deriva `METHOD /path` de cada `route.ts` (las dos ortografias: `export async function` y `export const`), asevera un piso de archivos y exige igualdad exacta con `HANDLERS`. **Probado que muerde:** una ruta falsa `zz-mutation/route.ts` sin guard lo puso rojo nombrandola (`- "GET /api/locations/zz-mutation"`); revertida, 15/15, `file-size` en 0 | Hallazgo MENOR del revisor en la 2a pasada, con el fix ya identificado: un `readdir` que asevere que la lista cubre todos los `route.ts` bajo `api/locations/**`. Hoy los 4 coinciden exacto, asi que no es un defecto vivo. Es la forma de la leccion de la spec 0046 («si sumas un plugin, suma sus paths») y del barrido MIME: un allow-list que no ve una superficie nueva da seguridad que no tiene |

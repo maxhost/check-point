@@ -2,7 +2,10 @@ import { eq } from "drizzle-orm";
 import { requireOwner } from "../../../server/auth-guards";
 import { getDb } from "../../../server/db";
 import { businesses, subscriptions } from "../../../server/schema";
-import { listLocations, locationLimitForPlan } from "../../../server/locations";
+import {
+  effectiveLocationLimit,
+  listLocations,
+} from "../../../server/locations";
 import { LocationsConsole } from "./locations-console";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +18,7 @@ export default async function LocationsPage() {
     .select({
       countryCode: businesses.countryCode,
       plan: subscriptions.plan,
+      pendingPlan: subscriptions.pendingPlan,
     })
     .from(businesses)
     .leftJoin(subscriptions, eq(subscriptions.businessId, businesses.id))
@@ -26,8 +30,10 @@ export default async function LocationsPage() {
       initialLocations={await listLocations(business.id)}
       countryCode={row?.countryCode ?? "EC"}
       // Advisory only: it decides whether the "add" button is rendered. The cap that
-      // holds is `createLocation`'s, under the business row lock.
-      activeLimit={locationLimitForPlan(row?.plan)}
+      // holds is `createLocation`'s, under the business row lock. Spec 0063, D2: es el
+      // tope EFECTIVO — con una baja ya programada el número que se muestra es el del plan
+      // destino, no el del plan vigente.
+      activeLimit={effectiveLocationLimit(row?.plan, row?.pendingPlan)}
     />
   );
 }

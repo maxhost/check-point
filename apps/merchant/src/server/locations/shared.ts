@@ -5,6 +5,7 @@ import { businesses, locations, subscriptions } from "../schema";
 import { parseUuid } from "../counter/core";
 import {
   LocationError,
+  effectiveLocationLimit,
   locationLimitForPlan,
   type ResolvedAddress,
 } from "./core";
@@ -72,22 +73,58 @@ export async function activeLocationCount(
   return Number(row?.value ?? 0);
 }
 
-export async function planLocationLimit(tx: DbTransaction, businessId: string) {
+/**
+ * El tope vigente para un negocio, con el MOTIVO por el que vale lo que vale.
+ *
+ * `pendingDowngrade` no es «hay un `pending_plan`»: es «el `pending_plan` BAJÓ el tope».
+ * Esa es la distinción que necesita el mensaje — un pendiente que no cambia el número no
+ * cambia lo que hay que hacer.
+ */
+export type ActiveLocationCap = {
+  limit: number;
+  pendingDowngrade: boolean;
+};
+
+/**
+ * Spec 0063, D2: selecciona `plan` Y `pending_plan`, y devuelve el tope EFECTIVO. Sus dos
+ * llamadores (`address.ts`, `store.ts`) quedan cubiertos por esto sin ninguna regla propia,
+ * y los dos ya corren bajo `lockBusiness`.
+ */
+export async function planLocationLimit(
+  tx: DbTransaction,
+  businessId: string,
+): Promise<ActiveLocationCap> {
   const [row] = await tx
-    .select({ plan: subscriptions.plan })
+    .select({
+      plan: subscriptions.plan,
+      pendingPlan: subscriptions.pendingPlan,
+    })
     .from(subscriptions)
     .where(eq(subscriptions.businessId, businessId))
     .limit(1);
-  return locationLimitForPlan(row?.plan ?? null);
+  const plan = row?.plan ?? null;
+  const limit = effectiveLocationLimit(plan, row?.pendingPlan ?? null);
+  return { limit, pendingDowngrade: limit < locationLimitForPlan(plan) };
 }
 
-export function limitReached(limit: number): LocationError {
+/**
+ * Spec 0063, D2 / [R2]: con una baja programada, «Mejora tu plan para abrir otro» es FALSO
+ * (el plan vigente permite 3) y manda al owner a la acción contraria a la que necesita.
+ */
+export function limitReached(cap: ActiveLocationCap): LocationError {
+  if (cap.pendingDowngrade) {
+    return new LocationError(
+      409,
+      "location_limit",
+      "Tu suscripción baja a Free: no puedes reactivar locales. Reanuda tu plan si querías seguir en Plus.",
+    );
+  }
   return new LocationError(
     409,
     "location_limit",
-    limit === 1
+    cap.limit === 1
       ? "Tu plan permite 1 local activo. Mejora tu plan para abrir otro."
-      : `Tu plan permite ${limit} locales activos.`,
+      : `Tu plan permite ${cap.limit} locales activos.`,
   );
 }
 

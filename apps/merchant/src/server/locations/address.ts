@@ -38,9 +38,9 @@ export async function createLocation(
 
   return withDbTransaction(async (tx) => {
     await lockBusiness(tx, business.id);
-    const limit = await planLocationLimit(tx, business.id);
-    if ((await activeLocationCount(tx, business.id)) >= limit) {
-      throw limitReached(limit);
+    const cap = await planLocationLimit(tx, business.id);
+    if ((await activeLocationCount(tx, business.id)) >= cap.limit) {
+      throw limitReached(cap);
     }
     const locationId = randomUUID();
     const verification = verificationValues(locationId, address);

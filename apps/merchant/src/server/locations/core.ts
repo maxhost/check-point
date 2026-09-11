@@ -64,6 +64,13 @@ export function toLocationDTO(row: LocationRow): LocationDTO {
 export const PLAN_LOCATION_LIMITS: Record<string, number> = {
   free: 1,
   plus: 3,
+  /**
+   * Spec 0063, D2 / ADR 0058 §12. `none` («sin suscripción») ya caería en 1 por el
+   * fallback, pero desde esta spec es un estado DELIBERADO, y apoyarse en el fallback para
+   * un valor que usamos a propósito es como no declararlo. Es 1 y no 0 porque un negocio
+   * sin suscripción sigue operando su local y tiene que poder archivar para salir.
+   */
+  none: 1,
 };
 
 export const FALLBACK_LOCATION_LIMIT = PLAN_LOCATION_LIMITS.free;
@@ -71,6 +78,28 @@ export const FALLBACK_LOCATION_LIMIT = PLAN_LOCATION_LIMITS.free;
 export function locationLimitForPlan(plan: string | null | undefined): number {
   if (typeof plan !== "string") return FALLBACK_LOCATION_LIMIT;
   return PLAN_LOCATION_LIMITS[plan] ?? FALLBACK_LOCATION_LIMIT;
+}
+
+/**
+ * Spec 0063, D2 — el tope EFECTIVO: el menor entre el plan vigente y el plan destino.
+ *
+ * El agujero que cierra: con una baja ya programada el negocio sigue en `plus` hasta el
+ * fin del periodo, así que comparar contra el plan VIGENTE deja desarchivar hasta 3
+ * locales — y al cerrar el periodo queda `free` con 3 activos, el estado que la spec
+ * entera existe para prohibir.
+ *
+ * Es `min` y no «el pendiente gana»: un futuro upgrade programado no debe SUBIR el tope
+ * antes de que el pago esté confirmado.
+ */
+export function effectiveLocationLimit(
+  plan: string | null | undefined,
+  pendingPlan: string | null | undefined,
+): number {
+  const current = locationLimitForPlan(plan);
+  // Un string vacío NO es una baja programada: sin esto el tope caería a 1 sin que nadie
+  // haya programado nada. [R1-N8]
+  if (typeof pendingPlan !== "string" || pendingPlan === "") return current;
+  return Math.min(current, locationLimitForPlan(pendingPlan));
 }
 
 const MAX_NAME_LENGTH = 120;

@@ -784,6 +784,8 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/drizzle/0030_*.sql` | crear — `drizzle-kit generate` |
 | `apps/merchant/src/server/billing/plan-change.ts` | crear — tipos de D4 + `decidePlanChange` con las guardas ordenadas |
 | `apps/merchant/src/server/billing/derive.ts` | crear — `planFromSubscription` + jerarquia de `pending_plan` + guard de pertenencia |
+| `apps/merchant/src/server/billing/derive-rules.ts` | crear — **[fase A] NO estaba en esta tabla.** Los conjuntos y helpers puros de D5.d-f, sacados de `derive.ts` porque el contrato normativo de ese archivo ya ocupa ~200 lineas y el limite es 300 (`file-size`): dividir, no extender |
+| `apps/merchant/src/server/billing/gateway.ts` | crear — **NO estaba en esta tabla.** La costura `StripeGateway` de §Archivos compartidos necesitaba un archivo; el orquestador la puso aca |
 | `apps/merchant/src/server/billing/view.ts` | crear — `toSubscriptionView` + allow-list de presentacion (la usan la seccion **y** la home) |
 | `apps/merchant/src/server/billing/store.ts` | crear — `readSubscription`, `scheduleDowngrade`, `clearPendingPlan`, `settleToFree`, `reconcileFromStripe` |
 | `apps/merchant/src/server/billing/webhook.ts` | crear — allow-list de tipos, claim, locks, escritura |
@@ -808,9 +810,13 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/server/billing-integration-support.ts` | crear — **[R2-I7]** fake de Stripe, constructor de payload firmado, `readSubscriptionRow` por SQL |
 | `apps/merchant/src/server/billing-plan-change.test.ts` | crear |
 | `apps/merchant/src/server/billing-derive.test.ts` | crear |
+| `apps/merchant/src/server/billing-derive-support.ts` | crear — **[fase A] NO estaba en esta tabla.** Constructores de `Stripe.Subscription` y de filas para los units; corte por el limite de 300 |
+| `apps/merchant/src/server/billing-plan-change-rows.test.ts` | crear — **[fase A] NO estaba en esta tabla.** «Las filas que mataron una regla», separadas de la matriz por el limite de 300 |
+| `apps/merchant/src/server/billing-applicability.test.ts` | crear — **[fase A] NO estaba en esta tabla, y NACE DE UN HALLAZGO REAL:** al correr **M15** por primera vez la suite entera quedaba VERDE — el guard de pertenencia de D5.h no tenia NINGUN oraculo. Con este archivo, M15 pone 8 rojos |
 | `apps/merchant/src/server/billing-view.test.ts` | crear — allow-list exacta + render del HTML |
 | `apps/merchant/src/server/billing-routes.test.ts` | crear — capa HTTP de las 5 rutas |
 | `apps/merchant/src/server/locations.test.ts` | editar — extender con `effectiveLocationLimit` |
+| `apps/merchant/src/server/locations-plan-cap.test.ts` | crear — **[fase A] NO estaba en esta tabla, y CIERRA EL BLOQUEANTE B1 de la 1a revision.** El oraculo de `limitReached` + `planLocationLimit`: sin el, anular la rama `pendingDowngrade` dejaba la suite en **620/620 VERDE** y el owner con una baja programada volvia a leer «Mejora tu plan». Va en un sibling y no dentro de `locations.test.ts` porque ese archivo esta en 233 lineas y el bloque ocupa ~90 (`file-size`, limite 300: dividir, no extender); `locations.test.ts` quedo con el puntero |
 | `apps/merchant/src/server/billing.neon.integration.test.ts` | crear |
 | `apps/merchant/src/server/billing-webhook.neon.integration.test.ts` | crear |
 | `apps/merchant/src/server/locations-races.neon.integration.test.ts` | editar |
@@ -901,8 +907,9 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
       **La lista ordenada de guardas de D4 es la fuente de verdad**: sin ella la matriz se
       escribiria adivinando.
 - [ ] Filas explicitas, cada una porque mato una version anterior de la regla:
-      `free/active/sin id/upgrade` → **`checkout`** (los 9 de prod); `plus/canceled/con
-      id/upgrade` → `checkout`; `plus/incomplete_expired/upgrade` → `checkout`;
+      `free/active/sin id/upgrade` → **`checkout`** (los 9 de prod);
+      `plus/canceled/con id/upgrade` → **`already_on_plan`**;
+      `plus/incomplete_expired/upgrade` → **`already_on_plan`**;
       `plus/"future_status"/con id/upgrade` → **`subscription_live`**; `none/downgrade` con 1
       activo → **`settle_to_free`**; `plus` sin id (A1)`/downgrade` con 1 activo →
       `settle_to_free`; `plus/interval null/change_interval year` → `change_interval`;
@@ -910,6 +917,32 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
 - [ ] Precedencia declarada: `downgrade` con 2 activos **y** `currentPlan='free'` → gana
       `downgrade_blocked` (guarda 1 antes que la 2). Se asevera **el orden declarado**, no el
       intuitivo.
+
+> **CORRECCION DEL ORQUESTADOR (2026-09-11), no una decision del owner — y el error es del mismo tipo que la
+> tabla de mutaciones escrita de memoria.** Las dos filas de arriba decian `checkout` y **contradecian las
+> guardas ordenadas de D4, que esta misma spec etiqueta «Es normativo»**: con `canceled` o
+> `incomplete_expired` la guarda 1 NO dispara (no hay suscripcion viva), asi que gana la **guarda 2**
+> (`currentPlan === 'plus'`) → **`already_on_plan`**. Eran filas **predichas en vez de derivadas** de la
+> seccion normativa. Lo encontro el implementador de la fase A y lo dejo marcado como HALLAZGO en el nombre
+> de dos tests, en vez de doblar el codigo para que coincidiera con el plan de pruebas — que es exactamente
+> lo correcto. Manda la seccion normativa y se corrigen las filas.
+>
+> **DE QUE CUELGA ESTA CORRECCION, porque no es gratis** — *y la primera version de este parrafo lo atribuyo
+> MAL; lo corrigio el revisor independiente de la fase A (hallazgo m2) y se verifico leyendo las guardas.*
+> «Plan `plus` con la suscripcion muerta» solo es un estado transitorio si algo lo repara, y hay **DOS**
+> mecanismos independientes, no uno:
+>
+> 1. la **reconciliacion de D8**, que lee el estado real de Stripe al abrir la pagina y reescribe la fila a
+>    `none`/`free`, y ahi `checkout` si procede; y
+> 2. **la salida de D10**, que NO depende de D8: sobre ese mismo estado, `intent: "downgrade"` no matchea las
+>    guardas 1-3 (con 1 activo no hay bloqueo por locales, el plan no es `free`, y la suscripcion esta muerta)
+>    y cae a la **guarda 4 → `settle_to_free`**, que limpia `stripe_subscription_id` y deja pasar el
+>    `checkout`. Verificado en `decideDowngrade` y pinneado en `billing-plan-change-rows.test.ts:51-69`.
+>
+> O sea que la dependencia real es «**D8 o el boton de salida de D10**», las dos de fase C. **Si la fase C
+> recorta o debilita LAS DOS, estas filas vuelven a estar abiertas** y `already_on_plan` pasa a ser un
+> callejon sin salida («Ya estas en el plan Plus» sobre una suscripcion que no existe). Item explicito para el
+> revisor de la fase C: vigilar **las dos salidas**, no solo D8.
 
 **Unit — `billing-derive.test.ts`:**
 
@@ -976,23 +1009,23 @@ implementador las corre, transcribe que se pone rojo de verdad y **corrige la ta
 coincide**. Toda mutacion se etiqueta con `MUTATION` mientras esta puesta y se revierte con
 `shasum` antes de cualquier otra cosa (hook `no-mutations-left.sh`).
 
-| # | Mutacion | Rojo esperado (hipotesis) |
+| # | Mutacion | Rojo esperado (hipotesis) / **RESULTADO REAL cuando ya se ejecuto** |
 |---|---|---|
-| M1 | `effectiveLocationLimit` ignora `pendingPlan` | carrera de desarchivado + (plus,free)=1 |
-| M2 | `planFromSubscription` vuelve a `plus` fijo | los 8+1 status + las dos filas de `deleted` |
+| M1 | `effectiveLocationLimit` ignora `pendingPlan` | **EJECUTADA 2026-09-11 (orquestador). La hipotesis era MITAD FALSA y se corrige aca.** Rojo: 3 casos de `locations.test.ts` (`plan plus + pendiente free → 1`, `plan plus + pendiente enterprise → 1`, `un pending_plan vacio NO es una baja programada [R1-N8]`). **La «carrera de desarchivado» quedo VERDE**, y no porque el guard falle: esa carrera **todavia no existe** — es el `locations-races.neon.integration.test.ts | editar` de la FASE C. Escrita como estaba, la fila prometia un oraculo de concurrencia que en fase A no se puede correr. Re-ejecutar M1 al cerrar la fase C |
+| M2 | `planFromSubscription` vuelve a `plus` fijo | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, mas amplia que la hipotesis.** 17 rojos en `billing-derive.test.ts` (la hipotesis decia 9+2): los 7 status no-`plus`, las dos filas de `deleted`, el par [R2-7], `pause_collection`, `unknown_price`, el intervalo del price que matcheo y las 3 de la jerarquia de pendiente |
 | M3 | sacar el `WHERE processed_at IS NULL` del claim | el observable del claim (**no** el estado final) |
 | M4 | **quitar `lockBusiness` del webhook** | la carrera `cancel` vs. webhook (escritura perdida). **NO** la de desarchivado: ahi el lock serializa pero no ordena, asi que ese test pasa igual — **corregido respecto de la version anterior, donde esta fila era falsa** |
 | M5 | invertir el orden de `cancel` (Stripe antes de escribir) | el fake dispara un desarchivado durante el `update` y asevera que ya ve `pending_plan` |
 | M6 | `checkout` vuelve al chequeo «existe fila en `memberships`» | los casos de staff |
 | M7 | `WHERE excluded.processed_at IS NULL` en vez de la tabla | el observable del claim (un revisor lo ejecuto: **otorga** el claim) |
-| M8 | mirar solo `cancel_at_period_end`, sin `cancel_at` | el caso de `cancel_at` seteado |
-| M9 | `items.data[0].current_period_end` sin optional chaining | el caso de `items.data` vacio |
-| M10 | `deleted` a `free` ignorando `downgrade_requested_at` | **la cancelacion desde el dashboard → `none`** |
-| M11 | `settle_to_free` sin el chequeo de locales | 3 activos desde `none` |
-| M12 | `change_interval` acepta `to: "month"` | `interval_downgrade_unsupported` |
-| M13 | `hasLiveSubscription` con allow-list **positiva** de vivos | `status` desconocido → `checkout` **no** bloqueado |
+| M8 | mirar solo `cancel_at_period_end`, sin `cancel_at` | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, exacta.** 1 rojo: `` `cancel_at` seteado con `cancel_at_period_end: false` programa la baja igual`` |
+| M9 | `items.data[0].current_period_end` sin optional chaining | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, exacta.** 1 rojo: `` `items.data` vacio NO tira: `pending_plan` puesto y la fecha en null`` |
+| M10 | `deleted` a `free` ignorando `downgrade_requested_at` | **EJECUTADA 2026-09-11 (orquestador): CONFIRMADA y de mas alcance que la hipotesis.** 4 rojos en `billing-derive.test.ts`, incluido el caso literal `SIN downgrade_requested_at (baja hecha desde el dashboard) → none` — el bloqueante R2-1 — mas `el mismo incomplete_expired sobre un plan PAGO → none`, `status canceled` y `status incomplete_expired`. Revertida con `shasum` verificado (`e4af225f…` antes y despues) |
+| M11 | `settle_to_free` sin el chequeo de locales | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, pero la hipotesis ATRIBUIA MAL.** 4 rojos y **ninguno es «3 activos desde `none`»** — ese caso es de INTEGRACION y no existe en fase A. Los reales: `PRECEDENCIA declarada: con 2 activos y plan free gana downgrade_blocked`, `` `archiveCount` sale del tope de free…`` (los dos en `-rows`), mas `cada punto del dominio cae en la guarda declarada` y `ninguna salida queda sin ejercer` (la matriz) |
+| M12 | `change_interval` acepta `to: "month"` | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA.** 3 rojos: `anual → mensual esta fuera de alcance por diseño` + los 2 de la matriz |
+| M13 | `hasLiveSubscription` con allow-list **positiva** de vivos | **EJECUTADA 2026-09-11 (orquestador): CONFIRMADA.** 2 rojos: `un status DESCONOCIDO con id bloquea el checkout: lo no muerto cuenta como vivo` (`billing-plan-change-rows.test.ts`) y `cada punto del dominio cae en la guarda declarada` (la matriz). Revertida con `shasum` verificado (`0cdb0eb8…` antes y despues) |
 | M14 | `settle_to_free` deja el `stripe_subscription_id` | «desde `none`, despues de bajar a free, `checkout` procede» |
-| M15 | invertir el guard de pertenencia de D5.h | «evento de `sub_1` con la fila en `sub_2` viva → ignorado» |
+| M15 | invertir el guard de pertenencia de D5.h | **EJECUTADA 2026-09-11: CONFIRMADA, mucho mas amplia — y ANTES cazo un agujero real.** Cuando el implementador la corrio por primera vez, **la suite entera quedaba VERDE**: no habia ningun oraculo del guard de pertenencia. De ahi nacio `billing-applicability.test.ts` (archivo fuera de la tabla §Archivos). Re-ejecutada por el revisor con ese archivo puesto: **8 rojos**, incluido el literal `un evento de sub_1 sobre una fila con sub_2 VIVA se ignora` |
 | M16 | `reconcileFromStripe` escribe con la lista vacia | «lista vacia → no escribe nada» |
 | M17 | `interval` sin `payment_behavior: error_if_incomplete` | «tarjeta rechazada → 402 y nada aplicado» |
 

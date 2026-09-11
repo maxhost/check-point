@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LocationError,
+  effectiveLocationLimit,
   isProviderSelection,
   locationLimitForPlan,
   parseLocationName,
@@ -29,6 +30,62 @@ describe("locations — plan cap (spec 0061, decision 2)", () => {
       expect(locationLimitForPlan(plan as string | null)).toBe(1);
     },
   );
+});
+
+/**
+ * Spec 0063, D2 — el tope EFECTIVO: el menor entre el plan VIGENTE y el plan DESTINO.
+ *
+ * El agujero que cierra: con una baja ya programada el negocio sigue en `plus` hasta el
+ * fin del periodo, así que comparar contra el plan vigente deja desarchivar hasta 3
+ * locales y al cerrar el periodo queda `free` con 3 activos — el estado que la spec entera
+ * existe para prohibir.
+ *
+ * Lo que esta tabla NO pinnea: que los LLAMADORES usen esta función bajo el lock. Eso es
+ * la carrera de desarchivado con `pending_plan` sembrado, que vive en
+ * `locations-races.neon.integration.test.ts` y es fase B — hoy ese archivo no menciona
+ * `pending_plan` (verificado por grep). Acá se pinnea la decisión, no el cableado.
+ *
+ * Tampoco están acá el MENSAJE de `limitReached` ni la derivación de `pendingDowngrade`
+ * dentro de `planLocationLimit`: viven en `locations-plan-cap.test.ts`, partidos sólo por
+ * el límite de 300 líneas de este archivo.
+ */
+describe("locations — tope efectivo con baja programada (spec 0063, D2)", () => {
+  it.each<[string | null | undefined, string | null | undefined, number]>([
+    // Sin baja programada manda el plan vigente, tal cual antes de esta spec.
+    ["plus", null, 3],
+    ["plus", undefined, 3],
+    ["free", null, 1],
+    ["none", null, 1],
+    // Con la baja a `free` programada el tope cae YA, aunque el plan vigente siga `plus`.
+    ["plus", "free", 1],
+    ["free", "free", 1],
+    // Un plan desconocido cae al tope más restrictivo por el fallback, de los dos lados.
+    ["enterprise", null, 1],
+    ["plus", "enterprise", 1],
+    [null, null, 1],
+  ])("plan %s + pendiente %s → %s", (plan, pendingPlan, expected) => {
+    expect(effectiveLocationLimit(plan, pendingPlan)).toBe(expected);
+  });
+
+  it.each([[""], ["   "]])(
+    "un `pending_plan` %s NO es una baja programada [R1-N8]",
+    (pendingPlan) => {
+      // El string vacío es el caso nombrado en la spec: sin este guard el tope caería a 1
+      // sin que nadie haya programado nada, y el owner perdería locales por una columna
+      // vacía. (`"   "` cae en 1 por el fallback de plan desconocido, no por el guard: se
+      // asevera lo que la función hace, que es distinto del caso `""`.)
+      expect(effectiveLocationLimit("plus", pendingPlan)).toBe(
+        pendingPlan === "" ? 3 : 1,
+      );
+    },
+  );
+
+  it("es `min`, no «el pendiente gana»: un upgrade programado NO sube el tope", () => {
+    // Si el pendiente ganara, un `free` con un `plus` programado permitiría 3 locales
+    // ANTES de que el pago esté confirmado.
+    expect(effectiveLocationLimit("free", "plus")).toBe(1);
+    expect(effectiveLocationLimit("none", "plus")).toBe(1);
+  });
 });
 
 describe("locations — address classification (spec 0061, decision 3)", () => {
