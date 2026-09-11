@@ -53,3 +53,12 @@ export {
 } from "./store";
 export type { ReconcileOutcome } from "./store";
 export { HANDLED_EVENT_TYPES, handleStripeWebhook } from "./webhook";
+// Fase C (D12 / ADR 0061): el claim se mudó a `claim.ts` con su tri-estado. `claimEvent` y
+// `ClaimResult` NO se reexportan — su único consumidor es `webhook.ts`, que importa de
+// `./claim` directo, y un reexport sin consumidor es andamiaje (`CLAUDE.md`). Lo que sí sale
+// por acá es `LEASE_WINDOW_SECONDS`, que leen los dos tests que aseveran la cota inferior de
+// la ventana contra el `maxDuration` de la ruta.
+// `claimStatement` sale por acá por el mismo motivo que `LEASE_WINDOW_SECONDS`: tiene un
+// consumidor real, el test que asevera con `toSQL()` que el `received_at` se escribe con el
+// reloj de POSTGRES. No es andamiaje — un reexport sin ningún consumidor sí lo sería.
+export { LEASE_WINDOW_SECONDS, claimStatement } from "./claim";

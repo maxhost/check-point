@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { eq, sql } from "drizzle-orm";
+
 import {
   STRIPE_TEST_ENV,
   eventBody,
@@ -10,6 +12,8 @@ import {
   type SeededSubscription,
 } from "./locations-integration-support";
 import { POST as webhookPost } from "../app/api/stripe/webhook/route";
+import { getDb } from "./db";
+import { stripeWebhookEvents } from "./schema";
 
 /**
  * Spec 0063 — la ENTREGA de un evento por la ruta real, compartida por los tests de
@@ -72,4 +76,26 @@ export function seedBillingBusiness(
 /** Las 5 env de Stripe, puestas con el `vi.stubEnv` del test (no se importa `vitest` acá). */
 export function stripeEnvEntries(): [string, string][] {
   return Object.entries(STRIPE_TEST_ENV);
+}
+
+/**
+ * (D12.f) ENVEJECER LA FILA DEL EVENTO POR SQL. Es como se prueba el reintento FUERA de la
+ * ventana del lease sin dormir 60 s: es el estado real que tendria un evento viejo, no un
+ * doble. Vive aca porque lo necesitan DOS archivos de integracion — el del claim (fase C) y el
+ * de claim/allow-list (fase B), cuyo test del `retrieve` fallido reintenta despues de la
+ * ventana desde que existe el lease.
+ *
+ * Lo que esta PROHIBIDO para conseguir lo mismo es lo contrario: volver la ventana
+ * configurable por env para bajarla en los tests. Eso dejaria el guard colgando de una
+ * variable que prod puede tener distinta, y el test pinneando una ventana que en prod no
+ * existe.
+ */
+export async function ageEventRow(
+  eventId: string,
+  seconds: number,
+): Promise<void> {
+  await getDb()
+    .update(stripeWebhookEvents)
+    .set({ receivedAt: sql`now() - make_interval(secs => ${seconds})` })
+    .where(eq(stripeWebhookEvents.eventId, eventId));
 }

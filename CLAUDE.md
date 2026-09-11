@@ -170,6 +170,23 @@ tocar un hook: corrolo contra un estado que **debe** bloquear y verifica el `exi
 mensaje, no solo que salga 0 cuando todo esta bien. Un exit 0 puede significar "paso" o
 "nunca miro nada", y desde afuera son indistinguibles.
 
+**Y el espejo: un ROJO tambien puede ser por el motivo equivocado, y se ve igual de convincente.** Al
+cerrar un hallazgo de la fase C (spec 0063) se escribio un test de forma que llamaba a `getDb()`: sin
+las env de integracion moria con `DATABASE_URL no esta configurada`. **Con la mutacion puesta daba
+rojo — y sin la mutacion tambien.** Se leia como «el guard muerde» y era el entorno; encima habria
+roto toda corrida sin esas env. **Verificar que un guard muerde no es ver un rojo: es LEER la
+asercion del rojo** y confirmar que habla de la propiedad, no del setup. Corolario del mismo error,
+cazado por el revisor en la misma fase: **una mutacion se corre contra TODOS los archivos que
+pueden verla, y el alcance se escribe en la fila.** M21 y M22 se transcribieron con 2 y 1 rojos
+porque se corrieron contra un solo archivo; eran 3 y 2, y una de las filas sacaba una conclusion
+del numero equivocado. **Y el tercero de la misma familia, en la misma fase: un tamaño de archivo
+reportado como «299/300 — queda margen» eran 309** — medido antes de la ultima pasada de prettier y
+nunca re-medido, o sea que el archivo creado para respetar el limite lo violaba. Los 5 gates no lo
+cazan: `file-size` es **PostToolUse, no Stop**. **Un numero que va a un doc se re-mide en el momento
+de escribirlo, y para los que tienen hook se pregunta AL HOOK, no a `wc`** —
+`echo '{"tool_input":{"file_path":"<abs>"}}' | .claude/hooks/file-size.sh; echo "EXIT=$?"`, con un
+control sobre un archivo sano para probar que discrimina.
+
 ## Codigo
 
 - Si un archivo supera el limite de tamaño (hook `file-size`): dividir, no extender.

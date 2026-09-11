@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { sql } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { stripeWebhookEvents } from "../schema";
 import { getStripeClient, getStripeConfiguration } from "../stripe-config";
+import { claimEvent } from "./claim";
 import type { IgnoredReason } from "./derive";
 import { asStripeGateway } from "./gateway";
 import {
@@ -51,8 +50,11 @@ export const HANDLED_EVENT_TYPES: ReadonlySet<string> = new Set([
  *
  *  1. firma (`constructEvent`). Si falla: 400 SIN FILA — no sabemos si el request era de
  *     Stripe. Es el único camino que no deja rastro, y es correcto (D11).
- *  2. CLAIM, en su propia transacción corta. Sin fila → `200 {duplicate:true}` y `return`
- *     INMEDIATO. [R1-M1] Un `ON CONFLICT DO UPDATE` que FALLA el filtro deja la fila del
+ *  2. CLAIM, en su propia transacción corta (`claim.ts`). Devuelve TRES resultados y cada
+ *     uno tiene su respuesta: `claimed` sigue; `already_processed` → `200 {duplicate:true}`;
+ *     `in_flight` → **409**, que NO es un 2xx a propósito, para que Stripe reintente (D12,
+ *     ADR 0061). Los dos rechazos hacen `return` INMEDIATO, antes de tocar la red.
+ *     [R1-M1] Un `ON CONFLICT DO UPDATE` que FALLA el filtro deja la fila del
  *     evento LOCKEADA HASTA EL COMMIT (un revisor lo ejecutó: una tercera sesión con
  *     `SELECT … FOR UPDATE` queda esperando en `Lock/transactionid`), así que nada lento
  *     puede quedar después del claim dentro de esa transacción. Acá el claim es UN statement
@@ -104,8 +106,18 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
     return new NextResponse("Firma inválida.", { status: 400 });
   }
 
-  if (!(await claimEvent(event))) {
+  const claim = await claimEvent(event);
+  // (D12.b) Las TRES respuestas del claim. No se colapsan dos en una: `already_processed`
+  // es «terminado de verdad» y Stripe DEBE dejar de reintentar; `in_flight` es «otro lo
+  // tiene tomado, o lo tomó y murió» y Stripe TIENE que reintentar. Un 2xx ahí le prometería
+  // a Stripe que el evento está terminado y un evento cuya primera entrega murió no se
+  // procesaría nunca (ADR 0061). El cuerpo del 409 es texto plano como el resto de los
+  // caminos de error de la ruta: el JSON de esta ruta significa «lo recibimos».
+  if (claim === "already_processed") {
     return NextResponse.json({ received: true, duplicate: true });
+  }
+  if (claim === "in_flight") {
+    return new NextResponse("Evento en proceso.", { status: 409 });
   }
   if (!HANDLED_EVENT_TYPES.has(event.type)) {
     await markProcessed(getDb(), event.id, "event_type_not_handled");
@@ -136,61 +148,6 @@ export async function handleStripeWebhook(request: Request): Promise<Response> {
 
 function ignoredResponse(ignoredReason: IgnoredReason) {
   return NextResponse.json({ received: true, ignored: ignoredReason });
-}
-
-/**
- * (D5.g) EL CLAIM. La ortografía es LOAD-BEARING, y está demostrado mutándola: con
- * `WHERE excluded.processed_at IS NULL` —el error natural, porque `excluded` es la fila
- * PROPUESTA y ahí `processed_at` siempre es `NULL`— el claim sobre una fila YA PROCESADA
- * devuelve 1 fila: LA OTORGA. El guard se vuelve un no-op con el statement visualmente
- * idéntico (mutación M7).
- *
- * `setWhere` referencia LA TABLA, no `excluded`, y drizzle la renderiza calificada
- * (`"core"."stripe_webhook_event"."processed_at"`, verificado con `toSQL()`). El `EXPLAIN`
- * sobre Neon da `Conflict Filter: (stripe_webhook_event.processed_at IS NULL)` — NO
- * `InitPlan` ni `One-Time Filter`: es el nodo que se evalúa sobre la fila YA LOCKEADA, en su
- * versión más nueva, que es la distinción del ADR 0054.
- *
- * QUÉ GARANTIZA ESTE GUARD Y QUÉ NO — acotado a lo que está MEDIDO contra Neon, porque la
- * versión anterior de este comentario afirmaba «UNA SOLA ENTREGA GANA EL CLAIM» y eso es falso
- * para el solape (ADR 0054 del lado del comentario, tres líneas arriba del statement).
- *
- *  - SÍ: una REENTREGA SECUENCIAL de un evento ya procesado NO vuelve a ganar el claim —
- *    responde `{duplicate:true}` y no se vuelve a aplicar. Ése es el reintento de Stripe, el
- *    caso real, y el bug del §Problema-4 (la versión vieja marcaba el evento recibido ANTES de
- *    procesarlo, así que un fallo hacía que el reintento contestara `{duplicate:true}` y el
- *    evento no se procesara NUNCA). Es lo que muerde con las mutaciones M3 y M7, que comparten
- *    ese observable. El observable NO es el estado final: aplicar el mismo `UPDATE` dos veces
- *    deja exactamente la misma fila, así que un test de estado final quedaría verde con el
- *    guard roto.
- *  - NO: dos entregas que SE SOLAPAN ganan las dos, y la segunda contesta `{received:true}`
- *    sin `duplicate`. Medido contra Neon. No es un descuido: [R1-M1] obliga a que el claim sea
- *    su propia transacción corta y commitee ANTES del `retrieve` —dejarlo abierto deja la fila
- *    del evento lockeada hasta el final del procesamiento—, así que la segunda entrega
- *    encuentra `processed_at IS NULL` mientras la primera está en la red. Lo que sí vale
- *    siempre es: UNA fila de evento, procesada, y el estado final correcto.
- *
- * Cerrar el solape es una DECISIÓN PENDIENTE, con su costo real (verificado, y más barato de
- * lo que decía el handoff de la fase B) escrito en el §Plan de mutaciones de la spec.
- *
- * `payload_version` sale de `event.api_version`: es el dato que prueba en qué versión
- * serializó Stripe el payload (en prod, `2020-08-27`).
- */
-async function claimEvent(event: Stripe.Event): Promise<boolean> {
-  const claimed = await getDb()
-    .insert(stripeWebhookEvents)
-    .values({
-      eventId: event.id,
-      eventType: event.type,
-      payloadVersion: event.api_version ?? "unknown",
-    })
-    .onConflictDoUpdate({
-      target: stripeWebhookEvents.eventId,
-      set: { receivedAt: new Date() },
-      setWhere: sql`${stripeWebhookEvents.processedAt} is null`,
-    })
-    .returning({ eventId: stripeWebhookEvents.eventId });
-  return claimed.length > 0;
 }
 
 /** El `id` del objeto del payload: el único campo que la tabla de D5.a autoriza a leer

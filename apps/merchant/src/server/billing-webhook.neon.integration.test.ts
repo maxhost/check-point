@@ -18,11 +18,13 @@ import {
   type FakeStripe,
 } from "./billing-integration-support";
 import {
+  ageEventRow,
   deliver,
   eventIdRegistry,
   seedBillingBusiness,
   stripeEnvEntries,
 } from "./billing-webhook-support";
+import { LEASE_WINDOW_SECONDS } from "./billing";
 import { dropBusiness } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
 
@@ -137,7 +139,14 @@ describe.skipIf(!integrationEnabled)(
           "free",
         );
 
+        // [fase C, D12] El reintento va FUERA de la ventana del lease. La PROPIEDAD que este
+        // test pinnea no cambia —un `retrieve` fallido deja la fila sin procesar y el
+        // reintento la procesa, que es el bug del §Problema-4—, pero desde el lease el
+        // reintento INMEDIATO recibe 409 en vez de procesar: D12.e lo declara como el unico
+        // costo que queda (se DEMORA, no se pierde). Envejecer la fila es exactamente lo que
+        // el paso del tiempo hace en prod.
         fake.retrieveError = null;
+        await ageEventRow(spec.id, LEASE_WINDOW_SECONDS * 2);
         const retried = await deliver(spec);
         expect(retried.status).toBe(200);
         await expect(retried.json()).resolves.toEqual({ received: true });
@@ -193,13 +202,13 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("dos entregas SIMULTÁNEAS del mismo evento dejan UNA sola fila y el estado correcto", async () => {
-      // LÍMITE MEDIDO, no supuesto, y declarado en el handoff como hallazgo: con el claim en
-      // su propia transacción corta ([R1-M1] lo exige así), dos entregas que se solapan de
-      // verdad pueden ganar las DOS el claim — la segunda ve `processed_at IS NULL` porque la
-      // primera todavía está en el `retrieve`. Lo que el claim garantiza es que un evento YA
-      // PROCESADO no se vuelve a procesar (el test de arriba), que es el caso real del
-      // reintento de Stripe. Acá se asevera lo que sí vale siempre: UNA sola fila de evento,
-      // procesada, y el estado final correcto (el `UPDATE` es idempotente).
+      // [fase C, D12] ESTE COMENTARIO DECLARABA UN LÍMITE QUE YA NO EXISTE, y se reescribe
+      // entero en vez de retocarle el número: decía que dos entregas solapadas «pueden ganar
+      // las DOS el claim». Con el lease de D12 la segunda NO gana y recibe **409** — no un
+      // 2xx, para que Stripe reintente (ADR 0061). El solape en sí, con su aserción de que
+      // Stripe se llama UNA sola vez, lo pinnea `billing-webhook-claim.neon.integration.test.ts`
+      // (mutaciones M20-M23); acá se conserva lo que este archivo aporta y aquél no: que el
+      // estado FINAL del negocio queda correcto y la fila del evento es una sola.
       const seeded = await seedBillingBusiness("free", {
         stripeCustomerId: "cus_race",
       });
@@ -220,8 +229,12 @@ describe.skipIf(!integrationEnabled)(
           object: { id: "sub_race" },
         };
         const responses = await Promise.all([deliver(spec), deliver(spec)]);
-        expect(responses.map((response) => response.status)).toEqual([
-          200, 200,
+        // `.sort()` y no el orden del `Promise.all`: CUÁL de las dos entregas gana el claim es
+        // exactamente la carrera que este test nombra, así que aseverar `[200, 409]` posicional
+        // haría que la propiedad («una gana, la otra se retira con 409») dependiera de quién
+        // llegó primero. El test hermano de `billing-webhook-claim…` ya ordenaba.
+        expect(responses.map((response) => response.status).sort()).toEqual([
+          200, 409,
         ]);
         const row = await readWebhookEvent(spec.id);
         expect(row.processedAt).not.toBeNull();

@@ -40,7 +40,84 @@ FASE D.** Nada desplegado a prod.
 NADA DESPLEGADO A PROD: no se pusheo y la migracion 0030 NO esta aplicada a prod — solo a la rama efimera
 `spec-0063-billing`.**
 
-**PROMPT PARA RETOMAR:** «retomamos: despacha la fase C de la spec 0063 (D12 / ADR 0061) a un implementador».
+**PROMPT PARA RETOMAR:** «retomamos: despacha la fase D de la spec 0063 a un implementador».
+
+**FASE C (D12 / ADR 0061): PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 3 pasadas: PASS con 5 menores → FAIL del
+delta por 1 bloqueante → PASS final sin hallazgos abiertos). COMMITEADA. Falta la FASE D.**
+**NADA DESPLEGADO A PROD:** no se pusheo y la migracion `0030` sigue sin aplicarse a prod — solo a la rama efimera.
+
+**DOS AGENTES MURIERON A MITAD EN ESTA FASE** —el implementador y despues el revisor—, asi que el estado de abajo es
+el que el ORQUESTADOR verifico corriendo comandos, no el que relato nadie. **Si esta sesion tambien se cae, lo primero
+al volver es repetir esa auditoria** (`grep -rn MUTATION apps/merchant/src` + `shasum` de los archivos mutados): un
+agente muerto a mitad de una mutacion deja un rojo indistinguible de un bug real del producto.
+
+**Baseline de `shasum` para esa auditoria** (arbol sin mutar, el que hay que ver siempre):
+- `billing/claim.ts` → `877dcc4f9ec099ef6746168e923bb2c0bdb60490`
+- `billing/webhook.ts` → `36163aef06cc066d622c7d95eeba446ed0113770`
+
+Tamanos esperados: `claim.ts` **171**, `billing-webhook-claim.neon.integration.test.ts` **262**, `billing-claim.test.ts` 61,
+`billing-webhook-support.ts` 101, `billing-webhook.neon.integration.test.ts` 269.
+
+**AUDITORIA DEL ARBOL HEREDADO, corrida por el orquestador — no relatada por nadie:**
+- **`grep -rn MUTATION apps/merchant/src` VACIO** y `shasum` identico al baseline en los dos archivos mutados.
+- **`typecheck` VERDE** al heredarlo (a diferencia de la fase B, donde vino rojo con 3 errores).
+- **Escribio codigo de produccion Y su test**: `billing/claim.ts` (141), `billing/webhook.ts` (158, era 201),
+  `billing-webhook-claim.neon.integration.test.ts` (296, 5 tests), `route.ts` (+`maxDuration = 10`), `billing/index.ts`.
+  Ninguno sobre 300. **No es el estado peligroso de la fase B** (produccion sin oraculo).
+- **Lo que le faltaba: las mutaciones y los gates.** Los corrio el orquestador.
+
+**MUTACIONES M20-M23: LAS CUATRO CONFIRMADAS** (ejecutadas y transcriptas, no predichas):
+- **M20** (sacar el lease) → 2 rojos. Uno prueba de paso el **`retrieve` duplicado** que D12.e dice que desaparece.
+- **M21** (contestar 200 en `in_flight`) → **3 rojos**. **Era la mas importante de la fase —el bug que D12 existe para
+  prevenir— y TIENE oraculo.**
+- **M22** (colapsar el tri-estado) → **2 rojos**.
+- **M23** (invertir la comparacion del lease) → 3 rojos. **La prediccion de la fila era FALSA: NO es indistinguible de
+  M20** (M20 borra el lease, M23 lo invierte; rompen mitades distintas). Otra vez: se ejecuta y se transcribe.
+
+**EL ERROR DEL ORQUESTADOR QUE CAZO EL REVISOR, y es la regla de `CLAUDE.md` incumplida por quien la hace cumplir:**
+M21 y M22 se transcribieron como «2 rojos» y «1 rojo» **porque se corrieron contra UN SOLO archivo de integracion**,
+el nuevo. Re-ejecutadas sobre los dos dan **3 y 2**. M20 si acotaba el alcance en su texto; M21 y M22 no. **Y la fila
+de M22 sacaba una conclusion del numero equivocado** («el rojo mas angosto de los cuatro, y eso es correcto»). Es una
+SUBESTIMACION —no una cobertura inventada—, pero es exactamente «no se predice, se EJECUTA y se transcribe», y el
+numero viajo a este archivo. Corregido en los dos lados.
+
+**LAS 4 MUTACIONES DEL REVISOR, FUERA DE LA TABLA (MUT-R1 a R4), que es donde estuvo el valor:**
+- **MUT-R4** responde la sospecha del orquestador sobre si el `ageEventRow` le saco filo al test de la fase B:
+  **no** — reintroducir el §Problema-4 exacto da 5 rojos e incluye ese test.
+- **MUT-R2** demuestra que la desigualdad `ventana > maxDuration` muerde **en el borde** (`60 > 60` es falso).
+- **MUT-R1 y MUT-R3 quedaron VERDES: dos afirmaciones de docblock sin oraculo.** MUT-R1 (`sql\`now()\`` → `new Date()`)
+  **no era un limite** —el revisor demostro que se pinnea con `toSQL()` sin base ni paquetes— asi que se cerro.
+  MUT-R3 (el caso «no hay fila») **se DECLARA como no pinneado en el codigo**, con el motivo y el renglon a re-mirar.
+
+**EL BLOQUEANTE DE LA RE-REVISION, y es la TERCERA vez en esta fase que un numero se relata sin re-medir:** el
+orquestador reporto el archivo del claim en **299**/300 lineas («queda margen»). Eran **309**: se midio ANTES de la
+ultima pasada de prettier y no se volvio a mirar. El revisor no lo cazo con un `wc` sino **corriendo el hook del
+propio repo** (`file-size.sh` → `EXIT=2`), con control sobre otro archivo para probar que discrimina. O sea que **el
+archivo creado para respetar el limite de 300 acabo violandolo**, y los 5 gates no lo cazan porque `file-size` es
+PostToolUse, no Stop. **Arreglado moviendo los dos tests que NO tocan la base** —la cota de la ventana y el chequeo de
+forma— a `billing-claim.test.ts` (61 lineas; el de integracion queda en 262, los dos con el hook en `EXIT=0`). El corte
+final no es por tamaño sino **por naturaleza**: sin base ni env, ahora corren SIEMPRE en vez de colgar de un archivo
+que en la mayoria de las corridas se skipea entero. Verificado que la mudanza no perdio ningun test: **113 archivos
+(+1) y los MISMOS 827**, y el unitario corre con `DATABASE_URL` desarmada.
+
+**UN ROJO FALSO AL CERRAR MUT-R1, que vale mas que el fix:** la primera version del test nuevo llamaba a `getDb()`
+adentro de `claimStatement` y moria con `DATABASE_URL no esta configurada` en cualquier corrida sin las env de
+integracion. **Se veia como el guard mordiendo y era el entorno** — y ademas habria roto toda corrida sin esas env.
+Se arreglo inyectando el ejecutor por parametro; el rojo real ahora es
+`expected 'insert into "core"."stripe_webhook_ev…' to contain 'set "received_at" = now()'`.
+
+**ALCANCE QUE APARECIO AL CORRER LOS GATES, no al leer codigo — y se declaro en §Archivos en vez de colarlo:** el
+contrato nuevo puso **rojos dos tests de la fase B** en `billing-webhook.neon.integration.test.ts`. **Que se rompan es
+evidencia de que el cambio es real, no cosmetico.** (1) `un retrieve que falla… y el reintento la procesa`: la
+propiedad del §Problema-4 no cambia, pero el reintento va **fuera** de la ventana del lease (se envejece la fila por
+SQL, que es lo que el paso del tiempo hace en prod). (2) `dos entregas SIMULTANEAS…`: esperaba `[200, 200]`, ahora es
+`[200, 409]`, y **su comentario declaraba como «LIMITE MEDIDO» justo lo que D12 cierra**, asi que se reescribio entero
+en vez de retocarle el numero. `ageEventRow` subio a `billing-webhook-support.ts` al aparecer el segundo consumidor.
+
+**GATES CORRIDOS POR EL ORQUESTADOR, no auto-reportados:** typecheck **forzado** (`TURBO_FORCE=true`, `0 cached`),
+lint, format:check, build **forzado**, y `pnpm test` con `.env.integration.local`: **113 archivos / 827 tests / 0
+fallados / 0 skipped** (la fase B cerro en 111/821: **ningun test preexistente perdido**).
+`grep MUTATION` vacio.
 
 **ARRANCAR LA FASE C DESDE ACA (y despues la D).** Base de integracion: la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`),
 credenciales en `.env.integration.local` (gitignored), migracion `0030` YA aplicada — **pero corre algo antes de
