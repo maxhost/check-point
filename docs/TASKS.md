@@ -68,6 +68,11 @@ orquestador y por NATURALEZA, no por tamaño:** los dos tests de `interval` sale
 
 **El otro rojo:** `format:check` sobre `interval/route.ts`.
 
+**LOS DOS ROJOS YA ESTAN CERRADOS (verificado por el orquestador, arbol en vuelo):** el corte se aplico
+—`billing.neon.integration.test.ts` **303 → 251** y `billing-interval.neon.integration.test.ts` **137**, los dos
+preguntados **al hook** y **post-prettier**, `EXIT=0`— y `format:check` esta **verde**. Falta confirmar con la suite
+que la mudanza no perdio ningun test: tiene que dar **116 archivos / 852 tests**, no menos.
+
 **LO QUE FALTA, y es donde esta el valor:** `billing-routes-auth.neon.integration.test.ts` (staff activo y
 desactivado x 5 rutas con **sesiones reales**), la edicion de `locations-races` (las dos carreras), **las 5 mutaciones
 —M5, M6, M14, M17 y re-ejecutar M1—, NINGUNA corrida todavia**, y la seccion «Decisiones del IMPLEMENTADOR de la fase
