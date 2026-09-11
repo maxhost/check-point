@@ -223,6 +223,41 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### B4 + LOS 4 MENORES CERRADOS. EN RE-REVISION, y esta vez el encargo es el BARRIDO SISTEMATICO
+
+**Corridas del orquestador:** `grep MUTATION` **vacio**, ninguna sonda en `src/`, **los 5 gates verdes** (`typecheck` y
+`build` forzados, `0 cached`) y **119 archivos / 864 tests / 0 failed / 0 skipped**. **Tamaños al hook con control que
+discrimina**: `_auth` **244**, `checkout` **161**, `billing-cancel-guards…` **194**, `billing-interval.neon…` **188**,
+`billing-routes.test.ts` **300**, `billing.neon…` **300**, fake **299** — todos `EXIT=0`. **Los tres ultimos sin
+margen.**
+
+**B4 pinneado** en `billing-cancel-guards…` (149 → 194), con el docblock ampliado al **ciclo `cancel`/`resume`** y la
+calibracion del revisor conservada. **MUT-J corrida contra la SUITE COMPLETA: 1 rojo**,
+`expected { cancel_at_period_end: false } to deeply equal { …, cancel_at: null }` — la asercion es sobre **lo que se le
+PIDIO a Stripe**, no sobre el setup.
+
+**El menor 1 se cerro como corresponde: PINNEANDO en vez de declarando, y el intento fue primero.** `has_more` se monta
+**sin tocar el fake** (que esta en 299), sobre la suscripcion ya sembrada. **MUT-I: 1 rojo, suite completa,
+`expected 200 to be 409`.** Ahora **las tres** condiciones de `interval_ambiguous` que el docblock enumera tienen
+oraculo — antes eran dos de tres con el comentario afirmando las tres.
+
+**Los otros tres menores:** el doc **cercano** alineado con el lejano; el docblock de `readBody` nombra a sus
+llamadores **reales** (`checkout` e `interval`) **y deja escrito que la frase vieja fue la que indujo el verde por el
+motivo equivocado** — o sea que el error quedo documentado donde lo va a leer el proximo, no solo corregido; y el
+«299/300» re-medido a **300, cero margen**.
+
+### EL ENCARGO DE ESTA RE-REVISION ES DISTINTO, Y ES LA REGLA NUEVA PUESTA A PRUEBA
+
+**Cada ronda encontro exactamente UN bloqueante mas, siempre de la misma familia y siempre fuera de la tabla.** No hay
+ninguna razon para creer que B4 fue el ultimo. Asi que el encargo ya **no** es otra ronda de mutaciones sueltas: es
+**listar TODAS las afirmaciones de invariante de los docblocks del codigo nuevo de la D1 y mutar cada una**, y entregar
+la **lista completa** con el resultado ejecutado de cada fila — rojo con su asercion literal, o **verde**. Los verdes
+son el trabajo que falta.
+
+**Y con el limite explicito:** si el barrido no entra en su presupuesto, que **priorice y lo diga**, pero que **no lo
+declare completo si no lo esta**. Un barrido que afirma «no hay mas» sin haberlas mirado todas es el guard roto de la
+tarea 38: **da seguridad que no tiene**.
+
 ### 2o FAIL DEL REVISOR: **B4**, CUARTO bloqueante de la MISMA familia. Despachado
 
 **Lo que el delta arreglo esta BIEN y el revisor lo verifico**: B1, B2 y B3 cerrados con oraculos que muerden **por el
