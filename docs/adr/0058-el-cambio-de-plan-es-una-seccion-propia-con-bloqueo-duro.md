@@ -7,6 +7,24 @@ resumen: El cambio de plan vive en una seccion propia del backoffice; el upgrade
 
 # 0058 — El cambio de plan es una seccion propia, con bloqueo duro
 
+> ## ⚠️ SUPERADO EN UN PUNTO — LEER ANTES QUE EL RESTO
+>
+> **Lo que de este ADR YA NO VALE: en el §12, la frase que reconoce un `deleted` «esperado»
+> porque tiene `pending_plan = 'free'` ya escrito, «o sea que el owner ya paso por el modal».**
+> No se sigue: `pending_plan` lo escribe **tambien el webhook** ante cualquier
+> `cancel_at_period_end: true`, incluido el que setea el boton del **dashboard de Stripe**. Leido
+> literal, cancelar desde el dashboard con 3 locales activos aterrizaba en **`free` con 3
+> activos**.
+>
+> **Lo reemplaza el [ADR 0060](0060-la-baja-esperada-se-prueba-con-una-marca-que-solo-escribimos-nosotros.md):**
+> el discriminante es **`downgrade_requested_at`**, que solo escriben nuestras rutas.
+>
+> **La decision de fondo del §12 SIGUE VIGENTE** —«sin suscripcion» es un estado propio y **no**
+> es `free`— igual que las otras once decisiones de este ADR. Lo superado es **como se prueba la
+> intencion**, no que haya que distinguirla.
+>
+> (Este ADR ya superaba al **0056** en su punto de checkout; eso no cambia.)
+
 Contexto: hoy no existe ningun camino de upgrade/downgrade en el producto.
 `POST /api/billing/checkout` es la unica ruta de billing y su unico llamador es
 `app/onboarding/page.tsx:158`; `plan` solo se LEE en el backoffice
@@ -105,9 +123,12 @@ eligio `free` en el onboarding **no tiene forma de pagar**.
     - Un `customer.subscription.deleted` **inesperado** lleva el negocio a **`plan = 'none'`**
       (sin suscripcion) y lo **bloquea**, con dos salidas: **ajustarse y bajar a `free`** (pasa
       por la misma condicion de locales y el mismo modal), o **pagar** para volver a su plan.
-    - **Un `deleted` ESPERADO no bloquea.** Si la baja la programo el propio producto
-      (`pending_plan = 'free'` ya escrito, o sea que el owner ya paso por el modal, archivo y
-      confirmo), el `deleted` de fin de periodo aterriza en **`free`**, que es lo que pidio.
+    - **Un `deleted` ESPERADO no bloquea.** Si la baja la programo el propio producto (el owner
+      paso por el modal, archivo y confirmo), el `deleted` de fin de periodo aterriza en
+      **`free`**, que es lo que pidio. **[SUPERADO POR EL ADR 0060 en COMO se prueba eso: el
+      discriminante NO es `pending_plan = 'free'` —lo escribe tambien el webhook, y por lo tanto
+      tambien el boton del dashboard de Stripe— sino `downgrade_requested_at`, que solo escriben
+      nuestras rutas. La distincion en si no cambia.]**
       Sin esta distincion, el flujo de cancelacion del ADR 0058 §4 terminaria **bloqueando** a
       quien hizo todo bien — es un hallazgo de esta correccion, no una decision del owner.
     - Con esto **el invariante queda cerrado del todo**: ya no existe ningun camino por el que

@@ -8,8 +8,13 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-11 (**FASE B de la spec 0063 EN CURSO. El primer implementador MURIO a mitad y dejo el
-arbol ROJO con codigo de produccion SIN UN SOLO TEST; se lo retomo con su contexto y la auditoria hecha.**
+Ultima actualizacion: 2026-09-11.
+
+**ESTADO: la FASE B de la spec 0063 esta CERRADA con PASS de revisor y commiteada. La FASE C es NUEVA
+—la creo una decision del owner del 2026-09-11— y arranca ahora; lo que era la fase C paso a ser la
+FASE D.** Nada desplegado a prod.
+
+<details><summary><b>HISTORICO de la fase B (auditoria del arbol heredado: el primer implementador murio a mitad y dejo el arbol ROJO con codigo de produccion sin un solo test)</b></summary>
 
 **AUDITORIA DEL ARBOL HEREDADO, corrida por el orquestador — no relatada por nadie:**
 - **`grep -rn MUTATION apps/merchant/src` VACIO.** Era lo primero a chequear: un implementador muerto a mitad de sus
@@ -28,12 +33,16 @@ arbol ROJO con codigo de produccion SIN UN SOLO TEST; se lo retomo con su contex
   alcance inventado.
 - **`store.ts` esta en 284 lineas**, a 16 del limite de 300: lo que se le sume parte el archivo.
 
+</details>
+
 **FASE B DE LA SPEC 0063: PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 2 pasadas). COMMITEADA en `cf9f7ff`
-(`feat: spec 0063 fase B — webhook y store, con PASS de revisor`). Falta la fase C.
+(`feat: spec 0063 fase B — webhook y store, con PASS de revisor`). **Faltan la fase C (D12, nueva) y la D (la vieja C).**
 NADA DESPLEGADO A PROD: no se pusheo y la migracion 0030 NO esta aplicada a prod — solo a la rama efimera
 `spec-0063-billing`.**
 
-**ARRANCAR LA FASE C DESDE ACA.** Base de integracion: la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`),
+**PROMPT PARA RETOMAR:** «retomamos: despacha la fase C de la spec 0063 (D12 / ADR 0061) a un implementador».
+
+**ARRANCAR LA FASE C DESDE ACA (y despues la D).** Base de integracion: la rama efimera `spec-0063-billing` (`br-shy-king-axu5s3ze`),
 credenciales en `.env.integration.local` (gitignored), migracion `0030` YA aplicada — **pero corre algo antes de
 creerle al `.env`**: una rama borrada y una sana son indistinguibles desde el archivo. **Ese archivo tiene SOLO las 3
 variables `NEON_INTEGRATION_*`, no las 5 `STRIPE_*`**: los tests usan `vi.stubEnv`, y el revisor verifico que eso no
@@ -72,33 +81,63 @@ perdido**: `billing-applicability.test.ts` 9→9 `it(`, `locations-plan-cap.test
    quedaba verde porque el guard de adopcion la frenaba. Y en M16/M19 hubo que **reordenar las aserciones** para que el
    rojo no quedara atribuido al valor de retorno en vez de a la fila.
 
-**DOS DECISIONES DEL OWNER, PLANTEADAS Y NO TOMADAS. Ninguna bloquea la fase C:**
-1. **El item del DoD «dos entregas simultaneas: una sola gana el claim» quedo marcado ABIERTO en la spec**, con el
-   precio real escrito: **reescribir el item** (el efecto es un `UPDATE` idempotente, asi que el doble procesamiento no
-   corrompe estado) **o implementar el lease** (un predicado, sin migracion; trade-off: un reintento de Stripe DENTRO de
-   la ventana recibe `{duplicate:true}` y espera al siguiente — hay que elegir la ventana, 1 min es el valor probado).
-   El orquestador **retiro** su recomendacion anterior porque estaba apoyada en el costo inflado.
-2. **`ADR 0059 §5` sigue nombrando `pending_plan='free'` como discriminante** del `deleted` «esperado» — el
-   discriminante **falsificable** que la 2a ronda reemplazo por `downgrade_requested_at`. Drift **preexistente**, pero es
-   texto vivo que puede recrear el bug que toda la spec existe para prohibir. Los ADR son **inmutables**: el arreglo es
-   un ADR nuevo que supersede ese punto.
+**DECISIONES DEL OWNER, LAS DOS RESUELTAS EL 2026-09-11:**
+1. **RESUELTA: el item del DoD del claim se CIERRA implementandolo, no reescribiendolo.** El owner
+   eligio cerrar el solape. **Entra como FASE C (spec 0063 §D12, ADR 0061); lo que era la fase C
+   —rutas + UI + D8 + D10— pasa a ser la FASE D.** Renumerado ya en la spec y en `docs/INDEX.md`.
+   **Y al diseñarlo aparecio el hallazgo que justifica el ADR: el lease de la fase B, implementado
+   tal como estaba escrito, habria sido una REGRESION.** Su trade-off declarado decia que un
+   reintento rechazado por el lease «esperaria al reintento siguiente»; pero ese rechazo contesta
+   `{duplicate:true}` con **HTTP 200**, y para Stripe cualquier 2xx es entrega exitosa: **no hay
+   reintento siguiente**. Un evento cuya primera entrega muriera no se habria procesado NUNCA — el
+   bug del §Problema-4, por la puerta de atras, y **peor que no hacer nada** (hoy el solape deja el
+   estado final correcto porque el `UPDATE` es idempotente). Arreglo: el claim pasa a **tres**
+   resultados — `claimed` (sigue), `already_processed` (**200** `{duplicate:true}`, sin cambios) e
+   `in_flight` (**409**, para que Stripe reintente).
+   **La leccion de metodo, que es la de `CLAUDE.md` en su variante mas dificil —el COSTO declarado,
+   en SEGUNDA vuelta:** ese parrafo habia nacido *corrigiendo* un limite sobredimensionado (el
+   implementador dijo que costaba una columna nueva; era falso) y, al corregirlo, **fijo un precio
+   nuevo que tampoco se verifico**. Sub-corregir se siente como rigor y deja el mismo agujero mas
+   chico. Estuvo escrito en la spec, en este archivo y en `docs/INDEX.md`, y sostenia una
+   recomendacion del orquestador («aceptar el limite»). Lo cazo el orquestador recien al explicarle
+   el trade-off al owner, o sea tarde.
+   **Pregunta del owner que vale conservar:** si el timestamp que Stripe manda en cada entrega no
+   alcanza. No: `event.created` es del EVENTO e identico en las dos entregas (por eso el guard de
+   orden no las distingue), y el `t=` de la firma **si** es por entrega (verificado en
+   `stripe@22.5.0`, `esm/Webhooks.js:208`) pero no aporta nada sobre `received_at` — **un timestamp
+   dice CUANDO empezo la primera, no si sigue viva**, que es el dato que falta. El lease es una
+   apuesta, y la respuesta no-2xx es lo que hace que **perder la apuesta sea gratis**.
+2. **RESUELTA el 2026-09-11 por decision explicita del owner → ADR 0060.** El drift estaba en **DOS** ADR, no en uno
+   (`0059 §5` **y** `0058 §12`, linea 109) **y ademas en la fila del 0059 en `docs/INDEX.md`** — los tres decian que
+   el `deleted` «esperado» se reconoce por `pending_plan='free'`. **El owner autorizo explicitamente editar los ADR
+   viejos** (que por convencion son inmutables) para dejar el aviso al inicio, y pidio el ADR nuevo. Hecho:
+   - **`docs/adr/0060-la-baja-esperada-se-prueba-con-una-marca-que-solo-escribimos-nosotros.md`** (nuevo). Supersede
+     **un solo punto** de cada uno: el CAMPO del discriminante, que pasa a ser **`downgrade_requested_at`**. **La
+     decision de producto NO cambia** — un `deleted` inesperado sigue yendo a `none` y bloqueando, con sus dos salidas.
+   - **Los dos ADR viejos llevan el aviso AL INICIO**, con el formato «que YA NO VALE / que SIGUE VIGENTE», mas una
+     anotacion en linea en el punto exacto para que no se lea aislado.
+   - **`docs/INDEX.md`**: fila nueva del ADR 0060 + corregida la del 0059.
+   - **Documenta lo que el codigo YA hace** (migracion `0030` + fases A y B con PASS): no es trabajo pendiente.
 
-**FILAS QUE HEREDA LA FASE C (del revisor, ninguna bloqueante):**
+**FILAS QUE HEREDA LA FASE D (del revisor, ninguna bloqueante):**
 - **`no_subscription_row`, `no_customer` e `ignored` no tienen oraculo** (solo `no_subscriptions`, via M16). El delta no
-  empeoro nada —corrigio un valor engañoso—, pero la fase C **traduce esos cuatro motivos a lo que ve el owner**, asi
+  empeoro nada —corrigio un valor engañoso—, pero la fase D **traduce esos cuatro motivos a lo que ve el owner**, asi
   que va una fila ahi. **El revisor YA DEMOSTRO que se puede pinnear** (escribio una sonda de ~35 lineas y la borro):
   **no hay limite que declarar.**
 - **Presupuesto de tamaño casi agotado:** `store.ts` en **295**/300 y `billing-store.neon.integration.test.ts` en
-  **300** exactas. Lo proximo que se le sume a cualquiera de los dos **parte el archivo** — y la fase C consume
+  **300** exactas. Lo proximo que se le sume a cualquiera de los dos **parte el archivo** — y la fase D consume
   `scheduleDowngrade` y `reconcileFromStripe`.
 - **Endurecimiento, no defecto:** si un mismo `sub_X` resolviera a dos negocios distintos, `applySubscriptionState`
   chocaria `core_subscription_stripe_unique` → `23505` → 500 → Stripe reintenta para siempre. No alcanzable por el actor
   del que m1 defiende.
 - **Las decisiones del IMPLEMENTADOR de la fase B estan en una seccion propia de la spec** (4 entradas), etiquetadas
-  como suyas. **La 4a —la forma de `scheduleDowngrade`, pasos 2 y 4 de D6 con `coalesce`— la consume la fase C.**
+  como suyas. **La 4a —la forma de `scheduleDowngrade`, pasos 2 y 4 de D6 con `coalesce`— la consume la fase D.**
 
-**LO QUE SIGUE:** **fase C** (5 rutas + `_auth.ts` + UI + D8 + D10 + render del HTML + `locations-races`; mutaciones M5,
-M6, M14, M17 y **re-ejecutar M1**) → revisor independiente → despliegue.
+**LO QUE SIGUE:** **fase C** (D12: tri-estado del claim en `billing/claim.ts` + lease + 409 + `maxDuration` en la ruta;
+mutaciones **M20-M23**, de las cuales **M21 es la mas importante de la fase** —contestar 200 en `in_flight`— porque es
+exactamente el bug que D12 existe para prevenir y con la suite verde seria invisible) → revisor independiente →
+**fase D** (5 rutas + `_auth.ts` + UI + D8 + D10 + render del HTML + `locations-races`; mutaciones M5, M6, M14, M17 y
+**re-ejecutar M1**) → revisor independiente → despliegue.
 
 **Y DESPUES del PASS final, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
 del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios

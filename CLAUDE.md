@@ -115,6 +115,18 @@ y si el limite es real, acotalo a la parte exacta que lo es (aca: la interaccion
 **Corolario para el orquestador: un limite que te reporta un subagente no se relata al owner ni
 se baja a un doc sin verificarlo** — es una afirmacion de exito («ya lo pense, no se puede»)
 disfrazada de cautela.
+**Y el limite no siempre dice «no se puede»: a veces dice «cuesta X», y esa forma es la que se
+cuela.** La spec 0063 declaro que cerrar el solape del claim «costaria un lock explicito o una
+columna `processing_at` con lease». Falso: el lease entra en la columna **`received_at` que ya
+existe**, como un predicado mas en el **mismo** `setWhere` — sin columna, sin migracion, sin lock,
+y con el `EXPLAIN` poniendo los **dos** predicados en el mismo nodo post-lock. **El orquestador lo
+relato al owner y lo bajo a `docs/TASKS.md` tal como vino del handoff**, y encima sostenia una
+recomendacion («aceptar el limite»), o sea que **un precio inventado estuvo a punto de torcer una
+decision del owner**. Lo cazo el revisor independiente. **Un COSTO declarado es un limite
+declarado:** «no se puede» y «costaria una migracion / una columna / un refactor grande» se
+verifican igual —intentandolo— y ninguno de los dos se le pasa al owner como insumo de decision
+sin haberlo hecho. Es mas facil de tragar que una imposibilidad, porque suena a ingenieria
+prudente en vez de a rendicion.
 
 **Y el corolario que costo una segunda vuelta: al CORREGIR un limite sobredimensionado, el
 limite nuevo tampoco vale sin intentarlo.** En la misma spec 0057, la correccion del limite

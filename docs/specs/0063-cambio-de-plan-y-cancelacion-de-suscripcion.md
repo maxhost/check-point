@@ -90,6 +90,9 @@ locales si el plan no lo permite**.
   ese estado no entra (tarea 54); la **salida** si, para que el estado no sea un callejon.
 - **Reescritura del webhook**: allow-list de tipos de evento, estado leido de Stripe,
   reprocesable, con lock del negocio.
+- **El claim del webhook distingue TRES estados** —`claimed` / `already_processed` /
+  `in_flight`— y la entrega que se retira porque otra la tiene tomada **contesta no-2xx**, para
+  que Stripe reintente (D12, ADR 0061). Cierra el solape de dos entregas simultaneas.
 - **Reconciliacion con Stripe al abrir la pagina** (D8) y **persistencia del
   `stripe_customer_id` en el momento del checkout**, sin la cual esa reconciliacion es un no-op
   **[R2-6]**.
@@ -824,6 +827,172 @@ registrados mas alla de `subscription.updated_at`. No hay tabla de auditoria en 
 para esto seria andamiaje sin su tarea. Si algun dia hace falta reconstruir la historia de un
 plan, esta spec **no** la deja.
 
+### D12. El claim distingue TRES estados, y la entrega que se retira NO contesta 2xx
+
+**[FASE C. Implementa el ADR 0061, que sale de este hallazgo.]** Cierra el unico item del DoD que
+habia quedado abierto («dos entregas simultaneas: una sola gana el claim»), que hasta aca era
+**falso para el solape real** — ver §Plan de mutaciones → «HALLAZGO DE LA FASE B».
+
+#### D12.a. El hallazgo: el lease de la fase B, tal como estaba escrito, era una REGRESION
+
+El §HALLAZGO DE LA FASE B propuso el lease sobre `received_at` y declaro su trade-off como «un
+reintento dentro de la ventana recibiria `{duplicate:true}` y el evento esperaria al reintento
+siguiente». **`{duplicate:true}` sale con HTTP 200, y para Stripe cualquier 2xx es entrega
+exitosa: no hay reintento siguiente.**
+
+```
+t=0s   entrega #1 gana el claim  →  el proceso MUERE (lambda cortada, crash, o el retrieve tira)
+       →  processed_at queda NULL, received_at = t0
+t=20s  reintento de Stripe  →  el lease lo rechaza  →  200 {duplicate:true}
+       →  Stripe marca el evento ENTREGADO  →  no reintenta nunca mas
+       →  EL EVENTO NO SE PROCESA JAMAS
+```
+
+Es el bug del **§Problema-4** —el que esta spec vino a matar— reintroducido con una ventana mas
+chica. Y es **peor que no hacer nada**: hoy el solape deja el estado final CORRECTO (las dos
+entregas escriben, el `UPDATE` es idempotente); el lease con 200 lo deja **sin escribir nunca**.
+Un agujero cosmetico cambiado por una perdida de datos.
+
+**La regla que ordena todo lo de abajo, y es la unica que hay que recordar:**
+
+> **Un 2xx es una promesa: «este evento ya no es tuyo, no lo mandes mas».** Solo se puede hacer esa
+> promesa cuando el evento esta REALMENTE terminado. **Retirarse porque otro lo tiene tomado no es
+> terminarlo.**
+
+#### D12.b. Los tres resultados del claim (normativo)
+
+`claimEvent` deja de devolver `boolean` y pasa a devolver `"claimed" | "already_processed" |
+"in_flight"`. **No se colapsan dos en uno**: cada uno tiene una respuesta HTTP distinta y las tres
+son observables.
+
+| resultado | condicion sobre la fila | respuesta HTTP | por que |
+|---|---|---|---|
+| `claimed` | no habia fila, **o** hay fila con `processed_at IS NULL` y lease **vencido** | sigue el procesamiento normal de D5.b | |
+| `already_processed` | `processed_at IS NOT NULL` | **200** `{received:true, duplicate:true}` | terminado de verdad; Stripe **debe** dejar de reintentar. Es el caso que pinnean **M3/M7**, y su status **no cambia** |
+| `in_flight` | `processed_at IS NULL` **y** `received_at` dentro de la ventana | **409** `"Evento en proceso."` | otro lo tiene tomado, o lo tomo y murio. Stripe **tiene** que reintentar |
+
+**El 409 es decision del ORQUESTADOR, no del owner** (§Decisiones del orquestador, n.º 8).
+Cualquier no-2xx sirve para que Stripe reintente; se elige `409 Conflict` porque es
+semanticamente exacto («hay un conflicto con el estado actual del recurso») y porque **no
+contamina el panel de errores 5xx** con un caso que no es una falla nuestra. El cuerpo es texto
+plano, como el resto de los caminos de error de la ruta (`"Firma invalida."`, `"Webhook no
+configurado."`), no JSON: el JSON de esta ruta significa «lo recibimos».
+
+#### D12.c. El SQL del claim, y que parte es el guard
+
+El predicado del lease entra en el **mismo `setWhere`** que ya existe. Sin columna nueva, sin
+migracion, sin lock explicito, sin tocar [R1-M1]:
+
+```sql
+ON CONFLICT (event_id) DO UPDATE SET received_at = now()
+WHERE core.stripe_webhook_event.processed_at IS NULL
+  AND core.stripe_webhook_event.received_at < now() - interval '1 minute'
+```
+
+Medido sobre Neon en la fase B, **con control** (el claim sin lease sobre los mismos 4 casos), por
+el revisor, el implementador y el orquestador por separado. Y el `EXPLAIN` deja los **dos**
+predicados en el **mismo nodo post-lock**, que es la distincion del **ADR 0054** — es un guard que
+se re-evalua sobre la fila ya lockeada, no un pre-chequeo tipo `InitPlan`:
+
+```
+Conflict Filter: ((stripe_webhook_event.processed_at IS NULL)
+              AND (stripe_webhook_event.received_at < (now() - '00:01:00'::interval)))
+```
+
+**El upsert devuelve 0 filas en los DOS casos de rechazo y no dice cual es cual.** Distinguirlos
+cuesta un `select processed_at ... where event_id = $1`, que corre **solo en el camino de
+rechazo** (el raro).
+
+**Ese `SELECT` NO ES UN GUARD y hay que escribirlo diciendolo**, porque el proximo lector va a
+suponer que si lo es y va a intentar «arreglarle» la atomicidad: es un **clasificador de la
+respuesta**. La carrera entre el upsert y el `SELECT` existe y es **benigna en los dos ordenes**:
+
+- si la entrega #1 termina justo en el medio, leemos `processed_at` puesto → 200 `{duplicate:true}`
+  → **correcto** (el evento esta terminado);
+- si leemos `NULL` → 409 → Stripe reintenta → **correcto** (no prometimos nada que no fuera
+  cierto).
+
+**Ningun orden pierde el evento, y ninguno miente.** Esa es la propiedad, y es la razon por la que
+no hace falta un statement unico ni un CTE — que ademas seria el error del ADR 0054 (un `SELECT`
+en un CTE previo se evalua ANTES del lock).
+
+#### D12.d. La ventana del lease tiene una cota inferior derivable, y por eso se fija `maxDuration`
+
+El lease es una **apuesta** a que el que tomo el evento sigue vivo — no una deduccion: «arranco
+hace 2 s y esta esperando el `retrieve`» y «arranco hace 2 s y murio» dejan la fila **identica**
+(`processed_at IS NULL`, `received_at` hace 2 s). La respuesta no-2xx es lo que hace que **perder
+la apuesta sea gratis**.
+
+Pero la ventana no es un numero magico: **tiene que ser estrictamente mayor que la duracion maxima
+de la funcion**, porque pasado ese tope el proceso esta muerto con certeza y el evento tiene que
+poder re-tomarse. Hoy `app/api/stripe/webhook/route.ts` **no declara `maxDuration`**, asi que esa
+premisa vive en un default de Vercel que no controlamos ni versionamos. La fase C **lo fija
+explicitamente**:
+
+```ts
+export const maxDuration = 10; // segundos
+```
+
+**Los dos valores son decision del orquestador (n.º 8), con su motivo:**
+
+- **`maxDuration = 10`**: el camino real es firma → claim (1 round-trip) → `retrieve` (~1 llamada
+  a la API de Stripe) → una transaccion sobre Neon; normalmente bien por debajo de 2 s. **10 es
+  conservador ademas por otra razon:** `CLAUDE.md` documenta que un valor que el plan no admite
+  hace que **Vercel rechace el deploy entero** (paso con el 3er cron), y 10 s esta por debajo del
+  tope de cualquier plan. Se declara en la **ruta**, no en `vercel.json`, por lo mismo.
+- **ventana = `1 minute`**: es el valor **medido** en la fase B, y da 6× de margen sobre
+  `maxDuration`. Agrandarla es seguro (un reintento in-window solo se demora); achicarla por
+  debajo de `maxDuration` **rompe la premisa** y deja eventos clavados hasta que Stripe se rinda.
+  Si algun dia sube `maxDuration`, **sube la ventana primero**.
+
+#### D12.e. Lo que NO cambia, y lo que queda declarado
+
+**No cambia:** [R1-M1] (el claim sigue siendo su propia transaccion corta que commitea antes del
+`retrieve`); el orden de operaciones de D5.b; el orden de locks; la respuesta de
+`already_processed`; ningun `ignored_reason`; ninguna columna; ninguna migracion.
+
+**Efecto colateral bueno:** el `retrieve` duplicado del solape **desaparece** — la segunda entrega
+se retira antes de llamar a Stripe.
+
+**Lo que queda abierto y se declara, en vez de esconderse:**
+
+1. **Un reintento de Stripe que llegue dentro de la ventana despues de un fallo real (500 del
+   `retrieve`) se DEMORA hasta el reintento siguiente.** No se pierde. Es el unico costo que queda
+   y es el costo de verdad.
+2. **Un `in_flight` es, para Stripe, una entrega fallida.** Si la ventana quedara mal configurada
+   (enorme), **todos** los reintentos fallarian y Stripe terminaria desactivando el endpoint — el
+   espejo del riesgo que D5.a ya documenta para `resource_missing`. Por eso la ventana chica **y
+   su test** no son cosmeticos.
+3. **«Stripe considera entregado cualquier 2xx y deja de reintentar» es una PREMISA declarada, no
+   verificada por nosotros.** Es la semantica documentada de sus webhooks y es de lo que cuelga
+   toda esta seccion, pero **ningun oraculo de nuestro arbol observa la decision de reintentar de
+   Stripe**, asi que no se puede pinnear con un test propio. Lo que si se pinnea —y es lo que el
+   plan de pruebas exige— es **el status que devolvemos nosotros** en cada uno de los tres casos,
+   que es la parte bajo nuestro control y la que una mutacion puede romper. Se anota asi, y no como
+   «verificado», precisamente por el ADR 0054.
+4. **`event.created` NO sirve para esto y no se intente:** es propiedad del EVENTO, identico en las
+   dos entregas del mismo evento, asi que el guard de orden de D5 (`event.created <
+   row.last_event_at`) no las distingue — son iguales, no menores. El `t=` del header
+   `Stripe-Signature` **si** es por entrega (verificado en `stripe@22.5.0`,
+   `esm/Webhooks.js:208`), pero no aporta nada sobre `received_at`: seria la misma comparacion con
+   el reloj de Stripe en vez del nuestro, y **un timestamp dice CUANDO empezo la primera, no si
+   sigue viva**, que es el dato que falta. Queda escrito porque es la primera idea que se le ocurre
+   a cualquiera que lea esto (se le ocurrio al owner, y la pregunta es la que produjo el ADR 0061).
+
+#### D12.f. Como se prueba sin esperar un minuto, y que NO se puede hacer para lograrlo
+
+El test del reintento **fuera** de la ventana no puede dormir 60 s. **Se envejece la fila por
+SQL** —`update core.stripe_webhook_event set received_at = now() - interval '2 minutes' where
+event_id = $1`— y despues se entrega de nuevo. Es el estado real que tendria un evento viejo, no
+un doble.
+
+**Lo que esta PROHIBIDO para conseguirlo: volver la ventana configurable por env para poder
+bajarla en los tests.** Suena razonable y es el camino corto, pero convierte el guard en algo que
+depende de una variable de entorno que prod puede tener distinta, y deja el test pinneando una
+ventana que en prod no existe — el test pasaria a medir otra cosa que la que se despliega. La
+ventana es una constante del modulo; lo que el test mueve es **el reloj de la fila**, que es lo
+que de verdad varia en produccion.
+
 ### Arquitectura de referencia
 
 - **ADR 0058** (12 decisiones del owner) y **ADR 0059** (el impago bloquea el acceso).
@@ -854,7 +1023,8 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/server/billing/gateway.ts` | crear — **NO estaba en esta tabla.** La costura `StripeGateway` de §Archivos compartidos necesitaba un archivo; el orquestador la puso aca |
 | `apps/merchant/src/server/billing/view.ts` | crear — `toSubscriptionView` + allow-list de presentacion (la usan la seccion **y** la home) |
 | `apps/merchant/src/server/billing/store.ts` | crear — `readSubscription`, `scheduleDowngrade`, `clearPendingPlan`, `settleToFree`, `reconcileFromStripe` |
-| `apps/merchant/src/server/billing/webhook.ts` | crear — allow-list de tipos, claim, locks, escritura |
+| `apps/merchant/src/server/billing/webhook.ts` | crear — allow-list de tipos, claim, locks, escritura. **[fase C] editar:** consume el tri-estado de `claim.ts` y despacha las TRES respuestas de D12.b (200 `duplicate` / 409 `in_flight` / seguir). El claim en si **se muda** a `claim.ts` |
+| `apps/merchant/src/server/billing/claim.ts` | **crear — [fase C] NO estaba en esta tabla. El corte lo decide el orquestador ANTES de despachar, no el implementador a mitad de la tarea.** `claimEvent` con su tri-estado, el SQL del lease y el contrato normativo de D12.b-c (incluido **por que el `SELECT` clasificador NO es un guard**, que es lo que el proximo lector va a querer 'arreglar'). Se parte porque `webhook.ts` esta en **201** lineas, el bloque normativo del claim ya ocupa ~60 y el limite es 300 (`file-size`: dividir, no extender) |
 | `apps/merchant/src/server/billing/webhook-apply.ts` | crear — **[fase B] NO estaba en esta tabla.** Lo que pasa DENTRO de la segunda transaccion: `applySubscriptionEvent` (camino `customer.subscription.*`), `bindCheckoutSession` (camino m1-b), la resolucion del `businessId` de D5.c y `markProcessed`. Se partio porque `webhook.ts` con todo adentro daba **358 lineas** y el limite es 300 (`file-size`: dividir, no extender). `webhook.ts` queda con la orquestacion HTTP (firma, claim, allow-list, 500) y el contrato normativo del orden de operaciones |
 | `apps/merchant/src/server/billing/index.ts` | crear — barrel |
 | `apps/merchant/src/server/locations/core.ts` | editar — `effectiveLocationLimit` + `none: 1` |
@@ -866,7 +1036,7 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/app/api/billing/resume/route.ts` | crear |
 | `apps/merchant/src/app/api/billing/interval/route.ts` | crear |
 | `apps/merchant/src/app/api/billing/settle-free/route.ts` | crear |
-| `apps/merchant/src/app/api/stripe/webhook/route.ts` | editar — delega + `export const runtime = "nodejs"` |
+| `apps/merchant/src/app/api/stripe/webhook/route.ts` | editar — delega + `export const runtime = "nodejs"`. **[fase C]** suma `export const maxDuration = 10` (D12.d): la cota inferior de la ventana del lease deja de vivir en un default de Vercel no versionado. **En la ruta, NO en `vercel.json`** — `CLAUDE.md`: un valor que el plan no admite hace que Vercel rechace el deploy entero |
 | `apps/merchant/src/app/backoffice/subscription/page.tsx` | crear |
 | `apps/merchant/src/app/backoffice/subscription/subscription-console.tsx` | crear |
 | `apps/merchant/src/app/backoffice/subscription/cancel-dialog.tsx` | crear — el modal de condiciones |
@@ -887,6 +1057,7 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/server/locations-plan-cap.test.ts` | crear — **[fase A] NO estaba en esta tabla, y CIERRA EL BLOQUEANTE B1 de la 1a revision.** El oraculo de `limitReached` + `planLocationLimit`: sin el, anular la rama `pendingDowngrade` dejaba la suite en **620/620 VERDE** y el owner con una baja programada volvia a leer «Mejora tu plan». Va en un sibling y no dentro de `locations.test.ts` porque ese archivo esta en 233 lineas y el bloque ocupa ~90 (`file-size`, limite 300: dividir, no extender); `locations.test.ts` quedo con el puntero |
 | `apps/merchant/src/server/billing.neon.integration.test.ts` | crear |
 | `apps/merchant/src/server/billing-webhook.neon.integration.test.ts` | crear — claim, allow-list y diagnosticabilidad (D5.a-b/g): tipo ignorado sin `retrieve`, firma invalida sin fila, `retrieve` fallido + reintento, reentrega de un evento ya procesado (**el observable de M3/M7**), dos entregas simultaneas, `unknown_business` |
+| `apps/merchant/src/server/billing-webhook-claim.neon.integration.test.ts` | **crear — [fase C] NO estaba en esta tabla. Corte decidido por adelantado.** Los tres casos del claim de D12.b contra Neon real: solape (**M20/M23**), primera entrega muerta + reintento dentro y fuera de la ventana (**M21**), reentrega de un ya procesado (**M22**), y la asercion `ventana > maxDuration`. Archivo propio porque `billing-webhook.neon.integration.test.ts` esta en **260** lineas y el bloque no entra bajo el limite de 300. Reusa el preambulo de `billing-webhook-support.ts` |
 | `apps/merchant/src/server/billing-webhook-writes.neon.integration.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Lo que el webhook ESCRIBE en `core.subscription`, por SQL: el bloqueante R2-1 (las dos filas de `deleted`) y el cableado del guard de adopcion (**M18**). Sibling del anterior porque los dos bloques juntos pasaban de 300 lineas |
 | `apps/merchant/src/server/billing-webhook-binding.neon.integration.test.ts` | crear — **[fase B] NO estaba en esta tabla.** El cableado del binding de `checkout.session.completed` (**m1-b / M19**): una sesion tardia no repunta una suscripcion viva; sobre una fila adoptable bindea los ids y NO el plan. Archivo propio por el limite de 300 y porque es OTRO guard (`canBindSubscriptionId`, no `assessEventApplicability`) |
 | `apps/merchant/src/server/billing-webhook-support.ts` | crear — **[fase B] NO estaba en esta tabla.** El preambulo compartido de los tres archivos de integracion del webhook (secreto, registro de ids de evento para el `afterAll`, `deliver` por la ruta real, seed con estado completo). El `vi.mock` de `stripe-config` NO puede vivir aca: va en cada `.test.ts` |
@@ -947,13 +1118,22 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
       escritura; sobre una fila adoptable **si** bindea.
 - [ ] Un evento cuyo `retrieve` falla deja **fila con `processed_at IS NULL`** y el reintento lo
       procesa.
-- [ ] Dos entregas simultaneas del mismo evento: **una sola gana el claim** (observable abajo),
-      con el `EXPLAIN` transcripto **corrido sobre Neon**. **OJO — ESTE ITEM ESTA ABIERTO: la parte
-      del `EXPLAIN` esta CUMPLIDA y verificada sobre Neon, pero «una sola gana el claim» NO se
-      cumple en el solape real** (si en la reentrega secuencial, que es el caso de Stripe). Ver
-      §Plan de mutaciones → «HALLAZGO DE LA FASE B», con el precio REAL de cerrarlo. **Decision
-      del owner, no tomada:** reescribir este item o implementar el lease. Escribir cualquiera de
-      las dos sin que el owner elija seria inventarle la decision.
+- [ ] **[fase C, D12] Dos entregas SOLAPADAS del mismo evento: una sola gana el claim** — la
+      otra recibe **409** (no 200), y por SQL queda **una sola fila**, con `processed_at` no nulo
+      y **un solo `retrieve`** contra Stripe. Con el `EXPLAIN` transcripto **corrido sobre Neon**.
+      Mutaciones **M20** y **M23**. *(El `EXPLAIN` ya estaba cumplido desde la fase B; lo que
+      faltaba —y falsificaba el item— era «una sola gana».)*
+- [ ] **[fase C, D12] Un evento cuya primera entrega MURIO no se pierde:** con `processed_at IS
+      NULL`, el reintento **dentro** de la ventana del lease recibe **409** —nunca un 2xx— y el
+      reintento **fuera** de la ventana **gana el claim y lo procesa**. **Es el item mas
+      importante de la fase:** un 200 ahi le promete a Stripe que el evento esta terminado y
+      reintroduce el bug del §Problema-4. Mutacion **M21**.
+- [ ] **[fase C, D12] Una reentrega de un evento YA PROCESADO sigue contestando 200
+      `{duplicate:true}`** — el lease **no** cambia ese status. Si contestara 409, Stripe
+      reintentaria para siempre hasta desactivar el endpoint. Mutacion **M22**.
+- [ ] **[fase C, D12] `app/api/stripe/webhook/route.ts` declara `maxDuration`**, y la ventana del
+      lease es **estrictamente mayor** que ese valor. Aseverado en un test, no solo escrito: es la
+      premisa de la que depende que un evento tomado por un proceso muerto se pueda re-tomar.
 - [ ] Un `cancel` concurrente con el webhook **no pierde** ninguna de las dos escrituras.
 - [ ] **mensual → anual** cobra la diferencia en el acto y la fila queda `interval='year'`
       (escrito por el webhook). Con `items` ambiguo → 409 `interval_ambiguous` sin tocar nada.
@@ -1028,10 +1208,10 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
 >    y cae a la **guarda 4 → `settle_to_free`**, que limpia `stripe_subscription_id` y deja pasar el
 >    `checkout`. Verificado en `decideDowngrade` y pinneado en `billing-plan-change-rows.test.ts:51-69`.
 >
-> O sea que la dependencia real es «**D8 o el boton de salida de D10**», las dos de fase C. **Si la fase C
+> O sea que la dependencia real es «**D8 o el boton de salida de D10**», las dos de fase D. **Si la fase D
 > recorta o debilita LAS DOS, estas filas vuelven a estar abiertas** y `already_on_plan` pasa a ser un
 > callejon sin salida («Ya estas en el plan Plus» sobre una suscripcion que no existe). Item explicito para el
-> revisor de la fase C: vigilar **las dos salidas**, no solo D8.
+> revisor de la fase D: vigilar **las dos salidas**, no solo D8.
 
 **Unit — `billing-derive.test.ts`:**
 
@@ -1106,7 +1286,7 @@ coincide**. Toda mutacion se etiqueta con `MUTATION` mientras esta puesta y se r
 
 | # | Mutacion | Rojo esperado (hipotesis) / **RESULTADO REAL cuando ya se ejecuto** |
 |---|---|---|
-| M1 | `effectiveLocationLimit` ignora `pendingPlan` | **EJECUTADA 2026-09-11 (orquestador). La hipotesis era MITAD FALSA y se corrige aca.** Rojo: 3 casos de `locations.test.ts` (`plan plus + pendiente free → 1`, `plan plus + pendiente enterprise → 1`, `un pending_plan vacio NO es una baja programada [R1-N8]`). **La «carrera de desarchivado» quedo VERDE**, y no porque el guard falle: esa carrera **todavia no existe** — es el `locations-races.neon.integration.test.ts | editar` de la FASE C. Escrita como estaba, la fila prometia un oraculo de concurrencia que en fase A no se puede correr. Re-ejecutar M1 al cerrar la fase C |
+| M1 | `effectiveLocationLimit` ignora `pendingPlan` | **EJECUTADA 2026-09-11 (orquestador). La hipotesis era MITAD FALSA y se corrige aca.** Rojo: 3 casos de `locations.test.ts` (`plan plus + pendiente free → 1`, `plan plus + pendiente enterprise → 1`, `un pending_plan vacio NO es una baja programada [R1-N8]`). **La «carrera de desarchivado» quedo VERDE**, y no porque el guard falle: esa carrera **todavia no existe** — es el `locations-races.neon.integration.test.ts | editar` de la FASE D. Escrita como estaba, la fila prometia un oraculo de concurrencia que en fase A no se puede correr. Re-ejecutar M1 al cerrar la fase D |
 | M2 | `planFromSubscription` vuelve a `plus` fijo | **EJECUTADA 2026-09-11 (revisor): CONFIRMADA, mas amplia que la hipotesis.** 17 rojos en `billing-derive.test.ts` (la hipotesis decia 9+2): los 7 status no-`plus`, las dos filas de `deleted`, el par [R2-7], `pause_collection`, `unknown_price`, el intervalo del price que matcheo y las 3 de la jerarquia de pendiente |
 | M3 | sacar el `WHERE processed_at IS NULL` del claim | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, exacta.** 1 rojo en `billing-webhook.neon.integration.test.ts`: `reentregar un evento YA PROCESADO contesta {duplicate:true} y no lo vuelve a aplicar` — `AssertionError: expected { received: true } to deeply equal { received: true, duplicate: true }`. **El test de dos entregas SIMULTANEAS queda VERDE, y eso es correcto**: ver el hallazgo del claim abajo. Revertida con `shasum` (`bc2c88de…` antes y despues) |
 | M4 | **quitar `lockBusiness` del webhook** | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, exacta.** 1 rojo en `billing-store.neon.integration.test.ts`: `un cancel concurrente con el webhook NO pierde ninguna de las dos escrituras` — `AssertionError: expected 'none' to be 'free'`, que es literalmente la escritura perdida (el webhook decidio con un `downgrade_requested_at` leido antes del commit del `cancel`). Los 16 tests restantes de los 3 archivos de integracion quedan verdes, incluido todo lo de tope de locales: confirma que el motivo NO es el sobre-tope. Revertida con `shasum` (`df9ecd68…`) |
@@ -1125,6 +1305,10 @@ coincide**. Toda mutacion se etiqueta con `MUTATION` mientras esta puesta y se r
 | M17 | `interval` sin `payment_behavior: error_if_incomplete` | «tarjeta rechazada → 402 y nada aplicado» |
 | M18 | **[m1, fase B]** sacar el guard de adopcion (una fila adoptable acepta cualquier suscripcion) | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA, mas amplia que la hipotesis — 6 rojos.** 5 units en `billing-adoption.test.ts` (`A1: fila adoptable (plus SIN suscripcion) + suscripcion ajena con price ajeno → not_adoptable`, `fila adoptable + price AJENO pero status VIVO`, las dos de `price NUESTRO pero status muerto (canceled / incomplete_expired)` y `PRECEDENCIA declarada: adopcion ANTES que orden`, esta ultima con `- "ignoredReason": "not_adoptable"` / `+ "stale_event"`) **mas 1 de CABLEADO** en `billing-webhook-writes.neon.integration.test.ts`: `[m1] una fila ADOPTABLE no acepta un deleted AJENO con price ajeno` — `expected { received: true } to deeply equal { received: true, ignored: "not_adoptable" }`. Las dos filas ANTI-DEGENERACION quedan VERDES, que es la otra mitad de la propiedad. Revertida con `shasum` (`8303892a…`) |
 | M19 | **[m1-b, fase B]** el binding de `checkout.session.completed` escribe sin mirar si la fila es adoptable | **EJECUTADA 2026-09-11 (implementador fase B): CONFIRMADA — 3 rojos.** 2 units en `billing-adoption.test.ts` (`una fila con una suscripcion VIVA no acepta el binding de otra` y `un status DESCONOCIDO no vuelve bindeable la fila`, los dos `expected true to be false`) **mas 1 de CABLEADO** en `billing-webhook-binding.neon.integration.test.ts`: `[m1-b] un checkout.session.completed tardio NO repunta una suscripcion VIVA` — `expected [Array(2)] to deeply equal ['sub_viva','cus_viva']`, recibido `['sub_de_la_sesion_vieja','cus_otro']`: la repunta, demostrada. **Tambien hubo que reordenar** ese test (la fila antes del cuerpo de la respuesta) para que el rojo no quedara atribuido a la RESPUESTA. Revertida con `shasum` (`8303892a…`) |
+| M20 | **[fase C, D12]** sacar el predicado del lease del `setWhere` (volver al claim de la fase B) | «dos entregas SOLAPADAS: una sola gana el claim, la otra 409» |
+| M21 | **[fase C, D12]** contestar **200 `{duplicate:true}`** en el caso `in_flight` en vez de 409 | «el reintento dentro de la ventana recibe 409, nunca un 2xx». **ES LA MUTACION MAS IMPORTANTE DE LA FASE:** es exactamente el bug que D12 existe para prevenir, y con la suite verde seria invisible. Si queda VERDE, el lease es peor que no haber hecho nada |
+| M22 | **[fase C, D12]** colapsar el tri-estado: tratar `already_processed` como `in_flight` (409 a un evento ya procesado) | «una reentrega de un evento YA PROCESADO contesta 200 `{duplicate:true}`». Pinnea que no rompimos el caso bueno: un 409 ahi deja a Stripe reintentando para siempre |
+| M23 | **[fase C, D12]** invertir la comparacion del lease (`received_at > now() - interval`) | el solape y/o la re-toma pasada la ventana. **Predicha como posiblemente INDISTINGUIBLE de M20** — si lo es, se transcribe que lo es (spec 0055: las mutaciones (a) y (b) resultaron indistinguibles contra lo que el plan afirmaba) |
 
 **M3 y M7 comparten observable** (las dos hacen que el claim se otorgue siempre): son dos
 mutaciones honestas de la **misma** propiedad, no dos propiedades. Se anota para que nadie lea la
@@ -1176,10 +1360,26 @@ tabla como «17 propiedades distintas pinneadas».
 > detalle. El mismo predicado es lo que hace que un proceso que muere a mitad no deje el evento
 > clavado: pasada la ventana, el reintento lo vuelve a tomar — igual que hoy.
 >
-> **Queda como DECISION PENDIENTE del owner/orquestador, con este precio. La fase B NO lo
-> implemento** (no estaba en la spec cerrada y la entrega duplicada simultanea no esta documentada
-> por Stripe como comportamiento); si se decide que entra, es una spec de correccion de una linea de
-> SQL mas su test de solape.
+> **RESUELTO el 2026-09-11 por decision del owner: se cierra, y entra como FASE C (D12, ADR
+> 0061).** Lo que era la fase C (rutas + UI + D8 + D10) pasa a ser la **fase D**.
+>
+> **PERO EL PRECIO QUE ESTE PARRAFO DECLARABA TAMBIEN ERA FALSO, y esa es la segunda leccion.** La
+> frase «es una spec de correccion de una linea de SQL mas su test de solape» omitia la mitad que
+> importa: el rechazo por lease iba a contestar `{duplicate:true}` **con HTTP 200**, y para Stripe
+> cualquier 2xx es entrega exitosa. El «el evento esperaria al reintento siguiente» de tres
+> parrafos mas arriba **no existe**: no hay reintento siguiente. Un evento cuya primera entrega
+> muriera **no se habria procesado nunca** — el bug del §Problema-4, reintroducido por la puerta de
+> atras, y una REGRESION neta respecto de no hacer nada (hoy el solape deja el estado final
+> correcto porque el `UPDATE` es idempotente).
+>
+> **Este bloque nacio corrigiendo un limite sobredimensionado y, al corregirlo, fijo un precio
+> nuevo que tampoco se verifico.** Es el corolario de `CLAUDE.md` que costo una segunda vuelta en
+> la spec 0057, ahora del lado del COSTO: sub-corregir se siente como rigor y deja el mismo agujero
+> mas chico. Lo cazo el orquestador al explicarle el trade-off al owner — o sea, tarde: ya estaba
+> escrito aca, en `docs/TASKS.md` y en `docs/INDEX.md`, y sostenia una recomendacion.
+>
+> El diseño real, con los tres estados del claim y la respuesta no-2xx, esta en **D12**; el porque,
+> en el **ADR 0061**.
 
 **Comandos exactos** (**[R2-I8]**: la version anterior usaba `DATABASE_URL`, con lo cual
 `integrationEnabled` era falso y **la integracion se skipeaba en silencio** — el falso verde que
@@ -1288,6 +1488,17 @@ explicitamente no se escribe como decision suya).
    suma `not_adoptable`), declarados en D5.h. **Si el owner prefiere dejarlo abierto, se revierte el
    guard y la fila de A1 queda expuesta: la decision es suya, pero no se puede implementar «sin
    decidir», porque el camino ya esta escrito.**
+8. **[2026-09-11, fase C] Los VALORES de D12: el status `409`, `maxDuration = 10` y la ventana de
+   `1 minute`.** Lo que decidio el owner es **cerrar el solape**; la forma es del orquestador.
+   - **409** — cualquier no-2xx sirve para que Stripe reintente; se elige `409 Conflict` porque es
+     semanticamente exacto y porque no contamina el panel de 5xx con un caso que no es una falla.
+   - **`maxDuration = 10`** — conservador a proposito: `CLAUDE.md` documenta que un valor que el
+     plan no admite hace que **Vercel rechace el deploy entero**.
+   - **ventana `1 minute`** — es el valor medido en la fase B, 6x `maxDuration`. Lo normativo no es
+     el numero sino la **relacion**: ventana > `maxDuration`.
+
+   **Si el owner prefiere otros valores, se cambian sin tocar el diseño.** Lo que NO es opcional es
+   el tri-estado con la respuesta no-2xx: sin eso el lease es una regresion (D12.a).
 
 ### Decisiones del IMPLEMENTADOR de la fase B, NO del owner ni del orquestador
 
@@ -1315,7 +1526,7 @@ fijaba y que HAY que resolver para que el webhook funcione.
 4. **`scheduleDowngrade` cubre los pasos 2 Y 4 de D6 en una sola funcion**, con
    `pendingPlanAt` opcional, en vez de una sexta funcion en `store.ts`; y escribe
    `downgrade_requested_at` con `coalesce(columna, $now)` para **conservar** la marca, que es de lo
-   que cuelga la `idempotencyKey` del reintento de D6. **Lo consume la fase C**: `cancel` llama dos
+   que cuelga la `idempotencyKey` del reintento de D6. **Lo consume la fase D**: `cancel` llama dos
    veces, sin `pendingPlanAt` en el paso 2 y con la fecha de Stripe en el paso 4.
 
 ### Requisito de configuracion que hay que verificar, o el ADR 0059 no se cumple

@@ -7,6 +7,24 @@ resumen: Un cobro fallido no baja el plan ni archiva locales: tras un maximo de 
 
 # 0059 — El impago bloquea el acceso, no baja el plan
 
+> ## ⚠️ SUPERADO EN UN PUNTO — LEER ANTES QUE EL RESTO
+>
+> **Lo que de este ADR YA NO VALE: el §5 dice que un `deleted` «esperado» se reconoce porque
+> tiene `pending_plan='free'` ya escrito por el producto. ES FALSO Y ES PELIGROSO.**
+> `pending_plan` lo escribe **tambien el webhook**, ante cualquier `cancel_at_period_end: true`
+> — que es justo lo que setea el boton «Cancel subscription» del **dashboard de Stripe**. Con esa
+> regla, cancelar desde el dashboard con 3 locales activos clasificaba la baja como «esperada» y
+> aterrizaba en **`free` con 3 activos**: el estado exacto que este arco existe para prohibir.
+>
+> **Lo reemplaza el [ADR 0060](0060-la-baja-esperada-se-prueba-con-una-marca-que-solo-escribimos-nosotros.md):**
+> el discriminante es **`downgrade_requested_at`**, una columna que **solo escriben nuestras
+> rutas**. El webhook nunca la escribe; solo la limpia cuando la baja se consuma.
+>
+> **TODO LO DEMAS DE ESTE ADR SIGUE VIGENTE** — que el impago no baja el plan, los 3 reintentos,
+> el bloqueo de acceso, que `plan='none'` bloquea, las dos causas con sus dos salidas, y que el
+> bloqueo tiene que dejar pasar `/backoffice/subscription` y `/backoffice/locations`. Lo unico
+> superado es **de que campo se lee la intencion**, no la decision de producto.
+
 Nace de una pregunta abierta de la spec 0063: que hace el producto cuando el plan **cae sin
 que nadie pase por la UI** (cobro fallido, dunning agotado), dejando un negocio en `free` con
 mas locales activos que el tope.
@@ -27,8 +45,10 @@ mas locales activos que el tope.
    Stripe no es `free`: es **`plan = 'none'`**, y tambien bloquea. Las dos salidas son
    **ajustarse para bajar a `free`** (misma condicion de locales, mismo modal — y sin tocar
    Stripe, porque no hay suscripcion que cancelar) o **pagar** para volver al plan. Un `deleted`
-   **esperado** (el de fin de periodo, con `pending_plan='free'` ya escrito por el producto) NO
-   bloquea: aterriza en `free`.
+   **esperado** (el de fin de periodo) NO bloquea: aterriza en `free`. **[SUPERADO POR EL ADR
+   0060 — el discriminante NO es `pending_plan`, que lo escribe tambien el webhook ante cualquier
+   `cancel_at_period_end` y por lo tanto tambien el boton del dashboard de Stripe, sino
+   `downgrade_requested_at`, que solo escriben nuestras rutas.]**
 
    Por lo tanto el bloqueo tiene **dos causas** y **salidas distintas**:
 
