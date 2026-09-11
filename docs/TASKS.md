@@ -28,7 +28,8 @@ arbol ROJO con codigo de produccion SIN UN SOLO TEST; se lo retomo con su contex
   alcance inventado.
 - **`store.ts` esta en 284 lineas**, a 16 del limite de 300: lo que se le sume parte el archivo.
 
-**FASE B DE LA SPEC 0063: PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 2 pasadas). COMMITEADA. Falta la fase C.
+**FASE B DE LA SPEC 0063: PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 2 pasadas). COMMITEADA en `cf9f7ff`
+(`feat: spec 0063 fase B — webhook y store, con PASS de revisor`). Falta la fase C.
 NADA DESPLEGADO A PROD: no se pusheo y la migracion 0030 NO esta aplicada a prod — solo a la rama efimera
 `spec-0063-billing`.**
 
