@@ -281,18 +281,21 @@ inventada para un sintoma**, escrita en este archivo y relatada al owner sin bus
 linea la habria matado. Es el ADR 0054 del lado del diagnostico: **un sintoma no es una causa, y nombrar una causa
 plausible se siente igual de bien que haberla verificado.**
 
-### ⚠️ MUTACION VIVA AHORA MISMO: MUT-A, del implementador, cerrando B1
+### ⚠️ MUTACION VIVA AHORA MISMO: MUT-D, del implementador, cerrando B2
 
-`apps/merchant/src/app/api/billing/cancel/route.ts:129` →
-`// MUTATION MUT-A — el revert ignora si ESTA peticion creo el estado.`
+`apps/merchant/src/app/api/billing/settle-free/route.ts:24` →
+`// MUTATION MUT-D — cuerpo propio que settlea SIEMPRE en local, aunque Stripe siga facturando.`
 
-- **Hash MUTADO (lo que vas a ver si heredas esto):** `ac4585ce30248966face3cdbef04cef75e899e49`
-- **Hash LIMPIO al que hay que volver:** `1fa5bbf9d80ee940d00c35d1655b462c99f9a911`
+- **Hash MUTADO (lo que vas a ver si heredas esto):** `81d1527cc2e6cf4da8789b79efa135dcd13eed7f`
+- **Hash LIMPIO al que hay que volver:** `eeaa9e0cbe64281c0463d53451d117d2e5377bf3`
 
-**No se revierte bajo un agente vivo** (lo haria transcribir un resultado falso). Esta etiquetada y atribuida; **lo
-que no puede pasar es que sobreviva a la sesion.** Si heredas el arbol con `ac4585ce…`, **no persigas un bug:
-revertilo** y verifica que vuelve a `1fa5bbf9…`. Y recorda que `cancel/route.ts` es **untracked**: `git checkout` no
-lo arregla, hay que reconstruirlo — por eso existe este par de hashes.
+**YA CERRADA: MUT-A.** Revertida por el implementador y **verificado por el orquestador**: `cancel/route.ts` volvio a
+`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`, identico al baseline.
+
+**No se revierte una mutacion bajo un agente vivo** (lo haria transcribir un resultado falso). Estan etiquetadas y
+atribuidas; **lo que no puede pasar es que sobrevivan a la sesion.** Si heredas el arbol con un hash que no coincide
+con el baseline de abajo, **no persigas un bug: revertilo.** Y recorda que **las dos rutas son untracked**:
+`git checkout` no las arregla, hay que reconstruirlas — por eso existe este par de hashes.
 
 ### EL DELTA DEL FAIL, EN CURSO
 
