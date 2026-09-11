@@ -83,6 +83,19 @@ bajo concurrencia" en SQL nuevo se cierra con un `EXPLAIN` del plan real **y** u
 lance el statement dos veces en simultaneo y lea el estado final por SQL — nunca con una
 lectura del codigo, por mas que "EvalPlanQual deberia cubrirlo".
 
+**UN DISCRIMINANTE DE INTENCION NO PUEDE LEERSE DE UN CAMPO QUE EL OTRO LADO TAMBIEN ESCRIBE.**
+La spec 0063 tenia que distinguir «esta baja la pedimos NOSOTROS» de «la pidio otro», y eligio
+`pending_plan` como discriminante afirmando «no hace falta ninguna columna nueva». **Era
+falsificable por el actor del que habia que defenderse, y se demostraba leyendo la propia spec
+dos secciones mas abajo:** el webhook escribe `pending_plan='free'` ante cualquier
+`cancel_at_period_end`, que es justo lo que setea el boton del dashboard de Stripe. Resultado:
+cancelar desde el dashboard con 3 locales activos clasificaba la baja como «esperada» y aterrizaba
+en `free` con 3 activos — el estado que la spec entera existia para prohibir. Lo cazo un revisor
+independiente en la segunda ronda. **Al elegir el campo que prueba una intencion, preguntá quien
+mas puede escribirlo**; si la respuesta no es «solo nuestro codigo», no es un discriminante, es
+una coincidencia. Reusar una columna existente «para no agregar una nueva» es la forma que toma
+este error, y se siente como economia.
+
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto,
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.
@@ -320,6 +333,26 @@ mensaje, no solo que salga 0 cuando todo esta bien. Un exit 0 puede significar "
   igual escribis un proxy, etiquetalo como proxy, decí cual de sus partes hace el trabajo y cual
   es decorativa**, y escribi vos 3 evasiones antes de darlo por bueno — las de la tarea 38 las
   encontraron los revisores, nunca el autor.
+- **La forma del payload de un webhook de Stripe la fija la `api_version` del ENDPOINT, no el
+  SDK.** `getStripeClient` no pinnea `apiVersion` (`server/stripe-config.ts`), asi que las
+  llamadas **salientes** (`retrieve`, `update`, `list`) vienen en la version del SDK
+  (`2026-07-29.dahlia` con `stripe@22.5.0`) y estan bien tipadas — pero el JSON **entrante** de
+  `constructEvent` viene como lo serializo Stripe con la version del endpoint, y
+  `constructEvent` **no lo transforma**. En este proyecto los eventos que llegaron tienen
+  `payload_version = '2020-08-27'` (`select payload_version from core.stripe_webhook_event`),
+  seis años atras: ahi `subscription.current_period_end` **existe** y
+  `items.data[0].current_period_end` es **`undefined`**, con `typecheck` en VERDE porque los
+  `.d.ts` describen dahlia. **Corolario operativo: del payload se leen solo `type`, `id` y
+  `created`; todo lo demas se pide con un `retrieve`.** Y el corolario de metodo, que es el ADR
+  0054 otra vez: **verificar el TIPO no es verificar el PAYLOAD** — un `.d.ts` es evidencia sobre
+  la forma que el SDK espera, no sobre la que llega por la red.
+- **Al endpoint del webhook llegan eventos que NO son `customer.subscription.*`** — en la base
+  hay `invoice.paid` y `checkout.session.completed`. Cualquier codigo que asuma que
+  `event.data.object.id` es un `sub_…` y lo pase a `subscriptions.retrieve` falla con
+  `resource_missing`; y si el registro del evento ocurre **despues** de esa llamada, Stripe
+  reintenta para siempre hasta desactivar el endpoint. Allow-list de tipos, y la fila del evento
+  se reclama **antes** de cualquier llamada de red.
+
 - **Geoapify autocomplete pega DIRECTO del navegador (`address-autofill-geoapify.tsx`) con la clave
   pública `NEXT_PUBLIC_GEOAPIFY_API_KEY`.** Con **Allowed Origins** seteadas en la clave, Geoapify
   devuelve un `Access-Control-Allow-Origin` **FIJO** (un solo origen, SIN `Vary: Origin`, sin *echo*

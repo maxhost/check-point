@@ -8,7 +8,180 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-10 (**HANDOFF — proxima sesion: DISEÑAR e implementar la spec de cambio de
+Ultima actualizacion: 2026-09-10 (**SPEC 0063 `cerrada` tras DOS rondas de revision independiente (4 revisores) y
+verificacion empirica. La 2a ronda encontro 7 bloqueantes y la spec se reescribio otra vez. Sin codigo tocado.
+Salieron el ADR 0059 y las tareas 54 y 55.**
+
+**PROXIMO PASO: implementar la 0063 con `AGENT-WORKFLOW.md`.** Antes de despachar, el orquestador deja listos los
+**4 archivos compartidos** que la spec exige (los tipos de `decidePlanChange` con sus guardas ORDENADAS, la firma y
+el retorno de `planFromSubscription`, `SubscriptionView`, y la costura `StripeGateway` — interfaz minima propia, no
+la clase `Stripe`, para que el fake tipe).
+
+**El bloqueante peor de la 2a ronda, porque es el patron que este repo paga una y otra vez:** el discriminante de
+«esta baja la pedimos NOSOTROS» era **falsificable por el actor del que habia que defenderse**. La version anterior
+usaba `pending_plan` y afirmaba «no hace falta ninguna columna nueva» — pero la jerarquia de la propia spec escribe
+`pending_plan='free'` ante cualquier `cancel_at_period_end`, que es **justo lo que setea el boton del dashboard de
+Stripe**. Cancelar desde el dashboard con 3 locales activos hacia que el `deleted` se clasificara «esperado» y
+aterrizara en **`free` con 3 activos**: el estado que toda la spec existe para prohibir. Fix: columna
+`downgrade_requested_at`, escrita **solo** por nuestras rutas. La leccion generalizable: **un discriminante de
+intencion no puede leerse de un campo que el otro lado tambien escribe.**
+
+**Los otros seis bloqueantes** (detalle en la spec y en el INDEX; no se repiten aca): `PlanChangeInput` no podia
+expresar el cambio de intervalo y la tabla no tenia **orden de evaluacion** (entradas que matcheaban dos filas, una
+de ellas volvia la salida de `none` un 409) → `PlanIntent` discriminado + guardas ordenadas; **`invoice.paid` LLEGA
+a este endpoint** y `subscriptions.retrieve` con un `in_…` entra en **loop hasta que Stripe desactiva el endpoint**
+→ allow-list de tipos y claim **antes** del retrieve; **el `itemId` de la llamada de intervalo no existia en ningun
+lado**; el `SET` de `settle_to_free` no estaba escrito y la eleccion natural dejaba al negocio **sin poder pagar
+nunca mas**; la reconciliacion era un **no-op en su propio caso motivador**; y **el orden de despliegue estaba
+invertido** — pushear antes de migrar deja `planLocationLimit` pidiendo una columna inexistente y **los 11 negocios
+pierden el modulo Locales** (el `next build` no lo caza: las paginas son `force-dynamic`).
+
+**Dos cosas que ya habia escrito y estaban mal, para que nadie las herede:** `Subscription.Status` **no tiene 8
+valores, termina en `| OtherString`** —asi que el guard anti-doble-cobro va con allow-list de **muertos**, no de
+vivos—, y los «comandos exactos» usaban `DATABASE_URL` cuando `integrationEnabled` pide
+`NEON_INTEGRATION_DATABASE_URL` + `NEON_INTEGRATION_ISOLATED=true`: **la integracion se skipeaba en silencio**, el
+falso verde que la spec 0062 existe para matar, reintroducido por mi en la seccion de comandos.
+
+**Lo del owner en esta vuelta (ADR 0058 §8-12 + ADR 0059):** el boton de cancelar nunca se muestra gris (abre un
+modal con lo que falta); A1 se arregla creando la suscripcion en Stripe; el impago **bloquea el acceso** en vez de
+bajar el plan (→ tarea 54); el intervalo entra **solo mensual → anual** (→ tarea 55 el inverso); y **«sin
+suscripcion» es un estado propio (`plan='none'`), no `free`**.
+
+**Seis decisiones son del ORQUESTADOR y estan etiquetadas como tales en la spec, no como del owner:** que exista
+`resume`; que un `price.id` desconocido no avise a nadie (solo `ignored_reason`); `MERCHANT_PUBLIC_ORIGIN` + el
+chequeo de sesion abierta en `checkout`; guardar el `status` crudo de Stripe; persistir el `stripe_customer_id` en
+el checkout; y que no haya auditoria de los cambios de plan por ruta.
+
+**Chequeo del owner en Stripe, sin el cual el ADR 0059 NO se cumple:** el default al agotar los reintentos de cobro
+es **cancelar**; la cuenta tiene que dejar la suscripcion en **`unpaid`** (Billing → Manage failed payments).
+
+Ultima actualizacion previa: 2026-09-10 (**el owner respondio las 4 decisiones abiertas de la 0063.**
+
+**Las 4 respuestas del owner (estan en el ADR 0058 §8-11, no las repitas de memoria):**
+- **(8) El boton de cancelar NUNCA se muestra gris.** «El usuario no sabria que debe hacer»: se aprieta igual y un
+  **modal** dice que falta (cuantos locales archivar + el link), con «Confirmar» disponible solo si cumple. El
+  bloqueo duro es del **servidor**, no de la UI.
+- **(9) El `plus` sin suscripcion de A1 se arregla en Stripe, no en codigo** — el owner crea la suscripcion Plus de
+  verdad. **Nota operativa:** tiene que quedar vinculada (metadata `businessId` o el `stripe_customer_id` de la
+  fila), o el webhook no resuelve el negocio. El `no_subscription` queda como guard defensivo.
+- **(10) El cambio de intervalo mensual↔anual ENTRA**, en las dos direcciones.
+- **(11) El impago NO baja el plan: bloquea el acceso** → **ADR 0059** + **tarea 54**. Esto **cierra** el hallazgo
+  del downgrade involuntario: si el plan no cae por un impago, nunca hay un `free` con 3 locales activos, y la 0063
+  no necesita tolerar un sobre-tope (queda un solo residual: cancelar desde el dashboard de Stripe).
+
+**Dato de Stripe verificado que invierte la intuicion, y que decidio el diseño del intervalo:**
+`proration_behavior: 'none'` al cambiar de intervalo **no** significa «al final del periodo». Lo dice la doc del
+propio SDK: «we don't generate any credits for the old subscription's unused time. We still reset the billing date
+and **bill immediately**» (`cjs/resources/Subscriptions.d.ts:50`). O sea que `none` es la PEOR opcion: el cliente
+**pierde lo que ya pago** y se le cobra de nuevo. «Al final del periodo» exige `subscription_schedules`, una
+superficie nueva de la API. De ahi el diseño asimetrico: **mensual→anual inmediato** con `always_invoice` (credito
+por el tiempo no usado + cobro de la diferencia), **anual→mensual agendado** con `pending_interval`.
+
+**CORRECCION CONCEPTUAL DEL OWNER (2026-09-10, ADR 0058 §12) — cambia el arreglo del bug del webhook:**
+«`deleted` → `free`» **NO es el fix**. `free` es una suscripcion, `plus` es otra, `enterprise` seria otra; un `delete`
+no es ninguna de las tres. Un `deleted` **inesperado** deja el negocio **`plan='none'` (sin suscripcion)** y lo
+**bloquea**; se sale **ajustandose para bajar a `free`** (misma condicion de locales, mismo modal, y **sin tocar
+Stripe** porque no hay nada que cancelar) o **pagando**. Con eso **el invariante queda cerrado del todo**: ya no hay
+ningun camino por el que un negocio llegue a `free` sin pasar por la verificacion de locales — el residual de
+«cancelar desde el dashboard de Stripe» dejo de ser un agujero.
+
+**HALLAZGO propio al implementar esa correccion (NO es decision del owner, esta marcado como tal en la spec):** el
+`deleted` de **fin de periodo** es el final normal del flujo de cancelacion del §4 — el owner ya paso por el modal,
+archivo y confirmo. Mandarlo a `none` **lo bloquearia por haber hecho todo bien**. El discriminante es `pending_plan`
+(si el producto pidio la baja, aterriza en `free`); **no hace falta ninguna columna nueva**. Las dos filas estan como
+casos explicitos del unit y como mutacion M10.
+
+**LA SPEC 0063 ESTA `cerrada`.** El owner acoto el intervalo: «**entregamos mensual a anual, no anual a mensual**» —
+el sentido inverso es la **tarea 55** (no tiene forma barata: reembolso, o quedarse con la plata del cliente, o
+`subscription_schedules`). Con eso salio `pending_interval` del modelo de datos: la migracion **0030** queda en 3
+columnas (`pending_plan`, `pending_plan_at`, `last_event_at`) + el unique de `business_id` + `ignored_reason`.
+
+**Un item se resolvio SIN el owner y esta etiquetado como tal en la spec, no como decision suya:** el `price.id`
+desconocido. Se pregunto dos veces y no se respondio, asi que rige el default — el plan no se toca y el motivo queda
+en `ignored_reason`, **sin aviso a nadie**, porque no hay infra de alertas en el repo y montarla para este caso seria
+andamiaje sin su tarea. Es una decision del orquestador por ausencia de infraestructura.
+
+**PROXIMO PASO: implementar la 0063 con `AGENT-WORKFLOW.md`** (implementador → revisor independiente; rama Neon
+efimera; migracion 0030 verificada por SQL **despues** del PASS). Antes de despachar, el orquestador tiene que dejar
+listos los 3 **archivos compartidos** que la spec exige: la firma de `decidePlanChange` con su tabla de casos, el
+conjunto exacto de claves de `SubscriptionView` + las props extra de D7, y **la costura de inyeccion del cliente de
+Stripe** (hoy `getStripeClient` se llama dentro de las rutas — sin esa costura, la mitad del plan de pruebas no se
+puede escribir).
+
+Ultima actualizacion previa: 2026-09-10 (**SPEC 0063 (cambio de plan + cancelacion) ESCRITA, REVISADA POR DOS AGENTES
+INDEPENDIENTES Y VERIFICADA EMPIRICAMENTE. Queda en `borrador`: 4 decisiones del owner abiertas. Sin codigo tocado.**
+
+**Orden decidido por el owner: el cambio de plan va ANTES del arco de campanas** (ADR 0058 decision 7). Motivo
+registrado: el acoplamiento es una linea (la lista de bloqueantes vive en una funcion y campanas le suma el suyo
+cuando exista) y hoy **ninguno de los 9 negocios `free` de prod puede pagar**.
+
+**Decision 6 nueva del owner:** el tope se endurece — «no podes dar de alta ni desarchivar locales si el plan en el
+que estas no te lo permite». Es una regla de **transicion**: lo prohibido es *aumentar* los activos por encima del
+tope efectivo, y una baja programada baja el tope al del plan destino.
+
+**Lo que la revision cambio (5 puntos; el detalle esta en la spec y en el INDEX, no se repite aca).** Los dos mas
+caros, los dos verificados por el orquestador y no tomados de palabra:
+- **La spec repitio el patron del ADR 0054 sobre si misma.** Afirmaba «verificado empiricamente» que el periodo se
+  lee de `items.data[0].current_period_end`, citando los `.d.ts` de `stripe@22.5.0` (dahlia). La cita es correcta
+  **sobre los tipos** — pero la forma del payload la fija la **api_version del endpoint**, y en prod es
+  **`2020-08-27`** (`select payload_version, event_type from core.stripe_webhook_event`: 3 eventos, todos en esa
+  version), anterior al movimiento de ese campo a los items. Habria dado `undefined` en runtime con `typecheck`
+  verde. El diseño pasa a **leer el estado real de Stripe** (`subscriptions.retrieve`) y a usar el payload solo como
+  disparador — lo que ademas mata el desorden de eventos y la deriva DB↔Stripe.
+- **El webhook escribia el plan sin `lockBusiness`.** Un desarchivado concurrente podia dejar `free` con 2 activos:
+  el invariante central violado por el camino mas probable de todos. Lo encontraron los **dos** revisores por
+  separado; uno lo ejecuto en Postgres 17.11. Es cierto por construccion (el `UPDATE core.subscription` no toca
+  `businesses`, asi que no puede bloquear contra el `SELECT … FOR UPDATE` del desarchivado; isolation de prod
+  verificada = `read committed`).
+
+**Un revisor se equivoco en un punto y NO se acepto:** reporto como «cita del owner inventada» la frase de la
+decision 6. La frase es **textual del owner**, dicha en la sesion; lo que era cierto es que **no estaba en ningun
+archivo**, porque el ADR 0058 se escribio antes. Se arreglo bajando la decision al ADR, no borrando la cita. (El
+revisor solo ve el disco: si una decision del owner no esta en un archivo, para el no existe — que es justamente el
+argumento de por que baja a disco.)
+
+**Estado de prod verificado por SQL el 2026-09-10 — la nota anterior estaba VIEJA:** 11 negocios, 9 `free`/`active`
+sin suscripcion, y **2 `plus`**: **A1 sin `stripe_subscription_id` y con 1 local activo** (2 archivados; el `plus`
+se lo puso a mano por SQL para el QA de la 0061), y **Negocio B**, el unico con suscripcion real (`month`, 1 local
+activo). **Ningun negocio esta hoy por encima de su tope.** La QA manual de la spec estaba escrita sobre «A1 con
+locales de sobra» y era **imposible de ejecutar**; quedo reescrita. Cero filas duplicadas en `core.subscription`
+(el unique de `business_id` de la migracion 0030 es seguro de aplicar).
+
+**LAS 4 DECISIONES ABIERTAS (no inventarlas — §Abierto de la spec):** (1) ¿el boton «Cancelar suscripcion» puede
+estar **bloqueado** hasta archivar? (roza lo legal); (2) los estados que nadie describio y que en prod **existen**:
+`plus` **sin** suscripcion de Stripe (el caso real de A1, que hoy no tendria salida), downgrade **involuntario**
+(dunning / dashboard de Stripe: la spec **propone** tolerar el sobre-tope y bloquear solo aumentos) y **`past_due`**
+(¿gracia o baja al primer fallo?); (3) `price.id` desconocido, ¿alcanza registrarlo en `ignored_reason`?; (4) ¿entra
+el cambio de intervalo month↔year? Con esas cuatro, la spec pasa a `cerrada` y se implementa con
+`AGENT-WORKFLOW.md`.
+
+Ultima actualizacion previa: 2026-09-10 (**ALCANCE DEL CAMBIO DE PLAN CERRADO CON EL OWNER — ADR 0058 escrito. Sin
+codigo tocado; arbol de codigo limpio. La spec queda SIN NUMERAR: falta UNA decision de orden.**
+
+**Lo que el owner decidio (esta en `adr/0058-...md`, no lo repitas de memoria):** seccion de gestion de
+suscripcion en el backoffice para elegir plan A → B; upgrade por Stripe Checkout como hoy aplicado al
+confirmarse el pago; **downgrade de bloqueo duro** (sin estado intermedio) con bloqueantes **un local
+activo** + **sin campanas corriendo**; boton de **cancelar suscripcion** que baja a `free` al terminar el
+periodo pagado; el **bug del webhook** (`plan: "plus"` para cualquier evento, incluido `deleted`) se arregla
+en este arco.
+
+**LA UNICA COSA QUE FALTA DECIDIR — no la inventes, preguntala:** el owner planteo *«seria conveniente pasar a
+crear todo el sistema de marketing y campanas ANTES de esta feature»*, porque uno de los dos bloqueantes del
+downgrade es «sin campanas corriendo» y esa feature no existe. **Quedo planteado con «creo que», no cerrado.**
+Estado verificado del arco de campanas: **diferido** por los ADR 0034/0057; lo que existe es **solo demo**
+(`app/backoffice/demo/campaigns/`), con ADRs de diseno viejos (0018 Incentive Engine, 0022, 0023) y la spec
+**0003 en borrador**; el ADR 0057 ya fijo la direccion (geofencing/check-in, segmentacion por comportamiento,
+cupon exclusivo, push al Wallet) y el transporte `campaign` de la cola de push ya esta provisionado (spec 0033).
+**Recomendacion registrada del agente (2026-09-10): NO esperar a campanas.** Razon: el orden solo cambia UNA
+linea de codigo — la lista de bloqueantes vive en una sola funcion del servidor, hoy con un bloqueante real
+(locales) y el de campanas se le suma cuando campanas exista. Mientras tanto hay un agujero de plata **vivo**:
+`api/billing/checkout` solo lo llama el onboarding, asi que **los 9 negocios `free` de prod no tienen ninguna
+forma de pagar**. Campanas es un arco de varias specs; el cambio de plan es chico. Si el owner igual elige
+campanas primero, el ADR 0058 sigue valido tal cual y solo se corre el numero de spec.
+
+**Numero de spec libre: 0063** (0062 es la ultima existente). Lo toma la feature que el owner ponga primero.
+
+Ultima actualizacion previa: 2026-09-10 (**HANDOFF — proxima sesion: DISEÑAR e implementar la spec de cambio de
 plan (upgrade/downgrade), tarea 53. Sin cambios de codigo en esta sesion — arbol limpio, nada que gatear.**
 
 **Numero de spec a usar: 0063** (0062 es la ultima existente).
@@ -2481,7 +2654,9 @@ end-to-end con el canal `fake`, APNs/Google reales quedan como QA residual).
 | 47 | **No existe gestión de locales en el backoffice** — el tile «Locales» enruta a un mock | **0061** (cierra la parte abierta de la 0023) | **HECHO (2026-09-09) — implementada con PASS de revisor independiente en 2 pasadas.** 5 gates verdes, **520 unitarios** (venian de 472), **20/20 de integracion Neon**. La 1a pasada dio FAIL y encontro dos cosas que nadie mas habria visto: un comentario citando un test inexistente, y que **la capa HTTP no tenia NINGUN oraculo** (sacar el guard de `GET /api/locations` dejaba 654 tests verdes) → salio `locations-routes.test.ts`. La 2a pasada probo los 4 handlers uno por uno y escribio **3 evasiones nuevas, las 3 cazadas** — la mas valiosa, E3: 401 y 403 correctos pero el dominio recibiendo el `businessId` del body, o sea la escalada de privilegios real, invisible a los status codes. **Falta: migracion `0029` a prod + QA del owner.** Antes de la spec: **spec CERRADA (2026-09-09)** con el protocolo de `AGENT-WORKFLOW.md`. Las 5 decisiones del owner estan tomadas y las consecuencias derivadas confirmadas. Migracion aditiva: columna de estado en `core.location` (`DEFAULT 'active'`, sin backfill) + coordenadas **nulables** en `location` y `location_verification`. **El item load-bearing del DoD es el filtro `status = 'active'` en `assertLocationInBusiness`** (`server/counter/core.ts:78`): sin el, una pestana vieja o un link `?location=<uuid>` en favoritos sigue acreditando y canjeando contra un local archivado, aunque la UI ya no lo ofrezca | **Destapado el 2026-09-09 al alinear docs con el código.** La spec 0023 figuraba `implementada` con **7 de 9 DoD sin marcar**; el árbol confirma que el estado era optimista: `app/backoffice/` no tiene ninguna ruta `locations`, `AddressAutofillField` se usa **sólo** en `app/onboarding/page.tsx`, y `backoffice/page.tsx:80` manda `locations` a `/backoffice/demo/locations` (mock de la spec 0015). O sea: **un local se crea en el onboarding y nunca más se puede editar.** Falta también la procedencia versionada (`location_verification`). La 0023 quedó re-etiquetada `implementada parcialmente` |
 | 48 | **`/wallet` no se actualiza en vivo** — hay que cerrar y reabrir el portal para ver el saldo nuevo | **0060** | **spec en `borrador`** (2026-09-09) — 4 decisiones abiertas del owner | Confirmado por el owner en el QA **B1.4**. **No es una regresión ni un olvido:** la spec 0031 sacó la «landing en vivo» de su alcance **explícitamente y sin reemplazo** («si el owner más adelante quiere un resultado en vivo, es una spec nueva — no entra acá»). Hoy el consumidor recibe el push, abre el ícono y ve el saldo viejo hasta recargar |
 | 49 | **La clave pública de Geoapify quedó sin restricción de origen** — fix operativo, no durable | — | pendiente (necesita spec) | Para destrabar el CORS (ACAO fijo, un solo dominio) el owner quitó **todas** las Allowed Origins: la clave es hoy usable desde cualquier sitio contra la cuota diaria. El DoD «tokens públicos restringidos por origen» de la 0023 está por lo tanto **falso en producción, a propósito**. Fix durable ya identificado en `CLAUDE.md` (Opción B): proxear el autocomplete por el server del merchant con `GEOAPIFY_API_KEY`, same-origin, la clave nunca viaja al cliente |
-| 53 | **Downgrade de plan sin bajar los locales primero: NO puede existir** | — | pendiente (guard para cuando se construya) | **Decisión del owner (2026-09-10):** al bajar de plan, el usuario tiene que **elegir qué locales siguen activos** para entrar en el tope del plan nuevo; **no se puede hacer downgrade sin llevar primero los locales activos al número que ese plan permite.** Hoy NO hay ningún camino de downgrade en el código —el webhook de Stripe solo hace `plan: "plus"` al completar el checkout— así que no es un bug vivo, es un **invariante que toda futura ruta de downgrade (webhook de cancelación, UI de cambio de plan) tiene que respetar**. Sin esto, un `plus` con 3 locales que cae a `free` queda con 2 por encima del tope y el sistema no sabría cuál dejar. Quedó demostrado en la práctica: A1 está en `plus` con locales de sobra para volver a `free` |
+| 53 | **Cambio de plan (upgrade/downgrade) + cancelar suscripcion** | ADR **0058**, spec **0063** | **spec 0063 escrita, revisada por 2 agentes independientes y verificada empiricamente; en `borrador` con 4 decisiones del owner abiertas.** Orden decidido: va ANTES de campanas | **Decisión del owner (2026-09-10):** al bajar de plan, el usuario tiene que **elegir qué locales siguen activos** para entrar en el tope del plan nuevo; **no se puede hacer downgrade sin llevar primero los locales activos al número que ese plan permite.** Hoy NO hay ningún camino de downgrade en el código —el webhook de Stripe solo hace `plan: "plus"` al completar el checkout— así que no es un bug vivo, es un **invariante que toda futura ruta de downgrade (webhook de cancelación, UI de cambio de plan) tiene que respetar**. Sin esto, un `plus` con 3 locales que cae a `free` queda con 2 por encima del tope y el sistema no sabría cuál dejar. Quedó demostrado en la práctica: A1 está en `plus` con locales de sobra para volver a `free`. **AMPLIADO 2026-09-10 — el owner cerro el alcance completo, esta en el ADR 0058:** una **seccion de gestion de suscripcion** en el backoffice para elegir plan A → B; **upgrade por Stripe Checkout** como hoy, aplicado al confirmarse el pago; **downgrade de bloqueo duro** (sin estado intermedio: si no cumple, no se ejecuta — primero archiva y elige cuales quedan), con bloqueantes **un local activo** + **sin campanas corriendo**; **boton de cancelar suscripcion** que baja a `free` al terminar el periodo pagado; y **el bug del webhook se arregla en este mismo arco**. **Dos hallazgos a decidir, NO acordados con nadie** (detalle en el ADR 0058): (a) el chequeo al apretar cancelar **no** sostiene el invariante, porque mientras siga en `plus` reactivar locales hasta 3 es valido (`locations/store.ts:70` mide contra el plan **vigente**) y al cerrar el periodo queda `free` con 3 activos → hay que sostenerlo tambien en el webhook; (b) la **premisa del ADR 0056 queda invalidada** — no restringio checkout por rol porque «no existe una UI de upgrade posterior», y esta seccion la crea; la ruta no filtra ni rol ni `status` y el staff vive en la misma tabla, asi que un staff **incluso desactivado** podria cambiar el plan (ya estaba anotado como abierto en la fila de la spec 0057) |
+| 54 | **El impago bloquea el acceso (backoffice + cuenta + mostrador)** | ADR **0059**, spec pendiente | pendiente (necesita spec; NO entra en la 0063) | **Decision del owner (2026-09-10), nacida de una pregunta abierta de la 0063:** si llega la fecha de cobro y no paga, se esperan **3 reintentos en la misma semana** y despues **se bloquea el acceso** con un modal que pide pagar para rehabilitar. **El plan NO baja y los locales no se tocan** — por eso el «downgrade involuntario» deja de existir y el invariante de locales de la 0063 se sostiene sin tolerar sobre-tope. Disparador = el estado de Stripe (`unpaid`, o `past_due` con `next_payment_attempt: null`), **no** un contador propio. **Va aparte de la 0063 a proposito:** el bloqueo vive en `requireBackofficeSession`, el guard compartido de 8 paginas **y del mostrador** (`backoffice/counter/page.tsx:16`) — un bug ahi deja a TODOS los comercios afuera de su panel, es el radio de daño mas grande del producto. **Chequeo previo obligatorio en Stripe:** el default al agotar reintentos es **cancelar** (lo que haria caer el plan a `free` y el ADR no se cumpliria); la cuenta tiene que dejar la suscripcion en **`unpaid`** (Billing → Manage failed payments). **Estado interino hasta que esta tarea se implemente:** un moroso conserva `plus` y el acceso completo — igual que hoy, no es una regresion; y un negocio en `plan='none'` (sin suscripcion) queda con el tope en 1 pero sigue operando. **AMPLIADA 2026-09-10 (ADR 0058 §12 / 0059 §5): el bloqueo tiene DOS causas con salidas distintas** — impago (`status='unpaid'`, salida = pagar) y **sin suscripcion** (`plan='none'`, salidas = bajar a `free` ajustandose, o pagar). **Requisito que es el mas facil de romper:** el bloqueo **tiene** que dejar pasar `/backoffice/subscription` y `/backoffice/locations`, o el comercio no puede ejecutar sus propias salidas (pagar, o archivar para bajar a free). La **salida** a `free` la entrega la spec 0063 (`settle_to_free`); lo que falta aca es el **bloqueo**. |
+| 55 | **Cambio de intervalo anual → mensual** | ADR **0058** §10, spec pendiente | pendiente (recorte explicito del owner el 2026-09-10; NO entra en la 0063) | El owner puso el cambio de intervalo en alcance en las **dos** direcciones y despues lo acoto: «**entregamos mensual a anual, no anual a mensual**». El motivo tecnico esta verificado en la doc del SDK de Stripe: el sentido inverso no tiene forma barata. Hacerlo «ahora» exige **devolver ~11 meses en credito** (el owner excluyo los reembolsos) o usar `proration_behavior: 'none'`, que **no** es «al final del periodo» — «we don't generate any credits for the old subscription's unused time. We still reset the billing date and **bill immediately**» (`cjs/resources/Subscriptions.d.ts:50`), o sea que el cliente **pierde lo que ya pago y se le cobra de nuevo**. Agendarlo al fin del año exige **`subscription_schedules`**, una superficie nueva de la API. La 0063 deja el rechazo explicito (`interval_downgrade_unsupported`, 409) en la **funcion pura**, asi que cuando esta tarea se haga hay un solo lugar donde cambiarlo y ya tiene su fila en la tabla de casos. |
 | 52 | **La lista `HANDLERS` de `locations-routes.test.ts` esta hardcodeada: una 5a ruta naceria sin guard con el test en verde** | — | **hecho (2026-09-10)** — barrido por filesystem que deriva `METHOD /path` de cada `route.ts` (las dos ortografias: `export async function` y `export const`), asevera un piso de archivos y exige igualdad exacta con `HANDLERS`. **Probado que muerde:** una ruta falsa `zz-mutation/route.ts` sin guard lo puso rojo nombrandola (`- "GET /api/locations/zz-mutation"`); revertida, 15/15, `file-size` en 0 | Hallazgo MENOR del revisor en la 2a pasada, con el fix ya identificado: un `readdir` que asevere que la lista cubre todos los `route.ts` bajo `api/locations/**`. Hoy los 4 coinciden exacto, asi que no es un defecto vivo. Es la forma de la leccion de la spec 0046 («si sumas un plugin, suma sus paths») y del barrido MIME: un allow-list que no ve una superficie nueva da seguridad que no tiene |
 | 51 | **Los 27 archivos `.neon.integration` NO corren en CI: se puede borrar un guard de producción con los 5 gates en verde** | **0062** | **hecho (2026-09-10) — VERIFICADO en la corrida real** `34529269621`: en CI `Tests 678 passed (678)`, **cero skipped**; en local sin Neon `521 \| 157 skipped`. Los 157 que se skipeaban corren. 33 archivos `.neon.integration` en `✓`, ninguno `↓`. Los 3 pasos nuevos `completed / success` por la API de jobs. Integración: 49 s | **Verificado por mutación el 2026-09-09, no argumentado:** con `eq(locations.status, "active")` sacado de `assertLocationInBusiness`, `pnpm run test` da **506/506 VERDE** — el único oráculo es la integración Neon, que se auto-skipea sin `NEON_INTEGRATION_DATABASE_URL` + `NEON_INTEGRATION_ISOLATED`, y `.github/workflows/ci.yml` no las setea. Afecta a TODO el repo, no a la spec 0061. Decisión del owner: si CI corre contra una rama Neon efímera (cuesta plata y hay que manejar secretos) o si se acepta el límite y se documenta |
 | 50 | **0058 y 0059 no tienen oráculo de comportamiento** — su única cobertura es un barrido estático de strings | 0058, 0059 | pendiente | **Demostrado por mutación el 2026-09-09, no argumentado:** borrar `setIsAnalyzing(true)` de `use-brand-logo.ts` apaga «Preparando imagen…» para siempre —que es el **DoD #1** de la 0059— y **los 5 gates quedan verdes** (471/471, typecheck, lint), porque `expect(source).toContain("Preparando imagen…")` sólo ve el string en el archivo. Es el patrón de la tarea 38 otra vez. La técnica que lo cierra ya existe en el repo: `login-form-retry.test.ts` (spec 0057) stubea `useState` con `vi.mock("react")`, ~45 líneas y cero paquetes |
