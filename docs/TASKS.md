@@ -223,34 +223,42 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### ⚠️ HAY UNA MUTACION VIVA AHORA MISMO — EN `resume/route.ts`, PUESTA POR UN AGENTE QUE ESTA MIDIENDO
+### ⚠️ HAY MUTACIONES VIVAS MIENTRAS EL IMPLEMENTADOR MIDE LOS VERDES — NO LAS REVIERTAS A CIEGAS
 
-**NO LA REVIERTAS SIN LEER ESTO.** El implementador esta corriendo las mutaciones de los verdes que faltan y va
-rapido: en el ultimo tramo pasaron por aca **S3** (ya revertida, `_auth.ts` verificado en
-`5ddc7c4c2cd66298b92d11d883388289021ef99a`), **S11** y ahora **S12**. La que este viva cuando leas esto sale de
-`grep -rn MUTATION apps/merchant/src`.
+**Esta seccion NO nombra una mutacion concreta a proposito**: el implementador avanza rapido (por aca ya pasaron S3,
+S11, S12, S16, S17) y un doc que nombra la mutacion equivocada **manda a restaurar un archivo que ya esta limpio**,
+que es peor que no tener el doc. **La fuente de verdad es `grep -rn MUTATION apps/merchant/src`.**
 
-**Esta ETIQUETADA y ATRIBUIDA.** El hook `no-mutations-left.sh` la marca —correctamente— pero **no puede distinguir
-«viva» de «abandonada»; el orquestador si**, y cortarla bajo un agente que esta midiendo lo haria transcribir un
-resultado falso: peor que el rojo que el hook previene.
+**Por que no se revientan:** estan **ETIQUETADAS y ATRIBUIDAS**. El hook `no-mutations-left.sh` las marca
+—correctamente— pero **no puede distinguir «viva» de «abandonada»; el orquestador si**, y cortarla bajo un agente que
+esta midiendo lo hace transcribir un resultado falso: peor que el rojo que el hook previene. **Un rojo en la suite
+mientras haya una puesta es ESPERADO** — leé la asercion antes de creerle al sintoma.
 
-**RESTAURACION de `resume/route.ts`, si esta sesion se cae o el agente no vuelve:**
-```
-cp /tmp/rev3/app_api_billing_resume_route.ts apps/merchant/src/app/api/billing/resume/route.ts
-shasum apps/merchant/src/app/api/billing/resume/route.ts   # debe dar 4e396b5e...
-```
-Hay **dos** copias limpias (`/tmp/rev3/…` y `/tmp/resume-mutJ.bak`), las dos en `4e396b5e`. **Antes de pisar el
-archivo, corre un `diff` contra la copia**: si muestra algo mas que la mutacion, el agente avanzo y restaurar te lleva
-trabajo por delante. Ese `diff` es lo que convierte restaurar en verificacion — se uso asi al revertir S3.
+**PROCEDIMIENTO si esta sesion se cae o el agente no vuelve.** Los 10 archivos tienen copia limpia en `/tmp/rev3/`
+(verificado hash por hash). **Ninguno esta trackeado, asi que `git checkout` NO sirve.**
 
-**UN ROJO EN LA SUITE MIENTRAS ESTO ESTE PUESTO ES ESPERADO Y NO ES UN BUG.** Leé la asercion antes de creerle al
-sintoma.
+| Archivo (bajo `apps/merchant/src/`) | `shasum` LIMPIO | Copia en `/tmp/rev3/` |
+|---|---|---|
+| `app/api/billing/_auth.ts` | `5ddc7c4c` | `app_api_billing__auth.ts` |
+| `app/api/billing/checkout/route.ts` | `a3f0cee0` | `app_api_billing_checkout_route.ts` |
+| `app/api/billing/cancel/route.ts` | `1fa5bbf9` | `app_api_billing_cancel_route.ts` |
+| `app/api/billing/interval/route.ts` | `65fe4f3c` | `app_api_billing_interval_route.ts` |
+| `app/api/billing/resume/route.ts` | `4e396b5e` | `app_api_billing_resume_route.ts` |
+| `app/api/billing/settle-free/route.ts` | `eeaa9e0c` | `app_api_billing_settle-free_route.ts` |
+| `server/billing/gateway.ts` | `b883d0fe` | `server_billing_gateway.ts` |
+| `server/billing/index.ts` | `b03c8335` | `server_billing_index.ts` |
+| `server/billing/store.ts` | `73902c5d` | `server_billing_store.ts` |
+| `server/billing-stripe-fake.ts` | `fc553527` | `server_billing-stripe-fake.ts` |
 
-**Lo que S3 dejo probado al ejecutarse, y vale conservar:** el rojo mostro que sin ese guard lo que viajaba al
-navegador era `connect ECONNREFUSED 10.0.0.7:5432 (ep-…us-east-2.aws.neon.tech)` — **la IP interna y el host de Neon**.
-El barrido lo habia listado como el 4o de 9 en gravedad, sonando a higiene menor; **verlo ejecutado lo movio de
-«cosmetico» a «fuga de infraestructura»**. Es el argumento a favor del barrido: encontrado de a uno, S3 llegaba a la
-ronda seis o siete, si alguien lo miraba.
+**Y el paso que convierte restaurar en verificacion, aprendido revirtiendo S3: ANTES de pisar el archivo, corre un
+`diff` contra la copia.** Si muestra **solo** la mutacion, restaurar es seguro. **Si muestra algo mas, el agente
+avanzo y restaurar le lleva trabajo por delante** — ahi se restaura a mano solo el bloque mutado.
+
+**RIESGO ESTRUCTURAL A DECIDIR (owner): `/tmp` es volatil y NADA de la fase D1 esta commiteado.** Seis muertes de
+agente y cada revert fue una reconstruccion manual, **porque no hay blob de git al que volver**. Si `/tmp` se limpiara
+con una mutacion puesta, el unico punto de retorno seria el `diff` de esta tabla. **La contramedida real seria
+commitear el trabajo de la fase en un commit WIP** —que NO es marcarla implementada, el PASS sigue gobernando eso— y
+dejar que git sea el respaldo. No se hizo por cuenta propia porque cambia el flujo del repo.
 
 ### CERRANDO LOS 9 VERDES: **5 cerrados, 4 + S7 pendientes.** El implementador murio con S3 puesta (6a muerte)
 
