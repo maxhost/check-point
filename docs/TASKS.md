@@ -223,37 +223,39 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### ⚠️ MUTACION VIVA AHORA MISMO (S7) — NO REVERTIR A MANO. Y EL BARRIDO ESTA DANDO MUCHO
+### ⚠️ MUTACION VIVA AHORA MISMO — NO REVERTIR A MANO. Y EL BARRIDO YA LLEVA OCHO VERDES
 
-**`cancel/route.ts` tiene puesta `// MUTATION S7 (revisor, barrido)` y el revisor esta MIDIENDO.** El hook la marco; el
-orquestador **no la corta a proposito**, porque cortarla bajo un agente vivo lo hace transcribir un resultado falso, y
-una fila de mutacion mal medida es lo que esta spec ya pago tres veces. **Esta etiquetada y atribuida**, que es lo que
-la convencion pide.
-**Si esta sesion se cae con la mutacion puesta, asi se restaura:** `cp /tmp/mut-backup-cancel.ts
-apps/merchant/src/app/api/billing/cancel/route.ts` y verificar `shasum` = **`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`**
-(el arbol mutado da `f01e14bc…`).
+**El arbol tiene puesta una mutacion del BARRIDO y el revisor esta MIDIENDO** (paso por S7 y ahora esta en **S9**, o
+sea que **avanza**). El hook la marca; el orquestador **no la corta a proposito**: cortarla bajo un agente vivo lo hace
+transcribir un resultado falso, y una fila mal medida es lo que esta spec ya pago tres veces. **El hook no distingue
+«viva» de «abandonada»; el orquestador si** — regla ya bajada a `CLAUDE.md`.
 
-**EL CAMBIO DE METODO FUNCIONO AL INSTANTE: el barrido se esta escribiendo a `/tmp/barrido-d1.md`** — 34 filas ya en
-disco. Si el revisor se cae por 6a vez, **la lista se levanta del archivo en vez de reconstruirse del arbol.**
+**SI ESTA SESION SE CAE CON LA MUTACION PUESTA, ASI SE RESTAURA** (las dos, S7 y S9, son sobre el MISMO archivo):
+`cp /tmp/mut-backup-cancel.ts apps/merchant/src/app/api/billing/cancel/route.ts`
+y verificar `shasum` = **`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`**.
 
-**RESULTADOS PARCIALES DEL BARRIDO — son del REVISOR, en vuelo, y el orquestador TODAVIA NO los verifico.** 12
-afirmaciones de rondas anteriores (todas rojas salvo las dos que cerro el delta) + 18 nuevas (S1-S18), de las que
-**faltan 6 por correr**. Lo importante: **SEIS afirmaciones nuevas quedaron VERDES**, o sea seis docblocks mas sin
-oraculo, y **dos son serias**:
+**EL CAMBIO DE METODO FUNCIONO: el barrido se escribe a `/tmp/barrido-d1.md`.** Si el revisor muere por 6a vez, la
+lista se levanta del disco. **Ojo al leerlo: el revisor muta mas rapido de lo que escribe las filas**, asi que una fila
+en `pendiente` puede tener el resultado ya medido — el arbol es la fuente de que mutacion esta puesta, el archivo es la
+fuente de los RESULTADOS ya transcriptos.
+
+**ESTADO DEL BARRIDO (resultados del REVISOR, en vuelo, NO verificados todavia por el orquestador):** 12 afirmaciones
+de rondas anteriores + **18 nuevas (S1-S18)**, de las que **8 ya tienen resultado y 8 quedan pendientes**.
+**SEIS VERDES nuevas, o sea seis docblocks mas sin oraculo**, y dos son serias:
 - **S1 — `_auth.ts:186` afirma que el conteo que alimenta `downgrade_blocked` se lee BAJO EL LOCK «o entre la
   verificacion y la escritura cabe un desarchivado (ADR 0054 §2)». Sacar `lockBusiness` deja 39/39 VERDE.** Es la
-  propiedad central de la spec —el invariante que toda la 0063 existe para sostener— sin oraculo del lado de las rutas.
-  (En la fase B el lock del WEBHOOK si lo tenia: es M4.)
-- **S4 — `checkout:22` afirma que un negocio con suscripcion viva recibe 409 `subscription_live` «en vez de abrir un
-  segundo Checkout y COBRAR DOS VECES». Saltear `decideUnderLock` deja 39/39 VERDE.** Cobrar dos veces es daño de
-  plata.
+  propiedad central de la spec, sin oraculo **del lado de las rutas** (el lock del WEBHOOK si lo tiene: es M4).
+- **S4 — `checkout:22` afirma que una suscripcion viva recibe 409 `subscription_live` «en vez de abrir un segundo
+  Checkout y COBRAR DOS VECES». Saltear `decideUnderLock` deja 39/39 VERDE.** Daño de plata.
 - **S3** (nunca filtrar el mensaje de una excepcion cualquiera en el 503), **S6** (normalizar la barra final del
-  origen), **S11** (el orden invertido de `resume`) y **S12** (la clave de `resume` lleva `pending_plan_at`) tambien
-  **VERDES**.
+  origen), **S11** (el orden invertido de `resume`) y **S12** (la clave de `resume` lleva `pending_plan_at`): VERDES.
 
-**Esto confirma por que el encargo cambio de «otra ronda de mutaciones» a «barrido sistematico»:** las cuatro rondas
-anteriores encontraron **un** bloqueante cada una; el barrido, en una sola pasada y sin terminar, ya lleva **seis**.
-**La tabla de mutaciones nunca iba a converger de a una.**
+**Las que SI muerden, transcriptas:** S2 (el DTO), S5 (sesion no abierta → 409), S8 (no revertir ante
+`StripeConnectionError`), S10 (`pending_plan_at` sale de `cancel_at` y no de `items.data[0]`).
+
+**ESTO ES POR QUE EL ENCARGO CAMBIO de «otra ronda de mutaciones» a «barrido sistematico»:** las cuatro rondas
+anteriores encontraron **un** bloqueante cada una —a un ciclo completo de implementador + revisor cada vez—; el
+barrido, en **una sola pasada y sin terminar**, ya lleva **seis**. **De a una nunca iba a converger.**
 
 ### 5a MUERTE DEL REVISOR, con S9 puesta — Y LA COPIA EN `/tmp` FUE LO QUE LA SALVO
 
