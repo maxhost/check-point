@@ -200,6 +200,25 @@ mutar se registra ANTES de mutarlo y se escribe en el handoff, **sobre todo si e
 nuevo** — es el unico punto de retorno que existe; y (2) antes de mutar, mirá si el archivo esta
 trackeado (`git status --short`), porque si sale `??` el `git checkout` de emergencia **no existe**
 y conviene sacar una copia a `/tmp` primero.
+**Y la variante PEOR, que la regla de arriba no cubria: un archivo TRACKED Y MODIFICADO (` M`).** Ahi el `git checkout`
+de emergencia **si hace algo — y es lo peor que puede hacer: se lleva tambien el trabajo no commiteado**, no solo la
+mutacion. La del untracked no revierte nada y **se nota**; esta revierte de mas y **se ve como si hubiera funcionado**.
+Paso en la fase D1 de la spec 0063 con `checkout/route.ts`. **Regla: antes de restaurar CUALQUIER archivo, corré un
+`diff` contra la copia limpia y mira que lo unico que se va sea la mutacion.** Se hizo asi al revertir una S3 sobre
+`_auth.ts` y el `diff` mostro exactamente una linea: **eso es lo que convierte «restaurar» en una operacion verificada
+en vez de una apuesta sobre el trabajo de otro.** Y cuando la reconstruccion a mano no converge —cuatro candidatos
+contra un `shasum` y ninguno dio— **la copia en `/tmp` es lo unico que queda**: ya salvo dos mutaciones abandonadas en
+esa fase. Ojo tambien con el «casi igual»: un candidato estructuralmente correcto perdia un comentario que explicaba
+por que se miraba `rawType` y no `instanceof`; **el hash lo cazo, y sin el ese archivo se degradaba en silencio**.
+
+**UN SINTOMA NO ES UNA CAUSA, y nombrar un mecanismo PLAUSIBLE se siente igual que haberlo verificado.** En la fase D1
+el orquestador vio `fetch failed` dentro de corridas VERDES y escribio —en `docs/TASKS.md` y al owner— que eran
+«reintentos absorbidos» y que el flaky estaba «tapado, no cerrado». **Falso, y lo falsifico un revisor con dos `grep`:**
+esos `fetch failed` salen de un test que setea a proposito un `DATABASE_URL` de localhost, y **no hay ninguna capa de
+retry en `db.ts`** — la hipotesis no tenia mecanismo. El flaky real era otro y ajeno a la fase (un `select` sin
+`order by` + `.at(-1)` sobre dos filas del mismo telefono). **Antes de escribir «esto pasa PORQUE X», buscá X en el
+arbol**: si no podes señalar el codigo que lo produce, no es un diagnostico, es una historia. Es el ADR 0054 del lado
+de la causa, y se cuela mas facil porque explicar un sintoma **se siente como entenderlo**.
 
 **Un hook tambien es un guard, y un guard sin prueba de que MUERDE es peor que ninguno.**
 `tasks-fresh.sh` guardaba con `[ -d src ] || exit 0`, pero `src/` **no existe en la raiz de

@@ -8,16 +8,43 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-11.
+Ultima actualizacion: 2026-09-12.
 
-**ESTADO: las FASES A, B y C de la spec 0063 estan CERRADAS, las tres con PASS de revisor independiente y
-commiteadas. LO QUE SIGUE ES LA FASE D**, que es el grueso que resta (5 rutas + `_auth.ts` + UI + D8 + D10 +
-`locations-races`). **Nada desplegado a prod: no se pusheo y la migracion `0030` NO esta aplicada a prod**, solo a la
-rama efimera.
+**ESTADO: las fases A, B, C y D1 de la spec 0063 estan CERRADAS, las cuatro con PASS de revisor independiente y
+commiteadas (la D1 en `8effb1b`). LO QUE SIGUE ES LA FASE D2 — la UI.** Arbol LIMPIO, sin mutaciones y sin sondas.
+**Nada desplegado a prod: no se pusheo y la migracion `0030` NO esta aplicada a prod**, solo a la rama efimera
+`spec-0063-billing`.
 
-**Ojo con la numeracion de fases al leer lo de abajo:** la fase C **es nueva** —la creo una decision del owner del
-2026-09-11 (ADR 0061)— y lo que originalmente se llamaba «fase C» paso a ser la **fase D**. Los bloques historicos
-viejos pueden decir «fase C» refiriendose a la actual D; los que se renumeraron ya dicen D.
+**PROMPT PARA RETOMAR:** «retomamos: despacha la fase D2 de la spec 0063 (UI + D8 + D10 + render del HTML) a un
+implementador».
+
+**Gates RE-MEDIDOS en el handoff (2026-09-12), no copiados:** `typecheck` y `build` forzados (`0 cached`), `lint` y
+`format:check` verdes; `pnpm test` con `.env.integration.local` → **121 archivos / 872 tests / 0 failed / 0 skipped**.
+
+**LO QUE FALTA DE LA D2:** `backoffice/subscription/{page,subscription-console,cancel-dialog}` (ninguno existe, ya
+verificado), **D8** (reconciliacion al abrir la pagina), `backoffice/page.tsx` (tarjeta + presentacion de
+`none`/`canceled`), `backoffice/locations/page.tsx` (tope efectivo), `onboarding/page.tsx` ([R2-I8], hoy todavia manda
+`businessId` en el body) y el **render del HTML** con `renderToStaticMarkup`.
+
+**TRES COSAS QUE EL ENCARGO DE LA D2 TIENE QUE LLEVAR, y las tres se ganaron caro en la D1:**
+1. **El barrido de docblocks va DESDE EL INICIO, no al final.** En la D1, cuatro rondas de revision encontraron **un**
+   bloqueante cada una —los cuatro de la misma familia— y despues **un barrido sistematico encontro NUEVE en una
+   pasada**. Ya es regla en `CLAUDE.md`.
+2. **El revisor de la D2 tiene que vigilar LAS DOS SALIDAS** del estado «`plus` con la suscripcion muerta»: la spec dice
+   que cuelga de «D8 **o** el boton de D10», **D10 quedo en la D1 y D8 va en la D2, asi que ningun revisor las vio
+   juntas.**
+3. **Verificar que la D1 no rompio el onboarding** — `checkout` ahora ignora el `businessId` del body y usa
+   `ownerContext`. En teoria coincide porque el onboarding rechaza un segundo negocio por usuario, **pero eso es un
+   razonamiento, no una medicion**: va con oraculo.
+
+**RESIDUALES DE LA D1 (menores del revisor, ninguno bloqueante):** un `it` que carga **cuatro** oraculos y cuyo titulo
+nombra uno (la atribucion existe en el archivo; **en CI solo se ve el titulo**), y
+**`billing-store.neon.integration.test.ts` de la fase B con 24 lineas de literales FIJOS** — el mismo modo de falla que
+en la D1 envenveno la rama efimera y dejo la suite muriendo **en el seed**, indistinguible de un bug.
+
+**PENDIENTE DEL OWNER, sin bloquear:** ~32 negocios huerfanos en la rama efimera de corridas abortadas (no bloquean;
+borrarlos es borrado en una base y la decision es suya), y el chequeo en Stripe de que al agotar los reintentos de cobro
+la suscripcion quede en **`unpaid`** y no cancelada — sin eso el ADR 0059 no se cumple.
 
 ## FASE D — DESPACHADA EN DOS ENCARGOS SERIALES (decision del ORQUESTADOR, no del owner)
 
@@ -577,7 +604,11 @@ directo) y la §Archivos compartidos de la spec lo repite.
 
 **Despues del delta: RE-REVISION con el MISMO revisor**, que conserva el contexto de toda la fase D1.
 
-### BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED — RE-MEDIDO 2026-09-11, arbol sin mutaciones
+### ~~BASELINE DE `shasum` DE LOS ARCHIVOS UNTRACKED~~ — **OBSOLETO: ya estan COMMITEADOS**
+
+> **AVISO (handoff 2026-09-12):** los 11 archivos que este bloque listaba **entraron en `8effb1b`**, asi que **ya no son
+> untracked y `git checkout` vuelve a funcionar sobre ellos** — el motivo entero por el que existia este baseline
+> desaparecio. **No lo uses como referencia: usa `git`.** Se conserva solo como historico de la D1.
 
 **Re-medido en el momento de escribirlo, no copiado del bloque anterior.** El del fake **habia quedado viejo**
 (`df152f8f…`) porque el implementador lo edito al cerrar el menor 6 — un cambio **legitimo**, no una mutacion, pero un
@@ -616,7 +647,12 @@ distintas y ningun revisor las ve juntas.
 
 <details><summary><b>HISTORICO: la mutacion M1 que estuvo viva durante la sesion (ya revertida, verificado)</b></summary>
 
-### ⚠️ HAY UNA MUTACION PUESTA A PROPOSITO EN ESTE MOMENTO — M1, Y ESTA VIVA
+### ~~MUTACION VIVA~~ — **YA NO VALE. Historico del 2026-09-11; el arbol esta LIMPIO desde entonces**
+
+> **AVISO (handoff 2026-09-12): NO hay ninguna mutacion puesta.** Verificado: `grep -rn MUTATION apps/merchant/src`
+> **vacio**, sin sondas en `src/`, arbol commiteado en `8effb1b`. Este bloque se conserva como historico **porque su
+> titulo original decia lo contrario y un punto de retorno que miente manda a perseguir un fantasma** — que es
+> exactamente el sintoma que la auditoria existe para descartar. Lo de abajo es la foto de aquel momento.
 
 **Si estas leyendo esto en una sesion fresca, NO es un bug y NO persigas el rojo.** El implementador de la D1 esta
 **corriendo** (verificado, no supuesto) y va por las mutaciones en orden. Estado al momento de escribir esto:
