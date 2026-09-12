@@ -223,64 +223,43 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### ⚠️ HAY MUTACIONES VIVAS MIENTRAS EL IMPLEMENTADOR MIDE LOS VERDES — NO LAS REVIERTAS A CIEGAS
+### LOS 9 VERDES CERRADOS, TODOS PINNEADOS. EN RE-REVISION FINAL. Sigue SIN PASS
 
-**Esta seccion NO nombra una mutacion concreta a proposito**: el implementador avanza rapido (por aca ya pasaron S3,
-S11, S12, S16, S17) y un doc que nombra la mutacion equivocada **manda a restaurar un archivo que ya esta limpio**,
-que es peor que no tener el doc. **La fuente de verdad es `grep -rn MUTATION apps/merchant/src`.**
+**Ninguno se declaro y ninguno se ablando: los nueve tienen oraculo.** Mas S7, que tenia consecuencia observable pero
+ninguna asercion.
 
-**Por que no se revientan:** estan **ETIQUETADAS y ATRIBUIDAS**. El hook `no-mutations-left.sh` las marca
-—correctamente— pero **no puede distinguir «viva» de «abandonada»; el orquestador si**, y cortarla bajo un agente que
-esta midiendo lo hace transcribir un resultado falso: peor que el rojo que el hook previene. **Un rojo en la suite
-mientras haya una puesta es ESPERADO** — leé la asercion antes de creerle al sintoma.
+**Corridas del ORQUESTADOR, con el arbol QUIETO (el agente ya entrego):** `grep MUTATION` **vacio**, sin sondas, los 5
+gates verdes (`typecheck` y `build` **forzados**, `0 cached`) y **la suite TRES veces: 121 archivos / 872 tests / 0
+failed / 0 skipped las tres.**
 
-**PROCEDIMIENTO si esta sesion se cae o el agente no vuelve.** Los 10 archivos tienen copia limpia en `/tmp/rev3/`
-(verificado hash por hash). **Ninguno esta trackeado, asi que `git checkout` NO sirve.**
+**EL FLAKE DE LOS LITERALES ESTA CERRADO, y la correccion es del orquestador contra si mismo:** se habia escalado a
+«bloqueante operativo» tras medir 4 rojos reales. **Era cierto al medirlo** —y las 3 corridas limpias de ahora son la
+prueba de que se cerro—, **pero aquellas mediciones se hicieron con el implementador escribiendo y no eran
+concluyentes**. El fix no fue archivo por archivo: **el sufijo unico se mudo a `subId`/`custId` del support**,
+calculados una vez por modulo, asi que **todo consumidor de `livePlusState` lo hereda**. `grep` de literales fijos:
+**cero** en los cinco archivos de integracion.
 
-| Archivo (bajo `apps/merchant/src/`) | `shasum` LIMPIO | Copia en `/tmp/rev3/` |
-|---|---|---|
-| `app/api/billing/_auth.ts` | `5ddc7c4c` | `app_api_billing__auth.ts` |
-| `app/api/billing/checkout/route.ts` | `a3f0cee0` | `app_api_billing_checkout_route.ts` |
-| `app/api/billing/cancel/route.ts` | `1fa5bbf9` | `app_api_billing_cancel_route.ts` |
-| `app/api/billing/interval/route.ts` | `65fe4f3c` | `app_api_billing_interval_route.ts` |
-| `app/api/billing/resume/route.ts` | `4e396b5e` | `app_api_billing_resume_route.ts` |
-| `app/api/billing/settle-free/route.ts` | `eeaa9e0c` | `app_api_billing_settle-free_route.ts` |
-| `server/billing/gateway.ts` | `b883d0fe` | `server_billing_gateway.ts` |
-| `server/billing/index.ts` | `b03c8335` | `server_billing_index.ts` |
-| `server/billing/store.ts` | `73902c5d` | `server_billing_store.ts` |
-| `server/billing-stripe-fake.ts` | `fc553527` | `server_billing-stripe-fake.ts` |
+**LOS DOS HALLAZGOS DE METODO DEL DELTA, que valen mas que los fixes:**
+1. **Un VERDE por el motivo equivocado, cazado por el propio implementador.** Su **primer** oraculo para S1 quedaba
+   verde **con y sin** el guard: aseveraba «la ruta no termino mientras yo tengo el lock», y eso pasa igual sin
+   `lockBusiness` **porque `billingStateResponse` tambien toma el lock al final**. Pinneaba «ALGUN paso toma el lock»,
+   no ESE. El oraculo que discrimina es «mientras otro tiene el lock, la ruta **no escribio NADA**», leido por otra
+   conexion (`expected 'free' to be null`). **Quedo escrito dentro del test para que nadie lo «simplifique» de vuelta.**
+2. **S7 se cerro cambiando la TECNICA, no insistiendo.** Preguntar por el lock con un `SELECT … FOR UPDATE` normal
+   **bloquea** — de ahi los 7 timeouts del revisor **y las filas huerfanas que envenenaron la rama**. Con
+   **`FOR UPDATE NOWAIT`** Postgres contesta al instante (`55P03`) y el fallo queda como
+   `AssertionError: expected false to be true`. Ademas la mutacion se re-ejecuto **en su forma minima** (la red dentro
+   de la transaccion, sin mover el paso 4, que era lo que auto-deadlockeaba): **4 rojos / 9 archivos, cero timeouts,
+   cero huerfanas.** El rojo por timeout no era «el guard mordiendo»: era la sonda mal construida.
 
-**Y el paso que convierte restaurar en verificacion, aprendido revirtiendo S3: ANTES de pisar el archivo, corre un
-`diff` contra la copia.** Si muestra **solo** la mutacion, restaurar es seguro. **Si muestra algo mas, el agente
-avanzo y restaurar le lleva trabajo por delante** — ahi se restaura a mano solo el bloque mutado.
+**S9 y S17 eran «inalcanzables por la suite» y los dos resultaron ALCANZABLES** — el oraculo de S17 le pasa un error
+**plano** con `rawType: "card_error"` en vez de un `StripeCardError` real. Es la distincion que se pidio no dar por
+buena: *inalcanzable por los tests que hay* no es *inalcanzable*.
 
-**RIESGO ESTRUCTURAL A DECIDIR (owner): `/tmp` es volatil y NADA de la fase D1 esta commiteado.** Seis muertes de
-agente y cada revert fue una reconstruccion manual, **porque no hay blob de git al que volver**. Si `/tmp` se limpiara
-con una mutacion puesta, el unico punto de retorno seria el `diff` de esta tabla. **La contramedida real seria
-commitear el trabajo de la fase en un commit WIP** —que NO es marcarla implementada, el PASS sigue gobernando eso— y
-dejar que git sea el respaldo. No se hizo por cuenta propia porque cambia el flujo del repo.
-
-### EL FLAKE DE LOS LITERALES FIJOS SE REPRODUJO, CON LA FORMA EXACTA QUE SE HABIA PREDICHO
-
-**Medido por el orquestador, sin ninguna mutacion en el arbol** (`grep MUTATION` vacio, verificado antes de cada
-corrida):
-- **Corrida 1: 2 archivos rojos / 4 tests** — tres en `billing.neon.integration.test.ts` (`cancel → resume → cancel`,
-  `cancel escribe la intencion ANTES…`, `cancel: un error de RED…`) y uno en `billing-cancel-guards`.
-- **`billing.neon` AISLADO: 6/6 VERDE.** Junto con `billing-cancel-guards`: **11/11 VERDE**.
-- **Corrida 2 de la suite completa: 121 archivos / 872 tests, TODO VERDE.**
-
-**Los tres tests de `billing.neon` que cayeron son EXACTAMENTE los de literales FIJOS** (`cus_ciclo`, `cus_orden`,
-`cus_red`, `cus_determinista`). Pasa aislado, falla en paralelo, **no es determinista y cambia de victima**: es la
-firma de la colision, no de un bug — la misma que ya se diagnostico cuando la rama quedo envenenada.
-
-**Esto convierte la higiene de literales de «pendiente» en BLOQUEANTE OPERATIVO.** Mientras sigan fijos, **la suite de
-esta fase no da una señal confiable**: un verde puede ser suerte y un rojo puede ser colision. No se puede cerrar la
-fase midiendo con un instrumento que falla al azar.
-
-**Y una limitacion del metodo, declarada: estas corridas se hicieron con el implementador ESCRIBIENDO.** El conteo
-paso de 871 a 872 entre medio (acababa de agregar el test de S7), asi que **se estaba midiendo un blanco en
-movimiento**. Una lectura definitiva de la suite **exige que el agente haya entregado**; hasta entonces, ni el verde ni
-el rojo son concluyentes.
+**A LA RE-REVISION SE LE PIDIO, ademas de verificar los diez:** que juzgue si el error plano de S17 es representativo
+de lo que manda Stripe o es una puerta que la realidad no usa; que el cambio de mecanismo compartido (`subId`/`custId`)
+no haya roto el aislamiento ni creado dependencia de orden; y **el barrido aplicado a si mismo** — los fixes agregaron
+docblocks nuevos, y la regla que salio del barrido dice que un docblock normativo necesita oraculo o declaracion.
 
 ### CERRANDO LOS 9 VERDES: **5 cerrados, 4 + S7 pendientes.** El implementador murio con S3 puesta (6a muerte)
 
