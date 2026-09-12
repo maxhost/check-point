@@ -2,7 +2,10 @@
 // del presupuesto de tamaño; todo `from "../billing"` resuelve acá.
 //
 // Fase A: las funciones PURAS. Fase B: la persistencia (`store.ts`) y el webhook
-// (`webhook.ts` + `webhook-apply.ts`). Las rutas y páginas (fase C) todavía no existen.
+// (`webhook.ts` + `webhook-apply.ts`). Fase C (ADR 0061): el tri-estado del claim. Fase D:
+// las rutas de `app/api/billing/**` (D1, servidor) y las páginas del backoffice (D2, UI).
+// La renumeración importa al leer comentarios viejos: lo que antes de 2026-09-11 se llamaba
+// «fase C» es la D.
 export {
   DEAD_STRIPE_STATUS,
   decidePlanChange,

@@ -30,11 +30,21 @@ export type StripeGateway = {
 };
 
 /**
- * FIRMAS QUE RECIBEN LA COSTURA. El `gw` va PRIMERO en todas, por consistencia:
+ * QUIÉN RECIBE LA COSTURA, EN EL ÁRBOL REAL. El `gw` va PRIMERO en todas, por consistencia:
  *
- *   cancelSubscription(gw, …)     resumeSubscription(gw, …)
- *   changeInterval(gw, …)         applySubscriptionEvent(gw, tx, …)
- *   reconcileFromStripe(gw, …)    createCheckoutSession(gw, …)
+ *   applySubscriptionEvent(gw, event, …)   bindCheckoutSession(gw, event, …)
+ *   reconcileFromStripe(gw, args)
+ *
+ * [CORRECCIÓN DE LA FASE D1, cazada por el revisor independiente — ADR 0054 del lado del
+ * docblock.] Esta lista decía `cancelSubscription(gw,…)`, `resumeSubscription(gw,…)`,
+ * `changeInterval(gw,…)` y `createCheckoutSession(gw,…)`, y la §Archivos compartidos de la
+ * spec la repetía: NINGUNA DE LAS CUATRO EXISTE. Las cuatro operaciones de plan viven en sus
+ * rutas (`app/api/billing/<ruta>/route.ts`), que toman el gateway con `stripeContext()` y llaman a
+ * `gw.subscriptions.update` / `retrieve` / `gw.checkout.sessions.create` /
+ * `gw.customers.create` directo. La costura cumple igual su función —el fake se inyecta y los
+ * tests pueden hacer fallar a Stripe— pero un docblock que describe funciones inexistentes es
+ * una arquitectura afirmada y no verificada. Si alguna de esas operaciones se extrae a
+ * `server/billing/`, se agrega acá con su firma REAL.
  *
  * Y CÓMO LLEGA EL FAKE A LAS DOS SUPERFICIES QUE NO TIENEN PARÁMETRO — queda decidido acá
  * para que no se improvise durante el código:

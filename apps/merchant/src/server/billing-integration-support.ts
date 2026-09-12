@@ -1,15 +1,21 @@
+import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
 
-import { subscriptionFake } from "./billing-derive-support";
-import type { StripeGateway } from "./billing";
+import {
+  stripeClientDouble,
+  stripeSubscription,
+  type FakeStripe,
+} from "./billing-stripe-fake";
+import type { SeededSubscription } from "./locations-integration-support";
 import { getDb } from "./db";
-import { stripeWebhookEvents, subscriptions } from "./schema";
+import { locations, stripeWebhookEvents, subscriptions } from "./schema";
 
 /**
- * Spec 0063, [R2-I7] — el mundo compartido de la integración de billing: el doble de Stripe,
- * el constructor de payloads FIRMADOS y los lectores por SQL.
+ * Spec 0063, [R2-I7] — el mundo compartido de la integración de billing: las env, el
+ * constructor de payloads FIRMADOS y los lectores por SQL. El doble de Stripe se mudó a
+ * `billing-stripe-fake.ts` (ver el bloque de reexports).
  *
  * Vive fuera de los `.test.ts` por el límite de 300 líneas del repo; no lo usa nada de
  * producción.
@@ -38,169 +44,20 @@ export const MONTHLY_PRICE = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_MONTHLY_TEST;
 export const YEARLY_PRICE = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_YEARLY_TEST;
 export const PRICE_IDS = { monthly: MONTHLY_PRICE, yearly: YEARLY_PRICE };
 
-/** `lastResponse` es metadata de transporte del SDK que nada de este dominio lee. El cast
- * está acá, en UN solo lugar nombrado, en vez de repartido por los tests. */
-function asResponse<T>(value: T): Stripe.Response<T> {
-  return value as Stripe.Response<T>;
-}
-
-export type SubscriptionSpec = {
-  id?: string;
-  status?: string;
-  items?: { priceId: string }[];
-  customer?: string;
-  created?: number;
-  businessId?: string;
-  cancelAt?: number | null;
-  cancelAtPeriodEnd?: boolean;
-};
-
 /**
- * Una `Stripe.Subscription` como la devuelve `subscriptions.retrieve`. Parte del constructor
- * de los units (`billing-derive-support.ts`) y le agrega los campos que el WEBHOOK necesita
- * y los units no: `customer` y `metadata` (resolución del `businessId`, D5.c) y `created`
- * (elección de la más reciente en `reconcileFromStripe`, D8).
+ * EL DOBLE DE STRIPE VIVE EN `billing-stripe-fake.ts` — corte de tamaño decidido por el
+ * orquestador antes de despachar la fase D (este archivo estaba en 297/300 y la fase D tiene
+ * que extender el fake). Se REEXPORTA para que ningún test de las fases B/C —que tienen PASS
+ * de revisor— cambie de import: un churn gratuito en archivos ya revisados es ruido que tapa
+ * el diff real.
  */
-export function stripeSubscription(spec: SubscriptionSpec = {}) {
-  const extra: Pick<Stripe.Subscription, "customer" | "created" | "metadata"> =
-    {
-      customer: spec.customer ?? "cus_integration",
-      created: spec.created ?? Math.floor(Date.UTC(2026, 8, 1) / 1000),
-      metadata:
-        spec.businessId === undefined ? {} : { businessId: spec.businessId },
-    };
-  return Object.assign(
-    subscriptionFake({
-      id: spec.id ?? "sub_integration",
-      status: spec.status,
-      items: spec.items,
-      cancel_at: spec.cancelAt ?? null,
-      cancel_at_period_end: spec.cancelAtPeriodEnd ?? false,
-    }),
-    extra,
-  );
-}
-
-/** Una `Checkout.Session` como la devuelve `checkout.sessions.retrieve`. El `businessId` sale
- * de `client_reference_id`, que SÓLO lo escribe nuestro checkout (m1-b). */
-export function stripeSession(spec: {
-  id?: string;
-  businessId: string | null;
-  subscriptionId: string | null;
-  customer?: string | null;
-}) {
-  const session: Pick<
-    Stripe.Checkout.Session,
-    "id" | "object" | "client_reference_id" | "customer" | "subscription"
-  > = {
-    id: spec.id ?? "cs_integration",
-    object: "checkout.session",
-    client_reference_id: spec.businessId,
-    customer: spec.customer ?? "cus_integration",
-    subscription: spec.subscriptionId,
-  };
-  return session as Stripe.Checkout.Session;
-}
-
-export type FakeStripe = {
-  gateway: StripeGateway;
-  /** Toda llamada, en orden: `subscriptions.retrieve`, `checkout.sessions.retrieve`, … El
-   * DoD pide aseverar CERO llamadas en varios caminos (tipo fuera de la allow-list,
-   * `settle_to_free`), y eso sólo se puede aseverar si se cuentan. */
-  calls: string[];
-  subscriptions: Map<string, Stripe.Subscription>;
-  sessions: Map<string, Stripe.Checkout.Session>;
-  /** Lo que tire el próximo `retrieve`, para el camino «el `retrieve` falla → 500 sin marcar
-   * procesado, fila con `processed_at IS NULL`». */
-  retrieveError: Error | null;
-  /** Lo que devuelve `subscriptions.list` (D8). Vacío = «este customer nunca tuvo
-   * suscripción» → no se escribe NADA (mutación M16). */
-  list: Stripe.Subscription[];
-};
-
-export function fakeStripe(): FakeStripe {
-  const fake: FakeStripe = {
-    calls: [],
-    subscriptions: new Map(),
-    sessions: new Map(),
-    retrieveError: null,
-    list: [],
-    gateway: {
-      subscriptions: {
-        retrieve: (async (id: string) => {
-          fake.calls.push(`subscriptions.retrieve:${id}`);
-          if (fake.retrieveError) throw fake.retrieveError;
-          const found = fake.subscriptions.get(id);
-          if (!found) {
-            // Lo que Stripe contesta de verdad con un id que no existe.
-            throw new Error(`No such subscription: ${id}`);
-          }
-          return asResponse(found);
-        }) as StripeGateway["subscriptions"]["retrieve"],
-        update: (async (id: string) => {
-          fake.calls.push(`subscriptions.update:${id}`);
-          const found = fake.subscriptions.get(id);
-          if (!found) throw new Error(`No such subscription: ${id}`);
-          return asResponse(found);
-        }) as StripeGateway["subscriptions"]["update"],
-        list: (async () => {
-          fake.calls.push("subscriptions.list");
-          return asResponse({
-            object: "list" as const,
-            data: fake.list,
-            has_more: false,
-            url: "/v1/subscriptions",
-          });
-        }) as StripeGateway["subscriptions"]["list"],
-      },
-      checkout: {
-        sessions: {
-          create: (async () => {
-            fake.calls.push("checkout.sessions.create");
-            throw new Error("La fase B no crea sesiones de Checkout.");
-          }) as StripeGateway["checkout"]["sessions"]["create"],
-          retrieve: (async (id: string) => {
-            fake.calls.push(`checkout.sessions.retrieve:${id}`);
-            if (fake.retrieveError) throw fake.retrieveError;
-            const found = fake.sessions.get(id);
-            if (!found) throw new Error(`No such checkout session: ${id}`);
-            return asResponse(found);
-          }) as StripeGateway["checkout"]["sessions"]["retrieve"],
-        },
-      },
-      customers: {
-        create: (async () => {
-          fake.calls.push("customers.create");
-          throw new Error("La fase B no crea customers.");
-        }) as StripeGateway["customers"]["create"],
-      },
-    },
-  };
-  return fake;
-}
-
-/**
- * El cliente que el módulo `stripe-config` mockeado le devuelve al webhook: `webhooks` es EL
- * REAL (la firma se verifica de verdad, con `node:crypto`) y los recursos son el fake.
- *
- * El cast a `Stripe` está acá y sólo acá. Es exactamente lo que la costura `StripeGateway`
- * evita en PRODUCCIÓN —donde un `as unknown as Stripe` apagaría el typecheck que la costura
- * compró— pero la ruta toma su cliente de `stripe-config`, así que el doble del módulo es el
- * único camino, y la spec lo fija así en §Archivos compartidos. Los tres recursos SÍ están
- * tipados por `StripeGateway`, que es donde un fake mal escrito se caza.
- */
-export function stripeClientDouble(
-  fake: FakeStripe,
-  secretKey: string,
-): Stripe {
-  const real = new Stripe(secretKey);
-  return {
-    webhooks: real.webhooks,
-    subscriptions: fake.gateway.subscriptions,
-    checkout: fake.gateway.checkout,
-    customers: fake.gateway.customers,
-  } as unknown as Stripe;
-}
+export {
+  fakeStripe,
+  stripeClientDouble,
+  stripeSession,
+  stripeSubscription,
+} from "./billing-stripe-fake";
+export type { FakeStripe, SubscriptionSpec } from "./billing-stripe-fake";
 
 export type EventSpec = {
   id: string;
@@ -294,4 +151,64 @@ export function stripeConfigDouble(
     getStripeClient: (configuration = actual.getStripeConfiguration()) =>
       stripeClientDouble(getFake(), configuration.secretKey),
   };
+}
+
+/**
+ * EL POST A UNA RUTA DE BILLING. Lo comparten los tres archivos de integración de la fase D
+ * (las 5 rutas, el gate con sesiones reales y las carreras de `locations-races`): la URL es
+ * irrelevante porque el handler se invoca directo, pero `NextRequest` sí exige una válida.
+ * `headers` es parámetro para poder mandar la cookie de una sesión REAL.
+ */
+export function billingRequest(
+  body: unknown = {},
+  headers: Record<string, string> = {},
+): NextRequest {
+  return new NextRequest("https://merchant.test/api/billing/x", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * LOS IDS DE STRIPE DE UN TEST SON ÚNICOS POR ARCHIVO Y POR CORRIDA, y no es cosmético:
+ * `core_subscription_customer_unique` y `core_subscription_stripe_unique` son uniques
+ * GLOBALES, vitest paraleliza ARCHIVOS, y una corrida ABORTADA deja filas huérfanas. Con
+ * literales fijos el síntoma es el peor posible — un `23505` EN EL SEED, o sea antes de
+ * cualquier aserción de comportamiento, que se lee como un bug del producto y encima es no
+ * determinista. Pasó de verdad dos veces en la fase D1: `cus_race` compartido con la fase B, y
+ * una corrida abortada por timeout que envenenó la rama entera.
+ *
+ * El sufijo se calcula UNA vez por módulo: vitest aísla el grafo por archivo de test, así que
+ * dos archivos nunca comparten sufijo y dos corridas tampoco.
+ */
+const RUN_SUFFIX = randomUUID().slice(0, 8);
+
+export const subId = (tag: string) => `sub_${tag}_${RUN_SUFFIX}`;
+export const custId = (tag: string) => `cus_${tag}_${RUN_SUFFIX}`;
+
+/** Un `plus` mensual VIVO: deja la suscripción cargada en el fake y devuelve el estado con el
+ * que sembrar la fila, para que las dos mitades no puedan desincronizarse. */
+export function livePlusState(
+  fake: FakeStripe,
+  tag: string,
+  items: { priceId: string }[] = [{ priceId: MONTHLY_PRICE }],
+): SeededSubscription {
+  fake.subscriptions.set(
+    subId(tag),
+    stripeSubscription({ id: subId(tag), items, customer: custId(tag) }),
+  );
+  return {
+    interval: "month",
+    stripeCustomerId: custId(tag),
+    stripeSubscriptionId: subId(tag),
+  };
+}
+
+/** Archiva un local POR SQL, sin pasar por el código bajo prueba. */
+export function archiveLocation(locationId: string) {
+  return getDb()
+    .update(locations)
+    .set({ status: "archived" })
+    .where(eq(locations.id, locationId));
 }

@@ -1,15 +1,68 @@
+import { randomUUID } from "node:crypto";
 import { and, count, eq, isNull } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { dropBusiness } from "./counter-integration-support";
 import {
   integrationEnabled,
   readLocationRow,
   readVerifications,
+  seedExtraLocation,
   seedLocationsBusiness,
 } from "./locations-integration-support";
+import {
+  billingRequest,
+  custId,
+  dropWebhookEvents,
+  livePlusState,
+  readSubscriptionRow,
+  subId,
+} from "./billing-integration-support";
+import { fakeStripe, type FakeStripe } from "./billing-stripe-fake";
+import {
+  deliver,
+  eventIdRegistry,
+  stripeEnvEntries,
+} from "./billing-webhook-support";
 import { getDb } from "./db";
 import { locations, locationVerifications } from "./schema";
-import { createLocation, updateLocation } from "./locations";
+import { createLocation, setLocationStatus, updateLocation } from "./locations";
+
+/**
+ * Spec 0063 — las dos carreras que la fase D agrega. El negocio bajo prueba se resuelve por
+ * `ownerContext` doblado; lo que NO va doblado es nada de lo que decide (el tope efectivo, el
+ * claim del webhook y el store son los reales, contra Postgres).
+ */
+let fake: FakeStripe = fakeStripe();
+const world = { businessId: "" };
+const events = eventIdRegistry();
+
+vi.mock("./auth", () => ({
+  getMerchantAuth: () => ({
+    api: { getSession: async () => ({ user: { id: "owner" } }) },
+  }),
+}));
+
+vi.mock("./staff", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./staff")>()),
+  ownerContext: async () =>
+    world.businessId ? { id: world.businessId, currencyCode: "USD" } : null,
+}));
+
+vi.mock("./stripe-config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./stripe-config")>();
+  const { stripeConfigDouble } = await import("./billing-integration-support");
+  return stripeConfigDouble(actual, () => fake);
+});
+
+import { POST as CANCEL } from "../app/api/billing/cancel/route";
 
 /**
  * Spec 0061 — the two invariants this domain claims to hold UNDER CONCURRENCY, each
@@ -46,6 +99,21 @@ async function liveVerifications(locationId: string) {
 describe.skipIf(!integrationEnabled)(
   "locations under concurrency (spec 0061)",
   () => {
+    beforeEach(() => {
+      fake = fakeStripe();
+      world.businessId = "";
+      for (const [name, value] of stripeEnvEntries()) vi.stubEnv(name, value);
+      vi.stubEnv("MERCHANT_PUBLIC_ORIGIN", "https://checkpass.test");
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    afterAll(async () => {
+      await dropWebhookEvents(events.ids);
+    }, 30_000);
+
     it("four simultaneous creates never walk a plus business past three active", async () => {
       const seed = await seedLocationsBusiness("Carrera", "plus");
       try {
@@ -104,6 +172,116 @@ describe.skipIf(!integrationEnabled)(
         expect(row.addressLabel).toBe(live?.normalizedAddress);
         // Nothing was destroyed: the seed's verification and the loser both survive.
         expect(all.filter((v) => v.supersededAt !== null)).toHaveLength(2);
+      } finally {
+        await dropBusiness(seed.business.id);
+      }
+    }, 60_000);
+
+    /**
+     * Spec 0063, D2 — EL TOPE EFECTIVO BAJO CONCURRENCIA. Con una baja programada el plan
+     * VIGENTE sigue siendo `plus` (3 locales), así que sin `effectiveLocationLimit` ocho
+     * desarchivados simultáneos caminan el negocio a 3 activos y al cerrar el periodo queda
+     * `free` CON 3 ACTIVOS — el estado que la spec entera existe para prohibir.
+     *
+     * EL ORÁCULO ES EL `count`, NO «cero éxitos»: `setLocationStatus` tiene un early-return
+     * idempotente (`locations/store.ts:59`) que devuelve ÉXITO sin cambiar el conteo, así que
+     * contar promesas resueltas mediría otra cosa.
+     */
+    it("eight simultaneous reactivations under a scheduled downgrade leave ONE active", async () => {
+      // Los ids de Stripe son UNIQUE GLOBALES (`schema/business.ts:250`) y vitest paraleliza
+      // ARCHIVOS: un literal compartido con otro archivo revienta con un `23505` EN EL SEED,
+      // que se lee como un bug del producto y encima es no determinista (falla un test u otro
+      // según quién llegue primero). Ya pasó en la fase B con `sub_viva`; acá el par fue
+      // `cus_race`/`sub_race` contra `billing-webhook.neon.integration.test.ts:213`. Por eso
+      // el tag es único por corrida.
+      const tag = randomUUID().slice(0, 8);
+      const seed = await seedLocationsBusiness("Baja programada", "plus", {
+        pendingPlan: "free",
+        downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
+        stripeCustomerId: custId(tag),
+        stripeSubscriptionId: subId(tag),
+      });
+      try {
+        const segunda = await seedExtraLocation(seed.business.id, "Sucursal 2");
+        const tercera = await seedExtraLocation(seed.business.id, "Sucursal 3");
+        await getDb()
+          .update(locations)
+          .set({ status: "archived" })
+          .where(eq(locations.businessId, seed.business.id));
+        await getDb()
+          .update(locations)
+          .set({ status: "active" })
+          .where(eq(locations.id, seed.locationId));
+        expect(await activeCount(seed.business.id)).toBe(1);
+
+        const attempts = await Promise.allSettled(
+          [
+            segunda,
+            tercera,
+            segunda,
+            tercera,
+            segunda,
+            tercera,
+            segunda,
+            tercera,
+          ].map((id) => setLocationStatus(seed.business, id, "active")),
+        );
+        // La tabla es el oráculo: el tope efectivo es 1, así que NINGUNO puede entrar.
+        expect(await activeCount(seed.business.id)).toBe(1);
+        // Y el motivo que ve el owner es el de la baja programada, no «mejora tu plan».
+        const refused = attempts.filter((a) => a.status === "rejected");
+        expect(refused).toHaveLength(8);
+        expect((refused[0] as PromiseRejectedResult).reason).toMatchObject({
+          status: 409,
+          code: "location_limit",
+          message:
+            "Tu suscripción baja a Free: no puedes reactivar locales. Reanuda tu plan si querías seguir en Plus.",
+        });
+      } finally {
+        await dropBusiness(seed.business.id);
+      }
+    }, 60_000);
+
+    /**
+     * Spec 0063, D6 — `cancel` CONCURRENTE CON EL WEBHOOK. Los dos hacen un
+     * read-modify-write de `core.subscription` y los dos toman `lockBusiness`, así que el
+     * lock los serializa: ninguna de las dos escrituras se puede perder, en cualquiera de los
+     * dos órdenes. Sin el lock del webhook (mutación M4) el evento decide con un
+     * `downgrade_requested_at` leído ANTES del commit del `cancel`.
+     */
+    it("a cancel concurrent with the webhook loses NEITHER write", async () => {
+      const periodEnd = Math.floor(Date.UTC(2026, 9, 1) / 1000);
+      // Tag único por corrida: ver el comentario del test de arriba (`23505` global).
+      const tag = randomUUID().slice(0, 8);
+      const seed = await seedLocationsBusiness("Carrera webhook", "plus", {
+        ...livePlusState(fake, tag),
+      });
+      world.businessId = seed.business.id;
+      try {
+        const subscription = fake.subscriptions.get(subId(tag))!;
+        subscription.status = "trialing";
+        subscription.cancel_at = periodEnd;
+        subscription.cancel_at_period_end = true;
+        subscription.metadata = { businessId: seed.business.id };
+
+        const [cancelled] = await Promise.all([
+          CANCEL(billingRequest({})),
+          deliver({
+            id: events.next("carrera"),
+            type: "customer.subscription.updated",
+            object: { id: subId(tag) },
+          }),
+        ]);
+        expect(cancelled.status).toBe(200);
+
+        const row = await readSubscriptionRow(seed.business.id);
+        // La escritura de la RUTA: la marca «esta baja la pedimos nosotros».
+        expect(row.downgradeRequestedAt).not.toBeNull();
+        // La escritura del WEBHOOK: el status crudo del evento aplicado (D5.e).
+        expect(row.status).toBe("trialing");
+        expect(row.lastEventAt).not.toBeNull();
+        // Y el tope ya cayó: las dos coinciden en la baja programada.
+        expect(row.pendingPlan).toBe("free");
       } finally {
         await dropBusiness(seed.business.id);
       }

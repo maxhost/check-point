@@ -223,96 +223,55 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### 6a MUERTE DEL REVISOR (sin residuos), y un MENOR que encontro el orquestador leyendo su log
+## FASE D1 (servidor): **PASS DEL REVISOR INDEPENDIENTE** (2026-09-12). COMMITEADA. Falta la D2
 
-**Auditoria: el arbol quedo IMPECABLE.** `grep MUTATION` vacio, sin sondas, los **seis hashes de rutas identicos** al
-baseline. Murio **entre** mutaciones, con los backups ya tomados en `/tmp/rev4/`. **Y su log crudo sobrevivio en
-`/tmp/barrido-raw.md`** — la disciplina de escribir a disco, cobrada por segunda vez.
+**NADA DESPLEGADO: no se pusheo y la migracion `0030` NO esta aplicada a prod**, solo a la rama efimera.
 
-**HALLAZGO DEL ORQUESTADOR, leyendo ese log y verificando contra el arbol: UN SOLO `it` CARGA TRES ORACULOS Y SU NOMBRE
-NOMBRA UNO.** En el log, **S11, S12 y la MUT-J de B4 ponen rojo EL MISMO test** —`` `resume` limpia el `cancel_at`
-EXPLICITO `` en `billing-cancel-guards…`—. Abierto el archivo, ese `it` asevera tres propiedades distintas:
-- lineas 20-21: `duranteStripe.pendingPlan === "free"` + `downgradeRequestedAt` no nulo → **S11, el ORDEN**;
-- linea 26: `fake.updateKeys.at(-1)` → **S12, la `idempotencyKey`**;
-- linea 35: `cancel_at` en `null` → **B4**, la unica que el nombre menciona.
+**Lo de abajo son corridas del ORQUESTADOR, no el PASS relatado** — un PASS tampoco se toma por bueno sin correr los
+comandos:
+- `grep MUTATION` **vacio**, sin sondas, los **6 hashes de rutas identicos** al baseline y el baseline de la fase C
+  intacto.
+- **Los 5 gates**: `typecheck` y `build` **forzados** (`0 cached`), `lint`, `format:check` → verdes. `pnpm test` con
+  integracion: **121 archivos / 872 tests / 0 failed / 0 skipped** (la fase C cerro en 113/827: **+8 archivos, +45
+  tests, ningun preexistente perdido**).
+- **Tamaños RE-MEDIDOS al hook en el momento de escribir esto**, con control (`onboarding/page.tsx` → `EXIT=2`): los 17
+  archivos en `EXIT=0`. **Sin margen: `billing-routes.test.ts` 300, `billing.neon…` 299, el fake 299.**
 
-**Las tres ESTAN pinneadas: no es un agujero de cobertura, es de ATRIBUCION.** Es la familia que `CLAUDE.md` documenta
-con el `FOR UPDATE` de la spec 0055 («el nombre del test sonaba a que cubria el lock»). El daño: quien rompa el orden
-mañana vera un rojo que dice «resume limpia el cancel_at» y **va a buscar en el lugar equivocado**. Pasado al revisor
-como **menor** —el arbol pinnea lo que dice pinnear; lo que engaña es la etiqueta—, con las dos salidas obvias:
-partirlo en tres `it` o renombrarlo para que nombre las tres.
+**El PASS cerro lo que el barrido abrio:** los **10 oraculos discriminan** —cada mutacion pone roja **1 de 47**, o sea
+solo su propia propiedad— y ninguno es proxy. La evidencia completa, en `docs/re-revision-d1-fase-d1.md` y
+`docs/barrido-d1-fase-d1.md`.
 
-**Al revisor se le pidio ademas volcar cada fila a `/tmp/re-revision-d1.md` apenas la cierra**, como en el barrido: son
-seis muertes y cada una se llevo lo que vivia solo en su contexto.
+**LO QUE ESTA FASE DEJA COMO METODO, y es lo que hay que llevarse a la D2:** cuatro rondas de «un bloqueante por vez»
+encontraron 4; **un barrido sistematico de los docblocks encontro 9 en una pasada**. La regla ya esta en `CLAUDE.md`.
 
-### LOS 9 VERDES CERRADOS, TODOS PINNEADOS. EN RE-REVISION FINAL. Sigue SIN PASS
+### MENORES DECLARADOS POR EL REVISOR, ninguno bloqueante — RESIDUALES PARA LA D2
 
-**Ninguno se declaro y ninguno se ablando: los nueve tienen oraculo.** Mas S7, que tenia consecuencia observable pero
-ninguna asercion.
+1. **Un `it` carga CUATRO oraculos y su titulo nombra uno.** El orquestador lo detecto leyendo el log del revisor y
+   dijo tres; **el revisor lo verifico y eran cuatro** (S11 el orden, S12 la clave, B4 el `cancel_at` y **S13** las tres
+   columnas). **Las cuatro estan pinneadas y cada asercion lleva su comentario nombrando su mutacion**, asi que la
+   atribucion existe en el archivo: **lo que engaña es el TITULO, que es lo unico que se ve en CI.** Se cierra
+   partiendolo en cuatro `it` o renombrandolo.
+2. **`billing-store.neon.integration.test.ts` (fase B) conserva literales FIJOS** — verificado por el orquestador: **24
+   lineas** con `sub_`/`cus_` a mano. El fix de raiz cubrio los 5 archivos de la D1; ese **no** consume `livePlusState`
+   y **mantiene vivo el modo de falla que envenveno la rama**. Fuera del alcance de la D1; es el hermano del hallazgo
+   que esta ronda cerro.
+3. El docblock de produccion de `isDeterministicRejection`/`isCardError` **promete mas de lo que esas dos ramas
+   compran**: bajo el escenario que invoca (un `instanceof` roto por otra copia del modulo) el error **igual traeria
+   `type`**, asi que lo cubre la primera rama. Nada falso, pero la justificacion es mas ancha que el guard.
+4. **Un limite declarado CON su intento, que es como corresponde:** la mitad entre-ARCHIVOS del aislamiento del sufijo
+   no la ejercita nada. El revisor intento acotarlo y **desistio por una razon concreta**: la sonda exigia dejar dos
+   `*.test.ts` bajo `src/`, donde la suite los corre — y el ya dejo una suelta una vez. **La mitad load-bearing (entre
+   CORRIDAS) si la verifico empiricamente**: tras el timeout de S7m, `billing.neon` sola da **6/6 verde**, o sea que el
+   modo de falla **desaparecio, no se mitigo**.
 
-**Corridas del ORQUESTADOR, con el arbol QUIETO (el agente ya entrego):** `grep MUTATION` **vacio**, sin sondas, los 5
-gates verdes (`typecheck` y `build` **forzados**, `0 cached`) y **la suite TRES veces: 121 archivos / 872 tests / 0
-failed / 0 skipped las tres.**
+**LO QUE SIGUE: la FASE D2 (UI + D8 + D10 + render del HTML).** Y el aviso que la particion creo y sigue vigente: la
+spec dice que la salida del estado «`plus` con la suscripcion muerta» cuelga de «**D8 o el boton de salida de D10**».
+**D10 quedo en la D1 y D8 va en la D2, asi que ningun revisor las vio juntas: el de la D2 tiene que vigilar las DOS.**
 
-**EL FLAKE DE LOS LITERALES ESTA CERRADO, y la correccion es del orquestador contra si mismo:** se habia escalado a
-«bloqueante operativo» tras medir 4 rojos reales. **Era cierto al medirlo** —y las 3 corridas limpias de ahora son la
-prueba de que se cerro—, **pero aquellas mediciones se hicieron con el implementador escribiendo y no eran
-concluyentes**. El fix no fue archivo por archivo: **el sufijo unico se mudo a `subId`/`custId` del support**,
-calculados una vez por modulo, asi que **todo consumidor de `livePlusState` lo hereda**. `grep` de literales fijos:
-**cero** en los cinco archivos de integracion.
-
-**LOS DOS HALLAZGOS DE METODO DEL DELTA, que valen mas que los fixes:**
-1. **Un VERDE por el motivo equivocado, cazado por el propio implementador.** Su **primer** oraculo para S1 quedaba
-   verde **con y sin** el guard: aseveraba «la ruta no termino mientras yo tengo el lock», y eso pasa igual sin
-   `lockBusiness` **porque `billingStateResponse` tambien toma el lock al final**. Pinneaba «ALGUN paso toma el lock»,
-   no ESE. El oraculo que discrimina es «mientras otro tiene el lock, la ruta **no escribio NADA**», leido por otra
-   conexion (`expected 'free' to be null`). **Quedo escrito dentro del test para que nadie lo «simplifique» de vuelta.**
-2. **S7 se cerro cambiando la TECNICA, no insistiendo.** Preguntar por el lock con un `SELECT … FOR UPDATE` normal
-   **bloquea** — de ahi los 7 timeouts del revisor **y las filas huerfanas que envenenaron la rama**. Con
-   **`FOR UPDATE NOWAIT`** Postgres contesta al instante (`55P03`) y el fallo queda como
-   `AssertionError: expected false to be true`. Ademas la mutacion se re-ejecuto **en su forma minima** (la red dentro
-   de la transaccion, sin mover el paso 4, que era lo que auto-deadlockeaba): **4 rojos / 9 archivos, cero timeouts,
-   cero huerfanas.** El rojo por timeout no era «el guard mordiendo»: era la sonda mal construida.
-
-**S9 y S17 eran «inalcanzables por la suite» y los dos resultaron ALCANZABLES** — el oraculo de S17 le pasa un error
-**plano** con `rawType: "card_error"` en vez de un `StripeCardError` real. Es la distincion que se pidio no dar por
-buena: *inalcanzable por los tests que hay* no es *inalcanzable*.
-
-**A LA RE-REVISION SE LE PIDIO, ademas de verificar los diez:** que juzgue si el error plano de S17 es representativo
-de lo que manda Stripe o es una puerta que la realidad no usa; que el cambio de mecanismo compartido (`subId`/`custId`)
-no haya roto el aislamiento ni creado dependencia de orden; y **el barrido aplicado a si mismo** — los fixes agregaron
-docblocks nuevos, y la regla que salio del barrido dice que un docblock normativo necesita oraculo o declaracion.
-
-### CERRANDO LOS 9 VERDES: **5 cerrados, 4 + S7 pendientes.** El implementador murio con S3 puesta (6a muerte)
-
-**Corridas del orquestador:** `grep MUTATION` **vacio** tras revertir, sin sondas, los otros **5 hashes de rutas
-identicos**, `typecheck` (forzado) y `format:check` **verdes**, y `pnpm test` con integracion en
-**121 archivos / 871 tests / 0 failed / 0 skipped** — venia de 119/863: **+2 archivos, +8 tests, ninguno perdido**.
-
-**LA REVERSION, y el detalle de metodo que la hizo segura:** murio con `// MUTATION S3` en `_auth.ts`, que es
-**untracked** (sin blob al que volver). Se restauro desde **`/tmp/rev3/app_api_billing__auth.ts`** —la copia del
-REVISOR, no del implementador— y **antes de pisar el archivo se corrio un `diff`** que dio **exactamente y solo la
-mutacion**: eso es lo que prueba que restaurar no se llevaba trabajo por delante. `shasum` final
-`5ddc7c4c2cd66298b92d11d883388289021ef99a`, exacto. **Restaurar sin ese `diff` habria sido apostar.**
-
-**LOS 5 VERDES YA CERRADOS** (verificado leyendo los `it(` del arbol, no el relato):
-- **S4** → `billing-checkout-guards…`: `un negocio con suscripcion VIVA recibe 409 subscription_live y NO abre una 2.a
-  sesion`. **Era el peor de los nueve: el de COBRAR DOS VECES.**
-- **S1** → `billing-auth-guards.neon…` (nuevo): `un cancel ESPERA al que tiene el lock del negocio, y recien despues
-  decide` — el lock de la RUTA, que citaba el ADR 0054 §2 y no tenia oraculo.
-- **S3** → `billing-error-classification.test.ts` (nuevo, sin base): 3 tests, incluido `una excepcion cualquiera es 503
-  unavailable y NO filtra su mensaje`.
-- **S6** → `un MERCHANT_PUBLIC_ORIGIN con barra final no produce //backoffice`.
-- **S9** → `el revert clasifica un 4xx por rawType y por statusCode, no solo por type`. **Era «inalcanzable por la
-  suite» y resulto alcanzable** — la distincion que se le pidio no dar por buena.
-
-**PENDIENTES: S11** (el orden invertido de `resume`, espejo de M5), **S12** y **S16** (las claves de `resume` e
-`interval`), **S17** (`isCardError`, hermano de S9) **y S7** (el rojo por TIMEOUT, que necesita una asercion que
-nombre la propiedad — hoy la consecuencia es observable pero nada la asevera, **y fue lo que envenveno la rama**).
-
-**Y lo que NO es opcional: la higiene de literales.** `billing.neon.integration.test.ts` **sigue con literales FIJOS**
-contra la decision 10 del propio implementador, y `billing-interval` a medias. **Mientras sigan fijos, cualquier
-corrida abortada vuelve a envenenar la rama** y el rojo siguiente aparece **en el seed**, indistinguible de un bug.
+**Y DESPUES del PASS de la D2, el orden de despliegue, al reves del reflejo natural:** migracion `0030` a prod **ANTES**
+del push (pushear primero deja `planLocationLimit` pidiendo `pending_plan` contra el esquema viejo y los 11 negocios
+pierden el modulo Locales; el `next build` NO lo caza porque esas paginas son `force-dynamic`), y **`MERCHANT_PUBLIC_ORIGIN`
+seteada en Vercel** (Production y Preview) antes de pushear.
 
 ### LA RAMA EFIMERA ESTABA ENVENENADA. Limpiada por el orquestador, con el minimo necesario
 
