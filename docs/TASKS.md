@@ -223,39 +223,55 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### ⚠️ MUTACION VIVA AHORA MISMO — NO REVERTIR A MANO. Y EL BARRIDO YA LLEVA OCHO VERDES
+### BARRIDO COMPLETO: **9 de 18 afirmaciones quedaron VERDES**. FAIL, despachado. Sin PASS
 
-**El arbol tiene puesta una mutacion del BARRIDO y el revisor esta MIDIENDO** (paso por S7 y ahora esta en **S9**, o
-sea que **avanza**). El hook la marca; el orquestador **no la corta a proposito**: cortarla bajo un agente vivo lo hace
-transcribir un resultado falso, y una fila mal medida es lo que esta spec ya pago tres veces. **El hook no distingue
-«viva» de «abandonada»; el orquestador si** — regla ya bajada a `CLAUDE.md`.
+**El barrido sistematico fue la decision correcta y los numeros lo dicen:** las cuatro rondas anteriores encontraron
+**un** bloqueante cada una —a un ciclo completo de implementador + revisor cada vez—; **el barrido, en una pasada,
+encontro NUEVE.** De 18 afirmaciones mutadas: **9 rojas (pinneadas), 1 roja-por-TIMEOUT, 9 VERDES.**
+**La lista completa, con la asercion literal y el alcance de cada fila, quedo en `docs/barrido-d1-fase-d1.md`** (copiada
+del `/tmp` del revisor, que es volatil).
 
-**SI ESTA SESION SE CAE CON LA MUTACION PUESTA, ASI SE RESTAURA** (las dos, S7 y S9, son sobre el MISMO archivo):
-`cp /tmp/mut-backup-cancel.ts apps/merchant/src/app/api/billing/cancel/route.ts`
-y verificar `shasum` = **`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`**.
+**Auditoria del arbol:** `grep MUTATION` **vacio**, ninguna sonda en `src/`, y **los 8 hashes identicos** al baseline.
+El revisor limpio perfecto.
 
-**EL CAMBIO DE METODO FUNCIONO: el barrido se escribe a `/tmp/barrido-d1.md`.** Si el revisor muere por 6a vez, la
-lista se levanta del disco. **Ojo al leerlo: el revisor muta mas rapido de lo que escribe las filas**, asi que una fila
-en `pendiente` puede tener el resultado ya medido — el arbol es la fuente de que mutacion esta puesta, el archivo es la
-fuente de los RESULTADOS ya transcriptos.
+**LOS 9 VERDES, por gravedad** — cada uno es un docblock que afirma algo que nada sostiene:
+- **S4 — el gate de plan de `checkout`.** Saltear `decidePlanChange` entero deja **39/39 VERDE**. La DECISION esta
+  pinneada en los units de fase A; **el CABLEADO no**. Es el hueco de `choosePushPromptView` que `CLAUDE.md` describe,
+  sobre la propiedad cuyo daño es **COBRAR DOS VECES**: ningun test llama a `checkout` sobre una suscripcion viva.
+- **S1 — el read-modify-write bajo lock de `decideUnderLock`**, con el docblock citando el **ADR 0054 §2**. Sacar
+  `lockBusiness` deja 39/39 verde. El lock del WEBHOOK si tiene oraculo (M4); **el de la RUTA no**.
+- **S11** (el orden invertido de `resume`, **espejo de M5** que para `cancel` si muerde), **S3** (nunca filtrar el
+  mensaje de una excepcion cualquiera en el 503), **S12/S16** (las claves de `resume` e `interval` — las de `cancel` y
+  `checkout` si muerden), **S9/S17** (las ramas `rawType`/`statusCode`, **inalcanzables POR LA SUITE**, que no es lo
+  mismo que inalcanzables) y **S6** (la barra final del origen, cosmetico).
 
-**ESTADO DEL BARRIDO (resultados del REVISOR, en vuelo, NO verificados todavia por el orquestador):** 12 afirmaciones
-de rondas anteriores + **18 nuevas (S1-S18)**, de las que **8 ya tienen resultado y 8 quedan pendientes**.
-**SEIS VERDES nuevas, o sea seis docblocks mas sin oraculo**, y dos son serias:
-- **S1 — `_auth.ts:186` afirma que el conteo que alimenta `downgrade_blocked` se lee BAJO EL LOCK «o entre la
-  verificacion y la escritura cabe un desarchivado (ADR 0054 §2)». Sacar `lockBusiness` deja 39/39 VERDE.** Es la
-  propiedad central de la spec, sin oraculo **del lado de las rutas** (el lock del WEBHOOK si lo tiene: es M4).
-- **S4 — `checkout:22` afirma que una suscripcion viva recibe 409 `subscription_live` «en vez de abrir un segundo
-  Checkout y COBRAR DOS VECES». Saltear `decideUnderLock` deja 39/39 VERDE.** Daño de plata.
-- **S3** (nunca filtrar el mensaje de una excepcion cualquiera en el 503), **S6** (normalizar la barra final del
-  origen), **S11** (el orden invertido de `resume`) y **S12** (la clave de `resume` lleva `pending_plan_at`): VERDES.
+**S7 ES UNA FAMILIA APARTE: ROJO POR TIMEOUT, NO POR UNA ASERCION.** Mover la red adentro del lock da 7
+`Test timed out in 60000ms` (auto-deadlock: `confirmAtStripe` abre otra transaccion con el row lock tomado). **La
+consecuencia es observable pero ninguna asercion la nombra** — es el espejo del «rojo por el motivo equivocado»: un
+timeout no dice QUE propiedad se rompio.
 
-**Las que SI muerden, transcriptas:** S2 (el DTO), S5 (sesion no abierta → 409), S8 (no revertir ante
-`StripeConnectionError`), S10 (`pending_plan_at` sale de `cancel_at` y no de `items.data[0]`).
+**Al implementador se le dieron TRES salidas por cada verde, no una:** pinnearlo; **borrar o ablandar la afirmacion**
+si el docblock afirma mas de lo que el codigo garantiza; o **declararlo no pinneado** con el motivo. Lo inaceptable es
+dejar el docblock afirmando y nada sosteniendolo.
 
-**ESTO ES POR QUE EL ENCARGO CAMBIO de «otra ronda de mutaciones» a «barrido sistematico»:** las cuatro rondas
-anteriores encontraron **un** bloqueante cada una —a un ciclo completo de implementador + revisor cada vez—; el
-barrido, en **una sola pasada y sin terminar**, ya lleva **seis**. **De a una nunca iba a converger.**
+### LA RAMA EFIMERA ESTABA ENVENENADA. Limpiada por el orquestador, con el minimo necesario
+
+**El S7 del revisor timeouteo, su `finally` no corrio y dejo filas huerfanas.** Medido por SQL: la rama tenia **43
+negocios y 26 filas de `core.subscription`** contra los **11/11** de la copia de prod. **Desde entonces
+`billing.neon.integration.test.ts` moria EN EL SEED con el arbol byte a byte limpio** — el sintoma exacto que la
+convencion de literales unicos existe para evitar, y **indistinguible de un bug de codigo**.
+
+**Se borraron SOLO 3 filas** —las de literales **FIJOS** (`cus_ciclo`, `cus_orden`, `cus_determinista`), las unicas que
+**chocan** contra el unique global— y **se verifico que la copia de prod quedo intacta** (14/14 antes y despues). Las
+demas huerfanas tienen literal aleatorio: son basura, **no bloquean**, y se dejaron. **Oraculo del arreglo, no
+supuesto: `billing.neon…` vuelve a dar 6/6 VERDE.**
+
+**CAUSA RAIZ, y es del implementador contra su propia regla:** `billing.neon.integration.test.ts` es **el unico
+archivo de integracion nuevo con literales de Stripe FIJOS**, contra **su decision 10**. `billing-interval` esta a
+medias. Mientras sigan fijos, **cualquier corrida abortada vuelve a envenenar la rama**. Despachado.
+
+**Y quedan ~32 negocios huerfanos acumulados de corridas abortadas** (no bloquean). **Decision del owner** si se
+limpian: es borrado en una base, aunque sea la rama efimera.
 
 ### 5a MUERTE DEL REVISOR, con S9 puesta — Y LA COPIA EN `/tmp` FUE LO QUE LA SALVO
 

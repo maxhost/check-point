@@ -1066,6 +1066,11 @@ medidas: `locations/core.ts`=207, `locations-console.tsx`=220, `locations-routes
 | `apps/merchant/src/server/billing-webhook-support.ts` | crear — **[fase B] NO estaba en esta tabla.** El preambulo compartido de los tres archivos de integracion del webhook (secreto, registro de ids de evento para el `afterAll`, `deliver` por la ruta real, seed con estado completo). El `vi.mock` de `stripe-config` NO puede vivir aca: va en cada `.test.ts` |
 | `apps/merchant/src/server/billing-store.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Unit de `store.ts` con un doble del `tx` (patron de `locations-plan-cap.test.ts`): el CONJUNTO EXACTO de claves de cada `SET` — en D10 la propiedad load-bearing es una AUSENCIA (`stripe_customer_id` se conserva) y un test de valores no ve una clave que sobra — mas la allow-list de columnas del `select` |
 | `apps/merchant/src/server/billing-store.neon.integration.test.ts` | crear — **[fase B] NO estaba en esta tabla.** Lo que el doble del `tx` no puede ver: el `coalesce` de `downgrade_requested_at` contra Postgres, el `where` por `businessId` (con un segundo negocio sembrado), `reconcileFromStripe` completo (**M16**) y la carrera `cancel` vs. webhook (**M4**) |
+| `apps/merchant/src/server/billing-interval.neon.integration.test.ts` | crear — **[fase D1] NO estaba en esta tabla. El corte lo decidio el ORQUESTADOR antes de que el implementador siguiera, y es por NATURALEZA:** D9 es su propia seccion de diseño, con sus propios modos de falla (402 por tarjeta rechazada, 409 `interval_ambiguous`, 409 `interval_downgrade_unsupported`) y es el unico consumidor de `updateError`/`updateParams` del fake. Ademas `billing.neon.integration.test.ts` habia llegado a 303 (`file-size`, `EXIT=2`) |
+| `apps/merchant/src/server/billing-checkout-guards.neon.integration.test.ts` | crear — **[fase D1] NO estaba en esta tabla, y NACE DEL MISMO FAIL DE REVISOR que su hermano `billing-cancel-guards`.** Los guards de `checkout`: hoy, que la `idempotencyKey` es FIJA por negocio+intervalo (**MUT-K**, que sin este archivo dejaba la suite entera en verde). Archivo propio porque `billing.neon.integration.test.ts` y `billing-routes.test.ts` estaban en **300 exactas** — cero margen contra el hook `file-size` |
+| `apps/merchant/src/server/billing-cancel-guards.neon.integration.test.ts` | crear — **[fase D1] NO estaba en esta tabla, y NACE DE UN FAIL DE REVISOR.** Las dos decisiones del implementador de la D1 que protegen una baja legitima de ser destruida —no revertir el REINTENTO de reparacion (MUT-A) y no settlear en local lo que Stripe sigue facturando (MUT-D)— estaban escritas en la spec y en docblocks, y **ningun test las pinneaba**: las dos mutaciones daban 35/35 VERDE. Archivo propio por naturaleza y porque `billing.neon.integration.test.ts` estaba en 299/300 |
+| `apps/merchant/src/server/billing-stripe-fake.ts` | crear — **[fase D1] NO estaba en esta tabla.** El doble de Stripe se muda aca desde `billing-integration-support.ts` (que estaba en 297/300) porque la fase D tiene que EXTENDERLO: `checkout.sessions.create` y `customers.create` tiraban «La fase B no crea…» y `subscriptions.update` ignoraba los params, con lo cual M17 no tenia forma de ponerse roja. El archivo viejo REEXPORTA, asi que ningun test de las fases B/C cambia de import |
+| `apps/merchant/src/server/billing-routes-auth.neon.integration.test.ts` | crear — **[fase D1] NO estaba en esta tabla.** El gate de las 5 rutas con SESIONES REALES: staff activo, staff desactivado y owner desactivado → 403, mas el control positivo del owner activo. Lo exige el DoD y `billing-routes.test.ts` no lo puede ver (con `ownerContext` doblado, activo y desactivado son el mismo `null`) |
 | `apps/merchant/src/server/locations-races.neon.integration.test.ts` | editar |
 
 ### Disjunta?
@@ -1083,7 +1088,7 @@ El orquestador los deja listos **antes de despachar**; los agentes solo consumen
 | `PlanIntent` + `PlanChangeInput` + `PlanChangeDecision` + `BlockCode` | tal cual D4, con la lista **ordenada** de guardas como comentario normativo |
 | `planFromSubscription` | **[R2-I1]** firma y retorno explicitos: `(args: { event: { type: string; created: number }; subscription: Stripe.Subscription; row: SubscriptionRow; priceIds: { monthly: string; yearly: string } }) => SubscriptionWrite`, con `SubscriptionWrite = { plan?: string; interval?: string \| null; status: string; pendingPlan: string \| null; pendingPlanAt: Date \| null; clearDowngradeRequest: boolean; ignoredReason?: string }`. **`plan` ausente = «no tocar el plan»** — es el caso mas frecuente y necesita representacion explicita, no un `null` ambiguo |
 | `SubscriptionView` + las props extra de D7 | conjunto exacto de claves; `pendingPlanAt` como string ISO |
-| **La costura de Stripe** | **[R2-B7]** el parametro inyectado es `StripeGateway`, una interfaz **minima** propia (`{ subscriptions: Pick<Stripe["subscriptions"], "retrieve" \| "update" \| "list">; checkout: …; customers: … }`), **no** la clase `Stripe`: con la clase concreta todo fake necesita `as unknown as Stripe`, y ese cast apaga justamente el typecheck que se esta comprando. Firmas: `cancelSubscription(gw, …)`, `resumeSubscription(gw, …)`, `changeInterval(gw, …)`, `applySubscriptionEvent(gw, tx, …)`, `reconcileFromStripe(gw, …)`, `createCheckoutSession(gw, …)`. **Y como llega el fake a las dos superficies sin parametro:** la **ruta** del webhook (que necesita `constructEvent` para la firma) y la **pagina** de D8 se testean mockeando el modulo `server/stripe-config` con `vi.mock`, igual que `locations-routes.test.ts` mockea `ownerContext`. Queda dicho aca para que no se decida durante el codigo |
+| **La costura de Stripe** | **[R2-B7]** el parametro inyectado es `StripeGateway`, una interfaz **minima** propia (`{ subscriptions: Pick<Stripe["subscriptions"], "retrieve" \| "update" \| "list">; checkout: …; customers: … }`), **no** la clase `Stripe`: con la clase concreta todo fake necesita `as unknown as Stripe`, y ese cast apaga justamente el typecheck que se esta comprando. Firmas: `applySubscriptionEvent(gw, …)`, `bindCheckoutSession(gw, …)`, `reconcileFromStripe(gw, …)`. **[CORREGIDO EN LA FASE D1, por el revisor independiente]** esta celda listaba ademas `cancelSubscription`, `resumeSubscription`, `changeInterval` y `createCheckoutSession`, y **ninguna de las cuatro existe**: las cuatro operaciones de plan viven en sus RUTAS, que toman el gateway con `stripeContext()` y llaman a `gw.subscriptions.update` / `retrieve` / `gw.checkout.sessions.create` / `gw.customers.create` directo. La costura cumple igual su funcion (el fake se inyecta, los tests hacen fallar a Stripe), pero una firma escrita y nunca creada es arquitectura afirmada sin verificar — el ADR 0054 del lado del documento. **Y como llega el fake a las dos superficies sin parametro:** la **ruta** del webhook (que necesita `constructEvent` para la firma) y la **pagina** de D8 se testean mockeando el modulo `server/stripe-config` con `vi.mock`, igual que `locations-routes.test.ts` mockea `ownerContext`. Queda dicho aca para que no se decida durante el codigo |
 
 ## Definition of Done
 
@@ -1316,6 +1321,12 @@ coincide**. Toda mutacion se etiqueta con `MUTATION` mientras esta puesta y se r
 | MUT-R2 | **[fase C, del REVISOR]** `maxDuration = 10` → `60` (igualar la ventana del lease) | **EJECUTADA 2026-09-11 (revisor): ROJA, y muerde en el BORDE exacto** (`60 > 60` es falso): la desigualdad es estricta, no decorativa. Corrida **sin** env de integracion, lo que confirma de paso que la asercion vive fuera del `skipIf` |
 | MUT-R3 | **[fase C, del REVISOR]** `classifyRejection` devuelve `already_processed` cuando NO hay fila | **EJECUTADA 2026-09-11 (revisor): VERDE, 11/11 — SIN ORACULO, y se DECLARA en el codigo en vez de taparlo.** Solo alcanzable con un `DELETE` externo entre dos statements; ningun camino del producto lo produce. El docblock de `classifyRejection` ahora dice que no esta pinneado y cual es el renglon a re-mirar si se agrega un borrado de eventos viejos |
 | MUT-R4 | **[fase C, del REVISOR]** reintroducir el **§Problema-4** exacto: `processedAt: sql\`now()\`` en el `INSERT` del claim (marcar procesado ANTES de procesar) | **EJECUTADA 2026-09-11 (revisor): 5 rojos, e incluye `un retrieve que falla deja la fila SIN procesar, y el reintento la procesa`.** Es la que responde la sospecha de si el `ageEventRow` le saco filo a ese test de la fase B: **no** — sigue muriendo en su primera asercion frente al bug que existe para pinnear. La edicion cambio el reintento de in-window a out-of-window, que es cambio de CONTRATO justificado por el ADR, no una asercion debilitada |
+| MUT-A | **[fase D1, del REVISOR — no estaba en la tabla]** sacar `planned.createdNow &&` de la condicion de revert de `cancel` | **EJECUTADA 2026-09-11 por el revisor (35/35 VERDE, SIN ORACULO) y RE-EJECUTADA por el implementador con la sonda puesta: CONFIRMADA, exacta — 1 rojo**, corrida contra los 5 archivos que pueden verla (`billing-cancel-guards.neon…`, `billing.neon…`, `billing-routes.test.ts`, `billing-routes-auth.neon…`, `locations-races.neon…`). El rojo es `un REINTENTO de cancel que falla determinista NO borra la baja ya pedida` → `AssertionError: expected null to be 'free'` — la asercion es sobre `pendingPlan` de la FILA, o sea la propiedad y no el setup. **Los dos tests de `billing.neon…` que parecian cubrirlo (error de RED / determinista) son los dos PRIMEROS pedidos (`createdNow === true`), asi que daban identico con y sin el guard**: es la decision 3 del implementador de la D1, afirmada en la spec y en un docblock de 8 lineas, y nada la probaba (ADR 0054). Revertida con `shasum` (`1fa5bbf9…` antes y despues) |
+| MUT-B | **[fase D1, del REVISOR]** sacar el `try/catch` de `readBody` (deja de tolerar la AUSENCIA de body) | **EJECUTADA 2026-09-11: VERDE la primera vez, y ESE VERDE ES EL HALLAZGO.** La sonda inicial mandaba un request sin body a **`cancel`** — y `cancel` NO LLAMA a `readBody`, asi que el caso quedaba verde con y sin el guard: un «verde por el motivo equivocado», el espejo exacto del rojo por el motivo equivocado. Con el oraculo corregido a una ruta que SI lee el body (`interval`), **la mutacion muerde: 1 rojo, `el parseo del body: interval sin to es 400, y SIN body tambien` → `AssertionError: expected 503 to be 400`**. Corrida contra los 6 archivos que tocan las rutas. Revertida con `shasum` (`06b1e16a…` antes y despues) |
+| MUT-D | **[fase D1, del REVISOR]** reemplazar el alias `export const POST = downgradeToFree` de `settle-free` por un cuerpo propio que conserva el gate y el 409 pero **settlea SIEMPRE en local** | **EJECUTADA 2026-09-11 por el revisor (35/35 VERDE, SIN ORACULO) y RE-EJECUTADA por el implementador con la sonda puesta: CONFIRMADA, exacta — 1 rojo** en `billing-cancel-guards.neon…`: `settle-free sobre una suscripcion VIVA programa la baja EN STRIPE, no en local` → `AssertionError: expected [] to include 'subscriptions.update:sub_vivo…'`, o sea que Stripe nunca se entero. Corrida contra los mismos 5 archivos que MUT-A, y **cada una pone roja SOLO su propio test**: la atribucion esta verificada, no supuesta. Es la «consecuencia que hay que leer» de la decision 1 del implementador, y su daño es de plata — settlear en local deja de cobrarle al negocio un plan que Stripe le sigue facturando. El barrido del filesystem de `billing-routes.test.ts` tampoco lo ve: mira que exista el `export POST`, no el cuerpo. Revertida con `shasum` (`eeaa9e0c…` antes y despues) |
+| MUT-K | **[fase D1, del REVISOR — no estaba en la tabla]** romper la `idempotencyKey` FIJA de `checkout` agregandole `:${Date.now()}` | **EJECUTADA 2026-09-11 por el revisor (la SUITE ENTERA VERDE, 118 archivos / 862 tests: SIN ORACULO EN NINGUNA PARTE DEL REPO) y RE-EJECUTADA por el implementador con la sonda puesta: CONFIRMADA, exacta — 1 rojo**, corrida contra **la suite completa** (119 archivos / 863 tests; los otros 118 archivos quedan verdes, que es la prueba del alcance). El rojo es `la idempotencyKey del Checkout es FIJA por negocio + intervalo` en `billing-checkout-guards.neon.integration.test.ts` → `AssertionError: expected [ …(2) ] to deeply equal [ …(2) ]`, con el diff mostrando `checkout:<id>:month` esperado contra `checkout:<id>:month:1789151976243` / `…:1789151976797` recibidos: **la asercion habla de las CLAVES, no del setup**. Es la 3.ª de la misma familia que MUT-A y MUT-D: **§Decisiones del orquestador punto 3 dice «la clave fija se conserva» y el docblock de `confirmAtStripe` en `cancel/route.ts` la usa como CONTRAEJEMPLO normativo** —«con una clave FIJA, el patron que `checkout` usa»— o sea que habia texto de produccion razonando sobre una propiedad que nada sostenia (ADR 0054). Revertida con `shasum` (`98e4e7c9…` antes y despues) |
+| MUT-J | **[fase D1, del REVISOR — no estaba en la tabla]** sacar `cancel_at: null` del `subscriptions.update` de `resume` | **EJECUTADA 2026-09-11 por el revisor (38/38 VERDE contra los 7 archivos que pueden verla: SIN ORACULO) y RE-EJECUTADA por el implementador con la sonda puesta: CONFIRMADA, exacta — 1 rojo**, corrida contra **la suite completa** (119 archivos / 864 tests; los otros 118 verdes). El rojo es `resume limpia el cancel_at EXPLICITO, no solo cancel_at_period_end` en `billing-cancel-guards.neon.integration.test.ts` → `AssertionError: expected { cancel_at_period_end: false } to deeply equal { cancel_at_period_end: false, …(1) }` con `- "cancel_at": null` — la asercion es sobre lo que se le PIDIO a Stripe. **Es ADR 0054 dentro del propio docblock**: `resume/route.ts` afirmaba que «limpiarlo es lo que hace que reanudar reanude de verdad» y nada lo sostenia. **La consecuencia no es cosmetica:** con un `cancel_at` EXPLICITO (el del dashboard, el actor del ADR 0060) el `resume` deja la baja VIVA en Stripe mientras `clearPendingPlan` borra las tres columnas — el webhook repone `pending_plan='free'` pero NO `downgrade_requested_at`, asi que el `deleted` de fin de periodo llega con la marca nula y aterriza en **`plan='none'`**: un owner que reanudo, bloqueado. **Calibracion del revisor, conservada:** cuando el `cancel_at` lo genero nuestro propio `cancel_at_period_end: true`, Stripe lo limpia solo al ponerlo en `false`; el guard es load-bearing para el EXPLICITO. Revertida con `shasum` (`4e396b5e…` antes y despues) |
+| MUT-I | **[fase D1, del REVISOR]** sacar `if (subscription.items.has_more) throw ambiguous` de `soleOurItem` (`interval`) | **EJECUTADA 2026-09-11: VERDE la primera vez (el docblock enumeraba TRES condiciones de `interval_ambiguous` —0 items, >1, `has_more`— y solo DOS tenian oraculo) y RE-EJECUTADA con la sonda puesta: CONFIRMADA — 1 rojo**, corrida contra **la suite completa** (119 archivos / 864 tests). El rojo esta en `billing-interval.neon.integration.test.ts` → `AssertionError: expected 200 to be 409`: con la lista TRUNCADA la ruta procede y cambia el price en vez de negarse. **Se pinnea en vez de declararse** (el intento primero, la declaracion despues): `has_more` no es un camino vivo hoy —exige mas de 10 items en una suscripcion de un solo plan— pero se monta sin tocar el fake, poniendo `items.has_more = true` sobre la suscripcion ya sembrada. Revertida con `shasum` (`65fe4f3c…` antes y despues) |
 
 **M3 y M7 comparten observable** (las dos hacen que el claim se otorgue siempre): son dos
 mutaciones honestas de la **misma** propiedad, no dos propiedades. Se anota para que nadie lea la
@@ -1487,6 +1498,9 @@ explicitamente no se escribe como decision suya).
    comportamiento de una ruta existente, que estaba fuera de lo pedido; se incluyen porque sin
    ellos el boton «Mejorar a Plus» puede tirar 400 `idempotency_error` desde un dominio distinto
    o mandar a un **falso exito** con una sesion ya completada. La clave fija se conserva.
+   **Oraculo (fase D1, pedido por un FAIL de revisor): MUT-K**, en
+   `billing-checkout-guards.neon.integration.test.ts`. Hasta entonces «la clave fija se conserva»
+   era una afirmacion sin nada que la sostuviera: romperla dejaba la suite ENTERA en verde.
 4. **El `status` crudo de Stripe se guarda en la columna** (antes se colapsaba
    `active|trialing → active`); la traduccion vive en la presentacion.
 5. **El `stripe_customer_id` se persiste en el checkout** (antes solo lo escribia el webhook).
@@ -1542,6 +1556,85 @@ fijaba y que HAY que resolver para que el webhook funcione.
    `downgrade_requested_at` con `coalesce(columna, $now)` para **conservar** la marca, que es de lo
    que cuelga la `idempotencyKey` del reintento de D6. **Lo consume la fase D**: `cancel` llama dos
    veces, sin `pendingPlanAt` en el paso 2 y con la fecha de Stripe en el paso 4.
+
+### Decisiones del IMPLEMENTADOR de la fase D1, NO del owner ni del orquestador
+
+Mismo criterio que la seccion de la fase B: son bordes que el diseño no fijaba y que HAY que
+resolver para que las rutas funcionen. Ninguna cambia una decision de producto.
+
+1. **`settle-free` es un ALIAS LITERAL del handler de `cancel`** (`export const POST =
+   downgradeToFree`), no una copia. D10 dice que la salida del estado `none` «es la MISMA rama
+   de `decidePlanChange` (`intent: "downgrade"`), no una segunda regla que pueda divergir», y la
+   tabla de D6 les da EL MISMO conjunto de errores; con dos cuerpos, el dia que cambie la regla
+   de bloqueo por locales uno de los dos queda viejo. **Consecuencia que hay que leer:**
+   `settle-free` sobre una suscripcion VIVA programa la baja en Stripe en vez de settlear en
+   local — lo decide la FILA (`hasLiveSubscription`), nunca la URL. Settlear en local una
+   suscripcion que Stripe sigue facturando seria dejar de cobrarle al negocio el plan que paga.
+   **Oraculo: MUT-D**, en `billing-cancel-guards.neon.integration.test.ts` — lo pidio un FAIL de
+   revisor: la consecuencia estaba escrita y nada la probaba (ADR 0054).
+2. **`app/api/billing/_auth.ts` quedo en 237 lineas contra las 51 del
+   `app/api/locations/_auth.ts` que la spec manda calcar, y no es alcance que crecio.** El de
+   locales SOLO gatea, porque su dominio vive en `server/locations/*`; billing **no tiene un
+   modulo de dominio propio para las rutas** (`store.ts` estaba cerrado con PASS y prohibido de
+   extender), asi que ahi viven ademas tres piezas COMPARTIDAS por las 5 rutas:
+   `decideUnderLock` (lock → leer → contar → decidir, el read-modify-write de D6),
+   `billingStateResponse` (el cuerpo de exito `{subscription, activeLocations, canCancel}`) y
+   `stripeContext`. La alternativa era repetirlas en cada ruta, que es exactamente la
+   divergencia que D10 prohibe. El gate en si son las mismas ~30 lineas que el de locales.
+3. **El revert de `cancel` ante un error determinista corre SOLO si ESTA peticion creo el
+   estado.** [R1-B3] fija «revertir solo ante un error que pruebe que no se aplico», pero no
+   distingue el primer pedido del REINTENTO de reparacion — y `cancel` es idempotente a
+   proposito. Sobre un reintento (la baja ya estaba pedida y confirmada en Stripe) un revert
+   borraria una baja legitima y devolveria el tope a 3 con la cancelacion viva en Stripe: el
+   mismo daño que [R1-B3] existe para impedir, por el otro camino. El discriminante es el
+   retorno de `scheduleDowngrade`: como escribe `coalesce(columna, $now)`, que lo devuelto sea
+   distinto del `now` de este request prueba que la marca ya existia. **Oraculo: MUT-A**, en
+   `billing-cancel-guards.neon.integration.test.ts` — lo pidio un FAIL de revisor: los dos tests
+   que parecian cubrirlo eran los dos PRIMEROS pedidos y daban identico con y sin el guard.
+4. **`from` por defecto es `"onboarding"`.** Hoy el unico llamador (`onboarding/page.tsx:158`)
+   no manda el campo y aterriza en `/backoffice`; con el default `"subscription"` el alta de
+   prod caeria en una pagina que todavia no existe (es la D2). El default conserva el
+   comportamiento actual y la D2 pasa a mandarlo explicito.
+5. **`pending_plan_at` sale SOLO de `cancel_at`**, sin fallback a
+   `items.data[0].current_period_end`: D5.f prohibe elegir `data[0]` para leer, y para ESCRIBIR
+   es peor. «Baja programada sin fecha» es un estado valido de D7, garantizado entre el 200 y el
+   paso 4, y lo completa el `updated` del webhook.
+6. **Codigos de error que la tabla de D6 no enumeraba** (decia «503 Stripe» sin fijar el
+   `code`): `stripe_not_configured` (503), `stripe_unavailable` (503, la llamada a Stripe fallo),
+   `subscription_unavailable` (503, el negocio no tiene fila de suscripcion — no deberia pasar
+   con el unique de D3, pero prestarle otro codigo mandaria a diagnosticar otra cosa),
+   `invalid_input` (400) y `unavailable` (503 generico de `billingErrorResponse`).
+7. **`readBody` tolera la AUSENCIA de body**: `cancel`, `resume` y `settle-free` reciben `{}` y
+   un cliente que no manda nada no puede comerse un 400. Los campos que importan (`interval`,
+   `to`) los valida cada ruta, asi que la tolerancia no tapa nada. **Oraculo: MUT-B** — y ojo
+   con el que NO sirve: un caso sobre `cancel` queda verde con y sin el guard, porque `cancel`
+   no lee el body.
+8. **La escritura de `stripe_customer_id` quedo en `checkout/route.ts`, no en `store.ts` — es un
+   HALLAZGO para el orquestador.** Pertenece a `store.ts` con el resto de los `SET` del dominio.
+   **El COSTO es real y esta medido, la IMPOSIBILIDAD no — y la primera version de esta fila
+   afirmaba la segunda. Lo cazo el revisor independiente.** Lo medido: con esa 6.ª funcion
+   `store.ts` da **313-314 lineas** y el hook `file-size` sale **`EXIT=2`** (sobre una copia, con
+   control sobre el `store.ts` real en `EXIT=0`), asi que **dentro de `store.ts` no entra**. Lo
+   que NO se sostiene es la conclusion que se escribio: el encargo prohibia **partir**
+   `store.ts`, no **crear un archivo nuevo en `server/billing/`** — que es exactamente lo que
+   esta spec ya hizo cinco veces (`derive-rules.ts`, `applicability.ts`, `claim.ts`,
+   `webhook-apply.ts`, `gateway.ts`). O sea: la escritura **si** puede vivir en el dominio, en un
+   archivo propio; no se hizo en la D1 porque habria sido alcance nuevo sin que el orquestador
+   decidiera el corte. Mientras tanto es una SEGUNDA superficie de escritura sobre
+   `core.subscription`, con un solo escritor y una sola columna, y hay que moverla.
+9. **El fake de Stripe modela la tarjeta rechazada con una ASIMETRIA, y esa asimetria es lo que
+   le da oraculo a M17**: con `payment_behavior: "error_if_incomplete"` el `update` falla y no
+   aplica nada; SIN el, el `update` tiene exito, el price nuevo QUEDA aplicado y la suscripcion
+   se va a `past_due`. Es lo que Stripe documenta; un fake que fallara siempre haria a M17
+   indistinguible del codigo correcto.
+10. **Los literales de ids de Stripe en los tests de integracion tienen que ser UNICOS POR
+    CORRIDA.** `core_subscription_customer_unique` y `core_subscription_stripe_unique` son
+    uniques GLOBALES y vitest paraleliza ARCHIVOS: `cus_race`/`sub_race` colisionaron con
+    `billing-webhook.neon.integration.test.ts` (fase B) y `sub_carrera` con
+    `billing-store.neon.integration.test.ts`. El sintoma es el peor posible — un `23505` **en el
+    seed**, o sea antes de cualquier asercion de comportamiento, y **no determinista**: falla un
+    test u otro segun quien llegue primero. En `locations-races` el tag pasa a salir de un
+    `randomUUID()`.
 
 ### Requisito de configuracion que hay que verificar, o el ADR 0059 no se cumple
 
