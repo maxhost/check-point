@@ -180,6 +180,13 @@ perseguir un bug que no existe, o «arreglarlo» tapando la mutacion. Enforced p
 detector de codigo mutado, es el cierre de esa convencion. Por eso todo encargo a un
 implementador exige etiquetar la mutacion y revertir con `shasum` antes de cualquier otra cosa.
 
+**Caso del ORQUESTADOR: si el hook `no-mutations-left.sh` te marca una mutacion de un subagente que
+TODAVIA ESTA MIDIENDO, no la revientes — el hook no puede distinguir «viva» de «abandonada», y vos
+si.** Cortarla bajo un agente vivo lo hace transcribir un resultado falso, que es peor que el rojo
+que el hook previene. Lo correcto: verificar que este **etiquetada y atribuida**, y dejar en
+`docs/TASKS.md` **el comando exacto de restauracion y el `shasum` limpio**, para que si la sesion
+se cae la proxima no tenga que reconstruir nada. Lo que NO puede pasar es que sobreviva a la sesion.
+
 **Y el corolario que costo caro, porque rompe el salvavidas que todo el mundo asume: MUTAR UN
 ARCHIVO UNTRACKED DEJA A GIT SIN NADA A QUE VOLVER.** El reflejo ante una mutacion abandonada es
 `git checkout <archivo>`, y sobre un `??` **no hace nada** — no hay blob. Paso en la fase D1 de la
