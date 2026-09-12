@@ -223,32 +223,34 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### ⚠️ HAY UNA MUTACION VIVA AHORA MISMO — S3, PUESTA A PROPOSITO POR UN AGENTE QUE ESTA MIDIENDO
+### ⚠️ HAY UNA MUTACION VIVA AHORA MISMO — EN `resume/route.ts`, PUESTA POR UN AGENTE QUE ESTA MIDIENDO
 
-**NO LA REVIERTAS SIN LEER ESTO.** `apps/merchant/src/app/api/billing/_auth.ts:94` tiene
-`// MUTATION S3 — el 503 filtra el mensaje de la excepcion.` **Esta ETIQUETADA y ATRIBUIDA**, y el implementador la
-re-aplico porque el orquestador le pidio re-correr S3. El hook `no-mutations-left.sh` la marca —correctamente— pero
-**el hook no puede distinguir «viva» de «abandonada»; el orquestador si**, y cortarla bajo un agente vivo lo haria
-transcribir un resultado falso, que es peor que el rojo que el hook previene.
+**NO LA REVIERTAS SIN LEER ESTO.** El implementador esta corriendo las mutaciones de los verdes que faltan y va
+rapido: en el ultimo tramo pasaron por aca **S3** (ya revertida, `_auth.ts` verificado en
+`5ddc7c4c2cd66298b92d11d883388289021ef99a`), **S11** y ahora **S12**. La que este viva cuando leas esto sale de
+`grep -rn MUTATION apps/merchant/src`.
 
-**RESTAURACION, si esta sesion se cae o el agente no vuelve:**
-```
-cp /tmp/rev3/app_api_billing__auth.ts apps/merchant/src/app/api/billing/_auth.ts
-shasum apps/merchant/src/app/api/billing/_auth.ts   # debe dar 5ddc7c4c2cd66298b92d11d883388289021ef99a
-```
-Mutado ahora: `2d764fc5066855d7e1868df285df287f9f2a69a1`. **Si `/tmp` se vacio**, el archivo es untracked y no hay
-blob: la unica diferencia es que el `return` del 503 pasa de `{ error: fallback, code: "unavailable" }` a filtrar
-`error instanceof Error ? error.message : fallback`. **Lo que NO puede pasar es que la mutacion sobreviva a la sesion.**
+**Esta ETIQUETADA y ATRIBUIDA.** El hook `no-mutations-left.sh` la marca —correctamente— pero **no puede distinguir
+«viva» de «abandonada»; el orquestador si**, y cortarla bajo un agente que esta midiendo lo haria transcribir un
+resultado falso: peor que el rojo que el hook previene.
 
-**EL ROJO QUE VE EL HOOK `verify.sh` ES EL DE ESTA MUTACION, NO UN BUG — y la asercion lo prueba sola:**
-`billing-error-classification.test.ts > una excepcion cualquiera es 503 unavailable y NO filtra su mensaje` →
+**RESTAURACION de `resume/route.ts`, si esta sesion se cae o el agente no vuelve:**
 ```
-- "error": "No pudimos actualizar tu suscripcion. Vuelve a intentarlo."
-+ "error": "connect ECONNREFUSED 10.0.0.7:5432 (ep-frosty-dawn-123456.us-east-2.aws.neon.tech)"
+cp /tmp/rev3/app_api_billing_resume_route.ts apps/merchant/src/app/api/billing/resume/route.ts
+shasum apps/merchant/src/app/api/billing/resume/route.ts   # debe dar 4e396b5e...
 ```
-**S3 MUERDE, y por el motivo exacto.** Y de paso el rojo es la mejor defensa del guard que ningun docblock supo dar:
-lo que se filtraba era **la IP interna y el host de Neon**. Un 503 generico no es cosmetica — es que el mensaje de
-cualquier excepcion, incluida una de conexion a la base, **viajaba al navegador**.
+Hay **dos** copias limpias (`/tmp/rev3/…` y `/tmp/resume-mutJ.bak`), las dos en `4e396b5e`. **Antes de pisar el
+archivo, corre un `diff` contra la copia**: si muestra algo mas que la mutacion, el agente avanzo y restaurar te lleva
+trabajo por delante. Ese `diff` es lo que convierte restaurar en verificacion — se uso asi al revertir S3.
+
+**UN ROJO EN LA SUITE MIENTRAS ESTO ESTE PUESTO ES ESPERADO Y NO ES UN BUG.** Leé la asercion antes de creerle al
+sintoma.
+
+**Lo que S3 dejo probado al ejecutarse, y vale conservar:** el rojo mostro que sin ese guard lo que viajaba al
+navegador era `connect ECONNREFUSED 10.0.0.7:5432 (ep-…us-east-2.aws.neon.tech)` — **la IP interna y el host de Neon**.
+El barrido lo habia listado como el 4o de 9 en gravedad, sonando a higiene menor; **verlo ejecutado lo movio de
+«cosmetico» a «fuga de infraestructura»**. Es el argumento a favor del barrido: encontrado de a uno, S3 llegaba a la
+ronda seis o siete, si alguien lo miraba.
 
 ### CERRANDO LOS 9 VERDES: **5 cerrados, 4 + S7 pendientes.** El implementador murio con S3 puesta (6a muerte)
 
