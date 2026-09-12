@@ -260,6 +260,28 @@ con una mutacion puesta, el unico punto de retorno seria el `diff` de esta tabla
 commitear el trabajo de la fase en un commit WIP** —que NO es marcarla implementada, el PASS sigue gobernando eso— y
 dejar que git sea el respaldo. No se hizo por cuenta propia porque cambia el flujo del repo.
 
+### EL FLAKE DE LOS LITERALES FIJOS SE REPRODUJO, CON LA FORMA EXACTA QUE SE HABIA PREDICHO
+
+**Medido por el orquestador, sin ninguna mutacion en el arbol** (`grep MUTATION` vacio, verificado antes de cada
+corrida):
+- **Corrida 1: 2 archivos rojos / 4 tests** — tres en `billing.neon.integration.test.ts` (`cancel → resume → cancel`,
+  `cancel escribe la intencion ANTES…`, `cancel: un error de RED…`) y uno en `billing-cancel-guards`.
+- **`billing.neon` AISLADO: 6/6 VERDE.** Junto con `billing-cancel-guards`: **11/11 VERDE**.
+- **Corrida 2 de la suite completa: 121 archivos / 872 tests, TODO VERDE.**
+
+**Los tres tests de `billing.neon` que cayeron son EXACTAMENTE los de literales FIJOS** (`cus_ciclo`, `cus_orden`,
+`cus_red`, `cus_determinista`). Pasa aislado, falla en paralelo, **no es determinista y cambia de victima**: es la
+firma de la colision, no de un bug — la misma que ya se diagnostico cuando la rama quedo envenenada.
+
+**Esto convierte la higiene de literales de «pendiente» en BLOQUEANTE OPERATIVO.** Mientras sigan fijos, **la suite de
+esta fase no da una señal confiable**: un verde puede ser suerte y un rojo puede ser colision. No se puede cerrar la
+fase midiendo con un instrumento que falla al azar.
+
+**Y una limitacion del metodo, declarada: estas corridas se hicieron con el implementador ESCRIBIENDO.** El conteo
+paso de 871 a 872 entre medio (acababa de agregar el test de S7), asi que **se estaba midiendo un blanco en
+movimiento**. Una lectura definitiva de la suite **exige que el agente haya entregado**; hasta entonces, ni el verde ni
+el rojo son concluyentes.
+
 ### CERRANDO LOS 9 VERDES: **5 cerrados, 4 + S7 pendientes.** El implementador murio con S3 puesta (6a muerte)
 
 **Corridas del orquestador:** `grep MUTATION` **vacio** tras revertir, sin sondas, los otros **5 hashes de rutas
