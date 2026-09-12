@@ -223,6 +223,28 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### 6a MUERTE DEL REVISOR (sin residuos), y un MENOR que encontro el orquestador leyendo su log
+
+**Auditoria: el arbol quedo IMPECABLE.** `grep MUTATION` vacio, sin sondas, los **seis hashes de rutas identicos** al
+baseline. Murio **entre** mutaciones, con los backups ya tomados en `/tmp/rev4/`. **Y su log crudo sobrevivio en
+`/tmp/barrido-raw.md`** — la disciplina de escribir a disco, cobrada por segunda vez.
+
+**HALLAZGO DEL ORQUESTADOR, leyendo ese log y verificando contra el arbol: UN SOLO `it` CARGA TRES ORACULOS Y SU NOMBRE
+NOMBRA UNO.** En el log, **S11, S12 y la MUT-J de B4 ponen rojo EL MISMO test** —`` `resume` limpia el `cancel_at`
+EXPLICITO `` en `billing-cancel-guards…`—. Abierto el archivo, ese `it` asevera tres propiedades distintas:
+- lineas 20-21: `duranteStripe.pendingPlan === "free"` + `downgradeRequestedAt` no nulo → **S11, el ORDEN**;
+- linea 26: `fake.updateKeys.at(-1)` → **S12, la `idempotencyKey`**;
+- linea 35: `cancel_at` en `null` → **B4**, la unica que el nombre menciona.
+
+**Las tres ESTAN pinneadas: no es un agujero de cobertura, es de ATRIBUCION.** Es la familia que `CLAUDE.md` documenta
+con el `FOR UPDATE` de la spec 0055 («el nombre del test sonaba a que cubria el lock»). El daño: quien rompa el orden
+mañana vera un rojo que dice «resume limpia el cancel_at» y **va a buscar en el lugar equivocado**. Pasado al revisor
+como **menor** —el arbol pinnea lo que dice pinnear; lo que engaña es la etiqueta—, con las dos salidas obvias:
+partirlo en tres `it` o renombrarlo para que nombre las tres.
+
+**Al revisor se le pidio ademas volcar cada fila a `/tmp/re-revision-d1.md` apenas la cierra**, como en el barrido: son
+seis muertes y cada una se llevo lo que vivia solo en su contexto.
+
 ### LOS 9 VERDES CERRADOS, TODOS PINNEADOS. EN RE-REVISION FINAL. Sigue SIN PASS
 
 **Ninguno se declaro y ninguno se ablando: los nueve tienen oraculo.** Mas S7, que tenia consecuencia observable pero
