@@ -223,36 +223,36 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
-### BARRIDO COMPLETO: **9 de 18 afirmaciones quedaron VERDES**. FAIL, despachado. Sin PASS
+### CERRANDO LOS 9 VERDES: **5 cerrados, 4 + S7 pendientes.** El implementador murio con S3 puesta (6a muerte)
 
-**El barrido sistematico fue la decision correcta y los numeros lo dicen:** las cuatro rondas anteriores encontraron
-**un** bloqueante cada una —a un ciclo completo de implementador + revisor cada vez—; **el barrido, en una pasada,
-encontro NUEVE.** De 18 afirmaciones mutadas: **9 rojas (pinneadas), 1 roja-por-TIMEOUT, 9 VERDES.**
-**La lista completa, con la asercion literal y el alcance de cada fila, quedo en `docs/barrido-d1-fase-d1.md`** (copiada
-del `/tmp` del revisor, que es volatil).
+**Corridas del orquestador:** `grep MUTATION` **vacio** tras revertir, sin sondas, los otros **5 hashes de rutas
+identicos**, `typecheck` (forzado) y `format:check` **verdes**, y `pnpm test` con integracion en
+**121 archivos / 871 tests / 0 failed / 0 skipped** — venia de 119/863: **+2 archivos, +8 tests, ninguno perdido**.
 
-**Auditoria del arbol:** `grep MUTATION` **vacio**, ninguna sonda en `src/`, y **los 8 hashes identicos** al baseline.
-El revisor limpio perfecto.
+**LA REVERSION, y el detalle de metodo que la hizo segura:** murio con `// MUTATION S3` en `_auth.ts`, que es
+**untracked** (sin blob al que volver). Se restauro desde **`/tmp/rev3/app_api_billing__auth.ts`** —la copia del
+REVISOR, no del implementador— y **antes de pisar el archivo se corrio un `diff`** que dio **exactamente y solo la
+mutacion**: eso es lo que prueba que restaurar no se llevaba trabajo por delante. `shasum` final
+`5ddc7c4c2cd66298b92d11d883388289021ef99a`, exacto. **Restaurar sin ese `diff` habria sido apostar.**
 
-**LOS 9 VERDES, por gravedad** — cada uno es un docblock que afirma algo que nada sostiene:
-- **S4 — el gate de plan de `checkout`.** Saltear `decidePlanChange` entero deja **39/39 VERDE**. La DECISION esta
-  pinneada en los units de fase A; **el CABLEADO no**. Es el hueco de `choosePushPromptView` que `CLAUDE.md` describe,
-  sobre la propiedad cuyo daño es **COBRAR DOS VECES**: ningun test llama a `checkout` sobre una suscripcion viva.
-- **S1 — el read-modify-write bajo lock de `decideUnderLock`**, con el docblock citando el **ADR 0054 §2**. Sacar
-  `lockBusiness` deja 39/39 verde. El lock del WEBHOOK si tiene oraculo (M4); **el de la RUTA no**.
-- **S11** (el orden invertido de `resume`, **espejo de M5** que para `cancel` si muerde), **S3** (nunca filtrar el
-  mensaje de una excepcion cualquiera en el 503), **S12/S16** (las claves de `resume` e `interval` — las de `cancel` y
-  `checkout` si muerden), **S9/S17** (las ramas `rawType`/`statusCode`, **inalcanzables POR LA SUITE**, que no es lo
-  mismo que inalcanzables) y **S6** (la barra final del origen, cosmetico).
+**LOS 5 VERDES YA CERRADOS** (verificado leyendo los `it(` del arbol, no el relato):
+- **S4** → `billing-checkout-guards…`: `un negocio con suscripcion VIVA recibe 409 subscription_live y NO abre una 2.a
+  sesion`. **Era el peor de los nueve: el de COBRAR DOS VECES.**
+- **S1** → `billing-auth-guards.neon…` (nuevo): `un cancel ESPERA al que tiene el lock del negocio, y recien despues
+  decide` — el lock de la RUTA, que citaba el ADR 0054 §2 y no tenia oraculo.
+- **S3** → `billing-error-classification.test.ts` (nuevo, sin base): 3 tests, incluido `una excepcion cualquiera es 503
+  unavailable y NO filtra su mensaje`.
+- **S6** → `un MERCHANT_PUBLIC_ORIGIN con barra final no produce //backoffice`.
+- **S9** → `el revert clasifica un 4xx por rawType y por statusCode, no solo por type`. **Era «inalcanzable por la
+  suite» y resulto alcanzable** — la distincion que se le pidio no dar por buena.
 
-**S7 ES UNA FAMILIA APARTE: ROJO POR TIMEOUT, NO POR UNA ASERCION.** Mover la red adentro del lock da 7
-`Test timed out in 60000ms` (auto-deadlock: `confirmAtStripe` abre otra transaccion con el row lock tomado). **La
-consecuencia es observable pero ninguna asercion la nombra** — es el espejo del «rojo por el motivo equivocado»: un
-timeout no dice QUE propiedad se rompio.
+**PENDIENTES: S11** (el orden invertido de `resume`, espejo de M5), **S12** y **S16** (las claves de `resume` e
+`interval`), **S17** (`isCardError`, hermano de S9) **y S7** (el rojo por TIMEOUT, que necesita una asercion que
+nombre la propiedad — hoy la consecuencia es observable pero nada la asevera, **y fue lo que envenveno la rama**).
 
-**Al implementador se le dieron TRES salidas por cada verde, no una:** pinnearlo; **borrar o ablandar la afirmacion**
-si el docblock afirma mas de lo que el codigo garantiza; o **declararlo no pinneado** con el motivo. Lo inaceptable es
-dejar el docblock afirmando y nada sosteniendolo.
+**Y lo que NO es opcional: la higiene de literales.** `billing.neon.integration.test.ts` **sigue con literales FIJOS**
+contra la decision 10 del propio implementador, y `billing-interval` a medias. **Mientras sigan fijos, cualquier
+corrida abortada vuelve a envenenar la rama** y el rojo siguiente aparece **en el seed**, indistinguible de un bug.
 
 ### LA RAMA EFIMERA ESTABA ENVENENADA. Limpiada por el orquestador, con el minimo necesario
 
