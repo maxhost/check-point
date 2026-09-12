@@ -223,6 +223,32 @@ los 4 archivos de test nuevos son untracked.
 **Arbol tras el revert, verificado:** `grep MUTATION` vacio; `typecheck` (forzado, `0 cached`), `lint` y
 `format:check` verdes; los 3 `shasum` del baseline identicos; `locations/core.ts` y `store.ts` identicos a git.
 
+### 5a MUERTE DEL REVISOR, con S9 puesta — Y LA COPIA EN `/tmp` FUE LO QUE LA SALVO
+
+**El revisor murio a mitad del BARRIDO** (habia llegado al menos a S9), con `// MUTATION S9 (revisor, barrido)` en
+`cancel/route.ts:170`, que borraba las ramas `rawType` y `statusCode` de `isDeterministicRejection`. Archivo
+**untracked**: `git checkout` no servia.
+
+**EL ORQUESTADOR INTENTO RECONSTRUIRLA A MANO Y NO CONVERGIO.** Cuatro candidatos plausibles, **ninguno** dio el hash.
+**Lo que la salvo fue la copia que el propio revisor habia dejado en `/tmp`** (`/tmp/mut-backup-cancel.ts`) — la regla
+que se escribio en `CLAUDE.md` hace dos rondas, **cobrada**. Restaurado y verificado:
+`1fa5bbf9d80ee940d00c35d1655b462c99f9a911`, exacto.
+
+**Y el detalle que vale mas que el incidente: el mejor candidato era ESTRUCTURALMENTE CORRECTO** (la rama `rawType` y
+el rango 4xx) **pero habria perdido el comentario** que explica por que se mira `rawType` y no `instanceof` («sobrevive
+a un bundler que renombre clases»). **El hash lo cazo.** «Casi igual» habria degradado el archivo **en silencio**, que
+es la clase de daño que nadie ve despues. **Corolario: el `shasum` no es burocracia — es lo que convierte una
+reconstruccion en verificacion, y lo que distingue «restaure el archivo» de «escribi algo parecido».**
+
+**Arbol tras restaurar, verificado:** `grep MUTATION` **vacio**, ninguna sonda en `src/`, los otros **nueve hashes
+identicos** al baseline, `typecheck` (forzado) y `format:check` **verdes**, y los 3 guards de
+`billing-cancel-guards…` —los oraculos de B1, B2 y B4— **en verde, 3/3**.
+
+**CAMBIO DE METODO PEDIDO AL REVISOR, porque cinco muertes ya son un patron y no un accidente:** que **escriba cada
+fila del barrido a `/tmp/barrido-d1.md` apenas la termina**, en vez de acumularla en su contexto. Es la regla del
+propio repo —lo que tiene que sobrevivir va a un archivo, no a la conversacion— aplicada al trabajo del agente. Si se
+cae otra vez, la lista sobrevive y se levanta del disco en vez de reconstruirse del arbol.
+
 ### B4 + LOS 4 MENORES CERRADOS. EN RE-REVISION, y esta vez el encargo es el BARRIDO SISTEMATICO
 
 **Corridas del orquestador:** `grep MUTATION` **vacio**, ninguna sonda en `src/`, **los 5 gates verdes** (`typecheck` y
