@@ -8,18 +8,28 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-12.
+Ultima actualizacion: 2026-09-13.
 
-**ESTADO: las fases A, B, C y D1 de la spec 0063 estan CERRADAS con PASS de revisor y commiteadas (la D1 en `8effb1b`).
-LA **SESION A** DEL PLAN DE CIERRE ESTA HECHA: el bloqueante del delta (`structuredClone`) y la promocion de la sonda
-R18 a test real, **los dos verificados por mutacion**, con los **5 GATES VERDES** (127 archivos / 917 tests / 0 failed
-/ 0 skipped). ARBOL LIMPIO Y **SIN COMMITEAR** — el commit de checkpoint espera el OK del owner. Quedan la SESION B
-(revision acotada + los 3 menores) y la SESION C (migracion a prod + push + QA).** Arbol **sin mutaciones**
-(`grep -rn MUTATION apps/merchant/src` vacio). **Nada desplegado a prod: no se pusheo y la migracion `0030` NO esta
-aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
+**ESTADO REAL (el bloque de arriba de esta linea quedo VIEJO y se reemplaza entero — decia "sin commitear, sin
+pushear, sin migrar", y las tres cosas ya pasaron):**
 
-**PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
-ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
+- **Spec 0063 (cambio de plan y cancelacion) esta COMMITEADA, PUSHEADA Y DESPLEGADA A PROD.** Commit
+  `5e4534c` (fase D2), sha en prod al escribir esto: `40c78785…`, deploy `state=success` verificado por
+  `gh api repos/maxhost/check-point/commits/<sha>/status`. Migracion `0030` aplicada a prod y verificada por SQL
+  (columnas, indice unico, datos intactos: 11 negocios, 11 suscripciones, 21 usuarios).
+- **El owner hizo DOS tandas de QA manual en prod.** 21+ casos en verde. Salieron: un bug (`resume` fallaba
+  siempre), una env que faltaba en Vercel (`MERCHANT_PUBLIC_ORIGIN`, YA CORREGIDA y commiteada en `.env.example`),
+  y una inconsistencia de diseño real que el owner cazo usando la pantalla (pagaba Plus hasta una fecha futura pero
+  perdia locales YA).
+- **Esa inconsistencia se resolvio: ADR 0063 aceptado + spec 0064 `cerrada`.** La baja a Free pasa de "programada a
+  fin de periodo" a **INMEDIATA y sin devolucion**; se BORRA la ruta `resume` (con eso el bug desaparece sin
+  arreglarse); el recibo que se muestra es el de la ultima factura pagada; el aviso de "conviene esperar" vive en el
+  modal de la baja. Los detalles y las 3 respuestas literales del owner estan en las secciones de abajo.
+- **NADA DE LA SPEC 0064 ESTA IMPLEMENTADO TODAVIA.** Es la proxima tarea de codigo.
+
+**PROMPT PARA RETOMAR:** «retomamos: implementar la spec 0064 (`docs/specs/0064-baja-inmediata-y-los-datos-del-cobro.md`),
+que esta `cerrada`. Lee la spec entera antes de tocar nada — tiene un DoD que incluye un hook nuevo (el error fantasma
+del validator generado) ademas del codigo de producto».
 
 ## SIGUIENTE: **ADR 0063 ACEPTADO + SPEC 0064 EN BORRADOR** — 4 preguntas abiertas, no se toca codigo
 

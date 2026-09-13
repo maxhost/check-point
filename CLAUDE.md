@@ -297,6 +297,14 @@ mismo archivo). Un baseline podrido no falla ruidoso: la sesion fresca corre la 
 mismatch y concluye **«alguien dejo una mutacion puesta»** — el sintoma exacto que esa auditoria
 existe para descartar, ahora fabricado por el propio doc. **Todo baseline (`shasum`, conteo de
 tests, tamaño) se RE-MIDE en el handoff, no se copia del mensaje anterior.**
+**Y la variante del mismo error del lado del RESUMEN, no del numero: `docs/TASKS.md` acumulo secciones nuevas
+correctas (commiteado, pusheado, migrado a prod, dos rondas de QA) mientras el bloque `ESTADO` del TOPE del
+archivo seguia diciendo «SIN COMMITEAR… no se pusheo… la migracion NO esta aplicada».** Cada sesion agregaba su
+seccion abajo y confiaba en que el header de arriba seguia describiendo la realidad; nadie lo volvio a leer con
+sospecha. Una sesion fresca que solo lee el tope —que es el diseño explicito de este archivo— habria heredado un
+estado falso aunque la verdad completa estuviera mas abajo. **Al hacer handoff, el bloque `ESTADO` de la primera
+pantalla se reescribe entero contra los hechos actuales, nunca se deja "vigente por omision" solo porque nadie
+lo contradijo explicitamente.**
 **Y el corolario de alcance, que costo un numero relatado al owner: al medir tamaños, el conjunto es TODO EL ALCANCE,
 no los archivos NUEVOS.** El orquestador de la D2 reporto «dos archivos en 300 exactas»; **eran tres** — el tercero
 (`billing-store.neon.integration.test.ts`) es un archivo **modificado** que ya estaba en el limite desde antes, y solo
