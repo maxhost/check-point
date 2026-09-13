@@ -21,6 +21,56 @@ aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
 **PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
 ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
 
+## QA DEL OWNER, 2a TANDA (2026-09-13): 21 CASOS OK, **1 BUG REAL (D4)**, 1 INCONSISTENCIA DE DISEÑO (D3) Y 4 HUECOS DE UI (F2)
+
+**VERDES:** A1-A3, B1-B2-B4, C1-C4, D1-D3, E1-E3, F1-F3, G1-G2, H. **`MERCHANT_PUBLIC_ORIGIN` quedo seteada y el
+Checkout anda** (el 503 de la tanda anterior, cerrado). **B5 quedo SIN MARCAR** — hay que preguntarlo.
+
+### B3 — RESPONDIDO CON DATOS, no con una lectura del codigo
+El owner no podia saber si el plan lo escribio el webhook. **Verificado por SQL sobre
+`core.stripe_webhook_event`:** la compra de las 13:11 dejo `checkout.session.completed` (procesado 13:11:43.958) y
+`customer.subscription.created` (procesado 13:11:44.578), y el `last_event_at` de la fila coincide. **El plan lo
+escribio el webhook.** De paso: los `invoice.paid` entran y salen con `ignored_reason='event_type_not_handled'`, que
+es la allow-list funcionando.
+
+### D4 — **BUG REAL EN PROD: «Reanudar suscripcion» falla siempre** («No pudimos confirmarlo con Stripe»)
+Negocio afectado: `A3 Test` (`e9c96528-5f3e-4952-b283-7434ec867b4f`), `sub_1UFDC4A9Vc14QXDyLAy78CsX`, que quedo con
+`pending_plan='free'` y `pending_plan_at=2026-10-13`.
+- **El 503 sale de `app/api/billing/resume/route.ts:81`**, dentro de un `catch { }` que envuelve
+  `subscriptions.update(id, { cancel_at_period_end: false, cancel_at: null })`.
+- **NO HAY EVENTO NUEVO en `stripe_webhook_event` despues de las 13:14**, o sea que la llamada a Stripe **fallo**;
+  no es que haya andado y la UI mintiera.
+- **DEFECTO DE DIAGNOSTICABILIDAD, y es lo primero a arreglar: el `catch` NO registra el error de Stripe.** Descarta
+  el objeto entero, asi que ni los logs del server tienen la causa. Un 503 que esconde su motivo obliga a ir al
+  dashboard de Stripe para algo que el server ya sabia.
+- **HIPOTESIS, NO DIAGNOSTICO (no escribirla como causa sin evidencia):** Stripe podria estar rechazando mandar
+  `cancel_at` y `cancel_at_period_end` en la MISMA llamada. **No esta verificado** — los `.d.ts` de la version
+  instalada no documentan la restriccion y el fake de los tests no la reproduce (seria el caso de «verificar el TIPO
+  no es verificar la API», `CLAUDE.md`). **La evidencia decisiva es el log de Stripe** (Developers → Logs, filtrado
+  por esa `sub_`), que trae el mensaje exacto del error.
+- **`cancel` (D1) SI anda**, y manda solo `cancel_at_period_end: true`. Esa asimetria es lo que hace la hipotesis
+  plausible, pero plausible no es medido.
+
+### D3 — INCONSISTENCIA DE DISEÑO QUE LEVANTO EL OWNER. **ES DECISION SUYA, NO ESTA TOMADA**
+El comportamiento actual es el especificado (por eso el caso esta ✅), pero el owner observa —y tiene razon— que
+**paga Plus hasta el 13 de octubre y sin embargo tiene que archivar locales HOY**. Su propuesta: que la baja sea
+**inmediata**, y que el modal lo diga («bajar de plan es inmediato, perderas las funciones Plus»).
+**Por que esta como esta:** `effectiveLocationLimit = min(plan vigente, plan pendiente)` existe para que no se pueda
+desarchivar hasta 3 y aterrizar en `free` con 3 activos — el estado que la spec entera prohibe
+(`locations/core.ts:84-89`). **El costo de la propuesta, que el owner tiene que decidir:** cancelar ya significa que
+el merchant **pierde el periodo ya pagado**, salvo que se reembolse prorrateado. **NO SE IMPLEMENTA NADA HASTA QUE EL
+OWNER ELIJA.** Sale ADR + cambio de spec: toca Stripe (cancelar ya vs a fin de periodo), la regla del tope y el texto
+del modal. El owner menciono ademas «frenar las campañas de marketing» al bajar: eso es alcance NUEVO, fuera de 0063.
+
+### F2 — CUATRO HUECOS DE UI, y **tres son de la SPEC, no del implementador** (verificado: la spec nunca los pidio)
+1. **No dice «Plus anual» ni «Plus mensual»: muestra «Plan activo».** El intervalo no se presenta en ningun lado.
+2. **El cambio de intervalo NO tiene modal de confirmacion**: se aplica al apretar. La spec no lo pidio, y **cobra
+   inmediato** (`always_invoice`), asi que es plata sin confirmar.
+3. **No se muestra la fecha de proximo pago/renovacion**, ni en mensual ni en anual.
+4. **No hay forma de saber en la app que el cobro de la diferencia se hizo.**
+Los tres primeros son **omisiones de la spec 0063**; el cuarto es una pregunta de producto (¿se muestra el importe
+cobrado? ¿un link al recibo de Stripe?). **Ninguno se implementa sin que el owner lo defina.**
+
 ## QA DEL OWNER EN CURSO — 1o HALLAZGO: FALTA `MERCHANT_PUBLIC_ORIGIN` EN VERCEL (config, no codigo)
 
 **Caso C (downgrade bloqueado) cerrado por el owner: TODO OK.** Es el corazon de la spec — modal en vez de boton
