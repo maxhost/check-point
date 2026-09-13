@@ -10,21 +10,611 @@ cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-09-12.
 
-**ESTADO: las fases A, B, C y D1 de la spec 0063 estan CERRADAS, las cuatro con PASS de revisor independiente y
-commiteadas (la D1 en `8effb1b`). LO QUE SIGUE ES LA FASE D2 — la UI.** Arbol LIMPIO, sin mutaciones y sin sondas.
-**Nada desplegado a prod: no se pusheo y la migracion `0030` NO esta aplicada a prod**, solo a la rama efimera
-`spec-0063-billing`.
+**ESTADO: las fases A, B, C y D1 de la spec 0063 estan CERRADAS con PASS de revisor y commiteadas (la D1 en `8effb1b`).
+LA **SESION A** DEL PLAN DE CIERRE ESTA HECHA: el bloqueante del delta (`structuredClone`) y la promocion de la sonda
+R18 a test real, **los dos verificados por mutacion**, con los **5 GATES VERDES** (127 archivos / 917 tests / 0 failed
+/ 0 skipped). ARBOL LIMPIO Y **SIN COMMITEAR** — el commit de checkpoint espera el OK del owner. Quedan la SESION B
+(revision acotada + los 3 menores) y la SESION C (migracion a prod + push + QA).** Arbol **sin mutaciones**
+(`grep -rn MUTATION apps/merchant/src` vacio). **Nada desplegado a prod: no se pusheo y la migracion `0030` NO esta
+aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
 
-**PROMPT PARA RETOMAR:** «retomamos: despacha la fase D2 de la spec 0063 (UI + D8 + D10 + render del HTML) a un
-implementador».
+**PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
+ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
+
+## ⛔ EL BUCLE DEL ORACULO DE FUGA SE CORTA — DECISION PEDIDA AL OWNER EL 2026-09-12
+
+**El owner freno la sesion y pregunto, textual: «se supone que armaste una feature que permite hacer upgrade o
+downgrade de un plan y estas implementando UI. Porque tenes tantos problemas para esto?».** La pregunta es correcta y
+el diagnostico es este:
+
+**LA FEATURE ESTA HECHA.** Upgrade = Checkout de Stripe; downgrade = `decidePlanChange` + modal + 409 del servidor.
+Fases A, B, C y D1 **commiteadas con PASS**; el codigo de la D2 escrito y funcionando.
+
+**LO QUE CONSUMIO LAS ULTIMAS HORAS ES UN SOLO TEST:** el que prueba que la pagina no filtra
+`stripe_customer_id`/`stripe_subscription_id` al navegador. Van **SEIS vueltas** de oraculo, cada una cazada por un
+revisor plantando una fuga mas exotica que la anterior (un `Proxy` que devuelve el secreto en la 1a lectura; un
+string en base64 como `type` del elemento). **Y hay una SEPTIMA ya empezada:** el revisor cortado dejo plantada una
+fuga en `notice` gateada a `params.done === "cancel"` — un TERCER estado que el oraculo no cubre.
+
+**EL DEFECTO DE PROCESO, Y ES DEL ORQUESTADOR, NO DE LOS REVISORES:** `CLAUDE.md` exige que toda afirmacion tenga
+oraculo probado por mutacion, pero **«esto no filtra nada por ningun canal» es una afirmacion UNIVERSAL: no existe un
+conjunto finito de mutaciones que la demuestre.** Siempre hay un canal mas. **El bucle no tiene condicion de corte y
+el orquestador nunca se la puso** — los revisores hicieron exactamente lo encargado. El riesgo REAL se cerro en la
+primera vuelta (el DTO omite las claves + el test de que el HTML no las contiene); todo lo posterior exige que
+alguien escriba a proposito `key={row.stripeCustomerId}`.
+
+**EL OWNER LO APROBO** (2026-09-12, textual: «si, cortamos el bucle y vamos con session C para poder acabar de
+cerrar esto»). **HECHO:** (1) el limite quedo **DECLARADO** en el ADR 0062 (§Limite declarado) y en el docblock del
+propio test —que cierra todo error PLAUSIBLE y NO la afirmacion universal—; (4) la regla bajo a `CLAUDE.md`: **una
+propiedad universal se cierra con un oraculo acotado MAS un limite declarado**, con la señal de alarma explicita
+(«si dos rondas seguidas terminan en *el fix abrio la preimagen siguiente*, el bucle no termina solo»). Quedan (2) el
+commit y (3) la sesion C.
+
+**ATENCION AL ORDEN DE DESPLIEGUE (esta escrito en la spec y ya fue un bloqueante): SE MIGRA PRIMERO Y SE PUSHEA
+DESPUES.** Al reves, `planLocationLimit` pide una columna que no existe y **los 11 negocios de prod pierden el modulo
+Locales**.
+
+**Y LO QUE EL OWNER TIENE QUE SABER AL DECIDIR:** esto se commitea y se despliega **SIN el PASS** que el plan pedia.
+Los cambios de las sesiones A, B-bis y B-ter **tienen sus mutaciones ejecutadas en rojo** una por una, pero **ningun
+revisor independiente firmo el delta completo** — la ultima revision quedo cortada a mitad. Lo que si esta cerrado
+con PASS son las fases A, B, C y D1, ya commiteadas.
+
+### 15a MUERTE (3a del ciclo B), 2026-09-12 — arbol restaurado y VERIFICADO
+
+El revisor de la B-ter murio con **R-A puesta** en `page.tsx` (`??`). `ListAgents` → no estaba vivo. La mutacion,
+**etiquetada y atribuida**. **`diff` contra `/tmp/b-ter-clean/page.tsx` ANTES de restaurar:** mostro exactamente sus
+dos hunks (el `notice` gateado al `?done=cancel` y el `stripeCustomerId` agregado al estado) y nada mas. Restaurado
+por `cp`: `diff` = 0, `shasum` `a9381ca449be4845c6e6daff5115084c8ea0b3dc`, `grep MUTATION` = **0**. Los otros 4
+shasums del baseline, identicos. **Su bitacora quedo en `/tmp/revision-b-ter.md` y su veredicto NO existe.**
+
+## SESION B-ter — DELTA ESCRITO, 5 GATES VERDES, RE-REVISION ACOTADA (CORTADA POR EL OWNER)
+
+Bitacora `/tmp/sesion-b-ter.md`; encargo `docs/encargo-sesion-b-ter.md`; bitacora del revisor
+`/tmp/revision-b-ter.md`. **Cierra el bloqueante (6a preimagen) y los menores, cada uno con su mutacion EJECUTADA:**
+
+- **El oraculo de props pasa a un HELPER, `expectCrossesExactly` (`billing-pages-support.ts`), y se corre COMPLETO
+  en CADA estado.** Hace las cuatro: `type`, `key`, UNA lectura (`structuredClone`) y `toEqual` de TODAS las props.
+  **El helper no es estilo: es lo que hace que repetir el conjunto entero salga MAS BARATO que recortarlo** — y el
+  recorte («no entra en el archivo») fue exactamente la 6a preimagen.
+- **DOS `it` separados, y la razon esta MEDIDA:** adentro del mismo `it` el primer rojo corta y el 2o estado **no se
+  evalua** (la fuga del `key` solo exhibia el secreto del primero). **Y los dos estados ahora se siembran con
+  `custId`/`subId` REALES**: sin eso, lo mejor que podia exhibir una fuga del `key` en el estado bloqueado era el
+  string `"null"`.
+- **Mutaciones, con la asercion leida y el `it` en que cae:** fuga en `notice` gateada al bloqueado → ROJO **solo en
+  el `it` nuevo** (`- "notice": null` / `+ "notice": "cus_secret_SIXTH_S1"`); fuga en `downgradeBlock.message`
+  conservando el «2» → ROJO; `<main>` envolviendo la consola → ROJO `expected 'main' to be [Function
+  SubscriptionConsole]`; fuga del `key` → **ROJO 2, uno por `it`**, con **dos secretos reales distintos**
+  (`cus_props_27bf91c1` y `cus_bloq_27bf91c1`).
+- **Menor 3 cerrado:** 4o caso del test de foco — con una tecla que no es Tab el handler sale ANTES del
+  `querySelectorAll`, asi que se asevera `seen` **vacio**. Borrar el guard → ROJO 1/4, solo ese caso.
+- **Docs:** ADR 0062 (6 vueltas; requisito 4 reescrito; **se corrige a si mismo por 2a vez** — la version anterior
+  declaraba aplicado un requisito que no lo estaba y citaba una asercion inflada), INDEX, items 8 y 12 de la spec y
+  el docblock de `page.tsx`. **Y el §Hallazgos punto 2 de la spec, que era un LIMITE FALSO** («queda sin oraculo que
+  apretar el boton ABRA el modal»): `billing-click-probe.test.ts` lo pinnea y muerde, y **el item 11 del MISMO
+  archivo ya lo afirmaba** — la spec se contradecia consigo misma.
+
+**5 GATES VERDES:** `test` con integracion **127 archivos / 921 tests / 0 failed / 0 skipped** (+2) · `typecheck
+--force` 3/3 `0 cached` · `lint` · `format:check` · `build --force` 3/3 `0 cached`. Tamaños AL HOOK sobre todo el
+alcance, control `onboarding` EXIT=2: todos EXIT=0.
+
+**CASI-ACCIDENTE QUE VALE LA REGLA: al separar los `it` el archivo quedo en 301 lineas, VIOLANDO el limite — y el
+hook `file-size` NO disparo porque es PostToolUse y las ediciones fueron por script.** Lo cazo la medicion manual.
+Se recupero hoisteando el literal del DTO (duplicado en los dos `it`) a un `const` del `describe`: **296 lineas,
+preguntado AL HOOK**. Siguen en 300 exactas `billing-offers.test.ts` y `billing-store.neon…`.
+
+**NUEVO BASELINE (copias en `/tmp/b-ter-clean/`):** `page.tsx` `a9381ca4` · `confirm-dialog.tsx` `2add27d4` ·
+`confirm-dialog-focus.test.ts` `50f304c8` · `billing-pages.neon…` `11bf7648` · `billing-pages-support.ts`
+`d690a0b0`. **SI ESTA SESION SE CAE:** `ListAgents`, `grep -rn MUTATION apps/merchant/src`, comparar esos 5 shasums
+y leer las bitacoras.
+
+## VEREDICTO DE LA RE-REVISION DE LA B-bis: **FAIL** — 1 bloqueante + 4 menores. SIGUE SIN HABER PASS ⇒ NO SE COMMITEA
+
+Bitacora en `/tmp/revision-b-bis.md` (202 lineas). **13 mutaciones, OCHO fuera de toda tabla** (pedia 2). Los 5
+numeros de los gates **reproducen exactos** (127/919/0/0, `typecheck --force` 3/3 `0 cached`, `build --force` 3/3).
+**Higiene verificada por el ORQUESTADOR al recibir:** `grep MUTATION` = 0, sin `zz-*`, los 4 shasums == baseline
+(`d2cf8bdc` / `2add27d4` / `ccb82ac5` / `648468e2`), `git status --short` con las mismas 23 entradas.
+
+**BLOQUEANTE — LA SEXTA PREIMAGEN ES DEL DELTA MISMO: el 2o estado NO es oraculo de VALOR.** El requisito 4 que el
+ADR 0062 estrena dice «el conjunto se repite en CADA ESTADO». **No esta aplicado**: el 2o estado asevera `key` y
+`downgradeBlock`, nada mas — **verificado por el orquestador leyendo el archivo**, son 8 lineas. Dos mutaciones, las
+dos **VERDES 44/44**:
+- **S1:** un secreto en **otra prop** (`notice`), **gateado al estado bloqueado** — nulo en el estado 1, asi que pasa
+  el `toEqual` entero, y el 2o no lo mira. **Y ademas se IMPRIME en el HTML** (`<p class="toast success">…`), asi que
+  cruzaba por los dos caminos con la suite en verde.
+- **S2:** el secreto **dentro de `downgradeBlock.message`**, conservando el «2» que `expect.stringContaining("2")`
+  exige. **Es la misma prop que el item m1 declaro cerrada:** la mutacion anterior mordia por la CLAVE de mas, esta
+  demuestra que **el VALOR nunca estuvo pinneado**. Y no llega al HTML (el modal esta cerrado en la carga): invisible
+  para todo.
+
+**Es FUGA, no limite** (sonda Q3: un string plano en una prop permitida viaja por el wire).
+
+**CONSECUENCIA DOCUMENTAL, Y ES LO MAS GRAVE: el ADR 0062 («los cuatro puntos estan APLICADOS al arbol y con su
+mutacion en ROJO ejecutada»), la fila de `docs/INDEX.md` y el item 8 de la spec AFIRMAN MAS DE LO QUE EL ARBOL
+SOSTIENE.** Lo escribio el orquestador en la B-bis, en el mismo commit en que estrenaba el requisito 4. **Septima vez
+de esta familia en esta spec, y la primera cometida DENTRO del documento que existe para prohibirla.**
+
+**MENORES:**
+1. **El seed del 2o estado no tiene NINGUNA clave interna**, asi que ni el `key` ni `downgradeBlock` pueden exhibir un
+   secreto real: lo mejor que dan es el string `"null"` (React coacciona: `key = '' + config.key`). **Respuesta
+   explicita del revisor a la pregunta del encargo: SI, ese estado necesita un secreto sembrado
+   (`custId(…)`/`subId(…)`) para ser un oraculo honesto.**
+2. **Transcripcion inflada:** el ADR y el INDEX citan `expected 'cus_secret_ZZ9' to be null` «en los DOS estados»;
+   en el 2o la asercion real es `expected 'null' to be null`. Se lee como mas de lo que hubo.
+3. **El guard `event.key !== "Tab"` no tiene oraculo NI declaracion** (S3 → VERDE 32/32 al borrarlo). La lista «lo
+   que este test NO mira» solo nombra el `useEffect`. Impacto bajo hoy: el modal no tiene inputs.
+4. **`element.type`: LIMITE CON SALVEDAD, no fuga** — y el criterio esta medido, no razonado. El canal existe
+   (`createElement(base64(secreto))` sale al wire con `key` null y clon limpio), pero en ESTA pagina no es explotable
+   en silencio: S6 da 13 rojos. **La salvedad: ningun rojo nombra la propiedad** (hablan del `structuredClone` o del
+   markup). El ADR *nombra* `type` y cierra dos de sus tres partes. Cerrarlo es 1 linea, o declararlo.
+
+**LO QUE EL DELTA HIZO BIEN, verificado y no asumido:** **m2 es la unica pieza exacta sin resto** (S5 → ROJO con el
+camino literal `props.offers.leak: [object Map]`, y las sondas confirman la justificacion palabra por palabra); el
+item 12 cita sus tres aserciones **literalmente correctas**; y **S4 (`first`/`last` invertidos → ROJO 2/32) prueba que
+el test de foco ya no es tautologico**. Las 5 re-ejecuciones (B1 en los dos estados, m1, m4, m5, R18) reproducen,
+cada una roja en UN test distinto.
+
+**HALLAZGO FUERA DE ALCANCE (es de la D2, y es un LIMITE FALSO):** el §Hallazgos punto 2 de la spec 0063 dice «queda
+sin oraculo que apretar el boton ABRA el modal (`setConfirming(true)`, una linea)». **Es falso: hay un test que lo
+pinnea y MUERDE** (ROJO 1/29, `expected false to be true`), y **el item 11 del MISMO documento lo afirma** — la spec
+se contradice consigo misma. Residual viejo que una fase posterior ya saldo.
+
+**SIGUE: sesion B-ter.** El fix del bloqueante **no cabe** en `billing-pages.neon…` (**299/300 medido al hook**), asi
+que el corte se decide ANTES: la salida barata es un helper en `billing-pages-support.ts` (**114 lineas, margen de
+sobra**) que reciba el elemento y el objeto esperado y haga las tres cosas (lectura unica, `key`, `toEqual` completo),
+llamado desde los DOS estados — cierra el requisito 4 y BAJA lineas del test en vez de subirlas.
+
+### 14a MUERTE (2a de la B-bis), 2026-09-12 — arbol SANO, y la re-revision YA ENCONTRO DOS FUGAS DEL DELTA
+
+**El revisor murio con S4 puesta** en `confirm-dialog.tsx` (` M`). **Restauracion del orquestador, con comandos:**
+`ListAgents` PRIMERO (no estaba vivo) → `grep MUTATION` = 1 linea **etiquetada y atribuida** → **`diff` contra
+`/tmp/rev-bbis-clean/` ANTES del `cp`** (mostro exactamente `first`/`last` invertidos, nada del trabajo no
+commiteado) → `diff` = 0, `shasum` `2add27d4…`, `grep MUTATION` = 0. Los otros 3 shasums, identicos.
+**Se perdieron las mediciones de S3 y S4** (filas abiertas, sin resultado): se rehacen. Revisor RETOMADO por
+`SendMessage`, contexto intacto. **SIN VEREDICTO TODAVIA.**
+
+**LO QUE YA MIDIO, Y ES CONTRA EL DELTA DEL ORQUESTADOR (bitacora `/tmp/revision-b-bis.md`):**
+- **Las 5 re-ejecuciones REPRODUCEN** (B1 en los dos estados, m1, m4, m5, R18), cada una roja en UN test distinto,
+  con la asercion leida. Y los 5 numeros de los gates reproducen exactos (127/919, 3/3, `0 cached`).
+- **S1 — SEXTA PREIMAGEN, y es del delta de la sesion B-bis: el 2o estado NO repite el conjunto de aserciones**,
+  solo mira `downgradeBlock`. Un secreto en `notice` **gateado al estado bloqueado** (nulo en el estado 1, asi que
+  pasa el `toEqual` entero) deja **44/44 VERDE** — y la sonda Q3 midio que un string plano en una prop permitida
+  viaja por el wire. **Peor: tambien se IMPRIME en el HTML** (`<p class="toast success">cus_secret_SIXTH_S1</p>`) y
+  la suite seguia verde. Fix **intentado, no declarado**: una linea, `expect(html).not.toContain("cus_")` en ese
+  test → rojo con la fuga, verde 6/6 limpio.
+- **S2 — `message` quedo pinneado con `expect.stringContaining("2")`, que NO es valor exacto:** un secreto adentro
+  del `message` conservando el «2» deja **44/44 VERDE**, y esa fuga **no llega al HTML** (el modal esta cerrado en
+  la carga), asi que tampoco la ve el test del markup. **Es la misma prop que el item m1 declaro cerrada: V2 mordio
+  por la CLAVE de mas, S2 demuestra que el VALOR sigue abierto.** El orquestador habia marcado ese matiz en el
+  encargo y el revisor lo cerro con mutacion en vez de con lectura.
+- **Q1 — `element.type` es un canal del wire que el oraculo no mira** (un `type` en base64 sale al wire y el test
+  del HTML tampoco lo ve). Pendiente de que el revisor lo clasifique fuga vs limite.
+- **Limites MEDIDOS (no declarados):** `_debugStack` (el wire emite los frames del `createElement`, no el `Error`
+  inyectado) y `ref` (React 19 lo pasa como prop, pero **Flight lo rechaza**: «Refs cannot be used in Server
+  Components»).
+
+## SESION B-bis — DELTA DE CORRECCION ESCRITO, 5 GATES VERDES, RE-REVISION ACOTADA EN CURSO
+
+Bitacora en `/tmp/sesion-b-bis.md`; encargo del revisor en `docs/encargo-sesion-b-bis.md` (bitacora suya en
+`/tmp/revision-b-bis.md`). **Cierra los 6 items del FAIL de la sesion B, cada uno con su mutacion EJECUTADA:**
+
+- **B1, el bloqueante — el canal `element.key`:** `expect(element.key).toBeNull()` en los DOS estados. Mutacion
+  → **ROJO 2/6**, `expected 'cus_secret_ZZ9' to be null`, **y el test del HTML queda VERDE** — que es exactamente
+  por que la quinta preimagen era invisible: un `key` no se renderiza.
+- **m1 — el `toEqual` pinneaba UN SOLO ESTADO:** se agrega el 2o (`downgradeBlock` NO nulo) en «con 2 locales
+  activos…». Mutacion → **ROJO**, `+ "customer": null`. **Matiz que se le paso al revisor para que lo audite: el
+  seed de ese test no tiene `stripeCustomerId`, asi que la fuga medida fue un `null` — el `toEqual` mordio por la
+  CLAVE de mas, no por el valor.**
+- **m2 —** el comentario de `nonPlainPaths` decia que caza instancias y el `structuredClone` se lo llevo (el clon
+  aplana el prototipo). Reescrito, y el limite queda MEDIDO: Flight **rechaza** instancias y `Object.create(null)`.
+- **m3 —** `page.tsx` y el item 8 de la spec describian el oraculo de la TERCERA vuelta. Corregidos.
+- **m4 y m5 — el test de foco era TAUTOLOGICO y cubria un tercio.** Reescrito a **3 casos** con
+  `tabDesde(activo, shiftKey)`. **Cada mutacion pone rojo un test DISTINTO:** selector ⇒ test 1; sacar
+  `activeElement === last` ⇒ test 2 (`expected "vi.fn()" to not be called at all`); borrar la rama del shift+Tab
+  ⇒ test 3 (`to be called 1 times, but got 0 times`).
+- **ADR 0062 reescrito** (5 vueltas, 4 requisitos) + fila de `docs/INDEX.md` + el docblock de `confirm-dialog.tsx`.
+  **El ADR ahora se corrige a si mismo:** su 1a version afirmaba en absoluto que contra un `toEqual` del objeto
+  entero no pasa nada, **sin nombrar SOBRE QUE lo cerraba**, y esa omision fue por donde entro la 5a preimagen.
+
+**5 GATES VERDES sobre los bytes finales:** `test` con integracion **127 archivos / 919 tests / 0 failed / 0
+skipped** (+2 tests, los dos casos nuevos del foco) · `typecheck --force` 3/3 `0 cached` · `lint` · `format:check` ·
+`build --force` 3/3 `0 cached`. **`typecheck` cazo un error real de esta tanda** (`TS2339: Property 'key' does not
+exist` — el cast del elemento no lo tenia): vitest no typechequea, asi que las mutaciones corrieron igual y el gate
+fue lo unico que lo vio. Tamaños al hook sobre ` M` + `??`: todos `EXIT=0`, control `onboarding` `EXIT=2`.
+**TRES al filo: `billing-pages.neon…` 299, `billing-offers` 300, `billing-store` 300.**
+
+**NUEVO BASELINE (copias limpias en `/tmp/b-bis-clean/`):** `page.tsx` `d2cf8bdc` · `confirm-dialog.tsx` `2add27d4`
+· `billing-pages.neon…` `ccb82ac5` · `confirm-dialog-focus.test.ts` `648468e2`. **SI ESTA SESION SE CAE:**
+`grep -rn MUTATION apps/merchant/src`, comparar esos 4 shasums y leer las dos bitacoras.
+
+## VEREDICTO DE LA SESION B: **FAIL DE BAJA SEVERIDAD** — 1 bloqueante + 5 menores. NO HAY PASS ⇒ NO SE COMMITEA
+
+Bitacora del revisor en `/tmp/revision-sesion-b.md` (147 lineas). **Los DOS cambios de la sesion A son correctos y
+MUERDEN** (E4, E5 y R18 re-ejecutadas por el revisor, las tres ROJAS con la asercion leida). El FAIL no dice «el
+trabajo esta mal»: dice que **la afirmacion de cierre esta sobredimensionada** y que hay un canal MEDIDO que el
+oraculo no ve. **9 mutaciones, 4 de ellas VERDES — y las 4 estaban FUERA de toda tabla**, que es donde esta el valor
+en esta spec desde la fase B.
+
+**Higiene verificada por el ORQUESTADOR al recibir (no relatada):** `grep MUTATION` = 0, sin `zz-*`, los **6 shasums
+== baseline**, `git status --short` identico al de apertura, disco 39 GB.
+
+**B1 — BLOQUEANTE: HAY QUINTA PREIMAGEN DE LA FUGA, Y ES EL `key` DEL ELEMENTO.** El oraculo lee `element.props`;
+**Flight serializa el ELEMENTO** (`type`, `key`, `props`). **Re-corri la sonda del revisor yo mismo** (`node
+--conditions=react-server /tmp/flight-probe3.cjs`) y reproduce exacto: con `createElement("div",{key:secret,...})`,
+`element.props` = `{"plan":"plus"}` y **`element.key` = `"cus_secret_ZZ9"`**, que **no esta en props ni en su
+`structuredClone`** — y el wire sale `0:["$","div","cus_secret_ZZ9",{"plan":"plus"},…]`, o sea **`sendsSecret=true`**.
+La mutacion N1 (`key={row.stripeCustomerId}`) deja **VERDE 15/15**, incluido el test del HTML que asevera
+`not.toContain("cus_")`. **Es FUGA, no limite.** El ADR 0062 y el docblock del test afirman «contra un `toEqual` del
+objeto entero no hay clave de mas, valor de mas ni transformacion que pase»: **cierto para las props, falso para el
+elemento.** **Fix INTENTADO Y MEDIDO por el revisor (no declarado): `expect(element.key).toBeNull()`** → limpio
+VERDE 6/6, con N1 ROJO `expected 'cus_props_da6aaa75' to be null`.
+
+**LOS 5 MENORES** (el revisor encontro 5; **el detalle de los 3 del revisor del delta NO es recuperable** y lo dijo
+explicitamente en vez de inventar tres — los menores que sobreviven en `/tmp` son de la ronda anterior y estan
+cerrados):
+1. **El `toEqual` pinnea UN SOLO ESTADO.** N2 → VERDE 44/44 con la fuga dentro de `downgradeBlock`, que en el estado
+   sembrado es `null`. No esta declarado en ningun lado.
+2. **`billing-pages.neon…:167-169` afirma que `nonPlainPaths` caza «instancia» y YA NO LO HACE** — lo perdio el
+   propio `structuredClone` de la sesion A (**verificado por mi con la sonda P3: el clon pasa de prototipo `Leak` a
+   `Object.prototype`**). NO es fuga (Flight rechaza instancias: «Only plain objects…»), es un **docblock que afirma
+   un invariante que el codigo dejo de tener**. Es la familia que esta spec ya pago cuatro veces.
+3. **`page.tsx:37-43` y el item 8 de la spec siguen describiendo el oraculo de la TERCERA vuelta** (allow-list de 8
+   claves + valores planos), que el ADR 0062 declara insuficiente. La sesion A corrigio el docblock de
+   `confirm-dialog` y el item 12, **y se dejo estos dos**.
+4. **El test de foco NO pinnea «desde el ULTIMO focusable», que es lo que dice su titulo.** N4 → VERDE 32/32 sacando
+   `document.activeElement === last`; con esa mutacion **ningun Tab hacia adelante funciona** en el modal. Causa
+   medida: el stub `get activeElement(){ return seen.at(-1) }` es **tautologico**.
+5. **La mitad hacia atras (shift+Tab) no tiene oraculo ni declaracion.** N3 → VERDE 32/32 borrando la rama entera.
+   El item 12 de la spec y este archivo dicen «la trampa de foco TIENE ORACULO»: **es mas de lo que hay** — o sea
+   que la correccion del limite falso que hizo la sesion A **quedo sobredimensionada al reves**. El docblock del
+   componente se salva porque habla del SELECTOR.
+
+**SIGUE: ronda de correccion (sesion B-bis)** — cerrar B1 con el fix medido, y los 5 menores (los 1 y 5 exigen
+INTENTAR antes de declarar limite, que es justo el error que se esta corrigiendo). Despues, revision acotada a esos
+cambios. **El commit sigue bloqueado por decision del owner hasta que haya PASS.**
+
+### HALLAZGO DE HARNESS (no de codigo): `tasks-fresh.sh` BLOQUEA EN BUCLE mientras corre un subagente que muta
+
+**Sintoma medido esta sesion: tres turnos seguidos bloqueados por el mismo hook**, cada uno nombrando el archivo
+que el revisor acababa de tocar (`confirm-dialog.tsx`, despues `page.tsx` dos veces).
+
+**Mecanismo, leido en el hook y no supuesto** (`.claude/hooks/tasks-fresh.sh`): toma lo que `git status --porcelain`
+reporta como cambiado bajo `apps/*/src` y compara **mtime contra `docs/TASKS.md`** (`[ "$entry" -nt docs/TASKS.md ]`).
+Un revisor vivo **muta y restaura** el mismo archivo muchas veces, y **cada `cp` le bumpea el mtime**: por
+construccion el codigo queda siempre mas nuevo que `TASKS.md`, y el hook bloquea aunque `TASKS.md` se acabe de
+actualizar. **No distingue «el orquestador toco codigo y no actualizo el estado» de «hay un subagente midiendo».**
+
+**No se toca el hook con una revision en curso** — un guard no se afloja en caliente, y `CLAUDE.md` exige probar que
+un hook MUERDE contra un estado que debe bloquear. **Queda como tarea, con la forma del fix ya pensada:** el hook ya
+resolvio un falso positivo parecido (un `git checkout` bumpeaba el mtime de archivos intactos; se arreglo mirando
+`git status` en vez del mtime de todo `src`). Aca el archivo **si** esta cambiado, asi que el discriminante no puede
+ser ese: lo honesto es que el hook **ignore los archivos que tienen una `MUTATION` etiquetada puesta** (son
+transitorios por definicion, y `no-mutations-left.sh` ya los cubre) o que compare contra el mtime del archivo
+**sin** contar las restauraciones. **Al implementarlo: correrlo contra un estado que DEBE bloquear y verificar el
+`exit 2` Y el mensaje** — un `exit 0` puede significar «paso» o «nunca miro nada», y desde afuera son iguales.
+
+### ⚠ HAY UN REVISOR VIVO MUTANDO — NO REVIENTES SUS MUTACIONES
+
+**Si `no-mutations-left.sh` te marca una `MUTATION`, PARA.** El revisor de la sesion B esta corriendo (`ListAgents`
+→ `running`) y su encargo es, justamente, mutar estos archivos. Cortarle una mutacion a un agente vivo lo hace
+transcribir un resultado falso, que es peor que el rojo que el hook previene.
+
+**EL ORDEN, SIEMPRE:** (1) **`ListAgents`** — si el subagente figura como `running`, la mutacion puede estar VIVA y
+**no se toca**; (2) **re-leer el archivo** (`grep MUTATION` + `shasum`), porque puede estar **ya revertida**;
+(3) **solo si el agente esta muerto Y la mutacion sigue puesta**, restaurar. Las dos respuestas posibles —viva, o ya
+revertida— prohiben tocarla, y ninguna se sabe sin mirar.
+
+**Y OJO CON EL TERCER HOOK, `verify.sh`, QUE ES EL MAS PELIGROSO DE LOS TRES: bajo una mutacion viva los TESTS DAN
+ROJO, y el hook te dice «Arreglalo».** Paso a las 21:18 con **S4** puesta (`first`/`last` invertidos): 2 rojos en
+`confirm-dialog-focus.test.ts` — que es **exactamente lo que S4 existe para medir**. El «arreglo» obvio seria tocar
+el test para que pase, o sea **destruir el oraculo para tapar una medicion en curso**; el propio hook lo prohibe en
+su ultima linea («No edites ni borres tests para que pasen»). **Un gate rojo bajo una mutacion viva NO SE ARREGLA:
+SE ESPERA.** El discriminante es el mismo de siempre: `ListAgents` + `grep MUTATION` + `shasum`. Con el subagente
+`running` y el hash distinto del baseline, ese rojo **no habla del producto**.
+**Y la variante que salio dos minutos despues: `verify.sh` puede pegarle al TYPECHECK, no solo a los tests.** Con
+**S5** puesta (un `Map` anidado en `offers`) tiro `TS2353: 'leak' does not exist in type 'SubscriptionOffers'` —
+un error que **describe la mutacion con precision** y por eso se lee como un bug real de tipos. Mismo discriminante,
+misma conducta: esperar.
+
+**YA PASO CUATRO VECES EN ESTA SESION, y en NINGUNA correspondia tocar nada:**
+- **20:30 — `confirm-dialog.tsx:86` (N4):** el hook la reportaba y el arbol ya estaba **LIMPIO** (`grep` = 0,
+  `shasum` = `553dec19…`). Foto vieja.
+- **20:32 — `page.tsx:73` (N5):** **VIVA**, con el subagente `running`. Etiquetada (`MUTATION`) y **atribuida**
+  («revisor sesion B, spec 0063») — que es lo unico que hay que verificar antes de dejarla en paz.
+- **20:35 — `page.tsx:71` + `:166` (N1-bis) y `billing-pages.neon…:157` (sonda S-FIX-1):** al mirar, **los TRES
+  archivos limpios** y los tres `shasum` == baseline. **El revisor las habia revertido el solo.** Foto vieja otra vez.
+- **21:18 — `confirm-dialog.tsx:86` (S4, revisor de la B-bis): VIVA**, subagente `running`, hash `0fd0638b…` ≠
+  baseline `2add27d4…`. Y esta vez **ademas disparo `verify.sh` con 2 tests rojos** (ver el parrafo de arriba).
+**Dos de tres eran fotos viejas: el reflejo de «restaurar apenas el hook reclama» habria pisado trabajo ajeno las
+dos veces**, y la tercera habria cortado una medicion viva.
+
+**COMANDOS EXACTOS DE RESTAURACION (no reconstruyas nada a mano), para cuando el revisor TERMINE:**
+
+```sh
+cd /Users/maxi/claude-workspace/check-point
+# el diff ANTES del cp no es opcional: tiene que mostrar SOLO la mutacion
+diff /tmp/rev-b-clean/page.tsx           apps/merchant/src/app/backoffice/subscription/page.tsx
+cp   /tmp/rev-b-clean/page.tsx           apps/merchant/src/app/backoffice/subscription/page.tsx
+shasum apps/merchant/src/app/backoffice/subscription/page.tsx        # DEBE dar 963efe9ce5e80a627c22cc634ff487a9b9439cd7
+
+diff /tmp/rev-b-clean/confirm-dialog.tsx apps/merchant/src/app/components/confirm-dialog.tsx
+cp   /tmp/rev-b-clean/confirm-dialog.tsx apps/merchant/src/app/components/confirm-dialog.tsx
+shasum apps/merchant/src/app/components/confirm-dialog.tsx           # DEBE dar 553dec1982e8bd6e5419fe3bbc34a03154dfe3c0
+
+# OJO: el baseline de `confirm-dialog.tsx` CAMBIO con la sesion B-bis. El limpio de HOY es
+#   2add27d40e400b21f168e7e86a907805ccddda36  (copia en /tmp/rev-bbis-clean/ y /tmp/b-bis-clean/)
+# y el `553dec19…` de mas arriba es el de la sesion A, ANTERIOR al delta. Restaurar con el viejo
+# revierte en silencio el trabajo de la B-bis: usá /tmp/rev-bbis-clean/.
+
+# el revisor tambien sondea el TEST de props (`??`, asi que `git checkout` tampoco sirve aca)
+diff /tmp/rev-b-clean/billing-pages.neon.integration.test.ts apps/merchant/src/server/billing-pages.neon.integration.test.ts
+cp   /tmp/rev-b-clean/billing-pages.neon.integration.test.ts apps/merchant/src/server/billing-pages.neon.integration.test.ts
+shasum apps/merchant/src/server/billing-pages.neon.integration.test.ts   # DEBE dar abc751a0f0c96bfdaf0188b9f9f7128e8d7a12e8
+```
+
+**Por que el `diff` primero, y por que son DOS peligros distintos:**
+- `page.tsx` es **`??` (untracked): `git checkout` sobre el NO HACE NADA** — no hay blob. La copia en `/tmp` es el
+  UNICO punto de retorno que existe.
+- `confirm-dialog.tsx` es **` M` (tracked y modificado): ahi `git checkout` SI hace algo, y es lo peor** — se
+  llevaria tambien el docblock corregido de la sesion A, y se veria como si hubiera funcionado.
+
+**TRAMPA CON LAS COPIAS LIMPIAS:** hay dos carpetas. Las de `page.tsx` son identicas (`963efe9c…` las dos), pero
+**la `confirm-dialog.tsx` de `/tmp/sesion-a-limpio/` es `206dc246…`, ANTERIOR al docblock corregido**. Para
+restaurar ese archivo usá **siempre** la de `/tmp/rev-b-clean/` (`553dec19…`).
+
+### 13a MUERTE DE LA SPEC (1a de la SESION B), 2026-09-12. El arbol quedo SANO y la bitacora a disco lo salvo
+
+**El revisor de la sesion B murio con la mutacion N4 PUESTA** en `app/components/confirm-dialog.tsx` (un archivo
+` M`, el caso peor: ahi `git checkout` SI hace algo y se lleva tambien el trabajo no commiteado). **Auditoria y
+restauracion del orquestador, con comandos, no relatada:**
+- **`ListAgents` PRIMERO** (la regla de `CLAUDE.md`: el reclamo del hook es una foto vieja y «viva» vs «abandonada»
+  no se sabe sin mirar): el subagente **NO estaba vivo**. No se corto ninguna medicion en curso.
+- `grep -rn MUTATION apps/merchant/src` → 1 linea, **etiquetada y atribuida** (`MUTATION N4 (revisor sesion B…)`).
+  La convencion de etiquetar es lo unico que separo «mutacion abandonada» de «bug real del producto».
+- **`diff` contra la copia limpia ANTES de restaurar:** mostro **exactamente** la mutacion (1 linea + 2 de
+  comentario) y nada mas. Recien ahi el `cp`. Post: `diff` = 0, `shasum` `553dec19…`, `grep MUTATION` = 0.
+- **LO QUE SE PERDIO NO ES EL ARBOL, ES LA MEDICION:** la fila de N4 estaba abierta (bien) pero **sin resultado**,
+  asi que N4 hay que **rehacerla**. Es exactamente el modo de falla que `CLAUDE.md` ya documenta: el hook te salva
+  el arbol, no la medicion.
+
+### SESION A — HECHA (2026-09-12). Bitacora en `/tmp/sesion-a-0063.md`; copias limpias en `/tmp/sesion-a-limpio/`
+
+**Auditoria al entrar, con comandos:** `grep MUTATION` vacio, sin sondas `zz-*`, los hashes del baseline identicos,
+41 GB libres en disco, Node `v24.20.0`. Sobrevivieron `/tmp/barrido-d2.md`, `/tmp/revision-delta-d2.md`,
+`/tmp/zz-focus-probe.test.ts` y `/tmp/fix-d2-base/`.
+
+**(1) BLOQUEANTE CERRADO — `structuredClone` en el test de props** (`billing-pages.neon.integration.test.ts`, 273 →
+281 lineas, hook `EXIT=0`). `const props = structuredClone(element.props)` es la UNICA lectura y las 3 aserciones
+leen el clon. **Re-ejecutadas las dos preimagenes, no heredadas del revisor:**
+- **E4** (getter con estado en `offers.downgrade.endpoint`, 1a lectura → el secreto) → **ROJO**, y la asercion habla
+  de la propiedad: `- "endpoint": "/api/billing/cancel"` / `+ "endpoint": "cus_secret_ZZ9"` en el `toEqual`.
+- **E5** (`Proxy` sobre `offers.downgrade`) → **ROJO** `DataCloneError: #<Object> could not be cloned`, en el propio
+  `structuredClone`.
+- Control limpio **6/6 VERDE**. Las dos restauradas con `cp` + `diff` (0 lineas) + `shasum` `963efe9c` + `grep
+  MUTATION` = 0.
+
+**(2) EL LIMITE FALSO DE LA TRAMPA DE FOCO, CERRADO** — `app/components/confirm-dialog-focus.test.ts` **CREADO** (95
+lineas tras prettier, hook `EXIT=0`): render real con `renderToStaticMarkup` + `parse()` de
+`next/dist/compiled/node-html-parser` + el `onKeyDown` y el `ref` REALES. **VERDE 1/1 en 12 ms, cero paquetes.**
+Mutacion **R18** (selector → `"button, input, select, textarea"`, sobre un archivo ` M`: restaurado por `cp` del
+`/tmp`, con `diff` mostrando **exactamente la mutacion** y `shasum` `206dc246`) → **ROJO** con la asercion literal
+(`+ "BUTTON:Confirmar"`, y sin `A:tus locales`). **Corregidos los DOS lugares donde el limite falso estaba escrito:**
+el docblock de `confirm-dialog.tsx` y el item 12 de la spec 0063. Es el patron de la 0057, y esta vez el limite lo
+habia declarado el ORQUESTADOR.
+
+**(3) LOS 5 GATES, CORRIDOS SOBRE LOS BYTES ACTUALES (no heredados):** `test` con integracion **127 archivos / 917
+tests / 0 failed / 0 skipped** (venia de 126/916: **+1 archivo, +1 test**, ninguno perdido) · `typecheck --force` 3/3
+`0 cached` · `lint` `EXIT=0` · `format:check` «All matched files use Prettier code style!» · `build --force` 3/3
+`0 cached`.
+
+**Barrido de tamaños al HOOK sobre TODO el alcance (` M` **y** `??`, 17 archivos), con control que discrimina
+(`onboarding/page.tsx` → `EXIT=2`):** todos `EXIT=0`. **Dos clavados en 300 exactas —`billing-offers.test.ts` y
+`billing-store.neon.integration.test.ts`—: lo proximo que se les sume necesita el corte decidido ANTES.**
+(`billing-reconcile-page.neon…` ya no esta en el limite: quedo en 214 tras el corte.)
+
+**Hashes al cierre de la sesion A:** `page.tsx 963efe9c` · `subscription-console 82388cbb` · `settle-free eeaa9e0c` ·
+`pages.neon` **`abc751a0`** (CAMBIO: trae el `structuredClone`) · `support d48533a3` · `confirm-dialog`
+**`553dec19`** (CAMBIO: el docblock corregido) · `confirm-dialog-focus.test.ts` **`79473252`** (NUEVO).
+
+### FASE D2 IMPLEMENTADA — LOS 5 GATES CORRIDOS POR EL ORQUESTADOR (2026-09-12), NO RELATADOS
+
+- **`test` con integracion: 124 archivos / 910 tests / 0 failed / 0 skipped.** Venia de 121/872 al cierre de la D1:
+  **+3 archivos, +38 tests, ningun preexistente perdido.** **Y el 910 es exactamente el numero que el implementador
+  habia PREDICHO para el gate que no pudo correr: reprodujo.**
+- **`typecheck --force`: 3/3, `cache bypass, force executing`, `0 cached`.** `lint` y `format:check` verdes.
+  **`build --force`: 3/3, `0 cached`.**
+- **El cuelgue de la 7a muerte esta CERRADO, y el oraculo no es una lectura del codigo: es que la suite pasa CON las
+  env de integracion y `0 skipped`** — o sea que `billing-pages.neon.integration.test.ts` corre de verdad (antes: >12
+  min sin una linea de salida).
+- **Tamaños al hook, con control que discrimina (`onboarding/page.tsx` → `EXIT=2`):** los 11 archivos en `EXIT=0`.
+  **DOS EN 300 EXACTAS, CERO MARGEN: `billing-reconcile-page.neon…` y `billing-offers.test.ts`** — la mina recurrente
+  de esta spec. Lo proximo que se les sume necesita corte decidido ANTES.
+- **Un numero que el orquestador leyo mal y aca queda corregido:** reporto el build como «0 cache miss» creyendo que
+  habia replayado de cache. Era el **grep equivocado**: con `--force` turbo no dice `cache miss` sino
+  **`cache bypass, force executing`**. El build si compilo. El error era del medidor, no del gate.
+
+### LO QUE EL IMPLEMENTADOR REPORTA Y EL ORQUESTADOR NO VERIFICO TODAVIA — VA AL REVISOR
+
+**11 mutaciones ejecutadas, y TRES SALIERON VERDES: invariantes que el mismo habia declarado en docblocks.** Las tres
+cerradas, segun su handoff:
+- **S7, LA FUGA, y es el hallazgo de la fase:** la pagina bajando la **fila cruda** dejaba **66/66 VERDE**.
+  **`renderToStaticMarkup` NO emite el payload RSC**, asi que las props de un componente CLIENTE nunca llegan al
+  markup: su test pinneaba «la consola no IMPRIME las claves», no «la pagina no las PASA». **Es el hueco de
+  `choosePushPromptView` otra vez —la decision pinneada, el cableado no— y el render que la spec exigia justo para
+  cerrarlo resulto ser un PROXY de la propiedad.** Cerrado inspeccionando las props del elemento; re-ejecutada da 1
+  rojo con asercion literal. **ESTO ES LO PRIMERO QUE TIENE QUE AUDITAR EL REVISOR.**
+- **S8** (allow-list del `?done=`): verde → cerrado, y **muerde por la forma ESCAPADA** (`&lt;script`), asi que la
+  asercion ingenua no habria disparado.
+- **S11** (`BLOCK_FALLBACK`): verde → cerrado.
+- **S9 queda VERDE y DECLARADO** (la lectura de la pagina sin lock; el bloqueo duro es el 409 de la ruta, que ya tiene
+  oraculo). **Un limite declarado: el revisor lo verifica intentandolo.**
+
+**LA HIPOTESIS DEL ORQUESTADOR SOBRE EL CUELGUE ERA FALSA, y el implementador la FALSIFICO con un oraculo.** No era
+auto-deadlock de `FOR UPDATE`: era un **ciclo de imports por la factory del `vi.mock`** (factory →
+`billing-pages-support` → la pagina → `auth-guards`, factory sin terminar). **Lo probo con `vitest list`, que solo
+COLECTA y tambien colgaba** — eso descarta cualquier causa de ejecucion. **>12 min → 1,46 s** con un solo cambio. Se
+le habia pasado explicitamente marcada como hipotesis y no como diagnostico, y por eso se testeo en vez de creerse.
+
+**HALLAZGO DE PROCESO QUE EL IMPLEMENTADOR SE AUTO-REPORTO, pudiendo esconderlo:** muto `cancel-dialog.tsx`
+(**untracked**) **sin copia limpia previa** y encima corrio un **`git checkout` pelado**. Se recupero solo porque era un
+edit de 2 lineas escrito en esa sesion. Es textualmente el modo de falla de `CLAUDE.md`. Recien despues saco copias de
+los 7 archivos (`/tmp/limpio2-*`).
+
+**FOCOS PARA EL REVISOR:** (1) **S7 y si el fix cierra la propiedad o sigue siendo proxy** — la pregunta es «¿el
+usuario recibe las claves?», no «¿el markup las imprime?»; (2) las **dos salidas** del estado «`plus` con la
+suscripcion muerta» juntas (D8 + boton de D10), que ningun revisor vio; (3) el **limite S9** declarado; (4) los
+**dos archivos en 300 exactas**; (5) **mutaciones FUERA de la tabla** — en las fases B, C y D1 ahi estuvo todo el
+valor, y en la D2 ya aparecieron 3 de 3 huecos asi.
+
+### INCIDENTE DE ENTORNO, NO DE CODIGO: EL DISCO SE LLENO AL 100% Y TODO ROJO ERA MENTIRA
+
+**Los 124 archivos «FAIL» en 2,29 s sin correr un solo test eran `ENOSPC: no space left on device`.** Bloqueo tambien
+al implementador y **al propio harness**: cada llamada de Bash necesita escribir su archivo de salida antes de ejecutar,
+asi que **fallaba hasta `df`**. Es el rojo por el motivo equivocado en su forma mas total — 124 rojos que no hablan del
+codigo.
+
+**Causa medida: 8.382 directorios temporales de vite/vitest ABANDONADOS** en el `T` del sistema (~1 MB cada uno,
+~9 GB), escombro de las corridas que se colgaron. **Se purgaron 7.901 (los de mas de 30 min, para no pisar una corrida
+viva de otra sesion): 143 MB → 8.726 MB libres.** **NO se toco `.turbo`** (16 GB, gitignoreado, verificado con
+`git check-ignore`) ni `.pnpm-store`: no hizo falta, y borrar 16 GB en la maquina del owner no estaba en ningun
+encargo.
+
+**REGLA OPERATIVA QUE SALE DE ACA:** un cuelgue de vitest no es gratis — **deja ~1 MB de basura por corrida en el temp
+del sistema**, y esta spec colgo muchas veces. Si aparecen rojos masivos y absurdos (todos los archivos, en segundos,
+«no tests»), **mirar `df -k /` ANTES de leer una sola asercion.**
+
+### 6a MUERTE DE LA SPEC (1a de la D2), 2026-09-12. El arbol quedo SANO y el log a disco lo salvo
+
+**Auditoria del orquestador, con comandos, no relatada por el agente:**
+- `grep -rn MUTATION apps/merchant/src` **vacio**: no dejo ninguna mutacion puesta.
+- **`/tmp/barrido-d2.md` SOBREVIVIO** — la regla de escribir cada fila a disco apenas se termina, cobrada por
+  segunda vez en esta spec. De ahi salio el estado exacto sin reconstruir nada del arbol.
+- **`pnpm run typecheck` tiene EXACTAMENTE UN ROJO Y NO ES UN BUG:**
+  `subscription/page.tsx(19,37): error TS2307: Cannot find module './subscription-console'` — el archivo que faltaba
+  escribir. Diagnostico leyendo la asercion, no adivinando.
+- **Tamaños al hook** (con control `onboarding/page.tsx` → `EXIT=2`, o sea que discrimina): `billing/view.ts` **257**,
+  `subscription/page.tsx` **196**, `billing-store.neon.integration.test.ts` **300** — los tres `EXIT=0`.
+
+**YA ESTA (verificado, no relatado):** el **residual R2 CERRADO** — los 24 literales fijos de
+`billing-store.neon.integration.test.ts` derivados a `subId(tag)`/`custId(tag)`. **El diff no toca ninguna propiedad:**
+la unica linea de `expect` que cambio es `toBe("cus_conservado")` → `toBe(custId("conservado"))`, el mismo hecho con
+literal derivado. Y `subscriptionOffers` en `billing/view.ts` (la tabla de 12 filas de D7 como funcion pura, la leccion
+de `choosePushPromptView` aplicada) + el barrel + `subscription/page.tsx` con D8 cableado.
+
+### 7a MUERTE DE LA SPEC (2a de la D2), 2026-09-12. **TODO EL CODIGO DE LA D2 ESTA ESCRITO; FALTA LA EVIDENCIA**
+
+**Arbol SANO** (`grep MUTATION` vacio) y `/tmp/barrido-d2.md` sobrevivio otra vez. **Ya esta escrito:** las 3 paginas
+de `subscription/`, la home con la tarjeta, el onboarding ([R2-I8], **469 antes y 469 despues**, medido al hook las dos
+veces: violacion PREEXISTENTE sin crecer), `billing-offers.test.ts` (20 verdes) y
+`billing-pages.neon.integration.test.ts` + su support. **`confirm-dialog.tsx` ENSANCHADO** (`description` →
+`ReactNode` + `confirmDisabled?`) en vez de una 2a copia de la trampa de foco: los 7 consumidores pasan strings y
+`typecheck` queda verde sin tocar ninguno. Ratificado por el orquestador.
+
+**BLOQUEANTE MEDIDO POR EL ORQUESTADOR, y es lo unico que importa ahora: `billing-pages.neon.integration.test.ts` SE
+CUELGA INDEFINIDAMENTE.** Lo escribio (279 lineas) y **nunca lo corrio**.
+- **>12 minutos sin UNA SOLA linea de salida**, proceso node al **0,0% de CPU** (bloqueado en I/O). Dos corridas, igual.
+- **CONTROL que lo convierte en hallazgo y no en sospecha: `billing-store.neon.integration.test.ts`, MISMA invocacion,
+  corre en 16s y da 5/5 VERDE.** O sea: el metodo esta bien, **cuelga ESE archivo**. (Y de paso ese control confirma
+  el fix del residual R2.)
+- **La rama efimera NO quedo envenenada:** `pg_stat_activity` sin transacciones colgadas ni esperas de lock.
+- **Los `60_000` de sus `it` NO salvan:** el cuelgue no llega a disparar el timeout del test.
+- **Amenaza a CI (spec 0062 corre estos archivos alla): un archivo que cuelga no hace fallar CI, lo clava hasta el
+  timeout del runner.** Es peor que un rojo: un rojo dice que propiedad se rompio, un cuelgue sin salida no dice nada
+  y es indistinguible de «es lento».
+- **HIPOTESIS, NO DIAGNOSTICO** (no se señalo el codigo que lo produce, asi que no vale como causa): auto-deadlock de
+  lock — la pagina toma `lockBusiness` (`FOR UPDATE`) dos veces. Es la familia de la S7 de la D1, que se cerro con
+  `FOR UPDATE NOWAIT` (`55P03`) para que el timeout se vuelva una asercion que nombra la propiedad.
+
+**OPERATORIA DE CORRIDA, aprendida hoy a los golpes:** `pnpm --filter … exec vitest` **se cuelga en su deps-check** (10+
+min sin lanzar nada). Lo que funciona: desde `apps/merchant`, `set -a; . ../../.env.integration.local; set +a` y despues
+`node ../../node_modules/vitest/vitest.mjs run <path>`. **`--reporter=basic` NO existe en vitest 4** y hace fallar la
+corrida por la flag, no por el test. En macOS no hay `timeout`.
+
+**FALTA:** cerrar el cuelgue (con el archivo CORRIENDO como oraculo, no «deberia andar»), las mutaciones **S1-S8**
+(en curso, ver abajo) y el resto del barrido.
+
+### PUNTO DE RETORNO DE LAS MUTACIONES EN VUELO (2026-09-12) — leelo ANTES de tocar `billing/view.ts`
+
+El implementador esta corriendo S1-S8 **una por una y bien ETIQUETADAS**. El orquestador lo verifico en vivo: vio
+`// MUTATION S1 (implementador)` y despues `// MUTATION S2 (implementador)` en `billing/view.ts`, con **2 rojos en
+`billing-offers.test.ts`** que **se leen como un bug del producto** («un `past_due` con baja programada pierde el
+aviso de cobro») y **no lo son**: son el oraculo de S1 mordiendo. **La convencion de etiquetar funciono: sin la
+etiqueta, esos dos rojos se perseguian como bug.** No se reventaron — `CLAUDE.md` es explicito: una mutacion de un
+subagente que **todavia esta midiendo** no se corta, porque lo hace transcribir un resultado falso.
+
+**EL AGUJERO QUE HABIA, Y QUE EL ORQUESTADOR CERRO:** `billing/view.ts` esta **` M` (trackeado Y MODIFICADO)** y **no
+habia ninguna copia limpia en `/tmp`**. Es el peor caso de los tres que `CLAUDE.md` enumera: ahi el `git checkout` de
+emergencia **si hace algo, y es lo peor que puede hacer** — se lleva tambien las **124 lineas** no commiteadas de
+`subscriptionOffers`, y **se ve como si hubiera funcionado**.
+
+**RESTAURACION, si aparece una mutacion abandonada en `billing/view.ts`:**
+
+```
+cp /tmp/view-LIMPIO-d2.ts apps/merchant/src/server/billing/view.ts
+shasum apps/merchant/src/server/billing/view.ts   # tiene que dar e64fa56b...
+```
+
+**NO uses `git checkout` sobre ese archivo.** Y antes de restaurar, `diff` contra la copia y mira que lo unico que se
+vaya sea la mutacion.
+
+- **Copia limpia: `/tmp/view-LIMPIO-d2.ts`** — `shasum` **`e64fa56babc1935d840a27332d5f58a66ef21427`**, **260 lineas**.
+- **Tomada en una ventana sin mutaciones y VERIFICADA SEMANTICAMENTE, no solo por ausencia de la etiqueta:** las
+  guardas en el orden correcto (`PAYMENT_PENDING_STATUS` en la 229 **antes** de `scheduled` en la 232, o sea S1 bien
+  revertida) y el guard de status muerto presente (`!DEAD_STRIPE_STATUS.has` en la 256, o sea sin S2). Hash re-medido
+  en el momento de escribir esta linea.
+- **Un hash que el orquestador etiqueto mal y aca queda corregido:** `e64fa56b…` se anoto primero como «mutado» y es
+  el **LIMPIO** (el agente habia revertido S1 entre el `grep` y el `shasum`). El mutado con S2 era `c9f13745…`. Se
+  corrige porque **un baseline podrido no falla ruidoso**: la proxima sesion corre la auditoria, ve el mismatch y
+  concluye «alguien dejo una mutacion puesta» — el sintoma exacto que la auditoria existe para descartar, fabricado
+  por el propio doc.
+
+**TRAS RETOMARLO — cerrado y verificado por el orquestador, no relatado:** `subscription-console.tsx` aterrizo y con eso
+**`typecheck` volvio a VERDE** (el `TS2307` era el archivo que faltaba, no un bug), y el **hallazgo del docblock falso
+esta cerrado**: `server/billing-offers.test.ts` **CREADO** con las 12 filas de D7 + precedencia + anti-degeneracion
+(**20 tests verdes**), y el docblock de `subscriptionOffers` ahora apunta ahi. **Los 3 gates del Stop hook (`typecheck`,
+`lint`, `test`) corridos por el orquestador: `EXIT=0`.**
+
+**CORTE DE ARCHIVO RATIFICADO POR EL ORQUESTADOR (no estaba en el encargo, y el implementador lo trajo a ratificar en vez
+de decidirlo solo — que es lo correcto):** el oraculo de `subscriptionOffers` NO entra en `billing-view.test.ts`. **El
+numero se verifico, no se acepto:** 230 + 161 menos el preambulo que se colapsaria da **~381** contra el limite de 300,
+asi que la conclusion se sostiene con margen (el implementador reporto 370; el exacto depende de cuanto preambulo se
+funde y no cambia la decision). Sibling, patron que esta spec ya uso 12 veces.
+
+**UNA MINA PUESTA, la de siempre en esta spec:** `subscription-console.tsx` quedo en **271** (hook `EXIT=0`) y todavia
+falta cablear el modal. **Quedan 29 lineas de margen; si las pasa, el corte lo decide el orquestador ANTES.**
+
+**LO QUE EL HOOK `verify.sh` NO PUEDE VER, y el orquestador si:** bloqueo el fin de un turno por el `typecheck` rojo
+mientras el subagente **estaba escribiendo ese mismo archivo**. Es el caso analogo al que `CLAUDE.md` ya documenta para
+`no-mutations-left.sh`: **el hook no distingue «trabajo vivo» de «trabajo abandonado», y el orquestador si.** Escribir
+`subscription-console.tsx` a mano habria puesto dos escritores sobre un archivo y le habria hecho transcribir un
+resultado falso al agente. **Lo correcto fue esperar** (el rojo se cerro solo a los 210s, cuando el agente aterrizo el
+archivo), no satisfacer al hook pisando trabajo en vuelo.
+
+**EL HALLAZGO DE LA AUDITORIA, y es la familia de la D1 otra vez: `subscriptionOffers` afirma en su docblock «ES
+NORMATIVO, y cada fila tiene su caso en `billing-view.test.ts`» — y `billing-view.test.ts` esta BYTE A BYTE IGUAL AL
+BASELINE (`ec73641c…`).** O sea: codigo de produccion con CERO tests y una frase prometiendo lo contrario — «el estado
+mas peligroso posible» de la fase B, con el agravante que `CLAUDE.md` documenta: **un docblock mentiroso no es pasivo,
+INDUCE errores de metodo.** Despachado al implementador retomado con prioridad sobre el JSX que le faltaba.
 
 **Gates RE-MEDIDOS en el handoff (2026-09-12), no copiados:** `typecheck` y `build` forzados (`0 cached`), `lint` y
 `format:check` verdes; `pnpm test` con `.env.integration.local` → **121 archivos / 872 tests / 0 failed / 0 skipped**.
 
 **LO QUE FALTA DE LA D2:** `backoffice/subscription/{page,subscription-console,cancel-dialog}` (ninguno existe, ya
-verificado), **D8** (reconciliacion al abrir la pagina), `backoffice/page.tsx` (tarjeta + presentacion de
-`none`/`canceled`), `backoffice/locations/page.tsx` (tope efectivo), `onboarding/page.tsx` ([R2-I8], hoy todavia manda
-`businessId` en el body) y el **render del HTML** con `renderToStaticMarkup`.
+verificado), **D8** (reconciliacion al abrir la pagina — `reconcileFromStripe` ya existe en `billing/store.ts` desde la
+fase B, lo que falta es el CABLEADO), `backoffice/page.tsx` (tarjeta + `realModules` + presentacion de
+`none`/`canceled`), `onboarding/page.tsx` ([R2-I8], hoy todavia manda `businessId` en el body y no manda `from`) y el
+**render del HTML** con `renderToStaticMarkup` (`billing-view.test.ts` pinnea el DTO y las dos allow-lists, pero **no
+tiene render**: verificado).
+
+**UN ITEM DE ESTA LISTA ESTABA SALDADO Y LA LISTA LO NEGABA — es la regla de `CLAUDE.md` sobre residuales heredados,
+cobrada sobre este mismo archivo.** Decia que faltaba `backoffice/locations/page.tsx` (tope efectivo) y **ya usa
+`effectiveLocationLimit(row?.plan, row?.pendingPlan)` desde la fase A** (`git log -1 --` sobre el archivo → `6921c94`).
+Lo cazo el orquestador al preparar el encargo de la D2, chequeando la lista con `grep` en vez de despacharla. **Y por
+eso se re-verificaron los cinco hermanos uno por uno** —los tres archivos de `subscription/` no existen, D8 no esta
+cableado, el render no existe, el onboarding sigue mandando `businessId`— que es exactamente lo que la regla pide: si un
+item de una nota vieja resulto obsoleto, sus hermanos son sospechosos.
+
+**EL ENCARGO DE LA D2 ESTA EN `docs/encargo-fase-d2.md`** (whitelist de archivos, corte de archivos ya decidido por el
+orquestador, protocolo de mutaciones, gates y el handoff exigido). **DESPACHADO a un implementador el 2026-09-12.**
 
 **TRES COSAS QUE EL ENCARGO DE LA D2 TIENE QUE LLEVAR, y las tres se ganaron caro en la D1:**
 1. **El barrido de docblocks va DESDE EL INICIO, no al final.** En la D1, cuatro rondas de revision encontraron **un**
@@ -4280,3 +4870,332 @@ Los caminos descartados importan: sin registro, se reintentan.
 
 | Que | Por que no |
 |---|---|
+
+### REVISION DE LA D2, EN VUELO: EL FIX DE S7 TIENE UN HUECO MEDIDO (fila R3)
+
+Bitacora viva del revisor: **`/tmp/revision-d2.md`** (se escribe fila por fila; sobrevive a la muerte de la sesion).
+Baseline suyo: los 4 archivos del alcance **66/66 VERDE**. Lleva 4 filas ejecutadas, todas del FOCO 1 (S7).
+
+- **R1 confirma el diagnostico del implementador y ademas prueba que el markup era proxy:** con la pagina bajando la
+  fila cruda, el test nuevo da ROJO con asercion literal sobre las claves (`stripeCustomerId`,
+  `stripeSubscriptionId`, `downgradeRequestedAt`) — **y el test del HTML queda VERDE**. O sea que el render, que la
+  spec pedia justo para cerrar el cableado, no ve la fuga.
+- **R3 ES EL HALLAZGO: el fix NUEVO tampoco cierra la propiedad.** Pasando las claves dentro de un **`Map`**
+  (`leak={new Map([["customer", row.stripeCustomerId]])}`) la suite da **6/6 VERDE**. Causa medida:
+  **`JSON.stringify` de un `Map` devuelve `{}`, pero el serializador Flight de React SI manda Map/Set.** El guard
+  mira el stringify, no lo que viaja. **Preimagen conocida, o sea proxy — la 2a vez que S7 se cierra con algo que
+  parece cubrir la propiedad y no la cubre.** Las otras dos evasiones (objeto plano anidado R2, elemento React R4)
+  si muerden.
+- **Pendiente del encargo:** rehacer R10, cerrar S7 (decidir FAIL vs limite acotado, y si el fix correcto es
+  inspeccionar con el serializador real en vez de `JSON.stringify`), las **dos salidas** del estado muerto juntas,
+  el **limite S9** intentandolo, los **dos archivos en 300 exactas**, y el barrido de docblocks.
+
+### LA 8a MUERTE DEJO UNA MUTACION PUESTA, Y EL PUNTO DE RETORNO FUNCIONO
+
+El revisor murio con **R10 puesta** en `app/backoffice/subscription/subscription-console.tsx:223` — `from:
+"subscription"` borrado del body del checkout. **Archivo untracked: `git checkout` no revertia nada.** Restaurado
+desde su `/tmp/d2-clean/` con el protocolo entero: el `diff` mostro **exactamente una linea** y el `shasum` quedo en
+`fb793cbd6fdca6a8c580067b419ba883f22f8dd1`, **identico al baseline que el propio revisor habia registrado** — eso lo
+convierte en verificacion y no en apuesta. Las dos copias independientes (`/tmp/d2-clean/` y las `/tmp/limpio2-*` del
+implementador) coinciden en hash. `grep -rn MUTATION apps/merchant/src` vacio.
+
+**EL COSTO NO FUE EL ARBOL, FUE LA MEDICION: R10 se ejecuto y su resultado se perdio**, porque la bitacora se escribia
+DESPUES de medir. Se rehace, no se transcribe de memoria. Y R10 importa: el docblock de al lado afirma que sin ese
+`from` «el que paga aterriza en la home del backoffice» — si queda verde, es otro invariante declarado sin oraculo.
+
+### SI ESTA SESION SE CAE CON UNA MUTACION DEL REVISOR PUESTA — COMANDO EXACTO, NO RECONSTRUIR NADA
+
+El revisor esta midiendo AHORA, asi que el hook `no-mutations-left.sh` puede cazarle una mutacion **viva**. **El hook no
+distingue «viva» de «abandonada»; vos si.** Si el revisor sigue trabajando: verificar que este etiquetada
+(`MUTATION <id> (revisor)`) y **NO revertirla** — cortarla bajo un agente vivo lo hace transcribir un resultado falso,
+que es peor que el rojo que el hook previene. Si el revisor esta muerto, restaurar:
+
+```
+cd /Users/maxi/claude-workspace/check-point
+D=/tmp/d2-clean; A=apps/merchant/src
+# 1) SIEMPRE diff primero: lo unico que debe irse es la mutacion
+diff $D/app_backoffice_subscription_subscription-console.tsx $A/app/backoffice/subscription/subscription-console.tsx
+# 2) restaurar y 3) verificar el shasum contra la tabla de abajo
+```
+
+| copia limpia en `/tmp/d2-clean/` | destino bajo `apps/merchant/src/` | `shasum` limpio |
+|---|---|---|
+| `app_backoffice_subscription_page.tsx` | `app/backoffice/subscription/page.tsx` | `d758744b279082e590f00a7022c1f266e4a086c7` |
+| `app_backoffice_subscription_subscription-console.tsx` | `app/backoffice/subscription/subscription-console.tsx` | `fb793cbd6fdca6a8c580067b419ba883f22f8dd1` |
+| `app_backoffice_subscription_cancel-dialog.tsx` | `app/backoffice/subscription/cancel-dialog.tsx` | `636163ef84f9ee96573487d163caa59fdcd39dfc` |
+| `app_components_confirm-dialog.tsx` | `app/components/confirm-dialog.tsx` | `67f6441fedd2b0e8a32b8f943bb553ec889fd385` |
+| `app_onboarding_page.tsx` | `app/onboarding/page.tsx` | `6749abe6e5a73d572deb1022c1fbf5c9e2a655b8` |
+| `server_billing_view.ts` | `server/billing/view.ts` | `e64fa56babc1935d840a27332d5f58a66ef21427` |
+
+**Hashes RE-MEDIDOS al escribir esta tabla** (no copiados de un mensaje anterior: un baseline podrido hace que la
+sesion fresca vea un mismatch y concluya «quedo una mutacion», el sintoma exacto que la auditoria existe para
+descartar). Los cuatro primeros y `view.ts` son **untracked o modificados**: `git checkout` no sirve — sobre `??` no
+revierte nada y sobre ` M` se lleva tambien el trabajo no commiteado.
+
+### EL HOOK CAZO UNA MUTACION VIVA (R9) Y NO SE TOCO — EL CASO QUE `CLAUDE.md` DESCRIBE, EN VIVO
+
+Al cerrar el turno, los tres hooks del Stop se quejaron a la vez de `app/backoffice/subscription/page.tsx`:
+`no-mutations-left` vio `// MUTATION R9 (revisor): la lectura del estado SIN lockBusiness`, y `verify` tiro **lint
+rojo** (`'lockBusiness' is defined but never used`). **Era R9 VIVA: el revisor estaba midiendo el limite S9 justo en
+ese archivo** — el limite que se le pidio verificar INTENTANDOLO en vez de leyendolo.
+
+**No se reverto ni se «arreglo» el lint, y esa fue la decision correcta por dos motivos, no uno:** (1) cortar una
+mutacion bajo un agente que mide lo hace transcribir un resultado falso; y (2) el fix «obvio» del lint era **borrar el
+import de `lockBusiness`**, o sea meter un bug real —la pagina leyendo sin lock— mientras se tapaba la medicion. **El
+rojo de lint no era un defecto: era la mutacion.** Se confirmo que estaba **etiquetada y atribuida** antes de decidir,
+y que el agente estaba `running` (no abandonado) — esa es la distincion que el hook no puede hacer y el orquestador si.
+
+**Desenlace: el revisor la revirtio solo, y verificado contra el baseline** — `shasum` de `page.tsx` en
+`d758744b279082e590f00a7022c1f266e4a086c7`, `diff` contra `/tmp/d2-clean/` **vacio**, `grep MUTATION` vacio, y **lint
+VERDE re-corrido**. O sea que los tres reclamos del hook eran una **foto vieja** de un arbol que ya estaba limpio.
+
+**REGLA OPERATIVA: ante un reclamo del Stop hook sobre una mutacion, el primer comando no es `git checkout` — es
+preguntar si el subagente esta VIVO** (`ListAgents`) y **re-leer el archivo**, porque entre que el hook corre y que vos
+lees pueden haber pasado los dos: que la mutacion ya no este, o que siga viva y midiendo. Las dos respuestas prohiben
+tocarla; ninguna se sabe sin mirar.
+
+### EL LIMITE S9 ESTA FALSIFICADO, Y LO CERRO UNA SONDA DE ~50 LINEAS SIN INSTALAR NADA
+
+El implementador declaro S9 como limite aceptado: la pagina lee el estado sin lock y «solo lo pinnearia una carrera;
+el bloqueo duro es el 409 de la ruta, que ya tiene oraculo». **Falso, y el revisor lo demostro ESCRIBIENDOLO** — el
+patron exacto de la spec 0057, tercera vez en este repo:
+
+- **R9** (`readBillingState` sin `lockBusiness`, alcance 66 tests): **VERDE 66/66.** Reproduce lo que el implementador
+  declaro — ningun test del alcance lo pinnea. Ahi terminaba su analisis.
+- **La sonda de carrera** (`zz-race-probe.neon.integration.test.ts`, ~50 lineas, **0 paquetes nuevos**, 4,2 s): un
+  escritor en vuelo toma `lockBusiness`, escribe el `SET` de `settle_to_free` y **retiene el commit 1,5 s** mientras el
+  render arranca en paralelo. **Con el lock: VERDE 1/1. Con R9 puesta: ROJO 1**, literal
+  «expected '<main class="merchant-shell">…' to contain 'Tu suscripción terminó'». O sea: **sin lock la pagina
+  renderiza —y ofrece operaciones sobre— un estado que una operacion ya commiteada superó.**
+
+**El lock es load-bearing Y TIENE ORACULO POSIBLE: el limite no era real, era el intento que no se hizo.** Falta
+decidir con el revisor si la sonda se promueve a test del alcance (y en que archivo, porque los dos candidatos estan
+en 300 exactas).
+
+**Y la sonda se auto-cazo un rojo por el motivo equivocado, que es la otra mitad del merito:** su primera version
+aseveraba `not.toContain("Plan Plus")` y daba **ROJO con el lock puesto** — porque la tarjeta de upgrade lleva
+`aria-label="Plan Plus"`. Lo encontro **leyendo la asercion**, no viendo el color. Sin eso, la fila habria concluido
+«sin lock se rompe» desde un rojo que hablaba del setup.
+
+**R8 bis** cerro la fila que faltaba: con el `catch` ancho sacado, el literal `Error: Stripe no contesta` se propaga
+fuera del render → **el render MUERE en vez de degradar**, y la asercion habla de la propiedad.
+
+### DOS COSAS QUE NO PUEDEN SOBREVIVIR A LA REVISION (y una el hook NO la ve)
+
+1. **`apps/merchant/src/server/zz-race-probe.neon.integration.test.ts` es SCRATCH y debe borrarse al cerrar.** Esta
+   auto-documentado como tal en su encabezado, pero **`no-mutations-left.sh` es CIEGO a el**: ese hook solo grepea la
+   etiqueta `MUTATION`, asi que **un archivo-sonda entero puede sobrevivir a la sesion sin que ningun gate chille** —
+   es andamiaje sin tarea, justo lo que `CLAUDE.md` prohibe. Queda anotado aca porque el doc es el unico guard que
+   tiene.
+2. **R10 esta PUESTA otra vez en `subscription-console.tsx:223`** (`{ interval: billingInterval }`), etiquetada y con
+   el revisor `running`: **es la re-ejecucion que se perdio en la 8a muerte. NO TOCARLA.** Si esta sesion muere, la
+   tabla de restauracion de mas arriba tiene el comando y el `shasum` limpio (`fb793cbd…`).
+
+**PENDIENTE ESTRUCTURAL (mistake→rule, a hacer CUANDO CIERRE LA REVISION, no antes):** extender
+`no-mutations-left.sh` para que tambien vea **archivos-sonda scratch** (untracked bajo `apps/*/src` con `SONDA` o
+`SCRATCH` en las primeras lineas). Verificado leyendo el hook: hoy grepea **solo** `MUTATION|MUTACION` — y lo declara
+en su propio encabezado, honestamente. **No se toca ahora a proposito:** con el revisor midiendo, la sonda esta
+legitimamente viva y el hook nuevo bloquearia cada turno hasta que termine. Al implementarlo, correrlo contra un
+estado que **debe** bloquear y verificar el `exit 2` **y** el mensaje — un `exit 0` puede significar «paso» o «nunca
+miro nada».
+
+## VEREDICTO DE LA REVISION DE LA D2: **FAIL** — 3 BLOQUEANTES, 7 MENORES
+
+**La revision SI se completo, aunque el agente murio sin devolver su mensaje final (9a muerte): el veredicto entero
+esta en `/tmp/revision-d2.md`, escrito fila por fila.** Eso es exactamente para lo que existe la disciplina de bajar a
+disco — el artefacto sobrevivio a la muerte que se llevo el contexto. **Muerte LIMPIA, verificada por el
+orquestador:** `grep MUTATION` vacio, las dos sondas scratch (`zz-race-probe`, `zz-click-probe`) **borradas por el
+propio revisor**, y los 6 archivos de `/tmp/d2-clean/` **byte-identicos** al baseline (`diff` vacio en los 6).
+
+**Gates del revisor:** `test` con integracion **124/910, 0 failed, 0 skipped** (1 corrida completa + 16 dirigidas);
+`typecheck --force` 3/3 `0 cached`; `lint` y `format:check` verdes. **`build` NO re-corrido, y lo declara:** el arbol
+quedo byte-identico al estado en que el orquestador lo corrio `--force` 3/3. Es un limite declarado **correctamente**,
+con el hash como respaldo.
+
+### LOS 3 BLOQUEANTES
+
+1. **S7 NO ESTA CERRADO: el fix tiene una preimagen IDIOMATICA.** Ya se sabia que un `Map` lo evade (R3). **R12 es
+   peor: `leak={Promise.resolve(row)}` deja 6/6 VERDE — y ese es el idiom de Next 15**, la propia pagina recibe
+   `searchParams` asi. Flight serializa promesas; `JSON.stringify` de una promesa da `{}`. O sea que el guard mira el
+   stringify y no lo que viaja. **Tercera vuelta de S7 y la tercera vez que el cierre es un proxy.**
+   **Fix ya verificado por el revisor: allow-list POSITIVA de las 8 props de la consola (9 lineas con prettier)** —
+   mismo patron que la spec ya exige para el DTO de R2. Muerde con R3 **y** con R12.
+   **Residual R13, razonado y NO ejecutado —hay que ejecutarlo—:** un `Map`/`Promise` **anidado dentro de una prop
+   permitida** no lo caza ni la allow-list ni el stringify. El cierre completo pide ademas **rechazar valores
+   no-planos dentro de las props**.
+2. **R6: `ignored` contando como CONFIRMADO deja 13/13 VERDE.** Lo afirman el docblock de `reconcileOnOpen` y la
+   decision 6 de la spec; nada lo pinnea.
+3. **R10: el `from: "subscription"` de la consola no tiene oraculo (38/38 VERDE), y el limite que lo justificaba es
+   FALSO.** El implementador declaro «lo unico que lo cerraria es simular el click»; la **sonda del click** del
+   revisor (`vi.mock("react")` sobre `useState`, se camina el arbol que devuelve `SubscriptionConsole(props)` y se
+   **invoca** el `onClick`; **0 paquetes nuevos, sin jsdom, 35 ms**) muerde con R10 **y** con R11. Cierra **las dos
+   mitades**: que el modal abra y que el body lleve el `from`. **Es la spec 0057 por cuarta vez.**
+
+### LOS 7 MENORES (ninguno se cierra sin oraculo o sin declaracion explicita)
+
+4. **S9 aceptado sin intentarlo** — la sonda de carrera discrimina (ver seccion propia).
+5. **`billing-view.test.ts` afirma «el CABLEADO lo pinnea el render y solo el» — es FALSO por la propia medicion S7
+   del implementador.** Un docblock mentiroso no es pasivo: induce el error.
+6. **R19: el body del onboarding no tiene oraculo (66/66 VERDE)** — ningun test importa ese modulo y el test «la D1 no
+   rompio el ALTA» **transcribe el body A MANO**, o sea que pinnea la copia, no el codigo.
+7. **R18: la afirmacion de accesibilidad del `confirm-dialog`** (la trampa de foco con `[href]` y sin botones
+   `disabled`, «no por casualidad») **no tiene oraculo ni declaracion** — 31/31 VERDE.
+   **→ CERRADO en la SESION A (2026-09-12): `confirm-dialog-focus.test.ts`, y R18 lo pone ROJO. El «limite declarado»
+   con el que se habia cerrado este item era FALSO — no se habia intentado.**
+8. **La consola imprime «Plan Sin plan» para `none`**, el string exacto que la home dejo de imprimir por la decision
+   3. Medido: la primera sonda aseveró `toContain("Plan Sin plan")` y **paso**.
+9. **«SALIDA 2» postea a `/api/billing/cancel` pero ejercita `SETTLE_FREE`:** son la misma funcion solo por
+   `settle-free/route.ts:24` (`export const POST = downgradeToFree`). **Aliasing que el test no enuncia ni pinnea** —
+   es el hallazgo del alias de la D1 otra vez.
+10. **TRES archivos en 300 exactas.**
+
+### CORRECCION DE UN NUMERO QUE EL ORQUESTADOR YA HABIA RELATADO: SON TRES, NO DOS
+
+Se reporto «dos archivos en 300 exactas»; **son TRES**: `billing-offers.test.ts`, `billing-reconcile-page.neon…` y
+**`billing-store.neon.integration.test.ts`**, que se paso porque es un archivo **modificado** (ya estaba en 300 antes
+del residual R2) y solo se midieron los dos nuevos. **Re-medido AL HOOK, con control:** los tres `EXIT=0` a 300
+lineas, `LIMIT=300` en `file-size.sh`, y el control (`onboarding/page.tsx`, 469) da `EXIT=2` → el hook discrimina.
+**Cero margen en los tres: una linea mas y bloquea.**
+
+### DECISION DEL ORQUESTADOR SOBRE EL CORTE (era su llamado, y el revisor lo delego bien)
+
+`CLAUDE.md` manda **dividir, no extender**. Dos de los tres fixes aterrizan en archivos sin margen, asi que:
+
+- **El oraculo de R10 va a un ARCHIVO NUEVO** (la sonda del click promovida, p.ej. `billing-console-click.test.ts`).
+  No toca ningun archivo en 300 y es el corte mas barato que existe.
+- **`billing-reconcile-page.neon.integration.test.ts` se PARTE por tema, no por linea:** sus 7 `it` se apoyan en ~93
+  lineas de setup compartido, asi que **el setup se extrae a `billing-pages-support.ts`** (89 lineas, tiene margen) y
+  **las dos SALIDAS del estado muerto (D8 lineas 214+ y D10 lineas 241+) mas el ALTA del onboarding (276+) se mudan a
+  un archivo propio** — queda `reconcile`-especifico lo de 94-172, y **las dos salidas juntas en un archivo que las
+  nombra**, que es justo el FOCO 2 que ningun revisor habia visto junto. El oraculo de R6 entra en el que queda.
+- **`billing-store.neon…` y `billing-offers.test.ts` no se tocan en este delta** (ningun fix cae ahi). Quedan
+  anotados: **lo proximo que les sume una linea decide su corte ANTES de escribirla.**
+
+## DELTA DE CORRECCION DE LA D2 — HECHO POR EL ORQUESTADOR, 5 GATES VERDES, 8 MUTACIONES EJECUTADAS (2026-09-12)
+
+**Por que lo hizo el orquestador:** el implementador del delta murio (10a muerte) **limpio y con el bloqueante 3
+cerrado** (`billing-click-probe.test.ts`, 4/4, M1/M2/M3 muerden con asercion literal; bitacora en
+`/tmp/delta-d2.md`). Con diez agentes muertos y el owner esperando, seguir despachando era el camino lento.
+
+### Que cerro cada hallazgo
+
+| # | hallazgo | cierre | oraculo ejecutado |
+|---|---|---|---|
+| B1 | S7 proxy (Map R3, Promise R12, anidado R13) | `billing-pages.neon…`: **allow-list positiva de las 8 props** + **`nonPlainPaths`** (recorre hasta el fondo y rechaza Map/Set/Promise/Date/instancias, devolviendo EL CAMINO) | **R3 y R12 ROJO** «expected [ Array(9) ] to deeply equal [ Array(8) ]»; **R13 ROJO** «expected [ 'props.offers.leak: [object Map]' ] to deeply equal []»; **R13b (Promise anidada) ROJO** idem. Los otros 2 archivos que renderizan quedan verdes (no inspeccionan props): alcance escrito |
+| B2 | R6 `ignored` sin oraculo | test nuevo en `billing-reconcile-page.neon…`: suscripcion AJENA viva sobre fila viva → `foreign_subscription` → `ignored` → aviso y fila intacta (premisa verificada en `applicability.ts:94-99`) | **R6 ROJO** «to contain 'No pudimos confirmar tu suscripción c…'» — 1 rojo en el archivo que lo pinnea, los otros 2 verdes |
+| B3 | R10/R11/R19 cableado del click | `billing-click-probe.test.ts` (del implementador) | M1/M2/M3 ROJO con asercion literal (ver `/tmp/delta-d2.md`) |
+| m4 | S9 sin intentar | **carrera promovida** a `billing-dead-state.neon…`: escritor toma `lockBusiness`, escribe `settleToFree`, retiene el commit 1,5 s; el render arranca en paralelo | **R9 ROJO** «not to contain 'Bajar a Free'» (sin lock la pagina ofrece bajar un plan que ya bajo); con lock VERDE |
+| m5 | docblock falso de `billing-view.test.ts` | corregido: el cableado lo pinnea la inspeccion de props, NO el render | — (docblock) |
+| m6 | body del onboarding a mano | el probe lo pinnea (M3); el test del ALTA ahora lo dice | M3 ROJO |
+| m7 | R18 accesibilidad del `confirm-dialog` | ~~LIMITE DECLARADO en el docblock, acotado a la interaccion del Tab~~ **EL LIMITE ERA FALSO y no se habia intentado: `confirm-dialog-focus.test.ts` lo pinnea con el DOM que `next` ya bundlea (SESION A)** | R18 → ROJO |
+| m8 | «Plan Sin plan» | consola: `offers.noPlan ? offers.plan : \`Plan ${offers.plan}\``; asercion `not.toContain("Plan Sin plan")` en SALIDA 1 | **M8 ROJO** «not to contain 'Plan Sin plan'» (5 archivos que importan la consola: 1 rojo) |
+| m9 | alias `cancel`/`settle-free` no enunciado | SALIDA 2 llama **`CANCEL`** (el endpoint que las offers dan a un `plus` muerto) y pinnea `expect(SETTLE_FREE).toBe(downgradeToFree)` + `offers.downgrade.endpoint === "/api/billing/cancel"` | **ALIAS ROJO** «expected [Function POST] to be [AsyncFunction downgradeToFree]» (5 archivos que importan la ruta: 1 rojo) |
+| m10 | tres archivos en 300 | `billing-reconcile-page.neon…` **partido por tema** → `billing-dead-state.neon.integration.test.ts` (las 2 SALIDAS + ALTA + carrera S9); reconcile queda en **214** | tamaños al hook abajo |
+
+**Un ajuste al corte decidido:** «extraer el setup al support» NO era posible — los `vi.mock` no pueden vivir ahi y
+las paginas tampoco (ciclo de imports que cuelga la coleccion, documentado en el support). El corte real fue mover el
+segundo `describe` a un archivo propio con su preambulo repetido, que es el patron que ya usan los otros dos.
+
+### Gates sobre el arbol FINAL (byte-identico al medido: hashes abajo)
+
+- **`test` con integracion: 126 archivos / 916 tests / 0 failed / 0 skipped** (venia de 124/910: +2 archivos —
+  `billing-click-probe`, `billing-dead-state`— y +6 tests; ninguno preexistente perdido).
+- **`typecheck --force` 3/3 `0 cached`. `build --force` 3/3 `0 cached`.** `lint` y `format:check` verdes.
+- `grep -rn MUTATION apps/merchant/src` vacio; ninguna sonda `zz-*`.
+
+**Tamaños AL HOOK post-prettier, control `onboarding/page.tsx` → `EXIT=2`:** pages.neon **294**, reconcile-page
+**214**, dead-state **234**, console **274**, page.tsx **203**, view.test **234**, confirm-dialog **128**,
+click-probe **285**, **offers.test 300 y store.neon 300 (intactos, cero margen — siguen anotados)**.
+
+**Hashes limpios RE-MEDIDOS (baseline para la proxima auditoria):** `page.tsx` `963efe9ce5e80a627c22cc634ff487a9b9439cd7`
+· `subscription-console.tsx` `82388cbb16f4fe279469b84b7513c4e20fef377d` · `settle-free/route.ts`
+`eeaa9e0cbe64281c0463d53451d117d2e5377bf3`. Copias en `/tmp/fix-d2-base/`.
+
+**QUEDA:** PASS del revisor del delta → commit → (D3 pendiente de la spec) → migracion `0030` a prod. Nada pusheado.
+
+### LOTE 3 DEL DELTA (2026-09-12, tras la 11a muerte): EL REVISOR ENCONTRO E2 Y SE CERRO POR VALOR EXACTO
+
+El revisor del delta murio **limpio** (arbol byte-identico, sin mutaciones ni sondas) y con bitacora en
+`/tmp/revision-delta-d2.md`. Antes de morir construyo un **oraculo de que manda Flight de verdad** (sonda
+`/tmp/flight-probe.cjs` sobre `react-server-dom-webpack`): manda Map/Set/Promise/TypedArray/getters/toJSON/strings;
+NO manda props extra de arrays, claves Symbol ni no-enumerables. Con eso midio dos evasiones nuevas:
+- **E1** (array con prop extra bajo `offers`): VERDE — **limite, no fuga** (Flight no lo manda).
+- **E2 — RESIDUAL REAL: un secreto CODIFICADO (base64) bajo la clave permitida `notice` pasaba la allow-list de claves,
+  `nonPlainPaths` y el substring, y Flight SI lo manda.** Tercera preimagen de S7, y la mas obvia en retrospectiva:
+  todo guard por forma o por substring tiene una preimagen por transformacion.
+
+**Cierre (orquestador): las 8 props se pinnean POR VALOR EXACTO con `toEqual` del objeto entero** (subscription
+literal, `offers` via la funcion pura, y los 6 escalares con su valor sembrado). Contra eso no hay clave de mas, valor
+de mas ni transformacion que pase. `nonPlainPaths` se conserva por el mensaje (dice el camino) y se movio a
+`billing-pages-support.ts` para no pasar de 300. **Ejecutado contra el fix, alcance 3 archivos (15 t):**
+- **E2 → ROJO 2** (`- "notice": null` / `+ "notice": "Y3VzX0UyX3NlY3JldG8="`; el 2o rojo es el test del `?done=`, que
+  ya no ve su texto — honesto, es la misma mutacion).
+- **E1 → ROJO 1** (`+ "leak": []`) — lo que era limite ahora tambien muerde.
+- **R13 (re) → ROJO 1** (`props.offers.leak: [object Map]`).
+Restauraciones por `diff` + `shasum` (`page.tsx` sigue en `963efe9c…`). typecheck --force 3/3, lint y format verdes.
+
+**Hashes RE-MEDIDOS:** `billing-pages.neon.integration.test.ts` `f5324d3eb8952516b76f926ab5ff6e0acf09cc92` (273 lineas al hook) ·
+`billing-pages-support.ts` `d48533a330c1d77446ac6821d60d86c0add779d2` (114). Copias en `/tmp/fix-d2-base/`.
+
+**Lo que el revisor NO alcanzo y queda para la reanudacion:** re-ejecutar R6 y R9 por su cuenta, S9 x3, el intento
+de R18, regresiones del recorte, higiene final. Su bitacora tiene las filas abiertas.
+**Gates sobre el arbol final del lote 3 (re-corridos, no heredados):** `test` con integracion **126 / 916 / 0 failed / 0
+skipped**; `build --force` 3/3 `0 cached`; `typecheck --force` 3/3; `lint` y `format:check` verdes. **Revisor del delta
+RETOMADO** (SendMessage, contexto intacto) con la lista exacta de lo pendiente y el aviso de que su copia de
+`pages.neon`/`support` quedo vieja.
+
+## VEREDICTO DEL REVISOR DEL DELTA (12a muerte, pero TERMINO): FAIL DE BAJA SEVERIDAD — Y EL PLAN DE CIERRE POR SESIONES
+
+Bitacora completa en `/tmp/revision-delta-d2.md`. Arbol auditado tras la muerte: `grep MUTATION` vacio, sin `zz-*`,
+los 5 hashes (`963efe9c 82388cbb f5324d3e d48533a3` + settle-free `eeaa9e0c`) iguales al baseline. **El hook
+`tasks-fresh` marco 3 archivos «tocados»: fue el revisor RESTAURANDOLOS (mtime nuevo, contenido identico).**
+
+**Bloqueante (E4/E5, cuarta preimagen de S7, la mas fina):** `toEqual` lee cada prop DOS veces (`nonPlainPaths` +
+`toEqual`); **Flight las lee UNA**. Un getter con estado o un `Proxy` que devuelve el secreto solo en la primera
+lectura deja 15/15 VERDE y Flight manda el secreto (sonda `/tmp/flight-probe2.cjs`: `"endpoint":"cus_secret_ZZ9"`).
+**Fix de 1 linea, verificado por el revisor:** `structuredClone(element.props)` como UNICA lectura y las aserciones
+sobre el clon → E4 ROJO (`toEqual`), E5 ROJO (`DataCloneError: #<Object> could not be cloned`). Control limpio 6/6.
+
+**R18: EL LIMITE QUE DECLARO EL ORQUESTADOR ERA FALSO** (patron de `CLAUDE.md`, esta vez cometido por el orquestador).
+La trampa de foco SI se pinnea sin paquetes: `node-html-parser` viene bundleado en `next` (`querySelectorAll` + motor
+CSS), render real + el `onKeyDown`/`ref` reales, **45 lineas, 12 ms**. Mutar el selector a `"button, input, select,
+textarea"` da ROJO: `expected [ 'BUTTON:Cancelar', …(1) ] to deeply equal [ 'A:tus locales', 'BUTTON:Cancelar' ]`.
+**Sonda guardada en `/tmp/zz-focus-probe.test.ts`** (borrada del arbol por el revisor). Se promueve en la sesion A.
+
+**Cerrado por el revisor:** R6 ROJO 1 y R9 ROJO 3/3 re-ejecutados por su cuenta; S9 limpio 6/6, piso justificado
+(`toContain("Mejorar a Plus")` + `plan === "free"` por SQL: el `!state` no puede dar verde falso). **3 menores: el
+detalle murio con el agente** — se recuperan en la sesion B con un revisor acotado.
+
+### PLAN DE CIERRE POR SESIONES (propuesto al owner el 2026-09-12; 12 muertes y ~5 h acumuladas)
+
+- **SESION A — HECHA el 2026-09-12 (detalle arriba, al principio de este archivo).** (1) `structuredClone` + E4/E5
+  re-ejecutadas en ROJO ✔; (2) `confirm-dialog-focus.test.ts` promovido, R18 en ROJO, los dos lugares del limite
+  falso corregidos ✔; (3) 5 gates verdes (127/917) ✔; (4) **commit de checkpoint: EL OWNER LO RECHAZO.** Respuesta
+  literal (2026-09-12): «hace el commit ahora si esta listo. pero si todavia no tenemos el pass del revisor,
+  entonces no». **No hay PASS ⇒ no se commitea.** El riesgo que el commit iba a cubrir SIGUE ABIERTO: 16 archivos
+  son `??` y no hay blob al que volver, asi que **toda mutacion de la sesion B exige copia en `/tmp` + `shasum`
+  ANTES de tocar nada** — es el unico punto de retorno que existe.
+- **SESION B — TERMINADA con veredicto FAIL de baja severidad** (1 bloqueante + 5 menores; detalle al principio de
+  este archivo). Sobrevivio una muerte (la 13a de la spec) y se retomo por `SendMessage` con el contexto intacto.
+  **Falta una SESION B-bis de correccion + re-revision acotada antes de que exista un PASS.** **SI ESTA SESION SE CAE:** el arbol quedo limpio
+  (`grep MUTATION` = 0, sin `zz-*`, los 6 shasums == baseline del encargo) y con los 5 gates verdes; lo primero que
+  hace la que hereda es `grep -rn MUTATION apps/merchant/src`, comparar esos 6 shasums y **leer la bitacora**.
+- **SESION C (~30 min):** migracion `0030` a prod (Neon, `db:migrate`, verificar por `run_sql`), push con el fix de
+  `GH_TOKEN`, y QA del owner contra el sha exacto (`gh api …/commits/<sha>/status` = `success`).
+- **Despues, sin apuro:** extender `no-mutations-left.sh` para ver archivos-sonda (hoy ciego), con prueba de que muerde.
+
+## HANDOFF 2026-09-12 — GATE VERDE, ADR 0062 ESCRITO, LISTO PARA `/clear`
+
+**Gate del handoff, RE-CORRIDO sobre los bytes actuales (no heredado):** `typecheck` VERDE · `lint` VERDE ·
+`test` con integracion **126 archivos / 916 tests / 0 failed / 0 skipped**. Higiene: `grep MUTATION` vacio, sin
+sondas `zz-*`, y los 5 hashes iguales al baseline (`page.tsx 963efe9c`, `console 82388cbb`, `settle-free eeaa9e0c`,
+`pages.neon f5324d3e`, `support d48533a3`).
+
+**Se bajo a disco lo aprendido:** **ADR 0062** — «lo que cruza al cliente se pinnea por VALOR EXACTO y en UNA SOLA
+LECTURA», con las cuatro vueltas del oraculo de S7 y por que las tres primeras estaban verdes sin cerrar nada. Fila en
+`docs/INDEX.md` en el mismo commit. **Mistake→rule en `CLAUDE.md`:** (1) la regla del oraculo que debe leer igual y la
+misma cantidad de veces que el consumidor real; (2) el gotcha de que **`node-html-parser` viene bundleado en `next`**,
+que es lo que falsifico el limite de R18 que habia declarado el orquestador.
+
+**NADA COMMITEADO TODAVIA.** 15 archivos de codigo (`??` en su mayoria) + docs. El commit de checkpoint es el primer
+paso de la sesion A y **espera confirmacion del owner**.

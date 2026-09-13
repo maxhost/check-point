@@ -9,24 +9,23 @@ import {
 /**
  * Spec 0063, D7 — el DTO que llega al navegador y la allow-list de presentación.
  *
- * LO QUE ESTE ARCHIVO NO PINNEA, declarado en vez de disimulado (fase A de la spec):
+ * LO QUE ESTE ARCHIVO NO PINNEA, declarado en vez de disimulado:
  *
- *  - El **render del HTML** de `/backoffice/subscription` con `renderToStaticMarkup` es
- *    FASE C. Verificado, no supuesto: `app/backoffice/` no tiene un directorio
- *    `subscription/`, y `toSubscriptionView` / `planLabel` / `statusLabel` no tienen HOY
- *    ningún consumidor fuera de `server/billing/` (grep sobre todo `apps/merchant/src`,
- *    transcripto en el handoff). No hay superficie que renderizar: el límite es de
- *    inexistencia, no de herramienta — el `environment: "node"` del vitest de merchant SÍ
- *    alcanza para `renderToStaticMarkup` (precedente:
- *    `locations-backoffice-pages.neon.integration.test.ts:113`), así que en cuanto la
- *    página exista el test se escribe sin instalar nada.
+ *  - **El render del HTML**. La fase A lo dejó anotado como límite de INEXISTENCIA (la
+ *    página no existía); desde la D2 existe y el render vive en
+ *    `billing-pages.neon.integration.test.ts` — corte del orquestador, por NATURALEZA: este
+ *    archivo es funciones puras sin un solo mock y el render exige `vi.mock("./auth-guards")`
+ *    y base real. El límite NUNCA fue de herramienta: el `environment: "node"` del vitest de
+ *    merchant alcanza para `renderToStaticMarkup` sin instalar nada.
  *
- *  - Por lo tanto, lo de abajo pinnea la DECISIÓN («el DTO dice X»), no el COMPORTAMIENTO
- *    («el usuario no recibe X»), y el CABLEADO —que la página use el DTO y no la fila—
- *    queda SIN ORÁCULO hasta la fase C. Es exactamente el hueco que `choosePushPromptView`
- *    dejó en la tarea 38, donde un revisor reintrodujo el bug en el llamador con los 5
- *    gates en verde. Nombrarlo es lo único que evita leer este archivo como más cobertura
- *    de la que da.
+ *  - Por lo tanto lo de abajo pinnea la DECISIÓN («el DTO dice X», «la tabla de D7 ofrece
+ *    X»), no el COMPORTAMIENTO («el usuario ve X»). El CABLEADO —que la PÁGINA le pase a la
+ *    consola el DTO y no la fila— lo pinnea la INSPECCIÓN DE LAS PROPS del elemento en
+ *    `billing-pages.neon.integration.test.ts`, y NO el render: `renderToStaticMarkup` no
+ *    emite el payload RSC, así que el HTML nunca ve las props de un componente cliente
+ *    (medido: la fila cruda dejaba 66/66 en verde). Es el hueco que `choosePushPromptView`
+ *    dejó en la tarea 38, donde un revisor reintrodujo el bug en el LLAMADOR con los 5
+ *    gates en verde.
  *
  * El conjunto de claves esperado está escrito A MANO acá y NO se importa de `view.ts`: con
  * una constante del módulo bajo prueba, agregar una clave a los dos lados dejaría el test

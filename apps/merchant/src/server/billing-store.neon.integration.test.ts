@@ -12,10 +12,12 @@ import {
   MONTHLY_PRICE,
   PRICE_IDS,
   YEARLY_PRICE,
+  custId,
   dropWebhookEvents,
   fakeStripe,
   readSubscriptionRow,
   stripeSubscription,
+  subId,
   type FakeStripe,
 } from "./billing-integration-support";
 import {
@@ -53,11 +55,9 @@ vi.mock("./stripe-config", async (importOriginal) => {
 
 const events = eventIdRegistry();
 
-/**
- * OJO: `core_subscription_stripe_unique` es un unique GLOBAL y vitest corre los ARCHIVOS en
- * paralelo: dos con el mismo literal chocan con un `23505` que PARECE un bug del producto —
- * pasó con `sub_viva`, que este archivo escribe al reconciliar y el de `-writes` siembra.
- */
+/** Residual R2 de la D1: los ids salen de `subId`/`custId` (sufijo único por módulo y corrida)
+ * y NO de literales. Los uniques de Stripe son GLOBALES y vitest paraleliza ARCHIVOS, así que
+ * un literal compartido revienta con un `23505` EN EL SEED, indistinguible de un bug. */
 
 /** El paso 1-2 del `cancel` de D6 (lock, leer, escribir la intención): los mismos statements de
  * la ruta de la fase C. Se invoca directo porque la propiedad es del store, no del HTTP. */
@@ -93,8 +93,8 @@ describe.skipIf(!integrationEnabled)(
       // la MISMA clave para que Stripe reconozca el reintento — es el camino de reparación. Con
       // una asignación en vez del `coalesce`, cada reintento estrenaría clave.
       const seeded = await seedBillingBusiness("plus", {
-        stripeSubscriptionId: "sub_idem",
-        stripeCustomerId: "cus_idem",
+        stripeSubscriptionId: subId("idem"),
+        stripeCustomerId: custId("idem"),
       });
       try {
         const first = await cancelStep(
@@ -136,14 +136,14 @@ describe.skipIf(!integrationEnabled)(
       const seeded = await seedBillingBusiness("none", {
         status: "canceled",
         interval: "month",
-        stripeSubscriptionId: "sub_muerta",
-        stripeCustomerId: "cus_conservado",
+        stripeSubscriptionId: subId("muerta"),
+        stripeCustomerId: custId("conservado"),
         pendingPlan: "free",
         downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
       });
       const otro = await seedBillingBusiness("plus", {
-        stripeSubscriptionId: "sub_del_otro",
-        stripeCustomerId: "cus_del_otro",
+        stripeSubscriptionId: subId("del_otro"),
+        stripeCustomerId: custId("del_otro"),
       });
       try {
         await withDbTransaction((tx) => settleToFree(tx, seeded.business.id));
@@ -154,7 +154,7 @@ describe.skipIf(!integrationEnabled)(
           null,
         ]);
         expect(row.stripeSubscriptionId).toBeNull();
-        expect(row.stripeCustomerId).toBe("cus_conservado");
+        expect(row.stripeCustomerId).toBe(custId("conservado"));
         expect(row.pendingPlan).toBeNull();
         expect(row.downgradeRequestedAt).toBeNull();
         // El `where` por `businessId`, que el doble del unit no puede ver: el otro negocio
@@ -162,7 +162,7 @@ describe.skipIf(!integrationEnabled)(
         const vecino = await readSubscriptionRow(otro.business.id);
         expect([vecino.plan, vecino.stripeSubscriptionId]).toEqual([
           "plus",
-          "sub_del_otro",
+          subId("del_otro"),
         ]);
       } finally {
         await dropBusiness(seeded.business.id);
@@ -174,15 +174,15 @@ describe.skipIf(!integrationEnabled)(
       // Mutación M16. Vacío con `status:"all"` significa «este customer nunca tuvo suscripción»,
       // que no alcanza para degradar un plan desde el render de una página.
       const seeded = await seedBillingBusiness("plus", {
-        stripeCustomerId: "cus_vacio",
-        stripeSubscriptionId: "sub_vieja",
+        stripeCustomerId: custId("vacio"),
+        stripeSubscriptionId: subId("vieja"),
         interval: "month",
       });
       try {
         const before = await readSubscriptionRow(seeded.business.id);
         const outcome = await reconcileFromStripe(fake.gateway, {
           businessId: seeded.business.id,
-          stripeCustomerId: "cus_vacio",
+          stripeCustomerId: custId("vacio"),
           priceIds: PRICE_IDS,
         });
         // LA FILA PRIMERO: es la propiedad que da nombre al test. Con el `outcome` antes, su
@@ -203,29 +203,29 @@ describe.skipIf(!integrationEnabled)(
       // Stripe tiene una suscripción viva — con esa divergencia, `checkout` crearía una SEGUNDA
       // suscripción viva (doble cobro).
       const seeded = await seedBillingBusiness("free", {
-        stripeCustomerId: "cus_deriva",
+        stripeCustomerId: custId("deriva"),
       });
       try {
         fake.list = [
           // La más reciente, pero MUERTA: no se elige.
           stripeSubscription({
-            id: "sub_muerta_reciente",
+            id: subId("muerta_reciente"),
             status: "canceled",
-            customer: "cus_deriva",
+            customer: custId("deriva"),
             created: Math.floor(Date.UTC(2026, 8, 9) / 1000),
             items: [{ priceId: MONTHLY_PRICE }],
           }),
           stripeSubscription({
-            id: "sub_viva_reconciliada",
+            id: subId("viva_reconciliada"),
             status: "active",
-            customer: "cus_deriva",
+            customer: custId("deriva"),
             created: Math.floor(Date.UTC(2026, 8, 5) / 1000),
             items: [{ priceId: YEARLY_PRICE }],
           }),
         ];
         const outcome = await reconcileFromStripe(fake.gateway, {
           businessId: seeded.business.id,
-          stripeCustomerId: "cus_deriva",
+          stripeCustomerId: custId("deriva"),
           priceIds: PRICE_IDS,
         });
         expect(outcome).toEqual({ reconciled: true });
@@ -233,7 +233,7 @@ describe.skipIf(!integrationEnabled)(
         expect([row.plan, row.interval, row.stripeSubscriptionId]).toEqual([
           "plus",
           "year",
-          "sub_viva_reconciliada",
+          subId("viva_reconciliada"),
         ]);
         // La reconciliación NO mueve el guard de orden: si lo adelantara a `now`, un evento
         // legítimo posterior con `created` anterior quedaría `stale_event` y se perdería.
@@ -252,17 +252,17 @@ describe.skipIf(!integrationEnabled)(
       // entrelazado se fuerza a mano para que sea determinista: el `cancel` toma el lock y
       // retiene el commit; el webhook llega después y tiene que esperarlo.
       const seeded = await seedBillingBusiness("plus", {
-        stripeSubscriptionId: "sub_carrera",
-        stripeCustomerId: "cus_carrera",
+        stripeSubscriptionId: subId("carrera"),
+        stripeCustomerId: custId("carrera"),
         interval: "month",
       });
       try {
         fake.subscriptions.set(
-          "sub_carrera",
+          subId("carrera"),
           stripeSubscription({
-            id: "sub_carrera",
+            id: subId("carrera"),
             status: "canceled",
-            customer: "cus_carrera",
+            customer: custId("carrera"),
             businessId: seeded.business.id,
             cancelAtPeriodEnd: true,
           }),
@@ -280,7 +280,7 @@ describe.skipIf(!integrationEnabled)(
         const webhook = deliver({
           id: events.next("carrera"),
           type: "customer.subscription.deleted",
-          object: { id: "sub_carrera" },
+          object: { id: subId("carrera") },
         });
         await new Promise((resolve) => setTimeout(resolve, 2000));
         release();

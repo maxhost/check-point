@@ -96,6 +96,22 @@ mas puede escribirlo**; si la respuesta no es «solo nuestro codigo», no es un 
 una coincidencia. Reusar una columna existente «para no agregar una nueva» es la forma que toma
 este error, y se siente como economia.
 
+**UNA PROPIEDAD UNIVERSAL NO SE CIERRA CON MUTACIONES: SE CIERRA CON UN ORACULO ACOTADO MAS UN LIMITE DECLARADO.**
+«Esto no filtra nada por ningun canal», «este dato no cruza nunca» y familia son afirmaciones **universales**, y
+**ningun conjunto finito de mutaciones las demuestra** — siempre queda un canal mas. Paso en la spec 0063: el oraculo
+de fuga de la pagina de suscripcion llego a **SEIS** vueltas, cada una cazada por un revisor plantando un canal nuevo
+(el markup, `JSON.stringify`, la allow-list de claves, el **conteo de lecturas**, `element.key`, el **estado
+parcial**), con una septima ya empezada cuando el **owner** corto el ciclo preguntando por que una feature de upgrade/
+downgrade llevaba horas. **El riesgo real se habia cerrado en la PRIMERA vuelta** (el DTO omite las claves + el test
+de que el HTML no las contiene); todo lo demas exigia que alguien escribiera la fuga a proposito, y las mutaciones se
+volvieron irreales (un `Proxy` que devuelve el secreto solo en la 1a lectura, un base64 como `type` del elemento).
+**El defecto es del ORQUESTADOR, no de los revisores:** ellos hicieron exactamente lo encargado; **el que tiene que
+poner la condicion de corte es el que encarga**. Al abrir una revision sobre una propiedad universal: (a) decidí de
+antemano que clase de error tiene que cazar el oraculo —los PLAUSIBLES— y escribilo en el encargo; (b) lo que quede
+afuera se **declara** (con la misma exigencia de siempre: intentado, no supuesto); (c) **si dos rondas seguidas
+terminan en «el fix abrio la preimagen siguiente», eso no es mala suerte: es la señal de que la propiedad es
+universal y de que el bucle no termina solo.** Ver ADR 0062.
+
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto,
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.
@@ -170,6 +186,18 @@ usaban la tolerancia —**ninguna de las tres la llama**— y esa frase fue exac
 la primera sonda se escribiera contra `cancel` y **saliera VERDE por el motivo equivocado**. Un
 comentario mentiroso no espera a que alguien lo lea mal: lo induce.
 
+**UN ORACULO QUE INSPECCIONA UN OBJETO TIENE QUE LEERLO IGUAL —Y LA MISMA CANTIDAD DE VECES— QUE EL CONSUMIDOR REAL.**
+Es el **ADR 0062**, y costo cuatro vueltas: probar que un server component no filtra al navegador salio VERDE con la
+fuga puesta usando el render del HTML (`renderToStaticMarkup` **no emite el payload RSC**), usando `JSON.stringify` de
+las props (borra `Map`/`Promise`, que **Flight si manda**, y `Promise.resolve(row)` **es el idiom de Next 15**), y
+usando una allow-list de CLAVES (un `cus_…` en **base64** bajo una clave permitida la pasa entera). La cuarta es la
+mas fina: con `toEqual` exacto, **el test leia cada prop dos veces y Flight una** — un **getter con estado** o un
+**`Proxy`** devuelven el secreto en la primera lectura y el valor legitimo en la segunda, 15/15 en verde. **Se cierra
+con una LECTURA UNICA (`structuredClone`) y valor exacto.** Corolarios: **todo guard por forma o por substring tiene
+preimagen por TRANSFORMACION**; y antes de creerle a un guard sobre serializacion, **medi que manda el serializador de
+verdad** con una sonda — sin eso no distinguis una **fuga** de un **limite** (ahi se separo «Flight no manda props
+extra de arrays» = limite, de «Flight si manda el base64» = fuga).
+
 **Una mutacion se revierte SIEMPRE, y se etiqueta mientras esta puesta.** Un implementador de
 la spec 0055 murio a mitad de sus mutaciones y dejo `counter/core.ts` sin el filtro
 `status = 'active'`: la integracion daba 25/26 y **el rojo parecia un bug real del producto**
@@ -186,6 +214,14 @@ si.** Cortarla bajo un agente vivo lo hace transcribir un resultado falso, que e
 que el hook previene. Lo correcto: verificar que este **etiquetada y atribuida**, y dejar en
 `docs/TASKS.md` **el comando exacto de restauracion y el `shasum` limpio**, para que si la sesion
 se cae la proxima no tenga que reconstruir nada. Lo que NO puede pasar es que sobreviva a la sesion.
+**Y dos precisiones que salieron de vivirlo (fase D2): (a) el reclamo del hook es una FOTO VIEJA** — entre que corre y
+que vos lo leen, la mutacion puede ya estar revertida (paso: `shasum` y `diff` contra la copia limpia daban identico al
+baseline, y lint volvia VERDE re-corrido). **El primer comando no es `git checkout`: es `ListAgents` para ver si el
+subagente esta vivo, y re-leer el archivo.** Las dos respuestas posibles —viva, o ya revertida— prohiben tocarla, y
+ninguna se sabe sin mirar. **(b) Ojo con el rojo COLATERAL de la mutacion, porque su fix «obvio» puede ser un bug
+real:** R9 (sacar `lockBusiness` de la lectura) dejaba el import sin usar y `verify.sh` tiraba lint rojo; el arreglo
+evidente era **borrar el import**, o sea consolidar «la pagina lee sin lock» mientras se tapaba la medicion. Un gate
+rojo bajo una mutacion viva no se arregla: se espera.
 
 **Y el corolario que costo caro, porque rompe el salvavidas que todo el mundo asume: MUTAR UN
 ARCHIVO UNTRACKED DEJA A GIT SIN NADA A QUE VOLVER.** El reflejo ante una mutacion abandonada es
@@ -210,6 +246,16 @@ en vez de una apuesta sobre el trabajo de otro.** Y cuando la reconstruccion a m
 contra un `shasum` y ninguno dio— **la copia en `/tmp` es lo unico que queda**: ya salvo dos mutaciones abandonadas en
 esa fase. Ojo tambien con el «casi igual»: un candidato estructuralmente correcto perdia un comentario que explicaba
 por que se miraba `rawType` y no `instanceof`; **el hash lo cazo, y sin el ese archivo se degradaba en silencio**.
+
+**Y la ultima pieza del protocolo, que costo una medicion entera: LA FILA DE LA BITACORA SE ABRE ANTES DE MUTAR, NO
+DESPUES DE MEDIR.** Un revisor de la fase D2 (spec 0063) escribia cada fila «al terminarla» —disciplina que suena
+correcta— y murio con **R10 puesta y sin fila**: el arbol se pudo restaurar (habia copia en `/tmp` y `shasum`
+baseline, y el `diff` mostro una sola linea), **pero el resultado ya ejecutado de R10 se perdio y hubo que rehacerlo
+desde cero**. El hook `no-mutations-left.sh` te salva el arbol; no te salva la medicion ni le dice a la proxima sesion
+QUE mutacion era. **Regla: al mutar se escribe primero `id + archivo + shasum limpio + que invariante ataca`, y
+despues se mide y se completa el resultado.** Una fila a medio escribir es un punto de retorno; una fila ausente es
+trabajo que se hace dos veces — y si la sesion que hereda la transcribe «de memoria», es una fila inventada, que es
+justo lo que la tabla de mutaciones existe para prohibir.
 
 **UN SINTOMA NO ES UNA CAUSA, y nombrar un mecanismo PLAUSIBLE se siente igual que haberlo verificado.** En la fase D1
 el orquestador vio `fetch failed` dentro de corridas VERDES y escribio —en `docs/TASKS.md` y al owner— que eran
@@ -251,6 +297,13 @@ mismo archivo). Un baseline podrido no falla ruidoso: la sesion fresca corre la 
 mismatch y concluye **«alguien dejo una mutacion puesta»** — el sintoma exacto que esa auditoria
 existe para descartar, ahora fabricado por el propio doc. **Todo baseline (`shasum`, conteo de
 tests, tamaño) se RE-MIDE en el handoff, no se copia del mensaje anterior.**
+**Y el corolario de alcance, que costo un numero relatado al owner: al medir tamaños, el conjunto es TODO EL ALCANCE,
+no los archivos NUEVOS.** El orquestador de la D2 reporto «dos archivos en 300 exactas»; **eran tres** — el tercero
+(`billing-store.neon.integration.test.ts`) es un archivo **modificado** que ya estaba en el limite desde antes, y solo
+se midieron los dos creados en la fase. **Un archivo preexistente clavado en el limite es el mas peligroso de todos,
+porque nadie lo vuelve a medir**: no aparece como `??` en el `git status`, no se siente «nuevo», y el hook `file-size`
+es **PostToolUse** — solo mira lo que se acaba de tocar. Lo cazo el revisor independiente. Al cerrar una fase, el
+barrido de tamaños se corre sobre los ` M` **y** los `??`.
 
 ## Codigo
 
@@ -265,6 +318,17 @@ tests, tamaño) se RE-MIDE en el handoff, no se copia del mensaje anterior.**
 
 ## Gotchas
 
+- **El shell del agente es ZSH, y zsh NO separa en palabras una variable sin comillas.** `FILES="a b c";
+  prettier --write $FILES` le pasa UN argumento con espacios: prettier contesta «No files matching the pattern» y
+  un `for f in $FILES` itera UNA vez sobre la cadena entera. Paso en el delta de la D2: prettier «corrio» sin tocar
+  nada y el bucle de tamaños al hook midio una entrada inexistente como `EXIT=0` — o sea un gate que dice «paso»
+  sin haber mirado. Usar arrays (`FILES=(a b c); cmd "${FILES[@]}"`) o `${=FILES}`; y leer la salida de prettier,
+  que lista cada archivo que formateo.
+- **`jsdom` NO es la unica forma de tener `querySelectorAll`: `node-html-parser` viene BUNDLEADO en `next`**
+  (con motor CSS). Render real con `renderToStaticMarkup` + `parse()` + invocar el handler real del elemento pinnea
+  una trampa de foco en **45 lineas, 12 ms, cero paquetes** — verificado en el delta de la spec 0063, donde el
+  ORQUESTADOR habia declarado el limite «exige DOM real» y era falso (mutar el selector da rojo). Antes de escribir
+  «no hay DOM», mira que bundlea Next.
 - **Gates: Node 24 + scripts de ROOT.** El shell del AGENTE arranca en Node 22 —es el Node del
   harness de Claude Code, que se antepone en el `PATH`, **no la terminal del owner**— y el repo
   pide 24: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` antes de cualquier gate.

@@ -36,10 +36,16 @@ export type {
   AssessEventApplicability,
   EventApplicability,
 } from "./applicability";
-export { planLabel, statusLabel, toSubscriptionView } from "./view";
+export {
+  planLabel,
+  statusLabel,
+  subscriptionOffers,
+  toSubscriptionView,
+} from "./view";
 export type {
   PlanLabel,
   StatusLabel,
+  SubscriptionOffers,
   SubscriptionSectionProps,
   SubscriptionView,
   ToSubscriptionView,

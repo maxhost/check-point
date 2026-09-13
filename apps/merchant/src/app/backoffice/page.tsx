@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { SignOutButton } from "../components/sign-out-button";
 import { requireOwner } from "../../server/auth-guards";
+import { planLabel, statusLabel } from "../../server/billing";
 import { getDb } from "../../server/db";
 import { subscriptions } from "../../server/schema";
 
@@ -24,7 +25,7 @@ export default async function BackofficePage() {
 
   // Modules with a REAL screen. Anything not listed here still falls back to the
   // sessionStorage mock of spec 0015 (`/backoffice/demo/<slug>`) — today `campaigns` and
-  // `analytics`. `locations` left that list in spec 0061.
+  // `analytics`. `locations` left that list in spec 0061, `subscription` in spec 0063.
   const realModules = new Set([
     "counter",
     "loyalty",
@@ -32,6 +33,7 @@ export default async function BackofficePage() {
     "locations",
     "staff",
     "brand",
+    "subscription",
   ]);
   const modules = [
     ["Mostrador", "Escanea el QR del cliente y acredita su compra.", "counter"],
@@ -50,6 +52,11 @@ export default async function BackofficePage() {
     ["Staff", "Organiza el equipo que opera tus locales.", "staff"],
     ["Marca", "Personaliza cómo se ve tu negocio.", "brand"],
     ["Analíticas", "Entiende visitas, beneficios y actividad.", "analytics"],
+    [
+      "Suscripción",
+      "Tu plan, el período de facturación y los locales incluidos.",
+      "subscription",
+    ],
   ];
   return (
     <main className="merchant-shell">
@@ -58,9 +65,15 @@ export default async function BackofficePage() {
           <div>
             <p className="eyebrow">Backoffice</p>
             <h1>{business.name}</h1>
+            {/* Spec 0063, D7 — POR LA ALLOW-LIST COMPARTIDA (`server/billing/view.ts`), no
+                por dos ternarios. Los dos que había mentían de formas que esta spec crea:
+                `plan === "plus" ? "Plus" : "Free"` mostraba `none` como «Plan Free» —justo
+                lo que `none` existe para no hacer (ADR 0058 §12)— y
+                `status === "active" ? … : "confirmando pago"` decía «confirmando pago»
+                PARA SIEMPRE sobre un `free` con `status='canceled'`. Se cae el prefijo
+                «Plan» a propósito: con él, `none` leería «Plan Sin plan». */}
             <p>
-              Plan {business.plan === "plus" ? "Plus" : "Free"} ·{" "}
-              {business.status === "active" ? "activo" : "confirmando pago"}
+              {planLabel(business.plan)} · {statusLabel(business.status)}
             </p>
           </div>
           <SignOutButton />

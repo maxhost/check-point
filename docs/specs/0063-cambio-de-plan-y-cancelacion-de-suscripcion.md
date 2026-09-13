@@ -1654,6 +1654,122 @@ resolver para que las rutas funcionen. Ninguna cambia una decision de producto.
     test u otro segun quien llegue primero. En `locations-races` el tag pasa a salir de un
     `randomUUID()`.
 
+### Decisiones del IMPLEMENTADOR de la fase D2, NO del owner ni del orquestador
+
+Mismo criterio que las secciones de las fases B y D1: bordes que el diseño no fijaba y que HAY
+que resolver para que la UI funcione. **Ninguna es un acuerdo del owner** — lo que el owner dijo
+esta en el ADR 0058 §8-12, y lo que decidio el orquestador esta arriba.
+
+1. **`resume` SOBREVIVE al cobro pendiente.** El DoD dice que con `past_due`/`unpaid` «no se
+   ofrece cambio de plan ni de intervalo», y la guarda 1 de `subscriptionOffers` esconde las
+   tres cosas — pero **deja «Reanudar suscripcion»** si hay una baja programada. Motivo:
+   esconderlo deja al owner ATRAPADO (no puede deshacer una baja mientras arregla su tarjeta),
+   que es exactamente el estado por el que existe la ruta `resume` (§Decisiones del
+   orquestador-1); y reanudar no es «cambiar de plan», es deshacer un cambio pedido.
+   **Oraculo: `billing-offers.test.ts`**, la fila de precedencia `past_due` + baja programada.
+   **Si el owner prefiere esconderlo tambien, es una linea** (`resume: false` en la guarda 1).
+2. **Despues de cada operacion la consola RECARGA la pagina** (`window.location.assign`) en vez
+   de parchear el estado local con la respuesta. Las rutas devuelven
+   `{subscription, activeLocations, canCancel}` pero **no** las `offers` —las decide el server— y
+   D9 paso 6 ya pide que «la UI re-lea». Recargar ademas vuelve a pasar por D8, asi que lo que el
+   owner ve despues de operar esta reconciliado. El precio es un round-trip.
+3. **La home pierde el prefijo «Plan»** (`Plan Plus · activo` → `Plus · activo`). Con el prefijo,
+   el estado `none` leia **«Plan Sin plan»**. Es cosmetico y esta aca solo para que nadie lo lea
+   como un descuido.
+4. **`BLOCK_FALLBACK` en la consola:** si `canCancel === false` y NO hay `downgradeBlock`, el
+   servidor bloqueo por algo que no es el conteo de locales (hoy `already_on_plan`). El modal dice
+   «Esta baja no esta disponible para tu plan actual» en vez de inventar un «archiva N» falso.
+5. **La lectura del `stripe_customer_id` para D8 va SIN `lockBusiness`; la del estado que se
+   renderiza, CON.** El docblock de `readSubscription` exige que la lectura y la decision ocurran
+   bajo el mismo lock, y eso se respeta en `readBillingState` (igual que `billingStateResponse`).
+   La primera lectura no decide nada: solo saca la llave con la que se le pregunta a Stripe, y
+   `reconcileFromStripe` vuelve a leer la fila bajo su propio lock antes de escribir.
+6. **Que cuenta como «confirmado con Stripe» en D8, porque no es lo mismo que «escribio»:**
+   `reconciled: true` y `no_customer` → confirmado (sin aviso); `no_subscriptions` e `ignored` →
+   **con aviso**. D8 pide el aviso para la lista vacia; `no_customer` se excluye a proposito
+   —son los 9 `free` de prod, que nunca tuvieron customer— porque un aviso siempre encendido es
+   un aviso que se deja de leer. `ignored` se incluye porque ahi Stripe contesto algo que no
+   respalda la fila.
+7. **La allow-list de `?checkout=` y `?done=` vive en la pagina** (`noticeFor`), con el patron de
+   `app/login/login-notice.ts`: un valor que no este en la lista no imprime nada. Es una query
+   string, o sea entrada del atacante.
+
+**DECISIONES DEL DELTA DE CORRECCION DE LA D2 (orquestador, 2026-09-12, tras el FAIL del revisor).**
+
+8. **El oraculo de «la pagina no baja la fila» NO es el render ni `JSON.stringify`: es la inspeccion de las props
+   del elemento leido UNA SOLA VEZ (`structuredClone`) y aseverado por VALOR EXACTO, mas `element.key`, en DOS
+   estados.** Llevo CINCO vueltas y las cuatro primeras se veian suficientes: el render del HTML
+   (`renderToStaticMarkup` no emite el payload RSC — la fila cruda dejaba 66/66 verde), `JSON.stringify` (serializa
+   `Map`/`Set`/`Promise` como `{}` y Flight si los manda), la allow-list de CLAVES (un secreto en base64 bajo una
+   clave permitida la pasa) y la LECTURA DOBLE (un getter con estado devuelve el secreto en la 1a lectura, que es la
+   que hace Flight). **La quinta la cazo el revisor de la sesion B: `element.key` NO vive en `props`, no se renderiza
+   a HTML y Flight lo manda igual** — medido con el serializador real, no razonado. Todas las mutaciones estan
+   ejecutadas y transcritas en el ADR 0062. Se corrigieron los docblocks que afirmaban lo viejo en `page.tsx`,
+   `billing-view.test.ts` y el propio test. **Y hubo SEXTA, abierta por el fix de la quinta:** el 2o estado que se
+   agrego aseveraba solo `key` y la prop que cambiaba —«el conjunto entero no entraba en el archivo»—, asi que un
+   secreto en OTRA prop gateado a ese estado, o metido en `downgradeBlock.message` respetando el
+   `stringContaining("2")`, dejaba **44/44 VERDE** (y el de `notice` **ademas se imprimia en el HTML**). Cerrado
+   moviendo las CUATRO aserciones a `expectCrossesExactly` —un helper hace que repetir el conjunto entero sea mas
+   BARATO que recortarlo—, con **cada estado en su propio `it`** (adentro del mismo, el primer rojo corta y el
+   segundo estado no se evalua) y **sembrado con claves internas reales** (sin ellas, una fuga del `key` solo podia
+   exhibir el string `"null"`).
+9. **`ignored` NO confirma (decision 6) y ahora tiene oraculo:** suscripcion ajena viva sobre fila viva → aviso y
+   fila intacta (`billing-reconcile-page.neon…`).
+10. **El limite S9 se retira: la lectura bajo `lockBusiness` tiene oraculo** — una carrera de ~40 lineas sin
+    paquetes (`billing-dead-state.neon…`); sin el lock la pagina ofrece bajar un plan que ya bajo.
+11. **El cableado del click tiene oraculo sin jsdom** (`billing-click-probe.test.ts`, `vi.mock("react")` sobre
+    `useState`): el `from: "subscription"` de la consola, el `from: "onboarding"` del alta y que «Bajar a Free» abre
+    el modal. El limite «solo simulando el click» era falso.
+12. **La trampa de foco (`confirm-dialog`) TIENE ORACULO EN SUS TRES MITADES: el limite «exige DOM real» era
+    FALSO.** `node-html-parser` viene BUNDLEADO en `next` (con `querySelectorAll` y motor CSS), asi que se renderiza
+    el markup real y se invoca el `onKeyDown` real (`confirm-dialog-focus.test.ts`). Lo pinneado, con la mutacion
+    que pone roja **cada** mitad y en un test DISTINTO: (a) el CONJUNTO focusable —selector a
+    `"button, input, select, textarea"` ⇒ `expected [ 'BUTTON:Cancelar', …(1) ] to deeply equal [ 'A:tus locales',
+    'BUTTON:Cancelar' ]`—; (b) hacia ADELANTE cierra SOLO desde el ultimo —sacar `activeElement === last` ⇒
+    `expected "vi.fn()" to not be called at all`—; (c) hacia ATRAS (shift+Tab) —borrar la rama ⇒ `expected "vi.fn()"
+    to be called 1 times, but got 0 times`—; y (d) **la trampa SOLO actua con Tab** —borrar
+    `if (event.key !== "Tab") return;` ⇒ rojo, y se asevera lo mas fuerte que hay: con otra tecla el handler sale
+    ANTES del `querySelectorAll`, o sea que ni consulta el DOM—. **Las (b) y (c) NO estaban en la primera version: el revisor de la
+    sesion B demostro que las dejaba verdes porque el stub de `document.activeElement` era TAUTOLOGICO** (devolvia
+    `seen.at(-1)`, o sea el ultimo por construccion), y la (d) tampoco: un revisor la cazo despues. **Fuera de este
+    test queda el `useEffect`** (foco inicial, y el Escape que cierra el modal — es el handler de `document`, no
+    este `onKeyDown`), que esta mockeado. Es el patron de la 0057 dos veces: el limite falso lo declaro el ORQUESTADOR, y
+    despues la correccion del limite quedo **sobredimensionada al reves** —«tiene oraculo» era mas de lo que habia—.
+13. **La seccion imprime «Sin plan» y no «Plan Sin plan» para `none`** (misma decision 3 que la home), con oraculo.
+14. **El alias `settle-free` = `downgradeToFree` esta ENUNCIADO en el test de la SALIDA 2**, que ademas llama al
+    endpoint que el boton usa (`/api/billing/cancel` para un `plus` muerto).
+15. **Segundo corte de tamaño:** `billing-reconcile-page.neon…` (300) se parte por tema; las dos salidas del estado
+    muerto, el alta y la carrera S9 viven en `billing-dead-state.neon.integration.test.ts`.
+
+**HALLAZGOS PARA EL ORQUESTADOR (no los arregle: salen de la whitelist).**
+
+1. **La pagina reescribe la secuencia `lock → leer → contar → decidir` que ya vive en
+   `decideUnderLock` (`app/api/billing/_auth.ts`).** No se reuso porque ese helper **LANZA** un
+   409 ante `blocked`, y `blocked` es justo el estado que esta pagina tiene que **renderizar**. La
+   decision en si no puede divergir —las dos superficies llaman a la MISMA `decidePlanChange`—
+   pero la secuencia esta escrita dos veces. Cerrarlo es partir `decideUnderLock` en una version
+   que devuelve y otra que lanza, y eso toca `_auth.ts`, que no esta en la whitelist de la D2.
+2. ~~**Queda sin oraculo que apretar el boton ABRA el modal** (`setConfirming(true)`, una linea).
+   Lo unico que lo cerraria es simular el click.~~ **ESTE LIMITE ES FALSO Y ESTA SALDADO — lo
+   cazo un revisor en la sesion B-bis.** `billing-click-probe.test.ts` **simula el click**
+   (`vi.mock("react")` sobre `useState`, sin jsdom) y **pinnea exactamente eso**: mutar
+   `setConfirming(true)` da **ROJO 1/29** con `expected false to be true`. **El item 11 de la
+   lista de arriba, en ESTE MISMO ARCHIVO, ya lo afirmaba** — la spec se contradecia consigo
+   misma porque este parrafo quedo escrito con la foto del dia y nadie lo volvio a mirar cuando
+   una fase posterior lo salda. Es la regla de `CLAUDE.md` sobre residuales heredados, ahora del
+   lado del documento: **un limite viejo no se hereda, se re-intenta.** El CONTENIDO del modal y
+   el CABLEADO de sus props siguen pinneados en `billing-offers.test.ts`.
+3. **`server/billing-pages-support.ts` NO PUEDE IMPORTAR LAS PAGINAS, y el sintoma es brutal.**
+   La primera version lo hacia (para compartir los `renderToStaticMarkup`) y **colgaba la corrida
+   para siempre**: >12 min, 0,0% de CPU, cero salida, y **ni `vitest list` terminaba**. El ciclo:
+   la factory del `vi.mock("./auth-guards")` importa el support → el support importaba la pagina →
+   la pagina importa `./auth-guards`, cuya factory no termino → espera infinita. **El timeout de
+   los `it` no salva porque el cuelgue es en la COLECCION.** Falsifico la hipotesis de auto-
+   deadlock de `FOR UPDATE` (`vitest list` no corre ningun `it`) y se probo por construccion: el
+   unico cambio —mover los imports de las paginas al `.test.ts`— llevo la coleccion de >12 min a
+   **1,46 s**. Candidato a linea de `CLAUDE.md`, porque el sintoma es indistinguible de «el test
+   es lento» y la spec 0062 corre estos archivos en CI.
+
 ### Requisito de configuracion que hay que verificar, o el ADR 0059 no se cumple
 
 No es una decision, es un chequeo: el default de Stripe al agotar los reintentos de cobro es

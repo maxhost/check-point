@@ -159,8 +159,8 @@ export default function OnboardingPage() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        businessId,
         interval: billingInterval,
+        from: "onboarding", // [R2-I8] sin businessId: la ruta usa ownerContext
       }),
     });
     const checkoutPayload = (await checkout.json()) as {
