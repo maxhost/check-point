@@ -21,6 +21,28 @@ aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
 **PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
 ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
 
+## RESPUESTAS DEL OWNER A LOS 3 PUNTOS ABIERTOS (2026-09-13) — LO DECIDIDO Y LO QUE SIGUE ABIERTO
+
+**DECIDIDO (literal del owner):**
+- **F2 punto 4:** «poner el importe cobrado, fecha de renovacion, link para descargar el recibo de stripe». Alcance
+  cerrado. Junto con los otros tres huecos de F2 (etiqueta «Plus anual/mensual», modal de confirmacion del cambio de
+  intervalo, fecha de proximo pago) van a la spec nueva.
+- **D3, la direccion:** la baja pasa a ser **INMEDIATA**. El owner ademas quiere un aviso del tipo **«te conviene
+  regresar el dia X»** (2 dias antes de la renovacion) para que el merchant no cancele desperdiciando lo pagado.
+
+**ABIERTO, Y NO SE ESCRIBE COMO DECIDIDO HASTA QUE EL OWNER LO DIGA:**
+- **¿El reembolso va, o el aviso lo REEMPLAZA?** La frase («si reembolso, de hecho, lo mejor es poder ponerle "te
+  conviene regresar el dia X"») admite las dos lecturas y la diferencia es plata.
+- **Y un hecho de Stripe que hay que verificar ANTES de prometer «reembolso»:** cancelar con prorrateo en Stripe
+  acredita **saldo a favor en el customer**, no devuelve la plata a la tarjeta; un reembolso real es otra llamada
+  (`refunds`) contra el cargo. **Son dos productos distintos para el merchant** y hay que medirlo, no suponerlo.
+
+**CORRECCION DEL ORQUESTADOR A UNA PREMISA DEL OWNER (D4):** el owner dijo que con la baja inmediata «ya no hay
+reanudar» y que el bug deja de importar. **Es cierto para NUESTRO flujo y falso para el estado:** el boton de cancelar
+del **dashboard de Stripe** setea `cancel_at_period_end`, y nuestro webhook escribe `pending_plan='free'` igual —es
+exactamente el motivo por el que existe el ADR 0060 y la columna `downgrade_requested_at`—. O sea que **la baja
+programada puede seguir APARECIENDO aunque la app no la cree nunca**, y hay que decidir que hace la app cuando llega.
+
 ## QA DEL OWNER, 2a TANDA (2026-09-13): 21 CASOS OK, **1 BUG REAL (D4)**, 1 INCONSISTENCIA DE DISEÑO (D3) Y 4 HUECOS DE UI (F2)
 
 **VERDES:** A1-A3, B1-B2-B4, C1-C4, D1-D3, E1-E3, F1-F3, G1-G2, H. **`MERCHANT_PUBLIC_ORIGIN` quedo seteada y el
