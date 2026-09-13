@@ -21,6 +21,44 @@ aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
 **PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
 ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
 
+## SIGUIENTE: **ADR 0063 ACEPTADO + SPEC 0064 EN BORRADOR** — 4 preguntas abiertas, no se toca codigo
+
+**El owner cerro D3 (2026-09-13, literal):** «Sin reembolso, no devolvemos plata. indicamos cuando le conviene para
+aprovechar el plan completo, si baja ahora, pierde acceso inmediato.» → **ADR 0063 aceptado**: la baja es
+**INMEDIATA**, sin devolver ni acreditar, y el diferimiento se reemplaza por un **aviso** («te conviene volver el
+dia X», 2 dias antes de la renovacion). Fila en `docs/INDEX.md` en el mismo commit.
+
+**VERIFICADO ANTES DE ESCRIBIR EL ADR (no supuesto):**
+- **`subscriptions.cancel` trae `prorate` en `false` por default** (documentado en
+  `esm/resources/Subscriptions.d.ts` de `stripe@22.5.0`): cancelar sin parametros es **exactamente** lo que el owner
+  pidio. No hay que escribir nada para «no devolver».
+- **El motivo de haber preguntado dos veces:** el prorrateo de Stripe **acredita saldo en el customer**, NO devuelve
+  plata a la tarjeta — un reembolso real es otra llamada contra el cargo. Son productos distintos. **Con esta
+  decision no se usa ninguno.**
+- **La fecha de renovacion ya se sabe derivar** (`items.data[0].current_period_end` del `retrieve`,
+  `billing/derive-rules.ts:79`): el aviso no necesita infra nueva.
+- **Falta superficie de gateway:** `subscriptions.cancel` **no esta** en `StripeGateway` (hoy `retrieve|update|list`)
+  y **`invoices` no se toca en ningun lado**. Los dos hay que agregarlos, con su fake.
+
+**SPEC 0064 EN BORRADOR** (`docs/specs/0064-baja-inmediata-y-los-datos-del-cobro.md`): la baja inmediata + el aviso +
+los **4 huecos de UI del QA** (etiqueta del intervalo, modal de confirmacion del cambio de intervalo, fecha de
+renovacion, importe cobrado + link al recibo). **Riesgo escrito ANTES de implementar: el defecto que origino todo esto
+NO lo caza una mutacion** —ningun invariante estaba roto, cada regla cumplia su contrato y la COMPOSICION era
+incoherente—, asi que el plan de pruebas exige un caso que recorra la secuencia completa y asevere que **lo que se
+cobra y lo que se puede usar coinciden**.
+
+**LAS 4 PREGUNTAS QUE BLOQUEAN EL CIERRE:** (1) que hace la app con una baja diferida que llega **del dashboard de
+Stripe** — ofrecer «Reanudar» (y entonces hay que arreglar el bug D4) o solo informarla; (2) que factura se muestra
+—la ultima siempre, o solo despues de una operacion que cobra—; (3) donde vive el aviso —siempre visible o solo en el
+modal—; (4) **de medicion:** por que falla `resume` hoy (evidencia en el log de Stripe; el `catch` de
+`resume/route.ts:81` descarta el error).
+
+**ENTRA IGUAL, decida lo que decida el owner:** que ese `catch` **registre la causa**. Un 503 que esconde su motivo es
+un defecto propio, y el mismo patron esta en `cancel/route.ts:135`.
+
+**NO LIMPIAR el negocio `A3 Test` (`e9c96528…`) que quedo con la baja diferida al 13-10:** es el caso real para la
+pregunta (1).
+
 ## RESPUESTAS DEL OWNER A LOS 3 PUNTOS ABIERTOS (2026-09-13) — LO DECIDIDO Y LO QUE SIGUE ABIERTO
 
 **DECIDIDO (literal del owner):**
