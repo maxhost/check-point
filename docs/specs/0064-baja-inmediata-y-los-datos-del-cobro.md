@@ -56,10 +56,45 @@ reanudar, no hay diferido, se cae HOY si doy de baja HOY, sin devolver dinero.»
 
 - **Se BORRA la ruta `app/api/billing/resume/route.ts`** y su boton. Con eso **desaparece el bug D4**
   del QA (fallaba siempre) sin arreglarlo: no se arregla codigo que no va a existir.
-- **Al borrar la ruta, ojo con el tipo GENERADO:** `pnpm typecheck` puede fallar con
-  `.next/types/validator.ts(...): Cannot find module '.../route.js'`. No es un error del codigo — se
-  borra ese archivo y el proximo build lo regenera (`CLAUDE.md`).
 - Se borran tambien sus tests y el `resume` de la tabla de ofertas (`billing/view.ts`).
+
+#### 4.b EL ERROR FANTASMA DEL TIPO GENERADO — se cierra ACA, no se hereda
+
+Pedido explicito del owner (2026-09-13): que borrar la ruta **no deje un error que alguien persiga
+sin que sea un error**. Va con su mecanismo **medido**, porque la frase corta se lee al reves:
+
+**Que pasa exactamente.** `apps/merchant/.next/types/validator.ts` es un archivo **GENERADO** por
+Next con **un bloque por ruta**; cada bloque hace
+`import("../../src/app/api/billing/<ruta>/route.js")` (verificado: lineas 293-305 del validator
+actual, con los bloques de `cancel` y `checkout`). `tsconfig` lo incluye, asi que **`tsc` lo
+typechequea**. Si se borra `resume/route.ts` y el validator todavia tiene SU bloque, `pnpm typecheck`
+falla con `Cannot find module '.../resume/route.js'` **apuntando a un archivo que acabamos de borrar
+a proposito**.
+
+**LO QUE EL BUILD REGENERA ES EL VALIDATOR, NO LA RUTA.** El validator se deriva del arbol de
+archivos: regenerado despues del borrado, **sale sin el bloque de `resume`**. La ruta borrada no
+vuelve. (La redaccion anterior de esta spec decia «se borra ese archivo y el proximo build lo
+regenera», y se puede leer como que reaparece la ruta. No: reaparece el validator, ya sin ella.)
+
+**Por que no explota en CI ni en Vercel:** `.next/` esta **gitignoreado** (verificado con
+`git check-ignore`) y alla se buildea de cero, asi que el validator viejo no existe. **El fantasma es
+SOLO de una maquina con `.next` tibio** — la del owner o la de un agente — y por eso es tan
+confusable: el rojo aparece en el unico lugar donde alguien lo va a perseguir a mano.
+
+**OBLIGATORIO EN ESTA SPEC, no opcional:**
+1. Borrar la ruta **y en el mismo paso** `rm -f apps/merchant/.next/types/validator.ts`.
+2. Correr `pnpm run typecheck` y **verificar que da VERDE**. Si sale rojo nombrando `resume`, el
+   borrado del validator no se hizo.
+3. `grep -rn "resume" apps/merchant/.next/types/validator.ts` tiene que dar **vacio** despues del
+   siguiente build.
+
+**Y EL GUARD PARA QUE NO VUELVA A PASAR (item propio del DoD).** La regla es verificable con un
+comando, asi que va a un hook y no a prosa (`CLAUDE.md`): un hook que detecte que
+`.next/types/validator.ts` referencia un `route.ts` **que ya no existe en el arbol** y lo **borre**
+—es un artefacto de build puro, borrarlo no destruye nada y se regenera—, diciendo en pantalla que lo
+hizo y por que. **Se entrega con la prueba de que MUERDE:** correrlo contra un validator que
+referencia una ruta inexistente y verificar el mensaje; y contra uno sano, verificando que **no
+toca nada** (un hook que borra siempre es tan inutil como uno que no borra nunca).
 
 **DECISION DEL ORQUESTADOR (n.o 1 de esta spec), NO del owner — esta etiquetada para que se pueda
 rechazar:** si alguien cancela a fin de periodo **desde el dashboard de Stripe**, el webhook va a
@@ -68,6 +103,13 @@ nuestro producto **la baja diferida no existe**, la app **no ofrece reanudar nad
 hecho y la seccion lo muestra como informacion («Stripe tiene una cancelacion programada para el
 <fecha>»). **`effectiveLocationLimit = min(vigente, pendiente)` se queda solo para ese caso**, que es
 lo unico que impide aterrizar en `free` con mas locales de los permitidos.
+
+## DoD adicional que sale del pedido del owner
+
+- [ ] Borrada la ruta `resume`, `pnpm run typecheck` **VERDE** tras `rm -f
+      apps/merchant/.next/types/validator.ts`, y `grep resume` sobre el validator regenerado da vacio.
+- [ ] **Hook nuevo** que borra el validator cuando quedo referenciando una ruta inexistente, **con la
+      prueba de que muerde Y de que discrimina** (no toca un validator sano).
 
 ## Lo que NO entra
 

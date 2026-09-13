@@ -63,9 +63,16 @@ ese caso.
 **ENTRA IGUAL:** que el `catch` de las rutas que llaman a Stripe **registre la causa**. Hoy `cancel/route.ts:135`
 descarta el error entero y un 503 no deja rastro ni en los logs. Es un defecto propio y la ruta de cancelar se queda.
 
-**AL BORRAR LA RUTA, el gotcha conocido:** `pnpm typecheck` puede tirar
-`.next/types/validator.ts(...): Cannot find module '.../route.js'` — es un tipo GENERADO viejo, se borra ese archivo
-y el proximo build lo regenera. No editarlo a mano.
+**EL ERROR FANTASMA DEL TIPO GENERADO — el owner pidio cerrarlo, no heredarlo, y entro al DoD de la 0064.**
+`.next/types/validator.ts` es GENERADO, tiene **un bloque por ruta** que importa su `route.js` (verificado en el
+validator actual, lineas 293-305) y **`tsc` lo typechequea**: si se borra `resume/route.ts` y el bloque queda,
+`typecheck` falla nombrando **un archivo que borramos a proposito**. **Lo que el build regenera es el VALIDATOR, no
+la ruta** — se deriva del arbol, asi que sale sin el bloque; la redaccion anterior («el proximo build lo regenera»)
+se podia leer como que la ruta vuelve, y no. **No explota en CI ni en Vercel** porque `.next/` esta gitignoreado y
+alla se buildea de cero: **el fantasma es solo de una maquina con `.next` tibio**, que es justo donde alguien lo
+persigue a mano. **Obligatorio:** borrar la ruta y el validator en el MISMO paso, `typecheck` verde, y `grep resume`
+vacio sobre el validator regenerado. **Y un HOOK nuevo** que borre el validator cuando referencia una ruta
+inexistente, **con prueba de que muerde y de que discrimina** (no tocar un validator sano).
 
 **`A3 Test` (`e9c96528…`) quedo con la baja diferida al 13-10 y, sin `resume`, sin salida por la app.** Es un negocio
 de PRUEBA, asi que no bloquea, pero **la migracion de los que ya esten diferidos al desplegar es parte del DoD.**
