@@ -21,6 +21,39 @@ aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
 **PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
 ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
 
+## SESION C — EJECUTADA EL 2026-09-12: COMMIT + MIGRACION A PROD + PUSH. FALTA EL QA DEL OWNER
+
+**1. COMMIT `5e4534c6c86fe007f537b477bb8b93a0390b6927`** («feat: spec 0063 fase D2 — UI de suscripcion, D8 y el
+oraculo de fuga acotado»), con los 5 gates re-corridos sobre los bytes exactos: `test` con integracion **127
+archivos / 921 tests / 0 failed / 0 skipped** · `typecheck --force` 3/3 `0 cached` · `lint` · `format:check` ·
+`build --force` 3/3 `0 cached`. Arbol sin mutaciones.
+
+**2. MIGRACION `0030` APLICADA A PROD Y VERIFICADA POR SQL** (proyecto Neon `mi-pasaporte`, rama default). **Orden
+respetado: PRIMERO migrar, DESPUES pushear** — al reves `planLocationLimit` pide una columna inexistente y los 11
+negocios pierden el modulo Locales.
+- **Chequeo PREVIO, que es lo que la hacia segura:** `business_duplicados = 0`, asi que el `CREATE UNIQUE INDEX`
+  sobre `business_id` no podia fallar; y las 5 sentencias son **aditivas** (columnas nullable + el indice).
+- **Verificado DESPUES:** `pending_plan, pending_plan_at, downgrade_requested_at, last_event_at` presentes ·
+  `core_subscription_business_unique` = 1 · `ignored_reason` en `stripe_webhook_event` = 1 ·
+  `__drizzle_migrations` = **31** (venia de 30) · **y los datos intactos: 11 filas de `core.subscription`, 11
+  negocios, 21 usuarios en `merchant_auth`.**
+
+**3. PUSH A `main` HECHO** con el workaround del `GH_TOKEN` invalido del entorno: `06062d9..5e4534c`.
+
+**HALLAZGO GRANDE DEL PUSH, Y CAMBIA EL ALCANCE DEL QA: viajaron 50 COMMITS, no uno.** El remoto estaba en
+`06062d9`, o sea **ANTES de la spec 0063 entera**. Las fases A, B, C y D1 estaban commiteadas **solo en local** y
+nunca se habian desplegado. **Prod pasa de no tener nada de cambio de plan a tener la feature completa de una vez**,
+asi que el QA no puede mirar solo la UI de la D2: tiene que cubrir tambien las 5 rutas, el webhook y el claim.
+
+**4. DEPLOY VERDE PARA EL SHA EXACTO: `state = success`** — `GH_TOKEN= gh api
+repos/maxhost/check-point/commits/5e4534c6c86fe007f537b477bb8b93a0390b6927/status --jq '.state'`. Es la regla de
+`CLAUDE.md` cumplida: se verifica el sha que se va a probar, no que «prod este verde». **Prod corre este commit.**
+
+**LO UNICO QUE FALTA: EL QA DEL OWNER.** Y por lo del push, el alcance es la spec **completa**, no solo la D2:
+upgrade free→plus por Checkout, downgrade con bloqueo duro por locales activos, el modal de condiciones, la baja
+programada y su «Reanudar», el cambio mensual→anual, la salida del estado muerto, y la tarjeta de la home.
+**Recordar el estado real de prod al probar:** 11 negocios, todos `active`, con planes `free` y `plus`.
+
 ## ⛔ EL BUCLE DEL ORACULO DE FUGA SE CORTA — DECISION PEDIDA AL OWNER EL 2026-09-12
 
 **El owner freno la sesion y pregunto, textual: «se supone que armaste una feature que permite hacer upgrade o
