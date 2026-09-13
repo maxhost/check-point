@@ -21,6 +21,30 @@ aplicada a prod**, solo a la rama efimera `spec-0063-billing`.
 **PROMPT PARA RETOMAR:** «retomamos: spec 0063, SESION B del plan de cierre en `docs/TASKS.md` (revision independiente
 ACOTADA a los 2 cambios de la sesion A + recuperar los 3 menores + higiene); audita el arbol primero».
 
+## QA DEL OWNER EN CURSO — 1o HALLAZGO: FALTA `MERCHANT_PUBLIC_ORIGIN` EN VERCEL (config, no codigo)
+
+**Caso C (downgrade bloqueado) cerrado por el owner: TODO OK.** Es el corazon de la spec — modal en vez de boton
+gris, el conteo de locales a archivar, el link, «Confirmar» deshabilitado, y habilitado al archivar.
+
+**BLOQUEANTE DEL QA, y no es un bug: `/api/billing/checkout` contesta 503 `origin_not_configured`** («El pago no esta
+configurado todavia»). **Causa localizada en el codigo, no supuesta:** `publicOrigin()` en
+`app/api/billing/checkout/route.ts:112` tira ese 503 cuando `process.env.MERCHANT_PUBLIC_ORIGIN` **no existe**, y ese
+guard corre ANTES de cualquier logica de plan — por eso no depende del negocio.
+- **Afecta a TODO upgrade, no solo a A1: el caso B de los 9 `free` esta bloqueado por lo mismo.**
+- **El valor correcto es `https://www.checkpass.club`** — medido: el apex hace **308** a `www`
+  (`curl -I https://checkpass.club/backoffice`).
+- **Hay que setearla en Vercel (Production) Y REDESPLEGAR:** las envs se inyectan por deploy.
+- **CAUSA RAIZ DE POR QUE NADIE LA SETEO: la env es NUEVA de esta spec ([R2-I10]) y NUNCA SE DOCUMENTO EN
+  `.env.example`.** Corregido en este commit, con el motivo de por que es 503 y no un fallback.
+- **Es 503 a proposito, no un descuido:** con la `idempotencyKey` fija, un fallback a
+  `new URL(request.url).origin` dejaria las `*_url` de Stripe clavadas al primer dominio usado por 24 h.
+- **Ojo con A1 ademas:** esta en `plus` SIN suscripcion de Stripe, asi que su caso es el **E** (salida del estado
+  muerto → `free`), no el B. El 503 tapo eso.
+
+**PENDIENTE DE CONFIRMAR ANTES DE SEGUIR CON B y F: si `STRIPE_ENVIRONMENT` en prod es `test` o `live`.** No se
+puede leer desde aca. **Si es `live`, el upgrade y el cambio mensual→anual cobran plata REAL** — y el anual cobra
+**inmediatamente** (`always_invoice`, ADR 0058).
+
 ## SESION C — EJECUTADA EL 2026-09-12: COMMIT + MIGRACION A PROD + PUSH. FALTA EL QA DEL OWNER
 
 **1. COMMIT `5e4534c6c86fe007f537b477bb8b93a0390b6927`** («feat: spec 0063 fase D2 — UI de suscripcion, D8 y el
