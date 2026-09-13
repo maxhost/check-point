@@ -47,17 +47,28 @@ NO lo caza una mutacion** —ningun invariante estaba roto, cada regla cumplia s
 incoherente—, asi que el plan de pruebas exige un caso que recorra la secuencia completa y asevere que **lo que se
 cobra y lo que se puede usar coinciden**.
 
-**LAS 4 PREGUNTAS QUE BLOQUEAN EL CIERRE:** (1) que hace la app con una baja diferida que llega **del dashboard de
-Stripe** — ofrecer «Reanudar» (y entonces hay que arreglar el bug D4) o solo informarla; (2) que factura se muestra
-—la ultima siempre, o solo despues de una operacion que cobra—; (3) donde vive el aviso —siempre visible o solo en el
-modal—; (4) **de medicion:** por que falla `resume` hoy (evidencia en el log de Stripe; el `catch` de
-`resume/route.ts:81` descarta el error).
+**LA SPEC 0064 QUEDO `cerrada` EL MISMO DIA: el owner contesto las tres preguntas de producto.**
+1. **NO EXISTE la baja diferida** (literal: «no hay baja diferida […] cancela en el momento, no hay reanudar, no hay
+   diferido, se cae HOY si doy de baja HOY, sin devolver dinero»). → **se BORRA `app/api/billing/resume/route.ts`**,
+   su boton, sus tests y el `resume` de la tabla de ofertas. **El bug D4 desaparece con la ruta: no se arregla codigo
+   que no va a existir**, y la 4a pregunta (por que fallaba) se cae sola.
+2. **El recibo es el de la ULTIMA FACTURA PAGADA** («claro que la ultima que tiene pagada»).
+3. **El aviso vive EN EL MODAL** de la baja, no como cartel permanente de la seccion.
 
-**ENTRA IGUAL, decida lo que decida el owner:** que ese `catch` **registre la causa**. Un 503 que esconde su motivo es
-un defecto propio, y el mismo patron esta en `cancel/route.ts:135`.
+**UNA DECISION QUEDA ETIQUETADA COMO DEL ORQUESTADOR, NO DEL OWNER** (regla de `CLAUDE.md`; se puede rechazar): si la
+cancelacion a fin de periodo llega **desde el dashboard de Stripe** —cosa que Stripe permite y nuestro webhook recibe
+igual—, la app **la registra y la informa**, sin ofrecer reanudar. `min(vigente, pendiente)` se queda **solo** para
+ese caso.
 
-**NO LIMPIAR el negocio `A3 Test` (`e9c96528…`) que quedo con la baja diferida al 13-10:** es el caso real para la
-pregunta (1).
+**ENTRA IGUAL:** que el `catch` de las rutas que llaman a Stripe **registre la causa**. Hoy `cancel/route.ts:135`
+descarta el error entero y un 503 no deja rastro ni en los logs. Es un defecto propio y la ruta de cancelar se queda.
+
+**AL BORRAR LA RUTA, el gotcha conocido:** `pnpm typecheck` puede tirar
+`.next/types/validator.ts(...): Cannot find module '.../route.js'` — es un tipo GENERADO viejo, se borra ese archivo
+y el proximo build lo regenera. No editarlo a mano.
+
+**`A3 Test` (`e9c96528…`) quedo con la baja diferida al 13-10 y, sin `resume`, sin salida por la app.** Es un negocio
+de PRUEBA, asi que no bloquea, pero **la migracion de los que ya esten diferidos al desplegar es parte del DoD.**
 
 ## RESPUESTAS DEL OWNER A LOS 3 PUNTOS ABIERTOS (2026-09-13) — LO DECIDIDO Y LO QUE SIGUE ABIERTO
 
