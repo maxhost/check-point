@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-10
+estado: aceptada
 resumen: Cerrar un local no elimina programas ni campañas; desactiva su operación y los beneficios se validan contra criterios vigentes con razones visibles.
 ---
 

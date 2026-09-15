@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-09
+estado: aceptada
 resumen: La V1 se limita a bares y prueba campañas autoconfigurables, con compra acreditada y control de margen.
 ---
 

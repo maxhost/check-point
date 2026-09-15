@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-10
+estado: aceptada
 resumen: Consumidor, plataforma y comercio usan dominios de acceso y backoffices separados; no comparten sesión ni roles.
 ---
 

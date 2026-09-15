@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-10
+estado: aceptada; la parte de ROLES/STAFF la supersede el ADR 0044
 resumen: La vigencia la define el emisor del activo; los guests quedan inactivos a seis meses y se eliminan a los doce meses sin actividad.
 ---
 

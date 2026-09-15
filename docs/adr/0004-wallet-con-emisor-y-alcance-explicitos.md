@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-09
+estado: aceptada
 resumen: El wallet reúne activos de Mi Pasaporte y comercios, pero cada uno conserva emisor, alcance y reglas de uso explícitas.
 ---
 

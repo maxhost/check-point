@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-09
+estado: aceptada; la «RED CURADA» la supersede el ADR 0031 (merchant-first)
 resumen: La V1 sirve a consumidor, comercio y administrador de plataforma; incluye exploración curada de rutas y eventos.
 ---
 

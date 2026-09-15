@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-09
+estado: aceptada; el CATALOGO que define lo reencuadra el ADR 0034
 resumen: Las campañas se protegen con coste y margen por local; no habrá puntos ni oportunidades transferibles entre comercios en V1.
 ---
 

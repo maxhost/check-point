@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-10
+estado: aceptada
 resumen: El programa de fidelización pertenece al negocio y se hereda en locales; las campañas pertenecen al negocio, se asignan a N locales y un evento es un tipo de campaña.
 ---
 

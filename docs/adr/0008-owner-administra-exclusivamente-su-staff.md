@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-10
+estado: aceptada
 resumen: Solo el owner del negocio crea, edita, asigna, desactiva y cambia permisos de su merchant staff.
 ---
 

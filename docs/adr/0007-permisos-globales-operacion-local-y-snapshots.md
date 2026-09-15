@@ -1,5 +1,6 @@
 ---
 fecha: 2026-08-10
+estado: aceptada
 resumen: Las campañas se gestionan a nivel negocio; los permisos separan configuración global de operación local y la auditoría conserva snapshots si se eliminan fuentes.
 ---
 
