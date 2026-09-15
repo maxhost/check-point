@@ -1,7 +1,7 @@
 ---
 spec: 0022
 fecha: 2026-08-11
-estado: cerrada
+estado: implementada
 resumen: Registro real de Owner, sesión merchant, suscripción Free/Plus con Stripe Checkout y alta inicial de negocio/local sobre Neon, Better Auth y Mapbox.
 disjunta: no
 archivos: apps/merchant, packages/auth, packages/db, packages/contracts, pruebas, configuración y docs
@@ -279,3 +279,10 @@ onboarding y pruebas con casi todas las specs futuras. Se implementa serialmente
   pública de retorno.
 - Recuperación de contraseña queda fuera de esta spec; el primer corte aplica rate limits
   de registro/login y documenta la ausencia de recuperación en la UI.
+
+
+## Cierre (2026-09-15)
+
+`implementada`: el registro de owner, la sesion de merchant, el Checkout de Stripe y el alta de
+negocio/local **estan en produccion y en uso** (`app/onboarding/page.tsx`, `server/auth.ts`). Es la base
+sobre la que despues se construyeron las specs 0063 y 0064. Estaba en `cerrada` por omision.

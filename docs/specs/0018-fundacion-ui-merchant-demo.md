@@ -1,7 +1,7 @@
 ---
 spec: 0018
 fecha: 2026-08-10
-estado: cerrada — implementada y en uso
+estado: implementada
 resumen: Refactoriza los mockups merchant en componentes UI reutilizables, estados accesibles y fixtures separados de las páginas.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
@@ -34,3 +34,10 @@ demostrado. Falta PASS de revisor independiente. Los gates locales `format:check
 `lint`, `typecheck`, `test` (4/4) y `build` (3/3) pasaron el 2026-08-10. El E2E pasó
 localmente el 2026-08-10: Playwright 3/3 en dos ejecuciones consecutivas. El sandbox no
 puede iniciar esos servidores por restricciones de puertos.
+
+
+## Cierre (2026-09-15)
+
+`implementada`: **el propio campo `estado` ya decia «implementada y en uso»** — el drift era solo que la
+palabra clave del frontmatter seguia en `cerrada`, que es lo que leen los barridos. `components/ui.tsx`
+(`ModuleHeader`, `Toast`) lo consume hoy todo el backoffice, incluida la seccion de suscripcion.

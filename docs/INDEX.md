@@ -80,7 +80,7 @@ desactualizado es peor que no tenerlo.
 | 0007 | 2026-08-09 | Tablero y medición del piloto | borrador | no | `specs/0007-tablero-y-medicion-del-piloto.md` |
 | 0008 | 2026-08-09 | Administrador, rutas, categorías y eventos | diferida a largo plazo | no | `specs/0008-administrador-rutas-y-eventos.md` |
 | 0009 | 2026-08-09 | Check-in QR por local | borrador | no | `specs/0009-checkin-qr-por-local.md` |
-| 0010 | 2026-08-10 | Scaffold production grade de la plataforma | cerrada | no | `specs/0010-scaffold-production-grade.md` |
+| 0010 | 2026-08-10 | Scaffold production grade de la plataforma | **implementada** (2026-09-15; estaba en `cerrada` por omision — el codigo esta vivo y en uso) | no | `specs/0010-scaffold-production-grade.md` |
 | 0011 | 2026-08-10 | Prototipo QA de check-in consumer v0.1 | cerrada — superada (sin código vivo) | no | `specs/0011-prototipo-qa-checkin-consumer.md` |
 | 0012 | 2026-08-10 | Onboarding demo de owner, negocio y sucursales | cerrada — superada por 0022 | no | `specs/0012-onboarding-owner-y-negocio-demo.md` |
 | 0013 | 2026-08-10 | Home demo del Backoffice owner | cerrada — superada; el mock sigue servido en `/backoffice/demo` | no | `specs/0013-home-backoffice-owner-demo.md` |
@@ -88,11 +88,11 @@ desactualizado es peor que no tenerlo.
 | 0015 | 2026-08-10 | Locales del owner demo | cerrada — **demo TODAVÍA EN USO**: es el destino real del tile «Locales» (tarea 47) | no | `specs/0015-locales-owner-demo.md` |
 | 0016 | 2026-08-10 | Staff del owner demo | cerrada — superada por 0043 | no | `specs/0016-staff-owner-demo.md` |
 | 0017 | 2026-08-10 | Campañas del owner demo | cerrada — **demo TODAVÍA EN USO**: destino real del tile «Campañas»; campañas diferidas (ADR 0034/0057) | no | `specs/0017-campanas-owner-demo.md` |
-| 0018 | 2026-08-10 | Fundación UI production-grade de merchant demo | cerrada — **implementada y en uso** (`app/components/ui.tsx`), no es un mock | no | `specs/0018-fundacion-ui-merchant-demo.md` |
+| 0018 | 2026-08-10 | Fundación UI production-grade de merchant demo | **implementada** (2026-09-15; el texto ya decia «implementada y en uso», el drift era la palabra clave del frontmatter, que es la que leen los barridos) | no | `specs/0018-fundacion-ui-merchant-demo.md` |
 | 0019 | 2026-08-10 | Programa de fidelización del owner demo | cerrada — superada por 0024/0027 | no | `specs/0019-programa-fidelizacion-owner-demo.md` |
 | 0020 | 2026-08-11 | Analíticas owner demo multirubro | cerrada — **demo TODAVÍA EN USO**: destino real del tile «Analíticas»; no hay analíticas reales (tarea 47/spec 0007) | no | `specs/0020-analiticas-owner-demo-multirubro.md` |
 | 0021 | 2026-08-11 | Catálogo único de beneficios | diferida (con campañas) por ADR 0034 | no | `specs/0021-catalogo-unico-de-beneficios.md` |
-| 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | cerrada | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
+| 0022 | 2026-08-11 | Registro, auth, suscripción y negocio inicial de Owner | **implementada** (2026-09-15; estaba en `cerrada` por omision — el codigo esta vivo y en uso) | no | `specs/0022-registro-auth-owner-suscripcion-y-negocio.md` |
 | 0023 | 2026-08-11 | Búsqueda y procedencia de locales (Geoapify único; Mapbox retirado por costo 2026-08-16) | **implementada parcialmente** — sólo el alta en onboarding; no hay locales en el backoffice ni procedencia versionada (tarea 47) | no | `specs/0023-busqueda-y-procedencia-de-locales.md` |
 | 0024 | 2026-08-12 | Programa de fidelización real y términos | implementada | no | `specs/0024-programa-fidelizacion-real-y-terminos.md` |
 | 0025 | 2026-08-12 | Marca real del negocio y assets R2 | implementada | no | `specs/0025-marca-real-y-assets-r2.md` |

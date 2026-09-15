@@ -60,6 +60,14 @@ Ultima actualizacion: 2026-09-13.
     en verde. El unico test cercano cubre FORMATOS, no la captura.
   - **Spec 0060** (el portal del consumidor se actualiza solo) sigue en `borrador` **y es correcto**:
     se verifico que no hay ningun `router.refresh`/polling/`visibilitychange` en `apps/consumer`.
+  - **Y TRES MAS que estaban en `cerrada` por pura omision, con el codigo vivo:** **0010** (el scaffold del
+    monorepo — es el arbol sobre el que corre todo), **0018** (la fundacion de UI; **su propio texto ya decia
+    «implementada y en uso»**, el drift era solo la palabra clave del frontmatter, que es la que leen los
+    barridos) y **0022** (registro de owner, sesion, Checkout y alta de negocio — la base de las 0063/0064).
+  - **LAS 9 QUE SIGUEN EN `cerrada` ESTAN BIEN Y NO SON DEUDA:** todas dicen POR QUE — «superada por la spec
+    X» (0011, 0012, 0013, 0014, 0016, 0019) o «**demo TODAVIA EN USO**» porque la feature real no existe aun
+    (0015 locales, 0017 campañas, 0020 analiticas). **No tocarlas**: su estado describe la realidad.
+  - **Resultado del barrido: no queda ninguna spec implementada marcada como otra cosa.**
 
 **PROXIMO ARCO (nada empezado):** la **tarea 55** — cambio de intervalo **anual → mensual**, el unico
 sentido que la 0063 dejo afuera por no tener forma barata (reembolso, quedarse con la plata, o

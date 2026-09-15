@@ -1,7 +1,7 @@
 ---
 spec: 0010
 fecha: 2026-08-10
-estado: cerrada
+estado: implementada
 resumen: Inicializa el monorepo reproducible, tres aplicaciones aisladas y controles de calidad, sin comportamiento de producto.
 disjunta: no
 archivos: raiz del repositorio, apps/consumer, apps/merchant, apps/platform, tests/e2e, .github/workflows
@@ -162,3 +162,10 @@ El implementador y el revisor usan el formato de `docs/AGENT-WORKFLOW.md`. El re
 No hay abiertos que bloqueen esta implementación. El remoto público canónico es
 `https://github.com/maxhost/check-point.git`; la publicación queda condicionada sólo por
 la conectividad/autenticación externa disponible al terminar.
+
+
+## Cierre (2026-09-15)
+
+`implementada`: el monorepo que esta spec define **es el arbol sobre el que corre todo hoy** — las tres
+aplicaciones (`apps/merchant`, `apps/consumer`, `apps/platform`), los scripts de root y los 5 gates que
+usa cada sesion. Estaba en `cerrada` por omision, no porque faltara algo.
