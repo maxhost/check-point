@@ -2347,7 +2347,7 @@ que la spec exigia del orquestador antes de despachar, en `apps/merchant/src/ser
 escribe el implementador en esos mismos archivos. Entre 60 y 195 lineas cada uno (limite 300).
 
 **HALLAZGO DEL ORQUESTADOR al materializar el contrato — es MIO, no una decision del owner ni algo que la spec
-dijera, y esta pendiente de que el owner decida si se baja a la spec.** `SubscriptionWrite` tiene `status`
+dijera. **[YA SALDADO — 2026-09-15: se resolvio en la fase B de la 0063 creando `billing/applicability.ts`, donde el guard vive como funcion propia con su contrato normativo. NO es deuda viva; esta linea es historia.]** `SubscriptionWrite` tiene `status`
 OBLIGATORIO, asi que **no puede expresar «no escribas nada»**. Si el guard de pertenencia de D5.h viviera dentro de
 `planFromSubscription` —y la tabla de Archivos de la spec dice que derive.ts lo contiene—, un evento de `sub_1`
 llegado sobre una fila ya en `sub_2` VIVA escribiria igual el status de `sub_1` encima, que es exactamente lo que
