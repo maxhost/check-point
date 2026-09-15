@@ -20,20 +20,17 @@ Ultima actualizacion: 2026-09-13.
   del ADR 0058**; **ADR 0058** con el aviso al inicio de que quedo superado en **DOS** puntos (el
   discriminante del §12 → ADR 0060, y la baja programada → ADR 0063); `INDEX.md` con las tres filas
   actualizadas.
-- **LO QUE QUEDA ABIERTO Y NO LO CIERRA EL QA — leer antes de tocar billing:**
-  - **Tres decisiones del ORQUESTADOR se implementaron sin que el owner las aceptara explicitamente**
-    (anexo tecnico de la spec 0064): **O-2** el link del recibo cruza como prop; **O-3 NO hay migracion
-    de los negocios ya diferidos**; **O-4** la baja conserva la marca de intencion del paso 2.
-    **El QA valida el EFECTO OBSERVABLE, no la decision.**
-  - **O-3 es la delicada: contradice un pedido literal del owner** («la migracion de los que ya esten
-    diferidos al desplegar es parte del DoD») **y el QA no la ejercita**. `A3 Test`
-    (`e9c96528-5f3e-4952-b283-7434ec867b4f`) sigue con la baja diferida al **13-10**; ese camino recien
-    se recorre cuando llegue la fecha o aparezca otra baja hecha desde el dashboard de Stripe.
-    **Si el 13-10 ese negocio no aterriza en `free` limpio, el sospechoso es O-3, no un bug nuevo.**
-  - **H2, hallazgo menor declarado:** mutar la `idempotencyKey` de `cancel` a un valor FIJO deja los 233
-    tests verdes. **El codigo esta bien** (la clave lleva la fecha, mas conservador que fija); lo dudoso
-    es el ARGUMENTO del docblock. **El trabajo, si alguien lo retoma, es corregir el COMENTARIO, no
-    escribir un test.**
+- **YA NO QUEDA NADA ABIERTO EN BILLING.** Las tres decisiones del orquestador (**O-2** el link del recibo
+  cruza como prop; **O-3** NO hay migracion de los negocios ya diferidos; **O-4** la baja conserva la marca de
+  intencion del paso 2) **quedaron ACEPTADAS el 2026-09-15** por decision del owner: «si estan implementadas y
+  funcionando por mas que no las acepte y no las rechace marcalas como terminadas». **Se aceptaron EN BLOQUE
+  y sobre el producto ya funcionando**, no evaluadas una por una, y con O-3 presentada explicitamente como
+  contraria a un pedido literal suyo. **Son decisiones vigentes del producto: cambiarlas exige una spec nueva.**
+  - **NOTA OPERATIVA (no es deuda ni decision abierta, es diagnostico para ahorrar tiempo):** el camino de
+    **O-3 no lo ejercito nadie todavia**. `A3 Test` (`e9c96528-5f3e-4952-b283-7434ec867b4f`) sigue diferido al
+    **13-10**. **Si ese dia no aterriza en `free` limpio, arrancar por O-3 y no por un bug nuevo.**
+  - **H2** queda como hallazgo menor declarado: el docblock de la `idempotencyKey` argumenta algo dudoso, pero
+    el codigo esta bien. Si alguien lo retoma, el trabajo es corregir el COMENTARIO, no escribir un test.
 - **TRAMPA DE ESTE REPO QUE COSTO UNA SESION ENTERA — vale para cualquier test de billing:** un **`import`
   de VALOR** al barrel `./billing` dentro de `billing-integration-support.ts` cierra un ciclo con la
   factory de `vi.mock("./stripe-config")` (que importa ese mismo support) y **cuelga para siempre** los

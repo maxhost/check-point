@@ -12,12 +12,18 @@ verificado para ESE sha) y **QA del owner en prod: TODO EN VERDE** — que es el
 (`CLAUDE.md`). **No hubo revision independiente final: el owner corto el ciclo de verificacion**, y de
 ahi salio la regla de presupuesto y condicion de corte.
 
-**LO QUE SIGUE ABIERTO, y no se cierra solo porque el QA haya pasado:** las tres decisiones del
-**ORQUESTADOR** del anexo (**O-2**, **O-3**, **O-4**) **nunca las acepto el owner explicitamente**. El QA
-valida su EFECTO OBSERVABLE, no la decision. La mas delicada es **O-3** (no migrar los negocios ya
-diferidos), porque **contradice un pedido literal del owner** y ademas **el QA no la ejercita**: `A3 Test`
-sigue diferido hasta el 13-10 y el camino solo se recorre cuando esa fecha llegue o aparezca otra baja
-hecha desde el dashboard de Stripe.
+**LAS TRES DECISIONES DEL ORQUESTADOR (O-2, O-3, O-4) ESTAN ACEPTADAS Y CERRADAS (2026-09-15).**
+Decision literal del owner: «si estan implementadas y funcionando por mas que no las acepte y no las
+rechace marcalas como terminadas». **Como se aceptaron, que es lo que hay que saber para no leer de mas:
+EN BLOQUE y sobre el producto YA FUNCIONANDO**, no evaluadas una por una — al owner se le presentaron las
+tres, etiquetadas como decisiones del orquestador y con **O-3 marcada explicitamente como contraria a un
+pedido literal suyo**, y eligio cerrarlas. O sea: **son decisiones VIGENTES del producto**, con el mismo
+peso que cualquier otra, y quien quiera cambiarlas abre una spec nueva.
+
+**La unica nota operativa que sobrevive (no es una decision abierta, es diagnostico):** el camino de
+**O-3** —no migrar los negocios ya diferidos— **todavia no lo ejercito nadie**. `A3 Test`
+(`e9c96528-5f3e-4952-b283-7434ec867b4f`) sigue diferido al **13-10**. Si ese dia no aterriza en `free`
+limpio, **el sospechoso es O-3 y no un bug nuevo** — arrancar por ahi ahorra perseguir un fantasma.
 
 ## De donde sale
 

@@ -16,15 +16,17 @@ resumen: La baja a Free deja de programarse a fin de periodo y pasa a ser INMEDI
 > **Este ADR supersede la decision 6 del [ADR 0058](0058-el-cambio-de-plan-es-una-seccion-propia-con-bloqueo-duro.md)**
 > (la baja programada a fin de periodo), que lleva el aviso correspondiente al inicio.
 >
-> **Tres decisiones del ORQUESTADOR quedaron implementadas SIN que el owner las aceptara
-> explicitamente** (estan en el anexo tecnico de la spec 0064, etiquetadas para poder rechazarlas).
-> El QA valida su **efecto observable**, no la decision. La mas delicada es **O-3 — no migrar los
-> negocios ya diferidos —, que contradice un pedido literal del owner** («la migracion de los que ya
-> esten diferidos al desplegar es parte del DoD») y que **el QA no ejercita**: `A3 Test` sigue
-> diferido hasta el 13-10 y ese camino solo se recorre cuando llegue la fecha o aparezca otra baja
-> hecha desde el dashboard de Stripe. El motivo de la decision: limpiarles el estado dejaria a
-> Stripe con la cancelacion viva y a nuestra base diciendo «Plus activo» — el estado incoherente que
-> la spec 0063 existe para prohibir.
+> **Las tres decisiones del ORQUESTADOR (O-2, O-3, O-4) estan ACEPTADAS** — decision del owner del
+> 2026-09-15: «si estan implementadas y funcionando por mas que no las acepte y no las rechace marcalas
+> como terminadas». Se aceptaron **en bloque y sobre el producto ya funcionando**, no evaluadas una por
+> una, y con **O-3 presentada explicitamente como contraria a un pedido literal del owner** («la
+> migracion de los que ya esten diferidos al desplegar es parte del DoD»). Son decisiones vigentes:
+> cambiarlas exige una spec nueva.
+>
+> **Nota operativa, no decision abierta:** el camino de O-3 no lo ejercito nadie todavia. `A3 Test`
+> sigue diferido al **13-10**; si ese dia no aterriza en `free` limpio, el sospechoso es O-3 y no un bug
+> nuevo. El motivo de la decision: migrarlos dejaria a Stripe con la cancelacion viva y a nuestra base
+> diciendo «Plus activo» — el estado incoherente que la spec 0063 existe para prohibir.
 
 ## Contexto
 
