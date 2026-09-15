@@ -45,6 +45,22 @@ Ultima actualizacion: 2026-09-13.
 - **Higiene del entorno:** hay un `pnpm install --filter activation…` colgado hace **mas de 37 dias** en
   esta maquina, **de OTRO proyecto**. No es nuestro y no hay que tocarlo.
 
+- **BARRIDO DE DOCUMENTACION (2026-09-15): se reviso el estado de LAS 60 specs, no solo el arco de
+  suscripcion.** Habia **dos con drift** —codigo vivo en el arbol y estado `cerrada`— y el owner las
+  mando marcar («ya estan corriendo», que es señal que el modelo no genera):
+  - **Spec 0058** (checkout solo-owner + toast del login) → `implementada`. **Y aparecio algo que valia
+    el barrido: su PREMISA CENTRAL CADUCO.** Cerro el hallazgo de Checkout como «no alcanzable» porque
+    habia «un unico llamador (`OnboardingPage`)»; **hoy hay DOS** — la seccion de suscripcion de la spec
+    0063 tambien lo llama, o sea que **la superficie de upgrade posterior SI existe**. **El riesgo no
+    quedo abierto: lo cerro la propia 0063** (`requireBillingOwner` en `checkout/route.ts:41` + el test
+    de auth que cubre checkout). Lo salvo que otra spec puso el guard igual, **no** este documento.
+  - **Spec 0059** (captura de imagen en movil) → `implementada`. Verificado por lectura antes de marcar:
+    el `capture="environment"` vive **dentro** del guard `isTouch` en las tres superficies. **LIMITE
+    DECLARADO: no tiene NINGUN test** — se puede romper «Tomar foto» o sacarle el guard con los 5 gates
+    en verde. El unico test cercano cubre FORMATOS, no la captura.
+  - **Spec 0060** (el portal del consumidor se actualiza solo) sigue en `borrador` **y es correcto**:
+    se verifico que no hay ningun `router.refresh`/polling/`visibilitychange` en `apps/consumer`.
+
 **PROXIMO ARCO (nada empezado):** la **tarea 55** — cambio de intervalo **anual → mensual**, el unico
 sentido que la 0063 dejo afuera por no tener forma barata (reembolso, quedarse con la plata, o
 `subscription_schedules`). Su rechazo vive hoy en la funcion pura (`interval_downgrade_unsupported`), que
