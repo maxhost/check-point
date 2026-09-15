@@ -47,9 +47,42 @@ el feedback colgado de `isAnalyzing`, las dos entradas comparten el mismo `choos
 `capture="environment"` esta **dentro** del guard `isTouch` en las tres — o sea que el item de
 escritorio, que era el unico sin respaldo, quedo comprobado por lectura del codigo.
 
-**LIMITE DECLARADO, que es lo unico que esta spec no tiene:** **no hay ningun test que pinnee este
-comportamiento.** El unico test cercano (`upload-image-formats.test.ts`) cubre los FORMATOS aceptados,
-no la captura ni el feedback. O sea que **hoy se puede romper el «Tomar foto» o sacarle el guard
-`isTouch` con los 5 gates en verde**. La verificacion de arriba es una LECTURA del arbol de hoy, no un
-oraculo que lo sostenga mañana. Si alguien toca estas tres superficies, el guard hay que re-mirarlo a
-mano.
+## Oraculo (2026-09-15) — el limite de arriba QUEDO CERRADO en su parte principal
+
+Cuando esta spec se marco `implementada` se declaro que **ningun test pinneaba este comportamiento**.
+El owner pidio cerrarlo y se escribio **`app/backoffice/catalog/image-capture.test.ts`** — 6 tests, que
+renderizan el componente REAL (`renderToStaticMarkup` + `node-html-parser`, **bundleado en `next`**:
+cero paquetes nuevos, bajo el `environment: "node"` que ya usa merchant).
+
+**NO es un barrido sintactico.** La propiedad es de COMPORTAMIENTO («en escritorio no aparece la
+camara»), y este repo tiene tres guards por `grep` rotos por tres revisores distintos. Aca se consulta
+el HTML emitido con un motor CSS.
+
+**LAS DOS MUTACIONES SE EJECUTARON Y ESTE ES EL RESULTADO TRANSCRIPTO, no predicho:**
+
+| id | mutacion | resultado |
+|----|----------|-----------|
+| M1 | anular el guard `isTouch` (la camara se renderiza siempre) | **ROJO 1/6** — «en ESCRITORIO no emite ninguna entrada con `capture`». Asercion: `expected [ HTMLElement ] to have a length of +0 but got 1`. Habla de la propiedad. |
+| M2 | colgar «Preparando imagen…» de `true` en vez de `isAnalyzing` | **ROJO 1/6** — «muestra «Preparando imagen…» SOLO mientras analiza». Asercion: `expected 'Imagen (opcional)Preparando imagen…' not to contain 'Preparando imagen…'`. |
+
+Las dos se revirtieron con `diff` contra la copia limpia y `shasum` verificado
+(`75c467e0da9f11298e3493752a4731f10bb63ddd`).
+
+**UN ROJO QUE ERA DEL TEST Y NO DEL PRODUCTO, anotado porque es la trampa de siempre:** la primera
+version pedia `disabled` en el `<input capture>` y daba rojo con el codigo SANO. Ese input es
+`sr-only` y **no es alcanzable por el usuario** — existe para que el boton le haga `.click()`, y quien
+gatea de verdad es el boton. Se corrigio la asercion al mecanismo real, no el producto.
+
+**LO QUE SIGUE SIN ORACULO, con el intento hecho y no supuesto:** de las TRES superficies, el test
+cubre **producto**. Queda afuera:
+- **Sello** (`step-card-design.tsx`): alcanzable —usa solo 3 campos del vm— pero el componente pide un
+  `LoyaltyVm` COMPLETO y el doble exigiria un `as unknown as`, que apaga el typecheck que el doble de
+  `CatalogImage` se compra. **Pendiente, no imposible.**
+- **Logo** (`brand-page.tsx`): **no** por render estatico — carga su estado en un `useEffect` que no
+  corre en SSR, asi que con `brand === null` devuelve `<BrandSkeleton/>` (`brand-page.tsx:130`) y el
+  formulario con la camara nunca se emite. **Verificado leyendo el codigo.** La tecnica que si lo
+  alcanza es la de `confirm-dialog-focus.test.ts` (`vi.mock("react")` sobre los hooks).
+
+**El riesgo que queda es acotado y explicito:** el guard de esas dos superficies puede romperse sin que
+la suite lo note. Lo que si esta pinneado es el mecanismo compartido (`useIsTouch`) y el cableado de
+producto.

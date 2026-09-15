@@ -55,9 +55,11 @@ Ultima actualizacion: 2026-09-13.
     quedo abierto: lo cerro la propia 0063** (`requireBillingOwner` en `checkout/route.ts:41` + el test
     de auth que cubre checkout). Lo salvo que otra spec puso el guard igual, **no** este documento.
   - **Spec 0059** (captura de imagen en movil) → `implementada`. Verificado por lectura antes de marcar:
-    el `capture="environment"` vive **dentro** del guard `isTouch` en las tres superficies. **LIMITE
-    DECLARADO: no tiene NINGUN test** — se puede romper «Tomar foto» o sacarle el guard con los 5 gates
-    en verde. El unico test cercano cubre FORMATOS, no la captura.
+    el `capture="environment"` vive **dentro** del guard `isTouch` en las tres superficies. **EL LIMITE YA SE CERRO** (2026-09-15, a pedido del owner):
+    `catalog/image-capture.test.ts`, 6 tests con render REAL, y **dos mutaciones ejecutadas** que muerden
+    (anular `isTouch` → rojo el caso escritorio; colgar el cartel de `true` → rojo el bicondicional).
+    **Sigue sin oraculo el guard de las otras dos superficies**: sello (pendiente, exige un `LoyaltyVm`
+    completo) y logo (exige `vi.mock("react")`: su estado carga en un `useEffect` que no corre en SSR).
   - **Spec 0060** (el portal del consumidor se actualiza solo) sigue en `borrador` **y es correcto**:
     se verifico que no hay ningun `router.refresh`/polling/`visibilitychange` en `apps/consumer`.
   - **Y TRES MAS que estaban en `cerrada` por pura omision, con el codigo vivo:** **0010** (el scaffold del
