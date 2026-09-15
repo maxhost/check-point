@@ -1,11 +1,30 @@
 ---
 adr: 0063
 fecha: 2026-09-13
-estado: aceptada
+estado: aceptada; supersede la decision 6 (baja programada) del ADR 0058; IMPLEMENTADO por la spec 0064, QA del owner en prod OK (2026-09-15)
 resumen: La baja a Free deja de programarse a fin de periodo y pasa a ser INMEDIATA, sin devolver ni acreditar el tiempo pagado. El diferimiento se cambia por un AVISO («te conviene volver el dia X»), porque el estado diferido creaba una contradiccion visible: el merchant seguia pagando Plus y ya no podia usar sus locales. Efecto lateral: «Reanudar» sale de nuestro flujo, pero el estado diferido puede seguir LLEGANDO desde el dashboard de Stripe, asi que la regla del tope efectivo se queda.
 ---
 
 # 0063 — La baja de plan es inmediata y sin devolucion
+
+> ## ✅ IMPLEMENTADO Y VERIFICADO EN PROD (2026-09-15)
+>
+> Lo entrego la **spec 0064** (commit `ca2d746`, `Vercel: success` verificado para ESE sha) y el
+> **QA del owner en prod salio en verde**. La ruta `resume` y el boton «Reanudar» ya **no existen
+> en el arbol**.
+>
+> **Este ADR supersede la decision 6 del [ADR 0058](0058-el-cambio-de-plan-es-una-seccion-propia-con-bloqueo-duro.md)**
+> (la baja programada a fin de periodo), que lleva el aviso correspondiente al inicio.
+>
+> **Tres decisiones del ORQUESTADOR quedaron implementadas SIN que el owner las aceptara
+> explicitamente** (estan en el anexo tecnico de la spec 0064, etiquetadas para poder rechazarlas).
+> El QA valida su **efecto observable**, no la decision. La mas delicada es **O-3 — no migrar los
+> negocios ya diferidos —, que contradice un pedido literal del owner** («la migracion de los que ya
+> esten diferidos al desplegar es parte del DoD») y que **el QA no ejercita**: `A3 Test` sigue
+> diferido hasta el 13-10 y ese camino solo se recorre cuando llegue la fecha o aparezca otra baja
+> hecha desde el dashboard de Stripe. El motivo de la decision: limpiarles el estado dejaria a
+> Stripe con la cancelacion viva y a nuestra base diciendo «Plus activo» — el estado incoherente que
+> la spec 0063 existe para prohibir.
 
 ## Contexto
 

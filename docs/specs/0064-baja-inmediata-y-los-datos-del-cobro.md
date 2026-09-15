@@ -1,14 +1,23 @@
 ---
 spec: 0064
-estado: cerrada
+estado: implementada
 fecha: 2026-09-13
 resumen: La baja a Free pasa a ser inmediata y sin devolucion (ADR 0063), con aviso de cuando conviene bajar; y se cierran los cuatro huecos de UI que el QA de la 0063 encontro — etiqueta del intervalo, modal de confirmacion del cambio de intervalo, fecha de renovacion, e importe cobrado con link al recibo de Stripe.
 ---
 
 # 0064 — Baja inmediata y los datos del cobro
 
-**ESTADO: `cerrada` (2026-09-13).** El owner contesto las tres preguntas de producto; la cuarta
-(de medicion) **dejo de existir** porque la ruta que la generaba se borra.
+**ESTADO: `implementada` (2026-09-15).** Commit `ca2d746`, desplegado a prod (`Vercel: success`
+verificado para ESE sha) y **QA del owner en prod: TODO EN VERDE** — que es el oraculo que define
+(`CLAUDE.md`). **No hubo revision independiente final: el owner corto el ciclo de verificacion**, y de
+ahi salio la regla de presupuesto y condicion de corte.
+
+**LO QUE SIGUE ABIERTO, y no se cierra solo porque el QA haya pasado:** las tres decisiones del
+**ORQUESTADOR** del anexo (**O-2**, **O-3**, **O-4**) **nunca las acepto el owner explicitamente**. El QA
+valida su EFECTO OBSERVABLE, no la decision. La mas delicada es **O-3** (no migrar los negocios ya
+diferidos), porque **contradice un pedido literal del owner** y ademas **el QA no la ejercita**: `A3 Test`
+sigue diferido hasta el 13-10 y el camino solo se recorre cuando esa fecha llegue o aparezca otra baja
+hecha desde el dashboard de Stripe.
 
 ## De donde sale
 
@@ -106,10 +115,14 @@ lo unico que impide aterrizar en `free` con mas locales de los permitidos.
 
 ## DoD adicional que sale del pedido del owner
 
-- [ ] Borrada la ruta `resume`, `pnpm run typecheck` **VERDE** tras `rm -f
-      apps/merchant/.next/types/validator.ts`, y `grep resume` sobre el validator regenerado da vacio.
-- [ ] **Hook nuevo** que borra el validator cuando quedo referenciando una ruta inexistente, **con la
-      prueba de que muerde Y de que discrimina** (no toca un validator sano).
+- [x] Borrada la ruta `resume`, `pnpm run typecheck` **VERDE** tras `rm -f
+      apps/merchant/.next/types/validator.ts`, y `grep resume` sobre el validator regenerado da vacio
+      (verificado tras un `build` real: 12 referencias a rutas de billing, ninguna a `resume`).
+- [x] **Hook nuevo** `.claude/hooks/stale-validator.sh`, **probado por el orquestador**: muerde ante una
+      ruta inexistente (borra + mensaje) y **deja intacto un validator sano** (mismo `shasum` antes y
+      despues). Lo invoca `verify.sh` en su primera linea util — el implementador **declaro** que no pudo
+      verificar desde adentro de un turno que el orden del array `Stop` se respete, y tomo el camino
+      garantizado por construccion en vez de afirmar lo que no midio.
 
 ## Lo que NO entra
 
@@ -308,20 +321,56 @@ Unit suelto: `pnpm --filter @mi-pasaporte/merchant exec vitest run <path>`.
 ## DoD ejecutable
 
 **Fase A**
-- [ ] `cancel` cancela en Stripe **en el acto** y la fila queda `free` con `stripe_subscription_id=null`; el 503 deja el estado puesto y `cancel` sigue siendo idempotente.
-- [ ] `settle_to_free` sigue haciendo **cero** llamadas a Stripe.
-- [ ] `resume` no existe: ni ruta, ni intent, ni oferta, ni `done=resume`.
-- [ ] `pnpm run typecheck` **VERDE** tras `rm -f apps/merchant/.next/types/validator.ts`, y `grep -rn "resume" apps/merchant/.next/types/validator.ts` **vacio** sobre el validator regenerado.
-- [ ] El `catch` de `cancel` registra la causa (sin secretos), con test.
-- [ ] `readBillingFacts` no tira nunca ante un fallo de Stripe, y elige la factura pagada por `created` **maximo**, no por posicion.
-- [ ] A-T4 en verde, con las dos carreras del webhook.
-- [ ] Tamaños **al hook** sobre TODO el alcance (los ` M` **y** los `??`), no solo los archivos nuevos.
+- [x] `cancel` cancela en Stripe **en el acto** y la fila queda `free` con `stripe_subscription_id=null`; el 503 deja el estado puesto y `cancel` sigue siendo idempotente.
+- [x] `settle_to_free` sigue haciendo **cero** llamadas a Stripe.
+- [x] `resume` no existe: ni ruta, ni intent, ni oferta, ni `done=resume`.
+- [x] `pnpm run typecheck` **VERDE** tras `rm -f apps/merchant/.next/types/validator.ts`, y `grep -rn "resume" apps/merchant/.next/types/validator.ts` **vacio** sobre el validator regenerado.
+- [x] El `catch` de `cancel` registra la causa (sin secretos), con test.
+- [x] `readBillingFacts` no tira nunca ante un fallo de Stripe, y elige la factura pagada por `created` **maximo**, no por posicion.
+- [x] A-T4 en verde, con las dos carreras del webhook.
+- [x] Tamaños **al hook** sobre TODO el alcance (los ` M` **y** los `??`), no solo los archivos nuevos.
 
 **Fase B**
-- [ ] La seccion dice «Plus mensual»/«Plus anual», la **fecha de renovacion**, el **importe cobrado** y un **link al recibo**.
-- [ ] El cambio de intervalo pide confirmacion en un modal que dice que el cobro es inmediato.
-- [ ] El modal de baja dice que es inmediata y sin devolucion, y muestra la fecha conveniente (`renewalAt - 2 dias`); **sin `renewalAt` omite el aviso y no inventa fecha**.
-- [ ] `expectCrossesExactly` actualizado, y un `it` propio que asevera que el customer id y el subscription id **siguen sin cruzar**.
+- [x] La seccion dice «Plus mensual»/«Plus anual», la **fecha de renovacion**, el **importe cobrado** y un **link al recibo**.
+- [x] El cambio de intervalo pide confirmacion en un modal que dice que el cobro es inmediato.
+- [x] El modal de baja dice que es inmediata y sin devolucion, y muestra la fecha conveniente (`renewalAt - 2 dias`); **sin `renewalAt` omite el aviso y no inventa fecha**.
+- [x] `expectCrossesExactly` actualizado, y un `it` propio que asevera que el customer id y el subscription id **siguen sin cruzar**.
 
 **Fase C**
-- [ ] Hook entregado con la prueba de que **muerde** y de que **discrimina** (validator sano intacto, verificado por `shasum`).
+- [x] Hook entregado con la prueba de que **muerde** y de que **discrimina** (validator sano intacto, verificado por `shasum`).
+
+
+## Cierre (2026-09-15) — evidencia
+
+**Gates al cerrar, medidos por el orquestador:** 721 unit passed + **240 de integracion de billing**
+(31 archivos, con `.env.integration.local` cargado — sin ese env los `.neon.integration` se SALTEAN y
+el verde no dice nada), typecheck / lint / format:check / build VERDES, y **cero archivos sobre el
+limite de 300** preguntandole al hook sobre todo el alcance (` M` y `??`).
+
+**EL BUG QUE MAS COSTO NO FUE DE PRODUCTO SINO DE INFRAESTRUCTURA DE TEST, Y HABRIA ROTO EL CI ENTERO.**
+Un **`import` de VALOR al barrel `./billing`** agregado a `billing-integration-support.ts` cerraba un
+ciclo: ese support lo importa la factory de `vi.mock("./stripe-config")`, y el barrel arrastra el dominio
+entero de vuelta a `stripe-config` — cuya factory no termino. Los dos
+`billing-pages*.neon.integration.test.ts` **colgaban para siempre** (ni `vitest list` terminaba; 0% de
+CPU, que es como se ve un deadlock y no una corrida lenta). Apuntarlo a **`./billing/store`** lo bajo de
+infinito a **1.06 s**. Es el mismo deadlock que ya documentaba `billing-pages.neon.integration.test.ts`,
+**reintroducido por otra puerta**: un `import type` al barrel es gratis (se borra en compilacion), uno de
+**valor** no.
+
+**El metodo que lo encontro, que es lo reutilizable:** el sintoma («todo cuelga») se confundio primero
+con contencion de maquina — habia 5 procesos vitest zombis de corridas cortadas. **Matarlos NO lo
+arreglo, y eso fue el dato.** Un archivo suelto y ajeno corrio en **94 ms**, asi que vitest estaba sano
+y el problema era de ESOS archivos; y que colgaran **los dos** hermanos apunto a la cadena COMUN en vez
+de al archivo nuevo, que era el sospechoso obvio.
+
+**Hallazgo menor declarado (H2), no bloqueante:** mutar la `idempotencyKey` de `cancel` a un valor FIJO
+deja los 233 tests VERDES — ningun test pinnea esa propiedad. **Pero el codigo esta bien** (la clave lleva
+la fecha, que es mas conservador que fija); lo dudoso es el ARGUMENTO del docblock, que habla de «dos bajas
+del mismo negocio en 24 h» cuando eso exigiria cancelar el MISMO `sub_…` dos veces — y tras la primera baja
+la suscripcion muere y la siguiente nace con otro id. **Si alguien lo retoma, el trabajo es corregir el
+COMENTARIO, no escribir un test.**
+
+**Proceso, para la proxima:** **cinco agentes se cortaron a mitad** en esta spec. Solo uno dejo mutacion
+viva (revertida y verificada por `shasum` + `diff` contra la copia limpia). El cierre lo hizo el
+orquestador **a mano**, y los 11 errores que quedaban eran imports huerfanos de archivos a medio partir,
+no bugs. **Cuando un encargo no entra en un turno, reanudar sale mas caro que terminarlo a mano.**

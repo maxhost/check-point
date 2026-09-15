@@ -7,7 +7,30 @@ resumen: El cambio de plan vive en una seccion propia del backoffice; el upgrade
 
 # 0058 — El cambio de plan es una seccion propia, con bloqueo duro
 
-> ## ⚠️ SUPERADO EN UN PUNTO — LEER ANTES QUE EL RESTO
+> ## ⚠️ SUPERADO EN DOS PUNTOS — LEER ANTES QUE EL RESTO
+>
+> ### Punto 2 (2026-09-15) — LA BAJA YA NO SE PROGRAMA
+>
+> **Lo que de este ADR YA NO VALE: la decision 6 y todo lo que cuelga de «la baja programada».**
+> Este ADR sostiene el invariante de locales diciendo que «con la baja programada el tope ya es 1,
+> asi que no se puede volver a subir» (§Residuales). **Ese mecanismo dejo de existir:** el
+> **[ADR 0063](0063-la-baja-de-plan-es-inmediata-y-sin-devolucion.md)** lo cambio por una baja
+> **INMEDIATA y sin devolucion**, implementada por la **spec 0064** (commit `ca2d746`, QA del owner
+> en prod en verde). La ruta `resume` y el boton «Reanudar» **se borraron del arbol**.
+>
+> **El invariante sigue sostenido, por otro camino:** si la baja es inmediata no hay ventana entre
+> «pedirla» y «que ocurra», que era justo donde vivia el riesgo de desarchivar para volver a 3.
+>
+> **Lo que motivo el cambio no fue una revision sino el OWNER USANDO LA PANTALLA:** con la baja
+> programada el merchant **pagaba Plus hasta la fecha y desde el minuto cero solo podia usar 1
+> local**. Ningun invariante estaba roto —cada regla cumplia su contrato— y **la COMPOSICION era
+> incoherente**; por eso ninguna mutacion lo encontro.
+>
+> **Sigue vigente el estado diferido como algo que puede LLEGAR desde el dashboard de Stripe**
+> (mismo hecho del ADR 0060): la app lo registra y lo informa, sin ofrecer reanudar, y
+> `min(vigente, pendiente)` se queda solo para ese caso.
+>
+> ### Punto 1 (2026-09-11) — el discriminante de la baja «esperada»
 >
 > **Lo que de este ADR YA NO VALE: en el §12, la frase que reconoce un `deleted` «esperado»
 > porque tiene `pending_plan = 'free'` ya escrito, «o sea que el owner ya paso por el modal».**

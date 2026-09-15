@@ -1,12 +1,34 @@
 ---
 spec: 0063
 fecha: 2026-09-10
-estado: cerrada
+estado: implementada (todas las fases con PASS, en prod desde 2026-09-12); SUPERADA EN PARTE por la spec 0064
 resumen: Seccion propia de suscripcion en el backoffice — upgrade por Stripe Checkout, downgrade/cancelacion con bloqueo duro (archivar locales primero) y tope de locales que cae al plan DESTINO en cuanto la baja queda programada; cambio de intervalo mensual → anual (el inverso afuera, tarea 55); el webhook deja de escribir plan "plus" para cualquier evento y pasa a leer el estado real de Stripe. Un impago NO baja el plan y un `deleted` inesperado deja el negocio SIN suscripcion (`plan='none'`), nunca en free (ADR 0059 / 0058 §12).
 disjunta: si
 archivos: server/schema/business.ts, drizzle/0030_*.sql, server/billing/*, server/locations/{core,shared,index}.ts, app/api/billing/{checkout,cancel,resume,interval,settle-free}/*, app/api/stripe/webhook/route.ts, app/backoffice/subscription/*, app/backoffice/page.tsx, app/backoffice/locations/page.tsx, app/onboarding/page.tsx, server/locations-integration-support.ts
 ---
 
+
+> ## ⚠️ IMPLEMENTADA, Y SUPERADA EN PARTE POR LA SPEC 0064 — LEER ANTES QUE EL RESTO
+>
+> **Estado real:** todas sus fases tienen PASS de revisor independiente y **estan en produccion**
+> (migracion `0030` aplicada y verificada por SQL). El owner le hizo **dos tandas de QA en prod**.
+>
+> **LO QUE DE ESTA SPEC YA NO EXISTE EN EL ARBOL** —lo cambio el **ADR 0063** y lo entrego la
+> **spec 0064** (commit `ca2d746`, QA del owner en verde):
+>
+> - **`POST /api/billing/resume` y el boton «Reanudar suscripcion»: BORRADOS.** Todo lo que este
+>   documento dice sobre `resume` (la tabla de contratos, la tabla de ofertas de D7, la lista de
+>   archivos, y la decision del orquestador n.o 1) es **historia, no el estado actual**.
+> - **La baja YA NO SE PROGRAMA a fin de periodo: es INMEDIATA y sin devolucion.** El estado «baja
+>   programada con fecha» que D7 describe **nuestro flujo ya no lo crea**.
+>
+> **Lo que SIGUE VIGENTE:** el bloqueo duro por locales activos, `min(vigente, pendiente)` —que se
+> queda **solo** para la baja que llega desde el **dashboard de Stripe**—, el webhook leyendo el
+> estado real de Stripe, `plan='none'` como estado propio, y el cambio de intervalo mensual → anual.
+>
+> **Por que cambio, y es la leccion de la spec:** lo cazo **el owner usando la pantalla**, no una
+> revision. El merchant **pagaba Plus hasta la fecha y desde el minuto cero solo podia usar 1 local**.
+> Ningun invariante estaba roto —cada regla cumplia su contrato— y **la COMPOSICION era incoherente**.
 # 0063 — Cambio de plan y cancelacion de suscripcion
 
 Implementa el **ADR 0058**. Cierra la **tarea 53**. El **ADR 0059** (el impago bloquea el

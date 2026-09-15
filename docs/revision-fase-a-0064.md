@@ -1,3 +1,19 @@
+> ## ⚠️ BITACORA CERRADA (2026-09-15) — NO ES TRABAJO PENDIENTE
+>
+> Documento de TRABAJO de la spec 0064, conservado como evidencia. **El arco esta cerrado:** spec
+> `implementada`, commit `ca2d746` en prod y **QA del owner en verde**.
+>
+> **LAS FILAS QUE DICEN «(abierta)» NO SON DEUDA: la verificacion se CORTO POR DECISION DEL OWNER**
+> («no podemos quedarnos eternamente gastando tokens en cosas que no acaban»), y de ese corte salio la
+> regla de presupuesto y condicion de corte de `CLAUDE.md`. Se ejecutaron 4 de 14 mutaciones y **el
+> valor ya estaba extraido**: R1/R3/R4 dieron rojo por el motivo correcto (asercion leida) y R2 destapo
+> el hallazgo **H2**, declarado como menor en la spec. **No re-abrir esto sin una razon nueva.**
+>
+> **Lo unico que hay que saber de aca:** una mutacion (R6) quedo viva cuando el revisor murio, y se
+> revirtio **verificada** — `diff` contra la copia limpia mostro exactamente esa hunk y el `shasum`
+> post-restauracion coincidio con el registrado ANTES de mutar. Ese numero es lo que convirtio
+> «restaurar» en una operacion verificada y no en una apuesta sobre el trabajo de otro.
+
 # Revision independiente — FASE A de la spec 0064
 
 > Revisor independiente. **No hubo handoff del implementador** (murio dos veces): la tabla de

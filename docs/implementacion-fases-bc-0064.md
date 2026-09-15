@@ -1,3 +1,12 @@
+> ## ⚠️ BITACORA CERRADA (2026-09-15) — NO ES TRABAJO PENDIENTE
+>
+> Documento de TRABAJO de las fases B y C de la spec 0064, conservado como evidencia. **El arco esta
+> cerrado:** spec `implementada`, commit `ca2d746` en prod y **QA del owner en verde**.
+>
+> **Los checkboxes sin marcar de «Estado» quedaron asi porque el implementador se corto a mitad; el
+> trabajo SI se completo** — lo termino el orquestador a mano. La evidencia final (gates, tamaños al
+> hook, el hook probado que muerde y que discrimina) esta en la **spec 0064**, seccion «Cierre».
+
 # Implementación fases B (UI) y C (hook) — spec 0064
 
 > Bitácora del implementador. **Las filas de mutación se abren ANTES de mutar** (`CLAUDE.md`:

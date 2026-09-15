@@ -10,42 +10,45 @@ cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-09-13.
 
-**ESTADO REAL (bloque reescrito ENTERO el 2026-09-14):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-15):**
 
-- **SPEC 0064 IMPLEMENTADA Y COMMITEADA. PENDIENTE: QA DEL OWNER EN PROD.** Las 3 fases (servidor, UI, hook).
-  **Sin revision independiente final: el owner corto el ciclo** — ahora es regla en `CLAUDE.md`.
-- **Gates al cerrar (medidos, no reportados):** 721 unit passed + **240 de integracion de billing** (31 archivos,
-  con el env `.env.integration.local` cargado), typecheck / lint / format:check / build VERDES, **cero archivos
-  sobre 300** medidos AL HOOK sobre todo el alcance.
-- **EL BUG QUE MAS COSTO NO ERA DE PRODUCTO SINO DE INFRAESTRUCTURA DE TEST, Y HABRIA ROTO EL CI ENTERO.**
-  `billing-integration-support.ts` recibio un **`import` DE VALOR al barrel `./billing`**. Ese support lo importa
-  la factory de `vi.mock("./stripe-config")`, y el barrel arrastra el dominio entero de vuelta a `stripe-config`
-  → ciclo → **los dos `billing-pages*.neon.integration.test.ts` COLGABAN PARA SIEMPRE** (ni `vitest list`
-  terminaba; 0% de CPU, que es como se ve un deadlock y no una corrida lenta). Apuntarlo a **`./billing/store`**
-  lo bajo de infinito a **1.06 s**. **Regla: un `import type` al barrel es gratis (se borra en compilacion), uno
-  de VALOR no.** Es el mismo deadlock que ya documentaba `billing-pages.neon.integration.test.ts`, reintroducido
-  por otra puerta.
-  - **Y el metodo, que es lo reutilizable:** el sintoma («todo cuelga») se confundio primero con contencion de
-    maquina — habia 5 procesos vitest zombis de corridas cortadas. Matarlos **no** lo arreglo, y eso fue el dato:
-    un archivo suelto y ajeno (`image-formats.test.ts`) corria en **94 ms**, asi que vitest estaba sano y el
-    problema era de ESOS archivos. Despues, que colgaran **los dos** hermanos apunto a la cadena COMUN, no al
-    archivo nuevo. (Ojo: hay un `pnpm install --filter activation…` colgado hace **37 dias** en esta maquina,
-    de OTRO proyecto. No es nuestro, no tocarlo.)
-- **CINCO agentes se cortaron a mitad en esta spec.** Solo uno dejo mutacion viva (R6, revertida y verificada por
-  `shasum` + `diff`). **El cierre lo hizo el orquestador a mano** — los 11 errores que quedaban eran imports
-  huerfanos de archivos a medio partir, no bugs. **Leccion: cuando un encargo no entra en un turno, reanudar sale
-  mas caro que terminarlo a mano.**
-- **TRES DECISIONES DEL ORQUESTADOR ABIERTAS, el owner puede rechazarlas** (anexo tecnico de la spec):
-  **O-2** el link del recibo cruza como prop; **O-3 NO hay migracion de datos de los diferidos** — contradice el
-  pedido literal del owner; **O-4** la baja inmediata conserva la marca de intencion del paso 2.
-  **H2** es hallazgo menor declarado: el docblock de la `idempotencyKey` argumenta algo dudoso, pero el codigo
-  esta bien — el trabajo, si alguien lo retoma, es corregir el COMENTARIO, no escribir un test.
-- **`A3 Test` (`e9c96528…`) sigue con la baja diferida al 13-10.** Por O-3 no se migra: la app la informa y cae
-  sola. Es un negocio de PRUEBA.
+- **ARCO DE SUSCRIPCION CERRADO.** Spec 0064 **`implementada`**, commit `ca2d746`, `Vercel: success`
+  verificado **para ese sha exacto ANTES** de pedir el QA, y **QA del owner en prod: TODO EN VERDE.**
+  No hace falta migracion de base: la 0064 no agrego columnas.
+- **Documentacion al dia (2026-09-15):** spec 0064 en `implementada` con **los 13 items del DoD marcados
+  con su evidencia**; **ADR 0063** anotado como implementado **y declarando que supersede la decision 6
+  del ADR 0058**; **ADR 0058** con el aviso al inicio de que quedo superado en **DOS** puntos (el
+  discriminante del §12 → ADR 0060, y la baja programada → ADR 0063); `INDEX.md` con las tres filas
+  actualizadas.
+- **LO QUE QUEDA ABIERTO Y NO LO CIERRA EL QA — leer antes de tocar billing:**
+  - **Tres decisiones del ORQUESTADOR se implementaron sin que el owner las aceptara explicitamente**
+    (anexo tecnico de la spec 0064): **O-2** el link del recibo cruza como prop; **O-3 NO hay migracion
+    de los negocios ya diferidos**; **O-4** la baja conserva la marca de intencion del paso 2.
+    **El QA valida el EFECTO OBSERVABLE, no la decision.**
+  - **O-3 es la delicada: contradice un pedido literal del owner** («la migracion de los que ya esten
+    diferidos al desplegar es parte del DoD») **y el QA no la ejercita**. `A3 Test`
+    (`e9c96528-5f3e-4952-b283-7434ec867b4f`) sigue con la baja diferida al **13-10**; ese camino recien
+    se recorre cuando llegue la fecha o aparezca otra baja hecha desde el dashboard de Stripe.
+    **Si el 13-10 ese negocio no aterriza en `free` limpio, el sospechoso es O-3, no un bug nuevo.**
+  - **H2, hallazgo menor declarado:** mutar la `idempotencyKey` de `cancel` a un valor FIJO deja los 233
+    tests verdes. **El codigo esta bien** (la clave lleva la fecha, mas conservador que fija); lo dudoso
+    es el ARGUMENTO del docblock. **El trabajo, si alguien lo retoma, es corregir el COMENTARIO, no
+    escribir un test.**
+- **TRAMPA DE ESTE REPO QUE COSTO UNA SESION ENTERA — vale para cualquier test de billing:** un **`import`
+  de VALOR** al barrel `./billing` dentro de `billing-integration-support.ts` cierra un ciclo con la
+  factory de `vi.mock("./stripe-config")` (que importa ese mismo support) y **cuelga para siempre** los
+  `billing-pages*.neon.integration.test.ts` — ni `vitest list` termina, 0% de CPU. Se importa del **modulo
+  concreto** (`./billing/store`). **Un `import type` al barrel es gratis; uno de valor no.**
+  **Y para diagnosticarlo:** si «todo cuelga», corré primero un test suelto y ajeno — si ese anda en ms,
+  vitest esta sano y el problema es de esos archivos; y si cuelgan **dos** hermanos, mira la cadena COMUN,
+  no el archivo nuevo.
+- **Higiene del entorno:** hay un `pnpm install --filter activation…` colgado hace **mas de 37 dias** en
+  esta maquina, **de OTRO proyecto**. No es nuestro y no hay que tocarlo.
 
-**PROMPT PARA RETOMAR:** «retomamos la spec 0064. Lee el ANEXO TECNICO al final de
-`docs/specs/0064-baja-inmediata-y-los-datos-del-cobro.md` — tiene las fases, los contratos y el DoD. Fijate en
-que fase quedo (A servidor / B UI / C hook) y si hay una mutacion sin revertir (`grep -rn MUTATION apps/`)».
+**PROXIMO ARCO (nada empezado):** la **tarea 55** — cambio de intervalo **anual → mensual**, el unico
+sentido que la 0063 dejo afuera por no tener forma barata (reembolso, quedarse con la plata, o
+`subscription_schedules`). Su rechazo vive hoy en la funcion pura (`interval_downgrade_unsupported`), que
+es el unico lugar donde habria que habilitarlo.
 
 ## HISTORIA: ADR 0063 ACEPTADO + SPEC 0064 (la seccion de abajo quedo escrita cuando la spec era borrador)
 
