@@ -15,23 +15,38 @@ import {
 } from "../_auth";
 
 /**
- * Spec 0063, D6 — `POST /api/billing/cancel`: bajar de plan. Con los planes de hoy
- * «downgrade» y «cancelar» son LA MISMA operación (D0): `free` no tiene suscripción de
- * Stripe, así que bajar de plan es terminar la suscripción.
+ * Spec 0064, A2 (ADR 0063) — `POST /api/billing/cancel`: bajar de plan, INMEDIATAMENTE. Con
+ * los planes de hoy «downgrade» y «cancelar» son LA MISMA operación (D0): `free` no tiene
+ * suscripción de Stripe, así que bajar de plan es terminar la suscripción.
  *
- * `cancel` ES IDEMPOTENTE Y ES EL CAMINO DE REPARACIÓN: si ya hay baja programada, vuelve a
- * afirmarla contra Stripe con la MISMA clave y contesta 200.
+ * LA BAJA YA NO SE PROGRAMA. Antes se pedía `update({cancel_at_period_end: true})` y el plan
+ * caía al cerrar el periodo; el owner lo cazó en el QA de prod (pagaba Plus y ya sólo podía
+ * tener 1 local) y el ADR 0063 lo cambió: se cancela en el acto, sin devolver ni acreditar el
+ * tiempo pagado. `subscriptions.cancel` sin params es EXACTAMENTE eso — `prorate` e
+ * `invoice_now` son `false` por default (`Subscriptions.d.ts`, stripe@22.5.0).
  *
- * ORDEN DE OPERACIONES, que es lo contrario del reflejo natural:
+ * `cancel` SIGUE SIENDO IDEMPOTENTE Y SIGUE SIENDO EL CAMINO DE REPARACIÓN: si el paso 3 o
+ * el 4 se cayeron, el `cancel` siguiente reusa la MISMA `idempotencyKey` (la marca se
+ * conserva con `coalesce`) y termina el trabajo.
+ *
+ * ORDEN DE OPERACIONES. ES NORMATIVO Y EL PASO 2 ES LO CONTRARIO DEL REFLEJO (anexo O-4):
  *
  *  1. transacción → `lockBusiness` → leer suscripción + contar activos → `decidePlanChange`.
  *     Si bloquea: 409 y nada más (`downgrade_blocked` lleva `archiveCount`).
  *  2. EN LA MISMA TRANSACCIÓN, escribir `pending_plan='free'` y `downgrade_requested_at`.
- *     Commit. Así el tope efectivo cae a 1 en el MISMO commit que verificó el conteo: no
- *     queda ventana para desarchivar entre la verificación y la baja (mutación M5).
- *  3. RECIÉN AHORA, FUERA DEL LOCK, `subscriptions.update(…, cancel_at_period_end: true)`.
- *     La llamada de red nunca ocurre con el lock tomado (la regla de `shared.ts:38-48`).
- *  4. Con la respuesta, `pending_plan_at` en una transacción corta.
+ *     Commit. **El reflejo al leer «la baja es inmediata» es borrar este paso, y rompe DOS
+ *     cosas medidas:** (a) sin él, un 503 del paso 3 deja la fila en `plus` con la baja quizás
+ *     aplicada en Stripe y el `cancel` siguiente sin forma de saber que ya se pidió — se
+ *     pierde la idempotencia; (b) sin `downgrade_requested_at` puesto ANTES de llamar a
+ *     Stripe, un webhook `deleted` que le gane la carrera al paso 4 ve `plan='plus'` +
+ *     `downgradeRequestedAt=null` y aterriza en `none` en vez de `free` (`derive.ts`), que es
+ *     el discriminante del ADR 0060 alcanzado por la puerta de atrás.
+ *     Y sigue valiendo lo de antes: el tope efectivo cae a 1 en el MISMO commit que verificó
+ *     el conteo, así que no queda ventana para desarchivar (mutación M5).
+ *  3. RECIÉN AHORA, FUERA DEL LOCK, `subscriptions.cancel`. La llamada de red nunca ocurre
+ *     con el lock tomado (la regla de `shared.ts:38-48`).
+ *  4. Transacción corta: `settleToFree` — `plan='free'`, `status='active'`,
+ *     `stripe_subscription_id=null` y las tres columnas de baja limpias.
  *
  * Si la decisión es `settle_to_free` (D10: `none`, o el `plus` SIN suscripción de A1) se
  * escribe el `SET` local y NO SE LLAMA A STRIPE ni una vez.
@@ -49,6 +64,11 @@ export async function POST(request: Request) {
  * bajar de plan desde `plus` y «Ajustarme y bajar a Free» desde `none`—; qué hacer lo decide
  * `decidePlanChange` con la fila real, nunca la URL. Con dos cuerpos, el día que cambie la
  * regla de bloqueo por locales uno de los dos se queda viejo.
+ *
+ * EL `catch` REGISTRA LA CAUSA (pedido explícito de la spec 0064: hoy un 503 no dejaba rastro
+ * ni en los logs del server). Sólo lo que NO es `BillingError`: un 409 `downgrade_blocked` es
+ * el producto funcionando, no un fallo, y loguearlo sería ruido que tapa el fallo real. El
+ * 503 de Stripe lo loguea `confirmAtStripe`, que es el único que tiene el error de Stripe.
  */
 export async function downgradeToFree(request: Request): Promise<NextResponse> {
   const gate = await requireBillingOwner(request);
@@ -79,6 +99,13 @@ export async function downgradeToFree(request: Request): Promise<NextResponse> {
     if (planned) await confirmAtStripe(businessId, planned);
     return await billingStateResponse(businessId);
   } catch (error) {
+    if (!(error instanceof BillingError)) {
+      console.error(
+        "[billing] cancel: fallo inesperado",
+        { businessId },
+        error,
+      );
+    }
     return billingErrorResponse(
       error,
       "No pudimos actualizar tu suscripción. Vuelve a intentarlo.",
@@ -88,11 +115,10 @@ export async function downgradeToFree(request: Request): Promise<NextResponse> {
 
 /**
  * Pasos 3 y 4. La `idempotencyKey` lleva el `downgrade_requested_at` ([R1-Derivado-2]): con
- * una clave FIJA —el patrón que `checkout` usa y esta spec denuncia— `cancel → resume →
- * cancel` dentro de 24 h haría que Stripe devolviera la respuesta CACHEADA sin aplicar nada:
- * la DB diciendo `pending_plan='free'`, el tope en 1 y la baja sin ocurrir jamás. Como
- * `resume` limpia la marca, la cancelación siguiente estrena clave; y un REINTENTO del mismo
- * pedido reusa la misma, que es justamente el camino de reparación.
+ * una clave FIJA —el patrón que `checkout` usa y esta spec denuncia— dos bajas separadas del
+ * mismo negocio dentro de 24 h harían que Stripe devolviera la respuesta CACHEADA sin aplicar
+ * nada. Como `settleToFree` limpia la marca en el paso 4, la cancelación siguiente estrena
+ * clave; y un REINTENTO del mismo pedido reusa la misma, que es el camino de reparación.
  *
  * SI EL PASO 3 FALLA NO SE REVIERTE [R1-B3]: un timeout o un 502 no distinguen «Stripe no lo
  * recibió» de «lo aplicó y se perdió la respuesta», y revertir en el segundo caso deja a
@@ -103,9 +129,15 @@ export async function downgradeToFree(request: Request): Promise<NextResponse> {
  *
  * DECISIÓN DEL IMPLEMENTADOR, declarada — no la dijo el owner ni la fija la spec: el revert
  * corre SÓLO si esta petición fue la que CREÓ el estado (`createdNow`). Sobre un reintento de
- * reparación —donde la baja ya estaba pedida y confirmada en Stripe— un revert borraría una
- * baja legítima y devolvería el tope a 3 con la cancelación viva en Stripe: exactamente el
- * daño que [R1-B3] existe para impedir, alcanzado por el otro camino.
+ * reparación —donde la baja ya estaba pedida y quizás ya aplicada en Stripe— un revert
+ * borraría una baja legítima y devolvería el tope a 3 con la cancelación viva en Stripe:
+ * exactamente el daño que [R1-B3] existe para impedir, alcanzado por el otro camino. Y con la
+ * baja inmediata gana un segundo motivo: limpiar `downgrade_requested_at` sobre una
+ * suscripción YA cancelada en Stripe haría que el `deleted` aterrizara en `none` (ADR 0060).
+ *
+ * QUÉ SE LOGUEA: el error de Stripe y el `businessId`, y NADA MÁS. Ni el cuerpo del request
+ * ni la clave de Stripe ni el id de la suscripción — con el `businessId` se llega a la fila,
+ * que es de donde sale todo lo demás sin escribirlo en un log.
  */
 async function confirmAtStripe(
   businessId: string,
@@ -116,16 +148,20 @@ async function confirmAtStripe(
   },
 ): Promise<void> {
   const { gateway } = stripeContext();
-  let updated;
   try {
-    updated = await gateway.subscriptions.update(
-      planned.subscriptionId,
-      { cancel_at_period_end: true },
-      {
-        idempotencyKey: `billing:cancel:${planned.subscriptionId}:${planned.downgradeRequestedAt.toISOString()}`,
-      },
-    );
+    // SIN `prorate` NI `invoice_now`: los dos son `false` por default y eso es literalmente
+    // lo que el owner pidió («sin reembolso, no devolvemos plata»). Pasarlos explícitos sería
+    // igual de correcto, pero escribir `prorate: false` invita a que alguien lo ponga en
+    // `true` creyendo que es más prolijo.
+    await gateway.subscriptions.cancel(planned.subscriptionId, undefined, {
+      idempotencyKey: `billing:cancel:${planned.subscriptionId}:${planned.downgradeRequestedAt.toISOString()}`,
+    });
   } catch (error) {
+    console.error(
+      "[billing] cancel: Stripe no confirmó la baja",
+      { businessId },
+      error,
+    );
     if (planned.createdNow && isDeterministicRejection(error)) {
       await withDbTransaction((tx) => clearPendingPlan(tx, businessId));
     }
@@ -135,18 +171,10 @@ async function confirmAtStripe(
       "No pudimos confirmarlo con Stripe. Vuelve a intentarlo.",
     );
   }
-  await withDbTransaction((tx) =>
-    scheduleDowngrade(tx, businessId, {
-      now: new Date(),
-      // De `cancel_at` y de ningún otro lado: `items.data[0]` viene truncado y sin orden
-      // contractual (D5.f). «Baja programada SIN fecha» es un estado VÁLIDO —garantizado
-      // entre el 200 y este paso— y la UI lo dice (D7).
-      pendingPlanAt:
-        typeof updated.cancel_at === "number"
-          ? new Date(updated.cancel_at * 1000)
-          : null,
-    }),
-  );
+  // Paso 4. La suscripción ya NO existe en Stripe, así que la fila no puede conservar su id:
+  // `settleToFree` lo pone en `null`, y eso es lo que hace que un `customer.subscription.deleted`
+  // tardío caiga en `not_adoptable` y no ensucie la fila (`applicability.ts`, regla 2).
+  await withDbTransaction((tx) => settleToFree(tx, businessId));
 }
 
 /**

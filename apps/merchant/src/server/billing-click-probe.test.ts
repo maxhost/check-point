@@ -113,6 +113,17 @@ function expand(element: ProbeElement): ProbeElement[] {
   return collect((element.type as (props: unknown) => unknown)(element.props));
 }
 
+/** Un componente hijo, por nombre. Spec 0064: la tarjeta de alta salió de la consola a
+ * `upgrade-card.tsx` (corte de tamaño), y `collect` NO invoca componentes — hay que expandirla.
+ * El `expect` es parte del oráculo: si el hijo desaparece, el rojo dice cuál falta. */
+function child(tree: ProbeElement[], name: string): ProbeElement {
+  const found = tree.find(
+    (el) => typeof el.type === "function" && el.type.name === name,
+  );
+  expect(found, `no hay ningún <${name}>`).toBeDefined();
+  return found as ProbeElement;
+}
+
 /** El texto de un elemento, para encontrar un botón por su etiqueta. */
 function label(node: unknown): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -180,6 +191,7 @@ const view = (overrides: Partial<SubscriptionView> = {}): SubscriptionView => ({
 const consoleProps = (subscription: SubscriptionView) => ({
   subscription,
   offers: subscriptionOffers(subscription),
+  facts: { renewalAt: null, lastPaidInvoice: null },
   activeLocations: 1,
   canCancel: true,
   downgradeBlock: null,
@@ -191,7 +203,7 @@ const consoleProps = (subscription: SubscriptionView) => ({
 describe("el click en la consola de suscripción (spec 0063, D7)", () => {
   it('«Mejorar a Plus» postea el `from: "subscription"` que decide el aterrizaje', async () => {
     const tree = invoke(SubscriptionConsole, consoleProps(view()));
-    click(button(tree, "Mejorar a Plus"));
+    click(button(expand(child(tree, "UpgradeCard")), "Mejorar a Plus"));
     await flush();
 
     expect(fetchCalls.map((call) => call.url)).toEqual([
@@ -214,7 +226,7 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
     const tree = invoke(SubscriptionConsole, consoleProps(view()), {
       0: "year",
     });
-    click(button(tree, "Mejorar a Plus"));
+    click(button(expand(child(tree, "UpgradeCard")), "Mejorar a Plus"));
 
     expect(fetchCalls[0].body).toEqual({
       interval: "year",
@@ -261,16 +273,13 @@ describe("el click del ALTA del onboarding (spec 0063, [R2-I8])", () => {
       13: "11111111-1111-1111-1111-111111111111",
     });
     expect(hooks.next).toBe(16);
-    const card = tree.find(
-      (element) =>
-        typeof element.type === "function" && element.type.name === "PlanCard",
-    );
-    expect(card?.props).toMatchObject({
+    const card = child(tree, "PlanCard");
+    expect(card.props).toMatchObject({
       plan: "plus",
       billingInterval: "month",
     });
 
-    click(button(expand(card as ProbeElement), "Continuar a Stripe"));
+    click(button(expand(card), "Continuar a Stripe"));
     await flush();
 
     expect(fetchCalls.map((call) => call.url)).toEqual([

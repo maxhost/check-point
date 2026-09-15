@@ -112,6 +112,24 @@ afuera se **declara** (con la misma exigencia de siempre: intentado, no supuesto
 terminan en «el fix abrio la preimagen siguiente», eso no es mala suerte: es la señal de que la propiedad es
 universal y de que el bucle no termina solo.** Ver ADR 0062.
 
+**TODA VERIFICACION LLEVA PRESUPUESTO Y CONDICION DE CORTE ESCRITOS EN EL ENCARGO — Y EL ORACULO QUE
+DEFINE ES EL QA DEL OWNER, NO LA SUITE.** Instruccion literal del owner (2026-09-13, despues de que la
+spec 0064 se comiera una sesion entera): «no podemos quedarnos eternamente gastando tokens en cosas que
+no acaban, loops de test, loops de errores, loops de webhooks muertos. Necesitamos planificar, revisar
+que es production grade, implementar y probar un QA que nos de la verdad; claro que algun test en el
+medio esta definido, pero se te esta yendo la mano». **Lo que lo gatillo:** el orquestador encargo
+**14 mutaciones** para revisar una fase; **las primeras 4 ya habian dado todo el valor** (un hallazgo
+real) y las otras 10 eran inercia. Es el ADR 0062 otra vez —el que tiene que poner el corte es el que
+ENCARGA— pero generalizado: no solo a las propiedades universales, a **toda** verificacion.
+Reglas practicas: (a) al encargar una revision, escribi **cuantas mutaciones** y **que clase de error**
+tiene que cazar; lo que quede afuera se declara. (b) **Ningun ciclo de verificacion se reabre porque
+"quedo una preimagen mas"**: si dos vueltas seguidas terminan en «el fix abrio la siguiente», eso no es
+mala suerte, es la señal de cortar. (c) **Entre una evidencia mas y una pantalla que el owner pueda
+probar, gana la pantalla** — el QA humano encuentra lo que ninguna mutacion ve (los 4 huecos de UI de
+la 0063 salieron asi, y ninguna spec los pedia). (d) Un hallazgo que **no es riesgo de produccion** se
+DECLARA y se sigue; no se persigue. (e) Si una fase no llego a pantalla, cortar la verificacion y
+llevarla al QA es la decision correcta, no una rendicion.
+
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto,
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
 chequear con un comando, es un hook — no la escribas aca tambien.

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, count, eq, isNull } from "drizzle-orm";
 // Importing this module is what points `DATABASE_URL` at the isolated Neon branch.
 import {
   integrationEnabled,
@@ -147,3 +147,35 @@ export const providerSelection = {
   latitude: -0.1807,
   featureId: "place-123",
 };
+
+/**
+ * Spec 0064, fase B — LOS DOS CONTADORES de `locations-races.neon.integration.test.ts`,
+ * mudados acá por tamaño (ese archivo estaba en 302/300 al hook).
+ *
+ * Leen el estado FINAL por SQL, que es lo que convierte una carrera en una aserción (ADR 0054
+ * §4): `CLAUDE.md` prohíbe afirmar «atómico/idempotente» desde una lectura del código. Son
+ * lecturas puras y sin `vi.mock` —que es POR ARCHIVO y no se puede compartir—, así que este
+ * módulo es su lugar natural.
+ */
+export async function activeLocationCountSql(businessId: string) {
+  const [row] = await getDb()
+    .select({ value: count() })
+    .from(locations)
+    .where(
+      and(eq(locations.businessId, businessId), eq(locations.status, "active")),
+    );
+  return Number(row.value);
+}
+
+export async function liveVerificationCountSql(locationId: string) {
+  const [row] = await getDb()
+    .select({ value: count() })
+    .from(locationVerifications)
+    .where(
+      and(
+        eq(locationVerifications.locationId, locationId),
+        isNull(locationVerifications.supersededAt),
+      ),
+    );
+  return Number(row.value);
+}

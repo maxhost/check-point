@@ -38,6 +38,7 @@ export type {
 } from "./applicability";
 export {
   planLabel,
+  planWithInterval,
   statusLabel,
   subscriptionOffers,
   toSubscriptionView,
@@ -52,6 +53,14 @@ export type {
 } from "./view";
 export { asStripeGateway } from "./gateway";
 export type { StripeGateway } from "./gateway";
+// Spec 0064, A4: la fecha de renovación y la última factura pagada. No tocan la base — se
+// leen de Stripe en cada render y nunca tiran.
+export {
+  NO_BILLING_FACTS,
+  readBillingFacts,
+  toBillingFactsView,
+} from "./facts";
+export type { BillingFacts, BillingFactsView, LastPaidInvoice } from "./facts";
 export {
   applySubscriptionState,
   clearPendingPlan,

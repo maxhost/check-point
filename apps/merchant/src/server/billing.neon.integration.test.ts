@@ -24,7 +24,9 @@ import {
 } from "./locations-integration-support";
 
 /**
- * Spec 0063, D6/D9/D10 — LAS 5 RUTAS contra Postgres de verdad. El oráculo de cada escritura es
+ * Spec 0063 D6/D9/D10 — LAS 4 RUTAS contra Postgres de verdad. La baja INMEDIATA de la spec
+ * 0064 (A2) y su secuencia completa viven en `billing-downgrade-now.neon.integration.test.ts`:
+ * este archivo estaba en 299/300 y con ese caso adentro daba 323, medido al hook. El oráculo de cada escritura es
  * la FILA por SQL (ADR 0054), nunca la respuesta; y el de lo que se le pidió a Stripe son los
  * params y las claves del fake, nunca lo que devolvió. Staff activo vs. desactivado necesita
  * sesiones REALES y vive en `billing-routes-auth…`. Los ids salen de `subId`/`custId`: únicos
@@ -53,7 +55,6 @@ vi.mock("./stripe-config", async (importOriginal) => {
 
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
-import { POST as RESUME } from "../app/api/billing/resume/route";
 import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
 
 type Handler = (request: NextRequest) => Promise<Response>;
@@ -80,7 +81,7 @@ const livePlus = (tag: string, items?: { priceId: string }[]) =>
   livePlusState(fake, tag, items);
 
 describe.skipIf(!integrationEnabled)(
-  "api/billing routes against Neon (spec 0063)",
+  "api/billing routes against Neon (spec 0063 + 0064)",
   () => {
     beforeEach(() => {
       fake = fakeStripe();
@@ -113,53 +114,11 @@ describe.skipIf(!integrationEnabled)(
       });
     }, 60_000);
 
-    it("`cancel` → `resume` → `cancel`: la fila de cada paso y la `idempotencyKey` que estrena la 2.ª", async () => {
-      const periodEnd = Math.floor(Date.UTC(2026, 9, 1) / 1000);
-      await withSeed("plus", livePlus("ciclo"), async (seed) => {
-        fake.subscriptions.get(subId("ciclo"))!.cancel_at = periodEnd;
-        const first = await post(CANCEL);
-        expect(first.status).toBe(200);
-        // EL CABLEADO del DTO, que el unit de `toSubscriptionView` no ve: la RESPUESTA pasa
-        // por la allow-list, así que ninguna clave interna viaja al navegador.
-        const payload = (await first.json()) as Record<string, unknown>;
-        expect(Object.keys(payload.subscription as object).sort()).toEqual([
-          "interval",
-          "pendingPlan",
-          "pendingPlanAt",
-          "plan",
-          "status",
-        ]);
-        expect(JSON.stringify(payload)).not.toContain(custId("ciclo"));
-        expect(JSON.stringify(payload)).not.toContain(subId("ciclo"));
-        expect(JSON.stringify(payload)).not.toContain("downgradeRequested");
-        const cancelled = await readSubscriptionRow(seed.business.id);
-        expect(cancelled.pendingPlan).toBe("free");
-        expect(cancelled.downgradeRequestedAt).not.toBeNull();
-        // Paso 4: la fecha que devolvió Stripe, en unix segundos × 1000.
-        expect(cancelled.pendingPlanAt).toEqual(new Date(periodEnd * 1000));
-        expect(fake.updateParams[0]).toEqual({ cancel_at_period_end: true });
-
-        expect((await post(RESUME)).status).toBe(200);
-        const resumed = await readSubscriptionRow(seed.business.id);
-        expect(resumed.pendingPlan).toBeNull();
-        expect(resumed.pendingPlanAt).toBeNull();
-        expect(resumed.downgradeRequestedAt).toBeNull();
-
-        expect((await post(CANCEL)).status).toBe(200);
-        // EL ÍTEM DEL DoD: la 2.ª cancelación llega a Stripe — `resume` estrenó la clave.
-        const keys = fake.updateKeys.filter((k) =>
-          k?.startsWith("billing:cancel"),
-        );
-        expect(keys).toHaveLength(2);
-        expect(keys[0]).not.toBe(keys[1]);
-      });
-    }, 60_000);
-
     /**
-     * M5 — EL ORDEN DE D6 ES LOAD-BEARING. El paso 2 (escribir `pending_plan` y
+     * M5 — EL ORDEN DE A2 ES LOAD-BEARING. El paso 2 (escribir `pending_plan` y
      * `downgrade_requested_at`) commitea ANTES del paso 3 (la llamada a Stripe): el tope cae a
      * 1 en el MISMO commit que verificó el conteo y no queda ventana para desarchivar. El fake
-     * dispara el desarchivado DENTRO del `update`, que es exactamente esa ventana.
+     * dispara el desarchivado DENTRO del `cancel`, que es exactamente esa ventana.
      */
     it("`cancel` escribe la intención ANTES de llamar a Stripe: un desarchivado concurrente ya ve el tope caído", async () => {
       await withSeed("plus", livePlus("orden"), async (seed) => {
@@ -169,7 +128,7 @@ describe.skipIf(!integrationEnabled)(
         );
         await archiveLocation(archivado);
         let intento: PromiseSettledResult<unknown> | undefined;
-        fake.beforeUpdate = async () => {
+        fake.beforeCancel = async () => {
           const { setLocationStatus } = await import("./locations");
           [intento] = await Promise.allSettled([
             setLocationStatus(seed.business, archivado, "active"),
@@ -189,7 +148,7 @@ describe.skipIf(!integrationEnabled)(
 
     it("`cancel`: un error de RED deja el estado PUESTO; uno determinista lo REVIERTE", async () => {
       await withSeed("plus", livePlus("red"), async (seed) => {
-        fake.updateError = new Stripe.errors.StripeConnectionError({
+        fake.cancelError = new Stripe.errors.StripeConnectionError({
           message: "network",
         });
         const response = await post(CANCEL);
@@ -197,14 +156,16 @@ describe.skipIf(!integrationEnabled)(
         expect(await response.json()).toMatchObject({
           code: "stripe_unavailable",
         });
-        // [R1-B3]: un timeout no prueba nada; el estado queda capado en 1 (conservador).
+        // [R1-B3]: un timeout no prueba nada; el estado queda capado en 1 (conservador) y el
+        // paso 4 NO corrió, así que el plan sigue siendo `plus` con la marca puesta.
         const row = await readSubscriptionRow(seed.business.id);
+        expect(row.plan).toBe("plus");
         expect(row.pendingPlan).toBe("free");
         expect(row.downgradeRequestedAt).not.toBeNull();
       });
 
       await withSeed("plus", livePlus("determinista"), async (seed) => {
-        fake.updateError = new Stripe.errors.StripeInvalidRequestError({
+        fake.cancelError = new Stripe.errors.StripeInvalidRequestError({
           message: "no such subscription",
           statusCode: 400,
         });

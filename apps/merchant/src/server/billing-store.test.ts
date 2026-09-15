@@ -130,10 +130,12 @@ describe("scheduleDowngrade — la intención, y la marca que NO se pisa", () =>
   });
 });
 
-describe("clearPendingPlan — `resume` limpia las TRES columnas", () => {
+describe("clearPendingPlan — el revert limpia las TRES columnas", () => {
   it("no deja `downgrade_requested_at` puesto", async () => {
-    // Si `resume` dejara la marca, un `deleted` ajeno posterior se clasificaría «esperado» y
-    // aterrizaría en `free` en vez de `none` — el bloqueante R2-1 por la puerta de atrás.
+    // Su único llamador desde la spec 0064 es el REVERT del paso 3 de `cancel` (el rechazo
+    // determinista): `resume` ya no existe. Si dejara la marca, un `deleted` ajeno posterior
+    // se clasificaría «esperado» y aterrizaría en `free` en vez de `none` — el bloqueante
+    // R2-1 por la puerta de atrás.
     const { tx, recorded } = txDouble();
     await clearPendingPlan(tx, BIZ);
     expect(recorded.set).toMatchObject({

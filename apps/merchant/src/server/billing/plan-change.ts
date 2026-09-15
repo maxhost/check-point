@@ -22,10 +22,6 @@ export type BlockCode =
   | "already_on_plan"
   /** Hay más locales activos que los del plan destino. Trae `archiveCount`. 409 */
   | "downgrade_blocked"
-  /** `resume` sin baja programada. 409 */
-  | "nothing_to_resume"
-  /** `resume` sobre una suscripción muerta: el camino es `upgrade`. 409 */
-  | "subscription_dead"
   /** anual → mensual, fuera de alcance por diseño (D9, tarea 55). 409 */
   | "interval_downgrade_unsupported"
   /** Cambio de intervalo sin suscripción viva que cambiar. 409 */
@@ -41,7 +37,6 @@ export type BlockCode =
 export type PlanIntent =
   | { kind: "upgrade"; interval: "month" | "year" } // free → plus, por Checkout
   | { kind: "downgrade" } // plus → free (cancelar) | none → free
-  | { kind: "resume" } // deshacer una baja programada
   | { kind: "change_interval"; to: "month" | "year" };
 
 export type PlanChangeInput = {
@@ -59,11 +54,14 @@ export type PlanChangeInput = {
 
 export type PlanChangeDecision =
   | { kind: "checkout"; interval: "month" | "year" }
-  /** Hay suscripción: se cancela al fin del periodo (D6, orden de operaciones). */
+  /** Hay suscripción: se cancela en el acto (spec 0064 A2, orden de operaciones). El nombre
+   * quedó de cuando la baja se programaba (ADR 0063 la hizo inmediata) y se CONSERVA: es el
+   * discriminante de «hay que hablar con Stripe», que es lo que la ruta necesita saber.
+   * Renombrarlo tocaría la matriz, los casos nombrados y las dos rutas sin cambiar ninguna
+   * regla. */
   | { kind: "schedule_downgrade" }
   /** No hay suscripción viva: se escribe `free` local, sin tocar Stripe (D10). */
   | { kind: "settle_to_free" }
-  | { kind: "resume" }
   | { kind: "change_interval"; to: "year" }
   | {
       kind: "blocked";
@@ -104,8 +102,9 @@ export function hasLiveSubscription(input: PlanChangeInput): boolean {
  * lista la matriz de la spec se escribiría adivinando.
  *
  * `intent: "upgrade"`
- *   1. `hasLiveSubscription` → blocked `subscription_live`. Si además hay baja programada,
- *      el camino correcto es `resume` y el mensaje lo dice.
+ *   1. `hasLiveSubscription` → blocked `subscription_live`. Si además hay baja programada
+ *      —que desde la spec 0064 sólo puede venir del dashboard de Stripe, porque nuestro flujo
+ *      ya no la crea— el mensaje lo dice y NO ofrece reanudar: esa operación no existe.
  *   2. `currentPlan === 'plus'` → blocked `already_on_plan`.
  *   3. en otro caso → `{ kind: "checkout", interval }`.
  *      Cubre los 9 `free` de prod: `status='active'`, sin id → no hay suscripción viva.
@@ -120,11 +119,6 @@ export function hasLiveSubscription(input: PlanChangeInput): boolean {
  *   4. en otro caso (`none`, o `plus` sin id como A1) → `{ kind: "settle_to_free" }`.
  *      Acá muere el código `no_subscription` de la versión anterior, que era la fila que
  *      contradecía a D10.
- *
- * `intent: "resume"`
- *   1. `pendingPlan === null` → blocked `nothing_to_resume`.
- *   2. `!hasLiveSubscription` → blocked `subscription_dead` (el camino es `upgrade`).
- *   3. en otro caso → `{ kind: "resume" }`.
  *
  * `intent: "change_interval"`
  *   1. `to === "month"` → blocked `interval_downgrade_unsupported` (D9, tarea 55).
@@ -146,8 +140,6 @@ export function decidePlanChange(input: PlanChangeInput): PlanChangeDecision {
       return decideUpgrade(input, input.intent.interval);
     case "downgrade":
       return decideDowngrade(input);
-    case "resume":
-      return decideResume(input);
     case "change_interval":
       return decideChangeInterval(input, input.intent.to);
   }
@@ -171,7 +163,7 @@ function decideUpgrade(
     return blocked(
       "subscription_live",
       input.pendingPlan !== null
-        ? "Tu suscripción sigue activa hasta el final del periodo. Reanúdala en lugar de contratar otra."
+        ? "Tu suscripción sigue activa hasta el final del periodo. Cuando termine podrás contratar el plan otra vez."
         : "Ya tienes una suscripción activa.",
     );
   }
@@ -196,22 +188,6 @@ function decideDowngrade(input: PlanChangeInput): PlanChangeDecision {
   }
   if (hasLiveSubscription(input)) return { kind: "schedule_downgrade" };
   return { kind: "settle_to_free" };
-}
-
-function decideResume(input: PlanChangeInput): PlanChangeDecision {
-  if (input.pendingPlan === null) {
-    return blocked(
-      "nothing_to_resume",
-      "No hay ninguna baja programada que reanudar.",
-    );
-  }
-  if (!hasLiveSubscription(input)) {
-    return blocked(
-      "subscription_dead",
-      "Tu suscripción ya terminó. Para volver a Plus contrata el plan de nuevo.",
-    );
-  }
-  return { kind: "resume" };
 }
 
 function decideChangeInterval(

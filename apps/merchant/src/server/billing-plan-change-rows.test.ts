@@ -171,28 +171,4 @@ describe("decidePlanChange — las filas que mataron una regla (spec 0063)", () 
       }),
     ).toMatchObject({ kind: "blocked", code: "already_on_plan" });
   });
-
-  it("`resume` sin baja programada no procede", () => {
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
-        intent: { kind: "resume" },
-      }),
-    ).toMatchObject({ kind: "blocked", code: "nothing_to_resume" });
-  });
-
-  it("`resume` sobre una suscripción muerta manda a `upgrade`", () => {
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        pendingPlan: "free",
-        status: "canceled",
-        stripeSubscriptionId: "sub_x",
-        intent: { kind: "resume" },
-      }),
-    ).toMatchObject({ kind: "blocked", code: "subscription_dead" });
-  });
 });

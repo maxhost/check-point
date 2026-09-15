@@ -106,9 +106,13 @@ describe.skipIf(!integrationEnabled)(
         const response = await enVuelo!;
         expect(response.status).toBe(200);
         expect(terminado).toBe(true);
+        // La baja es INMEDIATA desde la spec 0064 (ADR 0063): el estado final ya no es «baja
+        // programada» sino `free` sin suscripción. Lo que este test pinnea sigue siendo el
+        // lock, no el desenlace — pero el desenlace tiene que ser el REAL o el oráculo miente.
         const row = await readSubscriptionRow(seed.business.id);
-        expect(row.pendingPlan).toBe("free");
-        expect(row.downgradeRequestedAt).not.toBeNull();
+        expect(row.plan).toBe("free");
+        expect(row.stripeSubscriptionId).toBeNull();
+        expect(row.downgradeRequestedAt).toBeNull();
       } finally {
         await dropBusiness(seed.business.id);
       }

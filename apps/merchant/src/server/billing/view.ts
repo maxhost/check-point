@@ -134,6 +134,31 @@ export const statusLabel: StatusLabel = (status) => {
 };
 
 /**
+ * Spec 0064, F2-1 — EL PLAN CON SU INTERVALO. El owner lo pidió después de usar la pantalla:
+ * «Plan Plus · activo» no dice si lo que se le cobra es mensual o anual, y ése es el dato con
+ * el que decide si le conviene pasar a anual o bajar.
+ *
+ * Se compone sobre `planLabel` en vez de repetir la traducción: un segundo `switch` con
+ * «Plus»/«Free»/«Sin plan» es exactamente cómo las dos superficies divergen (el motivo por el
+ * que `planLabel` existe y vive acá y no en la página).
+ *
+ * SÓLO `plus` LLEVA INTERVALO. `free` y `none` no tienen suscripción, así que «Free mensual»
+ * sería una invención. Y un `plus` con `interval` NULL —el negocio A1 de prod, que existe— se
+ * queda en «Plus» pelado: NO se adivina «mensual» por ser el caso más común, porque una
+ * etiqueta inventada sobre la plata del merchant es peor que una etiqueta incompleta.
+ */
+export function planWithInterval(
+  plan: string,
+  interval: string | null,
+): string {
+  const label = planLabel(plan);
+  if (plan !== "plus") return label;
+  if (interval === "month") return `${label} mensual`;
+  if (interval === "year") return `${label} anual`;
+  return label;
+}
+
+/**
  * LA TABLA DE 12 FILAS DE D7, COMO FUNCIÓN PURA — no como `if`s repartidos por el JSX.
  *
  * Es la lección de `choosePushPromptView` (tarea 38): tres guards sintácticos escritos por
@@ -155,7 +180,9 @@ export const statusLabel: StatusLabel = (status) => {
  * sin que ninguna fila cambiara.
  */
 export type SubscriptionOffers = {
-  /** Ya traducidos por la allow-list. Nunca el string crudo de Stripe. */
+  /** Ya traducido por la allow-list, y CON EL INTERVALO si el plan es `plus` (spec 0064,
+   * F2-1: la sección decía «Plan activo» a secas y el owner no podía saber si pagaba mensual
+   * o anual). Nunca el string crudo de Stripe. */
   plan: string;
   status: string;
   /** `past_due`/`unpaid`: se avisa el cobro y NO se ofrece plan ni intervalo (DoD). */
@@ -173,8 +200,6 @@ export type SubscriptionOffers = {
   downgrade: { label: string; endpoint: string } | null;
   /** D9, un solo sentido: mensual → anual. El inverso es la tarea 55. */
   intervalUpgrade: boolean;
-  /** «Reanudar suscripción» (la ruta `resume`). */
-  resume: boolean;
 };
 
 /** Los dos status del DoD que avisan cobro pendiente. Se declaran acá y no se derivan de
@@ -190,13 +215,13 @@ const PAYMENT_PENDING_STATUS = new Set(["past_due", "unpaid"]);
  * límite de 300, medido al hook:
  *
  * 1. cobro pendiente (`past_due`/`unpaid`) → se avisa y no se ofrece cambio de plan ni de
- *    intervalo. `resume` sobrevive si hay una baja programada: esconderlo dejaría al owner
- *    ATRAPADO —es el motivo por el que la ruta `resume` existe (§Decisiones del
- *    orquestador-1)— y reanudar no es «cambiar de plan», es deshacer un cambio.
- *    **DECISIÓN DEL IMPLEMENTADOR DE LA D2, no del owner.**
- * 2. baja programada → «baja a Free» (con fecha o al fin del periodo) + Reanudar, y nada
- *    más: ofrecer un upgrade acá es el 409 `subscription_live`, cuyo propio mensaje manda a
- *    `resume`.
+ *    intervalo.
+ * 2. baja programada → se INFORMA (con fecha o al fin del periodo) y nada más. Desde la spec
+ *    0064 este estado ya NO lo crea nuestro flujo —la baja es inmediata (ADR 0063)— y sólo
+ *    puede llegar del botón de cancelar del dashboard de Stripe, vía webhook. Por eso no hay
+ *    nada que ofrecer: reanudar no existe (decisión n.º 1 de la spec 0064: se registra el
+ *    hecho y se muestra como información), y ofrecer un upgrade acá es el 409
+ *    `subscription_live`.
  * 3. `plan='none'` (D10) → las DOS salidas: «Volver a Plus» (Checkout) y «Ajustarme y bajar
  *    a Free» (`settle-free`). Sin las dos, el estado es un callejón.
  * 4. `plan='plus'` → bajar a Free por `cancel`, y «Pasar a anual» sólo si el intervalo no es
@@ -214,7 +239,7 @@ const PAYMENT_PENDING_STATUS = new Set(["past_due", "unpaid"]);
  */
 export function subscriptionOffers(view: SubscriptionView): SubscriptionOffers {
   const base: SubscriptionOffers = {
-    plan: planLabel(view.plan),
+    plan: planWithInterval(view.plan, view.interval),
     status: statusLabel(view.status),
     paymentPending: false,
     pendingDowngrade: null,
@@ -222,19 +247,17 @@ export function subscriptionOffers(view: SubscriptionView): SubscriptionOffers {
     upgrade: null,
     downgrade: null,
     intervalUpgrade: false,
-    resume: false,
   };
   const scheduled =
     typeof view.pendingPlan === "string" && view.pendingPlan !== "";
   if (PAYMENT_PENDING_STATUS.has(view.status)) {
-    return { ...base, paymentPending: true, resume: scheduled };
+    return { ...base, paymentPending: true };
   }
   if (scheduled) {
     return {
       ...base,
       pendingDowngrade:
         view.pendingPlanAt === null ? "without_date" : "with_date",
-      resume: true,
     };
   }
   if (view.plan === "none") {

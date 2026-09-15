@@ -5,13 +5,17 @@ import {
   lockBusiness,
 } from "../../../server/locations/shared";
 import {
+  NO_BILLING_FACTS,
   asStripeGateway,
   decidePlanChange,
+  readBillingFacts,
   readSubscription,
   reconcileFromStripe,
   subscriptionOffers,
+  toBillingFactsView,
   toSubscriptionView,
 } from "../../../server/billing";
+import type { BillingFactsView } from "../../../server/billing";
 import {
   getStripeClient,
   getStripeConfiguration,
@@ -73,6 +77,7 @@ export default async function SubscriptionPage({
     <SubscriptionConsole
       subscription={state.subscription}
       offers={subscriptionOffers(state.subscription)}
+      facts={await readFacts(state.stripeIds)}
       activeLocations={state.activeLocations}
       canCancel={state.canCancel}
       downgradeBlock={state.downgradeBlock}
@@ -165,6 +170,15 @@ async function readBillingState(businessId: string) {
     });
     return {
       subscription: toSubscriptionView(row),
+      // LAS DOS LLAVES DE STRIPE, PARA PREGUNTARLE — Y SÓLO PARA ESO. Salen de este helper y
+      // se consumen en `readFacts`, del lado del servidor; NO entran en ninguna prop de la
+      // consola. Es la misma regla por la que el DTO existe (`CLAUDE.md`; un revisor ya cazó
+      // esta clase de fuga en marca, spec 0025) y la asevera `expectCrossesExactly`, que
+      // compara el conjunto EXACTO de props que cruza.
+      stripeIds: {
+        stripeCustomerId: row.stripeCustomerId,
+        stripeSubscriptionId: row.stripeSubscriptionId,
+      },
       activeLocations,
       canCancel:
         decision.kind === "schedule_downgrade" ||
@@ -178,6 +192,32 @@ async function readBillingState(businessId: string) {
           : null,
     };
   });
+}
+
+/**
+ * Spec 0064, A4 + fase B — LOS DATOS DEL COBRO (renovación, importe y recibo), leídos de
+ * Stripe en el render y convertidos a lo que cruza al navegador.
+ *
+ * EL `try` NO ES DECORATIVO, Y NO LO CUBRE EL CONTRATO DE `readBillingFacts`. Esa función
+ * promete no tirar NUNCA, pero `getStripeConfiguration()` SÍ TIRA cuando falta una env — y en
+ * el render más común (un negocio `free`, sin customer ni suscripción) ni siquiera llegaríamos
+ * a hacer una llamada. Sin este `catch`, una env faltante tumbaría la sección entera para
+ * todos, que es exactamente lo que A4 existe para impedir: «una pantalla de plan no se cae
+ * porque Stripe no conteste». El mismo motivo por el que `reconcileOnOpen` tiene el suyo.
+ *
+ * COSTO DECLARADO Y ACEPTADO (anexo A4): hasta dos llamadas de red por render de una pantalla
+ * de baja frecuencia, lanzadas en paralelo dentro de `readBillingFacts`.
+ */
+async function readFacts(ids: {
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+}): Promise<BillingFactsView> {
+  try {
+    const gateway = asStripeGateway(getStripeClient(getStripeConfiguration()));
+    return toBillingFactsView(await readBillingFacts(gateway, ids));
+  } catch {
+    return NO_BILLING_FACTS;
+  }
 }
 
 /** El aviso de vuelta de Stripe Checkout y de una operación propia, por ALLOW-LIST: un valor
@@ -195,9 +235,10 @@ function noticeFor(params: {
   }
   switch (params.done) {
     case "cancel":
-      return "Programamos la baja a Free.";
-    case "resume":
-      return "Tu suscripción sigue activa.";
+      // DECÍA «Programamos la baja a Free», que desde el ADR 0063 es FALSO: la baja se aplica
+      // en el acto y no hay nada programado. Un aviso que promete un período de gracia que el
+      // servidor ya no da es la misma clase de mentira que el texto viejo del modal.
+      return "Diste de baja tu plan: ya estás en Free.";
     case "interval":
       return "Pasaste a facturación anual.";
     default:

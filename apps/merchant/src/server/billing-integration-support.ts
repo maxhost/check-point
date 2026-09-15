@@ -8,8 +8,16 @@ import {
   stripeSubscription,
   type FakeStripe,
 } from "./billing-stripe-fake";
+import type { SubscriptionRow } from "./billing";
 import type { SeededSubscription } from "./locations-integration-support";
-import { getDb } from "./db";
+// DEL MODULO CONCRETO, NO DEL BARREL `./billing` (spec 0064): este support lo importa la
+// factory de `vi.mock("./stripe-config")`, y el barrel arrastra el dominio entero —
+// incluido lo que vuelve a `./stripe-config`, cuya factory todavia no termino. Con el
+// barrel, `billing-pages*.neon.integration.test.ts` COLGABAN para siempre (ni `vitest
+// list` terminaba). Es el mismo deadlock que ya documenta `billing-pages.neon.integration.test.ts`.
+import { readSubscription, scheduleDowngrade } from "./billing/store";
+import { getDb, withDbTransaction } from "./db";
+import { lockBusiness } from "./locations/shared";
 import { locations, stripeWebhookEvents, subscriptions } from "./schema";
 
 /**
@@ -211,4 +219,87 @@ export function archiveLocation(locationId: string) {
     .update(locations)
     .set({ status: "archived" })
     .where(eq(locations.id, locationId));
+}
+
+/**
+ * Spec 0064, fase B — LAS FIXTURES DE FILA de `billing-routes.test.ts`, mudadas acá por tamaño
+ * (ese archivo estaba en 301/300 al hook y este support tenía ~85 líneas de margen).
+ *
+ * Son datos planos y un constructor puro, que es exactamente lo que un módulo de soporte tiene
+ * que alojar: no traen `vi.mock` (que es POR ARCHIVO y no se puede compartir) ni tocan la base.
+ * Los dos UUID son de un negocio LLAMANTE y de uno AJENO: toda llamada de ese test grita el
+ * ajeno en el query string y en el body, y el punto es que ninguno de los dos tuerza el handler.
+ */
+export const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
+export const FOREIGN_BUSINESS = "22222222-2222-4222-8222-222222222222";
+
+export const subscriptionRowFixture = (
+  overrides: Partial<SubscriptionRow> = {},
+): SubscriptionRow => ({
+  businessId: CALLER_BUSINESS,
+  plan: "free",
+  interval: null,
+  status: "active",
+  stripeCustomerId: null,
+  stripeSubscriptionId: null,
+  pendingPlan: null,
+  pendingPlanAt: null,
+  downgradeRequestedAt: null,
+  lastEventAt: null,
+  ...overrides,
+});
+
+/** La fila de un `plus` mensual VIVO, que es la que deja llegar al dominio a `cancel` e
+ * `interval`. */
+export const LIVE_ROW: SubscriptionRow = subscriptionRowFixture({
+  plan: "plus",
+  interval: "month",
+  stripeCustomerId: "cus_caller",
+  stripeSubscriptionId: "sub_caller",
+});
+
+/**
+ * Spec 0064, fase B — EL PASO 1-2 DEL `cancel` (lock, leer, escribir la intención), mudado acá
+ * desde `billing-store.neon.integration.test.ts` por tamaño (301/300 al hook).
+ *
+ * Son los MISMOS statements que corre la ruta, invocados directo porque la propiedad que se
+ * asevera es del STORE y no del HTTP. El `gate` opcional es lo que deja abrir la ventana de una
+ * carrera: la transacción queda con el lock tomado hasta que la promesa resuelva.
+ */
+export async function cancelStepUnderLock(
+  businessId: string,
+  now: Date,
+  gate?: Promise<void>,
+) {
+  return withDbTransaction(async (tx) => {
+    await lockBusiness(tx, businessId);
+    await readSubscription(tx, businessId);
+    const result = await scheduleDowngrade(tx, businessId, { now });
+    if (gate) await gate;
+    return result;
+  });
+}
+
+/**
+ * Spec 0064, fase B — LA SUSCRIPCIÓN VIVA que el doble devolvería para un tag, mudada acá desde
+ * `billing-downgrade-now.neon.integration.test.ts` por tamaño (302/300 al hook).
+ *
+ * El `fake` va por PARÁMETRO y no se lee de un módulo: cada test reconstruye el suyo en su
+ * `beforeEach`, así que capturarlo por closure ataría este helper a la instancia vieja y el
+ * seed caería en el doble equivocado — un rojo que parecería un bug del producto.
+ */
+export function seedLiveSubscription(
+  fake: FakeStripe,
+  businessId: string,
+  tag: string,
+) {
+  const subscription = stripeSubscription({
+    id: subId(tag),
+    status: "active",
+    customer: custId(tag),
+    businessId,
+    items: [{ priceId: MONTHLY_PRICE }],
+  });
+  fake.subscriptions.set(subId(tag), subscription);
+  return subscription;
 }

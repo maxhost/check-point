@@ -145,3 +145,183 @@ y se arregla con la ruta de cancelar, que es la que se queda.
 hasta que se implemente esta spec: hay que cancelarlo desde el dashboard de Stripe (o dejarlo caer el
 13-10). Es un negocio de PRUEBA, asi que no bloquea — pero **la migracion de estado de los que ya
 esten diferidos al desplegar es parte del DoD**, no un detalle.
+
+---
+
+# ANEXO TECNICO (orquestador, 2026-09-13) — lo que faltaba para despachar
+
+La spec estaba cerrada **en producto** y sin **diseño tecnico**: no tenia fases, contratos,
+archivos previstos, plan de pruebas ni DoD ejecutable, que es lo que `AGENT-WORKFLOW.md` le
+exige al orquestador comprobar antes de entregar un encargo. Esto lo agrega **sin tocar
+ninguna decision de producto**. Las decisiones nuevas van etiquetadas y son rechazables.
+
+## Premisas VERIFICADAS antes de escribir este anexo (no supuestas)
+
+| Hecho | Como se verifico |
+|---|---|
+| `subscriptions.cancel(id, params?, options?)` existe; `prorate` e `invoice_now` son `?boolean` **default `false`** | `esm/resources/Subscriptions.d.ts:26` y `:2678-2695` de `stripe@22.5.0` |
+| `invoices.list({customer, subscription, status:'paid', limit})` existe | `esm/resources/Invoices.d.ts:41`, `:2425-2457` |
+| `Invoice.amount_paid: number` (no opcional), `hosted_invoice_url?: string\|null`, `invoice_pdf?: string\|null` | `esm/resources/Invoices.d.ts:158,307,311` |
+| El fantasma del validator **es real en esta maquina AHORA** | `apps/merchant/.next/types/validator.ts:320-323` tiene el bloque de `resume` |
+| Tras `settleToFree` (que pone `stripe_subscription_id=null`), un `customer.subscription.deleted` tardio **se IGNORA** | `applicability.ts`: id distinto → `adoptable` (id null) → regla 2: la suscripcion recuperada esta `canceled` ∈ `DEAD_STRIPE_STATUS` → `not_adoptable`. **Es la pieza que hace viable la baja inmediata** y por eso tiene test propio (A-T4) |
+| Baseline del arbol: limpio, `typecheck`+`lint` verdes, Node 24.20.0 | corrido antes de escribir esto |
+| `resume` se referencia en **24 archivos** | `grep -rln resume apps/merchant/src` |
+
+## Decisiones del ORQUESTADOR en este anexo — NO las dijo el owner, se pueden rechazar
+
+**O-2. El link del recibo CRUZA al navegador como prop** (`hosted_invoice_url`, con fallback a
+`invoice_pdf`), en vez de proxiearlo por una ruta propia que haga el `retrieve` y redirija. Motivo:
+es exactamente el link que Stripe publica para mandarle al cliente por email —el owner ya lo recibe
+asi— y la ruta proxy agrega superficie HTTP autenticada y un round-trip por click sin cerrar ninguna
+amenaza (quien ve la pagina ya es el owner). **No viola la regla de `CLAUDE.md`**, que prohibe
+serializar claves internas (`*ObjectKey`, `stripeCustomerId`, `stripeSubscriptionId`): ninguna de
+esas viaja. **Lo que si obliga:** actualizar `expectCrossesExactly` con las props nuevas y aseverar
+—con un `it` propio— que el customer id y el subscription id **siguen sin cruzar**.
+
+**O-3. NO HAY MIGRACION DE DATOS de los negocios ya diferidos.** La spec pedia «la migracion de los
+que ya esten diferidos al desplegar». Limpiarles `pending_plan` dejaria a Stripe con la cancelacion
+viva y a la DB diciendo «Plus activo» — el estado incoherente que la 0063 existe para prohibir. Se
+reencuadran en la **decision n.o 1 de esta spec, que ya existe**: una baja programada que nuestro
+flujo ya no crea se **informa** («Stripe tiene una cancelacion programada para el <fecha>»), no se
+ofrece reanudar, y cae sola por el webhook al fin del periodo. Cero SQL, cero ventana incoherente.
+**Verificacion en vez de migracion:** correr por SQL el conteo de filas con `pending_plan='free'`
+antes de desplegar y dejarlo escrito en `TASKS.md` (al escribir esto: `A3 Test`, de prueba).
+
+**O-4. LA BAJA INMEDIATA CONSERVA EL PASO 2 (la marca de intencion), no lo borra.** El reflejo al
+leer «la baja es inmediata» es cancelar en Stripe y escribir `free`. **Esta mal por dos motivos
+medidos**, y por eso el orden de abajo es normativo:
+1. sin el paso 2, un 503 del paso 3 deja la fila en `plus` con la baja quizas aplicada en Stripe, y
+   el `cancel` siguiente no tiene de donde saber que ya se pidio → se pierde la idempotencia que
+   `cancel` tiene hoy;
+2. sin `downgrade_requested_at` puesto **antes** de llamar a Stripe, un webhook `deleted` que gane
+   la carrera al paso 4 ve `plan='plus'` + `downgradeRequestedAt=null` y aterriza en **`none`** en
+   vez de `free` (`derive.ts:216`) — el discriminante del ADR 0060, alcanzado por la puerta de atras.
+
+## Fase A — dominio y rutas (servidor). NO toca UI
+
+**A1. `billing/gateway.ts`** — sumar a `StripeGateway`:
+`subscriptions: Pick<…, "retrieve"|"update"|"list"|"cancel">` y `invoices: Pick<Stripe["invoices"], "list">`.
+El fake (`billing-stripe-fake.ts`, **hoy en 299/300 lineas**) deja de compilar hasta implementarlos:
+eso es el punto de la costura. **El fake NO se puede extender sin dividirlo antes** — el corte lo
+decide el implementador y se mide **al hook**, no con `wc`.
+
+**A2. `app/api/billing/cancel/route.ts` — ORDEN NORMATIVO de la baja inmediata:**
+1. tx: `lockBusiness` → leer → contar activos → `decidePlanChange({intent:'downgrade'})`.
+   `blocked` → 409 y nada mas. `settle_to_free` → `settleToFree` y **cero llamadas a Stripe** (se
+   conserva tal cual).
+2. **MISMA tx**: `scheduleDowngrade` (marca `pending_plan='free'` + `downgrade_requested_at`).
+   Commit. Load-bearing por los dos motivos de **O-4**.
+3. **Fuera del lock**: `gateway.subscriptions.cancel(subId, undefined, { idempotencyKey })`. **Sin
+   `prorate` ni `invoice_now`** (default `false` = lo que el owner pidio; escribirlos explicitos
+   tambien es aceptable, pero entonces el test lo asevera).
+4. tx corta: `settleToFree` → `plan='free'`, `status='active'`, `stripe_subscription_id=null`, las
+   tres columnas de baja limpias.
+- **Fallo del paso 3 → 503 y el estado QUEDA PUESTO** (capado en 1, conservador). El revert corre
+  **solo** ante rechazo determinista Y `createdNow` — se conservan `isDeterministicRejection` y el
+  guard `createdNow` **con sus docblocks y sus tests**: no son andamiaje de la baja diferida.
+- **El `catch` REGISTRA LA CAUSA** (pedido explicito de la spec; hoy `cancel/route.ts:135` descarta
+  el error entero). `console.error` con el error, **sin** secretos ni cuerpos de request.
+
+**A3. Borrar `resume` — en UN solo paso, y el validator con el:**
+`rm` de `app/api/billing/resume/route.ts`; el `{kind:'resume'}` de `decidePlanChange` y sus codigos
+(`nothing_to_resume` y el de suscripcion muerta); `offers.resume`; el boton y el `done=resume` de la
+UI; y **sus tests** (borrarlos esta autorizado por la spec §4 y se declara en el handoff —
+`CLAUDE.md` prohibe borrar tests para que un gate pase, no borrar el test de una feature que deja de
+existir). **En el mismo paso:** `rm -f apps/merchant/.next/types/validator.ts`.
+**`clearPendingPlan` NO se borra**: queda usado por el revert del paso 3.
+
+**A4. `server/billing/facts.ts` (archivo NUEVO) — la renovacion y el recibo.**
+`readBillingFacts(gw, { stripeCustomerId, stripeSubscriptionId })` → `{ renewalAt: Date|null,
+lastPaidInvoice: { amountPaid: number; currency: string; receiptUrl: string|null } | null }`.
+- `renewalAt`: de `subscriptions.retrieve(subId)` → `items?.data?.[0]?.current_period_end`, con el
+  **mismo acceso defensivo** que `derive-rules.ts` (`items` es un `ApiList` truncado y sin orden
+  contractual; `data[0]` pelado tira `TypeError`). Unix seconds → `* 1000`.
+- `lastPaidInvoice`: `invoices.list({ customer, status:'paid', limit: 10 })` y **se elige el de
+  `created` MAXIMO explicitamente**. NO se toma `data[0]`: que la lista venga ordenada desc no es
+  contractual, y es el bug exacto que `CLAUDE.md` ya cobro una vez (`select` sin `order by` +
+  `.at(-1)`). `receiptUrl = hosted_invoice_url ?? invoice_pdf ?? null`.
+- **ESTA FUNCION NO PUEDE TIRAR.** Mismo contrato que `reconcileOnOpen`: cualquier fallo devuelve
+  los campos en `null` y la UI omite el dato. Una pantalla de plan no se cae porque Stripe no
+  conteste. **Costo declarado y aceptado:** suma hasta 2 llamadas de red por render de una pantalla
+  de baja frecuencia.
+
+**A5. `billing/view.ts`** — sacar `resume` de `SubscriptionOffers`; agregar la **etiqueta de
+intervalo** («Plus mensual» / «Plus anual») a `subscriptionOffers`, que ya recibe `view.interval`.
+**El archivo esta en 260 lineas**: si la etiqueta lo pasa de 300, se divide (sibling, como ya se
+hizo con `billing-offers`), **medido al hook**.
+
+## Fase B — UI. Entra DESPUES del PASS de la A
+
+`subscription-console.tsx` esta en **274/300** y esta fase le suma cinco cosas: etiqueta de
+intervalo, fecha de renovacion, importe + link al recibo, **modal de confirmacion del cambio de
+intervalo** (hoy cobra al apretar, sin confirmar: es plata sin confirmar) y el **aviso en el modal
+de baja**. **Va a pasar el limite: se divide ANTES de agregar, no despues.** Corte propuesto por el
+orquestador (rechazable): la tarjeta de plan (`plan-card`) a su propio archivo y el modal de
+intervalo a otro.
+- **El aviso del modal de baja** (respuesta 3 del owner: vive en el modal, no como cartel): dice
+  que la baja es **inmediata y sin devolucion**, que ya pago hasta el `renewalAt`, y **la fecha
+  conveniente = `renewalAt - 2 dias`**. Si no hay `renewalAt` (Stripe no contesto), el modal
+  **omite el aviso** y sigue diciendo que es inmediato: nunca inventa una fecha.
+- Fechas: `Intl.DateTimeFormat` con el `timeZone` del negocio **fijado** (patron ya en el archivo);
+  sin fijarlo hay mismatch de hidratacion.
+- Importe: `amount_paid` viene en **centavos** → se divide por 100 y se formatea con `currency`.
+
+## Fase C — el hook del validator (item propio del DoD, §4.b)
+
+`.claude/hooks/stale-validator.sh`: si `apps/merchant/.next/types/validator.ts` referencia un
+`route.ts` que **ya no existe en el arbol**, lo **borra** (es un artefacto de build puro) y dice en
+pantalla que lo hizo y por que.
+- **Evento: `Stop`, ordenado ANTES de `verify.sh`** — si corriera despues, `verify.sh` ya fallo con
+  el fantasma. **El implementador VERIFICA que el orden del array de `settings.json` se respeta**;
+  si no se respeta, el chequeo se incorpora al principio de `verify.sh` y se declara el cambio.
+- **Se entrega con la prueba de que MUERDE y de que DISCRIMINA** (`CLAUDE.md`: un guard sin prueba
+  de que muerde es peor que ninguno): (a) contra un validator con un bloque de ruta inexistente →
+  borra + mensaje; (b) contra un validator **sano** → **no toca nada** (verificado por `shasum`
+  antes/despues). Un hook que borra siempre es tan inutil como uno que no borra nunca.
+
+## Plan de pruebas
+
+**LA TABLA DE MUTACIONES SE EJECUTA, NO SE PREDICE** (`CLAUDE.md`): cada fila «mutacion → rojo el
+test Y» se corre y se transcribe el resultado real, con el **alcance** (todos los archivos que
+pueden ver la mutacion) escrito en la fila. La fila de la bitacora **se abre ANTES de mutar** con
+`id + archivo + shasum limpio + que invariante ataca`; y antes de mutar se mira `git status --short`
+(un `??` no tiene `git checkout` de emergencia; un ` M` tiene uno que **se lleva tambien el trabajo
+no commiteado**) y se saca copia a `/tmp`.
+
+**Y el barrido que la fase D1 de la 0063 pago cuatro veces:** al cerrar cada fase, **listar los
+comentarios del codigo nuevo que afirman un invariante** («esto es lo que hace que X», «sin esto
+pasaria Y») **y mutar cada uno**. Los que queden verdes son el trabajo que falta. La tabla escrita
+desde el diseño no los ve, porque el diseño es anterior al docblock.
+
+**A-T4 — EL CASO DE SECUENCIA COMPLETA, que la spec exige explicitamente** («la clase de defecto que
+origino esta spec no la caza una mutacion»): un test de integracion que recorra **upgrade → baja →
+estado resultante → que puede hacer el merchant** y asevere **por SQL** que lo que se cobra y lo que
+se puede usar coinciden. Incluye las dos carreras del webhook contra el paso 4:
+- `deleted` **antes** del paso 4 (fila en `plus` + marca puesta) → `free`, **nunca `none`**;
+- `deleted` **despues** del paso 4 (fila ya en `free`, sin sub id) → **ignorado** (`not_adoptable`),
+  la fila no se ensucia.
+
+**Comandos (scripts de ROOT, Node 24 — `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use`):**
+`pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run format:check`, `pnpm run build`.
+Unit suelto: `pnpm --filter @mi-pasaporte/merchant exec vitest run <path>`.
+
+## DoD ejecutable
+
+**Fase A**
+- [ ] `cancel` cancela en Stripe **en el acto** y la fila queda `free` con `stripe_subscription_id=null`; el 503 deja el estado puesto y `cancel` sigue siendo idempotente.
+- [ ] `settle_to_free` sigue haciendo **cero** llamadas a Stripe.
+- [ ] `resume` no existe: ni ruta, ni intent, ni oferta, ni `done=resume`.
+- [ ] `pnpm run typecheck` **VERDE** tras `rm -f apps/merchant/.next/types/validator.ts`, y `grep -rn "resume" apps/merchant/.next/types/validator.ts` **vacio** sobre el validator regenerado.
+- [ ] El `catch` de `cancel` registra la causa (sin secretos), con test.
+- [ ] `readBillingFacts` no tira nunca ante un fallo de Stripe, y elige la factura pagada por `created` **maximo**, no por posicion.
+- [ ] A-T4 en verde, con las dos carreras del webhook.
+- [ ] Tamaños **al hook** sobre TODO el alcance (los ` M` **y** los `??`), no solo los archivos nuevos.
+
+**Fase B**
+- [ ] La seccion dice «Plus mensual»/«Plus anual», la **fecha de renovacion**, el **importe cobrado** y un **link al recibo**.
+- [ ] El cambio de intervalo pide confirmacion en un modal que dice que el cobro es inmediato.
+- [ ] El modal de baja dice que es inmediata y sin devolucion, y muestra la fecha conveniente (`renewalAt - 2 dias`); **sin `renewalAt` omite el aviso y no inventa fecha**.
+- [ ] `expectCrossesExactly` actualizado, y un `it` propio que asevera que el customer id y el subscription id **siguen sin cruzar**.
+
+**Fase C**
+- [ ] Hook entregado con la prueba de que **muerde** y de que **discrimina** (validator sano intacto, verificado por `shasum`).

@@ -22,7 +22,22 @@ import type Stripe from "stripe";
  * hasta que la implemente, que es el punto.
  */
 export type StripeGateway = {
-  subscriptions: Pick<Stripe["subscriptions"], "retrieve" | "update" | "list">;
+  /**
+   * `cancel` entra con la spec 0064 (ADR 0063): la baja a Free es INMEDIATA, así que la ruta
+   * ya no programa con `update({cancel_at_period_end:true})` sino que termina la suscripción
+   * en el acto. Se pide el método ENTERO del SDK (`Pick`), así que `prorate` e `invoice_now`
+   * quedan tipados con su default `false` — no hay que escribir nada para «sin devolución».
+   */
+  subscriptions: Pick<
+    Stripe["subscriptions"],
+    "retrieve" | "update" | "list" | "cancel"
+  >;
+  /**
+   * `invoices.list` entra con la spec 0064, F2-4: el importe cobrado y el link al recibo salen
+   * de la última factura PAGADA (respuesta literal del owner). Es la primera vez que este
+   * dominio toca `invoices`, y por eso el fake tiene que implementarla para seguir compilando.
+   */
+  invoices: Pick<Stripe["invoices"], "list">;
   checkout: {
     sessions: Pick<Stripe["checkout"]["sessions"], "create" | "retrieve">;
   };

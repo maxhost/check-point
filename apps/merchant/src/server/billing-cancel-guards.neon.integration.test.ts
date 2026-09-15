@@ -20,32 +20,29 @@ import { withDbTransaction } from "./db";
 import { integrationEnabled } from "./locations-integration-support";
 
 /**
- * Spec 0063, D6/D10 — LOS GUARDS DEL CICLO `cancel` / `resume`: lo que impide que una baja
- * legítima se destruya, y lo que impide que una reanudación deje la baja viva en Stripe. Los
- * tres nacen de FAILs de revisor, y los tres son la misma forma: estaban escritos en la spec o
- * en un docblock y NINGÚN test los pinneaba — el ADR 0054, un documento afirmando un
+ * Spec 0063 D6/D10 + spec 0064 A2 — LOS GUARDS DE `cancel`: lo que impide que una baja
+ * legítima se destruya. Nacen de FAILs de revisor, y son la misma forma: estaban escritos en
+ * la spec o en un docblock y NINGÚN test los pinneaba — el ADR 0054, un documento afirmando un
  * invariante que nadie verifica.
  *
  *  1. (decisión 3) El revert de `cancel` ante un error determinista corre SÓLO si ESTA
- *     petición creó el estado. Los dos tests de `billing.neon.integration.test.ts` que parecen
- *     cubrirlo son los dos PRIMEROS pedidos (`createdNow === true`), así que dan idéntico con
- *     y sin el guard. Mutación MUT-A.
+ *     petición creó el estado. Los tests de `billing.neon.integration.test.ts` que parecen
+ *     cubrirlo son PRIMEROS pedidos (`createdNow === true`), así que dan idéntico con y sin el
+ *     guard. Mutación MUT-A.
  *  2. (decisión 1) `settle-free` es el mismo handler que `cancel`, así que sobre una
- *     suscripción VIVA programa la baja EN STRIPE en vez de settlear en local. Ningún test
- *     llamaba a `settle-free` con una suscripción viva. El daño es de plata: settlear en local
- *     deja de cobrarle al negocio un plan que Stripe le sigue facturando. Mutación MUT-D.
+ *     suscripción VIVA la cancela EN STRIPE en vez de settlear en local. Ningún test llamaba a
+ *     `settle-free` con una suscripción viva. El daño es de plata: settlear en local deja de
+ *     cobrarle al negocio un plan que Stripe le sigue facturando. Mutación MUT-D.
  *
- *  3. (`resume`, D6) La reanudación limpia el `cancel_at` EXPLÍCITO —el que setea el botón del
- *     dashboard de Stripe—, no sólo `cancel_at_period_end`. Sin eso, `clearPendingPlan` borra
- *     las tres columnas (incluida `downgrade_requested_at`) mientras Stripe conserva la baja:
- *     el webhook repone `pending_plan='free'` pero NO la marca, así que el `deleted` de fin de
- *     periodo llega con `downgrade_requested_at IS NULL` y aterriza en **`plan='none'`** — un
- *     owner que reanudó, bloqueado. Mutación MUT-J. (Cuando el `cancel_at` lo generó nuestro
- *     propio `cancel_at_period_end: true`, Stripe lo limpia solo al ponerlo en `false`: el
- *     guard es load-bearing para el EXPLÍCITO, que es el caso que el docblock nombra.)
+ * EL TERCER GUARD ERA DE `resume` Y SE FUE CON LA RUTA (spec 0064 §4: la baja diferida no
+ * existe, «no hay reanudar»). Borrar su test está autorizado por esa sección y declarado en el
+ * handoff: no es un test que se saca para poner un gate en verde, es el test de una feature
+ * que dejó de existir. Lo que ese test protegía —que una baja ajena con `cancel_at` explícito
+ * no aterrice en `none`— sigue cubierto por el lado del webhook (`billing-derive.test.ts` y
+ * `billing-webhook-writes…`), que es donde vive el discriminante del ADR 0060.
  *
- * Archivo propio por naturaleza, y porque `billing.neon.integration.test.ts` está en **300
- * exactas** (medido con el hook `file-size`): cero margen. El corte lo decidió el orquestador.
+ * Archivo propio por naturaleza, y porque `billing.neon.integration.test.ts` no tiene margen
+ * (medido con el hook `file-size`). El corte lo decidió el orquestador.
  */
 let fake: FakeStripe = fakeStripe();
 const world = { businessId: "" };
@@ -69,7 +66,6 @@ vi.mock("./stripe-config", async (importOriginal) => {
 });
 
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
-import { POST as RESUME } from "../app/api/billing/resume/route";
 import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
 
 const post = (handler: (r: NextRequest) => Promise<Response>) =>
@@ -92,7 +88,7 @@ async function withLivePlus(
 }
 
 describe.skipIf(!integrationEnabled)(
-  "api/billing — los guards del ciclo `cancel` / `resume` (spec 0063, D6/D10)",
+  "api/billing — los guards de `cancel` (spec 0063 D6/D10 + spec 0064 A2)",
   () => {
     beforeEach(() => {
       fake = fakeStripe();
@@ -114,15 +110,22 @@ describe.skipIf(!integrationEnabled)(
      */
     it("un REINTENTO de `cancel` que falla determinista NO borra la baja ya pedida", async () => {
       await withLivePlus("repar", async (seed) => {
-        // 1.er pedido: entra limpio y deja la marca puesta.
-        expect((await post(CANCEL)).status).toBe(200);
+        // 1.er pedido: deja la marca puesta y se cae en la RED, que no prueba nada — el
+        // estado queda PUESTO ([R1-B3]) y la suscripción puede estar cancelada en Stripe.
+        fake.cancelError = new Stripe.errors.StripeConnectionError({
+          message: "network",
+        });
+        expect((await post(CANCEL)).status).toBe(503);
         const pedido = await readSubscriptionRow(seed.business.id);
+        expect(pedido.plan).toBe("plus");
         expect(pedido.pendingPlan).toBe("free");
         expect(pedido.downgradeRequestedAt).not.toBeNull();
 
         // 2.º pedido (el reintento de reparación): Stripe lo rechaza con un 4xx, que SÍ prueba
-        // que no aplicó nada… pero de ESTE pedido, no del anterior.
-        fake.updateError = new Stripe.errors.StripeInvalidRequestError({
+        // que no aplicó nada… pero de ESTE pedido, no del anterior. Sin el guard `createdNow`
+        // el revert corre acá y borra una baja que Stripe puede tener confirmada → el tope
+        // vuelve a 3 con la cancelación viva → `free` con 3 locales activos.
+        fake.cancelError = new Stripe.errors.StripeInvalidRequestError({
           message: "no such subscription",
           statusCode: 400,
         });
@@ -142,75 +145,24 @@ describe.skipIf(!integrationEnabled)(
      * Stripe. El barrido del filesystem de `billing-routes.test.ts` no ve esto — mira que
      * exista el `export POST`, no el cuerpo.
      */
-    it("`settle-free` sobre una suscripción VIVA programa la baja EN STRIPE, no en local", async () => {
+    it("`settle-free` sobre una suscripción VIVA la CANCELA en Stripe, no settlea en local", async () => {
       await withLivePlus("vivo", async (seed, tag) => {
         expect((await post(SETTLE_FREE)).status).toBe(200);
 
         // Se lo pidió a Stripe: settlear en local dejaría de cobrarle al negocio un plan que
-        // Stripe le sigue facturando.
-        expect(fake.calls).toContain(`subscriptions.update:${subId(tag)}`);
-        expect(fake.updateParams[0]).toEqual({ cancel_at_period_end: true });
+        // Stripe le sigue facturando. Es el ORÁCULO de MUT-D — las dos ramas terminan con la
+        // fila en `free`, así que lo único que las distingue es la llamada.
+        expect(fake.calls).toContain(`subscriptions.cancel:${subId(tag)}`);
+        // SIN `prorate` ni `invoice_now`: los dos son `false` por default, que es literalmente
+        // lo que el owner pidió (ADR 0063, «sin reembolso, no devolvemos plata»).
+        expect(fake.cancelParams[0]).toBeUndefined();
 
-        // Y la fila quedó como una baja PROGRAMADA, no como un `free` ya aplicado.
+        // Y la fila quedó settleada DESPUÉS de la cancelación, no antes.
         const row = await readSubscriptionRow(seed.business.id);
-        expect(row.plan).toBe("plus");
-        expect(row.pendingPlan).toBe("free");
-        expect(row.downgradeRequestedAt).not.toBeNull();
-        expect(row.stripeSubscriptionId).toBe(subId(tag));
-      });
-    }, 60_000);
-
-    /**
-     * MUT-J. `cancel_at` es INDEPENDIENTE de `cancel_at_period_end`
-     * (`Subscriptions.d.ts:129`) y se puede setear desde el dashboard: es el actor por el que
-     * existe el ADR 0060. Un `resume` que no lo limpia deja a Stripe con la baja VIVA mientras
-     * la fila se limpia entera — y el desenlace es `plan='none'` sobre un negocio que reanudó.
-     */
-    it("`resume` limpia el `cancel_at` EXPLÍCITO, no sólo `cancel_at_period_end`", async () => {
-      await withLivePlus("reanuda", async (seed, tag) => {
-        // Una baja con FECHA explícita, como la deja el botón del dashboard de Stripe.
-        const periodEnd = Math.floor(Date.UTC(2026, 9, 1) / 1000);
-        fake.subscriptions.get(subId(tag))!.cancel_at = periodEnd;
-
-        expect((await post(CANCEL)).status).toBe(200);
-
-        // S11 — EL ORDEN DE `resume` ES EL INVERSO DEL DE `cancel`, y acá se mide: durante la
-        // llamada a Stripe la fila TODAVÍA tiene la baja programada, porque el estado
-        // conservador es «seguir capado». Al revés, un fallo de red devolvería el tope a 3 con
-        // la cancelación viva en Stripe.
-        let duranteStripe: Awaited<
-          ReturnType<typeof readSubscriptionRow>
-        > | null = null;
-        fake.beforeUpdate = async () => {
-          duranteStripe = await readSubscriptionRow(seed.business.id);
-        };
-        expect((await post(RESUME)).status).toBe(200);
-        expect(duranteStripe!.pendingPlan).toBe("free");
-        expect(duranteStripe!.downgradeRequestedAt).not.toBeNull();
-
-        // S12 — la clave lleva el `pending_plan_at`, así que un ciclo
-        // `cancel → resume → cancel → resume` estrena una clave nueva en vez de comerse la
-        // respuesta cacheada de Stripe.
-        expect(fake.updateKeys.at(-1)).toBe(
-          `billing:resume:${subId(tag)}:${new Date(periodEnd * 1000).toISOString()}`,
-        );
-
-        // El oráculo es lo que se le PIDIÓ a Stripe, no lo que el fake devolvió.
-        expect(fake.updateParams.at(-1)).toEqual({
-          cancel_at_period_end: false,
-          cancel_at: null,
-        });
-        expect(fake.subscriptions.get(subId(tag))!.cancel_at).toBeNull();
-
-        // Y la fila quedó sin baja programada: las TRES columnas juntas. Dejar
-        // `downgrade_requested_at` puesto haría que un `deleted` ajeno se clasificara
-        // «esperado» y aterrizara en `free` en vez de `none`.
-        const row = await readSubscriptionRow(seed.business.id);
-        expect([
-          row.pendingPlan,
-          row.pendingPlanAt,
-          row.downgradeRequestedAt,
-        ]).toEqual([null, null, null]);
+        expect(row.plan).toBe("free");
+        expect(row.stripeSubscriptionId).toBeNull();
+        expect(row.pendingPlan).toBeNull();
+        expect(row.downgradeRequestedAt).toBeNull();
       });
     }, 60_000);
 
@@ -227,7 +179,7 @@ describe.skipIf(!integrationEnabled)(
         Object.assign(new Error("no such subscription"), extra);
 
       await withLivePlus("rawtype", async (seed) => {
-        fake.updateError = plano({ rawType: "invalid_request_error" });
+        fake.cancelError = plano({ rawType: "invalid_request_error" });
         expect((await post(CANCEL)).status).toBe(503);
         const row = await readSubscriptionRow(seed.business.id);
         expect(row.pendingPlan).toBeNull();
@@ -235,7 +187,7 @@ describe.skipIf(!integrationEnabled)(
       });
 
       await withLivePlus("statuscode", async (seed) => {
-        fake.updateError = plano({ statusCode: 400 });
+        fake.cancelError = plano({ statusCode: 400 });
         expect((await post(CANCEL)).status).toBe(503);
         const row = await readSubscriptionRow(seed.business.id);
         expect(row.pendingPlan).toBeNull();
@@ -244,8 +196,46 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     /**
+     * Spec 0064 — EL `catch` REGISTRA LA CAUSA. Pedido explícito de la spec: hoy el `catch`
+     * descartaba el objeto de error entero, así que un 503 no dejaba rastro NI en los logs del
+     * server y la cuarta pregunta del QA («¿por qué falla?») no tenía forma de contestarse.
+     *
+     * Y lo que NO se loguea, que es la otra mitad: ni la clave de Stripe, ni el secreto del
+     * webhook, ni el id de la suscripción. Con el `businessId` se llega a la fila, que es de
+     * donde sale todo lo demás sin escribirlo en un log que va a Vercel.
+     */
+    it("el `catch` de `cancel` registra la CAUSA, y no escribe secretos", async () => {
+      await withLivePlus("log", async (seed, tag) => {
+        const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+        try {
+          fake.cancelError = new Stripe.errors.StripeConnectionError({
+            message: "boom-de-stripe",
+          });
+          expect((await post(CANCEL)).status).toBe(503);
+
+          const escrito = spy.mock.calls
+            .flat()
+            .map((arg) =>
+              arg instanceof Error
+                ? `${arg.name}:${arg.message}`
+                : JSON.stringify(arg),
+            )
+            .join(" ");
+          // LA CAUSA: sin esto el 503 es indistinguible de cualquier otro fallo.
+          expect(escrito).toContain("boom-de-stripe");
+          expect(escrito).toContain(seed.business.id);
+          expect(escrito).not.toContain("sk_test_");
+          expect(escrito).not.toContain("whsec_");
+          expect(escrito).not.toContain(subId(tag));
+        } finally {
+          spy.mockRestore();
+        }
+      });
+    }, 60_000);
+
+    /**
      * S7 — LA LLAMADA DE RED NUNCA OCURRE CON EL LOCK TOMADO (`shared.ts:38-48`), que es la
-     * regla que obliga a que el paso 3 de D6 viva FUERA de la transacción.
+     * regla que obliga a que el paso 3 de A2 viva FUERA de la transacción.
      *
      * EL ORÁCULO USA `FOR UPDATE NOWAIT` A PROPÓSITO, y ese detalle es todo el test: preguntar
      * por el lock con un `SELECT … FOR UPDATE` normal BLOQUEA, así que la mutación no fallaría
@@ -258,7 +248,7 @@ describe.skipIf(!integrationEnabled)(
     it("la llamada a Stripe NO ocurre con el lock del negocio tomado", async () => {
       await withLivePlus("sinlock", async (seed) => {
         let lockLibre: boolean | null = null;
-        fake.beforeUpdate = async () => {
+        fake.beforeCancel = async () => {
           // Sólo la PRIMERA llamada de red: si una mutación agregara otra fuera del lock, la
           // segunda observación taparía a la primera y el test quedaría verde.
           if (lockLibre !== null) return;
@@ -271,7 +261,7 @@ describe.skipIf(!integrationEnabled)(
         };
 
         expect((await post(CANCEL)).status).toBe(200);
-        // DURANTE el `subscriptions.update`, otro pudo tomar el lock del negocio: la red no
+        // DURANTE el `subscriptions.cancel`, otro pudo tomar el lock del negocio: la red no
         // corrió adentro de la transacción.
         expect(lockLibre).toBe(true);
       });

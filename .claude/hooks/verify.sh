@@ -16,6 +16,21 @@ cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" 
 # Proyecto todavia sin scaffold: no bloquear.
 [ -f package.json ] || exit 0
 
+# Spec 0064 §4.b — ANTES DE CUALQUIER GATE. `stale-validator.sh` borra
+# `apps/merchant/.next/types/validator.ts` cuando quedo referenciando una ruta que ya no
+# existe; si corriera DESPUES, el `typecheck` de abajo ya habria fallado con un
+# "Cannot find module .../route.js" que apunta a un archivo borrado a proposito, y el turno
+# quedaria bloqueado por un error que no es un error.
+#
+# VA ACA Y NO COMO ENTRADA SUELTA DEL ARRAY `Stop` de settings.json porque asi el orden esta
+# garantizado POR CONSTRUCCION (mismo proceso, secuencial) en vez de depender de que el
+# runner respete el orden del array — algo que no se puede medir desde adentro de un turno,
+# porque el evento `Stop` dispara despues del ultimo mensaje. Ademas evita la carrera de dos
+# hooks en paralelo, uno borrando el validator mientras el otro corre `tsc` sobre el.
+# Su salida (cuando borra) va a stderr y llega igual al agente.
+_sv="${CLAUDE_PROJECT_DIR:-$PWD}/.claude/hooks/stale-validator.sh"
+[ -x "$_sv" ] && bash "$_sv"
+
 # El shell del hook arranca en el Node del SISTEMA (22), no en el que pide el
 # repo (.node-version, hoy 24). Correr los gates en otro runtime que el de CI y
 # produccion es verificar otra cosa: el verde de aca no dice nada del verde de

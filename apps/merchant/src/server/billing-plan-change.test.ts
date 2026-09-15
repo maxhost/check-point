@@ -42,7 +42,6 @@ const INTENTS: PlanIntent[] = [
   { kind: "upgrade", interval: "month" },
   { kind: "upgrade", interval: "year" },
   { kind: "downgrade" },
-  { kind: "resume" },
   { kind: "change_interval", to: "year" },
   { kind: "change_interval", to: "month" },
 ];
@@ -81,12 +80,6 @@ function expectedOutcome(input: PlanChangeInput): Outcome {
     if (input.currentPlan === "free")
       return { kind: "blocked", code: "already_on_plan" };
     return live ? { kind: "schedule_downgrade" } : { kind: "settle_to_free" };
-  }
-  if (intent.kind === "resume") {
-    if (input.pendingPlan === null)
-      return { kind: "blocked", code: "nothing_to_resume" };
-    if (!live) return { kind: "blocked", code: "subscription_dead" };
-    return { kind: "resume" };
   }
   if (intent.to === "month")
     return { kind: "blocked", code: "interval_downgrade_unsupported" };
@@ -144,7 +137,8 @@ describe("decidePlanChange — matriz completa del dominio (spec 0063, D4)", () 
         ACTIVE_LOCATIONS.length *
         INTENTS.length,
     );
-    expect(inputs).toHaveLength(5832);
+    // 4860 = 5832 menos los 972 del intent `resume`, que dejó de existir (spec 0064 §4).
+    expect(inputs).toHaveLength(4860);
   });
 
   it("cada punto del dominio cae en la guarda declarada", () => {
@@ -169,7 +163,6 @@ describe("decidePlanChange — matriz completa del dominio (spec 0063, D4)", () 
       "blocked",
       "change_interval",
       "checkout",
-      "resume",
       "schedule_downgrade",
       "settle_to_free",
     ]);
@@ -185,8 +178,6 @@ describe("decidePlanChange — matriz completa del dominio (spec 0063, D4)", () 
       "interval_downgrade_unsupported",
       "interval_needs_subscription",
       "interval_unchanged",
-      "nothing_to_resume",
-      "subscription_dead",
       "subscription_live",
     ]);
   });

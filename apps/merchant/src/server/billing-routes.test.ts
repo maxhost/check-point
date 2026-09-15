@@ -3,7 +3,13 @@ import { basename, dirname, join, sep } from "node:path";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { STRIPE_TEST_ENV } from "./billing-integration-support";
+import {
+  CALLER_BUSINESS,
+  FOREIGN_BUSINESS,
+  LIVE_ROW,
+  STRIPE_TEST_ENV,
+  subscriptionRowFixture as row,
+} from "./billing-integration-support";
 import {
   fakeStripe,
   stripeSubscription,
@@ -11,8 +17,6 @@ import {
 } from "./billing-stripe-fake";
 import type { SubscriptionRow } from "./billing";
 
-const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
-const FOREIGN_BUSINESS = "22222222-2222-4222-8222-222222222222";
 const MONTHLY = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_MONTHLY_TEST;
 
 /**
@@ -84,7 +88,6 @@ vi.mock("./stripe-config", async (importOriginal) => {
 
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
-import { POST as RESUME } from "../app/api/billing/resume/route";
 import { POST as INTERVAL } from "../app/api/billing/interval/route";
 import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
 
@@ -98,27 +101,6 @@ const request = (path: string, body?: unknown) =>
     },
   );
 
-const row = (overrides: Partial<SubscriptionRow> = {}): SubscriptionRow => ({
-  businessId: CALLER_BUSINESS,
-  plan: "free",
-  interval: null,
-  status: "active",
-  stripeCustomerId: null,
-  stripeSubscriptionId: null,
-  pendingPlan: null,
-  pendingPlanAt: null,
-  downgradeRequestedAt: null,
-  lastEventAt: null,
-  ...overrides,
-});
-
-const LIVE = row({
-  plan: "plus",
-  interval: "month",
-  stripeCustomerId: "cus_caller",
-  stripeSubscriptionId: "sub_caller",
-});
-
 /**
  * Las 5 rutas, cada una con el estado de fila que la deja LLEGAR al dominio. Toda llamada
  * grita un negocio AJENO en el query string Y en el body: el punto es que ninguno de los dos
@@ -126,9 +108,8 @@ const LIVE = row({
  */
 const HANDLERS = [
   ["checkout", CHECKOUT, { interval: "month" }, row()],
-  ["cancel", CANCEL, {}, LIVE],
-  ["resume", RESUME, {}, { ...LIVE, pendingPlan: "free" }],
-  ["interval", INTERVAL, { to: "year" }, LIVE],
+  ["cancel", CANCEL, {}, LIVE_ROW],
+  ["interval", INTERVAL, { to: "year" }, LIVE_ROW],
   ["settle-free", SETTLE_FREE, {}, row({ plan: "none" })],
 ].map(([path, handler, body, seeded]) => ({
   name: `POST /api/billing/${path as string}`,
@@ -237,7 +218,7 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
   });
 
   it("el parseo del body: `interval` sin `to` es 400, y SIN body también", async () => {
-    signedInOwner(LIVE);
+    signedInOwner(LIVE_ROW);
     const invalido = await INTERVAL(request("interval", {}));
     expect(invalido.status).toBe(400);
     expect(await invalido.json()).toMatchObject({ code: "invalid_input" });
@@ -254,7 +235,7 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
 });
 
 /**
- * Tarea 52 — `HANDLERS` está escrita a mano, así que una 6.ª ruta bajo `api/billing/**`
+ * Tarea 52 — `HANDLERS` está escrita a mano, así que una 5.ª ruta bajo `api/billing/**`
  * nacería SIN gate con este archivo en verde (la lección de la spec 0046 y la del barrido de
  * MIME). Este bloque deriva `MÉTODO /ruta` del FILESYSTEM y exige que sea igual al cubierto.
  *
@@ -270,7 +251,10 @@ describe("every handler under api/billing/** is covered by HANDLERS", () => {
     const files = readdirSync(root, { recursive: true, encoding: "utf8" })
       .filter((f) => basename(f) === "route.ts")
       .sort();
-    expect(files.length).toBeGreaterThanOrEqual(5);
+    // PISO, para que un barrido que no ve nada no pueda quedar verde. Bajó de 5 a 4 porque
+    // `resume` dejó de existir (spec 0064 §4), no para tapar un barrido roto: el `toEqual` de
+    // abajo sigue exigiendo igualdad EXACTA entre el filesystem y la lista.
+    expect(files.length).toBeGreaterThanOrEqual(4);
 
     const expected = new Set<string>();
     for (const file of files) {

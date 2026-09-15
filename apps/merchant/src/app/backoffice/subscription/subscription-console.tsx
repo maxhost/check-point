@@ -3,10 +3,14 @@
 import { useState } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { CancelDialog } from "./cancel-dialog";
+import { IntervalDialog } from "./interval-dialog";
+import { UpgradeCard } from "./upgrade-card";
+import { formatAmount, formatDate } from "./subscription-format";
 import type {
   SubscriptionOffers,
   SubscriptionView,
 } from "../../../server/billing/view";
+import type { BillingFactsView } from "../../../server/billing/facts";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -28,10 +32,23 @@ const JSON_HEADERS = { "content-type": "application/json" };
  * vuelve a pasar por D8, así que lo que el owner ve después de operar está reconciliado con
  * Stripe. El precio es un round-trip; la alternativa es un estado de cliente que puede
  * contradecir a la base.
+ *
+ * SPEC 0064, FASE B — QUÉ CAMBIÓ Y POR QUÉ ESTE ARCHIVO SE DIVIDIÓ PRIMERO. El QA del owner
+ * sobre la 0063 dejó cuatro huecos de UI que ninguna spec había pedido: la sección no decía si
+ * el cobro era mensual o anual, no mostraba la fecha de renovación ni el importe cobrado, y el
+ * cambio de intervalo movía plata sin confirmar. Sumarlos a un archivo que ya estaba en
+ * 264/300 lo habría pasado del límite, así que la tarjeta de alta (`upgrade-card.tsx`), el
+ * modal del intervalo (`interval-dialog.tsx`) y el formateo (`subscription-format.ts`) salieron
+ * ANTES de agregar nada.
+ *
+ * EL ORDEN DE LOS `useState` ES PARTE DE UN CONTRATO DE PRUEBA: `billing-click-probe.test.ts`
+ * los siembra POR POSICIÓN (su índice 0 es `billingInterval`). Los estados nuevos van AL
+ * FINAL; insertar uno en el medio no rompe el typecheck y deja la sonda midiendo otro estado.
  */
 export function SubscriptionConsole({
   subscription,
   offers,
+  facts,
   activeLocations,
   canCancel,
   downgradeBlock,
@@ -41,6 +58,10 @@ export function SubscriptionConsole({
 }: {
   subscription: SubscriptionView;
   offers: SubscriptionOffers;
+  /** Spec 0064, A4/O-2: la renovación y la última factura pagada, leídas de Stripe en el
+   * render. Todo `null` es un estado LEGÍTIMO —Stripe no contestó, o el negocio es `free`— y
+   * la sección OMITE el dato en vez de inventarlo. */
+  facts: BillingFactsView;
   activeLocations: number;
   /** De `decidePlanChange`, la misma función que las 5 rutas. NO deshabilita nada: decide
    * el contenido del modal (ADR 0058 §8). */
@@ -58,6 +79,8 @@ export function SubscriptionConsole({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(notice);
   const [confirming, setConfirming] = useState(false);
+  // Estado NUEVO de la spec 0064, y va al final a propósito (ver el docblock de arriba).
+  const [confirmingInterval, setConfirmingInterval] = useState(false);
 
   /** El `error` que se muestra es el del SERVIDOR (`{error, code}` de D6). No se traduce ni
    * se reemplaza por un genérico: el 409 `downgrade_blocked` ya trae el conteo correcto, y
@@ -78,6 +101,7 @@ export function SubscriptionConsole({
     if (!response.ok) {
       setBusy(false);
       setConfirming(false);
+      setConfirmingInterval(false);
       setError(payload?.error ?? "No pudimos completar la operación.");
       return;
     }
@@ -113,7 +137,9 @@ export function SubscriptionConsole({
         <section className="locations-list">
           <h2>
             {/* Para `none` la etiqueta ya ES «Sin plan»: anteponer «Plan» imprimía «Plan
-                Sin plan», el string exacto que la home dejó de imprimir (decisión 3). */}
+                Sin plan», el string exacto que la home dejó de imprimir (decisión 3).
+                Desde la spec 0064 `offers.plan` trae el INTERVALO («Plus mensual» / «Plus
+                anual»): lo compone `planWithInterval` en el servidor, no un ternario acá. */}
             {offers.noPlan ? offers.plan : `Plan ${offers.plan}`} ·{" "}
             {offers.status}
           </h2>
@@ -121,6 +147,41 @@ export function SubscriptionConsole({
             {activeLocations}{" "}
             {activeLocations === 1 ? "local activo" : "locales activos"}.
           </p>
+          {/* F2-3 — LA FECHA DE RENOVACIÓN, en mensual y en anual. NO se imprime cuando hay
+              una baja programada: ahí no hay próximo pago, y las dos líneas juntas se
+              contradirían («tu plan baja el X» + «tu próximo pago es el X»). El caso existe
+              de verdad — es la cancelación hecha desde el dashboard de Stripe, lo único que
+              todavía crea este estado (decisión n.º 1 de la spec). */}
+          {facts.renewalAt !== null && offers.pendingDowngrade === null && (
+            <p className="field-help">
+              Tu próximo pago es el {formatDate(facts.renewalAt, timezone)}.
+            </p>
+          )}
+          {/* F2-4 — EL IMPORTE COBRADO Y EL LINK AL RECIBO (decisión literal del owner). Es
+              la ÚLTIMA FACTURA PAGADA —también literal: «claro que la última que tiene
+              pagada»—, elegida por `created` máximo en `readBillingFacts`. El link es el que
+              Stripe publica para mandarle al cliente por email (decisión O-2 del anexo); si
+              Stripe no publicó ninguno, se muestra el importe SIN link en vez de esconder
+              también el importe. */}
+          {facts.lastPaidInvoice !== null && (
+            <p className="field-help">
+              Último cobro:{" "}
+              {formatAmount(
+                facts.lastPaidInvoice.amountPaid,
+                facts.lastPaidInvoice.currency,
+              )}
+              .{" "}
+              {facts.lastPaidInvoice.receiptUrl !== null && (
+                <a
+                  href={facts.lastPaidInvoice.receiptUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Ver el recibo
+                </a>
+              )}
+            </p>
+          )}
           {offers.noPlan && (
             <p className="field-help">
               Tu suscripción terminó. No estás en ningún plan.
@@ -144,25 +205,16 @@ export function SubscriptionConsole({
               Tu plan baja a Free al final del período actual.
             </p>
           )}
-          {offers.resume && (
-            <button
-              className="button"
-              type="button"
-              disabled={busy}
-              onClick={() => void send("/api/billing/resume", {}, "resume")}
-            >
-              Reanudar suscripción
-            </button>
-          )}
           {offers.intervalUpgrade && (
             <>
+              {/* F2-2 — EL BOTÓN YA NO COBRA: ABRE EL MODAL. Hasta la spec 0064 este
+                  `onClick` posteaba a `/api/billing/interval` directo, y esa ruta cobra
+                  inmediato (`always_invoice`). Era plata sin confirmar. */}
               <button
                 className="button"
                 type="button"
                 disabled={busy}
-                onClick={() =>
-                  void send("/api/billing/interval", { to: "year" }, "interval")
-                }
+                onClick={() => setConfirmingInterval(true)}
               >
                 Pasar a anual
               </button>
@@ -184,54 +236,30 @@ export function SubscriptionConsole({
           )}
         </section>
         {offers.upgrade && (
-          <article className="plan-card" aria-label="Plan Plus">
-            <p className="plan-card-eyebrow">Para hacer crecer tu negocio</p>
-            <h2>Plus</h2>
-            <p className="plan-card-price">
-              {billingInterval === "year" ? "USD 200" : "USD 20"}
-              <small> / {billingInterval === "year" ? "año" : "mes"}</small>
-            </p>
-            <div className="billing-toggle" aria-label="Período de facturación">
-              <button
-                type="button"
-                className={billingInterval === "month" ? "active" : ""}
-                aria-pressed={billingInterval === "month"}
-                onClick={() => setBillingInterval("month")}
-              >
-                Mensual
-              </button>
-              <button
-                type="button"
-                className={billingInterval === "year" ? "active" : ""}
-                aria-pressed={billingInterval === "year"}
-                onClick={() => setBillingInterval("year")}
-              >
-                Anual <span>Ahorra USD 40</span>
-              </button>
-            </div>
-            <ul className="plan-card-features">
-              <li>3 locales activos</li>
-              <li>Campañas y beneficios avanzados</li>
-              <li>Analíticas para hacer crecer el negocio</li>
-            </ul>
-            <button
-              className="button"
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                void send(
-                  "/api/billing/checkout",
-                  // `from: "subscription"` decide a dónde vuelve Stripe ([R2-I8]): sin esto
-                  // el que paga acá aterriza en la home del backoffice.
-                  { interval: billingInterval, from: "subscription" },
-                  "checkout",
-                )
-              }
-            >
-              {offers.upgrade}
-            </button>
-          </article>
+          <UpgradeCard
+            label={offers.upgrade}
+            billingInterval={billingInterval}
+            onSelectInterval={setBillingInterval}
+            busy={busy}
+            onCheckout={() =>
+              void send(
+                "/api/billing/checkout",
+                // `from: "subscription"` decide a dónde vuelve Stripe ([R2-I8]): sin esto
+                // el que paga acá aterriza en la home del backoffice.
+                { interval: billingInterval, from: "subscription" },
+                "checkout",
+              )
+            }
+          />
         )}
+        <IntervalDialog
+          open={confirmingInterval}
+          busy={busy}
+          onCancel={() => setConfirmingInterval(false)}
+          onConfirm={() =>
+            void send("/api/billing/interval", { to: "year" }, "interval")
+          }
+        />
         {offers.downgrade && (
           <CancelDialog
             open={confirming}
@@ -241,6 +269,10 @@ export function SubscriptionConsole({
             // contrato de D7 y hace explícito que un `false` no deshabilita nada.
             block={canCancel ? null : (downgradeBlock ?? BLOCK_FALLBACK)}
             busy={busy}
+            // Decide si el modal muestra el aviso de «cuándo conviene bajar». `null` =
+            // Stripe no contestó = no hay aviso y NO se inventa una fecha.
+            renewalAt={facts.renewalAt}
+            timezone={timezone}
             onCancel={() => setConfirming(false)}
             onConfirm={() =>
               void send(offers.downgrade?.endpoint ?? "", {}, "cancel")
@@ -260,15 +292,3 @@ const BLOCK_FALLBACK = {
   message: "Esta baja no está disponible para tu plan actual.",
   archiveCount: 0,
 };
-
-/** La fecha llega como string ISO ([R2-M4]) y se formatea acá, con el `timeZone` del
- * negocio FIJADO: sin fijarlo, el server y el cliente pueden formatear distinto y React
- * reporta un mismatch de hidratación. Patrón de `app/backoffice/loyalty/ui.tsx:18`. */
-function formatDate(value: string | null, timezone: string): string {
-  return value === null
-    ? "—"
-    : new Intl.DateTimeFormat("es-EC", {
-        timeZone: timezone,
-        dateStyle: "long",
-      }).format(new Date(value));
-}

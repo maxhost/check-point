@@ -12,6 +12,7 @@ import {
   MONTHLY_PRICE,
   PRICE_IDS,
   YEARLY_PRICE,
+  cancelStepUnderLock,
   custId,
   dropWebhookEvents,
   fakeStripe,
@@ -26,16 +27,9 @@ import {
   seedBillingBusiness,
   stripeEnvEntries,
 } from "./billing-webhook-support";
-import {
-  clearPendingPlan,
-  readSubscription,
-  reconcileFromStripe,
-  scheduleDowngrade,
-  settleToFree,
-} from "./billing";
+import { clearPendingPlan, reconcileFromStripe, settleToFree } from "./billing";
 import { dropBusiness } from "./counter-integration-support";
 import { withDbTransaction } from "./db";
-import { lockBusiness } from "./locations/shared";
 import { integrationEnabled } from "./locations-integration-support";
 
 /**
@@ -58,18 +52,6 @@ const events = eventIdRegistry();
 /** Residual R2 de la D1: los ids salen de `subId`/`custId` (sufijo único por módulo y corrida)
  * y NO de literales. Los uniques de Stripe son GLOBALES y vitest paraleliza ARCHIVOS, así que
  * un literal compartido revienta con un `23505` EN EL SEED, indistinguible de un bug. */
-
-/** El paso 1-2 del `cancel` de D6 (lock, leer, escribir la intención): los mismos statements de
- * la ruta de la fase C. Se invoca directo porque la propiedad es del store, no del HTTP. */
-async function cancelStep(businessId: string, now: Date, gate?: Promise<void>) {
-  return withDbTransaction(async (tx) => {
-    await lockBusiness(tx, businessId);
-    await readSubscription(tx, businessId);
-    const result = await scheduleDowngrade(tx, businessId, { now });
-    if (gate) await gate;
-    return result;
-  });
-}
 
 describe.skipIf(!integrationEnabled)(
   "billing store against Neon (spec 0063)",
@@ -97,11 +79,11 @@ describe.skipIf(!integrationEnabled)(
         stripeCustomerId: custId("idem"),
       });
       try {
-        const first = await cancelStep(
+        const first = await cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 11)),
         );
-        const second = await cancelStep(
+        const second = await cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 12)),
         );
@@ -112,12 +94,13 @@ describe.skipIf(!integrationEnabled)(
           new Date(Date.UTC(2026, 8, 11)),
         );
 
-        // `cancel → resume → cancel`: `resume` limpia la marca, así que la tercera cancelación
-        // SÍ estrena clave y por lo tanto SÍ llega a Stripe (ítem del DoD).
+        // Cuando la marca se LIMPIA —el revert del rechazo determinista, o el `settleToFree`
+        // del paso 4—, la cancelación siguiente SÍ estrena clave y por lo tanto SÍ llega a
+        // Stripe en vez de comerse la respuesta cacheada de 24 h.
         await withDbTransaction((tx) =>
           clearPendingPlan(tx, seeded.business.id),
         );
-        const third = await cancelStep(
+        const third = await cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 13)),
         );
@@ -271,7 +254,7 @@ describe.skipIf(!integrationEnabled)(
         const gate = new Promise<void>((resolve) => {
           release = resolve;
         });
-        const cancel = cancelStep(
+        const cancel = cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 11)),
           gate,

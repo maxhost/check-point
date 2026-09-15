@@ -10,28 +10,44 @@ cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-09-13.
 
-**ESTADO REAL (el bloque de arriba de esta linea quedo VIEJO y se reemplaza entero — decia "sin commitear, sin
-pushear, sin migrar", y las tres cosas ya pasaron):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-14):**
 
-- **Spec 0063 (cambio de plan y cancelacion) esta COMMITEADA, PUSHEADA Y DESPLEGADA A PROD.** Commit
-  `5e4534c` (fase D2), sha en prod al escribir esto: `40c78785…`, deploy `state=success` verificado por
-  `gh api repos/maxhost/check-point/commits/<sha>/status`. Migracion `0030` aplicada a prod y verificada por SQL
-  (columnas, indice unico, datos intactos: 11 negocios, 11 suscripciones, 21 usuarios).
-- **El owner hizo DOS tandas de QA manual en prod.** 21+ casos en verde. Salieron: un bug (`resume` fallaba
-  siempre), una env que faltaba en Vercel (`MERCHANT_PUBLIC_ORIGIN`, YA CORREGIDA y commiteada en `.env.example`),
-  y una inconsistencia de diseño real que el owner cazo usando la pantalla (pagaba Plus hasta una fecha futura pero
-  perdia locales YA).
-- **Esa inconsistencia se resolvio: ADR 0063 aceptado + spec 0064 `cerrada`.** La baja a Free pasa de "programada a
-  fin de periodo" a **INMEDIATA y sin devolucion**; se BORRA la ruta `resume` (con eso el bug desaparece sin
-  arreglarse); el recibo que se muestra es el de la ultima factura pagada; el aviso de "conviene esperar" vive en el
-  modal de la baja. Los detalles y las 3 respuestas literales del owner estan en las secciones de abajo.
-- **NADA DE LA SPEC 0064 ESTA IMPLEMENTADO TODAVIA.** Es la proxima tarea de codigo.
+- **SPEC 0064 IMPLEMENTADA Y COMMITEADA. PENDIENTE: QA DEL OWNER EN PROD.** Las 3 fases (servidor, UI, hook).
+  **Sin revision independiente final: el owner corto el ciclo** — ahora es regla en `CLAUDE.md`.
+- **Gates al cerrar (medidos, no reportados):** 721 unit passed + **240 de integracion de billing** (31 archivos,
+  con el env `.env.integration.local` cargado), typecheck / lint / format:check / build VERDES, **cero archivos
+  sobre 300** medidos AL HOOK sobre todo el alcance.
+- **EL BUG QUE MAS COSTO NO ERA DE PRODUCTO SINO DE INFRAESTRUCTURA DE TEST, Y HABRIA ROTO EL CI ENTERO.**
+  `billing-integration-support.ts` recibio un **`import` DE VALOR al barrel `./billing`**. Ese support lo importa
+  la factory de `vi.mock("./stripe-config")`, y el barrel arrastra el dominio entero de vuelta a `stripe-config`
+  → ciclo → **los dos `billing-pages*.neon.integration.test.ts` COLGABAN PARA SIEMPRE** (ni `vitest list`
+  terminaba; 0% de CPU, que es como se ve un deadlock y no una corrida lenta). Apuntarlo a **`./billing/store`**
+  lo bajo de infinito a **1.06 s**. **Regla: un `import type` al barrel es gratis (se borra en compilacion), uno
+  de VALOR no.** Es el mismo deadlock que ya documentaba `billing-pages.neon.integration.test.ts`, reintroducido
+  por otra puerta.
+  - **Y el metodo, que es lo reutilizable:** el sintoma («todo cuelga») se confundio primero con contencion de
+    maquina — habia 5 procesos vitest zombis de corridas cortadas. Matarlos **no** lo arreglo, y eso fue el dato:
+    un archivo suelto y ajeno (`image-formats.test.ts`) corria en **94 ms**, asi que vitest estaba sano y el
+    problema era de ESOS archivos. Despues, que colgaran **los dos** hermanos apunto a la cadena COMUN, no al
+    archivo nuevo. (Ojo: hay un `pnpm install --filter activation…` colgado hace **37 dias** en esta maquina,
+    de OTRO proyecto. No es nuestro, no tocarlo.)
+- **CINCO agentes se cortaron a mitad en esta spec.** Solo uno dejo mutacion viva (R6, revertida y verificada por
+  `shasum` + `diff`). **El cierre lo hizo el orquestador a mano** — los 11 errores que quedaban eran imports
+  huerfanos de archivos a medio partir, no bugs. **Leccion: cuando un encargo no entra en un turno, reanudar sale
+  mas caro que terminarlo a mano.**
+- **TRES DECISIONES DEL ORQUESTADOR ABIERTAS, el owner puede rechazarlas** (anexo tecnico de la spec):
+  **O-2** el link del recibo cruza como prop; **O-3 NO hay migracion de datos de los diferidos** — contradice el
+  pedido literal del owner; **O-4** la baja inmediata conserva la marca de intencion del paso 2.
+  **H2** es hallazgo menor declarado: el docblock de la `idempotencyKey` argumenta algo dudoso, pero el codigo
+  esta bien — el trabajo, si alguien lo retoma, es corregir el COMENTARIO, no escribir un test.
+- **`A3 Test` (`e9c96528…`) sigue con la baja diferida al 13-10.** Por O-3 no se migra: la app la informa y cae
+  sola. Es un negocio de PRUEBA.
 
-**PROMPT PARA RETOMAR:** «retomamos: implementar la spec 0064 (`docs/specs/0064-baja-inmediata-y-los-datos-del-cobro.md`),
-que esta `cerrada`. Lee la spec entera antes de tocar nada — tiene un DoD que incluye un hook nuevo (el error fantasma
-del validator generado) ademas del codigo de producto».
+**PROMPT PARA RETOMAR:** «retomamos la spec 0064. Lee el ANEXO TECNICO al final de
+`docs/specs/0064-baja-inmediata-y-los-datos-del-cobro.md` — tiene las fases, los contratos y el DoD. Fijate en
+que fase quedo (A servidor / B UI / C hook) y si hay una mutacion sin revertir (`grep -rn MUTATION apps/`)».
 
-## SIGUIENTE: **ADR 0063 ACEPTADO + SPEC 0064 EN BORRADOR** — 4 preguntas abiertas, no se toca codigo
+## HISTORIA: ADR 0063 ACEPTADO + SPEC 0064 (la seccion de abajo quedo escrita cuando la spec era borrador)
 
 **El owner cerro D3 (2026-09-13, literal):** «Sin reembolso, no devolvemos plata. indicamos cuando le conviene para
 aprovechar el plan completo, si baja ahora, pierde acceso inmediato.» → **ADR 0063 aceptado**: la baja es

@@ -96,7 +96,7 @@ describe.skipIf(!integrationEnabled)(
         // La rama 1 de la jerarquía es INCONDICIONAL: en un `deleted`
         // `cancel_at_period_end` sigue en `true` («will … or DID cancel»), y sin ella la fila
         // quedaba `plan='free'` Y `pending_plan='free'` a la vez, con la UI ofreciendo
-        // «Reanudar» sobre una suscripción muerta.
+        // un botón «Reanudar» (que existía entonces) sobre una suscripción muerta.
         expect(row.pendingPlan).toBeNull();
         expect(row.pendingPlanAt).toBeNull();
         expect(row.lastEventAt).toEqual(new Date(created * 1000));

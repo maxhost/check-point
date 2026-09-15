@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   planLabel,
+  planWithInterval,
   statusLabel,
+  subscriptionOffers,
   toSubscriptionView,
   type SubscriptionRow,
 } from "./billing";
@@ -230,5 +232,46 @@ describe("statusLabel — allow-list de presentación del STATUS (spec 0063, D7)
     const passthrough = raw.filter((status) => statusLabel(status) === status);
     expect(passthrough).toEqual([]);
     expect(raw.length).toBeGreaterThan(9);
+  });
+});
+
+/**
+ * Spec 0064, F2-1 — LA ETIQUETA DEL PLAN LLEVA EL INTERVALO. El owner lo pidió después de
+ * usar la pantalla: «Plan Plus · activo» no dice si se le cobra mensual o anual.
+ *
+ * Vive acá y no en `billing-offers.test.ts` por TAMAÑO, medido al hook: ese archivo estaba en
+ * 300/300 exactas y con este bloque adentro daba 318 (`EXIT=2`). Acá es además donde viven
+ * las otras dos allow-lists de texto (`planLabel`, `statusLabel`), que es de lo que esto es
+ * un compuesto.
+ *
+ * Las DOS mitades, porque una sola deja el agujero de `choosePushPromptView` (tarea 38): la
+ * función pura, y el CABLEADO —que `subscriptionOffers` la use y no `planLabel` pelado—. Sin
+ * la segunda, cambiar el `.plan` de las ofertas a `planLabel` deja este archivo verde.
+ */
+describe("planWithInterval — el plan con su intervalo (spec 0064, F2-1)", () => {
+  it.each([
+    ["plus", "month", "Plus mensual"],
+    ["plus", "year", "Plus anual"],
+    // El `plus` sin intervalo de A1 (existe en prod): «Plus» pelado, NUNCA «Plus mensual»
+    // adivinado por ser el caso más común. Una etiqueta inventada sobre la plata del
+    // merchant es peor que una incompleta.
+    ["plus", null, "Plus"],
+    // Los que no tienen suscripción no llevan intervalo ni aunque la columna lo traiga.
+    ["free", "month", "Free"],
+    ["none", "year", "Sin plan"],
+    ["enterprise", "month", "Plan no disponible"],
+  ])("plan=%s interval=%s → «%s»", (plan, interval, label) => {
+    expect(planWithInterval(plan, interval)).toBe(label);
+  });
+
+  it("`subscriptionOffers` LO USA: la etiqueta de las ofertas trae el intervalo", () => {
+    const offers = subscriptionOffers({
+      plan: "plus",
+      status: "active",
+      interval: "year",
+      pendingPlan: null,
+      pendingPlanAt: null,
+    });
+    expect(offers.plan).toBe("Plus anual");
   });
 });

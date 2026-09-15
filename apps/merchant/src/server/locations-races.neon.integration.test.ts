@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { and, count, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import Stripe from "stripe";
 import {
   afterAll,
   afterEach,
@@ -11,7 +12,9 @@ import {
 } from "vitest";
 import { dropBusiness } from "./counter-integration-support";
 import {
+  activeLocationCountSql,
   integrationEnabled,
+  liveVerificationCountSql,
   readLocationRow,
   readVerifications,
   seedExtraLocation,
@@ -32,7 +35,7 @@ import {
   stripeEnvEntries,
 } from "./billing-webhook-support";
 import { getDb } from "./db";
-import { locations, locationVerifications } from "./schema";
+import { locations } from "./schema";
 import { createLocation, setLocationStatus, updateLocation } from "./locations";
 
 /**
@@ -73,29 +76,6 @@ import { POST as CANCEL } from "../app/api/billing/cancel/route";
  * pre-check evaluates once, before anybody blocks. The mutation results are transcribed
  * in the spec 0061 handoff.
  */
-async function activeCount(businessId: string) {
-  const [row] = await getDb()
-    .select({ value: count() })
-    .from(locations)
-    .where(
-      and(eq(locations.businessId, businessId), eq(locations.status, "active")),
-    );
-  return Number(row.value);
-}
-
-async function liveVerifications(locationId: string) {
-  const [row] = await getDb()
-    .select({ value: count() })
-    .from(locationVerifications)
-    .where(
-      and(
-        eq(locationVerifications.locationId, locationId),
-        isNull(locationVerifications.supersededAt),
-      ),
-    );
-  return Number(row.value);
-}
-
 describe.skipIf(!integrationEnabled)(
   "locations under concurrency (spec 0061)",
   () => {
@@ -117,7 +97,7 @@ describe.skipIf(!integrationEnabled)(
     it("four simultaneous creates never walk a plus business past three active", async () => {
       const seed = await seedLocationsBusiness("Carrera", "plus");
       try {
-        expect(await activeCount(seed.business.id)).toBe(1);
+        expect(await activeLocationCountSql(seed.business.id)).toBe(1);
 
         const attempts = await Promise.allSettled(
           ["A", "B", "C", "D"].map((tag) =>
@@ -140,7 +120,7 @@ describe.skipIf(!integrationEnabled)(
           });
         }
         // The oracle is the table, not the count of resolved promises.
-        expect(await activeCount(seed.business.id)).toBe(3);
+        expect(await activeLocationCountSql(seed.business.id)).toBe(3);
       } finally {
         await dropBusiness(seed.business.id);
       }
@@ -149,7 +129,7 @@ describe.skipIf(!integrationEnabled)(
     it("two simultaneous address edits leave exactly one live verification", async () => {
       const seed = await seedLocationsBusiness("Mudanzas", "plus");
       try {
-        expect(await liveVerifications(seed.locationId)).toBe(1);
+        expect(await liveVerificationCountSql(seed.locationId)).toBe(1);
 
         await Promise.all([
           updateLocation(seed.business, seed.locationId, {
@@ -161,7 +141,7 @@ describe.skipIf(!integrationEnabled)(
         ]);
 
         // The invariant of the DoD: exactly ONE row with `superseded_at IS NULL`.
-        expect(await liveVerifications(seed.locationId)).toBe(1);
+        expect(await liveVerificationCountSql(seed.locationId)).toBe(1);
 
         // …and it is the one the location points at, with the address the location shows.
         const all = await readVerifications(seed.locationId);
@@ -212,7 +192,7 @@ describe.skipIf(!integrationEnabled)(
           .update(locations)
           .set({ status: "active" })
           .where(eq(locations.id, seed.locationId));
-        expect(await activeCount(seed.business.id)).toBe(1);
+        expect(await activeLocationCountSql(seed.business.id)).toBe(1);
 
         const attempts = await Promise.allSettled(
           [
@@ -227,7 +207,7 @@ describe.skipIf(!integrationEnabled)(
           ].map((id) => setLocationStatus(seed.business, id, "active")),
         );
         // La tabla es el oráculo: el tope efectivo es 1, así que NINGUNO puede entrar.
-        expect(await activeCount(seed.business.id)).toBe(1);
+        expect(await activeLocationCountSql(seed.business.id)).toBe(1);
         // Y el motivo que ve el owner es el de la baja programada, no «mejora tu plan».
         const refused = attempts.filter((a) => a.status === "rejected");
         expect(refused).toHaveLength(8);
@@ -243,11 +223,19 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     /**
-     * Spec 0063, D6 — `cancel` CONCURRENTE CON EL WEBHOOK. Los dos hacen un
+     * Spec 0063 D6 + spec 0064 A2 — `cancel` CONCURRENTE CON EL WEBHOOK. Los dos hacen un
      * read-modify-write de `core.subscription` y los dos toman `lockBusiness`, así que el
-     * lock los serializa: ninguna de las dos escrituras se puede perder, en cualquiera de los
-     * dos órdenes. Sin el lock del webhook (mutación M4) el evento decide con un
-     * `downgrade_requested_at` leído ANTES del commit del `cancel`.
+     * lock los serializa: ninguna de las dos escrituras se puede perder. Sin el lock del
+     * webhook (mutación M4) el evento decide con un `downgrade_requested_at` leído ANTES del
+     * commit del `cancel`.
+     *
+     * POR QUÉ LA RUTA FALLA A PROPÓSITO EN STRIPE (`cancelError`), que es lo único que cambió
+     * con la baja inmediata: la escritura que M4 pone en juego es la del PASO 2 (la marca de
+     * intención). Con la baja completa, el paso 4 (`settleToFree`) escribe DESPUÉS y es
+     * TERMINAL POR DISEÑO —`free`, sin suscripción, las tres columnas limpias—, así que pisa
+     * legítimamente lo que el webhook acababa de poner y el test dejaría de poder distinguir
+     * «el lock serializó» de «el último ganó». Con el 503 el paso 4 no corre, el estado QUEDA
+     * PUESTO ([R1-B3]) y las dos escrituras vuelven a ser observables por separado.
      */
     it("a cancel concurrent with the webhook loses NEITHER write", async () => {
       const periodEnd = Math.floor(Date.UTC(2026, 9, 1) / 1000);
@@ -264,6 +252,9 @@ describe.skipIf(!integrationEnabled)(
         subscription.cancel_at_period_end = true;
         subscription.metadata = { businessId: seed.business.id };
 
+        fake.cancelError = new Stripe.errors.StripeConnectionError({
+          message: "network",
+        });
         const [cancelled] = await Promise.all([
           CANCEL(billingRequest({})),
           deliver({
@@ -272,7 +263,7 @@ describe.skipIf(!integrationEnabled)(
             object: { id: subId(tag) },
           }),
         ]);
-        expect(cancelled.status).toBe(200);
+        expect(cancelled.status).toBe(503);
 
         const row = await readSubscriptionRow(seed.business.id);
         // La escritura de la RUTA: la marca «esta baja la pedimos nosotros».

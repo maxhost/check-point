@@ -1,6 +1,10 @@
 import Stripe from "stripe";
 
-import { subscriptionFake } from "./billing-derive-support";
+import {
+  applyUpdate,
+  asResponse,
+  stripeSession,
+} from "./billing-stripe-objects";
 import type { StripeGateway } from "./billing";
 
 /**
@@ -10,72 +14,19 @@ import type { StripeGateway } from "./billing";
  * estaba en 297/300 y la D tenía que EXTENDER el fake). El archivo viejo REEXPORTA lo que se
  * mudó acá: ningún test de las fases B/C —que tienen PASS— cambia de import.
  *
- * OJO AL SUMARLE ALGO: quedó en el filo del límite de 300. Lo próximo que entre necesita un
- * corte decidido antes, no un recorte de comentarios a último momento.
+ * SEGUNDO CORTE (spec 0064, fase A): los CONSTRUCTORES de objetos se mudaron a
+ * `billing-stripe-objects.ts` porque este archivo quedó en 299/300 y A1 le suma
+ * `subscriptions.cancel` + `invoices.list`. Se reexportan por el mismo motivo de siempre —
+ * ningún test cambia de import.
  */
-
-/** `lastResponse` es metadata de transporte del SDK que nada de este dominio lee: el cast va
- * acá, en UN solo lugar nombrado, en vez de repartido por los tests. */
-function asResponse<T>(value: T): Stripe.Response<T> {
-  return value as Stripe.Response<T>;
-}
-
-export type SubscriptionSpec = {
-  id?: string;
-  status?: string;
-  items?: { priceId: string }[];
-  customer?: string;
-  created?: number;
-  businessId?: string;
-  cancelAt?: number | null;
-  cancelAtPeriodEnd?: boolean;
-};
-
-/**
- * Una `Stripe.Subscription` como la devuelve `subscriptions.retrieve`. Parte del constructor de
- * los units (`billing-derive-support.ts`) y suma lo que el WEBHOOK necesita: `customer` y
- * `metadata` (el `businessId` de D5.c) y `created` (la más reciente en D8).
- */
-export function stripeSubscription(spec: SubscriptionSpec = {}) {
-  const extra: Pick<Stripe.Subscription, "customer" | "created" | "metadata"> =
-    {
-      customer: spec.customer ?? "cus_integration",
-      created: spec.created ?? Math.floor(Date.UTC(2026, 8, 1) / 1000),
-      metadata:
-        spec.businessId === undefined ? {} : { businessId: spec.businessId },
-    };
-  return Object.assign(
-    subscriptionFake({
-      id: spec.id ?? "sub_integration",
-      status: spec.status,
-      items: spec.items,
-      cancel_at: spec.cancelAt ?? null,
-      cancel_at_period_end: spec.cancelAtPeriodEnd ?? false,
-    }),
-    extra,
-  );
-}
-
-/** Una `Checkout.Session` como la devuelve `checkout.sessions.retrieve`. El `businessId` sale
- * de `client_reference_id`, que SÓLO lo escribe nuestro checkout (m1-b). */
-export function stripeSession(spec: {
-  id?: string;
-  businessId: string | null;
-  subscriptionId: string | null;
-  customer?: string | null;
-}) {
-  const session: Pick<
-    Stripe.Checkout.Session,
-    "id" | "object" | "client_reference_id" | "customer" | "subscription"
-  > = {
-    id: spec.id ?? "cs_integration",
-    object: "checkout.session",
-    client_reference_id: spec.businessId,
-    customer: spec.customer ?? "cus_integration",
-    subscription: spec.subscriptionId,
-  };
-  return session as Stripe.Checkout.Session;
-}
+export {
+  applyUpdate,
+  asResponse,
+  stripeInvoice,
+  stripeSession,
+  stripeSubscription,
+} from "./billing-stripe-objects";
+export type { InvoiceSpec, SubscriptionSpec } from "./billing-stripe-objects";
 
 export type FakeStripe = {
   gateway: StripeGateway;
@@ -99,8 +50,7 @@ export type FakeStripe = {
   /** Params de cada `subscriptions.update`, en orden: el oráculo de `cancel_at_period_end`, del
    * `items[].price` de D9 y del `payment_behavior` de M17 es lo que se le PIDIÓ a Stripe. */
   updateParams: Stripe.SubscriptionUpdateParams[];
-  /** Las `idempotencyKey` de cada `update`: el ítem del DoD `cancel → resume → cancel` se
-   * asevera acá (la 2.ª cancelación estrena clave). */
+  /** Las `idempotencyKey` de cada `update`. */
   updateKeys: (string | undefined)[];
   /**
    * M17 — LA TARJETA RECHAZADA, modelada como Stripe la documenta: con
@@ -125,36 +75,28 @@ export type FakeStripe = {
   customerKeys: (string | undefined)[];
   /** El id que devuelve `customers.create`. */
   nextCustomerId: string;
-};
 
-function applyUpdate(
-  subscription: Stripe.Subscription,
-  params: Stripe.SubscriptionUpdateParams,
-): Stripe.Subscription {
-  const next = { ...subscription };
-  if (params.cancel_at_period_end !== undefined) {
-    next.cancel_at_period_end = params.cancel_at_period_end;
-  }
-  if (params.cancel_at !== undefined) {
-    next.cancel_at =
-      typeof params.cancel_at === "number" ? params.cancel_at : null;
-  }
-  for (const item of params.items ?? []) {
-    if (typeof item.id !== "string" || typeof item.price !== "string") continue;
-    next.items = {
-      ...next.items,
-      data: next.items.data.map((existing) =>
-        existing.id === item.id
-          ? ({
-              ...existing,
-              price: { ...existing.price, id: item.price },
-            } as Stripe.SubscriptionItem)
-          : existing,
-      ),
-    };
-  }
-  return next;
-}
+  // ——— SPEC 0064, FASE A (la baja inmediata y los datos del cobro) ———
+
+  /** Lo que tira el próximo `subscriptions.cancel`: los dos caminos de error del paso 3 de A2
+   * (red → estado PUESTO; determinista + `createdNow` → REVERTIDO). */
+  cancelError: Error | null;
+  /** Params de cada `subscriptions.cancel`. El DoD pide aseverar que NO se manda `prorate` ni
+   * `invoice_now`: sin guardarlos no hay con qué. */
+  cancelParams: (Stripe.SubscriptionCancelParams | undefined)[];
+  cancelKeys: (string | undefined)[];
+  /** Se ejecuta DENTRO de `subscriptions.cancel`, antes de aplicar nada: la ventana en la que
+   * A-T4 mete el `deleted` del webhook ANTES del paso 4. */
+  beforeCancel: (() => Promise<void>) | null;
+  /** Lo que devuelve `invoices.list` (A4). Vacío = «no hay factura pagada» → `null`, y la UI
+   * omite el dato. */
+  invoices: Stripe.Invoice[];
+  /** Lo que tira el próximo `invoices.list`: A4 exige que `readBillingFacts` NO TIRE NUNCA. */
+  invoicesError: Error | null;
+  /** Params de cada `invoices.list`: el oráculo de que se pide `status: "paid"` del customer
+   * correcto. */
+  invoiceParams: (Stripe.InvoiceListParams | undefined)[];
+};
 
 export function fakeStripe(): FakeStripe {
   const fake: FakeStripe = {
@@ -175,6 +117,13 @@ export function fakeStripe(): FakeStripe {
     sessionKeys: [],
     customerKeys: [],
     nextCustomerId: "cus_creado_por_el_checkout",
+    cancelError: null,
+    cancelParams: [],
+    cancelKeys: [],
+    beforeCancel: null,
+    invoices: [],
+    invoicesError: null,
+    invoiceParams: [],
     gateway: {
       subscriptions: {
         retrieve: (async (id: string) => {
@@ -215,6 +164,32 @@ export function fakeStripe(): FakeStripe {
           fake.subscriptions.set(id, applied);
           return asResponse(applied);
         }) as StripeGateway["subscriptions"]["update"],
+        /**
+         * La baja INMEDIATA (ADR 0063). Modelada como la documenta Stripe: la suscripción pasa
+         * a `canceled` EN EL ACTO —no queda «programada»— y `cancel_at_period_end` NO se toca.
+         * Que quede `canceled` es lo que hace que el `deleted` tardío de A-T4 sea un caso real
+         * y no una maqueta.
+         */
+        cancel: (async (
+          id: string,
+          params?: Stripe.SubscriptionCancelParams,
+          options?: Stripe.RequestOptions,
+        ) => {
+          fake.calls.push(`subscriptions.cancel:${id}`);
+          fake.cancelParams.push(params);
+          fake.cancelKeys.push(options?.idempotencyKey);
+          if (fake.beforeCancel) await fake.beforeCancel();
+          if (fake.cancelError) throw fake.cancelError;
+          const found = fake.subscriptions.get(id);
+          if (!found) throw new Error(`No such subscription: ${id}`);
+          const canceled = {
+            ...found,
+            status: "canceled",
+            canceled_at: Math.floor(Date.now() / 1000),
+          } as Stripe.Subscription;
+          fake.subscriptions.set(id, canceled);
+          return asResponse(canceled);
+        }) as StripeGateway["subscriptions"]["cancel"],
         list: (async () => {
           fake.calls.push("subscriptions.list");
           return asResponse({
@@ -224,6 +199,19 @@ export function fakeStripe(): FakeStripe {
             url: "/v1/subscriptions",
           });
         }) as StripeGateway["subscriptions"]["list"],
+      },
+      invoices: {
+        list: (async (params?: Stripe.InvoiceListParams) => {
+          fake.calls.push("invoices.list");
+          fake.invoiceParams.push(params);
+          if (fake.invoicesError) throw fake.invoicesError;
+          return asResponse({
+            object: "list" as const,
+            data: fake.invoices,
+            has_more: false,
+            url: "/v1/invoices",
+          });
+        }) as StripeGateway["invoices"]["list"],
       },
       checkout: {
         sessions: {
@@ -282,7 +270,7 @@ export function fakeStripe(): FakeStripe {
  *
  * El cast a `Stripe` está acá y sólo acá: es lo que la costura `StripeGateway` evita en
  * PRODUCCIÓN, pero la ruta toma su cliente de `stripe-config` y el doble del módulo es el
- * único camino (la spec lo fija en §Archivos compartidos). Los tres recursos SÍ están tipados
+ * único camino (la spec lo fija en §Archivos compartidos). Los recursos SÍ están tipados
  * por `StripeGateway`, que es donde un fake mal escrito se caza.
  */
 export function stripeClientDouble(
@@ -293,6 +281,7 @@ export function stripeClientDouble(
   return {
     webhooks: real.webhooks,
     subscriptions: fake.gateway.subscriptions,
+    invoices: fake.gateway.invoices,
     checkout: fake.gateway.checkout,
     customers: fake.gateway.customers,
   } as unknown as Stripe;

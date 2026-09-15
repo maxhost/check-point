@@ -31,12 +31,12 @@ import { createStaff, setStaffStatus } from "./staff";
 
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
-import { POST as RESUME } from "../app/api/billing/resume/route";
 import { POST as INTERVAL } from "../app/api/billing/interval/route";
 import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
 
 /**
- * Spec 0063, D6 — EL GATE DE LAS 5 RUTAS CON SESIONES REALES. Existe porque
+ * Spec 0063, D6 — EL GATE DE LAS 4 RUTAS CON SESIONES REALES (eran 5 hasta que la spec 0064
+ * borró `resume`). Existe porque
  * `billing-routes.test.ts` NO PUEDE VER LA DISTINCIÓN que el DoD exige: con `ownerContext`
  * doblado, un staff ACTIVO y uno DESACTIVADO son el mismo `null`, así que un gate que hubiera
  * perdido el filtro `status='active'` pasaría el unit en verde. Acá la sesión se abre con
@@ -44,7 +44,7 @@ import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
  * `memberships` posta.
  *
  * EL NEGOCIO ESTÁ SEMBRADO COMO A1 (`plus` SIN `stripe_subscription_id`): así ninguna de las
- * 5 rutas necesita llamar a Stripe ni siquiera en el camino feliz, y este archivo puede
+ * 4 rutas necesita llamar a Stripe ni siquiera en el camino feliz, y este archivo puede
  * probar el GATE sin doblar el gateway. Las env de Stripe igual se stubbean porque `checkout`
  * valida la configuración antes de decidir.
  */
@@ -55,7 +55,6 @@ const ROUTES: [
 ][] = [
   ["checkout", CHECKOUT, { interval: "month" }],
   ["cancel", CANCEL, {}],
-  ["resume", RESUME, {}],
   ["interval", INTERVAL, { to: "year" }],
   ["settle-free", SETTLE_FREE, {}],
 ];

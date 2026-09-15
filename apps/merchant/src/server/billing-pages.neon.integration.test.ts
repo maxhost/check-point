@@ -43,10 +43,8 @@ vi.mock("./staff", async (importOriginal) => {
 });
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { expectCrossesExactly, useBusiness } from "./billing-pages-support";
-import { subscriptionOffers, type SubscriptionView } from "./billing";
+import { useBusiness } from "./billing-pages-support";
 import SubscriptionPage from "../app/backoffice/subscription/page";
-import { SubscriptionConsole } from "../app/backoffice/subscription/subscription-console";
 import BackofficePage from "../app/backoffice/page";
 
 /**
@@ -79,20 +77,19 @@ const renderHome = async () => renderToStaticMarkup(await BackofficePage());
  *
  * Los 3 casos de D8 viven en `billing-reconcile-page.neon.integration.test.ts` (corte de
  * tamaño decidido por el orquestador antes de despachar).
+ *
+ * SEGUNDO CORTE (spec 0064, fase B): EL ORÁCULO DE PROPS SE MUDÓ ENTERO a
+ * `billing-pages-props.neon.integration.test.ts` — los dos `it` de `expectCrossesExactly` más
+ * uno nuevo con los datos del cobro poblados. Este archivo estaba en 302/300 al hook (ya
+ * pasado) y la fase le sumaba props a los dos estados. ACÁ NO QUEDA NINGÚN ORÁCULO DE FUGA POR
+ * PROPS, y es a propósito: acá vive lo que se asevera sobre el HTML, allá lo que se asevera
+ * sobre el ELEMENTO. Son dos clases de oráculo distintas y el ADR 0062 existe porque
+ * confundirlas dejó 66/66 en verde con la fuga puesta.
  */
 describe.skipIf(!integrationEnabled)(
   "las páginas de billing, renderizadas (spec 0063, D7)",
   () => {
     let seed: Seed | null = null;
-    // El DTO que los DOS estados del oráculo de props esperan: lo que cambia entre ellos es
-    // el bloqueo (`activeLocations`/`canCancel`/`downgradeBlock`), no la suscripción.
-    const plusMensual: SubscriptionView = {
-      plan: "plus",
-      status: "active",
-      interval: "month",
-      pendingPlan: null,
-      pendingPlanAt: null,
-    };
 
     beforeEach(() => {
       fake = fakeStripe();
@@ -134,84 +131,10 @@ describe.skipIf(!integrationEnabled)(
       // una página vacía o un error. El estado sembrado es «baja programada CON fecha».
       expect(html).toContain("Suscripción");
       expect(html).toContain("Tu plan baja a Free el");
-      expect(html).toContain("Reanudar suscripción");
+      // Acá decía además `toContain("Reanudar suscripción")`. Ese botón dejó de existir con la
+      // spec 0064 §4 («no hay reanudar»): una baja programada que ya no creamos se INFORMA, no
+      // se ofrece deshacer. El piso de la aserción lo sostienen las otras tres líneas.
       expect(html.length).toBeGreaterThan(800);
-    }, 60_000);
-
-    it("la página le pasa a la consola el DTO, NO la fila", async () => {
-      // NACE DE UNA MUTACIÓN VERDE (S7) y lleva CINCO vueltas de oráculo; el relato entero
-      // está en el ADR 0062. El resumen: `renderToStaticMarkup` NO emite el payload RSC, así
-      // que el test del HTML pinnea «la consola no IMPRIME las claves», no «la página no las
-      // PASA». Se inspecciona el ELEMENTO que devuelve la página, patrón que el repo ya usa
-      // (`locations-backoffice-pages.neon.integration.test.ts:81`), sin mock ni `resetModules`.
-      const requestedAt = new Date(Date.UTC(2026, 8, 11));
-      seed = await seedBillingBusiness("plus", {
-        interval: "month",
-        stripeCustomerId: custId("props"),
-        stripeSubscriptionId: subId("props"),
-        downgradeRequestedAt: requestedAt,
-      });
-      useBusiness(seed);
-      // LAS CUATRO ASERCIONES VIVEN EN `expectCrossesExactly` (ADR 0062) y se corren en LOS
-      // DOS ESTADOS. LÍMITE DECLARADO (ADR 0062, §Límite): esto cierra todo error PLAUSIBLE
-      // —una prop de más, la fila cruda, el DTO olvidado, algo no serializable anidado— y NO
-      // cierra la afirmación universal «no filtra por ningún canal»: queda afuera un canal
-      // introducido a propósito por una vía no aseverada (un estado que el test no siembra).
-      // Eso pide otra clase de oráculo, no otra mutación. La versión anterior aseveraba el conjunto completo sólo acá y en el
-      // estado bloqueado miraba únicamente `downgradeBlock`: un revisor metió el secreto en
-      // OTRA prop, gateada a ese estado, y quedaba 44/44 VERDE. Un oráculo de un solo estado
-      // no cubre las ramas que en ese estado salen nulas.
-      expectCrossesExactly(
-        await SubscriptionPage({ searchParams: Promise.resolve({}) }),
-        SubscriptionConsole,
-        {
-          subscription: plusMensual,
-          offers: subscriptionOffers(plusMensual),
-          activeLocations: 1,
-          canCancel: true,
-          downgradeBlock: null,
-          // `fake.list` vacío → `no_subscriptions` → NO confirmado (decisión 6).
-          stripeUnconfirmed: true,
-          timezone: "America/Guayaquil",
-          notice: null,
-        },
-      );
-    }, 60_000);
-
-    it("le pasa el DTO también en el estado BLOQUEADO, con el conjunto COMPLETO", async () => {
-      // ES UN `it` PROPIO Y NO UN SEGUNDO TRAMO DEL ANTERIOR: adentro del mismo `it` el
-      // primer rojo corta y este estado NUNCA se evalúa —medido: con la fuga del `key` puesta
-      // sólo salía la aserción del estado 1—, así que un rojo no diría CUÁL de los dos
-      // estados se rompió. Es la lección del `it` que cargaba tres oráculos y nombraba uno.
-      //
-      // Se siembra con claves internas REALES (`custId`/`subId`) a propósito: el estado
-      // bloqueado no tenía ninguna, y lo más que podía exhibir una fuga del `key` era el
-      // string `"null"` (React coacciona: `key = '' + config.key`). Eso no es un oráculo.
-      seed = await seedBillingBusiness("plus", {
-        interval: "month",
-        stripeCustomerId: custId("bloq"),
-        stripeSubscriptionId: subId("bloq"),
-      });
-      await seedExtraLocation(seed.business.id, "Sucursal Sur");
-      useBusiness(seed);
-      expectCrossesExactly(
-        await SubscriptionPage({ searchParams: Promise.resolve({}) }),
-        SubscriptionConsole,
-        {
-          subscription: plusMensual,
-          offers: subscriptionOffers(plusMensual),
-          activeLocations: 2,
-          canCancel: false,
-          downgradeBlock: {
-            message:
-              "Para volver a Free necesitas 1 local activo; hoy tienes 2. Archiva 1.",
-            archiveCount: 1,
-          },
-          stripeUnconfirmed: true,
-          timezone: "America/Guayaquil",
-          notice: null,
-        },
-      );
     }, 60_000);
 
     it("la home dice «Sin plan» para `none` y NUNCA «confirmando pago» para un free cancelado", async () => {
@@ -250,7 +173,12 @@ describe.skipIf(!integrationEnabled)(
       // CONTROL POSITIVO, o sea lo que hace que la negativa de arriba discrimine: un valor
       // de la lista SÍ imprime su texto.
       const valido = await renderSubscription({ done: "cancel" });
-      expect(valido).toContain("Programamos la baja a Free.");
+      // EL TEXTO CAMBIÓ CON LA SPEC 0064, y no es cosmético: decía «Programamos la baja a
+      // Free», que bajo el ADR 0063 es FALSO — la baja se aplica en el acto y no queda nada
+      // programado. Se actualiza la aserción porque cambió la COPY del producto, no para
+      // tapar un rojo: lo que este `it` pinnea es la ALLOW-LIST (que un `done` inventado no
+      // imprima nada), y eso sigue intacto arriba y abajo de esta línea.
+      expect(valido).toContain("Diste de baja tu plan: ya estás en Free.");
       // Y el aterrizaje de Stripe Checkout, que es el otro consumidor de la lista.
       expect(await renderSubscription({ checkout: "success" })).toContain(
         "Recibimos tu pago",
