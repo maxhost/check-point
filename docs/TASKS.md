@@ -109,7 +109,7 @@ Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
   orquestador) · merito con balanza (piso para debutantes) · sin email · fecha de nacimiento mas
   adelante · slot por puerta, no por barrio.
 
-**ESTADO DE LA IMPLEMENTACION (2026-09-15, noche — COMMITEADO EN `07d34c1`, NO PUSHEADO):**
+**ESTADO DE LA IMPLEMENTACION (2026-09-15, noche — COMMITEADO EN `ddd64d2`, NO PUSHEADO):**
 
 - **FASE A1 (schema + migracion `0031`): IMPLEMENTADA Y VERIFICADA POR EL ORQUESTADOR.** Falta el PASS
   de un revisor independiente. Archivos: `schema/campaign.ts` (nuevo, 162 l.), `schema/campaign-turn.ts`
@@ -242,7 +242,7 @@ integracion Neon. Despues, **un revisor independiente sobre la fase A entera**. 
 entera y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las mediciones de Apple/Google/arbol estan en
 el ADR 0065 con su fuente, y lo que la revision ya confirmo correcto esta listado al final de la spec.
 **Ojo con `dropBusiness` en A5** (arriba).
-**A1 y A2 estan COMMITEADAS en `07d34c1`; NO se pusheo, asi que prod NO tiene este codigo** — si en algun
+**A1 y A2 estan COMMITEADAS en `ddd64d2`; NO se pusheo, asi que prod NO tiene este codigo** — si en algun
 momento se pide QA, primero `git push` y despues verificar el commit status del **sha exacto**
 (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`), nunca «prod esta verde».
 **EL PRIMER PASO AL RETOMAR son las 8 mutaciones pendientes de A2** (tabla arriba): las hace el orquestador
