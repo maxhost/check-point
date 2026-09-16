@@ -54,6 +54,28 @@ export type PassPlacementRow = {
 };
 
 /**
+ * `core.location.latitude`/`longitude` (`numeric(10,7)`, nullable) → a usable point, or
+ * `null` when the door cannot be geofenced. The rule of «a door without coordinates is
+ * dropped» lives HERE and nowhere else: the marketing tick applies it when it chooses
+ * what to place (`marketing/placement-store.ts`) and the pass builders apply it when
+ * they render what was placed, and a second copy would be a second rule (the lesson of
+ * `lib/image-formats.ts`). The two guards are discussed in {@link toPassLocations}.
+ */
+export function toLatLng(
+  latitude: string | null,
+  longitude: string | null,
+): { latitude: number; longitude: number } | null {
+  const rawLatitude = latitude?.trim();
+  const rawLongitude = longitude?.trim();
+  if (!rawLatitude || !rawLongitude) return null;
+  const parsedLatitude = Number(rawLatitude);
+  const parsedLongitude = Number(rawLongitude);
+  if (!Number.isFinite(parsedLatitude) || !Number.isFinite(parsedLongitude))
+    return null;
+  return { latitude: parsedLatitude, longitude: parsedLongitude };
+}
+
+/**
  * Rows → renderable doors. Two rules, both load-bearing:
  *
  *  1. **A door without coordinates is DROPPED.** `core.location.latitude`/`longitude` are
@@ -82,16 +104,12 @@ export type PassPlacementRow = {
 export function toPassLocations(rows: PassPlacementRow[]): PassLocation[] {
   const out: PassLocation[] = [];
   for (const row of rows) {
-    const rawLatitude = row.latitude?.trim();
-    const rawLongitude = row.longitude?.trim();
-    if (!rawLatitude || !rawLongitude) continue;
-    const latitude = Number(rawLatitude);
-    const longitude = Number(rawLongitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+    const point = toLatLng(row.latitude, row.longitude);
+    if (!point) continue;
     out.push({
       locationId: row.locationId,
-      latitude,
-      longitude,
+      latitude: point.latitude,
+      longitude: point.longitude,
       relevantText: row.relevantText,
       businessName: row.businessName,
       turn:

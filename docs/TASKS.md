@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (sesion de implementacion de la fase A — A2, A3 y A4 cerradas).
+Ultima actualizacion: 2026-09-16 (sesion de implementacion de la fase A — **A1..A5 cerradas y medidas**; falta el PASS del revisor independiente sobre la fase A entera, y NADA de la fase A esta pusheado).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -570,41 +570,202 @@ rutas 85/52/46.
 - **El radio real de Apple** (la razon por la que no se escribe `maxDistance`) es un dato de QA en telefono,
   no un numero que se pueda testear aca. Ya estaba declarado en el ADR 0065.
 
-**PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
-`cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
-bucle que el owner corto en la 0064). **A1, A2, A3 y A4 ESTAN CERRADAS Y COMMITEADAS** (`ddd64d2`, `96c6215`,
-`47879b9`, `437d9c6`) — **NO SE PUSHEO**, asi que prod NO tiene este codigo: si en algun momento se pide QA,
-primero `git push` y despues verificar el commit status del **sha exacto**
-(`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`), nunca «prod esta verde».
+**FASE A5 (audiencia + aplicador + endpoint del tick + workflow + integracion Neon): IMPLEMENTADA Y
+MEDIDA POR EL ORQUESTADOR A MANO (2026-09-16).** Como estaba decidido: A3 y A4 murieron sin handoff y
+`CLAUDE.md` corolario (f) dice que dos muertes seguidas son la señal de dejar de despachar.
+**Falta el PASS del revisor independiente sobre la fase A entera.**
 
-**EL PRIMER PASO AL RETOMAR ES A5** — audiencia + aplicador + endpoint del tick + `marketing-tick.yml` + la
-integracion Neon. **La hace el orquestador a mano, no se despacha a un implementador**: A3 y A4 murieron
-SIN HANDOFF (dos veces seguidas), y `CLAUDE.md` corolario (f) de la 0064 dice que dos muertes seguidas son
-la señal de dejar de despachar — a un agente solo se le manda lo que sea de verdad independiente. Antes de
-escribir codigo, releer `docs/specs/0065-campana-de-proximidad-por-wallet.md` entera (la seccion del tick,
-paso a paso, y el plan de pruebas de A5) y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las
-mediciones de Apple/Google/arbol estan en el ADR 0065 con su fuente, y lo que la revision ya confirmo
-correcto esta listado al final de la spec.
+**LO QUE SE ESCRIBIO (todo `??` salvo tres archivos ` M`):**
+- `marketing/audience.ts` (163) — `decideTurnEligibility` PURO con los **seis** motivos de exclusion y el
+  ORDEN de evaluacion declarado, `attributableLocation` (compartida con la bolsa de utilidad) y
+  `summarizeAudience` (los 5 conteos de `campaign_tick_audience`).
+- `marketing/audience-store.ts` (235) — paso 1: campañas vivas, puertas usables, candidatos, el
+  `on conflict … where status in ('queued','active')` y la foto de audiencia.
+- `marketing/turn-lifecycle.ts` (107) — pasos 2 y 3 en **una sentencia cada uno**, con la precedencia de
+  `cancel_reason` explicita.
+- `marketing/placement-store.ts` (243) + `marketing/utility-store.ts` (223) + `marketing/placement.ts`
+  (168) — paso 4: lecturas, bolsa de utilidad y el APLICADOR (lock por consumidor, plan puro, escritura).
+- `marketing/tick.ts` (179) — la corrida entera: lock, pasos, resumen, log JSON.
+- `marketing/driver-values.ts` (25) — `toDate`/`requireDate` (ver hallazgo 2).
+- `app/api/internal/marketing-tick/route.ts` (30, `maxDuration = 60`) + `.github/workflows/marketing-tick.yml`
+  (`0 */6 * * *` + `workflow_dispatch`, secrets `MARKETING_TICK_ENDPOINT` / `CRON_SECRET`).
+- Tests: `marketing/audience.test.ts` (15 casos), `marketing-tick-route.test.ts` (4), y **seis** archivos de
+  integracion Neon — `marketing-tick` (audiencia, activacion, fusion `both`, log, IDEMPOTENCIA),
+  `marketing-placement` (holdout fuera del pase, cuota dentro de una corrida, skip bajo el lock, opt-out que
+  NO apaga la utilidad), `marketing-merit` (el CABLEADO del merito), `marketing-cancel` (los 6 motivos +
+  pausar/reanudar no quema la audiencia), `marketing-outcome` (los 4 resultados), `marketing-refresh`
+  (`pass_refresh` de punta a punta con `FakePushChannel`, coalescing, `passesUpdatedSince`), mas los soportes
+  `marketing-integration-support` / `marketing-read-support` / `marketing-world-support`.
+- ` M`: `marketing/merit.ts` (`loadBusinessTurnStats` pasa a recibir la transaccion),
+  `wallet/pass-locations.ts` (se **extrajo** `toLatLng`, para que «una puerta sin coordenadas se descarta»
+  siga viviendo en UN solo lugar ahora que el tick tambien lo aplica) y `wallet-push-integration-support.ts`
+  (`enqueue` acepta `pass_refresh`).
 
-**Trampas ya verificadas para A5, no las redescubras:**
-- **`dropBusiness`** (`server/counter-integration-support.ts:210`) borra en un orden que las FKs de
-  `campaign_turn`/`coupon_redemption` (`no action`, calcadas de `reward_redemption`) no toleran al reves:
-  cualquier test de integracion que siembre turnos y llame a `dropBusiness` explota por FK salvo que borre
-  `coupon_redemption` y `campaign_turn` **antes** de las membresias (detalle completo arriba, buscar
-  "HALLAZGO VERIFICADO PARA LA FASE A5").
-- El planner (`placement-plan.ts`, A2) tope en **≤3 utilidad + ≤5 turnos = 8 puertas**: cualquier test de A5
-  que espere que el `maxSlots=10` trunque algo esta probando un caso inalcanzable con los limites default
-  (medido en la sonda D5).
-- El carril `pass_refresh` (A3) y el `PATCH` de Google con cuerpo real (A4) **ya estan listos para que A5 los
-  use** — A5 es quien por fin produce filas `pass_refresh` de verdad (hasta ahora ningun productor existia).
-- `google.ts` quedo en 166/300 tras el split de A4; `push-transports.ts` en 256/300. Si A5 los toca, verificar
-  margen ANTES de escribir.
+**LOS 5 GATES DE ROOT, corridos por el orquestador (Node `v24.20.0`):** `typecheck` 3/3, `lint` limpio,
+`format:check` ok, `build` exit 0, y `test` **con las env de integracion**:
+**`Tests 1062 passed (1062)`, 150 archivos**. Sin las env (que es como se midio el baseline de A4):
+**`816 passed | 246 skipped (1062)`** contra **797 | 221 (1018)** de A4 → **+19 unit y +25 de integracion,
+cero regresiones**. `grep -rn MUTATION apps/merchant/src` **vacio**.
 
-**Al cerrar A5 va un revisor independiente sobre la fase A entera** (protocolo de
-`docs/AGENT-WORKFLOW.md`), y tiene que saber que **dos archivos de test y dos docblocks los escribio/corrigio
-el orquestador, no un implementador**: `wallet-pass-refresh-worker.test.ts` (A3, asercion reemplazada) y los
-dos docblocks corregidos de A4 en `pass-locations.ts`/`pass-locations-store.ts` (atribucion de guards
-invertida; `order by` sin oraculo real). Solo entonces la spec pasa a `implementada`.»
+**TRES HALLAZGOS REALES DE A5, los tres CORREGIDOS EN EL CODIGO y encontrados por un test, no por lectura:**
+1. **Drizzle renderiza la columna SIN CALIFICAR en un select de UNA sola tabla, asi que una subconsulta
+   correlacionada se ata en silencio a la columna homonima de la tabla INTERNA.**
+   `exists (select 1 from consumer.wallet_pass wp where wp.consumer_id = ${programMemberships.consumerId})`
+   compilo a `wp.consumer_id = "consumer_id"` —verificado con `.toSQL()`, no deducido—, que Postgres resuelve
+   contra `wallet_pass`: la subconsulta **dejo de estar correlacionada** y paso a significar «¿existe algun
+   pase en toda la base?». **Todos los consumidores daban `hasPass = true`** con typecheck verde y filas de
+   aspecto plausible. Lo cazo el seed que incluye un consumidor **sin** pase. Los dos lectores con
+   subconsultas correlacionadas (`audience-store`, `utility-store`) se reescribieron como **SQL crudo con
+   alias explicito** (`m.consumer_id`), con el porque en el docblock.
+2. **`db.execute(sql…)` devuelve los valores CRUDOS del driver: un `timestamptz` llega como STRING**, mientras
+   el query builder lo mapea a `Date`. El generico de `execute<T>` es una **asercion**, no un chequeo, asi que
+   `enrolledAt: Date` paso typecheck y murio en runtime con `candidate.enrolledAt.getTime is not a function`.
+   De ahi sale `marketing/driver-values.ts`, por el que cruza toda fecha leida con SQL crudo. Booleanos e
+   `integer` **no** lo necesitan (medido con una sonda: el driver ya devuelve `true`/`false` y numeros).
+3. **`campaign_tick_audience` reventaba con `23505` si dos corridas compartian `ran_at`** (pk
+   `(campaign_id, ran_at)`), o sea que «el tick es idempotente» valia **salvo que lo corras dos veces con el
+   mismo reloj** — justo el matiz que el DoD existe para prohibir. Pasa a `on conflict … do update`: dos
+   corridas con el mismo `ran_at` son la MISMA foto.
+
+**BITACORA DE MUTACIONES DE A5 — el pre-registro se escribio ANTES de mutar.** **Todos los archivos del
+alcance eran `??` salvo tres**, asi que **`git checkout` no existia para la mayoria**: copia limpia en
+**`/tmp/a5-clean/`** con su `SHASUMS.txt`, y restauracion con `diff` contra ella en cada vuelta.
+**Presupuesto declarado antes de empezar: las 5 mutaciones que la spec nombra para A5 + 5 sondas sobre
+docblocks nuevos que afirmen un invariante. Clase de error: invariante declarado sin oraculo, con regresion
+PLAUSIBLE. Corte: UNA vuelta.** Alcance de cada corrida:
+`node ../../node_modules/vitest/vitest.mjs run src/server/marketing` desde `apps/merchant` con las env de
+integracion; **baseline verde re-medido: `Tests 77 passed (77)`** (78 al cerrar, con el test que agrego P5).
+
+| id | archivo | edicion exacta | resultado EJECUTADO |
+|---|---|---|---|
+| M1 | `audience-store.ts` | sacar ` where status in ('queued','active')` del conflict target | **ROJO, 5** (+12 skipped por el `beforeAll` caido). Asercion leida: `there is no unique or exclusion constraint matching the ON CONFLICT specification` — habla de la propiedad, y es **el 17.º bloqueante de la revision adversarial ahora pinneado** |
+| M2 | `placement.ts` | borrar el `quota.set(...)` que avanza el conteo | **ROJO, 1 — y solo el de cuota**: `expected { campaigns: 1, enqueued: 3, …(6) } to match object { enqueued: 3, activated: 2 }` (activo 3 donde la cuota era 2) |
+| M3 | `tick.ts` | **1er intento**: `pg_try_advisory_xact_lock(...)` → `select ${namespace} is not null` | **ROJO POR EL MOTIVO EQUIVOCADO**: `42P18 could not determine data type of parameter $1`. La mutacion no era la propiedad, era SQL invalido. *(La leccion de `CLAUDE.md` en vivo: un rojo se LEE, no se cuenta.)* |
+| M3b | `tick.ts` | `pg_try_advisory_xact_lock(...)` → `select true as locked` | **ROJO, 1**: `expected { campaigns: 1, enqueued: 1, …(6) } to deeply equal { skipped: 'tick_in_flight' }` — el tick trabajo en vez de saltar |
+| M4 | `placement-store.ts` | cooldown: `['active','done']` → `['active','done','cancelled']` | **ROJO, 1** — el de pausar/reanudar: `expected { campaigns: 1, enqueued: 1, …(6) } to match object { enqueued: 1, activated: 1 }`. Un turno cancelado volvia a quemar el cooldown |
+| M5 | `turn-lifecycle.ts` | `order by o.created_at asc` → `desc` | **ROJO, 1**: `expected '471b0e43…' to be '31be964e…'` — eligio la ULTIMA orden de la ventana, no la primera |
+| P1 | `audience.ts` | `reachable` contado desde la decision (`total − not_reachable`) en vez de `hasPass` | **VERDE 77/77 la primera vez → el docblock afirmaba algo sin oraculo.** El caso del unit no distinguia las dos lecturas. **Se agrego el unico caso que las separa** (opt-out **y** sin pase: la decision corta antes de `not_reachable`, asi que la version mutada lo contaria como alcanzable) → **ROJO**: `expected { total: 6, reachable: 5, …} to deeply equal { total: 6, reachable: 4, …}` |
+| P2 | `placement.ts` | mover las activaciones DESPUES de escribir `pass_placement` | **VERDE 77/77, y el docblock era FALSO.** Decia que el orden era load-bearing «porque `pass_placement.turn_id` es una fk»: la fk solo exige que la fila EXISTA (existe, `queued`), y las dos escrituras viven en la MISMA transaccion, asi que nadie puede observar una sin la otra. **Docblock corregido en el codigo**, con el resultado de la sonda escrito al lado |
+| P3 | `audience-store.ts` | `wp.consumer_id = m.consumer_id` → `wp.consumer_id is not null` | **ROJO, 2** (el hallazgo 1, ahora con oraculo): `to match object { total: 8, reachable: 7, …}` y `{ enqueued: 1, activated: 1 }` |
+| P4 | `placement-store.ts` | `parseSlotKind` default → `return "utility"` | **VERDE 77/77 — se DECLARA**, igual que `parseQueueClass` en A3: es un tripwire contra un drift schema↔codigo y el `check` de la base ya restringe la columna a tres valores. No hay entrada alcanzable que lo dispare |
+| P5 | `utility-store.ts` | agregar `and m.marketing_opt_out_at is null` a la bolsa de utilidad | **VERDE 77/77 → invariante del OWNER sin oraculo** («el opt-out no apaga la utilidad»). **Se escribio el test** (un negocio donde el consumidor se dio de baja de promociones conserva su puerta de utilidad con el saldo) → **ROJO**: `expected [ [ …(2) ] ] to deeply equal [ [ …(2) ], [ …(2) ] ]` |
+
+**Resultado: 6 rojas de entrada, 3 sondas verdes que destaparon trabajo real (dos se cerraron con un test
+nuevo cada una, una se declara), 1 mutacion invalida detectada por LEER su rojo.** Arbol restaurado con
+`diff` contra `/tmp/a5-clean/` en cada vuelta.
+
+**LO QUE QUEDA DECLARADO DE A5 (intentado, no supuesto):**
+- **`cancel_reason = 'membership_gone'` es INALCANZABLE hoy, y esta MEDIDO, no argumentado**:
+  `campaign_turn.membership_id` es `not null` con fk **NO ACTION**, asi que borrar una membresia con un turno
+  vivo falla con **`23503`** (`campaign_turn_membership_id_program_membership_id_fk`) — hay un test que lo
+  asevera. Volverlo alcanzable es un cambio de esquema (fk a `set null`/cascade), o sea **otra migracion**:
+  se declara en vez de tacharlo del DoD en silencio. *(Ojo al leer el error: drizzle lo envuelve, el SQLSTATE
+  vive en `error.cause.code`; `error.code` da `undefined` y el test pasaria por el motivo equivocado.)*
+- **La rama «vuelve a `pending`» de `wallet/push.ts` no la dispara ninguna entrada alcanzable de esta suite**:
+  un 403 de APNs se **registra** en la fila y la fila igual cierra como `sent` (medido: el primer intento de
+  test fallo con `expected 'sent' to be 'pending'`). Lo que el test pinnea es el ESTADO que esa rama produce
+  —dos `pass_refresh` vivos para un consumidor, que es justo lo que un unico parcial haria fatal— y no la rama.
+- **Una campaña cuyo `ends_at` ya paso pero sigue en `active` NO cancela sus turnos vivos** (el paso 3 mira
+  `status`, como dice la spec). El turno corre hasta que su ventana vence. Es lo literal del diseño, pero no
+  estaba escrito en ningun lado.
+- **`campaign_tick_audience` no distingue los seis motivos: la tabla tiene cinco columnas** (`total`,
+  `reachable`, `no_location`, `opt_out`, `cooldown`), asi que `not_dormant` y `live_turn` **no se guardan**.
+  Es el modelo de datos que la spec fijo; la fase B tiene que saberlo al escribir la pantalla de resultados.
+- **El tick entero corre en UNA transaccion** (ADR 0067) y eso tiene un costo escrito ahi.
+- **Un flaky PREEXISTENTE y AJENO**: 1 de 3 corridas completas fallo en
+  `consumer-recovery.neon.integration.test.ts` (`expected 'accepted' to be 'failed'`). **No es de A5**:
+  reproducido **en aislamiento** (1 de 3 corridas del archivo solo) y ya diagnosticado en este mismo archivo
+  (un `select` sin `order by` + `.at(-1)` sobre dos filas del mismo telefono, spec 0032).
+
+**BASELINE PARA AUDITAR EL ARBOL — RE-MEDIDO en el handoff, no copiado.** Si una sesion fresca corre
+`shasum` y algo no coincide, alguien dejo una mutacion puesta. Comando:
+`shasum apps/merchant/src/server/marketing/*.ts apps/merchant/src/server/marketing-*.ts apps/merchant/src/app/api/internal/marketing-tick/route.ts apps/merchant/src/server/wallet/pass-locations.ts`
+
+```
+d1626c05f3f9637cb53b95352477236457d5c90c  marketing/audience-store.ts
+1325e74895f27d1ff758a31ad4abff8637563f8f  marketing/audience.test.ts
+8b984673ed738d5f110589d5ffec9a1255c0191d  marketing/audience.ts
+58d8bd1199f0d46e97f0f57f1323b1c0f6757b79  marketing/driver-values.ts
+a8a5deee40738bb8a73f7b23fef1ee62894e23af  marketing/merit.ts
+58929e53a1be3890a8bfc3c5aac4354c1b9b6d89  marketing/placement-store.ts
+c3229050c78c07843fbf429174ee8d9f9b15fff9  marketing/placement.ts
+12464cb4e6a74610efb3776b6645498f29194d9a  marketing/tick.ts
+3a9c5304ce42377f97d5d459e36f12410731f5d5  marketing/turn-lifecycle.ts
+7b5450da3d69de97c0987e1271b45a98352d7cf2  marketing/utility-store.ts
+078c8aa59546ccce40c4b24a24f470b1969761d3  marketing-cancel.neon.integration.test.ts
+80f915df3ffec036edc2baa1d1a4c759e9d99a03  marketing-integration-support.ts
+3f3a3d6bf97f61173b12404e2dd112ab3478a0d8  marketing-merit.neon.integration.test.ts
+4d14ccd60509070c3348d0c5aabed67d52fb959c  marketing-outcome.neon.integration.test.ts
+7b88e4f9798676047abf283801c420557a04bf9f  marketing-placement.neon.integration.test.ts
+6433c0c160b5c346f1a6871b2033c53e762bf6ab  marketing-read-support.ts
+5683f19b26740dca53b6d6b923e15d702d875e7e  marketing-refresh.neon.integration.test.ts
+5a36e3b37233448cd4f273036f39d3844c1eda6c  marketing-tick-route.test.ts
+7056ba32118a96857c483c63a7011f924f3b77f8  marketing-tick.neon.integration.test.ts
+0d851dfc77ae977952e655d22822c824a4dc10d4  marketing-world-support.ts
+46ba2c9d8376470d68c36382b37423de1374e96b  marketing-tick/route.ts
+a0e66841c2073574214c03523c44bfad90cf2562  wallet/pass-locations.ts
+```
+*(Los de A1/A2/A3/A4 sin tocar siguen valiendo; `merit.ts` y `pass-locations.ts` CAMBIARON en A5, asi que sus
+hashes viejos estan podridos y son los de arriba.)*
+
+**TAMAÑOS PREGUNTADOS AL HOOK** (`echo '{"tool_input":{"file_path":"<abs>"}}' | .claude/hooks/file-size.sh`),
+post-prettier, sobre TODO el alcance (` M` **y** `??`), **todos `EXIT=0`**: `placement-store.ts` 243,
+`audience-store.ts` 235, `utility-store.ts` 223, `audience.test.ts` 206, `tick.ts` 179, `placement.ts` 168,
+`marketing-merit` 165, `audience.ts` 163, `marketing-placement` 145, `merit.ts` 144, `pass-locations.ts` 122,
+`marketing-read-support` 114, `turn-lifecycle.ts` 107, `marketing-world-support` 90, `route.ts` 30,
+`driver-values.ts` 25, y los de integracion 286/273/271/229/193/76. **El hook DISCRIMINA, y se probo con un
+`EXIT=2` real:** `marketing-placement.neon.integration.test.ts` habia quedado en **320** y el hook lo marco →
+**se PARTIO** (salio `marketing-merit.neon.integration.test.ts` + el soporte `marketing-world-support.ts`),
+no se extendio.
+
+**LO QUE SIGUE, en orden:**
+1. **Revisor independiente sobre la FASE A entera** (`docs/AGENT-WORKFLOW.md`), con el presupuesto escrito en
+   el encargo. Tiene que saber que **dos archivos de test y tres docblocks los escribio o corrigio el
+   ORQUESTADOR, no un implementador**: `wallet-pass-refresh-worker.test.ts` (A3), los dos docblocks de A4
+   (`pass-locations.ts` / `pass-locations-store.ts`) y **todo A5**.
+2. **Recien con el PASS**: commitear lo que falte, `git push`, verificar el commit status del **sha exacto**
+   (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`) y aplicar la migracion
+   `0031` a **prod** por MCP.
+3. **Secrets que necesita el owner ANTES del QA en prod**: `MARKETING_TICK_ENDPOINT`
+   (`https://<dominio>/api/internal/marketing-tick`) y `CRON_SECRET` (el mismo de Vercel) como Actions
+   secrets del repo. Sin ellos el workflow **sale en 0 sin hacer nada** (mismo patron que `wallet-push-cron`).
+4. Fases B (backoffice), C (cupon) y D (consumidor + freno por plan).
+
+**PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec
+esta `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta). **LA FASE A
+ESTA COMPLETA: A1, A2, A3, A4 y A5 implementadas, medidas por mutacion y con los 5 gates en verde.** A1-A4
+estan commiteadas (`ddd64d2`, `96c6215`, `47879b9`, `437d9c6`); **A5 se commitea en esta sesion**. **NADA
+DE LA FASE A ESTA PUSHEADO**, asi que prod NO tiene este codigo ni la migracion `0031`.
+
+**EL PRIMER PASO AL RETOMAR ES EL REVISOR INDEPENDIENTE SOBRE LA FASE A ENTERA** (`docs/AGENT-WORKFLOW.md`),
+con **presupuesto y condicion de corte escritos en el encargo** (`CLAUDE.md`, ADR 0062 y la instruccion del
+owner del 2026-09-13). Tiene que saber que **A3, A4 y A5 las cerro el ORQUESTADOR a mano** —sus dos
+implementadores murieron sin handoff— y que por lo tanto **dos archivos de test y tres docblocks no pasaron
+nunca por un segundo par de ojos**: `wallet-pass-refresh-worker.test.ts` (A3, asercion reemplazada), los dos
+docblocks corregidos de A4 (`pass-locations.ts`, `pass-locations-store.ts`) y **todo A5**.
+Antes de encargar, releer la seccion de A5 de este archivo (hallazgos, limites declarados y bitacora de
+mutaciones) y `docs/specs/0065-campana-de-proximidad-por-wallet.md`; **no re-medir lo medido**.
+
+**Trampas ya verificadas, no las redescubras:**
+- **Drizzle no califica la columna en un select de una tabla**, asi que una subconsulta correlacionada
+  escrita con `${tabla.columna}` se ata a la columna homonima de la tabla INTERNA y deja de correlacionar
+  (hallazgo 1 de A5, con `.toSQL()` de testigo). En este modulo esas consultas van en SQL crudo con alias.
+- **`db.execute` devuelve strings donde el query builder devuelve `Date`** (hallazgo 2 de A5 →
+  `marketing/driver-values.ts`).
+- **La exclusion del tick es GLOBAL**: toda suite de integracion nueva que corra el tick necesita su propio
+  `lockNamespace`, o le contesta `tick_in_flight` a las demas (ADR 0067).
+- `dropBusiness` + turnos: borrar `coupon_redemption` y `campaign_turn` ANTES de las membresias, y cortar
+  primero `campaign_turn.outcome_redemption_id` (el par de fks es CIRCULAR). Ya esta resuelto en
+  `marketing-read-support.ts`.
+- El planner tope en **≤3 utilidad + ≤5 turnos = 8 puertas**: cualquier test que espere que el `maxSlots=10`
+  trunque algo prueba un caso inalcanzable (medido en la sonda D5 de A2).
+- **Un flaky preexistente y AJENO** vive en `consumer-recovery.neon.integration.test.ts` (1 de 3 corridas):
+  `select` sin `order by` + `.at(-1)`. No es de esta fase y ya esta diagnosticado aca.
+
+**Con el PASS del revisor:** commitear, `git push`, verificar el commit status del **sha exacto**
+(`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`, nunca «prod esta verde»),
+aplicar la `0031` a prod por MCP y **pedirle al owner los dos Actions secrets** (`MARKETING_TICK_ENDPOINT`,
+`CRON_SECRET`) antes del QA. Despues siguen las fases B, C y D.»
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
@@ -616,13 +777,14 @@ detalle vivo esta en el bloque ESTADO del tope; esta lista es solo el arco compl
 3. ~~**Revision adversarial de la spec**~~ **HECHA Y CERRADA (2026-09-15, noche): tres revisores, FAIL
    unanime, 16 bloqueantes + un 17.º que salio de correr el SQL, todos corregidos y verificados
    empiricamente.** La condicion de corte declarada era **una** vuelta. **No se reabre.**
-4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1, A2, A3 y A4 CERRADAS.**
+4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1..A5 CERRADAS Y MEDIDAS.**
    A2: 9 mutaciones + 6 sondas + 4 tests nuevos. A3: 7 mutaciones. A4: 6 mutaciones (5 rojas, 1 verde
    declarada) + 2 docblocks falsos corregidos. **A3 y A4 las cerro el orquestador a mano porque sus dos
-   implementadores murieron sin handoff** — `CLAUDE.md` corolario (f). **Sigue A5** (audiencia + aplicador +
-   endpoint del tick + workflow + integracion Neon), **y la hace el orquestador**: no se despacha una tercera
-   vez. Al cerrar A5 va **un revisor independiente sobre la fase entera**, y tiene que saber que
-   `wallet-pass-refresh-worker.test.ts` y los dos docblocks corregidos de A4 los escribio el orquestador.
+   implementadores murieron sin handoff** — `CLAUDE.md` corolario (f). **A5 TAMBIEN ESTA CERRADA** (audiencia + aplicador +
+   endpoint del tick + workflow + 6 archivos de integracion Neon): 5 mutaciones de la spec + 5 sondas por
+   docblock → 6 rojas, 3 sondas verdes que destaparon trabajo real (2 cerradas con un test nuevo, 1
+   declarada) y 3 hallazgos corregidos en el codigo. **Lo que sigue es el revisor independiente sobre la
+   fase A entera**, que tiene que saber que A3, A4 y A5 las cerro el orquestador a mano.
    **El item viejo «aplicar la migracion `0031` en `ci-integration` antes» queda ANULADO**: `ci.yml` ya
    corre `pnpm db:migrate` en cada corrida (spec 0062), y el orden era ademas imposible — la migracion
    la **genera** la fase A.

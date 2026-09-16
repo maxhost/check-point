@@ -1,0 +1,49 @@
+name: Marketing tick
+
+# Spec 0065: the proximity engine's tick — it queues, activates, expires and cancels
+# turns and rewrites each consumer's pass placement. It lives here and not in
+# apps/merchant/vercel.json because the Vercel Hobby plan accepts at most TWO cron jobs
+# and only daily frequencies: a third entry (or a sub-daily schedule) makes Vercel reject
+# the whole deploy, leaving Production pinned to the previous commit. Same pattern as
+# wallet-push-cron.yml (spec 0033). When the project moves to Pro, re-add the native cron
+# and delete this file.
+#
+# Requires two repo Actions secrets:
+#   MARKETING_TICK_ENDPOINT = https://<prod-domain>/api/internal/marketing-tick
+#   CRON_SECRET             = same value set in Vercel (the endpoint's Bearer token)
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# A late run must never pile up on a previous one. This is a courtesy, not the
+# exclusion: the tick serializes itself in SQL with an advisory lock (step 0), because
+# a `workflow_dispatch` fired by hand does NOT queue behind the scheduled run.
+concurrency:
+  group: marketing-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the marketing tick via the Vercel endpoint
+        env:
+          ENDPOINT: ${{ secrets.MARKETING_TICK_ENDPOINT }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$ENDPOINT" ] || [ -z "$CRON_SECRET" ]; then
+            echo "MARKETING_TICK_ENDPOINT / CRON_SECRET not configured — skipping."
+            exit 0
+          fi
+          code=$(curl -sS --max-time 120 -o /tmp/out -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$ENDPOINT")
+          echo "HTTP $code"
+          cat /tmp/out || true
+          echo
+          test "$code" = "200"

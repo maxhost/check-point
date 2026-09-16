@@ -15,7 +15,7 @@ export type EnqueueOpts = {
 /** Inserts one `wallet_push_queue` row directly (bypassing the grant) and returns its id. */
 export async function enqueue(
   consumerId: string,
-  klass: "transactional" | "campaign",
+  klass: "transactional" | "campaign" | "pass_refresh",
   opts: EnqueueOpts = {},
 ): Promise<string> {
   const [row] = await getDb()

@@ -855,6 +855,33 @@ consumieron (`active`/`done`), no los cancelados**.
    entra se cae el saldo entero en vez de truncar — los tres a validar en el QA, que es donde se
    mide el corte real de la pantalla bloqueada.
 
+## Al implementar la fase A5 (2026-09-16) — decisiones y correcciones del ORQUESTADOR
+
+Todo esto es del orquestador, no del owner, y es reversible. El detalle medido (bitacora de
+mutaciones, hallazgos, limites) vive en `docs/TASKS.md`.
+
+1. **El lock del paso 0 es de TRANSACCION, no de sesion → ADR 0067.** `pg_try_advisory_lock` exige
+   que toda la corrida viaje por la misma conexion y este repo no lo puede prometer, asi que el tick
+   entero corre en una `withDbTransaction` con `pg_try_advisory_xact_lock`. El costo (los locks de
+   fila se sostienen hasta el commit) esta declarado ahi. Y como la exclusion es **global**, las
+   suites de integracion necesitan un `lockNamespace` propio: es un **costuron de test** que la
+   produccion nunca pasa.
+2. **La foto de audiencia se escribe con `on conflict … do update`.** Con un insert pelado, dos
+   corridas que comparten `ran_at` morian con `23505`: «idempotente salvo que lo corras dos veces con
+   el mismo reloj» no es idempotente.
+3. **El orden de evaluacion de los seis motivos de exclusion queda fijado** (opt_out → not_reachable
+   → not_dormant → no_location → cooldown → live_turn), porque **decide bajo que motivo se cuenta** a
+   quien falla varias reglas. `reachable` se cuenta **aparte**, sobre `has_pass`, para que no dependa
+   de donde corto la decision.
+4. **`cancel_reason = 'membership_gone'` es inalcanzable hoy y se DECLARA** (medido: la fk
+   `no action` de `membership_id` devuelve `23503`). Volverlo alcanzable es otra migracion.
+5. **`campaign_tick_audience` guarda cinco conteos, no seis**: `not_dormant` y `live_turn` no se
+   persisten. Es lo que fija el modelo de datos de esta misma spec; la fase B tiene que saberlo.
+6. **Una campaña con `ends_at` vencido pero `status = 'active'` no cancela sus turnos vivos** — el
+   paso 3 mira `status`, como dice la spec. Queda escrito porque no era obvio.
+7. **`toLatLng` se extrajo de `wallet/pass-locations.ts`**: «una puerta sin coordenadas se descarta»
+   ahora la aplican el tick **y** los builders del pase, y una segunda copia seria una segunda regla.
+
 ## Abierto
 
 **Nada bloqueante.** Las dos preguntas que la revision adversarial le abrio al owner las cerro el

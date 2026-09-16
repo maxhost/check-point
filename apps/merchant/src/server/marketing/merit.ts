@@ -11,7 +11,7 @@
  */
 
 import { eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
+import type { DbTransaction } from "../db";
 import { campaignTurns } from "../schema/campaign-turn";
 
 /** Weight of the prior, in turns (ORQUESTADOR, ADR 0066 §3). */
@@ -113,12 +113,18 @@ export function buildMeritTable(
  * `done`. A `coupon_redeemed` outcome counts as a purchase — the tick writes it INSTEAD
  * of `purchase` when the coupon was handed over (step 2), so reading only `'purchase'`
  * would count a campaign whose coupon worked as if nobody had come (see the handoff).
+ *
+ * It takes the transaction because its only caller is the tick, which runs entirely
+ * inside one (`marketing/tick.ts`): reading the stats on another connection would read
+ * them from outside the advisory lock that makes the run a single one.
  */
-export async function loadBusinessTurnStats(): Promise<BusinessTurnStats[]> {
+export async function loadBusinessTurnStats(
+  db: DbTransaction,
+): Promise<BusinessTurnStats[]> {
   const bought = sql`${campaignTurns.outcome} in ('purchase', 'coupon_redeemed')`;
   const placed = sql`${campaignTurns.holdout} = false`;
   const held = sql`${campaignTurns.holdout} = true`;
-  return await getDb()
+  return await db
     .select({
       businessId: campaignTurns.businessId,
       placedN: sql<number>`count(*) filter (where ${placed})`.mapWith(Number),
