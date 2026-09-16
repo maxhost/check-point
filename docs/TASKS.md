@@ -8,9 +8,19 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 Y B2 COMPLETAS, COMMITEADAS, NO PUSHEADAS** — B1 en `a0573a6` + `7f59f8a`; B2 sin commitear al escribir esto. 5 gates verdes: **162 archivos / 1169 tests / 0 failed** (venia de 157/1132). **PROXIMO PASO: B3** — las 3 pantallas (`/backoffice/marketing`, `new`, `[id]`) + el tile «Campañas» de `/backoffice/page.tsx:41-44`, que hoy cae en el mock de demo de la spec 0017. Ver «FASE B (BACKOFFICE DE CAMPAÑAS)» → sub-seccion B2.)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 Y B2 COMPLETAS Y COMMITEADAS — `a0573a6`, `7f59f8a`, `9bf69b8` — NINGUNA PUSHEADA.** Arbol limpio (`git status` vacio). 5 gates verdes sobre ese arbol: **162 archivos / 1169 tests / 0 failed**. **PROXIMO PASO: B3** — las 3 pantallas (`/backoffice/marketing`, `new`, `[id]`) + el tile «Campañas». Ver «FASE B (BACKOFFICE DE CAMPAÑAS)» → sub-seccion **B3 (PREPARADA, SIN EMPEZAR)**, que ya tiene relevado el tile, el patron de pantalla a copiar y una trampa medida: un `*.test.tsx` **no lo corre vitest**.)
 
-**ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, al cerrar B2):**
+
+- **ARCO DE MARKETING (spec 0065) — DONDE ESTA HOY, en una linea por fase:**
+  **A: EN PROD** (`9fd9625`), falta solo el Actions secret `MARKETING_TICK_ENDPOINT` (lo pone el owner).
+  **B1: hecha** (ciclo de vida + 6 rutas + el test unit de las 8 rutas HTTP) — `a0573a6` + `7f59f8a`.
+  **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
+  **B3: SIN EMPEZAR** — es lo proximo.
+  **C y D: sin empezar.**
+  **NADA DE LA FASE B ESTA PUSHEADO.** Se pushea con el PASS del revisor de la fase completa, o cuando
+  el owner lo pida explicitamente como hizo con la A. **Ningun revisor independiente vio B1 ni B2
+  todavia** — las cerro el orquestador con sus mutaciones, que no es lo mismo.
 
 - **ARCO DE SUSCRIPCION: CERRADO.** Spec 0064 `implementada`, commit `ca2d746`, QA del owner en prod en
   verde. O-2/O-3/O-4 aceptadas por el owner. Diagnostico vigente: `A3 Test`
@@ -1258,6 +1268,79 @@ hace falta, y se deja asi para no duplicar el query.
 `SHASUMS.txt` habia quedado viejo despues de unificar `BOUGHT_OUTCOMES` y se re-escribio en vez de anotarse
 como desactualizado: un baseline podrido no falla ruidoso — hace que la proxima sesion concluya «alguien dejo
 una mutacion puesta», que es justo el sintoma que esa auditoria existe para descartar.
+
+### HALLAZGO AL CERRAR B2 — **UN FLAKY QUE MARCA EL ARCHIVO EN ROJO CON TODOS SUS TESTS EN VERDE**
+
+Al correr los gates del handoff, `pnpm run test` salio **EXIT=1** con este resumen:
+`Test Files 1 failed | 161 passed (162)` y, dos lineas abajo, **`Tests 1169 passed (1169)`**. No fallo
+ninguna asercion: fallo el **teardown**. `marketing-lifecycle.neon.integration.test.ts:28` tenia
+`afterAll(async () => { await dropWorlds(worlds); })` **sin timeout**, y el `hookTimeout` por defecto de
+vitest son **10 s**.
+
+**Flaky de verdad, no determinista:** corrida 1 roja, corrida 2 verde, corrida 3 roja — mismo arbol. El
+mecanismo esta en el codigo y se puede señalar (no es una historia): `dropWorlds` hace varios `delete` por
+mundo contra la rama Neon compartida, y las **dos suites de integracion nuevas de B2** agregaron ~35 s de
+trabajo a la misma corrida, o sea que subieron la contencion y empujaron ese teardown por encima de los
+10 s. Es un defecto **preexistente de la fase A** (`9fd9625`, ya en prod) que B2 hizo visible.
+
+**Por que importa mas de lo que parece:** un rojo asi es **indistinguible de un bug del producto** para
+quien lo hereda — dice «1 failed» y nombra la suite del ciclo de vida de marketing. Es la misma familia que
+`CLAUDE.md` documenta con las mutaciones abandonadas.
+
+**Arreglado en tres niveles, los tres verificados:**
+1. Los **dos** archivos del modulo que no pasaban timeout (`marketing-lifecycle:28` y
+   `marketing-tick:174`) ahora usan `120_000`, como sus otras seis hermanas. El segundo era el proximo
+   flaky esperando.
+2. **`hookTimeout: 120_000` en `apps/merchant/vitest.config.ts`** — el fix estructural, para que la
+   proxima suite no nazca con el agujero. **NO se toco `testTimeout`**: un test que cuelga tiene que
+   seguir muriendo rapido.
+3. **Sonda que prueba las dos direcciones** (no se supuso que el config se aplicara): un
+   `afterAll` que duerme 11 s da `Hook timed out in 10000ms` con el default y **pasa** con el config
+   nuevo. Borrada despues de medir.
+
+**Evidencia final: DOS corridas completas seguidas con `EXIT=0`, 162 archivos / 1169 tests / 0 failed.**
+
+### B3 — **LAS PANTALLAS: PREPARADA, SIN EMPEZAR.** Es el proximo paso.
+
+**Lo que hay que construir** (spec 0065, «Backoffice — rutas y API» + el journey del owner en «Diseño»):
+`/backoffice/marketing` (listado), `/backoffice/marketing/new` (compositor), `/backoffice/marketing/[id]`
+(detalle + resultados) y el tile «Campañas» de `/backoffice`.
+
+**Items [B] del DoD que cierra B3** (los otros [B] ya los cerraron B1/B2): el compositor mostrando los
+conteos reales y el costo maximo antes de activar; los titulos de resultados y la estimacion **oculta con
+`B < 30` y visible con `B >= 30`**; el tile llevando a `/backoffice/marketing`; y la mitad de **pagina** del
+item de aislamiento (owner de A no **VE** la pagina de una campaña de B → 404).
+
+**RELEVADO YA, para no volver a buscarlo:**
+- **El tile.** `app/backoffice/page.tsx` tiene un `Set` llamado `realModules` (`:29-37`) y el link se arma
+  con `realModules.has(slug) ? \`/backoffice/${slug}\` : \`/backoffice/demo/${slug}\``. **Agregar
+  `"campaigns"` a ese Set es todo el cambio del tile** — el slug ya es `campaigns` y el titulo ya dice
+  «Campañas». Hoy cae en `/backoffice/demo/campaigns` (el mock de sessionStorage de la spec 0015/0017).
+  **Ojo: el slug es `campaigns` y la ruta que pide la spec es `/backoffice/marketing`** — no coinciden, asi
+  que o se renombra el slug o el ternario necesita un mapeo. **Decidirlo al empezar, no a mitad.**
+- **El patron de pantalla a copiar es `app/backoffice/locations/`** (spec 0061): `page.tsx` (server
+  component con `requireOwner`) + `locations-console.tsx` (cliente) + `location-form.tsx`. Es la seccion
+  mas parecida — owner-only, con sus rutas API ya hechas, y con su propia integracion de paginas
+  (`server/locations-backoffice-pages.neon.integration.test.ts`), que es el modelo para el 404 de pagina.
+- **`requireOwner` SI sirve aca** (es un guard de PAGINA y hace `redirect()`): lo que no servia era usarlo
+  en una ruta API, que es por lo que existe `app/api/marketing/_auth.ts`. No confundirlos.
+- **Lo que B3 consume ya existe y esta pinneado:** `listCampaigns`, `getCampaign`, `createCampaign`,
+  `updateCampaign`, `transitionCampaign`, `previewAudience`, `loadCampaignResults`, y las 10 rutas HTTP.
+  El DTO de resultados ya trae `title` y la `quality` de cada bloque: la pantalla **no decide** nada de eso.
+
+**TRAMPA MEDIDA HOY, antes de escribir una linea de B3 — un `*.test.tsx` NO LO CORRE VITEST.**
+`apps/merchant/vitest.config.ts` tiene `include: ["src/**/*.test.ts"]`. Sonda: se creo un
+`zz-probe.test.tsx` con un `expect(1).toBe(2)` y se lo nombro **explicitamente**; vitest contesto
+**«No test files found»** e imprimio su `include`. O sea que un test de render con esa extension queda
+**invisible y la suite sigue verde**, que es peor que no tenerlo. En el repo hay **158 `.test.ts` y 0
+`.test.tsx`**, incluidos todos los que renderizan (`login-form.test.ts`, `billing-cancel-dialog.test.ts`,
+`confirm-dialog-focus.test.ts`). **La tabla de Archivos de la spec pedia literalmente
+`app/backoffice/marketing/*.test.tsx`** — ya se corrigio en la spec. Enforced por el hook nuevo
+`.claude/hooks/invisible-test.sh` (PostToolUse), verificado que **muerde** (`EXIT=2` + mensaje sobre un
+`.test.tsx`) y que **discrimina** (`EXIT=0` sobre el mismo nombre en `.test.ts` y sobre un `page.tsx`).
+
+**Para los render tests, el idiom del repo esta en `CLAUDE.md`:** `renderToStaticMarkup` +
+`node-html-parser` (viene bundleado en `next`, no hace falta jsdom).
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 

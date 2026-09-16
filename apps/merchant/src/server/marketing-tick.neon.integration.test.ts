@@ -171,11 +171,13 @@ describe.skipIf(!integrationEnabled)("marketing tick", () => {
     spy.mockRestore();
   }, 120_000);
 
+  // 120_000 como sus hermanas: el default de vitest son 10 s y este teardown borra una
+  // corrida entera del tick. Era el proximo flaky esperando (ver `marketing-lifecycle`).
   afterAll(async () => {
     if (!integrationEnabled) return;
     await dropCampaigns(seed.business.id);
     await dropBusiness(seed.business.id);
-  });
+  }, 120_000);
 
   it("queues only the eligible consumers and says why for the rest", async () => {
     expect(firstRun.campaigns).toBe(1);

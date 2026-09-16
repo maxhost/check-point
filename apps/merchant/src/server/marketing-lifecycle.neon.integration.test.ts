@@ -25,9 +25,14 @@ import type { TickSummary } from "./marketing/tick";
 const NS = "marketing_tick_test_lifecycle";
 const worlds: World[] = [];
 
+// 120_000 como el resto del modulo, y no es decorativo: el `hookTimeout` por defecto de
+// vitest es 10 s y `dropWorlds` hace varios deletes por mundo. Medido al cerrar la B2: con
+// dos suites de integracion nuevas peleando por la misma rama Neon, este teardown se paso
+// de los 10 s en 2 de 3 corridas y marco el ARCHIVO como failed con sus tests en verde
+// («1 failed | 161 passed» con «1169 passed» abajo). Un rojo que no es de ninguna asercion.
 afterAll(async () => {
   await dropWorlds(worlds);
-});
+}, 120_000);
 
 describe.skipIf(!integrationEnabled)("marketing lifecycle", () => {
   /**

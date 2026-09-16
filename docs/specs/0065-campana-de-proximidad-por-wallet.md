@@ -584,7 +584,7 @@ va en el `WHERE`/lock, no en un `NOT EXISTS`), 0060 (discriminante que solo escr
 | `apps/merchant/src/server/billing/plan-change.ts` | editar: guarda `downgrade_blocked_campaigns` + `activeCampaigns` en el input |
 | `apps/merchant/src/app/backoffice/subscription/**`, `apps/merchant/src/app/api/billing/**` | editar: pasar `activeCampaigns` y mostrar el bloqueo en el modal |
 | `apps/merchant/src/server/billing/webhook-apply.ts` | editar: pausa defensiva `plan_downgraded` |
-| tests: `server/marketing/*.test.ts`, `server/marketing-*.neon.integration.test.ts`, `server/wallet-push*.test.ts`, `app/backoffice/marketing/*.test.tsx` | crear / editar |
+| tests: `server/marketing/*.test.ts`, `server/marketing-*.neon.integration.test.ts`, `server/wallet-push*.test.ts`, `app/backoffice/marketing/*.test.ts` | crear / editar. **`.test.ts`, NO `.test.tsx`** — corregido al preparar B3: el `include` de `apps/merchant/vitest.config.ts` es `src/**/*.test.ts`, asi que un `.test.tsx` **no se ejecuta ni nombrandolo explicitamente** (medido: vitest contesta «No test files found»). Los 158 tests del repo son `.test.ts`, incluidos todos los que renderizan JSX. Enforced por el hook `invisible-test.sh` |
 | `docs/specs/0017-campanas-owner-demo.md` | editar al implementar: «superada por la 0065» |
 
 ### Disjunta?
