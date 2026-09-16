@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 COMPLETA Y SIN COMMITEAR — 5 gates verdes, 156 archivos / 1097 tests**; falta el test unit de las rutas HTTP, que es lo que cierra el item de aislamiento. **Y se encontro una BOMBA DE TIEMPO preexistente de la fase A** —el tick no escribia `not_before`, asi que la suite se ponia roja despues de las 12:00 UTC— ya corregida. Ver «FASE B (BACKOFFICE DE CAMPAÑAS)».)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 COMMITEADA EN `a0573a6`, NO PUSHEADA** — 5 gates verdes, 156 archivos / 1097 tests. **PROXIMO PASO EXACTO: escribir el test unit de las rutas HTTP** (401 sin sesion, 403 de staff, mapeo de `CampaignError` a status) copiando el patron de `locations-routes.test.ts` — es lo unico que falta para cerrar el item de aislamiento del DoD de B1. Recien despues: B2 (resultados + audience-preview) y B3 (las 3 pantallas). Se encontro y corrigio una BOMBA DE TIEMPO preexistente de la fase A (el tick no escribia `not_before`). Ver «FASE B (BACKOFFICE DE CAMPAÑAS)» → sub-seccion B1.)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -1148,7 +1148,7 @@ integracion **156 archivos / 1097 tests / 0 failed** (venia de 153 / 1072: +3 ar
    **Fix: el tick escribe `not_before` con SU reloj** (`placement.ts`). En produccion los dos instantes son el
    mismo, asi que no cambia el comportamiento; en test los desacopla. `marketing-refresh` **6/6**.
 
-**FALTA de B1 (declarado, no omitido):** el test UNIT de las rutas HTTP (401 sin sesion, 403 de staff, mapeo de
+**COMMITEADO en `a0573a6`, NO PUSHEADO** (igual que el resto de la fase A/B: se pushea recien con el PASS del revisor de la fase completa, o cuando el owner lo pida explicitamente como hizo con la fase A). **FALTA de B1 (declarado, no omitido):** el test UNIT de las rutas HTTP (401 sin sesion, 403 de staff, mapeo de
 `CampaignError` → status, y que cada ruta de accion llame a SU accion). El patron a copiar es
 `locations-routes.test.ts` (mockea `./auth` y `./staff`). **Las suites de integracion lo declaran en su docblock:
 ejercitan el STORE, no la capa HTTP.** Sin ese test, el item [B] de aislamiento («staff no puede crear ni
