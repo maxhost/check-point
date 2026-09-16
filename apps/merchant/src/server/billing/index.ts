@@ -65,11 +65,13 @@ export {
   applySubscriptionState,
   clearPendingPlan,
   readSubscription,
-  reconcileFromStripe,
   scheduleDowngrade,
   settleToFree,
 } from "./store";
-export type { ReconcileOutcome } from "./store";
+// D8 salió de `store.ts` al entrar el freno defensivo de la spec 0065 (límite de 300
+// líneas). Sigue saliendo por este barrel: sus consumidores no cambiaron.
+export { reconcileFromStripe } from "./reconcile";
+export type { ReconcileOutcome } from "./reconcile";
 export { HANDLED_EVENT_TYPES, handleStripeWebhook } from "./webhook";
 // Fase C (D12 / ADR 0061): el claim se mudó a `claim.ts` con su tri-estado. `claimEvent` y
 // `ClaimResult` NO se reexportan — su único consumidor es `webhook.ts`, que importa de

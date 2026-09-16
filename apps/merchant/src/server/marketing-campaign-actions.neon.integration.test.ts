@@ -5,7 +5,7 @@ import {
   seedExtraLocation,
 } from "./locations-integration-support";
 import { getDb } from "./db";
-import { locations } from "./schema";
+import { locations, subscriptions } from "./schema";
 import {
   createCampaign,
   getCampaign,
@@ -161,16 +161,35 @@ describe.skipIf(!integrationEnabled)("campaigns: the four transitions", () => {
     );
   }, 180_000);
 
-  it("charges the plan: a `free` business gets 402 at activate", async () => {
+  it("charges the plan: a `free` business gets 402 at CREATE (spec 0065, fase D)", async () => {
+    // Hasta la fase C crear era gratis y el gate vivía sólo en `activate`; la D lo mueve
+    // también a la composición («un `free` no compone campañas»). El caso viejo aseveraba
+    // el 402 en `activate` DESPUÉS de crear, y ya no se puede llegar ahí.
     const seed = await world("free", "Campaign plan");
+    expect(
+      await caught(() =>
+        createCampaign(seed.business.id, seed.userId, body(seed)),
+      ),
+    ).toMatchObject({ status: 402, code: "plan_not_allowed" });
+  }, 120_000);
+
+  it("el plan se lee AL ACTIVAR: un draft de ayer no se activa si el plan ya cayó", async () => {
+    // El estado real que esto cubre: se compone con `plus` y la suscripción se cae (baja
+    // desde el dashboard, impago) antes de activar. El gate no puede ser una foto del
+    // momento de crear.
+    const seed = await world("plus", "Campaign plan caido");
     const campaign = await createCampaign(
       seed.business.id,
       seed.userId,
       body(seed),
     );
-
-    // Creating a draft is free; the gate is at ACTIVATE (the spec's 402 at create is [D]).
     expect(campaign.status).toBe("draft");
+
+    await getDb()
+      .update(subscriptions)
+      .set({ plan: "free", stripeSubscriptionId: null })
+      .where(eq(subscriptions.businessId, seed.business.id));
+
     expect(
       await caught(() =>
         transitionCampaign(seed.business.id, campaign.id, "activate"),

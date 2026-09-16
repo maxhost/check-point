@@ -7,6 +7,7 @@ import {
   parseCampaignPatch,
 } from "./campaign-input";
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
+import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
 
 /**
  * Every read and write of `core.campaign` the backoffice does (spec 0065 phase B). Two
@@ -169,6 +170,16 @@ export async function createCampaign(
     );
   const input = parsed.value;
   const id = await withDbTransaction(async (tx) => {
+    // EL GATE DE PLAN TAMBIÉN EN CREAR (spec 0065, fase D): «un `free` no compone
+    // campañas». Va DENTRO de la transacción y antes de cualquier escritura, con el mismo
+    // `plan-gate` que usa `activate`: dos reglas separadas divergirían el día que el plan
+    // de pago cambie de nombre.
+    if (!(await planAllowsCampaigns(tx, businessId)))
+      throw new CampaignError(
+        402,
+        "plan_not_allowed",
+        PLAN_NOT_ALLOWED_MESSAGE,
+      );
     const doors = await ownDoors(tx, businessId, input.locationIds);
     const [created] = await tx
       .insert(campaigns)

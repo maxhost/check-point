@@ -34,6 +34,12 @@ import { convenientDowngradeDate, formatDate } from "./subscription-format";
  * la divergencia que D10 prohíbe: el día que cambie el tope de Free, uno de los dos
  * quedaría viejo mintiéndole al owner sobre cuántos locales archivar.
  *
+ * LO QUE SÍ SE DECIDE ACÁ ES A DÓNDE MANDARLO (spec 0065, fase D): son dos bloqueos con
+ * dos destinos —Locales para archivar, Campañas para desactivar— y el discriminante es el
+ * `code` del servidor, no el texto. Un bloqueo sin destino conocido (`already_on_plan`,
+ * que llega por el fallback de la consola) muestra el mensaje y ningún link: inventarle
+ * uno mandaría al owner a una pantalla donde no hay nada que hacer.
+ *
  * Reusa `ConfirmDialog` en vez de reimplementar la trampa de foco y el Escape; lo que le
  * costó son dos props retrocompatibles, declaradas en ese archivo.
  */
@@ -52,8 +58,9 @@ export function CancelDialog({
    * Free» en `none`. El modal es el MISMO para los dos (D10: la misma rama, no una segunda
    * regla que pueda divergir). */
   title: string;
-  /** `null` = la baja procede. Si no, el mensaje del servidor y cuántos locales archivar. */
-  block: { message: string; archiveCount: number } | null;
+  /** `null` = la baja procede. Si no, el mensaje del servidor y el `code` del bloqueo
+   * (`null` en el genérico de la consola, que no tiene a dónde mandar). */
+  block: { message: string; code: string | null } | null;
   busy: boolean;
   /** ISO string de la renovación, o `null` si Stripe no contestó. Decide si hay aviso. */
   renewalAt: string | null;
@@ -62,6 +69,7 @@ export function CancelDialog({
   onConfirm: () => void;
 }) {
   const convenient = convenientDowngradeDate(renewalAt);
+  const action = block?.code == null ? undefined : BLOCK_ACTIONS[block.code];
   return (
     <ConfirmDialog
       open={open}
@@ -87,11 +95,30 @@ export function CancelDialog({
           </>
         ) : (
           <>
-            {block.message}{" "}
-            <Link href="/backoffice/locations">Ir a Locales para archivar</Link>
+            {block.message}
+            {action !== undefined && (
+              <>
+                {" "}
+                <Link href={action.href}>{action.label}</Link>
+              </>
+            )}
           </>
         )
       }
     />
   );
 }
+
+/** El destino de cada bloqueo, por `code`. Una tabla y no una cadena de `if`: el día que un
+ * tercer bloqueo traiga su propia pantalla, se agrega una fila. Un `code` que no está acá
+ * —hoy `already_on_plan`— no tiene link, y eso es una decisión, no un olvido. */
+const BLOCK_ACTIONS: Record<string, { href: string; label: string }> = {
+  downgrade_blocked: {
+    href: "/backoffice/locations",
+    label: "Ir a Locales para archivar",
+  },
+  downgrade_blocked_campaigns: {
+    href: "/backoffice/marketing",
+    label: "Ir a Campañas para desactivar",
+  },
+};

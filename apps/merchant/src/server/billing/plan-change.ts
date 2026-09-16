@@ -22,6 +22,8 @@ export type BlockCode =
   | "already_on_plan"
   /** Hay más locales activos que los del plan destino. Trae `archiveCount`. 409 */
   | "downgrade_blocked"
+  /** Hay campañas activas (spec 0065). Trae `deactivateCount`. 409 */
+  | "downgrade_blocked_campaigns"
   /** anual → mensual, fuera de alcance por diseño (D9, tarea 55). 409 */
   | "interval_downgrade_unsupported"
   /** Cambio de intervalo sin suscripción viva que cambiar. 409 */
@@ -49,6 +51,9 @@ export type PlanChangeInput = {
   status: string;
   stripeSubscriptionId: string | null;
   activeLocations: number;
+  /** Campañas en `status = 'active'` (spec 0065, fase D). El bloqueo es DURO, igual que el
+   * de locales: el owner las desactiva primero. */
+  activeCampaigns: number;
   intent: PlanIntent;
 };
 
@@ -68,6 +73,8 @@ export type PlanChangeDecision =
       code: BlockCode;
       message: string;
       archiveCount?: number;
+      /** Sólo en `downgrade_blocked_campaigns`: cuántas campañas hay que desactivar. */
+      deactivateCount?: number;
     };
 
 /**
@@ -90,7 +97,9 @@ export const DEAD_STRIPE_STATUS: ReadonlySet<string> = new Set([
   "incomplete_expired",
 ]);
 
-export function hasLiveSubscription(input: PlanChangeInput): boolean {
+export function hasLiveSubscription(
+  input: Pick<PlanChangeInput, "status" | "stripeSubscriptionId">,
+): boolean {
   return (
     input.stripeSubscriptionId !== null && !DEAD_STRIPE_STATUS.has(input.status)
   );
@@ -114,9 +123,17 @@ export function hasLiveSubscription(input: PlanChangeInput): boolean {
  *      `archiveCount = activeLocations - locationLimitForPlan("free")`. VA PRIMERO: es la
  *      condición del owner (ADR 0058 §3/§6) y la que alimenta el modal. El `1` NO se
  *      hardcodea — el tope vive en `locations/core.ts` y en ningún otro lado.
- *   2. `currentPlan === 'free'` → blocked `already_on_plan`.
- *   3. `hasLiveSubscription` → `{ kind: "schedule_downgrade" }`.
- *   4. en otro caso (`none`, o `plus` sin id como A1) → `{ kind: "settle_to_free" }`.
+ *   2. `activeCampaigns > 0` → blocked `downgrade_blocked_campaigns` con
+ *      `deactivateCount = activeCampaigns` (spec 0065, fase D). VA SEGUNDA, entre la de
+ *      locales y `already_on_plan`, y el orden lo fija la spec: la condición del owner es
+ *      la de locales y es la que ya alimentaba el modal.
+ *      CONSECUENCIA ACEPTADA Y DECLARADA EN LA SPEC: un negocio que viola las DOS
+ *      condiciones recibe primero el bloqueo de locales y, tras archivar, el de campañas.
+ *      Son dos vueltas. Mostrar las dos juntas exigiría que `PlanChangeDecision` llevara
+ *      los dos contadores; se deja como posible mejora y NO entra.
+ *   3. `currentPlan === 'free'` → blocked `already_on_plan`.
+ *   4. `hasLiveSubscription` → `{ kind: "schedule_downgrade" }`.
+ *   5. en otro caso (`none`, o `plus` sin id como A1) → `{ kind: "settle_to_free" }`.
  *      Acá muere el código `no_subscription` de la versión anterior, que era la fila que
  *      contradecía a D10.
  *
@@ -132,7 +149,8 @@ export function hasLiveSubscription(input: PlanChangeInput): boolean {
  * configuración (503) NO salen de acá: los produce la ruta.
  *
  * Precedencia que el unit asevera explícitamente: `downgrade` con 2 activos Y
- * `currentPlan === 'free'` → gana `downgrade_blocked` (guarda 1 antes que la 2).
+ * `currentPlan === 'free'` → gana `downgrade_blocked` (guarda 1 antes que la 3); con 2
+ * activos Y 1 campaña activa → gana `downgrade_blocked` (guarda 1 antes que la 2).
  */
 export function decidePlanChange(input: PlanChangeInput): PlanChangeDecision {
   switch (input.intent.kind) {
@@ -145,14 +163,16 @@ export function decidePlanChange(input: PlanChangeInput): PlanChangeDecision {
   }
 }
 
+/** El `extra` es el contador que el modal necesita, y va DISCRIMINADO: `archiveCount`
+ * pertenece a `downgrade_blocked` y `deactivateCount` a `downgrade_blocked_campaigns`.
+ * Un bloqueo sin contador no lleva ninguna de las dos claves (el `...undefined` no agrega
+ * nada), que es lo que deja al resto de los códigos exactamente como estaban. */
 function blocked(
   code: BlockCode,
   message: string,
-  archiveCount?: number,
+  extra?: { archiveCount: number } | { deactivateCount: number },
 ): PlanChangeDecision {
-  return archiveCount === undefined
-    ? { kind: "blocked", code, message }
-    : { kind: "blocked", code, message, archiveCount };
+  return { kind: "blocked", code, message, ...extra };
 }
 
 function decideUpgrade(
@@ -180,7 +200,14 @@ function decideDowngrade(input: PlanChangeInput): PlanChangeDecision {
     return blocked(
       "downgrade_blocked",
       `Para volver a Free necesitas ${freeLimit} local activo; hoy tienes ${input.activeLocations}. Archiva ${archiveCount}.`,
-      archiveCount,
+      { archiveCount },
+    );
+  }
+  if (input.activeCampaigns > 0) {
+    return blocked(
+      "downgrade_blocked_campaigns",
+      `Para volver a Free no puedes tener campañas activas; hoy tienes ${input.activeCampaigns}. Desactiva ${input.activeCampaigns}.`,
+      { deactivateCount: input.activeCampaigns },
     );
   }
   if (input.currentPlan === "free") {

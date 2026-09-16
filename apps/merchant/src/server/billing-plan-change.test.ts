@@ -38,6 +38,8 @@ const STATUSES = [
 ];
 const SUB_IDS: Array<string | null> = [null, "sub_x"];
 const ACTIVE_LOCATIONS = [1, 2, 3];
+/** Spec 0065, fase D: 0 = no bloquea, 1 = el borde, 3 = plural. */
+const ACTIVE_CAMPAIGNS = [0, 1, 3];
 const INTENTS: PlanIntent[] = [
   { kind: "upgrade", interval: "month" },
   { kind: "upgrade", interval: "year" },
@@ -55,6 +57,7 @@ type Outcome = {
   kind: string;
   code?: string;
   archiveCount?: number;
+  deactivateCount?: number;
   interval?: string;
   to?: string;
 };
@@ -77,6 +80,13 @@ function expectedOutcome(input: PlanChangeInput): Outcome {
         archiveCount: input.activeLocations - FREE_LIMIT,
       };
     }
+    if (input.activeCampaigns > 0) {
+      return {
+        kind: "blocked",
+        code: "downgrade_blocked_campaigns",
+        deactivateCount: input.activeCampaigns,
+      };
+    }
     if (input.currentPlan === "free")
       return { kind: "blocked", code: "already_on_plan" };
     return live ? { kind: "schedule_downgrade" } : { kind: "settle_to_free" };
@@ -96,6 +106,8 @@ function outcomeOf(decision: PlanChangeDecision): Outcome {
     out.code = decision.code;
     if (decision.archiveCount !== undefined)
       out.archiveCount = decision.archiveCount;
+    if (decision.deactivateCount !== undefined)
+      out.deactivateCount = decision.deactivateCount;
   }
   if (decision.kind === "checkout") out.interval = decision.interval;
   if (decision.kind === "change_interval") out.to = decision.to;
@@ -110,16 +122,18 @@ function everyInput(): PlanChangeInput[] {
         for (const status of STATUSES)
           for (const stripeSubscriptionId of SUB_IDS)
             for (const activeLocations of ACTIVE_LOCATIONS)
-              for (const intent of INTENTS)
-                all.push({
-                  currentPlan,
-                  currentInterval,
-                  pendingPlan,
-                  status,
-                  stripeSubscriptionId,
-                  activeLocations,
-                  intent,
-                });
+              for (const activeCampaigns of ACTIVE_CAMPAIGNS)
+                for (const intent of INTENTS)
+                  all.push({
+                    currentPlan,
+                    currentInterval,
+                    pendingPlan,
+                    status,
+                    stripeSubscriptionId,
+                    activeLocations,
+                    activeCampaigns,
+                    intent,
+                  });
   return all;
 }
 
@@ -135,10 +149,12 @@ describe("decidePlanChange — matriz completa del dominio (spec 0063, D4)", () 
         STATUSES.length *
         SUB_IDS.length *
         ACTIVE_LOCATIONS.length *
+        ACTIVE_CAMPAIGNS.length *
         INTENTS.length,
     );
-    // 4860 = 5832 menos los 972 del intent `resume`, que dejó de existir (spec 0064 §4).
-    expect(inputs).toHaveLength(4860);
+    // 14580 = los 4860 de la spec 0063 (5832 menos los 972 del intent `resume`, que dejó de
+    // existir — spec 0064 §4) por los 3 valores de `activeCampaigns` de la spec 0065.
+    expect(inputs).toHaveLength(14580);
   });
 
   it("cada punto del dominio cae en la guarda declarada", () => {
@@ -175,6 +191,7 @@ describe("decidePlanChange — matriz completa del dominio (spec 0063, D4)", () 
     expect([...codes].sort()).toEqual([
       "already_on_plan",
       "downgrade_blocked",
+      "downgrade_blocked_campaigns",
       "interval_downgrade_unsupported",
       "interval_needs_subscription",
       "interval_unchanged",

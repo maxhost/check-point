@@ -62,7 +62,7 @@ const consoleProps = (o: Partial<Record<string, unknown>> = {}) => ({
   downgradeBlock: {
     message:
       "Para volver a Free necesitas 1 local activo; hoy tienes 3. Archiva 2.",
-    archiveCount: 2,
+    code: "downgrade_blocked",
   },
   facts: { renewalAt: null, lastPaidInvoice: null },
   stripeUnconfirmed: false,
@@ -87,7 +87,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
       block: {
         message:
           "Para volver a Free necesitas 1 local activo; hoy tienes 3. Archiva 2.",
-        archiveCount: 2,
+        code: "downgrade_blocked",
       },
     });
   });
@@ -129,7 +129,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
         block: {
           message:
             "Para volver a Free necesitas 1 local activo; hoy tienes 3. Archiva 2.",
-          archiveCount: 2,
+          code: "downgrade_blocked",
         },
         busy: false,
         renewalAt: null,
@@ -146,6 +146,61 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
     expect(html).toContain(
       '<button class="button danger" type="button" disabled="">Confirmar</button>',
     );
+  });
+
+  it("el bloqueo por CAMPAÑAS linkea a Campañas, no a Locales (spec 0065, fase D)", async () => {
+    // El discriminante es el `code`, no el texto: con dos bloqueos y un solo link, el
+    // owner con campañas activas terminaba en Locales, donde no hay nada que hacer.
+    const { CancelDialog } = await vi.importActual<
+      typeof import("../app/backoffice/subscription/cancel-dialog")
+    >("../app/backoffice/subscription/cancel-dialog");
+    const html = renderToStaticMarkup(
+      createElement(CancelDialog, {
+        open: true,
+        title: "Bajar a Free",
+        block: {
+          message:
+            "Para volver a Free no puedes tener campañas activas; hoy tienes 2. Desactiva 2.",
+          code: "downgrade_blocked_campaigns",
+        },
+        busy: false,
+        renewalAt: null,
+        timezone: "America/Guayaquil",
+        onCancel: () => {},
+        onConfirm: () => {},
+      }),
+    );
+    expect(html).toContain("hoy tienes 2");
+    expect(html).toContain('href="/backoffice/marketing"');
+    expect(html).not.toContain("/backoffice/locations");
+    expect(html).toContain(
+      '<button class="button danger" type="button" disabled="">Confirmar</button>',
+    );
+  });
+
+  it("un bloqueo SIN `code` muestra el mensaje y NINGÚN link", async () => {
+    // Es el fallback de la consola (`already_on_plan`): no hay pantalla a donde mandar, y
+    // un link inventado llevaría al owner a buscar algo que no existe.
+    const { CancelDialog } = await vi.importActual<
+      typeof import("../app/backoffice/subscription/cancel-dialog")
+    >("../app/backoffice/subscription/cancel-dialog");
+    const html = renderToStaticMarkup(
+      createElement(CancelDialog, {
+        open: true,
+        title: "Bajar a Free",
+        block: {
+          message: "Esta baja no está disponible para tu plan actual.",
+          code: null,
+        },
+        busy: false,
+        renewalAt: null,
+        timezone: "America/Guayaquil",
+        onCancel: () => {},
+        onConfirm: () => {},
+      }),
+    );
+    expect(html).toContain("Esta baja no está disponible para tu plan actual.");
+    expect(html).not.toContain("<a ");
   });
 
   it("sin bloqueo, «Confirmar» está disponible", async () => {

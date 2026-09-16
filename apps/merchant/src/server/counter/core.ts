@@ -35,6 +35,14 @@ export function rowsOf(result: unknown): unknown[] {
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** ¿Es un uuid? La versión que NO tira, para los llamadores que traducen un id mal formado
+ * a su propio código de error (la ruta pública del opt-out contesta 400, no el 422 de
+ * mostrador). Comparte el patrón con `parseUuid` a propósito: dos regex de uuid en el mismo
+ * repo es cómo una acepta lo que la otra rechaza. */
+export function isUuid(value: unknown): boolean {
+  return typeof value === "string" && uuidPattern.test(value.trim());
+}
+
 /** A uuid straight from the request body. Anything else is a 422 `invalid_input`.
  * Lives here (not in `grant.ts`) because `redeem.ts` validates the same shapes and a
  * second copy of a validator is how two places that decide the same thing diverge. */

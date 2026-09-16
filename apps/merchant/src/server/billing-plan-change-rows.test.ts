@@ -15,6 +15,7 @@ const base: PlanChangeInput = {
   status: "active",
   stripeSubscriptionId: null,
   activeLocations: 1,
+  activeCampaigns: 0,
   intent: { kind: "upgrade", interval: "month" },
 };
 
@@ -120,6 +121,94 @@ describe("decidePlanChange — las filas que mataron una regla (spec 0063)", () 
       code: "downgrade_blocked",
       archiveCount: 1,
     });
+  });
+
+  it("con 1 campaña activa la baja queda BLOQUEADA, con el conteo en el mensaje", () => {
+    // Spec 0065, fase D. El texto va LITERAL: es el que el modal muestra y el que devuelve
+    // el 409, y salen de la misma llamada.
+    expect(
+      decidePlanChange({
+        ...base,
+        currentPlan: "plus",
+        stripeSubscriptionId: "sub_x",
+        activeCampaigns: 1,
+        intent: { kind: "downgrade" },
+      }),
+    ).toEqual({
+      kind: "blocked",
+      code: "downgrade_blocked_campaigns",
+      message:
+        "Para volver a Free no puedes tener campañas activas; hoy tienes 1. Desactiva 1.",
+      deactivateCount: 1,
+    });
+  });
+
+  it("sin campañas activas la baja PROCEDE: la guarda no bloquea de más", () => {
+    expect(
+      decidePlanChange({
+        ...base,
+        currentPlan: "plus",
+        stripeSubscriptionId: "sub_x",
+        activeCampaigns: 0,
+        intent: { kind: "downgrade" },
+      }),
+    ).toEqual({ kind: "schedule_downgrade" });
+  });
+
+  it("PRECEDENCIA declarada: con 2 locales Y 3 campañas gana el bloqueo de LOCALES", () => {
+    // La guarda de locales va ANTES que la de campañas, y la spec lo declara junto con su
+    // consecuencia: el owner archiva primero y recién en la segunda vuelta ve las campañas.
+    // Son DOS vueltas, aceptado y escrito.
+    expect(
+      decidePlanChange({
+        ...base,
+        currentPlan: "plus",
+        stripeSubscriptionId: "sub_x",
+        activeLocations: 2,
+        activeCampaigns: 3,
+        intent: { kind: "downgrade" },
+      }),
+    ).toMatchObject({
+      kind: "blocked",
+      code: "downgrade_blocked",
+      archiveCount: 1,
+    });
+  });
+
+  it("PRECEDENCIA declarada: con 1 campaña Y plan free gana `downgrade_blocked_campaigns`", () => {
+    // La guarda de campañas va ANTES que `already_on_plan`, igual que la de locales. Lo
+    // intuitivo sería «ya estás en free»; el orden declarado dice otra cosa.
+    expect(
+      decidePlanChange({
+        ...base,
+        currentPlan: "free",
+        activeCampaigns: 1,
+        intent: { kind: "downgrade" },
+      }),
+    ).toMatchObject({
+      kind: "blocked",
+      code: "downgrade_blocked_campaigns",
+      deactivateCount: 1,
+    });
+  });
+
+  it("las campañas activas NO frenan un upgrade ni un cambio de intervalo", () => {
+    // La guarda vive en `decideDowngrade` y en ningún otro intent: una campaña activa no
+    // puede impedirle a un negocio PAGAR más.
+    expect(decidePlanChange({ ...base, activeCampaigns: 3 })).toEqual({
+      kind: "checkout",
+      interval: "month",
+    });
+    expect(
+      decidePlanChange({
+        ...base,
+        currentPlan: "plus",
+        currentInterval: "month",
+        stripeSubscriptionId: "sub_x",
+        activeCampaigns: 3,
+        intent: { kind: "change_interval", to: "year" },
+      }),
+    ).toEqual({ kind: "change_interval", to: "year" });
   });
 
   it("`archiveCount` sale del tope de free, no de un número inventado", () => {

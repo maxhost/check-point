@@ -66,7 +66,7 @@ export function SubscriptionConsole({
   /** De `decidePlanChange`, la misma función que las 5 rutas. NO deshabilita nada: decide
    * el contenido del modal (ADR 0058 §8). */
   canCancel: boolean;
-  downgradeBlock: { message: string; archiveCount: number } | null;
+  downgradeBlock: { message: string; code: string } | null;
   /** D8: no pudimos confirmar el estado con Stripe. Avisa y NO bloquea la sección. */
   stripeUnconfirmed: boolean;
   timezone: string;
@@ -284,11 +284,11 @@ export function SubscriptionConsole({
   );
 }
 
-/** `canCancel === false` SIN `downgradeBlock` significa que el servidor bloqueó por otra
- * razón que no es el conteo de locales (hoy, `already_on_plan`). No se puede ofrecer
- * «Confirmar» —el 409 está garantizado— y tampoco se puede decir «archivá N», que sería
- * falso: se dice lo único cierto. */
+/** `canCancel === false` SIN `downgradeBlock` significa que el servidor bloqueó por una
+ * razón que no es ni el conteo de locales ni el de campañas (hoy, `already_on_plan`). No se
+ * puede ofrecer «Confirmar» —el 409 está garantizado— y tampoco se puede decir «archivá N»,
+ * que sería falso: se dice lo único cierto, y sin `code` el modal no ofrece ningún link. */
 const BLOCK_FALLBACK = {
   message: "Esta baja no está disponible para tu plan actual.",
-  archiveCount: 0,
+  code: null,
 };

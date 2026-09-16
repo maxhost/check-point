@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASES B Y C COMPLETAS Y COMMITEADAS** — `a0573a6`, `7f59f8a`, `9bf69b8`, `32be432` (B) y `8e8d596` (C). **NADA DE B NI DE C ESTA PUSHEADO.** 5 gates **re-medidos en el handoff**, no copiados: typecheck / lint / format:check / build VERDES y `test` = **172 archivos / 1234 tests / 0 failed** con las env de `ci-integration` apuntadas a la rama efimera `spec-0065-marketing`. **PROXIMO PASO: FASE D** (portal del consumidor + freno por plan) — ver «D — CONSUMIDOR Y FRENO POR PLAN: PREPARADA», que ya tiene relevado el terreno y **una bifurcacion que hay que decidir al empezar**: el portal es un SPA de dos pestañas y la spec pide una RUTA. **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** Ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASES B Y C COMPLETAS Y COMMITEADAS** — `a0573a6`, `7f59f8a`, `9bf69b8`, `32be432` (B) y `8e8d596` (C), **sin pushear**. **FASE D COMPLETA (D1 freno por plan + D2 portal del consumidor), MEDIDA Y SIN COMMITEAR**: 5 gates verdes, `test` = **180 archivos / 1279 tests / 0 failed**, **12/12 mutaciones en rojo** en dos tandas con presupuesto declarado. **CON ESTO LAS CUATRO FASES DE LA SPEC 0065 ESTAN IMPLEMENTADAS**, asi que se abre la fase que el owner dejo en cola: **las revisiones independientes, una por parte** (A, B, C, D). **DECISION DEL OWNER (2026-09-16): el opt-out es una TERCERA PESTAÑA del portal y no una ruta — ADR 0068**, contra la recomendacion del orquestador; la spec quedo corregida en los 5 lugares que nombraban `/wallet/settings`. **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** Ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, en el handoff que cierra C):**
 
@@ -18,7 +18,11 @@ Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo e
   **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
   **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — `32be432`.
   **C: hecha** (cupon en el mostrador: banner + ruta + transaccion con dos `for update` + 27 casos) — `8e8d596`.
-  **D: sin empezar** — es lo proximo.
+  **D1 (freno por plan): hecha y medida, SIN COMMITEAR** (gate de 402 al crear y al activar, guarda
+  `downgrade_blocked_campaigns`, modal con destino por `code`, freno defensivo del webhook).
+  **D2 (portal del consumidor): hecha y medida, SIN COMMITEAR** (tercera pestaña «Configuracion» con
+  el opt-out por negocio, `POST /api/public/consumer/marketing-opt-out`, el barrido estatico y el
+  caso de dos ticks que prueba que la utilidad sobrevive al opt-out). **Las 4 fases implementadas.**
   **NADA DE B NI DE C ESTA PUSHEADO.** Se pushea cuando el owner lo pida explicitamente, como hizo
   con la A.
 
@@ -1328,7 +1332,180 @@ quien lo hereda — dice «1 failed» y nombra la suite del ciclo de vida de mar
 
 **Evidencia final: DOS corridas completas seguidas con `EXIT=0`, 162 archivos / 1169 tests / 0 failed.**
 
-### D — **CONSUMIDOR Y FRENO POR PLAN: PREPARADA, SIN EMPEZAR.** Es el proximo paso.
+### D1 — **EL FRENO POR PLAN: HECHO Y MEDIDO (2026-09-16). SIN COMMITEAR.**
+
+La mitad de la fase D que **no** depende de la bifurcacion del portal. 5 gates verdes sobre el arbol
+final: typecheck / lint / format:check / build VERDES y `test` = **175 archivos / 1262 tests / 0
+failed** (venia de 172/1234) con las env de `ci-integration` apuntadas a `spec-0065-marketing`.
+
+**Lo que quedo en el arbol:**
+
+- **`marketing/plan-gate.ts` (nuevo)**: el gate de 402 `plan_not_allowed`, con la decision PURA
+  (`campaignsAllowedFor`) separada de la lectura (`planAllowsCampaigns`, que toma el `tx` del
+  llamador). Lo usan **`activate`** (ya existia en B1) y **`createCampaign`** (nuevo: «un `free` no
+  compone campañas»), dentro de la transaccion y antes de cualquier escritura.
+- **`marketing/plan-brake.ts` (nuevo)**: `activeCampaignCount` (lo consume billing, igual que
+  billing ya consume `activeLocationCount` de `locations/shared`) y `pauseCampaignsForDowngrade`.
+- **`billing/plan-change.ts`**: `activeCampaigns` en el input, guarda `downgrade_blocked_campaigns`
+  con `deactivateCount` **entre** la de locales y `already_on_plan`, docblock normativo actualizado
+  con la consecuencia de las dos vueltas. `hasLiveSubscription` acepta ahora un `Pick` (mismo
+  comportamiento; lo necesita el gate de campañas).
+- **Cableado del conteo bajo el MISMO lock** en las tres superficies que deciden: `decideUnderLock`
+  y `billingStateResponse` (`api/billing/_auth.ts`) y `readBillingState`
+  (`backoffice/subscription/page.tsx`).
+- **El modal**: `downgradeBlock` ahora cruza `{message, code}` y el `code` elige el destino
+  (Locales para archivar / **Campañas para desactivar**); un bloqueo sin `code` —el fallback
+  `already_on_plan`— muestra el mensaje y **ningun** link.
+- **El freno defensivo**: `applySubscriptionState` pausa las campañas `active` del negocio cuando el
+  plan derivado aterriza en `free`/`none`, en la MISMA transaccion.
+
+**TRES DIVERGENCIAS DECLARADAS (del ORQUESTADOR, no del owner) — las tres para arriba, ninguna
+recorta alcance:**
+
+1. **Se corrigio el `planAllows` de B1.** B1 miraba solo `plan === 'plus'` y declaraba como decision
+   del orquestador que una baja programada no frenaba la activacion. La spec dice lo contrario en
+   «Freno por plan» (`subscription.plan` + `pending_plan` **mas `hasLiveSubscription`**) y la fase D
+   es donde esa seccion se implementa: gana la spec. **CONSECUENCIA QUE EL OWNER TIENE QUE SABER, y
+   MEDIDA CONTRA PROD (no deducida), `select` del 2026-09-16 sobre `core.subscription`:** hay 3
+   `plus` y **ninguno tiene ya la forma A1** (`plus` sin `stripe_subscription_id`) — o sea que esa
+   mitad de la consecuencia es hipotetica hoy. **Pero `A3 Test` tiene `pending_plan='free'`** (la
+   baja diferida al 13-10 que ya estaba en este archivo), asi que **con este gate `A3 Test` no puede
+   crear ni activar campañas hasta que esa baja se resuelva**. Es lo que la spec pide —un negocio en
+   camino a `free` no compone campañas— pero es un efecto visible en el negocio de pruebas del
+   owner, no una hipotesis.
+2. **El freno defensivo quedo en `applySubscriptionState` y no en `webhook-apply.ts`**, que es donde
+   la spec lo ubica. Asi cubre ADEMAS a `reconcileFromStripe` (la reconciliacion al abrir la pagina
+   de suscripcion), que deriva el plan con la MISMA `planFromSubscription` sobre una suscripcion
+   `canceled` y **por lo tanto tambien puede aterrizar en `free`/`none`** por un camino que no pasa
+   por nuestra ruta de baja — el agujero exacto que el freno existe para tapar. Los dos llamadores
+   corren dentro de una transaccion con `lockBusiness` tomado, asi que la atomicidad vale para los
+   dos.
+3. **`BillingError` y el 409 ganaron `deactivateCount`** como clave propia, al lado de
+   `archiveCount`. Meter el conteo de campañas en `archiveCount` le diria a cualquier cliente
+   «archiva N locales» cuando lo que sobra son campañas.
+
+**DOS CAMBIOS DE FORMA QUE TOCARON TESTS EXISTENTES** (no para que un gate pase — la propiedad que
+cada test protege sigue intacta): `downgradeBlock` cambio de `{message, archiveCount}` a
+`{message, code}` (el `archiveCount` **no lo renderizaba nadie**: el conteo ya viaja dentro del
+mensaje), y el doble de `tx` de `billing-store.test.ts` ahora guarda el `SET` **por tabla** — con el
+freno, `applySubscriptionState` escribe dos tablas y el doble viejo dejaba el `UPDATE` de `campaign`
+pisando al de `subscription`, un rojo que se leia como «cambiaron las columnas de billing».
+
+**`billing/store.ts` se partio**: `reconcileFromStripe` + `pickReconcilable` + `ReconcileOutcome` se
+mudaron a **`billing/reconcile.ts`** (el archivo quedaba en 301+ con el freno; el limite es 300 y la
+regla es dividir, no extender). El barrel sigue exportando lo mismo, asi que ningun consumidor
+cambio. `billing-store.test.ts` tambien se partio: el doble de `tx` vive ahora en
+`billing-tx-double.ts` y el freno tiene su propio `billing-campaign-brake.test.ts`.
+
+**Tests nuevos (28 casos):** `marketing/plan-gate.test.ts` (14, tabla de las 3 condiciones),
+`billing-campaign-brake.test.ts` (4), `billing-webhook-campaign-brake.neon.integration.test.ts` (2:
+las dos campañas pausadas + **la inyeccion de fallo** que prueba el rollback del plan), 5 casos
+nombrados nuevos en `billing-plan-change-rows.test.ts`, 2 en `billing-cancel-dialog.test.ts` y 1 en
+`marketing-campaign-actions.neon.integration.test.ts` («el plan se lee AL ACTIVAR»). La matriz de
+`decidePlanChange` paso de 4860 a **14580** puntos (× `activeCampaigns` 0/1/3).
+
+**BITACORA DE MUTACIONES — presupuesto declarado ANTES de mutar: 6, clase de error a cazar «un
+invariante declarado que ningun test pinnea». Las 6 dieron ROJO.** Arbol verificado: `shasum` de los
+4 archivos mutados identico al baseline y `grep -rn MUTATION apps/merchant/src` vacio.
+
+| id | invariante | resultado |
+|----|-----------|-----------|
+| M1 | «con campañas activas la baja queda bloqueada» | **ROJO 4** — 2 casos nombrados + 2 de la matriz (648 puntos del dominio cambian de guarda y el codigo desaparece de la lista de ejercidos) |
+| M2 | «la guarda de campañas va DESPUES de la de locales» | **ROJO 2** — el caso de precedencia (2 locales Y 3 campañas) y 1296 puntos de la matriz |
+| M3 | «ademas del plan hace falta suscripcion VIVA» | **ROJO 3 en el unit** (la fila A1, `canceled`, `incomplete_expired`). **La integracion quedo VERDE, y transcribirlo importa**: su caso baja el plan a `free` ademas de borrar el id, asi que la 1a condicion ya lo frena — el par que pinnea «viva» es el unit, no la integracion |
+| M4 | «un `pending_plan` que baja tambien cierra el gate» | **ROJO 1** — es la correccion de la divergencia de B1, y tiene oraculo |
+| M5 | «el plan derivado `free`/`none` pausa las campañas» | **ROJO 4** — 2 del doble y 2 de integracion; el de atomicidad da `expected 200 to be greater than or equal to 500`, o sea que **ese test muere si el freno no existe** |
+| M6 | «el bloqueo de campañas manda a Campañas» | **ROJO 1** — sin esto el owner con campañas activas aterrizaba en Locales, donde no hay nada que hacer |
+
+**HALLAZGO DE ENTORNO, no de codigo:** dos suites de webhook fallaron en el seed con
+`duplicate key … (stripe_customer_id)=(cus_ok)`. **No era la fase D**: eran dos mundos huerfanos que
+dejo una corrida mia abortada a mitad (los ids `cus_ok`/`cus_retry` son FIJOS en esos tests). Se
+borraron los dos negocios en la rama efimera y las 2 suites volvieron verdes sin tocar codigo. Si
+vuelve a pasar: `select * from core.subscription where stripe_customer_id in ('cus_ok','cus_retry')`
+y borrar el negocio entero, no solo la suscripcion.
+
+**LIMITES DECLARADOS (intentados, no supuestos):**
+- El cableado del boton que ABRE el modal (`setConfirming(true)`) sigue sin oraculo — es el mismo
+  limite que ya declaraba la spec 0063 y no lo cambia esta fase.
+- La atomicidad se prueba con **inyeccion de fallo** envolviendo `pauseCampaignsForDowngrade`. Lo que
+  eso NO prueba es el `where` del `UPDATE` (que pause solo las del negocio); eso lo cubre el caso
+  feliz, que siembra un negocio propio y lee por SQL.
+
+### D2 — **EL PORTAL DEL CONSUMIDOR: HECHO Y MEDIDO (2026-09-16). SIN COMMITEAR.**
+
+**LA BIFURCACION LA RESOLVIO EL OWNER: tercera PESTAÑA, no ruta** («lo prefiero como una tercera
+pestaña»), contra la recomendacion del orquestador —que era seguir la spec cerrada—. Bajado a disco
+como **ADR 0068**, con su fila en `INDEX` y la spec 0065 corregida en los cinco lugares que nombraban
+la ruta. **Lo que la decision cuesta, declarado y no tapado: la seccion no tiene URL propia**, asi
+que el item «`/wallet/settings` sin sesion → redirect» **no existe tal como estaba escrito**; se
+reformulo a «sin sesion, `/wallet` responde "Tu tarjeta no esta abierta" **y no toca la base**», que
+es la misma proteccion por otro mecanismo. El aislamiento que protege el dato vive en la ruta HTTP.
+
+**Lo que quedo en el arbol:**
+
+- **`(consumer)/wallet/settings-tab.tsx` (nuevo)**: una fila por membresia, **encendido por
+  defecto** (escanear ya es consentimiento, ADR 0033 §2 — lo que se persiste es el APAGADO), el
+  texto fijo de la spec, y el switch OPTIMISTA que **revierte si el servidor dice que no**.
+- **`bottom-nav.tsx` / `wallet-shell.tsx`**: `WalletTab` suma `"settings"`, la barra pasa a 3
+  botones (`grid-template-columns: repeat(3, 1fr)` en `globals.css`) y el shell elige por ramas y
+  no por un ternario anidado.
+- **`POST /api/public/consumer/marketing-opt-out` (nuevo, estrena `app/api/public/consumer/`)**:
+  consumidor de la SESION (nunca del cuerpo), `programId` validado como uuid **antes** de tocar la
+  base (una columna `uuid` contra un string cualquiera es `22P02` → 500), `optOut` exigido booleano
+  (con `Boolean(body.optOut)`, un `"false"` apagaria creyendo encender), 401 sin sesion y **404** —
+  no 403— sobre una membresia ajena.
+- **`server/consumer/marketing-opt-out.ts` (nuevo)**: el UNICO escritor de
+  `marketing_opt_out_at`. El `where` lleva `consumerId` **y** `programId`: la autorizacion ES el
+  `where`, no un chequeo aparte que pueda desincronizarse.
+- **`consumer/programs.ts`**: el DTO suma `marketingOptOut: boolean` (booleano, **no la fecha**: la
+  fecha en que alguien se dio de baja es dato nuestro, no suyo).
+- **`counter/core.ts`**: `isUuid` exportado (la version que no tira), para que la ruta publica
+  traduzca a su propio 400 en vez del 422 del mostrador.
+
+**Tests nuevos (16 casos):** `settings-tab.test.ts` (3, render real), `settings-tab-switch.test.ts`
+(4, **la interaccion de verdad**), `page-no-session.test.ts` (1), `consumer-opt-out-writer.test.ts`
+(4, el barrido), `consumer-marketing-opt-out.neon.integration.test.ts` (4) y 1 en
+`consumer/programs.test.ts`.
+
+**LA INTERACCION DEL SWITCH NO SE DECLARO COMO LIMITE: se probo.** Un componente de funcion es una
+funcion — `SettingsTab({programs})` devuelve el arbol, `MarketingSwitch` (que no se exporta) es el
+unico hijo con `type` funcion, se lo llama a mano con `useState` mockeado y se invoca el `onChange`
+REAL del `<input>`. Cero paquetes nuevos, archivo aparte del render porque un
+`renderToStaticMarkup` con el dispatcher de React tocado no vale nada. Es la leccion de la spec 0057
+aplicada antes de escribir la frase «no se puede».
+
+**EL CASO GRANDE DEL DoD SE REDISEÑO AL MEDIRLO, y eso es lo que hay que recordar:** «apago
+promociones y sigue mi utilidad» con UN solo tick habria quedado **verde sobre un conjunto vacio** —
+`loadPlacementConsumerIds` (`marketing/placement-store.ts:43`) solo visita a quien tiene turno vivo o
+placement previo, asi que el consumidor apagado **no aparece en `pass_placement` para nada**. El caso
+final corre **dos ticks**: el primero le da turno + utilidad (y el slot sale **`both`**, fusionado por
+el ADR 0066 porque la puerta es la misma), despues apaga **por la ruta**, y el segundo tick deja el
+turno `cancelled`/`opt_out`, **el del vecino vivo** y el slot degradado a `utility` con «2 sellos» y
+**sin** «2x1 en picadas». Medido, no supuesto: el `origin_location_id` tambien hace falta (el negocio
+tiene dos puertas y sin atribucion la bolsa de utilidad sale vacia).
+
+**BITACORA DE MUTACIONES — presupuesto declarado ANTES de mutar: 6, misma clase de error. Las 6
+dieron ROJO.** Arbol verificado: `shasum` identico al baseline y `grep -rn MUTATION` vacio.
+
+| id | invariante | resultado |
+|----|-----------|-----------|
+| M7 | «el cuerpo manda el OPT-OUT, no el estado del switch» | **ROJO 2** — es LA inversion: el switch dice «encendidas» y la columna guarda el apagado |
+| M8 | «si el servidor rechaza, el switch vuelve» | **ROJO 2** — el 500 y el `fetch` que tira |
+| M9 | «el switch arranca segun lo guardado» | **ROJO 1** — dos `checked` donde tiene que haber uno |
+| M10 | «el barrido estatico MUERDE» | **ROJO 1** — plantado un `.set({ marketingOptOutAt })` en `consumer/programs.ts`, el barrido lo nombra. Es la prueba que la spec pide explicitamente |
+| M11 | «el `where` lleva el `consumerId` de la sesion» | **ROJO 2, y el 2.º es el que vale**: la membresia ajena pasa de 404 a **200** y **el turno del VECINO queda `cancelled`** — sin el `consumerId`, un consumidor le apaga las promociones a otro |
+| M12 | «el DTO refleja el opt-out guardado» | **ROJO 1** — el switch mentiria sobre el propio consentimiento |
+
+**LIMITES DECLARADOS (intentados, no supuestos):** que React repinte el switch con el estado nuevo
+(se asevera a que valor se llamo cada setter, que es la decision; pintar es del navegador), y que
+apretar el boton de la pestaña cambie de pestaña — el `onChange` de `BottomNav` es una prop del
+shell y su `useState` no tiene oraculo, igual que las dos pestañas que ya existian.
+
+**EL BARRIDO ESTATICO ESTA ETIQUETADO COMO PROXY**, con lo que no ve escrito adentro: un `sql.raw`
+armado por concatenacion o un `update` con el nombre de la columna en una variable. La propiedad de
+comportamiento la cierra la integracion, que escribe por la ruta y lee por SQL.
+
+### D — TERRENO RELEVADO ANTES DE EMPEZAR (2026-09-16). **La parte del freno por plan ya es D1, arriba; lo que sigue vigente de esta nota es lo del PORTAL.**
 
 **Lo que hay que construir** (spec 0065, «Portal del consumidor — seccion Configuracion» + «Freno
 por plan»): la seccion de opt-out por negocio en el portal, su ruta, la guarda

@@ -6,6 +6,7 @@ import {
   activeLocationCount,
   lockBusiness,
 } from "../../../server/locations/shared";
+import { activeCampaignCount } from "../../../server/marketing/plan-brake";
 import {
   asStripeGateway,
   decidePlanChange,
@@ -38,13 +39,19 @@ import {
 
 /** Error de dominio de billing: status HTTP + `code` estable + mensaje. Calcado de
  * `LocationError`; `archiveCount` viaja sólo en `downgrade_blocked`, que es lo que alimenta
- * el modal de D7. */
+ * el modal de D7, y `deactivateCount` sólo en `downgrade_blocked_campaigns` (spec 0065).
+ *
+ * SON DOS CLAVES Y NO UNA: el contador dice QUÉ hay que hacer, y meter el de campañas en
+ * `archiveCount` le diría a cualquier cliente «archivá N locales» cuando lo que sobra son
+ * campañas. El modal ya no mostraría el número equivocado —usa el `message` del servidor—
+ * pero el contrato sí. */
 export class BillingError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     message: string,
     readonly archiveCount?: number,
+    readonly deactivateCount?: number,
   ) {
     super(message);
   }
@@ -87,6 +94,9 @@ export function billingErrorResponse(
         ...(error.archiveCount === undefined
           ? {}
           : { archiveCount: error.archiveCount }),
+        ...(error.deactivateCount === undefined
+          ? {}
+          : { deactivateCount: error.deactivateCount }),
       },
       { status: error.status },
     );
@@ -167,7 +177,7 @@ export async function requireRow(
  * campo puesto distinto haría que la UI ofreciera lo que el servidor rechaza. */
 function planInput(
   row: SubscriptionRow,
-  activeLocations: number,
+  counts: { activeLocations: number; activeCampaigns: number },
   intent: PlanIntent,
 ): PlanChangeInput {
   return {
@@ -176,7 +186,8 @@ function planInput(
     pendingPlan: row.pendingPlan,
     status: row.status,
     stripeSubscriptionId: row.stripeSubscriptionId,
-    activeLocations,
+    activeLocations: counts.activeLocations,
+    activeCampaigns: counts.activeCampaigns,
     intent,
   };
 }
@@ -201,13 +212,19 @@ export async function decideUnderLock(
   await lockBusiness(tx, businessId);
   const row = await requireRow(tx, businessId);
   const activeLocations = await activeLocationCount(tx, businessId);
-  const decision = decidePlanChange(planInput(row, activeLocations, intent));
+  // El conteo de campañas va bajo el MISMO lock y por el mismo motivo que el de locales
+  // (spec 0065, fase D): entre contar y escribir el plan cabe una activación.
+  const activeCampaigns = await activeCampaignCount(tx, businessId);
+  const decision = decidePlanChange(
+    planInput(row, { activeLocations, activeCampaigns }, intent),
+  );
   if (decision.kind === "blocked") {
     throw new BillingError(
       409,
       decision.code,
       decision.message,
       decision.archiveCount,
+      decision.deactivateCount,
     );
   }
   return { row, activeLocations, decision };
@@ -229,8 +246,13 @@ export async function billingStateResponse(
     await lockBusiness(tx, businessId);
     const row = await requireRow(tx, businessId);
     const activeLocations = await activeLocationCount(tx, businessId);
+    const activeCampaigns = await activeCampaignCount(tx, businessId);
     const decision = decidePlanChange(
-      planInput(row, activeLocations, { kind: "downgrade" }),
+      planInput(
+        row,
+        { activeLocations, activeCampaigns },
+        { kind: "downgrade" },
+      ),
     );
     return {
       subscription: toSubscriptionView(row),

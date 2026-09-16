@@ -27,11 +27,24 @@ function row(overrides: Partial<ConsumerProgramRow> = {}): ConsumerProgramRow {
     enrolledAt: new Date("2026-01-01T00:00:00Z"),
     lastOrderAt: null,
     lastRedemptionAt: null,
+    marketingOptOutAt: null,
     ...overrides,
   };
 }
 
 describe("consumer program DTO", () => {
+  it("el opt-out de marketing cruza como BOOLEANO, nunca como fecha (spec 0065, fase D)", () => {
+    // La pestaña de Configuración sólo necesita saber si está apagado. La FECHA en que
+    // alguien se dio de baja de las promociones es un dato nuestro, no suyo, y una prop que
+    // cruza sin consumidor es superficie regalada (`CLAUDE.md`, la regla del DTO).
+    expect(toConsumerProgramSummary(row()).marketingOptOut).toBe(false);
+    const off = toConsumerProgramSummary(
+      row({ marketingOptOutAt: new Date("2026-09-16T00:00:00Z") }),
+    );
+    expect(off.marketingOptOut).toBe(true);
+    expect(JSON.stringify(off)).not.toContain("2026-09-16");
+  });
+
   it("exposes public asset paths, terms and status without object keys", () => {
     const dto = toConsumerProgramSummary(row());
     expect(dto.logoPath).toBe("/api/public/brands/business-1/logo?v=3");

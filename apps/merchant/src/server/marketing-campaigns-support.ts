@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { type Seed, dropBusiness } from "./counter-integration-support";
 import { seedLocationsBusiness } from "./locations-integration-support";
@@ -13,11 +14,30 @@ import { CampaignError } from "./marketing/campaign-store";
 
 export const campaignWorlds: string[] = [];
 
+/**
+ * A business with its plan AND —when it is `plus`— a LIVE subscription.
+ *
+ * The live id is not decoration (spec 0065 phase D): the campaign plan gate is
+ * `plan === 'plus'` AND `hasLiveSubscription`, so a `plus` row with a null
+ * `stripe_subscription_id` (the A1 shape of spec 0063) is refused with 402. Seeding it
+ * random keeps the two unique indexes of `core.subscription` happy across parallel worlds.
+ */
 export async function campaignWorld(
   plan: "free" | "plus",
   label: string,
 ): Promise<Seed> {
-  const seed = await seedLocationsBusiness(`${label} ${Date.now()}`, plan);
+  const live = randomUUID().slice(0, 8);
+  const seed = await seedLocationsBusiness(
+    `${label} ${Date.now()}`,
+    plan,
+    plan === "plus"
+      ? {
+          interval: "month",
+          stripeCustomerId: `cus_${live}`,
+          stripeSubscriptionId: `sub_${live}`,
+        }
+      : {},
+  );
   campaignWorlds.push(seed.business.id);
   return seed;
 }

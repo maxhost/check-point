@@ -168,7 +168,9 @@ describe.skipIf(!integrationEnabled)(
           downgradeBlock: {
             message:
               "Para volver a Free necesitas 1 local activo; hoy tienes 2. Archiva 1.",
-            archiveCount: 1,
+            // Spec 0065, fase D: lo que cruza es el `code`, no el conteo — el modal usa el
+            // `code` para elegir a dónde manda y el conteo ya viaja dentro del mensaje.
+            code: "downgrade_blocked",
           },
           stripeUnconfirmed: true,
           timezone: "America/Guayaquil",

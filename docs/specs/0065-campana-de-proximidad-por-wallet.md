@@ -93,7 +93,7 @@ El tile «Campañas» de `/backoffice` pasa a apuntar a `/backoffice/marketing`.
 - Pasa por un local dormido **sin turno** (en cola, en cooldown, retenido, opt-out) → **nada**.
 - Android: notificacion generica de Google «tu pase esta cerca»; al abrir el pase ve un modulo
   «Cerca tuyo: Bar La Esquina — 2x1 en picadas».
-- En `/wallet` hay una entrada **«Configuracion»**; adentro, un interruptor por negocio: «Promociones de {negocio}».
+- En `/wallet` hay una **tercera pestaña «Configuracion»** (ADR 0068); adentro, un interruptor por negocio: «Promociones de {negocio}».
 
 ### Especificacion tecnica
 
@@ -483,9 +483,17 @@ refresco»).
 
 #### Portal del consumidor — seccion «Configuracion»
 
-- `(consumer)/wallet/page.tsx` gana una entrada **«Configuracion»** →
+- **CORREGIDO POR EL ADR 0068 (decision del OWNER, 2026-09-16): es una TERCERA PESTAÑA del portal,
+  NO una ruta.** Lo de abajo se escribio sin mirar el portal, que no es un arbol de rutas: es un SPA
+  de dos pestañas (`wallet-shell.tsx` las conmuta con `useState`; `wallet/page.tsx` es su unica
+  ruta). `WalletTab` pasa a `"programs" | "qr" | "settings"`, `BottomNav` gana su boton y **no se
+  crea `(consumer)/wallet/settings/page.tsx`**. Sin URL propia, el item «sin sesion → redirect» no
+  existe tal como esta escrito: sin sesion, `/wallet` entero ya responde «Tu tarjeta no esta
+  abierta» sin tocar la base. El aislamiento que protege el dato vive en la ruta HTTP, que no
+  cambia. Ver el ADR para lo que esto cuesta.
+- ~~`(consumer)/wallet/page.tsx` gana una entrada **«Configuracion»** →
   `(consumer)/wallet/settings/page.tsx` (misma sesion de consumidor que el portal; sin sesion →
-  redirect al portal). Lista **una fila por membresia**: nombre del negocio + interruptor
+  redirect al portal).~~ La **pestaña** lista **una fila por membresia**: nombre del negocio + interruptor
   **«Promociones de {negocio}»**, **encendido por defecto** (escanear = alta + consentimiento,
   ADR 0033 §2). Debajo, texto fijo: «Si lo apagas dejas de recibir promociones de ese comercio.
   Los avisos de tus puntos y sellos, y tu saldo en el pase, siguen igual.»
@@ -582,7 +590,7 @@ va en el `WHERE`/lock, no en un `NOT EXISTS`), 0060 (discriminante que solo escr
 | `apps/merchant/src/server/counter/coupon-decision.ts`, `coupon-store.ts`, `coupon.ts` | **crear (no estaban en la tabla)**: el orden de guardas PURO, la transaccion con los dos `for update`, y el flujo que absorbe solo el backstop de idempotencia |
 | `apps/merchant/src/app/backoffice/counter/coupon-panel.tsx`, `cart.ts` | **crear**: el banner + la pantalla de entrega; y el carrito extraido de `counter-console.tsx`, que el cupon dejo en 324 lineas sobre el limite de 300 |
 | `apps/merchant/src/app/(consumer)/wallet/page.tsx` | editar: entrada «Configuracion» |
-| `apps/merchant/src/app/(consumer)/wallet/settings/page.tsx` | crear: seccion de configuracion (opt-out por negocio) |
+| ~~`apps/merchant/src/app/(consumer)/wallet/settings/page.tsx`~~ | **ANULADO por el ADR 0068**: la seccion es una pestaña. En su lugar: `(consumer)/wallet/settings-tab.tsx` (crear) + `bottom-nav.tsx` y `wallet-shell.tsx` (editar: la tercera pestaña) |
 | `apps/merchant/src/app/api/public/consumer/marketing-opt-out/route.ts` | crear |
 | `apps/merchant/src/server/billing/plan-change.ts` | editar: guarda `downgrade_blocked_campaigns` + `activeCampaigns` en el input |
 | `apps/merchant/src/app/backoffice/subscription/**`, `apps/merchant/src/app/api/billing/**` | editar: pasar `activeCampaigns` y mostrar el bloqueo en el modal |
@@ -708,7 +716,9 @@ SQL crudo en el seed de integracion.**
       escrito**. El tick retira sus turnos.
 - [~] **[B]** Aislamiento: owner de A no **ve** (pagina), edita ni obtiene resultados de campañas de
       B (404); **staff no puede crear ni activar** (403). **[A]** el tick sin `CRON_SECRET` → 401.
-      **[D]** opt-out de una membresia ajena → 404; `/wallet/settings` sin sesion → redirect.
+      **[D]** opt-out de una membresia ajena → 404; **sin sesion, `/wallet` responde «Tu tarjeta no
+      esta abierta» y no toca la base** (reformulado por el ADR 0068: la seccion es una pestaña y no
+      tiene URL propia que pueda redirigir).
       **[B] CERRADO en B3**: `marketing-backoffice-pages.neon.integration.test.ts` asevera el
       **digest** de `notFound()` (no un throw cualquiera) para la campaña ajena y para un `[id]` mal
       formado; el listado no muestra la campaña del vecino. Mutaciones M3 y M4 → ROJO las dos. El
@@ -821,7 +831,8 @@ SQL crudo en el seed de integracion.**
       verde — ADR 0060, y la leccion de las dos ortografias del `accept=` de la spec 0040.)*
 - [ ] Autorizacion: owner A → campañas de B: 404 en las rutas con `[id]` **y en la pagina
       `/backoffice/marketing/[id]`**; staff → `POST /campaigns` y `activate`: 403; tick sin Bearer:
-      401; opt-out de una membresia ajena: 404; `/wallet/settings` sin sesion → redirect.
+      401; opt-out de una membresia ajena: 404; **sin sesion `/wallet` no renderiza la pestaña ni
+      lee membresias** (ADR 0068: no hay URL propia que redirigir).
 - [~] Render (`renderToStaticMarkup` + `node-html-parser`, sin jsdom — gotcha de `CLAUDE.md`):
       compositor con los 5 bloques y conteos; resultados con los titulos exactos, la estimacion
       oculta con `B < 30` y **su valor con `B ≥ 30`**; **el modal de downgrade mostrando

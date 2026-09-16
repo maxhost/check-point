@@ -33,6 +33,7 @@ const world = vi.hoisted(() => ({
   ownerContext: vi.fn(),
   readSubscription: vi.fn(),
   activeLocationCount: vi.fn(),
+  activeCampaignCount: vi.fn(),
   lockBusiness: vi.fn(),
   scheduleDowngrade: vi.fn(),
   clearPendingPlan: vi.fn(),
@@ -68,6 +69,15 @@ vi.mock("./locations/shared", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./locations/shared")>()),
   lockBusiness: world.lockBusiness,
   activeLocationCount: world.activeLocationCount,
+}));
+
+// Spec 0065, fase D: el `tx` de acá sólo sabe hacer `update` (ver el doble de `./db`), así
+// que el conteo de campañas va doblado por el mismo motivo que el de locales. Sin esto las
+// 4 rutas contestaban 503 — y el 503 se leía como «la ruta se rompió», no como «el doble no
+// sabe contar».
+vi.mock("./marketing/plan-brake", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./marketing/plan-brake")>()),
+  activeCampaignCount: world.activeCampaignCount,
 }));
 
 // `decidePlanChange` y `toSubscriptionView` quedan REALES: son la decisión que la ruta tiene
@@ -133,6 +143,7 @@ function signedInOwner(seeded: SubscriptionRow, activeLocations = 1) {
   });
   world.readSubscription.mockResolvedValue(seeded);
   world.activeLocationCount.mockResolvedValue(activeLocations);
+  world.activeCampaignCount.mockResolvedValue(0);
 }
 
 describe("api/billing — owner-only guard (spec 0063, D6)", () => {
@@ -140,6 +151,7 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
     vi.clearAllMocks();
     world.session = null;
     world.activeLocationCount.mockResolvedValue(1);
+    world.activeCampaignCount.mockResolvedValue(0);
     world.lockBusiness.mockResolvedValue({ id: CALLER_BUSINESS });
     world.scheduleDowngrade.mockResolvedValue({
       downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),

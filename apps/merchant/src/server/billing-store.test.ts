@@ -8,8 +8,8 @@ import {
   scheduleDowngrade,
   settleToFree,
 } from "./billing";
-import type { DbTransaction } from "./db";
 import { stripeSubscription } from "./billing-integration-support";
+import { txDouble } from "./billing-tx-double";
 
 /**
  * Spec 0063 — `billing/store.ts`: QUÉ COLUMNAS TOCA CADA OPERACIÓN.
@@ -23,35 +23,6 @@ import { stripeSubscription } from "./billing-integration-support";
  * una AUSENCIA — `stripe_customer_id` SE CONSERVA, porque es la llave con la que D8 vuelve a
  * preguntarle a Stripe. Un test de valores no ve una clave que sobra; uno de conjunto, sí.
  */
-
-type Recorded = {
-  set: Record<string, unknown>;
-  selected: string[];
-};
-
-function txDouble(row?: Record<string, unknown>) {
-  const recorded: Recorded = { set: {}, selected: [] };
-  const chain = {
-    set: (values: Record<string, unknown>) => {
-      recorded.set = values;
-      return chain;
-    },
-    from: () => chain,
-    where: () => chain,
-    limit: () => Promise.resolve(row ? [row] : []),
-    returning: () => Promise.resolve(row ? [row] : []),
-    then: (resolve: (value: unknown) => unknown) =>
-      Promise.resolve(resolve([])),
-  };
-  const tx = {
-    update: () => chain,
-    select: (columns: Record<string, unknown>) => {
-      recorded.selected = Object.keys(columns);
-      return chain;
-    },
-  } as unknown as DbTransaction;
-  return { tx, recorded };
-}
 
 const BIZ = "11111111-1111-1111-1111-111111111111";
 

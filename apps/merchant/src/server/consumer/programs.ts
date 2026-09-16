@@ -38,6 +38,10 @@ export type ConsumerProgramSummary = {
   /** The program's reward catalog (spec 0055), ordered by `position`. Same DTO the
    * wizard and the counter use — public `imagePath` only, never an R2 object key. */
   rewards: RewardDTO[];
+  /** Spec 0065 fase D: whether THIS consumer turned marketing off for this business.
+   * A boolean and not the timestamp: the switch is the only consumer of it, and the date
+   * on which someone opted out is not the consumer's business — it is ours. */
+  marketingOptOut: boolean;
 };
 
 export type ConsumerProgramRow = {
@@ -67,6 +71,7 @@ export type ConsumerProgramRow = {
   /** A redemption IS activity (spec 0055): without it, redeeming would not reorder the
    * wallet list. `lastActivityAt` is the newest of enroll / order / redemption. */
   lastRedemptionAt: Date | null;
+  marketingOptOutAt: Date | null;
 };
 
 function configurationOf(value: unknown): {
@@ -145,6 +150,7 @@ export function toConsumerProgramSummary(
       row.lastRedemptionAt ?? null,
     ).toISOString(),
     rewards,
+    marketingOptOut: row.marketingOptOutAt !== null,
   };
 }
 
@@ -177,6 +183,7 @@ export async function listConsumerPrograms(
       pointsBalance: programMemberships.pointsBalance,
       stampsCount: programMemberships.stampsCount,
       enrolledAt: programMemberships.enrolledAt,
+      marketingOptOutAt: programMemberships.marketingOptOutAt,
       lastOrderAt,
       lastRedemptionAt,
     })

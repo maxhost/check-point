@@ -4,6 +4,7 @@ import {
   activeLocationCount,
   lockBusiness,
 } from "../../../server/locations/shared";
+import { activeCampaignCount } from "../../../server/marketing/plan-brake";
 import {
   NO_BILLING_FACTS,
   asStripeGateway,
@@ -23,6 +24,13 @@ import {
 import { SubscriptionConsole } from "./subscription-console";
 
 export const dynamic = "force-dynamic";
+
+/** Los dos bloqueos que el modal sabe resolver: traen mensaje Y un lugar a donde ir. Los
+ * demás (`already_on_plan`) caen en el texto genérico de la consola. */
+const BLOCKS_WITH_ACTION: ReadonlySet<string> = new Set([
+  "downgrade_blocked",
+  "downgrade_blocked_campaigns",
+]);
 
 /**
  * Spec 0063, D7 + D8 — la sección de suscripción, SOLO OWNER (`requireOwner`, que manda al
@@ -159,6 +167,9 @@ async function readBillingState(businessId: string) {
     const row = await readSubscription(tx, businessId);
     if (!row) return null;
     const activeLocations = await activeLocationCount(tx, businessId);
+    // Spec 0065, fase D: el conteo de campañas activas alimenta la segunda guarda del
+    // downgrade, y se lee bajo el MISMO lock que el de locales.
+    const activeCampaigns = await activeCampaignCount(tx, businessId);
     const decision = decidePlanChange({
       currentPlan: row.plan,
       currentInterval: row.interval,
@@ -166,6 +177,7 @@ async function readBillingState(businessId: string) {
       status: row.status,
       stripeSubscriptionId: row.stripeSubscriptionId,
       activeLocations,
+      activeCampaigns,
       intent: { kind: "downgrade" },
     });
     return {
@@ -183,12 +195,13 @@ async function readBillingState(businessId: string) {
       canCancel:
         decision.kind === "schedule_downgrade" ||
         decision.kind === "settle_to_free",
+      // El `code` viaja porque es lo que decide A DÓNDE manda el modal (Locales o
+      // Campañas); el texto sigue siendo el del servidor, sin una segunda versión acá.
+      // `archiveCount` NO viaja: el modal nunca lo renderizó — el conteo ya está DENTRO
+      // del mensaje— y una prop que cruza sin consumidor es andamiaje (`CLAUDE.md`).
       downgradeBlock:
-        decision.kind === "blocked" && decision.code === "downgrade_blocked"
-          ? {
-              message: decision.message,
-              archiveCount: decision.archiveCount ?? 0,
-            }
+        decision.kind === "blocked" && BLOCKS_WITH_ACTION.has(decision.code)
+          ? { message: decision.message, code: decision.code }
           : null,
     };
   });

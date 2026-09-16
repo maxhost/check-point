@@ -1,13 +1,9 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { withDbTransaction } from "../db";
-import {
-  campaignLocations,
-  campaigns,
-  locations,
-  subscriptions,
-} from "../schema";
+import { campaignLocations, campaigns, locations } from "../schema";
 import { CampaignError, type Campaign, getCampaign } from "./campaign-store";
 import { type CampaignAction, nextStatus } from "./campaign-transitions";
+import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
 
 /**
  * The four buttons of the detail page (spec 0065 phase B). They move `status` and
@@ -46,27 +42,6 @@ async function usableDoors(
   return rows.length;
 }
 
-/**
- * The paid gate. Reads the CURRENT plan only: a campaign of a business with a downgrade
- * already scheduled may still be activated, because the plan it has today allows it and
- * the hard block on downgrading while campaigns run is phase D's
- * (`downgrade_blocked_campaigns`), not this route's.
- *
- * DECISION OF THE ORCHESTRATOR, not of the owner: the spec says «plan `plus` (402
- * `plan_not_allowed`)» and says nothing about a pending downgrade.
- */
-async function planAllows(
-  tx: Parameters<Parameters<typeof withDbTransaction>[0]>[0],
-  businessId: string,
-): Promise<boolean> {
-  const [row] = await tx
-    .select({ plan: subscriptions.plan })
-    .from(subscriptions)
-    .where(eq(subscriptions.businessId, businessId))
-    .limit(1);
-  return row?.plan === "plus";
-}
-
 export async function transitionCampaign(
   businessId: string,
   id: string,
@@ -84,11 +59,14 @@ export async function transitionCampaign(
 
   await withDbTransaction(async (tx) => {
     if (action === "activate") {
-      if (!(await planAllows(tx, businessId)))
+      // El gate de plan (402) vive en `plan-gate.ts` y lo comparte con `createCampaign`:
+      // componer y activar exigen lo mismo. La versión de B1 que vivía acá miraba sólo
+      // `plan === 'plus'`; ver el docblock de `campaignsAllowedFor` por qué eso no alcanza.
+      if (!(await planAllowsCampaigns(tx, businessId)))
         throw new CampaignError(
           402,
           "plan_not_allowed",
-          "Las campañas son del plan Plus.",
+          PLAN_NOT_ALLOWED_MESSAGE,
         );
       if ((await usableDoors(tx, id)) === 0)
         throw new CampaignError(
