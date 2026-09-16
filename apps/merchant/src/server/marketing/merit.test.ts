@@ -53,6 +53,17 @@ describe("businessScore — ADR 0066", () => {
     expect(globalLift([])).toBe(0);
   });
 
+  it("(D6) pools the global lift: two turns do not move the prior like a thousand", () => {
+    // The docblock declares the aggregation POOLED. The old assertion for this was
+    // `expect(table.defaultScore).toBe(globalLift(rows))` — TAUTOLOGICAL: it compares
+    // the function with itself and stays green under any aggregation. Hardcoded value.
+    const rows = [stats("big", 1000, 400, 200, 40), stats("small", 2, 2, 1, 0)];
+    expect(globalLift(rows)).toBeCloseTo(0.2021926, 6);
+    // The unweighted average would be (0.2 + 1.0) / 2 = 0.6: `small` would have moved
+    // the prior of the whole platform with two turns.
+    expect(globalLift(rows)).toBeLessThan(0.3);
+  });
+
   it("gives the ADR 0065 example to B (+8), not to A (+3) who has the higher rate", () => {
     const a = stats("a", 100, 33, 100, 30);
     const b = stats("b", 100, 10, 100, 2);

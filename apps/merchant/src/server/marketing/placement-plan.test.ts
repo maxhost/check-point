@@ -141,6 +141,62 @@ describe("planConsumerPlacement — activation", () => {
     expect(ids(expired)).toEqual(["turn-i"]);
   });
 
+  it("(D1) skips the too-close candidate and keeps walking the queue", () => {
+    // The docblock of `planActivations` claims that failing a condition skips THAT
+    // candidate — «una separacion y no una purga». Nothing pinned it: case (b) has
+    // nothing behind the skipped turn, so a `break` reads identical there.
+    const three = [
+      queued("a", {
+        ...northOf(0),
+        queuedAt: new Date(NOW.getTime() - 3 * DAY_MS),
+      }),
+      queued("b", {
+        ...northOf(200),
+        queuedAt: new Date(NOW.getTime() - 2 * DAY_MS),
+      }),
+      queued("c", {
+        ...northOf(1200),
+        queuedAt: new Date(NOW.getTime() - DAY_MS),
+      }),
+    ];
+    // `turn-c` is what a purge would eat: it is BEHIND the one the 400 m rule rejects.
+    expect(ids(planConsumerPlacement(input({ queued: three })))).toEqual([
+      "turn-a",
+      "turn-c",
+    ]);
+  });
+
+  it("(D2) draws the holdout AFTER the filters, so a skipped turn burns no draw", () => {
+    // Why it matters beyond hygiene: the holdout is the base line of the LIFT that
+    // ADR 0066 ranks by. If a filtered turn consumed the draw, the retained set would
+    // stop being «turns that WOULD have been placed» and the metric would be biased.
+    const three = [
+      queued("a", {
+        ...northOf(0),
+        queuedAt: new Date(NOW.getTime() - 3 * DAY_MS),
+      }),
+      queued("b", {
+        ...northOf(200),
+        queuedAt: new Date(NOW.getTime() - 2 * DAY_MS),
+      }),
+      queued("c", {
+        ...northOf(1200),
+        queuedAt: new Date(NOW.getTime() - DAY_MS),
+      }),
+    ];
+    const plan = planConsumerPlacement(
+      input({ queued: three, random: draws([0.5, 0.05]) }),
+    );
+    // Two draws for two survivors: the second one (0.05 < 0.1) must land on `turn-c`,
+    // not be eaten by the `turn-b` the separation rule rejected.
+    expect(plan.activations.map((a) => [a.turnId, a.holdout] as const)).toEqual(
+      [
+        ["turn-a", false],
+        ["turn-c", true],
+      ],
+    );
+  });
+
   it("orders by merit (ADR 0066) and breaks the tie by `queued_at asc`", () => {
     const pair = [
       queued("old", { queuedAt: new Date(NOW.getTime() - 9 * DAY_MS) }),

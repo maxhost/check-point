@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
+Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A — A2 cerrada).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -109,7 +109,8 @@ Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
   orquestador) · merito con balanza (piso para debutantes) · sin email · fecha de nacimiento mas
   adelante · slot por puerta, no por barrio.
 
-**ESTADO DE LA IMPLEMENTACION (2026-09-15, noche — COMMITEADO EN `ddd64d2`, NO PUSHEADO):**
+**ESTADO DE LA IMPLEMENTACION (2026-09-15, noche — A1+A2 COMMITEADAS EN `ddd64d2`, NO PUSHEADO; los 4
+tests de cierre de A2 quedan por commitear):**
 
 - **FASE A1 (schema + migracion `0031`): IMPLEMENTADA Y VERIFICADA POR EL ORQUESTADOR.** Falta el PASS
   de un revisor independiente. Archivos: `schema/campaign.ts` (nuevo, 162 l.), `schema/campaign-turn.ts`
@@ -157,7 +158,7 @@ Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
   enumera** (`coupon_redemption` por campaña y por negocio+fecha, `pass_placement` por negocio y por turno),
   todos aditivos y justificados por una consulta que la spec si pide.
 
-- **FASE A2 (funciones puras): CODIGO COMPLETO Y VERDE; FALTA LA TABLA DE MUTACIONES (8 de 9).**
+- **FASE A2 (funciones puras): CERRADA — codigo verde y TABLA DE MUTACIONES COMPLETA (9/9 + 6 sondas por docblock + 4 tests nuevos).**
   El implementador **MURIO a mitad de la medicion** (se corto la sesion, nunca entrego handoff). Archivos
   creados, todos `??` bajo `apps/merchant/src/server/marketing/`: `placement-plan.ts`, `utility-text.ts`,
   `relevant-text.ts`, `merit.ts`, mas `placement-plan-cases.ts` y los tests `placement-plan.test.ts` (7),
@@ -182,19 +183,94 @@ Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
   | id | archivo | invariante que ataca | resultado EJECUTADO |
   |---|---|---|---|
   | M2 | `placement-plan.ts` (limpio `a1454541…`) | «1 turno por negocio» | **ROJO (c)**, y **solo** (c). Corrida contra los **dos** archivos que pueden verla: `placement-plan.test.ts` 1 rojo, `placement-slots.test.ts` verde. Asercion leida (no solo «es rojo»): `expected [ 'turn-c1', 'turn-c2' ] to deeply equal [ 'turn-c1' ]` — habla de la **propiedad**, no del setup |
-  | M1 | `placement-plan.ts` | regla de 400 m → esperado rojo (b) | **PENDIENTE** |
-  | M3 | `placement-plan.ts` | contar holdouts en el `< 5` → esperado rojo (e) | **PENDIENTE** |
-  | M4 | `placement-plan.ts` | cooldown re-evaluado al ACTIVAR → esperado rojo (i) | **PENDIENTE** |
-  | M5 | `placement-plan.ts` | dedupe al reves (utilidad gana) → esperado rojo (h) | **PENDIENTE** |
-  | M6 | `relevant-text.ts` | truncar en vez de descartar el saldo → esperado rojo | **PENDIENTE** |
-  | M7 | `merit.ts` | rankear por tasa cruda → esperado rojo (d) | **PENDIENTE** |
-  | M8 | `merit.ts` | quitar el encogimiento → esperado rojo (a) | **PENDIENTE** |
-  | M9 | `merit.ts` | debutante al fondo → esperado rojo (b) | **PENDIENTE** |
+  | M1 | `placement-plan.ts` | regla de 400 m | **ROJO (b) y SOLO (b)** — `expected [ 'turn-a', 'turn-b' ] to deeply equal [ 'turn-a' ]`. Coincide con la prediccion |
+  | M3 | `placement-plan.ts` | contar holdouts en el `< 5` | **ROJO (e)**, 1 solo. Muere en la PRIMERA asercion (`placement-plan.test.ts:104`): `expected … to have a length of 6 but got 5` — el holdout se comio uno de los 5 cupos y el 6.º turno nunca se activo. Habla de la propiedad. **No llega a la asercion de `placements`**, o sea que el test pinnea «el holdout no ocupa cupo» pero la mitad «no aparece en el pase» no la mide ESTA mutacion |
+  | M4 | `placement-plan.ts` | el cooldown se evalua al ACTIVAR (el guard existe y muerde) | **ROJO (i)**, 1 solo — `expected [ { turnId: 'turn-i', …(8) } ] to deeply equal []`. Coincide |
+  | M5 | `placement-plan.ts` | dedupe al reves (utilidad gana) | **ROJO (h)**, 1 solo, en el OTRO archivo (`placement-slots.test.ts`) — `expected 'utility' to be 'both'`. Coincide |
+  | M6 | `relevant-text.ts` | truncar en vez de descartar el saldo | **DOS ROJOS**, los dos en `relevant-text.test.ts`: «drops the balance ENTIRE» (`expected 'Bar La Esquina: te faltan 2 sellos · …' to be 'Bar La Esquina: 2x1 en picadas hasta …'`) y «never returns more than the cap» (`expected 19 to be 20`). La prediccion decia uno |
+  | M7 | `merit.ts` | rankear por tasa cruda | **ROJO (d)**, 1 solo — `expected 0.275 to be less than 0.08333…`: el ejemplo del ADR 0065 se lo lleva A (+3) en vez de B (+8). Coincide |
+  | M8 | `merit.ts` | quitar el encogimiento | **DOS ROJOS**: (a) `expected 1 to be less than 0.6000…` y ademas «treats an empty side as 0, never NaN» (`expected 0.3 to be close to 0.1`). **M7 y M8 NO son indistinguibles** — cada una cae en un rojo distinto, contra lo que paso en la spec 0055 |
+  | M9 | `merit.ts` | debutante al fondo (`defaultScore: -Infinity`) | **ROJO (b)** — `expected [ 'proven', 'weak', 'debutante' ] to deeply equal [ 'proven', 'debutante', 'weak' ]`. Coincide |
+  | M9b | `merit.ts` | variante MAS PLAUSIBLE que `-Infinity`: `defaultScore: 0` | **ROJO (b)** tambien, pero por **otra asercion**: `expected +0 to be 0.15000…` (la linea `toBe(globalLift(rows))`), no por el ranking — con esas filas el debutante en 0 **sigue quedando en el medio**. Sonda extra del orquestador: dice **cual** de las dos aserciones del test hace el trabajo en cada caso |
 
-  **La columna «esperado» es la PREDICCION de la spec, no un resultado.** Se ejecuta y se transcribe lo que
-  pase de verdad; si no coincide, **eso es el hallazgo** (spec 0055: dos mutaciones que el plan daba por
-  distintas resultaron indistinguibles). Falta ademas **una mutacion por cada docblock nuevo que afirme un
-  invariante** en esos 4 modulos — sin leerlos todavia, ese conjunto no esta enumerado.
+  **PRE-REGISTRO DE LAS 8 PENDIENTES — ESCRITO ANTES DE MUTAR (2026-09-15, cierre de A2).** Punto de
+  retorno: todos los archivos estan **COMMITEADOS en `ddd64d2`**, asi que a diferencia del rescate de M2 el
+  `git checkout` SI existe. Restauracion de cualquiera:
+  `git checkout -- apps/merchant/src/server/marketing/<archivo>` y despues `shasum` contra el baseline de
+  abajo. Corrida: `node ../../node_modules/vitest/vitest.mjs run src/server/marketing/` desde `apps/merchant`
+  (**los 5 archivos de test juntos, 459 ms** — el alcance es el directorio entero, no el archivo esperado:
+  `relevant-text.ts` lo consume `placement-plan.ts` y `truncateText` lo consumen los dos).
+  **Baseline verde re-medido hoy: `Tests 30 passed (30)`, 5 archivos.**
+
+  | id | archivo:linea | edicion exacta |
+  |---|---|---|
+  | M1 | `placement-plan.ts:197` | `< limits.minSeparationMeters` → `< 0` (deja `tooClose` usado: sin lint rojo colateral) |
+  | M3 | `placement-plan.ts:215` | comentar `if (holdout) continue;` (el holdout pasa a ocupar slot) |
+  | M4 | `placement-plan.ts:183` | `limits.cooldownDays * DAY_MS` → `0 * DAY_MS` (el piso queda en `now`: el guard nunca dispara) |
+  | M5 | `placement-plan.ts:248` | insertar `if (shared) continue;` (gana la utilidad, no el turno) |
+  | M6 | `relevant-text.ts:50` | `truncateText(campaignOnly, cap)` → `truncateText(composed, cap)` |
+  | M7 | `merit.ts:45-48` | `liftOf` devuelve solo `rate(placedPurchases, placedN)` (tasa cruda) |
+  | M8 | `merit.ts:67` | `return liftOf(stats);` (sin encogimiento) |
+  | M9 | `merit.ts:108` | `defaultScore: average` → `defaultScore: -Infinity` (debutante al fondo) |
+
+  **PRESUPUESTO Y CONDICION DE CORTE, declarados en el encargo (`CLAUDE.md`, ADR 0062 + la instruccion del
+  owner del 2026-09-13):** estas 8, mas **una sonda por cada docblock de los 4 modulos que afirme un
+  invariante** — ese conjunto **ya esta enumerado** (abajo, D1..D6) despues de leer los cuatro archivos.
+  **Clase de error que tienen que cazar: un invariante declarado —en la spec o en un docblock del codigo
+  nuevo— que NINGUN test pinnea, con una regresion PLAUSIBLE** (el cambio que haria un implementador
+  distraido), no una evasion adversarial escrita a proposito. **Una sola vuelta:** lo que quede sin oraculo
+  se **DECLARA** en la spec y en este archivo y pasa al QA o a la integracion de A5; no se abre una vuelta 2
+  ni se persigue un hallazgo que no sea riesgo de produccion.
+
+  **SONDAS POR DOCBLOCK NORMATIVO (D1..D6) — enumeradas LEYENDO los 4 modulos, no de memoria.** Cada una
+  ataca una frase que el codigo AFIRMA y que la tabla de mutaciones de la spec no podia ver, porque la tabla
+  se escribio antes de que esos comentarios existieran (`CLAUDE.md`: la tabla se escribe desde el diseño):
+
+  | id | docblock que afirma el invariante | edicion exacta |
+  |---|---|---|
+  | D1 | `placement-plan.ts:168-171` «fallar una condicion solo SALTEA ese candidato — sigue `queued`; eso es lo que hace de los 400 m una separacion y no una purga» | `if (tooClose) continue;` → `break` |
+  | D2 | `placement-plan.ts:172-173` «el holdout se sortea DESPUES de los filtros, por eso un retenido es un turno que SI se habria colocado» | mover `const holdout = input.random() …` al tope del `for` |
+  | D3 | `placement-plan.ts:151-153` «desempate final por `turn_id` para que dos corridas sobre los mismos datos den el mismo orden aunque el driver devuelva las filas mezcladas» | el ultimo `return` de `byMerit` → `0` |
+  | D4 | `placement-plan.ts:264-265` «el orden es irrelevante: es un conjunto» | quitar los dos `.sort()` de `differs` |
+  | D5 | `placement-plan.ts:93-94` «techo duro del pase: Apple acepta 10 `locations`, Google 10 por objeto» | quitar `.slice(0, limits.maxSlots)` |
+  | D6 | `merit.ts:70-75` «el promedio global es POOLED: pesa a cada negocio por su volumen en vez de dejar que uno con dos turnos mueva el prior igual que uno con dos mil» | `globalLift` devuelve el promedio simple de `liftOf` por fila |
+
+  **La columna «esperado» era la PREDICCION de la spec, no un resultado.** Se ejecutaron las 8 y se
+  transcribio lo que paso: **las 8 dieron rojo**, y en dos casos (M6, M8) el rojo fue **doble** donde la
+  prediccion decia uno. Ninguna resulto indistinguible de otra.
+
+  **RESULTADO DE LAS SONDAS POR DOCBLOCK (D1..D6): LAS SEIS VERDES. Ese es el hallazgo del ciclo.**
+  Seis invariantes que el codigo nuevo AFIRMA en un comentario y que **ningun test pinneaba** — exactamente
+  la familia que `CLAUDE.md` describe (la tabla de mutaciones se escribe desde el diseño, asi que no ve lo
+  que el codigo termino afirmando). **Cuatro son riesgo de produccion y se cerraron con un test cada uno;
+  dos se DECLARAN** (abajo). Los cuatro tests nuevos se **midieron**, no se predijeron:
+
+  | id | 1a vuelta (sin test) | test nuevo | 2a vuelta (con el test) |
+  |---|---|---|---|
+  | D1 | VERDE 30/30 | `(D1) skips the too-close candidate and keeps walking the queue` | **ROJO** `expected [ 'turn-a' ] to deeply equal [ 'turn-a', 'turn-c' ]` (y arrastra tambien al de D2: el `break` se come igual a `turn-c`) |
+  | D2 | VERDE 30/30 | `(D2) draws the holdout AFTER the filters, so a skipped turn burns no draw` | **ROJO**, diff leido entero: `turn-c` pasa de `true` a `false` — el turno filtrado por los 400 m se comio el sorteo. Habla de la propiedad |
+  | D4 | VERDE 30/30 | `(D4) does not refresh when the SAME set comes back in another order` | **ROJO** `expected true to be false` |
+  | D6 | VERDE 30/30 | `(D6) pools the global lift: two turns do not move the prior like a thousand` | **ROJO** `expected 0.6 to be close to 0.2021926` |
+
+  **Por que D4 y D6 importan mas de lo que parecen:** sin el `sort` de `differs`, un `select` que devuelva
+  las mismas filas en otro orden marca `refresh = true` **en cada tick** → reescritura del pase,
+  `message_updated_at` nuevo y una fila de `pass_refresh` por corrida, para siempre. Y la asercion que
+  cubria D6 era **TAUTOLOGICA**: `expect(table.defaultScore).toBe(globalLift(rows))` compara la funcion con
+  ella misma y queda verde bajo cualquier agregacion — el test nuevo usa un **valor hardcodeado**
+  (`0.2021926`) y ademas las filas viejas (dos negocios de 50 turnos) daban **el mismo numero** pooled que
+  por promedio simple, o sea que con ese fixture la propiedad era inobservable.
+
+  **LOS DOS QUE SE DECLARAN, con el limite verificado y no supuesto (condicion de corte: una vuelta):**
+  - **D3 — el desempate final por `turn_id` no tiene oraculo.** Sin el, `Array.sort` (estable en V8) deja
+    el orden de entrada, que viene del driver sin `order by` total: entre candidatos con **identico** score
+    y **identico** `queued_at` al milisegundo gana uno arbitrario. Las dos elecciones son validas; no hay
+    invariante roto, solo reproducibilidad. **No es riesgo de produccion → se declara y se sigue.**
+  - **D5 — el techo `maxSlots = 10` es INALCANZABLE con los limites default, MEDIDO.** Sonda temporal
+    (`zz-probe-d5.test.ts`, corrida y **borrada en el mismo turno**, `ls | grep -c zz-probe` = 0): con **30
+    candidatos `queued` y 30 de utilidad** el plan da **5 activaciones y 8 slots** — `utilitySlots` 3 +
+    `maxActiveTurns` 5 = 8 < 10. El `.slice(0, maxSlots)` es una defensa que no puede disparar sin bajar
+    otro limite; escribirle un test exigiria un `limits` artificial que no prueba nada del producto. **Esto
+    es una medicion, no un razonamiento sobre el codigo.**
 
   **BASELINE PARA AUDITAR EL ARBOL — RE-MEDIDO en el handoff (no copiado del mensaje anterior).** Si una
   sesion fresca corre `shasum` y algo no coincide, **alguien dejo una mutacion puesta**; si coincide todo,
@@ -202,30 +278,44 @@ Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
 
   ```
   6b72c2b46b23fa235dc6dc2fae5f3c3daa6d9d1d  marketing/merit.ts
-  a5f9f9576af86bca9a1a1189d0f6dbbd157fa490  marketing/merit.test.ts
+  f9a592f9558844fd31e84fd9daa3f44b49358006  marketing/merit.test.ts
   a1454541da0c1baeded94ea5af6edc6acd1c9002  marketing/placement-plan.ts
-  5b86521ce1148430bb6e61b3fb8dc111a55c6589  marketing/placement-plan.test.ts
+  ccaf5424fe397fe60896dad59d1dee8dc17598cc  marketing/placement-plan.test.ts
   ffbb4f260a0e84dfd09ae834fdc1ca4b2d0fad97  marketing/placement-plan-cases.ts
-  073a934d16df9787feef94b0db7cef97f714004f  marketing/placement-slots.test.ts
+  f27d84f61e9e5659d686a7c56952543739c92e00  marketing/placement-slots.test.ts
   07bd89db64da1a9f0ffaacd3288f5d9d2b7141b8  marketing/relevant-text.ts
   7769450d2f4da0f560b2ea1da88cc6ea1849d4b4  marketing/relevant-text.test.ts
   7f269930bfdff8bb997e3b8976a0f58c5782aefc  marketing/utility-text.ts
   048e063a0198f0b7935386c83f94b38d46e23c0a  marketing/utility-text.test.ts
   ```
+  **RE-MEDIDOS al cerrar las mutaciones (2026-09-15, noche): los 4 fuentes `.ts` estan IDENTICOS al baseline
+  anterior** —ninguna mutacion sobrevivio, y como A1/A2 estan commiteadas en `ddd64d2` el `git checkout` de
+  emergencia SI existe para estos archivos— y **cambiaron los 3 archivos de test** que recibieron los casos
+  D1/D2/D4/D6 (`merit.test.ts`, `placement-plan.test.ts`, `placement-slots.test.ts`). `grep -rn MUTATION
+  marketing/` **vacio**.
   Comando: `shasum apps/merchant/src/server/marketing/*.ts`
   **Los shasum de A1 del handoff anterior estan PODRIDOS y no se usan** — `campaign-turn.ts` cambio despues
   (el check de `relevant_text` 60→120) y la 0031 se regenero con otro nombre. Los vigentes de A1 se re-miden
   con `shasum apps/merchant/src/server/schema/campaign*.ts`.
 
-  **TAMAÑOS (preguntados AL HOOK, no a `wc`; todos `EXIT=0`), con los dos que estan al borde:**
+  **TAMAÑOS RE-MEDIDOS DESPUES DE PRETTIER (preguntados AL HOOK y con un control que da `EXIT=2` sobre un
+  archivo de 447 lineas, para probar que discrimina), sobre los ` M` Y los `??` del alcance:**
+  `placement-plan.test.ts` **224**, `placement-slots.test.ts` **129**, `merit.test.ts` **76** — los tres
+  `EXIT=0` y holgados. Los de A1/A2, sin cambios:
   `placement-plan.ts` **284/300** y `schema/consumer.ts` **298/300** — **la proxima fase que los toque los
   parte, no los extiende.** El resto holgado: `merit.ts` 138, `utility-text.ts` 102, `relevant-text.ts` 51,
   `campaign.ts` 162, `campaign-turn.ts` 252.
 
-  **DECISION DEL ORQUESTADOR: las 8 que faltan NO se re-despachan, las termina el orquestador a mano**
-  (`CLAUDE.md`, corolario (f) de la 0064: reanudar un encargo muerto sale mas caro que terminarlo — cada
-  muerte obliga a auditar el arbol antes de seguir). Cada una es **un cambio de una linea + una corrida de
-  ~5 s**. La fila de bitacora se escribe **ANTES** de mutar.
+  **DECISION DEL ORQUESTADOR (EJECUTADA): las 8 que faltaban NO se re-despacharon, las termino el
+  orquestador a mano** (`CLAUDE.md`, corolario (f) de la 0064: reanudar un encargo muerto sale mas caro que
+  terminarlo). **Confirmado en la practica: 8 mutaciones + 6 sondas + 4 re-corridas = ~5 min de reloj**, una
+  linea y una corrida de 460 ms cada una. La fila de bitacora se escribio **ANTES** de mutar (el pre-registro
+  de arriba).
+
+  **GATES DE ROOT AL CERRAR A2 (corridos por el orquestador, Node `v24.20.0`):** `typecheck` **3/3**,
+  `lint` limpio, `format:check` «All matched files use Prettier code style!», `test`
+  **`Tests 761 passed | 221 skipped (982)`** — el baseline de A2 era **757**, o sea **+4 y cero
+  regresiones** —, `build` **exit 0**. El directorio `marketing/` solo: **34 passed (34)** en 456 ms.
 
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
 `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
@@ -245,8 +335,9 @@ el ADR 0065 con su fuente, y lo que la revision ya confirmo correcto esta listad
 **A1 y A2 estan COMMITEADAS en `ddd64d2`; NO se pusheo, asi que prod NO tiene este codigo** — si en algun
 momento se pide QA, primero `git push` y despues verificar el commit status del **sha exacto**
 (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`), nunca «prod esta verde».
-**EL PRIMER PASO AL RETOMAR son las 8 mutaciones pendientes de A2** (tabla arriba): las hace el orquestador
-a mano, fila de bitacora ANTES de mutar, y el resultado se **ejecuta y se transcribe**, no se predice.»
+**LAS 8 MUTACIONES PENDIENTES DE A2 ESTAN HECHAS** (2026-09-15, noche): las 8 rojas, mas 6 sondas por
+docblock que salieron **todas verdes** → 4 tests nuevos (D1/D2/D4/D6, medidos rojos bajo su mutacion) y 2
+limites declarados (D3, D5). **A2 esta CERRADA. El primer paso al retomar es A3.**»
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
@@ -258,8 +349,9 @@ detalle vivo esta en el bloque ESTADO del tope; esta lista es solo el arco compl
 3. ~~**Revision adversarial de la spec**~~ **HECHA Y CERRADA (2026-09-15, noche): tres revisores, FAIL
    unanime, 16 bloqueantes + un 17.º que salio de correr el SQL, todos corregidos y verificados
    empiricamente.** La condicion de corte declarada era **una** vuelta. **No se reabre.**
-4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). A1 hecha y verificada; A2
-   despachada. Al cerrar A5 va **un revisor independiente sobre la fase entera**.
+4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1 y A2 CERRADAS** (A2 con
+   sus 9 mutaciones ejecutadas, 6 sondas por docblock y 4 tests nuevos). **Sigue A3.** Al cerrar A5 va
+   **un revisor independiente sobre la fase entera**.
    **El item viejo «aplicar la migracion `0031` en `ci-integration` antes» queda ANULADO**: `ci.yml` ya
    corre `pnpm db:migrate` en cada corrida (spec 0062), y el orden era ademas imposible — la migracion
    la **genera** la fase A.

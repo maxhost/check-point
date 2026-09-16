@@ -49,6 +49,35 @@ describe("planConsumerPlacement — the pass", () => {
     expect(changed.refresh).toBe(true);
   });
 
+  it("(D4) does not refresh when the SAME set comes back in another order", () => {
+    // `differs` declares «el orden es irrelevante: es un conjunto». Case (g) has ONE
+    // slot, where order cannot differ, so nothing pinned it — and without the sort a
+    // reordered `select` would rewrite the pass and queue a `pass_refresh` every tick.
+    const current = [
+      {
+        locationId: "location-b",
+        slotKind: "utility" as const,
+        relevantText: "Negocio b: 3 sellos",
+      },
+      {
+        locationId: "location-a",
+        slotKind: "utility" as const,
+        relevantText: "Negocio a: 3 sellos",
+      },
+    ];
+    const plan = planConsumerPlacement(
+      input({
+        utility: [utility("a"), utility("b", { ...northOf(900) })],
+        currentPlacement: current,
+      }),
+    );
+    expect(plan.placements.map((slot) => slot.locationId)).toEqual([
+      "location-a",
+      "location-b",
+    ]);
+    expect(plan.refresh).toBe(false);
+  });
+
   it("(h) fuses one door that falls in both bags into a single row", () => {
     const door = {
       businessId: "business-bar",
