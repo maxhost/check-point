@@ -422,6 +422,30 @@ barrido de tamaños se corre sobre los ` M` **y** los `??`.
   cae en un `swallow`. Coalescer con `insert … select … where not exists (… status in
   ('pending','sending'))`, no con un indice.
 
+- **DRIZZLE RENDERIZA LA COLUMNA *SIN CALIFICAR* EN UN SELECT DE UNA SOLA TABLA, asi que una subconsulta
+  correlacionada escrita con `${tabla.columna}` se ata EN SILENCIO a la columna homonima de la tabla
+  INTERNA y deja de correlacionar.** En A5 de la spec 0065,
+  `exists (select 1 from consumer.wallet_pass wp where wp.consumer_id = ${programMemberships.consumerId})`
+  compilo a `wp.consumer_id = "consumer_id"` —verificado con `.toSQL()`, no deducido— que Postgres resuelve
+  contra `wallet_pass`: el `exists` paso a significar «¿hay algun pase en toda la base?» y **todos los
+  consumidores daban `hasPass = true`**, con typecheck verde y filas de aspecto plausible. Lo cazo un seed
+  con un consumidor **sin** pase. Con `join`s drizzle SI califica, asi que el bug aparece y desaparece segun
+  la forma del query: **toda subconsulta correlacionada va en SQL crudo con alias explicito** (`m.consumer_id`).
+  Y si dudas de que emite una consulta, `.toSQL()` te lo dice sin tocar la base.
+- **`db.execute(sql…)` DEVUELVE LOS VALORES CRUDOS DEL DRIVER; el query builder los MAPEA.** Un
+  `timestamptz` llega como **string** desde `execute` y como `Date` desde un `select` del builder — y el
+  generico de `execute<T>` es una **asercion**, no un chequeo, asi que `enrolledAt: Date` pasa typecheck y
+  revienta despues con `enrolledAt.getTime is not a function` (o peor: compara como string). Booleanos e
+  `integer` no necesitan conversion (medido con una sonda: el driver ya devuelve `true`/`false` y numeros).
+  En marketing eso vive en `marketing/driver-values.ts`; si lees fechas con SQL crudo en otro modulo,
+  conviertelas ahi mismo.
+- **El apex `checkpass.club` hace 308 a `www.checkpass.club`, y los workflows de cron asertan
+  `test "$code" = "200"` con un `curl` SIN `-L`.** O sea que un `*_ENDPOINT` cargado con el apex deja el
+  workflow **rojo para siempre** y el worker sin correr, con pinta de secreto mal puesto. Medido:
+  `https://checkpass.club/api/internal/wallet-push` → **308** + `location: https://www.…`;
+  `https://www.checkpass.club/...` → **401** (la ruta contesta). **Todo endpoint interno que se configure
+  como secret va con `www.`**
+
 - **Gates: Node 24 + scripts de ROOT.** El shell del AGENTE arranca en Node 22 —es el Node del
   harness de Claude Code, que se antepone en el `PATH`, **no la terminal del owner**— y el repo
   pide 24: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` antes de cualquier gate.

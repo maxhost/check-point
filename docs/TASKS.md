@@ -726,9 +726,22 @@ no se extendio.
 2. **Recien con el PASS**: commitear lo que falte, `git push`, verificar el commit status del **sha exacto**
    (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`) y aplicar la migracion
    `0031` a **prod** por MCP.
-3. **Secrets que necesita el owner ANTES del QA en prod**: `MARKETING_TICK_ENDPOINT`
-   (`https://<dominio>/api/internal/marketing-tick`) y `CRON_SECRET` (el mismo de Vercel) como Actions
-   secrets del repo. Sin ellos el workflow **sale en 0 sin hacer nada** (mismo patron que `wallet-push-cron`).
+3. **SECRETS — VERIFICADO, NO RELATADO DE LA SPEC: falta UNO SOLO, y NO se toca Vercel.** La spec decia
+   «secrets `MARKETING_TICK_ENDPOINT` y `CRON_SECRET`». Al chequearlo (`GH_TOKEN= gh secret list`):
+   **`CRON_SECRET` ya existe como Actions secret del repo desde el 2026-08-15**, y las corridas de
+   `wallet-push-cron.yml` **salen `success` cada ~hora** (`gh run list --workflow=wallet-push-cron.yml`),
+   lo que prueba que ese secret **coincide con el de Vercel** — si no, el endpoint devolveria 401 y el paso
+   fallaria. O sea: **lo unico que el owner tiene que crear es `MARKETING_TICK_ENDPOINT`**, en
+   **GitHub → Settings → Secrets and variables → Actions** (NO en Vercel: el workflow vive en Actions
+   porque el plan Hobby ya gasto sus 2 crons).
+   **Valor exacto, medido: `https://www.checkpass.club/api/internal/marketing-tick` — CON `www.`**
+   El apex hace **308** a `www` (`curl` contra el endpoint de wallet-push: apex → 308 + `location`,
+   `www` → 401 «No autorizado», o sea la ruta contesta), y el workflow asevera `test "$code" = "200"` con
+   un `curl` **sin `-L`**: cargado con el apex quedaria **rojo para siempre** y el tick nunca correria, con
+   pinta de secreto mal puesto. Sin el secret, el workflow **sale en 0 sin hacer nada** (mismo patron que
+   `wallet-push-cron`), asi que la ausencia tampoco se ve como error.
+   **Ojo con el orden: el endpoint solo existe en prod DESPUES del push + deploy**, asi que cargar el
+   secret antes es inofensivo pero el `workflow_dispatch` de prueba recien vale despues del deploy.
 4. Fases B (backoffice), C (cupon) y D (consumidor + freno por plan).
 
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec
@@ -764,8 +777,10 @@ mutaciones) y `docs/specs/0065-campana-de-proximidad-por-wallet.md`; **no re-med
 
 **Con el PASS del revisor:** commitear, `git push`, verificar el commit status del **sha exacto**
 (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`, nunca «prod esta verde»),
-aplicar la `0031` a prod por MCP y **pedirle al owner los dos Actions secrets** (`MARKETING_TICK_ENDPOINT`,
-`CRON_SECRET`) antes del QA. Despues siguen las fases B, C y D.»
+aplicar la `0031` a prod por MCP y **pedirle al owner UN solo Actions secret**:
+`MARKETING_TICK_ENDPOINT = https://www.checkpass.club/api/internal/marketing-tick` (con `www.`; el apex
+hace 308 y el workflow no sigue redirects). `CRON_SECRET` **ya esta cargado y funcionando** — verificado,
+no supuesto. Despues siguen las fases B, C y D.»
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
