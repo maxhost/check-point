@@ -9,6 +9,13 @@ archivos: packages/domain/src/incentives/**, packages/db/src/schema/incentives.t
 
 # 0003 — Wizard de campañas e Incentive Engine
 
+> **Estado real 2026-09-15 — reencuadrada por el ADR 0064.** El motor reactivo que describe esta
+> spec es la **FASE 2** del motor de marketing: no puede expresar «N dias sin visita» (la ausencia
+> de un evento), asi que la fase 1 es un **motor de audiencias** y el primer tipo de campaña real es
+> la **proximidad por wallet (spec 0065)**, que ademas fija el journey de composicion. Cuando la
+> fase 2 se retome, dos agregados del ADR 0064: «actualizar audiencia» como efecto y la evaluacion
+> periodica como disparador. Sigue en `borrador`.
+
 ## Problema
 
 El owner necesita convertir una intención comercial —por ejemplo, atraer gente a un

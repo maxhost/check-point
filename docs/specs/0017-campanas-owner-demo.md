@@ -9,6 +9,11 @@ archivos: apps/merchant, pruebas merchant y e2e, docs
 
 # 0017 — Campañas del owner demo
 
+> **Estado real 2026-09-15 — la reemplaza la spec 0065.** El tile «Campañas» pasa a
+> `/backoffice/marketing` cuando la 0065 se implemente (fase B); hasta entonces este mock
+> sigue siendo el destino. Su compositor en frases con bloques cerrados es la referencia visual
+> que hereda la 0065.
+>
 > **Estado real 2026-09-09 — verificado contra el código.** **Este mock no fue superado: es el destino real del tile «Campañas»** (`backoffice/page.tsx:80` → `/backoffice/demo/campaigns`). Las campañas reales están **diferidas** (ADR 0034) y su rediseño vive en la spec 0003, dentro de la capa de marketing del ADR 0057.
 
 ## Alcance

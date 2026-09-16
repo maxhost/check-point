@@ -8,103 +8,99 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-13.
+Ultima actualizacion: 2026-09-15 (tarde).
 
-**ESTADO REAL (bloque reescrito ENTERO el 2026-09-15):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
-- **ARCO DE SUSCRIPCION CERRADO.** Spec 0064 **`implementada`**, commit `ca2d746`, `Vercel: success`
-  verificado **para ese sha exacto ANTES** de pedir el QA, y **QA del owner en prod: TODO EN VERDE.**
-  No hace falta migracion de base: la 0064 no agrego columnas.
-- **Documentacion al dia (2026-09-15):** spec 0064 en `implementada` con **los 13 items del DoD marcados
-  con su evidencia**; **ADR 0063** anotado como implementado **y declarando que supersede la decision 6
-  del ADR 0058**; **ADR 0058** con el aviso al inicio de que quedo superado en **DOS** puntos (el
-  discriminante del §12 → ADR 0060, y la baja programada → ADR 0063); `INDEX.md` con las tres filas
-  actualizadas.
-- **YA NO QUEDA NADA ABIERTO EN BILLING.** Las tres decisiones del orquestador (**O-2** el link del recibo
-  cruza como prop; **O-3** NO hay migracion de los negocios ya diferidos; **O-4** la baja conserva la marca de
-  intencion del paso 2) **quedaron ACEPTADAS el 2026-09-15** por decision del owner: «si estan implementadas y
-  funcionando por mas que no las acepte y no las rechace marcalas como terminadas». **Se aceptaron EN BLOQUE
-  y sobre el producto ya funcionando**, no evaluadas una por una, y con O-3 presentada explicitamente como
-  contraria a un pedido literal suyo. **Son decisiones vigentes del producto: cambiarlas exige una spec nueva.**
-  - **NOTA OPERATIVA (no es deuda ni decision abierta, es diagnostico para ahorrar tiempo):** el camino de
-    **O-3 no lo ejercito nadie todavia**. `A3 Test` (`e9c96528-5f3e-4952-b283-7434ec867b4f`) sigue diferido al
-    **13-10**. **Si ese dia no aterriza en `free` limpio, arrancar por O-3 y no por un bug nuevo.**
-  - **H2** queda como hallazgo menor declarado: el docblock de la `idempotencyKey` argumenta algo dudoso, pero
-    el codigo esta bien. Si alguien lo retoma, el trabajo es corregir el COMENTARIO, no escribir un test.
-- **TRAMPA DE ESTE REPO QUE COSTO UNA SESION ENTERA — vale para cualquier test de billing:** un **`import`
-  de VALOR** al barrel `./billing` dentro de `billing-integration-support.ts` cierra un ciclo con la
-  factory de `vi.mock("./stripe-config")` (que importa ese mismo support) y **cuelga para siempre** los
-  `billing-pages*.neon.integration.test.ts` — ni `vitest list` termina, 0% de CPU. Se importa del **modulo
-  concreto** (`./billing/store`). **Un `import type` al barrel es gratis; uno de valor no.**
-  **Y para diagnosticarlo:** si «todo cuelga», corré primero un test suelto y ajeno — si ese anda en ms,
-  vitest esta sano y el problema es de esos archivos; y si cuelgan **dos** hermanos, mira la cadena COMUN,
-  no el archivo nuevo.
-- **Higiene del entorno:** hay un `pnpm install --filter activation…` colgado hace **mas de 37 dias** en
-  esta maquina, **de OTRO proyecto**. No es nuestro y no hay que tocarlo.
+- **ARCO DE SUSCRIPCION: CERRADO.** Spec 0064 `implementada`, commit `ca2d746`, QA del owner en prod en
+  verde. O-2/O-3/O-4 aceptadas por el owner. Diagnostico vigente: `A3 Test`
+  (`e9c96528-5f3e-4952-b283-7434ec867b4f`) sigue diferido al **13-10**; si ese dia no aterriza en
+  `free` limpio, arrancar por O-3. **Tarea 55** (intervalo anual → mensual) sigue pendiente y no es
+  este arco. El barrido de las 60 specs (0058/0059/0010/0018/0022 → `implementada`) esta hecho y
+  commiteado en `ea996c3` y anteriores.
 
-- **BARRIDO DE DOCUMENTACION (2026-09-15): se reviso el estado de LAS 60 specs, no solo el arco de
-  suscripcion.** Habia **dos con drift** —codigo vivo en el arbol y estado `cerrada`— y el owner las
-  mando marcar («ya estan corriendo», que es señal que el modelo no genera):
-  - **Spec 0058** (checkout solo-owner + toast del login) → `implementada`. **Y aparecio algo que valia
-    el barrido: su PREMISA CENTRAL CADUCO.** Cerro el hallazgo de Checkout como «no alcanzable» porque
-    habia «un unico llamador (`OnboardingPage`)»; **hoy hay DOS** — la seccion de suscripcion de la spec
-    0063 tambien lo llama, o sea que **la superficie de upgrade posterior SI existe**. **El riesgo no
-    quedo abierto: lo cerro la propia 0063** (`requireBillingOwner` en `checkout/route.ts:41` + el test
-    de auth que cubre checkout). Lo salvo que otra spec puso el guard igual, **no** este documento.
-  - **Spec 0059** (captura de imagen en movil) → `implementada`. Verificado por lectura antes de marcar:
-    el `capture="environment"` vive **dentro** del guard `isTouch` en las tres superficies. **EL LIMITE YA SE CERRO** (2026-09-15, a pedido del owner):
-    `catalog/image-capture.test.ts`, 6 tests con render REAL, y **dos mutaciones ejecutadas** que muerden
-    (anular `isTouch` → rojo el caso escritorio; colgar el cartel de `true` → rojo el bicondicional).
-    **Sigue sin oraculo el guard de las otras dos superficies**: sello (pendiente, exige un `LoyaltyVm`
-    completo) y logo (exige `vi.mock("react")`: su estado carga en un `useEffect` que no corre en SSR).
-  - **Spec 0060** (el portal del consumidor se actualiza solo) sigue en `borrador` **y es correcto**:
-    se verifico que no hay ningun `router.refresh`/polling/`visibilitychange` en `apps/consumer`.
-  - **Y TRES MAS que estaban en `cerrada` por pura omision, con el codigo vivo:** **0010** (el scaffold del
-    monorepo — es el arbol sobre el que corre todo), **0018** (la fundacion de UI; **su propio texto ya decia
-    «implementada y en uso»**, el drift era solo la palabra clave del frontmatter, que es la que leen los
-    barridos) y **0022** (registro de owner, sesion, Checkout y alta de negocio — la base de las 0063/0064).
-  - **LAS 9 QUE SIGUEN EN `cerrada` ESTAN BIEN Y NO SON DEUDA:** todas dicen POR QUE — «superada por la spec
-    X» (0011, 0012, 0013, 0014, 0016, 0019) o «**demo TODAVIA EN USO**» porque la feature real no existe aun
-    (0015 locales, 0017 campañas, 0020 analiticas). **No tocarlas**: su estado describe la realidad.
-  - **Resultado del barrido: no queda ninguna spec implementada marcada como otra cosa.**
+- **ARCO DE MARKETING: EMPEZADO — DOCUMENTOS ESCRITOS Y SPEC CERRADA, NADA DE CODIGO, SIN COMMITEAR
+  (2026-09-15).**
+  - **ADR 0064** (`aceptada`): el motor arranca por **audiencias** (fase 1), el reactivo del 0018 es
+    la fase 2; **un tipo de campaña = una spec + un ADR**; los $20 compran el motor **sobre la base
+    propia**; el cupon es un efecto; medicion por ADR 0021.
+  - **ADR 0065** (`aceptada`): proximidad por wallet = **turno rotativo** (5 dias) con **separacion
+    geografica** (400 m), ≤5 turnos activos + ≤3 de utilidad por pase, 1 por negocio, FIFO, cooldown
+    30 d, cuota 50 concurrentes, holdout 10 %, clase `pass_refresh` silenciosa.
+  - **Spec 0065 (`cerrada`)**: compositor + tick + pase + cupon + resultados + configuracion del
+    consumidor + freno por plan, en 4 fases. **El owner cerro los dos items que faltaban
+    (2026-09-15):** (1) el opt-out vive en una **seccion de Configuracion** del portal
+    (`/wallet/settings`), un interruptor por negocio, sin tocar lo transaccional ni el saldo del
+    pase; (2) el freno por plan es **BLOQUEO DURO** al bajar —«debe desactivar las campañas activas
+    como sucede con los locales»—, **no** la pausa automatica que el orquestador habia escrito: se
+    calca `decidePlanChange` con una guarda nueva `downgrade_blocked_campaigns` + `deactivateCount`,
+    despues de la de locales. **La pausa defensiva del webhook sobrevive como decision del
+    ORQUESTADOR** (no del owner) para el plan que llega a `free`/`none` sin pasar por nuestra ruta
+    —dashboard de Stripe o impago—, que es el agujero que ya costo dos rondas en la 0063 (ADR 0060);
+    si el owner prefiere que ahi sigan corriendo, es una linea.
+  - `INDEX.md` con las tres filas; specs **0003** y **0017** anotadas (reencuadrada / reemplazada).
+  - **Correccion del orquestador que va al owner:** al retomar dije que el ADR 0057 §1 (OTP antes de
+    ampliar el re-enroll) «se gatillaba» con el motor. **Falso**: el canal entrega al **pase
+    instalado**, no al numero; la verificacion no cambia a quien le llega. Escrito en el ADR 0064 §8.
 
-**PROMPT PARA RETOMAR:** «arrancamos el arco del MOTOR DE PUBLICIDAD Y MARKETING. Antes de proponer nada,
-lee la seccion PROXIMO ARCO de `docs/TASKS.md` y los ADR que lista (0057 primero, despues 0018/0022/0023 y
-0040), mas las specs 0003 y 0007 que estan en borrador. La infraestructura de ENTREGA (cola de push,
-transportes, Web Push iOS) YA EXISTE y esta en prod: no la re-diseñes. El entregable de esta sesion es
-una SPEC conversada con el owner, no codigo.»
+- **MEDICIONES DE ESTA SESION (caras de rehacer — estan en el ADR 0065 con fuente; aca el resumen):**
+  - Apple: `locations` **≤10** por pase; `maxDistance` es clave **del pase** y **solo achica**
+    («smaller of this or the default»); nuestro pase es `storeCard` → radio ~100 m, `relevantText`
+    por ubicacion, **`relevantDate` NO soportado**.
+  - Google: el campo es **`merchantLocations`** (`locations` deprecado, «not supported to trigger
+    geo notifications»), radio fijado por Google, exige **dwell**, **sin texto por ubicacion**, 10 por
+    clase + 10 por objeto. ~150 m y 4/dia son **fuentes secundarias** (no load-bearing). Un
+    integrador (Splio) reporto la funcion «temporalmente no disponible» en Android.
+  - **Ninguna plataforma reporta impresiones** → la exposicion solo se controla al colocar, y el
+    merito por resultado en proximidad esta sesgado (necesita holdout).
+  - Nuestro codigo: `message_updated_at` es la **unica** etiqueta de «el pase cambio»; el
+    `changeMessage` solo notifica si `latest_message` cambia (refresco silencioso posible);
+    `rotate.ts` encola `transactional`, que **posterga campañas** → hace falta el carril
+    `pass_refresh`; `public/sw.js` ya tiene `push` y `notificationclick` (el Web Push SI es medible;
+    la URL es constante, va con la spec de push). `PLAN_LOCATION_LIMITS`: free 1, plus 3.
+  - Datos: no hay tabla de campañas; `core.order` + `order_item` + `product.unit_cost` dan RFM y
+    margen; no hay email, fecha de nacimiento, opt-out, check-in ni **categoria del negocio**;
+    `phone_verified_at` siempre null.
+
+- **DECISIONES DEL OWNER EN ESTA SESION (literal, ya bajadas a los ADR):** fase 1 audiencias / fase 2
+  reactivo · un spec+ADR por tipo de campaña, hoy solo proximidad · $20 = base propia, red cruzada =
+  otro precio a futuro · cupon SI como efecto («hoy 2x1 solo para ti en cervezas») · composicion
+  estilo Talon.One · ventana 5 dias · 400 m · 5 turnos activos · cuota por negocio (numero del
+  orquestador) · merito con balanza (piso para debutantes) · sin email · fecha de nacimiento mas
+  adelante · slot por puerta, no por barrio.
+
+**PROMPT PARA RETOMAR:** «Arco de marketing: ADR 0064/0065 escritos y **spec 0065 `cerrada`**.
+**Verificar primero con `git status` si los docs quedaron commiteados** — al cerrar la sesion del
+2026-09-15 estaban escritos y SIN COMMITEAR. El proximo paso es la **revision adversarial de la spec 0065** que pidio el owner, ANTES
+de escribir una linea de codigo — con presupuesto escrito en el encargo (`CLAUDE.md`): que clase de
+error tiene que cazar (afirmaciones del DoD sin oraculo, invariantes de colocacion sin test, la
+concurrencia del cupon, y si el orden de guardas del downgrade esta bien declarado) y **dos vueltas
+como maximo**; si la segunda termina en «el fix abrio la siguiente preimagen», cortar y llevar a QA.
+Despues, fase A. Leer `docs/specs/0065-*.md` entera y los ADR 0064/0065; **no re-medir lo medido** —
+las mediciones de Apple/Google/arbol estan en el ADR 0065 con su fuente.»
 
 ## PROXIMO ARCO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
-**NADA EMPEZADO: no hay ADR ni spec todavia.** El proximo paso es **conversarlo con el owner y escribir
-la spec**, no tocar codigo (`CLAUDE.md`: ninguna tarea toca codigo sin su spec cerrada, y la
-subespecificacion es el gatillo medido del exito fingido).
+**Estado: ADR 0064 y 0065 escritos; spec 0065 en borrador (ver ESTADO arriba).** Lo que sigue:
 
-**LO QUE YA EXISTE EN EL ARBOL Y HAY QUE LEER ANTES DE DISEÑAR NADA** (para no re-decidir lo decidido):
-- **ADR 0018** — Incentive Engine de campañas compuestas. **ADR 0022** — objetivos de campaña y
-  capacidades medibles. **ADR 0023** — disparadores independientes de objetivos. Los tres son la
-  fundacion conceptual del motor y estan `aceptada`.
-- **ADR 0040** — ruteo de transporte por CLASE de aviso: **transaccional → solo wallet** (con fallback a
-  Web Push), y **el Web Push es el transporte de CAMPAÑA**. Esto ya fija como sale un mensaje de
-  marketing al consumidor: no hay que inventarlo.
-- **ADR 0037/0038/0039** — la cola de push (`wallet_push_queue`) con prioridad y cooldown, los dos
-  transportes, y Web Push en iOS via PWA. **La infraestructura de ENTREGA ya existe y esta en prod.**
-- **ADR 0042** — atribucion por local como dimension universal de todo evento de valor. Es el contrato
-  para medir campañas por local.
-- **ADR 0057** — roadmap de marketing y captura de imagen. **Empezar por aca.**
-- **spec 0003** (wizard de campañas e Incentive Engine) y **spec 0007** (tablero y medicion) estan en
-  **`borrador`**: son el punto de partida escrito, no hay que arrancar de cero.
-- **spec 0017** es la **demo de campañas, TODAVIA EN USO** — «campañas no existen como feature real».
-  Esa demo es la referencia visual de lo que el owner ya vio.
+1. Commit de los docs de esta sesion.
+2. ~~Owner confirma opt-out + freno por plan~~ **HECHO (2026-09-15): spec 0065 `cerrada`.**
+3. **Revision adversarial de la spec** (pedido literal del owner: «pasarlo por un adversarial e
+   implementar») — con presupuesto escrito en el encargo (`CLAUDE.md`): que clase de error tiene que
+   cazar (afirmaciones sin oraculo en el DoD, invariantes de colocacion sin test, concurrencia del
+   cupon) y cuantas vueltas (dos; si la segunda abre otra preimagen, cortar y llevar al QA).
+4. Fase A (fundacion) a implementador + revisor. Aplicar la migracion `0031` en `ci-integration`
+   antes.
+5. Los demas tipos de campaña, **cada uno con su spec y ADR**, en este orden tentativo (no decidido
+   por el owner): reactivacion por push (ya tiene oraculo: `sw.js`), le-falta-un-sello / premio sin
+   canjear, local nuevo, franja muerta, aniversario de alta, categoria abandonada, ticket bajo,
+   cumpleaños (exige pedir la fecha).
 
-**UN CABO SUELTO QUE ENTRA EN ESTE ARCO, dicho por el owner en el QA de la 0063 y aplazado:** **frenar
-las campañas de marketing cuando un negocio baja de plan.** Quedo explicitamente fuera de la spec 0064
-(«es alcance nuevo y no tiene diseño»). Con el motor de marketing sobre la mesa, es el momento.
+**Lo que ya existe y NO se rediseña:** cola `wallet_push_queue` (ADR 0037), transportes (0038/0039),
+ruteo por clase (0040), atribucion por local (0042). **Lo que la spec 0065 agrega a esa
+infraestructura:** la clase `pass_refresh` y `locations`/`merchantLocations` en el pase.
 
-**TAREA 55 SIGUE PENDIENTE Y NO ES ESTE ARCO:** cambio de intervalo **anual → mensual**, el unico sentido
-que la 0063 dejo afuera por no tener forma barata (reembolso, quedarse con la plata, o
-`subscription_schedules`). Su rechazo vive en la funcion pura (`interval_downgrade_unsupported`), que es
-el unico lugar donde habria que habilitarlo.
+**CABO SUELTO DE BILLING que entra en la 0065:** frenar campañas al bajar de plan (fase D).
 
 ## HISTORIA: ADR 0063 ACEPTADO + SPEC 0064 (la seccion de abajo quedo escrita cuando la spec era borrador)
 
