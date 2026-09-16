@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { integrationEnabled } from "./counter-integration-support";
-import { seedMembership } from "./marketing-integration-support";
+import {
+  integrationEnabled,
+  seedConsumer,
+} from "./counter-integration-support";
+import { seedMembership, seedTurn } from "./marketing-integration-support";
 import { readPlacement, readTurns } from "./marketing-read-support";
 import {
   type World,
@@ -79,6 +82,62 @@ describe.skipIf(!integrationEnabled)("marketing placement", () => {
     await tick(built, { limits: { businessQuota: 2 } });
     const after = await readTurns(built.seed.business.id);
     expect(after.filter((turn) => turn.status === "queued")).toHaveLength(1);
+  }, 120_000);
+
+  /**
+   * R4 — the quota counts `active` NON-HOLDOUT turns (`loadBusinessActiveTurns`), which
+   * is the literal wording of the DoD: a holdout is the base line of the measurement,
+   * not an exposure, so it must not eat a slot the business paid for.
+   *
+   * The review of phase A found that half of the invariant pinned by nothing — the
+   * holdout suite and the quota suite both existed, but no case mixed holdouts and quota
+   * in the SAME business, which is the only shape that tells the two readings apart.
+   *
+   * The two holdouts are seeded as turns ALREADY `active` on purpose, and that detail is
+   * the whole test: `loadBusinessActiveTurns` only SEEDS the counter at the start of a
+   * run, and from there the planner advances it in memory. Holdouts created inside the
+   * run under test would never reach the query, so the first version of this test passed
+   * with the mutation mounted — measured, not reasoned (`CLAUDE.md`: the pair
+   * mutation↔test is executed, never predicted).
+   *
+   * Mutation that turns this red: drop `eq(campaignTurns.holdout, false)` from
+   * `loadBusinessActiveTurns`. Then the two seeded holdouts fill the quota of 2 and the
+   * two reachable consumers stay `queued`.
+   */
+  it("does NOT let a holdout eat the business quota", async () => {
+    const built = await world(2);
+    for (let index = 0; index < 2; index += 1) {
+      const consumer = await seedConsumer();
+      const membershipId = await seedMembership({
+        consumerId: consumer.id,
+        programId: built.seed.programId,
+        businessId: built.seed.business.id,
+        enrolledAt: new Date(NOW.getTime() - 400 * DAY),
+      });
+      await seedTurn({
+        campaignId: built.campaignId,
+        businessId: built.seed.business.id,
+        consumerId: consumer.id,
+        membershipId,
+        locationId: built.doorId,
+        status: "active",
+        holdout: true,
+        // Window still open: step 2 must not expire them before step 4 reads the quota.
+        windowStart: new Date(NOW.getTime() - DAY),
+        windowEnd: new Date(NOW.getTime() + 4 * DAY),
+      });
+    }
+
+    const summary = (await tick(built, {
+      limits: { businessQuota: 2 },
+    })) as TickSummary;
+
+    expect(summary).toMatchObject({ enqueued: 2, activated: 2 });
+    const turns = await readTurns(built.seed.business.id);
+    expect(
+      turns.filter((turn) => turn.status === "active" && !turn.holdout),
+    ).toHaveLength(2);
+    expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(0);
   }, 120_000);
 
   it("skips while another run holds the tick lock, and writes nothing", async () => {

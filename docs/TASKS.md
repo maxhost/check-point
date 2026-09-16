@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (sesion de implementacion de la fase A — **A1..A5 cerradas y medidas**; falta el PASS del revisor independiente sobre la fase A entera, y NADA de la fase A esta pusheado).
+Ultima actualizacion: 2026-09-16 (**REVISION DE LA FASE A COMPLETA (3 dimensiones, FAIL, 8 invariantes sin oraculo) Y SUS 8 FIXES HECHOS Y MEDIDOS** — cero bugs de produccion: el codigo no se toco, solo se escribieron los oraculos que faltaban. 5 gates verdes: **153 archivos / 1072 tests / 0 failed**. **LO QUE SIGUE: commit + push + migracion `0031` a prod + el secret `MARKETING_TICK_ENDPOINT` + QA del owner con el pase en un telefono real.** NADA de la fase A esta pusheado).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -781,6 +781,209 @@ aplicar la `0031` a prod por MCP y **pedirle al owner UN solo Actions secret**:
 `MARKETING_TICK_ENDPOINT = https://www.checkpass.club/api/internal/marketing-tick` (con `www.`; el apex
 hace 308 y el workflow no sigue redirects). `CRON_SECRET` **ya esta cargado y funcionando** — verificado,
 no supuesto. Despues siguen las fases B, C y D.»
+
+## REVISION DE LA FASE A — DIMENSION 1 (TICK Y COLA): **FAIL, 4 INVARIANTES SIN ORACULO** (2026-09-16)
+
+Bitacora completa en `/tmp/revision-fase-a-tick.md`. Sondas guardadas en `/tmp/revision-a-tick-probes/`
+(`marketing-probe-s1`, `marketing-probe-s2`) — **estan FUERA del arbol a proposito**: el hook
+`no-mutations-left.sh` es CIEGO a los archivos-sonda, asi que una sonda olvidada sobrevive a la sesion sin
+que ningun gate chille.
+
+**El revisor murio** (14a muerte de este arco) dejando **R4 puesta** en `placement-store.ts` y las dos sondas
+untracked en el arbol. **El punto de retorno funciono y el protocolo se aplico en el orden correcto:**
+(1) `ListAgents` → no habia subagente vivo, o sea mutacion ABANDONADA, no viva; (2) `git status --short` →
+` M` sobre un archivo **commiteado**, asi que `git checkout` era un punto de retorno real; (3) **se MIDIO
+antes de revertir** —la mutacion ya estaba montada y revertir primero habria tirado la unica corrida gratis
+(`CLAUDE.md`)—; (4) revert + `diff` contra `/tmp/a5-clean/` (exactamente una linea) + `shasum` identico al
+baseline.
+
+**LOS 4 HALLAZGOS, TODOS REPRODUCIDOS POR EL ORQUESTADOR.** R1 y R2 venian de la bitacora del revisor muerto,
+o sea que eran **afirmaciones, no verificaciones**: se re-ejecutaron. Alcance de cada corrida:
+`node ../../node_modules/vitest/vitest.mjs run src/server/marketing` desde `apps/merchant` con
+`set -a; . ./.env.integration.local; set +a`. **Baseline limpio: 13 archivos / 78 tests VERDE.**
+Ninguno de los cuatro es un BUG: el codigo es correcto. Lo que falta es el oraculo — la familia del ADR 0054
+(un documento afirmando un invariante que ningun test pinnea), que en este repo ya fue bloqueante cuatro veces.
+
+| id | archivo:linea | invariante declarado que nadie pinnea | resultado EJECUTADO |
+|---|---|---|---|
+| R1 | `marketing/merit.ts:113-116,124` | docblock: «A `coupon_redeemed` outcome counts as a purchase — leer solo `'purchase'` contaria una campaña cuyo cupon funciono como si nadie hubiera venido» | `in ('purchase','coupon_redeemed')` → `= 'purchase'`: **VERDE en los 13 archivos**. Afinado al verificar: `marketing-outcome:177` SI pinnea que el tick **escribe** `coupon_redeemed`, pero `marketing-merit:82` solo siembra `purchase`/`none` → lo que no tiene oraculo es que el merito lo **CUENTE**. El riesgo aterriza en prod **cuando entre la fase C** (hoy `coupon_redemption` solo lo inserta el support de test) |
+| R2 | `placement-store.ts:43-52` | docblock `:24-27`: el `union select consumer_id from consumer.pass_placement` «is not decoration — it is how a door LEAVES the pass when its turn expires, since by then the consumer has no live turn left to find them by». Es la clausula del DoD [A] «el pase deja de llevar esa ubicacion en el siguiente refresco» | borrar el `union`: **VERDE en los 13 archivos**. La sonda **S1** lo caza: `AssertionError: expected [ { …(5) } ] to deeply equal []` — sobrevive una fila `slotKind:'turn'` con el `turnId` del turno **YA VENCIDO**. Control: S1 sobre codigo limpio **PASA**. **La puerta se queda en el pase para siempre, en silencio** |
+| R3 | `audience-store.ts:82` | docblock `audience.ts:50-55`: «Both conditions belong to the ENQUEUE filter… a door that is archived or ungeocoded would otherwise be queued and cancelled in the SAME run, FOREVER (a cancelled turn does not hold the partial unique, so the next run re-inserts it)» | sacar `eq(locations.status,"active")`: **VERDE en los 13 archivos**. La sonda **S2** lo caza: `expected [1,1,1,1] to deeply equal [0,0,0,0]`, con `PROBE_S2` mostrando `enqueued:1, cancelled:1` en **las DOS** corridas → el bucle infinito que el docblock predice, **reproducido**. Control: S2 limpio **PASA** (`0,0,0,0`). La mitad «sin coordenadas» SI tiene caso (`doorNoCoords`); la mitad **«archivado» no aparece en ningun enqueue** |
+| R4 | `placement-store.ts:236-240` | docblock `:226-228` + texto literal del DoD [A]: «la cuota de turnos activos **no-holdout**» | sacar `eq(campaignTurns.holdout,false)`: **VERDE en los 13 archivos**. Ningun test mezcla holdouts y cuota en el **mismo** negocio. *(Medida por el orquestador sobre la mutacion abandonada, antes de revertirla.)* |
+
+**Lo que NO se hizo, y por que:** el presupuesto del encargo era **6 mutaciones, clase «invariante declarado
+sin oraculo con regresion plausible», corte en UNA vuelta**. Se ejecutaron **4 y las 4 dieron hallazgo**, asi
+que abrir la 5a y la 6a era inercia — es la instruccion literal del owner del 2026-09-13 (las primeras 4 ya
+habian dado todo el valor). **La dimension se cierra en FAIL y no se reabre.**
+
+**FIX (pendiente, barato y ya especificado):** promover **S1** y **S2** a tests del alcance; agregar al seed de
+`marketing-merit` un turno `done` con `outcome='coupon_redeemed'` (R1); y un caso de cuota con holdouts del
+**mismo** negocio (R4). Los cuatro se cierran ejecutando su mutacion contra el fix y transcribiendo el rojo.
+
+**Estado del arbol al escribir esto:** `git status --short` **vacio**, `grep -rn MUTATION apps/merchant/src`
+**vacio**, sin sondas en el arbol, y los 22 `shasum` del baseline de A5 **intactos** (re-medidos, no copiados).
+
+**QUEDA de la fase A:** dimension 2 (**el pase**: `placement-plan`, `relevant-text`, `utility-text`,
+`utility-store`, `wallet/pass-locations*`, `apple`/`google`/`provider` y las 3 rutas de emision) y dimension 3
+(**carril `pass_refresh` + schema/migracion `0031`**). Se corren **de a una**: comparten arbol y rama Neon, y
+el advisory lock del tick es **global** (ADR 0067) — dos suites simultaneas se contestan `tick_in_flight`.
+
+
+## REVISION DE LA FASE A — DIMENSION 2 (EL PASE): **FAIL, 2 HALLAZGOS DE LA MISMA FAMILIA** (2026-09-16)
+
+Bitacora completa en `/tmp/revision-fase-a-pase.md`. **El revisor murio** (15a muerte del arco) con **M3 puesta**
+en `wallet/pass-locations-store.ts` y sin resultado. Mismo protocolo que en la dimension 1 y en el mismo orden:
+`ListAgents` (sin subagente vivo → mutacion ABANDONADA), `git status --short`, **medir ANTES de revertir**, revert
+y `shasum` contra el que el propio revisor habia registrado (`6a9f07e8…`, identico). **Ojo con un detalle que casi
+muerde: `docs/TASKS.md` estaba ` M` con trabajo del orquestador sin commitear** — un `git checkout` ancho se lo
+habria llevado. Se restauro **solo** el archivo mutado.
+
+**Baseline limpio re-medido:** `src/server/wallet` **13 archivos / 84 tests VERDE**; `src/server/marketing`
+**13 / 78 VERDE**.
+
+| id | archivo:linea | invariante atacado | resultado EJECUTADO |
+|---|---|---|---|
+| M1 | `wallet/provider.ts:136-139` | DoD [A] #3 «el cableado llega al pase: el JSON servido por las tres rutas lleva las ubicaciones» | forzar `passLocations: []` camino a `buildApplePkpass`: **VERDE 84/84**. **HALLAZGO** — el pase se sirve **sin `locations`** (geofence apagado) con typecheck, lint y los 84 tests de wallet en verde |
+| M1b | `app/api/public/wallet/apple.pkpass/route.ts:40` | *(añadida por el orquestador al verificar M1)* el docblock afirma «Required makes `typecheck` the oracle for the wiring of all three» | sacar `passLocations:` del call-site: **`typecheck` ROJO**, `error TS2345 … Property 'passLocations' is missing … but required in type 'PassBuildInput'`. **El docblock ES CIERTO** |
+| M2 | `marketing/utility-store.ts` | el docblock ⚠️ dice que el alias explicito `m.` del `exists` correlacionado es load-bearing | sacar la calificacion `m.`: **ROJO 1/78**, `- "slotKind": "turn"` / `+ "slotKind": "both"` en `marketing-tick.neon:223`. **SIN hallazgo: el invariante SI esta pinneado** |
+| M3 | `wallet/pass-locations-store.ts:53` | DoD [A] #3; el docblock dice que este es «The ONLY reader of `consumer.pass_placement`» | `leftJoin(campaignTurns)` → `innerJoin`: **VERDE en los DOS alcances (84/84 y 78/78)**. **HALLAZGO** — asi, **toda puerta de UTILIDAD (`turn_id` null) desaparece del pase en silencio** y 162 tests siguen verdes |
+
+**EL HALLAZGO ESTRUCTURAL (M1 + M3 son uno solo): el DoD [A] #3 esta cerrado con tests que MOCKEAN justo lo que se
+puede romper.** `wallet-pass-locations-wiring.test.ts` mockea el store entero y `wallet-pass-locations.test.ts`
+prueba solo el mapper puro, asi que **ni el SQL de `passLocationsForConsumer` ni el tramo `provider.ts` → builders
+tienen oraculo de comportamiento**. Es textualmente la leccion de la tarea 38 en `CLAUDE.md`: extraer la decision a
+una funcion pura convierte una propiedad de COMPORTAMIENTO en una de DECISION **y deja el CABLEADO sin oraculo** —
+y ahi mismo esta escrito que un revisor reintrodujo el bug exacto con UNA linea y los 5 gates verdes.
+
+**LA PRECISION DE ATRIBUCION, que salio de verificar el hallazgo ajeno en vez de citarlo (`CLAUDE.md`):** el
+revisor listo el docblock de `PassBuildInput.passLocations` como «invariante atacado», lo que se lee como «el
+docblock es falso». **No lo es** — M1b lo demuestra ejecutandolo. Typecheck **si** pinnea que los tres call-sites
+*pasen* el campo; lo que nadie pinnea es que el valor *sobreviva* de `provider.ts` a los builders. La distincion
+cambia el fix: no se corrige un comentario, se agrega el oraculo de comportamiento que falta.
+
+**Presupuesto:** el encargo decia **MAX 4 mutaciones, corte en UNA vuelta**. Se ejecutaron 4 (M1, M1b, M2, M3),
+2 dieron hallazgo y 1 confirmo que el invariante estaba cubierto. **La dimension se cierra en FAIL y no se reabre.**
+
+**FIX (pendiente):** un oraculo de comportamiento **end-to-end** que vaya de `pass_placement` (por SQL) al JSON
+servido, **sin mockear el store**, para al menos una ruta de Apple y una de Google. Muerde con M1 **y** con M3.
+
+
+## REVISION DE LA FASE A — DIMENSION 3 (`pass_refresh` + SCHEMA/MIGRACION): **FAIL, 2 HALLAZGOS — Y BUENAS NOTICIAS VERIFICADAS** (2026-09-16)
+
+Bitacora completa en `/tmp/revision-fase-a-refresh.md`. **El revisor murio** (16a muerte) con **M3 puesta** en
+`marketing/placement.ts` y sin resultado. Mismo protocolo: `ListAgents` (sin subagente vivo → ABANDONADA),
+**medir ANTES de revertir**, revert nombrando el archivo y `shasum` contra el baseline de A5
+(`c3229050…`, identico). `docs/TASKS.md` seguia ` M` con trabajo sin commitear y **no se toco**.
+
+### LO QUE SE VERIFICO LIMPIO (y es lo mas caro de esta dimension, porque descarta bloqueantes de PRODUCCION)
+
+- **V1 — la migracion `0031` reproduce EXACTAMENTE el schema, con oraculo real y no por lectura:**
+  `drizzle-kit generate` contra una copia del directorio de migraciones en `/tmp` (config sonda, borrada despues)
+  devolvio **`No schema changes, nothing to migrate 😴`**. O sea: 0000..0031 == `src/server/schema.ts`.
+- **V2 — los guards de la `0031` existen EN LA BASE** (rama `spec-0065-marketing`, `__drizzle_migrations` = **32**):
+  el unico parcial `core_campaign_turn_business_consumer_live_unique (business_id, consumer_id) WHERE status in
+  ('queued','active')` —**por NEGOCIO**, que es lo que el ADR pedia y la revision adversarial habia cazado mal—,
+  los 11 `check` de `core.campaign`, los 2 de `pass_placement` (incl. `char_length(relevant_text) <= 120`), y las
+  **fks CIRCULARES en las dos direcciones**.
+- **V3 — LA TRAMPA DE `CLAUDE.md` ESTA EVITADA, verificado en la base y no supuesto.** `pg_indexes` sobre
+  `consumer.wallet_push_queue` devuelve **solo** la pk y dos indices NO unicos: **no hay ningun unico parcial**.
+  El coalescing vive en `placement.ts:100-112` como `insert … select … where not exists (… status in
+  ('pending','sending'))`, que es **la forma correcta**. El fallo documentado —fila clavada en `sending`,
+  `attempts` sin subir, re-reclamada para siempre— **no aplica**.
+- **M1 — EL SOSPECHOSO PRINCIPAL QUEDA LIMPIO.** `wallet-pass-refresh-worker.test.ts` es el test cuya asercion
+  **reescribio el orquestador** sin segundo par de ojos. Restaurando el ternario viejo (`… ? "campaign" :
+  "transactional"`) **en el call-site**, muerde: `- "sent": 2 / + "sent": 1`, `- "rescheduled": 0 / + "rescheduled": 1`
+  (`wallet-pass-refresh-worker.test.ts:107`). **Habla de la propiedad y es el unico oraculo de ella: funciona.**
+
+### LOS 2 HALLAZGOS
+
+| id | archivo:linea | invariante declarado que nadie pinnea | resultado EJECUTADO |
+|---|---|---|---|
+| M2 | `wallet/push-channel.ts:109-115` | docblock `:23-32`: «a `PATCH`, NOT an `addMessage` … sin este metodo un refresh implementado como `sendGoogle(…)` registraria `{kind:'google'}`, **pasaria todos los tests** y le haria sonar el telefono al consumidor donde la spec exige silencio». Es el DoD [A] #1 («no envia `addMessage`») | reemplazar el `PATCH` por `addMessage`: **NO MUERDE NADA** — 75 passed (identico al control), `typecheck` EXIT=0, `lint` EXIT=0. El barrido lo explica: `grep` de `pushChannelFromEnv|patchGoogleLoyaltyObject|RealPushChannel` **no aparece en ningun `.test.ts`**; `patchGoogleLoyaltyObject` tiene **un unico llamador en todo el arbol**, que es la linea mutada. **En prod (`WALLET_PUSH_CHANNEL=real`) cada `pass_refresh` le sonaria el telefono al consumidor, con los 5 gates verdes** |
+| M3 | `marketing/placement.ts:100-112` | DoD [A] #2 «hay a lo sumo **UN** `pass_refresh` vivo por consumidor» + el comentario normativo del coalescing | **borrar ENTERO el `where not exists`: VERDE 6/6.** Causa medida y leida del stdout del control: el test `coalesces: a pending refresh is never duplicated by another run` **nunca llega al insert** (`refreshes: 0` ⇒ `applyPlan` salio por `if (!plan.refresh) return 0`). **Y el comentario del propio test es FALSO**: dice «Force a real change of the set» pero solo borra filas de `wallet_push_queue`, que no tiene relacion con `pass_placement`, que es lo unico que mira `differs()` |
+
+**M3 es el peor de los 8 hallazgos de la fase A**, y no por su consecuencia sino por su forma: **hay un test que se
+llama como si cubriera la propiedad, no la cubre, y su comentario explica por que la cubre con una razon falsa.**
+Eso no es un hueco pasivo — desalienta activamente a escribir el test que falta. Es `CLAUDE.md` literal: *un
+comentario mentiroso no espera a que alguien lo lea mal, lo induce.*
+
+**Presupuesto:** MAX 4, se ejecutaron **3** (M1, M2, M3) mas 4 verificaciones estaticas/contra-base. Se cierra en
+3 porque la 4a era inercia: la dimension ya tiene su veredicto y las tres verificaciones duras (migracion, indices,
+coalescing) salieron limpias. **FAIL, y no se reabre.**
+
+**Lo que NO se alcanzo a correr: la suite completa** (`pnpm run test` con env de integracion), que era el unico
+chequeo de gates independiente de los tres revisores. El baseline del orquestador sobre estos mismos bytes es
+**1062 passed / 150 archivos** y el arbol esta byte-identico (hashes verificados), pero **eso es un limite
+declarado, no una medicion del revisor.**
+
+
+## FIX DE LOS 8 HALLAZGOS DE LA REVISION DE LA FASE A — HECHO, 5 GATES VERDES (2026-09-16)
+
+**Ninguno de los 8 era un bug: el codigo de produccion NO se toco en este delta.** Lo que faltaba era el
+oraculo. **`git diff --stat` de codigo de produccion: vacio** — solo tests.
+
+### La tabla, EJECUTADA (cada par mutacion↔test se corrio y se transcribio; ninguno se predijo)
+
+| # | hallazgo | donde se cerro | mutacion → resultado LEIDO |
+|---|---|---|---|
+| R1 | `merit.ts` cuenta `coupon_redeemed` como compra, sin oraculo | `marketing-merit.neon…`: caso nuevo que asevera `loadBusinessTurnStats` **por valor exacto** con una historia sembrada 100 % en `coupon_redeemed` | `in ('purchase','coupon_redeemed')` → `= 'purchase'`: **ROJO**, `- "placedPurchases": 3 / + 0`, `- "holdoutPurchases": 1 / + 0` |
+| R2 | el `union` con `pass_placement` es como una puerta SALE del pase | **archivo nuevo `marketing-lifecycle.neon…`** (sonda S1 promovida) | borrar el `union`: **ROJO**, `expected [ { …(5) } ] to deeply equal []` |
+| R3 | el filtro `status='active'` del local pertenece al ENQUEUE | idem, 2.º caso (sonda S2 promovida) | sacar `eq(locations.status,"active")`: **ROJO**, `expected [ 1, 1, 1, 1 ] to deeply equal [ 0, 0, 0, 0 ]` |
+| R4 | la cuota cuenta turnos **no-holdout** | `marketing-placement.neon…`: holdouts **YA activos** + cuota 2 + 2 alcanzables | sacar `eq(campaignTurns.holdout,false)`: **ROJO**, `activated: 0` donde la fila limpia da 2 |
+| M1-d2 | el tramo `provider.ts` → builders no tiene oraculo de comportamiento | **archivo nuevo `wallet-pass-locations-e2e.neon…`**, sin un solo mock: fila en la base → `pass.json` deszipeado y JWT de Google decodificado | `passLocations: []` en los DOS builders: **ROJO 2/3** (`expected [] to have a length of 2`), **y el test del LECTOR queda verde** — atribucion correcta |
+| M3-d2 | el SQL de `passLocationsForConsumer` no tiene ningun oraculo | idem | `leftJoin` → `innerJoin`: **ROJO 3/3**, `to have a length of 2 but got 1` — la puerta de UTILIDAD es la que se pierde |
+| M2-d3 | `RealPushChannel.patchGoogleObject` → `patchGoogleLoyaltyObject` sin oraculo | **archivo nuevo `wallet-push-channel-real.test.ts`** (`vi.mock` de `./wallet/google`, el canal REAL via `pushChannelFromEnv`) | llamar `postGoogleMessage` en vez del `PATCH`: **ROJO 1/3**, `Number of calls: 0`; los otros 2 casos **verdes** → discrimina los dos endpoints |
+| M3-d3 | el coalescing `where not exists` sin oraculo, con un test que decia cubrirlo | `marketing-refresh.neon…`: los DOS casos ahora fuerzan un cambio real del conjunto | borrar el `where not exists`: **ROJO 2/2**, `to have a length of 1 but got 2` y `of 2 but got 3` |
+
+### Tres cosas que salieron de EJECUTAR en vez de razonar (y que valen mas que los fixes)
+
+1. **La primera version del test de R4 pasaba con la mutacion puesta.** Motivo medido:
+   `loadBusinessActiveTurns` **solo siembra el contador al arrancar la corrida**; dentro de la corrida el
+   planner lo avanza en memoria. Holdouts creados **en** la corrida bajo prueba nunca llegan a esa query, asi
+   que el caso tenia que sembrar turnos holdout **ya `active`**. Escrito en el docblock del test.
+2. **El oraculo obvio del coalescing era falso.** Se intento aseverar `summary.refreshes === 1` para probar
+   que la corrida habia llegado al `insert`: **`refreshes` cuenta filas realmente INSERTADAS**, asi que el
+   coalescing lo deja en 0 **igual que el `return` temprano** — los dos casos son indistinguibles por ahi. El
+   oraculo real es otro: la fila de `pass_placement` que el test borra **vuelve**, y solo el cuerpo del
+   aplicador la escribe.
+3. **Dos rojos fueron por el motivo equivocado y se cazaron LEYENDO la asercion, no contandola:**
+   `No transactions support in neon-http driver` (era `getDb()`, el driver HTTP; la transaccion se pide con
+   `withDbTransaction`) y un `"undefined: te faltan 2 sellos"` sembrado por el propio test porque
+   `seed.business.name` no existe en el tipo `Seed`. **Ninguno de los dos era del codigo de produccion.**
+
+### El comentario mentiroso que se corrigio, que era el peor de los 8
+
+`marketing-refresh…` decia «Force a real change of the set so the planner asks for a refresh again» mientras
+borraba filas de **`wallet_push_queue`**, que `differs()` ni mira. Por eso los dos tests que decian pinnear el
+coalescing **nunca llegaban al `insert`** y quedaban verdes con el `where not exists` **borrado entero**. Ahora
+la intencion vive en una funcion nombrada (`forceRefreshWanted`) que borra `consumer.pass_placement`, que es lo
+que el planner SI compara. *(`CLAUDE.md`: un comentario mentiroso no espera a que alguien lo lea mal, lo induce.)*
+
+### Gates sobre el arbol FINAL
+
+`typecheck` **3/3**, `lint` EXIT=0, `format:check` EXIT=0, `build` EXIT=0, y `test` con las env de integracion:
+**153 archivos / 1072 tests / 0 failed / 0 skipped** (venia de **150 / 1062**: +3 archivos y +10 tests, que son
+exactamente los escritos aca; **ningun test preexistente perdido**). `grep -rn MUTATION apps/merchant/src` vacio.
+
+**Tamaños PREGUNTADOS AL HOOK** (todos `EXIT=0`), con **control** `onboarding/page.tsx` → **`EXIT=2`**, o sea que
+discrimina: `marketing-refresh` 256, `wallet-pass-locations-e2e` 205, `marketing-placement` 204,
+`marketing-merit` 201, `marketing-lifecycle` 88, `wallet-push-channel-real` 77.
+
+**Hashes RE-MEDIDOS (baseline para la proxima auditoria):**
+```
+82560494c5f21e2234fb0d709943d57ed94f6ab4  marketing-lifecycle.neon.integration.test.ts
+549a12059d06af5f9d693e5a45a749d196a106e1  wallet-pass-locations-e2e.neon.integration.test.ts
+63d21e853a68fdfe3e86d00325509840891c889c  wallet-push-channel-real.test.ts
+0842e00b70289c8994e4cc8f1c3694b1aa959620  marketing-merit.neon.integration.test.ts
+5b4a8a42f7a54d741ae21dbb0ab4d1e29fe631f9  marketing-placement.neon.integration.test.ts
+deb926bbd6df10310cba5b44dd2e4040145abeef  marketing-refresh.neon.integration.test.ts
+```
+*(Los 22 hashes de A1..A5 siguen valiendo: el codigo de produccion no se toco.)*
+
+**LO QUE SIGUE:** commit → `git push` → verificar el commit status del **sha exacto** → migracion `0031` a prod
+por MCP → el Actions secret `MARKETING_TICK_ENDPOINT` (con `www.`) → **QA del owner con el pase en un telefono
+real**, que es el unico oraculo que falta y ninguna mutacion ve.
+
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 

@@ -18,8 +18,9 @@ import {
   dropWorlds,
   seedWorld,
 } from "./marketing-world-support";
+import { loadBusinessTurnStats } from "./marketing/merit";
 import { runMarketingTick, type TickSummary } from "./marketing/tick";
-import { getDb } from "./db";
+import { getDb, withDbTransaction } from "./db";
 import { campaignTurns } from "./schema";
 
 /**
@@ -58,6 +59,7 @@ describe.skipIf(!integrationEnabled)("marketing merit", () => {
       held: number;
       heldBought: number;
     },
+    boughtOutcome: "purchase" | "coupon_redeemed" = "purchase",
   ): Promise<void> {
     const consumer = await seedConsumer();
     const membershipId = await seedMembership({
@@ -79,7 +81,7 @@ describe.skipIf(!integrationEnabled)("marketing merit", () => {
           holdout,
           windowStart: new Date(NOW.getTime() - 100 * DAY),
           windowEnd: new Date(NOW.getTime() - 95 * DAY),
-          outcome: index < bought ? "purchase" : "none",
+          outcome: index < bought ? boughtOutcome : "none",
         });
     };
     push(false, counts.placed, counts.placedBought);
@@ -161,5 +163,39 @@ describe.skipIf(!integrationEnabled)("marketing merit", () => {
     );
     expect(winner.map((turn) => turn.status)).toEqual(["active"]);
     expect(loser.map((turn) => turn.status)).toEqual(["queued"]);
+  }, 180_000);
+
+  /**
+   * R1 — `loadBusinessTurnStats` counts `coupon_redeemed` as a purchase, because step 2
+   * writes it INSTEAD of `purchase` when the coupon was handed over: reading only
+   * `'purchase'` would score a campaign whose coupon WORKED as if nobody had come.
+   *
+   * The review of phase A found that invariant declared in the docblock of `merit.ts`
+   * and pinned by nothing: `marketing-outcome` pins that the tick WRITES the value, and
+   * this file only ever seeded `purchase`/`none`, so the two halves never met. The stats
+   * are asserted directly instead of through the race — the property is the COUNT, and a
+   * test should fail for the reason it names (`CLAUDE.md`).
+   *
+   * Mutation that turns this red: `in ('purchase', 'coupon_redeemed')` → `= 'purchase'`.
+   */
+  it("counts a COUPON REDEMPTION as a purchase in the stats", async () => {
+    const built = await world(0);
+    await history(
+      built,
+      { placed: 4, placedBought: 3, held: 2, heldBought: 1 },
+      "coupon_redeemed",
+    );
+
+    const stats = await withDbTransaction((tx) => loadBusinessTurnStats(tx));
+
+    expect(
+      stats.find((row) => row.businessId === built.seed.business.id),
+    ).toEqual({
+      businessId: built.seed.business.id,
+      placedN: 4,
+      placedPurchases: 3,
+      holdoutN: 2,
+      holdoutPurchases: 1,
+    });
   }, 180_000);
 });

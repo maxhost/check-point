@@ -22,7 +22,7 @@ import {
 import { enqueue, queueRow } from "./wallet-push-integration-support";
 import { runMarketingTick } from "./marketing/tick";
 import { getDb } from "./db";
-import { walletPushQueue } from "./schema";
+import { passPlacements, walletPushQueue } from "./schema";
 import { ensureWalletPass } from "./wallet/core";
 import { listUpdatedSerials, registerDevice } from "./wallet/passkit";
 import { FakePushChannel } from "./wallet/push-channel";
@@ -45,6 +45,23 @@ const NS = "marketing_tick_test_refresh";
 
 const DAY = 86_400_000;
 const NOW = new Date("2026-09-16T12:00:00.000Z");
+
+/**
+ * Empties `consumer.pass_placement` so the NEXT tick sees a real difference between the
+ * set it plans and the set on disk, and therefore asks for a refresh.
+ *
+ * This exists because the review of phase A measured that without it the applier returns
+ * at `if (!plan.refresh) return 0` and the coalescing SQL below is never reached: both
+ * tests that claim to pin it were green with the whole `where not exists` deleted. The
+ * old comment («Force a real change of the set») named this intention while deleting
+ * rows of `wallet_push_queue`, which `differs()` does not look at (`CLAUDE.md`: a lying
+ * comment does not wait to be misread, it induces the mistake).
+ */
+async function forceRefreshWanted(consumerId: string) {
+  await getDb()
+    .delete(passPlacements)
+    .where(eq(passPlacements.consumerId, consumerId));
+}
 
 async function refreshRows(consumerId: string) {
   return await getDb()
@@ -166,13 +183,15 @@ describe.skipIf(!integrationEnabled)("marketing pass_refresh", () => {
   }, 60_000);
 
   it("coalesces: a pending refresh is never duplicated by another run", async () => {
-    // Force a real change of the set so the planner asks for a refresh again.
     await getDb()
       .delete(walletPushQueue)
       .where(eq(walletPushQueue.consumerId, consumerId));
     await enqueue(consumerId, "pass_refresh", { status: "pending" });
     const before = await refreshRows(consumerId);
     expect(before).toHaveLength(1);
+    // Without this the applier returns before the coalescing SQL and the assertion below
+    // holds for the wrong reason — measured, not reasoned.
+    await forceRefreshWanted(consumerId);
     await runMarketingTick({
       now: new Date(NOW.getTime() + 2 * 60_000),
       random: () => 1,
@@ -180,6 +199,11 @@ describe.skipIf(!integrationEnabled)("marketing pass_refresh", () => {
       businessIds: [seed.business.id],
       consumerIds: [consumerId],
     });
+    // Proof that the run reached the coalescing SQL instead of returning before it: the
+    // placement row we deleted is BACK, and only the applier's body writes it. Asserting
+    // `summary.refreshes` would not do — it counts rows actually INSERTED, so coalescing
+    // makes it 0 exactly like the early return does, and the two are indistinguishable.
+    expect(await readPlacement(consumerId)).toHaveLength(1);
     expect(await refreshRows(consumerId)).toHaveLength(1);
   }, 120_000);
 
@@ -205,7 +229,9 @@ describe.skipIf(!integrationEnabled)("marketing pass_refresh", () => {
     await enqueue(consumerId, "pass_refresh", { status: "sending" });
     expect(await refreshRows(consumerId)).toHaveLength(2);
 
-    // And the tick, seeing one alive, adds no third.
+    // And the tick, seeing one alive, adds no third — with the set really changed, so
+    // the run reaches the coalescing SQL instead of returning before it.
+    await forceRefreshWanted(consumerId);
     await runMarketingTick({
       now: new Date(NOW.getTime() + 3 * 60_000),
       random: () => 1,
@@ -213,6 +239,7 @@ describe.skipIf(!integrationEnabled)("marketing pass_refresh", () => {
       businessIds: [seed.business.id],
       consumerIds: [consumerId],
     });
+    expect(await readPlacement(consumerId)).toHaveLength(1);
     expect(await refreshRows(consumerId)).toHaveLength(2);
 
     const channel = new FakePushChannel();
