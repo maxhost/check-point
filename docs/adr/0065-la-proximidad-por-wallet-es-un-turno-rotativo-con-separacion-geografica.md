@@ -1,7 +1,7 @@
 ---
 adr: 0065
 fecha: 2026-09-15
-estado: aceptada; implementada por la spec 0065 (`cerrada` el 2026-09-15). Los parametros numericos marcados como del ORQUESTADOR son configurables y se ajustan con QA real
+estado: aceptada, con la **decision 4 SUPERSEDIDA por el ADR 0066** (2026-09-15): el owner decidio que el merito rige desde el dia uno, medido por LIFT contra el holdout (no por tasa cruda, que es lo que el argumento de §4 y de «alternativas descartadas» realmente refuta). Todo lo demas sigue vigente. Los parametros numericos marcados como del ORQUESTADOR son configurables y se ajustan con QA real
 resumen: La campaña de proximidad usa el campo `locations` del pase de Wallet (Apple: hasta 10 por pase, radio ~100 m, texto por ubicacion; Google: `merchantLocations`, hasta 10 por objeto, radio fijado por Google, sin texto por ubicacion). Como el pase es UNO por consumidor compartido entre todos los comercios (ADR 0033), las 10 ubicaciones son un recurso escaso POR CONSUMIDOR. Se reparten en dos bolsas: UTILIDAD (hasta 3 locales con relacion viva; muestra el propio saldo del consumidor; siempre encendida, sin turno ni cuota) y REACTIVACION (hasta 5 TURNOS de 5 dias sobre relaciones dormidas). El turno es un PRESTAMO: lo gana quien NO tiene al cliente y lo devuelve al vencer; separacion minima de 400 m entre turnos activos del mismo pase, maximo 1 turno por negocio y consumidor, cola por rotacion pura (FIFO), cooldown de 30 dias por negocio y consumidor, cuota por negocio en TURNOS concurrentes (no en campañas), y un HOLDOUT aleatorio como unico oraculo de efecto. Nadie «lanza» proximidad: no hay boton de enviar; la cola coloca. El consumidor apaga las promociones de un negocio desde una seccion de Configuracion de su portal, sin perder lo transaccional ni su saldo; `free` no corre campañas y bajar de plan esta BLOQUEADO mientras haya alguna activa (calcado del bloqueo de locales). El refresco del pase va por un carril propio y silencioso (`pass_refresh`) que no toca el cooldown ni posterga campañas. Limites medidos y declarados: `maxDistance` solo ACHICA el radio (no hay «zona»), no existe reporte de impresion en ninguna plataforma (la exposicion solo se controla al COLOCAR), y en Android el mensaje no viaja en el aviso.
 ---
 
@@ -85,11 +85,14 @@ incluido en el plan), asi que el racionamiento tiene que ser no monetario.
    cuadra; la geografia hace el resto (nadie camina a 100 m de ocho puertas distintas en un dia).
    La separacion rige **entre turnos**; un turno puede convivir con un local de utilidad cercano
    *(orquestador)*.
-4. **Cola por rotacion pura (FIFO por `queued_at`).** El **merito por resultado NO entra en fase 1
-   para proximidad**: sin reporte de impresion, «compro en su ventana» esta sesgado hacia los
-   clientes que iban a volver igual, y un ranking sobre esa metrica reintroduce el error de darle el
-   canal a quien no lo necesita. Se enciende cuando el holdout de una diferencia legible. *(Ver
-   alternativas descartadas.)*
+4. ~~**Cola por rotacion pura (FIFO por `queued_at`).**~~ **SUPERSEDIDA POR EL ADR 0066**
+   (owner, 2026-09-15: «desde dia uno»). Lo que decia: el merito por resultado no entraba en fase 1
+   porque, sin reporte de impresion, «compro en su ventana» esta sesgado hacia los clientes que iban
+   a volver igual. **El argumento era correcto pero apuntaba al blanco equivocado**: refuta la
+   **tasa cruda**, no el merito. El 0066 rankea por **lift** (tasa con turno − tasa del holdout),
+   que es justo la resta que deshace el sesgo del ejemplo, con **encogimiento hacia el promedio
+   global** para los que tienen poca historia (la «balanza con piso para debutantes» del ADR 0064
+   §6) y **FIFO como desempate**.
 5. **Holdout como unico oraculo.** Una fraccion **aleatoria** de los turnos elegibles se **retiene**
    (no se coloca en el pase, no recibe cupon) y se registra igual; su tasa de compra en ventana es la
    linea base. **No cuesta alcance** —la cola ya raciona— y no consume ni slots del consumidor ni
@@ -158,10 +161,13 @@ incluido en el plan), asi que el racionamiento tiene que ser no monetario.
 - **Un turno activo por consumidor a la vez.** Confundia ocupacion con exposicion: dejaba 7 slots
   sin usar para prevenir un problema que la geografia ya previene. Lo cazo el owner; se corrige con
   la separacion por distancia.
-- **Merito por resultado desde el dia uno en proximidad.** Con numeros: A apunta a 100 dormidos que
-  iban a volver solos (30 vuelven sin campaña, 33 con) y mide 33 %; B apunta a 100 perdidos (2 sin,
-  10 con) y mide 10 %. A gana el ranking generando +3 contra +8 de B, y el canal deriva hacia
-  quien no lo necesitaba. Solo el holdout separa esos dos numeros.
+- ~~**Merito por resultado desde el dia uno en proximidad.**~~ **REVERTIDA por el ADR 0066.** El
+  ejemplo sigue siendo valido y por eso se conserva: A apunta a 100 dormidos que iban a volver solos
+  (30 vuelven sin campaña, 33 con) y mide 33 %; B apunta a 100 perdidos (2 sin, 10 con) y mide 10 %.
+  A gana el ranking generando +3 contra +8 de B. **La conclusion correcta no era «no hay merito en
+  fase 1» sino «no se rankea por la tasa cruda»**: la ultima frase de este item —«solo el holdout
+  separa esos dos numeros»— es justamente la receta, porque el holdout se retiene **desde el primer
+  turno**. Rankeando por 33−30 = +3 contra 10−2 = +8, gana B, que es lo correcto.
 - **Cobrar por slot o por turno.** Decision del owner: incluido en el plan.
 - **Limitar «campañas por mes».** Una campaña puede apuntar a 3 o a 3.000; el incentivo seria meter
   todo en una. Se cuenta en turnos, como las plataformas de ads cuentan impresiones.

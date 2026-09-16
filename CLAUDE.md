@@ -155,6 +155,20 @@ y si el limite es real, acotalo a la parte exacta que lo es (aca: la interaccion
 **Corolario para el orquestador: un limite que te reporta un subagente no se relata al owner ni
 se baja a un doc sin verificarlo** — es una afirmacion de exito («ya lo pense, no se puede»)
 disfrazada de cautela.
+**Y la generalizacion, que costo que el owner la preguntara: NO ES SOLO EL LIMITE — ES TODO HALLAZGO
+DE UN SUBAGENTE.** Un revisor que te entrega «esto esta mal, mira `archivo:linea`» te esta dando una
+afirmacion, y una cita **no es una verificacion**: es un puntero a donde verificar. En la revision
+adversarial de la spec 0065 el orquestador recibio 16 bloqueantes de tres revisores, **verifico 2** y
+bajo los otros 14 a la spec, al `INDEX` y al relato al owner tal como vinieron. El owner pregunto
+«¿probaste esos resultados de forma empirica antes de tomarlo para el plan final?» y la respuesta
+honesta era **no**. Al verificarlos: los 16 eran ciertos —o sea que el riesgo no era el falso
+positivo— pero **aparecio un 17.º que ninguno de los tres habia visto**, y solo aparecio porque
+verificar significo **correr el SQL** en vez de releer la cita (`on conflict` contra un indice
+parcial, abajo en Gotchas: el tick reventaba en su primera corrida). **Verificar un hallazgo ajeno no
+es auditarlo por desconfianza, es la unica forma de encontrar el que falta.** Regla: ningun hallazgo
+de subagente entra a una spec, a un ADR, al `INDEX` o a un mensaje al owner sin que vos hayas
+reproducido la evidencia — el `grep` corrido, el archivo leido, el statement ejecutado. Y si el
+hallazgo es sobre semantica de la base, se reproduce **en una base**, no en la cabeza.
 **Y el limite no siempre dice «no se puede»: a veces dice «cuesta X», y esa forma es la que se
 cuela.** La spec 0063 declaro que cerrar el solape del claim «costaria un lock explicito o una
 columna `processing_at` con lease». Falso: el lease entra en la columna **`received_at` que ya
@@ -372,6 +386,26 @@ barrido de tamaños se corre sobre los ` M` **y** los `??`.
   AJENO —si anda en ms, vitest esta sano y el problema es de ESOS archivos—; (b) si cuelgan **dos** hermanos,
   mira la cadena COMUN y no el archivo nuevo, que es el sospechoso obvio y era inocente; (c) matar procesos
   zombis **no** lo arreglo, y ese negativo fue el dato que descarto «contencion de maquina».
+
+- **`ON CONFLICT` CONTRA UN INDICE UNICO *PARCIAL* EXIGE REPETIR EL `WHERE` DEL INDICE.**
+  `on conflict (a, b) do nothing` **pelado** no matchea un `create unique index … on t (a, b) where
+  status in ('queued','active')`: falla con `there is no unique or exclusion constraint matching the
+  ON CONFLICT specification`. No es un no-op silencioso — es un error **en tiempo de ejecucion**, o
+  sea que un encolado idempotente escrito asi revienta en su **primera** corrida. Se arregla
+  repitiendo el predicado en el conflict target:
+  `on conflict (a, b) where status in ('queued','active') do nothing`. Verificado contra PG 18 real
+  al revisar la spec 0065 (los dos casos, el que falla y el que anda). El patron «unico parcial sobre
+  filas vivas + `on conflict do nothing`» es el idiom de este repo para colas y turnos, asi que el
+  error es facil de reintroducir.
+  **Y el hermano del mismo dia: NO PONGAS UN UNICO PARCIAL SOBRE UN `status` QUE EL WORKER VUELVE A
+  ESCRIBIR.** `wallet_push_queue` devuelve una fila fallida a `'pending'` en el **mismo** `UPDATE`
+  que incrementa `attempts` (`wallet/push.ts:199-203`). Con un unico parcial sobre
+  `status = 'pending'`, si mientras esa fila estaba en `sending` entro otra para el mismo consumidor,
+  la vuelta viola el unico → **el `UPDATE` entero falla** → `attempts` **no sube** (reproducido:
+  queda en 0, `last_error` null) → la fila se queda clavada en `'sending'` y `claimRow`
+  (`push.ts:118-126`) la re-reclama para siempre, comiendose el cupo de cada corrida. El error ademas
+  cae en un `swallow`. Coalescer con `insert … select … where not exists (… status in
+  ('pending','sending'))`, no con un indice.
 
 - **Gates: Node 24 + scripts de ROOT.** El shell del AGENTE arranca en Node 22 —es el Node del
   harness de Claude Code, que se antepone en el `PATH`, **no la terminal del owner**— y el repo

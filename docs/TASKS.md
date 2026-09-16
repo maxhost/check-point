@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-15 (tarde).
+Ultima actualizacion: 2026-09-15 (noche).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -27,7 +27,44 @@ Ultima actualizacion: 2026-09-15 (tarde).
   - **ADR 0065** (`aceptada`): proximidad por wallet = **turno rotativo** (5 dias) con **separacion
     geografica** (400 m), ≤5 turnos activos + ≤3 de utilidad por pase, 1 por negocio, FIFO, cooldown
     30 d, cuota 50 concurrentes, holdout 10 %, clase `pass_refresh` silenciosa.
-  - **Spec 0065 (`cerrada`)**: compositor + tick + pase + cupon + resultados + configuracion del
+  - **Spec 0065: `cerrada` otra vez (2026-09-15, noche), despues de la revision adversarial.** Tres
+    revisores independientes con dimension acotada y presupuesto escrito: **FAIL unanime, 16
+    bloqueantes**, mas un **17.º que NINGUN revisor cazo y salio de correr el SQL**: contra un indice
+    **parcial**, `on conflict (a,b) do nothing` **pelado** falla con `there is no unique or exclusion
+    constraint matching the ON CONFLICT specification` — hay que repetir el `where` del indice, y sin
+    eso **el tick reventaba en su primera corrida**. Todos corregidos.
+    **LOS 17 SE VERIFICARON EMPIRICAMENTE ANTES DE BAJARLOS A LA SPEC.** El owner pregunto
+    explicitamente si se habia hecho, y la respuesta honesta en ese momento era **«no, solo 2»** — el
+    resto se habia bajado confiando en la cita del revisor, que es justo lo que `CLAUDE.md` prohibe.
+    Verificacion: el arbol por lectura directa de cada `archivo:linea`, y las afirmaciones de
+    Postgres contra una **rama Neon efimera con PG 18** — el `23505` del retry del worker con
+    `attempts` **quedando en 0** y la fila clavada en `sending` (que es lo que lo vuelve un reintento
+    infinito), el fallo del `on conflict` y su arreglo, `GREATEST` ignorando NULL, el check «todo o
+    nada» mordiendo, y la vigencia abierta pasando. **Un hallazgo de subagente es una afirmacion de
+    exito como cualquier otra.**
+    **Las dos preguntas de producto las cerro el owner el mismo dia:** (1) puerta compartida →
+    **se muestran las DOS cosas fusionadas** en un texto («{negocio}: te faltan 2 sellos · 2x1 en
+    picadas»), funcion pura `composeRelevantText`, `cap` 120 y si no entra **se cae el saldo entero**
+    (no se trunca); Apple **no documenta** limite de `relevantText`, asi que **donde corta la
+    pantalla bloqueada es un item de QA**, no un numero inventado. (2) **Merito con balanza DESDE EL
+    DIA UNO** → **ADR 0066**, que supersede la decision 4 del ADR 0065: se rankea por **lift**
+    (`tasa_colocados − tasa_holdout`), no por tasa cruda — el argumento numerico del 0065 era
+    correcto pero refutaba la tasa cruda, no el merito —, con encogimiento hacia el promedio global
+    (α = 20) para que el debutante arranque **en el medio y no ultimo**, y FIFO de desempate. Los cuatro hallazgos que mas duelen: el unico parcial del turno estaba por
+    **campaña** cuando el ADR dice por **negocio** (dos campañas del mismo negocio le daban al
+    cliente dos ventanas seguidas); `push-worker.ts:60` colapsa toda clase desconocida a
+    `transactional`, o sea que el carril `pass_refresh` moria **antes** de su planner con typecheck
+    en verde; el «`PATCH` de Google» se citaba con articulo definido y **no existe** en el arbol
+    (solo hay POST: token exchange y `addMessage`); y el barrido estatico del opt-out era **vacuo**
+    (buscaba `marketing_opt_out_at`, la ortografia que el codigo que escribe nunca contiene).
+    Ademas: el cooldown lo quemaban los turnos **cancelados** (pausar un dia para corregir un typo
+    dejaba a toda la audiencia bloqueada 30 dias), no habia donde guardar los conteos de exclusion
+    del tick (el DoD «el motivo se cuenta en resultados» no tenia oraculo posible → tabla nueva
+    `campaign_tick_audience`), la mutacion del webhook **no mordia** (mover el `update` despues del
+    commit deja el estado final identico), `requireBackofficeSession` es un guard de **pagina** que
+    hace `redirect()` (en un POST da 307, no 403), y `locations` no llegaba al pase editando solo
+    `apple.ts`/`google.ts` (el input lo llenan tres call-sites via `provider.ts`).
+  - **Spec 0065 — contenido de producto (sin cambios, lo que el owner cerro)**: compositor + tick + pase + cupon + resultados + configuracion del
     consumidor + freno por plan, en 4 fases. **El owner cerro los dos items que faltaban
     (2026-09-15):** (1) el opt-out vive en una **seccion de Configuracion** del portal
     (`/wallet/settings`), un interruptor por negocio, sin tocar lo transaccional ni el saldo del
@@ -60,7 +97,10 @@ Ultima actualizacion: 2026-09-15 (tarde).
     la URL es constante, va con la spec de push). `PLAN_LOCATION_LIMITS`: free 1, plus 3.
   - Datos: no hay tabla de campañas; `core.order` + `order_item` + `product.unit_cost` dan RFM y
     margen; no hay email, fecha de nacimiento, opt-out, check-in ni **categoria del negocio**;
-    `phone_verified_at` siempre null.
+    `phone_verified_at` **NO** es siempre null: lo escribe la recuperacion por OTP
+    (`consumer/recovery/internal.ts:206`, `verify.ts:178`, pinneado en
+    `consumer-recovery.neon.integration.test.ts:137/188/445`). La frase vieja salia de un docblock
+    de la spec 0028 (`schema/consumer.ts:17`) que quedo viejo — cazado por la revision adversarial.
 
 - **DECISIONES DEL OWNER EN ESTA SESION (literal, ya bajadas a los ADR):** fase 1 audiencias / fase 2
   reactivo · un spec+ADR por tipo de campaña, hoy solo proximidad · $20 = base propia, red cruzada =
@@ -69,15 +109,22 @@ Ultima actualizacion: 2026-09-15 (tarde).
   orquestador) · merito con balanza (piso para debutantes) · sin email · fecha de nacimiento mas
   adelante · slot por puerta, no por barrio.
 
-**PROMPT PARA RETOMAR:** «Arco de marketing: ADR 0064/0065 escritos y **spec 0065 `cerrada`**.
-**Verificar primero con `git status` si los docs quedaron commiteados** — al cerrar la sesion del
-2026-09-15 estaban escritos y SIN COMMITEAR. El proximo paso es la **revision adversarial de la spec 0065** que pidio el owner, ANTES
-de escribir una linea de codigo — con presupuesto escrito en el encargo (`CLAUDE.md`): que clase de
-error tiene que cazar (afirmaciones del DoD sin oraculo, invariantes de colocacion sin test, la
-concurrencia del cupon, y si el orden de guardas del downgrade esta bien declarado) y **dos vueltas
-como maximo**; si la segunda termina en «el fix abrio la siguiente preimagen», cortar y llevar a QA.
-Despues, fase A. Leer `docs/specs/0065-*.md` entera y los ADR 0064/0065; **no re-medir lo medido** —
-las mediciones de Apple/Google/arbol estan en el ADR 0065 con su fuente.»
+**PROMPT PARA RETOMAR:** «Arco de marketing: la **revision adversarial de la spec 0065 YA SE HIZO y la
+spec YA ESTA `cerrada`** (2026-09-15 noche): tres revisores, FAIL unanime, 16 bloqueantes + un 17.º
+que salio del SQL, **todos corregidos y verificados empiricamente** — esta en la seccion «Revision
+adversarial — vuelta 1» al final de la spec, con la lista de lo que ya se confirmo correcto para no
+re-medirlo. **NO la vuelvas a correr**: la condicion de corte declarada era una vuelta, y una vuelta
+2 de revisores sobre lo mismo es exactamente el bucle que el owner corto en la spec 0064. El owner ya
+cerro las dos preguntas de producto (fusion de los dos textos en la puerta compartida; **merito desde
+el dia uno → ADR 0066**). **El proximo paso es despachar la FASE A** con
+`docs/AGENT-WORKFLOW.md` (encargo con presupuesto: las mutaciones de la lista del plan de pruebas y
+las de los docblocks nuevos que afirmen un invariante, nada mas). La rama Neon efimera
+`adversarial-0065-check` (usada para verificar los hallazgos de SQL contra Postgres real) **ya se
+borro** con confirmacion del owner (2026-09-15 noche); no queda nada pendiente ahi. **Antes de la
+fase A: aplicar la migracion `0031` en `ci-integration`.** Leer
+`docs/specs/0065-*.md` entera y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las mediciones de Apple/Google/arbol estan en el ADR
+0065 con su fuente, y lo que la revision ya confirmo correcto esta listado al final de la spec para
+no volver a mirarlo.»
 
 ## PROXIMO ARCO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
