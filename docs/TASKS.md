@@ -572,30 +572,39 @@ rutas 85/52/46.
 
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
 `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
-bucle que el owner corto en la 0064). **Estamos IMPLEMENTANDO la fase A, partida en sub-fases porque entera no
-entra en un turno** (`CLAUDE.md`: reanudar sale mas caro que terminar). **A1 esta hecha y verificada; A2
-despachada.** Lo que queda de A, en este orden y **serializado — nunca dos implementadores a la vez sobre el
-mismo arbol**, que se pisan los gates: **A3** carril `pass_refresh` (`push-worker.ts:60` colapsa toda clase
-desconocida a `transactional`: ahi se muere el carril, con typecheck en verde) + `patchGoogleObject` en
-`PushChannel`/`FakePushChannel` con `{kind:'google-patch'}`; **A4** `locations`/`merchantLocations` en el pase
-— el campo entra **requerido** en `PassBuildInput` (`wallet/provider.ts:6`) para que `typecheck` obligue a los
-**tres** call-sites de emision, y hay que **crear** el `PATCH` del Loyalty Object de Google, que **no existe**;
-**A5** `audience.ts` + el aplicador `placement.ts` + el endpoint del tick + `marketing-tick.yml` + la
-integracion Neon. Despues, **un revisor independiente sobre la fase A entera**. Leer `docs/specs/0065-*.md`
-entera y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las mediciones de Apple/Google/arbol estan en
-el ADR 0065 con su fuente, y lo que la revision ya confirmo correcto esta listado al final de la spec.
-**Ojo con `dropBusiness` en A5** (arriba).
-**A1 y A2 estan COMMITEADAS en `ddd64d2`; NO se pusheo, asi que prod NO tiene este codigo** — si en algun
-momento se pide QA, primero `git push` y despues verificar el commit status del **sha exacto**
+bucle que el owner corto en la 0064). **A1, A2, A3 y A4 ESTAN CERRADAS Y COMMITEADAS** (`ddd64d2`, `96c6215`,
+`47879b9`, `437d9c6`) — **NO SE PUSHEO**, asi que prod NO tiene este codigo: si en algun momento se pide QA,
+primero `git push` y despues verificar el commit status del **sha exacto**
 (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`), nunca «prod esta verde».
-**A2 Y A3 ESTAN CERRADAS** (2026-09-15 noche / 2026-09-16 madrugada). A2: las 8 mutaciones rojas + 6 sondas
-por docblock **todas verdes** → 4 tests nuevos (D1/D2/D4/D6) y 2 limites declarados (D3, D5). A3: codigo del
-implementador auditado leyendo el diff (murio sin handoff), un rojo que era del TEST y no del codigo
-corregido con una asercion mas fuerte, y **7 mutaciones propias, todas rojas**. **El primer paso al retomar
-es A4** — `locations`/`merchantLocations` en el pase, el campo entra **requerido** en `PassBuildInput`
-(`wallet/provider.ts:6`) para que `typecheck` obligue a los **tres** call-sites de emision, y hay que llenar
-el cuerpo del PATCH que A3 dejo en `{}` (`push-transports.ts`, funcion `patchGoogle`). **Ojo con el margen:
-`google.ts` esta en 262/300 y `push-transports.ts` en 250/300 — si no entra, se parte.**»
+
+**EL PRIMER PASO AL RETOMAR ES A5** — audiencia + aplicador + endpoint del tick + `marketing-tick.yml` + la
+integracion Neon. **La hace el orquestador a mano, no se despacha a un implementador**: A3 y A4 murieron
+SIN HANDOFF (dos veces seguidas), y `CLAUDE.md` corolario (f) de la 0064 dice que dos muertes seguidas son
+la señal de dejar de despachar — a un agente solo se le manda lo que sea de verdad independiente. Antes de
+escribir codigo, releer `docs/specs/0065-campana-de-proximidad-por-wallet.md` entera (la seccion del tick,
+paso a paso, y el plan de pruebas de A5) y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las
+mediciones de Apple/Google/arbol estan en el ADR 0065 con su fuente, y lo que la revision ya confirmo
+correcto esta listado al final de la spec.
+
+**Trampas ya verificadas para A5, no las redescubras:**
+- **`dropBusiness`** (`server/counter-integration-support.ts:210`) borra en un orden que las FKs de
+  `campaign_turn`/`coupon_redemption` (`no action`, calcadas de `reward_redemption`) no toleran al reves:
+  cualquier test de integracion que siembre turnos y llame a `dropBusiness` explota por FK salvo que borre
+  `coupon_redemption` y `campaign_turn` **antes** de las membresias (detalle completo arriba, buscar
+  "HALLAZGO VERIFICADO PARA LA FASE A5").
+- El planner (`placement-plan.ts`, A2) tope en **≤3 utilidad + ≤5 turnos = 8 puertas**: cualquier test de A5
+  que espere que el `maxSlots=10` trunque algo esta probando un caso inalcanzable con los limites default
+  (medido en la sonda D5).
+- El carril `pass_refresh` (A3) y el `PATCH` de Google con cuerpo real (A4) **ya estan listos para que A5 los
+  use** — A5 es quien por fin produce filas `pass_refresh` de verdad (hasta ahora ningun productor existia).
+- `google.ts` quedo en 166/300 tras el split de A4; `push-transports.ts` en 256/300. Si A5 los toca, verificar
+  margen ANTES de escribir.
+
+**Al cerrar A5 va un revisor independiente sobre la fase A entera** (protocolo de
+`docs/AGENT-WORKFLOW.md`), y tiene que saber que **dos archivos de test y dos docblocks los escribio/corrigio
+el orquestador, no un implementador**: `wallet-pass-refresh-worker.test.ts` (A3, asercion reemplazada) y los
+dos docblocks corregidos de A4 en `pass-locations.ts`/`pass-locations-store.ts` (atribucion de guards
+invertida; `order by` sin oraculo real). Solo entonces la spec pasa a `implementada`.»
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
