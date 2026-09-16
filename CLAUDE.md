@@ -358,6 +358,14 @@ sospecha. Una sesion fresca que solo lee el tope —que es el diseño explicito 
 estado falso aunque la verdad completa estuviera mas abajo. **Al hacer handoff, el bloque `ESTADO` de la primera
 pantalla se reescribe entero contra los hechos actuales, nunca se deja "vigente por omision" solo porque nadie
 lo contradijo explicitamente.**
+**Y la variante mas fina, que la regla de arriba NO evito dos veces seguidas y por eso ahora es un hook
+(`state-uncommitted-lie.sh`, Stop): el doc se escribe ANTES del commit, asi que el propio commit lo
+invalida.** Paso en B3 y en la fase C de la spec 0065: el bloque `ESTADO` decia «esta SIN COMMITEAR» y ese
+mismo commit la commiteaba; las secciones de B1 y B2 arrastraban lo mismo. No es drift entre sesiones —es
+drift **dentro de un commit**— y se ve inocente porque cuando se escribio la frase era cierta. El hook
+compara `git status --short` vacio contra un «SIN COMMITEAR» en las primeras 40 lineas de `docs/TASKS.md`;
+verificado que **muerde** (exit 2 + mensaje) y que **discrimina** en las dos direcciones (la frase en una
+seccion historica de mas abajo pasa; con el arbol sucio pasa, porque ahi es cierta).
 **Y el corolario de alcance, que costo un numero relatado al owner: al medir tamaños, el conjunto es TODO EL ALCANCE,
 no los archivos NUEVOS.** El orquestador de la D2 reporto «dos archivos en 300 exactas»; **eran tres** — el tercero
 (`billing-store.neon.integration.test.ts`) es un archivo **modificado** que ya estaba en el limite desde antes, y solo

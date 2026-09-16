@@ -8,19 +8,27 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASES B Y C COMPLETAS Y COMMITEADAS** — `a0573a6`, `7f59f8a`, `9bf69b8`, `32be432` (B) y `c6a573c` (C). Arbol limpio. **NADA DE B NI DE C ESTA PUSHEADO.** 5 gates verdes sobre el arbol de hoy: **172 archivos / 1234 tests / 0 failed**. **PROXIMO PASO: FASE D** (portal del consumidor + freno por plan). **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** Ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASES B Y C COMPLETAS Y COMMITEADAS** — `a0573a6`, `7f59f8a`, `9bf69b8`, `32be432` (B) y `8e8d596` (C). **NADA DE B NI DE C ESTA PUSHEADO.** 5 gates **re-medidos en el handoff**, no copiados: typecheck / lint / format:check / build VERDES y `test` = **172 archivos / 1234 tests / 0 failed** con las env de `ci-integration` apuntadas a la rama efimera `spec-0065-marketing`. **PROXIMO PASO: FASE D** (portal del consumidor + freno por plan) — ver «D — CONSUMIDOR Y FRENO POR PLAN: PREPARADA», que ya tiene relevado el terreno y **una bifurcacion que hay que decidir al empezar**: el portal es un SPA de dos pestañas y la spec pide una RUTA. **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** Ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
 
-**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, al cerrar C):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, en el handoff que cierra C):**
 
 - **ARCO DE MARKETING (spec 0065) — DONDE ESTA HOY, en una linea por fase:**
   **A: EN PROD** (`9fd9625`), falta solo el Actions secret `MARKETING_TICK_ENDPOINT` (lo pone el owner).
   **B1: hecha** (ciclo de vida + 6 rutas + el test unit de las 8 rutas HTTP) — `a0573a6` + `7f59f8a`.
   **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
   **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — `32be432`.
-  **C: hecha** (cupon en el mostrador: banner + ruta + transaccion con dos `for update` + 27 casos) — `c6a573c`.
+  **C: hecha** (cupon en el mostrador: banner + ruta + transaccion con dos `for update` + 27 casos) — `8e8d596`.
   **D: sin empezar** — es lo proximo.
   **NADA DE B NI DE C ESTA PUSHEADO.** Se pushea cuando el owner lo pida explicitamente, como hizo
   con la A.
+
+- **HOOK NUEVO (mistake→rule de esta sesion): `state-uncommitted-lie.sh` (Stop).** Bloquea si
+  `docs/TASKS.md` dice «SIN COMMITEAR» en sus primeras 40 lineas con el arbol LIMPIO. Lo motivo un
+  error propio cometido DOS veces seguidas (B3 y C): el bloque `ESTADO` se escribe ANTES del commit,
+  asi que el propio commit lo invalida, y la sesion fresca hereda un estado falso. **Verificado que
+  muerde** (exit 2 + mensaje sobre un repo de prueba con el arbol limpio y la frase arriba) **y que
+  discrimina en las dos direcciones**: la misma frase en una seccion historica de mas abajo pasa, y
+  con el arbol sucio pasa, porque ahi es cierta. Registrado en `.claude/settings.json`.
 
 - **COLA DE REVISIONES INDEPENDIENTES — decision del owner del 2026-09-16.** El protocolo de
   `docs/AGENT-WORKFLOW.md` («cada fase cierra con PASS independiente antes de la siguiente») queda
@@ -1314,7 +1322,51 @@ quien lo hereda — dice «1 failed» y nombra la suite del ciclo de vida de mar
 
 **Evidencia final: DOS corridas completas seguidas con `EXIT=0`, 162 archivos / 1169 tests / 0 failed.**
 
-### C — **EL CUPON EN EL MOSTRADOR: HECHA Y MEDIDA (2026-09-16). COMMITEADA en `c6a573c`, sin pushear.**
+### D — **CONSUMIDOR Y FRENO POR PLAN: PREPARADA, SIN EMPEZAR.** Es el proximo paso.
+
+**Lo que hay que construir** (spec 0065, «Portal del consumidor — seccion Configuracion» + «Freno
+por plan»): la seccion de opt-out por negocio en el portal, su ruta, la guarda
+`downgrade_blocked_campaigns` en `decidePlanChange` + el modal, el 402 al crear/activar con `free`,
+y la pausa defensiva del webhook.
+
+**RELEVADO YA, para no volver a buscarlo (verificado leyendo el arbol, no de memoria):**
+
+- **⚠️ EL PORTAL NO ES UN ARBOL DE RUTAS: ES UN SPA DE DOS PESTAÑAS.** `wallet/bottom-nav.tsx`
+  declara `export type WalletTab = "programs" | "qr"` y `wallet-shell.tsx` las conmuta con un
+  `useState` (`:24`), con `initialTab` como prop. **La spec pide una RUTA**
+  (`(consumer)/wallet/settings/page.tsx`) **y eso no es lo que el portal hace hoy.** Es una
+  bifurcacion real —tercera pestaña vs. ruta propia— y hay que **decidirla al empezar, no a mitad**:
+  una ruta nueva sale del shell (pierde la barra inferior y el estado de la pestaña), una pestaña
+  no tiene URL propia y la spec la nombra por URL. No la resuelvo yo aca: es la primera pregunta
+  de la fase.
+- **`apps/merchant/src/app/api/public/consumer/` NO EXISTE.** La ruta
+  `POST /api/public/consumer/marketing-opt-out` estrena ese arbol entero, incluida la resolucion de
+  la sesion de consumidor (mirar como la resuelve `(consumer)/wallet/page.tsx`, que es el unico
+  consumidor de esa sesion hoy).
+- **El freno por plan se calca, no se inventa.** `billing/plan-change.ts` (213 l.) ya es una funcion
+  pura con **orden de guardas declarado como normativo** y su unit que lo asevera: `decideDowngrade`
+  (`:176`) tiene hoy `downgrade_blocked` (locales, `:181`) → `already_on_plan` (`:187`) →
+  `hasLiveSubscription` (`:189`). La guarda nueva va **entre la de locales y `already_on_plan`**.
+  `PlanChangeInput` (`:42`) suma `activeCampaigns`.
+- **`hasLiveSubscription` (`plan-change.ts:93`) es obligatorio ademas de `effectiveLocationLimit`**:
+  la spec lo dice y el arbol lo confirma — `effectiveLocationLimit` (`locations/core.ts:94`) es un
+  `Math.min` de topes y **no mira `status` ni `stripe_subscription_id`**, o sea que no sabe nada de
+  «viva».
+- **La pausa defensiva del webhook** va en `billing/webhook-apply.ts` (239 l.), que ya corre todo
+  dentro de `withDbTransaction` (`:130` y `:205`) y ya toma `lockBusiness`. **La mutacion que vale
+  es la INYECCION DE FALLO** (hacer que el `update campaign` lance y aseverar que el plan tampoco
+  quedo escrito), no mover el `update` de lugar: moverlo despues del commit deja el estado final
+  identico y el test queda verde con la atomicidad violada. Ya esta escrito en el plan de pruebas.
+- **El cupo de tamaño esta justo**: `plan-change.ts` 213 y `webhook-apply.ts` 239 sobre un limite de
+  300. Medir con el hook (`echo '{"tool_input":{"file_path":"<abs>"}}' | .claude/hooks/file-size.sh`)
+  **despues** de prettier, no antes.
+- **Ojo con el barrido del opt-out**: la spec ya corrige que el literal es **`marketingOptOutAt`**
+  (camelCase) y no `marketing_opt_out_at` — drizzle mapea a snake solo en `schema/consumer.ts`, asi
+  que la ortografia snake **nunca** aparece en el codigo que escribe. Un barrido por el snake es
+  vacuo. Piso de archivos escaneados > 50 y probar que se pone rojo plantando un
+  `.set({ marketingOptOutAt })` en otro archivo.
+
+### C — **EL CUPON EN EL MOSTRADOR: HECHA Y MEDIDA (2026-09-16). COMMITEADA en `8e8d596`, sin pushear.**
 
 **Lo que quedo en el arbol** (5 gates verdes; `test` = **172 archivos / 1234 tests / 0 failed** con
 las env de `ci-integration` apuntadas a la rama efimera `spec-0065-marketing`):
@@ -1335,8 +1387,10 @@ las env de `ci-integration` apuntadas a la rama efimera `spec-0065-marketing`):
 
 **BITACORA DE MUTACIONES — presupuesto declarado ANTES de mutar: las TRES que pide el plan de
 pruebas de la spec, mas una por docblock nuevo que afirme un invariante que esas tres no cubran.**
-Copias limpias en `/tmp/c-clean/`, bitacora completa en `/tmp/c-mutations.md`. **Arbol verificado
-limpio**: `grep -rn MUTATION apps/merchant/src` vacio y `diff` identico contra las copias.
+**Arbol verificado limpio al cerrar**: `grep -rn MUTATION apps/merchant/src` vacio y `diff` identico
+contra las copias. *(Las copias vivian en `/tmp/c-clean/` y la bitacora cruda en
+`/tmp/c-mutations.md`; `/tmp` no sobrevive la sesion — lo que vale es la tabla de abajo, que es la
+transcripcion completa. No salir a buscar esos archivos.)*
 
 | id | invariante | resultado |
 |----|-----------|-----------|
@@ -1390,9 +1444,9 @@ efimera `spec-0065-marketing`):
 
 **BITACORA DE MUTACIONES — presupuesto declarado ANTES de mutar: SEIS, una por docblock nuevo que
 afirma un invariante; clase de error a cazar: «un invariante declarado que ningun test pinnea».**
-Copias limpias en `/tmp/b3-clean/`, shasums en `/tmp/b3-mutations-baseline.txt`, bitacora completa en
-`/tmp/b3-mutations.md`. **Arbol verificado limpio**: `grep -rn MUTATION apps/merchant/src` vacio y
-`diff` identico contra las 6 copias.
+**Arbol verificado limpio al cerrar**: `grep -rn MUTATION apps/merchant/src` vacio y `diff` identico
+contra las 6 copias. *(Vivian en `/tmp/b3-clean/` + `/tmp/b3-mutations.md`; `/tmp` no sobrevive la
+sesion — la tabla de abajo es la transcripcion completa. No salir a buscarlos.)*
 
 | id | invariante | resultado |
 |----|-----------|-----------|
