@@ -114,7 +114,12 @@ async function usableDoors(
         isNotNull(locations.latitude),
         isNotNull(locations.longitude),
       ),
-    );
+    )
+    // ORDERED, and not for cosmetics: a `select` with no `order by` returns whatever the
+    // scan produced, so this array came out in a different order between runs and the
+    // integration assertion flipped at random. Caught by a real red on 2026-09-16 while
+    // building B3 — the DTO of a preview must not be a coin toss.
+    .orderBy(locations.id);
   return rows.map((row) => row.id);
 }
 

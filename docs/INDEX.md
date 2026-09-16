@@ -87,7 +87,7 @@ desactualizado es peor que no tenerlo.
 | 0014 | 2026-08-10 | Marca de negocio demo | cerrada — superada por 0025 | no | `specs/0014-marca-negocio-demo.md` |
 | 0015 | 2026-08-10 | Locales del owner demo | cerrada — **demo TODAVÍA EN USO**: es el destino real del tile «Locales» (tarea 47) | no | `specs/0015-locales-owner-demo.md` |
 | 0016 | 2026-08-10 | Staff del owner demo | cerrada — superada por 0043 | no | `specs/0016-staff-owner-demo.md` |
-| 0017 | 2026-08-10 | Campañas del owner demo | cerrada — **demo TODAVÍA EN USO**: destino real del tile «Campañas»; campañas diferidas (ADR 0034/0057) | no | `specs/0017-campanas-owner-demo.md` |
+| 0017 | 2026-08-10 | Campañas del owner demo | **superada por la spec 0065 (2026-09-16, fase B3)**: el tile «Campañas» apunta a `/backoffice/marketing`, una pantalla real; las rutas `/backoffice/demo/campaigns*` quedan sin entrada desde el backoffice. Su compositor en bloques cerrados fue la referencia visual del de la 0065 | no | `specs/0017-campanas-owner-demo.md` |
 | 0018 | 2026-08-10 | Fundación UI production-grade de merchant demo | **implementada** (2026-09-15; el texto ya decia «implementada y en uso», el drift era la palabra clave del frontmatter, que es la que leen los barridos) | no | `specs/0018-fundacion-ui-merchant-demo.md` |
 | 0019 | 2026-08-10 | Programa de fidelización del owner demo | cerrada — superada por 0024/0027 | no | `specs/0019-programa-fidelizacion-owner-demo.md` |
 | 0020 | 2026-08-11 | Analíticas owner demo multirubro | cerrada — **demo TODAVÍA EN USO**: destino real del tile «Analíticas»; no hay analíticas reales (tarea 47/spec 0007) | no | `specs/0020-analiticas-owner-demo-multirubro.md` |

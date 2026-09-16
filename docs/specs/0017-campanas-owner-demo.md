@@ -1,7 +1,7 @@
 ---
 spec: 0017
 fecha: 2026-08-10
-estado: cerrada — **demo TODAVÍA EN USO** — campañas no existen como feature real
+estado: superada por la spec 0065 (2026-09-16) — el tile «Campañas» ya NO apunta acá
 resumen: Owner gestiona campañas demo con plantillas cerradas, calendario, locales, recompensas, resultados mock y transiciones de estado.
 disjunta: no
 archivos: apps/merchant, pruebas merchant y e2e, docs
@@ -9,10 +9,12 @@ archivos: apps/merchant, pruebas merchant y e2e, docs
 
 # 0017 — Campañas del owner demo
 
-> **Estado real 2026-09-15 — la reemplaza la spec 0065.** El tile «Campañas» pasa a
-> `/backoffice/marketing` cuando la 0065 se implemente (fase B); hasta entonces este mock
-> sigue siendo el destino. Su compositor en frases con bloques cerrados es la referencia visual
-> que hereda la 0065.
+> **SUPERADA — 2026-09-16, fase B3 de la spec 0065.** El tile «Campañas» apunta a
+> `/backoffice/marketing`, que es una pantalla real contra la base
+> (`marketing-backoffice-pages.neon.integration.test.ts` lo asevera, y asevera que ya no linkea a
+> `/backoffice/demo/campaigns`). **Las rutas `/backoffice/demo/campaigns*` siguen existiendo pero
+> ya no son alcanzables desde el backoffice**; su compositor en frases con bloques cerrados fue la
+> referencia visual que heredó el de la 0065.
 >
 > **Estado real 2026-09-09 — verificado contra el código.** **Este mock no fue superado: es el destino real del tile «Campañas»** (`backoffice/page.tsx:80` → `/backoffice/demo/campaigns`). Las campañas reales están **diferidas** (ADR 0034) y su rediseño vive en la spec 0003, dentro de la capa de marketing del ADR 0057.
 

@@ -23,17 +23,25 @@ export default async function BackofficePage() {
     status: subscription?.status ?? "active",
   };
 
-  // Modules with a REAL screen. Anything not listed here still falls back to the
-  // sessionStorage mock of spec 0015 (`/backoffice/demo/<slug>`) — today `campaigns` and
-  // `analytics`. `locations` left that list in spec 0061, `subscription` in spec 0063.
-  const realModules = new Set([
-    "counter",
-    "loyalty",
-    "catalog",
-    "locations",
-    "staff",
-    "brand",
-    "subscription",
+  // Modules with a REAL screen, and WHERE it lives. Anything not listed here still falls
+  // back to the sessionStorage mock of spec 0015 (`/backoffice/demo/<slug>`) — today only
+  // `analytics`. `locations` left that list in spec 0061, `subscription` in spec 0063,
+  // `campaigns` in spec 0065 (B3), and the spec 0017 mock is superseded.
+  //
+  // It is a Map and no longer a Set because for the first time a slug and its path
+  // DISAGREE: the tile is «Campañas» / `campaigns` and the section the spec asks for is
+  // `/backoffice/marketing`. DECISION OF THE ORCHESTRATOR, not the owner: the path
+  // moves, the slug stays. Renaming the slug instead would touch the demo route, its
+  // sessionStorage key and the mock screens of spec 0015 for a cosmetic win.
+  const realModules = new Map([
+    ["counter", "/backoffice/counter"],
+    ["loyalty", "/backoffice/loyalty"],
+    ["catalog", "/backoffice/catalog"],
+    ["locations", "/backoffice/locations"],
+    ["staff", "/backoffice/staff"],
+    ["brand", "/backoffice/brand"],
+    ["subscription", "/backoffice/subscription"],
+    ["campaigns", "/backoffice/marketing"],
   ]);
   const modules = [
     ["Mostrador", "Escanea el QR del cliente y acredita su compra.", "counter"],
@@ -90,11 +98,7 @@ export default async function BackofficePage() {
             {modules.map(([title, description, slug]) => (
               <Link
                 className="module-card"
-                href={
-                  realModules.has(slug)
-                    ? `/backoffice/${slug}`
-                    : `/backoffice/demo/${slug}`
-                }
+                href={realModules.get(slug) ?? `/backoffice/demo/${slug}`}
                 key={slug}
               >
                 <strong>{title}</strong>

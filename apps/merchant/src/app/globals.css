@@ -3981,3 +3981,58 @@ input:focus {
     break-after: auto;
   }
 }
+/* Spec 0065 B3 — las tres pantallas de campañas. Reusan `.campaign-card`, `.status`,
+   `.rule-builder` y `.rule-line` del wizard de la spec 0017; esto es lo que falta. */
+.status.draft {
+  color: #4d5d52;
+  background: #eef2ef;
+}
+.status.ended {
+  color: #175c35;
+  background: #e2ece6;
+}
+.composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.composer-actions .button,
+.composer-actions .small-button {
+  width: auto;
+  margin: 0;
+  padding: 10px 16px;
+  text-decoration: none;
+}
+.campaign-results {
+  margin-top: 30px;
+}
+.result-block {
+  margin-top: 12px;
+  padding: 18px;
+  border: 1px solid #dbe5dd;
+  border-radius: 18px;
+  background: #fff;
+}
+.result-block h3 {
+  margin: 0;
+}
+.result-block ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #344238;
+}
+.result-effect {
+  margin: 12px 0 0;
+  font-weight: 800;
+}
+.quality {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 99px;
+  color: #4d5d52;
+  font-size: 11px;
+  font-weight: 800;
+  background: #eef2ef;
+}

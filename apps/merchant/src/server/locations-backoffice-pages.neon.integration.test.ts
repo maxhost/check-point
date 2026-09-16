@@ -114,8 +114,10 @@ describe.skipIf(!integrationEnabled)(
       expect(html).toContain('href="/backoffice/locations"');
       expect(html).not.toContain("/backoffice/demo/locations");
       // The tiles with no real screen yet still fall back to the mock — this asserts the
-      // re-route was surgical and did not silently break the others.
-      expect(html).toContain("/backoffice/demo/campaigns");
+      // re-route was surgical and did not silently break the others. `campaigns` left
+      // this list in spec 0065 (B3) and is asserted by
+      // `marketing-backoffice-pages.neon.integration.test.ts`; `analytics` is the only
+      // one still on the spec 0015 mock.
       expect(html).toContain("/backoffice/demo/analytics");
       expect(html).toContain('href="/backoffice/staff"');
     }, 60_000);

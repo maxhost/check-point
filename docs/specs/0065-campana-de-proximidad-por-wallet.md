@@ -574,8 +574,9 @@ va en el `WHERE`/lock, no en un `NOT EXISTS`), 0060 (discriminante que solo escr
 | `apps/merchant/src/app/api/internal/marketing-tick/route.ts` | crear |
 | `.github/workflows/marketing-tick.yml` | crear (secrets `MARKETING_TICK_ENDPOINT`, `CRON_SECRET`) |
 | `apps/merchant/src/app/api/marketing/**` | crear: rutas de la tabla |
-| `apps/merchant/src/app/backoffice/marketing/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (+ componentes) | crear |
-| `apps/merchant/src/app/backoffice/page.tsx` | editar: tile «Campañas» |
+| `apps/merchant/src/app/backoffice/marketing/page.tsx`, `new/page.tsx`, `[id]/page.tsx` (+ componentes) | crear. **Al implementar B3 se agrego una cuarta ruta, `[id]/edit/page.tsx`** — decision del ORQUESTADOR: la spec pide «editar solo en `draft` o `paused`» como accion del detalle y la tabla de Archivos no la listaba; se reusa el compositor en modo edicion en vez de crear un segundo formulario. Los componentes quedaron en `campaigns-list.tsx`, `composer{,-blocks,-review,-draft}.{tsx,ts}`, `results-view.tsx`, `campaign-labels.ts` y `[id]/campaign-detail.tsx` (limite de 300 lineas) |
+| `apps/merchant/src/app/backoffice/page.tsx` | editar: tile «Campañas». **B3: `realModules` paso de `Set` a `Map` slug→path**, porque por primera vez el slug (`campaigns`) y la ruta (`/backoffice/marketing`) NO coinciden. Decision del ORQUESTADOR: se mueve la ruta, el slug se queda — renombrarlo tocaba la ruta demo, su clave de `sessionStorage` y las pantallas mock de la spec 0015 |
+| `apps/merchant/src/server/marketing/campaign-list.ts`, `composer-summary.ts` | **crear (no estaban en la tabla)**: lo que lee el LISTADO (tallies agrupados + foto del ultimo tick por `distinct on`) y la decision pura del bloque 5 (turnos = `min(alcanzable, cuota libre)`, costo maximo = `costo × tope`) |
 | `apps/merchant/src/server/counter/resolve.ts`, `app/backoffice/counter/{counter-console,redeem-panel}.tsx` | editar: panel de cupon |
 | `apps/merchant/src/app/api/counter/coupon-redeem/route.ts` | crear |
 | `apps/merchant/src/app/(consumer)/wallet/page.tsx` | editar: entrada «Configuracion» |
@@ -618,9 +619,14 @@ y sin partirlos el revisor de A habria declarado un limite falso («esto no se p
 D»). **Se puede y se declara como se hace: sembrando `marketing_opt_out_at` y `pause_reason` por
 SQL crudo en el seed de integracion.**
 
-- [ ] **[B]** Un owner `plus` compone y activa una campaña de proximidad con audiencia «dormidos
+- [~] **[B]** Un owner `plus` compone y activa una campaña de proximidad con audiencia «dormidos
       hace N dias» sobre locales elegidos; el compositor muestra los conteos reales
       (`audience-preview`) y el costo maximo antes de activar.
+      **B3 cierra la MITAD verificable**: el compositor con sus 5 bloques, los conteos de
+      `audience-preview` y el costo maximo estan pinneados por render real
+      (`app/backoffice/marketing/composer.test.ts`, 7 casos) sobre la decision pura
+      `summarizeComposer` (5 casos). **Lo que queda es «compone y ACTIVA» de punta a punta**, que
+      son dos `fetch` desde el navegador: va al QA del owner, declarado, no se persigue.
 - [ ] **[B]** El ciclo de vida de la campaña responde lo declarado: crear `draft`, editar solo en
       `draft`/`paused` (409 `not_editable`), las cuatro transiciones (409 `invalid_transition` fuera
       de la tabla), y `activate` sin local activo **con coordenadas** → 409.
@@ -667,9 +673,14 @@ SQL crudo en el seed de integracion.**
       misma fila** (no 409). **No cambia `points_balance` ni `stamps_count`** (aseverado por SQL).
 - [ ] **[C]** Al canjear se encola un aviso **`class = 'transactional'`** cuyo texto contiene la
       **etiqueta snapshot** (no la etiqueta actual de la campaña).
-- [ ] **[B]** Resultados: los titulos dicen «compraron durante su ventana»; la estimacion esta
+- [x] **[B]** Resultados: los titulos dicen «compraron durante su ventana»; la estimacion esta
       oculta con `B < 30` **y muestra el valor correcto con `B ≥ 30`**; «estas en el pase de K de C»
       coincide con el SQL de `pass_placement`.
+      **Cerrado en dos mitades:** el DTO en B2 (`marketing/results.test.ts` +
+      `marketing-results.neon.integration.test.ts`) y la PANTALLA en B3
+      (`app/backoffice/marketing/results-view.test.ts`, 6 casos, construidos con el
+      `buildCampaignResults` real y no con un DTO a mano). Mutacion M6 (forzar la rama de la
+      estimacion) → ROJO el caso de `B < 30`.
 - [ ] **[A]** Pausar, **finalizar**, archivar un local, quedarse sin coordenadas y perder la
       membresia retiran los turnos con su `cancel_reason` en el siguiente tick, y el pase deja de
       llevar esa ubicacion en el siguiente refresco. *(Los seis valores de `cancel_reason` tienen
@@ -687,11 +698,18 @@ SQL crudo en el seed de integracion.**
       campañas `active` quedan `paused` con `plan_downgraded` **en la misma transaccion** —
       verificado **inyectando un fallo** en ese `update` y aseverando que **el plan tampoco quedo
       escrito**. El tick retira sus turnos.
-- [ ] **[B]** Aislamiento: owner de A no **ve** (pagina), edita ni obtiene resultados de campañas de
+- [~] **[B]** Aislamiento: owner de A no **ve** (pagina), edita ni obtiene resultados de campañas de
       B (404); **staff no puede crear ni activar** (403). **[A]** el tick sin `CRON_SECRET` → 401.
       **[D]** opt-out de una membresia ajena → 404; `/wallet/settings` sin sesion → redirect.
-- [ ] **[B]** El tile «Campañas» lleva a `/backoffice/marketing` (hoy cae en el mock de demo,
+      **[B] CERRADO en B3**: `marketing-backoffice-pages.neon.integration.test.ts` asevera el
+      **digest** de `notFound()` (no un throw cualquiera) para la campaña ajena y para un `[id]` mal
+      formado; el listado no muestra la campaña del vecino. Mutaciones M3 y M4 → ROJO las dos. El
+      403 del staff sobre las rutas lo cerro B1. **[A]** y **[D]** siguen abiertos.
+- [x] **[B]** El tile «Campañas» lleva a `/backoffice/marketing` (hoy cae en el mock de demo,
       `backoffice/page.tsx:41-44`); la spec 0017 queda anotada como superada.
+      Pinneado contra la base real en `marketing-backoffice-pages.neon.integration.test.ts` (y el
+      `not.toContain("/backoffice/demo/campaigns")` de `locations-backoffice-pages` se movio ahi,
+      con `analytics` como el unico tile que sigue en el mock).
 - [ ] QA del owner en dispositivos reales (abajo) en verde, con `Vercel: success` verificado para el
       sha exacto antes de pedirlo.
 - [ ] Revisor independiente emite PASS por fase (`docs/AGENT-WORKFLOW.md`).
@@ -796,10 +814,14 @@ SQL crudo en el seed de integracion.**
 - [ ] Autorizacion: owner A → campañas de B: 404 en las rutas con `[id]` **y en la pagina
       `/backoffice/marketing/[id]`**; staff → `POST /campaigns` y `activate`: 403; tick sin Bearer:
       401; opt-out de una membresia ajena: 404; `/wallet/settings` sin sesion → redirect.
-- [ ] Render (`renderToStaticMarkup` + `node-html-parser`, sin jsdom — gotcha de `CLAUDE.md`):
+- [~] Render (`renderToStaticMarkup` + `node-html-parser`, sin jsdom — gotcha de `CLAUDE.md`):
       compositor con los 5 bloques y conteos; resultados con los titulos exactos, la estimacion
       oculta con `B < 30` y **su valor con `B ≥ 30`**; **el modal de downgrade mostrando
       `downgrade_blocked_campaigns`**; el tile «Campañas» apuntando a `/backoffice/marketing`.
+      **Todo lo de B3 hecho** (26 casos entre `composer.test.ts`, `results-view.test.ts`,
+      `campaign-screens.test.ts`, `composer-draft.test.ts` y el de paginas contra Neon); **no hizo
+      falta `node-html-parser`**: las aserciones son sobre el markup y sobre las props, y para las
+      props se lee el elemento devuelto por la pagina. **El modal de downgrade es de la fase D.**
 - [ ] Barrido estatico: ningun DTO de `api/marketing/**` serializa `client_request_id` ajeno ni
       `*ObjectKey` (piso de archivos escaneados > 0).
 - [ ] Comandos exactos: `pnpm run typecheck`, `pnpm run lint`, `pnpm run format:check`,
@@ -873,6 +895,37 @@ Las dos son reversibles y ninguna la decidio el owner.
    redondeo eso viaja tal cual a la pantalla. Un decimal y no entero porque con el piso en 30
    holdouts existe el efecto real pero chico, y `Math.round` lo imprimiria como «+0 clientes», que
    se lee «no sirvio» en vez de «sirvio poco».
+
+## Al implementar la fase B3 (2026-09-16) — decisiones y correcciones del ORQUESTADOR
+
+Todas reversibles, ninguna la decidio el owner.
+
+1. **Una cuarta ruta: `[id]/edit`.** La spec lista «editar» entre las acciones del detalle pero su
+   tabla de Archivos solo tiene tres paginas. Meter el formulario DENTRO del detalle obligaba a
+   cargar locales, catalogo, cuota y preview **en cada visita al detalle**; una ruta aparte paga ese
+   costo solo cuando se edita. El compositor se reusa con una prop `campaign` opcional: en modo
+   edicion hace `PATCH`, no ofrece «Activar» (activar vive en el detalle, con las otras tres
+   transiciones) y una campaña que no es `draft`/`paused` es **404 en la pagina**, porque una
+   pantalla que dibuja inputs que el servidor va a rechazar con 409 `not_editable` miente sobre lo
+   que puede hacer.
+2. **El compositor abre con la audiencia ya calculada.** `new/page.tsx` resuelve `previewAudience`
+   en el servidor sobre la audiencia por defecto y la pasa como `initialPreview`. No es andamiaje de
+   test: sin eso la primera pintura dice «calculando» y los numeros que el owner vino a ver llegan
+   tarde. El refresco en vivo (cambiar dias o locales) sigue siendo el `useEffect`.
+3. **«Activar» son DOS llamadas y el borrador sobrevive a la segunda.** Crear y activar son rutas
+   distintas; si `activate` falla (el caso esperado es 402 `plan_not_allowed`) la campaña **ya
+   existe** como borrador. La pantalla lo dice y linkea al borrador, y `createdId` evita que un
+   segundo intento cree una segunda campaña.
+4. **`couponProductId` se ofrece** como pick opcional sobre el catalogo. La pagina lee **solo `id` y
+   `name`** de `core.product`: el DTO completo lleva `imageObjectKey`, y un server component que se
+   lo pasa a un componente cliente lo serializa al navegador (`CLAUDE.md`; ya se cazo una fuga asi
+   en marca, spec 0025). Blindado sobre las **props**, no sobre el HTML.
+5. **El 404 de pagina tambien cubre un `[id]` mal formado.** Sin un chequeo de forma, un id que no
+   es uuid llega al driver y sale `22P02` → 500, donde la respuesta honesta es «no existe».
+6. **Hallazgo fuera de B3, arreglado igual:** `usableDoors` de `audience-preview.ts` (fase B2) hacia
+   un `select` **sin `order by`**, asi que `usableLocationIds` salia en orden distinto entre
+   corridas y su asercion de integracion **se daba vuelta al azar**. Se puso `.orderBy(locations.id)`.
+   Salio como un rojo real en la corrida completa de gates, no de una lectura del codigo.
 
 ## Al implementar la fase A5 (2026-09-16) — decisiones y correcciones del ORQUESTADOR
 

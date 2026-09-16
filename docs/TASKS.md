@@ -8,19 +8,32 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 Y B2 COMPLETAS Y COMMITEADAS — `a0573a6`, `7f59f8a`, `9bf69b8` — NINGUNA PUSHEADA.** Arbol limpio (`git status` vacio). 5 gates verdes sobre ese arbol: **162 archivos / 1169 tests / 0 failed**. **PROXIMO PASO: B3** — las 3 pantallas (`/backoffice/marketing`, `new`, `[id]`) + el tile «Campañas». Ver «FASE B (BACKOFFICE DE CAMPAÑAS)» → sub-seccion **B3 (PREPARADA, SIN EMPEZAR)**, que ya tiene relevado el tile, el patron de pantalla a copiar y una trampa medida: un `*.test.tsx` **no lo corre vitest**.)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B COMPLETA EN EL ARBOL: B1, B2 y B3.** B1/B2 commiteadas (`a0573a6`, `7f59f8a`, `9bf69b8`); **B3 esta SIN COMMITEAR**. **NADA DE LA FASE B ESTA PUSHEADO.** 5 gates verdes sobre el arbol de hoy: **168 archivos / 1207 tests / 0 failed**. **PROXIMO PASO: FASE C (el cupon en el mostrador).** **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** O sea que A, B, C y D se implementan seguidas y **las revisiones se acumulan para el final** — ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
 
-**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, al cerrar B2):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, al cerrar B3):**
 
 - **ARCO DE MARKETING (spec 0065) — DONDE ESTA HOY, en una linea por fase:**
   **A: EN PROD** (`9fd9625`), falta solo el Actions secret `MARKETING_TICK_ENDPOINT` (lo pone el owner).
   **B1: hecha** (ciclo de vida + 6 rutas + el test unit de las 8 rutas HTTP) — `a0573a6` + `7f59f8a`.
   **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
-  **B3: SIN EMPEZAR** — es lo proximo.
+  **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — **SIN COMMITEAR**.
   **C y D: sin empezar.**
-  **NADA DE LA FASE B ESTA PUSHEADO.** Se pushea con el PASS del revisor de la fase completa, o cuando
-  el owner lo pida explicitamente como hizo con la A. **Ningun revisor independiente vio B1 ni B2
-  todavia** — las cerro el orquestador con sus mutaciones, que no es lo mismo.
+  **NADA DE LA FASE B ESTA PUSHEADO.** Se pushea cuando el owner lo pida explicitamente, como hizo
+  con la A.
+
+- **COLA DE REVISIONES INDEPENDIENTES — decision del owner del 2026-09-16.** El protocolo de
+  `docs/AGENT-WORKFLOW.md` («cada fase cierra con PASS independiente antes de la siguiente») queda
+  **suspendido para este arco por decision explicita del owner**: se implementan A→B→C→D seguidas y
+  las revisiones se hacen todas juntas al final, una por parte. **Lo que esto significa y hay que
+  decir en voz alta: nada de la spec 0065 tiene PASS de nadie.** Lo que hay es el trabajo del
+  orquestador con sus mutaciones, que no es lo mismo — y el riesgo que el protocolo existia para
+  cubrir (una fase construida sobre un defecto de la anterior) esta **aceptado, no eliminado**.
+  Pendientes en la cola, en orden:
+  1. **Fase A** (fundacion) — A3, A4 y A5 las cerro el ORQUESTADOR a mano porque sus implementadores
+     murieron; el revisor tiene que saberlo.
+  2. **Fase B** (B1 ciclo de vida + rutas, B2 resultados + preview, B3 pantallas).
+  3. **Fase C** (cupon).
+  4. **Fase D** (consumidor + freno por plan).
 
 - **ARCO DE SUSCRIPCION: CERRADO.** Spec 0064 `implementada`, commit `ca2d746`, QA del owner en prod en
   verde. O-2/O-3/O-4 aceptadas por el owner. Diagnostico vigente: `A3 Test`
@@ -1300,7 +1313,70 @@ quien lo hereda — dice «1 failed» y nombra la suite del ciclo de vida de mar
 
 **Evidencia final: DOS corridas completas seguidas con `EXIT=0`, 162 archivos / 1169 tests / 0 failed.**
 
-### B3 — **LAS PANTALLAS: PREPARADA, SIN EMPEZAR.** Es el proximo paso.
+### B3 — **LAS PANTALLAS: HECHA Y MEDIDA (2026-09-16). SIN COMMITEAR.**
+
+**Lo que quedo en el arbol** (5 gates verdes: typecheck / lint / format:check / build / test, este
+ultimo **168 archivos / 1207 tests / 0 failed** con las env de `ci-integration` apuntadas a la rama
+efimera `spec-0065-marketing`):
+
+- **Pantallas**: `app/backoffice/marketing/page.tsx` (listado), `new/page.tsx` (compositor),
+  `[id]/page.tsx` (detalle + resultados) y **`[id]/edit/page.tsx`**, una cuarta ruta que la tabla de
+  Archivos no tenia — decision del orquestador, escrita en la spec.
+- **Componentes**: `campaigns-list.tsx`, `composer.tsx` + `composer-blocks.tsx` +
+  `composer-review.tsx` + `composer-draft.ts`, `results-view.tsx`, `campaign-labels.ts`,
+  `[id]/campaign-detail.tsx`. La particion es el limite de 300 lineas; el mas grande queda en 253.
+- **Server nuevo**: `marketing/campaign-list.ts` (tallies agrupados + foto del ultimo tick por
+  `distinct on`) y `marketing/composer-summary.ts` (la decision pura del bloque 5).
+- **El tile**: `realModules` de `backoffice/page.tsx` paso de `Set` a **`Map` slug→path**, porque
+  `campaigns` y `/backoffice/marketing` no coinciden. `analytics` es el unico tile que sigue en el
+  mock de la spec 0015. La spec 0017 quedo marcada **superada** (frontmatter + INDEX).
+- **Tests (26 casos nuevos)**: `marketing/composer-summary.test.ts` (5),
+  `app/backoffice/marketing/composer.test.ts` (7), `results-view.test.ts` (6),
+  `campaign-screens.test.ts` (7), `composer-draft.test.ts` (6) y
+  `server/marketing-backoffice-pages.neon.integration.test.ts` (7, contra Neon).
+
+**BITACORA DE MUTACIONES — presupuesto declarado ANTES de mutar: SEIS, una por docblock nuevo que
+afirma un invariante; clase de error a cazar: «un invariante declarado que ningun test pinnea».**
+Copias limpias en `/tmp/b3-clean/`, shasums en `/tmp/b3-mutations-baseline.txt`, bitacora completa en
+`/tmp/b3-mutations.md`. **Arbol verificado limpio**: `grep -rn MUTATION apps/merchant/src` vacio y
+`diff` identico contra las 6 copias.
+
+| id | invariante | resultado |
+|----|-----------|-----------|
+| M1 | «la plata se multiplica en CENTAVOS, nunca en floats» (`composer-summary.ts`) | **VERDE — el invariante era FALSO.** `(amount*cap).toFixed(2)` pasa 12/12: `toFixed(2)` absorbe el ruido IEEE (~1e-13) en todo el rango alcanzable (cap ≤ 1e6). **El docblock se corrigio para decirlo**; el codigo en centavos se queda porque es mas claro, pero ya no afirma una guarda que no existe |
+| M2 | «el `order by` del `distinct on` hace ganar la foto MAS NUEVA» (`campaign-list.ts`) | ROJO 1/7 — el listado mostraba «Último tick: 99 personas, 88 alcanzables» (la de hace una semana) en vez de 42/18 |
+| M3 | «un `[id]` mal formado nunca llega a Postgres» (`[id]/page.tsx`) | ROJO 1/7 — el digest pasa a ser `Error: Failed query: select "id","na…`, o sea el driver, no un 404 |
+| M4 | «la campaña ajena es 404, nunca 403 ni un crash» (`[id]/page.tsx`) | ROJO 1/7 — digest `Error: No encontramos esa campaña.`, una excepcion sin digest = 500 |
+| M5 | «las acciones se DERIVAN de `nextStatus`, no se re-listan» (`campaign-labels.ts`) | ROJO 1/7 — `paused: expected [Activar, Finalizar] to deeply equal [Activar, Finalizar, Archivar]` |
+| M6 | «la pantalla RENDERIZA el DTO y no decide el gating» (`results-view.tsx`) | ROJO 1/6 — «Estimación del efecto» aparece con 29 holdouts |
+
+**HALLAZGO FUERA DE B3, ARREGLADO IGUAL — un flaky REAL de la fase B2, cazado por un rojo de la
+corrida completa y no por leer codigo.** `usableDoors` de `marketing/audience-preview.ts` hacia un
+`select` **sin `order by`**, asi que `usableLocationIds` salia en orden distinto entre corridas y el
+`toEqual` de `marketing-audience-preview.neon.integration.test.ts` **se daba vuelta al azar** (la
+primera corrida de gates dio 1 failed por eso). Fijado con `.orderBy(locations.id)` y el `toEqual`
+ordenado; 3 corridas seguidas en verde. Es el gotcha de `CLAUDE.md` («un `select` sin `order by`»)
+en un archivo nuevo, que es donde mas barato sale arreglarlo.
+
+**LIMITES DECLARADOS (condicion de corte del encargo — no se persiguen, van al QA del owner):**
+1. **El refetch en vivo de `audience-preview`** mientras el owner cambia dias o locales: `useEffect`
+   no corre en un render estatico. Lo que SI esta pinneado es `initialPreview`, que la pagina
+   resuelve en el server y es lo que se ve en la primera pintura. **Intentado antes de declararlo**
+   (`CLAUDE.md`, spec 0057): se puede llegar con `vi.mock("react")` sobre `useState`, como
+   `locations-counter-surface.test.ts`, pero eso pinnea el ESTADO, no el `fetch`; el `fetch` real
+   necesitaria doblar `globalThis.fetch` **y** correr el efecto, que es lo que no hay sin jsdom.
+2. **Los dos submits** (crear → activar; `PATCH` del editar) y el modal de confirmacion.
+3. **`.mapWith(Number)` sobre los conteos del LISTADO** (`loadTallies`): no hay caso de integracion
+   que los lea desde SQL. Mismo idiom ya pinneado en `results-store.ts` por B2.
+
+**Fuga de R2 cerrada de paso:** la pagina del compositor ofrece el catalogo para el
+`couponProductId`, y `core.product` lleva `imageObjectKey`. Se leen **solo `id` y `name`**, y se
+asevera **sobre las PROPS** (que es lo que Flight serializa, ADR 0062) con un producto sembrado
+**con** clave — sin sembrarlo la asercion era vacua sobre una lista vacia, y se corrigio al verlo.
+
+---
+
+**(Lo de abajo es el relevamiento con el que se arranco B3; queda como registro.)**
 
 **Lo que hay que construir** (spec 0065, «Backoffice — rutas y API» + el journey del owner en «Diseño»):
 `/backoffice/marketing` (listado), `/backoffice/marketing/new` (compositor), `/backoffice/marketing/[id]`

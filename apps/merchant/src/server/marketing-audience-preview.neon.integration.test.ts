@@ -170,7 +170,9 @@ describe.skipIf(!integrationEnabled)("audience preview", () => {
       optOut: 1,
       cooldown: 1,
       eligible: 1,
-      usableLocationIds: [world.doorA, world.doorB],
+      // Sorted by id, which is the order `usableDoors` now guarantees: without the
+      // `order by` this line flipped between runs.
+      usableLocationIds: [world.doorA, world.doorB].sort(),
     });
   }, 120_000);
 
