@@ -129,6 +129,12 @@ probar, gana la pantalla** — el QA humano encuentra lo que ninguna mutacion ve
 la 0063 salieron asi, y ninguna spec los pedia). (d) Un hallazgo que **no es riesgo de produccion** se
 DECLARA y se sigue; no se persigue. (e) Si una fase no llego a pantalla, cortar la verificacion y
 llevarla al QA es la decision correcta, no una rendicion.
+**(f) Corolario de la 0064, que costo cinco agentes cortados a mitad: cuando un encargo no entra en un
+turno, REANUDAR sale mas caro que terminarlo a mano.** Cada muerte obliga a auditar el arbol antes de
+seguir (una mutacion viva es indistinguible de un bug real) y a reconstruir contexto. El cierre lo hizo
+el orquestador a mano en una fraccion del tiempo: los 11 errores que quedaban eran imports huerfanos de
+archivos a medio partir, no bugs. **Si un encargo ya murio DOS veces, no lo despaches una tercera:
+terminalo vos y manda a un agente solo lo que sea de verdad independiente.**
 
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto,
 cuestan cero tokens y son deterministas; este archivo es advisory. Si una regla se puede
@@ -355,6 +361,18 @@ barrido de tamaños se corre sobre los ` M` **y** los `??`.
   una trampa de foco en **45 lineas, 12 ms, cero paquetes** — verificado en el delta de la spec 0063, donde el
   ORQUESTADOR habia declarado el limite «exige DOM real» y era falso (mutar el selector da rojo). Antes de escribir
   «no hay DOM», mira que bundlea Next.
+- **UN `import` DE VALOR AL BARREL `./billing` DENTRO DE UN SUPPORT DE TEST CUELGA LA SUITE PARA SIEMPRE.**
+  `billing-integration-support.ts` lo importa la factory de `vi.mock("./stripe-config")`; el barrel arrastra el
+  dominio entero **de vuelta a `stripe-config`**, cuya factory todavia no termino → ciclo. Los dos
+  `billing-pages*.neon.integration.test.ts` **colgaban sin emitir una linea** (ni `vitest list` terminaba, **0% de
+  CPU** — asi se ve un deadlock, no una corrida lenta). Se importa del **modulo concreto** (`./billing/store`): de
+  infinito a **1.06 s**. **Un `import type` al barrel es gratis —se borra en compilacion—; uno de VALOR no.** Es el
+  mismo deadlock que ya documentaba `billing-pages.neon.integration.test.ts`, reintroducido por otra puerta.
+  **Y el metodo para diagnosticarlo, que es lo reutilizable:** ante «todo cuelga», (a) corré un test suelto y
+  AJENO —si anda en ms, vitest esta sano y el problema es de ESOS archivos—; (b) si cuelgan **dos** hermanos,
+  mira la cadena COMUN y no el archivo nuevo, que es el sospechoso obvio y era inocente; (c) matar procesos
+  zombis **no** lo arreglo, y ese negativo fue el dato que descarto «contencion de maquina».
+
 - **Gates: Node 24 + scripts de ROOT.** El shell del AGENTE arranca en Node 22 —es el Node del
   harness de Claude Code, que se antepone en el `PATH`, **no la terminal del owner**— y el repo
   pide 24: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` antes de cualquier gate.

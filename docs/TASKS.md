@@ -68,10 +68,43 @@ Ultima actualizacion: 2026-09-13.
     (0015 locales, 0017 campañas, 0020 analiticas). **No tocarlas**: su estado describe la realidad.
   - **Resultado del barrido: no queda ninguna spec implementada marcada como otra cosa.**
 
-**PROXIMO ARCO (nada empezado):** la **tarea 55** — cambio de intervalo **anual → mensual**, el unico
-sentido que la 0063 dejo afuera por no tener forma barata (reembolso, quedarse con la plata, o
-`subscription_schedules`). Su rechazo vive hoy en la funcion pura (`interval_downgrade_unsupported`), que
-es el unico lugar donde habria que habilitarlo.
+**PROMPT PARA RETOMAR:** «arrancamos el arco del MOTOR DE PUBLICIDAD Y MARKETING. Antes de proponer nada,
+lee la seccion PROXIMO ARCO de `docs/TASKS.md` y los ADR que lista (0057 primero, despues 0018/0022/0023 y
+0040), mas las specs 0003 y 0007 que estan en borrador. La infraestructura de ENTREGA (cola de push,
+transportes, Web Push iOS) YA EXISTE y esta en prod: no la re-diseñes. El entregable de esta sesion es
+una SPEC conversada con el owner, no codigo.»
+
+## PROXIMO ARCO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
+
+**NADA EMPEZADO: no hay ADR ni spec todavia.** El proximo paso es **conversarlo con el owner y escribir
+la spec**, no tocar codigo (`CLAUDE.md`: ninguna tarea toca codigo sin su spec cerrada, y la
+subespecificacion es el gatillo medido del exito fingido).
+
+**LO QUE YA EXISTE EN EL ARBOL Y HAY QUE LEER ANTES DE DISEÑAR NADA** (para no re-decidir lo decidido):
+- **ADR 0018** — Incentive Engine de campañas compuestas. **ADR 0022** — objetivos de campaña y
+  capacidades medibles. **ADR 0023** — disparadores independientes de objetivos. Los tres son la
+  fundacion conceptual del motor y estan `aceptada`.
+- **ADR 0040** — ruteo de transporte por CLASE de aviso: **transaccional → solo wallet** (con fallback a
+  Web Push), y **el Web Push es el transporte de CAMPAÑA**. Esto ya fija como sale un mensaje de
+  marketing al consumidor: no hay que inventarlo.
+- **ADR 0037/0038/0039** — la cola de push (`wallet_push_queue`) con prioridad y cooldown, los dos
+  transportes, y Web Push en iOS via PWA. **La infraestructura de ENTREGA ya existe y esta en prod.**
+- **ADR 0042** — atribucion por local como dimension universal de todo evento de valor. Es el contrato
+  para medir campañas por local.
+- **ADR 0057** — roadmap de marketing y captura de imagen. **Empezar por aca.**
+- **spec 0003** (wizard de campañas e Incentive Engine) y **spec 0007** (tablero y medicion) estan en
+  **`borrador`**: son el punto de partida escrito, no hay que arrancar de cero.
+- **spec 0017** es la **demo de campañas, TODAVIA EN USO** — «campañas no existen como feature real».
+  Esa demo es la referencia visual de lo que el owner ya vio.
+
+**UN CABO SUELTO QUE ENTRA EN ESTE ARCO, dicho por el owner en el QA de la 0063 y aplazado:** **frenar
+las campañas de marketing cuando un negocio baja de plan.** Quedo explicitamente fuera de la spec 0064
+(«es alcance nuevo y no tiene diseño»). Con el motor de marketing sobre la mesa, es el momento.
+
+**TAREA 55 SIGUE PENDIENTE Y NO ES ESTE ARCO:** cambio de intervalo **anual → mensual**, el unico sentido
+que la 0063 dejo afuera por no tener forma barata (reembolso, quedarse con la plata, o
+`subscription_schedules`). Su rechazo vive en la funcion pura (`interval_downgrade_unsupported`), que es
+el unico lugar donde habria que habilitarlo.
 
 ## HISTORIA: ADR 0063 ACEPTADO + SPEC 0064 (la seccion de abajo quedo escrita cuando la spec era borrador)
 
@@ -1572,8 +1605,6 @@ que es el unico chequeo que distingue una rama sana de una borrada (el `.env` se
 (`feat: spec 0063 fase B — webhook y store, con PASS de revisor`). **Faltan la fase C (D12, nueva) y la D (la vieja C).**
 NADA DESPLEGADO A PROD: no se pusheo y la migracion 0030 NO esta aplicada a prod — solo a la rama efimera
 `spec-0063-billing`.**
-
-**PROMPT PARA RETOMAR:** «retomamos: despacha la fase D de la spec 0063 a un implementador».
 
 **FASE C (D12 / ADR 0061): PASS DEL REVISOR INDEPENDIENTE (2026-09-11, en 3 pasadas: PASS con 5 menores → FAIL del
 delta por 1 bloqueante → PASS final sin hallazgos abiertos). COMMITEADA en `71499f5`. Falta la FASE D.**
