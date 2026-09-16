@@ -1,6 +1,9 @@
 import { buildApplePkpass, certSigner, selfSignedSigner } from "./apple";
 import { buildGoogleSaveUrl as buildRealGoogleSaveUrl } from "./google";
 import { fakeBuildGoogleSaveUrl } from "./fake";
+import type { PassLocation } from "./pass-locations";
+
+export type { PassLocation };
 
 /** Everything a provider needs to build one consumer's identity pass. */
 export type PassBuildInput = {
@@ -16,6 +19,20 @@ export type PassBuildInput = {
   webViewToken: string;
   /** Current "Última novedad" text (spec 0033); null/absent renders the em-dash default. */
   latestMessage?: string | null;
+  /**
+   * The doors this consumer's pass must carry (spec 0065): Apple `locations`, Google
+   * `merchantLocations` + the per-turn text modules. Read from `consumer.pass_placement`
+   * by `passLocationsForConsumer` (`pass-locations-store.ts`); `[]` is a legitimate value (a consumer with no
+   * turn and no balance).
+   *
+   * **REQUIRED on purpose, unlike `latestMessage?` above.** The input is filled field by
+   * field at the THREE emission call-sites (the PassKit serve, `apple.pkpass` and the
+   * Google save URL), and `latestMessage?` being optional is exactly why two of the three
+   * never passed it. Optional here would mean the pass is served with NO locations —
+   * geofence silently off — with every gate green. Required makes `typecheck` the oracle
+   * for the wiring of all three.
+   */
+  passLocations: PassLocation[];
 };
 
 /**

@@ -21,6 +21,7 @@ const input: PassBuildInput = {
   lastName: "Pérez",
   origin: "https://app.mipasaporte.test",
   webViewToken: "WEB-VIEW-TOKEN-xyz_-",
+  passLocations: [],
 };
 
 describe("apple .pkpass builder", () => {

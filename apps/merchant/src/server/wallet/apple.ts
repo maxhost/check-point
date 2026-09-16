@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import forge from "node-forge";
 import { zipSync } from "fflate";
 import { WALLET_BRAND } from "./core";
+import { MAX_PASS_LOCATIONS } from "./pass-locations";
 import type { ApplePassBuildInput } from "./provider";
 
 /**
@@ -27,6 +28,25 @@ const BRAND_PNG = new Uint8Array(Buffer.from(BRAND_PNG_BASE64, "base64"));
 
 function sha1Hex(bytes: Uint8Array): string {
   return createHash("sha1").update(bytes).digest("hex");
+}
+
+/**
+ * The `locations` array of `pass.json` (spec 0065): each door with the line iOS shows on
+ * the lock screen when the phone lingers there, capped at Apple's {@link
+ * MAX_PASS_LOCATIONS}.
+ *
+ * **`maxDistance` is deliberately NOT written.** It is a key of the PASS (not of each
+ * location) and it can only SHRINK the default radius Apple applies — writing it would
+ * narrow the geofence, which is the opposite of what a proximity campaign wants (ADR
+ * 0065, measured). The radius Apple actually uses is an observation for the owner's QA on
+ * a real device, not a number to invent here.
+ */
+function passLocations(input: ApplePkpassInput): Record<string, unknown>[] {
+  return input.passLocations.slice(0, MAX_PASS_LOCATIONS).map((l) => ({
+    latitude: l.latitude,
+    longitude: l.longitude,
+    relevantText: l.relevantText,
+  }));
 }
 
 /** Builds the `pass.json` object (storeCard style, barcode = qrToken, no PII beyond name). */
@@ -58,6 +78,7 @@ export function buildPassJson(
     authenticationToken: input.authenticationToken,
     barcode,
     barcodes: [barcode],
+    locations: passLocations(input),
     storeCard: {
       primaryFields: [
         { key: "holder", label: "Titular", value: holder || "CheckPass Club" },

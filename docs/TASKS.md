@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (madrugada, sesion de implementacion de la fase A — A2 y A3 cerradas).
+Ultima actualizacion: 2026-09-16 (sesion de implementacion de la fase A — A2, A3 y A4 cerradas).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -476,6 +476,100 @@ cerrar A3.** Serializada: un solo implementador a la vez. Alcance: `wallet/provi
   14 mutaciones donde **las primeras 4 ya habian dado todo el valor**.
 - **Baseline a igualar o superar:** `test` = **`777 passed | 221 skipped (998)`**.
 
+**A4 — EL IMPLEMENTADOR MURIO SIN HANDOFF (segunda muerte consecutiva); LO CERRO EL ORQUESTADOR A MANO
+(2026-09-16).** `CLAUDE.md`, corolario (f) de la 0064: dos muertes seguidas son la señal de dejar de
+despachar. **A5 la hace el orquestador**, y a un agente solo se le manda lo que sea de verdad independiente.
+
+**AUDITORIA AL HEREDAR — y la diferencia importante con A3:** `ListAgents` sin subagentes vivos,
+`grep -rn MUTATION apps/merchant/src` **vacio**, y los **5 gates en VERDE** (`typecheck` 3/3, `lint` limpio,
+`format:check` ok, `test` **`797 passed | 221 skipped (1018)`** = **+20** sobre 777, `build` exit 0).
+**Pero este implementador NO dejo `shasum` baseline ni copias en `/tmp`**, asi que —a diferencia de A3, donde
+su propio `SHASUMS.txt` coincidia con el arbol— **no existe oraculo que diga «no sobrevive ninguna mutacion
+sin etiquetar»**. La auditoria se hizo **leyendo el diff entero**, que es lo que reemplaza al handoff ausente.
+
+**LO QUE ENTREGO (auditado leyendo el codigo, no un resumen — no dejo ninguno):**
+- **`provider.ts`**: `passLocations: PassLocation[]` **REQUERIDO** (no opcional), con el porque escrito en el
+  docblock: `latestMessage?` es opcional y **por eso dos de los tres call-sites nunca lo pasaron**.
+- **`pass-locations.ts` (nuevo, 97 l.)**: el tipo del pase + `toPassLocations` **pura**. Caza las dos trampas
+  que el orquestador habia medido y **una tercera que no estaba en el encargo**: `Number(null)` y `Number("")`
+  son **`0`**, un numero finito, asi que un guard de `Number.isFinite` **solo** habria puesto la puerta sin
+  coordenadas **en el ecuador** en vez de descartarla. El chequeo de vacio va primero y sobre el **string**.
+- **`pass-locations-store.ts` (nuevo, 76 l.)**: el unico lector de `pass_placement`, con `join` a
+  `core.location` (la tabla no tiene coordenadas) y **`order by` explicito** (`computed_at`, `location_id`)
+  — sin el, el corte de ≤10 elegiria un subconjunto distinto en cada corrida sobre los mismos datos.
+- **`google-object.ts` (nuevo, 192 l.)**: el split que el orquestador propuso, ejecutado. `google.ts` bajo de
+  **262 a 166**. **`buildLoyaltyObject` hace `...buildObjectPatch(input)`**, o sea que la emision y el
+  refresco silencioso **no pueden discrepar** sobre lo que muestra el pase: es una sola fuente.
+- **`apple.ts`**: `locations` ≤ 10, **sin `maxDistance`** (es clave del pase y **solo achica** el radio).
+- **`push-transports.ts`**: el cuerpo del `PATCH` que A3 dejo en `{}` ahora se lee **en el momento de
+  entregar** (`googleObjectPatchFor`), no se acarrea en la fila de la cola — un refresco que espero en la cola
+  manda el estado del pase **al salir**, no al encolarse. Y manda los arrays **completos** (incluido «Ultima
+  novedad») para que el refresco no borre el ultimo aviso transaccional bajo semantica de reemplazo.
+- **20 tests nuevos.** El del **CABLEADO** es el que mas importa y es de **comportamiento, no un barrido
+  estatico**: importa los handlers reales de las tres rutas y asevera que cada una llama al lector **con su
+  propio consumer id** y pasa el resultado sin tocarlo. `typecheck` ya prohibe omitir el campo; lo que ningun
+  tipo caza es un call-site que pase `[]`, una lista vieja o **el consumidor equivocado** — eso lo cierra este
+  test. (`CLAUDE.md`, tarea 38: tres guards estaticos, tres evadidos.)
+- Los cambios en `wallet.test.ts` y `wallet.neon.integration.test.ts` son **una linea cada uno**
+  (`passLocations: []` en el fixture), forzados por el campo requerido: no es editar un test para pasar.
+
+**BITACORA DE MUTACIONES DE A4 — PRE-REGISTRO ESCRITO ANTES DE MUTAR.** **Tres de los cuatro archivos son
+`??`**, donde `git checkout` **no hace nada** (no hay blob), y `apple.ts` es ` M`, donde **se llevaria tambien
+el trabajo no commiteado**: copia limpia en `/tmp/a4-base/` y restauracion con `diff` contra ella.
+`shasum` limpios: `apple.ts 29e0b8b1…`, `google-object.ts 0f1dd5f1…`, `pass-locations.ts 7523d7e3…`,
+`pass-locations-store.ts a34fa888…`. Presupuesto: **4 obligatorias + 2 sondas**, corte en una vuelta.
+
+| id | archivo | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|
+| M1 | `google-object.ts` | el campo es `merchantLocations`, no el `locations` deprecado | **ROJO, 7** — el mas ancho de A4, y se explica porque `buildLoyaltyObject` hace `...buildObjectPatch()`: **una sola linea gobierna la emision Y el refresco**. Aserciones leidas: `expected true to be false` en «does NOT use the deprecated `locations` field» y `expected { locations: [] } to deeply equal { merchantLocations: [] }`. Incluye el test de **entrega** del `PATCH` |
+| M2 | `apple.ts` | no se escribe `maxDistance` | **ROJO, 2** — `expected [ 'latitude', 'longitude', …(2) ] to deeply equal [ 'latitude', 'longitude', …(1) ]`: el test asevera **las claves exactas** de cada ubicacion, asi que caza el agregado y no solo el valor |
+| M3 | `pass-locations.ts` | la puerta sin coordenadas se descarta | **ROJO, 1 — pero NO en el test que el nombre sugiere.** Cae en «drops a non-numeric coordinate» (`expected [ { locationId: 'loc-1' } ] to deeply equal []`), y el test «DROPS a door without coordinates» queda **VERDE**. Motivo verificado leyendo los dos casos: el segundo siembra solo `null`, y `null` lo descarta **`isFinite` igual** (`null?.trim()` → `undefined`, `Number(undefined)` → `NaN`). **La atribucion del docblock estaba al reves** → corregida (ver hallazgos) |
+| M4 | `pass-locations.ts` | las coordenadas salen como NUMEROS, no strings del driver | **ROJO, 2** — `expected 'string' to be 'number'`, mas el test de entrega del `PATCH`. Es la trampa que el orquestador habia medido antes de encargar (`numeric(10,7)` → string) y **tiene oraculo** |
+| P1 | `pass-locations.ts` | el chequeo de vacio va sobre el STRING | **ROJO, 1 — y es EL MISMO test con LA MISMA asercion que M3: las dos mutaciones son INDISTINGUIBLES** desde la suite. Es el caso de la spec 0055 repitiendose, y solo se ve ejecutando las dos: el plan las daba por distintas |
+| P2 | `pass-locations-store.ts` | el `order by` explicito hace estable el corte de ≤10 | **VERDE 52/52 — no hay oraculo, Y su justificacion era FALSA.** Ver hallazgos: el corte de ≤10 **no puede truncar** |
+
+**DOS HALLAZGOS DE A4, los dos de la familia del ADR 0054 (un docblock afirmando algo falso) y los dos
+CORREGIDOS EN EL CODIGO, no solo anotados:**
+1. **La atribucion de los dos guards de coordenadas estaba invertida.** El docblock decia que sin el chequeo
+   de vacio sobre el string «una puerta sin coordenadas aterrizaria en el ECUADOR». **Falso:** `null` lo
+   descarta `Number.isFinite` igual. El unico caso que **solo** ese chequeo caza es el string **vacio**
+   (`Number("") === 0`, finito) — y una columna `numeric` **no puede contener `""`**, asi que ese guard es
+   defensivo contra una fuente futura, **no** contra el esquema de hoy. Se queda (es gratis) pero ahora esta
+   documentado como defensivo y no como load-bearing, con la indistinguibilidad M3↔P1 escrita al lado.
+   *(`CLAUDE.md`: que un test muerda no dice QUE propiedad pinnea — la atribucion equivocada es tan peligrosa
+   como la ausencia de test.)*
+2. **El `order by` del lector no tiene oraculo y su «por que» era inalcanzable.** El docblock decia que sin el
+   «el corte de ≤10 elegiria un subconjunto distinto en cada corrida». **No puede pasar:** el planner tope en
+   **≤3 utilidad + ≤5 turnos = 8 puertas**, medido en la **sonda D5 de la fase A2** (30 candidatos → 8 slots),
+   asi que el `.slice(0, 10)` de los builders **nunca trunca**. El `order by` se queda como determinismo
+   cosmetico y **se DECLARA como tal**, en vez de inventarle un test con base de datos para una propiedad que
+   ningun usuario puede observar. **Es la medicion de A2 pagando dividendos en A4.**
+
+**RESULTADO DE A4: 5 de 6 mutaciones rojas, 1 verde (P2, declarada), M3↔P1 indistinguibles, arbol restaurado
+con `shasum` identico al baseline en los 4 archivos** (`apple.ts 29e0b8b1…`, `google-object.ts 0f1dd5f1…`,
+`pass-locations.ts 7523d7e3…`, `pass-locations-store.ts a34fa888…`), `grep -rn MUTATION apps/merchant/src`
+**vacio**. Restauracion con `diff` contra `/tmp/a4-base/` — **tres de los cuatro eran `??`**, donde
+`git checkout` no habria hecho nada.
+**Los 5 gates de root, re-corridos DESPUES de restaurar y de corregir los dos docblocks:** `typecheck` 3/3,
+`lint` limpio, `format:check` ok, `test` **`797 passed | 221 skipped (1018)`** (baseline 777 → **+20, cero
+regresiones**), `build` exit 0.
+**Tamaños al HOOK sobre TODO el alcance, post-prettier, todos `EXIT=0`:** `wallet-pass-locations.test.ts`
+**271**, `push-transports.ts` 256, `apple.ts` 228, `wallet-pass-refresh-deliver.test.ts` 201,
+`google-object.ts` 192, `wallet.test.ts` 189, `wallet.neon.integration.test.ts` 181, `google.ts` **166**
+(bajo de 262 con el split), `push-channel.ts` 164, `provider.ts` 162,
+`wallet-pass-locations-wiring.test.ts` 147, `pass-locations.ts` 104, `pass-locations-store.ts` 81, las tres
+rutas 85/52/46.
+
+**LO QUE QUEDA DECLARADO DE A4 (intentado, no supuesto):**
+- **El `order by` del lector no esta pinneado** (hallazgo 2). No se le escribe test porque la propiedad que
+  justificaria el test es inalcanzable con los limites default.
+- **Nadie verifico contra Google de verdad** que un `PATCH` con `merchantLocations` + `textModulesData`
+  reemplace en vez de fusionar. Por eso el cuerpo manda **los arrays completos** (incluido «Ultima novedad»),
+  que es correcto **bajo las dos semanticas** — o sea que el limite esta **acotado y neutralizado**, no
+  simplemente aceptado. Lo que no se puede cerrar sin credenciales de Google queda para el QA del owner.
+- **El radio real de Apple** (la razon por la que no se escribe `maxDistance`) es un dato de QA en telefono,
+  no un numero que se pueda testear aca. Ya estaba declarado en el ADR 0065.
+
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
 `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
 bucle que el owner corto en la 0064). **Estamos IMPLEMENTANDO la fase A, partida en sub-fases porque entera no
@@ -513,11 +607,13 @@ detalle vivo esta en el bloque ESTADO del tope; esta lista es solo el arco compl
 3. ~~**Revision adversarial de la spec**~~ **HECHA Y CERRADA (2026-09-15, noche): tres revisores, FAIL
    unanime, 16 bloqueantes + un 17.º que salio de correr el SQL, todos corregidos y verificados
    empiricamente.** La condicion de corte declarada era **una** vuelta. **No se reabre.**
-4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1, A2 y A3 CERRADAS** (A2
-   con 9 mutaciones + 6 sondas + 4 tests nuevos; A3 con 7 mutaciones, terminada a mano por el orquestador
-   porque su implementador murio sin handoff). **Sigue A4** (`locations`/`merchantLocations` en el pase).
-   Al cerrar A5 va **un revisor independiente sobre la fase entera**, y tiene que saber que el test
-   `wallet-pass-refresh-worker.test.ts` lo escribio el orquestador.
+4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1, A2, A3 y A4 CERRADAS.**
+   A2: 9 mutaciones + 6 sondas + 4 tests nuevos. A3: 7 mutaciones. A4: 6 mutaciones (5 rojas, 1 verde
+   declarada) + 2 docblocks falsos corregidos. **A3 y A4 las cerro el orquestador a mano porque sus dos
+   implementadores murieron sin handoff** — `CLAUDE.md` corolario (f). **Sigue A5** (audiencia + aplicador +
+   endpoint del tick + workflow + integracion Neon), **y la hace el orquestador**: no se despacha una tercera
+   vez. Al cerrar A5 va **un revisor independiente sobre la fase entera**, y tiene que saber que
+   `wallet-pass-refresh-worker.test.ts` y los dos docblocks corregidos de A4 los escribio el orquestador.
    **El item viejo «aplicar la migracion `0031` en `ci-integration` antes» queda ANULADO**: `ci.yml` ya
    corre `pnpm db:migrate` en cada corrida (spec 0062), y el orden era ademas imposible — la migracion
    la **genera** la fase A.

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "../../../../../server/consumer/core";
 import { resolveSession } from "../../../../../server/consumer/session";
 import { ensureWalletPass } from "../../../../../server/wallet/core";
+import { passLocationsForConsumer } from "../../../../../server/wallet/pass-locations-store";
 import { getWalletProvider } from "../../../../../server/wallet/provider";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,8 @@ export async function GET(request: NextRequest) {
     lastName: account.lastName,
     origin: request.nextUrl.origin,
     webViewToken: account.webViewToken,
+    // The doors of spec 0065 (`merchantLocations` + the per-turn modules of the object).
+    passLocations: await passLocationsForConsumer(account.id),
   });
   // Contract: 302 to the Google save URL (the pass is added on Google's side).
   return NextResponse.redirect(saveUrl, { status: 302 });

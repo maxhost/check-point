@@ -7,6 +7,7 @@ import {
   type PushMessage,
   passTypeIdFromEnv,
 } from "./push-channel";
+import { googleObjectPatchFor } from "./pass-locations-store";
 import { type WebPushChannel } from "../push/webpush-channel";
 import { deliverWebPush } from "../push/subscriptions";
 
@@ -102,10 +103,12 @@ async function sendGoogle(
  * Silently re-writes the consumer's Google Loyalty Object (spec 0065 `pass_refresh`):
  * a `PATCH`, never an `addMessage` — the object changes without Google notifying.
  *
- * **A3 sends an EMPTY patch on purpose.** The body (`merchantLocations` + the per-turn
- * text modules read from `consumer.pass_placement`) is phase A4 of spec 0065, and the
- * only producer of `pass_refresh` rows — the marketing tick applier — does not exist
- * yet, so no production row reaches this with an empty body. **A4 fills THIS function.**
+ * The body is READ AT DELIVERY TIME (`googleObjectPatchFor` → `consumer.pass_placement`),
+ * never carried on the queue row: the tick decides the doors and the queue only says
+ * "this consumer's pass changed", so a refresh that waits in the queue ships the state of
+ * the pass as it is when it goes out, not as it was when it was enqueued. An EMPTY body
+ * would be the silent failure mode of this whole lane — a `PATCH` that answers 200 and
+ * changes nothing (that is what A3 sent, deliberately, before this phase existed).
  */
 async function patchGoogle(
   consumerId: string,
@@ -114,7 +117,10 @@ async function patchGoogle(
   const serialNumber = await googleSerial(consumerId);
   if (!serialNumber) return [];
   try {
-    await channel.patchGoogleObject(serialNumber, {});
+    await channel.patchGoogleObject(
+      serialNumber,
+      await googleObjectPatchFor(consumerId),
+    );
     return [];
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

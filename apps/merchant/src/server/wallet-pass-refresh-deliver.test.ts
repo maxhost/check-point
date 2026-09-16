@@ -40,6 +40,11 @@ vi.mock("./db", () => {
     for (const m of [
       "from",
       "innerJoin",
+      // `leftJoin`: the pass-placement reader of phase A4 outer-joins `campaign_turn`
+      // (a utility door has no turn). Missing from this list the chain broke, the body
+      // read threw, and `patchGoogle` swallowed it into an error string — the PATCH
+      // simply never went out, with the row still closing as `sent`.
+      "leftJoin",
       "where",
       "limit",
       "orderBy",
@@ -68,12 +73,26 @@ vi.mock("./db", () => {
           return Promise.resolve({ rows: [{ reachable: true }] });
         return Promise.resolve({ rows: [] });
       },
-      // One row that satisfies BOTH readers: `appleTargets` (id/pushToken) and
-      // `googleSerial` (serialNumber). Without a target the transport assertions would
-      // pass vacuously — no call recorded is not the same as no addMessage sent.
+      // One row that satisfies EVERY reader of this path: `appleTargets` (id/pushToken),
+      // `googleSerial` (serialNumber), the `latest_message` lookup and the pass-placement
+      // join of phase A4 (a door with its turn). Without a target the transport
+      // assertions would pass vacuously — no call recorded is not the same as no
+      // addMessage sent.
       select: () =>
         thenable([
-          { id: "dev-1", pushToken: "tok-1", serialNumber: "serial-1" },
+          {
+            id: "dev-1",
+            pushToken: "tok-1",
+            serialNumber: "serial-1",
+            latestMessage: "Se acreditó 1 sello",
+            locationId: "loc-1",
+            latitude: "-34.6083000",
+            longitude: "-58.3712000",
+            relevantText: "Bar La Esquina: 2x1 en picadas",
+            businessName: "Bar La Esquina",
+            turnId: "turn-1",
+            turnMessage: "2x1 en picadas",
+          },
         ]),
       update: () => ({
         set: (values: Record<string, unknown>) => {
@@ -131,6 +150,35 @@ describe("deliverClaimed for a pass_refresh row (spec 0065)", () => {
     const channel = new FakePushChannel();
     await deliverRow("row-1", { channel, webPushChannel: null, now: NOW });
     expect(channel.calls.map((c) => c.kind)).toEqual(["apple", "google-patch"]);
+  });
+
+  it("PATCHes the REAL body — the doors of pass_placement, never `{}` (phase A4)", async () => {
+    claim("pass_refresh");
+    const channel = new FakePushChannel();
+    await deliverRow("row-1", { channel, webPushChannel: null, now: NOW });
+    const patch = channel.calls.find((c) => c.kind === "google-patch");
+    // An empty body is the silent failure of this lane: a PATCH that answers 200 and
+    // changes nothing. The coordinates travel as NUMBERS (the column is `numeric`, which
+    // the driver returns as a string, and a stringified coordinate never triggers).
+    expect(patch).toEqual({
+      kind: "google-patch",
+      serialNumber: "serial-1",
+      patch: {
+        merchantLocations: [{ latitude: -34.6083, longitude: -58.3712 }],
+        textModulesData: [
+          {
+            id: "latest",
+            header: "Última novedad",
+            body: "Se acreditó 1 sello",
+          },
+          {
+            id: "turn-turn-1",
+            header: "Cerca tuyo",
+            body: "Bar La Esquina — 2x1 en picadas",
+          },
+        ],
+      },
+    });
   });
 
   it("CONTROL: a transactional does write the account and preempt campaigns", async () => {

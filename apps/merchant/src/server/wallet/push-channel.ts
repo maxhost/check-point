@@ -27,7 +27,8 @@ export interface PushChannel {
    * which always notifies: without this method a refresh implemented as
    * `sendGoogle(serial, {header: '', body: ''})` would record `{kind: 'google'}`, pass
    * every test, and ring the consumer's phone where the spec demands silence.
-   * The patch body is the caller's (phase A4 of spec 0065 fills it).
+   * The patch body is the caller's: `patchGoogle` reads it per delivery from
+   * `consumer.pass_placement` (`googleObjectPatchFor`, phase A4).
    */
   patchGoogleObject(
     serialNumber: string,

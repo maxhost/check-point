@@ -124,6 +124,7 @@ describe.skipIf(!enabled)("wallet passes against Neon", () => {
       lastName: "Pérez",
       origin: "https://app.mipasaporte.test",
       webViewToken: "WEB-VIEW-STABLE",
+      passLocations: [],
     };
 
     // Two independent ensure+build cycles = "Add to Wallet" pressed twice.

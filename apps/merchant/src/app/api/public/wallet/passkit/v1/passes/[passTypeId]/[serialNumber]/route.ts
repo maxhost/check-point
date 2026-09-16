@@ -6,6 +6,7 @@ import {
 import { passKitLimiter } from "../../../../../../../../../server/wallet/pass-rate-limit";
 import { getWalletProvider } from "../../../../../../../../../server/wallet/provider";
 import { ensureWalletPass } from "../../../../../../../../../server/wallet/core";
+import { passLocationsForConsumer } from "../../../../../../../../../server/wallet/pass-locations-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -67,6 +68,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     origin: request.nextUrl.origin,
     webViewToken: data.webViewToken,
     latestMessage: data.latestMessage,
+    // The doors of spec 0065. This route is the one an INSTALLED pass pulls, so it is
+    // what actually replaces the geofences on the phone after a tick.
+    passLocations: await passLocationsForConsumer(data.consumerId),
     authenticationToken,
   });
 

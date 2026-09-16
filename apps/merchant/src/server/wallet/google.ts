@@ -1,118 +1,22 @@
 import { createSign } from "node:crypto";
-import { WALLET_BRAND } from "./core";
+import {
+  buildAddMessageRequest,
+  buildLoyaltyObject,
+  buildPatchObjectRequest,
+} from "./google-object";
 import type { PassBuildInput } from "./provider";
 
-/** Class suffix under the issuer — the single CheckPass Club identity Loyalty Class. */
-export const GOOGLE_CLASS_SUFFIX = "mipasaporte_identity";
-
-/** Fully-qualified Loyalty Class id (`<issuerId>.<suffix>`). */
-export function loyaltyClassId(issuerId: string): string {
-  return `${issuerId}.${GOOGLE_CLASS_SUFFIX}`;
-}
-
-/**
- * Loyalty Object id = `<issuerId>.<serialNumber>`. The serialNumber is base64url
- * (`A-Za-z0-9-_`), all valid Google object-id characters — no `.`/`+`/`/` to escape.
- */
-export function loyaltyObjectId(
-  issuerId: string,
-  serialNumber: string,
-): string {
-  return `${issuerId}.${serialNumber}`;
-}
-
-/** Builds the Loyalty Object for one consumer (barcode = qrToken; link "Ver mis programas"). */
-export function buildLoyaltyObject(
-  input: PassBuildInput,
-  issuerId: string,
-): Record<string, unknown> {
-  const programsUrl = `${input.origin}/c/${input.webViewToken}`;
-  const holder = `${input.firstName} ${input.lastName}`.trim();
-  return {
-    id: loyaltyObjectId(issuerId, input.serialNumber),
-    classId: loyaltyClassId(issuerId),
-    state: "ACTIVE",
-    accountName: holder || WALLET_BRAND.organizationName,
-    accountId: input.serialNumber,
-    barcode: {
-      type: "QR_CODE",
-      value: input.qrToken,
-    },
-    // The single "Última novedad" slot (ADR 0033), mirrored on the Google object.
-    textModulesData: input.latestMessage
-      ? [
-          {
-            id: "latest",
-            header: "Última novedad",
-            body: input.latestMessage,
-          },
-        ]
-      : [],
-    linksModuleData: {
-      uris: [
-        {
-          uri: programsUrl,
-          description: "Ver mis programas",
-          id: "programs",
-        },
-      ],
-    },
-  };
-}
-
-const WALLETOBJECTS = "https://walletobjects.googleapis.com/walletobjects/v1";
-
-/**
- * The `addMessage` request for one Loyalty Object (spec 0033): a POST that appends a
- * dated message to the object so Google Wallet raises a notification. Pure so the
- * URL/body can be asserted without a network call (the fake channel uses this shape).
- *
- * `messageType: TEXT_AND_NOTIFY` is REQUIRED for a push notification — the default
- * (`TEXT`) only appends the message to the pass silently, with no notification. This is
- * what makes "te dieron puntos" actually reach the phone.
- */
-export function buildAddMessageRequest(
-  issuerId: string,
-  serialNumber: string,
-  message: { header: string; body: string },
-): { url: string; body: Record<string, unknown> } {
-  const objectId = loyaltyObjectId(issuerId, serialNumber);
-  return {
-    url: `${WALLETOBJECTS}/loyaltyObject/${objectId}/addMessage`,
-    body: {
-      message: {
-        header: message.header,
-        body: message.body,
-        id: `msg-${Date.now()}`,
-        messageType: "TEXT_AND_NOTIFY",
-      },
-    },
-  };
-}
-
-/**
- * The SILENT update request for one Loyalty Object (spec 0065, class `pass_refresh`):
- * a `PATCH` on the object itself, which merges the given fields and raises NO
- * notification. It is a different endpoint from `addMessage` on purpose — `addMessage`
- * always notifies (`TEXT_AND_NOTIFY`, {@link buildAddMessageRequest}), so refreshing the
- * pass through it would ring the consumer's phone, which is exactly what the
- * `pass_refresh` class exists to avoid. Pure so the URL/body are asserted without a
- * network call.
- *
- * The BODY is the caller's: A3 wires the transport with an empty patch and phase A4 of
- * spec 0065 fills it (`merchantLocations` + the per-turn text modules).
- */
-export function buildPatchObjectRequest(
-  issuerId: string,
-  serialNumber: string,
-  patch: Record<string, unknown>,
-): { url: string; body: Record<string, unknown> } {
-  const objectId = loyaltyObjectId(issuerId, serialNumber);
-  return {
-    url: `${WALLETOBJECTS}/loyaltyObject/${objectId}`,
-    body: { ...patch },
-  };
-}
+// The pure constructors live in `google-object.ts` (no network, no secrets, and the half
+// that spec 0065 phase A4 grew with the pass locations); re-exported here so every
+// existing importer of `./google` keeps working.
+export {
+  GOOGLE_CLASS_SUFFIX,
+  buildAddMessageRequest,
+  buildLoyaltyObject,
+  buildPatchObjectRequest,
+  loyaltyClassId,
+  loyaltyObjectId,
+} from "./google-object";
 
 /**
  * Mints an OAuth2 access token for the walletobjects scope from the service account

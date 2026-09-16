@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "../../../../../server/consumer/core";
 import { resolveSession } from "../../../../../server/consumer/session";
 import { ensureWalletPass } from "../../../../../server/wallet/core";
+import { passLocationsForConsumer } from "../../../../../server/wallet/pass-locations-store";
 import { getWalletProvider } from "../../../../../server/wallet/provider";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ export async function GET(request: NextRequest) {
     lastName: account.lastName,
     origin: request.nextUrl.origin,
     webViewToken: account.webViewToken,
+    // The doors of spec 0065: a pass installed today already carries its geofences.
+    passLocations: await passLocationsForConsumer(account.id),
     authenticationToken: pass.authToken,
   });
 
