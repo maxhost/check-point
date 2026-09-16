@@ -444,6 +444,38 @@ extiende**, y conviene decidirlo ANTES de escribir, no cuando el hook avise.
 - **La integracion Neon end-to-end del carril y el item del coalescing/retry siguen en A5**, como se declaro
   al despachar. A3 no las toco.
 
+**FASE A4 (`locations`/`merchantLocations` en el pase): DESPACHADA el 2026-09-16 (madrugada), despues de
+cerrar A3.** Serializada: un solo implementador a la vez. Alcance: `wallet/provider.ts` (145 l.),
+`wallet/apple.ts` (207), `wallet/google.ts` (**262/300**), `wallet/push-transports.ts` (**250/300**), los
+**tres** call-sites de emision y un lector nuevo de `consumer.pass_placement`.
+
+- **VERIFICADO EN EL ARBOL POR EL ORQUESTADOR antes de encargar** (los tres archivos abiertos, no la cita de
+  la spec): `passkit/v1/passes/[passTypeId]/[serialNumber]/route.ts:62-69` —**el unico de los tres que hoy
+  pasa `latestMessage`**—, `apple.pkpass/route.ts:31-36` y `google/route.ts:33-38`. Eso confirma el trap de
+  la spec: **`latestMessage?` es opcional y dos de los tres call-sites lo omiten sin que nada se queje**, asi
+  que el campo de ubicaciones entra **REQUERIDO** o el pase se sirve sin ubicaciones con los 5 gates verdes.
+- **DOS TRAMPAS QUE EL ORQUESTADOR MIDIO Y BAJO AL ENCARGO, para que no se descubran a los golpes:**
+  (1) `location.latitude`/`.longitude` son **`numeric(10,7)`** (`schema/business.ts:174-175`), asi que **el
+  driver las devuelve como STRING** y Apple/Google esperan numeros — un `latitude: row.latitude` pasa
+  `typecheck` y produce `"latitude": "-34.6083"`, que el telefono ignora: **fuga silenciosa con todo en
+  verde**, la familia mas caracteristica de este repo. (2) **Las dos columnas son NULLABLE**, asi que una
+  ubicacion sin geocodificar no puede entrar al pase. Las dos con test pedido.
+- **SPLIT DECIDIDO ANTES DE ESCRIBIR (no cuando el hook avise):** lo que A4 agrega no entra en `google.ts`.
+  Corte mapeado por el orquestador: las lineas **1–115** son los constructores **puros** y **122–262** son
+  red + JWT; moviendo los puros a `google-object.ts` quedan ~115 y ~150. Precedente de A3: `push-text.ts`
+  con re-export desde `push.ts`. **Y el aviso de la 0064: los 11 errores que quedaron en aquel cierre eran
+  imports huerfanos de archivos a medio partir** — `typecheck` va inmediatamente despues del movimiento,
+  antes de agregar nada.
+- **El cuerpo del `PATCH` que A3 dejo en `{}` es de A4**, con la funcion nombrada (`patchGoogle` en
+  `push-transports.ts`): el andamiaje tenia dueño escrito y aca se cobra.
+- **PRESUPUESTO: a lo sumo 6 mutaciones** — 4 obligatorias (`locations` en vez de `merchantLocations`;
+  escribir `maxDistance`; no filtrar la ubicacion sin coordenadas; pasar la latitud como string) **+ 2
+  sondas** por docblock. Clase de error: invariante declarado sin oraculo, regresion plausible. **Corte en
+  una vuelta.** Al encargo se le escribio ademas **por que** existe el presupuesto: en A2 las sondas
+  encontraron 6 huecos reales y en A3 las 7 mutaciones dieron 7 rojos, pero la 0064 se comio una sesion con
+  14 mutaciones donde **las primeras 4 ya habian dado todo el valor**.
+- **Baseline a igualar o superar:** `test` = **`777 passed | 221 skipped (998)`**.
+
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
 `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
 bucle que el owner corto en la 0064). **Estamos IMPLEMENTANDO la fase A, partida en sub-fases porque entera no
