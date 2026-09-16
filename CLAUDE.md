@@ -364,8 +364,13 @@ invalida.** Paso en B3 y en la fase C de la spec 0065: el bloque `ESTADO` decia 
 mismo commit la commiteaba; las secciones de B1 y B2 arrastraban lo mismo. No es drift entre sesiones —es
 drift **dentro de un commit**— y se ve inocente porque cuando se escribio la frase era cierta. El hook
 compara `git status --short` vacio contra un «SIN COMMITEAR» en las primeras 40 lineas de `docs/TASKS.md`;
-verificado que **muerde** (exit 2 + mensaje) y que **discrimina** en las dos direcciones (la frase en una
-seccion historica de mas abajo pasa; con el arbol sucio pasa, porque ahi es cierta).
+verificado que **muerde** (exit 2 + mensaje) y que **discrimina**: la frase en una seccion historica de mas
+abajo pasa, y con el arbol sucio pasa porque ahi es cierta. **Y el hook mismo pago la leccion del rojo por el
+motivo equivocado en su primera corrida**: se disparo sobre el parrafo de `docs/TASKS.md` que lo DESCRIBE, o
+sea sobre una **cita** de la frase y no sobre una afirmacion. Se arregla filtrando las lineas que nombran al
+hook y las apariciones entre `«»`, y se cierra con un caso (E) que pone una cita **y** una afirmacion real en
+la misma cabecera y exige el exit 2 — sin ese caso, el filtro que arregla el falso positivo podria haber
+apagado el hook entero y nadie se habria enterado.
 **Y el corolario de alcance, que costo un numero relatado al owner: al medir tamaños, el conjunto es TODO EL ALCANCE,
 no los archivos NUEVOS.** El orquestador de la D2 reporto «dos archivos en 300 exactas»; **eran tres** — el tercero
 (`billing-store.neon.integration.test.ts`) es un archivo **modificado** que ya estaba en el limite desde antes, y solo

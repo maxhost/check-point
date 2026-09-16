@@ -25,10 +25,16 @@ Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo e
 - **HOOK NUEVO (mistake→rule de esta sesion): `state-uncommitted-lie.sh` (Stop).** Bloquea si
   `docs/TASKS.md` dice «SIN COMMITEAR» en sus primeras 40 lineas con el arbol LIMPIO. Lo motivo un
   error propio cometido DOS veces seguidas (B3 y C): el bloque `ESTADO` se escribe ANTES del commit,
-  asi que el propio commit lo invalida, y la sesion fresca hereda un estado falso. **Verificado que
-  muerde** (exit 2 + mensaje sobre un repo de prueba con el arbol limpio y la frase arriba) **y que
-  discrimina en las dos direcciones**: la misma frase en una seccion historica de mas abajo pasa, y
-  con el arbol sucio pasa, porque ahi es cierta. Registrado en `.claude/settings.json`.
+  asi que el propio commit lo invalida, y la sesion fresca hereda un estado falso. **Verificado sobre un repo de prueba en 5
+  direcciones, y la 3.ª salio de un rojo real:** (A) arbol limpio + la afirmacion arriba → **exit 2**;
+  (B) la frase en una seccion historica debajo de la linea 40 → pasa; (C) la afirmacion con el arbol
+  sucio → pasa, porque ahi es CIERTA; (D) la frase solo como CITA («…») o dentro del parrafo que
+  documenta al propio hook → pasa; (E) una cita **y** una afirmacion real en la misma cabecera →
+  **exit 2**, o sea que el filtro de (D) no tapa una afirmacion de verdad.
+  **La (D) no es hipotetica: la primera version del hook se disparo sobre el parrafo de este mismo
+  archivo que lo describe** — un rojo por el motivo equivocado, que es la otra mitad de la leccion de
+  `CLAUDE.md` sobre guards («un exit 2 puede ser por la propiedad o por el setup, y desde afuera se
+  ven igual»). Registrado en `.claude/settings.json`.
 
 - **COLA DE REVISIONES INDEPENDIENTES — decision del owner del 2026-09-16.** El protocolo de
   `docs/AGENT-WORKFLOW.md` («cada fase cierra con PASS independiente antes de la siguiente») queda
