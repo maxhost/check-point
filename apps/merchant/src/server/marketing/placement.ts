@@ -101,9 +101,18 @@ async function applyPlan(
   // unique over `status='pending'` would make that update fail, leave the row stuck in
   // `sending` and re-claim it forever (spec 0065, `schema/consumer.ts`). It is safe
   // because the tick runs one at a time, under the advisory lock of step 0.
+  //
+  // `not_before` is written from the tick's OWN clock instead of letting the column
+  // default to `now()`. In production the two are the same instant, so nothing changes
+  // there; in a test with an injected clock they are NOT, and the row landed scheduled at
+  // the real wall clock while the worker was called at the frozen one. That made
+  // `marketing-refresh` pass before 12:00 UTC of the frozen date and fail after it —
+  // green in the morning, red in the afternoon, red forever the next day. A queue row
+  // whose schedule disagrees with the clock that produced it is a bug waiting for a
+  // timezone, not a test detail.
   const queued = await db.execute<{ id: string }>(sql`
-    insert into consumer.wallet_push_queue (consumer_id, class, title, body)
-    select ${consumerId}, 'pass_refresh', '', ''
+    insert into consumer.wallet_push_queue (consumer_id, class, title, body, not_before)
+    select ${consumerId}, 'pass_refresh', '', '', ${now.toISOString()}::timestamptz
     where not exists (
       select 1 from consumer.wallet_push_queue q
       where q.consumer_id = ${consumerId} and q.class = 'pass_refresh'

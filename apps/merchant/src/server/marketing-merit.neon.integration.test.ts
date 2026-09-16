@@ -166,6 +166,79 @@ describe.skipIf(!integrationEnabled)("marketing merit", () => {
   }, 180_000);
 
   /**
+   * The stats read turns that are `done` and ONLY those. A live turn has no outcome yet,
+   * so counting it inflates the denominator and sinks the business's rate: a campaign
+   * with many `queued` turns would look like nobody buys. Measured with a probe before
+   * being written here — dropping `.where(eq(status,'done'))` gives `placedN: 2` for one
+   * `done` + one `active` turn, where the clean read gives 1.
+   *
+   * It is its own case because the fixtures of the other two happen to contain no live
+   * turn for the business they assert on, so both stayed GREEN with that filter deleted.
+   * Found by attacking the test below instead of the code (`docs/TASKS.md`, prueba E3).
+   */
+  it("counts only FINISHED turns: a live one is not an exposure yet", async () => {
+    const built = await world(0);
+    const consumer = await seedConsumer();
+    const membershipId = await seedMembership({
+      consumerId: consumer.id,
+      programId: built.seed.programId,
+      businessId: built.seed.business.id,
+      enrolledAt: new Date(NOW.getTime() - 400 * DAY),
+    });
+    await getDb()
+      .insert(campaignTurns)
+      .values([
+        {
+          campaignId: built.campaignId,
+          businessId: built.seed.business.id,
+          consumerId: consumer.id,
+          membershipId,
+          locationId: built.doorId,
+          status: "done",
+          holdout: false,
+          windowStart: new Date(NOW.getTime() - 100 * DAY),
+          windowEnd: new Date(NOW.getTime() - 95 * DAY),
+          outcome: "purchase",
+        },
+      ]);
+    // A SECOND turn for the same business, still running: no outcome, not an exposure.
+    const other = await seedConsumer();
+    const otherMembership = await seedMembership({
+      consumerId: other.id,
+      programId: built.seed.programId,
+      businessId: built.seed.business.id,
+      enrolledAt: new Date(NOW.getTime() - 400 * DAY),
+    });
+    await getDb()
+      .insert(campaignTurns)
+      .values([
+        {
+          campaignId: built.campaignId,
+          businessId: built.seed.business.id,
+          consumerId: other.id,
+          membershipId: otherMembership,
+          locationId: built.doorId,
+          status: "active",
+          holdout: false,
+          windowStart: new Date(NOW.getTime() - DAY),
+          windowEnd: new Date(NOW.getTime() + 4 * DAY),
+        },
+      ]);
+
+    const stats = await withDbTransaction((tx) => loadBusinessTurnStats(tx));
+
+    expect(
+      stats.find((row) => row.businessId === built.seed.business.id),
+    ).toEqual({
+      businessId: built.seed.business.id,
+      placedN: 1,
+      placedPurchases: 1,
+      holdoutN: 0,
+      holdoutPurchases: 0,
+    });
+  }, 180_000);
+
+  /**
    * R1 — `loadBusinessTurnStats` counts `coupon_redeemed` as a purchase, because step 2
    * writes it INSTEAD of `purchase` when the coupon was handed over: reading only
    * `'purchase'` would score a campaign whose coupon WORKED as if nobody had come.

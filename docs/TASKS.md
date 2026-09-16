@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**REVISION DE LA FASE A COMPLETA (3 dimensiones, FAIL, 8 invariantes sin oraculo) Y SUS 8 FIXES HECHOS Y MEDIDOS** — cero bugs de produccion: el codigo no se toco, solo se escribieron los oraculos que faltaban. 5 gates verdes: **153 archivos / 1072 tests / 0 failed**. **LO QUE SIGUE: commit + push + migracion `0031` a prod + el secret `MARKETING_TICK_ENDPOINT` + QA del owner con el pase en un telefono real.** NADA de la fase A esta pusheado).
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 COMPLETA Y SIN COMMITEAR — 5 gates verdes, 156 archivos / 1097 tests**; falta el test unit de las rutas HTTP, que es lo que cierra el item de aislamiento. **Y se encontro una BOMBA DE TIEMPO preexistente de la fase A** —el tick no escribia `not_before`, asi que la suite se ponia roja despues de las 12:00 UTC— ya corregida. Ver «FASE B (BACKOFFICE DE CAMPAÑAS)».)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -983,6 +983,193 @@ deb926bbd6df10310cba5b44dd2e4040145abeef  marketing-refresh.neon.integration.tes
 **LO QUE SIGUE:** commit → `git push` → verificar el commit status del **sha exacto** → migracion `0031` a prod
 por MCP → el Actions secret `MARKETING_TICK_ENDPOINT` (con `www.`) → **QA del owner con el pase en un telefono
 real**, que es el unico oraculo que falta y ninguna mutacion ve.
+
+
+## PRUEBA ADVERSARIAL DE LOS 8 TESTS NUEVOS — EN CURSO, 1 DE 8 CERRADO (2026-09-16)
+
+**Pedido del owner (literal):** «vas a hacer un agente = un test, revisas ese resultado, cierras, luego otro
+agente = otro test, y asi hasta cerrar los 8 para evitar que te ates a un loop infinito de pruebas».
+La pregunta de cada vuelta es UNA: **¿se puede romper el invariante dejando ese test VERDE?**
+Presupuesto por test: **MAX 3 evasiones, UNA vuelta, y el fix NO se re-ataca.**
+
+**EJECUTOR: el ORQUESTADOR, no un agente — y el motivo hay que escribirlo.** Se despacharon agentes de fondo y
+**murieron CUATRO veces seguidas por fin de sesion**, la ultima **sin producir nada** (sin bitacora, sin mutacion,
+arbol limpio). La estructura que pidio el owner (uno por vez, presupuesto, cerrar antes del siguiente) **se
+respeta igual**; lo unico que cambia es quien la ejecuta. *(`CLAUDE.md`: si un encargo ya murio dos veces, no lo
+despaches una tercera.)*
+
+### ESTADO DE PROD (para que la proxima sesion no lo re-derive)
+
+**Commit `9fd9625` PUSHEADO, `Vercel: success` verificado para el SHA EXACTO, y migracion `0031` APLICADA A
+PROD y verificada por SQL** (`__drizzle_migrations` 31 → **32**; las 5 tablas nuevas; `marketing_opt_out_at`
+presente; el unico parcial **por negocio** presente; **0 indices unicos peligrosos** en `wallet_push_queue`;
+`core`+`merchant_auth` 28 → 33, o sea crecieron por las nuevas y no se perdio ninguna).
+**Falta SOLO el Actions secret `MARKETING_TICK_ENDPOINT = https://www.checkpass.club/api/internal/marketing-tick`**
+(con `www.`), que lo carga el owner. Sin el, el workflow sale en 0 sin hacer nada: el tick **no corre solo
+todavia**, y eso es lo esperado. **QA del owner EN CURSO.**
+
+### TEST 1/8 — R1 `counts a COUPON REDEMPTION as a purchase in the stats`: **EVADIBLE, 1 HALLAZGO REAL**
+
+Bitacora: `/tmp/prueba-test-r1.md`.
+
+| id | evasion | resultado EJECUTADO |
+|---|---|---|
+| E1 | `in ('purchase','coupon_redeemed')` → `is not null` | **MUERDE los 2 tests**: `- "placedPurchases": 3 / + 4`. El caso SI distingue «cuenta el cupon» de «cuenta cualquier outcome». Sin hallazgo |
+| E2 | → `= 'coupon_redeemed'` (se reemplaza en vez de sumar) | **el caso bajo ataque queda VERDE**; lo caza su hermano del mismo archivo (`expected [ 'queued' ] to deeply equal [ 'active' ]`). **PARCIAL, se DECLARA**: el caso siembra 100 % cupones, asi que en aislamiento no separa «cuenta las dos» de «cuenta solo el cupon»; la otra mitad la pinnea el test de orden. La cobertura existe repartida en dos casos — no se duplican fixtures por eso |
+| E3 | borrar `.where(eq(campaignTurns.status, "done"))` | **EVADE: archivo entero VERDE 2/2. HALLAZGO REAL** |
+
+**E3, y por que importa:** sin ese filtro un turno **VIVO** —que todavia no tiene resultado— se cuenta como
+exposicion, asi que el negocio queda 1 compra sobre 2 turnos (**50 % donde corresponde 100 %**) y su merito se
+hunde por campañas que ni terminaron. **El VERDE se LEYO, no se supuso:** sonda scratch con 1 turno `done` +
+1 `active` del mismo negocio → `SONDA_DONE {"placedN":2,"placedPurchases":1,…}` con la mutacion contra
+`{"placedN":1,…}` en el control limpio. Sin esa medicion, una mutacion que quizas no cambia nada se disfraza de
+hallazgo. Sonda **borrada** del arbol. Ningun test lo veia porque los fixtures de los otros dos **no tienen
+turnos vivos** para el negocio que aseveran — coincidencia de los datos, no cobertura.
+
+**CERRADO** con el caso `counts only FINISHED turns: a live one is not an exposure yet`
+(`marketing-merit.neon.integration.test.ts`, **274 lineas, hook `EXIT=0`**). **E3 ahora muerde ESE caso y solo
+ese** (`- "placedN": 1 / + 2`), los otros dos verdes → atribucion correcta. **3/3 en limpio.**
+
+### LO QUE QUEDA DE ESTA TANDA (7 tests)
+
+2. R2 `takes the door OUT of the pass when the turn expires` (`marketing-lifecycle`)
+3. R3 `does not queue-and-cancel an ARCHIVED door on every run` (`marketing-lifecycle`)
+4. R4 `does NOT let a holdout eat the business quota` (`marketing-placement`)
+5. M1-d2 el tramo `provider.ts` → builders (`wallet-pass-locations-e2e`)
+6. M3-d2 el SQL de `passLocationsForConsumer` (`wallet-pass-locations-e2e`)
+7. M2-d3 el `PATCH` del canal real (`wallet-push-channel-real`)
+8. M3-d3 el coalescing (`marketing-refresh`)
+
+**SIN COMMITEAR:** el caso nuevo de R1 en `marketing-merit.neon.integration.test.ts`. Se commitean los 8 juntos
+al cerrar la tanda (el owner puede pedir uno por test). El arbol quedo **sin mutaciones y sin sondas**
+(`grep MUTATION` vacio, `find zz-*` vacio).
+
+
+## FASE B (BACKOFFICE DE CAMPAÑAS) — ARRANCADA (2026-09-16)
+
+**El owner eligio la fase B por sobre sembrar una campaña en prod para QA.** Motivo que hay que tener a mano:
+**hoy NO existe ninguna ruta ni pantalla que CREE una campaña** —verificado en el arbol: lo unico que inserta en
+`core.campaign` es el support de tests, y `backoffice/demo/campaigns` son los mocks viejos de la spec 0017 que
+esta spec deja superados—, asi que el tick en prod no tiene nada que hacer y **el geofence no se puede QA-ear
+hasta que exista el compositor**. Eso es exactamente lo que la fase B desbloquea.
+
+**La spec 0065 ya especifica la fase B: no hace falta spec nueva.** Seccion «Backoffice — rutas y API» y
+«Resultados», mas el journey del owner en «Diseño». **6 items [B] del DoD.**
+
+### EL CORTE EN TRES (cada uno termina en algo verificable)
+
+- **B1 — el motor de estado y sus rutas.** `marketing/campaign-input.ts` (validacion pura),
+  `marketing/campaign-transitions.ts` (tabla de transiciones pura), `marketing/campaign-store.ts` (SQL),
+  `app/api/marketing/_auth.ts` y las rutas `POST /api/marketing/campaigns`, `PATCH …/[id]`,
+  `POST …/[id]/{activate,pause,end,archive}`. Cierra los items [B] del ciclo de vida.
+- **B2 — la lectura.** `marketing/results.ts` (DTO con la calidad de cada campo, ADR 0021),
+  `GET /api/marketing/audience-preview` y `GET /api/marketing/campaigns/[id]/results`, + `listCampaigns`.
+- **B3 — las pantallas.** `/backoffice/marketing` (listado), `new` (compositor), `[id]` (detalle + resultados)
+  y el tile «Campañas» de `/backoffice`, que hoy cae en el mock de demo (`backoffice/page.tsx:41-44`).
+
+### B1 — EN CURSO: LAS DOS PIEZAS PURAS HECHAS Y MEDIDAS, FALTA EL STORE Y LAS RUTAS
+
+**Hecho (todo `??`, sin commitear):**
+- `marketing/campaign-transitions.ts` (65 l.) — la tabla del ciclo de vida, pura. 4 acciones x 5 estados = 20
+  pares: **7 permitidos, 13 que deben dar 409**.
+- `marketing/campaign-input.ts` (253 l.) + `marketing/campaign-values.ts` (8 l.) — validacion campo por campo.
+  El cupon se trata como **TRIO indivisible** (etiqueta + costo + tope), incluso en el `PATCH`: nombrar una de
+  sus claves reemplaza el cupon entero, porque mandar solo `couponCost` construiria el estado a medias que el
+  check de la base prohibe. Los `check` de la `0031` ya protegen los datos; **esta capa existe para dar 400
+  `validation` con el error al lado del campo**, no para proteger la base.
+- `marketing/campaign-lifecycle.test.ts` (~215 l.) — **16 tests, VERDE**.
+
+**El test recorre la tabla en las DOS direcciones a proposito:** asevera los 7 pares permitidos **y** que los
+otros 13 dan `null`. Uno que solo listara los permitidos quedaria verde si alguien **agregara** una transicion,
+que es el error que importa (un `ended` volviendo a `active` re-encola una audiencia que ya corrio).
+
+**Mutaciones EJECUTADAS (no predichas):**
+| id | edicion | resultado |
+|---|---|---|
+| B1-M1 | agregar `"ended"` a los `from` de `activate` | **ROJO 2**: `expected [ …(8) ] to deeply equal [ …(7) ]` y `expected 'active' to be null` |
+| B1-M2 | `given.length < 3` → `< 1` en el cupon (acepta a medias) | **ROJO 1**: `expected { Object (couponCost) } to have property "couponLabel"` |
+
+**TROPIEZO QUE VALE ESCRIBIR — `git checkout` NO revirtio las mutaciones porque los archivos son `??`.** Es la
+trampa que `CLAUDE.md` ya documenta («mutar un archivo untracked deja a git sin nada a que volver») y se piso
+igual. Se deshicieron **a mano** (eran 2 lineas conocidas) y **recien despues** se saco la copia limpia, que es
+el orden inverso al correcto. **Copia en `/tmp/faseb-clean/` con estos `shasum`** — punto de retorno de la
+proxima sesion, y lo unico que existe para archivos nuevos:
+```
+ddd122e3f7134fbcee6b3e908cd1740dc4f286f2  campaign-input.ts
+da355fa99667d22f5298186f68f381b05f1f05b4  campaign-lifecycle.test.ts
+4eece07adf9459f6ca9ad92309713b48d3557466  campaign-transitions.ts
+effffad2aa69abbf3c58fca97a39e7dc774f2ef4  campaign-values.ts
+```
+
+**FALTA de B1:** `marketing/campaign-store.ts` (SQL: create + update + get + listado + transiciones, todo con
+scope por `business_id` y **404 para id ajeno**), `app/api/marketing/_auth.ts` (copiar el patron de
+`app/api/locations/_auth.ts`) y las 6 rutas. Despues: 5 gates y su test de integracion.
+**`activate` exige ademas ≥ 1 local activo ASIGNADO y con coordenadas, y plan `plus` (402 `plan_not_allowed`).**
+**Cancelar los turnos de una campaña pausada/terminada NO lo hace la ruta: lo hace el paso 3 del TICK**, y la
+respuesta de la ruta tiene que decirlo («los turnos activos se retiran en el proximo refresco»).
+
+### B1 — **COMPLETA, 5 GATES VERDES** (2026-09-16). SIN COMMITEAR.
+
+**Archivos (todos `??` salvo `placement.ts`):** `marketing/campaign-transitions.ts` (65 l., tabla pura),
+`marketing/campaign-input.ts` (253) + `campaign-values.ts` (8) (validacion pura), `marketing/campaign-store.ts`
+(245, CRUD + scope), `marketing/campaign-actions.ts` (141, las 4 transiciones + guards de `activate`),
+`app/api/marketing/_auth.ts` (76) y las 6 rutas. Tests: `campaign-lifecycle.test.ts` (16 unit),
+`marketing-campaigns.neon…` (142) + `marketing-campaign-actions.neon…` (203) + `marketing-campaigns-support.ts`
+(65) = **8 de integracion**. **Todos al hook `file-size`: `EXIT=0`.**
+
+**Gates sobre el arbol final:** `typecheck` 3/3, `lint` 0, `format:check` 0, `build` 0, y `test` con env de
+integracion **156 archivos / 1097 tests / 0 failed** (venia de 153 / 1072: +3 archivos y +25 tests).
+
+**Mutaciones EJECUTADAS (presupuesto 3 + 2 de las piezas puras):**
+| id | edicion | resultado |
+|---|---|---|
+| B1-M1 | `"ended"` agregado a los `from` de `activate` | ROJO 2 (`expected […8] to deeply equal […7]`, `expected 'active' to be null`) |
+| B1-M2 | cupon aceptado a medias | ROJO 1 (`to have property "couponLabel"`) |
+| B1-M3 | sacar el scope por negocio de `getCampaign` | ROJO 1 (`another owner's campaign is a 404`) |
+| B1-M4 | sacar `isNotNull(latitude)` de `usableDoors` | **1a corrida VERDE 8/8 — evasion del TEST.** El caso ponia las DOS columnas en null, asi que el `isNotNull(longitude)` restante ya lo cazaba: **cualquiera de las dos mitades se podia borrar sin que nada mordiera**. Se agregaron un local con **solo latitud** null y otro con **solo longitud** null (las columnas son nullables independientemente). **Re-ejecutada → ROJO 1** |
+| B1-M5 | `planAllows` siempre `true` | ROJO 1 (`a free business gets 402`) |
+
+### DOS COSAS ENCONTRADAS AL HACER B1 QUE NO SON DE B1
+
+1. **UN `delete` TAUTOLOGICO EN MI PROPIO TEARDOWN, que borraba la tabla entera.** La primera version del
+   teardown «ayudaba» al cascade con `delete(campaignLocations).where(eq(campaignLocations.campaignId,
+   campaignLocations.campaignId))`. **`.toSQL()` lo mostro:**
+   `delete from "core"."campaign_location" where "campaign_id" = "campaign_id"` — una tautologia que **borra las
+   puertas de TODOS los negocios de la base**, y que ya habia corrido 8 veces contra la rama efimera compartida.
+   No rompio nada solo porque ninguna otra suite estaba leyendo esas filas en ese momento. **Se saco entero: la
+   fk es `on delete cascade`.** *(Leccion: una condicion `col = col` typechea, lintea y se lee como un filtro.)*
+2. **BOMBA DE TIEMPO PREEXISTENTE DE LA FASE A, no un flaky.** `marketing-refresh` fallaba con
+   `expected +0 to be 1` en `summary.sent`. **Mecanismo señalado en el codigo y medido en la base, no supuesto:**
+   `claimRow` (`push.ts:84`) exige `not_before <= now`; el test congela `NOW = 2026-09-16T12:00:00Z` y llama al
+   worker con `NOW + 60s`, pero el tick insertaba la fila **sin** `not_before`, tomando el default `now()` de la
+   base = **reloj real** (medido: `not_before` `14:04Z` contra un worker en `12:01Z`). O sea: **verde antes de
+   las 12:00 UTC de la fecha congelada, rojo despues, y rojo para siempre desde el dia siguiente.** Paso
+   literalmente en esta sesion: la suite completa dio 1072/1072 a las 08:00 UTC y 1 failed a las 14:00 UTC.
+   **Fix: el tick escribe `not_before` con SU reloj** (`placement.ts`). En produccion los dos instantes son el
+   mismo, asi que no cambia el comportamiento; en test los desacopla. `marketing-refresh` **6/6**.
+
+**FALTA de B1 (declarado, no omitido):** el test UNIT de las rutas HTTP (401 sin sesion, 403 de staff, mapeo de
+`CampaignError` → status, y que cada ruta de accion llame a SU accion). El patron a copiar es
+`locations-routes.test.ts` (mockea `./auth` y `./staff`). **Las suites de integracion lo declaran en su docblock:
+ejercitan el STORE, no la capa HTTP.** Sin ese test, el item [B] de aislamiento («staff no puede crear ni
+activar → 403») NO esta cerrado.
+
+**Copia limpia + `SHASUMS.txt` en `/tmp/faseb-clean/`** — obligatorio para estos archivos: son `??` y
+`git checkout` **no revierte nada** sobre ellos (ya se piso una vez en esta sesion).
+
+### PATRONES DEL REPO RELEVADOS ANTES DE ESCRIBIR (no inventar idioma)
+
+- **`requireOwner` NO sirve para una ruta API: hace `redirect()`** (en un POST da 307, no 403) — ya lo habia
+  cazado la revision adversarial de la spec. El patron real de las rutas es un `_auth.ts` por carpeta con
+  `ownerContext(session.user.id)` (`server/staff.ts:38`, devuelve `{id, currencyCode}` del negocio del owner
+  **activo**), una clase de error con `status`+`code`, y `readJson`. Modelo a copiar: `app/api/locations/_auth.ts`.
+- **El plan se lee de `core.subscription`** via el patron de `locations/shared.ts:93` (`planLocationLimit`
+  selecciona `plan` Y `pending_plan`). Para el 402 `plan_not_allowed` de `activate` alcanza `plan === 'plus'`.
+  **Ojo de alcance:** ese 402 es del DoD **[D]**, pero la RUTA es de B — se implementa aca y el revisor de la D
+  cierra el item.
+- Los checks de la base ya prohiben lo invalido (`name` 1..80, `message` 1..60, `dormant_days` 7..365, cupon
+  **todo o nada**), asi que la validacion del input es para dar **400 `validation` por campo** con un mensaje
+  util, no para proteger la base.
 
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
