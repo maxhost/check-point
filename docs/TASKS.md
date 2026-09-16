@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 COMMITEADA EN `a0573a6`, NO PUSHEADA** — 5 gates verdes, 156 archivos / 1097 tests. **PROXIMO PASO EXACTO: escribir el test unit de las rutas HTTP** (401 sin sesion, 403 de staff, mapeo de `CampaignError` a status) copiando el patron de `locations-routes.test.ts` — es lo unico que falta para cerrar el item de aislamiento del DoD de B1. Recien despues: B2 (resultados + audience-preview) y B3 (las 3 pantallas). Se encontro y corrigio una BOMBA DE TIEMPO preexistente de la fase A (el tick no escribia `not_before`). Ver «FASE B (BACKOFFICE DE CAMPAÑAS)» → sub-seccion B1.)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 COMPLETA Y CERRADA** — commit `a0573a6` + el test unit de las rutas HTTP (`server/marketing-routes.test.ts`, 35 tests, **sin commitear**, `??`), 4 mutaciones ejecutadas. 5 gates verdes: **157 archivos / 1132 tests / 0 failed** (venia de 156/1097). NADA PUSHEADO de la fase B. **PROXIMO PASO: B2** (`marketing/results.ts` + `GET /api/marketing/audience-preview` + `GET …/campaigns/[id]/results`). Despues B3 (las 3 pantallas). Ver «FASE B (BACKOFFICE DE CAMPAÑAS)».)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -1148,11 +1148,41 @@ integracion **156 archivos / 1097 tests / 0 failed** (venia de 153 / 1072: +3 ar
    **Fix: el tick escribe `not_before` con SU reloj** (`placement.ts`). En produccion los dos instantes son el
    mismo, asi que no cambia el comportamiento; en test los desacopla. `marketing-refresh` **6/6**.
 
-**COMMITEADO en `a0573a6`, NO PUSHEADO** (igual que el resto de la fase A/B: se pushea recien con el PASS del revisor de la fase completa, o cuando el owner lo pida explicitamente como hizo con la fase A). **FALTA de B1 (declarado, no omitido):** el test UNIT de las rutas HTTP (401 sin sesion, 403 de staff, mapeo de
-`CampaignError` → status, y que cada ruta de accion llame a SU accion). El patron a copiar es
-`locations-routes.test.ts` (mockea `./auth` y `./staff`). **Las suites de integracion lo declaran en su docblock:
-ejercitan el STORE, no la capa HTTP.** Sin ese test, el item [B] de aislamiento («staff no puede crear ni
-activar → 403») NO esta cerrado.
+**COMMITEADO en `a0573a6`, NO PUSHEADO** (igual que el resto de la fase A/B: se pushea recien con el PASS del revisor de la fase completa, o cuando el owner lo pida explicitamente como hizo con la fase A).
+
+### B1 — EL TEST DE LAS RUTAS HTTP: **HECHO** (2026-09-16). SIN COMMITEAR (`??`).
+
+`apps/merchant/src/server/marketing-routes.test.ts` (**300 lineas exactas, preguntado AL HOOK `file-size`
+despues de prettier → `EXIT=0`**; la medicion antes de prettier decia 300 y prettier la subio a 301 — el numero
+que vale es el de despues). **35 tests, verde.** Cierra el item [B] de aislamiento que quedaba declarado.
+
+Que pinnea, sobre los **8** handlers de `api/marketing/**` (los 4 de `campaigns` + las 4 acciones):
+401 anonimo sin tocar el dominio · 403 de no-owner (`ownerContext` → null cubre staff, owner deshabilitado y
+sin membresia) · **actua sobre el negocio del LLAMADOR** aunque la query, el body y el path griten uno ajeno ·
+cada ruta de accion llama a **SU** accion · el mapeo de `CampaignError` (402/404/409 con su `code`, 400
+`validation` **con `fields`**, body no-JSON → 400 `invalid_body` sin llegar al dominio) · y cualquier otro error
+→ **503 con `toEqual` exacto**, que es la asercion de que no se filtra un host ni un stack al navegador.
+`CampaignError` se deja **REAL** en el `vi.mock` (el mapeo es por `instanceof`: una clase falsa testearia el falso).
+
+**Mutaciones EJECUTADAS — presupuesto declarado ANTES: 4, una vuelta, contra 4 clases de error distintas.**
+| id | edicion | resultado |
+|---|---|---|
+| B1-M6 | guard removido del factory `campaignActionRoute` (`_auth.ts`) | **ROJO 12** — `expected 200 to be 401` / `to be 403`, en los 4 handlers de accion |
+| B1-M7 | `archive/route.ts` cableado a la accion `"end"` | **ROJO 1** — `- "archive"` / `+ "end"` |
+| B1-M8 | `campaignError` deja `fields` afuera | **ROJO 1** — `- "fields": {` |
+| B1-M9 | una **7a ruta** nueva (`…/[id]/duplicate`) sin guard | **ROJO 1** — `expected [Array(8)] to deeply equal [Array(9)]`, nombrando `POST …/:id/duplicate` |
+
+M9 es la que prueba que el barrido del filesystem **muerde**: es la preimagen real («una ruta nace sin guard y
+este archivo sigue verde»), no una edicion del propio test. Las 4 se revirtieron y el arbol se verifico por
+`shasum` contra `/tmp/faseb-routes/` (`_auth.ts` `e64b749a…`, `archive/route.ts` `bba49715…`,
+`marketing-routes.test.ts` `d5b2107f…`) — los tres identicos al baseline, `grep MUTATION` vacio.
+
+**QUEDA AFUERA, DECLARADO:** el test mockea `ownerContext`, asi que **no** prueba que `ownerContext` filtre por
+`status` — eso lo pinnean los tests de `server/staff.ts`. Y no prueba el comportamiento del STORE: para eso
+estan las dos suites `marketing-*.neon.integration.test.ts`, que lo declaran en su docblock.
+
+**Gates sobre el arbol final (2026-09-16):** `typecheck` 3/3, `lint` 0, `format:check` 0, `build` 0, y `test`
+con env de integracion **157 archivos / 1132 tests / 0 failed** (venia de 156 / 1097: +1 archivo, +35 tests).
 
 **Copia limpia + `SHASUMS.txt` en `/tmp/faseb-clean/`** — obligatorio para estos archivos: son `??` y
 `git checkout` **no revierte nada** sobre ellos (ya se piso una vez en esta sesion).
