@@ -317,6 +317,45 @@ tests de cierre de A2 quedan por commitear):**
   **`Tests 761 passed | 221 skipped (982)`** — el baseline de A2 era **757**, o sea **+4 y cero
   regresiones** —, `build` **exit 0**. El directorio `marketing/` solo: **34 passed (34)** en 456 ms.
 
+**FASE A3 (carril `pass_refresh`): DESPACHADA a un implementador el 2026-09-15 (noche), DESPUES de cerrar
+A2.** Serializada: **un solo implementador a la vez sobre el arbol** (dos se pisan los gates). Archivos de su
+alcance, todos **trackeados y limpios** al despachar (o sea que el `git checkout` de emergencia SI existe para
+ellos): `wallet/push-plan.ts` (58 l.), `wallet/push-worker.ts` (120), `wallet/push-channel.ts` (130),
+`wallet/google.ts` (211), `wallet/push-transports.ts` (186), `wallet/push.ts` (**285/300 — si su cambio lo
+pasa, se parte, no se extiende**), y los tests `server/push.test.ts` (208) y `server/wallet-push.test.ts` (216).
+
+- **Lo que el orquestador verifico EN EL ARBOL antes de escribir el encargo** (no se paso ninguna cita de la
+  spec sin abrirla): `push-worker.ts:60` es literalmente
+  `klass: r.klass === "campaign" ? "campaign" : "transactional",` sobre la union de `push-plan.ts:10`;
+  `push-channel.ts` tiene la interfaz en :19, `FakeCall` en :26, `FakePushChannel` en :35 y `RealPushChannel`
+  en :61; en `google.ts` las dos unicas salidas son POST (`googleAccessToken` ~:105 y `postGoogleMessage`
+  ~:137) y el molde puro es `buildAddMessageRequest` (:74), ya testeado en `wallet-push.test.ts:199`;
+  `planTransports` tiene **3 consumidores** — `deliverTransports` (`push-transports.ts:171`) y **4 aserciones**
+  en `push.test.ts` (:167, :175, :184, :192). El check de `class` de la cola **ya acepta `pass_refresh`**
+  desde A1 (`schema/consumer.ts:291`, `0031_…sql:140`): A3 **no** toca schema ni genera migracion.
+- **RENAME AUTORIZADO POR LA SPEC (no es «editar un test para que pase»):** `TransportPlan.google` →
+  `googleAddMessage`, mas `googlePatch`. La forma `{apple, googlePatch, googleAddMessage, webPush}` es la
+  **literal** del plan de pruebas, y es lo que vuelve imposible confundir un PATCH con un `addMessage` — el
+  agujero exacto que el DoD prohibe (`sendGoogle(serial, {header:'',body:''})` deja el fake registrando
+  `{kind:'google'}` igual que un PATCH: test verde, notificacion real al consumidor).
+- **COSTURON A3↔A4, declarado por el orquestador ANTES de implementar:** el **contenido** del cuerpo del
+  PATCH (`merchantLocations` + modulos por turno) es de **A4**. En A3 la firma es
+  `patchGoogleObject(serialNumber, patch: Record<string, unknown>)` y A4 llena el cuerpo. **Esto es
+  andamiaje con dueño: su fila que lo consume es A4, aca escrita** (`CLAUDE.md`: nada de andamiaje sin su
+  tarea).
+- **FUERA DE A3, a proposito:** la integracion Neon end-to-end del carril y el item del coalescing/retry
+  («a lo sumo un `pass_refresh` vivo por consumidor; una fila devuelta a `pending` no rompe contra el
+  coalescing») dependen del **aplicador**, asi que quedan en **A5** — que es donde la spec ya los agrupa.
+  No se invento alcance para completar la simetria.
+- **PRESUPUESTO ESCRITO EN EL ENCARGO (ADR 0062 + la instruccion del owner del 2026-09-13):** las **3**
+  mutaciones que nombra la spec (restaurar el ternario con default `transactional`; tratar `pass_refresh`
+  como `transactional` en `planConsumerDrain`; devolver el fan-out de `campaign`) **+ a lo sumo 4 sondas**
+  sobre docblocks nuevos que afirmen un invariante — la familia que caza los bloqueantes de verdad (4 en la
+  fase D1, **6 en A2**). Clase de error: invariante declarado sin oraculo, con regresion **plausible**.
+  **Condicion de corte: UNA vuelta**; lo que quede se declara y pasa al revisor.
+- **Baseline que el implementador tiene que igualar o superar:** `test` de root
+  **`761 passed | 221 skipped (982)`**. Un numero menor es una regresion.
+
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
 `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
 bucle que el owner corto en la 0064). **Estamos IMPLEMENTANDO la fase A, partida en sub-fases porque entera no
