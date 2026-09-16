@@ -14,6 +14,7 @@ import {
   pgErrorCode,
   programDTO,
 } from "./core";
+import { type ActiveCoupon, loadActiveCoupon } from "./coupon-store";
 import { loadProgramRewards } from "../loyalty-program/persistence";
 import { type RewardDTO, toRewardDTO } from "../loyalty-program/client-view";
 
@@ -104,6 +105,7 @@ function buildResolveResult(opts: {
   program: ProgramRow;
   catalog: Awaited<ReturnType<typeof businessCatalog>>;
   rewards: RewardDTO[];
+  coupon: ActiveCoupon | null;
 }) {
   return {
     // Allow-list: the consumer's display name only — never the qr_token.
@@ -116,6 +118,11 @@ function buildResolveResult(opts: {
     // Rewards for the Canjear mode (spec 0055), ordered by `position` — the order the
     // owner configured in step 4. Same DTO as the wizard and the wallet: no R2 key.
     rewards: opts.rewards,
+    // The campaign coupon this consumer can be handed right now, or null (spec 0065
+    // phase C). It is a SNAPSHOT for painting: the redemption re-decides under the
+    // campaign's lock, so a coupon that ran out between the scan and the confirmation
+    // is refused by the server, never by this field.
+    coupon: opts.coupon,
   };
 }
 
@@ -152,6 +159,7 @@ export async function resolveScan(
   );
   const catalog = await businessCatalog(business.id);
   const rewards = (await loadProgramRewards(program.id)).map(toRewardDTO);
+  const coupon = await loadActiveCoupon(business.id, account.id);
 
   return buildResolveResult({
     displayName: `${account.firstName} ${account.lastName}`.trim(),
@@ -159,6 +167,7 @@ export async function resolveScan(
     program,
     catalog,
     rewards,
+    coupon,
   });
 }
 

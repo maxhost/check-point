@@ -181,6 +181,11 @@ export async function seedTurn(opts: {
   windowStart?: Date | null;
   windowEnd?: Date | null;
   messageSnapshot?: string | null;
+  /** The coupon the turn CARRIES, snapshotted at activation. Phase C reads these two and
+   * never the campaign's current ones: editing a paused campaign's coupon may not
+   * rewrite what a live turn already promised. */
+  couponLabelSnapshot?: string | null;
+  couponCostSnapshot?: string | null;
   outcome?: "purchase" | "coupon_redeemed" | "none" | null;
 }): Promise<string> {
   const [row] = await getDb()
@@ -197,6 +202,8 @@ export async function seedTurn(opts: {
       windowStart: opts.windowStart ?? null,
       windowEnd: opts.windowEnd ?? null,
       messageSnapshot: opts.messageSnapshot ?? null,
+      couponLabelSnapshot: opts.couponLabelSnapshot ?? null,
+      couponCostSnapshot: opts.couponCostSnapshot ?? null,
       outcome: opts.outcome ?? null,
     })
     .returning({ id: campaignTurns.id });

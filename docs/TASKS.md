@@ -8,17 +8,18 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B COMPLETA EN EL ARBOL: B1, B2 y B3.** B1/B2 commiteadas (`a0573a6`, `7f59f8a`, `9bf69b8`); **B3 esta SIN COMMITEAR**. **NADA DE LA FASE B ESTA PUSHEADO.** 5 gates verdes sobre el arbol de hoy: **168 archivos / 1207 tests / 0 failed**. **PROXIMO PASO: FASE C (el cupon en el mostrador).** **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** O sea que A, B, C y D se implementan seguidas y **las revisiones se acumulan para el final** — ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASES B Y C COMPLETAS Y COMMITEADAS** — `a0573a6`, `7f59f8a`, `9bf69b8`, `32be432` (B) y `c6a573c` (C). Arbol limpio. **NADA DE B NI DE C ESTA PUSHEADO.** 5 gates verdes sobre el arbol de hoy: **172 archivos / 1234 tests / 0 failed**. **PROXIMO PASO: FASE D** (portal del consumidor + freno por plan). **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** Ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
 
-**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, al cerrar B3):**
+**ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, al cerrar C):**
 
 - **ARCO DE MARKETING (spec 0065) — DONDE ESTA HOY, en una linea por fase:**
   **A: EN PROD** (`9fd9625`), falta solo el Actions secret `MARKETING_TICK_ENDPOINT` (lo pone el owner).
   **B1: hecha** (ciclo de vida + 6 rutas + el test unit de las 8 rutas HTTP) — `a0573a6` + `7f59f8a`.
   **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
-  **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — **SIN COMMITEAR**.
-  **C y D: sin empezar.**
-  **NADA DE LA FASE B ESTA PUSHEADO.** Se pushea cuando el owner lo pida explicitamente, como hizo
+  **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — `32be432`.
+  **C: hecha** (cupon en el mostrador: banner + ruta + transaccion con dos `for update` + 27 casos) — `c6a573c`.
+  **D: sin empezar** — es lo proximo.
+  **NADA DE B NI DE C ESTA PUSHEADO.** Se pushea cuando el owner lo pida explicitamente, como hizo
   con la A.
 
 - **COLA DE REVISIONES INDEPENDIENTES — decision del owner del 2026-09-16.** El protocolo de
@@ -32,7 +33,7 @@ Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo e
   1. **Fase A** (fundacion) — A3, A4 y A5 las cerro el ORQUESTADOR a mano porque sus implementadores
      murieron; el revisor tiene que saberlo.
   2. **Fase B** (B1 ciclo de vida + rutas, B2 resultados + preview, B3 pantallas).
-  3. **Fase C** (cupon).
+  3. **Fase C** (cupon) — cerrada por el orquestador con 5 mutaciones; ver su seccion abajo.
   4. **Fase D** (consumidor + freno por plan).
 
 - **ARCO DE SUSCRIPCION: CERRADO.** Spec 0064 `implementada`, commit `ca2d746`, QA del owner en prod en
@@ -42,8 +43,8 @@ Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo e
   este arco. El barrido de las 60 specs (0058/0059/0010/0018/0022 → `implementada`) esta hecho y
   commiteado en `ea996c3` y anteriores.
 
-- **ARCO DE MARKETING: EMPEZADO — DOCUMENTOS ESCRITOS Y SPEC CERRADA, NADA DE CODIGO, SIN COMMITEAR
-  (2026-09-15).**
+- **ARCO DE MARKETING — LOS DOCUMENTOS (lo de abajo se escribio el 2026-09-15; el ESTADO de codigo
+  es el de arriba: A en prod, B y C commiteadas, D pendiente).**
   - **ADR 0064** (`aceptada`): el motor arranca por **audiencias** (fase 1), el reactivo del 0018 es
     la fase 2; **un tipo de campaña = una spec + un ADR**; los $20 compran el motor **sobre la base
     propia**; el cupon es un efecto; medicion por ADR 0021.
@@ -1063,7 +1064,7 @@ ese** (`- "placedN": 1 / + 2`), los otros dos verdes → atribucion correcta. **
 7. M2-d3 el `PATCH` del canal real (`wallet-push-channel-real`)
 8. M3-d3 el coalescing (`marketing-refresh`)
 
-**SIN COMMITEAR:** el caso nuevo de R1 en `marketing-merit.neon.integration.test.ts`. Se commitean los 8 juntos
+**(Ya commiteado, con la fase A: `9fd9625` y anteriores.)** El caso nuevo de R1 en `marketing-merit.neon.integration.test.ts` se commiteo con los 8 juntos
 al cerrar la tanda (el owner puede pedir uno por test). El arbol quedo **sin mutaciones y sin sondas**
 (`grep MUTATION` vacio, `find zz-*` vacio).
 
@@ -1131,7 +1132,7 @@ scope por `business_id` y **404 para id ajeno**), `app/api/marketing/_auth.ts` (
 **Cancelar los turnos de una campaña pausada/terminada NO lo hace la ruta: lo hace el paso 3 del TICK**, y la
 respuesta de la ruta tiene que decirlo («los turnos activos se retiran en el proximo refresco»).
 
-### B1 — **COMPLETA, 5 GATES VERDES** (2026-09-16). SIN COMMITEAR.
+### B1 — **COMPLETA, 5 GATES VERDES** (2026-09-16). COMMITEADA en `a0573a6` + `7f59f8a`.
 
 **Archivos (todos `??` salvo `placement.ts`):** `marketing/campaign-transitions.ts` (65 l., tabla pura),
 `marketing/campaign-input.ts` (253) + `campaign-values.ts` (8) (validacion pura), `marketing/campaign-store.ts`
@@ -1173,7 +1174,7 @@ integracion **156 archivos / 1097 tests / 0 failed** (venia de 153 / 1072: +3 ar
 
 **COMMITEADO en `a0573a6`, NO PUSHEADO** (igual que el resto de la fase A/B: se pushea recien con el PASS del revisor de la fase completa, o cuando el owner lo pida explicitamente como hizo con la fase A).
 
-### B1 — EL TEST DE LAS RUTAS HTTP: **HECHO** (2026-09-16). SIN COMMITEAR (`??`).
+### B1 — EL TEST DE LAS RUTAS HTTP: **HECHO** (2026-09-16). COMMITEADO en `7f59f8a`.
 
 `apps/merchant/src/server/marketing-routes.test.ts` (**300 lineas exactas, preguntado AL HOOK `file-size`
 despues de prettier → `EXIT=0`**; la medicion antes de prettier decia 300 y prettier la subio a 301 — el numero
@@ -1225,7 +1226,7 @@ con env de integracion **157 archivos / 1132 tests / 0 failed** (venia de 156 / 
   util, no para proteger la base.
 
 
-### B2 — **LA LECTURA: COMPLETA, 5 GATES VERDES** (2026-09-16). SIN COMMITEAR.
+### B2 — **LA LECTURA: COMPLETA, 5 GATES VERDES** (2026-09-16). COMMITEADA en `9bf69b8`.
 
 **Archivos nuevos (todos `??`):** `marketing/results.ts` (184 l., DTO **puro** + la compuerta de la
 estimacion), `marketing/results-store.ts` (231, el SQL), `marketing/audience-preview.ts` (153, parseo de
@@ -1313,7 +1314,59 @@ quien lo hereda — dice «1 failed» y nombra la suite del ciclo de vida de mar
 
 **Evidencia final: DOS corridas completas seguidas con `EXIT=0`, 162 archivos / 1169 tests / 0 failed.**
 
-### B3 — **LAS PANTALLAS: HECHA Y MEDIDA (2026-09-16). SIN COMMITEAR.**
+### C — **EL CUPON EN EL MOSTRADOR: HECHA Y MEDIDA (2026-09-16). COMMITEADA en `c6a573c`, sin pushear.**
+
+**Lo que quedo en el arbol** (5 gates verdes; `test` = **172 archivos / 1234 tests / 0 failed** con
+las env de `ci-integration` apuntadas a la rama efimera `spec-0065-marketing`):
+
+- **Server**: `counter/coupon-decision.ts` (el ORDEN de guardas, puro), `counter/coupon-store.ts`
+  (la lectura del scan + la transaccion con `for update` de campaña y de turno),
+  `counter/coupon.ts` (el flujo, que absorbe **solo** el backstop de idempotencia),
+  `app/api/counter/coupon-redeem/route.ts` con `requireOperator`.
+- **Mostrador**: `coupon-panel.tsx` (banner + pantalla de entrega + `postCouponRedeem`), cableado en
+  `stages.tsx` y `counter-console.tsx`. `resolveScan` ahora sirve `coupon`.
+- **Extraccion forzada por el limite de 300**: el cupon dejo `counter-console.tsx` en 324, y se
+  partio sacando el CARRITO a `counter/cart.ts` (transiciones puras). Quedo en 286.
+- **`buildCouponBody`** en `wallet/push-text.ts`; sin saldo en el texto, porque el cupon no toca
+  `points_balance` ni `stamps_count` y decir «te quedan N» implicaria que si.
+- **Tests (27 casos nuevos)**: `counter/coupon-decision.test.ts` (10, con los 3 casos de ORDEN),
+  `counter-coupon.neon.integration.test.ts` (8), `counter-coupon-races.neon.integration.test.ts`
+  (5) y `app/backoffice/counter/coupon-panel.test.ts` (4).
+
+**BITACORA DE MUTACIONES — presupuesto declarado ANTES de mutar: las TRES que pide el plan de
+pruebas de la spec, mas una por docblock nuevo que afirme un invariante que esas tres no cubran.**
+Copias limpias en `/tmp/c-clean/`, bitacora completa en `/tmp/c-mutations.md`. **Arbol verificado
+limpio**: `grep -rn MUTATION apps/merchant/src` vacio y `diff` identico contra las copias.
+
+| id | invariante | resultado |
+|----|-----------|-----------|
+| C1 | «el `for update` de la CAMPAÑA es lo que hace valer el cupo» | **ROJO 1/5 y exactamente donde la spec lo predice**: `with ONE slot left in the cap` → `expected […] to have a length of 2 but got 3`. **Las 4 carreras del MISMO turno quedaron VERDES** — para ese caso el unique `turn_id` solo alcanza. Par mutacion↔test ejecutado, no escrito de memoria (leccion de la 0055) |
+| C2 | «la idempotencia se lee bajo el lock y ANTES de toda guarda de negocio» | ROJO 1/8 — `Error: Este cupón ya fue canjeado.` sobre el reintento legitimo: la contradiccion exacta que cazo la revision adversarial |
+| C3 | «el aviso va `class = 'transactional'`» | ROJO 1/8 — `expected 'campaign' to be 'transactional'` |
+| C4 | «la etiqueta y el costo son SNAPSHOTS del turno, no de la campaña de hoy» | **VERDE — el invariante no tenia oraculo**: el fixture tenia los dos valores iguales. Se cerro con un caso que edita el cupon de la campaña con el turno vivo; re-corrida → **ROJO 2/8** con `expected '3x1 rebautizado' to be '2x1 en picadas'` |
+| C5 | «`outcome <> 'coupon_redeemed'` saca el cupon del panel» | ROJO 1/8 — el panel seguia ofreciendo «Canjear cupón» sobre un cupon ya entregado |
+
+**DEFECTO DEL PROPIO TEST, cazado por C4 y arreglado:** el restore del fixture estaba DESPUES de las
+aserciones, asi que un rojo dejaba la campaña renombrada y ponia rojo al caso siguiente **por el
+motivo equivocado**. Movido a un `finally`.
+
+**EL GUARD DE LA 0055 MORDIO, que es la noticia buena:** la allow-list EXACTA de claves del DTO de
+`resolveScan` (`counter-redeem-surfaces.neon.integration.test.ts`) se puso roja nombrando `coupon`
+en cuanto la ruta empezo a servirlo. Se agrego a mano, que es la revision que ese DTO merece. El
+`coupon` tiene ademas su propia allow-list exacta donde SI existe (4 claves: `campaignName`,
+`label`, `turnId`, `windowEnd` — ningun id de consumidor, membresia ni `client_request_id`).
+
+**EXPLAIN transcripto como DATO, no como oraculo** (lo pide la spec), contra PG 18 real:
+`… from core.campaign where id = $1 limit 1 for update` → `Limit → **LockRows** → Seq Scan`;
+`select count(*) from core.coupon_redemption where campaign_id = $1` → `Aggregate → Seq Scan`.
+**El `LockRows` esta en el primero y no en el segundo**: por eso ningun plan puede probar que el
+conteo corre bajo el lock — son dos statements. Lo prueba la carrera (C1).
+
+**LIMITE DECLARADO (a QA del owner):** el cableado del boton (`confirmCoupon` → `postCouponRedeem`).
+El render pinnea que el banner y el boton existen y que el boton se deshabilita con `busy`, no que
+apretarlo dispare el fetch.
+
+### B3 — **LAS PANTALLAS: HECHA Y MEDIDA (2026-09-16). COMMITEADA en `32be432`.**
 
 **Lo que quedo en el arbol** (5 gates verdes: typecheck / lint / format:check / build / test, este
 ultimo **168 archivos / 1207 tests / 0 failed** con las env de `ci-integration` apuntadas a la rama

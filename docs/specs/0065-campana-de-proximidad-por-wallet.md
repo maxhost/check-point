@@ -579,6 +579,8 @@ va en el `WHERE`/lock, no en un `NOT EXISTS`), 0060 (discriminante que solo escr
 | `apps/merchant/src/server/marketing/campaign-list.ts`, `composer-summary.ts` | **crear (no estaban en la tabla)**: lo que lee el LISTADO (tallies agrupados + foto del ultimo tick por `distinct on`) y la decision pura del bloque 5 (turnos = `min(alcanzable, cuota libre)`, costo maximo = `costo × tope`) |
 | `apps/merchant/src/server/counter/resolve.ts`, `app/backoffice/counter/{counter-console,redeem-panel}.tsx` | editar: panel de cupon |
 | `apps/merchant/src/app/api/counter/coupon-redeem/route.ts` | crear |
+| `apps/merchant/src/server/counter/coupon-decision.ts`, `coupon-store.ts`, `coupon.ts` | **crear (no estaban en la tabla)**: el orden de guardas PURO, la transaccion con los dos `for update`, y el flujo que absorbe solo el backstop de idempotencia |
+| `apps/merchant/src/app/backoffice/counter/coupon-panel.tsx`, `cart.ts` | **crear**: el banner + la pantalla de entrega; y el carrito extraido de `counter-console.tsx`, que el cupon dejo en 324 lineas sobre el limite de 300 |
 | `apps/merchant/src/app/(consumer)/wallet/page.tsx` | editar: entrada «Configuracion» |
 | `apps/merchant/src/app/(consumer)/wallet/settings/page.tsx` | crear: seccion de configuracion (opt-out por negocio) |
 | `apps/merchant/src/app/api/public/consumer/marketing-opt-out/route.ts` | crear |
@@ -667,12 +669,18 @@ SQL crudo en el seed de integracion.**
 - [ ] **[A]** Cambiar `pass_placement` sube `message_updated_at` **y el serve de Apple responde el
       pase nuevo a `passesUpdatedSince`** (el oraculo ya existe:
       `wallet-push.neon.integration.test.ts:216`).
-- [ ] **[C]** El canje de cupon es **atomico e idempotente**: dos canjes concurrentes del mismo
+- [x] **[C]** El canje de cupon es **atomico e idempotente**: dos canjes concurrentes del mismo
       turno dejan **una** fila; dos canjes concurrentes de turnos distintos con un solo cupo
       restante dejan **una** fila; el reintento con el mismo `clientRequestId` devuelve **200 con la
       misma fila** (no 409). **No cambia `points_balance` ni `stamps_count`** (aseverado por SQL).
-- [ ] **[C]** Al canjear se encola un aviso **`class = 'transactional'`** cuyo texto contiene la
+      `counter-coupon-races.neon.integration.test.ts` (4 carreras × 4 del mismo turno + la del
+      cupo) y `counter-coupon.neon.integration.test.ts`. El saldo se lee por SQL antes y despues, y
+      el fixture lo siembra en **77**, no en 0 — con 0 esa asercion pasaba gratis.
+- [x] **[C]** Al canjear se encola un aviso **`class = 'transactional'`** cuyo texto contiene la
       **etiqueta snapshot** (no la etiqueta actual de la campaña).
+      Y la segunda mitad —«no la actual»— **no tenia oraculo hasta que la mutacion C4 salio verde**:
+      el fixture tenia los dos valores iguales. Se cerro con un caso que edita el cupon de la
+      campaña con el turno vivo (`honours the TURN's snapshot`), y la mutacion re-corrida da rojo.
 - [x] **[B]** Resultados: los titulos dicen «compraron durante su ventana»; la estimacion esta
       oculta con `B < 30` **y muestra el valor correcto con `B ≥ 30`**; «estas en el pase de K de C»
       coincide con el SQL de `pass_placement`.
@@ -895,6 +903,41 @@ Las dos son reversibles y ninguna la decidio el owner.
    redondeo eso viaja tal cual a la pantalla. Un decimal y no entero porque con el piso en 30
    holdouts existe el efecto real pero chico, y `Math.round` lo imprimiria como «+0 clientes», que
    se lee «no sirvio» en vez de «sirvio poco».
+
+## Al implementar la fase C (2026-09-16) — decisiones del ORQUESTADOR
+
+Todas reversibles, ninguna la decidio el owner.
+
+1. **El cupon no es un cuarto modo del mostrador: es un BANNER arriba de los tres.** No es otra
+   forma de hacer la misma operacion — no tiene carrito, ni premio que elegir, ni saldo que debitar
+   —, y el operador tiene el telefono del cliente en la mano: si hay cupon vivo tiene que verlo sin
+   buscarlo. No pasa por `confirm()` ni por `canConfirm`.
+2. **`clientRequestId` PROPIO, distinto del de la venta/canje.** `(business_id, client_request_id)`
+   es unico por TABLA, asi que reusar la misma clave entre una venta y un cupon del mismo escaneo
+   no rompe nada — pero vuelve indistinguibles los reintentos de uno y otro para quien lea los dos
+   logs al lado. Se mintea uno aparte por escaneo.
+3. **El panel no ofrece un cupon ya entregado** (`outcome <> 'coupon_redeemed'` en la lectura del
+   scan). La spec lista las condiciones y no nombra esta; sin ella el turno sigue `status='active'`
+   hasta que el tick cierra su ventana, o sea que el boton seguiria ahi **dias** y cada apretada
+   contestaria 409. Un boton que siempre es error es peor que ningun boton.
+4. **La respuesta lleva `label` y `campaignName`, nada mas.** En el camino de relectura (el `23505`
+   que perdio la carrera) `campaignName` viene vacio: el lock ya no esta y lo que el operador
+   necesita es la etiqueta, que ademas es el snapshot.
+5. **El orden de guardas vive en `counter/coupon-decision.ts`, PURO**, porque la spec lo llama
+   normativo y un orden declarado en un docblock es una afirmacion como cualquier otra. Los tres
+   casos que lo prueban son los que violan DOS reglas a la vez.
+6. **`counter-console.tsx` paso de 286 a 324 lineas con el cupon**, sobre el limite de 300. Se
+   partio sacando el CARRITO a `counter/cart.ts` como transiciones puras — es la unica parte de la
+   consola que es una transformacion de datos y no un fetch o un cambio de etapa, o sea la unica
+   que un unit puede pinnear sin browser. Quedo en 286.
+
+**EXPLAIN transcripto como DATO, no como oraculo** (lo pide la spec). Contra PG 18 real en la rama
+efimera, los dos statements por separado:
+`select … from core.campaign where id = $1 limit 1 for update` → `Limit → **LockRows** → Seq Scan on
+core.campaign`; `select count(*) from core.coupon_redemption where campaign_id = $1` → `Aggregate →
+Seq Scan`. **El nodo `LockRows` esta en el primero y no en el segundo**, que es exactamente por que
+ningun plan puede probar que el conteo corre bajo el lock: son dos statements. El oraculo es la
+carrera (mutacion C1).
 
 ## Al implementar la fase B3 (2026-09-16) — decisiones y correcciones del ORQUESTADOR
 

@@ -54,7 +54,11 @@ export {
   type DrainAction,
   planConsumerDrain,
 } from "./push-plan";
-export { buildTransactionalBody, buildRedemptionBody } from "./push-text";
+export {
+  buildTransactionalBody,
+  buildRedemptionBody,
+  buildCouponBody,
+} from "./push-text";
 
 type Claim = {
   consumerId: string;

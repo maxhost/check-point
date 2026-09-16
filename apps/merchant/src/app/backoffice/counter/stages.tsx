@@ -4,10 +4,12 @@ import type { ReactNode } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { DetailedSale, QuickSale } from "./sale-forms";
 import { RedeemDone, RedeemPanel } from "./redeem-panel";
+import { CouponBanner, CouponDone } from "./coupon-panel";
 import {
   type CartLine,
   type CounterLocation,
   type CounterProduct,
+  type CouponRedeemResponse,
   type GrantResponse,
   type Mode,
   type RedeemResponse,
@@ -100,6 +102,7 @@ export function ResolvedStage({
   canConfirm,
   onConfirm,
   onCancel,
+  onRedeemCoupon,
 }: {
   resolved: ResolveResponse;
   currencyCode: string;
@@ -121,6 +124,7 @@ export function ResolvedStage({
   canConfirm: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  onRedeemCoupon: () => void;
 }) {
   const balance = balanceFor(resolved.program.kind, resolved.membership);
   return (
@@ -135,6 +139,14 @@ export function ResolvedStage({
           </span>
         )}
       </header>
+
+      {resolved.coupon && (
+        <CouponBanner
+          coupon={resolved.coupon}
+          busy={busy}
+          onRedeem={onRedeemCoupon}
+        />
+      )}
 
       <div className="counter-toggle" role="tablist">
         {MODE_TABS.map((tab) => (
@@ -235,14 +247,25 @@ function PointsPreview({
 export function DoneStage({
   result,
   redeemed,
+  couponRedeemed,
   displayName,
   onNext,
 }: {
   result: GrantResponse | null;
   redeemed: RedeemResponse | null;
+  couponRedeemed: CouponRedeemResponse | null;
   displayName: string;
   onNext: () => void;
 }) {
+  if (couponRedeemed) {
+    return (
+      <CouponDone
+        redeemed={couponRedeemed}
+        displayName={displayName}
+        onNext={onNext}
+      />
+    );
+  }
   if (redeemed) {
     return (
       <RedeemDone

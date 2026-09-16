@@ -4036,3 +4036,36 @@ input:focus {
   font-weight: 800;
   background: #eef2ef;
 }
+/* Spec 0065 C — el cupon de campaña en el mostrador. Banner sobre los tres modos: el
+   operador tiene el telefono del cliente en la mano y no puede tener que buscarlo. */
+.counter-coupon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid #9ccbae;
+  border-radius: 16px;
+  background: #edf8f0;
+}
+.counter-coupon .eyebrow {
+  margin: 0;
+}
+.counter-coupon strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+}
+.counter-coupon span {
+  display: block;
+  margin-top: 4px;
+  color: #4d5d52;
+  font-size: 14px;
+}
+.counter-coupon .counter-primary {
+  width: auto;
+  margin: 0;
+  padding: 12px 16px;
+  white-space: nowrap;
+}

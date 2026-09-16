@@ -57,6 +57,24 @@ export type ResolveResponse = {
   };
   /** The program's rewards, already ordered by `position` by the server. */
   rewards: CounterReward[];
+  /** The live campaign coupon of this consumer at this counter, or `null` (spec 0065
+   * phase C). `windowEnd` is an ISO STRING and not a `Date`: a `Date` does not survive
+   * `JSON.stringify`, and typing it as one would pass typecheck and blow up on
+   * `.getTime()` at the counter. */
+  coupon: CounterCoupon | null;
+};
+
+export type CounterCoupon = {
+  turnId: string;
+  label: string;
+  campaignName: string;
+  windowEnd: string;
+};
+
+/** `POST /api/counter/coupon-redeem` (spec 0065 phase C). Allow-list: what to hand over
+ * and which campaign it came from — no turn id, no consumer id, no membership id. */
+export type CouponRedeemResponse = {
+  coupon: { label: string; campaignName: string };
 };
 
 export type CounterProduct = {
