@@ -166,7 +166,8 @@ describe("transport routing by class (spec 0038 / ADR 0040)", () => {
   it("transactional + reachable wallet → wallet only, NEVER Web Push", () => {
     expect(planTransports("transactional", true)).toEqual({
       apple: true,
-      google: true,
+      googleAddMessage: true,
+      googlePatch: false,
       webPush: false,
     });
   });
@@ -174,7 +175,8 @@ describe("transport routing by class (spec 0038 / ADR 0040)", () => {
   it("transactional + NO reachable wallet → Web Push fallback only (no wallet)", () => {
     expect(planTransports("transactional", false)).toEqual({
       apple: false,
-      google: false,
+      googleAddMessage: false,
+      googlePatch: false,
       webPush: true,
     });
   });
@@ -182,13 +184,18 @@ describe("transport routing by class (spec 0038 / ADR 0040)", () => {
   it("wallet and Web Push never coexist for a transactional (no duplicate)", () => {
     for (const reachable of [true, false]) {
       const plan = planTransports("transactional", reachable);
-      const wallet = plan.apple || plan.google;
+      const wallet = plan.apple || plan.googleAddMessage || plan.googlePatch;
       expect(wallet && plan.webPush).toBe(false);
     }
   });
 
   it("campaign keeps the provisional fan-out regardless of reachability", () => {
-    const fanOut = { apple: true, google: true, webPush: true };
+    const fanOut = {
+      apple: true,
+      googleAddMessage: true,
+      googlePatch: false,
+      webPush: true,
+    };
     expect(planTransports("campaign", true)).toEqual(fanOut);
     expect(planTransports("campaign", false)).toEqual(fanOut);
   });

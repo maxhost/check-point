@@ -91,6 +91,30 @@ export function buildAddMessageRequest(
 }
 
 /**
+ * The SILENT update request for one Loyalty Object (spec 0065, class `pass_refresh`):
+ * a `PATCH` on the object itself, which merges the given fields and raises NO
+ * notification. It is a different endpoint from `addMessage` on purpose — `addMessage`
+ * always notifies (`TEXT_AND_NOTIFY`, {@link buildAddMessageRequest}), so refreshing the
+ * pass through it would ring the consumer's phone, which is exactly what the
+ * `pass_refresh` class exists to avoid. Pure so the URL/body are asserted without a
+ * network call.
+ *
+ * The BODY is the caller's: A3 wires the transport with an empty patch and phase A4 of
+ * spec 0065 fills it (`merchantLocations` + the per-turn text modules).
+ */
+export function buildPatchObjectRequest(
+  issuerId: string,
+  serialNumber: string,
+  patch: Record<string, unknown>,
+): { url: string; body: Record<string, unknown> } {
+  const objectId = loyaltyObjectId(issuerId, serialNumber);
+  return {
+    url: `${WALLETOBJECTS}/loyaltyObject/${objectId}`,
+    body: { ...patch },
+  };
+}
+
+/**
  * Mints an OAuth2 access token for the walletobjects scope from the service account
  * (JWT-bearer grant, RS256 via node:crypto). Same SA that emits the pass (0029) — no
  * new secret. Real-channel only; the fake channel never calls Google.
@@ -153,6 +177,33 @@ export async function postGoogleMessage(
     body: JSON.stringify(req.body),
   });
   if (!res.ok) throw new Error(`Google addMessage failed: ${res.status}`);
+}
+
+/**
+ * Silently updates a consumer's Loyalty Object (spec 0065 `pass_refresh`): same service
+ * account as `addMessage`, but `PATCH` on the object, so Google merges the fields and
+ * does not notify.
+ */
+export async function patchGoogleLoyaltyObject(
+  opts: { saJson: string; issuerId: string },
+  serialNumber: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const sa = JSON.parse(opts.saJson) as {
+    client_email: string;
+    private_key: string;
+  };
+  const token = await googleAccessToken(sa);
+  const req = buildPatchObjectRequest(opts.issuerId, serialNumber, patch);
+  const res = await fetch(req.url, {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(req.body),
+  });
+  if (!res.ok) throw new Error(`Google object PATCH failed: ${res.status}`);
 }
 
 function base64url(input: string | Buffer): string {

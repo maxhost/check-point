@@ -1,5 +1,5 @@
 import { type ApnsCredentials, ApnsGoneError, sendApnsEmptyPush } from "./apns";
-import { postGoogleMessage } from "./google";
+import { patchGoogleLoyaltyObject, postGoogleMessage } from "./google";
 
 export { ApnsGoneError };
 
@@ -20,12 +20,30 @@ export interface PushChannel {
   readonly kind: "apple-google" | "fake";
   sendApple(target: AppleTarget): Promise<void>;
   sendGoogle(serialNumber: string, message: PushMessage): Promise<void>;
+  /**
+   * Silent update of the Loyalty Object (spec 0065, class `pass_refresh`): a `PATCH`,
+   * NOT an `addMessage`. It is a separate method — and records a separate
+   * `{kind: 'google-patch'}` call on the fake — because `sendGoogle` is `addMessage`,
+   * which always notifies: without this method a refresh implemented as
+   * `sendGoogle(serial, {header: '', body: ''})` would record `{kind: 'google'}`, pass
+   * every test, and ring the consumer's phone where the spec demands silence.
+   * The patch body is the caller's (phase A4 of spec 0065 fills it).
+   */
+  patchGoogleObject(
+    serialNumber: string,
+    patch: Record<string, unknown>,
+  ): Promise<void>;
 }
 
 /** A recorded fake call, for test assertions. */
 export type FakeCall =
   | { kind: "apple"; pushToken: string; passTypeId: string }
-  | { kind: "google"; serialNumber: string; message: PushMessage };
+  | { kind: "google"; serialNumber: string; message: PushMessage }
+  | {
+      kind: "google-patch";
+      serialNumber: string;
+      patch: Record<string, unknown>;
+    };
 
 /**
  * In-memory channel for dev/test. Records every call; never touches the network.
@@ -55,6 +73,13 @@ export class FakePushChannel implements PushChannel {
   async sendGoogle(serialNumber: string, message: PushMessage): Promise<void> {
     this.calls.push({ kind: "google", serialNumber, message });
   }
+
+  async patchGoogleObject(
+    serialNumber: string,
+    patch: Record<string, unknown>,
+  ): Promise<void> {
+    this.calls.push({ kind: "google-patch", serialNumber, patch });
+  }
 }
 
 /** Real channel: APNs over HTTP/2 for Apple, `addMessage` for Google. */
@@ -78,6 +103,14 @@ class RealPushChannel implements PushChannel {
   async sendGoogle(serialNumber: string, message: PushMessage): Promise<void> {
     if (!this.google) return;
     await postGoogleMessage(this.google, serialNumber, message);
+  }
+
+  async patchGoogleObject(
+    serialNumber: string,
+    patch: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.google) return;
+    await patchGoogleLoyaltyObject(this.google, serialNumber, patch);
   }
 }
 

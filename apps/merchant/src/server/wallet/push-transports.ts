@@ -64,13 +64,8 @@ async function sendApple(
   return errors;
 }
 
-/** Pushes to the consumer's Google pass via `addMessage`. Returns the error string on
- * failure (recorded by the caller) so a misconfigured issuer/SA is visible, not silent. */
-async function sendGoogle(
-  consumerId: string,
-  message: PushMessage,
-  channel: PushChannel,
-): Promise<string[]> {
+/** The serial of the consumer's Google pass, or null when they have none. */
+async function googleSerial(consumerId: string): Promise<string | null> {
   const [pass] = await getDb()
     .select({ serialNumber: walletPasses.serialNumber })
     .from(walletPasses)
@@ -81,14 +76,50 @@ async function sendGoogle(
       ),
     )
     .limit(1);
-  if (!pass) return [];
+  return pass?.serialNumber ?? null;
+}
+
+/** Pushes to the consumer's Google pass via `addMessage`. Returns the error string on
+ * failure (recorded by the caller) so a misconfigured issuer/SA is visible, not silent. */
+async function sendGoogle(
+  consumerId: string,
+  message: PushMessage,
+  channel: PushChannel,
+): Promise<string[]> {
+  const serialNumber = await googleSerial(consumerId);
+  if (!serialNumber) return [];
   try {
-    await channel.sendGoogle(pass.serialNumber, message);
+    await channel.sendGoogle(serialNumber, message);
     return [];
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[wallet-push] Google addMessage failed", msg);
     return [`google: ${msg}`];
+  }
+}
+
+/**
+ * Silently re-writes the consumer's Google Loyalty Object (spec 0065 `pass_refresh`):
+ * a `PATCH`, never an `addMessage` — the object changes without Google notifying.
+ *
+ * **A3 sends an EMPTY patch on purpose.** The body (`merchantLocations` + the per-turn
+ * text modules read from `consumer.pass_placement`) is phase A4 of spec 0065, and the
+ * only producer of `pass_refresh` rows — the marketing tick applier — does not exist
+ * yet, so no production row reaches this with an empty body. **A4 fills THIS function.**
+ */
+async function patchGoogle(
+  consumerId: string,
+  channel: PushChannel,
+): Promise<string[]> {
+  const serialNumber = await googleSerial(consumerId);
+  if (!serialNumber) return [];
+  try {
+    await channel.patchGoogleObject(serialNumber, {});
+    return [];
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[wallet-push] Google object PATCH failed", msg);
+    return [`google-patch: ${msg}`];
   }
 }
 
@@ -130,10 +161,16 @@ export async function consumerHasReachableWallet(
  * routing is unit-testable without a DB — the effectful send lives in
  * {@link deliverTransports}. `transactional` goes ONLY by wallet when it is reachable, and
  * falls back to Web Push ONLY when it is not (the two never coexist → never a duplicate).
- * `campaign` keeps the provisional fan-out until the campaign spec refines it. */
+ * `campaign` keeps the provisional fan-out until the campaign spec refines it.
+ *
+ * The two Google transports are SEPARATE flags (spec 0065): `googleAddMessage` notifies
+ * (that IS `addMessage`) and `googlePatch` does not. A single `google` flag made the
+ * two indistinguishable, which is how a `pass_refresh` could end up notifying with every
+ * gate green. Nothing sets both. */
 export type TransportPlan = {
   apple: boolean;
-  google: boolean;
+  googleAddMessage: boolean;
+  googlePatch: boolean;
   webPush: boolean;
 };
 export function planTransports(
@@ -142,19 +179,44 @@ export function planTransports(
 ): TransportPlan {
   if (noticeClass === "transactional") {
     return reachableWallet
-      ? { apple: true, google: true, webPush: false }
-      : { apple: false, google: false, webPush: true };
+      ? {
+          apple: true,
+          googleAddMessage: true,
+          googlePatch: false,
+          webPush: false,
+        }
+      : {
+          apple: false,
+          googleAddMessage: false,
+          googlePatch: false,
+          webPush: true,
+        };
   }
+  // `pass_refresh` (spec 0065): wake the Apple devices so they pull the new pass, and
+  // PATCH the Google object. NO `addMessage` and NO Web Push — those two are the ones
+  // that would ring the phone, and this class is defined by its silence.
+  if (noticeClass === "pass_refresh")
+    return {
+      apple: true,
+      googlePatch: true,
+      googleAddMessage: false,
+      webPush: false,
+    };
   // `campaign` (provisional, no rows in prod): keep the ADR 0038 fan-out.
-  return { apple: true, google: true, webPush: true };
+  return {
+    apple: true,
+    googleAddMessage: true,
+    googlePatch: false,
+    webPush: true,
+  };
 }
 
 /**
  * Delivers one notice over the transports selected by its `class` (ADR 0040, supersedes
  * the ADR 0038 §3 fan-out). A `transactional` goes by wallet (Apple APNs + Google
  * `addMessage`, spec 0033) when the consumer has a reachable pass, else falls back to Web
- * Push (spec 0037) — never both, so no duplicate. `campaign` keeps the provisional
- * fan-out. Each transport is best-effort — one failing transport never blocks the others —
+ * Push (spec 0037) — never both, so no duplicate. A `pass_refresh` (spec 0065) goes by
+ * APNs + the silent Google `PATCH` only. `campaign` keeps the provisional fan-out. Each transport is best-effort — one failing transport never blocks the others —
  * and every error is collected so the caller records it on the queue row. This is a SINGLE
  * notice: the per-consumer cooldown counts it once (the caller closes exactly one row).
  */
@@ -172,8 +234,10 @@ export async function deliverTransports(
   const errors: string[] = [];
   if (plan.apple)
     errors.push(...(await sendApple(consumerId, message, opts.channel)));
-  if (plan.google)
+  if (plan.googleAddMessage)
     errors.push(...(await sendGoogle(consumerId, message, opts.channel)));
+  if (plan.googlePatch)
+    errors.push(...(await patchGoogle(consumerId, opts.channel)));
   if (plan.webPush)
     errors.push(
       ...(await deliverWebPush(

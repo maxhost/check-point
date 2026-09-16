@@ -5,10 +5,33 @@ import { type PushChannel } from "./push-channel";
 import { type WebPushChannel } from "../push/webpush-channel";
 import {
   COOLDOWN_MS,
+  type NoticeClass,
   type QueueRow,
   deliverRow,
   planConsumerDrain,
 } from "./push";
+
+/**
+ * Maps the raw `class` column to the planner's {@link NoticeClass}. Exhaustive and
+ * total: an unknown class THROWS, it never degrades to `transactional`. Until spec 0065
+ * this was `r.klass === "campaign" ? "campaign" : "transactional"`, so a `pass_refresh`
+ * row entered the planner AS a transactional — skipping the cooldown, advancing the
+ * clock and preempting the next `campaign`, the three invariants the class exists to
+ * hold — and `typecheck` stayed GREEN because the ternary always yields a valid union
+ * member. Pure and exported so the mapping has a unit oracle: `selectDue` needs a DB,
+ * this does not. The DB check constraint already restricts the column to these three
+ * values, so the throw is a tripwire for a schema/code drift, not an expected path.
+ */
+export function parseQueueClass(raw: string): NoticeClass {
+  switch (raw) {
+    case "transactional":
+    case "campaign":
+    case "pass_refresh":
+      return raw;
+    default:
+      throw new Error(`wallet_push_queue.class desconocida: ${raw}`);
+  }
+}
 
 export type WorkerSummary = {
   sent: number;
@@ -57,7 +80,7 @@ async function selectDue(
     const row: QueueRow = {
       id: r.id,
       consumerId: r.consumerId,
-      klass: r.klass === "campaign" ? "campaign" : "transactional",
+      klass: parseQueueClass(r.klass),
       notBefore: r.notBefore,
       createdAt: r.createdAt,
     };

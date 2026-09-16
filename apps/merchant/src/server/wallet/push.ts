@@ -45,59 +45,16 @@ function rowsOf(result: unknown): Record<string, unknown>[] {
   return (Array.isArray(rows) ? rows : []) as Record<string, unknown>[];
 }
 
-/**
- * The transactional notice body as a full sentence, e.g. `Se acreditó 1 sello en tu
- * cuenta 🎉` / `Se acreditaron 30 puntos en tu cuenta 🎉`. A complete sentence (not a
- * `+N` fragment) reads clearly both inside the Wallet pass and, where the platform
- * surfaces it, in the notification itself — the business name rides in the title/header.
- */
-export function buildTransactionalBody(
-  units: number,
-  kind: "points" | "stamps",
-): string {
-  const singular = units === 1;
-  const noun =
-    kind === "points"
-      ? singular
-        ? "punto"
-        : "puntos"
-      : singular
-        ? "sello"
-        : "sellos";
-  const verb = singular ? "Se acreditó" : "Se acreditaron";
-  return `${verb} ${units} ${noun} en tu cuenta 🎉`;
-}
-
-/**
- * The redemption notice (spec 0055), same `transactional` class as the accreditation:
- * what was handed over plus the balance that is left, as a full sentence. The reward
- * label is the snapshot the log stored, so the notice says exactly what the row says.
- */
-export function buildRedemptionBody(
-  label: string,
-  kind: "points" | "stamps",
-  balanceAfter: number,
-): string {
-  const singular = balanceAfter === 1;
-  const noun =
-    kind === "points"
-      ? singular
-        ? "punto"
-        : "puntos"
-      : singular
-        ? "sello"
-        : "sellos";
-  const verb = singular ? "Te queda" : "Te quedan";
-  return `Canjeaste «${label}» 🎁 ${verb} ${balanceAfter} ${noun}.`;
-}
-
-// The pure drain planner lives in `push-plan.ts` (kept DB-free + under the file-size
-// budget); re-exported here so existing importers keep using `./push`.
+// The pure drain planner lives in `push-plan.ts` and the notice bodies in
+// `push-text.ts` (both DB-free + under the file-size budget); re-exported here so
+// existing importers keep using `./push`.
 export {
+  type NoticeClass,
   type QueueRow,
   type DrainAction,
   planConsumerDrain,
 } from "./push-plan";
+export { buildTransactionalBody, buildRedemptionBody } from "./push-text";
 
 type Claim = {
   consumerId: string;
@@ -150,20 +107,30 @@ type DeliverOpts = {
  * by its `class` (ADR 0040: transactional → wallet, else Web Push fallback), then closes
  * the row (`sent`) and preempts pending campaigns — or backs off on failure. It is ONE
  * notice: exactly one queue row closes, so the per-consumer cooldown counts it as a single
- * push (ADR 0038) regardless of how many transports the class selected. */
+ * push (ADR 0038) regardless of how many transports the class selected.
+ *
+ * A `pass_refresh` (spec 0065) is SILENT, and that is what the two `silent` guards below
+ * buy (one before the delivery, one after closing the row): it writes neither
+ * `latest_message`/`message_updated_at` (the tick already bumped `message_updated_at`;
+ * writing `latest_message` would publish an empty "Última novedad" over the consumer's
+ * real one) nor `last_push_at`, and it does NOT preempt a pending `campaign` — so a refresh never spends the consumer's push budget
+ * nor delays a campaign. The row still closes as `sent` and a delivery error is still
+ * recorded on it, exactly like any other class. */
 async function deliverClaimed(
   id: string,
   claim: Claim,
   opts: DeliverOpts,
 ): Promise<void> {
   const { channel, webPushChannel, now } = opts;
+  const silent = claim.class === "pass_refresh";
   const message: PushMessage = { header: claim.title, body: claim.body };
   const latest = claim.title ? `${claim.title}: ${claim.body}` : claim.body;
   try {
-    await getDb()
-      .update(consumerAccounts)
-      .set({ latestMessage: latest, messageUpdatedAt: now, updatedAt: now })
-      .where(eq(consumerAccounts.id, claim.consumerId));
+    if (!silent)
+      await getDb()
+        .update(consumerAccounts)
+        .set({ latestMessage: latest, messageUpdatedAt: now, updatedAt: now })
+        .where(eq(consumerAccounts.id, claim.consumerId));
     // Per-transport delivery is best-effort (one bad transport never blocks the pass
     // update or another transport); every APNs/Google/Web Push error is recorded on the
     // row so a misconfigured transport is visible in the DB instead of a silent `sent`.
@@ -181,6 +148,7 @@ async function deliverClaimed(
       SET status = 'sent', sent_at = ${now.toISOString()},
           last_error = ${deliveryError}
       WHERE id = ${id}`);
+    if (silent) return;
     await getDb()
       .update(consumerAccounts)
       .set({ lastPushAt: now })

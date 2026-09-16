@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A — A2 cerrada).
+Ultima actualizacion: 2026-09-16 (madrugada, sesion de implementacion de la fase A — A2 y A3 cerradas).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -356,6 +356,94 @@ pasa, se parte, no se extiende**), y los tests `server/push.test.ts` (208) y `se
 - **Baseline que el implementador tiene que igualar o superar:** `test` de root
   **`761 passed | 221 skipped (982)`**. Un numero menor es una regresion.
 
+**A3 — EL IMPLEMENTADOR MURIO SIN HANDOFF; LO TERMINO EL ORQUESTADOR A MANO (2026-09-16, madrugada).**
+`CLAUDE.md`, corolario (f) de la 0064: reanudar un encargo muerto sale mas caro que terminarlo. **Codigo
+completo y los 5 gates en verde**; la bitacora de mutaciones la corre el orquestador porque el implementador
+no entrego ninguna.
+
+**AUDITORIA DEL ARBOL AL HEREDAR, en el orden del protocolo:** (1) **`ListAgents`** — ningun subagente vivo,
+o sea abandonado y no midiendo; (2) `git status --short` → 7 ` M` + 4 `??`; (3) `grep -rn MUTATION
+apps/merchant/src` **vacio**. **Pero `grep MUTATION` solo ve mutaciones ETIQUETADAS**, asi que eso no alcanza
+— y el oraculo que si alcanza aparecio solo: el implementador habia dejado **`/tmp/a3-clean/SHASUMS.txt`**
+(23:45) con 10 archivos, y **los 10 coinciden exactamente con el arbol actual**. Eso convierte «no parece
+haber mutaciones» en **verificado**. El unico archivo ausente de esa lista es
+`wallet-pass-refresh-worker.test.ts` — el que nunca termino (ver abajo).
+*(La leccion que esto ejercita: el `shasum` que se registra ANTES de mutar es el unico punto de retorno que
+existe. Aca salvo la auditoria de una sesion que heredo el arbol sin handoff.)*
+
+**UN ROJO QUE ERA DEL TEST, NO DEL CODIGO — y el reflejo de borrarlo habria tapado un oraculo.**
+`wallet-pass-refresh-worker.test.ts:109` aseveraba `expect(queueUpdates).toEqual([])` con el comentario
+«nada se postergo por el cooldown». **Estaba rojo contra codigo correcto:** ese colector junta **todo**
+`update().set()`, y la `campaign` que el caso siembra escribe legitimamente su `latest_message` y su
+`last_push_at`. El oraculo de verdad es la linea de arriba (`summary` = `{sent: 2, rescheduled: 0}`), que
+**pasaba**. Se reemplazo por la asercion **mas fuerte** —los dos writes de la campaña y **nada mas**, o sea
+que el refresco no escribio ninguno—, que ademas pinnea una propiedad que la version vieja no pinneaba.
+Queda anotado que **ese test lo escribio el orquestador**, no el implementador: el revisor independiente de
+la fase A tiene que mirarlo con esa etiqueta.
+
+**LO QUE ENTREGO EL IMPLEMENTADOR (auditado leyendo el diff entero, no su resumen — no dejo ninguno):**
+`push-plan.ts` (`NoticeClass` de tres miembros + `CLASS_RANK` para que el comparador sea **total**, que con
+dos clases era un ternario y con tres deja de ser un orden estricto; `pass_refresh` siempre `send` y **sin
+tocar el reloj**), `push-worker.ts` (`parseQueueClass` **puro y exportado**, exhaustivo, clase desconocida
+**tira**), `push-channel.ts` + `google.ts` (`patchGoogleObject` en la interfaz, el fake y el real;
+`buildPatchObjectRequest` puro calcado de `buildAddMessageRequest`; `patchGoogleLoyaltyObject` con
+`method: "PATCH"`), `push-transports.ts` (`TransportPlan` con `googleAddMessage` **y** `googlePatch`
+separados, mas el rename en las 4 aserciones de `push.test.ts`), `push.ts` (guarda `silent`: sin
+`latest_message`, sin `message_updated_at`, sin `last_push_at`, **sin preempcion**) y **`push-text.ts`
+nuevo** — partio `push.ts` de **285 a 253** en vez de extenderlo, que es lo que pedia el limite.
+**+16 tests: `777 passed | 221 skipped (998)`** contra el baseline de **761**.
+**El test del CABLEADO es el mas valioso y no estaba en el plan de pruebas:** extraer `parseQueueClass`
+convirtio un comportamiento («el refresco llega al planner como refresco») en una decision («el mapeo dice
+refresco») y dejo el call-site de `selectDue` sin oraculo — el hueco exacto de la tarea 38. Lo cerro
+mockeando `../db` y corriendo `runPushWorker` de verdad.
+
+**BITACORA DE MUTACIONES DE A3 — PRE-REGISTRO ESCRITO ANTES DE MUTAR.** Los 4 archivos a mutar estan ` M`
+(trackeados **y modificados**): ahi `git checkout` **no es el camino, se llevaria tambien el trabajo no
+commiteado**. Copia limpia en `/tmp/a3-clean/` y restauracion con `diff` contra ella. `shasum` limpios:
+`push-plan.ts 1e694d81…`, `push-worker.ts 17a1650b…`, `push-transports.ts 7b802af4…`, `push.ts 96009e20…`.
+Presupuesto del encargo: **3 mutaciones de la spec + 4 sondas por docblock nuevo**; clase de error, un
+invariante declarado sin oraculo con regresion plausible; **corte en una vuelta**.
+
+| id | archivo | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|
+| M1 | `push-worker.ts` | el call-site de `selectDue` no colapsa la clase | **ROJO, 1 solo — y SOLO el del cableado**: `wallet-pass-refresh-worker.test.ts`, `expected {sent,rescheduled,…} to deeply equal {sent: 2, rescheduled: +0}`. **Los unitarios puros quedan TODOS VERDES.** Esa es la medicion del hueco de la tarea 38: extraer `parseQueueClass` cerro la decision y dejo el cableado sin oraculo; el test que lo tapa es el unico que muerde aca, y **no estaba en el plan de pruebas de la spec** |
+| M2 | `push-plan.ts` | `pass_refresh` no avanza el reloj | **ROJO, 4** (los 3 de `planConsumerDrain` + el del cableado). Aserciones leidas: `expected { kind: 'reschedule' } to match object { kind: 'send', row: { id: 'ref' } }` — habla de la propiedad. M2 ⊃ el sintoma de M1, pero M1 tiene un rojo que **solo** el cableado ve: **no son indistinguibles** |
+| M3 | `push-transports.ts` | el fan-out de `pass_refresh` no es el de `campaign` | **ROJO, 2**: el unit del fan-out y —lo que importa— el de entrega, `expected [ 'apple', 'google' ] to deeply equal [ 'apple', 'google-patch' ]`. **Ese rojo es exactamente el que el `{kind:'google-patch'}` del fake existe para producir**: sin ese miembro, `addMessage` y `PATCH` eran indistinguibles y el test habria pasado mandando una notificacion real |
+| P1 | `push-plan.ts` | el comparador es TOTAL para tres clases | **ROJO, 1**: `expected [ 'txn', 'camp', 'ref-a', 'ref-b' ] to deeply equal [ 'txn', 'ref-a', 'ref-b', 'camp' ]` — con dos ternarios, `campaign` se le adelanta al refresco |
+| P2 | `push-plan.ts` | el desempate por `id` no depende de la estabilidad del sort | **ROJO, 1** — cae en el **mismo test** que P1 pero con otro recibido: `[ 'txn', 'ref-b', 'ref-a', 'camp' ]` (se desordenan los dos refrescos empatados, no las clases). **Distinguibles**, contra lo que paso en la spec 0055 |
+| P3 | `push-transports.ts` | «nada setea los dos flags de Google a la vez» | **ROJO, 2**: `expected [ 'apple', 'google', 'google-patch' ] to deeply equal [ 'apple', 'google-patch' ]`. La propiedad **es universal sobre las clases**, pero `planTransports` tiene exactamente **4 `return`** y los cuatro estan pinneados con `toEqual` exacto, asi que queda cerrada **por exhaucion** — no hace falta un test nuevo, y eso es una conclusion medida, no un razonamiento |
+| P4 | `push.ts` | la guarda `silent` | **ROJO, 2**: el de entrega (`expected [ { latestMessage: '', …} , …] to deeply equal []`) **y el del cableado** (`expected [4 items] to deeply equal [2 items]`). Ese segundo rojo lo produce **la asercion que el orquestador escribio para reemplazar la rota**: o sea que el reemplazo no fue tapar un rojo, **agrega un oraculo que antes no existia**. Medido, no afirmado |
+
+**RESULTADO DE A3: LAS 7 MUTACIONES ROJAS, ninguna indistinguible de otra, y el arbol restaurado con
+`shasum` identico al limpio en los 4 archivos** (`push-plan.ts 1e694d81…`, `push-worker.ts 17a1650b…`,
+`push-transports.ts 7b802af4…`, `push.ts 96009e20…`), `grep -rn MUTATION apps/merchant/src` **vacio**.
+Restauracion con `diff` contra `/tmp/a3-clean/` en cada vuelta — nunca `git checkout`, porque los 4 estaban
+` M` y se habria llevado tambien el trabajo no commiteado.
+**Los 5 gates de root, re-corridos DESPUES de restaurar:** `typecheck` 3/3, `lint` limpio, `format:check` ok,
+`test` **`777 passed | 221 skipped (998)`** (baseline 761 → **+16, cero regresiones**), `build` exit 0.
+**Tamaños preguntados AL HOOK sobre TODO el alcance (` M` y `??`), post-prettier, todos `EXIT=0`:**
+`google.ts` **262**, `push.ts` **253** (bajo de 285 al partirse), `push-transports.ts` **250**,
+`push.test.ts` 215, `wallet-pass-refresh.test.ts` 175, `push-channel.ts` 163,
+`wallet-pass-refresh-deliver.test.ts` 153, `push-worker.ts` 143, `wallet-pass-refresh-worker.test.ts` 120,
+`push-plan.ts` 102, `push-text.ts` 51.
+**AVISO PARA A4, que toca los DOS archivos mas gordos de este alcance:** `google.ts` queda con **38 lineas
+de margen** y `push-transports.ts` con **50**. A4 tiene que llenar `patchGoogle` (`push-transports.ts:~105`,
+hoy manda `{}` a proposito) y el objeto de Google con `merchantLocations`. **Si no entra, se parte — no se
+extiende**, y conviene decidirlo ANTES de escribir, no cuando el hook avise.
+
+**LO QUE QUEDA DECLARADO DE A3 (intentado, no supuesto):**
+- **El cuerpo del PATCH es `{}` hoy.** No es un hueco disimulado: no existe ningun productor de filas
+  `pass_refresh` todavia (el aplicador del tick es de **A5**), asi que ninguna fila de produccion llega aca.
+  Su dueño es **A4**, con la fila escrita arriba. Lo que **no** se verifico —y no se podia sin credenciales
+  de Google— es si la API acepta un `PATCH` con cuerpo vacio; es irrelevante hoy y deja de serlo en A4, que
+  es cuando el cuerpo se llena.
+- **`parseQueueClass` TIRA ante una clase desconocida, y eso mata el drain de TODOS los consumidores de esa
+  corrida**, no solo la fila mala. Es lo que la spec pide literalmente («clase desconocida → error, no
+  `transactional`») y el check de la base ya restringe la columna a los tres valores, asi que solo dispara
+  ante un drift schema↔codigo. **Se declara como decision de la spec, no como hallazgo.**
+- **La integracion Neon end-to-end del carril y el item del coalescing/retry siguen en A5**, como se declaro
+  al despachar. A3 no las toco.
+
 **PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
 `cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
 bucle que el owner corto en la 0064). **Estamos IMPLEMENTANDO la fase A, partida en sub-fases porque entera no
@@ -374,9 +462,14 @@ el ADR 0065 con su fuente, y lo que la revision ya confirmo correcto esta listad
 **A1 y A2 estan COMMITEADAS en `ddd64d2`; NO se pusheo, asi que prod NO tiene este codigo** — si en algun
 momento se pide QA, primero `git push` y despues verificar el commit status del **sha exacto**
 (`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`), nunca «prod esta verde».
-**LAS 8 MUTACIONES PENDIENTES DE A2 ESTAN HECHAS** (2026-09-15, noche): las 8 rojas, mas 6 sondas por
-docblock que salieron **todas verdes** → 4 tests nuevos (D1/D2/D4/D6, medidos rojos bajo su mutacion) y 2
-limites declarados (D3, D5). **A2 esta CERRADA. El primer paso al retomar es A3.**»
+**A2 Y A3 ESTAN CERRADAS** (2026-09-15 noche / 2026-09-16 madrugada). A2: las 8 mutaciones rojas + 6 sondas
+por docblock **todas verdes** → 4 tests nuevos (D1/D2/D4/D6) y 2 limites declarados (D3, D5). A3: codigo del
+implementador auditado leyendo el diff (murio sin handoff), un rojo que era del TEST y no del codigo
+corregido con una asercion mas fuerte, y **7 mutaciones propias, todas rojas**. **El primer paso al retomar
+es A4** — `locations`/`merchantLocations` en el pase, el campo entra **requerido** en `PassBuildInput`
+(`wallet/provider.ts:6`) para que `typecheck` obligue a los **tres** call-sites de emision, y hay que llenar
+el cuerpo del PATCH que A3 dejo en `{}` (`push-transports.ts`, funcion `patchGoogle`). **Ojo con el margen:
+`google.ts` esta en 262/300 y `push-transports.ts` en 250/300 — si no entra, se parte.**»
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 
@@ -388,9 +481,11 @@ detalle vivo esta en el bloque ESTADO del tope; esta lista es solo el arco compl
 3. ~~**Revision adversarial de la spec**~~ **HECHA Y CERRADA (2026-09-15, noche): tres revisores, FAIL
    unanime, 16 bloqueantes + un 17.º que salio de correr el SQL, todos corregidos y verificados
    empiricamente.** La condicion de corte declarada era **una** vuelta. **No se reabre.**
-4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1 y A2 CERRADAS** (A2 con
-   sus 9 mutaciones ejecutadas, 6 sondas por docblock y 4 tests nuevos). **Sigue A3.** Al cerrar A5 va
-   **un revisor independiente sobre la fase entera**.
+4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). **A1, A2 y A3 CERRADAS** (A2
+   con 9 mutaciones + 6 sondas + 4 tests nuevos; A3 con 7 mutaciones, terminada a mano por el orquestador
+   porque su implementador murio sin handoff). **Sigue A4** (`locations`/`merchantLocations` en el pase).
+   Al cerrar A5 va **un revisor independiente sobre la fase entera**, y tiene que saber que el test
+   `wallet-pass-refresh-worker.test.ts` lo escribio el orquestador.
    **El item viejo «aplicar la migracion `0031` en `ci-integration` antes» queda ANULADO**: `ci.yml` ya
    corre `pnpm db:migrate` en cada corrida (spec 0062), y el orden era ademas imposible — la migracion
    la **genera** la fase A.
