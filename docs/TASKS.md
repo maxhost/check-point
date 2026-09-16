@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASES B Y C COMPLETAS Y COMMITEADAS** — `a0573a6`, `7f59f8a`, `9bf69b8`, `32be432` (B) y `8e8d596` (C), **sin pushear**. **FASE D COMPLETA (D1 freno por plan + D2 portal del consumidor), MEDIDA Y SIN COMMITEAR**: 5 gates verdes, `test` = **180 archivos / 1279 tests / 0 failed**, **12/12 mutaciones en rojo** en dos tandas con presupuesto declarado. **CON ESTO LAS CUATRO FASES DE LA SPEC 0065 ESTAN IMPLEMENTADAS**, asi que se abre la fase que el owner dejo en cola: **las revisiones independientes, una por parte** (A, B, C, D). **DECISION DEL OWNER (2026-09-16): el opt-out es una TERCERA PESTAÑA del portal y no una ruta — ADR 0068**, contra la recomendacion del orquestador; la spec quedo corregida en los 5 lugares que nombraban `/wallet/settings`. **DECISION DEL OWNER (2026-09-16, literal): «todas las revisiones independientes las ponemos en cola […] cuando acabemos todas las implementaciones recien entraremos en la fase de usar revisores independientes para cada parte».** Ver «COLA DE REVISIONES INDEPENDIENTES» abajo.)
+Ultima actualizacion: 2026-09-16 (**LA SPEC 0065 ESTA ENTERA EN `main` Y PUSHEADA**: el push `9fd9625..ad51157` subio de una vez las fases **B** (`a0573a6`, `7f59f8a`, `9bf69b8`, `32be432`), **C** (`8e8d596`) y **D** (`ad51157`), que estaban commiteadas pero nunca pusheadas. **A ya estaba en prod** (`9fd9625`); falta solo el Actions secret `MARKETING_TICK_ENDPOINT`, que lo pone el owner. **Sin migraciones nuevas: prod tiene las 32 y la ultima (0031) es de la fase A.** Evidencia del arbol que se pusheo: 5 gates verdes y `test` = **180 archivos / 1279 tests / 0 failed** contra la rama efimera `spec-0065-marketing`; **12/12 mutaciones en rojo** en dos tandas con presupuesto declarado. **AHORA: el owner hace QA sobre prod mientras corre la COLA DE REVISIONES INDEPENDIENTES** (una por fase: A, B, C, D) que el owner decidio el 2026-09-16 diferir al final de la implementacion. **DECISION DEL OWNER (2026-09-16): el opt-out es una TERCERA PESTAÑA del portal y no una ruta — ADR 0068**, contra la recomendacion del orquestador; la spec quedo corregida en los 5 lugares que nombraban `/wallet/settings`.)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, en el handoff que cierra C):**
 
@@ -18,13 +18,13 @@ Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo e
   **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
   **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — `32be432`.
   **C: hecha** (cupon en el mostrador: banner + ruta + transaccion con dos `for update` + 27 casos) — `8e8d596`.
-  **D1 (freno por plan): hecha y medida, SIN COMMITEAR** (gate de 402 al crear y al activar, guarda
+  **D1 (freno por plan): hecha, medida y pusheada en `ad51157`** (gate de 402 al crear y al activar, guarda
   `downgrade_blocked_campaigns`, modal con destino por `code`, freno defensivo del webhook).
-  **D2 (portal del consumidor): hecha y medida, SIN COMMITEAR** (tercera pestaña «Configuracion» con
+  **D2 (portal del consumidor): hecha, medida y pusheada en `ad51157`** (tercera pestaña «Configuracion» con
   el opt-out por negocio, `POST /api/public/consumer/marketing-opt-out`, el barrido estatico y el
   caso de dos ticks que prueba que la utilidad sobrevive al opt-out). **Las 4 fases implementadas.**
-  **NADA DE B NI DE C ESTA PUSHEADO.** Se pushea cuando el owner lo pida explicitamente, como hizo
-  con la A.
+  **TODO PUSHEADO el 2026-09-16** (`9fd9625..ad51157`), a pedido del owner, para que pueda hacer QA
+  en prod mientras corre la cola de revisiones.
 
 - **HOOK NUEVO (mistake→rule de esta sesion): `state-uncommitted-lie.sh` (Stop).** Bloquea si
   `docs/TASKS.md` dice «SIN COMMITEAR» en sus primeras 40 lineas con el arbol LIMPIO. Lo motivo un
@@ -1332,7 +1332,7 @@ quien lo hereda — dice «1 failed» y nombra la suite del ciclo de vida de mar
 
 **Evidencia final: DOS corridas completas seguidas con `EXIT=0`, 162 archivos / 1169 tests / 0 failed.**
 
-### D1 — **EL FRENO POR PLAN: HECHO Y MEDIDO (2026-09-16). SIN COMMITEAR.**
+### D1 — **EL FRENO POR PLAN: HECHO Y MEDIDO (2026-09-16). COMMITEADO Y PUSHEADO en `ad51157`.**
 
 La mitad de la fase D que **no** depende de la bifurcacion del portal. 5 gates verdes sobre el arbol
 final: typecheck / lint / format:check / build VERDES y `test` = **175 archivos / 1262 tests / 0
@@ -1431,7 +1431,7 @@ y borrar el negocio entero, no solo la suscripcion.
   eso NO prueba es el `where` del `UPDATE` (que pause solo las del negocio); eso lo cubre el caso
   feliz, que siembra un negocio propio y lee por SQL.
 
-### D2 — **EL PORTAL DEL CONSUMIDOR: HECHO Y MEDIDO (2026-09-16). SIN COMMITEAR.**
+### D2 — **EL PORTAL DEL CONSUMIDOR: HECHO Y MEDIDO (2026-09-16). COMMITEADO Y PUSHEADO en `ad51157`.**
 
 **LA BIFURCACION LA RESOLVIO EL OWNER: tercera PESTAÑA, no ruta** («lo prefiero como una tercera
 pestaña»), contra la recomendacion del orquestador —que era seguir la spec cerrada—. Bajado a disco
