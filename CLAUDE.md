@@ -439,6 +439,15 @@ barrido de tamaños se corre sobre los ` M` **y** los `??`.
   `integer` no necesitan conversion (medido con una sonda: el driver ya devuelve `true`/`false` y numeros).
   En marketing eso vive en `marketing/driver-values.ts`; si lees fechas con SQL crudo en otro modulo,
   conviertelas ahi mismo.
+  **Y el que rompe la lectura facil de la linea de arriba: `count(*)` NO es uno de esos `integer`
+  seguros — es `bigint`, y el driver lo devuelve como la STRING `"7"`.** Medido con una sonda contra
+  la rama efimera al implementar la B2 (`select count(*) as bare, count(*)::int as casted`: `bare` es
+  `"7"` typeof string, `casted` es `7` typeof number). Como el generico de `db.execute<T>` es una
+  **asercion y no un chequeo**, esa string entra a un campo `number` con typecheck en VERDE, y de ahi
+  `"7" + 1` es `"71"` y una comparacion contra un umbral se decide por orden lexicografico. En SQL
+  crudo va **siempre** `count(...)::int`; con el query builder, `.mapWith(Number)`. Y si un conteo no
+  llega a una asercion exacta en los tests, aseverá el `typeof`: `toEqual` lo caza, `toBeGreaterThan`
+  y la aritmetica no.
 - **El apex `checkpass.club` hace 308 a `www.checkpass.club`, y los workflows de cron asertan
   `test "$code" = "200"` con un `curl` SIN `-L`.** O sea que un `*_ENDPOINT` cargado con el apex deja el
   workflow **rojo para siempre** y el worker sin correr, con pinta de secreto mal puesto. Medido:

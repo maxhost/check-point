@@ -213,6 +213,9 @@ export async function seedCouponRedemption(opts: {
   membershipId: string;
   locationId: string | null;
   userId: string;
+  /** The cost the counter honoured. Left open because results sum the SNAPSHOTS, and a
+   * fixture where every row carries the same number cannot tell that from `n × costo`. */
+  costSnapshot?: string;
 }): Promise<string> {
   const [row] = await getDb()
     .insert(couponRedemptions)
@@ -224,7 +227,7 @@ export async function seedCouponRedemption(opts: {
       membershipId: opts.membershipId,
       locationId: opts.locationId,
       labelSnapshot: "2x1 en picadas",
-      costSnapshot: "3.00",
+      costSnapshot: opts.costSnapshot ?? "3.00",
       createdByUserId: opts.userId,
       clientRequestId: randomUUID(),
     })

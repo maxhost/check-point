@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 COMPLETA Y CERRADA** — commit `a0573a6` + el test unit de las rutas HTTP (`server/marketing-routes.test.ts`, 35 tests, **sin commitear**, `??`), 4 mutaciones ejecutadas. 5 gates verdes: **157 archivos / 1132 tests / 0 failed** (venia de 156/1097). NADA PUSHEADO de la fase B. **PROXIMO PASO: B2** (`marketing/results.ts` + `GET /api/marketing/audience-preview` + `GET …/campaigns/[id]/results`). Despues B3 (las 3 pantallas). Ver «FASE B (BACKOFFICE DE CAMPAÑAS)».)
+Ultima actualizacion: 2026-09-16 (**FASE A EN PROD** — `9fd9625`; falta solo el Actions secret `MARKETING_TICK_ENDPOINT`. **FASE B: B1 Y B2 COMPLETAS, COMMITEADAS, NO PUSHEADAS** — B1 en `a0573a6` + `7f59f8a`; B2 sin commitear al escribir esto. 5 gates verdes: **162 archivos / 1169 tests / 0 failed** (venia de 157/1132). **PROXIMO PASO: B3** — las 3 pantallas (`/backoffice/marketing`, `new`, `[id]`) + el tile «Campañas» de `/backoffice/page.tsx:41-44`, que hoy cae en el mock de demo de la spec 0017. Ver «FASE B (BACKOFFICE DE CAMPAÑAS)» → sub-seccion B2.)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -1201,6 +1201,63 @@ con env de integracion **157 archivos / 1132 tests / 0 failed** (venia de 156 / 
   **todo o nada**), asi que la validacion del input es para dar **400 `validation` por campo** con un mensaje
   util, no para proteger la base.
 
+
+### B2 — **LA LECTURA: COMPLETA, 5 GATES VERDES** (2026-09-16). SIN COMMITEAR.
+
+**Archivos nuevos (todos `??`):** `marketing/results.ts` (184 l., DTO **puro** + la compuerta de la
+estimacion), `marketing/results-store.ts` (231, el SQL), `marketing/audience-preview.ts` (153, parseo de
+la query + `previewAudience`), y las dos rutas `GET /api/marketing/audience-preview` y
+`GET …/campaigns/[id]/results`. Tests: `marketing/results.test.ts` (8 unit),
+`marketing/audience-preview.test.ts` (8 unit), `marketing-results.neon…` (10) +
+`marketing-results-support.ts` + `marketing-audience-preview.neon…` (4). **Todos al hook `file-size`:
+`EXIT=0`** (preguntado AL HOOK despues de prettier, sobre los `??` **y** los ` M`).
+
+**`listCampaigns` ya existia de B1**: no hubo nada que hacer ahi.
+
+**Dos archivos que la spec NO tenia en su tabla** (`results-store.ts`, `audience-preview.ts`): la fila se
+agrego a la spec con el motivo. Partir puro/SQL es el idiom del modulo (`audience.ts`/`audience-store.ts`) y
+es lo que deja la compuerta `B >= 30` pinneada por un unit en el **borde exacto**, que ninguna fixture
+realista alcanza.
+
+**Dos decisiones del ORQUESTADOR, escritas en la spec, reversibles:** el costo incurrido es
+`sum(cost_snapshot)` y no `n × costo_actual` (editar un cupon pausado reescribiria plata ya entregada;
+pinneado con canjes a 3.00 y 4.50 contra un cupon que hoy vale 3.00 → 7.50, no 6.00); y la estimacion va
+**redondeada a un decimal**, porque es una diferencia de dos tasas por un conteo y el ruido IEEE es el caso
+normal — `(10/100 − 20/50) × 100` da **−30.000000000000004**, medido, y sin redondeo eso viajaba a la pantalla.
+
+**Mutaciones EJECUTADAS — presupuesto declarado ANTES: 5, una vuelta, contra 5 clases de error.**
+| id | edicion | resultado |
+|---|---|---|
+| B2-M1 | `BOUGHT` reducido a `'purchase'` | **1a corrida ROJO 1 — y ese 1 era el hallazgo.** Debia ensuciar los totales **y** el desglose por local; el desglose quedo VERDE porque los dos literales estaban escritos **dos veces** (uno para el builder, otro dentro del SQL crudo). La pantalla habria mostrado 1 de 4 arriba y 2 por la puerta, sin que nada fallara. Se unifico en `BOUGHT_OUTCOMES` (el SQL crudo no puede reusar el fragmento del builder — drizzle lo renderiza sin calificar) y **re-ejecutada → ROJO 2** |
+| B2-M2 | `<` → `<=` en la compuerta de la estimacion | ROJO 1 (`expected 'no_disponible' to be 'estimada'`) |
+| B2-M3 | scope por `business_id` sacado de `loadTurnFacts` | ROJO 1 (`expected 5 to be +0`) |
+| B2-M4 | `order by ran_at desc` sacado de la foto del tick | ROJO 1 (sin orden PG devolvio la foto **vieja**) |
+| B2-M5 | filtro por negocio sacado de `usableDoors` del preview | **1a corrida VERDE 4/4 — evasion del TEST, igual que B1-M4.** El id «ajeno» era un `randomUUID()` que no existe en `core.location`: no matchea **ni con el filtro ni sin el**. Se sembro un negocio vecino con una puerta REAL, activa y geocodificada. **Re-ejecutada → ROJO 1** |
+| B2-M6 | (extra) fuga `clientRequestId` plantada en el DTO | ROJO 1 — es la prueba de que el guard de fuga muerde, no un hallazgo |
+
+**El item del plan de pruebas «barrido estatico: ningun DTO de `api/marketing/**` serializa
+`client_request_id` ni `*ObjectKey`» se cerro de forma CONDUCTUAL, no estatica:** se asevera sobre el
+`JSON.stringify` del DTO real que devuelve la ruta, con piso de contenido para que no sea vacuo. Es
+estrictamente mas fuerte que el barrido (ve un campo agregado tres modulos mas alla) y el riesgo era
+concreto: resultados camina `coupon_redemption`, la unica tabla de aca que **tiene** `client_request_id`.
+
+**MISTAKE→RULE que salio de B2 y ya esta en `CLAUDE.md`:** `count(*)` es **bigint** y el driver lo
+devuelve como la **string** `"7"` — medido con una sonda (`count(*)` vs `count(*)::int`). El generico de
+`db.execute<T>` es una asercion, asi que entra a un campo `number` con typecheck verde. En SQL crudo va
+`::int`; con el builder, `.mapWith(Number)`.
+
+**QUEDA AFUERA, DECLARADO:** (a) el valor de la estimacion con `B >= 30` esta cerrado por el **unit** en el
+borde exacto (29 → oculta, 30 → visible, y el negativo); la **integracion** lo ve en `no_disponible` con su
+unico holdout, porque sembrar 30 holdouts reales exigiria 30 consumidores y no agrega nada que el unit no
+pinnee. (b) Que la **pantalla** oculte la linea es el render test de B3. (c) `previewAudience` corre dentro
+de `withDbTransaction` (lo exige `loadAudienceCandidates`, que toma `DbTransaction`): es una lectura, no
+hace falta, y se deja asi para no duplicar el query.
+
+**Punto de retorno:** copia limpia en `/tmp/faseb2-clean/` con `SHASUMS.txt`, **re-generado al cerrar**:
+`results.ts` `bb04e6061f…`, `results-store.ts` `eb621e84a0…`, `audience-preview.ts` `d0dc420e70…`. El
+`SHASUMS.txt` habia quedado viejo despues de unificar `BOUGHT_OUTCOMES` y se re-escribio en vez de anotarse
+como desactualizado: un baseline podrido no falla ruidoso — hace que la proxima sesion concluya «alguien dejo
+una mutacion puesta», que es justo el sintoma que esa auditoria existe para descartar.
 
 ## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
 

@@ -561,7 +561,9 @@ va en el `WHERE`/lock, no en un `NOT EXISTS`), 0060 (discriminante que solo escr
 | `apps/merchant/src/server/marketing/relevant-text.ts` | crear: `composeRelevantText` (puro) — fusion saldo + mensaje en una puerta |
 | `apps/merchant/src/server/marketing/merit.ts` | crear: SQL de stats por negocio + `businessScore` (puro), ADR 0066 |
 | `apps/merchant/src/server/marketing/campaign-store.ts` | crear: CRUD + transiciones |
-| `apps/merchant/src/server/marketing/results.ts` | crear: DTO de resultados |
+| `apps/merchant/src/server/marketing/results.ts` | crear: DTO de resultados (**puro**) |
+| `apps/merchant/src/server/marketing/results-store.ts` | **crear (no estaba en la tabla)**: el SQL de resultados. Se parte igual que `audience.ts`/`audience-store.ts` — es el idiom del modulo y es lo que deja la compuerta de la estimacion pinneada por un unit en vez de por una base sembrada |
+| `apps/merchant/src/server/marketing/audience-preview.ts` | **crear (no estaba en la tabla)**: parseo de la query + `previewAudience`, que reusa `decideTurnEligibility` sobre una campaña que todavia no existe |
 | `apps/merchant/src/server/marketing/coupon-redeem.ts` | crear: canje transaccional |
 | `apps/merchant/src/server/wallet/apple.ts`, `google.ts`, `passkit.ts` | editar: `locations` / `merchantLocations` + modulos, lectura de `pass_placement`; **crear el `PATCH` del Loyalty Object en `google.ts`** (hoy solo hay POST: token exchange y `addMessage`) |
 | `apps/merchant/src/server/wallet/provider.ts` | **editar (faltaba)**: campo nuevo **requerido** en `PassBuildInput` / `ApplePassBuildInput` |
@@ -854,6 +856,23 @@ consumieron (`active`/`done`), no los cancelados**.
    solo el **detalle**: el `cap` de 120, el orden (saldo antes que oferta) y la regla de que si no
    entra se cae el saldo entero en vez de truncar — los tres a validar en el QA, que es donde se
    mide el corte real de la pantalla bloqueada.
+
+## Al implementar la fase B2 (2026-09-16) — decisiones del ORQUESTADOR
+
+Las dos son reversibles y ninguna la decidio el owner.
+
+1. **El costo incurrido es `sum(cost_snapshot)`, no `n × coupon_cost`.** La spec escribe «n × costo»
+   y no dice cual costo. Los dos numeros coinciden hasta que alguien edita el cupon de una campaña
+   **pausada**; a partir de ahi `n × costo_actual` **reescribe plata ya entregada en el mostrador**,
+   que es justo lo que un costo «incurrido» no puede hacer. El snapshot es lo que se le prometio al
+   consumidor y lo que el mostrador honro. Pinneado con dos canjes a 3.00 y 4.50 contra un cupon que
+   hoy vale 3.00: el DTO dice 7.50 y `n × costo` diria 6.00.
+2. **La estimacion del efecto va redondeada a UN decimal.** La spec dice «+Z clientes» sin fijar
+   precision. No es cosmetica: es una **diferencia de dos tasas** por un conteo, asi que el ruido
+   IEEE es el caso normal — `(10/100 − 20/50) × 100` da **−30.000000000000004**, medido, y sin
+   redondeo eso viaja tal cual a la pantalla. Un decimal y no entero porque con el piso en 30
+   holdouts existe el efecto real pero chico, y `Math.round` lo imprimiria como «+0 clientes», que
+   se lee «no sirvio» en vez de «sirvio poco».
 
 ## Al implementar la fase A5 (2026-09-16) — decisiones y correcciones del ORQUESTADOR
 

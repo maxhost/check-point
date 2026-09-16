@@ -1,5 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { basename, dirname, join, sep } from "node:path";
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +13,8 @@ const world = vi.hoisted(() => ({
   getCampaign: vi.fn(),
   updateCampaign: vi.fn(),
   transitionCampaign: vi.fn(),
+  previewAudience: vi.fn(),
+  loadCampaignResults: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -42,13 +42,27 @@ vi.mock("./marketing/campaign-actions", async (importOriginal) => ({
   transitionCampaign: world.transitionCampaign,
 }));
 
+// `parseAudiencePreviewQuery` stays REAL: it is the route's 400 `validation`, and a fake
+// would mean the query string is never actually parsed by anything this test runs.
+vi.mock("./marketing/audience-preview", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./marketing/audience-preview")>()),
+  previewAudience: world.previewAudience,
+}));
+
+vi.mock("./marketing/results-store", () => ({
+  loadCampaignResults: world.loadCampaignResults,
+}));
+
 import { GET, POST } from "../app/api/marketing/campaigns/route";
 import { GET as ONE, PATCH } from "../app/api/marketing/campaigns/[id]/route";
 import { POST as ACTIVATE } from "../app/api/marketing/campaigns/[id]/activate/route";
 import { POST as PAUSE } from "../app/api/marketing/campaigns/[id]/pause/route";
 import { POST as END } from "../app/api/marketing/campaigns/[id]/end/route";
 import { POST as ARCHIVE } from "../app/api/marketing/campaigns/[id]/archive/route";
+import { GET as PREVIEW } from "../app/api/marketing/audience-preview/route";
+import { GET as RESULTS } from "../app/api/marketing/campaigns/[id]/results/route";
 import { CampaignError } from "./marketing/campaign-store";
+import { MARKETING_ROUTE_NAMES } from "./marketing-route-names";
 
 const request = (path: string, method: string, body?: unknown) =>
   new NextRequest(`https://merchant.test${path}`, {
@@ -84,6 +98,24 @@ const HANDLERS = [
     name: "POST /api/marketing/campaigns",
     call: () => POST(request(`${base}?b=${FOREIGN_BUSINESS}`, "POST", FIELDS)),
     spy: world.createCampaign,
+    action: null,
+  },
+  {
+    name: "GET /api/marketing/audience-preview",
+    call: () =>
+      PREVIEW(
+        request(
+          `/api/marketing/audience-preview?dormantDays=30&locationIds=&b=${FOREIGN_BUSINESS}`,
+          "GET",
+        ),
+      ),
+    spy: world.previewAudience,
+    action: null,
+  },
+  {
+    name: "GET /api/marketing/campaigns/:id/results",
+    call: () => RESULTS(request(`${one}/results`, "GET"), { params }),
+    spy: world.loadCampaignResults,
     action: null,
   },
   {
@@ -139,6 +171,8 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     world.getCampaign.mockResolvedValue(CAMPAIGN);
     world.updateCampaign.mockResolvedValue(CAMPAIGN);
     world.transitionCampaign.mockResolvedValue({ campaign: CAMPAIGN });
+    world.previewAudience.mockResolvedValue({ quality: "observada" });
+    world.loadCampaignResults.mockResolvedValue({ turns: {} });
   });
 
   it.each(HANDLERS)(
@@ -253,48 +287,13 @@ describe("api/marketing — how the domain's error becomes an answer", () => {
       error: "No pudimos crear la campaña.",
     });
   });
-});
 
-/**
- * `HANDLERS` is hand-written, so a seventh `route.ts` under `api/marketing/**` would be
- * born WITHOUT a guard while this file stays green. This derives the expected
- * `METHOD /path` set from the FILESYSTEM and demands it equals the covered set.
- *
- * PROXY, and labelled as such: it pins that every handler is LISTED, not that its guard
- * works — the `it.each` blocks above do that. Both spellings are read, because the four
- * action routes use `export const POST =` and the other two `export async function`; a
- * sweep blind to either would see zero handlers in four files and stay green.
- */
-describe("every handler under api/marketing/** is covered by HANDLERS", () => {
-  it("the filesystem and the list agree exactly", () => {
-    const root = join(import.meta.dirname, "../app/api/marketing");
-    const files = readdirSync(root, { recursive: true, encoding: "utf8" })
-      .filter((f) => basename(f) === "route.ts")
-      .sort();
-    expect(files.length).toBeGreaterThanOrEqual(6);
-
-    const expected = new Set<string>();
-    for (const file of files) {
-      const source = readFileSync(join(root, file), "utf8");
-      const url = ["/api/marketing", ...dirname(file).split(sep)]
-        .filter((s) => s && s !== ".")
-        .map((s) => s.replace(/^\[(.+)\]$/, ":$1"))
-        .join("/");
-      const methods = new Set<string>();
-      for (const m of source.matchAll(
-        /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE)\b/g,
-      ))
-        methods.add(m[1]);
-      for (const m of source.matchAll(
-        /export\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=/g,
-      ))
-        methods.add(m[1]);
-      expect(methods.size, `${file} sin handler`).toBeGreaterThan(0);
-      for (const method of methods) expected.add(`${method} ${url}`);
-    }
-
+  // The other half of this check lives in `marketing-routes-coverage.test.ts`, which
+  // derives the same names from the FILESYSTEM. Together: a route that exists is
+  // declared, and a route that is declared has its guard exercised above.
+  it("HANDLERS covers exactly the declared routes, no more and no less", () => {
     expect([...new Set(HANDLERS.map((h) => h.name))].sort()).toEqual(
-      [...expected].sort(),
+      [...MARKETING_ROUTE_NAMES].sort(),
     );
   });
 });
