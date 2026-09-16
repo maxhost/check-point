@@ -169,6 +169,37 @@ es auditarlo por desconfianza, es la unica forma de encontrar el que falta.** Re
 de subagente entra a una spec, a un ADR, al `INDEX` o a un mensaje al owner sin que vos hayas
 reproducido la evidencia — el `grep` corrido, el archivo leido, el statement ejecutado. Y si el
 hallazgo es sobre semantica de la base, se reproduce **en una base**, no en la cabeza.
+**Y EL ESPEJO, QUE COSTO UN HALLAZGO FALSO DE UN REVISOR: LO QUE LE PASAS A UN SUBAGENTE COMO INSUMO
+ES UNA AFIRMACION TUYA.** Al abrir la cola de revisiones de la spec 0065 se les dio `docs/TASKS.md`
+como contexto; su primera pantalla decia «falta el Actions secret `MARKETING_TICK_ENDPOINT`» y
+llevaba **horas** vencida —el owner lo habia cargado y el workflow ya habia corrido en verde—. El
+revisor de la fase A construyo un hallazgo sobre esa premisa y lo entrego como suyo. **No es su
+error: es el del que encarga.** Antes de despachar un subagente, la parte del doc que le sirve de
+insumo se **re-mide**, igual que un `shasum` de baseline. Un doc vencido no falla ruidoso: le
+fabrica un diagnostico a alguien que no tiene como dudarlo.
+
+**Y UNA DE HERRAMIENTA QUE BORRO MEDIA PANTALLA DEL PUNTO DE RETORNO: NUNCA REESCRIBAS UNA CABECERA
+REEMPLAZANDO EL RANGO ENTRE DOS ANCLAS.** Al cerrar la spec 0065 el orquestador actualizo el bloque
+`ESTADO` de `docs/TASKS.md` con `s[s.index("Ultima actualizacion") : s.index("**ESTADO REAL")]` y lo
+reemplazo por la cabecera nueva. Entre esas dos anclas habia crecido, durante la misma sesion, TODO
+el registro de la cola de revisiones —los cuatro veredictos, los 14 hallazgos, las mutaciones— y el
+reemplazo se lo llevo entero. **No fallo ruidoso**: los hooks pasaron, el `git status` quedo limpio y
+el commit salio; se detecto por casualidad, al correr un `grep` de verificacion para otra cosa. Un
+`sed`/`python` que reemplaza UN RANGO borra lo que alguien (vos, dos horas antes) metio en el medio.
+Regla: para cambiar una cabecera se reemplaza **esa linea**, y para insertar se hace `replace(marca,
+nuevo + marca, 1)` contra una marca exacta. Si igual reemplazas un rango, **contá las lineas antes y
+despues** — `wc -l` delata un borrado de 200 lineas en un segundo.
+
+**UNA FRASE «ESTO TIENE SU ORACULO EN X» ES UNA FILA MUTACION↔TEST ESCRITA DE MEMORIA — EJECUTALA
+ANTES DE ESCRIBIRLA.** El docblock de `marketing/plan-gate.test.ts` declaraba que «el gate se lee en
+la MISMA transaccion que escribe» tenia su oraculo en la integracion. **Falso**: leerlo con `getDb()`
+fuera de la transaccion dejo 64 tests en verde. Lo escribio el orquestador **un dia despues** de
+escribir en este archivo la regla de que los pares mutacion↔test no se predicen. Vale para las dos
+direcciones: afirmar que algo TIENE oraculo es tan verificable —y tan barato de verificar— como
+afirmar que no se puede testear. Corolario del mismo cierre: **un test de un bloqueo que convive con
+OTRO bloqueo tiene que aseverar CUAL de los dos contesto** — el caso del 409 por campañas empezo
+midiendo el de locales, porque sembrar la campaña con una puerta nueva le daba al negocio dos locales
+activos y la guarda de locales va primero.
 **Y el limite no siempre dice «no se puede»: a veces dice «cuesta X», y esa forma es la que se
 cuela.** La spec 0063 declaro que cerrar el solape del claim «costaria un lock explicito o una
 columna `processing_at` con lease». Falso: el lease entra en la columna **`received_at` que ya

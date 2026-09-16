@@ -10,6 +10,98 @@ cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 Ultima actualizacion: 2026-09-16 (**SPEC 0065 COMPLETA, REVISADA Y CERRADA.** Las 4 fases en `main` y pusheadas; el owner hizo QA en prod y **todo funciona** — abre ahora una etapa de CAMBIOS DE PRODUCTO porque la funcionalidad no quedo como esperaba, que es trabajo NUEVO y va con su spec. **La cola de revisiones independientes corrio y cerro: los CUATRO revisores dieron FAIL, ninguno encontro un bug vivo, y los 14 hallazgos ya estan APLICADOS** — ver «LA COLA DE REVISIONES ESTA CERRADA». Solo uno cambiaba codigo de produccion (`loadByLocation` sin filtro por negocio); el resto eran oraculos que faltaban y tres comentarios que mentian. 5 gates verdes sobre el arbol final: `test` = **182 archivos / 1295 tests / 0 failed**, y **7 mutaciones nuevas prueban que cada oraculo nuevo MUERDE**. El tick corre solo cada 6 h con su secret ya cargado.)
 
+## ⇥ LO QUE SIGUE: RE-PENSAR EL PRODUCTO EN GENERAL (decision del owner, 2026-09-16)
+
+**La spec 0065 esta CERRADA: implementada, revisada, corregida, commiteada, pusheada y con QA del
+owner en verde.** No queda trabajo abierto de esa spec. Lo que sigue es OTRA cosa.
+
+**Lo que dijo el owner, literal:** «ya hice el qa todo funciona pero la funcionalidad no es como
+esperaba, cerremos primero y empezaremos a modificar para que quede como espero» y «cuando volvamos
+empezamos a re-pensar lo que creo que tenemos que arreglar en lineas generales. **no solo de esta
+feature que acabamos de construir**».
+
+**Como arranca la proxima sesion:**
+
+- **NO se abre codigo primero.** El owner trae una lista, en lineas generales y **no acotada a
+  marketing**. Escucharla entera antes de proponer nada: partir a implementar el primer item es la
+  forma de perder la vision de conjunto que el owner esta trayendo.
+- **Cada cosa se clasifica, y la clasificacion decide el artefacto:** decision de diseño → **ADR**
+  (proximo numero: **0069**); que-construir → **spec** (proximo numero: **0066**); hueco de UI o bug
+  → fila en este archivo. Nada de codigo sin spec cerrada.
+- **Ojo con el reflejo de defender lo construido.** «Funciona» y «es lo que esperaba» son cosas
+  distintas y el owner ya dijo cual es cual. Si un cambio contradice un ADR vigente, el camino es un
+  ADR nuevo que lo supersede (como el 0051 con el 0050), no discutir el pedido.
+
+**Estado del arbol:** `main` en `2224a45`, pusheado, **deploy `success` verificado para ese sha
+exacto**, arbol limpio, sin mutaciones, 5 gates verdes (`test` = **182 archivos / 1295 tests / 0
+failed**, medido sobre ESE commit). Tick corriendo cada 6 h con su secret. Sin migraciones pendientes.
+
+## LA COLA DE REVISIONES INDEPENDIENTES: CERRADA, 4 FAIL, 14 HALLAZGOS APLICADOS (2026-09-16)
+
+**Los cuatro revisores (uno por fase) dieron FAIL y NINGUNO encontro un bug vivo.** Los ocho
+hallazgos altos eran la misma familia —**un invariante DECLARADO que ningun test pinnea**— y en
+cuatro casos el test que *parecia* cubrirlos pasaba por otro guard. **Solo UNO cambio codigo de
+produccion.** Todo verificado por el orquestador reproduciendo la evidencia, no por la cita del
+revisor — y verificar encontro dos cosas que ningun revisor habia visto (la CUARTA copia de la
+definicion de «compro», en `merit.ts:124`, y que `billing-routes.test.ts` dobla `activeCampaignCount`
+a 0).
+
+**Tres de los hallazgos salieron de mutaciones ABANDONADAS** (la sesion anterior murio con los cuatro
+revisores en vuelo): se aplico la regla del reverso positivo —**medir antes de revertir**— y las tres
+dieron informacion. Orden ejecutado: `ListAgents` → `git status` → medir → revertir → `diff` contra
+la copia limpia del propio revisor.
+
+### Los 14, y que se hizo con cada uno
+
+| # | Fase | Hueco | Que se hizo |
+|---|------|-------|-------------|
+| 1 | B | **BLOQUEANTE**: 4 copias de `outcome in ('purchase','coupon_redeemed')` y el listado sin oraculo (ningun test sembraba un turno antes de leerlo) | la lista se mudo a `marketing/campaign-values.ts` y la consumen los tres archivos + caso de integracion que siembra 3 turnos y lee el listado real |
+| 2 | C | **BLOQUEANTE**: de los 9 predicados de `loadActiveCoupon`, solo `outcome` tenia oraculo | caso nuevo: turno vivo de OTRO negocio para el mismo consumidor → el scan no lo pinta; idem campaña pausada |
+| 3 | D | **BLOQUEANTE**: el bloqueo duro por campañas sin oraculo de comportamiento | archivo nuevo `billing-campaign-block.neon.integration.test.ts`: la RUTA contesta 409 con `code` y conteo, la PAGINA cruza ese `code`, + el control de que no es permanente |
+| 4 | B | `loadByLocation` no filtraba por negocio — **EL UNICO CAMBIO DE PRODUCCION** | recibe `businessId` y filtra en el join de locales **y** en el subselect de canjes; el docblock que decia «las DOS queries» corregido |
+| 5 | D | atribucion de oraculo FALSA escrita por el orquestador en `plan-gate.test.ts` | corregida, con el limite declarado |
+| 6 | D | `BLOCKS_WITH_ACTION` y `BLOCK_ACTIONS` podian divergir | resuelto **POR CONSTRUCCION**: viven en `subscription/block-actions.ts` y la pagina deriva su conjunto de las claves del mapa |
+| 7 | D | el `where` de `pauseCampaignsForDowngrade` sin oraculo | caso nuevo: dos negocios con campañas activas, baja uno, el vecino sigue `active` |
+| 8 | C | las 4 carreras comparten un `clientRequestId`: cubren el reintento idempotente, no «dos operadores» | carrera nueva con dos ids distintos → 1 fila + 409 `already_redeemed` |
+| 9 | C | `cart.ts` sin ningun test, con 3 invariantes en comentarios | `cart.test.ts` con los tres y su control |
+| 10 | C | `stages.tsx` en 299/300 y numero viejo en la spec | numero corregido (`286` → **283**); el tamaño se **declara**, no se persigue |
+| 11 | A | **ALTO**: el `continue` del holdout (avance de cuota EN MEMORIA) sin oraculo — el test que decia cubrirlo siembra holdouts ya `active` y ataca la SIEMBRA del contador | caso nuevo con el sorteo forzado: 3 elegibles, cuota 2, el primero holdout |
+| 12 | A | **ALTO**: comentario FALSO en `campaign-actions.ts` («el tick la termina» — no hay un solo `update(campaigns)` en el tick) + el `ends_at` del paso 1 sin oraculo | comentario corregido + caso nuevo: ventana vencida no encola, fecha futura si |
+| 13 | A | precedencia del `case` de `cancel_reason` sin oraculo | **DECLARADO** en el docblock, con el caso exacto que haria falta el dia que ese campo decida algo |
+| 14 | A | el comentario del workflow induce a cargar el endpoint sin `www.` | corregido con el por que del 308 |
+
+### Las 7 mutaciones que prueban que cada oraculo NUEVO muerde
+
+`F1` lista estrechada → ROJO 1 · `F2` scope por negocio + campaña activa → ROJO 1 · `F3a`
+`activeCampaignCount`→0 → ROJO 2 · `F3b` el `code` fuera de la lista → ROJO 1 · `F4` el `where` del
+freno sin negocio → ROJO 1 · `F5` el `continue` del holdout → **ROJO 1 y SOLO ese** (el test viejo
+sigue verde: prueba de que son dos mitades distintas) · `F6` la ventana `ends_at` → ROJO 1.
+Las 7 revertidas y verificadas con `diff`.
+
+### Tres cosas que aparecieron al APLICAR y valen para la proxima
+
+1. **Un test de un bloqueo que convive con OTRO bloqueo tiene que aseverar CUAL contesto.** El caso
+   del 409 por campañas media el de LOCALES hasta que se midio: sembrar la campaña con una puerta
+   nueva le daba al negocio 2 locales activos y esa guarda va primero.
+2. **`core_campaign_dates_check` exige `ends_at > starts_at`** y `seedCampaign` pone `starts_at` con
+   el reloj REAL, no con `WORLD_NOW`: mover solo `ends_at` al pasado revienta la check.
+3. **Flake de infraestructura**: `counter-coupon-races` tuvo una corrida con `Connection terminated
+   unexpectedly` a los 180 s y las otras tres identicas verdes; la re-corrida dio 6/6. Es la rama
+   Neon compartida.
+
+### Deuda declarada y NO perseguida (no se pierde: esta aca)
+
+`stages.tsx` en 299/300 · la precedencia de `cancel_reason` · el cableado de los botones (solo lo
+cierra el QA humano) · los limites de la fase A: los 400 m sin caso de integracion, el orden de los
+seis motivos de exclusion, y «sin el advisory lock dos corridas se pasan de cuota» (la propia spec
+declara que racear dos ticks reales es un volado).
+
+### Trampa de entorno que encontro el revisor de A, y vale para cualquiera
+
+**`./.env.integration.local` vive en la RAIZ.** Sourcearlo desde `apps/merchant` deja los 6 `.neon`
+en `skipped` **con el run en VERDE** (77 tests pasan a 53 passed / 24 skipped) — se lee identico a un
+PASS.
+
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, en el handoff que cierra C):**
 
 - **ARCO DE MARKETING (spec 0065) — DONDE ESTA HOY, en una linea por fase:**
