@@ -218,6 +218,13 @@
       "when": 1789093025830,
       "tag": "0030_sleepy_vulcan",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1789530718105,
+      "tag": "0031_secret_the_santerians",
+      "breakpoints": true
     }
   ]
 }

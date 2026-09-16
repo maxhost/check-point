@@ -180,9 +180,19 @@ marcar leyendo el codigo.
 
 `consumer.pass_placement` — lo que **esta** en el pase de cada consumidor (lo escribe el tick, lo lee
 el pase): `consumer_id` fk cascade, `location_id` fk cascade, `slot_kind` check
-`in ('utility','turn')`, `turn_id` uuid null fk, `business_id`, `relevant_text` text (≤ 60),
-`computed_at`. Pk `(consumer_id, location_id)`. Check: ≤ 10 filas por consumidor se garantiza en el
+`in ('utility','turn','both')`, `turn_id` uuid null fk, `business_id`, `relevant_text` text
+(**≤ 120**, no 60), `computed_at`. Pk `(consumer_id, location_id)`. Check: ≤ 10 filas por consumidor se garantiza en el
 aplicador bajo lock (no hay check SQL de conteo; ver plan de pruebas).
+
+**Corregido al implementar A1 (2026-09-15):** esta fila decia `in ('utility','turn')` y `≤ 60` — las
+dos eran la foto anterior a la fusion que decidio el owner el mismo dia, y las dos estaban
+**refutadas dos secciones mas abajo** por «Una puerta, un texto» (`both` y `cap` 120). El **60 no era
+cosmetico**: es el cap de `utilityText` **solo**, y esta columna guarda tambien el texto **compuesto**
+— el ejemplo literal del owner («Bar La Esquina: te faltan 2 sellos · 2x1 en picadas hasta el
+domingo») mide **68 caracteres**, asi que con el check en 60 **todo** `slot_kind = 'both'` moria con
+`23514` en produccion, que es el perfil central de la audiencia y no un borde. Lo cazo el
+implementador y lo verifico el orquestador contra la rama: con el check en 120, 68 entra y 121
+devuelve `23514`.
 
 **Una puerta, un texto: se FUSIONAN (decision del owner, 2026-09-15).** Las dos bolsas **no son
 disjuntas** y la pk lo prohibe. «Dormido» mira solo ordenes; «relacion viva» incluye
@@ -585,7 +595,7 @@ ninguna spec que toque esos archivos.
 
 | Que | Quien lo deja listo | Cuando |
 |---|---|---|
-| Migracion `0031` aplicada en la rama de integracion (`ci-integration`) | orquestador | antes de la fase A |
+| ~~Migracion `0031` aplicada en `ci-integration`~~ **ANULADO al implementar A1**: `ci.yml` corre `pnpm db:migrate` en cada corrida (spec 0062), y el orden era imposible — la migracion la **genera** la fase A. Lo que si hace falta es aplicarla en la rama efimera local (`spec-0065-marketing`), que es contra la que corren los `.neon.integration` de la maquina | implementador de A1 | al generar la migracion |
 | Secrets `MARKETING_TICK_ENDPOINT` / `CRON_SECRET` en GitHub | owner | antes del QA en prod |
 
 ### Fases (cada una con PASS de revisor independiente antes de la siguiente)

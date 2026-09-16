@@ -295,6 +295,21 @@ despues se mide y se completa el resultado.** Una fila a medio escribir es un pu
 trabajo que se hace dos veces — y si la sesion que hereda la transcribe «de memoria», es una fila inventada, que es
 justo lo que la tabla de mutaciones existe para prohibir.
 
+**Y el reverso positivo, que ya recupero una medicion: UNA MUTACION ABANDONADA QUE SEGUIS ENCONTRANDO PUESTA
+SE MIDE ANTES DE REVERTIRLA.** El reflejo al heredar una mutacion viva es revertirla rapido para limpiar el
+arbol — y eso **tira a la basura la unica corrida gratis que vas a tener**: mientras esta puesta, el
+experimento ya esta montado; despues de revertir hay que volver a mutar para saber que pinneaba. Paso en la
+fase A2 de la spec 0065: el implementador murio con M2 puesta y **sin fila de bitacora**; el orquestador
+corrio el test **con la mutacion todavia ahi**, obtuvo el rojo con su asercion textual, y recien despues
+revirtio. Orden correcto al heredar una mutacion viva: (1) **`ListAgents`** — si hay un subagente vivo, no
+la toques, esta midiendo; (2) `git status --short` del archivo y copia a `/tmp` **si es `??`**, porque ahi
+`git checkout` no hace nada; (3) **medir y transcribir**; (4) revertir y probar con `diff` que se fue
+**solo** la mutacion. Los pasos (1) y (2) ya estaban; el que faltaba es el (3).
+**Y el truco de reconstruccion cuando no hay `shasum` ni copia: buscá el ARTEFACTO COLGANTE que dejo el
+codigo removido.** Aca el guard borrado era `if (withLiveTurn.has(...)) continue;` y lo delato un `Set` que
+se construia y se hacia `.add()` **pero nunca se leia** — una variable escrita y jamas consumida es la firma
+de una linea que falta, y `lint` no la marca porque `.add()` cuenta como uso.
+
 **UN SINTOMA NO ES UNA CAUSA, y nombrar un mecanismo PLAUSIBLE se siente igual que haberlo verificado.** En la fase D1
 el orquestador vio `fetch failed` dentro de corridas VERDES y escribio —en `docs/TASKS.md` y al owner— que eran
 «reintentos absorbidos» y que el flaky estaba «tapado, no cerrado». **Falso, y lo falsifico un revisor con dos `grep`:**

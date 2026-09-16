@@ -8,7 +8,7 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-15 (noche).
+Ultima actualizacion: 2026-09-15 (noche, sesion de implementacion de la fase A).
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-15, tarde):**
 
@@ -109,36 +109,162 @@ Ultima actualizacion: 2026-09-15 (noche).
   orquestador) · merito con balanza (piso para debutantes) · sin email · fecha de nacimiento mas
   adelante · slot por puerta, no por barrio.
 
-**PROMPT PARA RETOMAR:** «Arco de marketing: la **revision adversarial de la spec 0065 YA SE HIZO y la
-spec YA ESTA `cerrada`** (2026-09-15 noche): tres revisores, FAIL unanime, 16 bloqueantes + un 17.º
-que salio del SQL, **todos corregidos y verificados empiricamente** — esta en la seccion «Revision
-adversarial — vuelta 1» al final de la spec, con la lista de lo que ya se confirmo correcto para no
-re-medirlo. **NO la vuelvas a correr**: la condicion de corte declarada era una vuelta, y una vuelta
-2 de revisores sobre lo mismo es exactamente el bucle que el owner corto en la spec 0064. El owner ya
-cerro las dos preguntas de producto (fusion de los dos textos en la puerta compartida; **merito desde
-el dia uno → ADR 0066**). **El proximo paso es despachar la FASE A** con
-`docs/AGENT-WORKFLOW.md` (encargo con presupuesto: las mutaciones de la lista del plan de pruebas y
-las de los docblocks nuevos que afirmen un invariante, nada mas). La rama Neon efimera
-`adversarial-0065-check` (usada para verificar los hallazgos de SQL contra Postgres real) **ya se
-borro** con confirmacion del owner (2026-09-15 noche); no queda nada pendiente ahi. **Antes de la
-fase A: aplicar la migracion `0031` en `ci-integration`.** Leer
-`docs/specs/0065-*.md` entera y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las mediciones de Apple/Google/arbol estan en el ADR
-0065 con su fuente, y lo que la revision ya confirmo correcto esta listado al final de la spec para
-no volver a mirarlo.»
+**ESTADO DE LA IMPLEMENTACION (2026-09-15, noche — COMMITEADO EN `07d34c1`, NO PUSHEADO):**
 
-## PROXIMO ARCO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
+- **FASE A1 (schema + migracion `0031`): IMPLEMENTADA Y VERIFICADA POR EL ORQUESTADOR.** Falta el PASS
+  de un revisor independiente. Archivos: `schema/campaign.ts` (nuevo, 162 l.), `schema/campaign-turn.ts`
+  (nuevo, 252 l. — `campaign_turn` ⇄ `coupon_redemption` son FKs **circulares**, tienen que vivir en el
+  mismo archivo y el lado forward necesita `(): AnyPgColumn =>` o `tsc` tira `TS7022`), `schema/consumer.ts`
+  (` M`, **298/300 — la proxima fase que lo toque lo parte**), `schema.ts`, y
+  **`drizzle/0031_secret_the_santerians.sql`** + `meta/`.
+  **Los 5 gates de root en VERDE, corridos por el orquestador:** `typecheck` 3/3, `lint` limpio,
+  `format:check` «All matched files use Prettier code style!», `test` **`Tests 727 passed | 221 skipped
+  (948)`**, `build` exit 0.
+- **LA MIGRACION YA ESTA APLICADA en la rama Neon `spec-0065-marketing`** (`br-shy-king-axu5s3ze` — es la
+  vieja `spec-0063-billing`, **renombrada**, misma conn, misma host: `.env.integration.local` no cambio de
+  credencial). `drizzle.__drizzle_migrations` = **32** filas, `hash` = `27d2c73f…`, y `db:migrate`
+  re-corrido no reporta nada pendiente. Expira el **2026-10-15** (Neon la borra sola).
+  **`ci-integration` NO necesita el paso manual que decia la spec: `ci.yml` corre `pnpm db:migrate` en cada
+  corrida** (spec 0062, «Migrar la rama de CI en cada corrida»). El item «orquestador aplica 0031 antes de
+  la fase A» era ademas **imposible de cumplir en ese orden** — la migracion la genera la fase A.
 
-**Estado: ADR 0064 y 0065 escritos; spec 0065 en borrador (ver ESTADO arriba).** Lo que sigue:
+- **UN BLOQUEO REAL QUE CAZO EL IMPLEMENTADOR Y VERIFICO EL ORQUESTADOR (no se acepto de palabra):** la
+  spec fijaba el check de `pass_placement.relevant_text` en **≤ 60** y el `cap` de `composeRelevantText`
+  en **120**, en dos secciones distintas del mismo documento. **El 60 no era cosmetico:** es el cap de
+  `utilityText` **solo**, y esa columna guarda tambien el texto **compuesto** — el ejemplo literal del
+  owner («Bar La Esquina: te faltan 2 sellos · 2x1 en picadas hasta el domingo») mide **68 caracteres**,
+  asi que **todo** `slot_kind = 'both'` habria muerto con `23514` en produccion, y `both` es el perfil
+  **central** de la audiencia, no un borde. Corregido a **120** y **verificado con oraculo contra la rama**,
+  no por lectura: 68 chars **ACEPTA**, 121 chars **`23514` check_violation (MUERDE)**, sonda revertida
+  (0 filas). La 0031 se **regenero** (no estaba commiteada, salia gratis) y el `diff` contra la vieja es de
+  **exactamente una linea**. La linea 183 de la spec quedo corregida con su nota al pie.
+  *(Misma familia que el ADR 0054: un documento afirmando dos cosas incompatibles, y la que estaba en la
+  tabla del modelo de datos era la foto ANTERIOR a la decision del owner del mismo dia.)*
 
-1. Commit de los docs de esta sesion.
+- **HALLAZGO VERIFICADO PARA LA FASE A5 (integracion), anotado antes de que muerda:** `dropBusiness`
+  (`server/counter-integration-support.ts:210`) borra `rewardRedemptions` → `orders` → `programMemberships`
+  → `businesses` **en ese orden y a proposito**, porque esas FKs no cascadean. `campaign_turn.membership_id`
+  y `.consumer_id` siguen el **mismo** patron (`no action`, calcado de `reward_redemption` — verificado
+  leyendo `schema/reward-redemption.ts:48-61`), asi que **cualquier test que siembre turnos y llame a
+  `dropBusiness` va a explotar por FK**: hay que borrar `coupon_redemption` y `campaign_turn` **antes** de
+  las membresias. `pass_placement.consumer_id` **si** cascadea, ese no molesta.
+
+- **DECISIONES DE DETALLE DEL IMPLEMENTADOR EN A1 (declaradas, todas reversibles, ninguna toca un
+  invariante):** `coupon_cost_snapshot` como `numeric(12,2)` (la spec decia `numeric` pelado; se alineo con
+  la columna origen); FKs sin accion declarada → `no action`, salvo `coupon_redemption.business_id` que va
+  **cascade** calcando `reward_redemption`; `campaign_turn.business_id` **sin FK** (es la denormalizacion que
+  la spec anota); los «≤ N» de `name` y `coupon_label` bajados a `CHECK`; y **cuatro indices que la spec no
+  enumera** (`coupon_redemption` por campaña y por negocio+fecha, `pass_placement` por negocio y por turno),
+  todos aditivos y justificados por una consulta que la spec si pide.
+
+- **FASE A2 (funciones puras): CODIGO COMPLETO Y VERDE; FALTA LA TABLA DE MUTACIONES (8 de 9).**
+  El implementador **MURIO a mitad de la medicion** (se corto la sesion, nunca entrego handoff). Archivos
+  creados, todos `??` bajo `apps/merchant/src/server/marketing/`: `placement-plan.ts`, `utility-text.ts`,
+  `relevant-text.ts`, `merit.ts`, mas `placement-plan-cases.ts` y los tests `placement-plan.test.ts` (7),
+  `placement-slots.test.ts` (4), `relevant-text.test.ts` (6), `utility-text.test.ts` (9), `merit.test.ts` (4).
+  **Los 9 casos (a)-(i) de la spec existen.** Gates de root corridos por el orquestador **despues** de
+  sanear el arbol: `typecheck`/`lint`/`format:check` VERDES y **`Tests 757 passed | 221 skipped (978)`**
+  — el baseline antes de A2 era **727**, o sea **+30 y cero regresiones**.
+
+- **RESCATE DE LA MUTACION ABANDONADA (2026-09-15, noche) — hecho, no pendiente.** El agente murio con
+  **M2 puesta** en `placement-plan.ts:191`. Protocolo aplicado en este orden: (1) **`ListAgents` ANTES de
+  tocar nada** — ningun subagente vivo, o sea abandonada y no en uso; (2) `marketing/` es **untracked**, asi
+  que **`git checkout` no habria hecho nada**: copia a `/tmp/placement-plan.MUTADO-M2.ts` primero
+  (`shasum` mutado `0f1ec366c9c54a7496f04c06ed5cb611e20c6139`); (3) **se COMPLETO la medicion en vez de
+  perderla** — la mutacion seguia puesta, asi que se corrio ahi mismo; (4) revertida, `diff` contra la copia
+  mutada de **exactamente una linea**, `grep MUTATION` **vacio**, `shasum` limpio
+  `a1454541da0c1baeded94ea5af6edc6acd1c9002`.
+  *(La leccion de `CLAUDE.md` que esto ejercita: el resultado ya ejecutado de una mutacion se pierde si se
+  revierte sin medir. Aca no se perdio.)*
+
+  **BITACORA DE MUTACIONES DE A2** — `id | archivo | shasum limpio | invariante | alcance | RESULTADO`:
+
+  | id | archivo | invariante que ataca | resultado EJECUTADO |
+  |---|---|---|---|
+  | M2 | `placement-plan.ts` (limpio `a1454541…`) | «1 turno por negocio» | **ROJO (c)**, y **solo** (c). Corrida contra los **dos** archivos que pueden verla: `placement-plan.test.ts` 1 rojo, `placement-slots.test.ts` verde. Asercion leida (no solo «es rojo»): `expected [ 'turn-c1', 'turn-c2' ] to deeply equal [ 'turn-c1' ]` — habla de la **propiedad**, no del setup |
+  | M1 | `placement-plan.ts` | regla de 400 m → esperado rojo (b) | **PENDIENTE** |
+  | M3 | `placement-plan.ts` | contar holdouts en el `< 5` → esperado rojo (e) | **PENDIENTE** |
+  | M4 | `placement-plan.ts` | cooldown re-evaluado al ACTIVAR → esperado rojo (i) | **PENDIENTE** |
+  | M5 | `placement-plan.ts` | dedupe al reves (utilidad gana) → esperado rojo (h) | **PENDIENTE** |
+  | M6 | `relevant-text.ts` | truncar en vez de descartar el saldo → esperado rojo | **PENDIENTE** |
+  | M7 | `merit.ts` | rankear por tasa cruda → esperado rojo (d) | **PENDIENTE** |
+  | M8 | `merit.ts` | quitar el encogimiento → esperado rojo (a) | **PENDIENTE** |
+  | M9 | `merit.ts` | debutante al fondo → esperado rojo (b) | **PENDIENTE** |
+
+  **La columna «esperado» es la PREDICCION de la spec, no un resultado.** Se ejecuta y se transcribe lo que
+  pase de verdad; si no coincide, **eso es el hallazgo** (spec 0055: dos mutaciones que el plan daba por
+  distintas resultaron indistinguibles). Falta ademas **una mutacion por cada docblock nuevo que afirme un
+  invariante** en esos 4 modulos — sin leerlos todavia, ese conjunto no esta enumerado.
+
+  **BASELINE PARA AUDITAR EL ARBOL — RE-MEDIDO en el handoff (no copiado del mensaje anterior).** Si una
+  sesion fresca corre `shasum` y algo no coincide, **alguien dejo una mutacion puesta**; si coincide todo,
+  el arbol esta limpio. Al 2026-09-15 noche, con los 5 gates en verde:
+
+  ```
+  6b72c2b46b23fa235dc6dc2fae5f3c3daa6d9d1d  marketing/merit.ts
+  a5f9f9576af86bca9a1a1189d0f6dbbd157fa490  marketing/merit.test.ts
+  a1454541da0c1baeded94ea5af6edc6acd1c9002  marketing/placement-plan.ts
+  5b86521ce1148430bb6e61b3fb8dc111a55c6589  marketing/placement-plan.test.ts
+  ffbb4f260a0e84dfd09ae834fdc1ca4b2d0fad97  marketing/placement-plan-cases.ts
+  073a934d16df9787feef94b0db7cef97f714004f  marketing/placement-slots.test.ts
+  07bd89db64da1a9f0ffaacd3288f5d9d2b7141b8  marketing/relevant-text.ts
+  7769450d2f4da0f560b2ea1da88cc6ea1849d4b4  marketing/relevant-text.test.ts
+  7f269930bfdff8bb997e3b8976a0f58c5782aefc  marketing/utility-text.ts
+  048e063a0198f0b7935386c83f94b38d46e23c0a  marketing/utility-text.test.ts
+  ```
+  Comando: `shasum apps/merchant/src/server/marketing/*.ts`
+  **Los shasum de A1 del handoff anterior estan PODRIDOS y no se usan** — `campaign-turn.ts` cambio despues
+  (el check de `relevant_text` 60→120) y la 0031 se regenero con otro nombre. Los vigentes de A1 se re-miden
+  con `shasum apps/merchant/src/server/schema/campaign*.ts`.
+
+  **TAMAÑOS (preguntados AL HOOK, no a `wc`; todos `EXIT=0`), con los dos que estan al borde:**
+  `placement-plan.ts` **284/300** y `schema/consumer.ts` **298/300** — **la proxima fase que los toque los
+  parte, no los extiende.** El resto holgado: `merit.ts` 138, `utility-text.ts` 102, `relevant-text.ts` 51,
+  `campaign.ts` 162, `campaign-turn.ts` 252.
+
+  **DECISION DEL ORQUESTADOR: las 8 que faltan NO se re-despachan, las termina el orquestador a mano**
+  (`CLAUDE.md`, corolario (f) de la 0064: reanudar un encargo muerto sale mas caro que terminarlo — cada
+  muerte obliga a auditar el arbol antes de seguir). Cada una es **un cambio de una linea + una corrida de
+  ~5 s**. La fila de bitacora se escribe **ANTES** de mutar.
+
+**PROMPT PARA RETOMAR:** «Arco de marketing, spec 0065 — **la revision adversarial YA SE HIZO y la spec esta
+`cerrada`**; **NO la vuelvas a correr** (la condicion de corte declarada era una vuelta; una vuelta 2 es el
+bucle que el owner corto en la 0064). **Estamos IMPLEMENTANDO la fase A, partida en sub-fases porque entera no
+entra en un turno** (`CLAUDE.md`: reanudar sale mas caro que terminar). **A1 esta hecha y verificada; A2
+despachada.** Lo que queda de A, en este orden y **serializado — nunca dos implementadores a la vez sobre el
+mismo arbol**, que se pisan los gates: **A3** carril `pass_refresh` (`push-worker.ts:60` colapsa toda clase
+desconocida a `transactional`: ahi se muere el carril, con typecheck en verde) + `patchGoogleObject` en
+`PushChannel`/`FakePushChannel` con `{kind:'google-patch'}`; **A4** `locations`/`merchantLocations` en el pase
+— el campo entra **requerido** en `PassBuildInput` (`wallet/provider.ts:6`) para que `typecheck` obligue a los
+**tres** call-sites de emision, y hay que **crear** el `PATCH` del Loyalty Object de Google, que **no existe**;
+**A5** `audience.ts` + el aplicador `placement.ts` + el endpoint del tick + `marketing-tick.yml` + la
+integracion Neon. Despues, **un revisor independiente sobre la fase A entera**. Leer `docs/specs/0065-*.md`
+entera y los ADR 0064/0065/**0066**; **no re-medir lo medido** — las mediciones de Apple/Google/arbol estan en
+el ADR 0065 con su fuente, y lo que la revision ya confirmo correcto esta listado al final de la spec.
+**Ojo con `dropBusiness` en A5** (arriba).
+**A1 y A2 estan COMMITEADAS en `07d34c1`; NO se pusheo, asi que prod NO tiene este codigo** — si en algun
+momento se pide QA, primero `git push` y despues verificar el commit status del **sha exacto**
+(`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status --jq '.state'`), nunca «prod esta verde».
+**EL PRIMER PASO AL RETOMAR son las 8 mutaciones pendientes de A2** (tabla arriba): las hace el orquestador
+a mano, fila de bitacora ANTES de mutar, y el resultado se **ejecuta y se transcribe**, no se predice.»
+
+## ARCO EN CURSO — **EL MOTOR DE PUBLICIDAD Y MARKETING** (decidido por el owner, 2026-09-15)
+
+**Estado: ADR 0064/0065/0066 escritos, spec 0065 `cerrada` y revisada, FASE A EN IMPLEMENTACION.** El
+detalle vivo esta en el bloque ESTADO del tope; esta lista es solo el arco completo.
+
+1. ~~Commit de los docs~~ **HECHO** (`8764368`).
 2. ~~Owner confirma opt-out + freno por plan~~ **HECHO (2026-09-15): spec 0065 `cerrada`.**
-3. **Revision adversarial de la spec** (pedido literal del owner: «pasarlo por un adversarial e
-   implementar») — con presupuesto escrito en el encargo (`CLAUDE.md`): que clase de error tiene que
-   cazar (afirmaciones sin oraculo en el DoD, invariantes de colocacion sin test, concurrencia del
-   cupon) y cuantas vueltas (dos; si la segunda abre otra preimagen, cortar y llevar al QA).
-4. Fase A (fundacion) a implementador + revisor. Aplicar la migracion `0031` en `ci-integration`
-   antes.
-5. Los demas tipos de campaña, **cada uno con su spec y ADR**, en este orden tentativo (no decidido
+3. ~~**Revision adversarial de la spec**~~ **HECHA Y CERRADA (2026-09-15, noche): tres revisores, FAIL
+   unanime, 16 bloqueantes + un 17.º que salio de correr el SQL, todos corregidos y verificados
+   empiricamente.** La condicion de corte declarada era **una** vuelta. **No se reabre.**
+4. **Fase A (fundacion) — EN CURSO, partida en A1..A5** (ver ESTADO arriba). A1 hecha y verificada; A2
+   despachada. Al cerrar A5 va **un revisor independiente sobre la fase entera**.
+   **El item viejo «aplicar la migracion `0031` en `ci-integration` antes» queda ANULADO**: `ci.yml` ya
+   corre `pnpm db:migrate` en cada corrida (spec 0062), y el orden era ademas imposible — la migracion
+   la **genera** la fase A.
+5. Fases B (backoffice), C (cupon) y D (consumidor + freno por plan) de la misma spec 0065.
+6. Los demas tipos de campaña, **cada uno con su spec y ADR**, en este orden tentativo (no decidido
    por el owner): reactivacion por push (ya tiene oraculo: `sw.js`), le-falta-un-sello / premio sin
    canjear, local nuevo, franja muerta, aniversario de alta, categoria abandonada, ticket bajo,
    cumpleaños (exige pedir la fecha).

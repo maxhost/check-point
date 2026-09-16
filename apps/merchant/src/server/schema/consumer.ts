@@ -136,6 +136,13 @@ export const programMemberships = consumer.table(
     // future redemption feature, not this spec.
     pointsBalance: integer("points_balance").notNull().default(0),
     stampsCount: integer("stamps_count").notNull().default(0),
+    // Marketing opt-out per business (spec 0065). Null = promotions ON (scanning is
+    // enrollment + consent, ADR 0033 §2). ONLY the consumer portal writes it (ADR 0060:
+    // a discriminant of intent no other actor may set). It removes the consumer from
+    // campaign audiences; the transactional lane and the utility bag stay untouched.
+    marketingOptOutAt: timestamp("marketing_opt_out_at", {
+      withTimezone: true,
+    }),
     enrolledAt: timestamp("enrolled_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -240,7 +247,9 @@ export const walletPushDevices = consumer.table(
 
 /**
  * Push outbox (ADR 0037). One row per notice. `class` sets priority (`transactional`
- * preempts and skips cooldown; `campaign` is deferred, respects the cooldown). The
+ * preempts and skips cooldown; `campaign` is deferred, respects the cooldown;
+ * `pass_refresh` — spec 0065 — is the SILENT lane of the wallet pass: always sent,
+ * never advances the cooldown clock, never postpones a pending `campaign`). The
  * `transactional` row is enqueued INSIDE `persistGrant`'s transaction (0030), so an
  * accredited order ⇔ its push row. The worker claims a row (`pending` → `sending`),
  * delivers it, and closes it (`sent`) or backs it off (`pending`, then `failed` after
@@ -274,9 +283,12 @@ export const walletPushQueue = consumer.table(
       table.notBefore,
     ),
     index("wallet_push_queue_consumer_idx").on(table.consumerId),
+    // NO unique index for `pass_refresh`, on purpose: the worker returns a failed row to
+    // 'pending' in the SAME update that bumps `attempts`, so a partial unique over
+    // status='pending' would wedge it in 'sending' forever (spec 0065) — see that spec.
     check(
       "wallet_push_queue_class_check",
-      sql`${table.class} in ('transactional', 'campaign')`,
+      sql`${table.class} in ('transactional', 'campaign', 'pass_refresh')`,
     ),
     check(
       "wallet_push_queue_status_check",
