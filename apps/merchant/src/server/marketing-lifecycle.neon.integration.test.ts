@@ -11,6 +11,9 @@ import {
   tickWorld,
 } from "./marketing-world-support";
 import type { TickSummary } from "./marketing/tick";
+import { eq } from "drizzle-orm";
+import { getDb } from "./db";
+import { campaigns } from "./schema";
 
 /**
  * The two ends of a door's life, which the rest of the phase-A suites do NOT pin: how a
@@ -59,6 +62,53 @@ describe.skipIf(!integrationEnabled)("marketing lifecycle", () => {
     const turns = await readTurns(built.seed.business.id);
     expect(turns.map((turn) => turn.status)).toEqual(["done"]);
     expect(await readPlacement(built.consumerIds[0])).toEqual([]);
+  }, 180_000);
+
+  /**
+   * LA VENTANA DE LA CAMPAÑA — el tercer borde, y lo encontró la revisión independiente de
+   * la fase A. El paso 1 sólo encola campañas `active` cuya `starts_at <= now` y cuya
+   * `ends_at` es nula o futura (`audience-store.ts`), pero **ningún fixture sembraba una
+   * `ends_at`**: la mutación que borra ese predicado dejó los 13 archivos de marketing en
+   * VERDE.
+   *
+   * Importa más de lo que parece porque el comentario de `campaign-actions.ts` afirmaba que
+   * una campaña vencida «would be activated AND ENDED by the very next tick» — y es falso:
+   * el tick no escribe `campaign.status` en ningún paso, así que una campaña vencida se
+   * queda `active` para siempre y ESTE predicado es lo único que impide que siga encolando.
+   *
+   * Mutación que lo pone rojo: borrar `or(isNull(endsAt), gt(endsAt, now))` del `where` de
+   * la audiencia. El control vive adentro del caso: la misma campaña, con la fecha movida
+   * al futuro, sí encola.
+   */
+  it("no encola una campaña cuya ventana YA VENCIÓ (y sí cuando no venció)", async () => {
+    const built = await seedWorld({ label: "Lifecycle vencida", people: 1 });
+    worlds.push(built);
+    // Las DOS fechas: `core_campaign_dates_check` exige `ends_at > starts_at`, y el seed
+    // deja `starts_at = ahora - 1 día` con el reloj REAL, no con `WORLD_NOW` (medido: el
+    // `update` con sólo `ends_at` revienta con esa check).
+    await getDb()
+      .update(campaigns)
+      .set({
+        startsAt: new Date(NOW.getTime() - 10 * DAY),
+        endsAt: new Date(NOW.getTime() - DAY),
+      })
+      .where(eq(campaigns.id, built.campaignId));
+
+    const expired = (await tickWorld(built, NS)) as TickSummary;
+    expect(expired.enqueued).toBe(0);
+    expect(await readTurns(built.seed.business.id)).toEqual([]);
+
+    // EL CONTROL: mismo mundo, misma gente, la fecha corrida al futuro. Sin esto, un tick
+    // que no encolara NUNCA pasaría la primera mitad.
+    await getDb()
+      .update(campaigns)
+      .set({ endsAt: new Date(NOW.getTime() + 30 * DAY) })
+      .where(eq(campaigns.id, built.campaignId));
+
+    const alive = (await tickWorld(built, NS, {
+      now: new Date(NOW.getTime() + 60_000),
+    })) as TickSummary;
+    expect(alive.enqueued).toBe(1);
   }, 180_000);
 
   /**

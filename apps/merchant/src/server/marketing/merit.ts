@@ -13,6 +13,7 @@
 import { eq, sql } from "drizzle-orm";
 import type { DbTransaction } from "../db";
 import { campaignTurns } from "../schema/campaign-turn";
+import { boughtList } from "./campaign-values";
 
 /** Weight of the prior, in turns (ORQUESTADOR, ADR 0066 §3). */
 export const MERIT_ALPHA = 20;
@@ -121,7 +122,9 @@ export function buildMeritTable(
 export async function loadBusinessTurnStats(
   db: DbTransaction,
 ): Promise<BusinessTurnStats[]> {
-  const bought = sql`${campaignTurns.outcome} in ('purchase', 'coupon_redeemed')`;
+  // Idem: la CUARTA copia del literal vivia aca, y es la que ordena la cola. Sale de
+  // `campaign-values.ts`.
+  const bought = sql`${campaignTurns.outcome} in (${boughtList})`;
   const placed = sql`${campaignTurns.holdout} = false`;
   const held = sql`${campaignTurns.holdout} = true`;
   return await db

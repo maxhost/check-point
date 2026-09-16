@@ -17,6 +17,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { campaignTickAudiences, campaignTurns } from "../schema";
 import { type Campaign, listCampaigns } from "./campaign-store";
+import { boughtList } from "./campaign-values";
 
 export type CampaignOverview = {
   campaign: Campaign;
@@ -43,8 +44,10 @@ async function loadTallies(
       campaignId: campaignTurns.campaignId,
       active: tally(sql`${campaignTurns.status} = 'active'`),
       done: tally(done),
+      // La lista sale de `campaign-values.ts` y NO se escribe inline: esta era la tercera
+      // copia del literal, y la revision independiente de la fase B la cazo.
       purchases: tally(
-        sql`${done} and ${campaignTurns.outcome} in ('purchase', 'coupon_redeemed')`,
+        sql`${done} and ${campaignTurns.outcome} in (${boughtList})`,
       ),
     })
     .from(campaignTurns)

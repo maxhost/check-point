@@ -22,15 +22,11 @@ import {
   getStripeConfiguration,
 } from "../../../server/stripe-config";
 import { SubscriptionConsole } from "./subscription-console";
+// Los bloqueos que traen mensaje Y un lugar a donde ir. La lista vive en UN archivo y el
+// modal deriva sus links del mismo mapa: no puede divergir (spec 0065, fase D).
+import { BLOCKS_WITH_ACTION } from "./block-actions";
 
 export const dynamic = "force-dynamic";
-
-/** Los dos bloqueos que el modal sabe resolver: traen mensaje Y un lugar a donde ir. Los
- * demás (`already_on_plan`) caen en el texto genérico de la consola. */
-const BLOCKS_WITH_ACTION: ReadonlySet<string> = new Set([
-  "downgrade_blocked",
-  "downgrade_blocked_campaigns",
-]);
 
 /**
  * Spec 0063, D7 + D8 — la sección de suscripción, SOLO OWNER (`requireOwner`, que manda al

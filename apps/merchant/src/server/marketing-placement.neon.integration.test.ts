@@ -169,6 +169,31 @@ describe.skipIf(!integrationEnabled)("marketing placement", () => {
       activated: 1,
     });
   }, 120_000);
+  it("un holdout SORTEADO EN ESTA CORRIDA tampoco come cuota (la otra mitad)", async () => {
+    // LA MITAD QUE FALTABA, y la encontró la revisión independiente de la fase A: el caso
+    // de arriba siembra los holdouts YA `active`, así que ataca `loadBusinessActiveTurns`
+    // —la SIEMBRA del contador— y nunca el avance EN MEMORIA, que es el `continue` de
+    // `placement.ts:163`. Sacarlo dejaba los 13 archivos de marketing en verde mientras el
+    // negocio perdía ~10 % de su cupo: el turno retenido se comía una plaza y una
+    // exposición real quedaba en cola.
+    //
+    // El sorteo se fuerza con un `random` con estado: la primera extracción cae bajo el
+    // `holdoutRate` y las demás no. Es la única forma de tener holdout Y no-holdouts en la
+    // misma corrida sin sembrar el resultado.
+    const built = await world(3);
+    let draws = 0;
+    const summary = (await tick(built, {
+      limits: { businessQuota: 2 },
+      random: () => (draws++ === 0 ? 0 : 1),
+    })) as TickSummary;
+
+    // 3 activados con cuota 2: los dos que SÍ se exponen la llenan, y el retenido no.
+    expect(summary).toMatchObject({ enqueued: 3, activated: 3, holdouts: 1 });
+    const turns = await readTurns(built.seed.business.id);
+    expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(0);
+    expect(turns.filter((turn) => turn.holdout)).toHaveLength(1);
+  }, 180_000);
+
   it("keeps the utility door of a business the consumer opted OUT of", async () => {
     // The owner's rule (spec 0065): the opt-out silences MARKETING, never the
     // consumer's own balance — «el opt-out no apaga la utilidad». The bag is loaded by

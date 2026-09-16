@@ -940,7 +940,9 @@ Todas reversibles, ninguna la decidio el owner.
 6. **`counter-console.tsx` paso de 286 a 324 lineas con el cupon**, sobre el limite de 300. Se
    partio sacando el CARRITO a `counter/cart.ts` como transiciones puras — es la unica parte de la
    consola que es una transformacion de datos y no un fetch o un cambio de etapa, o sea la unica
-   que un unit puede pinnear sin browser. Quedo en 286.
+   que un unit puede pinnear sin browser. Quedo en **283** (re-medido al cerrar la cola de
+   revisiones: este numero decia 286, que era la medicion de antes de la ultima pasada de
+   prettier — la familia «un numero que va a un doc se re-mide al escribirlo»).
 
 **EXPLAIN transcripto como DATO, no como oraculo** (lo pide la spec). Contra PG 18 real en la rama
 efimera, los dos statements por separado:

@@ -163,6 +163,39 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 60_000);
 
+    it("pausa SÓLO las campañas del negocio que bajó, no las del vecino", async () => {
+      // EL `where` POR NEGOCIO NO TENÍA ORÁCULO (revisión independiente de la fase D): el
+      // doble de `tx` implementa `where: () => chain`, o sea que no registra nada, y el
+      // caso feliz de acá arriba lee por sus PROPIOS ids — un freno que pausara las
+      // campañas de todos los negocios salía verde en los dos.
+      const mine = await worldWithCampaigns("scoped", 1);
+      const neighbour = await worldWithCampaigns("neighbour", 1);
+      try {
+        const response = await deliver({
+          id: events.next("scoped"),
+          created: Math.floor(Date.UTC(2026, 8, 12) / 1000),
+          type: "customer.subscription.deleted",
+          object: { id: "sub_scoped" },
+        });
+        expect(response.status).toBe(200);
+
+        expect(await readCampaigns(mine.ids)).toEqual([
+          { status: "paused", pauseReason: "plan_downgraded" },
+        ]);
+        // El vecino no se enteró: mismo tick de webhook, otra suscripción.
+        expect(await readCampaigns(neighbour.ids)).toEqual([
+          { status: "active", pauseReason: null },
+        ]);
+      } finally {
+        for (const world of [mine, neighbour]) {
+          await getDb()
+            .delete(campaigns)
+            .where(eq(campaigns.businessId, world.seeded.business.id));
+          await dropBusiness(world.seeded.business.id);
+        }
+      }
+    }, 60_000);
+
     it("si la pausa falla, EL PLAN TAMPOCO QUEDA ESCRITO (la transacción es una sola)", async () => {
       const { seeded, ids } = await worldWithCampaigns("atomic", 1);
       try {

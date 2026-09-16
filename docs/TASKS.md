@@ -8,12 +8,13 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**LA SPEC 0065 ESTA ENTERA EN `main` Y PUSHEADA**: el push `9fd9625..ad51157` subio de una vez las fases **B** (`a0573a6`, `7f59f8a`, `9bf69b8`, `32be432`), **C** (`8e8d596`) y **D** (`ad51157`), que estaban commiteadas pero nunca pusheadas. **A ya estaba en prod** (`9fd9625`); falta solo el Actions secret `MARKETING_TICK_ENDPOINT`, que lo pone el owner. **Sin migraciones nuevas: prod tiene las 32 y la ultima (0031) es de la fase A.** Evidencia del arbol que se pusheo: 5 gates verdes y `test` = **180 archivos / 1279 tests / 0 failed** contra la rama efimera `spec-0065-marketing`; **12/12 mutaciones en rojo** en dos tandas con presupuesto declarado. **AHORA: el owner hace QA sobre prod mientras corre la COLA DE REVISIONES INDEPENDIENTES** (una por fase: A, B, C, D) que el owner decidio el 2026-09-16 diferir al final de la implementacion. **DECISION DEL OWNER (2026-09-16): el opt-out es una TERCERA PESTAÑA del portal y no una ruta — ADR 0068**, contra la recomendacion del orquestador; la spec quedo corregida en los 5 lugares que nombraban `/wallet/settings`.)
+Ultima actualizacion: 2026-09-16 (**SPEC 0065 COMPLETA, REVISADA Y CERRADA.** Las 4 fases en `main` y pusheadas; el owner hizo QA en prod y **todo funciona** — abre ahora una etapa de CAMBIOS DE PRODUCTO porque la funcionalidad no quedo como esperaba, que es trabajo NUEVO y va con su spec. **La cola de revisiones independientes corrio y cerro: los CUATRO revisores dieron FAIL, ninguno encontro un bug vivo, y los 14 hallazgos ya estan APLICADOS** — ver «LA COLA DE REVISIONES ESTA CERRADA». Solo uno cambiaba codigo de produccion (`loadByLocation` sin filtro por negocio); el resto eran oraculos que faltaban y tres comentarios que mentian. 5 gates verdes sobre el arbol final: `test` = **182 archivos / 1295 tests / 0 failed**, y **7 mutaciones nuevas prueban que cada oraculo nuevo MUERDE**. El tick corre solo cada 6 h con su secret ya cargado.)
 
 **ESTADO REAL (bloque reescrito ENTERO el 2026-09-16, en el handoff que cierra C):**
 
 - **ARCO DE MARKETING (spec 0065) — DONDE ESTA HOY, en una linea por fase:**
-  **A: EN PROD** (`9fd9625`), falta solo el Actions secret `MARKETING_TICK_ENDPOINT` (lo pone el owner).
+  **A: EN PROD** (`9fd9625`), con el secret `MARKETING_TICK_ENDPOINT` ya puesto y el workflow del tick
+  corriendo en verde cada 6 h (verificado por `gh run list`, no por este archivo).
   **B1: hecha** (ciclo de vida + 6 rutas + el test unit de las 8 rutas HTTP) — `a0573a6` + `7f59f8a`.
   **B2: hecha** (resultados + `audience-preview` + las 2 rutas GET) — `9bf69b8`.
   **B3: hecha** (las 3 pantallas + `[id]/edit` + el tile + 26 casos de render/paginas) — `32be432`.

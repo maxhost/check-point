@@ -6,9 +6,16 @@ import { campaignsAllowedFor, type CampaignPlanRow } from "./plan-gate";
  * caso y con su control. El oráculo es la tabla: se escribe la salida esperada de cada
  * fila, no una regla re-derivada.
  *
- * Lo que NO está acá y tiene su oráculo en la integración
- * (`marketing-campaign-actions.neon.integration.test.ts`): que el gate se lea en la MISMA
- * transacción que escribe, y que el 402 salga por HTTP.
+ * Lo que NO está acá: que el 402 salga por HTTP y que el plan se lea AL ACTIVAR (los dos sí
+ * tienen su oráculo en `marketing-campaign-actions.neon.integration.test.ts`).
+ *
+ * Y UNA ATRIBUCIÓN QUE ERA FALSA, corregida: este docblock decía que «el gate se lee en la
+ * MISMA transacción que escribe» tenía su oráculo en esa integración. **No lo tiene** — la
+ * revisión independiente de la fase D leyó el gate con `getDb()` fuera de la transacción y
+ * los 64 tests quedaron VERDES. La ventana es real pero angosta (deja crear un `draft` que
+ * después no se puede activar), así que se DECLARA sin oráculo en vez de perseguirla. Lo que
+ * no se podía dejar es la frase: una fila «propiedad → su oráculo vive allá» escrita de
+ * memoria le regala a quien herede el árbol una cobertura que no existe.
  */
 
 const live: CampaignPlanRow = {

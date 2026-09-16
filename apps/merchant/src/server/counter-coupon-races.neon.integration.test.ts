@@ -68,6 +68,31 @@ describe.skipIf(!integrationEnabled)("coupon races (spec 0065 C)", () => {
     }, 180_000);
   }
 
+  it("DOS OPERADORES sobre el mismo turno: una fila, un 409 con nombre", async () => {
+    // LA CARRERA QUE EL DoD PIDE Y QUE NINGUNA DE LAS 4 DE ARRIBA CUBRIA (revisión
+    // independiente de la fase C): las cuatro comparten UN `clientRequestId` —el
+    // `couponBody(…, randomUUID())` está FUERA del `Promise.allSettled`—, así que lo que
+    // pinnean es la concurrencia del REINTENTO IDEMPOTENTE. Dos mostradores con dos
+    // dispositivos mandan DOS identificadores distintos, y ahí el que decide es el unique
+    // `turn_id`: uno entra y el otro tiene que salir con un 409 que se pueda leer, nunca
+    // con un 503 ni con una segunda fila.
+    const w = await world("Carrera dos operadores");
+    const card = await newCouponCard(w);
+
+    const settled = await Promise.allSettled([
+      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+    ]);
+
+    expect(await readCoupons(w.campaignId)).toHaveLength(1);
+    const rejected = settled.filter((r) => r.status === "rejected");
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+      status: 409,
+      code: "already_redeemed",
+    });
+  }, 180_000);
+
   it("with ONE slot left in the cap, two DIFFERENT turns leave ONE row", async () => {
     // cap 2, one already handed over → exactly one slot. Without the campaign's
     // `FOR UPDATE` both readers see `count = 1 < 2` and both insert.

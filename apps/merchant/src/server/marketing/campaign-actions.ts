@@ -75,9 +75,17 @@ export async function transitionCampaign(
           "Necesitás al menos un local activo y con ubicación en el mapa.",
         );
       // «fechas validas» of the spec, read at its narrowest: a campaign whose end has
-      // already passed would be activated and ended by the very next tick. Anything
-      // beyond that (a start in the past, for instance) is legitimate — the tick queues
-      // from `starts_at`, so activating a campaign that already started is normal.
+      // already passed has nothing to do but sit there. Anything beyond that (a start in
+      // the past, for instance) is legitimate — the tick queues from `starts_at`, so
+      // activating a campaign that already started is normal.
+      //
+      // ESTE COMENTARIO DECIA «would be activated AND ENDED by the very next tick», Y ERA
+      // FALSO: no hay un solo `update(campaigns)` en `tick.ts` ni en `turn-lifecycle.ts`
+      // (verificado con `grep` por la revision independiente de la fase A), y el unico
+      // escritor de `status = 'ended'` es la accion `end` del owner. Una campaña vencida se
+      // queda `active` para siempre; lo que impide que siga encolando es el predicado
+      // `ends_at` del paso 1 (`audience-store.ts`), no un cierre automatico. Es el ADR 0054:
+      // un comentario que hace creer que existe un mecanismo que no existe.
       if (current.endsAt !== null && current.endsAt <= now)
         throw new CampaignError(
           409,

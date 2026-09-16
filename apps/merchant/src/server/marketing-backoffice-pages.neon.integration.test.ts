@@ -10,6 +10,8 @@ import {
   dropCampaignWorlds,
 } from "./marketing-campaigns-support";
 import { createCampaign } from "./marketing/campaign-store";
+import { seedMembership, seedTurn } from "./marketing-integration-support";
+import { seedConsumer } from "./counter-integration-support";
 import { getDb } from "./db";
 import { campaignTickAudiences, products } from "./schema";
 
@@ -110,6 +112,53 @@ describe.skipIf(!integrationEnabled)("marketing backoffice pages", () => {
     expect(html).not.toContain("Campaña del vecino");
     // No tick has run over it: the screen says so instead of showing zeros.
     expect(html).toContain("Todavía no corrió ningún tick");
+  }, 120_000);
+
+  it("the listing counts turns with the SHARED definition of «compró», not its own", async () => {
+    // EL ORACULO QUE FALTABA (revision independiente de la fase B): los tres numeros del
+    // listado —turnos activos, «N de M compraron»— salian de `loadTallies`, que escribia
+    // `in ('purchase','coupon_redeemed')` INLINE (la tercera de cuatro copias del
+    // literal). Ningun test sembraba un solo `campaign_turn` antes de leer el listado, asi
+    // que estrecharlo a `'purchase'` dejaba todo verde. `campaign-screens.test.ts` pasa el
+    // DTO a mano: renderiza los numeros sin ejercer la consulta.
+    //
+    // El turno `coupon_redeemed` es el que hace discriminar al caso: con la lista
+    // estrechada, «1 de 2» pasa a «0 de 2».
+    const seed = await campaignWorld("plus", "Conteos del listado");
+    const campaign = await createCampaign(
+      seed.business.id,
+      seed.userId,
+      campaignBody(seed),
+    );
+    const consumer = await seedConsumer();
+    const membershipId = await seedMembership({
+      consumerId: consumer.id,
+      programId: seed.programId,
+      businessId: seed.business.id,
+      enrolledAt: new Date("2025-01-01T00:00:00.000Z"),
+    });
+    const turn = (
+      status: "active" | "done",
+      outcome: "coupon_redeemed" | "none" | null,
+    ) =>
+      seedTurn({
+        campaignId: campaign.id,
+        businessId: seed.business.id,
+        consumerId: consumer.id,
+        membershipId,
+        locationId: seed.locationId,
+        status,
+        outcome,
+      });
+    await turn("active", null);
+    await turn("done", "coupon_redeemed");
+    await turn("done", "none");
+    ctx.session = sessionFor(seed);
+
+    const html = renderToStaticMarkup(await MarketingPage());
+
+    expect(html).toContain("1 turnos activos");
+    expect(html).toContain("1 de 2 compraron durante su ventana");
   }, 120_000);
 
   it("the listing shows the LAST tick's photo, not whichever row came first", async () => {

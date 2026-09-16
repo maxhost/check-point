@@ -13,6 +13,7 @@
 
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
+import { boughtList } from "./campaign-values";
 import {
   campaignTickAudiences,
   campaignTurns,
@@ -27,24 +28,9 @@ import {
   type ResultsFacts,
 } from "./results";
 
-/**
- * Same definition of «bought in its window» as `marketing/merit.ts`, and that is
- * load-bearing: the tick ORDERS the queue with it, so a results screen that counted only
- * `'purchase'` would contradict the ranking of the very campaign it describes.
- *
- * ONE list feeding BOTH shapes, and that is not tidiness. The first version wrote the
- * two literals twice — once for the builder, once inside the raw per-door SQL — and the
- * mutation that narrows it to `'purchase'` came out red in the totals and GREEN in the
- * breakdown: the same screen would have shown 1 of 4 at the top and 2 by the door, with
- * nothing failing. The raw half cannot reuse the builder fragment (drizzle renders the
- * column unqualified and it would bind to the wrong table — `CLAUDE.md`), so what is
- * shared is the VALUES.
- */
-const BOUGHT_OUTCOMES = ["purchase", "coupon_redeemed"] as const;
-const boughtList = sql.join(
-  BOUGHT_OUTCOMES.map((outcome) => sql`${outcome}`),
-  sql`, `,
-);
+/** La definición de «compró en su ventana» sale de `campaign-values.ts`, que es la ÚNICA:
+ * este archivo la usa en sus dos formas (builder y SQL crudo) y otros dos la usan en la
+ * suya. Ver ahí por qué estar sincronizadas es load-bearing. */
 const BOUGHT = sql`${campaignTurns.outcome} in (${boughtList})`;
 const DONE = sql`${campaignTurns.status} = 'done'`;
 
@@ -129,7 +115,10 @@ async function loadCouponFacts(businessId: string, campaignId: string) {
  * column rendered UNQUALIFIED when the select has a single table and silently binds to
  * the inner one (`CLAUDE.md`, measured in A5). Every count is cast to `int`.
  */
-async function loadByLocation(campaignId: string): Promise<LocationRow[]> {
+async function loadByLocation(
+  businessId: string,
+  campaignId: string,
+): Promise<LocationRow[]> {
   const result = await getDb().execute<{
     location_id: string;
     name: string;
@@ -145,12 +134,13 @@ async function loadByLocation(campaignId: string): Promise<LocationRow[]> {
         where t.status = 'done' and t.outcome in (${boughtList})
       )::int as window_purchases,
       (select count(*) from core.coupon_redemption cr
-         where cr.campaign_id = ${campaignId} and cr.location_id = l.id)::int as redemptions
+         where cr.campaign_id = ${campaignId} and cr.location_id = l.id
+           and cr.business_id = ${businessId})::int as redemptions
     from core.campaign_location cl
     join core.location l on l.id = cl.location_id
     left join core.campaign_turn t
       on t.campaign_id = ${campaignId} and t.location_id = l.id
-    where cl.campaign_id = ${campaignId}
+    where cl.campaign_id = ${campaignId} and l.business_id = ${businessId}
     group by l.id, l.name
     order by l.name asc, l.id asc
   `);
@@ -187,9 +177,19 @@ async function loadPassReach(businessId: string) {
 
 /**
  * The facts of one campaign. The caller resolves the 404 — `getCampaign` is what scopes
- * by business — and the two counting queries filter by `business_id` AS WELL, since both
- * tables carry it denormalized: a campaign id that arrived from anywhere else still
- * cannot sum another business's turns or redemptions.
+ * by business — and **every** query here filters by `business_id` AS WELL: a campaign id
+ * that arrived from anywhere else still cannot read another business's numbers.
+ *
+ * DECIA «the two counting queries», Y ERAN DOS DE CUATRO. La revision independiente de la
+ * fase B lo cazo con una sonda: `loadByLocation` no recibia `businessId` y devolvia el
+ * desglose por puerta —nombres de locales, turnos, compras y CANJES— de la campaña de otro
+ * negocio. No era explotable por la ruta (el `getCampaign` 404ea antes, y eso si tiene
+ * oraculo), pero era la defensa en profundidad que este docblock afirmaba tener. El
+ * `where` por negocio va ahora en el `join` de locales Y en el subselect de canjes.
+ *
+ * `loadAudiencePhoto` sigue sin `business_id` a proposito: `campaign_tick_audience` no lo
+ * lleva, su pk es `(campaign_id, ran_at)` y sus cinco conteos son de la campaña, no del
+ * negocio. Queda declarado acá para que nadie lo lea como el mismo olvido.
  */
 export async function loadCampaignResults(
   businessId: string,
@@ -200,7 +200,7 @@ export async function loadCampaignResults(
     loadAudiencePhoto(campaignId),
     loadTurnFacts(businessId, campaignId),
     loadCouponFacts(businessId, campaignId),
-    loadByLocation(campaignId),
+    loadByLocation(businessId, campaignId),
     loadPassReach(businessId),
   ]);
   const facts: ResultsFacts = {

@@ -215,6 +215,48 @@ describe.skipIf(!integrationEnabled)("coupon redemption (spec 0065 C)", () => {
     }
   }, 120_000);
 
+  it("el scan NO pinta el cupon de OTRO negocio, ni el de una campaña pausada", async () => {
+    // LOS DOS ORACULOS QUE FALTABAN (revision independiente de la fase C): de los nueve
+    // predicados del `where` de `loadActiveCoupon`, sólo `outcome` tenía uno. Neutralizar
+    // el scope por negocio dejaba 23/23 en verde — **incluido** el test «a turn of ANOTHER
+    // business is 404», que pasa por el guard del CANJE (ése sí re-chequea el negocio bajo
+    // el lock), no por el de la LECTURA. Sin esto, el mostrador de A pintaría el nombre de
+    // campaña y la etiqueta de una campaña de B para el mismo consumidor, y el botón
+    // contestaría 404: fuga de información entre negocios + botón roto.
+    const other = await seedCouponWorld("Cupon de otro negocio");
+    try {
+      // El MISMO consumidor, con un turno vivo en el negocio ajeno y ninguno en el propio.
+      const card = await newCouponCard(other);
+      const scan = await resolveScan(world.seed.business, card.qrToken);
+      expect(scan.coupon).toBeNull();
+
+      // Y la otra mitad: su propio negocio, pero la campaña pausada.
+      const mine = await newCouponCard(world);
+      expect(
+        (await resolveScan(world.seed.business, mine.qrToken)).coupon,
+      ).not.toBeNull();
+      await getDb()
+        .update(campaigns)
+        .set({ status: "paused", pauseReason: "owner" })
+        .where(eq(campaigns.id, world.campaignId));
+      try {
+        expect(
+          (await resolveScan(world.seed.business, mine.qrToken)).coupon,
+        ).toBeNull();
+      } finally {
+        // El restore va en `finally` y ANTES de cualquier otra asercion: un rojo que
+        // dejara la campaña pausada pondría rojo al caso siguiente por el motivo
+        // equivocado (la lección de C4, en esta misma suite).
+        await getDb()
+          .update(campaigns)
+          .set({ status: "active", pauseReason: null })
+          .where(eq(campaigns.id, world.campaignId));
+      }
+    } finally {
+      await dropCouponWorld(other);
+    }
+  }, 120_000);
+
   it("a holdout turn is refused: the consumer never saw the offer", async () => {
     const card = await newCouponCard(world, { holdout: true });
     await expect(

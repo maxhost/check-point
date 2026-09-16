@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import { convenientDowngradeDate, formatDate } from "./subscription-format";
+import { BLOCK_ACTIONS } from "./block-actions";
 
 /**
  * Spec 0063, D7 / ADR 0058 §8 — EL MODAL DE CONDICIONES DE LA BAJA.
@@ -108,17 +109,3 @@ export function CancelDialog({
     />
   );
 }
-
-/** El destino de cada bloqueo, por `code`. Una tabla y no una cadena de `if`: el día que un
- * tercer bloqueo traiga su propia pantalla, se agrega una fila. Un `code` que no está acá
- * —hoy `already_on_plan`— no tiene link, y eso es una decisión, no un olvido. */
-const BLOCK_ACTIONS: Record<string, { href: string; label: string }> = {
-  downgrade_blocked: {
-    href: "/backoffice/locations",
-    label: "Ir a Locales para archivar",
-  },
-  downgrade_blocked_campaigns: {
-    href: "/backoffice/marketing",
-    label: "Ir a Campañas para desactivar",
-  },
-};

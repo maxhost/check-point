@@ -69,6 +69,15 @@ export type CancelCounts = Record<string, number>;
  * billing, not from the owner — the defensive pause of `billing/webhook-apply.ts`
  * (phase D). `campaign_ended` covers `ended` and `archived`.
  *
+ * ⚠️ LA PRECEDENCIA ESTA DECLARADA Y **NO TIENE ORACULO**, y se dice acá en vez de taparlo:
+ * los seis escenarios de `marketing-cancel.neon.integration.test.ts` rompen UNA condición
+ * cada uno, así que ningún turno viola dos reglas a la vez y **cualquier orden del `case`
+ * pasa** (revisión independiente de la fase A, mutación A2: mover `opt_out` al tope dejó 4
+ * archivos en verde). Se DECLARA en vez de perseguirse porque `cancel_reason` hoy no decide
+ * nada en producción — sólo describe— así que un orden equivocado degrada la calidad del
+ * dato y nada más. El día que alguien lea `cancel_reason` para decidir algo, esto pasa a ser
+ * un bloqueante y el caso que falta es uno solo: un turno que viole DOS condiciones.
+ *
  * ⚠️ `membership_gone` is NOT produced here, and cannot be: `campaign_turn.membership_id`
  * is `not null` with a NO ACTION fk, so deleting a membership that has a live turn
  * fails with `23503` — the state the reason describes is unreachable while the turn

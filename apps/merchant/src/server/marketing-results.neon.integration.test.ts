@@ -236,6 +236,12 @@ describe.skipIf(!integrationEnabled)("campaign results", () => {
       COUPON,
     );
 
+    // EL DESGLOSE POR PUERTA TAMBIEN, y esta linea es el oraculo que faltaba: hasta la
+    // revision independiente de la fase B, `loadByLocation` no recibia `businessId` y
+    // devolvia los nombres de los locales ajenos con sus turnos, compras y CANJES. El
+    // resto de las aserciones de este caso daban 0 igual, asi que el nombre del test
+    // («gets nothing») prometia mas de lo que cubria.
+    expect(results.byLocation.rows).toEqual([]);
     expect(results.turns.done).toBe(0);
     expect(results.windowPurchases.placed).toEqual({ purchases: 0, of: 0 });
     expect(results.coupon.redeemed).toBe(0);

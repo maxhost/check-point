@@ -9,7 +9,10 @@ name: Marketing tick
 # and delete this file.
 #
 # Requires two repo Actions secrets:
-#   MARKETING_TICK_ENDPOINT = https://<prod-domain>/api/internal/marketing-tick
+#   MARKETING_TICK_ENDPOINT = https://www.checkpass.club/api/internal/marketing-tick
+#     ^ CON `www.` Y NO EL APEX: `checkpass.club` hace 308 a `www.`, el `curl` de abajo va
+#       SIN `-L` y compara contra 200, asi que el apex deja este workflow rojo para siempre
+#       con pinta de secret mal cargado (gotcha ya pagado en `CLAUDE.md`).
 #   CRON_SECRET             = same value set in Vercel (the endpoint's Bearer token)
 
 on:
