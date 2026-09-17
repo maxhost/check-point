@@ -187,19 +187,21 @@ despues **agrandar**, que es lo que introduce el dentado. **Sin `density`: 0 pix
 en 24.407 bytes. Con `density: 600`: 38.273 pixeles intermedios en 42.557 bytes.** Se quito la
 opcion: el QR que el comerciante imprime sale mas nitido y **~40% mas liviano**.
 
-### HALLAZGOS A DECIDIR — son del owner, NO estan decididos
+### DECIDIDOS POR EL OWNER el 2026-09-17 — ya no son hallazgos
 
-1. **El wizard fija el `accrual` en `{ per_purchase, grant: 1 }`, y lo eligio el IMPLEMENTADOR,
-   no el owner.** La spec §D4 no lo fijaba y `validateAccrual` no acepta que falte. Esta
-   declarado en el contrato §3 y en el docblock de `program-defaults.ts`. **Si el owner queria
-   otra cosa, es un cambio de una linea.**
-2. **El sello placeholder cambia TRES pantallas, no dos — y una es del CONSUMIDOR.** Con
-   `stampImagePath` siempre no nulo, `card-preview.tsx:46` renderiza la inicial donde antes el
-   slot quedaba vacio. Alcanza `backoffice/loyalty/steps/step-review.tsx`,
-   `steps/step-card-design.tsx` y **`app/(consumer)/wallet/program-card.tsx:39`, la tarjeta que
-   ve el cliente final**. La lista del implementador **omitia la tercera**; la cazo el revisor y
-   el orquestador la verifico en el arbol. Es el efecto buscado por §D5, pero **nadie lo pidio
-   explicitamente para la tarjeta del consumidor**.
+1. **El `accrual` del wizard queda en `{ per_purchase, grant: 1 }`** («un sello por visita»).
+   **Decision del owner, textual: «accrual lo dejamos como esta».** Lo habia elegido el
+   implementador y se le llevo como hallazgo; ahora es decision suya. Sigue siendo **editable**
+   desde el editor de programa de siempre (`saveProgram` reescribe la mecanica en cada guardado),
+   asi que el wizard fija un punto de partida, no algo permanente.
+2. **El sello placeholder queda como se implemento**, y eso incluye que se vea en **TRES**
+   pantallas, una de ellas **del consumidor**: con `stampImagePath` siempre no nulo,
+   `card-preview.tsx:46` renderiza la inicial donde antes el slot quedaba vacio, y eso alcanza
+   `steps/step-review.tsx`, `steps/step-card-design.tsx` y **`app/(consumer)/wallet/
+   program-card.tsx:39`, la tarjeta del cliente final**. Se le mostro al owner la tercera —que la
+   lista del implementador omitia y cazo el revisor— y respondio: **«sello placeholder dejalo
+   como lo implementaste»**. Decision suya, con el efecto en la tarjeta del consumidor a la
+   vista.
 3. **`POST /api/onboarding/business` responde sin `code`**, contra la convencion del contrato
    0067 («todo error responde `{error, code}`»). Se dejo como estaba; el contrato lo **declara
    como estado actual**. Candidato a `PARQUEADO` fila 56.
@@ -314,8 +316,9 @@ success`**, `total checks: 1`, **`no-success: 0`**. Pasos leidos uno por uno del
 1. **Habia 4 suscripciones de Stripe VIVAS** en la base (`plan: plus`, `status: active`, con
    `customer` y `subscription` id): A1, A3 Test ×2 y Negocio B. **El owner dijo «elimina, no te
    preocupes por Stripe»** — asi que los ids se perdieron con el truncate. Si alguna seguia viva
-   del lado de Stripe, **sigue facturando** y sus webhooks llegan sin fila que matchee. Decision
-   del owner, registrada.
+   del lado de Stripe, sus webhooks llegan sin fila que matchee. **CERRADO por el owner el
+   2026-09-17: «olvidate de las suscripciones, es sandbox».** No es deuda y no vuelve a listarse
+   — no hay facturacion real que perseguir.
 2. **`core.terms_template` no es dato de prueba: es SEMILLA**, insertada por la migracion
    `0004_polite_turbo.sql:97`. Truncarla la borraba **para siempre** (esa migracion ya figura
    aplicada, `db:migrate` no la re-ejecuta) y `GET /api/loyalty-terms/templates` habria quedado
@@ -399,8 +402,9 @@ En la 0068 el revisor cazo un oraculo que no existia y la fuga sobrevivia a 1027
   Mientras viva, un owner sin verificar crea sucursales, sube marca, arma campañas y **abre un
   checkout de Stripe**. Las decisiones de contenido ya estan tomadas; falta el cuando.
 - **`PARQUEADO.md` fila 57** — `core.business.status` no existe; pedido del owner para la 3ª spec.
-- **Stripe**: el owner ordeno truncar sin cancelar. Si alguna de las 4 suscripciones seguia viva
-  del lado de Stripe, **sigue facturando** y sus webhooks no matchean ninguna fila.
+- ~~**Stripe**~~ — **CERRADO el 2026-09-17, no es deuda.** El owner: «olvidate de las
+  suscripciones, es sandbox». Las 4 suscripciones truncadas eran de prueba: no hay facturacion
+  real. **No re-listar.**
 - **Las ramas de Neon no se borraron porque ninguna esta sin uso** (ver arriba). Lo que tiene
   sentido es **renombrar** `spec-0065-marketing`, no borrarla.
 
