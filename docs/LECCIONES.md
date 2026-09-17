@@ -454,3 +454,31 @@ del paso 3, cuando ya no habia ruta a la que redirigir.
 spec, y se escribe al lado lo que devuelve hoy.** Si devuelve algo, el criterio dice «exactamente
 estas N lineas y ninguna mas», no «nada». Y **todo destino de redireccion que una spec escriba se
 busca en la lista de lo que esa misma spec borra**.
+
+## El comando de verificacion tambien es una afirmacion: `/status` no ve a GitHub Actions
+
+**La regla que ya estaba y no alcanzo.** «Ninguna afirmacion de exito vale sin una señal que el
+modelo no genero.» El agujero: **la señal venia de un comando que miraba el lugar equivocado**, y un
+comando escrito en `CLAUDE.md` se lee como si alguien ya lo hubiera validado.
+
+**El caso (2026-09-17).** `CLAUDE.md` mandaba verificar con
+`gh api repos/.../commits/<sha>/status --jq '.state'` y exigir `success` para el sha exacto. Se
+pusheo el arco de la spec 0067 y ese comando contesto **`success`** — **con la CI todavia
+`in_progress`**. El orquestador estuvo a punto de reportar «CI verde».
+
+**Por que.** `/status` agrega los **commit statuses** de la API vieja de GitHub. **GitHub Actions no
+publica ahi: publica *check runs***, que es `/check-runs`. En este repo el unico que publica un commit
+status es **Vercel**, asi que `/status` dice `success` en cuanto termina el deploy — y el deploy
+termina **antes** que la suite. Medido: `/status` → `success` (`Vercel: success`) mientras
+`/check-runs` → `verify: in_progress`.
+
+**Por que se cuela.** El comando **tiene forma de verificacion** —es `gh api`, devuelve un estado, se
+puede pegar en un mensaje— y encima estaba escrito en el archivo de reglas, o sea con la autoridad de
+algo ya acordado. Nadie vuelve a preguntarse *que mide*. Es el mismo defecto que los cuatro criterios
+imposibles de la spec 0067, una capa mas arriba: **ahi el DoD era una afirmacion sin correr; aca el
+comando corria, pero sobre el objeto equivocado.**
+
+**La regla.** **Un comando de verificacion se valida contra un caso donde TIENE que dar rojo**, igual
+que un oraculo. Si nunca se lo vio distinguir, no se sabe que mide. Y en concreto para este repo: el
+verde de CI se lee de **`/check-runs`** —todos `completed` + `success`—, nunca de `/status`, que aca
+es el deploy de Vercel y nada mas.

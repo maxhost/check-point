@@ -83,8 +83,12 @@ por el motivo correcto, como se declara un limite— esta en la skill
 pruebas. Los casos que originaron cada regla estan en `docs/LECCIONES.md`.
 
 **Antes de pedirle QA al owner, verificar que prod tenga EL COMMIT que se va a probar** —
-no que "prod este verde". `GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/status
---jq '.state'` tiene que decir `success` para el sha exacto.
+no que "prod este verde". **Y el `/status` NO sirve solo para eso: en este repo devuelve `success`
+con la CI todavia corriendo**, porque agrega los *commit statuses* de la API vieja —donde el unico
+que publica es **Vercel**— y **GitHub Actions reporta como *check runs*, que es otro endpoint**
+(medido el 2026-09-17). El comando que hay que correr:
+`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/check-runs --jq '.check_runs[] |
+"\(.name): \(.status) -> \(.conclusion)"'` — **todos** `completed` y `success`, para el sha exacto.
 
 **Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral que
 nadie acordo va como *hallazgo a decidir*, nunca como «aceptado».
