@@ -253,6 +253,13 @@
       "when": 1789631369660,
       "tag": "0035_categoria_del_negocio",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1789668654754,
+      "tag": "0036_estado_de_la_cuenta_del_negocio",
+      "breakpoints": true
     }
   ]
 }

@@ -108,6 +108,48 @@ nuevas son **mas fuertes** —`loyalty-program.test.ts` pasa de `null` a la ruta
 el `not.toHaveProperty('stampImageObjectKey')`; el `.neon` **agrega** la asercion de que una
 version que no matchea sigue dando `null`—. No es un test ablandado para que pase un gate.
 
+## ⇥ ANDAMIAJE CON SU TAREA: `core.business.status` migrado SOLO (2026-09-17)
+
+**La columna esta en produccion. La feature NO existe.** Esta fila es la que la va a consumir, y
+es lo que autoriza que el esquema se haya aplicado sin su spec (regla de «nada de andamiaje sin su
+tarea»): **si esta fila se borra sin implementarse, la columna se borra con ella.**
+
+**Los tres estados los dicto el owner el 2026-09-17, textual:**
+
+- `active` — opera normal.
+- **`suspended`** — «el staff no puede loguearse, el owner puede loguearse y ver un mensaje de
+  cuenta suspendida con su razon y boton de contacto. Es decir que toda la plataforma quedara
+  inusable, no pueden escanear, no pueden asignar puntos, sellos, cambios en programa, marca, etc.
+  Nada».
+- **`closed`** — «ni staff ni owner puede hacer nada, el negocio queda cerrado, **ni siquiera
+  admite login**».
+
+**Migracion `0036` aplicada a produccion y VERIFICADA POR SQL** (36 → 37): `status` `NOT NULL
+DEFAULT 'active'`, `suspension_reason` y `status_changed_at` nullables, y
+`CHECK (status IN ('active','suspended','closed'))`. Semillas de terminos intactas.
+**La rama de integracion tambien quedo migrada** — sin eso la suite tira **123 fallos** que son un
+`42703 column "status" of relation "business" does not exist`, o sea algo que **parece un bug de
+codigo y es una migracion pendiente**. Con la rama migrada: **1479 passed / 0 failed**.
+
+**⚠️ LO QUE FALTA, Y ES TODO EL TRABAJO — NINGUN GUARD LEE ESA COLUMNA.** Hoy un negocio
+`suspended` esta suspendido en la base y **plenamente operativo en la app**. Para volverlo real
+hay que gatear:
+
+1. **El login**, que es lo que el owner puso primero: el estado se lee en `auth/start`, en el
+   consumo del link magico y en el PIN del staff. **Eso toca superficie de la spec 0067, ya
+   implementada** — no es terreno virgen.
+2. **Las 11 superficies de API del owner** (las mismas de `PARQUEADO` fila 56: conviene hacerlas
+   juntas, es el mismo `requireApiOwner`).
+3. **El mostrador** (`api/counter/{grant,redeem,coupon-redeem,resolve}`).
+
+**Quien ESCRIBE el estado: diferido por el owner** a «las API de admin de CheckPass.club», que no
+existen (`apps/platform` tiene una sola ruta, `/api/health`). Por ahora, `UPDATE` a mano.
+
+**Lo que el owner NO dijo y por lo tanto NO es decision suya:** que pasa del lado del **CONSUMIDOR**
+de un negocio `closed` —los pases de Wallet ya emitidos, los sellos acumulados, el QR de
+enrolamiento que sigue circulando—. Se le pregunto y su respuesta describio la superficie del
+**comercio**. Es la decision que abre la 3ª spec.
+
 ## ⇥ EN PRODUCCION (2026-09-17) — commits `fde3757` + `34cb98b`
 
 **Autorizado por el owner.** Estado verificado, no asumido:

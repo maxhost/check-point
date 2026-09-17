@@ -50,6 +50,36 @@ export const businesses = core.table(
      * `ADD COLUMN ... NOT NULL` sobre una tabla con filas falla sin default, y las
      * ramas de Neon de CI e integracion TIENEN filas aunque produccion este vacia. */
     categoryGcid: text("category_gcid").notNull().default("gcid:store"),
+    /** Estado de la CUENTA del negocio (`PARQUEADO` fila 57). Los tres estados y su
+     * semantica los dicto el owner el 2026-09-17:
+     * - `active`: opera normal.
+     * - `suspended`: **el staff NO puede loguearse**; el owner SI entra, pero lo unico
+     *   que ve es un mensaje de cuenta suspendida con su `suspensionReason` y un boton
+     *   de contacto. Toda la plataforma queda inusable: no se escanea, no se acreditan
+     *   puntos ni sellos, no se edita programa ni marca. Nada.
+     * - `closed`: **no admite NI LOGIN**, ni de owner ni de staff. El negocio esta cerrado.
+     *
+     * **⚠️ ESTA COLUMNA NO HACE NADA TODAVIA: NO HAY UN SOLO GUARD QUE LA LEA.** Se
+     * aplico sola, por pedido explicito del owner, para sacar la migracion del camino de
+     * la **3ª spec del arco** (entitlements), que es la que la va a consumir y la unica
+     * que puede volverla real. Hasta entonces, un negocio `suspended` esta suspendido en
+     * la BASE y **plenamente operativo en la APP**. No confundir que la columna exista
+     * con que la feature funcione. Fila viva en `docs/TASKS.md`.
+     *
+     * Quien ESCRIBE el estado es, por ahora, un `UPDATE` a mano: el owner difirio el
+     * mecanismo a las API de admin de la plataforma, que **no existen** (`apps/platform`
+     * tiene una sola ruta, `/api/health`).
+     *
+     * **Lo que el owner NO dijo y por lo tanto NO esta decidido:** que pasa del lado del
+     * CONSUMIDOR de un negocio `closed` —los pases de Wallet ya emitidos, los sellos ya
+     * acumulados, el QR de enrolamiento que sigue circulando—. Su respuesta describio la
+     * superficie del comercio. Es una decision pendiente de la 3ª spec. */
+    status: text("status").notNull().default("active"),
+    /** El motivo que el owner suspendido ve en pantalla. Sin esta columna el mensaje que
+     * pidio —«informacion de por que fue suspendida su cuenta»— no tiene que mostrar. */
+    suspensionReason: text("suspension_reason"),
+    /** Desde cuando rige el `status` actual; `null` mientras nunca se haya cambiado. */
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
     countryCode: text("country_code").notNull(),
     /** ISO 4217 currency for prices; default derived from the country at migration time. */
     currencyCode: text("currency_code").notNull().default("USD"),
@@ -72,6 +102,10 @@ export const businesses = core.table(
       .defaultNow(),
   },
   (table) => [
+    check(
+      "business_status_check",
+      sql`${table.status} in ('active', 'suspended', 'closed')`,
+    ),
     check(
       "business_primary_color_check",
       sql`${table.brandPrimaryColor} ~ '^#[0-9A-Fa-f]{6}$'`,
