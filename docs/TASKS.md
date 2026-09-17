@@ -8,9 +8,39 @@ Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido,
 cosa vista en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-Ultima actualizacion: 2026-09-16 (**SPEC 0065 COMPLETA, REVISADA Y CERRADA.** Las 4 fases en `main` y pusheadas; el owner hizo QA en prod y **todo funciona** — abre ahora una etapa de CAMBIOS DE PRODUCTO porque la funcionalidad no quedo como esperaba, que es trabajo NUEVO y va con su spec. **La cola de revisiones independientes corrio y cerro: los CUATRO revisores dieron FAIL, ninguno encontro un bug vivo, y los 14 hallazgos ya estan APLICADOS** — ver «LA COLA DE REVISIONES ESTA CERRADA». Solo uno cambiaba codigo de produccion (`loadByLocation` sin filtro por negocio); el resto eran oraculos que faltaban y tres comentarios que mentian. 5 gates verdes sobre el arbol final: `test` = **182 archivos / 1295 tests / 0 failed**, y **7 mutaciones nuevas prueban que cada oraculo nuevo MUERDE**. El tick corre solo cada 6 h con su secret ya cargado.)
+Ultima actualizacion: 2026-09-16 (**SESION DE DISEÑO — NO SE TOCO CODIGO DE `apps/`.** Se definio el arco nuevo: rehacer el alta del comercio como wizard + onboarding, con la UI por fuera (el owner la trabaja con ChatGPT) y esta capa entregando endpoints. Salieron **dos ADRs y una spec**: **ADR 0069** (el harness se repara ANTES del arco) + **spec 0066** que lo implementa, y **ADR 0070** con las decisiones de producto del alta —cuya spec TODAVIA NO EXISTE—. **Lo que sigue al volver: implementar la spec 0066**, en su orden 1→2→3. La spec 0065 sigue cerrada y no quedo trabajo abierto de ella.)
 
-## ⇥ LO QUE SIGUE: RE-PENSAR EL PRODUCTO EN GENERAL (decision del owner, 2026-09-16)
+## ⇥ LO QUE SIGUE: IMPLEMENTAR LA SPEC 0066 (reparacion del harness)
+
+**Punto de entrada de la proxima sesion: `docs/specs/0066-reparacion-del-harness.md`, estado
+`cerrada`.** No hace falta reconstruir nada de la conversacion: las decisiones estan en los ADRs.
+
+**Orden, decidido por el owner y no negociable dentro de la spec:**
+
+1. **Podar `CLAUDE.md`** de 696 a <=200 lineas + reorganizar `docs/`. Nada se borra: se muda a
+   skills, a `docs/LECCIONES.md`, a `docs/PARQUEADO.md` y a `docs/archivo/`.
+2. **Crear `.claude/agents/`** (`implementador`, `revisor`) con el protocolo de mutaciones y **el
+   presupuesto de verificacion adentro**.
+3. **Worktrees usables**: `tools/worktree-new.sh` con `node_modules` propio instalado offline.
+
+**Recien DESPUES de eso** arranca el arco de producto (ADR 0070), y ahi si se paraleliza por slice
+vertical y se escribe el oraculo antes que el codigo.
+
+**Lo que esta decidido y bajado a disco (no repreguntar):** ADR 0069 (harness) y ADR 0070 (alta del
+comercio: wizard de 3 pantallas, sin plan, sin contraseña, staff por handle+PIN, sello placeholder,
+categoria `gcid`, entitlements en una capa, DB desde cero). Las filas ya estan en `docs/INDEX.md`.
+
+**Lo que NO esta decidido** — los 4 hallazgos abiertos al final del ADR 0070: que bloquea la falta de
+verificacion del email, las reglas del slug, la defensa del PIN y el pais fuera de la lista. **Ninguno
+bloquea la spec 0066**; se resuelven al escribir la spec del wizard.
+
+**Presupuesto de verificacion de la 0066, ya declarado en la spec: TRES mutaciones**, una por guard
+nuevo. No se reabre por «quedo una preimagen mas» (ADR 0062).
+
+**Estado del arbol:** `main` limpio, sin mutaciones, sin migraciones pendientes. Los 5 gates NO se
+re-corrieron en esta sesion porque no se toco codigo de `apps/` — solo se agregaron documentos.
+
+## (CUMPLIDA el 2026-09-16) RE-PENSAR EL PRODUCTO EN GENERAL — lo que sigue esta ARRIBA
 
 **La spec 0065 esta CERRADA: implementada, revisada, corregida, commiteada, pusheada y con QA del
 owner en verde.** No queda trabajo abierto de esa spec. Lo que sigue es OTRA cosa.
