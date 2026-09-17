@@ -11,6 +11,10 @@ desactualizado es peor que no tenerlo.
 [ARCHITECTURE.md](ARCHITECTURE.md) reúne las decisiones transversales y enlaza sus ADRs.
 [SCAFFOLD-PLAN.md](SCAFFOLD-PLAN.md) define el recorrido y DoD para preparar el repositorio antes de implementar una feature.
 [REPOSITORY.md](REPOSITORY.md) identifica el remoto canónico y la política de publicación.
+[LECCIONES.md](LECCIONES.md) es el registro historico de `mistake→rule`: cada error observado del agente con su caso, su fecha y la regla que salio de ahi. Salio de `CLAUDE.md` en la spec 0066; **no se referencia con `@`** (un import `@` se carga como si estuviera pegado y anularia la poda).
+[PARQUEADO.md](PARQUEADO.md) es el **unico lugar donde buscar pendientes**: todo lo diferido, parado o pospuesto, con su origen y por que se paro. `TASKS.md` contiene solo el arco en ejecucion (spec 0066).
+[archivo/](archivo/) guarda lo cerrado que ya no se lee seguido: los encargos, revisiones y barridos de fases terminadas, el `TASKS.md` historico (7.185 lineas, hasta 2026-09-16) y el `CLAUDE.md` de 696 lineas previo a la poda. Nada se borro; se movio con `git mv`.
+[.claude/skills/](../.claude/skills/) son las skills que se cargan on demand: `protocolo-de-verificacion` (mutaciones, presupuesto, oraculos, limites) y `gotchas-del-repo` (drizzle, Stripe, Neon, Vercel, pnpm, wallet…). `.claude/agents/` define `implementador` y `revisor` con el protocolo y el presupuesto adentro.
 [wallet-go-live.md](wallet-go-live.md) es el checklist de go-live de los pases de Wallet (Google demo→prod gratis; Apple $99); el código ya está listo, es trámite de cuenta + arte.
 
 ## ADR — decisiones
