@@ -15,12 +15,17 @@ import {
 } from "./counter-integration-support";
 import { getDb } from "./db";
 import { memberships, orders, sessions, users } from "./schema";
-import { createStaff, listStaff, setStaffStatus } from "./staff";
+import { listStaff, setStaffStatus } from "./staff";
+import { createStaff } from "./staff-create";
 import { listTodaysAccreditations } from "./counter/history";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 
-const uniqueEmail = () => `staff-${randomUUID()}@example.test`;
+/** Spec 0067 §4: el alta recibe SOLO el nombre; el `slug` sale del negocio, nunca del body. */
+const ownerBusiness = (seed: Seed) => ({
+  id: seed.business.id,
+  slug: seed.slug,
+});
 
 describe.skipIf(!integrationEnabled)(
   "staff service against Neon (spec 0043)",
@@ -51,15 +56,15 @@ describe.skipIf(!integrationEnabled)(
     });
 
     it("creates a staff user + membership (staff/active) without touching the owner", async () => {
-      const email = uniqueEmail();
-      const dto = await createStaff(a.business, {
+      const { staff: dto, pin } = await createStaff(ownerBusiness(a), {
         name: "Ana Staff",
-        email,
-        password: "supersecret",
       });
       expect(dto.role).toBe("staff");
       expect(dto.status).toBe("active");
-      expect(JSON.stringify(dto)).not.toContain("supersecret");
+      expect(dto.identifier).toBe(`ana-staff@${a.slug}`);
+      // El PIN viaja en la respuesta del alta y en ninguna otra parte del DTO.
+      expect(pin).toMatch(/^[0-9]{6}$/);
+      expect(JSON.stringify(dto)).not.toContain(pin);
 
       const [row] = await getDb()
         .select({ role: memberships.role, status: memberships.status })
@@ -85,28 +90,15 @@ describe.skipIf(!integrationEnabled)(
       expect(owners.map((o) => o.userId)).toEqual([a.userId]);
     }, 60_000);
 
-    it("rejects a duplicate email with 409", async () => {
-      const email = uniqueEmail();
-      await createStaff(a.business, {
-        name: "Uno",
-        email,
-        password: "supersecret",
-      });
-      await expect(
-        createStaff(a.business, {
-          name: "Dos",
-          email,
-          password: "supersecret",
-        }),
-      ).rejects.toMatchObject({ status: 409 });
+    it("resolves a handle collision with a suffix instead of failing", async () => {
+      const uno = await createStaff(ownerBusiness(a), { name: "Repetido" });
+      const dos = await createStaff(ownerBusiness(a), { name: "Repetido" });
+      expect(uno.staff.identifier).toBe(`repetido@${a.slug}`);
+      expect(dos.staff.identifier).toBe(`repetido-2@${a.slug}`);
     }, 60_000);
 
     it("deactivating revokes sessions + blocks; reactivating restores", async () => {
-      const staff = await createStaff(a.business, {
-        name: "Beto",
-        email: uniqueEmail(),
-        password: "supersecret",
-      });
+      const { staff } = await createStaff(ownerBusiness(a), { name: "Beto" });
       // Seed a live session for the staff to prove revocation deletes it.
       await getDb()
         .insert(sessions)
@@ -120,7 +112,7 @@ describe.skipIf(!integrationEnabled)(
         });
 
       const disabled = await setStaffStatus(
-        a.business,
+        ownerBusiness(a),
         staff.userId,
         "disabled",
       );
@@ -138,7 +130,7 @@ describe.skipIf(!integrationEnabled)(
       expect(stillThere?.id).toBe(staff.userId);
 
       const reactivated = await setStaffStatus(
-        a.business,
+        ownerBusiness(a),
         staff.userId,
         "active",
       );
@@ -147,17 +139,15 @@ describe.skipIf(!integrationEnabled)(
 
     it("never deactivates the owner (409) and isolates across businesses (404)", async () => {
       await expect(
-        setStaffStatus(a.business, a.userId, "disabled"),
+        setStaffStatus(ownerBusiness(a), a.userId, "disabled"),
       ).rejects.toMatchObject({ status: 409 });
 
-      const staffOfA = await createStaff(a.business, {
+      const { staff: staffOfA } = await createStaff(ownerBusiness(a), {
         name: "Cara",
-        email: uniqueEmail(),
-        password: "supersecret",
       });
       // Business B cannot touch A's staff.
       await expect(
-        setStaffStatus(b.business, staffOfA.userId, "disabled"),
+        setStaffStatus(ownerBusiness(b), staffOfA.userId, "disabled"),
       ).rejects.toMatchObject({ status: 404 });
 
       // listStaff is business-scoped.
@@ -166,11 +156,7 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("a staff member can accredit (reuses spec 0030) and the day history is scoped", async () => {
-      const staff = await createStaff(a.business, {
-        name: "Dana",
-        email: uniqueEmail(),
-        password: "supersecret",
-      });
+      const { staff } = await createStaff(ownerBusiness(a), { name: "Dana" });
       const consumer = await seedConsumer();
       const resolved = await resolveScan(a.business, consumer.qrToken);
       const result = await grantAccrual(a.business, staff.userId, {

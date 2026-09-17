@@ -1,4 +1,5 @@
 import {
+  boolean,
   check,
   integer,
   jsonb,
@@ -12,6 +13,8 @@ import {
 import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
 import { users } from "./auth";
+
+const SLUG_PLACEHOLDER = sql`'b-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 20)`;
 
 export const ownerProfiles = core.table("owner_profile", {
   userId: text("user_id")
@@ -31,6 +34,13 @@ export const businesses = core.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
+    /** Spec 0067 §1: unico GLOBAL. Se deriva del nombre al crear el negocio y NO lo sigue
+     * (ADR 0070 §12): es a la vez el login del staff (`handle@slug`) y la URL publica.
+     * El DEFAULT **no es la regla de producto** —esa es `slugify(name)` en la ruta de
+     * alta— sino un placeholder: `ADD COLUMN ... NOT NULL` sobre una tabla con filas
+     * falla sin default, y al ser VOLATIL Postgres lo evalua por fila, asi que el indice
+     * unico no choca. `b-` + 20 hex = 22 chars, dentro de la forma. */
+    slug: text("slug").notNull().default(SLUG_PLACEHOLDER),
     countryCode: text("country_code").notNull(),
     /** ISO 4217 currency for prices; default derived from the country at migration time. */
     currencyCode: text("currency_code").notNull().default("USD"),
@@ -71,6 +81,7 @@ export const businesses = core.table(
       "business_currency_code_check",
       sql`${table.currencyCode} ~ '^[A-Z]{3}$'`,
     ),
+    uniqueIndex("core_business_slug_unique").on(table.slug),
   ],
 );
 
@@ -135,6 +146,13 @@ export const memberships = core.table(
     role: text("role").notNull().default("owner"),
     /** `active` operates; `disabled` keeps identity + audit but has no access (ADR 0044). */
     status: text("status").notNull().default("active"),
+    /** Spec 0067 §4: parte local del login del staff (`handle@slug`), unica POR NEGOCIO.
+     * `handle` y `pin_hash` (hash, nunca el PIN) son NULLABLE en el tipo y obligatorios
+     * por CHECK solo cuando `role='staff'`: el owner entra por email y no tiene ninguno. */
+    handle: text("handle"),
+    pinHash: text("pin_hash"),
+    pinMustChange: boolean("pin_must_change").notNull().default(true),
+    pinUpdatedAt: timestamp("pin_updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -148,6 +166,14 @@ export const memberships = core.table(
     check(
       "business_membership_status_check",
       sql`${table.status} in ('active', 'disabled')`,
+    ),
+    check(
+      "business_membership_staff_identity_check",
+      sql`${table.role} <> 'staff' or (${table.handle} is not null and ${table.pinHash} is not null)`,
+    ),
+    uniqueIndex("core_business_membership_handle_unique").on(
+      table.businessId,
+      table.handle,
     ),
   ],
 );

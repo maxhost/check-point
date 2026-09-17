@@ -119,7 +119,17 @@ describe.skipIf(!integrationEnabled)(
       // `marketing-backoffice-pages.neon.integration.test.ts`; `analytics` is the only
       // one still on the spec 0015 mock.
       expect(html).toContain("/backoffice/demo/analytics");
-      expect(html).toContain('href="/backoffice/staff"');
+      // Spec 0067 §7-quinquies — this line USED to assert `href="/backoffice/staff"`, a
+      // second real screen kept here as anti-false-green. That screen was DELETED (owner's
+      // decision, 2026-09-17), so its subject no longer exists: this is not a test edited
+      // to turn a gate green, it is a test whose object was removed, and the coverage it
+      // gave —that the `staff` tile pointed at the real section— is GONE with it. What
+      // replaces it is the oracle of the deletion itself: the tile must not be rendered at
+      // all. Both spellings matter — dropping `staff` from `realModules` while leaving it
+      // in `modules` would silently fall back to the spec 0015 mock, which is a live
+      // placeholder page and not a 404.
+      expect(html).not.toContain("/backoffice/staff");
+      expect(html).not.toContain("/backoffice/demo/staff");
     }, 60_000);
   },
 );

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { type CSSProperties, useEffect, useState } from "react";
 import {
   analyticsFixtures,
@@ -31,9 +30,6 @@ export default function AnalyticsPage() {
       <main className="merchant-shell">
         <div className="module-placeholder">
           <h1>Primero completa el onboarding</h1>
-          <Link className="button" href="/onboarding">
-            Ir al onboarding
-          </Link>
         </div>
       </main>
     );

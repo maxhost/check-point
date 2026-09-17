@@ -28,6 +28,9 @@ export type Seed = {
   userId: string;
   locationId: string;
   programId: string;
+  /** Spec 0067 §1: el `slug` es unico GLOBAL, asi que el seed escribe uno propio en vez
+   * de dejar el `DEFAULT` de la migracion. Es la mitad derecha de `handle@slug`. */
+  slug: string;
 };
 
 /** Seeds a business with an owner, a location, and an accreditable loyalty program. */
@@ -57,9 +60,11 @@ export async function seedBusiness(opts: {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+  const slug = `int-${businessId.slice(0, 20)}`;
   await db.insert(businesses).values({
     id: businessId,
     name: opts.name,
+    slug,
     countryCode: "EC",
     timezone: "America/Guayaquil",
     currencyCode: "USD",
@@ -94,6 +99,7 @@ export async function seedBusiness(opts: {
     userId,
     locationId,
     programId,
+    slug,
   };
 }
 
@@ -142,13 +148,20 @@ export async function seedMember(opts: {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+  const role = opts.role ?? "staff";
   await getDb()
     .insert(memberships)
     .values({
       businessId: opts.businessId,
       userId,
-      role: opts.role ?? "staff",
+      role,
       status: opts.status ?? "active",
+      // Spec 0067 §4: el CHECK `business_membership_staff_identity_check` exige `handle` y
+      // `pin_hash` cuando `role='staff'`. El hash es un centinela deliberado —no verifica
+      // contra ningun PIN— porque estos seeds prueban el mostrador, no el login.
+      ...(role === "staff"
+        ? { handle: `seed-${userId.slice(-12)}`, pinHash: "seed-sin-pin" }
+        : {}),
     });
   return userId;
 }

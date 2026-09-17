@@ -65,8 +65,10 @@ export type SubscriptionSectionProps = {
 
 /**
  * ALLOW-LIST DE PRESENTACIÓN, compartida por la home (`app/backoffice/page.tsx`) y la
- * sección. Patrón de `app/login/login-notice.ts` (ADR 0055): un status desconocido NUNCA
- * llega crudo al DOM.
+ * sección. Mismo patrón que la TABLA DE CÓDIGOS DE REBOTE del contrato
+ * (`docs/specs/0067-contratos-de-api.md`, ADR 0055): un status desconocido NUNCA llega
+ * crudo al DOM. El ejemplo canónico vivía en la pantalla de acceso vieja, que la spec
+ * 0067 §7 borró; la allow-list se mudó al contrato.
  *
  * Vive acá y no en la página porque hoy la home hace
  * `Plan {plan === "plus" ? "Plus" : "Free"} · {status === "active" ? "activo" :
@@ -107,8 +109,9 @@ export const planLabel: PlanLabel = (plan) => {
   }
 };
 
-/** Traducción del STATUS crudo de Stripe (D5.e lo guarda sin colapsar). Patrón de
- * `app/login/login-notice.ts` (ADR 0055): un status desconocido nunca llega crudo al DOM.
+/** Traducción del STATUS crudo de Stripe (D5.e lo guarda sin colapsar). Mismo patrón que
+ * la tabla de códigos de rebote del contrato (`docs/specs/0067-contratos-de-api.md`, ADR
+ * 0055): un status desconocido nunca llega crudo al DOM.
  * Ojo con el caso que motivó la allow-list: `canceled` no puede decir «confirmando pago». */
 export const statusLabel: StatusLabel = (status) => {
   switch (status) {

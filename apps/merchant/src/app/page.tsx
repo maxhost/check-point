@@ -1,19 +1,10 @@
-import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { getMerchantAuth } from "../server/auth";
-
-export const dynamic = "force-dynamic";
-
-export default async function MerchantEntryPage() {
-  const session = await getMerchantAuth().api.getSession({
-    headers: await headers(),
-  });
-  // A logged-in owner goes straight to the backoffice; everyone else sees the landing.
-  if (session) redirect("/backoffice");
-
-  // Minimal landing — structure only, no visual design yet (spec 0045). Two actions:
-  // access (login) and create a business (registration wizard).
+// Spec 0067 §7: la landing queda sin NINGUNA accion y sin rebote a `/backoffice`.
+// Los tres `redirect` del guard apuntan aca (`/`, `/?e=<codigo>`), asi que si esta pagina
+// volviera a mandar una sesion viva al backoffice, un owner sin email verificado —o una
+// sesion sin membresia— entraria en un bucle de redireccion infinito en vez de ver el
+// motivo del rebote. El producto no tiene entrada por navegador hasta que aterrice la UI
+// de afuera: costo aceptado por el owner (ADR 0070 §17).
+export default function MerchantEntryPage() {
   return (
     <main className="merchant-shell">
       <section className="panel login-panel">
@@ -22,13 +13,6 @@ export default async function MerchantEntryPage() {
         <p>
           Sumá clientes con tu programa de puntos o sellos, acreditá desde el
           mostrador y llegá a tus clientes por su billetera.
-        </p>
-        <Link className="button" href="/login">
-          Acceder
-        </Link>
-        <p>
-          ¿Aún no tienes cuenta? <Link href="/onboarding">Crea tu negocio</Link>
-          .
         </p>
       </section>
     </main>

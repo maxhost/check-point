@@ -10,8 +10,9 @@ export const runtime = "nodejs";
  * different id over the same turn is 409 `already_redeemed`.
  *
  * `requireOperator`, NOT `requireBackofficeSession`: the latter is a PAGE guard that
- * answers with `redirect("/login")`, which on a POST is a 307 and not the 401/403 the
- * spec's isolation item demands. Same guard `redeem`, `grant` and `resolve` already use.
+ * answers with `redirect("/")` — spec 0067 §7 retargeted it there when the sign-in page
+ * was deleted —, which on a POST is a 307 and not the 401/403 the spec's isolation item
+ * demands. Same guard `redeem`, `grant` and `resolve` already use.
  */
 export async function POST(request: Request) {
   const auth = await requireOperator(request);

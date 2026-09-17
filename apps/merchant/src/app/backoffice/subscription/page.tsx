@@ -230,8 +230,10 @@ async function readFacts(ids: {
 }
 
 /** El aviso de vuelta de Stripe Checkout y de una operación propia, por ALLOW-LIST: un valor
- * que no esté acá no imprime nada. El patrón es el de `app/login/login-notice.ts` (ADR
- * 0055), y el motivo es el mismo — un `?done=` viene de la URL, o sea del atacante. */
+ * que no esté acá no imprime nada. El patrón es el de la tabla de códigos de rebote del
+ * contrato (`docs/specs/0067-contratos-de-api.md`, ADR 0055) — la allow-list que vivía en la
+ * pantalla de acceso vieja, borrada por la spec 0067 §7 —, y el motivo es el mismo: un
+ * `?done=` viene de la URL, o sea del atacante. */
 function noticeFor(params: {
   checkout?: string;
   done?: string;

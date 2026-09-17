@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { read, save, type DemoState } from "../../../demo";
 import { ModuleHeader, Toast } from "../../../components/ui";
@@ -19,9 +18,6 @@ export default function LocationsPage() {
       <main className="merchant-shell">
         <div className="module-placeholder">
           <h1>Primero completa el onboarding</h1>
-          <Link className="button" href="/onboarding">
-            Ir al onboarding
-          </Link>
         </div>
       </main>
     );

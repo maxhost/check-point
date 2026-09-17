@@ -1,8 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, magicLink } from "better-auth/plugins";
 import { getDb } from "./db";
-import { passwordResetEmail } from "./email/channel";
+import { magicLinkEmail, passwordResetEmail } from "./email/channel";
 import { emailChannelFromEnv } from "./email/provider";
 import * as schema from "./schema";
 
@@ -32,14 +32,12 @@ export function getMerchantAuth() {
         verification: schema.verifications,
       },
     }),
-    emailAndPassword: {
-      enabled: true,
-      minPasswordLength: 8,
-      // The emailOTP reset path revokes sessions ONLY when this flag is on — verified
-      // in better-auth 1.6.26 (`plugins/email-otp/routes.mjs`, resetPasswordEmailOTP).
-      // A recovered account must kill every session opened with the old password.
-      revokeSessionsOnPasswordReset: true,
-    },
+    // Spec 0067 §2 / ADR 0070 §4: la identidad del merchant NO tiene contraseña. El owner
+    // entra escribiendo su email (`POST /api/merchant/auth/start`) y vuelve con un link
+    // magico; el staff entra con `handle@slug` + PIN por ruta propia. Sin `emailAndPassword`
+    // better-auth deja de montar `/sign-in/email` y `/sign-up/email` —pinneado en
+    // `merchant-auth-disabled-paths.test.ts`— y `revokeSessionsOnPasswordReset` deja de
+    // existir junto con el arco de recuperacion, que esta spec borra entero (§5).
     plugins: [
       emailOTP({
         otpLength: 6,
@@ -53,6 +51,29 @@ export function getMerchantAuth() {
           // Other OTP types are unreachable by design; never deliver a code for them.
           if (type !== "forget-password") return;
           const { subject, html, text } = passwordResetEmail(otp);
+          await emailChannelFromEnv().sendEmail({
+            to: email,
+            subject,
+            html,
+            text,
+          });
+        },
+      }),
+      magicLink({
+        // 15 minutos: el owner abre el mail en el momento. El token se consume una sola
+        // vez (`consumeVerificationValue`, better-auth 1.6.26).
+        expiresIn: 900,
+        // El alta de cuentas vive en UN solo lugar: `POST /api/merchant/auth/start`. Con
+        // `disableSignUp: false` un token cuyo `user` fue borrado entre el envio y el
+        // click crearia una cuenta por esta puerta, salteando el rate limit de `start`.
+        disableSignUp: true,
+        // El link NO apunta al endpoint de better-auth —esta en `disabledPaths`— sino a
+        // nuestra ruta `GET /api/merchant/auth/magic-link`, que es la que consume el
+        // token via `auth.api.magicLinkVerify` (`auth.api.*` no pasa por `disabledPaths`).
+        sendMagicLink: async ({ email, token }) => {
+          const url = new URL("/api/merchant/auth/magic-link", baseURL);
+          url.searchParams.set("token", token);
+          const { subject, html, text } = magicLinkEmail(url.toString());
           await emailChannelFromEnv().sendEmail({
             to: email,
             subject,
@@ -80,6 +101,12 @@ export function getMerchantAuth() {
       "/email-otp/change-email",
       "/forget-password/email-otp",
       "/sign-in/email-otp",
+      // Spec 0067 §2: los DOS unicos endpoints que publica el plugin `magicLink`, medidos
+      // en `dist/plugins/magic-link/index.mjs` (`createAuthEndpoint("/sign-in/magic-link")`
+      // y `"/magic-link/verify"`). Por HTTP saltearian nuestro rate limit por IP y el
+      // registro de intentos; el consumo va por ruta propia via `auth.api.*`.
+      "/sign-in/magic-link",
+      "/magic-link/verify",
     ],
     secret,
     baseURL,

@@ -34,7 +34,7 @@ import {
  * —«actúa sobre el negocio del CALLER, nunca sobre uno nombrado en el request»— vale para las
  * cinco rutas. Lo que hace SEGURO usar `ownerContext` (que devuelve el negocio más viejo,
  * `staff.ts:33`) es que el onboarding rechaza un segundo negocio por usuario
- * (`api/onboarding/business/route.ts:89-99`, 409) — [R2-M6].
+ * (la ruta del alta del negocio contesta 409 al segundo) — [R2-M6].
  */
 
 /** Error de dominio de billing: status HTTP + `code` estable + mensaje. Calcado de

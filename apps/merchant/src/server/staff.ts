@@ -1,24 +1,37 @@
 import { and, asc, eq } from "drizzle-orm";
-import { APIError } from "better-auth/api";
-import { getMerchantAuth } from "./auth";
 import { getDb } from "./db";
 import { businesses, memberships, sessions, users } from "./schema";
 
-/** Typed domain error: HTTP status + user message. Mirrors CounterError/BrandError. */
+/**
+ * Typed domain error: HTTP status + user message. Mirrors CounterError/BrandError.
+ *
+ * El `code` es **estable** y es lo que consume la UI de afuera: los mensajes son copia y
+ * se pueden reescribir, los codigos no. Estan listados en
+ * `docs/specs/0067-contratos-de-api.md`, que es el oraculo del revisor.
+ */
 export class StaffError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code: string = "staff_error",
   ) {
     super(message);
   }
 }
 
-/** Public staff row: never serializes a password hash, session token or account id. */
+/**
+ * Public staff row: never serializes a PIN, a hash, a session token or an account id.
+ *
+ * `email` sigue en el DTO con el **email sintetico** de la spec 0067 §4 (ver
+ * {@link syntheticEmail}) y NO es un canal: existe porque `merchant_auth.user.email` es
+ * `NOT NULL` con unico. Lo que el owner reparte es `identifier` (`handle@slug`).
+ */
 export type StaffDTO = {
   userId: string;
   name: string;
   email: string;
+  /** `handle@slug` — el identificador con el que el integrante entra al mostrador. */
+  identifier: string;
   role: string;
   status: string;
   createdAt: string;
@@ -26,20 +39,27 @@ export type StaffDTO = {
 
 export type StaffStatus = "active" | "disabled";
 
+/** Spec 0067 §4: el owner escribe **solo el nombre**. Ni email, ni contraseña, ni slug. */
 export type CreateStaffInput = {
   name: string;
-  email: string;
-  password: string;
 };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** El PIN en claro viaja **una sola vez**, en la respuesta del alta o de la regeneracion. */
+export type CreatedStaff = {
+  staff: StaffDTO;
+  pin: string;
+};
 
 /** The owner's (active) business, or null. `api/staff/*` are owner-only + business-scoped. */
 export async function ownerContext(
   userId: string,
-): Promise<{ id: string; currencyCode: string } | null> {
+): Promise<{ id: string; slug: string; currencyCode: string } | null> {
   const [row] = await getDb()
-    .select({ id: businesses.id, currencyCode: businesses.currencyCode })
+    .select({
+      id: businesses.id,
+      slug: businesses.slug,
+      currencyCode: businesses.currencyCode,
+    })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
     .where(
@@ -54,33 +74,13 @@ export async function ownerContext(
   return row ?? null;
 }
 
-/** Validates + normalizes the alta body. Throws 400 on a bad field or short password. */
-function parseCreateStaffInput(value: unknown): CreateStaffInput {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new StaffError(400, "El cuerpo no es válido.");
-  }
-  const body = value as Record<string, unknown>;
-  const rawName = typeof body.name === "string" ? body.name.trim() : "";
-  const name = rawName || null;
-  const email =
-    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const password = typeof body.password === "string" ? body.password : "";
-  if (!name) throw new StaffError(400, "El nombre es obligatorio.");
-  if (!EMAIL_RE.test(email))
-    throw new StaffError(400, "El email no es válido.");
-  if (password.length < 8) {
-    throw new StaffError(
-      400,
-      "La contraseña debe tener al menos 8 caracteres.",
-    );
-  }
-  return { name, email, password };
-}
-
-function toStaffDTO(row: {
+/** Forma publica de una fila de staff. Lo comparten el listado, la baja y el alta. */
+export function toStaffDTO(row: {
   userId: string;
   name: string;
   email: string;
+  handle: string | null;
+  slug: string;
   role: string;
   status: string;
   createdAt: Date;
@@ -89,83 +89,11 @@ function toStaffDTO(row: {
     userId: row.userId,
     name: row.name,
     email: row.email,
+    identifier: row.handle ? `${row.handle}@${row.slug}` : "",
     role: row.role,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
   };
-}
-
-/**
- * Creates a staff user for the owner's business (ADR 0044): provisions the user via
- * better-auth `signUpEmail` (correct password hash; NEVER a raw insert) and DISCARDS the
- * returned session — the owner's cookie is untouched (no nextCookies plugin) — then inserts
- * the `role='staff', status='active'` membership. A duplicate email → 409.
- */
-export async function createStaff(
-  business: { id: string },
-  value: unknown,
-): Promise<StaffDTO> {
-  const input = parseCreateStaffInput(value);
-
-  const [existing] = await getDb()
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, input.email))
-    .limit(1);
-  if (existing) throw new StaffError(409, "Ese email ya está en uso.");
-
-  let userId: string;
-  try {
-    const result = await getMerchantAuth().api.signUpEmail({
-      body: { name: input.name, email: input.email, password: input.password },
-    });
-    userId = result.user.id;
-  } catch (error) {
-    if (error instanceof APIError) {
-      // The only expected functional failure after validation is a duplicate email.
-      throw new StaffError(409, "Ese email ya está en uso.");
-    }
-    throw new StaffError(
-      503,
-      "No pudimos crear al integrante. Intenta de nuevo.",
-    );
-  }
-
-  try {
-    const [row] = await getDb()
-      .insert(memberships)
-      .values({
-        businessId: business.id,
-        userId,
-        role: "staff",
-        status: "active",
-      })
-      .returning({
-        role: memberships.role,
-        status: memberships.status,
-        createdAt: memberships.createdAt,
-      });
-    return toStaffDTO({
-      userId,
-      name: input.name,
-      email: input.email,
-      role: row.role,
-      status: row.status,
-      createdAt: row.createdAt,
-    });
-  } catch {
-    // Roll back the just-created auth user so the email is not burned (a user without an
-    // active membership can't enter, but leaving it would make re-adding that email 409
-    // forever). FK cascades drop its account/session rows.
-    await getDb()
-      .delete(users)
-      .where(eq(users.id, userId))
-      .catch(() => {});
-    throw new StaffError(
-      503,
-      "No pudimos crear al integrante. Intenta de nuevo.",
-    );
-  }
 }
 
 /** All staff of a business (role='staff'), oldest first. DTOs carry no secrets. */
@@ -175,12 +103,15 @@ export async function listStaff(businessId: string): Promise<StaffDTO[]> {
       userId: users.id,
       name: users.name,
       email: users.email,
+      handle: memberships.handle,
+      slug: businesses.slug,
       role: memberships.role,
       status: memberships.status,
       createdAt: memberships.createdAt,
     })
     .from(memberships)
     .innerJoin(users, eq(users.id, memberships.userId))
+    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
     .where(
       and(
         eq(memberships.businessId, businessId),
@@ -198,15 +129,15 @@ export async function listStaff(businessId: string): Promise<StaffDTO[]> {
  * the owner (an owner is never deactivated). Business-scoped → cross-business is a 404.
  */
 export async function setStaffStatus(
-  business: { id: string },
+  business: { id: string; slug: string },
   targetUserId: string,
   status: unknown,
 ): Promise<StaffDTO> {
   if (status !== "active" && status !== "disabled") {
-    throw new StaffError(400, "El estado no es válido.");
+    throw new StaffError(400, "El estado no es válido.", "invalid_status");
   }
   if (typeof targetUserId !== "string" || !targetUserId) {
-    throw new StaffError(400, "El integrante no es válido.");
+    throw new StaffError(400, "El integrante no es válido.", "invalid_target");
   }
 
   const [target] = await getDb()
@@ -219,9 +150,14 @@ export async function setStaffStatus(
       ),
     )
     .limit(1);
-  if (!target) throw new StaffError(404, "Ese integrante no existe.");
+  if (!target)
+    throw new StaffError(404, "Ese integrante no existe.", "staff_not_found");
   if (target.role === "owner") {
-    throw new StaffError(409, "No puedes desactivar al owner del negocio.");
+    throw new StaffError(
+      409,
+      "No puedes desactivar al owner del negocio.",
+      "target_is_owner",
+    );
   }
 
   const [row] = await getDb()
@@ -236,6 +172,7 @@ export async function setStaffStatus(
     .returning({
       role: memberships.role,
       status: memberships.status,
+      handle: memberships.handle,
       createdAt: memberships.createdAt,
     });
 
@@ -253,6 +190,8 @@ export async function setStaffStatus(
     userId: targetUserId,
     name: profile?.name ?? "",
     email: profile?.email ?? "",
+    handle: row.handle,
+    slug: business.slug,
     role: row.role,
     status: row.status,
     createdAt: row.createdAt,

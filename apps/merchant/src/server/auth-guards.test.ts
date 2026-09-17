@@ -1,7 +1,7 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { loginNotice } from "../app/login/login-notice";
 
 // Redirect throws a tagged error so we can assert the destination without a real router.
 class Redirected extends Error {
@@ -17,7 +17,9 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 
-let sessionValue: { user: { id: string; name: string } } | null = null;
+let sessionValue: {
+  user: { id: string; name: string; emailVerified?: boolean };
+} | null = null;
 let membershipRow: Record<string, unknown> | undefined;
 /** Every `db.delete(table).where(cond)` the guard issued, in order. */
 let deletes: Array<{ table: unknown; where: SQL }> = [];
@@ -43,6 +45,7 @@ vi.mock("./db", () => {
 });
 
 import {
+  EMAIL_NOT_VERIFIED,
   requireBackofficeSession,
   requireOwner,
   STAFF_DISABLED,
@@ -75,24 +78,28 @@ describe("backoffice guards by role (ADR 0044)", () => {
     deletes = [];
   });
 
-  it("no session → /login", async () => {
+  // Spec 0067 §7 / mutación #6: la pantalla de acceso vieja fue BORRADA. Un `redirect` a
+  // una ruta que ya no existe convierte un rebote en un 404, así que el destino es parte
+  // del contrato del guard y no decoración. Apuntadas al destino viejo, estas tres
+  // aserciones seguirían pasando contra un producto roto — por eso viven acá.
+  it("no session → /", async () => {
     sessionValue = null;
-    expect(await destinationOf(requireBackofficeSession)).toBe("/login");
+    expect(await destinationOf(requireBackofficeSession)).toBe("/");
   });
 
-  it("session but no membership → /onboarding", async () => {
-    sessionValue = { user: { id: "u1", name: "Ana" } };
+  it("session but no membership → /", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = undefined;
-    expect(await destinationOf(requireBackofficeSession)).toBe("/onboarding");
+    expect(await destinationOf(requireBackofficeSession)).toBe("/");
   });
 
   // ADR 0055 / spec 0057: the bounce says why, and leaves no live session behind.
-  it("disabled membership → /login with the reason, and revokes the session first", async () => {
-    sessionValue = { user: { id: "u1", name: "Ana" } };
+  it("disabled membership → / with the reason, and revokes the session first", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = { ...owner, role: "staff", status: "disabled" };
 
     expect(await destinationOf(requireBackofficeSession)).toBe(
-      "/login?e=staff_disabled",
+      "/?e=staff_disabled",
     );
 
     // The redirect throws NEXT_REDIRECT: if the revocation moved after it, or was
@@ -104,14 +111,58 @@ describe("backoffice guards by role (ADR 0044)", () => {
     expect(params).toEqual(["u1"]);
   });
 
-  // Pins the guard's reason code to the copy the login shows; they live in two files.
-  it("the reason the guard emits is the one the login can translate", () => {
-    expect(STAFF_DISABLED).toBe("staff_disabled");
-    expect(loginNotice(STAFF_DISABLED)).toBe("Miembro del staff desactivado");
+  // El código que el guard emite y su TRADUCCIÓN vivían en dos archivos (el segundo, en
+  // la pantalla de acceso vieja); esa página se borró y la allow-list se mudó al
+  // CONTRATO, que es lo que lee quien construye la UI de afuera. El par sigue pinneado:
+  // un código que el guard emite y el contrato no documenta deja a la UI sin qué decir.
+  it("los códigos que el guard emite están en la tabla del contrato", () => {
+    const contrato = readFileSync(
+      new URL(
+        "../../../../docs/specs/0067-contratos-de-api.md",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    // Piso: sin esto, un archivo vacío o movido pasaría este test en verde.
+    expect(contrato.length).toBeGreaterThan(5_000);
+    expect(contrato).toContain("## Códigos de rebote");
+    for (const code of [STAFF_DISABLED, EMAIL_NOT_VERIFIED]) {
+      expect(contrato).toContain(`\`${code}\``);
+    }
+  });
+
+  // Mutación #3: el gate de email verificado NO puede alcanzar al staff. Un integrante no
+  // tiene email por diseño (`@staff.invalid`), así que si el gate lo alcanzara el
+  // mostrador quedaría muerto para siempre y ninguna acción lo podría desbloquear.
+  it("staff con email SIN verificar entra igual al mostrador", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: false } };
+    membershipRow = { ...owner, role: "staff", status: "active" };
+    const ctx = await requireBackofficeSession();
+    expect(ctx.membership).toEqual({ role: "staff", status: "active" });
+    expect(deletes).toEqual([]);
+  });
+
+  it("owner con email SIN verificar → /?e=email_not_verified, sin revocar nada", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: false } };
+    membershipRow = { ...owner };
+    expect(await destinationOf(requireBackofficeSession)).toBe(
+      "/?e=email_not_verified",
+    );
+    // El gate BLOQUEA, no expulsa: la sesión sigue viva para poder verificar.
+    expect(deletes).toEqual([]);
+  });
+
+  // Fail-closed: una fila vieja o un doble incompleto no puede ABRIR el gate.
+  it("owner sin el campo `emailVerified` también rebota", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana" } };
+    membershipRow = { ...owner };
+    expect(await destinationOf(requireBackofficeSession)).toBe(
+      "/?e=email_not_verified",
+    );
   });
 
   it("active staff passes the session guard but requireOwner sends it to the counter", async () => {
-    sessionValue = { user: { id: "u1", name: "Ana" } };
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = { ...owner, role: "staff", status: "active" };
     const ctx = await requireBackofficeSession();
     expect(ctx.membership).toEqual({ role: "staff", status: "active" });
@@ -121,7 +172,7 @@ describe("backoffice guards by role (ADR 0044)", () => {
   });
 
   it("active owner reaches an owner-only page", async () => {
-    sessionValue = { user: { id: "u1", name: "Ana" } };
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = { ...owner };
     const ctx = await requireOwner();
     expect(ctx.membership.role).toBe("owner");

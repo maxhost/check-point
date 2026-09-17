@@ -24,10 +24,11 @@ import {
 } from "./billing-webhook-support";
 import { dropBusiness, type Seed } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
-import { getMerchantAuth } from "./auth";
 import { getDb } from "./db";
-import { memberships } from "./schema";
-import { createStaff, setStaffStatus } from "./staff";
+import { businesses, memberships } from "./schema";
+import { setStaffStatus } from "./staff";
+import { createStaff } from "./staff-create";
+import { openMerchantSession } from "./merchant-session";
 
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
@@ -59,31 +60,34 @@ const ROUTES: [
   ["settle-free", SETTLE_FREE, {}],
 ];
 
-async function signIn(email: string, password: string): Promise<string> {
-  const response = await getMerchantAuth().api.signInEmail({
-    body: { email, password },
-    asResponse: true,
-  });
-  expect(response.status).toBe(200);
-  return response.headers
-    .getSetCookie()
-    .map((cookie) => cookie.split(";")[0])
-    .join("; ");
+/**
+ * Abre una sesión real para `userId` y devuelve la cookie lista para el header `cookie`.
+ *
+ * Spec 0067 §4: el staff YA NO tiene contraseña, así que `signInEmail` dejó de servir para
+ * sembrar la sesión de este test. Se usa el mismo `openMerchantSession` que usa el login
+ * por `handle@slug` + PIN — o sea que sigue siendo una sesión de verdad, creada por
+ * `internalAdapter.createSession`, no un doble.
+ */
+async function signIn(userId: string): Promise<string> {
+  const cookie = await openMerchantSession(userId);
+  return cookie.split(";")[0];
 }
 
-const PASSWORD = "supersecret-integration";
-
-/** Crea un miembro con contraseña real y devuelve su cookie de sesión. `promote` lo convierte
+/** Crea un miembro y devuelve su cookie de sesión. `promote` lo convierte
  * en owner por SQL, y `status` lo deja activo o desactivado. */
 async function member(
   business: Seed["business"],
   opts: { role: "owner" | "staff"; status: "active" | "disabled" },
 ): Promise<{ cookie: string; userId: string }> {
-  const email = `billing-gate-${randomUUID()}@example.test`;
-  const staff = await createStaff(business, {
-    name: "Gate",
-    email,
-    password: PASSWORD,
+  // El `slug` se lee de la fila: `createStaff` lo necesita para armar `handle@slug` y en
+  // producción sale de la sesión del owner, nunca del cuerpo (spec 0067 §4).
+  const [row] = await getDb()
+    .select({ slug: businesses.slug })
+    .from(businesses)
+    .where(eq(businesses.id, business.id));
+  const owner = { id: business.id, slug: row.slug };
+  const { staff } = await createStaff(owner, {
+    name: `Gate ${randomUUID().slice(0, 8)}`,
   });
   if (opts.role === "owner") {
     await getDb()
@@ -110,12 +114,12 @@ async function member(
           ),
         );
     } else {
-      await setStaffStatus(business, staff.userId, "disabled");
+      await setStaffStatus(owner, staff.userId, "disabled");
     }
   }
   // La sesión se abre DESPUÉS de desactivar: `setStaffStatus` revoca las sesiones vivas, así
   // que una cookie sacada antes daría 401 y el test estaría midiendo otra cosa.
-  return { cookie: await signIn(email, PASSWORD), userId: staff.userId };
+  return { cookie: await signIn(staff.userId), userId: staff.userId };
 }
 
 describe.skipIf(!integrationEnabled)(

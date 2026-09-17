@@ -21,9 +21,6 @@ export default function OwnerHomePage() {
           <p className="eyebrow">Backoffice</p>
           <h1>Primero configura tu negocio</h1>
           <p>Necesitamos el nombre de tu negocio y al menos una sucursal.</p>
-          <Link className="button" href="/onboarding">
-            Ir al onboarding
-          </Link>
         </div>
       </main>
     );

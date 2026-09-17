@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { type DemoState, read, save } from "../../../demo";
 import {
@@ -35,9 +34,6 @@ export default function LoyaltyPage() {
       <main className="merchant-shell">
         <div className="module-placeholder">
           <h1>Primero completa el onboarding</h1>
-          <Link className="button" href="/onboarding">
-            Ir al onboarding
-          </Link>
         </div>
       </main>
     );

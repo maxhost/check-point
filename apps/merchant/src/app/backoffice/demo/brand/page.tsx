@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { read, save, type DemoState } from "../../../demo";
 import { ModuleHeader, Toast } from "../../../components/ui";
@@ -23,9 +22,6 @@ export default function BrandPage() {
       <main className="merchant-shell">
         <div className="module-placeholder">
           <h1>Primero completa el onboarding</h1>
-          <Link className="button" href="/onboarding">
-            Ir al onboarding
-          </Link>
         </div>
       </main>
     );

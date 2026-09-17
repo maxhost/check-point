@@ -33,12 +33,19 @@ export default async function BackofficePage() {
   // `/backoffice/marketing`. DECISION OF THE ORCHESTRATOR, not the owner: the path
   // moves, the slug stays. Renaming the slug instead would touch the demo route, its
   // sessionStorage key and the mock screens of spec 0015 for a cosmetic win.
+  //
+  // `staff` left BOTH structures in spec 0067 §7-quinquies (owner's decision, 2026-09-17):
+  // `/backoffice/staff` was deleted because it posted fields the server ignores and never
+  // read the `pin`, throwing away the member's only credential on every alta. It had to
+  // leave the `modules` list too, not just this Map: dropping it from the Map ALONE would
+  // have fallen back to the spec 0015 mock (`/backoffice/demo/staff`, a real placeholder
+  // page) — resurrecting a screen instead of removing it. The capability lives in
+  // `/api/staff/*`, which the UI built outside consumes.
   const realModules = new Map([
     ["counter", "/backoffice/counter"],
     ["loyalty", "/backoffice/loyalty"],
     ["catalog", "/backoffice/catalog"],
     ["locations", "/backoffice/locations"],
-    ["staff", "/backoffice/staff"],
     ["brand", "/backoffice/brand"],
     ["subscription", "/backoffice/subscription"],
     ["campaigns", "/backoffice/marketing"],
@@ -57,7 +64,6 @@ export default async function BackofficePage() {
     ],
     ["Catálogo", "Declara los productos que vende tu negocio.", "catalog"],
     ["Locales", "Gestiona las sucursales de tu negocio.", "locations"],
-    ["Staff", "Organiza el equipo que opera tus locales.", "staff"],
     ["Marca", "Personaliza cómo se ve tu negocio.", "brand"],
     ["Analíticas", "Entiende visitas, beneficios y actividad.", "analytics"],
     [

@@ -225,6 +225,27 @@
       "when": 1789530718105,
       "tag": "0031_secret_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1789609918917,
+      "tag": "0032_hot_gunslinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789616454908,
+      "tag": "0033_borra_el_arco_de_recuperacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1789616462551,
+      "tag": "0034_rate_limit_del_auth_start",
+      "breakpoints": true
     }
   ]
 }

@@ -2,8 +2,9 @@
 // file-size budget; every `from "./schema"` import resolves here unchanged.
 export * from "./schema/_schemas";
 export * from "./schema/auth";
-export * from "./schema/merchant-recovery";
+export * from "./schema/auth-start";
 export * from "./schema/business";
+export * from "./schema/staff-pin";
 export * from "./schema/loyalty";
 export * from "./schema/loyalty-reward";
 export * from "./schema/consumer";

@@ -419,3 +419,38 @@ rompe las pantallas vivas y deja al producto sin entrada hasta que aterrice la U
 («entre una evidencia mas y una pantalla que el owner pueda probar, gana la pantalla»). Ese conflicto
 no lo resuelve el agente por su cuenta: **se sube al owner como decision**, con sus opciones y su
 costo. Esta como item BLOQUEANTE en la seccion «Abierto» de la spec 0067.
+
+## Un criterio de DoD que nunca se corrio contra el arbol es una afirmacion sin verificar
+
+**La regla que ya estaba y no alcanzo.** «Ninguna afirmacion de exito vale sin una señal que el
+modelo no genero.» Lo que faltaba era su espejo en el momento de **escribir** la spec: un DoD es una
+afirmacion sobre el arbol —«este comando va a dar vacio»— y se verifica igual que cualquier otra,
+**corriendolo**, antes de cerrarla.
+
+**El caso (2026-09-16, spec 0067).** La spec se cerro con **cuatro** criterios imposibles de
+cumplir, y ninguno lo era por una decision equivocada: los cuatro eran afirmaciones que nadie
+ejecuto.
+
+1. `rg '/login|/onboarding|/forgot-password' apps/merchant/src` **no puede dar vacio**:
+   `api/onboarding/business/route.ts` es una ruta que **la misma spec manda editar**.
+2. El mismo barrido matchea `recovery-routes.test.ts:56` («session/onboarding tokens»), que es el
+   arco del **consumidor**, declarado fuera de alcance **por la misma spec**.
+3. `rg 'forgot-password'` tampoco puede dar cero: la **§1 de la misma spec** manda esa palabra en
+   `RESERVED_SLUGS`, con piso aseverado y con `PASS` de un revisor.
+4. La §3 mandaba `redirect('/onboarding?v=1')` para el owner sin verificar… y **la §7 de la misma
+   spec borra `/onboarding`**.
+
+**Los cuatro son autocontradicciones internas**, no choques con el mundo. Y los cuatro habrian caido
+con **un solo `rg` corrido antes de cerrar**.
+
+**Por que se cuela.** Un DoD se escribe en el modo «que quiero que sea verdad», que es el mismo modo
+en el que se escribe el resto de la spec. El comando `rg` **parece** una verificacion —tiene forma de
+comando— y por eso desarma la sospecha: se lee como si ya se hubiera corrido. Los tres primeros los
+cazo el orquestador re-midiendo el doc antes de despachar (la regla «lo que le pasas a un subagente
+es una afirmacion tuya» funciono); **el cuarto lo cazo el implementador chocandose con el**, a mitad
+del paso 3, cuando ya no habia ruta a la que redirigir.
+
+**La regla.** **Todo criterio de DoD que sea un comando se corre contra el arbol ANTES de cerrar la
+spec, y se escribe al lado lo que devuelve hoy.** Si devuelve algo, el criterio dice «exactamente
+estas N lineas y ninguna mas», no «nada». Y **todo destino de redireccion que una spec escriba se
+busca en la lista de lo que esa misma spec borra**.

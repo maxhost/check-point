@@ -1,7 +1,7 @@
 ---
 spec: 0067
 fecha: 2026-09-16
-estado: cerrada
+estado: implementada
 resumen: Primera tajada del ADR 0070. La identidad del merchant deja de tener contraseña: el owner entra escribiendo su email (link magico despues), el staff deja de tener email y entra con `nombre@slug` + PIN de 6 digitos hasheado con bloqueo escalado propio, el email verificado pasa a ser el PRIMER paso del onboarding y bloquea todo lo posterior al wizard, y se BORRA entero el arco de recuperacion de contraseña. Incluye el slug del negocio (unico, global, que NO sigue al nombre) y el borrado de la base. Entrega API + el contrato HTTP escrito que consume quien construya la UI por fuera, y **borra la UI de identidad vieja** (`/login`, `/onboarding`, `/forgot-password`) con sus 10 referencias colgantes: el producto queda sin entrada por navegador hasta que aterrice la UI nueva, y eso es costo aceptado por el owner.
 disjunta: si
 archivos: SOLO servidor y endpoints (la UI la construye el owner por fuera). apps/merchant/src/server/auth.ts · auth-guards.ts · staff.ts · staff-pin.ts (nuevo) · slug.ts (nuevo) · schema/business.ts · app/api/merchant/auth/* (nuevo) · app/api/staff/* · app/api/merchant/recovery/* (borrar) · app/forgot-password/* (borrar) · server/recovery/* (borrar) · middleware.ts · drizzle/ · docs/specs/0067-contratos-de-api.md (nuevo) · BORRA app/login/, app/onboarding/, app/forgot-password/ y limpia enlaces muertos en app/page.tsx, not-found.tsx, sign-out-button.tsx y 5 demo/
@@ -164,8 +164,27 @@ paginas del backoffice **y del mostrador**, no repartido por pantalla.
 
 - Se aplica **solo cuando `membership.role === 'owner'`**. El staff no tiene email por diseño: si
   el gate lo alcanzara, el mostrador quedaria inutilizable para siempre.
-- Owner con `emailVerified === false` → `redirect('/onboarding?v=1')`. `/onboarding` **no** esta
-  detras del guard, asi que no hay bucle de redireccion.
+- Owner con `emailVerified === false` → **`redirect('/?e=email_not_verified')`**.
+  **CORREGIDO el 2026-09-16 al implementar el paso 3, y es el CUARTO criterio imposible de esta
+  spec** (los otros tres son barridos `rg`, corregidos en §7-bis y en el DoD): esta linea decia
+  `/onboarding?v=1`, pero **la §7 de esta misma spec borra `/onboarding`**, asi que cumplirla al pie
+  rompia el borrado y su barrido. El destino es `/`, la unica ruta de pantalla que sobrevive, con el
+  motivo por el **mismo canal `?e=`** que ya usa `staff_disabled` — una sola allow-list para la UI de
+  afuera, ya escrita en la tabla de codigos de rebote del contrato.
+- **El bucle de redireccion era real y NO lo abria este gate:** `app/page.tsx` rebotaba la sesion
+  viva a `/backoffice`, y con los tres `redirect` del guard yendo a `/`, el caso «sesion viva sin
+  membresia» cerraba `/` → `/backoffice` → `/`. Se resolvio **borrando** ese rebote (solo lineas
+  `-`). **Consecuencia no pedida por el owner, declarada:** un usuario logueado que pide `/` ve la
+  landing en vez de ir al backoffice — irrelevante mientras no haya entrada por navegador, pero es
+  un cambio de comportamiento. **Y la trampa para la spec que reponga logica de sesion ahi:** al
+  sacar el rebote se fue tambien `force-dynamic` y `/` pasa a prerenderizarse estatica; si vuelve a
+  leer `headers()` sin reponerlo, **rompe el build**.
+- **Como SALE el owner del rebote** (verificado por el revisor leyendo `email_verified` por SQL, no
+  el objeto de sesion): **consumir el link magico verifica el email** — better-auth 1.6.26 hace
+  `revokeUnprovenAccountAccess` + `updateUser({emailVerified:true})` antes de crear la sesion. Hay
+  **dos** salidas, las dos verdes: `POST /api/merchant/auth/verify-email` con la sesion viva, y
+  volver a `POST /api/merchant/auth/start` con el mismo email (que ahora es «conocido»). **El
+  producto no queda cerrado con llave.**
 - Mismo gate en las rutas de API owner-only (`requireOwner`, `auth-guards.ts:98`), respondiendo
   **403 `email_not_verified`** en vez de redirigir.
 - El envio y el consumo del mail de verificacion usan el canal que ya existe
@@ -316,9 +335,116 @@ escribir la sonda contra el lugar equivocado**. Se actualizan los dos, y lo mism
 **Consecuencia declarada:** `app/page.tsx` queda sin ninguna accion —texto y nada mas— y el
 producto no tiene entrada por navegador. Es el costo aceptado de la salida A, no un descuido.
 
+#### 7-bis. El censo re-medido antes de despachar (2026-09-16, orquestador)
+
+La tabla de arriba decia «10 referencias en 8 archivos» y **se quedaba corta**. Re-medido sobre el
+arbol con `rg -n '/login|/onboarding|/forgot-password' apps/merchant/src`: **20 archivos no-test**
+mas **7 archivos de test**. Lo que la tabla NO listaba y sobrevive al borrado:
+
+| Archivo | Referencia medida | Que se hace |
+|---|---|---|
+| `server/billing/view.ts:68` | docblock «Patron de `app/login/login-notice.ts` (ADR 0055)» | reapuntar la cita a la tabla de codigos del contrato; el patron sobrevive, el archivo no |
+| `server/billing/view.ts:111` | idem | idem |
+| `app/backoffice/subscription/page.tsx:233` | idem | idem (es un docblock: **no** agrega controles a la pantalla, sigue siendo un `M` de solo `-`/comentario) |
+
+**Y el chequeo mecanico del DoD, tal como estaba escrito, es IMPOSIBLE de satisfacer.** Hay dos
+coincidencias que **tienen que sobrevivir**:
+
+1. `app/api/billing/_auth.ts:37` cita `api/onboarding/business/route.ts:89-99` — y esa ruta esta en
+   la tabla de «Archivos» de esta spec como **editar** (es la que persiste el `slug`). El patron
+   `/onboarding` la matchea siempre.
+2. `server/recovery-routes.test.ts:56` dice `"verify keeps session/onboarding tokens HttpOnly…"` —
+   es el arco de recuperacion del **consumidor**, que esta spec declara explicitamente fuera de
+   alcance y **no se toca**.
+
+El barrido correcto, que es el que corre el revisor:
+
+```sh
+rg -n '/login|/forgot-password' apps/merchant/src            # tiene que dar VACIO
+rg -n '/onboarding' apps/merchant/src -g '!src/app/api/onboarding/**' \
+  | grep -v 'session/onboarding'                             # tiene que dar VACIO
+```
+
+#### 7-ter. Los tests que la spec no nombraba (medidos, con su destino)
+
+Cuatro archivos de test tocan lo que se borra y **ninguno estaba en la tabla de «Archivos»**. El
+repo prohibe editar o borrar un test para que el gate pase, asi que cada uno lleva su destino
+escrito **antes** de que el implementador lo encuentre:
+
+| Test | Que lo ata | Destino |
+|---|---|---|
+| `server/auth-guards.test.ts` | importa `../app/login/login-notice` (`:4`) y asevera los tres destinos (`:78`, `:86`, `:95`) | **SE ACTUALIZA, NO SE BORRA.** Es el oraculo de la mutacion #6: los destinos pasan a `/` y `/?e=staff_disabled`. Borrarlo dejaria el guard sin oraculo y la #6 quedaria verde |
+| `src/middleware.test.ts` | pinnea el 503 y el matcher `["/forgot-password"]` de la spec 0046 | se borra junto con `middleware.ts` (ver abajo) |
+| `server/billing-click-probe.test.ts` | importa `../app/onboarding/page` (`:45`) y lo ejercita en `describe("el click del ALTA del onboarding")` (`:263`) | **se borra SOLO ese `describe` y el import**; los otros dos (`:203`, consola de suscripcion) quedan intactos. El archivo no se borra |
+| `server/recovery-routes.test.ts` | es recuperacion del **consumidor** | **NO SE TOCA** |
+
+**Oraculo que se pierde, declarado y no escondido:** el `describe` del alta es la sonda **R19** de la
+spec 0063 —«`app/onboarding/page.tsx` mandando `from: "subscription"` quedaba 66/66 VERDE porque el
+test transcribia el body a mano»—. Su sujeto es la pantalla que el owner mando borrar, asi que la
+cobertura desaparece con ella: no es un test editado para poner verde un gate, es un test cuyo
+objeto dejo de existir. **Cuando la UI de afuera reponga el alta, el cableado del `from:` vuelve a
+quedar sin sonda** y hay que reponerla en la spec que la construya.
+
+#### 7-quater. `middleware.ts` se BORRA entero, no se edita
+
+La tabla de «Archivos» decia «editar — sacar la rama `PASSWORD_RECOVERY_ENABLED`». Medido: el
+archivo **existe unicamente** para ese gate (14 lineas de cuerpo, un solo `if`), su
+`config.matcher` es `["/forgot-password"]` y **nada en `src` lo importa**. Sacarle la rama deja un
+middleware vacio corriendo sobre una ruta que ya no existe — andamiaje sin tarea, que el repo
+prohibe. Se borran `src/middleware.ts` y `src/middleware.test.ts`.
+
 **Lo que NO se borra en esta spec, y por que:** el backoffice, el mostrador y las paginas `demo`
 siguen en pie. No son parte del refactor de identidad y sacarlos seria ampliar el alcance por
 cuenta propia; se borraran cuando su propia spec del arco los reemplace.
+
+#### 7-quinquies. La consola de staff se BORRA — decision del owner del 2026-09-17 (PASO 4)
+
+**Los pasos 1, 2 y 3 estan implementados y tienen `PASS` de revisor independiente.** Esta seccion es
+alcance **agregado despues**, por decision explicita del owner, y por eso la spec vuelve a `cerrada`:
+tiene un paso 4 sin implementar.
+
+**Que la motiva.** La §7 decia textual que el backoffice **no** se borra en esta spec. Eso se escribio
+antes de saber lo que despues midio un revisor: `app/backoffice/staff/staff-console.tsx` postea
+`{name, email, password}` a `/api/staff` —campos que el servidor ya ignora—, **nunca lee el `pin` de
+la respuesta** y muestra el email sintetico `@staff.invalid` como si fuera un contacto. Como el PIN se
+ve **una sola vez**, cada alta hecha por esa pantalla **tira a la basura la unica credencial del
+integrante**, y la unica salida es regenerar.
+
+**La decision del owner (2026-09-17), textual:** *«Si quiero que se vaya ahora, no quiero dejar
+archivos sueltos porque luego acabaremos con archivos sin uso o "legacy" que ensucian todo.»*
+
+**Alcance, medido antes de encargarlo — se va la SECCION entera, no solo el componente:**
+
+| Archivo | Que se hace | Por que |
+|---|---|---|
+| `app/backoffice/staff/staff-console.tsx` | **borrar** | es la pantalla que pierde la credencial |
+| `app/backoffice/staff/page.tsx` | **borrar** | **no tiene contenido propio**: son 11 lineas que hacen `requireOwner` + `listStaff` y renderizan la consola. Sin el componente queda un archivo huerfano, que es exactamente lo que el owner no quiere |
+| `app/backoffice/page.tsx:41` | quitar la fila `["staff", "/backoffice/staff"]` de `realModules` | un enlace a una ruta borrada es un 404, y la limpieza de referencias es **parte** del borrado (ADR 0070 §17) |
+| `server/locations-backoffice-pages.neon.integration.test.ts:122` | actualizar la asercion `href="/backoffice/staff"` | su sujeto deja de existir. **NO es editar un test para que un gate pase**: es un test cuyo objeto se borro, y se declara |
+
+**Lo que NO se toca:** la API de staff (`/api/staff/*`, el PIN, la regeneracion) no se mueve. Esto
+borra la **pantalla**, no la capacidad.
+
+> **CORRECCION del orquestador (2026-09-17), medida por el revisor del paso 4 y reproducida:** el
+> parrafo de arriba decia *«la API de staff **entera** sigue en pie — es lo que consume la UI
+> nueva»*, y **eso es falso como estaba escrito**. Verificado: **no existe ningun `GET` bajo
+> `app/api/staff/`**, y el unico llamador de `listStaff` (`server/staff.ts:100`) es su propio test.
+> Consecuencia real, que es peor que «una funcion exportada sin usar»: **dos de las cuatro rutas de
+> staff quedan inalcanzables para un integrante preexistente** —`POST /api/staff/[userId]/pin/regenerate`
+> y `POST /api/staff/[userId]/status` exigen un `userId` que la UI de afuera **solo puede obtener del
+> 201 del alta que acaba de hacer en esa misma sesion**—. **No es un defecto del borrado**: el agujero
+> existia desde el paso 2 y la pantalla borrada lo tapaba.
+>
+> **NO se arregla reabriendo esta spec por cuarta vez**: es literalmente «el fix abrio la preimagen
+> siguiente», y la condicion de corte manda cortar. Va a la spec siguiente del arco, con su fila en
+> `docs/TASKS.md` para que `listStaff` no quede como andamiaje sin dueño. **Y el fix tiene una trampa
+> escrita de antemano:** `StaffDTO` lleva `email`, que es el sintetico `@staff.invalid`; un `GET` que
+> lo serialice le devuelve al navegador **el mismo contacto falso que motivo borrar la pantalla**. O
+> se omite del DTO, o el contrato lo marca como no-contacto.
+
+**Consecuencia declarada:** el modulo «staff» desaparece de la grilla del backoffice. Como el paso 3
+ya dejo el producto **sin entrada por navegador**, nadie puede llegar ahi igual; el borrado quita el
+archivo, no una funcion viva.
 
 #### 8. El contrato de API es un entregable, no documentacion opcional
 
@@ -353,7 +479,12 @@ sugerido, para que la UI nueva no tenga que re-derivarlos.
 | `apps/merchant/src/app/api/onboarding/business/route.ts` | editar — genera y persiste el `slug` |
 | `apps/merchant/src/app/api/merchant/business/slug/route.ts` | crear — `PATCH`, cambio explicito y **posterior** al alta |
 | `docs/specs/0067-contratos-de-api.md` | crear — **contrato HTTP normativo; entregable, no anexo** |
-| `apps/merchant/src/middleware.ts` | editar — sacar la rama `PASSWORD_RECOVERY_ENABLED` |
+| `apps/merchant/src/middleware.ts` | **borrar entero** — existe solo para el gate de `/forgot-password` y nada lo importa (§7-quater) |
+| `apps/merchant/src/middleware.test.ts` | **borrar** — muere con el middleware |
+| `apps/merchant/src/server/auth-guards.test.ts` | editar — **actualizar** los 3 destinos y sacar el import de `login-notice`; es el oraculo de la mutacion #6, NO se borra |
+| `apps/merchant/src/server/billing-click-probe.test.ts` | editar — borrar SOLO el `describe` del alta y su import; los otros dos quedan (§7-ter) |
+| `apps/merchant/src/server/billing/view.ts` | editar — reapuntar 2 docblocks que citan `login-notice.ts` |
+| `apps/merchant/src/app/backoffice/subscription/page.tsx` | editar — reapuntar 1 docblock que cita `login-notice.ts` |
 | `apps/merchant/src/app/forgot-password/` | **borrar** |
 | `apps/merchant/src/app/login/` | **borrar entera**, `login-notice.ts` incluido — su allow-list pasa a ser una tabla del contrato |
 | `apps/merchant/src/app/onboarding/` | **borrar** |
@@ -394,20 +525,28 @@ antes (ver «Archivos compartidos»).
       declara y la ruta no emite (o al reves) es un FAIL.
 - [ ] **Ningun archivo de pantalla se crea, y ninguno gana controles.** Chequeo mecanico sobre
       `git diff --name-status`: fuera de `app/api/`, **todo lo que toque `app/` tiene que ser `D`
-      (borrado) o un `M` cuyo diff sea solo lineas `-`**. Un `A`, o un `M` con lineas `+` de JSX
-      fuera de `api/`, es un FAIL: es la firma de haber construido UI.
-- [ ] **`rg -n '/login|/onboarding|/forgot-password' apps/merchant/src` no devuelve NADA** — ni
-      codigo ni comentarios. Las 10 referencias vivas de hoy estan listadas en la seccion 7; los
-      docblocks que las describen (`auth-guards.ts:9-12` y `:36-42`,
-      `api/counter/coupon-redeem/route.ts:13`) cuentan como referencias y entran en el mismo
-      barrido: un docblock que afirma un destino que ya no existe es el caso que el protocolo del
+      (borrado) o un `M` cuyo diff sea solo lineas `-` o lineas de COMENTARIO**. La unica `+` de
+      pantalla admitida es la del docblock de `subscription/page.tsx:233` que reapunta la cita a
+      `login-notice.ts` (§7-bis). Un `A`, o un `M` con lineas `+` de JSX fuera de `api/`, es un
+      FAIL: es la firma de haber construido UI.
+- [ ] **El barrido de la §7-bis no devuelve NADA** — ni codigo ni comentarios:
+      `rg -n '/login|/forgot-password' apps/merchant/src` vacio, y
+      `rg -n '/onboarding' apps/merchant/src -g '!src/app/api/onboarding/**' | grep -v 'session/onboarding'`
+      vacio. **Ojo: el barrido ingenuo de las tres rutas juntas es imposible de dejar en cero** —
+      `api/onboarding/business/route.ts` sobrevive (es la que persiste el `slug`) y
+      `recovery-routes.test.ts:56` es del consumidor; estan medidos en la §7-bis. Las referencias a
+      limpiar son las de la §7 **mas las tres de la §7-bis**, y los docblocks
+      (`auth-guards.ts:9-12` y `:36-42`, `api/counter/coupon-redeem/route.ts:13`,
+      `billing/view.ts:68` y `:111`, `subscription/page.tsx:233`) cuentan como referencias: un
+      docblock que afirma un destino o un archivo que ya no existe es el caso que el protocolo del
       repo señala como inductor de sondas mal apuntadas.
 - [ ] Un usuario **sin sesion** que pide `/backoffice` termina en **`/`, no en un 404**; un staff
       `disabled` termina en **`/?e=staff_disabled`**, con el codigo `STAFF_DISABLED` intacto.
 - [ ] `POST /api/merchant/auth/start` con un email **desconocido** devuelve 200 **y una cookie de
       sesion**; con un email **conocido** devuelve 200 **sin cookie de sesion** y con `sent: true`.
-- [ ] Un owner con `email_verified = false` que pide `/backoffice` es redirigido a `/onboarding`;
-      con `true`, entra. Una ruta owner-only responde **403 `email_not_verified`**.
+- [ ] Un owner con `email_verified = false` que pide `/backoffice` es redirigido a
+      **`/?e=email_not_verified`** (NO a `/onboarding`, que esta spec borra — ver §3); con `true`,
+      entra. Una ruta owner-only responde **403 `email_not_verified`**.
 - [ ] Un **staff** con `email_verified = false` **entra al mostrador** (el gate no lo alcanza).
 - [ ] `createStaff` no recibe email ni contraseña, devuelve el PIN en claro **una sola vez**, y
       `select pin_hash from ...` **no** contiene ese PIN.
@@ -421,8 +560,13 @@ antes (ver «Archivos compartidos»).
 - [ ] Renombrar el negocio **no cambia el `slug`** (leido por SQL antes y despues).
 - [ ] Un `slug` reservado y uno con forma invalida son rechazados con 4xx; un `slug` duplicado
       devuelve 409 con sugerencia.
-- [ ] `rg -n "PASSWORD_RECOVERY_ENABLED|forgot-password|merchant-recovery" apps/merchant/src` no
-      devuelve **nada**.
+- [ ] `rg -n "PASSWORD_RECOVERY_ENABLED|merchant-recovery" apps/merchant/src` no devuelve **nada**,
+      y el de `forgot-password` devuelve **exactamente dos lineas y ninguna mas**:
+      `server/slug.ts` y `server/slug.test.ts`, que son la palabra **reservada** que la §1 de esta
+      misma spec manda tener en `RESERVED_SLUGS` con piso aseverado. **El barrido original pedia
+      cero y era imposible de cumplir** — el tercero de la misma familia, despues de los dos que
+      corrigio la §7-bis: quitar esa entrada violaria la §1 y liberaria un slug que tiene que seguir
+      reservado. Medido el 2026-09-16 al cerrar el paso 3.
 - [ ] Gates de root en verde con Node 24: `typecheck`, `lint`, `test`, `format:check`, `build`.
 
 ## Plan de pruebas y verificación

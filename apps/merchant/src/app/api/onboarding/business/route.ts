@@ -16,6 +16,10 @@ import {
   verifyLocation,
 } from "../../../../server/location-providers";
 import { isIanaTimezone } from "../../../../server/timezone";
+import {
+  isUniqueViolation,
+  slugForNewBusiness,
+} from "../../../../server/business-slug";
 import { currencyForCountry } from "../../../../lib/currencies";
 
 type CreateBusinessInput = {
@@ -97,6 +101,12 @@ export async function POST(request: Request) {
         { status: 409 },
       );
     }
+    // EL SLUG SE GENERA Y SE PERSISTE ACÁ (spec 0067 §1). Pasa por `slugForNewBusiness`,
+    // no por `slugify` a secas: la derivación puede caer en una palabra RESERVADA
+    // (`"Admin"` → `"admin"`) o colapsar a `"000"` todo nombre sin caracteres latinos, y
+    // en los dos casos el comercio se llevaría puesto un identificador que no debería
+    // tener. La unicidad la decide `core_business_slug_unique`, no esta lectura.
+    const slug = await slugForNewBusiness(name);
     await db.batch([
       db
         .insert(ownerProfiles)
@@ -108,6 +118,7 @@ export async function POST(request: Request) {
       db.insert(businesses).values({
         id: businessId,
         name,
+        slug,
         countryCode,
         timezone,
         currencyCode: currencyForCountry(countryCode),
@@ -147,8 +158,16 @@ export async function POST(request: Request) {
         status: "active",
       }),
     ]);
-    return NextResponse.json({ businessId }, { status: 201 });
-  } catch {
+    return NextResponse.json({ businessId, slug }, { status: 201 });
+  } catch (error) {
+    // El TOCTOU del slug: entre leer los tomados y escribir cabe otra alta con el mismo
+    // nombre. El comerciante no eligió este valor —el wizard no muestra el campo—, así que
+    // devolverle un 409 con una sugerencia no tendría a quién ofrecérsela: el 503 le dice
+    // que reintente y el reintento deriva el siguiente libre.
+    console.error("onboarding_business_failed", {
+      name: error instanceof Error ? error.name : typeof error,
+      slugConflict: isUniqueViolation(error),
+    });
     return NextResponse.json(
       { error: "No pudimos guardar tu negocio. Intenta nuevamente." },
       { status: 503 },

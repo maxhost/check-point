@@ -42,7 +42,6 @@ vi.mock("react", async (importOriginal) => {
 import { subscriptionOffers, type SubscriptionView } from "./billing";
 import { SubscriptionConsole } from "../app/backoffice/subscription/subscription-console";
 import { CancelDialog } from "../app/backoffice/subscription/cancel-dialog";
-import OnboardingPage from "../app/onboarding/page";
 
 /**
  * Spec 0063, D7 — LO QUE PASA CUANDO EL OWNER APRIETA EL BOTÓN. Cero paquetes nuevos, cero
@@ -56,8 +55,12 @@ import OnboardingPage from "../app/onboarding/page";
  *  - **R10**: la consola postea `{ interval }` SIN `from: "subscription"` → 38/38 VERDE. El
  *    docblock de al lado afirma «sin esto el que paga acá aterriza en la home del backoffice».
  *  - **R11**: `onClick={() => {}}` en el botón de bajar (no abre el modal) → 38/38 VERDE.
- *  - **R19**: `app/onboarding/page.tsx` mandando `from: "subscription"` → 66/66 VERDE, porque
- *    el test del ALTA transcribía el body A MANO y pinneaba la copia, no el código.
+ *  - **R19**: el ALTA mandando `from: "subscription"` → 66/66 VERDE, porque el test
+ *    transcribía el body A MANO y pinneaba la copia, no el código. **Esa sonda ya no está
+ *    acá**: su sujeto era la pantalla del alta, que la spec 0067 §7 borró por decisión
+ *    del owner (ADR 0070 §17). Es cobertura PERDIDA, no un test editado para poner verde un
+ *    gate: cuando la UI de afuera reponga el alta, el cableado del `from:` vuelve a quedar
+ *    sin oráculo y hay que reponerlo en la spec que la construya (spec 0067 §7-ter).
  *
  * POR QUÉ LOS TRES EN UN ARCHIVO: el `vi.mock("react")` es POR ARCHIVO. Separarlos obliga a
  * una segunda copia de la máquina de hooks, y dos copias divergen.
@@ -257,38 +260,5 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
     ).toBe(true);
     // Y no salió ningún request: el botón abre el modal, no baja el plan.
     expect(fetchCalls).toEqual([]);
-  });
-});
-
-describe("el click del ALTA del onboarding (spec 0063, [R2-I8])", () => {
-  it('«Continuar a Stripe» postea `from: "onboarding"`, no el de la sección', async () => {
-    // LOS ÍNDICES DEL SEED SON POSICIONALES (`step`, `plan`, `businessId`), así que las tres
-    // aserciones de piso de abajo existen para que un `useState` nuevo en el onboarding no
-    // corra el seed en silencio: si un índice deja de ser el que era, esto se pone ROJO con
-    // un mensaje que lo dice, en vez de medir otro estado.
-    const tree = invoke(OnboardingPage, undefined as never, {
-      0: "plan",
-      6: "plus",
-      7: "month",
-      13: "11111111-1111-1111-1111-111111111111",
-    });
-    expect(hooks.next).toBe(16);
-    const card = child(tree, "PlanCard");
-    expect(card.props).toMatchObject({
-      plan: "plus",
-      billingInterval: "month",
-    });
-
-    click(button(expand(card), "Continuar a Stripe"));
-    await flush();
-
-    expect(fetchCalls.map((call) => call.url)).toEqual([
-      "/api/billing/checkout",
-    ]);
-    expect(fetchCalls[0].body).toEqual({
-      interval: "month",
-      from: "onboarding",
-    });
-    expect(assigned).toEqual(["https://stripe.test/sesion"]);
   });
 });

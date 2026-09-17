@@ -8,7 +8,7 @@ export function SignOutButton() {
       className="text-button"
       onClick={async () => {
         await merchantAuthClient.signOut();
-        window.location.assign("/login");
+        window.location.assign("/");
       }}
     >
       Cerrar sesión
