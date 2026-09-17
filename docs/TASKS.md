@@ -8,14 +8,15 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-**Este archivo contiene SOLO el arco en ejecucion** (spec 0066). Lo diferido, parado o pospuesto
-vive en **`docs/PARQUEADO.md`** (el unico lugar donde buscar pendientes); el relato historico
-completo esta en **`docs/archivo/`** — `TASKS-historico-2026-09-16.md` (7.185 lineas: todo lo
-anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la bitacora de mutaciones y
-el PASS del revisor, ahora que esa spec cerro).
+**Este archivo contiene SOLO el arco en ejecucion** (regla instaurada por la spec 0066, ya cerrada).
+Lo diferido, parado o pospuesto vive en **`docs/PARQUEADO.md`** (el unico lugar donde buscar
+pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS-historico-2026-09-16.md`
+(7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
+bitacora de mutaciones y el PASS del revisor de esa spec).
 
-Ultima actualizacion: 2026-09-16 — **spec 0066 CERRADA e implementada** (commits `e54117f` +
-`285be90`, **pusheados**), y arranca el **arco del wizard de alta (ADR 0070)**.
+Ultima actualizacion: 2026-09-16 — **spec 0066 CERRADA e implementada**, y arranca el **arco del
+wizard de alta (ADR 0070)**. `main` en `8329342`, **verificado pusheado** (`git rev-parse HEAD` =
+`git rev-parse origin/main`).
 
 ## ⇥ EN EJECUCION: EL ALTA DEL COMERCIO ES UN WIZARD (ADR 0070)
 
@@ -48,9 +49,10 @@ fuera (con ChatGPT); esta capa entrega los endpoints.
 
 ## ESTADO DEL ARBOL (bloque reescrito ENTERO el 2026-09-16)
 
-- **Rama `main`, arbol limpio, pusheado.** `git log --oneline -3`: `285be90` (PASS del revisor +
-  spec 0066 `implementada`), `e54117f` (spec 0066: poda + agentes + worktrees), `c654f93` (ADRs
-  0069/0070 + spec 0066, sesion anterior).
+- **Rama `main`, arbol limpio, pusheado y verificado** (`git rev-parse HEAD` = `git rev-parse
+  origin/main` = `8329342`). `git log --oneline -4`: `8329342` (este handoff), `285be90` (PASS del
+  revisor + spec 0066 `implementada`), `e54117f` (spec 0066: poda + agentes + worktrees), `c654f93`
+  (ADRs 0069/0070 + spec 0066, sesion anterior).
 - **No se toco una sola linea de `apps/` en toda la sesion de la 0066.** Sin mutaciones puestas.
   Sin migraciones pendientes.
 - La spec 0065 (campaña de proximidad) sigue **cerrada** — implementada, revisada, corregida,
