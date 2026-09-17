@@ -95,6 +95,15 @@ cero tokens y son deterministas; este archivo es advisory.
 ## Codigo
 
 - Si un archivo supera el limite de tamaño (hook `file-size`): dividir, no extender.
+- **El arco del alta (ADR 0070) entrega API y endpoints, NO interfaz: la UI la construye el owner
+  por fuera.** Una spec de ese arco que liste un archivo de pantalla como «crear» o «rediseñar»
+  esta mal alcanzada; lo que falta en su lugar es el **contrato HTTP escrito** que consume quien
+  hace la UI (forma de `specs/0055-contratos-del-orquestador.md`). Caso en `LECCIONES.md`.
+- **Y su contraparte, que SI es trabajo de estas specs: la UI vieja de lo que se refactoriza se
+  BORRA** (decision del owner, ADR 0070 §17) — «no dejar rastros viejos de lo que ya no usaremos».
+  Borrar una pantalla deja enlaces muertos: los `redirect` de un guard apuntando a una ruta borrada
+  convierten un rebote en un **404**, asi que la limpieza de referencias es parte del borrado, no
+  un extra.
 - No editar ni borrar tests para que el gate pase: un test rojo se arregla o se discute.
 - Nada de andamiaje sin su tarea: codigo que no se usa hoy va con su fila en
   `docs/TASKS.md` que lo va a consumir, o se borra.

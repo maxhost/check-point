@@ -1,7 +1,7 @@
 ---
 adr: 0070
 fecha: 2026-09-16
-estado: aceptada (decisiones del OWNER, 2026-09-16) — la spec que la implementa todavia NO existe
+estado: aceptada (decisiones del OWNER, 2026-09-16; los 4 puntos abiertos cerrados el mismo dia) — la spec que la implementa todavia NO existe
 resumen: El alta deja de ser 3 pasos con contraseña y eleccion de plan, y pasa a ser un WIZARD de tres pantallas (entrar · negocio+local · programa) que termina en una pantalla con el QR listo, con el programa de fidelizacion YA ACTIVO. Decisiones del owner: (1) no se elige plan, todos entran `free`; (2) no hay contraseña — el owner entra por email y queda logueado al registrarse, verifica el email para el onboarding y usa LINK MAGICO en los logins siguientes; (3) el staff NO usa email: cada negocio tiene un handle (`@lafarmacia`) y cada miembro entra con `nombre@lafarmacia` + PIN de 6 digitos que el owner genera y regenera; (4) marca sin logo ni colores, con «marca avanzada» opcional, y un SELLO PLACEHOLDER nuestro hasta que suba el suyo; (5) categoria OBLIGATORIA, guardada como `gcid:` de Google; (6) pais prellenado por dispositivo/IP pero editable, + Mexico; (7) los limites por plan viven en una capa de entitlements unica; (8) la base se borra entera y se arranca limpia. Google Business es una feature SEPARADA que el dia de mañana reemplaza la pantalla 1 y autocompleta el wizard; el diseño de hoy debe poder recibir ese paquete sin reescribirse.
 ---
 
@@ -165,18 +165,157 @@ que ya no existe.
 - **Catalogo por foto del menu con IA.**
 - **La pagina publica por comercio.**
 
-## Hallazgos a decidir — NO acordados con el owner
+## Decisiones del owner sobre los cuatro puntos abiertos (2026-09-16, misma fecha)
 
-Se escriben aca como abiertos, no como decision suya:
+Los cuatro «hallazgos a decidir» de la primera version de este ADR **se cerraron con el
+owner**. Ya no son abiertos: son decisiones suyas y se citan como tales.
 
-1. **Que bloquea exactamente la falta de verificacion del email.** El owner dijo que el
-   owner «debe verificar su email para el Onboarding», pero no si puede terminar el wizard
-   sin verificar, ni que pasa con el programa si no verifica nunca. Mientras no este
-   verificado, cualquiera puede escribir el email de otro y quedarse con una sesion.
-2. **Las reglas del slug**: unico global, palabras reservadas, sugerido pero editable con
-   chequeo de disponibilidad, y que **no cambie solo** si el negocio se renombra (romperia
-   logins y URLs). Es propuesta del orquestador.
-3. **La defensa del PIN.** 6 digitos son 1.000.000 de combinaciones: sin rate limit por
-   cuenta y bloqueo progresivo es forzable en minutos, y da acceso a acreditar saldo. Entra
-   como requisito tecnico de la spec, con su test.
-4. **Que hace el wizard si el pais detectado esta fuera de la lista soportada.**
+### 11. La verificacion de email NO bloquea el alta, bloquea TODO el onboarding
+
+Textual del owner: *«para el alta no pedimos verificacion. Una vez estemos en la cuenta,
+alli para iniciar el onboarding, basicamente cualquier accion si requerimos verificar el
+email»*. El flujo que dicto, en tres pasos:
+
+1. El merchant crea la cuenta desde el wizard **sin friccion**.
+2. Entra a su cuenta directamente al terminar el wizard y ve el onboarding.
+3. **El primer paso del onboarding es verificar el email**, y sin eso no avanza el resto.
+
+O sea: **creada la cuenta sin verificacion, se bloquea todo** lo que venga despues del
+wizard. El motivo que dio el owner no es de seguridad sino de negocio: *«hoy Staff es
+gratis, pero va a pasar a ser parte del plan de pago quizas»* — una cuenta no verificada no
+puede quedar habilitada a consumir lo que mañana se cobra.
+
+**Medido en el arbol (2026-09-16):** la columna `email_verified` **ya existe** con default
+`false` (`server/schema/auth.ts:10`) y **no se lee en una sola linea de produccion** — su
+unico uso hoy es soporte de tests (`counter-integration-support.ts:56,141`). El gate es
+codigo nuevo, no una migracion.
+
+### 12. El slug no sigue al nombre: se cambia explicitamente y se verifica
+
+Decision del owner: *«el slug no cambia con el cambio de nombre, el merchant tiene que
+hacer un cambio explicito y eso verifica si esta disponible»*. Renombrar el negocio deja el
+slug intacto (cambiarlo solo romperia los logins del staff **y** la URL publica); cambiarlo
+es una accion aparte y deliberada, con chequeo de disponibilidad.
+
+**Medido:** no existe hoy ninguna columna `slug` ni `handle` de negocio en el esquema
+(`server/schema/*.ts`). Es terreno virgen, sin migracion de datos.
+
+### 13. El PIN se defiende con bloqueo escalado propio, NO con el del plugin
+
+Escalado dictado por el owner: **5 fallos → bloqueo 15 min; 3 fallos mas → 1 h; el
+siguiente fallo → 24 h.** PIN **hasheado**. El owner lo ve **una sola vez** al generarlo
+para pasarselo al staff, el staff lo cambia en su primer uso, y despues el owner **nunca
+puede verlo: solo regenerarlo**.
+
+**Por que no alcanza el plugin — medido en `better-auth@1.6.26`, a pedido del owner:**
+
+| Hecho | Evidencia |
+|---|---|
+| El plugin `username` no trae **ninguna** regla de rate limit propia | `dist/plugins/username/index.mjs`, cero matches de `rateLimit` |
+| Si lo cubre una regla **global**: `/sign-in*` → 3 requests / 10 s | `dist/api/rate-limiter/index.mjs:370-376` |
+| Pero la clave es **`(IP, path)`, no la cuenta** | `createRateLimitKey(ip ?? "no-trusted-ip", path)`, linea 287 |
+| El storage por defecto es **`memory`** (un `Map` del proceso) y nosotros no configuramos nada | linea 174 + `server/auth.ts` sin `rateLimit` |
+| `enabled` = `isProduction`: **apagado en dev y en test** | linea 171 |
+
+Las tres consecuencias que lo descartan como defensa del PIN:
+
+1. **Keyeado por IP, todo el staff de un local comparte el bucket** y se bloquean entre si
+   desde el WiFi del negocio. Es palabra por palabra la leccion que este repo ya escribio
+   en `consumer/rate-limit.ts:15` («keyed by phone on purpose — many legitimate customers
+   enroll from the same shop WiFi»). Y el espejo: un atacante que rote IPs no tiene limite
+   por cuenta **ninguno**.
+2. **`memory` en Vercel es por instancia de lambda y se evapora**: el escalado 15 min → 1 h
+   → 24 h no tiene donde persistir ahi.
+3. **Apagado en test**: ningun test puede morder ese oraculo sin encenderlo a mano.
+
+Y el numero: 3/10 s son ~26.000 intentos/dia desde **una sola IP**; contra 1.000.000 de
+combinaciones, ~39 dias con una IP y **menos de 10 horas con 100 IPs**. No frena un ataque
+distribuido.
+
+Por eso el PIN se verifica en **ruta propia**, con el bloqueo persistido en la base y
+keyeado por **`(negocio, handle)`**. El plugin puede seguir siendo el modelo de identidad,
+pero su endpoint no es el camino del PIN. **Hallazgo colateral medido:** el plugin tambien
+publica `/is-username-available`, que es un enumerador gratuito de handles de negocios —
+entra al mismo `disabledPaths` que ya existe para `emailOTP`.
+
+### 14. El pais se prellena pero el selector siempre ofrece TODA la lista
+
+Textual: *«el selector siempre que pueda viene pre llenado, pero tiene todas las opciones
+[…] si usa un VPN o algo puede estar en un pais diferente al real. necesitamos que pueda
+corregirlo»*. La deteccion es una sugerencia, nunca un filtro: **no se recorta la lista a
+lo detectado**.
+
+Y el caso del pais no soportado **no se resuelve porque no se admite**: decision del owner,
+*«esto de momento es solo para LATAM, entonces no ofreceremos de momento en USA o Europa»*.
+
+**Medido:** la lista de paises esta duplicada en **dos** lugares —el wizard
+(`app/onboarding/page.tsx:18`) y el verificador de Geoapify
+(`server/location-providers.ts:22`)—, ambas con los mismos 8 (AR BR CL CO EC UY PY PE).
+`COUNTRY_CURRENCY` (`lib/currencies.ts:8`) ya cubre ~28 paises, MX incluido: sumar Mexico
+toca **dos** listas, no tres, y ninguna tabla de monedas.
+
+### 15. Tres confirmaciones del owner al cerrar la spec 0067 (2026-09-16)
+
+1. **El escalado del PIN** queda tal como lo lee la seccion 13: *«5 intentos y bloquea por 15
+   minutos, si vuelve a equivocarse 1h (solo 3 intentos), si se equivoca se bloquea 24h»*, leido
+   como 5 fallos → 15 min; tras liberarse, 3 fallos → 1 h; tras liberarse, el siguiente fallo →
+   24 h. **Confirmado.**
+2. **Un email ya existente NO abre sesion en la pantalla 1.** Textual: *«email existente: exacto no
+   abre sesion en pantalla 1, manda magic link, sin contraseña»*. Nacio como requisito tecnico del
+   orquestador —sin contraseña, escribir el email de otro merchant le entregaria el negocio— y el
+   owner lo **adopto como decision suya**.
+3. **El slug no se escribe en el alta, y el staff se crea solo con el nombre.** Textual: *«usa el
+   slug del negocio, el merchan crea el usuario, se le adiciona el @ y el slug, el slug no puede
+   escribirlo en el momento del alta»*. O sea: el wizard **no expone campo de slug** (se genera del
+   nombre), y al dar de alta a un integrante el owner escribe **solo el nombre** — el servidor
+   agrega el `@` y el slug del negocio, tomandolo **de la sesion y nunca del body**. Cambiar el slug
+   sigue siendo posible, pero es la accion explicita y **posterior** de la seccion 12.
+
+**Consecuencia declarada de (3), que no es decision del owner:** si el slug no es editable en el
+alta, la forma que genera el algoritmo es la que el comerciante se lleva puesta. La spec 0067 adopta
+`"La Farmacia"` → **`la-farmacia`** (con guion): quitar los separadores, como sugiere la ilustracion
+`@lafarmacia` de la seccion 4, colapsa `el-arbol` y `elarbol` en el mismo handle. Si el owner
+prefiere sin guiones es una linea de `slugify` y afecta solo a negocios nuevos.
+
+### 16. Lo que este arco entrega es API, y eso incluye el contrato escrito
+
+El «Contexto» de este ADR ya decia que la UI la trabaja el owner por fuera. Se sube a decision
+explicita porque **el orquestador se la salteo en la primera version de la spec 0067**, listando dos
+pantallas como archivos a editar (el caso completo esta en `docs/LECCIONES.md`).
+
+Cada spec de este arco entrega **dos** piezas: los endpoints, y el **contrato HTTP normativo** que
+los describe —metodo, ruta, entrada, salida, todos los `code` de error, si setea cookie— con la
+forma del anexo `specs/0055-contratos-del-orquestador.md`. Sin ese documento, «entregamos los
+endpoints» no es transferible a quien construye la UI.
+
+**Costo declarado, con decision pendiente del owner:** entregar solo la capa de API rompe
+`/login` y `/onboarding`, que hoy llaman a `signIn.email` / `signUp.email`, y deja al producto **sin
+entrada** —y por lo tanto sin QA humano— hasta que aterrice la UI de afuera. Las tres salidas y su
+costo estan en la seccion «Abierto» de la spec 0067.
+
+### 17. La UI vieja de lo que se refactoriza se BORRA
+
+Decision del owner del 2026-09-16, tomada sobre las tres salidas que la spec 0067 le planteo como
+bloqueante y **contra la recomendacion del orquestador**, que era recablear las pantallas viejas a
+los endpoints nuevos para conservar el QA humano.
+
+Textual: *«quiero que vayas borrando la UI de lo que vamos refactorizando para justamente no dejar
+rastros viejos de lo que se que ya no usaremos»*, y el flujo que describe para la UI nueva: *«luego
+le diga a chatGPT mira, necesitamos una UI para un wizard lee aqui la documentacion del api o
+endpoint. y el cree la UI»*.
+
+Esto convierte al **contrato de API de la seccion 16 en el entregable critico del arco**: es
+literalmente el insumo que recibe quien construye la UI. Un contrato incompleto no produce una UI
+incompleta — produce una UI inventada.
+
+**Costo aceptado por el owner, escrito para que ninguna spec del arco lo redescubra al final:**
+mientras dure el arco, el producto **no tiene entrada por navegador** y por lo tanto **no hay QA de
+pantalla**. Es la excepcion explicita y acotada a la regla «entre una evidencia mas y una pantalla
+que el owner pueda probar, gana la pantalla»: aca no hay pantalla que ganar todavia, asi que la
+verificacion es por HTTP con las respuestas transcriptas, y se declara como limite en cada spec.
+
+**Lo que el borrado arrastra, y no es opcional:** borrar una pantalla deja enlaces muertos. El caso
+medido en la spec 0067 son **10 referencias en 8 archivos**, y tres de ellas son los `redirect` del
+guard compartido `requireBackofficeSession` — o sea **control de acceso**: apuntados a una ruta
+borrada convierten un rebote en un **404**, y el caso `staff_disabled` del ADR 0055 pierde el canal
+por el que explica el rechazo. La limpieza de referencias es parte del borrado.

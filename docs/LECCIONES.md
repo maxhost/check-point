@@ -384,3 +384,38 @@ porque nadie lo vuelve a medir**: no aparece como `??` en el `git status`, no se
 es **PostToolUse** — solo mira lo que se acaba de tocar. Lo cazo el revisor independiente. Al cerrar una fase, el
 barrido de tamaños se corre sobre los ` M` **y** los `??`.
 
+
+## Alcance: entregar la capa que el owner pidio, no la que el codigo sugiere
+
+**El arco del alta (ADR 0070) entrega API y endpoints. La UI la construye el owner por fuera, con
+ChatGPT.** Esta escrito en el «Contexto» del propio ADR, con la cita textual del owner: *«el dia de
+mañana si creamos una app mobile o cambiamos completamente la UI estariamos abstrayendo la capa de
+logica de la UI»*.
+
+**El caso (2026-09-16).** El orquestador leyo el ADR, escribio en la spec 0067 la frase «la UI la
+trabaja el owner por fuera; esta capa entrega los endpoints»… **y en la misma spec listo
+`app/login/login-form.tsx` y `app/onboarding/page.tsx` como archivos a editar.** La restriccion
+estaba copiada en la prosa y contradicha en la tabla. No la cazo ningun gate: `typecheck`, `lint` y
+`test` no tienen forma de saber quien construye la UI. **La cazo el owner preguntando «recordas que
+lo que te toca es armar api y endpoints?»** — o sea, el recurso mas caro del proyecto revisando algo
+que estaba escrito dos parrafos mas arriba.
+
+**Por que se cuela.** La pregunta «que archivos toca esto» se contesta siguiendo el codigo, y el
+codigo **si** lleva a la UI: apagar `emailAndPassword` rompe los dos call-sites de `signIn.email` /
+`signUp.email`. El razonamiento «esto rompe X, entonces arreglo X» es correcto tecnicamente y
+**equivocado de alcance**. Una restriccion de division de trabajo no se deduce del grafo de
+dependencias: hay que ir a buscarla.
+
+**La regla.** Una spec de este arco que liste un archivo de pantalla en «Archivos» esta mal
+alcanzada. Y lo que falta en su lugar no es «nada»: es el **contrato HTTP escrito** —metodo, ruta,
+entrada, salida, todos los `code` de error, si setea cookie— que consume quien hace la UI afuera.
+Sin ese documento, «entregamos los endpoints» es intransferible. La forma ya existe en el repo:
+`specs/0055-contratos-del-orquestador.md`, normativo para el implementador y oraculo para el
+revisor.
+
+**Y el corolario que hay que declarar, no tapar.** Entregar solo la capa de API tiene un costo real:
+rompe las pantallas vivas y deja al producto sin entrada hasta que aterrice la UI de afuera, o sea
+**sin QA humano**, que es justo el recurso que este repo declara superior a una evidencia mas
+(«entre una evidencia mas y una pantalla que el owner pueda probar, gana la pantalla»). Ese conflicto
+no lo resuelve el agente por su cuenta: **se sube al owner como decision**, con sus opciones y su
+costo. Esta como item BLOQUEANTE en la seccion «Abierto» de la spec 0067.
