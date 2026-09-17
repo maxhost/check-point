@@ -500,3 +500,43 @@ comando corria, pero sobre el objeto equivocado.**
 que un oraculo. Si nunca se lo vio distinguir, no se sabe que mide. Y en concreto para este repo: el
 verde de CI se lee de **`/check-runs`** —todos `completed` + `success`—, nunca de `/status`, que aca
 es el deploy de Vercel y nada mas.
+
+## Un fixture que mezcla el reloj REAL con un `NOW` fijado es una bomba de tiempo
+
+**2026-09-17, spec 0069.** Se pushea un commit que **no toca marketing** y la CI queda roja en
+**7 archivos `.neon` de marketing**, con 20+ fallos que aseveran todos lo mismo:
+`{campaigns: 0, enqueued: 0}`. El commit anterior habia sido **verde** ocho horas antes.
+
+**La causa:** `marketing-integration-support.ts:78` defaulteaba `startsAt` de una campaña a
+`new Date(Date.now() - 86_400_000)` —**reloj real**— mientras los 7 archivos corren el tick con
+un `NOW` **fijado** en `2026-09-16T12:00:00.000Z`. Mientras el reloj real estuviera dentro de esas
+24 h, `startsAt <= NOW` y la campaña era elegible. Pasadas las 24 h, `startsAt` queda **despues**
+del `NOW` fijado, la campaña «todavia no empezo» y el tick no encola nada. **Detono a las 12:00
+UTC del 2026-09-17 y habria puesto roja la CI de CUALQUIER commit.**
+
+**Por que es peligroso y no solo molesto:** el rojo aparece **en el commit de otro**, y todo
+empuja a culpar al cambio nuevo. El costo real de este error no es el fixture — es el rato que se
+pierde buscando la regresion donde no esta, y el riesgo de «arreglar» codigo sano.
+
+**Como se aisló, en orden, y esto es lo reutilizable:**
+
+1. **¿El commit anterior era verde?** Si (`a0f66ea`, 07:15 UTC). O sea que es nuevo… o temporal.
+2. **¿El codigo nuevo esta en el grafo de dependencias del que falla?** `rg` de todo lo que toco
+   la spec sobre `marketing/` → **cero matches**. Primera señal fuerte de que no era la spec.
+3. **La prueba decisiva: correr el test que falla SIN cambiar nada, mas tarde.**
+   `marketing-tick.neon` **paso** en local a las 08:17 UTC y **fallo** en local a las 14:18 UTC
+   del **mismo dia**, sobre el **mismo arbol**. Si el arbol no cambio y el resultado si, la
+   variable es el **entorno**, y el candidato numero uno es el reloj.
+4. **Re-correr el job** para distinguir flake de determinista: fallo **identico**.
+5. Recien ahi, buscar el reloj real en el fixture: `rg 'Date.now\(\)|new Date\(\)'`.
+
+**La regla:** en un test de integracion con tiempo fijado, **ningun fixture puede leer el reloj
+real**. Si el test inyecta un `NOW`, todo lo que se compare contra ese `NOW` —`startsAt`,
+`enrolledAt`, ventanas, cooldowns— se deriva **de ese mismo `NOW`** o de un instante fijo
+declarado. Un `Date.now()` en un default de fixture pasa todos los gates el dia que se escribe y
+falla un dia cualquiera, en el commit de otra persona.
+
+**Y el corolario de metodo, que es el ADR 0062 otra vez:** «la CI se puso roja con mi cambio» es
+una **afirmacion**, no un hecho. Se verifica igual que las demas —buscando si el codigo nuevo
+siquiera puede alcanzar al que falla, y volviendo a correr lo que fallo bajo otra variable—. Aca
+las dos respuestas fueron «no» y «el reloj», y ninguna se deducia leyendo el diff.

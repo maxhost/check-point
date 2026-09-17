@@ -108,6 +108,56 @@ nuevas son **mas fuertes** —`loyalty-program.test.ts` pasa de `null` a la ruta
 el `not.toHaveProperty('stampImageObjectKey')`; el `.neon` **agrega** la asercion de que una
 version que no matchea sigue dando `null`—. No es un test ablandado para que pase un gate.
 
+## ⇥ EN PRODUCCION (2026-09-17) — commits `fde3757` + `34cb98b`
+
+**Autorizado por el owner.** Estado verificado, no asumido:
+
+- **Commit `fde3757`** (la 0069, 36 archivos) y **`34cb98b`** (el fix del fixture de marketing),
+  los dos **pusheados**: `git rev-parse HEAD` == `origin/main`.
+- **MIGRACION 0035 APLICADA A PRODUCCION.** Proyecto `mi-pasaporte`, rama **`main` =
+  `br-curly-silence-ax8acywm`** (la `default`, **confirmada por API antes de tocar nada**).
+  **Verificado por SQL, no por el mensaje de `drizzle-kit`:** migraciones **35 → 36**,
+  `core.business.category_gcid` existe como `text NOT NULL DEFAULT 'gcid:store'`, y las **3
+  semillas** de `core.terms_template` intactas (son las que el wizard usa como terminos).
+  La `0035` es **un solo `ALTER TABLE ADD COLUMN`**: no crea ni borra tablas.
+- **Se migro ANTES de pushear, a proposito.** Vercel despliega con el push y el codigo nuevo lee
+  esa columna; al reves habria una ventana con produccion tirando `42703`.
+- **Vercel: `success`** para `fde3757`.
+- **Las rutas nuevas responden en produccion**, probadas por HTTP contra `www.` (el apex hace
+  308): `/api/onboarding/prefill` → **401 `{"code":"unauthorized"}`**, `/api/loyalty-program/qr`
+  → **401 `{"code":"unauthorized"}`**, `/api/onboarding/program` → **405** en GET (es POST-only).
+  Los tres codigos son **los que declara el contrato**.
+
+**El contrato para la UI esta pusheado: `docs/specs/0069-contratos-de-api.md`.**
+
+**CI VERDE, LEIDA DE `/check-runs` PARA EL SHA EXACTO `34cb98b`** (nunca `/status`, que aca
+miente): `verify: completed -> success`, `total: 1`, **`no-success: 0`**. Los **18 pasos** en
+`success`, leidos uno por uno — incluidos **«Migrar la rama Neon de CI»** (la `0035` aplica
+limpia) y **«Unit + integracion Neon»**.
+
+**Eso cierra el unico riesgo que quedaba declarado de la 0069:** el test del glifo del sello
+placeholder mide pixeles opacos y se escribio en macOS; se declaro «pendiente de la primera
+corrida de CI» por si en Linux faltaban fuentes. **Corrio en Linux y paso.**
+
+### La CI se puso ROJA y NO era la 0069 — era una bomba de tiempo
+
+7 archivos `.neon` de **marketing** rojos en un commit que no toca marketing. **No era una
+regresion.** `createCampaign` (`marketing-integration-support.ts:78`) defaulteaba `startsAt` a
+`Date.now() - 24 h` —**reloj real**— mientras esos tests corren el tick con un `NOW` **fijado** en
+`2026-09-16T12:00:00Z`. Pasadas 24 h del `NOW` fijado, la campaña «todavia no empezo» y el tick
+devuelve `{campaigns: 0, enqueued: 0}`. **Detono a las 12:00 UTC del 2026-09-17 y habria puesto
+roja la CI de cualquier commit.**
+
+**La prueba decisiva:** `marketing-tick.neon` **paso** en local a las 08:17 UTC y **fallo** en
+local a las 14:18 UTC del mismo dia, **sobre el mismo arbol, sin un cambio de codigo**. La
+variable era el reloj. El re-run del job fallo **identico** (determinista, no flake), y `rg` no
+encuentra **un solo import** de lo que toco la 0069 dentro de `marketing/`.
+
+**Arreglado en `34cb98b`**: el default pasa a un instante fijo anterior a cualquier `NOW` de la
+suite. Verificado **26 h despues del `NOW` fijado** —la condicion exacta que los rompia—: los 7
+archivos **7/7 y 31 tests**, la suite completa **1479 passed / 0 failed**, typecheck/lint/format/
+build verdes sin cache. **El caso completo esta en `docs/LECCIONES.md`.**
+
 ## ⇥ LA SPEC 0069 ESTA `implementada` — PASS de revisor independiente (2026-09-17)
 
 **PASS**, con 3 hallazgos declarados y **ninguno bloqueante**. Un solo ciclo: el revisor no
