@@ -1,7 +1,7 @@
 ---
 spec: 0066
 fecha: 2026-09-16
-estado: cerrada
+estado: implementada
 resumen: Repara el harness antes del arco de alta (ADR 0069): poda `CLAUDE.md` de 696 a <=200 lineas mudando —no borrando— las lecciones a skills y a `docs/LECCIONES.md`; deja en `docs/TASKS.md` solo lo que esta en ejecucion y manda lo parqueado y los encargos de fases cerradas a `docs/archivo/`; define `.claude/agents/` con el protocolo de mutaciones y el presupuesto de verificacion adentro; y hace los worktrees usables instalando su `node_modules` propio 100% offline desde el `.pnpm-store` del repo.
 disjunta: si
 archivos: CLAUDE.md, docs/LECCIONES.md, docs/TASKS.md, docs/archivo/*, .claude/skills/*, .claude/agents/*, tools/worktree-new.sh, tools/context-budget.test.ts

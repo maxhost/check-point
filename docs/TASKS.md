@@ -13,11 +13,12 @@ pospuesto vive en **`docs/PARQUEADO.md`** (el unico lugar donde buscar pendiente
 historico completo —7.185 lineas: cada sesion, cada veredicto, cada tabla de mutaciones— esta en
 **`docs/archivo/TASKS-historico-2026-09-16.md`**.
 
-Ultima actualizacion: 2026-09-16 — **spec 0066 (reparacion del harness) IMPLEMENTADA en los tres
-pasos y medida**, y commiteada por el commit que trae esta linea. Falta el PASS de un revisor
-independiente antes de marcar la spec `implementada`.
+Ultima actualizacion: 2026-09-16 — **spec 0066 CERRADA: implementada, con PASS de un revisor
+independiente en contexto fresco, verificado por el orquestador reproduciendo la evidencia (no por
+la cita del revisor).** Commit `e54117f`. No esta pusheada. Lo unico que sigue abierto es la
+verificacion manual del owner (sesion nueva, no bloqueante) y el arranque del arco de alta.
 
-## ⇥ SPEC 0066 — REPARACION DEL HARNESS: implementada, 5 gates verdes, sin PASS todavia
+## ⇥ SPEC 0066 — REPARACION DEL HARNESS: PASS del revisor, spec `implementada`
 
 Punto de entrada: `docs/specs/0066-reparacion-del-harness.md` (`cerrada`) y el **ADR 0069**. Los tres
 pasos se hicieron en el orden que fijo el owner (1 → 2 → 3).
@@ -48,7 +49,7 @@ borde, no leyendo el codigo.
 **Por que el hook es `Stop` y no `PostToolUse`:** `file-size.sh` es PostToolUse (Write|Edit) y por
 eso es **ciego a una edicion hecha por Bash** — que es exactamente como se edito `CLAUDE.md` aca.
 
-### Paso 2 — `.claude/agents/`: **ESCRITO, sin verificar en esta sesion (limite real, medido)**
+### Paso 2 — `.claude/agents/`: **HECHO Y USADO DE VERDAD** (el revisor que dio el PASS de abajo era este agente)
 
 `implementador.md` (101 lineas) y `revisor.md` (92). El de revisor **exige presupuesto y condicion
 de corte** como primera linea del informe, y si el encargo no los trae, **fija el default el agente**
@@ -56,20 +57,20 @@ de corte** como primera linea del informe, y si el encargo no los trae, **fija e
 configuracion: el corte deja de depender de que el orquestador se acuerde.
 
 **Un limite que se declaro y resulto FALSO — queda escrito porque es el error, no el dato.** Al
-despachar un encargo de prueba al agente `revisor`, la herramienta contesto `Agent type 'revisor'
-not found. Available agents: claude, Explore, general-purpose, Plan, statusline-setup`, y el
-orquestador escribio aca que «las definiciones de `.claude/agents/` no se cargan a mitad de
-sesion». **Es falso:** unos turnos despues el harness releyo la config **en la misma sesion** y los
-dos agentes aparecieron disponibles. Lo correcto era decir lo unico medido —«en el instante del
-despacho todavia no estaban cargados»— y no inventar el mecanismo. Es el ADR 0054 del lado de la
-causa: explicar un sintoma se siente como entenderlo.
+despachar un PRIMER encargo de prueba al agente `revisor`, la herramienta contesto `Agent type
+'revisor' not found. Available agents: claude, Explore, general-purpose, Plan, statusline-setup`, y
+el orquestador escribio aca que «las definiciones de `.claude/agents/` no se cargan a mitad de
+sesion». **Es falso:** unos turnos despues el harness releyo la config **en la misma sesion**, y el
+encargo real de revision de esta spec —el que dio el PASS de abajo— corrio sobre el agente `revisor`
+sin problema. Lo correcto era decir lo unico medido en el momento —«en el instante de ESE despacho
+todavia no estaban cargados»— y no inventar el mecanismo. Es el ADR 0054 del lado de la causa:
+explicar un sintoma se siente como entenderlo.
 
-Verificado ademas: el frontmatter de los dos archivos parsea y tiene `name`, `description`,
-`tools`, `model`, con el `name` correcto.
-
-⇒ **Pendiente (es la verificacion manual que pide la spec):** despachar un encargo SIN presupuesto
-al agente `revisor` y confirmar que el presupuesto viaja igual. **Ya no hace falta sesion nueva
-para eso**, pero si un turno distinto del que escribio el codigo.
+⇒ **Sigue pendiente, y es genuinamente distinto:** el encargo que dio el PASS **llevaba presupuesto
+explicito** (3 mutaciones, PLAUSIBLE) puesto por el orquestador. Todavia no se probo el camino del
+default: despachar un encargo SIN presupuesto y confirmar que el agente lo fija solo. No bloquea el
+cierre de la spec (el DoD pide que `revisor.md` **exija** el presupuesto, verificado leyendo el
+archivo; no pide ejercitar el default en produccion).
 
 ### Paso 3 — `tools/worktree-new.sh`: **HECHO Y MEDIDO — el DoD que mas importa**
 
@@ -113,6 +114,29 @@ el DoD). Se implemento igual, porque cierra un hueco real —el hook es local a 
 corre en CI— y se midio con M2b. Queda dicho que es una decision del implementador, no un pedido
 escrito de la spec.
 
+## PASS DEL REVISOR INDEPENDIENTE (2026-09-16, contexto fresco, agente `revisor`)
+
+**Presupuesto que se le dio: 3 mutaciones, clase PLAUSIBLE** (el mismo del punto anterior — no
+calculo uno propio). Foco literal: (a) ninguna regla perdida en la mudanza, (b) los dos guards de
+tamaño muerden de verdad. Todo lo demas quedo **declarado, no perseguido**.
+
+**Veredicto: PASS.** Corrio los 5 gates el mismo (no cito el handoff del orquestador: typecheck,
+lint, format:check, test y build todos verdes, los numeros de `test` coinciden exacto con los de
+arriba), y las 3 mutaciones del presupuesto — cobertura, hook de tamaño + su test, y aislamiento del
+worktree — con el mismo protocolo (`shasum` antes, `diff` + `shasum` despues). Detalle completo en
+el handoff del agente; **reproducido por el orquestador antes de bajarlo aca** (no se acepto la cita
+sola): `git status` limpio, `wc -l CLAUDE.md` = 136, `claude-md-coverage.sh` 46/46 exit 0, shasums de
+`CLAUDE.md` y de la skill mutada identicos al baseline, `git worktree list` sin worktrees colgados,
+`grep -rn MUTATION` sin ninguna viva.
+
+**1 hallazgo, riesgo bajo, declarado y no perseguido:** el preview del bloque faltante que imprime
+`claude-md-coverage.sh` en un rojo muestra los primeros 120 caracteres del **parrafo completo**
+(la unidad de "bloque" del script), no de la regla puntual — en el archivo pre-poda varias reglas
+viven como bullets pegados sin linea en blanco entre si, asi que el preview puede mostrar el bullet
+de al lado en vez del que realmente falta. **El guard sigue mordiendo** (exit 2, no hay falso
+negativo): es una observacion de legibilidad del mensaje, no un incumplimiento del DoD. No se
+arregla en esta spec.
+
 ## GATES — 5/5 VERDES sobre el arbol final
 
 ```
@@ -127,16 +151,15 @@ export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use     # v24.20.0
 | `pnpm run test` | **183 archivos / 1298 tests / 0 failed** (986 passed + 312 skipped de integracion) — eran 182/1295 antes de esta spec |
 | `pnpm exec turbo run build --force` | 3/3 successful, **`Cached: 0 cached`** (la corrida con cache daba FULL TURBO y no probaba nada) |
 
-## LO QUE FALTA PARA CERRAR LA 0066
+## LA 0066 ESTA CERRADA. LO QUE QUEDA ES NO BLOQUEANTE
 
-- [ ] **PASS de un revisor independiente.** Segun `docs/AGENT-WORKFLOW.md` la spec no se marca
-      `implementada` sin el. El foco que pide la propia spec: **que ninguna regla se haya perdido en
-      la mudanza, y que los dos guards nuevos muerdan de verdad**. Presupuesto sugerido para ese
-      encargo: **3 mutaciones**, clase de error PLAUSIBLE.
-- [ ] **Verificacion manual del owner**, en sesion nueva: correr `/context` y confirmar que
-      `CLAUDE.md` carga y pesa menos; y despachar un encargo SIN presupuesto al agente `revisor`
-      para confirmar que el presupuesto viaja solo.
-- [ ] Marcar la spec `implementada` y actualizar su fila en `docs/INDEX.md`, recien despues del PASS.
+- [x] PASS de un revisor independiente — ver arriba. Spec marcada `implementada` en su frontmatter
+      y en `docs/INDEX.md`, en este mismo commit.
+- [ ] **Push a `main`** (`e54117f` todavia es local).
+- [ ] **Verificacion manual del owner**, cuando quiera, sin apuro: correr `/context` en una sesion
+      cualquiera y confirmar que `CLAUDE.md` pesa menos; y algun dia despachar un encargo SIN
+      presupuesto al agente `revisor` para ver el default en accion (no bloquea nada: `revisor.md`
+      ya se leyo y confirma que lo exige).
 
 ## DESPUES DE LA 0066: EL ARCO DE ALTA DEL COMERCIO (ADR 0070)
 
