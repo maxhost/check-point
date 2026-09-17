@@ -75,7 +75,16 @@ export async function seedCampaign(opts: {
       couponLabel: opts.coupon?.label ?? null,
       couponCost: opts.coupon?.cost ?? null,
       couponMaxRedemptions: opts.coupon?.maxRedemptions ?? null,
-      startsAt: opts.startsAt ?? new Date(Date.now() - 86_400_000),
+      // NO se usa el reloj REAL acá. El default era `Date.now() - 24 h`, y los tests que
+      // consumen este fixture corren el tick con un `NOW` FIJADO (`2026-09-16T12:00:00Z`).
+      // Mezclar los dos relojes es una BOMBA DE TIEMPO: mientras el reloj real esté dentro
+      // de esas 24 h, `startsAt <= NOW` y la campaña es elegible; pasadas las 24 h,
+      // `startsAt` queda DESPUÉS del `NOW` fijado, la campaña «todavía no empezó» y el tick
+      // devuelve `{campaigns: 0, enqueued: 0}`. Detonó el 2026-09-17 a las 12:00 UTC y puso
+      // roja la CI de 7 archivos en un commit que no tocaba marketing. Un instante fijo y
+      // muy anterior a cualquier `NOW` de la suite expresa lo que el default siempre quiso
+      // decir —«la campaña ya empezó»— sin depender de cuándo se corre.
+      startsAt: opts.startsAt ?? new Date("2026-01-01T00:00:00.000Z"),
       endsAt: opts.endsAt ?? null,
       createdByUserId: opts.createdByUserId,
     })
