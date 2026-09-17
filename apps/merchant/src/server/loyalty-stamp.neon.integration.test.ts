@@ -69,9 +69,15 @@ describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
     const ctx = await programForOwner(userId);
     expect(ctx?.program?.stampImageObjectKey).toBeNull();
     expect(ctx?.program?.stampImageVersion).toBe(0);
-    // No stamp yet → the public read is denied regardless of version.
+    // Spec 0069 §D5: sin sello, la lectura pública YA NO es un `null` genérico. Hasta la
+    // 0069 devolvía `null` por dos motivos indistinguibles (sin sello / versión vieja);
+    // ahora el «sin sello» resuelve al PLACEHOLDER —con la versión vigente, que es 0— y
+    // el «versión que no matchea» sigue siendo `null`, o sea 404 en la ruta.
     expect(
       await stampForPublicProgram(businessId, ctx!.program!.id, "0"),
+    ).toEqual({ kind: "placeholder", businessName: "Sello QA" });
+    expect(
+      await stampForPublicProgram(businessId, ctx!.program!.id, "1"),
     ).toBeNull();
     // Editing with the default keep leaves the stamp columns untouched.
     await saveProgram(userId, {

@@ -76,11 +76,25 @@ export function toClientProgram<T extends ProgramRow>(
     accrualBlockAmount,
     ...rest
   } = program;
+  // La clave interna de R2 se desestructura para SACARLA de `rest` y no vuelve nunca al
+  // DTO (spec 0025). El `void` es el idiom del repo para un binding a proposito sin uso
+  // (ver `wallet/push-transports.ts:46`).
+  void stampImageObjectKey;
   return {
     ...rest,
-    stampImagePath: stampImageObjectKey
-      ? `/api/public/loyalty/${businessId}/${program.id}/stamp?v=${program.stampImageVersion}`
-      : null,
+    /**
+     * Spec 0069 §D5 — **el path se emite SIEMPRE, con sello o sin el.**
+     *
+     * Hasta la 0069 esto devolvia `null` sin `stampImageObjectKey`, y medido contra el
+     * arbol esta es la UNICA linea que construye la URL `/api/public/loyalty/.../stamp`
+     * en todo `apps/merchant/src`. O sea: un placeholder escrito solo dentro de la ruta
+     * publica seria **codigo muerto**, porque nadie la llamaria nunca. Esto es lo que
+     * lo hace alcanzable — y `consumer/programs.ts` lo propaga tal cual.
+     *
+     * Sin sello la version es la de la columna (`0` por default), que es exactamente
+     * la que la ruta exige para servir el placeholder.
+     */
+    stampImagePath: `/api/public/loyalty/${businessId}/${program.id}/stamp?v=${program.stampImageVersion}`,
     accrual: accrualMode
       ? {
           mode: accrualMode,

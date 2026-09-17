@@ -14,9 +14,185 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-Ultima actualizacion: 2026-09-16 — el owner cerro los 4 puntos abiertos del ADR 0070 (§11-14), dio tres
-confirmaciones (§15), subio la restriccion de alcance a decision (§16), eligio **la salida A: la UI vieja
-se BORRA** (§17) y **confirmo el corte del arco en 4 specs**. **La spec 0067 esta `cerrada`.**
+**Ultima actualizacion: 2026-09-17.** Estado real en una linea: **specs 0067 y 0068
+`implementadas`**, commit `a0f66ea` **pusheado** (HEAD == origin/main), **CI verde leida de
+`/check-runs`**, **produccion truncada y migrada a 35**, y el **proceso recortado por el ADR 0071**
+(spec chica, un implementador y un revisor por spec, gates una vez, filas de INDEX de 3 lineas).
+**EL ARCO 2 ESTA EN EJECUCION: la spec 0069 esta `cerrada` y su implementador fue despachado.**
+
+## ⇥ EN EJECUCION AHORA — spec 0069, el wizard de alta es API (2026-09-17)
+
+**`docs/specs/0069-el-wizard-de-alta-es-api.md`, estado `cerrada`**, con su fila en `INDEX.md`.
+Es la **2a tajada del ADR 0070**. Entrega API y contrato, **cero pantallas** (§16).
+
+**Plantilla elegida MIDIENDO, no por costumbre (ADR 0071):** `TEMPLATE.md`, la larga. Las tres
+condiciones de la chica fallan dos: toca **varios dominios** (onboarding, loyalty, imagenes,
+brand-kit, location-providers) y **si lleva migracion** (`0035`, la columna de categoria).
+
+**Las tres decisiones de producto las contesto el owner el 2026-09-17, ANTES de escribir la
+prosa** (que es justo lo que el ADR 0071 vino a ordenar):
+
+1. **Las 15 categorias `gcid:`** propuestas, tal cual.
+2. **Sello placeholder generado por codigo (opcion A):** SVG con la inicial del negocio en
+   **negro no puro (`#1A1A1A`)** — textual del owner: «el cuadrado donde se sella siempre es
+   blanco, entonces asi sera visible».
+3. **QR pelado, no el poster** —en el wizard todavia no hay color ni logo, eso es la parte
+   «avanzada» del onboarding— **pero con descarga como imagen**, para que el comerciante lo
+   guarde en el telefono hasta imprimirlo o armar el poster despues.
+
+**Tres cosas se MIDIERON y corrigen documentos que ya estaban escritos** (regla: lo que se le
+pasa a un subagente como insumo es una afirmacion propia):
+
+- **El ADR 0070 se equivoca con el placeholder.** Dice que alcanza con implementarlo dentro de la
+  ruta publica «y lo reciben todos los consumidores sin tocar ninguno». **Falso:**
+  `client-view.ts:81-83` devuelve `stampImagePath: null` sin sello, o sea **la URL nunca se
+  construye y la ruta nunca se llama**. Escrito solo ahi seria codigo muerto.
+- **El ADR 0070 §14 dice que Mexico toca dos listas. Toca UNA:** la segunda
+  (`app/onboarding/page.tsx:18`) la **borro la 0067**.
+- **`counter/core.ts` NO se toca, y la primera version de la spec lo afirmaba mal.** Su docblock
+  dice que `programDTO` expone «only the public stamp path» y **ese campo no existe** en lo que
+  devuelve. Queda como hallazgo, no como trabajo.
+
+**Verificado ejecutandolo, no asumido:** `sharp` 0.35.3 (ya es dependencia) rasteriza el SVG del
+QR — Node 24.20.0, vips 8.18.3, un SVG de 2.421 bytes → **PNG 1024×1024 de 50.316 bytes**. La
+descarga no cuesta una dependencia nueva.
+
+**Los barridos del DoD se corrieron contra el arbol ANTES de cerrar** (leccion de la 0067, que
+cerro con cuatro criterios imposibles). **Dos criterios nacieron mal y se corrigieron:** el
+conteo de categorias por `rg 'gcid:'` (que tambien cuenta comentarios y el default `gcid:store`,
+asi que no puede dar el numero exacto → pasa a ser una asercion del unit), y la afirmacion de que
+la 0069 era «la unica spec abierta del INDEX», que es **falsa**: hay tres borradores viejos
+(0003, 0007, 0009). Sigue siendo disjunta, pero por el motivo medido — los `archivos` de la 0003
+son `packages/**` y **`packages/` no existe** (el workspace es `apps/*`), y la 0007 y la 0009
+declaran «rutas concretas por definir». La 0009 ademas es **otro QR**: el fijo por local.
+
+**→ LO PROXIMO, EN ORDEN:**
+
+1. **Esperar al implementador** (despachado en background). Al volver: **reproducir la señal
+   decisiva** de su informe, no todas sus mediciones.
+2. **UN revisor independiente en contexto fresco**, con presupuesto y condicion de corte escritos.
+   Solo un `PASS` verificable permite marcar la spec `implementada`.
+3. **Cerrar la re-medicion del ADR 0071** con los numeros reales.
+
+**RE-MEDICION DEL ADR 0071 — en curso.** Baseline a batir, de la spec 0068: implementador paso 1
+**18 min / 71 tools / 179k** · revisor **9 / 40 / 106k** · implementador cerrando el FAIL **8 / 18
+/ 208k** · paso 2 reanudado **6,8 / 17 / 238k** · revision final **4,4 / 17 / 137k** = **~46 min y
+868k tokens** de subagentes. Se anota el `duration_ms`, el `tool_uses` y el `subagent_tokens` de
+**cada** notificacion, y **el numero real vuelve al ADR 0071 aunque contradiga la promesa** de
+~60 → ~25 min. No cuenta como mejora bajar el tiempo salteando mutaciones o la revision.
+
+### Numeros de la re-medicion, a medida que llegan (2026-09-17)
+
+| Etapa | Tiempo | Tools | Tokens |
+|---|---|---|---|
+| **Implementador 0069** (toda la spec, un solo agente) | **29,1 min** | **141** | **316k** |
+| **Revisor 0069** (PASS de primera, sin ciclo de FAIL) | **11,2 min** | **59** | **183k** |
+| **TOTAL 0069** | **40,3 min** | **200** | **498k** |
+
+**Contra el baseline de la 0068** (que fueron CINCO despachos: implementador, revisor,
+implementador cerrando el FAIL, implementador reanudado, revision final): **~46 min y 868k**.
+El implementador solo de la 0069 hizo **toda** la spec —15 archivos, migracion, 5 mutaciones
+ejecutadas y el contrato— en **29,1 min y 316k**, o sea **~64% de los tokens del arco 0068
+completo en UN despacho**. El numero final se escribe cuando cierre el revisor, y **va al ADR
+0071 aunque contradiga la promesa**.
+
+**Gates REPRODUCIDOS por el orquestador** (no citados del agente, regla de la señal decisiva):
+`typecheck --force` 3/3 sin cache · `lint` exit 0 · `format:check` OK · `test` **1088 passed / 0
+failed** · `test` con `.env.integration.local` (esta en la RAIZ del repo) **199 files, 1478
+passed / 0 failed** en 174 s · `build --force` 3/3 sin cache · `rg MUTATION` **vacio** · **cero
+`.tsx` tocados**.
+
+**Los dos tests preexistentes que el implementador modifico fueron auditados por el orquestador
+y son legitimos:** pinneaban exactamente lo que la §D5 cambia a proposito, y las aserciones
+nuevas son **mas fuertes** —`loyalty-program.test.ts` pasa de `null` a la ruta exacta y conserva
+el `not.toHaveProperty('stampImageObjectKey')`; el `.neon` **agrega** la asercion de que una
+version que no matchea sigue dando `null`—. No es un test ablandado para que pase un gate.
+
+## ⇥ LA SPEC 0069 ESTA `implementada` — PASS de revisor independiente (2026-09-17)
+
+**PASS**, con 3 hallazgos declarados y **ninguno bloqueante**. Un solo ciclo: el revisor no
+abrio FAIL. La condicion de corte no se aplico (ninguna vuelta termino en «el fix abrio la
+siguiente»).
+
+**Gates finales, corridos por el orquestador DESPUES de sus propios cambios** (el PASS del
+revisor no cubria lo que el orquestador toco despues): `typecheck --force` 3/3 sin cache ·
+`lint` exit 0 · `format:check` OK · **`test` con Neon: 199 files, 1479 passed / 0 failed** ·
+`build --force` 3/3 sin cache · `rg MUTATION` **vacio** · **cero `.tsx`**.
+
+### Lo que el revisor cazo y el orquestador ARREGLO (con su mutacion propia)
+
+**El filtro por `(businessId, programId)` de la ruta publica del sello NO tenia oraculo.** El
+revisor quito ese `eq()` y **23 tests pasaron igual**: un negocio podia leer el sello de otro y
+la suite no lo veia. El orquestador agrego el test de aislamiento en
+`loyalty-stamp-placeholder.neon.integration.test.ts` y **probo que muerde** con la mutacion
+**O1** (`stamp.ts`, shasum limpio `37379485f888a7943003b390b0a964e5d9de5fd0`): rojo
+**`AssertionError: expected { kind: 'stamp', …(1) } to be null`**, y **un solo test rojo**, lo
+que confirma que nada mas lo cubria. Revertida con `diff` vacio y shasum coincidente.
+
+**El docblock de `brand-kit/qr.ts` afirmaba lo contrario de lo medido, y se corrigio el CODIGO,
+no solo el comentario.** Decia que el `density: 600` «evita el borde dentado». **Medido por el
+orquestador** sobre el SVG de un enroll real (`viewBox 0 0 47 47`): `sharp` rasteriza el vector
+**directo al tamaño del `resize`**, asi que fijarle `density` lo obliga a rasterizar a 392×392 y
+despues **agrandar**, que es lo que introduce el dentado. **Sin `density`: 0 pixeles intermedios
+en 24.407 bytes. Con `density: 600`: 38.273 pixeles intermedios en 42.557 bytes.** Se quito la
+opcion: el QR que el comerciante imprime sale mas nitido y **~40% mas liviano**.
+
+### HALLAZGOS A DECIDIR — son del owner, NO estan decididos
+
+1. **El wizard fija el `accrual` en `{ per_purchase, grant: 1 }`, y lo eligio el IMPLEMENTADOR,
+   no el owner.** La spec §D4 no lo fijaba y `validateAccrual` no acepta que falte. Esta
+   declarado en el contrato §3 y en el docblock de `program-defaults.ts`. **Si el owner queria
+   otra cosa, es un cambio de una linea.**
+2. **El sello placeholder cambia TRES pantallas, no dos — y una es del CONSUMIDOR.** Con
+   `stampImagePath` siempre no nulo, `card-preview.tsx:46` renderiza la inicial donde antes el
+   slot quedaba vacio. Alcanza `backoffice/loyalty/steps/step-review.tsx`,
+   `steps/step-card-design.tsx` y **`app/(consumer)/wallet/program-card.tsx:39`, la tarjeta que
+   ve el cliente final**. La lista del implementador **omitia la tercera**; la cazo el revisor y
+   el orquestador la verifico en el arbol. Es el efecto buscado por §D5, pero **nadie lo pidio
+   explicitamente para la tarjeta del consumidor**.
+3. **`POST /api/onboarding/business` responde sin `code`**, contra la convencion del contrato
+   0067 («todo error responde `{error, code}`»). Se dejo como estaba; el contrato lo **declara
+   como estado actual**. Candidato a `PARQUEADO` fila 56.
+4. **Esa misma ruta con cuerpo no-JSON revienta en 500 sin `code`** (el `request.json()` esta
+   fuera del `try`). Hay un test que lo pinnea **como limite** para que el dia que se arregle se
+   ponga rojo. **Matiz del revisor:** ese test usa `rejects.toThrow()` sin matcher, asi que
+   tambien pasaria si rechazara por otro motivo.
+5. **`counter/core.ts:167-169` sigue mintiendo:** su docblock dice que `programDTO` expone «only
+   the public stamp path» y ese campo **no existe** en lo que devuelve. Declarado fuera de
+   alcance en la spec.
+6. **El split de `schema/billing.ts`** (el hook `file-size` corta en 300 y `business.ts` llegaba
+   a 308) **no estaba en la tabla de archivos de la spec**. El revisor verifico por `diff` que
+   es un **movimiento puro**, sin cambio semantico, y que el barrel re-exporta.
+
+### Declarado y NO perseguido (intentado antes de declararse)
+
+- **`?v=00` es alias de `?v=0`** (el guard es `/^[0-9]+$/` + `Number()`): mismo contenido bajo
+  claves de cache distintas. No es fuga ni 404 indebido — desperdicio de cache.
+- **`403 not_owner` / `503 qr_unavailable` y los 403/409/503 del programa no tienen test.**
+  Verificados leyendo los sitios de `throw` alcanzables y el mapeo de `codeForStatus`;
+  ejercitarlos pedia un owner sin negocio y una inyeccion de falla de base — fuera del
+  presupuesto de 4 mutaciones.
+- **La precedencia del 400 de categoria** que afirma el contrato §2 es cierta en el codigo pero
+  no tiene oraculo.
+- **El rasterizado del glifo del placeholder** se midio en macOS; el test asevera un piso de 1%
+  y un techo de 50% de pixeles opacos, asi que **si en CI (Linux) faltaran fuentes ese test es
+  ROJO y no un falso verde**. Pendiente de la primera corrida de CI, no declarado imposible.
+
+### Lo que FALTA y es paso del orquestador, no del agente
+
+- **La migracion `0035` esta aplicada SOLO en la rama de integracion** (`br-shy-king-axu5s3ze`).
+  **Produccion NO se toco.** Aplicarla es paso posterior al commit, y se confirma con el owner.
+- **Verificar la CI con `/check-runs`** —nunca con `/status`, que en este repo miente— para el
+  sha exacto, despues del push.
+
+**SIN COMMITEAR (el owner no lo autorizo todavia): 34 archivos** — todo el codigo de la 0069,
+sus tests, la migracion `0035`, `docs/specs/0069-el-wizard-de-alta-es-api.md`,
+`docs/specs/0069-contratos-de-api.md`, `docs/INDEX.md`, `docs/adr/0071-*` (la re-medicion) y este
+`docs/TASKS.md`. **Verificado con `git status --short | wc -l` → 34.**
+
+---
+
+**Lo anterior al arco 2 esta detallado abajo, en «ARRANCA ACA LA SESION QUE SIGUE».**
 
 **→ LA SPEC 0067 ESTA `implementada`** (2026-09-17): **cuatro pasos, cuatro `PASS`** de revisor
 independiente, cada uno en contexto fresco. **Nada esta commiteado ni pusheado: eso lo autoriza el
@@ -67,26 +243,116 @@ failed** · `build --force` · `rg -n MUTATION apps tools` **vacio**. Los dos ba
 (mismo implementador **reanudado**, sin re-leer el repo) → revision final **4,4 min**. La palanca
 grande es el contexto, no los comandos.
 
-**→ LO PROXIMO, EN ORDEN:**
+**COMMITEADA Y PUSHEADA el 2026-09-17** — commit **`a0f66ea`**, autorizado por el owner. 26
+archivos, +1.528 / −190. **Verificado con `git rev-parse HEAD` y `git rev-parse origin/main` dando
+el MISMO sha**, no por asumirlo.
 
-1. **Pedirle al owner autorizacion para commitear** (~26 archivos: codigo, tests, spec 0068, ADR
-   0071, `TEMPLATE-CHICA.md`, `CLAUDE.md`, `LECCIONES.md`, `INDEX`, `PARQUEADO`, `TASKS`). Y
-   despues **verificar el push con `git rev-parse` y la CI con `/check-runs`**, nunca `/status`.
-2. **El borrado de la base** (punto 2 de este handoff): autorizado por el owner, SOLO DATOS, sin
-   Stripe, por MCP de Neon — y **se confirma el objetivo con el owner en el momento**.
-3. **La 2ª spec del arco**: el wizard de 3 pantallas + el QR.
+**CI VERDE, VERIFICADA CON `/check-runs` (2026-09-17).** Sha `a0f66ea`: **`verify: completed ->
+success`**, `total checks: 1`, **`no-success: 0`**. Pasos leidos uno por uno del job
+`105111713508`: `lint`, `typecheck`, **«La integracion Neon tiene que correr, no skipearse»**,
+**«Migrar la rama Neon de CI»**, `Unit + integracion Neon`, `playwright install`, `test:e2e`,
+`build`, `format:check` — **los 18 en `success`**. Nunca se uso `/status`, que aca miente.
 
-**CI VERDE, VERIFICADO CON EL ENDPOINT CORRECTO (2026-09-17).** `check-runs` del sha `9086c9a`:
-`verify: completed -> success`, cero checks que no sean `success`. **Los pasos que importaban, leidos
-uno por uno del job**: `lint` OK, `typecheck` OK, **«Migrar la rama Neon de CI» → success** (las tres
-migraciones `0032`/`0033`/`0034` aplicadas limpias, incluida la que **dropea** la tabla del arco de
-recuperacion), `Unit + integracion Neon` OK, e2e OK, `build` OK, `format:check` OK.
+**→ PRODUCCION LIMPIADA Y MIGRADA (2026-09-17), ejecutado por el agente via MCP de Neon.**
 
-> **OJO, y ya esta corregido en `CLAUDE.md`: `gh api .../commits/<sha>/status` MIENTE en este repo.**
-> Devolvio `success` con la CI **todavia corriendo**, porque agrega los *commit statuses* de la API
-> vieja —donde el unico que publica es **Vercel**— y **Actions reporta como *check runs***, que es
-> otro endpoint. El verde de CI se lee de `/check-runs`, nunca de `/status`. Caso completo en
-> `LECCIONES.md`.
+**Objetivo confirmado con el owner en el momento, no solo el permiso:** proyecto `mi-pasaporte`
+(`red-violet-38772073`), rama **`main` = `br-curly-silence-ax8acywm`**, la `default`/`primary`.
+**NO** se toco ninguna rama de integracion.
+
+**Dos hallazgos que se midieron ANTES de truncar, y que el owner decidio:**
+
+1. **Habia 4 suscripciones de Stripe VIVAS** en la base (`plan: plus`, `status: active`, con
+   `customer` y `subscription` id): A1, A3 Test ×2 y Negocio B. **El owner dijo «elimina, no te
+   preocupes por Stripe»** — asi que los ids se perdieron con el truncate. Si alguna seguia viva
+   del lado de Stripe, **sigue facturando** y sus webhooks llegan sin fila que matchee. Decision
+   del owner, registrada.
+2. **`core.terms_template` no es dato de prueba: es SEMILLA**, insertada por la migracion
+   `0004_polite_turbo.sql:97`. Truncarla la borraba **para siempre** (esa migracion ya figura
+   aplicada, `db:migrate` no la re-ejecuta) y `GET /api/loyalty-terms/templates` habria quedado
+   devolviendo `[]`. **El owner eligio EXCLUIRLA del truncate.** Verificado antes de ejecutar que
+   la exclusion es efectiva: **`terms_template` no tiene NINGUNA FK** —ni entrante ni saliente—,
+   asi que el `CASCADE` no podia alcanzarla.
+
+**Ejecutado:** `TRUNCATE` de `core.*` + `merchant_auth.*` menos `core.terms_template`, con
+`RESTART IDENTITY CASCADE`. **Verificado por SQL:** las 2 tablas de `merchant_auth` y las 28 de
+`core` en **0 filas**; `core.terms_template` con sus **3** semillas.
+
+**Migraciones aplicadas a PRODUCCION con `drizzle-kit migrate`** (no con SQL crudo, para que el
+journal no quede mintiendo): **32 → 35**. Verificado por SQL, no por el mensaje de la herramienta:
+`merchant_auth.password_reset_attempt` **ya no existe** (0033), `merchant_auth.auth_start_attempt`
+**existe** (0034), `core.business.slug` **existe** y `core.business_membership.pin_hash`
+**existe** (0032).
+
+**`consumer.*` TAMBIEN TRUNCADO, por decision del owner (2026-09-17).** El script acordado
+alcanzaba solo `core.*` + `merchant_auth.*`, y 7 tablas de `consumer` habian quedado con filas
+porque **no tienen FK a lo truncado** (el `CASCADE` no las alcanzaba): eran identidades de
+consumidor y pases de Wallet apuntando a programas ya inexistentes. Se verifico antes de ejecutar,
+con la misma diligencia que cazo `terms_template`, que **ninguna migracion siembra datos en
+`consumer.*`** (`rg 'INSERT INTO "consumer"' drizzle/*.sql` → vacio), asi que no habia semillas que
+perder.
+
+**ESTADO FINAL DE PRODUCCION, verificado por SQL:** de las 43 tablas de `core`, `merchant_auth` y
+`consumer`, **la unica con filas es `core.terms_template` (3 semillas)**. Todo lo demas en **0**.
+
+**LAS RAMAS DE NEON: NINGUNA ESTA SIN USO, asi que no se borro ninguna.** Medido: `ci-integration`
+(`br-icy-hat-axsfqc8k`) es la que uso la CI verde de `a0f66ea` hace minutos, y
+`spec-0065-marketing` (`br-shy-king-axu5s3ze`) es a la que apunta `.env.integration.local`, o sea
+**toda la suite `.neon` local**. Borrar cualquiera rompe CI o los tests de integracion. La segunda
+tiene TTL hasta **2026-10-15**.
+
+## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-17, post-`/clear`)
+
+**Todo lo anterior esta CERRADO y verificado.** Commit `a0f66ea` pusheado (HEAD == origin/main),
+**CI verde leida de `/check-runs`** (`verify: completed -> success`, 18 pasos en `success`),
+**produccion limpia y migrada a 35**. Lo unico sin commitear es este `docs/TASKS.md`.
+
+### Lo que hay que hacer: el ARCO 2 (2ª spec del ADR 0070)
+
+**ES API, NO PANTALLA. Confirmado con el owner el 2026-09-17** y es textual del ADR 0070 §16: «la
+UI la construye el owner por fuera, con ChatGPT, asi que lo que se construye aca es la capa de
+logica y los endpoints». El nombre del ADR —«el wizard de 3 pantallas»— engaña: lo que se entrega
+son **los endpoints que esas 3 pantallas consumen** mas **el contrato HTTP escrito** (forma de
+`0067-contratos-de-api.md`). Una spec de este arco que liste un archivo de pantalla como «crear»
+esta mal alcanzada.
+
+**Contenido segun el corte de 4 specs ya confirmado:** logica de pantallas 2 y 3, categoria
+`gcid:`, paises + Mexico, sello placeholder, programa activo, y **el QR**. Consume `server/slug.ts`
+y la migracion del `slug`, **ya aplicadas en produccion**.
+
+**Plantilla:** evaluar contra las tres condiciones del ADR 0071 (un dominio, sin migraciones, sin
+decision de producto abierta). **Probablemente NO califique** —toca varios dominios y puede pedir
+esquema—, o sea `TEMPLATE.md`. **Decidirlo midiendo, no por costumbre.**
+
+### Y LA RE-MEDICION DEL ADR 0071 — el owner la pidio explicitamente contra ESTE arco
+
+El ADR 0071 promete **de ~60 min a ~25** y se cerro con la condicion escrita de re-medirse. **Como
+se mide, para que la comparacion sea honesta:**
+
+**Baseline de la spec 0068** (lo que hay que batir): implementador paso 1 **18 min / 71 tools /
+179k tokens** · revisor **9 min / 40 / 106k** · implementador cerrando el FAIL **8 min / 18 /
+208k** · paso 2 con el implementador **reanudado** **6,8 min / 17 / 238k** · revision final **4,4
+min / 17 / 137k**. **Total subagentes ~46 min y 868k tokens**, mas la orquestacion.
+
+**Que anotar en el arco 2:** el `duration_ms`, el `tool_uses` y el `subagent_tokens` que devuelve
+**cada** notificacion de subagente, y cuantos ciclos hubo. **Comparar contra el baseline de arriba
+y escribir el numero REAL en el ADR 0071**, aunque contradiga la promesa. Si no bajo, el ADR se
+corrige con lo medido — un ADR que promete y no se re-mide es exactamente la clase de afirmacion
+sin verificar que este repo persigue.
+
+**Lo que NO cuenta como mejora:** bajar el tiempo salteando mutaciones o la revision independiente.
+En la 0068 el revisor cazo un oraculo que no existia y la fuga sobrevivia a 1027 tests; ese ciclo
+**se paga**.
+
+### Deuda viva, por si aparece en el camino
+
+- **`PARQUEADO.md` fila 56** — el gate de email verificado cubre **2 superficies de API de 11**.
+  Mientras viva, un owner sin verificar crea sucursales, sube marca, arma campañas y **abre un
+  checkout de Stripe**. Las decisiones de contenido ya estan tomadas; falta el cuando.
+- **`PARQUEADO.md` fila 57** — `core.business.status` no existe; pedido del owner para la 3ª spec.
+- **Stripe**: el owner ordeno truncar sin cancelar. Si alguna de las 4 suscripciones seguia viva
+  del lado de Stripe, **sigue facturando** y sus webhooks no matchean ninguna fila.
+- **Las ramas de Neon no se borraron porque ninguna esta sin uso** (ver arriba). Lo que tiene
+  sentido es **renombrar** `spec-0065-marketing`, no borrarla.
 
 ## ⇥ HANDOFF 2026-09-17 — LO QUE HACE LA SESION QUE VIENE, EN ORDEN
 
@@ -430,3 +696,77 @@ contra el arbol**. Candidato a `LECCIONES.md` cuando cierre el arco.
   esquema y los snapshots.
 - La spec 0065 (campaña de proximidad) sigue **cerrada** — QA del owner en verde. La 0066
   (reparacion del harness), **implementada con PASS**. Deuda declarada en `docs/PARQUEADO.md`.
+
+## ⇥ BITACORA DE MUTACIONES — SPEC 0069 (abierta 2026-09-17, ANTES de medir)
+
+**Punto de retorno.** Copia limpia de cada archivo en `/tmp/clean-*.ts`. Si una mutacion queda
+viva: `cp /tmp/clean-<x>.ts <archivo>` y verificar el `shasum` de abajo. **`qr/route.ts` es `??`
+(sin commitear): `git checkout` NO lo salva, solo la copia de `/tmp`.**
+
+| # | Archivo | `shasum` limpio | Invariante que ataca | Alcance de la medicion | Resultado EJECUTADO |
+|---|---|---|---|---|---|
+| 1 | `apps/merchant/src/app/api/onboarding/business/route.ts` | `95637e027dc54283f3feaa6a40980370bb01fb80` | la categoria del alta se valida contra la lista curada (`isBusinessCategory`) | `onboarding-business.neon.integration.test.ts` | **ROJO** — «una categoria fuera de la lista ("gcid:inventado") responde 400 y no escribe nada»: `AssertionError: expected 201 to be 400`. Verificado ademas por SQL: la corrida mutada dejo una fila `core.business` con `category_gcid = 'gcid:inventado'` (huerfana, borrada despues). 10 failed / 1 passed — las otras 9 son COLATERAL del «un negocio por owner» (409) y no se arreglaron |
+| 2 | `apps/merchant/src/server/loyalty-program/client-view.ts` | `d23d6846c78b421e104f87b7dcc4bb8b4afe0161` | `stampImagePath` se emite SIEMPRE, con sello o sin el (si no, el placeholder es codigo muerto) | `loyalty-client-view.test.ts`, `loyalty-program.test.ts`, `loyalty-stamp-placeholder.neon` | **ROJO 5 tests / 18 passed**: «un programa SIN sello expone un path NO nulo» y «un sello REMOVIDO … usa su version» (`expected null to be '/api/public/loyalty/…'`), «el consumidor hereda el path del sello» (idem — o sea que la propagacion a `consumer/programs.ts` esta cubierta), `loyalty-program.test.ts > never serializes the internal stamp key` y el `.neon` «el programa SIN sello expone un stampImagePath no nulo» |
+| 3 | `apps/merchant/src/server/loyalty-program/stamp.ts` | `37379485f888a7943003b390b0a964e5d9de5fd0` | una version que NO matchea es 404, nunca placeholder (un sello real no puede verse tapado por la letra) | `loyalty-stamp-placeholder.neon`, `loyalty-stamp.neon` | **ROJO 3 tests / 5 passed**: «con un sello puesto > una version VIEJA sigue siendo 404, NO el placeholder» (`expected { kind: 'placeholder', …(1) } to be null`), «sin sello, una version que no es la vigente ya es 404» (`expected 200 to be 404` — el status de la RUTA) y el `loyalty-stamp.neon` heredado |
+| 4 | `apps/merchant/src/app/api/public/loyalty/[businessId]/[programId]/stamp/route.ts` | `c47740a9513fe2e628c86426efb204274aef1ea9` | la ruta publica NUNCA serializa `stampImageObjectKey` (ni en cuerpo ni en header) | `loyalty-stamp-route.test.ts` | **ROJO 1 test / 6 passed** — «NUNCA serializa la clave interna de R2: ni en el cuerpo ni en un header»: `expected 'cache-control: …' not to contain 'loyalty/biz-1/prog-1/8f3c2a'`, con el `+ x-stamp-object-key: loyalty/biz-1/prog-1/8f3c2a` en el diff. La fuga se escribio por un HEADER, que es el canal que un oraculo que solo mira el cuerpo no ve |
+| 5 | `apps/merchant/src/app/api/loyalty-program/qr/route.ts` | `a645e440ef491dedcbb656805454ec7a6baabbea` | el `programId` sale de la SESION, nunca del query (aislamiento entre negocios) | `loyalty-qr.neon.integration.test.ts` | **ROJO 1 test / 6 passed** — «el programId del QUERY se ignora: A no alcanza el programa de B»: `Expected "…/enroll/f7a630fa-…" / Received "…/enroll/8ef1d3eb-…"`, o sea el QR del negocio B. El oraculo DECODIFICA el QR (sharp + jsqr), no mira «vino un SVG» |
+
+
+**Las 5 se corrieron de a una, se revirtieron con `cp` desde la copia limpia de `/tmp` y el `diff`
+contra esa copia dio VACIO; el `shasum` posterior coincide con el de la tabla en los 5 casos.**
+`rg -n MUTATION apps tools` → **vacio** (exit 1).
+
+**Condicion de corte (ADR 0062): NO se aplico** — ninguna vuelta termino en «el fix abrio la
+siguiente». Las 5 salieron rojas a la primera y por la asercion correcta.
+### Nota sobre los `shasum` de la tabla de arriba
+
+Los `shasum` de la bitacora son el **punto de retorno DURANTE la ronda de mutaciones** y siguen
+siendo validos como tales (las 5 se revirtieron y el `shasum` posterior coincidio en los 5 casos).
+**Despues** de la ronda, tres archivos cambiaron por el gate de `lint`/`typecheck` —ninguno por
+una mutacion— y su `shasum` actual es otro:
+
+- `apps/merchant/src/server/loyalty-program/client-view.ts` → `68817d52870852f41f912a5813a25b0a1ad46faf`
+  (`void stampImageObjectKey;` para el `no-unused-vars`, idiom de `wallet/push-transports.ts:46`)
+- `apps/merchant/src/server/onboarding/program-defaults.test.ts` → `fb8d67e23c27c9a89a1912c85c334800d46d5e6c`
+- `apps/merchant/src/server/loyalty-qr.neon.integration.test.ts` → `03d6aff8e46d6608aeb2804f1efb288fd58b0b89`
+
+## ⇥ ESTADO DE LA SPEC 0069 (implementador, 2026-09-17) — FALTA LA REVISION INDEPENDIENTE
+
+**La spec 0069 esta IMPLEMENTADA por el implementador y NO marcada como `implementada`: eso lo
+decide un revisor independiente con un `PASS` verificable (ADR 0071 §3).** El `estado` de su fila
+en `docs/INDEX.md` sigue en `cerrada` a proposito.
+
+**Entregado** (18 archivos de `apps/` + 1 doc nuevo; **cero `.tsx`**, barrido con
+`git status --short | grep -c '\.tsx'` → **0**):
+
+- Migracion **`0035_categoria_del_negocio.sql`** (generada con `drizzle-kit generate`, con su
+  snapshot y su fila de journal) + `category_gcid` en `schema/business.ts`.
+  **Aplicada a la rama de INTEGRACION** (`br-shy-king-axu5s3ze`) con `db:migrate` y verificada por
+  SQL (`information_schema.columns` → `text`, `NOT NULL`, default `'gcid:store'::text`).
+  **NO aplicada a produccion**: eso es paso del orquestador DESPUES del PASS.
+- `lib/business-categories.ts` (las 15 `gcid:` + `isBusinessCategory`), Mexico en
+  `SUPPORTED_COUNTRIES` (9 paises, **una** lista), `GET /api/onboarding/prefill`,
+  `POST /api/onboarding/program` + `server/onboarding/program-defaults.ts`,
+  `server/loyalty-program/stamp-placeholder.ts`, el path del sello **siempre** en `client-view.ts`,
+  `stampForPublicProgram` distinguiendo los dos `null`, la ruta publica sirviendo el placeholder, y
+  `GET /api/loyalty-program/qr` (SVG/PNG 1024²/descarga) con `renderEnrollQrPng`.
+- **`docs/specs/0069-contratos-de-api.md`** — el contrato HTTP normativo, 5 endpoints con todos sus
+  `code`, mas la declaracion de estado actual de las 4 rutas de `/api/loyalty-program` sin `code`.
+
+**Split obligado por el hook `file-size`:** `schema/business.ts` llegaba a **308** lineas al sumarle
+la columna, asi que `subscription` y `stripe_webhook_event` se mudaron a
+**`schema/billing.ts`** (nuevo) y el barrel `server/schema.ts` lo reexporta. Mismo motivo por el que
+`staff-pin.ts` ya vivia aparte. Verificado sin drift: `drizzle-kit check` → «Everything's fine» y
+`drizzle-kit generate` → «No schema changes».
+
+**Gates corridos una sola vez al final** (Node **v24.20.0**, scripts de root):
+`typecheck --force` **3/3 sin cache** · `lint` **exit 0** · `format:check` **OK** ·
+`test` **122 files / 1088 passed / 390 skipped / 0 failed** · `test` **con el env de integracion**
+**199 files / 1478 passed / 0 failed** · `build --force` **3/3 sin cache** (las 3 rutas nuevas
+aparecen en el manifiesto) · `rg -n MUTATION apps tools` **vacio**.
+
+**Dos tests preexistentes se CORRIGIERON contra el contrato nuevo (no se borraron), y hay que
+mirarlo en la revision:** `loyalty-program.test.ts` («never serializes the internal stamp key»)
+aseveraba `stampImagePath: null` sin sello, y `loyalty-stamp.neon.integration.test.ts` aseveraba
+`stampForPublicProgram(...) === null` sin sello. Las dos pinneaban **justo lo que la §D5 cambia**.
+

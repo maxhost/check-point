@@ -21,9 +21,11 @@ import {
   slugForNewBusiness,
 } from "../../../../server/business-slug";
 import { currencyForCountry } from "../../../../lib/currencies";
+import { isBusinessCategory } from "../../../../lib/business-categories";
 
 type CreateBusinessInput = {
   name?: unknown;
+  categoryGcid?: unknown;
   countryCode?: unknown;
   timezone?: unknown;
   locationName?: unknown;
@@ -51,6 +53,16 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as CreateBusinessInput;
   const name = nonEmpty(body.name);
+  // Spec 0069 §D1: la categoria es OBLIGATORIA en el alta, y ese es el lugar donde vive
+  // la regla de producto. El DEFAULT `'gcid:store'` de la columna es relleno de la
+  // migracion y NO esta en la lista curada, asi que no se puede pedir desde afuera.
+  const categoryGcid = body.categoryGcid;
+  if (!isBusinessCategory(categoryGcid)) {
+    return NextResponse.json(
+      { error: "Selecciona una categoría válida." },
+      { status: 400 },
+    );
+  }
   const countryCode = nonEmpty(body.countryCode)?.toUpperCase();
   const timezone = nonEmpty(body.timezone);
   const locationName = nonEmpty(body.locationName);
@@ -119,6 +131,7 @@ export async function POST(request: Request) {
         id: businessId,
         name,
         slug,
+        categoryGcid,
         countryCode,
         timezone,
         currencyCode: currencyForCountry(countryCode),

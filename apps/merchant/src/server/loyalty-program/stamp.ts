@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, asc, eq, lt, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
+  businesses,
   loyaltyAssetCleanups,
   loyaltyAssetUploads,
   loyaltyPrograms,
@@ -229,12 +230,29 @@ export async function cleanupExpiredLoyaltyAssets() {
   };
 }
 
+/**
+ * Que sirve la ruta publica del sello (spec 0069 §D5). `null` = **404**.
+ *
+ * Hasta la 0069 esta resolucion devolvia `null` por DOS motivos distintos —sin sello, y
+ * version que no matchea— y la ruta no podia separarlos. Ahora los separa, y la
+ * diferencia NO es cosmetica:
+ *
+ * - **sin sello** (`placeholder`): el programa existe, nunca subio imagen → se sirve la
+ *   inicial del negocio generada en servidor.
+ * - **version vieja**: sigue siendo `null`, o sea **404**. Si una URL cacheada y vencida
+ *   sirviera el placeholder, un sello real recien subido se veria reemplazado por la
+ *   letra — peor que el 404, porque el 404 lo arregla recargar y esto no.
+ */
+export type PublicStamp =
+  | { kind: "stamp"; objectKey: string }
+  | { kind: "placeholder"; businessName: string };
+
 /** Public read: resolves a program's current stamp prefix if the version matches. */
 export async function stampForPublicProgram(
   businessId: string,
   programId: string,
   version: unknown,
-) {
+): Promise<PublicStamp | null> {
   if (
     !uuidPattern.test(businessId) ||
     !uuidPattern.test(programId) ||
@@ -246,8 +264,10 @@ export async function stampForPublicProgram(
     .select({
       stampImageObjectKey: loyaltyPrograms.stampImageObjectKey,
       stampImageVersion: loyaltyPrograms.stampImageVersion,
+      businessName: businesses.name,
     })
     .from(loyaltyPrograms)
+    .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))
     .where(
       and(
         eq(loyaltyPrograms.id, programId),
@@ -255,11 +275,10 @@ export async function stampForPublicProgram(
       ),
     )
     .limit(1);
-  if (
-    !program?.stampImageObjectKey ||
-    program.stampImageVersion !== Number(version)
-  ) {
-    return null;
-  }
-  return program;
+  // El guard de version es COMUN a las dos ramas y va PRIMERO: un `v` que no es el
+  // vigente es 404 tenga sello o no.
+  if (!program || program.stampImageVersion !== Number(version)) return null;
+  return program.stampImageObjectKey
+    ? { kind: "stamp", objectKey: program.stampImageObjectKey }
+    : { kind: "placeholder", businessName: program.businessName };
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "core"."business" ADD COLUMN "category_gcid" text DEFAULT 'gcid:store' NOT NULL;

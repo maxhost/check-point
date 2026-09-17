@@ -61,3 +61,50 @@ señal decisiva**, no con repetir todas sus mediciones.
 
 De ~60 min a ~25 para un cambio de esta clase. **Se mide contra la proxima spec chica** y el
 numero real vuelve a este ADR.
+
+## RE-MEDICION (2026-09-17) — el numero real, contra la spec 0069
+
+**La promesa de ~25 min NO se cumplio en reloj. Se cumplio, y con margen, en tokens y en
+despachos.** El numero va aca aunque contradiga la prediccion: un ADR que promete y no se re-mide
+es la clase de afirmacion sin verificar que este repo persigue.
+
+| | spec 0068 (baseline) | spec 0069 (re-medicion) | |
+|---|---|---|---|
+| Despachos de subagente | **5** | **2** | −60% |
+| Tiempo de subagentes | **~46 min** | **40,3 min** | **−12%** |
+| Tokens de subagentes | **868k** | **498k** | **−43%** |
+| Tool uses | — | 200 | |
+
+Desglose de la 0069: **implementador 29,1 min / 141 tools / 316k** · **revisor 11,2 min / 59
+tools / 183k**. **Un solo ciclo: el revisor dio `PASS` de primera**, asi que no hubo el
+`FAIL → fix → re-verificacion` que en la 0068 costo ~15 min y dos despachos extra.
+
+### Las tres advertencias que hacen honesto el numero
+
+1. **La comparacion NO es de igual a igual, y favorece al baseline.** La 0068 era «un cambio
+   chico, un solo dominio» (`GET /api/staff` + el `StaffDTO`). La 0069 es **15 archivos, una
+   migracion, 5 endpoints, el contrato HTTP y 5 mutaciones ejecutadas**. Que un trabajo varias
+   veces mas grande salga en **menos tiempo y con la mitad de los tokens** es la señal real; el
+   −12% de reloj la subestima.
+2. **Esta decision dijo «se mide contra la proxima spec CHICA» y la 0069 es la LARGA.** La
+   `TEMPLATE-CHICA.md` sigue **sin estrenarse**: sus tres condiciones se evaluaron midiendo y la
+   0069 fallaba dos (varios dominios, y lleva migracion). El recorte que ESTA re-medicion prueba
+   es el de los puntos **2, 3 y 5** —decisiones antes de la prosa, un implementador y un revisor,
+   gates una vez—, **no** el de la plantilla chica, que sigue sin evidencia.
+3. **Lo que mas bajo es lo que el punto 2 predecia.** La spec se escribio **una sola vez**: las
+   tres decisiones de producto (categorias, placeholder, QR) se le pidieron al owner **antes** de
+   la prosa. En la 0068 la re-escritura completa de la spec fue la fuga #1.
+
+### Lo que NO se recorto, y volvio a pagar
+
+El protocolo de mutaciones y la revision independiente siguen enteros, y **volvieron a morder**:
+el revisor de la 0069 encontro con su mutacion R1 que `stampForPublicProgram` filtra por el par
+`(businessId, programId)` **sin un solo test que lo pinnee** —quitar ese `eq()` dejaba 23 tests
+verdes y a un negocio leyendo el sello de otro—. El orquestador agrego el oraculo y **probo que
+muerde**: `expected { kind: 'stamp', …(1) } to be null`, un solo test rojo. Sin esa ronda, la
+0069 cerraba con un agujero de aislamiento invisible para 1478 tests.
+
+**Conclusion operativa: el recorte se confirma y la prediccion de reloj se corrige.** Para un
+cambio de la clase de la 0068, ~25 min es plausible; para un arco como la 0069, el piso medido
+son **~40 min de subagentes** mas la orquestacion. La palanca que mas rindio no fue correr menos
+comandos: fue **no escribir la spec dos veces** y **no gastar un ciclo de FAIL**.

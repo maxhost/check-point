@@ -231,7 +231,12 @@ describe("loyalty program contract", () => {
       "biz-1",
     );
     expect(withoutStamp).not.toHaveProperty("stampImageObjectKey");
-    expect(withoutStamp).toMatchObject({ stampImagePath: null });
+    // Spec 0069 §D5: el path se emite SIEMPRE, también sin sello — ahí la ruta pública
+    // sirve el placeholder con la inicial del negocio. Hasta la 0069 esto era `null` y
+    // esa era justamente la razón por la que la ruta no la llamaba nadie.
+    expect(withoutStamp).toMatchObject({
+      stampImagePath: "/api/public/loyalty/biz-1/prog-1/stamp?v=3",
+    });
     expect(toClientProgram(null, "biz-1")).toBeNull();
     // Card colors are public design, not secrets: they pass straight through.
     const withCard = toClientProgram(
