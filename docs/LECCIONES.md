@@ -540,3 +540,26 @@ falla un dia cualquiera, en el commit de otra persona.
 una **afirmacion**, no un hecho. Se verifica igual que las demas —buscando si el codigo nuevo
 siquiera puede alcanzar al que falla, y volviendo a correr lo que fallo bajo otra variable—. Aca
 las dos respuestas fueron «no» y «el reloj», y ninguna se deducia leyendo el diff.
+
+## `rg -r` no es `-n`: un flag mal puesto devuelve una lectura FALSA del arbol, no un error
+
+**2026-09-17, spec 0069.** Buscando quien construia la URL del sello, el orquestador corrio
+`rg -rn 'patron' <ruta>`. **`-r` es `--replace`**, asi que `n` no fue «numero de linea»: fue el
+**texto de reemplazo**. `rg` devolvio las lineas con **cada match sustituido por la letra `n`** —
+`const resized = base.n{`, `"n": 'attachment; …'`— y **exit 0**.
+
+**Por que importa mas de lo que parece:** el comando **no falla**. Devuelve rutas reales, numeros
+de linea reales y contenido casi real. Es exactamente la forma de un resultado valido, y se presta
+a leerlo como «ya vi donde esta». Es la misma familia que el gotcha de zsh sin comillas que ya
+esta en `CLAUDE.md`: **un comando que "paso" sin haber mirado lo que uno cree.**
+
+**La regla:** cuando la salida de una busqueda se vea rara —contenido truncado, identificadores
+que no existen en el repo, una constante que aparece donde no deberia— **la primera hipotesis es
+el comando, no el codigo**. Volver a correrlo en su forma minima (`rg -n 'patron' <ruta>`) antes
+de sacar una sola conclusion. Aca se cazo porque un nombre de columna aparecio renombrado a `n` en
+tres archivos distintos, que es imposible; si el patron hubiera sido de una sola letra, la
+sustitucion habria pasado desapercibida.
+
+**Corolario, que es el de siempre en este repo:** la salida de una herramienta es evidencia sobre
+**lo que la herramienta hizo**, no sobre el arbol. Las dos cosas coinciden solo si el comando era
+el que uno creia.

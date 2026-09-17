@@ -14,13 +14,48 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-17.** Estado real en una linea: **specs 0067 y 0068
-`implementadas`**, commit `a0f66ea` **pusheado** (HEAD == origin/main), **CI verde leida de
-`/check-runs`**, **produccion truncada y migrada a 35**, y el **proceso recortado por el ADR 0071**
-(spec chica, un implementador y un revisor por spec, gates una vez, filas de INDEX de 3 lineas).
-**EL ARCO 2 ESTA EN EJECUCION: la spec 0069 esta `cerrada` y su implementador fue despachado.**
+**Ultima actualizacion: 2026-09-17 (handoff de cierre de sesion).**
 
-## ⇥ EN EJECUCION AHORA — spec 0069, el wizard de alta es API (2026-09-17)
+**ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
+
+| Que | Donde esta |
+|---|---|
+| `HEAD` == `origin/main` | **`08227ed`** (verificado con `git rev-parse`, no asumido) |
+| Arbol | **limpio**, 0 archivos sin commitear |
+| Specs del arco | **0067, 0068 y 0069 `implementadas`**. La 0069 con **PASS de revisor independiente** |
+| Migraciones en PRODUCCION | **37** — la `0035` (categoria del negocio) y la `0036` (estado de la cuenta), las dos **leidas por SQL** |
+| CI | **verde** para `08227ed`, leida de **`/check-runs`** (`no-success: 0`). **Nunca `/status`, que en este repo miente** |
+| Vercel | `success`. Las rutas nuevas **responden en produccion** con los `code` del contrato |
+| Suite | **1479 passed / 0 failed** con Neon |
+| Produccion | **0 negocios, 0 usuarios merchant, 0 suscripciones** |
+
+**EL ARCO 2 ESTA CERRADO Y EN PRODUCCION.** Lo que sigue es la **3ª spec** (entitlements), y
+arranca con **dos decisiones del owner pendientes** que estan detalladas abajo.
+
+**→ PARA RETOMAR, LEER EN ESTE ORDEN:** esta cabecera · la seccion «LO PROXIMO» de aca abajo ·
+`docs/PARQUEADO.md` filas **56** y **57** (las dos las absorbe la 3ª spec) · el ADR **0070**
+(el arco) y el **0071** (el proceso, con su re-medicion real).
+
+## ⇥ LO PROXIMO: LA 3ª SPEC DEL ARCO (entitlements) — y las 2 decisiones que la destraban
+
+**No se escribe una linea de prosa de esa spec hasta tener estas dos** (ADR 0071 §2: las
+decisiones del owner se piden ANTES de la prosa — es lo que hizo que la 0069 se escribiera **una
+sola vez**, y la fuga #1 de la 0068 fue escribirla dos):
+
+1. **Que pasa del lado del CONSUMIDOR de un negocio `closed`.** Se le pregunto al owner el
+   2026-09-17 y **su respuesta describio la superficie del COMERCIO** («ni staff ni owner puede
+   hacer nada»). Sigue sin decidirse: los **pases de Wallet ya emitidos**, los **sellos que la
+   gente ya junto**, y el **QR de enrolamiento que sigue pegado en el local**. **Esto decide el
+   tamaño de la spec**: si `closed` solo cierra el backoffice es chica; si tiene que apagar el
+   lado del consumidor, toca el arco de Wallet y pases.
+2. **Que estados/limites entran al catalogo de entitlements** (`can()` / `limitOf()`), y que
+   pasa cuando un negocio `free` ya excedio un limite que despues se baja.
+
+**Alcance ya conocido de esa spec, medido:** los 3 call-sites de plan que ya divergieron viven en
+`billing/`, `marketing/` y `locations/`. **Conviene hacer las filas 56 y 57 JUNTAS ahi**: son los
+mismos archivos y el mismo `requireApiOwner`.
+
+## ⇥ HECHO ESTA SESION — spec 0069, el wizard de alta es API (2026-09-17)
 
 **`docs/specs/0069-el-wizard-de-alta-es-api.md`, estado `cerrada`**, con su fila en `INDEX.md`.
 Es la **2a tajada del ADR 0070**. Entrega API y contrato, **cero pantallas** (§16).
@@ -279,10 +314,10 @@ opcion: el QR que el comerciante imprime sale mas nitido y **~40% mas liviano**.
 - **Verificar la CI con `/check-runs`** —nunca con `/status`, que en este repo miente— para el
   sha exacto, despues del push.
 
-**SIN COMMITEAR (el owner no lo autorizo todavia): 34 archivos** — todo el codigo de la 0069,
-sus tests, la migracion `0035`, `docs/specs/0069-el-wizard-de-alta-es-api.md`,
-`docs/specs/0069-contratos-de-api.md`, `docs/INDEX.md`, `docs/adr/0071-*` (la re-medicion) y este
-`docs/TASKS.md`. **Verificado con `git status --short | wc -l` → 34.**
+~~**SIN COMMITEAR**~~ → **TODO COMMITEADO Y PUSHEADO** (2026-09-17, autorizado por el owner).
+Los 36 archivos de la 0069 entraron en **`fde3757`**; despues vinieron `34cb98b` (el fix de la
+bomba de tiempo), `785605f` (docs), `cd952d1` (decisiones del owner) y `08227ed` (la migracion
+`0036`). **`git status --short | wc -l` → 0** y `HEAD` == `origin/main` en **`08227ed`**.
 
 ---
 
