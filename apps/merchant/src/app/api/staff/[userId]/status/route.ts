@@ -4,27 +4,34 @@ import { requireStaffOwner, staffError } from "../../_auth";
 
 export const dynamic = "force-dynamic";
 
-/** POST /api/staff/:userId/status — owner activates/deactivates a staff member. */
+/**
+ * POST /api/staff/:userId/status — owner activates/deactivates a staff member.
+ *
+ * Contrato: `docs/specs/0067-contratos-de-api.md` §4-bis (su fila la agrega la spec 0068).
+ */
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ userId: string }> },
 ) {
-  const auth = await requireStaffOwner(request);
-  if ("response" in auth) return auth.response;
-
-  const { userId } = await params;
-
-  let body: Record<string, unknown>;
+  // El guard va ADENTRO del `try` (spec 0068 §3): la resolución de la sesión también
+  // consulta la base, y afuera un fallo de base salía 500 sin `code` en vez del 503 que el
+  // contrato declara. El `return auth.response` sigue siendo un return temprano.
   try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json(
-      { error: "El cuerpo no es válido." },
-      { status: 400 },
-    );
-  }
+    const auth = await requireStaffOwner(request);
+    if ("response" in auth) return auth.response;
 
-  try {
+    const { userId } = await params;
+
+    let body: Record<string, unknown>;
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      return NextResponse.json(
+        { error: "El cuerpo no es válido." },
+        { status: 400 },
+      );
+    }
+
     const staff = await setStaffStatus(auth.business, userId, body.status);
     return NextResponse.json({ staff }, { status: 200 });
   } catch (error) {

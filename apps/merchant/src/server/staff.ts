@@ -22,14 +22,16 @@ export class StaffError extends Error {
 /**
  * Public staff row: never serializes a PIN, a hash, a session token or an account id.
  *
- * `email` sigue en el DTO con el **email sintetico** de la spec 0067 §4 (ver
- * {@link syntheticEmail}) y NO es un canal: existe porque `merchant_auth.user.email` es
- * `NOT NULL` con unico. Lo que el owner reparte es `identifier` (`handle@slug`).
+ * **Y tampoco el email** (spec 0068 §2): el de un integrante es el **sintetico**
+ * `staff-<uuid>@staff.invalid` que el alta genera porque `merchant_auth.user.email` es
+ * `NOT NULL` con unico. Se PERSISTE, pero no se serializa nunca: devolverlo al navegador
+ * seria entregar el mismo contacto falso que motivo borrar la consola de staff. Misma
+ * regla que `toClientProgram` y `brandResponse` con las claves de R2. Lo que el owner
+ * reparte es `identifier` (`handle@slug`).
  */
 export type StaffDTO = {
   userId: string;
   name: string;
-  email: string;
   /** `handle@slug` — el identificador con el que el integrante entra al mostrador. */
   identifier: string;
   role: string;
@@ -78,7 +80,6 @@ export async function ownerContext(
 export function toStaffDTO(row: {
   userId: string;
   name: string;
-  email: string;
   handle: string | null;
   slug: string;
   role: string;
@@ -88,7 +89,6 @@ export function toStaffDTO(row: {
   return {
     userId: row.userId,
     name: row.name,
-    email: row.email,
     identifier: row.handle ? `${row.handle}@${row.slug}` : "",
     role: row.role,
     status: row.status,
@@ -102,7 +102,6 @@ export async function listStaff(businessId: string): Promise<StaffDTO[]> {
     .select({
       userId: users.id,
       name: users.name,
-      email: users.email,
       handle: memberships.handle,
       slug: businesses.slug,
       role: memberships.role,
@@ -181,7 +180,7 @@ export async function setStaffStatus(
   }
 
   const [profile] = await getDb()
-    .select({ name: users.name, email: users.email })
+    .select({ name: users.name })
     .from(users)
     .where(eq(users.id, targetUserId))
     .limit(1);
@@ -189,7 +188,6 @@ export async function setStaffStatus(
   return toStaffDTO({
     userId: targetUserId,
     name: profile?.name ?? "",
-    email: profile?.email ?? "",
     handle: row.handle,
     slug: business.slug,
     role: row.role,

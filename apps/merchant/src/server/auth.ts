@@ -1,8 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP, magicLink } from "better-auth/plugins";
+import { magicLink } from "better-auth/plugins";
 import { getDb } from "./db";
-import { magicLinkEmail, passwordResetEmail } from "./email/channel";
+import { magicLinkEmail } from "./email/channel";
 import { emailChannelFromEnv } from "./email/provider";
 import * as schema from "./schema";
 
@@ -38,27 +38,12 @@ export function getMerchantAuth() {
     // better-auth deja de montar `/sign-in/email` y `/sign-up/email` —pinneado en
     // `merchant-auth-disabled-paths.test.ts`— y `revokeSessionsOnPasswordReset` deja de
     // existir junto con el arco de recuperacion, que esta spec borra entero (§5).
+    // Spec 0068 §4: el plugin de OTP por email se BORRO. Existia solo para el reset de
+    // contraseña —su unico `type` atendido era `forget-password`— y ese arco se borro
+    // entero en la 0067, asi que era configuracion muerta que igual publicaba 16
+    // endpoints de OTP/password en la instancia. El oraculo de que no vuelve se asevera
+    // sobre la INSTANCIA y no sobre un 404: `merchant-auth-disabled-paths.test.ts`.
     plugins: [
-      emailOTP({
-        otpLength: 6,
-        expiresIn: 600,
-        allowedAttempts: 3,
-        // Recovery is the only OTP surface for merchant users: an unknown email must
-        // never bootstrap an account through `/sign-in/email-otp` (spec 0046 excludes
-        // auto-registro).
-        disableSignUp: true,
-        sendVerificationOTP: async ({ email, otp, type }) => {
-          // Other OTP types are unreachable by design; never deliver a code for them.
-          if (type !== "forget-password") return;
-          const { subject, html, text } = passwordResetEmail(otp);
-          await emailChannelFromEnv().sendEmail({
-            to: email,
-            subject,
-            html,
-            text,
-          });
-        },
-      }),
       magicLink({
         // 15 minutos: el owner abre el mail en el momento. El token se consume una sola
         // vez (`consumeVerificationValue`, better-auth 1.6.26).
@@ -83,24 +68,19 @@ export function getMerchantAuth() {
         },
       }),
     ],
-    // The `/api/auth/[...all]` catch-all would otherwise publish every emailOTP
-    // endpoint, and those bypass our gate, persistent rate limit, disabled-staff
-    // check and audit trail — a locked door next to an open wall. Recovery must go
-    // through `/api/merchant/recovery/*` only.
+    // El catch-all `/api/auth/[...all]` publica TODO endpoint que un plugin agregue, y
+    // esos saltean nuestro gate, el rate limit persistente, el chequeo de staff
+    // desactivado y el registro de intentos — una puerta con llave al lado de una pared
+    // abierta.
     //
-    // Enforced by the HTTP router's `onRequest` (better-auth 1.6.26,
-    // `dist/api/index.mjs`: disabled paths answer 404), which does NOT affect the
-    // server-side `auth.api.*` calls our own routes make.
+    // Lo aplica el `onRequest` del router HTTP (better-auth 1.6.26,
+    // `dist/api/index.mjs`: un path deshabilitado contesta 404), que NO afecta a las
+    // llamadas server-side `auth.api.*` que hacen nuestras rutas.
+    //
+    // Spec 0068 §4: quedan DOS. Los 9 del plugin de OTP por email se fueron con el plugin
+    // — sin el, esos paths dan 404 por INEXISTENTES, no por bloqueados, y listarlos aca
+    // seria una proteccion vacua.
     disabledPaths: [
-      "/email-otp/send-verification-otp",
-      "/email-otp/check-verification-otp",
-      "/email-otp/verify-email",
-      "/email-otp/request-password-reset",
-      "/email-otp/reset-password",
-      "/email-otp/request-email-change",
-      "/email-otp/change-email",
-      "/forget-password/email-otp",
-      "/sign-in/email-otp",
       // Spec 0067 §2: los DOS unicos endpoints que publica el plugin `magicLink`, medidos
       // en `dist/plugins/magic-link/index.mjs` (`createAuthEndpoint("/sign-in/magic-link")`
       // y `"/magic-link/verify"`). Por HTTP saltearian nuestro rate limit por IP y el

@@ -44,6 +44,9 @@ export function parseCreateStaffInput(value: unknown): CreateStaffInput {
  * (`schema/auth.ts:12-15`), asi que «sin email» exigiria una migracion de la tabla de
  * better-auth — y `schema/auth.ts` esta fuera del alcance de esta spec.
  *
+ * **Spec 0068 §2: ese email se PERSISTE pero NO se serializa.** Salio del `StaffDTO`, asi
+ * que ninguna respuesta lo devuelve; la columna sigue existiendo porque es `NOT NULL`.
+ *
  * `.invalid` es el TLD que RFC 2606 §2 reserva para que **nunca** resuelva: ningun MTA
  * puede entregarle nada. Y ese email tampoco sirve para entrar: el usuario se crea **sin
  * fila en `merchant_auth.account`**, o sea sin credencial de contraseña, asi que
@@ -133,7 +136,6 @@ export async function createStaff(
       staff: toStaffDTO({
         userId,
         name: input.name,
-        email,
         handle,
         slug: business.slug,
         role: row.role,

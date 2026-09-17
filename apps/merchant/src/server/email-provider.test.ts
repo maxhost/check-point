@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { EmailProviderError, passwordResetEmail } from "./email/channel";
+import { EmailProviderError } from "./email/channel";
 import { ConsoleEmailChannel, consoleEmailOutbox } from "./email/console";
 import { emailChannelFromEnv } from "./email/provider";
 import { ResendEmailChannel } from "./email/resend";
@@ -106,16 +106,5 @@ describe("ResendEmailChannel", () => {
     expect(() => new ResendEmailChannel({ apiKey: "", from: "" })).toThrow(
       EmailProviderError,
     );
-  });
-});
-
-describe("passwordResetEmail", () => {
-  it("carries the code, the expiry and the do-not-share warning", () => {
-    const mail = passwordResetEmail("123456");
-    expect(mail.text).toContain("123456");
-    expect(mail.html).toContain("123456");
-    expect(mail.text).toContain("10 minutos");
-    expect(mail.text.toLowerCase()).toContain("no compartas");
-    expect(mail.subject.length).toBeGreaterThan(0);
   });
 });

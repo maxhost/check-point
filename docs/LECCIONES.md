@@ -455,6 +455,24 @@ spec, y se escribe al lado lo que devuelve hoy.** Si devuelve algo, el criterio 
 estas N lineas y ninguna mas», no «nada». Y **todo destino de redireccion que una spec escriba se
 busca en la lista de lo que esa misma spec borra**.
 
+### Quinto caso, 2026-09-17 (spec 0068): el barrido y el ORACULO se contradicen entre si
+
+La spec 0068 pedia dos cosas a la vez, y **una hacia imposible a la otra**. Su DoD exige
+`rg -n "emailOTP|passwordResetEmail|sendVerificationOTP" apps/merchant/src` → **vacio**; y su §4
+escribe el oraculo nuevo como `expect(keys).not.toContain("sendVerificationOTP")`, con el `it`
+nombrado «el plugin `emailOTP` ya no esta montado». **El test que el DoD manda escribir es
+exactamente lo que el barrido del DoD prohibe.** Lo cazo el implementador chocandose con el, no
+la re-medicion del orquestador: el barrido se habia corrido —daba las 12 lineas esperadas— pero
+**contra el arbol de ANTES, sin el archivo que la propia spec manda crear**.
+
+**La regla, que amplia la de arriba:** un barrido `rg` del DoD **se corre contra el arbol que la
+spec va a DEJAR**, no contra el de hoy — o sea que los archivos que la spec manda crear entran en
+la cuenta. En concreto, **un barrido por nombre de simbolo y un oraculo que menciona ese simbolo
+no pueden convivir**: o el barrido excluye el archivo del oraculo, o el oraculo usa otro simbolo
+del mismo plugin. Se resolvio por medicion, sin debilitar nada: `forgetPasswordEmailOTP` es otra
+clave que **solo** aporta ese plugin (verificada presente bajo la mutacion) y no matchea el
+barrido, que es sensible a mayusculas.
+
 ## El comando de verificacion tambien es una afirmacion: `/status` no ve a GitHub Actions
 
 **La regla que ya estaba y no alcanzo.** «Ninguna afirmacion de exito vale sin una señal que el

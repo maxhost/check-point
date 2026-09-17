@@ -2,7 +2,7 @@
 spec: 0067
 fecha: 2026-09-16
 estado: anexo
-resumen: Contrato HTTP normativo de la spec 0067 — metodo, ruta, entrada, salida, TODOS los codigos de error con su status, y si setea cookie de sesion. Es lo que consume quien construye la UI por fuera (ADR 0070 §16) y es el oraculo del revisor. Cubre los 8 endpoints de la spec: los 4 del staff (paso 2) mas `auth/start`, el consumo del link magico, el envio de la verificacion de email y el `PATCH` del slug del negocio (paso 3), y la tabla de CODIGOS DE REBOTE que reemplaza a la allow-list de la pantalla de login borrada.
+resumen: Contrato HTTP normativo de la spec 0067 — metodo, ruta, entrada, salida, TODOS los codigos de error con su status, y si setea cookie de sesion. Es lo que consume quien construye la UI por fuera (ADR 0070 §16) y es el oraculo del revisor. Cubre los 10 endpoints: los 4 del staff de la spec 0067 (paso 2) mas `auth/start`, el consumo del link magico, el envio de la verificacion de email y el `PATCH` del slug del negocio (paso 3), y los 2 que agrega la spec 0068 — `GET /api/staff` (§2-bis) y `POST /api/staff/[userId]/status` (§4-bis)—, mas la tabla de CODIGOS DE REBOTE que reemplaza a la allow-list de la pantalla de login borrada.
 ---
 
 # 0067 — Contrato de API: identidad sin contraseña
@@ -22,13 +22,15 @@ resumen: Contrato HTTP normativo de la spec 0067 — metodo, ruta, entrada, sali
 - La autenticacion del owner y del staff es la **cookie de sesion de better-auth**
   (`better-auth.session_token`, `HttpOnly`). Ninguna ruta acepta un token por header.
 - `503` sale con `code: "staff_unavailable"` cuando el fallo no es de dominio (base caida,
-  por ejemplo). Aplica a **las cuatro rutas de staff** (§1-§4) y no esta repetido en cada
-  tabla: las cuatro
-  envuelven **todo** lo que toca la base —incluida la resolucion de la sesion, que tambien
-  consulta— y traducen con `staffError`. Un 500 sin `code` **es un incumplimiento del
-  contrato**, no un detalle: lo cazo un revisor independiente cuando dos de las rutas
-  tenian su unico `try` alrededor del `request.json()`. Sonda:
-  `server/staff-routes-unavailable.test.ts`.
+  por ejemplo). Aplica a **las seis rutas de staff** (§1-§4, §2-bis y §4-bis) y no esta
+  repetido en cada tabla: las seis envuelven **todo** lo que toca la base —incluida la
+  resolucion de la sesion, que tambien consulta— y traducen con `staffError`. Un 500 sin
+  `code` **es un incumplimiento del contrato**, no un detalle: lo cazo un revisor
+  independiente cuando dos de las rutas tenian su unico `try` alrededor del
+  `request.json()`, y la spec 0068 §3 lo termino de cerrar moviendo `requireStaffOwner`
+  ADENTRO del `try` en las cuatro donde quedaba afuera (las dos de `/api/staff`, la
+  regeneracion, el cambio de estado) mas el `PATCH` del slug (§8), que traduce con su
+  propio `code: "slug_unavailable"`. Sonda: `server/staff-routes-unavailable.test.ts`.
 - **El PIN en claro aparece exactamente en dos respuestas** —el alta y la regeneracion— y
   en ninguna otra. No hay ninguna ruta que lo lea.
 
@@ -38,7 +40,6 @@ resumen: Contrato HTTP normativo de la spec 0067 — metodo, ruta, entrada, sali
 {
   "userId": "b0e498d9-…",          // merchant_auth.user.id
   "name": "Lucas Pérez",
-  "email": "staff-b0e498d9-…@staff.invalid", // SINTETICO: no es un canal, ver abajo
   "identifier": "lucas-perez@la-farmacia",   // handle@slug: esto es lo que se reparte
   "role": "staff",
   "status": "active",              // 'active' | 'disabled'
@@ -46,12 +47,23 @@ resumen: Contrato HTTP normativo de la spec 0067 — metodo, ruta, entrada, sali
 }
 ```
 
-**`email` es sintetico y no entregable, a proposito.** `merchant_auth.user.email` es
-`NOT NULL` con indice unico, asi que el staff necesita *algo* ahi; el dominio `.invalid`
-esta reservado por RFC 2606 §2 para que nunca resuelva. **Ningun mail sale hacia un staff**
-y ese email **no sirve para entrar**: el usuario se crea sin fila en `merchant_auth.account`,
-o sea sin credencial. La UI no deberia mostrarlo — lo que el owner le pasa al integrante es
-`identifier` + el PIN.
+**Son exactamente estas SEIS claves** (`createdAt`, `identifier`, `name`, `role`, `status`,
+`userId`), y ninguna respuesta agrega otra: lo pinnea `server/staff-create.test.ts` con
+`Object.keys(dto).sort()`.
+
+**El email del staff EXISTE EN LA BASE Y NO SE EXPONE** (spec 0068 §2). `merchant_auth.user.email`
+es `NOT NULL` con indice unico, asi que el alta persiste un sintetico
+`staff-<uuid>@staff.invalid` —`.invalid` es el TLD que RFC 2606 §2 reserva para que nunca
+resuelva—, pero **ninguna ruta lo serializa**: salio del `StaffDTO`. No es una recomendacion
+para la UI, es el contrato. **Ningun mail sale hacia un staff** y ese email **no sirve para
+entrar**: el usuario se crea sin fila en `merchant_auth.account`, o sea sin credencial. Lo
+que el owner le pasa al integrante es `identifier` + el PIN. **Oraculos, uno por superficie que
+serializa un `StaffDTO`** —el cuerpo no contiene la subcadena `staff.invalid` ni la clave
+`email`—: `staff-list.neon.integration.test.ts` (§2-bis),
+`staff-status.neon.integration.test.ts` (§4-bis) y `staff-pin-change.neon.integration.test.ts`
+(§4). **No alcanza con que `toStaffDTO` sea el unico constructor**: un revisor independiente
+midio que la fuga escrita **por fuera** (`{...toStaffDTO(…), email}`) pasa el typecheck y los
+1027 tests, porque TypeScript rechaza el exceso de propiedades pero no el spread.
 
 ---
 
@@ -146,6 +158,49 @@ el owner usa §4.
 
 ---
 
+## 2-bis. `GET /api/staff` — el owner lista a su equipo
+
+**Requiere sesion de owner.** Lo agrega la spec 0068 §1. **Va numerada `2-bis` y no `3` a
+proposito**: renumerar el documento invalidaria las referencias `§N` que ya viven en los
+docblocks de las rutas.
+
+**Entrada:** ninguna. **No hay `businessId` en el cuerpo ni en la query**: sale de la sesion,
+y que no viaje es lo que impide que un owner liste el equipo de otro. Cualquier parametro de
+query se ignora.
+
+**Salida 200** — **NO setea cookie.**
+
+```jsonc
+{ "staff": [ /* StaffDTO[] */ ] }
+```
+
+- Solo membresias con `role='staff'` del negocio de la sesion — **el owner no se lista a si
+  mismo**.
+- **Mas viejo primero** (`created_at` ascendente).
+- Incluye a los integrantes `disabled`: `status` viene en cada fila y el filtro es de la UI.
+- **Sin integrantes → `{ "staff": [] }` con 200**, nunca 404.
+- **No devuelve PIN ni hash** —no existe ninguna ruta que lea un PIN— ni el email sintetico
+  (ver «`StaffDTO` — forma canonica»).
+
+**Por que existe:** sin este endpoint, `POST /api/staff/[userId]/pin/regenerate` (§4) y
+`POST /api/staff/[userId]/status` (§4-bis) son **inalcanzables** para cualquier integrante
+creado antes de la sesion actual, porque su `userId` salia **solo** del 201 del alta (§2).
+
+**Errores**
+
+| Status | `code` | Cuando |
+|---|---|---|
+| 401 | `unauthorized` | sin sesion |
+| 403 | `not_owner` | la sesion no es owner de ningun negocio activo. **Se evalua ANTES que el gate de email**, ver §2: un integrante nunca recibe `email_not_verified` |
+| 403 | `email_not_verified` | el owner todavia no verifico su email (spec 0067 §3 / ADR 0070 §11). Se sale de ahi con §7 + §6 |
+| 503 | `staff_unavailable` | fallo no de dominio, **incluido el de la resolucion de la sesion** (ver «Convenciones») |
+
+Oraculo: `server/staff-list.neon.integration.test.ts` (los 4 actores con sesiones reales, el
+aislamiento entre dos negocios y el orden) y `server/staff-gate.test.ts` (el gate es
+fail-closed: un `emailVerified` ausente cierra).
+
+---
+
 ## 3. `POST /api/staff/[userId]/pin` — el integrante cambia SU PIN
 
 Es el **cambio obligatorio del primer uso**. **Requiere la sesion del propio integrante**
@@ -217,6 +272,48 @@ Hace **cuatro** cosas, y las cuatro son parte del contrato:
 | 404 | `staff_not_found` | ese `userId` no es staff **de este negocio**. **404 y no 403** — un owner del negocio A pidiendo un staff de B no puede distinguir «no existe» de «no es tuyo» |
 
 ---
+
+## 4-bis. `POST /api/staff/[userId]/status` — el owner activa o desactiva a un integrante
+
+**Requiere sesion de owner.** La ruta existe desde la spec 0043; **su fila faltaba en este
+contrato** y la agrega la spec 0068.
+
+**Entrada**
+
+```jsonc
+{ "status": "disabled" }
+```
+
+`status` es `'active' | 'disabled'` y es el **unico** campo que se lee. El `userId` del
+integrante va en la ruta, y el negocio sale de la sesion.
+
+**Salida 200** — **NO setea cookie** (pero **borra las del integrante** al desactivarlo).
+
+```jsonc
+{ "staff": { /* StaffDTO */ } }
+```
+
+Desactivar hace dos cosas, y las dos son parte del contrato:
+
+1. deja la membresia en `status='disabled'` — el `user` y su rastro de auditoria **no se
+   borran**;
+2. **revoca todas las sesiones de ese integrante** (`delete from merchant_auth.session where
+   user_id = …`), el mismo `DELETE` de §4 (ADR 0055). Reactivar **no** devuelve las sesiones:
+   el integrante vuelve a entrar con §1.
+
+**Errores**
+
+| Status | `code` | Cuando |
+|---|---|---|
+| 400 | *(sin `code`)* | el cuerpo no es JSON. **Es la unica respuesta de las rutas de staff sin `code`**, y esta declarada asi porque la ruta la emite asi: `{ "error": "El cuerpo no es válido." }` |
+| 400 | `invalid_status` | `status` distinto de `'active'` / `'disabled'` |
+| 400 | `invalid_target` | `userId` vacio o que no es string. **Hoy es inalcanzable**: el valor llega del segmento dinamico de la ruta y Next siempre lo entrega como string no vacio; esta declarado porque `setStaffStatus` lo puede emitir y el contrato no puede tener codigos ocultos (mismo criterio que el `business_not_found` de §8) |
+| 401 | `unauthorized` | sin sesion |
+| 403 | `not_owner` | la sesion no es owner de ningun negocio activo. Se evalua antes que el gate de email, ver §2 |
+| 403 | `email_not_verified` | el owner todavia no verifico su email (ver §2) |
+| 404 | `staff_not_found` | ese `userId` no es miembro **de este negocio**. **404 y no 403**: un owner de A pidiendo un integrante de B no puede distinguir «no existe» de «no es tuyo» |
+| 409 | `target_is_owner` | el objetivo es el owner del negocio: **un owner nunca se desactiva por esta ruta** |
+| 503 | `staff_unavailable` | fallo no de dominio, incluido el de la resolucion de la sesion |
 
 ---
 
@@ -391,7 +488,7 @@ imprimir el parametro crudo**: un codigo desconocido no renderiza nada.
 | `magic_link_invalid` | `GET /api/merchant/auth/magic-link` (§6) | el enlace no traia token, o el token era invalido, estaba vencido o ya se habia usado | «Ese enlace ya no sirve. Pedí uno nuevo.» |
 
 **Gemelo de API:** en las rutas owner-only el mismo motivo no rebota, responde **403 con
-`code: "email_not_verified"`** (§2, §4 y §8) — un `redirect()` sobre un `POST` es un 307 y no
+`code: "email_not_verified"`** (§2, §2-bis, §4, §4-bis y §8) — un `redirect()` sobre un `POST` es un 307 y no
 el 403 que la UI necesita.
 
 **Pinneado:** `server/auth-guards.test.ts` lee este archivo y exige que cada codigo que el

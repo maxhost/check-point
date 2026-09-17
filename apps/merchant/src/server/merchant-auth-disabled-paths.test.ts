@@ -16,20 +16,20 @@ import { getMerchantAuth } from "./auth";
  *
  * The 404 comes from the router's `onRequest`, before any endpoint or database work,
  * so this needs no live database.
+ *
+ * **Spec 0068 §4 — POR QUE LA LISTA BAJO DE 11 A 2, y por que hay un caso nuevo.** Al
+ * borrarse el plugin de OTP por email, sus 9 paths pasaron a dar 404 **por inexistentes**,
+ * no por bloqueados: dejarlos en `BLOCKED` los habria dejado en verde probando NADA (un
+ * path mal escrito da 404 igual — es la misma razon por la que este archivo ya tenia un
+ * control del 404). El oraculo que los reemplaza se asevera **sobre la instancia**: que las
+ * claves que ese plugin agregaba a `auth.api` ya no esten, con un control de que la
+ * instancia sigue teniendo endpoints.
  */
 const BASE = "http://localhost:3001";
 
 const BLOCKED = [
-  "/api/auth/email-otp/send-verification-otp",
-  "/api/auth/email-otp/check-verification-otp",
-  "/api/auth/email-otp/verify-email",
-  "/api/auth/email-otp/request-password-reset",
-  "/api/auth/email-otp/reset-password",
-  "/api/auth/email-otp/request-email-change",
-  "/api/auth/email-otp/change-email",
-  "/api/auth/forget-password/email-otp",
-  "/api/auth/sign-in/email-otp",
-  // Spec 0067 §2 — los dos unicos que publica `magicLink`.
+  // Spec 0067 §2 — los dos unicos que publica `magicLink`, y los dos unicos que quedan
+  // (spec 0068 §4: los 9 del plugin de OTP se fueron con el plugin).
   "/api/auth/sign-in/magic-link",
   "/api/auth/magic-link/verify",
 ];
@@ -66,6 +66,23 @@ describe("better-auth HTTP surface (spec 0046)", () => {
       }),
     );
     expect(response.status).not.toBe(404);
+  });
+
+  /**
+   * Spec 0068 §4 — EL ORACULO QUE REEMPLAZA AL QUE SE HABRIA VUELTO VACUO. Se mira la
+   * INSTANCIA, no un 404: las dos claves de abajo las agregaba **solo** el plugin de OTP
+   * por email (medido: con el plugin puesto, `Object.keys(auth.api)` tenia 44 claves e
+   * incluia las dos). Si alguien vuelve a montarlo, este caso se pone rojo.
+   *
+   * `signInMagicLink` es el CONTROL, y no es decorativo: sin el, los dos `not.toContain`
+   * pasarian igual contra un objeto vacio —o contra una instancia que fallo en construirse—
+   * y no probarian nada.
+   */
+  it("el plugin de OTP por email ya no esta montado", () => {
+    const keys = Object.keys(getMerchantAuth().api);
+    expect(keys).not.toContain("signInEmailOTP");
+    expect(keys).not.toContain("forgetPasswordEmailOTP");
+    expect(keys).toContain("signInMagicLink");
   });
 
   // Spec 0067 §2 / DoD: el merchant YA NO TIENE CONTRASEÑA. Que no quede ninguna llamada a

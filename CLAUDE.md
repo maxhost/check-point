@@ -22,20 +22,29 @@ como si estuviera pegado aca y no ahorraria un solo token.
 ## Flujo de trabajo
 
 1. **Leer `docs/TASKS.md` antes de empezar.** Es el estado real, no lo que diga el chat.
-2. **Ninguna tarea toca codigo sin su spec cerrada** (`docs/specs/`, plantilla en
-   `TEMPLATE.md`). La subespecificacion es el gatillo medido del exito fingido: en tareas
-   resolubles y bien definidas el reward hacking cae a 0%; en tareas vagas, ~50%.
+2. **Ninguna tarea toca codigo sin su spec cerrada** (`docs/specs/`). La subespecificacion
+   es el gatillo medido del exito fingido: en tareas resolubles y bien definidas el reward
+   hacking cae a 0%; en tareas vagas, ~50%. **Que plantilla (ADR 0071):** `TEMPLATE-CHICA.md`
+   (~60 lineas) si valen las tres —**un dominio, sin migraciones, sin decision de producto
+   abierta**—; `TEMPLATE.md` si falta alguna. **Y las decisiones del owner se piden ANTES de
+   escribir la prosa**: una spec escrita dos veces porque el alcance cambio despues es el
+   costo que el 0071 vino a cortar.
 3. **Toda decision de diseño genera un ADR** (`docs/adr/`) con fecha y `resumen` de una
    linea en el frontmatter. El resumen es lo que se lee sin abrir el archivo.
-4. **Agregar la fila a `docs/INDEX.md` en el mismo commit.** Un indice viejo es peor que
-   ninguno.
+4. **Agregar la fila a `docs/INDEX.md` en el mismo commit**, de **3 lineas**: que es, por
+   que importa, estado (ADR 0071). El detalle vive en la spec, que es lo que la fila enlaza.
+   Un indice viejo es peor que ninguno; uno de 2.000 palabras por fila se paga en cada sesion.
 5. **Actualizar `docs/TASKS.md` al terminar.** Hay un hook `Stop` que lo exige si quedo
    viejo respecto del codigo tocado.
 6. **Marcar `hecho` solo con verificacion real** — test que pasa, comando corrido, cosa
    vista en pantalla. Nunca "deberia andar".
-7. **Implementar con el protocolo de `docs/AGENT-WORKFLOW.md`.** Una spec cerrada se
-   entrega a implementador y después a revisor independiente; solo un PASS verificable
-   permite marcarla como implementada.
+7. **Implementar con el protocolo de `docs/AGENT-WORKFLOW.md`: UN implementador para toda
+   la spec y UN revisor independiente al final** (ADR 0071), no un ciclo por paso. Solo un
+   PASS verificable permite marcarla como implementada. **Los gates completos se corren una
+   vez por spec**, no una por agente: medido, una ronda entera cuesta menos de un minuto y el
+   tiempo real se va en contexto re-leido. **Lo que NO se recorta es el protocolo de
+   mutaciones ni la revision independiente** — en la 0068 el revisor cazo un oraculo que no
+   existia y la fuga sobrevivia a 1027 tests.
 
 ## Estado
 

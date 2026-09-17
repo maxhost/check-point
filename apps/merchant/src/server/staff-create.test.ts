@@ -17,6 +17,9 @@ let takenHandles: Array<{ handle: string | null }> = [];
 let insertRows: Array<{ role: string; status: string; createdAt: Date }> = [];
 /** Lo que el alta le manda a `insert(memberships).values(...)`, para poder aseverarlo. */
 let membershipValues: Record<string, unknown> | null = null;
+/** Idem para `insert(users).values(...)`: es donde se PERSISTE el email sintetico, que
+ * desde la spec 0068 §2 ya no vuelve en ningun DTO. */
+let userValues: Record<string, unknown> | null = null;
 
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({
@@ -44,6 +47,7 @@ vi.mock("./db", () => {
   }
   chain.values = (value: Record<string, unknown>) => {
     if ("role" in value) membershipValues = value;
+    if ("email" in value) userValues = value;
     return chain;
   };
   chain.limit = () => Promise.resolve([]);
@@ -62,6 +66,7 @@ afterEach(() => {
   takenHandles = [];
   insertRows = [];
   membershipValues = null;
+  userValues = null;
 });
 
 describe("createStaff: el cuerpo es SOLO el nombre — spec 0067 §4", () => {
@@ -126,9 +131,10 @@ describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
     const serialized = JSON.stringify(staff);
     expect(serialized).not.toContain(pin);
     expect(serialized.toLowerCase()).not.toContain("hash");
+    // Allow-list de claves (spec 0068 §2): son SEIS, y `email` ya no esta. Un DTO que
+    // vuelva a llevarlo pone este caso en rojo.
     expect(Object.keys(staff).sort()).toEqual([
       "createdAt",
-      "email",
       "identifier",
       "name",
       "role",
@@ -150,10 +156,16 @@ describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
     expect(membershipValues?.pinHash).not.toBe(pin);
   });
 
-  it("el email del staff es sintético y no entregable (.invalid)", async () => {
+  it("el email sintético se PERSISTE pero no se serializa (spec 0068 §2)", async () => {
     insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
     const { staff } = await createStaff(business, { name: "Ana" });
-    expect(staff.email).toMatch(/^staff-.+@staff\.invalid$/);
+    // Sigue yendo a la base: `merchant_auth.user.email` es NOT NULL con único, así que el
+    // alta no puede dejarlo vacío. Se asevera sobre los valores del insert.
+    expect(userValues?.email).toMatch(/^staff-.+@staff\.invalid$/);
+    expect(userValues?.emailVerified).toBe(false);
+    // Y NO vuelve al navegador: ni la clave ni el dominio sintético.
+    expect(staff).not.toHaveProperty("email");
+    expect(JSON.stringify(staff)).not.toContain("staff.invalid");
   });
 
   it("traduce el choque del único de handle a un 409", async () => {

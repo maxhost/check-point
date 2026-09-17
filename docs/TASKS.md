@@ -26,9 +26,55 @@ owner.**
 con `git rev-parse HEAD` y `git rev-parse origin/main` dando el MISMO sha**, no por asumirlo (esta
 cabecera ya mintio dos veces en sesiones anteriores). 91 archivos, +24.149 / -2.747.
 
-**→ LO PROXIMO:** la **2ª spec del arco** (el wizard de 3 pantallas + el QR), que consume
-`server/slug.ts` y la migracion que la 0067 dejo lista. **Y antes de empezarla, decidir los puntos
-abiertos de abajo** — sobre todo el gate de API y el `GET /api/staff`.
+**→ EL PROCESO CAMBIO: ADR 0071, aceptado por el owner el 2026-09-17.** Spec chica
+(`docs/specs/TEMPLATE-CHICA.md`, nuevo) para cambios de **un dominio, sin migraciones y sin
+decision de producto abierta**; decisiones del owner **antes** de la prosa; **UN implementador y
+UN revisor por spec**, no por paso; filas de `INDEX` de **3 lineas**; **gates completos una vez
+por spec**. `CLAUDE.md` puntos 2, 4 y 7 actualizados. **No se toco el protocolo de mutaciones ni
+la revision independiente**: en esta misma spec el revisor cazo un oraculo inexistente y la fuga
+sobrevivia a 1027 tests. El ADR lleva los numeros medidos y **se re-mide contra la proxima spec
+chica**.
+
+**El paso 2 NO lleva spec nueva**: ya es el §4 de la 0068, `cerrada`. Escribir otra seria la
+duplicacion que el 0071 vino a cortar. La plantilla chica estrena en el proximo trabajo nuevo.
+
+**→ LA SPEC 0068 ESTA `implementada` (2026-09-17), con `PASS` de revisor independiente sobre la
+spec ENTERA.** Entregado: `GET /api/staff`, `email` fuera del `StaffDTO`, `requireStaffOwner`
+adentro del `try` en 4 rutas, el borrado de `emailOTP`, y en el contrato `§2-bis`, `§4-bis` y los
+oraculos por superficie. **Nada commiteado: eso lo autoriza el owner.**
+
+**Gates corridos por el ORQUESTADOR sobre el estado final** (cadena con `&&`, o sea exit 0 en cada
+paso): `typecheck --force` · `lint` · `format:check` · `test` **1018 passed / 355 skipped / 0
+failed** · `build --force` · `rg -n MUTATION apps tools` **vacio**. Los dos barridos del DoD, exit
+1. Integracion del revisor: **8 archivos / 53 tests / 0 failed**, incluidos `magic-link.neon` y
+`auth-start.neon` (sacar `emailOTP` no toco el link magico).
+
+**14 mutaciones en total, ninguna sobrevivio sin explicacion**: 6 del implementador, 5 del revisor,
+3 del orquestador. Las dos que valieron el ciclo:
+
+- **El `FAIL`**: el DoD pedia un oraculo contra la fuga del email sintetico y **no existia** para
+  `…/pin/regenerate` ni `…/status`. La fuga escrita **por fuera** de `toStaffDTO`
+  (`{...toStaffDTO(…), email}`) pasaba `typecheck`, **1027 tests** y los 4 `.neon` — TypeScript
+  rechaza el exceso de propiedades pero **no** el spread. Cerrado con
+  `staff-status.neon.integration.test.ts` (nuevo) y +5 lineas en `staff-pin-change.neon`.
+- **El oraculo que iba a quedar VACUO**: sin el plugin, los 9 paths de `emailOTP` dan 404 **por
+  inexistentes**, asi que el test viejo seguia verde sin probar nada. Se mudo a
+  `Object.keys(auth.api)`; reponer el plugin lo pone rojo **por la clave**
+  (`to not include 'signInEmailOTP'`), y el revisor probo ademas que los 2 `disabledPaths` que
+  quedan son guard vivo (sin la entrada, el path da **500**, no 404).
+
+**PRIMERA MEDICION DEL ADR 0071:** paso 1 **18 min** (implementador fresco) → paso 2 **6,8 min**
+(mismo implementador **reanudado**, sin re-leer el repo) → revision final **4,4 min**. La palanca
+grande es el contexto, no los comandos.
+
+**→ LO PROXIMO, EN ORDEN:**
+
+1. **Pedirle al owner autorizacion para commitear** (~26 archivos: codigo, tests, spec 0068, ADR
+   0071, `TEMPLATE-CHICA.md`, `CLAUDE.md`, `LECCIONES.md`, `INDEX`, `PARQUEADO`, `TASKS`). Y
+   despues **verificar el push con `git rev-parse` y la CI con `/check-runs`**, nunca `/status`.
+2. **El borrado de la base** (punto 2 de este handoff): autorizado por el owner, SOLO DATOS, sin
+   Stripe, por MCP de Neon — y **se confirma el objetivo con el owner en el momento**.
+3. **La 2ª spec del arco**: el wizard de 3 pantallas + el QR.
 
 **CI VERDE, VERIFICADO CON EL ENDPOINT CORRECTO (2026-09-17).** `check-runs` del sha `9086c9a`:
 `verify: completed -> success`, cero checks que no sean `success`. **Los pasos que importaban, leidos
@@ -50,7 +96,55 @@ limpias). No hay nada a medias de ese arco.
 
 **El owner dio estas tres instrucciones el 2026-09-17. Estan en orden y no hay que repreguntarlas:**
 
-### 1. Armar una SPEC DE CIERRE chica — tres puntos, un solo dominio (la API de identidad)
+### 1. HECHO — la spec 0068 esta `cerrada` (2026-09-17)
+
+`docs/specs/0068-cierre-de-la-api-de-identidad.md`, con su fila en `docs/INDEX.md`. **Nada de
+codigo escrito todavia**: lo que hay es la spec.
+
+**Las cuatro decisiones que la bloqueaban las contesto el owner el 2026-09-17:**
+
+1. **Alcance recortado a staff.** Palabras del owner: «como estamos en proceso de reconversion
+   todo a API diferentes, mas seguras, yo tocaria solo lo que faltaba de staff para completar lo
+   que faltaba del arco 1». → **el gate de email en las otras 9 superficies SALE de la spec** y
+   vive en `docs/PARQUEADO.md` **fila 56**, con sus dos decisiones de contenido **ya tomadas**
+   (si al `status='active'`, si a los `code` en 401/403): lo unico que falta es cuando.
+2. **`email` sale del `StaffDTO`.** Confirmado.
+3. **Negocio con `status` + suscripcion `free` de base.** Medido, y son dos cosas distintas: la
+   **suscripcion free YA existe** en toda alta (`api/onboarding/business/route.ts:155` inserta
+   `plan:'free'`, `status:'active'`), y **`core.business.status` NO existe** — los `status` del
+   esquema son los de `business_membership`, `location` y `subscription`. Es esquema nuevo, la
+   0068 no toca esquema → `PARQUEADO.md` **fila 57**, para la **3ª spec** (entitlements).
+4. **`code` en los 401/403.** Confirmado; aplica a las superficies parqueadas en la fila 56.
+
+**Lo que la re-medicion corrigio de lo que decia este archivo** (regla: lo que se le pasa a un
+subagente como insumo es una afirmacion propia, y se re-mide antes de despachar):
+
+- **Las superficies de API del owner son 11, no 6.** Las 6 del encargo eran `api/staff/*`, el
+  `PATCH` del slug, `api/billing`, `api/locations`, `api/marketing` y `api/catalog`. **Las 5 que
+  faltaban**: `api/brand`, `api/brand/logo-upload` (que **ni siquiera resuelve owner**: solo
+  sesion), `api/loyalty-program`, `api/loyalty-program/stamp-upload` y `api/loyalty-terms/templates`.
+- **Hallazgo nuevo, no estaba en ningun doc:** los tres `ownerBusiness` (`brand.ts:32`,
+  `catalog/core.ts:73`, `loyalty-program.ts:51`) **no filtran `memberships.status='active'`**, que
+  `ownerContext` si filtra, y loyalty ordena `desc` donde los otros ordenan `asc`. Es la deriva
+  que el docblock de `locations/_auth.ts:8` decia estar evitando.
+- **El contrato ya MIENTE hoy**: sus «Convenciones» declaran que las cuatro rutas de staff
+  envuelven «todo lo que toca la base, incluida la resolucion de la sesion», y en **4** de ellas
+  el guard esta fuera del `try`. Arreglarlo es lo que vuelve cierto al documento.
+
+**Sondas ejecutadas** (archivo temporal de vitest, **borrado**, `git status` limpio):
+`Object.keys(auth.api)` da **44** endpoints con `emailOTP` puesto, incluidos `signInEmailOTP` y
+`sendVerificationOTP` — por eso el oraculo del punto (4) se asevera sobre la instancia en vez de
+sobre un 404 que quedaria vacuo. Y los **endpoints core de password** de better-auth siguen
+montados: `request-password-reset` → **400 `RESET_PASSWORD_DISABLED`**, `reset-password` y
+`change-password` → 400 de validacion, `set-password` → 404. Ninguno autentica: **declarado
+afuera de alcance**.
+
+**Los barridos del DoD se corrieron contra el arbol ANTES de cerrar** (leccion de la 0067, que
+cerro con cuatro criterios imposibles): dos nacieron mal y se corrigieron — el conteo de archivos
+de un barrido, y un `rg` sobre el contrato que **no puede dar cero** porque la palabra `email`
+tambien esta en el cuerpo de `auth/start`.
+
+### 1-bis. El encargo original del owner, para referencia — tres puntos, un solo dominio
 
 No es el wizard todavia. Es cerrar la deuda que dejo la 0067, y el owner la aprobo agrupada asi:
 
@@ -107,10 +201,17 @@ previa — **confirmar el objetivo con el owner en el momento, no el permiso.**
 
 Consume `server/slug.ts` y la migracion del `slug` que la 0067 dejo lista.
 
-### Sin commitear al cerrar esta sesion (3 archivos, todo documentacion)
+### ~~Sin commitear al cerrar esta sesion~~ → YA COMMITEADO (`b2fef3d`, 2026-09-17)
 
-`CLAUDE.md` (la correccion de `/status` → `/check-runs`), `docs/LECCIONES.md` (la leccion nueva) y
-este `docs/TASKS.md`. **El owner no autorizo ese commit todavia** — se le propuso y quedo pendiente.
+Los 3 archivos de documentacion (`CLAUDE.md` con la correccion de `/status` → `/check-runs`,
+`docs/LECCIONES.md` y `docs/TASKS.md`) entraron en el commit **`b2fef3d`**, que **esta pusheado**:
+`git rev-parse HEAD` y `git rev-parse origin/main` dan el mismo sha (verificado el 2026-09-17, no
+asumido).
+
+**Lo que hay sin commitear AHORA (2026-09-17, sesion de la 0068) son 4 archivos, todo
+documentacion:** `docs/specs/0068-cierre-de-la-api-de-identidad.md` (nuevo), `docs/INDEX.md` (su
+fila), `docs/PARQUEADO.md` (filas 56 y 57) y este `docs/TASKS.md`. **El owner no autorizo ese
+commit todavia.**
 
 ## ⇥ EN EJECUCION: EL ALTA DEL COMERCIO ES UN WIZARD (ADR 0070)
 
@@ -310,9 +411,13 @@ contra el arbol**. Candidato a `LECCIONES.md` cuando cierre el arco.
   `Unit + integracion Neon`, e2e, `build`, `format:check`.
   **`/status` NO sirve para esto y ya esta corregido en `CLAUDE.md`**: devolvio `success` con la CI
   todavia corriendo porque ahi solo publica Vercel (caso en `LECCIONES.md`).
-- **Sin commitear quedan 3 archivos, todos documentacion**: `CLAUDE.md` (la correccion de
-  `/status` → `/check-runs`), `docs/LECCIONES.md` (la leccion nueva) y este `docs/TASKS.md`.
-  **El owner no autorizo ese commit todavia.**
+- **Aquellos 3 archivos de documentacion YA se commitearon** en `b2fef3d`, pusheado (HEAD ==
+  origin/main, verificado). **Lo que queda sin commitear hoy** son 4, todos documentacion: la spec
+  0068, su fila en `docs/INDEX.md`, las filas 56 y 57 de `docs/PARQUEADO.md` y este
+  `docs/TASKS.md` — **el owner no autorizo ese commit todavia**.
+- **El arbol de codigo esta LIMPIO**: la sesion de la 0068 **no toco una sola linea de
+  `apps/`**. La unica sonda que se corrio (`Object.keys(auth.api)` y los 4 endpoints core de
+  password) vivio en un archivo temporal que **se borro**, verificado con `git status` vacio.
 - **`rg -n MUTATION apps packages tools`: VACIO.** Las 6 mutaciones del presupuesto mas las 4 extra
   declaradas se corrieron de a una y se revirtieron con `diff` vacio contra copia limpia.
 - **Las migraciones NO estan aplicadas en PRODUCCION**, solo en CI y en la rama de integracion

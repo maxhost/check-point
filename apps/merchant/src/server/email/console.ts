@@ -11,7 +11,8 @@ export type SentEmail = {
 
 /**
  * In-memory capture of emails "sent" by the console channel. Dev/test only — lets an
- * integration test read the OTP that better-auth generated inside `sendVerificationOTP`.
+ * integration test read what the flow put in the mail (hoy, el link magico del owner)
+ * sin una bandeja real.
  * Never populated when `NODE_ENV === "production"` (and the channel is not even selectable
  * there — see `emailChannelFromEnv`).
  */

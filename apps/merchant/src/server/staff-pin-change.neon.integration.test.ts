@@ -218,6 +218,11 @@ describe.skipIf(!integrationEnabled)(
       expect(body.pin).toMatch(/^[0-9]{6}$/);
       expect(body.pin).not.toBe(pin);
       expect(JSON.stringify(body.staff)).not.toContain(body.pin);
+      // Spec 0068 §2 — el email sintético NO se serializa, y se mira EL CUERPO, no el tipo:
+      // `{...toStaffDTO(…), email}` compila igual, así que el `StaffDTO` no es el guard.
+      // Este integrante tiene un `staff-<uuid>@staff.invalid` real en la base.
+      expect(JSON.stringify(body.staff)).not.toContain("staff.invalid");
+      expect(body.staff).not.toHaveProperty("email");
 
       const after = await pinRow(staff.userId);
       expect(after.pinMustChange).toBe(true);

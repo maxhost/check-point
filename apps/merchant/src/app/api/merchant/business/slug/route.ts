@@ -19,20 +19,23 @@ export const dynamic = "force-dynamic";
  * Contrato: `docs/specs/0067-contratos-de-api.md` §8.
  */
 export async function PATCH(request: Request) {
-  const auth = await requireStaffOwner(request);
-  if ("response" in auth) return auth.response;
-
-  let body: unknown;
+  // El guard va ADENTRO del `try` (spec 0068 §3): resolver la sesión también consulta la
+  // base, y afuera un fallo de base salía 500 sin `code` en vez del 503 `slug_unavailable`.
+  // El `return auth.response` sigue siendo un return temprano (un 401/403 no es excepción).
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: "El cuerpo no es válido.", code: "invalid_body" },
-      { status: 400 },
-    );
-  }
+    const auth = await requireStaffOwner(request);
+    if ("response" in auth) return auth.response;
 
-  try {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "El cuerpo no es válido.", code: "invalid_body" },
+        { status: 400 },
+      );
+    }
+
     const { slug } = await changeBusinessSlug(
       auth.business.id,
       (body as { slug?: unknown } | null)?.slug ?? null,

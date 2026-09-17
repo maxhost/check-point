@@ -35,15 +35,17 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ userId: string }> },
 ) {
-  const auth = await requireStaffOwner(request);
-  if ("response" in auth) return auth.response;
-
-  const { userId } = await params;
-  const pin = generatePin();
-  const pinHash = await hashPin(pin);
-  const now = new Date();
-
+  // El guard va ADENTRO del `try` (spec 0068 §3): resolver la sesión también consulta la
+  // base, y afuera un fallo de base salía 500 sin `code` en vez del 503 del contrato.
   try {
+    const auth = await requireStaffOwner(request);
+    if ("response" in auth) return auth.response;
+
+    const { userId } = await params;
+    const pin = generatePin();
+    const pinHash = await hashPin(pin);
+    const now = new Date();
+
     const [row] = await getDb()
       .update(memberships)
       .set({ pinHash, pinMustChange: true, pinUpdatedAt: now })
@@ -79,7 +81,7 @@ export async function POST(
     await getDb().delete(sessions).where(eq(sessions.userId, userId));
 
     const [profile] = await getDb()
-      .select({ name: users.name, email: users.email })
+      .select({ name: users.name })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -89,7 +91,6 @@ export async function POST(
         staff: toStaffDTO({
           userId,
           name: profile?.name ?? "",
-          email: profile?.email ?? "",
           handle: row.handle,
           slug: auth.business.slug,
           role: row.role,
