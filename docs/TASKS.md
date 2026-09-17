@@ -20,8 +20,8 @@ bitacora de mutaciones y el PASS del revisor de esa spec).
 
 | Que | Donde esta |
 |---|---|
-| `HEAD` == `origin/main` | **`08227ed`** (verificado con `git rev-parse`, no asumido) |
-| Arbol | **limpio**, 0 archivos sin commitear |
+| Ultimo commit que toca codigo/migraciones | **`08227ed`** — es el que esta en produccion, verificado por SQL y CI |
+| Arbol y sync con `origin/main` | **al dia** — `git status --short` vacio y `git rev-parse HEAD` == `git rev-parse origin/main` en el momento de cada verificacion (no perseguir un sha "actual" aca: cualquier commit posterior de docs, como este mismo handoff, lo corre) |
 | Specs del arco | **0067, 0068 y 0069 `implementadas`**. La 0069 con **PASS de revisor independiente** |
 | Migraciones en PRODUCCION | **37** — la `0035` (categoria del negocio) y la `0036` (estado de la cuenta), las dos **leidas por SQL** |
 | CI | **verde** para `08227ed`, leida de **`/check-runs`** (`no-success: 0`). **Nunca `/status`, que en este repo miente** |
