@@ -14,27 +14,84 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-17 (spec 0072 `implementada`, PUSHEADA a `origin/main` en
-`0507cf5`. CI en curso — ver abajo antes de pedirle QA al owner).**
+**Ultima actualizacion: 2026-09-18 — HANDOFF. El arco 2 cerrado, CI verde verificada y en
+produccion. **El owner se fue a construir la UI con ChatGPT**; la proxima tanda son las CINCO
+APIs que dejo pedidas. Ver «ARRANCA ACA LA SESION QUE SIGUE».**
 
 **ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
 
 | Que | Donde esta |
 |---|---|
-| Ultimo commit, LOCAL y `origin/main` | **`0507cf5`** — `git rev-parse --short HEAD` = `0507cf5`, pusheado (`5f89d18..0507cf5 main -> main`). `git status --short` vacio |
-| CI para `0507cf5` | **⚠️ EN CURSO al momento de este handoff.** `gh api .../commits/0507cf5/check-runs` devolvio `verify: queued -> null` recien pusheado. **LA SESION QUE RETOME TIENE QUE VOLVER A LEER ESTO** — no asumir verde: `GH_TOKEN= gh api repos/maxhost/check-point/commits/0507cf5/check-runs --jq '.check_runs[] \| "\(.name): \(.status) -> \(.conclusion)"'`, **todos** `completed`/`success`. **Nunca `/status`, que en este repo miente** (agrega commit statuses viejos donde solo publica Vercel; GitHub Actions es `/check-runs`, otro endpoint) |
-| Ultimo commit EN PRODUCCION | **`08227ed`** (la migracion `0036`) hasta que Vercel termine de desplegar `0507cf5` — verificar `success` antes de darlo por live |
+| Ultimo commit de CODIGO | **`0507cf5`** (la spec 0072). Afirmacion ESTABLE: no la invalida un commit de docs posterior |
+| Sincronizacion local/remoto | **En sintonia**: `git rev-parse --short HEAD` y `git ls-remote origin main` dan los dos **`78d1f3a`** (el commit de docs que sigue a la 0072), leidos el 2026-09-18 |
+| CI para `0507cf5` | **✅ VERDE, LEIDA DE `/check-runs` EL 2026-09-18.** `verify: completed -> success`, y los **18 pasos del job en `success`** (contados por API: 18 totales, **0 no-`success`**), incluidos `Migrar la rama Neon de CI`, `Unit + integracion Neon`, `test:e2e`, `build` y `format:check`. **Nunca `/status`, que en este repo miente** (agrega commit statuses viejos donde solo publica Vercel; GitHub Actions es `/check-runs`, otro endpoint) |
+| CI para `78d1f3a` (el commit de docs, HEAD de `origin/main`) | **✅ VERDE**, leida de `/check-runs` el 2026-09-18: `verify: completed -> success`, **18 pasos, 0 no-`success`**. **Los DOS commits del arbol estan verificados**, no solo el de codigo |
+| Ultimo commit EN PRODUCCION | **`78d1f3a`** — Vercel desplego `0507cf5` (`dpl_4ncoWc…`) **y** `78d1f3a` (`dpl_6sGHYf…`), los dos `state: READY`, `target: production`, leidos de la API de Vercel el 2026-09-18. **La 0072 esta LIVE** |
 | Migraciones que pide `0507cf5` | **NINGUNA** — la 0072 no tiene migracion, asi que el deploy no tiene la ventana de riesgo de la 0069/0035 |
 | Specs del arco | **0067, 0068, 0069 y 0072 `implementadas`**. La 0069 y la 0072 con **PASS de revisor independiente** |
 | Suite | **203 archivos / 1590 passed / 0 failed** con Neon, medido LOCAL sobre `0507cf5` antes del push |
 | Produccion (datos) | **0 negocios, 0 usuarios merchant, 0 suscripciones** (ultima lectura, `08227ed`) |
 
-**→ LO PROXIMO, literal:** (1) verificar `/check-runs` para `0507cf5` hasta que los 18 pasos den
-`completed`/`success` — si algo da rojo, **no es la 0069 corriendo de nuevo, es codigo nuevo: se
-investiga como regresion real**, no como la bomba de tiempo de `marketing-tick`. (2) Confirmar
-Vercel `success` para `0507cf5` antes de decir que esta en produccion. (3) **La 3ª spec del arco
-queda CERRADA con esto.** Falta decidir que sigue: la 4ª spec del ADR 0070 (onboarding derivado,
-progreso leido de hechos y no de una columna) o volver a `PARQUEADO.md` por deuda parqueada.
+**→ LO PROXIMO, literal:** los puntos (1) y (2) de este bloque —CI verde y Vercel `success`—
+**estan HECHOS y verificados el 2026-09-18** (ver la tabla de arriba). **La 3ª spec del arco queda
+CERRADA con esto y el arco 2 entero esta en produccion.**
+
+**EL OWNER YA ELIGIO que sigue, el 2026-09-18, y NO es la 4ª spec del ADR 0070:** se fue a construir
+la UI del wizard con ChatGPT y dejo pedidas **cinco APIs** para cuando vuelva. Estan en
+«ARRANCA ACA LA SESION QUE SIGUE», con lo medido de cada una. **La 4ª spec (onboarding derivado)
+queda diferida sin fecha** —no cancelada— junto con las filas **54** y **49** de `PARQUEADO.md`;
+sus seis decisiones abiertas y el agujero de los colores (que NO son derivables: nacen con default)
+quedan escritos en la §«la 4ª spec» de mas abajo para no re-medirlos.
+
+## ⇥ DECISIONES DEL OWNER SOBRE LA UI (2026-09-18)
+
+**La UI la construye el owner por fuera con ChatGPT** (ADR 0070 §16), consumiendo los contratos
+`0067`/`0069`/`0072`. Lo que decidio el 2026-09-18, textual: **«el wizard como es para dar de alta
+a un merchant deberia vivir en la app del merchant»**.
+
+**Medido, y la decision coincide con el estado de hecho:** las rutas vivas del consumidor
+(`/enroll/[programId]`, `/wallet`, `/recover`) **ya viven en `apps/merchant`** bajo el grupo
+`(consumer)`, y `apps/merchant` es la **unica app desplegada** (un solo proyecto en Vercel). Asi
+que el wizard y el `/login` de tres perfiles no cruzan ningun limite de app.
+
+**Mapa de superficies que el owner dicto** (ninguna existe todavia como pantalla):
+
+| URL | Que es | Estado medido el 2026-09-18 |
+|---|---|---|
+| `checkpass.club` | landing publica | la raiz responde 200; el apex hace **308 a `www`** |
+| `checkpass.club/login` | login UNICO de merchant, staff y consumidor, que redirige segun el caso. **Decision del owner del 2026-09-18, que CORRIGIO al orquestador: NO vive en la app del merchant sino en la PUBLICA** — «puede acabar en merchant o consumer luego» | **no existe** — la 0067 borro `/login` |
+| `checkpass.club/es/business/dashboard` | pantalla principal del comercio | **no existe**; hoy es `/backoffice/*`, que es la UI vieja a borrar (ADR 0070 §17) |
+| `bo.checkpass.club` | panel del dueño de CheckPass, con **login propio y sin web publica** | **no resuelve DNS**. Su esqueleto es `apps/platform`, que hoy tiene una sola ruta (`/api/health`) |
+
+**⚠️ RESTRICCION MEDIDA que condiciona donde puede vivir `/login`:** la cookie de sesion la
+setean rutas de **`apps/merchant`** (`openMerchantSession` en `api/merchant/auth/staff/route.ts:135`,
+y el catch-all `/api/auth/*`), sobre el origen `checkpass.club`. **La superficie publica tiene que
+servirse en el MISMO origen** o el `Set-Cookie` no pega. Y hoy la raiz `checkpass.club` **la sirve
+`apps/merchant`** (`src/app/page.tsx` existe). O sea que «la app publica» es hoy un **grupo de rutas
+dentro de `apps/merchant`** que se extrae despues, o un deployable nuevo que pasa a ser dueño de la
+raiz. **El owner no eligio entre esas dos y no se elige por el.** Mitigacion ya puesta en el encargo
+a ChatGPT: `/login` se construye **sin una sola dependencia del merchant**, para que mudarlo no sea
+reescribirlo.
+
+**HALLAZGO A DECIDIR, no decision del owner:** `apps/consumer` es **andamiaje sin tarea** — solo
+`/qa`, `/check-in/demo-bar`, `/wallet/demo` y `/api/health`, y no esta desplegada. Por la regla del
+repo le toca una fila en `TASKS.md` con quien la va a consumir, o el borrado.
+
+**PIEZA 0 PROPUESTA para la proxima tanda, a confirmar: `GET /api/merchant/session`.** Medido: el
+unico lector de sesion publicado hoy es `GET /api/auth/get-session` de better-auth (verificado
+contra `www.checkpass.club`: **200 con cuerpo `null`** sin sesion, y los controles —un path de
+`disabledPaths` y uno inventado— dan **404**, o sea que la sonda discrimina). **No hay fuga**: la
+tabla `user` tiene `id`, `name`, `email`, `emailVerified`, `image` y las fechas, nada sensible.
+**El problema es que es insuficiente**: no dice rol, negocio, `slug`, `status` ni plan, asi que la
+UI tendria que inferirlos de los 403. Un DTO propio seria ademas **el consumidor que espera el
+andamiaje de `requireBackofficeSession`** (`status`/`suspensionReason`, §ANDAMIAJE de mas arriba).
+
+**⚠️ DEUDA DE MEDICION, declarada y NO perseguida:** los `duration_ms`/`tool_uses`/`subagent_tokens`
+de los subagentes de la **0072** —que el owner pidio anotar para la re-medicion del ADR 0071— **se
+perdieron**. Vivian en las notificaciones de subagente de la sesion anterior y el `/clear` se las
+llevo; **no estan en disco** (verificado: el ADR 0071 tiene la re-medicion contra la 0069 y cero
+menciones de la 0072). No se reconstruyen sin inventarlas. **La 4ª spec es la proxima oportunidad
+de medirlo**, y hay que anotarlo A MEDIDA que llega cada notificacion, no al final.
 
 **EL ARCO 2 ESTA CERRADO Y EN PRODUCCION.** La **3ª spec** del arco esta **`cerrada`**:
 **`docs/specs/0072-entitlements-y-estado-del-negocio.md`**, con su ADR **0073** y sus dos filas
@@ -43,6 +100,92 @@ de `INDEX`. **Las decisiones del owner estan las cuatro tomadas** y el implement
 **→ PARA RETOMAR, LEER EN ESTE ORDEN:** esta cabecera · la seccion «LA 3ª SPEC» de aca abajo ·
 la spec **0072** y el ADR **0073** · `docs/PARQUEADO.md` filas **56** y **57** (las dos las
 absorbe la 0072) · el ADR **0070** (el arco) y el **0071** (el proceso).
+
+## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-18)
+
+**EL OWNER SE FUE A CONSTRUIR LA UI CON CHATGPT.** El arco 2 esta cerrado, verificado y en
+produccion (ver la tabla de ESTADO REAL de arriba). **No hay codigo pendiente.** Lo que sigue
+depende de que el owner vuelva con la UI del wizard construida.
+
+**LO QUE PIDIO PARA CUANDO VUELVA, en su orden y textual** (2026-09-18) — **son cinco APIs, y las
+decisiones de contenido NO estan tomadas todavia**:
+
+1. **API de verificacion de email** (para el onboarding). **⚠️ MEDIDO: YA EXISTE ENTERA.**
+   `POST /api/merchant/auth/verify-email` emite (contrato 0067 §7, toma el email de la SESION, no
+   del body) y `GET /api/merchant/auth/magic-link` consume **y es lo que pone `emailVerified: true`**.
+   El gate ya corre en las 10 superficies desde la 0072. **Lo que queda no es construirlo sino una
+   decision del owner:** si le sirve que la verificacion ocurra como efecto de consumir un link de
+   login, o quiere un link SOLO de verificacion, separado del de entrada. **Preguntarselo antes de
+   escribir una linea.**
+2. **API de marca** — editar todo lo de la marca de un merchant: imagenes, colores, nombre.
+3. **API de locales** — alta, baja, modificacion, **y limites segun el plan**.
+4. **API de staff** — alta, baja, modificacion, **y limites segun el plan**. **Medido: las 4 rutas
+   de CRUD YA EXISTEN** (contrato 0067); lo que falta son los limites por plan, porque la 0072
+   midio que **staff no tiene tope por plan hoy**.
+5. **API de catalogo de productos (mini-POS)** — alta, baja, modificacion de productos y categorias,
+   **con una capa de IA AGNOSTICA del modelo**: se le manda una foto y devuelve JSON para generar el
+   catalogo. **Medido: hay 6 rutas de catalogo vivas** pero **ninguna pasa por el catalogo de
+   entitlements**, y productos tampoco tiene tope por plan.
+
+**PIEZA 0 PROPUESTA, a confirmar con el owner antes de empezar: `GET /api/merchant/session`** (ver
+la seccion de decisiones de UI). Las cinco pantallas de arriba la van a necesitar.
+
+**LO PRIMERO AL RETOMAR, antes de cualquier spec:** el owner vuelve con `docs/api-faltante.md`
+escrito por ChatGPT — el encargo se lo pide explicitamente. **Esa lista es el insumo real del
+alcance**, y hay que leerla ANTES de elegir por donde empezar: puede reordenar las cinco.
+
+**Y la regla que aplica a esa lista:** un endpoint que ChatGPT diga que falta es **una afirmacion
+suya, no una verificacion**. Se reproduce contra el arbol antes de que entre a una spec — igual que
+se hizo con los cinco puntos de arriba, donde medir corrigio dos (el 1 ya existe, el 4 esta a
+medias).
+
+## ⇥ LA 4ª SPEC (onboarding derivado) — DIFERIDA, con lo medido el 2026-09-18
+
+**No existe el archivo de spec.** Lo unico escrito son ~8 lineas del ADR 0070 **§9** (el checklist
+derivado de los hechos) y **§11** (verificar el email es su primer paso). Eso es el QUE, no un plan.
+
+**Medido en el arbol el 2026-09-18, para no re-medirlo:**
+- **No existe columna `onboarding_step`** (bien: el ADR la prohibe). Los dos hits de «onboarding»
+  en el esquema son `onboarding_token_hash`, del arco de recuperacion del **consumidor**: vivo y
+  otro dominio.
+- **Cero codigo de checklist** en `apps/merchant/src`. Greenfield.
+- La superficie `onboarding` de hoy es **solo el wizard**: `prefill`, `business`, `program`.
+
+**Los 8 items del §9 contra los hechos que existen — y DOS NO CIERRAN:**
+
+| Item | Hecho | ¿Deriva? |
+|---|---|---|
+| Logo | `business.logo_object_key` (nullable) | si |
+| **Colores** | `brand_primary/complementary/accent_color` | **NO — `notNull` con DEFAULT** |
+| Sello propio | `loyalty_program.stamp_image_object_key` (nullable) | si |
+| Catalogo | filas en `product` | si |
+| Costos | `product.unit_cost` (nullable) | si, pero sin criterio definido |
+| Staff | `business_membership` con rol staff | si |
+| Mas locales | `location` > 1 | si |
+| **Wallet** | `wallet_pass` | es un hecho **del consumidor**, no del comercio |
+
+**EL AGUJERO CENTRAL: los colores NO son derivables.** Nacen con valor (`#176548`, `#2D8B68`,
+`#E78132`), asi que **no hay forma de distinguir «el owner eligio su marca» de «nunca la toco»**.
+El unico proxy es `brand_revision` (default `1`) o `logo_version` (default `0`) — inferir por un
+contador de revision, que es justo la clase de cosa que el ADR quiso evitar. **Rompe la premisa del
+§9 y no se arregla escribiendo codigo**: o se acepta el proxy, o sale el item, o entra una columna
+(y ahi la spec deja de ser sin-migraciones).
+
+**LAS SEIS DECISIONES DEL OWNER QUE LA DESTRABAN** (ADR 0071 §2: se piden ANTES de la prosa):
+1. **Colores**: ¿proxy por `brand_revision`, se saca del checklist, o una columna?
+2. **Wallet**: ¿cual es el hecho? ¿Sigue siendo un item si depende de un tercero?
+3. **Costos**: ¿alcanza UN producto con `unit_cost`, o todos?
+4. **Que significa «completo»** en los otros cinco (¿un local mas o dos? ¿un integrante, o uno que
+   ya entro?).
+5. **¿Bloquea o solo ordena?** El §11 dice «sin eso no avanza el resto», pero **el gate de email ya
+   esta implementado** (la 0072, en `requireApiOwner`, 10 superficies). O sea que la 4ª spec seria
+   solo el **LECTOR**, no el gate. Confirmarlo.
+6. **Es API, no pantalla** (ADR 0070 §16), aunque el §9 diga «checklist en el backoffice»: entrega
+   un `GET` del estado derivado + su contrato.
+
+**Plantilla: `TEMPLATE.md`, NO la chica.** Falla dos de las tres condiciones del ADR 0071 —varios
+dominios (marca, catalogo, staff, locales, loyalty, wallet) y decisiones de producto abiertas—; si
+los colores terminan pidiendo columna, falla las tres.
 
 ## ⇥ BITACORA DE MUTACIONES — spec 0072 (implementador, 2026-09-17)
 
@@ -946,9 +1089,9 @@ El ADR 0070 no entra en una spec sola. Orden propuesto, por dependencia:
 | Spec | Que | Estado |
 |---|---|---|
 | **0067** | **Identidad sin contraseña** — owner por email + link magico, staff por `handle@slug` + PIN, gate de email verificado, slug del negocio, borrado del arco de recuperacion y de la UI vieja, wipe de la base | **`implementada` — 4 pasos, 4 `PASS`, commit `9086c9a` pusheado y CI verde (2026-09-17)** |
-| 2ª | **El wizard de 3 pantallas + el QR** — logica de pantallas 2 y 3, categoria `gcid:`, paises + Mexico, sello placeholder, programa activo | no existe |
-| 3ª | **Capa de entitlements** — `can()` / `limitOf()`, migrar los 3 call-sites que ya divergieron | no existe |
-| 4ª | **Onboarding derivado** — checklist calculado de los hechos de la base, sin columna `onboarding_step` | no existe |
+| **0069** | **El wizard de 3 pantallas + el QR** — logica de pantallas 2 y 3, categoria `gcid:`, paises + Mexico, sello placeholder, programa activo | **`implementada`, PASS de revisor, EN PRODUCCION** (2026-09-17) |
+| **0072** | **Capa de entitlements** — `can()` / `limitOf()`, migrar los 3 call-sites que ya divergieron | **`implementada`, PASS de revisor, EN PRODUCCION** (`0507cf5`, CI verde 2026-09-18) |
+| 4ª | **Onboarding derivado** — checklist calculado de los hechos de la base, sin columna `onboarding_step` | **no existe. DIFERIDA sin fecha** el 2026-09-18 — ver §«LA 4ª SPEC» |
 
 **Corte de 4 specs confirmado por el owner el 2026-09-16.** Se serializan en ese orden: la 2ª consume
 `server/slug.ts` y la migracion del `slug` que deja lista la 0067.
