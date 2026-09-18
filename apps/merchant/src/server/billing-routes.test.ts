@@ -106,6 +106,7 @@ import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
 import { POST as INTERVAL } from "../app/api/billing/interval/route";
 import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
+import { GET as STATE } from "../app/api/billing/state/route";
 
 const request = (path: string, body?: unknown) =>
   new NextRequest(
@@ -121,14 +122,21 @@ const request = (path: string, body?: unknown) =>
  * Las 5 rutas, cada una con el estado de fila que la deja LLEGAR al dominio. Toda llamada
  * grita un negocio AJENO en el query string Y en el body: el punto es que ninguno de los dos
  * pueda torcer el handler.
+ *
+ * `GET /api/billing/state` (spec 0074 §D2) entra a la MISMA lista y no a un bloque propio: es
+ * una superficie del owner como las otras cuatro, pasa por el mismo `requireBillingOwner` y
+ * tiene que emitir los mismos `code`. Un `GET` no lleva cuerpo, así que su negocio ajeno lo
+ * grita sólo el query string — ver {@link call}.
  */
 const HANDLERS = [
-  ["checkout", CHECKOUT, { interval: "month" }, row()],
-  ["cancel", CANCEL, {}, LIVE_ROW],
-  ["interval", INTERVAL, { to: "year" }, LIVE_ROW],
-  ["settle-free", SETTLE_FREE, {}, row({ plan: "none" })],
-].map(([path, handler, body, seeded]) => ({
-  name: `POST /api/billing/${path as string}`,
+  ["POST", "checkout", CHECKOUT, { interval: "month" }, row()],
+  ["POST", "cancel", CANCEL, {}, LIVE_ROW],
+  ["POST", "interval", INTERVAL, { to: "year" }, LIVE_ROW],
+  ["POST", "settle-free", SETTLE_FREE, {}, row({ plan: "none" })],
+  ["GET", "state", STATE, {}, LIVE_ROW],
+].map(([method, path, handler, body, seeded]) => ({
+  name: `${method as string} /api/billing/${path as string}`,
+  method: method as string,
   path: path as string,
   handler: handler as (r: NextRequest) => Promise<Response>,
   body: body as Record<string, unknown>,
@@ -138,7 +146,14 @@ const HANDLERS = [
 type Handler = (typeof HANDLERS)[number];
 
 const call = (h: Handler) =>
-  h.handler(request(h.path, { ...h.body, businessId: FOREIGN_BUSINESS }));
+  h.method === "GET"
+    ? h.handler(
+        new NextRequest(
+          `https://merchant.test/api/billing/${h.path}?b=${FOREIGN_BUSINESS}`,
+          { method: "GET" },
+        ),
+      )
+    : h.handler(request(h.path, { ...h.body, businessId: FOREIGN_BUSINESS }));
 
 /** Un owner ACTIVO con la fila y el conteo pedidos. */
 function signedInOwner(seeded: SubscriptionRow, activeLocations = 1) {
@@ -282,8 +297,9 @@ describe("every handler under api/billing/** is covered by HANDLERS", () => {
       .sort();
     // PISO, para que un barrido que no ve nada no pueda quedar verde. Bajó de 5 a 4 porque
     // `resume` dejó de existir (spec 0064 §4), no para tapar un barrido roto: el `toEqual` de
-    // abajo sigue exigiendo igualdad EXACTA entre el filesystem y la lista.
-    expect(files.length).toBeGreaterThanOrEqual(4);
+    // abajo sigue exigiendo igualdad EXACTA entre el filesystem y la lista. Vuelve a 5 con
+    // `state` (spec 0074 §D2) — un piso SUBE cuando llega una ruta, nunca baja para que pase.
+    expect(files.length).toBeGreaterThanOrEqual(5);
 
     const expected = new Set<string>();
     for (const file of files) {
