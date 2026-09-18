@@ -1,4 +1,4 @@
-import { downgradeToFree } from "../cancel/route";
+import { downgradeToFree } from "../_downgrade";
 
 /**
  * Spec 0063, D10 — `POST /api/billing/settle-free`: LA SALIDA del estado «sin suscripción»

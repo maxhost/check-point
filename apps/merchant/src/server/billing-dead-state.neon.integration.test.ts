@@ -57,10 +57,8 @@ import { lockBusiness } from "./locations/shared";
 import { useBusiness } from "./billing-pages-support";
 import SubscriptionPage from "../app/backoffice/subscription/page";
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
-import {
-  POST as CANCEL,
-  downgradeToFree,
-} from "../app/api/billing/cancel/route";
+import { POST as CANCEL } from "../app/api/billing/cancel/route";
+import { downgradeToFree } from "../app/api/billing/_downgrade";
 import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
 
 /** Las páginas se importan DESPUÉS de los `vi.mock` y no desde el support: el motivo (un
@@ -149,7 +147,7 @@ describe.skipIf(!integrationEnabled)(
 
       // EL ALIAS, ENUNCIADO (menor 9 del revisor): para un `plus` muerto las offers mandan
       // el botón a `/api/billing/cancel`, y `settle-free` es LITERALMENTE el mismo handler
-      // (`settle-free/route.ts`: `export const POST = downgradeToFree`). Qué hacer lo decide
+      // (`settle-free/route.ts`: `export const POST = downgradeToFree`, de `_downgrade.ts`). Qué hacer lo decide
       // la FILA, no la URL. Si alguien los separa, esto lo dice antes que prod.
       expect(
         subscriptionOffers({
