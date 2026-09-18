@@ -14,20 +14,27 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-17 (spec 0072 `implementada` con PASS de revisor independiente. SIN COMMITEAR. Falta UNA decision del owner: F1, el wizard sin gate).**
+**Ultima actualizacion: 2026-09-17 (spec 0072 `implementada`, PUSHEADA a `origin/main` en
+`0507cf5`. CI en curso — ver abajo antes de pedirle QA al owner).**
 
 **ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
 
 | Que | Donde esta |
 |---|---|
-| Ultimo commit que toca codigo/migraciones | **`08227ed`** — es el que esta en produccion, verificado por SQL y CI |
-| Arbol y sync con `origin/main` | **al dia** — `git status --short` vacio y `git rev-parse HEAD` == `git rev-parse origin/main` en el momento de cada verificacion (no perseguir un sha "actual" aca: cualquier commit posterior de docs, como este mismo handoff, lo corre) |
-| Specs del arco | **0067, 0068 y 0069 `implementadas`**. La 0069 con **PASS de revisor independiente** |
-| Migraciones en PRODUCCION | **37** — la `0035` (categoria del negocio) y la `0036` (estado de la cuenta), las dos **leidas por SQL** |
-| CI | **verde** para `08227ed`, leida de **`/check-runs`** (`no-success: 0`). **Nunca `/status`, que en este repo miente** |
-| Vercel | `success`. Las rutas nuevas **responden en produccion** con los `code` del contrato |
-| Suite | **1479 passed / 0 failed** con Neon |
-| Produccion | **0 negocios, 0 usuarios merchant, 0 suscripciones** |
+| Ultimo commit, LOCAL y `origin/main` | **`0507cf5`** — `git rev-parse --short HEAD` = `0507cf5`, pusheado (`5f89d18..0507cf5 main -> main`). `git status --short` vacio |
+| CI para `0507cf5` | **⚠️ EN CURSO al momento de este handoff.** `gh api .../commits/0507cf5/check-runs` devolvio `verify: queued -> null` recien pusheado. **LA SESION QUE RETOME TIENE QUE VOLVER A LEER ESTO** — no asumir verde: `GH_TOKEN= gh api repos/maxhost/check-point/commits/0507cf5/check-runs --jq '.check_runs[] \| "\(.name): \(.status) -> \(.conclusion)"'`, **todos** `completed`/`success`. **Nunca `/status`, que en este repo miente** (agrega commit statuses viejos donde solo publica Vercel; GitHub Actions es `/check-runs`, otro endpoint) |
+| Ultimo commit EN PRODUCCION | **`08227ed`** (la migracion `0036`) hasta que Vercel termine de desplegar `0507cf5` — verificar `success` antes de darlo por live |
+| Migraciones que pide `0507cf5` | **NINGUNA** — la 0072 no tiene migracion, asi que el deploy no tiene la ventana de riesgo de la 0069/0035 |
+| Specs del arco | **0067, 0068, 0069 y 0072 `implementadas`**. La 0069 y la 0072 con **PASS de revisor independiente** |
+| Suite | **203 archivos / 1590 passed / 0 failed** con Neon, medido LOCAL sobre `0507cf5` antes del push |
+| Produccion (datos) | **0 negocios, 0 usuarios merchant, 0 suscripciones** (ultima lectura, `08227ed`) |
+
+**→ LO PROXIMO, literal:** (1) verificar `/check-runs` para `0507cf5` hasta que los 18 pasos den
+`completed`/`success` — si algo da rojo, **no es la 0069 corriendo de nuevo, es codigo nuevo: se
+investiga como regresion real**, no como la bomba de tiempo de `marketing-tick`. (2) Confirmar
+Vercel `success` para `0507cf5` antes de decir que esta en produccion. (3) **La 3ª spec del arco
+queda CERRADA con esto.** Falta decidir que sigue: la 4ª spec del ADR 0070 (onboarding derivado,
+progreso leido de hechos y no de una columna) o volver a `PARQUEADO.md` por deuda parqueada.
 
 **EL ARCO 2 ESTA CERRADO Y EN PRODUCCION.** La **3ª spec** del arco esta **`cerrada`**:
 **`docs/specs/0072-entitlements-y-estado-del-negocio.md`**, con su ADR **0073** y sus dos filas
