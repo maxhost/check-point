@@ -45,6 +45,7 @@ vi.mock("./db", () => {
 });
 
 import {
+  BUSINESS_CLOSED,
   EMAIL_NOT_VERIFIED,
   requireBackofficeSession,
   requireOwner,
@@ -59,6 +60,11 @@ const owner = {
   timezone: "America/Guayaquil",
   role: "owner",
   status: "active",
+  // Spec 0072 §D4: el eje `status` del NEGOCIO. Se llama `businessStatus` y no `status`
+  // porque `status` ya es el de la MEMBRESÍA en esta misma fila — dos ejes distintos con el
+  // mismo nombre es como uno termina decidiendo por el otro.
+  businessStatus: "active",
+  suspensionReason: null,
 };
 
 async function destinationOf(fn: () => Promise<unknown>): Promise<string> {
@@ -169,6 +175,50 @@ describe("backoffice guards by role (ADR 0044)", () => {
     expect(deletes).toEqual([]);
     expect(await destinationOf(requireOwner)).toBe("/backoffice/counter");
     expect(deletes).toEqual([]);
+  });
+
+  /**
+   * Spec 0072 §D4 — EL EJE `status` DEL NEGOCIO EN EL BACKOFFICE. Sólo `closed` rebota.
+   *
+   * `suspended` PASA a propósito y es decisión del owner: lo único que un owner suspendido
+   * tiene que poder hacer es leer el motivo y el botón de contacto, así que rebotarlo sería
+   * dejarlo sin ninguna superficie donde enterarse. Todo lo que puede HACER ya está cortado
+   * — las 10 APIs del owner contestan 403 y el mostrador también.
+   */
+  it("negocio `closed` → /?e=business_closed, aunque la membresía esté activa", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
+    membershipRow = { ...owner, businessStatus: "closed" };
+    expect(await destinationOf(requireBackofficeSession)).toBe(
+      `/?e=${BUSINESS_CLOSED}`,
+    );
+  });
+
+  it("negocio `suspended`: el owner ENTRA, y se lleva el motivo para mostrarlo", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
+    membershipRow = {
+      ...owner,
+      businessStatus: "suspended",
+      suspensionReason: "Reclamos de consumidores.",
+    };
+    const ctx = await requireBackofficeSession();
+    expect(ctx.business.status).toBe("suspended");
+    expect(ctx.business.suspensionReason).toBe("Reclamos de consumidores.");
+    expect(deletes).toEqual([]);
+  });
+
+  it("un INTEGRANTE de un negocio suspendido NO recibe el motivo", async () => {
+    // §D4: `suspension_reason` se serializa SÓLO al owner. Es una nota interna sobre la
+    // cuenta del negocio, no algo que quien trabaja ahí tenga que leer.
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
+    membershipRow = {
+      ...owner,
+      role: "staff",
+      businessStatus: "suspended",
+      suspensionReason: "Reclamos de consumidores.",
+    };
+    const ctx = await requireBackofficeSession();
+    expect(ctx.business.status).toBe("suspended");
+    expect(ctx.business.suspensionReason).toBeNull();
   });
 
   it("active owner reaches an owner-only page", async () => {

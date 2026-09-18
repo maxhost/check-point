@@ -136,4 +136,46 @@ describe.skipIf(!enabled)("getEnrollLanding branding against Neon", () => {
   it("inactive program → null (does not admit enrollment)", async () => {
     expect(await getEnrollLanding(programInactive)).toBeNull();
   });
+
+  /**
+   * EL EJE `status` DEL NEGOCIO EN LA LANDING (spec 0072). Decisión del owner del 2026-09-17: «si
+   * la persona llegara a escanear el QR para sumarse al programa, la landing diría "Este Programa
+   * ya no está disponible"».
+   *
+   * `null` es EL contrato de esa pantalla: la rama `!landing` de
+   * `app/(consumer)/enroll/[programId]/page.tsx` ya renderiza ese mensaje exacto. Por eso el
+   * oráculo es `toBeNull()` y no un texto — el texto es de la UI, que esta spec no toca.
+   *
+   * **El control positivo NO es decorativo:** un `null` puede venir de cualquiera de las cuatro
+   * condiciones del `where`, así que sin volver a `active` y verificar que la landing reaparece,
+   * un gate que anulara TODO pasaría en verde.
+   */
+  describe("el eje `status` del negocio (spec 0072)", () => {
+    const setStatus = (status: string) =>
+      getDb()
+        .update(businesses)
+        .set({ status })
+        .where(eq(businesses.id, businessWithLogo));
+
+    afterAll(async () => {
+      await setStatus("active");
+    });
+
+    it("negocio `suspended` → null: la landing no pinta el formulario", async () => {
+      await setStatus("suspended");
+      expect(await getEnrollLanding(programWithLogo)).toBeNull();
+    });
+
+    it("negocio `closed` → null", async () => {
+      await setStatus("closed");
+      expect(await getEnrollLanding(programWithLogo)).toBeNull();
+    });
+
+    it("CONTROL POSITIVO — de vuelta en `active`, la landing reaparece", async () => {
+      await setStatus("active");
+      const landing = await getEnrollLanding(programWithLogo);
+      expect(landing).not.toBeNull();
+      expect(landing?.businessId).toBe(businessWithLogo);
+    });
+  });
 });

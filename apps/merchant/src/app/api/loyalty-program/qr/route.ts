@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { getMerchantAuth } from "../../../../server/auth";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../../server/api-owner";
 import { getDb } from "../../../../server/db";
 import { businesses } from "../../../../server/schema";
 import { programForOwner } from "../../../../server/loyalty-program";
@@ -28,22 +31,20 @@ export const runtime = "nodejs";
  *
  * QR **pelado**, sin poster: en el wizard todavia no hay ni color ni logo.
  */
-const unauthorized = () =>
-  NextResponse.json(
-    { error: "No autorizado.", code: "unauthorized" },
-    { status: 401 },
-  );
-
 export async function GET(request: Request) {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
+  // Spec 0072 §D3: el guard es `requireApiOwner` — esta ruta nacio con la 0069, DESPUES de
+  // que se censaran las superficies sin gate de email, y por eso la fila 56 de `PARQUEADO`
+  // decia 9 en vez de 10.
+  const auth = await requireApiOwner(request, {
+    notOwner: "Solo el owner puede gestionar el programa.",
+    emailNotVerified: "Verificá tu email para gestionar el programa.",
   });
-  if (!session) return unauthorized();
+  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const url = new URL(request.url);
   const format = url.searchParams.get("format") === "png" ? "png" : "svg";
   const download = url.searchParams.get("download") === "1";
   try {
-    const context = await programForOwner(session.user.id);
+    const context = await programForOwner(auth.userId);
     if (!context) {
       return NextResponse.json(
         { error: "Sin negocio.", code: "not_owner" },

@@ -66,10 +66,18 @@ export function authGuardsDouble(actual: typeof import("./auth-guards")) {
 export function staffDouble(actual: typeof import("./staff")) {
   return {
     ...actual,
+    // Spec 0072: `ownerContext` selecciona ademas el eje `status`, y `requireApiOwner` es
+    // fail-closed — una fila sin `status` NO opera.
     ownerContext: async () =>
       routeOwner.businessId === null
         ? null
-        : { id: routeOwner.businessId, currencyCode: "USD" },
+        : {
+            id: routeOwner.businessId,
+            slug: "int",
+            currencyCode: "USD",
+            status: "active",
+            suspensionReason: null,
+          },
   };
 }
 
@@ -83,6 +91,9 @@ export function useBusiness(seed: Seed, name = "Suscripción"): void {
       name,
       currencyCode: "USD",
       timezone: "America/Guayaquil",
+      // Spec 0072: `GuardBusiness` lleva el eje `status` y el motivo (sólo para el owner).
+      status: "active",
+      suspensionReason: null,
     },
     membership: { role: "owner", status: "active" },
   };

@@ -18,6 +18,34 @@ import {
 
 const PROGRAM_UNAVAILABLE = "Este programa no está disponible.";
 
+/**
+ * El eje `status` del negocio, del lado del CONSUMIDOR (spec 0072 §D4).
+ *
+ * **La línea que separa lo que se corta de lo que no es «ya emitido» vs «alta nueva»**, y no
+ * «comercio» vs «consumidor»: el pase de Wallet, los sellos acumulados y la tarjeta de quien
+ * YA está adentro **no se tocan** (decisión del owner: un pase borrado del teléfono no vuelve,
+ * y `status` es reversible). Lo que se corta es el alta NUEVA, que es esto.
+ *
+ * **El 403 NO lleva `suspension_reason`**: el motivo se serializa sólo al owner (§D4). Un
+ * consumidor no tiene por qué leer la nota interna de por qué se suspendió una cuenta.
+ */
+function assertBusinessAdmitsEnrollment(businessStatus: string): void {
+  if (businessStatus === "active") return;
+  if (businessStatus === "closed") {
+    throw new ConsumerError(
+      403,
+      "business_closed",
+      "Este negocio cerró y ya no admite altas nuevas.",
+    );
+  }
+  // Fail-closed sobre un estado desconocido, igual que `businessStatusFailure`.
+  throw new ConsumerError(
+    403,
+    "business_suspended",
+    "Este negocio no está aceptando altas nuevas por ahora.",
+  );
+}
+
 export type EnrollResult = {
   account: ConsumerAccountRow;
   membership: MembershipRow;
@@ -38,8 +66,15 @@ async function loadEnrollableProgram(programId: string) {
       .select({
         id: loyaltyPrograms.id,
         businessId: loyaltyPrograms.businessId,
+        // Spec 0072 §D4: el eje `status` del NEGOCIO. El alta nueva se corta en
+        // `suspended` y en `closed` — decisión textual del owner del 2026-09-17: «el alta
+        // nueva también queda suspendida si el negocio está suspendido, si está cerrado
+        // queda cerrado para altas nuevas». El QR pegado en la pared sigue circulando, así
+        // que sin esto un negocio cerrado seguiría dando de alta gente.
+        businessStatus: businesses.status,
       })
       .from(loyaltyPrograms)
+      .innerJoin(businesses, eq(businesses.id, loyaltyPrograms.businessId))
       .where(
         and(
           eq(loyaltyPrograms.id, programId),
@@ -49,6 +84,7 @@ async function loadEnrollableProgram(programId: string) {
       .limit(1);
     if (!program)
       throw new ConsumerError(404, "program_unavailable", PROGRAM_UNAVAILABLE);
+    assertBusinessAdmitsEnrollment(program.businessStatus);
     return program;
   } catch (error) {
     if (error instanceof ConsumerError) throw error;
@@ -239,6 +275,21 @@ export async function getEnrollLanding(
         and(
           eq(loyaltyPrograms.id, programId),
           inArray(loyaltyPrograms.status, ["active", "closing"]),
+          // EL EJE `status` DEL NEGOCIO EN LA LANDING (spec 0072, decisión del owner del
+          // 2026-09-17: «si la persona llegara a escanear el QR para sumarse al programa, la
+          // landing diría "Este Programa ya no está disponible"»).
+          //
+          // Va acá y no en la pantalla porque **es una propiedad de API**: `getEnrollLanding`
+          // vive en el servidor y la página sólo renderiza lo que esta función devuelve. Y el
+          // mensaje que el owner pidió **ya existe**: la rama `!landing` de
+          // `app/(consumer)/enroll/[programId]/page.tsx` dice exactamente «Este programa no está
+          // disponible». Devolver `null` la alcanza, así que esto cierra el caso con **cero
+          // `.tsx`** (ADR 0070 §16) en vez de pedir una pantalla nueva.
+          //
+          // `!= 'active'` y no `in ('suspended','closed')`: fail-CLOSED, la misma polaridad que
+          // `businessStatusFailure`. Un cuarto estado que nadie le enseñó a este guard tiene que
+          // ocultar el formulario, no mostrarlo.
+          eq(businesses.status, "active"),
         ),
       )
       .limit(1);

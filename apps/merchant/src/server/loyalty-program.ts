@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "./db";
+import { businessStatusFailure } from "./business-status";
 import {
   businesses,
   loyaltyProgramEvents,
@@ -59,6 +60,12 @@ export async function ownerBusiness(userId: string) {
       brandPrimaryColor: businesses.brandPrimaryColor,
       brandComplementaryColor: businesses.brandComplementaryColor,
       brandAccentColor: businesses.brandAccentColor,
+      // Spec 0072, cierre de F1: el eje `status` se lee ACA porque este es el resolvedor que
+      // usa `saveProgram`, o sea el que decide SOBRE QUE NEGOCIO se escribe. Gatear con otro
+      // resolvedor sería evaluar el estado de una fila y escribir en otra — que es exactamente
+      // la divergencia `asc`/`desc` que la §D3 declara abierta.
+      status: businesses.status,
+      suspensionReason: businesses.suspensionReason,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -99,6 +106,25 @@ export async function saveProgram(userId: string, rawInput: unknown) {
   const context = await programForOwner(userId);
   if (!context) throw new LoyaltyError(403, "No tienes un negocio como owner.");
   const { business, program } = context;
+  // EL EJE `status` (spec 0072, cierre de F1). Va en el WRITER y no en la ruta porque
+  // `saveProgram` es UN writer con DOS puertas: `PUT /api/loyalty-program`, que pasa por
+  // `requireApiOwner`, y `POST /api/onboarding/program`, que resuelve la sesión a mano porque
+  // el wizard corre ANTES de que el email esté verificado (y por eso no puede pasar por el
+  // gate completo). Con el chequeo sólo en la puerta gateada, la otra reescribía el programa
+  // de un negocio `suspended` — medido: 200 con `created: false` contra el 403 de la gateada.
+  // Contradecía la regla textual del owner para `suspended` («no pueden … cambios en
+  // programa»), así que es un incumplimiento, no una decisión de producto abierta.
+  //
+  // `reasonVisible: false` y su motivo declarado: el `suspensionReason` viaja en las 12
+  // superficies de `requireApiOwner`, pero esta no es una de ellas y plomear el motivo por
+  // `LoyaltyError` agregaría superficie por un dato que el owner ya recibe en todas las demás.
+  const statusFailure = businessStatusFailure(business.status, null, false);
+  if (statusFailure)
+    throw new LoyaltyError(
+      statusFailure.status,
+      statusFailure.message,
+      statusFailure.code,
+    );
   if (program?.status === "closing") {
     throw new LoyaltyError(
       409,

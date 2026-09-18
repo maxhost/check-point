@@ -43,6 +43,7 @@ vi.mock("../db", async () => {
   type Pending = { table: string; payload?: Row };
   type Chain = {
     from(table: unknown): Chain;
+    innerJoin(): Chain;
     where(): Chain;
     set(payload: Row): Chain;
     values(payload: Row): Chain;
@@ -55,6 +56,12 @@ vi.mock("../db", async () => {
     const chain: Chain = {
       from(table: unknown) {
         pending.table = getTableName(table as never);
+        return chain;
+      },
+      // Spec 0072 §D4: `loadEnrollableProgram` hace `innerJoin(businesses)` para leer el
+      // eje `status` del negocio. El doble tiene que ofrecer el MISMO encadenamiento que el
+      // consumidor real, o el 403 del alta nueva se vería como un `TypeError`.
+      innerJoin() {
         return chain;
       },
       where() {
@@ -148,7 +155,11 @@ const INPUT = {
 };
 
 function queueProgram() {
-  state.reads.loyalty_program = [[{ id: "program-1", businessId: "biz-1" }]];
+  // `businessStatus` entra desde la spec 0072 §D4: la lectura del programa ahora trae el
+  // eje `status` del negocio, y el alta nueva se corta si no es `active`.
+  state.reads.loyalty_program = [
+    [{ id: "program-1", businessId: "biz-1", businessStatus: "active" }],
+  ];
 }
 
 /** Every recorded write (insert/update/delete) touching consumer_account. */

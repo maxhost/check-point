@@ -64,13 +64,25 @@ export function parseUuid(value: unknown, field: string): string {
  * member keeps their identity and their audit trail but loses access — and the counter
  * hands over merchandise and destroys balance, so a dismissed employee must not be able
  * to accredit or redeem. It gates all three endpoints (`resolve`/`grant`/`redeem`). */
-export type OperatorBusiness = { id: string; currencyCode: string };
+/** `status` entra desde la spec 0072 §D4: el mostrador tiene que frenar en un negocio
+ * `suspended` o `closed`. **Es una columna mas en el `innerJoin(businesses)` que ya existia**,
+ * no una consulta nueva. `suspension_reason` NO se selecciona: el motivo se serializa solo al
+ * owner, y el mostrador lo opera tambien el staff. */
+export type OperatorBusiness = {
+  id: string;
+  currencyCode: string;
+  status: string;
+};
 
 export async function operatorBusiness(
   userId: string,
 ): Promise<OperatorBusiness | null> {
   const [business] = await getDb()
-    .select({ id: businesses.id, currencyCode: businesses.currencyCode })
+    .select({
+      id: businesses.id,
+      currencyCode: businesses.currencyCode,
+      status: businesses.status,
+    })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
     .where(

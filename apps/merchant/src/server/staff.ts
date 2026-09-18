@@ -52,15 +52,29 @@ export type CreatedStaff = {
   pin: string;
 };
 
-/** The owner's (active) business, or null. `api/staff/*` are owner-only + business-scoped. */
-export async function ownerContext(
-  userId: string,
-): Promise<{ id: string; slug: string; currencyCode: string } | null> {
+/**
+ * The owner's (active) business, or null. `api/staff/*` are owner-only + business-scoped.
+ *
+ * **Selecciona `status` y `suspension_reason` desde la spec 0072**: es el resolvedor de
+ * `requireApiOwner`, o sea de las 10 superficies de API del owner, y leer el eje `status`
+ * es **una columna mas en un `innerJoin(businesses)` que ya existia** — no una consulta
+ * nueva. Quien dobla esta funcion en un test tiene que devolver `status` tambien: el guard
+ * es fail-closed y una fila sin `status` no opera.
+ */
+export async function ownerContext(userId: string): Promise<{
+  id: string;
+  slug: string;
+  currencyCode: string;
+  status: string;
+  suspensionReason: string | null;
+} | null> {
   const [row] = await getDb()
     .select({
       id: businesses.id,
       slug: businesses.slug,
       currencyCode: businesses.currencyCode,
+      status: businesses.status,
+      suspensionReason: businesses.suspensionReason,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))

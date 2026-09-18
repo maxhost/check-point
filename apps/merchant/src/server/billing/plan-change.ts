@@ -1,4 +1,5 @@
 import { locationLimitForPlan } from "../locations/core";
+import { hasLiveSubscription } from "../entitlements/live-subscription";
 
 /**
  * Spec 0063, D4 — CONTRATO. Lo dejó el orquestador antes de despachar; el implementador
@@ -78,32 +79,20 @@ export type PlanChangeDecision =
     };
 
 /**
- * Estados de Stripe que prueban que la suscripción está MUERTA.
+ * `DEAD_STRIPE_STATUS` y `hasLiveSubscription` se MUDARON a
+ * `server/entitlements/live-subscription.ts` (spec 0072) y se re-exportan desde acá: son la
+ * misma decisión que el catálogo de entitlements necesita para `requiresLiveSubscription`,
+ * y dejarlas en este archivo cerraba un ciclo de imports que mataba la carga de 8 suites
+ * (el motivo completo está escrito en el módulo nuevo).
  *
- * [R2-2] La polaridad es load-bearing y la versión anterior de la spec la tenía al revés.
- * `Subscription.Status` NO tiene ocho valores: la línea termina en `| OtherString`
- * (`Subscriptions.d.ts:473`, verificado — el tipo es abierto a propósito) y el endpoint de
- * prod está pineado en `2020-08-27`. Con una allow-list POSITIVA de vivos, un status
- * desconocido caería en «no vivo» → `checkout` procede → segunda suscripción viva → doble
- * cobro, que es el daño exacto que este guard existe para prevenir. Con la lista de
- * MUERTOS, lo desconocido se trata como vivo: el default seguro para ESTE guard.
- *
- * (Al revés en `planFromSubscription` — ver `derive.ts`: ahí la allow-list positiva es la
- * correcta, porque lo desconocido no debe otorgar `plus`. Dos guards, dos polaridades,
- * cada una con su default seguro. Mutación M13 del plan de pruebas.)
+ * Se re-exportan y no se reescriben los imports de `applicability.ts`, `reconcile.ts`,
+ * `view.ts` y `billing/index.ts` porque esta spec es una unificación, no un renombre: el
+ * `DEAD_STRIPE_STATUS` que esos módulos consumen sigue siendo el mismo objeto.
  */
-export const DEAD_STRIPE_STATUS: ReadonlySet<string> = new Set([
-  "canceled",
-  "incomplete_expired",
-]);
-
-export function hasLiveSubscription(
-  input: Pick<PlanChangeInput, "status" | "stripeSubscriptionId">,
-): boolean {
-  return (
-    input.stripeSubscriptionId !== null && !DEAD_STRIPE_STATUS.has(input.status)
-  );
-}
+export {
+  DEAD_STRIPE_STATUS,
+  hasLiveSubscription,
+} from "../entitlements/live-subscription";
 
 /**
  * GUARDAS, EN ORDEN. PRIMER MATCH GANA. ES NORMATIVO — el unit

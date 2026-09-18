@@ -1,3 +1,4 @@
+import { ENTITLEMENTS, limitOf } from "../entitlements";
 import {
   isSupportedCountryCode,
   verifyLocation,
@@ -53,53 +54,42 @@ export function toLocationDTO(row: LocationRow): LocationDTO {
 }
 
 /**
- * Active locations a plan may hold (spec 0061, decision 2). Enforced in the SERVER while
- * holding the business lock, never by hiding a button.
+ * Spec 0072 §D2.5 — ENVOLTORIOS FINOS sobre la capa de entitlements. Los topes por plan ya
+ * NO viven acá: la fuente es `server/entitlements/catalog.ts`, entrada `locations.max`.
  *
- * `enterprise` is NOT here on purpose: `core.subscription.plan` only ever takes `free` and
- * `plus` today, and the spec forbids writing code for a plan that does not exist. An
- * unknown plan therefore falls back to the most restrictive tier — the consequence to know
- * is that introducing `enterprise` REQUIRES adding its row here, or it lands on 1.
+ * Conservan su firma porque tienen 30+ llamadores y tests propios, y cambiarlos a todos es
+ * alcance que la 0072 no compra. el mapa de topes que vivía acá se borró: si
+ * sobreviviera, la unificación sería decorativa — y fue esa copia la que dejó a `enterprise` cayendo al tope
+ * más restrictivo en silencio (ahora el catálogo lo pone en rojo en la suite, ADR 0073 §3).
+ *
+ * Sigue enforced en el SERVER mientras se sostiene el lock del negocio, nunca escondiendo
+ * un botón (spec 0061, decisión 2).
  */
-export const PLAN_LOCATION_LIMITS: Record<string, number> = {
-  free: 1,
-  plus: 3,
-  /**
-   * Spec 0063, D2 / ADR 0058 §12. `none` («sin suscripción») ya caería en 1 por el
-   * fallback, pero desde esta spec es un estado DELIBERADO, y apoyarse en el fallback para
-   * un valor que usamos a propósito es como no declararlo. Es 1 y no 0 porque un negocio
-   * sin suscripción sigue operando su local y tiene que poder archivar para salir.
-   */
-  none: 1,
-};
-
-export const FALLBACK_LOCATION_LIMIT = PLAN_LOCATION_LIMITS.free;
+export const FALLBACK_LOCATION_LIMIT: number =
+  ENTITLEMENTS["locations.max"].fallback;
 
 export function locationLimitForPlan(plan: string | null | undefined): number {
-  if (typeof plan !== "string") return FALLBACK_LOCATION_LIMIT;
-  return PLAN_LOCATION_LIMITS[plan] ?? FALLBACK_LOCATION_LIMIT;
+  return limitOf({ plan }, "locations.max");
 }
 
 /**
  * Spec 0063, D2 — el tope EFECTIVO: el menor entre el plan vigente y el plan destino.
  *
  * El agujero que cierra: con una baja ya programada el negocio sigue en `plus` hasta el
- * fin del periodo, así que comparar contra el plan VIGENTE deja desarchivar hasta 3
- * locales — y al cerrar el periodo queda `free` con 3 activos, el estado que la spec
+ * fin del período, así que comparar contra el plan VIGENTE deja desarchivar hasta 3
+ * locales — y al cerrar el período queda `free` con 3 activos, el estado que la spec
  * entera existe para prohibir.
  *
  * Es `min` y no «el pendiente gana»: un futuro upgrade programado no debe SUBIR el tope
- * antes de que el pago esté confirmado.
+ * antes de que el pago esté confirmado. La regla vive ahora en el catálogo
+ * (`pendingRule: "min"`), incluido el detalle de que un string vacío NO es una baja
+ * programada ([R1-N8]).
  */
 export function effectiveLocationLimit(
   plan: string | null | undefined,
   pendingPlan: string | null | undefined,
 ): number {
-  const current = locationLimitForPlan(plan);
-  // Un string vacío NO es una baja programada: sin esto el tope caería a 1 sin que nadie
-  // haya programado nada. [R1-N8]
-  if (typeof pendingPlan !== "string" || pendingPlan === "") return current;
-  return Math.min(current, locationLimitForPlan(pendingPlan));
+  return limitOf({ plan, pendingPlan }, "locations.max");
 }
 
 const MAX_NAME_LENGTH = 120;

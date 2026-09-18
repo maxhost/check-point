@@ -53,6 +53,38 @@ export async function ownerBusiness(
   return business ?? null;
 }
 
+/**
+ * La marca de UN negocio, por id. Spec 0072: la ruta `GET /api/brand` resolvia owner a mano
+ * con `getSession` + `ownerBusiness` —sin filtrar `memberships.status='active'` y sin gate
+ * de email—, y ahora resuelve con `requireApiOwner`, que ya devuelve el `businessId`. Esta
+ * lectura es la mitad que la ruta seguia necesitando.
+ *
+ * Selecciona EXACTAMENTE las mismas columnas que `ownerBusiness`: la respuesta de la ruta no
+ * cambia de forma. `logoObjectKey` se lee para derivar el path publico y **nunca** se
+ * serializa (lo quita `brandResponse`).
+ */
+export async function brandForBusiness(
+  businessId: string,
+): Promise<BrandRecord | null> {
+  const [business] = await getDb()
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      timezone: businesses.timezone,
+      currencyCode: businesses.currencyCode,
+      brandPrimaryColor: businesses.brandPrimaryColor,
+      brandComplementaryColor: businesses.brandComplementaryColor,
+      brandAccentColor: businesses.brandAccentColor,
+      logoObjectKey: businesses.logoObjectKey,
+      brandRevision: businesses.brandRevision,
+      logoVersion: businesses.logoVersion,
+    })
+    .from(businesses)
+    .where(eq(businesses.id, businessId))
+    .limit(1);
+  return business ?? null;
+}
+
 export async function createLogoUpload(userId: string, value: unknown) {
   const business = await ownerBusiness(userId);
   if (!business) throw new BrandError(403, "No tienes un negocio como owner.");

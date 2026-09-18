@@ -25,7 +25,7 @@ import {
 import { dropBusiness, type Seed } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
 import { getDb } from "./db";
-import { businesses, memberships } from "./schema";
+import { businesses, memberships, users } from "./schema";
 import { setStaffStatus } from "./staff";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
@@ -99,6 +99,16 @@ async function member(
           eq(memberships.userId, staff.userId),
         ),
       );
+    // Spec 0072: `requireApiOwner` trae a billing el gate de email verificado, que esta
+    // superficie NO tenía —con el email sin verificar se abría un checkout de Stripe—. El
+    // alta de staff crea al usuario con `emailVerified: false` (su email es sintético), así
+    // que un owner FABRICADO desde ahí necesita el flag para llegar al gate que este
+    // archivo mide, que es el del ROL. Es una edición del SEED, no de una aserción: sin
+    // ella el control positivo mediría el gate de email y no el de owner.
+    await getDb()
+      .update(users)
+      .set({ emailVerified: true })
+      .where(eq(users.id, staff.userId));
   }
   if (opts.status === "disabled") {
     // Un owner no se puede desactivar por `setStaffStatus` (409), y es justo el caso que hay
@@ -174,8 +184,11 @@ describe.skipIf(!integrationEnabled)(
           );
           const response = await handler(request);
           expect(response.status, name).toBe(403);
+          // El `code` es NUEVO (spec 0072 §D3, decisión del owner del 2026-09-17): los
+          // 401/403 de las 10 superficies del owner lo llevan normalizado.
           expect(await response.json(), name).toEqual({
             error: "Solo el owner puede gestionar la suscripción.",
+            code: "not_owner",
           });
         }
         // El dominio no se tocó: el plan sigue donde estaba.

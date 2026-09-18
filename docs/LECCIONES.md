@@ -563,3 +563,38 @@ sustitucion habria pasado desapercibida.
 **Corolario, que es el de siempre en este repo:** la salida de una herramienta es evidencia sobre
 **lo que la herramienta hizo**, no sobre el arbol. Las dos cosas coinciden solo si el comando era
 el que uno creia.
+
+---
+
+## El espejo de «lo que el owner no dijo»: lo que YA dijo, preguntado de nuevo
+
+**2026-09-17, spec 0072.** El orquestador le subio al owner **dos** «decisiones pendientes» que el
+owner **ya habia tomado el mismo dia**, con palabras textuales guardadas en `TASKS.md`:
+
+1. **F1 — `POST /api/onboarding/program` reescribiendo el programa de un negocio `suspended`.** Se
+   le planteo como decision de producto («¿gatear el wizard o declararlo?»). Su regla dictada para
+   `suspended` ya decia: «no pueden escanear, no pueden asignar puntos, sellos, **cambios en
+   programa**, marca, etc. Nada». **No era una decision: era un incumplimiento.** Respuesta del
+   owner: «cerralo ahora».
+2. **El `status`/`suspensionReason` que devuelve `requireBackofficeSession`** y que hoy ninguna
+   pantalla consume. Se le subio como «andamiaje a decidir: su fila o se borra». Su dictado ya
+   decia que el owner suspendido «puede loguearse y **ver un mensaje de cuenta suspendida con su
+   razon y boton de contacto**» — o sea que el consumidor estaba decidido y el campo es la mitad de
+   API de esa pantalla. **Lo que faltaba era la fila, que es trabajo del orquestador, no una
+   pregunta.**
+
+**La causa raiz, y es lo que hace que se repita:** los dos venian etiquetados por un subagente como
+«decision del implementador, NO del owner». Esa etiqueta es **cierta desde el contexto del
+subagente** —el no tiene el historial de decisiones— y el orquestador la propago sin cruzarla
+contra las palabras del owner. La regla anterior («lo que el owner no dijo no se escribe como
+decision suya») empuja justo en esa direccion, asi que sin su espejo el sesgo es estructural: **ante
+la duda, preguntar parece siempre lo seguro.** No lo es — le devuelve al owner trabajo que el ya
+hizo, y encima disfrazado de pregunta nueva.
+
+**El costo medido:** dos vueltas de conversacion, y en F1 el owner tuvo que reafirmar una regla que
+habia dictado horas antes. El sintoma en su voz fue «tan dificil es entender eso?».
+
+**La regla (en `CLAUDE.md`, junto a su espejo):** antes de subir un hallazgo a decidir, buscar las
+palabras textuales del owner en `TASKS.md`/`PARQUEADO.md`. Si ya las dijo, **no es una decision
+abierta: es un incumplimiento, y se arregla**. Un subagente que etiqueta algo como «decision mia»
+esta describiendo su contexto, no el estado del proyecto.

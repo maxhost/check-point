@@ -42,7 +42,18 @@ import { GET } from "../app/api/staff/route";
 const get = () =>
   GET(new Request("http://localhost:3001/api/staff", { method: "GET" }));
 
-const owner = [{ id: "b1", slug: "la-farmacia", currencyCode: "USD" }];
+// Spec 0072: `ownerContext` selecciona ademas el eje `status`, y el guard de
+// `requireApiOwner` es fail-closed — una fila sin `status` NO opera. Edicion del FIXTURE:
+// las aserciones de este archivo no cambian.
+const owner = [
+  {
+    id: "b1",
+    slug: "la-farmacia",
+    currencyCode: "USD",
+    status: "active",
+    suspensionReason: null,
+  },
+];
 
 beforeEach(() => {
   sessionUser = null;

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { DbTransaction } from "../db";
 import { subscriptions } from "../schema";
-import { hasLiveSubscription } from "../billing/plan-change";
+import { can } from "../entitlements";
 
 /**
  * Spec 0065, fase D — EL GATE DE PLAN DE LAS CAMPAÑAS (402 `plan_not_allowed`).
@@ -28,21 +28,26 @@ export type CampaignPlanRow = {
   stripeSubscriptionId: string | null;
 };
 
-const PLAN_WITH_CAMPAIGNS = "plus";
-
 /**
- * DECISIÓN PURA. Tres condiciones, y cada una cierra un agujero distinto:
+ * DECISIÓN PURA, delegada en la capa de entitlements (spec 0072 §D2.5). La regla —las tres
+ * condiciones— vive ahora en UNA fila del catálogo (`campaigns.enabled`), y este archivo
+ * conserva la firma porque `createCampaign` y `transitionCampaign` la llaman.
  *
- *  1. `plan === 'plus'` — el plan vigente.
- *  2. `pending_plan` no baja de `plus` — el MISMO criterio que `effectiveLocationLimit`
- *     (`locations/core.ts:94`): con una baja ya programada el negocio sigue en `plus`
+ * Las tres condiciones y el agujero que cierra cada una, para que no se pierdan al mover
+ * la regla de lugar:
+ *
+ *  1. `byPlan` — el plan vigente (`plus` es el único con `true`).
+ *  2. `pendingRule: "min"` — `pending_plan` no baja de `plus`. Es el MISMO criterio que
+ *     `effectiveLocationLimit`: con una baja ya programada el negocio sigue en `plus`
  *     hasta el fin del período, y activar ahí deja campañas corriendo el día que el plan
  *     aterriza en `free`. Un `pending_plan` vacío NO es una baja programada ([R1-N8] de la
  *     spec 0063: sin ese detalle el tope caía solo).
- *  3. `hasLiveSubscription` — `effectiveLocationLimit` por sí sola es un `Math.min` de
- *     topes y **no mira `status` ni `stripe_subscription_id`**, o sea que no sabe nada de
- *     «viva». En prod hay un `plus` con `interval` NULL y sin `stripe_subscription_id`
- *     (A1 de la spec 0063): sin esta condición, ese negocio activaría campañas sin pagar.
+ *  3. `requiresLiveSubscription: true` — el tope de locales por sí solo es un `Math.min` y
+ *     **no mira `status` ni `stripe_subscription_id`**, o sea que no sabe nada de «viva».
+ *     En prod hay un `plus` con `interval` NULL y sin `stripe_subscription_id` (A1 de la
+ *     spec 0063): sin esta condición, ese negocio activaría campañas sin pagar. Se declara
+ *     POR ENTRADA y no como un `effectivePlan` único, porque locales SÍ los conserva
+ *     (ADR 0073 §2).
  *
  * CORRIGE UNA DIVERGENCIA DE LA FASE B1, declarada acá porque no es un detalle: el
  * `planAllows` que B1 dejó en `campaign-actions.ts` miraba SÓLO `plan === 'plus'` y
@@ -50,17 +55,13 @@ const PLAN_WITH_CAMPAIGNS = "plus";
  * activación. La spec dice lo contrario en «Freno por plan» («la fuente son
  * `subscription.plan` + `pending_plan` … MÁS `hasLiveSubscription`»), y la fase D es donde
  * esa sección se implementa. Gana la spec.
+ *
+ * **NO mira `core.business.status`** (ADR 0073 §1): un negocio suspendido se corta en
+ * `requireApiOwner` con 403 `business_suspended`, no con un «mejorá tu plan».
  */
 export function campaignsAllowedFor(row: CampaignPlanRow | null): boolean {
   if (row === null) return false;
-  if (row.plan !== PLAN_WITH_CAMPAIGNS) return false;
-  if (
-    typeof row.pendingPlan === "string" &&
-    row.pendingPlan !== "" &&
-    row.pendingPlan !== PLAN_WITH_CAMPAIGNS
-  )
-    return false;
-  return hasLiveSubscription(row);
+  return can(row, "campaigns.enabled");
 }
 
 /**

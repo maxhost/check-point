@@ -38,8 +38,12 @@ export const TERMINAL_STATUS: ReadonlySet<string> = new Set([
 ]);
 
 /** Sólo un plan PAGO puede caer a `none` ([R2-7]): un negocio `free` cuya primera factura
- * expira sigue en `free`, nunca queda «sin plan» por haber intentado pagar. */
-export const PAID_PLANS: ReadonlySet<string> = new Set(["plus"]);
+ * expira sigue en `free`, nunca queda «sin plan» por haber intentado pagar.
+ *
+ * Spec 0072 §P1: la lista ya NO se declara acá. «Qué plan es pago» era el tercer lugar
+ * donde el conocimiento de plan estaba copiado, y vive en el catálogo de entitlements
+ * junto a los topes. Se re-exporta para no tocar a `derive.ts` ni a sus tests. */
+export { PAID_PLANS } from "../entitlements/catalog";
 
 /** Las fechas de Stripe son unix SECONDS. Sin el `* 1000` caen en 1970 y el bug es visual,
  * no de tipos — por eso el unit asevera el AÑO. */

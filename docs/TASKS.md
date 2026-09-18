@@ -14,7 +14,7 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-17 (handoff de cierre de sesion).**
+**Ultima actualizacion: 2026-09-17 (spec 0072 `implementada` con PASS de revisor independiente. SIN COMMITEAR. Falta UNA decision del owner: F1, el wizard sin gate).**
 
 **ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
 
@@ -29,31 +29,322 @@ bitacora de mutaciones y el PASS del revisor de esa spec).
 | Suite | **1479 passed / 0 failed** con Neon |
 | Produccion | **0 negocios, 0 usuarios merchant, 0 suscripciones** |
 
-**EL ARCO 2 ESTA CERRADO Y EN PRODUCCION.** Lo que sigue es la **3ª spec** (entitlements), y
-arranca con **dos decisiones del owner pendientes** que estan detalladas abajo.
+**EL ARCO 2 ESTA CERRADO Y EN PRODUCCION.** La **3ª spec** del arco esta **`cerrada`**:
+**`docs/specs/0072-entitlements-y-estado-del-negocio.md`**, con su ADR **0073** y sus dos filas
+de `INDEX`. **Las decisiones del owner estan las cuatro tomadas** y el implementador salio.
 
-**→ PARA RETOMAR, LEER EN ESTE ORDEN:** esta cabecera · la seccion «LO PROXIMO» de aca abajo ·
-`docs/PARQUEADO.md` filas **56** y **57** (las dos las absorbe la 3ª spec) · el ADR **0070**
-(el arco) y el **0071** (el proceso, con su re-medicion real).
+**→ PARA RETOMAR, LEER EN ESTE ORDEN:** esta cabecera · la seccion «LA 3ª SPEC» de aca abajo ·
+la spec **0072** y el ADR **0073** · `docs/PARQUEADO.md` filas **56** y **57** (las dos las
+absorbe la 0072) · el ADR **0070** (el arco) y el **0071** (el proceso).
 
-## ⇥ LO PROXIMO: LA 3ª SPEC DEL ARCO (entitlements) — y las 2 decisiones que la destraban
+## ⇥ BITACORA DE MUTACIONES — spec 0072 (implementador, 2026-09-17)
 
-**No se escribe una linea de prosa de esa spec hasta tener estas dos** (ADR 0071 §2: las
-decisiones del owner se piden ANTES de la prosa — es lo que hizo que la 0069 se escribiera **una
-sola vez**, y la fuga #1 de la 0068 fue escribirla dos):
+**Presupuesto: 7 mutaciones** (M1-M7 de la §Plan de pruebas de la spec). Las filas se abren
+ANTES de medir. **Restauracion de emergencia:** los archivos nuevos (`??`) tienen copia limpia
+en `/tmp/spec0072-clean/`; los modificados (` M`) se restauran con `git checkout --` SOLO si no
+hay otro trabajo sin commitear en ellos (hoy SI lo hay: el paso 1 de la spec).
 
-1. **Que pasa del lado del CONSUMIDOR de un negocio `closed`.** Se le pregunto al owner el
-   2026-09-17 y **su respuesta describio la superficie del COMERCIO** («ni staff ni owner puede
-   hacer nada»). Sigue sin decidirse: los **pases de Wallet ya emitidos**, los **sellos que la
-   gente ya junto**, y el **QR de enrolamiento que sigue pegado en el local**. **Esto decide el
-   tamaño de la spec**: si `closed` solo cierra el backoffice es chica; si tiene que apagar el
-   lado del consumidor, toca el arco de Wallet y pases.
-2. **Que estados/limites entran al catalogo de entitlements** (`can()` / `limitOf()`), y que
-   pasa cuando un negocio `free` ya excedio un limite que despues se baja.
+| id | archivo | shasum limpio | invariante que ataca | alcance medido | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `server/api-owner.ts` | `ba2daa879915e807077311ac7b3b189f9b3c446d` | el eje `status` se lee en `requireApiOwner`: una API del owner frena en un negocio `suspended`/`closed` | suite entera (203 archivos, con Neon) | **ROJO 38 tests / 1 archivo** (`api-owner-surfaces.test.ts`): los 3 casos de estado × las 12 entradas HTTP. Aserciones: `AssertionError: expected 400 to be 403`, `expected 503 to be 403`, `expected 422 to be 403` — sin el paso 4 el request sigue de largo hasta el dominio. Revertida desde `/tmp/spec0072-clean/api-owner.ts`, `diff` limpio, shasum `ba2daa87…` |
+| M4 | `app/api/merchant/auth/magic-link/route.ts` | `6b10503a827f29f413f4b175b8e1be3783291ad2` | el corte de `closed` en el CONSUMO del link magico: el owner de un negocio cerrado no obtiene sesion | suite entera (203 archivos, con Neon) | **ROJO 2 tests / 1 archivo** (`magic-link-business-closed.neon.integration.test.ts`). Asercion: `AssertionError: expected '/backoffice' to be '/?e=business_closed' // Object.is equality`; el 2.º caso cae con `expected 2 to be 1` porque la sesion creada tampoco se revoco. Revertida, `diff` limpio, shasum OK |
+| M5 | `app/api/counter/_auth.ts` | `229cc5532a75d0db579dd2cc72fa0914f288af39` | el guard va en CADA superficie y no solo en la puerta: una sesion de staff YA VIVA no acredita en un negocio suspendido (el hueco de los 7 dias) | suite entera (203 archivos, con Neon), medida DOS veces | **ROJO 2 tests / 1 archivo** (`business-status.neon.integration.test.ts`). Asercion (2.ª medicion, con la etiqueta puesta): `AssertionError: el mostrador dejó pasar una sesión de staff YA VIVA en un negocio SUSPENDIDO: expected false to be true // Object.is equality` y su gemela `… en un negocio CERRADO`. Revertida, `diff` limpio, shasum OK |
+| M2 | `server/api-owner.ts` | `ba2daa879915e807077311ac7b3b189f9b3c446d` | el gate de email verificado corre en las 10 superficies, incluida billing (que hoy no lo tiene) | suite entera (201 archivos) | **ROJO 28 tests / 4 archivos**: `api-owner-surfaces.test.ts` (las 12 entradas, incluida `billing/checkout`), `staff-gate.test.ts`, `staff-list.neon`, `business-slug.neon`. Asercion sobre billing: `AssertionError: expected 400 to be 403 // Object.is equality`. Revertida, `diff` limpio, shasum OK |
+| M3 | `server/api-owner.ts` | `ba2daa879915e807077311ac7b3b189f9b3c446d` | el ORDEN de §D1: el email se evalua DESPUES de resolver owner, o un integrante recibe `email_not_verified` en vez de `not_owner` | suite entera (201 archivos) | **ROJO 18 tests / 5 archivos**: `api-owner-surfaces.test.ts` (las 12), `staff-gate.test.ts`, `staff-list.neon`, `staff-pin-change.neon`, `business-slug.neon`, `billing-routes-auth.neon`. Asercion: `AssertionError: expected 'email_not_verified' to be 'not_owner' // Object.is equality`. Revertida, `diff` limpio, shasum OK |
+| M6 | `server/entitlements/catalog.ts` | `e592b5aa51d7553a720585bfdb3a61dbf552f785` | `campaigns.enabled` exige suscripcion VIVA: un `plus` forma A1 (sin `stripe_subscription_id`) no activa campañas | suite entera (200 archivos) | **ROJO 4 tests / 2 archivos.** `marketing/plan-gate.test.ts` (A1, `canceled`, `incomplete_expired`) + `entitlements-catalog.test.ts`. Asercion: `AssertionError: expected true to be false // Object.is equality`. Revertida, `diff` limpio, shasum OK |
+| M7 | `server/entitlements/catalog.ts` | `e592b5aa51d7553a720585bfdb3a61dbf552f785` | el catalogo es la FUENTE del tope de locales, no una copia muerta | suite entera (200 archivos) | **ROJO 22 tests / 9 archivos**, unit + Neon: `locations.test.ts` `AssertionError: expected 2 to be 1`, `locations-plan-cap.test.ts` `expected { limit: 2, pendingDowngrade: true } to deeply equal { limit: 1, pendingDowngrade: true }`, `locations-limits.neon` `promise resolved "{ …(4) }" instead of rejecting`, `billing-plan-change.test.ts` `expected [ { input: { …(8) }, …(2) }, …(1943) ] to deeply equal []`. Revertida, `diff` limpio, shasum OK |
 
-**Alcance ya conocido de esa spec, medido:** los 3 call-sites de plan que ya divergieron viven en
-`billing/`, `marketing/` y `locations/`. **Conviene hacer las filas 56 y 57 JUNTAS ahi**: son los
-mismos archivos y el mismo `requireApiOwner`.
+## ⇥ LA 3ª SPEC DEL ARCO: la 0072 esta `cerrada` y en implementacion (2026-09-17)
+
+### ⇥ LA 0072 ESTA `implementada` — PASS de revisor independiente (2026-09-17)
+
+**PASS.** Un solo ciclo: el revisor no abrio FAIL. Gasto sus **4 mutaciones** y la condicion de
+corte no se aplico. **SIN COMMITEAR** — 58 archivos en el diff, `HEAD` en `5f89d18`.
+
+**Gates al momento del PASS** —corridos por el orquestador DESPUES de sus propios cambios, porque
+el PASS del revisor no cubria lo que el orquestador toco despues—: `typecheck --force` **3/3 sin
+cache** · `lint` exit 0 · `format:check` OK · **`test` con Neon: 203 archivos / 1584 passed / 0
+failed** · `build --force` **3/3 sin cache** · `rg MUTATION apps` **vacio**. El **`build` era la
+unica señal del DoD que nadie habia observado**: el revisor lo declaro afuera.
+
+**⚠️ ESE `1584` ES HISTORICO, NO LA CIFRA FINAL.** Despues del PASS vinieron dos cierres pedidos
+por el owner —F1 y el landing del enroll—, cada uno con sus tests, y **los gates se re-corrieron
+enteros despues de cada uno**. La cifra vigente es **1590** (§«F1 CERRADO» y §«CERRADO — el landing
+publico»). Los `1584` de este archivo son el estado de una corrida anterior y se dejan con su
+fecha: un numero viejo etiquetado es historia; reescrito, es una mentira sobre cuando se midio.
+
+#### ✅ F1 CERRADO — decision del owner del 2026-09-17 («cerralo ahora»)
+
+**El agujero:** `POST /api/onboarding/program` llamaba a **`saveProgram`** (`route.ts:53`), **el
+MISMO writer** que la ruta gateada `PUT /api/loyalty-program` (`route.ts:60`), con solo
+`getSession`. Con el negocio en `suspended` respondia **200 con `created: false`** —o sea UPDATE—
+mientras la gateada contestaba **403**. Lo cazo el revisor y lo reprodujo el orquestador.
+
+**Y NO era una decision de producto abierta, que es como el orquestador lo habia planteado mal:**
+la regla textual del owner para `suspended` ya decia «no pueden … **cambios en programa**». Era
+un **incumplimiento**, no una pregunta.
+
+**Medicion que ACOTO el hallazgo de tres rutas a UNA** (el revisor decia «lo mismo aplica a
+`business` y `prefill`; verificado y es falso):
+- **`onboarding/prefill`: no lee una sola fila del negocio.** Devuelve paises, categorias y el
+  sesgo geografico de los headers. No hay estado que gatear.
+- **`onboarding/business`: solo CREA.** Si ya existe **cualquier** membresia contesta **409**
+  antes de escribir (`route.ts:110`). Un owner con negocio `suspended` ya tiene membresia, asi
+  que **nunca llega a un write**. Inalcanzable, no arreglable.
+- **`onboarding/program` era el unico agujero real.**
+
+**EL GATE VIVE EN EL WRITER, NO EN LA RUTA.** `saveProgram` (`server/loyalty-program.ts`) es un
+writer con **dos puertas**; una defensa en el borde deja la otra abierta, que es exactamente como
+nacio el agujero. Ventaja extra: el guard lee el `status` de **la misma fila** que el write va a
+tocar, asi que no le afecta la divergencia `asc`/`desc` de §D3. **La ruta NO lleva el gate de
+email, a proposito**: el wizard corre antes de la verificacion (ADR 0070 §11) y son dos ejes
+distintos (ADR 0073).
+
+**`businessStatusFailure` se MUDO a una HOJA sin un solo import (`server/business-status.ts`),
+y es la leccion del paso 1 aplicada de nuevo.** Vivia en `api-owner.ts`, que importa
+`next/server` y better-auth; importarla desde `loyalty-program.ts` habria arrastrado el runtime
+HTTP y de auth a un modulo de dominio — la misma forma del ciclo que costo 8 suites. `api-owner.ts`
+la re-exporta, asi que **sus 12 consumidores no cambian una linea**. Verificado: la hoja tiene
+**0 imports** y ni ella ni `api-owner` importan loyalty.
+
+**`LoyaltyError` gano un `code` opcional.** Sin el, el mapeo por STATUS de la ruta
+(`codeForStatus`) traducia **todo 403 a `not_owner`**, o sea que un rechazo por negocio suspendido
+habria salido con el `code` de «no sos owner»: mentirle al cliente sobre por que lo frenaron.
+
+**El oraculo, y una MUTACION que prueba que muerde** (shasum limpio
+`a83c94ae1e7ba5ef2ad7b431afba340fc7b5e71f`): removido el guard, **2 rojos** con
+`AssertionError: expected 200 to be 403`, y **el control positivo quedo VERDE** — o sea que el
+oraculo discrimina en vez de tirar todo al piso. Revertida con `diff` **vacio** y shasum
+coincidente. Los tests nuevos viven en `onboarding-program.neon.integration.test.ts` y **no
+aseveran solo el status**: pinnean el `updatedAt` del programa antes y despues, porque un fix que
+devolviera 403 **despues** de escribir pasaria en verde con solo mirar el codigo HTTP.
+
+**LIMITE MEDIDO, declarado en el propio test:** el caso de un `status` DESCONOCIDO **no es
+alcanzable contra base**. Se intento: el `CHECK` de la migracion `0036` lo rechaza **incluso por
+SQL crudo** (`23514 business_status_check`). La polaridad fail-closed se mide donde si se puede,
+sobre la funcion pura, en `api-owner-surfaces.test.ts` (12 × 7 estados, `frozen` incluido).
+
+**GATES FINALES, despues del cierre de F1:** `typecheck --force` **3/3 sin cache** · `lint` exit 0
+· `format:check` OK · **`test` con Neon: 203 archivos / 1590 passed / 0 failed** (baseline de la spec 1479; +3 del
+cierre de F1 y +3 del landing) · `build --force` **3/3 sin cache** · `rg MUTATION apps` **vacio**.
+
+#### Lo que el revisor cazo y el ORQUESTADOR ARREGLO
+
+- **Un `limit(1)` SIN `orderBy` en el corte del link magico** (`magic-link/route.ts`,
+  `businessIsClosed`). Su docblock afirmaba «la membresia mas vieja, mismo criterio que
+  `requireBackofficeSession`» y **la consulta no ordenaba**: un `limit(1)` sin orden es **no
+  determinista**, asi que con dos membresias este guard abriria o cerraria la sesion al azar.
+  Se corrigio **el codigo** (se agrego `orderBy(asc(businesses.createdAt))`), no solo el
+  comentario — misma regla que la 0069 con el `density` del QR. La divergencia que QUEDA
+  —aca se filtra `memberships.status='active'` y `requireBackofficeSession` no— esta declarada
+  en el docblock.
+- **Una afirmacion de mas de la propia spec.** §D3 decia que se cerraba la divergencia
+  `asc`/`desc`. **Falso, reproducido:** quedan cuatro `asc` (`staff.ts:88`,
+  `catalog/core.ts:81`, `brand.ts:51`, `auth-guards.ts:106`) contra **un `desc`**
+  (`loyalty-program.ts:66`), y `api/loyalty-program` + `/qr` llegan a ese resolvedor `desc`
+  **despues** de que el gate resolvio con `asc`. Inalcanzable hoy (`onboarding/business:110`
+  contesta 409 si ya hay membresia: un negocio por usuario) y **declarado, no perseguido** —
+  cerrarlo toca un archivo que no esta en la tabla de la spec.
+- **El contrato afirmaba ser el unico resolvedor de owner.** Corregido, con la fila de exclusion
+  de `api/onboarding/*` y su riesgo medido.
+
+#### Hallazgos del revisor que NO son defectos (verificados)
+
+- **La ruta del PIN sin gate esta bien.** `pin/route.ts:73`: `userId !== session.user.id` → `404
+  staff_not_found`. Gatearla dejaria a **todo** el staff sin poder cambiar su PIN.
+- **`suspensionReason` camelCase** es la convencion del API y esta declarado en el contrato.
+- **`api-owner-surfaces.test.ts` tiene PISO DE BARRIDO** (`expect(SURFACES.length).toBe(12)`),
+  que es lo que evita que un `it.each` vacio pase en verde. Lo verifico el revisor.
+- **El fail-closed asimetrico esta acotado:** `rg "use server"` → **0 matches**, no hay server
+  actions, asi que el backoffice no escribe nada por fuera del API. Con un `status` desconocido
+  se entra a LEER, pero toda escritura esta fail-closed (medido).
+- **Cero fuga de claves de R2:** `brandResponse` sigue destructurando `logoObjectKey` afuera.
+
+#### ANDAMIAJE CON SU TAREA: `status`/`suspensionReason` del guard del backoffice
+
+**NO es un hallazgo a decidir, y el orquestador lo habia clasificado mal.** Es cierto que hoy
+ninguna pantalla lo consume (verificado: el unico hit en `.tsx` es `backoffice/page.tsx:90` y es
+el `status` de la SUSCRIPCION, otro eje). **Pero su consumidor ya esta decidido por el owner**, en
+su dictado textual de `suspended` del 2026-09-17: «el owner puede loguearse y **ver un mensaje de
+cuenta suspendida con su razon y boton de contacto**».
+
+**Esta es la fila que lo autoriza** (regla de «nada de andamiaje sin su tarea»):
+
+| Que | Quien lo va a consumir | Estado |
+|---|---|---|
+| `ctx.business.status` y `ctx.business.suspensionReason` de `requireBackofficeSession` (`auth-guards.ts:160-163`), con el motivo **solo** para `role='owner'` | **La pantalla de cuenta suspendida que construye el OWNER por fuera** (ADR 0070 §16: el arco entrega API, no interfaz). Su contrato es `0072-contratos-de-api.md` §6 | esperando la UI |
+
+**Si esa pantalla no se construye, el campo se borra con ella** — igual que la columna
+`core.business.status` respecto de su propia fila.
+- **✅ CERRADO — el landing publico del enroll.** Lo observo el revisor como UX y el owner lo
+  resolvio el 2026-09-17: «si la persona llegara a escanear el QR para sumarse al programa, la
+  landing diria **"Este Programa ya no esta disponible"**». Y acoto el criterio para el futuro:
+  **eso se toca al editar la pantalla, SALVO que sea una propiedad de API.** Medido: **lo es**.
+  `getEnrollLanding` vive en `server/consumer/enrollment.ts:254` —el servidor, y el archivo ya
+  estaba en la tabla de la spec— y la pagina solo renderiza lo que devuelve.
+  **Y el mensaje que pidio YA EXISTE:** la rama `!landing` de
+  `app/(consumer)/enroll/[programId]/page.tsx:32` dice exactamente «Este programa no esta
+  disponible». Asi que devolver `null` lo alcanza: se agrego `eq(businesses.status, "active")` al
+  `where` que ya hacia `innerJoin(businesses)`, **cero `.tsx`** (ADR 0070 §16). Fail-CLOSED
+  (`= 'active'`, no `in ('suspended','closed')`), misma polaridad que `businessStatusFailure`.
+  **Oraculo con mutacion (L1)**, shasum limpio `05af3cf10d69ba62de111576b8b5cb661b558344`:
+  removido el guard, **2 rojos** con `AssertionError: expected { …(9) } to be null` y el
+  **control positivo VERDE** —que no es decorativo: un `null` puede venir de cualquiera de las 4
+  condiciones del `where`, asi que sin el, un gate que anulara TODO pasaria en verde—. Revertida
+  con `diff` vacio y shasum coincidente.
+
+#### Correccion del revisor a una premisa del ENCARGO del orquestador
+
+El encargo decia que el consumo del link magico estaba **sin mutar**. **Falso:** la bitacora
+muestra que el implementador ya lo habia cubierto con su M4. **2 de las 4 mutaciones del revisor
+(RM2 link magico, RM4 catalogo) re-probaron trabajo ya medido** — valen como medicion
+independiente con shasum identico, pero se pagaron del presupuesto. La unica superficie del eje
+`status` que estaba de verdad sin mutar era el **enroll publico** (RM1), y **RM3 fue original y
+es la mejor de las cuatro**: cambio `ownerContext` para leer el `status` de la MEMBRESIA en vez
+del NEGOCIO, y descubrio que `api-owner-surfaces.test.ts` **queda verde (88 passed)** porque el
+unit dobla `ownerContext` — esa clase de error **solo la caza la integracion**.
+
+### ✅ VERIFICADO POR EL ORQUESTADOR — y un barrido del implementador que era DEBIL
+
+Todo lo de abajo lo escribio el implementador. Esto es lo que el **orquestador reprodujo por su
+cuenta** (regla de la señal decisiva: se reproduce lo decisivo, no todas sus mediciones):
+
+- **Suite completa CON NEON reproducida: 203 archivos / 1584 passed / 0 failed.** Mas
+  `typecheck` 3/3, `lint` exit 0, `format:check` OK, `rg MUTATION apps` **vacio**.
+- **El barrido del implementador para «ningun test ablandado» NO alcanzaba.** El suyo miraba las
+  lineas borradas que contuvieran `expect(`; **eso no caza que a un `toEqual` le saquen una
+  clave**, que es justo la forma barata de ablandar una asercion sin borrarla. El orquestador lo
+  rehizo sobre **TODAS** las lineas borradas de los `.test.ts` y los `*support*.ts`: las 12
+  distintas son andamiaje (dobles de `ownerContext`, dobles de sesion, un seed, un import y un
+  comentario). **Cero `expect(...)` eliminados**, y los dos cambios de asercion son **aditivos**
+  (`toEqual({error})` → `toEqual({error, code:"not_owner"})`). La conclusion del implementador
+  era correcta; su prueba no.
+- **DoD reproducido:** `rg PLAN_LOCATION_LIMITS|PLAN_WITH_CAMPAIGNS` vacio · `rg ownerBusiness`
+  en `app/api` vacio · **0 `.tsx`** · **0 archivos de wallet/tarjeta** en el diff — o sea que lo
+  YA EMITIDO no se toco, que es la decision del owner.
+- **La M1 la midio el ORQUESTADOR**, no el implementador: un hook `no-mutations-left.sh` bloqueo
+  un turno con la mutacion puesta, asi que se midio ahi (**36 rojos**, asercion
+  `expect(response.status).toBe(403)` + `code === "business_suspended"`) y se revirtio (**85/85
+  verde**). El implementador la re-midio independiente y le dio **38**. Su copia limpia y la
+  reconstruccion del orquestador diferian **solo en el nombre de una variable local**.
+- **La ruta del PIN sin gate se verifico leyendola:** contesta **404 `staff_not_found`** si
+  `userId !== session.user.id`, o sea que esta auto-acotada. No gatearla es correcto.
+
+**🔵 REVISOR INDEPENDIENTE EN VUELO**, contexto fresco, **presupuesto 4 mutaciones** y condicion
+de corte escritos en el encargo. Se le pidio concentrarlo donde el riesgo NO es el rojo sino el
+**verde sin oraculo**: las superficies del eje `status` que el implementador NO muto (enroll
+publico y consumo del link magico), el contrato contra la realidad (en la 0067 hubo un FAIL por
+un `code` declarado que dos rutas no emitian), y los 4 hallazgos de abajo. **La spec NO esta
+marcada `implementada`: eso lo decide su PASS.**
+
+### ⚠️ 4 HALLAZGOS: son decisiones del IMPLEMENTADOR, NO del owner
+
+1. **`POST /api/staff/[userId]/pin` sin `requireApiOwner`** — correcto y verificado (ver arriba).
+   Consecuencia declarada: un integrante con sesion viva rota su PIN en un negocio `suspended`.
+   No acredita, no entra al mostrador y no obtiene sesion nueva.
+2. **El motivo viaja como `suspensionReason` (camelCase)**, no `suspension_reason` como lo nombra
+   la spec — que es el nombre de la COLUMNA, no el del campo. Declarado en el contrato.
+3. **`requireBackofficeSession` devuelve `status`/`suspensionReason` que HOY NO CONSUME NINGUNA
+   PANTALLA.** Es andamiaje: o le entra su fila en `TASKS.md`, o se borra. **A DECIDIR.**
+4. **Fail-closed ASIMETRICO:** API, mostrador, login y enroll tratan un `status` desconocido como
+   `suspended`; el backoffice solo rebota con `closed` exacto, porque es la unica superficie
+   donde el owner puede LEER el motivo. **A DECIDIR.**
+
+
+### ESTADO EN VIVO — LOS 3 PASOS ESCRITOS, GATES VERDES, CERO MUTACIONES VIVAS (2026-09-17)
+
+- `HEAD` = **`5f89d18`**, **nada commiteado**, **ninguna migracion aplicada** (la 0072 no tiene).
+- **`rg MUTATION apps` → VACIO.** Las **7 mutaciones del presupuesto estan corridas y
+  revertidas**, con shasum limpio, etiqueta, texto de la asercion roja y `diff` de reversion:
+  ver la bitacora de mas arriba.
+- **Gates completos, Node 24.20.0, con `.env.integration.local` de la RAIZ:**
+  `typecheck` **3/3** · `lint` exit 0 · `format:check` OK ·
+  `test` **203 archivos / 1584 passed / 0 failed** (baseline al empezar: 199 / 1479) ·
+  `build` **3/3**.
+- **La matriz `{active, suspended, closed}` SI se ejercito contra base**, en
+  `business-status.neon.integration.test.ts` (el `status` se escribe con un `UPDATE`, que es el
+  unico mecanismo que hay hoy) y en `magic-link-business-closed.neon.integration.test.ts`.
+- **Los 3 pasos internos estan escritos:** la capa de entitlements con sus 3 call-sites
+  migrados; `server/api-owner.ts` con sus 4 pasos y sus 12 consumidores; y el eje `status` en
+  las 7 superficies de §D4.
+- **El ciclo de imports del paso 1 quedo arreglado en su raiz:**
+  `server/entitlements/live-subscription.ts` saca `hasLiveSubscription` de `billing/plan-change`,
+  asi que la pieza de mas abajo del stack ya no importa un modulo de dominio. `plan-change.ts` lo
+  re-exporta, asi que `applicability`, `reconcile`, `view` y `billing/index` no cambian.
+- **Entregable de contrato escrito:** `docs/specs/0072-contratos-de-api.md`.
+- **22 archivos de test preexistentes modificados, auditados uno por uno.** El barrido decisivo:
+  `git diff -U0 -- <los 22> | grep "^-"` **no borra ni una sola linea `expect(...)`** — todo lo
+  eliminado son dobles de sesion, dobles de `ownerContext`, declaraciones de tipo y un
+  comentario. Las **unicas dos aserciones que cambiaron** son los `toEqual` del cuerpo del 403
+  de billing, que pasaron de `{ error }` a `{ error, code: "not_owner" }`: **mas estrictas**, y
+  cambian porque el contrato cambio por decision del owner («si a los `code`»).
+- **DOS HALLAZGOS A DECIDIR, no decisiones del owner** (detalle en el handoff y en el contrato):
+  (1) `POST /api/staff/[userId]/pin` esta en las 33 rutas del DoD pero **no es una superficie
+  del owner** —es el integrante cambiando su propio PIN— y gatearla romperia la spec 0067 §4;
+  (2) la clave del motivo en el cuerpo viaja como `suspensionReason` (camelCase) y la spec la
+  nombra por su columna, `suspension_reason`.
+- **Falta el PASS de un revisor independiente.** La spec NO esta marcada `implementada`.
+
+**Las decisiones del owner se pidieron ANTES de la prosa** (ADR 0071 §2) y las contesto el
+2026-09-17. **Textual, para que no se reinterprete:**
+
+1. **El lado del CONSUMIDOR de un negocio `closed`: no se apaga nada.** «No necesitas cerrar
+   pase ni nada que siga habilitado, nadie podra escanearlo. Y si alguien lo escanea no podra
+   dar puntos ni nada porque no sera un scan del local que pueda luego asignar nada al
+   programa.» → **pases de Wallet, sellos y tarjeta quedan INTACTOS**; no se contesta `410` en
+   el web service de passkit. Eso hace la spec **chica del lado del consumidor**.
+2. **No entran limites nuevos al catalogo** («no de momento»), **pero agregar uno tiene que ser
+   simple y claro** — requisito suyo, y por eso el catalogo declarativo de §D2.3 con el test
+   que pone la suite en rojo si un plan no declara sus limites.
+3. **`status` y `plan` NO son el mismo eje** — corrigio la premisa del orquestador: «si yo
+   suspendo un comercio no es cambiar de plan es deja de acceder a las funciones, si lo cierro
+   no hay ni siquiera login». Y **el caso "bajamos un limite y alguien ya lo excedia" queda
+   DIFERIDO** por el: «todavia no esta resuelto esto, cuando lleguemos alli trabajaremos en
+   ello». Es el ADR **0073**.
+
+4. **El ALTA NUEVA se corta en los dos estados.** El orquestador le llevo que
+   `POST /api/public/enroll/[programId]` no tiene sesion de comercio —es publico, rate limit por
+   telefono— asi que el QR pegado en la pared seguia dando de alta gente en un negocio cerrado.
+   **Textual: «el alta nueva tambien queda suspendida si el negocio esta suspendido, si esta
+   cerrado queda cerrado para altas nuevas».** Con eso **la spec quedo `cerrada`**.
+
+**LA LINEA QUE SEPARA LO QUE ENTRA DE LO QUE NO ES «YA EMITIDO» VS «ALTA NUEVA»**, y NO
+«comercio» vs «consumidor». El orquestador la habia trazado mal —de ahi la pregunta de mas— y
+queda escrita aca para que la proxima sesion no la vuelva a trazar: pase de Wallet, sellos y
+tarjeta son **ya emitido** y no se tocan; el enrolamiento es un **alta nueva** y se corta.
+
+### Lo que se MIDIO al escribirla, y corrige documentos ya escritos
+
+Regla: lo que se le pasa a un subagente como insumo es una afirmacion propia.
+
+- **`billing/plan-change.ts` NO es un call-site divergido.** `TASKS` decia «los 3 call-sites
+  viven en `billing/`, `marketing/` y `locations/`»: **importa** `locationLimitForPlan` de
+  locations, no lo recopia. El tercer lugar real es `billing/derive-rules.ts:42` (`PAID_PLANS`).
+- **Staff y catalogo de productos NO tienen tope por plan** (`rg` sobre `server/staff.ts` y
+  `server/catalog/*.ts`: 0 matches). No hay nada que unificar ahi.
+- **Las superficies de API sin gate de email son 10, no 9.** La fila 56 de `PARQUEADO` se
+  escribio antes de la 0069 y le falta **`api/loyalty-program/qr`**.
+- **El refactor es MAS BARATO de lo que decia la fila 56:** `ownerContext` (`server/staff.ts:56`)
+  ya es el mismo `innerJoin(businesses)` que comparten 4 de los 6 resolvedores, asi que leer
+  `status` es **una columna mas en un join que ya existe**.
+- **Cerrar el login NO expulsa a quien ya entro.** `auth.ts` no pisa `session.expiresIn`, asi
+  que rige el default de better-auth 1.6.26: **7 dias** (`3600*24*7`, leido en
+  `dist/context/create-context.mjs:147` y `dist/db/internal-adapter.mjs:24`). Un staff con la
+  sesion viva **acredita hasta una semana** despues del cierre, porque `requireOperator`
+  (`api/counter/_auth.ts:14`) no lee `business.status`. Por eso el guard va en CADA superficie.
+
+**Los barridos del DoD se corrieron contra el arbol ANTES de proponer el cierre** (leccion de la
+0067). **Uno nacio imposible y se corrigio:** `rg PLAN_LOCATION_LIMITS` no podia dar vacio —
+faltaba el barrel `locations/index.ts:12` en la tabla de archivos, y hay un **comentario** en
+`billing-plan-change.test.ts:53` que nombra la constante (ese test transcribe el tope a mano a
+proposito, `FREE_LIMIT = 1`). Las **33 rutas** del segundo barrido estan contadas, no estimadas.
+
+**→ LO PROXIMO, EN ORDEN:** (1) **implementador despachado** (ADR 0071: UNO para toda la spec,
+en los 3 pasos internos de §Handoff). Al volver: **reproducir la señal decisiva** de su informe,
+no todas sus mediciones · (2) **UN** revisor independiente en contexto fresco, con el
+presupuesto de **7 mutaciones** y la condicion de corte escritos EN EL ENCARGO · (3) solo un
+`PASS` verificable permite marcarla `implementada` · (4) anotar `duration_ms`, `tool_uses` y
+`subagent_tokens` de cada notificacion para la re-medicion del ADR 0071.
 
 ## ⇥ HECHO ESTA SESION — spec 0069, el wizard de alta es API (2026-09-17)
 

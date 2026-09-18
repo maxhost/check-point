@@ -6,7 +6,13 @@ const FOREIGN_BUSINESS = "22222222-2222-4222-8222-222222222222";
 const FOREIGN_CAMPAIGN = "33333333-3333-4333-8333-333333333333";
 
 const world = vi.hoisted(() => ({
-  session: null as null | { user: { id: string } },
+  /**
+   * Spec 0072: `emailVerified` entra al doble de la sesión porque `requireApiOwner` —el
+   * resolvedor único de las 10 superficies del owner— ahora corre el gate de email también
+   * acá. Es una edición del FIXTURE, no de una aserción: cada `it` sigue aseverando lo
+   * mismo que aseveraba.
+   */
+  session: null as null | { user: { id: string; emailVerified: boolean } },
   ownerContext: vi.fn(),
   listCampaigns: vi.fn(),
   createCampaign: vi.fn(),
@@ -147,10 +153,15 @@ const HANDLERS = [
 ];
 
 function signedInOwner() {
-  world.session = { user: { id: "user-owner" } };
+  world.session = { user: { id: "user-owner", emailVerified: true } };
   world.ownerContext.mockResolvedValue({
     id: CALLER_BUSINESS,
+    slug: "caller",
     currencyCode: "USD",
+    // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed —
+    // una fila sin `status` NO opera. Es la forma que devuelve la función real.
+    status: "active",
+    suspensionReason: null,
   });
 }
 
@@ -191,7 +202,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     async ({ call, spy }) => {
       // `ownerContext` returns null for a STAFF member, for a disabled owner and for a
       // user with no membership: the three ways this endpoint must say no.
-      world.session = { user: { id: "user-staff" } };
+      world.session = { user: { id: "user-staff", emailVerified: true } };
       world.ownerContext.mockResolvedValue(null);
       const response = await call();
       expect(response.status).toBe(403);

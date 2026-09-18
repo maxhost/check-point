@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../server/auth";
-import { ownerContext } from "../../../server/staff";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../server/api-owner";
 import { CampaignError } from "../../../server/marketing/campaign-store";
 import { transitionCampaign } from "../../../server/marketing/campaign-actions";
 import type { CampaignAction } from "../../../server/marketing/campaign-transitions";
 
 /**
- * Resolves the caller as the OWNER of a business. Reuses `ownerContext` — the same
- * owner+active resolver `api/staff/*` and `api/locations/*` use — so the `status` filter
- * can never drift between them.
+ * Resolves the caller as the OWNER of a business.
+ *
+ * **Desde la spec 0072 delega en `requireApiOwner`** —el resolvedor unico de las 10
+ * superficies del owner—, que trae el filtro `memberships.status='active'`, el gate de
+ * email verificado que esta superficie no tenia, y el eje `core.business.status`.
  *
  * It is NOT `requireOwner`: that one is a PAGE guard and answers with `redirect()`, which
  * on a POST is a 307 and not the 403 the spec's isolation item demands. The adversarial
@@ -19,22 +23,14 @@ export async function requireMarketingOwner(
 ): Promise<
   { business: { id: string }; userId: string } | { response: NextResponse }
 > {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
+  const auth = await requireApiOwner(request, {
+    notOwner: "Solo el owner puede gestionar las campañas.",
+    emailNotVerified: "Verificá tu email para gestionar las campañas.",
   });
-  if (!session)
-    return {
-      response: NextResponse.json({ error: "No autorizado." }, { status: 401 }),
-    };
-  const business = await ownerContext(session.user.id);
-  if (!business)
-    return {
-      response: NextResponse.json(
-        { error: "Solo el owner puede gestionar las campañas." },
-        { status: 403 },
-      ),
-    };
-  return { business: { id: business.id }, userId: session.user.id };
+  if ("failure" in auth) {
+    return { response: apiOwnerFailureResponse(auth.failure) };
+  }
+  return { business: { id: auth.business.id }, userId: auth.userId };
 }
 
 /** `fields` travels only on a 400 `validation`: it is what lets the composer paint the

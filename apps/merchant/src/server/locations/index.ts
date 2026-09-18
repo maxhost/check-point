@@ -9,7 +9,6 @@ export {
   resolveAddress,
   toLocationDTO,
   FALLBACK_LOCATION_LIMIT,
-  PLAN_LOCATION_LIMITS,
 } from "./core";
 export type {
   AddressInput,

@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
+import { and, asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../../server/auth";
+import { getDb } from "../../../../../server/db";
+import {
+  businesses,
+  memberships,
+  sessions,
+} from "../../../../../server/schema";
 
 export const dynamic = "force-dynamic";
 
 /** Adonde cae el owner cuando el link sirvio, y adonde cuando no. */
 const OK_DESTINATION = "/backoffice";
 const FAILED_DESTINATION = "/?e=magic_link_invalid";
+/** Spec 0072 §D4: el negocio esta CERRADO, asi que no se emite sesion. Mismo canal de
+ * codigos de rebote que `staff_disabled` y `email_not_verified` (`server/auth-guards.ts`). */
+const CLOSED_DESTINATION = "/?e=business_closed";
 
 /**
  * GET /api/merchant/auth/magic-link?token=… — el CONSUMO del link magico, por ruta propia
@@ -52,7 +62,71 @@ export async function GET(request: Request) {
 
   const cookie = verified.headers.get("set-cookie");
   if (verified.status !== 200 || !cookie) return bounce(FAILED_DESTINATION);
+
+  /**
+   * EL CORTE DE `closed` (spec 0072 §D4), y va ACA y no en `auth/start`, que es deliberado:
+   * `start` solo toca `merchant_auth.user` y no resuelve negocio, asi que gatear ahi seria
+   * una consulta nueva — y ademas el owner de un negocio `suspended` **si tiene que entrar**,
+   * para ver el motivo. **El corte va donde se CREA la sesion.**
+   *
+   * `magicLinkVerify` ya creo la sesion en la base antes de contestar
+   * (`internalAdapter.createSession`, `plugins/magic-link/index.mjs`), asi que no alcanza con
+   * no reenviar la cookie: hay que REVOCARLA, con el mismo `DELETE` en forma y alcance que el
+   * de `requireBackofficeSession` y `setStaffStatus`. Sin eso quedaria una sesion viva en la
+   * base — sin cookie hoy, pero viva — y esta ruta no agrega mecanismos de revocacion nuevos.
+   *
+   * Un owner SIN negocio (recien registrado, todavia sin pasar el wizard) entra normal: no
+   * hay fila que consultar y el alta es justamente lo que viene despues.
+   */
+  const userId = await verifiedUserId(verified);
+  if (userId && (await businessIsClosed(userId))) {
+    await getDb().delete(sessions).where(eq(sessions.userId, userId));
+    return bounce(CLOSED_DESTINATION);
+  }
   return bounce(OK_DESTINATION, cookie);
+}
+
+/** El `user.id` del cuerpo JSON del verify. Sin `callbackURL` el plugin contesta
+ * `{ token, user, session }`; un cuerpo inesperado devuelve `null` y **no** bloquea el
+ * login — un cambio de forma de better-auth no puede dejar a todos afuera. */
+async function verifiedUserId(verified: Response): Promise<string | null> {
+  try {
+    const body = (await verified.clone().json()) as {
+      user?: { id?: unknown };
+    } | null;
+    const id = body?.user?.id;
+    return typeof id === "string" ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Si «su negocio» esta `closed`. El criterio de «su negocio» es **la membresia mas vieja**, el
+ * mismo de `requireBackofficeSession` (`auth-guards.ts:106`) y de `ownerContext`
+ * (`staff.ts:88`), y por eso el `orderBy` es OBLIGATORIO y no cosmetico: un `limit(1)` sin
+ * orden es **no determinista** —Postgres puede devolver cualquiera de las filas— asi que sin el
+ * este guard abriria o cerraria la sesion al azar en cuanto un user tenga dos membresias. El
+ * docblock original afirmaba el orden y la consulta no lo tenia (cazado por el revisor de la
+ * 0072).
+ *
+ * **Divergencia que queda declarada, no cerrada:** aca se filtra
+ * `memberships.status='active'` y `requireBackofficeSession` **no** lo filtra. Con un solo
+ * negocio por usuario —lo que hoy garantiza el `409` de `api/onboarding/business`— las dos
+ * consultas coinciden; el dia que un user tenga dos, hay que unificarlas en un solo
+ * resolvedor. Es la misma familia que la divergencia `asc`/`desc` de `loyalty-program.ts:66`.
+ */
+async function businessIsClosed(userId: string): Promise<boolean> {
+  const [row] = await getDb()
+    .select({ status: businesses.status })
+    .from(memberships)
+    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
+    .where(
+      and(eq(memberships.userId, userId), eq(memberships.status, "active")),
+    )
+    .orderBy(asc(businesses.createdAt))
+    .limit(1);
+  return row?.status === "closed";
 }
 
 /**

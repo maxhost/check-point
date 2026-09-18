@@ -37,14 +37,30 @@ const world = { businessId: "" };
 
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({
-    api: { getSession: async () => ({ user: { id: "owner" } }) },
+    api: {
+      // Spec 0072: el doble declara `emailVerified` porque `requireApiOwner` corre el
+      // gate de email en las 10 superficies del owner. Edicion del DOBLE.
+      getSession: async () => ({
+        user: { id: "owner", emailVerified: true },
+      }),
+    },
   }),
 }));
 
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
+  // Spec 0072: `ownerContext` selecciona ademas el eje `status`, y `requireApiOwner` es
+  // fail-closed — una fila sin `status` NO opera. Edicion del DOBLE, no de una asercion.
   ownerContext: async () =>
-    world.businessId ? { id: world.businessId, currencyCode: "USD" } : null,
+    world.businessId
+      ? {
+          id: world.businessId,
+          slug: "int",
+          currencyCode: "USD",
+          status: "active",
+          suspensionReason: null,
+        }
+      : null,
 }));
 
 vi.mock("./stripe-config", async (importOriginal) => {

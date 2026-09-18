@@ -95,7 +95,9 @@ export async function seedBusiness(opts: {
     redeemAllowInsufficient: opts.redeemAllowInsufficient ?? false,
   });
   return {
-    business: { id: businessId, currencyCode: "USD" },
+    // Spec 0072: `OperatorBusiness` lleva el eje `status`; el seed nace `active`, que es
+    // el default de la columna.
+    business: { id: businessId, currencyCode: "USD", status: "active" },
     userId,
     locationId,
     programId,

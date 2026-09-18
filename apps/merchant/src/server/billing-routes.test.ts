@@ -29,7 +29,13 @@ const MONTHLY = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_MONTHLY_TEST;
  * ACTIVO y uno DESACTIVADO son el mismo `null`.
  */
 const world = vi.hoisted(() => ({
-  session: null as null | { user: { id: string } },
+  /**
+   * Spec 0072: `emailVerified` entra al doble de la sesión porque `requireApiOwner` —el
+   * resolvedor único de las 10 superficies del owner— ahora corre el gate de email también
+   * acá. Es una edición del FIXTURE, no de una aserción: cada `it` sigue aseverando lo
+   * mismo que aseveraba.
+   */
+  session: null as null | { user: { id: string; emailVerified: boolean } },
   ownerContext: vi.fn(),
   readSubscription: vi.fn(),
   activeLocationCount: vi.fn(),
@@ -136,10 +142,15 @@ const call = (h: Handler) =>
 
 /** Un owner ACTIVO con la fila y el conteo pedidos. */
 function signedInOwner(seeded: SubscriptionRow, activeLocations = 1) {
-  world.session = { user: { id: "user-owner" } };
+  world.session = { user: { id: "user-owner", emailVerified: true } };
   world.ownerContext.mockResolvedValue({
     id: CALLER_BUSINESS,
+    slug: "caller",
     currencyCode: "USD",
+    // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed —
+    // una fila sin `status` NO opera. Es la forma que devuelve la función real.
+    status: "active",
+    suspensionReason: null,
   });
   world.readSubscription.mockResolvedValue(seeded);
   world.activeLocationCount.mockResolvedValue(activeLocations);
@@ -187,12 +198,18 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
   it.each(HANDLERS)(
     "$name answers 403 to a signed-in caller who is not an active owner",
     async (h) => {
-      world.session = { user: { id: "user-staff" } };
+      world.session = { user: { id: "user-staff", emailVerified: true } };
       world.ownerContext.mockResolvedValue(null);
       const response = await call(h);
       expect(response.status).toBe(403);
+      // El `code` es NUEVO y es la decisión del owner del 2026-09-17 que la spec 0072 §D3
+      // implementa («si a los `code`»): los 401/403 de las 10 superficies del owner los
+      // llevan normalizados. Ésta es la ÚNICA aserción preexistente que esta spec cambia,
+      // y cambia porque el contrato cambió — el status sigue siendo 403 y el `error` sigue
+      // siendo la copia de billing.
       expect(await response.json()).toEqual({
         error: "Solo el owner puede gestionar la suscripción.",
+        code: "not_owner",
       });
       expect(world.readSubscription).not.toHaveBeenCalled();
     },

@@ -1,17 +1,27 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../server/auth";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../server/api-owner";
 import {
   BrandError,
   type BrandRecord,
-  ownerBusiness,
+  brandForBusiness,
   saveBrand,
 } from "../../../server/brand";
 
 export const runtime = "nodejs";
 
-async function sessionUser(request: Request) {
-  return getMerchantAuth().api.getSession({ headers: request.headers });
-}
+/**
+ * Spec 0072 §D3 — las dos superficies de `/api/brand` resuelven owner con
+ * `requireApiOwner`, el resolvedor unico. Antes resolvian a mano con `getSession` + el
+ * resolvedor ad hoc del dominio, que **no filtra `memberships.status='active'`** y no tiene
+ * gate de email: un integrante de baja y un owner sin verificar editaban la marca.
+ */
+const MESSAGES = {
+  notOwner: "Solo el owner puede gestionar la marca.",
+  emailNotVerified: "Verificá tu email para gestionar la marca.",
+};
 
 async function readJson(request: Request) {
   try {
@@ -33,21 +43,26 @@ function brandResponse(brand: BrandRecord) {
 }
 
 export async function GET(request: Request) {
-  const session = await sessionUser(request);
-  if (!session)
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  const brand = await ownerBusiness(session.user.id);
+  const auth = await requireApiOwner(request, MESSAGES);
+  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+  const brand = await brandForBusiness(auth.business.id);
   if (!brand)
-    return NextResponse.json({ error: "Sin negocio." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Sin negocio.", code: "not_owner" },
+      { status: 403 },
+    );
   return NextResponse.json(brandResponse(brand));
 }
 
 export async function PUT(request: Request) {
-  const session = await sessionUser(request);
-  if (!session)
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  const auth = await requireApiOwner(request, MESSAGES);
+  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
-    const brand = await saveBrand(session.user.id, await readJson(request));
+    // `saveBrand` sigue recibiendo el `userId` y resolviendo su propio negocio: cambiarle la
+    // firma tocaria su optimistic lock y sus tests, y esta spec unifica el GUARD, no el
+    // dominio. El guard de arriba ya decidio que este usuario es owner activo de un negocio
+    // que opera.
+    const brand = await saveBrand(auth.userId, await readJson(request));
     return NextResponse.json(brandResponse(brand));
   } catch (error) {
     if (error instanceof BrandError) {

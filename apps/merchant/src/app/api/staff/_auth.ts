@@ -1,66 +1,37 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../server/auth";
-import { StaffError, ownerContext } from "../../../server/staff";
+import { StaffError } from "../../../server/staff";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../server/api-owner";
 
 /**
  * Resolves the caller as the OWNER of a business (ADR 0044). Staff management is owner-only
- * and scoped to the owner's own business. Returns the business + owner user id, or the
- * 401/403 response to send.
+ * and scoped to the owner's own business.
+ *
+ * **Desde la spec 0072 esto es un envoltorio de `requireApiOwner`** y ya no una copia: el
+ * orden de las cuatro decisiones (sesion → owner activo → email → estado del negocio) vive
+ * ahi, y con el vive la razon por la que el gate de email va DESPUES de resolver owner —
+ * puesto antes, un INTEGRANTE recibia `email_not_verified` en vez de `not_owner`, lo cazo
+ * `staff-pin-change.neon.integration.test.ts`. Lo unico propio que queda es la copia del
+ * dominio y el `slug`.
+ *
+ * El `slug` viaja desde la SESION hasta el alta del integrante (spec 0067 §4): que no pueda
+ * venir del cuerpo es lo que impide que un owner apunte al negocio de otro.
  */
 export async function requireStaffOwner(
   request: Request,
 ): Promise<
   { business: { id: string; slug: string } } | { response: NextResponse }
 > {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
+  const auth = await requireApiOwner(request, {
+    notOwner: "Solo el owner puede gestionar el personal.",
+    emailNotVerified: "Verificá tu email para gestionar el personal.",
   });
-  if (!session) {
-    return {
-      response: NextResponse.json(
-        { error: "No autorizado.", code: "unauthorized" },
-        { status: 401 },
-      ),
-    };
+  if ("failure" in auth) {
+    return { response: apiOwnerFailureResponse(auth.failure) };
   }
-  const business = await ownerContext(session.user.id);
-  if (!business) {
-    return {
-      response: NextResponse.json(
-        {
-          error: "Solo el owner puede gestionar el personal.",
-          code: "not_owner",
-        },
-        { status: 403 },
-      ),
-    };
-  }
-  // El gemelo de API del gate de `requireBackofficeSession` (spec 0067 §3): la misma regla
-  // —owner con el email sin verificar no consume nada de lo POSTERIOR al wizard (ADR 0070
-  // §11)— pero respondiendo 403 con `code` en vez de redirigir, porque un `redirect()`
-  // sobre un POST es un 307 y no el 403 que el contrato declara.
-  //
-  // VA DESPUÉS DE `ownerContext`, y el orden es la regla, no una optimización: la spec §3
-  // dice «solo cuando `role === "owner"`». Puesto antes, un INTEGRANTE —cuyo email es
-  // sintético y nunca se verifica— recibía `email_not_verified` en vez de `not_owner`, o
-  // sea un código que le pedía hacer algo que no puede hacer. Lo cazó
-  // `staff-pin-change.neon.integration.test.ts`.
-  //
-  // `!== true` y no `!`: un `undefined` cierra en vez de abrir (fail-closed).
-  if (session.user.emailVerified !== true) {
-    return {
-      response: NextResponse.json(
-        {
-          error: "Verificá tu email para gestionar el personal.",
-          code: "email_not_verified",
-        },
-        { status: 403 },
-      ),
-    };
-  }
-  // El `slug` viaja desde la SESION hasta el alta del integrante (spec 0067 §4): que no
-  // pueda venir del cuerpo es lo que impide que un owner apunte al negocio de otro.
-  return { business: { id: business.id, slug: business.slug } };
+  return { business: { id: auth.business.id, slug: auth.business.slug } };
 }
 
 export function staffError(error: unknown, fallback: string): NextResponse {

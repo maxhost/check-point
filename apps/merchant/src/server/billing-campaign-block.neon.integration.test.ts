@@ -34,7 +34,13 @@ vi.mock("./auth-guards", async (importOriginal) => {
 
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({
-    api: { getSession: async () => ({ user: { id: "usuario-de-prueba" } }) },
+    api: {
+      // Spec 0072: el doble declara `emailVerified` porque `requireApiOwner` corre el
+      // gate de email en las 10 superficies del owner. Edicion del DOBLE.
+      getSession: async () => ({
+        user: { id: "usuario-de-prueba", emailVerified: true },
+      }),
+    },
   }),
 }));
 

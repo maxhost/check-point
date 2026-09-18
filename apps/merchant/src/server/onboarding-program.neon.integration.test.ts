@@ -199,5 +199,81 @@ describe.skipIf(!enabled)(
       expect(response.status).toBe(401);
       expect((await response.json()).code).toBe("unauthorized");
     }, 60_000);
+
+    /**
+     * EL CIERRE DE F1 (spec 0072). Esta es LA puerta que el revisor encontró abierta: la ruta
+     * del wizard llama a `saveProgram`, **el mismo writer** que `PUT /api/loyalty-program`, y
+     * antes de este gate reescribía el programa de un negocio `suspended` con 200 y
+     * `created: false` mientras la ruta gateada contestaba 403. Contradecía la regla textual del
+     * owner para `suspended`: «no pueden … cambios en programa».
+     *
+     * **El oráculo NO es sólo el status.** Un 403 podría venir de cualquier otra guarda, así que
+     * cada caso asevera además que **el programa NO se movió**: se pinnea el `updatedAt` antes y
+     * después. Sin eso, un fix que devolviera 403 *después* de escribir pasaría en verde.
+     */
+    describe("el eje `status` del negocio corta la puerta del wizard", () => {
+      const setStatus = (status: string, reason: string | null = null) =>
+        getDb()
+          .update(businesses)
+          .set({ status, suspensionReason: reason })
+          .where(eq(businesses.id, businessId));
+
+      const programUpdatedAt = async () => {
+        const [row] = await getDb()
+          .select({ updatedAt: loyaltyPrograms.updatedAt })
+          .from(loyaltyPrograms)
+          .where(eq(loyaltyPrograms.businessId, businessId))
+          .limit(1);
+        return row?.updatedAt ?? null;
+      };
+
+      const body = {
+        target: 5,
+        reward: { type: "custom" as const, label: "Postre" },
+      };
+
+      afterAll(async () => {
+        await setStatus("active");
+      }, 60_000);
+
+      it("`suspended`: 403 business_suspended y el programa NO se reescribe", async () => {
+        await setStatus("active");
+        await wipePrograms();
+        expect((await post(body)).status).toBe(201);
+        const before = await programUpdatedAt();
+        expect(before).not.toBeNull();
+
+        await setStatus("suspended", "falta de pago");
+        const response = await post(body);
+        expect(response.status).toBe(403);
+        expect((await response.json()).code).toBe("business_suspended");
+        // La prueba de que frenó ANTES del write, no después.
+        expect(await programUpdatedAt()).toEqual(before);
+      }, 90_000);
+
+      it("`closed`: 403 business_closed", async () => {
+        await setStatus("closed");
+        const response = await post(body);
+        expect(response.status).toBe(403);
+        expect((await response.json()).code).toBe("business_closed");
+      }, 60_000);
+
+      /**
+       * **NO hay caso de `status` desconocido acá, y es un límite MEDIDO, no un olvido.** Se
+       * intentó: el `CHECK (status IN ('active','suspended','closed'))` de la migración `0036`
+       * lo rechaza **incluso por SQL crudo** —`23514 business_status_check`, «Failing row
+       * contains (… frozen …)»—, así que ese estado es INALCANZABLE contra base. La polaridad
+       * fail-closed del guard se mide donde sí se puede: sobre la función pura, en
+       * `api-owner-surfaces.test.ts`, que recorre los 12 × 7 estados incluido `frozen`.
+       */
+      it("CONTROL POSITIVO — de vuelta en `active`, la ruta vuelve a escribir", async () => {
+        await setStatus("active");
+        const before = await programUpdatedAt();
+        const response = await post(body);
+        expect(response.status).toBe(200);
+        expect((await response.json()).created).toBe(false);
+        expect(await programUpdatedAt()).not.toEqual(before);
+      }, 90_000);
+    });
   },
 );

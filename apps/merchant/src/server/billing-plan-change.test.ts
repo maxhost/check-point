@@ -50,7 +50,8 @@ const INTENTS: PlanIntent[] = [
 
 /** Transcripción independiente de las guardas. NO importa nada del módulo bajo prueba. */
 const DEAD = ["canceled", "incomplete_expired"];
-/** El tope de free, literal: si `PLAN_LOCATION_LIMITS.free` cambia, esto se pone rojo. */
+/** El tope de free, literal: si el catálogo de entitlements cambia `locations.max`
+ * para `free`, esto se pone rojo. Se transcribe a propósito, sin importar el módulo. */
 const FREE_LIMIT = 1;
 
 type Outcome = {

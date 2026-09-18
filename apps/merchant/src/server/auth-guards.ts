@@ -22,12 +22,31 @@ export const STAFF_DISABLED = "staff_disabled";
  */
 export const EMAIL_NOT_VERIFIED = "email_not_verified";
 
+/**
+ * Reason code for a business whose account is CLOSED (spec 0072 §D4). Same channel and same
+ * allow-list as {@link STAFF_DISABLED}. El gemelo de API es el 403 `business_closed` de
+ * `requireApiOwner`.
+ *
+ * **`suspended` NO rebota** y es una decision del owner, no un olvido: el owner de un negocio
+ * suspendido **si entra**, porque lo unico que tiene que poder hacer es leer el motivo y el
+ * boton de contacto. Por eso el guard devuelve `status` y `suspensionReason` en vez de
+ * redirigir.
+ */
+export const BUSINESS_CLOSED = "business_closed";
+
 /** The business the current backoffice session operates on (its first business). */
 export type GuardBusiness = {
   id: string;
   name: string;
   currencyCode: string;
   timezone: string;
+  /** El eje `status` (spec 0072 §D4). `closed` no llega nunca: rebota antes. Queda
+   * `active` | `suspended`, que es lo que la pantalla necesita para decidir si muestra el
+   * mensaje de cuenta suspendida. */
+  status: string;
+  /** El motivo, **solo para el owner** y solo con `status = 'suspended'`. Es el dato que el
+   * owner pidio ver («informacion de por que fue suspendida su cuenta»). */
+  suspensionReason: string | null;
 };
 
 export type GuardMembership = {
@@ -73,6 +92,11 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
       name: businesses.name,
       currencyCode: businesses.currencyCode,
       timezone: businesses.timezone,
+      // `businessStatus` y no `status`: `status` ya es el de la MEMBRESIA en esta misma
+      // fila (ADR 0055). Dos ejes distintos con el mismo nombre es como uno termina
+      // decidiendo por el otro.
+      businessStatus: businesses.status,
+      suspensionReason: businesses.suspensionReason,
       role: memberships.role,
       status: memberships.status,
     })
@@ -118,6 +142,13 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
   if (row.role === "owner" && session.user.emailVerified !== true)
     redirect(`/?e=${EMAIL_NOT_VERIFIED}`);
 
+  // EL EJE `status` (spec 0072 §D4). Va DESPUES del email, el mismo orden que
+  // `requireApiOwner` (ADR 0073 §1), para que las dos superficies contesten lo mismo ante el
+  // mismo caller. **Solo `closed` rebota**: `suspended` pasa a proposito, porque el owner
+  // tiene que poder ver el motivo — y el mostrador de un negocio suspendido igual no acredita
+  // nada (`api/counter/_auth.ts` lo corta con 403).
+  if (row.businessStatus === "closed") redirect(`/?e=${BUSINESS_CLOSED}`);
+
   return {
     userId: session.user.id,
     userName: session.user.name,
@@ -126,6 +157,10 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
       name: row.name,
       currencyCode: row.currencyCode,
       timezone: row.timezone,
+      status: row.businessStatus,
+      // El motivo solo para el OWNER: un integrante no tiene por que leer la nota interna
+      // de por que se suspendio la cuenta del negocio donde trabaja.
+      suspensionReason: row.role === "owner" ? row.suspensionReason : null,
     },
     membership: { role: row.role, status: row.status },
   };

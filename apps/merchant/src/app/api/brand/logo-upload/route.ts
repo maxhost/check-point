@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../../server/auth";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../../server/api-owner";
 import { BrandError, createLogoUpload } from "../../../../server/brand";
 
 export const runtime = "nodejs";
 
+/** Spec 0072 §D3: resuelve owner con `requireApiOwner` (antes: `getSession` pelado, o sea
+ * CUALQUIER sesion de merchant_auth —incluida la de un integrante— preparaba una carga). */
 export async function POST(request: Request) {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
+  const auth = await requireApiOwner(request, {
+    notOwner: "Solo el owner puede gestionar la marca.",
+    emailNotVerified: "Verificá tu email para gestionar la marca.",
   });
-  if (!session)
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   let body: unknown;
   try {
     body = await request.json();
@@ -20,7 +25,7 @@ export async function POST(request: Request) {
     );
   }
   try {
-    return NextResponse.json(await createLogoUpload(session.user.id, body), {
+    return NextResponse.json(await createLogoUpload(auth.userId, body), {
       status: 201,
     });
   } catch (error) {

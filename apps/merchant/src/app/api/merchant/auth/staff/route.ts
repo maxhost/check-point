@@ -4,6 +4,7 @@ import { getDb } from "../../../../../server/db";
 import { businesses, memberships, users } from "../../../../../server/schema";
 import { openMerchantSession } from "../../../../../server/merchant-session";
 import { staffError } from "../../../staff/_auth";
+import { businessStatusFailure } from "../../../../../server/api-owner";
 import {
   isValidPin,
   lockedFor,
@@ -108,6 +109,29 @@ async function staffLogin(request: Request): Promise<NextResponse> {
     );
   }
 
+  /**
+   * EL EJE `status` DEL NEGOCIO (spec 0072 §D4): con `suspended` o `closed` **el staff no
+   * obtiene sesión**, ni una. Es la decisión textual del owner: «si yo suspendo un comercio
+   * […] deja de acceder a las funciones, si lo cierro no hay ni siquiera login».
+   *
+   * VA DESPUÉS de verificar el PIN, por el mismo motivo que `staff_disabled` (paso 6 del
+   * contrato de esta ruta): contestarlo antes convertiría la ruta en un oráculo de qué
+   * negocios existen y en qué estado están, a cualquiera que tipee un `handle@slug`.
+   *
+   * El `suspension_reason` NO viaja: el motivo se serializa sólo al owner (§D4).
+   */
+  const businessFailure = businessStatusFailure(
+    row.businessStatus,
+    null,
+    false,
+  );
+  if (businessFailure) {
+    return NextResponse.json(
+      { error: businessFailure.message, code: businessFailure.code },
+      { status: businessFailure.status },
+    );
+  }
+
   const cookie = await openMerchantSession(row.userId);
   return NextResponse.json(
     {
@@ -155,6 +179,9 @@ async function findStaff(handle: string, slug: string) {
       userId: memberships.userId,
       name: users.name,
       status: memberships.status,
+      // Spec 0072 §D4: el eje `status` del NEGOCIO, una columna mas en el
+      // `innerJoin(businesses)` que esta resolucion ya hacia.
+      businessStatus: businesses.status,
       pinHash: memberships.pinHash,
       pinMustChange: memberships.pinMustChange,
     })

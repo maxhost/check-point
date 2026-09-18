@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../server/auth";
-import { ownerContext } from "../../../server/staff";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../server/api-owner";
 import { withDbTransaction, type DbTransaction } from "../../../server/db";
 import {
   activeLocationCount,
@@ -57,27 +59,23 @@ export class BillingError extends Error {
   }
 }
 
+/**
+ * **Desde la spec 0072 delega en `requireApiOwner`**, el resolvedor unico de las 10
+ * superficies del owner. Lo que esta superficie gana con eso: el gate de email verificado
+ * —sin el, un owner con el email sin verificar abria un checkout de Stripe— y el eje
+ * `core.business.status`. Los 401/403 pasan a llevar `code`, que antes no llevaban.
+ */
 export async function requireBillingOwner(
   request: Request,
 ): Promise<{ business: { id: string } } | { response: NextResponse }> {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
+  const auth = await requireApiOwner(request, {
+    notOwner: "Solo el owner puede gestionar la suscripción.",
+    emailNotVerified: "Verificá tu email para gestionar la suscripción.",
   });
-  if (!session) {
-    return {
-      response: NextResponse.json({ error: "No autorizado." }, { status: 401 }),
-    };
+  if ("failure" in auth) {
+    return { response: apiOwnerFailureResponse(auth.failure) };
   }
-  const business = await ownerContext(session.user.id);
-  if (!business) {
-    return {
-      response: NextResponse.json(
-        { error: "Solo el owner puede gestionar la suscripción." },
-        { status: 403 },
-      ),
-    };
-  }
-  return { business: { id: business.id } };
+  return { business: { id: auth.business.id } };
 }
 
 /** `{ error, code, archiveCount? }` — la forma de fallo del contrato de D6. Lo que no sea un

@@ -1,18 +1,20 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../../server/auth";
+import {
+  apiOwnerFailureResponse,
+  requireApiOwner,
+} from "../../../../server/api-owner";
 import { getDb } from "../../../../server/db";
 import { termsTemplates } from "../../../../server/schema";
-import { ownerBusiness } from "../../../../server/loyalty-program";
 
+/** Spec 0072 §D3: el guard es `requireApiOwner`, no el resolvedor ad hoc del dominio — que
+ * no filtraba `memberships.status='active'` ni miraba el email verificado. */
 export async function GET(request: Request) {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
+  const auth = await requireApiOwner(request, {
+    notOwner: "Solo el owner puede ver las plantillas.",
+    emailNotVerified: "Verificá tu email para ver las plantillas.",
   });
-  if (!session)
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  if (!(await ownerBusiness(session.user.id)))
-    return NextResponse.json({ error: "Sin negocio." }, { status: 403 });
+  if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const templates = await getDb()
     .select({
       id: termsTemplates.id,

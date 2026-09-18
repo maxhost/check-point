@@ -58,7 +58,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof LoyaltyError) {
       return NextResponse.json(
-        { error: error.message, code: codeForStatus(error.status) },
+        // `error.code ?? …`: el cierre de F1 (spec 0072) hace que `saveProgram` rechace con
+        // `business_suspended`/`business_closed`, y el mapeo por STATUS traduciría esos 403 a
+        // `not_owner` — un `code` que le miente al cliente sobre por qué lo frenaron.
+        {
+          error: error.message,
+          code: error.code ?? codeForStatus(error.status),
+        },
         { status: error.status },
       );
     }
