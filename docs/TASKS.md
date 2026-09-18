@@ -14,36 +14,302 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-18 — LA UI DEL WIZARD VOLVIO y esta REVISADA contra el arbol.
-**La 0074 esta EN IMPLEMENTACION** (un implementador despachado; falta su revisor independiente).
-**La 0075 —el QR del wizard sin gate de email— esta escrita y `cerrada`**, con su fila de INDEX.
-**El bloqueante del CSS quedo CERRADO POR DECISION DEL OWNER: no se aisla.** Ver «⇥ LA REVISION DE
-LA UI» y «⇥ EL ARCO DEL PROGRAMA» aca abajo.**
+**Ultima actualizacion: 2026-09-18 (QA local en curso; fallback de dev retirado, SIN COMMITEAR) — TODO PUSHEADO a `origin/main` (`bb511df`), pero
+`main` esta ROJO en CI por `pnpm test:e2e`, y Vercel no despliega por un problema del lado de
+ellos. Lo proximo es QA LOCAL de lo que dejo GPT. Ver «⇥ ARRANCA ACA» abajo.**
 
 **ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
 
 | Que | Donde esta |
 |---|---|
-| Ultimo commit de CODIGO | **`0507cf5`** (la spec 0072). Afirmacion ESTABLE: no la invalida un commit de docs posterior |
-| Sincronizacion local/remoto | **En sintonia**: `git rev-parse --short HEAD` y `git ls-remote origin main` dan los dos **`78d1f3a`** (el commit de docs que sigue a la 0072), leidos el 2026-09-18 |
-| CI para `0507cf5` | **✅ VERDE, LEIDA DE `/check-runs` EL 2026-09-18.** `verify: completed -> success`, y los **18 pasos del job en `success`** (contados por API: 18 totales, **0 no-`success`**), incluidos `Migrar la rama Neon de CI`, `Unit + integracion Neon`, `test:e2e`, `build` y `format:check`. **Nunca `/status`, que en este repo miente** (agrega commit statuses viejos donde solo publica Vercel; GitHub Actions es `/check-runs`, otro endpoint) |
-| CI para `78d1f3a` (el commit de docs, HEAD de `origin/main`) | **✅ VERDE**, leida de `/check-runs` el 2026-09-18: `verify: completed -> success`, **18 pasos, 0 no-`success`**. **Los DOS commits del arbol estan verificados**, no solo el de codigo |
-| Ultimo commit EN PRODUCCION | **`78d1f3a`** — Vercel desplego `0507cf5` (`dpl_4ncoWc…`) **y** `78d1f3a` (`dpl_6sGHYf…`), los dos `state: READY`, `target: production`, leidos de la API de Vercel el 2026-09-18. **La 0072 esta LIVE** |
-| Migraciones que pide `0507cf5` | **NINGUNA** — la 0072 no tiene migracion, asi que el deploy no tiene la ventana de riesgo de la 0069/0035 |
-| Specs del arco | **0067, 0068, 0069 y 0072 `implementadas`**. La 0069 y la 0072 con **PASS de revisor independiente** |
-| Suite | **203 archivos / 1590 passed / 0 failed** con Neon, medido LOCAL sobre `0507cf5` antes del push |
-| Produccion (datos) | **0 negocios, 0 usuarios merchant, 0 suscripciones** (ultima lectura, `08227ed`) |
+| HEAD de `origin/main` | **`bb511df`**. Arbol local **CON CAMBIOS SIN COMMITEAR**: retiro del fallback de dev (`onboarding-api.ts`, su test, y `dev-onboarding-state.ts` **borrado**) + docs |
+| Lo que entro en este push | **6 commits**: refactor de billing, **spec 0074** (3 lecturas), **spec 0075** (QR sin gate de email), la **UI del wizard** de GPT, y 2 de docs |
+| Specs del arco | **0067, 0068, 0069, 0072, 0074 y 0075 `implementadas`**. Las 4 ultimas con **PASS de revisor independiente** |
+| Suite local con Neon | **211 archivos / 1637 tests, 0 failed, 0 skipped** (`set -a; . ./.env.integration.local; set +a` antes de `pnpm run test`) |
+| `typecheck` · `lint` · `format:check` · `build` | **los cuatro verdes** en local sobre el arbol pusheado |
+| ⚠️ **`pnpm test:e2e`** | **ROJO en CI, y NUNCA se corrio en local.** Es el **sexto** gate; las specs listan cinco. **Es lo que tiene `main` en rojo** |
+| CI de `e2e8f18` y de `bb511df` | **las dos `failure`**, las dos en el **paso 12, `Run pnpm test:e2e`**. Los pasos 1-11 (lint, typecheck, migracion Neon, **unit+integracion**) en `success` |
+| Vercel | **NO desplego nada del push.** Ultimo deploy en produccion sigue siendo **`78d1f3a`** (2026-09-18 02:56 UTC) |
+| Produccion (HTTP, verificado) | `www.checkpass.club` **200**, `/api/health` **200**, apex **308 → www**. **`/api/merchant/session` da 404**: prod NO tiene el codigo nuevo |
+| Produccion (datos) | **0 negocios, 0 usuarios merchant, 0 suscripciones** |
 
-**→ LO PROXIMO, literal:** los puntos (1) y (2) de este bloque —CI verde y Vercel `success`—
-**estan HECHOS y verificados el 2026-09-18** (ver la tabla de arriba). **La 3ª spec del arco queda
-CERRADA con esto y el arco 2 entero esta en produccion.**
+## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-18)
 
-**EL OWNER YA ELIGIO que sigue, el 2026-09-18, y NO es la 4ª spec del ADR 0070:** se fue a construir
-la UI del wizard con ChatGPT y dejo pedidas **cinco APIs** para cuando vuelva. Estan en
-«ARRANCA ACA LA SESION QUE SIGUE», con lo medido de cada una. **La 4ª spec (onboarding derivado)
-queda diferida sin fecha** —no cancelada— junto con las filas **54** y **49** de `PARQUEADO.md`;
-sus seis decisiones abiertas y el agujero de los colores (que NO son derivables: nacen con default)
-quedan escritos en la §«la 4ª spec» de mas abajo para no re-medirlos.
+**LO QUE PIDIO EL OWNER, textual:** «volvemos para revisarlo que ya esta implementado de la
+migracion de API, porque sabemos que gpt ya hizo la UI para ello y el QA paso y dejo anotadas
+algunas cosas en `docs/api-faltantes.md` y quiero asegurarme de lo que habia dejado GPT esta
+completo y vamos a probar todo en local porque vercel esta caido».
+
+**→ EL TRABAJO ES: QA LOCAL del wizard de GPT contra las rutas nuevas.** El archivo es
+**`docs/api-faltante.md`** (singular, no «faltantes»), y **ya tiene el veredicto de los tres
+huecos escrito**: el 1 **RESUELTO** (la spec 0074 entrego `GET /api/onboarding/state`), el 2
+explicado como alcance que el ADR 0070 §1 ya cerro, el 3 **RESUELTO** (la spec 0075 le saco el
+gate de email al QR). **Leerlo primero: contesta la mitad de la pregunta antes de tocar nada.**
+
+**COMO LEVANTAR LOCAL** (Vercel esta caido, asi que es el unico camino):
+```
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use
+set -a; . ./.env.integration.local; set +a     # apunta a la rama Neon de integracion
+pnpm --filter @mi-pasaporte/merchant dev       # puerto 3001
+```
+**✅ EL PRIMER GOTCHA YA ESTA RESUELTO (2026-09-18, pedido del owner: «retira el fallback de
+desarrollo para el QA»).** El wizard **ya llama a `GET /api/onboarding/state` en cualquier
+`NODE_ENV`**. Se borro `dev-onboarding-state.ts` entero y las 4 llamadas que lo usaban en
+`onboarding-api.ts` (el `readDevelopmentState()` de la linea 64 y los tres `markDevelopment*`).
+**SIN COMMITEAR.**
+
+Lo que aparecio al hacerlo y conviene saber en el QA: el fallback se activaba cuando
+`POST /api/merchant/auth/start` contesta `{ sent: false }`, **que es justamente el caso en que el
+servidor SI abrio sesion con cookie** (rama del email desconocido, `auth/start/route.ts:55-58`).
+Estaba duplicando en `sessionStorage` un estado que ya existia de verdad: sacarlo **no deja sin
+sesion en dev**.
+
+Evidencia (reproducida, no auto-reportada):
+- `onboarding-api.test.ts` ya no necesita `vi.stubEnv("NODE_ENV","production")` para ejercitar la
+  ruta; se retiro el stub, asi el test fija que **se llama siempre**. 5/5 pasan.
+- **El oraculo MUERDE**: se repuso el fallback etiquetado `MUTATION` (shasum limpio del archivo
+  `fc0ac2dba51c1da069b77f819318a0673d88a413` tomado ANTES) y el test se puso rojo por el motivo
+  correcto — `expected { authenticated: false } to deeply equal { authenticated: true, …(3) }`.
+  Revertido con `diff` contra la copia limpia: sin diferencias, cero `MUTATION` en el arbol.
+- `typecheck` · `lint` · `format:check`: **los tres verdes**. La suite completa con Neon quedo
+  **corriendo y sin resultado leido** — es lo primero que hay que confirmar al retomar.
+
+**LOS CHEQUEOS QUE IMPORTAN, en orden:**
+0. **Confirmar la suite completa con Neon** sobre este arbol (`set -a; . ./.env.integration.local;
+   set +a` y `pnpm run test`). Referencia del push anterior: 211 archivos / 1637 tests, 0 failed.
+1. **El flujo entero**: `/es/business/onboarding` con un email nuevo → negocio → programa →
+   **ver el QR SIN haber verificado el email**. Eso es lo que la 0075 destrabo y lo que nunca se
+   probo en pantalla.
+2. **Las tres lecturas de la 0074** contra el server local: `GET /api/merchant/session` (200
+   siempre, tambien sin sesion), `GET /api/billing/state`, `GET /api/onboarding/state`.
+3. ~~Retirar el fallback de desarrollo~~ **hecho**; falta **confirmar en pantalla que el wizard
+   reanuda de verdad** contra la ruta real.
+
+## ⇥ ✅ ADR 0076 ESCRITO — TODAS LAS DECISIONES DEL OWNER TOMADAS (2026-09-18)
+
+**`docs/adr/0076-el-permiso-de-alta-vive-en-la-sesion-y-el-gate-baja-al-writer.md`**, `aceptada`,
+con su fila en `INDEX.md`. Cierra la ronda de diseño de esta sesion. **Las seis decisiones:**
+
+| # | Decision | De quien |
+|---|---|---|
+| 1 | El invariante del email **baja al writer** (`saveProgram`): crear ≠ editar | agente, sobre evidencia |
+| 2 | **Permiso de alta en la fila de la SESION**, escrito por `auth/start`. **NO viaja**: el cliente nunca lo manda | agente; el owner pedia un «usuario de sistema», descartado en el ADR con el motivo |
+| 3 | Acota **solo escrituras del alta**. Staff/locales/marca/campañas/catalogo/billing conservan el gate. **El QR queda AFUERA** y conserva el guard de la 0075 | agente |
+| 4 | Cierra con **lo que pase primero**: email verificado · **5 min tras el alta completa** · **60 min desde la creacion de la cuenta** | (a) y (b) del OWNER textual; (c) lo agrego el agente y el owner lo confirmo |
+| 5 | **UNA sola ruta** de escritura del programa | OWNER textual: «Una sola ruta de api si hacen lo mismo» |
+| 6 | **La API acepta `kind`**; la pantalla la hace el owner | OWNER textual |
+| 7 | **TOS por pais** (EC primero, por `countryCode`) + personalizado **libre en el panel**, no en el wizard | OWNER textual |
+
+**MEDICIONES QUE SOSTIENEN EL ADR (reproducidas por el orquestador, sondas ya borradas):**
+- El bypass: misma sesion `emailVerified:false` → `POST /api/onboarding/program` **200** y la base
+  reescrita a `target:50`; `PUT /api/loyalty-program` **403 `email_not_verified`**.
+- La cookie: `httpOnly:true`, `sameSite:lax`, `maxAge` 604800 (**7 dias** — de ahi el tope (c)),
+  valor firmado HMAC-SHA256.
+- `better-auth@1.6.26` soporta **`session.additionalFields` nativo** (sin plugin, o sea **sin**
+  superficie HTTP nueva por el catch-all — leccion de la 0046).
+- TOS: `terms_template` ya tiene `jurisdiction_scope`; `renderedTerms` ya interpola
+  `business_legal_name`/`country_code`; el texto libre por clausula **ya se acepta**. Sin migracion
+  de esquema.
+
+**PROXIMO PASO — TRES SPECS DISJUNTAS, NINGUNA ESCRITA TODAVIA** (orden obligatorio, C depende de
+A y B). Plantilla: **A y B llevan `TEMPLATE.md`** (llevan migracion); **C puede ir CHICA** si al
+escribirla sigue siendo un dominio.
+
+| Spec | Alcance | Migracion |
+|---|---|---|
+| **A** | TOS por pais: semillas EC + default, seleccion por `business.countryCode`, `country_code` al `variables_allowlist`, y el bug **«Los sello se acumulan…»** (texto legal que ve el consumidor) | semillas |
+| **B** | Permiso de alta en la sesion + el invariante crear/editar en `saveProgram`. **Es la que cierra el bypass** | columna en `merchant_auth.session` |
+| **C** | Unificar las dos rutas de escritura en una y aceptar `kind` con los campos de cada modalidad (puntos: `unitSingular`/`unitPlural`, `per_amount` con `blockAmount`, `pointsCost` por premio) | no |
+
+## ⇥ 🔴 HALLAZGO REPRODUCIDO: EL GATE DE EMAIL ES EVADIBLE HOY (2026-09-18)
+
+**Reproducido contra Neon con una sonda temporal** (`SONDA-gate-bypass.neon.integration.test.ts`,
+ya BORRADA). Un solo usuario con `emailVerified: false`, **una sola sesion**, dos puertas:
+
+| Llamada | Resultado medido |
+|---|---|
+| `POST /api/onboarding/program` (2da vez, programa ya existente) | **200** `{"created":false}` — y la base quedo `{"target":50,"unitName":"sello"}`, **reescrito** desde `target: 8` |
+| `PUT /api/loyalty-program` con **la misma cookie** | **403** `{"code":"email_not_verified"}` |
+
+**O sea: la puerta del wizard no solo CREA, tambien EDITA, y no tiene gate.** Quien tenga una
+cuenta sin verificar reescribe su programa llamando a la ruta del wizard en vez de a la gateada.
+
+**Ya hay precedente EXACTO de este bug y de su fix:** el comentario de
+`server/loyalty-program.ts:109-116` cuenta que la spec 0072 encontro lo mismo con el eje `status`
+(«la otra reescribia el programa de un negocio `suspended` — medido: 200 con `created:false` contra
+el 403 de la gateada») y lo arreglo **bajando el invariante al WRITER**. El del email quedo afuera.
+
+**Y EL ADR LE DA LA RAZON AL OWNER SOBRE EL DISEÑO.** ADR 0070 §11 registra su motivo textual —
+*«hoy Staff es gratis, pero va a pasar a ser parte del plan de pago quizas»* — y dice explicito:
+**«El motivo que dio el owner no es de seguridad sino de negocio»**. Se implemento como control de
+seguridad transversal de API (12 entradas). Ese desajuste es lo que viene produciendo la friccion.
+
+**PROPUESTA (sin implementar, esperando decisiones del owner):** la regla baja al writer, no a la
+ruta. `saveProgram` distingue **crear** el primer programa (no exige email) de **editar** uno
+existente (si lo exige). Cierra el bypass por construccion, sin importar cuantas puertas HTTP haya,
+y **vuelve innecesaria la «API especifica del wizard» como mecanismo de seguridad** — con lo cual
+UNA sola ruta que acepte cuerpo corto o completo pasa a ser viable, que es lo que el owner pidio.
+
+## ⇥ TOS POR PAIS: EL MODELO DE DATOS YA EXISTE (medido 2026-09-18)
+
+El owner pidio «un tipo de TOS segun pais» + terminos personalizados como opcion avanzada.
+**Ninguna de las dos cosas necesita migracion:**
+
+- `core.terms_template` **ya tiene** `jurisdiction_scope`, `locale`, `category`, `template_markdown`,
+  `variables_allowlist`, `version`, `status` (`server/schema/loyalty.ts:186-208`).
+- `renderedTerms` (`loyalty-program/terms.ts:33-41`) **ya interpola** `business_legal_name`,
+  `program_name`, `program_kind` y `country_code`.
+- **Los terminos personalizados YA se aceptan**: cada clausula es `templateId` **o** `text` libre
+  (`loyalty-program/validation.ts:129-143`).
+
+**Lo que falta es SEMBRAR y SELECCIONAR, no esquema:** hoy existe **un solo** scope,
+`global-draft`/`es`, con 2 plantillas publicadas (`earning`, `redemption`; la tercera, `transition`,
+la archivo la migracion `0011`), y el wizard las pide **hardcodeando** ese scope
+(`onboarding/program-defaults.ts:60-68`).
+
+**Dos defectos visibles que salieron en la misma sonda:**
+1. **El texto legal renderizado dice «Los sello se acumulan…»** — `program_name` se llena con
+   `configuration.unitName`, que es **singular**. Es texto legal que ve el consumidor.
+2. **`country_code` se pasa como variable pero NO esta en el `variables_allowlist` de las semillas**
+   (solo `business_legal_name` y `program_name`), asi que hoy **no se puede usar en el texto**.
+
+## ⇥ PUNTOS: EL OWNER CORRIGIO EL ENCUADRE (2026-09-18)
+
+Textual: *«entiendo que para elegir el programa de puntos necesitamos mas datos, pero eso no es
+decision tuya, deberiamos permitirlo a nivel de API y ya como yo hago la UI para eso es otro tema.
+Pero no deberia ser el API la que no me lo permita»*. **Queda decidido: la API acepta `kind`.**
+La tabla de campos por modalidad de la seccion de abajo sigue siendo el insumo, pero **ya no es una
+decision abierta de producto** — es el contrato a escribir.
+
+## ⇥ EL HUECO 2 DE `api-faltante.md` — ¿EL API DEJA ELEGIR PUNTOS O SELLOS? (2026-09-18)
+
+**Pregunta textual del owner:** «El api entonces ahora permite elegir entre puntos y sellos?».
+**Respuesta medida, depende de la ruta:**
+
+| Ruta | ¿Elige `kind`? | Evidencia |
+|---|---|---|
+| `POST /api/onboarding/program` (el wizard) | **NO.** Ni siquiera lee el campo | `wizardProgramInput` valida solo `target` (2–50) y `reward:{type:"custom",label}`; `composeWizardProgramInput` (`server/onboarding/program-defaults.ts:119-131`) fija a mano `kind:"stamps"`, `unitName`, clausulas, `per_purchase` y `stampAction`. Un `kind:"points"` enviado ahi **se ignora** |
+| `PUT /api/loyalty-program` (administracion) | **SI: `points` o `stamps`** | `server/loyalty-program/validation.ts:11-12` (`enabledKinds`); `tiers`/`cashback` → 422 «Esta modalidad todavia no esta disponible» |
+
+**Puntos NO es un esqueleto:** esta ejercitado de punta a punta —acumulacion, canje en mostrador,
+wallet, enrolamiento del consumidor— por ~30 archivos de test que crean programas `kind:"points"`.
+
+**Los dos asteriscos antes de que eso sea una opcion en pantalla:**
+1. `PUT /api/loyalty-program` **lleva el gate de email completo** (`requireApiOwner`), al reves que
+   el QR: una cuenta recien salida del wizard no la alcanza hasta verificar el correo.
+2. Sus errores **no traen `code`** — solo `{error:"<mensaje>"}` con 403/409/422/503. Declarado como
+   ESTADO ACTUAL en el contrato **0069** (tabla de errores, §lineas 357-367), no es una regresion.
+
+**CONCLUSION, y sigue siendo decision del owner (no la tomamos aca):** para ofrecer **puntos** en el
+paso 3 **no falta dominio, falta contrato** — extender `POST /api/onboarding/program` para aceptar
+el tipo y decidir cual es la entrada minima de puntos en esa pantalla (el ADR 0070 §1 la definio
+para sellos: «cada cuantos sellos · que premio»). Para **cashback** SI falta dominio: esta en el
+CHECK del esquema pero no en `enabledKinds`.
+
+### Repregunta del owner (textual) y lo que se midio para contestarla
+
+> «y porque no podemos usar en el POST del wizard? se supone que es la misma API que usaremos luego
+> en el backoffice. Porque luego en el administrador del programa usaremos exactamente los mismos
+> endpoints y API porque no tendria sentido tener dos diferentes.»
+
+**LA PREMISA ES CORRECTA Y YA SE CUMPLE donde importa: NO hay dos APIs.**
+`POST /api/onboarding/program` **no duplica ni una regla de dominio** — llama al mismo
+`saveProgram` que `PUT /api/loyalty-program` (`app/api/onboarding/program/route.ts:3` y `:53`).
+Son **dos puertas HTTP sobre UN solo writer**; la del wizard es un compositor de ~15 lineas.
+
+**Por que el wizard NO puede llamar a `PUT` tal como esta hoy — tres razones medidas:**
+
+1. **`saveProgram` exige al menos una clausula de terminos legales**
+   (`server/loyalty-program/validation.ts:144-146`). El wizard no le pide terminos al comerciante:
+   el servidor los siembra de `core.terms_template`. Con `PUT`, **la UI tendria que inventar los
+   terminos legales del comercio** o hardcodear semillas de una tabla. Es el motivo escrito del
+   compositor (contrato 0069 §D4).
+2. **`PUT` lleva el gate de email completo** (`requireApiOwner`) y el wizard corre ANTES de
+   verificar → 403 `email_not_verified` en el paso 3, el mismo bug que la 0075 le saco al QR.
+   Sacarselo a `PUT` **abre el gate para TODA la administracion del programa**, no solo para el alta.
+3. **`PUT` no emite `code`** (solo `{error}` con 403/409/422/503, declarado en el contrato 0069);
+   la ruta del wizard si, y la UI discrimina con eso —incluido `business_suspended` con su
+   `suspensionReason`—.
+
+**Y POR QUE PUNTOS NO ES PASAR UN FLAG — lo que cada modalidad le exige a QUIEN LLAMA:**
+
+| | Sellos (wizard hoy) | Puntos |
+|---|---|---|
+| `configuration` | `unitName` + `target` 2–50 | `unitSingular` **+** `unitPlural` |
+| `accrual` | `per_purchase` o `per_amount` | **forzado a `per_amount`** (`accrual.ts:22-27`) → exige `grant` entero >0 **y** `blockAmount` >0 |
+| `rewards` | exactamente 1, sin costo | 1..N, **cada uno con `pointsCost`** entero >0 (`rewards.ts:14-15,109-111`) |
+
+Hoy el paso 3 pide **2 datos** y el servidor compone los otros seis. Puntos pediria **cinco**:
+singular y plural de la unidad, cuantos puntos por cada $X de compra, y el costo en puntos del
+premio. **El servidor no puede inventar el bloque de dinero.** O sea: el paso 3 de puntos **es otra
+pantalla**, no la misma con un selector arriba.
+
+**LAS DOS OPCIONES QUE SE LE SUBIERON AL OWNER (2026-09-18) — sin decidir, esperando respuesta:**
+
+| | Que es | Costo |
+|---|---|---|
+| **A (recomendada)** | Extender `POST /api/onboarding/program` para aceptar `kind`, con defaults por modalidad en el compositor | Un solo writer y una sola puerta para el **alta**; el backoffice sigue con `GET`/`PUT`/`DELETE`/`PATCH` para la **edicion**, que ya aceptan puntos |
+| **B** | UN solo endpoint para alta y edicion: subir el compositor al `PUT` para que acepte cuerpo corto | Arrastra las razones 2 y 3: decidir el gate de email para **toda** la administracion del programa y darle `code` a **4 rutas ya contratadas** |
+
+**LO QUE NO SE PUEDE RESOLVER SIN EL OWNER:** el diseño del paso 3 para puntos (esos cinco campos).
+
+## ⇥ ⚠️ LO QUE ESTA ROTO Y ES DECISION DEL OWNER (2026-09-18)
+
+**`main` esta en ROJO y la causa es NUESTRA, no de Vercel.** `pnpm test:e2e` falla en
+`tests/e2e/loyalty.spec.ts:27`, sobre la UI vieja (`/backoffice/demo`):
+
+```
+await page.getByRole("radio", { name: /Sellos/i }).check();
+  - element is visible, enabled and stable
+  - <span class="loyalty-choice-content">…</span> intercepts pointer events
+  → Test timeout of 30000ms exceeded   (reintento 57 veces)
+```
+
+**Atribucion medida:** en `78d1f3a` ese mismo `test:e2e` daba **`success`** y el test no cambio.
+Lo unico del push que toca CSS global es el `@import "tailwindcss"` de `globals.css`, que importa
+el **root layout**.
+
+**POR QUE VUELVE AL OWNER Y NO SE ARREGLA SOLO:** el owner acepto explicitamente que las pantallas
+viejas se rompieran («voy a rediseñar todas, que se rompan ahora no me preocupa»), y con eso se
+descarto aislar el CSS. **Pero esa decision se tomo sobre degradacion VISUAL** —que es la
+evidencia que se le puso enfrente: bullets, margenes, tamaños de heading—. **Esto es FUNCIONAL: un
+control que ya no se puede clickear.** Es una decision nueva, no la vieja arrastrada.
+
+**Las tres opciones, con su costo:**
+1. **Aislar el CSS del sistema nuevo** (sacar el `@import` del root layout y ponerlo en una hoja
+   que importe solo `app/[locale]/layout.tsx`). Revierte esto de raiz. **Es la recomendacion.**
+2. **Ajustar el e2e** para clickear el label. Hace pasar el gate **con la interaccion real todavia
+   rota** para un usuario. El repo prohibe editar un test para que pase un gate.
+3. **Borrar ese e2e**, asumiendo que `/backoffice` se va. Valido **solo** si el borrado es
+   inminente (ADR 0070 §17 lo pide, pero depende de que la UI nueva aterrice).
+
+**NO SE TOCO NADA DE ESTO**: el arreglo espera la decision.
+
+## ⇥ VERCEL NO DESPLIEGA — DEL LADO DE ELLOS (2026-09-18)
+
+**Decision del owner: «el problema es en vercel, no es nuestro».** Se deja de perseguir. Lo medido,
+para no re-medirlo:
+
+- **Los deploys se CREAN pero no arrancan.** Un deployment de una rama de Dependabot
+  (`source: "git"`, o sea disparado por el webhook) quedo en **`QUEUED`** sin pasar a `BUILDING`.
+  Igual que el manual que se disparo por API. **La conexion con GitHub FUNCIONA.**
+- **Descartado midiendo:** no hay backlog (1 solo deployment no terminal en toda la cuenta), no es
+  limite de uso (remote caching `enabled`), no es cola de namespace (0 proyectos con
+  `WAIT_FOR_NAMESPACE_QUEUE`), **no es pausa** (verificado por el owner en el dashboard), y **no es
+  la conexion Git** (verificado por el owner).
+- **Otro proyecto de la MISMA cuenta (`my-55mas`) desplego dos veces hoy** (15:48 y 16:06 UTC) y
+  las dos quedaron `READY`.
+
+**⚠️ TRES ERRORES DE DIAGNOSTICO DEL ORQUESTADOR EN ESTE EPISODIO, para no repetirlos:**
+1. **«El proyecto esta pausado»** — falso. Se leyo **`"live": false`** del objeto de proyecto de la
+   API de Vercel como señal de pausa. **NO significa eso.**
+2. **«La conexion Git se rompio»** — falso. Se concluyo **1 minuto despues del push**, antes de que
+   el webhook llegara.
+3. **«54 segundos despues del deploy = se pauso ahi»** — inferencia debil sobre un `updatedAt` que
+   se explica igual de bien por el propio deployment pasando a READY.
+
+**El patron es uno solo y esta en `LECCIONES.md`:** una señal que encaja + una explicacion que
+cierra, **sin experimento que la separe de su alternativa**, no es una medicion: es una historia.
 
 ## ⇥ DECISIONES DEL OWNER SOBRE LA UI (2026-09-18)
 

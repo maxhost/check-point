@@ -100,7 +100,6 @@ describe("API del wizard", () => {
   });
 
   it("lee el estado 0074 sin inferir rol, ids ni plan", async () => {
-    vi.stubEnv("NODE_ENV", "production");
     const state = {
       authenticated: true as const,
       business: null,

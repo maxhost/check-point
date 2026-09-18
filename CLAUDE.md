@@ -138,6 +138,12 @@ Solo los que arruinan una sesion cualquiera. **Todo el resto —drizzle y SQL cr
 webhooks, Neon, Vercel, better-auth, wallet, formatos de imagen, middleware de Next, Geoapify—
 esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
 
+- **LOS GATES DE CI SON SEIS, NO CINCO: falta `pnpm test:e2e`.** El Stop hook corre
+  typecheck+lint+test, las specs listan cinco (con `format:check` y `build`) y **CI corre ademas
+  `test:e2e` con Playwright** (`ci.yml:64`). Es el unico que nadie corre local, y por eso es el
+  unico que puede tumbar `main` despues de un push «con todo verde». **Toda spec que toque UI, CSS
+  GLOBAL o una pantalla de `/backoffice` lo lleva en su DoD**, y se corre antes de pushear: los
+  browsers se bajan aparte (`pnpm exec playwright install chromium`). Caso en `LECCIONES.md`.
 - **Gates: Node 24 + scripts de ROOT.** El shell del agente arranca en Node 22 (es el Node del
   harness, que se antepone en el `PATH`) y el repo pide 24: correr
   `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` (**sin argumento**: hay `.nvmrc`)

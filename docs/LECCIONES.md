@@ -748,3 +748,43 @@ acumulado en esa ventana, **pero eso tampoco esta probado y se declara como no p
    y una explicacion elegante sin experimento que la separe de su alternativa **no es una medicion,
    es una historia**. Si el experimento no reproduce, lo que corresponde es **declarar que no se
    identifico el mecanismo**, no elegir la explicacion mas linda.
+
+## «Los cinco gates verdes» eran cinco de SEIS: `test:e2e` solo lo corre la CI
+
+**2026-09-18.** Se pusheo un arco entero —dos specs con PASS de revisor, mas la UI que el owner
+construyo por fuera— reportando **«los cinco gates verdes»**: `typecheck`, `lint`, `format:check`,
+`test` (1637 con Neon) y `build`. **CI se puso ROJA igual**, y en un paso que no estaba en esa
+lista: **`pnpm test:e2e`** (`ci.yml:64`), Playwright, **7 min 24 s**.
+
+**Lo que rompio, y es peor que un test fragil:**
+
+```
+await page.getByRole("radio", { name: /Sellos/i }).check();
+  - locator resolved to <input type="radio" value="stamps" class="sr-only" …>
+  - element is visible, enabled and stable
+  - <span class="loyalty-choice-content">…</span> intercepts pointer events
+  → Test timeout of 30000ms exceeded   (reintento 57 veces)
+```
+
+Un radio del backoffice **dejo de ser clickeable**. El commit anterior (`78d1f3a`) tenia ese mismo
+`test:e2e` en **`success`** y el test no cambio: lo unico del push que toca CSS global es el
+`@import "tailwindcss"` que entro por `globals.css`, que importa el **root layout**.
+
+**Y ahi esta la leccion de producto, que es la mitad cara:** el owner habia aceptado explicitamente
+que las pantallas viejas **se rompieran** («voy a rediseñar todas, que se rompan ahora no me
+preocupa»), y con eso se descarto aislar el CSS. Esa decision se tomo sobre **degradacion visual**
+—bullets, margenes, tamaños de heading—, que es lo que se le midio y se le mostro. **Lo que
+aparecio no fue visual: fue funcional.** Un click que ya no entra no es «se ve feo»: es una
+pantalla que no se puede usar. **El alcance de una decision del owner no se extiende solo: si la
+evidencia que se le puso enfrente era visual, una rotura funcional es una decision NUEVA.**
+
+**Las dos reglas:**
+
+1. **Contar los gates contra `ci.yml`, no contra la memoria.** Son **seis**: el Stop hook corre
+   tres, las specs listan cinco, **CI corre seis**. El sexto es el unico que nadie corre local —y
+   por eso es el unico que puede tumbar `main` despues de un push «con todo verde»—. Va al DoD de
+   **toda spec que toque UI, CSS global o una pantalla de `/backoffice`**. Los browsers se bajan
+   aparte: `pnpm exec playwright install chromium`.
+2. **Cuando se acepta romper algo, acotar QUE se acepta romper.** «Que se rompan» dicho sobre
+   capturas de estilo no autoriza que un control deje de responder. Si la rotura cambia de clase
+   —de visual a funcional— **vuelve al owner**, no se arrastra la autorizacion vieja.

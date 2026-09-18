@@ -6,12 +6,6 @@ import type {
   ProgramSummary,
   WizardApiCode,
 } from "./contracts";
-import {
-  markDevelopmentAuthenticated,
-  markDevelopmentBusiness,
-  markDevelopmentProgram,
-  readDevelopmentState,
-} from "./dev-onboarding-state";
 
 export class WizardApiError extends Error {
   constructor(
@@ -58,11 +52,9 @@ async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getOnboardingState(): Promise<OnboardingState> {
-  // Spec 0074 contracts this route, but it is not implemented in the current tree yet.
-  // Keep the exact-shaped development substitute behind this adapter and avoid probing
-  // authenticated endpoints before the owner has submitted an email.
-  if (process.env.NODE_ENV !== "production") return readDevelopmentState();
-
+  // Spec 0074 — la ruta existe y se llama SIEMPRE, tambien en desarrollo. Hubo un
+  // sustituto de `sessionStorage` mientras la 0074 estaba sin implementar; se retiro
+  // porque hacia que la ruta real no se ejercitara ni una vez fuera de produccion.
   const response = await fetch("/api/onboarding/state", {
     credentials: "same-origin",
   });
@@ -79,15 +71,11 @@ export async function getOnboardingState(): Promise<OnboardingState> {
   return body as OnboardingState;
 }
 
-export async function startMerchantAuth(email: string) {
-  const result = await jsonRequest<{ sent: boolean }>(
-    "/api/merchant/auth/start",
-    { method: "POST", body: JSON.stringify({ email }) },
-  );
-  if (!result.sent && process.env.NODE_ENV !== "production") {
-    markDevelopmentAuthenticated();
-  }
-  return result;
+export function startMerchantAuth(email: string) {
+  return jsonRequest<{ sent: boolean }>("/api/merchant/auth/start", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
 }
 
 export function getOnboardingPrefill() {
@@ -104,7 +92,6 @@ export async function createBusiness(input: CreateBusinessInput) {
     name: input.name.trim(),
     slug: result.slug,
   };
-  if (process.env.NODE_ENV !== "production") markDevelopmentBusiness(business);
   return business;
 }
 
@@ -120,7 +107,6 @@ export async function createProgram(target: number, rewardLabel: string) {
     },
   );
   const program: ProgramSummary = { id: result.programId, kind: "stamps" };
-  if (process.env.NODE_ENV !== "production") markDevelopmentProgram(program);
   return program;
 }
 
