@@ -598,3 +598,153 @@ habia dictado horas antes. El sintoma en su voz fue «tan dificil es entender es
 palabras textuales del owner en `TASKS.md`/`PARQUEADO.md`. Si ya las dijo, **no es una decision
 abierta: es un incumplimiento, y se arregla**. Un subagente que etiqueta algo como «decision mia»
 esta describiendo su contexto, no el estado del proyecto.
+
+## Un gate verde en CI puede estar tapando un defecto, si el ORDEN de los pasos lo esconde
+
+**2026-09-18, al revisar la UI que volvio de ChatGPT.** El handoff externo reportaba «el typecheck
+global queda en rojo por un problema ajeno de billing». Tentacion inmediata y equivocada: darlo por
+ruido, porque **la CI estaba verde sobre el mismo arbol** (18 pasos en `success`, leidos de
+`/check-runs`).
+
+**Lo que pasaba de verdad, medido:** `apps/merchant/src/app/api/billing/cancel/route.ts` exportaba
+`downgradeToFree`, un simbolo que **no es un handler**. Next genera en `.next/types` un chequeo que
+exige que un Route Handler **solo** exporte handlers, y ese chequeo fallaba (`TS2344`). La CI nunca
+lo vio porque **corre `typecheck` en la linea 32 y `build` en la 65**: sobre un checkout limpio,
+cuando `tsc` corre, `.next/types` **todavia no existe**. El defecto solo aparece despues de un
+`next build` local — o sea, exactamente para quien construye UI, y nunca para la CI.
+
+**Las dos lecturas falsas que esto habilita, y las dos son caras:**
+1. «La CI esta verde, entonces el arbol esta sano» — falso: la CI verifico un arbol **sin el
+   artefacto generado** que dispara el chequeo.
+2. «Es un artefacto rancio, lo borro y sigo» — es hacer pasar el gate sin mirar nada. El artefacto
+   era rancio **y** el defecto era real; borrarlo deja el segundo vivo para el siguiente.
+
+**Como se distingue una cosa de la otra, y es barato:** correr el gate en las DOS condiciones. Un
+`tsc` con un `tsconfig` que omite `.next/types` (la condicion de la CI) contra el `tsc` normal (la
+condicion del que buildea). Si difieren, el orden de los pasos esta escondiendo algo.
+
+**El arreglo:** mover el cuerpo compartido a `api/billing/_downgrade.ts` —mismo criterio que
+`_auth.ts`, que ya vivia en ese directorio— y dejar en la ruta solo su `POST`. Del test se cambio
+**la ruta del import y nada mas**: la asercion `expect(SETTLE_FREE).toBe(downgradeToFree)` quedo
+intacta, porque un test que se afloja para que el gate pase no verifica el arreglo, lo tapa.
+
+**La regla:** un reporte de gate rojo que viene de afuera se **reproduce**, no se clasifica de
+oido. Y «la CI esta verde» responde «el arbol pasa los pasos de la CI **en el orden de la CI**»,
+que no es la misma afirmacion que «el arbol esta sano».
+
+## «Diff aditivo puro» es una afirmacion, y los barridos de inventario la desmienten
+
+**2026-09-18, spec 0074.** La spec declaraba `disjunta: si`, «el diff es **aditivo puro**» y una
+tabla de Archivos con **solo archivos nuevos**: tres rutas `GET` y una hoja de DTO. El argumento
+escrito era bueno —«no se edita una sola linea de `auth-guards.ts`, `api-owner.ts`,
+`billing/_auth.ts` ni de ninguna ruta existente»— y **era falso igual**.
+
+Apenas el implementador creo `GET /api/billing/state`, la suite dio un rojo:
+
+```
+FAIL src/server/billing-routes.test.ts > every handler under api/billing/** is covered by HANDLERS
+AssertionError: expected [ 'POST /api/billing/cancel', …(3) ] to deeply equal [ 'GET /api/billing/state', …(4) ]
+```
+
+**La causa, y es lo que la hace repetible:** ese archivo tiene un **barrido de inventario** que lee
+el filesystem bajo `api/billing/**`, extrae los handlers exportados y exige **igualdad exacta**
+contra su lista. Un barrido asi **no aparece en ninguna lista de imports**: no lo caza un
+`rg 'from ".*billing/state"'` porque no importa la ruta nueva — la **descubre leyendo el disco**.
+O sea que la tecnica habitual para probar disjuncion (buscar quien importa lo que voy a tocar) es
+**estructuralmente ciega** a esta clase de acoplamiento.
+
+**Por que es un acierto y no un estorbo:** el barrido existe justamente para que nadie agregue una
+ruta de billing sin declarar como se comporta su auth. Funciono. Lo que fallo fue la spec.
+
+**El costo:** el implementador quedo con un gate rojo contra una regla del encargo que le prohibia
+tocar ese archivo — o se bloquea, o amplia alcance por su cuenta, y las dos son malas. Se resolvio
+con una ampliacion **autorizada y acotada** (agregar la fila; **no** tocar el `toEqual` ni bajar el
+piso del barrido) anotada en la spec y en el handoff.
+
+**La regla:** antes de cerrar una spec que **crea una ruta**, correr
+`rg -n 'readdirSync|readdir\(|globSync|import\.meta\.glob' apps -g '*.test.ts'` y mirar si algun
+test hace inventario del directorio donde va a nacer. **El flag es `-g`, no `--include`** —`rg`
+rechaza `--include` con «unrecognized flag», y esa es la misma familia de error que la leccion del
+`rg -r`: un comando de verificacion mal escrito es una afirmacion sin verificar. **Corrido asi el
+2026-09-18 devuelve 8 archivos** que hacen inventario, entre ellos los barridos por dominio de
+`billing`, `locations` y `marketing`. Si lo hace, **ese test va en la tabla
+de Archivos**, y «aditivo puro» deja de ser cierto. Una tabla de Archivos incompleta es
+subespecificacion, que es el gatillo medido del exito fingido.
+
+## Un limite que le declaras a un subagente es una afirmacion tuya, y esta se verifica corriendola
+
+**2026-09-18, spec 0074.** El encargo al implementador incluia esta linea, escrita por el
+orquestador:
+
+> «Si `pnpm run test` corre sin `DATABASE_URL`, los tests Neon quedan **`skipped`, no en verde**:
+> si no podes correrlos, **declaralo** como limite en vez de reportar la suite como pasada.»
+
+La primera mitad es cierta y util. **La segunda inventa un limite que no existe:** hay un
+`.env.integration.local` **en la raiz del repo**, y con el la suite corre contra la rama Neon de
+verdad. Verificado despues de mandar el encargo, sobre `loyalty-qr.neon.integration.test.ts`:
+**7 passed**. El comando es `set -a; . ./.env.integration.local; set +a` antes de `pnpm run test`,
+y estaba escrito en `TASKS.md` y en cuatro encargos archivados.
+
+**Por que es caro, y no un detalle de redaccion:** el presupuesto de mutaciones de la 0074 tiene
+**5 mutaciones, y 4 apuntan a tests de integracion Neon**. Sin ese `set -a`, esos archivos quedan
+en `skipped`. Y una mutacion cuyo oraculo esta skippeado **no da rojo: da verde** — o sea que el
+implementador podia ejecutar el protocolo entero, con su `shasum` y su bitacora, y producir
+evidencia que **no prueba absolutamente nada**, con el formato de la que si prueba. La medicion del
+arbol lo mostraba a la vista y hay que saber leerla: **1201 passed | 423 skipped**.
+
+**La regla ya existia en `CLAUDE.md` y se rompio hacia adentro:** «una afirmacion de IMPOSIBILIDAD
+o de COSTO es una afirmacion como cualquier otra, y se verifica **intentandolo**», y su espejo «lo
+que le pasas a un subagente como insumo es una afirmacion tuya — re-medi el doc antes de
+despacharlo». El sesgo es especifico y vale nombrarlo: **cuando uno escribe «si no podes, declaralo
+como limite» se siente prudente**, porque le esta dando al agente una salida honesta. No lo es —
+le esta dando permiso anticipado para no medir, y el agente **no tiene el contexto para saber que
+el permiso esta mal dado**.
+
+**La regla:** un encargo no ofrece «declaralo como limite» sobre algo que el orquestador **no
+intento primero**. Si el limite es real, se demuestra con el comando que fallo; si no se intento,
+la frase que corresponde es «corré esto y pegame la salida», nunca «si no podes, declaralo».
+
+## Medir la suite con OTRA corrida de la suite encima fabrica el rojo que despues explicas
+
+**2026-09-18, al cerrar la 0074.** Para no pisar a un subagente que trabajaba, puse un poll en
+background que corria `pnpm run test` cada tanto. Despues corri la suite yo, en primer plano, para
+reproducir su evidencia. **Las dos corrian contra la MISMA rama Neon.**
+
+Resultado: rojos que no existian. La cronologia es exacta y no deja lugar a la casualidad —
+
+```
+poll [1] 11:00:49 roja
+poll [2] 11:04:56 roja   <- mi corrida en primer plano 11:05:33 → 2 failed
+poll [3] 11:08:50 roja   <- mi corrida de grep en esa ventana → FAIL marketing-placement
+poll [4] 11:12:44 roja   <- mi corrida en primer plano 11:13:02 → 1634 passed, 0 failed
+```
+
+**En cada par, una de las dos pierde.** El sintoma que lo delata esta en el log:
+`marketing_tick {"skipped":"tick_in_flight"}` — o sea, **otra corrida tenia el lock**. Y el par
+final es la prueba de que no es el codigo: las dos corridas, sobre el MISMO arbol, una roja y una
+verde.
+
+**Y el error de razonamiento que vino despues, que es la mitad cara de esta leccion.** Corri la
+suite sola, dio rojo otra vez —en OTRO test, `consumer-recovery`, el del limite «3/hora»— y de ahi
+arme una explicacion nueva (paralelismo entre archivos contra una rama compartida), con cita del
+comentario de `vitest.config.ts` que dice que las suites `.neon.integration` «borran mundos enteros
+contra una rama Neon compartida». **La explicacion era plausible, tenia evidencia citable, y no la
+probe.** Cuando la puse a prueba —los tres archivos sospechosos juntos en paralelo— dio
+**3 passed / 17 tests**: no reprodujo nada.
+
+Lo que quedo medido de verdad, con nada mas corriendo y despues de que rodara la ventana horaria:
+**dos corridas completas consecutivas, 1634 passed, 0 failed las dos.** El unico rojo «limpio» fue
+un test de ventana de una hora, corrido despues de ~8 suites en 45 minutos — consistente con estado
+acumulado en esa ventana, **pero eso tampoco esta probado y se declara como no probado.**
+
+**Las dos reglas:**
+
+1. **Nunca corras la suite mientras otra corrida de la suite esta viva.** Si hay un poll en
+   background que la ejecuta, matalo antes de medir. Una medicion contaminada no se distingue de un
+   bug del producto: se lee igual, se reporta igual y hace perder una hora.
+2. **Un rojo intermitente no se explica: se reproduce.** La tentacion es armar el mecanismo —tenes
+   el comentario del config, tenes el `tick_in_flight`, cierra todo— y pasarlo como hallazgo. Es el
+   mismo error que la leccion del `/status`: **el comando de verificacion tambien es una afirmacion**,
+   y una explicacion elegante sin experimento que la separe de su alternativa **no es una medicion,
+   es una historia**. Si el experimento no reproduce, lo que corresponde es **declarar que no se
+   identifico el mecanismo**, no elegir la explicacion mas linda.

@@ -14,9 +14,11 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-18 — HANDOFF. El arco 2 cerrado, CI verde verificada y en
-produccion. **El owner se fue a construir la UI con ChatGPT**; la proxima tanda son las CINCO
-APIs que dejo pedidas. Ver «ARRANCA ACA LA SESION QUE SIGUE».**
+**Ultima actualizacion: 2026-09-18 — LA UI DEL WIZARD VOLVIO y esta REVISADA contra el arbol.
+**La 0074 esta EN IMPLEMENTACION** (un implementador despachado; falta su revisor independiente).
+**La 0075 —el QR del wizard sin gate de email— esta escrita y `cerrada`**, con su fila de INDEX.
+**El bloqueante del CSS quedo CERRADO POR DECISION DEL OWNER: no se aisla.** Ver «⇥ LA REVISION DE
+LA UI» y «⇥ EL ARCO DEL PROGRAMA» aca abajo.**
 
 **ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
 
@@ -100,6 +102,600 @@ de `INDEX`. **Las decisiones del owner estan las cuatro tomadas** y el implement
 **→ PARA RETOMAR, LEER EN ESTE ORDEN:** esta cabecera · la seccion «LA 3ª SPEC» de aca abajo ·
 la spec **0072** y el ADR **0073** · `docs/PARQUEADO.md` filas **56** y **57** (las dos las
 absorbe la 0072) · el ADR **0070** (el arco) y el **0071** (el proceso).
+
+## ⇥ LA 0074 — EL HUECO DE LECTURAS, `cerrada` y SIN IMPLEMENTAR (2026-09-18)
+
+**Spec: `docs/specs/0074-el-hueco-de-lecturas-del-api.md` + anexo `docs/specs/0074-contratos-de-api.md`.
+Fila puesta en `INDEX.md` en el mismo commit. NO tiene ADR: no decide nada transversal nuevo,
+consume el ADR 0070 §16 y el 0073.**
+
+**QUE LA ORIGINO, y corrige una premisa del owner:** el prompt que el owner le paso a ChatGPT **no
+lista APIs que faltan** — `docs/api-faltante.md` esta en sus **Entregables**, no en sus insumos: es
+el alambre de trampa de la regla «no inventes endpoints», y el propio prompt contempla que quede
+vacio. **Ese archivo no existe** (verificado: `find` en todo el repo y en `/Users/maxi`, `git status`
+limpio). Lo unico que el prompt SI afirma como hueco es el contexto de sesion.
+
+**LOS CUATRO HUECOS, medidos contra el arbol el 2026-09-18** —no citados de ChatGPT, reproducidos—:
+
+| # | Hueco | Evidencia ejecutada | Estado |
+|---|---|---|---|
+| A | contexto de sesion (rol, negocio, `slug`, `status`) | unico lector: `get-session` de better-auth, que devuelve `user` pelado | **entra a la 0074** |
+| B | plan y suscripcion | `api/billing/*` es **POST-only**, cero `GET` | **entra a la 0074** |
+| C | estado del wizard | `onboarding/{business,program}` POST-only; `prefill` no lee una fila del negocio | **entra a la 0074** |
+| D | metricas del dashboard | cero rutas; `/backoffice/demo/analytics` es un mock de `sessionStorage` | **AFUERA, es decision del owner** |
+
+**LA CAUSA, y explica los cuatro de una vez:** el arco contrato las **escrituras**, porque ahi viven
+los guards. Las lecturas nunca necesitaron HTTP: **7 paginas de `/backoffice` son server components
+que consultan drizzle en proceso** (`grep -rln 'server/db|drizzle' … --include=*.tsx`), incluida la
+principal, que lee `core.subscription` con un `select` directo. En cuanto la UI habla por HTTP, cada
+lectura in-process se vuelve un endpoint faltante. **No es un olvido: es mecanico.**
+
+**LAS CUATRO DECISIONES DE DISEÑO QUE TOMO EL ORQUESTADOR** (no el owner — si alguna no le cierra,
+se cambia ANTES de despachar al implementador):
+1. `/api/merchant/session` **contesta 200 siempre** y **no** emite los cinco `code` de la 0072. Un
+   endpoint gateado por el estado que reporta no deja renderizar la pantalla de cuenta suspendida.
+2. **No devuelve el plan**: `billingStateResponse` toma un lock de fila, y eso pondria un lock en
+   cada carga de cada pantalla. Por eso B es un endpoint aparte.
+3. Membresia no `active` → `business: null` **sin revocar la sesion**: es un `GET` y un `GET` con
+   efecto lateral se dispara con un prefetch del navegador.
+4. `/api/onboarding/state` devuelve **hechos, nunca un numero de paso** (el ADR 0070 prohibe
+   `onboarding_step`, y un `"step": 2` en el JSON es esa columna disfrazada).
+
+**LO QUE HAY QUE PREGUNTARLE AL OWNER, concreto y sin bloquear la 0074:** ¿que tres numeros quiere
+ver al abrir el dashboard, y con que ventana de tiempo? Sin eso el hueco D no se especifica sin
+inventarlo.
+
+**PROXIMO PASO:** despachar UN implementador con la 0074 y UN revisor independiente al final
+(ADR 0071). Presupuesto **5 mutaciones**, sin migraciones, **cero `.tsx`**. La spec trae las cinco
+mutaciones con su invariante y su rojo esperado.
+
+## ⇥ LA REVISION DE LA UI QUE VOLVIO DE CHATGPT (2026-09-18) — EL PUNTO DE RETORNO
+
+**Estado: la UI esta en el arbol SIN COMMITEAR** (26 archivos nuevos + 6 modificados). La
+revision esta HECHA y todo lo de abajo esta **reproducido contra el arbol**, no citado del
+handoff de ChatGPT (`docs/ui-handoff.md`, `docs/api-faltante.md`).
+
+**Los gates, medidos el 2026-09-18 con la UI adentro:** `typecheck` **verde**, `lint` verde,
+`format:check` verde, suite **128 archivos / 1198 tests pass**, y los 4 archivos de test nuevos
+de la UI **12/12**. **Limite declarado:** los **404 tests de integracion Neon quedaron
+`skipped`** (sin `DATABASE_URL` local); ese lado lo cubre la CI.
+
+**El «typecheck global en rojo» que reporta el handoff de ChatGPT NO era de la UI** — era
+`.next/types` rancio (del 17-sep 23:17) + un export invalido preexistente. **ARREGLADO esta
+sesion**, ver mas abajo.
+
+### Las tres afirmaciones de `docs/api-faltante.md`, reproducidas una por una
+
+| # | Afirmacion de ChatGPT | Veredicto medido | Que hay que hacer |
+|---|---|---|---|
+| 1 | `GET /api/onboarding/state` no existe | **CIERTA.** Es exactamente la spec **0074**, `cerrada` y sin implementar. **Y verifique que el `OnboardingState` de `contracts.ts` coincide campo por campo con el contrato 0074 §3** (`authenticated`/`business`/`program`/`stampImage`): implementar la 0074 **no rompe la UI**, solo retira el fallback de `sessionStorage` | **Implementar la 0074** |
+| 2 | Falta contrato para elegir puntos/sellos/cashback en el paso 3 | **CIERTA como hecho, FALSA como hueco de API.** El **ADR 0070 §1** ya decidio la pantalla 3: «Sellos, premio en texto libre», y lista explicitamente lo que queda fuera del wizard. Ademas `loyalty-program/validation.ts:12` habilita **solo `points` y `stamps`**: **cashback existe en el CHECK del esquema pero NO en el dominio**. La UI hizo lo correcto dejando solo sellos | **Nada, salvo que el owner decida ampliar.** Puntos = trabajo de contrato; cashback = trabajo de dominio nuevo |
+| 3 | El QR final choca contra el gate de email | **CIERTA, y es un INCUMPLIMIENTO, no una decision abierta.** Textual del owner (**ADR 0070 §11**): «para el alta no pedimos verificacion», y el ADR precisa que se bloquea **todo lo que venga DESPUES del wizard**. La pantalla del QR **ES** la cuarta del wizard (ADR 0070 §1: `→ \| Tu QR \| nada: es la recompensa`). La 0072 aplico `requireApiOwner` a las 10 superficies y se llevo puesta una del wizard. El propio contrato **0074 §3** usa ese mismo razonamiento para dejar `onboarding/state` sin gate | **Spec chica: sacar el gate de email de `GET /api/loyalty-program/qr`**, con nota de ADR porque corrige una de las 10 de la 0073 |
+
+**Y lo que la UI NO hizo mal, tambien medido:** no invento endpoints (llama **9 rutas, 8
+existen**, la unica ausente es la de la 0074), no manda `businessId`/`programId`, no usa
+`get-session`, y el locale va por **allow-list** (`isSupportedLocale` → `notFound`).
+
+### ⚠️ EL BLOQUEANTE PARA COMMITEAR, que `api-faltante.md` NO reporta
+
+**`globals.css` ahora abre con `@import "tailwindcss"`, y ese archivo lo importa el ROOT
+layout** → el **preflight de Tailwind se aplica a TODAS las superficies de `apps/merchant`**,
+que es la unica app desplegada.
+
+**Evidencia EJECUTADA, no razonada:** compile `globals.css` con el pipeline real del proyecto
+(`@tailwindcss/postcss`) y el preflight queda en el bundle, dentro de `@layer base`:
+`*, ::after, ::before { margin: 0; padding: 0; border: 0 solid }` · `h1..h6 { font-size:
+inherit; font-weight: inherit }` · `ol, ul, menu { list-style: none }` · `img, svg, video…
+{ display: block }`.
+
+El CSS legado es **sin capa** (arranca en la linea 823 del bundle), asi que gana **solo donde
+declara la misma propiedad** — y declara `h1`, `h2` y `p` (line-height y color, **no** margin).
+**Censo de lo que queda desprotegido:** `<li>` en **21** archivos, `<ul>` en **16**, `<img>` en
+**15**, `<h3>` en **7**, `<fieldset>` en **6** — incluidas las **tres rutas VIVAS del
+consumidor** (`/enroll/[programId]`, `/wallet`, `/recover`: 4 archivos con `<h3>`, 4 con `<li>`,
+6 con `<p>`).
+
+**`docs/design-system.md:13` afirma lo contrario de lo que pasa:** dice que «los estilos
+heredados de /backoffice permanecen aislados en globals.css». El aislamiento es de una sola
+via, y la que se fuga es la del reset NUEVO sobre la UI VIEJA que hoy esta en produccion.
+
+**El arreglo seria chico:** sacar el `@import "tailwindcss"` de `globals.css` y ponerlo en una hoja
+que importe **solo `app/[locale]/layout.tsx`** (Next carga el CSS por segmento de ruta), o importar
+`theme.css` + `utilities.css` sin preflight.
+
+**PERO NO SE HACE — DECISION DEL OWNER, 2026-09-18, textual:** «Ninguna pantalla de las que esta en
+produccion es decir de las viejas va a quedar, voy a rediseñar todas, entonces que se rompan ahora
+no me preocupa». **Su razonamiento cierra con lo medido:** produccion tiene **0 negocios y 0
+usuarios merchant**, asi que el radio de impacto hoy es cero; y si toda la UI se rehace sobre el
+sistema nuevo, el preflight global **es el estado final deseado** — aislarlo ahora seria trabajo
+para deshacer despues. **El hallazgo queda registrado como decision aceptada, no como deuda**, para
+que nadie lo «arregle» mas adelante creyendo que es un bug.
+
+**Lo unico que el owner NO nombro explicitamente, y por eso NO se escribe como decision suya:** las
+**tres rutas VIVAS del consumidor** (`/enroll/[programId]`, `/wallet`, `/recover`) tambien comen el
+preflight, y no son «pantallas viejas del merchant» — son del arco del consumidor. Con 0 negocios en
+produccion nadie las esta usando hoy, asi que **no bloquea nada**; queda como un «miralas una vez»
+cuando haya datos, no como un pendiente de codigo.
+
+### HECHO ESTA SESION (unico codigo tocado): el export invalido de billing
+
+`apps/merchant/src/app/api/billing/cancel/route.ts` exportaba **`downgradeToFree`**, que no es
+un handler. **Un Route Handler de Next solo puede exportar handlers**, asi que `.next/types`
+generaba un chequeo que fallaba (`TS2344`) y dejaba el typecheck local en rojo apenas alguien
+corria un `next build`. **La CI no lo veia porque corre `typecheck` ANTES que `build`**, sobre
+un checkout donde `.next/types` todavia no existe (`.github/workflows/ci.yml:32` vs `:65`).
+
+**Arreglado moviendo el cuerpo compartido a `apps/merchant/src/app/api/billing/_downgrade.ts`**
+(mismo criterio que `_auth.ts`, que ya vivia en ese directorio). `cancel/route.ts` queda con su
+`POST`, `settle-free/route.ts` reapunta su alias, y del test solo se cambio **la ruta del
+import** — la asercion `expect(SETTLE_FREE).toBe(downgradeToFree)` **quedo intacta**.
+
+**Verificado:** typecheck verde **con el `.next/types` rancio todavia en su lugar** (o sea, el
+artefacto que fallaba ahora pasa), lint, `format:check` y la suite entera sin cambio de numeros
+(128/1198). **Mutacion M2** (`throw` al entrar a `downgradeToFree`) → **6 tests rojos** en
+`billing-routes.test.ts`, lo que prueba que **las dos rutas ejecutan el modulo nuevo**;
+revertida con `diff` contra la copia limpia, shasum `3ba2fa50…` identico, **cero `MUTATION` en
+el arbol**.
+
+### LO PROXIMO, y el estado de cada cosa (el owner decidio los 4 puntos el 2026-09-18)
+
+| # | Que | Estado |
+|---|---|---|
+| 1 | Aislar el CSS | **DESCARTADO por decision del owner.** Ver arriba |
+| 2 | Implementar la **0074** | ✅ **`implementada`**, con PASS de revisor independiente y los 2 hallazgos cerrados. **211 archivos / 1634 tests, 0 failed, 0 skipped**, 5 gates verdes, reproducido por el orquestador. **SIN COMMITEAR** |
+| 3 | Spec chica del **QR** | ✅ **`implementada`**, con PASS de revisor independiente. **211 archivos / 1637 tests, 0 failed, 0 skipped**, 5 gates verdes, reproducido por el orquestador. **SIN COMMITEAR** |
+| 4 | `downgradeToFree` fuera del Route Handler | **HECHO y verificado** (ver la seccion de arriba) |
+
+**⚠️ SUBESPECIFICACION DE LA 0074, encontrada durante la implementacion (2026-09-18) y ya
+corregida en la spec.** La spec declaraba `disjunta: si` y «diff **aditivo puro**», con una tabla de
+Archivos de **solo archivos nuevos**. **Era falso para B:** apenas nacio `GET /api/billing/state`,
+`server/billing-routes.test.ts` se puso rojo —tiene un **barrido de inventario** que lee el
+filesystem bajo `api/billing/**` y exige **igualdad exacta** contra su lista `HANDLERS`—.
+
+**El barrido funciono como debe**; lo que fallo fue la spec. Se autorizo una ampliacion **acotada a
+ese archivo y a AGREGAR la fila**: el `toEqual` y el piso del barrido **no se tocan**, y si el piso
+queda corto **sube**, nunca baja. Queda anotado en la tabla de Archivos de la 0074.
+
+**ESTADO EXACTO (2026-09-18, implementador todavia corriendo):** la fila de
+`GET /api/billing/state` **ya esta puesta** en `billing-routes.test.ts`, los tres archivos de ruta
+mas `session-view.ts` existen en disco, y la suite **midio verde: 1201 passed | 423 skipped**.
+**Ningun gate de esta spec esta declarado como pasado todavia** — el que los declara es el
+**revisor independiente**, que no salio.
+
+**⚠️ SEGUNDO ERROR DEL ORQUESTADOR EN ESTA SPEC, detectado y corregido en curso (2026-09-18).** El
+encargo al implementador le decia: «si no podes correr los tests Neon, **declaralo como limite**».
+**Ese limite no existe:** hay un `.env.integration.local` **en la raiz** y con el la suite corre
+contra la rama Neon de verdad — verificado corriendo
+`set -a; . ./.env.integration.local; set +a` + `loyalty-qr.neon.integration.test.ts`: **7 passed**.
+
+**Por que importa y no es una correccion cosmetica:** **4 de las 5 mutaciones de la 0074 apuntan a
+tests de integracion Neon** (`session.neon`, `onboarding-state.neon`, `billing-state.neon`). Los
+**423 `skipped`** de la medicion de arriba **son exactamente esos**. Una mutacion cuyo oraculo esta
+skippeado **no da rojo: da verde**, o sea que se puede ejecutar el protocolo entero —`shasum`,
+bitacora, etiqueta— y producir evidencia que **no prueba nada**, con el formato de la que si
+prueba. Ya se le mando al implementador el comando verificado y la orden de **rehacer toda mutacion
+medida con el oraculo skippeado**.
+
+**Criterio para el revisor, que queda fijado aca:** el handoff tiene que mostrar los tres archivos
+`.neon.integration.test.ts` **corriendo con sus `✓`**, no con `↓ skipped`. **Un oraculo skippeado
+es un FAIL, no un limite.** La leccion completa esta en `LECCIONES.md`.
+
+**Y la regla que salio de ahi, ya en `LECCIONES.md`:** un barrido de inventario **no aparece en
+ninguna lista de imports** —descubre los archivos leyendo el disco—, asi que la tecnica habitual
+para probar disjuncion (buscar quien importa lo que voy a tocar) es **estructuralmente ciega** a
+el. Antes de cerrar una spec que **crea una ruta** hay que correr
+`rg -n 'readdirSync|readdir\(|globSync|import\.meta\.glob' apps -g '*.test.ts'` (**`-g`, no
+`--include`**, que `rg` rechaza). **Corrido el 2026-09-18 devuelve 8 archivos**, entre ellos los
+barridos por dominio de `billing`, `locations` y `marketing`.
+
+**📊 MEDICION DEL ADR 0071 — IMPLEMENTADOR DE LA 0074 (anotada al llegar la notificacion, que es
+lo que fallo en la 0072).** Estos tres numeros son los que el owner pidio para la re-medicion del
+ADR 0071 y los que **se perdieron** la vez pasada por anotarlos al final:
+
+| Metrica | Valor |
+|---|---|
+| `subagent_tokens` | **213.719** |
+| `tool_uses` | **95** |
+| `duration_ms` | **1.603.692** (≈ **26 min 44 s**) |
+
+**Y los del REVISOR independiente de la misma spec** (anotados igual, al llegar su notificacion):
+
+| Metrica | Implementador | Revisor |
+|---|---|---|
+| `subagent_tokens` | 213.719 | **152.283** |
+| `tool_uses` | 95 | **53** |
+| `duration_ms` | 1.603.692 (26m44s) | **1.817.940** (≈ **30 min 18 s**) |
+
+**Vuelta 2 del implementador** (cerrar los dos hallazgos del revisor): `subagent_tokens`
+**236.322**, `tool_uses` **21**, `duration_ms` **427.619** (≈ **7 min 8 s**). **Dato para el ADR
+0071:** cerrar dos hallazgos acotados costo **7 minutos y 21 tool uses** contra los 27 minutos y 95
+de la implementacion inicial — o sea que **el ciclo de correccion es barato cuando el hallazgo
+viene con su evidencia y su arreglo escritos**. Los tokens NO bajaron (236k contra 213k) porque
+re-lee el contexto entero: **lo caro es el contexto, no el trabajo.**
+
+**El dato que el ADR 0071 va a querer:** el revisor gasto **29% menos tokens y 44% menos tool uses
+que el implementador, y tardo MAS tiempo de reloj** (30m contra 27m). O sea que el costo de la
+revision independiente **no es marginal**: es del mismo orden que implementar. Y en esta spec
+**valio**, porque cazo un invariante escrito sin oraculo (ver hallazgos).
+
+Contexto para que el numero signifique algo cuando se compare: spec de **3 rutas nuevas + 1 hoja de
+DTO**, 4 archivos de test nuevos (26 tests), **5 mutaciones** del presupuesto **todas ejecutadas y
+revertidas**, gates completos de root **con Neon** (`set -a; . ./.env.integration.local`), y **dos
+correcciones del orquestador en vuelo** (la ampliacion a `billing-routes.test.ts` y el `.env` que
+yo habia declarado mal como limite) que le costaron re-trabajo. **El revisor va aparte y sus
+numeros se anotan igual, apenas llegue su notificacion.**
+
+**AL CERRAR LA 0074, ademas:** actualizar `docs/api-faltante.md` marcando el hueco 1 como
+**RESUELTO** — es el documento que el owner le pasa de vuelta a ChatGPT para que retire el fallback
+de `sessionStorage`. Lo mismo con el hueco 3 al cerrar la 0075.
+
+**LA PREGUNTA QUE SIGUE ABIERTA** (no bloquea nada de lo de arriba): el hueco **D** — ¿que tres
+numeros querés ver al abrir el dashboard, y con que ventana de tiempo?
+
+## ⇥ LA 0074 — LO QUE ENTREGO EL IMPLEMENTADOR (2026-09-18), REPRODUCIDO POR EL ORQUESTADOR
+
+**Estado: implementada por el implementador, EN REVISION. NO marcada `implementada` — falta el
+PASS del revisor independiente, que es el unico que declara los gates.**
+
+**LO QUE REPRODUJE YO, no lo que reporto el subagente** (regla del repo: ningun hallazgo de un
+subagente entra a un doc sin reproducir la evidencia):
+
+| Que | Medido por el orquestador el 2026-09-18 |
+|---|---|
+| Suite completa **con Neon** (`set -a; . ./.env.integration.local`) | **211 archivos / 1631 tests passed · 0 skipped · 0 failed** |
+| `typecheck --force` | verde, `0 cached, 3 total` |
+| `rg -n MUTATION apps tools` | **vacio** |
+| `next-env.d.ts` | volvio a coincidir con HEAD (lo regenera `next build`) |
+| `billing-routes.test.ts` | **329 lineas**, sobre el limite de 300 del hook `file-size` |
+
+**Archivos que entrego:** `server/session-view.ts` (hoja, 0 imports), las tres rutas
+`api/merchant/session`, `api/billing/state` y `api/onboarding/state`, sus tres
+`.neon.integration.test.ts` (7 + 8 + 4 tests), `server/read-surfaces-leak.test.ts` (7 tests), y la
+edicion autorizada de `server/billing-routes.test.ts`.
+
+**LAS 5 MUTACIONES DEL PRESUPUESTO: ejecutadas y revertidas, las cinco.** La que mas importa es
+**M4** (sustituir `toSubscriptionView(row)` por `row` en billing): el implementador reporta que
+`billing-routes.test.ts` y `billing-view.test.ts` **quedan VERDES** y solo muerde el oraculo nuevo
+— o sea que `read-surfaces-leak.test.ts` es **lo unico** que separa Stripe del navegador. **Esa
+afirmacion la tiene que reproducir el revisor**, no la doy por buena.
+
+### CONTRADICCION RESUELTA POR EL ORQUESTADOR — el anexo se contradecia a si mismo
+
+El implementador **paro y no eligio**, que es lo correcto. La spec §D1 decia «`suspensionReason`
+solo para `role === 'owner'`, **identico a `auth-guards.ts`**» y el anexo §1 decia «string **SOLO si
+`status='suspended'` Y `role='owner'`**».
+
+**Medido: el que se contradecia era el ANEXO, consigo mismo.** Su comentario del JSON pedia las dos
+condiciones; su **nota 2** decia «es la misma regla de `requireBackofficeSession`», y ese guard
+condiciona **solo por rol** (`auth-guards.ts:163`). **Gana el rol**: dos de las tres afirmaciones
+del contrato ya lo decian y la ruta tiene que resolver igual que el guard. El anexo quedo corregido.
+
+**Y de ahi salio un invariante nuevo para quien haga la UI, porque el estado ES alcanzable:**
+`suspension_reason` **no tiene ningun CHECK que la ate al `status`** (migracion `0036`), asi que un
+negocio reactivado puede quedar `active` **con el motivo viejo escrito**. **La UI decide por
+`status`, NUNCA por la presencia de `suspensionReason`.** Escrito en el anexo.
+
+### HALLAZGOS DEL IMPLEMENTADOR PENDIENTES DE AUDITORIA DEL REVISOR
+
+1. `/api/onboarding/state` trata una **membresia no `active`** igual que «sin negocio». Es una
+   **decision del implementador declarada**, no del owner; el anexo §3 no se pronuncia.
+2. `billing-routes.test.ts` estaba en **313 lineas antes** de esta spec (limite del hook: 300) y
+   quedo en **329**. **Deuda pre-existente que empeoro**, no creada por la spec. `CLAUDE.md` dice
+   «dividir, no extender» — dividir un archivo con PASS de revisor esta fuera de la autorizacion
+   que se le dio. **Queda como hallazgo a decidir.**
+3. Efecto colateral sobre trabajo ajeno: `next-env.d.ts` estaba modificado por quien hizo la UI y
+   `pnpm run build` —gate obligatorio— lo **regenero**. Se recupera solo en el proximo
+   `next dev`/`build` de esa persona. Reportado sin arreglar, que es lo correcto.
+
+### EL PASS DEL REVISOR, Y LOS DOS HALLAZGOS QUE VOLVIERON AL IMPLEMENTADOR (2026-09-18)
+
+**Veredicto: PASS.** El revisor corrio los gates por su cuenta y su medicion **coincide con la
+mia**: `211 archivos / 1631 tests passed · 0 skipped · 0 failed`, `build --force` con las tres
+rutas saliendo `ƒ (Dynamic)`, `rg MUTATION` vacio. Gasto **4 mutaciones del presupuesto + 1
+declarada fuera**, y las cuatro dieron rojo por la asercion correcta.
+
+**AUDITO LOS CUATRO HALLAZGOS DEL IMPLEMENTADOR y los cuatro resultaron ciertos**, incluido el
+mas importante: con `toSubscriptionView` sustituido por `row`, **`billing-routes.test.ts` y
+`billing-view.test.ts` quedan VERDES** y solo muerde el oraculo nuevo. O sea que
+`read-surfaces-leak.test.ts` **es lo unico que hay entre Stripe y el navegador**, y ademas la
+asercion de **conjunto exacto de claves** hace trabajo que el barrido de valores-centinela no
+hace: el revisor lo probo agregando una clave **sin valor secreto** (`subscription.businessId`) y
+el test de valores quedo verde mientras el de claves se puso rojo.
+
+**HALLAZGO 1 — un invariante escrito SIN ORACULO. Reproducido por el orquestador, y mas fuerte
+que la medicion del revisor.** El filtro de membresia de `/api/onboarding/state`
+(`route.ts:54`) implementa lo que la spec §D1 declara contrato, pero borrarlo no rompe nada:
+
+```
+MUTATION MO1:  const business = row ?? null;
+pnpm run test (con Neon)  →  211 passed (211) · 1631 passed (1631)
+```
+
+**Cero rojos sobre 1631 tests.** Revertida con `diff` vacio y shasum `228340715985111e…`
+coincidente. **Consecuencia: un integrante dado de baja leeria `id`, `name` y `slug` del negocio
+por esta puerta y no por la otra** — textualmente lo que el docblock dice que evita. El codigo de
+hoy esta bien; falta lo que impide que mañana se caiga en silencio. **Volvio al implementador.**
+
+**HALLAZGO 2 — el anexo declara menos estados de los que la ruta emite. Reproducido contra el
+codigo.** `0074-contratos-de-api.md:231` dice `Status posibles: 200, 401, 403` para
+`GET /api/billing/state`. Es falso: la ruta envuelve en `billingErrorResponse`, que emite **503
+`unavailable`** (`billing/_auth.ts:103-104`) y **503 `subscription_unavailable`** (`:165-166`).
+El preambulo del propio anexo dice que un `code` que la ruta emite y el contrato no declara es
+**FAIL de revision**. **Volvio al implementador.**
+
+**LOS DOS HALLAZGOS: CERRADOS Y VERIFICADOS POR EL ORQUESTADOR (2026-09-18).**
+
+- **Hallazgo 1, cerrado con DOS oraculos.** El implementador no solo agrego el caso Neon
+  (`seedMember({ status: "disabled" })` → `business: null` Y `program: null`, **verificando por SQL
+  que el programa existe** para que el `program: null` no sea vacuo): agrego un **segundo oraculo
+  que NO depende de Neon** —un 4º estado en el barrido unitario— y subio el piso de 3 a 4. La
+  mutacion `row ?? null` ahora da **rojo 2 de 14**, y la asercion muestra la fuga exacta: el
+  integrante dado de baja leia `id`, `name`, `slug` **y el programa entero**.
+- **Hallazgo 2, cerrado.** El anexo declara las dos filas de `503` con sus `code` reales
+  (`subscription_unavailable` y `unavailable`) y §5 pasó a «200, 401, 403, **503**». Se acepto
+  ademas una linea de contrato que el implementador marco como dudosa: **«un 503 NO es 'no tenes
+  plan', es 'no lo pudimos leer'; la UI nunca degrada a mostrar `free`»**. **No es una decision de
+  producto**: es la semantica del codigo escrita para que quien haga la UI no le invente al comercio
+  el estado de su plata.
+
+**DESINCRONIZACION DEL SUBAGENTE, aclarada:** el implementador volvio a reportar la contradiccion de
+`suspensionReason` como abierta. **Ya no lo esta** — se resolvio mientras el corria. Verificado:
+`session-view.ts:107` es `row.role === "owner" ? … : null`, la misma expresion que
+`auth-guards.ts:163`, y el anexo ya dice «solo para `role='owner'`». Su reporte venia de su contexto
+anterior, no del arbol.
+
+**ESTADO SUPERADO (queda como registro de lo que se midio en vuelo):**
+
+- **Hallazgo 1: el caso YA ESTA ESCRITO.** `onboarding-state.neon.integration.test.ts:164` —
+  `it("membresia NO active: business: null Y program: null, con el programa EXISTIENDO")`,
+  sembrando `seedMember({ businessId, status: "disabled" })`. **Falta que el implementador pruebe
+  que MUERDE** contra la mutacion `row ?? null`, con su asercion literal.
+- **Hallazgo 2: HECHO.** El anexo ya declara el `503` (`grep -c 503` → **5**). Falta que el
+  orquestador verifique que las filas dicen los `code` reales (`unavailable`,
+  `subscription_unavailable`) y que §5 pasara de «200, 401, 403» a incluir el 503.
+
+**NINGUNO DE LOS DOS ESTA CERRADO. La 0074 NO se marca `implementada` hasta que los dos cierren y
+la suite quede verde** (baseline a superar: 211 archivos / 1631 tests; con el caso nuevo tiene que
+dar **1632**).
+
+
+**LIMITES QUE EL REVISOR DECLARO Y NO PERSIGUIO** (intentados antes de declararse):
+- **La corrida AISLADA de un test neon es flaky**: en una, el `beforeAll` se paso de timeout y
+  dejo 8 tests `skipped` (658s contra ~9s). **La medicion que manda es la de suite completa.**
+  Dato operativo util para el proximo que mida mutaciones contra Neon.
+- Una fuga que **reemplace** el valor de una clave ya declarada por un interno cuyo valor no esta
+  en la lista de centinelas **no la caza** el oraculo (mismo conjunto de claves). Clase de
+  preimagen por transformacion: el ADR 0062 dice que no se cierra por iteracion.
+- El oraculo de fuga es un unit con `getDb` doblado: pinnea la **forma**, no que las rutas lean de
+  la base lo que dicen. Eso lo cubren los tres neon.
+
+## ⇥ ⚠️ LA SUITE LOCAL NO ES UN ORACULO CONFIABLE SI LA CORRES MAL (2026-09-18)
+
+**Esto le cuesta una hora a quien lo herede sin saberlo, y casi entra a un reporte al owner como
+«bug del producto».**
+
+**Lo medido, con su cronologia exacta:** para no pisar a un subagente puse un **poll en background
+que corria `pnpm run test`** cada tanto, y despues corri la suite yo en primer plano. **Las dos
+contra la MISMA rama Neon.** Resultado:
+
+```
+poll [1] 11:00:49 roja
+poll [2] 11:04:56 roja   <- mi corrida 11:05:33 → 2 failed
+poll [3] 11:08:50 roja   <- mi corrida de grep en esa ventana → FAIL marketing-placement
+poll [4] 11:12:44 roja   <- mi corrida 11:13:02 → 1634 passed, 0 failed
+```
+
+**En cada par una de las dos pierde**, y el par final lo prueba: dos corridas sobre el **mismo
+arbol**, una roja y una verde. El sintoma en el log es `marketing_tick {"skipped":"tick_in_flight"}`
+— otra corrida tenia el lock.
+
+**Y LO QUE NO ESTA PROBADO, declarado como tal.** Una corrida limpia dio rojo igual, en OTRO test
+(`consumer-recovery`, el del limite «3/hora»), despues de ~8 suites en 45 minutos. Arme una
+explicacion —paralelismo entre archivos contra rama compartida, citando el comentario de
+`vitest.config.ts` que dice que las `.neon.integration` «borran mundos enteros contra una rama Neon
+compartida»— y **al ponerla a prueba NO reprodujo**: los tres archivos sospechosos juntos en
+paralelo dieron **3 passed / 17 tests**. **El mecanismo de ese rojo quedo SIN identificar.** Lo
+unico consistente con el es estado acumulado en una ventana horaria que despues rodo, y eso
+**tampoco esta probado**.
+
+**LA MEDICION LIMPIA, que es la que vale:** sin nada mas corriendo y con la ventana rodada,
+**dos corridas completas consecutivas → 1634 passed, 0 failed las dos**, mas `typecheck --force`,
+`lint`, `format:check` y `build --force` verdes, y `rg MUTATION apps tools` vacio.
+
+**LAS DOS REGLAS OPERATIVAS** (la leccion completa esta en `LECCIONES.md`):
+1. **Nunca corras la suite mientras otra corrida de la suite esta viva.** Si hay un poll en
+   background, matalo antes de medir.
+2. **Un rojo intermitente se REPRODUCE, no se explica.** Si el experimento que separa tu hipotesis
+   de su alternativa no reproduce, lo que corresponde es declarar que no identificaste el mecanismo.
+
+**Y la consecuencia para el QA:** la verificacion que manda no es la suite local sino **CI sobre el
+commit pusheado**, leida de `/check-runs` para el sha exacto — nunca `/status`, que en este repo
+devuelve `success` con la CI todavia corriendo.
+
+## ⇥ LA 0075 — EL QR SIN GATE DE EMAIL: implementada y EN REVISION (2026-09-18)
+
+**Decision del owner, textual:** «directamente quita el QR del gate de email verificado… simplemente
+lo quitas y el QR siempre puede ser solicitado por el owner de su negocio, simple». **Sin regla
+condicional.**
+
+**LO QUE REPRODUJE YO** (no lo que reporto el subagente), con `pgrep -fl vitest` verificado en
+**ninguna corrida viva** antes de medir:
+
+| Que | Medido por el orquestador |
+|---|---|
+| Suite con Neon | **211 archivos / 1637 tests passed · 0 failed · 0 skipped** (baseline previa: 1634) |
+| `typecheck --force` · `lint` · `format:check` · `build --force` | los cuatro verdes |
+| `rg -n MUTATION apps tools` | **vacio** |
+| **`requireApiOwner` intacto** | `git diff --numstat api-owner.ts` → **85 inserciones, 0 borrados**; `git diff -U0 \| grep -c '^-[^-]'` → **0** |
+| **La hermana la consume UNA sola ruta** | 3 hits en 2 archivos: su definicion (`api-owner.ts:164`) + el import y la llamada del QR. Ninguna otra |
+| `emailNotVerified` en el dir del QR | **vacio** |
+| Pisos del barrido | `SURFACES.length === 12`, `CON_GATE === 11`, `SIN_GATE === 1`, `11+1 === 12`, y `SIN_GATE[0][0] === "loyalty-program/qr"`. **Las dos tablas salen de `SURFACES` por FILTRO**, no son listas paralelas |
+
+**Las 3 mutaciones del presupuesto, ejecutadas y revertidas**, atacan el riesgo real —que al sacar
+el paso del email se caiga otro—: M1 (volver a poner el gate) → **4 rojos**; M2 (saltear el paso 2,
+owner activo) → **1 rojo, en la fila del QR**; M3 (saltear el paso 4, eje `status`) → **3 rojos, los
+tres en la fila del QR**.
+
+**⚠️ TERCER ERROR DEL ORQUESTADOR EN UNA SPEC, reportado por el implementador: la 0075 §D1 se
+contradice con su propio Alcance y su DoD.** §D1 pedia «cuerpo comun» entre las dos funciones; el
+Alcance y el DoD exigen `requireApiOwner` **byte por byte igual**, y un cuerpo comun obliga a
+reescribir su cuerpo para que delegue. El implementador **resolvio por el criterio binario** (que es
+el correcto: es el verificable) y dejo duplicados **solo los `return` del fallo**, compartiendo las
+piezas que DECIDEN (`ownerContext` del paso 2 y `businessStatusFailure` del paso 4). **Pendiente de
+auditoria del revisor.** Van tres specs seguidas donde el error estuvo en la spec, no en el codigo.
+
+**Hallazgos del implementador pendientes de auditoria:**
+1. Corrigio `0069-contratos-de-api.md` §5 agregando `business_suspended`/`business_closed`, que la
+   ruta emite desde la 0072 y el contrato **no declaraba**. Correccion extra dentro del archivo
+   autorizado.
+2. `api-owner-surfaces.test.ts` quedo en **293 lineas** (limite del hook: 300). **La proxima
+   superficie que se agregue a esa tabla lo pasa** — ahi aplica «dividir, no extender».
+3. Edito `api-owner.ts` DESPUES de revertir M3, **solo un comentario** (3 lineas, cero codigo).
+   Declarado por el, a verificar por el revisor.
+4. El barrido unitario dobla `programForOwner` y `getDb` porque **el QR es la unica fila de la tabla
+   que pasa el gate** y por lo tanto la unica que llega a su dominio. Sin los dobles el test daria
+   verde **por motivos distintos segun el entorno**. Decision suya, declarada.
+
+**CONFIRMACION INDEPENDIENTE DEL FLAKE:** el implementador se topo con el mismo rojo ajeno
+(`consumer-recovery.neon > enforces 3/hour persistently`) y **lo reprodujo en vez de explicarlo**:
+aislado **8/8 verde**, y las dos corridas completas siguientes **1637/1637**. Refuerza que el
+mecanismo sigue **sin identificar** y que no tiene relacion con el codigo.
+
+**PASS DEL REVISOR INDEPENDIENTE (2026-09-18).** Sus 3 mutaciones propias —distintas de las del
+implementador— atacaron lo que faltaba: **R1** (romper el `suspensionReason` en la COPIA del paso 4
+de la hermana) → rojo **solo en la fila del QR**, con las otras 11 verdes; **R2** (dejar vacia la
+tabla de la excepcion) → rojo en el piso, y el conteo lo prueba: **84 tests bajo la mutacion contra
+86 limpios**, o sea que los dos `it.each` desaparecieron **sin ruido** y lo unico que lo delata es
+el piso; **R3** (romper el paso 1, la sesion, con un fallback SILENCIOSO en vez de un crash, para
+exigirle al oraculo distinguir 401 de 403) → rojo en los dos oraculos.
+
+**Verifico ademas lo que yo no habia verificado:** que `requireApiOwner` esta intacto **por shasum
+de su cuerpo** (`b90b285f…` identico contra `git show HEAD:`), no solo por el numstat; que la
+edicion post-mutacion del implementador era **comment-only** (`diff` de un solo hunk, integro dentro
+del `/** */`, cero codigo); y que el hook de tamaño **discrimina** (control de 301 lineas → `EXIT=2`
+con su mensaje; de 299 → `EXIT=0`).
+
+**Corregido por el orquestador tras su hallazgo cosmetico:** `0069-contratos-de-api.md:350` decia
+«los otros **cuatro** desenlaces» y son **cinco**.
+
+**Metricas ADR 0071 de la 0075** (anotadas al llegar cada notificacion):
+
+| Metrica | Implementador | Revisor |
+|---|---|---|
+| `subagent_tokens` | 153.249 | **96.310** |
+| `tool_uses` | 44 | **41** |
+| `duration_ms` | 1.505.866 (25m06s) | **716.218** (≈ **11 min 56 s**) |
+
+**Contraste con la 0074, que es el dato del ADR 0071:** en una spec CHICA el revisor costo **63%
+de los tokens y la mitad del tiempo** del implementador; en la 0074 (spec grande) habia costado 71%
+de los tokens y **mas** tiempo que implementar. **La revision independiente escala mejor que la
+implementacion**: cuanto mas acotada la spec, mas barata es en proporcion.
+
+## ⇥ EL ARCO DEL PROGRAMA DE FIDELIZACION — lo que el owner abrio el 2026-09-18, MEDIDO
+
+**El owner pidio revisar «como funciona la creacion y administracion del programa de afiliados» y
+generar las API para que esas acciones sean posibles desde una UI nueva, una app mobile o un POS.**
+Su premisa textual: *«hoy creo que cubrimos una parte (no se cual), pero falta poder editar el
+programa, poder ordenar el cierre del programa, poder asignar un premio del catalogo, poder cambiar
+el nombre de los puntos»*.
+
+**MEDIDO CONTRA EL ARBOL EL 2026-09-18, y corrige la premisa: cuatro de esas cinco YA EXISTEN.**
+
+| Lo que el owner pidio | Estado real, medido | Donde |
+|---|---|---|
+| **Editar el programa** | **YA EXISTE** | `PUT /api/loyalty-program` → `saveProgram`, con el `ProgramInput` entero |
+| **Ordenar el cierre** | **YA EXISTE**, y ademas se puede **cancelar** | `DELETE /api/loyalty-program` → `closeProgram(earningEndsAt, redemptionEndsAt)`; `PATCH {action:'cancel-close'}` → `cancelClose` |
+| **Premio del catalogo** | **YA EXISTE** | `rewards.ts:43` acepta `catalog_product`, `custom` y `discount` |
+| **Cambiar el nombre de los puntos** | **YA EXISTE** | `configuration.unitName` (`validation.ts:100,161`) |
+| **Elegir tipo de programa** | **A MEDIAS, y es el unico hueco real de los cinco** | `PUT` acepta el `kind`, pero `validation.ts:12` habilita **solo `points` y `stamps`**. `cashback` y `tiers` estan en el `CHECK` del esquema y **no** en el dominio. Y el wizard (`POST /api/onboarding/program`) **fija `stamps`**, por decision del ADR 0070 §1 |
+
+**ENTONCES EL PROBLEMA NO ES QUE FALTEN OPERACIONES: ES QUE NO SE PUEDEN CONSUMIR DESDE AFUERA.**
+Los dos huecos que si son reales, y los dos ya estaban medidos y declarados:
+
+1. **Las 5 rutas del programa responden sus errores SIN `code`**, contra la convencion del contrato
+   0067 («todo error responde `{error, code}`»). Esta declarado con su tabla en
+   `specs/0069-contratos-de-api.md` §«Estado actual declarado». **Consecuencia exacta para una UI,
+   una app mobile o un POS:** hay que discriminar por **status**, y dentro de un mismo status por el
+   **texto** de `error`, que es copia y puede cambiar. **Es el bloqueante real del pedido del
+   owner**, mucho mas que las operaciones.
+2. **No hay anexo de contrato para la administracion del programa.** El 0069 contrato los 5
+   endpoints del wizard (`prefill`, `business`, `program`, el sello publico y el QR); los cuatro
+   verbos de `/api/loyalty-program` **no tienen su contrato escrito**. Es el mismo hueco estructural
+   que la 0074: el contrato existe solo donde paso una spec.
+
+**⚠️ Y UN HALLAZGO DE PROCESO:** el hueco 1 dice textualmente «**Candidato a la fila 56 de
+`PARQUEADO.md`**» — y **esa fila nunca se escribio** (verificado: `grep` de «sin `code`» en
+`PARQUEADO.md` no devuelve nada; las filas 56 y 57 son otras cosas, absorbidas por la 0072). O sea
+que un hallazgo medido quedo flotando **solo dentro de un anexo de contrato**, que es justo el lugar
+donde nadie lo busca.
+
+**LO QUE ESTO CAMBIA PARA EL ARCO:** el pedido del owner probablemente **no** es un rediseño del
+dominio, sino **(a)** ponerle `code` estable a las 5 rutas, **(b)** escribir su anexo de contrato,
+y **(c)** una decision de producto sobre el tipo de programa en el wizard. Eso es mucho mas barato
+que «rediseñar la creacion y administracion». **Pero es una lectura del orquestador, no una decision
+del owner**: la decision de si se rediseña o se contrata lo que ya hay **es suya y no esta tomada**.
+
+### DECISIONES DEL OWNER DEL 2026-09-18 SOBRE EL ARCO, Y LO MEDIDO QUE LAS CONDICIONA
+
+**1. El wizard tiene que dejar elegir el tipo de programa** entre los que haya disponibles.
+Textual: «El wizard deberia poder elegir el tipo sobre todos los que tenemos disponibles: sellos,
+puntos, cashback, tiers». **Esto REEMPLAZA el prellenado «Sellos» del ADR 0070 §1** y necesita su
+propio ADR antes de cualquier spec.
+
+**LO MEDIDO, que ordena el costo de cada tipo y no es parejo:**
+
+| Tipo | Estado real en el arbol | Que cuesta habilitarlo |
+|---|---|---|
+| **stamps** | vivo y en produccion | nada |
+| **points** | **el dominio YA lo valida entero** (`validation.ts:12` lo habilita; `accrual.ts:23` le exige `per_amount`; `rewards.ts` le calcula `pointsCost`) | **contrato + composer del wizard.** Es el barato |
+| **cashback** | **NO EXISTE.** Los unicos hits son el literal en `LoyaltyKind`, un `if` de la allow-list y el `CHECK` del esquema. **Cero comportamiento** | **dominio nuevo**: acumulacion, canje y —lo caro— **semantica de PLATA**. No es un endpoint |
+| **tiers** | idem: literal, `if`, `CHECK`. Cero comportamiento | **no deberia ser un `kind`** — ver abajo |
+
+**2. Y el propio owner puso en duda que `tiers` sea un programa.** Textual: «un sistema de tier
+puede no ser en si un programa de fidelizacion como sellos o puntos, mas bien puede ser algo
+diferente, que es una "categorizacion" de los consumidores, una segmentacion para saber que
+consumidores son los de mas valor para un merchant».
+
+**SU INTUICION LA CONFIRMA EL ESQUEMA, y este es el dato que cierra la discusion:**
+`schema/loyalty.ts:137` tiene **`core_loyalty_program_one_operational`**, un indice unico PARCIAL
+sobre `business_id` donde `status in ('active','closing')`. O sea **un solo programa operativo por
+negocio, enforced en la base**. Si `tiers` siguiera siendo un `kind`, **elegir tiers significaria
+RENUNCIAR a sellos o puntos** — que es exactamente lo contrario de para que sirve una
+segmentacion, que tiene que convivir con el programa. **`tiers` sale del enum de `kind`.**
+
+**3. Y NO ES GREENFIELD: la mitad ya existe, en marketing.** `marketing/audience.ts` carga por
+membresia los hechos de las seis reglas de exclusion, e incluye **`max(order.created_at)`** — la
+RECENCIA— porque la campaña «dormidos» ya segmenta por eso. **«Dormidos» ES un segmento y ya
+funciona.** Lo que falta son los otros dos ejes del modelo clasico **RFM** (frecuencia y monto) y
+un concepto de segmento con nombre y persistencia. **Generalizacion de algo medio construido, no
+una feature nueva.**
+
+**PROPUESTA DE NOMBRE DEL ORQUESTADOR (el owner pidio sugerencia, NO es decision suya):** llamar
+**«Segmentos»** a la feature —generaliza «dormidos», que ya existe— y reservar **«Niveles»** para
+un mecanismo de tier visible al consumidor, si algun dia se construye. Son **dos cosas distintas**
+y conviene que tengan dos nombres: el segmento lo ve el COMERCIO y se deriva del comportamiento;
+el nivel lo ve el CONSUMIDOR y es una promesa.
+
+**USOS SUGERIDOS que se apoyan en superficie que YA existe** (sugerencia, no decision):
+- **Targeting de campañas**: un segmento es una regla mas en `audience.ts`. Es el mas barato.
+- **Recuperacion de fugados**: «era frecuente y dejo de venir» sale casi gratis — `lastOrderAt` ya
+  se carga por membresia.
+- **Señal en el MOSTRADOR**: que el staff vea «cliente top» al escanear. `/api/counter/resolve` ya
+  existe y ya resuelve al consumidor.
+- **Premios diferenciados**: `rewards[]` ya admite varios premios con `pointsCost`; gatear uno por
+  segmento es extension natural.
+- **Control de costo**: la cuota de campañas del plan free es finita; gastarla primero en el
+  segmento de mas valor.
+
+**NADA DE ESTO TIENE ADR NI SPEC TODAVIA. No se escribe codigo hasta que el owner cierre: (a) si
+`tiers` sale del enum, (b) que tipos entran al wizard en la primera tanda, y (c) si «Segmentos» es
+un arco aparte o entra con el del programa.**
+
+**LO QUE HAY QUE PREGUNTARLE, concreto:**
+- ¿El wizard tiene que ofrecer **elegir el tipo** de programa? Puntos = trabajo de contrato (el
+  dominio ya lo valida); **cashback = dominio nuevo**, no un endpoint.
+- ¿Alcanza con contratar y estabilizar lo que ya existe, o hay algo del comportamiento actual que
+  querés cambiar? Si es lo segundo, eso si es un **ADR** antes de cualquier spec.
 
 ## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-18)
 
