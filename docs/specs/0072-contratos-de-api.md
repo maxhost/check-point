@@ -72,9 +72,12 @@ Evalua en este orden, y **el orden es contrato** (ADR 0073 §1), no una optimiza
    `email_not_verified`, y un `status` que no sea `active` ni `closed` recibe
    `business_suspended`.
 
-### 1.1 Las 33 rutas que emiten estos cinco codigos
+### 1.1 Las 33 rutas que emiten estos cinco codigos — con UNA excepcion declarada
 
-Todas resuelven por `requireApiOwner`, directa o vía el `_auth.ts` de su dominio.
+Todas resuelven por `requireApiOwner`, directa o vía el `_auth.ts` de su dominio. **La unica
+excepcion es `GET /api/loyalty-program/qr`** (spec 0075): resuelve por
+`requireApiOwnerSinGateDeEmail` y por eso emite **cuatro** de los cinco codigos, no los cinco.
+El detalle, abajo de la tabla.
 
 | Grupo | Rutas | Resolvedor |
 |---|---|---|
@@ -84,10 +87,28 @@ Todas resuelven por `requireApiOwner`, directa o vía el `_auth.ts` de su domini
 | `api/marketing` | `campaigns`, `campaigns/[id]`, `campaigns/[id]/{activate,pause,end,archive,results}`, `audience-preview` (8) | `marketing/_auth.ts` → `requireMarketingOwner` |
 | `api/staff` | `/`, `[userId]/status`, `[userId]/pin/regenerate` (3) | `staff/_auth.ts` → `requireStaffOwner` |
 | `api/brand` | `/`, `logo-upload` (2) | `requireApiOwner` directo |
-| `api/loyalty-program` | `/`, `stamp-upload`, `qr` (3) | `requireApiOwner` directo |
+| `api/loyalty-program` | `/`, `stamp-upload` (2) | `requireApiOwner` directo |
+| `api/loyalty-program` | **`qr` (1)** | **`requireApiOwnerSinGateDeEmail`** — los pasos 1, 2 y 4, **sin el 3** (spec 0075) |
 | `api/loyalty-terms` | `templates` (1) | `requireApiOwner` directo |
 | `api/merchant/business` | `slug` (1) | `staff/_auth.ts` → `requireStaffOwner` |
 | **Total** | **32 rutas** — las 33 del barrido del DoD **menos** `api/staff/[userId]/pin`, que no es del owner (ver abajo) | |
+
+**⚠️ `GET /api/loyalty-program/qr` NO EMITE `email_not_verified`, Y ES CONTRATO (spec 0075).**
+Emite los otros cuatro codigos **enteros y en el mismo orden**: `401 unauthorized`,
+`403 not_owner`, `403 business_suspended` (con su `suspensionReason`) y `403 business_closed`,
+mas el fail-closed del `status` desconocido. Lo unico que no corre es el paso 3.
+
+**Por que:** la pantalla del QR es la **cuarta del wizard** (ADR 0070 §1: `→ | Tu QR | nada: es
+la recompensa | ya generado`) y el owner dicto que la verificacion bloquea *«todo lo que venga
+DESPUES del wizard»* (ADR 0070 §11). Una cuenta nueva llega ahi con `email_verified: false`
+**por construccion**, asi que el paso 3 volvia inalcanzable el resultado del propio alta. Es la
+misma razon por la que `POST /api/onboarding/program` y `GET /api/onboarding/state` tampoco lo
+llevan. **La excepcion es de esa ruta y de ninguna otra**: las 11 entradas HTTP restantes
+conservan los cinco codigos.
+
+**Lo que esto NO cambia para la UI:** un 403 de esa ruta sigue siendo accionable por su `code`;
+simplemente `email_not_verified` no es uno de los posibles. La pantalla del QR **no** tiene que
+ofrecer «verificá tu email» como salida de un 403.
 
 **Excluidas del barrido, y por que:**
 

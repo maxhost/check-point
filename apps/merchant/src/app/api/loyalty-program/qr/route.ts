@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import {
   apiOwnerFailureResponse,
-  requireApiOwner,
+  requireApiOwnerSinGateDeEmail,
 } from "../../../../server/api-owner";
 import { getDb } from "../../../../server/db";
 import { businesses } from "../../../../server/schema";
@@ -32,12 +32,15 @@ export const runtime = "nodejs";
  * QR **pelado**, sin poster: en el wizard todavia no hay ni color ni logo.
  */
 export async function GET(request: Request) {
-  // Spec 0072 §D3: el guard es `requireApiOwner` — esta ruta nacio con la 0069, DESPUES de
-  // que se censaran las superficies sin gate de email, y por eso la fila 56 de `PARQUEADO`
-  // decia 9 en vez de 10.
-  const auth = await requireApiOwner(request, {
+  // Spec 0075 — **la UNICA ruta del repo con este guard**, y el nombre lo dice: conserva los
+  // pasos 1, 2 y 4 (sesion, owner activo, eje `status`) y pierde SOLO el paso 3. Esta
+  // pantalla es la CUARTA del wizard (ADR 0070 §1) y la verificacion de email bloquea «todo
+  // lo que venga DESPUES del wizard» (ADR 0070 §11): con el paso 3 puesto, una cuenta recien
+  // creada —cuyo `email_verified` nace `false`— no podia ver el resultado de su propia alta.
+  // La 0072 la habia barrido adentro de las 12 entradas gateadas porque nacio con la 0069,
+  // DESPUES de que se censaran las superficies sin gate de email.
+  const auth = await requireApiOwnerSinGateDeEmail(request, {
     notOwner: "Solo el owner puede gestionar el programa.",
-    emailNotVerified: "Verificá tu email para gestionar el programa.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const url = new URL(request.url);

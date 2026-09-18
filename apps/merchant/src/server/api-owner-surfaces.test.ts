@@ -14,12 +14,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * la sesión y `ownerContext`, y se mide **qué status y qué `code`** sale de cada ruta en los
  * cinco estados del caller.
  */
-const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
-
 const world = vi.hoisted(() => ({
   session: null as null | { user: { id: string; emailVerified?: boolean } },
   ownerRow: null as null | Record<string, unknown>,
+  /** El negocio y el programa del caller. Viven acá —y no en una `const` de módulo— porque
+   * los factories de `vi.mock` se hoistean por encima de las declaraciones del archivo. */
+  businessId: "11111111-1111-4111-8111-111111111111",
+  programId: "99999999-9999-4999-8999-999999999999",
+  slug: "la-farmacia",
 }));
+
+const CALLER_BUSINESS = world.businessId;
 
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
@@ -28,6 +33,33 @@ vi.mock("./auth", () => ({
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
   ownerContext: async () => world.ownerRow,
+}));
+
+/**
+ * Spec 0075 — **el QR es la única fila que PASA el gate** en un caso, así que es la única que
+ * llega a su dominio. Sus dos dependencias de datos se doblan para que ese 200 sea
+ * **determinista**: sin esto daría 403 `not_owner` con `DATABASE_URL` puesta (el usuario
+ * doblado no existe en la base) y 503 `qr_unavailable` sin ella, y **ninguno de los dos
+ * probaría la polaridad**. El 200 contra la base lo prueba `loyalty-qr.neon.integration`.
+ */
+vi.mock("./loyalty-program", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./loyalty-program")>()),
+  programForOwner: async () => ({
+    business: { id: world.businessId },
+    program: { id: world.programId },
+    rewards: [],
+  }),
+}));
+
+vi.mock("./db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./db")>()),
+  getDb: () => ({
+    select: () => ({
+      from: () => ({
+        where: () => ({ limit: async () => [{ slug: world.slug }] }),
+      }),
+    }),
+  }),
 }));
 
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
@@ -82,10 +114,27 @@ const SURFACES: Array<[string, () => Promise<Response>]> = [
   ],
 ];
 
+/**
+ * Spec 0075 — **el email es el único de los cuatro pasos que no se aplica parejo**, y la tabla
+ * se parte para ASEVERAR la excepción en vez de perderla de vista. `SURFACES` sigue entera
+ * (12) para los otros cinco casos: el QR se mide igual que las demás en `unauthorized`,
+ * `not_owner`, `business_suspended`, `business_closed` y `status` desconocido. Las dos salen
+ * de `SURFACES` por filtro —no son listas paralelas—, así que mover una fila cambia los pisos.
+ */
+const SURFACES_CON_GATE_DE_EMAIL = SURFACES.filter(
+  ([name]) => name !== "loyalty-program/qr",
+);
+
+/** La única excepción del repo, y existe por el ADR 0070 §11: la pantalla del QR es la CUARTA
+ * del wizard, y la verificación bloquea «todo lo que venga DESPUÉS del wizard». */
+const SURFACES_SIN_GATE_DE_EMAIL = SURFACES.filter(
+  ([name]) => name === "loyalty-program/qr",
+);
+
 function ownerRow(status: string, suspensionReason: string | null = null) {
   return {
     id: CALLER_BUSINESS,
-    slug: "la-farmacia",
+    slug: world.slug,
     currencyCode: "USD",
     status,
     suspensionReason,
@@ -102,6 +151,17 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     // Piso del barrido: sin esto, una tabla que quedara vacía dejaría cada `it.each` de
     // abajo sin correr NI UNA vez y el archivo entero pasaría en verde sin medir nada.
     expect(SURFACES.length).toBe(12);
+  });
+
+  it("las dos tablas del email parten las 12 sin perder ni duplicar ninguna", () => {
+    // Spec 0075 §D3. Sin estos tres pisos, mover la fila del QR de una tabla a la otra —o
+    // vaciar la de la excepción— dejaría su `it.each` sin correr NI UNA vez, en verde.
+    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(11);
+    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(1);
+    expect(
+      SURFACES_CON_GATE_DE_EMAIL.length + SURFACES_SIN_GATE_DE_EMAIL.length,
+    ).toBe(SURFACES.length);
+    expect(SURFACES_SIN_GATE_DE_EMAIL[0][0]).toBe("loyalty-program/qr");
   });
 
   it.each(SURFACES)(
@@ -131,7 +191,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     },
   );
 
-  it.each(SURFACES)(
+  it.each(SURFACES_CON_GATE_DE_EMAIL)(
     "%s: owner con `emailVerified: false` → 403 `email_not_verified`",
     async (_name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: false } };
@@ -142,7 +202,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     },
   );
 
-  it.each(SURFACES)(
+  it.each(SURFACES_CON_GATE_DE_EMAIL)(
     "%s: owner SIN la clave `emailVerified` → 403 igual (fail-closed)",
     async (_name, call) => {
       world.session = { user: { id: "user-owner" } };
@@ -150,6 +210,40 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
       const response = await call();
       expect(response.status).toBe(403);
       expect((await response.json()).code).toBe("email_not_verified");
+    },
+  );
+
+  /**
+   * LA EXCEPCIÓN, ASEVERADA EN POSITIVO (spec 0075 §D3). Un `not.toBe(403)` solo diría lo
+   * mismo si la ruta se rompiera de cualquier otra forma: acá se exige el desenlace COMPLETO
+   * del camino feliz —200 + `image/svg+xml` + un SVG de verdad— **y** que el `code` del gate
+   * no aparezca en el cuerpo. Es el oráculo de la mutación M1.
+   */
+  it.each(SURFACES_SIN_GATE_DE_EMAIL)(
+    "%s: owner con `emailVerified: false` sobre un negocio `active` → 200, NUNCA `email_not_verified`",
+    async (_name, call) => {
+      world.session = { user: { id: "user-owner", emailVerified: false } };
+      world.ownerRow = ownerRow("active");
+      const response = await call();
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/svg+xml");
+      const body = await response.text();
+      expect(body).toContain("<svg");
+      expect(body).not.toContain("email_not_verified");
+    },
+  );
+
+  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 11
+   * (test de arriba), y acá tampoco frena — porque el paso 3 no corre, no porque «pase». */
+  it.each(SURFACES_SIN_GATE_DE_EMAIL)(
+    "%s: owner SIN la clave `emailVerified` → 200 igual (el paso 3 no corre)",
+    async (_name, call) => {
+      world.session = { user: { id: "user-owner" } };
+      world.ownerRow = ownerRow("active");
+      const response = await call();
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/svg+xml");
+      expect(await response.text()).not.toContain("email_not_verified");
     },
   );
 

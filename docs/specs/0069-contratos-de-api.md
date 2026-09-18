@@ -323,11 +323,32 @@ color ni logo del comercio. El poster armado es del brand kit (spec 0041).
 |---|---|---|
 | 401 | `unauthorized` | sin sesion |
 | 403 | `not_owner` | la sesion no es owner de ningun negocio |
+| 403 | `business_suspended` \| `business_closed` | el negocio no opera (spec 0072 §D4; con `suspensionReason` solo el primero) |
 | 404 | `no_program` | el negocio no tiene un programa operativo (`active`/`closing`) |
 | 503 | `qr_unavailable` | fallo no de dominio (base caida, rasterizado fallido) |
+| **nunca** | **`email_not_verified`** | **NO SE EMITE — ver abajo** |
+
+**LA AUSENCIA DE `email_not_verified` ES CONTRATO, NO UN DESCUIDO (spec 0075).** Esta ruta es la
+**unica** del API del owner que no lleva el paso 3 del gate: resuelve por
+`requireApiOwnerSinGateDeEmail` y conserva enteros los pasos 1, 2 y 4 (sesion, owner activo y el
+eje `status`, con su fail-closed). **Motivo:** la pantalla del QR es la **cuarta del wizard**
+(ADR 0070 §1: `→ | Tu QR | nada: es la recompensa | ya generado`) y el owner dicto que la
+verificacion de email bloquea *«todo lo que venga DESPUES del wizard»* (ADR 0070 §11). Una
+cuenta recien creada llega a esta pantalla con `email_verified: false` **por construccion**, asi
+que el paso 3 volvia inalcanzable el resultado del propio alta. Es la misma razon por la que
+`POST /api/onboarding/program` (§3) y `GET /api/onboarding/state` (contrato 0074 §3) tampoco lo
+llevan.
+
+**Para quien construye la UI:** la pantalla del QR **no** tiene que ofrecer «verificá tu email»
+como salida de un 403. Sus 403 posibles son `not_owner`, `business_suspended` y
+`business_closed`, y ninguno se resuelve verificando el email.
 
 Oraculo: `server/loyalty-qr.neon.integration.test.ts` (los dos formatos, el
-`content-disposition` con el slug, el 401, el 404 y el aislamiento entre dos negocios).
+`content-disposition` con el slug, el 401, el 404, el aislamiento entre dos negocios y **el
+owner con `email_verified: false` descargando su QR en SVG y en PNG**) y
+`server/api-owner-surfaces.test.ts` (la tabla `SURFACES_SIN_GATE_DE_EMAIL`, que asevera la
+excepcion en positivo, y `SURFACES`, que sigue midiendo los otros **cinco** desenlaces sobre esta
+misma ruta).
 
 ---
 

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 process.env.BETTER_AUTH_SECRET ||= "integration-secret-at-least-32-chars-xx";
@@ -39,14 +39,19 @@ describe.skipIf(!enabled)(
     const ownerA = `qr-a-${randomUUID()}`;
     const ownerB = `qr-b-${randomUUID()}`;
     const ownerSinPrograma = `qr-c-${randomUUID()}`;
+    /** Spec 0075: el owner del wizard, con `email_verified` como NACE la cuenta: `false`. */
+    const ownerSinVerificar = `qr-d-${randomUUID()}`;
     const businessA = randomUUID();
     const businessB = randomUUID();
     const businessC = randomUUID();
+    const businessD = randomUUID();
     const slugA = `qrtest-a-${businessA.slice(0, 10)}`;
     let programA = "";
     let programB = "";
+    let programD = "";
     let cookieA = "";
     let cookieC = "";
+    let cookieD = "";
 
     const get = (cookie: string | null, query = "") =>
       GET(
@@ -60,13 +65,14 @@ describe.skipIf(!enabled)(
       businessId: string,
       name: string,
       slug: string,
+      emailVerified = true,
     ) => {
       const db = getDb();
       await db.insert(users).values({
         id: userId,
         name,
         email: `${userId}@example.test`,
-        emailVerified: true,
+        emailVerified,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -108,15 +114,24 @@ describe.skipIf(!enabled)(
         "Panadería C",
         `qrtest-c-${businessC.slice(0, 10)}`,
       );
+      await seed(
+        ownerSinVerificar,
+        businessD,
+        "Panadería D",
+        `qrtest-d-${businessD.slice(0, 10)}`,
+        false,
+      );
       programA = await createProgram(ownerA);
       programB = await createProgram(ownerB);
+      programD = await createProgram(ownerSinVerificar);
       cookieA = (await openMerchantSession(ownerA)).split(";")[0];
       cookieC = (await openMerchantSession(ownerSinPrograma)).split(";")[0];
+      cookieD = (await openMerchantSession(ownerSinVerificar)).split(";")[0];
     }, 60_000);
 
     afterAll(async () => {
       const db = getDb();
-      const ids = [businessA, businessB, businessC];
+      const ids = [businessA, businessB, businessC, businessD];
       await db
         .delete(loyaltyProgramEvents)
         .where(inArray(loyaltyProgramEvents.businessId, ids));
@@ -130,7 +145,14 @@ describe.skipIf(!enabled)(
       await db.delete(businesses).where(inArray(businesses.id, ids));
       await db
         .delete(users)
-        .where(inArray(users.id, [ownerA, ownerB, ownerSinPrograma]));
+        .where(
+          inArray(users.id, [
+            ownerA,
+            ownerB,
+            ownerSinPrograma,
+            ownerSinVerificar,
+          ]),
+        );
     }, 60_000);
 
     it("sin sesión responde 401 unauthorized", async () => {
@@ -183,6 +205,43 @@ describe.skipIf(!enabled)(
       expect(await decodeQr(svg)).toBe(
         `http://localhost:3001/enroll/${programA}`,
       );
+    }, 60_000);
+
+    /**
+     * SPEC 0075 — **el QR no lleva el gate de email, y este es su oráculo contra la base.**
+     *
+     * La pantalla del QR es la CUARTA del wizard (ADR 0070 §1) y la verificación bloquea
+     * «todo lo que venga DESPUÉS del wizard» (§11). Una cuenta recién creada llega acá con
+     * `email_verified: false` **por construcción**, así que con el paso 3 puesto la ruta
+     * devolvía 403 `email_not_verified` y el alta terminaba en una pantalla inalcanzable.
+     *
+     * Es el oráculo de la mutación M1: volver a poner `requireApiOwner` pone esto en rojo.
+     */
+    it("el owner con el email SIN verificar descarga su QR igual (200 svg)", async () => {
+      const [fila] = await getDb()
+        .select({ emailVerified: users.emailVerified })
+        .from(users)
+        .where(eq(users.id, ownerSinVerificar));
+      // Sin esta lectura el caso sería VACUO: un seed que dejara `email_verified: true`
+      // pasaría en verde sin ejercitar una sola línea de lo que la 0075 cambia.
+      expect(fila?.emailVerified).toBe(false);
+
+      const response = await get(cookieD);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/svg+xml");
+      const svg = await response.text();
+      expect(svg).not.toContain("email_not_verified");
+      expect(await decodeQr(svg)).toBe(
+        `http://localhost:3001/enroll/${programD}`,
+      );
+    }, 60_000);
+
+    it("...y en PNG también, sin verificar el email", async () => {
+      const response = await get(cookieD, "?format=png");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      const bytes = Buffer.from(await response.arrayBuffer());
+      expect(bytes.subarray(0, 8)).toEqual(PNG_MAGIC);
     }, 60_000);
 
     // === MUTACIÓN #5 ===
