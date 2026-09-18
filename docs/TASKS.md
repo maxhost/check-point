@@ -149,6 +149,94 @@ inventarlo.
 (ADR 0071). Presupuesto **5 mutaciones**, sin migraciones, **cero `.tsx`**. La spec trae las cinco
 mutaciones con su invariante y su rojo esperado.
 
+## ⇥ ⚠️ VERCEL NO DESPLIEGA — MECANISMO SIN IDENTIFICAR (2026-09-18)
+
+**El sintoma:** se pushearon 5 commits a `origin/main` y **Vercel no desplego nada**. El ultimo
+deploy seguia siendo el de `78d1f3a`, de ~18 h antes.
+
+**⚠️ EL ORQUESTADOR CONCLUYO «el proyecto esta pausado» Y ESTABA EQUIVOCADO.** El owner lo
+verifico en el dashboard el 2026-09-18: **no hay ningun proyecto pausado**. La conclusion se
+retira; lo que sigue son **solo los hechos medidos**, que siguen en pie.
+
+**DATO QUE SE GANO CON EL ERROR, y evita que se repita: `"live": false` en el objeto de proyecto
+de la API de Vercel NO significa «pausado».** Se leyo asi y se construyo un diagnostico entero
+encima. **No usarlo como señal de pausa.**
+
+**HECHOS MEDIDOS, que siguen valiendo:**
+- **GitHub:** `78d1f3a` y `0507cf5` tienen `Vercel:success` con su deployment registrado. Los
+  commits nuevos (`e38b0a5`, `e2e8f18`) quedan en **`pending` con CERO statuses** — Vercel ni
+  siquiera publico un build fallido. **No es que el build reviente: es que no arranca.**
+- **La integracion con GitHub FUNCIONA:** `create_deployment` con `gitSource` github/main/sha
+  **creo el deployment**, o sea que Vercel resolvio el repo y el sha sin problema.
+- **Pero el build NUNCA ARRANCA:** ese deployment quedo en **`QUEUED` +7 minutos** sin pasar a
+  `BUILDING`.
+- **`unpause_project` es un no-op** en este proyecto: devuelve `null` y el segundo intento ni
+  siquiera cambia el `updatedAt`. **Consistente con que no hubiera nada que despausar.**
+
+**HIPOTESIS DESCARTADAS, midiendo:**
+- **No hay backlog**: `list_deployments` con `QUEUED,BUILDING,INITIALIZING` sobre **toda la
+  cuenta** devuelve **1 solo** deployment.
+- **No es limite de uso**: el `status` de remote caching devuelve `enabled`.
+- **No es la cola de namespace**: **0 proyectos** con `WAIT_FOR_NAMESPACE_QUEUE`.
+- **No es pausa del proyecto** (verificado por el owner en el dashboard).
+
+**ESTADO: el mecanismo NO esta identificado.** Lo que queda sin descartar es una degradacion del
+lado de Vercel —builds que se encolan y no se toman—, pero **eso no esta medido y no se escribe
+como causa**. Decision del owner: **cancelar el deploy encolado y reintentar mas tarde.**
+
+**PRODUCCION ESTA INTACTA, verificado por HTTP:** `www.checkpass.club` **200**, `/api/health`
+**200**, apex **308 → www**. El deploy encolado **no tumbo nada**; prod sigue sirviendo `78d1f3a`.
+`/api/merchant/session` da **404**: **prod todavia NO tiene el commit nuevo**, y el QA del owner
+no puede hacerse hasta que despliegue.
+
+**FALSA ALARMA REGISTRADA:** tras crear el deployment, el campo `domains` de `get_project` dejo de
+listar `www.checkpass.club`. **No se perdieron los dominios**: ese campo refleja los **alias del
+ULTIMO deployment**, y el ultimo paso a ser el encolado. Se verifico por HTTP antes de alarmar.
+
+## ⇥ PUSHEADO A PRODUCCION (2026-09-18) — `78d1f3a..e2e8f18`, CINCO COMMITS
+
+**Pedido del owner: «hacemos el push de todo para probar en live».**
+
+| commit | que |
+|---|---|
+| `b61f832` | `refactor(billing)`: el cuerpo compartido de cancel/settle-free sale del Route Handler |
+| `21855a3` | `feat(merchant)`: **spec 0074** — las tres lecturas que la UI necesita |
+| `9d6ce92` | `feat(merchant)`: **spec 0075** — el QR del wizard no lleva el gate de email |
+| `e38b0a5` | `feat(merchant)`: la UI mobile-first (sistema de diseño + wizard) |
+| `e2e8f18` | `docs`: INDEX, TASKS, api-faltante, PARQUEADO y las cuatro lecciones |
+
+**Verificado ANTES del push:** `.env.integration.local` ignorado por `.gitignore`, cero secretos
+en el status, y los cinco gates verdes sobre el arbol exacto (suite **1637 passed / 0 failed** con
+Neon, sin ninguna otra corrida viva).
+
+**⚠️ Y una lectura roja que NO reprodujo, declarada para que nadie la descubra de nuevo:** una de
+las ultimas cinco corridas locales dio **10 tests rojos en 8 archivos** (`wallet-push`,
+`web-push`), y la corrida inmediatamente anterior al commit dio 1637/0 sobre el mismo arbol. **El
+mecanismo sigue SIN identificar.** Se desarmo ademas una hipotesis propia: **CI NO usa una rama
+Neon fresca** — el workflow dice que «la rama de CI nace de `main` y se queda atras» y se migra
+idempotentemente, o sea que esta expuesta a la misma acumulacion que la local.
+
+**CI PARA `e2e8f18`, leida de `/check-runs` + los pasos del job** (nunca `/status`):
+**los pasos 1-11 en `success`**, incluidos **`pnpm lint`**, **`pnpm typecheck`**, **«Migrar la rama
+Neon de CI»** y —el que importaba— **«Unit + integracion Neon: completed success»**. **El flake NO
+aparecio en CI.** Al momento de escribir esto quedaban `test:e2e` corriendo, y `build` +
+`format:check` pendientes.
+
+**⚠️ TRAMPA DEL COMANDO DE VERIFICACION, medida en este mismo push y que se suma a la del
+`/status`:** este commit tiene tambien check runs de **Dependabot**, y uno ya dice
+`completed -> success`. Un poll que busque «completed» en **cualquier** check run **corta con un
+verde que no es el tuyo**. El comando correcto filtra por nombre:
+
+```
+GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/check-runs \
+  --jq '.check_runs[] | select(.name=="verify") | "\(.name): \(.status) -> \(.conclusion)"'
+```
+
+**LO QUE FALTA ANTES DEL QA DEL OWNER:** que `verify` cierre en `success`, y **que Vercel tenga EL
+COMMIT `e2e8f18`** —no que «prod este verde»—. El flujo que esta sesion destrabo y que hay que
+probar: `/es/business/onboarding` con un email nuevo → negocio → programa → **ver el QR SIN haber
+verificado el email**.
+
 ## ⇥ LA REVISION DE LA UI QUE VOLVIO DE CHATGPT (2026-09-18) — EL PUNTO DE RETORNO
 
 **Estado: la UI esta en el arbol SIN COMMITEAR** (26 archivos nuevos + 6 modificados). La
