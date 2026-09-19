@@ -789,7 +789,7 @@ evidencia que se le puso enfrente era visual, una rotura funcional es una decisi
    capturas de estilo no autoriza que un control deje de responder. Si la rotura cambia de clase
    —de visual a funcional— **vuelve al owner**, no se arrastra la autorizacion vieja.
 
-## 2026-09-19 — La spec mal especificada hace MENTIR al implementador (specs 0077 y 0078)
+## 2026-09-19 — La spec mal especificada hace MENTIR al implementador (specs 0077, 0078, 0079 y 0080)
 
 **Que paso.** En la spec 0077, **tres** de los errores que encontro el revisor estaban en la
 SPEC, no en el codigo. El peor: la spec afirmaba, presentandolo como medido, que
@@ -820,6 +820,44 @@ medir**, porque el implementador no tiene motivo para dudar y la propaga al arbo
 instruccion explicita de **verificar cada cita de la spec antes de apoyarse en ella**, y de
 reportar como hallazgo cualquiera que no se sostuviera en vez de copiarla. Verifico las tres que
 se le señalaron y las tres se sostenian — pero la instruccion es barata y el modo de fallo es caro.
+
+### Cuarto caso, 2026-09-19 (spec 0079): el ORACULO de la spec estaba VENCIDO
+
+La 0079 fijaba como mutacion M5 «los `code` caen a `codeForStatus` ignorando `error.code`» con el
+caso `business_suspended` como oraculo. **Despues de la propia 0079 ese oraculo ya no muerde**: al
+mover el guard, el eje `status` lo corta el **paso 4**, que emite su `code` sin pasar por
+`codeForStatus`. El revisor lo reprodujo — bajo la mutacion, el caso de `business_suspended` quedo
+**VERDE**, y el unico 403 que la sostiene es `email_not_verified`.
+
+Lo notable: **la spec se escribio antes del cambio que ella misma ordenaba**, y su oraculo
+describia el mundo viejo. No es una cita mal leida como en la 0077: es una afirmacion que **era
+cierta al escribirla y dejo de serlo por efecto de la propia spec**. Se detecta igual — corriendo
+la mutacion y **leyendo que test se cayo**, no dando por bueno que «algo» se puso rojo.
+
+De la misma spec: la tabla «Archivos» omitia 13 archivos realmente tocados y listaba
+`validation.ts` como «editar» cuando **no tocarlo era lo correcto**. El revisor tuvo que
+dictaminar, otra vez, que eso no era alcance ampliado del implementador.
+
+### Quinto caso, 2026-09-19 (spec 0080): el orquestador se lo hizo a si mismo, y lo cazo a tiempo
+
+Escribiendo la 0080 —cuyo trabajo es justamente ponerle oraculo a un invariante que no lo tiene—
+el orquestador afirmo que el `if (partial.clauses !== undefined)` estaba en
+`program-defaults.ts:134` **y estaba en la 177**. No es un detalle de citado: la 134 esta dentro de
+`composeProgramInput`, que es **puro**, y la 177 dentro de `programInput`, que es `async` y consulta
+la base. **Con la linea mal, el test que la spec pedia no habria podido pinnear nada**: cuando se
+llama al compositor, la decision de sembrar ya fue tomada. El implementador habria escrito un test
+verde que no protege el invariante — exactamente el defecto que la spec venia a arreglar.
+
+Lo cazo **abrir el archivo antes de cerrar la spec**, en vez de confiar en la cita del handoff del
+revisor (que era correcta: decia «`programInput`»; el orquestador la tradujo mal a un numero de
+linea). **La regla operativa que deja: una spec que cita `archivo:linea` verifica ESA linea con un
+`grep -n` antes de cerrarse, y si la cita viene con el nombre de una funcion, el numero se
+subordina al nombre.**
+
+**El patron, cuatro specs seguidas:** los defectos de este arco aparecen en las SPECS, no en el
+arbol. Vale como prior al revisar: **lo primero que hay que dudar en un encargo es la spec**, y por
+eso los encargos de este repo llevan la instruccion de reportar como hallazgo toda cita que no se
+sostenga, en vez de obedecerla.
 
 ## 2026-09-19 — Un insumo falso a un subagente manda a buscar el bug donde no esta
 

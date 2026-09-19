@@ -218,6 +218,18 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   503/404 (no solo su API), va por `src/middleware.ts` con `matcher` acotado. Ojo: el middleware corre en
   **edge runtime** — no importes cadenas que arrastren `node:crypto` (leé la env directo). Verificá que la
   env no quede inlineada en build-time inspeccionando el chunk edge compilado.
+- **EL TOS: `renderTermsText` tira 422 CUANDO EL VALOR DE LA VARIABLE ES VACIO, no solo cuando la
+  variable no esta en el allowlist.** La condicion es
+  `!allowedVariables.includes(key) || !variables[key]`
+  (`apps/merchant/src/server/loyalty-program/validation.ts:259-270`). **Consecuencia que sorprende:
+  una plantilla con una variable que «a veces no aplica» IMPIDE GUARDAR EL PROGRAMA** — no deja un
+  hueco en el texto, corta el `PUT` con 422. Asi que **una variable de TOS que no siempre tiene
+  valor no se resuelve con un default vacio**: o la plantilla que la usa es una plantilla APARTE
+  (elegida por el dato que decide, como `earning_per_amount` por el `accrual.mode`), o la variable
+  no se emite y ninguna plantilla del wizard la nombra. **Y el allowlist esta EN LA FILA de la
+  plantilla** (`variables_allowlist`, jsonb): agregar una variable al diccionario de `terms.ts` sin
+  agregarla al allowlist de las semillas es un 422 garantizado, y eso exige una **migracion de
+  datos**. Medido en la spec 0081; el caso de la 0078 es el mismo con `country_code`.
 - **Formatos de imagen aceptados en subidas: viven en UN solo lugar,
   `apps/merchant/src/lib/image-formats.ts`** (jpeg/png/webp/**heic/heif/avif** — las fotos de
   cámara/galería de Android e iPhone son HEIC/HEIF, `sharp` las decodifica). Lo consumen los guards
