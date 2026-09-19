@@ -19,7 +19,8 @@ export const dynamic = "force-dynamic";
  *
  * **Lleva sesion pero NO lleva el gate de email, a proposito, y es precedente ya
  * establecido:** el wizard corre ANTES de la verificacion (ADR 0070 §11), que es exactamente
- * por lo que `POST /api/onboarding/program` tampoco lo lleva (0072, cierre de F1). Un gate de
+ * por lo que la escritura del programa tampoco lo lleva (0072 y 0077; desde la spec 0079 esa
+ * escritura es `PUT /api/loyalty-program`, la única). Un gate de
  * email aca volveria irretomable el unico flujo que ocurre antes de verificar. Es la
  * mutacion M5.
  *

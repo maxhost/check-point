@@ -56,7 +56,8 @@ export type EventAction =
 export class LoyaltyError extends Error {
   /**
    * `code` es OPCIONAL y nació con el cierre de F1 de la spec 0072. Sin él, el único mapeo a
-   * `code` que había era por STATUS (`codeForStatus` en `api/onboarding/program`), y ahí todo
+   * `code` que había era por STATUS (`codeForStatus`, que desde la spec 0079 vive en
+   * `api/loyalty-program`), y ahí todo
    * 403 se traducía a `not_owner` — así que un rechazo por negocio suspendido habría salido
    * con el `code` de «no sos owner», que es mentirle al cliente sobre por qué lo frenaron.
    * Cuando viene, gana sobre el mapeo por status.

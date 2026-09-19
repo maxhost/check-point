@@ -14,27 +14,218 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-18 — arbol LIMPIO en `8a01c62`, con la spec 0077 cerrada. Los
-2 commits nuevos NO estan pusheados (`origin/main` sigue en `bb511df`). La 0078 tiene un
-implementador CORRIENDO. Ver «⇥ ✅ 0077 IMPLEMENTADA» abajo.**
+**Ultima actualizacion: 2026-09-19 — la spec 0079 esta IMPLEMENTADA con PASS de revisor
+independiente, y con eso las TRES specs del ADR 0076 (0077, 0078, 0079) estan cerradas.
+Lo unico que queda del arco es la SPEC DEL TOS, y esta bloqueada en UNA decision del owner.
+Ver «⇥ ARRANCA ACA».**
 
-**ESTADO REAL, en una pantalla — lo medido en ESTA sesion esta marcado; lo heredado dice de donde
-viene:**
+**ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador en esta sesion,
+salvo lo que diga explicitamente de donde viene:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | ver `git log --oneline -1`. La **0078** acaba de cerrar y se commitea en este turno |
-| `origin/main` | **`bb511df`** — estamos **2 commits ADELANTE y sin pushear**: `53bcf88` (fallback de dev + ADR 0076) y `8a01c62` (spec 0077) |
-| Specs del arco | **0067, 0068, 0069, 0072, 0074, 0075 y 0077 `implementadas`**. Las 5 ultimas con **PASS de revisor independiente** |
-| **En vuelo AHORA** | **0077 y 0078 `implementadas`** con PASS. Lo que sigue es la **0079** (una ruta + `kind`), **la unica que lleva `test:e2e`** |
-| Suite local con Neon | **219 archivos / 1715 tests, 0 failed, 0 skipped** — corrido por el orquestador tras cerrar la 0078 |
-| `typecheck` · `lint` · `format:check` · `build` | **los cuatro verdes** sobre `8a01c62` |
-| ⚠️ **`pnpm test:e2e`** | **NO se corrio en esta sesion** y no aplicaba (0077 y 0078 no tocan `.tsx`). **La 0079 SI lo lleva** |
-| ⚠️ CI | **`main` remoto sigue ROJO** por `test:e2e` en `tests/e2e/loyalty.spec.ts:27` (UI vieja de `/backoffice/demo`). Es **anterior** a los 2 commits nuevos — heredado de `bb511df`, no lo causamos |
-| Vercel / Produccion | **Medido en la sesion del 2026-09-18 anterior, NO re-verificado hoy:** ultimo deploy `78d1f3a`, prod sin el codigo nuevo (`/api/merchant/session` daba 404), **0 negocios / 0 usuarios / 0 suscripciones**. **Re-medir antes de usarlo para decidir algo** |
+| HEAD local | **`20531b2`** + el trabajo de la 0079. `origin/main` sigue en **`bb511df`**: **4 commits sin pushear**. El owner no pidio push |
+| Specs del arco | **0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078 y 0079 `implementadas`**. Las 7 ultimas con **PASS de revisor independiente** |
+| **El ADR 0076 esta COMPLETO** | sus tres specs (A=0078, B=0077, C=0079) cerradas con PASS |
+| `typecheck` · `lint` · `format:check` · `build` | **los cuatro verdes**, corridos por el orquestador (typecheck con `--force`, sin cache) |
+| Suite con Neon | **220 archivos / 1726 tests**. **219 archivos verdes**; el unico rojo es el flake AJENO de abajo |
+| **`pnpm test:e2e`** | **CORRIDO** (lo exigia la 0079). Unico rojo: `tests/e2e/loyalty.spec.ts:27`, **demostrado PREEXISTENTE** por el revisor con una corrida baseline en un worktree limpio a `20531b2` — contadores identicos, mismo test, misma linea. **No se declaro ajeno de palabra: se midio dos veces** |
+| ⚠️ CI de `main` remoto | **ROJO heredado** por ese mismo e2e, anterior a los 4 commits. No lo causamos nosotros |
+| Vercel / Produccion | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada con eso** |
+| **QA del owner** | **ya casi corresponde**: las tres specs del ADR 0076 estan listas. Falta solo la spec del TOS |
 
-**LO QUE FALTA PARA EL QA UNICO QUE PIDIO EL OWNER:** la 0078 (en vuelo) y la 0079 (bloqueada).
-Recien con las tres `implementadas` se le avisa.
+### ⚠️ EL FLAKE AJENO DE `consumer-recovery`, con el mecanismo MEDIDO (2026-09-19)
+
+`consumer-recovery.neon.integration.test.ts:367` fallo en la corrida del orquestador
+(`expected 'accepted' to be 'failed'`) y **volvio a fallar corrido solo**, aunque el
+implementador y el revisor lo vieron VERDE sobre **el mismo arbol**. Mismo codigo, dos
+resultados distintos: no es el codigo.
+
+**El mecanismo, leido en el archivo y confirmado — no es la colision de `phone_e164` UNIQUE que
+decian los handoffs viejos, eso es FALSO:** `phones[4]` se usa en **DOS** tests (lineas ~269 y
+~350). El primero deja una entrega `accepted` y el segundo una `failed`. La linea 363-367 hace
+`select ... where(phoneE164)` **SIN `ORDER BY`** y lee `.at(-1)`: el orden de filas en Postgres
+es indefinido, asi que levanta cualquiera de las dos.
+
+**Es AJENO a la 0079**: el archivo no lo toca la spec (`git status` limpio sobre el) y es del
+dominio consumer/OTP. **Arreglo de una linea** (un `ORDER BY` por `createdAt`, o filtrar por
+`status`), pero es tocar un test de otro dominio: **va como spec chica aparte, no se cuela aca.**
+
+## ⇥ ARRANCA ACA LA SESION QUE SIGUE (2026-09-19)
+
+### LO UNICO QUE BLOQUEA: LA SPEC DEL TOS, Y ES UNA DECISION DEL OWNER
+
+**Ya se le pregunto y esta esperando respuesta. NO se le vuelve a preguntar lo que ya dijo**
+(sus ocho variables estan abajo). Lo que falta es **la #7**, y las tres propuestas del
+orquestador que solo necesitan un si/no.
+
+**Las 8 variables que el owner pidio textual, CONTRASTADAS CONTRA EL CODIGO DE HOY** (medido por
+el orquestador en `loyalty-program/terms.ts`, que tiene **cinco**: `business_legal_name`,
+`program_name`, `program_unit_plural`, `program_kind`, `country_code`):
+
+| # | Variable | Estado MEDIDO |
+|---|---|---|
+| 1 | Nombre de la empresa | ✅ pero lleva `business.name`, el nombre **comercial**: no hay columna de razon social |
+| 2 | Listado de locales | ❌ existe `core.location.name`, no se pasa |
+| 3 | Direccion de la empresa | ❌ **y la empresa NO tiene direccion**: no hay columna. Solo la tienen los locales (`location.address_label`) |
+| 4 | Pais | ✅ `country_code` (allowlisted desde la 0078) |
+| 5 | Tipo de programa | ✅ pero emite el literal CRUDO `"stamps"`/`"points"`, en ingles, dentro del texto legal |
+| 6 | Nombre de los puntos | ✅ el plural. **El singular NO se pasa** — los handoffs viejos decian que si: es FALSO |
+| 7 | Cada cuanto dinero → un sello | ⚠️ **LA DECISION ABIERTA**, abajo |
+| 8 | Cada cuanto dinero → X puntos | ❌ esta en `accrual` (`grant`/`blockAmount`), no se pasa |
+
+**LA #7, que es la que bloquea:** el wizard crea los Sellos como «un sello por compra»
+(`accrual: {mode:"per_purchase", grant:1, blockAmount:null}`), asi que **no hay monto de dinero
+que poner** y la variable quedaria vacia en todo programa nacido del wizard. Las dos salidas:
+**(a)** el texto legal de Sellos no usa esa variable — cero cambios de pantalla; **(b)** el
+wizard pasa a preguntar un monto, **que es cambiar la pantalla 3 del ADR 0070 §1**.
+
+**LAS TRES PROPUESTAS DEL ORQUESTADOR** (esperan un si/no, no son decisiones tomadas):
+
+- **#3** que la variable sea la direccion **del local**, no de la empresa (es lo unico que
+  existe), listada junto a cada nombre de local. La alternativa cara es una columna de
+  direccion fiscal en `business`.
+- **#2** solo los locales `active`, separados por coma. Los `archived` no van al TOS.
+- **#5** emitir `"Sellos"`/`"Puntos"` en castellano, no el literal interno.
+
+**LO QUE LA SPEC DEL TOS RESUELVE DE PASO — el hallazgo abierto de la 0078:** hoy hay TRES copias
+de cada clausula (`global-draft` vieja + `default` + `EC`), `GET /api/loyalty-terms/templates`
+las devuelve **sin `jurisdictionScope`**, y `renderedTerms` acepta **cualquier** `templateId`
+`published` sin validar scope. **La respuesta del owner lo simplifica: se ARCHIVA `global-draft`**
+— al dejar de ser `published`, el filtro de `terms.ts` la excluye y el agujero se cierra solo,
+sin la validacion de scope en el writer que se habia propuesto.
+
+**⚠️ DATO MEDIDO ANTES DE ARCHIVAR:** las semillas por pais de la 0078 tienen **solo dos**
+claves (`earning` y `redemption`). La tercera, `transition` (vigencia), existe **UNICAMENTE** en
+`global-draft`. El wizard solo usa las dos primeras (`WIZARD_CLAUSE_KEYS`), asi que archivar **no
+rompe el wizard**, pero deja sin clausula de vigencia por pais. Sembrarla puede entrar en la
+misma spec. Ademas `renderedTerms` necesita la plantilla al RE-guardar un programa que la
+referencie: medir cuantos hay antes (en prod habia 0 negocios al 2026-09-18, **re-medir**).
+
+### LOS 3 HALLAZGOS MENORES QUE DEJO EL REVISOR DE LA 0079 (ninguno bloquea, ninguno tocado)
+
+1. **(bajo) Un invariante del contrato SIN ORACULO permanente.** El contrato declara que
+   `clauses: []` **no** es lo mismo que omitir `clauses` (el primero da 422, el segundo trae las
+   semillas del pais). Hoy lo sostiene **un solo caracter**: `if (partial.clauses !== undefined)`
+   en `programInput`. Cambiarlo a truthy (`if (partial.clauses)`) rompe la afirmacion y **ningun
+   test del repo se pondria rojo**. El revisor lo verifico por sonda ejecutada. **Arreglo: un
+   test de 6 lineas en `program-defaults.test.ts`.**
+2. **(bajo) Un docblock que sobre-afirma.** El caso dado vuelta en `onboarding-grant.neon` se
+   titula «es lo UNICO que el permiso habilita» pero mide una **creacion**, y
+   `programEditDenied` hace `if (!input.isEdit) return null;`: ese 201 sale **igual sin permiso**.
+   No hay riesgo de produccion — el control positivo real (editar con permiso → 200) existe y
+   esta verde en `onboarding-program-bypass.neon`. **Arreglo: renombrar el caso.**
+3. **(bajo, costo) No son 2 lecturas por `PUT`: son 5 round-trips antes de escribir.** El
+   implementador declaro 2 (`getSession` ×2); el revisor midio ademas `ownerContext` ×1,
+   `ownerBusiness` ×1 (en el compositor, **solo con cuerpo corto** — justo el del alta) y
+   `programForOwner`→`ownerBusiness` ×1. Antes de la 0079 cada puerta hacia 3. **No hay
+   `cookieCache` configurado** en ningun lado (verificado con `rg`). Es costo, no correccion:
+   **decision del owner**, y la alternativa toca `api-owner.ts`, que la 0075 pidio dejar intacto.
+
+**Y UN HALLAZGO PREEXISTENTE que el revisor midio de paso, NO introducido por la 0079:** el guard
+y el writer pueden resolver negocios **DISTINTOS**. `ownerContext` (`server/staff.ts`) filtra
+`role='owner' AND memberships.status='active'` y ordena **`asc(createdAt)`**; `ownerBusiness`
+(`loyalty-program/owner.ts`) filtra **solo** `role='owner'` y ordena **`desc(createdAt)`**. Con
+2+ negocios por owner, el guard evalua el mas viejo y `saveProgram` escribe en el mas nuevo. La
+0072 §D3 ya lo declara abierto y el `PUT` lo arrastraba antes de esta spec. **Declarado y no
+perseguido** (cuesta un seed nuevo, fuera de presupuesto); la receta para reproducirlo esta en
+el handoff del revisor.
+
+## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0079 (2026-09-19)
+
+**Estado: implementado, SIN commitear y SIN marcar la spec.** Falta el PASS del revisor
+independiente (ADR 0071). Arbol limpio de mutaciones (`no-mutations-left.sh` EXIT=0).
+
+**Los SEIS gates, con `set -a; . ./.env.integration.local; set +a`:**
+`typecheck` · `lint` · `format:check` · `build` · `test` · **`test:e2e`**.
+
+| Gate | Resultado |
+|---|---|
+| `typecheck` · `lint` · `format:check` · `build` | **verdes**. Al borrar la ruta hizo falta `rm -f apps/merchant/.next/types/validator.ts` (tipo GENERADO viejo, el gotcha de la spec §5) |
+| `test` con Neon | **220 archivos / 1726 tests, 1 failed, 0 skipped**. El unico failed es el **flake AJENO** `consumer-recovery.neon.integration.test.ts:367` (`expected 'accepted' to be 'failed'`) — el mismo `.at(-1)` sin `ORDER BY` ya documentado. **Corrido solo: 8/8 VERDE** |
+| **`test:e2e`** | **1 failed, 1 skipped, 4 passed**, y el failed es el rojo **PREEXISTENTE**. Ver abajo |
+
+**LA EVIDENCIA QUE SEPARA EL ROJO DE e2e, medida DOS veces:** antes de tocar nada, sobre el
+arbol LIMPIO en `20531b2`, `pnpm test:e2e` ya daba **1 failed / 1 skipped / 4 passed** con
+`tests/e2e/loyalty.spec.ts:27` en `locator.check` timeout de 30 s
+(`<span class="loyalty-choice-content"> intercepts pointer events`). Con los cambios de la
+0079 la corrida da **exactamente lo mismo**: mismo archivo, misma linea, mismo mecanismo,
+mismos contadores. **No es «falla lo de siempre»: son dos corridas, una antes y una despues.**
+
+**⚠️ DETALLE DEL ENTORNO, no del codigo:** habia un `next dev` **huerfano del 2026-09-18**
+(PID 85329, `apps/merchant`) ocupando el puerto 3000, y con el vivo **`pnpm test:e2e` ni
+arranca** (`Another next dev server is already running`, exit 1). Se lo detuvo para poder
+correr el gate. Si el gate falla asi, no es la suite: es el puerto.
+
+**DESVIOS DE LA TABLA «Archivos» — todos declarados, ninguno de producto. El revisor tiene
+que mirarlos:**
+
+1. **SEIS archivos de test mas que la tabla no lista.** Todos importaban
+   `POST /api/onboarding/program`, que se borro, asi que el typecheck los obliga:
+   `onboarding-program-bypass.neon`, `onboarding-grant-cortes.neon`, `onboarding-grant.neon`,
+   `onboarding-program-terms.neon`, `onboarding-program-503`, y el soporte
+   `onboarding-grant-support.ts`. **La tabla de la spec estaba incompleta** (mismo caso que la
+   0078); el cambio es mecanico: misma puerta nueva, mismo cuerpo corto, mismos desenlaces.
+2. **UN caso preexistente cambio de polaridad A PROPOSITO, y es el unico.**
+   `onboarding-grant.neon` exigia «`PUT /api/loyalty-program` sigue dando **403** a un no
+   verificado CON permiso». La 0079 §1 **le saca el paso 3 a esa puerta**, asi que ese 403 ya
+   no corresponde. **No se borro: se dio vuelta con su motivo escrito** y pasa a ser el control
+   POSITIVO del barrido de las 11 (crea con 201). Es el desvio que mas merece juicio.
+3. **`api-owner-surfaces-support.ts` (nuevo).** La tabla de superficies se MOVIO ahi tal cual:
+   con la fila 13 (el `PUT`), `api-owner-surfaces.test.ts` pasaba de 300 lineas y el hook
+   `file-size` corta — «dividir, no extender». Hoy queda en **291**. Cero `expect` en el
+   modulo movido: los oraculos y los dobles siguen en el test.
+4. **`loyalty-program-ruta-unica.neon.integration.test.ts` (nuevo).** Los casos que la 0079
+   AGREGA (Puntos, el 422 del dinero, `cashback`, el cuerpo completo de hoy, el cambio de
+   modalidad, `business_suspended`). No entraban en `onboarding-program.neon`, que quedo en
+   **293** lineas.
+5. **`loyalty-program/validation.ts` NO se toco.** La tabla dice «editar — lo que el compositor
+   necesite», y **el compositor no necesito nada**: delega en `validateProgramInput` tal como
+   esta. Se deja sin tocar en vez de inventar un cambio; su `shasum` es el de HEAD.
+6. **Cuatro comentarios corregidos en archivos fuera de la tabla, SOLO texto** — afirmaban que
+   `POST /api/onboarding/program` existe, y despues de esta spec eso es FALSO en el arbol:
+   `server/loyalty-program.ts`, `server/api-owner.ts`, `server/loyalty-program/core.ts` y
+   `app/api/onboarding/state/route.ts`. Cero bytes de comportamiento.
+
+**HALLAZGOS A DECIDIR (ninguno tocado):**
+
+- **El `code` de «modalidad no disponible» es `invalid_program`**, igual que cualquier otro 422:
+  quien quiera distinguir esa causa tiene que leer el `error`. Declarado en el contrato como
+  limite de hoy; darle un `code` propio no estaba en el alcance.
+- **`PUT` hace DOS lecturas de sesion por request.** `requireApiOwnerSinGateDeEmail` no
+  devuelve la sesion y el writer necesita `emailVerified` + el permiso de alta, que viven en
+  esa fila. La alternativa —que el guard la devuelva— toca `api-owner.ts`, que NO esta en la
+  tabla y que la 0075 pidio dejar intacto. Medido: **no hay `cookieCache` configurado**, asi
+  que es **una consulta mas por escritura de programa**. Se eligio el costo y no el cambio de
+  alcance; si el owner prefiere lo otro, es una spec chica.
+
+## ⇥ ✅ BITACORA DE MUTACIONES — spec 0079 (implementador, 2026-09-19) — CERRADA
+
+**CERRADA: las 5 medidas y revertidas.** `diff` VACIO contra la copia limpia en los 3 archivos,
+`shasum` identico, `grep -rn MUTATION apps/*/src tools` devuelve **cero lineas** y
+`.claude/hooks/no-mutations-left.sh` sale **EXIT=0**. Restauracion de emergencia, por si acaso
+(los 3 archivos estan SIN COMMITEAR: `git checkout` NO alcanza, se lleva el trabajo de la spec):
+
+```
+cp /tmp/limpios-0079/route.ts.6e1155            apps/merchant/src/app/api/loyalty-program/route.ts
+cp /tmp/limpios-0079/program-defaults.ts.02b918 apps/merchant/src/server/onboarding/program-defaults.ts
+cp /tmp/limpios-0079/validation.ts.2f34dd       apps/merchant/src/server/loyalty-program/validation.ts
+```
+
+| id | archivo | shasum LIMPIO | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `app/api/loyalty-program/route.ts` | `b3206dd6cb9157329c1a538e64329428583e9b00` | el guard sin paso 3: crear sin verificar tiene que dar 201 | **ROJO — 13 tests**. El de la spec: `onboarding-program-bypass.neon` «sin email verificado y SIN permiso, CREAR el primer programa sigue dando 201» (`expected 403 to be 201`). Tambien `api-owner-surfaces` las 2 filas del `PUT` sin gate, los 6 de `onboarding-grant-cortes.neon` y el de `onboarding-grant.neon`. Alcance corrido: esos 4 archivos, **13 failed / 108 passed** |
+| M2 | `server/onboarding/program-defaults.ts` | `46812170425f18c52b865809a0375fd7c371d0db` | el servidor NO inventa el dinero de Puntos (`accrual`) | **ROJO — 2 tests**: `loyalty-program-ruta-unica.neon` «Puntos SIN `accrual` → 422 `invalid_program` y CERO filas» (`expected 201 to be 422`) y `program-defaults.test` «SIN `accrual` el compositor no lo inventa» (`expected { mode: 'per_amount', grant: 1, … } to be undefined`). Alcance: + `onboarding-program.neon`, verde |
+| M3 | `server/onboarding/program-defaults.ts` | `46812170425f18c52b865809a0375fd7c371d0db` | un campo explicito nunca se pisa con su default | **ROJO — 2 tests**: `loyalty-program-ruta-unica.neon` «un cuerpo COMPLETO de hoy conserva cada campo que mando» (`expected 'per_purchase' to be 'per_amount'`) y `program-defaults.test` «respeta el `accrual` que vino en el cuerpo». Alcance: los mismos 3 archivos |
+| M4 | `server/loyalty-program/validation.ts` | `b1933c0db4111d921aa5e3ceb88b8e4caa6273ea` | `cashback`/`tiers` NO estan habilitadas | **ROJO — 2 tests**: `loyalty-program-ruta-unica.neon` «`cashback` → 422 con el mensaje de modalidad no disponible» (`expected 201 to be 422`) y `program-defaults.test` «cashback → 422 «modalidad no disponible»» (`expected 'Define la mecánica de acumulación.' to be 'Esta modalidad todavía no está disponible.'`). **El segundo confirma por que el oraculo tiene que ser el MENSAJE**: el status habria seguido en 422. Alcance: + `loyalty-program.test`, verde |
+| M5 | `app/api/loyalty-program/route.ts` | `b3206dd6cb9157329c1a538e64329428583e9b00` | el `error.code ??` gana sobre el mapeo por status | **ROJO — 2 tests**, los dos por `email_not_verified`: `onboarding-program-bypass.neon` «PUT #1 → 201; PUT #2 → 403 …» y `onboarding-grant-cortes.neon` «CORTE por vencimiento», los dos `expected 'not_owner' to be 'email_not_verified'`. **Y UN HALLAZGO: el oraculo que la spec le asigna —`business_suspended`— quedo VERDE, y es correcto que lo este.** Alcance corrido: + `loyalty-program-ruta-unica.neon`, `onboarding-program.neon`, `onboarding-program-503`, verdes |
+
+**EL HALLAZGO DE M5, que es un error de la SPEC y no del codigo:** despues de la 0079 el eje
+`status` lo corta el **paso 4 del guard** (`requireApiOwnerSinGateDeEmail` →
+`apiOwnerFailureResponse`), que emite su `code` **sin pasar por `codeForStatus`**; el chequeo
+gemelo de `saveProgram` ya no se alcanza por HTTP. El unico 403 que viaja como `LoyaltyError`
+con `code` propio es `email_not_verified`, y **ese si tiene oraculo y muerde**. El motivo esta
+escrito en el test de `loyalty-program-ruta-unica.neon` para que nadie lo vuelva a suponer.
 
 ## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-19)
 

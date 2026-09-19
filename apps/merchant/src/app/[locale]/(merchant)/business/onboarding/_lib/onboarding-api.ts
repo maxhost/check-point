@@ -95,14 +95,25 @@ export async function createBusiness(input: CreateBusinessInput) {
   return business;
 }
 
+/**
+ * Spec 0079 — la ruta unica. `POST /api/onboarding/program` se borro: escribia el mismo
+ * programa con el mismo writer, y dos puertas sobre un writer es lo que produjo el bypass
+ * de la 0077.
+ *
+ * El cuerpo sigue siendo el CORTO: lo que el servidor puede completar con seguridad
+ * —`unitName`/`unitPlural`, la mecanica «un sello por compra» y las clausulas del pais—
+ * es opcional y lo completa `programInput`. Y **sigue sin mandar ids**: el negocio lo
+ * resuelve el servidor desde la sesion (ADR 0070 §15.3).
+ */
 export async function createProgram(target: number, rewardLabel: string) {
   const result = await jsonRequest<{ programId: string; created: boolean }>(
-    "/api/onboarding/program",
+    "/api/loyalty-program",
     {
-      method: "POST",
+      method: "PUT",
       body: JSON.stringify({
-        target,
-        reward: { type: "custom", label: rewardLabel.trim() },
+        kind: "stamps",
+        configuration: { target },
+        rewards: [{ type: "custom", label: rewardLabel.trim() }],
       }),
     },
   );

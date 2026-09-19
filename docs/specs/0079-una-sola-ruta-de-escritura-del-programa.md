@@ -1,7 +1,7 @@
 ---
 spec: 0079
 fecha: 2026-09-18
-estado: cerrada
+estado: implementada
 resumen: Las DOS puertas HTTP que escriben el programa se funden en UNA —decision textual del owner: «una sola ruta de api si hacen lo mismo»— y esa ruta acepta `kind`, porque la API no niega una modalidad que el dominio soporta solo porque la pantalla no exista (ADR 0076 §6). `POST /api/onboarding/program` se BORRA; queda `PUT /api/loyalty-program` con un cuerpo donde todo lo que el servidor puede completar con seguridad es opcional y lo que NO puede —el bloque de dinero de Puntos— es obligatorio. Va TERCERA y serializada: fundir las puertas antes de que el invariante viva en el writer (spec 0077) seria mover el bug en vez de arreglarlo.
 disjunta: no
 archivos: apps/merchant/src/app/api/loyalty-program/route.ts, apps/merchant/src/app/api/onboarding/program/route.ts, apps/merchant/src/server/onboarding/program-defaults.ts, apps/merchant/src/server/loyalty-program/validation.ts, apps/merchant/src/server/api-owner-surfaces.test.ts, apps/merchant/src/app/[locale]/(merchant)/business/onboarding/_lib/onboarding-api.ts, docs/specs/0079-contratos-de-api.md

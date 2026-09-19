@@ -1,4 +1,3 @@
-import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -26,8 +25,21 @@ const world = vi.hoisted(() => ({
 
 const CALLER_BUSINESS = world.businessId;
 
+/**
+ * La fila de la SESIÓN se dobla en un solo lugar y con el permiso de alta en `null` (spec
+ * 0077): los casos de abajo sólo tocan `world.session.user`, que es lo que este archivo
+ * mide. El permiso con valor tiene sus propios archivos contra Neon.
+ */
 vi.mock("./auth", () => ({
-  getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
+  getMerchantAuth: () => ({
+    api: {
+      getSession: async () =>
+        world.session && {
+          ...world.session,
+          session: { onboardingGrantUntil: null },
+        },
+    },
+  }),
 }));
 
 vi.mock("./staff", async (importOriginal) => ({
@@ -49,6 +61,14 @@ vi.mock("./loyalty-program", async (importOriginal) => ({
     program: { id: world.programId },
     rewards: [],
   }),
+  /**
+   * Spec 0079 — el `PUT` de la ruta única es la segunda fila sin paso 3, y su desenlace
+   * positivo es un 201. El writer se dobla **a propósito**: este archivo mide el GUARD, y
+   * el invariante crear ≠ editar que `saveProgram` aplica de verdad se mide contra Neon
+   * (`onboarding-program-bypass.neon.integration.test.ts`). Sin el doble, el 201 dependería
+   * de si hay `DATABASE_URL` y no probaría la polaridad de nada.
+   */
+  saveProgram: async () => ({ programId: world.programId, created: true }),
 }));
 
 vi.mock("./db", async (importOriginal) => ({
@@ -62,74 +82,45 @@ vi.mock("./db", async (importOriginal) => ({
   }),
 }));
 
-import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
-import { GET as CATALOG } from "../app/api/catalog/route";
-import { GET as LOCATIONS } from "../app/api/locations/route";
-import { GET as CAMPAIGNS } from "../app/api/marketing/campaigns/route";
-import { GET as STAFF } from "../app/api/staff/route";
-import { GET as BRAND } from "../app/api/brand/route";
-import { POST as LOGO_UPLOAD } from "../app/api/brand/logo-upload/route";
-import { GET as PROGRAM } from "../app/api/loyalty-program/route";
-import { POST as STAMP_UPLOAD } from "../app/api/loyalty-program/stamp-upload/route";
-import { GET as QR } from "../app/api/loyalty-program/qr/route";
-import { GET as TEMPLATES } from "../app/api/loyalty-terms/templates/route";
-import { PATCH as SLUG } from "../app/api/merchant/business/slug/route";
-
-const json = (path: string, method: string) =>
-  new NextRequest(`https://merchant.test${path}`, {
-    method,
-    headers: { "content-type": "application/json" },
-    ...(method === "GET" ? {} : { body: JSON.stringify({}) }),
-  });
-
-/** Las 12 entradas HTTP de las 10 superficies del owner. `qr` y `slug` incluidas: la
- * primera nació con la spec 0069 (por eso la fila 56 de `PARQUEADO` decía 9 y eran 10). */
-const SURFACES: Array<[string, () => Promise<Response>]> = [
-  ["billing/checkout", () => CHECKOUT(json("/api/billing/checkout", "POST"))],
-  ["catalog", () => CATALOG(json("/api/catalog", "GET"))],
-  ["locations", () => LOCATIONS(json("/api/locations", "GET"))],
-  [
-    "marketing/campaigns",
-    () => CAMPAIGNS(json("/api/marketing/campaigns", "GET")),
-  ],
-  ["staff", () => STAFF(json("/api/staff", "GET"))],
-  ["brand", () => BRAND(json("/api/brand", "GET"))],
-  [
-    "brand/logo-upload",
-    () => LOGO_UPLOAD(json("/api/brand/logo-upload", "POST")),
-  ],
-  ["loyalty-program", () => PROGRAM(json("/api/loyalty-program", "GET"))],
-  [
-    "loyalty-program/stamp-upload",
-    () => STAMP_UPLOAD(json("/api/loyalty-program/stamp-upload", "POST")),
-  ],
-  ["loyalty-program/qr", () => QR(json("/api/loyalty-program/qr", "GET"))],
-  [
-    "loyalty-terms/templates",
-    () => TEMPLATES(json("/api/loyalty-terms/templates", "GET")),
-  ],
-  [
-    "merchant/business/slug",
-    () => SLUG(json("/api/merchant/business/slug", "PATCH")),
-  ],
-];
-
 /**
  * Spec 0075 — **el email es el único de los cuatro pasos que no se aplica parejo**, y la tabla
- * se parte para ASEVERAR la excepción en vez de perderla de vista. `SURFACES` sigue entera
- * (12) para los otros cinco casos: el QR se mide igual que las demás en `unauthorized`,
- * `not_owner`, `business_suspended`, `business_closed` y `status` desconocido. Las dos salen
- * de `SURFACES` por filtro —no son listas paralelas—, así que mover una fila cambia los pisos.
+ * se parte para ASEVERAR las excepciones en vez de perderlas de vista. `SURFACES` sigue entera
+ * (13) para los otros cinco casos: las dos sin gate se miden igual que las demás en
+ * `unauthorized`, `not_owner`, `business_suspended`, `business_closed` y `status` desconocido.
+ * Las dos tablas salen de `SURFACES` por filtro —no son listas paralelas—, así que mover una
+ * fila cambia los pisos. La tabla vive en `api-owner-surfaces-support.ts` por el hook
+ * `file-size`; los oráculos y los dobles siguen acá.
  */
-const SURFACES_CON_GATE_DE_EMAIL = SURFACES.filter(
-  ([name]) => name !== "loyalty-program/qr",
-);
+import {
+  SURFACES,
+  SURFACES_CON_GATE_DE_EMAIL,
+  SURFACES_SIN_GATE_DE_EMAIL,
+} from "./api-owner-surfaces-support";
 
-/** La única excepción del repo, y existe por el ADR 0070 §11: la pantalla del QR es la CUARTA
- * del wizard, y la verificación bloquea «todo lo que venga DESPUÉS del wizard». */
-const SURFACES_SIN_GATE_DE_EMAIL = SURFACES.filter(
-  ([name]) => name === "loyalty-program/qr",
-);
+/**
+ * EL DESENLACE POSITIVO DE CADA EXCEPCIÓN, por fila. Un `not.toBe(403)` diría lo mismo si la
+ * ruta se rompiera de cualquier otra forma: acá se exige el desenlace COMPLETO del camino
+ * feliz. Es el oráculo de la mutación M1 de la 0079 (y de la M1 de la 0075).
+ */
+const DESENLACE_SIN_GATE: Record<
+  string,
+  (response: Response) => Promise<void>
+> = {
+  "loyalty-program/qr": async (response) => {
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/svg+xml");
+    const body = await response.text();
+    expect(body).toContain("<svg");
+    expect(body).not.toContain("email_not_verified");
+  },
+  "loyalty-program (PUT)": async (response) => {
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({
+      programId: world.programId,
+      created: true,
+    });
+  },
+};
 
 function ownerRow(status: string, suspensionReason: string | null = null) {
   return {
@@ -147,21 +138,40 @@ beforeEach(() => {
 });
 
 describe("las superficies de API del owner — el gate unificado (spec 0072 §D3)", () => {
-  it("son 12 entradas HTTP y ninguna se cayó de la tabla", () => {
+  it("son 13 entradas HTTP y ninguna se cayó de la tabla", () => {
     // Piso del barrido: sin esto, una tabla que quedara vacía dejaría cada `it.each` de
     // abajo sin correr NI UNA vez y el archivo entero pasaría en verde sin medir nada.
-    expect(SURFACES.length).toBe(12);
+    expect(SURFACES.length).toBe(13);
   });
 
-  it("las dos tablas del email parten las 12 sin perder ni duplicar ninguna", () => {
-    // Spec 0075 §D3. Sin estos tres pisos, mover la fila del QR de una tabla a la otra —o
-    // vaciar la de la excepción— dejaría su `it.each` sin correr NI UNA vez, en verde.
+  /**
+   * **EL CONJUNTO EXACTO DE DOS, y es un criterio del DoD de la 0079** — no «al menos una».
+   * El valor del oráculo es que sea CERRADO: con un `toContain` o un `length >= 1`, una
+   * tercera ruta que se sacara el paso 3 entraría sin que nadie lo vea. La 0075 exigía
+   * exactamente UNA; la 0079 lo cambia a DOS **a propósito** y con el motivo escrito en
+   * `api-owner-surfaces-support.ts`: desde la 0077 el gate de email vive en `saveProgram`,
+   * no en la puerta de la escritura.
+   */
+  it("las rutas SIN paso 3 son EXACTAMENTE dos: el QR y la escritura del programa", () => {
+    expect(SURFACES_SIN_GATE_DE_EMAIL.map(([name]) => name)).toEqual([
+      "loyalty-program (PUT)",
+      "loyalty-program/qr",
+    ]);
+  });
+
+  it("las dos tablas del email parten las 13 sin perder ni duplicar ninguna", () => {
+    // Spec 0075 §D3. Sin estos pisos, mover una fila de una tabla a la otra —o vaciar la de
+    // las excepciones— dejaría su `it.each` sin correr NI UNA vez, en verde.
     expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(11);
-    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(1);
+    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(2);
     expect(
       SURFACES_CON_GATE_DE_EMAIL.length + SURFACES_SIN_GATE_DE_EMAIL.length,
     ).toBe(SURFACES.length);
-    expect(SURFACES_SIN_GATE_DE_EMAIL[0][0]).toBe("loyalty-program/qr");
+    // Y cada excepción tiene su desenlace positivo declarado: una fila nueva sin oráculo
+    // reventaría acá en vez de pasar con un `undefined` silencioso.
+    for (const [name] of SURFACES_SIN_GATE_DE_EMAIL) {
+      expect(typeof DESENLACE_SIN_GATE[name]).toBe("function");
+    }
   });
 
   it.each(SURFACES)(
@@ -213,37 +223,25 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     },
   );
 
-  /**
-   * LA EXCEPCIÓN, ASEVERADA EN POSITIVO (spec 0075 §D3). Un `not.toBe(403)` solo diría lo
-   * mismo si la ruta se rompiera de cualquier otra forma: acá se exige el desenlace COMPLETO
-   * del camino feliz —200 + `image/svg+xml` + un SVG de verdad— **y** que el `code` del gate
-   * no aparezca en el cuerpo. Es el oráculo de la mutación M1.
-   */
+  /** LAS EXCEPCIONES, ASEVERADAS EN POSITIVO (spec 0075 §D3, spec 0079 §1): el desenlace
+   * COMPLETO del camino feliz de cada una, no un `not.toBe(403)`. Ver `DESENLACE_SIN_GATE`. */
   it.each(SURFACES_SIN_GATE_DE_EMAIL)(
-    "%s: owner con `emailVerified: false` sobre un negocio `active` → 200, NUNCA `email_not_verified`",
-    async (_name, call) => {
+    "%s: owner con `emailVerified: false` sobre un negocio `active` → pasa, NUNCA `email_not_verified`",
+    async (name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: false } };
       world.ownerRow = ownerRow("active");
-      const response = await call();
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("image/svg+xml");
-      const body = await response.text();
-      expect(body).toContain("<svg");
-      expect(body).not.toContain("email_not_verified");
+      await DESENLACE_SIN_GATE[name](await call());
     },
   );
 
   /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 11
    * (test de arriba), y acá tampoco frena — porque el paso 3 no corre, no porque «pase». */
   it.each(SURFACES_SIN_GATE_DE_EMAIL)(
-    "%s: owner SIN la clave `emailVerified` → 200 igual (el paso 3 no corre)",
-    async (_name, call) => {
+    "%s: owner SIN la clave `emailVerified` → pasa igual (el paso 3 no corre)",
+    async (name, call) => {
       world.session = { user: { id: "user-owner" } };
       world.ownerRow = ownerRow("active");
-      const response = await call();
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toBe("image/svg+xml");
-      expect(await response.text()).not.toContain("email_not_verified");
+      await DESENLACE_SIN_GATE[name](await call());
     },
   );
 

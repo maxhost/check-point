@@ -21,10 +21,16 @@ import {
 } from "./schema";
 import { openMerchantSession } from "./merchant-session";
 import { wizardClauseTemplateIds } from "./onboarding/program-defaults";
-import { POST } from "../app/api/onboarding/program/route";
+import { PUT } from "../app/api/loyalty-program/route";
 
 /**
- * Spec 0069 §D4 — `POST /api/onboarding/program` CONTRA LA BASE.
+ * Spec 0069 §D4 / spec 0079 — EL CUERPO CORTO CONTRA LA BASE, ahora por la ruta ÚNICA.
+ *
+ * Este archivo **se reapuntó, no se borró** (spec 0079 §5): sus casos son el oráculo del
+ * comportamiento que tenía que sobrevivir al borrado de `POST /api/onboarding/program`.
+ * Lo único que cambió es la puerta (`PUT /api/loyalty-program`) y la forma del cuerpo
+ * corto; los desenlaces —201, 422, 400, 401, 403 y la fila que queda en la base— son los
+ * mismos de antes de la spec.
  *
  * Lo que sólo se puede medir con base de verdad:
  *  - las semillas `earning` y `redemption` de `core.terms_template` EXISTEN y se
@@ -44,13 +50,23 @@ describe.skipIf(!enabled)(
     let cookie = "";
 
     const post = (body: unknown) =>
-      POST(
-        new Request("http://localhost:3001/api/onboarding/program", {
-          method: "POST",
+      PUT(
+        new Request("http://localhost:3001/api/loyalty-program", {
+          method: "PUT",
           headers: { "content-type": "application/json", cookie },
           body: JSON.stringify(body),
         }),
       );
+
+    /** El cuerpo CORTO de Sellos (spec 0079 §2): `kind`, el objetivo y el premio. Todo lo
+     * demás lo completa el servidor. */
+    const corto = (target: unknown, conPremio = true) => ({
+      kind: "stamps",
+      configuration: { target },
+      ...(conPremio
+        ? { rewards: [{ type: "custom", label: "Café gratis" }] }
+        : {}),
+    });
 
     const wipePrograms = async () => {
       const db = getDb();
@@ -108,10 +124,7 @@ describe.skipIf(!enabled)(
     }, 30_000);
 
     it("crea el programa con 201: activo, un premio y DOS cláusulas", async () => {
-      const response = await post({
-        target: 8,
-        reward: { type: "custom", label: "Café gratis" },
-      });
+      const response = await post(corto(8));
       expect(response.status).toBe(201);
       const body = await response.json();
       expect(body.created).toBe(true);
@@ -158,10 +171,7 @@ describe.skipIf(!enabled)(
     it.each([[1], [51], [0], [2.5], ["8"]])(
       "un target de %j responde 422 y no escribe ningún programa",
       async (target) => {
-        const response = await post({
-          target,
-          reward: { type: "custom", label: "Café gratis" },
-        });
+        const response = await post(corto(target));
         expect(response.status).toBe(422);
         expect((await response.json()).code).toBe("invalid_program");
         const rows = await getDb()
@@ -174,15 +184,15 @@ describe.skipIf(!enabled)(
     );
 
     it("sin premio responde 422", async () => {
-      const response = await post({ target: 8 });
+      const response = await post(corto(8, false));
       expect(response.status).toBe(422);
       expect((await response.json()).code).toBe("invalid_program");
     }, 60_000);
 
     it("un cuerpo que no es JSON responde 400 invalid_body", async () => {
-      const response = await POST(
-        new Request("http://localhost:3001/api/onboarding/program", {
-          method: "POST",
+      const response = await PUT(
+        new Request("http://localhost:3001/api/loyalty-program", {
+          method: "PUT",
           headers: { "content-type": "application/json", cookie },
           body: "esto no es json",
         }),
@@ -192,14 +202,11 @@ describe.skipIf(!enabled)(
     }, 60_000);
 
     it("sin sesión responde 401 unauthorized", async () => {
-      const response = await POST(
-        new Request("http://localhost:3001/api/onboarding/program", {
-          method: "POST",
+      const response = await PUT(
+        new Request("http://localhost:3001/api/loyalty-program", {
+          method: "PUT",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            target: 8,
-            reward: { type: "custom", label: "Café" },
-          }),
+          body: JSON.stringify(corto(8)),
         }),
       );
       expect(response.status).toBe(401);
@@ -217,7 +224,7 @@ describe.skipIf(!enabled)(
      * cada caso asevera además que **el programa NO se movió**: se pinnea el `updatedAt` antes y
      * después. Sin eso, un fix que devolviera 403 *después* de escribir pasaría en verde.
      */
-    describe("el eje `status` del negocio corta la puerta del wizard", () => {
+    describe("el eje `status` del negocio corta la ruta única", () => {
       const setStatus = (status: string, reason: string | null = null) =>
         getDb()
           .update(businesses)
@@ -234,8 +241,9 @@ describe.skipIf(!enabled)(
       };
 
       const body = {
-        target: 5,
-        reward: { type: "custom" as const, label: "Postre" },
+        kind: "stamps",
+        configuration: { target: 5 },
+        rewards: [{ type: "custom" as const, label: "Postre" }],
       };
 
       afterAll(async () => {

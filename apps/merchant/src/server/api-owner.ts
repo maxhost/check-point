@@ -123,8 +123,8 @@ export async function requireApiOwner(
 }
 
 /**
- * Spec 0075 — **la unica excepcion al gate de email, y existe para UNA sola ruta**:
- * `GET /api/loyalty-program/qr`.
+ * Spec 0075 + spec 0079 — **la excepcion al gate de email, y existe para DOS rutas y nada
+ * mas**: `GET /api/loyalty-program/qr` y `PUT /api/loyalty-program`.
  *
  * Mismo contrato de retorno que `requireApiOwner` y **los mismos pasos 1, 2 y 4** (sesion →
  * owner activo → eje `status`, con su fail-closed). Lo unico que no corre es el **paso 3**,
@@ -135,15 +135,22 @@ export async function requireApiOwner(
  * lo que venga DESPUES del wizard»* (ADR 0070 §11). Una cuenta nueva llega ahi con el email
  * sin verificar **por construccion** —`openMerchantSession` abre sesion y `email_verified`
  * nace `false`—, asi que aplicarle el paso 3 volvia inalcanzable el resultado del propio
- * alta. Los otros dos pasos del wizard (`POST /api/onboarding/business` y
- * `POST /api/onboarding/program`) tampoco llevan el gate, y `GET /api/onboarding/state`
- * tampoco (contrato 0074 §3): el precedente ya estaba establecido.
+ * alta. Los otros dos pasos del wizard (`POST /api/onboarding/business` y la escritura del
+ * programa) tampoco llevan el gate, y `GET /api/onboarding/state` tampoco (contrato 0074
+ * §3): el precedente ya estaba establecido.
+ *
+ * **SPEC 0079 — YA NO ES LA ÚNICA: son DOS.** La escritura del programa
+ * (`PUT /api/loyalty-program`) también usa esta función desde que las dos puertas se
+ * fundieron en una, porque su gate de email bajó al writer (`saveProgram`, spec 0077), que
+ * distingue crear de editar. `rg 'SinGateDeEmail' apps` tiene que devolver **exactamente
+ * esas dos rutas**, y el conjunto está aseverado como CERRADO en
+ * `api-owner-surfaces.test.ts`. No se extiende a una tercera sin volver a discutirlo.
  *
  * **POR QUE UNA HERMANA Y NO `requireApiOwner(request, { emailGate: false })`** (spec 0075
  * §D1): un flag booleano que apaga un gate de seguridad viaja en un copy-paste entre rutas
  * del mismo dominio y no se puede contar con un `rg`. Un nombre si: `rg 'SinGateDeEmail' apps`
- * tiene que devolver **exactamente una** ruta, y eso es un criterio del DoD de la 0075 (el
- * nombre completo no se escribe en esta prosa a proposito: ensuciaria el barrido).
+ * tiene que devolver **exactamente las DOS rutas de arriba** —era UNA en la 0075 y la 0079 lo
+ * cambio a proposito—, y eso es un criterio del DoD de las dos specs.
  * **No se extiende a ninguna otra superficie sin volver a discutirlo:** las 11 entradas HTTP
  * restantes del ADR 0073 §1 conservan el paso 3 entero.
  *
@@ -154,7 +161,7 @@ export async function requireApiOwner(
  * paso si esta compartida**, en las piezas que las dos llaman: `ownerContext` (paso 2) y
  * `businessStatusFailure` (paso 4). Lo duplicado son los `return` del fallo. Que las dos no
  * divergan lo pinnea `api-owner-surfaces.test.ts`, que corre los cinco estados del caller
- * sobre la fila del QR igual que sobre las otras once.
+ * sobre las dos filas sin paso 3 igual que sobre las otras once.
  *
  * **El riesgo que esto NO abre** (spec 0075, «Declarado AFUERA»): el QR codifica una URL
  * **publica** (`<origin>/enroll/<programId>`), el `programId` lo resuelve el servidor desde la

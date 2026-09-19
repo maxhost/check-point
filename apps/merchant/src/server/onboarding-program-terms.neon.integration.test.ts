@@ -24,10 +24,10 @@ import {
 } from "./schema";
 import { openMerchantSession } from "./merchant-session";
 import {
+  programInput,
   wizardClauseTemplateIds,
-  wizardProgramInput,
 } from "./onboarding/program-defaults";
-import { POST } from "../app/api/onboarding/program/route";
+import { PUT } from "../app/api/loyalty-program/route";
 
 /**
  * Spec 0078 (ADR 0076 §7) — EL TOS SALE DEL PAIS DEL NEGOCIO, contra la base.
@@ -41,7 +41,7 @@ import { POST } from "../app/api/onboarding/program/route";
  * scope del país le falta una clave» sin tocar las semillas compartidas (`default` las lee
  * cualquier otro archivo de test que corra en paralelo).
  *
- * Lo que renderiza sin pasar por el wizard —el control del 422, `global-draft` y el texto
+ * Lo que renderiza sin pasar por la ruta de escritura —el control del 422, `global-draft` y el texto
  * libre— vive en `loyalty-terms-render.neon.integration.test.ts`.
  */
 const EC_EARNING = "0078ec00-0000-4000-8000-000000000001";
@@ -222,14 +222,15 @@ describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
       .where(eq(termsTemplates.id, ZZ_REDEMPTION));
   }, 90_000);
 
-  it("el programa del wizard queda con «Los sellos» y con el país nombrado", async () => {
-    const response = await POST(
-      new Request("http://localhost:3001/api/onboarding/program", {
-        method: "POST",
+  it("el programa del cuerpo corto queda con «Los sellos» y con el país nombrado", async () => {
+    const response = await PUT(
+      new Request("http://localhost:3001/api/loyalty-program", {
+        method: "PUT",
         headers: { "content-type": "application/json", cookie },
         body: JSON.stringify({
-          target: 6,
-          reward: { type: "custom", label: "Empanada" },
+          kind: "stamps",
+          configuration: { target: 6 },
+          rewards: [{ type: "custom", label: "Empanada" }],
         }),
       }),
     );
@@ -255,23 +256,26 @@ describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
    */
   it("el `countryCode` del CUERPO no mueve el scope: un negocio MX se queda en `default`", async () => {
     const body = {
-      target: 4,
-      reward: { type: "custom", label: "Taco" },
+      kind: "stamps",
+      configuration: { target: 4 },
+      rewards: [{ type: "custom", label: "Taco" }],
       // Las tres ortografías con las que un cliente intentaría forzarlo.
       countryCode: "EC",
       country_code: "EC",
       business: { countryCode: "EC" },
     };
-    const input = await wizardProgramInput(body, mxOwnerId);
+    const input = (await programInput(body, mxOwnerId)) as {
+      clauses: unknown;
+    };
     expect(input.clauses).toEqual([
       { templateId: DEFAULT_EARNING },
       { templateId: DEFAULT_REDEMPTION },
     ]);
 
     const mxCookie = (await openMerchantSession(mxOwnerId)).split(";")[0];
-    const response = await POST(
-      new Request("http://localhost:3001/api/onboarding/program", {
-        method: "POST",
+    const response = await PUT(
+      new Request("http://localhost:3001/api/loyalty-program", {
+        method: "PUT",
         headers: { "content-type": "application/json", cookie: mxCookie },
         body: JSON.stringify(body),
       }),

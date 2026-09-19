@@ -25,9 +25,9 @@ import {
   seedUnverifiedOwner,
   wipePrograms,
   wipeSessions,
-  wizardRequest,
+  programRequest,
 } from "./onboarding-grant-support";
-import { POST as WIZARD } from "../app/api/onboarding/program/route";
+import { PUT as PROGRAM_PUT } from "../app/api/loyalty-program/route";
 
 /**
  * Spec 0077 §4 — LOS TRES CORTES y la MONOTONÍA, sobre la columna real.
@@ -39,7 +39,7 @@ describe.skipIf(!enabled)(
   "los cortes del permiso de alta (spec 0077 §4)",
   () => {
     let seed: GrantSeed;
-    const post = (cookie: string) => WIZARD(wizardRequest(cookie));
+    const post = (cookie: string) => PROGRAM_PUT(programRequest(cookie));
 
     /** Cada caso arranca del mismo estado: sin programa y sin sesiones previas. */
     const reset = async () => {

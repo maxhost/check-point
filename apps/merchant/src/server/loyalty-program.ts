@@ -63,13 +63,19 @@ export async function saveProgram(
   if (!context) throw new LoyaltyError(403, "No tienes un negocio como owner.");
   const { business, program } = context;
   // EL EJE `status` (spec 0072, cierre de F1). Va en el WRITER y no en la ruta porque
-  // `saveProgram` es UN writer con DOS puertas: `PUT /api/loyalty-program`, que pasa por
-  // `requireApiOwner`, y `POST /api/onboarding/program`, que resuelve la sesión a mano porque
-  // el wizard corre ANTES de que el email esté verificado (y por eso no puede pasar por el
-  // gate completo). Con el chequeo sólo en la puerta gateada, la otra reescribía el programa
-  // de un negocio `suspended` — medido: 200 con `created: false` contra el 403 de la gateada.
-  // Contradecía la regla textual del owner para `suspended` («no pueden … cambios en
-  // programa»), así que es un incumplimiento, no una decisión de producto abierta.
+  // cuando se escribió esto `saveProgram` era UN writer con DOS puertas: `PUT
+  // /api/loyalty-program`, que pasaba por `requireApiOwner`, y `POST
+  // /api/onboarding/program`, que resolvía la sesión a mano porque el alta corre ANTES de
+  // que el email esté verificado. Con el chequeo sólo en la puerta gateada, la otra
+  // reescribía el programa de un negocio `suspended` — medido: 200 con `created: false`
+  // contra el 403 de la gateada. Contradecía la regla textual del owner para `suspended`
+  // («no pueden … cambios en programa»), así que es un incumplimiento, no una decisión de
+  // producto abierta.
+  //
+  // **La spec 0079 fundió las dos puertas en una (`PUT /api/loyalty-program`) y borró la
+  // otra, así que hoy hay UN writer y UNA puerta. El chequeo NO se sube a la ruta igual:**
+  // el motivo por el que bajó acá es que una puerta nueva no pueda saltarlo, y eso vale
+  // para la siguiente que aparezca.
   //
   // `reasonVisible: false` y su motivo declarado: el `suspensionReason` viaja en las 12
   // superficies de `requireApiOwner`, pero esta no es una de ellas y plomear el motivo por

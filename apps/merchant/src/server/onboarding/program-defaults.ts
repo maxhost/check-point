@@ -10,53 +10,56 @@ import {
 } from "../loyalty-program/terms-scope";
 
 /**
- * Spec 0069 §D4 — dos campos adentro, un `ProgramInput` COMPLETO afuera.
+ * Spec 0079 §3 — LOS DEFAULTS DEL PROGRAMA (antes: «los defaults del wizard»).
  *
- * La pantalla 3 del wizard pregunta dos cosas: cada cuantos sellos, y que premio.
- * `saveProgram` exige bastante mas (`validateProgramInput`: `kind`, `configuration`
- * con `unitName` + `target` 2..50, **al menos una clausula de terminos**, exactamente
- * un premio para `stamps`, y la mecanica de acumulacion). Sin esta capa, quien
- * construye la UI por fuera tendria que **inventar los terminos legales** del comercio.
+ * Desde la 0079 hay **una sola** ruta de escritura (`PUT /api/loyalty-program`) y acepta
+ * cuerpo corto o completo. Este modulo es lo que hace posible el corto: **completa** lo
+ * que el servidor puede completar con seguridad y **no inventa** lo que no puede.
  *
- * Lo que compone, y por que cada cosa:
+ * **El principio del contrato, y es lo unico que hay que recordar (spec 0079 §2): todo lo
+ * que el servidor puede completar con seguridad es OPCIONAL; lo que no puede —el dinero—
+ * es OBLIGATORIO.**
+ *
+ * Lo que completa, y por que cada cosa:
  *
  * - `clauses`: los `templateId` de las SEMILLAS `earning` y `redemption` de
  *   `core.terms_template`, **del scope del pais del negocio** con caida a `default`
  *   (spec 0078; antes era el unico `global-draft` hardcodeado). `transition` NO entra:
- *   es la clausula del **cierre** del programa, que el wizard no agenda.
- * - `accrual`: `per_purchase`, `grant: 1` — «un sello por compra», que es la unica
- *   lectura de «cada cuantos sellos» que el wizard pregunta. **Este default lo eligio
- *   el implementador, no el owner**: la spec no lo fija y `validateAccrual` no acepta
- *   que falte.
- * - `stampAction: "keep"` — el wizard no sube imagen; de ahi sale el placeholder (§D5).
+ *   es la clausula del **cierre** del programa, que el alta no agenda.
+ * - `configuration.unitName`/`unitPlural` **solo en Sellos**: «sello»/«sellos».
+ * - `accrual` **solo en Sellos**: `per_purchase`, `grant: 1` — «un sello por compra», que
+ *   es la unica lectura posible de la pregunta del alta. **En PUNTOS no se completa
+ *   NUNCA**: `validateAccrual` fuerza `per_amount` para Puntos (`accrual.ts:22-27`), que
+ *   exige un `blockAmount > 0` — un **monto de dinero**, y «X puntos por cada $Y» no
+ *   tiene default seguro. Faltando, el 422 de `validateProgramInput`.
+ * - `stampAction` **no se completa aca**: `validateProgramInput` ya hace `?? "keep"`.
+ *   Duplicarlo serian dos reglas para lo mismo.
+ *
+ * **NADA DE LO QUE VIENE EXPLICITO SE PISA.** Es la mutacion M3 de la spec: un cuerpo
+ * completo de hoy tiene que dar exactamente el mismo resultado que antes de la 0079.
+ *
+ * **Y ESTE MODULO NO VALIDA.** Devuelve el cuerpo completado **sin validar**: el unico
+ * que dice si es valido sigue siendo `validateProgramInput`, adentro de `saveProgram`
+ * (spec 0079 §3: «no se duplica ni una regla»).
  *
  * El `status: 'active'` **no se construye aca**: `loyalty_program.status` ya nace
  * `'active'` por default de columna (`schema/loyalty.ts`). Es una propiedad a
  * **verificar**, no trabajo nuevo.
  */
-export type WizardProgramRequest = {
-  target?: unknown;
-  reward?: unknown;
-};
 
-/** El `ProgramInput` crudo que consume `saveProgram` (lo valida el de siempre). */
-export type WizardProgramInput = {
-  kind: "stamps";
-  configuration: { unitName: string; unitPlural: string; target: number };
-  clauses: { templateId: string }[];
-  accrual: { mode: "per_purchase"; grant: 1; blockAmount: null };
-  rewards: { type: "custom"; label: string }[];
-  stampAction: "keep";
-};
-
-/** La unidad del wizard es siempre «sello»: la pantalla no ofrece renombrarla. */
-export const WIZARD_UNIT_NAME = "sello";
+/**
+ * La unidad por defecto de Sellos. **`unitName` y `unitPlural` se completan como UN par,
+ * no como dos campos sueltos**: un cuerpo que nombra su unidad («visita») y omite el
+ * plural conserva el comportamiento de hoy —`renderedTerms` cae al singular— en vez de
+ * recibir «sellos», que seria el plural de OTRA unidad en el texto legal del consumidor.
+ */
+export const DEFAULT_STAMP_UNIT_NAME = "sello";
 
 /**
  * Y su plural, que es lo que el TOS por pais interpola en `{{program_unit_plural}}`.
  * Sin esto el texto que ve el consumidor dice «Los sello se acumulan…» (spec 0078).
  */
-export const WIZARD_UNIT_PLURAL = "sellos";
+export const DEFAULT_STAMP_UNIT_PLURAL = "sellos";
 
 /** Las dos semillas que el wizard usa como terminos. `transition` es del cierre. */
 export const WIZARD_CLAUSE_KEYS = ["earning", "redemption"] as const;
@@ -111,79 +114,70 @@ export async function wizardClauseTemplateIds(
   return resolveWizardClauseIds(rows, candidates);
 }
 
-/** Valida los dos campos del wizard. Puro: no toca la base. */
-export function validateWizardRequest(raw: unknown): {
-  target: number;
-  label: string;
-} {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new LoyaltyError(422, "El programa debe ser un objeto válido.");
-  }
-  const input = raw as WizardProgramRequest;
-  const target = input.target;
-  if (
-    !Number.isInteger(target) ||
-    (target as number) < 2 ||
-    (target as number) > 50
-  ) {
-    throw new LoyaltyError(
-      422,
-      "El objetivo debe ser un entero entre 2 y 50 sellos.",
-    );
-  }
-  const reward = input.reward;
-  if (!reward || typeof reward !== "object" || Array.isArray(reward)) {
-    throw new LoyaltyError(422, "Define el premio del programa.");
-  }
-  const { type, label } = reward as { type?: unknown; label?: unknown };
-  if (type !== "custom") {
-    throw new LoyaltyError(422, "El premio del wizard es de tipo libre.");
-  }
-  const trimmed = typeof label === "string" ? label.trim() : "";
-  if (!trimmed) {
-    throw new LoyaltyError(422, "El premio libre necesita un nombre.");
-  }
-  return { target: target as number, label: trimmed };
-}
+/** Un objeto plano, o `null`. No valida nada: sólo decide si hay algo que completar. */
+const asObject = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 
-/** Compone el `ProgramInput` completo a partir de los dos campos y las dos semillas. */
-export function composeWizardProgramInput(
-  target: number,
-  label: string,
-  templateIds: string[],
-): WizardProgramInput {
-  return {
-    kind: "stamps",
-    configuration: {
-      unitName: WIZARD_UNIT_NAME,
-      unitPlural: WIZARD_UNIT_PLURAL,
-      target,
-    },
-    clauses: templateIds.map((templateId) => ({ templateId })),
-    accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-    rewards: [{ type: "custom", label }],
-    stampAction: "keep",
-  };
+/**
+ * Completa el cuerpo parcial. **PURA** y sin validar (ver el docblock del modulo).
+ *
+ * `clauseTemplateIds` en `null` significa «el cuerpo ya trae `clauses`»: la lectura de
+ * semillas la decide `programInput`, que es quien puede tocar la base.
+ */
+export function composeProgramInput(
+  partial: Record<string, unknown>,
+  clauseTemplateIds: readonly string[] | null,
+): Record<string, unknown> {
+  const composed: Record<string, unknown> = { ...partial };
+  if (clauseTemplateIds) {
+    // El orden de las clausulas es el de `WIZARD_CLAUSE_KEYS`, que es el del markdown.
+    composed.clauses = clauseTemplateIds.map((templateId) => ({ templateId }));
+  }
+  // TODO LO QUE SIGUE ES SOLO DE SELLOS. Puntos no recibe un solo default: sus dos campos
+  // propios (`unitSingular`/`unitPlural`) y su `accrual` con dinero son OBLIGATORIOS.
+  if (partial.kind !== "stamps") return composed;
+  const configuration = asObject(partial.configuration);
+  if (configuration && configuration.unitName === undefined) {
+    composed.configuration = {
+      ...configuration,
+      unitName: DEFAULT_STAMP_UNIT_NAME,
+      unitPlural: configuration.unitPlural ?? DEFAULT_STAMP_UNIT_PLURAL,
+    };
+  }
+  if (partial.accrual === undefined) {
+    composed.accrual = { mode: "per_purchase", grant: 1, blockAmount: null };
+  }
+  return composed;
 }
 
 /**
- * Lo que consume la ruta: valida, lee las semillas del PAIS del negocio y devuelve el
- * input completo.
+ * Lo que consume la ruta unica: completa el cuerpo y, si hace falta, lee las semillas del
+ * PAIS del negocio. Devuelve el cuerpo **sin validar** — lo valida `saveProgram`.
  *
  * Recibe el `userId` y no el pais porque el pais no puede venir del cliente: se resuelve
  * con el mismo `ownerBusiness` que usa `saveProgram`, o sea de la sesion. Si el usuario
  * no tiene negocio como owner, cae a `default` y `saveProgram` corta despues con el 403
  * de siempre — el TOS no es quien decide eso.
+ *
+ * Un cuerpo que **no es un objeto** vuelve tal cual: el 422 «El programa debe ser un
+ * objeto válido.» lo tira `validateProgramInput`, y repetirlo aca serian dos reglas para
+ * lo mismo.
  */
-export async function wizardProgramInput(
+export async function programInput(
   raw: unknown,
   userId: string,
-): Promise<WizardProgramInput> {
-  const { target, label } = validateWizardRequest(raw);
+): Promise<unknown> {
+  const partial = asObject(raw);
+  if (!partial) return raw;
+  // `!== undefined` y no un chequeo de contenido: un `clauses: []` explicito NO se
+  // reemplaza por las semillas — se va al 422 «Añade al menos una cláusula de términos.»,
+  // que es lo que el cliente pidió al mandarlo vacío.
+  if (partial.clauses !== undefined) return composeProgramInput(partial, null);
   const business = await ownerBusiness(userId);
-  return composeWizardProgramInput(
-    target,
-    label,
+  return composeProgramInput(
+    partial,
     await wizardClauseTemplateIds(business?.countryCode ?? null),
   );
 }

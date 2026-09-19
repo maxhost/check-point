@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Spec 0078 — **SIN PLANTILLAS NO SE ESCRIBE UN PROGRAMA.** El contrato de la ruta del
- * wizard para ese caso es `503 program_unavailable` y **cero escrituras**.
+ * Spec 0078 — **SIN PLANTILLAS NO SE ESCRIBE UN PROGRAMA.** El contrato de la ruta de
+ * escritura para ese caso es `503 program_unavailable` y **cero escrituras**. Desde la spec
+ * 0079 esa ruta es `PUT /api/loyalty-program`, la única, y el compositor se llama
+ * `programInput`.
  *
  * Va con dobles y no contra Neon **a propósito, y el motivo es de CONTRATO, no de
  * comodidad**: para que la resolución de plantillas falle de verdad habría que dejar sin
@@ -21,7 +23,7 @@ const world = vi.hoisted(() => ({
     user: { id: string; emailVerified: boolean };
     session: { onboardingGrantUntil: Date | null };
   },
-  wizardProgramInput: vi.fn(),
+  programInput: vi.fn(),
   saveProgram: vi.fn(),
 }));
 
@@ -29,9 +31,25 @@ vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
 }));
 
+/**
+ * Spec 0079 — la ruta única resuelve owner con `requireApiOwnerSinGateDeEmail`, que lee
+ * `ownerContext`. Se dobla en `active` porque este archivo mide el 503 del compositor, no el
+ * guard: el guard entero, con sus cinco estados del caller, es `api-owner-surfaces.test.ts`.
+ */
+vi.mock("./staff", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./staff")>()),
+  ownerContext: async () => ({
+    id: "11111111-1111-4111-8111-111111111111",
+    slug: "la-farmacia",
+    currencyCode: "USD",
+    status: "active",
+    suspensionReason: null,
+  }),
+}));
+
 vi.mock("./onboarding/program-defaults", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./onboarding/program-defaults")>()),
-  wizardProgramInput: world.wizardProgramInput,
+  programInput: world.programInput,
 }));
 
 vi.mock("./loyalty-program", async (importOriginal) => ({
@@ -39,22 +57,23 @@ vi.mock("./loyalty-program", async (importOriginal) => ({
   saveProgram: world.saveProgram,
 }));
 
-import { POST } from "../app/api/onboarding/program/route";
+import { PUT } from "../app/api/loyalty-program/route";
 import { LoyaltyError } from "./loyalty-program/core";
 
 const post = () =>
-  POST(
-    new Request("http://localhost:3001/api/onboarding/program", {
-      method: "POST",
+  PUT(
+    new Request("http://localhost:3001/api/loyalty-program", {
+      method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        target: 8,
-        reward: { type: "custom", label: "Café gratis" },
+        kind: "stamps",
+        configuration: { target: 8 },
+        rewards: [{ type: "custom", label: "Café gratis" }],
       }),
     }),
   );
 
-describe("POST /api/onboarding/program sin plantillas (spec 0078 §3)", () => {
+describe("PUT /api/loyalty-program sin plantillas (spec 0078 §3, ruta única 0079)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     world.session = {
@@ -64,7 +83,7 @@ describe("POST /api/onboarding/program sin plantillas (spec 0078 §3)", () => {
   });
 
   it("responde 503 `program_unavailable` y NO llama a `saveProgram`", async () => {
-    world.wizardProgramInput.mockRejectedValue(
+    world.programInput.mockRejectedValue(
       new LoyaltyError(503, "Las plantillas de términos no están disponibles."),
     );
     const response = await post();
@@ -82,7 +101,7 @@ describe("POST /api/onboarding/program sin plantillas (spec 0078 §3)", () => {
   /** CONTROL POSITIVO — sin esto, un doble que siempre falle dejaría el caso de arriba en
    * verde aunque la ruta nunca llamara al writer en ningún escenario. */
   it("con plantillas resueltas, la MISMA ruta llama al writer y contesta 201", async () => {
-    world.wizardProgramInput.mockResolvedValue({ kind: "stamps" });
+    world.programInput.mockResolvedValue({ kind: "stamps" });
     world.saveProgram.mockResolvedValue({ programId: "prog-1", created: true });
     const response = await post();
     expect(response.status).toBe(201);

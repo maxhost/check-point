@@ -20,17 +20,22 @@ import {
   wipeSessions,
 } from "./onboarding-grant-support";
 import { ONBOARDING_GRANT_MINUTES } from "./onboarding-grant";
-import { POST } from "../app/api/onboarding/program/route";
+import { PUT } from "../app/api/loyalty-program/route";
 
 /**
  * EL BYPASS DE LA SPEC 0077, con EL MISMO MONTAJE QUE LO ENCONTRÓ (ADR 0076): un solo
- * usuario con `emailVerified: false` y dos POST a `POST /api/onboarding/program`.
+ * usuario con `emailVerified: false` y dos escrituras por la ruta ÚNICA (spec 0079:
+ * `PUT /api/loyalty-program`; hasta entonces era `POST /api/onboarding/program`).
  *
  * Antes del invariante el segundo devolvía **200 `created:false`** y dejaba la fila
- * reescrita a `{"target":50,…}` desde `target: 8`, mientras `PUT /api/loyalty-program`
- * contestaba **403** con la misma cookie. Es la SEGUNDA vez que se abre la misma grieta: la
- * spec 0072 ya la tapó para el eje `status` bajando el invariante al writer, y el del email
- * quedó afuera.
+ * reescrita a `{"target":50,…}` desde `target: 8`, mientras la ruta gateada contestaba
+ * **403** con la misma cookie. Es la SEGUNDA vez que se abre la misma grieta: la spec 0072
+ * ya la tapó para el eje `status` bajando el invariante al writer, y el del email quedó
+ * afuera.
+ *
+ * **POR QUÉ SIGUE VALIENDO DESPUÉS DE LA 0079, que es cuando la puerta pasó a ser una sola:**
+ * la 0079 le saca el paso 3 a `PUT /api/loyalty-program` —el gate vive en el writer desde la
+ * 0077— y estos casos son EL oráculo de que eso no afloja nada. Es la mutación M1.
  *
  * **La sesión de los casos de bypass NO tiene permiso de alta.** Es el estado de quien
  * vuelve al día siguiente, o de quien ya consumió los 5 minutos posteriores a completar el
@@ -48,19 +53,22 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
   let cookie = "";
 
   const post = (body: unknown) =>
-    POST(
-      new Request("http://localhost:3001/api/onboarding/program", {
-        method: "POST",
+    PUT(
+      new Request("http://localhost:3001/api/loyalty-program", {
+        method: "PUT",
         headers: { "content-type": "application/json", cookie },
         body: JSON.stringify(body),
       }),
     );
 
-  const ocho = { target: 8, reward: { type: "custom", label: "Café gratis" } };
-  const cincuenta = {
-    target: 50,
-    reward: { type: "custom", label: "Café gratis" },
-  };
+  /** El cuerpo CORTO de Sellos de la spec 0079: la ruta única absorbió el de dos campos. */
+  const conTarget = (target: number) => ({
+    kind: "stamps",
+    configuration: { target },
+    rewards: [{ type: "custom", label: "Café gratis" }],
+  });
+  const ocho = conTarget(8);
+  const cincuenta = conTarget(50);
 
   // `unitPlural` lo escribe el wizard desde la spec 0078 (es lo que hace que el TOS diga
   // «Los sellos»): estas aserciones miran la configuración ENTERA, así que lo incluyen.
@@ -95,7 +103,7 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     cookie = await openSessionCookie(seed.ownerId, minutes);
   };
 
-  it("POST #1 → 201; POST #2 → 403 `email_not_verified` y la fila NO se reescribe", async () => {
+  it("PUT #1 → 201; PUT #2 → 403 `email_not_verified` y la fila NO se reescribe", async () => {
     await reset(null);
 
     const first = await post(ocho);

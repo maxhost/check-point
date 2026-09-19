@@ -104,15 +104,21 @@ export async function openSessionCookie(
   return cookie.split(";")[0];
 }
 
-/** `POST /api/onboarding/program` con el cuerpo corto del wizard. */
-export const wizardBody = {
-  target: 7,
-  reward: { type: "custom", label: "Café" },
+/**
+ * El cuerpo CORTO de Sellos contra la ruta única (spec 0079). Hasta la 0079 esto le pegaba
+ * a `POST /api/onboarding/program`, que se borró: escribía el mismo programa con el mismo
+ * writer. Lo que el servidor completa —`unitName`/`unitPlural`, «un sello por compra» y las
+ * cláusulas del país— **no viaja**, que es justo lo que estos casos siguen ejercitando.
+ */
+export const programBody = {
+  kind: "stamps",
+  configuration: { target: 7 },
+  rewards: [{ type: "custom", label: "Café" }],
 };
 
-export const wizardRequest = (cookie: string) =>
-  new Request("http://localhost:3001/api/onboarding/program", {
-    method: "POST",
+export const programRequest = (cookie: string) =>
+  new Request("http://localhost:3001/api/loyalty-program", {
+    method: "PUT",
     headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(wizardBody),
+    body: JSON.stringify(programBody),
   });

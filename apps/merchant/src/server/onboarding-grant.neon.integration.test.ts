@@ -18,7 +18,9 @@ import {
   dropGrantSeed,
   grantRowsOf,
   openSessionCookie,
+  programRequest,
   seedUnverifiedOwner,
+  wipePrograms,
 } from "./onboarding-grant-support";
 import { ONBOARDING_GRANT_MINUTES } from "./onboarding-grant";
 import { createStaff } from "./staff-create";
@@ -54,9 +56,10 @@ const req = (path: string, method: string, cookie: string) =>
   });
 
 /**
- * Las ONCE entradas del ADR 0073 §1 que conservan el gate ENTERO — las 12 de
- * `api-owner-surfaces.test.ts` menos el QR, que es la única excepción (spec 0075) y que el
- * ADR 0076 §3 deja explícitamente fuera del permiso porque es una LECTURA.
+ * Las ONCE entradas del ADR 0073 §1 que conservan el gate ENTERO — las 13 de
+ * `api-owner-surfaces.test.ts` menos las DOS sin paso 3: el QR (spec 0075, que el ADR 0076
+ * §3 deja fuera del permiso porque es una LECTURA) y el `PUT` de la ruta única (spec 0079,
+ * cuyo gate bajó al writer). El lado positivo del `PUT` se mide al final del archivo.
  */
 const SURFACES: Array<[string, (cookie: string) => Promise<Response>]> = [
   [
@@ -187,18 +190,28 @@ describe.skipIf(!enabled)(
       );
     });
 
-    /** REGRESIÓN — a la puerta gateada no se le afloja nada: `requireApiOwner` corta en su
-     * paso 3, antes de llegar al writer. */
-    it("`PUT /api/loyalty-program` sigue dando 403 a un no verificado CON permiso", async () => {
+    /**
+     * EL CONTROL POSITIVO DEL BARRIDO DE ARRIBA, y **el caso que la spec 0079 dio vuelta a
+     * propósito**. Hasta la 0079 este test exigía 403 acá: `PUT /api/loyalty-program` era la
+     * puerta gateada y cortaba en el paso 3. La 0079 la convierte en la ÚNICA escritura y le
+     * saca ese paso, porque desde la 0077 el gate vive en `saveProgram` —que distingue crear
+     * de editar—. O sea que lo que el permiso de alta habilita es **exactamente una cosa**:
+     * escribir el programa. Las otras once siguen en 403 (barrido de arriba), y esa asimetría
+     * no tendría oráculo si acá no se midiera el lado positivo.
+     *
+     * Con el email SIN verificar, sin programa previo y el permiso vigente, el cuerpo corto
+     * de Sellos **crea**: 201.
+     */
+    it("`PUT /api/loyalty-program` es lo ÚNICO que el permiso habilita: crea con 201", async () => {
+      await wipePrograms(seed.businessId);
       const cookie = await openSessionCookie(
         seed.ownerId,
         ONBOARDING_GRANT_MINUTES,
       );
-      const response = await PROGRAM_PUT(
-        req("/api/loyalty-program", "PUT", cookie),
-      );
-      expect(response.status).toBe(403);
-      expect((await response.json()).code).toBe("email_not_verified");
-    }, 60_000);
+      const response = await PROGRAM_PUT(programRequest(cookie));
+      expect(response.status).toBe(201);
+      expect((await response.json()).created).toBe(true);
+      await wipePrograms(seed.businessId);
+    }, 90_000);
   },
 );
