@@ -62,6 +62,8 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     reward: { type: "custom", label: "Café gratis" },
   };
 
+  // `unitPlural` lo escribe el wizard desde la spec 0078 (es lo que hace que el TOS diga
+  // «Los sellos»): estas aserciones miran la configuración ENTERA, así que lo incluyen.
   const configurationNow = async () => {
     const [row] = await getDb()
       .select({ configuration: loyaltyPrograms.configuration })
@@ -100,7 +102,11 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     expect(first.status).toBe(201);
     expect((await first.json()).created).toBe(true);
     const before = await configurationNow();
-    expect(before).toEqual({ unitName: "sello", target: 8 });
+    expect(before).toEqual({
+      unitName: "sello",
+      unitPlural: "sellos",
+      target: 8,
+    });
 
     const second = await post(cincuenta);
     expect(second.status).toBe(403);
@@ -116,7 +122,11 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     const response = await post(ocho);
     expect(response.status).toBe(201);
     expect((await response.json()).created).toBe(true);
-    expect(await configurationNow()).toEqual({ unitName: "sello", target: 8 });
+    expect(await configurationNow()).toEqual({
+      unitName: "sello",
+      unitPlural: "sellos",
+      target: 8,
+    });
   }, 120_000);
 
   /** EL ALTA NO SE ROMPE — con el permiso vigente el wizard puede volver atrás y corregir,
@@ -127,7 +137,11 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     const second = await post(cincuenta);
     expect(second.status).toBe(200);
     expect((await second.json()).created).toBe(false);
-    expect(await configurationNow()).toEqual({ unitName: "sello", target: 50 });
+    expect(await configurationNow()).toEqual({
+      unitName: "sello",
+      unitPlural: "sellos",
+      target: 50,
+    });
   }, 120_000);
 
   /** CONTROL NEGATIVO DEL ORÁCULO — con el email verificado la MISMA edición pasa, así que
@@ -139,6 +153,10 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     const second = await post(cincuenta);
     expect(second.status).toBe(200);
     expect((await second.json()).created).toBe(false);
-    expect(await configurationNow()).toEqual({ unitName: "sello", target: 50 });
+    expect(await configurationNow()).toEqual({
+      unitName: "sello",
+      unitPlural: "sellos",
+      target: 50,
+    });
   }, 120_000);
 });

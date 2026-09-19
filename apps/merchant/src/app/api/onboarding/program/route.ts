@@ -50,7 +50,9 @@ export async function POST(request: Request) {
     // Todo lo que toca la base va ADENTRO del `try`, incluida la lectura de las
     // semillas de terminos: un fallo de base tiene que salir como el 503 que el
     // contrato declara, nunca como un 500 sin `code` (leccion de la spec 0068 §3).
-    const input = await wizardProgramInput(body);
+    // El `userId` va ACA y no el pais: el scope del TOS se resuelve del negocio de la
+    // SESION (spec 0078 §3), nunca de un campo del cuerpo.
+    const input = await wizardProgramInput(body, session.user.id);
     // Spec 0077 §6 — esta puerta NO decide: RESUELVE y pasa. El permiso de alta se lee de la
     // fila de la sesion que `getSession` ya trajo — **no viaja en ningun campo del request**
     // (ADR 0076 §2), asi que no hay nada del cuerpo que pueda influir en esta lectura. El

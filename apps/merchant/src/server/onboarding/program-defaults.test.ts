@@ -3,7 +3,9 @@ import { LoyaltyError } from "../loyalty-program/core";
 import { validateProgramInput } from "../loyalty-program/validation";
 import {
   WIZARD_UNIT_NAME,
+  WIZARD_UNIT_PLURAL,
   composeWizardProgramInput,
+  resolveWizardClauseIds,
   validateWizardRequest,
 } from "./program-defaults";
 
@@ -97,6 +99,7 @@ describe("composeWizardProgramInput (spec 0069 §D4)", () => {
     ]);
     expect(composed.configuration).toEqual({
       unitName: WIZARD_UNIT_NAME,
+      unitPlural: WIZARD_UNIT_PLURAL,
       target: 8,
     });
     expect(composed.kind).toBe("stamps");
@@ -111,8 +114,11 @@ describe("composeWizardProgramInput (spec 0069 §D4)", () => {
     expect(validated.rewards).toHaveLength(1);
     expect(validated.rewards[0].label).toBe("Café gratis");
     expect(validated.rewards[0].pointsCost).toBeNull();
+    // El plural SOBREVIVE a `normalizeConfiguration`: si se cayera ahi, el TOS
+    // volveria a decir «Los sello» sin que nada mas se ponga rojo (spec 0078).
     expect(validated.configuration).toEqual({
       unitName: WIZARD_UNIT_NAME,
+      unitPlural: WIZARD_UNIT_PLURAL,
       target: 8,
     });
     expect(validated.accrual).toEqual({
@@ -128,5 +134,58 @@ describe("composeWizardProgramInput (spec 0069 §D4)", () => {
         validateProgramInput(composeWizardProgramInput(8, "Café", [])),
       ),
     ).toBe(422);
+  });
+});
+
+/**
+ * El 503 sin base: `resolveWizardClauseIds` es la traduccion `null` → `LoyaltyError`, y
+ * es lo que garantiza que NUNCA se componga un programa sin terminos.
+ *
+ * **Por que este caso NO tiene gemelo contra Neon:** `termsScopeCandidates` siempre
+ * appendea `"default"` al final, asi que con las semillas puestas el 503 es inalcanzable
+ * **por construccion** para cualquier pais. El contrato de la RUTA para ese 503 —el
+ * `code` y que `saveProgram` no se llame— lo pinnea `onboarding-program-503.test.ts` con
+ * dobles. Lo unico declarado afuera es «una base real sin semillas».
+ */
+describe("resolveWizardClauseIds (spec 0078 §3)", () => {
+  const rows = [
+    { id: "ec-1", key: "earning", jurisdictionScope: "EC" },
+    { id: "ec-2", key: "redemption", jurisdictionScope: "EC" },
+    { id: "def-1", key: "earning", jurisdictionScope: "default" },
+    { id: "def-2", key: "redemption", jurisdictionScope: "default" },
+  ];
+
+  it("devuelve las dos del primer candidato COMPLETO", () => {
+    expect(resolveWizardClauseIds(rows, ["EC", "default"])).toEqual([
+      "ec-1",
+      "ec-2",
+    ]);
+    expect(resolveWizardClauseIds(rows, ["MX", "default"])).toEqual([
+      "def-1",
+      "def-2",
+    ]);
+  });
+
+  it("con el candidato del pais a medias, NO mezcla: las dos de `default`", () => {
+    expect(
+      resolveWizardClauseIds(
+        rows.filter((row) => row.id !== "ec-2"),
+        ["EC", "default"],
+      ),
+    ).toEqual(["def-1", "def-2"]);
+  });
+
+  it("sin ningun candidato completo tira 503, no compone nada", () => {
+    expect(statusOf(() => resolveWizardClauseIds([], ["EC", "default"]))).toBe(
+      503,
+    );
+    expect(
+      statusOf(() =>
+        resolveWizardClauseIds(
+          rows.filter((row) => row.key === "earning"),
+          ["EC", "default"],
+        ),
+      ),
+    ).toBe(503);
   });
 });

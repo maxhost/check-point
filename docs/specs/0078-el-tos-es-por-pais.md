@@ -1,10 +1,10 @@
 ---
 spec: 0078
 fecha: 2026-09-18
-estado: cerrada
+estado: implementada
 resumen: El TOS del programa pasa a ser POR PAIS —decision del owner, empezando por EC— seleccionado por `business.countryCode` con caida a un scope `default`, en vez del unico `global-draft` hardcodeado que usa el wizard hoy. Sin migracion de ESQUEMA: `core.terms_template` ya tiene `jurisdiction_scope` y `renderedTerms` ya interpola las variables; lo que falta son SEMILLAS y SELECCION. Entran ademas los dos defectos medidos del texto legal que ve el consumidor: el «Los sello se acumulan…» (el singular de `unitName` usado como `program_name`) y que `country_code` se pasa como variable pero no esta en ningun `variables_allowlist`, asi que hoy un TOS por pais no podria nombrar a su pais.
 disjunta: no
-archivos: apps/merchant/drizzle/<NNNN>_terms_por_pais.sql, apps/merchant/src/server/loyalty-program/terms.ts, apps/merchant/src/server/onboarding/program-defaults.ts, apps/merchant/src/server/loyalty-program/terms-scope.ts, apps/merchant/src/server/loyalty-program/terms-scope.test.ts, apps/merchant/src/server/onboarding-program.neon.integration.test.ts, docs/specs/0078-contratos-de-api.md
+archivos: apps/merchant/drizzle/0038_terms_por_pais.sql, apps/merchant/src/server/loyalty-program/terms.ts, apps/merchant/src/server/onboarding/program-defaults.ts, apps/merchant/src/server/loyalty-program/terms-scope.ts, apps/merchant/src/server/loyalty-program/terms-scope.test.ts, apps/merchant/src/server/onboarding-program.neon.integration.test.ts, docs/specs/0078-contratos-de-api.md
 ---
 
 # 0078 — El TOS es por pais (spec A del ADR 0076)

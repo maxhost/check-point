@@ -96,9 +96,15 @@ export function normalizeConfiguration(
     };
   }
   // The stamp image lives in dedicated columns (spec 0026), never in configuration jsonb.
+  // `unitPlural` es OPCIONAL en Sellos (spec 0078): lo manda el wizard para que el TOS
+  // diga «Los sellos» y no «Los sello». Como `configuration` es jsonb, sumarlo no es una
+  // migracion; y si no viene, la clave NO se escribe —un programa viejo no cambia de
+  // forma— y `renderedTerms` cae al singular.
+  const unitPlural = nonEmpty(configuration.unitPlural);
   return {
     unitName: String(configuration.unitName).trim(),
     target: Number(configuration.target),
+    ...(unitPlural ? { unitPlural } : {}),
   };
 }
 
@@ -166,6 +172,19 @@ export function validateProgramInput(value: unknown): ProgramInput {
       throw new LoyaltyError(
         422,
         "Los sellos requieren nombre y un objetivo entero entre 2 y 50.",
+      );
+    }
+    // Spec 0078: el plural es opcional en Sellos (Puntos lo sigue EXIGIENDO arriba),
+    // pero si viene tiene que ser un string con contenido — un `""` o un `42` entrarian
+    // al texto legal que ve el consumidor.
+    if (
+      configuration.unitPlural !== undefined &&
+      configuration.unitPlural !== null &&
+      !nonEmpty(configuration.unitPlural)
+    ) {
+      throw new LoyaltyError(
+        422,
+        "El plural de la unidad no puede estar vacío.",
       );
     }
   }

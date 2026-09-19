@@ -2,6 +2,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import { termsTemplates } from "../schema";
 import { LoyaltyError } from "../loyalty-program/core";
+import { ownerBusiness } from "../loyalty-program/owner";
+import {
+  type ScopedTemplate,
+  scopedTemplateIds,
+  termsScopeCandidates,
+} from "../loyalty-program/terms-scope";
 
 /**
  * Spec 0069 §D4 — dos campos adentro, un `ProgramInput` COMPLETO afuera.
@@ -15,8 +21,9 @@ import { LoyaltyError } from "../loyalty-program/core";
  * Lo que compone, y por que cada cosa:
  *
  * - `clauses`: los `templateId` de las SEMILLAS `earning` y `redemption` de
- *   `core.terms_template` (`drizzle/0004_polite_turbo.sql:97-100`). `transition` NO
- *   entra: es la clausula del **cierre** del programa, que el wizard no agenda.
+ *   `core.terms_template`, **del scope del pais del negocio** con caida a `default`
+ *   (spec 0078; antes era el unico `global-draft` hardcodeado). `transition` NO entra:
+ *   es la clausula del **cierre** del programa, que el wizard no agenda.
  * - `accrual`: `per_purchase`, `grant: 1` — «un sello por compra», que es la unica
  *   lectura de «cada cuantos sellos» que el wizard pregunta. **Este default lo eligio
  *   el implementador, no el owner**: la spec no lo fija y `validateAccrual` no acepta
@@ -35,7 +42,7 @@ export type WizardProgramRequest = {
 /** El `ProgramInput` crudo que consume `saveProgram` (lo valida el de siempre). */
 export type WizardProgramInput = {
   kind: "stamps";
-  configuration: { unitName: string; target: number };
+  configuration: { unitName: string; unitPlural: string; target: number };
   clauses: { templateId: string }[];
   accrual: { mode: "per_purchase"; grant: 1; blockAmount: null };
   rewards: { type: "custom"; label: string }[];
@@ -45,39 +52,63 @@ export type WizardProgramInput = {
 /** La unidad del wizard es siempre «sello»: la pantalla no ofrece renombrarla. */
 export const WIZARD_UNIT_NAME = "sello";
 
+/**
+ * Y su plural, que es lo que el TOS por pais interpola en `{{program_unit_plural}}`.
+ * Sin esto el texto que ve el consumidor dice «Los sello se acumulan…» (spec 0078).
+ */
+export const WIZARD_UNIT_PLURAL = "sellos";
+
 /** Las dos semillas que el wizard usa como terminos. `transition` es del cierre. */
 export const WIZARD_CLAUSE_KEYS = ["earning", "redemption"] as const;
 
 /**
- * Lee los ids de las dos semillas publicadas. Si faltaran —fueron excluidas a proposito
- * del truncate de produccion, pero una base sin ellas es posible— la ruta corta con
- * `503` en vez de escribir un programa **sin terminos**, que es el estado que ningun
- * comercio deberia poder alcanzar.
+ * Traduce las filas leidas al par de ids del wizard. PURA, para que el 503 tenga oraculo
+ * sin base: `scopedTemplateIds` elige **un solo scope completo** (nunca media clausula de
+ * cada uno) y devuelve `null` si ningun candidato tiene las dos claves. Ese `null` es el
+ * `503` — la ruta corta ANTES de escribir un programa **sin terminos**, que es el estado
+ * que ningun comercio deberia poder alcanzar.
  */
-export async function wizardClauseTemplateIds(): Promise<string[]> {
-  const rows = await getDb()
-    .select({ id: termsTemplates.id, key: termsTemplates.key })
-    .from(termsTemplates)
-    .where(
-      and(
-        eq(termsTemplates.status, "published"),
-        eq(termsTemplates.locale, "es"),
-        eq(termsTemplates.jurisdictionScope, "global-draft"),
-        inArray(termsTemplates.key, [...WIZARD_CLAUSE_KEYS]),
-      ),
-    );
+export function resolveWizardClauseIds(
+  rows: readonly ScopedTemplate[],
+  candidates: readonly string[],
+): string[] {
   // El orden de las clausulas es el del wizard (`earning` y despues `redemption`), no
   // el que devuelva Postgres: el markdown de los terminos se concatena en ese orden.
-  const ids = WIZARD_CLAUSE_KEYS.map(
-    (key) => rows.find((row) => row.key === key)?.id,
-  ).filter((id): id is string => typeof id === "string");
-  if (ids.length !== WIZARD_CLAUSE_KEYS.length) {
+  const ids = scopedTemplateIds(rows, candidates, WIZARD_CLAUSE_KEYS);
+  if (!ids) {
     throw new LoyaltyError(
       503,
       "Las plantillas de términos no están disponibles.",
     );
   }
   return ids;
+}
+
+/**
+ * Los ids de las dos semillas publicadas **del pais del negocio**, con caida al scope
+ * `default` (spec 0078 §3, ADR 0076 §7). Una sola consulta por los dos candidatos: la
+ * eleccion entre ellos es de `resolveWizardClauseIds`, no del `ORDER BY`.
+ */
+export async function wizardClauseTemplateIds(
+  countryCode: string | null | undefined,
+): Promise<string[]> {
+  const candidates = termsScopeCandidates(countryCode);
+  const rows = await getDb()
+    .select({
+      id: termsTemplates.id,
+      key: termsTemplates.key,
+      jurisdictionScope: termsTemplates.jurisdictionScope,
+    })
+    .from(termsTemplates)
+    .where(
+      and(
+        eq(termsTemplates.status, "published"),
+        eq(termsTemplates.locale, "es"),
+        inArray(termsTemplates.jurisdictionScope, candidates),
+        inArray(termsTemplates.key, [...WIZARD_CLAUSE_KEYS]),
+      ),
+    );
+  return resolveWizardClauseIds(rows, candidates);
 }
 
 /** Valida los dos campos del wizard. Puro: no toca la base. */
@@ -123,7 +154,11 @@ export function composeWizardProgramInput(
 ): WizardProgramInput {
   return {
     kind: "stamps",
-    configuration: { unitName: WIZARD_UNIT_NAME, target },
+    configuration: {
+      unitName: WIZARD_UNIT_NAME,
+      unitPlural: WIZARD_UNIT_PLURAL,
+      target,
+    },
     clauses: templateIds.map((templateId) => ({ templateId })),
     accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
     rewards: [{ type: "custom", label }],
@@ -131,14 +166,24 @@ export function composeWizardProgramInput(
   };
 }
 
-/** Lo que consume la ruta: valida, lee las semillas y devuelve el input completo. */
+/**
+ * Lo que consume la ruta: valida, lee las semillas del PAIS del negocio y devuelve el
+ * input completo.
+ *
+ * Recibe el `userId` y no el pais porque el pais no puede venir del cliente: se resuelve
+ * con el mismo `ownerBusiness` que usa `saveProgram`, o sea de la sesion. Si el usuario
+ * no tiene negocio como owner, cae a `default` y `saveProgram` corta despues con el 403
+ * de siempre — el TOS no es quien decide eso.
+ */
 export async function wizardProgramInput(
   raw: unknown,
+  userId: string,
 ): Promise<WizardProgramInput> {
   const { target, label } = validateWizardRequest(raw);
+  const business = await ownerBusiness(userId);
   return composeWizardProgramInput(
     target,
     label,
-    await wizardClauseTemplateIds(),
+    await wizardClauseTemplateIds(business?.countryCode ?? null),
   );
 }

@@ -32,10 +32,22 @@ export async function renderedTerms(
     : [];
   const variables = {
     business_legal_name: business.name,
+    // `program_name` SE CONSERVA tal cual, singular incluido: es la variable que usan
+    // las plantillas del scope `global-draft`, y cambiarla les cambiaria el texto a los
+    // programas que todavia las referencian. Lo que arregla el «Los sello se acumulan…»
+    // es `program_unit_plural`, que es lo que usan las plantillas por pais (spec 0078).
     program_name:
       input.kind === "points"
         ? String(input.configuration.unitPlural)
         : String(input.configuration.unitName),
+    // Sellos acepta `unitPlural` OPCIONAL (`validation.ts`), asi que un programa viejo
+    // —o uno creado por una puerta que no lo manda— cae al singular en vez de romper.
+    program_unit_plural:
+      input.kind === "points"
+        ? String(input.configuration.unitPlural)
+        : String(
+            input.configuration.unitPlural ?? input.configuration.unitName,
+          ),
     program_kind: input.kind,
     country_code: business.countryCode,
   };

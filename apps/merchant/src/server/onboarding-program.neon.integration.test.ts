@@ -100,7 +100,9 @@ describe.skipIf(!enabled)(
     }, 60_000);
 
     it("las dos SEMILLAS de términos existen y resuelven a dos ids distintos", async () => {
-      const ids = await wizardClauseTemplateIds();
+      // El negocio de este archivo es `EC`; el scope por país lo cubre en detalle
+      // `onboarding-program-terms.neon.integration.test.ts` (spec 0078).
+      const ids = await wizardClauseTemplateIds("EC");
       expect(ids).toHaveLength(2);
       expect(new Set(ids).size).toBe(2);
     }, 30_000);
@@ -121,7 +123,11 @@ describe.skipIf(!enabled)(
         .where(eq(loyaltyPrograms.id, body.programId));
       expect(program.status).toBe("active");
       expect(program.kind).toBe("stamps");
-      expect(program.configuration).toEqual({ unitName: "sello", target: 8 });
+      expect(program.configuration).toEqual({
+        unitName: "sello",
+        unitPlural: "sellos",
+        target: 8,
+      });
       // Sin sello: es de donde sale el placeholder de §D5.
       expect(program.stampImageObjectKey).toBeNull();
       expect(program.stampImageVersion).toBe(0);

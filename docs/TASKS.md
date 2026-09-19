@@ -14,24 +14,27 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-18 (QA local en curso; fallback de dev retirado, SIN COMMITEAR) — TODO PUSHEADO a `origin/main` (`bb511df`), pero
-`main` esta ROJO en CI por `pnpm test:e2e`, y Vercel no despliega por un problema del lado de
-ellos. Lo proximo es QA LOCAL de lo que dejo GPT. Ver «⇥ ARRANCA ACA» abajo.**
+**Ultima actualizacion: 2026-09-18 — arbol LIMPIO en `8a01c62`, con la spec 0077 cerrada. Los
+2 commits nuevos NO estan pusheados (`origin/main` sigue en `bb511df`). La 0078 tiene un
+implementador CORRIENDO. Ver «⇥ ✅ 0077 IMPLEMENTADA» abajo.**
 
-**ESTADO REAL, en una pantalla — todo verificado, nada asumido:**
+**ESTADO REAL, en una pantalla — lo medido en ESTA sesion esta marcado; lo heredado dice de donde
+viene:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD de `origin/main` | **`bb511df`**. Arbol local **CON CAMBIOS SIN COMMITEAR**: retiro del fallback de dev (`onboarding-api.ts`, su test, y `dev-onboarding-state.ts` **borrado**) + docs |
-| Lo que entro en este push | **6 commits**: refactor de billing, **spec 0074** (3 lecturas), **spec 0075** (QR sin gate de email), la **UI del wizard** de GPT, y 2 de docs |
-| Specs del arco | **0067, 0068, 0069, 0072, 0074 y 0075 `implementadas`**. Las 4 ultimas con **PASS de revisor independiente** |
-| Suite local con Neon | **211 archivos / 1637 tests, 0 failed, 0 skipped** (`set -a; . ./.env.integration.local; set +a` antes de `pnpm run test`) |
-| `typecheck` · `lint` · `format:check` · `build` | **los cuatro verdes** en local sobre el arbol pusheado |
-| ⚠️ **`pnpm test:e2e`** | **ROJO en CI, y NUNCA se corrio en local.** Es el **sexto** gate; las specs listan cinco. **Es lo que tiene `main` en rojo** |
-| CI de `e2e8f18` y de `bb511df` | **las dos `failure`**, las dos en el **paso 12, `Run pnpm test:e2e`**. Los pasos 1-11 (lint, typecheck, migracion Neon, **unit+integracion**) en `success` |
-| Vercel | **NO desplego nada del push.** Ultimo deploy en produccion sigue siendo **`78d1f3a`** (2026-09-18 02:56 UTC) |
-| Produccion (HTTP, verificado) | `www.checkpass.club` **200**, `/api/health` **200**, apex **308 → www**. **`/api/merchant/session` da 404**: prod NO tiene el codigo nuevo |
-| Produccion (datos) | **0 negocios, 0 usuarios merchant, 0 suscripciones** |
+| HEAD local | ver `git log --oneline -1`. La **0078** acaba de cerrar y se commitea en este turno |
+| `origin/main` | **`bb511df`** — estamos **2 commits ADELANTE y sin pushear**: `53bcf88` (fallback de dev + ADR 0076) y `8a01c62` (spec 0077) |
+| Specs del arco | **0067, 0068, 0069, 0072, 0074, 0075 y 0077 `implementadas`**. Las 5 ultimas con **PASS de revisor independiente** |
+| **En vuelo AHORA** | **0077 y 0078 `implementadas`** con PASS. Lo que sigue es la **0079** (una ruta + `kind`), **la unica que lleva `test:e2e`** |
+| Suite local con Neon | **219 archivos / 1715 tests, 0 failed, 0 skipped** — corrido por el orquestador tras cerrar la 0078 |
+| `typecheck` · `lint` · `format:check` · `build` | **los cuatro verdes** sobre `8a01c62` |
+| ⚠️ **`pnpm test:e2e`** | **NO se corrio en esta sesion** y no aplicaba (0077 y 0078 no tocan `.tsx`). **La 0079 SI lo lleva** |
+| ⚠️ CI | **`main` remoto sigue ROJO** por `test:e2e` en `tests/e2e/loyalty.spec.ts:27` (UI vieja de `/backoffice/demo`). Es **anterior** a los 2 commits nuevos — heredado de `bb511df`, no lo causamos |
+| Vercel / Produccion | **Medido en la sesion del 2026-09-18 anterior, NO re-verificado hoy:** ultimo deploy `78d1f3a`, prod sin el codigo nuevo (`/api/merchant/session` daba 404), **0 negocios / 0 usuarios / 0 suscripciones**. **Re-medir antes de usarlo para decidir algo** |
+
+**LO QUE FALTA PARA EL QA UNICO QUE PIDIO EL OWNER:** la 0078 (en vuelo) y la 0079 (bloqueada).
+Recien con las tres `implementadas` se le avisa.
 
 ## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-18)
 
@@ -138,6 +141,105 @@ cp /tmp/mut-loyalty-program.ts  apps/merchant/src/server/loyalty-program.ts
 | M5 | `apps/merchant/src/server/onboarding-grant.ts` | `0d9049f629ce0f6dee25610642f4d9da8c67ec5c` | monotonia: el acortado usa `least(...)`, no asignacion | **ROJO** — `onboarding-grant-cortes.neon` «MONOTONÍA: con 2 minutos restantes, completar el alta NO los estira a 5» (`expected 2026-09-18T23:39:52.916Z to deeply equal 2026-09-18T23:36:51.405Z`: la ventana se estiro ~3 min). Los otros 6 del archivo + el bypass + la unitaria, verdes. |
 | M6 | `apps/merchant/src/server/onboarding-grant.ts` | `0d9049f629ce0f6dee25610642f4d9da8c67ec5c` | el `isNotNull` del `WHERE` del acortado (hallazgo 1 del revisor: `least` IGNORA nulos) | **ROJO** — `onboarding-grant-cortes.neon` «el acortado NO le regala permiso a una sesión del MISMO usuario que lo tenía NULL» (`AssertionError: expected [] to have a length of 1 but got +0`: la fila NULL dejo de ser NULL). Alcance: los 4 archivos de la spec, **44/45**, o sea que ese caso es el UNICO que lo pinnea. Revertida, `diff` vacio, shasum OK. |
 
+
+## ⇥ 🟠 DECISION PENDIENTE DEL OWNER — EL TOS DEPRECADO SIGUE ALCANZABLE (2026-09-19)
+
+**NO es una decision tomada. Es un hallazgo del revisor de la 0078, subido al owner sin resolver.**
+**Reproducido por el orquestador con tres evidencias independientes:**
+
+1. **`renderedTerms` acepta CUALQUIER `templateId` que este `published`** — `terms.ts:26-31` filtra
+   por `eq(status,'published')` e `inArray(id, ids)`, **sin scope y sin pertenencia**.
+2. **`GET /api/loyalty-terms/templates` no devuelve `jurisdictionScope`** — el DTO
+   (`templates/route.ts:19-27`) es `id, title, category, templateMarkdown, version`. Devuelve **6**
+   plantillas con titulos repetidos («Cómo se acumula» ×3) y **quien haga el panel no tiene forma
+   de distinguirlas** salvo comparando strings de markdown.
+3. **Una de esas tres es la que escribe «Los sello se acumulan…»** — el test nuevo del
+   implementador lo asevera (`loyalty-terms-render.neon…:98`).
+
+**Consecuencia:** un panel construido sobre ese contrato puede escribir el texto legal **viejo y
+mal redactado** en el TOS de un comercio EC. No es cosmetico: es un camino directo al texto
+deprecado, y el TOS es lo que ve el consumidor.
+
+**LAS DOS MITADES DEL ARREGLO, y solo la segunda cierra el agujero:**
+
+| | Que | Efecto |
+|---|---|---|
+| a | Filtrar la ruta por `termsScopeCandidates(business.countryCode)` y exponer el scope en el DTO | **cosmetica**: deja de ofrecer las tres copias |
+| b | **Validar en `renderedTerms` que el `templateId` pertenezca a un scope candidato del negocio** | **cierra el agujero de verdad** |
+
+**POR QUE NO SE APLICO:** la ruta no esta en la tabla «Archivos» de la 0078, su alcance excluye
+pantallas, y **(b) cambia el comportamiento de `PUT /api/loyalty-program`** — podria romper el
+flujo de TOS personalizado que el owner pidio para el panel. **Es decision suya.**
+
+**PREGUNTA CONCRETA AL OWNER:** ¿se valida el scope del `templateId` en el writer (arreglo b), o se
+deja que el panel pueda elegir cualquier plantilla publicada? Si se valida, es una spec chica
+aparte, **no entra en la 0078**.
+
+## ⇥ ✅ 0078 IMPLEMENTADA — EL TOS ES POR PAIS (2026-09-19)
+
+**`estado: implementada`**, con PASS de revisor independiente y sus 2 hallazgos cerrados.
+**Reproducido por el orquestador:** los cinco gates verdes, **219 archivos / 1715 tests con Neon,
+0 failed, 0 skipped**, `no-mutations-left.sh` EXIT=0, cero `.tsx`. Y el oraculo nuevo **MUERDE**:
+con el cuerpo ganando sobre la sesion, el caso «el `countryCode` del CUERPO no mueve el scope»
+se pone rojo con el deep-equal de `templateId`; revertido con `diff` vacio y shasum
+`d82498be…` identico.
+
+**Lo que el revisor resolvio de los 7 puntos que se le exigieron:**
+- **El `0038_snapshot.json` hecho A MANO es CORRECTO:** comparo los dos JSON campo por campo — las
+  unicas claves que difieren son `id` y `prevId`, y `prevId(0038) === id(0037)`. La prueba fuerte
+  no es la comparacion sino que **`drizzle-kit generate` leyo ese snapshot como estado previo,
+  diffeo contra el esquema y dijo «No schema changes» sin escribir nada**.
+- **Los 4 desvios de la tabla «Archivos»: ninguno es alcance ampliado.** La linea de produccion en
+  `program/route.ts` es **necesaria y minima** — sin el `userId` no compila. **La tabla «Archivos»
+  de la spec estaba incompleta; el implementador no se fue de alcance.** (Otro error de spec mio.)
+- **Tests preexistentes NO debilitados:** las 5 lineas con `expect` que el diff borra son las mismas
+  aserciones reescritas **con una clave MAS** (`unitPlural`). Como `toEqual` es exacto, quedaron
+  **mas estrictas**, y la mutacion MR3 lo demuestra.
+
+**LOS 2 HALLAZGOS EN CIERRE** (el implementador fue reanudado por `SendMessage`):
+
+| # | Que | Estado |
+|---|---|---|
+| 2 | **«El pais no puede venir del cuerpo» no tiene ORACULO.** MR4 lo rompio y **65/65 quedaron verdes**; con una sonda el revisor probo que un negocio MX mandando `countryCode:"EC"` en el cuerpo recibe los ids de EC. El codigo es correcto; el contrato §4 promete algo que ningun test sostiene | en cierre |
+| 3 | **El 503 quedo sin la mitad barata de su oraculo.** El limite declarado era correcto en su nucleo —y el revisor le dio un motivo MAS FUERTE: `termsScopeCandidates` **siempre** appendea `default`, asi que el 503 es inalcanzable **por construccion**, no por el paralelismo— pero la mitad de CONTRATO se cerraba con `vi.mock` en 4 ms y 45 lineas | en cierre |
+
+## ⇥ 0078 — IMPLEMENTADA POR EL AGENTE, EN REVISION (2026-09-18)
+
+**Revisor independiente DESPACHADO.** La spec NO esta marcada `implementada`.
+
+**REPRODUCIDO POR EL ORQUESTADOR** (no es el auto-reporte del implementador):
+
+| Que | Resultado |
+|---|---|
+| Los cinco gates con env Neon | **verdes** — **218 archivos / 1712 tests, 0 failed, 0 skipped** |
+| `no-mutations-left.sh` · `.tsx` tocados | **EXIT=0** · **cero** |
+| `drizzle-kit check` | «Everything's fine» — importa porque el **`0038_snapshot.json` se hizo A MANO** |
+| Semillas en la base | **7 filas**: `EC`×2 + `default`×2 + `global-draft`×3 (1 `archived`) |
+
+**DOS HALLAZGOS DEL IMPLEMENTADOR, los dos CONFIRMADOS por el orquestador y NINGUNO tocado:**
+
+1. **`GET /api/loyalty-terms/templates` NO filtra por scope** (`route.ts:26-27`: solo
+   `eq(status,'published')`). Desde la `0038` devuelve **6** plantillas con titulos repetidos
+   («Cómo se acumula» ×3). Si la pantalla avanzada del panel consume esa lista, le ofrece al
+   comerciante tres copias de cada una. **Es un hallazgo a decidir del owner**, no una decision
+   tomada: la spec 0078 no lo incluia en su alcance.
+2. **Una clausula con `templateId` Y `text` usa el allowlist de la PLANTILLA**, asi que un TOS
+   personalizado que conserve el `templateId` **si** puede usar variables — al reves de lo que el
+   contrato declara para el texto libre puro. Documentado como mecanismo.
+
+**⚠️ UN ERROR MIO, CORREGIDO POR EL IMPLEMENTADOR — Y ES LA REGLA DE `CLAUDE.md` QUE VIOLE:**
+en el encargo le afirme que el flake de `consumer-recovery.neon` era una **colision de
+`phone_e164` UNIQUE** sembrado con `Math.random()`. **ERA FALSO.** Lo copie de un handoff viejo
+**sin re-medirlo**. El mecanismo real, que el implementador midio y el orquestador confirmo
+leyendo el archivo: `consumer-recovery.neon.integration.test.ts:363-367` hace
+`select … where(phoneE164)` **SIN `ORDER BY`** y lee `.at(-1)`, y el orden de filas en Postgres es
+**indefinido**; ademas `phones[4]` se usa en **dos** tests (lineas 269 y 350). Demostrado con tres
+corridas del mismo archivo: pasa, pasa, falla.
+
+**La regla que viole esta escrita en `CLAUDE.md`:** *«lo que le pasas a un subagente como insumo
+es una afirmacion tuya — re-medí el doc antes de despacharlo»*. Un insumo falso en un encargo es
+peor que no darlo: manda al agente a buscar el bug donde no esta. **Al revisor de la 0078 ya se le
+paso la correccion.** Y el flake sigue AJENO y sin arreglar (no es de este arco).
 
 ## ⇥ ✅ 0077 IMPLEMENTADA — EL BYPASS ESTA CERRADO (2026-09-18)
 
@@ -2591,3 +2693,118 @@ mirarlo en la revision:** `loyalty-program.test.ts` («never serializes the inte
 aseveraba `stampImagePath: null` sin sello, y `loyalty-stamp.neon.integration.test.ts` aseveraba
 `stampForPublicProgram(...) === null` sin sello. Las dos pinneaban **justo lo que la §D5 cambia**.
 
+
+## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0078 (2026-09-18)
+
+**Estado: implementado, SIN commitear y SIN marcar la spec.** Falta el PASS del revisor
+independiente (ADR 0071). Arbol limpio de mutaciones (`no-mutations-left.sh` sale **0**).
+
+**Gates, los cinco, con `set -a; . ./.env.integration.local; set +a`:** `typecheck` (3/3) ·
+`lint` (exit 0) · `format:check` («All matched files use Prettier code style!») · `build`
+(3/3) · `test` → **219 archivos / 1715 tests, 0 failed, 0 skipped** (exit 0, corrida final
+tras cerrar los dos hallazgos de TEST del revisor; la corrida previa a esos dos archivos fue
+218 / 1712).
+`pnpm test:e2e` **NO aplica y no se corrio**: `git status --porcelain | grep -c '\.tsx$'` → **0**.
+
+**La migracion `0038_terms_por_pais.sql` YA ESTA APLICADA a la rama de integracion** (no a
+prod), con su `meta/0038_snapshot.json` (copia del `0037` con `prevId` encadenado, igual que
+la `0011`, que tambien es de solo datos) y su fila de journal en `idx: 38`. Verificado:
+`drizzle-kit check` → «Everything's fine», `drizzle-kit generate` → «No schema changes», y por
+SQL: 4 filas nuevas (`default`×2, `EC`×2), todas `published`/`es`, las cuatro con
+`["business_legal_name","program_name","program_unit_plural","country_code"]`; `global-draft`
+intacto (2 `published` + 1 `archived`).
+
+**CUATRO desvios de la tabla «Archivos» de la spec. El revisor tiene que mirarlos:**
+
+1. **`app/api/onboarding/program/route.ts` (1 linea).** Es el CABLEADO que la spec no listo:
+   `wizardClauseTemplateIds` necesita el pais, y la cadena es ruta → `wizardProgramInput` →
+   `wizardClauseTemplateIds`. `wizardProgramInput(body, session.user.id)` resuelve el pais con
+   el mismo `ownerBusiness` que usa `saveProgram`, o sea **de la sesion**; sin tocar la ruta el
+   pais no llega. Cero `.tsx`.
+2. **Los casos de integracion van en DOS archivos nuevos, no dentro de
+   `onboarding-program.neon.integration.test.ts`** (la spec ya lo contemplaba como opcion):
+   ese archivo esta en 285 lineas y el hook corta en 300. Quedaron
+   `onboarding-program-terms.neon.integration.test.ts` (219) y
+   `loyalty-terms-render.neon.integration.test.ts` (119).
+2b. **Dos archivos mas, de la ronda del revisor (PASS con 3 hallazgos):**
+   `onboarding-program-503.test.ts` (nuevo, unitario con dobles) cierra la mitad de contrato
+   del 503; y el caso **MX con `countryCode` en el CUERPO** entro en
+   `onboarding-program-terms.neon…` (que quedo en **289** lineas: el proximo caso obliga a
+   partirlo). El tercer hallazgo del revisor —`renderedTerms` acepta cualquier `templateId`
+   `published` sin validar scope, y `GET /api/loyalty-terms/templates` no devuelve
+   `jurisdictionScope`— **NO se toco: es decision de producto y va al owner**.
+3. **`onboarding/program-defaults.test.ts` (no listado): aserciones actualizadas**, no
+   borradas — `composeWizardProgramInput` ahora compone `unitPlural`, que es §4 de la spec — y
+   3 casos nuevos sobre `resolveWizardClauseIds` (incluido el **503**).
+4. **`onboarding-program-bypass.neon.integration.test.ts` (no listado): 4 aserciones
+   actualizadas** por lo mismo. Comparan la `configuration` ENTERA contra
+   `{ unitName, target }` y el wizard ahora escribe tambien `unitPlural`. **Rojo detectado por
+   la suite completa, no predicho**; la intencion del test (que la fila NO se reescriba) queda
+   igual. Ningun test se borro ni se debilito.
+
+**El LIMITE del 503, CORREGIDO (hallazgo 2 del revisor) y ya reducido a su nucleo real.** La
+primera version de este limite culpaba al paralelismo de vitest; el motivo de fondo es **mas
+fuerte y estructural**: `termsScopeCandidates` **siempre** appendea `"default"` al final
+(`loyalty-program/terms-scope.ts:26-28`), asi que mientras `default` este sembrado **ningun
+pais puede producir el 503** — es inalcanzable **por construccion**, no por concurrencia. (Lo
+del estado compartido sigue siendo cierto y es el motivo extra por el que archivar `default`
+en un test tampoco es una opcion: vitest corre con forks, sin `fileParallelism: false`.)
+
+**La mitad de CONTRATO si se cerro**, y es barata: `onboarding-program-503.test.ts` (nuevo, 2
+casos, **5 ms**) mockea `./auth` y `./onboarding/program-defaults` con `vi.mock` —patron que ya
+existia en `marketing-routes.test.ts`, con `LoyaltyError` REAL para que el `instanceof` de la
+ruta siga valiendo— y pinnea **503 + `program_unavailable` + `saveProgram` NO llamado**, con un
+control positivo que prueba que el espia no esta verde de gratis. Mordido por M6.
+
+**Lo unico que queda declarado afuera: «una base real sin semillas».** Eso si exige una base
+dedicada.
+
+**Hallazgo a decidir (NO lo decidio el owner, NO se toco):** `GET /api/loyalty-terms/templates`
+devuelve **todas** las plantillas `published` sin filtrar por scope (`route.ts:26-27`), asi que
+desde la `0038` lista **6** filas con titulos repetidos («Cómo se acumula» ×3). Si la pantalla
+«avanzada» del panel usa esa lista, va a ofrecer tres copias de cada plantilla. Esta escrito en
+`docs/specs/0078-contratos-de-api.md` §4 como hallazgo abierto.
+
+**Flake AJENO reproducido y NO arreglado** (pedido del encargo):
+`consumer-recovery.neon.integration.test.ts` → «enforces 3/hour persistently…»,
+`expected 'accepted' to be 'failed'`. **Mecanismo identificado, y NO es el `phone_e164`
+UNIQUE:** `phones[4]` se usa en DOS tests del archivo (linea 269, entrega aceptada; linea 350,
+entrega fallida), y la asercion lee `select … .where(phone)` **SIN `ORDER BY`** y toma
+`.at(-1)` (lineas 363-367). Cual de las dos filas viene ultima es indefinido en Postgres.
+Demostrado: **misma corrida a corrida, mismo arbol** → pasa, pasa, **falla**. La corrida final
+de la suite lo tuvo verde.
+
+## ⇥ BITACORA DE MUTACIONES — spec 0078 (implementador, 2026-09-18)
+
+**Abierta ANTES de medir; las 4 medidas y revertidas** (`diff` contra `/tmp/limpios-0078/` vacio y `shasum` confirmado en las 4). Presupuesto: 4 mutaciones; clase de error a cazar: **que el TOS
+salga de un scope que no corresponde, o que salga incompleto/mezclado**.
+
+Restauracion de emergencia (los 3 archivos tienen copia limpia en `/tmp/limpios-0078/`; los
+`??` **no** se recuperan con `git checkout`):
+
+```
+cp /tmp/limpios-0078/terms-scope.ts apps/merchant/src/server/loyalty-program/terms-scope.ts
+cp /tmp/limpios-0078/terms.ts       apps/merchant/src/server/loyalty-program/terms.ts
+cp /tmp/limpios-0078/0038_terms_por_pais.sql apps/merchant/drizzle/0038_terms_por_pais.sql
+```
+
+| id | archivo | shasum limpio | git status | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `loyalty-program/terms-scope.ts` | `ae3610c1ceaf4c88654986067ddc0654e6b96b70` | `??` | el scope sale del PAIS del negocio | **7 rojos / 61 tests**. El que importa: `onboarding-program-terms.neon` «un negocio EC resuelve los templates de EC» → `expected ["0078ec00-…001","0078ec00-…002"] received ["0078a1b2-…001","0078a1b2-…002"]` (por **id**, no por texto). Tambien los 4 casos ISO-2 de `terms-scope.test.ts` y el caso de ruta |
+| M2 | `loyalty-program/terms-scope.ts` | `ae3610c1ceaf4c88654986067ddc0654e6b96b70` | `??` | la caida es por SCOPE COMPLETO, no por clave (no se mezcla) | **3 rojos / 61 tests**, los tres de no-mezcla y con la mezcla LITERAL en el recibido: `terms-scope.test.ts` y `program-defaults.test.ts` → `['ec-1','def-2']`; `onboarding-program-terms.neon` → `["0078cc00-…001","0078a1b2-…002"]` |
+| M3 | `loyalty-program/terms.ts` | `a6e5ab76c3e690bb3c1fd289a6a91a0d9ed40bba` | ` M` | `program_unit_plural` usa el plural cuando lo hay («Los sellos») | **1 rojo / 72 tests** (7 archivos, incluidos `loyalty-program.test.ts` y `loyalty-program.neon`): `onboarding-program-terms.neon` → `expected 'Los sello se acumulan…' to contain 'Los sellos se acumulan'` — el defecto del ADR 0076 §7 reproducido. El caso de `global-draft` queda VERDE, que es lo correcto: ese scope usa `{{program_name}}` |
+| M4 | `drizzle/0038_terms_por_pais.sql` + la fila en Neon | `47e87ee8ccb45dd487e3dcce08f5c5e14734260e` | `??` | `country_code` esta en el allowlist de las 4 semillas | **5 rojos / 21 tests** en 2 archivos: el allowlist (`ArrayContaining` sin `country_code`) y, sobre todo, **`expected 422 to be 201`** en la ruta del wizard en `onboarding-program-terms.neon` **y** en `onboarding-program.neon` — o sea que sin el allowlist el TOS por pais no se puede ni escribir |
+
+| M5 | `onboarding/program-defaults.ts` | `d82498be6e581050ab8795645208c0d52708eebc` | ` M` | el pais NO puede venir del cuerpo (reproduce la MR4 del revisor) | **1 rojo / 61 tests** (5 archivos): `onboarding-program-terms.neon` «el `countryCode` del CUERPO no mueve el scope» → `expected templateId "0078a1b2-…001/002" received "0078ec00-…001/002"`. Antes de este caso, la MISMA mutacion dejaba los 65 tests en verde |
+| M6 | `app/api/onboarding/program/route.ts` | `38cdc81a94aea0fee82dab01011fd08f7a41c51d` | ` M` | el 503 corta ANTES de `saveProgram` | **1 rojo / 25 tests** (4 archivos): `onboarding-program-503.test.ts` → `expected "vi.fn()" to not be called at all, but actually been called 1 times`, con el input basura `{kind:"stamps"}` llegando al writer. **Hallazgo de la medicion:** bajo esta mutacion el `catch` generico devuelve **el mismo 503 con el mismo `code`**, asi que `status` y `code` NO distinguen el caso — el oraculo que hace el trabajo es el espia. Se reordeno la asercion para que sea la primera (con el motivo escrito en el test) y se re-midio |
+
+Copias limpias de las dos en `/tmp/limpios-0078/` (`program-defaults.ts`, `route.ts`).
+
+**M4 toca ademas ESTADO DE LA BASE** (la migracion ya esta aplicada, y su `ON CONFLICT DO
+NOTHING` no reescribiria la fila). Restauracion de ese estado, verificada por `SELECT`:
+
+```sql
+UPDATE core.terms_template
+SET variables_allowlist = '["business_legal_name", "program_name", "program_unit_plural", "country_code"]'::jsonb
+WHERE jurisdiction_scope IN ('default', 'EC');
+```
