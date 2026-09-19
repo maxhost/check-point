@@ -32,6 +32,30 @@ export function getMerchantAuth() {
         verification: schema.verifications,
       },
     }),
+    // EL PERMISO DE ALTA (spec 0077 §2, ADR 0076 §2). `additionalFields` es config del
+    // CORE, no un plugin: **no publica ni un endpoint** — un plugin sí lo haría por el
+    // catch-all `api/auth/[...all]` (la lección de la spec 0046). Lo único que agrega es
+    // que la columna `onboarding_grant_until` entre al esquema lógico de `session`, o sea
+    // que el adapter la escriba al crear la sesión y `getSession` la devuelva.
+    //
+    // **`input: false` ES LA LÍNEA CRÍTICA DE SEGURIDAD DE ESTA SPEC.** Es lo que hace que
+    // el campo no sea seteable desde ninguna entrada de la API: `parseInputData`
+    // (better-auth 1.6.26, `dist/db/schema.mjs:59-77`) tira `BAD_REQUEST` —
+    // «onboardingGrantUntil is not allowed to be set»— en cuanto un cuerpo lo trae con un
+    // valor. Sin ella el permiso pasaría a ser lo que el ADR 0076 descarta explícitamente:
+    // un claim aceptado desde el cliente. El oráculo está en `onboarding-grant.test.ts`.
+    //
+    // No afecta a la escritura del servidor: `internalAdapter.createSession` NO pasa por
+    // `parseSessionInput` (medido: sólo `parseSessionOutput`, en la lectura).
+    session: {
+      additionalFields: {
+        onboardingGrantUntil: {
+          type: "date",
+          required: false,
+          input: false,
+        },
+      },
+    },
     // Spec 0067 §2 / ADR 0070 §4: la identidad del merchant NO tiene contraseña. El owner
     // entra escribiendo su email (`POST /api/merchant/auth/start`) y vuelve con un link
     // magico; el staff entra con `handle@slug` + PIN por ruta propia. Sin `emailAndPassword`

@@ -10,6 +10,7 @@ import {
   recordStartAttempt,
 } from "../../../../../server/auth-start";
 import { openMerchantSession } from "../../../../../server/merchant-session";
+import { ONBOARDING_GRANT_MINUTES } from "../../../../../server/onboarding-grant";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,15 @@ export async function POST(request: Request) {
       if (isUniqueViolation(error)) return await sendMagicLink(request, email);
       throw error;
     }
-    const cookie = await openMerchantSession(userId);
+    // EL PERMISO DE ALTA (spec 0077 §3, ADR 0076 §2) — se emite **sólo acá**, en la rama
+    // del email DESCONOCIDO, que es el único punto donde el servidor sabe por sí mismo que
+    // arranca un alta: es el que acaba de crear la cuenta. La rama del email conocido no
+    // abre sesión, y `api/merchant/auth/staff` (login por PIN) NUNCA lo pasa.
+    const cookie = await openMerchantSession(userId, {
+      onboardingGrantUntil: new Date(
+        Date.now() + ONBOARDING_GRANT_MINUTES * 60_000,
+      ),
+    });
     return NextResponse.json(
       { sent: false },
       { status: 200, headers: { "set-cookie": cookie } },

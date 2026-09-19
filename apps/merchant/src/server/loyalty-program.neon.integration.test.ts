@@ -25,6 +25,14 @@ import {
   saveProgram,
 } from "./loyalty-program";
 
+/** Spec 0077 §5 — el 3er argumento de `saveProgram`. Estos casos son de DOMINIO, no del
+ * gate: escriben como un owner con el email verificado, igual que antes de la spec. */
+const save = (userId: string, input: unknown) =>
+  saveProgram(userId, input, {
+    emailVerified: true,
+    onboardingGrantActive: false,
+  });
+
 /** A browser datetime-local value in America/Guayaquil (UTC-5, no DST) N days ahead. */
 function guayaquilLocal(daysFromNow: number) {
   const date = new Date(Date.now() + daysFromNow * 86_400_000);
@@ -90,9 +98,13 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
   it("runs the full lifecycle with a complete, attributed audit trail", async () => {
     // Many sequential Neon HTTP round-trips; allow generous time.
     // create — unknown config keys must be stripped
-    const created = await saveProgram(userId, {
+    const created = await save(userId, {
       kind: "points",
-      configuration: { unitSingular: "Punto", unitPlural: "Puntos", junk: "x" },
+      configuration: {
+        unitSingular: "Punto",
+        unitPlural: "Puntos",
+        junk: "x",
+      },
       clauses: [{ text: "Términos iniciales." }],
       accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
       rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
@@ -109,7 +121,7 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
     expect(ctx?.program?.cardBackgroundGradientAngle).toBeNull();
 
     // edit
-    const edited = await saveProgram(userId, {
+    const edited = await save(userId, {
       kind: "points",
       configuration: { unitSingular: "Estrella", unitPlural: "Estrellas" },
       clauses: [{ text: "Términos actualizados." }],
@@ -134,7 +146,7 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
       }),
     ).rejects.toBeInstanceOf(LoyaltyError);
     await expect(
-      saveProgram(userId, {
+      save(userId, {
         kind: "points",
         configuration: { unitSingular: "No", unitPlural: "Noes" },
         clauses: [{ text: "x" }],
@@ -183,7 +195,7 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
     expect(log.at(-1)?.actorId).toBeNull();
 
     // a new cycle can be created only now that the previous one is inactive
-    const recreated = await saveProgram(userId, {
+    const recreated = await save(userId, {
       kind: "stamps",
       configuration: { unitName: "Sello", target: 8 },
       clauses: [{ text: "Términos del nuevo ciclo." }],
@@ -195,7 +207,7 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
 
   it("rejects a user without an owner business with 403", async () => {
     await expect(
-      saveProgram(`ghost-${randomUUID()}`, {
+      save(`ghost-${randomUUID()}`, {
         kind: "points",
         configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
         clauses: [{ text: "Términos." }],
@@ -227,7 +239,7 @@ describe.skipIf(!enabled)("loyalty program service against Neon", () => {
       .insert(memberships)
       .values({ businessId: otherBusiness, userId: otherUser, role: "owner" });
     try {
-      await saveProgram(otherUser, {
+      await save(otherUser, {
         kind: "points",
         configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
         clauses: [{ text: "Primero." }],

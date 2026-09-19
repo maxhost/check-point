@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../../server/auth";
 import { LoyaltyError, saveProgram } from "../../../../server/loyalty-program";
+import { onboardingGrantActive } from "../../../../server/onboarding-grant";
 import { wizardProgramInput } from "../../../../server/onboarding/program-defaults";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,17 @@ export async function POST(request: Request) {
     // semillas de terminos: un fallo de base tiene que salir como el 503 que el
     // contrato declara, nunca como un 500 sin `code` (leccion de la spec 0068 §3).
     const input = await wizardProgramInput(body);
-    const result = await saveProgram(session.user.id, input);
+    // Spec 0077 §6 — esta puerta NO decide: RESUELVE y pasa. El permiso de alta se lee de la
+    // fila de la sesion que `getSession` ya trajo — **no viaja en ningun campo del request**
+    // (ADR 0076 §2), asi que no hay nada del cuerpo que pueda influir en esta lectura. El
+    // invariante crear ≠ editar lo aplica `saveProgram`, que es el unico writer.
+    const result = await saveProgram(session.user.id, input, {
+      emailVerified: session.user.emailVerified === true,
+      onboardingGrantActive: onboardingGrantActive({
+        onboardingGrantUntil: session.session.onboardingGrantUntil,
+        emailVerified: session.user.emailVerified,
+      }),
+    });
     return NextResponse.json(
       { programId: result.programId, created: result.created },
       { status: result.created ? 201 : 200 },
@@ -60,7 +71,9 @@ export async function POST(request: Request) {
       return NextResponse.json(
         // `error.code ?? …`: el cierre de F1 (spec 0072) hace que `saveProgram` rechace con
         // `business_suspended`/`business_closed`, y el mapeo por STATUS traduciría esos 403 a
-        // `not_owner` — un `code` que le miente al cliente sobre por qué lo frenaron.
+        // `not_owner` — un `code` que le miente al cliente sobre por qué lo frenaron. La spec
+        // 0077 suma `email_not_verified` por la misma vía: el mismo `code` que devuelve la
+        // puerta gateada, para que las dos puertas contesten igual al mismo rechazo.
         {
           error: error.message,
           code: error.code ?? codeForStatus(error.status),

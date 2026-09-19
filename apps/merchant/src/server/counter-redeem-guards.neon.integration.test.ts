@@ -28,6 +28,13 @@ import { redeemReward } from "./counter/redeem";
 import { saveProgram } from "./loyalty-program";
 
 /**
+ * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck
+ * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
+ * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
+ */
+const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+
+/**
  * Spec 0055 — authorization, validation and history guards of the redemption, against
  * a real Neon branch. Every error is asserted by its NAMED code: the spec forbids
  * classifying by elimination, and forbids `insufficient_balance` from being the landing
@@ -202,14 +209,18 @@ describe.skipIf(!integrationEnabled)(
 
         // The REAL `saveProgram`: it deletes every reward of the program and re-inserts
         // them on every save, which is why the id is not stable and the log snapshots.
-        await saveProgram(seed.userId, {
-          kind: "points",
-          configuration: { unitSingular: "punto", unitPlural: "puntos" },
-          clauses: [{ text: "Términos del programa." }],
-          accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
-          rewards: [{ type: "custom", label: "Otro premio", pointsCost: 99 }],
-          redeemAllowInsufficient: true,
-        });
+        await saveProgram(
+          seed.userId,
+          {
+            kind: "points",
+            configuration: { unitSingular: "punto", unitPlural: "puntos" },
+            clauses: [{ text: "Términos del programa." }],
+            accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+            rewards: [{ type: "custom", label: "Otro premio", pointsCost: 99 }],
+            redeemAllowInsufficient: true,
+          },
+          OWNER_VERIFICADO,
+        );
         expect(
           await getDb()
             .select({ id: loyaltyRewards.id })
@@ -252,14 +263,18 @@ describe.skipIf(!integrationEnabled)(
         await getDb()
           .delete(loyaltyPrograms)
           .where(eq(loyaltyPrograms.id, owner.programId));
-        const created = await saveProgram(owner.userId, {
-          kind: "points",
-          configuration: { unitSingular: "punto", unitPlural: "puntos" },
-          clauses: [{ text: "Términos del programa." }],
-          accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
-          rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
-          redeemAllowInsufficient: true,
-        });
+        const created = await saveProgram(
+          owner.userId,
+          {
+            kind: "points",
+            configuration: { unitSingular: "punto", unitPlural: "puntos" },
+            clauses: [{ text: "Términos del programa." }],
+            accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+            rewards: [{ type: "custom", label: "Café", pointsCost: 50 }],
+            redeemAllowInsufficient: true,
+          },
+          OWNER_VERIFICADO,
+        );
         expect(created.created).toBe(true);
         const [program] = await getDb()
           .select({ flag: loyaltyPrograms.redeemAllowInsufficient })

@@ -22,6 +22,13 @@ import {
   stampForPublicProgram,
 } from "./loyalty-program";
 
+/**
+ * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck
+ * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
+ * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
+ */
+const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+
 describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
   const userId = `stamp-${randomUUID()}`;
   const businessId = randomUUID();
@@ -59,13 +66,17 @@ describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
   }, 30_000);
 
   it("defaults stamp columns and gates the public stamp read", async () => {
-    await saveProgram(userId, {
-      kind: "stamps",
-      configuration: { unitName: "Sello", target: 8 },
-      clauses: [{ text: "Términos del sello." }],
-      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-      rewards: [{ type: "custom", label: "Café gratis" }],
-    });
+    await saveProgram(
+      userId,
+      {
+        kind: "stamps",
+        configuration: { unitName: "Sello", target: 8 },
+        clauses: [{ text: "Términos del sello." }],
+        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+        rewards: [{ type: "custom", label: "Café gratis" }],
+      },
+      OWNER_VERIFICADO,
+    );
     const ctx = await programForOwner(userId);
     expect(ctx?.program?.stampImageObjectKey).toBeNull();
     expect(ctx?.program?.stampImageVersion).toBe(0);
@@ -80,13 +91,17 @@ describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
       await stampForPublicProgram(businessId, ctx!.program!.id, "1"),
     ).toBeNull();
     // Editing with the default keep leaves the stamp columns untouched.
-    await saveProgram(userId, {
-      kind: "stamps",
-      configuration: { unitName: "Sello", target: 10 },
-      clauses: [{ text: "Términos actualizados." }],
-      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-      rewards: [{ type: "custom", label: "Café gratis" }],
-    });
+    await saveProgram(
+      userId,
+      {
+        kind: "stamps",
+        configuration: { unitName: "Sello", target: 10 },
+        clauses: [{ text: "Términos actualizados." }],
+        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+        rewards: [{ type: "custom", label: "Café gratis" }],
+      },
+      OWNER_VERIFICADO,
+    );
     const after = await programForOwner(userId);
     expect(after?.program?.stampImageObjectKey).toBeNull();
     expect(after?.program?.stampImageVersion).toBe(0);

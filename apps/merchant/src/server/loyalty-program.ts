@@ -1,13 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getDb } from "./db";
 import { businessStatusFailure } from "./business-status";
 import {
-  businesses,
   loyaltyProgramEvents,
   loyaltyPrograms,
   loyaltyRewards,
-  memberships,
 } from "./schema";
 import { type CloseInput, LoyaltyError } from "./loyalty-program/core";
 import { validateProgramInput } from "./loyalty-program/validation";
@@ -16,11 +14,16 @@ import {
   STATE_CHANGED,
   isUniqueViolation,
   loadBusinessProducts,
-  loadProgramRewards,
   updateWithEvent,
 } from "./loyalty-program/persistence";
 import { validateClosingWindow } from "./loyalty-program/time";
+import {
+  type ProgramCaller,
+  programEditDenied,
+  shortenOnboardingGrant,
+} from "./onboarding-grant";
 import { renderedTerms } from "./loyalty-program/terms";
+import { programForOwner } from "./loyalty-program/owner";
 import {
   cleanupStampPrefixNow,
   resolveStampChange,
@@ -48,60 +51,13 @@ export {
   createStampUpload,
   stampForPublicProgram,
 } from "./loyalty-program/stamp";
+export { ownerBusiness, programForOwner } from "./loyalty-program/owner";
 
-export async function ownerBusiness(userId: string) {
-  const [business] = await getDb()
-    .select({
-      id: businesses.id,
-      name: businesses.name,
-      countryCode: businesses.countryCode,
-      currencyCode: businesses.currencyCode,
-      timezone: businesses.timezone,
-      brandPrimaryColor: businesses.brandPrimaryColor,
-      brandComplementaryColor: businesses.brandComplementaryColor,
-      brandAccentColor: businesses.brandAccentColor,
-      // Spec 0072, cierre de F1: el eje `status` se lee ACA porque este es el resolvedor que
-      // usa `saveProgram`, o sea el que decide SOBRE QUE NEGOCIO se escribe. Gatear con otro
-      // resolvedor sería evaluar el estado de una fila y escribir en otra — que es exactamente
-      // la divergencia `asc`/`desc` que la §D3 declara abierta.
-      status: businesses.status,
-      suspensionReason: businesses.suspensionReason,
-    })
-    .from(memberships)
-    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(and(eq(memberships.userId, userId), eq(memberships.role, "owner")))
-    .orderBy(desc(businesses.createdAt))
-    .limit(1);
-  return business ?? null;
-}
-
-export async function programForOwner(userId: string) {
-  const business = await ownerBusiness(userId);
-  if (!business) return null;
-  const db = getDb();
-  // Self-heal expiry on read as a safety net for a late cron; atomic with audit.
-  await updateWithEvent(db, {
-    set: sql`status = 'inactive', updated_at = now()`,
-    where: sql`business_id = ${business.id} AND status = 'closing' AND redemption_ends_at <= now()`,
-    actorId: null,
-    action: "expired",
-  });
-  const [program] = await db
-    .select()
-    .from(loyaltyPrograms)
-    .where(
-      and(
-        eq(loyaltyPrograms.businessId, business.id),
-        inArray(loyaltyPrograms.status, ["active", "closing"]),
-      ),
-    )
-    .orderBy(desc(loyaltyPrograms.createdAt))
-    .limit(1);
-  const rewards = program ? await loadProgramRewards(program.id) : [];
-  return { business, program: program ?? null, rewards };
-}
-
-export async function saveProgram(userId: string, rawInput: unknown) {
+export async function saveProgram(
+  userId: string,
+  rawInput: unknown,
+  caller: ProgramCaller,
+) {
   const input = validateProgramInput(rawInput);
   const context = await programForOwner(userId);
   if (!context) throw new LoyaltyError(403, "No tienes un negocio como owner.");
@@ -125,6 +81,14 @@ export async function saveProgram(userId: string, rawInput: unknown) {
       statusFailure.message,
       statusFailure.code,
     );
+  // EL INVARIANTE CREAR ≠ EDITAR (spec 0077 §5, ADR 0076 §1). Va acá por el MISMO motivo
+  // que el eje `status` de arriba —un writer con dos puertas— y en este MISMO orden: después
+  // de resolver owner y `status`, porque quien no es owner tiene que recibir `not_owner` y
+  // no una pista sobre el email (ADR 0073 §1). La decisión es pura y vive en
+  // `onboarding-grant.ts`; acá sólo se traduce a `LoyaltyError`.
+  const denied = programEditDenied({ isEdit: Boolean(program), ...caller });
+  if (denied)
+    throw new LoyaltyError(denied.status, denied.message, denied.code);
   if (program?.status === "closing") {
     throw new LoyaltyError(
       409,
@@ -178,6 +142,11 @@ export async function saveProgram(userId: string, rawInput: unknown) {
       });
       if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
     } else {
+      // El acortado a 5 min del permiso de alta (spec 0077 §5) viaja en ESTA transacción:
+      // si el insert del programa se cae, la ventana no se toca.
+      const shorten = caller.onboardingGrantActive
+        ? [shortenOnboardingGrant(db, userId)]
+        : [];
       // One transaction: a unique-index clash rolls back the event and rewards too.
       await db.batch([
         db.insert(loyaltyPrograms).values({
@@ -219,6 +188,7 @@ export async function saveProgram(userId: string, rawInput: unknown) {
             position: r.position,
           })),
         ),
+        ...shorten,
       ]);
     }
   } catch (error) {

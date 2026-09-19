@@ -28,6 +28,23 @@ export const sessions = merchantAuth.table(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /**
+     * EL PERMISO DE ALTA (spec 0077 §1, ADR 0076 §2). Un INSTANTE, no un booleano: un
+     * `timestamptz` codifica los dos topes de tiempo en un solo campo y hace que
+     * «caducado» no necesite que nadie escriba nada (un booleano pediría un job).
+     *
+     * **El permiso NO VIAJA**: lo escribe el servidor al crear la cuenta
+     * (`POST /api/merchant/auth/start`) y lo lee de esta misma fila. `input: false` en
+     * `session.additionalFields` (`server/auth.ts`) lo hace no-seteable desde ninguna
+     * entrada de la API.
+     *
+     * **Invariante del dato: MONOTONA HACIA ABAJO.** Se escribe una vez al crear la
+     * sesión y después sólo puede adelantarse — el acortado usa `least(...)`, nunca una
+     * asignación (`shortenOnboardingGrant` en `server/onboarding-grant.ts`).
+     */
+    onboardingGrantUntil: timestamp("onboarding_grant_until", {
+      withTimezone: true,
+    }),
   },
   (table) => [
     uniqueIndex("merchant_auth_session_token_unique").on(table.token),

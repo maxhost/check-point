@@ -18,6 +18,13 @@ import {
 } from "./schema";
 import { programForOwner, saveProgram } from "./loyalty-program";
 
+/**
+ * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck
+ * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
+ * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
+ */
+const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+
 describe.skipIf(!enabled)("loyalty card design against Neon", () => {
   const userId = `card-${randomUUID()}`;
   const businessId = randomUUID();
@@ -56,19 +63,23 @@ describe.skipIf(!enabled)("loyalty card design against Neon", () => {
 
   it("persists a gradient design, round-trips an edit to solid, and rejects bad hex", async () => {
     // create with a gradient design; colors normalize to uppercase
-    await saveProgram(userId, {
-      kind: "stamps",
-      configuration: { unitName: "Sello", target: 8 },
-      clauses: [{ text: "Términos." }],
-      cardDesign: {
-        backgroundColor: "#aabbcc",
-        backgroundColor2: "#112233",
-        gradientAngle: 135,
-        borderColor: "#445566",
+    await saveProgram(
+      userId,
+      {
+        kind: "stamps",
+        configuration: { unitName: "Sello", target: 8 },
+        clauses: [{ text: "Términos." }],
+        cardDesign: {
+          backgroundColor: "#aabbcc",
+          backgroundColor2: "#112233",
+          gradientAngle: 135,
+          borderColor: "#445566",
+        },
+        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+        rewards: [{ type: "custom", label: "Café gratis" }],
       },
-      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-      rewards: [{ type: "custom", label: "Café gratis" }],
-    });
+      OWNER_VERIFICADO,
+    );
     let ctx = await programForOwner(userId);
     expect(ctx?.program).toMatchObject({
       cardBackgroundColor: "#AABBCC",
@@ -78,19 +89,23 @@ describe.skipIf(!enabled)("loyalty card design against Neon", () => {
     });
 
     // edit to a solid background clears the 2nd color and the angle
-    await saveProgram(userId, {
-      kind: "stamps",
-      configuration: { unitName: "Sello", target: 8 },
-      clauses: [{ text: "Términos v2." }],
-      cardDesign: {
-        backgroundColor: "#010203",
-        backgroundColor2: null,
-        gradientAngle: null,
-        borderColor: "#0a0b0c",
+    await saveProgram(
+      userId,
+      {
+        kind: "stamps",
+        configuration: { unitName: "Sello", target: 8 },
+        clauses: [{ text: "Términos v2." }],
+        cardDesign: {
+          backgroundColor: "#010203",
+          backgroundColor2: null,
+          gradientAngle: null,
+          borderColor: "#0a0b0c",
+        },
+        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+        rewards: [{ type: "custom", label: "Café gratis" }],
       },
-      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-      rewards: [{ type: "custom", label: "Café gratis" }],
-    });
+      OWNER_VERIFICADO,
+    );
     ctx = await programForOwner(userId);
     expect(ctx?.program).toMatchObject({
       cardBackgroundColor: "#010203",

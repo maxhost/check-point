@@ -85,6 +85,305 @@ Evidencia (reproducida, no auto-reportada):
 3. ~~Retirar el fallback de desarrollo~~ **hecho**; falta **confirmar en pantalla que el wizard
    reanuda de verdad** contra la ruta real.
 
+## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0077 (2026-09-18)
+
+**Estado: implementado, SIN commitear y SIN marcar la spec.** Falta el PASS del revisor
+independiente (ADR 0071). Arbol limpio de mutaciones (hook `no-mutations-left.sh` sale 0).
+
+**Gates, los cinco, con `set -a; . ./.env.integration.local; set +a` y la migracion aplicada:**
+`typecheck` · `lint` · `format:check` · `build` · `test` → **215 archivos / 1681 tests, 0 failed,
+0 skipped** (193 archivos Neon en la corrida). `pnpm test:e2e` **NO aplica y no se corrio**: la
+spec no toca ni un `.tsx` (`git status --short | grep -c '.tsx$'` → **0**).
+
+**La migracion `0037_onboarding_grant.sql` YA ESTA APLICADA a la rama de integracion** (no a
+prod). Verificado por SQL: `onboarding_grant_until` existe, `timestamp with time zone`,
+`is_nullable = YES`.
+
+**TRES desvios de la tabla «Archivos» de la spec, todos forzados y ninguno de comportamiento**
+— el revisor tiene que mirarlos:
+
+1. **`loyalty-program/owner.ts` (nuevo).** `ownerBusiness` y `programForOwner` se MOVIERON ahi
+   (movimiento literal, re-exportado desde el barrel). Motivo: con el invariante adentro,
+   `loyalty-program.ts` daba **317 lineas** y el hook `file-size` corta en 300 — «dividir, no
+   extender». Hoy queda en **265**.
+2. **El bypass vive en `onboarding-program-bypass.neon.integration.test.ts` (nuevo), no dentro de
+   `onboarding-program.neon.integration.test.ts`** como decia la tabla: ese archivo esta en 279
+   lineas y no admite un `describe` mas. Se lo dejo **intacto** (`git checkout`, sin diff).
+   Igual motivo para partir la integracion del permiso en dos (`onboarding-grant.neon` +
+   `onboarding-grant-cortes.neon`) con su soporte `onboarding-grant-support.ts`.
+3. **7 archivos de test de integracion mas**, que la tabla no lista: el 3er argumento de
+   `saveProgram` es **obligatorio por diseño de la spec**, asi que el typecheck obliga a los 18
+   llamadores existentes a declararse. El cambio es mecanico y **preserva la semantica anterior**
+   (`{ emailVerified: true, onboardingGrantActive: false }`).
+
+## ⇥ BITACORA DE MUTACIONES — spec 0077 (implementador, 2026-09-18)
+
+**CERRADA: las 6 medidas y revertidas (5 de la spec + la M6 del hallazgo 1 del revisor), `diff` vacio contra la copia limpia y `shasum` identico
+en los 4 archivos. `grep -rn MUTATION apps/*/src tools` devuelve 0 lineas y
+`.claude/hooks/no-mutations-left.sh` sale 0.** Restauracion de emergencia, por si acaso:
+
+```
+cp /tmp/mut-onboarding-grant.ts apps/merchant/src/server/onboarding-grant.ts
+cp /tmp/mut-auth.ts             apps/merchant/src/server/auth.ts
+cp /tmp/mut-route.ts            apps/merchant/src/app/api/merchant/auth/staff/route.ts
+cp /tmp/mut-loyalty-program.ts  apps/merchant/src/server/loyalty-program.ts
+```
+
+| id | archivo | shasum LIMPIO | invariante que ataca | resultado |
+|---|---|---|---|---|
+| M1 | `apps/merchant/src/server/onboarding-grant.ts` | `0d9049f629ce0f6dee25610642f4d9da8c67ec5c` | el permiso VENCIDO no corre (corte de 60 min) | **ROJO** — `onboarding-grant.test.ts` «CORTE 2/3 — el instante ya venció» y «el borde exacto NO corre» (`expected true to be false`) + `onboarding-grant-cortes.neon` «CORTE por vencimiento» (`expected 200 to be 403`). Alcance corrido: los dos archivos. |
+| M2 | `apps/merchant/src/server/auth.ts` | `a2481d49f26901b0dd6151c8c3ee89b6ca68cdc2` | `input: false` — el campo no es seteable desde la API | **ROJO** — `onboarding-grant.test.ts` «un cuerpo que TRAE `onboardingGrantUntil` es rechazado por el parser» (`expected [Function] to throw an error`). Los otros 17 del archivo siguen verdes: el oraculo discrimina. |
+| M3 | `apps/merchant/src/app/api/merchant/auth/staff/route.ts` | `f9a626c37ad995b0dce9f7d3f0104845ffee4fb2` | la puerta del staff NUNCA recibe el permiso | **ROJO** — `onboarding-grant.neon` «`auth/staff` (login por PIN) NUNCA lo recibe: la columna queda NULL» (`expected 2026-09-19T00:33:41.972Z to be null`). Alcance: se corrio tambien `staff-pin.neon` entero, **8/8 verde** — ninguna otra cosa del staff lo ve. |
+| M4 | `apps/merchant/src/server/loyalty-program.ts` | `e628dcbc2d8182e9fd2693bb6fede6bd8aa8f2f7` | crear ≠ editar (el bypass) | **ROJO** — `onboarding-program-bypass.neon` «POST #1 → 201; POST #2 → 403 … y la fila NO se reescribe» y `onboarding-grant-cortes.neon` «CORTE por vencimiento» (los dos `expected 200 to be 403`). `onboarding-grant.test.ts` queda VERDE **a proposito**: la mutacion esta en el CABLEADO, no en la decision pura — y eso prueba que el cableado tiene oraculo propio. |
+| M5 | `apps/merchant/src/server/onboarding-grant.ts` | `0d9049f629ce0f6dee25610642f4d9da8c67ec5c` | monotonia: el acortado usa `least(...)`, no asignacion | **ROJO** — `onboarding-grant-cortes.neon` «MONOTONÍA: con 2 minutos restantes, completar el alta NO los estira a 5» (`expected 2026-09-18T23:39:52.916Z to deeply equal 2026-09-18T23:36:51.405Z`: la ventana se estiro ~3 min). Los otros 6 del archivo + el bypass + la unitaria, verdes. |
+| M6 | `apps/merchant/src/server/onboarding-grant.ts` | `0d9049f629ce0f6dee25610642f4d9da8c67ec5c` | el `isNotNull` del `WHERE` del acortado (hallazgo 1 del revisor: `least` IGNORA nulos) | **ROJO** — `onboarding-grant-cortes.neon` «el acortado NO le regala permiso a una sesión del MISMO usuario que lo tenía NULL» (`AssertionError: expected [] to have a length of 1 but got +0`: la fila NULL dejo de ser NULL). Alcance: los 4 archivos de la spec, **44/45**, o sea que ese caso es el UNICO que lo pinnea. Revertida, `diff` vacio, shasum OK. |
+
+
+## ⇥ ✅ 0077 IMPLEMENTADA — EL BYPASS ESTA CERRADO (2026-09-18)
+
+**`estado: implementada`**, con PASS de revisor independiente y los 3 hallazgos cerrados.
+**Todo reproducido por el orquestador, nada aceptado por auto-reporte:**
+
+| Chequeo | Resultado |
+|---|---|
+| `typecheck` · `lint` · `format:check` · `build` · `test` | **los cinco VERDES** |
+| Suite con Neon | **215 archivos / 1682 tests, 0 failed, 0 skipped** |
+| **El oraculo nuevo MUERDE** | misma mutacion que antes dejaba **44/44 verdes** → ahora **1 failed**, `expected [] to have a length of 1 but got +0` (la fila NULL dejo de ser NULL). Revertida con `diff` vacio y shasum `0d9049f6…` identico |
+| `no-mutations-left.sh` | **EXIT=0** |
+| `api-owner.ts` | **byte por byte igual** a HEAD (`fe5d3c02…`) |
+
+**Lo que este trabajo cierra, en una linea:** una sesion con `emailVerified:false` ya **no** puede
+reescribir el programa por la puerta del wizard. Crear sigue permitido; **editar** exige email
+verificado **o** el permiso de alta vigente, y la regla vive en el **writer**, no en la puerta.
+
+**La 0078 ya puede arrancar** (el journal de migraciones quedo libre: la 0037 es la de esta spec).
+
+## ⇥ 📌 LECCION CANDIDATA — LA SPEC MAL ESPECIFICADA HACE MENTIR AL IMPLEMENTADOR (2026-09-18)
+
+**Tres de los errores encontrados en la 0077 estaban en la SPEC, no en el codigo:**
+
+1. Un oraculo que pedia **403** donde la propia regla de la spec implica **200**.
+2. Una causa **FALSA** sobre `overrideAll` —«`defaultAdditionalFields` lo pisa»— que el
+   implementador **copio literalmente al docblock del codigo**. Quedaba en el arbol como
+   conocimiento verificado, y era invento del orquestador.
+3. Un tercer docblock inducido por lo mismo: el test decia pinnear el `isNotNull` y pinneaba otra
+   linea.
+
+**La regla que falta y que esto sugiere:** `CLAUDE.md` ya dice que una afirmacion de imposibilidad
+o de costo se verifica intentandola. **Falta su hermana: una afirmacion de MECANISMO que la spec
+presenta como «medido» tiene que estar medida hasta el final.** Leer `internal-adapter.mjs:204` y
+ver `...defaultAdditionalFields` **NO es medir**: habia que abrir `getSessionDefaultFields` y ver
+que solo emite campos con `defaultValue`. Media medicion presentada como medicion completa es
+peor que no medir, porque **el implementador obedece y la propaga al codigo**.
+
+Sumar a `docs/LECCIONES.md` con los tres casos (0074, 0075, 0077).
+
+## ⇥ 0077 — PASS DEL REVISOR, CON 3 HALLAZGOS EN CIERRE (2026-09-18)
+
+**Veredicto del revisor independiente: `PASS`**, 5 mutaciones propias, los cinco gates corridos
+por el **215 archivos / 1681 tests, 0 failed, 0 skipped**. Los 11 items del DoD verificados uno
+por uno con evidencia propia. **La spec NO esta marcada `implementada` todavia**: hay 3 hallazgos
+en cierre (abajo).
+
+**LOS 7 PUNTOS QUE SE LE EXIGIERON, resueltos:**
+- **`loyalty-program/owner.ts` es movimiento LITERAL** — el revisor extrajo el bloque de
+  `git show HEAD:` y lo diffeo contra el archivo nuevo: **identico**. Y la particion era
+  obligatoria: HEAD estaba en **295** lineas, el bloque son **52**, sin partir daria **315 > 300**.
+- **Los 4 archivos de test fuera de la tabla:** particion por tamaño, medida. Cero comportamiento
+  de produccion agregado.
+- **El punto 4 (el que podia ser FAIL) queda ACEPTADO, y con evidencia fuerte:** el revisor cableo
+  el permiso DENTRO de `requireApiOwner` (su mutacion R5) y **las 11 superficies se pusieron rojas**
+  con sesiones reales. El barrido del implementador usa sesiones reales contra los `route.ts` de
+  verdad, mientras `api-owner-surfaces.test.ts` corre sobre dobles: **cubrio mas, no menos**.
+
+**LOS 3 HALLAZGOS, y los DOS de los tres son errores MIOS en la spec, no del implementador:**
+
+| # | Que | De quien | Reproducido por el orquestador |
+|---|---|---|---|
+| **1** | **El `isNotNull` de `shortenOnboardingGrant` NO tiene oraculo** | hueco de test | **SI**: borrado el `isNotNull`, los 4 archivos dan **44/44 VERDES**. Y la preimagen es real: `select least(null::timestamptz, now() + interval '5 minutes')` contra Neon devuelve **la fecha, NO NULL** — `least` ignora nulos, asi que completar un alta le **regala 5 min de permiso a una sesion que nunca lo tuvo** |
+| **2** | El docblock de `openMerchantSession` afirma una causa **FALSA** sobre `overrideAll` | **ERROR DEL ORQUESTADOR** — lo decia la spec §3 y el implementador lo copio | **SI**: `getSessionDefaultFields` (`better-auth/dist/db/schema.mjs:141-146`) solo emite campos **con `defaultValue`**; el nuestro no tiene. `overrideAll: true` es **redundante**, no necesario. **Spec ya corregida** |
+| **3** | Dos comentarios desactualizados en el test de cortes | cosmetico | — |
+
+**El codigo de produccion es CORRECTO en los tres.** El `isNotNull` **esta puesto**; lo que falta
+es el test que lo pinnee.
+
+**⚠️ PATRON QUE YA NO ES CASUALIDAD: 2 de los 3 hallazgos son errores de la SPEC, no del codigo**
+—y antes, el oraculo del corte por email tambien lo era—. **Tres errores de spec en una sola spec**,
+mas los de la 0074 y la 0075. La subespecificacion no es el unico riesgo: **la spec MAL
+especificada —que afirma como medido algo que no se midio— hace que el implementador escriba
+docblocks falsos con total obediencia.** Candidato a leccion en `LECCIONES.md`.
+
+**EN CURSO:** el **implementador fue reanudado por `SendMessage`** (no relanzado) con los 3
+hallazgos para cerrar. El oraculo nuevo del punto 1 **tiene que morder** la mutacion del
+`isNotNull`, y eso lo verifica el orquestador, no el implementador.
+
+**SIGUE SIN COMMITEAR.** Punto limpio de retorno: **`53bcf88`**.
+
+## ⇥ 0077 — IMPLEMENTADA POR EL AGENTE, EN REVISION (2026-09-18)
+
+**El implementador entrego su handoff. La spec NO esta marcada `implementada`: falta el PASS.**
+**Revisor independiente DESPACHADO** (turno aparte, como exige el ADR 0071).
+
+**⚠️ EL REVISOR SE CORTO A MITAD Y SE RETOMO** (2026-09-18). Su proceso murio sin entregar
+handoff; el transcript quedo guardado y se reanudo por `SendMessage` en vez de relanzarlo desde
+cero. **Antes de reanudarlo se midio el arbol** (regla de `CLAUDE.md` para mutaciones heredadas):
+
+- `grep -rn MUTATION apps/merchant/src tools` → **cero lineas**.
+- Los 4 archivos con copia limpia en `/tmp/mut-*` (del IMPLEMENTADOR, 18:32) son **identicos** a
+  los del arbol: `server/auth.ts`, `server/loyalty-program.ts`, `server/onboarding-grant.ts`,
+  `app/api/merchant/auth/staff/route.ts`. O sea: **el arbol esta en el estado que entrego el
+  implementador**, no a mitad de una mutacion del revisor.
+
+**Si el revisor vuelve a morir:** medir igual antes de tocar, y reanudar por `SendMessage`
+—no relanzar— mientras el transcript exista.
+
+**⚠️⚠️ Y EL CASO QUE SIGUE, QUE ES LA TRAMPA DE VERDAD (2026-09-18):** despues de reanudarlo, el
+hook `no-mutations-left.sh` corto el turno denunciando
+`app/api/onboarding/program/route.ts:60: // MUTATION R1`, y `verify.sh` marco lint en rojo por el
+import que esa mutacion deja sin usar.
+
+**NO SE REVIRTIO, Y ESO FUE LO CORRECTO.** `ListAgents` mostro al **revisor `running`**: esa
+mutacion es **suya y esta EN CURSO DE MEDICION**. Revertirsela mientras mide le hace ver **verde
+donde espera rojo** → concluye que el oraculo no muerde → su veredicto queda **invertido y sin
+valor**, y encima parece una revision hecha.
+
+**LA REGLA, que ya estaba en `CLAUDE.md` y ahora tiene su caso:** ante una mutacion heredada,
+`ListAgents` **PRIMERO**. Si hay un agente vivo, la mutacion **no es basura abandonada: es
+instrumental**. Se espera. Solo se revierte si **nadie** esta midiendo, y aun asi midiendo antes.
+
+**El hook no se equivoco** — no puede distinguir «mutacion olvidada» de «mutacion en vuelo», y su
+default (denunciar) es el correcto. El que distingue es el orquestador, con `ListAgents`.
+
+**DESENLACE, verificado por el orquestador:** el revisor revirtio R1 solo a los **60s** y siguio
+con su serie (se lo vio pasar por R4 en `server/merchant-session.ts`). Estado medido al cierre de
+este turno, con la serie ya terminada:
+
+| Chequeo | Resultado |
+|---|---|
+| `grep -rn MUTATION apps/merchant/src tools` | **vacio en DOS chequeos separados 45s** (el doble chequeo evita cortar justo entre dos mutaciones) |
+| `.claude/hooks/no-mutations-left.sh` | **EXIT=0** |
+| `typecheck` · `lint` · `format:check` | **los tres verdes** |
+| `app/api/merchant/auth/staff/route.ts` vs `/tmp/mut-route.ts` | **identico** |
+
+**El revisor SIGUE `running` y todavia NO entrego handoff. No hay veredicto.** Nada de la 0077
+esta marcado `implementada` y nada esta commiteado. Punto limpio de retorno: **`53bcf88`**.
+
+**Metodo reutilizable para esperar a un agente que muta** (evita pelear con el hook una vez por
+mutacion): esperar a que `grep MUTATION` de **vacio dos veces seguidas** con ~45s de separacion,
+en vez de una sola. Una sola lectura vacia puede caer en la ventana entre revertir R_n y aplicar
+R_n+1, y hace creer que termino cuando recien va por la mitad.
+
+**LO QUE EL ORQUESTADOR REPRODUJO POR SU CUENTA** (no es el auto-reporte del implementador):
+
+| Que | Resultado |
+|---|---|
+| **El bypass cerrado** | `onboarding-program-bypass.neon` + `onboarding-grant.test.ts` → **22/22**. POST#1 201, POST#2 **403** y **la fila NO se reescribe** |
+| `requireApiOwner` intacto | `shasum` = `fe5d3c02cee6a59ea3576db41804a525a393ecd0`, **identico** a `git show HEAD:` |
+| `SinGateDeEmail` | **una sola** ruta (la del QR) |
+| `MUTATION` sueltas | **cero** |
+| `.tsx` tocados | **cero** |
+| Particion por tamaño | `loyalty-program.ts` **265** lineas (venia de 317, limite 300), `owner.ts` 66, `onboarding-grant.ts` 111 |
+| `onboarding-program.neon.integration.test.ts` | **sin diff** — no se toco ningun test preexistente de esa ruta |
+
+**⚠️ UN ERROR DE LA SPEC, NO DEL CODIGO — y lo cazo el implementador:** el plan de pruebas de la
+0077 pedia «se verifica el email → la edicion pasa a **403**», **incoherente con su propio §5**
+(`emailVerified || onboardingGrantActive`: verificar el email **abre** la edicion). Reproducido
+contra Neon: da **200**. **La spec ya esta corregida**, con la nota de por que. Es la tercera vez
+en el arco que el error esta en la spec y no en el codigo (0074, 0075, ahora 0077).
+
+**LOS 7 PUNTOS QUE EL REVISOR TIENE QUE JUZGAR** (todos declarados por el implementador, ninguno
+aceptado todavia): (1) el bypass con asercion por SQL; (2) `loyalty-program/owner.ts` fuera de la
+tabla de Archivos — ¿particion literal o logica nueva?; (3) cuatro archivos de test fuera de la
+tabla; (4) **NO toco `api-owner-surfaces.test.ts`** aunque el plan lo pedia, y argumenta que lo
+cubrio mejor con sesiones reales — **hay que juzgarlo, no aceptarlo**; (5) `overrideAll: true`
+seria redundante; (6) el hook `file-size` en los 21 archivos; (7) un flake ajeno en
+`consumer-recovery.neon:367`.
+
+**SIGUE SIN COMMITEAR.** Punto limpio de retorno: **`53bcf88`**.
+
+## ⇥ ⚠️ SI ENCONTRAS EL ARBOL EN ROJO: HAY UN IMPLEMENTADOR EN VUELO (2026-09-18)
+
+> **RESUELTO (2026-09-18, mismo dia): el implementador de la 0077 entrego y el arbol quedo
+> VERDE** — los llamadores de `saveProgram` ya declaran su tercer argumento. Los cinco gates
+> corridos con el env de integracion: **215 archivos / 1681 tests, 0 failed, 0 skipped**. Lo de
+> abajo queda como registro del corte, no como estado.
+
+**NO lo "arregles" a mano sin leer esto.** El Stop hook `verify.sh` corto el turno con typecheck y
+lint en ROJO, y **el rojo NO es una regresion: es trabajo a medio camino de un subagente vivo.**
+
+`ListAgents` al momento del corte: **`implementador` de la spec 0077, `running`**, 6 minutos.
+
+**Que es el rojo, exactamente:** el implementador aplico el §5 de la 0077 —`saveProgram` pasa a
+recibir un **tercer argumento obligatorio** (`caller: {emailVerified, onboardingGrantActive}`)— y
+todavia no actualizo los llamadores. De ahi los ~20 `TS2554: Expected 3 arguments, but got 2` en
+las dos rutas y en 8 archivos de test de integracion, mas dos `no-unused-vars` en
+`loyalty-program.ts` de un import a medio mover.
+
+**El tercer argumento OBLIGATORIO es deliberado, no un descuido**: la spec lo pide asi para que el
+typecheck **obligue a cada puerta presente y futura** a declarar con que autorizacion escribe. Que
+el compilador liste los llamadores es la señal de que el diseño funciona.
+
+**ESTADO AL CIERRE DE ESTE TURNO (verificado por el orquestador, no auto-reportado):** el
+implementador **sigue `running`** (15 min), pero el arbol ya volvio a ser consistente:
+**typecheck, lint y format:check VERDES**, y **cero `MUTATION` sueltas**. El rojo del hook fue
+transitorio, como se esperaba. Falta su handoff, la suite con Neon y sus 5 mutaciones.
+
+**Lo que ya se ve en el arbol (23 archivos):** migracion `0037_onboarding_grant.sql`, modulos
+nuevos `server/onboarding-grant.ts` y `server/loyalty-program/owner.ts` (**este ultimo NO estaba
+en la tabla de Archivos de la spec** — probable particion por el hook de tamaño; **el revisor
+tiene que confirmar que es eso y no alcance ampliado**), y los 8 archivos de test de integracion
+actualizados al 3er argumento.
+
+**QUE HACER:**
+1. `ListAgents` **primero**. Si el implementador sigue `running`, **esperarlo**. Editar
+   `loyalty-program.ts`, `merchant-session.ts` o los tests ahora **pisa su trabajo**.
+2. Cuando entregue el handoff: correr los gates **completos** uno mismo (no creerle al
+   auto-reporte) y recien ahi despachar el **revisor independiente**.
+3. Si el agente murio y dejo el arbol roto: `git status` + `git diff`, y **medir antes de
+   revertir** (regla de `CLAUDE.md` para mutaciones heredadas). El punto limpio de retorno es
+   **`53bcf88`**.
+
+**Lo que NO hay que hacer:** bajar el tercer argumento a opcional para que el typecheck pase. Eso
+vacia el invariante entero de la spec.
+
+## ⇥ ▶ EN EJECUCION: LAS TRES SPECS DEL ADR 0076 (2026-09-18)
+
+**Commit `53bcf88`** — retiro del fallback de dev + ADR 0076. Arbol limpio en ese punto; lo de
+abajo son las tres specs, ya `cerradas`, con sus filas en el INDEX.
+
+**PEDIDO DEL OWNER, textual:** «hace el commit y arranca por B. e implementa a y c tambien de
+forma ordenada para que al hacer el qa pruebo todo de una sola vez». O sea: **el QA es UNO SOLO al
+final de las tres**, no uno por spec.
+
+| Spec | Que | Estado |
+|---|---|---|
+| **0077** (B) | Permiso de alta en la sesion + invariante crear/editar en `saveProgram`. **Cierra el bypass** | `cerrada` — **implementador DESPACHADO**, corriendo |
+| **0078** (A) | TOS por pais (EC + `default`), `country_code` al allowlist, y el «Los sello» | `cerrada` — **esperando el PASS de la 0077** |
+| **0079** (C) | Una sola ruta de escritura + `kind`. Borra `POST /api/onboarding/program` | `cerrada` — **bloqueada hasta el PASS de 0077 Y 0078** |
+
+**⚠️ EL ORDEN ES OBLIGATORIO: 0077 → 0078 → 0079.** Dos motivos distintos, los dos reales:
+
+1. **0079 DEPENDE de 0077.** Fundir las dos puertas antes de que el invariante viva en el writer
+   seria **mover** el bypass, no arreglarlo.
+2. **0077 y 0078 parecen disjuntas en codigo y NO lo son.** Las dos llevan migracion, y
+   `drizzle-kit generate` numera secuencialmente contra `drizzle/meta/_journal.json` (hoy `idx: 36`):
+   dos implementadores a la vez producen el mismo prefijo y un journal corrupto. Ademas las dos
+   correrian `db:migrate` + la suite entera contra **la misma rama Neon**. La 0078 nacio marcada
+   `disjunta: si` mirando solo el codigo fuente; **corregido a `no` el mismo dia**.
+
+**LO QUE EL ORQUESTADOR DEBE HACER AL VOLVER, en orden:**
+1. Recibir el handoff del implementador de la 0077 → despachar **revisor independiente** (nunca el
+   mismo turno que escribio el codigo, ADR 0071).
+2. Con el PASS: marcar la 0077 `implementada`, actualizar INDEX y TASKS, y **recien ahi** despachar
+   el implementador de la 0078.
+3. Idem con la 0078 → despues la 0079.
+4. **Recien con las tres en `implementada`, avisarle al owner para el QA unico.**
+
+**LO QUE NO SE PUEDE OLVIDAR EN EL QA FINAL:** la 0079 **si lleva `pnpm test:e2e`** (toca
+`onboarding-api.ts`, un archivo de cliente). Y `main` arrastra un rojo **preexistente y ajeno** de
+e2e en `tests/e2e/loyalty.spec.ts:27`, sobre la UI vieja de `/backoffice/demo`: **hay que
+distinguirlo de una regresion nuestra**, no silenciarlo.
+
 ## ⇥ ✅ ADR 0076 ESCRITO — TODAS LAS DECISIONES DEL OWNER TOMADAS (2026-09-18)
 
 **`docs/adr/0076-el-permiso-de-alta-vive-en-la-sesion-y-el-gate-baja-al-writer.md`**, `aceptada`,

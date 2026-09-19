@@ -57,7 +57,14 @@ export async function PUT(request: Request) {
   const auth = await requireApiOwner(request, MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
-    const result = await saveProgram(auth.userId, await readJson(request));
+    // Spec 0077 §6 — `requireApiOwner` YA cortó a los no verificados en su paso 3, así que
+    // acá el email está verificado por construcción y el permiso de alta no hace falta.
+    // **A esta puerta no se le afloja el gate**: el argumento sólo declara con qué
+    // autorización escribe.
+    const result = await saveProgram(auth.userId, await readJson(request), {
+      emailVerified: true,
+      onboardingGrantActive: false,
+    });
     return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error) {
     if (error instanceof LoyaltyError)

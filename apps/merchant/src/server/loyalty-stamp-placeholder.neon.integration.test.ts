@@ -22,6 +22,13 @@ import { toClientProgram } from "./loyalty-program/client-view";
 import { GET } from "../app/api/public/loyalty/[businessId]/[programId]/stamp/route";
 
 /**
+ * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck
+ * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
+ * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
+ */
+const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+
+/**
  * Spec 0069 §D5 — el placeholder del sello, CONTRA LA BASE.
  *
  * Tres propiedades que ningún test sin Neon puede dar:
@@ -79,13 +86,17 @@ describe.skipIf(!enabled)(
       await db
         .insert(memberships)
         .values({ businessId, userId: ownerId, role: "owner" });
-      await saveProgram(ownerId, {
-        kind: "stamps",
-        configuration: { unitName: "sello", target: 8 },
-        clauses: [{ text: "Términos del sello." }],
-        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-        rewards: [{ type: "custom", label: "Café gratis" }],
-      });
+      await saveProgram(
+        ownerId,
+        {
+          kind: "stamps",
+          configuration: { unitName: "sello", target: 8 },
+          clauses: [{ text: "Términos del sello." }],
+          accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+          rewards: [{ type: "custom", label: "Café gratis" }],
+        },
+        OWNER_VERIFICADO,
+      );
       programId = (await programForOwner(ownerId))!.program!.id;
     }, 60_000);
 

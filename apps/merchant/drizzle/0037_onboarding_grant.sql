@@ -1,0 +1,1 @@
+ALTER TABLE "merchant_auth"."session" ADD COLUMN "onboarding_grant_until" timestamp with time zone;

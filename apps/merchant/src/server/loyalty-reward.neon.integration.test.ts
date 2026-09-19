@@ -21,6 +21,13 @@ import {
 import { sql } from "drizzle-orm";
 import { LoyaltyError, programForOwner, saveProgram } from "./loyalty-program";
 
+/**
+ * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck
+ * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
+ * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
+ */
+const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+
 type Seed = { userId: string; businessId: string; productId: string };
 
 async function seed(name: string): Promise<Seed> {
@@ -96,16 +103,20 @@ describe.skipIf(!enabled)("loyalty reward persistence against Neon", () => {
   }, 30_000);
 
   it("persists Puntos mechanics + rewards, then round-trips an edit", async () => {
-    await saveProgram(a.userId, {
-      kind: "points",
-      configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
-      clauses: [{ text: "Términos." }],
-      accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
-      rewards: [
-        { type: "catalog_product", productId: a.productId, pointsCost: 50 },
-        { type: "custom", label: "Cerveza", pointsCost: 100 },
-      ],
-    });
+    await saveProgram(
+      a.userId,
+      {
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: [{ text: "Términos." }],
+        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+        rewards: [
+          { type: "catalog_product", productId: a.productId, pointsCost: 50 },
+          { type: "custom", label: "Cerveza", pointsCost: 100 },
+        ],
+      },
+      OWNER_VERIFICADO,
+    );
     const ctx = await programForOwner(a.userId);
     expect(ctx?.program?.accrualMode).toBe("per_amount");
     expect(ctx?.program?.accrualGrant).toBe(10);
@@ -123,13 +134,17 @@ describe.skipIf(!enabled)("loyalty reward persistence against Neon", () => {
     expect(first[1]).toMatchObject({ label: "Cerveza", position: 1 });
 
     // Edit: change the mechanics and replace all rewards with a single discount.
-    await saveProgram(a.userId, {
-      kind: "points",
-      configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
-      clauses: [{ text: "Términos v2." }],
-      accrual: { mode: "per_amount", grant: 5, blockAmount: 2 },
-      rewards: [{ type: "discount", discountPercent: 20, pointsCost: 30 }],
-    });
+    await saveProgram(
+      a.userId,
+      {
+        kind: "points",
+        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+        clauses: [{ text: "Términos v2." }],
+        accrual: { mode: "per_amount", grant: 5, blockAmount: 2 },
+        rewards: [{ type: "discount", discountPercent: 20, pointsCost: 30 }],
+      },
+      OWNER_VERIFICADO,
+    );
     const ctx2 = await programForOwner(a.userId);
     expect(ctx2?.program?.accrualGrant).toBe(5);
     expect(Number(ctx2?.program?.accrualBlockAmount)).toBe(2);
@@ -145,28 +160,36 @@ describe.skipIf(!enabled)("loyalty reward persistence against Neon", () => {
 
   it("rejects a productId from another business with 422", async () => {
     await expect(
-      saveProgram(a.userId, {
-        kind: "points",
-        configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
-        clauses: [{ text: "Términos." }],
-        accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
-        // b.productId belongs to business B, not A.
-        rewards: [
-          { type: "catalog_product", productId: b.productId, pointsCost: 50 },
-        ],
-      }),
+      saveProgram(
+        a.userId,
+        {
+          kind: "points",
+          configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+          clauses: [{ text: "Términos." }],
+          accrual: { mode: "per_amount", grant: 10, blockAmount: 3 },
+          // b.productId belongs to business B, not A.
+          rewards: [
+            { type: "catalog_product", productId: b.productId, pointsCost: 50 },
+          ],
+        },
+        OWNER_VERIFICADO,
+      ),
     ).rejects.toBeInstanceOf(LoyaltyError);
   }, 30_000);
 
   it("stores Sellos per_purchase with a null block amount and one reward", async () => {
-    await saveProgram(b.userId, {
-      kind: "stamps",
-      configuration: { unitName: "Sello", target: 8 },
-      clauses: [{ text: "Términos." }],
-      cardDesign: null,
-      accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-      rewards: [{ type: "custom", label: "Café gratis" }],
-    });
+    await saveProgram(
+      b.userId,
+      {
+        kind: "stamps",
+        configuration: { unitName: "Sello", target: 8 },
+        clauses: [{ text: "Términos." }],
+        cardDesign: null,
+        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+        rewards: [{ type: "custom", label: "Café gratis" }],
+      },
+      OWNER_VERIFICADO,
+    );
     const ctx = await programForOwner(b.userId);
     expect(ctx?.program?.accrualMode).toBe("per_purchase");
     expect(ctx?.program?.accrualBlockAmount).toBeNull();

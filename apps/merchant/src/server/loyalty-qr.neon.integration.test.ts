@@ -24,6 +24,13 @@ import { openMerchantSession } from "./merchant-session";
 import { GET } from "../app/api/loyalty-program/qr/route";
 
 /**
+ * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck
+ * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
+ * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
+ */
+const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+
+/**
  * Spec 0069 §D6 — `GET /api/loyalty-program/qr` CONTRA LA BASE.
  *
  * **ORÁCULO DE LA MUTACIÓN #5**: el `programId` sale de la SESIÓN, nunca del query. El
@@ -90,13 +97,17 @@ describe.skipIf(!enabled)(
     };
 
     const createProgram = async (userId: string) => {
-      await saveProgram(userId, {
-        kind: "stamps",
-        configuration: { unitName: "sello", target: 8 },
-        clauses: [{ text: "Términos." }],
-        accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
-        rewards: [{ type: "custom", label: "Pan gratis" }],
-      });
+      await saveProgram(
+        userId,
+        {
+          kind: "stamps",
+          configuration: { unitName: "sello", target: 8 },
+          clauses: [{ text: "Términos." }],
+          accrual: { mode: "per_purchase", grant: 1, blockAmount: null },
+          rewards: [{ type: "custom", label: "Pan gratis" }],
+        },
+        OWNER_VERIFICADO,
+      );
       return (await programForOwner(userId))!.program!.id;
     };
 

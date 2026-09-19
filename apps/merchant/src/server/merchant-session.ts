@@ -31,9 +31,46 @@ import { getMerchantAuth } from "./auth";
  * en un `Request` y `auth.api.getSession` tiene que devolver al usuario. Si una version de
  * better-auth cambia el esquema de firma, ese test se pone rojo.
  */
-export async function openMerchantSession(userId: string): Promise<string> {
+/**
+ * Spec 0077 §3 — el segundo parámetro es EL PERMISO DE ALTA, y es EXPLÍCITO Y OPCIONAL a
+ * propósito: el invariante de autorización de la spec es **quién lo pasa y quién no**.
+ *
+ * | Llamador | Permiso |
+ * |---|---|
+ * | `api/merchant/auth/start`, rama del email DESCONOCIDO (crea la cuenta) | SÍ, `now() + 60 min` |
+ * | `api/merchant/auth/start`, rama del email conocido | no abre sesión: no aplica |
+ * | `api/merchant/auth/staff` (login por PIN) | **NUNCA** |
+ *
+ * La firma real, medida en la fuente (better-auth 1.6.26,
+ * `dist/db/internal-adapter.mjs:176-206`), es
+ * `createSession(userId, dontRememberMe, override, overrideAll)`.
+ *
+ * **`overrideAll: true` es REDUNDANTE hoy, y se conserva a propósito.** La spec 0077 §3
+ * afirmaba que `defaultAdditionalFields` pisa al `override` y que «por eso» hacía falta: es
+ * FALSO, y lo cazó el revisor. `getSessionDefaultFields`
+ * (`better-auth/dist/db/schema.mjs:141-146`) hace
+ * `if (fields[key].defaultValue !== void 0)` — sólo emite campos **con `defaultValue`**, y
+ * `onboardingGrantUntil` no tiene, así que sale `{}` y el `...rest` de la línea 193 sobrevive
+ * solo. Se deja el `true` como defensa por si alguien le pone un `defaultValue` al campo.
+ *
+ * **Lo que el `true` SÍ cambia, y es el motivo de que el tipo del parámetro sea angosto:**
+ * reubica `...rest` DESPUÉS de `expiresAt`, `userId`, `token`, `createdAt` y `updatedAt`
+ * (línea 205), así que un llamador que trajera alguna de esas claves las pisaría. Hoy lo
+ * impide `options: { onboardingGrantUntil?: Date }`. **Ese tipo no se relaja.**
+ */
+export async function openMerchantSession(
+  userId: string,
+  options: { onboardingGrantUntil?: Date } = {},
+): Promise<string> {
   const ctx = await getMerchantAuth().$context;
-  const session = await ctx.internalAdapter.createSession(userId, false);
+  const session = await ctx.internalAdapter.createSession(
+    userId,
+    false,
+    options.onboardingGrantUntil
+      ? { onboardingGrantUntil: options.onboardingGrantUntil }
+      : {},
+    true,
+  );
   const { name, attributes } = ctx.authCookies.sessionToken;
   const signature = await makeSignature(session.token, ctx.secret);
   const value = encodeURIComponent(`${session.token}.${signature}`);
