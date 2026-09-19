@@ -36,57 +36,79 @@ viene:**
 **LO QUE FALTA PARA EL QA UNICO QUE PIDIO EL OWNER:** la 0078 (en vuelo) y la 0079 (bloqueada).
 Recien con las tres `implementadas` se le avisa.
 
-## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-18)
+## ⇥ ARRANCA ACA LA SESION QUE SIGUE (handoff del 2026-09-19)
 
-**LO QUE PIDIO EL OWNER, textual:** «volvemos para revisarlo que ya esta implementado de la
-migracion de API, porque sabemos que gpt ya hizo la UI para ello y el QA paso y dejo anotadas
-algunas cosas en `docs/api-faltantes.md` y quiero asegurarme de lo que habia dejado GPT esta
-completo y vamos a probar todo en local porque vercel esta caido».
+**EL ORDEN ES: (1) la spec del TOS, (2) la 0079.** Lo pidio el owner textual: «cuando volvemos
+arreglas el TOS y luego entramos en 0079».
 
-**→ EL TRABAJO ES: QA LOCAL del wizard de GPT contra las rutas nuevas.** El archivo es
-**`docs/api-faltante.md`** (singular, no «faltantes»), y **ya tiene el veredicto de los tres
-huecos escrito**: el 1 **RESUELTO** (la spec 0074 entrego `GET /api/onboarding/state`), el 2
-explicado como alcance que el ADR 0070 §1 ya cerro, el 3 **RESUELTO** (la spec 0075 le saco el
-gate de email al QR). **Leerlo primero: contesta la mitad de la pregunta antes de tocar nada.**
+### 1) LA SPEC DEL TOS — el owner YA dio las variables, NO se las vuelvas a preguntar
 
-**COMO LEVANTAR LOCAL** (Vercel esta caido, asi que es el unico camino):
-```
-export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use
-set -a; . ./.env.integration.local; set +a     # apunta a la rama Neon de integracion
-pnpm --filter @mi-pasaporte/merchant dev       # puerto 3001
-```
-**✅ EL PRIMER GOTCHA YA ESTA RESUELTO (2026-09-18, pedido del owner: «retira el fallback de
-desarrollo para el QA»).** El wizard **ya llama a `GET /api/onboarding/state` en cualquier
-`NODE_ENV`**. Se borro `dev-onboarding-state.ts` entero y las 4 llamadas que lo usaban en
-`onboarding-api.ts` (el `readDevelopmentState()` de la linea 64 y los tres `markDevelopment*`).
-**SIN COMMITEAR.**
+**Textual del owner (2026-09-19):** *«Tenemos que tener una semilla que es un texto y con
+variables que se podran usar en el texto»*, y listo **ocho**:
 
-Lo que aparecio al hacerlo y conviene saber en el QA: el fallback se activaba cuando
-`POST /api/merchant/auth/start` contesta `{ sent: false }`, **que es justamente el caso en que el
-servidor SI abrio sesion con cookie** (rama del email desconocido, `auth/start/route.ts:55-58`).
-Estaba duplicando en `sessionStorage` un estado que ya existia de verdad: sacarlo **no deja sin
-sesion en dev**.
+| # | Variable que pidio | ¿Existe hoy? |
+|---|---|---|
+| 1 | Nombre de la empresa | ✅ `business_legal_name` |
+| 2 | **Listado de nombre de locales** | ❌ hay tabla `locations`, **no se pasa** a `renderedTerms` |
+| 3 | **Direccion de la empresa** | ❌ idem |
+| 4 | Pais | ✅ `country_code` (allowlisted desde la 0078) |
+| 5 | Tipo de programa (Sellos/Puntos) | ✅ `program_kind` |
+| 6 | Nombre de los puntos | ✅ `program_unit_plural` + singular |
+| 7 | **Cada cuanto dinero se otorga un sello** | ⚠️ **PROBLEMA DE DISEÑO, ver abajo** |
+| 8 | **Cada cuanto dinero se entregan X puntos** | ❌ esta en `accrual` (`grant`/`blockAmount`), no se pasa |
 
-Evidencia (reproducida, no auto-reportada):
-- `onboarding-api.test.ts` ya no necesita `vi.stubEnv("NODE_ENV","production")` para ejercitar la
-  ruta; se retiro el stub, asi el test fija que **se llama siempre**. 5/5 pasan.
-- **El oraculo MUERDE**: se repuso el fallback etiquetado `MUTATION` (shasum limpio del archivo
-  `fc0ac2dba51c1da069b77f819318a0673d88a413` tomado ANTES) y el test se puso rojo por el motivo
-  correcto — `expected { authenticated: false } to deeply equal { authenticated: true, …(3) }`.
-  Revertido con `diff` contra la copia limpia: sin diferencias, cero `MUTATION` en el arbol.
-- `typecheck` · `lint` · `format:check`: **los tres verdes**. La suite completa con Neon quedo
-  **corriendo y sin resultado leido** — es lo primero que hay que confirmar al retomar.
+**⚠️ LA #7 NO ES PLOMERIA, ES UNA DECISION QUE EL OWNER TODAVIA NO TOMO.** El wizard crea los
+Sellos como **«un sello por compra»** —`accrual: { mode: "per_purchase", grant: 1, blockAmount:
+null }` (`onboarding/program-defaults.ts`)—, asi que **no hay monto de dinero que poner**: la
+variable quedaria vacia en todo programa nacido del wizard. Las dos salidas son: (a) el texto
+legal omite esa variable para Sellos, o (b) el wizard pasa a preguntar un monto, **que es cambiar
+la pantalla 3 del ADR 0070 §1**. **PREGUNTARSELO ANTES de escribir la spec** (ADR 0071: las
+decisiones del owner se piden ANTES de la prosa).
 
-**LOS CHEQUEOS QUE IMPORTAN, en orden:**
-0. **Confirmar la suite completa con Neon** sobre este arbol (`set -a; . ./.env.integration.local;
-   set +a` y `pnpm run test`). Referencia del push anterior: 211 archivos / 1637 tests, 0 failed.
-1. **El flujo entero**: `/es/business/onboarding` con un email nuevo → negocio → programa →
-   **ver el QR SIN haber verificado el email**. Eso es lo que la 0075 destrabo y lo que nunca se
-   probo en pantalla.
-2. **Las tres lecturas de la 0074** contra el server local: `GET /api/merchant/session` (200
-   siempre, tambien sin sesion), `GET /api/billing/state`, `GET /api/onboarding/state`.
-3. ~~Retirar el fallback de desarrollo~~ **hecho**; falta **confirmar en pantalla que el wizard
-   reanuda de verdad** contra la ruta real.
+**Y LO QUE LA SPEC DEL TOS RESUELVE DE PASO — el hallazgo abierto de la 0078:** hoy hay TRES
+copias de cada clausula (`global-draft` vieja + `default` + `EC`), `GET /api/loyalty-terms/
+templates` devuelve las **6 sin `jurisdictionScope`** y `renderedTerms` acepta **cualquier**
+`templateId` `published` sin validar scope. **La respuesta del owner lo simplifica:** si hay una
+semilla buena por pais, **`global-draft` se ARCHIVA** y deja de ofrecerse. Eso elimina el problema
+en vez de parchearlo, y es mas barato que la validacion de scope en el writer que se habia
+propuesto. **Ojo al archivar:** `renderedTerms` necesita la plantilla al RE-guardar un programa
+que la referencie; `terms_markdown` ya esta renderizado y no se toca, pero un `PUT` sobre un
+programa viejo que apunte a `global-draft` daria 422. Medir cuantos hay antes (en integracion; en
+prod habia 0 negocios al 2026-09-18, **re-medir**).
+
+### 2) DESPUES, LA SPEC 0079 — ya esta escrita y `cerrada`
+
+`docs/specs/0079-una-sola-ruta-de-escritura-del-programa.md`. **No hay que escribirla, hay que
+despacharla.** Funde las dos puertas de escritura en una (`PUT /api/loyalty-program`, borra
+`POST /api/onboarding/program`) y hace que acepte `kind`. **Es la UNICA de las tres que lleva
+`pnpm test:e2e`** porque toca `onboarding-api.ts`.
+
+**⚠️ AL CORRER e2e: `main` arrastra un rojo PREEXISTENTE y AJENO** en
+`tests/e2e/loyalty.spec.ts:27` (UI vieja de `/backoffice/demo`, anterior a estos 3 commits).
+**Hay que separarlo con evidencia de una regresion propia**, no declarar «falla lo de siempre».
+
+### ESTADO REAL, verificado al cierre
+
+| Que | Donde esta |
+|---|---|
+| HEAD local | **`6879af6`**, arbol **LIMPIO** |
+| `origin/main` | **`bb511df`** — **3 commits SIN PUSHEAR**: `53bcf88`, `8a01c62`, `6879af6`. El owner no pidio push |
+| Specs del arco | **0067, 0068, 0069, 0072, 0074, 0075, 0077 y 0078 `implementadas`**. Las 6 ultimas con PASS de revisor independiente |
+| Suite con Neon | **219 archivos / 1715 tests, 0 failed, 0 skipped** — corrido por el orquestador sobre `6879af6` |
+| `typecheck` · `lint` · `format:check` · `build` | los cuatro verdes sobre `6879af6` |
+| `pnpm test:e2e` | **NO corrido** (0077 y 0078 no tocan `.tsx`). **La 0079 SI lo lleva** |
+| CI de `main` remoto | **ROJO heredado** por e2e, anterior a estos commits |
+| Vercel / prod | **medido el 2026-09-18, NO re-verificado**: deploy `78d1f3a`, 0 negocios. **Re-medir antes de decidir con eso** |
+| **QA del owner** | **todavia NO corresponde**: falta la 0079 (y ahora la spec del TOS). El owner pidio **un solo QA al final** |
+
+### FLAKE AJENO, con el mecanismo CORREGIDO
+
+`consumer-recovery.neon.integration.test.ts` falla de manera intermitente. **NO es la colision de
+`phone_e164` UNIQUE** que decian los handoffs viejos —eso es FALSO y se propago sin medir—. El
+mecanismo real, leido en el archivo: **lineas 363-367 hacen `select … where(phoneE164)` SIN
+`ORDER BY` y leen `.at(-1)`**, y el orden de filas en Postgres es indefinido; ademas `phones[4]`
+se usa en **dos** tests (lineas 269 y 350). Demostrado con tres corridas del mismo archivo sobre
+el mismo codigo: pasa, pasa, falla. **Es ajeno a este arco y no se arregla en estas specs.**
 
 ## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0077 (2026-09-18)
 
@@ -142,7 +164,17 @@ cp /tmp/mut-loyalty-program.ts  apps/merchant/src/server/loyalty-program.ts
 | M6 | `apps/merchant/src/server/onboarding-grant.ts` | `0d9049f629ce0f6dee25610642f4d9da8c67ec5c` | el `isNotNull` del `WHERE` del acortado (hallazgo 1 del revisor: `least` IGNORA nulos) | **ROJO** — `onboarding-grant-cortes.neon` «el acortado NO le regala permiso a una sesión del MISMO usuario que lo tenía NULL» (`AssertionError: expected [] to have a length of 1 but got +0`: la fila NULL dejo de ser NULL). Alcance: los 4 archivos de la spec, **44/45**, o sea que ese caso es el UNICO que lo pinnea. Revertida, `diff` vacio, shasum OK. |
 
 
-## ⇥ 🟠 DECISION PENDIENTE DEL OWNER — EL TOS DEPRECADO SIGUE ALCANZABLE (2026-09-19)
+## ⇥ ✅ EL OWNER YA RESPONDIO LO DEL TOS (2026-09-19) — ver «ARRANCA ACA»
+
+**No es una decision pendiente: el owner la contesto y la respuesta esta arriba, en «ARRANCA
+ACA» §1**, con sus ocho variables textuales y el analisis de cuales existen. Su respuesta
+**simplifica** el arreglo: en vez de validar el scope en el writer, **se archiva `global-draft`**
+para que deje de ofrecerse. **Lo unico que queda abierto es la variable #7** (el monto de dinero
+por sello, que el wizard no pregunta).
+
+El bloque de abajo se conserva porque tiene las **tres evidencias reproducidas** del problema.
+
+## ⇥ (evidencia) EL TOS DEPRECADO ES ALCANZABLE — reproducido (2026-09-19)
 
 **NO es una decision tomada. Es un hallazgo del revisor de la 0078, subido al owner sin resolver.**
 **Reproducido por el orquestador con tres evidencias independientes:**

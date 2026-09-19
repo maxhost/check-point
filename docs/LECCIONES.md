@@ -788,3 +788,56 @@ evidencia que se le puso enfrente era visual, una rotura funcional es una decisi
 2. **Cuando se acepta romper algo, acotar QUE se acepta romper.** «Que se rompan» dicho sobre
    capturas de estilo no autoriza que un control deje de responder. Si la rotura cambia de clase
    —de visual a funcional— **vuelve al owner**, no se arrastra la autorizacion vieja.
+
+## 2026-09-19 — La spec mal especificada hace MENTIR al implementador (specs 0077 y 0078)
+
+**Que paso.** En la spec 0077, **tres** de los errores que encontro el revisor estaban en la
+SPEC, no en el codigo. El peor: la spec afirmaba, presentandolo como medido, que
+`defaultAdditionalFields` **pisa** al `override` de `createSession` y que «**por eso**» hacia
+falta `overrideAll: true`. **Era falso.** El orquestador habia leido
+`better-auth/dist/db/internal-adapter.mjs:204`, visto el spread `...defaultAdditionalFields` y
+concluido el resto. No abrio `getSessionDefaultFields`, que esta a 60 lineas de ahi
+(`dist/db/schema.mjs:141-146`) y hace `if (fields[key].defaultValue !== void 0)`: **solo emite
+campos con `defaultValue`**, y el campo nuevo no tenia ninguno.
+
+**El daño no fue la spec: fue que el implementador la OBEDECIO.** Copio la causa falsa al
+docblock de `openMerchantSession`, donde quedo con forma de conocimiento verificado. La cazo el
+revisor con una mutacion (`overrideAll: false` → **no se cayo ni un test**).
+
+Los otros dos de la misma spec: un oraculo que pedia **403** donde la propia regla de la spec
+(`emailVerified || onboardingGrantActive`) implica **200** —el implementador lo detecto y
+pregunto en vez de fabricar el 403—, y un docblock de test que decia pinnear el `isNotNull` del
+acortado cuando pinneaba otra linea. En la **0078** se repitio la forma: la tabla «Archivos» de
+la spec estaba **incompleta** (no listaba la ruta que habia que tocar para que el `countryCode`
+llegara), y el revisor tuvo que dictaminar que eso **no** era alcance ampliado del implementador.
+
+**La regla (ya en `CLAUDE.md`).** Una afirmacion de **mecanismo** que la spec presenta como
+«medido» tiene que estar medida **hasta el final**: leer una linea y ver el nombre de una funcion
+no es medir, hay que abrir esa funcion. **Media medicion presentada como completa es peor que no
+medir**, porque el implementador no tiene motivo para dudar y la propaga al arbol.
+
+**Corolario operativo, aplicado el mismo dia:** el encargo del implementador de la 0078 llevo la
+instruccion explicita de **verificar cada cita de la spec antes de apoyarse en ella**, y de
+reportar como hallazgo cualquiera que no se sostuviera en vez de copiarla. Verifico las tres que
+se le señalaron y las tres se sostenian — pero la instruccion es barata y el modo de fallo es caro.
+
+## 2026-09-19 — Un insumo falso a un subagente manda a buscar el bug donde no esta
+
+**Que paso.** El orquestador le paso al implementador de la 0078, como dato de contexto, que el
+flake de `consumer-recovery.neon.integration.test.ts` era una **colision de `phone_e164` UNIQUE**
+sembrado con `Math.random()`. Lo tomo de un handoff de una sesion anterior y **no lo re-midio**.
+
+**Era falso.** El implementador lo midio y el mecanismo real es otro: las lineas **363-367** hacen
+`select … where(phoneE164)` **sin `ORDER BY`** y leen `.at(-1)`, y el orden de filas en Postgres
+es indefinido; ademas `phones[4]` se usa en **dos** tests distintos (lineas 269 y 350). Lo
+demostro con tres corridas del mismo archivo sobre el mismo codigo: pasa, pasa, falla.
+
+**La regla ya estaba escrita en `CLAUDE.md`** —*«lo que le pasas a un subagente como insumo es una
+afirmacion tuya — re-medí el doc antes de despacharlo»*— y se violo igual, por la via mas comun:
+**copiar de un handoff propio sin releer la evidencia**. Un insumo falso es **peor que no dar
+ninguno**: el agente lo toma como suelo firme y sale a buscar el bug donde no esta.
+
+**Lo que salio bien y conviene repetir:** el encargo pedia explicitamente reportar lo que no se
+sostuviera, y el implementador **contradijo al orquestador con evidencia** en vez de acomodarse al
+dato que le habian dado. Esa contradiccion se propago: al revisor se le paso la correccion junto
+con el error original, nombrado como error propio.

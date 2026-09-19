@@ -66,6 +66,15 @@ exit code, una fila leida por SQL. La auto-revision sin oraculo es negativa neta
 «No se puede testear» y «costaria una migracion / una columna / un refactor grande» se verifican
 igual —**intentandolo**— y ninguna de las dos se le pasa al owner ni se baja a un doc sin eso.
 
+**Y LA TERCERA DE LA FAMILIA, que cuesta igual: una afirmacion de MECANISMO que una spec presenta
+como «medido» tiene que estar medida HASTA EL FINAL.** Leer una linea y ver el nombre de una
+funcion NO es medir: hay que abrir esa funcion. Media medicion presentada como completa es **peor
+que no medir**, porque el implementador la copia al codigo con total obediencia y queda en el
+arbol con forma de conocimiento verificado. En la 0077 la spec afirmo que `defaultAdditionalFields`
+pisaba al `override` —era falso, `getSessionDefaultFields` solo emite campos con `defaultValue`— y
+el docblock mintio hasta que lo cazo el revisor. **Tres de los hallazgos de esa spec estaban en la
+SPEC, no en el codigo.** Caso en `LECCIONES.md`.
+
 **Toda verificacion lleva presupuesto y condicion de corte escritos EN EL ENCARGO**, y el oraculo
 que define es el QA del owner, no la suite: cuantas mutaciones y que clase de error tiene que
 cazar (los plausibles). Lo que quede afuera se **declara**. Si dos vueltas seguidas terminan en
