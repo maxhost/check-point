@@ -1,5 +1,11 @@
 # API faltante para la UI
 
+> **⚠️ DESACTUALIZADO EN PARTE (2026-09-20).** Despues de este documento se implemento y desplego
+> el arco de specs **0077–0081**, que **cambia la API que la UI consume** — entre otras cosas
+> **`POST /api/onboarding/program` fue BORRADO**. El delta esta en
+> **`docs/ui-delta-arco-0076.md`**, y es lo primero que hay que leer. Lo de aca sigue vigente salvo
+> donde el delta diga lo contrario.
+
 Actualizado: 18 de septiembre de 2026 — **revisado contra el árbol por el equipo del API**. Los tres huecos reportados fueron reproducidos uno por uno; el veredicto de cada uno está marcado abajo.
 
 ## Alcance construido

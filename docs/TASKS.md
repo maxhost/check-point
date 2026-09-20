@@ -36,7 +36,8 @@ connection string por MCP y quedo en el transcript de la sesion.
 | El TOS ya emitido | **intacto**: mismos 235 caracteres y su hash, antes y despues de archivar `global-draft` |
 | CI de `a7a35f9` | `verify -> failure`, **rojo PREEXISTENTE y AJENO**: `1 failed / 1 skipped / 4 passed`, `loyalty.spec.ts:16:5`. Contadores identicos al baseline en worktree limpio. Los otros gates pasaron |
 | Gates locales | `typecheck --force`, `lint`, `build`, `format:check` **EXIT=0**; **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** |
-| **QA del owner** | **YA CORRESPONDE**, y su checklist esta escrito: **`docs/QA-arco-0076.md`**. Prod tiene el commit y la base migrada |
+| **QA del owner** | **POSPUESTO por decision del owner (2026-09-20): primero los arreglos de UI, despues el QA.** Su checklist ya esta escrito y espera: **`docs/QA-arco-0076.md`** |
+| **LO QUE SIGUE** | **la UI.** El delta para quien la construye esta en **`docs/ui-delta-arco-0076.md`**: que se rompio, que hay de nuevo sin pantalla, el inventario medido y el gap |
 
 ## ⇥ (historico) ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
 

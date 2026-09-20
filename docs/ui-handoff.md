@@ -1,5 +1,11 @@
 # Handoff — UI mobile-first de CheckPass Club
 
+> **⚠️ DESACTUALIZADO EN PARTE (2026-09-20).** Despues de este documento se implemento y desplego
+> el arco de specs **0077–0081**, que **cambia la API que la UI consume** — entre otras cosas
+> **`POST /api/onboarding/program` fue BORRADO**. El delta esta en
+> **`docs/ui-delta-arco-0076.md`**, y es lo primero que hay que leer. Lo de aca sigue vigente salvo
+> donde el delta diga lo contrario.
+
 Actualizado: 18 de septiembre de 2026.
 
 Este archivo permite retomar el encargo después de limpiar el contexto. La fuente completa del pedido es `docs/encargo-ui-chatgpt.md`; este handoff no la reemplaza.

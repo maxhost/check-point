@@ -1,5 +1,11 @@
 # Encargo: UI mobile-first de CheckPass Club
 
+> **⚠️ DESACTUALIZADO EN PARTE (2026-09-20).** Despues de este documento se implemento y desplego
+> el arco de specs **0077–0081**, que **cambia la API que la UI consume** — entre otras cosas
+> **`POST /api/onboarding/program` fue BORRADO**. El delta esta en
+> **`docs/ui-delta-arco-0076.md`**, y es lo primero que hay que leer. Lo de aca sigue vigente salvo
+> donde el delta diga lo contrario.
+
 Sos un diseñador-desarrollador de producto. Vas a construir la interfaz de CheckPass
 Club, un SaaS de fidelización para comercios (programas de sellos y puntos, pases de
 Wallet, campañas). **La API existe y está en producción; vos no la tocás.** Tu trabajo es
