@@ -2,7 +2,7 @@
 spec: 0083
 fecha: 2026-09-20
 estado: anexo
-resumen: Contrato normativo de `GET /api/onboarding/checklist` para quien construya la UI del onboarding por fuera. Un endpoint de LECTURA con un solo item (`verify-email`); la API dicta `position` y `required` y la UI no tiene lista propia de pasos. NO emite `email_not_verified` en ningun camino —se gatearia a si mismo— y ese es el punto del endpoint. El texto viaja en la respuesta con `locale: "es"` fijo y declarado, y el `anchor` es una CLAVE estable que la UI mapea a un elemento, nunca un selector ni una coordenada. Declara ademas el recurso que NO existe todavia: el tutorial paso-a-paso de cada item es un SEGUNDO endpoint, y sus pasos no van adentro de este.
+resumen: Contrato normativo de `GET /api/onboarding/checklist` para quien construya la UI del onboarding por fuera. Un endpoint de LECTURA con un solo item (`verify-email`); la API dicta `position`, `required` y `blocking` —dos ejes SEPARADOS: «hay que hacerlo» no es lo mismo que «frena a los que siguen»— y la UI no tiene lista propia de pasos. NO emite `email_not_verified` en ningun camino —se gatearia a si mismo— y ese es el punto del endpoint. El texto viaja en la respuesta con `locale: "es"` fijo y declarado, y el `anchor` es una CLAVE estable que la UI mapea a un elemento, nunca un selector ni una coordenada. Declara ademas el recurso que NO existe todavia: el tutorial paso-a-paso de cada item es un SEGUNDO endpoint, y sus pasos no van adentro de este.
 ---
 
 # 0083 — Contrato de API: el checklist del onboarding
@@ -45,7 +45,8 @@ Lectura pura. No recibe cuerpo, no recibe query params, no escribe nada.
     {
       "id": "verify-email",        // ESTABLE. Es la clave del contrato.
       "position": 1,               // Orden. Lo dicta la API, no la UI.
-      "required": true,            // Bloquea a los de position mayor mientras no este done.
+      "required": true,            // HAY QUE HACERLO. No se puede ignorar ni saltar.
+      "blocking": true,            // Mientras no este done, los de position mayor se bloquean.
       "done": false,               // El hecho, derivado del servidor.
       "anchor": "verify-email",    // CLAVE, no selector. La UI la mapea a un elemento.
       "title": "…",                // Copia. NO es contrato.
@@ -57,12 +58,34 @@ Lectura pura. No recibe cuerpo, no recibe query params, no escribe nada.
 
 **`items` viene ordenado por `position` ascendente.** La UI no reordena.
 
+### `required` y `blocking` son DOS ejes, no uno
+
+Es la parte del contrato mas facil de colapsar por error, asi que va explicita:
+
+| Campo | Que afirma | Que tiene que hacer la UI |
+|---|---|---|
+| `required` | **Hay que hacerlo.** Es obligatorio, no algo que el merchant pueda ignorar | Marcarlo como obligatorio; **no** ofrecer «saltar este paso» |
+| `blocking` | **Mientras no este `done`, los items de `position` mayor no se pueden hacer** | Deshabilitar lo que viene despues |
+
+Son **independientes**. Un item puede ser obligatorio y **no** frenar al resto (hay que
+hacerlo, pero mientras tanto se puede avanzar con otra cosa), y puede frenar al resto **sin**
+ser obligatorio.
+
+**Hoy los dos valen `true`** en el unico item, porque asi lo dicto el owner para el email
+(*«sin esto no desbloqueas nada de lo que sigue»*). **No leer uno por el otro:** el dia que
+aparezca un item que sea solo una de las dos cosas, una UI que los haya tratado como sinonimos
+se comporta mal y nadie lo va a ver hasta que un merchant se trabe.
+
+**La API los REPORTA; no los hace cumplir.** Con un solo item no hay un «siguiente» que
+bloquear. Si la API ademas debe **rechazar** acciones de un item bloqueado es una decision que
+**no esta tomada**, y se toma cuando haya un segundo item.
+
 ### Lo que la UI puede dar por estable, y lo que no
 
 | Campo | ¿Contrato? |
 |---|---|
 | `id`, `anchor` | **Si.** Son claves. Sobre ellas se construye el mapa de hotspots |
-| `position`, `required`, `done` | **Si.** Son el estado |
+| `position`, `required`, `blocking`, `done` | **Si.** Son el estado |
 | `title`, `body` | **No.** Es copia y va a cambiar sin aviso. No aseverar sobre su texto |
 | `locale` | **Si**, pero hoy es siempre `"es"` — ver §4 |
 

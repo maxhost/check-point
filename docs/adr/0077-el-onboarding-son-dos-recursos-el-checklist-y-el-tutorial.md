@@ -2,7 +2,7 @@
 adr: 0077
 fecha: 2026-09-20
 estado: aceptada
-resumen: El onboarding se parte en DOS recursos con ciclos de vida opuestos — el CHECKLIST («que hay que hacer y en que estado esta», derivado de hechos de la base, sobrevive a cualquier rediseño) y el TUTORIAL de cada item («toca aca, abri la camara», que ES la descripcion de una pantalla concreta y cambia cada vez que esa pantalla cambia). Meterlos en un endpoint los ata a la cadencia del mas volatil. El orden y la obligatoriedad los dicta la API, nunca la UI, y el texto viaja en la respuesta para que un segundo idioma sea un cambio de servidor; pero el ANCLA es una clave estable (`"verify-email"`), nunca un selector ni una coordenada, o cada rediseño de UI rompe el tour en produccion sin señal. Arranca con UN item (`verify-email`) y su almacenamiento es CODIGO: con un item no hay orden que cambiar ni obligatoriedad que alternar, y mover a tabla despues es invisible para la UI porque el JSON no cambia.
+resumen: El onboarding se parte en DOS recursos con ciclos de vida opuestos — el CHECKLIST («que hay que hacer y en que estado esta», derivado de hechos de la base, sobrevive a cualquier rediseño) y el TUTORIAL de cada item («toca aca, abri la camara», que ES la descripcion de una pantalla concreta y cambia cada vez que esa pantalla cambia). Meterlos en un endpoint los ata a la cadencia del mas volatil. El orden, la obligatoriedad y el bloqueo los dicta la API —`required` y `blocking` son DOS ejes separados, no uno— y el texto viaja en la respuesta para que un segundo idioma sea un cambio de servidor; pero el ANCLA es una clave estable (`"verify-email"`), nunca un selector ni una coordenada, o cada rediseño de UI rompe el tour en produccion sin señal. Arranca con UN item (`verify-email`) y su almacenamiento es CODIGO: con un item no hay orden que cambiar ni obligatoriedad que alternar, y mover a tabla despues es invisible para la UI porque el JSON no cambia.
 ---
 
 # 0077 — El onboarding son dos recursos: el checklist y el tutorial
@@ -78,20 +78,35 @@ GET /api/onboarding/guide/{item}   → CONTENIDO.  Mas grande, bajo demanda, cam
 
 **El segundo no se construye todavia** — ver §5.
 
-### 2. El orden y la obligatoriedad los dicta la API, nunca la UI
+### 2. El orden, la obligatoriedad y el bloqueo los dicta la API, nunca la UI
 
 Textual del owner: *«lo importante cmo dije es poder controlarlos via API e incluso indicar el
 orden, un paso que hoy es 1, mañana sera 3 si asi lo considero y unpaso que hoy es opcional
 malana puede ser obligatorio»*.
 
-La respuesta trae `position` y `required` por item. La UI **no** tiene una lista propia de
-pasos ni decide cual bloquea: pinta lo que recibe, en el orden que recibe.
+La respuesta trae `position`, `required` y `blocking` por item. La UI **no** tiene una lista
+propia de pasos, no decide cual es obligatorio y no decide cual bloquea: pinta lo que recibe,
+en el orden que recibe.
 
-`required` tiene **un** significado definido, y es la regla que el owner dicto para el email:
-*«sin esto no desbloqueas nada de lo que sigue»*. O sea: **un item `required` que no esta
-`done` bloquea a todos los de `position` mayor.** No se introduce un segundo campo para
-separar «obligatorio» de «bloqueante» — hoy no hay ningun caso que los distinga, y un campo
-sin caso es el molde generico que el owner rechazo explicitamente.
+**`required` y `blocking` son DOS EJES SEPARADOS**, por decision explicita del owner
+(2026-09-20): *«Si necesitamos determinar si es o no obligatoria, no solo que se bloquee la
+siguiente mayor»*.
+
+| Campo | Que afirma | Quien lo consume |
+|---|---|---|
+| `required` | **Hay que hacerlo.** Es obligatorio para el merchant, no algo que pueda ignorar | La UI lo marca como tal y no le ofrece «saltar» |
+| `blocking` | **Mientras no este `done`, los items de `position` mayor no se pueden hacer** | La UI deshabilita lo que viene despues |
+
+Son independientes: un item puede ser **obligatorio sin frenar al resto** (hay que hacerlo,
+pero mientras tanto se puede avanzar con otra cosa) y puede **frenar al resto sin ser
+obligatorio**. Colapsarlos en un solo booleano obliga a elegir entre «obligatorio» y
+«bloqueante» cada vez que aparece un item que es solo una de las dos.
+
+**Hoy `verify-email` es `required: true` y `blocking: true`**, que es la regla que el owner
+dicto para el email —*«sin esto no desbloqueas nada de lo que sigue»*— y que con un solo item
+hace que los dos campos valgan lo mismo. **Eso no los hace el mismo campo**, y la spec 0083 se
+hace cargo de que con un item nadie puede falsificar que uno se implemente como alias del otro:
+lo cubre con la funcion pura y entradas sinteticas, no con el catalogo real.
 
 ### 3. El texto viaja en la API; el ancla es una clave, no una coordenada
 

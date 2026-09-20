@@ -1,8 +1,8 @@
 ---
 spec: 0083
 fecha: 2026-09-20
-estado: borrador
-resumen: `GET /api/onboarding/checklist` — el checklist del onboarding del ADR 0070 §9, que estaba diferido desde la 0074. Arranca con UN item (`verify-email`), cuyo hecho ya viaja en la sesion y cuya accion ya existe. La API dicta `position` y `required` (la UI no tiene lista propia) y el texto viaja en la respuesta con `locale: "es"` fijo y declarado. NO lleva gate de email —un endpoint que dice «verifica tu email» no puede estar bloqueado por no haberlo verificado— y por eso no usa `requireApiOwner`: reusa `ownerContext` y `businessStatusFailure` y recorre la escalera del ADR 0073 §1 salteando SOLO el paso 3. Sin migracion: el catalogo de items es codigo tipado, como `ENTITLEMENTS`.
+estado: cerrada
+resumen: `GET /api/onboarding/checklist` — el checklist del onboarding del ADR 0070 §9, que estaba diferido desde la 0074. Arranca con UN item (`verify-email`), cuyo hecho ya viaja en la sesion y cuya accion ya existe. La API dicta `position`, `required` y `blocking` —dos ejes SEPARADOS por decision del owner— la UI no tiene lista propia, y el texto viaja en la respuesta con `locale: "es"` fijo y declarado. NO lleva gate de email —un endpoint que dice «verifica tu email» no puede estar bloqueado por no haberlo verificado— y por eso no usa `requireApiOwner`: reusa `ownerContext` y `businessStatusFailure` y recorre la escalera del ADR 0073 §1 salteando SOLO el paso 3. Sin migracion: el catalogo de items es codigo tipado, como `ENTITLEMENTS`.
 disjunta: si
 archivos: apps/merchant/src/server/onboarding/checklist.ts, apps/merchant/src/app/api/onboarding/checklist/route.ts, apps/merchant/src/server/onboarding/checklist.test.ts, apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts
 ---
@@ -65,7 +65,13 @@ type ChecklistFacts = { emailVerified: boolean };
 
 type ChecklistItemDef = {
   position: number;
+  /** DOS EJES SEPARADOS (ADR 0077 §2), no uno. `required` = hay que hacerlo.
+   *  `blocking` = mientras no este `done`, los de `position` mayor no se pueden hacer.
+   *  Un item puede ser obligatorio sin frenar al resto, y frenar al resto sin ser
+   *  obligatorio. Con UN item los dos valen `true` y no se distinguen: por eso el
+   *  oraculo que prueba que no son alias vive en la funcion pura (D2), no en el catalogo. */
   required: boolean;
+  blocking: boolean;
   /** Clave ESTABLE que la UI mapea a un elemento. NUNCA un selector ni una coordenada
    *  (ADR 0077 §3): si la API guardara coordenadas, cada rediseño de UI romperia el tour
    *  en produccion sin poner rojo a nadie. */
@@ -81,22 +87,32 @@ type ChecklistItemDef = {
 
 Una sola entrada:
 
-| id | position | required | anchor | done |
-|---|---|---|---|---|
-| `verify-email` | `1` | `true` | `"verify-email"` | `(f) => f.emailVerified` |
+| id | position | required | blocking | anchor | done |
+|---|---|---|---|---|---|
+| `verify-email` | `1` | `true` | `true` | `"verify-email"` | `(f) => f.emailVerified` |
 
 El `title` y el `body` son copia en español y **no son contrato** — lo que la UI puede dar por
 estable es el `id` y el `anchor`.
 
-`required: true` significa **exactamente** lo que dicto el owner: un item `required` que no
-esta `done` bloquea a todos los de `position` mayor. **No hay un segundo campo** que separe
-«obligatorio» de «bloqueante»: hoy no hay caso que los distinga (ADR 0077 §2).
+**`required` y `blocking` son dos campos y dos preguntas distintas** (ADR 0077 §2, decision
+textual del owner del 2026-09-20). `verify-email` los tiene los dos en `true` porque es la
+regla que el owner dicto para el email; **que hoy coincidan no los hace el mismo campo**, y el
+implementador **no** debe derivar uno del otro — ni siquiera «porque hoy da igual». Ese atajo
+es exactamente lo que ataca la mutacion M6.
 
 ### D2 — La funcion pura que arma la vista
 
 ```ts
-export function toChecklistView(facts: ChecklistFacts): ChecklistView
+export function toChecklistView(
+  facts: ChecklistFacts,
+  items: Record<string, ChecklistItemDef> = CHECKLIST_ITEMS,
+): ChecklistView
 ```
+
+**El segundo parametro tiene default y existe por dos oraculos concretos**, no por gusto de
+inyectar: es la unica forma de alimentar entradas **sinteticas** —desordenadas, o con
+`required` y `blocking` divergentes— que el catalogo real de un solo item no puede producir.
+La ruta lo llama **sin** el segundo argumento.
 
 Devuelve `{ locale: "es", items: [...] }` con los items **ordenados por `position` ascendente**
 y cada uno con su `done` ya resuelto. Es pura: no toca base ni sesion, asi que su test no
@@ -161,6 +177,11 @@ ruta existente se edita.
       `done: false`, `required: true`, `position: 1`. **Este es el caso central de la spec:**
       es la prueba de que la ruta no se gatea a si misma.
 - [ ] **Un owner CON el email verificado recibe 200** con el mismo item y `done: true`.
+- [ ] **`required` y `blocking` viajan como campos SEPARADOS** y el item de `verify-email` trae
+      los dos en `true`.
+- [ ] **`blocking` NO es un alias de `required`:** `toChecklistView` con una entrada sintetica
+      `{ required: true, blocking: false }` devuelve **exactamente eso** (y el caso espejo
+      `{ required: false, blocking: true }`). Sin Neon, sobre la funcion pura.
 - [ ] **Sin sesion → 401** con `code: "unauthorized"`.
 - [ ] **Un integrante (`role='staff'`) → 403** con `code: "not_owner"`, y **no** con
       `email_not_verified`.
@@ -181,7 +202,7 @@ ruta existente se edita.
       toca UI, ni CSS global, ni pantalla de `/backoffice`).
 - [ ] `rg -n MUTATION apps tools` → vacio.
 
-## Mutaciones — presupuesto: 5. Clase: los plausibles
+## Mutaciones — presupuesto: 6. Clase: los plausibles
 
 La clase de error a cazar es **que el guard deje pasar a quien no debe, o bloquee a quien la
 ruta existe para servir**, y **que `done` no sea vacuo**.
@@ -193,6 +214,7 @@ ruta existe para servir**, y **que `done` no sea vacuo**.
 | 3 | `done: () => true` en la entrada | El caso «owner sin verificar» → `done` debe quedar en `true` y romper la asercion |
 | 4 | `done: () => false` en la entrada | El caso «owner verificado» → `done` debe quedar en `false`. **La 3 y la 4 juntas** son las que prueban que `done` lee el hecho y no devuelve una constante |
 | 5 | Sacar `businessStatusFailure` (paso 4) | Los casos `closed` y `suspended` → deben pasar de 403 a 200 |
+| 6 | En `toChecklistView`, emitir `blocking: def.required` (colapsar los dos ejes en uno) | El caso sintetico `{ required: true, blocking: false }` → debe recibir `blocking: true`. **Es la unica mutacion que el catalogo real NO puede cazar**, porque con un item los dos campos valen `true`; por eso su oraculo son entradas sinteticas |
 
 **Protocolo:** `shasum` limpio antes de mutar → fila de bitacora **antes** de medir → etiqueta
 `MUTATION` → medir y **transcribir la salida ejecutada** → revertir con `diff` contra copia
@@ -215,9 +237,14 @@ corta y va al owner. Lo que queda afuera se **declara**.
 - **El texto (`title`, `body`).** Es copia, no contrato. Un test que lo asevere se rompe con
   cada ajuste de redaccion sin que nada este mal.
 - **El comportamiento con dos o mas items** (orden entre items, bloqueo en cadena). **Hoy hay
-  un item y no se puede falsificar con uno solo.** El unico pedazo que si se cubre es el
-  `sort` por `position` de `toChecklistView`, que se testea con entradas sinteticas
-  desordenadas.
+  un item y no se puede falsificar con uno solo.** Los dos pedazos que SI se cubren, ambos con
+  entradas sinteticas sobre la funcion pura: el `sort` por `position`, y la independencia de
+  `required` y `blocking`.
+- **Que la UI aplique `blocking` de verdad** (deshabilitar los de `position` mayor). La API
+  **reporta** los dos ejes; **no los hace cumplir**, porque con un solo item no hay un
+  «siguiente» que bloquear y porque el bloqueo es comportamiento de pantalla. El dia que haya
+  un segundo item hay que decidir si la API ademas **rechaza** acciones de un item bloqueado —
+  esa decision **no esta tomada** y no se da por tomada aca.
 
 ## Handoff
 
@@ -230,5 +257,8 @@ resto no importa.
 
 ## Abierto
 
-Nada bloqueante. Las seis decisiones que estaban abiertas desde la 0074 se cerraron en el
-**ADR 0077** el 2026-09-20.
+**Nada.** Las seis decisiones que estaban abiertas desde la 0074 se cerraron en el **ADR 0077**
+el 2026-09-20, y el owner cerro la spec ese mismo dia tras pedir el unico arreglo que faltaba:
+**separar `required` de `blocking`** (*«Si necesitamos determinar si es o no obligatoria, no
+solo que se bloquee la siguiente mayor»*), que es lo que quedo en D1, en la M6 y en el §1 del
+contrato.
