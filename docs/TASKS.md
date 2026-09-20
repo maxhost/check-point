@@ -14,29 +14,21 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-19 — EL ARCO ESTA COMPLETO.** La **0081** cerro con PASS de
-revisor independiente y quedo commiteada; con ella terminan el ADR 0076 y las dos specs que
-salieron de la respuesta del owner. **No queda ninguna spec en vuelo.** El entregable para la UI
-es **`docs/specs/0081-contratos-de-api.md`** (cero `.tsx` tocados en todo el arco).
-**Lo unico pendiente es hacia afuera: pushear, deployar y aplicar la `0039` a prod** — ver «F2»,
-que es lo unico que puede romper el QA.
+**Ultima actualizacion: 2026-09-20 — EL ARCO ESTA COMPLETO Y DESPLEGADO. Push hecho
+(`bb511df..a7a35f9`, 12 commits) y **prod sirve el codigo nuevo**, verificado. **LA MIGRACION
+`0039` NO SE APLICO: esta BLOQUEADA** y la decision es del owner — ver «⇥ BLOQUEO».**
 
-**ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador, salvo lo que diga
-de donde viene:**
+**ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | **`02aa985`** (spec 0081). Arbol **LIMPIO**. `origin/main` sigue en **`bb511df`**: **10 commits por delante, sin pushear**. El owner no pidio push |
-| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, **0079**, **0080** y **0081** — las 9 ultimas con **PASS de revisor independiente** |
-| **EL ARCO ESTA COMPLETO** | el ADR 0076 y sus tres specs (0077/0078/0079), mas la 0080 (los pendientes) y la **0081** (el TOS, la ultima). **No queda spec en vuelo** |
-| Gates sobre `02aa985` | reproducidos por el orquestador **con exit code explicito**: `typecheck --force` `EXIT=0` (3 successful, sin cache), `lint` `EXIT=0`, `build` `EXIT=0`, `format:check` `EXIT=0`, y suite con Neon **226 archivos / 1757 tests, 0 failed, 0 skipped** |
-| Mutaciones vivas | **CERO**: `rg -n MUTATION apps tools` vacio y `no-mutations-left.sh` limpio |
-| `pnpm test:e2e` | **no aplica** a la 0080 ni a la 0081 (cero `.tsx`, confirmado por sus revisores). Se corrio en la **0079**, con su unico rojo demostrado PREEXISTENTE en un worktree limpio |
-| ⚠️ CI de `main` remoto | **ROJO heredado** por ese mismo e2e, anterior a los 10 commits. No lo causamos nosotros |
-| **⚠️ LO QUE FALTA PARA EL QA** | **pushear, deployar y aplicar la `0039` a prod** (ver F2 abajo). **Nada de eso esta hecho** — son acciones hacia afuera y el owner no las pidio |
-| Migracion `0039` | aplicada a **integracion**, verificada por SQL. **NO a prod** |
-| Vercel / prod | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada** |
-| Abierto, no bloquea | la divergencia `asc`/`desc` guard-vs-writer (0072 §D3): la mutacion R1 del revisor **sobrevivio con los 1757 tests en verde**, o sea que **sigue sin oraculo** |
+| HEAD local | **`a7a35f9`**, arbol limpio. **`origin/main` = `a7a35f9`: ya NO hay commits sin pushear** |
+| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, **0077**, **0078**, **0079**, **0080** y **0081** — las 9 ultimas con PASS de revisor independiente |
+| Vercel / prod | **deploy `READY` con el sha EXACTO `a7a35f9`** (`dpl_CEKXDseirdKTF89zUrJ6rg6xK1o3`). Antes estaba en `bb511df` |
+| Prod sirve el codigo nuevo | **verificado por HTTP**: `/api/merchant/session` → **200** (en el deploy viejo daba **404**) y `/api/loyalty-terms/templates` → **401** (existe y pide auth) |
+| CI de `a7a35f9` | **`verify: completed -> failure`**, y es el **rojo PREEXISTENTE y AJENO**: `1 failed / 1 skipped / 4 passed`, `tests/e2e/loyalty.spec.ts:16:5`, `locator.check` timeout sobre el radio «Sellos». **Contadores IDENTICOS al baseline** que el revisor de la 0079 midio en un worktree limpio. Los otros gates pasaron |
+| ⚠️ **Migracion `0039`** | **NO APLICADA A PROD. BLOQUEADA** — ver «⇥ BLOQUEO» abajo |
+| Gates locales sobre el arbol | `typecheck --force`, `lint`, `build`, `format:check` **EXIT=0**, y **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** |
 
 ## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
 
@@ -173,6 +165,50 @@ cp /tmp/limpios-0081/0039_tos_variables_del_negocio.sql apps/merchant/drizzle/00
 | M4 | `loyalty-program/terms.ts` — `program_unit_plural` cae al singular | `b09775cee60acef3c662de522454ef65589b5d47` | `program_unit_plural` es el PLURAL, no el singular | **ROJO — 6 tests de 88**, con el «Los sello se acumulan…» que cazo la 0078 reproducido literal: `onboarding-program-terms.neon` «el programa del cuerpo corto queda con «Los sellos»» y «el `countryCode` del CUERPO no mueve el scope» (`expected 'Los sello se acumulan únicamente conf…' to contain 'Los sellos se acumulan'`), `loyalty-terms-negocio.neon` los dos casos de TOS, y `terms-variables.test` Sellos y Puntos (`expected 'sello' to be 'sellos'`, `expected 'punto' to be 'puntos'`). Alcance: los 6 archivos de arriba + `loyalty-terms-render.neon` → **6 failed / 82 passed**. **RE-MEDIDA despues de agregar `loyalty-terms-doce-variables.neon`** (que se escribio DESPUES de la primera vuelta, para cumplir al pie el DoD de «las doce renderizadas»): con ese archivo en el alcance son **8 failed / 49 passed**, y los dos rojos nuevos son sus casos de Sellos y de Puntos, con el markdown exacto. Revertida otra vez, `diff` vacio y shasum identico |
 | M5 | `drizzle/0039_…sql` — el allowlist de las 2 filas de `earning_per_amount` SIN `currency_code`, `program_accrual_grant` ni `program_accrual_block_amount` | `4d335126ebcab7fe69195c5d0b1c389c25aaeda1` | el `variables_allowlist` de `earning_per_amount` cubre las variables de dinero | **ROJO — 2 tests de 15.** Medida re-sembrando: `delete from core.terms_template where key='earning_per_amount'` + re-aplicar el SQL mutado (verificado por SQL que el allowlist quedo recortado). `loyalty-terms-negocio.neon` «`per_amount` guarda la mecánica…» (`expected 422 to be 200`) y `loyalty-program-ruta-unica.neon` «un cuerpo de Puntos crea el programa» (`expected 422 to be 201`). **EL MOTIVO DEL ROJO, leido con una sonda ejecutada y borrada** (el rojo del status no lo muestra): `La variable {{program_accrual_grant}} no está permitida.` — es el 422 del allowlist, no otro. **Y un dato para el revisor: «las 8 semillas… con `country_code` en el allowlist» quedo VERDE** — esa asercion NO guarda las variables de dinero; la que las guarda es el end-to-end. Revertida y **re-sembrado el allowlist limpio, verificado por SQL** |
 | M6 | `onboarding/program-defaults.ts` — sembrar SIEMPRE, ignorando el `clauses` del cuerpo | `66a3c8802cdb627c05556d8c5afa98ce3599756f` | un `clauses` NO VACIO del cuerpo sobrevive al compositor (hallazgo **F1** del revisor de la 0080) | **ROJO — 4 tests de 52, y el que cierra el hueco es el PRIMERO:** `loyalty-program-ruta-unica.neon` «un cuerpo COMPLETO de hoy conserva cada campo que mandó, cláusulas incluidas» (`expected 'Se otorgan 3 visitas por cada 20.00 U…' to contain 'Cláusula propia del comercio, escrita…'`). **El rojo cae en la asercion NUEVA**, o sea en el oraculo que esta spec agrego: antes ese caso mandaba `clauses` iguales a las semillas de EC y su bloque **ni mencionaba** `termsMarkdown`, asi que sembrar encima era un no-op observable (la bitacora de la 0080 lo dejo medido: su M2 lo vio VERDE). Los otros 3 son los oraculos de la 0080 (`program-defaults-clauses.test`), esperables porque esta mutacion es un superconjunto de su M2. Alcance: `loyalty-program-ruta-unica.neon` + `onboarding/` + `onboarding-program.neon` + `onboarding-program-terms.neon` + `loyalty-terms-negocio.neon` → **4 failed / 48 passed** |
+
+## ⇥ ⚠️ BLOQUEO: LA MIGRACION `0039` A PROD — decision del owner (2026-09-20)
+
+**El owner pidio aplicarla. NO se aplico, y el motivo no es pereza: no se pudo IDENTIFICAR la base
+de prod con certeza, y una migracion a ciegas contra la base equivocada no se intenta.**
+
+**Lo medido:**
+
+- El **MCP de Neon esta scopeado al proyecto `silent-wave-15401445`**, cuyo unico endpoint es
+  `ep-dawn-pond-b2e4jqhs` en **eu-central-1**, y cuya base `neondb` **NO tiene los esquemas `core`
+  ni `merchant_auth`** — solo `public` y `neon_auth`. O sea: **no es la base de la app.**
+- El repo apunta (en `.env.integration.local`) a **`ep-spring-moon-axt4mngw` en us-east-2**, que es
+  **otro proyecto** y ese MCP **no lo alcanza**.
+- El `DATABASE_URL_UNPOOLED` de produccion vive en Vercel **encriptado**. Leerlo es tocar una
+  credencial de produccion: **no se hace sin pedido explicito del owner.**
+
+**LAS DOS SALIDAS (decide el owner):**
+
+1. **Autoriza leer el `DATABASE_URL_UNPOOLED` de prod desde Vercel** → el orquestador corre
+   `DATABASE_URL_UNPOOLED='<...>' pnpm --filter @mi-pasaporte/merchant db:migrate` y verifica por
+   SQL que `global-draft` quedo `archived` y que las semillas nuevas estan.
+2. **La corre el owner** y el orquestador verifica el resultado.
+
+### ✅ EL ORDEN DE DESPLIEGUE ESTABA INVERTIDO EN LA SPEC, y se corrigio con evidencia
+
+**La 0081 §F2 decia «aplicar la `0039` ANTES del deploy». Es al reves, y por poco no rompe prod.**
+Medido: **el codigo que corria en prod (`78d1f3a`) usa `global-draft` HARDCODEADO**
+(`program-defaults.ts:65`, `eq(termsTemplates.jurisdictionScope, "global-draft")`). La `0039`
+archiva exactamente esas plantillas → aplicarla antes del deploy **le rompe la creacion de
+programas al codigo viejo**.
+
+**Y el riesgo inverso es MENOR de lo que la spec decia:** `wizardClauseKeys(mode)` pide **dos**
+claves, no tres — `["earning","redemption"]` para `per_purchase` (existen desde la **0038**) y
+`earning_per_amount` solo para `per_amount`. **Asi que sin la `0039` lo unico que falla es un
+`per_amount`, y todavia no hay UI que lo mande.**
+
+**ORDEN CORRECTO, el que se ejecuto:** push → deploy → verificar que prod tiene el sha → **despues**
+la migracion.
+
+**⚠️ LO QUE FALTA VERIFICAR CUANDO SE APLIQUE:** si prod tambien debe la **`0038`** (las semillas
+por pais de la 0078). `db:migrate` aplica todas las pendientes de una, asi que se resuelve solo
+— pero **entre el deploy y la migracion hay una ventana en la que crear un programa daria 503**.
+Con prod en 0 negocios (dato del 2026-09-18 que **NO se pudo re-verificar, justamente por este
+bloqueo**) es inocuo.
 
 ## ⇥ ✅ 0081 IMPLEMENTADA CON PASS — EL ARCO ESTA COMPLETO (2026-09-19)
 
