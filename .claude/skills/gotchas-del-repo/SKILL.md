@@ -187,6 +187,22 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   esperas, la hipotesis correcta NO es «prod esta vacia» sino «no es esa base».** Se perdio medio
   turno concluyendo lo primero. El scope del MCP se lee en las instrucciones del server
   («scoped to one project only (...)»), y se cambia con el query param `projectId` de su URL.
+- **EL ORDEN «migracion primero o deploy primero» LO DECIDE EL CODIGO QUE **YA** CORRE EN PROD, no
+  el que vas a desplegar.** Medido en la spec 0081 (2026-09-20), cuyo §F2 ordenaba «aplicar la
+  migracion ANTES del deploy» **y estaba al reves**: la migracion archivaba las plantillas
+  `global-draft`, y el codigo que corria en prod las usaba **hardcodeadas**
+  (`program-defaults.ts:65`), asi que aplicarla primero **le rompia la creacion de programas al
+  codigo viejo**. La spec razono sobre el codigo NUEVO — el unico que sus autores tenian a la
+  vista— y nadie miro el viejo. **Antes de migrar: `git show <sha-de-prod>:<archivo>` y fijarse que
+  lee ese codigo de lo que la migracion toca.** Regla practica: **una migracion ADITIVA (columnas
+  nullables, filas nuevas) puede ir antes; una que ARCHIVA, BORRA o RENOMBRA algo que el codigo
+  viejo lee, va DESPUES del deploy.**
+  **Y el corolario que aparecio en la misma operacion: desplegar codigo nuevo con migraciones
+  pendientes DEJA FLUJOS ROTOS EN SILENCIO.** Prod quedo sin poder crear programas (503, porque el
+  codigo nuevo busca semillas por pais que no existian) y con un `42703` latente (la columna
+  `onboarding_grant_until` que la 0077 escribe). **Ninguno de los dos aparece en la CI ni en el
+  deploy: aparecen cuando un usuario los toca.** Verificar el estado de la base **para el codigo
+  que se acaba de desplegar**, corriendo **la consulta exacta que hace el codigo**, no una parecida.
 - **Migracion a prod (Neon):** `DATABASE_URL_UNPOOLED='<conn de la rama default, host SIN
   -pooler>' pnpm --filter @mi-pasaporte/merchant db:migrate`. La connection string se saca con
   `mcp__neon__get_connection_string` — **viene con el host POOLED: hay que sacarle el `-pooler`
