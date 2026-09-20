@@ -120,7 +120,8 @@ estable es el `id` y el `anchor`.
 textual del owner del 2026-09-20). `verify-email` los tiene los dos en `true` porque es la
 regla que el owner dicto para el email; **que hoy coincidan no los hace el mismo campo**, y el
 implementador **no** debe derivar uno del otro — ni siquiera «porque hoy da igual». Ese atajo
-es exactamente lo que ataca la mutacion M6.
+es exactamente lo que ataca la mutacion **M5** (era la M6 antes de que la enmienda del
+2026-09-20 rehiciera la tabla; la M6 de hoy es la del inventario).
 
 ### D2 — La funcion pura que arma la vista
 
@@ -188,9 +189,24 @@ Fallo de base → **503** `onboarding_unavailable`.
 
 ### D4 — Costo de la lectura
 
-`emailVerified` sale de la sesion de better-auth: **cero consultas extra**. La unica consulta
-es la de `ownerContext`, que es la misma que hace cualquier superficie de owner. Total:
-**una consulta**, igual que las demas.
+**CORREGIDO EL 2026-09-20, y el error lo produjo la propia enmienda.** La version original
+decia «cero consultas extra … total: una consulta». **Era cierta cuando la ruta armaba la
+escalera a mano y resolvia la sesion UNA vez**; al pasar a `requireApiOwnerSinGateDeEmail` dejo
+de serlo, porque el contrato de retorno de esa funcion —el mismo de `requireApiOwner`— son
+`business` y `userId`, **no la sesion**. Lo reprodujo el orquestador sobre `ApiOwnerResult`.
+
+El costo real, entonces: **una consulta del guard (`ownerContext`) + una SEGUNDA lectura de la
+sesion** para obtener `emailVerified`. Es exactamente el mismo costo que ya paga y documenta
+`callerOf` en `app/api/loyalty-program/route.ts`, por el mismo motivo.
+
+**Donde vive esa lectura:** en `server/onboarding/checklist-facts.ts`, **no en el archivo de la
+ruta**. No es capricho — sacarla de adentro del guard obligaria a tocar **el cuerpo** de las dos
+funciones, que la spec 0075 exige byte por byte iguales; y dejarla en la ruta contradiria el
+criterio del DoD que mantiene a ese archivo sin escalera propia.
+
+**Lo que NO se hizo y se declara:** no se configuro `cookieCache` de better-auth para ahorrar
+esa segunda lectura. Seria un cambio de configuracion de auth que afecta a **todas** las
+superficies, muy fuera del alcance de una spec chica de un endpoint de lectura.
 
 ### D5 — El inventario de exenciones pasa de 2 a 3
 
@@ -220,6 +236,7 @@ esas dos rutas». Pasa a tres, nombrando a esta y su motivo.
 | Archivo | Accion |
 |---|---|
 | `apps/merchant/src/server/onboarding/checklist.ts` | crear |
+| `apps/merchant/src/server/onboarding/checklist-facts.ts` | crear — la segunda lectura de sesion (D4). **Se agrego en la enmienda**: no estaba en la tabla original porque la version original de D4 creia que no hacia falta |
 | `apps/merchant/src/app/api/onboarding/checklist/route.ts` | crear |
 | `apps/merchant/src/server/onboarding/checklist.test.ts` | crear |
 | `apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts` | crear |
@@ -326,6 +343,15 @@ corta y va al owner. Lo que queda afuera se **declara**.
   un segundo item hay que decidir si la API ademas **rechaza** acciones de un item bloqueado —
   esa decision **no esta tomada** y no se da por tomada aca.
 
+## Hallazgo medido que queda ABIERTO (no lo decidio el owner)
+
+**`api-owner-surfaces.test.ts` quedo en 299 lineas y el hook `file-size` corta en 300.** Entro
+por un pelo, y para entrar hubo que compactar dos docblocks que la enmienda ya tenia que
+reescribir. **La proxima superficie que se sume al inventario —exenta o no— no entra**, y ahi
+aplica la regla de `CLAUDE.md`: *dividir, no extender*. No se divide en esta spec porque seria
+un refactor de un archivo ajeno sin su tarea; queda anotado para que el dia que pase no se
+descubra como sorpresa en mitad de otra spec.
+
 ## Handoff
 
 **UN implementador para toda la spec, UN revisor independiente al final** (ADR 0071). El
@@ -340,5 +366,5 @@ resto no importa.
 **Nada.** Las seis decisiones que estaban abiertas desde la 0074 se cerraron en el **ADR 0077**
 el 2026-09-20, y el owner cerro la spec ese mismo dia tras pedir el unico arreglo que faltaba:
 **separar `required` de `blocking`** (*«Si necesitamos determinar si es o no obligatoria, no
-solo que se bloquee la siguiente mayor»*), que es lo que quedo en D1, en la M6 y en el §1 del
+solo que se bloquee la siguiente mayor»*), que es lo que quedo en D1, en la **M5** y en el §1 del
 contrato.
