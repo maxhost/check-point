@@ -30,10 +30,14 @@ bitacora de mutaciones y el PASS del revisor de esa spec).
 | ⚠️ **Migracion `0039`** | **NO APLICADA A PROD. BLOQUEADA** — ver «⇥ BLOQUEO» abajo |
 | Gates locales sobre el arbol | `typecheck --force`, `lint`, `build`, `format:check` **EXIT=0**, y **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** |
 
-## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
+## ⇥ (historico) ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
 
-**Estado: implementado, SIN commitear y SIN marcar la spec.** Falta el PASS del revisor
-independiente (ADR 0071). **Arbol LIMPIO de mutaciones**: `rg -n MUTATION apps tools` → vacio,
+> **SUPERADO: esto es el registro de la entrega, no el estado.** La 0081 despues obtuvo su PASS,
+> quedo marcada `implementada` y se commiteo en `02aa985`; el arco esta desplegado en `a7a35f9`.
+> El bloque de arriba es el estado real. Se conserva por su evidencia.
+
+**Estado al momento de la entrega: implementado, a la espera del PASS del revisor independiente**
+(ADR 0071). **Arbol LIMPIO de mutaciones**: `rg -n MUTATION apps tools` → vacio,
 `.claude/hooks/no-mutations-left.sh` **EXIT=0**, y los 4 archivos mutados con `diff` vacio y
 `shasum` identico al limpio.
 
