@@ -32,6 +32,15 @@ describe("restoredStage", () => {
       },
       "complete",
     ],
+    [
+      {
+        authenticated: true,
+        business: { id: "business-1", name: "Café Sur", slug: "cafe-sur" },
+        program: { id: "program-2", kind: "points" },
+        stampImage: false,
+      },
+      "complete",
+    ],
   ])("deriva %s sin recrear recursos", (state, expected) => {
     expect(restoredStage(state)).toBe(expected);
   });

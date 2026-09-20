@@ -89,9 +89,10 @@ describe.skipIf(!integrationEnabled)("marketing backoffice pages", () => {
 
     expect(html).toContain('href="/backoffice/marketing"');
     expect(html).not.toContain("/backoffice/demo/campaigns");
-    // Anti-false-green: the re-route was surgical. `analytics` is the last tile still on
-    // the mock, and the other real sections did not move.
-    expect(html).toContain("/backoffice/demo/analytics");
+    // Anti-false-green: the re-route was surgical. The spec 0015 mock is gone entirely
+    // (`analytics` had no real screen and its tile was removed, not migrated), and the
+    // other real sections did not move.
+    expect(html).not.toContain("/backoffice/demo/");
     expect(html).toContain('href="/backoffice/locations"');
   }, 120_000);
 

@@ -113,12 +113,12 @@ describe.skipIf(!integrationEnabled)(
       const html = renderToStaticMarkup(await BackofficePage());
       expect(html).toContain('href="/backoffice/locations"');
       expect(html).not.toContain("/backoffice/demo/locations");
-      // The tiles with no real screen yet still fall back to the mock — this asserts the
+      // The spec 0015 mock (`/backoffice/demo/*`) is gone entirely — this asserts the
       // re-route was surgical and did not silently break the others. `campaigns` left
       // this list in spec 0065 (B3) and is asserted by
-      // `marketing-backoffice-pages.neon.integration.test.ts`; `analytics` is the only
-      // one still on the spec 0015 mock.
-      expect(html).toContain("/backoffice/demo/analytics");
+      // `marketing-backoffice-pages.neon.integration.test.ts`; `analytics` had no real
+      // screen and its tile was removed instead of getting one.
+      expect(html).not.toContain("/backoffice/demo/");
       // Spec 0067 §7-quinquies — this line USED to assert `href="/backoffice/staff"`, a
       // second real screen kept here as anti-false-green. That screen was DELETED (owner's
       // decision, 2026-09-17), so its subject no longer exists: this is not a test edited

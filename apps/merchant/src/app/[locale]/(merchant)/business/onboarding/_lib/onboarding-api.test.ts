@@ -76,7 +76,13 @@ describe("API del wizard", () => {
       .mockResolvedValue(jsonResponse({ programId: "p-1", created: true }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(createProgram(8, "  Café gratis  ")).resolves.toEqual({
+    await expect(
+      createProgram({
+        kind: "stamps",
+        target: 8,
+        rewardLabel: "  Café gratis  ",
+      }),
+    ).resolves.toEqual({
       id: "p-1",
       kind: "stamps",
     });
@@ -86,6 +92,29 @@ describe("API del wizard", () => {
       kind: "stamps",
       configuration: { target: 8 },
       rewards: [{ type: "custom", label: "Café gratis" }],
+    });
+  });
+
+  it("crea Puntos con sus nombres fijos, la regla por monto y el costo del premio", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ programId: "p-2", created: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      createProgram({
+        kind: "points",
+        pointsGranted: 10,
+        purchaseAmount: "5.00",
+        rewardLabel: "  Café gratis  ",
+        rewardPointsCost: 100,
+      }),
+    ).resolves.toEqual({ id: "p-2", kind: "points" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      kind: "points",
+      configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+      rewards: [{ type: "custom", label: "Café gratis", pointsCost: 100 }],
+      accrual: { mode: "per_amount", grant: 10, blockAmount: "5.00" },
     });
   });
 
@@ -104,7 +133,9 @@ describe("API del wizard", () => {
       ),
     );
 
-    await expect(createProgram(8, "Café")).rejects.toMatchObject({
+    await expect(
+      createProgram({ kind: "stamps", target: 8, rewardLabel: "Café" }),
+    ).rejects.toMatchObject({
       status: 403,
       code: "business_suspended",
       suspensionReason: "Pago pendiente",

@@ -23,24 +23,8 @@ export default async function BackofficePage() {
     status: subscription?.status ?? "active",
   };
 
-  // Modules with a REAL screen, and WHERE it lives. Anything not listed here still falls
-  // back to the sessionStorage mock of spec 0015 (`/backoffice/demo/<slug>`) — today only
-  // `analytics`. `locations` left that list in spec 0061, `subscription` in spec 0063,
-  // `campaigns` in spec 0065 (B3), and the spec 0017 mock is superseded.
-  //
-  // It is a Map and no longer a Set because for the first time a slug and its path
-  // DISAGREE: the tile is «Campañas» / `campaigns` and the section the spec asks for is
-  // `/backoffice/marketing`. DECISION OF THE ORCHESTRATOR, not the owner: the path
-  // moves, the slug stays. Renaming the slug instead would touch the demo route, its
-  // sessionStorage key and the mock screens of spec 0015 for a cosmetic win.
-  //
-  // `staff` left BOTH structures in spec 0067 §7-quinquies (owner's decision, 2026-09-17):
-  // `/backoffice/staff` was deleted because it posted fields the server ignores and never
-  // read the `pin`, throwing away the member's only credential on every alta. It had to
-  // leave the `modules` list too, not just this Map: dropping it from the Map ALONE would
-  // have fallen back to the spec 0015 mock (`/backoffice/demo/staff`, a real placeholder
-  // page) — resurrecting a screen instead of removing it. The capability lives in
-  // `/api/staff/*`, which the UI built outside consumes.
+  // Solo se muestran módulos con una pantalla real. El slug de Campañas conserva su
+  // nombre visible, aunque su pantalla viva en `/backoffice/marketing`.
   const realModules = new Map([
     ["counter", "/backoffice/counter"],
     ["loyalty", "/backoffice/loyalty"],
@@ -65,7 +49,6 @@ export default async function BackofficePage() {
     ["Catálogo", "Declara los productos que vende tu negocio.", "catalog"],
     ["Locales", "Gestiona las sucursales de tu negocio.", "locations"],
     ["Marca", "Personaliza cómo se ve tu negocio.", "brand"],
-    ["Analíticas", "Entiende visitas, beneficios y actividad.", "analytics"],
     [
       "Suscripción",
       "Tu plan, el período de facturación y los locales incluidos.",
@@ -104,7 +87,7 @@ export default async function BackofficePage() {
             {modules.map(([title, description, slug]) => (
               <Link
                 className="module-card"
-                href={realModules.get(slug) ?? `/backoffice/demo/${slug}`}
+                href={realModules.get(slug)!}
                 key={slug}
               >
                 <strong>{title}</strong>

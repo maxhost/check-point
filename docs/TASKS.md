@@ -14,30 +14,65 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-20 — ARCO COMPLETO, DESPLEGADO Y MIGRADO.** Push
-(`bb511df..a7a35f9`), deploy `READY` con el sha exacto, y **las 3 migraciones pendientes
-aplicadas a PROD y verificadas por SQL**. **El bloqueo se levanto: la DB de prod es el proyecto
-Neon `red-violet-38772073`** (lo dijo el owner), no el que estaba scopeado antes.
+## ⇥ UI DEL ARCO 0076 — IMPLEMENTADA, GATES VERDES, PENDIENTE DE QA VISUAL
 
-**⚠️ ACCION PARA EL OWNER: rotar la password de `neondb_owner`.** Para migrar hubo que pedir la
-connection string por MCP y quedo en el transcript de la sesion.
+**Alcance decidido por el owner e implementado:** el paso 3 permite elegir Sellos o Puntos;
+Puntos fija `Punto`/`Puntos` y pide puntos otorgados, monto de compra y costo del premio; Sellos
+conserva el cuerpo corto y «un sello por compra». No se construyo panel de TOS ni monto por sello.
+El `403 email_not_verified` usa la pantalla especifica ya existente. Se borro
+`/backoffice/demo/*`, sus referencias y el tile de Analiticas, que no tenia pantalla real.
+
+**Verificacion ejecutada, los SEIS gates, con Node 24 y fuera del sandbox anterior (2026-09-19):**
+`typecheck` (3/3) · `lint` (`eslint .` exit 0) · `format:check` («All matched files use Prettier
+code style!») · `build` (3/3, **completo esta vez**: el bloqueo de Turbopack de la corrida
+anterior no se repitio) · `test` con el env de integracion → **226 archivos / 1759 tests, 0
+failed** · `pnpm test:e2e` → **3 passed, 1 skipped** (el skip es `loyalty-real.spec.ts`, gateado
+por env vars que no aplican aca).
+
+**Dos hallazgos cerrados en esta pasada, no en la anterior:**
+
+1. **`test:e2e` en rojo por el borrado de `/backoffice/demo/*`:** `tests/e2e/analytics.spec.ts` y
+   `tests/e2e/loyalty.spec.ts` navegaban a esa ruta, que ya no existe ni tiene fallback (el
+   `apps/merchant/src/app/backoffice/page.tsx` de esta misma entrega saco el `?? /backoffice/demo/${slug}`).
+   Es la limpieza de referencias que el borrado de una pantalla exige (regla de este archivo,
+   seccion Codigo) — no un test editado para pasar el gate: la pantalla que probaban ya no existe.
+   Se borraron los dos specs y `tests/e2e/support/demo.ts` (su unico consumidor). De paso resuelve
+   el rojo AJENO de `loyalty.spec.ts:16` que quedaba anotado como baseline mas abajo.
+2. **`onboarding-wizard.tsx` en 713 lineas** (mas del doble del limite de 300 del hook
+   `file-size`), pese a que ya se habian extraido `program-impact.tsx` y `program-step.tsx`. Se
+   dividio en `account-step.tsx` (107), `business-step.tsx` (151), `complete-step.tsx` (220) y
+   `wizard-shared.tsx` (64, lo compartido: `StepHeader`, `InlineApiError`, `gateCode`), dejando el
+   orquestador en 201. Refactor mecanico, sin cambio de logica; typecheck/lint/tests confirman que
+   no rompio nada.
+
+**Navegacion final:** el boton «Ir a mi panel» del cierre del wizard apunta a `/backoffice`.
+La ruta conserva su proteccion server-side con `requireOwner`: no alcanza con conocer la URL;
+exige sesion merchant, membresia activa y rol owner.
+
+**Proximo paso:** ejecutar el QA visual ya escrito en `docs/QA-arco-0076.md`, incluyendo ambos
+caminos del paso 3 y la llegada al panel. **No hay revisor independiente todavia** (ADR 0071): esto
+se pushea para habilitar el QA visual en el deploy, no porque el protocolo de revision se haya
+corrido. `.claude/skills/gotchas-del-repo/SKILL.md` ya estaba modificado por el usuario y no forma
+parte de esta entrega.
+
+**Ultima actualizacion: 2026-09-20 — HANDOFF DE CIERRE.** El arco **0077–0081** esta
+**completo, desplegado y migrado**. **Decision del owner: los arreglos de UI van ANTES del QA.**
+Lo que sigue esta en **`docs/ui-delta-arco-0076.md`**; el checklist de QA ya escrito espera en
+**`docs/QA-arco-0076.md`**.
 
 **ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | `a7a35f9` + los docs de cierre. **`origin/main` al dia**: no hay commits sin pushear |
-| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, **0077**, **0078**, **0079**, **0080** y **0081** — las 9 ultimas con PASS de revisor independiente |
-| Vercel / prod | **deploy `READY` con el sha EXACTO `a7a35f9`**. `/api/merchant/session` → **200** (antes 404) |
-| **DB de prod** | **proyecto Neon `red-violet-38772073`, rama `main` (`br-curly-silence-ax8acywm`)**. ⚠️ **NO es `silent-wave-15401445`**, que estaba scopeado antes y **no tiene los esquemas de la app** |
-| **Migraciones** | **40 aplicadas** (eran 37). Se aplicaron **TRES**: `0037_onboarding_grant`, `0038_terms_por_pais` y `0039_tos_variables_del_negocio` |
-| Verificado por SQL | `global-draft`: **3 archivadas, 0 publicadas**. Semillas por pais: **8 publicadas**. Columna `onboarding_grant_until`: **presente**. La consulta exacta del codigo para EC devuelve **las 6 filas** (antes: `[]`) |
-| **Datos reales en prod** | **1 negocio** (`LaCraft Beer Garden`, **EC**, USD) y **1 programa activo** de Sellos `per_purchase`. **El dato heredado de «0 negocios» era VIEJO** |
-| El TOS ya emitido | **intacto**: mismos 235 caracteres y su hash, antes y despues de archivar `global-draft` |
-| CI de `a7a35f9` | `verify -> failure`, **rojo PREEXISTENTE y AJENO**: `1 failed / 1 skipped / 4 passed`, `loyalty.spec.ts:16:5`. Contadores identicos al baseline en worktree limpio. Los otros gates pasaron |
-| Gates locales | `typecheck --force`, `lint`, `build`, `format:check` **EXIT=0**; **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** |
-| **QA del owner** | **POSPUESTO por decision del owner (2026-09-20): primero los arreglos de UI, despues el QA.** Su checklist ya esta escrito y espera: **`docs/QA-arco-0076.md`** |
-| **LO QUE SIGUE** | **la UI.** El delta para quien la construye esta en **`docs/ui-delta-arco-0076.md`**: que se rompio, que hay de nuevo sin pantalla, el inventario medido y el gap |
+| HEAD | **`df2f739`** + el commit de este handoff. **2 commits sin pushear** al escribir esto (los docs de QA y del delta de UI) |
+| Codigo en produccion | **`a7a35f9`**, deploy `READY`. **Prod sirve el codigo nuevo**: `/api/merchant/session` → **200** (antes 404) |
+| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, **0077**, **0078**, **0079**, **0080**, **0081** — las 9 ultimas con PASS de revisor independiente |
+| Ultima suite completa | **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** sobre `02aa985`. **Desde ahi solo cambiaron 9 archivos `.md`** (verificado con `git diff --name-only`): cero codigo, la medicion sigue valida |
+| Gates | `typecheck --force`, `lint`, `build`, `format:check` — **los cuatro EXIT=0** |
+| **DB de prod** | proyecto Neon **`red-violet-38772073`**, rama `main` (`br-curly-silence-ax8acywm`). **40 migraciones** aplicadas |
+| Datos reales en prod | **1 negocio** (`LaCraft Beer Garden`, EC, USD) y **1 programa activo** de Sellos. **El dato viejo de «0 negocios» era FALSO** |
+| ⚠️ CI de `main` | **ROJO y AJENO**: `loyalty.spec.ts:16`, `1 failed / 1 skipped / 4 passed`, contadores identicos al baseline en worktree limpio |
+| ⚠️ **PENDIENTE DEL OWNER** | **rotar la password de `neondb_owner`** (quedo en el transcript del despliegue) y actualizar `DATABASE_URL`/`DATABASE_URL_UNPOOLED` en Vercel |
 
 ## ⇥ (historico) ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
 
@@ -178,6 +213,49 @@ cp /tmp/limpios-0081/0039_tos_variables_del_negocio.sql apps/merchant/drizzle/00
 | M4 | `loyalty-program/terms.ts` — `program_unit_plural` cae al singular | `b09775cee60acef3c662de522454ef65589b5d47` | `program_unit_plural` es el PLURAL, no el singular | **ROJO — 6 tests de 88**, con el «Los sello se acumulan…» que cazo la 0078 reproducido literal: `onboarding-program-terms.neon` «el programa del cuerpo corto queda con «Los sellos»» y «el `countryCode` del CUERPO no mueve el scope» (`expected 'Los sello se acumulan únicamente conf…' to contain 'Los sellos se acumulan'`), `loyalty-terms-negocio.neon` los dos casos de TOS, y `terms-variables.test` Sellos y Puntos (`expected 'sello' to be 'sellos'`, `expected 'punto' to be 'puntos'`). Alcance: los 6 archivos de arriba + `loyalty-terms-render.neon` → **6 failed / 82 passed**. **RE-MEDIDA despues de agregar `loyalty-terms-doce-variables.neon`** (que se escribio DESPUES de la primera vuelta, para cumplir al pie el DoD de «las doce renderizadas»): con ese archivo en el alcance son **8 failed / 49 passed**, y los dos rojos nuevos son sus casos de Sellos y de Puntos, con el markdown exacto. Revertida otra vez, `diff` vacio y shasum identico |
 | M5 | `drizzle/0039_…sql` — el allowlist de las 2 filas de `earning_per_amount` SIN `currency_code`, `program_accrual_grant` ni `program_accrual_block_amount` | `4d335126ebcab7fe69195c5d0b1c389c25aaeda1` | el `variables_allowlist` de `earning_per_amount` cubre las variables de dinero | **ROJO — 2 tests de 15.** Medida re-sembrando: `delete from core.terms_template where key='earning_per_amount'` + re-aplicar el SQL mutado (verificado por SQL que el allowlist quedo recortado). `loyalty-terms-negocio.neon` «`per_amount` guarda la mecánica…» (`expected 422 to be 200`) y `loyalty-program-ruta-unica.neon` «un cuerpo de Puntos crea el programa» (`expected 422 to be 201`). **EL MOTIVO DEL ROJO, leido con una sonda ejecutada y borrada** (el rojo del status no lo muestra): `La variable {{program_accrual_grant}} no está permitida.` — es el 422 del allowlist, no otro. **Y un dato para el revisor: «las 8 semillas… con `country_code` en el allowlist» quedo VERDE** — esa asercion NO guarda las variables de dinero; la que las guarda es el end-to-end. Revertida y **re-sembrado el allowlist limpio, verificado por SQL** |
 | M6 | `onboarding/program-defaults.ts` — sembrar SIEMPRE, ignorando el `clauses` del cuerpo | `66a3c8802cdb627c05556d8c5afa98ce3599756f` | un `clauses` NO VACIO del cuerpo sobrevive al compositor (hallazgo **F1** del revisor de la 0080) | **ROJO — 4 tests de 52, y el que cierra el hueco es el PRIMERO:** `loyalty-program-ruta-unica.neon` «un cuerpo COMPLETO de hoy conserva cada campo que mandó, cláusulas incluidas» (`expected 'Se otorgan 3 visitas por cada 20.00 U…' to contain 'Cláusula propia del comercio, escrita…'`). **El rojo cae en la asercion NUEVA**, o sea en el oraculo que esta spec agrego: antes ese caso mandaba `clauses` iguales a las semillas de EC y su bloque **ni mencionaba** `termsMarkdown`, asi que sembrar encima era un no-op observable (la bitacora de la 0080 lo dejo medido: su M2 lo vio VERDE). Los otros 3 son los oraculos de la 0080 (`program-defaults-clauses.test`), esperables porque esta mutacion es un superconjunto de su M2. Alcance: `loyalty-program-ruta-unica.neon` + `onboarding/` + `onboarding-program.neon` + `onboarding-program-terms.neon` + `loyalty-terms-negocio.neon` → **4 failed / 48 passed** |
+
+## ⇥ (historico, SUPERADO) HANDOFF QUE ABRIO EL TRABAJO DE UI
+
+### La UI que seguia ya fue implementada con las decisiones finales del owner
+
+> **SUPERADO:** este bloque conserva el pedido recibido, no el estado actual. El alcance final y
+> la evidencia estan al principio de este archivo. El owner decidio no construir el monto por
+> sello ni el panel de TOS; Puntos usa `Punto`/`Puntos` fijos y pide los tres valores monetarios y
+> de acumulacion necesarios.
+
+**Decision textual del owner (2026-09-20):** *«no vamos a hacer QA todavia, vamos a hacer los
+arreglos de UI antes del qa»*. El checklist de QA **ya esta escrito** y espera intacto en
+`docs/QA-arco-0076.md`; **no hay que re-escribirlo.**
+
+**EL DOCUMENTO PARA QUIEN CONSTRUYE LA UI ES `docs/ui-delta-arco-0076.md`.** Quien la construye
+(ChatGPT) leyo los contratos **hasta el 0074, el 18/09** — antes del arco —, asi que **su mapa de
+la API esta viejo**. El delta abre por lo que se ROMPIO y trae el inventario medido.
+
+**EL GAP, en el orden que propone el delta (el owner decide el alcance):**
+
+1. **Paso 3 del wizard: elegir modalidad** (Sellos/Puntos). Hoy manda `kind:"stamps"` hardcodeado
+   y **Puntos no tiene ninguna forma de crearse desde la UI**.
+2. **Paso 3: el monto por sello** — pedido explicito del owner; **la API ya lo acepta y lo guarda**.
+3. **Mensaje propio para `403 email_not_verified`**: el permiso de alta **VENCE** (60 min desde la
+   cuenta, 5 desde completar el alta), y hoy eso cae en un error generico.
+4. **Panel de TOS** (plantilla por pais o texto libre). **No va en el wizard** — decision del owner.
+5. **Borrar `/backoffice/demo/*`** y limpiar sus referencias (ADR 0070 §17).
+
+### ⚠️ UNA PREGUNTA ABIERTA PARA EL OWNER, y no se resuelve sola
+
+El paso 3 **ya tiene campos de dinero** — «Costo unitario del premio» y «Valor promedio por
+compra» — en su **calculadora de impacto**, y **esos campos NO se envian** (son solo para el
+calculo en pantalla). El **monto por sello** es un concepto **distinto**: uno es estadistico, el
+otro es **la regla del programa** que se guarda y que cambia el texto legal.
+
+**¿Son dos campos separados o se unifican?** Es decision de producto: **no la tome el que
+implemente.**
+
+### Lo que NO hay que volver a hacer
+
+- **No re-escribir el checklist de QA** (`docs/QA-arco-0076.md`).
+- **No volver a preguntar las 8 variables del TOS**: el owner ya las dio y estan implementadas.
+- **No tocar `POST /api/onboarding/program`**: fue BORRADO. La ruta unica es `PUT /api/loyalty-program`.
 
 ## ⇥ ✅ MIGRACION A PROD APLICADA — y prod estaba ROTO sin saberlo (2026-09-20)
 

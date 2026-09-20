@@ -13,6 +13,22 @@
 > `0039` aplicadas y verificadas por SQL. Todo lo que dice este documento esta **medido contra el
 > arbol**, no supuesto.
 
+## Actualizacion del owner — alcance final implementado
+
+La propuesta de §4 fue resuelta despues de escribir este delta:
+
+- El paso 3 permite elegir **Sellos o Puntos**.
+- Puntos no pregunta nombres: envia `Punto` y `Puntos`, y pide puntos otorgados, monto de compra y
+  costo del premio en puntos.
+- Sellos conserva **un sello por compra**. No se agrego monto por sello ni selector de mecanica.
+- No se construyo panel de TOS. Al crear, el servidor usa las clausulas predeterminadas del pais.
+- El estado `403 email_not_verified` usa su presentacion especifica existente.
+- `/backoffice/demo/*` y sus referencias fueron eliminados.
+- El cierre del wizard enlaza a `/backoffice`, protegido en servidor por `requireOwner`.
+
+Las secciones siguientes se conservan como inventario y contexto historico. Donde propongan un
+alcance distinto, manda esta actualizacion y `docs/TASKS.md`.
+
 ---
 
 ## 1. ⚠️ LO QUE SE ROMPIO — leer antes que nada

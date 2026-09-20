@@ -1,5 +1,6 @@
 import type {
   BusinessSummary,
+  CreateProgramInput,
   CreateBusinessInput,
   OnboardingPrefill,
   OnboardingState,
@@ -105,19 +106,38 @@ export async function createBusiness(input: CreateBusinessInput) {
  * es opcional y lo completa `programInput`. Y **sigue sin mandar ids**: el negocio lo
  * resuelve el servidor desde la sesion (ADR 0070 §15.3).
  */
-export async function createProgram(target: number, rewardLabel: string) {
+export async function createProgram(input: CreateProgramInput) {
+  const body =
+    input.kind === "stamps"
+      ? {
+          kind: input.kind,
+          configuration: { target: input.target },
+          rewards: [{ type: "custom", label: input.rewardLabel.trim() }],
+        }
+      : {
+          kind: input.kind,
+          configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
+          rewards: [
+            {
+              type: "custom",
+              label: input.rewardLabel.trim(),
+              pointsCost: input.rewardPointsCost,
+            },
+          ],
+          accrual: {
+            mode: "per_amount",
+            grant: input.pointsGranted,
+            blockAmount: input.purchaseAmount,
+          },
+        };
   const result = await jsonRequest<{ programId: string; created: boolean }>(
     "/api/loyalty-program",
     {
       method: "PUT",
-      body: JSON.stringify({
-        kind: "stamps",
-        configuration: { target },
-        rewards: [{ type: "custom", label: rewardLabel.trim() }],
-      }),
+      body: JSON.stringify(body),
     },
   );
-  const program: ProgramSummary = { id: result.programId, kind: "stamps" };
+  const program: ProgramSummary = { id: result.programId, kind: input.kind };
   return program;
 }
 

@@ -1,7 +1,22 @@
 import type { OwnerGateErrorCode } from "../../../../../../ui";
 
 export type BusinessSummary = { id: string; name: string; slug: string };
-export type ProgramSummary = { id: string; kind: "stamps" };
+export type ProgramKind = "stamps" | "points";
+export type ProgramSummary = { id: string; kind: ProgramKind };
+
+export type CreateProgramInput =
+  | {
+      kind: "stamps";
+      target: number;
+      rewardLabel: string;
+    }
+  | {
+      kind: "points";
+      pointsGranted: number;
+      purchaseAmount: string;
+      rewardLabel: string;
+      rewardPointsCost: number;
+    };
 
 export type OnboardingState =
   | { authenticated: false }
