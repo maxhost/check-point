@@ -14,6 +14,150 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
+## ⇥ ▶ EL ONBOARDING SE REDEFINIO. NO HAY SPEC TODAVIA
+
+**El bloque anterior de esta seccion («PROXIMO = STAFF») quedo OBSOLETO y se reemplaza aca.**
+Nunca se commiteo, asi que no dejo rastro en el arbol.
+
+### La forma que dicto el owner el 2026-09-20 (segunda conversacion del dia), textual
+
+> *1 El merchant llega a su panel luego del wizard. 2 Ve el Onboarding — 2.1 Verifica tu email:
+> Done cuando el email es verificado. 2.2 Tour por Staff: Done completa el tour o skipe. 2.3 Tour
+> por Catalogo. 2.4 Tour por Programa. 2.5 Tour por marca.*
+
+Y sobre el skip, textual: *«si, un merchant puede completar el onboarding con skip de todo»*
+— se le planteo que asi el checklist mide «¿le mostramos la app?» y no «¿esta listo para
+operar?», y lo acepto explicitamente.
+
+**Un solo item deriva de un hecho de dominio (el email, ya implementado en la 0083). Los otros
+CUATRO tienen el MISMO `done`: «este usuario completo o salteo este tour».**
+
+### Lo que esto MATA, y es la consecuencia grande
+
+**`GET /api/onboarding/guide/{itemId}` NO SE CONSTRUYE NUNCA.** El ADR 0077 §1/§5 diseno un
+segundo recurso para servir *el contenido* del tutorial. Con una libreria de tours en el cliente
+el contenido son componentes React en la UI, no JSON nuestro. **Hay que corregir el contrato
+`0083-contratos-de-api.md` §5, que hoy anuncia ese endpoint a quien construya la UI.**
+
+Lo que queda del lado de la API: el **estado**. O sea una **tabla nueva** (progreso por usuario
+× negocio × tour) y **la primera escritura del onboarding** — hasta hoy el checklist es lectura
+pura. El `anchor` del ADR 0077 §3 («clave estable, nunca un selector») sigue siendo correcto y
+ahora vale mas: los selectores los necesita la libreria, y viven en la UI.
+
+**Decision del owner ya tomada, textual:** guardar `completed` y `skipped` como valores
+DISTINTOS aunque los dos cuenten como `done` — se le propuso y acepto («si, un merchant puede
+completar el onboarding con skip de todo»). Con un booleano el dato se perderia.
+
+### LA MEDICION DE `@tour-kit/react` (usertourkit.com) — EJECUTADA, 2026-09-20
+
+El owner eligio la libreria y pidio medir compatibilidad **de verdad**. Se hizo en un worktree
+descartable (`tools/worktree-new.sh probe-tourkit`), ya **borrado**; el repo principal quedo con
+el `node_modules/.modules.yaml` en el MISMO shasum (`a29add45…`).
+
+**VEREDICTO: compatible con Next 16, pero SOLO por un camino de los dos.**
+
+| Lo medido | Resultado EJECUTADO |
+|---|---|
+| Version | `@tour-kit/react@3.0.0` + `@tour-kit/core@3.0.0` (publicadas 2026-09-14) |
+| `pnpm peers check` | **UN solo peer sin cumplir: `next`.** Instalado 16.3.0, pedido `^13 \|\| ^14 \|\| ^15`. React 19.2.8 y Tailwind 4 ✅. El peer es `optional`, y el repo no tiene `.npmrc` ni `strict-peer-dependencies`, asi que el install NO falla |
+| **Variante A: `useNextAppRouter()`** | **ROMPE EL BUILD.** `pnpm run build` → **EXIT 1**: *«Error: dynamic usage of require is not supported»* + *«Error occurred prerendering page "/probe-tourkit"»*. Ese hook resuelve `next/navigation` con un **require dinamico** que **Turbopack** (bundler por defecto de Next 16) no soporta. Su propio `.d.ts` lo dice: *«Automatically imports from 'next/navigation'»* |
+| **Variante B: `createNextAppRouterAdapter(usePathname, useRouter)`** | **VERDE.** Los hooks los importa el consumidor, asi que no hay require dinamico. `typecheck` ✅, `build` ✅ (`/probe-tourkit` prerenderizado como estatico) |
+| **Navegador real** (Playwright + chromium, sobre el build de produccion) | **Los tres oraculos pasan.** (1) el adaptador leyo el pathname de Next 16: `getCurrentRoute() = /probe-tourkit`; (2) el paso del tour se monto y pinto su titulo y su contenido; (3) **cero errores de runtime y cero errores de consola**. Screenshot: overlay + spotlight sobre el boton + tarjeta con `Finish` |
+
+**LA REGLA QUE SALE DE ESTO, y tiene que entrar a la spec y a la skill `gotchas-del-repo`:**
+**usar SIEMPRE `createNextAppRouterAdapter` inyectando `usePathname`/`useRouter`; NUNCA
+`useNextAppRouter()`.** El typecheck NO lo caza — las dos tipan igual. Lo caza el **build**, que
+es un gate que nadie corre en el Stop hook (ahi van typecheck+lint+test): esto llega a CI o a
+Vercel, no al escritorio.
+
+**LIMITE DECLARADO, no perseguido:** el badge «Unlicensed» **no se reprodujo** — pero la corrida
+tenia un `NODE_ENV` no estandar (Next lo advirtio en el log), asi que **«no lo vi» NO es «no
+hay»**. No se midio si aparece con la build de produccion real.
+
+### Licencia — DECIDIDO POR EL OWNER, textual
+
+> *«Licencia, no me importa me cobran 10 para ir a produccion, pago y listo y si la licencia en
+> ese archivo dice MIT es mit»*
+
+Se le habia levantado la contradiccion, medida: el `package.json` de la 3.0.0 declara
+**`BUSL-1.1`**, y el archivo `LICENSE` **que viaja dentro de ese mismo tarball** dice **MIT**
+(verificado sobre el paquete instalado, no sobre el repo de GitHub). Precios del vendor: **$9.99**
+(1 proyecto) / **$49** (5) / **$299** (ilimitado), pago unico. **El owner decidio: es MIT y se
+paga la licencia de produccion.**
+
+### El orden de los tours — DECIDIDO POR EL OWNER, textual
+
+> *«datos para el orden, no me preocupa ahora. porque creare cada tour cuando este completa la
+> pantalla, las api en esa pantalla, etc. No es problema ahora»*
+
+O sea que el dato medido —de los cuatro tours, **tres apuntan a pantallas que existen**
+(`/backoffice/catalog`, `/backoffice/loyalty`, `/backoffice/brand`) y **el de staff a una que no**
+(`backoffice-navigation.tsx:37`: `href: null, soon: true`)— **no bloquea**: cada tour se crea
+cuando su pantalla este lista.
+
+### ESTADO — ESCRITO DESPUES DE LOS COMMITS, con sus shas
+
+**La 0083 esta PUSHEADA y su CI esta VERDE.** El owner autorizo el push el 2026-09-20
+(*«hace los 4 commit»*). `4753dc4..3f9566f main -> main`, y despues
+`git rev-list --left-right --count origin/main...main` → **`0 0`**.
+
+**CI verificada por CHECK-RUNS del sha exacto**, no por `/status` (que en este repo devuelve
+`success` con la CI corriendo): `gh api repos/maxhost/check-point/commits/3f9566f/check-runs`
+→ **`verify: completed -> success`**.
+
+**Lo que se commiteo en esta sesion, en orden:**
+
+| sha | que |
+|---|---|
+| `b923084` | el `mistake→rule` de la 0083 que la sesion anterior dejo sin commitear |
+| `1dee3a0` | **ADR 0078 + spec 0084 + las dos filas del INDEX** |
+| `b598698` | dos `mistake→rule` NUEVOS (abajo) |
+
+**Ninguno de esos tres esta pusheado todavia.** El owner autorizo el push de los CUATRO de la
+0083, no de estos.
+
+### LO QUE QUEDA, Y ES UNA SOLA PREGUNTA
+
+**La spec 0085 (el checklist de UNO a CINCO items) NO se escribio a proposito.** Le falta una
+decision del owner, y el ADR 0071 dice que se piden ANTES de la prosa — una spec escrita dos
+veces porque el alcance cambio es exactamente el costo que ese ADR vino a cortar. **Esperar no
+cuesta nada**: la 0085 esta serializada DESPUES de la 0084 igual, porque las dos tocan
+`api-owner-surfaces.test.ts`.
+
+**La pregunta: ¿cuanto valen `required` y `blocking` en los cuatro tours?**
+
+Recomendacion del ORQUESTADOR — **no es decision del owner y no se escribe como tal**:
+`required: false`, `blocking: false` para los cuatro. Motivo: un item que se puede SALTEAR no es
+obligatorio en ningun sentido util, y un tour no tiene por que frenar al siguiente. Si se
+confirma, **es el primer caso REAL en que los dos ejes divergen de `verify-email`**
+(`true`/`true`): hoy eso solo lo prueban entradas sinteticas (mutacion M5 de la 0083), y pasaria
+a tener oraculo con datos de verdad.
+
+**Con esa respuesta la 0085 entra en `TEMPLATE-CHICA`** (un dominio, sin migraciones —la
+migracion es de la 0084— y sin decision de producto abierta). Sin ella, no.
+
+### LO QUE LA 0085 YA TIENE DECIDIDO, para que no se vuelva a preguntar
+
+- Los cuatro items de tour salen de `ONBOARDING_TOURS` (`server/onboarding/tours.ts`), que **crea
+  la 0084**. Una sola fuente de verdad, no dos listas.
+- El `done` de un tour es `completed || skipped`. **El JSON no dice cual de los dos fue:** el
+  contrato de la UI sigue siendo `done: boolean` (ADR 0078 §2).
+- El catalogo de items **SIGUE EN CODIGO**, no pasa a tabla (ADR 0078, consecuencias). Cierra la
+  decision que el 0077 §4 habia diferido «hasta que exista el segundo item».
+- **Hay que corregir `specs/0083-contratos-de-api.md` §5**, que hoy le anuncia
+  `GET /api/onboarding/guide/{item}` a quien construya la UI. Ese endpoint **no existe y no va a
+  existir** (ADR 0078 §4). Es trabajo de la 0085 y esta en su alcance.
+
+### LOS DOS `mistake→rule` NUEVOS DE ESTA SESION (`b598698`)
+
+1. **`useNextAppRouter()` de `@tour-kit/react` ROMPE EL BUILD** bajo Turbopack/Next 16 y hay que
+   usar `createNextAppRouterAdapter`. **El `typecheck` no distingue las dos** y el Stop hook no
+   corre `build`: el error solo aparece en CI o en Vercel. → skill `gotchas-del-repo`.
+2. **Un barrido `rg` de una DoD escrito con sintaxis de `grep` (`'a\|b'`) PASA VACUO.** Cazado
+   escribiendo la DoD de la 0084 y probado contra un archivo que tiene las dos formas. El modo de
+   falla no es que el comando falle: es que **pasa**. → skill `protocolo-de-verificacion` +
+   `LECCIONES.md`.
+
 ## ⇥ ✅ SPEC 0083 — IMPLEMENTADA CON PASS, COMMITEADA EN `618af56`
 
 **Estado EXACTO al escribir esto:** el trabajo esta commiteado en `618af56` —codigo, spec en
