@@ -14,13 +14,15 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-19 — la **0081 esta IMPLEMENTADA y ESPERANDO REVISOR**: el
-implementador entrego, sin commitear y sin marcar la spec. Es la ULTIMA del arco, asi que con su
-PASS recien corresponde avisarle al owner para el QA. **El entregable para la UI es
-`docs/specs/0081-contratos-de-api.md`** (cero `.tsx` tocados).**
+**Ultima actualizacion: 2026-09-19 — EL ARCO ESTA COMPLETO.** La **0081** cerro con PASS de
+revisor independiente y quedo commiteada; con ella terminan el ADR 0076 y las dos specs que
+salieron de la respuesta del owner. **No queda ninguna spec en vuelo.** El entregable para la UI
+es **`docs/specs/0081-contratos-de-api.md`** (cero `.tsx` tocados en todo el arco).
+**Lo unico pendiente es hacia afuera: pushear, deployar y aplicar la `0039` a prod** — ver «F2»,
+que es lo unico que puede romper el QA.
 
-**ESTADO REAL, en una pantalla — lo de abajo lo midio el IMPLEMENTADOR de la 0081 (el
-orquestador todavia no lo reprodujo), salvo lo que diga de donde viene:**
+**ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador, salvo lo que diga
+de donde viene:**
 
 | Que | Donde esta |
 |---|---|
