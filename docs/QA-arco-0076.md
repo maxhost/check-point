@@ -3,10 +3,10 @@
 > **Que se esta probando:** las specs **0077, 0078, 0079, 0080 y 0081**, desplegadas en prod en el
 > commit **`a7a35f9`** con las migraciones `0037`, `0038` y `0039` aplicadas y verificadas por SQL.
 >
-> **LO QUE ESTE ARCO ENTREGO ES API, NO PANTALLAS** (ADR 0070). El wizard de alta existe y usa la
-> ruta nueva, asi que **el flujo principal SI se prueba clickeando**. Lo demas —Puntos, el monto
-> por sello, el panel de TOS— **existe en la API y todavia no tiene UI**: se prueba con `fetch`
-> desde la consola del navegador, y es exactamente lo que va a construir la etapa siguiente.
+> **ACTUALIZADO 2026-09-19 — la UI del paso 3 ya se construyo e incluye Sellos y Puntos**
+> (commit `b543983`, pusheado hoy). Este documento originalmente decia que Puntos «no tiene UI
+> todavia»: eso ya no es cierto, se prueba por pantalla en **A1**. Lo que SIGUE sin pantalla es
+> el monto por sello y el panel de TOS — eso se prueba por API en la seccion **B**.
 
 ## Antes de empezar (2 minutos)
 
@@ -24,6 +24,9 @@
 - [ ] **El programa se crea sin haber verificado el email.** Es el comportamiento correcto y nuevo
       (spec 0077): **crear** esta permitido durante el alta; **editar** no.
 - [ ] El **QR** del programa se ve y se puede descargar.
+- [ ] Repetir el alta con una SEGUNDA cuenta nueva y en el paso 3 elegir **Puntos**: pide puntos
+      otorgados, monto de compra y costo del premio en puntos. Confirmar que el programa se crea
+      con esos tres valores.
 
 ### A2 · El invariante que cierra el bypass (spec 0077) — el mas importante
 
@@ -43,6 +46,30 @@
 - [ ] Revisar el texto legal del programa: **tiene que decir «Los sellos se acumulan…»**, en
       plural. Si dice **«Los sello se acumulan…»** es el bug viejo y seria una regresion.
 - [ ] En un negocio EC, el texto menciona la **legislacion vigente en EC**.
+
+### A4 · Limpieza de `/backoffice/demo/*` (borrado hoy)
+
+- [ ] Al terminar el wizard, tocar «Ir a mi panel»: llega a `/backoffice` con las tarjetas reales.
+- [ ] La tarjeta **«Analíticas» ya no aparece** en el panel (no tenia pantalla real).
+- [ ] Ninguna tarjeta del panel enlaza a `/backoffice/demo/...` (compara con lo que veias antes).
+
+### A5 · El gate de email ya no te deja afuera del panel (spec 0082, commit `5ac30f9`)
+
+**Con una cuenta cuyo email NO esta verificado:**
+
+- [ ] «Ir a mi panel» al cerrar el wizard **entra a `/backoffice`** y se ven las tarjetas.
+      Antes rebotaba a `/?e=email_not_verified`. **Este es el caso que disparo la spec.**
+- [ ] Entrar a una seccion del panel (Marca, Locales, Catalogo): **la pantalla se ve**.
+- [ ] Intentar una ACCION que escriba (guardar marca, crear un local): **tiene que fallar** con
+      `email_not_verified`. Entrar si, acciones no.
+- [ ] Abrir el **mostrador** y escanear: tiene que contestar
+      **«Verificá tu email para operar el mostrador.»**
+- [ ] Verificar el email y repetir las tres ultimas: **ahora todas funcionan**.
+
+**Con un INTEGRANTE (staff), que no tiene email por diseño:**
+
+- [ ] El mostrador **funciona igual, sin pedir nada**. Si a un integrante le pide verificar un
+      email, es un bug grave: no tiene forma de hacerlo y el mostrador quedaria inutilizable.
 
 ## B) Lo que solo se prueba POR API (entregado sin UI, a proposito)
 
@@ -89,9 +116,8 @@ await (await fetch('/api/loyalty-terms/templates')).json()
 
 ## C) Lo que NO hay que esperar que funcione (no existe todavia)
 
-- **Pantalla para el monto por sello.** El API lo acepta y lo guarda; **la pantalla la decide la
-  etapa siguiente**, con el contrato ya escrito.
-- **Pantalla para Puntos.** Idem.
+- **Pantalla para el monto por sello.** El API lo acepta y lo guarda (B1); decision del owner NO
+  construirla en este arco.
 - **Panel de TOS personalizado.** El endpoint devuelve las plantillas; la UI no existe.
 - **`cashback` y `tiers`.** Dan **422** a proposito: estan en la base pero no habilitadas.
 
@@ -100,8 +126,6 @@ await (await fetch('/api/loyalty-terms/templates')).json()
 - **No crear un SEGUNDO negocio con el mismo usuario.** Hay un defecto **preexistente** (0072 §D3,
   sigue abierto): con 2+ negocios, el guard evalua el mas viejo y el writer escribe en el mas
   nuevo. **No lo introdujo este arco** y no tiene oraculo.
-- **La CI de `main` esta ROJA y es ajeno**: `tests/e2e/loyalty.spec.ts:16`, un timeout de la UI
-  vieja de `/backoffice/demo`. Medido antes y despues del arco con contadores identicos.
 - **El TOS ya emitido no cambia** al archivar `global-draft`: `terms_markdown` se guarda
   renderizado. Verificado en el programa real: mismos 235 caracteres y su hash.
 

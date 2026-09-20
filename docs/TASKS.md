@@ -14,6 +14,64 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
+## ⇥ ✅ SPEC 0082 — IMPLEMENTADA CON PASS, COMMITEADA EN `5ac30f9`
+
+**El owner con el email sin verificar ENTRA al backoffice.** Era un incumplimiento de ADR 0070
+§11, no una decision abierta: ahi estan sus palabras textuales —*«Entra a su cuenta directamente
+al terminar el wizard y ve el onboarding»*— y el primer paso del onboarding **es** verificar el
+email, que no se puede ver desde afuera. Lo reprodujo el owner en prod el 2026-09-19: «Ir a mi
+panel» aterrizaba en `https://www.checkpass.club/?e=email_not_verified`.
+
+**Por que entro inadvertido:** la spec 0067, que lo implemento, declara en su propio alcance que
+el backoffice era inalcanzable a proposito y **«el QA de pantalla de esta spec no se puede
+hacer»**. Hizo falta la UI del owner para que el defecto fuera visible. **Leccion aplicable:** un
+guard entregado sin QA de pantalla posible se paga cuando la pantalla llega.
+
+**Lo que entrego:** el rebote sale de `requireBackofficeSession` (con su constante, ya sin uso) y
+`BackofficeSession` expone `emailVerified`. A cambio, el **mostrador** —que no tenia gate de email
+en ninguna linea— pasa a exigirlo **solo al `role='owner'`**; el staff no tiene email por diseño
+(`@staff.invalid`) y un gate que lo alcanzara lo dejaria muerto para siempre.
+`operatorBusiness` devuelve el `role` **al lado** del negocio, no adentro, para no meterle la
+membresia a los cuatro escritores del dominio (ADR 0055: no mezclar ejes).
+
+**La premisa, medida y reproducida por el orquestador:** sacar el rebote **no abre una sola
+escritura**. Las 11 superficies owner-only ya devuelven 403 `email_not_verified`
+(`api-owner-surfaces.test.ts`, **verde y sin editar**), y `rg -l '"use server"' apps/merchant/src`
+→ **cero server actions en todo el paquete**.
+
+**PASS de revisor independiente** (ADR 0071), **5 mutaciones, las 5 rojas por la propiedad
+atacada**. La que mas importa es la M1: borrar la condicion `role === 'owner'` puso rojo tambien a
+`business-status.neon.integration.test.ts`, que el DoD exige verde **sin editar** — o sea que su
+verde no era vacuo.
+
+**Los SEIS gates, corridos por el orquestador sobre el arbol final** (Node 24): `typecheck`,
+`lint`, `format:check`, `build` → **EXIT=0**; `test` con `.env.integration.local` → **227
+archivos / 1768 tests, 0 failed**. **`test:e2e` no aplica y se declara**:
+`git status --porcelain | grep -c '\.tsx$'` → **0**.
+
+**Un defecto corregido en la SPEC, no en el codigo:** decia «`counter/resolve` (GET)» y **las
+cuatro rutas son `POST`** (verificado con `grep -o 'export async function [A-Z]*'`). El contrato
+publicado no afirma metodo, asi que no hubo contradiccion hacia afuera — pero la spec afirmaba mal
+y se arreglo antes de commitear.
+
+**Limitacion conocida, de severidad BAJA, que el revisor midio y NO se arreglo:** el barrido que
+prueba que las 4 rutas del mostrador pasan por `requireOperator` **hardcodea los 4 nombres**
+(`counter-email-gate.test.ts`), asi que una QUINTA ruta futura en `app/api/counter/` que resuelva
+la sesion por su cuenta quedaria fuera del gate **sin poner rojo a nadie**. Fila en
+`docs/PARQUEADO.md` con su arreglo.
+
+### Bitacora de mutaciones — implementador (4) + revisor (5), todas revertidas
+
+**Arbol limpio:** `rg -n MUTATION apps tools` → vacio, `no-mutations-left.sh` → EXIT=0, y los
+archivos mutados con `diff` vacio y `shasum` identico al limpio. Las 4 del implementador:
+
+| # | Archivo | shasum limpio | Invariante que ataca | Alcance de la corrida | Resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `apps/merchant/src/app/api/counter/_auth.ts` | `dc0aadab57e260e063f6c550a3a0327d536a36a9` | el gate del mostrador **no puede alcanzar al staff** (`@staff.invalid`): sin esto el mostrador queda muerto para siempre | suite merchant completa con env de integracion | **ROJO — 4 tests en 2 archivos** (1752 passed). `counter-email-gate`: «staff con `emailVerified: false` PASA» y «staff SIN la clave» → `expected { blocked: true, status: 403 } to deeply equal { blocked: false }`. Y ADEMAS `business-status.neon.integration` (el que el DoD exige verde sin editar): `expected 'email_not_verified' to be 'business_suspended'` y `… to be 'business_closed'`. **Revertida**: `diff` vacio, shasum identico |
+| M2 | `apps/merchant/src/app/api/counter/_auth.ts` | `dc0aadab57e260e063f6c550a3a0327d536a36a9` | fail-closed en el dato: `!== true` y no `=== false`, para que un owner SIN la clave `emailVerified` no abra el mostrador | idem | **ROJO — 1 test, 1 archivo** (1755 passed). `counter-email-gate` > «owner SIN la clave `emailVerified` → 403 igual (fail-closed)»: `expected { blocked: false } to deeply equal { blocked: true, status: 403, …(1) }`. El caso con `false` explicito queda VERDE, que es exactamente lo que distingue esta mutacion de la M3. **Revertida**: `diff` vacio, shasum identico |
+| M3 | `apps/merchant/src/app/api/counter/_auth.ts` | `dc0aadab57e260e063f6c550a3a0327d536a36a9` | que el gate de email del mostrador EXISTA: owner con `emailVerified:false` → 403 `email_not_verified` | idem | **ROJO — 3 tests, 1 archivo** (1753 passed). `counter-email-gate`: «owner con `emailVerified: false` → 403» y «owner SIN la clave» → `expected { blocked: false } to deeply equal { blocked: true, status: 403, …}`; y el caso del ORDEN cae con el diff leido entero: `- "code": "email_not_verified"` / `+ "code": "business_suspended"`. El `role` quedo sin uso bajo la mutacion (colateral declarado, NO se arreglo). **Revertida**: `diff` vacio, shasum identico |
+| M4 | `apps/merchant/src/server/auth-guards.ts` | `cfff3bd648d9164652a9be428b4c70d18938b1ad` | el oraculo invertido MUERDE: re-poner el rebote de la puerta tiene que poner rojo «owner sin verificar ENTRA» | idem | **ROJO — 2 tests, 1 archivo** (1754 passed). `auth-guards.test.ts`: «owner con email SIN verificar ENTRA…» y «owner sin el campo `emailVerified` tambien entra…», las dos con `Error: redirect:/?e=email_not_verified` lanzado desde `Module.requireBackofficeSession src/server/auth-guards.ts:146` — la LINEA MUTADA, o sea rojo por la propiedad y no por el setup. **Revertida**: `diff` vacio, shasum identico |
+
 ## ⇥ UI DEL ARCO 0076 — IMPLEMENTADA, GATES VERDES, PENDIENTE DE QA VISUAL
 
 **Alcance decidido por el owner e implementado:** el paso 3 permite elegir Sellos o Puntos;
