@@ -14,21 +14,29 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-20 — EL ARCO ESTA COMPLETO Y DESPLEGADO. Push hecho
-(`bb511df..a7a35f9`, 12 commits) y **prod sirve el codigo nuevo**, verificado. **LA MIGRACION
-`0039` NO SE APLICO: esta BLOQUEADA** y la decision es del owner — ver «⇥ BLOQUEO».**
+**Ultima actualizacion: 2026-09-20 — ARCO COMPLETO, DESPLEGADO Y MIGRADO.** Push
+(`bb511df..a7a35f9`), deploy `READY` con el sha exacto, y **las 3 migraciones pendientes
+aplicadas a PROD y verificadas por SQL**. **El bloqueo se levanto: la DB de prod es el proyecto
+Neon `red-violet-38772073`** (lo dijo el owner), no el que estaba scopeado antes.
+
+**⚠️ ACCION PARA EL OWNER: rotar la password de `neondb_owner`.** Para migrar hubo que pedir la
+connection string por MCP y quedo en el transcript de la sesion.
 
 **ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | **`a7a35f9`**, arbol limpio. **`origin/main` = `a7a35f9`: ya NO hay commits sin pushear** |
+| HEAD local | `a7a35f9` + los docs de cierre. **`origin/main` al dia**: no hay commits sin pushear |
 | Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, **0077**, **0078**, **0079**, **0080** y **0081** — las 9 ultimas con PASS de revisor independiente |
-| Vercel / prod | **deploy `READY` con el sha EXACTO `a7a35f9`** (`dpl_CEKXDseirdKTF89zUrJ6rg6xK1o3`). Antes estaba en `bb511df` |
-| Prod sirve el codigo nuevo | **verificado por HTTP**: `/api/merchant/session` → **200** (en el deploy viejo daba **404**) y `/api/loyalty-terms/templates` → **401** (existe y pide auth) |
-| CI de `a7a35f9` | **`verify: completed -> failure`**, y es el **rojo PREEXISTENTE y AJENO**: `1 failed / 1 skipped / 4 passed`, `tests/e2e/loyalty.spec.ts:16:5`, `locator.check` timeout sobre el radio «Sellos». **Contadores IDENTICOS al baseline** que el revisor de la 0079 midio en un worktree limpio. Los otros gates pasaron |
-| ⚠️ **Migracion `0039`** | **NO APLICADA A PROD. BLOQUEADA** — ver «⇥ BLOQUEO» abajo |
-| Gates locales sobre el arbol | `typecheck --force`, `lint`, `build`, `format:check` **EXIT=0**, y **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** |
+| Vercel / prod | **deploy `READY` con el sha EXACTO `a7a35f9`**. `/api/merchant/session` → **200** (antes 404) |
+| **DB de prod** | **proyecto Neon `red-violet-38772073`, rama `main` (`br-curly-silence-ax8acywm`)**. ⚠️ **NO es `silent-wave-15401445`**, que estaba scopeado antes y **no tiene los esquemas de la app** |
+| **Migraciones** | **40 aplicadas** (eran 37). Se aplicaron **TRES**: `0037_onboarding_grant`, `0038_terms_por_pais` y `0039_tos_variables_del_negocio` |
+| Verificado por SQL | `global-draft`: **3 archivadas, 0 publicadas**. Semillas por pais: **8 publicadas**. Columna `onboarding_grant_until`: **presente**. La consulta exacta del codigo para EC devuelve **las 6 filas** (antes: `[]`) |
+| **Datos reales en prod** | **1 negocio** (`LaCraft Beer Garden`, **EC**, USD) y **1 programa activo** de Sellos `per_purchase`. **El dato heredado de «0 negocios» era VIEJO** |
+| El TOS ya emitido | **intacto**: mismos 235 caracteres y su hash, antes y despues de archivar `global-draft` |
+| CI de `a7a35f9` | `verify -> failure`, **rojo PREEXISTENTE y AJENO**: `1 failed / 1 skipped / 4 passed`, `loyalty.spec.ts:16:5`. Contadores identicos al baseline en worktree limpio. Los otros gates pasaron |
+| Gates locales | `typecheck --force`, `lint`, `build`, `format:check` **EXIT=0**; **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped** |
+| **QA del owner** | **YA CORRESPONDE.** Prod tiene el commit y la base migrada |
 
 ## ⇥ (historico) ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
 
@@ -170,49 +178,51 @@ cp /tmp/limpios-0081/0039_tos_variables_del_negocio.sql apps/merchant/drizzle/00
 | M5 | `drizzle/0039_…sql` — el allowlist de las 2 filas de `earning_per_amount` SIN `currency_code`, `program_accrual_grant` ni `program_accrual_block_amount` | `4d335126ebcab7fe69195c5d0b1c389c25aaeda1` | el `variables_allowlist` de `earning_per_amount` cubre las variables de dinero | **ROJO — 2 tests de 15.** Medida re-sembrando: `delete from core.terms_template where key='earning_per_amount'` + re-aplicar el SQL mutado (verificado por SQL que el allowlist quedo recortado). `loyalty-terms-negocio.neon` «`per_amount` guarda la mecánica…» (`expected 422 to be 200`) y `loyalty-program-ruta-unica.neon` «un cuerpo de Puntos crea el programa» (`expected 422 to be 201`). **EL MOTIVO DEL ROJO, leido con una sonda ejecutada y borrada** (el rojo del status no lo muestra): `La variable {{program_accrual_grant}} no está permitida.` — es el 422 del allowlist, no otro. **Y un dato para el revisor: «las 8 semillas… con `country_code` en el allowlist» quedo VERDE** — esa asercion NO guarda las variables de dinero; la que las guarda es el end-to-end. Revertida y **re-sembrado el allowlist limpio, verificado por SQL** |
 | M6 | `onboarding/program-defaults.ts` — sembrar SIEMPRE, ignorando el `clauses` del cuerpo | `66a3c8802cdb627c05556d8c5afa98ce3599756f` | un `clauses` NO VACIO del cuerpo sobrevive al compositor (hallazgo **F1** del revisor de la 0080) | **ROJO — 4 tests de 52, y el que cierra el hueco es el PRIMERO:** `loyalty-program-ruta-unica.neon` «un cuerpo COMPLETO de hoy conserva cada campo que mandó, cláusulas incluidas» (`expected 'Se otorgan 3 visitas por cada 20.00 U…' to contain 'Cláusula propia del comercio, escrita…'`). **El rojo cae en la asercion NUEVA**, o sea en el oraculo que esta spec agrego: antes ese caso mandaba `clauses` iguales a las semillas de EC y su bloque **ni mencionaba** `termsMarkdown`, asi que sembrar encima era un no-op observable (la bitacora de la 0080 lo dejo medido: su M2 lo vio VERDE). Los otros 3 son los oraculos de la 0080 (`program-defaults-clauses.test`), esperables porque esta mutacion es un superconjunto de su M2. Alcance: `loyalty-program-ruta-unica.neon` + `onboarding/` + `onboarding-program.neon` + `onboarding-program-terms.neon` + `loyalty-terms-negocio.neon` → **4 failed / 48 passed** |
 
-## ⇥ ⚠️ BLOQUEO: LA MIGRACION `0039` A PROD — decision del owner (2026-09-20)
+## ⇥ ✅ MIGRACION A PROD APLICADA — y prod estaba ROTO sin saberlo (2026-09-20)
 
-**El owner pidio aplicarla. NO se aplico, y el motivo no es pereza: no se pudo IDENTIFICAR la base
-de prod con certeza, y una migracion a ciegas contra la base equivocada no se intenta.**
+**El bloqueo se levanto porque el owner dio el dato que faltaba: la DB es el proyecto Neon
+`red-violet-38772073`.** El MCP estaba scopeado a `silent-wave-15401445`, cuya base **no tiene los
+esquemas de la app** — por eso «prod» parecia vacio. **Leccion: cuando la base no tiene los
+esquemas que esperas, la hipotesis correcta no es «esta vacia» sino «no es esa base».**
 
-**Lo medido:**
+### LO QUE APARECIO AL MIRAR LA BASE DE VERDAD, y no era lo que decian los docs
 
-- El **MCP de Neon esta scopeado al proyecto `silent-wave-15401445`**, cuyo unico endpoint es
-  `ep-dawn-pond-b2e4jqhs` en **eu-central-1**, y cuya base `neondb` **NO tiene los esquemas `core`
-  ni `merchant_auth`** — solo `public` y `neon_auth`. O sea: **no es la base de la app.**
-- El repo apunta (en `.env.integration.local`) a **`ep-spring-moon-axt4mngw` en us-east-2**, que es
-  **otro proyecto** y ese MCP **no lo alcanza**.
-- El `DATABASE_URL_UNPOOLED` de produccion vive en Vercel **encriptado**. Leerlo es tocar una
-  credencial de produccion: **no se hace sin pedido explicito del owner.**
+| Dato heredado | Medido el 2026-09-20 |
+|---|---|
+| «prod: 0 negocios» (2026-09-18) | **1 negocio real**: `LaCraft Beer Garden`, pais **EC**, moneda USD |
+| — | **1 programa ACTIVO** de Sellos `per_purchase`, con su TOS renderizado |
+| «faltan 0038 y 0039» | **faltaban TRES**: tambien la **`0037_onboarding_grant`**, que es de **ESQUEMA** |
 
-**LAS DOS SALIDAS (decide el owner):**
+**PROD ESTABA ROTO EN DOS FLUJOS, y el deploy lo destapo:**
 
-1. **Autoriza leer el `DATABASE_URL_UNPOOLED` de prod desde Vercel** → el orquestador corre
-   `DATABASE_URL_UNPOOLED='<...>' pnpm --filter @mi-pasaporte/merchant db:migrate` y verifica por
-   SQL que `global-draft` quedo `archived` y que las semillas nuevas estan.
-2. **La corre el owner** y el orquestador verifica el resultado.
+1. **Crear o editar un programa daba 503.** Medido con **la consulta exacta del codigo** contra
+   prod: `status='published' AND locale='es' AND jurisdiction_scope IN ('EC','default') AND key IN
+   (...)` devolvia **`[]`** — las unicas 2 plantillas publicadas eran de `global-draft`, y el
+   codigo nuevo ya no las mira. `scopedTemplateIds` → `null` → **503**.
+2. **Faltaba la columna `onboarding_grant_until`** que la spec 0077 —ya desplegada— escribe. Sin
+   ella, un `42703` que **parece un bug de codigo y es una migracion pendiente**.
 
-### ✅ EL ORDEN DE DESPLIEGUE ESTABA INVERTIDO EN LA SPEC, y se corrigio con evidencia
+### El orden de despliegue, corregido con evidencia
 
-**La 0081 §F2 decia «aplicar la `0039` ANTES del deploy». Es al reves, y por poco no rompe prod.**
-Medido: **el codigo que corria en prod (`78d1f3a`) usa `global-draft` HARDCODEADO**
-(`program-defaults.ts:65`, `eq(termsTemplates.jurisdictionScope, "global-draft")`). La `0039`
-archiva exactamente esas plantillas → aplicarla antes del deploy **le rompe la creacion de
-programas al codigo viejo**.
+**La 0081 §F2 decia «aplicar la `0039` ANTES del deploy». Era al reves:** el codigo que corria en
+prod (`78d1f3a`) usa **`global-draft` hardcodeado** (`program-defaults.ts:65`), y la `0039` archiva
+justo esas plantillas. **Orden ejecutado: push → deploy → verificar el sha → migrar.**
 
-**Y el riesgo inverso es MENOR de lo que la spec decia:** `wizardClauseKeys(mode)` pide **dos**
-claves, no tres — `["earning","redemption"]` para `per_purchase` (existen desde la **0038**) y
-`earning_per_amount` solo para `per_amount`. **Asi que sin la `0039` lo unico que falla es un
-`per_amount`, y todavia no hay UI que lo mande.**
+### Verificacion POST, toda por SQL contra la rama de prod
 
-**ORDEN CORRECTO, el que se ejecuto:** push → deploy → verificar que prod tiene el sha → **despues**
-la migracion.
+- `drizzle.__drizzle_migrations`: **37 → 40**.
+- `global-draft`: **3 archivadas, 0 publicadas**.
+- Semillas por pais: **8 publicadas**; la consulta del codigo para EC ahora devuelve **6 filas**
+  (`earning`, `earning_per_amount`, `redemption` en `EC` **y** en `default`).
+- Columna `onboarding_grant_until`: **presente**.
+- **El TOS ya emitido del negocio real NO cambio**: mismos **235 caracteres** y su hash, antes y
+  despues de archivar `global-draft`. Era el riesgo declarado y no se materializo.
 
-**⚠️ LO QUE FALTA VERIFICAR CUANDO SE APLIQUE:** si prod tambien debe la **`0038`** (las semillas
-por pais de la 0078). `db:migrate` aplica todas las pendientes de una, asi que se resuelve solo
-— pero **entre el deploy y la migracion hay una ventana en la que crear un programa daria 503**.
-Con prod en 0 negocios (dato del 2026-09-18 que **NO se pudo re-verificar, justamente por este
-bloqueo**) es inocuo.
+### ⚠️ PENDIENTE DEL OWNER: rotar la credencial
+
+Para migrar hubo que pedir la connection string de `neondb_owner` por MCP y **quedo en el
+transcript**. Rotarla en el panel de Neon y actualizar `DATABASE_URL`/`DATABASE_URL_UNPOOLED` en
+Vercel.
 
 ## ⇥ ✅ 0081 IMPLEMENTADA CON PASS — EL ARCO ESTA COMPLETO (2026-09-19)
 

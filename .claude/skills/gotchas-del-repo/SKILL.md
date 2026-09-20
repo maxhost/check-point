@@ -180,8 +180,17 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push origin main`. Cada Bash
   es un shell nuevo, asi que el `GH_TOKEN=` inline va en el MISMO comando del push. No es bug
   del repo — es el entorno; no reintentar el push pelado.
+- **LA DB DE LA APP ES EL PROYECTO NEON `red-violet-38772073`, rama `main`
+  (`br-curly-silence-ax8acywm`). NO es `silent-wave-15401445`**, que en algun momento estuvo
+  scopeado en el MCP y **no tiene los esquemas `core`/`merchant_auth`** (solo `public` y
+  `neon_auth`). **Regla de diagnostico, medida el 2026-09-20: si la base no tiene los esquemas que
+  esperas, la hipotesis correcta NO es «prod esta vacia» sino «no es esa base».** Se perdio medio
+  turno concluyendo lo primero. El scope del MCP se lee en las instrucciones del server
+  («scoped to one project only (...)»), y se cambia con el query param `projectId` de su URL.
 - **Migracion a prod (Neon):** `DATABASE_URL_UNPOOLED='<conn de la rama default, host SIN
-  -pooler>' pnpm --filter @mi-pasaporte/merchant db:migrate`. `drizzle-kit migrate` aplica
+  -pooler>' pnpm --filter @mi-pasaporte/merchant db:migrate`. La connection string se saca con
+  `mcp__neon__get_connection_string` — **viene con el host POOLED: hay que sacarle el `-pooler`
+  a mano** — y **queda en el transcript: avisarle al owner que rote la password despues**. `drizzle-kit migrate` aplica
   solo las pendientes (lleva su propia tabla `drizzle.__drizzle_migrations`). Verificar
   siempre por MCP (`run_sql`) que el esquema quedo y que `core`/`merchant_auth` estan
   intactos ANTES de marcar la spec. Aplicar a prod = paso del orquestador DESPUES del PASS
