@@ -18,6 +18,20 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 
 ## Gotchas
 
+- **`pnpm test:e2e` DEJA EL ARBOL SUCIO: su `next dev` reescribe los TRES `next-env.d.ts`** de
+  `./.next/types/` a `./.next/dev/types/` (`apps/{consumer,merchant,platform}`). Medido el
+  2026-09-20 al pushear el shell del backoffice. Es artefacto de **dev**, apunta a rutas que el
+  build de produccion no genera, y **no se commitea**: `git checkout -- apps/*/next-env.d.ts`.
+  Si despues de un e2e ves esos tres archivos modificados y no los tocaste, es esto — revisar el
+  `git status` **despues** del gate, no solo antes.
+- **El `test:e2e` verde NO significa que tu UI ande.** `tests/e2e/` tiene DOS archivos:
+  `health.spec.ts` (los 3 contratos `/api/health`) y `loyalty-real.spec.ts`, que se **saltea**
+  salvo que esten `E2E_MERCHANT_BASE_URL`, `E2E_MERCHANT_EMAIL`, `E2E_MERCHANT_PASSWORD` y
+  `E2E_LOYALTY_MUTATION_TEST=true`. O sea: el gate prueba que las 3 apps **levantan y compilan**.
+  Es un gate de humo, no un oraculo de pantalla — si tu spec toca UI, el QA visual sigue siendo
+  trabajo aparte y **se declara como faltante**, no se da por cubierto con este verde.
+  Ojo tambien con `reuseExistingServer: !isCi`: si ya tenes un `next dev` levantado, Playwright
+  lo REUSA y no compila tu codigo nuevo.
 - **El shell del agente es ZSH, y zsh NO separa en palabras una variable sin comillas.** `FILES="a b c";
   prettier --write $FILES` le pasa UN argumento con espacios: prettier contesta «No files matching the pattern» y
   un `for f in $FILES` itera UNA vez sobre la cadena entera. Paso en el delta de la D2: prettier «corrio» sin tocar
