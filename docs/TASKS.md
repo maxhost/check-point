@@ -14,25 +14,242 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-19 — la spec 0079 esta IMPLEMENTADA con PASS de revisor
-independiente, y con eso las TRES specs del ADR 0076 (0077, 0078, 0079) estan cerradas.
-Lo unico que queda del arco es la SPEC DEL TOS, y esta bloqueada en UNA decision del owner.
-Ver «⇥ ARRANCA ACA».**
+**Ultima actualizacion: 2026-09-19 — la **0080 esta IMPLEMENTADA y EN REVISION** (revisor
+corriendo, sin commitear, sin PASS). La 0079 ya esta commiteada (`07a06c0`) y con ella el ADR 0076
+quedo COMPLETO. **EL OWNER YA CONTESTO LO DEL TOS**, y su respuesta esta abajo en «⇥ ARRANCA ACA».
+Lo que sigue despues del PASS de la 0080 es la **0081** (el TOS), ya `cerrada`.**
 
-**ESTADO REAL, en una pantalla — todo lo de abajo lo REPRODUJO el orquestador en esta sesion,
-salvo lo que diga explicitamente de donde viene:**
+**ESTADO REAL, en una pantalla — lo de abajo lo REPRODUJO el orquestador, salvo lo que diga de
+donde viene:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | **`20531b2`** + el trabajo de la 0079. `origin/main` sigue en **`bb511df`**: **4 commits sin pushear**. El owner no pidio push |
-| Specs del arco | **0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078 y 0079 `implementadas`**. Las 7 ultimas con **PASS de revisor independiente** |
-| **El ADR 0076 esta COMPLETO** | sus tres specs (A=0078, B=0077, C=0079) cerradas con PASS |
-| `typecheck` · `lint` · `format:check` · `build` | **los cuatro verdes**, corridos por el orquestador (typecheck con `--force`, sin cache) |
-| Suite con Neon | **220 archivos / 1726 tests**. **219 archivos verdes**; el unico rojo es el flake AJENO de abajo |
-| **`pnpm test:e2e`** | **CORRIDO** (lo exigia la 0079). Unico rojo: `tests/e2e/loyalty.spec.ts:27`, **demostrado PREEXISTENTE** por el revisor con una corrida baseline en un worktree limpio a `20531b2` — contadores identicos, mismo test, misma linea. **No se declaro ajeno de palabra: se midio dos veces** |
-| ⚠️ CI de `main` remoto | **ROJO heredado** por ese mismo e2e, anterior a los 4 commits. No lo causamos nosotros |
-| Vercel / Produccion | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada con eso** |
-| **QA del owner** | **ya casi corresponde**: las tres specs del ADR 0076 estan listas. Falta solo la spec del TOS |
+| HEAD local | **`e62b756`** (specs 0080 y 0081 + los docs). `origin/main` en **`bb511df`**: **6 commits sin pushear**. El owner no pidio push |
+| **Trabajo SIN COMMITEAR** | el de la **0080** (4 archivos + `TASKS.md`). **`git checkout .` se llevaria `program-defaults-clauses.test.ts`, que es nuevo** |
+| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, **0079** y **0080** (las 8 ultimas con PASS independiente) |
+| **0080** | ✅ **`implementada` con PASS de revisor independiente.** Sin commitear todavia |
+| Proxima | **0081** (el TOS). `cerrada` y **AMPLIADA** con el hallazgo F1 del revisor (su mutacion **M6**). Se despacha apenas la 0080 este commiteada |
+| Gates sobre el arbol de la 0080 | `typecheck --force` (sin cache), `lint`, `build` **verdes**; suite **221 archivos / 1730 tests, 0 failed, 0 skipped** |
+| Mutaciones vivas | **CERO** (`no-mutations-left.sh` EXIT=0) |
+| El flake de `consumer-recovery` | **arreglado por la 0080**: no aparecio en la corrida del orquestador, y el implementador lo corrio **3 veces seguidas en verde** |
+| `pnpm test:e2e` | **NO aplica** a la 0080 ni a la 0081 (cero `.tsx`). Se corrio en la 0079, con su rojo preexistente demostrado en worktree limpio |
+| ⚠️ CI de `main` remoto | **ROJO heredado** por ese e2e, anterior a los 6 commits |
+| Vercel / prod | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada** |
+| **QA del owner** | **despues de la 0081.** El owner pidio un solo QA al final |
+
+## ⇥ ✅ 0080 IMPLEMENTADA CON PASS — y lo que encontro vale mas que su alcance (2026-09-19)
+
+**Gates reproducidos por el orquestador:** `typecheck --force` (sin cache), `lint`, `build` verdes
+y **221 archivos / 1730 tests con Neon, 0 failed, 0 skipped** (antes: 220/1726 con 1 rojo). Cero
+`MUTATION`. `program-defaults.ts` **byte-identico a HEAD** — el revisor lo verifico contra el
+**blob de git**, no contra el handoff. Cero produccion tocada, cero `.tsx`.
+
+**EL HALLAZGO CENTRAL: la premisa de la propia spec era FALSA.** `[]` es **truthy**, asi que la
+mutacion que la spec proponia media **21/21 en VERDE**. El invariante real es un `clauses` **falsy
+pero presente** (`null`): con truthy recibe las semillas y **CREA el programa** en vez de irse al
+422. Con ese caso, la mutacion muerde con **1 test en 1250**. La frase «verificado con una sonda
+ejecutada» venia de un **PASS de la 0079** y se copio **sin ejecutarla**. Corregido en la spec, en
+`LECCIONES.md` (sexto caso) y en **dos reglas nuevas de `CLAUDE.md`**.
+
+**EL SEGUNDO, reproducido por el revisor con metodo propio: un `vi.mock` de
+`wizardClauseTemplateIds` seria un ORACULO MUERTO.** `programInput` la llama por **binding local
+del mismo modulo** (`program-defaults.ts:114`): el doble **no intercepta**, corre la real y el
+espia queda en cero llamadas **siempre**, asi que `not.toHaveBeenCalled()` **no puede fallar
+nunca**. El stack del rojo muestra el `Proxy` delegando en la funcion real. Se espia **`getDb`**,
+que ademas es mas fuerte. **La spec lo prescribia mal y ya se corrigio.**
+
+**Y un regalo del metodo:** la mutacion R3 del revisor delato el orden real de las filas del flake
+— `[ 'unknown', 'accepted' ]`, con el `accepted` del test vecino **ultimo**—, o sea que en esa
+misma corrida el viejo `.at(-1)` habria fallado. **El mecanismo quedo medido por segunda vez, con
+un metodo distinto.**
+
+### Los 5 hallazgos del revisor y donde fue cada uno
+
+| # | Hallazgo | Resolucion |
+|---|---|---|
+| **F1** | **Hueco REAL del contrato 0079**: no hay oraculo para «un `clauses` NO VACIO del cuerpo sobrevive». El caso «cuerpo COMPLETO» manda **las semillas mismas** (`…ruta-unica.neon:194`, ids de la linea 106), asi que sembrar encima es un **no-op observable** y su bloque de aserciones **ni menciona** `clauses`. Confirmado con `grep` exhaustivo | **ABSORBIDO POR LA 0081**: entra en su alcance, su DoD y su mutacion **M6**. Son ~3 lineas |
+| **F2** | La spec 0080 **prescribia el oraculo muerto** | **CORREGIDO**, con el mecanismo escrito |
+| **F3** | La tabla «Archivos» no listaba el archivo nuevo (obligado por `file-size`: 285+136 > 300) | **CORREGIDO**, con el motivo |
+| **F4** | Linea rancia: §Problema decia `:134`, desmentida abajo por `:177` | **CORREGIDO** |
+| **F5** | `TASKS.md` se contradecia sobre el estado de la 0080 | **CORREGIDO** |
+
+**Juicios del revisor que CIERRAN preguntas abiertas:** `""`/`0`/`false` **no hacen falta** (misma
+clase de equivalencia que `null` — el patron «las primeras 4 mutaciones dieron todo el valor» del
+ADR 0062); el caso de `clauses: []` **si vale**, porque su compañero (cero consultas) es el
+**unico** oraculo del repo que pinnea el ahorro de round-trips del contrato 0079; y el docblock
+nuevo de `onboarding-grant.neon` es **verdadero**, verificado referencia por referencia.
+
+**Declarado y NO perseguido:** el radio de explosion de la mutacion 2 sobre los ~93 archivos Neon
+(presupuesto 3/3 agotado; ataco su consecuencia —F1— por `grep`), y `build` (arbol byte-identico al
+del orquestador, que lo dio verde). **Dijo explicito que su `typecheck` salio cacheado**, para que
+no se lea como una medicion propia.
+
+## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0080 (2026-09-19)
+
+**Estado: implementado, SIN commitear y SIN marcar la spec.** Falta el PASS del revisor
+independiente (ADR 0071). **Arbol LIMPIO de mutaciones**: `grep -rn MUTATION apps/merchant/src
+tools` → 0 lineas, `.claude/hooks/no-mutations-left.sh` **EXIT=0**, y `program-defaults.ts`
+identico a HEAD (`shasum 46812170…`, `git status --short` vacio sobre ese archivo).
+
+**Los cinco gates de root con Node 24 y `set -a; . ./.env.integration.local; set +a`:**
+
+| Gate | Resultado |
+|---|---|
+| `typecheck` (con `--force`, sin cache) · `lint` · `format:check` · `build` | **los cuatro verdes** |
+| `test` con Neon | **221 archivos / 1730 tests, 0 failed, 0 skipped** (antes: 220/1726 con 1 failed) |
+| `consumer-recovery.neon` ×3 seguidas | **8/8 VERDE las tres** (corridas 1, 2 y 3) |
+| `test:e2e` | **NO corrido y NO aplica**: cero `.tsx` tocados (lo dice el DoD de la spec) |
+
+**Archivos tocados (4):** `onboarding/program-defaults-clauses.test.ts` (**nuevo**),
+`onboarding-grant.neon.integration.test.ts` (titulo + docblock, **cero lineas de `expect`**),
+`consumer-recovery.neon.integration.test.ts` (solo la lectura de 363-367) y
+`docs/specs/0079-…md` (la firma del compositor). **Ni un archivo de `src/` que no sea `.test.ts`.**
+
+### ⚠️⚠️ EL HALLAZGO QUE DA VUELTA LA PREMISA DE LA SPEC — `[]` ES TRUTHY
+
+**La mutacion 1 de la spec NO rompe nada, y eso esta MEDIDO.** La spec (y el revisor de la 0079,
+que decia haberlo verificado «con una sonda ejecutada») afirmaban que cambiar
+`if (partial.clauses !== undefined)` por `if (partial.clauses)` hace que un **`clauses: []`**
+reciba las semillas y cree el programa. **Es FALSO: `Boolean([]) === true` en JS**
+(`node -e 'console.log(Boolean([]))'` → `true`), asi que para `[]` las dos formas deciden **lo
+mismo** y la mutacion es un **no-op**. Medido: con la M1 viva y los tres casos de la spec ya
+escritos, `src/server/onboarding/` daba **21/21 VERDE**.
+
+**Lo que el caracter `!== undefined` sostiene de verdad es un `clauses` FALSY pero PRESENTE** —
+`null`, `""`, `0`, `false`—: con truthy, un `clauses: null` se va a buscar las semillas y **crea
+el programa que el cliente no pidio**; con `!== undefined` viaja intacto al 422 del validador.
+Por eso el archivo nuevo tiene **CUATRO** casos y no tres: el cuarto (`clauses: null`) es **el
+unico oraculo del repo que ve esa mutacion** (ver la bitacora).
+
+**Consecuencia para quien herede esto:** el «un solo caracter» del hallazgo 1 del revisor de la
+0079 era real, pero **su ejemplo no**. El agujero existia y ahora tiene oraculo; la prosa de la
+0080 §Problema y su tabla de mutaciones quedan desmentidas en ese punto.
+
+### LOS DESVIOS Y LIMITES, todos medidos (el revisor tiene que mirarlos)
+
+1. **Los casos nuevos NO van en `program-defaults.test.ts`: van en
+   `onboarding/program-defaults-clauses.test.ts` (nuevo).** Motivo medido: ese archivo esta en
+   **285** lineas y el hook `file-size` corta en **300** — «dividir, no extender». Beneficio de
+   rebote: el `vi.mock` de `../db` no contamina los 18 casos puros que ya viven ahi, y el archivo
+   que la **0081** va a tocar queda **sin diff**.
+2. **LIMITE MEDIDO (intentado, no supuesto): `vi.mock` de `wizardClauseTemplateIds` NO
+   intercepta.** La spec pedia doblar esa funcion, pero `programInput` la llama por su binding
+   **local** (viven en el mismo modulo). **Sonda ejecutada y borrada:** con el doble puesto, el
+   contador del doble quedo en **0 llamadas** mientras la funcion real corria (las `clauses`
+   salieron de las filas dobladas y `getDb` se llamo **1** vez). O sea que un
+   `expect(spy).not.toHaveBeenCalled()` sobre ese doble **pasaria siempre**: seria un oraculo
+   vacio. El espia que SI mide el corto-circuito es **`getDb`** (unico efecto de esa funcion) mas
+   **`ownerBusiness`**, con **control positivo** que exige `getDb` llamado **1 vez**.
+3. **La mutacion 2 no puede poner rojo «los tres casos, positivo y negativos» como predice la
+   spec.** Borrar el `if` no cambia el camino SIN la clave `clauses`, asi que el control positivo
+   queda verde **por construccion**. Medido: **3 de 4 rojos**.
+4. **Dos numeros de linea de la spec estan corridos:** `programEditDenied` abre con
+   `if (!input.isEdit) return null` en **`onboarding-grant.ts:76`** (la spec dice 73). El docblock
+   nuevo dice 76.
+5. **`consumer-recovery.neon.integration.test.ts` queda en 453 lineas, sobre el limite de 300 —
+   PREEXISTENTE:** HEAD ya lo tenia en **447**. Esta spec suma 6 lineas de comentario y su
+   alcance dice «SOLO la lectura de 363-367», asi que partirlo seria irse de alcance. Se declara.
+6. **El arreglo del flake es el (b) de la spec (aseverar sobre el conjunto), y el (a) tambien
+   servia:** medido con un log temporal contra Neon, la lectura devuelve **exactamente 2 filas**
+   para `phones[4]` —`accepted` a las 23:33:47.648 y `failed` a las 23:34:02.839, **15 s de
+   diferencia, sin empate de `createdAt`**—. Se eligio (b) igual porque **no depende de ningun
+   orden ni del reloj**, y porque la propiedad que el caso quiere es «el fallo quedo registrado».
+   Esa medicion **confirma el mecanismo del flake y descarta otra vez** la colision de
+   `phone_e164` UNIQUE: el `.at(-1)` elegia entre esas dos filas, y `'accepted'` es exactamente
+   el valor del rojo reportado.
+
+### ⚠️ CORRECCION AL REGISTRO: el rojo de las 18:37/18:39 NO fue «un test a medio escribir»
+
+La seccion «EN VUELO» decia que el `verify.sh` de las 18:37 cazo
+`program-defaults-clauses.test.ts` a medio escribir. **No fue eso: eran las MEDICIONES M1 y M2**,
+con la mutacion **viva y etiquetada** en `program-defaults.ts:177` (M1 → 1 failed a las 18:37,
+M2 → 3 failed a las 18:39). El archivo de test estaba completo y verde en limpio desde las 18:36.
+La conclusion operativa no cambia —**un gate corrido encima de un implementador que muta mide
+otra cosa**—, pero la causa si: era un **rojo de mutacion**, que es indistinguible de un bug
+desde afuera y por eso la bitacora se abre ANTES de medir.
+
+### Hallazgos a decidir (ninguno tocado)
+
+- **No queda oraculo para «un `clauses` NO VACIO del cuerpo sobrevive» por la ruta.** El caso
+  «un cuerpo COMPLETO de hoy conserva cada campo» de `loyalty-program-ruta-unica.neon` manda
+  `clauses` **iguales a las semillas de EC** (`templateIds = await wizardClauseTemplateIds("EC")`,
+  linea 106), asi que sembrar encima es un **no-op observable** y ese caso quedo verde bajo la M2.
+  Hoy lo cubre el compositor por unidad; un caso con clausulas propias por la ruta seria una
+  linea mas, pero es alcance que esta spec no tiene.
+- **`docs/INDEX.md` aparece modificado y NO lo toco esta entrega** (lo edito el orquestador en
+  paralelo, junto con `specs/0081-…md`).
+
+**LO QUE ESTA SIN COMMITEAR (punto de retorno `07a06c0`):** los 3 tests + la correccion de la
+spec 0079. `git checkout .` se llevaria el test NUEVO, que no esta commiteado; para volver
+`program-defaults.ts` a limpio alcanza `git checkout` **de ese archivo solo** (ya esta limpio).
+
+## ⇥ ARRANCA ACA LA SESION QUE SIGUE (2026-09-19)
+
+### ✅ EL OWNER YA DECIDIO LO DEL TOS — NO SE LE VUELVE A PREGUNTAR
+
+**Textual (2026-09-19), sobre la variable #7:** *«el API en la pantalla 3 puede pasar el valor
+para que lo uses en el TOS y ademas queda guardado. TU NO TOCAS UI, dejas documentada el api para
+que sepa ChatGPT que puede enviar y como enviarlo para que luego GPT decida si vamos a armar una
+pantalla o no»*, y *«completa las que quedan en tasks.md»*.
+
+**LAS DOS REGLAS QUE SALEN DE AHI:**
+
+1. **El monto por unidad se acepta por API y se guarda.** No es «(a) omitir la variable» ni «(b)
+   cambiar la pantalla»: es **la API lo acepta, el TOS lo usa, y la pantalla la decide GPT
+   despues**.
+2. **El entregable de la 0081 incluye el CONTRATO HTTP ESCRITO**, cuyo publico es quien construya
+   la UI por fuera. **Cero `.tsx`.** Si una spec de este arco lista un archivo de pantalla, esta
+   mal alcanzada (CLAUDE.md, ADR 0070).
+
+### ✅ Y LO QUE ESA DECISION NO CUESTA — MEDIDO CON UNA SONDA EJECUTADA, NO LEIDO
+
+**El dominio YA acepta «un sello cada $X».** Verificado el 2026-09-19 con una sonda que se corrio
+y se borro en el mismo turno:
+
+- `validateAccrual` lo dice literal: «Puntos only accepts `per_amount`; **Sellos accepts both
+  modes**» (`loyalty-program/accrual.ts:11`).
+- El CHECK `loyalty_program_accrual_points_mode_check` **solo** restringe `points`; las columnas
+  `accrual_mode` / `accrual_grant` / `accrual_block_amount` ya existen.
+- El compositor de la 0079 **no pisa** un `accrual` explicito (`if (partial.accrual === undefined)`,
+  `program-defaults.ts:149`).
+- La sonda midio las dos mitades: `composeProgramInput` **conserva**
+  `{mode:"per_amount", grant:1, blockAmount:"5.00"}` en Sellos, y `validateProgramInput` lo
+  **ACEPTA**.
+
+**Conclusion: la 0081 no cambia el dominio.** Cuesta documentacion y texto legal. Y de paso:
+`ownerBusiness` **ya trae `currencyCode` e `id`** — lo unico que los esconde es el tipo local
+`OwnerBusiness` de `terms.ts:9-12`. **`ownerBusiness` no se toca.**
+
+### ⚠️ EL HALLAZGO QUE DEFINE EL DISEÑO DE LA 0081 (medido)
+
+**`renderTermsText` (`loyalty-program/validation.ts:259-270`) tira 422 cuando el valor es VACIO**,
+no solo cuando la variable no esta en el allowlist: la condicion es
+`!allowedVariables.includes(key) || !variables[key]`. **Consecuencia: una variable que «a veces no
+aplica» IMPIDE GUARDAR EL PROGRAMA**, no deja un hueco en el texto. De ahi salen las dos
+decisiones de diseño de la 0081:
+
+- el monto por unidad es una **SEGUNDA plantilla de `earning`** (`earning_per_amount`), elegida por
+  el `accrual.mode` — no una variable opcional de la plantilla de siempre;
+- **un negocio SIN locales `active` no puede recibir las variables de local**, o no podria guardar
+  su programa. Es el caso trampa de la spec y tiene DoD propio.
+
+### LAS DOS SPECS ESCRITAS Y CERRADAS EN ESTA SESION
+
+| Spec | Que | Estado |
+|---|---|---|
+| **0080** | Los 3 pendientes del cierre del ADR 0076: el oraculo que le falta a `clauses` (el real es `null`, **no** `[]`), el docblock que sobre-afirma, y el flake de `consumer-recovery` | **`implementada` con PASS de revisor independiente** |
+| **0081** | Las 8 variables del TOS + `earning_per_amount` + archivar `global-draft` + el contrato HTTP para la pantalla 3 | `cerrada` — **esperando el commit de la 0080** |
+
+**Orden obligatorio: 0080 → 0081.** Comparten `program-defaults.test.ts`.
+
+### ⚠️ UN ERROR MIO DE ESTA SESION, YA CORREGIDO, QUE VALE COMO ADVERTENCIA
+
+La 0080 se escribio primero afirmando que el `if` del invariante de `clauses` estaba en
+`program-defaults.ts:134` **y estaba en la 177**, en `programInput` (la funcion `async`) y no en
+`composeProgramInput` (que es pura). Con la linea mal, el test que la spec pedia **no habria
+podido pinnear nada**: cuando se llama al compositor, la decision de sembrar ya fue tomada. Lo
+cazo abrir la funcion antes de cerrar la spec. **Es el mismo patron que las 0077, 0078 y 0079: el
+defecto estaba en la SPEC.** Cuarta vez seguida.
 
 ### ⚠️ EL FLAKE AJENO DE `consumer-recovery`, con el mecanismo MEDIDO (2026-09-19)
 
@@ -51,71 +268,54 @@ es indefinido, asi que levanta cualquiera de las dos.
 dominio consumer/OTP. **Arreglo de una linea** (un `ORDER BY` por `createdAt`, o filtrar por
 `status`), pero es tocar un test de otro dominio: **va como spec chica aparte, no se cuela aca.**
 
-## ⇥ ARRANCA ACA LA SESION QUE SIGUE (2026-09-19)
+## ⇥ ✅ BITACORA DE MUTACIONES — spec 0080 (implementador, 2026-09-19) — CERRADA
 
-### LO UNICO QUE BLOQUEA: LA SPEC DEL TOS, Y ES UNA DECISION DEL OWNER
+**CERRADA: las 2 medidas y revertidas.** `diff` VACIO contra la copia limpia, shasum identico,
+`grep -rn MUTATION apps/merchant/src tools` → **0 lineas**, `.claude/hooks/no-mutations-left.sh`
+**EXIT=0**, y `git status --short` del archivo **vacio** (igual a HEAD `07a06c0`). Las dos van
+sobre `apps/merchant/src/server/onboarding/program-defaults.ts`, **shasum LIMPIO
+`46812170425f18c52b865809a0375fd7c371d0db`**; copia limpia en
+`/tmp/limpios-0080/program-defaults.ts`. Restauracion de emergencia (el archivo es tracked y
+esta SIN MODIFICAR, asi que sirven las dos vias):
 
-**Ya se le pregunto y esta esperando respuesta. NO se le vuelve a preguntar lo que ya dijo**
-(sus ocho variables estan abajo). Lo que falta es **la #7**, y las tres propuestas del
-orquestador que solo necesitan un si/no.
+```
+cp /tmp/limpios-0080/program-defaults.ts apps/merchant/src/server/onboarding/program-defaults.ts
+# o: git checkout apps/merchant/src/server/onboarding/program-defaults.ts
+```
 
-**Las 8 variables que el owner pidio textual, CONTRASTADAS CONTRA EL CODIGO DE HOY** (medido por
-el orquestador en `loyalty-program/terms.ts`, que tiene **cinco**: `business_legal_name`,
-`program_name`, `program_unit_plural`, `program_kind`, `country_code`):
+| id | archivo:linea | shasum LIMPIO | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `program-defaults.ts:177` — `!== undefined` → `if (partial.clauses)` | `46812170…` | un `clauses` presente NO se reemplaza por las semillas | **ROJO — 1 test**, y **es el unico del repo que la ve**: `program-defaults-clauses.test` «un `clauses: null` tampoco se reemplaza por semillas: viaja intacto al 422» (`AssertionError: expected [ …(2) ] to be null`, con los dos `templateId` de semilla adentro). Alcance corrido: `onboarding/` + `loyalty-program-ruta-unica.neon` + `onboarding-program.neon` + `onboarding-program-terms.neon` + `onboarding-program-503` → **1 failed / 48 passed**. **⚠️ PRIMERA MEDICION, antes de agregar ese caso: TODO VERDE (21/21) — ver el hallazgo H1** |
+| M2 | `program-defaults.ts:177` — borrar el `if` entero (sembrar SIEMPRE) | `46812170…` | el corto-circuito existe: con `clauses` en el cuerpo no hay consultas | **ROJO — 3 tests**, los tres de `program-defaults-clauses.test`: «`clauses: []` explícito NO recibe semillas» (`expected [ …(2) ] to deeply equal []`), «`clauses: null` … viaja intacto al 422» (`expected [ …(2) ] to be null`) y «con `clauses: []` no hay NI UNA consulta» (`expected "vi.fn()" to not be called at all, but actually been called 1 times`). Mismo alcance: **3 failed / 46 passed**. El **control positivo queda VERDE a proposito** (sin la clave `clauses` el comportamiento no cambia): la spec predecia «los tres casos, positivo y negativos» y eso es imposible por construccion |
 
-| # | Variable | Estado MEDIDO |
-|---|---|---|
-| 1 | Nombre de la empresa | ✅ pero lleva `business.name`, el nombre **comercial**: no hay columna de razon social |
-| 2 | Listado de locales | ❌ existe `core.location.name`, no se pasa |
-| 3 | Direccion de la empresa | ❌ **y la empresa NO tiene direccion**: no hay columna. Solo la tienen los locales (`location.address_label`) |
-| 4 | Pais | ✅ `country_code` (allowlisted desde la 0078) |
-| 5 | Tipo de programa | ✅ pero emite el literal CRUDO `"stamps"`/`"points"`, en ingles, dentro del texto legal |
-| 6 | Nombre de los puntos | ✅ el plural. **El singular NO se pasa** — los handoffs viejos decian que si: es FALSO |
-| 7 | Cada cuanto dinero → un sello | ⚠️ **LA DECISION ABIERTA**, abajo |
-| 8 | Cada cuanto dinero → X puntos | ❌ esta en `accrual` (`grant`/`blockAmount`), no se pasa |
+## ⇥ HALLAZGOS ABIERTOS DE LA 0079 (lo que la 0080 resolvio y lo que NO)
 
-**LA #7, que es la que bloquea:** el wizard crea los Sellos como «un sello por compra»
-(`accrual: {mode:"per_purchase", grant:1, blockAmount:null}`), asi que **no hay monto de dinero
-que poner** y la variable quedaria vacia en todo programa nacido del wizard. Las dos salidas:
-**(a)** el texto legal de Sellos no usa esa variable — cero cambios de pantalla; **(b)** el
-wizard pasa a preguntar un monto, **que es cambiar la pantalla 3 del ADR 0070 §1**.
+> **La seccion «ARRANCA ACA» que estaba aca se RETIRO el 2026-09-19: decia «esperando respuesta del
+> owner» sobre la variable #7 y el owner YA la contesto.** Un doc que se contradice es peor que
+> ninguno. Su contenido vivo (las 8 variables medidas, el hallazgo de `global-draft`) esta en el
+> «ARRANCA ACA» de arriba, que es el unico. Lo que sigue se conserva porque es lo unico que no
+> estaba duplicado.
 
-**LAS TRES PROPUESTAS DEL ORQUESTADOR** (esperan un si/no, no son decisiones tomadas):
+**ESTADO DE LOS TRES, al 2026-09-19:** los hallazgos **1 y 2** los esta cerrando la **spec 0080**
+(implementada, esperando PASS). El **3 sigue ABIERTO** y es decision del owner.
 
-- **#3** que la variable sea la direccion **del local**, no de la empresa (es lo unico que
-  existe), listada junto a cada nombre de local. La alternativa cara es una columna de
-  direccion fiscal en `business`.
-- **#2** solo los locales `active`, separados por coma. Los `archived` no van al TOS.
-- **#5** emitir `"Sellos"`/`"Puntos"` en castellano, no el literal interno.
+### LOS 3 HALLAZGOS MENORES QUE DEJO EL REVISOR DE LA 0079
 
-**LO QUE LA SPEC DEL TOS RESUELVE DE PASO — el hallazgo abierto de la 0078:** hoy hay TRES copias
-de cada clausula (`global-draft` vieja + `default` + `EC`), `GET /api/loyalty-terms/templates`
-las devuelve **sin `jurisdictionScope`**, y `renderedTerms` acepta **cualquier** `templateId`
-`published` sin validar scope. **La respuesta del owner lo simplifica: se ARCHIVA `global-draft`**
-— al dejar de ser `published`, el filtro de `terms.ts` la excluye y el agujero se cierra solo,
-sin la validacion de scope en el writer que se habia propuesto.
-
-**⚠️ DATO MEDIDO ANTES DE ARCHIVAR:** las semillas por pais de la 0078 tienen **solo dos**
-claves (`earning` y `redemption`). La tercera, `transition` (vigencia), existe **UNICAMENTE** en
-`global-draft`. El wizard solo usa las dos primeras (`WIZARD_CLAUSE_KEYS`), asi que archivar **no
-rompe el wizard**, pero deja sin clausula de vigencia por pais. Sembrarla puede entrar en la
-misma spec. Ademas `renderedTerms` necesita la plantilla al RE-guardar un programa que la
-referencie: medir cuantos hay antes (en prod habia 0 negocios al 2026-09-18, **re-medir**).
-
-### LOS 3 HALLAZGOS MENORES QUE DEJO EL REVISOR DE LA 0079 (ninguno bloquea, ninguno tocado)
-
-1. **(bajo) Un invariante del contrato SIN ORACULO permanente.** El contrato declara que
+1. **✅ LO CIERRA LA 0080 — (bajo) Un invariante del contrato SIN ORACULO permanente.**
+   **⚠️ Y EL EJEMPLO DE ESTE HALLAZGO ERA FALSO:** `[]` es truthy, asi que el caso que el revisor
+   proponia no distinguia nada. El invariante real es un `clauses` **falsy pero presente**
+   (`null`). Ver «LO QUE ESTA SPEC TERMINO ENCONTRANDO» arriba. El contrato declara que
    `clauses: []` **no** es lo mismo que omitir `clauses` (el primero da 422, el segundo trae las
    semillas del pais). Hoy lo sostiene **un solo caracter**: `if (partial.clauses !== undefined)`
    en `programInput`. Cambiarlo a truthy (`if (partial.clauses)`) rompe la afirmacion y **ningun
    test del repo se pondria rojo**. El revisor lo verifico por sonda ejecutada. **Arreglo: un
    test de 6 lineas en `program-defaults.test.ts`.**
-2. **(bajo) Un docblock que sobre-afirma.** El caso dado vuelta en `onboarding-grant.neon` se
+2. **✅ LO CIERRA LA 0080 — (bajo) Un docblock que sobre-afirma.** El caso dado vuelta en `onboarding-grant.neon` se
    titula «es lo UNICO que el permiso habilita» pero mide una **creacion**, y
    `programEditDenied` hace `if (!input.isEdit) return null;`: ese 201 sale **igual sin permiso**.
    No hay riesgo de produccion — el control positivo real (editar con permiso → 200) existe y
    esta verde en `onboarding-program-bypass.neon`. **Arreglo: renombrar el caso.**
-3. **(bajo, costo) No son 2 lecturas por `PUT`: son 5 round-trips antes de escribir.** El
+3. **⚠️ SIGUE ABIERTO, ES DECISION DEL OWNER — (bajo, costo) No son 2 lecturas por `PUT`: son 5 round-trips antes de escribir.** El
    implementador declaro 2 (`getSession` ×2); el revisor midio ademas `ownerContext` ×1,
    `ownerBusiness` ×1 (en el compositor, **solo con cuerpo corto** — justo el del alta) y
    `programForOwner`→`ownerBusiness` ×1. Antes de la 0079 cada puerta hacia 3. **No hay

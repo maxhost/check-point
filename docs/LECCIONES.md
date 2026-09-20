@@ -791,6 +791,10 @@ evidencia que se le puso enfrente era visual, una rotura funcional es una decisi
 
 ## 2026-09-19 — La spec mal especificada hace MENTIR al implementador (specs 0077, 0078, 0079 y 0080)
 
+> **Seis casos, y los dos ultimos los produjo el ORQUESTADOR, no un implementador.** El modo de
+> fallo no es «el agente barato se equivoca»: es **copiar una afirmacion sin ejecutarla**, y lo
+> comete igual quien escribe la spec.
+
 **Que paso.** En la spec 0077, **tres** de los errores que encontro el revisor estaban en la
 SPEC, no en el codigo. El peor: la spec afirmaba, presentandolo como medido, que
 `defaultAdditionalFields` **pisa** al `override` de `createSession` y que «**por eso**» hacia
@@ -854,7 +858,35 @@ linea). **La regla operativa que deja: una spec que cita `archivo:linea` verific
 `grep -n` antes de cerrarse, y si la cita viene con el nombre de una funcion, el numero se
 subordina al nombre.**
 
-**El patron, cuatro specs seguidas:** los defectos de este arco aparecen en las SPECS, no en el
+### Sexto caso, 2026-09-19 (spec 0080): el EJEMPLO con el que se describe un invariante tambien es una afirmacion
+
+El mas fino de la serie, porque la regla de fondo era correcta y **el ejemplo que la ilustraba era
+falso**. El revisor de la 0079 reporto: «el contrato dice que `clauses: []` no es lo mismo que
+omitir `clauses`; hoy lo sostiene un solo caracter, `!== undefined`, y cambiarlo a truthy haria que
+un `clauses: []` reciba las semillas — verificado con una sonda ejecutada». El orquestador lo
+copio a la spec 0080 **sin ejecutarlo**, y diseño la mutacion M1 sobre ese ejemplo.
+
+**`[]` es TRUTHY.** `Boolean([])` es `true`, asi que `if (partial.clauses)` y
+`if (partial.clauses !== undefined)` **deciden exactamente lo mismo para `clauses: []`**. El
+implementador puso la M1 y midio **21/21 en VERDE** con los tres casos que la spec pedia: la
+mutacion no tenia como morder. Lo que ese caracter sostiene es un `clauses` **falsy pero
+presente** (`null`, `""`, `0`, `false`) — con truthy, un `clauses: null` recibe semillas y **crea
+el programa**. El implementador agrego el cuarto caso y ahi si la M1 se puso roja, con **1 test**,
+el unico del repo que la ve.
+
+**Lo que lo hace distinto de los cinco anteriores:** no fue una cita mal leida ni una linea mal
+numerada. La **regla** («ese caracter sostiene un invariante sin oraculo») era **cierta**; el
+**ejemplo** era falso, y el ejemplo es lo que se convierte en mutacion y en test. Una spec que
+describe un invariante con un caso concreto esta afirmando que **ese caso lo distingue**, y eso se
+verifica como cualquier otra cosa: **ejecutandolo**. Dos lineas de `node -e` habrian bastado.
+
+**Y el espejo, que es la parte cara:** «verificado con una sonda ejecutada» venia de un revisor —
+la fuente mas confiable del repo, la que produce PASS con evidencia. **No alcanzo.** La regla de
+CLAUDE.md («ningun hallazgo de un subagente entra a una spec sin que vos hayas reproducido la
+evidencia») **se aplica igual cuando el subagente es el revisor y dice haberlo medido**. Una cita
+de una medicion no es una medicion: es un puntero a donde medir.
+
+**El patron, cinco specs seguidas:** los defectos de este arco aparecen en las SPECS, no en el
 arbol. Vale como prior al revisar: **lo primero que hay que dudar en un encargo es la spec**, y por
 eso los encargos de este repo llevan la instruccion de reportar como hallazgo toda cita que no se
 sostenga, en vez de obedecerla.

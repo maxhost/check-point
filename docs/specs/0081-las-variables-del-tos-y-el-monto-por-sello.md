@@ -4,7 +4,7 @@ fecha: 2026-09-19
 estado: cerrada
 resumen: El TOS del programa pasa a nombrar al negocio de verdad — sus locales, su direccion, su moneda y el dinero que hace falta para ganar una unidad — con las OCHO variables que pidio el owner textual. El hallazgo que define la spec: `renderTermsText` tira 422 cuando el valor es VACIO, no solo cuando la variable no esta en el allowlist, asi que una variable «que a veces no aplica» IMPIDE guardar el programa; por eso el monto por unidad no es una variable opcional sino una SEGUNDA plantilla de `earning`, elegida por el `accrual.mode`. El monto ya se puede mandar hoy y se guarda —medido: `validateAccrual` acepta `per_amount` en Sellos y el compositor no lo pisa—, asi que esta spec NO cambia el dominio: documenta el contrato para quien haga la pantalla 3 y lo lleva al texto legal. Archiva ademas las plantillas `global-draft`, que es lo que cierra el hallazgo abierto de la 0078.
 disjunta: no
-archivos: apps/merchant/drizzle/0039_tos_variables_del_negocio.sql, apps/merchant/src/server/loyalty-program/terms.ts, apps/merchant/src/server/loyalty-program/terms-scope.ts, apps/merchant/src/server/onboarding/program-defaults.ts, apps/merchant/src/app/api/loyalty-terms/templates/route.ts, docs/specs/0081-contratos-de-api.md
+archivos: apps/merchant/drizzle/0039_tos_variables_del_negocio.sql, apps/merchant/src/server/loyalty-program-ruta-unica.neon.integration.test.ts, apps/merchant/src/server/loyalty-program/terms.ts, apps/merchant/src/server/loyalty-program/terms-scope.ts, apps/merchant/src/server/onboarding/program-defaults.ts, apps/merchant/src/app/api/loyalty-terms/templates/route.ts, docs/specs/0081-contratos-de-api.md
 ---
 
 # 0081 — Las variables del TOS y el monto por sello
@@ -70,6 +70,16 @@ deprecado «Los sello se acumulan…».
 - **El contrato HTTP escrito** (`0081-contratos-de-api.md`): que puede mandar quien construya la
   pantalla 3 y como. **Es el entregable que pidio el owner** y es para consumo de quien haga la
   UI por fuera.
+- **EL ORACULO QUE LE FALTA AL CONTRATO 0079** (hallazgo F1 del revisor de la 0080, confirmado con
+  `grep` exhaustivo): hoy **no existe ni un test** que pruebe que **un `clauses` NO VACIO del
+  cuerpo sobrevive** al compositor. El caso «cuerpo COMPLETO» de
+  `loyalty-program-ruta-unica.neon:194` manda `clauses` construidas con
+  `wizardClauseTemplateIds("EC")` (linea 106) — o sea **las semillas mismas**—, asi que sembrar
+  encima seria un **no-op observable** y su bloque de aserciones **ni menciona** `clauses` ni
+  `termsMarkdown`. Los otros cuerpos que si mandan clausulas distinguibles (`loyalty-program.neon`)
+  **nunca aseveran** sobre el resultado. **Arreglo: ~3 lineas** — ese caso manda una clausula de
+  texto libre distinguible y asevera `termsMarkdown` contra ese texto. **Entra aca porque esta
+  spec ya toca el dominio del TOS y sus clausulas**, y porque dejarlo declarado no lo cierra.
 
 **No entra** (explicito):
 
@@ -234,6 +244,7 @@ sin que el lector abra una sola linea de codigo:
 | `apps/merchant/src/server/onboarding/program-defaults.ts` | editar — `WIZARD_CLAUSE_KEYS` por modo |
 | `apps/merchant/src/server/loyalty-program.ts` | editar **solo si hace falta** — `business` ya viaja entero a `renderedTerms`; lo que se amplia es el tipo de `terms.ts` |
 | `apps/merchant/src/app/api/loyalty-terms/templates/route.ts` | editar — filtro por scope + `jurisdictionScope` |
+| `apps/merchant/src/server/loyalty-program-ruta-unica.neon.integration.test.ts` | editar — el oraculo que le falta al contrato 0079 (F1) |
 | `docs/specs/0081-contratos-de-api.md` | **crear** |
 | tests | crear/editar los del plan de pruebas |
 
@@ -276,6 +287,9 @@ spec arranca con el arbol de la 0080 ya commiteado**, no en paralelo.
 - [ ] **Se conto, contra la base de integracion, cuantos programas referencian las 3 plantillas
       `global-draft`**, y el numero esta en el handoff. Si es `> 0`, **es un bloqueo que se
       reporta al owner**, no algo que el implementador resuelve.
+- [ ] **El oraculo del contrato 0079 MUERDE**: con el compositor sembrando SIEMPRE (ignorando el
+      `clauses` del cuerpo), el caso «cuerpo COMPLETO» de `loyalty-program-ruta-unica.neon` se pone
+      **ROJO**. Hoy queda verde, y eso es el hueco que este item cierra.
 - [ ] El contrato `0081-contratos-de-api.md` existe y cubre los 7 puntos del §5.
 - [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`,
       `build`. **`test:e2e` NO hace falta: no se toca ni un `.tsx`** — y si el implementador cree
@@ -286,7 +300,7 @@ spec arranca con el arbol de la 0080 ya commiteado**, no en paralelo.
 
 ### Presupuesto y condición de corte (ADR 0062)
 
-**5 mutaciones.** Clase de error a cazar: **que el TOS quede mudo o mentiroso sin que nada se
+**6 mutaciones.** Clase de error a cazar: **que el TOS quede mudo o mentiroso sin que nada se
 ponga rojo** — una variable que no se emite, un local archivado que se cuela, un monto que no
 llega al texto legal, o el 422 del valor vacio.
 
@@ -297,6 +311,7 @@ llega al texto legal, o el 422 del valor vacio.
 | M3 | `terms-scope.ts`: elegir siempre `earning`, ignorando el `accrual.mode` | el caso del monto en el `terms_markdown` |
 | M4 | `terms.ts`: `program_unit_plural` cae al singular | el «Los sello se acumulan…» que cazo la 0078 |
 | M5 | la migracion: no actualizar el `variables_allowlist` | el 201 del monto (tiene que caer a 422) |
+| M6 | `program-defaults.ts:177`: sembrar SIEMPRE, ignorando el `clauses` del cuerpo | el caso «cuerpo COMPLETO» de `loyalty-program-ruta-unica.neon`, **que hoy queda VERDE** (hallazgo F1) |
 
 Protocolo por mutacion: `shasum` limpio ANTES, fila de bitacora antes de medir, etiqueta
 `MUTATION`, revertir con `diff` contra la copia limpia. De a una, **leyendo la asercion del

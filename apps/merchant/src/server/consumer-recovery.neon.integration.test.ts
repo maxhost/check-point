@@ -364,7 +364,13 @@ describe.skipIf(!enabled)("consumer recovery against Neon (spec 0032)", () => {
       .select()
       .from(otpDeliveries)
       .where(eq(otpDeliveries.phoneE164, phones[4]!));
-    expect(failedRows.at(-1)?.status).toBe("failed");
+    // Spec 0080 §3 — SE ASEVERA SOBRE EL CONJUNTO, NO SOBRE EL ORDEN. `phones[4]` se usa en
+    // DOS casos: el de los intentos inválidos deja una entrega `accepted` y éste la `failed`,
+    // así que esta lectura ve las dos (medido: 2 filas). `select` sin `ORDER BY` no define el
+    // orden en Postgres, así que el `.at(-1)` que había acá levantaba cualquiera y el caso
+    // fallaba NO DETERMINISTAMENTE (`expected 'accepted' to be 'failed'`). Lo que el caso
+    // quiere es «el intento fallido quedó REGISTRADO», que no depende de ningún orden.
+    expect(failedRows.map((row) => row.status)).toContain("failed");
 
     const uncertainPhone = phones[9]!;
     await expect(

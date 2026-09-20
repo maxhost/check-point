@@ -84,7 +84,16 @@ pantalla que el owner pueda probar, **gana la pantalla**.
 **Ningun hallazgo de un subagente entra a una spec, a un ADR, al `INDEX` o a un mensaje al owner
 sin que vos hayas reproducido la evidencia.** Una cita no es una verificacion: es un puntero a
 donde verificar. Y el espejo: **lo que le pasas a un subagente como insumo es una afirmacion
-tuya** — re-medí el doc antes de despacharlo.
+tuya** — re-medí el doc antes de despacharlo. **Esto vale IGUAL cuando el subagente es el REVISOR
+y dice «verificado con una sonda ejecutada»**: en la 0080 esa frase venia de un PASS y el ejemplo
+que traia era falso.
+
+**Y EL EJEMPLO CON EL QUE DESCRIBIS UN INVARIANTE ES UNA AFIRMACION, no una ilustracion.** Si la
+spec dice «cambiar X rompe el caso Y», esta afirmando que **Y distingue X** — y eso se ejecuta,
+porque Y es lo que se vuelve mutacion y test. En la 0080 la regla era cierta y el ejemplo falso:
+`[]` es **truthy**, asi que `if (c)` y `if (c !== undefined)` deciden lo mismo para `clauses: []`,
+la mutacion midio **21/21 en verde** y el invariante real (un `clauses` **falsy pero presente**,
+como `null`) no tenia oraculo. Dos lineas de `node -e` lo habrian cazado. Caso en `LECCIONES.md`.
 
 **Toda mutacion se etiqueta con `MUTATION`, se le registra el `shasum` limpio ANTES de mutar, y se
 revierte con un `diff` contra la copia limpia.** Enforced por el hook `no-mutations-left.sh`, que

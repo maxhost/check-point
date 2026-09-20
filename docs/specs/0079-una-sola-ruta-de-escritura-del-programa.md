@@ -102,7 +102,10 @@ campos opcionales nuevos ya venian puestos.
 defaults del programa**, con una funcion por modalidad. Se mantiene el archivo (no se mueve)
 para que el diff sea legible, pero:
 
-- `composeWizardProgramInput` → `composeProgramInput(kind, partial, clauseTemplateIds)`.
+- `composeWizardProgramInput` → `composeProgramInput(partial, clauseTemplateIds)`. **⚠️
+  Corregido por la spec 0080 §1: esta linea anunciaba TRES argumentos (`kind` adelante) y el
+  codigo implementado tiene DOS** (`program-defaults.ts:129-132`, medido). El `kind` sale de
+  `partial.kind`, no de un parametro propio: **la spec estaba mal, el codigo esta bien.**
 - `WizardProgramInput` deja de tener `kind: "stamps"` literal.
 - `validateWizardRequest` se reemplaza por la validacion del cuerpo parcial, que **delega**
   en `validateProgramInput` para todo lo que ya valida. **No se duplica ni una regla**: el

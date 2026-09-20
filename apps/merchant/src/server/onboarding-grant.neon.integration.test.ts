@@ -191,18 +191,22 @@ describe.skipIf(!enabled)(
     });
 
     /**
-     * EL CONTROL POSITIVO DEL BARRIDO DE ARRIBA, y **el caso que la spec 0079 dio vuelta a
-     * propósito**. Hasta la 0079 este test exigía 403 acá: `PUT /api/loyalty-program` era la
-     * puerta gateada y cortaba en el paso 3. La 0079 la convierte en la ÚNICA escritura y le
-     * saca ese paso, porque desde la 0077 el gate vive en `saveProgram` —que distingue crear
-     * de editar—. O sea que lo que el permiso de alta habilita es **exactamente una cosa**:
-     * escribir el programa. Las otras once siguen en 403 (barrido de arriba), y esa asimetría
-     * no tendría oráculo si acá no se midiera el lado positivo.
+     * **El caso que la spec 0079 dio vuelta a propósito**: hasta la 0079 exigía 403 acá,
+     * porque `PUT /api/loyalty-program` era la puerta gateada y cortaba en el paso 3. La
+     * 0079 la convierte en la ÚNICA escritura y le saca ese paso, porque desde la 0077 el
+     * invariante vive en `saveProgram` —que distingue crear de editar—. Con el email SIN
+     * verificar y sin programa previo, el cuerpo corto de Sellos **crea**: 201.
      *
-     * Con el email SIN verificar, sin programa previo y el permiso vigente, el cuerpo corto
-     * de Sellos **crea**: 201.
+     * **⚠️ OJO — ESTE 201 NO PRUEBA EL PERMISO** (spec 0080 §2, corrigiendo el título viejo
+     * «es lo ÚNICO que el permiso habilita»): `programEditDenied`
+     * (`server/onboarding-grant.ts:76`) abre con `if (!input.isEdit) return null`, así que
+     * **crear sale igual SIN permiso** —y eso lo mide `onboarding-program-bypass.neon`
+     * («sin email verificado y SIN permiso, CREAR el primer programa sigue dando 201»)—.
+     * Lo que este caso pinnea es que la puerta ya no corta por el paso 3, que es el lado
+     * positivo del barrido de las 11 de arriba. **El control positivo del permiso en sí
+     * —editar CON permiso vigente → 200— vive en `onboarding-program-bypass.neon`.**
      */
-    it("`PUT /api/loyalty-program` es lo ÚNICO que el permiso habilita: crea con 201", async () => {
+    it("CREAR sigue dando 201 con una sesión sin verificar: la 0079 le sacó el paso 3 a esta puerta", async () => {
       await wipePrograms(seed.businessId);
       const cookie = await openSessionCookie(
         seed.ownerId,
