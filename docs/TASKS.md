@@ -14,6 +14,72 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
+## ⇥ ⏸ SPEC 0083 — ESCRITA Y EN `borrador`, ESPERA QUE EL OWNER LA CIERRE
+
+**El checklist del onboarding.** ADR **0077** + spec **0083** + su contrato de API, commiteados
+en `7d20a18`. **No empieza codigo hasta que la spec pase a `cerrada`** — eso es decision del
+owner, no del orquestador.
+
+**La decision que ordena todo lo demas (ADR 0077 §1):** el onboarding son **DOS recursos**, no
+uno. El **checklist** («que hay que hacer y en que estado esta») se deriva de hechos de la base
+y sobrevive a cualquier rediseño; el **tutorial** paso-a-paso de cada item («toca aca, abri la
+camara») **ES** la descripcion de una pantalla concreta y cambia cada vez que esa pantalla
+cambia. Servirlos juntos ata el recurso estable a la cadencia del volatil, y ademas baja el
+texto de todos los tours en cada carga del backoffice. **El tutorial no se diseña hasta que
+exista el primero** — hoy no hay ninguno.
+
+**Alcance de la 0083:** `GET /api/onboarding/checklist` con **UN** item, `verify-email`. Es el
+unico de los cinco candidatos que no necesita pantalla nueva ni feature previa: su hecho ya
+viaja en la sesion y su accion ya existe (`POST /api/merchant/auth/verify-email`). Catalogo de
+items en **codigo tipado** (forma de `ENTITLEMENTS`), **sin migracion** y **sin tocar un solo
+`.tsx`**.
+
+**EL INVARIANTE CENTRAL, y es lo primero que tiene que mirar el revisor: la ruta NO lleva gate
+de email.** Un endpoint cuyo unico item dice «verifica tu email» no puede estar bloqueado por
+no haberlo verificado. **Medido:** `requireApiOwner` evalua el email en el **paso 3** de su
+escalera **siempre** (`api-owner.ts:30-40`) y **no admite saltarlo**, asi que la ruta no lo usa.
+**Pero tampoco escribe un resolvedor nuevo** —seis resolvedores divergidos es el agujero que
+mato la 0072—: reusa `ownerContext` y `businessStatusFailure`, y recorre la escalera del ADR
+0073 §1 **salteando SOLO el paso 3**. El paso 4 (estado del negocio) **no** se saltea, y la
+asimetria es deliberada.
+
+**Es la pieza que le faltaba a la 0082**, que saco el rebote de la puerta justamente para que el
+owner pudiera **ver** este paso desde adentro. Hoy no hay ninguna ruta que se lo diga a la UI.
+
+**Lo que el orquestador midio en esta sesion y quedo escrito en el ADR, para que no se
+redescubra:**
+
+- **`requireApiOwner` no tiene opcion para saltar el gate de email.** Escalera fija.
+- **`email_verified` ya viaja en la sesion de better-auth**: el `done` del item cuesta **cero
+  consultas extra**. La unica consulta de la ruta es la de `ownerContext`.
+- **El staff no tiene email al que escribirle** (`@staff.invalid`, aseverado en
+  `auth-start.test.ts:92`) y `verify-email` lo rechaza con 400. Por eso el checklist es
+  owner-only y contesta 403 `not_owner` a un integrante.
+- **No hay columna de idioma del merchant en ninguna tabla**, asi que `locale: "es"` va fijo y
+  **declarado**. De donde sale el idioma es su propia spec, junto al segundo idioma.
+- **Los colores de marca nacen `NOT NULL DEFAULT`** (`schema/business.ts:87-91`), asi que
+  «¿eligio sus colores?» **no es derivable**; `logo_object_key` y `stamp_image_object_key` si,
+  son nullable. Afiche y rentabilidad son acciones que **no dejan rastro**.
+- **Catalogo por foto con IA no tiene nada en el repo**: cero dependencias de IA y el catalogo
+  crea **de a un producto por request**. Ya figura en el ADR 0070 como feature con spec propia.
+- **Staff no necesita API**: `GET`/`POST /api/staff` + pin + status ya existen. Le falta
+  pantalla.
+
+**UNA PREMISA DEL OWNER QUE RESULTO FALSA, medida y corregida en el ADR 0077:** planteo que «hoy
+el modelo no te permite ediciones en un programa activo». **`PUT /api/loyalty-program` es un
+upsert y edita un programa activo sin problema.** Solo hay dos bloqueos
+(`loyalty-program.ts:98-109`): `status='closing'` → 409, y cambiar `kind` → 409 «cerra el
+programa actual antes de cambiar su modalidad». Nombre de los puntos, diseño de tarjeta, sello,
+premios y TOS **se editan hoy**. Eso achica mucho el item 4 cuando le toque.
+
+**LO QUE FALTA PARA ARRANCAR:** que el owner lea la spec y la pase a `cerrada`. Su seccion
+`Abierto` dice «nada bloqueante» y las seis decisiones se cerraron en el ADR 0077 el
+2026-09-20, asi que no hay pregunta pendiente — falta el visto bueno, no una decision.
+
+**Presupuesto de la 0083 cuando arranque:** 5 mutaciones. La que importa es la **M1** (agregar
+el gate de email a la ruta): si ese rojo no aparece, y no aparece **en el caso del owner sin
+verificar**, la spec entera no tiene oraculo.
+
 ## ⇥ ✅ SHELL DEL BACKOFFICE — COMMITEADO EN `b50fb4d`, SEIS GATES VERDES, FALTA EL QA VISUAL
 
 **Que hay en el arbol:** `/backoffice/*` ahora tiene layout propio
