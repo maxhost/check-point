@@ -35,7 +35,13 @@ como si estuviera pegado aca y no ahorraria un solo token.
    que importa, estado (ADR 0071). El detalle vive en la spec, que es lo que la fila enlaza.
    Un indice viejo es peor que ninguno; uno de 2.000 palabras por fila se paga en cada sesion.
 5. **Actualizar `docs/TASKS.md` al terminar.** Hay un hook `Stop` que lo exige si quedo
-   viejo respecto del codigo tocado.
+   viejo respecto del codigo tocado. **Y el bloque ESTADO se escribe DESPUES del commit del
+   trabajo, no antes**: si lo escribis antes, el commit que sigue lo invalida en el mismo
+   turno y describe un arbol que ya no existe. Son dos commits (el trabajo, y despues el
+   doc con su sha) y esta bien que lo sean. Lo caza `state-uncommitted-lie.sh`, que en una
+   sola sesion disparo **tres** veces — una de ellas sobre una frase escrita como
+   PREDICCION («va a haber trabajo sin commitear»): el bloque ESTADO se lee como el estado
+   ACTUAL, asi que ahi no se pronostica, se describe.
 6. **Marcar `hecho` solo con verificacion real** — test que pasa, comando corrido, cosa
    vista en pantalla. Nunca "deberia andar".
 7. **Implementar con el protocolo de `docs/AGENT-WORKFLOW.md`: UN implementador para toda

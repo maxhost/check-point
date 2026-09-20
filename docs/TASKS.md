@@ -24,18 +24,17 @@ orquestador todavia no lo reprodujo), salvo lo que diga de donde viene:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | **`c0039d9`**. `origin/main` en **`bb511df`**: **9 commits sin pushear**. El owner no pidio push |
-| **Trabajo SIN COMMITEAR** | el de la **0081**: 14 archivos ` M` + **8 `??`** (la migracion `0039` + su snapshot, **5 tests nuevos** y el contrato de API). **`git checkout .` se llevaria lo modificado y dejaria los `??` huerfanos** |
-| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, 0079 y 0080 (las 8 ultimas con PASS independiente) |
-| **0081** | **implementada por el implementador, SIN PASS de revisor y SIN marcar.** Es la ULTIMA del arco |
-| Gates del implementador de la 0081 | `typecheck --force` (sin cache), `lint`, `format:check`, `build` **verdes**; suite con Neon **226 archivos / 1757 tests, 0 failed, 0 skipped** (baseline de la 0080: 221/1730) |
-| Mutaciones vivas | **CERO**: `rg -n MUTATION apps tools` vacio, `no-mutations-left.sh` **EXIT=0**, `diff` vacio y `shasum` identico en los 4 archivos mutados |
-| **Migracion `0039`** | **APLICADA a la rama de INTEGRACION, NO a prod.** Verificada por SQL: 8 filas `published` en `default`+`EC`, las 3 de `global-draft` en `archived` |
-| **Programas que referencian `global-draft`** | **0, y es ESTRUCTURAL**: no existe ninguna columna en la base que guarde el `template_id` de un programa. **No hay bloqueo** — ver el hallazgo abajo |
-| `pnpm test:e2e` | **NO aplica** a la 0080 ni a la 0081 (cero `.tsx`). Se corrio en la 0079, con su rojo preexistente demostrado en worktree limpio |
-| ⚠️ CI de `main` remoto | **ROJO heredado** por ese e2e, anterior a los 9 commits |
+| HEAD local | **`02aa985`** (spec 0081). Arbol **LIMPIO**. `origin/main` sigue en **`bb511df`**: **10 commits por delante, sin pushear**. El owner no pidio push |
+| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, **0079**, **0080** y **0081** — las 9 ultimas con **PASS de revisor independiente** |
+| **EL ARCO ESTA COMPLETO** | el ADR 0076 y sus tres specs (0077/0078/0079), mas la 0080 (los pendientes) y la **0081** (el TOS, la ultima). **No queda spec en vuelo** |
+| Gates sobre `02aa985` | reproducidos por el orquestador **con exit code explicito**: `typecheck --force` `EXIT=0` (3 successful, sin cache), `lint` `EXIT=0`, `build` `EXIT=0`, `format:check` `EXIT=0`, y suite con Neon **226 archivos / 1757 tests, 0 failed, 0 skipped** |
+| Mutaciones vivas | **CERO**: `rg -n MUTATION apps tools` vacio y `no-mutations-left.sh` limpio |
+| `pnpm test:e2e` | **no aplica** a la 0080 ni a la 0081 (cero `.tsx`, confirmado por sus revisores). Se corrio en la **0079**, con su unico rojo demostrado PREEXISTENTE en un worktree limpio |
+| ⚠️ CI de `main` remoto | **ROJO heredado** por ese mismo e2e, anterior a los 10 commits. No lo causamos nosotros |
+| **⚠️ LO QUE FALTA PARA EL QA** | **pushear, deployar y aplicar la `0039` a prod** (ver F2 abajo). **Nada de eso esta hecho** — son acciones hacia afuera y el owner no las pidio |
+| Migracion `0039` | aplicada a **integracion**, verificada por SQL. **NO a prod** |
 | Vercel / prod | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada** |
-| **QA del owner** | **despues del PASS de la 0081.** El owner pidio un solo QA al final |
+| Abierto, no bloquea | la divergencia `asc`/`desc` guard-vs-writer (0072 §D3): la mutacion R1 del revisor **sobrevivio con los 1757 tests en verde**, o sea que **sigue sin oraculo** |
 
 ## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
 
