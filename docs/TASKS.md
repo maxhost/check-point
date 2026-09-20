@@ -14,11 +14,12 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-## ⇥ ⏸ SPEC 0083 — ESCRITA Y EN `borrador`, ESPERA QUE EL OWNER LA CIERRE
+## ⇥ ▶ SPEC 0083 — `cerrada`, LISTA PARA IMPLEMENTAR
 
-**El checklist del onboarding.** ADR **0077** + spec **0083** + su contrato de API, commiteados
-en `7d20a18`. **No empieza codigo hasta que la spec pase a `cerrada`** — eso es decision del
-owner, no del orquestador.
+**El checklist del onboarding.** ADR **0077** + spec **0083** + su contrato de API, en
+`7d20a18`; el arreglo de `required`/`blocking` y el cierre, en `a57f5e8`. **El owner la cerro
+el 2026-09-20**, asi que puede arrancar el implementador (ADR 0071: UN implementador para toda
+la spec, UN revisor independiente al final).
 
 **La decision que ordena todo lo demas (ADR 0077 §1):** el onboarding son **DOS recursos**, no
 uno. El **checklist** («que hay que hacer y en que estado esta») se deriva de hechos de la base
@@ -72,13 +73,22 @@ upsert y edita un programa activo sin problema.** Solo hay dos bloqueos
 programa actual antes de cambiar su modalidad». Nombre de los puntos, diseño de tarjeta, sello,
 premios y TOS **se editan hoy**. Eso achica mucho el item 4 cuando le toque.
 
-**LO QUE FALTA PARA ARRANCAR:** que el owner lea la spec y la pase a `cerrada`. Su seccion
-`Abierto` dice «nada bloqueante» y las seis decisiones se cerraron en el ADR 0077 el
-2026-09-20, asi que no hay pregunta pendiente — falta el visto bueno, no una decision.
+**EL ULTIMO ARREGLO DEL OWNER, que trajo un oraculo propio: `required` y `blocking` son DOS
+ejes separados** — *«Si necesitamos determinar si es o no obligatoria, no solo que se bloquee la
+siguiente mayor»*. `required` = hay que hacerlo; `blocking` = frena a los de `position` mayor.
+**Con UN item los dos valen `true`, asi que el catalogo real NO puede falsificar que alguien
+implemente uno como alias del otro**: por eso `toChecklistView` toma el catalogo como segundo
+parametro **con default**, y su test le da entradas sinteticas con los dos ejes divergentes. La
+ruta lo llama sin el segundo argumento.
 
-**Presupuesto de la 0083 cuando arranque:** 5 mutaciones. La que importa es la **M1** (agregar
-el gate de email a la ruta): si ese rojo no aparece, y no aparece **en el caso del owner sin
-verificar**, la spec entera no tiene oraculo.
+**Declarado, para que no se de por tomada una decision que no se tomo:** la API **reporta** los
+dos ejes, **no los hace cumplir**. Si ademas debe **rechazar** acciones de un item bloqueado se
+decide cuando haya un segundo item.
+
+**Presupuesto de la 0083:** **6 mutaciones**. Las dos que importan: la **M1** (agregar el gate
+de email a la ruta) —si ese rojo no aparece, y no aparece **en el caso del owner sin
+verificar**, la spec entera no tiene oraculo— y la **M6** (`blocking: def.required`), que es la
+unica que el catalogo real no puede cazar.
 
 ## ⇥ ✅ SHELL DEL BACKOFFICE — COMMITEADO EN `b50fb4d`, SEIS GATES VERDES, FALTA EL QA VISUAL
 
