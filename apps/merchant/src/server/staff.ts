@@ -60,10 +60,17 @@ export type CreatedStaff = {
  * es **una columna mas en un `innerJoin(businesses)` que ya existia** — no una consulta
  * nueva. Quien dobla esta funcion en un test tiene que devolver `status` tambien: el guard
  * es fail-closed y una fila sin `status` no opera.
+ *
+ * **`countryCode` desde la spec 0081 §4**, por el mismo motivo y con el mismo costo: la
+ * ruta de plantillas del TOS filtra por el scope del pais y tiene que hacerlo con la MISMA
+ * fila que evaluo el guard. Resolver el negocio otra vez (con `ownerBusiness`, que ordena
+ * `desc(createdAt)` contra el `asc` de aca) seria gatear sobre una fila y filtrar sobre
+ * otra — la divergencia que la 0072 §D3 declara abierta.
  */
 export async function ownerContext(userId: string): Promise<{
   id: string;
   slug: string;
+  countryCode: string;
   currencyCode: string;
   status: string;
   suspensionReason: string | null;
@@ -72,6 +79,7 @@ export async function ownerContext(userId: string): Promise<{
     .select({
       id: businesses.id,
       slug: businesses.slug,
+      countryCode: businesses.countryCode,
       currencyCode: businesses.currencyCode,
       status: businesses.status,
       suspensionReason: businesses.suspensionReason,

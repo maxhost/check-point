@@ -52,6 +52,9 @@ export {
 export type ApiOwnerBusiness = {
   id: string;
   slug: string;
+  /** Spec 0081 §4: lo consume el filtro por scope del TOS en `api/loyalty-terms/templates`,
+   * para que el pais salga de la MISMA fila que evaluo el guard. */
+  countryCode: string;
   currencyCode: string;
   status: string;
   suspensionReason: string | null;

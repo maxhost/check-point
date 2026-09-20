@@ -118,7 +118,7 @@ describe.skipIf(!enabled)(
     it("las dos SEMILLAS de términos existen y resuelven a dos ids distintos", async () => {
       // El negocio de este archivo es `EC`; el scope por país lo cubre en detalle
       // `onboarding-program-terms.neon.integration.test.ts` (spec 0078).
-      const ids = await wizardClauseTemplateIds("EC");
+      const ids = await wizardClauseTemplateIds("EC", "per_purchase");
       expect(ids).toHaveLength(2);
       expect(new Set(ids).size).toBe(2);
     }, 30_000);

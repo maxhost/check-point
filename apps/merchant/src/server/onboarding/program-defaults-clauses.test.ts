@@ -41,11 +41,22 @@ vi.mock("../db", async (importOriginal) => ({
 
 import { LoyaltyError } from "../loyalty-program/core";
 import { validateProgramInput } from "../loyalty-program/validation";
-import { programInput } from "./program-defaults";
+import { composedAccrualMode, programInput } from "./program-defaults";
 
-/** Lo que la consulta doblada devuelve: un scope `EC` COMPLETO (las dos claves). */
+/**
+ * Lo que la consulta doblada devuelve: un scope `EC` COMPLETO.
+ *
+ * **Las TRES claves desde la spec 0081 §2**: `earning` y `earning_per_amount` son las dos
+ * cláusulas de acumulación posibles y el `accrual.mode` elige una. Con las tres puestas, el
+ * segundo `describe` de este archivo puede distinguir cuál se eligió por el ID.
+ */
 const SEEDS = [
   { id: "seed-ec-earning", key: "earning", jurisdictionScope: "EC" },
+  {
+    id: "seed-ec-earning-monto",
+    key: "earning_per_amount",
+    jurisdictionScope: "EC",
+  },
   { id: "seed-ec-redemption", key: "redemption", jurisdictionScope: "EC" },
 ];
 
@@ -132,5 +143,75 @@ describe("programInput — `clauses: []` no es omitir `clauses` (spec 0080 §1)"
     await compose({ ...SELLOS_CORTO, clauses: [] });
     expect(world.ownerBusiness).not.toHaveBeenCalled();
     expect(world.getDb).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Spec 0081 §2 — **QUÉ CLÁUSULA DE ACUMULACIÓN LE TOCA AL PROGRAMA, decidido por el
+ * `accrual.mode` que el compositor deja puesto** (no por el del cuerpo crudo).
+ *
+ * Los dos casos son la misma propiedad por sus dos lados, y hace falta el par: con un solo
+ * caso, una implementación que devolviera siempre la misma clave pasaría la mitad.
+ *
+ * **Por qué el modo EFECTIVO y no el del cuerpo:** el cuerpo corto de Sellos **no manda
+ * `accrual`** —lo completa el compositor con `per_purchase`—, así que leer el cuerpo crudo
+ * daría `undefined` para el caso más común del alta. `composedAccrualMode` deriva el valor
+ * del compositor mismo para que no puedan divergir.
+ */
+describe("programInput — la cláusula de acumulación por modo (spec 0081 §2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    world.ownerBusiness.mockResolvedValue({ countryCode: "EC" });
+    world.getDb.mockReturnValue({
+      select: () => ({ from: () => ({ where: async () => SEEDS }) }),
+    });
+  });
+
+  it("el cuerpo corto (sin `accrual`) recibe la cláusula SIN monto", async () => {
+    const composed = await compose({ ...SELLOS_CORTO });
+    expect(composed.accrual).toEqual({
+      mode: "per_purchase",
+      grant: 1,
+      blockAmount: null,
+    });
+    expect(composed.clauses).toEqual([
+      { templateId: "seed-ec-earning" },
+      { templateId: "seed-ec-redemption" },
+    ]);
+  });
+
+  it("un `accrual` `per_amount` explícito recibe la cláusula DEL MONTO", async () => {
+    const composed = await compose({
+      ...SELLOS_CORTO,
+      accrual: { mode: "per_amount", grant: 1, blockAmount: "5.00" },
+    });
+    // El `accrual` explícito no se pisa (spec 0079) y ADEMÁS mueve el TOS.
+    expect(composed.accrual).toEqual({
+      mode: "per_amount",
+      grant: 1,
+      blockAmount: "5.00",
+    });
+    expect(composed.clauses).toEqual([
+      { templateId: "seed-ec-earning-monto" },
+      { templateId: "seed-ec-redemption" },
+    ]);
+  });
+});
+
+/**
+ * `composedAccrualMode` suelta: es lo que traduce «lo que mandó el cliente» a «el modo con el
+ * que se elige la cláusula», y su caso raro es Puntos — que NO recibe default y por eso queda
+ * en `null` (su 422 lo tira el validador, no el TOS).
+ */
+describe("composedAccrualMode (spec 0081 §2)", () => {
+  it("Sellos corto → `per_purchase`; explícito → el del cuerpo; Puntos corto → null", () => {
+    expect(composedAccrualMode({ ...SELLOS_CORTO })).toBe("per_purchase");
+    expect(
+      composedAccrualMode({
+        ...SELLOS_CORTO,
+        accrual: { mode: "per_amount", grant: 2, blockAmount: "3.00" },
+      }),
+    ).toBe("per_amount");
+    expect(composedAccrualMode({ kind: "points" })).toBeNull();
   });
 });

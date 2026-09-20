@@ -29,6 +29,27 @@ export function termsScopeCandidates(
     : [DEFAULT_TERMS_SCOPE];
 }
 
+/**
+ * Spec 0081 §2 — LA CLAVE DE LA CLAUSULA DE ACUMULACION, elegida por el modo.
+ *
+ * `per_amount` («se otorgan N unidades por cada $X de compra») necesita nombrar el monto y
+ * la moneda; `per_purchase` («una unidad por compra») no tiene monto —el `blockAmount` es
+ * `null` por CHECK de la base—.
+ *
+ * **POR QUE DOS PLANTILLAS Y NO UNA VARIABLE OPCIONAL, medido y no supuesto:**
+ * `renderTermsText` tira 422 cuando el valor de la variable es **vacio**, no solo cuando no
+ * esta en el allowlist. Un `earning` unico que nombre `{{program_accrual_block_amount}}`
+ * **rompe todo programa `per_purchase`**, que es justo el que crea el cuerpo corto del alta.
+ *
+ * Cualquier cosa que no sea `per_amount` cae a `earning`: fail-safe hacia el texto que no
+ * depende de dinero.
+ */
+export function earningClauseKey(
+  accrualMode: string | null | undefined,
+): "earning" | "earning_per_amount" {
+  return accrualMode === "per_amount" ? "earning_per_amount" : "earning";
+}
+
 export type ScopedTemplate = {
   id: string;
   key: string;

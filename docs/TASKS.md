@@ -14,28 +14,223 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-19 — HEAD **`0e0493e`**, con las specs 0079 y 0080 `implementadas`
-y COMMITEADAS (las dos con PASS). El ADR 0076 quedo COMPLETO. **EL OWNER YA CONTESTO LO DEL TOS** —
-su respuesta esta abajo en «⇥ ARRANCA ACA». **La 0081 (el TOS) tiene un implementador CORRIENDO**:
-es la ULTIMA del arco, y con su PASS recien corresponde avisarle al owner para el QA.**
+**Ultima actualizacion: 2026-09-19 — la **0081 esta IMPLEMENTADA y ESPERANDO REVISOR**: el
+implementador entrego, sin commitear y sin marcar la spec. Es la ULTIMA del arco, asi que con su
+PASS recien corresponde avisarle al owner para el QA. **El entregable para la UI es
+`docs/specs/0081-contratos-de-api.md`** (cero `.tsx` tocados).**
 
-**ESTADO REAL, en una pantalla — lo de abajo lo REPRODUJO el orquestador, salvo lo que diga de
-donde viene:**
+**ESTADO REAL, en una pantalla — lo de abajo lo midio el IMPLEMENTADOR de la 0081 (el
+orquestador todavia no lo reprodujo), salvo lo que diga de donde viene:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | **`0e0493e`** (spec 0080 con su PASS, + el fix de este bloque). `origin/main` en **`bb511df`**: **8 commits sin pushear**. El owner no pidio push |
-| Arbol | **LIMPIO en `0e0493e`** al momento de escribir esto. ⚠️ **Pero la 0081 tiene un implementador CORRIENDO**: si ves cambios pendientes o una **mutacion viva y etiquetada**, es suya y es legitima — `ListAgents` primero, y **medila antes de revertirla** |
-| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, **0079** y **0080** (las 8 ultimas con PASS independiente) |
-| **0080** | ✅ **`implementada` con PASS, COMMITEADA** en `17496b5` |
-| **EN VUELO AHORA** | **0081** (el TOS) — `cerrada` y **AMPLIADA** con el hallazgo F1 del revisor de la 0080 (su mutacion **M6**). **Implementador corriendo.** Es la ULTIMA del arco |
-| Gates sobre `17496b5` | `typecheck --force` (sin cache), `lint`, `build` **verdes**; suite **221 archivos / 1730 tests, 0 failed, 0 skipped** — reproducidos por el orquestador |
-| Mutaciones vivas | **CERO al commitear `17496b5`**. Re-chequear con `no-mutations-left.sh`: la 0081 esta midiendo |
-| El flake de `consumer-recovery` | **arreglado por la 0080**: no aparecio en la corrida del orquestador, y el implementador lo corrio **3 veces seguidas en verde** |
+| HEAD local | **`c0039d9`**. `origin/main` en **`bb511df`**: **9 commits sin pushear**. El owner no pidio push |
+| **Trabajo SIN COMMITEAR** | el de la **0081**: 14 archivos ` M` + **8 `??`** (la migracion `0039` + su snapshot, **5 tests nuevos** y el contrato de API). **`git checkout .` se llevaria lo modificado y dejaria los `??` huerfanos** |
+| Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, 0079 y 0080 (las 8 ultimas con PASS independiente) |
+| **0081** | **implementada por el implementador, SIN PASS de revisor y SIN marcar.** Es la ULTIMA del arco |
+| Gates del implementador de la 0081 | `typecheck --force` (sin cache), `lint`, `format:check`, `build` **verdes**; suite con Neon **226 archivos / 1757 tests, 0 failed, 0 skipped** (baseline de la 0080: 221/1730) |
+| Mutaciones vivas | **CERO**: `rg -n MUTATION apps tools` vacio, `no-mutations-left.sh` **EXIT=0**, `diff` vacio y `shasum` identico en los 4 archivos mutados |
+| **Migracion `0039`** | **APLICADA a la rama de INTEGRACION, NO a prod.** Verificada por SQL: 8 filas `published` en `default`+`EC`, las 3 de `global-draft` en `archived` |
+| **Programas que referencian `global-draft`** | **0, y es ESTRUCTURAL**: no existe ninguna columna en la base que guarde el `template_id` de un programa. **No hay bloqueo** — ver el hallazgo abajo |
 | `pnpm test:e2e` | **NO aplica** a la 0080 ni a la 0081 (cero `.tsx`). Se corrio en la 0079, con su rojo preexistente demostrado en worktree limpio |
-| ⚠️ CI de `main` remoto | **ROJO heredado** por ese e2e, anterior a los 8 commits |
+| ⚠️ CI de `main` remoto | **ROJO heredado** por ese e2e, anterior a los 9 commits |
 | Vercel / prod | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada** |
-| **QA del owner** | **despues de la 0081.** El owner pidio un solo QA al final |
+| **QA del owner** | **despues del PASS de la 0081.** El owner pidio un solo QA al final |
+
+## ⇥ ENTREGA DEL IMPLEMENTADOR — spec 0081 (2026-09-19)
+
+**Estado: implementado, SIN commitear y SIN marcar la spec.** Falta el PASS del revisor
+independiente (ADR 0071). **Arbol LIMPIO de mutaciones**: `rg -n MUTATION apps tools` → vacio,
+`.claude/hooks/no-mutations-left.sh` **EXIT=0**, y los 4 archivos mutados con `diff` vacio y
+`shasum` identico al limpio.
+
+**CERO `.tsx` tocados.** El entregable para la UI es `docs/specs/0081-contratos-de-api.md`.
+
+**La migracion `0039_tos_variables_del_negocio.sql` YA ESTA APLICADA a la rama de integracion**
+(no a prod), por `db:migrate`. Verificado por SQL: 8 filas `published` en `default`+`EC` y las 3
+de `global-draft` en `archived` con `published_at` nulo.
+
+### ⚠️ EL NUMERO DEL DoD: PROGRAMAS QUE REFERENCIAN `global-draft` = **0**, y es ESTRUCTURAL
+
+**No es «hoy da 0»: no existe la referencia.** Medido por `information_schema` contra la base de
+integracion: **no hay ninguna tabla ni columna en toda la base que guarde el `template_id` de un
+programa**. `core.loyalty_program` tiene `terms_markdown`, `terms_hash` y `terms_updated_at`, y la
+unica columna con «template» en el nombre fuera de `terms_template.template_markdown` es de
+`pg_catalog`. Las clausulas **viajan en el cuerpo de cada escritura**, no se persisten como ids.
+
+**Consecuencia: el riesgo que la spec §3 declara —«un `PUT` sobre un programa viejo que
+referencie un `templateId` de `global-draft` pasaria a dar 422»— es FALSO.** Un re-guardado con
+cuerpo corto vuelve a resolver las semillas del pais; el unico que puede mandar el id viejo es un
+cliente que lo tenga cacheado, y la pantalla lo pide a `GET /api/loyalty-terms/templates`, que ya
+no lo ofrece. **No hay bloqueo.** (Base de integracion al momento de medir: 167 programas, 186
+negocios, 224 locales — 206 `active`.)
+
+### ⚠️ LOS CUATRO HALLAZGOS DE LA SPEC, medidos (el revisor tiene que mirarlos)
+
+1. **LA MUTACION M1 DE LA SPEC NO LA VE EL ORACULO QUE LA SPEC LE ASIGNA — MEDIDO.** La spec
+   predice que emitir las variables de local con la lista vacia pone rojo «un negocio SIN locales
+   puede guardar» (por el 422 de `renderTermsText`). **Quedo VERDE**, y el mecanismo es exacto:
+   la condicion es `!allowedVariables.includes(key) || !variables[key]`, y **`undefined` y `""`
+   son las dos falsy**, asi que **no emitir una variable y emitirla vacia producen el MISMO
+   422** — son indistinguibles desde el markdown. Y como **ninguna plantilla del wizard nombra
+   esas variables**, ahi no hay 422 de ningun lado. O sea que la decision «no se emiten» **no
+   protege nada por si sola**. Lo que protege el caso trampa son DOS cosas distintas, y las dos
+   tienen oraculo propio ahora: (a) que ninguna semilla las nombre
+   (`loyalty-terms-semillas.neon`), y (b) el end-to-end del 201 (`loyalty-terms-negocio.neon`).
+   **El unico oraculo del repo que VE la M1 es el unitario del diccionario**, que asevera
+   `not.toHaveProperty` — y por eso `termsVariables` es pura y exportada.
+2. **`transition` de `global-draft` YA ESTABA `archived` desde la migracion `0011`.** La spec §3
+   dice «hoy `transition` existe solo en `global-draft`… y al archivarlo el proyecto se quedaria
+   sin clausula de vigencia por pais»: la primera mitad es cierta, la segunda **no puede serlo**,
+   porque ya no estaba publicada. Leido por SQL antes de migrar. **Y el detalle que importa:
+   la 0011 la archivo justamente porque su texto usa `{{earning_ends_at}}` /
+   `{{redemption_ends_at}}`, que el renderer NO provee** — copiar ese texto a `default`/`EC`
+   habria reintroducido el 422 que la 0011 vino a sacar. Las dos filas nuevas usan **solo
+   variables que el renderer emite siempre**, y hay un caso que lo asevera.
+3. **El `UPDATE` del `variables_allowlist` que pide la spec §3.3 es INNECESARIO, y no se
+   escribio.** Los textos de las 4 semillas de la `0038` **no cambian** en esta spec, asi que no
+   usan ni una variable nueva y su allowlist ya las cubre. Las variables nuevas viajan en el
+   allowlist de las 4 filas que la `0039` **inserta**. Escribir un `UPDATE` que setea el mismo
+   valor que ya esta habria sido un no-op con forma de trabajo. **La M5 se midio sobre el
+   allowlist del `INSERT`**, que es donde vive de verdad la propiedad.
+4. **La spec dice «once» variables y su tabla lista DOCE.** Manda la tabla (es la normativa):
+   estan las 12, y el unitario asevera el conjunto exacto de claves.
+
+### LOS DESVIOS DE LA TABLA «Archivos», todos declarados
+
+1. **`loyalty-terms-semillas.neon.integration.test.ts` (NUEVO).** Los casos de nivel semilla
+   (conteos, idempotencia, `transition`, `global-draft` archivado, «ninguna semilla nombra las
+   variables de local») **no entraban** en `onboarding-program-terms.neon`: con ellos ese archivo
+   daba **327** lineas y el hook `file-size` corta en 300 — «dividir, no extender». Preguntado AL
+   HOOK, con control sobre un archivo sano.
+2. **CINCO archivos de test nuevos**, todos del plan de pruebas (la tabla de la spec dice
+   «tests | crear/editar los del plan de pruebas», asi que entran ahi):
+   `loyalty-program/terms-variables.test.ts` (el diccionario, PURO),
+   `loyalty-terms-negocio.neon` (locales contra la base + el dinero end-to-end),
+   `loyalty-terms-templates.neon` (la ruta de plantillas),
+   `loyalty-terms-semillas.neon` (las filas de la migracion) y
+   `loyalty-terms-doce-variables.neon` (las doce renderizadas en un markdown exacto, que es el
+   DoD al pie). **Son cinco y no dos por el hook `file-size`**, no por gusto: cada corte se
+   verifico preguntandole AL HOOK, con control sobre un archivo sano — `loyalty-terms-negocio`
+   quedo en **281** lineas y la plantilla de las doce no entraba.
+3. **`server/staff.ts` + `server/api-owner.ts` (una columna y un campo de tipo), fuera de la
+   tabla.** El filtro por scope de la ruta de plantillas necesita el pais, y `ownerContext` —el
+   resolvedor del guard— no lo seleccionaba. Se agrego **una columna a un `innerJoin` que ya
+   existia** (cero consultas nuevas) en vez de resolver el negocio otra vez con `ownerBusiness`,
+   que ordena `desc(createdAt)` contra el `asc` del guard: gatear sobre una fila y filtrar sobre
+   otra es exactamente la divergencia que la 0072 §D3 declara abierta. **`ownerBusiness` NO se
+   toco.**
+4. **UN caso preexistente CAMBIO DE POLARIDAD a proposito, y es el unico.**
+   `loyalty-terms-render.neon` exigia «`global-draft` sigue publicado y renderiza igual que antes
+   de la 0078». La spec 0081 la **archiva**, asi que eso ya no corresponde. **No se borro: se dio
+   vuelta con su motivo escrito**, y su nueva asercion es mas fuerte — que `renderedTerms`
+   **rechaza** ese `templateId` con «La plantilla seleccionada no está disponible.», que es lo
+   que cierra el camino al texto deprecado.
+5. **Dos firmas se volvieron de argumento OBLIGATORIO** (`wizardClauseTemplateIds` y
+   `resolveWizardClauseIds` reciben el `accrualMode`), asi que el typecheck obligo a declarar a
+   los 9 llamadores en 4 archivos de test. Mecanico, y preserva la semantica anterior
+   (`"per_purchase"` → la clausula de siempre).
+6. **`onboarding-program-terms.neon`: los conteos de semillas pasaron de 4 a 8** y la idempotencia
+   ahora corre las DOS migraciones. Es data que la `0039` cambia, no un test debilitado: las
+   aserciones nuevas son **mas** (dos conteos por clave y un piso de statements).
+
+### LIMITES Y COSTOS, intentados y no supuestos
+
+1. **UNA consulta nueva por escritura de programa**: los locales `active`. Se paga **siempre**,
+   incluso cuando ninguna plantilla del TOS nombra las variables de local — que es el caso de
+   **todas** las semillas de hoy. Se podria evitar leyendo los textos antes de decidir, pero eso
+   acopla el diccionario a las plantillas y la spec declara el costo explicitamente (§1). Va en la
+   linea del hallazgo de round-trips que dejo abierto la 0079.
+2. **`business_locations` y `business_address` se emiten y se testean, pero HOY no cambian ningun
+   TOS**: ninguna semilla las nombra (a proposito: un negocio sin locales no podria guardar). Son
+   consumibles cuando exista una forma de crear plantillas desde el panel, y el texto libre **no**
+   admite variables (limite de la 0078). **Es lo mas cerca de andamiaje que tiene esta spec** y se
+   declara como tal: el owner las pidio explicitamente (variables #2 y #3 de sus ocho).
+3. **`pnpm test:e2e` NO se corrio y NO aplica**: cero `.tsx` tocados.
+
+## ⇥ ✅ BITACORA DE MUTACIONES — spec 0081 (implementador, 2026-09-19) — CERRADA
+
+**CERRADA: las 6 medidas y revertidas.** `diff` VACIO contra la copia limpia en los 4 archivos,
+`shasum` identico, `rg -n MUTATION apps tools` **vacio** y `.claude/hooks/no-mutations-left.sh`
+**EXIT=0**. Restauracion de emergencia (los 4 estan MODIFICADOS o SIN TRACKEAR: **`git checkout`
+NO sirve** — se lleva el trabajo de la spec, y el `.sql` ni existe como blob):
+
+```
+cp /tmp/limpios-0081/terms.ts             apps/merchant/src/server/loyalty-program/terms.ts
+cp /tmp/limpios-0081/terms-scope.ts       apps/merchant/src/server/loyalty-program/terms-scope.ts
+cp /tmp/limpios-0081/program-defaults.ts  apps/merchant/src/server/onboarding/program-defaults.ts
+cp /tmp/limpios-0081/0039_tos_variables_del_negocio.sql apps/merchant/drizzle/0039_tos_variables_del_negocio.sql
+```
+
+**⚠️ NOTA DE ALCANCE, honesta: `loyalty-terms-doce-variables.neon.integration.test.ts` se escribio DESPUES de medir M1, M2, M3, M5 y M6**, asi que NO esta en los alcances de esas cinco filas. **Solo M4 se re-midio con el** (ver su fila). De las otras cuatro no se afirma nada sobre ese archivo: es trabajo que el revisor puede hacer si lo quiere cerrado.
+
+| id | archivo | shasum LIMPIO | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `loyalty-program/terms.ts` — emitir las variables de local SIEMPRE, tambien vacias | `b09775cee60acef3c662de522454ef65589b5d47` | las variables de local NO se emiten con la lista vacia | **ROJO — 1 test de 28**, y es el UNICO del repo que la ve: `terms-variables.test` «SIN locales activos las dos variables NO se emiten (ausentes, no vacías)» (`AssertionError: expected { …(11) } to not have property "business_locations"`, Expected `undefined` / Received `""`). **⚠️ EL ORACULO QUE LA SPEC LE ASIGNA QUEDO VERDE:** «un negocio SIN locales `active` crea su programa: 201» paso, porque ausente y vacio dan el MISMO 422 y ninguna semilla nombra esas variables — ver el hallazgo 1. Alcance corrido: `terms-variables.test` + `loyalty-terms-negocio.neon` + `loyalty-terms-render.neon` + `onboarding-program-terms.neon` + `loyalty-terms-semillas.neon` → **1 failed / 27 passed** |
+| M2 | `loyalty-program/terms.ts` — borrar el `eq(locations.status,'active')` del `WHERE` | `b09775cee60acef3c662de522454ef65589b5d47` | los locales se listan filtrados por `status='active'` | **ROJO — 1 test de 28**: `loyalty-terms-negocio.neon` «lista los locales `active` separados por `, ` y excluye el `archived`». Asercion literal: Received `"Locales: Sucursal Centro, Sucursal Norte, Sucursal Cerrada. Direcciones: Av. 9 de Octubre 123, Av. Orellana 45, Calle Vieja 1."` vs Expected sin las dos ultimas. **El rojo habla de la propiedad: el local ARCHIVADO se colo en el texto legal.** Mismo alcance de 5 archivos: **1 failed / 27 passed** |
+| M3 | `loyalty-program/terms-scope.ts` — `earningClauseKey` devuelve siempre `earning` | `9f2a68402fe4f8b5b416d8ed4f0c03fe4ce29847` | la clausula de acumulacion la elige el `accrual.mode` | **ROJO — 3 tests de 85**, los tres niveles: (a) el de la spec, `loyalty-terms-negocio.neon` «`per_amount` guarda la mecánica y el TOS nombra el monto y la moneda» (`expected 'Los sellos se acumulan únicamente con…' to contain 'Se otorgan 1 sellos por cada 5.00 USD'` — la FILA quedo bien y el TEXTO LEGAL mintio, que es exactamente la clase de error del presupuesto); (b) `terms-variables.test` «`per_amount` elige la plantilla del monto» (`expected 'earning' to be 'earning_per_amount'`); (c) `program-defaults-clauses.test` «un `accrual` `per_amount` explícito recibe la cláusula DEL MONTO». Alcance: `loyalty-program/` + `onboarding/` + `loyalty-terms-negocio.neon` + `onboarding-program-terms.neon` + `loyalty-program-ruta-unica.neon` → **3 failed / 82 passed** |
+| M4 | `loyalty-program/terms.ts` — `program_unit_plural` cae al singular | `b09775cee60acef3c662de522454ef65589b5d47` | `program_unit_plural` es el PLURAL, no el singular | **ROJO — 6 tests de 88**, con el «Los sello se acumulan…» que cazo la 0078 reproducido literal: `onboarding-program-terms.neon` «el programa del cuerpo corto queda con «Los sellos»» y «el `countryCode` del CUERPO no mueve el scope» (`expected 'Los sello se acumulan únicamente conf…' to contain 'Los sellos se acumulan'`), `loyalty-terms-negocio.neon` los dos casos de TOS, y `terms-variables.test` Sellos y Puntos (`expected 'sello' to be 'sellos'`, `expected 'punto' to be 'puntos'`). Alcance: los 6 archivos de arriba + `loyalty-terms-render.neon` → **6 failed / 82 passed**. **RE-MEDIDA despues de agregar `loyalty-terms-doce-variables.neon`** (que se escribio DESPUES de la primera vuelta, para cumplir al pie el DoD de «las doce renderizadas»): con ese archivo en el alcance son **8 failed / 49 passed**, y los dos rojos nuevos son sus casos de Sellos y de Puntos, con el markdown exacto. Revertida otra vez, `diff` vacio y shasum identico |
+| M5 | `drizzle/0039_…sql` — el allowlist de las 2 filas de `earning_per_amount` SIN `currency_code`, `program_accrual_grant` ni `program_accrual_block_amount` | `4d335126ebcab7fe69195c5d0b1c389c25aaeda1` | el `variables_allowlist` de `earning_per_amount` cubre las variables de dinero | **ROJO — 2 tests de 15.** Medida re-sembrando: `delete from core.terms_template where key='earning_per_amount'` + re-aplicar el SQL mutado (verificado por SQL que el allowlist quedo recortado). `loyalty-terms-negocio.neon` «`per_amount` guarda la mecánica…» (`expected 422 to be 200`) y `loyalty-program-ruta-unica.neon` «un cuerpo de Puntos crea el programa» (`expected 422 to be 201`). **EL MOTIVO DEL ROJO, leido con una sonda ejecutada y borrada** (el rojo del status no lo muestra): `La variable {{program_accrual_grant}} no está permitida.` — es el 422 del allowlist, no otro. **Y un dato para el revisor: «las 8 semillas… con `country_code` en el allowlist» quedo VERDE** — esa asercion NO guarda las variables de dinero; la que las guarda es el end-to-end. Revertida y **re-sembrado el allowlist limpio, verificado por SQL** |
+| M6 | `onboarding/program-defaults.ts` — sembrar SIEMPRE, ignorando el `clauses` del cuerpo | `66a3c8802cdb627c05556d8c5afa98ce3599756f` | un `clauses` NO VACIO del cuerpo sobrevive al compositor (hallazgo **F1** del revisor de la 0080) | **ROJO — 4 tests de 52, y el que cierra el hueco es el PRIMERO:** `loyalty-program-ruta-unica.neon` «un cuerpo COMPLETO de hoy conserva cada campo que mandó, cláusulas incluidas» (`expected 'Se otorgan 3 visitas por cada 20.00 U…' to contain 'Cláusula propia del comercio, escrita…'`). **El rojo cae en la asercion NUEVA**, o sea en el oraculo que esta spec agrego: antes ese caso mandaba `clauses` iguales a las semillas de EC y su bloque **ni mencionaba** `termsMarkdown`, asi que sembrar encima era un no-op observable (la bitacora de la 0080 lo dejo medido: su M2 lo vio VERDE). Los otros 3 son los oraculos de la 0080 (`program-defaults-clauses.test`), esperables porque esta mutacion es un superconjunto de su M2. Alcance: `loyalty-program-ruta-unica.neon` + `onboarding/` + `onboarding-program.neon` + `onboarding-program-terms.neon` + `loyalty-terms-negocio.neon` → **4 failed / 48 passed** |
+
+## ⇥ ✅ 0081 IMPLEMENTADA CON PASS — EL ARCO ESTA COMPLETO (2026-09-19)
+
+**Gates reproducidos por el orquestador con EXIT CODE EXPLICITO** (no inferidos de un pipe):
+`typecheck --force` `EXIT=0` (3 successful, sin cache), `lint` `EXIT=0`, `build` `EXIT=0`,
+`format:check` `EXIT=0`, y **226 archivos / 1757 tests con Neon, 0 failed, 0 skipped**.
+Cero `MUTATION`, cero `.tsx`.
+
+**EL ORQUESTADOR MIDIO LA M6, que el revisor habia declarado afuera por presupuesto** — era el
+unico item del DoD sin verificacion independiente. Protocolo completo (shasum limpio
+`66a3c880…`, bitacora antes, etiqueta `MUTATION O-M6`, revertida con `diff` vacio y shasum
+identico). **MUERDE y por el motivo correcto**: sembrando siempre e ignorando el `clauses` del
+cuerpo, el caso «cuerpo COMPLETO … clausulas incluidas» de `loyalty-program-ruta-unica.neon` cae
+con `expected 'Se otorgan 3 visitas por cada 20.00 U…' to contain 'Clausula propia del
+comercio…'`. **El hueco F1 que venia de la 0080 quedo CERRADO con oraculo propio.**
+
+### Lo que el revisor confirmo, y lo que agrego
+
+**Los 4 claims falsos de la spec: los cuatro CIERTOS**, verificados por el revisor con SQL propio
+y lectura del renderer — incluido que `transition` de `global-draft` ya estaba `archived` desde la
+**0011** y que su texto usa `{{earning_ends_at}}`, **que el renderer no provee**: copiarlo habria
+reintroducido el 422 que la 0011 vino a sacar.
+
+**Sus dos juicios sobre el alcance:**
+
+- **`staff.ts` / `api-owner.ts` fuera de la tabla: CAMBIO SEGURO.** El diff agrega **una columna a
+  un `select` de un `innerJoin` que ya existia**; `where`, `orderBy` y `limit` **no se tocaron**,
+  asi que **no puede mover que fila resuelve el guard**. La alternativa habria metido un segundo
+  resolvedor con orden inverso.
+- **`business_locations`/`business_address`: ENTREGA PEDIDA, no andamiaje.** Busco las **palabras
+  textuales del owner** en `TASKS.md` (sus variables #2 y #3). Por la regla de CLAUDE.md, **no
+  vuelve a subir como decision abierta**.
+
+**Y midio lo que NADIE habia medido (su R4): el AISLAMIENTO POR NEGOCIO de la consulta nueva de
+locales.** 3 tests rojos en 2 archivos bajo la mutacion: la fuga cross-tenant **al documento
+legal** queda pinneada. Es el mejor hallazgo de la revision y no estaba en ninguna spec.
+
+### ⚠️ F2 — ACCION DE DESPLIEGUE, LO UNICO QUE PUEDE ROMPER EL QA
+
+**La migracion `0039` tiene que estar aplicada ANTES de que este codigo atienda un `per_amount`.**
+`wizardClauseTemplateIds` pide `earning_per_amount` y `scopedTemplateIds` cae **por scope
+completo**: sin las filas de la `0039`, ningun candidato tiene el juego y la ruta tira
+**503 `program_unavailable`**. El cuerpo corto de hoy (`per_purchase`) **no** se ve afectado.
+
+**La `0039` esta aplicada a INTEGRACION, no a prod.** Hay que aplicarla **con** el deploy, no
+despues.
+
+### F1 y F3 — abiertos, ninguno bloquea
+
+- **F1 (preexistente, 0072 §D3):** `GET /api/loyalty-terms/templates` scopea con `ownerContext`
+  (`asc`, con `memberships.status='active'`) y `saveProgram` escribe con `ownerBusiness` (`desc`,
+  **sin** ese filtro). Con 2+ negocios de paises distintos, el panel ofrece las plantillas del mas
+  viejo y el TOS se guarda en el mas nuevo. **La mutacion R1 del revisor SOBREVIVIO con los 1757
+  tests en verde: la divergencia sigue SIN ORACULO.** Hoy inocuo (prod con 0 negocios). Cerrarlo es
+  una spec chica: que los dos compartan un resolvedor unico.
+- **F3 (informativo):** las 2 filas de `transition` sembradas en `default`/`EC` **no las consume
+  ningun codigo hoy** (`WIZARD_CLAUSE_KEYS` las excluye); solo salen en `GET /templates` para el
+  panel. La spec las pidio, pero **su justificativo declarado era falso**. Se anota para que no se
+  lea como necesidad medida.
 
 ## ⇥ ✅ 0080 IMPLEMENTADA CON PASS — y lo que encontro vale mas que su alcance (2026-09-19)
 

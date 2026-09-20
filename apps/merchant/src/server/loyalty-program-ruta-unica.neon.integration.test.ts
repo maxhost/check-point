@@ -103,7 +103,7 @@ describe.skipIf(!enabled)("la ruta única de escritura (spec 0079)", () => {
       .insert(memberships)
       .values({ businessId, userId: ownerId, role: "owner" });
     cookie = (await openMerchantSession(ownerId)).split(";")[0];
-    templateIds = await wizardClauseTemplateIds("EC");
+    templateIds = await wizardClauseTemplateIds("EC", "per_purchase");
   }, 60_000);
 
   afterAll(async () => {
@@ -185,13 +185,25 @@ describe.skipIf(!enabled)("la ruta única de escritura (spec 0079)", () => {
    * que el compositor no tiene un solo hueco que rellenar: si pisara algo con su default
    * —el `accrual` `per_amount` volviéndose `per_purchase`, o el `unitName` propio pasando a
    * «sello»— se vería acá y en ningún otro lado.
+   *
+   * **Y CIERRA EL HUECO F1 DEL CONTRATO 0079 (spec 0081, mutación M6).** Hasta la 0080 este
+   * caso mandaba `clauses` construidas con `wizardClauseTemplateIds("EC")`, o sea **las
+   * semillas mismas**: sembrar encima era un **no-op observable** y ninguna aserción miraba
+   * el resultado, así que «un `clauses` NO VACÍO del cuerpo sobrevive al compositor» no tenía
+   * oráculo en todo el repo. La tercera cláusula es de **texto libre distinguible** y el
+   * `termsMarkdown` se asevera contra ella: si el compositor sembrara SIEMPRE, ese párrafo
+   * desaparecería del documento legal y este caso se pone rojo.
    */
-  it("un cuerpo COMPLETO de hoy conserva cada campo que mandó", async () => {
+  it("un cuerpo COMPLETO de hoy conserva cada campo que mandó, cláusulas incluidas", async () => {
     await wipePrograms();
+    const MIA = "Cláusula propia del comercio, escrita a mano.";
     const completo = {
       kind: "stamps",
       configuration: { unitName: "visita", unitPlural: "visitas", target: 12 },
-      clauses: templateIds.map((templateId) => ({ templateId })),
+      clauses: [
+        ...templateIds.map((templateId) => ({ templateId })),
+        { text: MIA },
+      ],
       accrual: { mode: "per_amount", grant: 3, blockAmount: 20 },
       rewards: [{ type: "custom", label: "Postre" }],
       stampAction: "keep",
@@ -208,6 +220,11 @@ describe.skipIf(!enabled)("la ruta única de escritura (spec 0079)", () => {
     expect(row?.accrualGrant).toBe(3);
     expect(row?.accrualBlockAmount).toBe("20.00");
     expect(row?.redeemAllowInsufficient).toBe(true);
+    // Las 3 cláusulas del cuerpo, en su orden, y la propia AL FINAL: las semillas no la
+    // pisaron ni la reordenaron. `endsWith` es lo que hace que el oráculo vea la M6.
+    expect(row?.termsMarkdown).toContain(MIA);
+    expect(row?.termsMarkdown.endsWith(MIA)).toBe(true);
+    expect(row?.termsMarkdown.split("\n\n")).toHaveLength(3);
     await wipePrograms();
   }, 120_000);
 

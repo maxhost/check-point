@@ -20,15 +20,27 @@ import { renderedTerms } from "./loyalty-program/terms";
  *  - el **control negativo** del allowlist: la misma `{{country_code}}` que ahora
  *    renderiza en las semillas nuevas sigue siendo **422** en una plantilla que no la
  *    permite (si no, el verde del caso positivo no prueba que el allowlist exista);
- *  - `global-draft` sigue publicado y renderiza **igual que antes** (usa
- *    `{{program_name}}`, que la spec conservó a propósito);
+ *  - **`global-draft` YA NO SE PUEDE USAR** — polaridad DADA VUELTA a propósito por la spec
+ *    0081 §3, que la archiva. Hasta la 0080 este caso exigía que siguiera `published` y
+ *    renderizara; desde la migración `0039` está `archived`, así que el filtro
+ *    `status='published'` de `renderedTerms` la excluye y la cláusula cae al 422 «La
+ *    plantilla seleccionada no está disponible.». **No se borró el caso: se invirtió**, y su
+ *    aserción es lo que prueba que el archivado cierra el camino al texto deprecado «Los
+ *    sello se acumulan…» que el revisor de la 0078 reportó al owner;
  *  - el texto libre —el TOS personalizado del panel— se guarda tal cual y **no admite
  *    variables**, que es el límite declarado en `docs/specs/0078-contratos-de-api.md`.
  */
 const SIN_ALLOWLIST = "0078cc00-0000-4000-8000-0000000000ff";
 const GLOBAL_DRAFT_EARNING = "9d4a3a05-2a87-4d12-8a99-e1a59e3cf101";
 
-const business = { name: "Bodega Las Peñas", countryCode: "EC" };
+/** Un negocio que NO existe en `core.business`: alcanza porque `renderedTerms` sólo usa su
+ * `id` para listar locales (cero filas) y el resto son datos ya resueltos. */
+const business = {
+  id: "00000081-0000-4000-8000-0000000000aa",
+  name: "Bodega Las Peñas",
+  countryCode: "EC",
+  currencyCode: "USD",
+};
 
 const stampsInput = (
   configuration: Record<string, unknown>,
@@ -82,20 +94,22 @@ describe.skipIf(!enabled)("renderedTerms contra Neon (spec 0078)", () => {
     ).rejects.toThrow("no está permitida");
   }, 60_000);
 
-  it("`global-draft` sigue publicado y renderiza igual que antes de la 0078", async () => {
+  it("`global-draft` quedó ARCHIVADA y ya no se puede usar (spec 0081)", async () => {
     const [row] = await getDb()
       .select({ status: termsTemplates.status })
       .from(termsTemplates)
       .where(eq(termsTemplates.id, GLOBAL_DRAFT_EARNING));
-    expect(row.status).toBe("published");
-    const { markdown } = await renderedTerms(
-      stampsInput({ unitName: "sello", target: 6 }, [
-        { templateId: GLOBAL_DRAFT_EARNING },
-      ]),
-      business,
-    );
-    // Su texto usa `{{program_name}}`, que NO cambió: el singular es el de siempre.
-    expect(markdown).toContain("Los sello se acumulan");
+    expect(row.status).toBe("archived");
+    // El oráculo fuerte no es el `status` de la fila, es que el camino esté cerrado: aunque
+    // un panel guarde el id viejo, `renderedTerms` filtra por `published` y corta.
+    await expect(
+      renderedTerms(
+        stampsInput({ unitName: "sello", target: 6 }, [
+          { templateId: GLOBAL_DRAFT_EARNING },
+        ]),
+        business,
+      ),
+    ).rejects.toThrow("La plantilla seleccionada no está disponible.");
   }, 60_000);
 
   it("texto libre: se guarda tal cual, y con `{{x}}` sigue dando 422", async () => {

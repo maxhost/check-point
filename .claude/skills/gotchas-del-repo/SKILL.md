@@ -230,6 +230,15 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   plantilla** (`variables_allowlist`, jsonb): agregar una variable al diccionario de `terms.ts` sin
   agregarla al allowlist de las semillas es un 422 garantizado, y eso exige una **migracion de
   datos**. Medido en la spec 0081; el caso de la 0078 es el mismo con `country_code`.
+  **Y EL COROLARIO QUE SE COME UNA MUTACION ENTERA, medido en la 0081: una variable AUSENTE y una
+  variable VACIA son INDISTINGUIBLES para `renderTermsText`** — `!variables[key]` es falsy para
+  `undefined` y para `""`, asi que «no emitir la variable» **no protege nada** frente a
+  «emitirla vacia»: las dos tiran el mismo 422. Lo unico que protege a un negocio sin ese dato
+  es que **ninguna plantilla la nombre**, y eso se asevera sobre las FILAS de las semillas, no
+  sobre el diccionario. Corolario de metodo: el unico oraculo que ve «se emite o no se emite»
+  es uno que inspeccione el diccionario (`expect(vars).not.toHaveProperty(...)`), asi que la
+  funcion que lo arma tiene que ser **pura y exportada** — desde el markdown resultante esa
+  decision es invisible. La mutacion que la spec 0081 asignaba al 422 salio **VERDE**.
 - **Formatos de imagen aceptados en subidas: viven en UN solo lugar,
   `apps/merchant/src/lib/image-formats.ts`** (jpeg/png/webp/**heic/heif/avif** — las fotos de
   cámara/galería de Android e iPhone son HEIC/HEIF, `sharp` las decodifica). Lo consumen los guards

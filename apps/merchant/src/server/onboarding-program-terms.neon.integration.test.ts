@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { fileURLToPath } from "node:url";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 process.env.BETTER_AUTH_SECRET ||= "integration-secret-at-least-32-chars-xx";
@@ -42,7 +40,10 @@ import { PUT } from "../app/api/loyalty-program/route";
  * cualquier otro archivo de test que corra en paralelo).
  *
  * Lo que renderiza sin pasar por la ruta de escritura —el control del 422, `global-draft` y el texto
- * libre— vive en `loyalty-terms-render.neon.integration.test.ts`.
+ * libre— vive en `loyalty-terms-render.neon.integration.test.ts`. **Lo que asevera sobre las
+ * SEMILLAS mismas** (los conteos, la idempotencia de las migraciones y las variables que sus
+ * textos usan) se mudó a `loyalty-terms-semillas.neon.integration.test.ts` por el hook
+ * `file-size`: este archivo quedaba en 327 líneas y la regla es dividir, no extender.
  */
 const EC_EARNING = "0078ec00-0000-4000-8000-000000000001";
 const EC_REDEMPTION = "0078ec00-0000-4000-8000-000000000002";
@@ -50,10 +51,6 @@ const DEFAULT_EARNING = "0078a1b2-0000-4000-8000-000000000001";
 const DEFAULT_REDEMPTION = "0078a1b2-0000-4000-8000-000000000002";
 const ZZ_EARNING = "0078cc00-0000-4000-8000-000000000001";
 const ZZ_REDEMPTION = "0078cc00-0000-4000-8000-000000000002";
-
-const MIGRATION = fileURLToPath(
-  new URL("../../drizzle/0038_terms_por_pais.sql", import.meta.url),
-);
 
 describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
   const ownerId = `onb-terms-${randomUUID()}`;
@@ -146,45 +143,16 @@ describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
       .where(eq(termsTemplates.jurisdictionScope, "ZZ"));
   }, 120_000);
 
-  it("la migración 0038 dejó 4 semillas publicadas con `country_code` en el allowlist", async () => {
-    const rows = await getDb()
-      .select()
-      .from(termsTemplates)
-      .where(inArray(termsTemplates.jurisdictionScope, ["default", "EC"]));
-    expect(rows).toHaveLength(4);
-    for (const row of rows) {
-      expect(row.status).toBe("published");
-      expect(row.locale).toBe("es");
-      expect(row.variablesAllowlist).toEqual(
-        expect.arrayContaining([
-          "business_legal_name",
-          "program_name",
-          "program_unit_plural",
-          "country_code",
-        ]),
-      );
-    }
-  }, 60_000);
-
-  it("la migración es IDEMPOTENTE: correr su SQL otra vez deja 4 filas, no 8", async () => {
-    await getDb().execute(sql.raw(readFileSync(MIGRATION, "utf8")));
-    const rows = await getDb()
-      .select({ id: termsTemplates.id })
-      .from(termsTemplates)
-      .where(inArray(termsTemplates.jurisdictionScope, ["default", "EC"]));
-    expect(rows).toHaveLength(4);
-  }, 60_000);
-
   it("un negocio EC resuelve los templates de EC, y uno de MX cae a `default`", async () => {
-    expect(await wizardClauseTemplateIds("EC")).toEqual([
+    expect(await wizardClauseTemplateIds("EC", "per_purchase")).toEqual([
       EC_EARNING,
       EC_REDEMPTION,
     ]);
-    expect(await wizardClauseTemplateIds("MX")).toEqual([
+    expect(await wizardClauseTemplateIds("MX", "per_purchase")).toEqual([
       DEFAULT_EARNING,
       DEFAULT_REDEMPTION,
     ]);
-    expect(await wizardClauseTemplateIds(null)).toEqual([
+    expect(await wizardClauseTemplateIds(null, "per_purchase")).toEqual([
       DEFAULT_EARNING,
       DEFAULT_REDEMPTION,
     ]);
@@ -192,7 +160,7 @@ describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
 
   it("scope del país A MEDIAS → las DOS de `default`; completo → las DOS de él", async () => {
     // `ZZ` tiene `earning` y le falta `redemption`: ni una de las dos puede salir de ZZ.
-    expect(await wizardClauseTemplateIds("ZZ")).toEqual([
+    expect(await wizardClauseTemplateIds("ZZ", "per_purchase")).toEqual([
       DEFAULT_EARNING,
       DEFAULT_REDEMPTION,
     ]);
@@ -213,7 +181,7 @@ describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
         status: "published",
         publishedAt: new Date(),
       });
-    expect(await wizardClauseTemplateIds("ZZ")).toEqual([
+    expect(await wizardClauseTemplateIds("ZZ", "per_purchase")).toEqual([
       ZZ_EARNING,
       ZZ_REDEMPTION,
     ]);

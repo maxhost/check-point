@@ -4,6 +4,7 @@ import { termsTemplates } from "../schema";
 import { LoyaltyError } from "../loyalty-program/core";
 import { ownerBusiness } from "../loyalty-program/owner";
 import {
+  earningClauseKey,
   type ScopedTemplate,
   scopedTemplateIds,
   termsScopeCandidates,
@@ -61,8 +62,25 @@ export const DEFAULT_STAMP_UNIT_NAME = "sello";
  */
 export const DEFAULT_STAMP_UNIT_PLURAL = "sellos";
 
-/** Las dos semillas que el wizard usa como terminos. `transition` es del cierre. */
-export const WIZARD_CLAUSE_KEYS = ["earning", "redemption"] as const;
+/**
+ * Las dos semillas que el wizard usa como terminos. `transition` es del cierre.
+ *
+ * **Spec 0081 §2: la clave de acumulacion depende del `accrual.mode`** — `earning` para
+ * «una unidad por compra», `earning_per_amount` para «N unidades cada $X». Las CLAVES
+ * POSIBLES (para el `IN` de la consulta) son las tres; el par que se resuelve son dos.
+ */
+export const WIZARD_CLAUSE_KEYS = [
+  "earning",
+  "earning_per_amount",
+  "redemption",
+] as const;
+
+/** El par de claves que le toca a un programa, en el orden del markdown. */
+export function wizardClauseKeys(
+  accrualMode: string | null | undefined,
+): readonly string[] {
+  return [earningClauseKey(accrualMode), "redemption"];
+}
 
 /**
  * Traduce las filas leidas al par de ids del wizard. PURA, para que el 503 tenga oraculo
@@ -74,10 +92,15 @@ export const WIZARD_CLAUSE_KEYS = ["earning", "redemption"] as const;
 export function resolveWizardClauseIds(
   rows: readonly ScopedTemplate[],
   candidates: readonly string[],
+  accrualMode: string | null | undefined,
 ): string[] {
-  // El orden de las clausulas es el del wizard (`earning` y despues `redemption`), no
+  // El orden de las clausulas es el del wizard (acumulacion y despues `redemption`), no
   // el que devuelva Postgres: el markdown de los terminos se concatena en ese orden.
-  const ids = scopedTemplateIds(rows, candidates, WIZARD_CLAUSE_KEYS);
+  const ids = scopedTemplateIds(
+    rows,
+    candidates,
+    wizardClauseKeys(accrualMode),
+  );
   if (!ids) {
     throw new LoyaltyError(
       503,
@@ -94,6 +117,7 @@ export function resolveWizardClauseIds(
  */
 export async function wizardClauseTemplateIds(
   countryCode: string | null | undefined,
+  accrualMode: string | null | undefined,
 ): Promise<string[]> {
   const candidates = termsScopeCandidates(countryCode);
   const rows = await getDb()
@@ -111,7 +135,7 @@ export async function wizardClauseTemplateIds(
         inArray(termsTemplates.key, [...WIZARD_CLAUSE_KEYS]),
       ),
     );
-  return resolveWizardClauseIds(rows, candidates);
+  return resolveWizardClauseIds(rows, candidates, accrualMode);
 }
 
 /** Un objeto plano, o `null`. No valida nada: sólo decide si hay algo que completar. */
@@ -178,6 +202,24 @@ export async function programInput(
   const business = await ownerBusiness(userId);
   return composeProgramInput(
     partial,
-    await wizardClauseTemplateIds(business?.countryCode ?? null),
+    await wizardClauseTemplateIds(
+      business?.countryCode ?? null,
+      composedAccrualMode(partial),
+    ),
   );
+}
+
+/**
+ * El modo de acumulacion **EFECTIVO**: el que el compositor va a dejar puesto, no el del
+ * cuerpo crudo. Spec 0081 §2 — la clave de la clausula de acumulacion se elige con ESTE
+ * valor, y el cuerpo corto de Sellos no manda `accrual`: lo completa el compositor.
+ *
+ * Se deriva **del compositor mismo** (y no de una copia de su regla) para que no puedan
+ * divergir: si el default de Sellos cambiara, el TOS lo sigue solo.
+ */
+export function composedAccrualMode(
+  partial: Record<string, unknown>,
+): string | null {
+  const accrual = asObject(composeProgramInput(partial, null).accrual);
+  return typeof accrual?.mode === "string" ? accrual.mode : null;
 }

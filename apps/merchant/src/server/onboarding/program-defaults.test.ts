@@ -250,14 +250,12 @@ describe("resolveWizardClauseIds (spec 0078 §3)", () => {
   ];
 
   it("devuelve las dos del primer candidato COMPLETO", () => {
-    expect(resolveWizardClauseIds(rows, ["EC", "default"])).toEqual([
-      "ec-1",
-      "ec-2",
-    ]);
-    expect(resolveWizardClauseIds(rows, ["MX", "default"])).toEqual([
-      "def-1",
-      "def-2",
-    ]);
+    expect(
+      resolveWizardClauseIds(rows, ["EC", "default"], "per_purchase"),
+    ).toEqual(["ec-1", "ec-2"]);
+    expect(
+      resolveWizardClauseIds(rows, ["MX", "default"], "per_purchase"),
+    ).toEqual(["def-1", "def-2"]);
   });
 
   it("con el candidato del pais a medias, NO mezcla: las dos de `default`", () => {
@@ -265,19 +263,23 @@ describe("resolveWizardClauseIds (spec 0078 §3)", () => {
       resolveWizardClauseIds(
         rows.filter((row) => row.id !== "ec-2"),
         ["EC", "default"],
+        "per_purchase",
       ),
     ).toEqual(["def-1", "def-2"]);
   });
 
   it("sin ningun candidato completo tira 503, no compone nada", () => {
-    expect(statusOf(() => resolveWizardClauseIds([], ["EC", "default"]))).toBe(
-      503,
-    );
+    expect(
+      statusOf(() =>
+        resolveWizardClauseIds([], ["EC", "default"], "per_purchase"),
+      ),
+    ).toBe(503);
     expect(
       statusOf(() =>
         resolveWizardClauseIds(
           rows.filter((row) => row.key === "earning"),
           ["EC", "default"],
+          "per_purchase",
         ),
       ),
     ).toBe(503);

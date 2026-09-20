@@ -1,7 +1,7 @@
 ---
 spec: 0081
 fecha: 2026-09-19
-estado: cerrada
+estado: implementada
 resumen: El TOS del programa pasa a nombrar al negocio de verdad — sus locales, su direccion, su moneda y el dinero que hace falta para ganar una unidad — con las OCHO variables que pidio el owner textual. El hallazgo que define la spec: `renderTermsText` tira 422 cuando el valor es VACIO, no solo cuando la variable no esta en el allowlist, asi que una variable «que a veces no aplica» IMPIDE guardar el programa; por eso el monto por unidad no es una variable opcional sino una SEGUNDA plantilla de `earning`, elegida por el `accrual.mode`. El monto ya se puede mandar hoy y se guarda —medido: `validateAccrual` acepta `per_amount` en Sellos y el compositor no lo pisa—, asi que esta spec NO cambia el dominio: documenta el contrato para quien haga la pantalla 3 y lo lleva al texto legal. Archiva ademas las plantillas `global-draft`, que es lo que cierra el hallazgo abierto de la 0078.
 disjunta: no
 archivos: apps/merchant/drizzle/0039_tos_variables_del_negocio.sql, apps/merchant/src/server/loyalty-program-ruta-unica.neon.integration.test.ts, apps/merchant/src/server/loyalty-program/terms.ts, apps/merchant/src/server/loyalty-program/terms-scope.ts, apps/merchant/src/server/onboarding/program-defaults.ts, apps/merchant/src/app/api/loyalty-terms/templates/route.ts, docs/specs/0081-contratos-de-api.md
