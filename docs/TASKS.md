@@ -14,6 +14,58 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
+## ⇥ ✅ SHELL DEL BACKOFFICE — COMMITEADO EN `b50fb4d`, SEIS GATES VERDES, FALTA EL QA VISUAL
+
+**Que hay en el arbol:** `/backoffice/*` ahora tiene layout propio
+(`app/backoffice/layout.tsx`) y navegacion adaptativa
+(`app/backoffice/backoffice-navigation.tsx`, Client Component porque necesita el segmento
+activo): sidebar en escritorio, barra inferior con bottom sheets en movil, y acceso
+persistente al mostrador. El Inicio (`app/backoffice/page.tsx`) deja de ser la grilla de 8
+tarjetas iguales. Los estilos van en `globals.css` a partir de `Backoffice shell — mobile
+first`, sobre los tokens del wizard. Plan y criterios en `docs/backoffice-ui-plan.md`; el
+detalle y las decisiones a no revertir, en `docs/backoffice-ui-handoff.md`.
+
+**ESTO NO TIENE SPEC.** Entro como trabajo de UI directo, no por el circuito
+`spec cerrada → implementador → revisor` del ADR 0071, y no hay PASS de revisor
+independiente ni bitacora de mutaciones. Se commitea tal cual para no perderlo; lo que
+sigue abajo es lo que el orquestador SI verifico por su cuenta antes de pushear.
+
+**LOS SEIS GATES, corridos sobre el arbol final en Node 24 (v24.20.0):** `typecheck`,
+`lint`, `format:check`, `build` → **EXIT=0**; `test` con `.env.integration.local` → **227
+archivos / 1768 tests, 0 failed**; **`test:e2e` → EXIT=0, 3 pasados / 1 skipped**.
+
+**PERO EL `test:e2e` NO EJERCITA NADA DE ESTA UI, y se declara:** `tests/e2e/` tiene dos
+archivos — `health.spec.ts` (los 3 contratos `/api/health`) y `loyalty-real.spec.ts`, que se
+**saltea** sin `E2E_MERCHANT_BASE_URL`/`E2E_MERCHANT_EMAIL`/`E2E_MERCHANT_PASSWORD`/
+`E2E_LOYALTY_MUTATION_TEST=true`. Su verde prueba que las 3 apps levantan y compilan, **no
+que la navegacion se vea ni funcione**.
+
+**Lo que el orquestador si reprodujo:**
+
+- **Ningun enlace muerto.** Los 8 `href` de la navegacion y del Inicio cruzados contra los
+  `page.tsx` reales bajo `app/backoffice/`: los 8 resuelven. Staff va **sin `href`** y
+  marcado «Proximamente» — su pantalla no existe en el repo y no se invento una ruta.
+- **El layout no le rompe el mostrador al staff.** `requireBackofficeSession`
+  (`auth-guards.ts:93`) **admite rol staff** (solo corta `memberships.status !== 'active'` y
+  `businessStatus === 'closed'`), asi que envolver `/backoffice/counter` con el layout no lo
+  deja afuera. El staff ve navegacion reducida a mostrador + cierre de sesion.
+- **Cero mutaciones abandonadas:** `grep -rn MUTATION` sobre `apps/` y `packages/` → 0.
+
+**Dos correcciones sobre lo que decia el handoff heredado, medidas:** afirmaba que
+`next build` **no puede completarse en el sandbox** (PostCSS y un puerto) y que el entorno
+corria Node 22.22.2. Con `nvm use` (Node 24) **el build da EXIT=0, 3 tareas exitosas**. La
+imposibilidad era del entorno mal preparado, no del repo.
+
+**Trampa que aparecio y quedo resuelta:** el `next dev` que levanta `test:e2e` **reescribe
+los tres `next-env.d.ts`** de `./.next/types/` a `./.next/dev/types/`. Es artefacto de dev y
+**no se commitea** — se revirtio con `git checkout --`. Si aparece modificado despues de un
+e2e, es esto.
+
+**LO QUE FALTA, y es la unica razon por la que esto no esta cerrado: el QA visual, que nadie
+hizo.** Correr la app con Node 24 y una sesion owner real, y mirar en 320, 390, 768, 1024 y
+1440 px. **El punto mas riesgoso es el mostrador en un movil real**: la barra inferior
+persistente convive ahi con la camara/escaner, y nadie lo vio en pantalla.
+
 ## ⇥ ✅ SPEC 0082 — IMPLEMENTADA CON PASS, COMMITEADA EN `5ac30f9`
 
 **El owner con el email sin verificar ENTRA al backoffice.** Era un incumplimiento de ADR 0070
