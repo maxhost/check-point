@@ -46,7 +46,6 @@ vi.mock("./db", () => {
 
 import {
   BUSINESS_CLOSED,
-  EMAIL_NOT_VERIFIED,
   requireBackofficeSession,
   requireOwner,
   STAFF_DISABLED,
@@ -132,39 +131,62 @@ describe("backoffice guards by role (ADR 0044)", () => {
     // Piso: sin esto, un archivo vacío o movido pasaría este test en verde.
     expect(contrato.length).toBeGreaterThan(5_000);
     expect(contrato).toContain("## Códigos de rebote");
-    for (const code of [STAFF_DISABLED, EMAIL_NOT_VERIFIED]) {
+    for (const code of [STAFF_DISABLED]) {
       expect(contrato).toContain(`\`${code}\``);
     }
+    // Spec 0082: `email_not_verified` YA NO ES un código de rebote — el guard no lo emite,
+    // sólo sobrevive como 403 de API. Si alguien re-pusiera el `redirect`, esta línea no lo
+    // vería; lo que lo ve es el caso «owner sin verificar ENTRA» de abajo. Lo que ASEVERA
+    // acá es lo contrario: que el contrato no siga prometiéndole a la UI un código por `?e=`
+    // que nadie va a mandar nunca.
+    const rebotes = contrato.slice(contrato.indexOf("## Códigos de rebote"));
+    expect(rebotes).not.toContain("| `email_not_verified` |");
   });
 
-  // Mutación #3: el gate de email verificado NO puede alcanzar al staff. Un integrante no
-  // tiene email por diseño (`@staff.invalid`), así que si el gate lo alcanzara el
-  // mostrador quedaría muerto para siempre y ninguna acción lo podría desbloquear.
+  // Spec 0082: el staff NUNCA tuvo gate de email acá y sigue sin tenerlo. No tiene email por
+  // diseño (`@staff.invalid`), así que un gate que lo alcanzara dejaría el mostrador muerto
+  // para siempre. El gate que sí existe —y que también lo exime— es el del mostrador
+  // (`counter-email-gate.test.ts`).
   it("staff con email SIN verificar entra igual al mostrador", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: false } };
     membershipRow = { ...owner, role: "staff", status: "active" };
     const ctx = await requireBackofficeSession();
     expect(ctx.membership).toEqual({ role: "staff", status: "active" });
+    expect(ctx.emailVerified).toBe(false);
     expect(deletes).toEqual([]);
   });
 
-  it("owner con email SIN verificar → /?e=email_not_verified, sin revocar nada", async () => {
+  /**
+   * EL ORÁCULO INVERTIDO DE LA SPEC 0082, y es la mutación #4: hasta esta spec este mismo
+   * caso exigía un rebote a la landing con el motivo en el query. La decisión del owner es
+   * textual (ADR 0070 §11):
+   * *«Entra a su cuenta directamente al terminar el wizard y ve el onboarding»*, y el primer
+   * paso de ese onboarding **es** verificar el email. Entrar sí, acciones no.
+   *
+   * No alcanza con «no redirige»: el contexto tiene que TRAER el dato, porque es lo único con
+   * lo que la página puede pintar ese primer paso.
+   */
+  it("owner con email SIN verificar ENTRA, y se lleva `emailVerified: false`", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: false } };
     membershipRow = { ...owner };
-    expect(await destinationOf(requireBackofficeSession)).toBe(
-      "/?e=email_not_verified",
-    );
-    // El gate BLOQUEA, no expulsa: la sesión sigue viva para poder verificar.
+    const ctx = await requireBackofficeSession();
+    expect(ctx.emailVerified).toBe(false);
+    expect(ctx.membership.role).toBe("owner");
+    expect(ctx.business.id).toBe("b1");
+    // Ni rebota ni expulsa: la sesión sigue viva para poder verificar desde adentro.
     expect(deletes).toEqual([]);
   });
 
-  // Fail-closed: una fila vieja o un doble incompleto no puede ABRIR el gate.
-  it("owner sin el campo `emailVerified` también rebota", async () => {
+  // Fail-closed EN EL DATO, no en la puerta: sin la clave el owner entra igual, pero el
+  // contexto dice `false` — una fila vieja o un doble incompleto no puede pintar la pantalla
+  // como si el buzón estuviera probado.
+  it("owner sin el campo `emailVerified` también entra, y el contexto dice `false`", async () => {
     sessionValue = { user: { id: "u1", name: "Ana" } };
     membershipRow = { ...owner };
-    expect(await destinationOf(requireBackofficeSession)).toBe(
-      "/?e=email_not_verified",
-    );
+    const ctx = await requireBackofficeSession();
+    expect(ctx.emailVerified).toBe(false);
+    expect(ctx.membership.role).toBe("owner");
+    expect(deletes).toEqual([]);
   });
 
   it("active staff passes the session guard but requireOwner sends it to the counter", async () => {

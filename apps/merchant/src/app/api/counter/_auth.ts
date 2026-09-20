@@ -25,10 +25,46 @@ export async function requireOperator(
       response: NextResponse.json({ error: "No autorizado." }, { status: 401 }),
     };
   }
-  const business = await operatorBusiness(session.user.id);
-  if (!business) {
+  const operator = await operatorBusiness(session.user.id);
+  if (!operator) {
     return {
       response: NextResponse.json({ error: "Sin negocio." }, { status: 403 }),
+    };
+  }
+  const { business, role } = operator;
+  /**
+   * EL GATE DE EMAIL DEL MOSTRADOR (spec 0082 §2, decisión textual del owner del 2026-09-19:
+   * *«mostrador, tambien entra en cualquier accion requiere verificar email»*). Hasta esta
+   * spec el mostrador **no tenía gate de email en ninguna línea**: no se notaba porque la
+   * puerta del backoffice rebotaba antes. Sacada esa puerta, un owner sin verificar
+   * acreditaría sellos.
+   *
+   * **`role === "owner"` NO es una optimización, es la trampa central**: el staff no tiene
+   * email por diseño (su `user` lleva un sintético `@staff.invalid` que nunca se entrega,
+   * spec 0067 §4), así que un gate que lo alcanzara dejaría el mostrador muerto PARA SIEMPRE
+   * — no existe ninguna acción con la que un integrante pueda verificar nada.
+   *
+   * **`!== true`, no `!`**: un `undefined` —una fila vieja, un doble incompleto— cierra en
+   * vez de abrir (fail-closed en el dato).
+   *
+   * **Va ANTES del eje `status`**, el orden del ADR 0073 §1 que ya usan `requireApiOwner` y
+   * `requireBackofficeSession`, «para que las dos superficies contesten lo mismo ante el mismo
+   * caller». Consecuencia declarada y pinneada: un owner sin verificar sobre un negocio
+   * `suspended` recibe `email_not_verified`, no `business_suspended`.
+   *
+   * Cubre las CUATRO rutas (`resolve`, `grant`, `redeem`, `coupon-redeem`) porque las cuatro
+   * pasan por acá. `resolve` es una lectura y se gatea igual, a propósito: es el primer paso
+   * de acreditar, y la decisión del owner fue «el mostrador» como unidad, no ruta por ruta.
+   */
+  if (role === "owner" && session.user.emailVerified !== true) {
+    return {
+      response: NextResponse.json(
+        {
+          error: "Verificá tu email para operar el mostrador.",
+          code: "email_not_verified",
+        },
+        { status: 403 },
+      ),
     };
   }
   /**

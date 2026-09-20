@@ -14,7 +14,9 @@ export const dynamic = "force-dynamic";
 const OK_DESTINATION = "/backoffice";
 const FAILED_DESTINATION = "/?e=magic_link_invalid";
 /** Spec 0072 §D4: el negocio esta CERRADO, asi que no se emite sesion. Mismo canal de
- * codigos de rebote que `staff_disabled` y `email_not_verified` (`server/auth-guards.ts`). */
+ * codigos de rebote que `staff_disabled` (`server/auth-guards.ts`). **`email_not_verified` ya
+ * NO viaja por este canal** (spec 0082): el guard dejo de rebotar al owner sin verificar, y
+ * ese motivo existe unicamente como 403 de API. */
 const CLOSED_DESTINATION = "/?e=business_closed";
 
 /**

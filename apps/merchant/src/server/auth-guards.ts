@@ -16,13 +16,6 @@ import { businesses, memberships, sessions } from "./schema";
 export const STAFF_DISABLED = "staff_disabled";
 
 /**
- * Reason code for an OWNER whose email is still unverified (spec 0067 §3 / ADR 0070 §11).
- * Same channel and same allow-list as {@link STAFF_DISABLED}. The API twin of this bounce
- * is the 403 `email_not_verified` of `app/api/staff/_auth.ts`.
- */
-export const EMAIL_NOT_VERIFIED = "email_not_verified";
-
-/**
  * Reason code for a business whose account is CLOSED (spec 0072 §D4). Same channel and same
  * allow-list as {@link STAFF_DISABLED}. El gemelo de API es el 403 `business_closed` de
  * `requireApiOwner`.
@@ -57,6 +50,15 @@ export type GuardMembership = {
 export type BackofficeSession = {
   userId: string;
   userName: string;
+  /** ¿El usuario probó el control de su buzón? (spec 0082 / ADR 0070 §11.)
+   *
+   * Es un DATO que la puerta entrega, **no un gate**: el owner sin verificar entra y ve el
+   * panel, y lo que muere con 403 es cada ACCIÓN. La página lo usa para renderizar el primer
+   * paso del onboarding («verificá tu email»), que no se puede ver desde afuera.
+   *
+   * `=== true` y no `!!`: una fila vieja o un doble incompleto se lee como **sin verificar**
+   * (fail-closed en el dato). */
+  emailVerified: boolean;
   business: GuardBusiness;
   membership: GuardMembership;
 };
@@ -68,7 +70,15 @@ export type BackofficeSession = {
  *  - session but no membership at all → `/` (a brand-new owner);
  *  - membership `status='disabled'` → revokes the session and sends the member to
  *    `/?e=staff_disabled`, so the landing can say why (ADR 0055);
- *  - OWNER with an unverified email → `/?e=email_not_verified` (spec 0067 §3).
+ *  - business `closed` → `/?e=business_closed` (spec 0072 §D4).
+ *
+ * **NO gatea por email verificado, y es una decisión del owner** (spec 0082 / ADR 0070 §11,
+ * textual): *«Entra a su cuenta directamente al terminar el wizard y ve el onboarding»*, y el
+ * primer paso de ese onboarding **es** verificar el email — para verlo hay que estar adentro.
+ * Entrar sí, ACCIONES no: las 11 superficies de API del owner contestan 403
+ * `email_not_verified` (`api-owner-surfaces.test.ts`) y el mostrador también
+ * (`app/api/counter/_auth.ts`). El backoffice no tiene ni una server action: sus 8 páginas son
+ * lecturas, así que sacar el rebote de acá no abre ninguna escritura.
  *
  * **The three destinations are `/` and no longer the sign-in page, which spec 0067 §7
  * deleted.** It is not cosmetics: a redirect to a route that no longer exists turns a
@@ -78,7 +88,7 @@ export type BackofficeSession = {
  * **And `app/page.tsx` no longer bounces a live session to `/backoffice`**: with these
  * three redirects pointing at `/`, that bounce would close an infinite redirect loop.
  *
- * Never returns a disabled, unverified-owner or sessionless caller.
+ * Never returns a disabled or sessionless caller.
  */
 export async function requireBackofficeSession(): Promise<BackofficeSession> {
   const session = await getMerchantAuth().api.getSession({
@@ -125,33 +135,23 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
     redirect(`/?e=${STAFF_DISABLED}`);
   }
 
-  // EL GATE DE EMAIL VERIFICADO (spec 0067 §3 / ADR 0070 §11), acá adentro y no repartido
-  // por pantalla: éste es el guard de las 8 páginas del backoffice **y del mostrador**.
-  //
-  // `role === "owner"` NO es una optimización: el staff no tiene email por diseño (su
-  // `user` lleva un sintético `@staff.invalid` que nunca se entrega, spec §4), así que sin
-  // esa condición el mostrador quedaría inutilizable PARA SIEMPRE — no hay ninguna acción
-  // con la que un integrante pueda verificar nada. Es la mutación #3 del presupuesto.
-  //
-  // Va DESPUÉS del chequeo de `status`: un miembro desactivado tiene que seguir recibiendo
-  // su propio motivo, y su sesión revocada, antes que cualquier otra cosa.
-  //
-  // `emailVerified` sale de la sesión de better-auth, que ya leyó la fila del usuario: no
-  // agrega una consulta. Se compara contra `true` en vez de negar, para que un `undefined`
-  // —una fila vieja, un doble de test incompleto— cierre en vez de abrir (fail-closed).
-  if (row.role === "owner" && session.user.emailVerified !== true)
-    redirect(`/?e=${EMAIL_NOT_VERIFIED}`);
+  // ACÁ VIVÍA EL REBOTE POR EMAIL SIN VERIFICAR, y su ausencia es la spec 0082: rebotar en
+  // la PUERTA bloqueaba las 8 páginas y el mostrador de una, y dejaba al owner sin ninguna
+  // superficie donde ver el paso «verificá tu email» que el ADR 0070 §11 pone PRIMERO en su
+  // onboarding. Reproducido en prod el 2026-09-19: «Ir a mi panel» aterrizaba en la landing
+  // con el motivo en el query. Ese motivo sobrevive como 403 de API, nunca más como `?e=`.
 
-  // EL EJE `status` (spec 0072 §D4). Va DESPUES del email, el mismo orden que
-  // `requireApiOwner` (ADR 0073 §1), para que las dos superficies contesten lo mismo ante el
-  // mismo caller. **Solo `closed` rebota**: `suspended` pasa a proposito, porque el owner
-  // tiene que poder ver el motivo — y el mostrador de un negocio suspendido igual no acredita
-  // nada (`api/counter/_auth.ts` lo corta con 403).
+  // EL EJE `status` (spec 0072 §D4), el mismo orden que `requireApiOwner` (ADR 0073 §1) para
+  // que las dos superficies contesten lo mismo ante el mismo caller. **Solo `closed` rebota**:
+  // `suspended` pasa a proposito, porque el owner tiene que poder ver el motivo — y el
+  // mostrador de un negocio suspendido igual no acredita nada (`api/counter/_auth.ts` lo corta
+  // con 403).
   if (row.businessStatus === "closed") redirect(`/?e=${BUSINESS_CLOSED}`);
 
   return {
     userId: session.user.id,
     userName: session.user.name,
+    emailVerified: session.user.emailVerified === true,
     business: {
       id: row.id,
       name: row.name,

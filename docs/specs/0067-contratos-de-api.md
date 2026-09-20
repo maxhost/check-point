@@ -484,12 +484,19 @@ imprimir el parametro crudo**: un codigo desconocido no renderiza nada.
 | `code` | Quien lo emite | Que significa | Texto sugerido |
 |---|---|---|---|
 | `staff_disabled` | `requireBackofficeSession` (`server/auth-guards.ts`, constante `STAFF_DISABLED`) | la membresia del integrante esta `disabled`; el guard ademas **revoco su sesion** antes de rebotarlo (ADR 0055) | «Miembro del staff desactivado» |
-| `email_not_verified` | `requireBackofficeSession` (constante `EMAIL_NOT_VERIFIED`), solo para `role='owner'` | el owner todavia no probo el control de su buzon; todo lo posterior al wizard esta bloqueado (ADR 0070 §11). La sesion **sigue viva**: se sale de ahi con §7 + §6 | «Verificá tu email para continuar» |
 | `magic_link_invalid` | `GET /api/merchant/auth/magic-link` (§6) | el enlace no traia token, o el token era invalido, estaba vencido o ya se habia usado | «Ese enlace ya no sirve. Pedí uno nuevo.» |
 
-**Gemelo de API:** en las rutas owner-only el mismo motivo no rebota, responde **403 con
-`code: "email_not_verified"`** (§2, §2-bis, §4, §4-bis y §8) — un `redirect()` sobre un `POST` es un 307 y no
-el 403 que la UI necesita.
+**`email_not_verified` SALIO de esta tabla (spec 0082).** Ya no es un codigo de rebote: el
+guard de paginas **no lo emite mas**, porque el owner sin verificar **entra** al backoffice —
+es el paso 2 textual del ADR 0070 §11, y el primer paso de su onboarding (verificar el email)
+solo se puede ver desde adentro. El motivo existe **unicamente como 403 de API**: las rutas
+owner-only de §2, §2-bis, §4, §4-bis y §8, y las 4 del mostrador
+(`0072-contratos-de-api.md` §2). Un `redirect()` sobre un `POST` es un 307 y no el 403 que la
+UI necesita, asi que la superficie que corta es la API y nunca la puerta.
+
+**Como lo lee la UI:** `GET /api/merchant/session` devuelve `emailVerified`
+(`0074-contratos-de-api.md` §1) y `requireBackofficeSession` lo pone en su contexto. Con ese
+dato la pantalla pinta el primer paso del onboarding; no hay ningun `?e=` que esperar.
 
 **Pinneado:** `server/auth-guards.test.ts` lee este archivo y exige que cada codigo que el
 guard emite tenga su fila aca. Un codigo nuevo sin fila pone ese test rojo.

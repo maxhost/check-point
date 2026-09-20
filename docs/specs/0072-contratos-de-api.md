@@ -169,8 +169,23 @@ cliente sobre por que lo frenaron.
 |---|---|---|---|
 | sin sesion | 401 | — (cuerpo `{ error }`, sin `code`; **estado actual**, la 0072 no lo cambio) | no |
 | sesion sin negocio / membresia `disabled` | 403 | — (idem) | no |
+| **owner con el email sin verificar** | **403** | **`email_not_verified`** (spec 0082) | no |
 | negocio `suspended` | **403** | `business_suspended` | **NO** |
 | negocio `closed` | **403** | `business_closed` | no |
+
+**`email_not_verified` lo recibe SOLO el owner: un integrante NUNCA lo recibe** (spec 0082 §2).
+No es una optimizacion — el staff no tiene email por diseño (`handle@slug` + PIN, su `user`
+lleva un sintetico `@staff.invalid` que nunca se entrega, spec 0067 §4), asi que un gate que lo
+alcanzara dejaria el mostrador **muerto para siempre**: no existe ninguna accion con la que un
+integrante pueda verificar nada.
+
+**Y va ANTES del eje `status`**, el orden del ADR 0073 §1 que ya usan `requireApiOwner` y
+`requireBackofficeSession`. Consecuencia observable y declarada: un owner sin verificar sobre un
+negocio `suspended` recibe **`email_not_verified`**, no `business_suspended`.
+
+**Las cuatro rutas lo emiten** (`resolve`, `grant`, `redeem`, `coupon-redeem`), incluida
+`resolve`, que es una **lectura**: es el primer paso de acreditar, y la decision del owner
+(2026-09-19) fue «el mostrador» como unidad, no ruta por ruta.
 
 **Por que el motivo NO viaja acá, y es contrato:** el mostrador lo opera tambien el staff, y
 `suspension_reason` es una nota interna sobre la cuenta del negocio. Se serializa **solo al
@@ -267,9 +282,14 @@ Mismo canal y misma allow-list que el contrato 0067 «Codigos de rebote». El pa
 | `code` | Lo emite | Cuando |
 |---|---|---|
 | `staff_disabled` | `requireBackofficeSession` | membresia `disabled` (ADR 0055) |
-| `email_not_verified` | `requireBackofficeSession` | owner con el email sin verificar (spec 0067 §3) |
 | **`business_closed`** | `requireBackofficeSession` | **negocio `closed`** (spec 0072 §D4) |
 | `magic_link_invalid` | consumo del link | token invalido o vencido |
+
+**`email_not_verified` SALIO de esta tabla (spec 0082)**, igual que de la del contrato 0067: el
+guard de paginas dejo de emitirlo porque el owner sin verificar **entra** (ADR 0070 §11, paso 2
+textual). Sobrevive **solo como 403 de API** — las 11 superficies del owner (§1) y las 4 del
+mostrador (§2). La pantalla lo sabe por `emailVerified`, que `GET /api/merchant/session`
+devuelve (`0074-contratos-de-api.md` §1) y `requireBackofficeSession` pone en su contexto.
 
 **`suspended` NO rebota, a proposito.** El owner de un negocio suspendido **entra al
 backoffice**, porque es la unica superficie donde puede enterarse de por que. Para que la

@@ -63,7 +63,12 @@ describe.skipIf(!integrationEnabled)(
       });
       // Anti-false-green: the active staff DOES resolve, so a null for the disabled one
       // is the `status` filter and not a typo/missing seed.
-      expect(await operatorBusiness(active)).toMatchObject({ id: businessId });
+      // Spec 0082 §2: `operatorBusiness` devuelve `{ business, role }` — el rol viaja AFUERA
+      // del negocio. La intención de este caso no cambia: el activo resuelve, el desactivado
+      // no.
+      expect((await operatorBusiness(active))?.business).toMatchObject({
+        id: businessId,
+      });
       expect(await operatorBusiness(disabled)).toBeNull();
     }, 60_000);
 

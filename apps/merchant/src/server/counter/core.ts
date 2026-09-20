@@ -74,14 +74,34 @@ export type OperatorBusiness = {
   status: string;
 };
 
+/** El negocio del operador **y su rol**, que son DOS EJES y por eso viajan separados
+ * (spec 0082 §2).
+ *
+ * El `role` queda AFUERA de {@link OperatorBusiness} a propósito: ese objeto es el argumento
+ * que reciben los cuatro escritores del dominio (`grant`, `redeem`, `resolve`, `coupon`), y
+ * meterle la membresía adentro les mete un eje que no tienen por qué ver. Es la lección que ya
+ * vive en `auth-guards.ts` (ADR 0055): *«dos ejes distintos con el mismo nombre es como uno
+ * termina decidiendo por el otro»*.
+ *
+ * Quien lo necesita es UNO solo: el gate de email del mostrador (`app/api/counter/_auth.ts`),
+ * que alcanza al owner y **no** al staff. */
+export type CounterOperator = {
+  business: OperatorBusiness;
+  role: string;
+};
+
 export async function operatorBusiness(
   userId: string,
-): Promise<OperatorBusiness | null> {
-  const [business] = await getDb()
+): Promise<CounterOperator | null> {
+  const [row] = await getDb()
     .select({
       id: businesses.id,
       currencyCode: businesses.currencyCode,
       status: businesses.status,
+      // Una columna más en el `innerJoin(memberships)` que ya existía, no una consulta
+      // nueva: `where`, `orderBy` y `limit` no se tocan, así que esto no puede mover qué
+      // fila resuelve el guard.
+      role: memberships.role,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -90,7 +110,15 @@ export async function operatorBusiness(
     )
     .orderBy(asc(businesses.createdAt))
     .limit(1);
-  return business ?? null;
+  if (!row) return null;
+  return {
+    business: {
+      id: row.id,
+      currencyCode: row.currencyCode,
+      status: row.status,
+    },
+    role: row.role,
+  };
 }
 
 /** Confirms a location belongs to the operator's business AND is still `active`;
