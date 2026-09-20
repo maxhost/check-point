@@ -109,7 +109,7 @@ con su item en `done: false`. Ese es el caso principal del endpoint, no un borde
 |---|---|---|
 | **401** | `unauthorized` | No hay sesion |
 | **403** | `not_owner` | Hay sesion pero no es owner con membresia `active` (p. ej. un integrante) |
-| **403** | `business_suspended` | El negocio esta suspendido. Trae ademas `reason` cuando hay motivo |
+| **403** | `business_suspended` | El negocio esta suspendido. Trae ademas **`suspensionReason`** cuando hay motivo — **camelCase, es la clave que serializa `apiOwnerFailureResponse`** y la convencion declarada en `0072-contratos-de-api.md`. (La primera version de esta fila decia `reason`, que es el nombre del campo INTERNO del guard y **nunca** viaja por HTTP.) |
 | **403** | `business_closed` | El negocio esta cerrado |
 | **503** | `onboarding_unavailable` | Fallo de base |
 

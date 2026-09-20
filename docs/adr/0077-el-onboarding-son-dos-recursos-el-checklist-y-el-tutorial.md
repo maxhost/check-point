@@ -2,7 +2,7 @@
 adr: 0077
 fecha: 2026-09-20
 estado: aceptada
-resumen: El onboarding se parte en DOS recursos con ciclos de vida opuestos — el CHECKLIST («que hay que hacer y en que estado esta», derivado de hechos de la base, sobrevive a cualquier rediseño) y el TUTORIAL de cada item («toca aca, abri la camara», que ES la descripcion de una pantalla concreta y cambia cada vez que esa pantalla cambia). Meterlos en un endpoint los ata a la cadencia del mas volatil. El orden, la obligatoriedad y el bloqueo los dicta la API —`required` y `blocking` son DOS ejes separados, no uno— y el texto viaja en la respuesta para que un segundo idioma sea un cambio de servidor; pero el ANCLA es una clave estable (`"verify-email"`), nunca un selector ni una coordenada, o cada rediseño de UI rompe el tour en produccion sin señal. Arranca con UN item (`verify-email`) y su almacenamiento es CODIGO: con un item no hay orden que cambiar ni obligatoriedad que alternar, y mover a tabla despues es invisible para la UI porque el JSON no cambia.
+resumen: El onboarding se parte en DOS recursos con ciclos de vida opuestos — el CHECKLIST («que hay que hacer y en que estado esta», derivado de hechos de la base, sobrevive a cualquier rediseño) y el TUTORIAL de cada item («toca aca, abri la camara», que ES la descripcion de una pantalla concreta y cambia cada vez que esa pantalla cambia). Meterlos en un endpoint los ata a la cadencia del mas volatil. El orden, la obligatoriedad y el bloqueo los dicta la API —`required` y `blocking` son DOS ejes separados, no uno— y el texto viaja en la respuesta para que un segundo idioma sea un cambio de servidor; pero el ANCLA es una clave estable (`"verify-email"`), nunca un selector ni una coordenada, o cada rediseño de UI rompe el tour en produccion sin señal. Arranca con UN item (`verify-email`) usa `requireApiOwnerSinGateDeEmail` —la pieza que ya existe— como TERCERA ruta exenta, con el inventario cerrado ampliado de 2 a 3 por decision del owner; y su almacenamiento es CODIGO: con un item no hay orden que cambiar ni obligatoriedad que alternar, y mover a tabla despues es invisible para la UI porque el JSON no cambia.
 ---
 
 # 0077 — El onboarding son dos recursos: el checklist y el tutorial
@@ -175,9 +175,28 @@ buscar. Es el mismo argumento que ya sostiene el 200-siempre de `/api/merchant/s
 (`0074-contratos-de-api.md` §1).
 
 `requireApiOwner` no sirve, porque su escalera **siempre** evalua el email en el paso 3 y no
-admite saltarlo. **Pero no se escribe un resolvedor nuevo** — eso reintroduciria la
-divergencia de seis resolvedores que la spec 0072 mato. El checklist reusa las **mismas piezas
-compartidas** y recorre la escalera del ADR 0073 §1 **salteando solo el paso 3**:
+admite saltarlo.
+
+**LA PIEZA CORRECTA YA EXISTE Y ES `requireApiOwnerSinGateDeEmail`** (`api-owner.ts:174`), que
+hace **pasos 1, 2 y 4 sin el 3**. El checklist la usa y pasa a ser su **tercera** ruta.
+
+> **Correccion del 2026-09-20.** La primera version de este §6 decia «no se escribe un
+> resolvedor nuevo: se llaman las piezas por separado», sin mencionar a esa hermana — el
+> orquestador leyo `requireApiOwner` hasta la linea 90 y no vio la 174. Con esa premisa el
+> implementador armo la escalera a mano: correcto y seguro, pero **una exencion del gate de
+> email invisible al control que el repo monto para contarlas**. La spec 0075 §D1 eligio
+> deliberadamente marcar las exenciones **con un nombre** y no con un flag, justamente para que
+> `rg 'SinGateDeEmail' apps` las pueda contar; una escalera a mano evade ese mecanismo.
+>
+> **Decision del owner (2026-09-20): usar la hermana y ampliar el inventario cerrado de
+> exenciones de 2 a 3.** No es editar un test para que pase un gate —el test no estaba rojo—:
+> es actualizar un inventario declarado porque el inventario cambio. El freno del docblock
+> (*«no se extiende a una tercera sin volver a discutirlo»*) existe para forzar la pregunta
+> *¿esta bien que esta ruta se exima?*, y la respuesta es **si**, por el auto-gateo. La
+> exencion que se suma es la mas inocua de las tres: **lectura pura**, no escribe nada y no
+> devuelve datos del negocio (las otras dos incluyen la que **escribe el programa**).
+
+La escalera que corre, entonces:
 
 ```
 1. ¿hay sesion?       → 401 unauthorized          (getSession, igual que todos)

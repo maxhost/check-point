@@ -2,9 +2,9 @@
 spec: 0083
 fecha: 2026-09-20
 estado: cerrada
-resumen: `GET /api/onboarding/checklist` — el checklist del onboarding del ADR 0070 §9, que estaba diferido desde la 0074. Arranca con UN item (`verify-email`), cuyo hecho ya viaja en la sesion y cuya accion ya existe. La API dicta `position`, `required` y `blocking` —dos ejes SEPARADOS por decision del owner— la UI no tiene lista propia, y el texto viaja en la respuesta con `locale: "es"` fijo y declarado. NO lleva gate de email —un endpoint que dice «verifica tu email» no puede estar bloqueado por no haberlo verificado— y por eso no usa `requireApiOwner`: reusa `ownerContext` y `businessStatusFailure` y recorre la escalera del ADR 0073 §1 salteando SOLO el paso 3. Sin migracion: el catalogo de items es codigo tipado, como `ENTITLEMENTS`.
+resumen: `GET /api/onboarding/checklist` — el checklist del onboarding del ADR 0070 §9, que estaba diferido desde la 0074. Arranca con UN item (`verify-email`), cuyo hecho ya viaja en la sesion y cuya accion ya existe. La API dicta `position`, `required` y `blocking` —dos ejes SEPARADOS por decision del owner— la UI no tiene lista propia, y el texto viaja en la respuesta con `locale: "es"` fijo y declarado. NO lleva gate de email —un endpoint que dice «verifica tu email» no puede estar bloqueado por no haberlo verificado— y por eso no usa `requireApiOwner` sino su hermana **`requireApiOwnerSinGateDeEmail`**, que ya existe y ya hace los pasos 1, 2 y 4. Pasa a ser la TERCERA ruta exenta, y el inventario cerrado de exenciones (`NOMBRES_SIN_GATE_DE_EMAIL`, aseverado en 2) se amplia a 3 — decision del owner del 2026-09-20. Sin migracion: el catalogo de items es codigo tipado, como `ENTITLEMENTS`.
 disjunta: si
-archivos: apps/merchant/src/server/onboarding/checklist.ts, apps/merchant/src/app/api/onboarding/checklist/route.ts, apps/merchant/src/server/onboarding/checklist.test.ts, apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts
+archivos: apps/merchant/src/server/onboarding/checklist.ts, apps/merchant/src/app/api/onboarding/checklist/route.ts, apps/merchant/src/server/onboarding/checklist.test.ts, apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts, apps/merchant/src/server/api-owner-surfaces-support.ts, apps/merchant/src/server/api-owner-surfaces.test.ts
 ---
 
 # 0083 — El checklist del onboarding
@@ -15,6 +15,28 @@ archivos: apps/merchant/src/server/onboarding/checklist.ts, apps/merchant/src/ap
 >
 > **Arquitectura de referencia: ADR 0077**, que decide todo lo que esta spec implementa. Si
 > algo de aca contradice al 0077, manda el 0077.
+
+## ENMIENDA DEL 2026-09-20 — leer antes que nada
+
+**Esta spec se corrigio DESPUES de una primera implementacion, y el defecto era de la spec.**
+
+El §D3 original decia «no se usa `requireApiOwner` … y tampoco se escribe un resolvedor nuevo:
+se llaman las piezas por separado». **Era una medicion a medias:** el orquestador leyo
+`requireApiOwner` hasta la linea 90 y **`requireApiOwnerSinGateDeEmail` esta en la 174**. Esa
+hermana ya existe, ya hace **pasos 1, 2 y 4 sin el 3**, y ya la usan dos rutas.
+
+El implementador obedecio la spec y escribio la escalera a mano. El resultado era correcto y
+seguro, pero creaba **una ruta exenta del gate de email invisible al control que el repo monto
+para contarlas** (`rg 'SinGateDeEmail' apps` + el inventario `NOMBRES_SIN_GATE_DE_EMAIL`).
+
+**Decision del owner, 2026-09-20: opcion A** — usar la hermana existente y **ampliar el
+inventario de 2 a 3**. No es «editar un test para que pase un gate» (el test no estaba rojo):
+es actualizar un inventario declarado porque el inventario cambio. La pregunta que el freno del
+docblock queria forzar —*¿esta bien que esta ruta se exima?*— se discutio y la respuesta es si,
+por el auto-gateo.
+
+**La spec se mantiene `cerrada`** en vez de volver a `borrador` y cerrarse en el mismo turno:
+el cambio de alcance queda registrado aca, que es lo que la regla de AGENT-WORKFLOW persigue.
 
 ## Problema
 
@@ -126,22 +148,34 @@ garantizado, y un `sort` que ya esta ahi es lo que evita que ese dia el bug sea 
 
 **La escalera, y el salteo es el punto de la spec** (ADR 0077 §6 / ADR 0073 §1):
 
-| Paso | Chequeo | Respuesta | Pieza reusada |
-|---|---|---|---|
-| 1 | ¿hay sesion? | **401** `unauthorized` | `getMerchantAuth().api.getSession` |
-| 2 | ¿owner con membresia `active`? | **403** `not_owner` | **`ownerContext`** (`server/staff.ts`) |
-| 3 | ¿email verificado? | **SE SALTEA** | — |
-| 4 | ¿el negocio opera? | **403** `business_suspended` \| `business_closed` | **`businessStatusFailure`** (`server/business-status.ts`, funcion pura) |
-| — | todo bien | **200** con la vista | `toChecklistView` |
+**EL GUARD ES UNA LINEA, Y ES LA PIEZA QUE YA EXISTE:**
 
-**Por que no se usa `requireApiOwner`:** su escalera evalua el email en el paso 3 **siempre** y
-no admite saltarlo (`api-owner.ts:30-40`, verificado). Usarlo devolveria 403
-`email_not_verified` justo al owner que viene a que le digan que verifique el email.
+```ts
+const auth = await requireApiOwnerSinGateDeEmail(request, {
+  notOwner: "Solo el owner puede ver el checklist del onboarding.",
+});
+if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
+```
 
-**Y por que NO se escribe un resolvedor nuevo:** seis resolvedores divergidos es el agujero
-que mato la spec 0072 y no se reabre. Se reusan las **mismas** piezas compartidas
-(`ownerContext`, `businessStatusFailure`, `API_OWNER_CODES`); lo unico propio de esta ruta es
-**el orden en que las llama**, con el paso 3 ausente.
+`requireApiOwnerSinGateDeEmail` (`api-owner.ts:174`) hace **pasos 1, 2 y 4 — sin el 3**, que es
+exactamente lo que esta ruta necesita:
+
+| Paso | Chequeo | Respuesta |
+|---|---|---|
+| 1 | ¿hay sesion? | **401** `unauthorized` |
+| 2 | ¿owner con membresia `active`? | **403** `not_owner` |
+| 3 | ¿email verificado? | **NO CORRE** — es la razon de ser de esa funcion |
+| 4 | ¿el negocio opera? | **403** `business_suspended` \| `business_closed` |
+| — | todo bien | **200** con `toChecklistView` |
+
+**Por que no `requireApiOwner` a secas:** su escalera evalua el email en el paso 3 **siempre** y
+no admite saltarlo (verificado). Usarlo devolveria 403 `email_not_verified` justo al owner que
+viene a que le digan que verifique el email.
+
+**Y POR QUE NO SE ARMA LA ESCALERA A MANO —aunque llame a las mismas piezas compartidas—:**
+porque el repo eligio (spec 0075 §D1) marcar las exenciones **con un nombre distintivo y no con
+un flag**, para que `rg 'SinGateDeEmail' apps` pueda contarlas. Una escalera escrita a mano es
+una exencion que **ni el `rg` ni el inventario ven**. Es el mecanismo de control, no estetica.
 
 **El paso 4 NO se saltea**, a proposito: saltear el 3 tiene una razon (auto-gateo), saltear el
 4 no tendria ninguna.
@@ -158,6 +192,29 @@ Fallo de base → **503** `onboarding_unavailable`.
 es la de `ownerContext`, que es la misma que hace cualquier superficie de owner. Total:
 **una consulta**, igual que las demas.
 
+### D5 — El inventario de exenciones pasa de 2 a 3
+
+Esta ruta es la **tercera** exenta del gate de email, y eso se **declara**, no se deja implicito:
+
+| Archivo | Que cambia |
+|---|---|
+| `api-owner-surfaces-support.ts` | la fila del checklist entra a `SURFACES`, y `"onboarding/checklist"` se suma a `NOMBRES_SIN_GATE_DE_EMAIL` |
+| `api-owner-surfaces.test.ts` | una entrada en `DESENLACE_SIN_GATE` (el desenlace del camino feliz: **200** y cuerpo con `items[0].id === "verify-email"`), la lista de nombres aseverada, y **`.toBe(2)` → `.toBe(3)`** |
+
+**Las dos tablas salen de `SURFACES` por filtro** —no son listas paralelas—, asi que agregar la
+fila en un solo lugar mueve los dos pisos.
+
+**Esto NO es «editar un test para que pase un gate»:** el test **no esta rojo**. Es un
+inventario declarado que cambia porque el owner decidio sumar una exencion. Si hay 3 y el
+inventario dice 2, **el que miente es el inventario**.
+
+**Ganancia colateral, y no es menor:** al entrar a `SURFACES`, la ruta queda cubierta por la
+bateria que ya corre **los cinco estados del caller** sobre cada superficie — cobertura que con
+la escalera a mano no tenia.
+
+**El docblock de `requireApiOwnerSinGateDeEmail` hay que ACTUALIZARLO:** hoy dice «exactamente
+esas dos rutas». Pasa a tres, nombrando a esta y su motivo.
+
 ## Archivos
 
 | Archivo | Accion |
@@ -166,10 +223,15 @@ es la de `ownerContext`, que es la misma que hace cualquier superficie de owner.
 | `apps/merchant/src/app/api/onboarding/checklist/route.ts` | crear |
 | `apps/merchant/src/server/onboarding/checklist.test.ts` | crear |
 | `apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts` | crear |
+| `apps/merchant/src/server/api-owner-surfaces-support.ts` | **editar** — la fila y el nombre en el inventario (D5) |
+| `apps/merchant/src/server/api-owner-surfaces.test.ts` | **editar** — desenlace, lista y el conteo 2 → 3 (D5) |
+| `apps/merchant/src/server/api-owner.ts` | **editar SOLO el docblock** de `requireApiOwnerSinGateDeEmail`: «dos rutas» → tres. **Ni una linea de codigo** |
 | `docs/specs/0083-contratos-de-api.md` | ya escrito (anexo de esta spec) |
 
-**Disjunta?** **Si.** No hay otra spec en ejecucion; los archivos son todos nuevos y ninguna
-ruta existente se edita.
+**Disjunta?** **Si.** No hay otra spec en ejecucion. **Pero ya NO es cierto que «ninguna ruta
+existente se edita»:** la enmienda toca tres archivos existentes, los tres del inventario de
+exenciones. El cuerpo de `requireApiOwner` y el de su hermana **quedan byte por byte iguales** —
+eso es invariante de la spec 0075 y esta spec no lo afloja.
 
 ## Definition of Done
 
@@ -189,10 +251,17 @@ ruta existente se edita.
       `business_suspended`.
 - [ ] **La ruta no emite `email_not_verified` en ningun camino:**
       `rg -n 'email_not_verified' apps/merchant/src/app/api/onboarding/checklist/` → **vacio**.
-- [ ] **No se escribio un resolvedor nuevo:**
-      `rg -n 'ownerContext|businessStatusFailure' apps/merchant/src/app/api/onboarding/checklist/route.ts`
-      → las dos presentes; `rg -n 'innerJoin|getDb' .../route.ts` → **vacio** (la ruta no
-      consulta por su cuenta).
+- [ ] **La ruta usa la pieza existente:**
+      `rg -n 'requireApiOwnerSinGateDeEmail' apps/merchant/src/app/api/onboarding/checklist/route.ts`
+      → presente; y `rg -n 'ownerContext|businessStatusFailure|getSession|innerJoin|getDb' .../route.ts`
+      → **vacio** (la ruta no arma la escalera ni consulta por su cuenta).
+- [ ] **El inventario de exenciones dice TRES:** `rg -l 'SinGateDeEmail' apps/merchant/src/app`
+      → **exactamente 3 rutas** (`loyalty-program`, `loyalty-program/qr`, `onboarding/checklist`);
+      `NOMBRES_SIN_GATE_DE_EMAIL` contiene `"onboarding/checklist"`; y la asercion de conteo
+      del test dice **3**, no 2.
+- [ ] **El CUERPO de los dos guards queda intacto** (invariante de la 0075, que esta spec no
+      afloja): en el diff de `api-owner.ts` **solo hay lineas de docblock** — ni una linea
+      dentro de `requireApiOwner` ni de `requireApiOwnerSinGateDeEmail`.
 - [ ] **`toChecklistView` ordena por `position`** aunque las entradas lleguen desordenadas
       (test de la funcion pura, sin Neon).
 - [ ] **Ningun `.tsx` tocado:** `git status --porcelain | grep -c '\.tsx$'` → **0**.
@@ -207,14 +276,21 @@ ruta existente se edita.
 La clase de error a cazar es **que el guard deje pasar a quien no debe, o bloquee a quien la
 ruta existe para servir**, y **que `done` no sea vacuo**.
 
-| # | Mutacion | Oraculo que tiene que ponerse ROJO |
-|---|---|---|
-| 1 | Agregar el gate de email a la ruta (o cambiar `ownerContext` por `requireApiOwner`) | El caso «owner SIN verificar recibe 200 con su item» → debe dar 403 `email_not_verified`. **Es la mutacion que prueba que el invariante central tiene oraculo** |
-| 2 | Sacar el chequeo de owner (paso 2) | El caso del integrante → debe pasar de 403 `not_owner` a 200 |
-| 3 | `done: () => true` en la entrada | El caso «owner sin verificar» → `done` debe quedar en `true` y romper la asercion |
-| 4 | `done: () => false` en la entrada | El caso «owner verificado» → `done` debe quedar en `false`. **La 3 y la 4 juntas** son las que prueban que `done` lee el hecho y no devuelve una constante |
-| 5 | Sacar `businessStatusFailure` (paso 4) | Los casos `closed` y `suspended` → deben pasar de 403 a 200 |
-| 6 | En `toChecklistView`, emitir `blocking: def.required` (colapsar los dos ejes en uno) | El caso sintetico `{ required: true, blocking: false }` → debe recibir `blocking: true`. **Es la unica mutacion que el catalogo real NO puede cazar**, porque con un item los dos campos valen `true`; por eso su oraculo son entradas sinteticas |
+| # | Mutacion | Archivo | Oraculo que tiene que ponerse ROJO |
+|---|---|---|---|
+| 1 | `requireApiOwnerSinGateDeEmail` → `requireApiOwner` (o sea, poner el paso 3) | `route.ts` | El caso «owner SIN verificar recibe 200 con su item» → debe dar 403 `email_not_verified`. **Es la mutacion que prueba que el invariante central tiene oraculo.** Confirmar que el rojo es el caso del **owner**: el del integrante tiene que quedar VERDE (sigue dando `not_owner`) |
+| 2 | Sacar el guard entero y resolver la sesion a mano, sin owner ni `status` | `route.ts` | El caso del **integrante** (403 `not_owner` → 200) **y** los de `closed`/`suspended`. Es el error catastrofico plausible: «total, es una lectura» |
+| 3 | `done: () => true` en la entrada | `checklist.ts` | El caso «owner sin verificar» → `done` debe quedar en `true` y romper la asercion |
+| 4 | `done: () => false` en la entrada | `checklist.ts` | El caso «owner verificado» → `done` debe quedar en `false`. **La 3 y la 4 juntas** prueban que `done` lee el hecho y no devuelve una constante |
+| 5 | En `toChecklistView`, emitir `blocking: def.required` | `checklist.ts` | El caso sintetico `{ required: true, blocking: false }` → debe recibir `blocking: true`. **El catalogo real NO puede cazarla** (con un item los dos valen `true`): su oraculo son entradas sinteticas por el segundo parametro |
+| 6 | Sacar `"onboarding/checklist"` de `NOMBRES_SIN_GATE_DE_EMAIL` **dejando la fila en `SURFACES`** | `api-owner-surfaces-support.ts` | La bateria de superficies: la ruta cae a `SURFACES_CON_GATE_DE_EMAIL`, que le va a exigir **403 `email_not_verified`** y va a recibir **200**. **Prueba que el inventario GOBIERNA y no es decorativo** — sin esta mutacion, ampliarlo a 3 seria un numero escrito a mano sin oraculo |
+
+**Cambio respecto de la tabla original** (enmienda del 2026-09-20): las viejas M2 y M5 atacaban
+los pasos 2 y 4 **dentro de la ruta**. Con la opcion A esos pasos ya no viven ahi: viven en
+`requireApiOwnerSinGateDeEmail`, que **ya esta pinneada** por `api-owner-surfaces.test.ts` sobre
+las tres filas. Mutarla seria medir de nuevo lo que otra spec ya mide, con un rojo ancho y poca
+informacion. En su lugar entran la M2 nueva (sacar el guard entero, que es el error plausible de
+verdad) y la M6 (el inventario), que **no tenian oraculo antes**.
 
 **Protocolo:** `shasum` limpio antes de mutar → fila de bitacora **antes** de medir → etiqueta
 `MUTATION` → medir y **transcribir la salida ejecutada** → revertir con `diff` contra copia
@@ -229,6 +305,10 @@ corta y va al owner. Lo que queda afuera se **declara**.
 
 ## Declarado AFUERA (sin oraculo, a proposito)
 
+- **Los pasos 1, 2 y 4 en si mismos.** Ya no son codigo de esta spec: viven en
+  `requireApiOwnerSinGateDeEmail` y los pinnea `api-owner-surfaces.test.ts` corriendo los cinco
+  estados del caller sobre las tres filas. Esta spec prueba que **usa** esa pieza (M1, M2) y que
+  **esta declarada en el inventario** (M6), no vuelve a probar la pieza.
 - **El idioma.** `locale: "es"` es una constante; no hay caso que lo mueva porque no hay
   columna de idioma del merchant en ninguna tabla (medido). No se testea la eleccion de
   idioma porque no hay eleccion.

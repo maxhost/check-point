@@ -69,6 +69,20 @@ Reglas que acompañan:
   escrito de memoria regala una cobertura que no existe.
 - **La mutacion se corre contra TODOS los archivos que pueden verla**, y el alcance se escribe en
   la fila.
+- **`MUTATION`/`MUTACION` es PALABRA RESERVADA: no la escribas en un docblock que documente que
+  mutacion pinnea un test.** El hook `no-mutations-left.sh` busca
+  `\b(MUTATION|MUTACION)\b` en `src/`, `apps/*/src` y `packages/*/src` —**las dos
+  ortografias**— y no puede distinguir una etiqueta viva de prosa que la nombra. Documentar
+  «este test es el oraculo de la mutacion M1» es valioso y hay que seguir haciendolo, pero se
+  escribe **«ORACULO DE M1»**, sin la palabra. Medido el 2026-09-20 en la spec 0083: seis
+  docblocks perfectamente correctos bloquearon el turno, y hubo que probar —con `diff` contra
+  las copias limpias de `/tmp`— que **ninguna** mutacion estaba aplicada. **No se debilita el
+  hook para que acepte prosa:** es deliberadamente tonto y ahi esta su valor.
+- **El hook NO escanea `.next/`**, asi que un artefacto de build viejo con una mutacion adentro
+  no lo dispara — pero SI aparece en un `grep -r` tuyo sobre `apps/`. Antes de alarmarte por un
+  hit ahi, mira si el fuente real lo tiene: un source map de `.next/dev/` puede ser de hace
+  varias specs (se reconoce porque su copia del archivo no tiene los campos que agregaron las
+  specs posteriores).
 - **Un gate rojo COLATERAL bajo una mutacion viva no se arregla: se espera.** (Un import que
   queda sin uso porque la mutacion borro su llamada — «arreglarlo» tapa la medicion.)
 
