@@ -949,3 +949,28 @@ completa»**, la misma de la 0077, aplicada a un modulo en vez de a una funcion.
 
 **Y el corolario de proceso:** un implementador que obedece una spec equivocada produce codigo
 que pasa todos los gates. **La spec es un insumo del agente, y un insumo falso no falla ruidoso.**
+
+## 2026-09-20 — El criterio de DoD que pasa vacuo: `rg` no es `grep` (spec 0084)
+
+**El caso.** Escribiendo la DoD de la spec 0084 el orquestador puso el criterio
+`rg -n 'user_id\|userId' apps/.../onboarding-tour.ts` → **vacio**, para blindar la decision del
+owner de que el progreso del tour se guarda **por negocio y no por usuario**.
+
+**Por que estaba mal.** `\|` es la alternacion de `grep`/BRE. **`rg` es regex extendido por
+defecto**, donde `\|` significa **la barra vertical literal**. El patron no matchea nunca.
+
+**Que produjo.** Nada todavia, porque se cazo antes de cerrar la spec — y se cazo **solo porque
+se corrio**. Probado contra `schema/business.ts`, que tiene `user_id` y `userId` en tres lineas:
+la forma con `\|` devolvio **vacio**; la forma correcta devolvio **tres matches**.
+
+**Lo que lo hace peligroso.** El criterio afirma «→ vacio». Un comando roto tambien devuelve
+vacio. **Los dos desenlaces son indistinguibles desde afuera**, asi que el criterio habria pasado
+en verde para siempre sin verificar nada — y el revisor lo habria marcado como cumplido. Es la
+misma familia que el `EXIT 0` sobre arbol limpio de un hook que nunca miro nada.
+
+**La regla.** Ya existia («los barridos `rg` se corren contra el arbol ANTES de cerrar la spec»,
+instaurada cuando la 0067 cerro con cuatro criterios imposibles). Lo que se agrega es el **motivo
+especifico y el modo de falla**: no es que el comando falle, es que **pasa**. Un criterio de la
+forma «→ vacio» **no esta verificado hasta que se lo vio dar NO-vacio sobre un caso que deberia
+matchear**. Es el mismo principio que «probar que el oraculo MUERDE». Linea agregada a la skill
+`protocolo-de-verificacion`.

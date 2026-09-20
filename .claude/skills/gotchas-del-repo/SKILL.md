@@ -349,3 +349,26 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   autocomplete por el server del merchant con la clave server `GEOAPIFY_API_KEY` — el browser pega
   same-origin (cero CORS) y la clave nunca viaja al cliente.** Reordenar orígenes NO sirve: un ACAO
   fijo no cubre apex + www + vercel a la vez.
+
+## Librerias de tour (`@tour-kit/react`) sobre Next 16
+
+**`useNextAppRouter()` ROMPE EL BUILD. Usar siempre `createNextAppRouterAdapter(usePathname,
+useRouter)`**, importando los hooks vos mismo. Medido el 2026-09-20 sobre
+`@tour-kit/react@3.0.0` + Next **16.3.0**: ese hook resuelve `next/navigation` con un **`require`
+dinamico** que **Turbopack** (bundler por defecto de Next 16) no soporta, y `pnpm run build` sale
+con **EXIT 1**: *«Error: dynamic usage of require is not supported»* + *«Error occurred
+prerendering page»*.
+
+**Lo caro es COMO se caza:** el `typecheck` **no distingue las dos variantes** —tipan igual, las
+dos devuelven `RouterAdapter`— y el Stop hook corre typecheck+lint+test, **no `build`**. O sea
+que este error **no aparece nunca en el escritorio**: aparece en CI o en Vercel.
+
+**El peer `next` del paquete miente y no importa:** declara `^13 || ^14 || ^15` contra nuestro
+16.3.0, pero es peer **opcional** y el repo no usa `strict-peer-dependencies`, asi que el install
+no falla. `pnpm peers check` lo lista como el **unico** peer sin cumplir (React 19 y Tailwind 4
+entran bien). La incompatibilidad real no era el peer: era el `require` dinamico.
+
+**Licencia:** el `package.json` de la 3.0.0 declara `BUSL-1.1` y el archivo `LICENSE` **que viaja
+dentro de ese mismo tarball** dice **MIT**. El owner decidio (2026-09-20) que es MIT y que se paga
+la licencia de produccion. Sin clave, el vendor documenta un badge «Unlicensed» en produccion —
+**no reproducido**, la sonda corrio con un `NODE_ENV` no estandar.

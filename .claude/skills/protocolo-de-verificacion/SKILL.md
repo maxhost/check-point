@@ -157,3 +157,11 @@ variable que se escribe y nunca se lee es la firma de una linea que falta (y `li
   **contá las lineas antes y despues** (`wc -l`).
 - Al hacer handoff, el bloque `ESTADO` de la primera pantalla **se reescribe entero** contra los
   hechos del momento, nunca se deja «vigente por omision».
+
+- **Un barrido `rg` de la DoD se ESCRIBE en sintaxis de `rg`, y se CORRE antes de cerrar la
+  spec.** `rg` es regex por defecto: la alternacion es `'a|b'` y **`'a\|b'` es la barra
+  LITERAL**, que es sintaxis de `grep`/BRE. Un criterio escrito asi **no matchea nunca**, y como
+  el criterio dice «→ vacio», **pasa vacuo para siempre**. Cazado el 2026-09-20 escribiendo la
+  DoD de la spec 0084: `rg -n 'user_id\|userId' <archivo>` dio vacio **sobre un archivo que tiene
+  las dos**. La regla del repo ya decia que los barridos se corren contra el arbol antes de
+  cerrar; esto es **por que**: el modo de falla no es «el comando falla», es «el comando pasa».
