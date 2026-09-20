@@ -14,81 +14,136 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-## ⇥ ▶ SPEC 0083 — `cerrada`, LISTA PARA IMPLEMENTAR
+## ⇥ ✅ SPEC 0083 — IMPLEMENTADA CON PASS, COMMITEADA EN `618af56`
 
-**El checklist del onboarding.** ADR **0077** + spec **0083** + su contrato de API, en
-`7d20a18`; el arreglo de `required`/`blocking` y el cierre, en `a57f5e8`. **El owner la cerro
-el 2026-09-20**, asi que puede arrancar el implementador (ADR 0071: UN implementador para toda
-la spec, UN revisor independiente al final).
+**Estado EXACTO al escribir esto:** el trabajo esta commiteado en `618af56` —codigo, spec en
+`implementada` y fila del INDEX, todo junto—. **NO esta pusheado:** se le pregunto al owner y
+no contesto.
 
-**La decision que ordena todo lo demas (ADR 0077 §1):** el onboarding son **DOS recursos**, no
-uno. El **checklist** («que hay que hacer y en que estado esta») se deriva de hechos de la base
-y sobrevive a cualquier rediseño; el **tutorial** paso-a-paso de cada item («toca aca, abri la
-camara») **ES** la descripcion de una pantalla concreta y cambia cada vez que esa pantalla
-cambia. Servirlos juntos ata el recurso estable a la cadencia del volatil, y ademas baja el
-texto de todos los tours en cada carga del backoffice. **El tutorial no se diseña hasta que
-exista el primero** — hoy no hay ninguno.
+### El PASS
 
-**Alcance de la 0083:** `GET /api/onboarding/checklist` con **UN** item, `verify-email`. Es el
-unico de los cinco candidatos que no necesita pantalla nueva ni feature previa: su hecho ya
-viaja en la sesion y su accion ya existe (`POST /api/merchant/auth/verify-email`). Catalogo de
-items en **codigo tipado** (forma de `ENTITLEMENTS`), **sin migracion** y **sin tocar un solo
-`.tsx`**.
+**Revisor independiente en contexto fresco, 6 mutaciones, las 6 ROJAS y por la propiedad
+atacada.** Las dos que sostienen la spec:
 
-**EL INVARIANTE CENTRAL, y es lo primero que tiene que mirar el revisor: la ruta NO lleva gate
-de email.** Un endpoint cuyo unico item dice «verifica tu email» no puede estar bloqueado por
-no haberlo verificado. **Medido:** `requireApiOwner` evalua el email en el **paso 3** de su
-escalera **siempre** (`api-owner.ts:30-40`) y **no admite saltarlo**, asi que la ruta no lo usa.
-**Pero tampoco escribe un resolvedor nuevo** —seis resolvedores divergidos es el agujero que
-mato la 0072—: reusa `ownerContext` y `businessStatusFailure`, y recorre la escalera del ADR
-0073 §1 **salteando SOLO el paso 3**. El paso 4 (estado del negocio) **no** se saltea, y la
-asimetria es deliberada.
+- **M1** (poner el paso 3 en la ruta) → `un owner SIN el email verificado recibe 200…` da
+  *«expected 403 to be 200»*, y **el caso del integrante queda VERDE**. O sea que el rojo es de
+  la propiedad, no del setup.
+- **M6** (sacar `"onboarding/checklist"` de `NOMBRES_SIN_GATE_DE_EMAIL` dejando la fila en
+  `SURFACES`) → la ruta cae a `SURFACES_CON_GATE_DE_EMAIL`, que le exige 403 y recibe 200.
+  **El «3» del inventario no es un numero escrito a mano: gobierna.**
 
-**Es la pieza que le faltaba a la 0082**, que saco el rebote de la puerta justamente para que el
-owner pudiera **ver** este paso desde adentro. Hoy no hay ninguna ruta que se lo diga a la UI.
+**El revisor hizo ademas algo que NO estaba en el encargo y hay que conservar como practica:
+probo que el hook `no-mutations-left.sh` MUERDE**, con un archivo sonda etiquetado que le
+saco **EXIT 2**, y despues lo borro. Un `EXIT 0` sobre arbol limpio puede significar «paso» o
+«nunca miro nada», y desde afuera son indistinguibles.
 
-**Lo que el orquestador midio en esta sesion y quedo escrito en el ADR, para que no se
-redescubra:**
+### DOS HALLAZGOS DEL REVISOR, reproducidos por el orquestador y YA CORREGIDOS
 
-- **`requireApiOwner` no tiene opcion para saltar el gate de email.** Escalera fija.
-- **`email_verified` ya viaja en la sesion de better-auth**: el `done` del item cuesta **cero
-  consultas extra**. La unica consulta de la ruta es la de `ownerContext`.
-- **El staff no tiene email al que escribirle** (`@staff.invalid`, aseverado en
-  `auth-start.test.ts:92`) y `verify-email` lo rechaza con 400. Por eso el checklist es
-  owner-only y contesta 403 `not_owner` a un integrante.
-- **No hay columna de idioma del merchant en ninguna tabla**, asi que `locale: "es"` va fijo y
-  **declarado**. De donde sale el idioma es su propia spec, junto al segundo idioma.
-- **Los colores de marca nacen `NOT NULL DEFAULT`** (`schema/business.ts:87-91`), asi que
-  «¿eligio sus colores?» **no es derivable**; `logo_object_key` y `stamp_image_object_key` si,
-  son nullable. Afiche y rentabilidad son acciones que **no dejan rastro**.
-- **Catalogo por foto con IA no tiene nada en el repo**: cero dependencias de IA y el catalogo
-  crea **de a un producto por request**. Ya figura en el ADR 0070 como feature con spec propia.
-- **Staff no necesita API**: `GET`/`POST /api/staff` + pin + status ya existen. Le falta
-  pantalla.
+1. **Un docblock FALSO** —la clase de defecto que este repo trata como activa, no cosmetica—:
+   `onboarding/checklist.ts` decia *«el §D4 de la spec dice "cero consultas extra": ya no es
+   cierto»*, pero **§D4 ya estaba corregido y dice exactamente eso**; ademas citaba **§D5** (el
+   inventario) para un costo que vive en **§D4**. Mandaba al lector a una seccion que afirma lo
+   contrario de lo que el docblock afirmaba. Corregido en `checklist.ts` y en
+   `checklist-facts.ts`.
+2. **Prosa vencida en este mismo archivo:** el bloque viejo pedia arreglar el §D1 por la
+   renumeracion M6 → M5, **que ya estaba arreglado**. Se fue al reescribir este bloque.
 
-**UNA PREMISA DEL OWNER QUE RESULTO FALSA, medida y corregida en el ADR 0077:** planteo que «hoy
-el modelo no te permite ediciones en un programa activo». **`PUT /api/loyalty-program` es un
-upsert y edita un programa activo sin problema.** Solo hay dos bloqueos
-(`loyalty-program.ts:98-109`): `status='closing'` → 409, y cambiar `kind` → 409 «cerra el
-programa actual antes de cambiar su modalidad». Nombre de los puntos, diseño de tarjeta, sello,
-premios y TOS **se editan hoy**. Eso achica mucho el item 4 cuando le toque.
+### Gates sobre el arbol FINAL (con los docblocks ya corregidos)
 
-**EL ULTIMO ARREGLO DEL OWNER, que trajo un oraculo propio: `required` y `blocking` son DOS
-ejes separados** — *«Si necesitamos determinar si es o no obligatoria, no solo que se bloquee la
-siguiente mayor»*. `required` = hay que hacerlo; `blocking` = frena a los de `position` mayor.
-**Con UN item los dos valen `true`, asi que el catalogo real NO puede falsificar que alguien
-implemente uno como alias del otro**: por eso `toChecklistView` toma el catalogo como segundo
-parametro **con default**, y su test le da entradas sinteticas con los dos ejes divergentes. La
-ruta lo llama sin el segundo argumento.
+**LOS SEIS, corridos por el ORQUESTADOR sobre el arbol commiteado, en Node 24:** `typecheck`,
+`lint`, `format:check`, `build` → **EXIT=0**; `test` con `.env.integration.local` → **1793 de
+1793, 0 failed y CERO SKIPPEADOS**; **`test:e2e` no aplica y se declara** con
+`git status --porcelain | grep -c '\.tsx$'` → **0**.
 
-**Declarado, para que no se de por tomada una decision que no se tomo:** la API **reporta** los
-dos ejes, **no los hace cumplir**. Si ademas debe **rechazar** acciones de un item bloqueado se
-decide cuando haya un segundo item.
+**Se re-corrieron a proposito:** los del revisor son de ANTES de que el orquestador corrigiera
+los dos docblocks falsos, asi que no describian este arbol. Y la corrida de aca es **mas fuerte
+que la suya**: la del revisor tuvo **488 tests skippeados** (los `.neon`, sin entorno de
+integracion cargado); esta corrio los 1793.
 
-**Presupuesto de la 0083:** **6 mutaciones**. Las dos que importan: la **M1** (agregar el gate
-de email a la ruta) —si ese rojo no aparece, y no aparece **en el caso del owner sin
-verificar**, la spec entera no tiene oraculo— y la **M6** (`blocking: def.required`), que es la
-unica que el catalogo real no puede cazar.
+### Lo que el orquestador reprodujo por su cuenta (no es auto-reporte de nadie)
+
+- `rg -l 'SinGateDeEmail' apps/merchant/src/app` → **3 rutas**, las del inventario.
+- El diff de `api-owner.ts` es **solo docblock**: ni una linea dentro de `requireApiOwner` ni de
+  su hermana. Es el invariante de la 0075 y esta spec no lo afloja.
+- Hook `no-mutations-left.sh` → **EXIT=0**; `git status --porcelain | grep -c '\.tsx$'` → **0**,
+  con lo que `test:e2e` queda declarado como no-aplica.
+
+### DECLARADO Y NO PERSEGUIDO (lo acoto el revisor antes de declararlo)
+
+- **El camino `503 onboarding_unavailable` no tiene oraculo en ningun archivo.** No estaba en la
+  tabla de las 6 ni en el DoD. Riesgo bajo y acotado: es un `catch` de ultima linea, su `code`
+  esta en el contrato y **no filtra nada** (el `console.error` emite solo `error.name`).
+  Cerrarlo cuesta **un test que doble `ownerContext` para que tire**. **Pendiente de decision
+  del owner**, a quien se le ofrecio.
+- **El `sort` por `position` quedo sin mutacion ejecutada, no sin oraculo:** el test declara las
+  entradas **3-1-2** y asevera `["primero","segundo","tercero"]`, o sea que distingue de verdad.
+
+### HALLAZGO ABIERTO, medido, que NO decidio el owner
+
+**`api-owner-surfaces.test.ts` quedo en 299 lineas y el hook `file-size` corta en 300.** Entro
+por UNA linea, y para entrar hubo que compactar dos docblocks. **La proxima superficie que se
+sume al inventario no entra**, y ahi aplica la regla de `CLAUDE.md`: *dividir, no extender*. No
+se divide en esta spec porque seria refactor de un archivo ajeno sin su tarea.
+
+### LO QUE SIGUE
+
+1. **PUSH — falta la autorizacion del owner.** Se le pregunto dos veces y no contesto. Nada de
+   esto esta en `origin/main`.
+2. **Decision del owner sobre el 503 sin oraculo** (arriba): se cierra con un test o se deja
+   declarado. Se le ofrecio.
+3. **El arco sigue por el ITEM 2 del onboarding.** El owner dijo que el orden depende de que
+   feature exista antes: catalogo necesita la feature de IA (que **no tiene nada en el repo**:
+   cero dependencias de IA, catalogo de a un producto por request), y **staff no necesita API
+   —ya existe entera— sino PANTALLA**. Por eso staff es el candidato barato.
+4. **Cuando llegue el PRIMER tutorial de verdad**, se diseña el segundo recurso
+   (`GET /api/onboarding/guide/{item}`), que el ADR 0077 §5 dejo deliberadamente sin diseñar.
+
+
+## ⇥ ✅ BITACORA DE MUTACIONES — spec 0083 **ENMIENDA** (implementador, 2026-09-20) — CERRADA, 6/6
+
+**Reemplaza a la bitacora de la primera entrega**: la tabla de mutaciones de la spec se rehizo
+con la enmienda (las viejas M2 y M5 atacaban pasos que ya no viven en la ruta). Presupuesto: 6.
+Clase de error a cazar: **que el guard deje pasar a quien no debe o bloquee a quien la ruta
+existe para servir, y que `done` no sea vacuo**.
+
+**Copias limpias en `/tmp/limpios-0083b/`.** Tres de los archivos estan `??` (sin blob: `git
+checkout` NO los restaura) y tres estan ` M` (un `git checkout` ahi se llevaria tambien el
+trabajo sin commitear). Restauracion:
+
+```
+cp /tmp/limpios-0083b/route.ts                     apps/merchant/src/app/api/onboarding/checklist/route.ts
+cp /tmp/limpios-0083b/checklist.ts                 apps/merchant/src/server/onboarding/checklist.ts
+cp /tmp/limpios-0083b/checklist-facts.ts           apps/merchant/src/server/onboarding/checklist-facts.ts
+cp /tmp/limpios-0083b/api-owner-surfaces-support.ts apps/merchant/src/server/api-owner-surfaces-support.ts
+```
+
+| Archivo | `git status` | `shasum` LIMPIO |
+|---|---|---|
+| `app/api/onboarding/checklist/route.ts` | `??` | `4a9348340d9fca57be4e54268578ead30aa32317` |
+| `server/onboarding/checklist.ts` | `??` | `b016e114c327e55e1611f71886ffb81ff31d6259` |
+| `server/onboarding/checklist-facts.ts` | `??` | `0ca0a9188a530740bf62b64400ded23afa35c378` |
+| `server/api-owner-surfaces-support.ts` | ` M` | `7a512296af55d8c1b6aa707cb7b645f7c616d3ea` |
+| `server/api-owner-surfaces.test.ts` | ` M` | `af7efef8af6906430798b1459e1203f8e8868153` |
+| `server/api-owner.ts` | ` M` | `eae3167b2c5d49ac06bfb9cf49cb048b5e81dbaf` |
+
+| id | archivo | invariante que ataca | alcance corrido | RESULTADO EJECUTADO |
+|---|---|---|---|---|
+| **M1** | `route.ts` (`requireApiOwnerSinGateDeEmail` → `requireApiOwner`) | la ruta NO lleva el paso 3 — **el invariante central** | `.neon.integration` + `api-owner-surfaces.test.ts` | **ROJO 7 de 109.** El caso del OWNER: `un owner SIN el email verificado recibe 200 con su item pendiente` → *«expected 403 to be 200»*; y en la bateria `onboarding/checklist: owner con emailVerified: false … → pasa, NUNCA email_not_verified` → *«expected 403 to be 200»* (+ el fail-closed sin la clave). Los de `suspended`/`closed` muestran el `code`: *«expected 'email_not_verified' to be 'business_suspended'»* y *«… to be 'business_closed'»*. **El caso del INTEGRANTE quedo VERDE** (`un integrante (role='staff') → 403 not_owner` ✓), que es la desambiguacion que pide la spec: el rojo es del owner. Tambien verde `un owner CON el email verificado…` |
+| **M2** | `route.ts` (sacar el guard entero, sesion a mano) | los pasos 2 y 4 no se pierden «total, es una lectura» | `.neon.integration` + `api-owner-surfaces.test.ts` | **ROJO 7 de 109, los siete con *«expected 200 to be 403»***, y el primero es el del INTEGRANTE en los dos archivos: `un integrante (role='staff') → 403 not_owner, y NO el codigo del email` y `onboarding/checklist: un INTEGRANTE … → 403 not_owner`. Ademas `suspended`, `closed` y `un status desconocido no opera`. El caso del owner sin verificar quedo VERDE (200 es su desenlace correcto) |
+| **M3** | `checklist.ts` (`done: () => true`) | `done` LEE el hecho, no es constante | unit + `.neon.integration` + bateria | **ROJO 5 de 119.** Unit: `done sigue al hecho de la sesion en las dos polaridades` → *«expected true to be false»*. Integracion: `un owner SIN el email verificado…` → *«expected { id: 'verify-email', …(7) } to match object …»* y el control de `active` → *«expected true to be false»*. **Y los dos casos nuevos de la bateria** (`DESENLACE_SIN_GATE` exige `done: false`) |
+| **M4** | `checklist.ts` (`done: () => false`) | idem, polaridad opuesta | unit + `.neon.integration` + bateria | **ROJO 2 de 119.** Integracion: `un owner CON el email verificado recibe 200 y el mismo item en done: true` → *«expected { …(7) } to match object { …(4) }»*. Unit: la misma polaridad → *«expected false to be true»*. **Con la M3 prueban que `done` no devuelve una constante** |
+| **M5** | `checklist.ts` (`blocking: def.required`) | `blocking` NO es alias de `required` | unit + `.neon.integration` + bateria | **ROJO 3 de 119, los tres en el unit y con entradas SINTETICAS**: `{required:true,blocking:false}` → *«expected true to be false»*; el espejo → *«expected false to be true»*; los dos items cruzados → *«expected [['a',true,true],…] to deeply equal [['a',true,false],…]»*. **El `.neon.integration` y la bateria quedaron VERDES**: es el limite declarado en la spec — con un item real los dos ejes valen `true` |
+| **M6** | `api-owner-surfaces-support.ts` (sacar `"onboarding/checklist"` de `NOMBRES_SIN_GATE_DE_EMAIL` **dejando la fila en `SURFACES`**) | **el inventario GOBIERNA**: no es un numero escrito a mano | `api-owner-surfaces.test.ts` | **ROJO 4 de 101, y MUERDE por donde la spec dijo:** la ruta cae a `SURFACES_CON_GATE_DE_EMAIL` y esa tabla le exige el 403 → `onboarding/checklist: owner con emailVerified: false → 403 email_not_verified` → *«expected 200 to be 403»*, mas el fail-closed `owner SIN la clave emailVerified → 403 igual` con el mismo mensaje. Y los dos pisos: la lista exacta → *«expected ['loyalty-program (PUT)', …(1)] to deeply equal ['loyalty-program (PUT)', …(2)]»* y el conteo → *«expected 12 to be 11»* |
+
+**Reversion verificada de a una:** `diff` contra `/tmp/limpios-0083b/` **vacio (exit 0)** en los
+tres archivos mutados, `shasum` de los seis archivos igual al limpio de la tabla de arriba, y
+`rg -n MUTATION apps tools` → **vacio (exit 1)**.
+
+**Rojo COLATERAL que NO se arreglo, a proposito:** bajo la M2 el import de
+`requireApiOwnerSinGateDeEmail` queda sin uso y `lint` habria dado rojo que no mide nada.
+No se corrio ni se toco: arreglarlo habria tapado la medicion. Los gates van **una sola vez al
+final**, con el arbol ya limpio.
+
 
 ## ⇥ ✅ SHELL DEL BACKOFFICE — COMMITEADO EN `b50fb4d`, SEIS GATES VERDES, FALTA EL QA VISUAL
 
