@@ -130,6 +130,14 @@ variable que se escribe y nunca se lee es la firma de una linea que falta (y `li
 - **Y el espejo: lo que le pasas a un subagente como insumo es una afirmacion tuya.** Antes de
   despachar, **re-medí** la parte del doc que le sirve de contexto. Un doc vencido no falla
   ruidoso: le fabrica un diagnostico a alguien que no tiene como dudarlo.
+- **«No existe una pieza que haga X» se verifica listando los EXPORTS del modulo, no leyendo la
+  funcion que ya conocias.** `rg -n '^export (async )?function|^export const' <archivo>`. Medido
+  el 2026-09-20 en la spec 0083: el orquestador leyo `api-owner.ts` hasta la **linea 90**,
+  confirmo que `requireApiOwner` aplica siempre el gate de email y escribio en la spec «hay que
+  armar la escalera a mano» — **`requireApiOwnerSinGateDeEmail` estaba en la 174 del mismo
+  archivo**, hacia exactamente lo que hacia falta y ya la usaban dos rutas. El implementador
+  obedecio y el resultado **paso los seis gates y un barrido de mutaciones**, porque era correcto;
+  lo que rompia era un mecanismo de conteo, y eso no tiene rojo. Caso en `LECCIONES.md`.
 - **Un sintoma no es una causa.** Antes de escribir «esto pasa PORQUE X», **buscá X en el arbol**:
   si no podes señalar el codigo que lo produce, no es un diagnostico, es una historia.
 - **Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral

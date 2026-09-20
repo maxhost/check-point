@@ -911,3 +911,41 @@ ninguno**: el agente lo toma como suelo firme y sale a buscar el bug donde no es
 sostuviera, y el implementador **contradijo al orquestador con evidencia** en vez de acomodarse al
 dato que le habian dado. Esa contradiccion se propago: al revisor se le paso la correccion junto
 con el error original, nombrado como error propio.
+
+## 2026-09-20 — Leer la funcion que ya conoces no es medir el modulo (spec 0083)
+
+**El caso.** La spec 0083 necesitaba un guard de owner **sin** el paso 3 (el gate de email),
+porque su endpoint es el que le dice al owner «verifica tu email» y no puede exigir email
+verificado. El orquestador abrio `apps/merchant/src/server/api-owner.ts`, leyo el docblock del
+modulo y la firma de `requireApiOwner` —**`sed -n '1,90p'`**— confirmo que su escalera aplica el
+paso 3 **siempre** y **cerro la investigacion ahi**. Escribio entonces en el §D3 de la spec y en
+el ADR 0077 §6: *«no se usa `requireApiOwner` … y tampoco se escribe un resolvedor nuevo: se
+llaman las piezas compartidas por separado»*.
+
+**`requireApiOwnerSinGateDeEmail` estaba en la linea 174 del MISMO archivo**, hace exactamente
+pasos 1, 2 y 4 sin el 3, y **ya la usaban dos rutas**.
+
+**Que produjo.** El implementador obedecio la spec al pie de la letra y armo la escalera a mano.
+El resultado era **correcto y seguro**, paso los seis gates y un barrido de mutaciones — y por
+eso mismo no lo iba a cazar ningun test. Lo que creaba era una **ruta exenta del gate de email
+invisible a los DOS mecanismos con que el repo las cuenta**: `rg 'SinGateDeEmail' apps` y el
+inventario `NOMBRES_SIN_GATE_DE_EMAIL`, aseverado cerrado en 2. La spec 0075 §D1 habia elegido
+deliberadamente **un nombre distintivo en vez de un flag booleano** justamente para poder
+contarlas; una escalera a mano evade ese mecanismo sin poner rojo a nada.
+
+Peor: el docblock que escribio el implementador decia *«tampoco escribe un resolvedor nuevo»* —
+una afirmacion que **no se sostenia**, en el arbol, con forma de conocimiento verificado.
+
+**Como aparecio.** No lo cazo un test ni el revisor: lo cazo el ORQUESTADOR reproduciendo la
+evidencia de la entrega, cuando un `grep` de otra cosa devolvio una linea de un test que
+mencionaba `requireApiOwnerSinGateDeEmail`. **Fue suerte, y por eso hace falta la regla.**
+
+**La regla.** Antes de afirmar «no existe una pieza que haga X» o «hay que armar X a mano»,
+**listar los exports del modulo donde X viviria** — `rg -n '^export (async )?function|^export
+const' <archivo>` — en vez de leer solo la funcion que ya conocias. Una funcion con el docblock
+correcto puede tener al lado una hermana que es exactamente lo que buscabas. **Leer 90 lineas de
+un archivo de 250 y concluir sobre el archivo es la familia «medicion a medias presentada como
+completa»**, la misma de la 0077, aplicada a un modulo en vez de a una funcion.
+
+**Y el corolario de proceso:** un implementador que obedece una spec equivocada produce codigo
+que pasa todos los gates. **La spec es un insumo del agente, y un insumo falso no falla ruidoso.**
