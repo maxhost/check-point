@@ -85,7 +85,7 @@ vi.mock("./db", async (importOriginal) => ({
 /**
  * Spec 0075 — **el email es el único de los cuatro pasos que no se aplica parejo**, y la tabla
  * se parte para ASEVERAR las excepciones en vez de perderlas de vista. `SURFACES` sigue entera
- * (13) para los otros cinco casos: las dos sin gate se miden igual que las demás en
+ * (14) para los otros cinco casos: las tres sin gate se miden igual que las demás en
  * `unauthorized`, `not_owner`, `business_suspended`, `business_closed` y `status` desconocido.
  * Las dos tablas salen de `SURFACES` por filtro —no son listas paralelas—, así que mover una
  * fila cambia los pisos. La tabla vive en `api-owner-surfaces-support.ts` por el hook
@@ -120,6 +120,14 @@ const DESENLACE_SIN_GATE: Record<
       created: true,
     });
   },
+  /** Spec 0083 §D5 — la TERCERA, y su desenlace es EL caso central de esa spec. */
+  "onboarding/checklist": async (response) => {
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.locale).toBe("es");
+    expect(body.items[0].id).toBe("verify-email");
+    expect(body.items[0].done).toBe(false);
+  },
 };
 
 function ownerRow(status: string, suspensionReason: string | null = null) {
@@ -138,32 +146,32 @@ beforeEach(() => {
 });
 
 describe("las superficies de API del owner — el gate unificado (spec 0072 §D3)", () => {
-  it("son 13 entradas HTTP y ninguna se cayó de la tabla", () => {
+  it("son 14 entradas HTTP y ninguna se cayó de la tabla", () => {
     // Piso del barrido: sin esto, una tabla que quedara vacía dejaría cada `it.each` de
     // abajo sin correr NI UNA vez y el archivo entero pasaría en verde sin medir nada.
-    expect(SURFACES.length).toBe(13);
+    expect(SURFACES.length).toBe(14);
   });
 
   /**
-   * **EL CONJUNTO EXACTO DE DOS, y es un criterio del DoD de la 0079** — no «al menos una».
-   * El valor del oráculo es que sea CERRADO: con un `toContain` o un `length >= 1`, una
-   * tercera ruta que se sacara el paso 3 entraría sin que nadie lo vea. La 0075 exigía
-   * exactamente UNA; la 0079 lo cambia a DOS **a propósito** y con el motivo escrito en
-   * `api-owner-surfaces-support.ts`: desde la 0077 el gate de email vive en `saveProgram`,
-   * no en la puerta de la escritura.
+   * **EL CONJUNTO EXACTO DE TRES, criterio del DoD de la 0079 y de la 0083** — no «al menos
+   * una». El valor del oráculo es que sea CERRADO: con un `toContain` o un `length >= 1`, una
+   * cuarta ruta que se sacara el paso 3 entraría sin que nadie lo vea. La 0075 exigía UNA, la
+   * 0079 lo pasó a DOS y la 0083 a TRES, **cada vez a propósito y con el motivo escrito en
+   * `api-owner-surfaces-support.ts`**: el de la tercera es el auto-gateo.
    */
-  it("las rutas SIN paso 3 son EXACTAMENTE dos: el QR y la escritura del programa", () => {
+  it("las rutas SIN paso 3 son EXACTAMENTE tres: el QR, la escritura del programa y el checklist", () => {
     expect(SURFACES_SIN_GATE_DE_EMAIL.map(([name]) => name)).toEqual([
       "loyalty-program (PUT)",
       "loyalty-program/qr",
+      "onboarding/checklist",
     ]);
   });
 
-  it("las dos tablas del email parten las 13 sin perder ni duplicar ninguna", () => {
+  it("las dos tablas del email parten las 14 sin perder ni duplicar ninguna", () => {
     // Spec 0075 §D3. Sin estos pisos, mover una fila de una tabla a la otra —o vaciar la de
     // las excepciones— dejaría su `it.each` sin correr NI UNA vez, en verde.
     expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(11);
-    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(2);
+    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(3);
     expect(
       SURFACES_CON_GATE_DE_EMAIL.length + SURFACES_SIN_GATE_DE_EMAIL.length,
     ).toBe(SURFACES.length);

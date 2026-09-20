@@ -15,6 +15,7 @@ import { POST as STAMP_UPLOAD } from "../app/api/loyalty-program/stamp-upload/ro
 import { GET as QR } from "../app/api/loyalty-program/qr/route";
 import { GET as TEMPLATES } from "../app/api/loyalty-terms/templates/route";
 import { PATCH as SLUG } from "../app/api/merchant/business/slug/route";
+import { GET as CHECKLIST } from "../app/api/onboarding/checklist/route";
 
 /**
  * LA TABLA de entradas HTTP del owner, aparte del test por el hook `file-size` (spec 0079):
@@ -41,9 +42,10 @@ const PROGRAM_BODY = {
   rewards: [{ type: "custom", label: "Café gratis" }],
 };
 
-/** Las 13 entradas HTTP de las 10 superficies del owner. `qr` y `slug` incluidas: la
- * primera nació con la spec 0069 (por eso la fila 56 de `PARQUEADO` decía 9 y eran 10).
- * La 13ª es el `PUT` de la ruta única (spec 0079), que es la SEGUNDA sin gate de email. */
+/** Las 14 entradas HTTP de las superficies del owner. `qr` y `slug` incluidas: la primera
+ * nació con la spec 0069 (por eso la fila 56 de `PARQUEADO` decía 9 y eran 10). La 13ª es el
+ * `PUT` de la ruta única (spec 0079), que es la SEGUNDA sin gate de email; la 14ª es el
+ * checklist del onboarding (spec 0083 §D5), que es la TERCERA. */
 export const SURFACES: Array<[string, () => Promise<Response>]> = [
   ["billing/checkout", () => CHECKOUT(json("/api/billing/checkout", "POST"))],
   ["catalog", () => CATALOG(json("/api/catalog", "GET"))],
@@ -76,12 +78,17 @@ export const SURFACES: Array<[string, () => Promise<Response>]> = [
     "merchant/business/slug",
     () => SLUG(json("/api/merchant/business/slug", "PATCH")),
   ],
+  [
+    "onboarding/checklist",
+    () => CHECKLIST(json("/api/onboarding/checklist", "GET")),
+  ],
 ];
 
 /**
- * **EL CONJUNTO EXACTO DE LAS RUTAS SIN PASO 3, y son DOS desde la spec 0079** — el QR
- * (spec 0075) y la escritura del programa. No es una lista paralela: sale de `SURFACES` por
- * filtro, así que mover una fila cambia los dos pisos que el test asevera.
+ * **EL CONJUNTO EXACTO DE LAS RUTAS SIN PASO 3, y son TRES desde la spec 0083** — el QR
+ * (spec 0075), la escritura del programa (spec 0079) y el checklist del onboarding. No es una
+ * lista paralela: sale de `SURFACES` por filtro, así que mover una fila cambia los dos pisos
+ * que el test asevera.
  *
  * **El motivo de la segunda, escrito acá para que no se lea como un aflojamiento:** después
  * de la spec 0077 el gate de email **ya no vive en la puerta** de la escritura, vive en
@@ -90,10 +97,18 @@ export const SURFACES: Array<[string, () => Promise<Response>]> = [
  * §11); editarlo sí exige email verificado o el permiso de alta, y eso lo aplica el WRITER.
  * Poner el paso 3 en esta puerta volvería inalcanzable el alta; sacarlo del writer
  * reabriría el bypass.
+ *
+ * **El motivo de la tercera (spec 0083 §D5, decisión del owner del 2026-09-20): el
+ * AUTO-GATEO.** `GET /api/onboarding/checklist` existe para decirle al owner que le falta
+ * verificar el email; con el paso 3 puesto, el único endpoint que reporta ese pendiente
+ * quedaría bloqueado justamente por ese pendiente. La pregunta que el docblock de
+ * `requireApiOwnerSinGateDeEmail` manda hacer antes de sumar una tercera —«¿está bien que
+ * esta ruta se exima?»— se hizo y la respuesta fue sí.
  */
 export const NOMBRES_SIN_GATE_DE_EMAIL = [
   "loyalty-program (PUT)",
   "loyalty-program/qr",
+  "onboarding/checklist",
 ] as const;
 
 export const SURFACES_SIN_GATE_DE_EMAIL = SURFACES.filter(([name]) =>

@@ -126,8 +126,9 @@ export async function requireApiOwner(
 }
 
 /**
- * Spec 0075 + spec 0079 — **la excepcion al gate de email, y existe para DOS rutas y nada
- * mas**: `GET /api/loyalty-program/qr` y `PUT /api/loyalty-program`.
+ * Spec 0075 + spec 0079 + spec 0083 — **la excepcion al gate de email, y existe para TRES
+ * rutas y nada mas**: `GET /api/loyalty-program/qr`, `PUT /api/loyalty-program` y
+ * `GET /api/onboarding/checklist`.
  *
  * Mismo contrato de retorno que `requireApiOwner` y **los mismos pasos 1, 2 y 4** (sesion →
  * owner activo → eje `status`, con su fail-closed). Lo unico que no corre es el **paso 3**,
@@ -145,15 +146,28 @@ export async function requireApiOwner(
  * **SPEC 0079 — YA NO ES LA ÚNICA: son DOS.** La escritura del programa
  * (`PUT /api/loyalty-program`) también usa esta función desde que las dos puertas se
  * fundieron en una, porque su gate de email bajó al writer (`saveProgram`, spec 0077), que
- * distingue crear de editar. `rg 'SinGateDeEmail' apps` tiene que devolver **exactamente
- * esas dos rutas**, y el conjunto está aseverado como CERRADO en
- * `api-owner-surfaces.test.ts`. No se extiende a una tercera sin volver a discutirlo.
+ * distingue crear de editar.
+ *
+ * **SPEC 0083 — Y SON TRES, por decisión del owner del 2026-09-20: el checklist del
+ * onboarding** (`GET /api/onboarding/checklist`). Su motivo es el **auto-gateo**: ese
+ * endpoint existe para decirle al owner que le falta verificar el email, así que con el paso
+ * 3 puesto el único lugar que reporta ese pendiente quedaría bloqueado justamente por ese
+ * pendiente — el mismo argumento que sostiene el 200-siempre de `GET /api/merchant/session`.
+ * Es una LECTURA sin efectos: no escribe nada y no toca lo que el ADR 0070 §11 protege.
+ *
+ * `rg 'SinGateDeEmail' apps` tiene que devolver **exactamente esas tres rutas**, y el
+ * conjunto está aseverado como CERRADO en `api-owner-surfaces.test.ts`, que además corre los
+ * cinco estados del caller sobre las tres filas. **No se extiende a una cuarta sin volver a
+ * discutirlo**: la pregunta «¿está bien que esta ruta se exima?» se hace ANTES, y las tres
+ * veces que se hizo quedó escrita con su motivo.
  *
  * **POR QUE UNA HERMANA Y NO `requireApiOwner(request, { emailGate: false })`** (spec 0075
  * §D1): un flag booleano que apaga un gate de seguridad viaja en un copy-paste entre rutas
  * del mismo dominio y no se puede contar con un `rg`. Un nombre si: `rg 'SinGateDeEmail' apps`
- * tiene que devolver **exactamente las DOS rutas de arriba** —era UNA en la 0075 y la 0079 lo
- * cambio a proposito—, y eso es un criterio del DoD de las dos specs.
+ * tiene que devolver **exactamente las TRES rutas de arriba** —era UNA en la 0075, la 0079 lo
+ * paso a DOS y la 0083 a TRES, cada vez a proposito—, y eso es un criterio del DoD de las tres
+ * specs. **Y es el motivo por el que ninguna de las tres arma la escalera 1-2-4 a mano:** una
+ * escalera escrita a mano es una exencion que ni el `rg` ni ese inventario ven.
  * **No se extiende a ninguna otra superficie sin volver a discutirlo:** las 11 entradas HTTP
  * restantes del ADR 0073 §1 conservan el paso 3 entero.
  *
@@ -164,7 +178,7 @@ export async function requireApiOwner(
  * paso si esta compartida**, en las piezas que las dos llaman: `ownerContext` (paso 2) y
  * `businessStatusFailure` (paso 4). Lo duplicado son los `return` del fallo. Que las dos no
  * divergan lo pinnea `api-owner-surfaces.test.ts`, que corre los cinco estados del caller
- * sobre las dos filas sin paso 3 igual que sobre las otras once.
+ * sobre las tres filas sin paso 3 igual que sobre las otras once.
  *
  * **El riesgo que esto NO abre** (spec 0075, «Declarado AFUERA»): el QR codifica una URL
  * **publica** (`<origin>/enroll/<programId>`), el `programId` lo resuelve el servidor desde la

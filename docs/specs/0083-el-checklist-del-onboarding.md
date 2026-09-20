@@ -1,7 +1,7 @@
 ---
 spec: 0083
 fecha: 2026-09-20
-estado: cerrada
+estado: implementada
 resumen: `GET /api/onboarding/checklist` — el checklist del onboarding del ADR 0070 §9, que estaba diferido desde la 0074. Arranca con UN item (`verify-email`), cuyo hecho ya viaja en la sesion y cuya accion ya existe. La API dicta `position`, `required` y `blocking` —dos ejes SEPARADOS por decision del owner— la UI no tiene lista propia, y el texto viaja en la respuesta con `locale: "es"` fijo y declarado. NO lleva gate de email —un endpoint que dice «verifica tu email» no puede estar bloqueado por no haberlo verificado— y por eso no usa `requireApiOwner` sino su hermana **`requireApiOwnerSinGateDeEmail`**, que ya existe y ya hace los pasos 1, 2 y 4. Pasa a ser la TERCERA ruta exenta, y el inventario cerrado de exenciones (`NOMBRES_SIN_GATE_DE_EMAIL`, aseverado en 2) se amplia a 3 — decision del owner del 2026-09-20. Sin migracion: el catalogo de items es codigo tipado, como `ENTITLEMENTS`.
 disjunta: si
 archivos: apps/merchant/src/server/onboarding/checklist.ts, apps/merchant/src/app/api/onboarding/checklist/route.ts, apps/merchant/src/server/onboarding/checklist.test.ts, apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts, apps/merchant/src/server/api-owner-surfaces-support.ts, apps/merchant/src/server/api-owner-surfaces.test.ts
@@ -342,6 +342,18 @@ corta y va al owner. Lo que queda afuera se **declara**.
   «siguiente» que bloquear y porque el bloqueo es comportamiento de pantalla. El dia que haya
   un segundo item hay que decidir si la API ademas **rechaza** acciones de un item bloqueado —
   esa decision **no esta tomada** y no se da por tomada aca.
+
+## Declarado por el REVISOR, y el orquestador lo acepta
+
+- **El camino `503 onboarding_unavailable` no tiene oraculo en ningun archivo.** No esta en la
+  tabla de las 6 ni en el DoD, y mutarlo se salia del presupuesto. **Riesgo bajo, acotado por
+  el revisor:** es un `catch` de ultima linea, su `code` esta en el contrato y **no filtra
+  nada** (el `console.error` emite solo `error.name`). Cerrarlo cuesta un test que doble
+  `ownerContext` para que tire. **No se persigue**; queda escrito para que nadie lo cuente como
+  cubierto.
+- **El `sort` por `position` quedo sin mutacion ejecutada, no sin oraculo.** El revisor leyo el
+  test: las entradas se declaran **3-1-2** y asevera `["primero","segundo","tercero"]` + `[1,2,3]`,
+  o sea que distingue de verdad el orden de declaracion.
 
 ## Hallazgo medido que queda ABIERTO (no lo decidio el owner)
 
