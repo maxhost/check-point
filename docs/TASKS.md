@@ -14,26 +14,26 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-**Ultima actualizacion: 2026-09-19 — la **0080 esta IMPLEMENTADA y EN REVISION** (revisor
-corriendo, sin commitear, sin PASS). La 0079 ya esta commiteada (`07a06c0`) y con ella el ADR 0076
-quedo COMPLETO. **EL OWNER YA CONTESTO LO DEL TOS**, y su respuesta esta abajo en «⇥ ARRANCA ACA».
-Lo que sigue despues del PASS de la 0080 es la **0081** (el TOS), ya `cerrada`.**
+**Ultima actualizacion: 2026-09-19 — HEAD **`17496b5`**, con las specs 0079 y 0080 `implementadas`
+y COMMITEADAS (las dos con PASS). El ADR 0076 quedo COMPLETO. **EL OWNER YA CONTESTO LO DEL TOS** —
+su respuesta esta abajo en «⇥ ARRANCA ACA». **La 0081 (el TOS) tiene un implementador CORRIENDO**:
+es la ULTIMA del arco, y con su PASS recien corresponde avisarle al owner para el QA.**
 
 **ESTADO REAL, en una pantalla — lo de abajo lo REPRODUJO el orquestador, salvo lo que diga de
 donde viene:**
 
 | Que | Donde esta |
 |---|---|
-| HEAD local | **`e62b756`** (specs 0080 y 0081 + los docs). `origin/main` en **`bb511df`**: **6 commits sin pushear**. El owner no pidio push |
-| **Trabajo SIN COMMITEAR** | el de la **0080** (4 archivos + `TASKS.md`). **`git checkout .` se llevaria `program-defaults-clauses.test.ts`, que es nuevo** |
+| HEAD local | **`17496b5`** (spec 0080, con su PASS). `origin/main` en **`bb511df`**: **7 commits sin pushear**. El owner no pidio push |
+| Arbol | **LIMPIO en `17496b5`** al momento de escribir esto. ⚠️ **Pero la 0081 tiene un implementador CORRIENDO**, asi que va a haber trabajo sin commitear — y puede haber una **mutacion viva y etiquetada**: `ListAgents` primero, y **medila antes de revertirla** |
 | Specs `implementadas` | 0067, 0068, 0069, 0072, 0074, 0075, 0077, 0078, **0079** y **0080** (las 8 ultimas con PASS independiente) |
-| **0080** | ✅ **`implementada` con PASS de revisor independiente.** Sin commitear todavia |
-| Proxima | **0081** (el TOS). `cerrada` y **AMPLIADA** con el hallazgo F1 del revisor (su mutacion **M6**). Se despacha apenas la 0080 este commiteada |
-| Gates sobre el arbol de la 0080 | `typecheck --force` (sin cache), `lint`, `build` **verdes**; suite **221 archivos / 1730 tests, 0 failed, 0 skipped** |
-| Mutaciones vivas | **CERO** (`no-mutations-left.sh` EXIT=0) |
+| **0080** | ✅ **`implementada` con PASS, COMMITEADA** en `17496b5` |
+| **EN VUELO AHORA** | **0081** (el TOS) — `cerrada` y **AMPLIADA** con el hallazgo F1 del revisor de la 0080 (su mutacion **M6**). **Implementador corriendo.** Es la ULTIMA del arco |
+| Gates sobre `17496b5` | `typecheck --force` (sin cache), `lint`, `build` **verdes**; suite **221 archivos / 1730 tests, 0 failed, 0 skipped** — reproducidos por el orquestador |
+| Mutaciones vivas | **CERO al commitear `17496b5`**. Re-chequear con `no-mutations-left.sh`: la 0081 esta midiendo |
 | El flake de `consumer-recovery` | **arreglado por la 0080**: no aparecio en la corrida del orquestador, y el implementador lo corrio **3 veces seguidas en verde** |
 | `pnpm test:e2e` | **NO aplica** a la 0080 ni a la 0081 (cero `.tsx`). Se corrio en la 0079, con su rojo preexistente demostrado en worktree limpio |
-| ⚠️ CI de `main` remoto | **ROJO heredado** por ese e2e, anterior a los 6 commits |
+| ⚠️ CI de `main` remoto | **ROJO heredado** por ese e2e, anterior a los 7 commits |
 | Vercel / prod | **medido el 2026-09-18 y NO re-verificado**: deploy `78d1f3a`, **0 negocios**. **Re-medir antes de decidir nada** |
 | **QA del owner** | **despues de la 0081.** El owner pidio un solo QA al final |
 
