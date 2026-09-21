@@ -255,18 +255,20 @@ select {
   padding: 24px;
   background: var(--ui-overlay);
 }
+/* El color de este dialogo lo comparten SIETE pantallas (catalog, loyalty, locations,
+   marketing, subscription x3 y staff), asi que se queda en `#fff` y NO pasa a los tokens:
+   `--ui-surface` invierte bajo `@media (prefers-color-scheme: dark)` sin ningun gate
+   (`ui/tokens.css:77-78`, y el merchant no setea `data-theme`), mientras las paginas de
+   atras siguen con `background: #fff` a mano en 69 reglas de este archivo. El resultado era
+   un dialogo oscuro sobre una pantalla clara en cualquier SO en modo oscuro — un efecto
+   lateral de la spec 0088 sobre seis pantallas que no estaban en su alcance.
+   El `z-index: 90` del backdrop SI se queda: es lo que pone al dialogo por encima de las
+   capas del tour de Staff (modal 70 < ayuda 85 < backdrop 90 < toast 100). */
 .confirm-dialog {
   width: min(100%, 420px);
   padding: 24px;
   border-radius: 20px;
-  color: var(--ui-text);
-  background: var(--ui-surface);
-}
-.confirm-dialog h2 {
-  color: var(--ui-text);
-}
-.confirm-dialog p {
-  color: var(--ui-text-muted);
+  background: #fff;
 }
 .confirm-dialog > div {
   display: grid;

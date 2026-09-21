@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { HelpCircle, Xmark } from "iconoir-react";
 import { startOnboardingTour } from "../onboarding/onboarding-tour";
-import { staffTourSteps, type StaffHelpTour } from "./staff-tour-definitions";
+import {
+  staffHelpStart,
+  staffOnboardingStart,
+  wantsStaffOnboardingTour,
+  type StaffHelpTour,
+} from "./staff-tour-definitions";
 
 const HELP: Array<{
   id: StaffHelpTour;
@@ -48,25 +53,14 @@ export function StaffTourController({
 
   useEffect(() => {
     if (loading || started.current) return;
-    const query = new URLSearchParams(window.location.search);
-    if (query.get("tour") !== "onboarding") return;
+    if (!wantsStaffOnboardingTour(window.location.search)) return;
     started.current = true;
-    startOnboardingTour({
-      tourId: "staff",
-      steps: staffTourSteps("onboarding"),
-      showSkipOnFirstStep: true,
-    });
+    startOnboardingTour(staffOnboardingStart());
   }, [loading]);
 
   function startHelp(id: StaffHelpTour) {
     setHelpOpen(false);
-    requestAnimationFrame(() =>
-      startOnboardingTour({
-        tourId: "staff",
-        steps: staffTourSteps(id),
-        persist: false,
-      }),
-    );
+    requestAnimationFrame(() => startOnboardingTour(staffHelpStart(id)));
   }
 
   return (

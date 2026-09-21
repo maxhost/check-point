@@ -259,7 +259,18 @@ export function StaffEditor({
         >
           {draft.member.status === "active" ? "Dar de baja" : "Reactivar"}
         </button>
-        {isOwner && (
+        {/* Enmienda §11 de la spec 0088: el boton NO es owner-only. La API ya delega
+            `pin/regenerate` en el permiso `staff` (`api/staff/_auth.ts:66`,
+            `requireApiPermission(request, "staff")`) y el copy del picker se lo promete con
+            todas las letras («puede crear a terceros, ver sus PIN»). Con el gate `isOwner`
+            puesto, la ayuda «Regenerar un PIN» —que el menu ofrece a cualquier
+            administrador— quedaba esperando un `[data-tour="staff-pin"]` que para el nunca
+            se renderizaba.
+            Se conserva el corte por `own`: rotarse el PIN a si mismo revoca las propias
+            sesiones (el `DELETE` de la ruta), o sea un cierre de sesion sin aviso. La
+            membresia del OWNER no aparece en esta lista, asi que `own` solo se da entre
+            integrantes. */}
+        {!own && (
           <button
             className="small-button pin"
             data-tour="staff-pin"

@@ -120,7 +120,9 @@ const TOUR_COPY: Record<OnboardingTourId, { title: string; body: string }> = {
  *
  * **Que la pantalla de un tour no exista todavia NO bloquea** (ADR 0078 §6): su `done` queda en
  * `false`, nadie manda un `POST` por el, y como ningun tour es `required` no traba a los que
- * siguen. Hoy `/backoffice/staff` no existe (`backoffice-navigation.tsx:37`, `href: null`).
+ * siguen. **De los cuatro, `staff` YA tiene su pantalla y su tour** (spec 0088:
+ * `/backoffice/staff`, enlazada en `backoffice-navigation.tsx:37`); los otros tres siguen sin
+ * pantalla y por eso nunca reciben un `POST`.
  */
 export const CHECKLIST_ITEMS: Record<string, ChecklistItemDef> = {
   "verify-email": {

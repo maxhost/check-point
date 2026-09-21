@@ -10,8 +10,8 @@ export const STAFF_TOUR_COPY = {
       "Escribí el nombre con el que identificarás a esta persona.",
     ],
     counter: [
-      "Habilitá Mostrador",
-      "Este es el primer permiso recomendado: permite acreditar compras y canjear premios.",
+      "Mostrador ya viene activado",
+      "Es el permiso recomendado para quien atiende: acreditar compras y canjear premios. Podés apagarlo o sumar otros antes de crear.",
     ],
     create: [
       "Creá y mostrale su PIN",

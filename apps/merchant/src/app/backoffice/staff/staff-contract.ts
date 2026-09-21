@@ -1,42 +1,72 @@
-export const PERMISSIONS = [
-  {
-    id: "counter",
+import type { PermissionScope } from "../../../server/permissions-catalog";
+
+/**
+ * LA COPIA DE LOS SIETE PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**
+ *
+ * `server/permissions-catalog.ts` declara el conjunto CERRADO (el mismo que el `CHECK` de la
+ * migracion 0041) y dice explicitamente por que no tiene un solo `import`: para que nadie
+ * tenga que copiar el arreglo. Esta pantalla es su quinta consumidora, asi que **toma el
+ * tipo de alla**: `Record<PermissionScope, …>` hace que un permiso nuevo en el catalogo
+ * **NO COMPILE** aca hasta que se le escriba su copy — misma forma y mismo motivo que el
+ * `TOUR_COPY` de `server/onboarding/checklist.ts`. Sin esto, agregar un permiso al `CHECK`
+ * dejaba una pantalla que no lo ofrece nunca, y sin un solo rojo.
+ *
+ * El ORDEN es de producto y a proposito NO es el del catalogo (que es alfabetico): primero el
+ * recomendado (`counter`), ultimo el peligroso (`staff`). ORACULO DE ESA COBERTURA: el caso
+ * «ofrece exactamente los siete permisos del catalogo» de `staff-contract.test.ts`, que
+ * compara los dos conjuntos ordenados y por eso no depende de este orden.
+ */
+const PERMISSION_COPY: Record<
+  PermissionScope,
+  { label: string; detail: string }
+> = {
+  counter: {
     label: "Mostrador",
     detail: "Acreditar compras y canjear premios.",
   },
-  {
-    id: "catalog",
+  catalog: {
     label: "Catálogo",
     detail: "Ver, crear y editar productos y categorías.",
   },
-  {
-    id: "locations",
+  locations: {
     label: "Locales",
     detail: "Ver, crear, editar y activar locales.",
   },
-  {
-    id: "loyalty",
+  loyalty: {
     label: "Programa de fidelización",
     detail: "Configurar el programa, sus premios y diseño.",
   },
-  {
-    id: "marketing",
+  marketing: {
     label: "Campañas",
     detail: "Crear, editar, pausar y activar campañas.",
   },
-  {
-    id: "brand",
+  brand: {
     label: "Marca",
     detail: "Editar la identidad visual del negocio.",
   },
-  {
-    id: "staff",
+  staff: {
     label: "Administrador",
     detail: "Acceso total a la configuración y al alta de integrantes.",
   },
-] as const;
+};
 
-export type Permission = (typeof PERMISSIONS)[number]["id"];
+const PERMISSION_ORDER: readonly PermissionScope[] = [
+  "counter",
+  "catalog",
+  "locations",
+  "loyalty",
+  "marketing",
+  "brand",
+  "staff",
+];
+
+export const PERMISSIONS: readonly {
+  id: PermissionScope;
+  label: string;
+  detail: string;
+}[] = PERMISSION_ORDER.map((id) => ({ id, ...PERMISSION_COPY[id] }));
+
+export type Permission = PermissionScope;
 
 export type StaffMember = {
   userId: string;

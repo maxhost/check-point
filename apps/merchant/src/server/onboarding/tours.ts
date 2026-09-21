@@ -10,8 +10,9 @@ import { businessOnboardingTours } from "../schema";
  * `404`; para rechazarlo necesita la lista. Que la 0085 derive sus items de esta constante —y
  * no al reves— es lo que evita dos listas que se desincronizan.
  *
- * **Que los cuatro existan no implica que sus pantallas existan** (ADR 0078 §6). De los cuatro,
- * el de staff apunta a una pantalla que todavia no esta. No hay que esperarla: un tour sin
+ * **Que los cuatro existan no implica que sus pantallas existan** (ADR 0078 §6). **`staff` ya
+ * la tiene** desde la spec 0088 (`/backoffice/staff`, con su tour de onboarding y sus cuatro
+ * ayudas); `catalog`, `program` y `brand` todavia no. No hay que esperarlas: un tour sin
  * pantalla simplemente nunca recibe un `POST`, su `done` queda en `false` y no traba a nadie
  * porque ningun tour es `required` (spec 0085: el unico obligatorio es `verify-email`).
  *

@@ -15,6 +15,7 @@ import {
   AVAILABLE_ONBOARDING_ANCHORS,
   onboardingStepState,
 } from "./onboarding-view";
+import { STAFF_ONBOARDING_TOUR_HREF } from "../staff/staff-tour-definitions";
 import { ONBOARDING_TOUR_STARTED_EVENT } from "./onboarding-tour";
 
 type SendState = "idle" | "sending" | "sent" | "error";
@@ -198,7 +199,7 @@ export function OnboardingChecklist() {
                       onClick={() => {
                         if (item.anchor === "staff") {
                           setHiddenForTour(true);
-                          router.push("/backoffice/staff?tour=onboarding");
+                          router.push(STAFF_ONBOARDING_TOUR_HREF);
                           return;
                         }
                         void sendVerification();

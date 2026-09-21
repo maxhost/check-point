@@ -53,8 +53,14 @@ archivos: apps/merchant/src/app/backoffice/onboarding, apps/merchant/src/app/bac
 - [x] Ayudas independientes no persisten progreso.
 - [x] Anchors estables, acciones reales, copy separado y catálogo tipado.
 - [x] Funciona desde 320 px con controles táctiles de 44 px.
-- [x] Tests de composición, locale, navegación y persistencia.
-- [ ] Gates root: typecheck, lint, test, format:check, build y test:e2e.
+- [x] Tests de composición, **navegación** y **persistencia** (los dos últimos nacieron en la
+      enmienda §11: antes estaban marcados y no existían).
+- [ ] **Test de `locale`: NO existe, y se declara en vez de fingirse.** La completitud del
+      diccionario la sostiene el TIPO (`StaffTourLocale = keyof typeof STAFF_TOUR_COPY`,
+      `staff-tour-locales.ts:71`), así que un idioma incompleto no compila; lo que no hay es un
+      caso que pase un `locale` distinto, porque hoy sólo existe `es`. Entra con el segundo idioma.
+- [x] Gates root: typecheck, lint, test, format:check y **build** — los cinco verdes.
+- [ ] `test:e2e`: bloqueado localmente por el puerto 3000 (ver «Evidencia»). Queda para la CI.
 
 ## Mutaciones — presupuesto: 4
 
@@ -66,6 +72,76 @@ archivos: apps/merchant/src/app/backoffice/onboarding, apps/merchant/src/app/bac
 | 4 | Primer permiso no es counter | test del anchor |
 
 **Condición de corte:** dos correcciones consecutivas que descubran otra rotura detienen la ronda.
+
+## Enmienda §11 — los seis hallazgos de la revisión independiente (2026-09-21)
+
+La revisión en contexto fresco devolvió **FAIL** sobre el commit `8ee91d1`, y **no por lo que el
+owner vio en pantalla**: por un defecto funcional que el botón «Siguiente» del popover esconde, y
+por cinco propiedades que la spec daba por cubiertas y no tenían oráculo. Los seis quedaron
+reproducidos por el orquestador antes de escribirse acá, y los seis están cerrados.
+
+1. **EL DEFECTO REAL — la ayuda de alta le pedía al merchant el clic que ROMPE el alta.** El alta
+   abre con el switch de Mostrador **ya encendido** (`staff-console.tsx:30-32`,
+   `useState(["counter"])`), y el paso `counter` decía *«Habilitá Mostrador»* y estaba en
+   `autoAdvanceAnchors`: el anchor es el `<label>` que envuelve el switch
+   (`permission-picker.tsx:33`), así que pulsarlo lo **APAGA** → `createPermissions` queda en `[]`
+   → el alta se corta con *«Elegí al menos un permiso»* (`staff-console.tsx:75-76`). Quien avanzaba
+   con «Siguiente» nunca lo veía, y por eso sobrevivió al QA. **Arreglo: el paso pasa a
+   informativo** («Mostrador ya viene activado») y sale de `autoAdvanceAnchors`. Se eligió esto y
+   no cambiar el default del alta a `[]` porque el default es una decisión de producto que el tour
+   no tiene por qué mover: el permiso recomendado sigue viniendo puesto.
+2. **El gate de la pantalla no tenía oráculo** (y es la primera página del backoffice gateada por
+   PERMISO en vez de por `requireOwner`). Borrar el chequeo dejaba **1.526 tests en verde** y
+   ningún test del repo importaba `page.tsx`. Nace `page-guard.test.ts`, sin base: cuatro casos
+   —integrante sin el permiso, integrante sin ninguno, integrante con `staff`, y **el owner, que
+   llega con los siete aunque su fila esté vacía**—. Es RM1, y muerde con dos rojos.
+3. **La UI tenía su propia lista de los siete permisos**, en otro orden y sin nada que la atara al
+   catálogo cerrado — justo lo que `server/permissions-catalog.ts` existe para evitar (su docblock
+   lo dice: una copia por módulo serían cuatro fuentes de verdad para un conjunto que el `CHECK` de
+   la migración 0041 declara cerrado). Ahora `staff-contract.ts` tipa su copy como
+   `Record<PermissionScope, …>` —un permiso nuevo **no compila** hasta que se le escriba— y un test
+   compara los dos conjuntos ordenados, porque el **orden** de la pantalla sí es de producto
+   (recomendado primero, peligroso último) y un arreglo incompleto sí compila. Es RM3.
+4. **El administrador no veía «Regenerar PIN».** El botón era `isOwner &&`, pero la API ya delega
+   esa ruta en el permiso `staff` (`api/staff/_auth.ts:66`) y el copy del picker se lo **promete**
+   («puede crear a terceros, ver sus PIN»): la ayuda «Regenerar un PIN» —que el menú ofrece a
+   cualquier administrador— quedaba esperando un `[data-tour="staff-pin"]` que para él nunca se
+   renderizaba, y con `skipMissingElement: false` y `waitForElement: 60_000` eso es un recorrido
+   que no responde. Pasa a `!own &&`: se conserva el corte sobre **uno mismo**, porque rotarse el
+   PIN revoca las propias sesiones. No abre escalada nueva: por la regla 2 del ADR 0079 §3 un
+   administrador ya puede otorgarse los seis permisos no-`staff`, y el `WHERE role='staff'` de la
+   ruta protege la membresía del owner (regla 4).
+5. **El cableado del arranque estaba escrito dos veces y sin oráculo.** El `href` que empuja el
+   checklist y el query que la pantalla parsea vivían en dos archivos: romper uno dejaba «Empezar»
+   navegando a una pantalla que no arranca nada, **sin rojo**. Ahora los dos salen de las mismas
+   constantes (`STAFF_ONBOARDING_TOUR_HREF` / `wantsStaffOnboardingTour`), así que la
+   desincronización **no es posible por construcción**; y el `persist: false` de las ayudas dejó de
+   vivir en el `.tsx` y pasó a `staffHelpStart()`, que sí tiene oráculo (RM4). Lo que se pinnea con
+   test es que el parseo **discrimine** (RM5).
+6. **Efecto lateral sobre SEIS pantallas ajenas, revertido.** El `.confirm-dialog` había pasado de
+   `background: #fff` a `var(--ui-surface)`, y ese diálogo lo comparten catalog, loyalty, locations,
+   marketing, subscription (×3) y staff. Los tokens invierten bajo
+   `@media (prefers-color-scheme: dark)` sin ningún gate (`ui/tokens.css:77-78`, y el merchant no
+   setea `data-theme`) mientras las páginas de atrás siguen con `#fff` a mano en **69** reglas del
+   mismo archivo: en un SO en modo oscuro, diálogo oscuro sobre pantalla clara. Vuelve a `#fff`.
+   **El `z-index: 90` del backdrop se queda**: es lo que ordena las capas del tour
+   (modal 70 < ayuda 85 < backdrop 90 < toast 100).
+
+**Y dos docblocks que este commit volvió falsos**, los dos fuera de los archivos que tocó:
+`server/onboarding/checklist.ts:123` decía *«Hoy `/backoffice/staff` no existe
+(`backoffice-navigation.tsx:37`, `href: null`)»* citando la línea exacta que hoy afirma lo
+contrario, y `server/onboarding/tours.ts:14` decía que el tour de staff *«apunta a una pantalla que
+todavía no está»*. Corregidos los dos. Es la cuarta spec seguida con un docblock que afirma algo
+que el árbol no sostiene.
+
+**Mutaciones de la enmienda: 5, las cinco ROJAS y por la aserción correcta.** Bitácora con
+`shasum`, alcance y salida transcrita en `docs/archivo/spec-0088-bitacora-de-mutaciones.md`.
+
+**Lo que la revisión declaró y NO se persiguió:** `test:e2e` y los 560 tests de integración (no
+corren sin base ni sin puerto), QA visual/responsive (lo hizo el owner), y el hecho de que
+16 archivos fuente de `backoffice/staff/` tengan test sólo 2 — la clase ya quedó medida por las
+mutaciones, y perseguir cobertura de `.tsx` sin navegador es gastar presupuesto en lo que el QA
+humano ya cubrió.
 
 ## Declarado AFUERA
 
