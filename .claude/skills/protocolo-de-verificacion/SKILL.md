@@ -50,6 +50,37 @@ Es el ADR 0062 y la instruccion del owner del 2026-09-13, y es la regla que mas 
 Una mutacion es codigo roto a proposito para probar que un test muerde. **Un rojo de mutacion y
 un rojo de bug son indistinguibles desde afuera**, asi que la disciplina no es opcional.
 
+### 2.0 La tabla se verifica ANTES de despacharla (2026-09-21)
+
+**Cada fila de la tabla de mutaciones afirma DOS cosas** — que existe un mecanismo X, y que el
+oraculo Y lo distingue — **y las dos se miden antes de cerrar la spec.** Hay que poder senalar el
+archivo y la linea del mecanismo. Dos minutos de `rg` por fila.
+
+**Van dos specs seguidas con una fila falsa, y las dos las escribio el orquestador:** la M5 de la
+0085 afirmaba un rojo que **no existia** (`[]` es truthy, asi que la mutacion midio 21/21 en
+verde), y la M6 de la 0086 mandaba a mutar *«el evaluador del plan del catalogo»*, que **no
+existe** — `ENTITLEMENTS` tiene exactamente `locations.max` y `campaigns.enabled`. En los dos
+casos la fila llego hasta el agente que iba a ejecutarla.
+
+### 2.0-bis Y su espejo: una mutacion que SOBREVIVE acusa al oraculo tan seguido como a la tabla
+
+Antes de declarar la fila falsa, **mirar el seed**. En la 0086 esto paso **tres veces**:
+`seedMember` creaba el `user` con `emailVerified: true`, pero un integrante real nace con
+`false` (`staff-create.ts:132`, su email es el sintetico `@staff.invalid`). Las suites estaban
+midiendo **un caller que no existe en produccion**, asi que todo oraculo que dependiera del gate
+de email pasaba en verde sin medir nada.
+
+**Un seed de test es una afirmacion sobre como es el caller en produccion.** Si diverge, lo que
+midas con el vale cero. Tres corolarios, los tres pagados:
+
+- **La reparacion va en la FUENTE, no en el archivo que estas mirando.** El primer parche de la
+  0086 fue local y dejo la causa puesta; las otras dos suites siguieron midiendo al caller irreal
+  hasta que el revisor re-corrio la mutacion.
+- **El default del seed es la forma de PRODUCCION**, y lo excepcional se pide: `emailVerified:
+  opts.emailVerified ?? false`, no al reves.
+- **Se prueba que la reparacion MUERDE, o no es una reparacion**: sacando la linea, la mutacion
+  tiene que volver a sobrevivir. En la 0086 se midio (RV2) y volvio a verde 7/7.
+
 Antes de mutar, en este orden:
 
 1. `git status --short <archivo>`. Si sale `??`, **`git checkout` no existe como salvavidas**:

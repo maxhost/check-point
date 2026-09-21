@@ -101,6 +101,11 @@ porque Y es lo que se vuelve mutacion y test. En la 0080 la regla era cierta y e
 la mutacion midio **21/21 en verde** y el invariante real (un `clauses` **falsy pero presente**,
 como `null`) no tenia oraculo. Dos lineas de `node -e` lo habrian cazado. Caso en `LECCIONES.md`.
 
+**Y CADA FILA DE LA TABLA DE MUTACIONES SE VERIFICA CONTRA EL ARBOL ANTES DE CERRAR LA SPEC** —
+el mecanismo que nombra tiene que existir y hay que poder senalar su archivo y su linea. **Van dos
+specs seguidas con una fila falsa, y las dos las escribio el orquestador** (M5 de la 0085, M6 de
+la 0086). El protocolo esta en la skill `protocolo-de-verificacion`; los casos, en `LECCIONES.md`.
+
 **Toda mutacion se etiqueta con `MUTATION`, se le registra el `shasum` limpio ANTES de mutar, y se
 revierte con un `diff` contra la copia limpia.** Enforced por el hook `no-mutations-left.sh`, que
 **solo ve mutaciones etiquetadas**. Si heredas una puesta: `ListAgents` primero (puede estar

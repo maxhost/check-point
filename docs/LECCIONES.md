@@ -1128,3 +1128,100 @@ dos canales (cuerpo HTTP y `console.error`). Tambien se corrigio de paso un «tr
   archivo que la contradice.
 - **Un «declarado afuera» no se copia entre specs.** Se re-verifica contra las palabras del owner
   antes de repetirlo, igual que cualquier otra afirmacion heredada.
+
+---
+
+## 2026-09-21 — Spec 0086. Tres veces el mismo patron: el oraculo verde por un seed irreal
+
+**El caso.** La spec 0086 se implemento y reviso con **17 mutaciones ejecutadas** (8 del
+implementador, 9 del revisor). Tres de ellas midieron **VERDE el archivo que uno esperaba que se
+pusiera rojo**, siempre por la misma causa:
+
+| Mutacion | Archivo que quedo verde | Por que |
+|---|---|---|
+| **M3** (el paso 4 deja de exceptuar al staff) | `permisos-mostrador.neon` | el oraculo real era `counter-email-gate.test.ts`, con dobles |
+| **M8** (el writer deja de saber que el caller es staff) | el caso de EDITAR el programa | el staff sembrado tenia `emailVerified: true` |
+| **M3 re-corrida por el revisor (RV9)** | `permisos-delegados.neon` **y** `permisos-mostrador.neon` | la misma causa que M8, en la fuente |
+
+**La causa unica:** `seedMember` creaba el `user` con **`emailVerified: true`**, pero un
+integrante **real** nace con **`false`** (`staff-create.ts:132` — su email es el sintetico
+`@staff.invalid`, que no se entrega nunca). O sea que **las suites de integracion estaban
+midiendo un caller que no existe en produccion**, y cualquier oraculo que dependiera del gate de
+email pasaba en verde sin medir nada.
+
+**Lo que lo salvo fue mutar, no leer.** El codigo estaba **bien** en los tres casos: lo que
+fallaba era el oraculo. Un barrido estatico, una revision de codigo o un «los tests pasan» no lo
+habrian encontrado nunca — la unica señal fue una mutacion que **sobrevivio**.
+
+**Y el segundo error, que casi lo deja abierto:** la primera reparacion fue **local** (un
+`UPDATE emailVerified:false` dentro del archivo que se estaba arreglando). Eso apago el sintoma
+en un archivo y **dejo la causa en la fuente**, asi que las otras dos suites siguieron midiendo
+al caller irreal. Lo cazo el revisor re-corriendo M3.
+
+**Las reglas.**
+- **Una mutacion que sobrevive es un hallazgo, no un tramite.** Antes de declarar la fila falsa,
+  preguntarse si el que miente es el **oraculo** y no la tabla. Aca la fila era verdadera las
+  tres veces.
+- **Un seed de test es una afirmacion sobre como es el caller en produccion.** Si diverge, todo
+  lo que se mida con el vale cero. `seedMember` pasa a `emailVerified: opts.emailVerified ?? false`
+  — **la forma de produccion es el default y `true` hay que pedirlo**.
+- **Una reparacion de oraculo se hace en la FUENTE.** Un parche local apaga el sintoma del
+  archivo que estas mirando y deja los demas midiendo lo mismo de antes, sin avisar.
+- **Y se prueba que la reparacion MUERDE**, o no es una reparacion: sacando la linea, la mutacion
+  tiene que volver a sobrevivir. El revisor lo midio (RV2) y volvio a verde 7/7.
+
+## 2026-09-21 — Spec 0086. La SEGUNDA fila de mutacion falsa seguida, y las dos las escribi yo
+
+**El caso.** La fila **M6** del plan de pruebas de la 0086 decia: *«el writer del **catalogo** se
+llama sin pasar por el evaluador del plan»*. **El catalogo no tiene evaluador de plan.**
+`ENTITLEMENTS` tiene exactamente dos claves, `locations.max` y `campaigns.enabled`
+(`entitlements/catalog.ts:69,78`). La mutacion, como estaba escrita, era **imposible de ejecutar**.
+
+**Es la segunda spec seguida con una fila de mutacion falsa** — la anterior es la M5 de la 0085,
+que afirmaba un rojo que nunca existio. **Las dos las escribio el orquestador**, o sea yo, y las
+dos las cazo el agente que fue a ejecutarlas.
+
+**La regla que ya existia y no alcanzo.** `CLAUDE.md` dice que el ejemplo con el que describis un
+invariante es una **afirmacion**, no una ilustracion. Una fila de la tabla de mutaciones es
+exactamente eso: afirma que **existe un mecanismo X** y que **el oraculo Y lo distingue**. En la
+M6 el mecanismo no existia; en la M5 de la 0085 el oraculo no distinguia.
+
+**La regla nueva, que es mas barata que ambas.** **Cada fila de la tabla de mutaciones se
+verifica contra el arbol ANTES de cerrar la spec** — el mecanismo que nombra tiene que existir y
+hay que poder senalar el archivo y la linea. Dos minutos de `rg` por fila. No se despacha una
+tabla de mutaciones cuyo mecanismo no se abrio.
+
+## 2026-09-21 — Spec 0086. El §7 afirmaba un mecanismo medido a medias, y tapaba un bloqueo real
+
+**El caso.** El §7 de la spec decia: *«un integrante con `loyalty` **edita** el programa y **no
+puede crearlo**. Es correcto y queda declarado»*. **Es exactamente al reves.**
+`programEditDenied` (`onboarding-grant.ts`) hace:
+
+```ts
+if (!input.isEdit) return null;                                 // CREAR es libre
+if (input.emailVerified || input.onboardingGrantActive) return null;
+return { status: 403, code: "email_not_verified", ... };        // EDITAR exige email
+```
+
+**Crear es libre** (ADR 0070 §11) y **editar** exige `emailVerified`, que un staff **nunca**
+tiene. La spec afirmaba como propiedad deseada lo contrario de lo que hace el arbol.
+
+**Lo caro no fue la frase: fue lo que TAPABA.** Al declarar el comportamiento como «correcto y
+declarado», la spec cerraba la puerta a mirar ahi — y detras habia un **bloqueo real** que dejaba
+la superficie `loyalty` delegada pero muerta. El implementador lo encontro **solo porque fue a
+medir**, no porque la spec lo mandara.
+
+**Y su gemelo en el codigo, la misma familia:** el docblock de `loyalty-program/route.ts` afirmaba
+que `!== "owner"` era **fail-closed** para un rol desconocido. Es **falso**: con `!== "owner"` un
+rol desconocido **si** queda exento. El comportamiento estaba bien —el dominio **espeja** al paso
+4 del guard, y esa consistencia es la propiedad— pero la justificacion escrita mandaba a la
+proxima sesion a escribir la sonda contra el lugar equivocado. Lo cazo el revisor.
+
+**Las reglas.**
+- **Una afirmacion de mecanismo en una spec se mide ABRIENDO la funcion**, no leyendo su nombre
+  ni el docblock de quien la llama. Es la misma regla de la 0077, y volvio a costar.
+- **Un «es correcto y queda declarado» es la frase mas cara de una spec:** cierra la puerta a
+  mirar. No se escribe sin haber ejecutado lo que declara correcto.
+- **Un docblock que explica POR QUE una comparacion tiene la forma que tiene es codigo, no
+  prosa**, y se verifica igual. Un comentario que dice «fail-closed» sobre algo que no lo es
+  sobrevive a todos los gates.

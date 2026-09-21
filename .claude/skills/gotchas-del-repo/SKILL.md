@@ -25,6 +25,13 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   pasan. El rojo es del arnes, no del arbol, y aparece al final de una spec sobre codigo ya
   revisado. Corrementelos de a uno. **Corolario:** un gate que dice `>>> FULL TURBO` **no midio
   nada en esa corrida** — si de lo que vas a afirmar depende que haya mirado el arbol, forzalo.
+- **Y para forzarlo, la forma es `TURBO_FORCE=1`, NO `-- --force`** (medido 2026-09-21).
+  `pnpm run typecheck -- --force` le pasa el flag a **`tsc`**, no a turbo, y el gate muere con
+  `error TS5093: Compiler option '--force' may only be used with '--build'` en los **tres**
+  paquetes. O sea un **rojo por el motivo equivocado**, que es exactamente lo que un gate forzado
+  viene a evitar: parece el arbol roto y es el comando mal armado. La forma correcta es
+  `TURBO_FORCE=1 pnpm run typecheck` y `TURBO_FORCE=1 pnpm run build`, y se confirma leyendo
+  **`Cached: 0 cached`** en el resumen.
 - **Una migracion NO lleva `CREATE TABLE IF NOT EXISTS`, y una spec no dicta el texto del `.sql`.**
   `drizzle-kit generate` no lo emite y de las 41 migraciones del repo **ninguna `CREATE TABLE` lo
   tiene** (el unico `IF NOT EXISTS` es un `CREATE EXTENSION` en la `0016`). La idempotencia que
