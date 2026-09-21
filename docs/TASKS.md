@@ -14,7 +14,123 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-## ⇥ ▶ EL ARCO DEL ONBOARDING ESTA COMPLETO DEL LADO DE LA API. FALTA LA UI, Y LA HACE EL OWNER
+## ⇥ ▶ ARCO NUEVO — PERMISOS DEL STAFF Y AUDITORIA (ADR 0079, 2026-09-20)
+
+**Es el arco en ejecucion.** El anterior (UI del onboarding) quedo cerrado en `c8c552b` y
+sigue abajo como contexto, no porque este en curso.
+
+**La decision ya esta tomada y escrita:** `docs/adr/0079-los-permisos-del-staff-son-alcances-por-objeto.md`,
+con su fila en `INDEX.md`. Las siete decisiones del owner se tomaron en conversacion el
+2026-09-20 y estan citadas textualmente ahi — **no se le vuelven a preguntar**.
+
+**Lo que el ADR decide, en una linea cada uno:** siete permisos por objeto y nunca una matriz
+CRUD · lo irreversible no se delega y desactivar no cuenta como destructivo · el permiso
+`staff` es el perfil **administrador** y solo el owner lo otorga · los permisos viven en
+`business_membership.permissions text[]` · un solo guard con el orden del ADR 0073 intacto ·
+`permissions` viaja en `GET /api/merchant/session` · `core.activity_log` en texto plano y en
+la misma transaccion que la mutacion, con el mostrador afuera.
+
+**Las tres specs:**
+
+| Spec | Que | Estado |
+|---|---|---|
+| **A → `0086`** | los permisos y `requireApiPermission`: migracion `0041` con sus tres CHECK y el **borrado** de las membresias de staff existentes, diez superficies migradas, `POST /api/staff` con `permissions`, `PATCH /api/staff/{userId}/permissions`, el mostrador exigiendo `counter`, `permissions` en la sesion, y el contrato `specs/0086-contratos-de-api.md` | **CERRADA** — lista para el implementador |
+| **B** | `core.activity_log`, la escritura transaccional en las superficies de A y `GET /api/activity` (lo lee **solo el owner**) con su contrato | sin escribir; **serializa despues de A** |
+| **C** | **archivado del catalogo** — verificado: `schema/catalog.ts` no tiene `archived_at` ni `deleted_at`, el `DELETE` es **duro**, asi que «archivar si, borrar solo el owner» no es implementable hoy. Migracion + filtros de lectura en catalogo publico y backoffice | sin escribir; disjunta de A |
+
+**Los dos puntos que faltaban antes de despachar, ya resueltos el 2026-09-20:**
+
+1. **El cambio de contrato esta MEDIDO y su radio es CERO.** `not_owner` desaparece de las
+   diez superficies delegables (lo reemplazan `not_member` y `missing_permission`), pero los
+   unicos consumidores fuera de tests son `src/ui/api-error.tsx` y
+   `business/onboarding/_components/wizard-shared.tsx`, **y quien los importa es solo el wizard
+   de alta** (`_lib/contracts.ts`), que corre contra `/api/onboarding/*` — una de las cuatro
+   superficies de la CUENTA, que **conserva `not_owner`**. Ninguna pantalla de hoy se entera.
+   Lo que cambia son **doce archivos de test** y dos `code` nuevos en ese mapa compartido.
+2. **El backfill se elimino** por decision del owner: la migracion **borra** las membresias de
+   staff existentes y el owner las recrea. Ver el §1 de la spec para por que el `delete` vive
+   en la migracion y por que se borra la membresia y **no** el `user`.
+
+**Cero `.tsx` en las tres: la UI la construye el owner por fuera** (ADR 0070 §16-17). Lo que
+estas specs entregan es API **y su contrato escrito**, que es lo que consume quien hace la UI.
+
+**LOS DOS HALLAZGOS QUE EL ADR DEJO ABIERTOS YA ESTAN CERRADOS** (owner, 2026-09-20):
+`POST /api/locations/:id/status` y `campaigns/:id/pause`/`activate` **van** con su permiso
+(*«van»*), y **`GET /api/activity` lo lee solo el owner** (*«solo owner»*) — el perfil
+administrador no lee el log que lo audita. Estan integrados en el ADR §2 y §7.6. **No queda
+ninguna decision de producto abierta en este arco.**
+
+**Un hueco conocido que entra al DoD de la spec A:** `auth-guards.ts` (guard de PAGINAS)
+rebota solo con `closed`; `suspended` pasa a proposito para que el owner lea el motivo. Hoy no
+filtra nada porque las paginas son owner-only, pero **cuando el staff tenga pantallas una
+cuenta suspendida se las va a renderizar**. La API igual contesta 403: no hay dato en riesgo.
+
+**Lo que este arco desbloquea:** el tour `staff` del onboarding, que hoy no tiene pantalla
+(`backoffice-navigation.tsx:37`, `href: null`) y por eso el checklist lo muestra
+«Proximamente» (ADR 0078 §6).
+
+**El PIN fuera de banda (SMS) NO es parte de este arco:** fila **60** de `PARQUEADO.md`, con
+la escalada residual que deja abierta escrita ahi y aceptada por el owner.
+
+
+## ⇥ ▶ UI DEL ONBOARDING — PRIMER PASO IMPLEMENTADO, TOURS PREPARADOS
+
+**Punto de continuacion:** `docs/handoff-onboarding-ui-2026-09-20.md` contiene el handoff
+autocontenido del trabajo, estado del arbol, QA, mutaciones de Neon y receta para publicar el
+proximo tour.
+
+**Implementado el 2026-09-20, commiteado en `c8c552b`:**
+
+- La home del backoffice consume `GET /api/onboarding/checklist` y muestra la tarjeta de
+  `verify-email` solo mientras el item existe y tiene `done: false`.
+- El CTA consume `POST /api/merchant/auth/verify-email`, cubre envio, reenvio, email ya
+  verificado y error recuperable. Los cuatro tours todavia no se muestran porque sus recorridos
+  de pantalla no estan implementados; no se le presenta al merchant un progreso imposible.
+- Un fallo al cargar el checklist ya no se oculta como si no hubiera onboarding: muestra un
+  estado de error con reintento. El primer QA local encontro un `503` porque la base configurada
+  por el dev server no tenia disponible la migracion `0040`; no se aplico a ciegas porque
+  `db:migrate` muta la base señalada por `.env.local`.
+- Despues del primer QA visual, la tarjeta de un paso se reemplazo por el checklist progresivo
+  mobile-first especificado en `docs/onboarding-ui.md`: zona de activacion separada del
+  dashboard, resumen colapsable, progreso, lista vertical y estados `done` / `current` /
+  `blocked` / `upcoming`. La UI consume los cinco items, pero solo `verify-email` esta publicado
+  como accion; los tours sin pasos reales dicen `Proximamente` y no arrancan driver.js.
+- Segundo QA visual: el owner preciso que no queria otra seccion dentro del dashboard sino un
+  widget anclado abajo. Se saco del flujo: en movil queda sobre la navegacion inferior y abre una
+  lista con scroll propio; en escritorio flota abajo a la derecha. Tambien se corrigio el grid
+  del item: `[indicador][texto]` arriba y el CTA a ancho completo abajo, nunca como tercera
+  columna.
+- `onboarding-tour.ts` integra `driver.js` para que cada futura pantalla declare localmente sus
+  `DriveStep[]`. Terminar persiste `completed`; cerrar o saltear persiste `skipped` mediante
+  `POST /api/onboarding/tours/{tourId}`. El CSS oficial de driver se carga desde el root layout.
+- Contrato cliente cubierto por 10 tests: parseo estricto del checklist, lectura con sesion,
+  escritura exacta y rechazo de una escritura 403, mas `completed` al terminar y `skipped` al
+  cerrar driver.js, y los cuatro estados visuales del checklist.
+
+**Verificacion ejecutada con Node 24.20.0:** `typecheck`, `lint`, `format:check`, suite completa
+(`141 archivos / 1352 tests passed`; 94 archivos Neon omitidos por no estar activa la rama de
+integracion) y build de produccion merchant con webpack, verdes. El build Turbopack y
+`pnpm test:e2e` no pueden abrir sus puertos auxiliares en este sandbox (`EPERM`); Playwright se
+intento y fallo antes de iniciar los servidores, no en una asercion.
+
+**Siguiente gatillo:** cuando una pantalla tenga su tour definido, llamar
+`startOnboardingTour({ tourId, steps })` desde esa pantalla y añadir su selector estable local.
+No agregar pasos ni selectores al API.
+
+**Migracion para QA aplicada a Neon `main` el 2026-09-20:** proyecto
+`red-violet-38772073`, rama `br-curly-silence-ax8acywm`, base `neondb`. Se preparo y valido en
+una rama temporal administrada por Neon, el owner confirmo la aplicacion y la rama temporal fue
+eliminada. Verificacion posterior en `main`: `core.business_onboarding_tour` existe,
+`drizzle.__drizzle_migrations` tiene **41** filas y el ultimo hash es
+`5585a9febeab4816ac1700aabdfd9098ab9673eb12eee8a98077f1f0b37710f8` (el de `0040`). La tabla
+empieza con 0 filas, como corresponde: el progreso se crea con el primer POST de un tour.
+
+**Cuenta de QA habilitada para continuar:** por pedido explicito del owner se actualizo mediante
+MCP, solo en Neon `main`, `merchant_auth.user.email_verified = true` para
+`gjlccghplujnhlkqpk@kjkpc.net` (id `29918f4b-09ad-4dfa-b8e8-df528e967740`). La lectura previa
+dio `false` y `UPDATE … RETURNING` confirmo `true`.
+
+## EL ARCO DEL ONBOARDING ESTA COMPLETO DEL LADO DE LA API
 
 ### ESTADO — ESCRITO DESPUES DE LOS COMMITS DEL TRABAJO, con sus shas
 
