@@ -4,6 +4,7 @@ export * from "./schema/_schemas";
 export * from "./schema/auth";
 export * from "./schema/auth-start";
 export * from "./schema/business";
+export * from "./schema/onboarding-tour";
 export * from "./schema/billing";
 export * from "./schema/staff-pin";
 export * from "./schema/loyalty";

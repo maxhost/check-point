@@ -85,7 +85,7 @@ vi.mock("./db", async (importOriginal) => ({
 /**
  * Spec 0075 — **el email es el único de los cuatro pasos que no se aplica parejo**, y la tabla
  * se parte para ASEVERAR las excepciones en vez de perderlas de vista. `SURFACES` sigue entera
- * (14) para los otros cinco casos: las tres sin gate se miden igual que las demás en
+ * (15) para los otros cinco casos: las tres sin gate se miden igual que las demás en
  * `unauthorized`, `not_owner`, `business_suspended`, `business_closed` y `status` desconocido.
  * Las dos tablas salen de `SURFACES` por filtro —no son listas paralelas—, así que mover una
  * fila cambia los pisos. La tabla vive en `api-owner-surfaces-support.ts` por el hook
@@ -146,10 +146,10 @@ beforeEach(() => {
 });
 
 describe("las superficies de API del owner — el gate unificado (spec 0072 §D3)", () => {
-  it("son 14 entradas HTTP y ninguna se cayó de la tabla", () => {
+  it("son 15 entradas HTTP y ninguna se cayó de la tabla", () => {
     // Piso del barrido: sin esto, una tabla que quedara vacía dejaría cada `it.each` de
     // abajo sin correr NI UNA vez y el archivo entero pasaría en verde sin medir nada.
-    expect(SURFACES.length).toBe(14);
+    expect(SURFACES.length).toBe(15);
   });
 
   /**
@@ -167,10 +167,10 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     ]);
   });
 
-  it("las dos tablas del email parten las 14 sin perder ni duplicar ninguna", () => {
+  it("las dos tablas del email parten las 15 sin perder ni duplicar ninguna", () => {
     // Spec 0075 §D3. Sin estos pisos, mover una fila de una tabla a la otra —o vaciar la de
     // las excepciones— dejaría su `it.each` sin correr NI UNA vez, en verde.
-    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(11);
+    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(12);
     expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(3);
     expect(
       SURFACES_CON_GATE_DE_EMAIL.length + SURFACES_SIN_GATE_DE_EMAIL.length,
@@ -242,7 +242,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     },
   );
 
-  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 11
+  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 12
    * (test de arriba), y acá tampoco frena — porque el paso 3 no corre, no porque «pase». */
   it.each(SURFACES_SIN_GATE_DE_EMAIL)(
     "%s: owner SIN la clave `emailVerified` → pasa igual (el paso 3 no corre)",

@@ -281,6 +281,13 @@
       "when": 1789794421941,
       "tag": "0039_tos_variables_del_negocio",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789950938736,
+      "tag": "0040_progreso_de_tours_del_onboarding",
+      "breakpoints": true
     }
   ]
 }

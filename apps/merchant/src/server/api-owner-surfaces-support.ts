@@ -16,6 +16,7 @@ import { GET as QR } from "../app/api/loyalty-program/qr/route";
 import { GET as TEMPLATES } from "../app/api/loyalty-terms/templates/route";
 import { PATCH as SLUG } from "../app/api/merchant/business/slug/route";
 import { GET as CHECKLIST } from "../app/api/onboarding/checklist/route";
+import { POST as TOUR } from "../app/api/onboarding/tours/[tourId]/route";
 
 /**
  * LA TABLA de entradas HTTP del owner, aparte del test por el hook `file-size` (spec 0079):
@@ -42,10 +43,16 @@ const PROGRAM_BODY = {
   rewards: [{ type: "custom", label: "Café gratis" }],
 };
 
-/** Las 14 entradas HTTP de las superficies del owner. `qr` y `slug` incluidas: la primera
+/** Las 15 entradas HTTP de las superficies del owner. `qr` y `slug` incluidas: la primera
  * nació con la spec 0069 (por eso la fila 56 de `PARQUEADO` decía 9 y eran 10). La 13ª es el
  * `PUT` de la ruta única (spec 0079), que es la SEGUNDA sin gate de email; la 14ª es el
- * checklist del onboarding (spec 0083 §D5), que es la TERCERA. */
+ * checklist del onboarding (spec 0083 §D5), que es la TERCERA.
+ *
+ * **La 15ª es la escritura del progreso de un tour (spec 0084), y va del lado CON gate** —
+ * es lo contrario del checklist y la asimetría es la decisión de esa spec: el checklist se
+ * exime porque se gatearía a sí mismo, y esta ruta no tiene ese problema. `verify-email` es
+ * `blocking: true`, así que poner el paso 3 acá es HACER CUMPLIR ese bloqueo en vez de sólo
+ * reportarlo. El inventario de exenciones sigue en TRES. */
 export const SURFACES: Array<[string, () => Promise<Response>]> = [
   ["billing/checkout", () => CHECKOUT(json("/api/billing/checkout", "POST"))],
   ["catalog", () => CATALOG(json("/api/catalog", "GET"))],
@@ -81,6 +88,15 @@ export const SURFACES: Array<[string, () => Promise<Response>]> = [
   [
     "onboarding/checklist",
     () => CHECKLIST(json("/api/onboarding/checklist", "GET")),
+  ],
+  [
+    // `tourId` válido a propósito: acá se mide el GUARD, no la validación del catálogo. El
+    // `404 unknown_tour` —que se evalúa DESPUÉS del guard— tiene su oráculo contra Neon.
+    "onboarding/tours/{tourId}",
+    () =>
+      TOUR(json("/api/onboarding/tours/staff", "POST", { status: "skipped" }), {
+        params: Promise.resolve({ tourId: "staff" }),
+      }),
   ],
 ];
 
