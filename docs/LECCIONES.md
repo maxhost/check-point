@@ -1225,3 +1225,65 @@ proxima sesion a escribir la sonda contra el lugar equivocado. Lo cazo el reviso
 - **Un docblock que explica POR QUE una comparacion tiene la forma que tiene es codigo, no
   prosa**, y se verifica igual. Un comentario que dice «fail-closed» sobre algo que no lo es
   sobrevive a todos los gates.
+
+---
+
+## 2026-09-21 — Spec 0087. Un `code` nuevo que ya existia, con otro status y otra audiencia
+
+**El caso.** La enmienda §5 de la 0087 necesitaba un `code` para «el integrante que queres
+renombrar esta dado de baja». El orquestador eligio **`staff_disabled`** y lo escribio en la
+spec, en el contrato y en el encargo del implementador.
+
+**Ese `code` YA EXISTIA y estaba establecido.** Tiene su propio **ADR 0055**, dos specs (0057,
+0067), y lo emiten cinco archivos de codigo. Lo devuelve el **login** con **403**
+(`api/merchant/auth/staff/route.ts:105-109`) y significa *«TU acceso esta desactivado»*, dirigido
+**a la persona rechazada**.
+
+El de la enmienda significa **otra cosa** —*«el TARGET que queres editar esta de baja»*, dirigido
+**al merchant**— y sale con **409**. **El mismo string con dos status y dos audiencias.**
+
+**Por que importa mas de lo que parece:** en este repo **el `code` ES el contrato** y el `error`
+es copia reescribible. Un consumidor que mapee por `code` sin mirar la ruta se come la diferencia
+entera. Y las tablas de contrato viven **por spec**, asi que ninguna de las dos habria mostrado a
+la otra.
+
+**Quien lo cazo:** el **implementador**, leyendo el arbol al implementar — no el orquestador al
+elegirlo, ni el revisor. Lo subio como *hallazgo a decidir* con la evidencia y tres salidas
+posibles, sin tomar la decision. Renombrado a **`target_disabled`**, que espeja a
+`target_is_owner`: su hermano en la misma tabla y la misma familia.
+
+**La regla.** **Antes de bautizar un `code` nuevo, `rg` por ese string en `apps` y `docs`.** El
+catalogo de `code` es **compartido por todo el producto** aunque las tablas de contrato esten
+partidas por spec. Dos minutos. Y el corolario de nombre: un `code` que describe **al target** de
+una operacion se llama `target_*`, no como el estado que describe — asi la colision es dificil
+incluso sin el `rg`.
+
+## 2026-09-21 — Spec 0087. TERCERA spec seguida en la que un DOBLE irreal ensucia una medicion
+
+**El caso.** Ya son tres, y las tres veces el patron es identico: **un doble de test devuelve una
+fila que la base no puede producir**, y una mutacion se lee mal por eso.
+
+| Spec | El doble devolvia | En la base |
+|---|---|---|
+| 0086 | `emailVerified: true` para un staff | un integrante real nace en `false` |
+| 0087 (M4/R4) | filas `{handle:"000"}` **sin `userId`** | `user_id` es **`NOT NULL`** |
+| 0087 (M7) | `{role:"owner"}` **sin `status`** | `status` es **`NOT NULL DEFAULT 'active'`** |
+
+**Las consecuencias son las DOS**, y conviene tenerlas separadas:
+
+- **Falso VERDE** (0086): la mutacion sobrevive porque el caso mide un caller que no existe.
+- **Falso ROJO** (0087, las dos): la mutacion «muerde», pero **la propiedad que acusa solo existe
+  en el doble**. En R4 el guard mutado no cambiaba **ningun resultado real**; en M7 el rojo
+  colateral acusaba al doble, no al codigo.
+
+**Un falso rojo es mas caro de lo que parece**, porque **se lee como exito**: la mutacion dio
+rojo, el oraculo «muerde», se sigue de largo. Nadie audita un rojo.
+
+**Las reglas.**
+- **Un doble de test es una afirmacion sobre lo que la base puede devolver.** Si omite una
+  columna `NOT NULL`, esta describiendo una fila **imposible**, y todo lo que se mida con ella
+  vale cero.
+- **Ante un rojo de mutacion, preguntarse SIEMPRE si la propiedad que acusa existe fuera del
+  doble.** La pregunta es barata: abrir el esquema y mirar los `notNull()`.
+- **Se arregla el DOBLE, no el test.** Y se **re-mide** despues: en la 0087 la segunda lectura de
+  M7 dejo un solo rojo, y era el correcto.

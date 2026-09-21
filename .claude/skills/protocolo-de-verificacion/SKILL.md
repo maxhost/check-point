@@ -62,6 +62,28 @@ verde), y la M6 de la 0086 mandaba a mutar *«el evaluador del plan del catalogo
 existe** — `ENTITLEMENTS` tiene exactamente `locations.max` y `campaigns.enabled`. En los dos
 casos la fila llego hasta el agente que iba a ejecutarla.
 
+### 2.0-ter El FALSO ROJO, que es mas caro porque se lee como exito (2026-09-21)
+
+**Van TRES specs seguidas** en las que un **doble de test devuelve una fila que la base no puede
+producir**. El falso VERDE de la 0086 ya esta abajo; estas son las otras dos, las dos en la 0087:
+
+| Doble devolvia | En la base |
+|---|---|
+| filas `{handle:"000"}` **sin `userId`** | `user_id` es **`NOT NULL`** |
+| `{role:"owner"}` **sin `status`** | `status` es **`NOT NULL DEFAULT 'active'`** |
+
+En las dos la mutacion **dio rojo** — pero **la propiedad que acusaba solo existia en el doble**.
+Un guard mutado que no cambia **ningun** resultado real, y un rojo colateral que acusaba al doble
+en vez de al codigo.
+
+**Por eso es mas caro que el falso verde: un rojo se lee como exito y nadie lo audita.** «Muerde,
+seguimos».
+
+**Las reglas.** Un doble es una **afirmacion sobre lo que la base puede devolver**: si omite una
+columna `NOT NULL`, describe una fila **imposible**. Ante cualquier rojo de mutacion, preguntarse
+**si la propiedad que acusa existe fuera del doble** — abrir el esquema y mirar los `notNull()`
+cuesta dos minutos. Y se arregla **el doble, no el test**, y se **RE-MIDE** despues.
+
 ### 2.0-bis Y su espejo: una mutacion que SOBREVIVE acusa al oraculo tan seguido como a la tabla
 
 Antes de declarar la fila falsa, **mirar el seed**. En la 0086 esto paso **tres veces**:
