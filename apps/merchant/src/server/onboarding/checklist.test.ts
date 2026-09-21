@@ -4,148 +4,146 @@ import {
   type ChecklistItemDef,
   toChecklistView,
 } from "./checklist";
+import { ONBOARDING_TOURS } from "./tours";
 
 /**
- * Spec 0083 §D2 — `toChecklistView`, LA FUNCION PURA. Sin Neon, sin sesion, sin base.
+ * Spec 0085 (antes 0083 §D2) — `toChecklistView` y EL CATALOGO DE CINCO, sin Neon, sin sesion,
+ * sin base.
  *
- * **Dos de los oraculos de esta spec solo existen ACA**, y los dos necesitan el segundo
- * parametro de `toChecklistView` porque el catalogo real —de UN item— no puede producirlos:
- *
- * - **la independencia de `required` y `blocking`** (mutacion M5): con un item los dos valen
- *   `true`, asi que `blocking: def.required` pasaria en verde contra el catalogo real;
- * - **el `sort` por `position`**: con un item no hay orden que falsificar.
+ * **El oraculo que sobrevivio al borrado del segundo eje es el del `sort`**, y necesita el
+ * segundo parametro de `toChecklistView`: el catalogo real sale ya ordenado, asi que un `sort`
+ * removido no se puede falsificar con el. Ahora vale MAS que con un item, porque en el catalogo
+ * real hay cinco posiciones que ordenar.
  *
  * **Lo que este archivo NO asevera, declarado:** el TEXTO (`title`, `body`). Es copia y no es
  * contrato (ADR 0077 §3): un test que lo aseverara se rompe con cada ajuste de redaccion sin
  * que nada este mal.
  */
 
-/** Una entrada sintetica con los dos ejes elegibles por separado. El `done` es constante
- * porque estos casos miden los ejes, no el hecho. */
-const item = (
-  position: number,
-  required: boolean,
-  blocking: boolean,
-): ChecklistItemDef => ({
+/** Una entrada sintetica. El `done` es constante porque estos casos miden el ORDEN y las
+ * claves, no el hecho. */
+const item = (position: number, required = true): ChecklistItemDef => ({
   position,
   required,
-  blocking,
   anchor: `anchor-${position}`,
   title: `titulo ${position}`,
   body: `cuerpo ${position}`,
   done: () => false,
 });
 
-describe("toChecklistView — el catalogo REAL (spec 0083 §D1)", () => {
-  it("el unico item es `verify-email`, con `position: 1` y los DOS ejes en `true`", () => {
-    const view = toChecklistView({ emailVerified: false });
+/** Los hechos con los cuatro tours PENDIENTES, que es como nace todo negocio. */
+const sinTours = (emailVerified: boolean) => ({
+  emailVerified,
+  toursHechos: new Set<string>(),
+});
+
+describe("toChecklistView — el catalogo REAL de CINCO (spec 0085)", () => {
+  it("son los cinco ids en el orden del ADR 0078 §1, con `position` 1..5", () => {
+    const view = toChecklistView(sinTours(false));
     expect(view.locale).toBe("es");
-    expect(view.items).toHaveLength(1);
-    const [first] = view.items;
-    expect(first.id).toBe("verify-email");
-    expect(first.position).toBe(1);
-    expect(first.required).toBe(true);
-    expect(first.blocking).toBe(true);
-    expect(first.anchor).toBe("verify-email");
-  });
-
-  /** ORACULO DE LAS MUTACIONES M3 y M4: `done` LEE EL HECHO, no devuelve una constante. Las
-   * dos polaridades juntas son las que lo prueban — una sola la pasaria cualquier constante. */
-  it("`done` sigue al hecho de la sesion en las dos polaridades", () => {
-    expect(toChecklistView({ emailVerified: false }).items[0].done).toBe(false);
-    expect(toChecklistView({ emailVerified: true }).items[0].done).toBe(true);
-  });
-
-  /** El CONJUNTO EXACTO de claves: la vista no filtra el `done` como funcion ni arrastra
-   * nada del `def` que la UI no declara contrato. */
-  it("cada item sale con el conjunto EXACTO de claves del contrato", () => {
-    const [first] = toChecklistView({ emailVerified: true }).items;
-    expect(Object.keys(first).sort()).toEqual([
-      "anchor",
-      "blocking",
-      "body",
-      "done",
-      "id",
-      "position",
-      "required",
-      "title",
+    expect(view.items.map((i) => i.id)).toEqual([
+      "verify-email",
+      "staff",
+      "catalog",
+      "program",
+      "brand",
     ]);
-    expect(typeof first.done).toBe("boolean");
+    expect(view.items.map((i) => i.position)).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("el catalogo real declara `verify-email` y nada mas", () => {
-    expect(Object.keys(CHECKLIST_ITEMS)).toEqual(["verify-email"]);
+  /** ORACULO DE M4 — el owner dijo que `verify-email` sea EL UNICO obligatorio. Se asevera el
+   * vector entero, no «el primero es true»: asi un tour que se volviera `required` aparece. */
+  it("`verify-email` es el UNICO `required: true`", () => {
+    expect(
+      toChecklistView(sinTours(false)).items.map((i) => i.required),
+    ).toEqual([true, false, false, false, false]);
+  });
+
+  /** Los ids de los tours SALEN de `ONBOARDING_TOURS` y su `anchor` es el mismo id: si esa
+   * constante cambia, el catalogo cambia con ella y no hay segunda lista que desincronizar. */
+  it("los cuatro items de tour son exactamente `ONBOARDING_TOURS`, y su `anchor` es su id", () => {
+    const tours = toChecklistView(sinTours(false)).items.slice(1);
+    expect(tours.map((i) => i.id)).toEqual([...ONBOARDING_TOURS]);
+    expect(tours.map((i) => i.anchor)).toEqual([...ONBOARDING_TOURS]);
+    expect(Object.keys(CHECKLIST_ITEMS)).toHaveLength(
+      ONBOARDING_TOURS.length + 1,
+    );
+  });
+
+  it("`done` del email sigue al hecho de la sesion en las dos polaridades", () => {
+    expect(toChecklistView(sinTours(false)).items[0].done).toBe(false);
+    expect(toChecklistView(sinTours(true)).items[0].done).toBe(true);
+  });
+
+  /** ORACULO DE M1 y M2 en la funcion pura: el `done` de un tour lee el conjunto —**sin mirar
+   * `completed` ni `skipped`, que aca ya no existen**— y lo hace POR ITEM. `catalog` esta en el
+   * conjunto y los otros tres no. */
+  it("el `done` de cada tour sale de `toursHechos`, item por item", () => {
+    const { items } = toChecklistView({
+      emailVerified: false,
+      toursHechos: new Set(["catalog"]),
+    });
+    expect(items.map((i) => [i.id, i.done])).toEqual([
+      ["verify-email", false],
+      ["staff", false],
+      ["catalog", true],
+      ["program", false],
+      ["brand", false],
+    ]);
+  });
+
+  /** El CONJUNTO EXACTO de claves, y **el borrado del segundo eje se asevera aca**: la lista
+   * es cerrada, asi que si volviera a emitirse este `toEqual` se pone rojo. */
+  it("cada item sale con el conjunto EXACTO de claves del contrato, SIN el campo borrado", () => {
+    for (const fila of toChecklistView(sinTours(true)).items) {
+      expect(Object.keys(fila).sort()).toEqual([
+        "anchor",
+        "body",
+        "done",
+        "id",
+        "position",
+        "required",
+        "title",
+      ]);
+      expect(typeof fila.done).toBe("boolean");
+    }
   });
 });
 
 describe("toChecklistView — entradas SINTETICAS (spec 0083 §D2)", () => {
-  /**
-   * ORACULO DE M5 — **`blocking` NO es un alias de `required`**, y es el unico
-   * caso del repo que puede falsificarlo: el catalogo real tiene los dos en `true`.
-   *
-   * Los dos espejos van juntos a proposito: `blocking: def.required` sobrevive al primero si
-   * se mira solo `required`, y `blocking: !def.required` sobrevive al segundo. Con los dos,
-   * ninguna derivacion de uno a partir del otro pasa.
-   */
-  it("`{ required: true, blocking: false }` viaja EXACTAMENTE asi", () => {
-    const [only] = toChecklistView(
-      { emailVerified: false },
-      { "solo-obligatorio": item(1, true, false) },
-    ).items;
-    expect(only.required).toBe(true);
-    expect(only.blocking).toBe(false);
-  });
-
-  it("y el espejo `{ required: false, blocking: true }`, tambien", () => {
-    const [only] = toChecklistView(
-      { emailVerified: false },
-      { "solo-bloqueante": item(1, false, true) },
-    ).items;
-    expect(only.required).toBe(false);
-    expect(only.blocking).toBe(true);
-  });
-
-  /** Los dos ejes en la MISMA vista, con valores cruzados: un solo item por llamada no
-   * distingue «lo copio del otro campo» de «lo copio del otro ITEM». */
-  it("dos items con los ejes cruzados conservan cada par", () => {
-    const { items } = toChecklistView(
-      { emailVerified: false },
-      {
-        a: item(1, true, false),
-        b: item(2, false, true),
-      },
-    );
-    expect(items.map((i) => [i.id, i.required, i.blocking])).toEqual([
-      ["a", true, false],
-      ["b", false, true],
-    ]);
-  });
-
-  /** ORACULO DEL `sort`: las entradas llegan DESORDENADAS respecto de su `position`. Sin el
-   * `sort`, `Object.entries` las devuelve en orden de declaracion y esto queda 3-1-2. */
+  /** ORACULO DEL `sort` (mutacion M5): las entradas llegan DESORDENADAS respecto de su
+   * `position`. Sin el `sort`, `Object.entries` las devuelve en orden de declaracion y esto
+   * queda 3-1-2. Es el unico caso que puede falsificarlo: el catalogo real ya sale ordenado. */
   it("ordena por `position` ascendente aunque lleguen desordenadas", () => {
-    const { items } = toChecklistView(
-      { emailVerified: false },
-      {
-        tercero: item(3, true, true),
-        primero: item(1, true, true),
-        segundo: item(2, true, true),
-      },
-    );
+    const { items } = toChecklistView(sinTours(false), {
+      tercero: item(3),
+      primero: item(1),
+      segundo: item(2),
+    });
     expect(items.map((i) => i.id)).toEqual(["primero", "segundo", "tercero"]);
     expect(items.map((i) => i.position)).toEqual([1, 2, 3]);
+  });
+
+  /** `required` viaja por item y no se contagia entre items: uno `true` y otro `false` en la
+   * MISMA vista. */
+  it("`required` viaja por item, sin contagiarse", () => {
+    const { items } = toChecklistView(sinTours(false), {
+      a: item(1, true),
+      b: item(2, false),
+    });
+    expect(items.map((i) => [i.id, i.required])).toEqual([
+      ["a", true],
+      ["b", false],
+    ]);
   });
 
   /** `done` se resuelve POR ITEM con los mismos hechos: un item hecho y otro pendiente en la
    * misma respuesta. */
   it("resuelve el `done` de cada item por separado", () => {
-    const { items } = toChecklistView(
-      { emailVerified: true },
-      {
-        hecho: { ...item(1, true, true), done: (f) => f.emailVerified },
-        pendiente: { ...item(2, true, true), done: (f) => !f.emailVerified },
-      },
-    );
+    const { items } = toChecklistView(sinTours(true), {
+      hecho: { ...item(1), done: (f) => f.emailVerified },
+      pendiente: { ...item(2), done: (f) => !f.emailVerified },
+    });
     expect(items.map((i) => [i.id, i.done])).toEqual([
       ["hecho", true],
       ["pendiente", false],
@@ -153,7 +151,7 @@ describe("toChecklistView — entradas SINTETICAS (spec 0083 §D2)", () => {
   });
 
   it("un catalogo vacio devuelve `items: []` con el locale puesto", () => {
-    expect(toChecklistView({ emailVerified: true }, {})).toEqual({
+    expect(toChecklistView(sinTours(true), {})).toEqual({
       locale: "es",
       items: [],
     });

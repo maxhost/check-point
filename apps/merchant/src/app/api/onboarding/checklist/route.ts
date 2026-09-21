@@ -9,15 +9,17 @@ import { checklistFacts } from "../../../../server/onboarding/checklist-facts";
 export const dynamic = "force-dynamic";
 
 /**
- * Spec 0083 §D3 / ADR 0077 §6 — `GET /api/onboarding/checklist`.
+ * Spec 0083 §D3 + spec 0085 / ADR 0077 §6 — `GET /api/onboarding/checklist`.
  *
- * Lectura pura: «que hay que hacer y en que estado esta» **despues** del wizard. El contrato
- * normativo es `docs/specs/0083-contratos-de-api.md`.
+ * Lectura pura: «que hay que hacer y en que estado esta» **despues** del wizard. Son CINCO
+ * items desde la 0085 (ADR 0078 §1). El contrato normativo es
+ * `docs/specs/0083-contratos-de-api.md`.
  *
  * **ESTA RUTA NO LLEVA EL GATE DEL PASO 3, Y ESE ES EL PUNTO DE LA SPEC.** Un endpoint cuyo
- * unico item dice «verifica tu email» no puede estar bloqueado por no haber verificado el
- * email: se gatearia a si mismo y el owner nunca veria la instruccion que vino a buscar. Es el
- * mismo argumento que sostiene el 200-siempre de `GET /api/merchant/session`.
+ * primer item —y el unico obligatorio de los cinco— dice «verifica tu email» no puede estar
+ * bloqueado por no haber verificado el email: se gatearia a si mismo y el owner nunca veria la
+ * instruccion que vino a buscar. Es el mismo argumento que sostiene el 200-siempre de
+ * `GET /api/merchant/session`.
  *
  * **Por eso NO usa `requireApiOwner`:** su escalera evalua el email en el paso 3 **siempre** y
  * no admite saltarlo (`api-owner.ts`, docblock del modulo). Le contestaria el 403 del
@@ -59,10 +61,16 @@ export async function GET(request: Request) {
     });
     if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
 
-    // Los hechos del `done` salen de la SESION y viven en `checklist-facts.ts`: el contrato
-    // de retorno del guard son `business` y `userId`, no la sesion, y su cuerpo no se toca
-    // (invariante de la spec 0075). Ahi esta escrito el costo de esa segunda lectura.
-    return NextResponse.json(toChecklistView(await checklistFacts(request)));
+    // Los hechos del `done` viven en `checklist-facts.ts`: el contrato de retorno del guard
+    // son `business` y `userId`, no la sesion, y su cuerpo no se toca (invariante de la spec
+    // 0075). Ahi esta escrito el costo — la segunda lectura de sesion MAS la consulta de
+    // tours que agrego la 0085.
+    //
+    // **El `businessId` sale del GUARD, nunca del cuerpo ni de la query** (ADR 0070 §15.3):
+    // es el unico parametro que decide de que negocio se lee el progreso.
+    return NextResponse.json(
+      toChecklistView(await checklistFacts(request, auth.business.id)),
+    );
   } catch (error) {
     console.error("onboarding_checklist_failed", {
       name: error instanceof Error ? error.name : typeof error,

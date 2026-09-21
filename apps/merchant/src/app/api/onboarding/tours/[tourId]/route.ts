@@ -21,8 +21,9 @@ export const dynamic = "force-dynamic";
  *
  * `GET /api/onboarding/checklist` se exime **porque se gatearia a si mismo**: es el endpoint
  * que viene a decir «verifica tu email». Esta ruta no tiene ese problema, y ademas
- * `verify-email` es `blocking: true` —o sea que mientras el email no este verificado los items
- * de `position` mayor **no se pueden hacer**—. Poner el paso 3 aca es **HACER CUMPLIR** ese
+ * `verify-email` es el UNICO `required: true` del catalogo —y desde la spec 0085 ese campo
+ * significa, con las palabras del owner, que mientras no este hecho los items de `position`
+ * mayor **no se pueden hacer**—. Poner el paso 3 aca es **HACER CUMPLIR** ese
  * bloqueo en vez de solo reportarlo. El contrato `0083-contratos-de-api.md` §1 declaraba esa
  * decision como no tomada, *«se toma cuando haya un segundo item»*: se toma aca, y es que si.
  *

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Spec 0072 §D3/§D4 — EL GATE DE LAS SUPERFICIES DE API DEL OWNER, las 10, en una matriz.
+ * Spec 0072 §D3/§D4 — EL GATE DE LAS SUPERFICIES DE API DEL OWNER, las 15, en una matriz.
  *
  * Por qué acá y no repartido por dominio: el agujero que esta spec cierra es justamente que
  * **cada dominio tenía su propio resolvedor** y sólo uno chequeaba el email. Un test por
@@ -12,90 +12,51 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * resolución real contra Postgres (eso es `ownerContext`, con su integración). Acá se dobla
  * la sesión y `ownerContext`, y se mide **qué status y qué `code`** sale de cada ruta en los
  * cinco estados del caller.
- */
-const world = vi.hoisted(() => ({
-  session: null as null | { user: { id: string; emailVerified?: boolean } },
-  ownerRow: null as null | Record<string, unknown>,
-  /** El negocio y el programa del caller. Viven acá —y no en una `const` de módulo— porque
-   * los factories de `vi.mock` se hoistean por encima de las declaraciones del archivo. */
-  businessId: "11111111-1111-4111-8111-111111111111",
-  programId: "99999999-9999-4999-8999-999999999999",
-  slug: "la-farmacia",
-}));
-
-const CALLER_BUSINESS = world.businessId;
-
-/**
- * La fila de la SESIÓN se dobla en un solo lugar y con el permiso de alta en `null` (spec
- * 0077): los casos de abajo sólo tocan `world.session.user`, que es lo que este archivo
- * mide. El permiso con valor tiene sus propios archivos contra Neon.
- */
-vi.mock("./auth", () => ({
-  getMerchantAuth: () => ({
-    api: {
-      getSession: async () =>
-        world.session && {
-          ...world.session,
-          session: { onboardingGrantUntil: null },
-        },
-    },
-  }),
-}));
-
-vi.mock("./staff", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./staff")>()),
-  ownerContext: async () => world.ownerRow,
-}));
-
-/**
- * Spec 0075 — **el QR es la única fila que PASA el gate** en un caso, así que es la única que
- * llega a su dominio. Sus dos dependencias de datos se doblan para que ese 200 sea
- * **determinista**: sin esto daría 403 `not_owner` con `DATABASE_URL` puesta (el usuario
- * doblado no existe en la base) y 503 `qr_unavailable` sin ella, y **ninguno de los dos
- * probaría la polaridad**. El 200 contra la base lo prueba `loyalty-qr.neon.integration`.
- */
-vi.mock("./loyalty-program", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./loyalty-program")>()),
-  programForOwner: async () => ({
-    business: { id: world.businessId },
-    program: { id: world.programId },
-    rewards: [],
-  }),
-  /**
-   * Spec 0079 — el `PUT` de la ruta única es la segunda fila sin paso 3, y su desenlace
-   * positivo es un 201. El writer se dobla **a propósito**: este archivo mide el GUARD, y
-   * el invariante crear ≠ editar que `saveProgram` aplica de verdad se mide contra Neon
-   * (`onboarding-program-bypass.neon.integration.test.ts`). Sin el doble, el 201 dependería
-   * de si hay `DATABASE_URL` y no probaría la polaridad de nada.
-   */
-  saveProgram: async () => ({ programId: world.programId, created: true }),
-}));
-
-vi.mock("./db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./db")>()),
-  getDb: () => ({
-    select: () => ({
-      from: () => ({
-        where: () => ({ limit: async () => [{ slug: world.slug }] }),
-      }),
-    }),
-  }),
-}));
-
-/**
- * Spec 0075 — **el email es el único de los cuatro pasos que no se aplica parejo**, y la tabla
+ *
+ * **LA TABLA, EL MUNDO Y LOS DOBLES VIVEN EN `api-owner-surfaces-support.ts`** (spec 0079 y
+ * spec 0085), por el hook `file-size`: acá quedan los ORÁCULOS, que es lo único que este
+ * archivo tiene que dejar ver de un vistazo. Cada fábrica de `vi.mock` llama a su doble
+ * **dentro de una función** y nunca al construir el objeto: las fábricas corren mientras el
+ * módulo de soporte todavía se evalúa (él importa las rutas), y una lectura eager sería un TDZ.
+ *
+ * **Spec 0075 — el email es el único de los cuatro pasos que no se aplica parejo**, y la tabla
  * se parte para ASEVERAR las excepciones en vez de perderlas de vista. `SURFACES` sigue entera
- * (15) para los otros cinco casos: las tres sin gate se miden igual que las demás en
- * `unauthorized`, `not_owner`, `business_suspended`, `business_closed` y `status` desconocido.
- * Las dos tablas salen de `SURFACES` por filtro —no son listas paralelas—, así que mover una
- * fila cambia los pisos. La tabla vive en `api-owner-surfaces-support.ts` por el hook
- * `file-size`; los oráculos y los dobles siguen acá.
+ * (15) para los otros cinco casos. Las dos tablas salen de `SURFACES` por filtro —no son listas
+ * paralelas—, así que mover una fila cambia los pisos.
  */
 import {
   SURFACES,
   SURFACES_CON_GATE_DE_EMAIL,
   SURFACES_SIN_GATE_DE_EMAIL,
+  dobleDeGetDb,
+  dobleDeOwnerContext,
+  dobleDeProgramForOwner,
+  dobleDeSaveProgram,
+  dobleDeSesion,
+  world,
 } from "./api-owner-surfaces-support";
+
+vi.mock("./auth", () => ({
+  getMerchantAuth: () => ({ api: { getSession: () => dobleDeSesion() } }),
+}));
+
+vi.mock("./staff", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./staff")>()),
+  ownerContext: () => dobleDeOwnerContext(),
+}));
+
+vi.mock("./loyalty-program", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./loyalty-program")>()),
+  programForOwner: () => dobleDeProgramForOwner(),
+  saveProgram: () => dobleDeSaveProgram(),
+}));
+
+vi.mock("./db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./db")>()),
+  getDb: () => dobleDeGetDb(),
+}));
+
+const CALLER_BUSINESS = world.businessId;
 
 /**
  * EL DESENLACE POSITIVO DE CADA EXCEPCIÓN, por fila. Un `not.toBe(403)` diría lo mismo si la
@@ -120,13 +81,30 @@ const DESENLACE_SIN_GATE: Record<
       created: true,
     });
   },
-  /** Spec 0083 §D5 — la TERCERA, y su desenlace es EL caso central de esa spec. */
+  /**
+   * Spec 0083 §D5 — la TERCERA, y su desenlace es EL caso central de esa spec: el owner sin
+   * email verificado recibe 200 con su primer item pendiente.
+   *
+   * **Spec 0085 — y ahora también prueba que la lectura de tours NO rompe la ruta.** El doble
+   * de `./db` devuelve CERO filas de progreso para ese `where()` sin `.limit()`; si el `await`
+   * de esa consulta volviera a devolver un objeto en vez de un array, el `catch` de la ruta
+   * contestaría 503 y este `toBe(200)` sería el primero en verlo.
+   */
   "onboarding/checklist": async (response) => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.locale).toBe("es");
+    expect(body.items).toHaveLength(5);
     expect(body.items[0].id).toBe("verify-email");
     expect(body.items[0].done).toBe(false);
+    // Sin filas de progreso, los cuatro tours salen pendientes (fail-closed).
+    expect(body.items.map((item: { done: boolean }) => item.done)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
   },
 };
 

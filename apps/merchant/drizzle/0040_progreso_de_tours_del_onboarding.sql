@@ -6,7 +6,7 @@
 -- `$onUpdate`, así que «revisé mi programa y no cambié nada» no deja rastro.
 --
 -- SOLO DDL: **no siembra ni una fila.** Un tour sin `POST` simplemente no tiene fila, su
--- `done` queda en `false` y no traba a nadie (ningún tour es `blocking`).
+-- `done` queda en `false` y no traba a nadie (ningún tour es `required`).
 --
 -- PK compuesta `(business_id, tour_id)` y **sin `user_id`**: el progreso es POR NEGOCIO,
 -- decisión textual del owner (ADR 0078 §3), tomada con la alternativa a la vista. Esa PK es

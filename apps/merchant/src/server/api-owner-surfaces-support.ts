@@ -19,11 +19,100 @@ import { GET as CHECKLIST } from "../app/api/onboarding/checklist/route";
 import { POST as TOUR } from "../app/api/onboarding/tours/[tourId]/route";
 
 /**
- * LA TABLA de entradas HTTP del owner, aparte del test por el hook `file-size` (spec 0079):
- * con la fila del `PUT` de la ruta única, `api-owner-surfaces.test.ts` pasaba de 300 líneas.
- * **Acá no hay ni un `expect`**: los oráculos —y los dobles, que se hoistean por encima de
- * este import— siguen en el test. Esto es sólo la lista.
+ * LA TABLA de entradas HTTP del owner —y desde la spec 0085 también LOS DOBLES—, aparte del
+ * test por el hook `file-size`: con la fila del `PUT` de la ruta única (spec 0079) ese archivo
+ * pasaba de 300 líneas, y con el doble de `./db` extendido (spec 0085) se pasaba de nuevo. La
+ * regla del repo es **dividir, no extender**, y no se borra una aserción para hacer lugar.
+ *
+ * **Acá no hay ni un `expect`**: los oráculos siguen todos en el test. Esto es la lista y el
+ * montaje.
+ *
+ * **Por qué los dobles pueden vivir en un módulo importado y no rompen el hoisting de
+ * `vi.mock`:** este archivo importa las rutas, así que cuando el test lo importa las fábricas
+ * de `vi.mock` corren **mientras este módulo todavía se está evaluando**. Por eso ninguna
+ * fábrica referencia estos símbolos de forma EAGER — todas los llaman dentro de una función
+ * que recién se ejecuta durante un caso (`getDb: () => dobleDeGetDb()`). Leerlos al construir
+ * el objeto del mock daría un TDZ.
  */
+/** El estado que cada caso mueve. Es un objeto MUTABLE a propósito: los dobles lo leen en el
+ * momento de la llamada, así que un caso cambia `session`/`ownerRow` y el siguiente lo limpia
+ * en su `beforeEach`. */
+export const world = {
+  session: null as null | { user: { id: string; emailVerified?: boolean } },
+  ownerRow: null as null | Record<string, unknown>,
+  businessId: "11111111-1111-4111-8111-111111111111",
+  programId: "99999999-9999-4999-8999-999999999999",
+  slug: "la-farmacia",
+};
+
+/**
+ * La fila de la SESIÓN, doblada en un solo lugar y con el permiso de alta en `null` (spec
+ * 0077): los casos sólo tocan `world.session.user`, que es lo que ese archivo mide. El permiso
+ * con valor tiene sus propios archivos contra Neon.
+ */
+export const dobleDeSesion = async () =>
+  world.session && {
+    ...world.session,
+    session: { onboardingGrantUntil: null },
+  };
+
+export const dobleDeOwnerContext = async () => world.ownerRow;
+
+/**
+ * Spec 0075 — **el QR es la única fila que PASA el gate** en un caso, así que es la única que
+ * llega a su dominio. Sus dos dependencias de datos se doblan para que ese 200 sea
+ * **determinista**: sin esto daría 403 `not_owner` con `DATABASE_URL` puesta (el usuario
+ * doblado no existe en la base) y 503 `qr_unavailable` sin ella, y **ninguno de los dos
+ * probaría la polaridad**. El 200 contra la base lo prueba `loyalty-qr.neon.integration`.
+ */
+export const dobleDeProgramForOwner = async () => ({
+  business: { id: world.businessId },
+  program: { id: world.programId },
+  rewards: [],
+});
+
+/**
+ * Spec 0079 — el `PUT` de la ruta única es la segunda fila sin paso 3, y su desenlace positivo
+ * es un 201. El writer se dobla **a propósito**: ese archivo mide el GUARD, y el invariante
+ * crear ≠ editar que `saveProgram` aplica de verdad se mide contra Neon
+ * (`onboarding-program-bypass.neon.integration.test.ts`).
+ */
+export const dobleDeSaveProgram = async () => ({
+  programId: world.programId,
+  created: true,
+});
+
+/**
+ * EL DOBLE DE `./db`, y su forma **no es cosmética** (spec 0085). Hay DOS consumidores con
+ * cadenas distintas:
+ *
+ * - `select().from().where().limit()` — la lectura del slug, que espera su fila;
+ * - `select().from().where()` **sin `.limit()`** — la lectura de `core.business_onboarding_tour`
+ *   del checklist, que en drizzle **se espera directamente**.
+ *
+ * Con una cadena fija terminada en `.limit()`, el `await` del segundo devolvía el OBJETO
+ * `{ limit }` en vez de un array, el `.map` reventaba, el `catch` de la ruta lo convertía en
+ * **503** y se caían TODOS los casos del checklist de la batería. Por eso `where()` devuelve
+ * algo que es a la vez **`await`-able** (un `Promise` de verdad) y portador de `.limit()`.
+ *
+ * **Y las dos ramas devuelven cosas DISTINTAS a propósito:** el negocio doblado no tiene
+ * ninguna fila de progreso de tours —los cuatro items salen `done: false`, que es lo que la
+ * batería asevera—.
+ *
+ * **La rama `.limit()`, en cambio, HOY NO TIENE ORACULO y hay que decirlo:** queda disponible
+ * para la lectura del slug, pero **ningún test asevera su contenido**. Medido por el revisor de
+ * la 0085 con una mutación (`limit: async () => []`): **sobrevive en verde**, y este archivo
+ * tiene un solo importador. No la toques dando por hecho que algo la cuida.
+ */
+const resultadoDelWhere = () =>
+  Object.assign(Promise.resolve([] as Array<Record<string, unknown>>), {
+    limit: async () => [{ slug: world.slug }],
+  });
+
+export const dobleDeGetDb = () => ({
+  select: () => ({ from: () => ({ where: () => resultadoDelWhere() }) }),
+});
+
 export const json = (path: string, method: string, body: unknown = {}) =>
   new NextRequest(`https://merchant.test${path}`, {
     method,
@@ -50,9 +139,10 @@ const PROGRAM_BODY = {
  *
  * **La 15ª es la escritura del progreso de un tour (spec 0084), y va del lado CON gate** —
  * es lo contrario del checklist y la asimetría es la decisión de esa spec: el checklist se
- * exime porque se gatearía a sí mismo, y esta ruta no tiene ese problema. `verify-email` es
- * `blocking: true`, así que poner el paso 3 acá es HACER CUMPLIR ese bloqueo en vez de sólo
- * reportarlo. El inventario de exenciones sigue en TRES. */
+ * exime porque se gatearía a sí mismo, y esta ruta no tiene ese problema. `verify-email` es el
+ * único `required: true` —y desde la spec 0085 ese campo significa que mientras no esté hecho
+ * los de `position` mayor están bloqueados—, así que poner el paso 3 acá es HACER CUMPLIR ese
+ * bloqueo en vez de sólo reportarlo. El inventario de exenciones sigue en TRES. */
 export const SURFACES: Array<[string, () => Promise<Response>]> = [
   ["billing/checkout", () => CHECKOUT(json("/api/billing/checkout", "POST"))],
   ["catalog", () => CATALOG(json("/api/catalog", "GET"))],

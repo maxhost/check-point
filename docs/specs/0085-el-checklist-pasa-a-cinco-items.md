@@ -1,7 +1,7 @@
 ---
 spec: 0085
 fecha: 2026-09-20
-estado: cerrada
+estado: implementada
 resumen: El checklist del onboarding pasa de UNO a CINCO items (ADR 0078 §1) y pierde un campo. Los cuatro nuevos son TOURS —staff, catalogo, programa, marca— y su `done` sale de `core.business_onboarding_tour` (spec 0084): `completed` Y `skipped` cuentan los dos como `done: true`. Y `blocking` SE BORRA del tipo, del JSON y del contrato: el owner pregunto por que habia dos campos y la respuesta medida es que no hay dos — su definicion de `required` («sin eso no se puede hacer nada mas») ES la de `blocking`, y con los cinco items reales los dos ejes nunca divergen. `verify-email` queda como el UNICO `required: true`. Corrige ademas el contrato 0083, que todavia le anuncia a quien construya la UI un `GET /api/onboarding/guide/{item}` que el ADR 0078 §4 mato.
 disjunta: no
 archivos: apps/merchant/src/server/onboarding/checklist.ts, apps/merchant/src/server/onboarding/checklist.test.ts, apps/merchant/src/server/onboarding/checklist-facts.ts, apps/merchant/src/app/api/onboarding/checklist/route.ts, apps/merchant/src/server/onboarding-checklist.neon.integration.test.ts, apps/merchant/src/server/api-owner-surfaces.test.ts, docs/specs/0083-contratos-de-api.md
@@ -205,7 +205,30 @@ de ella: consume `ONBOARDING_TOURS` y la tabla. **La 0084 va primero y tiene que
 | **M2** | `done` de los tours → `() => true` constante | El caso «sin fila → `done: false`» |
 | **M3** | La consulta de tours ignora el `businessId` (lee la tabla entera) | El caso de aislamiento: un negocio ve el progreso de otro |
 | **M4** | Poner `required: true` en un tour | El item de tour serializa `required: false` — **el owner dijo que el email sea el UNICO** |
-| **M5** | Sacar el `sort` por `position` de `toChecklistView` | El unit con entradas **desordenadas** (el oraculo que sobrevive al borrado de `blocking`) y el orden de los 5 ids en integracion |
+| **M5** | Sacar el `sort` por `position` de `toChecklistView` | **SOLO** el unit con entradas **desordenadas** (el oraculo que sobrevive al borrado de `blocking`). **Ver la correccion de abajo: el caso de integracion NO sirve de oraculo.** |
+
+**CORRECCION DE LA FILA M5, medida al implementar (2026-09-20) y arbitrada por el revisor.** Esta
+tabla afirmaba que sacar el `sort` tambien ponia rojo *«el orden de los 5 ids en integracion»*.
+**Es FALSO, y se ejecuto:** con el `.sort()` borrado, el caso *«los CINCO items salen en orden»*
+quedo **VERDE**.
+
+**El mecanismo:** `CHECKLIST_ITEMS` declara `verify-email` primero (`position: 1`) y despues hace
+spread de `ONBOARDING_TOURS` con `position: indice + 2`, asi que **`Object.entries` ya sale
+ordenado** y el `sort` es un **no-op contra el catalogo real**. Su unico oraculo son las entradas
+**sinteticas** del segundo parametro de `toChecklistView` — que es exactamente lo que dice el §1 de
+esta misma spec, **contradiciendo su propia tabla**. Nadie cruzo las dos secciones.
+
+**El arreglo barato existe y esta MEDIDO, pero NO se aplico:** declarar `verify-email` **despues**
+del spread, dejando `position: 1` y `ONBOARDING_TOURS` intactos. Solo, con el `sort` puesto, la
+salida HTTP es identica (**129/129 verde**); con el `sort` sacado, el caso de integracion **y** el
+de la bateria se ponen rojos. O sea que el `sort` **si** es falsificable con el catalogo real a
+costo cero de comportamiento. **No se aplico porque llego DESPUES del PASS** y es codigo de
+produccion: tocarlo habria invalidado la revision (mismo criterio que la fila 59 de
+`PARQUEADO.md`). **Gatillo: la proxima vez que se toque `checklist.ts`.**
+
+**Lo que NO se hizo, a proposito:** reordenar `ONBOARDING_TOURS` para fabricar el rojo. Moveria las
+`position` (salen del indice) **y** el orden que dicto el owner, y es la lista que usa el `POST`
+para rechazar ids. Es diseño que nadie pidio.
 
 **Protocolo:** `shasum` limpio **antes** de mutar → fila de bitacora en `TASKS.md` **antes** de
 medir → etiqueta `MUTATION` → medir y **transcribir la salida ejecutada** → revertir con `diff`

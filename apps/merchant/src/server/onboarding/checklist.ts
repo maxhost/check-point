@@ -1,45 +1,52 @@
+import { ONBOARDING_TOURS, type OnboardingTourId } from "./tours";
+
 /**
- * Spec 0083 §D1-D2 / ADR 0077 §2-4 — EL CATALOGO DEL CHECKLIST DEL ONBOARDING, EN CODIGO.
+ * Spec 0085 / ADR 0078 §1 — EL CATALOGO DEL CHECKLIST DEL ONBOARDING, EN CODIGO. Son CINCO
+ * items: `verify-email` y los CUATRO TOURS.
  *
  * Es la unica fuente de verdad de «que hay que hacer y en que estado esta» **despues** del
  * wizard. No es `GET /api/onboarding/state`, que es «que falta para terminar el alta» y corre
  * ANTES de la verificacion de email (ADR 0070 §11).
  *
- * **El almacenamiento arranca en CODIGO, no en tabla** (ADR 0077 §4): con un item no hay nada
- * que configurar, mover a tabla despues no cambia el JSON que ve la UI, y el repo ya tiene el
- * patron para un catalogo chico y tipado —`ENTITLEMENTS` (`entitlements/catalog.ts`)—, donde
- * una entrada mal formada **no compila**.
- *
- * **Lo que la tabla NO va a comprar el dia que se elija:** el «¿esta hecho?» de cada item es
- * una funcion —cada item lo deriva de un hecho distinto—, asi que agregar un item nuevo va a
- * exigir deploy igual.
+ * **El almacenamiento sigue en CODIGO, no en tabla** (ADR 0077 §4): el «¿esta hecho?» de cada
+ * item es una FUNCION —uno lee la sesion, cuatro leen `core.business_onboarding_tour`—, asi que
+ * una tabla de items no ahorraria el deploy del dia que entre el sexto. El repo ya tiene el
+ * patron para un catalogo chico y tipado (`ENTITLEMENTS`), donde una entrada mal formada **no
+ * compila**.
  */
 
 /**
- * Los hechos con los que se resuelve el `done` de cada item. Hoy hay uno solo y **viaja en la
- * sesion de better-auth**: el checklist no consulta ninguna TABLA DE DOMINIO para resolverlo.
- * Quien lo lee es `checklist-facts.ts`, y ahi esta escrito su costo real —una segunda lectura
- * de la sesion en el mismo request— desde que la ruta usa el guard compartido. **Ese costo lo
- * registra el §D4 de la spec, ya corregido**: su version original decia «cero consultas extra»
- * y la enmienda del 2026-09-20 la volvio falsa.
+ * Los hechos con los que se resuelve el `done` de cada item.
+ *
+ * **Su costo esta escrito en `checklist-facts.ts` y son DOS lecturas por request**: la segunda
+ * resolucion de sesion (que ya venia) **mas una consulta** a `core.business_onboarding_tour`.
+ * Es el precedente de la 0083, cuyo §D4 decia «cero consultas extra» y quedo falso al
+ * enmendarse: un docblock que miente sobre el costo es un defecto activo en este repo.
  */
-export type ChecklistFacts = { emailVerified: boolean };
+export type ChecklistFacts = {
+  emailVerified: boolean;
+  /** Los `tour_id` con fila en `core.business_onboarding_tour`, sea `completed` o `skipped`.
+   * Los dos cuentan como hecho (ADR 0078 §2, decision textual del owner). */
+  toursHechos: ReadonlySet<string>;
+};
 
 export type ChecklistItemDef = {
   /** Orden. Lo dicta la API, nunca la UI (ADR 0077 §2). */
   position: number;
   /**
-   * DOS EJES SEPARADOS (ADR 0077 §2), no uno. `required` = **hay que hacerlo**; `blocking` =
-   * mientras no este `done`, los de `position` mayor **no se pueden hacer**.
+   * UN SOLO EJE, y es el que definio el owner el 2026-09-20 (*«required es importante porque
+   * sin eso no se puede hacer nada mas»*, *«colapsa a un campo»*): `required: true` significa
+   * **hay que hacerlo, y mientras no este `done` los items de `position` mayor estan
+   * bloqueados**.
    *
-   * Un item puede ser obligatorio sin frenar al resto, y frenar al resto sin ser obligatorio.
-   * Con UN item los dos valen `true` y no se distinguen: por eso el oraculo que prueba que no
-   * son alias vive en {@link toChecklistView} con entradas sinteticas, no en el catalogo.
-   * **No derivar uno del otro, ni siquiera «porque hoy da igual»** — es la mutacion M5 de
-   * la tabla enmendada de la spec (la que emite `blocking: def.required`).
+   * El campo que estaba al lado —el que separaba «hay que hacerlo» de «frena al resto»— **se
+   * borro en la spec 0085**: con los cinco items reales los dos valen lo mismo en los cinco
+   * casos, y sacarlo del JSON costaba cero mientras ninguna UI lo consumiera.
+   *
+   * **`verify-email` es el UNICO `required: true`.** Los cuatro tours son `false`: se pueden
+   * saltear (ADR 0078 §2) y no traban a nadie.
    */
   required: boolean;
-  blocking: boolean;
   /**
    * Clave ESTABLE que la UI mapea a un elemento. NUNCA un selector ni una coordenada
    * (ADR 0077 §3): si la API guardara coordenadas, cada rediseño de UI romperia el tour en
@@ -51,7 +58,7 @@ export type ChecklistItemDef = {
   body: string;
   /**
    * El «¿esta hecho?». Es una FUNCION y no un dato porque cada item lo deriva de un hecho
-   * distinto — el del email sale de la sesion, el del catalogo saldria de una consulta.
+   * distinto — el del email sale de la sesion, el de un tour de la tabla de progreso.
    */
   done: (facts: ChecklistFacts) => boolean;
 };
@@ -60,7 +67,6 @@ export type ChecklistItemView = {
   id: string;
   position: number;
   required: boolean;
-  blocking: boolean;
   done: boolean;
   anchor: string;
   title: string;
@@ -80,37 +86,82 @@ export type ChecklistView = {
 };
 
 /**
- * UN item, y es el unico de los cinco candidatos del ADR 0070 §9 que no necesita pantalla
- * nueva ni feature previa: su accion ya existe (`POST /api/merchant/auth/verify-email`) y su
- * hecho ya viaja en la sesion.
- *
- * `required: true` + `blocking: true` es la regla que el owner dicto para el email —«sin esto
- * no desbloqueas nada de lo que sigue»—. **Que hoy coincidan no los hace el mismo campo.**
+ * La COPIA de cada tour, y nada mas que la copia. **No es una segunda lista de ids**: esta
+ * tipada como `Record<OnboardingTourId, …>`, asi que si `ONBOARDING_TOURS` gana o pierde un id
+ * este objeto **no compila** hasta que se lo acompañe. Los ids siguen saliendo de un solo lado.
  */
-export const CHECKLIST_ITEMS = {
+const TOUR_COPY: Record<OnboardingTourId, { title: string; body: string }> = {
+  staff: {
+    title: "Conocé la pantalla de Equipo",
+    body: "Un recorrido corto por donde se da de alta a quien atiende el mostrador.",
+  },
+  catalog: {
+    title: "Conocé tu catálogo",
+    body: "Un recorrido corto por donde cargás y editás lo que vendés.",
+  },
+  program: {
+    title: "Conocé tu programa de fidelidad",
+    body: "Un recorrido corto por los sellos, los premios y las condiciones.",
+  },
+  brand: {
+    title: "Conocé tu marca",
+    body: "Un recorrido corto por el logo, los colores y cómo se ve tu tarjeta.",
+  },
+};
+
+/**
+ * LOS CINCO ITEMS (ADR 0078 §1). El primero deriva de la sesion; los otros cuatro de
+ * `core.business_onboarding_tour`.
+ *
+ * **Los ids de los tours salen de `ONBOARDING_TOURS`** (`onboarding/tours.ts`, spec 0084), que
+ * es lo mismo que usa la ESCRITURA para rechazar un id desconocido con `404`. Dos listas se
+ * desincronizan: el `POST` aceptaria un tour que el checklist no muestra, o al reves. Su
+ * `position` tambien sale de ahi (el indice), asi que tampoco hay un orden escrito dos veces.
+ *
+ * **Que la pantalla de un tour no exista todavia NO bloquea** (ADR 0078 §6): su `done` queda en
+ * `false`, nadie manda un `POST` por el, y como ningun tour es `required` no traba a los que
+ * siguen. Hoy `/backoffice/staff` no existe (`backoffice-navigation.tsx:37`, `href: null`).
+ */
+export const CHECKLIST_ITEMS: Record<string, ChecklistItemDef> = {
   "verify-email": {
     position: 1,
+    // El UNICO obligatorio, por decision textual del owner: «sin eso no se puede hacer nada
+    // mas […] de hecho ser la unica».
     required: true,
-    blocking: true,
     anchor: "verify-email",
     title: "Verificá tu email",
     body: "Te enviamos un enlace al correo con el que te registraste. Confirmalo para desbloquear el resto del onboarding.",
     done: (facts: ChecklistFacts) => facts.emailVerified,
   },
-} as const satisfies Record<string, ChecklistItemDef>;
+  ...Object.fromEntries(
+    ONBOARDING_TOURS.map((tourId, indice) => [
+      tourId,
+      {
+        position: indice + 2,
+        required: false,
+        anchor: tourId,
+        ...TOUR_COPY[tourId],
+        // `has` sobre el conjunto de tours con fila: `completed` y `skipped` entran los dos
+        // (ADR 0078 §2). El JSON no dice cual de los dos fue — su contrato es `done: boolean`.
+        done: (facts: ChecklistFacts) => facts.toursHechos.has(tourId),
+      } satisfies ChecklistItemDef,
+    ]),
+  ),
+};
 
 /**
  * Arma la vista que sale por HTTP. **Es pura**: no toca base ni sesion, asi que su test no
  * necesita Neon.
  *
- * **El segundo parametro tiene default y existe por dos oraculos concretos**, no por gusto de
- * inyectar (spec 0083 §D2): es la unica forma de alimentar entradas SINTETICAS —desordenadas,
- * o con `required` y `blocking` divergentes— que el catalogo real de un solo item no puede
- * producir. **La ruta lo llama SIN el segundo argumento.**
+ * **El segundo parametro tiene default y SIGUE EXISTIENDO por su oraculo** (spec 0083 §D2, y
+ * la 0085 lo conserva a proposito): es la unica forma de alimentar entradas SINTETICAS
+ * DESORDENADAS, que el catalogo real —ya ordenado— no puede producir. **La ruta lo llama SIN
+ * el segundo argumento.**
  *
  * El `sort` por `position` se hace aca y **no se asume del orden de declaracion** del objeto:
- * el dia que el catalogo mude a tabla el orden de las filas no esta garantizado, y un `sort`
- * que ya esta puesto es lo que evita que ese dia el bug sea silencioso.
+ * los cuatro tours entran por un spread de `Object.fromEntries` y el dia que el catalogo mude a
+ * tabla el orden de las filas no esta garantizado. Un `sort` que ya esta puesto es lo que evita
+ * que ese dia el bug sea silencioso.
  */
 export function toChecklistView(
   facts: ChecklistFacts,
@@ -123,7 +174,6 @@ export function toChecklistView(
         id,
         position: def.position,
         required: def.required,
-        blocking: def.blocking,
         done: def.done(facts),
         anchor: def.anchor,
         title: def.title,

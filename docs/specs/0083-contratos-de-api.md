@@ -2,7 +2,7 @@
 spec: 0083
 fecha: 2026-09-20
 estado: anexo
-resumen: Contrato normativo de `GET /api/onboarding/checklist` para quien construya la UI del onboarding por fuera. Un endpoint de LECTURA con un solo item (`verify-email`); la API dicta `position`, `required` y `blocking` —dos ejes SEPARADOS: «hay que hacerlo» no es lo mismo que «frena a los que siguen»— y la UI no tiene lista propia de pasos. NO emite `email_not_verified` en ningun camino —se gatearia a si mismo— y ese es el punto del endpoint. El texto viaja en la respuesta con `locale: "es"` fijo y declarado, y el `anchor` es una CLAVE estable que la UI mapea a un elemento, nunca un selector ni una coordenada. Declara ademas el recurso que NO existe todavia: el tutorial paso-a-paso de cada item es un SEGUNDO endpoint, y sus pasos no van adentro de este.
+resumen: Contrato normativo de `GET /api/onboarding/checklist` para quien construya la UI del onboarding por fuera. Un endpoint de LECTURA con CINCO items (ADR 0078 §1): `verify-email` y los cuatro TOURS —staff, catalogo, programa, marca—. La API dicta `position`, `required` y `done`, y la UI no tiene lista propia de pasos. **`required` es UN SOLO eje** (enmienda de la spec 0085, decision del owner): «hay que hacerlo, y mientras no este `done` los de `position` mayor estan bloqueados», y `verify-email` es el unico. NO emite `email_not_verified` en ningun camino —se gatearia a si mismo— y ese es el punto del endpoint; el bloqueo SI se hace cumplir, pero en la ruta de escritura de los tours. El texto viaja con `locale: "es"` fijo y declarado, y el `anchor` es una CLAVE estable que la UI mapea a un elemento, nunca un selector ni una coordenada. **El tutorial NO es un endpoint** (ADR 0078 §4): sus pasos los define la UI con su libreria de tours y por HTTP viaja solo el ESTADO.
 ---
 
 # 0083 — Contrato de API: el checklist del onboarding
@@ -45,47 +45,54 @@ Lectura pura. No recibe cuerpo, no recibe query params, no escribe nada.
     {
       "id": "verify-email",        // ESTABLE. Es la clave del contrato.
       "position": 1,               // Orden. Lo dicta la API, no la UI.
-      "required": true,            // HAY QUE HACERLO. No se puede ignorar ni saltar.
-      "blocking": true,            // Mientras no este done, los de position mayor se bloquean.
+      "required": true,            // HAY QUE HACERLO, y bloquea a los de position mayor.
       "done": false,               // El hecho, derivado del servidor.
       "anchor": "verify-email",    // CLAVE, no selector. La UI la mapea a un elemento.
       "title": "…",                // Copia. NO es contrato.
       "body": "…"                  // Copia. NO es contrato.
-    }
+    },
+    { "id": "staff",   "position": 2, "required": false, "done": false, "anchor": "staff",   "title": "…", "body": "…" },
+    { "id": "catalog", "position": 3, "required": false, "done": true,  "anchor": "catalog", "title": "…", "body": "…" },
+    { "id": "program", "position": 4, "required": false, "done": false, "anchor": "program", "title": "…", "body": "…" },
+    { "id": "brand",   "position": 5, "required": false, "done": false, "anchor": "brand",   "title": "…", "body": "…" }
   ]
 }
 ```
 
+**Son CINCO items** (ADR 0078 §1): `verify-email` y los cuatro TOURS de pantalla. Los cuatro
+ids de tour son los mismos que acepta `POST /api/onboarding/tours/{tourId}`
+(`0084-contratos-de-api.md`) — **no hay dos listas**.
+
 **`items` viene ordenado por `position` ascendente.** La UI no reordena.
 
-### `required` y `blocking` son DOS ejes, no uno
+### `required` es UN SOLO eje, y dice las dos cosas
 
-Es la parte del contrato mas facil de colapsar por error, asi que va explicita:
+**Enmienda de la spec 0085 (2026-09-20).** Este contrato declaraba DOS campos —`required` y uno
+que separaba «hay que hacerlo» de «frena a los que siguen»—. **El segundo se borro**: el owner
+pregunto por que habia dos y la respuesta medida es que no hay dos. Con los cinco items reales
+los dos ejes **nunca divergen**, y ninguna UI consumia el campo todavia.
 
 | Campo | Que afirma | Que tiene que hacer la UI |
 |---|---|---|
-| `required` | **Hay que hacerlo.** Es obligatorio, no algo que el merchant pueda ignorar | Marcarlo como obligatorio; **no** ofrecer «saltar este paso» |
-| `blocking` | **Mientras no este `done`, los items de `position` mayor no se pueden hacer** | Deshabilitar lo que viene despues |
+| `required` | **Hay que hacerlo**, y **mientras no este `done` los items de `position` mayor estan bloqueados** (palabras del owner: *«sin eso no se puede hacer nada mas»*) | Marcarlo como obligatorio, **no** ofrecer «saltar este paso», y deshabilitar lo que viene despues hasta que este `done` |
 
-Son **independientes**. Un item puede ser obligatorio y **no** frenar al resto (hay que
-hacerlo, pero mientras tanto se puede avanzar con otra cosa), y puede frenar al resto **sin**
-ser obligatorio.
+**`verify-email` es el UNICO `required: true`.** Los cuatro tours son `required: false`: se
+pueden saltear —es una decision explicita del owner (ADR 0078 §2)— y no traban a nadie.
 
-**Hoy los dos valen `true`** en el unico item, porque asi lo dicto el owner para el email
-(*«sin esto no desbloqueas nada de lo que sigue»*). **No leer uno por el otro:** el dia que
-aparezca un item que sea solo una de las dos cosas, una UI que los haya tratado como sinonimos
-se comporta mal y nadie lo va a ver hasta que un merchant se trabe.
-
-**La API los REPORTA; no los hace cumplir.** Con un solo item no hay un «siguiente» que
-bloquear. Si la API ademas debe **rechazar** acciones de un item bloqueado es una decision que
-**no esta tomada**, y se toma cuando haya un segundo item.
+**La API lo REPORTA *y* lo HACE CUMPLIR, y ya no es una pregunta abierta.** La version anterior
+de este contrato decia que rechazar acciones de un item bloqueado era *«una decision que no esta
+tomada, y se toma cuando haya un segundo item»*. **Ya hay cinco, y la decision esta tomada: es
+que SI.** `POST /api/onboarding/tours/{tourId}` —la escritura de los cuatro items que siguen—
+lleva el gate de email y contesta **403 `email_not_verified`** mientras `verify-email` no este
+`done`. Ese 403 es el bloqueo hecho cumplir, no reportado. Lo que NO lo hace cumplir es **este**
+endpoint, que se gatearia a si mismo (§2).
 
 ### Lo que la UI puede dar por estable, y lo que no
 
 | Campo | ¿Contrato? |
 |---|---|
 | `id`, `anchor` | **Si.** Son claves. Sobre ellas se construye el mapa de hotspots |
-| `position`, `required`, `blocking`, `done` | **Si.** Son el estado |
+| `position`, `required`, `done` | **Si.** Son el estado |
 | `title`, `body` | **No.** Es copia y va a cambiar sin aviso. No aseverar sobre su texto |
 | `locale` | **Si**, pero hoy es siempre `"es"` — ver §4 |
 
@@ -95,13 +102,13 @@ bloquear. Si la API ademas debe **rechazar** acciones de un item bloqueado es un
 
 **`GET /api/onboarding/checklist` NUNCA devuelve `403 email_not_verified`.**
 
-No es un olvido: un endpoint cuyo unico item hoy es «verifica tu email» **no puede estar
-bloqueado por no haber verificado el email**, o se gatea a si mismo y el owner nunca ve la
+No es un olvido: un endpoint cuyo PRIMER item —y el unico obligatorio— dice «verifica tu
+email» **no puede estar bloqueado por no haber verificado el email**, o se gatea a si mismo y el owner nunca ve la
 instruccion que vino a buscar. Es el mismo argumento que sostiene el 200-siempre de
 `GET /api/merchant/session` (`0074-contratos-de-api.md` §1).
 
 Concretamente: **un owner recien salido del wizard, con el email sin verificar, recibe `200`**
-con su item en `done: false`. Ese es el caso principal del endpoint, no un borde.
+con sus cinco items, el primero en `done: false`. Ese es el caso principal del endpoint, no un borde.
 
 ### Los `code` de fallo
 
@@ -148,38 +155,45 @@ que la API gane un item, la UI ya desplegada tiene que seguir funcionando.
 | Lo que no hay | Evidencia | Que hacer mientras tanto |
 |---|---|---|
 | **Eleccion de idioma** | **No hay columna de idioma del merchant en ninguna tabla.** `core.terms_template` y `otp_delivery` tienen `locale` (este con `CHECK in ('es','pt','en')`), pero no hay de donde sacar el del owner | `locale` viene **siempre `"es"`**. Leerlo igual: el dia que haya un segundo idioma, el campo ya esta y la UI no cambia de contrato |
-| **El tutorial paso-a-paso** | No existe ningun endpoint de guide | **Ver §5.** No meter los pasos del tour adentro de este JSON |
-| **Mas de un item** | El catalogo tiene **una** entrada | No construir una barra «3 de 5» que asuma varios. Derivarla del largo de `items` |
+| **Los pasos del tour** | **No existen por HTTP y no van a existir** (ADR 0078 §4): los define la UI con su libreria de tours | **Ver §5.** No esperar un segundo endpoint ni meter los pasos adentro de este JSON |
+| **Saber si un tour se completo o se salteo** | El JSON dice `done: boolean` y nada mas. La distincion **se persiste** (`0084-contratos-de-api.md`) pero no se serializa | Tratar los dos igual. Es lo que el owner decidio (ADR 0078 §2) |
 | **Cualquier escritura de onboarding** | Este endpoint es de lectura pura | El paso se completa con la accion de su dominio — para el email, `POST /api/merchant/auth/verify-email` (contrato en `0067-contratos-de-api.md` §7) |
 
 ---
 
-## 5. EL TUTORIAL ES OTRO RECURSO, Y TODAVIA NO EXISTE
+## 5. EL TUTORIAL NO ES UN ENDPOINT — por HTTP viaja solo el ESTADO
 
-El onboarding tiene **dos niveles**, y este endpoint sirve **solo el primero**:
+El onboarding tiene **dos niveles**, y por la API viaja **uno solo**:
 
 1. **El checklist** — «que hay que hacer y en que estado esta». Es lo de este documento.
 2. **El tutorial de cada item** — «toca aca → abri la camara → saca la foto y espera a la IA».
 
-**No se sirven juntos, y no es una decision de comodidad** (ADR 0077 §1): el item sobrevive a
-cualquier rediseño de pantalla, mientras que el tutorial **es** la descripcion de una pantalla
-concreta y cambia cada vez que esa pantalla cambia. Ademas el checklist se pide en **cada**
-carga del backoffice y un tutorial se abre **una vez**: bajarlos juntos paga el peso de todos
-los tours en cada pantalla, que es exactamente lo que no se quiere en movil.
+**Enmienda de la spec 0085 (ADR 0078 §4).** La version anterior de esta seccion anunciaba un
+segundo endpoint, `GET /api/onboarding/<el id del item>`, que serviria los pasos del tutorial.
+**Ese endpoint no existe y no va a existir.** Si alguien esta construyendo la UI contra la
+version vieja de este documento, esto es lo unico que cambia para el.
 
-Cuando exista, el tutorial va a ser un segundo endpoint con esta forma:
+**Por que se mato:** el contenido de un tour son componentes de una libreria en el CLIENTE, no
+JSON del servidor. El ADR 0078 §5 eligio `driver.js` despues de medir tres librerias sobre
+nuestro Next en un iPhone 13. Un endpoint que devolviera «pasos» tendria que describir la
+pantalla —selectores, orden, textos— y eso **es** la UI: cada rediseño romperia el tour en
+produccion sin poner rojo a nadie en CI, que es exactamente lo que el `anchor` de §3 evita.
 
-```
-GET /api/onboarding/guide/{itemId}
-```
+**Lo que la API SI sirve de los tours, y es todo lo que necesita la UI:**
 
-**Hoy no existe ninguno**, porque el unico item —`verify-email`— es una accion de un toque y no
-necesita tour. El primero va a llegar con la feature de catalogo o la de staff, y **su forma se
-decide ahi**, con un ejemplo real a la vista.
+| Que | Donde |
+|---|---|
+| **Leer** si un tour esta hecho | El `done` de su item en **este** `GET` |
+| **Escribir** que se completo o se salteo | `POST /api/onboarding/tours/{tourId}` — contrato en `0084-contratos-de-api.md` |
 
-**Lo que se le pide a quien construya la UI ahora:** no modelar los pasos del tour como parte
-del item del checklist. Cuando llegue el segundo endpoint, un tour embebido en este JSON hay
-que desarmarlo.
+**`completed` y `skipped` proyectan los DOS `done: true`**, y el JSON de este endpoint **no
+dice cual de los dos fue**. La distincion se guarda en la base (el owner pidio conservar
+«cuantos saltearon») pero no viaja: el contrato de la UI es `done: boolean` y no hay que
+modelar un tercer estado.
+
+**Lo que se le pide a quien construya la UI:** mantener los pasos de cada tour del lado del
+cliente, junto al mapa `anchor → elemento` de §3. Lo unico que se le pregunta al servidor es
+si el item esta hecho, y lo unico que se le avisa es cuando se termino o se salteo.
 
 ---
 

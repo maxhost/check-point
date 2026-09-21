@@ -13,7 +13,7 @@ import { businessOnboardingTours } from "../schema";
  * **Que los cuatro existan no implica que sus pantallas existan** (ADR 0078 §6). De los cuatro,
  * el de staff apunta a una pantalla que todavia no esta. No hay que esperarla: un tour sin
  * pantalla simplemente nunca recibe un `POST`, su `done` queda en `false` y no traba a nadie
- * porque ningun tour es `blocking`.
+ * porque ningun tour es `required` (spec 0085: el unico obligatorio es `verify-email`).
  *
  * **Esta pieza es agnostica de la libreria de tours.** El ADR 0078 §5 eligio `driver.js`, que
  * vive del lado de la UI y **no se instala en esta spec**: aca se guarda ESTADO, no pasos.
