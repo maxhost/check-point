@@ -34,7 +34,7 @@ NADA DE ESTO ESTA PUSHEADO.** El delta con el remoto se lee con
 ### ✅ SPEC 0087 — **IMPLEMENTADA Y COMMITEADA** en `816a14e` (2026-09-21)
 
 **Editar al integrante, pedido del owner el 2026-09-21.** Spec y ADR en **`4115032`**, codigo en
-**`816a14e`**. **PASS** de un revisor independiente. **NO PUSHEADO** (*«no push todavia»*).
+**`816a14e`**, y la **enmienda §5** (el dado de baja no se renombra) en **`f444ba0`**. **PASS** de un revisor independiente. **NO PUSHEADO** (*«no push todavia»*).
 
 **Que entrega:** `PATCH /api/staff/{userId}` edita **solo el nombre** y **re-deriva el handle**,
 asi que el identificador nunca queda desincronizado — a cambio de que **cada renombre cambia con
@@ -70,17 +70,35 @@ demostrado en los dos canales. **11 mutaciones en total** (5 del implementador +
 
 ### PENDIENTES Y AVISOS DE LA 0087
 
-1. **SUBIDO AL OWNER, SIN RESPUESTA:** un integrante **dado de baja** (`status='disabled'`) **se
-   puede renombrar**. **Verificado que NO es politica nueva** — `setStaffPermissions` tampoco
-   filtra por `status`. Si el owner quiere cerrarlo, es **una linea en el `WHERE` y vale para las
-   dos rutas**, con su fila de spec.
-2. **AVISO DE TAMAÑO:** `staff-rename.neon.integration.test.ts` quedo en **285/300**. **El proximo
-   caso de integracion de este dominio NO entra**: hay que dividir el archivo, y es barato porque
-   el montaje ya vive afuera (`permissions-integration-support.ts`).
-3. **Declarado:** si alguna vez nace otro indice unico que incluya `handle`, `isUniqueViolation`
+1. **✅ CERRADO (owner, 2026-09-21):** *«integrante dado de baja se puede renombrar: **no**»*.
+   Enmienda **§5** de la spec, commit **`f444ba0`** — `409 target_disabled`, con el chequeo en
+   `rejectionFor` (no en el `WHERE`, donde la fila no matchearia y caeria en un 404) y **despues**
+   del scope por negocio, con la mutacion **M7** probando que un `disabled` de **otro** negocio
+   sigue diciendo **404**. **La asimetria queda DECLARADA, no decidida:** `PATCH …/permissions`
+   **sigue permitiendo** editarle los permisos a un `disabled`. El owner decidio sobre el
+   **renombre**; lo que no dijo no se escribe como decision suya.
+2. **✅ CERRADO:** el archivo de integracion estaba en 285/300 y **se DIVIDIO en vez de
+   extenderse**. Nace `staff-rename-integration-support.ts` (**sin un solo `expect`**) y el
+   original bajo a **235 conservando sus 13 casos**, verificado corriendolo antes y despues.
+
+3. **⚠ UN ERROR MIO QUE CAZO EL IMPLEMENTADOR, y vale como regla:** el `code` de la enmienda se
+   iba a llamar **`staff_disabled`**, y **ese `code` YA EXISTE y esta establecido** — tiene su
+   propio **ADR 0055**, dos specs, y lo emite el **login con 403** significando *«TU acceso esta
+   desactivado»*, dirigido **a la persona rechazada**. El de la enmienda significa otra cosa
+   —*«el TARGET esta de baja»*, al **merchant**— y sale con **409**. **El mismo string con dos
+   status y dos audiencias es una colision de contrato**, y en este repo el `code` **ES** el
+   contrato. Renombrado a **`target_disabled`**, que espeja a `target_is_owner`. **La regla:
+   antes de bautizar un `code` nuevo, `rg` por ese string en `apps` y `docs`** — el catalogo de
+   `code` es compartido aunque las tablas de contrato esten por spec.
+
+4. **⚠ Y la M7 volvio a traer el patron de la 0086:** su primera lectura dio **dos** rojos, y el
+   segundo acusaba a un **DOBLE**, no al codigo — devolvia una fila **sin `status`** cuando en la
+   base es `NOT NULL DEFAULT 'active'`. **Se arreglo el doble, no el test**, y se re-midio sobre
+   el arbol final. Tercera vez en tres specs que un doble irreal ensucia una medicion.
+5. **Declarado:** si alguna vez nace otro indice unico que incluya `handle`, `isUniqueViolation`
    dejaria de distinguirlo de `handle_taken` (hoy hay **exactamente dos** unicos y los 6 CHECK son
    `23514`, medido con `pg_indexes`).
-4. **Declarado:** dos claves se ignoran en silencio (`__proto__` con `permissions` adentro, y
+6. **Declarado:** dos claves se ignoran en silencio (`__proto__` con `permissions` adentro, y
    `Permissions` con mayuscula): devuelven 200 y renombran, **sin escribir permisos**. Cerrarlo
    seria rechazar claves desconocidas — **decision de producto, no tomada**.
 
