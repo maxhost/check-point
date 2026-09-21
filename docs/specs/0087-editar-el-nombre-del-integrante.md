@@ -1,7 +1,7 @@
 ---
 spec: 0087
 fecha: 2026-09-21
-estado: cerrada
+estado: implementada
 resumen: Nace `PATCH /api/staff/{userId}` y edita **solo el nombre**. Como el identificador sigue al nombre (ADR 0080), el renombre **re-deriva el handle** y por lo tanto CAMBIA con que string entra esa persona: la respuesta devuelve siempre el `identifier` nuevo y el contrato lo declara. La re-derivacion pasa por `nextSuggestion` —asi hereda las reservadas y el sufijo de colision— y **excluye el handle actual del target**, sin lo cual cada renombre bumpearia el sufijo. La ruta **RECHAZA con 400 `permissions_not_here`** un cuerpo que traiga `permissions` en vez de ignorarlo: `PATCH …/permissions` queda INTACTA y las dos politicas de autorizacion nunca se tocan en el mismo camino de codigo. Uno mismo SI edita su propio nombre (R3 no se extiende), pero R4 sigue: la membresia del owner no se toca. Sin migracion: la columna `handle` ya existe y ya es unica por negocio.
 disjunta: si
 archivos: apps/merchant/src/server/staff-rename.ts, apps/merchant/src/app/api/staff/[userId]/route.ts, apps/merchant/src/server/staff-create.ts, docs/specs/0087-contratos-de-api.md

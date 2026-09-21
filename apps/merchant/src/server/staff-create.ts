@@ -76,13 +76,34 @@ function syntheticEmail(userId: string): string {
  *
  * La lectura previa es un TOCTOU asumido, igual que con el slug del negocio: la unicidad
  * la garantiza el indice, y el `insert` que choca se traduce a 409.
+ *
+ * **`excludeUserId` (spec 0087 §1) — el parametro del RENOMBRE, opcional a proposito.**
+ * Sin el, esta funcion se comporta exactamente como antes y el ALTA la sigue llamando con
+ * dos argumentos. Con el, el handle que hoy tiene ese integrante sale de `taken`: sin eso
+ * renombrar «Carla» a «Carla» veria su PROPIO `carla` como ocupado y devolveria `carla-2`,
+ * bumpeando el sufijo en cada renombre hasta el infinito (ADR 0080, Consecuencias).
+ *
+ * La exclusion se hace en JS y no en el `WHERE` a proposito: el `select` sigue siendo el
+ * mismo para las dos superficies, asi que el alta no puede divergir por un filtro que solo
+ * una de las dos ejercita.
  */
-async function freeHandle(businessId: string, name: string): Promise<string> {
+export async function freeHandle(
+  businessId: string,
+  name: string,
+  excludeUserId?: string,
+): Promise<string> {
   const rows = await getDb()
-    .select({ handle: memberships.handle })
+    .select({ handle: memberships.handle, userId: memberships.userId })
     .from(memberships)
     .where(eq(memberships.businessId, businessId));
   const taken = rows
+    // `!excludeUserId ||` explicito: asi «sin el parametro no se filtra NI UNA fila» vale por
+    // la FORMA del predicado y no por como sean las filas. No lo llames indispensable: en la
+    // base `user_id` es `NOT NULL` (`schema/membership.ts:32-34`), asi que sobre filas reales
+    // `row.userId !== undefined` ya es siempre cierto y la version pelada daria lo mismo. Lo
+    // unico que hoy las distingue es un DOBLE de test cuyas filas no traen `userId`, y una
+    // propiedad que solo existe en un doble no es una propiedad del sistema.
+    .filter((row) => !excludeUserId || row.userId !== excludeUserId)
     .map((row) => row.handle)
     .filter((handle): handle is string => Boolean(handle));
   return nextSuggestion(slugify(name), taken);
@@ -192,8 +213,12 @@ export async function createStaff(
   }
 }
 
-/** `23505` = unique_violation, en el error o en cualquiera de sus `cause`. */
-function isUniqueViolation(error: unknown): boolean {
+/** `23505` = unique_violation, en el error o en cualquiera de sus `cause`.
+ *
+ * **Exportada desde la spec 0087**: el renombre traduce el mismo choque del mismo indice
+ * (`core_business_membership_handle_unique`) al mismo `409 handle_taken`, y una segunda copia
+ * de este recorrido de `cause` se separaria de esta sin que nadie lo vea. */
+export function isUniqueViolation(error: unknown): boolean {
   let current = error;
   for (let depth = 0; current && depth < 5; depth += 1) {
     if ((current as { code?: string }).code === "23505") return true;
