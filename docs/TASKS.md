@@ -31,6 +31,59 @@ NADA DE ESTO ESTA PUSHEADO.** El delta con el remoto se lee con
 `git rev-list --left-right --count origin/main...main` → `0  3`. El owner aprobo *«commit»*;
 **el push no se pidio**.
 
+### ✅ SPEC 0087 — **IMPLEMENTADA Y COMMITEADA** en `816a14e` (2026-09-21)
+
+**Editar al integrante, pedido del owner el 2026-09-21.** Spec y ADR en **`4115032`**, codigo en
+**`816a14e`**. **PASS** de un revisor independiente. **NO PUSHEADO** (*«no push todavia»*).
+
+**Que entrega:** `PATCH /api/staff/{userId}` edita **solo el nombre** y **re-deriva el handle**,
+asi que el identificador nunca queda desincronizado — a cambio de que **cada renombre cambia con
+que string entra esa persona**, y por eso la respuesta devuelve **SIEMPRE** el `identifier` nuevo.
+La ruta **rechaza** `permissions` con `400 permissions_not_here` mirando la **presencia de la
+clave**, y `PATCH …/permissions` quedo con **CERO lineas de diff**.
+
+**Verificacion corrida por el ORQUESTADOR:** los cinco gates con `TURBO_FORCE=1` (`0 cached`) y la
+rama de integracion **ACTIVA** → **`EXIT=0`, 246 archivos / 2068 tests**. `test:e2e` no aplica,
+demostrado en los dos canales. **11 mutaciones en total** (5 del implementador + 5 del revisor +
+1 de cierre); bitacora en `docs/archivo/spec-0087-bitacora-de-mutaciones.md`.
+
+### LO QUE ESTA SPEC ENSEÑO
+
+1. **DOS decisiones de diseño tomadas por el motivo correcto, y las dos son la misma idea:** el
+   404/409 se resuelve **DESPUES** del `UPDATE` —un `SELECT` previo scopeado habria dejado el
+   `business_id` **sin oraculo que lo distinga**, la proteccion tapando a la proteccion, y se
+   **MIDIO**: con el pre-chequeo la mutacion de aislamiento **sobrevivia en verde**— y `users.name`
+   se escribe **despues** y solo si matcheo, porque `merchant_auth.user` **no tiene `business_id`**.
+   **No se declaro «no se puede testear»: se descubrio que ASI ESCRITO no se podia.**
+2. **El revisor NO repitio las mutaciones del implementador**, gasto su presupuesto en cinco
+   propias apuntadas a lo que la tabla **no** cubria, y **ahi estaba el hueco**: `rejectionFor`
+   scopeada **sin oraculo**, porque el caso de aislamiento usaba un target `role='staff'` que con
+   el scope roto **sigue dando 404**. El unico vector que distingue es el **owner de otro
+   negocio**. **Elegir mutaciones nuevas en vez de repetir es lo que compro ese hallazgo.**
+3. **Un docblock que AFIRMA un invariante sin oraculo** — tercera vez en dos specs. Cerrado, y
+   ahora la frase **lleva su oraculo escrito al lado**: nombra el caso que la muerde y dice cual
+   **no** la distingue.
+4. **Un rojo de PLOMERIA disfrazado de propiedad:** la mutacion del guard `!excludeUserId ||` daba
+   rojo por un **doble** que devuelve filas sin `userId`, cuando en la base `user_id` es
+   **`NOT NULL`** (`schema/membership.ts:32-34`, verificado). El guard se queda; el comentario
+   dejo de afirmar una propiedad que **solo existe en un doble**.
+
+### PENDIENTES Y AVISOS DE LA 0087
+
+1. **SUBIDO AL OWNER, SIN RESPUESTA:** un integrante **dado de baja** (`status='disabled'`) **se
+   puede renombrar**. **Verificado que NO es politica nueva** — `setStaffPermissions` tampoco
+   filtra por `status`. Si el owner quiere cerrarlo, es **una linea en el `WHERE` y vale para las
+   dos rutas**, con su fila de spec.
+2. **AVISO DE TAMAÑO:** `staff-rename.neon.integration.test.ts` quedo en **285/300**. **El proximo
+   caso de integracion de este dominio NO entra**: hay que dividir el archivo, y es barato porque
+   el montaje ya vive afuera (`permissions-integration-support.ts`).
+3. **Declarado:** si alguna vez nace otro indice unico que incluya `handle`, `isUniqueViolation`
+   dejaria de distinguirlo de `handle_taken` (hoy hay **exactamente dos** unicos y los 6 CHECK son
+   `23514`, medido con `pg_indexes`).
+4. **Declarado:** dos claves se ignoran en silencio (`__proto__` con `permissions` adentro, y
+   `Permissions` con mayuscula): devuelven 200 y renombran, **sin escribir permisos**. Cerrarlo
+   seria rechazar claves desconocidas — **decision de producto, no tomada**.
+
 ### ✅ SPEC 0086 — **IMPLEMENTADA Y COMMITEADA**. MIGRACION **APLICADA A PROD** (2026-09-21)
 
 **Este es el punto de retorno de esta sesion.**
