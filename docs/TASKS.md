@@ -14,63 +14,184 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-## ⇥ ▶ ARRANCA ACA: LA 0084 ESTA IMPLEMENTADA. SIGUE LA 0085
+## ⇥ ▶ EL ARCO DEL ONBOARDING ESTA COMPLETO DEL LADO DE LA API. FALTA LA UI, Y LA HACE EL OWNER
 
-### ESTADO — ESCRITO DESPUES DEL COMMIT DEL TRABAJO, con su sha
+### ESTADO — ESCRITO DESPUES DE LOS COMMITS DEL TRABAJO, con sus shas
 
-**La spec 0084 esta `implementada`, con PASS de un revisor independiente.** El trabajo es el
-commit **`400aa07`** (`feat(onboarding): el progreso de los tours`): migracion `0040` + schema +
-`ONBOARDING_TOURS` + `POST /api/onboarding/tours/{tourId}` + los tres tests + el contrato
-`specs/0084-contratos-de-api.md`, con la spec marcada `implementada` y la fila 182 del `INDEX`
-actualizada.
+**Las dos specs estan `implementada`, cada una con PASS de un revisor independiente.**
 
-**`400aa07` NO esta pusheado.** El owner autorizo *«hace los dos commit»*, no el push. El estado
-respecto del remoto se lee con `git rev-list --left-right --count origin/main...main`.
+| sha | que |
+|---|---|
+| `400aa07` | **spec 0084** — migracion `0040`, `core.business_onboarding_tour`, `ONBOARDING_TOURS`, `POST /api/onboarding/tours/{tourId}`, tres tests, contrato `0084-contratos-de-api.md` |
+| `9dfd293` | docs de la 0084 — estado, dos `mistake→rule`, la precision a la 0085 |
+| `fbb596b` | **spec 0085** — checklist de 1 a 5 items, `blocking` borrado, enmienda del contrato `0083-contratos-de-api.md` |
 
-**La verificacion, y quien la hizo:**
+**NADA DE ESTO ESTA PUSHEADO.** El owner autorizo *«si hace los dos commit»* para la 0084 y el
+trabajo de la 0085; **el push no se pidio**. Se lee con
+`git rev-list --left-right --count origin/main...main`.
+
+**Antes de pedirle QA al owner** hay que verificar que prod tenga **EL COMMIT**, y **no con
+`/status`** — en este repo devuelve `success` con la CI corriendo. El comando es
+`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/check-runs --jq '.check_runs[] |
+"\(.name): \(.status) -> \(.conclusion)"'`, **todos** `completed` y `success`.
+
+**La verificacion de la 0085, y quien la hizo:**
 
 | Que | Resultado |
 |---|---|
-| Revisor independiente | **PASS**, presupuesto 5/5 mutaciones, re-medidas sobre el arbol FINAL (no sobre el shasum del implementador, que era anterior a un arreglo) y con la **asercion de cada rojo leida** |
-| M1 (el gate de email) | roja **y el caso del INTEGRANTE quedo VERDE** — es lo que distingue el rojo de la propiedad del rojo del setup |
-| Tabla, PK compuesta y `CHECK` | por **SQL contra `information_schema`**, no leyendo el `.sql`; `INSERT status='invalid'` → **`23514`** con su control positivo |
-| Gates de root, Node 24 | los cinco verdes, corridos **tambien por el orquestador**: `test` fresco (`1338 passed \| 0 failed`), `typecheck` y `build` **forzados sin cache** |
-| `test:e2e` | **NO aplica y esta DECLARADO**: `git status --porcelain \| grep -c '\.tsx$'` → `0` |
+| Revisor independiente | **PASS**, 5 del presupuesto **+ 3 extra** (`MR5b`, `MR6`, `MR7`), con la asercion de cada rojo leida |
+| Rojos de la PROPIEDAD vs. de PLOMERIA | **separados uno por uno**, que es el punto de la revision: de los 3 rojos de M3, **solo UNO** es de aislamiento; los otros dos dicen *«expected 503 to be 200»* porque sin `.where()` el doble de `./db` devuelve otra cosa |
+| «No hay dos listas de ids» | **falsificado**: agregar un quinto id a `ONBOARDING_TOURS` deja de compilar (`TS2741` sobre `TOUR_COPY`) |
+| Gates de root, Node 24 | los cinco verdes, corridos **tambien por el orquestador** despues de sus propias ediciones: `typecheck` y `build` **forzados** (`0 cached`), y `test` con la **integracion Neon ACTIVA** → `231 passed / 1848 passed`, **0 skipped** |
+| `test:e2e` | **NO aplica y esta DECLARADO**: cero `.tsx` |
 | Mutaciones en el arbol | `rg -n MUTATION apps tools` → vacio |
 
-### LO QUE SIGUE, Y ES LO UNICO: LA SPEC 0085
+### ⚠️ LA FILA M5 DE LA SPEC 0085 ERA FALSA, y la escribi yo
 
-Esta **`cerrada`** y ya solo esperaba que la 0084 estuviera implementada. Mismo protocolo del
-ADR 0071: **UN implementador para toda la spec, UN revisor independiente al final**; los gates
-completos **una vez por spec**.
+**La tabla de mutaciones afirmaba que sacar el `sort` por `position` tambien ponia rojo «el orden
+de los 5 ids en integracion». Se ejecuto: ese caso quedo VERDE.**
 
-**Las tres trampas de la 0085, todas ya medidas y escritas en su spec:**
+**El mecanismo, medido:** `CHECKLIST_ITEMS` declara `verify-email` primero (`position: 1`) y
+despues hace spread de `ONBOARDING_TOURS` con `position: indice + 2`, asi que `Object.entries`
+**ya sale ordenado** y el `sort` es un **no-op contra el catalogo real**. Su unico oraculo son las
+entradas **sinteticas**. **El §1 de la misma spec ya decia eso**, contradiciendo su propia tabla:
+nadie cruzo las dos secciones.
 
-1. **El doble de `./db` de `api-owner-surfaces.test.ts` es una cadena FIJA que termina en
-   `.limit()`.** La consulta de tours no usa `.limit()`, asi que contra ese doble el `await`
-   devuelve un objeto en vez de un array, la ruta cae al `catch` y contesta **503** — y se lleva
-   puestos TODOS los casos del checklist de esa bateria. **No es un bug del codigo nuevo: hay que
-   extender el doble.** El revisor de la 0084 lo confirmo desde el otro lado: ese doble **solo
-   expone `select`**, asi que para una ruta de ESCRITURA el rojo de un fallo de guard llega como
-   `503` y su camino feliz no se puede aseverar ahi.
-2. **`api-owner-surfaces.test.ts` quedo en 299 lineas y el hook `file-size` corta en 300.**
-   **Dividir, no extender**, y **no borrar asercion para hacer lugar**. El destino natural es
-   `api-owner-surfaces-support.ts`. Precedente de esta misma sesion: el test de integracion de la
-   0084 media 333 y se dividio en `onboarding-tours-support.ts` **sin perder un solo `expect(`**
-   (verificado: 0 en el support, 35 en el test).
-3. **La 0085 NO toca ningun `.tsx`**, asi que `test:e2e` se declara igual que aca.
+**El arreglo barato existe y esta MEDIDO pero NO se aplico:** declarar `verify-email` **despues**
+del spread (MR5b del revisor) — con el `sort` puesto la salida HTTP es identica (**129/129
+verde**), y con el `sort` sacado el caso de integracion **y** el de la bateria se ponen rojos.
+**No se aplico porque llego DESPUES del PASS y es codigo de produccion.** **Gatillo: la proxima
+vez que se toque `checklist.ts`.** La correccion esta escrita en la spec, debajo de su tabla, y el
+caso en `LECCIONES.md`.
 
-### LO QUE LA 0085 TIENE QUE CORREGIR EN EL CONTRATO 0083, y son TRES cosas (no dos)
+### ❌ CORRECCION DE UN HALLAZGO QUE ESCRIBI MAL EN `9dfd293`
 
-Su §5 enumeraba dos ediciones de §1. **Hay una tercera, agregada a la spec esta sesion:** el
-parrafo que hoy dice que si la API debe **rechazar** acciones de un item bloqueado *«es una
-decision que no esta tomada, y se toma cuando haya un segundo item»*. **Ya se tomo, y la tomo la
-0084: es que SI** — `POST /api/onboarding/tours/{tourId}` lleva el gate de email, y ese 403
-`email_not_verified` es el bloqueo de `verify-email` **hecho cumplir**. Y la condicion del
-parrafo (*«cuando haya un segundo item»*) la cumple la 0085 misma, que lleva el catalogo a cinco.
+Ese commit dice que **la bitacora de mutaciones del implementador de la 0084 nunca se persistio**.
+**Es FALSO: esta en este archivo, completa, con las cinco mutaciones y sus aserciones**, bajo el
+titulo «SPEC 0084 — EN IMPLEMENTACION (2026-09-20). BITACORA DE MUTACIONES».
 
-**Esto NO es una decision para el owner** y no hay que subirsela: la 0085 ya tenia *«la enmienda
-del contrato 0083 (§1 y §5)»* en su Alcance. Lo que faltaba era enumerarla.
+**Como me equivoque, que es lo unico que importa:** busque con `grep -n 'BITACORA.*0084'`, y ese
+titulo pone el numero **antes** de la palabra. El barrido devolvio una sola fila y **lei el vacio
+como una ausencia**. Es la tercera vez en la misma sesion que un barrido sintactico mal armado se
+lee como un hecho del arbol. Caso en `LECCIONES.md`.
+
+### LO QUE QUEDA ABIERTO, con su gatillo
+
+Ninguno bloquea y ninguno es de produccion.
+
+| # | Que | Gatillo / por que no se arreglo |
+|---|---|---|
+| 1 | **La rama `.limit()` del doble de `./db` no tiene oraculo.** El revisor la mutó (`limit: async () => []`) y **sobrevivio en verde** | Es una afirmacion de cobertura que no existe, **no** un riesgo de produccion. **Ya corregido el docblock** para que diga la verdad. Gatillo: si alguien agrega un caso que asevere la lectura del slug |
+| 2 | **El caso de aislamiento de la 0084 parte su oraculo en dos `expect(` separados** (`onboarding-tours.neon.integration.test.ts:188` y `:191`) | Llego despues del PASS de la 0084. **Gatillo: la proxima vez que se toque ese archivo.** La forma correcta ya esta en el mismo archivo, en el caso del 404 |
+| 3 | **`CHECKLIST_ITEMS` perdio el `as const satisfies`** y quedo `: Record<string, ChecklistItemDef>`: se pierde el tipado literal de las claves | Impacto medido: **cero**. El guard de «no hay dos listas» **sigue mordiendo** por `TOUR_COPY`, que es `Record<OnboardingTourId, …>` (probado con `TS2741`) |
+| 4 | **El `503 onboarding_unavailable` no tiene oraculo** en ninguna de las tres rutas de onboarding | **Es decision del owner y ya se le ofrecio**; sigue sin responder. Si dice que si, **se cierra para las tres de una vez** |
+
+### LO QUE SIGUE, Y NO ES TRABAJO DE ESTE ARCO
+
+**La UI del onboarding la construye el owner por fuera** (ADR 0070 §16-17). Lo que la API ya le
+entrega, escrito y verificado:
+
+- `GET /api/onboarding/checklist` → **cinco items** con `id`, `anchor`, `position`, `required`,
+  `done`, `title`, `body`, `locale`. **`blocking` ya no existe.**
+- `POST /api/onboarding/tours/{tourId}` con `status: "completed" | "skipped"`.
+- Los contratos normativos: `specs/0083-contratos-de-api.md` (enmendado) y
+  `specs/0084-contratos-de-api.md`.
+- **La libreria de tours es `driver.js`** (ADR 0078 §5, decision del owner). **No esta instalada**
+  y no es dependencia del servidor: las specs guardan **estado**, no pasos.
+- **Tres de los cuatro tours apuntan a pantallas que existen**; el de staff no
+  (`backoffice-navigation.tsx:37`, `href: null`). **No bloquea** (ADR 0078 §6): su `done` queda en
+  `false` y ningun tour es `required`.
+
+
+### BITACORA DE MUTACIONES — SPEC 0085 (REVISOR INDEPENDIENTE). Abierta ANTES de medir
+
+**Punto de retorno.** Los dos archivos estan ` M` (trabajo sin commitear): `git checkout` NO es el
+salvavidas. Copias limpias en `/tmp/rev0085/`. Restauracion:
+`cp /tmp/rev0085/checklist.ts.clean apps/merchant/src/server/onboarding/checklist.ts` y
+`cp /tmp/rev0085/checklist-facts.ts.clean apps/merchant/src/server/onboarding/checklist-facts.ts`.
+
+| Archivo | `shasum` LIMPIO | git status |
+|---|---|---|
+| `apps/merchant/src/server/onboarding/checklist.ts` | `8d42e86220445c1be84e342663aab44adf4bda81` | ` M` |
+| `apps/merchant/src/server/onboarding/checklist-facts.ts` | `c2e3c223155d86fc3bb24bcf48084d1252f4a4da` | ` M` |
+
+Alcance de cada medicion: `src/server/onboarding/checklist.test.ts` +
+`src/server/onboarding-checklist.neon.integration.test.ts` + `src/server/api-owner-surfaces.test.ts`.
+Baseline verde re-medido por el revisor: **129 passed / 0 failed**.
+
+| # | Archivo | Invariante que ataca | Resultado EJECUTADO |
+|---|---|---|---|
+| **MR1** | `checklist-facts.ts` (`and(eq(status,'completed'))`) | `skipped` cuenta como `done` | **ROJO 2/129, los dos por la PROPIEDAD.** `completed y skipped proyectan los dos done: true` → el vector difiere **solo** en `["program", true] → false` (la fila `skipped`), con `catalog` (`completed`) intacto en `true`. Y `un negocio NO ve el progreso de otro` → solo `["brand", true] → false`. Unit y bateria VERDES (no tienen fila real). **Revertida**: `diff` vacio, `shasum` `c2e3c2…` |
+| **MR2** | `checklist.ts` (`done: () => true`) | el `done` de un tour LEE la tabla, no es constante | **ROJO 6/129 en los TRES archivos.** Bateria: *«expected [ false, true, true, true, true ] to deeply equal [ false, false, false, false, false ]»* — el item 1 queda en `false`, asi que el rojo es del tour. Unit: `el done de cada tour sale de toursHechos`. Integracion: los tres casos de `done`. **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+| **MR3** | `checklist-facts.ts` (sin `.where()`) | la consulta filtra por `business_id` (aislamiento) | **ROJO 3/129, y SOLO 1 es de la propiedad.** `un negocio NO ve el progreso de otro (y si ve el suyo)` → `staff`/`catalog`/`program` pasan `false → true` (las filas del OTRO negocio) **con `brand` intacto en `true`** (la fila propia: control positivo). Los otros 2 son PLOMERIA, y su asercion lo dice: *«expected 503 to be 200»* en los dos casos del checklist de la bateria (el doble de `./db` devuelve `{where}` y la ruta cae al `catch`). **La lectura del implementador se confirma.** **Revertida**: `diff` vacio, `shasum` `c2e3c2…` |
+| **MR4** | `checklist.ts` (`required: tourId === "catalog"`) | `verify-email` es el UNICO `required: true` | **ROJO 2/129, los dos por la propiedad.** Unit: *«expected [ true, false, true, false, false ] to deeply equal [ true, false, false, false, false ]»*. Integracion: el vector `[3, "catalog", "catalog", false, false]` llego con `required: true`. El item 1 queda `true` en los dos. Bateria VERDE (no asevera `required`) — declarado. **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+| **MR5** | `checklist.ts` (sin `.sort()`) | el `sort` por `position` de `toChecklistView` | **ROJO 1/129, SOLO en el unit sintetico**: *«expected [ 'tercero', 'primero', 'segundo' ] to deeply equal [ 'primero', 'segundo', 'tercero' ]»*. **`los CINCO items salen en orden` quedo VERDE** → la fila M5 de la spec prometia un rojo en integracion que NO existe. **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+| **MR5b** (fuera de presupuesto, medida) | `checklist.ts`: `verify-email` declarado DESPUES del spread, `position` intacto en 1 | ¿hay un oraculo barato que falsifique el `sort` con el catalogo REAL? | **SI.** Con MR5b **sola** (el `sort` puesto): **129/129 VERDE** — la salida HTTP es identica. Con MR5b **+ MR5** (`sort` sacado): **13 rojos**, entre ellos el de integracion *«expected [ [ 2, 'staff', 'staff', …(2) ], …(4) ] to deeply equal [ [ 1, 'verify-email', …(3) ], …(4) ]»* y el de la bateria *«expected 'staff' to be 'verify-email'»*. O sea: **reordenar la DECLARACION (no las `position`, no `ONBOARDING_TOURS`) le da al `sort` un oraculo de catalogo real a costo cero de comportamiento.** **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+| **MR6** (fuera de presupuesto, medida) | `api-owner-surfaces-support.ts`: `limit: async () => []` | el docblock nuevo afirma *«la lectura del slug sigue viendo la suya»* | **VERDE — la mutacion SOBREVIVE.** `api-owner-surfaces.test.ts` (el unico importador) pasa entero con la rama `.limit()` devolviendo `[]`: esa mitad del doble **no tiene oraculo**. No es riesgo de produccion (es andamiaje), pero el docblock afirma cobertura que no hay. **Revertida**: `diff` vacio, `shasum` `135a16…` |
+| **MR7** (fuera de presupuesto, medida) | `onboarding/tours.ts`: un quinto id (`"billing"`) en `ONBOARDING_TOURS` | el docblock nuevo afirma *«si `ONBOARDING_TOURS` gana o pierde un id este objeto NO COMPILA»* | **ROJO, y por el motivo correcto**: `tsc --noEmit` → *«src/server/onboarding/checklist.ts(93,7): error TS2741: Property 'billing' is missing in type … but required in type 'Record<"staff" | "catalog" | "program" | "brand" | "billing", …>'»*. El guard de «no hay dos listas» MUERDE. **Revertida**: `diff` vacio, `shasum` `a41454…` |
+
+**Cierre del revisor.** `rg -n MUTATION apps tools` → vacio. `shasum` de los tres archivos
+identicos a los limpios. Suite completa con la rama de integracion: **231 archivos / 1848 tests,
+0 failed**. Ninguna mutacion sobrevivio al turno.
+
+
+### BITACORA DE MUTACIONES — SPEC 0085 (implementador). **CERRADA: 5/5 medidas y revertidas**
+
+**Punto de retorno.** Los dos archivos estaban ` M` (trabajo sin commitear) cuando se abrio esta
+bitacora, asi que **`git checkout` NO es el salvavidas**: se lleva tambien la implementacion. Las
+copias limpias estan en `/tmp/0085-limpio/`. Restauracion:
+`cp /tmp/0085-limpio/checklist.ts apps/merchant/src/server/onboarding/checklist.ts` y
+`cp /tmp/0085-limpio/checklist-facts.ts apps/merchant/src/server/onboarding/checklist-facts.ts`.
+
+| Archivo | `shasum` LIMPIO |
+|---|---|
+| `apps/merchant/src/server/onboarding/checklist.ts` | `8d42e86220445c1be84e342663aab44adf4bda81` |
+| `apps/merchant/src/server/onboarding/checklist-facts.ts` | `c2e3c223155d86fc3bb24bcf48084d1252f4a4da` |
+
+**Alcance de CADA medicion** (los tres archivos que pueden ver estas mutaciones, corridos juntos
+con `set -a; . ./.env.integration.local; set +a`): `src/server/onboarding/checklist.test.ts` +
+`src/server/onboarding-checklist.neon.integration.test.ts` + `src/server/api-owner-surfaces.test.ts`.
+**Baseline verde: 129 passed / 0 failed** (medido antes de la primera mutacion).
+
+| # | Archivo | Invariante que ataca | Resultado EJECUTADO |
+|---|---|---|---|
+| **M1** | `checklist-facts.ts` | `skipped` cuenta como `done` (decision textual del owner) | **ROJO 2 de 129**, los dos en `.neon.integration` y **los dos por la propiedad**: `completed y skipped proyectan los dos done: true` → el vector difiere **solo en `["program", true] → false`** (la fila `skipped`; `catalog`, que es `completed`, quedo en `true`), y `un negocio NO ve el progreso de otro` → **solo en `["brand", true] → false`** (la otra fila `skipped`). El unit y la bateria quedaron VERDES: ninguno de los dos tiene fila real. **Revertida**: `diff` vacio, `shasum` `c2e3c2…` |
+| **M2** | `checklist.ts` | el `done` de un tour LEE la tabla, no es constante | **ROJO 6 de 129, en los TRES archivos.** Bateria (los dos casos sin gate): *«expected [ false, true, true, true, true ] to deeply equal [ false, false, false, false, false ]»* — el item 1 se mantuvo en `false`, que es lo que separa el rojo de la propiedad del rojo del montaje. Unit: `el done de cada tour sale de toursHechos, item por item`. Integracion: `los CINCO items salen en orden…` (los cuatro `false` → `true`), `completed y skipped…` y `un negocio NO ve el progreso de otro`. **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+| **M3** | `checklist-facts.ts` | la consulta filtra por `business_id` (aislamiento) | **ROJO 3 de 129, pero SOLO UNO es de la propiedad** y es el que importa: `un negocio NO ve el progreso de otro (y si ve el suyo)` → `staff`, `catalog` y `program` pasan de `false` a **`true`** (son las filas del OTRO negocio) **mientras `brand` sigue en `true`** (la fila propia, el control positivo). Los otros dos rojos son de PLOMERIA y estan leidos: los dos casos del checklist en la bateria dan *«expected 503 to be 200»* porque sin `.where()` el doble de `./db` devuelve el objeto `{where}` en vez de un array y la ruta cae al `catch` — **no prueban el aislamiento**. **Revertida**: `diff` vacio, `shasum` `c2e3c2…` |
+| **M4** | `checklist.ts` | `verify-email` es el UNICO `required: true` | **ROJO 2 de 129**, los dos por la propiedad. Unit (`verify-email es el UNICO required: true`): *«expected [ true, false, true, false, false ] to deeply equal [ true, false, false, false, false ]»* — la tercera posicion. Integracion (`los CINCO items salen en orden…`): el vector del item 3 `[3, "catalog", "catalog", false, false]` llego con `required: true`. **El primer item quedo `true` en los dos**: el rojo es del tour, no del email. La bateria quedo VERDE (no asevera `required`) — declarado. **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+| **M5** | `checklist.ts` | el `sort` por `position` de `toChecklistView` | **ROJO 1 de 129, y SOLO en el unit**: `ordena por position ascendente aunque lleguen desordenadas` → *«expected [ 'tercero', 'primero', 'segundo' ] to deeply equal [ 'primero', 'segundo', 'tercero' ]»*. **HALLAZGO: la fila M5 de la spec afirma que tambien se pone rojo «el orden de los 5 ids en integracion», y es FALSO** — medido: ese caso quedo VERDE, porque el catalogo real se declara YA ordenado (`verify-email` y despues `ONBOARDING_TOURS`, que es el orden de `position`). Con el catalogo real el `sort` **no se puede falsificar**: su unico oraculo son las entradas sinteticas, que es lo que dice el §1 de la spec (y contradice su propia tabla). **Revertida**: `diff` vacio, `shasum` `8d42e8…` |
+
+**Cierre.** Las cinco se midieron de a una, con la fila abierta ANTES de medir, etiqueta
+`MUTATION` y reversion con `diff` contra `/tmp/0085-limpio/`. Al terminar:
+`rg -n MUTATION apps tools` → **vacio**, y los dos `shasum` **identicos a los de la tabla de
+arriba**. Ninguna mutacion sobrevivio al turno.
+
+### SPEC 0085 — TRABAJO DEL IMPLEMENTADOR, SIN COMMITEAR (lo commitea/PASS el orquestador)
+
+**No esta marcada `implementada`**: falta el PASS de un revisor independiente (ADR 0071). El
+arbol tiene 11 archivos ` M` y 1 `??` (`apps/merchant/src/server/onboarding-checklist-support.ts`).
+
+**Los cinco gates de root con Node 24 (v24.20.0), corridos UNA vez al final y por separado:**
+`typecheck` → 3 successful; `lint` → sin salida; `format:check` → *All matched files use Prettier
+code style!*; `test` con `set -a; . ./.env.integration.local; set +a` → **231 archivos / 1848
+tests, 0 failed**; `build` → 3 successful (merchant **cache miss**, o sea que midio).
+**`test:e2e` NO aplica y esta DECLARADO:** `git status --porcelain | grep -c '\.tsx$'` → **0**.
+
+**Tres cosas que la spec afirma y NO se cumplen contra el arbol (para el revisor):**
+
+1. **La fila M5 promete un rojo en integracion que NO ocurre.** Ver su fila: el catalogo real se
+   declara ya ordenado, asi que sacar el `sort` deja el orden de los 5 ids intacto. El oraculo
+   real del `sort` son las entradas SINTETICAS del unit, que es lo que dice el §1 de la spec.
+   **No se reordeno el catalogo para fabricarle un rojo**: seria una decision de diseño que
+   nadie pidio. Limite declarado, no supuesto — se intento y se midio.
+2. **El barrido `blocking` de la DoD alcanza DOS archivos que la tabla «Archivos» no lista**:
+   `server/onboarding/tours.ts` y `app/api/onboarding/tours/[tourId]/route.ts`, los dos de la
+   0084 y los dos con el campo citado en PROSA. Se editaron (solo docblock) porque si no el
+   criterio no daba vacio, y porque su prosa quedaba falsa igual.
+3. **`api-owner-surfaces-support.ts` tambien nombraba el campo borrado** (fuera del barrido, pero
+   describiendo el gate de la 0084). Se corrigio ahi mismo. **Queda sin tocar** la unica mencion
+   restante del arbol: el comentario del `.sql` de la migracion `0040`, que es historico y las
+   migraciones no se reescriben.
 
 ### HALLAZGOS DE LA 0084 QUE NO SE ARREGLARON, con su gatillo
 

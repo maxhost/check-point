@@ -1030,3 +1030,60 @@ nada), no la que primero sonaba plausible.
 que `drizzle-kit generate` emita el SQL. Y si igual se va a afirmar una propiedad del `.sql`
 —«es idempotente»— esa propiedad **se ejecuta**, no se supone: es una afirmacion de mecanismo como
 cualquier otra. Linea agregada a la skill `gotchas-del-repo`.
+
+## 2026-09-20 — La tabla de mutaciones de una spec es una afirmacion, y la M5 de la 0085 era falsa
+
+**El caso.** La spec 0085 tabulo su mutacion M5 asi: *«Sacar el `sort` por `position` de
+`toChecklistView`» → «El unit con entradas desordenadas **y el orden de los 5 ids en
+integracion**»*. El implementador la ejecuto: el unit se puso rojo, y **el caso de integracion
+quedo VERDE**.
+
+**El mecanismo, medido.** `CHECKLIST_ITEMS` declara `verify-email` primero (`position: 1`) y
+despues hace spread de `ONBOARDING_TOURS` con `position: indice + 2`. **`Object.entries` ya sale
+ordenado**, asi que contra el catalogo REAL el `sort` es un **no-op** y no hay nada que
+falsificar. Su unico oraculo son las entradas **sinteticas** del segundo parametro.
+
+**Lo peor del caso: la spec se contradecia a si misma.** Su §1 ya decia que ese segundo parametro
+existe porque es *«la unica forma de alimentar entradas sinteticas desordenadas, que el catalogo
+real no puede producir»*. **Las dos secciones nunca se cruzaron.** Una tabla de mutaciones escrita
+desde el DISEÑO no ve lo que el codigo termino afirmando.
+
+**Lo que salio bien, y hay que repetirlo.** El implementador **no reordeno el catalogo para
+fabricar el rojo** — habria sido una decision de diseño que nadie pidio, moviendo las `position`
+(salen del indice) y el orden que dicto el owner. **Reporto el hueco en vez de taparlo.** Y el
+revisor, al arbitrar, encontro la tercera opcion que nadie habia probado (declarar `verify-email`
+**despues** del spread: salida HTTP identica, **129/129 verde**, y el `sort` pasa a ser
+falsificable con el catalogo real). No se aplico porque llego **despues del PASS** y es codigo de
+produccion; quedo con su gatillo escrito.
+
+**La regla.** Es la misma de la 0080 —*el ejemplo con el que describis un invariante es una
+afirmacion, no una ilustracion*— con un agravante nuevo: **cada fila de la tabla de mutaciones
+afirma que un oraculo concreto DISTINGUE la mutacion**, y eso se verifica **corriendolo**, no
+razonandolo desde el diseño. Y antes de cerrar una spec hay que **cruzar la tabla de mutaciones
+con el resto de la prosa**: aca las dos secciones decian cosas opuestas y ninguna estaba oculta.
+
+## 2026-09-20 — Un barrido mal armado devolvio vacio y lo lei como una ausencia (tercera vez en la misma sesion)
+
+**El caso.** Cerrando la 0084 el orquestador quiso confirmar que la bitacora de mutaciones del
+implementador estuviera persistida en `TASKS.md`. Corrio `grep -n 'BITACORA.*0084'`, vio **una
+sola fila** (la del revisor) y reporto —al owner y en el mensaje del commit `9dfd293`— que **«la
+bitacora del implementador nunca se persistio»**.
+
+**Era falso.** La bitacora estaba en el archivo, completa, con las cinco mutaciones y sus
+aserciones. El titulo era **«SPEC 0084 — EN IMPLEMENTACION (2026-09-20). BITACORA DE
+MUTACIONES»**: el numero va **antes** de la palabra, y el patron `BITACORA.*0084` exige el orden
+contrario.
+
+**Por que es la MISMA familia que las otras dos de esta sesion** —el `rg` con `\|` de la DoD de la
+0084, y el docblock que rompia su propio criterio citandolo— **y por que es la mas cara de las
+tres:** en las otras dos el barrido fallaba en verde y nadie se enteraba. Aca el vacio se
+**interpreto**, y la interpretacion viajo a un mensaje al owner, a un `mistake→rule` inventado
+(«exigir la bitacora como entregable») y a un commit. **Un hallazgo que no existia gasto atencion
+del owner.**
+
+**La regla, que es una sola linea:** **un barrido que devuelve vacio no prueba una ausencia hasta
+que se lo vio dar NO-vacio sobre algo que deberia matchear.** Ya estaba escrita para los criterios
+de DoD (leccion del `rg` vs `grep`); lo que se agrega es que **vale igual cuando el barrido es
+exploratorio y su resultado va a un mensaje**. Antes de afirmar «X no esta en el archivo»: correr
+el patron contra un caso positivo conocido, o usar la forma que no depende del orden
+(`grep -in 'bitacora' | grep 0084`).
