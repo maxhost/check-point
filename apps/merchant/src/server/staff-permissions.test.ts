@@ -17,6 +17,7 @@ import {
   permissionsForRole,
 } from "./permissions-catalog";
 import {
+  assertDemotable,
   assertGrantable,
   assertNotSelf,
   parsePermissions,
@@ -169,6 +170,40 @@ describe("las reglas anti-escalada puras (spec 0086 §4 / ADR 0079 §3)", () => 
   /** Fail-closed en el ROL: un rol que no es `owner` cae del lado restrictivo. */
   it("R1: un rol desconocido tampoco otorga `staff`", () => {
     expect(() => assertGrantable("admin", ["staff"])).toThrowError(
+      expect.objectContaining({ code: "permission_not_grantable" }),
+    );
+  });
+
+  /**
+   * R1b — **la otra mitad: un administrador tampoco DEGRADA a otro administrador.**
+   * `assertGrantable` mira la lista nueva, asi que mandar la lista SIN `staff` lo esquivaba:
+   * el techo del perfil se saltaba por abajo en vez de por arriba, y la unica barrera era la
+   * UI. El target que importa es el de HOY, no el que llega en el cuerpo.
+   */
+  it("R1b: un no-owner que apunta a otro administrador → 403 `permission_not_grantable`", () => {
+    expect(() => assertDemotable("staff", ["staff", "catalog"])).toThrowError(
+      expect.objectContaining({
+        status: 403,
+        code: "permission_not_grantable",
+      }),
+    );
+  });
+
+  it("R1b: el OWNER sí lo quita", () => {
+    expect(() => assertDemotable("owner", ["staff"])).not.toThrow();
+  });
+
+  it("R1b: un no-owner SÍ edita a un integrante que no es administrador", () => {
+    expect(() =>
+      assertDemotable("staff", ["counter", "catalog"]),
+    ).not.toThrow();
+    expect(() => assertDemotable("staff", [])).not.toThrow();
+    expect(() => assertDemotable("staff", null)).not.toThrow();
+  });
+
+  /** Fail-closed en el ROL, igual que R1a. */
+  it("R1b: un rol desconocido tampoco degrada a un administrador", () => {
+    expect(() => assertDemotable("admin", ["staff"])).toThrowError(
       expect.objectContaining({ code: "permission_not_grantable" }),
     );
   });

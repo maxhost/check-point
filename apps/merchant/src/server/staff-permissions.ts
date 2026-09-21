@@ -17,7 +17,8 @@ import { type StaffDTO, StaffError, toStaffDTO } from "./staff";
  *
  * | # | Regla | Respuesta |
  * |---|---|---|
- * | R1 | **Solo el owner otorga o quita `staff`.** Un caller `role !== 'owner'` que mande `staff` | `403 permission_not_grantable` |
+ * | R1a | **Solo el owner OTORGA `staff`.** Un caller `role !== 'owner'` que mande `staff` en la lista | `403 permission_not_grantable` |
+ * | R1b | **Solo el owner QUITA `staff`.** Un caller `role !== 'owner'` cuyo TARGET ya lo tiene | `403 permission_not_grantable` |
  * | R2 | **Un no-owner SI otorga cualquier otro permiso**, tenga o no ese permiso el mismo | — |
  * | R3 | **Nadie edita sus propios permisos**, tampoco el owner | `403 self_permission_edit` |
  * | R4 | **Ninguna superficie de staff toca la membresia del owner** | `409 target_is_owner` |
@@ -92,8 +93,9 @@ export function parsePermissions(value: unknown): string[] {
 }
 
 /**
- * R1 — **solo el OWNER otorga o quita `staff`**. Se evalua sobre el rol del CALLER, que sale
- * de la fila que resolvio el guard y nunca del cuerpo.
+ * R1a — **solo el OWNER otorga `staff`**. Se evalua sobre el rol del CALLER, que sale de la
+ * fila que resolvio el guard y nunca del cuerpo. **Mira la lista NUEVA**; la mitad que mira al
+ * TARGET es {@link assertDemotable}.
  *
  * Vale tanto para el alta como para el `PATCH`: las dos superficies escriben el conjunto de
  * permisos de un tercero y las dos tienen que tener el mismo techo.
@@ -104,6 +106,36 @@ export function assertGrantable(callerRole: string, permissions: string[]) {
     throw new StaffError(
       403,
       "Solo el owner puede otorgar el permiso de administrar staff.",
+      STAFF_PERMISSION_CODES.permissionNotGrantable,
+    );
+  }
+}
+
+/**
+ * R1, LA OTRA MITAD — **solo el owner QUITA `staff`**. `assertGrantable` mira la lista NUEVA y
+ * por eso no puede ver esto: un administrador que manda la lista **sin** `staff` a otro
+ * administrador lo estaba degradando, y la unica barrera era la UI
+ * (`staff-views.tsx`, `protectedAdministrator`) — justo lo que la pantalla le promete al
+ * merchant con todas las letras («Solo el owner puede otorgarlo o quitarlo»,
+ * `permission-picker.tsx:54`).
+ *
+ * **Corre DESPUES de resolver el target**, no antes, y el orden es contrato: un `userId` que no
+ * existe tiene que seguir contestando `404 staff_not_found`. Si esta regla corriera primero,
+ * contestaria `403` y con eso confirmaria que ese id existe.
+ *
+ * Reusa `permission_not_grantable`: es el mismo techo, el mismo rol y la misma copia ya
+ * traducida en la UI. Un `code` nuevo seria una entrada mas en el catalogo compartido para
+ * decir lo mismo.
+ */
+export function assertDemotable(
+  callerRole: string,
+  targetPermissions: readonly string[] | null | undefined,
+) {
+  if (callerRole === "owner") return;
+  if ((targetPermissions ?? []).includes("staff")) {
+    throw new StaffError(
+      403,
+      "Solo el owner puede quitar el permiso de administrar staff.",
       STAFF_PERMISSION_CODES.permissionNotGrantable,
     );
   }
@@ -154,7 +186,10 @@ export async function setStaffPermissions(
   assertNotSelf(caller.userId, targetUserId);
 
   const [target] = await getDb()
-    .select({ role: memberships.role })
+    // `permissions` viaja en el MISMO `select` que ya traia `role`: es una columna mas en una
+    // consulta que ya se hacia, no una consulta nueva (mismo argumento con el que la 0086 sumo
+    // la columna al guard).
+    .select({ role: memberships.role, permissions: memberships.permissions })
     .from(memberships)
     .where(
       and(
@@ -178,6 +213,8 @@ export async function setStaffPermissions(
       STAFF_PERMISSION_CODES.targetIsOwner,
     );
   }
+  // R1, la otra mitad. Va aca —paso 4bis— para que un id inexistente siga siendo 404.
+  assertDemotable(caller.role, target.permissions);
 
   const [row] = await getDb()
     .update(memberships)

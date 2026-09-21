@@ -180,7 +180,8 @@ que lo aseveran hoy: se actualizan, no se borran.
 
 | # | Regla | Respuesta |
 |---|---|---|
-| R1 | **Solo el owner otorga o quita `staff`.** Un caller con `role !== 'owner'` que mande `staff` en la lista | `403 permission_not_grantable` |
+| R1a | **Solo el owner OTORGA `staff`.** Un caller con `role !== 'owner'` que mande `staff` en la lista | `403 permission_not_grantable` |
+| R1b | **Solo el owner QUITA `staff`.** Un caller con `role !== 'owner'` cuyo target ya lo tiene (enmienda 2026-09-21: el titular de esta fila decia «otorga o quita» y la condicion describia solo la primera mitad; el servidor hacia lo que decia la condicion y la UI era la unica barrera de la otra) | `403 permission_not_grantable` |
 | R2 | **Un no-owner SI otorga cualquier otro permiso**, tenga o no ese permiso el mismo | — (decision del owner, ADR 0079 §3.2) |
 | R3 | **Nadie edita sus propios permisos**, tampoco el owner | `403 self_permission_edit` |
 | R4 | **Ninguna superficie de staff toca la membresia del owner** | `409 target_is_owner` |

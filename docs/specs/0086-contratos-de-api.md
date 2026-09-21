@@ -87,9 +87,19 @@ Conservan el `code` **`not_owner`**, que ahi sigue siendo literal.
 los permisos — **incluso permisos que el mismo no tiene** (decision explicita del owner: un
 admin de staff tiene que poder crear a alguien de marketing).
 
-**Solo el OWNER puede otorgarlo o quitarlo.** Un administrador **no fabrica otro
-administrador**: mandar `"staff"` en la lista siendo no-owner es `403
-permission_not_grantable`.
+**Solo el OWNER puede otorgarlo o quitarlo, y son DOS disparadores del mismo `403
+permission_not_grantable`** (enmienda del 2026-09-21; hasta entonces el servidor cumplia solo
+el primero y la UI era la unica barrera del segundo):
+
+| | Cuando | Que mira |
+|---|---|---|
+| **R1a** | un caller no-owner manda `"staff"` en la lista | la lista **nueva** del cuerpo |
+| **R1b** | un caller no-owner apunta a un target que **HOY** tiene `staff` | la fila **actual** del target |
+
+R1b **se evalua DESPUES** de resolver al target, asi que un `userId` inexistente o de otro
+negocio sigue contestando `404 staff_not_found` y el 403 nunca confirma que un id exista.
+
+Un administrador **no fabrica otro administrador** y **tampoco desarma al que el owner creo**.
 
 > **⚠️ Lo que la UI tiene que decirle al merchant, y no es cosmetica.** El alta devuelve el PIN
 > **en claro**, asi que **crear a un tercero con el permiso X equivale a tener X**: quien lo
