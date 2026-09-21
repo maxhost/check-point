@@ -86,13 +86,31 @@ solo se ven en pantalla, mas la CI:
 Y en desktop: que el **toast** de arriba a la derecha no tape el boton de cerrar modulo — geometria
 **declarada y NO verificada en navegador**.
 
-### HALLAZGO A DECIDIR (no es decision del owner todavia)
+### ✅ CERRADO EN `e9dd3e1` — la R1 de la 0086, completa
 
-**La R1 de la spec 0086 esta implementada a la mitad.** `staff-permissions.ts:20` afirma *«Solo el
-owner otorga **o quita** `staff`»*, pero `assertGrantable` mira `permissions.includes("staff")`
-(`:103`): un administrador que manda la lista **sin** `staff` a otro administrador **no es
-rechazado**, y hoy lo unico que lo frena es la UI (`protectedAdministrator`). Medido por el revisor
-con una sonda y reproducido. Es de la **0086**, no de la 0088.
+**Regla del owner, 2026-09-21:** *«solo merchant (owner) puede crear un miembro staff como
+administrador»* y *«ese miembro administrador no puede crear otros administradores»*.
+
+**Esa mitad YA estaba implementada** en las dos superficies que escriben permisos —el alta
+(`staff-create.ts:141`) y `PATCH …/permissions`— y las dos tenian oraculo. **Lo que faltaba era
+QUITARLO:** `assertGrantable` mira la lista NUEVA, asi que un administrador que mandaba la lista
+**sin** `staff` degradaba a otro administrador, y la unica barrera era la UI — mientras la pantalla
+ya le promete al merchant *«solo el owner puede otorgarlo o quitarlo»*.
+
+Nace `assertDemotable`, que mira la fila **actual** del target y corre **despues** de resolverlo,
+asi que un id inexistente sigue siendo `404` y el `403` no confirma existencia. Reusa
+`permission_not_grantable`. Cero consultas nuevas: la columna viaja en el `select` que ya traia
+`role`.
+
+**3 mutaciones, las tres rojas** — y la del **cableado** midio **VERDE la primera vez**: borrar la
+llamada del writer dejaba **1.293 tests en verde**. Es el mismo modo de falla que costo la revision
+de la 0088, dos veces en el mismo dia: **una regla pura con test no dice nada sobre si alguien la
+llama.**
+
+**Lo que NO se toco, y se declara:** un administrador todavia puede **regenerar el PIN** de otro
+administrador y **darlo de baja** (las dos rutas miran `role`, no `permissions`). No es escalada de
+permisos —`staff` ya lo tiene— sino interferencia entre pares. **El owner no pidio eso**, asi que
+no se implementa ni se presenta como decision suya.
 
 ## ⇥ ▶ LO QUE SIGUE — LOCALES: API REVISADA, Y DOS DECISIONES PENDIENTES DEL OWNER
 
