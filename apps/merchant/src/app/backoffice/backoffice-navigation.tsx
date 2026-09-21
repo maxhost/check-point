@@ -34,7 +34,7 @@ const businessLinks = [
     icon: Shop,
     segment: "locations",
   },
-  { href: null, label: "Staff", icon: Group, segment: "staff", soon: true },
+  { href: "/backoffice/staff", label: "Staff", icon: Group, segment: "staff" },
   {
     href: "/backoffice/catalog",
     label: "Catálogo",
@@ -107,9 +107,11 @@ function SoonLink({
 export function BackofficeNavigation({
   businessName,
   isOwner,
+  permissions,
 }: {
   businessName: string;
   isOwner: boolean;
+  permissions: string[];
 }) {
   const segment = useSelectedLayoutSegment();
   const [openMenu, setOpenMenu] = useState<MenuName | null>(null);
@@ -192,19 +194,37 @@ export function BackofficeNavigation({
               />
             </div>
           </nav>
+        ) : permissions.includes("staff") ? (
+          <nav
+            aria-label="Navegación principal"
+            className="backoffice-desktop-nav"
+          >
+            <div className="backoffice-nav-group">
+              <p>Administración</p>
+              <NavLink
+                href="/backoffice/staff"
+                icon={Group}
+                label="Staff"
+                segment="staff"
+                selectedSegment={segment}
+              />
+            </div>
+          </nav>
         ) : (
           <p className="staff-nav-note">Espacio de atención</p>
         )}
 
         <div className="backoffice-sidebar-footer">
-          <Link
-            aria-current={segment === "counter" ? "page" : undefined}
-            className="counter-access"
-            href="/backoffice/counter"
-          >
-            <QrCode aria-hidden="true" width={22} height={22} />
-            <span>Abrir mostrador</span>
-          </Link>
+          {permissions.includes("counter") && (
+            <Link
+              aria-current={segment === "counter" ? "page" : undefined}
+              className="counter-access"
+              href="/backoffice/counter"
+            >
+              <QrCode aria-hidden="true" width={22} height={22} />
+              <span>Abrir mostrador</span>
+            </Link>
+          )}
           <SignOutButton />
         </div>
       </aside>
@@ -214,43 +234,57 @@ export function BackofficeNavigation({
         className="backoffice-mobile-nav"
         data-owner={isOwner || undefined}
       >
-        {isOwner && (
+        {(isOwner || permissions.includes("staff")) && (
           <>
-            <NavLink
-              href="/backoffice"
-              icon={HomeSimple}
-              label="Inicio"
-              segment={null}
-              selectedSegment={segment}
-              onNavigate={closeMenu}
-            />
-            <button
-              aria-controls="backoffice-mobile-menu"
-              aria-expanded={openMenu === "business"}
-              className="mobile-nav-trigger"
-              data-active={
-                businessLinks.some((item) => item.segment === segment) ||
-                undefined
-              }
-              onClick={() => toggleMenu("business")}
-              type="button"
-            >
-              <Dashboard aria-hidden="true" width={22} height={22} />
-              <span>Negocio</span>
-            </button>
+            {isOwner && (
+              <NavLink
+                href="/backoffice"
+                icon={HomeSimple}
+                label="Inicio"
+                segment={null}
+                selectedSegment={segment}
+                onNavigate={closeMenu}
+              />
+            )}
+            {isOwner ? (
+              <button
+                aria-controls="backoffice-mobile-menu"
+                aria-expanded={openMenu === "business"}
+                className="mobile-nav-trigger"
+                data-active={
+                  businessLinks.some((item) => item.segment === segment) ||
+                  undefined
+                }
+                onClick={() => toggleMenu("business")}
+                type="button"
+              >
+                <Dashboard aria-hidden="true" width={22} height={22} />
+                <span>Negocio</span>
+              </button>
+            ) : (
+              <NavLink
+                href="/backoffice/staff"
+                icon={Group}
+                label="Staff"
+                segment="staff"
+                selectedSegment={segment}
+              />
+            )}
           </>
         )}
-        <Link
-          aria-current={segment === "counter" ? "page" : undefined}
-          className="mobile-counter-access"
-          href="/backoffice/counter"
-          onClick={closeMenu}
-        >
-          <span>
-            <QrCode aria-hidden="true" width={24} height={24} />
-          </span>
-          Mostrador
-        </Link>
+        {permissions.includes("counter") && (
+          <Link
+            aria-current={segment === "counter" ? "page" : undefined}
+            className="mobile-counter-access"
+            href="/backoffice/counter"
+            onClick={closeMenu}
+          >
+            <span>
+              <QrCode aria-hidden="true" width={24} height={24} />
+            </span>
+            Mostrador
+          </Link>
+        )}
         {isOwner && (
           <>
             <button

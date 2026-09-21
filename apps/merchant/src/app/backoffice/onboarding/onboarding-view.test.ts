@@ -47,4 +47,12 @@ describe("estados visuales del checklist", () => {
       "current",
     );
   });
+
+  it("staff está publicado para el checklist real", () => {
+    const items = [
+      item("verify-email", 1, true, true),
+      item("staff", 2, false),
+    ];
+    expect(onboardingStepState(items[1], items)).toBe("current");
+  });
 });

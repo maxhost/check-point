@@ -9,20 +9,31 @@ import {
   Sparks,
 } from "iconoir-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getOnboardingChecklist, type OnboardingItem } from "./onboarding-api";
 import {
   AVAILABLE_ONBOARDING_ANCHORS,
   onboardingStepState,
 } from "./onboarding-view";
+import { ONBOARDING_TOUR_STARTED_EVENT } from "./onboarding-tour";
 
 type SendState = "idle" | "sending" | "sent" | "error";
 
 export function OnboardingChecklist() {
+  const router = useRouter();
   const [items, setItems] = useState<OnboardingItem[] | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [sendState, setSendState] = useState<SendState>("idle");
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [hiddenForTour, setHiddenForTour] = useState(false);
+
+  useEffect(() => {
+    const hide = () => setHiddenForTour(true);
+    window.addEventListener(ONBOARDING_TOUR_STARTED_EVENT, hide);
+    return () =>
+      window.removeEventListener(ONBOARDING_TOUR_STARTED_EVENT, hide);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,7 +98,7 @@ export function OnboardingChecklist() {
       </section>
     );
 
-  if (!items || items.every((item) => item.done)) return null;
+  if (hiddenForTour || !items || items.every((item) => item.done)) return null;
 
   const completed = items.filter((item) => item.done).length;
   const percent = Math.round((completed / items.length) * 100);
@@ -184,15 +195,28 @@ export function OnboardingChecklist() {
                     <button
                       className="onboarding-primary-action"
                       disabled={sendState === "sending"}
-                      onClick={sendVerification}
+                      onClick={() => {
+                        if (item.anchor === "staff") {
+                          setHiddenForTour(true);
+                          router.push("/backoffice/staff?tour=onboarding");
+                          return;
+                        }
+                        void sendVerification();
+                      }}
                       type="button"
                     >
-                      <Mail aria-hidden="true" width={18} height={18} />
-                      {sendState === "sending"
-                        ? "Enviando…"
-                        : sendState === "sent"
-                          ? "Reenviar enlace"
-                          : "Verificar mi email"}
+                      {item.anchor === "staff" ? (
+                        <Sparks aria-hidden="true" width={18} height={18} />
+                      ) : (
+                        <Mail aria-hidden="true" width={18} height={18} />
+                      )}
+                      {item.anchor === "staff"
+                        ? "Empezar"
+                        : sendState === "sending"
+                          ? "Enviando…"
+                          : sendState === "sent"
+                            ? "Reenviar enlace"
+                            : "Verificar mi email"}
                     </button>
                   )}
                 </li>

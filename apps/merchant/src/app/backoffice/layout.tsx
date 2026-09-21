@@ -12,6 +12,7 @@ export default async function BackofficeLayout({
       <BackofficeNavigation
         businessName={session.business.name}
         isOwner={session.membership.role === "owner"}
+        permissions={session.membership.permissions}
       />
       {session.membership.role === "owner" && <OnboardingChecklist />}
       <div className="backoffice-content">{children}</div>

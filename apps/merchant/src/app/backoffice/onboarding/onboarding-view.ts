@@ -4,6 +4,7 @@ export type OnboardingStepState = "done" | "blocked" | "current" | "upcoming";
 
 export const AVAILABLE_ONBOARDING_ANCHORS: ReadonlySet<string> = new Set([
   "verify-email",
+  "staff",
 ]);
 
 export function onboardingStepState(

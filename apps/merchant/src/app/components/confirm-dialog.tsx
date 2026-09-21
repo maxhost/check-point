@@ -36,6 +36,7 @@ type Props = {
   confirmLabel: string;
   cancelLabel?: string;
   confirmDisabled?: boolean;
+  confirmTourAnchor?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -46,6 +47,7 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel = "Cancelar",
   confirmDisabled = false,
+  confirmTourAnchor,
   onCancel,
   onConfirm,
 }: Props) {
@@ -119,6 +121,7 @@ export function ConfirmDialog({
           </button>
           <button
             className="button danger"
+            data-tour={confirmTourAnchor}
             type="button"
             disabled={confirmDisabled}
             onClick={onConfirm}

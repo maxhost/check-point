@@ -26,6 +26,11 @@ beforeEach(() => {
 });
 
 describe("driver del onboarding", () => {
+  it("configura el enfoque automático de cada elemento resaltado", () => {
+    startOnboardingTour({ tourId: "staff", steps: [] });
+    expect(mocks.config?.onHighlighted).toBeTypeOf("function");
+  });
+
   it("registra completed al terminar el último paso", () => {
     startOnboardingTour({ tourId: "catalog", steps: [] });
 
@@ -42,5 +47,27 @@ describe("driver del onboarding", () => {
 
     expect(mocks.record).toHaveBeenCalledWith("brand", "skipped");
     expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("una ayuda independiente no persiste progreso", () => {
+    startOnboardingTour({ tourId: "staff", steps: [], persist: false });
+    mocks.config?.onDoneClick();
+    expect(mocks.record).not.toHaveBeenCalled();
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+
+  it("ofrece avanzar o saltar desde el primer paso cuando se solicita", () => {
+    startOnboardingTour({
+      tourId: "staff",
+      steps: [{ element: "[data-tour='staff-add']", popover: {} }],
+      showSkipOnFirstStep: true,
+    });
+
+    const firstStep = (
+      mocks.config as unknown as {
+        steps: Array<{ popover?: { showButtons?: string[] } }>;
+      }
+    )?.steps[0];
+    expect(firstStep?.popover?.showButtons).toEqual(["next", "close"]);
   });
 });
