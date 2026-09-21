@@ -8,6 +8,139 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ SPEC 0088 — UI Y TOUR DE STAFF: COMMITEADA, CON DOS REVISIONES CERRADAS (2026-09-21)
+
+### ESTADO — ESCRITO DESPUES DE LOS COMMITS, con sus shas
+
+| sha | que |
+|---|---|
+| `8ee91d1` | **La pantalla de Staff y sus cuatro ayudas** (spec 0088). Es el arbol que la primera revision auditó |
+| `7f51c51` | **Enmienda §11** — los SEIS hallazgos de la primera revision independiente |
+| `0ac4391` | **§11-bis** — los TRES arreglos de la segunda vuelta, que activo la condicion de corte |
+
+**El arbol esta limpio y son CUATRO los commits en `main` LOCAL sin pushear** — los tres de la tabla mas el de este doc. Se lee con
+`git rev-list --left-right --count origin/main...main`. Ultimo sha en `origin/main`: **`fa9a029`**,
+cuya CI esta **entera en verde** (`tick`, `drain` y `verify`, los tres `completed/success`,
+verificado por `check-runs` y **no** por `/status`).
+
+**No hay autorizacion para pushear**: se le pregunto al owner y no contesto todavia. **El
+`test:e2e` de estos tres commits NO CORRIO EN NINGUN LADO** — ni local ni CI — y eso es lo que el
+push desbloquea.
+
+### LOS GATES, MEDIDOS SOBRE `0ac4391`
+
+`typecheck`, `lint`, `format:check`, `test` (**149 archivos / 1.550 tests**, +12 casos nuevos) y
+**`build`** → los cinco **VERDES** con `TURBO_FORCE=1` y Node 24.20.0.
+
+**`build` dejo de estar bloqueado, y la sesion anterior se equivoco al declararlo:** el `EPERM` de
+Turbopack era del **sandbox del agente**, no del codigo. Corriendo sin sandbox pasa en ~10 s. Es un
+recordatorio de la regla: una afirmacion de IMPOSIBILIDAD se verifica intentandola.
+
+**`test:e2e` sigue sin correr, y el motivo es el puerto, no el codigo:** `playwright.config.ts:16-31`
+levanta el consumer en `127.0.0.1:3000` y el merchant en `3001`, y el 3000 lo tiene un `next dev`
+**del merchant** que es un proceso del OWNER (PID 97387). Playwright aborta con *«Another next dev
+server is already running»*. **La suite SI existe** (`tests/e2e/health.spec.ts`,
+`tests/e2e/loyalty-real.spec.ts`): un revisor afirmo lo contrario mirando `e2e/` en la raiz, y se
+verifico antes de creerlo.
+
+**Trampa de medicion que costo un falso verde:** `pnpm run test:e2e | tail` devolvio **exit 0 con el
+gate FALLADO**, porque en zsh el status de un pipeline es el de `tail`. Se vio **leyendo** la salida.
+
+### LAS DOS REVISIONES, Y LO QUE ENSENIARON
+
+**Nueve hallazgos, los nueve cerrados. Ninguno lo habia visto el QA del owner, y hay un motivo
+estructural: el popover ofrece «Siguiente», asi que quien avanza con el boton nunca dispara el
+paso que rompe.**
+
+1. **La misma familia de defecto aparecio DOS VECES, y la segunda sobrevivio al arreglo de la
+   primera.** Un paso de tour cuyo clic hace lo CONTRARIO de lo que su copy pide: en el alta,
+   «Habilitá Mostrador» sobre un switch que **ya nace encendido** (apagaba el unico permiso y el
+   alta se cortaba); en la baja, «Dalo de baja» sobre un boton que es un **TOGGLE** y sobre un
+   integrante ya dado de baja **le restablece el acceso**. **La leccion es el metodo: al cerrar un
+   defecto de esta clase hay que barrer los OTROS pasos del mismo tipo**, no solo el que se cazo.
+2. **Un gate nuevo sin oraculo se lee como proteccion.** El chequeo de permiso de
+   `/backoffice/staff` —el primero del backoffice que no es `requireOwner`— se podia BORRAR con
+   1.526 tests en verde, porque ningun test importaba la pagina. Hoy tiene `page-guard.test.ts`,
+   sin base, y muerde con dos rojos.
+3. **Tocar CSS COMPARTIDO es tocar otras pantallas.** Un cambio de `.confirm-dialog` pensado para
+   Staff alcanzo a **siete** pantallas; el `.toast` a **nueve**. Y el arreglo salio a mitad de
+   camino: revertir el fondo sin poner el `color` restauro un defecto **preexistente** (texto casi
+   blanco sobre blanco en modo oscuro), porque el color se hereda de `.backoffice-layout`.
+4. **QUINTA vez en cuatro specs que el docblock es el defecto** — y una de las cinco es mia, en el
+   test que acababa de escribir: afirmaba haber medido algo que el **doble** hacia imposible medir.
+   Corregido para que diga que distingue de verdad y en que archivo esta el otro oraculo.
+5. **La condicion de corte del ADR 0062 se ACTIVO, y la activo el revisor**, no yo: dos vueltas
+   seguidas terminando en «el fix abrio la siguiente». No se abre una tercera ronda.
+
+### LO QUE FALTA EN LA 0088 (corto, y es de pantalla)
+
+**Spec en `cerrada` a proposito: no se marca `implementada` sin el QA del owner.** Tres cosas que
+solo se ven en pantalla, mas la CI:
+
+1. La ayuda **«Dar de baja»** sobre alguien **que ya esta de baja** — el copy nuevo tiene que
+   describir un toggle.
+2. **Gestionar sobre su propia fila** siendo administrador: «Regenerar PIN» aparece
+   **deshabilitado** con su motivo, no ausente (antes el tour se colgaba 60 s ahi).
+3. Cualquier **dialogo de confirmacion** con el **SO en modo oscuro**: el texto tiene que leerse.
+
+Y en desktop: que el **toast** de arriba a la derecha no tape el boton de cerrar modulo — geometria
+**declarada y NO verificada en navegador**.
+
+### HALLAZGO A DECIDIR (no es decision del owner todavia)
+
+**La R1 de la spec 0086 esta implementada a la mitad.** `staff-permissions.ts:20` afirma *«Solo el
+owner otorga **o quita** `staff`»*, pero `assertGrantable` mira `permissions.includes("staff")`
+(`:103`): un administrador que manda la lista **sin** `staff` a otro administrador **no es
+rechazado**, y hoy lo unico que lo frena es la UI (`protectedAdministrator`). Medido por el revisor
+con una sonda y reproducido. Es de la **0086**, no de la 0088.
+
+## ⇥ ▶ LO QUE SIGUE — LOCALES: API REVISADA, Y DOS DECISIONES PENDIENTES DEL OWNER
+
+Pedido del owner del 2026-09-21: *«revisar el API para Locales: crear, editar, archivar»*, con
+*«owner puede siempre CRUD… y luego staff con permiso de administrador de locales»*, y
+*«lo añadiremos al checklist del onboarding»*.
+
+**EL API YA ESTA COMPLETO Y CUMPLE EL REQUISITO. No hay que construirlo** (verificado archivo por
+archivo):
+
+| Verbo | Ruta | Que hace |
+|---|---|---|
+| `GET` | `/api/locations` | lista, activos primero; DTO de 4 claves (sin coordenadas ni snapshots) |
+| `POST` | `/api/locations` | **crear**, con el tope de plan bajo el lock del negocio |
+| `PATCH` | `/api/locations/{id}` | **editar** nombre y/o direccion, en UNA transaccion |
+| `POST` | `/api/locations/{id}/status` | **archivar / reactivar** |
+
+Los cuatro entran por `requireLocationsOwner` → `requireApiPermission(request, "locations")`:
+**owner siempre** (ignora la columna por ser owner) **o staff con el permiso `locations`**. Archivar
+es delegable por decision textual del owner del 2026-09-20 (*«van»*, ADR 0079 §2). Estan en el
+inventario de superficies delegables con sus tests.
+
+**EL HUECO REAL: el permiso esta vivo en la API y MUERTO en el producto.**
+`backoffice/locations/page.tsx:15` entra con **`requireOwner()`**, que manda al staff al mostrador,
+y `backoffice-navigation.tsx` solo pinta el link de Locales dentro de la rama `isOwner`. Un
+integrante con permiso de Locales **no tiene como llegar a la pantalla**: solo podria ejercerlo
+llamando la API a mano. La pantalla sigue obedeciendo la decision 4 de la spec 0061 (*«solo el owner
+administra locales»*), que el ADR 0079 ya superó para la API. **Es el mismo patron que la enmienda
+§10 de la 0086** (superficie delegada pero muerta), y lo que el owner ya dijo lo cubre: es
+incumplimiento, no decision abierta.
+
+**EL CHECKLIST: el item tiene que ser un TOUR, y eso esta medido.** `POST /api/onboarding/business`
+—el wizard— **ya crea el primer local en el alta**, asi que un item del tipo «tenés un local»
+naceria `done: true` para todos. Sirve un tour, con la misma forma que los otros cuatro
+(`completed` y `skipped` cuentan los dos). Del lado del servidor es chico y bien disenado: agregar
+`locations` a `ONBOARDING_TOURS` **obliga** a acompanar la copia o no compila. Del lado del cliente
+hay que sumar el anchor a `AVAILABLE_ONBOARDING_ANCHORS` y generalizar la navegacion, que hoy tiene
+`item.anchor === "staff"` hardcodeado. **Pasa el checklist de CINCO a SEIS items → es enmienda al
+ADR 0078 §1 y lleva ADR propio.**
+
+**LAS DOS DECISIONES QUE FRENAN LA SPEC** (se piden ANTES de escribir la prosa, ADR 0071):
+
+1. **¿En que posicion entra Locales?** Hoy: `verify-email` (1) · staff (2) · catalogo (3) ·
+   programa (4) · marca (5). Recomendacion: **2**, antes de Staff — primero donde se opera, despues
+   quien opera. Ningun tour bloquea, asi que es orden de lectura.
+2. **¿Una spec o dos?** Propuesta: **(A)** checklist a seis items + pantalla delegada al permiso +
+   link en la nav; **(B)** despues, el tour `driver.js` de Locales, como la 0088.
+
 **Este archivo contiene SOLO el arco en ejecucion** (regla instaurada por la spec 0066, ya cerrada).
 Lo diferido, parado o pospuesto vive en **`docs/PARQUEADO.md`** (el unico lugar donde buscar
 pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS-historico-2026-09-16.md`
