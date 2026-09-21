@@ -239,9 +239,16 @@ y va al owner. Lo que quede afuera se **declara**.
 
 ## Declarado AFUERA (sin oraculo, a proposito)
 
-- **El `503 onboarding_unavailable`**, igual que en la 0083 y la 0084. **Sigue pendiente de
-  decision del owner**, a quien se le ofrecio cerrarlo; si dice que si, se cierra para las tres
-  rutas de una vez.
+- **✅ EL `503 onboarding_unavailable` YA NO ESTA AFUERA — CERRADO el 2026-09-20.** Lo cierra
+  `apps/merchant/src/server/onboarding-503.test.ts` para **las DOS rutas de onboarding de una
+  vez** (son dos, no tres: `GET /api/onboarding/checklist` y
+  `POST /api/onboarding/tours/{tourId}` — la 0085 no agrega ruta). Va con **dobles**, como su
+  precedente `onboarding-program-503.test.ts`. Pinnea el `status`, el `code`, que **no se
+  invente un desenlace positivo** (ni `items` en el checklist ni el recibo `{tourId,status}` en
+  tours) y —lo que **no tenia ni un test**— que el `catch` **NO filtre el mensaje de la
+  excepcion** en ninguno de los dos canales: ni el cuerpo HTTP ni el `console.error`. Los dos
+  controles positivos estan. **Tres mutaciones ejecutadas, las tres rojas en el oraculo exacto**
+  (bitacora en `TASKS.md`). **Cero codigo de produccion tocado.**
 - **Que el JSON no distinga `completed` de `skipped`** no tiene oraculo propio mas alla de que los
   dos den `done: true` (M1). Aseverar que la clave NO existe seria aseverar una ausencia que ya
   cubre el chequeo de `Object.keys`.

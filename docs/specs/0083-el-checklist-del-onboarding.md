@@ -345,12 +345,20 @@ corta y va al owner. Lo que queda afuera se **declara**.
 
 ## Declarado por el REVISOR, y el orquestador lo acepta
 
-- **El camino `503 onboarding_unavailable` no tiene oraculo en ningun archivo.** No esta en la
-  tabla de las 6 ni en el DoD, y mutarlo se salia del presupuesto. **Riesgo bajo, acotado por
-  el revisor:** es un `catch` de ultima linea, su `code` esta en el contrato y **no filtra
-  nada** (el `console.error` emite solo `error.name`). Cerrarlo cuesta un test que doble
-  `ownerContext` para que tire. **No se persigue**; queda escrito para que nadie lo cuente como
-  cubierto.
+- **✅ EL `503 onboarding_unavailable` YA NO ESTA AFUERA — CERRADO el 2026-09-20.** Lo cierra
+  `apps/merchant/src/server/onboarding-503.test.ts` para **las DOS rutas de onboarding de una
+  vez** (son dos, no tres: `GET /api/onboarding/checklist` y
+  `POST /api/onboarding/tours/{tourId}` — la 0085 no agrega ruta). Va con **dobles**, como su
+  precedente `onboarding-program-503.test.ts`. Pinnea el `status`, el `code`, que **no se
+  invente un desenlace positivo** (ni `items` en el checklist ni el recibo `{tourId,status}` en
+  tours) y —lo que **no tenia ni un test**— que el `catch` **NO filtre el mensaje de la
+  excepcion** en ninguno de los dos canales: ni el cuerpo HTTP ni el `console.error`. Los dos
+  controles positivos estan. **Tres mutaciones ejecutadas, las tres rojas en el oraculo exacto**
+  (bitacora en `TASKS.md`). **Cero codigo de produccion tocado.**
+
+  *(Lo que decia antes, y era cierto cuando se escribio: «no tiene oraculo en ningun archivo …
+  no se persigue». La afirmacion de que «no filtra nada» era un LEIDO del codigo, no una
+  medicion — ahora tiene oraculo y se puede regresar sin que nadie lo vea.)*
 - **El `sort` por `position` quedo sin mutacion ejecutada, no sin oraculo.** El revisor leyo el
   test: las entradas se declaran **3-1-2** y asevera `["primero","segundo","tercero"]` + `[1,2,3]`,
   o sea que distingue de verdad el orden de declaracion.

@@ -1087,3 +1087,44 @@ de DoD (leccion del `rg` vs `grep`); lo que se agrega es que **vale igual cuando
 exploratorio y su resultado va a un mensaje**. Antes de afirmar «X no esta en el archivo»: correr
 el patron contra un caso positivo conocido, o usar la forma que no depende del orden
 (`grep -in 'bitacora' | grep 0084`).
+
+## 2026-09-20 — Una decision del owner que vivio solo en el chat, y tres specs la copiaron como «pendiente»
+
+**El caso.** El revisor de la spec 0083 declaro afuera el `503 onboarding_unavailable` y escribio
+que quedaba *«pendiente de decision del owner, a quien se le ofrecio»*. La **0084** copio esa
+linea. La **0085** la copio otra vez. Dos docblocks de tests de integracion la copiaron tambien.
+Al cerrar el arco, el agente se lo volvio a ofrecer al owner — y el owner contesto: *«pense que ya
+lo habias resuelto porque hace mucho que te dije que resuelvas esto»*.
+
+**Se busco antes de contestarle**, que es lo unico que se hizo bien: `503` en `TASKS.md`,
+`PARQUEADO.md`, `INDEX.md` y `docs/archivo/`. **La instruccion del owner no estaba en ningun
+archivo.** La del agente estaba **cinco veces**.
+
+**El mecanismo de la falla tiene dos mitades, y las dos son evitables.**
+
+1. **La decision se tomo en el chat y no bajo a disco.** Es literalmente lo que advierte el
+   §Estado de `CLAUDE.md` —*lo que tiene que sobrevivir va a un archivo*— aplicado a una
+   decision del owner, que es el tipo de dato mas caro de perder: no se puede re-derivar del
+   codigo ni de la historia de git.
+2. **El «declarado afuera» se COPIO de una spec a la siguiente sin re-verificarse.** Ahi esta lo
+   que agrega este caso: **copiar una afirmacion es re-afirmarla.** Cada vez que la 0084 y la
+   0085 escribieron «el owner todavia no decidio», estaban haciendo una afirmacion NUEVA sobre el
+   estado del proyecto, sostenida solo en que la spec anterior lo decia. Ninguna de las dos
+   volvio a mirar.
+
+**Lo que costo.** Nada de codigo — el cierre resulto barato: un archivo de test con dobles, dos
+controles positivos, tres mutaciones rojas y **cero lineas de produccion tocadas**. Lo que costo
+fue **atencion del owner**, tres veces, sobre algo que ya habia resuelto.
+
+**Y un hallazgo de regalo al cerrarlo:** las tres specs decian que el `catch` *«no filtra nada»*.
+Eso era un **leido del codigo, no una medicion**, y no tenia ni un test: se regresa escribiendo
+`error.message` donde dice `error.name`, y nadie lo ve. Ahora el oraculo existe y muerde en los
+dos canales (cuerpo HTTP y `console.error`). Tambien se corrigio de paso un «tres rutas» que eran
+**dos** — el numero contaba specs, no rutas, y nadie lo habia contado.
+
+**Las reglas.**
+- Cuando el owner decide algo que cambia un **limite declarado**, el limite **se cierra o se
+  reescribe en el mismo turno**. Una decision suya no termina en un mensaje: termina en el
+  archivo que la contradice.
+- **Un «declarado afuera» no se copia entre specs.** Se re-verifica contra las palabras del owner
+  antes de repetirlo, igual que cualquier otra afirmacion heredada.

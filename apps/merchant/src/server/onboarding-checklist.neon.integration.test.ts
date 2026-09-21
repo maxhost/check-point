@@ -52,7 +52,9 @@ import {
  * **Lo que este archivo NO prueba, declarado:** el `sort` por `position` con entradas que
  * lleguen DESORDENADAS —el catalogo real sale ordenado, asi que desde la base no se puede
  * falsificar; su oraculo son las entradas sinteticas de `onboarding/checklist.test.ts`— y el
- * `503 onboarding_unavailable`, que sigue pendiente de decision del owner.
+ * `503 onboarding_unavailable`, que **ya NO esta declarado afuera**: lo cierra
+ * `onboarding-503.test.ts` con dobles (status, `code`, que no se invente un desenlace
+ * positivo y que el `catch` NO filtre el mensaje de la excepcion).
  */
 describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
   let seed: GrantSeed;

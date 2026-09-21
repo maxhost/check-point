@@ -41,9 +41,12 @@ import { POST } from "../app/api/onboarding/tours/[tourId]/route";
  * El montaje vive en `onboarding-tours-support.ts` por el hook `file-size`; los oráculos
  * están todos acá.
  *
- * **Lo que NO prueba, declarado:** el `503 onboarding_unavailable` (es un `catch` de última
- * línea y su oráculo exigiría doblar la capa de datos — el owner todavía no decidió si se
- * cierra, y si lo decide se cierra para las dos rutas de una vez) y la concurrencia REAL de
+ * **El `503 onboarding_unavailable` YA NO está declarado afuera:** lo cierra
+ * `onboarding-503.test.ts`, que dobla la capa de datos para las DOS rutas de onboarding de una
+ * vez (status, `code`, que no se invente un desenlace positivo y que el `catch` **no filtre el
+ * mensaje** de la excepción).
+ *
+ * **Lo que NO prueba, declarado:** la concurrencia REAL de
  * dos `POST` simultáneos sobre la misma fila (lo resuelve el `on conflict` a nivel de PG y no
  * hay oráculo barato para una carrera de verdad; la idempotencia SECUENCIAL sí está cubierta).
  */

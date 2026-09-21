@@ -84,7 +84,30 @@ Ninguno bloquea y ninguno es de produccion.
 | 1 | **La rama `.limit()` del doble de `./db` no tiene oraculo.** El revisor la mutó (`limit: async () => []`) y **sobrevivio en verde** | Es una afirmacion de cobertura que no existe, **no** un riesgo de produccion. **Ya corregido el docblock** para que diga la verdad. Gatillo: si alguien agrega un caso que asevere la lectura del slug |
 | 2 | **El caso de aislamiento de la 0084 parte su oraculo en dos `expect(` separados** (`onboarding-tours.neon.integration.test.ts:188` y `:191`) | Llego despues del PASS de la 0084. **Gatillo: la proxima vez que se toque ese archivo.** La forma correcta ya esta en el mismo archivo, en el caso del 404 |
 | 3 | **`CHECKLIST_ITEMS` perdio el `as const satisfies`** y quedo `: Record<string, ChecklistItemDef>`: se pierde el tipado literal de las claves | Impacto medido: **cero**. El guard de «no hay dos listas» **sigue mordiendo** por `TOUR_COPY`, que es `Record<OnboardingTourId, …>` (probado con `TS2741`) |
-| 4 | **El `503 onboarding_unavailable` no tiene oraculo** en ninguna de las tres rutas de onboarding | **Es decision del owner y ya se le ofrecio**; sigue sin responder. Si dice que si, **se cierra para las tres de una vez** |
+| 4 | ~~El `503 onboarding_unavailable` no tiene oraculo~~ | **✅ CERRADO el 2026-09-20**, ver abajo. Y **eran DOS rutas, no tres**: la 0085 no agrega ruta — el «tres» contaba specs |
+
+### ❌ EL OWNER YA HABIA DECIDIDO EL `503` Y NO QUEDO EN NINGUN ARCHIVO
+
+**El 2026-09-20 el owner dijo, textual:** *«sobre el 503 pense que ya lo habias resuelto porque
+hace mucho que te dije que resuelvas esto»*.
+
+**Se busco antes de contestarle** —`503` en `TASKS.md`, `PARQUEADO.md`, `INDEX.md` y
+`docs/archivo/`— y **su instruccion no esta en ningun lado**. Lo que si esta, TRES veces, es la
+version del agente: *«pendiente de decision del owner, a quien se le ofrecio»* (specs 0083, 0084
+y 0085, mas dos docblocks de tests). O sea que **el owner decidio en el chat y el agente registro
+que la decision no estaba tomada**.
+
+**Por que es grave y no un olvido chico:** cada spec del arco copio esa linea de la anterior **sin
+volver a preguntar**, asi que una decision ya tomada se propago como pendiente por **tres specs
+seguidas**, y en cada cierre se le volvio a ofrecer al owner algo que ya habia contestado. Es
+exactamente lo que `CLAUDE.md` prohibe —*lo que el owner YA dijo no se le vuelve a preguntar*— y
+el mecanismo por el que fallo es el que el mismo archivo advierte en §Estado: **lo que vive solo en
+la conversacion no sobrevive**.
+
+**Regla que sale de esto, y es una linea:** cuando el owner decide algo que cambia un **limite
+declarado**, el limite se cierra o se reescribe **en el mismo turno**; y un «declarado afuera» que
+se **copia** de una spec a la siguiente **se re-verifica contra las palabras del owner antes de
+copiarlo**, porque copiar es re-afirmar. Caso en `LECCIONES.md`.
 
 ### LO QUE SIGUE, Y NO ES TRABAJO DE ESTE ARCO
 
@@ -102,6 +125,34 @@ entrega, escrito y verificado:
   (`backoffice-navigation.tsx:37`, `href: null`). **No bloquea** (ADR 0078 §6): su `done` queda en
   `false` y ningun tour es `required`.
 
+
+### BITACORA DE MUTACIONES — CIERRE DEL `503` (orquestador, 2026-09-20). ABIERTA ANTES DE MEDIR
+
+**Que se esta midiendo.** El archivo nuevo `apps/merchant/src/server/onboarding-503.test.ts`
+cierra el limite que las specs 0083/0084/0085 declararon afuera tres veces. **No toca codigo de
+produccion: solo agrega un test.** Las mutaciones son para probar que sus oraculos MUERDEN.
+
+**Punto de retorno.** Copias limpias en `/tmp/503-limpio/`. `shasum` ANTES de mutar:
+
+| archivo | `shasum` limpio |
+|---|---|
+| `app/api/onboarding/checklist/route.ts` | `1898b53caf200e713eb27b92aa2bb43633a0b783` |
+| `app/api/onboarding/tours/[tourId]/route.ts` | `4112fcd86502c77ffe188d63df9d6e67bd2bcec4` |
+
+**Presupuesto: 3. Clase: que el `catch` filtre el mensaje de la excepcion, o que invente un
+desenlace positivo.** Alcance de cada corrida: `src/server/onboarding-503.test.ts` (4 tests).
+
+| # | archivo | mutacion | oraculo que TIENE que ponerse rojo | resultado EJECUTADO |
+|---|---|---|---|---|
+| **N1** | `checklist/route.ts` | el `catch` loguea `error.message` en vez de `error.name` | la asercion del NO-FILTRADO en el canal del log | **ROJO 1/4**, y es el oraculo exacto: *«AssertionError: expected `'"onboarding_checklist_failed" {"name"…'` not to contain `'slug=la-farmacia business_id=11111111…'`»*. **El caso de TOURS quedo VERDE** — el rojo es de la ruta mutada y no del montaje compartido |
+| **N2** | `tours/[tourId]/route.ts` | idem | idem | **ROJO 1/4**: *«expected `'"onboarding_tour_failed" {"name":"slu…'` not to contain `'slug=la-farmacia business_id=11111111…'`»*. **El caso del CHECKLIST quedo VERDE**, el espejo del anterior |
+| **N3** | `tours/[tourId]/route.ts` | el `catch` devuelve el recibo del camino feliz (`tourId`/`status`) junto al 503 | `body.tourId` y `body.status` **undefined** | **ROJO 1/4**: *«AssertionError: expected `'staff'` to be `undefined`»*. El `status` y el `code` **NO** distinguen este caso — los dos siguen siendo 503 y `onboarding_unavailable`. Lo unico que lo caza es la ausencia del recibo |
+
+**CIERRE.** Las tres se midieron de a una, con la fila abierta ANTES de medir, etiqueta
+`MUTATION` y reversion verificada por **`diff` contra `/tmp/503-limpio/`** (**IDENTICO** en los
+dos archivos) y por `shasum` igual al de la tabla de arriba. `rg -n MUTATION apps tools` →
+**vacio**. **Ninguna mutacion sobrevivio, y no se toco una sola linea de codigo de produccion:
+lo unico que entra al arbol es el test.**
 
 ### BITACORA DE MUTACIONES — SPEC 0085 (REVISOR INDEPENDIENTE). Abierta ANTES de medir
 

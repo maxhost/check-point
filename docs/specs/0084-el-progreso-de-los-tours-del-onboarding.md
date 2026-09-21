@@ -279,10 +279,16 @@ y va al owner. Lo que quede afuera se **declara**.
 
 ## Declarado AFUERA (sin oraculo, a proposito)
 
-- **El `503 onboarding_unavailable`.** Misma situacion que en la 0083, donde quedo declarado y
-  **el owner todavia no decidio** si se cierra con un test que doble la capa de datos. Riesgo
-  bajo y acotado: es un `catch` de ultima linea, su `code` esta en el contrato y no filtra nada.
-  **Si el owner decide cerrarlo, se cierra para las dos rutas de una vez.**
+- **✅ EL `503 onboarding_unavailable` YA NO ESTA AFUERA — CERRADO el 2026-09-20.** Lo cierra
+  `apps/merchant/src/server/onboarding-503.test.ts` para **las DOS rutas de onboarding de una
+  vez** (son dos, no tres: `GET /api/onboarding/checklist` y
+  `POST /api/onboarding/tours/{tourId}` — la 0085 no agrega ruta). Va con **dobles**, como su
+  precedente `onboarding-program-503.test.ts`. Pinnea el `status`, el `code`, que **no se
+  invente un desenlace positivo** (ni `items` en el checklist ni el recibo `{tourId,status}` en
+  tours) y —lo que **no tenia ni un test**— que el `catch` **NO filtre el mensaje de la
+  excepcion** en ninguno de los dos canales: ni el cuerpo HTTP ni el `console.error`. Los dos
+  controles positivos estan. **Tres mutaciones ejecutadas, las tres rojas en el oraculo exacto**
+  (bitacora en `TASKS.md`). **Cero codigo de produccion tocado.**
 - **Concurrencia real** (dos `POST` simultaneos sobre la misma fila). El `on conflict` lo
   resuelve a nivel de PG y no hay un oraculo barato para una carrera de verdad; el caso de
   idempotencia secuencial si esta cubierto.
