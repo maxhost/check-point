@@ -26,9 +26,104 @@ sigue abajo como contexto, no porque este en curso.
 | `c8c552b` | **UI del onboarding** — el widget del checklist y la integracion de `driver.js` (venia de la sesion anterior) |
 | `fd84ec5` | **ADR 0079 + spec 0086 `cerrada` + su contrato HTTP**, mas las filas de `INDEX` y `PARQUEADO` 60 |
 
-**El arbol esta limpio y NADA DE ESTO ESTA PUSHEADO.** Se lee con
-`git rev-list --left-right --count origin/main...main`. El owner aprobo *«commit»*; **el push
-no se pidio**.
+**EL ARBOL YA NO ESTA LIMPIO** (ver el bloque de la 0086 en implementacion, mas abajo) **y
+NADA DE ESTO ESTA PUSHEADO.** El delta con el remoto se lee con
+`git rev-list --left-right --count origin/main...main` → `0  3`. El owner aprobo *«commit»*;
+**el push no se pidio**.
+
+### ✅ SPEC 0086 — **IMPLEMENTADA Y COMMITEADA**. MIGRACION **APLICADA A PROD** (2026-09-21)
+
+**Este es el punto de retorno de esta sesion.**
+
+| sha | que |
+|---|---|
+| `67ebc79` | **spec 0086** — la migracion `0041`, `requireApiPermission`, las diez superficies, las dos escrituras de staff, el mostrador con `counter`, la sesion con `permissions`, la enmienda §10 y la bitacora de mutaciones |
+| `3faa3db` | **tres `mistake→rule`** — el seed irreal, la fila de mutacion falsa (segunda seguida) y el `TURBO_FORCE`; `CLAUDE.md` vuelve a 199 lineas mudando el detalle a las skills |
+
+**EL PUSH NO SE PIDIO** (*«no push todavia»*, owner 2026-09-21). Se lee con
+`git rev-list --left-right --count origin/main...main`.
+
+**La verificacion, corrida por el ORQUESTADOR y no tomada de un informe:** los cinco gates con
+Node 24.20.0, `TURBO_FORCE=1` (`0 cached`) y la rama de integracion Neon **ACTIVA** →
+**`EXIT=0`, 244 archivos / 2029 tests**. **17 mutaciones** ejecutadas (8 del implementador + 9
+del revisor), bitacora en `docs/archivo/spec-0086-bitacora-de-mutaciones.md`. **PASS** del
+revisor independiente. `test:e2e` **no aplica**: cero `.tsx`.
+
+### ✅ LA MIGRACION `0041` ESTA APLICADA A PROD, VERIFICADA POR SQL
+
+Proyecto `red-violet-38772073`, rama `main` (`br-curly-silence-ax8acywm`), base `neondb`.
+Autorizada por el owner el 2026-09-21 (*«aplica la migracion»*). Lectura posterior por MCP:
+
+| Que | Valor |
+|---|---|
+| `drizzle.__drizzle_migrations` | **42** filas |
+| Columna `permissions` | **existe** |
+| `CHECK` en `business_membership` | **6**, y los tres nuevos con definicion **identica** a la de integracion, `COALESCE` incluido |
+| Membresias | **3 owners intactos, 0 staff** |
+| Esquemas `core` y `merchant_auth` | **intactos** |
+
+**El `delete` de la migracion fue un NO-OP en prod: no habia una sola membresia de staff.** Se
+verifico **ANTES** de aplicar, siguiendo el gotcha del repo — *el orden lo decide el codigo que
+YA corre en prod, no el que vas a desplegar*.
+
+**⚠ CONSECUENCIA ABIERTA MIENTRAS NO SE PUSHEE: crear staff en prod esta ROTO.** El codigo viejo
+que corre hoy no manda `permissions`, la columna toma su `default '{}'` y el **CHECK 3** rechaza
+la fila. No rompe nada existente —habia cero staff— pero **el alta de integrantes no funciona
+hasta el deploy**. Es consecuencia directa de aplicar la migracion sin pushear, y esta dicho.
+
+**⚠ La connection string con la password quedo en el transcript de la sesion: conviene rotarla.**
+
+### LO QUE ESTA SPEC ENSEÑO, Y ESTA EN `LECCIONES.md`
+
+1. **Tres veces el mismo patron: el oraculo verde por un seed irreal.** `seedMember` creaba el
+   `user` con `emailVerified: true`; un integrante **real** nace con `false`
+   (`staff-create.ts:132`). Las suites median **un caller que no existe en produccion**. Lo
+   encontraron **mutaciones que SOBREVIVIERON** — ninguna revision de codigo lo habria visto. La
+   primera reparacion fue **local** y dejo la causa en la fuente; lo cazo el revisor re-corriendo
+   M3. Arreglado en la fuente: `emailVerified: opts.emailVerified ?? false`, o sea **la forma de
+   produccion es el default y `true` hay que pedirlo**.
+2. **Segunda spec seguida con una FILA DE MUTACION FALSA, y las dos las escribi yo.** La M6
+   mandaba a mutar «el evaluador del plan del catalogo», que **no existe**. **Ya es regla en
+   `CLAUDE.md`**: cada fila de la tabla se verifica contra el arbol **antes** de cerrar la spec.
+3. **El §7 afirmaba un mecanismo medido a medias, y TAPABA un bloqueo real.** Decia que un staff
+   con `loyalty` «edita pero no crea»; es al reves. Al declararlo «correcto y declarado» cerraba
+   la puerta a mirar, y detras estaba la superficie delegada **pero muerta**. Su gemelo en el
+   codigo: un docblock que decia «fail-closed» sobre algo que no lo es.
+4. **`TURBO_FORCE=1`, NO `-- --force`** — este ultimo se lo pasa a `tsc` y mata el gate con
+   `TS5093`: un rojo por el motivo equivocado. **Ya esta en la skill `gotchas-del-repo`.**
+
+### PENDIENTES DE LA 0086
+
+1. **Pendiente MIO (Neon MCP):** correr la `0041` sobre una **rama virgen sin staff** para el
+   no-op completo. **PREGUNTADO AL OWNER EL 2026-09-21, SIN RESPUESTA** — crear una rama efimera
+   se le pregunta (precedente: la temporal de la `0040`). Lo medido: el `DELETE` sobre la rama ya
+   migrada (`antes 183 / borradas 0 / despues 183`) y los tres `ADD CONSTRAINT` validando 183
+   filas sin fallar.
+2. **Va al QA del owner contra prod:** el **201 completo** de `POST /api/brand/logo-upload` para
+   un staff no es medible en integracion — `createLogoUpload` presigna contra **R2** y la rama no
+   tiene credenciales. Lo medido es que el 403 del resolvedor desaparecio.
+3. **Declarado y AFUERA:** `catalog/core.ts:73 ownerBusiness` es codigo sin consumidor de
+   produccion (verificado: cero usos en `app/`). Andamiaje anterior a esta spec; borrarlo es una
+   tarea con su propia fila.
+4. **Nombrado, no perseguido:** un usuario con **dos membresias activas** — `membershipContext`
+   resuelve con `orderBy(asc(createdAt)).limit(1)`. **No es regresion de esta spec**; el
+   `businessId` nuevo solo la hace visible.
+
+### LO QUE SIGUE EN EL ARCO
+
+**Spec B** (`core.activity_log` + `GET /api/activity`, que **lee solo el owner**) — sin escribir,
+**serializa despues de A**, que ya esta. **Spec C** (archivado del catalogo) — sin escribir,
+disjunta de A. Ninguna tiene decision de producto abierta: el ADR 0079 las cerro todas.
+
+### ⚠ DOS COSAS ABIERTAS QUE NO DEPENDEN DE LA 0086
+
+1. **`test:e2e` sigue EN ROJO para `c8c552b`**, que trae `.tsx`. Motivo medido: el puerto 3000 lo
+   ocupan **dos procesos del owner** (PIDs 29871 y 97387) y `playwright.config.ts:18` espera ahi
+   al consumer, asi que el `webServer` choca con el guard de instancia unica de Next y Playwright
+   **no llega a ejecutar una sola asercion**. **No se matan servidores del owner sin preguntar**;
+   se le pregunto el 2026-09-20 y **no contesto todavia**. Es el unico gate que puede tumbar
+   `main` despues de un push «con todo verde».
+2. **El push de los 3 commits no se pidio.** Va despues del e2e, no antes.
 
 **Los cinco gates de root, con Node 24.20.0 y FORZADOS (`0 cached`), antes del `c8c552b`:**
 `typecheck`, `lint`, `format:check` y `build` verdes, y la suite completa con la rama de
