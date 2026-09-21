@@ -974,3 +974,59 @@ especifico y el modo de falla**: no es que el comando falle, es que **pasa**. Un
 forma «→ vacio» **no esta verificado hasta que se lo vio dar NO-vacio sobre un caso que deberia
 matchear**. Es el mismo principio que «probar que el oraculo MUERDE». Linea agregada a la skill
 `protocolo-de-verificacion`.
+
+## 2026-09-20 — Un gate que se auto-rompe al forzarlo: `typecheck` y `build` no van en la misma invocacion de turbo (spec 0084)
+
+**El caso.** Cerrando la 0084 el orquestador corrio los cinco gates y los vio verdes, pero
+`typecheck` y `build` vinieron de **caché** (`>>> FULL TURBO`). Para no dar por bueno un log
+replayado los forzo — y juntos, en **una sola** invocacion:
+`pnpm exec turbo run typecheck build --force`. **Rojo:**
+
+```
+@mi-pasaporte/merchant:typecheck: .next/types/validator.ts(5,79):
+  error TS2307: Cannot find module './routes.js' or its corresponding type declarations.
+```
+
+**El mecanismo, medido hasta el final.** `apps/merchant/tsconfig.json:6` incluye
+`".next/types/**/*.ts"`. En una sola invocacion turbo corre las dos tareas **concurrentes**;
+`next build` regenera ese directorio, y `tsc` alcanza a leer `validator.ts` cuando el `routes.js`
+que ese archivo importa todavia no existe. **Forzados por separado, los dos pasan** (`3 successful`
+cada uno, `0 cached`).
+
+**Por que importa y no es anecdota.** El rojo es **del arnes, no del arbol**, y llega en el peor
+momento: al final de una spec, sobre codigo que acaba de pasar una revision independiente. Quien
+no mida el mecanismo tiene dos salidas igual de malas — reportarle al owner un fallo que no existe,
+o «arreglar» el codigo hasta que el sintoma se vaya.
+
+**La regla.** `typecheck` y `build` se corren **en invocaciones separadas**, siempre. Es lo que
+hacen `pnpm run typecheck` y `pnpm run build` por separado, que es la forma documentada; el atajo
+de juntarlos en un `turbo run a b` es el que rompe. Linea agregada a la skill `gotchas-del-repo`.
+
+**Y la de fondo, que ya es regla de la casa:** un gate que devuelve `FULL TURBO` **no midio nada
+en esta corrida**. Si de lo que se esta por afirmar depende que el gate haya mirado el arbol de
+verdad, se fuerza — de a uno.
+
+## 2026-09-20 — `CREATE TABLE IF NOT EXISTS` en una migracion: una spec dictando una idempotencia que no existe (spec 0084)
+
+**El caso.** La spec 0084 escribio en su §Modelo de datos: *«La migracion es `CREATE TABLE IF NOT
+EXISTS` y no siembra datos»*. El implementador obedecio y lo agrego a mano, porque
+**`drizzle-kit generate` no lo emite**.
+
+**Por que estaba mal.** Medido sobre las 41 migraciones del repo: **ninguna otra `CREATE TABLE` lo
+lleva**; el unico `IF NOT EXISTS` del arbol es un `CREATE EXTENSION` en la `0016`. Y lo peor es que
+la propiedad que la frase sugiere **es falsa**: re-ejecutados los dos statements del `.sql` contra
+la base, el `CREATE TABLE IF NOT EXISTS` pasa pero el `ADD CONSTRAINT` de la FK que viene despues
+vuelve con **`42710` (`constraint ... already exists`)**. O sea que la migracion **no es
+idempotente**, con o sin esas dos palabras.
+
+**El hallazgo secundario, que corrigio una hipotesis comoda.** Se penso en dejarlo por miedo a que
+editar un `.sql` ya aplicado rompiera el `hash` de `drizzle.__drizzle_migrations`. **Falso, y se
+midio:** `pg-core/dialect.js:62` decide con
+`Number(lastDbMigration.created_at) < migration.folderMillis` — por **timestamp**. El `hash` se
+guarda y **nunca se compara**. La razon para no tocarlo es otra (ya paso la revision y no compra
+nada), no la que primero sonaba plausible.
+
+**La regla.** Una spec **no dicta el texto de una migracion**: dicta la forma de la tabla y deja
+que `drizzle-kit generate` emita el SQL. Y si igual se va a afirmar una propiedad del `.sql`
+—«es idempotente»— esa propiedad **se ejecuta**, no se supone: es una afirmacion de mecanismo como
+cualquier otra. Linea agregada a la skill `gotchas-del-repo`.

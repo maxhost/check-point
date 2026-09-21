@@ -18,6 +18,21 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 
 ## Gotchas
 
+- **`typecheck` y `build` NO van en la misma invocacion de turbo.**
+  `turbo run typecheck build --force` los corre **concurrentes**, `next build` regenera
+  `.next/types/` —que `apps/merchant/tsconfig.json:6` **incluye**— y `tsc` lee `validator.ts` sin
+  que exista todavia el `routes.js` que importa: **`TS2307`**. Forzados por separado, los dos
+  pasan. El rojo es del arnes, no del arbol, y aparece al final de una spec sobre codigo ya
+  revisado. Corrementelos de a uno. **Corolario:** un gate que dice `>>> FULL TURBO` **no midio
+  nada en esa corrida** — si de lo que vas a afirmar depende que haya mirado el arbol, forzalo.
+- **Una migracion NO lleva `CREATE TABLE IF NOT EXISTS`, y una spec no dicta el texto del `.sql`.**
+  `drizzle-kit generate` no lo emite y de las 41 migraciones del repo **ninguna `CREATE TABLE` lo
+  tiene** (el unico `IF NOT EXISTS` es un `CREATE EXTENSION` en la `0016`). La idempotencia que
+  sugiere **es falsa**: re-ejecutada, la tabla pasa pero el `ADD CONSTRAINT` de la FK vuelve con
+  **`42710`**. Y si necesitas editar un `.sql` **ya aplicado**, el `hash` de
+  `drizzle.__drizzle_migrations` **no lo impide**: `pg-core/dialect.js:62` decide por
+  `created_at < folderMillis` —por timestamp— y el hash se guarda pero nunca se compara.
+
 - **`pnpm test:e2e` DEJA EL ARBOL SUCIO: su `next dev` reescribe los TRES `next-env.d.ts`** de
   `./.next/types/` a `./.next/dev/types/` (`apps/{consumer,merchant,platform}`). Medido el
   2026-09-20 al pushear el shell del backoffice. Es artefacto de **dev**, apunta a rutas que el

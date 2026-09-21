@@ -125,6 +125,13 @@ Es **entregable, no documentacion opcional** (ADR 0070 §16): es el insumo de qu
 - **§1** — sale la fila de `blocking` de las dos tablas; `required` se redefine con las palabras
   del owner; el ejemplo de `items` pasa a mostrar **cinco**; se saca la frase *«Hoy los dos valen
   `true` en el unico item»* y la de *«no leer uno por el otro»*.
+- **§1, el parrafo del «hace cumplir»** (hoy: *«Si la API ademas debe **rechazar** acciones de un
+  item bloqueado es una decision que **no esta tomada**, y se toma cuando haya un segundo item»*).
+  **La decision YA se tomo, y la tomo la spec 0084: es que SI.** `POST /api/onboarding/tours/
+  {tourId}` lleva el gate de email —`requireApiOwner` con su paso 3— y ese 403
+  `email_not_verified` es el bloqueo de `verify-email` HECHO CUMPLIR, no reportado. El parrafo se
+  reescribe con esa decision tomada; su condicion (*«cuando haya un segundo item»*) la cumple esta
+  misma spec, que lleva el catalogo a cinco.
 - **§4** — la fila «Mas de un item» deja de decir que el catalogo tiene una entrada.
 - **§5** — **se reescribe entero.** Deja de anunciar `GET /api/onboarding/guide/{itemId}` y pasa a
   decir lo que es cierto: **el tutorial NO es un endpoint**, los pasos los define la UI con su

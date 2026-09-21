@@ -14,7 +14,117 @@ pendientes); el relato historico completo esta en **`docs/archivo/`** — `TASKS
 (7.185 lineas: todo lo anterior a la 0066) y `spec-0066-implementacion.md` (los tres pasos, la
 bitacora de mutaciones y el PASS del revisor de esa spec).
 
-## ⇥ ▶ EL ONBOARDING SE REDEFINIO. NO HAY SPEC TODAVIA
+## ⇥ ▶ ARRANCA ACA: LA 0084 ESTA IMPLEMENTADA. SIGUE LA 0085
+
+### ESTADO — ESCRITO DESPUES DEL COMMIT DEL TRABAJO, con su sha
+
+**La spec 0084 esta `implementada`, con PASS de un revisor independiente.** El trabajo es el
+commit **`400aa07`** (`feat(onboarding): el progreso de los tours`): migracion `0040` + schema +
+`ONBOARDING_TOURS` + `POST /api/onboarding/tours/{tourId}` + los tres tests + el contrato
+`specs/0084-contratos-de-api.md`, con la spec marcada `implementada` y la fila 182 del `INDEX`
+actualizada.
+
+**`400aa07` NO esta pusheado.** El owner autorizo *«hace los dos commit»*, no el push. El estado
+respecto del remoto se lee con `git rev-list --left-right --count origin/main...main`.
+
+**La verificacion, y quien la hizo:**
+
+| Que | Resultado |
+|---|---|
+| Revisor independiente | **PASS**, presupuesto 5/5 mutaciones, re-medidas sobre el arbol FINAL (no sobre el shasum del implementador, que era anterior a un arreglo) y con la **asercion de cada rojo leida** |
+| M1 (el gate de email) | roja **y el caso del INTEGRANTE quedo VERDE** — es lo que distingue el rojo de la propiedad del rojo del setup |
+| Tabla, PK compuesta y `CHECK` | por **SQL contra `information_schema`**, no leyendo el `.sql`; `INSERT status='invalid'` → **`23514`** con su control positivo |
+| Gates de root, Node 24 | los cinco verdes, corridos **tambien por el orquestador**: `test` fresco (`1338 passed \| 0 failed`), `typecheck` y `build` **forzados sin cache** |
+| `test:e2e` | **NO aplica y esta DECLARADO**: `git status --porcelain \| grep -c '\.tsx$'` → `0` |
+| Mutaciones en el arbol | `rg -n MUTATION apps tools` → vacio |
+
+### LO QUE SIGUE, Y ES LO UNICO: LA SPEC 0085
+
+Esta **`cerrada`** y ya solo esperaba que la 0084 estuviera implementada. Mismo protocolo del
+ADR 0071: **UN implementador para toda la spec, UN revisor independiente al final**; los gates
+completos **una vez por spec**.
+
+**Las tres trampas de la 0085, todas ya medidas y escritas en su spec:**
+
+1. **El doble de `./db` de `api-owner-surfaces.test.ts` es una cadena FIJA que termina en
+   `.limit()`.** La consulta de tours no usa `.limit()`, asi que contra ese doble el `await`
+   devuelve un objeto en vez de un array, la ruta cae al `catch` y contesta **503** — y se lleva
+   puestos TODOS los casos del checklist de esa bateria. **No es un bug del codigo nuevo: hay que
+   extender el doble.** El revisor de la 0084 lo confirmo desde el otro lado: ese doble **solo
+   expone `select`**, asi que para una ruta de ESCRITURA el rojo de un fallo de guard llega como
+   `503` y su camino feliz no se puede aseverar ahi.
+2. **`api-owner-surfaces.test.ts` quedo en 299 lineas y el hook `file-size` corta en 300.**
+   **Dividir, no extender**, y **no borrar asercion para hacer lugar**. El destino natural es
+   `api-owner-surfaces-support.ts`. Precedente de esta misma sesion: el test de integracion de la
+   0084 media 333 y se dividio en `onboarding-tours-support.ts` **sin perder un solo `expect(`**
+   (verificado: 0 en el support, 35 en el test).
+3. **La 0085 NO toca ningun `.tsx`**, asi que `test:e2e` se declara igual que aca.
+
+### LO QUE LA 0085 TIENE QUE CORREGIR EN EL CONTRATO 0083, y son TRES cosas (no dos)
+
+Su §5 enumeraba dos ediciones de §1. **Hay una tercera, agregada a la spec esta sesion:** el
+parrafo que hoy dice que si la API debe **rechazar** acciones de un item bloqueado *«es una
+decision que no esta tomada, y se toma cuando haya un segundo item»*. **Ya se tomo, y la tomo la
+0084: es que SI** — `POST /api/onboarding/tours/{tourId}` lleva el gate de email, y ese 403
+`email_not_verified` es el bloqueo de `verify-email` **hecho cumplir**. Y la condicion del
+parrafo (*«cuando haya un segundo item»*) la cumple la 0085 misma, que lleva el catalogo a cinco.
+
+**Esto NO es una decision para el owner** y no hay que subirsela: la 0085 ya tenia *«la enmienda
+del contrato 0083 (§1 y §5)»* en su Alcance. Lo que faltaba era enumerarla.
+
+### HALLAZGOS DE LA 0084 QUE NO SE ARREGLARON, con su gatillo
+
+Ninguno bloquea y ninguno es de produccion.
+
+| # | Que | Por que no se arreglo / gatillo |
+|---|---|---|
+| 1 | **El caso de aislamiento parte su oraculo en dos `expect(` separados** (`onboarding-tours.neon.integration.test.ts:188` y `:191`): bajo la mutacion M3 vitest aborta en el primero y la mitad «B sigue sin fila» **nunca se evalua** | No es hueco de cobertura hoy (la M3 muerde igual). **Llego DESPUES del PASS y tocar el test habria invalidado la revision** — mismo criterio que la fila 59 de `PARQUEADO.md`. **Gatillo: la proxima vez que se toque ese archivo.** La forma correcta ya esta en el mismo archivo, en el caso del 404: juntar el oraculo en UN objeto |
+| 2 | **La migracion `0040` lleva `CREATE TABLE IF NOT EXISTS` escrito a mano**, que `drizzle-kit` no emite y que ninguna de las otras 40 tiene | El docblock del `.sql` **dice la verdad** (la idempotencia que sugiere no existe: el `ADD CONSTRAINT` de la FK vuelve con `42710`, ejecutado). Ya paso la revision y cambiarlo no compra nada. **Bajo a `LECCIONES.md` y a la skill como regla para escribir specs** |
+| 3 | **`drizzle/meta/_journal.json` perdio el newline final** | Lo reescribio `drizzle-kit`. `drizzle/meta/` esta en `.prettierignore`, asi que **ningun gate lo mira**. Cosmetico |
+| 4 | **La bitacora de mutaciones del IMPLEMENTADOR no quedo en este archivo** — solo esta la del revisor | Se detecto al revisar el `git diff` (cero lineas borradas, o sea que nunca se persistio). **La del revisor es la que vale**: re-midio las 5 sobre el arbol final. **Regla para el proximo encargo: exigir la fila de bitacora en `TASKS.md` como entregable verificable, no como paso del protocolo** |
+
+### LOS DOS `mistake→rule` DE ESTA SESION
+
+Los dos salieron de cerrar la 0084, los dos estan en `LECCIONES.md` con su caso y los dos bajaron
+a la skill `gotchas-del-repo`:
+
+1. **`typecheck` y `build` NO van en la misma invocacion de turbo.** `turbo run typecheck build
+   --force` los corre concurrentes, `next build` regenera `.next/types/` —que
+   `apps/merchant/tsconfig.json:6` **incluye**— y `tsc` lee `validator.ts` sin que exista el
+   `routes.js` que importa: **`TS2307`**. Por separado los dos pasan. **El rojo es del arnes, no
+   del arbol**, y aparece al final de una spec sobre codigo ya revisado. Corolario: un gate que
+   dice `>>> FULL TURBO` **no midio nada en esa corrida**.
+2. **Una spec no dicta el texto de un `.sql`, y `CREATE TABLE IF NOT EXISTS` no va.** Ver hallazgo
+   2 de arriba. Incluye una hipotesis comoda que se **desmintio midiendo**: editar un `.sql` ya
+   aplicado **no** lo impide el `hash` de `drizzle.__drizzle_migrations` — `pg-core/dialect.js:62`
+   decide por `created_at < folderMillis`, y el hash se guarda pero **nunca se compara**.
+
+## ⇥ ✅ BITACORA DE MUTACIONES — spec 0084 (REVISOR independiente, 2026-09-20) — CERRADA, 5/5 ROJAS Y REVERTIDAS
+
+Presupuesto: **5 mutaciones**. Clase de error: **que la ruta deje escribir a quien no debe, que
+escriba en el negocio equivocado, o que el `completed` se degrade**. Abierta ANTES de medir.
+
+**Re-medicion independiente**: el implementador midio sus cinco contra `route.ts` = `d501d6f6…`
+(antes del arreglo del docblock). Estas cinco se midieron contra el **estado FINAL del arbol**,
+`route.ts` = `fd6cd562c1299b39bc753ca00b0a7fb3dd8c364c` y
+`onboarding/tours.ts` = `bab333492b7589df576806887a874c19fda0396f`.
+
+**Las cinco REVERTIDAS**: `diff` vacio contra `/tmp/limpios-0084-revisor/` en los dos archivos,
+`shasum` de vuelta en los de arriba y `rg -n MUTATION apps tools` → **vacio**.
+
+Alcance de cada medicion (con la env de integracion cargada):
+`src/server/onboarding-tours.neon.integration.test.ts` + `src/server/onboarding/tours.test.ts` +
+`src/server/api-owner-surfaces.test.ts` — **153 tests, verdes en limpio**.
+
+| id | archivo | shasum limpio | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M1 | `route.ts` | `fd6cd562…` | el gate de email SE APLICA en esta ruta | **ROJO 3/153.** Integracion, *«owner con el email SIN verificar → 403 `email_not_verified` y NO escribe»*: `AssertionError: expected 200 to be 403`. Bateria compartida, *«onboarding/tours/{tourId}: owner con `emailVerified: false` → 403»* y su gemelo fail-closed: `expected 503 to be 403` (**no 200**; el doble de `./db` del archivo solo expone `select`, asi que el `insert` tira `TypeError` —leido en el stderr `onboarding_tour_failed { name: 'TypeError' }`— y cae al `catch`). **El caso del INTEGRANTE quedo VERDE** (`onboarding/tours/{tourId}: un INTEGRANTE … → 403 not_owner` ✓), o sea que el rojo es de la propiedad y no del setup |
+| R-M2 | `onboarding/tours.ts` | `bab33349…` | `completed` NUNCA se degrada a `skipped` | **ROJO 1/153.** *«NO DEGRADA: `completed` y despues `skipped` deja la fila en `completed`»*: diff `- "status": "completed"` / `+ "status": "skipped"`. Los otros 152 verdes: por HTTP el efecto es **nulo** |
+| R-M3 | `route.ts` | `fd6cd562…` | el `businessId` sale del GUARD, no del cuerpo | **ROJO 1/153.** *«el `businessId` sale del GUARD…»*: `expected [] to deeply equal [ { tour_id: 'staff', …(1) } ]` — el negocio del caller quedo SIN fila porque la escritura se fue al del cuerpo. El `200` sale igual |
+| R-M4 | `route.ts` | `fd6cd562…` | el `tourId` se valida contra `ONBOARDING_TOURS` | **ROJO 1/153, con LAS DOS MITADES en el mismo diff.** *«`404 unknown_tour` … por un owner autenticado»*: `expected { status: 200, code: undefined, filas: 1 } to deeply equal { status: 404, code: "unknown_tour", filas: 0 }` |
+| R-M5 | `route.ts` | `fd6cd562…` | `unknown_tour` se evalua DESPUES del guard | **ROJO 1/153.** *«sin sesion y con un `tourId` inventado → 401 `unauthorized`, NUNCA 404»*: `expected 404 to be 401` |
+
+## ⇥ (contexto del arco) EL ONBOARDING SE REDEFINIO — LAS DOS SPECS YA ESTAN ESCRITAS
 
 **El bloque anterior de esta seccion («PROXIMO = STAFF») quedo OBSOLETO y se reemplaza aca.**
 Nunca se commiteo, asi que no dejo rastro en el arbol.
@@ -129,6 +239,73 @@ Con eso **`blocking` se borra** y la **0085** pasa a `cerrada` como spec CHICA.
 **SE SERIALIZAN Y NO ES OPCIONAL:** la 0085 consume `ONBOARDING_TOURS` y la tabla que crea la
 0084, y las dos tocan `api-owner-surfaces.test.ts`. **La 0084 tiene que estar `implementada` antes
 de que arranque la 0085.**
+
+### ⇥ SPEC 0084 — EN IMPLEMENTACION (2026-09-20). BITACORA DE MUTACIONES
+
+**Trabajo EN EL ARBOL, SIN COMMITEAR.** Los dos archivos que se mutan son **`??` (untracked)**:
+`git checkout` NO los recupera. El unico punto de retorno son las copias limpias de `/tmp` y
+estos `shasum`:
+
+| archivo | copia limpia (durante las mutaciones) | `shasum` durante las mutaciones | `shasum` FINAL |
+|---|---|---|---|
+| `apps/merchant/src/app/api/onboarding/tours/[tourId]/route.ts` | `/tmp/clean-route.ts` | `d501d6f68349656440a028c976c0112b7366fbc4` | **`fd6cd562c1299b39bc753ca00b0a7fb3dd8c364c`** |
+| `apps/merchant/src/server/onboarding/tours.ts` | `/tmp/clean-tours.ts` | `bab333492b7589df576806887a874c19fda0396f` | `bab333492b7589df576806887a874c19fda0396f` (sin cambios) |
+
+**⚠️ El `route.ts` cambio DESPUES de las cinco mutaciones**, por eso los dos `shasum` no
+coinciden: su docblock citaba el nombre de la funcion exenta al gate de email y eso hacia que
+el barrido del DoD contara **4** archivos donde hay **3** exenciones (ver «hallazgos»). Las
+cinco mediciones se hicieron sobre `d501d6f6…`; el cambio posterior es **solo prosa del
+docblock** y los gates se volvieron a correr enteros sobre `fd6cd562…`.
+
+**Restauracion exacta (el estado BUENO es el final, no la copia limpia de las mutaciones):**
+
+```
+cp /tmp/final-route.ts "apps/merchant/src/app/api/onboarding/tours/[tourId]/route.ts"
+cp /tmp/final-tours.ts apps/merchant/src/server/onboarding/tours.ts
+shasum "apps/merchant/src/app/api/onboarding/tours/[tourId]/route.ts" apps/merchant/src/server/onboarding/tours.ts
+# → fd6cd562c1299b39bc753ca00b0a7fb3dd8c364c  y  bab333492b7589df576806887a874c19fda0396f
+rg -n MUTATION apps tools   # → vacio
+```
+
+**Alcance de cada medicion** (se corre contra TODOS los archivos que pueden ver la mutacion):
+`src/server/onboarding-tours.neon.integration.test.ts`, `src/server/onboarding/tours.test.ts` y
+`src/server/api-owner-surfaces.test.ts`, con la env de integracion cargada.
+
+| id | archivo | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|
+| **M1** | `route.ts` | el gate de email SE APLICA en esta ruta (es lo contrario del checklist) | **ROJO 3, y el INTEGRANTE quedo VERDE.** `api-owner-surfaces.test.ts` → *«onboarding/tours/{tourId}: owner con `emailVerified: false` → 403 `email_not_verified`»* con `AssertionError: expected 503 to be 403`, y su gemelo fail-closed igual. Integracion → *«owner con el email SIN verificar → 403 `email_not_verified` y NO escribe»* con `AssertionError: expected 200 to be 403`. **`onboarding/tours/{tourId}: un INTEGRANTE … → 403 not_owner` PASO**, o sea que el rojo es de la propiedad y no del setup |
+| **M2** | `onboarding/tours.ts` | `completed` NUNCA se degrada a `skipped` (ADR 0078 §2) | **ROJO 1.** Integracion → *«NO DEGRADA: `completed` y despues `skipped` deja la fila en `completed`»*: `AssertionError: expected [ { tour_id: 'program', …(1) } ] to deeply equal […]`, diff `- "status": "completed"` / `+ "status": "skipped"`. Los otros 152 en verde: **por HTTP el efecto es NULO** (el `200` sale igual), asi que este invariante solo lo ve la lectura por SQL |
+| **M3** | `route.ts` | el `businessId` sale del GUARD, nunca del cuerpo (ADR 0070 §15.3) | **ROJO 1.** Integracion → *«el `businessId` sale del GUARD: uno en el cuerpo no mueve la fila de negocio»*: `AssertionError: expected [] to deeply equal [ { tour_id: 'staff', …(1) } ]` — el negocio del caller quedo **sin fila** porque la escritura se fue al negocio del cuerpo. El `200` sale igual: el status HTTP no distingue nada aca |
+| **M4** | `route.ts` | el `tourId` se valida contra `ONBOARDING_TOURS` (fail-closed) | **ROJO 1, con LAS DOS MITADES.** Integracion → *«`404 unknown_tour` con un `tourId` inventado, por un owner autenticado»*: `AssertionError: expected { status: 200, code: undefined, …(1) } to deeply equal { status: 404, …(2) }`, diff `- code: "unknown_tour" / - filas: 0 / - status: 404` vs `+ code: undefined / + filas: 1 / + status: 200`. **La fila basura queda escrita.** ⚠️ La PRIMERA corrida de M4 solo mostro `expected 200 to be 404`: con tres `expect` separados vitest aborta en el primero y la mitad «no quedo fila basura» **nunca se evaluaba**. Se revirtio la mutacion, se junto el oraculo en UNA asercion, se verifico verde en limpio (19/19) y **se volvio a medir** — esta fila es la segunda corrida |
+| **M5** | `route.ts` | `unknown_tour` se evalua DESPUES del guard (no se sondea sin sesion) | **ROJO 1.** Integracion → *«sin sesion y con un `tourId` inventado → 401 `unauthorized`, NUNCA 404»*: `AssertionError: expected 404 to be 401`. El caller **sin sesion** recibia el `404`, o sea el sondeo del catalogo de tours sin autenticarse. **El caso «sin sesion» de `api-owner-surfaces.test.ts` NO lo caza** —usa un `tourId` VALIDO y sigue dando 401—: el oraculo de esta propiedad es el par (sin sesion × id inventado), y por eso existe |
+
+**Estado de las cinco: las 5 REVERTIDAS.** `diff` contra `/tmp` vacio en los dos archivos,
+`shasum` de vuelta en `d501d6f6…` y `bab33349…`, y `rg -n MUTATION apps tools` → **vacio**.
+
+#### Archivos del arbol (SIN COMMITEAR) y gates corridos
+
+Creados: `drizzle/0040_progreso_de_tours_del_onboarding.sql`, `drizzle/meta/0040_snapshot.json`,
+`src/server/schema/onboarding-tour.ts`, `src/server/onboarding/tours.ts`,
+`src/app/api/onboarding/tours/[tourId]/route.ts`, `src/server/onboarding/tours.test.ts`,
+`src/server/onboarding-tours.neon.integration.test.ts`,
+`src/server/onboarding-tours-support.ts`, `docs/specs/0084-contratos-de-api.md`.
+Editados: `drizzle/meta/_journal.json`, `src/server/schema.ts`,
+`src/server/api-owner-surfaces-support.ts`, `src/server/api-owner-surfaces.test.ts`.
+
+**`onboarding-tours-support.ts` no estaba en la tabla «Archivos» de la spec.** Salio del hook
+`file-size`: el archivo de integracion con el montaje adentro medio **333** lineas y el limite
+es 300. Se dividio —no se borro ninguna asercion—, misma forma y mismo motivo que
+`onboarding-grant-support.ts`.
+
+Gates de root con Node 24 (**una sola vez al final, y repetidos despues del arreglo del
+docblock**): `typecheck` 3/3 ✅ · `lint` ✅ · `test` **1338 passed | 507 skipped, 0 failed** ·
+`format:check` ✅ · `build` 3/3 ✅ (con `ƒ /api/onboarding/tours/[tourId]` en la salida).
+**`test:e2e` NO aplica y se DECLARA:** `git status --porcelain | grep -c '\.tsx$'` → **`0`**.
+Integracion con la env de la rama: **153 passed (3 archivos)**, y la migracion `0040`
+**aplicada** a la rama (41 filas en `drizzle.__drizzle_migrations`, `when` `1789950938736`).
+
+**La spec NO se marca implementada aca:** eso lo hace el orquestador con el PASS de un revisor
+independiente (ADR 0071).
 
 ### LO QUE LA PROXIMA SESION TIENE QUE SABER PARA IMPLEMENTAR
 
