@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { requireOwner } from "../../../server/auth-guards";
+import { redirect } from "next/navigation";
+import { requireBackofficeSession } from "../../../server/auth-guards";
 import { getDb } from "../../../server/db";
 import { businesses, subscriptions } from "../../../server/schema";
 import {
@@ -10,9 +11,21 @@ import { LocationsConsole } from "./locations-console";
 
 export const dynamic = "force-dynamic";
 
-/** Owner-only (decision 4 of spec 0061); `requireOwner` sends staff to the counter. */
+/**
+ * **Gateada por el PERMISO `locations`, no por el rol** — enmienda de la spec 0061 §4, que la
+ * hacia owner-only. La API ya delega estas cuatro rutas desde la spec 0086
+ * (`api/locations/_auth.ts` → `requireApiPermission(request, "locations")`, decision del owner
+ * en el ADR 0079 §2), asi que con la pantalla cerrada el permiso estaba **vivo en la API y
+ * muerto en el producto**: un integrante con `locations` no tenia por donde ejercerlo.
+ *
+ * El owner entra siempre: `permissionsForRole` le devuelve los siete aunque su fila este vacia
+ * (`auth-guards.ts:202`). Misma forma que `backoffice/staff/page.tsx`, y con el mismo oraculo.
+ */
 export default async function LocationsPage() {
-  const { business } = await requireOwner();
+  const session = await requireBackofficeSession();
+  if (!session.membership.permissions.includes("locations"))
+    redirect("/backoffice");
+  const business = session.business;
 
   const [row] = await getDb()
     .select({

@@ -21,27 +21,52 @@ import { SignOutButton } from "../components/sign-out-button";
 
 type MenuName = "business" | "loyalty" | "more";
 
+/**
+ * `delegado` NO es «el permiso existe» —los siete existen desde la spec 0086— sino **«la
+ * PANTALLA ya esta gateada por permiso y no por rol»**. Hoy son dos: Staff (spec 0088) y
+ * Locales. Las otras siguen con `requireOwner()`, asi que pintarle el link a un integrante con
+ * ese permiso lo mandaria a un rebote: un menu que ofrece una puerta cerrada es peor que uno
+ * que no la ofrece. Cuando una pantalla mas migre, se marca acá y aparece sola.
+ */
 const businessLinks = [
   {
     href: "/backoffice/brand",
     label: "Marca",
     icon: Palette,
     segment: "brand",
+    permission: "brand",
   },
   {
     href: "/backoffice/locations",
     label: "Locales",
     icon: Shop,
     segment: "locations",
+    permission: "locations",
+    delegado: true,
   },
-  { href: "/backoffice/staff", label: "Staff", icon: Group, segment: "staff" },
+  {
+    href: "/backoffice/staff",
+    label: "Staff",
+    icon: Group,
+    segment: "staff",
+    permission: "staff",
+    delegado: true,
+  },
   {
     href: "/backoffice/catalog",
     label: "Catálogo",
     icon: Package,
     segment: "catalog",
+    permission: "catalog",
   },
 ];
+
+/** Lo que ve un integrante: solo las pantallas delegadas para las que tiene permiso. */
+export function delegatedLinks(permissions: string[]) {
+  return businessLinks.filter(
+    (item) => item.delegado && permissions.includes(item.permission),
+  );
+}
 
 const loyaltyLinks = [
   {
@@ -114,6 +139,7 @@ export function BackofficeNavigation({
   permissions: string[];
 }) {
   const segment = useSelectedLayoutSegment();
+  const delegados = delegatedLinks(permissions);
   const [openMenu, setOpenMenu] = useState<MenuName | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setOpenMenu(null);
@@ -194,20 +220,16 @@ export function BackofficeNavigation({
               />
             </div>
           </nav>
-        ) : permissions.includes("staff") ? (
+        ) : delegados.length > 0 ? (
           <nav
             aria-label="Navegación principal"
             className="backoffice-desktop-nav"
           >
             <div className="backoffice-nav-group">
               <p>Administración</p>
-              <NavLink
-                href="/backoffice/staff"
-                icon={Group}
-                label="Staff"
-                segment="staff"
-                selectedSegment={segment}
-              />
+              {delegados.map((item) => (
+                <NavLink {...item} key={item.label} selectedSegment={segment} />
+              ))}
             </div>
           </nav>
         ) : (
@@ -234,7 +256,7 @@ export function BackofficeNavigation({
         className="backoffice-mobile-nav"
         data-owner={isOwner || undefined}
       >
-        {(isOwner || permissions.includes("staff")) && (
+        {(isOwner || delegados.length > 0) && (
           <>
             {isOwner && (
               <NavLink
@@ -262,13 +284,9 @@ export function BackofficeNavigation({
                 <span>Negocio</span>
               </button>
             ) : (
-              <NavLink
-                href="/backoffice/staff"
-                icon={Group}
-                label="Staff"
-                segment="staff"
-                selectedSegment={segment}
-              />
+              delegados.map((item) => (
+                <NavLink {...item} key={item.label} selectedSegment={segment} />
+              ))
             )}
           </>
         )}

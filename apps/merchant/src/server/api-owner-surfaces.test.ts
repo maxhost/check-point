@@ -98,11 +98,13 @@ const DESENLACE_SIN_GATE: Record<
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.locale).toBe("es");
-    expect(body.items).toHaveLength(5);
+    // SEIS desde el 2026-09-21: `locations` entro al catalogo (`onboarding/tours.ts`).
+    expect(body.items).toHaveLength(6);
     expect(body.items[0].id).toBe("verify-email");
     expect(body.items[0].done).toBe(false);
-    // Sin filas de progreso, los cuatro tours salen pendientes (fail-closed).
+    // Sin filas de progreso, los CINCO tours salen pendientes (fail-closed).
     expect(body.items.map((item: { done: boolean }) => item.done)).toEqual([
+      false,
       false,
       false,
       false,

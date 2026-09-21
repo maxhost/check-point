@@ -13,9 +13,9 @@ import { useRouter } from "next/navigation";
 import { getOnboardingChecklist, type OnboardingItem } from "./onboarding-api";
 import {
   AVAILABLE_ONBOARDING_ANCHORS,
+  ONBOARDING_TOUR_HREFS,
   onboardingStepState,
 } from "./onboarding-view";
-import { STAFF_ONBOARDING_TOUR_HREF } from "../staff/staff-tour-definitions";
 import { ONBOARDING_TOUR_STARTED_EVENT } from "./onboarding-tour";
 
 type SendState = "idle" | "sending" | "sent" | "error";
@@ -197,21 +197,22 @@ export function OnboardingChecklist() {
                       className="onboarding-primary-action"
                       disabled={sendState === "sending"}
                       onClick={() => {
-                        if (item.anchor === "staff") {
+                        const destino = ONBOARDING_TOUR_HREFS[item.anchor];
+                        if (destino) {
                           setHiddenForTour(true);
-                          router.push(STAFF_ONBOARDING_TOUR_HREF);
+                          router.push(destino);
                           return;
                         }
                         void sendVerification();
                       }}
                       type="button"
                     >
-                      {item.anchor === "staff" ? (
+                      {ONBOARDING_TOUR_HREFS[item.anchor] ? (
                         <Sparks aria-hidden="true" width={18} height={18} />
                       ) : (
                         <Mail aria-hidden="true" width={18} height={18} />
                       )}
-                      {item.anchor === "staff"
+                      {ONBOARDING_TOUR_HREFS[item.anchor]
                         ? "Empezar"
                         : sendState === "sending"
                           ? "Enviando…"

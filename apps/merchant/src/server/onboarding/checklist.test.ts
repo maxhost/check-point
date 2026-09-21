@@ -37,18 +37,19 @@ const sinTours = (emailVerified: boolean) => ({
   toursHechos: new Set<string>(),
 });
 
-describe("toChecklistView — el catalogo REAL de CINCO (spec 0085)", () => {
-  it("son los cinco ids en el orden del ADR 0078 §1, con `position` 1..5", () => {
+describe("toChecklistView — el catalogo REAL de SEIS (spec 0085 + locales)", () => {
+  it("son los seis ids en orden, con `position` 1..6", () => {
     const view = toChecklistView(sinTours(false));
     expect(view.locale).toBe("es");
     expect(view.items.map((i) => i.id)).toEqual([
       "verify-email",
+      "locations",
       "staff",
       "catalog",
       "program",
       "brand",
     ]);
-    expect(view.items.map((i) => i.position)).toEqual([1, 2, 3, 4, 5]);
+    expect(view.items.map((i) => i.position)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   /** ORACULO DE M4 — el owner dijo que `verify-email` sea EL UNICO obligatorio. Se asevera el
@@ -56,12 +57,12 @@ describe("toChecklistView — el catalogo REAL de CINCO (spec 0085)", () => {
   it("`verify-email` es el UNICO `required: true`", () => {
     expect(
       toChecklistView(sinTours(false)).items.map((i) => i.required),
-    ).toEqual([true, false, false, false, false]);
+    ).toEqual([true, false, false, false, false, false]);
   });
 
   /** Los ids de los tours SALEN de `ONBOARDING_TOURS` y su `anchor` es el mismo id: si esa
    * constante cambia, el catalogo cambia con ella y no hay segunda lista que desincronizar. */
-  it("los cuatro items de tour son exactamente `ONBOARDING_TOURS`, y su `anchor` es su id", () => {
+  it("los items de tour son exactamente `ONBOARDING_TOURS`, y su `anchor` es su id", () => {
     const tours = toChecklistView(sinTours(false)).items.slice(1);
     expect(tours.map((i) => i.id)).toEqual([...ONBOARDING_TOURS]);
     expect(tours.map((i) => i.anchor)).toEqual([...ONBOARDING_TOURS]);
@@ -85,6 +86,7 @@ describe("toChecklistView — el catalogo REAL de CINCO (spec 0085)", () => {
     });
     expect(items.map((i) => [i.id, i.done])).toEqual([
       ["verify-email", false],
+      ["locations", false],
       ["staff", false],
       ["catalog", true],
       ["program", false],

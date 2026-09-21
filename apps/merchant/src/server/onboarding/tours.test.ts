@@ -20,8 +20,11 @@ describe("el catálogo de tours del onboarding (spec 0084 §D2)", () => {
    * vea, y la 0085 derivaría un item de más; con un `length >= 4`, uno de menos no pondría rojo
    * a nadie hasta que un merchant se trabara en un tour que la API rechaza con 404.
    */
-  it("son EXACTAMENTE los cuatro ids del ADR 0078, y en ese orden", () => {
+  it("son EXACTAMENTE los cinco ids, y en ese orden", () => {
+    // `locations` entro el 2026-09-21 y va PRIMERO: el orden de esta constante es el que el
+    // checklist publica como `position`.
     expect([...ONBOARDING_TOURS]).toEqual([
+      "locations",
       "staff",
       "catalog",
       "program",
@@ -29,7 +32,7 @@ describe("el catálogo de tours del onboarding (spec 0084 §D2)", () => {
     ]);
   });
 
-  it("los cuatro validan como `tourId`", () => {
+  it("los cinco validan como `tourId`", () => {
     for (const tour of ONBOARDING_TOURS)
       expect(isOnboardingTourId(tour)).toBe(true);
   });

@@ -1,8 +1,8 @@
 import { ONBOARDING_TOURS, type OnboardingTourId } from "./tours";
 
 /**
- * Spec 0085 / ADR 0078 §1 — EL CATALOGO DEL CHECKLIST DEL ONBOARDING, EN CODIGO. Son CINCO
- * items: `verify-email` y los CUATRO TOURS.
+ * Spec 0085 / ADR 0078 §1 — EL CATALOGO DEL CHECKLIST DEL ONBOARDING, EN CODIGO. Son SEIS
+ * items: `verify-email` y los CINCO TOURS (`locations` entro el 2026-09-21).
  *
  * Es la unica fuente de verdad de «que hay que hacer y en que estado esta» **despues** del
  * wizard. No es `GET /api/onboarding/state`, que es «que falta para terminar el alta» y corre
@@ -91,6 +91,10 @@ export type ChecklistView = {
  * este objeto **no compila** hasta que se lo acompañe. Los ids siguen saliendo de un solo lado.
  */
 const TOUR_COPY: Record<OnboardingTourId, { title: string; body: string }> = {
+  locations: {
+    title: "Conocé tus locales",
+    body: "Un recorrido corto por donde agregás, editás y archivás los locales donde operás.",
+  },
   staff: {
     title: "Conocé la pantalla de Equipo",
     body: "Un recorrido corto por donde se da de alta a quien atiende el mostrador.",
@@ -110,7 +114,7 @@ const TOUR_COPY: Record<OnboardingTourId, { title: string; body: string }> = {
 };
 
 /**
- * LOS CINCO ITEMS (ADR 0078 §1). El primero deriva de la sesion; los otros cuatro de
+ * LOS SEIS ITEMS (ADR 0078 §1, ampliado el 2026-09-21). El primero deriva de la sesion; los otros cinco de
  * `core.business_onboarding_tour`.
  *
  * **Los ids de los tours salen de `ONBOARDING_TOURS`** (`onboarding/tours.ts`, spec 0084), que

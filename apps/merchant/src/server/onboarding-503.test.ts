@@ -125,7 +125,7 @@ describe("GET /api/onboarding/checklist — el 503 de ultima linea", () => {
 
   /** CONTROL POSITIVO — sin esto el caso de arriba quedaria verde aunque la ruta nunca
    * contestara 200 en ningun escenario. */
-  it("con la lectura sana, la MISMA ruta contesta 200 con los cinco items", async () => {
+  it("con la lectura sana, la MISMA ruta contesta 200 con los seis items", async () => {
     world.checklistFacts.mockResolvedValue({
       emailVerified: true,
       toursHechos: new Set<string>(),
@@ -133,7 +133,8 @@ describe("GET /api/onboarding/checklist — el 503 de ultima linea", () => {
     const response = await pedirChecklist();
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.items).toHaveLength(5);
+    // SEIS desde el 2026-09-21: `locations` entro al catalogo (`onboarding/tours.ts`).
+    expect(body.items).toHaveLength(6);
   });
 });
 
