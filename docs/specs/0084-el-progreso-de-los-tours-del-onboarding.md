@@ -3,7 +3,7 @@ spec: 0084
 fecha: 2026-09-20
 estado: cerrada
 resumen: La PERSISTENCIA y la ESCRITURA del progreso de los tours del onboarding (ADR 0078 §2-3). Tabla nueva `core.business_onboarding_tour` con PK `(business_id, tour_id)` —el progreso es POR NEGOCIO, decision del owner— y `POST /api/onboarding/tours/{tourId}` con `status: "completed" | "skipped"`. Es la PRIMERA escritura del onboarding: hasta hoy el checklist era lectura pura, porque «vi un tour» no es un hecho derivable de ninguna tabla de dominio. Los dos estados se PERSISTEN distintos aunque los dos proyecten `done: true`, y `completed` NUNCA se degrada a `skipped` (el upsert solo pisa hacia arriba). A diferencia del checklist, esta ruta SI lleva el gate de email —el inventario de exenciones sigue en 3— porque `verify-email` es `blocking: true` y esta es la primera vez que ese bloqueo se HACE CUMPLIR en vez de solo reportarse.
-disjunta: si
+disjunta: no
 archivos: apps/merchant/drizzle/0040_progreso_de_tours_del_onboarding.sql, apps/merchant/drizzle/meta/_journal.json, apps/merchant/src/server/schema/onboarding-tour.ts, apps/merchant/src/server/schema.ts, apps/merchant/src/server/onboarding/tours.ts, apps/merchant/src/app/api/onboarding/tours/[tourId]/route.ts, apps/merchant/src/server/api-owner-surfaces-support.ts, apps/merchant/src/server/api-owner-surfaces.test.ts, apps/merchant/src/server/onboarding/tours.test.ts, apps/merchant/src/server/onboarding-tours.neon.integration.test.ts, docs/specs/0084-contratos-de-api.md
 ---
 
@@ -195,10 +195,9 @@ el *conflict target*. Es el gotcha de los unicos parciales del repo: no aplica a
 
 ### Disjunta?
 
-**Si.** No hay otra spec abierta en el INDEX. Colisiona **con la 0085**, que edita
-`onboarding/checklist.ts`, `checklist-facts.ts` y **tambien**
-`api-owner-surfaces.test.ts`: **se serializan, la 0084 primero**. La 0085 no puede empezar hasta
-que esta este `implementada`.
+**No.** Colisiona **con la 0085** en `api-owner-surfaces.test.ts`, y la 0085 ademas **depende**
+de esta: consume `ONBOARDING_TOURS` y la tabla. **Se serializan, la 0084 primero**; la 0085 no
+puede empezar hasta que esta este `implementada`. Con ninguna otra spec del INDEX colisiona.
 
 **Ojo con `api-owner-surfaces.test.ts`: esta en 299 lineas y el hook corta en 300.** Medido: la
 fila nueva es **con** gate, y ese lado del test corre por `it.each(SURFACES_CON_GATE_DE_EMAIL)`,

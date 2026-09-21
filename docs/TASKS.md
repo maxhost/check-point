@@ -116,25 +116,38 @@ cuando su pantalla este lista.
 **Ninguno de esos tres esta pusheado todavia.** El owner autorizo el push de los CUATRO de la
 0083, no de estos.
 
-### LO QUE QUEDA, Y ES UNA SOLA PREGUNTA
+### ✅ EL ARCO ESTA ESPECIFICADO ENTERO. DOS SPECS `cerradas`, SIN IMPLEMENTAR
 
-**La spec 0085 (el checklist de UNO a CINCO items) NO se escribio a proposito.** Le falta una
-decision del owner, y el ADR 0071 dice que se piden ANTES de la prosa — una spec escrita dos
-veces porque el alcance cambio es exactamente el costo que ese ADR vino a cortar. **Esperar no
-cuesta nada**: la 0085 esta serializada DESPUES de la 0084 igual, porque las dos tocan
-`api-owner-surfaces.test.ts`.
+**La ultima decision abierta la cerro el owner el 2026-09-20, textual:** *«colapsa a un campo»*.
+Con eso **`blocking` se borra** y la **0085** pasa a `cerrada` como spec CHICA.
 
-**La pregunta: ¿cuanto valen `required` y `blocking` en los cuatro tours?**
+| spec | que | estado |
+|---|---|---|
+| **0084** | tabla `core.business_onboarding_tour` + `POST /api/onboarding/tours/{tourId}` | `cerrada`, **va PRIMERO** |
+| **0085** | el checklist de 1 a 5 items, borra `blocking`, corrige el contrato 0083 | `cerrada`, **depende de la 0084** |
 
-Recomendacion del ORQUESTADOR — **no es decision del owner y no se escribe como tal**:
-`required: false`, `blocking: false` para los cuatro. Motivo: un item que se puede SALTEAR no es
-obligatorio en ningun sentido util, y un tour no tiene por que frenar al siguiente. Si se
-confirma, **es el primer caso REAL en que los dos ejes divergen de `verify-email`**
-(`true`/`true`): hoy eso solo lo prueban entradas sinteticas (mutacion M5 de la 0083), y pasaria
-a tener oraculo con datos de verdad.
+**SE SERIALIZAN Y NO ES OPCIONAL:** la 0085 consume `ONBOARDING_TOURS` y la tabla que crea la
+0084, y las dos tocan `api-owner-surfaces.test.ts`. **La 0084 tiene que estar `implementada` antes
+de que arranque la 0085.**
 
-**Con esa respuesta la 0085 entra en `TEMPLATE-CHICA`** (un dominio, sin migraciones —la
-migracion es de la 0084— y sin decision de producto abierta). Sin ella, no.
+### LO QUE LA PROXIMA SESION TIENE QUE SABER PARA IMPLEMENTAR
+
+1. **Empezar por la 0084**, con el protocolo del ADR 0071: **UN implementador para toda la spec,
+   UN revisor independiente al final**. Los gates completos van **una vez por spec**, no una por
+   agente. El encargo del revisor ya esta escrito en la seccion «Handoff» de cada spec, con su
+   presupuesto de mutaciones y su clase de error.
+2. **`api-owner-surfaces.test.ts` esta en 299 lineas y el hook corta en 300.** Las dos specs lo
+   tocan. **Dividir, no extender** — y no borrar asercion para hacer lugar. El destino natural es
+   `api-owner-surfaces-support.ts` (120 lineas), que existe para exactamente esto.
+3. **LA TRAMPA DE LA 0085, medida y escrita en su seccion «Archivos»:** el doble de `./db` de esa
+   bateria es una cadena FIJA que termina en `.limit()`. La consulta de tours no usa `.limit()`,
+   asi que contra ese doble `await` devuelve un objeto en vez de un array, la ruta cae al `catch`
+   y contesta **503** — y se lleva puestos TODOS los casos del checklist de la bateria. No es un
+   bug del codigo nuevo: hay que extender el doble.
+4. **Ninguna de las dos toca un `.tsx`.** `test:e2e` no aplica y se **declara** con
+   `git status --porcelain | grep -c '\.tsx$'` → `0`.
+5. **La libreria de tours (`driver.js`) NO se instala en ninguna de las dos.** Es dependencia de
+   la UI, que construye el owner por fuera. Las specs guardan **estado**, no pasos.
 
 ### LO QUE LA 0085 YA TIENE DECIDIDO, para que no se vuelva a preguntar
 
