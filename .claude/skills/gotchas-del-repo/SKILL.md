@@ -372,3 +372,16 @@ entran bien). La incompatibilidad real no era el peer: era el `require` dinamico
 dentro de ese mismo tarball** dice **MIT**. El owner decidio (2026-09-20) que es MIT y que se paga
 la licencia de produccion. Sin clave, el vendor documenta un badge «Unlicensed» en produccion —
 **no reproducido**, la sonda corrio con un `NODE_ENV` no estandar.
+
+**Si se evalua `react-joyride`, su v3 cambio la API y los tutoriales de la web estan vencidos:**
+el export es **nombrado** (`import { Joyride } from "react-joyride"`, ya no default — el default
+da *«Export default doesn't exist in target module»* en el build de Turbopack) y la opcion para
+saltear el beacon es **`skipBeacon`**, no `disableBeacon` (que ya no existe en el tipo del paso).
+**Sin `skipBeacon` la libreria pinta solo un punto y NINGUN tooltip**, que desde afuera se lee
+como «no funciona». Medido el 2026-09-20 sobre `react-joyride@3.2.0`.
+
+**Alternativa sin acople: `driver.js@1.8.0` no declara NI UN peer y no tiene dependencias.** Por
+construccion no puede sufrir la clase de problema del `require` dinamico de arriba: no importa
+nada de `next`. Es vanilla (sin bindings de React) y en la medicion de movil del 2026-09-20 fue
+**la que mejor recorto el spotlight sobre un CTA `position: fixed`**, que es el caso que rompe a
+los tours en pantallas chicas.

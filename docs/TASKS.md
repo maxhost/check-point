@@ -148,6 +148,71 @@ migracion es de la 0084— y sin decision de producto abierta). Sin ella, no.
   `GET /api/onboarding/guide/{item}` a quien construya la UI. Ese endpoint **no existe y no va a
   existir** (ADR 0078 §4). Es trabajo de la 0085 y esta en su alcance.
 
+### LIBRERIA DE TOURS — TRES CANDIDATAS MEDIDAS EN MOVIL (2026-09-20)
+
+El owner pidio alternativas *«muy buenas en mobile y que funcionen con nuestro stack»*. Se midio
+en worktree descartable (`probe-mobile`, ya borrado; repo principal con el `.modules.yaml` en el
+mismo shasum `a29add45…`), **con build de produccion de Next 16 y Playwright emulando iPhone 13
+(390×844, touch)**. La pantalla es la MISMA para las tres —header arriba y el CTA `position:
+fixed` ABAJO—, que es el caso que rompe a los tours en movil.
+
+**Las tres compilan en Next 16, las tres mantienen el tooltip DENTRO de la pantalla en el paso
+del boton de abajo, y las tres con CERO errores de runtime y de consola.**
+
+| | `@tour-kit/react@3.0.0` | `driver.js@1.8.0` | `react-joyride@3.2.0` |
+|---|---|---|---|
+| Licencia | MIT en el tarball / `BUSL-1.1` en el `package.json`; **pago para produccion** | **MIT**, sin pago | **MIT**, sin pago |
+| `peerDependencies` | `next: ^13 \|\| ^14 \|\| ^15` → **miente contra nuestro 16** | **NINGUNO** | solo `react`/`react-dom` (`16.8 - 19`) |
+| Dependencias | 6 | **0** | 10 |
+| Acopla a `next`? | **Si** (de ahi el bug del `require` dinamico) | **No** | **No** |
+| Spotlight sobre el CTA fijo | **DEFECTUOSO con config default**: el boton queda OSCURECIDO, el recorte cae corrido | **El mejor**: recorte limpio, boton entero iluminado | correcto |
+| Estetica por default | buena (progreso `2 / 2`, Back/Finish) | buena y sobria (`2 of 2`, Previous/Done) | **la peor** (texto centrado, boton negro con halo naranja) |
+| Trampas propias | el `useNextAppRouter()` del gotcha | vanilla: sin bindings de React, sin multi-ruta | **v3 cambio la API**: export **nombrado** (`import { Joyride }`), y es `skipBeacon`, NO `disableBeacon`; sin eso **solo pinta un punto y ningun tooltip**. Casi todos los tutoriales de la web estan vencidos |
+
+**CAVEAT DECLARADO, no perseguido:** el spotlight corrido de `tour-kit` se vio **con la config por
+default** (`TourKitProvider` sin opciones). Su README menciona un `spotlight` config que se adjunta
+en runtime, asi que **puede ser una perilla que no puse y no un defecto**. No se investigo.
+
+**Y lo que hay que decir con todas las letras: el bug del build NO es motivo para cambiar de
+libreria.** Se arregla con una linea (`createNextAppRouterAdapter`) y ya esta probado end-to-end.
+Lo que si cambia el calculo es que **`driver.js` no tiene NI UN peer**, asi que la clase entera de
+problema —«la libreria se acopla a una version de Next que no es la nuestra»— **no puede volver a
+pasar**. Es la unica diferencia estructural entre las tres.
+
+**Recomendacion del ORQUESTADOR, NO decision del owner:** `driver.js`. Gratis, sin ambiguedad de
+licencia, cero acople, el mejor spotlight en el caso que importa. Lo que se resigna: bindings de
+React y multi-ruta — **ninguno de los dos hace falta**, porque nuestros cuatro tours son de UNA
+pantalla cada uno y el estado ya lo guarda nuestra API (spec 0084), no la libreria.
+
+### `required` Y `blocking` — EL OWNER PREGUNTO POR QUE HAY DOS, Y LA RESPUESTA ES QUE NO HAY
+
+**Textual del owner (2026-09-20):** *«Required es importante porque sin eso no se puede hacer nada
+mas, ejemplo verficar email. de echo ser ala unica. Blocking no se porque tenemos blockint»*.
+
+**La definicion que el owner da de `required` —«sin eso no se puede hacer nada mas»— ES la
+definicion de `blocking` del ADR 0077 §2.** O sea que en su cabeza es UN eje, no dos.
+
+**Y con los cinco items reales a la vista, nunca divergen:** `verify-email` es `true`/`true`, los
+cuatro tours son `false`/`false`. La separacion del 0077 §2 fue **especulativa** («un item puede
+ser obligatorio sin frenar al resto») y **no tiene ni una instancia real**.
+
+**Lo que existe HOY solo para sostener esa distincion, medido:** `blocking` aparece en 7 lugares de
+`onboarding/checklist.ts`, y `checklist.test.ts` tiene un bloque de oraculo entero —con entradas
+**sinteticas** y sus dos espejos— cuyo unico proposito es probar que `blocking` no es alias de
+`required`. El segundo parametro de `toChecklistView` existe en parte para poder alimentar esas
+entradas. **Es andamiaje sin su tarea**, que es justo lo que `CLAUDE.md` prohibe.
+
+**Recomendacion del ORQUESTADOR, NO decision del owner: colapsar a UN campo.** Se queda `required`
+con la semantica que el owner le dio («mientras no este `done`, los de `position` mayor estan
+bloqueados») y **se borra `blocking`** del tipo, del catalogo, del JSON y del contrato.
+
+**Por que AHORA y no despues:** `GET /api/onboarding/checklist` ya esta implementado y pusheado,
+pero **ninguna UI lo consume todavia** — no existe pantalla de onboarding en el backoffice. El
+costo de sacar el campo es **cero hoy** y sube el dia que exista la primera UI que lo lea.
+
+**Si el owner acepta, entra al alcance de la 0085** (que ya iba a tocar esos mismos archivos) y
+**la 0085 puede seguir siendo `TEMPLATE-CHICA`**: sigue siendo un dominio y sin migracion.
+
 ### LOS DOS `mistake→rule` NUEVOS DE ESTA SESION (`b598698`)
 
 1. **`useNextAppRouter()` de `@tour-kit/react` ROMPE EL BUILD** bajo Turbopack/Next 16 y hay que
