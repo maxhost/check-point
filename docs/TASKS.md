@@ -26,15 +26,23 @@ sigue abajo como contexto, no porque este en curso.
 | `c8c552b` | **UI del onboarding** — el widget del checklist y la integracion de `driver.js` (venia de la sesion anterior) |
 | `fd84ec5` | **ADR 0079 + spec 0086 `cerrada` + su contrato HTTP**, mas las filas de `INDEX` y `PARQUEADO` 60 |
 
-**EL ARBOL YA NO ESTA LIMPIO** (ver el bloque de la 0086 en implementacion, mas abajo) **y
-NADA DE ESTO ESTA PUSHEADO.** El delta con el remoto se lee con
-`git rev-list --left-right --count origin/main...main` → `0  3`. El owner aprobo *«commit»*;
-**el push no se pidio**.
+**✅ EL ARBOL ESTA LIMPIO Y TODO ESTA PUSHEADO** (owner, 2026-09-21: *«hacemos los commit... y
+push»*). Se lee con `git rev-list --left-right --count origin/main...main` → **`0  0`**.
+Ultimo sha en `origin/main`: **`f8d0c5d`**.
+
+**⚠ LA CI TODAVIA NO TERMINO.** El check `verify` estaba **`in_progress`** al cerrar la sesion, y
+**ahi corre el SEXTO gate (`test:e2e`), que es el unico que nadie corre local**. Se verifica con
+—y **NUNCA** con `/status`, que en este repo devuelve `success` con la CI corriendo—:
+`GH_TOKEN= gh api repos/maxhost/check-point/commits/f8d0c5d/check-runs --jq '.check_runs[] | "\(.name): \(.status) -> \(.conclusion)"'`
+— **todos** `completed` y `success`. **Si `verify` sale rojo, el sospechoso numero uno es
+`test:e2e`**, que arrastraba pendiente desde `c8c552b` porque el puerto 3000 local esta ocupado
+por dos procesos del owner (PIDs 29871 y 97387) y `playwright.config.ts:18` espera ahi al
+consumer.
 
 ### ✅ SPEC 0087 — **IMPLEMENTADA Y COMMITEADA** en `816a14e` (2026-09-21)
 
 **Editar al integrante, pedido del owner el 2026-09-21.** Spec y ADR en **`4115032`**, codigo en
-**`816a14e`**, y la **enmienda §5** (el dado de baja no se renombra) en **`f444ba0`**. **PASS** de un revisor independiente. **NO PUSHEADO** (*«no push todavia»*).
+**`816a14e`**, y la **enmienda §5** (el dado de baja no se renombra) en **`f444ba0`**. **PASS** de un revisor independiente. **PUSHEADO** el 2026-09-21.
 
 **Que entrega:** `PATCH /api/staff/{userId}` edita **solo el nombre** y **re-deriva el handle**,
 asi que el identificador nunca queda desincronizado — a cambio de que **cada renombre cambia con
@@ -111,8 +119,8 @@ demostrado en los dos canales. **11 mutaciones en total** (5 del implementador +
 | `67ebc79` | **spec 0086** — la migracion `0041`, `requireApiPermission`, las diez superficies, las dos escrituras de staff, el mostrador con `counter`, la sesion con `permissions`, la enmienda §10 y la bitacora de mutaciones |
 | `3faa3db` | **tres `mistake→rule`** — el seed irreal, la fila de mutacion falsa (segunda seguida) y el `TURBO_FORCE`; `CLAUDE.md` vuelve a 199 lineas mudando el detalle a las skills |
 
-**EL PUSH NO SE PIDIO** (*«no push todavia»*, owner 2026-09-21). Se lee con
-`git rev-list --left-right --count origin/main...main`.
+**PUSHEADO** el 2026-09-21 junto con el resto del arco. Se lee con
+`git rev-list --left-right --count origin/main...main` → `0  0`.
 
 **La verificacion, corrida por el ORQUESTADOR y no tomada de un informe:** los cinco gates con
 Node 24.20.0, `TURBO_FORCE=1` (`0 cached`) y la rama de integracion Neon **ACTIVA** →
