@@ -367,7 +367,12 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 
 ## Librerias de tour: la eleccion es `driver.js`, y por que
 
-**`driver.js@1.8.0` (MIT).** Decision del owner del 2026-09-20 (ADR 0078 §5), tomada **despues de
+**`driver.js@1.8.0` (MIT), y desde el 2026-09-20 esta INSTALADA en `apps/merchant`** — no la
+instales, no elijas otra, no evalues alternativas. Los dos imports son
+`import { driver } from "driver.js";` y **`import "driver.js/dist/driver.css";`** (el `.css`
+existe en el paquete, verificado). **Cero `peerDependencies` y cero dependencias propias.**
+
+Decision del owner del 2026-09-20 (ADR 0078 §5), tomada **despues de
 medir tres candidatas** en worktree descartable, con build de produccion de Next 16 y Playwright
 emulando un iPhone 13. **No re-litigar sin medir**: las otras dos tambien funcionaban.
 

@@ -119,11 +119,56 @@ entrega, escrito y verificado:
 - `POST /api/onboarding/tours/{tourId}` con `status: "completed" | "skipped"`.
 - Los contratos normativos: `specs/0083-contratos-de-api.md` (enmendado) y
   `specs/0084-contratos-de-api.md`.
-- **La libreria de tours es `driver.js`** (ADR 0078 §5, decision del owner). **No esta instalada**
-  y no es dependencia del servidor: las specs guardan **estado**, no pasos.
+- **✅ `driver.js` YA ESTA INSTALADA** — decision del owner del 2026-09-20: *«dejar todo instalado
+  para que ChatGPT sepa que tenemos esta libreria de tours y que podemos implementarla para los
+  tours sin que tenga que inventar o instalar nada nuevo»*. **Ver la seccion de abajo con lo que
+  hace falta para usarla**, que es lo unico que hay que leer para no instalar nada.
 - **Tres de los cuatro tours apuntan a pantallas que existen**; el de staff no
   (`backoffice-navigation.tsx:37`, `href: null`). **No bloquea** (ADR 0078 §6): su `done` queda en
   `false` y ningun tour es `required`.
+
+
+### 🛠 PARA QUIEN CONSTRUYA LA UI DE LOS TOURS: LA LIBRERIA YA ESTA, NO INSTALES NADA
+
+**Instalada el 2026-09-20 por decision explicita del owner.** No hay que elegir libreria, ni
+instalar, ni evaluar alternativas: ya se midieron tres sobre nuestro Next en un iPhone 13 y gano
+esta (ADR 0078 §5; la comparativa esta en la skill `gotchas-del-repo`).
+
+| | Verificado el 2026-09-20 |
+|---|---|
+| Paquete | **`driver.js@1.8.0`**, en `apps/merchant/package.json` (`^1.8.0`) |
+| Licencia | **MIT** — sin pago, sin ambiguedad (se leyo del paquete instalado) |
+| `peerDependencies` | **NINGUNO.** Es la razon estructural por la que se eligio: no puede volver a pasar que la libreria se acople a una version de Next que no es la nuestra |
+| Dependencias propias | **0** |
+| Los dos imports | `import { driver } from "driver.js";` y **`import "driver.js/dist/driver.css";`** — el `.css` existe en el paquete, verificado |
+
+**Es VANILLA: no trae bindings de React.** O sea que va en un componente `"use client"` y el tour
+se arranca desde un efecto o un handler, no declarativamente. **Eso no es una carencia para
+nosotros:** los cuatro tours son de UNA pantalla cada uno y **el estado ya lo guarda nuestra API**
+(spec 0084), no la libreria.
+
+**Lo que la UI tiene que respetar de nuestro contrato, y no es negociable:**
+
+1. **El `anchor` que devuelve `GET /api/onboarding/checklist` es una CLAVE ESTABLE, nunca un
+   selector** (ADR 0078 §3). El selector lo pone la UI. Si el JSON trajera selectores, cada
+   rediseño romperia el tour en produccion **sin poner rojo a nadie en CI**.
+2. **Al terminar O al saltear un tour hay que llamar a
+   `POST /api/onboarding/tours/{tourId}`** con `{"status":"completed"}` o `{"status":"skipped"}`.
+   **Los dos cuentan como `done: true`** en el checklist, pero **se persisten distintos** (decision
+   del owner: quiere saber cuantos saltearon). Si no se llama, el item nunca se marca.
+3. **Esa ruta lleva el gate de email:** con el email sin verificar contesta **403
+   `email_not_verified`**. Es a proposito — es el bloqueo de `verify-email` hecho cumplir.
+4. Los `tourId` validos son exactamente **`staff`, `catalog`, `program`, `brand`**. Cualquier otro
+   es **404 `unknown_tour`**.
+5. **NO existe ni va a existir un endpoint que sirva los PASOS del tour** (ADR 0078 §4). Los pasos
+   son componentes/selectores de la UI. Por HTTP viaja **solo el estado**.
+
+**Contratos normativos completos:** `docs/specs/0083-contratos-de-api.md` y
+`docs/specs/0084-contratos-de-api.md`.
+
+**Y el gate que se despierta:** **en cuanto se toque un `.tsx`, `pnpm test:e2e` pasa a aplicar.**
+Es el sexto gate, el unico que nadie corre local y el unico que puede tumbar `main` despues de un
+push «con todo verde». Los browsers se bajan aparte: `pnpm exec playwright install chromium`.
 
 
 ### BITACORA DE MUTACIONES — CIERRE DEL `503` (orquestador, 2026-09-20). ABIERTA ANTES DE MEDIR
