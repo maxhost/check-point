@@ -19,6 +19,33 @@ bitacora de mutaciones y el PASS del revisor de esa spec).
 **Es el arco en ejecucion.** El anterior (UI del onboarding) quedo cerrado en `c8c552b` y
 sigue abajo como contexto, no porque este en curso.
 
+### ESTADO — ESCRITO DESPUES DE LOS COMMITS, con sus shas
+
+| sha | que |
+|---|---|
+| `c8c552b` | **UI del onboarding** — el widget del checklist y la integracion de `driver.js` (venia de la sesion anterior) |
+| `fd84ec5` | **ADR 0079 + spec 0086 `cerrada` + su contrato HTTP**, mas las filas de `INDEX` y `PARQUEADO` 60 |
+
+**El arbol esta limpio y NADA DE ESTO ESTA PUSHEADO.** Se lee con
+`git rev-list --left-right --count origin/main...main`. El owner aprobo *«commit»*; **el push
+no se pidio**.
+
+**Los cinco gates de root, con Node 24.20.0 y FORZADOS (`0 cached`), antes del `c8c552b`:**
+`typecheck`, `lint`, `format:check` y `build` verdes, y la suite completa con la rama de
+integracion Neon **ACTIVA** → **235 archivos / 1862 tests, 0 failed, 0 skipped**.
+
+**⚠️ EL SEXTO GATE NO CORRIO, Y APLICA** (el `c8c552b` trae `.tsx`). **El motivo es concreto y
+NO es el que decia el handoff heredado** (ahi figuraba un `EPERM` del sandbox): el puerto 3000
+lo ocupa un `next dev` de **merchant** (PID 97387) y `playwright.config.ts:18` espera ahi al
+**consumer**, asi que el `webServer` del consumer choca con el guard de instancia unica de
+Next y Playwright **no llega a ejecutar una sola asercion**. Se intento, se leyo la salida y se
+declara — no se asume verde. Para correrlo hay que liberar el 3000 (es un server del owner: no
+se mata sin preguntar) y despues:
+`pnpm exec playwright install chromium && pnpm run test:e2e`.
+
+**Es el unico gate que puede tumbar `main` despues de un push «con todo verde», asi que hay
+que correrlo ANTES de pushear el `c8c552b`.**
+
 **La decision ya esta tomada y escrita:** `docs/adr/0079-los-permisos-del-staff-son-alcances-por-objeto.md`,
 con su fila en `INDEX.md`. Las siete decisiones del owner se tomaron en conversacion el
 2026-09-20 y estan citadas textualmente ahi — **no se le vuelven a preguntar**.
