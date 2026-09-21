@@ -112,52 +112,61 @@ administrador y **darlo de baja** (las dos rutas miran `role`, no `permissions`)
 permisos —`staff` ya lo tiene— sino interferencia entre pares. **El owner no pidio eso**, asi que
 no se implementa ni se presenta como decision suya.
 
-## ⇥ ▶ LO QUE SIGUE — LOCALES: API REVISADA, Y DOS DECISIONES PENDIENTES DEL OWNER
+## ⇥ ▶ LOCALES — API REVISADA, PANTALLA DELEGADA Y CONTRATO ESCRITO (2026-09-21)
 
-Pedido del owner del 2026-09-21: *«revisar el API para Locales: crear, editar, archivar»*, con
-*«owner puede siempre CRUD… y luego staff con permiso de administrador de locales»*, y
-*«lo añadiremos al checklist del onboarding»*.
+### ESTADO — ESCRITO DESPUES DE LOS COMMITS, con sus shas
 
-**EL API YA ESTA COMPLETO Y CUMPLE EL REQUISITO. No hay que construirlo** (verificado archivo por
-archivo):
+| sha | que |
+|---|---|
+| `e9dd3e1` | **R1 completa** — solo el owner QUITA `staff` (spec 0086) |
+| `b8f3170` | **R5** — un administrador no toca a otro administrador: ni su PIN ni su baja |
+| `5bfd152` | **Locales**: la pantalla se delega al permiso, el checklist pasa a SEIS items, y nace el contrato HTTP |
 
-| Verbo | Ruta | Que hace |
-|---|---|---|
-| `GET` | `/api/locations` | lista, activos primero; DTO de 4 claves (sin coordenadas ni snapshots) |
-| `POST` | `/api/locations` | **crear**, con el tope de plan bajo el lock del negocio |
-| `PATCH` | `/api/locations/{id}` | **editar** nombre y/o direccion, en UNA transaccion |
-| `POST` | `/api/locations/{id}/status` | **archivar / reactivar** |
+**El arbol esta limpio.** Ultimo sha en `origin/main`: **`fa9a029`** — hay **9 commits locales sin
+pushear** y **el `test:e2e` de todos ellos no corrio en ningun lado**: ni local (el puerto 3000 lo
+tiene un `next dev` del owner, PID 97387) ni en CI (no estan pusheados). El push es lo unico que lo
+desbloquea.
 
-Los cuatro entran por `requireLocationsOwner` → `requireApiPermission(request, "locations")`:
-**owner siempre** (ignora la columna por ser owner) **o staff con el permiso `locations`**. Archivar
-es delegable por decision textual del owner del 2026-09-20 (*«van»*, ADR 0079 §2). Estan en el
-inventario de superficies delegables con sus tests.
+### QUE QUEDO HECHO
 
-**EL HUECO REAL: el permiso esta vivo en la API y MUERTO en el producto.**
-`backoffice/locations/page.tsx:15` entra con **`requireOwner()`**, que manda al staff al mostrador,
-y `backoffice-navigation.tsx` solo pinta el link de Locales dentro de la rama `isOwner`. Un
-integrante con permiso de Locales **no tiene como llegar a la pantalla**: solo podria ejercerlo
-llamando la API a mano. La pantalla sigue obedeciendo la decision 4 de la spec 0061 (*«solo el owner
-administra locales»*), que el ADR 0079 ya superó para la API. **Es el mismo patron que la enmienda
-§10 de la 0086** (superficie delegada pero muerta), y lo que el owner ya dijo lo cubre: es
-incumplimiento, no decision abierta.
+**El API de Locales ya estaba completo** —crear, editar, archivar/reactivar, listar— y ya pasaba por
+`requireApiPermission(request, "locations")`: **owner siempre, integrante con el permiso**. No se
+construyo ni una ruta. Lo que faltaba y se hizo:
 
-**EL CHECKLIST: el item tiene que ser un TOUR, y eso esta medido.** `POST /api/onboarding/business`
-—el wizard— **ya crea el primer local en el alta**, asi que un item del tipo «tenés un local»
-naceria `done: true` para todos. Sirve un tour, con la misma forma que los otros cuatro
-(`completed` y `skipped` cuentan los dos). Del lado del servidor es chico y bien disenado: agregar
-`locations` a `ONBOARDING_TOURS` **obliga** a acompanar la copia o no compila. Del lado del cliente
-hay que sumar el anchor a `AVAILABLE_ONBOARDING_ANCHORS` y generalizar la navegacion, que hoy tiene
-`item.anchor === "staff"` hardcodeado. **Pasa el checklist de CINCO a SEIS items → es enmienda al
-ADR 0078 §1 y lleva ADR propio.**
+1. **La pantalla dejo de ser owner-only.** Entraba con `requireOwner()` (spec 0061 §4), asi que el
+   permiso estaba **vivo en la API y muerto en el producto**. Ahora se gatea por `locations`, con el
+   mismo oraculo que la de Staff.
+2. **La navegacion se generalizo** con un criterio escrito: a un integrante se le pinta un link
+   **solo si esa pantalla ya esta gateada por permiso** — hoy Staff y Locales. Las otras siguen con
+   `requireOwner()` y ofrecerle una puerta que lo rebota es peor que no ofrecerla.
+3. **El checklist pasa a SEIS items**: `locations` en la posicion 2 (**la posicion la delego el
+   owner**: *«ponlo donde quieras… luego lo reordenare»*). Es un TOUR y no un hecho de dominio, y
+   esta **medido**: el wizard del alta ya crea el primer local, asi que «tenes un local» naceria
+   `done: true` para todos.
+4. **El contrato HTTP** (`specs/0089-contratos-de-api.md`) — es lo que consume quien construye la
+   pantalla por fuera (ADR 0070).
 
-**LAS DOS DECISIONES QUE FRENAN LA SPEC** (se piden ANTES de escribir la prosa, ADR 0071):
+### LO QUE FALTA PARA CERRAR LOCALES
 
-1. **¿En que posicion entra Locales?** Hoy: `verify-email` (1) · staff (2) · catalogo (3) ·
-   programa (4) · marca (5). Recomendacion: **2**, antes de Staff — primero donde se opera, despues
-   quien opera. Ningun tour bloquea, asi que es orden de lectura.
-2. **¿Una spec o dos?** Propuesta: **(A)** checklist a seis items + pantalla delegada al permiso +
-   link en la nav; **(B)** despues, el tour `driver.js` de Locales, como la 0088.
+- **El tour `driver.js` de la pantalla de Locales.** Hasta que exista, el item del checklist
+  **nunca se marca hecho** — no traba nada (ningun tour es obligatorio) y es el estado explicito del
+  ADR 0078 §6. Va con la pantalla nueva, siguiendo la forma de la 0088.
+- **QA del owner** sobre los tres puntos del handoff de la 0088 (ver arriba).
+
+### PERMISOS DE STAFF: LAS DOS REGLAS QUE ENTRARON HOY
+
+- **R1 completa** (`e9dd3e1`): solo el owner otorga **y quita** `staff`. Faltaba la mitad de quitar,
+  y la unica barrera era la UI.
+- **R5** (`b8f3170`): **un administrador no toca a otro administrador** — ni le regenera el PIN ni lo
+  da de baja. `403 target_is_administrator`, un `code` propio (el owner es intocable SIEMPRE, un
+  administrador solo para un no-owner). Decision textual del owner del 2026-09-21.
+
+**Lo que enseño, y es la misma leccion dos veces en un dia:** **una regla pura con test no dice nada
+sobre si alguien la llama.** Las dos veces la mutacion del CABLEADO midio verde con la suite entera
+en verde. Desde hoy cada regla nueva lleva su test de cableado.
+
+**`staff.ts` llego a 327/300 y se DIVIDIO en vez de extenderse** (`staff-error.ts` y
+`staff-admin-target.ts`), con re-export para que sus ~20 consumidores no cambien una linea.
 
 **Este archivo contiene SOLO el arco en ejecucion** (regla instaurada por la spec 0066, ya cerrada).
 Lo diferido, parado o pospuesto vive en **`docs/PARQUEADO.md`** (el unico lugar donde buscar
