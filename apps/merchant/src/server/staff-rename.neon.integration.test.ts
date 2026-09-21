@@ -1,18 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { cookieDe } from "./permissions-integration-support";
 import {
-  conCookie,
-  cookieDe,
-  limpiarNegocios,
-  permisosIntegrationEnabled as enabled,
-  seedOwnerDeNegocio,
-} from "./permissions-integration-support";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
-import { POST as CREATE_STAFF } from "../app/api/staff/route";
-import { PATCH as RENAME } from "../app/api/staff/[userId]/route";
+  type Montaje,
+  altaDe,
+  darPermisos,
+  desmontar,
+  filaDe,
+  montarDosNegocios,
+  patch,
+  renombreIntegrationEnabled as enabled,
+} from "./staff-rename-integration-support";
 
 /**
  * Spec 0087 — **`PATCH /api/staff/:userId` CONTRA LA BASE, con sesiones REALES.**
@@ -27,89 +26,40 @@ import { PATCH as RENAME } from "../app/api/staff/[userId]/route";
  *    su **control positivo en el mismo vector**: un rojo sin el no distingue «aislado» de
  *    «roto».
  * 4. Que el rechazo de `permissions` **no mueva la fila**.
+ *
+ * **El montaje vive en `staff-rename-integration-support.ts`** y la enmienda del `status`
+ * (§5) en `staff-rename-status.neon.integration.test.ts`: este archivo llego a 285 de 300
+ * lineas y la regla del repo es dividir, no extender.
  */
-const patch = (cookie: string, userId: string, body: unknown) =>
-  RENAME(conCookie(`/api/staff/${userId}`, "PATCH", cookie, body), {
-    params: Promise.resolve({ userId }),
-  });
-
-const create = (cookie: string, body: unknown) =>
-  CREATE_STAFF(conCookie("/api/staff", "POST", cookie, body));
-
 describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
-  const ids = {
-    ownerA: `ren-owner-a-${randomUUID()}`,
-    ownerB: `ren-owner-b-${randomUUID()}`,
-  };
-  const businessIds = { a: randomUUID(), b: randomUUID() };
-  const slugs = {
-    a: `rentest-a-${businessIds.a.slice(0, 8)}`,
-    b: `rentest-b-${businessIds.b.slice(0, 8)}`,
-  };
-  const creados: string[] = [];
+  let montaje: Montaje;
+  let ids: Montaje["ids"];
+  let businessIds: Montaje["businessIds"];
+  let slugs: Montaje["slugs"];
   let cookieOwnerA = "";
-  let cookieOwnerB = "";
   /** El perfil ADMINISTRADOR de A: tiene `staff` y es quien prueba el auto-renombre. */
   let adminA = "";
   let cookieAdminA = "";
   /** Un integrante de B: el vector del aislamiento. */
   let peonB = "";
 
-  const altaDe = async (cookie: string, name: string) => {
-    const response = await create(cookie, { name, permissions: ["counter"] });
-    expect(response.status).toBe(201);
-    const { staff } = await response.json();
-    creados.push(staff.userId);
-    return staff.userId as string;
-  };
-
-  /** La fila REAL: el handle de la membresia y el nombre del `user`. */
-  const filaDe = async (businessId: string, userId: string) => {
-    const [row] = await getDb()
-      .select({
-        handle: memberships.handle,
-        permissions: memberships.permissions,
-        name: users.name,
-      })
-      .from(memberships)
-      .innerJoin(users, eq(users.id, memberships.userId))
-      .where(
-        and(
-          eq(memberships.businessId, businessId),
-          eq(memberships.userId, userId),
-        ),
-      );
-    return row;
-  };
+  const alta = (cookie: string, name: string) => altaDe(montaje, cookie, name);
 
   beforeAll(async () => {
-    await seedOwnerDeNegocio(ids.ownerA, businessIds.a, slugs.a);
-    await seedOwnerDeNegocio(ids.ownerB, businessIds.b, slugs.b);
-    cookieOwnerA = await cookieDe(ids.ownerA);
-    cookieOwnerB = await cookieDe(ids.ownerB);
-    adminA = await altaDe(cookieOwnerA, "Admin A");
-    await getDb()
-      .update(memberships)
-      .set({ permissions: ["staff", "catalog"] })
-      .where(
-        and(
-          eq(memberships.businessId, businessIds.a),
-          eq(memberships.userId, adminA),
-        ),
-      );
+    montaje = await montarDosNegocios("rentest");
+    ({ ids, businessIds, slugs, cookieOwnerA } = montaje);
+    adminA = await alta(cookieOwnerA, "Admin A");
+    await darPermisos(businessIds.a, adminA, ["staff", "catalog"]);
     cookieAdminA = await cookieDe(adminA);
-    peonB = await altaDe(cookieOwnerB, "Peon B");
+    peonB = await alta(montaje.cookieOwnerB, "Peon B");
   }, 180_000);
 
   afterAll(async () => {
-    await limpiarNegocios(Object.values(businessIds), [
-      ...Object.values(ids),
-      ...creados,
-    ]);
+    await desmontar(montaje);
   }, 120_000);
 
   it("re-deriva el identificador, y lo GUARDADO es el handle nuevo", async () => {
-    const carla = await altaDe(cookieOwnerA, "Carla");
+    const carla = await alta(cookieOwnerA, "Carla");
     const response = await patch(cookieOwnerA, carla, { name: "Carla Gómez" });
     expect(response.status).toBe(200);
     const { staff } = await response.json();
@@ -131,7 +81,7 @@ describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
   /** El handle que el target tiene HOY no cuenta como ocupado: sin esa exclusión, «Carla» →
    * «Carla» devolvería `carla-2` y el sufijo se bumpearía en CADA renombre. */
   it("renombrar a un nombre que slugifica IGUAL no bumpea el sufijo, dos veces seguidas", async () => {
-    const carla = await altaDe(cookieOwnerA, "Carla Sola");
+    const carla = await alta(cookieOwnerA, "Carla Sola");
     expect((await filaDe(businessIds.a, carla))?.handle).toBe("carla-sola");
 
     const renombrarIgual = async () => {
@@ -152,8 +102,8 @@ describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
   }, 180_000);
 
   it("el handle tomado por OTRO sufija, y una palabra reservada tampoco se toma", async () => {
-    await altaDe(cookieOwnerA, "Marcos");
-    const target = await altaDe(cookieOwnerA, "Sin Nombre");
+    await alta(cookieOwnerA, "Marcos");
+    const target = await alta(cookieOwnerA, "Sin Nombre");
 
     const colision = await patch(cookieOwnerA, target, { name: "Marcos" });
     expect(colision.status).toBe(200);
@@ -179,7 +129,7 @@ describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
   ])(
     "`permissions` presente como %s → 400 `permissions_not_here`, y la fila no se mueve",
     async (_label, permissions) => {
-      const target = await altaDe(
+      const target = await alta(
         cookieOwnerA,
         `Intacto ${randomUUID().slice(0, 6)}`,
       );
@@ -248,7 +198,7 @@ describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
     expect(fantasma.status).toBe(404);
     expect((await fantasma.json()).code).toBe("staff_not_found");
 
-    const propio = await altaDe(cookieOwnerA, "Control Positivo");
+    const propio = await alta(cookieOwnerA, "Control Positivo");
     const ok = await patch(cookieOwnerA, propio, { name: "Control Movido" });
     expect(ok.status).toBe(200);
     expect((await filaDe(businessIds.a, propio))?.handle).toBe(
@@ -265,7 +215,7 @@ describe.skipIf(!enabled)("el renombre del integrante (spec 0087)", () => {
   ])(
     "`name` %s → 400 `%s`, con los `code` del alta",
     async (_label, code, name) => {
-      const target = await altaDe(
+      const target = await alta(
         cookieOwnerA,
         `Limite ${randomUUID().slice(0, 6)}`,
       );

@@ -26,3 +26,19 @@ Alcance de cada medicion (archivos que pueden ver la mutacion):
 Copia limpia: /tmp/0087/staff-rename.clean2.ts
 Alcance: src/server/staff-rename.test.ts + src/server/staff-rename.neon.integration.test.ts
 Asercion que TIENE que ponerse roja: `expect(ownerAjeno.status).toBe(404)` en el caso de aislamiento.
+
+## Mutacion de la ENMIENDA §5 (presupuesto 5 -> 6) — ABIERTA ANTES DE MEDIR
+
+| id | archivo | shasum limpio | git status | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M7 | staff-rename.ts | 20c48702e8e286166248363e95b03f7c09057c5d |  M (ya commiteado por el coordinador) | el chequeo de `status` se hace ANTES del scope por negocio: el `disabled` de OTRO negocio pasaria de 404 a 409 `staff_disabled`, filtrando existencia y estado | ROJO — LECTURA 2 (arbol final): 1 failed / 42 passed, y el unico rojo es el previsto: staff-rename-status.neon.integration.test.ts > «un `disabled` de OTRO negocio → 404 `staff_not_found`, NO 409» con «AssertionError: expected 409 to be 404». Sin colaterales. REVERTIDA (diff vacio contra /tmp/0087/staff-rename.clean3.ts, shasum 20c48702… ok). |
+
+Copia limpia: /tmp/0087/staff-rename.clean3.ts — shasum 20c48702e8e286166248363e95b03f7c09057c5d
+Alcance: staff-rename.test.ts + staff-rename.neon.integration.test.ts + staff-rename-status.neon.integration.test.ts
+Asercion que TIENE que ponerse roja: `expect(response.status).toBe(404)` del tercer caso de staff-rename-status.
+
+LECTURA 1 (antes de arreglar el doble): ROJO 2 failed / 40 passed. (a) staff-rename-status, `disabled`
+de OTRO negocio: «expected 409 to be 404» — el oraculo previsto. (b) COLATERAL en staff-rename.test.ts,
+caso del OWNER: recibio `staff_disabled` porque el doble devolvia `{role:'owner'}` SIN `status`, y
+`status` es NOT NULL en la base. Se arreglo el DOBLE (no el test): `targetRows` lleva `status` siempre,
+y se agrego el caso unit `disabled -> 409 staff_disabled`. Re-medicion abajo sobre el arbol final.

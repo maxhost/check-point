@@ -131,6 +131,66 @@ entra esa persona**, y la UI tiene que poder decirselo.
 
 **No se serializa** el email sintetico ni `pin_hash` (regla de `CLAUDE.md`).
 
+### 5. ENMIENDA 2026-09-21 — un integrante DADO DE BAJA no se renombra
+
+**Decision del owner**, sobre el hallazgo que esta spec habia dejado como observacion: *«integrante
+dado de baja se puede renombrar: **no**»*.
+
+**Lo que habia, medido:** el `UPDATE` filtra por `businessId` + `userId` + `role='staff'`, **sin
+`status`**, asi que un integrante `disabled` se renombraba. No era una politica nueva
+—`setStaffPermissions` tampoco filtra por `status`— pero el owner decidio cerrarlo **para el
+renombre**.
+
+**El `code` es `409 target_disabled`, y NO un `404` — ni `staff_disabled`.**
+
+**Por que NO `staff_disabled`, que fue el primer nombre elegido y era un error del orquestador:**
+ese `code` **ya existe y esta establecido**, con su propio **ADR 0055** y dos specs (0057, 0067).
+Lo emite el **login** con **403** (`api/merchant/auth/staff/route.ts:105-109`) y significa *«TU
+acceso esta desactivado»*, dirigido **a la persona rechazada**. El de aca significa otra cosa
+—*«el TARGET que queres editar esta de baja»*, dirigido **al merchant**— y sale con **409**. El
+mismo string con dos status y dos audiencias es una colision de contrato, y en este repo **el
+`code` ES el contrato**. `target_disabled` **espeja a `target_is_owner`**, su hermano en la misma
+tabla y la misma familia: «el target esta en un estado que bloquea esta operacion». **Lo cazo el
+implementador al revisar el arbol, no el orquestador al elegirlo.**
+
+El motivo del 409 y no del 404 esta medido: **`listStaff` no
+filtra por `status`** (`staff.ts:182-200`), o sea que **el merchant VE al desactivado en su
+lista**. Un `404 staff_not_found` le mentiria sobre algo que tiene en pantalla. El `409` es la
+familia correcta —«existe, pero esta operacion no va sobre el»— y es la misma de
+`target_is_owner` y `handle_taken`.
+
+**Mensaje:** que el camino de salida sea obvio — **reactivarlo primero** con
+`POST /api/staff/{userId}/status`, que es reversible.
+
+**Donde va el chequeo, y por que NO en el `WHERE` del `UPDATE`:** si se agrega `status='active'`
+al `UPDATE`, la fila no matchea y cae a `rejectionFor`, que **no mira `status`** y contestaria
+`404`. O sea que el `code` correcto exige mirar el `status` **en `rejectionFor`**, que es donde ya
+vive la distincion `409 target_is_owner` / `404 staff_not_found`. **Esa lectura ya esta scopeada
+por negocio** (y desde la mutacion M6 tiene oraculo), asi que sumar `status` ahi no abre ninguna
+preimagen de aislamiento: un `disabled` de OTRO negocio tiene que seguir dando **404**, no `409
+target_disabled`.
+
+**DoD de la enmienda:**
+
+- [ ] Renombrar a un integrante `disabled` del propio negocio → **409 `target_disabled`**, y su
+      fila **no se movio** (ni nombre ni handle).
+- [ ] **Control positivo en el mismo vector:** reactivarlo con `POST …/status` y renombrarlo →
+      **200**.
+- [ ] Un integrante `disabled` de **OTRO** negocio → sigue siendo **404 `staff_not_found`**,
+      **no** `409`. Es el caso que impide que este `code` nuevo filtre existencia.
+- [ ] El `code` nuevo entra a `STAFF_RENAME_CODES` y a la tabla del §2 del contrato, y la
+      biyeccion se mantiene.
+
+**Una mutacion mas, presupuesto 5 → 6 (mas la M6 de cierre, que ya se midio):**
+
+| # | Mutacion | Oraculo que tiene que ponerse ROJO |
+|---|---|---|
+| M7 | el chequeo de `status` se hace **antes** del scope por negocio | el `disabled` de OTRO negocio, que tiene que decir `404` y no `409 target_disabled` |
+
+**Lo que esta enmienda NO decide, y sube como hallazgo:** `PATCH …/permissions` **sigue
+permitiendo** editarle los permisos a un `disabled`. El owner decidio sobre el **renombre**, y lo
+que no dijo no se escribe como decision suya. Queda la asimetria declarada.
+
 ## Archivos
 
 | Archivo | Accion |

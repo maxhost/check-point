@@ -17,8 +17,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 let takenRows: Array<{ handle: string | null; userId: string }> = [];
 /** Lo que devuelve el `returning` del `UPDATE` de la membresia. `[]` = no matcheo nada. */
 let updatedRows: Array<Record<string, unknown>> = [];
-/** Lo que devuelve la lectura de desempate (`rejectionFor`). */
-let targetRows: Array<{ role: string }> = [];
+/** Lo que devuelve la lectura de desempate (`rejectionFor`). **Lleva `status` SIEMPRE**: en la
+ * base `status` es `NOT NULL DEFAULT 'active'` (`schema/membership.ts:37`), asi que una fila sin
+ * ese campo seria un caller que no existe en produccion — la leccion de la 0086. */
+let targetRows: Array<{ role: string; status: string }> = [];
 /** Lo que se le pidio escribir a cada `.set(...)`, en orden. */
 let sets: Array<Record<string, unknown>> = [];
 /** Lo que el `returning` del `UPDATE` TIRA en vez de resolver: la carrera del unico. */
@@ -194,11 +196,21 @@ describe("los rechazos que se deciden sobre la fila (spec 0087 §2)", () => {
    * mismo status que `setStaffStatus`. Y **no se escribio el nombre**. */
   it("apuntar al OWNER → 409 `target_is_owner`, sin escribir el nombre", async () => {
     updatedRows = [];
-    targetRows = [{ role: "owner" }];
+    targetRows = [{ role: "owner", status: "active" }];
     await expect(
       renameStaff(business, "owner-user", { name: "Otro" }),
     ).rejects.toMatchObject({ status: 409, code: "target_is_owner" });
     expect(sets).toEqual([{ handle: "otro" }]);
+  });
+
+  /** La enmienda §5: el `UPDATE` no matchea porque la membresia esta DADA DE BAJA, y el `code`
+   * es 409 `target_disabled` —no 404— porque el merchant VE al desactivado en su lista. */
+  it("un integrante DADO DE BAJA → 409 `target_disabled`", async () => {
+    updatedRows = [];
+    targetRows = [{ role: "staff", status: "disabled" }];
+    await expect(
+      renameStaff(business, CARLA, { name: "Otro" }),
+    ).rejects.toMatchObject({ status: 409, code: "target_disabled" });
   });
 
   it("un id que no matchea nada → 404 `staff_not_found`", async () => {

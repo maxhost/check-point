@@ -94,7 +94,8 @@ sufijo de colision y las palabras reservadas los decide el servidor.
 | **`permissions_not_here`** | **400** | **el cuerpo trae la clave `permissions`** — ver §3 |
 | `target_is_owner` | 409 | el `userId` es la membresia del **owner**. Ninguna superficie de staff la toca |
 | `handle_taken` | 409 | carrera perdida contra otro renombre simultaneo. **Reintentar es seguro** |
-| `staff_not_found` | 404 | no existe, **o es de otro negocio** — la misma respuesta para los dos, a proposito: no se confirma que un id exista |
+| **`target_disabled`** | **409** | **el integrante esta DADO DE BAJA.** Reactivalo primero con `POST /api/staff/{userId}/status` y despues renombralo |
+| `staff_not_found` | 404 | no existe, **o es de otro negocio** — la misma respuesta para los dos, a proposito: no se confirma que un id exista. **Tambien** un `disabled` de otro negocio: ahi gana el 404, no el 409 |
 
 **`self` NO esta en esta tabla, y es a proposito: un integrante SI puede renombrarse a si
 mismo.** La regla «nadie se edita a si mismo» (`self_permission_edit`) existe **solo para los
