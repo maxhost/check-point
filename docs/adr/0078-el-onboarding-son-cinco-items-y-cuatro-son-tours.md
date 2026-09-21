@@ -2,7 +2,7 @@
 adr: 0078
 fecha: 2026-09-20
 estado: aceptada
-resumen: El onboarding posterior al wizard son CINCO items y solo UNO deriva de un hecho de dominio (verificar el email, ya implementado). Los otros cuatro son TOURS de pantalla — staff, catalogo, programa, marca— y los cuatro comparten el mismo `done`: «completo o SALTEO este tour». Eso cambia dos cosas del ADR 0077. Primero, MATA el segundo recurso (`GET /api/onboarding/guide/{item}`): el contenido del tour son componentes de una libreria en el cliente (`@tour-kit/react`), no JSON del servidor, asi que la API no sirve pasos — solo ESTADO. Segundo, ese estado no es derivable de ningun hecho del negocio, asi que el checklist deja de ser lectura pura y gana su primera escritura y su primera tabla. El progreso se guarda POR NEGOCIO (decision del owner), y `completed` y `skipped` se guardan como valores DISTINTOS aunque los dos cuenten como `done`. Consecuencia aceptada explicitamente por el owner: un merchant puede terminar el onboarding entero salteando los cuatro tours, o sea que el checklist mide «¿le mostramos la app?», no «¿esta listo para operar?».
+resumen: El onboarding posterior al wizard son CINCO items y solo UNO deriva de un hecho de dominio (verificar el email, ya implementado). Los otros cuatro son TOURS de pantalla — staff, catalogo, programa, marca— y los cuatro comparten el mismo `done`: «completo o SALTEO este tour». Eso cambia dos cosas del ADR 0077. Primero, MATA el segundo recurso (`GET /api/onboarding/guide/{item}`): el contenido del tour son componentes de una libreria en el cliente (`driver.js`), no JSON del servidor, asi que la API no sirve pasos — solo ESTADO. Segundo, ese estado no es derivable de ningun hecho del negocio, asi que el checklist deja de ser lectura pura y gana su primera escritura y su primera tabla. El progreso se guarda POR NEGOCIO (decision del owner), y `completed` y `skipped` se guardan como valores DISTINTOS aunque los dos cuenten como `done`. Consecuencia aceptada explicitamente por el owner: un merchant puede terminar el onboarding entero salteando los cuatro tours, o sea que el checklist mide «¿le mostramos la app?», no «¿esta listo para operar?».
 ---
 
 # 0078 — El onboarding son cinco items, y cuatro son tours
@@ -35,9 +35,10 @@ Y despues, la forma completa:
 
 ## Lo que se midio antes de decidir (2026-09-20)
 
-- **`@tour-kit/react@3.0.0` funciona sobre nuestro Next 16.3.0**, medido en un worktree
-  descartable con build de produccion y navegador real. El detalle —y la trampa que trae— esta
-  en §5 y en la spec 0084.
+- **Se midieron TRES librerias de tour sobre nuestro Next 16.3.0** —`@tour-kit/react@3.0.0`,
+  `driver.js@1.8.0` y `react-joyride@3.2.0`— en worktree descartable, con build de produccion y
+  Playwright emulando un iPhone 13. **Las tres compilan, las tres mantienen el tooltip dentro de
+  la pantalla y ninguna tira un error de consola.** Lo que las separa esta en §5.
 - **No hay ninguna columna de «visto» en el schema.** Barrido por `tour`, `dismissed`, `seen_at`,
   `visto` y `onboarding` sobre `server/schema/`: lo unico que aparece es `web_push.last_seen_at`
   (otra cosa) y las columnas del *grant* de alta (`onboarding_grant_until`,
@@ -93,8 +94,8 @@ excepcion y no la regla.
 ### 4. MUERE `GET /api/onboarding/guide/{item}`. La API sirve ESTADO, no contenido
 
 El ADR 0077 §1 declaro dos recursos y §5 difirio el segundo *«hasta que exista el primero»*. El
-primero existe, y **no tiene la forma que se supuso**: el contenido de un tour son componentes
-React de `@tour-kit/react` que viven en la UI, no JSON que baje del servidor.
+primero existe, y **no tiene la forma que se supuso**: el contenido de un tour son **pasos**
+que la UI define con su libreria de tours (§5), no JSON que baje del servidor.
 
 **Entonces el segundo endpoint no se construye nunca.** Lo que queda del lado de la API es el
 **estado**: una tabla y una escritura.
@@ -109,29 +110,54 @@ libreria y viven en la UI; nuestra API sigue mandando solo la clave.
 construya la UI. Hay que corregirlo o produce exactamente el error que el 0077 §5 queria evitar,
 con el signo invertido.
 
-### 5. La libreria de tours es `@tour-kit/react`, y trae una trampa medida
+### 5. La libreria de tours es `driver.js`
 
-Eleccion del owner (`usertourkit.com`). Se midio de verdad, en worktree descartable con build de
-produccion y navegador real; el detalle ejecutado vive en la spec 0084.
+> **ENMIENDA DEL 2026-09-20.** La primera version de este §5 decia `@tour-kit/react`, que era la
+> eleccion inicial del owner. Despues de medir tres candidatas en movil el owner cambio, textual:
+> *«perfecto hacemos el cambio a driver.js definitivamente mejor»*. El §5 original y la trampa de
+> `tour-kit` quedan abajo, porque **el motivo de la eleccion es parte de la decision**.
 
-**Lo que hay que saber aca, porque es una decision y no un detalle de implementacion:**
+**`driver.js@1.8.0`, MIT, sin costo.** Medido el 2026-09-20 en worktree descartable con build de
+produccion de Next 16 y Playwright emulando un iPhone 13 (390×844, touch), contra la misma
+pantalla que las otras dos —header arriba y el CTA `position: fixed` abajo, que es el caso que
+rompe a los tours en pantallas chicas—.
 
-- **`useNextAppRouter()` ROMPE EL BUILD** con *«dynamic usage of require is not supported»*:
-  resuelve `next/navigation` con un `require` dinamico que **Turbopack** (bundler por defecto de
-  Next 16) no soporta.
-- **`createNextAppRouterAdapter(usePathname, useRouter)` funciona**, porque los hooks los importa
-  el consumidor.
-- **El `typecheck` no distingue las dos.** Lo caza **solo `build`**, que no esta en el Stop hook.
-  Es un error que llega a CI o a Vercel, nunca al escritorio.
-- El peer `next` del paquete declara `^13 || ^14 || ^15` y nosotros estamos en **16.3.0**. Es peer
-  **opcional** y el repo no usa `strict-peer-dependencies`, asi que el install no falla — pero la
-  declaracion va a seguir mintiendo hasta que el vendor la actualice.
+**Las tres candidatas compilaban en Next 16, mantenian el tooltip dentro de la pantalla y no
+tiraban un solo error de consola.** Lo que decidio fueron dos cosas:
 
-**Licencia — decision del owner, textual:** *«no me importa me cobran 10 para ir a produccion,
-pago y listo y si la licencia en ese archivo dice MIT es mit»*. Se le levanto la contradiccion
-medida: el `package.json` de la 3.0.0 declara **`BUSL-1.1`** y el archivo `LICENSE` **que viaja
-dentro de ese mismo tarball** dice **MIT**. Decidio. Precios del vendor: $9.99 (1 proyecto) /
-$49 (5) / $299 (ilimitado), pago unico.
+1. **`driver.js` no declara NI UN `peer` ni una dependencia.** Por construccion **no puede
+   acoplarse a una version de Next**, asi que la clase de problema que se encontro con `tour-kit`
+   —abajo— no puede volver a pasar. Es la unica diferencia **estructural** entre las tres.
+2. **Fue la que mejor recorto el spotlight sobre el CTA fijo:** el boton queda entero e iluminado.
+   `tour-kit` lo dejo **oscurecido** con su config por default (declarado como caveat: puede ser
+   una perilla que no se puso, no se investigo) y `react-joyride` lo resolvio bien pero con la
+   estetica por default mas pobre de las tres.
+
+**Lo que se resigna, y por que no importa:** `driver.js` es vanilla —sin bindings de React y sin
+multi-ruta—. Ninguno de los dos hace falta: los cuatro tours son de **una pantalla cada uno**, y
+**el estado lo guarda nuestra API** (spec 0084), no la libreria. Esa separacion es justamente lo
+que hace que la eleccion de libreria sea reversible: **la 0084 no cambia una linea por esto.**
+
+#### Lo que se descarto, y la trampa que lo descarto — se conserva a proposito
+
+**`@tour-kit/react@3.0.0`** (`usertourkit.com`) fue la eleccion inicial. Al medirla aparecio que
+**`useNextAppRouter()` ROMPE EL BUILD** con *«dynamic usage of require is not supported»*: resuelve
+`next/navigation` con un `require` dinamico que **Turbopack** (bundler por defecto de Next 16) no
+soporta. `createNextAppRouterAdapter(usePathname, useRouter)` si funciona.
+
+**Eso NO es lo que la descarto** — se arregla con una linea y quedo probado end-to-end. Lo que la
+descarto es lo que la trampa **revela**: la libreria se acopla a `next`, declara un peer
+(`^13 || ^14 || ^15`) que **miente contra nuestro 16.3.0**, y esa es una deuda que vuelve en cada
+major de Next.
+
+**Lo caro de esa trampa, y es una leccion que sobrevive a la eleccion:** el `typecheck` **no
+distingue** las dos variantes —tipan igual— y el Stop hook corre typecheck+lint+test, **no
+`build`**. Un error asi **no aparece nunca en el escritorio**: aparece en CI o en Vercel. Queda en
+la skill `gotchas-del-repo`.
+
+Tambien se descartaron **`shepherd.js`** (AGPL-3.0, incompatible con un producto comercial cerrado
+sin licencia comercial), **`onborda`** (ultima publicacion 2024-12-22) y **`@reactour/tour`**
+(2025-05-07), por licencia y por abandono.
 
 ### 6. El orden de construccion lo dicta la pantalla, no este ADR
 

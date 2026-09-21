@@ -148,7 +148,14 @@ migracion es de la 0084— y sin decision de producto abierta). Sin ella, no.
   `GET /api/onboarding/guide/{item}` a quien construya la UI. Ese endpoint **no existe y no va a
   existir** (ADR 0078 §4). Es trabajo de la 0085 y esta en su alcance.
 
-### LIBRERIA DE TOURS — TRES CANDIDATAS MEDIDAS EN MOVIL (2026-09-20)
+### ✅ LIBRERIA DE TOURS — DECIDIDA: `driver.js` (owner, 2026-09-20)
+
+**Textual:** *«perfecto hacemos el cambio a driver.js definitivamente mejor»*. Quedo en el **ADR
+0078 §5** (enmendado), en el INDEX y en la skill `gotchas-del-repo`. **La spec 0084 NO cambia por
+esto y es agnostica de la libreria**: guarda estado, no pasos.
+
+La medicion que llevo a esa decision:
+
 
 El owner pidio alternativas *«muy buenas en mobile y que funcionen con nuestro stack»*. Se midio
 en worktree descartable (`probe-mobile`, ya borrado; repo principal con el `.modules.yaml` en el

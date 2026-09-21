@@ -43,8 +43,9 @@ derivar:
   `checklist-facts.ts`: sin items de tour no tendria consumidor, y la regla de `CLAUDE.md` es
   que nada de andamiaje entra sin su tarea. Su tarea es la 0085.
 - **Cualquier `.tsx`.** El arco entrega API y contrato; la UI la construye el owner por fuera
-  (ADR 0070 §16-17). **`@tour-kit/react` no se instala en esta spec** — es una dependencia de
-  la UI, no del servidor.
+  (ADR 0070 §16-17). **la libreria de tours (`driver.js`, ADR 0078 §5) no se instala en esta spec** — es una
+  dependencia de la UI, no del servidor. **Esta spec es agnostica de la libreria**: guarda estado,
+  no pasos.
 - **`GET /api/onboarding/guide/{item}`**, que el ADR 0078 §4 mato.
 
 ## Diseño

@@ -350,38 +350,36 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   same-origin (cero CORS) y la clave nunca viaja al cliente.** Reordenar orígenes NO sirve: un ACAO
   fijo no cubre apex + www + vercel a la vez.
 
-## Librerias de tour (`@tour-kit/react`) sobre Next 16
+## Librerias de tour: la eleccion es `driver.js`, y por que
 
-**`useNextAppRouter()` ROMPE EL BUILD. Usar siempre `createNextAppRouterAdapter(usePathname,
-useRouter)`**, importando los hooks vos mismo. Medido el 2026-09-20 sobre
-`@tour-kit/react@3.0.0` + Next **16.3.0**: ese hook resuelve `next/navigation` con un **`require`
-dinamico** que **Turbopack** (bundler por defecto de Next 16) no soporta, y `pnpm run build` sale
-con **EXIT 1**: *«Error: dynamic usage of require is not supported»* + *«Error occurred
-prerendering page»*.
+**`driver.js@1.8.0` (MIT).** Decision del owner del 2026-09-20 (ADR 0078 §5), tomada **despues de
+medir tres candidatas** en worktree descartable, con build de produccion de Next 16 y Playwright
+emulando un iPhone 13. **No re-litigar sin medir**: las otras dos tambien funcionaban.
 
-**Lo caro es COMO se caza:** el `typecheck` **no distingue las dos variantes** —tipan igual, las
-dos devuelven `RouterAdapter`— y el Stop hook corre typecheck+lint+test, **no `build`**. O sea
-que este error **no aparece nunca en el escritorio**: aparece en CI o en Vercel.
+**Lo que la gano, y es lo unico estructural:** `driver.js` **no declara ni un `peer` ni una
+dependencia**, asi que no puede acoplarse a una version de Next. Ademas fue la que mejor recorto el
+spotlight sobre un CTA `position: fixed`, que es el caso que rompe a los tours en movil.
 
-**El peer `next` del paquete miente y no importa:** declara `^13 || ^14 || ^15` contra nuestro
-16.3.0, pero es peer **opcional** y el repo no usa `strict-peer-dependencies`, asi que el install
-no falla. `pnpm peers check` lo lista como el **unico** peer sin cumplir (React 19 y Tailwind 4
-entran bien). La incompatibilidad real no era el peer: era el `require` dinamico.
+**Es vanilla**: se usa desde un `useEffect` en un componente `"use client"`, con `driver({steps})`
+y `d.drive()`, y **`return () => d.destroy()`** en el cleanup. No tiene bindings de React ni
+multi-ruta, y **no hacen falta**: cada tour es de UNA pantalla y **el estado lo guarda nuestra API**
+(`core.business_onboarding_tour`, spec 0084), no la libreria.
 
-**Licencia:** el `package.json` de la 3.0.0 declara `BUSL-1.1` y el archivo `LICENSE` **que viaja
-dentro de ese mismo tarball** dice **MIT**. El owner decidio (2026-09-20) que es MIT y que se paga
-la licencia de produccion. Sin clave, el vendor documenta un badge «Unlicensed» en produccion —
-**no reproducido**, la sonda corrio con un `NODE_ENV` no estandar.
+### Las dos que se descartaron, para no volver a pisarlas
 
-**Si se evalua `react-joyride`, su v3 cambio la API y los tutoriales de la web estan vencidos:**
-el export es **nombrado** (`import { Joyride } from "react-joyride"`, ya no default — el default
-da *«Export default doesn't exist in target module»* en el build de Turbopack) y la opcion para
-saltear el beacon es **`skipBeacon`**, no `disableBeacon` (que ya no existe en el tipo del paso).
-**Sin `skipBeacon` la libreria pinta solo un punto y NINGUN tooltip**, que desde afuera se lee
-como «no funciona». Medido el 2026-09-20 sobre `react-joyride@3.2.0`.
+**`@tour-kit/react`** (`usertourkit.com`): **`useNextAppRouter()` ROMPE EL BUILD** con *«dynamic
+usage of require is not supported»* —resuelve `next/navigation` con un `require` dinamico que
+**Turbopack** no soporta—; `createNextAppRouterAdapter(usePathname, useRouter)` si anda. **El
+`typecheck` NO distingue las dos** (tipan igual) y el Stop hook corre typecheck+lint+test, **no
+`build`**: un error asi no aparece nunca en el escritorio, aparece en CI o en Vercel. Declara
+ademas un peer `next: ^13 || ^14 || ^15` que miente contra nuestro 16, y cobra para produccion.
 
-**Alternativa sin acople: `driver.js@1.8.0` no declara NI UN peer y no tiene dependencias.** Por
-construccion no puede sufrir la clase de problema del `require` dinamico de arriba: no importa
-nada de `next`. Es vanilla (sin bindings de React) y en la medicion de movil del 2026-09-20 fue
-**la que mejor recorto el spotlight sobre un CTA `position: fixed`**, que es el caso que rompe a
-los tours en pantallas chicas.
+**`react-joyride@3.2.0`**: la v3 cambio la API y **los tutoriales de la web estan vencidos**. El
+export es **nombrado** (`import { Joyride }`; el default da *«Export default doesn't exist in
+target module»* en Turbopack) y la opcion es **`skipBeacon`**, no `disableBeacon`. Sin ella la
+libreria pinta **solo un punto y ningun tooltip**, que desde afuera se lee como «no funciona».
+
+**`shepherd.js` es AGPL-3.0** — descartada de entrada: es un producto comercial cerrado.
+
+**LA LECCION QUE SOBREVIVE A LA ELECCION, y aplica a cualquier dependencia de UI:** un paquete que
+importa de `next` se acopla a su major. Si hay una alternativa **sin peers**, esa deuda no existe.
