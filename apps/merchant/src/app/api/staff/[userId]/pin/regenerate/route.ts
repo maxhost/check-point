@@ -8,7 +8,10 @@ import {
   users,
 } from "../../../../../../server/schema";
 import { generatePin, hashPin } from "../../../../../../server/staff-pin";
-import { toStaffDTO } from "../../../../../../server/staff";
+import {
+  assertTargetNotAdministrator,
+  toStaffDTO,
+} from "../../../../../../server/staff";
 import { requireStaffAccess, staffError } from "../../../_auth";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +45,32 @@ export async function POST(
     if ("response" in auth) return auth.response;
 
     const { userId } = await params;
+
+    /**
+     * R5 — **un no-owner no le regenera el PIN a otro administrador** (decision del owner,
+     * 2026-09-21). Es una consulta NUEVA y se declara como tal: esta ruta resolvia todo con
+     * el `UPDATE … RETURNING`, y para rechazar hay que saber **antes de escribir** si el
+     * target es administrador. Es una operacion rara (rotar un PIN), no un camino caliente.
+     *
+     * **Si el `select` no trae fila, NO se rechaza: se sigue.** Esa es la parte que sostiene
+     * el aislamiento — un target de otro negocio, inexistente, o el owner, cae igual en el
+     * `WHERE` del `UPDATE` (que conserva `business_id` y `role='staff'` intactos) y sale por
+     * el `404` de siempre. Un `403` aca convertiria «no existe» en «existe y no puedo», que
+     * es exactamente la filtracion que el 404 evita.
+     */
+    const [target] = await getDb()
+      .select({ permissions: memberships.permissions })
+      .from(memberships)
+      .where(
+        and(
+          eq(memberships.businessId, auth.business.id),
+          eq(memberships.userId, userId),
+          eq(memberships.role, "staff"),
+        ),
+      )
+      .limit(1);
+    if (target) assertTargetNotAdministrator(auth.role, target.permissions);
+
     const pin = generatePin();
     const pinHash = await hashPin(pin);
     const now = new Date();

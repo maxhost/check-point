@@ -101,6 +101,35 @@ negocio sigue contestando `404 staff_not_found` y el 403 nunca confirma que un i
 
 Un administrador **no fabrica otro administrador** y **tampoco desarma al que el owner creo**.
 
+### R5 — un administrador NO toca a otro administrador
+
+Decision textual del owner del **2026-09-21**: *«solo owner puede reestablecer el pin de otro
+administrador de staff y darlo de baja»*. Alcanza a **tres** superficies, y las tres responden
+**`403 target_is_administrator`** (un `code` NUEVO, que la UI tiene que mapear):
+
+| Ruta | Rechaza cuando |
+|---|---|
+| `PATCH /api/staff/{userId}/permissions` | ya lo cubre **R1b** con `permission_not_grantable` |
+| `POST /api/staff/{userId}/pin/regenerate` | caller no-owner y el target **tiene** `staff` |
+| `POST /api/staff/{userId}/status` | caller no-owner y el target **tiene** `staff` |
+
+**El `code` es propio y NO es `target_is_owner`:** el owner es intocable **siempre** (R4, incluso
+para si mismo); un administrador es intocable **solo para un no-owner**. Dos causas con un `code`
+compartido serian un mensaje que miente en uno de los dos casos.
+
+**Orden:** R5 se evalua **despues** de resolver al target, asi que un `userId` inexistente, de otro
+negocio o el owner siguen contestando lo de siempre (`404` / `409`). El `403` nunca confirma que un
+id exista.
+
+**Lo que un administrador SI sigue pudiendo** (no cambia): dar de alta integrantes con cualquier
+permiso salvo `staff`, y editar permisos, PIN y estado de cualquier integrante **que no sea
+administrador**.
+
+**Para la UI:** con la sesion ya sabes si sos owner (`GET /api/merchant/session` → `membership.role`)
+y el listado de `GET /api/staff` trae los `permissions` de cada integrante, asi que los tres
+controles se pueden deshabilitar sin preguntar nada mas. **Deshabilitados, no ausentes**, y con el
+motivo al lado.
+
 > **⚠️ Lo que la UI tiene que decirle al merchant, y no es cosmetica.** El alta devuelve el PIN
 > **en claro**, asi que **crear a un tercero con el permiso X equivale a tener X**: quien lo
 > crea se queda con la credencial. Un administrador puede, por cuenta interpuesta, quedarse

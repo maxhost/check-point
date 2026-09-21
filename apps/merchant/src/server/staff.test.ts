@@ -35,12 +35,14 @@ const business = { id: "b1", slug: "negocio" };
 describe("setStaffStatus validation — spec 0043", () => {
   it("rejects an invalid status with 400", async () => {
     await expect(
-      setStaffStatus(business, "u1", "banned"),
+      setStaffStatus(business, "owner", "u1", "banned"),
     ).rejects.toMatchObject({ status: 400 });
   });
 
   it("rejects a missing target with 400", async () => {
-    await expect(setStaffStatus(business, "", "active")).rejects.toMatchObject({
+    await expect(
+      setStaffStatus(business, "owner", "", "active"),
+    ).rejects.toMatchObject({
       status: 400,
     });
   });
@@ -48,7 +50,7 @@ describe("setStaffStatus validation — spec 0043", () => {
   it("returns 404 when the target is not a member of the business", async () => {
     existingUsers = []; // target lookup resolves to no row
     await expect(
-      setStaffStatus(business, "ghost", "disabled"),
+      setStaffStatus(business, "owner", "ghost", "disabled"),
     ).rejects.toMatchObject({ status: 404 });
   });
 });

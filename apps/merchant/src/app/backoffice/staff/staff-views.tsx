@@ -239,7 +239,8 @@ export function StaffEditor({
       )}
       {protectedAdministrator && (
         <p className="field-help">
-          Sólo el owner puede modificar los permisos de un Administrador.
+          Sólo el owner puede modificar los permisos de un Administrador,
+          regenerar su PIN o darlo de baja.
         </p>
       )}
       <button
@@ -251,10 +252,15 @@ export function StaffEditor({
         Guardar cambios
       </button>
       <div className="staff-secondary-actions">
+        {/* R5 (decision del owner, 2026-09-21): un no-owner no da de baja a un
+            administrador. El servidor es el que manda —`assertTargetNotAdministrator` en
+            `server/staff.ts`, `403 target_is_administrator`—; esto es su espejo, y va
+            DESHABILITADO y no ausente para que las ayudas del tour sigan teniendo a que
+            apuntar. */}
         <button
           className="small-button"
           data-tour="staff-status"
-          disabled={busy}
+          disabled={busy || protectedAdministrator}
           onClick={() => onAction("status")}
         >
           {draft.member.status === "active" ? "Dar de baja" : "Reactivar"}
@@ -284,7 +290,7 @@ export function StaffEditor({
         <button
           className="small-button pin"
           data-tour="staff-pin"
-          disabled={busy || own}
+          disabled={busy || own || protectedAdministrator}
           onClick={() => onAction("pin")}
         >
           Regenerar PIN

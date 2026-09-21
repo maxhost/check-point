@@ -36,6 +36,7 @@ describe("staff error copy", () => {
     "permission_not_grantable",
     "self_permission_edit",
     "target_is_owner",
+    "target_is_administrator",
     "staff_not_found",
     "unauthorized",
     "not_member",

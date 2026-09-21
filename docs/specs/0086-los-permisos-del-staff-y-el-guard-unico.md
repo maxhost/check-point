@@ -185,6 +185,7 @@ que lo aseveran hoy: se actualizan, no se borran.
 | R2 | **Un no-owner SI otorga cualquier otro permiso**, tenga o no ese permiso el mismo | — (decision del owner, ADR 0079 §3.2) |
 | R3 | **Nadie edita sus propios permisos**, tampoco el owner | `403 self_permission_edit` |
 | R4 | **Ninguna superficie de staff toca la membresia del owner** | `409 target_is_owner` |
+| R5 | **Un no-owner no toca a OTRO ADMINISTRADOR**: ni su PIN ni su estado (decision textual del owner, 2026-09-21). Se evalua DESPUES de resolver al target, asi que no filtra existencia | `403 target_is_administrator` |
 
 **R4 ya existe para el estado** —`setStaffStatus` (`staff.ts:176`) tira `409 target_is_owner`—
 y la ruta de permisos usa **el mismo `code` y el mismo status**, no uno nuevo. `listStaff` ya

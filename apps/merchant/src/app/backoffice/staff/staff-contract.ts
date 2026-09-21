@@ -96,6 +96,8 @@ const ERROR_COPY: Record<string, string> = {
   self_permission_edit:
     "No podés editar tus propios permisos. Pedile a otra persona con acceso a Staff.",
   target_is_owner: "La membresía del owner no se puede modificar desde Staff.",
+  target_is_administrator:
+    "Sólo el owner puede regenerar el PIN o dar de baja a un Administrador.",
   target_disabled:
     "Este integrante está dado de baja. Reactivalo y después volvé a guardar el nombre.",
   handle_taken:

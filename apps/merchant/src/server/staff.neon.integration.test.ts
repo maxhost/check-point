@@ -127,6 +127,7 @@ describe.skipIf(!integrationEnabled)(
 
       const disabled = await setStaffStatus(
         ownerBusiness(a),
+        "owner",
         staff.userId,
         "disabled",
       );
@@ -145,6 +146,7 @@ describe.skipIf(!integrationEnabled)(
 
       const reactivated = await setStaffStatus(
         ownerBusiness(a),
+        "owner",
         staff.userId,
         "active",
       );
@@ -153,7 +155,7 @@ describe.skipIf(!integrationEnabled)(
 
     it("never deactivates the owner (409) and isolates across businesses (404)", async () => {
       await expect(
-        setStaffStatus(ownerBusiness(a), a.userId, "disabled"),
+        setStaffStatus(ownerBusiness(a), "owner", a.userId, "disabled"),
       ).rejects.toMatchObject({ status: 409 });
 
       const { staff: staffOfA } = await createStaff(
@@ -163,7 +165,7 @@ describe.skipIf(!integrationEnabled)(
       );
       // Business B cannot touch A's staff.
       await expect(
-        setStaffStatus(ownerBusiness(b), staffOfA.userId, "disabled"),
+        setStaffStatus(ownerBusiness(b), "owner", staffOfA.userId, "disabled"),
       ).rejects.toMatchObject({ status: 404 });
 
       // listStaff is business-scoped.

@@ -130,7 +130,7 @@ async function member(
           ),
         );
     } else {
-      await setStaffStatus(owner, staff.userId, "disabled");
+      await setStaffStatus(owner, "owner", staff.userId, "disabled");
     }
   }
   // La sesión se abre DESPUÉS de desactivar: `setStaffStatus` revoca las sesiones vivas, así

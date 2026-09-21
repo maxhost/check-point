@@ -37,7 +37,14 @@ export async function POST(
       );
     }
 
-    const staff = await setStaffStatus(auth.business, userId, body.status);
+    const staff = await setStaffStatus(
+      auth.business,
+      // El rol sale del GUARD, nunca del cuerpo (R5: un no-owner no da de baja a un
+      // administrador).
+      auth.role,
+      userId,
+      body.status,
+    );
     return NextResponse.json({ staff }, { status: 200 });
   } catch (error) {
     return staffError(error, "No pudimos actualizar el estado.");

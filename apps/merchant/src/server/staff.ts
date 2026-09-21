@@ -2,34 +2,16 @@ import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { businesses, memberships, sessions, users } from "./schema";
 import { normalizePermissions } from "./permissions-catalog";
+import { StaffError } from "./staff-error";
+import { assertTargetNotAdministrator } from "./staff-admin-target";
 
-/**
- * Typed domain error: HTTP status + user message. Mirrors CounterError/BrandError.
- *
- * El `code` es **estable** y es lo que consume la UI de afuera: los mensajes son copia y
- * se pueden reescribir, los codigos no. Estan listados en
- * `docs/specs/0067-contratos-de-api.md`, que es el oraculo del revisor.
- */
-export class StaffError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    readonly code: string = "staff_error",
-  ) {
-    super(message);
-  }
-}
+/** Los dos viven en archivos propios desde que este llego al limite del hook `file-size`
+ * (327/300): **dividir, no extender**. Se re-exportan para que los ~20 modulos que hacen
+ * `from "./staff"` no cambien ni una linea, y porque `StaffError` en un archivo sin imports es
+ * lo que rompe el ciclo con el guard. */
+export { StaffError } from "./staff-error";
+export { assertTargetNotAdministrator } from "./staff-admin-target";
 
-/**
- * Public staff row: never serializes a PIN, a hash, a session token or an account id.
- *
- * **Y tampoco el email** (spec 0068 §2): el de un integrante es el **sintetico**
- * `staff-<uuid>@staff.invalid` que el alta genera porque `merchant_auth.user.email` es
- * `NOT NULL` con unico. Se PERSISTE, pero no se serializa nunca: devolverlo al navegador
- * seria entregar el mismo contacto falso que motivo borrar la consola de staff. Misma
- * regla que `toClientProgram` y `brandResponse` con las claves de R2. Lo que el owner
- * reparte es `identifier` (`handle@slug`).
- */
 export type StaffDTO = {
   userId: string;
   name: string;
@@ -209,9 +191,13 @@ export async function listStaff(businessId: string): Promise<StaffDTO[]> {
  * every merchant_auth session of that user (cutting live access) without deleting the user
  * or their audit trail. 404 when the target is not staff of this business; 409 when it is
  * the owner (an owner is never deactivated). Business-scoped → cross-business is a 404.
+ *
+ * **`callerRole` entra desde el GUARD** (nunca del cuerpo) porque desde el 2026-09-21 esta
+ * superficie lleva R5: un no-owner no da de baja a un administrador.
  */
 export async function setStaffStatus(
   business: { id: string; slug: string },
+  callerRole: string,
   targetUserId: string,
   status: unknown,
 ): Promise<StaffDTO> {
@@ -223,7 +209,9 @@ export async function setStaffStatus(
   }
 
   const [target] = await getDb()
-    .select({ role: memberships.role })
+    // `permissions` viaja en el MISMO `select` que ya traia `role`: es una columna mas en una
+    // consulta que ya se hacia, no una consulta nueva.
+    .select({ role: memberships.role, permissions: memberships.permissions })
     .from(memberships)
     .where(
       and(
@@ -241,6 +229,8 @@ export async function setStaffStatus(
       "target_is_owner",
     );
   }
+  // R5 — despues del 404 y del 409, para no filtrar existencia con el 403.
+  assertTargetNotAdministrator(callerRole, target.permissions);
 
   const [row] = await getDb()
     .update(memberships)
