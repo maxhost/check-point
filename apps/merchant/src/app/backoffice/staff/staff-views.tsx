@@ -266,21 +266,35 @@ export function StaffEditor({
             puesto, la ayuda «Regenerar un PIN» —que el menu ofrece a cualquier
             administrador— quedaba esperando un `[data-tour="staff-pin"]` que para el nunca
             se renderizaba.
-            Se conserva el corte por `own`: rotarse el PIN a si mismo revoca las propias
-            sesiones (el `DELETE` de la ruta), o sea un cierre de sesion sin aviso. La
+
+            **Y SE RENDERIZA SIEMPRE, deshabilitado en vez de ausente** (segunda vuelta de
+            revision): con `{!own && …}` el anchor DESAPARECIA al abrir Gestionar sobre la
+            propia fila, y `startOnboardingTour` corre con `skipMissingElement: false` y
+            `waitForElement: 60_000` (`onboarding/onboarding-tour.ts:80-81`), o sea que el
+            recorrido se quedaba hasta 60 s sin responder y despues dibujaba el popover sin
+            anclar. Un control deshabilitado con su motivo al lado es la unica forma de que
+            el corte exista Y el tour siga teniendo a que apuntar.
+
+            El corte sobre uno mismo se conserva porque rotarse el PIN revoca las propias
+            sesiones (el `DELETE` de la ruta): es un cierre de sesion sin aviso. La API NO lo
+            frena —no tiene `assertNotSelf`, a diferencia de `staff-permissions.ts:114`—, asi
+            que este disabled es la unica barrera y por eso lleva el motivo escrito. La
             membresia del OWNER no aparece en esta lista, asi que `own` solo se da entre
             integrantes. */}
-        {!own && (
-          <button
-            className="small-button pin"
-            data-tour="staff-pin"
-            disabled={busy}
-            onClick={() => onAction("pin")}
-          >
-            Regenerar PIN
-          </button>
-        )}
+        <button
+          className="small-button pin"
+          data-tour="staff-pin"
+          disabled={busy || own}
+          onClick={() => onAction("pin")}
+        >
+          Regenerar PIN
+        </button>
       </div>
+      {own && (
+        <p className="field-help">
+          No podés regenerar tu propio PIN: cerraría tu sesión al instante.
+        </p>
+      )}
     </StaffFormModal>
   );
 }

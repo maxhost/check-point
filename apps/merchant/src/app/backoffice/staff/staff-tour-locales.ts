@@ -55,15 +55,15 @@ export const STAFF_TOUR_COPY = {
     ],
     manageDisable: [
       "Elegí un integrante",
-      "Abrí Gestionar sobre la persona que querés dar de baja.",
+      "Abrí Gestionar sobre la persona cuyo acceso querés cambiar.",
     ],
     disable: [
-      "Dalo de baja",
-      "La baja corta su acceso y es reversible: después podés reactivarlo.",
+      "Cortá o restablecé su acceso",
+      "Este botón alterna: dice «Dar de baja» si está activo y «Reactivar» si ya está de baja. La baja es reversible.",
     ],
     disableConfirm: [
-      "Confirmá la baja",
-      "La sesión del integrante se cerrará y perderá acceso inmediatamente.",
+      "Confirmá lo que pide el diálogo",
+      "Si es una baja, su sesión se cierra y pierde acceso de inmediato; si es una reactivación, lo recupera.",
     ],
   },
 } as const;

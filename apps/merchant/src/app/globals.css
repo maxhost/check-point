@@ -268,6 +268,12 @@ select {
   width: min(100%, 420px);
   padding: 24px;
   border-radius: 20px;
+  /* El `color` va EXPLICITO y es la segunda mitad del arreglo: sin el, el texto lo hereda de
+     `.backoffice-layout { color: var(--ui-text) }` (mas abajo en este archivo), y `--ui-text`
+     es `#edf7f1` bajo `prefers-color-scheme: dark` (`ui/tokens.css:97`) — o sea blanco sobre
+     este fondo blanco, en las 7 pantallas del dialogo. Era un defecto PREEXISTENTE que la 0088
+     habia tapado sin querer al pasar todo a tokens; revertir sin esta linea lo restauraba. */
+  color: #10251d;
   background: #fff;
 }
 .confirm-dialog > div {

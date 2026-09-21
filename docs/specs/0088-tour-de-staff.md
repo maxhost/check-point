@@ -143,13 +143,106 @@ corren sin base ni sin puerto), QA visual/responsive (lo hizo el owner), y el he
 mutaciones, y perseguir cobertura de `.tsx` sin navegador es gastar presupuesto en lo que el QA
 humano ya cubrió.
 
+### §11-bis — la SEGUNDA vuelta de revisión, y la condición de corte
+
+La verificación de la enmienda volvió **FAIL** con tres arreglos de una línea, y **activó la
+condición de corte del ADR 0062**: dos vueltas seguidas terminando en «el fix abrió la siguiente»
+es la señal de cortar. Los tres están aplicados; **no se abre una vuelta 3**, y lo que queda se
+lleva a una pantalla que el owner pueda probar.
+
+1. **La misma familia del defecto H2 sobrevivía en el recorrido de BAJA, y no lo cerró el arreglo
+   de H2.** El paso `disable` apunta a `[data-tour="staff-status"]`, que es un **toggle**:
+   `staff-views.tsx:260` dice «Dar de baja» o «**Reactivar**» según el estado. El copy era
+   incondicional («Dalo de baja… perderá acceso inmediatamente») y el recorrido se habilita con
+   `hasMembers = members.length > 0` (`staff-console.tsx:161`), que **cuenta a los dados de baja**,
+   mientras `manageDisable` ilumina la **primera** tarjeta y `listStaff` ordena por `createdAt ASC`
+   sin filtrar estado. Resultado: sobre un integrante ya dado de baja, seguir el tour al pie de la
+   letra **le RESTABLECE el acceso** mientras el popover promete lo contrario. **Arreglo: el copy
+   deja de afirmar la dirección del toggle** y nombra que alterna. Se eligió el copy y no gatear el
+   recorrido por «hay algún activo» porque el spotlight cae en la primera tarjeta igual: con un
+   activo y un inactivo, el gate no alcanzaría y el copy sí.
+2. **El arreglo de H4 dejó vivo el propio modo de falla que H4 describía.** Con `{!own && …}` el
+   anchor `staff-pin` **desaparecía** al abrir Gestionar sobre la propia fila de un administrador
+   —que además suele ser la primera por `createdAt ASC`—, y con `skipMissingElement: false` +
+   `waitForElement: 60_000` eso es el recorrido colgado 60 s. **Arreglo: el botón se renderiza
+   SIEMPRE y se deshabilita** cuando es sobre uno mismo, con el motivo escrito al lado. Un control
+   deshabilitado conserva el corte **y** le deja al tour a qué apuntar. Anotado de paso, y es la
+   razón de que ese `disabled` lleve su comentario: la API **no** tiene `assertNotSelf` en
+   `pin/regenerate`, así que la barrera es sólo de UI.
+3. **La reversión de H6 estaba a mitad de camino y dejaba el diálogo ILEGIBLE.** `background: #fff`
+   sin `color` hereda de `.backoffice-layout { color: var(--ui-text) }`, y `--ui-text` es `#edf7f1`
+   en modo oscuro: texto casi blanco sobre fondo blanco, en las 7 pantallas. **Era un defecto
+   PREEXISTENTE** que la 0088 había tapado sin querer al pasar todo a tokens, así que revertir sin
+   más lo restauraba. **Arreglo: `color: #10251d` explícito.** Los dos bugs quedan cerrados: ni
+   diálogo oscuro sobre pantalla clara, ni texto blanco sobre blanco.
+4. **Un docblock MÍO que afirmaba haber medido lo que el doble hacía imposible medir**, en el test
+   nuevo del gate: el cuarto caso dice «el owner llega con los siete», pero la sesión llega
+   expandida **desde el doble**, así que `permissionsForRole` no corre ahí. Corregido: el docblock
+   ahora dice qué distingue de verdad ese caso y **a qué archivo** hay que ir por el otro oráculo
+   (`staff-permissions.test.ts:103-104`). Quinta vez en cuatro specs que el docblock es el defecto.
+
+**Una afirmación de la revisión que NO se propagó porque es falsa, y se verificó antes de creerla:**
+que no hay suite e2e en el árbol. La hay — `tests/e2e/health.spec.ts` y `tests/e2e/loyalty-real.spec.ts`,
+que es lo que `playwright.config.ts:6` (`testDir: "./tests/e2e"`) levanta. El agente miró `e2e/` en
+la raíz. El bloqueo del gate sigue siendo el puerto, no la ausencia de tests.
+
+### Declarado, con su motivo, en vez de perseguido
+
+- **Los otros cambios de `globals.css` sobre reglas COMPARTIDAS**, que la 0088 hizo por el tour y
+  esta spec no revierte: `.dialog-backdrop` pasa a `var(--ui-overlay)` (velo más opaco; alcanza a
+  `confirm-dialog`, `image-cropper`, `stock-picker` y `credential-dialog`),
+  `.confirm-dialog > div` gana `margin-top: 20px`, y **`.toast` pasa de `z-index: 10` a `100` y en
+  ≥700 px se muda de arriba-centro a arriba-derecha, en las 9 pantallas que lo usan.** Ninguno es
+  funcional; el único a mirar en pantalla es el toast en desktop, porque con `position: fixed` y sin
+  `pointer-events: none` puede solaparse unos píxeles con `.close-module` durante los 4 s que dura.
+  **Esa geometría NO se verificó en navegador y no se afirma como reproducida**: es de QA del owner.
+- **`staff-views.tsx` sigue sin test propio** (y con él `staff-console`, `permission-picker`,
+  `staff-tour-controller`, `credential-dialog`). La clase ya quedó medida —una mutación del revisor
+  volvió el botón a `isOwner` y los 140 tests de `backoffice/` siguieron verdes—, y perseguir
+  cobertura de `.tsx` sin navegador es gastar presupuesto en lo que el QA humano cubre mejor. Lo que
+  SÍ se hizo en esta enmienda es sacar del `.tsx` las decisiones que se podían: el `persist` de las
+  ayudas y el parseo del query viven ahora en funciones puras con oráculo.
+- **El `Record` del copy de tours garantiza la completitud por INFERENCIA de un consumidor**
+  (`keyof typeof copy` dentro de `staffTourSteps`), no por anotación. Verificado que muerde —un
+  segundo idioma con 2 de 17 claves rompe el `typecheck`—, pero un refactor de esa función la
+  disolvería sin ruido. Anotar `STAFF_TOUR_COPY: Record<StaffTourLocale, …>` la haría local; entra
+  con el segundo idioma, junto al test de `locale`.
+
+### Hallazgo AJENO a esta spec, medido por el revisor y reproducido: la R1 de la 0086 está a mitad
+
+`staff-permissions.ts:20` afirma *«Sólo el owner otorga **o quita** `staff`»*, pero `assertGrantable`
+mira `permissions.includes("staff")` (`:103`): un administrador que manda la lista **sin** `staff`
+a otro administrador **no es rechazado** — hoy sólo lo frena la UI
+(`staff-views.tsx:193-194`, `protectedAdministrator`). Es de la spec **0086**, no de esta, y es el
+reverso exacto del razonamiento con el que §11 quitó un gate de UI «porque la API ya lo delega».
+**No se arregla acá y no se presenta como decisión del owner**: queda como hallazgo a decidir.
+
 ## Declarado AFUERA
 
 - Reanudación por paso, analítica por usuario y versión persistida; eso sí requeriría API nueva.
 
 ## Handoff
 
-Implementación y revisión contra esta spec. La revisión independiente queda pendiente de disponibilidad de agente en esta sesión.
+**Dos rondas de revisión independiente, las dos con FAIL, los nueve hallazgos cerrados** (seis de
+la primera vuelta, tres de la segunda). **La condición de corte del ADR 0062 quedó ACTIVADA por el
+revisor de la segunda vuelta**: no se abre una tercera, y lo que falta es QA de pantalla, no más
+evidencia.
+
+**Lo que le queda al owner, y es corto — tres cosas que sólo se ven en pantalla:**
+
+1. La ayuda **«Dar de baja»** sobre un integrante **que ya está de baja**: el copy ahora dice que el
+   botón alterna. Antes prometía cortar el acceso y lo restablecía.
+2. **Gestionar sobre su propia fila** siendo administrador: «Regenerar PIN» tiene que aparecer
+   **deshabilitado** con su explicación, no desaparecer. Antes el tour se colgaba 60 s ahí.
+3. Cualquier **diálogo de confirmación** (catálogo, programa, locales, campañas, suscripción) con el
+   **SO en modo oscuro**: el texto tiene que leerse. Es la mitad del arreglo de H6 que la segunda
+   vuelta cazó.
+
+Y en desktop, de paso: que el **toast** de arriba a la derecha no tape el botón de cerrar módulo
+(geometría declarada, no verificada en navegador).
+
+`test:e2e` queda para la CI: la suite existe (`tests/e2e/health.spec.ts`,
+`tests/e2e/loyalty-real.spec.ts`) y localmente no corre por el puerto 3000.
 
 ## Evidencia de implementación
 

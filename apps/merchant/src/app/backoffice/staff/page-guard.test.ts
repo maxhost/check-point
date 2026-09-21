@@ -56,11 +56,15 @@ describe("el guard de /backoffice/staff", () => {
   });
 
   /**
-   * La otra mitad del gate, y la que se rompe sola si alguien "arregla" el chequeo mirando la
-   * columna: la fila del owner tiene `permissions` VACIA en la base (`CHECK 2` de la migracion
-   * 0041 lo exige) y es `permissionsForRole` la que le devuelve los siete
-   * (`auth-guards.ts:202`). Si la pagina leyera la columna cruda, el owner quedaria afuera de
-   * su propia pantalla.
+   * El owner entra. **Y este caso mide MENOS de lo que parece, asi que lo dice:** el doble
+   * entrega la sesion con los siete permisos ya expandidos, o sea que `permissionsForRole`
+   * —que es quien se los da al owner aunque su fila este vacia por el `CHECK 2` de la
+   * migracion 0041— **no corre aca**. Lo unico que este caso distingue del anterior es que la
+   * pagina no rechace `role === "owner"` por el rol. La expansion tiene su propio oraculo, y
+   * esta en otro archivo: `server/staff-permissions.test.ts:103-104`.
+   *
+   * Lo anota la segunda vuelta de revision de la 0088, y vale la pena que quede: el docblock
+   * anterior afirmaba haber medido algo que el doble hacia imposible medir.
    */
   it("deja entrar al owner, que llega con los siete", async () => {
     requireBackofficeSession.mockResolvedValue(
