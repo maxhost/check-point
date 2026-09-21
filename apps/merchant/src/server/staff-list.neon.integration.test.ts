@@ -104,7 +104,11 @@ describe.skipIf(!enabled)("GET /api/staff contra Neon (spec 0068 §1)", () => {
     name: string,
     createdAt: Date,
   ): Promise<string> => {
-    const { staff } = await createStaff({ id: businessId, slug }, { name });
+    const { staff } = await createStaff(
+      { id: businessId, slug },
+      { name, permissions: ["counter"] },
+      "owner",
+    );
     staffIds.push(staff.userId);
     await getDb()
       .update(memberships)
@@ -240,6 +244,8 @@ describe.skipIf(!enabled)("GET /api/staff contra Neon (spec 0068 §1)", () => {
         "createdAt",
         "identifier",
         "name",
+        // Spec 0086 §5: `permissions` entra al DTO. El email sintético sigue sin entrar.
+        "permissions",
         "role",
         "status",
         "userId",
@@ -259,12 +265,15 @@ describe.skipIf(!enabled)("GET /api/staff contra Neon (spec 0068 §1)", () => {
     expect((await response.json()).code).toBe("email_not_verified");
   }, 60_000);
 
-  it("un integrante ACTIVO → 403 `not_owner`, nunca `email_not_verified`", async () => {
-    // El orden de los chequeos es la regla: el email de un integrante es sintético y nunca
-    // se verifica, así que con el gate adelantado recibiría un código imposible de resolver.
+  /** CAMBIO DE CONTRATO de la spec 0086: `/api/staff/*` es delegable, así que el integrante
+   * **sin** el toggle `staff` recibe `missing_permission` (paso 3) y no `not_owner`. El
+   * integrante sembrado acá lleva `["counter"]`. Lo que este caso mide no cambia: el orden es
+   * la regla, y su email sintético —que nunca se verifica— no puede producir un
+   * `email_not_verified` imposible de resolver. */
+  it("un integrante ACTIVO sin el toggle → 403 `missing_permission`, nunca `email_not_verified`", async () => {
     const response = await listWith(cookieStaffOfA);
     expect(response.status).toBe(403);
-    expect((await response.json()).code).toBe("not_owner");
+    expect((await response.json()).code).toBe("missing_permission");
   }, 60_000);
 
   it("sin sesión → 401 `unauthorized`", async () => {

@@ -160,7 +160,22 @@ describe.skipIf(!integrationEnabled)(
           currencyCode: "USD",
           timezone: "America/Guayaquil",
         },
-        membership: { role: "owner", status: "active" },
+        // Spec 0086 §8 / contrato §6: para un OWNER son **los SIETE**, aunque su fila en la
+        // base los tenga en `'{}'` (el `CHECK 2` lo exige). La API no expone la columna,
+        // expone la CAPACIDAD — y acá la diferencia se ve contra la base de verdad.
+        membership: {
+          role: "owner",
+          status: "active",
+          permissions: [
+            "brand",
+            "catalog",
+            "counter",
+            "locations",
+            "loyalty",
+            "marketing",
+            "staff",
+          ],
+        },
       });
     }, 60_000);
 
@@ -186,7 +201,10 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("negocio `suspended`: el INTEGRANTE recibe `suspensionReason: null`", async () => {
-      const staffId = await seedMember({ businessId: seed.business.id });
+      const staffId = await seedMember({
+        businessId: seed.business.id,
+        permissions: ["catalog", "counter"],
+      });
       const staffCookie = await cookieFor(staffId);
       await setStatus(seed.business.id, "suspended", "Nota interna del caso.");
       try {
@@ -197,7 +215,14 @@ describe.skipIf(!integrationEnabled)(
         // la nota interna de por que se suspendio la cuenta. Es la mutacion M3.
         expect(body.business.status).toBe("suspended");
         expect(body.business.suspensionReason).toBeNull();
-        expect(body.membership).toEqual({ role: "staff", status: "active" });
+        // Spec 0086 §8: el integrante recibe **su conjunto exacto**, no los siete. Junto con
+        // el caso del owner de arriba, es el par que distingue «devuelve la capacidad» de
+        // «devuelve la columna» y de «devuelve siempre lo mismo».
+        expect(body.membership).toEqual({
+          role: "staff",
+          status: "active",
+          permissions: ["catalog", "counter"],
+        });
       } finally {
         await setStatus(seed.business.id, "active", null);
         await getDb()

@@ -21,6 +21,7 @@ const world = vi.hoisted(() => ({
   operator: null as null | {
     business: { id: string; currencyCode: string; status: string };
     role: string;
+    permissions: string[];
   },
 }));
 
@@ -40,7 +41,11 @@ vi.mock("./counter", async (importOriginal) => ({
 
 import { requireOperator } from "../app/api/counter/_auth";
 
-function operator(role: string, status = "active") {
+/** Spec 0086 §6 — el staff de este archivo lleva `["counter"]` por default, que es lo que le
+ * da el ALTA cuando el owner le marca el toggle del mostrador. Sin el, todos los casos de acá
+ * frenarian en `missing_permission` y este archivo dejaria de medir el gate de EMAIL, que es
+ * lo suyo. El caso del staff SIN el permiso vive en `counter-permission.test.ts`. */
+function operator(role: string, status = "active", permissions = ["counter"]) {
   return {
     business: {
       id: "11111111-1111-4111-8111-111111111111",
@@ -48,6 +53,7 @@ function operator(role: string, status = "active") {
       status,
     },
     role,
+    permissions,
   };
 }
 

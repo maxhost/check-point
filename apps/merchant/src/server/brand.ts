@@ -29,8 +29,25 @@ export { validateBrandInput } from "./brand/validation";
 export { cleanupExpiredBrandAssets } from "./brand/cleanup";
 export { normalizeImage } from "./assets/image";
 
+/**
+ * Spec 0086 §10 (enmienda 2026-09-21) — **EL `businessId` ES OPCIONAL, Y ESA ES LA DECISION.**
+ *
+ * - **Sin `businessId`**: se comporta **exactamente como antes de la enmienda** —
+ *   `role = 'owner'` + `orderBy(asc(createdAt)).limit(1)`—, asi que los ~20 usos que pasan un
+ *   `userId` de owner (rutas owner-only y suites de integracion) no cambian una linea.
+ * - **Con `businessId`**: resuelve por ESE negocio, el que el guard ya resolvio, y **no filtra
+ *   por rol** — porque el rol ya lo decidio el paso 3 de `requireApiPermission`. Sigue
+ *   exigiendo que el caller sea MIEMBRO de ese negocio: es una red, no un adorno.
+ *
+ * **Por que no se afloja el `eq(role,'owner')` en vez de agregar el parametro:** este
+ * resolvedor termina en `orderBy(asc(createdAt)).limit(1)`, asi que para un usuario con mas de
+ * una membresia **elegiria un negocio en silencio**. Ensancharlo convertiria un 403 en una
+ * escritura sobre el negocio EQUIVOCADO. Con `businessId` la fila queda pinneada y la
+ * ambiguedad del `limit(1)` desaparece.
+ */
 export async function ownerBusiness(
   userId: string,
+  businessId?: string,
 ): Promise<BrandRecord | null> {
   const [business] = await getDb()
     .select({
@@ -47,7 +64,14 @@ export async function ownerBusiness(
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(and(eq(memberships.userId, userId), eq(memberships.role, "owner")))
+    .where(
+      businessId === undefined
+        ? and(eq(memberships.userId, userId), eq(memberships.role, "owner"))
+        : and(
+            eq(memberships.userId, userId),
+            eq(memberships.businessId, businessId),
+          ),
+    )
     .orderBy(asc(businesses.createdAt))
     .limit(1);
   return business ?? null;
@@ -85,8 +109,14 @@ export async function brandForBusiness(
   return business ?? null;
 }
 
-export async function createLogoUpload(userId: string, value: unknown) {
-  const business = await ownerBusiness(userId);
+export async function createLogoUpload(
+  userId: string,
+  value: unknown,
+  /** Spec 0086 §10: el negocio que el guard ya resolvio. Sin el, el comportamiento es el de
+   * siempre (owner-only), que es lo que conservan las puertas no migradas. */
+  businessId?: string,
+) {
+  const business = await ownerBusiness(userId, businessId);
   if (!business) throw new BrandError(403, "No tienes un negocio como owner.");
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new BrandError(422, "La carga no es válida.");
@@ -153,9 +183,14 @@ async function consumeUpload(businessId: string, uploadId: string) {
   return upload;
 }
 
-export async function saveBrand(userId: string, value: unknown) {
+export async function saveBrand(
+  userId: string,
+  value: unknown,
+  /** Spec 0086 §10: ver {@link ownerBusiness}. Opcional = comportamiento viejo. */
+  businessId?: string,
+) {
   const input = validateBrandInput(value);
-  const business = await ownerBusiness(userId);
+  const business = await ownerBusiness(userId, businessId);
   if (!business) throw new BrandError(403, "No tienes un negocio como owner.");
 
   let newPrefix: string | null = null;

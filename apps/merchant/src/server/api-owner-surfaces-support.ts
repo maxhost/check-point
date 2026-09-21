@@ -40,6 +40,16 @@ import { POST as TOUR } from "../app/api/onboarding/tours/[tourId]/route";
 export const world = {
   session: null as null | { user: { id: string; emailVerified?: boolean } },
   ownerRow: null as null | Record<string, unknown>,
+  /**
+   * Spec 0086 — la fila de `membershipContext`, el resolvedor de las superficies DELEGABLES.
+   *
+   * **Si un caso no la toca, se DERIVA de `ownerRow`** (ver {@link dobleDeMembershipContext}):
+   * asi los ocho `it.each` que ya existian siguen describiendo un owner con una sola linea de
+   * setup, y los dos resolvedores no pueden contradecirse por descuido. Un caso que quiera un
+   * INTEGRANTE la setea explicitamente y deja `ownerRow` en `null`, que es lo que la funcion
+   * real devuelve para quien no es owner.
+   */
+  membershipRow: null as null | Record<string, unknown>,
   businessId: "11111111-1111-4111-8111-111111111111",
   programId: "99999999-9999-4999-8999-999999999999",
   slug: "la-farmacia",
@@ -57,6 +67,18 @@ export const dobleDeSesion = async () =>
   };
 
 export const dobleDeOwnerContext = async () => world.ownerRow;
+
+/** Ver {@link world.membershipRow}. `countryCode` entra en la derivacion porque la ruta de
+ * plantillas del TOS filtra por el pais de la MISMA fila que evaluo el guard (spec 0081 §4). */
+export const dobleDeMembershipContext = async () =>
+  world.membershipRow ??
+  (world.ownerRow && {
+    countryCode: "EC",
+    ...world.ownerRow,
+    // El owner pasa el paso 3 sin mirar la columna, que es `'{}'` por el `CHECK 2`.
+    role: "owner",
+    permissions: [] as string[],
+  });
 
 /**
  * Spec 0075 — **el QR es la única fila que PASA el gate** en un caso, así que es la única que
@@ -111,6 +133,28 @@ const resultadoDelWhere = () =>
 
 export const dobleDeGetDb = () => ({
   select: () => ({ from: () => ({ where: () => resultadoDelWhere() }) }),
+});
+
+/** La fila de `ownerContext`: el negocio del caller con el eje `status`. Vive acá —y no en un
+ * test— desde la spec 0086, porque ahora la usan DOS archivos de oráculos y un fixture
+ * duplicado diverge sin que nadie lo vea. */
+export const filaDeOwner = (
+  status: string,
+  suspensionReason: string | null = null,
+) => ({
+  id: world.businessId,
+  slug: world.slug,
+  currencyCode: "USD",
+  status,
+  suspensionReason,
+});
+
+/** Un INTEGRANTE activo del MISMO negocio, con el conjunto de permisos que se le pase. */
+export const filaDeStaff = (permissions: string[], status = "active") => ({
+  ...filaDeOwner(status),
+  countryCode: "EC",
+  role: "staff",
+  permissions,
 });
 
 export const json = (path: string, method: string, body: unknown = {}) =>
@@ -211,6 +255,40 @@ export const SURFACES: Array<[string, () => Promise<Response>]> = [
  * `requireApiOwnerSinGateDeEmail` manda hacer antes de sumar una tercera —«¿está bien que
  * esta ruta se exima?»— se hizo y la respuesta fue sí.
  */
+/**
+ * **QUE ALCANCE ABRE CADA SUPERFICIE DELEGABLE** (spec 0086 §3 / ADR 0079 §1). Las entradas
+ * que NO estan acá son las CUATRO de la CUENTA, que conservan `requireApiOwner` y su
+ * `not_owner`: `billing/checkout`, `merchant/business/slug`, `onboarding/checklist` y
+ * `onboarding/tours/{tourId}`.
+ *
+ * Es un mapa y no una lista para que cada fila declare **cual** permiso abre: el error
+ * plausible del QA del owner no es solo «un permiso no muerde» sino «muerde el equivocado»,
+ * y sin el nombre del scope al lado no hay con que medirlo.
+ */
+export const SCOPE_POR_SUPERFICIE: Record<string, string> = {
+  catalog: "catalog",
+  locations: "locations",
+  "marketing/campaigns": "marketing",
+  staff: "staff",
+  brand: "brand",
+  "brand/logo-upload": "brand",
+  "loyalty-program": "loyalty",
+  "loyalty-program (PUT)": "loyalty",
+  "loyalty-program/stamp-upload": "loyalty",
+  "loyalty-program/qr": "loyalty",
+  "loyalty-terms/templates": "loyalty",
+};
+
+export const SURFACES_DELEGABLES = SURFACES.filter(
+  ([name]) => SCOPE_POR_SUPERFICIE[name] !== undefined,
+);
+
+/** Las CUATRO del ADR 0079 §8, por complemento y no por lista paralela: mover una fila de un
+ * lado cambia los dos pisos que el test asevera. */
+export const SURFACES_SOLO_OWNER = SURFACES.filter(
+  ([name]) => SCOPE_POR_SUPERFICIE[name] === undefined,
+);
+
 export const NOMBRES_SIN_GATE_DE_EMAIL = [
   "loyalty-program (PUT)",
   "loyalty-program/qr",

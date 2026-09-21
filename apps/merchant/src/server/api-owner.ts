@@ -126,9 +126,13 @@ export async function requireApiOwner(
 }
 
 /**
- * Spec 0075 + spec 0079 + spec 0083 — **la excepcion al gate de email, y existe para TRES
- * rutas y nada mas**: `GET /api/loyalty-program/qr`, `PUT /api/loyalty-program` y
- * `GET /api/onboarding/checklist`.
+ * Spec 0075 + spec 0079 + spec 0083 — la excepcion al gate de email.
+ *
+ * **⚠️ SPEC 0086: SU UNICO CONSUMIDOR HOY ES `GET /api/onboarding/checklist`.** Las otras dos
+ * rutas sin paso 3 —`GET /api/loyalty-program/qr` y `PUT /api/loyalty-program`— migraron a la
+ * escalera de PERMISOS y su exencion vive ahora en `requireApiPermissionSinGateDeEmail`. El
+ * inventario sigue en TRES y `rg 'SinGateDeEmail' apps` sigue siendo la forma de contarlo,
+ * **ahora repartido en dos funciones**; `api-owner-surfaces.test.ts` lo asevera CERRADO.
  *
  * Mismo contrato de retorno que `requireApiOwner` y **los mismos pasos 1, 2 y 4** (sesion →
  * owner activo → eje `status`, con su fail-closed). Lo unico que no corre es el **paso 3**,
@@ -155,9 +159,10 @@ export async function requireApiOwner(
  * pendiente — el mismo argumento que sostiene el 200-siempre de `GET /api/merchant/session`.
  * Es una LECTURA sin efectos: no escribe nada y no toca lo que el ADR 0070 §11 protege.
  *
- * `rg 'SinGateDeEmail' apps` tiene que devolver **exactamente esas tres rutas**, y el
- * conjunto está aseverado como CERRADO en `api-owner-surfaces.test.ts`, que además corre los
- * cinco estados del caller sobre las tres filas. **No se extiende a una cuarta sin volver a
+ * `rg 'SinGateDeEmail' apps` tiene que devolver **exactamente esas tres rutas** —repartidas
+ * en dos funciones desde la spec 0086—, y el conjunto está aseverado como CERRADO en
+ * `api-owner-surfaces.test.ts`, que además corre los cinco estados del caller sobre las tres
+ * filas. **No se extiende a una cuarta sin volver a
  * discutirlo**: la pregunta «¿está bien que esta ruta se exima?» se hace ANTES, y las tres
  * veces que se hizo quedó escrita con su motivo.
  *

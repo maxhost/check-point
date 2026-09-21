@@ -25,6 +25,21 @@ export const ONBOARDING_GRANT_AFTER_COMPLETION_MINUTES = 5;
 export type ProgramCaller = {
   emailVerified: boolean;
   onboardingGrantActive: boolean;
+  /**
+   * Spec 0086 §10 (enmienda 2026-09-21) — **¿el caller es un INTEGRANTE?**
+   *
+   * Existe porque el gate de email de este writer volvia a imponer `emailVerified`
+   * **despues** de que el paso 4 de `requireApiPermission` exceptuo al staff **a proposito**
+   * (ADR 0079 §5): el integrante tiene un email sintetico `@staff.invalid` que nunca se
+   * entrega y **ninguna accion con la que verificar nada**, asi que un gate que lo alcanzara
+   * dejaria su superficie muerta para siempre. Sin este dato, un staff con `loyalty` pasaba
+   * la puerta y moria en el dominio con `email_not_verified` — el bloqueo que la enmienda
+   * cierra.
+   *
+   * **OPCIONAL y fail-CLOSED**: ausente se lee como `false`, o sea el gate se aplica, que es
+   * el comportamiento de siempre para toda puerta que no lo declare.
+   */
+  isStaff?: boolean;
 };
 
 /**
@@ -74,6 +89,10 @@ export function programEditDenied(
   input: ProgramCaller & { isEdit: boolean },
 ): { status: 403; code: "email_not_verified"; message: string } | null {
   if (!input.isEdit) return null;
+  // Spec 0086 §10: el paso 4 de la escalera ya decidio EXCEPTUAR al staff, y re-imponer el
+  // gate aca seria deshacer esa decision una capa mas abajo. `=== true` y no `!`: un
+  // `undefined` deja el gate PUESTO (fail-closed en el dato).
+  if (input.isStaff === true) return null;
   if (input.emailVerified || input.onboardingGrantActive) return null;
   return {
     status: 403,

@@ -46,6 +46,7 @@ vi.mock("./db", () => {
 
 import {
   BUSINESS_CLOSED,
+  BUSINESS_SUSPENDED,
   requireBackofficeSession,
   requireOwner,
   STAFF_DISABLED,
@@ -64,6 +65,9 @@ const owner = {
   // mismo nombre es como uno termina decidiendo por el otro.
   businessStatus: "active",
   suspensionReason: null,
+  // Spec 0086 §8: la columna cruda. Para un owner es `'{}'` por el `CHECK 2`, y lo que el
+  // guard DEVUELVE son los siete — la capacidad, no la fila.
+  permissions: [],
 };
 
 async function destinationOf(fn: () => Promise<unknown>): Promise<string> {
@@ -131,7 +135,9 @@ describe("backoffice guards by role (ADR 0044)", () => {
     // Piso: sin esto, un archivo vacío o movido pasaría este test en verde.
     expect(contrato.length).toBeGreaterThan(5_000);
     expect(contrato).toContain("## Códigos de rebote");
-    for (const code of [STAFF_DISABLED]) {
+    // Spec 0086: los TRES que el guard emite, no uno. `business_closed` ya se emitía desde
+    // la 0072 y la tabla del contrato no lo documentaba; `business_suspended` nace acá.
+    for (const code of [STAFF_DISABLED, BUSINESS_CLOSED, BUSINESS_SUSPENDED]) {
       expect(contrato).toContain(`\`${code}\``);
     }
     // Spec 0082: `email_not_verified` YA NO ES un código de rebote — el guard no lo emite,
@@ -149,9 +155,18 @@ describe("backoffice guards by role (ADR 0044)", () => {
   // (`counter-email-gate.test.ts`).
   it("staff con email SIN verificar entra igual al mostrador", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: false } };
-    membershipRow = { ...owner, role: "staff", status: "active" };
+    membershipRow = {
+      ...owner,
+      role: "staff",
+      status: "active",
+      permissions: ["counter"],
+    };
     const ctx = await requireBackofficeSession();
-    expect(ctx.membership).toEqual({ role: "staff", status: "active" });
+    expect(ctx.membership).toEqual({
+      role: "staff",
+      status: "active",
+      permissions: ["counter"],
+    });
     expect(ctx.emailVerified).toBe(false);
     expect(deletes).toEqual([]);
   });
@@ -191,9 +206,18 @@ describe("backoffice guards by role (ADR 0044)", () => {
 
   it("active staff passes the session guard but requireOwner sends it to the counter", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
-    membershipRow = { ...owner, role: "staff", status: "active" };
+    membershipRow = {
+      ...owner,
+      role: "staff",
+      status: "active",
+      permissions: ["counter"],
+    };
     const ctx = await requireBackofficeSession();
-    expect(ctx.membership).toEqual({ role: "staff", status: "active" });
+    expect(ctx.membership).toEqual({
+      role: "staff",
+      status: "active",
+      permissions: ["counter"],
+    });
     expect(deletes).toEqual([]);
     expect(await destinationOf(requireOwner)).toBe("/backoffice/counter");
     expect(deletes).toEqual([]);
@@ -228,19 +252,46 @@ describe("backoffice guards by role (ADR 0044)", () => {
     expect(deletes).toEqual([]);
   });
 
-  it("un INTEGRANTE de un negocio suspendido NO recibe el motivo", async () => {
-    // §D4: `suspension_reason` se serializa SÓLO al owner. Es una nota interna sobre la
-    // cuenta del negocio, no algo que quien trabaja ahí tenga que leer.
+  /**
+   * EL HUECO DE `suspended`, CERRADO POR LA SPEC 0086 §8 — y es un ORÁCULO INVERTIDO: hasta
+   * esta spec este mismo caso aseveraba que el integrante ENTRABA (y sólo comprobaba que no
+   * leyera el motivo). El ADR 0079 abre pantallas al staff, así que dejarlo entrar a un
+   * backoffice de un negocio que no opera pasa de ser inocuo a ser el agujero.
+   *
+   * La propiedad vieja —«el motivo se serializa SÓLO al owner»— **no se perdió**: la aplica
+   * `toSessionView` sobre la misma fila (`session-view.ts`) y la asevera
+   * `session.neon.integration.test.ts`. Acá ya no hay contexto que inspeccionar porque el
+   * guard rebota antes de construirlo, que es justamente lo que la spec pide.
+   */
+  it("negocio `suspended`: un INTEGRANTE rebota con `business_suspended`", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = {
       ...owner,
       role: "staff",
+      permissions: ["counter"],
       businessStatus: "suspended",
       suspensionReason: "Reclamos de consumidores.",
     };
-    const ctx = await requireBackofficeSession();
-    expect(ctx.business.status).toBe("suspended");
-    expect(ctx.business.suspensionReason).toBeNull();
+    expect(await destinationOf(requireBackofficeSession)).toBe(
+      `/?e=${BUSINESS_SUSPENDED}`,
+    );
+    // Rebota SIN revocar la sesión: la membresía está bien, lo que no opera es el negocio.
+    expect(deletes).toEqual([]);
+  });
+
+  /** Fail-CLOSED sobre un estado que nadie le enseñó al guard: un cuarto valor frena al
+   * integrante en vez de pasar de largo. Misma polaridad que `businessStatusFailure`. */
+  it("un `businessStatus` desconocido también rebota al INTEGRANTE", async () => {
+    sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
+    membershipRow = {
+      ...owner,
+      role: "staff",
+      permissions: ["counter"],
+      businessStatus: "frozen",
+    };
+    expect(await destinationOf(requireBackofficeSession)).toBe(
+      `/?e=${BUSINESS_SUSPENDED}`,
+    );
   });
 
   it("active owner reaches an owner-only page", async () => {

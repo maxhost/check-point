@@ -9,7 +9,7 @@ import {
 } from "../../../../../../server/schema";
 import { generatePin, hashPin } from "../../../../../../server/staff-pin";
 import { toStaffDTO } from "../../../../../../server/staff";
-import { requireStaffOwner, staffError } from "../../../_auth";
+import { requireStaffAccess, staffError } from "../../../_auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
  *     `auth-guards.ts:77` y `setStaffStatus` — no se agrega un mecanismo de revocacion
  *     nuevo (ADR 0055).
  *
- * **Aislamiento:** `requireStaffOwner` resuelve el negocio desde la SESION, y el `UPDATE`
+ * **Aislamiento:** `requireStaffAccess` resuelve el negocio desde la SESION, y el `UPDATE`
  * lleva `business_id` en el `WHERE`. Un owner del negocio A pidiendo un staff del negocio
  * B no matchea ninguna fila → **404, no 403**: un 403 confirmaria que ese id existe.
  */
@@ -38,7 +38,7 @@ export async function POST(
   // El guard va ADENTRO del `try` (spec 0068 §3): resolver la sesión también consulta la
   // base, y afuera un fallo de base salía 500 sin `code` en vez del 503 del contrato.
   try {
-    const auth = await requireStaffOwner(request);
+    const auth = await requireStaffAccess(request);
     if ("response" in auth) return auth.response;
 
     const { userId } = await params;
@@ -59,6 +59,7 @@ export async function POST(
       .returning({
         role: memberships.role,
         status: memberships.status,
+        permissions: memberships.permissions,
         handle: memberships.handle,
         createdAt: memberships.createdAt,
       });
@@ -95,6 +96,7 @@ export async function POST(
           slug: auth.business.slug,
           role: row.role,
           status: row.status,
+          permissions: row.permissions,
           createdAt: row.createdAt,
         }),
         pin,

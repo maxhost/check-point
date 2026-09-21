@@ -84,10 +84,15 @@ export type OperatorBusiness = {
  * termina decidiendo por el otro»*.
  *
  * Quien lo necesita es UNO solo: el gate de email del mostrador (`app/api/counter/_auth.ts`),
- * que alcanza al owner y **no** al staff. */
+ * que alcanza al owner y **no** al staff.
+ *
+ * **Y desde la spec 0086 viaja tambien `permissions`, por el mismo motivo y con el mismo
+ * costo**: el mostrador exige el toggle `counter` y lo evalua en el guard, no acá. Es una
+ * columna mas en el `innerJoin(memberships)` que ya existia. */
 export type CounterOperator = {
   business: OperatorBusiness;
   role: string;
+  permissions: string[];
 };
 
 export async function operatorBusiness(
@@ -98,10 +103,11 @@ export async function operatorBusiness(
       id: businesses.id,
       currencyCode: businesses.currencyCode,
       status: businesses.status,
-      // Una columna más en el `innerJoin(memberships)` que ya existía, no una consulta
+      // Dos columnas más en el `innerJoin(memberships)` que ya existía, no una consulta
       // nueva: `where`, `orderBy` y `limit` no se tocan, así que esto no puede mover qué
       // fila resuelve el guard.
       role: memberships.role,
+      permissions: memberships.permissions,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -118,6 +124,7 @@ export async function operatorBusiness(
       status: row.status,
     },
     role: row.role,
+    permissions: row.permissions,
   };
 }
 

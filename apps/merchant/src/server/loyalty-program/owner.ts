@@ -13,7 +13,16 @@ import { loadProgramRewards, updateWithEvent } from "./persistence";
  *
  * No importan nada de `loyalty-program.ts`: no hay ciclo.
  */
-export async function ownerBusiness(userId: string) {
+/**
+ * Spec 0086 §10 (enmienda 2026-09-21) — **`businessId` OPCIONAL**, con la misma forma y el
+ * mismo motivo que su gemelo de `server/brand.ts`: sin el parametro el comportamiento es
+ * **identico al de antes** (owner-only, `desc(createdAt)`, `limit(1)`), y con el se resuelve
+ * el negocio que el guard ya resolvio, sin filtrar rol pero exigiendo membresia.
+ *
+ * Aflojar el `eq(role,'owner')` se descarto: con `limit(1)` sobre un orden por fecha, un
+ * usuario con dos membresias escribiria en el negocio equivocado en silencio.
+ */
+export async function ownerBusiness(userId: string, businessId?: string) {
   const [business] = await getDb()
     .select({
       id: businesses.id,
@@ -33,14 +42,21 @@ export async function ownerBusiness(userId: string) {
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
-    .where(and(eq(memberships.userId, userId), eq(memberships.role, "owner")))
+    .where(
+      businessId === undefined
+        ? and(eq(memberships.userId, userId), eq(memberships.role, "owner"))
+        : and(
+            eq(memberships.userId, userId),
+            eq(memberships.businessId, businessId),
+          ),
+    )
     .orderBy(desc(businesses.createdAt))
     .limit(1);
   return business ?? null;
 }
 
-export async function programForOwner(userId: string) {
-  const business = await ownerBusiness(userId);
+export async function programForOwner(userId: string, businessId?: string) {
+  const business = await ownerBusiness(userId, businessId);
   if (!business) return null;
   const db = getDb();
   // Self-heal expiry on read as a safety net for a late cron; atomic with audit.

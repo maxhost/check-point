@@ -86,13 +86,19 @@ async function member(
     .from(businesses)
     .where(eq(businesses.id, business.id));
   const owner = { id: business.id, slug: row.slug };
-  const { staff } = await createStaff(owner, {
-    name: `Gate ${randomUUID().slice(0, 8)}`,
-  });
+  const { staff } = await createStaff(
+    owner,
+    { name: `Gate ${randomUUID().slice(0, 8)}`, permissions: ["counter"] },
+    "owner",
+  );
   if (opts.role === "owner") {
     await getDb()
       .update(memberships)
-      .set({ role: "owner" })
+      // `permissions: []` NO es cosmética: el `CHECK 2` de la migración 0041
+      // (`business_membership_owner_no_permissions_check`) hace que un owner con permisos
+      // sea un estado IMPOSIBLE, así que promover la fila sin vaciar la columna la rechaza
+      // la base. El owner ignora la columna por definición (ADR 0079 §4).
+      .set({ role: "owner", permissions: [] })
       .where(
         and(
           eq(memberships.businessId, business.id),

@@ -83,7 +83,8 @@ describe.skipIf(!integrationEnabled)(
       ownerCookie = await seedOwnerSession(seed);
       const created = await createStaff(
         { id: seed.business.id, slug: seed.slug },
-        { name: "Integrante" },
+        { name: "Integrante", permissions: ["counter"] },
+        "owner",
       );
       staffIdentifier = created.staff.identifier;
       staffPin = created.pin;
@@ -249,7 +250,11 @@ describe.skipIf(!integrationEnabled)(
         const response = await LOCATIONS(ownerRequest(cookie));
         expect(response.status).toBe(403);
         const body = await response.json();
-        expect(body.code).toBe("not_owner");
+        // CAMBIO DE CONTRATO de la spec 0086: `/api/staff` es delegable, asi que el
+        // integrante sin el toggle `staff` recibe `missing_permission` en el paso 3 y no
+        // `not_owner`. **Lo que este caso mide no cambia**: el paso 3 va ANTES del 5, asi que
+        // el integrante NO se entera de que el negocio esta suspendido ni recibe el motivo.
+        expect(body.code).toBe("missing_permission");
         expect(body.suspensionReason).toBeUndefined();
       });
       await getDb().delete(memberships).where(eq(memberships.userId, memberId));

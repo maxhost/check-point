@@ -1,6 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "./db";
 import { businesses, memberships, sessions, users } from "./schema";
+import { normalizePermissions } from "./permissions-catalog";
 
 /**
  * Typed domain error: HTTP status + user message. Mirrors CounterError/BrandError.
@@ -36,14 +37,21 @@ export type StaffDTO = {
   identifier: string;
   role: string;
   status: string;
+  /** Spec 0086 §5 — los alcances del integrante, **normalizados** (deduplicados y en el
+   * orden del catalogo). Nunca es `[]` para un `role='staff'`: el `CHECK 3` de la migracion
+   * 0041 lo vuelve imposible en la base y el writer lo rechaza antes con
+   * `400 permissions_required`. */
+  permissions: string[];
   createdAt: string;
 };
 
 export type StaffStatus = "active" | "disabled";
 
-/** Spec 0067 §4: el owner escribe **solo el nombre**. Ni email, ni contraseña, ni slug. */
+/** Spec 0067 §4 + spec 0086 §5: el owner escribe el nombre **y elige los permisos**. Ni
+ * email, ni contraseña, ni slug. */
 export type CreateStaffInput = {
   name: string;
+  permissions: string[];
 };
 
 /** El PIN en claro viaja **una sola vez**, en la respuesta del alta o de la regeneracion. */
@@ -98,6 +106,53 @@ export async function ownerContext(userId: string): Promise<{
   return row ?? null;
 }
 
+/**
+ * Spec 0086 §2 — EL GEMELO DE {@link ownerContext} PARA EL GUARD DE PERMISOS: resuelve la
+ * membresia ACTIVA del caller **sea owner o staff**, y trae `role` y `permissions`.
+ *
+ * Mismas columnas, mismo `innerJoin(businesses)`, mismo `orderBy(asc(createdAt))` y mismo
+ * `limit(1)` que `ownerContext`: lo UNICO que cambia es que no filtra `role='owner'`. Ese
+ * orden identico es lo que garantiza que el guard nuevo y el viejo resuelvan LA MISMA fila
+ * para un mismo owner — gatear con un resolvedor y escribir con otro es la divergencia
+ * `asc`/`desc` que la spec 0072 §D3 dejo declarada.
+ *
+ * **Sigue filtrando `memberships.status='active'`** (ADR 0044): una membresia dada de baja
+ * conserva identidad y auditoria y pierde acceso, tenga los permisos que tenga.
+ *
+ * `permissions` es **una columna mas en una consulta que ya se hacia**, no una consulta
+ * nueva (ADR 0079 §4).
+ */
+export async function membershipContext(userId: string): Promise<{
+  id: string;
+  slug: string;
+  countryCode: string;
+  currencyCode: string;
+  status: string;
+  suspensionReason: string | null;
+  role: string;
+  permissions: string[];
+} | null> {
+  const [row] = await getDb()
+    .select({
+      id: businesses.id,
+      slug: businesses.slug,
+      countryCode: businesses.countryCode,
+      currencyCode: businesses.currencyCode,
+      status: businesses.status,
+      suspensionReason: businesses.suspensionReason,
+      role: memberships.role,
+      permissions: memberships.permissions,
+    })
+    .from(memberships)
+    .innerJoin(businesses, eq(businesses.id, memberships.businessId))
+    .where(
+      and(eq(memberships.userId, userId), eq(memberships.status, "active")),
+    )
+    .orderBy(asc(businesses.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
 /** Forma publica de una fila de staff. Lo comparten el listado, la baja y el alta. */
 export function toStaffDTO(row: {
   userId: string;
@@ -106,6 +161,7 @@ export function toStaffDTO(row: {
   slug: string;
   role: string;
   status: string;
+  permissions: string[] | null;
   createdAt: Date;
 }): StaffDTO {
   return {
@@ -114,6 +170,10 @@ export function toStaffDTO(row: {
     identifier: row.handle ? `${row.handle}@${row.slug}` : "",
     role: row.role,
     status: row.status,
+    // `normalizePermissions` y no `row.permissions` crudo: el `CHECK` de contencion de la
+    // base NO impide duplicados, asi que una fila escrita por fuera del writer podria traer
+    // `{catalog,catalog}`. La forma que sale por la API es siempre la normalizada.
+    permissions: normalizePermissions(row.permissions ?? []),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -128,6 +188,7 @@ export async function listStaff(businessId: string): Promise<StaffDTO[]> {
       slug: businesses.slug,
       role: memberships.role,
       status: memberships.status,
+      permissions: memberships.permissions,
       createdAt: memberships.createdAt,
     })
     .from(memberships)
@@ -193,6 +254,7 @@ export async function setStaffStatus(
     .returning({
       role: memberships.role,
       status: memberships.status,
+      permissions: memberships.permissions,
       handle: memberships.handle,
       createdAt: memberships.createdAt,
     });
@@ -214,6 +276,7 @@ export async function setStaffStatus(
     slug: business.slug,
     role: row.role,
     status: row.status,
+    permissions: row.permissions,
     createdAt: row.createdAt,
   });
 }

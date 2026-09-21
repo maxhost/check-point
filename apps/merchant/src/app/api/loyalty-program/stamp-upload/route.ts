@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  apiOwnerFailureResponse,
-  requireApiOwner,
-} from "../../../../server/api-owner";
+import { apiOwnerFailureResponse } from "../../../../server/api-owner";
+import { requireApiPermission } from "../../../../server/api-permission";
 import {
   LoyaltyError,
   createStampUpload,
@@ -10,11 +8,13 @@ import {
 
 export const runtime = "nodejs";
 
-/** Spec 0072 §D3: el negocio sale de `requireApiOwner` y no del resolvedor ad hoc del
- * dominio, que devolvia negocio incluso para una membresia `disabled`. */
+/** Spec 0072 §D3: el negocio sale del guard y no del resolvedor ad hoc del dominio, que
+ * devolvia negocio incluso para una membresia `disabled`.
+ * **Spec 0086 §3: ese guard es ahora el alcance `loyalty`.** `createStampUpload` recibe el
+ * `businessId` que el guard resolvio, asi que esta ruta funciona igual para un integrante. */
 export async function POST(request: Request) {
-  const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede gestionar el programa.",
+  const auth = await requireApiPermission(request, "loyalty", {
+    missingPermission: "No tienes permiso para gestionar el programa.",
     emailNotVerified: "Verificá tu email para gestionar el programa.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);

@@ -38,6 +38,19 @@ vi.mock("./auth", () => ({
  */
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
+  // Spec 0086: el `PUT` pasó a `requireApiPermissionSinGateDeEmail`, que resuelve con
+  // `membershipContext`. `ownerContext` queda doblado igual porque otras superficies del
+  // barril lo siguen usando y un doble parcial dejaría la real apuntando a la base.
+  membershipContext: async () => ({
+    id: "11111111-1111-4111-8111-111111111111",
+    slug: "la-farmacia",
+    countryCode: "EC",
+    currencyCode: "USD",
+    status: "active",
+    suspensionReason: null,
+    role: "owner",
+    permissions: [],
+  }),
   ownerContext: async () => ({
     id: "11111111-1111-4111-8111-111111111111",
     slug: "la-farmacia",

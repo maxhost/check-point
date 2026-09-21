@@ -68,7 +68,11 @@ describe.skipIf(!integrationEnabled)(
     }, 30_000);
 
     const newStaff = (seed: Seed, name: string) =>
-      createStaff({ id: seed.business.id, slug: seed.slug }, { name });
+      createStaff(
+        { id: seed.business.id, slug: seed.slug },
+        { name, permissions: ["counter"] },
+        "owner",
+      );
 
     const pinRow = (userId: string) =>
       getDb()
@@ -275,7 +279,10 @@ describe.skipIf(!integrationEnabled)(
         params(staff.userId),
       );
       expect(response.status).toBe(403);
-      expect((await response.json()).code).toBe("not_owner");
+      // Spec 0086: `/api/staff/*` es delegable; un integrante SIN el toggle `staff` recibe
+      // `missing_permission` (paso 3). `not_owner` sólo sobrevive en las cuatro superficies
+      // de la CUENTA (ADR 0079 §8).
+      expect((await response.json()).code).toBe("missing_permission");
     }, 60_000);
   },
 );

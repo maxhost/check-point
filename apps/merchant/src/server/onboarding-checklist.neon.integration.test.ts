@@ -74,7 +74,8 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
     // por el que el checklist es owner-only (ADR 0077 §6).
     const { staff } = await createStaff(
       { id: seed.businessId, slug: seed.slug },
-      { name: "Integrante Checklist" },
+      { name: "Integrante Checklist", permissions: ["counter"] },
+      "owner",
     );
     staffUserId = staff.userId;
     cookieStaff = await openSessionCookie(staffUserId, null);

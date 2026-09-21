@@ -28,11 +28,14 @@ import {
   SURFACES,
   SURFACES_CON_GATE_DE_EMAIL,
   SURFACES_SIN_GATE_DE_EMAIL,
+  SURFACES_SOLO_OWNER,
   dobleDeGetDb,
+  dobleDeMembershipContext,
   dobleDeOwnerContext,
   dobleDeProgramForOwner,
   dobleDeSaveProgram,
   dobleDeSesion,
+  filaDeOwner,
   world,
 } from "./api-owner-surfaces-support";
 
@@ -43,6 +46,9 @@ vi.mock("./auth", () => ({
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
   ownerContext: () => dobleDeOwnerContext(),
+  // Spec 0086: el resolvedor de las once entradas DELEGABLES. Los dos se doblan porque la
+  // tabla mezcla las dos escaleras a propósito — es lo que hace visible cuál es cuál.
+  membershipContext: () => dobleDeMembershipContext(),
 }));
 
 vi.mock("./loyalty-program", async (importOriginal) => ({
@@ -55,8 +61,6 @@ vi.mock("./db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./db")>()),
   getDb: () => dobleDeGetDb(),
 }));
-
-const CALLER_BUSINESS = world.businessId;
 
 /**
  * EL DESENLACE POSITIVO DE CADA EXCEPCIÓN, por fila. Un `not.toBe(403)` diría lo mismo si la
@@ -108,19 +112,10 @@ const DESENLACE_SIN_GATE: Record<
   },
 };
 
-function ownerRow(status: string, suspensionReason: string | null = null) {
-  return {
-    id: CALLER_BUSINESS,
-    slug: world.slug,
-    currencyCode: "USD",
-    status,
-    suspensionReason,
-  };
-}
-
 beforeEach(() => {
   world.session = null;
   world.ownerRow = null;
+  world.membershipRow = null;
 });
 
 describe("las superficies de API del owner — el gate unificado (spec 0072 §D3)", () => {
@@ -176,7 +171,10 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
    * pide hacer algo que no puede hacer, y un tercero podría sondear el estado de un negocio
    * ajeno. Ya lo cazó un test de la spec 0067 en `api/staff`; ahora vale para las 10.
    */
-  it.each(SURFACES)(
+  /** Las CUATRO de la CUENTA (ADR 0079 §8) conservan `requireApiOwner` y su `not_owner`,
+   * que ahí sigue siendo literal. El reparto completo y la escalera de PERMISOS de las once
+   * delegables viven en `api-permission-surfaces.test.ts`, que comparte este mismo soporte. */
+  it.each(SURFACES_SOLO_OWNER)(
     "%s: un INTEGRANTE (sin email verificado) → 403 `not_owner`, nunca `email_not_verified`",
     async (_name, call) => {
       world.session = { user: { id: "user-staff", emailVerified: false } };
@@ -191,7 +189,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: owner con `emailVerified: false` → 403 `email_not_verified`",
     async (_name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: false } };
-      world.ownerRow = ownerRow("active");
+      world.ownerRow = filaDeOwner("active");
       const response = await call();
       expect(response.status).toBe(403);
       expect((await response.json()).code).toBe("email_not_verified");
@@ -202,7 +200,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: owner SIN la clave `emailVerified` → 403 igual (fail-closed)",
     async (_name, call) => {
       world.session = { user: { id: "user-owner" } };
-      world.ownerRow = ownerRow("active");
+      world.ownerRow = filaDeOwner("active");
       const response = await call();
       expect(response.status).toBe(403);
       expect((await response.json()).code).toBe("email_not_verified");
@@ -215,7 +213,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: owner con `emailVerified: false` sobre un negocio `active` → pasa, NUNCA `email_not_verified`",
     async (name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: false } };
-      world.ownerRow = ownerRow("active");
+      world.ownerRow = filaDeOwner("active");
       await DESENLACE_SIN_GATE[name](await call());
     },
   );
@@ -226,7 +224,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: owner SIN la clave `emailVerified` → pasa igual (el paso 3 no corre)",
     async (name, call) => {
       world.session = { user: { id: "user-owner" } };
-      world.ownerRow = ownerRow("active");
+      world.ownerRow = filaDeOwner("active");
       await DESENLACE_SIN_GATE[name](await call());
     },
   );
@@ -235,7 +233,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: negocio `suspended` → 403 `business_suspended` CON el motivo",
     async (_name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: true } };
-      world.ownerRow = ownerRow("suspended", "Pago rechazado tres veces.");
+      world.ownerRow = filaDeOwner("suspended", "Pago rechazado tres veces.");
       const response = await call();
       expect(response.status).toBe(403);
       const body = await response.json();
@@ -250,7 +248,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: negocio `closed` → 403 `business_closed` y SIN motivo",
     async (_name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: true } };
-      world.ownerRow = ownerRow(
+      world.ownerRow = filaDeOwner(
         "closed",
         "Motivo viejo de una suspensión anterior.",
       );
@@ -268,7 +266,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     "%s: un `status` desconocido no opera",
     async (_name, call) => {
       world.session = { user: { id: "user-owner", emailVerified: true } };
-      world.ownerRow = ownerRow("frozen");
+      world.ownerRow = filaDeOwner("frozen");
       const response = await call();
       expect(response.status).toBe(403);
       expect((await response.json()).code).toBe("business_suspended");

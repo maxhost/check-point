@@ -51,6 +51,10 @@ export async function GET(request: Request) {
       timezone: businesses.timezone,
       role: memberships.role,
       membershipStatus: memberships.status,
+      // Spec 0086 §8: una columna mas en el `innerJoin` que ya existia. Lo que sale por la
+      // API NO es esta columna sino la capacidad (`permissionsForRole`): para un owner es
+      // `'{}'` acá y los SIETE allá.
+      permissions: memberships.permissions,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))

@@ -14,7 +14,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
  */
 
 let takenHandles: Array<{ handle: string | null }> = [];
-let insertRows: Array<{ role: string; status: string; createdAt: Date }> = [];
+let insertRows: Array<{
+  role: string;
+  status: string;
+  permissions: string[];
+  createdAt: Date;
+}> = [];
 /** Lo que el alta le manda a `insert(memberships).values(...)`, para poder aseverarlo. */
 let membershipValues: Record<string, unknown> | null = null;
 /** Idem para `insert(users).values(...)`: es donde se PERSISTE el email sintetico, que
@@ -69,47 +74,38 @@ afterEach(() => {
   userValues = null;
 });
 
-describe("createStaff: el cuerpo es SOLO el nombre — spec 0067 §4", () => {
-  const cases: Array<[string, unknown]> = [
-    ["missing body", null],
-    ["an array", []],
-    ["empty name", { name: "  " }],
-    ["a name over 80 chars", { name: "x".repeat(81) }],
-  ];
-  for (const [label, body] of cases) {
-    it(`rejects ${label} with 400`, async () => {
-      await expect(createStaff(business, body)).rejects.toMatchObject({
-        status: 400,
-      });
-    });
-  }
-
-  it("ignora un email y una contraseña en el cuerpo: ya no son parte del alta", async () => {
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
-    const { staff } = await createStaff(business, {
-      name: "Ana",
-      email: "ana@bar.co",
-      password: "supersecret",
-    });
-    expect(staff.identifier).toBe("ana@la-farmacia");
-    expect(JSON.stringify(staff)).not.toContain("ana@bar.co");
-    expect(JSON.stringify(staff)).not.toContain("supersecret");
-  });
-});
-
 describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
   it("devuelve `handle@slug` con el slug del NEGOCIO, no uno del cuerpo", async () => {
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
-    const { staff } = await createStaff(business, {
-      name: "Lucas Pérez",
-      slug: "otro-negocio",
-    });
+    insertRows = [
+      {
+        role: "staff",
+        status: "active",
+        permissions: ["counter"],
+        createdAt: new Date(0),
+      },
+    ];
+    const { staff } = await createStaff(
+      business,
+      { name: "Lucas Pérez", slug: "otro-negocio", permissions: ["counter"] },
+      "owner",
+    );
     expect(staff.identifier).toBe("lucas-perez@la-farmacia");
   });
 
   it("no deja que un nombre reservado derive en un handle reservado", async () => {
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
-    const { staff } = await createStaff(business, { name: "Admin" });
+    insertRows = [
+      {
+        role: "staff",
+        status: "active",
+        permissions: ["counter"],
+        createdAt: new Date(0),
+      },
+    ];
+    const { staff } = await createStaff(
+      business,
+      { name: "Admin", permissions: ["counter"] },
+      "owner",
+    );
     // `slugify("Admin")` da `admin`, que está en RESERVED_SLUGS: el alta tiene que
     // sufijarlo en vez de entregarlo tal cual.
     expect(staff.identifier).toBe("admin-2@la-farmacia");
@@ -118,25 +114,48 @@ describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
   it("resuelve la colisión de dos nombres que colapsan al mismo slug", async () => {
     // `slugify` colapsa a "000" todo nombre sin caracteres latinos ("日本語", "Мир"): sin
     // `nextSuggestion` los dos integrantes chocarían contra el único (business_id, handle).
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
+    insertRows = [
+      {
+        role: "staff",
+        status: "active",
+        permissions: ["counter"],
+        createdAt: new Date(0),
+      },
+    ];
     takenHandles = [{ handle: "000" }];
-    const { staff } = await createStaff(business, { name: "日本語" });
+    const { staff } = await createStaff(
+      business,
+      { name: "日本語", permissions: ["counter"] },
+      "owner",
+    );
     expect(staff.identifier).toBe("000-2@la-farmacia");
   });
 
   it("devuelve un PIN de 6 dígitos que NO aparece en el DTO", async () => {
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
-    const { staff, pin } = await createStaff(business, { name: "Ana" });
+    insertRows = [
+      {
+        role: "staff",
+        status: "active",
+        permissions: ["counter"],
+        createdAt: new Date(0),
+      },
+    ];
+    const { staff, pin } = await createStaff(
+      business,
+      { name: "Ana", permissions: ["counter"] },
+      "owner",
+    );
     expect(pin).toMatch(/^[0-9]{6}$/);
     const serialized = JSON.stringify(staff);
     expect(serialized).not.toContain(pin);
     expect(serialized.toLowerCase()).not.toContain("hash");
-    // Allow-list de claves (spec 0068 §2): son SEIS, y `email` ya no esta. Un DTO que
-    // vuelva a llevarlo pone este caso en rojo.
+    // Allow-list de claves (spec 0068 §2): son SIETE desde la 0086 —`permissions` entra—, y
+    // `email` sigue sin estar. Un DTO que vuelva a llevarlo pone este caso en rojo.
     expect(Object.keys(staff).sort()).toEqual([
       "createdAt",
       "identifier",
       "name",
+      "permissions",
       "role",
       "status",
       "userId",
@@ -144,8 +163,19 @@ describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
   });
 
   it("persiste el hash del PIN y `pin_must_change`, nunca el PIN", async () => {
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
-    const { pin } = await createStaff(business, { name: "Ana" });
+    insertRows = [
+      {
+        role: "staff",
+        status: "active",
+        permissions: ["counter"],
+        createdAt: new Date(0),
+      },
+    ];
+    const { pin } = await createStaff(
+      business,
+      { name: "Ana", permissions: ["counter"] },
+      "owner",
+    );
     expect(membershipValues).toMatchObject({
       role: "staff",
       status: "active",
@@ -157,8 +187,19 @@ describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
   });
 
   it("el email sintético se PERSISTE pero no se serializa (spec 0068 §2)", async () => {
-    insertRows = [{ role: "staff", status: "active", createdAt: new Date(0) }];
-    const { staff } = await createStaff(business, { name: "Ana" });
+    insertRows = [
+      {
+        role: "staff",
+        status: "active",
+        permissions: ["counter"],
+        createdAt: new Date(0),
+      },
+    ];
+    const { staff } = await createStaff(
+      business,
+      { name: "Ana", permissions: ["counter"] },
+      "owner",
+    );
     // Sigue yendo a la base: `merchant_auth.user.email` es NOT NULL con único, así que el
     // alta no puede dejarlo vacío. Se asevera sobre los valores del insert.
     expect(userValues?.email).toMatch(/^staff-.+@staff\.invalid$/);
@@ -192,7 +233,11 @@ async function createStaffWithInsertError(error: unknown) {
   const previous = db.returning;
   db.returning = () => Promise.reject(error);
   try {
-    return await createStaff(business, { name: "Ana" });
+    return await createStaff(
+      business,
+      { name: "Ana", permissions: ["counter"] },
+      "owner",
+    );
   } finally {
     db.returning = previous;
   }

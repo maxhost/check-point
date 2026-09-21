@@ -1,15 +1,15 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import {
-  apiOwnerFailureResponse,
-  requireApiOwner,
-} from "../../../../server/api-owner";
+import { apiOwnerFailureResponse } from "../../../../server/api-owner";
+import { requireApiPermission } from "../../../../server/api-permission";
 import { getDb } from "../../../../server/db";
 import { termsScopeCandidates } from "../../../../server/loyalty-program/terms-scope";
 import { termsTemplates } from "../../../../server/schema";
 
-/** Spec 0072 §D3: el guard es `requireApiOwner`, no el resolvedor ad hoc del dominio — que
- * no filtraba `memberships.status='active'` ni miraba el email verificado.
+/** Spec 0072 §D3: el guard es el unico, no el resolvedor ad hoc del dominio — que no
+ * filtraba `memberships.status='active'` ni miraba el email verificado.
+ * **Spec 0086 §3: es `requireApiPermission` con el alcance `loyalty`**, y el `countryCode`
+ * sigue saliendo de la MISMA fila que evaluo el guard.
  *
  * **Spec 0081 §4 — solo los scopes candidatos del negocio de la sesion, y el scope viaja en
  * el DTO.** Antes devolvia TODAS las publicadas: seis filas con titulos repetidos («Cómo se
@@ -22,8 +22,8 @@ import { termsTemplates } from "../../../../server/schema";
  * Su guard y sus `code` **no cambian** (declarado afuera, como la 0079 hizo con
  * `GET`/`DELETE`/`PATCH` del programa). */
 export async function GET(request: Request) {
-  const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede ver las plantillas.",
+  const auth = await requireApiPermission(request, "loyalty", {
+    missingPermission: "No tienes permiso para ver las plantillas.",
     emailNotVerified: "Verificá tu email para ver las plantillas.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);

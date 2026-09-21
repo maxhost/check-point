@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Spec 0068 §1/§3 — **el gate de `requireStaffOwner` es FAIL-CLOSED**, probado sobre el
+ * Spec 0068 §1/§3 — **el gate de `requireStaffAccess` es FAIL-CLOSED**, probado sobre el
  * `GET /api/staff` sin base.
  *
  * Por qué no alcanza la integración: en la base `merchant_auth.user.email_verified` es
@@ -10,12 +10,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * ahí. Acá la sesión es un doble y el `undefined` se puede producir: es la única forma de
  * ver que un `emailVerified` ausente **cierra** en vez de abrir.
  *
- * El orden de los chequeos también se asevera acá (sesión → owner → email): un caller sin
- * membresía de owner recibe `not_owner` aunque su email no esté verificado.
+ * El orden de los chequeos también se asevera acá (sesión → membresía → alcance → email): un
+ * caller sin membresía activa recibe `not_member` aunque su email no esté verificado.
  */
 
 let sessionUser: Record<string, unknown> | null = null;
-/** Filas que devuelve `ownerContext`. Vacío = la sesión no es owner de nada activo. */
+/** Filas que devuelve `membershipContext`. Vacío = la sesión no tiene membresía activa. */
 let ownerRows: Array<Record<string, unknown>> = [];
 
 vi.mock("./auth", () => ({
@@ -31,7 +31,7 @@ vi.mock("./db", () => {
   for (const m of ["select", "from", "innerJoin", "where", "orderBy"]) {
     chain[m] = () => chain;
   }
-  // `ownerContext` cierra con `.limit(1)`; `listStaff` se `await`ea sobre el `.orderBy(...)`.
+  // `membershipContext` cierra con `.limit(1)`; `listStaff` se `await`ea sobre el `.orderBy(...)`.
   chain.limit = () => Promise.resolve(ownerRows);
   chain.then = (resolve: (v: unknown[]) => unknown) => resolve([]);
   return { getDb: () => chain };
@@ -42,16 +42,22 @@ import { GET } from "../app/api/staff/route";
 const get = () =>
   GET(new Request("http://localhost:3001/api/staff", { method: "GET" }));
 
-// Spec 0072: `ownerContext` selecciona ademas el eje `status`, y el guard de
-// `requireApiOwner` es fail-closed — una fila sin `status` NO opera. Edicion del FIXTURE:
-// las aserciones de este archivo no cambian.
+// Spec 0072: el resolvedor selecciona ademas el eje `status`, y el guard es fail-closed —
+// una fila sin `status` NO opera.
+//
+// Spec 0086: la fila es ahora la de `membershipContext` y trae `role` y `permissions`. Para
+// un OWNER, `permissions` es `'{}'` por el `CHECK 2` y el paso 3 lo deja pasar sin mirarla
+// (`hasScope`). Edicion del FIXTURE: las aserciones de este archivo no cambian.
 const owner = [
   {
     id: "b1",
     slug: "la-farmacia",
+    countryCode: "EC",
     currencyCode: "USD",
     status: "active",
     suspensionReason: null,
+    role: "owner",
+    permissions: [],
   },
 ];
 
@@ -93,7 +99,11 @@ describe("GET /api/staff — el gate (spec 0068 §1)", () => {
     expect((await response.json()).code).toBe("email_not_verified");
   });
 
-  it("una sesión que no es owner → `not_owner`, NUNCA `email_not_verified`", async () => {
+  /** **CAMBIO DE CONTRATO de la spec 0086**: esta superficie ya no contesta `not_owner`.
+   * Sin membresía activa es `not_member` (paso 2); con membresía y sin el toggle es
+   * `missing_permission` (paso 3). `not_owner` sobrevive **solo** en las cuatro superficies
+   * de la CUENTA (ADR 0079 §8). */
+  it("una sesión sin membresía activa → `not_member`, NUNCA `email_not_verified`", async () => {
     // El orden es la regla, no una optimización: el email de un integrante es sintético y
     // nunca se verifica, así que con el gate adelantado recibiría un código que le pide
     // hacer algo que no puede hacer.
@@ -101,6 +111,25 @@ describe("GET /api/staff — el gate (spec 0068 §1)", () => {
     ownerRows = [];
     const response = await get();
     expect(response.status).toBe(403);
-    expect((await response.json()).code).toBe("not_owner");
+    expect((await response.json()).code).toBe("not_member");
+  });
+
+  /** El paso 3, con su control positivo en el mismo archivo: el integrante SIN el toggle
+   * `staff` no entra, y el que lo tiene sí — aunque su email nunca esté verificado, porque
+   * el paso 4 no lo alcanza (es la mutación M3). */
+  it("un INTEGRANTE sin el permiso `staff` → `missing_permission`", async () => {
+    sessionUser = { id: "u3", emailVerified: false };
+    ownerRows = [{ ...owner[0], role: "staff", permissions: ["counter"] }];
+    const response = await get();
+    expect(response.status).toBe(403);
+    expect((await response.json()).code).toBe("missing_permission");
+  });
+
+  it("un INTEGRANTE CON el permiso `staff` y sin email verificado → 200", async () => {
+    sessionUser = { id: "u4", emailVerified: false };
+    ownerRows = [{ ...owner[0], role: "staff", permissions: ["staff"] }];
+    const response = await get();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ staff: [] });
   });
 });

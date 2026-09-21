@@ -9,7 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
-import { memberships } from "./business";
+import { memberships } from "./membership";
 
 /**
  * Spec 0067 §4 / ADR 0070 §13 — el bloqueo escalado del PIN del staff, PERSISTIDO.

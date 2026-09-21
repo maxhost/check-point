@@ -1,10 +1,8 @@
 import {
-  boolean,
   check,
   integer,
   jsonb,
   numeric,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -173,50 +171,6 @@ export const brandAssetCleanups = core.table(
   (table) => [
     uniqueIndex("core_brand_asset_cleanup_prefix_unique").on(
       table.objectPrefix,
-    ),
-  ],
-);
-
-export const memberships = core.table(
-  "business_membership",
-  {
-    businessId: uuid("business_id")
-      .notNull()
-      .references(() => businesses.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    role: text("role").notNull().default("owner"),
-    /** `active` operates; `disabled` keeps identity + audit but has no access (ADR 0044). */
-    status: text("status").notNull().default("active"),
-    /** Spec 0067 §4: parte local del login del staff (`handle@slug`), unica POR NEGOCIO.
-     * `handle` y `pin_hash` (hash, nunca el PIN) son NULLABLE en el tipo y obligatorios
-     * por CHECK solo cuando `role='staff'`: el owner entra por email y no tiene ninguno. */
-    handle: text("handle"),
-    pinHash: text("pin_hash"),
-    pinMustChange: boolean("pin_must_change").notNull().default(true),
-    pinUpdatedAt: timestamp("pin_updated_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    primaryKey({ columns: [table.businessId, table.userId] }),
-    check(
-      "business_membership_role_check",
-      sql`${table.role} in ('owner', 'staff')`,
-    ),
-    check(
-      "business_membership_status_check",
-      sql`${table.status} in ('active', 'disabled')`,
-    ),
-    check(
-      "business_membership_staff_identity_check",
-      sql`${table.role} <> 'staff' or (${table.handle} is not null and ${table.pinHash} is not null)`,
-    ),
-    uniqueIndex("core_business_membership_handle_unique").on(
-      table.businessId,
-      table.handle,
     ),
   ],
 );

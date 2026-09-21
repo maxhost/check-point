@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "./auth";
 import { getDb } from "./db";
 import { businesses, memberships, sessions } from "./schema";
+import { permissionsForRole } from "./permissions-catalog";
 
 /**
  * Reason code the guard puts on `/?e=…` when it bounces a deactivated staff member
@@ -20,12 +21,22 @@ export const STAFF_DISABLED = "staff_disabled";
  * allow-list as {@link STAFF_DISABLED}. El gemelo de API es el 403 `business_closed` de
  * `requireApiOwner`.
  *
- * **`suspended` NO rebota** y es una decision del owner, no un olvido: el owner de un negocio
- * suspendido **si entra**, porque lo unico que tiene que poder hacer es leer el motivo y el
- * boton de contacto. Por eso el guard devuelve `status` y `suspensionReason` en vez de
- * redirigir.
+ * **`suspended` no rebota AL OWNER** y es una decision suya, no un olvido: el owner de un
+ * negocio suspendido **si entra**, porque lo unico que tiene que poder hacer es leer el motivo
+ * y el boton de contacto. Por eso el guard devuelve `status` y `suspensionReason` en vez de
+ * redirigir. Al INTEGRANTE si lo rebota, desde la spec 0086: ver {@link BUSINESS_SUSPENDED}.
  */
 export const BUSINESS_CLOSED = "business_closed";
+
+/**
+ * Spec 0086 §8 — el rebote de un INTEGRANTE sobre un negocio que no opera. Mismo canal y
+ * misma allow-list que {@link STAFF_DISABLED}; el gemelo de API es el `403 business_suspended`
+ * del paso 5 de `requireApiPermission`.
+ *
+ * **El owner NO lo recibe nunca**: su pantalla de cuenta suspendida es justamente lo que el
+ * rebote de `closed` y este no le tocan.
+ */
+export const BUSINESS_SUSPENDED = "business_suspended";
 
 /** The business the current backoffice session operates on (its first business). */
 export type GuardBusiness = {
@@ -45,6 +56,10 @@ export type GuardBusiness = {
 export type GuardMembership = {
   role: string;
   status: string;
+  /** Spec 0086 §8 — la CAPACIDAD, no la columna: para un owner son los siete aunque su fila
+   * este vacia. Sale de la MISMA fila del join, con la MISMA funcion que
+   * `GET /api/merchant/session`, para que la pagina y la API no puedan divergir. */
+  permissions: string[];
 };
 
 export type BackofficeSession = {
@@ -70,7 +85,8 @@ export type BackofficeSession = {
  *  - session but no membership at all → `/` (a brand-new owner);
  *  - membership `status='disabled'` → revokes the session and sends the member to
  *    `/?e=staff_disabled`, so the landing can say why (ADR 0055);
- *  - business `closed` → `/?e=business_closed` (spec 0072 §D4).
+ *  - business `closed` → `/?e=business_closed` (spec 0072 §D4), para CUALQUIER rol;
+ *  - business no-`active` y caller no-owner → `/?e=business_suspended` (spec 0086 §8).
  *
  * **NO gatea por email verificado, y es una decisión del owner** (spec 0082 / ADR 0070 §11,
  * textual): *«Entra a su cuenta directamente al terminar el wizard y ve el onboarding»*, y el
@@ -109,6 +125,7 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
       suspensionReason: businesses.suspensionReason,
       role: memberships.role,
       status: memberships.status,
+      permissions: memberships.permissions,
     })
     .from(memberships)
     .innerJoin(businesses, eq(businesses.id, memberships.businessId))
@@ -148,6 +165,23 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
   // con 403).
   if (row.businessStatus === "closed") redirect(`/?e=${BUSINESS_CLOSED}`);
 
+  // EL HUECO DE `suspended`, CERRADO POR LA SPEC 0086 §8 (ADR 0079, «Consecuencias»). El
+  // rebote de arriba alcanza a TODOS —`closed` no admite a nadie— y este alcanza **solo al
+  // no-owner**: el owner conserva su pantalla de cuenta suspendida, porque lo unico que tiene
+  // que poder hacer es leer el motivo y el boton de contacto (decision del owner, 2026-09-17).
+  //
+  // **Hasta esta spec no filtraba nada porque las paginas eran owner-only.** El ADR 0079 abre
+  // pantallas al integrante, y sin esta linea una cuenta suspendida se las renderizaria. La
+  // API igual contesta 403 (paso 5 de `requireApiPermission`), asi que no habia dato en
+  // riesgo; lo que habia era una puerta que el dia que el staff entre deja de estar cerrada.
+  //
+  // **`!== "active"` y no `=== "suspended"`, o sea fail-CLOSED**: misma polaridad que
+  // `businessStatusFailure`. Un cuarto valor que nadie le enseño a este guard frena al
+  // integrante en vez de pasar de largo.
+  if (row.businessStatus !== "active" && row.role !== "owner") {
+    redirect(`/?e=${BUSINESS_SUSPENDED}`);
+  }
+
   return {
     userId: session.user.id,
     userName: session.user.name,
@@ -162,7 +196,11 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
       // de por que se suspendio la cuenta del negocio donde trabaja.
       suspensionReason: row.role === "owner" ? row.suspensionReason : null,
     },
-    membership: { role: row.role, status: row.status },
+    membership: {
+      role: row.role,
+      status: row.status,
+      permissions: permissionsForRole(row.role, row.permissions),
+    },
   };
 }
 

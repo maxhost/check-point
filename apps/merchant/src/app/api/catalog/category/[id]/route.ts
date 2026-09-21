@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { deleteCategory, renameCategory } from "../../../../../server/catalog";
-import { catalogError, readJson, requireOwner } from "../../_auth";
+import {
+  catalogError,
+  readJson,
+  requireCatalogOwner,
+  requireOwner,
+} from "../../_auth";
 
 export const runtime = "nodejs";
 
@@ -27,7 +32,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requireOwner(request);
+  // Spec 0086 §3 / ADR 0079 §2: el borrado es DURO y no se delega. `requireCatalogOwner`
+  // conserva `requireApiOwner` y su `403 not_owner`, que acá sigue siendo literal.
+  const auth = await requireCatalogOwner(request);
   if ("response" in auth) return auth.response;
   const { id } = await params;
   try {

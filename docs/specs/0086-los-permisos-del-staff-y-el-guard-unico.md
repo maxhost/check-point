@@ -1,7 +1,7 @@
 ---
 spec: 0086
 fecha: 2026-09-20
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0079 §1-§6 y §8. `business_membership` gana `permissions text[]` con tres CHECK que hacen imposibles los estados invalidos (permiso desconocido, owner con permisos, staff con cero). Nace `requireApiPermission` —la escalera del ADR 0073 con un paso nuevo entre membresia y email— y las diez superficies delegables migran a el; las cuatro del §8 se quedan en `requireApiOwner`. El alta de staff acepta `permissions` (>= 1), nace `PATCH /api/staff/:userId/permissions` con las cuatro reglas anti-escalada del ADR 0079 §3, el mostrador pasa a exigir el permiso `counter` y `GET /api/merchant/session` devuelve `permissions` para que la UI no adivine. **SIN BACKFILL, por decision del owner: la migracion BORRA las membresias de staff existentes** —el owner las recrea— porque el CHECK valida filas viejas y el proyecto todavia esta en prueba; se borra la membresia y NO el `user`, que la FK de `order.created_by_user_id` protege. El eje PLAN no se toca: sigue en el writer, y por eso el staff hereda los topes sin una linea nueva.
 disjunta: no
 archivos: apps/merchant/drizzle/0041_*, apps/merchant/src/server/schema/business.ts, apps/merchant/src/server/api-permission.ts, apps/merchant/src/server/staff-permissions.ts, apps/merchant/src/server/staff.ts, apps/merchant/src/server/staff-create.ts, apps/merchant/src/server/session-view.ts, apps/merchant/src/server/auth-guards.ts, apps/merchant/src/app/api/{staff,catalog,locations,marketing}/_auth.ts, apps/merchant/src/app/api/counter/_auth.ts, apps/merchant/src/app/api/staff/[userId]/permissions/route.ts, apps/merchant/src/app/api/{brand,loyalty-program,loyalty-terms}/**/route.ts, apps/merchant/src/app/api/merchant/session/route.ts
@@ -28,7 +28,8 @@ fidelizacion.
 
 **Entra:**
 
-- La columna `permissions` con sus tres `CHECK` y el backfill de las filas existentes.
+- La columna `permissions` con sus tres `CHECK` y el **borrado** de las membresias de staff
+  existentes — **sin backfill**, decision del owner (§1).
 - `requireApiPermission` y su hermana sin gate de email, y la migracion de las **diez**
   superficies delegables del ADR 0079 §1.
 - `POST /api/staff` aceptando `permissions`, y `PATCH /api/staff/:userId/permissions`.
@@ -210,7 +211,8 @@ alcance.
 
 `api/counter/_auth.ts`: un caller con `role === 'staff'` y sin `counter` en sus permisos
 recibe `403 missing_permission`. **Es un cambio de comportamiento** —hoy alcanza con ser
-miembro— y por eso el backfill del §1 existe. El owner nunca lo necesita.
+miembro— y por eso el §1 **borra** las membresias de staff existentes en vez de backfillearlas:
+el owner las recrea con `counter` si las quiere. El owner nunca lo necesita.
 
 `operatorBusiness` (`counter/core.ts:93`) ya trae `role` desde el `innerJoin(memberships)`;
 sumar `permissions` es **una columna mas en esa misma consulta**, y su docblock ya declara por
@@ -228,9 +230,87 @@ choca contra el mismo tope que el owner **sin una linea nueva**.
 camino que llegue al `INSERT` sin pasar por el writer que evalua el plan. Tiene mutacion
 propia en el plan de pruebas.
 
-**Y `saveProgram` no se toca.** Su gate de crear-vs-editar vive en el writer desde la spec
-0077 y depende del **permiso de alta de la sesion**, que un staff nunca tiene: un integrante
-con `loyalty` **edita** el programa y **no puede crearlo**. Es correcto y queda declarado.
+**~~Y `saveProgram` no se toca.~~ ESTE PARRAFO ERA FALSO Y SE CORRIGE (enmienda 2026-09-21).**
+
+Decia: *«un integrante con `loyalty` **edita** el programa y **no puede crearlo**»*. **El
+mecanismo real es el INVERSO, y esta leido hasta el final** (`server/onboarding-grant.ts:73`):
+
+```ts
+export function programEditDenied(input: ProgramCaller & { isEdit: boolean }) {
+  if (!input.isEdit) return null;                                    // CREAR es libre
+  if (input.emailVerified || input.onboardingGrantActive) return null;
+  return { status: 403, code: "email_not_verified", ... };           // EDITAR exige email
+}
+```
+
+**Crear es libre** (decision del owner, ADR 0070 §11: *«para el alta no pedimos
+verificacion»*) y **editar** exige `emailVerified || onboardingGrantActive` — que un staff
+**no** tiene. O sea que la spec afirmaba como propiedad deseada exactamente lo contrario de lo
+que hace el arbol, y de paso tapaba un bloqueo real. Es la familia de error del `CLAUDE.md`:
+una afirmacion de MECANISMO presentada como medida, medida solo a medias. Caso en
+`LECCIONES.md`.
+
+#### 10. ENMIENDA 2026-09-21 — `brand` y `loyalty` no quedan entregadas sin esto
+
+**El hallazgo, reproducido por el orquestador sobre el arbol (no citado del implementador):**
+
+| Archivo | Linea | Que hace |
+|---|---|---|
+| `server/brand.ts` | **50** | `.where(and(eq(memberships.userId, userId), eq(memberships.role, "owner")))` |
+| `server/loyalty-program/owner.ts` | **36** | la misma linea, identica |
+
+`saveBrand`, `createLogoUpload` y `programForOwner` **re-resuelven el negocio por `userId` con
+`role = 'owner'`**, ignorando el `businessId` que el guard ya resolvio. Consecuencia: el guard
+nuevo deja pasar al integrante y **el resolvedor del dominio lo rechaza despues**. Un staff con
+`brand` lee `GET /api/brand` y **no puede escribir**; uno con `loyalty` no pasa ni la lectura.
+
+**Esto NO es una decision de producto abierta, y por eso no se le pregunta al owner:** el ADR
+0079 §1 ya lista `brand` → `GET/PUT /api/brand`, `brand/logo-upload` y `loyalty` →
+`GET/PUT /api/loyalty-program`, `stamp-upload`, `qr`, `loyalty-terms/templates` como
+superficies **delegables**. Entregarlas guardadas-pero-bloqueadas es un **incumplimiento**, no
+una entrega parcial legitima. «Declararlas a medias» queda descartado por esa razon.
+
+**El arreglo, y por que este y no aflojar el filtro de rol:** `ownerBusiness` y
+`programForOwner` ganan un `businessId` **opcional**; cuando viene, resuelven por el
+`businessId` que el guard ya devolvio, y cuando no, se comportan **exactamente como hoy**. Las
+rutas migradas pasan `auth.businessId`. Aflojar el `eq(role,'owner')` se descarta: ese
+resolvedor hace `orderBy(asc(businesses.createdAt)).limit(1)`, asi que para un usuario con mas
+de una membresia **elegiria un negocio en silencio** — ensancharlo convierte un 403 en una
+escritura sobre el negocio equivocado.
+
+**Radio medido, no estimado:** en produccion son `brand.ts` (3 funciones),
+`loyalty-program/owner.ts` (2) y las rutas que las llaman. **Los ~20 usos en tests de
+integracion pasan un `userId` de owner y NO se tocan**, porque el parametro es opcional y su
+ausencia conserva el comportamiento viejo.
+
+**Y el gate de email del writer, que es el segundo bloqueo de la misma familia:**
+`programEditDenied` vuelve a imponer `emailVerified` adentro del dominio, justo despues de que
+el paso 4 del guard **exceptuo al staff a proposito** (ADR 0079 §5). El writer tiene que saber
+que el caller es staff para no re-imponer un gate que la escalera ya decidio saltear.
+
+**DoD de esta enmienda:**
+
+- [ ] Un staff con `brand` hace `PUT /api/brand` y `POST /api/brand/logo-upload` con **200/201**,
+      y el control positivo en el mismo vector: sobre el negocio ajeno sigue rebotando.
+- [ ] Un staff con `loyalty` **lee** `GET /api/loyalty-program` y `qr` con 200, y **edita** con
+      `PUT` — el `email_not_verified` del writer ya no lo alcanza.
+- [ ] El owner sigue haciendo exactamente lo de hoy en las cinco rutas: sin `businessId`, el
+      resolvedor no cambia de comportamiento. Verificado con las suites `brand.neon` y
+      `loyalty-*.neon` **sin editarlas**.
+
+**Dos mutaciones mas, presupuesto 6 → 8:**
+
+| # | Mutacion | Oraculo que TIENE que ponerse rojo |
+|---|---|---|
+| M7 | el `businessId` opcional se ignora y siempre resuelve por `userId`+owner | el staff con `brand` escribiendo: vuelve el 403 del dominio |
+| M8 | el writer deja de saber que el caller es staff | el staff con `loyalty` **editando**: vuelve `email_not_verified` |
+
+**Lo que el implementador declaro y se acepta como esta:** el §8 dice «rebota si
+`businessStatus !== 'active'` **y** `role !== 'owner'`», y escrito asi un **owner de un negocio
+`closed` dejaria de rebotar** — contra el ADR 0079 y contra `business.status` (*«`closed`: no
+admite NI LOGIN, ni de owner ni de staff»*). Se implementaron **las dos** reglas: `closed`
+rebota a todos y ademas no-`active`+no-owner rebota. Es una desviacion de la letra **para
+conservar la decision**, y queda escrita aca.
 
 #### 8. Las dos lecturas
 

@@ -55,7 +55,11 @@ describe.skipIf(!integrationEnabled)(
     }, 30_000);
 
     const newStaff = async (name: string) =>
-      createStaff({ id: a.business.id, slug: a.slug }, { name });
+      createStaff(
+        { id: a.business.id, slug: a.slug },
+        { name, permissions: ["counter"] },
+        "owner",
+      );
 
     const lockoutRow = (userId: string) =>
       getDb()

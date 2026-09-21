@@ -148,7 +148,8 @@ describe.skipIf(!enabled)(
     it("`auth/staff` (login por PIN) NUNCA lo recibe: la columna queda NULL", async () => {
       const { staff, pin } = await createStaff(
         { id: seed.businessId, slug: seed.slug },
-        { name: "Cajera Sin Permiso" },
+        { name: "Cajera Sin Permiso", permissions: ["counter"] },
+        "owner",
       );
       const response = await STAFF_LOGIN(
         new Request("http://localhost:3001/api/merchant/auth/staff", {

@@ -169,6 +169,10 @@ const SURFACES: Surface[] = [
       "business.timezone",
       "membership.role",
       "membership.status",
+      // Spec 0086 §8: la CAPACIDAD del caller, para que la UI pinte la navegacion sin
+      // sondear endpoints. No es la columna: para un owner son los SIETE aunque su fila este
+      // vacia.
+      "membership.permissions",
     ],
     run: () => {
       world.rows = [[BUSINESS_ROW]];

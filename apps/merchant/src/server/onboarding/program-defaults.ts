@@ -192,6 +192,9 @@ export function composeProgramInput(
 export async function programInput(
   raw: unknown,
   userId: string,
+  /** Spec 0086 §10: el negocio del guard. Sin el, el pais cae a `default` para un integrante
+   * —que es lo que pasaba antes de la enmienda— y las clausulas semilla saldrian genericas. */
+  businessId?: string,
 ): Promise<unknown> {
   const partial = asObject(raw);
   if (!partial) return raw;
@@ -199,7 +202,18 @@ export async function programInput(
   // reemplaza por las semillas — se va al 422 «Añade al menos una cláusula de términos.»,
   // que es lo que el cliente pidió al mandarlo vacío.
   if (partial.clauses !== undefined) return composeProgramInput(partial, null);
-  const business = await ownerBusiness(userId);
+  // **LA LLAMADA SIN `businessId` CONSERVA SU FORMA EXACTA, y no es un tic de estilo.**
+  // `ownerBusiness(userId, undefined)` y `ownerBusiness(userId)` corren la MISMA rama y el
+  // MISMO SQL —el comportamiento del owner es idéntico—, pero no son la misma LLAMADA para un
+  // espía: `program-defaults-clauses.test.ts:114` asevera
+  // `toHaveBeenCalledWith("user-0080")`, que es estricto en la aridad. Ese test pinnea que el
+  // país sale de la SESIÓN y no del cliente, y el DoD §10 exige que las suites del owner pasen
+  // **sin editarlas**: editar esa línea para acomodar la enmienda sería exactamente lo que esa
+  // regla prohíbe. La condición cuesta dos líneas y deja el oráculo viejo intacto.
+  const business =
+    businessId === undefined
+      ? await ownerBusiness(userId)
+      : await ownerBusiness(userId, businessId);
   return composeProgramInput(
     partial,
     await wizardClauseTemplateIds(

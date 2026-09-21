@@ -9,13 +9,15 @@ const FOREIGN_LOCATION = "33333333-3333-4333-8333-333333333333";
 
 const world = vi.hoisted(() => ({
   /**
-   * Spec 0072: `emailVerified` entra al doble de la sesión porque `requireApiOwner` —el
-   * resolvedor único de las 10 superficies del owner— ahora corre el gate de email también
-   * acá. Es una edición del FIXTURE, no de una aserción: cada `it` sigue aseverando lo
-   * mismo que aseveraba.
+   * Spec 0072: `emailVerified` entra al doble de la sesión porque el resolvedor único de
+   * las superficies delegables corre el gate de email también acá.
+   *
+   * Spec 0086: el resolvedor pasó a ser `membershipContext` —el gemelo de `ownerContext`
+   * que NO filtra rol— porque el guard ahora decide por PERMISO. Son ediciones del FIXTURE,
+   * no de una aserción: cada `it` sigue aseverando lo mismo que aseveraba.
    */
   session: null as null | { user: { id: string; emailVerified: boolean } },
-  ownerContext: vi.fn(),
+  membershipContext: vi.fn(),
   listLocations: vi.fn(),
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
@@ -28,7 +30,7 @@ vi.mock("./auth", () => ({
 
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
-  ownerContext: world.ownerContext,
+  membershipContext: world.membershipContext,
 }));
 
 // Only the four domain entry points are replaced; `LocationError` stays real, because
@@ -151,17 +153,19 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
       const response = await call();
       expect(response.status).toBe(401);
       expect(spy).not.toHaveBeenCalled();
-      expect(world.ownerContext).not.toHaveBeenCalled();
+      expect(world.membershipContext).not.toHaveBeenCalled();
     },
   );
 
   it.each(HANDLERS)(
     "$name answers 403 to a signed-in caller who is not an owner",
     async ({ call, spy }) => {
-      // `ownerContext` returns null for a staff member, for a disabled owner, and for a
-      // user with no membership at all — the three ways this endpoint must say no.
+      // Spec 0086: `membershipContext` returns null for a disabled member and for a user
+      // with no membership at all. (A staff member WITH an active membership but WITHOUT
+      // the `locations` scope is the other way this endpoint says no, and it has its own
+      // oracle in `api-permission-surfaces.test.ts`.)
       world.session = { user: { id: "user-staff", emailVerified: true } };
-      world.ownerContext.mockResolvedValue(null);
+      world.membershipContext.mockResolvedValue(null);
       const response = await call();
       expect(response.status).toBe(403);
       expect(spy).not.toHaveBeenCalled();
@@ -172,13 +176,17 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
     "$name acts on the CALLER's business, never on one named by the request",
     async ({ call, spy, businessArg }) => {
       world.session = { user: { id: "user-owner", emailVerified: true } };
-      world.ownerContext.mockResolvedValue({
+      world.membershipContext.mockResolvedValue({
         id: CALLER_BUSINESS,
         slug: "caller",
+        countryCode: "EC",
         currencyCode: "USD",
-        // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed.
+        // Spec 0072: el resolvedor selecciona el eje `status`, y el guard es fail-closed.
         status: "active",
         suspensionReason: null,
+        // Spec 0086: el owner pasa el paso 3 sin mirar la columna, que es `'{}'` por CHECK.
+        role: "owner",
+        permissions: [],
       });
 
       const response = await call();
@@ -191,7 +199,7 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
       expect(business).toBe(CALLER_BUSINESS);
       expect(business).not.toBe(FOREIGN_BUSINESS);
       // …and the session it resolved from is the caller's, not a header-supplied one.
-      expect(world.ownerContext).toHaveBeenCalledWith("user-owner");
+      expect(world.membershipContext).toHaveBeenCalledWith("user-owner");
     },
   );
 
@@ -200,13 +208,17 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
     // caller's business (`locations-limits.neon.integration.test.ts`). This pins that the
     // route forwards the id and surfaces the domain's status instead of swallowing it.
     world.session = { user: { id: "user-owner", emailVerified: true } };
-    world.ownerContext.mockResolvedValue({
+    world.membershipContext.mockResolvedValue({
       id: CALLER_BUSINESS,
       slug: "caller",
+      countryCode: "EC",
       currencyCode: "USD",
-      // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed.
+      // Spec 0072: el resolvedor selecciona el eje `status`, y el guard es fail-closed.
       status: "active",
       suspensionReason: null,
+      // Spec 0086: el owner pasa el paso 3 sin mirar la columna, que es `'{}'` por CHECK.
+      role: "owner",
+      permissions: [],
     });
     const { LocationError } = await import("./locations");
     world.updateLocation.mockRejectedValue(
@@ -231,13 +243,17 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
 
   it("GET returns the domain list and nothing else", async () => {
     world.session = { user: { id: "user-owner", emailVerified: true } };
-    world.ownerContext.mockResolvedValue({
+    world.membershipContext.mockResolvedValue({
       id: CALLER_BUSINESS,
       slug: "caller",
+      countryCode: "EC",
       currencyCode: "USD",
-      // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed.
+      // Spec 0072: el resolvedor selecciona el eje `status`, y el guard es fail-closed.
       status: "active",
       suspensionReason: null,
+      // Spec 0086: el owner pasa el paso 3 sin mirar la columna, que es `'{}'` por CHECK.
+      role: "owner",
+      permissions: [],
     });
     world.listLocations.mockResolvedValue([
       {

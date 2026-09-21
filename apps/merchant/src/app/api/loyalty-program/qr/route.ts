@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import {
-  apiOwnerFailureResponse,
-  requireApiOwnerSinGateDeEmail,
-} from "../../../../server/api-owner";
+import { apiOwnerFailureResponse } from "../../../../server/api-owner";
+import { requireApiPermissionSinGateDeEmail } from "../../../../server/api-permission";
 import { getDb } from "../../../../server/db";
 import { businesses } from "../../../../server/schema";
 import { programForOwner } from "../../../../server/loyalty-program";
@@ -32,25 +30,29 @@ export const runtime = "nodejs";
  * QR **pelado**, sin poster: en el wizard todavia no hay ni color ni logo.
  */
 export async function GET(request: Request) {
-  // Spec 0075 — **la UNICA ruta del repo con este guard**, y el nombre lo dice: conserva los
-  // pasos 1, 2 y 4 (sesion, owner activo, eje `status`) y pierde SOLO el paso 3. Esta
+  // Spec 0075 — el guard **sin el paso 3**, y el nombre lo dice. Spec 0086: la escalera es
+  // ahora la de permisos (sesion → membresia activa → alcance `loyalty` → eje `status`) y
+  // pierde igual SOLO el paso 3. Esta
   // pantalla es la CUARTA del wizard (ADR 0070 §1) y la verificacion de email bloquea «todo
   // lo que venga DESPUES del wizard» (ADR 0070 §11): con el paso 3 puesto, una cuenta recien
   // creada —cuyo `email_verified` nace `false`— no podia ver el resultado de su propia alta.
   // La 0072 la habia barrido adentro de las 12 entradas gateadas porque nacio con la 0069,
   // DESPUES de que se censaran las superficies sin gate de email.
-  const auth = await requireApiOwnerSinGateDeEmail(request, {
-    notOwner: "Solo el owner puede gestionar el programa.",
+  const auth = await requireApiPermissionSinGateDeEmail(request, "loyalty", {
+    missingPermission: "No tienes permiso para gestionar el programa.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const url = new URL(request.url);
   const format = url.searchParams.get("format") === "png" ? "png" : "svg";
   const download = url.searchParams.get("download") === "1";
   try {
-    const context = await programForOwner(auth.userId);
+    // Spec 0086 §10: el negocio sale del guard. Sin esto, un integrante con `loyalty` pasaba
+    // la escalera y recibia el 403 `not_member` de la linea de abajo, que es la del
+    // resolvedor owner-only y no la del guard.
+    const context = await programForOwner(auth.userId, auth.business.id);
     if (!context) {
       return NextResponse.json(
-        { error: "Sin negocio.", code: "not_owner" },
+        { error: "Sin negocio.", code: "not_member" },
         { status: 403 },
       );
     }

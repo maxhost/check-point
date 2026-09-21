@@ -11,6 +11,7 @@ import {
   StaffError,
   toStaffDTO,
 } from "./staff";
+import { assertGrantable, parsePermissions } from "./staff-permissions";
 
 /**
  * Spec 0067 §4 — el ALTA del integrante, separada de `staff.ts` porque ese archivo ya
@@ -20,7 +21,14 @@ import {
  * el `user` sin credencial—, que es tambien lo unico que importa `staff-pin.ts`.
  */
 
-/** Valida el cuerpo del alta. **Solo `name`**: cualquier otra clave se ignora. */
+/**
+ * Valida el cuerpo del alta. **`name` y `permissions`**: cualquier otra clave se ignora.
+ *
+ * `permissions` es **obligatorio y con al menos un elemento** desde la spec 0086 §5 (decision
+ * del owner): dar de alta a alguien que no puede hacer nada no tiene sentido, y para eso
+ * existe desactivarlo. Un valor desconocido es `400 unknown_permission` **antes** de llegar a
+ * la base — el `CHECK` de la migracion 0041 es la red, no el validador.
+ */
 export function parseCreateStaffInput(value: unknown): CreateStaffInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new StaffError(400, "El cuerpo no es válido.", "invalid_body");
@@ -31,7 +39,7 @@ export function parseCreateStaffInput(value: unknown): CreateStaffInput {
     throw new StaffError(400, "El nombre es obligatorio.", "name_required");
   if (name.length > 80)
     throw new StaffError(400, "El nombre es muy largo.", "name_too_long");
-  return { name };
+  return { name, permissions: parsePermissions(body.permissions) };
 }
 
 /**
@@ -81,10 +89,14 @@ async function freeHandle(businessId: string, name: string): Promise<string> {
 }
 
 /**
- * Alta de un integrante (ADR 0044 + spec 0067 §4). El owner escribe **solo el nombre**:
- * el `handle` lo deriva el servidor y el `slug` sale de la SESION, nunca del cuerpo — si
- * viajara en el body seria un parametro con el que un owner podria apuntar al negocio de
- * otro.
+ * Alta de un integrante (ADR 0044 + spec 0067 §4 + spec 0086 §5). Quien da de alta escribe
+ * el **nombre** y **los permisos**: el `handle` lo deriva el servidor y el `slug` sale de la
+ * SESION, nunca del cuerpo — si viajara en el body seria un parametro con el que se podria
+ * apuntar al negocio de otro.
+ *
+ * **Ya no lo hace solo el owner** (spec 0086): tambien un integrante con el permiso `staff`,
+ * que es el perfil ADMINISTRADOR. Lo que ese perfil NO puede es otorgar `staff` — R1, y va
+ * aplicada aca adentro, no en la ruta, para que cualquier puerta futura la herede.
  *
  * Ya NO pasa por `signUpEmail`: ese camino exige una contraseña que el staff no tiene, y
  * el paso 3 apaga `emailAndPassword` entero. El `user` se inserta directo, **sin fila en
@@ -96,8 +108,16 @@ async function freeHandle(businessId: string, name: string): Promise<string> {
 export async function createStaff(
   business: { id: string; slug: string },
   value: unknown,
+  /** El ROL DEL CALLER, que sale de la fila que resolvio el guard y **nunca del cuerpo**.
+   * Lo necesita R1 (spec 0086 §4): un administrador no fabrica otro administrador. Es
+   * obligatorio a proposito — un default `"owner"` haria que cualquier puerta nueva se
+   * saltee la regla por omision. */
+  callerRole: string,
 ): Promise<CreatedStaff> {
   const input = parseCreateStaffInput(value);
+  // R1 — va ANTES de cualquier escritura: un no-owner que manda `staff` en la lista no puede
+  // dejar ni un `user` huerfano detras del rechazo.
+  assertGrantable(callerRole, input.permissions);
   const handle = await freeHandle(business.id, input.name);
   const pin = generatePin();
   const pinHash = await hashPin(pin);
@@ -122,6 +142,7 @@ export async function createStaff(
         userId,
         role: "staff",
         status: "active",
+        permissions: input.permissions,
         handle,
         pinHash,
         pinMustChange: true,
@@ -130,6 +151,7 @@ export async function createStaff(
       .returning({
         role: memberships.role,
         status: memberships.status,
+        permissions: memberships.permissions,
         createdAt: memberships.createdAt,
       });
     return {
@@ -140,6 +162,7 @@ export async function createStaff(
         slug: business.slug,
         role: row.role,
         status: row.status,
+        permissions: row.permissions,
         createdAt: row.createdAt,
       }),
       pin,

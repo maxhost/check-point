@@ -116,14 +116,21 @@ describe.skipIf(!enabled)(
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-      await getDb().insert(memberships).values({
-        businessId,
-        userId: staffId,
-        role: "staff",
-        status: "active",
-        handle: "staff-slug",
-        pinHash: "no-sirve-para-nada",
-      });
+      await getDb()
+        .insert(memberships)
+        .values({
+          businessId,
+          userId: staffId,
+          role: "staff",
+          status: "active",
+          handle: "staff-slug",
+          pinHash: "no-sirve-para-nada",
+          // Spec 0086: el `CHECK 3` hace imposible un staff con `'{}'`. `counter` es el
+          // permiso que este integrante NO necesita para nada acá —el slug es una superficie
+          // de la CUENTA (ADR 0079 §8) y no tiene toggle—, y por eso es el valor correcto:
+          // deja al caller siendo un integrante legítimo y `not_owner` sigue siendo su `code`.
+          permissions: ["counter"],
+        });
       ownerCookie = (await openMerchantSession(ownerId)).split(";")[0];
     }, 60_000);
 

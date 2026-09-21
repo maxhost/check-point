@@ -57,9 +57,13 @@ export async function saveProgram(
   userId: string,
   rawInput: unknown,
   caller: ProgramCaller,
+  /** Spec 0086 §10: el negocio que el guard ya resolvio. **Opcional a proposito** — sin el,
+   * `programForOwner` se comporta exactamente como antes de la enmienda (owner-only), que es
+   * lo que conserva a las ~20 llamadas de las suites de integracion sin tocarlas. */
+  businessId?: string,
 ) {
   const input = validateProgramInput(rawInput);
-  const context = await programForOwner(userId);
+  const context = await programForOwner(userId, businessId);
   if (!context) throw new LoyaltyError(403, "No tienes un negocio como owner.");
   const { business, program } = context;
   // EL EJE `status` (spec 0072, cierre de F1). Va en el WRITER y no en la ruta porque

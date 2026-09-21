@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../server/auth";
 import { businessStatusFailure } from "../../../server/api-owner";
+import { hasScope } from "../../../server/permissions-catalog";
 import {
   CounterError,
   type OperatorBusiness,
@@ -8,9 +9,10 @@ import {
 } from "../../../server/counter";
 
 /**
- * Resolves the counter operator: an authenticated merchant_auth user who is a member
- * (owner or staff) of a business. Returns the business + the operator's user id, or the
- * 401/403 response to send. The counter never resolves or accredits over a foreign business.
+ * Resolves the counter operator: an authenticated merchant_auth user who is an ACTIVE member
+ * of a business **and** —since spec 0086— either its owner or a staff member holding the
+ * `counter` permission. Returns the business + the operator's user id, or the 401/403
+ * response to send. The counter never resolves or accredits over a foreign business.
  */
 export async function requireOperator(
   request: Request,
@@ -32,6 +34,36 @@ export async function requireOperator(
     };
   }
   const { business, role } = operator;
+  /**
+   * EL PERMISO `counter` (spec 0086 §6 / ADR 0079 §1). **Es un CAMBIO DE COMPORTAMIENTO**:
+   * hasta esta spec alcanzaba con ser miembro del negocio para acreditar, y ahora hace falta
+   * el toggle. Es decision textual del owner: *«puede que el merchant quiera que un solo
+   * staff se encargue de eso»*.
+   *
+   * Por eso la migracion 0041 **borra** las membresias de staff existentes en vez de
+   * backfillearlas: el owner las recrea con `counter` si las quiere.
+   *
+   * `hasScope` es la MISMA decision pura que evalua el paso 3 de `requireApiPermission`, asi
+   * que el mostrador y las nueve superficies delegables no pueden divergir. El **owner nunca
+   * lo necesita** (`hasScope` lo deja pasar sin mirar la columna, ADR 0079 §4).
+   *
+   * Va ANTES del gate de email y del eje `status` por el mismo orden del ADR 0073 §1 que
+   * usan las otras diez: quien no tiene el permiso no se entera del estado del negocio.
+   *
+   * Cubre las CUATRO rutas (`resolve`, `grant`, `redeem`, `coupon-redeem`) porque las cuatro
+   * pasan por acá.
+   */
+  if (!hasScope(role, operator.permissions, "counter")) {
+    return {
+      response: NextResponse.json(
+        {
+          error: "No tienes permiso para operar el mostrador.",
+          code: "missing_permission",
+        },
+        { status: 403 },
+      ),
+    };
+  }
   /**
    * EL GATE DE EMAIL DEL MOSTRADOR (spec 0082 §2, decisión textual del owner del 2026-09-19:
    * *«mostrador, tambien entra en cualquier accion requiere verificar email»*). Hasta esta

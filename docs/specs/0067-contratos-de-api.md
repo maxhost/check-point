@@ -485,6 +485,8 @@ imprimir el parametro crudo**: un codigo desconocido no renderiza nada.
 |---|---|---|---|
 | `staff_disabled` | `requireBackofficeSession` (`server/auth-guards.ts`, constante `STAFF_DISABLED`) | la membresia del integrante esta `disabled`; el guard ademas **revoco su sesion** antes de rebotarlo (ADR 0055) | «Miembro del staff desactivado» |
 | `magic_link_invalid` | `GET /api/merchant/auth/magic-link` (§6) | el enlace no traia token, o el token era invalido, estaba vencido o ya se habia usado | «Ese enlace ya no sirve. Pedí uno nuevo.» |
+| `business_closed` | `requireBackofficeSession` (constante `BUSINESS_CLOSED`, spec 0072 §D4) | la cuenta del negocio esta CERRADA; no entra nadie, ni el owner | «Esta cuenta está cerrada.» |
+| `business_suspended` | `requireBackofficeSession` (constante `BUSINESS_SUSPENDED`, spec 0086 §8) | el negocio no opera y el caller **no es el owner**. El owner del mismo negocio NO rebota: entra a leer el motivo | «La cuenta del negocio está suspendida.» |
 
 **`email_not_verified` SALIO de esta tabla (spec 0082).** Ya no es un codigo de rebote: el
 guard de paginas **no lo emite mas**, porque el owner sin verificar **entra** al backoffice —

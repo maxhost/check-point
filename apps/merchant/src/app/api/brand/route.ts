@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  apiOwnerFailureResponse,
-  requireApiOwner,
-} from "../../../server/api-owner";
+import { apiOwnerFailureResponse } from "../../../server/api-owner";
+import { requireApiPermission } from "../../../server/api-permission";
 import {
   BrandError,
   type BrandRecord,
@@ -13,13 +11,16 @@ import {
 export const runtime = "nodejs";
 
 /**
- * Spec 0072 §D3 — las dos superficies de `/api/brand` resuelven owner con
- * `requireApiOwner`, el resolvedor unico. Antes resolvian a mano con `getSession` + el
- * resolvedor ad hoc del dominio, que **no filtra `memberships.status='active'`** y no tiene
- * gate de email: un integrante de baja y un owner sin verificar editaban la marca.
+ * Spec 0072 §D3 — las dos superficies de `/api/brand` dejaron de resolver a mano con
+ * `getSession` + el resolvedor ad hoc del dominio, que **no filtra
+ * `memberships.status='active'`** y no tiene gate de email.
+ *
+ * **Spec 0086 §3 — y ahora el guard es `requireApiPermission` con el alcance `brand`.**
+ * Conserva los pasos 1, 4 y 5 de la escalera y suma los dos del medio; el `code` de rechazo
+ * pasa de `not_owner` a `not_member` / `missing_permission`.
  */
 const MESSAGES = {
-  notOwner: "Solo el owner puede gestionar la marca.",
+  missingPermission: "No tienes permiso para gestionar la marca.",
   emailNotVerified: "Verificá tu email para gestionar la marca.",
 };
 
@@ -43,26 +44,30 @@ function brandResponse(brand: BrandRecord) {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireApiOwner(request, MESSAGES);
+  const auth = await requireApiPermission(request, "brand", MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const brand = await brandForBusiness(auth.business.id);
   if (!brand)
     return NextResponse.json(
-      { error: "Sin negocio.", code: "not_owner" },
+      { error: "Sin negocio.", code: "not_member" },
       { status: 403 },
     );
   return NextResponse.json(brandResponse(brand));
 }
 
 export async function PUT(request: Request) {
-  const auth = await requireApiOwner(request, MESSAGES);
+  const auth = await requireApiPermission(request, "brand", MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
-    // `saveBrand` sigue recibiendo el `userId` y resolviendo su propio negocio: cambiarle la
-    // firma tocaria su optimistic lock y sus tests, y esta spec unifica el GUARD, no el
-    // dominio. El guard de arriba ya decidio que este usuario es owner activo de un negocio
-    // que opera.
-    const brand = await saveBrand(auth.userId, await readJson(request));
+    // Spec 0086 §10 — **EL `businessId` DEL GUARD VIAJA AL WRITER.** Hasta la enmienda,
+    // `saveBrand` re-resolvia el negocio por `userId` con `role='owner'`, asi que un
+    // integrante con `brand` pasaba esta puerta y moria abajo con «No tienes un negocio como
+    // owner». El `userId` sigue yendo porque el optimistic lock y la auditoria lo usan.
+    const brand = await saveBrand(
+      auth.userId,
+      await readJson(request),
+      auth.business.id,
+    );
     return NextResponse.json(brandResponse(brand));
   } catch (error) {
     if (error instanceof BrandError) {

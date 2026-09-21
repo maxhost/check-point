@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import {
   apiOwnerFailureResponse,
   requireApiOwner,
-  requireApiOwnerSinGateDeEmail,
 } from "../../../server/api-owner";
+import {
+  requireApiPermission,
+  requireApiPermissionSinGateDeEmail,
+} from "../../../server/api-permission";
 import { getMerchantAuth } from "../../../server/auth";
 import {
   type ProgramCaller,
@@ -33,9 +36,24 @@ import { toClientProgram } from "../../../server/loyalty-program/client-view";
  * que produjo el bypass de la 0077 y, antes, el del eje `status` en la 0072. El `PUT`
  * absorbio el cuerpo corto, los `code` estables y el guard sin paso 3 de la puerta vieja;
  * `GET`, `DELETE` y `PATCH` **no cambian** (siguen con `requireApiOwner` y sin `code`).
+ *
+ * **Spec 0086 §3 — LOS CUATRO VERBOS YA NO COMPARTEN GUARD, y eso es la decision:**
+ *
+ * - `GET` y `PUT` son **delegables** con el alcance `loyalty` (un integrante lee y escribe
+ *   el programa), y pasan a `requireApiPermission` / `requireApiPermissionSinGateDeEmail`.
+ * - `DELETE` (cierra el programa) y `PATCH` (`cancel-close`) son **IRREVERSIBLES** y por eso
+ *   **ningun toggle los abre** (ADR 0079 §2, contrato 0086 §2.1): conservan `requireApiOwner`
+ *   y su `403 not_owner`, que ahi sigue siendo literal.
  */
 const MESSAGES = {
-  notOwner: "Solo el owner puede gestionar el programa.",
+  missingPermission: "No tienes permiso para gestionar el programa.",
+  emailNotVerified: "Verificá tu email para gestionar el programa.",
+};
+
+/** La copia OWNER-ONLY de `DELETE` y `PATCH`. Separada de {@link MESSAGES} porque los `code`
+ * son distintos y el tipo de las dos funciones lo hace explicito. */
+const OWNER_MESSAGES = {
+  notOwner: "Solo el owner puede cerrar o reabrir el programa.",
   emailNotVerified: "Verificá tu email para gestionar el programa.",
 };
 
@@ -68,7 +86,7 @@ async function readJson(request: Request) {
  * (ADR 0076 §2), asi que no hay campo del cuerpo que pueda moverlos. Fail-closed: sin
  * sesion se devuelve el caller mas restrictivo, que deja crear y niega editar.
  *
- * **Es una SEGUNDA lectura de la sesion en el mismo request** —`requireApiOwnerSinGateDeEmail`
+ * **Es una SEGUNDA lectura de la sesion en el mismo request** —`requireApiPermissionSinGateDeEmail`
  * ya hizo la suya— y es el costo medido de no tocar `api-owner.ts`, que es el guard de las
  * otras once superficies y la 0075 exige que quede intacto. Sin `cookieCache` configurado,
  * es una consulta mas por escritura de programa.
@@ -88,12 +106,13 @@ async function callerOf(request: Request): Promise<ProgramCaller> {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireApiOwner(request, MESSAGES);
+  const auth = await requireApiPermission(request, "loyalty", MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
-  const result = await programForOwner(auth.userId);
+  // Spec 0086 §10: el negocio sale del guard, no de un segundo resolvedor owner-only.
+  const result = await programForOwner(auth.userId, auth.business.id);
   if (!result)
     return NextResponse.json(
-      { error: "Sin negocio.", code: "not_owner" },
+      { error: "Sin negocio.", code: "not_member" },
       { status: 403 },
     );
   return NextResponse.json({
@@ -111,7 +130,7 @@ export async function GET(request: Request) {
  * modalidades que el dominio habilita (`points` y `stamps`, ADR 0076 §6) y emite los 8
  * `code` de §4.
  *
- * **SU GUARD ES `requireApiOwnerSinGateDeEmail` —pasos 1, 2 y 4, sin el 3— Y ESO NO AFLOJA
+ * **SU GUARD ES `requireApiPermissionSinGateDeEmail` —la escalera sin el paso 4— Y ESO NO AFLOJA
  * NADA:** desde la spec 0077 el paso 3 **ya no vive en la puerta**, vive en `saveProgram`,
  * que distingue crear de editar y exige `emailVerified || onboardingGrantActive` para
  * editar. Volver a poner el gate aca reintroduciria la grieta al reves: una cuenta nueva
@@ -122,8 +141,8 @@ export async function GET(request: Request) {
  * la 0075 cambia a proposito y `api-owner-surfaces.test.ts` asevera el conjunto EXACTO.
  */
 export async function PUT(request: Request) {
-  const auth = await requireApiOwnerSinGateDeEmail(request, {
-    notOwner: MESSAGES.notOwner,
+  const auth = await requireApiPermissionSinGateDeEmail(request, "loyalty", {
+    missingPermission: MESSAGES.missingPermission,
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   let body: unknown;
@@ -144,11 +163,26 @@ export async function PUT(request: Request) {
     // Todo lo que toca la base va ADENTRO del `try`, incluida la lectura de las semillas de
     // terminos que hace `programInput`: un fallo de base sale como el 503 que el contrato
     // declara, nunca como un 500 sin `code` (leccion de la spec 0068 §3).
-    const input = await programInput(body, auth.userId);
+    const input = await programInput(body, auth.userId, auth.business.id);
     const result = await saveProgram(
       auth.userId,
       input,
-      await callerOf(request),
+      // Spec 0086 §10 — **`isStaff` sale del ROL que resolvio el guard, nunca del cuerpo.**
+      // El paso 4 de la escalera exceptuo al integrante a proposito (su email sintetico no
+      // se verifica NUNCA); sin este dato `programEditDenied` volveria a imponer el gate una
+      // capa mas abajo y un staff con `loyalty` podria crear pero no EDITAR el programa.
+      // **`!== "owner"` y no `=== "staff"` porque ESPEJA AL PASO 4, que tampoco distingue.**
+      // `api-permission.ts:101` es `role === "owner" && emailVerified !== true`, asi que un
+      // rol que nadie le enseño al guard —un `manager` hipotetico— **queda exento del gate de
+      // email ahi tambien**. Con `=== "staff"` el dominio lo bloquearia despues de que la
+      // puerta lo dejo pasar, y esa DIVERGENCIA entre capas es el defecto que hay que evitar:
+      // la propiedad que se defiende es que el writer decida lo mismo que la escalera.
+      // **NO es fail-closed y no hay que leerlo asi** (medido: el rol desconocido se exime en
+      // las dos capas). Hoy es inalcanzable de todos modos — `business_membership_role_check`
+      // admite solo `owner` y `staff`—, y el dia que admita un tercer valor esta linea y el
+      // paso 4 se revisan JUNTOS, no por separado.
+      { ...(await callerOf(request)), isStaff: auth.role !== "owner" },
+      auth.business.id,
     );
     return NextResponse.json(result, { status: result.created ? 201 : 200 });
   } catch (error) {
@@ -168,7 +202,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireApiOwner(request, MESSAGES);
+  const auth = await requireApiOwner(request, OWNER_MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
     await closeProgram(
@@ -193,7 +227,7 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireApiOwner(request, MESSAGES);
+  const auth = await requireApiOwner(request, OWNER_MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const body = (await request.json().catch(() => null)) as {
     action?: string;

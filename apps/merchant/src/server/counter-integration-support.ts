@@ -138,6 +138,27 @@ export async function seedMember(opts: {
   businessId: string;
   role?: "owner" | "staff";
   status?: "active" | "disabled";
+  /** Spec 0086 §1 — los alcances del integrante. **Default `["counter"]`, que es el
+   * comportamiento que este seed tenia antes de la 0086**: hasta entonces cualquier miembro
+   * operaba el mostrador. Un `[]` para un `role='staff'` lo rechaza el `CHECK 3`
+   * (`business_membership_staff_has_permission_check`), asi que el default no es comodidad:
+   * es el unico valor que reproduce el seed viejo sin violar la base. */
+  permissions?: string[];
+  /**
+   * **`false` POR DEFAULT, que es la forma de PRODUCCION** (`staff-create.ts:132`): el `user`
+   * de un integrante nace con `email_verified = false` porque su email es el sintetico
+   * `staff-<uuid>@staff.invalid`, que **nunca se entrega y nunca se verifica**.
+   *
+   * Hasta la spec 0086 este seed ponia `true`, y eso volvia CIEGAS a las suites que miden las
+   * superficies delegadas: cualquier gate de email que alcanzara al staff pasaba igual,
+   * porque el caller sembrado no era el que existe en produccion. **Medido**: con `true`, la
+   * mutacion que le saca la excepcion al staff (`role === "owner" &&` fuera del paso 4)
+   * sobrevivia en VERDE en `permisos-delegados.neon` y `permisos-mostrador.neon`.
+   *
+   * Quien necesite un miembro con el buzon probado —un OWNER fabricado desde este seed— lo
+   * pide explicito. El default no se elige por comodidad: se elige por parecerse al dato real.
+   */
+  emailVerified?: boolean;
 }): Promise<string> {
   const userId = `counter-int-${randomUUID()}`;
   await getDb()
@@ -146,7 +167,7 @@ export async function seedMember(opts: {
       id: userId,
       name: `Staff ${userId.slice(-6)}`,
       email: `${userId}@example.test`,
-      emailVerified: true,
+      emailVerified: opts.emailVerified ?? false,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -161,8 +182,13 @@ export async function seedMember(opts: {
       // Spec 0067 §4: el CHECK `business_membership_staff_identity_check` exige `handle` y
       // `pin_hash` cuando `role='staff'`. El hash es un centinela deliberado —no verifica
       // contra ningun PIN— porque estos seeds prueban el mostrador, no el login.
+      // El owner NO lleva permisos nunca: el `CHECK 2` lo vuelve imposible (ADR 0079 §4).
       ...(role === "staff"
-        ? { handle: `seed-${userId.slice(-12)}`, pinHash: "seed-sin-pin" }
+        ? {
+            handle: `seed-${userId.slice(-12)}`,
+            pinHash: "seed-sin-pin",
+            permissions: opts.permissions ?? ["counter"],
+          }
         : {}),
     });
   return userId;

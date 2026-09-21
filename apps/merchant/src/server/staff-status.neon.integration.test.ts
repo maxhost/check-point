@@ -65,9 +65,8 @@ describe.skipIf(!enabled)(
         .values({ businessId, userId: ownerId, role: "owner" });
       const { staff } = await createStaff(
         { id: businessId, slug },
-        {
-          name: "Estado",
-        },
+        { name: "Estado", permissions: ["counter"] },
+        "owner",
       );
       staffUserId = staff.userId;
       ownerCookie = (await openMerchantSession(ownerId)).split(";")[0];
@@ -111,6 +110,8 @@ describe.skipIf(!enabled)(
           "createdAt",
           "identifier",
           "name",
+          // Spec 0086 §5: `permissions` entra al DTO; el email sintético sigue sin entrar.
+          "permissions",
           "role",
           "status",
           "userId",

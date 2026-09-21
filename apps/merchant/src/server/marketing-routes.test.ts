@@ -13,6 +13,7 @@ const world = vi.hoisted(() => ({
    * mismo que aseveraba.
    */
   session: null as null | { user: { id: string; emailVerified: boolean } },
+  membershipContext: vi.fn(),
   ownerContext: vi.fn(),
   listCampaigns: vi.fn(),
   createCampaign: vi.fn(),
@@ -27,8 +28,16 @@ vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
 }));
 
+/**
+ * Spec 0086 — **se doblan LOS DOS resolvedores, y la asimetria es la decision de esa spec**:
+ * `archive` y `end` son IRREVERSIBLES y conservan `requireApiOwner` (→ `ownerContext`,
+ * `403 not_owner`); las otras seis entradas son delegables y pasan por
+ * `requireApiPermission` (→ `membershipContext`, `403 missing_permission`). Un doble solo
+ * dejaria al otro resolvedor apuntando a la base y el archivo no correria sin `DATABASE_URL`.
+ */
 vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
+  membershipContext: world.membershipContext,
   ownerContext: world.ownerContext,
 }));
 
@@ -152,16 +161,30 @@ const HANDLERS = [
   })),
 ];
 
+const OWNER_ROW = {
+  id: CALLER_BUSINESS,
+  slug: "caller",
+  countryCode: "EC",
+  currencyCode: "USD",
+  status: "active",
+  suspensionReason: null,
+};
+
 function signedInOwner() {
   world.session = { user: { id: "user-owner", emailVerified: true } };
-  world.ownerContext.mockResolvedValue({
+  world.ownerContext.mockResolvedValue(OWNER_ROW);
+  world.membershipContext.mockResolvedValue({
     id: CALLER_BUSINESS,
     slug: "caller",
+    countryCode: "EC",
     currencyCode: "USD",
-    // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed —
+    // Spec 0072: el resolvedor selecciona el eje `status`, y el guard es fail-closed —
     // una fila sin `status` NO opera. Es la forma que devuelve la función real.
     status: "active",
     suspensionReason: null,
+    // Spec 0086: el owner pasa el paso 3 sin mirar la columna, que es `'{}'` por CHECK.
+    role: "owner",
+    permissions: [],
   });
 }
 
@@ -193,16 +216,17 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
       const response = await call();
       expect(response.status).toBe(401);
       expect(spy).not.toHaveBeenCalled();
-      expect(world.ownerContext).not.toHaveBeenCalled();
+      expect(world.membershipContext).not.toHaveBeenCalled();
     },
   );
 
   it.each(HANDLERS)(
     "$name answers 403 to a signed-in caller who is not an owner",
     async ({ call, spy }) => {
-      // `ownerContext` returns null for a STAFF member, for a disabled owner and for a
+      // Spec 0086: `membershipContext` returns null for a disabled member and for a
       // user with no membership: the three ways this endpoint must say no.
       world.session = { user: { id: "user-staff", emailVerified: true } };
+      world.membershipContext.mockResolvedValue(null);
       world.ownerContext.mockResolvedValue(null);
       const response = await call();
       expect(response.status).toBe(403);
@@ -210,9 +234,66 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     },
   );
 
+  /**
+   * Spec 0086 §3 / ADR 0079 §2 — **LO IRREVERSIBLE NO SE DELEGA, y acá se ve cuál es cuál.**
+   * Un integrante con el permiso `marketing` completo entra a las seis entradas delegables y
+   * recibe `403 not_owner` en `archive` y `end`, que no se deshacen.
+   *
+   * El control positivo va en el MISMO vector: sin él, un guard roto que contestara 403 a
+   * todo pasaría este caso sin distinguir «acotado» de «muerto».
+   */
+  it.each(HANDLERS)(
+    "$name: un STAFF con el permiso `marketing` entra, salvo en lo irreversible",
+    async ({ call, spy, action }) => {
+      world.session = { user: { id: "user-staff", emailVerified: false } };
+      world.membershipContext.mockResolvedValue({
+        ...OWNER_ROW,
+        role: "staff",
+        permissions: ["marketing"],
+      });
+      // `ownerContext` filtra `role='owner'`: para un integrante devuelve null, que es
+      // exactamente lo que hace a `archive` y `end` owner-only.
+      world.ownerContext.mockResolvedValue(null);
+      const response = await call();
+      if (action === "archive" || action === "end") {
+        expect(response.status).toBe(403);
+        expect((await response.json()).code).toBe("not_owner");
+        expect(spy).not.toHaveBeenCalled();
+      } else {
+        expect(response.status).toBeLessThan(400);
+        expect(spy).toHaveBeenCalledTimes(1);
+      }
+    },
+  );
+
+  /** El otro lado del mismo eje: sin el toggle, ninguna de las ocho abre — y el `code` es
+   * `missing_permission`, no `not_owner` (cambio de contrato de la 0086). */
+  it.each(HANDLERS)(
+    "$name: un STAFF SIN el permiso `marketing` → 403 `missing_permission`",
+    async ({ call, spy, action }) => {
+      world.session = { user: { id: "user-staff", emailVerified: false } };
+      world.membershipContext.mockResolvedValue({
+        ...OWNER_ROW,
+        role: "staff",
+        permissions: ["catalog"],
+      });
+      world.ownerContext.mockResolvedValue(null);
+      const response = await call();
+      expect(response.status).toBe(403);
+      // `archive`/`end` cortan antes, en el paso 2 de `requireApiOwner`, y ese `code` sigue
+      // siendo `not_owner` a proposito: ahi es literalmente lo que pasa.
+      expect((await response.json()).code).toBe(
+        action === "archive" || action === "end"
+          ? "not_owner"
+          : "missing_permission",
+      );
+      expect(spy).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(HANDLERS)(
     "$name acts on the CALLER's business, never on one named by the request",
-    async ({ call, spy }) => {
+    async ({ call, spy, action }) => {
       signedInOwner();
       const response = await call();
       expect(response.status).toBeLessThan(400);
@@ -220,7 +301,13 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
       const business = (spy.mock.calls[0] as unknown[])[0];
       expect(business).toBe(CALLER_BUSINESS);
       expect(business).not.toBe(FOREIGN_BUSINESS);
-      expect(world.ownerContext).toHaveBeenCalledWith("user-owner");
+      // …y la sesion de la que lo resolvio es la del caller, no una del header. Cual de los
+      // dos resolvedores corrio depende de si la accion es irreversible (spec 0086 §3).
+      const resolvedor =
+        action === "archive" || action === "end"
+          ? world.ownerContext
+          : world.membershipContext;
+      expect(resolvedor).toHaveBeenCalledWith("user-owner");
     },
   );
 

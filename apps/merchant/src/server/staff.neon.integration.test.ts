@@ -56,9 +56,11 @@ describe.skipIf(!integrationEnabled)(
     });
 
     it("creates a staff user + membership (staff/active) without touching the owner", async () => {
-      const { staff: dto, pin } = await createStaff(ownerBusiness(a), {
-        name: "Ana Staff",
-      });
+      const { staff: dto, pin } = await createStaff(
+        ownerBusiness(a),
+        { name: "Ana Staff", permissions: ["counter"] },
+        "owner",
+      );
       expect(dto.role).toBe("staff");
       expect(dto.status).toBe("active");
       expect(dto.identifier).toBe(`ana-staff@${a.slug}`);
@@ -91,14 +93,26 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("resolves a handle collision with a suffix instead of failing", async () => {
-      const uno = await createStaff(ownerBusiness(a), { name: "Repetido" });
-      const dos = await createStaff(ownerBusiness(a), { name: "Repetido" });
+      const uno = await createStaff(
+        ownerBusiness(a),
+        { name: "Repetido", permissions: ["counter"] },
+        "owner",
+      );
+      const dos = await createStaff(
+        ownerBusiness(a),
+        { name: "Repetido", permissions: ["counter"] },
+        "owner",
+      );
       expect(uno.staff.identifier).toBe(`repetido@${a.slug}`);
       expect(dos.staff.identifier).toBe(`repetido-2@${a.slug}`);
     }, 60_000);
 
     it("deactivating revokes sessions + blocks; reactivating restores", async () => {
-      const { staff } = await createStaff(ownerBusiness(a), { name: "Beto" });
+      const { staff } = await createStaff(
+        ownerBusiness(a),
+        { name: "Beto", permissions: ["counter"] },
+        "owner",
+      );
       // Seed a live session for the staff to prove revocation deletes it.
       await getDb()
         .insert(sessions)
@@ -142,9 +156,11 @@ describe.skipIf(!integrationEnabled)(
         setStaffStatus(ownerBusiness(a), a.userId, "disabled"),
       ).rejects.toMatchObject({ status: 409 });
 
-      const { staff: staffOfA } = await createStaff(ownerBusiness(a), {
-        name: "Cara",
-      });
+      const { staff: staffOfA } = await createStaff(
+        ownerBusiness(a),
+        { name: "Cara", permissions: ["counter"] },
+        "owner",
+      );
       // Business B cannot touch A's staff.
       await expect(
         setStaffStatus(ownerBusiness(b), staffOfA.userId, "disabled"),
@@ -156,7 +172,11 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("a staff member can accredit (reuses spec 0030) and the day history is scoped", async () => {
-      const { staff } = await createStaff(ownerBusiness(a), { name: "Dana" });
+      const { staff } = await createStaff(
+        ownerBusiness(a),
+        { name: "Dana", permissions: ["counter"] },
+        "owner",
+      );
       const consumer = await seedConsumer();
       const resolved = await resolveScan(a.business, consumer.qrToken);
       const result = await grantAccrual(a.business, staff.userId, {

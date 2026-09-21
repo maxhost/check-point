@@ -1,8 +1,8 @@
 /**
  * Spec 0074 §D1/§D3 — LAS FORMAS DE LAS DOS LECTURAS DE SESION, PURAS.
  *
- * **Este archivo no tiene un solo `import`, y eso es deliberado** (misma forma y mismo motivo
- * que `server/business-status.ts`, spec 0072 §D4). La tentacion es definir la forma dentro de
+ * **Este archivo no importa nada que no sea una HOJA PURA, y eso es deliberado** (misma forma
+ * y mismo motivo que `server/business-status.ts`, spec 0072 §D4). La tentacion es definir la forma dentro de
  * `auth-guards.ts`, que es donde vive el resolvedor gemelo; pero ese modulo importa
  * `next/navigation` y llama a `redirect()`, asi que cualquier consumidor de la forma se
  * arrastraria el runtime de ruteo. `auth-guards.ts` **no se modifica**: las rutas componen su
@@ -15,7 +15,14 @@
  * **Ninguna de las dos serializa una clave interna** (`CLAUDE.md`): `stampImageObjectKey` entra
  * a `toOnboardingView` y sale convertido en el booleano `stampImage`; `logoObjectKey`,
  * `stripeCustomerId` y `stripeSubscriptionId` no entran ni como parametro.
+ *
+ * **Spec 0086 — el unico import que este archivo tiene es `permissions-catalog.ts`, que
+ * tampoco importa nada.** La propiedad que el parrafo de arriba protege es «ningun consumidor
+ * de estas formas se arrastra un runtime», y una hoja pura no arrastra ninguno. La
+ * alternativa —copiar los siete valores acá— seria una quinta fuente de verdad para el
+ * conjunto que el `CHECK` de la base declara cerrado.
  */
+import { permissionsForRole } from "./permissions-catalog";
 
 export type SessionUser = {
   id: string;
@@ -38,7 +45,17 @@ export type SessionBusiness = {
   timezone: string;
 };
 
-export type SessionMembership = { role: string; status: string };
+export type SessionMembership = {
+  role: string;
+  status: string;
+  /** Spec 0086 §8 — lo que el caller PUEDE hacer, para que la UI pinte la navegacion sin
+   * adivinar ni sondear endpoints a ver cual contesta 403.
+   *
+   * **Para `role === 'owner'` son los SIETE**, aunque su fila en la base los tenga vacios:
+   * la API no expone la columna, expone la CAPACIDAD — y el `CHECK 2` de la migracion 0041
+   * depende de que esas dos cosas no coincidan. Lo decide `permissionsForRole`. */
+  permissions: string[];
+};
 
 /**
  * **SIEMPRE `200`.** No existe un camino que devuelva 401 ni 403: un endpoint que REPORTA el
@@ -67,6 +84,9 @@ export type SessionRow = {
   timezone: string;
   role: string;
   membershipStatus: string;
+  /** La columna cruda de la membresia. Para un owner es `'{}'` y **no es lo que sale por la
+   * API**: ver {@link SessionMembership}. */
+  permissions: string[] | null;
 };
 
 /** El cuerpo del caso «sin sesion», COMPARTIDO por las dos rutas. Es la misma forma que ya
@@ -108,7 +128,11 @@ export function toSessionView(
       currencyCode: row.currencyCode,
       timezone: row.timezone,
     },
-    membership: { role: row.role, status: row.membershipStatus },
+    membership: {
+      role: row.role,
+      status: row.membershipStatus,
+      permissions: permissionsForRole(row.role, row.permissions),
+    },
   };
 }
 
