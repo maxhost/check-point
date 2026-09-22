@@ -53,3 +53,14 @@ export function isAcceptedImageType(type: string | undefined | null): boolean {
   if (!type) return false;
   return ACCEPTED_IMAGE_CONTENT_TYPE_SET.has(type);
 }
+
+/**
+ * El PDF lo acepta UNA sola superficie —la importación de catálogo (spec 0090)—, porque es
+ * el único lugar donde el archivo no es una imagen de marca/producto sino un documento a
+ * analizar. Vive acá, y no en esa pantalla, para que el barrido de
+ * `upload-image-formats.test.ts` siga teniendo un solo lugar donde mirar.
+ *
+ * **NO entra en `ACCEPTED_IMAGE_CONTENT_TYPE_SET`**: ese set es el allow-list de los tres
+ * presign de imagen (marca/sello/producto), y sumarlo ahí dejaría subir un PDF como logo.
+ */
+export const PDF_CONTENT_TYPE = "application/pdf";

@@ -1287,3 +1287,167 @@ rojo, el oraculo «muerde», se sigue de largo. Nadie audita un rojo.
   doble.** La pregunta es barata: abrir el esquema y mirar los `notNull()`.
 - **Se arregla el DOBLE, no el test.** Y se **re-mide** despues: en la 0087 la segunda lectura de
   M7 dejo un solo rojo, y era el correcto.
+
+## 2026-09-21 — Specs 0088 y 0086. Una regla PURA con test no dice nada sobre si alguien la LLAMA
+
+**El caso, y paso DOS VECES el mismo dia.** Se escribio una regla anti-escalada, se le escribio su
+test puro (que muerde), se cableo en el writer… y al mutar **el cableado** —borrar la linea que la
+llama— la suite entera siguio **VERDE**:
+
+| Regla | Mutacion del cableado | Resultado |
+|---|---|---|
+| `assertDemotable` (R1b, solo el owner QUITA `staff`) | borrar la llamada de `setStaffPermissions` | **1.293 tests en verde** |
+| el `persist: false` de las ayudas del tour de Staff | quitarlo de `startHelp` | **1.526 tests en verde** (lo cazo el revisor) |
+
+**Por que se cuela tan facil:** el test puro da una sensacion de cierre completa. «La regla existe,
+tiene su caso, muerde» — y las tres cosas son ciertas. Lo que no se probo es la unica que protege en
+produccion: **que el borde la invoque**. Un `assert*` exportado y nunca llamado typecheckea, lintea
+y pasa su propio test.
+
+**Las reglas.**
+- **Toda regla nueva lleva DOS oraculos: el de la regla y el del CABLEADO.** Son pruebas distintas y
+  se mutan distinto: la primera ataca la condicion, la segunda **borra la llamada**.
+- El del cableado no necesita base: un doble de `./db` con el `select … limit` alcanza, porque el
+  caso que importa **corta antes de escribir**. Y conviene que el `returning` del doble **lance**:
+  asi el camino feliz se distingue del rechazo sin montar media base.
+- **Si la regla vive en una ruta**, el test va al lado de la ruta y dobla su `_auth` — es la unica
+  forma de elegir el rol del caller sin sesion.
+
+## 2026-09-21 — Spec 0088. El paso de un tour cuyo CLIC hace lo contrario de lo que su copy pide
+
+**El caso.** El tour de alta de Staff decia *«Habilitá Mostrador»* y estaba marcado para avanzar **al
+pulsar** ese switch. Pero el formulario abre con ese permiso **ya encendido**, asi que seguir el tour
+al pie de la letra lo **APAGABA**: los permisos quedaban en `[]` y el alta se cortaba con «Elegí al
+menos un permiso». **El QA del owner no lo vio porque el popover ofrece «Siguiente»** — quien avanza
+con el boton nunca dispara el clic que rompe.
+
+**Y la segunda mitad, que es la leccion de verdad:** al cerrarlo **no se barrieron los demas pasos de
+la misma clase**, y la segunda vuelta de revision encontro el gemelo — el paso de BAJA apunta a un
+boton que es un **TOGGLE** («Dar de baja» / «Reactivar») con copy incondicional, asi que sobre un
+integrante ya dado de baja el tour le **restablece** el acceso mientras el popover promete cortarlo.
+
+**Las reglas.**
+- **Un paso que autoavanza al pulsar un control es una afirmacion sobre el ESTADO de ese control.**
+  Antes de marcarlo, leer el estado inicial del componente: un toggle ya encendido, un boton que
+  alterna su accion, un control deshabilitado.
+- **Al cerrar un defecto de una clase, barrer los OTROS miembros de la clase en el mismo turno** — la
+  lista de pasos es corta y el `rg` es de dos minutos. Si no, la segunda vuelta de revision lo
+  encuentra y cuesta una ronda entera.
+- **Un anchor que puede no existir se renderiza DESHABILITADO, no ausente.** Con
+  `skipMissingElement: false` y `waitForElement: 60_000`, un anchor faltante es un tour colgado 60 s.
+
+## 2026-09-21 — Spec 0088. Tocar CSS COMPARTIDO es tocar otras pantallas, y revertir a medias es peor
+
+**El caso.** Un cambio de `.confirm-dialog` hecho para Staff alcanzo a **siete** pantallas (catalog,
+loyalty, locales, campañas, suscripcion) y el de `.toast` a **nueve**: pasaron de `#fff` a
+`var(--ui-surface)`, que **invierte** bajo `@media (prefers-color-scheme: dark)` sin ningun gate,
+mientras las paginas de atras siguen con `background: #fff` a mano en **69** reglas del mismo
+archivo. En un SO en modo oscuro: dialogo oscuro sobre pantalla clara.
+
+**Y la reversion salio a mitad de camino:** volver a `background: #fff` **sin poner `color`** dejo el
+texto heredando `--ui-text` de `.backoffice-layout`, que en oscuro es casi blanco. O sea **texto
+blanco sobre fondo blanco** — un defecto **preexistente** que la spec habia tapado sin querer, y que
+la reversion restauro.
+
+**Las reglas.**
+- **Antes de tocar una regla de CSS sin prefijo de pantalla, `rg` por sus consumidores** y escribir
+  en el diff a cuantas pantallas alcanza. Una spec que no lista esas pantallas esta mal alcanzada.
+- **Revertir no es «volver la linea»: es volver al COMPORTAMIENTO.** Si el cambio tapaba un bug
+  preexistente, la reversion lo destapa — y eso hay que verlo antes, no despues.
+- **Un `background` explicito pide su `color` explicito.** Si uno de los dos se hereda de un token
+  que invierte por `prefers-color-scheme`, el par se rompe en la mitad de los dispositivos.
+
+## 2026-09-21 — Lei el DOCBLOCK antes que el ADR, y le arme al owner un menu de decisiones sobre una contradiccion de prosa
+
+**El caso.** Un revisor reporto que la regla R1 de la spec 0086 estaba «implementada a la mitad».
+Verifique el codigo, confirme el hueco… y le presente al owner **dos opciones y una tabla de costos**
+para decidir. Su respuesta: *«Es simple, no entiendo como te pudiste confundir o hacerlo tan
+complejo»* — y tenia razon. Las fuentes decian:
+
+| Fuente | R1 |
+|---|---|
+| **ADR 0079 §3 (la decision del owner)** | «Solo el OWNER **otorga** `staff`» |
+| spec 0086, prosa | «solo el owner **otorga** `staff`» |
+| spec 0086, **titular** de la fila de la tabla | «otorga **o quita**» — con la condicion de al lado describiendo **solo otorgar** |
+| el docblock del codigo | copio el titular |
+
+O sea: **el codigo era fiel al ADR**, y lo que se habia pasado de largo era **el titular de una fila
+de tabla**, copiado despues al docblock. No habia media decision sin implementar: habia prosa que
+prometia mas que la decision.
+
+**Las reglas.**
+- **Cuando el codigo y un docblock difieren, la fuente es el ADR, y se lee PRIMERO.** El docblock es
+  una cita; el ADR es el original.
+- **Una fila de tabla cuyo TITULAR y cuya CONDICION dicen cosas distintas es un defecto**, y el
+  titular es el que miente mas lejos: es lo que se copia.
+- **No se le arma un menu de opciones al owner sobre algo que su ADR ya decidio.** Si la prosa
+  contradice al ADR, se arregla la prosa y se le informa; si hace falta una decision nueva, se le
+  hace **una** pregunta con su recomendacion.
+
+## 2026-09-21 — Una mutacion que da VERDE puede ser un artefacto mio, no un hueco del codigo
+
+**El caso.** Al entrar `locations` al catalogo del checklist (de cinco items a seis), se muto sacando
+ese id para ver si algun oraculo lo acusaba. **Verde.** Lo lei como «el checklist no tiene oraculo de
+sus items» — y era falso: el test SI existia y aseveraba **los cinco viejos**, asi que la mutacion
+**devolvia el arbol exactamente al estado que ese test esperaba**. El verde era mio.
+
+Al actualizar los tests al catalogo nuevo y re-medir, la misma mutacion dio **rojo en cuatro casos**.
+
+**La regla.** **Una mutacion se mide sobre el arbol FINAL, con los tests ya actualizados al
+comportamiento nuevo.** Mutar «hacia atras» —devolver el codigo al estado anterior— contra tests que
+todavia describen ese estado anterior es una tautologia: mide que el test viejo sigue siendo el test
+viejo. Si la mutacion es la inversa exacta del cambio que acabas de hacer, **primero se actualizan
+los oraculos**.
+
+## 2026-09-21 — Una spec escrita sin el arbol delante inventa la plataforma que necesita
+
+**El caso.** La spec 0090 (importacion de catalogo con IA) llego escrita y en estado `cerrada`, con
+su ADR y su handoff, lista para un implementador. Revisada contra el arbol, **siete bloqueantes** y
+**tres afirmaciones de mecanismo falsas**. Ninguna era una opinion: las once se resolvieron con un
+`grep`, un `node -e` o leer un archivo de config.
+
+Las tres afirmaciones falsas, que son la familia de siempre:
+
+| La spec decia | El arbol dice |
+|---|---|
+| «el rate limit **comun** de escrituras» controla el abuso | `api-permission.ts` y `api-owner.ts` no tienen **una linea** de rate limit. El mecanismo no existe |
+| la URL firmada «solo permite la clave **y el tamano** reservado» | `createTemporaryUploadUrl` (`r2.ts:72-95`) firma `Key` + `ContentType`, **no** `ContentLength`. Y ese helper **rechaza todo lo que pase de 5 MB** (`MAX_LOGO_BYTES`), asi que no podia firmar ni una de las fotos de 10 MB que la spec prometia |
+| «se valida la cantidad de paginas antes de llamar al modelo» | `sharp` **no lee PDF** (`sharp.format.pdf.input === false`) y no hay libreria de PDF en el store. El mecanismo tampoco existia |
+
+Y los dos bloqueantes de plataforma, que son el corazon:
+
+- **La spec diseño un worker asincrono para un plan que no puede despertarlo.** `vercel.json` ya
+  tiene los **2 crons** del maximo de Hobby y solo admite frecuencia diaria; un tercero, o un `*/5`,
+  hace que Vercel **rechace el deploy entero**. O sea que `queued` no tenia quien lo levantara: la
+  feature habria pasado los gates, los tests y la revision, y en prod el analisis **no empezaba
+  nunca**.
+- **`analyzing` era un pozo sin fondo.** La tabla de estados solo permitia `analyzing → ready|failed`
+  y el unico-import-activo bloqueaba crear otro: un `after()` o un worker muerto dejaba al negocio
+  **sin poder importar nunca mas**. Es el bug de `wallet_push_queue` clavado en `sending`, ya
+  documentado en la skill de gotchas, reintroducido por otra puerta.
+
+**Y el dato que vuelve esto una leccion y no una anecdota: la solucion correcta estaba en la
+documentacion del proveedor y nadie —ni quien escribio la spec, ni yo en la primera revision— fue a
+mirarla.** La pregunta del owner («¿por que no un webhook?») la desbloqueo en dos minutos: la
+Responses API acepta `background: true` y hay webhooks con firma Standard Webhooks, asi que **el
+trabajo largo no tiene por que vivir en nuestra funcion** y el techo de 60 s deja de ser un
+problema de diseño. Yo habia propuesto `after()`: una solucion que cabe **apenas** en la
+restriccion, en vez de una que la saca del medio.
+
+**Las reglas.**
+
+- **Una spec que nombra un mecanismo de la plataforma —un cron, un rate limit, un tope firmado, un
+  parser— tiene que poder señalar su archivo y su linea, o el plan que lo crea.** Escrita sin eso, la
+  spec no describe este sistema: describe el sistema que la feature necesitaria.
+- **Antes de diseñar alrededor de una restriccion, leer la documentacion del proveedor que la
+  impone.** «No se puede tener un worker frecuente» era cierto; «entonces el modelo tiene que correr
+  en nuestra funcion» no lo era. Una restriccion aceptada sin verificar se convierte en arquitectura.
+- **Toda maquina de estados se revisa preguntando, por cada estado, quien lo saca de ahi si el
+  proceso que lo escribio desaparece.** Un estado cuya unica salida la escribe un proceso que puede
+  morir es un pozo, y si ademas bloquea un unico-activo, el pozo se come la feature para ese negocio.
+- **El corolario barato: un contador hecho a mano falla ABIERTO.** El escaneo naive de `/Type /Page`
+  devolvio **0** en un PDF con `/ObjStm` (medido sobre 14 PDFs reales), y un `<=10` sobre 0 pasa: un
+  documento de 400 paginas se iba al modelo. Lo que lo arreglo no fue una dependencia nueva sino
+  `node:zlib` —que viene en Node— inflando los streams y tomando el **maximo** de dos señales
+  independientes, con rechazo cuando ninguna da nada. **Un limite que no se puede medir se declara,
+  no se afirma.**

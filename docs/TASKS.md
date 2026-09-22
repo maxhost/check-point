@@ -8,6 +8,113 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ SIGUIENTE ARCO — SPEC 0090: IMPORTACIÓN DE CATÁLOGO CON IA
+
+**Estado: DOCUMENTOS CERRADOS Y CORREGIDOS (2026-09-21). CERO CÓDIGO DE LA FEATURE. SIN COMMITEAR.**
+
+Lo siguiente es **implementar**, y el punto de retorno son cuatro archivos:
+
+- `adr/0082-…-agnostica-y-borrador-revisable.md` — la decisión, **y su enmienda §8-§12**, que es
+  donde viven las seis decisiones del owner del 2026-09-21.
+- `specs/0090-importacion-de-catalogo-desde-imagen-o-pdf.md` — **segunda versión**, la que se
+  implementa. La primera se revisó contra el árbol y tenía siete bloqueantes y tres afirmaciones de
+  mecanismo falsas.
+- `specs/0090-contratos-de-api.md` — **el contrato para la UI, que la construye el owner por
+  fuera.** La spec **no toca un solo `.tsx`**.
+- `handoff-catalog-import-ai-2026-09-21.md` — punto de retorno corto (su «secuencia recomendada»
+  quedó vieja en un punto: el implementador **no** hace UI).
+
+### Las seis decisiones del owner, cerradas — no se reabren durante el código
+
+1. **El trabajo largo no corre en nuestra función.** El adaptador delega en el proveedor
+   (`background: true`) y lo retomamos por **callback firmado**; el scheduler externo pasa de worker
+   a **reconciliador**. Motivo medido: los 2 crons de `vercel.json` son el máximo de Hobby y un
+   tercero hace que Vercel **rechace el deploy entero**; y el techo de 60 s no alcanzaba.
+2. **DOS estados de precio y ninguno bloquea.** `missing` se elimina: «si no podemos tener el valor
+   o no lo sabemos es ambiguo». Un `ambiguous` nace con `unit_price` **null** (nunca `0`) y el
+   merchant lo completa después; `accept` devuelve `productsWithoutPrice`. Desaparece
+   `priceConfirmed`.
+3. **El cupo es un valor centralizado con ventana** en `server/entitlements/` — arranca en 1/día y
+   **los fallos no lo consumen**; hay un techo aparte de intentos al proveedor.
+4. **El PDF se cuenta con `node:zlib`, sin dependencias.** No hay que instalar nada.
+5. **Email al merchant** cuando el borrador queda listo, reusando `server/email/`.
+6. **El aviso de privacidad lo escribe el owner en la UI.** No es un pendiente del server.
+7. **La API se adapta a la pantalla que YA existe** (`catalog-ai-import.tsx`: un archivo, sin
+   edición del borrador, «Cancelar» sólo cierra el modal). `accept` **sin cuerpo**, idempotencia
+   **del servidor** (no hay `idempotencyKey`), y `POST /imports` **se apropia** de un import
+   abandonado en `pending_upload` para que cerrar el modal no trabe el siguiente intento — pero
+   **no** descarta uno en `ready`, porque eso quemaría el análisis del día.
+
+### Lo que la revisión dejó medido, y que el implementador NO tiene que re-descubrir
+
+- `sharp.format.pdf.input === false` (vips 8.18.3) y **no hay librería de PDF ni `openai` en
+  `.pnpm-store`**: el adaptador va con `fetch` y el contador con `zlib`.
+- El escaneo naive de `/Type /Page` devuelve **0** en un PDF con `/ObjStm` (medido sobre 14 PDFs
+  reales): por eso el contador **falla cerrado**.
+- `createTemporaryUploadUrl` (`server/r2.ts:72-95`) firma `Key` + `ContentType`, **no**
+  `ContentLength`, y **rechaza todo lo que pase de 5 MB** (`MAX_LOGO_BYTES`): hay que parametrizar
+  el tope.
+- `api-permission.ts` / `api-owner.ts` **no tienen rate limit**. El «rate limit común de escrituras»
+  de la spec vieja no existía.
+- `catalogError` (`api/catalog/_auth.ts`) devuelve **`{error}` pelado**: los `code` de esta feature
+  son código nuevo.
+- `after` se exporta de `next/server` en Next 16 (`node_modules/next/server.d.ts:21`).
+- Standard Webhooks: HMAC-SHA256 sobre `id.timestamp.body`, base64, header `v1,<firma>`, secreto
+  `whsec_` en base64 → `node:crypto`.
+
+### Cómo sigue
+
+Un implementador para toda la spec (no es disjunta) y **un** revisor independiente antes de marcar
+`implementada`. Presupuesto: **9 mutaciones** con la tabla y la condición de corte escritas en la
+spec. **La migración va DIRECTO a `main` de Neon, sin rama efímera** (decisión del owner,
+2026-09-21: «estamos en desarrollo, no me preocupa»); consecuencia declarada en la spec: las
+pruebas de integración corren contra la misma base que usa la app, así que cada test crea y borra
+sus propias filas y ninguna trunca tablas ni borra por rango. Es aditiva, así que puede aplicarse
+antes del deploy.
+
+**Config de prod que es del owner y no bloquea implementar:** el endpoint de webhook en el
+dashboard del proveedor apuntando a
+`https://www.checkpass.club/api/internal/catalog-imports/provider-callback` (**con `www.`**), sus
+secretos en Vercel y `CATALOG_IMPORT_RECONCILE_ENDPOINT` en GitHub. Con
+`CATALOG_EXTRACTION_PROVIDER=fake` el arco entero se desarrolla y se testea sin nada de eso.
+
+### HECHO EN ESTE TURNO — SIN COMMITEAR (el árbol trae la UI en curso del owner)
+
+**1. Los tres documentos de arriba** (enmienda del ADR, spec reescrita, contrato nuevo) más las
+tres filas del `INDEX`. `prettier --check` limpio en los cuatro.
+
+**2. El barrido de `upload-image-formats.test.ts:204` estaba ROJO** por el mock de la importación
+(`catalog-ai-import.tsx`, sin trackear, del owner): hardcodeaba
+`accept="image/*,.pdf,application/pdf"` — 6ta aparición del bug que ya se pagó en sello, marca y las
+dos demo. Arreglado con la lista en UN lugar: `lib/image-formats.ts` gana **`PDF_CONTENT_TYPE`** (con
+el por qué de que **no** entra en `ACCEPTED_IMAGE_CONTENT_TYPE_SET`: ese set es el allow-list de los
+tres presign de imagen, y sumarlo dejaría subir un PDF como logo) y el input compone desde ahí.
+**Verificado:** `typecheck` 3/3, `lint` limpio, `test` **155 archivos / 1586 tests**. Rojo con el
+literal viejo, verde con la composición. **No se tocó el test.**
+
+**Pendiente chico y conocido:** `catalog-ai-import.tsx` **ya fallaba `prettier --check` antes** de
+ese cambio (WIP del owner). No se reformateó el archivo entero a propósito; va a estar rojo en CI
+cuando se commitee.
+
+**3. Segunda ronda de correcciones, después de que el owner miró la UI real y contestó las tres
+preguntas pendientes (missing/ambiguous, idempotencia, `code`).** Se propagaron a los cuatro
+documentos (ADR §9 enmendada + §13 nueva, spec, contrato, INDEX, este archivo):
+
+- **Dos estados de precio, no tres.** `missing` desaparece; un `ambiguous` nace con `unit_price`
+  **null** (nunca `0`) y **ya no bloquea** `accept` — el bloqueo original protegía contra un `0`
+  que parecía válido, y ese riesgo desapareció con `null`. `accept` devuelve
+  `productsWithoutPrice`. Sin `priceConfirmed`.
+- **Sin `idempotencyKey` en el cliente.** La resuelve el servidor bajo el lock del import; `accept`
+  quedó sin cuerpo obligatorio.
+- **`POST /imports` se apropia de un import abandonado en `pending_upload`** (la UI real cierra el
+  modal sin cancelar) pero **no** de uno en `ready` — eso quemaría el análisis del día. Nace
+  `GET /api/catalog/imports` (sin id) para que la pantalla retome al abrir el modal.
+- Tabla de mutaciones: **8 → 9** (M5 ahora es la más importante — `0` vs `null` — y M9 cubre que
+  `ready` no se descarte).
+
+**Verificado:** `prettier --check` limpio en los cuatro documentos; `git grep` confirma cero rastros
+de `missing`, `priceConfirmed` o `idempotencyKey` fuera de las frases que dicen «ya no existe».
+
 ## ⇥ SPEC 0088 — UI Y TOUR DE STAFF: COMMITEADA, CON DOS REVISIONES CERRADAS (2026-09-21)
 
 ### ESTADO — ESCRITO DESPUES DE LOS COMMITS, con sus shas
@@ -167,6 +274,27 @@ en verde. Desde hoy cada regla nueva lleva su test de cableado.
 
 **`staff.ts` llego a 327/300 y se DIVIDIO en vez de extenderse** (`staff-error.ts` y
 `staff-admin-target.ts`), con re-export para que sus ~20 consumidores no cambien una linea.
+
+## ⇥ COMO RETOMAR (handoff del 2026-09-21)
+
+**Lo siguiente lo arranca el owner por fuera: la UI de Locales con GPT.** El insumo es
+**`docs/specs/0089-contratos-de-api.md`**, que es el contrato normativo de las cuatro rutas — no hace
+falta leer codigo para diseñar la pantalla.
+
+**Prompt para la sesion nueva:**
+
+> Lei `docs/TASKS.md`. Hay 9 commits locales sin pushear y el `test:e2e` de todos ellos no corrio en
+> ningun lado. La pantalla de Locales la esta diseñando el owner por fuera con el contrato
+> `specs/0089-contratos-de-api.md`. Lo que sigue cuando llegue esa UI: el tour `driver.js` de
+> Locales, con la forma de la spec 0088 —y leyendo la leccion del 2026-09-21 sobre pasos de tour
+> cuyo clic hace lo contrario de lo que su copy pide.
+
+**Lo que NO hay que rehacer** (ya esta medido y commiteado): el API de Locales, el gate por permiso de
+las dos pantallas, el checklist de seis items, R1 completa y R5.
+
+**Los tres puntos de QA de la 0088 siguen abiertos** y son de pantalla (ver el handoff de esa spec):
+la ayuda de baja sobre alguien ya dado de baja, Gestionar sobre la propia fila de un administrador, y
+cualquier dialogo de confirmacion con el SO en modo oscuro.
 
 **Este archivo contiene SOLO el arco en ejecucion** (regla instaurada por la spec 0066, ya cerrada).
 Lo diferido, parado o pospuesto vive en **`docs/PARQUEADO.md`** (el unico lugar donde buscar
