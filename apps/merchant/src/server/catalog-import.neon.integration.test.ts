@@ -183,8 +183,6 @@ describe.skipIf(!enabled)(
           "catalog_import_in_progress",
         );
         await cancelar(cookieA, id);
-        // `analyzing` NO se cierra al cancelar: solo se marca la intencion (§1). Se cierra
-        // a mano para que el caso siguiente no lo herede.
         await cerrarImport(id);
       }
     });

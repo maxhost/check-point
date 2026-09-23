@@ -80,10 +80,10 @@ worker o un `after()` que muere no deja al negocio sin poder importar nunca mas 
 lo vuelve a `queued` (hasta `max_attempts`) o lo cierra en `failed`. El precedente propio es
 `wallet_push_queue` clavado en `sending` y re-reclamado para siempre.
 
-**Cancelar durante `analyzing` es explicito:** escribe `cancel_requested_at` **y** deja el estado
-en `analyzing`; el callback o el reconciliador, al llegar, descartan el resultado y cierran en
-`cancelled` limpiando los originales. `DELETE` sobre `pending_upload|queued|ready` pasa a
-`cancelled` directo.
+**Cancelar durante `analyzing` es terminal e inmediato:** escribe `cancel_requested_at`, pasa a
+`cancelled`, libera el lease y limpia los originales. El callback o el reconciliador descartan
+cualquier resultado tardio porque los writers solo aceptan imports abiertos. `DELETE` sobre
+`pending_upload|queued|ready` tambien pasa a `cancelled` directo.
 
 Solo puede existir **un import no terminal por negocio** (indice unico parcial). Crear otro
 responde `409 catalog_import_in_progress`. Los estados terminales nunca retroceden.

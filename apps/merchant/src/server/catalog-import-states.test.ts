@@ -116,23 +116,26 @@ describe("el conjunto de estados (spec 0090 §1)", () => {
 });
 
 describe("cancelar (spec 0090 §1 / contrato §7)", () => {
-  for (const status of ["pending_upload", "queued", "ready"] as const) {
+  for (const status of [
+    "pending_upload",
+    "queued",
+    "analyzing",
+    "ready",
+  ] as const) {
     it(`desde \`${status}\` pasa a cancelled`, async () => {
       estado.filas = [[fila(status)], [fila("cancelled")]];
       const outcome = await cancelImport(NEGOCIO, IMPORT_ID);
       expect(outcome.import.status).toBe("cancelled");
       expect(estado.sets[0]).toMatchObject({ status: "cancelled" });
+      expect(estado.sets[0]).toMatchObject({ leaseUntil: null });
     });
   }
 
-  /** La cancelacion durante `analyzing` es EXPLICITA: deja el estado y marca la intencion.
-   * El callback o el reconciliador descartan el resultado cuando llegue. */
-  it("desde `analyzing` escribe `cancel_requested_at` y NO cambia el estado", async () => {
-    estado.filas = [[fila("analyzing")], [fila("analyzing")]];
+  it("desde `analyzing` conserva tambien la marca de intencion", async () => {
+    estado.filas = [[fila("analyzing")], [fila("cancelled")]];
     const outcome = await cancelImport(NEGOCIO, IMPORT_ID);
-    expect(outcome.import.status).toBe("analyzing");
+    expect(outcome.import.status).toBe("cancelled");
     expect(estado.sets[0]).toHaveProperty("cancelRequestedAt");
-    expect(estado.sets[0]).not.toHaveProperty("status");
   });
 
   it("repetirlo sobre un terminal da 200 y no escribe nada — idempotente", async () => {
@@ -152,6 +155,14 @@ describe("cancelar (spec 0090 §1 / contrato §7)", () => {
       code: "catalog_import_already_accepted",
     });
     expect(estado.sets).toHaveLength(0);
+  });
+
+  it("si llega a `accepted` durante el DELETE responde 409 y no confirma una cancelacion vieja", async () => {
+    estado.filas = [[fila("analyzing")], [], [fila("accepted")]];
+    await expect(cancelImport(NEGOCIO, IMPORT_ID)).rejects.toMatchObject({
+      status: 409,
+      code: "catalog_import_already_accepted",
+    });
   });
 
   /**

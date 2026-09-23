@@ -323,9 +323,9 @@ buen momento para decirle «3 productos quedaron sin precio, podes completarlos 
 
 ## 7. `DELETE /api/catalog/imports/{id}` — cancelar
 
-**200** siempre que se pueda cancelar, y **repetirlo tambien da 200**. En `analyzing` la cancelacion
-queda registrada y el resultado del proveedor se descarta cuando llegue: la UI puede cerrar la
-pantalla en el momento, no tiene que esperar.
+**200** siempre que se pueda cancelar, y **repetirlo tambien da 200**. Tambien en `analyzing`
+pasa inmediatamente al terminal `cancelled`; un resultado tardio del proveedor se descarta porque
+los writers solo aceptan imports abiertos. La UI puede cerrar la pantalla en el momento.
 
 `accepted` responde `409 catalog_import_already_accepted`. **Cancelar nunca toca el catalogo**: no
 borra nada de lo que ya existia.

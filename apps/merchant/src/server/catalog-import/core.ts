@@ -198,9 +198,9 @@ async function takeOverAbandoned(open: ImportRow): Promise<void> {
 /**
  * §7 / contrato §7 — `DELETE`: cancela. **Nunca toca catalogo.**
  *
- * En `analyzing` escribe `cancel_requested_at` y **deja el estado**: el callback o el
- * reconciliador, al llegar, descartan el resultado y cierran en `cancelled`. Repetirlo da
- * 200; `accepted` da 409.
+ * La cancelacion es terminal e inmediata tambien en `analyzing`: el callback y
+ * `finishAnalysis` ya ignoran estados terminales, asi que un resultado tardio no puede
+ * recrear el borrador. Repetirlo da 200; `accepted` da 409.
  */
 export async function cancelImport(
   business: { id: string },
@@ -214,17 +214,6 @@ export async function cancelImport(
       "Esa importación ya fue aceptada.",
     );
   }
-  if (row.status === "analyzing") {
-    const [updated] = await getDb()
-      .update(catalogImports)
-      .set({
-        cancelRequestedAt: row.cancelRequestedAt ?? new Date(),
-        ...touch(),
-      })
-      .where(eq(catalogImports.id, row.id))
-      .returning();
-    return { import: toImportDTO(updated ?? row) };
-  }
   if (
     row.status === "cancelled" ||
     row.status === "failed" ||
@@ -234,15 +223,40 @@ export async function cancelImport(
   }
   const [updated] = await getDb()
     .update(catalogImports)
-    .set({ status: "cancelled", cancelledAt: new Date(), ...touch() })
+    .set({
+      status: "cancelled",
+      cancelledAt: new Date(),
+      cancelRequestedAt:
+        row.status === "analyzing"
+          ? (row.cancelRequestedAt ?? new Date())
+          : row.cancelRequestedAt,
+      leaseUntil: null,
+      ...touch(),
+    })
     .where(
       and(
         eq(catalogImports.id, row.id),
-        inArray(catalogImports.status, ["pending_upload", "queued", "ready"]),
+        inArray(catalogImports.status, [
+          "pending_upload",
+          "queued",
+          "analyzing",
+          "ready",
+        ]),
       ),
     )
     .returning();
+  if (!updated) {
+    const current = await requireImport(business.id, importId);
+    if (current.status === "accepted") {
+      throw new CatalogImportError(
+        409,
+        "catalog_import_already_accepted",
+        "Esa importación ya fue aceptada.",
+      );
+    }
+    return { import: toImportDTO(current) };
+  }
   await enqueueImportCleanup(row.id, row.businessId).catch(() => undefined);
   await purgeImportObjects(row.id, row.businessId).catch(() => undefined);
-  return { import: toImportDTO(updated ?? row) };
+  return { import: toImportDTO(updated) };
 }

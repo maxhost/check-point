@@ -24,8 +24,8 @@ export async function GET(request: Request, { params }: Params) {
   }
 }
 
-/** §6 — cancelar. En `analyzing` deja registrada la cancelacion y el resultado se descarta
- * cuando llegue. **Nunca toca catalogo.** */
+/** §6 — cancelar inmediatamente. Un resultado tardio del proveedor se descarta porque los
+ * writers solo aceptan imports todavia abiertos. **Nunca toca catalogo.** */
 export async function DELETE(request: Request, { params }: Params) {
   const auth = await requireImportAccess(request);
   if ("response" in auth) return auth.response;
