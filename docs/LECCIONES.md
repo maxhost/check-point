@@ -1519,3 +1519,90 @@ error.** Se verificaron corriendolos.
 2. **El comando de deteccion se elige MIDIENDO**, no por plausibilidad: el candidato obvio
    (`grep '[[:cntrl:]]'`) era el equivocado.
 3. **El texto del mensaje se ejecuta**, igual que la regla.
+
+## 2026-09-23 — Un `.env` NO se imprime: mi filtro tapaba `*_URL` y la variable se llamaba `*_URL_UNPOOLED`
+
+Para saber contra que base apuntaba `.env.integration.local` escribi un `node -e` que imprimia
+**la clave y metadatos** de cada variable, con una rama especial que a las `*_URL` les sacaba solo
+el `hostname`. La variable se llamaba **`NEON_INTEGRATION_DATABASE_URL_UNPOOLED`** — no termina en
+`URL`, cayo al `else` genérico y el `else` imprimia `v.slice(0, 40)`. Salieron al transcript el rol
+`neondb_owner` y la cabeza de su password.
+
+La lista de exclusion del `else` (`KEY|SECRET|TOKEN|PASSWORD|...`) tampoco la cubria: **el nombre
+de la variable no dice que adentro hay una credencial**. Una connection string es un secreto y se
+llama `URL`.
+
+**La regla: de un archivo `.env` se imprime la CLAVE y metadatos derivados —largo, huella
+`sha256[0..12]`, si tiene espacios al borde—, NUNCA el valor ni un prefijo suyo.** Un allow-list
+por nombre de variable es la forma equivocada del filtro: el default tiene que ser **no imprimir**,
+y lo que se muestre se construye, no se recorta. Recortar un secreto no lo deja de ser.
+
+Costo real bajo por casualidad: era la password de `neondb_owner`, que `TASKS.md` **ya tenia
+marcada para rotar** desde el 2026-09-22 por el mismo motivo (se pego una connection string en un
+transcript). Que la segunda fuga sea de la misma credencial es la señal de que la rotacion
+pendiente no es opcional.
+
+**Fix estructural:** la deny-list de `.claude/settings.json` pasa de `Read(**/.env.local)` a
+`Read(**/.env*)` —cubre `.env.integration.local`, que no estaba— mas la linea advisory de
+`CLAUDE.md`, porque **el deny de `Read` no alcanza a un script que lee el archivo desde Bash**, que
+es exactamente lo que hice.
+
+## 2026-09-23 — El doble de `./db` es una COLA POSICIONAL: borrar una consulta da `TypeError`, no un rojo de la propiedad
+
+Mutando para comprobar que unos tests que re-cablee no quedaran tautologicos, borre
+`assertQuota(business.id, "catalog.imports.attempts", ctx)` de `catalog-import/core.ts` esperando
+que el caso «responde 429 ANTES de reservar o firmar» acusara la propiedad. El rojo llego, pero
+decia:
+
+```
+AssertionError: expected TypeError: Cannot read properties of unde… to match object { status: 429 }
+```
+
+**Es un rojo de SETUP.** El doble de `./db` de estas suites devuelve `estado.filas.shift()`: es una
+**cola posicional**, asi que sacar cualquier consulta desalinea todo lo que sigue y el doble se
+queda sin filas. Se pone igual de rojo con cualquier cambio en la **cantidad** de consultas, que no
+es lo que el caso dice medir. Lo confirman los otros dos casos del mismo `describe`, que tambien se
+cayeron sin tener nada que ver con el cupo.
+
+Intente repararlo alargando la cola para que el camino pudiera terminar y el rojo hablara de la
+propiedad (resolvio en vez de rechazar). **No alcanzo: volvio a dar `TypeError`.** Revertí la
+reparacion en vez de dejar en el arbol un docblock que afirmara un oraculo que no existe — que es
+el modo de falla que la propia 0077 dejo escrito.
+
+**Lo que queda, declarado:** el cableado de `assertQuota` en `core.ts` **no tiene oraculo a nivel
+unidad**, y no lo puede tener con este doble. Su oraculo real es
+`catalog-import-quota.neon.integration.test.ts`, que siembra filas de verdad y pega a la ruta. Es
+un limite del doble, no del codigo.
+
+**La regla, que es §3 del protocolo con un caso nuevo: un rojo de mutacion sobre un doble
+posicional hay que LEERLO.** Si la asercion es un `TypeError` del doble en vez de la propiedad, la
+mutacion **no midio nada** — y el peligro es que se lee como exito («muerde, seguimos»).
+
+## 2026-09-23 — Un test que resetea estado compartido en la ULTIMA LINEA del cuerpo no resetea nada cuando falla
+
+`main` quedo rojo con cinco casos de `onboarding-checklist.neon.integration.test.ts`. **Cuatro de
+los cinco acusaban `verify-email`, y el defecto era `locations`.**
+
+Causa raiz unica: `5bfd152` sumo `locations` al checklist (ADR 0081) y la suite seguia aseverando
+los cinco items de la 0085. El caso del email verificado hacia:
+
+```ts
+await setVerified(seed, true);
+…
+expect(body.items).toHaveLength(5);   // ← corta aca
+…
+await setVerified(seed, false);       // ← NUNCA corre
+```
+
+Al cortarse, el owner quedo **verificado** para los cuatro casos siguientes, que asumen
+`done: false`. Un defecto de UNA linea se leyo como cinco defectos, y cuatro de los cinco mensajes
+apuntaban al item equivocado.
+
+**La regla: todo `set` de estado compartido en una suite de integracion se deshace en `finally`,
+nunca en la ultima linea del cuerpo.** Dos casos mas abajo, el de `setBusinessStatus` ya lo hacia
+bien — otra vez un defecto de clase con un hermano sano al lado (2.0-sexies).
+
+Y el meta-hallazgo, que es el que importa: **esto no lo destapo un test nuevo, lo destapo el primer
+`git push` en dos dias.** Las 6 suites `.neon.integration` quedan `skipped` local —583 tests— y
+**un `skipped` se lee igual que un `passed`**. El lag entre «el commit que rompe» y «el push que lo
+muestra» es exactamente la ventana en la que el diagnostico se vuelve caro.

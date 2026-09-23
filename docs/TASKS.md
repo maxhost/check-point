@@ -8,6 +8,120 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO AL CIERRE DE LA SESION DEL 2026-09-23
+
+### Lo que se hizo, con su sha
+
+| sha | que es |
+|---|---|
+| `59063a8` | diagnostico seguro del fallo de OpenAI (`keyFingerprint`, `keyLength`, `keyHasOuterWhitespace`, `errorCode`, `x-request-id`) + su test |
+| `11b0c12` | prettier sobre los 9 archivos de UI/CSS que dejaban rojo `format:check` desde `7c423a9` |
+| `bce921f` | el diagnostico del 401 en `TASKS.md` |
+| `16512a9` | **cupo de analisis a 100/dia** (valor de PRUEBAS) |
+| `7ecd363` | fix de la suite del checklist: describia CINCO items y el catalogo tiene SEIS |
+
+### 1. EL 401 DE PROD: es la clave de Vercel, no el codigo — **PENDIENTE DEL OWNER**
+
+Ver la seccion «EL 401 DE OPENAI EN PROD» mas abajo, que tiene las sondas y sus resultados.
+**Resumen: re-cargar `OPENAI_API_KEY` en Vercel (production) con el valor que anda, y
+redesplegar.** El valor es tipo `sensitive` y no se puede leer ni por API ni por dashboard, asi
+que la comparacion se hace por el log: con `59063a8` desplegado, repetir el import y mirar
+`catalog_import_openai_request_failed` en los runtime logs.
+
+- `keyFingerprint` ≠ **`aed315b6196e`** → la clave de Vercel es otra.
+- `keyHasOuterWhitespace: true` → se pego con espacio o salto de linea.
+- `keyLength` ≠ **164** → esta truncada.
+
+### 2. EL CUPO ESTA EN VALOR DE PRUEBAS (100), Y HAY QUE BAJARLO
+
+**Decision del owner (2026-09-23): «quita el limite de 1 analisis diario […] ahora puedes subirla
+a 100 para las pruebas», y vuelve a 1 mas adelante.** Los dos topes viven en **un solo lugar**,
+`entitlements/catalog.ts`, con su valor de produccion escrito en el docblock:
+
+| clave | produccion | hoy |
+|---|---|---|
+| `catalog.imports.analyses` | **1** | 100 |
+| `catalog.imports.attempts` | **3** | 100 |
+
+**El segundo lo subi yo y NO es decision del owner:** es el otro techo del mismo camino y a 3
+habria cortado la prueba en el cuarto submit aceptado, que es justo lo que pidio evitar. Si no
+queria eso, se baja solo esa fila.
+
+Subir un tope **no es apagarlo**: sigue el `429` con `Retry-After`, la ventana `day` y los
+discriminantes (`draft IS NOT NULL` / `provider IS NOT NULL`). Hay un caso que lo pinnea («el cupo
+NO quedó apagado: sigue siendo un número finito y positivo»), el que se pondria rojo si alguien
+«sacara el limite» con `0`, `Infinity` o borrando la clave.
+
+**Cuatro suites dejaron de escribir el tope a mano y lo toman del catalogo** — miden la DECISION
+(el borde `used < limit`, que filas cuenta el `WHERE`, que el 429 llega antes de escribir), no el
+valor. **El valor se transcribe y se pinnea en `entitlements-window.test.ts`**, que es el archivo
+que hay que tocar cuando el tope vuelva a 1 y 3.
+
+**VERIFICADO con mutaciones** (presupuesto: 3; clase de error: que esos tests se hubieran vuelto
+tautologicos; declarado afuera: el predicado del `WHERE` de `usedInWindow`, que necesita Neon):
+
+| id | archivo | shasum limpio | resultado EJECUTADO |
+|---|---|---|---|
+| Q1 | `catalog-import/quota.ts` (`used < limit` → `used <= limit`) | `e4d729cb59bbf87dd7d361f98b9d7a7772fd18f1` | **ROJO, 2 casos**, `expected true to be false` sobre el borde. Revertida |
+| Q2 | `catalog-import/prepare.ts` (el cableado, borrado) | `85b6c239b2bf551e6ad4aba69598459978fa934d` | **ROJO**, `expected 'submitted' to be 'failed'` — el submit llego al proveedor. Revertida |
+| Q3 | `catalog-import/core.ts` (`assertQuota(attempts)`, borrado) | `f1dd1ab75e59baa8f244d9a541d2a326b6a85a20` | **ROJO PERO POR EL MOTIVO EQUIVOCADO** — ver abajo. Revertida |
+
+**Arbol sin mutaciones** (`grep -rn 'MUTATION|MUTACION' apps/*/src` → 0 hits) y los tres `shasum`
+de vuelta en el valor de la tabla, con `diff` vacio contra `/tmp/q0090/`.
+
+**LIMITE DECLARADO (Q3):** el doble de `./db` es una **cola posicional**, asi que borrar una
+consulta lo deja sin filas y el rojo es un `TypeError`, no la propiedad. Intente repararlo
+alargando la cola; **no alcanzo**, y revertí la reparacion en vez de dejar un docblock afirmando un
+oraculo inexistente. **El cableado de `assertQuota` en `core.ts` no tiene oraculo a nivel unidad y
+no lo puede tener con este doble**; su oraculo real es `catalog-import-quota.neon.integration.test.ts`.
+Caso en `LECCIONES.md`, regla en la skill (2.0-septies).
+
+### 3. `main` QUEDO ROJO CON EL PRIMER PUSH — arreglado en `7ecd363`, **CI SIN LEER**
+
+`verify` de `bce921f` fallo con **5 tests** de `onboarding-checklist.neon.integration.test.ts`.
+**No era de la importacion de catalogo**: es el hueco que este archivo ya declaraba —las 6 suites
+`.neon.integration` nunca habian corrido— destapado por el primer push en dos dias.
+
+Causa raiz unica: `5bfd152` sumo `locations` al checklist (ADR 0081) y la suite seguia aseverando
+los cinco items de la 0085. **Cuatro de los cinco rojos acusaban `verify-email` y el defecto era
+`locations`**, porque el `setVerified(seed, false)` estaba como ultima linea del cuerpo y al cortarse
+el caso nunca corrio. Ahora va en `finally`. Caso en `LECCIONES.md`, regla en la skill (2.0-octies).
+
+**⚠️ LO QUE FALTA VERIFICAR, Y ES EL PRIMER PASO DE LA SESION QUE SIGUE: el resultado de la CI de
+`7ecd363`.** Esa suite queda `skipped` local y **ningun gate local la ejecuta**:
+
+```
+GH_TOKEN= gh api repos/maxhost/check-point/commits/7ecd363/check-runs \
+  --jq '.check_runs[] | "\(.name): \(.status) -> \(.conclusion)"'
+```
+
+`verify` tiene que decir `completed -> success`. **`/status` NO sirve**: devolvio `success` con la
+CI en rojo, porque agrega los *commit statuses* (donde el unico que publica es Vercel) y Actions
+reporta como *check runs*.
+
+### 4. GOTCHA NUEVO, MEDIDO: el `.env` de integracion apunta a la rama EQUIVOCADA
+
+`.env.integration.local` tiene `NEON_INTEGRATION_DATABASE_URL` → **`ep-spring-moon-axt4mngw`**, que
+es la rama efimera **`spec-0065-marketing`** (`br-shy-king-axu5s3ze`, **expira el 2026-10-15**), NO
+`ci-integration` (`ep-plain-firefly-axzyzpfz`). Verificado por MCP de Neon. Esa rama se corto de
+`main` el **2026-09-11**, o sea **antes de la migracion 0042**: las tablas `catalog_import*` no
+existen ahi. **Correr las suites de integracion local hoy no mide lo que parece.** Para arreglarlo
+hay que apuntar esa variable al pooled host de `ci-integration`.
+
+### 5. ⚠️ SE VOLVIO A FILTRAR LA PASSWORD DE `neondb_owner` — LA ROTACION YA NO ES OPCIONAL
+
+Un script mio imprimio los primeros 40 caracteres de
+`NEON_INTEGRATION_DATABASE_URL_UNPOOLED`, incluida la cabeza de la password. Es **la misma
+credencial** que este archivo ya tenia marcada para rotar desde el 2026-09-22. Segunda fuga de la
+misma clave. Caso y regla en `LECCIONES.md`; el fix estructural es la linea nueva de `CLAUDE.md` y
+la deny-list de `.claude/settings.json`, que paso de `Read(**/.env.local)` a `Read(**/.env*)`.
+
+### Gates de esta sesion
+
+Los SEIS, con Node 24, sobre el arbol de `7ecd363`: `typecheck` 3/3 `Cached: 0`, `lint` limpio,
+`test` **171 archivos / 1735 passed, 0 failed** (583 `skipped` = las `.neon.integration`),
+`build` 3/3, `format:check` limpio, `test:e2e` 3 passed / 1 skipped.
+
 ## BITACORA DE MUTACIONES — SPEC 0090 (2026-09-22): **TODAS REVERTIDAS**
 
 Se abrio ANTES de medir cada fila, como exige la skill `protocolo-de-verificacion`, y se cierra

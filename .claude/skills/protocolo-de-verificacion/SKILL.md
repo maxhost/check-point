@@ -121,6 +121,35 @@ que es un **toggle**, con copy incondicional— y costo una ronda entera.
 **La lista de hermanos casi siempre es corta y el `rg` es de dos minutos.** Un defecto de clase
 cerrado en un solo miembro es una ronda de revision comprada al precio de no haber mirado.
 
+### 2.0-septies El doble de `./db` de este repo es una COLA POSICIONAL (2026-09-23)
+
+Las suites de unidad doblan `./db` con `estado.filas.shift()`. **Sacar cualquier consulta desalinea
+todo lo que sigue**, asi que una mutacion que borra un `assertQuota`/`select` no produce el rojo de
+la propiedad: produce `AssertionError: expected TypeError: Cannot read properties of unde…`. Se pone
+igual de rojo con cualquier cambio en la **CANTIDAD** de consultas.
+
+**Es §3 con un caso nuevo, y es de la familia cara: un rojo se lee como exito.** Medido en la 0090:
+borrar `assertQuota(…, "catalog.imports.attempts")` de `core.ts` tumbo tres casos del mismo
+`describe`, dos de los cuales no hablan del cupo. Alargar la cola para que el camino pudiera
+terminar **no alcanzo** — volvio a dar `TypeError`, y la reparacion se revirtio en vez de dejar un
+docblock afirmando un oraculo inexistente.
+
+**Regla: ante un rojo de mutacion sobre un doble posicional, LEER la asercion.** Si es un
+`TypeError` del doble, la mutacion **no midio nada** y el cableado hay que atacarlo desde la suite
+de integracion, que siembra filas de verdad.
+
+### 2.0-octies Todo `set` de estado compartido se deshace en `finally` (2026-09-23)
+
+Un reset escrito como **ultima linea del cuerpo** de un `it` no corre cuando un assert de arriba
+corta el caso, y deja el estado puesto para todos los que siguen.
+
+Medido: `onboarding-checklist.neon.integration.test.ts` hacia `setVerified(seed, true)` … assert …
+`setVerified(seed, false)`. El dia que el catalogo sumo un item, el `toHaveLength` de arriba corto
+el caso, el owner quedo **verificado** y los cuatro casos siguientes fallaron acusando
+`verify-email`. **Un defecto de una linea se leyo como cinco, y cuatro mensajes apuntaban al item
+equivocado.** Dos casos mas abajo, el de `setBusinessStatus` ya usaba `try/finally` — otra vez un
+defecto de clase con el hermano sano al lado (2.0-sexies).
+
 ### 2.0-bis Y su espejo: una mutacion que SOBREVIVE acusa al oraculo tan seguido como a la tabla
 
 Antes de declarar la fila falsa, **mirar el seed**. En la 0086 esto paso **tres veces**:

@@ -72,14 +72,10 @@ exit code, una fila leida por SQL. La auto-revision sin oraculo es negativa neta
 «No se puede testear» y «costaria una migracion / una columna / un refactor grande» se verifican
 igual —**intentandolo**— y ninguna de las dos se le pasa al owner ni se baja a un doc sin eso.
 
-**Y LA TERCERA DE LA FAMILIA, que cuesta igual: una afirmacion de MECANISMO que una spec presenta
-como «medido» tiene que estar medida HASTA EL FINAL.** Leer una linea y ver el nombre de una
-funcion NO es medir: hay que abrir esa funcion. Media medicion presentada como completa es **peor
-que no medir**, porque el implementador la copia al codigo con total obediencia y queda en el
-arbol con forma de conocimiento verificado. En la 0077 la spec afirmo que `defaultAdditionalFields`
-pisaba al `override` —era falso, `getSessionDefaultFields` solo emite campos con `defaultValue`— y
-el docblock mintio hasta que lo cazo el revisor. **Tres de los hallazgos de esa spec estaban en la
-SPEC, no en el codigo.** Caso en `LECCIONES.md`.
+**Y LA TERCERA DE LA FAMILIA: una afirmacion de MECANISMO que una spec presenta como «medido»
+tiene que estar medida HASTA EL FINAL.** Ver el nombre de una funcion NO es medir: hay que abrirla.
+Media medicion presentada como completa es **peor que no medir** — el implementador la copia con
+total obediencia y queda en el arbol con forma de conocimiento verificado (0077, `LECCIONES.md`).
 
 **Toda verificacion lleva presupuesto y condicion de corte escritos EN EL ENCARGO**, y el oraculo
 que define es el QA del owner, no la suite: cuantas mutaciones y que clase de error tiene que
@@ -95,11 +91,9 @@ y dice «verificado con una sonda ejecutada»**: en la 0080 esa frase venia de u
 que traia era falso.
 
 **Y EL EJEMPLO CON EL QUE DESCRIBIS UN INVARIANTE ES UNA AFIRMACION, no una ilustracion.** Si la
-spec dice «cambiar X rompe el caso Y», esta afirmando que **Y distingue X** — y eso se ejecuta,
-porque Y es lo que se vuelve mutacion y test. En la 0080 la regla era cierta y el ejemplo falso:
-`[]` es **truthy**, asi que `if (c)` y `if (c !== undefined)` deciden lo mismo para `clauses: []`,
-la mutacion midio **21/21 en verde** y el invariante real (un `clauses` **falsy pero presente**,
-como `null`) no tenia oraculo. Dos lineas de `node -e` lo habrian cazado. Caso en `LECCIONES.md`.
+spec dice «cambiar X rompe el caso Y», afirma que **Y distingue X**, y eso se EJECUTA: Y es lo que
+se vuelve mutacion y test. En la 0080 la regla era cierta y el ejemplo falso, la mutacion midio
+21/21 en verde y el invariante real quedo sin oraculo. Caso en `LECCIONES.md`.
 
 **Y CADA FILA DE LA TABLA DE MUTACIONES SE VERIFICA CONTRA EL ARBOL ANTES DE CERRAR LA SPEC** —
 el mecanismo que nombra tiene que existir y hay que poder senalar su archivo y su linea. **Van dos
@@ -137,6 +131,11 @@ el ADR**: si ya lo dijo, es **incumplimiento** y se arregla. **Cuando el codigo 
 difieren manda el ADR, y se lee PRIMERO**: el docblock es una cita, y un titular que promete mas que
 su propia condicion es prosa pasada de largo, no media decision sin implementar — se arregla la prosa
 y se INFORMA, nunca se le arma un menu sobre algo que su ADR ya cerro. Casos en `LECCIONES.md`.
+
+**De un `.env` se imprime la CLAVE y metadatos —largo, huella `sha256[0..12]`, espacios al borde—,
+NUNCA el valor ni un prefijo suyo**: el default es no imprimir, y **recortar una credencial no la
+deja de ser**. Filtrar por nombre de variable es la forma equivocada (`*_URL_UNPOOLED` no matchea
+`*_URL`), y el deny de `Read(**/.env*)` no alcanza a un script que lo lee desde Bash.
 
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto, cuestan
 cero tokens y son deterministas; este archivo es advisory.
