@@ -114,13 +114,11 @@ por el motivo correcto, como se declara un limite— esta en la skill
 `protocolo-de-verificacion`.** Cargala antes de encargar una revision o de escribir un plan de
 pruebas. Los casos que originaron cada regla estan en `docs/LECCIONES.md`.
 
-**Antes de pedirle QA al owner, verificar que prod tenga EL COMMIT que se va a probar** —
-no que "prod este verde". **Y el `/status` NO sirve solo para eso: en este repo devuelve `success`
-con la CI todavia corriendo**, porque agrega los *commit statuses* de la API vieja —donde el unico
-que publica es **Vercel**— y **GitHub Actions reporta como *check runs*, que es otro endpoint**
-(medido el 2026-09-17). El comando que hay que correr:
-`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/check-runs --jq '.check_runs[] |
-"\(.name): \(.status) -> \(.conclusion)"'` — **todos** `completed` y `success`, para el sha exacto.
+**NO ESPERAR A LA CI DE GITHUB ACTIONS** (instruccion del owner, 2026-09-23): tarda y bloquea el
+turno. Los gates se corren **local antes de pushear** y con eso alcanza; despues del push se sigue
+sin sondear `check-runs` ni armar un monitor. **Antes de pedirle QA al owner igual hay que verificar
+que el DEPLOY tenga el commit** —que es otra cosa y es una sola llamada—: el deploy de Vercel al que
+apunta `checkpass.club` tiene que estar en `READY` con ese sha.
 
 **Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral que
 nadie acordo va como *hallazgo a decidir*, nunca como «aceptado».

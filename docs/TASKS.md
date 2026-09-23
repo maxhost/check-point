@@ -20,6 +20,13 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 | `16512a9` | **cupo de analisis a 100/dia** (valor de PRUEBAS) |
 | `7ecd363` | fix de la suite del checklist: describia CINCO items y el catalogo tiene SEIS |
 
+### 0. DESPLEGADO EN PRODUCCION (2026-09-23)
+
+`dpl_CC4HNKCXBpkX2AhXEW4Jm1u1WEfp` — sha **`6ae0d33`**, `state: READY`, `aliasError: null`, con
+`checkpass.club` y `www.checkpass.club` apuntando ahi. **Prod ya tiene el cupo en 100** (`16512a9`
+es ancestro) y el diagnostico del 401 (`59063a8`). Vercel despliega solo en cada push a `main`: no
+hace falta disparar nada a mano.
+
 ### 1. EL 401 DE PROD: es la clave de Vercel, no el codigo — **PENDIENTE DEL OWNER**
 
 Ver la seccion «EL 401 DE OPENAI EN PROD» mas abajo, que tiene las sondas y sus resultados.
@@ -87,17 +94,11 @@ los cinco items de la 0085. **Cuatro de los cinco rojos acusaban `verify-email` 
 `locations`**, porque el `setVerified(seed, false)` estaba como ultima linea del cuerpo y al cortarse
 el caso nunca corrio. Ahora va en `finally`. Caso en `LECCIONES.md`, regla en la skill (2.0-octies).
 
-**⚠️ LO QUE FALTA VERIFICAR, Y ES EL PRIMER PASO DE LA SESION QUE SIGUE: el resultado de la CI de
-`7ecd363`.** Esa suite queda `skipped` local y **ningun gate local la ejecuta**:
-
-```
-GH_TOKEN= gh api repos/maxhost/check-point/commits/7ecd363/check-runs \
-  --jq '.check_runs[] | "\(.name): \(.status) -> \(.conclusion)"'
-```
-
-`verify` tiene que decir `completed -> success`. **`/status` NO sirve**: devolvio `success` con la
-CI en rojo, porque agrega los *commit statuses* (donde el unico que publica es Vercel) y Actions
-reporta como *check runs*.
+**Lo que ese fix NO tiene es verificacion ejecutada:** la suite queda `skipped` local y ningun gate
+local la corre. **Por instruccion del owner (2026-09-23) NO se espera a la CI** — tarda y bloquea el
+turno—, asi que el fix esta pusheado sin leer su resultado. Es un arreglo mecanico (seis items en
+vez de cinco, el reset en `finally`) y el riesgo es bajo, pero **esta declarado, no verificado**. Si
+alguna vez se quiere mirar, el resultado esta en la pestaña Actions del repo.
 
 ### 4. GOTCHA NUEVO, MEDIDO: el `.env` de integracion apunta a la rama EQUIVOCADA
 
