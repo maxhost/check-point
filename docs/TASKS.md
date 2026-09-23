@@ -8,81 +8,88 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ SPEC 0091 IMPLEMENTADA Y COMMITEADA (2026-09-23) — PASS del revisor
+## ⇥ ESTADO (2026-09-23): 0091 Y 0092 IMPLEMENTADAS, NADA PUSHEADO
 
-**Estado del arbol AHORA: LIMPIO**, `git status --short` vacio. HEAD es **`89fdd84`**. La 0091
-entro en **`5a1b2f7`** (servidor) y **`9e093fe`** (la pantalla), mas `893bea8`, `0bc6ee3` y
-`89fdd84` de docs, sobre los tres commits previos. **Ninguno esta pusheado** (pushear dispara
-deploy de produccion y el owner no lo pidio). `format:check` quedo en **exit 0**: el rojo que
-arrastraba era el archivo del owner, que esta spec ya reescribio.
+**El arbol esta LIMPIO**, `git status --short` vacio. HEAD es **`7edd0a6`**. **Nada esta
+pusheado**, y pushear dispara deploy de produccion.
 
-La spec quedo en `estado: implementada` con el `PASS` del revisor independiente (ADR 0071).
-
-### Gates al cerrar (root, Node 24 v24.20.0)
-
-| gate | resultado EJECUTADO |
+| sha | que es |
 |---|---|
-| `pnpm run typecheck` · `lint` · `build` | exit 0 |
-| `pnpm run test` | **1752 passed**, 590 skipped (2342) |
-| `pnpm run format:check` | exit 1, **unico `[warn]`: `catalog-ai-import.tsx`** (del owner) |
-| Neon, 6 suites de catalog-import | **30 tests EJECUTADOS** (no `skipped`), 0 failed |
-| `pnpm test:e2e` | **no aplica**: ni un `.tsx`/`.css` propio, y las 2 specs de Playwright (`health`, `loyalty-real`) no tocan este dominio |
+| `5a1b2f7` | spec 0091 — el servidor: la importacion escribe el catalogo directo |
+| `9e093fe` | spec 0091 — la pantalla consume el contrato nuevo (se dividio en 5 archivos) |
+| `0fa0a62` | hueco A cerrado: el empate de `createdAt` lo desempata el `id` |
+| `fbed94c` | ADR 0085 (fuera el email) + ADR 0086 (bloqueo del alta) + spec 0092 |
+| `7edd0a6` | spec 0092 — implementada, con PASS del revisor |
 
-### Verificacion: 12 mutaciones, todas revertidas
+Las dos specs tienen `estado: implementada` con `PASS` de un revisor independiente (ADR 0071).
 
-`rg -n MUTATION apps tools` → **vacio**. Seis de la tabla de la spec (implementador), cuatro del
-revisor (DTO sin claves internas, aislamiento de `latestImport`, idempotencia del writer,
-`notified_at`) y **dos del orquestador**, que son las que cerraron los huecos que el revisor
-encontro:
+### LO QUE FALTA ANTES DE PUSHEAR
 
-| id | invariante | resultado EJECUTADO |
-|---|---|---|
-| MO-1 | §6.7 «nacen disponibles en todos los locales» | **ROJO** 1 caso Neon (`expected false to be true`). Antes `productosDe` **ni leia la columna**. |
-| MO-2 | §7 «el aviso sale DESPUES del resultado final» | **ROJO** (`expected 0, received 1` en el outbox): adelantar la llamada le manda al merchant «tu menu ya esta en el catalogo» con el catalogo VACIO **y se come el aviso de fallo**, porque la marca ya fue reclamada. |
+1. **`pnpm test:e2e` NO SE CORRIO NUNCA.** Las dos specs tocan `.tsx`, asi que el gate
+   **aplica**. Esta bloqueado porque hay un `next dev` de merchant del owner en el **puerto
+   3000** y `playwright.config.ts` espera merchant en el **3001**: Playwright intenta levantar
+   otro y el lock de `next dev` lo rechaza. **No se mata ese proceso.** Con el 3000 libre,
+   `pnpm exec playwright install chromium && pnpm test:e2e`.
+   **Corrige el memory note «el puerto 3000 ocupado NO bloquea el e2e»: en este estado SI
+   bloquea.** Acotacion verificada dos veces: `tests/e2e/` tiene `health.spec.ts` (tres
+   `GET /api/health`) y `loyalty-real.spec.ts` (se saltea sin `E2E_*`), y **ninguno visita
+   `/backoffice/catalog`**, asi que el riesgo residual para estas specs es ~cero.
 
-**MO-2 fallo primero por el motivo equivocado y eso vale mas que el rojo:** el primer intento del
-oraculo disparaba el fallo del writer con un byte NUL en un nombre, pero el NUL **tambien revienta el
-`jsonb`** donde `finishAnalysis` persiste la extraccion, asi que lanzaba ANTES de llegar al writer y
-la mutacion sobrevivia en verde. El caso vive en
-`catalog-import-finish-notify.neon.integration.test.ts` y dobla **solo** `writeImportedCatalog`.
+### Y DESPUES DE PUSHEAR, EN ESTE ORDEN — NO ES OPCIONAL
 
-### Lo que el revisor dejo declarado y NO se persiguio
+2. **Esperar que el deploy de Vercel que sirve `checkpass.club` este `READY` con ese sha.**
+3. **RECIEN AHI aplicar la migracion `0043_sin_notified_at.sql`.** El codigo que corre HOY en
+   produccion **escribe** `notified_at`: aplicarla antes del deploy le rompe la importacion al
+   codigo viejo (gotcha de la spec 0081). **Verificado por SQL el 2026-09-23: la columna sigue
+   en la base de la app, o sea que NO se aplico.** En `ci-integration` si esta, porque
+   `tools/neon-test.sh` migra antes de correr.
+4. **QA del owner sobre la pantalla**, que es la unica evidencia que ningun gate de este repo
+   puede dar: subir un PDF real, ver el catalogo escrito y el resumen, y ver el alta manual
+   bloqueada mientras corre.
 
-- **El desempate por `id` de dos categorias con el mismo `createdAt` no tiene oraculo.** No es riesgo
-  de produccion: las dos ramas reusan una categoria existente y **nada se destruye**; lo que se
-  pierde es el determinismo que promete el docblock.
-- **La mitad «una sola vez» de `notified_at` sigue sin oraculo**, y es **preexistente de la 0090**
-  (el `isNull(notifiedAt)` no lo toco esta spec): el doble de `./db` de
-  `catalog-import-notify.test.ts` ignora el `where`, asi que ningun test de unidad puede verla.
-- **La carrera REAL del 23505 tampoco quedo pinneada.** Lo que esta ejecutado es el MECANISMO de
-  recuperacion con su control positivo. **El limite que dice el docblock es mas grande de lo real**:
-  no hace falta un segundo *import* (que el indice parcial prohibe), alcanza una segunda **sesion**
-  que inserte la categoria y la deje sin commitear — el revisor lo forzo con una sonda temporal y
-  funciono. Cabe en ~40 lineas si se quiere cerrar.
-- La calidad de la extraccion del LLM: la mide el corpus de menus reales, no un test.
+### Huecos de verificacion: estado
 
-### La pantalla YA consume el contrato nuevo (`9e093fe`)
+| hueco | estado |
+|---|---|
+| **A** — el empate de `createdAt` | **CERRADO** (`0fa0a62`), mutacion MA1 en rojo |
+| **B** — la mitad «una sola vez» de `notified_at` | **CERRADO BORRANDO LA FUNCION** (ADR 0085) |
+| **C** — la carrera real del 23505 | **VUELTA IMPROBABLE** (ADR 0086), no pinneada; ver abajo |
 
-El hallazgo anterior —la pantalla llamando a `PUT /{id}/draft` y `POST /{id}/accept`, que daban
-404— **esta resuelto**. Se borro el editor de borrador entero y el estado `ready`; entra el panel
-que muestra el `result` del DTO (creadas, **reusadas**, creados, **omitidos**, sin precio y los
-descartados con su motivo). El archivo estaba en 867 lineas con limite 300, asi que se dividio en
-cinco (`-api`, `use-catalog-import`, `-picker`, `-result` y el componente), ninguno arriba de 280.
-Se borro tambien el CSS muerto del editor (ADR 0070 §17).
+**Lo que sigue SIN oraculo, a proposito y declarado:**
 
-**PENDIENTE Y BLOQUEADO: `pnpm test:e2e` NO se corrio.** Esta spec ahora toca `.tsx` y CSS global,
-asi que el gate **aplica**. No corre porque hay un `next dev` de merchant ocupando el puerto 3000 y
-`playwright.config.ts` espera merchant en el **3001**: Playwright intenta levantar otro y el lock de
-`next dev` lo rechaza. **Hay que correrlo antes de pushear.** Atenuante medido: `tests/e2e/health.spec.ts`
-solo pega a `/api/health` de las tres apps (JSON, sin UI) y `loyalty-real.spec.ts` se auto-skipea sin
-credenciales y va a `/backoffice/loyalty` — ninguno ejercita la pantalla ni el CSS que se toco.
+- **El *interleaving* real del 23505.** El ADR 0086 eligio volver la carrera improbable en vez
+  de pinnearla. La receta de la sonda que SI la fuerza: abrir una transaccion, insertar la
+  categoria y dejarla **sin commitear**, lanzar el writer (relee y no la ve → planifica CREAR),
+  esperar ~800 ms y recien ahi commitear. ~40 lineas. **El limite que dice el docblock del caso
+  es mas grande que el real**: no hacen falta dos imports abiertos.
+- **El guard no cierra la ventana del todo**: mira el estado en el instante del alta, asi que
+  dos requests exactamente simultaneas pueden cruzarse. Por eso la recuperacion del 23505 **no
+  se borro**.
+- **`products.ts:141-143` afirma que el guard va ANTES de reservar la imagen** —«un 409 no deja
+  nada que limpiar en R2»— y el codigo cumple, pero **nada lo pinnea**: mover el guard despues
+  de `resolveImageChange` sobrevive en verde. Si se reordena en un refactor, cada alta bloqueada
+  con imagen deja un objeto huerfano en R2. Se cierra con un caso Neon que cree un producto CON
+  imagen y afirme que no quedo prefijo.
+- **La pantalla no tiene ningun oraculo automatico.** No hay tests de componente y el e2e no
+  visita `/backoffice/catalog`. La equivalencia del refactor de `catalog-page.tsx` se verifico
+  **estaticamente** (cuerpos comparados contra `fbed94c`), no renderizada.
+- **La calidad de extraccion del LLM**, el precio mal leido con confianza alta, y que el copy
+  del bloqueo se entienda: QA, no test.
 
-## ⇥ PROXIMO PASO: QA DEL OWNER SOBRE LA PANTALLA NUEVA
+### Flake conocido de la suite Neon (NO lo introdujo la 0092)
 
-El servidor esta listo y verificado. Lo que falta es la pantalla que consuma el contrato de la §9
-(la hace el owner) y, con ella, el QA de punta a punta: subir un PDF real y ver el catalogo escrito.
-**Antes de pedir ese QA contra produccion hay que pushear** —hoy nadie pusheo— **y verificar que el
-deploy de Vercel al que apunta `checkpass.club` este en `READY` con ese sha.**
+En 1 de 3 corridas del glob `src/server/catalog` salio rojo
+`catalog-import-reconcile.neon.integration.test.ts:211` (`expect(polls).toHaveLength(0)` recibio
+`1`). **Causa senalada en el codigo:** `catalog-import/reconcile.ts:60-62` y `:87-89` escanean
+por `status` **sin `businessId`**, y la asercion del test es global — cualquier suite
+concurrente con un import abierto sembrado en la rama compartida lo dispara. Ese archivo solo:
+8/8 verde. **A decidir**, no perseguido.
+
+### Limpieza pendiente de un renglon
+
+**`legacyDraftVersion` (`draft_version`) es una columna huerfana**: nadie la lee ni la escribe
+desde la 0091. La 0092 no la toco a proposito —su migracion declara que no toca nada mas— pero
+es candidata natural a irse con la proxima.
 
 ## ⇥ LAS SUITES NEON YA CORREN LOCAL (2026-09-23) — `tools/neon-test.sh`
 
