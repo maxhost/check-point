@@ -8,6 +8,48 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ PROXIMO PASO (2026-09-23): IMPLEMENTAR LA SPEC 0091
+
+**Arranca aca.** Leer, en este orden: `specs/0091-la-importacion-de-catalogo-escribe-directo.md`
+(esta `cerrada`, sin decisiones abiertas) y `adr/0084-la-importacion-de-catalogo-escribe-directo-y-solo-agrega.md`.
+
+**Como:** UN implementador para toda la spec, UN revisor independiente al final (ADR 0071).
+Presupuesto **6 mutaciones**, tabla en la §12 de la spec. Los gates completos, una vez al final.
+
+**Los tres archivos Neon que toca la spec se corren asi** (≈40 s, no la tanda entera):
+
+```
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use
+tools/neon-test.sh src/server/catalog-import.neon.integration.test.ts
+```
+
+**`test:e2e` NO aplica** a la 0091 (cero `.tsx`) y se demuestra con `git diff --stat`.
+
+### Estado del arbol al cerrar esta sesion
+
+Tres commits en `main`, **SIN PUSHEAR** (pushear dispara deploy de produccion; el owner no lo pidio):
+
+| sha | que es |
+|---|---|
+| `53b5765` | fix: cancelar en `analyzing` es inmediato y terminal (trabajo que estaba sin commitear) |
+| `1d8836f` | docs: ADR 0084 + spec 0091 reescritos y simplificados, INDEX y TASKS |
+| `744ede0` | tools: `neon-test.sh` + la regla en `CLAUDE.md`, la skill y `LECCIONES.md` |
+
+**Sin commitear queda solo la UI en curso del owner** (`backoffice/catalog/catalog-ai-import.tsx`
++ `globals.css`), que **no toca esta spec** y es la unica razon por la que `format:check` esta
+rojo. Cuando el owner la commitee: `pnpm exec prettier --write <ruta>` (**nunca** `pnpm format`) y
+`test:e2e`, que ahi SI aplica.
+
+**Gates corridos en esta sesion:** `typecheck`, `lint`, `test` (**1737 passed, 0 failed**), `build`.
+`format:check` rojo solo por ese `.tsx`.
+
+### Ofrecido al owner y SIN RESPUESTA (no decidirlo solo)
+
+- **Modo «rama efimera por corrida»** para `tools/neon-test.sh`, que mataria el flake de rama
+  compartida y la contencion con la CI. La alternativa barata ya diagnosticada es el fix de una
+  linea del `seedConsumer` (`Math.random()` sobre una columna UNIQUE), que espera decision en
+  `PARQUEADO.md` fila 58.
+
 ## ⇥ LAS SUITES NEON YA CORREN LOCAL (2026-09-23) — `tools/neon-test.sh`
 
 **El limite declarado desde la 0090 —«las 6 suites `.neon.integration` NUNCA CORRIERON, 583 tests
