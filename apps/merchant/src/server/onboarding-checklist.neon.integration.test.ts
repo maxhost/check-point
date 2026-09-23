@@ -116,15 +116,17 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
   }, 120_000);
 
   /**
-   * SPEC 0085 — LOS CINCO ITEMS, EN ORDEN, SERIALIZADOS POR LA RUTA REAL. Es el oraculo de
+   * SPEC 0085 / ADR 0081 — LOS SEIS ITEMS, EN ORDEN, SERIALIZADOS POR LA RUTA REAL (son
+   * `verify-email` mas los CINCO tours de `ONBOARDING_TOURS`; `locations` entro el
+   * 2026-09-21). Es el oraculo de
    * la M5 (sacar el `sort`) del lado de la integracion, el de la M4 (`required` en un tour) y
    * la mitad «sin fila → `done: false`» de la M2: este negocio no tiene ni una fila de
    * progreso.
    *
-   * El vector entero en un solo `toEqual` y no cinco `expect` sueltos: partido, el primero que
-   * falla aborta el caso y las otras cuatro filas nunca se evaluan.
+   * El vector entero en un solo `toEqual` y no seis `expect` sueltos: partido, el primero que
+   * falla aborta el caso y las otras cinco filas nunca se evaluan.
    */
-  it("los CINCO items salen en orden, con `verify-email` como unico `required`", async () => {
+  it("los SEIS items salen en orden, con `verify-email` como unico `required`", async () => {
     await wipeTours(seed.businessId);
     const body = await (await getChecklist(cookieOwner)).json();
     expect(
@@ -137,10 +139,11 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       ]),
     ).toEqual([
       [1, "verify-email", "verify-email", true, false],
-      [2, "staff", "staff", false, false],
-      [3, "catalog", "catalog", false, false],
-      [4, "program", "program", false, false],
-      [5, "brand", "brand", false, false],
+      [2, "locations", "locations", false, false],
+      [3, "staff", "staff", false, false],
+      [4, "catalog", "catalog", false, false],
+      [5, "program", "program", false, false],
+      [6, "brand", "brand", false, false],
     ]);
   }, 120_000);
 
@@ -149,17 +152,24 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
    * LEE la sesion y no devuelve una constante. */
   it("un owner CON el email verificado recibe 200 y el mismo item en `done: true`", async () => {
     await setVerified(seed, true);
-    const response = await getChecklist(cookieOwner);
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.items).toHaveLength(5);
-    expect(body.items[0]).toMatchObject({
-      id: "verify-email",
-      position: 1,
-      required: true,
-      done: true,
-    });
-    await setVerified(seed, false);
+    // **El reset va en `finally`.** Estaba como ultima linea del cuerpo, asi que cuando un
+    // assert de arriba fallaba el owner quedaba VERIFICADO y los cuatro casos siguientes
+    // —que asumen `done: false`— fallaban en cascada acusando al item equivocado. Paso de
+    // verdad: el dia que el catalogo sumo `locations`, este `toHaveLength` corto el caso.
+    try {
+      const response = await getChecklist(cookieOwner);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.items).toHaveLength(6);
+      expect(body.items[0]).toMatchObject({
+        id: "verify-email",
+        position: 1,
+        required: true,
+        done: true,
+      });
+    } finally {
+      await setVerified(seed, false);
+    }
   }, 120_000);
 
   /** EL CONJUNTO EXACTO DE CLAVES QUE SALE POR HTTP, item por item — **y aca se asevera que
@@ -256,17 +266,19 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       body.items.map((item: ChecklistItemJson) => [item.id, item.done]),
     ).toEqual([
       ["verify-email", false],
+      ["locations", false],
       ["staff", false],
       ["catalog", true],
       ["program", true],
       ["brand", false],
     ]);
     // Y el JSON NO dice cual de los dos fue: la distincion se persiste, no se serializa.
-    expect(Object.keys(body.items[2])).not.toContain("status");
+    // El indice 3 es `catalog`, el `completed` del vector de arriba.
+    expect(Object.keys(body.items[3])).not.toContain("status");
   }, 120_000);
 
   /**
-   * ORACULO DE LA M3 — EL AISLAMIENTO. El otro negocio tiene los CUATRO tours hechos y este
+   * ORACULO DE LA M3 — EL AISLAMIENTO. El otro negocio tiene los CINCO tours hechos y este
    * ninguno: una consulta que ignorara el `business_id` le mostraria a este el progreso del
    * otro. El control positivo va en la MISMA respuesta —una fila propia, que si tiene que
    * verse— para que un `done` constante en `false` tampoco pase.
@@ -274,7 +286,7 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
   it("un negocio NO ve el progreso de otro (y si ve el suyo)", async () => {
     await wipeTours(seed.businessId);
     await wipeTours(seedAjeno.businessId);
-    for (const tourId of ["staff", "catalog", "program", "brand"])
+    for (const tourId of ["locations", "staff", "catalog", "program", "brand"])
       await seedTour(seedAjeno.businessId, tourId, "completed");
     await seedTour(seed.businessId, "brand", "skipped");
     const body = await (await getChecklist(cookieOwner)).json();
@@ -282,6 +294,7 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       body.items.map((item: ChecklistItemJson) => [item.id, item.done]),
     ).toEqual([
       ["verify-email", false],
+      ["locations", false],
       ["staff", false],
       ["catalog", false],
       ["program", false],
