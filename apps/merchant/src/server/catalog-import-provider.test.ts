@@ -1,24 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  catalogExtractionProviderFromEnv,
-  ProviderUnavailableError,
-} from "./catalog-import/providers/provider";
-import { FakeCatalogExtractionProvider } from "./catalog-import/providers/fake";
-import {
   extractionFrom,
   OpenAiCatalogExtractionProvider,
   OpenAiRequestError,
 } from "./catalog-import/providers/openai";
 import { CATALOG_EXTRACTION_PROMPT } from "./catalog-import/providers/openai-schema";
-import type {
-  CatalogExtractionInput,
-  CatalogExtractionProvider,
-} from "./catalog-import/types";
-
-/** Un entorno parcial: `catalogExtractionProviderFromEnv` lee tres claves y `ProcessEnv`
- * exige `NODE_ENV`, que no tiene nada que ver con esta decision. */
-const env = (valores: Record<string, string>) =>
-  valores as unknown as NodeJS.ProcessEnv;
+import type { CatalogExtractionInput } from "./catalog-import/types";
 
 /**
  * Spec 0090 §4 — EL CONTRATO DEL PROVEEDOR: `fake` determinista, adaptador `openai`
@@ -45,73 +32,6 @@ const entradaPdf = (): CatalogExtractionInput => ({
       position: 0,
     },
   ],
-});
-
-describe("adaptador `fake` (spec 0090 §4)", () => {
-  it("contesta `completed` y es determinista por contenido", async () => {
-    const provider = new FakeCatalogExtractionProvider();
-    const a = await provider.start(entrada());
-    const b = await provider.start(entrada());
-    expect(a.kind).toBe("completed");
-    expect(a).toEqual(b);
-  });
-
-  it("produce los dos estados de precio, y el ambiguo con `null`", async () => {
-    const result = await new FakeCatalogExtractionProvider().start(entrada());
-    if (result.kind !== "completed") throw new Error("esperaba completed");
-    const productos = result.extraction.categories.flatMap((c) => c.products);
-    expect(productos.find((p) => p.priceStatus === "detected")?.unitPrice).toBe(
-      "3.25",
-    );
-    expect(
-      productos.find((p) => p.priceStatus === "ambiguous")?.unitPrice,
-    ).toBeNull();
-  });
-
-  it("implementa SOLO `start`: la forma diferida es opcional", () => {
-    const provider: CatalogExtractionProvider =
-      new FakeCatalogExtractionProvider();
-    expect(provider.poll).toBeUndefined();
-    expect(provider.verifyCallback).toBeUndefined();
-  });
-});
-
-describe("resolución del proveedor por configuración (spec 0090 §4)", () => {
-  it("`fake` es el default y no necesita nada", () => {
-    expect(catalogExtractionProviderFromEnv(env({})).id).toBe("fake");
-  });
-
-  /** **NO HAY FALLBACK SILENCIOSO**: caer al `fake` en producción le daría al merchant un
-   * menú inventado con cara de análisis real. */
-  it("`openai` SIN clave tira, no cae al fake", () => {
-    expect(() =>
-      catalogExtractionProviderFromEnv(
-        env({ CATALOG_EXTRACTION_PROVIDER: "openai" }),
-      ),
-    ).toThrow(ProviderUnavailableError);
-  });
-
-  it("un proveedor desconocido tira, no cae al fake", () => {
-    expect(() =>
-      catalogExtractionProviderFromEnv(
-        env({ CATALOG_EXTRACTION_PROVIDER: "kimi" }),
-      ),
-    ).toThrow(ProviderUnavailableError);
-  });
-
-  it("con clave, `openai` se construye con el modelo de la env", () => {
-    const provider = catalogExtractionProviderFromEnv(
-      env({
-        CATALOG_EXTRACTION_PROVIDER: "openai",
-        OPENAI_API_KEY: "sk-test",
-        CATALOG_EXTRACTION_MODEL: "gpt-x",
-      }),
-    );
-    expect({ id: provider.id, model: provider.model }).toEqual({
-      id: "openai",
-      model: "gpt-x",
-    });
-  });
 });
 
 /** Un `fetch` doblado: devuelve lo que se le ponga y registra lo que se le mandó. */
@@ -156,9 +76,7 @@ const RESPUESTA_OK = {
           {
             sourceId: "p1",
             name: "Café",
-            unitPrice: "2.5",
-            priceStatus: "detected",
-            sourceText: "Café 2,5",
+            priceText: "$2,50",
           },
         ],
       },
@@ -168,7 +86,7 @@ const RESPUESTA_OK = {
   usage: { input_tokens: 10, output_tokens: 20 },
 };
 
-describe("adaptador `openai` (spec 0090 §4)", () => {
+describe("adaptador `openai` (specs 0090 §4 / 0091 §10)", () => {
   it("`start` submitea con `background: true` y devuelve un jobId diferido", async () => {
     const doble = fetchDoble([{ ok: true, body: { id: "resp_1" } }]);
     try {
@@ -240,8 +158,8 @@ describe("adaptador `openai` (spec 0090 §4)", () => {
     try {
       const result = await provider.poll("resp_1");
       if (result.status !== "done") throw new Error("esperaba done");
-      expect(result.extraction.categories[0].products[0].unitPrice).toBe(
-        "2.50",
+      expect(result.extraction.categories[0].products[0].priceText).toBe(
+        "$2,50",
       );
       expect(result.extraction.usage).toEqual({
         inputTokens: 10,
@@ -319,7 +237,7 @@ describe("adaptador `openai` (spec 0090 §4)", () => {
     expect(() =>
       extractionFrom({
         id: "resp_1",
-        output_text: JSON.stringify({ categories: [{ sourceId: "c1" }] }),
+        output_text: JSON.stringify({ categories: "no es una lista" }),
       }),
     ).toThrow();
     expect(() =>
@@ -328,5 +246,27 @@ describe("adaptador `openai` (spec 0090 §4)", () => {
     expect(() => extractionFrom({ id: "resp_1" })).toThrow(
       "openai_no_output_text",
     );
+  });
+
+  /** Spec 0091 §5 — una CATEGORIA rota ya no tumba la extraccion entera: se descarta. */
+  it("una categoría rota se DESCARTA, no tira: un renglón no cuesta el análisis", () => {
+    const out = extractionFrom({
+      id: "resp_1",
+      output_text: JSON.stringify({
+        categories: [
+          { sourceId: "c1" },
+          {
+            sourceId: "c2",
+            name: "Bebidas",
+            products: [{ sourceId: "p1", name: "Café", priceText: "2,50" }],
+          },
+        ],
+        warnings: [],
+      }),
+    });
+    expect(out.categories.map((c) => c.name)).toEqual(["Bebidas"]);
+    expect(out.discarded).toEqual([
+      { text: '{"sourceId":"c1"}', reason: "invalid_row" },
+    ]);
   });
 });

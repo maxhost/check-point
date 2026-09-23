@@ -23,7 +23,7 @@ export type CallbackOutcome =
   | { status: 401 }
   | {
       status: 200;
-      result: "ignored" | "pending" | "ready" | "failed" | "noop";
+      result: "ignored" | "pending" | "accepted" | "failed" | "noop";
     };
 
 export async function handleProviderCallback(
@@ -66,5 +66,8 @@ export async function handleProviderCallback(
   }
   const elapsed = Date.now() - row.createdAt.getTime();
   const outcome = await finishAnalysis(row.id, result.extraction, elapsed);
-  return { status: 200, result: outcome === "ready" ? "ready" : "noop" };
+  return {
+    status: 200,
+    result: outcome === "accepted" ? "accepted" : "noop",
+  };
 }

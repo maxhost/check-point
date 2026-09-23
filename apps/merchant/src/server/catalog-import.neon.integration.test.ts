@@ -33,42 +33,30 @@ const { GET: VER, DELETE: CANCELAR } =
  * Spec 0090 §1/§6/§8 — EL CICLO DE VIDA CONTRA LA BASE, con sesiones REALES.
  *
  * Lo que solo se puede medir acá: el **indice unico parcial** de un import abierto por
- * negocio, la **apropiacion** del abandonado, el **409 que NO descarta un `ready`**, el
- * aislamiento entre negocios y el **cupo**, que se cuenta con filas.
+ * negocio, la **apropiacion** del abandonado, el aislamiento entre negocios y el **cupo**,
+ * que se cuenta con filas.
  *
- * ORACULO DE M8 (contar el cupo tambien cuando el import termina `failed`) y de M9
- * (apropiarse tambien de un `ready`).
+ * Spec 0091 §9 — y ademas el `GET` de la lista, que ahora devuelve **el ULTIMO import**
+ * (abierto o terminal) para que un reload no pierda el resultado.
  */
 const archivos = {
   files: [{ name: "menu.jpg", contentType: "image/jpeg", byteSize: 100_000 }],
 };
 
-const BORRADOR = {
-  version: 1,
-  categories: [
-    {
-      draftId: "c1",
-      name: "Bebidas",
-      resolution: { kind: "create" },
-      duplicateCandidate: null,
-      products: [
-        {
-          draftId: "p1",
-          name: "Café",
-          unitPrice: "3.50",
-          priceStatus: "detected",
-          sourceText: null,
-          include: true,
-          duplicateCandidate: null,
-        },
-      ],
-    },
-  ],
-  warnings: [],
+/** El resumen que un import ya importado guarda en `accepted_summary` y que el `GET`
+ * devuelve como `result` (spec 0091 §9). */
+const RESUMEN = {
+  categoriesCreated: 1,
+  categoriesReused: 0,
+  productsCreated: 2,
+  productsSkipped: 0,
+  productsWithoutPrice: 1,
+  discardedCount: 1,
+  discarded: [{ text: "Milanesa", reason: "unreadable_name" }],
 };
 
 describe.skipIf(!enabled)(
-  "importación de catálogo contra Neon (spec 0090)",
+  "importación de catálogo contra Neon (specs 0090/0091)",
   () => {
     let a: SeedImport;
     let b: SeedImport;
@@ -108,7 +96,7 @@ describe.skipIf(!enabled)(
         params: Promise.resolve({ id }),
       });
 
-    it("reserva, devuelve URLs firmadas y el activo se retoma con el GET", async () => {
+    it("reserva, devuelve URLs firmadas y el import se retoma con el GET", async () => {
       const creado = await crear(cookieA);
       expect(creado.status).toBe(201);
       const cuerpo = await creado.json();
@@ -130,9 +118,16 @@ describe.skipIf(!enabled)(
       expect(activo.status).toBe(200);
       expect((await activo.json()).import.id).toBe(cuerpo.import.id);
 
+      // Spec 0091 §9 — cancelarlo NO lo hace desaparecer del GET: la lista devuelve el
+      // ULTIMO import del negocio, terminal incluido. Lo que cambia es el `status`, y por
+      // eso es la pantalla la que decide si ofrece empezar de nuevo.
       await cancelar(cookieA, cuerpo.import.id);
-      const vacio = await listar(cookieA);
-      expect((await vacio.json()).import).toBeNull();
+      const despues = await (await listar(cookieA)).json();
+      expect(despues.import).toMatchObject({
+        id: cuerpo.import.id,
+        status: "cancelled",
+        result: null,
+      });
     });
 
     it("un abandonado en `pending_upload` NO traba el siguiente: se lo apropia", async () => {
@@ -145,29 +140,41 @@ describe.skipIf(!enabled)(
       await cancelar(cookieA, nuevo.import.id);
     });
 
-    /** ORACULO DE M9: si `POST` se apropiara tambien de un `ready`, este caso se pone rojo
-     * dos veces — por el status y porque el borrador desaparece. */
-    it("uno en `ready` responde 409 y **el borrador sigue existiendo**", async () => {
-      const listo = await seedImport({
+    /**
+     * Spec 0091 §9 — **EL `GET` DE LA LISTA DEVUELVE EL ULTIMO IMPORT, TERMINAL INCLUIDO.**
+     *
+     * Es lo que hace que un reload despues de importar no pierda el resultado. El caso
+     * asevera las TRES mitades: que el terminal se devuelve con su `result`, que **no
+     * bloquea** una importacion nueva (a diferencia de un abierto), y que el import de OTRO
+     * negocio **nunca** aparece.
+     */
+    it("el GET devuelve el último import aunque sea terminal, y nunca el de otro negocio", async () => {
+      const ajeno = await seedImport({
+        businessId: b.businessId,
+        userId: b.userId,
+        status: "accepted",
+        acceptedSummary: { ...RESUMEN, productsCreated: 999 },
+        createdAt: new Date(Date.now() + 60_000),
+      });
+      const importado = await seedImport({
         businessId: a.businessId,
         userId: a.userId,
-        status: "ready",
-        draft: BORRADOR,
+        status: "accepted",
+        acceptedSummary: RESUMEN,
       });
-      const respuesta = await crear(cookieA);
-      expect(respuesta.status).toBe(409);
-      expect(await respuesta.json()).toMatchObject({
-        code: "catalog_import_in_progress",
-      });
-      const fila = await leerImport(listo);
-      expect(fila?.status).toBe("ready");
-      expect(fila?.draft).toMatchObject({ version: 1 });
-      // Y la pantalla lo retoma con el GET, que es la salida del 409.
-      const retomado = await listar(cookieA);
-      expect((await retomado.json()).import.draft).toMatchObject({
-        version: 1,
-      });
-      await cancelar(cookieA, listo);
+
+      const cuerpo = await (await listar(cookieA)).json();
+      expect(cuerpo.import.id).toBe(importado);
+      expect(cuerpo.import.status).toBe("accepted");
+      expect(cuerpo.import.result).toEqual(RESUMEN);
+      // Y ni el id ni el resumen del negocio ajeno se filtran por ningún lado.
+      expect(JSON.stringify(cuerpo)).not.toContain(ajeno);
+      expect(JSON.stringify(cuerpo)).not.toContain("999");
+
+      // Un terminal NO bloquea: el guard sigue siendo `activeImport`, no este GET.
+      const nuevo = await crear(cookieA);
+      expect(nuevo.status).toBe(201);
+      await cancelar(cookieA, (await nuevo.json()).import.id);
     });
 
     it("`queued` y `analyzing` también dan 409: hay trabajo pago en vuelo", async () => {
@@ -191,8 +198,7 @@ describe.skipIf(!enabled)(
       const deB = await seedImport({
         businessId: b.businessId,
         userId: b.userId,
-        status: "ready",
-        draft: BORRADOR,
+        status: "analyzing",
       });
       const ajeno = await ver(cookieA, deB);
       expect(ajeno.status).toBe(404);

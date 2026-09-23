@@ -100,7 +100,6 @@ export async function seedImport(opts: {
   userId: string;
   status: string;
   draft?: unknown;
-  draftVersion?: number;
   createdAt?: Date;
   expiresAt?: Date;
   providerJobId?: string | null;
@@ -120,7 +119,6 @@ export async function seedImport(opts: {
       sourceKind: "images",
       fileCount: 1,
       draft: opts.draft ?? null,
-      draftVersion: opts.draftVersion ?? (opts.draft ? 1 : 0),
       providerJobId: opts.providerJobId ?? null,
       provider: opts.provider ?? null,
       leaseUntil: opts.leaseUntil ?? null,
@@ -157,7 +155,6 @@ export async function seedImports(
         sourceKind: "images",
         fileCount: 1,
         draft: opts.draft ?? null,
-        draftVersion: opts.draftVersion ?? (opts.draft ? 1 : 0),
         providerJobId: opts.providerJobId ?? null,
         provider: opts.provider ?? null,
         leaseUntil: opts.leaseUntil ?? null,
@@ -188,6 +185,38 @@ export async function cerrarImport(id: string): Promise<void> {
     .where(eq(catalogImports.id, id));
 }
 
+/** Una categoria del catalogo REAL del negocio, para que la importacion la concilie. */
+export async function sembrarCategoria(
+  businessId: string,
+  name: string,
+  createdAt?: Date,
+): Promise<string> {
+  const [row] = await getDb()
+    .insert(productCategories)
+    .values({ businessId, name, ...(createdAt ? { createdAt } : {}) })
+    .returning({ id: productCategories.id });
+  return row.id;
+}
+
+/** Un producto del catalogo REAL. `unitPrice` viaja como el decimal en string del repo. */
+export async function sembrarProducto(opts: {
+  businessId: string;
+  name: string;
+  categoryId?: string | null;
+  unitPrice?: string | null;
+}): Promise<string> {
+  const [row] = await getDb()
+    .insert(products)
+    .values({
+      businessId: opts.businessId,
+      name: opts.name,
+      categoryId: opts.categoryId ?? null,
+      unitPrice: opts.unitPrice ?? null,
+    })
+    .returning({ id: products.id });
+  return row.id;
+}
+
 export async function productosDe(businessId: string) {
   return getDb()
     .select({
@@ -196,6 +225,7 @@ export async function productosDe(businessId: string) {
       unitPrice: products.unitPrice,
       unitCost: products.unitCost,
       categoryId: products.categoryId,
+      availableAllLocations: products.availableAllLocations,
     })
     .from(products)
     .where(eq(products.businessId, businessId));
@@ -203,7 +233,11 @@ export async function productosDe(businessId: string) {
 
 export async function categoriasDe(businessId: string) {
   return getDb()
-    .select({ id: productCategories.id, name: productCategories.name })
+    .select({
+      id: productCategories.id,
+      name: productCategories.name,
+      createdAt: productCategories.createdAt,
+    })
     .from(productCategories)
     .where(eq(productCategories.businessId, businessId));
 }

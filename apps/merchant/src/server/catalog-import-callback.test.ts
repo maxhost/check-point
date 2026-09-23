@@ -2,12 +2,15 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ProviderExtraction } from "./catalog-import/types";
 
 /**
- * Spec 0090 §7 — **EL CUERPO DEL WEBHOOK NO SE CREE.**
+ * Spec 0091 §7 — **EL CUERPO DEL WEBHOOK NO SE CREE.**
  *
- * ORACULO DE M3: el payload que entra trae un borrador FALSO con un producto que no existe;
- * lo que la API del proveedor devuelve es otro. El test asevera que lo persistido es lo que
- * trajo `poll` y que **el producto del cuerpo no aparece por ningun lado**. Si el codigo
- * confiara en el cuerpo, este caso se pone rojo.
+ * ORACULO DE M3 (spec 0090): el payload que entra trae una extraccion FALSA con un producto
+ * que no existe; lo que la API del proveedor devuelve es otra. El test asevera que lo
+ * persistido —y **lo que recibe el writer**— es lo que trajo `poll`, y que el producto del
+ * cuerpo no aparece por ningun lado.
+ *
+ * El writer esta doblado a proposito: lo que se mide aca es **que extraccion le llega**, no
+ * que escriba bien (eso es `catalog-import-write.neon.integration.test.ts`).
  *
  * Y el orden: con la firma invalida **no se toca la base** — se cuenta cero acceso a `getDb`.
  */
@@ -15,7 +18,30 @@ const estado = {
   filas: [] as unknown[][],
   sets: [] as Record<string, unknown>[],
   accesosAlaBase: 0,
+  escrituras: [] as unknown[],
 };
+
+vi.mock("./catalog-import/write", () => ({
+  writeImportedCatalog: async (
+    _importId: string,
+    _businessId: string,
+    extraction: unknown,
+  ) => {
+    estado.escrituras.push(extraction);
+    return {
+      created: true,
+      result: {
+        categoriesCreated: 1,
+        categoriesReused: 0,
+        productsCreated: 1,
+        productsSkipped: 0,
+        productsWithoutPrice: 0,
+        discardedCount: 0,
+        discarded: [],
+      },
+    };
+  },
+}));
 
 vi.mock("./db", () => {
   const nuevaCadena = () => {
@@ -67,7 +93,6 @@ const FILA = {
   sourceKind: "images",
   fileCount: 1,
   draft: null,
-  draftVersion: 0,
   provider: "openai",
   model: "gpt-x",
   providerJobId: "resp_real",
@@ -83,16 +108,11 @@ const REAL: ProviderExtraction = {
       sourceId: "c1",
       name: "Bebidas",
       products: [
-        {
-          sourceId: "p1",
-          name: "Café de verdad",
-          unitPrice: "2.50",
-          priceStatus: "detected",
-          sourceText: null,
-        },
+        { sourceId: "p1", name: "Café de verdad", priceText: "$2,50" },
       ],
     },
   ],
+  discarded: [],
   warnings: [],
   usage: { inputTokens: 1, outputTokens: 2 },
   providerRequestId: "req_1",
@@ -110,13 +130,7 @@ const CUERPO_MALICIOSO = JSON.stringify({
           sourceId: "cX",
           name: "Categoría inyectada",
           products: [
-            {
-              sourceId: "pX",
-              name: "PRODUCTO FALSO",
-              unitPrice: "0.01",
-              priceStatus: "detected",
-              sourceText: null,
-            },
+            { sourceId: "pX", name: "PRODUCTO FALSO", priceText: "0,01" },
           ],
         },
       ],
@@ -138,9 +152,10 @@ beforeEach(() => {
   estado.filas = [];
   estado.sets = [];
   estado.accesosAlaBase = 0;
+  estado.escrituras = [];
 });
 
-describe("callback del proveedor (spec 0090 §7)", () => {
+describe("callback del proveedor (spec 0091 §7)", () => {
   it("con firma inválida contesta 401 y NO toca la base", async () => {
     const outcome = await handleProviderCallback(
       new Headers(),
@@ -162,22 +177,23 @@ describe("callback del proveedor (spec 0090 §7)", () => {
   });
 
   /** ORACULO DE M3. */
-  it("persiste lo que devolvió la API, NO el borrador que venía en el cuerpo", async () => {
-    // 1) callback busca la fila; 2) finishAnalysis la vuelve a leer; 3) snapshot x2;
-    // 4) el UPDATE que persiste; 5) la reclamación del email.
-    estado.filas = [[FILA], [FILA], [], [], [{ id: FILA.id }], []];
+  it("persiste y escribe lo que devolvió la API, NO lo que venía en el cuerpo", async () => {
+    // 1) callback busca la fila; 2) finishAnalysis la vuelve a leer; 3) el UPDATE que
+    // persiste la extracción cruda; 4) la reclamación del email.
+    estado.filas = [[FILA], [FILA], [], []];
     const outcome = await handleProviderCallback(
       new Headers(),
       CUERPO_MALICIOSO,
       { provider: proveedor({ firmaValida: true }) },
     );
-    expect(outcome).toEqual({ status: 200, result: "ready" });
+    expect(outcome).toEqual({ status: 200, result: "accepted" });
     const persistido = estado.sets.find((set) => "draft" in set);
     expect(persistido).toBeDefined();
     expect(JSON.stringify(persistido)).toContain("Café de verdad");
     expect(JSON.stringify(estado.sets)).not.toContain("PRODUCTO FALSO");
     expect(JSON.stringify(estado.sets)).not.toContain("Categoría inyectada");
-    expect(persistido).toMatchObject({ status: "ready", draftVersion: 1 });
+    // Y lo que el WRITER recibió es la extracción de la API, no la del cuerpo.
+    expect(estado.escrituras).toEqual([REAL]);
   });
 
   it("un import que ya salió de análisis es no-op idempotente", async () => {
@@ -214,5 +230,6 @@ describe("callback del proveedor (spec 0090 §7)", () => {
     expect(outcome).toEqual({ status: 200, result: "noop" });
     expect(estado.sets.some((set) => set.status === "cancelled")).toBe(true);
     expect(estado.sets.some((set) => "draft" in set)).toBe(false);
+    expect(estado.escrituras).toEqual([]);
   });
 });

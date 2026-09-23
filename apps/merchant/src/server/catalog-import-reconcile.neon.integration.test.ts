@@ -4,6 +4,7 @@ import {
   importIntegrationEnabled as enabled,
   leerImport,
   limpiarNegocio,
+  productosDe,
   seedImport,
   seedNegocio,
   type SeedImport,
@@ -22,11 +23,15 @@ const { runCatalogImportReconcile } =
   await import("./catalog-import/reconcile");
 
 /**
- * Spec 0090 §7 — EL RECONCILIADOR CONTRA LA BASE.
+ * Spec 0091 §8 — EL RECONCILIADOR CONTRA LA BASE.
  *
- * ORACULO DE M4 (borrar `lease_until` del reclamo): **dos reconciliadores concurrentes
- * reclaman la misma fila UNA sola vez**, y una fila con el lease vivo no se vuelve a tocar.
- * Sin el lease, el primer caso ve dos `poll` y el segundo ve uno que no deberia existir.
+ * ORACULO DE M4 de la 0090 (borrar `lease_until` del reclamo): **dos reconciliadores
+ * concurrentes reclaman la misma fila UNA sola vez**, y una fila con el lease vivo no se
+ * vuelve a tocar. Sin el lease, el primer caso ve dos `poll` y el segundo ve uno que no
+ * deberia existir.
+ *
+ * Y lo que la 0091 cambia: **no se re-submitea nada**. Un `queued` sin submitear pasa a
+ * `failed`; lo unico que se conserva es ir a buscar un resultado **ya pagado**.
  */
 const EXTRACCION: ProviderExtraction = {
   categories: [
@@ -34,16 +39,11 @@ const EXTRACCION: ProviderExtraction = {
       sourceId: "c1",
       name: "Rescatada",
       products: [
-        {
-          sourceId: "p1",
-          name: "Café rescatado",
-          unitPrice: "1.00",
-          priceStatus: "detected",
-          sourceText: null,
-        },
+        { sourceId: "p1", name: "Café rescatado", priceText: "$1,00" },
       ],
     },
   ],
+  discarded: [],
   warnings: [],
   usage: { inputTokens: 1, outputTokens: 1 },
   providerRequestId: "req_rec",
@@ -71,7 +71,7 @@ function proveedorQueCuenta(
   };
 }
 
-describe.skipIf(!enabled)("reconciliador contra Neon (spec 0090 §7)", () => {
+describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
   let a: SeedImport;
 
   beforeAll(async () => {
@@ -120,17 +120,63 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0090 §7)", () => {
     await cerrarImport(id);
   });
 
-  it("un lease VENCIDO se re-reclama y el `done` deja el borrador listo", async () => {
+  it("un lease VENCIDO se re-reclama y el `done` IMPORTA el catálogo", async () => {
     const id = await analizando();
     const { provider, polls } = proveedorQueCuenta("done");
     const resumen = await runCatalogImportReconcile({ provider });
     expect(polls).toHaveLength(1);
     expect(resumen.completed).toBe(1);
     const fila = await leerImport(id);
-    expect(fila?.status).toBe("ready");
-    expect(fila?.draft).toMatchObject({ version: 1 });
+    // Ya no hay estado intermedio: el poll termina en catálogo escrito (§8).
+    expect(fila?.status).toBe("accepted");
+    expect(fila?.acceptedSummary).toMatchObject({
+      categoriesCreated: 1,
+      productsCreated: 1,
+    });
     expect(fila?.leaseUntil).toBeNull();
-    await cerrarImport(id);
+    expect((await productosDe(a.businessId)).map((p) => p.name)).toContain(
+      "Café rescatado",
+    );
+  });
+
+  /**
+   * §8 — **NO SE RE-SUBMITEA.** Un `queued` que quedó sin submitear se cierra en `failed`.
+   *
+   * El oráculo no es solo el estado: el proveedor **no recibe ni un `start`**. Si el
+   * reconciliador volviera a llamar a `runAnalysis`, `starts` pasaría a 1.
+   */
+  it("un `queued` abandonado pasa a `failed` y NO se vuelve a mandar al proveedor", async () => {
+    const id = await seedImport({
+      businessId: a.businessId,
+      userId: a.userId,
+      status: "queued",
+      leaseUntil: new Date(Date.now() - 60_000),
+    });
+    const starts: string[] = [];
+    const { provider } = proveedorQueCuenta("pending");
+    const resumen = await runCatalogImportReconcile({
+      provider: {
+        ...provider,
+        start: async (input) => {
+          starts.push(input.importId);
+          return { kind: "deferred" as const, jobId: "job-no" };
+        },
+      },
+    });
+    expect(starts).toEqual([]);
+    expect(resumen.failed).toBeGreaterThanOrEqual(1);
+    const fila = await leerImport(id);
+    expect(fila?.status).toBe("failed");
+    expect(fila?.failureCode).toBe("provider_unavailable");
+  });
+
+  /** El mismo corte, del otro lado: `analyzing` sin `provider_job_id` tampoco se rehace. */
+  it("un `analyzing` sin `provider_job_id` se cierra en `failed`, no vuelve a `queued`", async () => {
+    const id = await analizando({ providerJobId: null });
+    const { provider, polls } = proveedorQueCuenta("pending");
+    await runCatalogImportReconcile({ provider });
+    expect(polls).toHaveLength(0);
+    expect((await leerImport(id))?.status).toBe("failed");
   });
 
   it("un `failed` del proveedor cierra el import con código saneado", async () => {

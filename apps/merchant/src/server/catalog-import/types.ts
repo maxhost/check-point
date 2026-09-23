@@ -30,11 +30,7 @@ export const CATALOG_IMPORT_ERROR_CODES = [
   "catalog_import_rate_limited",
   "catalog_import_not_found",
   "catalog_import_state",
-  "catalog_import_version",
   "catalog_import_already_accepted",
-  "catalog_import_conflict",
-  "unresolved_catalog_import",
-  "invalid_catalog_draft",
   "unsupported_catalog_file",
   "catalog_pdf_encrypted",
   "catalog_page_limit",
@@ -44,16 +40,20 @@ export const CATALOG_IMPORT_ERROR_CODES = [
 export type CatalogImportErrorCode =
   (typeof CATALOG_IMPORT_ERROR_CODES)[number];
 
-/** El precio: DOS estados y ninguno bloquea (ADR 0082 §9). `ambiguous` ⇒ `unitPrice: null`. */
-export type PriceStatus = "detected" | "ambiguous";
+/** §5 — por que un item quedo AFUERA del catalogo. Va al resumen, para cargarlo a mano. */
+export type DiscardReason = "unreadable_name" | "invalid_row";
+
+export type DiscardedItem = { text: string; reason: DiscardReason };
 
 export type ExtractedProduct = {
   sourceId: string;
   name: string;
-  /** Decimal en STRING, como todo el dinero del repo (`numeric(12,2)`). `null` = sin precio. */
-  unitPrice: string | null;
-  priceStatus: PriceStatus;
-  sourceText: string | null;
+  /**
+   * §4 — EL FRAGMENTO IMPRESO DEL PRECIO, tal cual. El modelo ya **no** decide el estado del
+   * precio: el servidor lo parsea con `parsePriceText` (`plan.ts`), que es lo que vuelve
+   * testeable la decision. `null` = el menu no imprimia precio.
+   */
+  priceText: string | null;
 };
 
 export type ExtractedCategory = {
@@ -64,6 +64,8 @@ export type ExtractedCategory = {
 
 export type ProviderExtraction = {
   categories: ExtractedCategory[];
+  /** Lo ilegible, que NO entra al catalogo y se lista en el resumen (§5). */
+  discarded: DiscardedItem[];
   warnings: string[];
   usage: { inputTokens: number | null; outputTokens: number | null };
   providerRequestId: string | null;
@@ -103,52 +105,19 @@ export interface CatalogExtractionProvider {
   verifyCallback?(headers: Headers, rawBody: string): { jobId: string } | null;
 }
 
-/** La resolucion de una categoria del borrador (§5). */
-export type CategoryResolution =
-  | { kind: "create" }
-  | { kind: "use_existing"; categoryId: string }
-  | { kind: "uncategorized" }
-  | { kind: "discard" };
-
-export type DuplicateCandidateCategory = {
-  categoryId: string;
-  name: string;
-} | null;
-
-export type DuplicateCandidateProduct = {
-  productId: string;
-  name: string;
-} | null;
-
-export type DraftProduct = {
-  draftId: string;
-  name: string;
-  unitPrice: string | null;
-  priceStatus: PriceStatus;
-  sourceText: string | null;
-  include: boolean;
-  duplicateCandidate: DuplicateCandidateProduct;
-};
-
-export type DraftCategory = {
-  draftId: string;
-  name: string;
-  resolution: CategoryResolution;
-  duplicateCandidate: DuplicateCandidateCategory;
-  products: DraftProduct[];
-};
-
-export type CatalogImportDraft = {
-  version: number;
-  categories: DraftCategory[];
-  warnings: string[];
-};
-
-export type AcceptedSummary = {
-  importId: string;
+/**
+ * §9 — EL RESUMEN de una importacion, persistido en `accepted_summary` y servido por el
+ * `GET`. Es lo unico que la pantalla necesita para contar el resultado.
+ */
+export type ImportResult = {
   categoriesCreated: number;
+  categoriesReused: number;
   productsCreated: number;
+  productsSkipped: number;
   productsWithoutPrice: number;
+  /** El total de descartes; `discarded` lista como maximo los primeros 50. */
+  discardedCount: number;
+  discarded: DiscardedItem[];
 };
 
 /** Lo que el `GET` devuelve. **Allow-list cerrada** (§6): ni `objectKey`, ni `providerJobId`,
@@ -160,7 +129,8 @@ export type CatalogImportDTO = {
   fileCount: number;
   pageCount: number | null;
   expiresAt: string;
-  draft: CatalogImportDraft | null;
+  /** Un objeto **solo** en `accepted`; en cualquier otro estado es `null` (§9). */
+  result: ImportResult | null;
   error: { code: string; message: string } | null;
 };
 

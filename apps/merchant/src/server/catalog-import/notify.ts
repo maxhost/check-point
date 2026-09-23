@@ -10,7 +10,8 @@ import { touch } from "./quota";
  *
  * Que el proceso sea asincrono es una ventaja y se explota: el merchant sube, cierra la
  * pantalla y sigue con lo suyo. Para que eso no sea un pozo, el servidor avisa cuando el
- * borrador queda listo (y si falla). Reusa el canal que ya existe (`server/email/`), asi que
+ * menu quedo importado (y si falla). **Sale una sola vez y DESPUES del resultado final**
+ * (spec 0091 §7): no hay estado intermedio que anunciar. Reusa el canal que ya existe (`server/email/`), asi que
  * en los tests sale por el fake de consola y se lee en `consoleEmailOutbox`.
  *
  * **La marca se RECLAMA antes de mandar** (`notified_at is null` en el `WHERE`, con
@@ -29,7 +30,7 @@ export type NotifyOutcome =
 
 export async function notifyImportFinished(
   importId: string,
-  outcome: "ready" | "failed",
+  outcome: "accepted" | "failed",
   channel?: EmailChannel,
 ): Promise<NotifyOutcome> {
   const [claimed] = await getDb()
@@ -99,17 +100,17 @@ function usable(email: string | null | undefined): email is string {
 
 /** El cuerpo. **Sin nombres de productos ni fragmentos del menu**: el aviso dice que el
  * trabajo termino, no que decia el documento (§9). */
-export function catalogImportEmail(outcome: "ready" | "failed"): {
+export function catalogImportEmail(outcome: "accepted" | "failed"): {
   subject: string;
   html: string;
   text: string;
 } {
-  const ready = outcome === "ready";
-  const subject = ready
-    ? "Tu menú ya está listo para revisar"
+  const importado = outcome === "accepted";
+  const subject = importado
+    ? "Tu menú ya está en el catálogo"
     : "No pudimos leer tu menú";
-  const line = ready
-    ? "Terminamos de leer tu menú. Entrá al catálogo para revisar el borrador y confirmarlo."
+  const line = importado
+    ? "Terminamos de leer tu menú y ya está en tu catálogo. Entrá para revisarlo y completar lo que haya quedado sin precio."
     : "No pudimos leer el archivo que subiste. Podés intentarlo de nuevo con otras fotos o un PDF.";
   const text = `${line} CheckPass Club · Negocios`;
   const html = `<!doctype html>

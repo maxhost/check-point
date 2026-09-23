@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import { catalogImportFiles, catalogImports } from "../schema";
 import { catalogImportObjectKey } from "../r2";
@@ -11,7 +11,7 @@ import {
 import {
   CatalogImportError,
   type CatalogImportDTO,
-  type CatalogImportDraft,
+  type ImportResult,
   type UploadTicket,
 } from "./types";
 import { validateImportFiles } from "./validation";
@@ -19,8 +19,8 @@ import { signTickets } from "./uploads";
 import { assertQuota, entitlementContextOf, touch } from "./quota";
 import { enqueueImportCleanup, purgeImportObjects } from "./cleanup";
 
-/** Cuanto vive un import antes de vencer. Se **extiende al pasar a `ready`** para que
- * revisar un menu largo no lo venza mientras se revisa (§7). */
+/** Cuanto vive un import antes de vencer. Ya no se extiende: no hay paso de revision que
+ * pueda vencer mientras alguien revisa (ADR 0084 §5). */
 export const IMPORT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type ImportRow = typeof catalogImports.$inferSelect;
@@ -51,7 +51,12 @@ export function toImportDTO(row: ImportRow): CatalogImportDTO {
     fileCount: row.fileCount,
     pageCount: row.pageCount,
     expiresAt: row.expiresAt.toISOString(),
-    draft: (row.draft as CatalogImportDraft | null) ?? null,
+    // §9 — `result` es un objeto **solo** en `accepted`. En cualquier otro estado es `null`,
+    // y la extraccion cruda que vive en la columna `draft` **nunca** cruza al cliente.
+    result:
+      row.status === "accepted"
+        ? ((row.acceptedSummary as ImportResult | null) ?? null)
+        : null,
     error:
       row.status === "failed"
         ? {
@@ -64,7 +69,12 @@ export function toImportDTO(row: ImportRow): CatalogImportDTO {
   };
 }
 
-/** El unico import no terminal del negocio, o `null`. Es como la pantalla retoma. */
+/**
+ * El unico import ABIERTO del negocio, o `null`. Es **el guard de `createImport`**: solo los
+ * cuatro no terminales bloquean una importacion nueva, y solo un `pending_upload` se apropia.
+ *
+ * No es lo que sirve el `GET` de la lista — eso es `latestImport` (§9).
+ */
 export async function activeImport(
   businessId: string,
 ): Promise<ImportRow | null> {
@@ -78,6 +88,26 @@ export async function activeImport(
       ),
     )
     .orderBy(asc(catalogImports.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * §9 — EL ULTIMO import del negocio, abierto o terminal, o `null` si nunca importo.
+ *
+ * Es lo que devuelve `GET /api/catalog/imports`: sin esto un reload despues de importar
+ * **pierde el resultado**, porque un `accepted` no es un import abierto. **No se usa como
+ * guard**: un import terminal no puede bloquear una importacion nueva, y por eso esto nace
+ * al lado de `activeImport` en vez de reemplazarlo.
+ */
+export async function latestImport(
+  businessId: string,
+): Promise<ImportRow | null> {
+  const [row] = await getDb()
+    .select()
+    .from(catalogImports)
+    .where(eq(catalogImports.businessId, businessId))
+    .orderBy(desc(catalogImports.createdAt))
     .limit(1);
   return row ?? null;
 }
@@ -107,8 +137,7 @@ export async function requireImport(
  *
  * **Se APROPIA de un import abandonado en `pending_upload`** (ADR 0082 §13.2): la pantalla
  * real cierra el modal sin llamar a `DELETE`, y sin esto el merchant queda trabado hasta que
- * el import venza. En `queued`/`analyzing`/`ready` responde **409**: hay trabajo pago en
- * vuelo, y **descartar un `ready` quema el analisis del dia**.
+ * el import venza. En `queued`/`analyzing` responde **409**: hay trabajo pago en vuelo.
  */
 export async function createImport(
   business: { id: string },
@@ -200,7 +229,7 @@ async function takeOverAbandoned(open: ImportRow): Promise<void> {
  *
  * La cancelacion es terminal e inmediata tambien en `analyzing`: el callback y
  * `finishAnalysis` ya ignoran estados terminales, asi que un resultado tardio no puede
- * recrear el borrador. Repetirlo da 200; `accepted` da 409.
+ * escribir catalogo. Repetirlo da 200; `accepted` da 409 y **no es deshacer** (§9).
  */
 export async function cancelImport(
   business: { id: string },
@@ -211,7 +240,7 @@ export async function cancelImport(
     throw new CatalogImportError(
       409,
       "catalog_import_already_accepted",
-      "Esa importación ya fue aceptada.",
+      "Esa importación ya se importó al catálogo.",
     );
   }
   if (
@@ -240,6 +269,8 @@ export async function cancelImport(
           "pending_upload",
           "queued",
           "analyzing",
+          // `ready` ya no se escribe (§1), pero una fila VIEJA en ese estado tiene que
+          // poder cancelarse: si no, bloquea al negocio hasta que venza.
           "ready",
         ]),
       ),
@@ -251,7 +282,7 @@ export async function cancelImport(
       throw new CatalogImportError(
         409,
         "catalog_import_already_accepted",
-        "Esa importación ya fue aceptada.",
+        "Esa importación ya se importó al catálogo.",
       );
     }
     return { import: toImportDTO(current) };

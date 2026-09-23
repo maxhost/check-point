@@ -47,7 +47,16 @@ const archivos = {
   files: [{ name: "menu.jpg", contentType: "image/jpeg", byteSize: 100_000 }],
 };
 
-const BORRADOR = { version: 1, categories: [], warnings: [] };
+/** La extraccion cruda persistida en `draft`, que es el discriminante del cupo `analyses`
+ * (`quota.ts:60-70`). **Ya no es un borrador editable** (spec 0091 §7): lo que se cuenta es
+ * que el analisis se pago, no que alguien lo haya revisado. */
+const EXTRACCION = {
+  categories: [],
+  discarded: [],
+  warnings: [],
+  usage: { inputTokens: null, outputTokens: null },
+  providerRequestId: null,
+};
 
 describe.skipIf(!enabled)(
   "el cupo de análisis contra Neon (spec 0090 §8)",
@@ -89,14 +98,14 @@ describe.skipIf(!enabled)(
       expect(respuesta.status).toBe(201);
     });
 
-    it("un análisis que llegó a borrador SÍ lo consume, y el exceso es 429 con `Retry-After`", async () => {
+    it("un análisis que llegó a resultado SÍ lo consume, y el exceso es 429 con `Retry-After`", async () => {
       // El tope entero de analisis, ya gastado hoy: todos terminales, para no chocar con el
       // unico parcial por negocio. El siguiente POST es el que tiene que rebotar.
       await seedImports(TOPE_ANALISIS, {
         businessId: conAnalisis.businessId,
         userId: conAnalisis.userId,
         status: "accepted",
-        draft: BORRADOR,
+        draft: EXTRACCION,
       });
       const respuesta = await crear(cookieAnalisis);
       expect(respuesta.status).toBe(429);
@@ -156,7 +165,7 @@ describe.skipIf(!enabled)(
         businessId: conFallo.businessId,
         userId: conFallo.userId,
         status: "cancelled",
-        draft: BORRADOR,
+        draft: EXTRACCION,
         createdAt: ayer,
         expiresAt: new Date(ayer.getTime() + 24 * 60 * 60 * 1000),
       });

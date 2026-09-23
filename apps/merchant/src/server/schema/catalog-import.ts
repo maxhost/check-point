@@ -66,8 +66,13 @@ export const catalogImports = core.table(
     sourceKind: text("source_kind").notNull(),
     fileCount: integer("file_count").notNull(),
     pageCount: integer("page_count"),
+    /** Spec 0091 §7 — **la extraccion CRUDA del proveedor**, guardada para diagnostico y
+     * como discriminante del cupo `analyses`. Dejo de ser un borrador editable: nadie la
+     * revisa y **no cruza al cliente**. */
     draft: jsonb("draft"),
-    draftVersion: integer("draft_version").notNull().default(0),
+    /** LEGACY del borrador versionado que la spec 0091 borro. La columna se conserva —esta
+     * spec no lleva migracion— pero **nadie la escribe ni la lee**. */
+    legacyDraftVersion: integer("draft_version").notNull().default(0),
     provider: text("provider"),
     model: text("model"),
     promptVersion: text("prompt_version"),

@@ -1,7 +1,7 @@
 ---
 spec: 0091
 fecha: 2026-09-23
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0084. La importacion deja de producir un borrador revisable y pasa a escribir el catalogo en una transaccion: concilia contra el catalogo actual, reusa categorias, omite productos existentes, crea lo que falta, deja sin precio lo que no parsea y descarta lo ilegible listandolo en el resumen. Se BORRAN el borrador, `PUT /draft`, `POST /accept` y el estado `ready`. Cero migraciones, cero `.tsx`.
 disjunta: si
 archivos: apps/merchant/src/server/catalog-import/**, apps/merchant/src/app/api/catalog/imports/**, docs/specs/0090-contratos-de-api.md

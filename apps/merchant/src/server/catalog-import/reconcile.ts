@@ -3,7 +3,7 @@ import { getDb } from "../db";
 import { catalogImports } from "../schema";
 import type { CatalogExtractionProvider } from "./types";
 import { catalogExtractionProviderFromEnv } from "./providers/provider";
-import { ANALYZE_LEASE_MS, MAX_ATTEMPTS, runAnalysis } from "./prepare";
+import { ANALYZE_LEASE_MS, MAX_ATTEMPTS } from "./prepare";
 import { failImport, finishAnalysis } from "./finish";
 import { purgeImportObjects } from "./cleanup";
 import { touch } from "./quota";
@@ -19,9 +19,14 @@ import { touch } from "./quota";
  *
  * Reclama con un lease (`lease_until`), que es lo que hace que dos corridas concurrentes
  * tomen cada fila **una sola vez**.
+ *
+ * **Spec 0091 §8 — NO RE-SUBMITEA.** Un fallo es un fallo (ADR 0084 §5): un `queued` que se
+ * quedo sin submitear pasa a `failed` y el merchant vuelve a empezar. Lo unico que se
+ * conserva es **pollear un resultado ya pagado** cuando el webhook se perdio, que no es un
+ * reintento sino ir a buscar algo que ya se compro; por eso `MAX_ATTEMPTS` ya no gobierna
+ * submits y solo acota los polls.
  */
 export type ReconcileSummary = {
-  requeued: number;
   polled: number;
   completed: number;
   failed: number;
@@ -35,7 +40,6 @@ export async function runCatalogImportReconcile(
 ): Promise<ReconcileSummary> {
   const now = deps.now ?? new Date();
   const summary: ReconcileSummary = {
-    requeued: 0,
     polled: 0,
     completed: 0,
     failed: 0,
@@ -48,8 +52,8 @@ export async function runCatalogImportReconcile(
     provider = null;
   }
 
-  // 1. Los `queued` viejos: el `after()` murio antes de submitear. `runAnalysis` reclama con
-  //    su propio lease, asi que acá solo hace falta elegir candidatos.
+  // 1. Los `queued` viejos: el `after()` murio antes de submitear. **No se re-submitean**
+  //    (§8): se cierran en `failed` y el merchant vuelve a intentarlo desde el archivo.
   const stale = await getDb()
     .select({ id: catalogImports.id })
     .from(catalogImports)
@@ -64,13 +68,12 @@ export async function runCatalogImportReconcile(
     )
     .limit(BATCH);
   for (const row of stale) {
-    const outcome = await runAnalysis(
+    await failImport(
       row.id,
-      provider ? { provider } : {},
-    ).catch(() => "failed" as const);
-    if (outcome === "submitted" || outcome === "ready") summary.requeued += 1;
-    if (outcome === "failed") summary.failed += 1;
-    if (outcome === "cancelled") summary.cancelled += 1;
+      "provider_unavailable",
+      "No pudimos analizar el menú. Volvé a intentarlo.",
+    );
+    summary.failed += 1;
   }
 
   // 2. Los `analyzing` con lease vencido: se pollea al proveedor.
@@ -107,17 +110,14 @@ export async function runCatalogImportReconcile(
       continue;
     }
     if (!row.providerJobId) {
-      // Submiteo a medias: se lo devuelve a `queued` para que el camino normal lo rehaga.
-      await getDb()
-        .update(catalogImports)
-        .set({ status: "queued", leaseUntil: null, ...touch() })
-        .where(
-          and(
-            eq(catalogImports.id, row.id),
-            eq(catalogImports.status, "analyzing"),
-          ),
-        );
-      summary.requeued += 1;
+      // Submiteo a medias y sin `job_id`: no hay resultado pago que ir a buscar, y §8 no
+      // permite volver a mandarlo. Se cierra en `failed`.
+      await failImport(
+        row.id,
+        "provider_unavailable",
+        "No pudimos analizar el menú. Volvé a intentarlo.",
+      );
+      summary.failed += 1;
       continue;
     }
     if (!provider?.poll) continue;
@@ -137,7 +137,7 @@ export async function runCatalogImportReconcile(
       }
       const elapsed = now.getTime() - row.createdAt.getTime();
       const outcome = await finishAnalysis(row.id, result.extraction, elapsed);
-      if (outcome === "ready") summary.completed += 1;
+      if (outcome === "accepted") summary.completed += 1;
       if (outcome === "cancelled") summary.cancelled += 1;
     } catch {
       // Un fallo de red del poll no quema el import: el lease vence y se reintenta hasta

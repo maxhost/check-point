@@ -19,12 +19,13 @@ const FILA: ImportRow = {
   id: "11111111-1111-4111-8111-111111111111",
   businessId: "22222222-2222-4222-8222-222222222222",
   createdByUserId: "u-1",
-  status: "ready",
+  status: "accepted",
   sourceKind: "images",
   fileCount: 3,
   pageCount: 3,
-  draft: { version: 1, categories: [], warnings: [] },
-  draftVersion: 1,
+  // La extraccion CRUDA vive en esta columna y **nunca** cruza al cliente (§9).
+  draft: { categories: [{ name: "Menu crudo del proveedor" }] },
+  legacyDraftVersion: 0,
   provider: "openai",
   model: "gpt-x",
   promptVersion: "v1",
@@ -38,7 +39,15 @@ const FILA: ImportRow = {
   leaseUntil: null,
   cancelRequestedAt: null,
   notifiedAt: null,
-  acceptedSummary: null,
+  acceptedSummary: {
+    categoriesCreated: 12,
+    categoriesReused: 2,
+    productsCreated: 86,
+    productsSkipped: 4,
+    productsWithoutPrice: 3,
+    discardedCount: 4,
+    discarded: [{ text: "Milanesa ???", reason: "unreadable_name" }],
+  },
   failureCode: null,
   failureDetail: null,
   createdAt: new Date("2026-09-22T10:00:00.000Z"),
@@ -49,28 +58,56 @@ const FILA: ImportRow = {
   cleanedAt: null,
 };
 
-describe("el DTO del import es una allow-list cerrada (spec 0090 §6)", () => {
+describe("el DTO del import es una allow-list cerrada (specs 0090 §6 / 0091 §9)", () => {
   it("devuelve EXACTAMENTE los ocho campos del contrato", () => {
     expect(toImportDTO(FILA)).toEqual({
       id: "11111111-1111-4111-8111-111111111111",
-      status: "ready",
+      status: "accepted",
       sourceKind: "images",
       fileCount: 3,
       pageCount: 3,
       expiresAt: "2026-09-23T10:00:00.000Z",
-      draft: { version: 1, categories: [], warnings: [] },
+      result: {
+        categoriesCreated: 12,
+        categoriesReused: 2,
+        productsCreated: 86,
+        productsSkipped: 4,
+        productsWithoutPrice: 3,
+        discardedCount: 4,
+        discarded: [{ text: "Milanesa ???", reason: "unreadable_name" }],
+      },
       error: null,
     });
     expect(Object.keys(toImportDTO(FILA)).sort()).toEqual([
-      "draft",
       "error",
       "expiresAt",
       "fileCount",
       "id",
       "pageCount",
+      "result",
       "sourceKind",
       "status",
     ]);
+  });
+
+  /** §9 — `result` es un objeto **solo** en `accepted`; y la extraccion cruda de la columna
+   * `draft` no cruza en ningun estado. */
+  it("fuera de `accepted`, `result` es null — y la extracción cruda nunca viaja", () => {
+    for (const status of [
+      "pending_upload",
+      "queued",
+      "analyzing",
+      "failed",
+      "cancelled",
+      "expired",
+    ] as const) {
+      const dto = toImportDTO({ ...FILA, status });
+      expect(dto.result).toBeNull();
+      expect(JSON.stringify(dto)).not.toContain("Menu crudo del proveedor");
+    }
+    expect(JSON.stringify(toImportDTO(FILA))).not.toContain(
+      "Menu crudo del proveedor",
+    );
   });
 
   it("NO filtra el job id, el request id, los tokens ni el negocio — ni serializado", () => {
@@ -160,20 +197,25 @@ describe("la forma de los errores (contrato 0090 §0)", () => {
   it("la lista de `code` es CERRADA y coincide con el contrato escrito", () => {
     expect([...CATALOG_IMPORT_ERROR_CODES].sort()).toEqual([
       "catalog_import_already_accepted",
-      "catalog_import_conflict",
       "catalog_import_in_progress",
       "catalog_import_not_found",
       "catalog_import_rate_limited",
       "catalog_import_state",
       "catalog_import_too_large",
-      "catalog_import_version",
       "catalog_page_limit",
       "catalog_pdf_encrypted",
-      "invalid_catalog_draft",
       "invalid_import_files",
       "provider_unavailable",
-      "unresolved_catalog_import",
       "unsupported_catalog_file",
     ]);
+    // Spec 0091 §9 — los CUATRO que se borraron con el borrador no pueden volver de rebote.
+    for (const muerto of [
+      "catalog_import_version",
+      "catalog_import_conflict",
+      "unresolved_catalog_import",
+      "invalid_catalog_draft",
+    ]) {
+      expect([...CATALOG_IMPORT_ERROR_CODES]).not.toContain(muerto);
+    }
   });
 });

@@ -1,12 +1,10 @@
 import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
 import { PDF_CONTENT_TYPE } from "../../lib/image-formats";
-import { parseOptionalMoney } from "../catalog/validation";
-import { CatalogError } from "../catalog/core";
 import {
   CatalogImportError,
+  type DiscardedItem,
   type ExtractedCategory,
   type ExtractedProduct,
-  type PriceStatus,
   type ProviderExtraction,
 } from "./types";
 
@@ -18,13 +16,17 @@ export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const MAX_IMAGES_TOTAL_BYTES = 50 * 1024 * 1024;
 export const MAX_PDF_BYTES = 20 * 1024 * 1024;
 export const MAX_PDF_PAGES = 10;
-export const MAX_DRAFT_PRODUCTS = 250;
+/** El tope de productos de UNA extraccion. Excederlo FALLA, no trunca (§2). */
+export const MAX_EXTRACTED_PRODUCTS = 250;
 /** Los del catalogo real (`catalog/validation.ts:111,152`). No nacen otros. */
 export const MAX_PRODUCT_NAME = 120;
 export const MAX_CATEGORY_NAME = 60;
 export const MAX_WARNINGS = 20;
 export const MAX_WARNING_LENGTH = 300;
-export const MAX_SOURCE_TEXT_LENGTH = 200;
+/** El fragmento impreso del precio que el servidor parsea (§4). */
+export const MAX_PRICE_TEXT_LENGTH = 60;
+/** §5 — el texto con el que un descarte se muestra en el resumen. */
+export const MAX_DISCARDED_TEXT = 120;
 /** Lo que `analyze` lee de CADA objeto para sniffear bytes sin bajarse el archivo. */
 export const SNIFF_BYTES = 4096;
 
@@ -142,43 +144,59 @@ export function sanitizeText(value: string, maxLength: number): string {
   return withoutControl.replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
-/** La normalizacion de duplicados, que es **la del indice real**
- * `core_product_category_name_unique` sobre `(business_id, lower(name))`. */
-export function normalizeForDuplicate(name: string): string {
-  return name.trim().toLowerCase();
-}
-
 /**
- * §4 — LA SALIDA DEL PROVEEDOR SIEMPRE SE VALIDA CONTRA ESTE ESQUEMA CERRADO, aunque el
- * proveedor prometa JSON Schema. Lo no conforme se rechaza **antes de persistir**.
+ * §4/§5 — LA SALIDA DEL PROVEEDOR SIEMPRE SE VALIDA CONTRA ESTE ESQUEMA CERRADO, aunque el
+ * proveedor prometa JSON Schema.
+ *
+ * **Lo que no cumple ya no tumba la extraccion entera: se DESCARTA y se lista** (§5). Un
+ * renglon roto en la pagina 6 de un menu de 90 productos no puede costar el analisis del dia;
+ * lo que si sigue fallando explicitamente es el tope de productos, que es un limite del
+ * producto y no un defecto de lectura.
  */
 export function validateProviderExtraction(value: unknown): ProviderExtraction {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("extraction_not_an_object");
   }
   const raw = value as Record<string, unknown>;
-  if (!Array.isArray(raw.categories))
+  if (!Array.isArray(raw.categories)) {
     throw new Error("extraction_no_categories");
+  }
+  const discarded: DiscardedItem[] = [];
   const seenCategoryIds = new Set<string>();
   const seenProductIds = new Set<string>();
+  const categories: ExtractedCategory[] = [];
   let productCount = 0;
-  const categories: ExtractedCategory[] = raw.categories.map((entry) => {
-    const category = requireObject(entry, "category");
-    const sourceId = requireSourceId(category.sourceId, seenCategoryIds);
-    const name = sanitizeText(requireString(category.name), MAX_CATEGORY_NAME);
-    if (!name) throw new Error("extraction_empty_category_name");
-    const rawProducts = category.products;
-    if (!Array.isArray(rawProducts)) throw new Error("extraction_no_products");
-    const products: ExtractedProduct[] = rawProducts.map((item) => {
-      productCount += 1;
-      if (productCount > MAX_DRAFT_PRODUCTS) {
-        // §2: excederlo FALLA EXPLICITAMENTE, no trunca.
-        throw new Error("extraction_too_many_products");
+  for (const entry of raw.categories) {
+    const category = asObject(entry);
+    const rawProducts =
+      category && Array.isArray(category.products) ? category.products : null;
+    const sourceId = category
+      ? readSourceId(category.sourceId, seenCategoryIds)
+      : null;
+    const name = category
+      ? sanitizeText(asString(category.name), MAX_CATEGORY_NAME)
+      : "";
+    productCount += rawProducts?.length ?? 0;
+    if (productCount > MAX_EXTRACTED_PRODUCTS) {
+      // §2: excederlo FALLA EXPLICITAMENTE, no trunca.
+      throw new Error("extraction_too_many_products");
+    }
+    if (!sourceId || !name || !rawProducts) {
+      // §5 — **una categoria entera invalida DESCARTA sus productos**, uno por uno, para que
+      // el merchant los vea en el resumen en vez de que desaparezcan en silencio.
+      for (const item of rawProducts ?? [entry]) {
+        discarded.push({ text: discardText(item), reason: "invalid_row" });
       }
-      return parseExtractedProduct(item, seenProductIds);
-    });
-    return { sourceId, name, products };
-  });
+      continue;
+    }
+    const products: ExtractedProduct[] = [];
+    for (const item of rawProducts) {
+      const parsed = parseExtractedProduct(item, seenProductIds);
+      if ("reason" in parsed) discarded.push(parsed);
+      else products.push(parsed);
+    }
+    categories.push({ sourceId, name, products });
+  }
   const warnings = Array.isArray(raw.warnings)
     ? raw.warnings
         .slice(0, MAX_WARNINGS)
@@ -188,6 +206,7 @@ export function validateProviderExtraction(value: unknown): ProviderExtraction {
   const usage = raw.usage as Record<string, unknown> | undefined;
   return {
     categories,
+    discarded,
     warnings,
     usage: {
       inputTokens: optionalInteger(usage?.inputTokens),
@@ -200,65 +219,62 @@ export function validateProviderExtraction(value: unknown): ProviderExtraction {
   };
 }
 
+/**
+ * §5 — un item se DESCARTA cuando su nombre queda vacio despues de sanitizar, cuando supera
+ * `MAX_PRODUCT_NAME` (se descarta, **no se recorta**: un nombre cortado a la mitad es un
+ * producto inventado) o cuando su fila no cumple el esquema.
+ */
 function parseExtractedProduct(
   value: unknown,
   seen: Set<string>,
-): ExtractedProduct {
-  const item = requireObject(value, "product");
-  const sourceId = requireSourceId(item.sourceId, seen);
-  const name = sanitizeText(requireString(item.name), MAX_PRODUCT_NAME);
-  if (!name) throw new Error("extraction_empty_product_name");
-  const priceStatus: PriceStatus =
-    item.priceStatus === "detected" ? "detected" : "ambiguous";
-  // **`ambiguous` ⇒ `null`, SIEMPRE**, aunque el modelo mande un numero: lo que hace legal
-  // no bloquear la aceptacion es que no entre un valor incorrecto (ADR 0082 §9). Un `0`
-  // aca seria un precio falso que parece valido.
-  const unitPrice =
-    priceStatus === "detected" ? parseExtractedPrice(item.unitPrice) : null;
+): ExtractedProduct | DiscardedItem {
+  const item = asObject(value);
+  const sourceId = item ? readSourceId(item.sourceId, seen) : null;
+  if (!item || !sourceId || typeof item.name !== "string") {
+    return { text: discardText(value), reason: "invalid_row" };
+  }
+  // Se sanea con UN caracter de margen para poder distinguir «entra justo» de «se paso».
+  const name = sanitizeText(item.name, MAX_PRODUCT_NAME + 1);
+  if (!name || name.length > MAX_PRODUCT_NAME) {
+    return { text: discardText(value), reason: "unreadable_name" };
+  }
   return {
     sourceId,
     name,
-    unitPrice,
-    // Un `detected` sin precio legible no es `detected`: se degrada, no se inventa.
-    priceStatus:
-      priceStatus === "detected" && unitPrice === null
-        ? "ambiguous"
-        : priceStatus,
-    sourceText:
-      typeof item.sourceText === "string"
-        ? sanitizeText(item.sourceText, MAX_SOURCE_TEXT_LENGTH) || null
+    priceText:
+      typeof item.priceText === "string"
+        ? sanitizeText(item.priceText, MAX_PRICE_TEXT_LENGTH) || null
         : null,
   };
 }
 
-/** Reusa `parseOptionalMoney` del catalogo: **no nace una segunda representacion del
- * dinero** (§4). Un precio que no parsea vuelve `null` en vez de tirar — el borrador no se
- * pierde entero porque el modelo escribio «s/d» en un renglon. */
-function parseExtractedPrice(value: unknown): string | null {
+/** El texto con el que un descarte se muestra: lo que se vio, saneado y recortado a 120. */
+function discardText(value: unknown): string {
+  const item = asObject(value);
+  if (typeof value === "string") return sanitizeText(value, MAX_DISCARDED_TEXT);
+  if (item && typeof item.name === "string") {
+    return sanitizeText(item.name, MAX_DISCARDED_TEXT);
+  }
   try {
-    return parseOptionalMoney(value, "El precio");
-  } catch (error) {
-    if (error instanceof CatalogError) return null;
-    throw error;
+    return sanitizeText(JSON.stringify(value) ?? "", MAX_DISCARDED_TEXT);
+  } catch {
+    return "";
   }
 }
 
-function requireObject(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`extraction_bad_${label}`);
-  }
+function asObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
 }
 
-function requireString(value: unknown): string {
-  if (typeof value !== "string") throw new Error("extraction_bad_string");
-  return value;
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
-function requireSourceId(value: unknown, seen: Set<string>): string {
+/** `null` cuando falta, no es string o **se repite**: un id duplicado es una fila rota. */
+function readSourceId(value: unknown, seen: Set<string>): string | null {
   const id = typeof value === "string" ? sanitizeText(value, 64) : "";
-  if (!id) throw new Error("extraction_bad_source_id");
-  if (seen.has(id)) throw new Error("extraction_duplicate_source_id");
+  if (!id || seen.has(id)) return null;
   seen.add(id);
   return id;
 }

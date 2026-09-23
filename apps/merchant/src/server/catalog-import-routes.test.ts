@@ -7,8 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `catalog-import-contract.test.ts` la pinnea sobre `toImportDTO(fila)`, que es la funcion.
  * Eso deja afuera lo unico que ve la pantalla: **que la ruta la LLAME.** Medido en la
  * revision de la 0090: reemplazar `toImportDTO(row)` por la fila cruda en
- * `api/catalog/imports/route.ts:43` dejaba **1701 tests en verde**, y por contrato §1.bis ese
- * `GET` es la PRIMERA llamada que hace la pantalla.
+ * `api/catalog/imports/route.ts` dejaba **1701 tests en verde**, y por contrato §1.bis ese
+ * `GET` es la PRIMERA llamada que hace la pantalla. Con la 0091 la fuga es peor: la columna
+ * `draft` guarda **la extraccion cruda del modelo**, que no tiene que viajar nunca.
  *
  * La fila sembrada trae `providerJobId`, `providerRequestId` y los tokens **a proposito**: un
  * assert de claves sobre una fila que no los tiene no prueba nada.
@@ -48,12 +49,11 @@ const FILA = {
   id: IMPORT_ID,
   businessId: NEGOCIO,
   createdByUserId: "u-secreto",
-  status: "ready",
+  status: "accepted",
   sourceKind: "images",
   fileCount: 3,
   pageCount: 3,
-  draft: { version: 1, categories: [], warnings: [] },
-  draftVersion: 1,
+  draft: { categories: [{ name: "Menu crudo del proveedor" }] },
   provider: "openai",
   model: "gpt-x",
   promptVersion: "v1",
@@ -67,7 +67,15 @@ const FILA = {
   leaseUntil: new Date("2026-09-22T11:00:00.000Z"),
   cancelRequestedAt: null,
   notifiedAt: null,
-  acceptedSummary: null,
+  acceptedSummary: {
+    categoriesCreated: 12,
+    categoriesReused: 2,
+    productsCreated: 86,
+    productsSkipped: 4,
+    productsWithoutPrice: 3,
+    discardedCount: 4,
+    discarded: [{ text: "Milanesa ???", reason: "unreadable_name" }],
+  },
   failureCode: null,
   failureDetail: "detalle interno del proveedor",
   createdAt: new Date("2026-09-22T10:00:00.000Z"),
@@ -79,17 +87,18 @@ const FILA = {
 };
 
 const CLAVES = [
-  "draft",
   "error",
   "expiresAt",
   "fileCount",
   "id",
   "pageCount",
+  "result",
   "sourceKind",
   "status",
 ];
 
 const SECRETOS = [
+  "Menu crudo del proveedor",
   "resp_secreto",
   "req_secreto",
   "u-secreto",
@@ -146,7 +155,7 @@ describe("las rutas que serializan un import (contrato §4)", () => {
     }
   });
 
-  it("sin import activo, `GET /api/catalog/imports` devuelve `{ import: null }`", async () => {
+  it("sin ningún import, `GET /api/catalog/imports` devuelve `{ import: null }`", async () => {
     estado.filas = [[]];
     const cuerpo = await (await ACTIVO(pedido("/api/catalog/imports"))).json();
     expect(cuerpo).toEqual({ import: null });
@@ -170,7 +179,7 @@ describe("las rutas que serializan un import (contrato §4)", () => {
    * **control positivo** en el mismo vector, porque un rojo sin el no distingue «aislado» de
    * «roto».
    */
-  it("el import abierto de OTRO negocio no se devuelve (y el propio si)", async () => {
+  it("el import de OTRO negocio no se devuelve (y el propio sí)", async () => {
     const ajena = {
       ...FILA,
       businessId: "33333333-3333-4333-8333-333333333333",

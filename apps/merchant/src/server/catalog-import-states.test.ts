@@ -67,7 +67,6 @@ const fila = (status: string, overrides: Record<string, unknown> = {}) => ({
   fileCount: 1,
   pageCount: null,
   draft: null,
-  draftVersion: 0,
   cancelRequestedAt: null,
   failureCode: null,
   failureDetail: null,
@@ -93,6 +92,9 @@ beforeEach(() => {
 });
 
 describe("el conjunto de estados (spec 0090 §1)", () => {
+  /** Siguen siendo OCHO: la spec 0091 dejo de ESCRIBIR `ready`, pero no toco el `check` ni
+   * el indice unico parcial de la tabla — por eso no lleva migracion, y por eso el valor
+   * sigue existiendo como legacy inalcanzable (§1). */
   it("son ocho, y abiertos + terminales lo cubren sin superponerse", () => {
     expect([...CATALOG_IMPORT_STATUSES].sort()).toEqual([
       "accepted",
@@ -115,6 +117,8 @@ describe("el conjunto de estados (spec 0090 §1)", () => {
   });
 });
 
+/** `ready` sigue en la lista porque una fila VIEJA en ese estado tiene que poder cerrarse:
+ * si no, bloquea al negocio hasta que venza (spec 0091 §1). */
 describe("cancelar (spec 0090 §1 / contrato §7)", () => {
   for (const status of [
     "pending_upload",
@@ -204,7 +208,7 @@ describe("analizar (spec 0090 §6 / contrato §3)", () => {
     );
   });
 
-  it("repetirlo en `queued`/`analyzing`/`ready` NO vuelve a encolar", async () => {
+  it("repetirlo en `queued`/`analyzing` (y en un `ready` legacy) NO vuelve a encolar", async () => {
     for (const status of ["queued", "analyzing", "ready"] as const) {
       estado.filas = [[fila(status)]];
       estado.sets = [];
@@ -277,11 +281,12 @@ describe("reservar un import nuevo (spec 0090 §6 / ADR 0082 §13.2)", () => {
   });
 
   /**
-   * ORACULO DE M9, en su mitad medible sin base: **un `ready` abierto NO se apropia**.
-   * La otra mitad —que el borrador sigue existiendo despues del 409— la mide
-   * `catalog-import.neon.integration.test.ts`, porque exige releer la fila.
+   * ORACULO DE M9 de la 0090: **solo un `pending_upload` se apropia**. La spec 0091 ya no
+   * escribe `ready`, pero el guard sigue leyendo `CATALOG_IMPORT_OPEN_STATUSES` —que es el
+   * mismo conjunto del indice unico parcial—, asi que una fila legacy en ese estado tiene
+   * que seguir dando 409 en vez de ser pisada.
    */
-  it("con uno en `ready` abierto responde 409 y NO escribe nada", async () => {
+  it("con uno en `ready` legacy abierto responde 409 y NO escribe nada", async () => {
     // La cola va COMPLETA a proposito: si se lo apropiara, el camino tendria con que
     // terminar y el rojo hablaria de la propiedad (resuelve en vez de rechazar) y no de
     // haberse quedado sin filas.

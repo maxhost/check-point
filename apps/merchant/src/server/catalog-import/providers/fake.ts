@@ -5,6 +5,7 @@ import type {
   ProviderExtraction,
   StartResult,
 } from "../types";
+import { validateProviderExtraction } from "../validation";
 
 /**
  * Spec 0090 §4 — EL ADAPTADOR `fake`, DETERMINISTA.
@@ -14,7 +15,7 @@ import type {
  * y contesta `completed`: la forma diferida es opcional en el contrato justamente para que
  * un adaptador sincronico no tenga que fingir un `jobId`.
  *
- * Determinista **por el contenido**: el mismo archivo da el mismo borrador, que es lo que
+ * Determinista **por el contenido**: el mismo archivo da el mismo resultado, que es lo que
  * permite aseverar valores exactos en un test de integracion.
  */
 export class FakeCatalogExtractionProvider implements CatalogExtractionProvider {
@@ -26,8 +27,16 @@ export class FakeCatalogExtractionProvider implements CatalogExtractionProvider 
   }
 }
 
-/** Un borrador con los tres casos que importan: precio leido, precio **ambiguo** (que nace
- * `null` y no `0`) y un producto sin precio en el menu. */
+/**
+ * §10 — EL MISMO CONTRATO `v2`, con **los cuatro casos que importan** para que los dos
+ * caminos se puedan probar sin gastar un centavo: un precio que parsea, uno con separador de
+ * miles, **uno que NO parsea** (que tiene que nacer `unit_price NULL` y nunca `0`) y **un
+ * item ilegible**, que no entra al catalogo y se lista en `result.discarded`.
+ *
+ * Pasa por `validateProviderExtraction` **a proposito**: el fake tiene que recorrer el mismo
+ * camino que el adaptador real, incluido el descarte. Un fake que devolviera la extraccion ya
+ * normalizada describiria un proveedor que no existe.
+ */
 export function fakeExtraction(
   input: CatalogExtractionInput,
 ): ProviderExtraction {
@@ -37,7 +46,7 @@ export function fakeExtraction(
     .update(input.pages[0]?.bytes.subarray(0, 64) ?? Buffer.alloc(0))
     .digest("hex")
     .slice(0, 8);
-  return {
+  return validateProviderExtraction({
     categories: [
       {
         sourceId: "c1",
@@ -46,16 +55,19 @@ export function fakeExtraction(
           {
             sourceId: "p1",
             name: "Cappuccino",
-            unitPrice: "3.25",
-            priceStatus: "detected",
-            sourceText: "Cappuccino $3,25",
+            priceText: "$3,25",
           },
+          // No parsea (es un rango): el producto nace SIN precio.
           {
             sourceId: "p2",
             name: "Té de hierbas",
-            unitPrice: null,
-            priceStatus: "ambiguous",
-            sourceText: "Té de hierbas $2,5?",
+            priceText: "2,5 - 3,5",
+          },
+          // Ilegible: se DESCARTA y se lista en el resumen.
+          {
+            sourceId: "p4",
+            name: "   ",
+            priceText: null,
           },
         ],
       },
@@ -66,9 +78,7 @@ export function fakeExtraction(
           {
             sourceId: "p3",
             name: `Tabla de quesos ${seed}`,
-            unitPrice: "12.00",
-            priceStatus: "detected",
-            sourceText: "Tabla de quesos 12",
+            priceText: "$ 1.250,00",
           },
         ],
       },
@@ -76,5 +86,5 @@ export function fakeExtraction(
     warnings: [`Extracción simulada (${input.pages.length} página/s).`],
     usage: { inputTokens: 100, outputTokens: 50 },
     providerRequestId: `fake-${seed}`,
-  };
+  });
 }
