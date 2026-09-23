@@ -8,6 +8,95 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ADR 0084 + SPEC 0091 REESCRITOS Y SIMPLIFICADOS (2026-09-23) — LISTOS PARA IMPLEMENTAR
+
+**Decision del owner (2026-09-23), textual:** *«Cargar una foto o fotos o un pdf, extraer, crear,
+listo, que revise a mano luego del catalogo final, que tenga un filtro para saber cuales son los
+que debe revisar. No es tan complicado.»*
+
+La primera version de los dos documentos (escrita por ChatGPT el 2026-09-22) resolvia esto
+**agregando** maquinaria encima de la del 0090: contexto del catalogo en el prompt, autoaceptacion
+detras de un flag, `ready` como escape hatch, tabla de trazabilidad, lock por negocio, cinco fases.
+Se descarto entera. **Diagnostico de por que se complicaba:** el ADR 0082 eligio como invariante
+«la IA nunca escribe el catalogo», y el borrador, las resoluciones, `draft_version`, `PUT /draft`,
+`POST /accept` y `ready` son **consecuencias** de ese invariante. El 0084 nuevo **cambia el
+invariante**, y al cambiarlo la maquinaria se borra.
+
+### Los documentos que quedaron
+
+- `adr/0084-la-importacion-de-catalogo-escribe-directo-y-solo-agrega.md` — **reescrito**.
+- `specs/0091-la-importacion-de-catalogo-escribe-directo.md` — **nuevo** (el archivo
+  `0091-autoaceptacion-aditiva-…` se borro). Plantilla **chica**: un dominio, **cero migraciones**,
+  cero decisiones abiertas.
+- `INDEX.md` — las dos filas reescritas.
+
+### El modelo, en una linea
+
+`subir → extraer → el SERVIDOR concilia contra el catalogo actual → crea lo que falta → resumen`.
+La primera importacion y la quinta son la misma operacion. Nunca se actualiza ni se borra nada.
+
+### Las decisiones del owner que cerraron la spec
+
+1. **Precio que no se puede leer → producto creado SIN precio** (filtro «sin precio» en la
+   pantalla). Es seguro: `counter/grant.ts:154-163` le pide el precio al operador cuando el
+   producto no lo tiene. Nunca `0`.
+2. **Item que no se puede leer → se DESCARTA y se lista** en el resumen, para cargarlo a mano.
+3. **Sin borrador, sin revision, sin `accept`, sin reintento de submit.** Un fallo es `failed` y se
+   rehace desde subir el archivo.
+4. **El resumen se muestra en pantalla; el API lo prepara.** La pantalla es del owner (ADR 0070):
+   la spec no toca un solo `.tsx`.
+
+### Las dos que decidi yo (reversibles, el owner las pidio como propuesta)
+
+- **`ready` desaparece del todo.** Ninguna decision del servidor es destructiva, asi que ninguna
+  necesita un humano: el empate entre dos categorias existentes se resuelve **reusando la mas
+  vieja**.
+- **Sin lock por negocio y sin unique nuevo en `product`.** La unica carrera real cuesta **un
+  producto duplicado**; serializar todas las escrituras de catalogo del negocio es peor que el
+  problema. La carrera de **categoria** (que si tiene unique) se resuelve **reusando** ante el
+  23505, en vez del `catalog_import_conflict` de hoy (`accept.ts:218-231`).
+
+### Lo que la spec BORRA (es su firma: quita mas de lo que agrega)
+
+`draft.ts` (273 lineas), `draft-save.ts` (98), `accept.ts` (243, reemplazado por el writer interno),
+las rutas `imports/[id]/draft` y `imports/[id]/accept`, el estado `ready`, `draft_version` y cuatro
+codigos de error (`catalog_import_version`, `unresolved_catalog_import`, `invalid_catalog_draft`,
+`catalog_import_conflict`). La columna `draft` **queda** pero cambia de rol: guarda la extraccion
+cruda (diagnostico) y sigue siendo el discriminante del cupo (`quota.ts:60-70`).
+
+### Lo que sigue, en orden
+
+1. **Commitear primero el trabajo sin commitear** de la cancelacion inmediata (ver abajo), que
+   colisiona con esta spec.
+2. Implementar la 0091: **UN implementador, UN revisor** (ADR 0071). Presupuesto **6 mutaciones**.
+3. Las **dos suites Neon** de la spec (dos writers concurrentes; categoria creada en paralelo) son
+   DoD y tienen que **correr, no quedar `skipped`**.
+4. El **corpus de 15-25 menus reales** sigue pendiente y es lo unico que puede medir la calidad de
+   la extraccion. No bloquea la spec.
+
+### EL ARBOL AHORA MISMO
+
+**Commiteado en `53b5765` — cancelacion inmediata en `analyzing`.** `DELETE` sobre un import en
+`analyzing` ya no deja el estado esperando al callback: pasa a `cancelled` en el momento, libera el
+lease y conserva la marca de intencion; si el import llego a `accepted` entre el `SELECT` y el
+`UPDATE` condicional se responde `409 catalog_import_already_accepted` en vez de confirmar una
+cancelacion que no ocurrio (tiene su test). Toca `catalog-import/core.ts`,
+`api/catalog/imports/[id]/route.ts`, dos suites y los dos docs de la 0090.
+**Gates corridos con Node 24 antes del commit:** `typecheck`, `lint`, `test` (**1737 passed, 0
+failed**, 583 `skipped` = las suites Neon), `build`. **Sin pushear todavia.**
+
+**SIGUE SIN COMMITEAR — UI en curso del owner:** `backoffice/catalog/catalog-ai-import.tsx`
+(drag&drop, auto-`analyze` al soltar un PDF, generacion de poll, `use-is-touch`) + `globals.css`.
+No lo toque. **`format:check` esta ROJO por ese archivo** y por eso no entro al commit; cuando se
+commitee hay que formatearlo (`pnpm exec prettier --write`, **nunca** `pnpm format`, que
+reformatea trabajo ajeno) y correr `test:e2e`, que ahi SI aplica.
+
+### Dato corregido de este archivo
+
+`CATALOG_IMPORT_RECONCILE_ENDPOINT` **ya esta cargado** en Actions (`gh secret list`, 2026-09-23
+00:40 UTC): la seccion de mas abajo que dice «Falta en GitHub Actions» quedo vieja. Lo que sigue sin
+comprobarse es un `HTTP 200` real del workflow — un nombre mal escrito lo deja verde con `exit 0`.
+
 ## ⇥ ESTADO AL CIERRE DE LA SESION DEL 2026-09-23
 
 ### Lo que se hizo, con su sha
