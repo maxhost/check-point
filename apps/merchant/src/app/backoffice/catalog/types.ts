@@ -42,6 +42,9 @@ export type Catalog = {
   categories: Category[];
   locations: Location[];
   currencyCode: string;
+  /** ADR 0086 — hay una importacion ABIERTA, asi que el alta manual esta bloqueada en el
+   * servidor (409). La pantalla solo lo refleja: no es la que protege. */
+  importInProgress: boolean;
 };
 
 export type ProductPayload = {

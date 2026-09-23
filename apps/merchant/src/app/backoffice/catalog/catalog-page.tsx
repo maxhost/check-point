@@ -1,19 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MagicWand, Plus } from "iconoir-react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import {
-  ModuleHeader,
-  Skeleton,
-  SkeletonScreen,
-  Toast,
-} from "../../components/ui";
+import { ModuleHeader, Toast } from "../../components/ui";
 import { CatalogAiImport } from "./catalog-ai-import";
+import { CatalogSkeleton } from "./catalog-skeleton";
 import { CategoryManager } from "./category-manager";
 import { ProductEditor } from "./product-editor";
 import { ProductsTab } from "./products-tab";
-import type { Catalog, Category, Product, ProductPayload } from "./types";
+import { jsonInit, useCatalog } from "./use-catalog";
+import type { Category, Product, ProductPayload } from "./types";
 
 type Confirm =
   | { kind: "product"; product: Product }
@@ -21,69 +18,31 @@ type Confirm =
 
 type Tab = "products" | "categories";
 
+/** ADR 0086 — el copy del bloqueo. La proteccion es el 409 del servidor; esto es su reflejo,
+ * para que el merchant no choque contra un error que no esperaba. */
+const IMPORTANDO =
+  "Estamos importando tu menú. Mientras termina no podés crear productos ni categorías; sí podés editar y borrar lo que ya está.";
+
 export default function CatalogPage({
   canDelete = true,
 }: {
   canDelete?: boolean;
 }) {
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const {
+    catalog,
+    notice,
+    error,
+    setNotice,
+    setError,
+    reload,
+    mutate,
+    createCategory,
+  } = useCatalog();
   const [tab, setTab] = useState<Tab>("products");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [showAiImport, setShowAiImport] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void reload();
-  }, []);
-
-  async function reload() {
-    try {
-      const res = await fetch("/api/catalog");
-      const payload = (await res.json().catch(() => null)) as
-        | Catalog
-        | { error?: string }
-        | null;
-      if (!res.ok || !payload || !("products" in payload)) {
-        throw new Error(
-          (payload as { error?: string } | null)?.error ??
-            "No pudimos cargar el catálogo.",
-        );
-      }
-      setCatalog(payload);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Error de carga.");
-    }
-  }
-
-  async function mutate(
-    input: RequestInfo,
-    init: RequestInit,
-    okMessage: string,
-    fallback: string,
-  ): Promise<boolean> {
-    try {
-      const res = await fetch(input, init);
-      const payload = (await res.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!res.ok) throw new Error(payload?.error ?? fallback);
-      await reload();
-      setNotice(okMessage);
-      return true;
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : fallback);
-      return false;
-    }
-  }
-
-  const jsonInit = (method: string, body: unknown): RequestInit => ({
-    method,
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
 
   async function saveProduct(payload: ProductPayload, id: string | null) {
     const ok = await mutate(
@@ -97,32 +56,6 @@ export default function CatalogPage({
       setEditing(null);
     }
     return ok;
-  }
-
-  async function createCategory(name: string): Promise<Category | null> {
-    if (!name) return null;
-    try {
-      const res = await fetch(
-        "/api/catalog/category",
-        jsonInit("POST", { name }),
-      );
-      const cat = (await res.json().catch(() => null)) as
-        | Category
-        | { error?: string }
-        | null;
-      if (!res.ok || !cat || !("id" in cat)) {
-        throw new Error(
-          (cat as { error?: string } | null)?.error ??
-            "No pudimos crear la categoría.",
-        );
-      }
-      await reload();
-      setNotice("Categoría creada.");
-      return cat;
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Error.");
-      return null;
-    }
   }
 
   function runConfirm() {
@@ -146,11 +79,6 @@ export default function CatalogPage({
     }
   }
 
-  function closeEditor() {
-    setCreating(false);
-    setEditing(null);
-  }
-
   if (!catalog) {
     return (
       <main className="merchant-shell">
@@ -160,6 +88,7 @@ export default function CatalogPage({
   }
 
   const editorOpen = creating || editing !== null;
+  const importando = catalog.importInProgress;
   return (
     <main className="merchant-shell">
       <div className="brand-page catalog-page">
@@ -213,6 +142,7 @@ export default function CatalogPage({
             Probar importador
           </button>
         </section>
+        {importando && <p className="field-help">{IMPORTANDO}</p>}
         <div className="catalog-section-head">
           <div
             className="catalog-tabs"
@@ -241,6 +171,8 @@ export default function CatalogPage({
           <button
             className="button catalog-primary-action"
             type="button"
+            disabled={importando}
+            title={importando ? IMPORTANDO : undefined}
             onClick={() => {
               setEditing(null);
               setCreating(true);
@@ -255,6 +187,7 @@ export default function CatalogPage({
             categories={catalog.categories}
             locations={catalog.locations}
             currencyCode={catalog.currencyCode}
+            importInProgress={importando}
             onNew={() => {
               setEditing(null);
               setCreating(true);
@@ -269,6 +202,7 @@ export default function CatalogPage({
         ) : (
           <CategoryManager
             categories={catalog.categories}
+            importInProgress={importando}
             onCreate={(name) =>
               createCategory(name).then((cat) => cat !== null)
             }
@@ -293,7 +227,10 @@ export default function CatalogPage({
           currencyCode={catalog.currencyCode}
           onCreateCategory={createCategory}
           onSave={saveProduct}
-          onCancel={closeEditor}
+          onCancel={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
           onError={setError}
         />
         <CatalogAiImport
@@ -317,37 +254,5 @@ export default function CatalogPage({
         onConfirm={runConfirm}
       />
     </main>
-  );
-}
-
-export function CatalogSkeleton() {
-  return (
-    <SkeletonScreen
-      label="Cargando catálogo"
-      className="brand-page catalog-page catalog-skeleton"
-    >
-      <div className="catalog-skeleton-head">
-        <div>
-          <Skeleton width={90} height={14} />
-          <Skeleton width="min(430px, 80vw)" height={38} />
-          <Skeleton width="min(520px, 85vw)" height={18} />
-        </div>
-        <Skeleton width={44} height={44} radius={22} />
-      </div>
-      <div className="catalog-overview">
-        {[0, 1, 2].map((item) => (
-          <div key={item}>
-            <Skeleton width={42} height={28} />
-            <Skeleton width={72} height={14} />
-          </div>
-        ))}
-      </div>
-      <Skeleton height={150} radius={20} />
-      <div className="catalog-skeleton-cards">
-        {[0, 1, 2].map((item) => (
-          <Skeleton key={item} height={104} radius={18} />
-        ))}
-      </div>
-    </SkeletonScreen>
   );
 }

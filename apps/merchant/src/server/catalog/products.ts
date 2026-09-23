@@ -15,6 +15,7 @@ import {
   uuidPattern,
 } from "./core";
 import { validateProductInput } from "./validation";
+import { assertNoOpenImport, hasOpenImport } from "./import-guard";
 import { resolveImageChange } from "./image";
 import { cleanupProductPrefixNow } from "./cleanup";
 
@@ -131,11 +132,19 @@ export async function listCatalog(business: OwnerBusiness) {
     categories,
     locations: locationList,
     currencyCode: business.currencyCode,
+    // ADR 0086 — un BOOLEANO, y nada mas: la pantalla necesita saber que el alta esta
+    // bloqueada, no quien importa ni con que. Ninguna clave interna del import cruza.
+    // **No es el guard**, es su reflejo: la proteccion sigue siendo el 409 del servidor.
+    importInProgress: await hasOpenImport(business.id),
   };
 }
 
+/** ADR 0086 — **el alta se bloquea con un import abierto**: esta es la carrera del producto
+ * duplicado, la que la spec 0091 habia declarado afuera por el costo de serializar. El guard
+ * va ANTES de reservar la imagen: un 409 no deja nada que limpiar en R2. */
 export async function createProduct(business: OwnerBusiness, value: unknown) {
   const input = validateProductInput(value);
+  await assertNoOpenImport(business.id);
   await assertCategory(business.id, input.categoryId);
   await assertLocations(
     business.id,

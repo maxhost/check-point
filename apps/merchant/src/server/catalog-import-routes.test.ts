@@ -66,7 +66,6 @@ const FILA = {
   attemptCount: 1,
   leaseUntil: new Date("2026-09-22T11:00:00.000Z"),
   cancelRequestedAt: null,
-  notifiedAt: null,
   acceptedSummary: {
     categoriesCreated: 12,
     categoriesReused: 2,

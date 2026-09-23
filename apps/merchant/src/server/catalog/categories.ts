@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { productCategories } from "../schema";
 import { CatalogError, type OwnerBusiness, uuidPattern } from "./core";
+import { assertNoOpenImport } from "./import-guard";
 import { validateCategoryName } from "./validation";
 
 /** Postgres unique-violation (23505), including errors that wrap it in `.cause`.
@@ -28,8 +29,11 @@ const duplicate = new CatalogError(
   "Ya existe una categoría con ese nombre.",
 );
 
+/** ADR 0086 — **el alta se bloquea con un import abierto**: esta es la carrera del 23505,
+ * porque `createCategory` es el unico camino manual que inserta una categoria. */
 export async function createCategory(business: OwnerBusiness, value: unknown) {
   const name = validateCategoryName(value);
+  await assertNoOpenImport(business.id);
   try {
     const [row] = await getDb()
       .insert(productCategories)

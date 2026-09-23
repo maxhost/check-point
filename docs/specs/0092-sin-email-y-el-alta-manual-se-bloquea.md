@@ -1,7 +1,7 @@
 ---
 spec: 0092
 fecha: 2026-09-23
-estado: cerrada
+estado: implementada
 resumen: Implementa los ADR 0085 y 0086. (1) Se ELIMINA el aviso por email de la importacion — modulo, copys, tests, las dos llamadas de `finish.ts` y la columna `notified_at` con su migracion. (2) Mientras hay una importacion ABIERTA, crear categoria o producto a mano devuelve 409 desde el SERVIDOR; `GET /api/catalog` suma `importInProgress` y la pantalla lo refleja. Cierra la carrera del 23505 de categoria y la del producto duplicado.
 disjunta: si
 archivos: apps/merchant/src/server/catalog-import/**, apps/merchant/src/server/catalog/**, apps/merchant/src/app/api/catalog/**, apps/merchant/src/app/backoffice/catalog/**, apps/merchant/drizzle/**

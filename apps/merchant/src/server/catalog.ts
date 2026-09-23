@@ -16,3 +16,8 @@ export {
   renameCategory,
   deleteCategory,
 } from "./catalog/categories";
+export {
+  CATALOG_IMPORT_IN_PROGRESS,
+  assertNoOpenImport,
+  hasOpenImport,
+} from "./catalog/import-guard";

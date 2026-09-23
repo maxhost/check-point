@@ -1,0 +1,1 @@
+ALTER TABLE "core"."catalog_import" DROP COLUMN "notified_at";

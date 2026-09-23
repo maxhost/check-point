@@ -90,8 +90,6 @@ export const catalogImports = core.table(
      * siempre. El reconciliador reclama por `status + lease_until`. */
     leaseUntil: timestamp("lease_until", { withTimezone: true }),
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
-    /** El email sale UNA vez por import. */
-    notifiedAt: timestamp("notified_at", { withTimezone: true }),
     acceptedSummary: jsonb("accepted_summary"),
     failureCode: text("failure_code"),
     /** Saneado: sin prompt, sin archivo y sin secreto. */

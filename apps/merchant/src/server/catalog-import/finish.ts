@@ -4,7 +4,6 @@ import { catalogImports } from "../schema";
 import type { ProviderExtraction } from "./types";
 import { writeImportedCatalog } from "./write";
 import { touch } from "./quota";
-import { notifyImportFinished } from "./notify";
 import { purgeImportObjects } from "./cleanup";
 
 /**
@@ -90,13 +89,14 @@ export async function finishAnalysis(
     productsWithoutPrice: written.result.productsWithoutPrice,
     discardedCount: written.result.discardedCount,
   });
-  // §7 — el email sale UNA sola vez y **despues del resultado final**, nunca a mitad.
-  await notifyImportFinished(importId, "accepted").catch(() => undefined);
   return "accepted";
 }
 
-/** Cierra el import en `failed` con un codigo **saneado** y avisa por email una sola vez.
- * `failed` es terminal: un nuevo intento crea otro import (§1). */
+/** Cierra el import en `failed` con un codigo **saneado**. `failed` es terminal: un nuevo
+ * intento crea otro import (§1).
+ *
+ * **No avisa por ningun canal** (ADR 0085): el merchant se entera al volver a la pantalla,
+ * que lee el ultimo import con su `error` desde `GET /api/catalog/imports`. */
 export async function failImport(
   importId: string,
   code: string,
@@ -131,6 +131,5 @@ export async function failImport(
     businessId: row.businessId,
     code,
   });
-  await notifyImportFinished(importId, "failed").catch(() => undefined);
   await purgeImportObjects(importId, row.businessId).catch(() => undefined);
 }

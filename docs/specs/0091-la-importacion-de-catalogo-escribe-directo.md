@@ -1,7 +1,7 @@
 ---
 spec: 0091
 fecha: 2026-09-23
-estado: implementada
+estado: implementada — su §7 (el aviso por EMAIL) fue ELIMINADO por el ADR 0085 / spec 0092 el 2026-09-23
 resumen: Implementa el ADR 0084. La importacion deja de producir un borrador revisable y pasa a escribir el catalogo en una transaccion: concilia contra el catalogo actual, reusa categorias, omite productos existentes, crea lo que falta, deja sin precio lo que no parsea y descarta lo ilegible listandolo en el resumen. Se BORRAN el borrador, `PUT /draft`, `POST /accept` y el estado `ready`. Cero migraciones, cero `.tsx`.
 disjunta: si
 archivos: apps/merchant/src/server/catalog-import/**, apps/merchant/src/app/api/catalog/imports/**, docs/specs/0090-contratos-de-api.md
@@ -131,6 +131,11 @@ Sin llamadas al proveedor, a R2 ni al email adentro de la transaccion.
 `finishAnalysis` valida la extraccion, **persiste la extraccion cruda en la columna `draft`** —que
 deja de ser un borrador editable y pasa a ser el resultado guardado para diagnostico, y sigue siendo
 el discriminante del cupo `analyses` (`quota.ts:60-70`)— y llama al writer en la misma invocacion.
+
+> **SUPERADO (ADR 0085, 2026-09-23): el aviso por email SE ELIMINO.** No existe `notify.ts`, ni
+> los copys, ni la columna `notified_at`. Lo de abajo describe lo que esta spec construyo, y se
+> deja como registro historico. Hoy el merchant se entera por la pantalla, que polea y muestra el
+> `result`; el motivo esta en el ADR 0085.
 
 El email se manda **una sola vez y despues del resultado final**: `notified_at` se reclama recien
 cuando el import quedo `accepted` o `failed` (hoy se reclama al pasar a `ready`, `finish.ts:90`). Dos

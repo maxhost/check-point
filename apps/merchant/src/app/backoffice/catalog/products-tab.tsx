@@ -10,6 +10,8 @@ type Props = {
   categories: Category[];
   locations: Location[];
   currencyCode: string;
+  /** ADR 0086 — con una importacion abierta el alta manual da 409; el boton se apaga. */
+  importInProgress: boolean;
   onNew: () => void;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
@@ -21,6 +23,7 @@ export function ProductsTab({
   categories,
   locations,
   currencyCode,
+  importInProgress,
   onNew,
   onEdit,
   onDelete,
@@ -53,10 +56,16 @@ export function ProductsTab({
         </div>
         <h2>Tu catálogo empieza con un producto</h2>
         <p>
-          Podés cargarlo manualmente o usar el importador inteligente desde una
-          foto o PDF.
+          {importInProgress
+            ? "Estamos importando tu menú. En cuanto termine vas a ver los productos acá."
+            : "Podés cargarlo manualmente o usar el importador inteligente desde una foto o PDF."}
         </p>
-        <button className="button" type="button" onClick={onNew}>
+        <button
+          className="button"
+          type="button"
+          disabled={importInProgress}
+          onClick={onNew}
+        >
           Crear producto
         </button>
       </section>

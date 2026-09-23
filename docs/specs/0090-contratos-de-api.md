@@ -2,7 +2,7 @@
 spec: 0090-contratos
 fecha: 2026-09-21
 estado: cerrada
-resumen: Contrato normativo de la IMPORTACION DE CATALOGO para quien construya la pantalla por fuera. Las rutas de `/api/catalog/imports/*` —reservar, re-firmar, analizar, consultar, cancelar— abiertas al owner SIEMPRE y al integrante con el permiso `catalog`. **Actualizado por la spec 0091 (ADR 0084): la importacion ESCRIBE el catalogo sola y es siempre aditiva**; se borraron el borrador, `PUT /draft`, `POST /accept` y el estado `ready`, y el DTO perdio `draft` y gano `result`. El proceso sigue siendo asincrono: se sube, se pide el analisis, se cierra la pantalla, y `GET /api/catalog/imports` devuelve el ULTIMO import (abierto o terminal) para retomarlo; el servidor avisa por email cuando el menu quedo importado. Un precio que no se puede leer crea el producto SIN precio, nunca en cero; un item ilegible se descarta y se lista. Ninguna respuesta incluye claves de R2, ids del proveedor, tokens, costo ni la extraccion cruda.
+resumen: Contrato normativo de la IMPORTACION DE CATALOGO para quien construya la pantalla por fuera. Las rutas de `/api/catalog/imports/*` —reservar, re-firmar, analizar, consultar, cancelar— abiertas al owner SIEMPRE y al integrante con el permiso `catalog`. **Actualizado por la spec 0091 (ADR 0084): la importacion ESCRIBE el catalogo sola y es siempre aditiva**; se borraron el borrador, `PUT /draft`, `POST /accept` y el estado `ready`, y el DTO perdio `draft` y gano `result`. El proceso sigue siendo asincrono: se sube, se pide el analisis, se cierra la pantalla, y `GET /api/catalog/imports` devuelve el ULTIMO import (abierto o terminal) para retomarlo. **Actualizado otra vez por la spec 0092 (ADR 0085 y 0086): NO hay aviso por email —la funcion se elimino entera—, y mientras hay un import ABIERTO el alta manual de catalogo devuelve `409 catalog_import_in_progress`, con `GET /api/catalog` sumando `importInProgress` para que la pantalla lo refleje.** Un precio que no se puede leer crea el producto SIN precio, nunca en cero; un item ilegible se descarta y se lista. Ninguna respuesta incluye claves de R2, ids del proveedor, tokens, costo ni la extraccion cruda.
 disjunta: no
 archivos: apps/merchant/src/app/api/catalog/imports
 ---
@@ -48,8 +48,10 @@ La escalera de rechazos, con su `code` estable (contrato 0086):
 
 **El analisis es asincrono y eso es a favor.** El merchant sube, pide el analisis, **puede cerrar la
 pantalla** y seguir con lo suyo: el import es un recurso del servidor, no un estado de React. Al
-volver se consulta y se retoma donde estaba. Cuando el menu quedo **importado**, el servidor le
-manda un email — la pantalla no tiene que quedarse abierta para que el trabajo termine.
+volver se consulta y se retoma donde estaba. **No hay ningun aviso: ni email, ni push** (ADR
+0085 — el aviso por email existio hasta el 2026-09-23 y se elimino). El merchant se entera al
+volver al catalogo, que es donde iba a ir igual: `GET /api/catalog/imports` devuelve el ultimo
+import con su `result`, asi que la pantalla que vuelve encuentra el resumen sin ayuda de nadie.
 
 **Un analisis termina en catalogo o en `failed`.** No hay paso intermedio que revisar: el servidor
 concilia contra el catalogo actual, crea lo que falta y **nunca actualiza ni borra nada** (ADR 0084
@@ -75,7 +77,7 @@ una fila vieja anterior al 2026-09-23.
 
 **Cadencia de consulta sugerida:** cada 3 s mientras el estado sea `queued` o `analyzing`, y
 **parar al salir de esos dos**. No hace falta poll agresivo: el analisis normal tarda decenas de
-segundos y el email cubre al que se fue.
+segundos, y al que se fue lo cubre el `GET` de la proxima visita, no un aviso.
 
 ## 1.bis Lo minimo que la pantalla tiene que hacer para no trabar al merchant
 
@@ -313,12 +315,45 @@ por producto.
 
 **Cancelar nunca toca el catalogo**: no borra nada.
 
+## 7.bis Mientras se importa, el alta manual del catalogo esta BLOQUEADA
+
+**No es una ruta de `/imports`, pero la pantalla del catalogo la ve** (ADR 0086, spec 0092).
+
+Mientras el negocio tiene un import **abierto** (`pending_upload`, `queued`, `analyzing`,
+`ready`), estas dos rutas responden **409**:
+
+| Ruta | Respuesta con un import abierto |
+|---|---|
+| `POST /api/catalog/category` | `409 { "error": "Estamos importando tu menu. …", "code": "catalog_import_in_progress" }` |
+| `POST /api/catalog/product` | idem |
+
+**Editar, renombrar y borrar NO se bloquean** (`PUT`/`DELETE` de producto y categoria): el writer
+de la importacion es estrictamente aditivo y no compite con ellos. Un import `accepted`, `failed`,
+`cancelled` o `expired` **no bloquea nada**, y el bloqueo es **por negocio**: el import abierto de
+otro negocio no toca a este.
+
+**El `code` de este 409 es la excepcion del dominio catalogo**, que no tiene lista cerrada de
+codigos: el resto de sus errores sigue respondiendo `{ "error": "…" }` **sin** clave `code`. Por
+eso la pantalla tiene que leer `code === "catalog_import_in_progress"` y no el texto.
+
+**Para reflejarlo sin una segunda llamada, `GET /api/catalog` suma un booleano:**
+
+```json
+{ "products": [...], "categories": [...], "locations": [...],
+  "currencyCode": "USD", "importInProgress": true }
+```
+
+Es **un booleano y nada mas**: ni el id del import, ni su estado, ni la extraccion. Y **no es el
+guard** — deshabilitar el boton es cortesia; la proteccion es el 409. Dos requests exactamente
+simultaneas siguen pudiendo cruzarse, y por eso el servidor conserva su recuperacion del 23505.
+
 ## 8. Lo que esta spec NO decide
 
 - **El diseno.** Copy, layout, orden de los pasos y como se ven los avisos son del owner.
 - **El aviso de privacidad.** Que el archivo se procesa con un proveedor externo de IA **lo escribe
   la UI** (ADR 0082 §12). El servidor no lo emite.
-- **Notificacion push.** El aviso del servidor es **email**; un push al backoffice es otra feature.
+- **Cualquier notificacion.** El servidor **no avisa por ningun canal** cuando la importacion
+  termina: ni email (ADR 0085 lo elimino) ni push (ADR 0082 §12 ya lo dejaba afuera).
 - **La precision del modelo.** Que tan bien lee un menu torcido se mide con el corpus del ADR 0082
   §2, no se promete acá. **Un precio mal leido con confianza alta entra al catalogo**: es un riesgo
   aceptado por el owner (ADR 0084) y se corrige editando el producto.

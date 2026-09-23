@@ -3,10 +3,17 @@ import { getDb } from "../db";
 import { businesses, memberships } from "../schema";
 import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
 
+/**
+ * El error del dominio catalogo. **`code` es OPCIONAL y aditivo** (ADR 0086): a diferencia de
+ * catalog-import, este dominio no tiene lista cerrada de codigos y la ruta serializa
+ * `{ error: message }`. Los errores que no lo pasan siguen respondiendo exactamente igual —
+ * `catalogError()` solo agrega la clave `code` cuando existe.
+ */
 export class CatalogError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code?: string,
   ) {
     super(message);
   }

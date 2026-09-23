@@ -1,4 +1,4 @@
-import { CatalogSkeleton } from "./catalog-page";
+import { CatalogSkeleton } from "./catalog-skeleton";
 
 export default function LoadingCatalog() {
   return (

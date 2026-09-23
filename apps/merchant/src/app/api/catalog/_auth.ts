@@ -68,10 +68,18 @@ export async function requireCatalogOwner(
   };
 }
 
+/**
+ * ADR 0086 — el cuerpo de error del dominio. **`code` sale SOLO cuando el `CatalogError` lo
+ * trae**: el dominio catalogo no tiene lista cerrada de codigos, asi que todo lo que hoy no
+ * lo pasa tiene que seguir respondiendo `{ error }` tal cual. Lo consume la pantalla para
+ * distinguir el 409 de la importacion en curso de cualquier otro conflicto sin leer el texto.
+ */
 export function catalogError(error: unknown, fallback: string): NextResponse {
   if (error instanceof CatalogError) {
     return NextResponse.json(
-      { error: error.message },
+      error.code
+        ? { error: error.message, code: error.code }
+        : { error: error.message },
       { status: error.status },
     );
   }

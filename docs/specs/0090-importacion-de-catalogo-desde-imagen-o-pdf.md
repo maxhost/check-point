@@ -1,7 +1,7 @@
 ---
 spec: 0090
 fecha: 2026-09-21
-estado: implementada
+estado: implementada — el aviso por EMAIL y la columna `notified_at` fueron ELIMINADOS por el ADR 0085 / spec 0092 el 2026-09-23
 resumen: Importacion asistida de catalogo desde 1-10 fotos o un PDF de hasta 10 paginas. Subida temporal firmada a R2; el analisis NO corre en nuestra funcion —el adaptador lo delega en el proveedor (`background: true`) y lo retomamos por un callback firmado, con un reconciliador externo para el webhook perdido—; borrador persistido y revisable, resolucion explicita de duplicados y precios ambiguos, y aceptacion idempotente que crea categorias y productos en bulk dentro de una transaccion. Un analisis por negocio por dia, centralizado en entitlements, y los fallos no consumen cupo. SIN UI: la pantalla la construye el owner por fuera con `specs/0090-contratos-de-api.md`.
 disjunta: no
 archivos: apps/merchant/src/server/schema/catalog-import.ts, apps/merchant/src/server/catalog-import/**, apps/merchant/src/server/entitlements/catalog.ts, apps/merchant/src/app/api/catalog/imports/**, apps/merchant/src/app/api/internal/catalog-imports/**, apps/merchant/drizzle, .github/workflows, tests
@@ -49,7 +49,7 @@ por que esta en la enmienda del ADR 0082; lo que sigue ya esta corregido.
 - OCR propio, fine-tuning, fallback automatico entre proveedores.
 - Adaptadores Anthropic/Kimi: el contrato los admite sin tocar el dominio, pero no se escriben acá.
 - Inventario, variantes, descripciones, impuestos, promociones.
-- Web push al merchant (el aviso de esta spec es email; el push es otra feature).
+- Web push al merchant (el aviso de esta spec era email; el push es otra feature). *El email lo ELIMINO el ADR 0085 el 2026-09-23, y el push sigue afuera.*
 
 ## Diseno
 
@@ -135,7 +135,7 @@ duration_ms integer nullable
 attempt_count integer not null default 0
 lease_until timestamptz nullable         -- sin esto, `analyzing` es un pozo
 cancel_requested_at timestamptz nullable
-notified_at timestamptz nullable         -- el email sale UNA vez por import
+notified_at timestamptz nullable         -- BORRADA por la spec 0092 (ADR 0085): no hay email
 accepted_summary jsonb nullable          -- {categoriesCreated, productsCreated, productsWithoutPrice}
 failure_code text nullable
 failure_detail text nullable             -- saneado: sin prompt, archivo ni secreto
@@ -339,7 +339,7 @@ sesion**. En este orden, sin excepcion:
    responde 200 y se ignora** (no filtra existencia ni deja al proveedor reintentando para siempre);
 4. **va a buscar el resultado a la API del proveedor.** El cuerpo del webhook no se cree;
 5. valida contra el esquema propio, enriquece duplicados, persiste el borrador, pasa a `ready`,
-   registra tokens/duracion y **manda el email** si `notified_at` es null;
+   registra tokens/duracion y **manda el email** si `notified_at` es null; *(el email lo elimino el ADR 0085)*
 6. si hay `cancel_requested_at`, o el import ya salio de `analyzing`, es **no-op idempotente**.
 
 **`POST /api/internal/catalog-imports/reconcile`** — con el `CRON_SECRET` que ya usan las internas.

@@ -38,7 +38,6 @@ const FILA: ImportRow = {
   attemptCount: 1,
   leaseUntil: null,
   cancelRequestedAt: null,
-  notifiedAt: null,
   acceptedSummary: {
     categoriesCreated: 12,
     categoriesReused: 2,

@@ -5,6 +5,9 @@ import type { Category } from "./types";
 
 type Props = {
   categories: Category[];
+  /** ADR 0086 — con una importacion abierta el alta manual da 409; el boton se apaga.
+   * Renombrar y borrar NO se tocan: no compiten con el writer, que es solo aditivo. */
+  importInProgress: boolean;
   onCreate: (name: string) => Promise<boolean>;
   onRename: (id: string, name: string) => Promise<boolean>;
   onDelete: (category: Category) => void;
@@ -13,6 +16,7 @@ type Props = {
 
 export function CategoryManager({
   categories,
+  importInProgress,
   onCreate,
   onRename,
   onDelete,
@@ -39,17 +43,24 @@ export function CategoryManager({
           maxLength={60}
           placeholder="Nueva categoría"
           aria-label="Nueva categoría"
+          disabled={importInProgress}
           onChange={(event) => setAdding(event.target.value)}
         />
         <button
           type="button"
           className="small-button"
-          disabled={!adding.trim()}
+          disabled={importInProgress || !adding.trim()}
           onClick={() => void create()}
         >
           Añadir
         </button>
       </div>
+      {importInProgress && (
+        <p className="field-help">
+          Estamos importando tu menú. Mientras termina no podés crear
+          categorías; sí podés renombrar y borrar las que ya están.
+        </p>
+      )}
       {categories.length === 0 ? (
         <p className="field-help">Sin categorías todavía.</p>
       ) : (
