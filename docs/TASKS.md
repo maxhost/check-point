@@ -10,11 +10,11 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ SPEC 0091 IMPLEMENTADA Y COMMITEADA (2026-09-23) — PASS del revisor
 
-**Estado del arbol AHORA:** la 0091 esta en `main` en el commit **`5a1b2f7`**, junto a los tres
-commits previos. Los cuatro siguen **SIN PUSHEAR** (pushear dispara deploy de produccion y el owner
-no lo pidio). Lo unico sin commitear del arbol son los **dos archivos del owner**
-(`backoffice/catalog/catalog-ai-import.tsx` y `globals.css`), que no se tocaron y son la unica razon
-por la que `format:check` esta rojo.
+**Estado del arbol AHORA:** la 0091 esta en `main` en **`5a1b2f7`** (servidor) y **`9e093fe`**
+(la pantalla), mas `893bea8` y `0bc6ee3` de docs, sobre los tres commits previos. **Ninguno esta
+pusheado** (pushear dispara deploy de produccion y el owner no lo pidio). **El arbol no tiene nada
+sin commitear**, y `format:check` quedo en **exit 0**: el rojo que arrastraba era el archivo del
+owner, que esta spec ya reescribio.
 
 La spec quedo en `estado: implementada` con el `PASS` del revisor independiente (ADR 0071).
 
@@ -61,13 +61,21 @@ la mutacion sobrevivia en verde. El caso vive en
   funciono. Cabe en ~40 lineas si se quiere cerrar.
 - La calidad de la extraccion del LLM: la mide el corpus de menus reales, no un test.
 
-### Hallazgo para el owner (NO es decision tomada)
+### La pantalla YA consume el contrato nuevo (`9e093fe`)
 
-**La pantalla actual quedo llamando a rutas que ya no existen.** `catalog-ai-import.tsx` sigue
-haciendo `PUT /{id}/draft` y `POST /{id}/accept`, que ahora dan **404**, y sigue leyendo `draft` del
-DTO, que ahora trae `result`. Es lo esperado por el ADR 0070 (la UI la hace el owner por fuera) y por
-eso no se toco, pero **hasta que la pantalla se actualice, la importacion no se puede probar de punta
-a punta desde el navegador**. El contrato nuevo esta escrito en `specs/0090-contratos-de-api.md`.
+El hallazgo anterior —la pantalla llamando a `PUT /{id}/draft` y `POST /{id}/accept`, que daban
+404— **esta resuelto**. Se borro el editor de borrador entero y el estado `ready`; entra el panel
+que muestra el `result` del DTO (creadas, **reusadas**, creados, **omitidos**, sin precio y los
+descartados con su motivo). El archivo estaba en 867 lineas con limite 300, asi que se dividio en
+cinco (`-api`, `use-catalog-import`, `-picker`, `-result` y el componente), ninguno arriba de 280.
+Se borro tambien el CSS muerto del editor (ADR 0070 §17).
+
+**PENDIENTE Y BLOQUEADO: `pnpm test:e2e` NO se corrio.** Esta spec ahora toca `.tsx` y CSS global,
+asi que el gate **aplica**. No corre porque hay un `next dev` de merchant ocupando el puerto 3000 y
+`playwright.config.ts` espera merchant en el **3001**: Playwright intenta levantar otro y el lock de
+`next dev` lo rechaza. **Hay que correrlo antes de pushear.** Atenuante medido: `tests/e2e/health.spec.ts`
+solo pega a `/api/health` de las tres apps (JSON, sin UI) y `loyalty-real.spec.ts` se auto-skipea sin
+credenciales y va a `/backoffice/loyalty` — ninguno ejercita la pantalla ni el CSS que se toco.
 
 ## ⇥ PROXIMO PASO: QA DEL OWNER SOBRE LA PANTALLA NUEVA
 
