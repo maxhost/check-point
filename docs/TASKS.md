@@ -120,8 +120,10 @@ en el transcript de la sesion del 2026-09-22 (es la unica forma de correr `drizz
 **Ya existen** — `CRON_SECRET` en **Vercel** (desde 2026-08-15) y en **GitHub Actions**. No hay que
 crearlo.
 
-**Faltan en Vercel:** `OPENAI_API_KEY`, `OPENAI_WEBHOOK_SECRET`, `CATALOG_EXTRACTION_PROVIDER`,
-`CATALOG_EXTRACTION_MODEL`. (`CATALOG_EXTRACTION_PROMPT_VERSION` es opcional, default `v1`.)
+**~~Faltan~~ YA ESTAN en Vercel** (cargadas por el owner el 2026-09-22 22:11-22:12 UTC,
+verificado por MCP): `OPENAI_API_KEY`, `OPENAI_WEBHOOK_SECRET`, `CATALOG_EXTRACTION_PROVIDER`,
+`CATALOG_EXTRACTION_MODEL`, `CATALOG_EXTRACTION_PROMPT_VERSION`. **Pero el valor de
+`OPENAI_API_KEY` no sirve: prod da `openai_http_401`** — ver «EL 401 DE OPENAI EN PROD».
 
 **Falta en GitHub Actions:** `CATALOG_IMPORT_RECONCILE_ENDPOINT`.
 
@@ -168,6 +170,82 @@ no leyendo la doc. Es el gate que decide si la arquitectura de callback funciona
 Y sigue en pie el ADR 0082 §2: el modelo productivo se confirma con el **corpus manual de 15-25
 menus reales** (foto clara, inclinada, poca luz, dos columnas, coma vs punto decimal, PDF digital y
 escaneado), registrando precision, error de precio y tokens.
+
+## ⇥ EL 401 DE OPENAI EN PROD (2026-09-23) — **ES LA CLAVE DE VERCEL, NO EL CODIGO**
+
+Sintoma: `catalog_import_provider_start_failed { provider: 'openai', model: 'gpt-6-luna',
+reason: 'openai_http_401' }` seguido de `catalog_import_failed { code: 'provider_unavailable' }`,
+en **produccion** (`dpl_YK1NKScSzxVt7Z6FSKv8qXbQp9si` a las 00:21 UTC y
+`dpl_8wQj6quajSMHua9bQk8ov2izZEEW` a las 00:42 UTC, los dos en `main`), leido por MCP de Vercel.
+
+**Medido con la clave de `apps/merchant/.env.local`, contra `api.openai.com` de verdad:**
+
+| sonda | resultado EJECUTADO |
+|---|---|
+| `GET /v1/models` | **200** |
+| `GET /v1/models/gpt-6-luna` | **200** — el modelo existe y la cuenta lo tiene |
+| `POST /v1/responses` con el **cuerpo exacto de `start()`** (prompt real, PDF real, `tools: []`, `text.format` `json_schema` `strict: true`) | **200**, `status: queued` |
+| `GET /v1/responses/{id}` (el `poll()`) | **`completed`** — JSON valido: 2 categorias, 3 productos, los tres precios correctos, `warnings: []`, `usage` 468 in / 220 out (53 de reasoning) |
+
+Metadatos de esa clave, **sin imprimirla**: `sk-proj`, 164 caracteres, sin comillas, sin espacios
+al borde, sin CR, huella `sha256[0..12] = aed315b6196e`.
+
+**Conclusion: el adaptador, el modelo y el esquema estan bien. La unica variable que cambia entre
+el 200 local y el 401 de prod es el VALOR de `OPENAI_API_KEY` en Vercel** (creada el 2026-09-22
+22:11 UTC, tipo `sensitive` → ilegible incluso con `decrypt`, ni por API ni por dashboard).
+Causas tipicas, en orden: clave pegada **truncada** desde el dashboard de OpenAI (la vista
+enmascarada `sk-proj-...XYZ` se copia entera y no sirve), **salto de linea o espacio al final**
+al pegarla, o una clave **de otro proyecto / revocada**.
+
+**Fix: re-cargar `OPENAI_API_KEY` en Vercel (production) con el valor que dio 200 acá, y
+REDESPLEGAR** — las env de Vercel entran por build, no en caliente.
+
+**Como se comprueba sin adivinar — YA COMMITEADO Y PUSHEADO:** `59063a8` hace que el log
+del 401 emita `keyFingerprint`, `keyLength` y `keyHasOuterWhitespace`. Cuando ese sha este
+desplegado, **una huella distinta de `aed315b6196e` prueba que la clave de Vercel es otra, y
+`keyHasOuterWhitespace: true` prueba el pegado sucio.** Verificado que `safeProviderFailure` solo
+alimenta el `console.warn`: el `failureDetail` que se persiste sale de `classify()`, que no
+cambio, asi que no toca lo que ve el merchant.
+
+**Como se lee el log:** `POST /api/catalog/imports/<id>/analyze` en prod, y despues
+`catalog_import_openai_request_failed` (el `console.warn` nuevo del adaptador) o
+`catalog_import_provider_start_failed` (el de `prepare.ts`, que ahora lleva el objeto entero
+en `reason`). Los dos salen por los runtime logs de Vercel.
+
+**Las sondas quedaron en `/tmp/probe-openai.mjs`, `/tmp/probe-responses.mjs` y
+`/tmp/probe-adapter.mjs`** (leen la clave del `.env.local` y **nunca la imprimen**), con el PDF
+de prueba en `/tmp/menu-prueba.pdf`, generado por `/tmp/make-pdf.mjs`.
+
+### ESTADO tras el push del 2026-09-23
+
+| sha | que es |
+|---|---|
+| `59063a8` | el diagnostico seguro del fallo de OpenAI + su test |
+| `11b0c12` | prettier sobre los 9 archivos de UI/CSS que dejaban rojo `format:check` desde `7c423a9` |
+
+**Los SEIS gates corridos antes del push, con Node 24:** `typecheck` 3/3 `Cached: 0`, `lint`
+(eslint limpio), `test` **171 archivos / 1734 passed, 0 failed** (583 `skipped`, que son las
+`.neon.integration`), `build` 3/3, `format:check` limpio, y **`test:e2e` 3 passed / 1 skipped**
+(el `loyalty-real` se saltea sin base).
+
+**Lo que NO se verifico acá y lo cierra la CI:** las 6 suites `.neon.integration` —583 tests que
+local quedan en `skipped`— corren en el push contra `ci-integration`. **Un `skipped` se lee igual
+que un `passed`**, asi que el resultado hay que mirarlo en los *check runs*, no en `/status`:
+`GH_TOKEN= gh api repos/maxhost/check-point/commits/<sha>/check-runs --jq '.check_runs[] |
+"\(.name): \(.status) -> \(.conclusion)"'`.
+
+**`apps/merchant/next-env.d.ts` NO entro al push**: el `build` lo reescribe de
+`./.next/dev/types/` a `./.next/types/` y `next dev` lo vuelve a dar vuelta. Es churn de
+artefacto, no trabajo.
+
+### Esto CIERRA el limite declarado del modelo
+
+`docs/TASKS.md` declaraba sin medir: «**si el modelo acepta `background: true`**, que la doc de
+OpenAI no lista como capacidad de ningun modelo». **Medido: `gpt-6-luna` lo acepta** — devolvio
+`queued` al instante y el `poll` lo levanto `completed`. La arquitectura de callback diferido
+funciona contra el modelo elegido. Sigue en pie lo otro del ADR 0082 §2: el **corpus de 15-25
+menus reales** (foto inclinada, poca luz, dos columnas, coma vs punto) antes de fijarlo. Lo de acá
+fue **un PDF digital sintetico de 8 lineas**, que no dice nada de precision en fotos.
 
 ## BITACORA — ORQUESTADOR, EL TERCER HERMANO DEL AISLAMIENTO (2026-09-22)
 
