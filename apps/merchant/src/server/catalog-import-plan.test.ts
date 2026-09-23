@@ -230,6 +230,53 @@ describe("el plan aditivo (§3)", () => {
     expect(JSON.stringify(plan)).not.toContain("99");
   });
 
+  /**
+   * §3 — EL EMPATE DE `createdAt` LO DESEMPATA EL `id` MENOR.
+   *
+   * No es teorico y no hace falta una carrera: la clave canonica es MAS agresiva que el
+   * indice unico de la base (el indice es `lower(name)`; `matchKey` ademas saca acentos y
+   * puntuacion), asi que «Bebidas» y «Bebidas!» **conviven** en el catalogo y la importacion
+   * las ve como la misma. Y si las creo la misma importacion, comparten `created_at`
+   * EXACTO: el writer las inserta en una sola transaccion y `now()` en Postgres es el
+   * instante en que la transaccion arranco, no el de cada fila.
+   *
+   * Sin el desempate, a que categoria van los productos depende del orden en que Postgres
+   * devolvio las filas. Nada se destruye —las dos son del merchant y las dos se reusan—
+   * pero el plan dejaria de ser una funcion del catalogo.
+   */
+  it("con `createdAt` empatado gana el `id` menor, no el orden de las filas", () => {
+    const empatadas = (orden: "asc" | "desc"): CatalogSnapshot => {
+      const filas = [
+        { id: "aaa", name: "Bebidas", createdAt: fecha("2026-01-01") },
+        { id: "zzz", name: "Bebidas!", createdAt: fecha("2026-01-01") },
+      ];
+      return {
+        categories: orden === "asc" ? filas : [...filas].reverse(),
+        products: [],
+      };
+    };
+    const conAsc = buildAdditivePlan(
+      extraccion([
+        { sourceId: "c1", name: "bebidas", products: [producto("Agua")] },
+      ]),
+      empatadas("asc"),
+    );
+    const conDesc = buildAdditivePlan(
+      extraccion([
+        { sourceId: "c1", name: "bebidas", products: [producto("Agua")] },
+      ]),
+      empatadas("desc"),
+    );
+
+    // Ninguna se crea: la extraida concilia contra una que ya existe.
+    expect(conAsc.categories.filter((c) => c.existingId === null)).toEqual([]);
+    expect(conAsc.categoriesReused).toBe(1);
+    // Y el producto cae SIEMPRE en la del `id` menor, venga como venga la lectura.
+    expect(conAsc.categories[0].existingId).toBe("aaa");
+    expect(conDesc.categories[0].existingId).toBe("aaa");
+    expect(conDesc).toEqual(conAsc);
+  });
+
   it("los descartes se pasan al resumen: 50 listados y el total contado", () => {
     const muchos = Array.from({ length: 63 }, (_, i) => ({
       text: `roto ${i}`,
