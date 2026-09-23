@@ -16,7 +16,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1107.0",
     "@mapbox/search-js-react": "^1.6.0",
     "@neondatabase/serverless": "^1.1.0",
-    "better-auth": "^1.6.26",
+    "better-auth": "^1.7.5",
     "driver.js": "^1.8.0",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",
