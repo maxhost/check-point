@@ -49,6 +49,11 @@ vi.mock("./r2", async () => {
 
 const { cancelImport, createImport } = await import("./catalog-import/core");
 const { startAnalyze } = await import("./catalog-import/analyze");
+const { limitOf } = await import("./entitlements");
+
+/** El tope sale del catalogo: lo que este caso mide es que el 429 llega ANTES de escribir,
+ * no cuanto vale el tope — ese numero lo pinnea `entitlements-window.test.ts`. */
+const TOPE_INTENTOS = limitOf({ plan: null }, "catalog.imports.attempts");
 
 const IMPORT_ID = "11111111-1111-4111-8111-111111111111";
 const NEGOCIO = { id: "22222222-2222-4222-8222-222222222222" };
@@ -251,7 +256,7 @@ describe("reservar un import nuevo (spec 0090 §6 / ADR 0082 §13.2)", () => {
   });
 
   it("con submits aceptados agotados responde 429 ANTES de reservar o firmar", async () => {
-    estado.filas = [[], [], [{ total: 0 }], [{ total: 3 }]];
+    estado.filas = [[], [], [{ total: 0 }], [{ total: TOPE_INTENTOS }]];
     await expect(createImport(NEGOCIO, "u-1", archivos)).rejects.toMatchObject({
       status: 429,
       code: "catalog_import_rate_limited",

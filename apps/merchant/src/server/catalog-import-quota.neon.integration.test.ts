@@ -4,6 +4,7 @@ import {
   leerImport,
   limpiarNegocio,
   seedImport,
+  seedImports,
   seedNegocio,
   type SeedImport,
 } from "./catalog-import-integration-support";
@@ -21,6 +22,17 @@ vi.mock("./r2", async () => {
 
 const { POST: CREAR } = await import("../app/api/catalog/imports/route");
 const { runAnalysis } = await import("./catalog-import/prepare");
+const { limitOf } = await import("./entitlements");
+
+/**
+ * **Los dos topes salen del catalogo, no de un numero escrito acá.** Lo que estos casos miden
+ * es la DECISION contra la base —que filas cuentan, y que al agotarse hay `429`—, no cuanto
+ * valen: ese numero se transcribe a mano y se pinnea en `entitlements-window.test.ts`.
+ * Escribirlos dos veces hacia que moverlos para las pruebas pusiera en rojo dos casos que no
+ * hablan del valor.
+ */
+const TOPE_ANALISIS = limitOf({ plan: null }, "catalog.imports.analyses");
+const TOPE_INTENTOS = limitOf({ plan: null }, "catalog.imports.attempts");
 
 /**
  * Spec 0090 §8 / ADR 0082 §10 — **EL CUPO SE CUENTA CON FILAS, Y UN FALLO NO LO CONSUME.**
@@ -78,7 +90,9 @@ describe.skipIf(!enabled)(
     });
 
     it("un análisis que llegó a borrador SÍ lo consume, y el exceso es 429 con `Retry-After`", async () => {
-      await seedImport({
+      // El tope entero de analisis, ya gastado hoy: todos terminales, para no chocar con el
+      // unico parcial por negocio. El siguiente POST es el que tiene que rebotar.
+      await seedImports(TOPE_ANALISIS, {
         businessId: conAnalisis.businessId,
         userId: conAnalisis.userId,
         status: "accepted",
@@ -104,35 +118,34 @@ describe.skipIf(!enabled)(
     it("agotado el techo de intentos, el submit se cierra en `failed` sin llamar al proveedor", async () => {
       const negocio = await seedNegocio("Cupo QA intentos");
       negocios.push(negocio);
-      // Tres imports YA submiteados hoy (terminales, para no chocar con el único parcial).
-      for (let i = 0; i < 3; i += 1) {
-        await seedImport({
-          businessId: negocio.businessId,
-          userId: negocio.userId,
-          status: "failed",
-          attemptCount: 1,
-          provider: "openai",
-        });
-      }
-      const cuarto = await seedImport({
+      // El tope entero de submits YA aceptados hoy (terminales, para no chocar con el único
+      // parcial). El que sigue es el que tiene que cerrarse sin llamar al proveedor.
+      await seedImports(TOPE_INTENTOS, {
+        businessId: negocio.businessId,
+        userId: negocio.userId,
+        status: "failed",
+        attemptCount: 1,
+        provider: "openai",
+      });
+      const siguiente = await seedImport({
         businessId: negocio.businessId,
         userId: negocio.userId,
         status: "queued",
       });
       let submits = 0;
-      const outcome = await runAnalysis(cuarto, {
+      const outcome = await runAnalysis(siguiente, {
         provider: {
           id: "doble",
           model: "doble-v1",
           start: async () => {
             submits += 1;
-            return { kind: "deferred", jobId: `job-${cuarto}` };
+            return { kind: "deferred", jobId: `job-${siguiente}` };
           },
         },
       });
       expect(outcome).toBe("failed");
       expect(submits).toBe(0);
-      const fila = await leerImport(cuarto);
+      const fila = await leerImport(siguiente);
       expect(fila?.status).toBe("failed");
       expect(fila?.failureCode).toBe("catalog_import_rate_limited");
     });

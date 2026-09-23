@@ -132,6 +132,44 @@ export async function seedImport(opts: {
   return id;
 }
 
+/**
+ * `n` imports de una sola vez, en UN `insert`.
+ *
+ * Existe porque los topes del cupo salen del catalogo y hoy estan en **valor de pruebas
+ * (100)**: sembrarlos de a uno serian 100 viajes a Neon por caso, y hacerlo con `Promise.all`
+ * abriria 100 conexiones en paralelo contra el pool. Un solo `values([...])` no hace ninguna
+ * de las dos cosas.
+ */
+export async function seedImports(
+  cantidad: number,
+  opts: Parameters<typeof seedImport>[0],
+): Promise<string[]> {
+  if (cantidad <= 0) return [];
+  const ids = Array.from({ length: cantidad }, () => randomUUID());
+  await getDb()
+    .insert(catalogImports)
+    .values(
+      ids.map((id) => ({
+        id,
+        businessId: opts.businessId,
+        createdByUserId: opts.userId,
+        status: opts.status,
+        sourceKind: "images",
+        fileCount: 1,
+        draft: opts.draft ?? null,
+        draftVersion: opts.draftVersion ?? (opts.draft ? 1 : 0),
+        providerJobId: opts.providerJobId ?? null,
+        provider: opts.provider ?? null,
+        leaseUntil: opts.leaseUntil ?? null,
+        attemptCount: opts.attemptCount ?? 0,
+        acceptedSummary: opts.acceptedSummary ?? null,
+        createdAt: opts.createdAt ?? new Date(),
+        expiresAt: opts.expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000),
+      })),
+    );
+  return ids;
+}
+
 export async function leerImport(id: string) {
   const [row] = await getDb()
     .select()

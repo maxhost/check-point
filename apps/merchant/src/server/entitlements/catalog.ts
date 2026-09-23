@@ -101,21 +101,33 @@ export const ENTITLEMENTS = {
    * un fallo del proveedor o nuestro no le cuesta el dia al merchant. `requiresLiveSubscription`
    * es `false` porque esto **no es cuota comercial** (§7 del ADR sigue en pie) sino un control
    * operativo: un negocio sin suscripcion tiene que poder importar su menu.
+   *
+   * **⚠️ VALOR DE PRUEBAS — 100, NO 1 (decision del owner, 2026-09-23).** El valor de
+   * produccion es **1 por negocio por dia** y vuelve cuando la feature salga de pruebas.
+   * El mecanismo NO cambio: misma clave, misma ventana `day`, mismo discriminante
+   * (`draft IS NOT NULL`). Lo unico que se movio es el numero, y se mueve **solo acá** —
+   * ninguna pantalla ni ruta lo hardcodea, la UI muestra lo que devuelve el servidor.
    */
   "catalog.imports.analyses": {
     kind: "limit",
-    byPlan: { free: 1, plus: 1, none: 1 },
-    fallback: 1,
+    byPlan: { free: 100, plus: 100, none: 100 },
+    fallback: 100,
     requiresLiveSubscription: false,
     pendingRule: "min",
     window: "day",
   },
-  /** El techo de SUBMITS ACEPTADOS por el proveedor en la ventana (ADR 0083). Un trabajo
-   * aceptado cuenta aunque falle despues; configuracion/preparacion/rechazo de `start` no. */
+  /**
+   * El techo de SUBMITS ACEPTADOS por el proveedor en la ventana (ADR 0083). Un trabajo
+   * aceptado cuenta aunque falle despues; configuracion/preparacion/rechazo de `start` no.
+   *
+   * **⚠️ TAMBIEN EN VALOR DE PRUEBAS — 100, NO 3.** El owner pidio sacar el tope de **1
+   * analisis diario**; este es el otro techo del mismo camino y a 3 habria cortado la prueba
+   * en el cuarto submit aceptado, que es justo lo que pidio evitar. Valor de produccion: **3**.
+   */
   "catalog.imports.attempts": {
     kind: "limit",
-    byPlan: { free: 3, plus: 3, none: 3 },
-    fallback: 3,
+    byPlan: { free: 100, plus: 100, none: 100 },
+    fallback: 100,
     requiresLiveSubscription: false,
     pendingRule: "min",
     window: "day",

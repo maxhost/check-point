@@ -119,8 +119,9 @@ export async function assertQuota(
  * esperando un HTTP**. El llamador cierra el import en `failed`, que el contrato ya cubre.
  *
  * La fila en curso TODAVIA NO esta contada: `provider` se escribe al volver de `start()`.
- * Por eso se admite sólo cuando `used < limit`: con tope 3, el tercer submit pasa y el cuarto
- * se rechaza.
+ * Por eso se admite sólo cuando `used < limit`: el submit numero `limit` pasa y el siguiente
+ * se rechaza. **El valor del tope sale del catalogo** (`entitlements/catalog.ts`), que hoy lo
+ * tiene en valor de pruebas; este archivo no lo conoce y no debe conocerlo.
  */
 export async function withinAttemptBudget(
   businessId: string,

@@ -82,6 +82,7 @@ vi.mock("./r2", async () => {
 
 const { runAnalysis } = await import("./catalog-import/prepare");
 const { withinAttemptBudget } = await import("./catalog-import/quota");
+const { limitOf } = await import("./entitlements");
 
 const IMPORT_ID = "11111111-1111-4111-8111-111111111111";
 const NEGOCIO_ID = "22222222-2222-4222-8222-222222222222";
@@ -130,20 +131,28 @@ beforeEach(() => {
   estado.submits = 0;
 });
 
+/**
+ * **El TOPE sale del catalogo, no de un numero escrito acá.** Lo que estos casos miden es la
+ * DECISION (`used < limit`, y donde cae el borde), no cuanto vale el tope: ese numero se
+ * transcribe a mano —y se pinnea— en `entitlements-window.test.ts`. Escribirlo dos veces hacia
+ * que subirlo a 100 para las pruebas pusiera en rojo tres casos que no hablan del valor.
+ */
+const TOPE = limitOf({ plan: null }, "catalog.imports.attempts");
+
 describe("la REGLA: conteo vs tope (spec 0090 §8)", () => {
   it("con el conteo por DEBAJO del tope, hay presupuesto", async () => {
-    estado.filas = [[], [{ total: 1 }]];
+    estado.filas = [[], [{ total: TOPE - 1 }]];
     expect(await withinAttemptBudget(NEGOCIO_ID)).toBe(true);
   });
 
-  /** La fila en curso TODAVIA NO esta contada: con 3 aceptados, el siguiente no pasa. */
+  /** La fila en curso TODAVIA NO esta contada: con el tope ya aceptado, el siguiente no pasa. */
   it("JUSTO en el tope ya no hay presupuesto — el borde importa", async () => {
-    estado.filas = [[], [{ total: 3 }]];
+    estado.filas = [[], [{ total: TOPE }]];
     expect(await withinAttemptBudget(NEGOCIO_ID)).toBe(false);
   });
 
   it("uno por encima del tope, NO", async () => {
-    estado.filas = [[], [{ total: 4 }]];
+    estado.filas = [[], [{ total: TOPE + 1 }]];
     expect(await withinAttemptBudget(NEGOCIO_ID)).toBe(false);
   });
 });
@@ -152,7 +161,7 @@ describe("el CABLEADO: `runAnalysis` consulta el techo antes de submitear", () =
   /** ORACULO DEL CABLEADO DE M10: borrar la llamada en `prepare.ts` pone esto en rojo por
    * partida doble — el proveedor recibe un submit y el import no cierra en `failed`. */
   it("agotado el techo, cierra en `failed` y NO llama al proveedor", async () => {
-    estado.filas = cola(3);
+    estado.filas = cola(TOPE);
     const outcome = await runAnalysis(IMPORT_ID, { provider: proveedor() });
     expect(outcome).toBe("failed");
     // Lo que el techo existe para proteger: la plata. Cero submits.

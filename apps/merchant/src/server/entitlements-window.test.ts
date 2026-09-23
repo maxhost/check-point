@@ -11,9 +11,13 @@ import {
 /**
  * Spec 0090 §8 / ADR 0082 §10 — EL CUPO DE ANALISIS COMO VALOR DEL CATALOGO, con ventana.
  *
- * **Los valores se transcriben a mano** (`1`, `3`, `"day"`): un test que leyera
+ * **Los valores se transcriben a mano** (`100`, `"day"`): un test que leyera
  * `ENTITLEMENTS["catalog.imports.analyses"].byPlan.free` pasaria con CUALQUIER valor, que es
  * exactamente la copia muerta que `entitlements-catalog.test.ts` ya descarta.
+ *
+ * **Los dos topes estan en VALOR DE PRUEBAS (100).** Los de produccion son **1** analisis y
+ * **3** intentos por dia; cuando vuelvan, estas transcripciones vuelven con ellos — que es
+ * precisamente el punto de transcribirlas.
  */
 const live = (plan: string): EntitlementContext => ({
   plan,
@@ -22,18 +26,35 @@ const live = (plan: string): EntitlementContext => ({
 });
 
 describe("entitlements — el cupo de importación de catálogo", () => {
-  it("arranca en UN análisis por negocio por día, en los tres planes", () => {
-    expect(limitOf({ plan: "free" }, "catalog.imports.analyses")).toBe(1);
-    expect(limitOf({ plan: "plus" }, "catalog.imports.analyses")).toBe(1);
-    expect(limitOf({ plan: "none" }, "catalog.imports.analyses")).toBe(1);
+  it("está en 100 análisis por negocio por día (pruebas), en los tres planes", () => {
+    expect(limitOf({ plan: "free" }, "catalog.imports.analyses")).toBe(100);
+    expect(limitOf({ plan: "plus" }, "catalog.imports.analyses")).toBe(100);
+    expect(limitOf({ plan: "none" }, "catalog.imports.analyses")).toBe(100);
     expect(windowOf("catalog.imports.analyses")).toBe("day");
   });
 
-  it("el techo de intentos al proveedor es 3 por día", () => {
-    expect(limitOf({ plan: "free" }, "catalog.imports.attempts")).toBe(3);
-    expect(limitOf({ plan: "plus" }, "catalog.imports.attempts")).toBe(3);
-    expect(limitOf({ plan: "none" }, "catalog.imports.attempts")).toBe(3);
+  it("el techo de intentos al proveedor es 100 por día (pruebas)", () => {
+    expect(limitOf({ plan: "free" }, "catalog.imports.attempts")).toBe(100);
+    expect(limitOf({ plan: "plus" }, "catalog.imports.attempts")).toBe(100);
+    expect(limitOf({ plan: "none" }, "catalog.imports.attempts")).toBe(100);
     expect(windowOf("catalog.imports.attempts")).toBe("day");
+  });
+
+  /**
+   * **La ventana sigue siendo `day` y el cupo sigue EXISTIENDO.** Subirlo a 100 no es lo
+   * mismo que apagarlo: `assertQuota` sigue contando y sigue tirando `429` al agotarse.
+   * Este caso es el que se romperia si alguien «sacara el limite» poniendo `0`, `Infinity`
+   * o borrando la clave.
+   */
+  it("el cupo NO quedó apagado: sigue siendo un número finito y positivo", () => {
+    for (const key of [
+      "catalog.imports.analyses",
+      "catalog.imports.attempts",
+    ] as const) {
+      const limite = limitOf({ plan: "free" }, key);
+      expect(Number.isFinite(limite)).toBe(true);
+      expect(limite).toBeGreaterThan(0);
+    }
   });
 
   /**
@@ -51,13 +72,15 @@ describe("entitlements — el cupo de importación de catálogo", () => {
         },
         "catalog.imports.analyses",
       ),
-    ).toBe(1);
-    expect(limitOf(live("plus"), "catalog.imports.analyses")).toBe(1);
+    ).toBe(100);
+    expect(limitOf(live("plus"), "catalog.imports.analyses")).toBe(100);
   });
 
   it("un plan desconocido cae al fallback, no a cero ni a infinito", () => {
-    expect(limitOf({ plan: "enterprise" }, "catalog.imports.analyses")).toBe(1);
-    expect(limitOf({ plan: null }, "catalog.imports.attempts")).toBe(3);
+    expect(limitOf({ plan: "enterprise" }, "catalog.imports.analyses")).toBe(
+      100,
+    );
+    expect(limitOf({ plan: null }, "catalog.imports.attempts")).toBe(100);
   });
 
   it("`locations.max` NO tiene ventana: es un tope de stock, no de flujo", () => {
