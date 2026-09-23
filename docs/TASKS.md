@@ -10,11 +10,11 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ SPEC 0091 IMPLEMENTADA Y COMMITEADA (2026-09-23) — PASS del revisor
 
-**Estado del arbol AHORA:** la 0091 esta en `main` en **`5a1b2f7`** (servidor) y **`9e093fe`**
-(la pantalla), mas `893bea8` y `0bc6ee3` de docs, sobre los tres commits previos. **Ninguno esta
-pusheado** (pushear dispara deploy de produccion y el owner no lo pidio). **El arbol no tiene nada
-sin commitear**, y `format:check` quedo en **exit 0**: el rojo que arrastraba era el archivo del
-owner, que esta spec ya reescribio.
+**Estado del arbol AHORA: LIMPIO**, `git status --short` vacio. HEAD es **`89fdd84`**. La 0091
+entro en **`5a1b2f7`** (servidor) y **`9e093fe`** (la pantalla), mas `893bea8`, `0bc6ee3` y
+`89fdd84` de docs, sobre los tres commits previos. **Ninguno esta pusheado** (pushear dispara
+deploy de produccion y el owner no lo pidio). `format:check` quedo en **exit 0**: el rojo que
+arrastraba era el archivo del owner, que esta spec ya reescribio.
 
 La spec quedo en `estado: implementada` con el `PASS` del revisor independiente (ADR 0071).
 
