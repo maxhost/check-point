@@ -14,6 +14,7 @@ import {
   promptVersionFromEnv,
   CATALOG_EXTRACTION_SCHEMA_VERSION,
 } from "./providers/provider";
+import { OpenAiRequestError } from "./providers/openai";
 import { touch, withinAttemptBudget } from "./quota";
 import { failImport, finishAnalysis } from "./finish";
 import { purgeImportObjects } from "./cleanup";
@@ -162,7 +163,8 @@ export async function runAnalysis(
   }
 }
 
-function safeProviderFailure(error: unknown): string {
+function safeProviderFailure(error: unknown): string | Record<string, unknown> {
+  if (error instanceof OpenAiRequestError) return error.diagnostics;
   if (!(error instanceof Error)) return "unknown";
   if (/^openai_http_\d{3}$/.test(error.message)) return error.message;
   if (error.message === "openai_no_job_id") return error.message;

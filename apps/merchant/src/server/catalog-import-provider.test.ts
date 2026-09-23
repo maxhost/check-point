@@ -7,6 +7,7 @@ import { FakeCatalogExtractionProvider } from "./catalog-import/providers/fake";
 import {
   extractionFrom,
   OpenAiCatalogExtractionProvider,
+  OpenAiRequestError,
 } from "./catalog-import/providers/openai";
 import { CATALOG_EXTRACTION_PROMPT } from "./catalog-import/providers/openai-schema";
 import type {
@@ -114,7 +115,14 @@ describe("resolución del proveedor por configuración (spec 0090 §4)", () => {
 });
 
 /** Un `fetch` doblado: devuelve lo que se le ponga y registra lo que se le mandó. */
-function fetchDoble(respuestas: Array<{ ok: boolean; body: unknown }>) {
+function fetchDoble(
+  respuestas: Array<{
+    ok: boolean;
+    body: unknown;
+    status?: number;
+    headers?: Record<string, string>;
+  }>,
+) {
   const llamadas: Array<{ url: string; body: unknown }> = [];
   let i = 0;
   const original = globalThis.fetch;
@@ -126,7 +134,10 @@ function fetchDoble(respuestas: Array<{ ok: boolean; body: unknown }>) {
     const respuesta = respuestas[Math.min(i++, respuestas.length - 1)];
     return {
       ok: respuesta.ok,
-      status: respuesta.ok ? 200 : 500,
+      status: respuesta.status ?? (respuesta.ok ? 200 : 500),
+      headers: new Headers(respuesta.headers),
+      url: "https://api.openai.com/v1/responses",
+      redirected: false,
       json: async () => respuesta.body,
     } as Response;
   }) as typeof fetch;
@@ -254,6 +265,51 @@ describe("adaptador `openai` (spec 0090 §4)", () => {
       await expect(provider.start(entrada())).rejects.toThrow(
         "openai_http_500",
       );
+    } finally {
+      doble.restore();
+    }
+  });
+
+  it("conserva el código seguro de OpenAI y descarta su mensaje", async () => {
+    const secreto = `${CATALOG_EXTRACTION_PROMPT} sk-secreto`;
+    const doble = fetchDoble([
+      {
+        ok: false,
+        status: 401,
+        headers: { "x-request-id": "req_diagnostico" },
+        body: {
+          error: {
+            type: "invalid_request_error",
+            code: "ip_not_authorized",
+            param: "authorization",
+            message: secreto,
+          },
+        },
+      },
+    ]);
+    try {
+      const provider = new OpenAiCatalogExtractionProvider(
+        "gpt-x",
+        "sk-prueba",
+        "whsec_x",
+      );
+      const error = await provider.start(entrada()).catch((reason) => reason);
+      expect(error).toBeInstanceOf(OpenAiRequestError);
+      expect(error.diagnostics).toMatchObject({
+        kind: "http_error",
+        operation: "create",
+        keyLength: 9,
+        keyHasOuterWhitespace: false,
+        status: 401,
+        errorType: "invalid_request_error",
+        errorCode: "ip_not_authorized",
+        errorParam: "authorization",
+        requestId: "req_diagnostico",
+        hostname: "api.openai.com",
+        redirected: false,
+      });
+      expect(JSON.stringify(error.diagnostics)).not.toContain(secreto);
+      expect(JSON.stringify(error.diagnostics)).not.toContain("sk-prueba");
     } finally {
       doble.restore();
     }

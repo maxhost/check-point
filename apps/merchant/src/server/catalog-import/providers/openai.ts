@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   CatalogExtractionInput,
   CatalogExtractionProvider,
@@ -11,6 +12,34 @@ import {
   CATALOG_EXTRACTION_PROMPT,
 } from "./openai-schema";
 import { verifyWebhookSignature } from "./openai-callback";
+
+export type OpenAiRequestDiagnostics = {
+  kind: "http_error" | "network_error";
+  operation: "create" | "retrieve";
+  keyFingerprint: string;
+  keyLength: number;
+  keyHasOuterWhitespace: boolean;
+  status?: number;
+  errorType?: string;
+  errorCode?: string;
+  errorParam?: string;
+  requestId?: string;
+  hostname?: string;
+  redirected?: boolean;
+  causeCode?: string;
+};
+
+/** Conserva solo diagnostico seguro: nunca el mensaje, body, prompt, archivo o API key. */
+export class OpenAiRequestError extends Error {
+  constructor(readonly diagnostics: OpenAiRequestDiagnostics) {
+    super(
+      diagnostics.kind === "http_error"
+        ? `openai_http_${diagnostics.status ?? "unknown"}`
+        : "openai_network_error",
+    );
+    this.name = "OpenAiRequestError";
+  }
+}
 
 /**
  * Spec 0090 §4 / ADR 0082 §8 — EL ADAPTADOR `openai`, con `fetch` y **cero paquetes**.
@@ -54,31 +83,41 @@ export class OpenAiCatalogExtractionProvider implements CatalogExtractionProvide
             },
       ),
     ];
-    const response = await this.request("POST", "/responses", {
-      model: this.model,
-      // El id diferido llega al instante; el resultado se busca despues.
-      background: true,
-      store: true,
-      // **Sin tools**: el documento del merchant es entrada no confiable y no puede alcanzar
-      // ninguna capacidad del modelo mas alla de producir el JSON.
-      tools: [],
-      input: [{ role: "user", content }],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "catalog_extraction",
-          strict: true,
-          schema: CATALOG_EXTRACTION_JSON_SCHEMA,
+    const response = await this.request(
+      "POST",
+      "/responses",
+      {
+        model: this.model,
+        // El id diferido llega al instante; el resultado se busca despues.
+        background: true,
+        store: true,
+        // **Sin tools**: el documento del merchant es entrada no confiable y no puede alcanzar
+        // ninguna capacidad del modelo mas alla de producir el JSON.
+        tools: [],
+        input: [{ role: "user", content }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "catalog_extraction",
+            strict: true,
+            schema: CATALOG_EXTRACTION_JSON_SCHEMA,
+          },
         },
       },
-    });
+      "create",
+    );
     const jobId = typeof response.id === "string" ? response.id : "";
     if (!jobId) throw new Error("openai_no_job_id");
     return { kind: "deferred", jobId };
   }
 
   async poll(jobId: string): Promise<PollResult> {
-    const response = await this.request("GET", `/responses/${jobId}`);
+    const response = await this.request(
+      "GET",
+      `/responses/${jobId}`,
+      undefined,
+      "retrieve",
+    );
     const status = typeof response.status === "string" ? response.status : "";
     if (status === "queued" || status === "in_progress") {
       return { status: "pending" };
@@ -101,21 +140,78 @@ export class OpenAiCatalogExtractionProvider implements CatalogExtractionProvide
     method: "GET" | "POST",
     path: string,
     body?: unknown,
+    operation: "create" | "retrieve" = method === "POST"
+      ? "create"
+      : "retrieve",
   ): Promise<Record<string, unknown>> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        ...(body === undefined ? {} : { "content-type": "application/json" }),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+    const keyFingerprint = createHash("sha256")
+      .update(this.apiKey)
+      .digest("hex")
+      .slice(0, 12);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${this.apiKey}`,
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+    } catch (error) {
+      const cause =
+        error instanceof Error
+          ? (error.cause as { code?: unknown } | undefined)
+          : undefined;
+      const diagnostics: OpenAiRequestDiagnostics = {
+        kind: "network_error",
+        operation,
+        keyFingerprint,
+        keyLength: this.apiKey.length,
+        keyHasOuterWhitespace: this.apiKey !== this.apiKey.trim(),
+        hostname: hostnameOf(this.baseUrl),
+        causeCode:
+          typeof cause?.code === "string" ? cause.code.slice(0, 80) : undefined,
+      };
+      console.warn("catalog_import_openai_request_failed", diagnostics);
+      throw new OpenAiRequestError(diagnostics);
+    }
     if (!response.ok) {
-      // El cuerpo del error NO se propaga: puede traer el prompt y hasta el eco del
-      // documento, y el `failure_detail` que guardamos tiene que estar saneado (§3).
-      throw new Error(`openai_http_${response.status}`);
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { type?: unknown; code?: unknown; param?: unknown };
+      } | null;
+      const providerError = payload?.error;
+      const diagnostics: OpenAiRequestDiagnostics = {
+        kind: "http_error",
+        operation,
+        keyFingerprint,
+        keyLength: this.apiKey.length,
+        keyHasOuterWhitespace: this.apiKey !== this.apiKey.trim(),
+        status: response.status,
+        errorType: safeScalar(providerError?.type),
+        errorCode: safeScalar(providerError?.code),
+        errorParam: safeScalar(providerError?.param),
+        requestId:
+          response.headers?.get("x-request-id")?.slice(0, 120) || undefined,
+        hostname: hostnameOf(response.url || this.baseUrl),
+        redirected: response.redirected,
+      };
+      console.warn("catalog_import_openai_request_failed", diagnostics);
+      throw new OpenAiRequestError(diagnostics);
     }
     return (await response.json()) as Record<string, unknown>;
+  }
+}
+
+function safeScalar(value: unknown): string | undefined {
+  return typeof value === "string" ? value.slice(0, 120) : undefined;
+}
+
+function hostnameOf(value: string): string | undefined {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return undefined;
   }
 }
 
