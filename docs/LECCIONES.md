@@ -1648,3 +1648,44 @@ la tanda entera. Local van **solo los archivos que toca la spec**; la tanda ente
 **una corrida larga en background desde el agente no sobrevive**: se murio dos veces por teardown de
 sesion, y las dos veces dejo un `ELIFECYCLE` al final del log **que parece un test rojo y no lo es** —
 la unica forma de distinguirlo fue que no habia ni una linea de resumen de vitest.
+
+## 2026-09-23 — Spec 0091. Mi oraculo daba VERDE bajo mutacion porque el test reventaba ANTES de llegar al codigo que queria medir
+
+**El caso.** El revisor de la 0091 encontro que el invariante §7 —«el aviso por email sale DESPUES
+del resultado final»— no tenia oraculo: movio la llamada a `notifyImportFinished` para ANTES del
+writer y pasaron 1752 tests de unidad y 29 de Neon. Escribi el oraculo que faltaba. Como necesitaba
+una escritura que FALLARA (con una que funciona, los dos ordenes terminan igual y no hay nada que
+distinguir), reuse el disparador que ya usaba el caso de rollback de la suite de carreras: un nombre
+de producto con un byte NUL, que Postgres no puede guardar en `text`.
+
+**Volvio a dar VERDE con la mutacion puesta.** El caso pasaba, la mutacion sobrevivia, y la lectura
+facil era «no hay forma de pinnear esto».
+
+**Lo que pasaba.** Mi caso entraba por `finishAnalysis`, y `finishAnalysis` **persiste la extraccion
+cruda en la columna `draft` (`jsonb`) antes de llamar al writer**. El NUL tampoco es valido en
+`jsonb`: la excepcion salia en la persistencia, dos `await` antes del punto que yo queria medir. Mi
+`rejects.toThrow()` se cumplia **por el motivo equivocado**, y como el codigo mutado nunca se
+ejecutaba, ninguna de las dos versiones podia diferenciarse. El test verde no decia «el invariante
+esta cubierto» ni «no se puede cubrir»: decia «este test no llega hasta ahi».
+
+**La pista que lo delato fue un assert que pasaba de mas.** Con la notificacion adelantada,
+`notified_at` tenia que haber quedado reclamado; mi propio caso aseveraba que seguia en `null` y eso
+pasaba. Un estado imposible bajo la mutacion es la firma de que el codigo mutado nunca corrio.
+
+**Las reglas.**
+
+- **El disparador de fallo de un test tiene que fallar EN el punto que queres medir, no antes.**
+  Antes de aceptar que una mutacion sobrevive, probar que el camino **llega**: un `console.log`, un
+  assert sobre un efecto intermedio, o el propio estado que la mutacion deberia haber cambiado.
+- **Reusar el disparador de otro caso es una afirmacion sobre DONDE falla**, no solo sobre que falla.
+  El NUL era correcto en el caso de rollback, que llama a `writeImportedCatalog` **directo**; dejo de
+  serlo apenas el caso entro por `finishAnalysis`, que escribe `jsonb` primero.
+- **Es la familia de 2.0-quinquies, con el signo invertido:** ahi el verde era tautologico porque los
+  oraculos describian el estado viejo; aca es tautologico porque el codigo mutado no se ejecuta. En
+  los dos, **el verde de una mutacion es una hipotesis, no un resultado**.
+- El arreglo fue doblar **solo** `writeImportedCatalog` para que lance, en un archivo propio
+  (`catalog-import-finish-notify.neon.integration.test.ts`). No es una fila inventada: que el writer
+  pueda lanzar esta ejecutado contra Postgres en la suite de carreras. Lo que se dobla es **el momento
+  del fallo, no su posibilidad**. Con eso, la mutacion paso a ROJO con la asercion exacta
+  (`expected 0, received 1` en el outbox): el merchant recibia «tu menu ya esta en el catalogo» con el
+  catalogo VACIO, y encima perdia el aviso real de fallo porque la marca ya estaba reclamada.

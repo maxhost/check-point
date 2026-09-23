@@ -112,6 +112,23 @@ el verde es tautologico: mide que el test viejo sigue siendo el test viejo.
 del catalogo del checklist dio verde y se leyo como «no hay oraculo»; con los tests al dia, la misma
 mutacion dio **rojo en cuatro casos**.
 
+### 2.0-quinquies-bis El VERDE tambien miente cuando el test no LLEGA al codigo mutado (2026-09-23)
+
+Antes de aceptar que una mutacion sobrevive, **proba que el camino llega hasta ella**. Medido en la
+0091: el oraculo del invariante «el email sale DESPUES del resultado final» disparaba el fallo del
+writer con un byte NUL en un nombre de producto —el mismo disparador que ya usaba el caso de
+rollback— pero entraba por `finishAnalysis`, que **persiste la extraccion en una columna `jsonb`
+antes de llamar al writer**. El NUL tampoco es valido en `jsonb`: la excepcion salia dos `await`
+antes, el `rejects.toThrow()` se cumplia **por el motivo equivocado** y el codigo mutado nunca se
+ejecutaba. Verde en las dos versiones.
+
+- **El disparador de fallo tiene que fallar EN el punto que queres medir, no antes.**
+- **Reusar el disparador de otro caso es una afirmacion sobre DONDE falla**, no solo sobre que falla.
+- **La firma del sintoma es un assert que pasa de mas:** si bajo la mutacion un estado tendria que
+  haber cambiado y tu propio caso asevera que no cambio, el codigo mutado no corrio.
+- Doblar la pieza que tiene que fallar es legitimo **si su fallo esta ejecutado en otro lado**: se
+  dobla el MOMENTO del fallo, no su posibilidad.
+
 ### 2.0-sexies Al cerrar un defecto, barrer los OTROS miembros de su CLASE (2026-09-21)
 
 Un paso de tour pedia el clic que **apagaba** el unico permiso del alta. Se arreglo ese paso y **no se
