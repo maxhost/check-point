@@ -8,6 +8,413 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## BITACORA DE MUTACIONES — SPEC 0090 (2026-09-22): **TODAS REVERTIDAS**
+
+Se abrio ANTES de medir cada fila, como exige la skill `protocolo-de-verificacion`, y se cierra
+acá. **Barrido `grep -rn 'MUTATION|MUTACION' apps/*/src packages` → ARBOL LIMPIO**, `diff` vacio
+contra las copias limpias de `/tmp/m0090/` y los `shasum` coinciden.
+
+| id | archivo | shasum limpio VERIFICADO | estado |
+|---|---|---|---|
+| M1, M2 | `catalog-import/providers/openai-callback.ts` | `3b8008ad91364e76b94dcd27018fc675904d8dba` | medidas y revertidas |
+| M3 | `catalog-import/callback.ts` | `e1780ec882c9e382e4ef0529e4fee3f75fe2fea8` | medida y revertida |
+| M4 | `catalog-import/prepare.ts` / `catalog-import/reconcile.ts` | `fc91d6b904105229c8e7ccf6bb50844826085bbb` / `1aca5d1fc50b1d9163bd65e29c00a86097923c29` | **PENDIENTE — requiere Neon** (no aplicada) |
+| M5, M6 | `catalog-import/accept.ts` | `176654521b5afab20f7b2634f4ed19ee80c7e315` | medidas y revertidas |
+| M7, M9 | `catalog-import/core.ts` | `a5368fb89c1e417afdc965bd500c22804ef1dd23` | medidas y revertidas |
+| M8 | `catalog-import/quota.ts` | `d34f8634150896a8b3365e9bdc3174ac85563326` | **PENDIENTE — requiere Neon** (no aplicada) |
+| M10a (regla) | `catalog-import/quota.ts` | `d34f8634150896a8b3365e9bdc3174ac85563326` | medida y revertida |
+| M10b (cableado) | `catalog-import/prepare.ts` | `fc91d6b904105229c8e7ccf6bb50844826085bbb` | medida y revertida |
+
+Si alguna vez hiciera falta restaurar: `cp /tmp/m0090/<archivo>.ts <destino>` y comparar el
+`shasum` con la tabla. **El resultado EJECUTADO de cada fila esta en
+`docs/handoff-0090-implementacion-2026-09-22.md`.**
+
+### Vuelta 2 — re-mediciones del FAIL del revisor (2026-09-22): **TODAS REVERTIDAS**
+
+Los cinco archivos mutados son `??` (sin blob en git): **`git checkout` NO los restaura**. Las
+copias limpias estan en `/tmp/rev0090/`. Se verifico `diff` vacio contra cada una y el `shasum`
+de los cinco vuelve al valor de la tabla. **`rg -n 'MUTATION|MUTACION' apps/` → sin hits**, con
+control positivo (un archivo con la etiqueta da hit).
+
+| id | archivo:linea | shasum limpio VERIFICADO | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| RM3 | `catalog-import/core.ts:97` (`eq(businessId)` de `requireImport`) | `a5368fb89c1e417afdc965bd500c22804ef1dd23` | un import ajeno da el mismo 404 que uno inexistente | **ROJO — 1 failed / 134 passed**, revertida |
+| RM4 | `catalog-import/accept.ts:43` (`eq(businessId)` del `SELECT … FOR UPDATE`) | `176654521b5afab20f7b2634f4ed19ee80c7e315` | la ruta que ESCRIBE no materializa el menu ajeno como catalogo propio | **ROJO — 1 failed / 134 passed**, revertida. **NO requeria Neon** |
+| RM6 | `api/catalog/imports/route.ts:43` (`toImportDTO(row)` del `GET` del activo) | `a16c9f3a16504668045e4a4b2c52b363ccdc9f43` | la RUTA aplica la allow-list, no solo la funcion | **ROJO — 2 failed / 133 passed**, revertida |
+| RM6b | `api/catalog/imports/[id]/route.ts:22` (`toImportDTO(row)` del `GET` por id) | `2be124d22ae6015a8548a9f750579b4d733122fe` | la SEGUNDA ruta que serializa un import tambien aplica la allow-list | **ROJO — 2 failed / 133 passed**, revertida |
+| RM11 | `catalog-import/cleanup.ts:118` (`lte(expiresAt, now)`) | `1241b2b10bf9dada42dcdfc56424b6cef8cb45b0` | la corrida diaria vence SOLO lo vencido, no todo import abierto de todo negocio | **ROJO — 2 failed / 133 passed**, revertida. **NO requeria Neon** |
+
+Restauracion, si alguna vez hiciera falta:
+`cp /tmp/rev0090/catalog-import__core.ts apps/merchant/src/server/catalog-import/core.ts`
+`cp /tmp/rev0090/catalog-import__accept.ts apps/merchant/src/server/catalog-import/accept.ts`
+`cp /tmp/rev0090/imports__route.ts apps/merchant/src/app/api/catalog/imports/route.ts`
+`cp /tmp/rev0090/imports__id__route.ts "apps/merchant/src/app/api/catalog/imports/[id]/route.ts"`
+`cp /tmp/rev0090/catalog-import__cleanup.ts apps/merchant/src/server/catalog-import/cleanup.ts`
+
+**El resultado completo de cada fila —la asercion textual del rojo— esta en
+`docs/handoff-0090-implementacion-2026-09-22.md`, seccion «Vuelta 2».**
+
+## ⇥ SPEC 0090 — **IMPLEMENTADA** (2026-09-22), POR INSTRUCCION DEL OWNER
+
+`estado: implementada` en el frontmatter, fila del `INDEX` actualizada, y el estado real escrito en
+la propia spec (seccion «Estado de cierre») para que la marca no diga mas de lo que se midio.
+
+**Verificado:** PASS de revisor independiente en **dos vueltas** (vuelta 1 FAIL con cinco mutaciones
+sobrevivientes → cuatro arreglos → vuelta 2 con las cinco en ROJO a alcance completo), mas un tercer
+hermano del aislamiento cerrado por el orquestador. Cinco gates verdes: `typecheck` 3/3 `Cached: 0`,
+`lint`, `test` **171 archivos / 1731 tests**, `build` 3/3 `Cached: 0`, `format:check` rojo **solo**
+en los 10 del WIP del owner. Arbol sin mutaciones. Migracion aplicada y verificada por MCP.
+
+**LO QUE SIGUE SIN VERIFICAR, y por eso esta escrito y no escondido: las 6 suites
+`.neon.integration` NUNCA CORRIERON** — 583 tests en `skipped`, y **un `skipped` se lee igual que un
+`passed`**. Sin oraculo ejecutado: **M4** (dos reconciliadores concurrentes), **M8** (un `failed` no
+consume el cupo), **media M9** (el borrador sobrevive al 409), **RM1** (el borde de `assertQuota`) y
+la **atomicidad real del `accept`**. **Las corre la CI al pushear** (`ci.yml:36-58`, contra
+`ci-integration`, y falla fuerte si falta el secret). **Al 2026-09-22 no se habia pusheado.**
+
+**Lo que falta para que ande en prod** (nada de esto bloquea la marca, es config del owner):
+
+1. **Push** — cierra el hueco de integracion y corre `test:e2e`, el unico gate que nadie corre local.
+   Hay commits locales sin subir, y `format:check` va a fallar por los **10 archivos de UI del
+   owner** hasta que se formateen.
+2. **Deploy**, y **DESPUES** el secret `CATALOG_IMPORT_RECONCILE_ENDPOINT` en GitHub — hoy esa URL da
+   **404** y cargarlo antes deja el workflow rojo cada 5 minutos. Al cargarlo, dispararlo a mano
+   (`workflow_dispatch`) y ver un `HTTP 200`: el workflow hace `exit 0` si el secret falta, asi que
+   un nombre mal escrito queda **verde y muerto**.
+3. **Envs de Vercel**: `OPENAI_API_KEY`, `OPENAI_WEBHOOK_SECRET`, `CATALOG_EXTRACTION_PROVIDER`,
+   `CATALOG_EXTRACTION_MODEL`. `CRON_SECRET` ya esta en los tres lugares (rotado por el owner el
+   2026-09-22).
+4. **Rotar la password del rol `neondb_owner`** — la connection string quedo en el transcript.
+5. **El corpus manual de 15-25 menus** (ADR 0082 §2) antes de fijar el modelo productivo. Y con el se
+   responde el limite declarado: **si el modelo acepta `background: true`**, que la doc de OpenAI no
+   lista como capacidad de ningun modelo porque es parametro de la Responses API.
+
+**La UI** la construye el owner por fuera: contrato en `specs/0090-contratos-de-api.md`, punto de
+partida en `docs/handoff-ui-importacion-catalogo-2026-09-22.md`.
+
+## ⇥ MIGRACION 0042 APLICADA EN NEON `main` (2026-09-22) — VERIFICADA
+
+Decision del owner: **directo a `main`, sin rama efimera**. Aplicada con
+`DATABASE_URL_UNPOOLED=... pnpm --filter @mi-pasaporte/merchant db:migrate` (host **sin** `-pooler`).
+
+| | antes | despues |
+|---|---|---|
+| filas en `drizzle.__drizzle_migrations` | 42 | **43** |
+| tablas `core.catalog_import*` | 0 | **3** |
+| indices de la feature | 0 | **10** |
+| tablas en `core` / `merchant_auth` | — | 33 / 5, **intactas** |
+
+Verificado **por MCP, no por el output del comando**. Los dos indices que sostienen invariantes del
+diseno quedaron con el predicado correcto: el **parcial** de un import abierto por negocio
+(`WHERE status = ANY (...)`) y el unico de `provider_job_id` **cuando no es null**, que es la llave
+con la que entra el callback.
+
+La migracion es **puramente aditiva** (3 `CREATE TABLE` + FKs + indices, **cero `ALTER`, cero
+`DROP`**), asi que no puede romper el codigo viejo que corre en prod.
+
+**⚠️ PENDIENTE DEL OWNER: rotar la password del rol `neondb_owner`.** La connection string se pego
+en el transcript de la sesion del 2026-09-22 (es la unica forma de correr `drizzle-kit` desde acá).
+
+### Configuracion de prod: lo que YA esta y lo que falta
+
+**Ya existen** — `CRON_SECRET` en **Vercel** (desde 2026-08-15) y en **GitHub Actions**. No hay que
+crearlo.
+
+**Faltan en Vercel:** `OPENAI_API_KEY`, `OPENAI_WEBHOOK_SECRET`, `CATALOG_EXTRACTION_PROVIDER`,
+`CATALOG_EXTRACTION_MODEL`. (`CATALOG_EXTRACTION_PROMPT_VERSION` es opcional, default `v1`.)
+
+**Falta en GitHub Actions:** `CATALOG_IMPORT_RECONCILE_ENDPOINT`.
+
+**EL ORDEN IMPORTA Y SE MIDIO.** Hoy el apex hace `308` a `www` y
+`https://www.checkpass.club/api/internal/catalog-imports/reconcile` devuelve **404**, porque el
+codigo no esta desplegado. El workflow corre `*/5` y hoy esta **verde y silencioso** porque sin
+secrets hace `exit 0`. **Si se carga el secret ANTES del deploy, pasa a fallar cada 5 minutos.**
+Primero el deploy, despues el secret.
+
+**Y su riesgo espejo, de la misma familia que un test `skipped`:** ese `exit 0` significa que **un
+nombre de secret mal escrito deja el workflow VERDE y el reconciliador sin correr para siempre**.
+Despues de cargarlo hay que disparar el workflow a mano (`workflow_dispatch`) y ver un `HTTP 200`.
+
+### El modelo del proveedor — investigado el 2026-09-22 contra la doc oficial
+
+El codigo tiene `gpt-5-mini` de default (`providers/provider.ts:34`). Precios oficiales por 1M
+tokens (input / cached / output) y costo estimado por menu, con la normalizacion de la spec
+(JPEG, lado mayor 2048 px → **~3.000 tokens de imagen por pagina**, patches de 32 px × 1,2):
+
+| modelo | in | out | 1 foto | PDF 10 pag |
+|---|---|---|---|---|
+| gpt-5-nano | $0,05 | $0,40 | ~$0,0014 | ~$0,005 |
+| **gpt-6-luna** | **$0,10** | **$0,50** | **~$0,002** | **~$0,007** |
+| gpt-5-mini *(default actual)* | $0,25 | $2,00 | ~$0,007 | ~$0,024 |
+| gpt-6-sol | $2,00 | $10,00 | ~$0,04 | ~$0,14 |
+
+**La conclusion que importa: a 1 analisis por negocio por dia, el costo NO es la restriccion.** La
+diferencia entre el mas barato y el de gama media es **menos de cuatro centavos por menu**. Un
+precio mal leido cuesta mucho mas que eso. **Se optimiza precision, no centavos.**
+
+**Recomendado: `gpt-6-luna`** — es **mas barato que el default actual** ($0,10/$0,50 vs $0,25/$2),
+mas nuevo, tiene **reasoning tokens** (util para el caso `$3,50` vs `$35,00` que la spec llama
+`ambiguous`), ventana de 1.050.000 y lista `image_input` + `structured_outputs`. Si el corpus
+muestra que falla en fotos inclinadas o con poca luz, se sube a `gpt-6-sol`, que sigue costando
+centavos. **NO bajar a la gama nano:** ahorra ~$0,0005 por menu y la gama nano es la mas debil en
+OCR denso.
+
+**LIMITE DECLARADO, y hay que medirlo antes de fijar el modelo:** la doc **no lista `background`
+como capacidad de ningun modelo** —tampoco del `gpt-5-mini` que el codigo ya usa—, porque es un
+parametro de la **Responses API**, no un flag por modelo. El adaptador pega a `/v1/responses` con
+`background: true`. **Que el modelo elegido lo acepte se verifica INTENTANDOLO con una clave real**,
+no leyendo la doc. Es el gate que decide si la arquitectura de callback funciona.
+
+Y sigue en pie el ADR 0082 §2: el modelo productivo se confirma con el **corpus manual de 15-25
+menus reales** (foto clara, inclinada, poca luz, dos columnas, coma vs punto decimal, PDF digital y
+escaneado), registrando precision, error de precio y tokens.
+
+## BITACORA — ORQUESTADOR, EL TERCER HERMANO DEL AISLAMIENTO (2026-09-22)
+
+Abierta ANTES de medir. El revisor de la vuelta 2 encontro que `activeImport`
+(`catalog-import/core.ts:76`) es el **tercer miembro** de la clase de H1/H2 y **no tiene oraculo**.
+
+| id | archivo | shasum limpio | invariante | resultado |
+|---|---|---|---|---|
+| ORQ-RM12 | `catalog-import/core.ts` (`:76`, el `eq(businessId)` de `activeImport`) | `a5368fb89c1e417afdc965bd500c22804ef1dd23` | `GET /api/catalog/imports` **no devuelve el import abierto de otro negocio** | **antes: VERDE (1718 passed) — despues del oraculo: ROJO** |
+
+**Medido en DOS tiempos, que es lo que prueba que el oraculo es el oraculo:**
+
+1. **Sin el caso nuevo** (reproduciendo el hallazgo del revisor): borrar el filtro deja
+   **1718 passed / 0 failed**, alcance `vitest run src` (todo `apps/merchant/src`). **Sobrevive.**
+2. **Con el caso nuevo**, la MISMA mutacion: **1 failed / 1718 passed**.
+   `catalog-import-routes.test.ts > «el import abierto de OTRO negocio no se devuelve (y el propio
+   si)»` → `AssertionError: expected { import: { …(8) } } to deeply equal { import: null }`.
+   La asercion habla de **la propiedad** (devolvio el import ajeno), no del setup.
+
+**Por que importaba:** `GET /api/catalog/imports` es —contrato §1.bis— **la PRIMERA llamada que hace
+la pantalla**, y devuelve el import **con su `draft`**. Sin el filtro, un merchant abriendo el modal
+veia el menu de otro comercio. Es el **TERCER hermano** de la clase de H1/H2: los otros dos ganaron
+su oraculo al cerrar el FAIL, este quedo afuera del barrido. **Leccion 2.0-sexies otra vez: un
+defecto de clase cerrado en dos miembros de tres.**
+
+El caso viejo (`estado.filas = [[]]`) **no** servia de oraculo: media «si la base no devuelve filas,
+contestamos null», cierto con y sin filtro. El nuevo siembra una fila que **existe y esta abierta**
+cuyo unico defecto es el negocio, y lleva su **control positivo** en el mismo vector.
+
+**REVERTIDA Y VERIFICADA:** `diff` vacio contra `/tmp/orq0090/core.ts`, `shasum` de vuelta en
+`a5368fb89c1e417afdc965bd500c22804ef1dd23`, `grep` de etiquetas sin hits, `no-mutations-left.sh`
+EXIT=0.
+
+## BITACORA DE MUTACIONES — ORQUESTADOR, VERIFICACION DEL FIX DEL FAIL (2026-09-22)
+
+Abierta ANTES de medir, como exige la skill. Reproduzco **yo** la fila mas consecuente del arreglo
+del revisor en vez de creerle al reporte del subagente.
+
+| id | archivo | shasum limpio | invariante que ataca | resultado |
+|---|---|---|---|---|
+| ORQ-RM4 | `catalog-import/accept.ts` (`:43`, el `eq(businessId)` del `SELECT … FOR UPDATE`) | `176654521b5afab20f7b2634f4ed19ee80c7e315` | el `accept` —**la ruta que ESCRIBE**— no acepta un import ajeno | **ROJA, motivo correcto — 1 failed / 1446 passed** |
+
+**Resultado EJECUTADO**, `catalog-import-accept-states.test.ts:141` («un import de OTRO negocio es
+404 y NO crea una sola fila de catalogo»):
+
+```
+- "message": "rejected promise"
++ { "created": true, "categoriesCreated": 1, "productsCreated": 1 }
+```
+
+O sea: sin el filtro, **el menu de la victima se materializa como catalogo del atacante**. La
+asercion habla de la propiedad, no del setup. **Antes del arreglo esta misma mutacion dejaba 1430
+tests en VERDE** (fila RM4 del revisor) — el arreglo es un arreglo.
+
+**REVERTIDA Y VERIFICADA:** `diff` vacio contra `/tmp/orq0090/accept.ts`, `shasum` vuelve a
+`176654521b5afab20f7b2634f4ed19ee80c7e315`, `grep` de etiquetas sin hits y
+`no-mutations-left.sh` EXIT=0. El archivo es `??`, asi que **`git checkout` no era salvavidas**: se
+revirtio con la copia.
+
+## ⇥ SPEC 0090 — EN IMPLEMENTACION AHORA (2026-09-22). SIN COMMITEAR, SIN PASS
+
+**Estado en el momento de escribir esto: el codigo de la spec 0090 existe en el arbol y NO esta
+commiteado. No hay PASS de revisor y la migracion NO esta aplicada en ninguna base.**
+
+Punto de retorno si esta sesion se cae: `docs/handoff-0090-implementacion-2026-09-22.md`, que es
+el handoff del implementador con la evidencia ejecutada fila por fila.
+
+### Lo que hay en el arbol
+
+Las tres tablas (`schema/catalog-import.ts`), el dominio en `server/catalog-import/**`, los cinco
+adaptadores en `providers/`, las ocho rutas (`api/catalog/imports/**` y
+`api/internal/catalog-imports/**`), `entitlements/window.ts` con las dos claves nuevas, el workflow
+`catalog-import-reconcile.yml`, y la migracion **`drizzle/0042_clean_risque.sql` generada y NO
+aplicada**. **Cero `.tsx` y cero CSS**, como manda el ADR 0070: la pantalla la construye el owner.
+
+Editados: `r2.ts` (el presign gana `maxBytes`/`expiresInSeconds`, default `MAX_LOGO_BYTES`, o sea
+cero cambio para las tres subidas viejas), `assets/image.ts` (se extrae `guardedResize`,
+`normalizeImage` conserva firma y salida), `catalog/validation.ts` y `catalog/categories.ts` (dos
+exports), `entitlements/{catalog,index}.ts`, y `api/internal/assets-cleanup/route.ts`.
+
+### Los gates, MEDIDOS POR EL ORQUESTADOR sobre el ARBOL FINAL
+
+Corridos por mi, **no leidos del reporte del subagente**, con Node 24.20.0 y scripts de root, sobre
+el arbol con las tres correcciones ya aplicadas:
+
+| gate | resultado |
+|---|---|
+| `TURBO_FORCE=1 pnpm run typecheck` | **3/3, `Cached: 0`** |
+| `pnpm run lint` | limpio |
+| `pnpm run test` | **169 archivos / 1713 tests passed**, 105 / 581 en `skipped` |
+| `TURBO_FORCE=1 pnpm run build` | **3/3, `Cached: 0`** |
+| `pnpm run format:check` | **rojo en 10 archivos, los diez del WIP de UI del owner** |
+
+Los 10 de `format:check` (`backoffice/catalog/*.tsx`, `globals.css`) son **pre-existentes y ninguno
+de la spec** — medidos como baseline antes de que el implementador empezara. **Van a tumbar la CI
+cuando se commiteen**, porque `format:check` es gate (`ci.yml:68`).
+
+Las tres correcciones, verificadas por mi contra el arbol: `withinAttemptBudget` tiene call-site
+real (`prepare.ts:17` y `:92`), `callbackUrl`/`APP_BASE_URL`/`CATALOG_IMPORT_CALLBACK_BASE_URL` no
+dejan **un solo rastro** en `apps/merchant/src`, y el arbol no tiene mutaciones (`grep` vacio +
+hook `no-mutations-left.sh` exit 0).
+
+**El oraculo de cableado se gano el sueldo:** bajo M10b (borrar la llamada en `prepare.ts`) los
+**tres casos de la REGLA quedaron VERDES**. Sin esa segunda prueba, borrar la linea pasaba con la
+regla «bien testeada» — el modo de falla que este repo ya pago dos veces en un dia.
+
+### Las tres correcciones que pedi despues de leer la primera entrega
+
+1. **`catalog.imports.attempts` estaba declarado y SIN CABLEAR.** Reproducido por mi con `rg`:
+   aparecia solo en `entitlements/catalog.ts:115`, en dos ramas internas de `quota.ts` y en su
+   test — **cero call-sites**, contra `analyses` que si tenia el suyo en `core.ts:128`. Era
+   andamiaje. No se le subio como pregunta al owner porque **la spec §8 ya lo decidio** («cuenta
+   todo submit al proveedor, para que un loop de fallos no queme plata»): se cablea en el camino de
+   submit de `prepare.ts` y cierra en `failed`, sin `429` no documentado. Lleva **dos** oraculos
+   (M10a la regla, M10b el cableado), que es la trampa que este repo ya pago dos veces.
+2. **Borrar el andamiaje de `callbackUrl`** (`types.ts`, `prepare.ts`, `callbackUrlFromEnv`): leia
+   dos envs que la spec no lista y ningun adaptador lo consumia.
+3. **El email no le llegaba a nadie si el analisis lo pedia un integrante** (buzon sintetico
+   `@staff.invalid`). Cae al **owner activo del negocio**. **Es decision del ORQUESTADOR del
+   2026-09-22, reversible — el owner no dijo esto.**
+
+### Hallazgos a decidir — SON DEL OWNER, nadie los acordo
+
+- **La ventana del cupo es UTC**, no la zona del negocio: el catalogo de entitlements no tiene como
+  expresar una zona, asi que dos negocios en husos distintos ven el corte del dia en momentos
+  distintos. Con 1/dia es menor; si el cupo sube, se nota.
+- **`attempts` cuenta FILAS en la ventana, no submits.** La spec §8 se contradice en dos frases; se
+  tomo la que dice «se cuentan filas de `catalog_import` en la ventana, no nace tabla de
+  contadores». Los reintentos dentro de un import los acota `MAX_ATTEMPTS = 3` aparte.
+- **Se toco `server/assets/image.ts`**, compartido por marca, sello y producto, para no pagar un
+  encode PNG `compressionLevel: 9` por pagina diez veces dentro de un `after()` de 60 s.
+
+### LA REVISION INDEPENDIENTE DIO **FAIL** (2026-09-22) — informe en `docs/revision-0090-2026-09-22.md`
+
+**FAIL acotado: CUATRO arreglos, ninguno cascada.** El revisor **no encontro un solo defecto vivo en
+el camino de produccion**. El FAIL es porque **cinco mutaciones plausibles SOBREVIVIERON**: hay tres
+lineas de la DoD marcadas `[x]` cuya evidencia no mide lo que dice, un item del plan de pruebas de la
+propia spec que no se escribio, y un defecto de archivo. Cinco lineas que hoy se pueden borrar **con
+los seis gates en verde**.
+
+| hallazgo | que se puede borrar sin que nada se ponga rojo |
+|---|---|
+| **H1** | el filtro por negocio del `accept` (`accept.ts:43`), **la ruta que ESCRIBE**: sin el, el menu de la victima se materializa como catalogo del atacante (`accept.ts:72-74` sigue usando el `business.id` del atacante) |
+| **H4** | `lte(expiresAt, now)` (`cleanup.ts:118`): venceria **todos** los imports abiertos de **todos** los negocios en cada corrida diaria, borrando sus originales. `cleanup.ts` son 183 lineas con **cero** tests |
+| **H3** | el `toImportDTO` de `GET /imports` (`route.ts:43`): viajarian job id, request id, tokens, `failureDetail`, `leaseUntil` y `businessId` — y por contrato §1.bis esa es **la primera llamada de la pantalla** |
+| **H2** | el filtro de `requireImport` (`core.ts:97`, cubre 5 rutas): su unico test es un **FALSO ORACULO** — `catalog-import-states.test.ts:173` dobla `where()` **ignorando el predicado**, asi que mide lo mismo con y sin filtro |
+| **H5** | nada, pero **`validation.ts` y `catalog-import-extraction.test.ts` son BINARIOS para `git` y `rg`** por bytes de control literales. `rg` sin `-a` da **exit 0 y cero lineas** sobre un archivo con 3 hits: el barrido **pasa vacuo**. Y los dos archivos **no son revisables en un diff ni en un PR** |
+
+**Reproducido por mi, no leido del reporte:** H5 (`git diff --stat` → `Bin`, `rg` vacuo vs `-a` con 3
+hits), H4 (`rg -l` de las cuatro funciones sobre `*.test.ts` → vacio), H3 (la ruta **si** llama a
+`toImportDTO`; lo que falta es el oraculo) y H1 (`accept.ts:37-47` tiene su filtro propio, separado
+de `requireImport`).
+
+**Lo que SI mordio**, por el motivo correcto: RM2 (borde del techo de submits), RM5 (cableado de
+`assertResolved`), RM8 (cableado de `validateProviderExtraction`). Y el muestreo de dos filas del
+implementador (S-M3, S-M5) **reprodujo exacto**.
+
+### LOS CUATRO ARREGLOS ESTAN HECHOS (2026-09-22). FALTA LA SEGUNDA VUELTA DE REVISION
+
+**H5 cerrado, verificado por mi:** `git diff --stat` paso de `Bin 0 -> 9724 bytes` a **452 lineas de
+texto**, y `rg -n 'sanitizeText'` **sin `-a`** ya devuelve los 3 hits. **H4 cerrado:** nace
+`catalog-import-cleanup.test.ts` (10 casos) donde habia cero. **H1/H2/H3 cerrados** con oraculos
+nuevos, incluido un doble que **evalua** el `where` (`catalog-import-predicado.ts`) — la causa raiz
+de H2 era el doble, que tiraba el predicado.
+
+**Los cinco gates, corridos por MI sobre el arbol final:** `typecheck` 3/3 `Cached: 0`, `lint`
+limpio, `test` **171 archivos / 1730 tests** (105 / 583 skipped), `build` 3/3 `Cached: 0`,
+`format:check` rojo con **los mismos 10 del owner**. El `build` el implementador **no lo corrio** (lo
+declaro); lo corri yo y pasa.
+
+**Dos limites que YO habia declarado en el encargo resultaron FALSOS**, y el implementador lo probo
+intentandolos: **RM4 y RM11 no requerian Neon** — un doble honesto alcanza. Queda como recordatorio
+de que una afirmacion de imposibilidad se verifica igual que una de exito.
+
+**El revisor de la primera vuelta MURIO** por un error de API al arrancar la segunda. **Arbol
+auditado: sin mutaciones** (`grep` sin hits, `no-mutations-left.sh` EXIT=0), no dejo nada puesto. Su
+bitacora de la vuelta 1 quedo en `/tmp/rev0090/bitacora.md`. **Si el proximo encargo de revision
+muere otra vez, NO se despacha un tercero: se termina a mano** (regla de la skill).
+
+### LA SEGUNDA VUELTA DIO **PASS** (2026-09-22), Y CERRO UN TERCER HERMANO
+
+El revisor fresco re-midio las cinco con alcance **todo `apps/merchant/src`** (`vitest run src`,
+baseline 271 archivos / 1718 passed) y **las cinco dieron ROJO**: RM3, RM4, RM6, RM6b y RM11. Su RM4
+**coincide con la mia** (misma asercion; la diferencia de conteo es solo el alcance). Las tres
+auditorias que pedi tambien pasaron: el arreglo de H5 **no corrio el rango** de caracteres saneados
+(33 code points antes y despues, con control positivo en tres direcciones), el doble nuevo no
+describe filas imposibles en la dimension que importa, y el falso oraculo quedo reparado **sin que
+se borrara ni debilitara un solo test** (la aritmetica 1713→1730 cierra sin holgura).
+
+**Pero encontro un TERCER hermano de la clase de H1/H2**, y lo dejo a decision mia: `activeImport`
+(`core.ts:76`) tiene su **propio** `eq(businessId)` y **no tenia oraculo**. **Lo cerre yo**, con el
+protocolo completo — la bitacora ORQ-RM12 esta arriba. No lo declare pese a la condicion de corte
+porque **no es «el fix abrio la siguiente»**: es el **mismo defecto de clase cerrado en dos miembros
+de tres**, que es literalmente la leccion 2.0-sexies. El arreglo es **un caso de test, cero lineas de
+logica**.
+
+**Los cinco gates con el oraculo nuevo, corridos por mi:** `typecheck` 3/3 `Cached: 0`, `lint`
+limpio, `test` **171 archivos / 1731 tests** (105 / 583 skipped), `build` 3/3 `Cached: 0`,
+`format:check` rojo con **los 10 del owner y cero mios**.
+
+### MISTAKE→RULE APLICADO: nace el hook `no-control-bytes.sh`
+
+La familia «bytes de control crudos» paso **TRES veces en este turno** (los dos fuentes de la spec,
+mi informe de revision, y **el archivo del hook que escribi para cazarla**), asi que va como hook y
+no como frase: se chequea con un comando, cuesta cero tokens y es determinista.
+`.claude/hooks/no-control-bytes.sh`, cableado en `PostToolUse` sobre `Write|Edit`.
+
+**Probado que MUERDE y que discrimina**, con cuatro fixtures: sano → `EXIT=0`, un `\u0000`
+sintetico → `2`, **el `validation.ts` real del bug → `2`**, el mismo ya arreglado → `0`, extension
+no cubierta → `0`. Y se cazo a si mismo y a este archivo (`EXIT=2` en los dos) — arreglados, 3 y 1
+bytes → 0.
+
+**La leccion dentro de la leccion, que quedo en `LECCIONES.md`:** la **version 1 del hook NO
+mordia**. Usaba `grep '[[:cntrl:]]'`, que no matchea nada sobre un archivo que `grep` considera
+binario, y mi primer fixture era **falso** (un `sed` que nunca inserto el NUL). El control positivo
+dio `EXIT=0` y casi lo doy por bueno: habria quedado un guard que pasa siempre, el mismo «pasa
+vacuo» que venia a cazar. Lo que si discrimina es un `tr -dc` que borra todo lo que NO es byte de control y cuenta lo que
+queda (el rango exacto esta en el hook; **citarlo aca seria pisar la misma mina**). **Y el texto del mensaje
+de error tambien se ejecuta:** las dos primeras versiones del consejo estaban rotas (una matcheaba
+los offsets octales de `od`, la otra daba falsos positivos sobre UTF-8 multibyte).
+
+### Y una correccion que me toca a mi
+
+**`docs/revision-0090-2026-09-22.md` tenia el defecto H5 que el mismo documento denuncia.** Al
+escribirlo, los `\u0000` del ejemplo se decodificaron a **bytes de control crudos** y git lo veia
+como `Bin 0 -> 26088 bytes`: el informe sobre archivos invisibles para un diff **era invisible para
+un diff**. Arreglado (19 bytes → 0; git ve 411 lineas de texto). **Misma familia de error dos veces
+en el mismo turno**, y ya estaba en el `CLAUDE.md`.
+
+### Lo que FALTA, y es lo que bloquea el cierre
+
+1. **La evidencia de integracion no existe todavia.** Las 4 suites Neon (20 tests) estan escritas y
+   en `skipped`, y **un `skipped` se lee igual que un `passed`**. Son las que cierran **M4, M8 y la
+   mitad de M9**, las tres mutaciones sin medir.
+   **Correccion medida contra el arbol (`ci.yml:12-58` + `list_branches`): la integracion NO corre
+   contra la base de la app.** Corre contra la rama Neon persistente **`ci-integration`**
+   (`br-icy-hat-axsfqc8k`), a la que la CI le aplica la migracion ANTES de `pnpm test`, y hay un
+   paso que **falla fuerte** si el secret no llego. O sea que la frase de la spec «las pruebas de
+   integracion corren contra la misma base que usa la app» **es falsa contra el arbol**. La
+   decision del owner (migracion directo a `main`, sin rama efimera) sigue en pie: es sobre **donde
+   aterriza la migracion**, no sobre donde corren los tests.
+   Dos caminos, los dos necesitan al owner: **pushear** (la CI las corre sola, costo cero, pero no
+   hay autorizacion) o **correrlas local** (sacar la connection string por MCP, que **queda en el
+   transcript** y obliga a rotar la password).
+2. **Revisor independiente en contexto fresco.** No empezo.
+3. **Migracion a Neon `main` + deploy**, recien DESPUES del PASS.
+
 ## ⇥ SIGUIENTE ARCO — SPEC 0090: IMPORTACIÓN DE CATÁLOGO CON IA
 
 **Estado: DOCUMENTOS CERRADOS Y CORREGIDOS (2026-09-21). CERO CÓDIGO DE LA FEATURE. SIN COMMITEAR.**

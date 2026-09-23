@@ -1,10 +1,11 @@
-import { requireOwner } from "../../../server/auth-guards";
+import { redirect } from "next/navigation";
+import { requireBackofficeSession } from "../../../server/auth-guards";
 import CatalogPage from "./catalog-page";
 
 export const dynamic = "force-dynamic";
 
-// Owner-only (ADR 0044): a staff member is redirected to the counter console.
 export default async function Page() {
-  await requireOwner();
-  return <CatalogPage />;
+  const session = await requireBackofficeSession();
+  if (!session.membership.permissions.includes("catalog")) redirect("/backoffice");
+  return <CatalogPage canDelete={session.membership.role === "owner"} />;
 }

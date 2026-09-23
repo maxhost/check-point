@@ -9,6 +9,7 @@ type Props = {
   currencyCode: string;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  canDelete: boolean;
 };
 
 export function CatalogList({
@@ -17,6 +18,7 @@ export function CatalogList({
   currencyCode,
   onEdit,
   onDelete,
+  canDelete,
 }: Props) {
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
@@ -52,13 +54,13 @@ export function CatalogList({
             >
               Editar
             </button>
-            <button
+            {canDelete && <button
               type="button"
               className="small-button danger"
               onClick={() => onDelete(product)}
             >
               Borrar
-            </button>
+            </button>}
           </div>
         </li>
       ))}

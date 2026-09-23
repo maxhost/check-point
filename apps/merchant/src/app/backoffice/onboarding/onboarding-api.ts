@@ -13,7 +13,12 @@ export type OnboardingChecklist = {
   items: OnboardingItem[];
 };
 
-export type OnboardingTourId = "staff" | "catalog" | "program" | "brand";
+export type OnboardingTourId =
+  | "locations"
+  | "staff"
+  | "catalog"
+  | "program"
+  | "brand";
 export type OnboardingTourStatus = "completed" | "skipped";
 
 function isItem(value: unknown): value is OnboardingItem {

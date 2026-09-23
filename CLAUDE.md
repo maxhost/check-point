@@ -131,11 +131,12 @@ que publica es **Vercel**— y **GitHub Actions reporta como *check runs*, que e
 **Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral que
 nadie acordo va como *hallazgo a decidir*, nunca como «aceptado».
 
-**Y SU ESPEJO, que cuesta igual de caro: lo que el owner YA dijo no se le vuelve a preguntar.**
-Antes de subir un «hallazgo a decidir» —propio o de un subagente— hay que **buscar sus palabras
-textuales** en `TASKS.md`/`PARQUEADO.md`: si ya las dijo, no es una decision abierta, es un
-**incumplimiento** y se arregla. Un subagente que etiqueta algo como «decision mia, no del owner»
-esta describiendo **su** contexto, no el estado del proyecto. Caso en `LECCIONES.md`.
+**Y SU ESPEJO: lo que el owner YA dijo no se le vuelve a preguntar.** Antes de subir un «hallazgo a
+decidir» —propio o de un subagente— buscar sus palabras textuales en `TASKS.md`/`PARQUEADO.md` **y en
+el ADR**: si ya lo dijo, es **incumplimiento** y se arregla. **Cuando el codigo y un DOCBLOCK
+difieren manda el ADR, y se lee PRIMERO**: el docblock es una cita, y un titular que promete mas que
+su propia condicion es prosa pasada de largo, no media decision sin implementar — se arregla la prosa
+y se INFORMA, nunca se le arma un menu sobre algo que su ADR ya cerro. Casos en `LECCIONES.md`.
 
 **Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto, cuestan
 cero tokens y son deterministas; este archivo es advisory.

@@ -1,4 +1,5 @@
 import { STAFF_ONBOARDING_TOUR_HREF } from "../staff/staff-tour-definitions";
+import { LOCATIONS_ONBOARDING_TOUR_HREF } from "../locations/locations-tour-definitions";
 import type { OnboardingItem } from "./onboarding-api";
 
 export type OnboardingStepState = "done" | "blocked" | "current" | "upcoming";
@@ -13,7 +14,7 @@ export type OnboardingStepState = "done" | "blocked" | "current" | "upcoming";
  * pinta un boton que no lleva a ningun lado.
  */
 export const ONBOARDING_TOUR_HREFS: Readonly<Record<string, string>> = {
-  locations: "/backoffice/locations?tour=onboarding",
+  locations: LOCATIONS_ONBOARDING_TOUR_HREF,
   staff: STAFF_ONBOARDING_TOUR_HREF,
 };
 

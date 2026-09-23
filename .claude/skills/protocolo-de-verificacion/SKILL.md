@@ -84,6 +84,43 @@ columna `NOT NULL`, describe una fila **imposible**. Ante cualquier rojo de muta
 **si la propiedad que acusa existe fuera del doble** — abrir el esquema y mirar los `notNull()`
 cuesta dos minutos. Y se arregla **el doble, no el test**, y se **RE-MIDE** despues.
 
+### 2.0-quater TODA REGLA NUEVA LLEVA DOS ORACULOS: el de la REGLA y el del CABLEADO (2026-09-21)
+
+**Paso dos veces el mismo dia.** Se escribe una regla (`assertX`), se le escribe su test puro —que
+muerde—, se cablea en el writer, y al mutar **el cableado** (borrar la linea que la llama) la suite
+entera sigue **VERDE**: 1.293 tests en un caso, 1.526 en el otro.
+
+Se cuela porque el test puro da sensacion de cierre: la regla existe, tiene su caso, muerde. Lo que
+nadie probo es lo unico que protege en produccion — **que el borde la invoque**. Un `assert*`
+exportado y nunca llamado typecheckea, lintea y pasa su propio test.
+
+- **Son dos pruebas y se mutan distinto:** la de la regla ataca la **condicion**; la del cableado
+  **borra la llamada**.
+- El del cableado **no necesita base**: un doble de `./db` con el `select … limit` alcanza, porque el
+  caso que importa **corta antes de escribir**. Que el `returning` del doble **lance** distingue el
+  camino feliz del rechazo sin montar media base.
+- Si la regla vive en una **ruta**, el test va al lado de la ruta y dobla su `_auth`: es la unica
+  forma de elegir el rol del caller sin sesion.
+
+### 2.0-quinquies Una mutacion que da VERDE puede ser un artefacto TUYO (2026-09-21)
+
+Si la mutacion es **la inversa exacta del cambio que acabas de hacer** —sacar el item que acabas de
+agregar, volver la linea que acabas de mover— y los tests todavia describen el estado **anterior**,
+el verde es tautologico: mide que el test viejo sigue siendo el test viejo.
+
+**Primero se actualizan los oraculos al comportamiento nuevo, despues se muta.** Medido: sacar un id
+del catalogo del checklist dio verde y se leyo como «no hay oraculo»; con los tests al dia, la misma
+mutacion dio **rojo en cuatro casos**.
+
+### 2.0-sexies Al cerrar un defecto, barrer los OTROS miembros de su CLASE (2026-09-21)
+
+Un paso de tour pedia el clic que **apagaba** el unico permiso del alta. Se arreglo ese paso y **no se
+barrieron los demas de la misma forma**: la segunda vuelta de revision encontro el gemelo —un anchor
+que es un **toggle**, con copy incondicional— y costo una ronda entera.
+
+**La lista de hermanos casi siempre es corta y el `rg` es de dos minutos.** Un defecto de clase
+cerrado en un solo miembro es una ronda de revision comprada al precio de no haber mirado.
+
 ### 2.0-bis Y su espejo: una mutacion que SOBREVIVE acusa al oraculo tan seguido como a la tabla
 
 Antes de declarar la fila falsa, **mirar el seed**. En la 0086 esto paso **tres veces**:

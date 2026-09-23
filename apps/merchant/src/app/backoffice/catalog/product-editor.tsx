@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { Plus } from "iconoir-react";
+import { SelectField, TextField } from "../../../ui";
+import { StaffFormModal } from "../staff/staff-form-modal";
 import type { Category, Location, Product, ProductPayload } from "./types";
 import { useCatalogImage } from "./use-catalog-image";
 import { ProductImageField } from "./product-image-field";
 
 type Props = {
+  open: boolean;
   product: Product | null;
   categories: Category[];
   locations: Location[];
+  currencyCode: string;
   onCreateCategory: (name: string) => Promise<Category | null>;
   onSave: (payload: ProductPayload, id: string | null) => Promise<boolean>;
   onCancel: () => void;
@@ -22,9 +27,11 @@ function toMoney(value: string): number | null {
 }
 
 export function ProductEditor({
+  open,
   product,
   categories,
   locations,
+  currencyCode,
   onCreateCategory,
   onSave,
   onCancel,
@@ -109,89 +116,75 @@ export function ProductEditor({
   }
 
   return (
-    <section className="panel catalog-editor">
-      <h2>{product ? "Editar producto" : "Nuevo producto"}</h2>
-      <label>
-        Nombre
-        <input
+    <StaffFormModal
+      open={open}
+      eyebrow={product ? "Editar producto" : "Nuevo producto"}
+      title={product ? "Actualizá el producto" : "Sumá un producto al catálogo"}
+      description="Completá solo lo que ya tengas. La imagen, el costo y el precio de venta son opcionales."
+      onClose={onCancel}
+    >
+      <form className="catalog-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+        <TextField
+          autoFocus
+          label="Nombre del producto"
           value={name}
           maxLength={120}
-          onChange={(event) => setName(event.target.value)}
+          onChange={setName}
           placeholder="Ej. Café con leche"
+          isRequired
         />
-      </label>
-      <label>
-        Categoría
-        <select
-          value={categoryId}
-          onChange={(event) => setCategoryId(event.target.value)}
-        >
-          <option value="">Sin categoría</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="catalog-inline-add">
-        <input
+        <SelectField
+          label="Categoría"
+          selectedKey={categoryId || "none"}
+          onSelectionChange={(key) => setCategoryId(key === "none" ? "" : String(key))}
+          options={[{ id: "none", label: "Sin categoría" }, ...categories.map((category) => ({ id: category.id, label: category.name }))]}
+        />
+        <div className="catalog-inline-add">
+          <TextField
+            label="Crear una categoría sin salir"
           value={newCategory}
           maxLength={60}
-          onChange={(event) => setNewCategory(event.target.value)}
-          placeholder="Nueva categoría"
-          aria-label="Nueva categoría"
-        />
-        <button
-          type="button"
-          className="small-button"
-          disabled={!newCategory.trim()}
-          onClick={() => void createCategory()}
-        >
-          Crear
-        </button>
-      </div>
-      <div className="catalog-money">
-        <label>
-          Precio de venta (opcional)
-          <input
+            onChange={setNewCategory}
+            placeholder="Ej. Bebidas calientes"
+          />
+          <button type="button" className="small-button" disabled={!newCategory.trim()} onClick={() => void createCategory()}>
+            <Plus aria-hidden="true" /> Crear
+          </button>
+        </div>
+        <div className="catalog-money">
+          <TextField
+            label="Precio de venta (opcional)"
             type="number"
-            min="0"
-            step="0.01"
+            inputMode="decimal"
             value={unitPrice}
-            onChange={(event) => setUnitPrice(event.target.value)}
+            onChange={setUnitPrice}
+            placeholder="0.00"
+            description={`En ${currencyCode}`}
           />
-        </label>
-        <label>
-          Coste unitario (opcional)
-          <input
+          <TextField
+            label="Precio de costo (opcional)"
             type="number"
-            min="0"
-            step="0.01"
+            inputMode="decimal"
             value={unitCost}
-            onChange={(event) => setUnitCost(event.target.value)}
+            onChange={setUnitCost}
+            placeholder="0.00"
+            description="Solo para tus reportes internos"
           />
-        </label>
-      </div>
-      <p className="field-help">
-        Cargar el precio habilita puntos por consumo y analítica de ticket.
-      </p>
-      <ProductImageField image={image} name={name} onError={onError} />
-      <fieldset className="catalog-visibility">
-        <legend>Disponibilidad</legend>
-        <label className="catalog-check">
-          <input
-            type="checkbox"
-            checked={availableAll}
-            onChange={(event) => setAvailableAll(event.target.checked)}
-          />
-          Disponible en todos los locales
-        </label>
-        {!availableAll &&
-          (locations.length === 0 ? (
-            <p className="field-help">Aún no tienes locales.</p>
-          ) : (
-            locations.map((location) => (
+        </div>
+        <ProductImageField image={image} name={name} onError={onError} />
+        {locations.length > 1 && <fieldset className="catalog-visibility">
+          <legend>Disponibilidad por local</legend>
+          <p className="field-help">Elegí dónde estará disponible este producto.</p>
+          <label className="catalog-choice">
+            <input type="radio" name="availability" checked={availableAll} onChange={() => setAvailableAll(true)} />
+            <span><strong>Todos los locales</strong><small>También se aplicará a los locales que agregues después.</small></span>
+          </label>
+          <label className="catalog-choice">
+            <input type="radio" name="availability" checked={!availableAll} onChange={() => setAvailableAll(false)} />
+            <span><strong>Locales específicos</strong><small>Seleccioná uno o más locales.</small></span>
+          </label>
+          {!availableAll && <div className="catalog-location-options">
+            {locations.map((location) => (
               <label className="catalog-check" key={location.id}>
                 <input
                   type="checkbox"
@@ -200,22 +193,22 @@ export function ProductEditor({
                 />
                 {location.name}
               </label>
-            ))
-          ))}
-      </fieldset>
-      <div className="catalog-editor-actions">
+            ))}
+          </div>}
+        </fieldset>}
+        <div className="catalog-editor-actions">
         <button className="button alt" type="button" onClick={onCancel}>
           Cancelar
         </button>
         <button
           className="button"
-          type="button"
+          type="submit"
           disabled={saving}
-          onClick={() => void save()}
         >
           {saving ? "Guardando…" : "Guardar producto"}
         </button>
-      </div>
-    </section>
+        </div>
+      </form>
+    </StaffFormModal>
   );
 }

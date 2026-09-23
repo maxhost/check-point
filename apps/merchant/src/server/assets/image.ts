@@ -42,36 +42,7 @@ export async function normalizeImage(
   opts: { flatten?: string; maxInputPixels?: number } = {},
 ): Promise<{ webp: Buffer; png: Buffer }> {
   try {
-    const sharp = (await import("sharp")).default;
-    const transformer = sharp(input, {
-      limitInputPixels: opts.maxInputPixels ?? MAX_INPUT_PIXELS_FALLBACK,
-      failOn: "error",
-    }).rotate();
-    const metadata = await transformer.metadata();
-    if (
-      !metadata.format ||
-      !["jpeg", "png", "webp", "heif", "avif"].includes(metadata.format)
-    ) {
-      throw new AssetImageError(
-        422,
-        "El archivo no es una imagen válida (PNG, JPEG, WebP, HEIC o AVIF).",
-      );
-    }
-    if (!metadata.width || !metadata.height) {
-      throw new AssetImageError(
-        422,
-        "No pudimos leer las dimensiones de la imagen.",
-      );
-    }
-    const base = opts.flatten
-      ? transformer.flatten({ background: opts.flatten })
-      : transformer;
-    const resized = base.resize({
-      width: MAX_OUTPUT_EDGE,
-      height: MAX_OUTPUT_EDGE,
-      fit: "inside",
-      withoutEnlargement: true,
-    });
+    const resized = await guardedResize(input, opts);
     const [webp, png] = await Promise.all([
       resized.clone().webp({ quality: 82, effort: 4 }).toBuffer(),
       resized
@@ -81,20 +52,85 @@ export async function normalizeImage(
     ]);
     return { webp, png };
   } catch (error) {
-    if (error instanceof AssetImageError) throw error;
-    // sharp raises a plain Error("Input image exceeds pixel limit") from `metadata()` when
-    // `limitInputPixels` is hit. Without this branch the generic catch below would dress a
-    // too-big-but-valid photo as "not a valid image", which sends the user hunting for the
-    // wrong problem — especially on the strict cropped path.
-    if (error instanceof Error && /exceeds pixel limit/i.test(error.message)) {
-      throw new AssetImageError(
-        422,
-        "La imagen es demasiado grande para procesarla. Recórtala o elige una más pequeña.",
-      );
-    }
+    throw asAssetImageError(error);
+  }
+}
+
+/**
+ * Spec 0090 §2 — LA MISMA normalizacion endurecida, con **una sola salida JPEG**.
+ *
+ * La importacion de catalogo manda las paginas a un proveedor de vision; no las guarda como
+ * activo del negocio. Producir las dos variantes seria el doble de trabajo de `sharp` por
+ * pagina, y eso corre dentro de un `after()` con techo de 60 s.
+ *
+ * **Comparte el pipeline, no lo copia** (`guardedResize`): mismo sniff por bytes, misma
+ * correccion de orientacion, mismo tope de pixeles de entrada y mismo lado mayor de salida.
+ * El dia que el allow-list de formatos cambie, cambia en un solo lugar.
+ */
+export async function normalizeImageToJpeg(
+  input: Buffer,
+  opts: { maxInputPixels?: number } = {},
+): Promise<Buffer> {
+  try {
+    const resized = await guardedResize(input, opts);
+    return await resized.jpeg({ quality: 82 }).toBuffer();
+  } catch (error) {
+    throw asAssetImageError(error);
+  }
+}
+
+/** El pipeline compartido: decodifica con el guard de bomba, valida el formato REAL por
+ * bytes, corrige orientacion y baja a `MAX_OUTPUT_EDGE`. No codifica nada. */
+async function guardedResize(
+  input: Buffer,
+  opts: { flatten?: string; maxInputPixels?: number },
+) {
+  const sharp = (await import("sharp")).default;
+  const transformer = sharp(input, {
+    limitInputPixels: opts.maxInputPixels ?? MAX_INPUT_PIXELS_FALLBACK,
+    failOn: "error",
+  }).rotate();
+  const metadata = await transformer.metadata();
+  if (
+    !metadata.format ||
+    !["jpeg", "png", "webp", "heif", "avif"].includes(metadata.format)
+  ) {
     throw new AssetImageError(
       422,
       "El archivo no es una imagen válida (PNG, JPEG, WebP, HEIC o AVIF).",
     );
   }
+  if (!metadata.width || !metadata.height) {
+    throw new AssetImageError(
+      422,
+      "No pudimos leer las dimensiones de la imagen.",
+    );
+  }
+  const base = opts.flatten
+    ? transformer.flatten({ background: opts.flatten })
+    : transformer;
+  return base.resize({
+    width: MAX_OUTPUT_EDGE,
+    height: MAX_OUTPUT_EDGE,
+    fit: "inside",
+    withoutEnlargement: true,
+  });
+}
+
+function asAssetImageError(error: unknown): AssetImageError {
+  if (error instanceof AssetImageError) return error;
+  // sharp raises a plain Error("Input image exceeds pixel limit") from `metadata()` when
+  // `limitInputPixels` is hit. Without this branch the generic fallback below would dress a
+  // too-big-but-valid photo as "not a valid image", which sends the user hunting for the
+  // wrong problem — especially on the strict cropped path.
+  if (error instanceof Error && /exceeds pixel limit/i.test(error.message)) {
+    return new AssetImageError(
+      422,
+      "La imagen es demasiado grande para procesarla. Recórtala o elige una más pequeña.",
+    );
+  }
+  return new AssetImageError(
+    422,
+    "El archivo no es una imagen válida (PNG, JPEG, WebP, HEIC o AVIF).",
+  );
 }

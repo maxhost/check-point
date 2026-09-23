@@ -19,10 +19,11 @@ export function StepTemplate({
 }) {
   return (
     <div className="brand-kit-templates">
-      <p className="brand-kit-hint">
-        Elegí una plantilla. Vas a poder ajustar colores y textos en la vista
-        previa.
-      </p>
+      <header className="brand-kit-step-intro">
+        <p className="eyebrow">Diseño</p>
+        <h2>Elegí una plantilla</h2>
+        <p>Vas a poder ajustar colores y textos antes de imprimir el afiche.</p>
+      </header>
       <ul className="brand-kit-template-grid">
         {TEMPLATES.map((t) => (
           <li key={t.id}>

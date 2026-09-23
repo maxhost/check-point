@@ -8,6 +8,7 @@ type Props = {
   onCreate: (name: string) => Promise<boolean>;
   onRename: (id: string, name: string) => Promise<boolean>;
   onDelete: (category: Category) => void;
+  canDelete: boolean;
 };
 
 export function CategoryManager({
@@ -15,6 +16,7 @@ export function CategoryManager({
   onCreate,
   onRename,
   onDelete,
+  canDelete,
 }: Props) {
   const [adding, setAdding] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -91,13 +93,13 @@ export function CategoryManager({
                   >
                     Renombrar
                   </button>
-                  <button
+                  {canDelete && <button
                     type="button"
                     className="small-button danger"
                     onClick={() => onDelete(category)}
                   >
                     Borrar
-                  </button>
+                  </button>}
                 </>
               )}
             </li>

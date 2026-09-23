@@ -18,10 +18,13 @@ export {
   PAID_PLANS,
   type EntitlementDef,
   type EntitlementKey,
+  type EntitlementWindow,
   type FlagKey,
   type KnownPlan,
   type LimitKey,
 } from "./catalog";
+
+export { retryAfterSeconds, windowEnd, windowOf, windowStart } from "./window";
 
 /**
  * Spec 0072 §D2.4 — LA CAPA DE ENTITLEMENTS: `can()` y `limitOf()` sobre el catalogo.

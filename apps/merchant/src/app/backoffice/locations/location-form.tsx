@@ -4,6 +4,8 @@ import {
   AddressAutofillField,
   type SelectedAddress,
 } from "../../components/address-autofill";
+import { TextField } from "../../../ui";
+import { StaffFormModal } from "../staff/staff-form-modal";
 
 export type LocationView = {
   id: string;
@@ -74,48 +76,85 @@ export function LocationForm({
   onCancel: () => void;
 }) {
   return (
-    <section className="panel location-form">
-      <h2>{draft.id ? "Editar local" : "Nuevo local"}</h2>
-      <label>
-        Nombre del local
-        <input
+    <StaffFormModal
+      open
+      eyebrow={draft.id ? "Editar local" : "Nuevo local"}
+      title={draft.id ? "Actualizá sus datos" : "Sumá una nueva sucursal"}
+      description="Usá un nombre fácil de reconocer y la dirección donde atendés."
+      onClose={onCancel}
+    >
+      <form
+        className="location-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave();
+        }}
+      >
+        <TextField
+          autoFocus
+          className="staff-name-field"
+          data-tour="location-name"
+          label="Nombre del local"
+          maxLength={120}
+          placeholder="Ej. Sucursal Centro"
           value={draft.name}
-          onChange={(e) => onChange({ ...draft, name: e.target.value })}
+          onChange={(name) => onChange({ ...draft, name })}
+          isRequired
         />
-      </label>
-      <p className="field-help">Buscá la dirección</p>
-      <AddressAutofillField
-        countryCode={countryCode}
-        onSelect={(selection) =>
-          onChange({
-            ...draft,
-            selection,
-            addressLabel: selection.label,
-            addressChanged: true,
-          })
-        }
-      />
-      <label>
-        Dirección
-        <input
+        <div className="location-address-search" data-tour="location-address">
+          <span className="location-form-label">Buscá la dirección</span>
+          <p className="field-help">
+            Elegí una sugerencia para verificarla automáticamente.
+          </p>
+          <AddressAutofillField
+            countryCode={countryCode}
+            onSelect={(selection) =>
+              onChange({
+                ...draft,
+                selection,
+                addressLabel: selection.label,
+                addressChanged: true,
+              })
+            }
+          />
+        </div>
+        <TextField
+          className="staff-name-field"
+          data-tour="location-manual-address"
+          label="Dirección escrita"
+          description="También podés escribirla si el buscador no la encuentra."
+          maxLength={240}
           value={draft.addressLabel}
-          placeholder="O escribila si el buscador no la encuentra"
-          onChange={(e) =>
+          placeholder="Ej. Av. Amazonas 123, Quito"
+          onChange={(addressLabel) =>
             onChange({
               ...draft,
-              addressLabel: e.target.value,
+              addressLabel,
               selection: null,
               addressChanged: true,
             })
           }
+          isRequired
         />
-      </label>
-      <button className="button" disabled={busy} onClick={onSave}>
-        {busy ? "Guardando…" : "Guardar local"}
-      </button>
-      <button className="button alt" onClick={onCancel}>
-        Cancelar
-      </button>
-    </section>
+        <div className="location-form-actions">
+          <button
+            className="button alt"
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+          <button
+            className="button"
+            data-tour="location-save"
+            type="submit"
+            disabled={busy}
+          >
+            {busy ? "Guardando…" : draft.id ? "Guardar cambios" : "Crear local"}
+          </button>
+        </div>
+      </form>
+    </StaffFormModal>
   );
 }

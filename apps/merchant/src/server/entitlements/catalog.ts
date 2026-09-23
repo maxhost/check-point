@@ -39,6 +39,16 @@ export type KnownPlan = (typeof KNOWN_PLANS)[number];
  * una segunda regla el catalogo la pueda nombrar sin tocar a los llamadores. */
 export type PendingRule = "min";
 
+/**
+ * Spec 0090 §8 / ADR 0082 §10 — LA VENTANA de una entrada `kind: "limit"`.
+ *
+ * Existe porque el requisito del owner es poder mover el cupo de analisis (1/dia → 10/semana
+ * → 5/mes por plan) **sin tocar codigo**. Las entradas que no la declaran —`locations.max`—
+ * son topes de **stock** (cuantos hay ahora), no de **flujo** (cuantos en un periodo), y su
+ * ausencia es lo que las distingue: `windowOf` devuelve `null` para ellas.
+ */
+export type EntitlementWindow = "day" | "week" | "month";
+
 type EntitlementShape<Kind extends string, Value> = {
   kind: Kind;
   byPlan: Record<KnownPlan, Value>;
@@ -56,6 +66,8 @@ type EntitlementShape<Kind extends string, Value> = {
    */
   requiresLiveSubscription: boolean;
   pendingRule: PendingRule;
+  /** Solo en los topes de FLUJO (spec 0090 §8). Ausente = tope de stock, sin ventana. */
+  window?: EntitlementWindow;
 };
 
 export type LimitEntitlement = EntitlementShape<"limit", number>;
@@ -81,6 +93,32 @@ export const ENTITLEMENTS = {
     fallback: false,
     requiresLiveSubscription: true,
     pendingRule: "min",
+  },
+  /**
+   * Spec 0090 §8 — ANALISIS DE IMPORTACION QUE LLEGARON A `ready`, por ventana.
+   *
+   * **Solo lo consume un analisis que llego a `ready`** (ADR 0082 §10, decision del owner):
+   * un fallo del proveedor o nuestro no le cuesta el dia al merchant. `requiresLiveSubscription`
+   * es `false` porque esto **no es cuota comercial** (§7 del ADR sigue en pie) sino un control
+   * operativo: un negocio sin suscripcion tiene que poder importar su menu.
+   */
+  "catalog.imports.analyses": {
+    kind: "limit",
+    byPlan: { free: 1, plus: 1, none: 1 },
+    fallback: 1,
+    requiresLiveSubscription: false,
+    pendingRule: "min",
+    window: "day",
+  },
+  /** El techo de SUBMITS ACEPTADOS por el proveedor en la ventana (ADR 0083). Un trabajo
+   * aceptado cuenta aunque falle despues; configuracion/preparacion/rechazo de `start` no. */
+  "catalog.imports.attempts": {
+    kind: "limit",
+    byPlan: { free: 3, plus: 3, none: 3 },
+    fallback: 3,
+    requiresLiveSubscription: false,
+    pendingRule: "min",
+    window: "day",
   },
 } as const satisfies Record<string, EntitlementDef>;
 

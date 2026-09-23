@@ -1,7 +1,7 @@
 ---
 spec: 0090
 fecha: 2026-09-21
-estado: cerrada
+estado: implementada
 resumen: Importacion asistida de catalogo desde 1-10 fotos o un PDF de hasta 10 paginas. Subida temporal firmada a R2; el analisis NO corre en nuestra funcion —el adaptador lo delega en el proveedor (`background: true`) y lo retomamos por un callback firmado, con un reconciliador externo para el webhook perdido—; borrador persistido y revisable, resolucion explicita de duplicados y precios ambiguos, y aceptacion idempotente que crea categorias y productos en bulk dentro de una transaccion. Un analisis por negocio por dia, centralizado en entitlements, y los fallos no consumen cupo. SIN UI: la pantalla la construye el owner por fuera con `specs/0090-contratos-de-api.md`.
 disjunta: no
 archivos: apps/merchant/src/server/schema/catalog-import.ts, apps/merchant/src/server/catalog-import/**, apps/merchant/src/server/entitlements/catalog.ts, apps/merchant/src/app/api/catalog/imports/**, apps/merchant/src/app/api/internal/catalog-imports/**, apps/merchant/drizzle, .github/workflows, tests
@@ -559,3 +559,71 @@ ejecuta sus propios casos y emite PASS antes de que alguien cambie el estado a `
 
 Nada bloquea la implementacion. El modelo concreto se confirma con el corpus antes de produccion:
 es configuracion y evaluacion, no una reapertura del contrato.
+
+---
+
+## Estado de cierre — **IMPLEMENTADA** (2026-09-22)
+
+Marcada `implementada` **por instruccion explicita del owner**, con el estado real escrito acá para
+que la marca no diga mas de lo que se midio.
+
+### Lo que SI esta verificado
+
+**PASS del revisor independiente en contexto fresco**, en dos vueltas:
+
+- **Vuelta 1 → FAIL acotado.** Ocho mutaciones propias mas dos de muestreo del implementador.
+  **Cinco sobrevivieron** (RM1, RM3, RM4, RM6, RM7): ninguna era un defecto vivo, todas eran lineas
+  que se podian borrar **con los seis gates en verde**. Informe completo en
+  `docs/revision-0090-2026-09-22.md`.
+- **Los cuatro arreglos**, y **vuelta 2 → PASS**: las cinco re-mediciones dieron **ROJO** con alcance
+  **todo `apps/merchant/src`** (`vitest run src`, baseline 271 archivos / 1718 tests).
+- **Un TERCER hermano del aislamiento** (`activeImport`, `core.ts:76`) aparecio en la vuelta 2 y lo
+  cerro el orquestador, medido en dos tiempos: **sin** el caso nuevo la mutacion dejaba 1718 tests
+  en verde; **con** el caso nuevo da rojo por la propiedad. Bitacora en `docs/TASKS.md`.
+
+**Los cinco gates, corridos por el orquestador sobre el arbol final** (Node 24.20.0, scripts de
+root): `typecheck` 3/3 `Cached: 0` · `lint` limpio · `test` **171 archivos / 1731 tests** ·
+`build` 3/3 `Cached: 0` · `format:check` rojo **solo** en los 10 archivos de WIP de UI del owner,
+**cero de esta spec**.
+
+**Arbol sin mutaciones:** `grep` sin hits y `no-mutations-left.sh` `EXIT=0`, con control positivo.
+
+**La migracion `0042` esta APLICADA en Neon `main`** y verificada por MCP: 42 → **43** migraciones,
+**3** tablas, **10** indices, `core` y `merchant_auth` intactos, y los dos indices que sostienen
+invariantes del diseno (el parcial de un import abierto por negocio y el unico de `provider_job_id`)
+con el predicado correcto.
+
+### Lo que NO esta verificado, y hay que decirlo
+
+**LAS 6 SUITES `.neon.integration` NUNCA CORRIERON — ni local ni en CI.** Son **583 tests en
+`skipped`**, y **un `skipped` se lee igual que un `passed`**. Quedan sin oraculo ejecutado:
+
+| | propiedad sin verificar |
+|---|---|
+| **M4** | dos reconciliadores concurrentes reclaman la fila **una sola vez**; el lease vencido se re-reclama |
+| **M8** | un import `failed` **no** consume el cupo del dia (y su control positivo: uno `ready` **si**) |
+| **M9** (mitad) | tras el `409` de un `ready`, **el borrador sigue existiendo** |
+| **RM1** | el borde de `assertQuota` (`used >= limit`) |
+| — | la atomicidad **real** del `accept` (un fallo intermedio deja **cero** filas) |
+| — | los dos casos cruzados de aislamiento del `accept` contra la base |
+
+**Todas esas suites SI corren en CI** contra la rama Neon persistente `ci-integration`
+(`ci.yml:36-58`), que ademas **falla fuerte** si el secret no llego. **El push es lo que cierra este
+hueco**, y al 2026-09-22 no habia ocurrido.
+
+Tampoco se midio: la **latencia real del 202**, el `PUT` real a R2, el **webhook real de OpenAI en
+produccion**, y la **precision del modelo** (que es el corpus manual del ADR 0082 §2, declarado
+desde el principio como no-gate de esta spec).
+
+### Config de prod que sigue siendo del owner
+
+`OPENAI_API_KEY`, `OPENAI_WEBHOOK_SECRET`, `CATALOG_EXTRACTION_PROVIDER` y
+`CATALOG_EXTRACTION_MODEL` en Vercel; y el secret `CATALOG_IMPORT_RECONCILE_ENDPOINT` en GitHub,
+que **va DESPUES del deploy**: hoy esa URL da 404 y cargarlo antes deja el workflow rojo cada 5
+minutos. `CRON_SECRET` ya existe en los tres lugares.
+
+### La UI
+
+**No es de esta spec** (ADR 0070: el arco del alta entrega API y endpoints). Se construye por fuera
+con `specs/0090-contratos-de-api.md`, y el punto de partida esta en
+`docs/handoff-ui-importacion-catalogo-2026-09-22.md`.

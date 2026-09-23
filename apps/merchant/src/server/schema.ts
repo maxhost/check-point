@@ -14,6 +14,7 @@ export * from "./schema/consumer";
 export * from "./schema/otp";
 export * from "./schema/web-push";
 export * from "./schema/catalog";
+export * from "./schema/catalog-import";
 export * from "./schema/order";
 export * from "./schema/reward-redemption";
 export * from "./schema/campaign";

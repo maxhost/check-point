@@ -1,0 +1,53 @@
+name: Catalog import reconciler
+
+# Spec 0090 §7 / ADR 0082 §8. El analisis largo NO corre en nuestra funcion: el adaptador lo
+# delega en el proveedor y lo retomamos por un callback firmado. Este workflow es el
+# RECONCILIADOR: rescata los imports cuyo `after()` murio antes de submitear y los que quedaron
+# en `analyzing` con el lease vencido porque el webhook se perdio. Sin el, un import puede
+# colgarse para siempre — y como solo hay UN import no terminal por negocio, eso deja al
+# merchant sin poder importar nunca mas.
+#
+# Va acá y no en `apps/merchant/vercel.json` porque el plan Hobby admite **2 crons y solo
+# frecuencia diaria**: un tercero, o un `*/5`, hace que Vercel rechace el deploy entero.
+# Mismo patron que `wallet-push-cron.yml` y `marketing-tick.yml`.
+#
+# Requiere dos secrets de Actions:
+#   CATALOG_IMPORT_RECONCILE_ENDPOINT = https://www.<dominio>/api/internal/catalog-imports/reconcile
+#     ⚠️ CON `www.`: el apex hace 308 y el `curl` de abajo no lleva `-L`, asi que un endpoint
+#     con el apex deja el workflow rojo para siempre y el reconciliador sin correr.
+#   CRON_SECRET = el mismo valor que esta en Vercel (el Bearer del endpoint)
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# Una corrida tardía nunca se apila sobre la anterior: las dos reclamarían las mismas filas y
+# la segunda sólo encontraría leases vivos.
+concurrency:
+  group: catalog-import-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconcile catalog imports via the Vercel endpoint
+        env:
+          ENDPOINT: ${{ secrets.CATALOG_IMPORT_RECONCILE_ENDPOINT }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$ENDPOINT" ] || [ -z "$CRON_SECRET" ]; then
+            echo "CATALOG_IMPORT_RECONCILE_ENDPOINT / CRON_SECRET not configured — skipping."
+            exit 0
+          fi
+          code=$(curl -sS --max-time 90 -o /tmp/out -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$ENDPOINT")
+          echo "HTTP $code"
+          cat /tmp/out || true
+          echo
+          test "$code" = "200"

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { NavArrowLeft, NavArrowRight } from "iconoir-react";
 import { ModuleHeader } from "../../../components/ui";
+import { ProgressIndicator } from "../../../../ui";
 import type { QrStyle } from "./qr-render";
-import { StepBrandCheck } from "./steps/step-brand-check";
 import { StepPreview } from "./steps/step-preview";
 import { StepTemplate } from "./steps/step-template";
 import type { PosterColors, TemplateId } from "./templates/types";
@@ -12,18 +13,18 @@ import type {
   KitScope,
 } from "../../../../server/brand-kit/data";
 
-// Brand kit wizard (spec 0041): 3 steps — choose template (+ scope when 2+ locales) →
-// check logo/colors → preview & print. The state is central (same pattern as the loyalty
+// Brand kit wizard (spec 0041): 2 steps — choose template (+ scope when 2+ locales) →
+// preview, customize and print. A missing logo never blocks: every poster renders the
+// business name and PosterLogo has a monogram fallback. The state is central (same pattern as the loyalty
 // program-editor). Nothing here persists to the saved marca: color/text overrides live
 // only for this print. The QR SVGs are pre-rendered server-side (one per scope) and only
 // recolored/overlaid client-side.
 
-const STEPS = ["template", "brand", "preview"] as const;
+const STEPS = ["template", "preview"] as const;
 type StepId = (typeof STEPS)[number];
 
 const STEP_LABEL: Record<StepId, string> = {
   template: "Plantilla",
-  brand: "Marca",
   preview: "Vista previa",
 };
 
@@ -51,9 +52,6 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
   const [paper, setPaper] = useState<Paper>("a4");
 
   const step = STEPS[index];
-  const hasLogo = data.business.logoPath !== null;
-  // The only gate to advancing: step 2 needs a logo to paint the poster.
-  const canAdvance = step === "brand" ? hasLogo : true;
   const isLast = step === "preview";
 
   const activeScope: KitScope =
@@ -72,19 +70,12 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
           closeHref="/backoffice/brand"
         />
 
-        <ol className="brand-kit-steps">
-          {STEPS.map((s, i) => (
-            <li
-              key={s}
-              className={`brand-kit-step ${i === index ? "is-active" : ""} ${
-                i < index ? "is-done" : ""
-              }`}
-            >
-              <span className="brand-kit-step-n">{i + 1}</span>
-              {STEP_LABEL[s]}
-            </li>
-          ))}
-        </ol>
+        <div className="brand-kit-progress">
+          <ProgressIndicator
+            currentStep={index + 1}
+            steps={STEPS.map((id) => ({ label: STEP_LABEL[id] }))}
+          />
+        </div>
 
         <section className="brand-kit-body">
           {step === "template" && (
@@ -95,9 +86,6 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
               scopeMode={scopeMode}
               onScopeMode={setScopeMode}
             />
-          )}
-          {step === "brand" && (
-            <StepBrandCheck business={data.business} hasLogo={hasLogo} />
           )}
           {step === "preview" && (
             <StepPreview
@@ -132,16 +120,15 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
             disabled={index === 0}
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
           >
-            Atrás
+            <NavArrowLeft aria-hidden="true" /> Atrás
           </button>
           {!isLast && (
             <button
               type="button"
               className="brand-kit-next"
-              disabled={!canAdvance}
               onClick={() => setIndex((i) => Math.min(STEPS.length - 1, i + 1))}
             >
-              Siguiente
+              Siguiente <NavArrowRight aria-hidden="true" />
             </button>
           )}
         </div>

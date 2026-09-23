@@ -76,13 +76,30 @@ export async function createTemporaryUploadUrl(input: {
   // `server/assets/image.ts`. This only sets the presigned PUT's Content-Type.
   contentType: string;
   byteSize: number;
+  /**
+   * Spec 0090 §9 — el tope de bytes que esta reserva admite, en bytes. Por defecto
+   * `MAX_LOGO_BYTES` (5 MB), que es lo que las tres subidas de imagen ya exigian.
+   *
+   * **Es parametrico desde la spec 0090 y no por gusto:** la importacion de catalogo firma
+   * fotos de hasta 10 MB y PDFs de hasta 20 MB, y con el tope fijo no podia firmar ni una.
+   * Lo que NO hace es cambiar lo que la firma ata: el `PutObjectCommand` lleva `Key` y
+   * `ContentType`, **no `ContentLength`**, asi que esto es una validacion del tamaño
+   * DECLARADO, no una garantia criptografica sobre el objeto que termina en el bucket. Lo
+   * que protege de verdad es el tope de lectura del servidor (`readObjectAtMost`).
+   */
+  maxBytes?: number;
+  /** Vida de la firma, en segundos. El default de 10 min es el de las subidas de imagen. */
+  expiresInSeconds?: number;
 }) {
+  const maxBytes = input.maxBytes ?? MAX_LOGO_BYTES;
   if (
     !Number.isInteger(input.byteSize) ||
     input.byteSize < 1 ||
-    input.byteSize > MAX_LOGO_BYTES
+    input.byteSize > maxBytes
   ) {
-    throw new Error("El archivo debe pesar como máximo 5 MB.");
+    throw new Error(
+      `El archivo debe pesar como máximo ${Math.round(maxBytes / (1024 * 1024))} MB.`,
+    );
   }
   const { s3, bucket } = client();
   return getSignedUrl(
@@ -92,8 +109,18 @@ export async function createTemporaryUploadUrl(input: {
       Key: input.objectKey,
       ContentType: input.contentType,
     }),
-    { expiresIn: 10 * 60 },
+    { expiresIn: input.expiresInSeconds ?? 10 * 60 },
   );
+}
+
+/** Private R2 key of one uploaded original of a catalog import (spec 0090 §3). Business,
+ * import and file are non-guessable UUIDs. */
+export function catalogImportObjectKey(
+  businessId: string,
+  importId: string,
+  fileId: string,
+) {
+  return `catalog-imports/${businessId}/${importId}/${fileId}`;
 }
 
 export async function getPrivateObject(key: string) {

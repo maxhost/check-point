@@ -1451,3 +1451,71 @@ restriccion, en vez de una que la saca del medio.
   `node:zlib` —que viene en Node— inflando los streams y tomando el **maximo** de dos señales
   independientes, con rechazo cuando ninguna da nada. **Un limite que no se puede medir se declara,
   no se afirma.**
+
+## 2026-09-22 — Escribi bytes de CONTROL CRUDOS en un fuente, y el barrido no fallo: paso VACUO
+
+**Paso TRES VECES en el mismo turno.** La segunda fui yo escribiendo el informe que denunciaba la
+primera. **La tercera fue el archivo del HOOK que escribi para cazarlo** — su propio docblock cita
+el regex del bug, y al escribirlo se decodifico igual. Lo cazo el hook recien cableado, corriendolo
+sobre si mismo: `EXIT=2` sobre `no-control-bytes.sh` y sobre `TASKS.md`. Es la mejor validacion que
+podia tener, y dice algo sobre la familia: **no se evita teniendo cuidado, se evita con el guard.**
+
+**El caso.** En la spec 0090, el implementador escribio el regex de saneado como
+`/[\\u0000-\\u001f\\u007f]/g` y los escapes **se decodificaron a bytes crudos** al escribir el
+archivo. Lo mismo en un string de su test. Consecuencias medidas:
+
+```
+git diff --stat  ->  catalog-import-extraction.test.ts | Bin 0 -> 5263 bytes
+                     catalog-import/validation.ts      | Bin 0 -> 9724 bytes
+rg -n 'sanitizeText' validation.ts  ->  "binary file matches", EXIT 0, CERO lineas
+rg -na 'sanitizeText' validation.ts ->  3 hits (127, 139, 168)
+```
+
+Dos de los archivos centrales de la spec **no eran revisables en un diff ni en un PR**, y todo
+barrido sobre ellos **pasaba vacuo**.
+
+**Por que es la familia mas cara.** El modo de falla no es «el comando falla»: es **«el comando
+pasa»**. Es el mismo del `rg -n 'a\|b'` del 2026-09-20 (la barra escapada es sintaxis de `grep`,
+no de `rg`, asi que el criterio no matcheaba nunca y **pasaba vacuo para siempre**). Un criterio de
+DoD escrito como «`rg ...` -> vacio» sobre un archivo binario **se cumple solo**, eternamente.
+
+**Y el agravante: lo repeti yo.** Al bajar a disco el informe del revisor, los `\\u0000` del
+*ejemplo* se volvieron a decodificar. `docs/revision-0090-2026-09-22.md` quedo en
+`Bin 0 -> 26088 bytes`: **el documento que denuncia archivos invisibles para un diff era invisible
+para un diff**. Arreglado: 19 bytes -> 0, git pasa a ver 411 lineas.
+
+**La regla, y es un HOOK** (`.claude/hooks/no-control-bytes.sh`, PostToolUse sobre `Write|Edit`):
+un fuente o un doc **nunca** lleva bytes de control crudos; se escriben como escapes literales.
+Se chequea con un comando, cuesta cero tokens y es determinista.
+
+### Y la leccion DENTRO de la leccion: el guard que escribi primero NO MORDIA
+
+La version 1 del hook usaba `LC_ALL=C grep -c '[[:cntrl:]]'`. **No matchea nada**: `grep` trata el
+archivo como binario y la clase no muerde. Mi control positivo dio `EXIT=0` y **casi lo doy por
+bueno** — habria quedado un hook que pasa siempre, o sea exactamente el «pasa vacuo» que venia a
+cazar.
+
+Lo cazo el protocolo: **un `EXIT=0` puede significar «paso» o «nunca miro nada», y desde afuera son
+indistinguibles**. Ademas mi primer fixture era **falso** (un `sed` que nunca inserto el NUL: el
+archivo decia literalmente `connulo`), asi que el control positivo tampoco probaba nada.
+
+Lo que **si** discrimina, medido con cuatro fixtures:
+
+```
+LC_ALL=C tr -dc '\000-\010\013\014\016-\037\177' < archivo | wc -c
+#  sano -> 0   |  con un \0 -> 1  |  el validation.ts del bug -> 3  |  ya arreglado -> 0
+```
+
+Y **el consejo del mensaje de error tambien es una afirmacion**: la primera version sugeria
+`od -c | grep -e '\\0' -e '03[0-7]' -e '177'`, que matchea **los offsets octales de `od`**, no los
+bytes; la segunda, `cat -v | grep '\^[@A-Z_?]'`, da falsos positivos sobre UTF-8 multibyte (un
+em-dash sale como `M-^@M-^T`). **Un guard que aconseja un comando roto induce al proximo al mismo
+error.** Se verificaron corriendolos.
+
+**Tres corolarios para cualquier guard nuevo:**
+
+1. **El fixture del control positivo se VERIFICA antes de creerle al rojo** — `od -c` sobre el
+   fixture, no confiar en que el `printf`/`sed` hizo lo que parecia.
+2. **El comando de deteccion se elige MIDIENDO**, no por plausibilidad: el candidato obvio
+   (`grep '[[:cntrl:]]'`) era el equivocado.
+3. **El texto del mensaje se ejecuta**, igual que la regla.

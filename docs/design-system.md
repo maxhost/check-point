@@ -74,6 +74,33 @@ Estados: vacío/default, con valor, hover, focus-visible, disabled e invalid/err
 />
 ```
 
+### Formularios en modales y wizards
+
+Los formularios nuevos —incluidos los que viven en un modal del backoffice— deben usar los componentes de `apps/merchant/src/ui`; el wizard y los formularios de alta/edición de Staff son la referencia ejecutable. No se deben construir campos nuevos con `<label><input /></label>` ni asignarles colores en `globals.css`.
+
+Reglas obligatorias:
+
+1. Usar `TextField`, `SelectField` o `NumberField` desde el barrel `src/ui`. Estos componentes ya resuelven label, valor, placeholder, descripción, error, foco y estados claro/oscuro.
+2. Pasar la ayuda con `description` y los errores con `errorMessage`; no recrearlos con `span`, `small` o reglas CSS locales.
+3. No sobrescribir `color`, `background`, `border` ni `::placeholder` de un componente del catálogo. Sus tokens son `text-content`, `text-content-muted`, `bg-surface`, `border-border-strong` y `outline-focus`.
+4. Un control compuesto que todavía no esté en el catálogo debe usar los mismos roles semánticos: label `--ui-text`, valor `--ui-text`, placeholder/ayuda `--ui-text-muted`, superficie `--ui-surface`, borde `--ui-border-strong` y foco `--ui-focus`. Nunca colores hexadecimales.
+5. En modales, usar la misma separación vertical de Staff (`staff-name-field`) hasta que exista un layout de formulario compartido; una clase de pantalla puede definir geometría, pero no colores de campos.
+6. Verificar siempre tema claro y oscuro, valores escritos y placeholders, además de ejecutar `check:design-contrast` y `typecheck:ui`.
+
+Ejemplo para un modal:
+
+```tsx
+<TextField
+  className="staff-name-field"
+  label="Nombre del local"
+  description="Así lo reconocerá tu equipo."
+  placeholder="Ej. Sucursal Centro"
+  value={name}
+  onChange={setName}
+  isRequired
+/>
+```
+
 ### `SelectField`
 
 Propósito: elegir una opción conocida, como país o categoría. Usa `Select`, `Popover` y `ListBox` de React Aria para teclado, typeahead, foco y selección.
@@ -161,13 +188,13 @@ Estados: error inicial, acción disponible, verificación de email cargando, enl
 
 Mapeo único:
 
-| Código | Presentación | Acción |
-| --- | --- | --- |
-| `unauthorized` | sesión terminada | volver a ingresar |
-| `not_owner` | acción exclusiva del propietario | volver |
-| `email_not_verified` | email pendiente | enviar enlace de verificación |
-| `business_suspended` | cuenta suspendida y motivo, si existe | contactar a CheckPass |
-| `business_closed` | negocio cerrado | ir al inicio |
+| Código               | Presentación                          | Acción                        |
+| -------------------- | ------------------------------------- | ----------------------------- |
+| `unauthorized`       | sesión terminada                      | volver a ingresar             |
+| `not_owner`          | acción exclusiva del propietario      | volver                        |
+| `email_not_verified` | email pendiente                       | enviar enlace de verificación |
+| `business_suspended` | cuenta suspendida y motivo, si existe | contactar a CheckPass         |
+| `business_closed`    | negocio cerrado                       | ir al inicio                  |
 
 ```tsx
 <ApiError

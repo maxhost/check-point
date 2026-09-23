@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MagicWand, Plus } from "iconoir-react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { ModuleHeader, Toast } from "../../components/ui";
+import { ModuleHeader, Skeleton, SkeletonScreen, Toast } from "../../components/ui";
+import { CatalogAiImport } from "./catalog-ai-import";
 import { CategoryManager } from "./category-manager";
 import { ProductEditor } from "./product-editor";
 import { ProductsTab } from "./products-tab";
@@ -14,12 +16,13 @@ type Confirm =
 
 type Tab = "products" | "categories";
 
-export default function CatalogPage() {
+export default function CatalogPage({ canDelete = true }: { canDelete?: boolean }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [tab, setTab] = useState<Tab>("products");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [showAiImport, setShowAiImport] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,13 +145,7 @@ export default function CatalogPage() {
   if (!catalog) {
     return (
       <main className="merchant-shell">
-        <div className="brand-page loyalty-skeleton" aria-busy="true">
-          {error ? (
-            <p className="form-error">{error}</p>
-          ) : (
-            <span className="skeleton-line skeleton-title" />
-          )}
-        </div>
+        {error ? <p className="form-error">{error}</p> : <CatalogSkeleton />}
       </main>
     );
   }
@@ -167,24 +164,37 @@ export default function CatalogPage() {
         />
         <ModuleHeader
           eyebrow="Catálogo"
-          title="Tu catálogo de productos"
-          description="Lo que vende tu negocio. El valor en puntos lo define tu programa."
+          title="Productos listos para vender"
+          description="Organizá productos, precios y disponibilidad para cada local."
           closeHref="/backoffice"
-          onClose={editorOpen ? closeEditor : undefined}
         />
-        {editorOpen ? (
-          <ProductEditor
-            product={editing}
-            categories={catalog.categories}
-            locations={catalog.locations}
-            onCreateCategory={createCategory}
-            onSave={saveProduct}
-            onCancel={closeEditor}
-            onError={setError}
-          />
-        ) : (
-          <>
-            <div className="catalog-tabs" role="tablist">
+        <section className="catalog-overview" aria-label="Resumen del catálogo">
+          <div>
+            <span>{catalog.products.length}</span>
+            <p>{catalog.products.length === 1 ? "producto" : "productos"}</p>
+          </div>
+          <div>
+            <span>{catalog.categories.length}</span>
+            <p>{catalog.categories.length === 1 ? "categoría" : "categorías"}</p>
+          </div>
+          <div>
+            <span>{catalog.locations.length}</span>
+            <p>{catalog.locations.length === 1 ? "local" : "locales"}</p>
+          </div>
+        </section>
+        <section className="catalog-ai-banner">
+          <div className="catalog-ai-icon" aria-hidden="true"><MagicWand /></div>
+          <div>
+            <p className="eyebrow">Carga inteligente</p>
+            <h2>Convertí una foto o PDF en tu catálogo</h2>
+            <p>La IA preparará categorías, productos y precios para que solo revises y completes.</p>
+          </div>
+          <button className="button alt" type="button" onClick={() => setShowAiImport(true)}>
+            Probar importador
+          </button>
+        </section>
+        <div className="catalog-section-head">
+          <div className="catalog-tabs" role="tablist" aria-label="Vista del catálogo">
               <button
                 type="button"
                 role="tab"
@@ -204,10 +214,18 @@ export default function CatalogPage() {
                 Categorías
               </button>
             </div>
+          <button className="button catalog-primary-action" type="button" onClick={() => {
+            setEditing(null);
+            setCreating(true);
+          }}>
+            <Plus aria-hidden="true" /> Nuevo producto
+          </button>
+        </div>
             {tab === "products" ? (
               <ProductsTab
                 products={catalog.products}
                 categories={catalog.categories}
+                locations={catalog.locations}
                 currencyCode={catalog.currencyCode}
                 onNew={() => {
                   setEditing(null);
@@ -218,6 +236,7 @@ export default function CatalogPage() {
                   setEditing(product);
                 }}
                 onDelete={(product) => setConfirm({ kind: "product", product })}
+                canDelete={canDelete}
               />
             ) : (
               <CategoryManager
@@ -236,10 +255,26 @@ export default function CatalogPage() {
                 onDelete={(category) =>
                   setConfirm({ kind: "category", category })
                 }
+                canDelete={canDelete}
               />
             )}
-          </>
-        )}
+        <ProductEditor
+          key={`${editing?.id ?? "new"}-${editorOpen ? "open" : "closed"}`}
+          open={editorOpen}
+          product={editing}
+          categories={catalog.categories}
+          locations={catalog.locations}
+          currencyCode={catalog.currencyCode}
+          onCreateCategory={createCategory}
+          onSave={saveProduct}
+          onCancel={closeEditor}
+          onError={setError}
+        />
+        <CatalogAiImport
+          open={showAiImport}
+          onClose={() => setShowAiImport(false)}
+          onAccepted={reload}
+        />
       </div>
       <ConfirmDialog
         open={confirm !== null}
@@ -256,5 +291,16 @@ export default function CatalogPage() {
         onConfirm={runConfirm}
       />
     </main>
+  );
+}
+
+export function CatalogSkeleton() {
+  return (
+    <SkeletonScreen label="Cargando catálogo" className="brand-page catalog-page catalog-skeleton">
+      <div className="catalog-skeleton-head"><div><Skeleton width={90} height={14} /><Skeleton width="min(430px, 80vw)" height={38} /><Skeleton width="min(520px, 85vw)" height={18} /></div><Skeleton width={44} height={44} radius={22} /></div>
+      <div className="catalog-overview">{[0, 1, 2].map((item) => <div key={item}><Skeleton width={42} height={28} /><Skeleton width={72} height={14} /></div>)}</div>
+      <Skeleton height={150} radius={20} />
+      <div className="catalog-skeleton-cards">{[0, 1, 2].map((item) => <Skeleton key={item} height={104} radius={18} />)}</div>
+    </SkeletonScreen>
   );
 }

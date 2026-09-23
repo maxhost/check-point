@@ -12,7 +12,12 @@ export function ProgressIndicator({
       <p className="text-sm font-bold text-primary">
         Paso {currentStep} de {steps.length}
       </p>
-      <ol className="mt-2 grid grid-cols-3 gap-2">
+      <ol
+        className="mt-2 grid gap-2"
+        style={{
+          gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
+        }}
+      >
         {steps.map((step, index) => {
           const stepNumber = index + 1;
           const isCurrent = stepNumber === currentStep;

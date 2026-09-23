@@ -4,6 +4,9 @@ import { Search } from "iconoir-react";
 import { useEffect, useId, useState } from "react";
 import type { SelectedAddress } from "./address-autofill";
 import { canonicalAddress } from "../../lib/location-address";
+import { TOUR_ADVANCE_EVENT, TOUR_REFRESH_EVENT } from "./tour-events";
+
+const LOCATION_ADDRESS_TOUR_ELEMENT = '[data-tour="location-address"]';
 
 type GeoapifyResult = {
   formatted?: string;
@@ -35,6 +38,13 @@ export default function GeoapifyPlaceSearch({
     setFailed(false);
     setSelectionFinalized(false);
   }, [countryCode]);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() =>
+      window.dispatchEvent(new Event(TOUR_REFRESH_EVENT)),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [results.length]);
 
   useEffect(() => {
     if (selectionFinalized) {
@@ -103,6 +113,13 @@ export default function GeoapifyPlaceSearch({
       featureId: result.place_id,
       snapshot: result,
     });
+    requestAnimationFrame(() =>
+      window.dispatchEvent(
+        new CustomEvent(TOUR_ADVANCE_EVENT, {
+          detail: { element: LOCATION_ADDRESS_TOUR_ELEMENT },
+        }),
+      ),
+    );
   }
 
   return (

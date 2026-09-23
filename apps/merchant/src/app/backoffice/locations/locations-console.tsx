@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Archive,
+  EditPencil,
+  MapPin,
+  Plus,
+  RefreshDouble,
+  Shop,
+} from "iconoir-react";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { ConfirmDialog } from "../../components/confirm-dialog";
 import {
@@ -11,8 +19,15 @@ import {
   type Draft,
   type LocationView,
 } from "./location-form";
+import { LocationErrorDialog } from "./location-error-dialog";
+import { LocationsTourController } from "./locations-tour-controller";
 
 const JSON_HEADERS = { "content-type": "application/json" };
+type LocationToast = {
+  message: string;
+  kind: "success" | "info";
+  pending?: boolean;
+};
 
 export function LocationsConsole({
   initialLocations,
@@ -26,7 +41,7 @@ export function LocationsConsole({
   const [locations, setLocations] = useState(initialLocations);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<LocationToast | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<LocationView | null>(null);
 
@@ -66,6 +81,13 @@ export function LocationsConsole({
     }
     setBusy(true);
     setError(null);
+    setToast({
+      message: draft.id
+        ? "Revisando y guardando cambios"
+        : "Revisando y creando local",
+      kind: "info",
+      pending: true,
+    });
     try {
       const location = draft.id
         ? await send(`/api/locations/${draft.id}`, "PATCH", {
@@ -78,8 +100,12 @@ export function LocationsConsole({
           });
       apply(location);
       setDraft(null);
-      setToast(draft.id ? "Local actualizado." : "Local añadido.");
+      setToast({
+        message: draft.id ? "Local actualizado." : "Local añadido.",
+        kind: "success",
+      });
     } catch (e) {
+      setToast(null);
       setError(e instanceof Error ? e.message : "No pudimos guardar el local.");
     } finally {
       setBusy(false);
@@ -93,14 +119,25 @@ export function LocationsConsole({
     if (busy) return;
     setBusy(true);
     setError(null);
+    setToast({
+      message:
+        status === "archived"
+          ? "Revisando y archivando local"
+          : "Revisando y reactivando local",
+      kind: "info",
+      pending: true,
+    });
     try {
       apply(
         await send(`/api/locations/${location.id}/status`, "POST", { status }),
       );
-      setToast(
-        status === "archived" ? "Local archivado." : "Local reactivado.",
-      );
+      setToast({
+        message:
+          status === "archived" ? "Local archivado." : "Local reactivado.",
+        kind: "success",
+      });
     } catch (e) {
+      setToast(null);
       setError(e instanceof Error ? e.message : "No pudimos guardar el local.");
     } finally {
       setBusy(false);
@@ -116,29 +153,43 @@ export function LocationsConsole({
           description="Da de alta, corrige o archiva los locales donde operás."
           closeHref="/backoffice"
         />
-        <Toast
-          message={error ?? toast}
-          kind={error ? "error" : "success"}
-          onDismiss={() => {
-            setError(null);
-            setToast(null);
-          }}
+        <LocationsTourController
+          canAdd={canAdd}
+          planAllowsMultiple={activeLimit > 1}
+          hasActiveLocations={active.length > 0}
         />
-        {!draft &&
-          (canAdd ? (
+        <Toast
+          message={toast?.message ?? null}
+          kind={toast?.kind}
+          durationMs={toast?.pending ? null : undefined}
+          onDismiss={() => setToast(null)}
+        />
+        <div className="locations-toolbar">
+          <div>
+            <strong>
+              {active.length}{" "}
+              {active.length === 1 ? "local activo" : "locales activos"}
+            </strong>
+            <span>
+              {locations.length}{" "}
+              {locations.length === 1 ? "local en total" : "locales en total"}
+            </span>
+          </div>
+          {canAdd ? (
             <button
-              className="button add-location"
+              className="button"
+              data-tour="locations-add"
               onClick={() => setDraft(newDraft())}
             >
-              + Añadir local
+              <Plus aria-hidden="true" /> Añadir local
             </button>
-          ) : (
-            <p className="field-help">
-              Tu plan permite {activeLimit}{" "}
-              {activeLimit === 1 ? "local activo" : "locales activos"}. Archivá
-              uno o mejorá tu plan para abrir otro.
-            </p>
-          ))}
+          ) : null}
+        </div>
+        <p className="locations-plan-banner" data-tour="locations-limit">
+          Tu plan permite {activeLimit}{" "}
+          {activeLimit === 1 ? "local activo" : "locales activos"}.
+          {!canAdd && " Archivá uno para poder añadir otro."}
+        </p>
         {draft && (
           <LocationForm
             draft={draft}
@@ -149,32 +200,46 @@ export function LocationsConsole({
             onCancel={() => setDraft(null)}
           />
         )}
-        <section className="locations-list">
-          <h2>Locales activos</h2>
+        <section className="locations-list" data-tour="locations-list">
+          <div className="locations-section-title">
+            <h2>Locales activos</h2>
+            <span>{active.length}</span>
+          </div>
           {active.length === 0 && (
-            <p className="counter-hint">No tenés locales activos.</p>
+            <div className="locations-empty">
+              <Shop aria-hidden="true" />
+              <p>No tenés locales activos.</p>
+            </div>
           )}
           {active.map((location) => (
             <article className="location-card" key={location.id}>
-              <div>
+              <span className="location-icon" aria-hidden="true">
+                <Shop />
+              </span>
+              <div className="location-card-copy">
                 <strong>{location.name}</strong>
-                <span>⌖ {location.addressLabel}</span>
-                <small>Activo</small>
+                <span>
+                  <MapPin aria-hidden="true" />
+                  {location.addressLabel}
+                </span>
+                <small className="active">Activo</small>
               </div>
-              <div>
+              <div className="location-card-actions">
                 <button
                   className="small-button"
+                  data-tour="location-edit"
                   disabled={busy}
                   onClick={() => setDraft(editDraft(location))}
                 >
-                  Editar
+                  <EditPencil aria-hidden="true" /> Editar
                 </button>
                 <button
                   className="archive-button"
+                  data-tour="location-archive"
                   disabled={busy}
                   onClick={() => setArchiveTarget(location)}
                 >
-                  Archivar
+                  <Archive aria-hidden="true" /> Archivar
                 </button>
               </div>
             </article>
@@ -182,21 +247,30 @@ export function LocationsConsole({
         </section>
         {archived.length > 0 && (
           <section className="locations-list archived">
-            <h2>Archivados</h2>
+            <div className="locations-section-title">
+              <h2>Archivados</h2>
+              <span>{archived.length}</span>
+            </div>
             {archived.map((location) => (
               <article className="location-card" key={location.id}>
-                <div>
+                <span className="location-icon" aria-hidden="true">
+                  <Archive />
+                </span>
+                <div className="location-card-copy">
                   <strong>{location.name}</strong>
-                  <span>⌖ {location.addressLabel}</span>
+                  <span>
+                    <MapPin aria-hidden="true" />
+                    {location.addressLabel}
+                  </span>
                   <small>Archivado</small>
                 </div>
-                <div>
+                <div className="location-card-actions">
                   <button
                     className="small-button"
                     disabled={busy}
                     onClick={() => void setStatus(location, "active")}
                   >
-                    Reactivar
+                    <RefreshDouble aria-hidden="true" /> Reactivar
                   </button>
                 </div>
               </article>
@@ -208,12 +282,14 @@ export function LocationsConsole({
           title="¿Archivar este local?"
           description="Dejará de aparecer en el mostrador y no podrá acreditar ni canjear. Su historial y la visibilidad de sus productos se conservan."
           confirmLabel="Archivar"
+          confirmTourAnchor="location-archive-confirm"
           onCancel={() => setArchiveTarget(null)}
           onConfirm={() => {
             if (archiveTarget) void setStatus(archiveTarget, "archived");
             setArchiveTarget(null);
           }}
         />
+        <LocationErrorDialog message={error} onClose={() => setError(null)} />
       </div>
     </main>
   );

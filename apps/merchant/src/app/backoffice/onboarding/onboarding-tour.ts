@@ -11,6 +11,11 @@ import {
   type OnboardingTourId,
   type OnboardingTourStatus,
 } from "./onboarding-api";
+import {
+  TOUR_ADVANCE_EVENT,
+  TOUR_REFRESH_EVENT,
+  type TourAdvanceDetail,
+} from "../../components/tour-events";
 
 export type OnboardingTourOptions = {
   tourId: OnboardingTourId;
@@ -105,14 +110,41 @@ export function startOnboardingTour({
       );
     },
     onDoneClick: () => {
+      removeTourEventListeners();
       save("completed");
       tour.destroy();
     },
     onDestroyStarted: () => {
+      removeTourEventListeners();
       save("skipped");
       tour.destroy();
     },
   });
+
+  const refreshTour = () => {
+    if (tour.isActive()) tour.refresh();
+  };
+  const advanceTour = (event: Event) => {
+    const requestedElement = (event as CustomEvent<TourAdvanceDetail>).detail
+      ?.element;
+    if (
+      requestedElement &&
+      tour.isActive() &&
+      tour.getActiveStep()?.element === requestedElement
+    ) {
+      tour.moveNext();
+    }
+  };
+  function removeTourEventListeners() {
+    if (typeof window === "undefined") return;
+    window.removeEventListener(TOUR_REFRESH_EVENT, refreshTour);
+    window.removeEventListener(TOUR_ADVANCE_EVENT, advanceTour);
+  }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener(TOUR_REFRESH_EVENT, refreshTour);
+    window.addEventListener(TOUR_ADVANCE_EVENT, advanceTour);
+  }
 
   tour.drive();
   return tour;

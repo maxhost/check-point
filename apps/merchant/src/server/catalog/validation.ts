@@ -20,7 +20,17 @@ export type ProductInput = {
 /** numeric(12,2) range: prices/costs must fit and be non-negative. */
 const MAX_MONEY = 9_999_999_999.99;
 
-function parseOptionalMoney(value: unknown, label: string): string | null {
+/**
+ * LA UNICA representacion del dinero del catalogo: `numeric(12,2)` como STRING decimal.
+ *
+ * Exportada desde la spec 0090 §4 para que la importacion la REUSE en vez de nacer con una
+ * segunda aritmetica de precios. Un `null` es un precio ausente legal (`core.product.unit_price`
+ * es nullable) — y es exactamente lo que nace de un `priceStatus: "ambiguous"`.
+ */
+export function parseOptionalMoney(
+  value: unknown,
+  label: string,
+): string | null {
   if (value === null || value === undefined || value === "") return null;
   const amount =
     typeof value === "number"

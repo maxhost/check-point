@@ -4,8 +4,11 @@ import { productCategories } from "../schema";
 import { CatalogError, type OwnerBusiness, uuidPattern } from "./core";
 import { validateCategoryName } from "./validation";
 
-/** Postgres unique-violation (23505), including errors that wrap it in `.cause`. */
-function isUniqueViolation(error: unknown): boolean {
+/** Postgres unique-violation (23505), including errors that wrap it in `.cause`.
+ * Exported since spec 0090 §6: el `accept` de la importacion traduce el 23505 de
+ * `core_product_category_name_unique` a un `409 catalog_import_conflict` con ESTE helper —
+ * un 23505 que se escapa como 500 es el modo de falla que existe para evitar. */
+export function isUniqueViolation(error: unknown): boolean {
   let current: unknown = error;
   for (let depth = 0; current && depth < 5; depth += 1) {
     if (

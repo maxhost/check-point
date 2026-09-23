@@ -2,7 +2,21 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { ModuleHeader, Toast } from "../../components/ui";
+import Link from "next/link";
+import {
+  Camera,
+  MagicWand,
+  MediaImage,
+  Palette,
+  Settings,
+} from "iconoir-react";
+import {
+  ModuleHeader,
+  Skeleton,
+  SkeletonScreen,
+  Toast,
+} from "../../components/ui";
+import { TextField } from "../../../ui";
 import { useIsTouch } from "../catalog/use-is-touch";
 import {
   ACCEPTED_IMAGE_ACCEPT_ATTR,
@@ -146,129 +160,230 @@ export default function BrandPage() {
           description="Así se verá tu negocio en CheckPass Club."
           closeHref="/backoffice"
         />
-        <a className="brand-kit-cta-link" href="/backoffice/brand/kit">
-          Generar afiche de enrolamiento
-        </a>
-        <section
-          className="brand-preview"
-          style={
-            {
-              "--primary": draft.brandPrimaryColor,
-              "--complementary": draft.brandComplementaryColor,
-            } as React.CSSProperties
-          }
-        >
-          <div className="brand-logo">
-            {visibleLogo ? (
-              <img src={visibleLogo} alt={`Logo de ${draft.name}`} />
-            ) : (
-              draft.name.slice(0, 2).toUpperCase()
-            )}
+        <div className="brand-toolbar">
+          <div>
+            <strong>Personalizá tu presencia</strong>
+            <span>Los cambios se aplican en todas las experiencias.</span>
           </div>
-          <strong>{draft.name || "Tu negocio"}</strong>
-          <span>Vista previa de marca</span>
-        </section>
-        <section className="panel brand-form">
-          <label>
-            Nombre del negocio
-            <input
-              value={draft.name}
-              maxLength={120}
-              onChange={(event) =>
-                setDraft({ ...draft, name: event.target.value })
-              }
-            />
-          </label>
-          <label>
-            Logo
-            <input
-              ref={logo.fileInput}
-              type="file"
-              accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
-              disabled={logo.isAnalyzing}
-              onChange={(event) => {
-                void logo.choose(event.target.files?.[0], setError);
-              }}
-            />
-          </label>
-          {isTouch && (
-            <>
+          <Link className="button alt" href="/backoffice/brand/kit">
+            <MagicWand aria-hidden="true" /> Crear afiche
+          </Link>
+        </div>
+        <div className="brand-layout">
+          <section
+            className="brand-preview"
+            aria-label="Vista previa de marca"
+            style={
+              {
+                "--primary": draft.brandPrimaryColor,
+                "--complementary": draft.brandComplementaryColor,
+              } as React.CSSProperties
+            }
+          >
+            <p>Vista previa</p>
+            <div className="brand-preview-content">
+              <div className="brand-logo">
+                {visibleLogo ? (
+                  <img src={visibleLogo} alt={`Logo de ${draft.name}`} />
+                ) : (
+                  draft.name.slice(0, 2).toUpperCase()
+                )}
+              </div>
+              <div>
+                <strong>{draft.name || "Tu negocio"}</strong>
+                <span>Tu marca en CheckPass Club</span>
+              </div>
+            </div>
+            <div className="brand-preview-swatches" aria-hidden="true">
+              {colors.map(([key]) => (
+                <i key={key} style={{ background: draft[key] }} />
+              ))}
+            </div>
+          </section>
+          <div className="brand-editor">
+            <section className="brand-section" aria-labelledby="identity-title">
+              <header className="brand-section-head">
+                <span aria-hidden="true">
+                  <Palette />
+                </span>
+                <div>
+                  <h2 id="identity-title">Identidad</h2>
+                  <p>El nombre principal con el que te verán tus clientes.</p>
+                </div>
+              </header>
+              <TextField
+                className="brand-field"
+                label="Nombre del negocio"
+                value={draft.name}
+                maxLength={120}
+                placeholder="Ej. Café Milca"
+                onChange={(name) => setDraft({ ...draft, name })}
+                isRequired
+              />
+            </section>
+
+            <section className="brand-section" aria-labelledby="logo-title">
+              <header className="brand-section-head">
+                <span aria-hidden="true">
+                  <MediaImage />
+                </span>
+                <div>
+                  <h2 id="logo-title">Logo</h2>
+                  <p>Usá una imagen cuadrada, clara y fácil de reconocer.</p>
+                </div>
+              </header>
+              <div className="brand-logo-editor">
+                <div className="brand-logo-thumb" aria-hidden="true">
+                  {visibleLogo ? (
+                    <img src={visibleLogo} alt="" />
+                  ) : (
+                    draft.name.slice(0, 2).toUpperCase()
+                  )}
+                </div>
+                <div className="brand-logo-actions">
+                  <button
+                    className="small-button"
+                    type="button"
+                    disabled={logo.isAnalyzing}
+                    onClick={() => logo.fileInput.current?.click()}
+                  >
+                    <MediaImage aria-hidden="true" />
+                    {visibleLogo ? "Cambiar logo" : "Elegir logo"}
+                  </button>
+                  {isTouch && (
+                    <button
+                      className="small-button"
+                      type="button"
+                      disabled={logo.isAnalyzing}
+                      onClick={() => logo.cameraInput.current?.click()}
+                    >
+                      <Camera aria-hidden="true" /> Tomar foto
+                    </button>
+                  )}
+                  {visibleLogo && (
+                    <button
+                      type="button"
+                      className="brand-remove-logo"
+                      onClick={logo.remove}
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="sr-only">
+                <label htmlFor="brand-logo-file">
+                  Seleccionar archivo de logo
+                </label>
+              </div>
               <input
                 className="sr-only"
-                ref={logo.cameraInput}
+                id="brand-logo-file"
+                ref={logo.fileInput}
                 type="file"
-                accept="image/*"
-                capture="environment"
+                accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
+                disabled={logo.isAnalyzing}
                 onChange={(event) => {
                   void logo.choose(event.target.files?.[0], setError);
                 }}
               />
+              {isTouch && (
+                <input
+                  className="sr-only"
+                  ref={logo.cameraInput}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(event) => {
+                    void logo.choose(event.target.files?.[0], setError);
+                  }}
+                />
+              )}
+              <p className="brand-file-help">
+                {logo.isAnalyzing
+                  ? "Preparando imagen…"
+                  : `${ACCEPTED_IMAGE_LABEL} · máximo 5 MB · se ajusta a 2048 px.`}
+              </p>
+            </section>
+
+            <section className="brand-section" aria-labelledby="colors-title">
+              <header className="brand-section-head">
+                <span aria-hidden="true">
+                  <Palette />
+                </span>
+                <div>
+                  <h2 id="colors-title">Paleta de colores</h2>
+                  <p>Definí los tonos que identifican a tu negocio.</p>
+                </div>
+              </header>
+              <div className="brand-colors-grid">
+                {colors.map(([key, label]) => (
+                  <label className="brand-color-field" key={key}>
+                    <span>{label}</span>
+                    <div>
+                      <input
+                        aria-label={`Elegir color ${label.toLowerCase()}`}
+                        type="color"
+                        value={validColor(draft[key]) ? draft[key] : "#000000"}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            [key]: event.target.value.toUpperCase(),
+                          })
+                        }
+                      />
+                      <input
+                        value={draft[key]}
+                        maxLength={7}
+                        onChange={(event) =>
+                          setDraft({ ...draft, [key]: event.target.value })
+                        }
+                        aria-label={`Código hexadecimal ${label.toLowerCase()}`}
+                      />
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section className="brand-section" aria-labelledby="regional-title">
+              <header className="brand-section-head">
+                <span aria-hidden="true">
+                  <Settings />
+                </span>
+                <div>
+                  <h2 id="regional-title">Configuración regional</h2>
+                  <p>Controlá cómo se interpretan horarios y precios.</p>
+                </div>
+              </header>
+              <RegionalFields
+                timezone={draft.timezone}
+                currencyCode={draft.currencyCode}
+                onTimezoneChange={(timezone) =>
+                  setDraft({ ...draft, timezone })
+                }
+                onCurrencyChange={(currencyCode) =>
+                  setDraft({ ...draft, currencyCode })
+                }
+              />
+            </section>
+
+            <div className="brand-save-bar">
+              <div>
+                <strong>¿Todo listo?</strong>
+                <span>Revisá la vista previa antes de guardar.</span>
+              </div>
               <button
-                className="small-button"
+                className="button"
                 type="button"
-                disabled={logo.isAnalyzing}
-                onClick={() => logo.cameraInput.current?.click()}
+                disabled={saving}
+                onClick={() => void save()}
               >
-                Tomar foto
+                {saving ? "Guardando…" : "Guardar marca"}
               </button>
-            </>
-          )}
-          <p className="field-help">
-            {ACCEPTED_IMAGE_LABEL} · máximo 5 MB · se ajusta a 2048 px.
-          </p>
-          {logo.isAnalyzing && <p className="field-help">Preparando imagen…</p>}
-          {visibleLogo && (
-            <button
-              type="button"
-              className="small-button"
-              onClick={logo.remove}
-            >
-              Quitar logo
-            </button>
-          )}
-          <h2 className="color-heading">Colores</h2>
-          {colors.map(([key, label]) => (
-            <label className="color-field" key={key}>
-              {label}
-              <span>
-                <input
-                  type="color"
-                  value={validColor(draft[key]) ? draft[key] : "#000000"}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      [key]: event.target.value.toUpperCase(),
-                    })
-                  }
-                />
-                <input
-                  value={draft[key]}
-                  maxLength={7}
-                  onChange={(event) =>
-                    setDraft({ ...draft, [key]: event.target.value })
-                  }
-                  aria-label={`Código hexadecimal ${label.toLowerCase()}`}
-                />
-              </span>
-            </label>
-          ))}
-          <RegionalFields
-            timezone={draft.timezone}
-            currencyCode={draft.currencyCode}
-            onTimezoneChange={(timezone) => setDraft({ ...draft, timezone })}
-            onCurrencyChange={(currencyCode) =>
-              setDraft({ ...draft, currencyCode })
-            }
-          />
-          <button
-            className="button"
-            type="button"
-            disabled={saving}
-            onClick={() => void save()}
-          >
-            {saving ? "Guardando…" : "Guardar marca"}
-          </button>
-        </section>
+            </div>
+          </div>
+        </div>
         {logo.pending && logo.pendingSrc && (
           <ImageCropper
             src={logo.pendingSrc}
@@ -282,19 +397,53 @@ export default function BrandPage() {
   );
 }
 
-function BrandSkeleton({ error }: { error: string | null }) {
+export function BrandSkeleton({ error = null }: { error?: string | null }) {
   return (
     <main className="merchant-shell">
-      <div className="brand-page loyalty-skeleton" aria-busy="true">
+      <div className="brand-page">
         {error ? (
-          <p className="form-error">{error}</p>
+          <div className="staff-alert error" role="alert">
+            {error}
+          </div>
         ) : (
-          <>
-            <span className="skeleton-line skeleton-eyebrow" />
-            <span className="skeleton-line skeleton-title" />
-            <span className="skeleton-line skeleton-description" />
-            <section className="panel skeleton-card" />
-          </>
+          <SkeletonScreen className="brand-skeleton" label="Cargando marca">
+            <div className="brand-skeleton-header">
+              <div>
+                <Skeleton height={12} width={58} />
+                <Skeleton height={34} width={280} />
+                <Skeleton height={15} width={320} />
+              </div>
+              <Skeleton height={42} radius={99} width={42} />
+            </div>
+            <div className="brand-toolbar">
+              <div>
+                <Skeleton height={17} width={180} />
+                <Skeleton height={13} width={260} />
+              </div>
+              <Skeleton height={44} width={142} />
+            </div>
+            <div className="brand-layout">
+              <Skeleton
+                className="brand-skeleton-preview"
+                height={278}
+                radius={22}
+              />
+              <div className="brand-editor">
+                {["identity", "logo", "colors", "regional"].map((key) => (
+                  <div className="brand-section" key={key}>
+                    <div className="brand-section-head">
+                      <Skeleton height={42} radius={13} width={42} />
+                      <div>
+                        <Skeleton height={18} width={145} />
+                        <Skeleton height={13} width="72%" />
+                      </div>
+                    </div>
+                    <Skeleton height={48} radius={10} width="100%" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SkeletonScreen>
         )}
       </div>
     </main>

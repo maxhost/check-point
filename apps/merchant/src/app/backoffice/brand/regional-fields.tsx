@@ -1,6 +1,7 @@
 "use client";
 
 import { SUPPORTED_CURRENCIES } from "../../../lib/currencies";
+import { SelectField } from "../../../ui";
 
 const timezones = [
   "America/Argentina/Buenos_Aires",
@@ -28,45 +29,30 @@ export function RegionalFields({
   onTimezoneChange,
   onCurrencyChange,
 }: Props) {
+  const timezoneOptions = [
+    ...(!timezones.includes(timezone) ? [timezone] : []),
+    ...timezones,
+  ].map((zone) => ({ id: zone, label: zone.replaceAll("_", " ") }));
+
   return (
-    <section className="timezone-settings" aria-labelledby="regional-title">
-      <h2 id="regional-title" className="color-heading">
-        Zona horaria y moneda
-      </h2>
-      <label>
-        Zona horaria del negocio
-        <select
-          value={timezone}
-          onChange={(event) => onTimezoneChange(event.target.value)}
-        >
-          {timezones.map((zone) => (
-            <option key={zone} value={zone}>
-              {zone}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="field-help">
-        Las fechas y horarios de tus programas y campañas se interpretan en esta
-        zona.
-      </p>
-      <label>
-        Moneda
-        <select
-          value={currencyCode}
-          onChange={(event) => onCurrencyChange(event.target.value)}
-        >
-          {SUPPORTED_CURRENCIES.map((currency) => (
-            <option key={currency.code} value={currency.code}>
-              {currency.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="field-help">
-        Se usa para mostrar los precios de tu catálogo. Se derivó del país al
-        crear el negocio; puedes cambiarla.
-      </p>
-    </section>
+    <div className="brand-regional-grid">
+      <SelectField
+        label="Zona horaria del negocio"
+        description="Define las fechas y horarios de programas y campañas."
+        options={timezoneOptions}
+        selectedKey={timezone}
+        onSelectionChange={(key) => onTimezoneChange(String(key))}
+      />
+      <SelectField
+        label="Moneda"
+        description="Se usa para mostrar los precios de tu catálogo."
+        options={SUPPORTED_CURRENCIES.map((currency) => ({
+          id: currency.code,
+          label: currency.label,
+        }))}
+        selectedKey={currencyCode}
+        onSelectionChange={(key) => onCurrencyChange(String(key))}
+      />
+    </div>
   );
 }

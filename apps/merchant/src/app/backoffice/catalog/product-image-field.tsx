@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Camera, MediaImage, Upload } from "iconoir-react";
 import dynamic from "next/dynamic";
 import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../lib/image-formats";
 import type { CatalogImage } from "./use-catalog-image";
@@ -35,10 +36,10 @@ export function ProductImageField({
   const cameraInput = useRef<HTMLInputElement>(null);
 
   return (
-    <>
-      <label>
-        Imagen (opcional)
+    <section className="catalog-image-field">
+      <div><strong>Imagen del producto (opcional)</strong><p className="field-help">Usá una foto propia o elegí una de la biblioteca. Si no cargás una, mostraremos un placeholder.</p></div>
         <input
+          className="sr-only"
           ref={fileInput}
           type="file"
           accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
@@ -47,7 +48,8 @@ export function ProductImageField({
             void image.choose(event.target.files?.[0], onError);
           }}
         />
-      </label>
+      <div className="catalog-image-actions">
+        <button type="button" className="button alt" disabled={image.isAnalyzing} onClick={() => fileInput.current?.click()}><Upload aria-hidden="true" /> Subir imagen</button>
       {isTouch && (
         <>
           <input
@@ -62,28 +64,17 @@ export function ProductImageField({
           />
           <button
             type="button"
-            className="small-button"
+            className="button alt"
             disabled={image.isAnalyzing}
             onClick={() => cameraInput.current?.click()}
           >
-            Tomar foto
+            <Camera aria-hidden="true" /> Tomar foto
           </button>
-          <p className="field-help">
-            Elegí una imagen de tu galería o tomá una foto.
-          </p>
         </>
       )}
+        <button type="button" className="button alt" onClick={() => setShowPicker(true)}><MediaImage aria-hidden="true" /> Biblioteca</button>
+      </div>
       {image.isAnalyzing && <p className="field-help">Preparando imagen…</p>}
-      <div className="stock-or">o</div>
-      <button
-        type="button"
-        className="small-button stock-library-button"
-        onClick={() => setShowPicker(true)}
-      >
-        {image.visible
-          ? "Elegir otra imagen de biblioteca"
-          : "Elegir de biblioteca"}
-      </button>
       {image.visible && (
         <div className="catalog-image-row">
           <img
@@ -144,6 +135,6 @@ export function ProductImageField({
           }}
         />
       )}
-    </>
+    </section>
   );
 }

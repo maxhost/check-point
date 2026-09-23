@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Printer } from "iconoir-react";
+import Link from "next/link";
+import { SelectField, TextField } from "../../../../../ui";
 import { PosterPreview } from "../poster-preview";
 import type { QrStyle } from "../qr-render";
 import type { PosterColors, TemplateId } from "../templates/types";
@@ -102,20 +105,31 @@ export function StepPreview({
       }; margin: 0; } }`}</style>
 
       <div className="brand-kit-controls no-print">
+        <header className="brand-kit-step-intro">
+          <p className="eyebrow">Personalización</p>
+          <h2>Ajustá tu afiche</h2>
+          <p>Los cambios se reflejan al instante en la vista previa.</p>
+        </header>
+        <div className="brand-kit-brand-note">
+          <p>
+            {hasLogo
+              ? "Usamos el logo, el nombre y los colores guardados en tu marca."
+              : `Como todavía no hay un logo, el afiche mostrará el nombre “${business.name}”.`}
+          </p>
+          <Link href="/backoffice/brand">Editar marca</Link>
+        </div>
         {perLocal && (
-          <label className="brand-kit-field">
-            Local
-            <select
-              value={activeLocationId}
-              onChange={(e) => onActiveLocation(e.target.value)}
-            >
-              {locationScopes.map((s) => (
-                <option key={s.key} value={s.locationId ?? ""}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SelectField
+            className="brand-kit-field"
+            label="Local"
+            description="La atribución del QR corresponderá a este local."
+            options={locationScopes.map((scope) => ({
+              id: scope.locationId ?? "",
+              label: scope.label,
+            }))}
+            selectedKey={activeLocationId}
+            onSelectionChange={(key) => onActiveLocation(String(key))}
+          />
         )}
 
         <div className="brand-kit-colors">
@@ -147,24 +161,20 @@ export function StepPreview({
           </label>
         </div>
 
-        <label className="brand-kit-field">
-          Texto junto al logo
-          <input
-            type="text"
-            value={label}
-            maxLength={48}
-            onChange={(e) => onLabel(e.target.value)}
-          />
-        </label>
-        <label className="brand-kit-field">
-          Título
-          <input
-            type="text"
-            value={headline}
-            maxLength={80}
-            onChange={(e) => onHeadline(e.target.value)}
-          />
-        </label>
+        <TextField
+          className="brand-kit-field"
+          label="Texto junto al logo"
+          value={label}
+          maxLength={48}
+          onChange={onLabel}
+        />
+        <TextField
+          className="brand-kit-field"
+          label="Título"
+          value={headline}
+          maxLength={80}
+          onChange={onHeadline}
+        />
         <label className="brand-kit-field">
           Subtítulo
           <textarea
@@ -223,7 +233,7 @@ export function StepPreview({
             className="brand-kit-print"
             onClick={() => setPrintReq("current")}
           >
-            Imprimir
+            <Printer aria-hidden="true" /> Imprimir
           </button>
           {perLocal && (
             <button
@@ -231,7 +241,7 @@ export function StepPreview({
               className="brand-kit-print-all"
               onClick={() => setPrintReq("all")}
             >
-              Imprimir todos los locales
+              <Printer aria-hidden="true" /> Imprimir todos los locales
             </button>
           )}
         </div>

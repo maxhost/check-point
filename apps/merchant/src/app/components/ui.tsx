@@ -51,7 +51,7 @@ export function Toast({
   onDismiss,
 }: {
   message: string | null;
-  kind?: "success" | "warning" | "error";
+  kind?: "success" | "info" | "warning" | "error";
   /** `null` mantiene el toast visible hasta que cambie la operación. */
   durationMs?: number | null;
   onDismiss: () => void;

@@ -12,7 +12,8 @@ import { businessOnboardingTours } from "../schema";
  *
  * **Que los cuatro existan no implica que sus pantallas existan** (ADR 0078 §6). **`staff` ya
  * la tiene** desde la spec 0088 (`/backoffice/staff`, con su tour de onboarding y sus cuatro
- * ayudas); `catalog`, `program`, `brand` y `locations` todavia no. No hay que esperarlas: un tour sin
+ * ayudas); `locations` también publica su orientación y cuatro ayudas operativas;
+ * `catalog`, `program` y `brand` todavía no. No hay que esperarlas: un tour sin
  * pantalla simplemente nunca recibe un `POST`, su `done` queda en `false` y no traba a nadie
  * porque ningun tour es `required` (spec 0085: el unico obligatorio es `verify-email`).
  *
