@@ -4540,9 +4540,13 @@ input.cp-number-input::-webkit-outer-spin-button {
 .catalog-dropzone small {
   color: var(--color-content-muted);
 }
+.catalog-dropzone.is-dragging {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
 .catalog-ai-source-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 9px;
 }
 .catalog-ai-source-actions .button {
@@ -4569,45 +4573,35 @@ input.cp-number-input::-webkit-outer-spin-button {
   margin: 3px 0 0;
   color: var(--color-content-muted);
 }
-.catalog-ai-preview {
+/* El resumen de lo que la importacion escribio (spec 0091 §9). */
+.catalog-ai-result-list {
   display: grid;
-  gap: 12px;
-}
-.catalog-ai-preview section {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-}
-.catalog-ai-preview section > div {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 9px;
-  color: var(--color-content);
-}
-.catalog-ai-preview section > div small {
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
   color: var(--color-content-muted);
 }
-.catalog-ai-preview label {
+.catalog-ai-result-list:empty {
+  display: none;
+}
+.catalog-ai-discarded {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: var(--color-content-muted);
+}
+.catalog-ai-discarded summary {
+  cursor: pointer;
+  color: var(--color-content);
+}
+.catalog-ai-discarded ul {
   display: grid;
   gap: 5px;
+  margin: 10px 0 0;
+  padding-left: 18px;
 }
-.catalog-ai-preview input {
-  min-width: 0;
-}
-.catalog-ai-product {
-  display: grid !important;
-  grid-template-columns: auto minmax(0, 1fr) minmax(110px, 0.4fr) !important;
-}
-.catalog-ai-product > input[type="checkbox"] {
-  width: 18px;
-  min-height: 18px;
-  accent-color: var(--color-primary);
-}
-.catalog-ai-product > small {
-  grid-column: 2 / -1;
+.catalog-ai-discarded .field-help {
+  margin: 8px 0 0;
 }
 .catalog-ai-placeholder {
   display: grid;
@@ -4677,18 +4671,6 @@ input.cp-number-input::-webkit-outer-spin-button {
   }
   .catalog-inline-add .small-button {
     justify-content: center;
-  }
-  .catalog-ai-preview section > div {
-    grid-template-columns: auto 1fr;
-  }
-  .catalog-ai-preview section > div small {
-    grid-column: 2;
-  }
-  .catalog-ai-product {
-    grid-template-columns: auto minmax(0, 1fr) !important;
-  }
-  .catalog-ai-product > input:nth-of-type(3) {
-    grid-column: 2;
   }
   .catalog-skeleton-cards {
     grid-template-columns: 1fr;
