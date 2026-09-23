@@ -8,47 +8,73 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ PROXIMO PASO (2026-09-23): IMPLEMENTAR LA SPEC 0091
+## ⇥ SPEC 0091 IMPLEMENTADA Y COMMITEADA (2026-09-23) — PASS del revisor
 
-**Arranca aca.** Leer, en este orden: `specs/0091-la-importacion-de-catalogo-escribe-directo.md`
-(esta `cerrada`, sin decisiones abiertas) y `adr/0084-la-importacion-de-catalogo-escribe-directo-y-solo-agrega.md`.
+**Estado del arbol AHORA:** la 0091 esta en `main` en el commit **`5a1b2f7`**, junto a los tres
+commits previos. Los cuatro siguen **SIN PUSHEAR** (pushear dispara deploy de produccion y el owner
+no lo pidio). Lo unico sin commitear del arbol son los **dos archivos del owner**
+(`backoffice/catalog/catalog-ai-import.tsx` y `globals.css`), que no se tocaron y son la unica razon
+por la que `format:check` esta rojo.
 
-**Como:** UN implementador para toda la spec, UN revisor independiente al final (ADR 0071).
-Presupuesto **6 mutaciones**, tabla en la §12 de la spec. Los gates completos, una vez al final.
+La spec quedo en `estado: implementada` con el `PASS` del revisor independiente (ADR 0071).
 
-**Los tres archivos Neon que toca la spec se corren asi** (≈40 s, no la tanda entera):
+### Gates al cerrar (root, Node 24 v24.20.0)
 
-```
-export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use
-tools/neon-test.sh src/server/catalog-import.neon.integration.test.ts
-```
-
-**`test:e2e` NO aplica** a la 0091 (cero `.tsx`) y se demuestra con `git diff --stat`.
-
-### Estado del arbol al cerrar esta sesion
-
-Tres commits en `main`, **SIN PUSHEAR** (pushear dispara deploy de produccion; el owner no lo pidio):
-
-| sha | que es |
+| gate | resultado EJECUTADO |
 |---|---|
-| `53b5765` | fix: cancelar en `analyzing` es inmediato y terminal (trabajo que estaba sin commitear) |
-| `1d8836f` | docs: ADR 0084 + spec 0091 reescritos y simplificados, INDEX y TASKS |
-| `744ede0` | tools: `neon-test.sh` + la regla en `CLAUDE.md`, la skill y `LECCIONES.md` |
+| `pnpm run typecheck` · `lint` · `build` | exit 0 |
+| `pnpm run test` | **1752 passed**, 590 skipped (2342) |
+| `pnpm run format:check` | exit 1, **unico `[warn]`: `catalog-ai-import.tsx`** (del owner) |
+| Neon, 6 suites de catalog-import | **30 tests EJECUTADOS** (no `skipped`), 0 failed |
+| `pnpm test:e2e` | **no aplica**: ni un `.tsx`/`.css` propio, y las 2 specs de Playwright (`health`, `loyalty-real`) no tocan este dominio |
 
-**Sin commitear queda solo la UI en curso del owner** (`backoffice/catalog/catalog-ai-import.tsx`
-+ `globals.css`), que **no toca esta spec** y es la unica razon por la que `format:check` esta
-rojo. Cuando el owner la commitee: `pnpm exec prettier --write <ruta>` (**nunca** `pnpm format`) y
-`test:e2e`, que ahi SI aplica.
+### Verificacion: 12 mutaciones, todas revertidas
 
-**Gates corridos en esta sesion:** `typecheck`, `lint`, `test` (**1737 passed, 0 failed**), `build`.
-`format:check` rojo solo por ese `.tsx`.
+`rg -n MUTATION apps tools` → **vacio**. Seis de la tabla de la spec (implementador), cuatro del
+revisor (DTO sin claves internas, aislamiento de `latestImport`, idempotencia del writer,
+`notified_at`) y **dos del orquestador**, que son las que cerraron los huecos que el revisor
+encontro:
 
-### Ofrecido al owner y SIN RESPUESTA (no decidirlo solo)
+| id | invariante | resultado EJECUTADO |
+|---|---|---|
+| MO-1 | §6.7 «nacen disponibles en todos los locales» | **ROJO** 1 caso Neon (`expected false to be true`). Antes `productosDe` **ni leia la columna**. |
+| MO-2 | §7 «el aviso sale DESPUES del resultado final» | **ROJO** (`expected 0, received 1` en el outbox): adelantar la llamada le manda al merchant «tu menu ya esta en el catalogo» con el catalogo VACIO **y se come el aviso de fallo**, porque la marca ya fue reclamada. |
 
-- **Modo «rama efimera por corrida»** para `tools/neon-test.sh`, que mataria el flake de rama
-  compartida y la contencion con la CI. La alternativa barata ya diagnosticada es el fix de una
-  linea del `seedConsumer` (`Math.random()` sobre una columna UNIQUE), que espera decision en
-  `PARQUEADO.md` fila 58.
+**MO-2 fallo primero por el motivo equivocado y eso vale mas que el rojo:** el primer intento del
+oraculo disparaba el fallo del writer con un byte NUL en un nombre, pero el NUL **tambien revienta el
+`jsonb`** donde `finishAnalysis` persiste la extraccion, asi que lanzaba ANTES de llegar al writer y
+la mutacion sobrevivia en verde. El caso vive en
+`catalog-import-finish-notify.neon.integration.test.ts` y dobla **solo** `writeImportedCatalog`.
+
+### Lo que el revisor dejo declarado y NO se persiguio
+
+- **El desempate por `id` de dos categorias con el mismo `createdAt` no tiene oraculo.** No es riesgo
+  de produccion: las dos ramas reusan una categoria existente y **nada se destruye**; lo que se
+  pierde es el determinismo que promete el docblock.
+- **La mitad «una sola vez» de `notified_at` sigue sin oraculo**, y es **preexistente de la 0090**
+  (el `isNull(notifiedAt)` no lo toco esta spec): el doble de `./db` de
+  `catalog-import-notify.test.ts` ignora el `where`, asi que ningun test de unidad puede verla.
+- **La carrera REAL del 23505 tampoco quedo pinneada.** Lo que esta ejecutado es el MECANISMO de
+  recuperacion con su control positivo. **El limite que dice el docblock es mas grande de lo real**:
+  no hace falta un segundo *import* (que el indice parcial prohibe), alcanza una segunda **sesion**
+  que inserte la categoria y la deje sin commitear — el revisor lo forzo con una sonda temporal y
+  funciono. Cabe en ~40 lineas si se quiere cerrar.
+- La calidad de la extraccion del LLM: la mide el corpus de menus reales, no un test.
+
+### Hallazgo para el owner (NO es decision tomada)
+
+**La pantalla actual quedo llamando a rutas que ya no existen.** `catalog-ai-import.tsx` sigue
+haciendo `PUT /{id}/draft` y `POST /{id}/accept`, que ahora dan **404**, y sigue leyendo `draft` del
+DTO, que ahora trae `result`. Es lo esperado por el ADR 0070 (la UI la hace el owner por fuera) y por
+eso no se toco, pero **hasta que la pantalla se actualice, la importacion no se puede probar de punta
+a punta desde el navegador**. El contrato nuevo esta escrito en `specs/0090-contratos-de-api.md`.
+
+## ⇥ PROXIMO PASO: QA DEL OWNER SOBRE LA PANTALLA NUEVA
+
+El servidor esta listo y verificado. Lo que falta es la pantalla que consuma el contrato de la §9
+(la hace el owner) y, con ella, el QA de punta a punta: subir un PDF real y ver el catalogo escrito.
+**Antes de pedir ese QA contra produccion hay que pushear** —hoy nadie pusheo— **y verificar que el
+deploy de Vercel al que apunta `checkpass.club` este en `READY` con ese sha.**
 
 ## ⇥ LAS SUITES NEON YA CORREN LOCAL (2026-09-23) — `tools/neon-test.sh`
 
