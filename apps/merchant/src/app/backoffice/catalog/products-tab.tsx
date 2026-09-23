@@ -34,7 +34,12 @@ export function ProductsTab({
     const term = search.trim().toLowerCase();
     return products.filter((product) => {
       if (categoryId && product.categoryId !== categoryId) return false;
-      if (locationId && !product.availableAllLocations && !product.locationIds.includes(locationId)) return false;
+      if (
+        locationId &&
+        !product.availableAllLocations &&
+        !product.locationIds.includes(locationId)
+      )
+        return false;
       if (term && !product.name.toLowerCase().includes(term)) return false;
       return true;
     });
@@ -43,9 +48,14 @@ export function ProductsTab({
   if (products.length === 0) {
     return (
       <section className="panel catalog-empty">
-        <div className="catalog-empty-art" aria-hidden="true">01</div>
+        <div className="catalog-empty-art" aria-hidden="true">
+          01
+        </div>
         <h2>Tu catálogo empieza con un producto</h2>
-        <p>Podés cargarlo manualmente o usar el importador inteligente desde una foto o PDF.</p>
+        <p>
+          Podés cargarlo manualmente o usar el importador inteligente desde una
+          foto o PDF.
+        </p>
         <button className="button" type="button" onClick={onNew}>
           Crear producto
         </button>
@@ -56,7 +66,16 @@ export function ProductsTab({
   return (
     <>
       <div className="catalog-toolbar">
-        <label className="catalog-search"><Search aria-hidden="true" /><input type="search" value={search} placeholder="Buscar producto…" aria-label="Buscar producto" onChange={(event) => setSearch(event.target.value)} /></label>
+        <label className="catalog-search">
+          <Search aria-hidden="true" />
+          <input
+            type="search"
+            value={search}
+            placeholder="Buscar producto…"
+            aria-label="Buscar producto"
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
         <select
           className="catalog-filter"
           value={categoryId}
@@ -70,10 +89,21 @@ export function ProductsTab({
             </option>
           ))}
         </select>
-        {locations.length > 1 && <select className="catalog-filter" value={locationId} aria-label="Filtrar por local" onChange={(event) => setLocationId(event.target.value)}>
-          <option value="">Todos los locales</option>
-          {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
-        </select>}
+        {locations.length > 1 && (
+          <select
+            className="catalog-filter"
+            value={locationId}
+            aria-label="Filtrar por local"
+            onChange={(event) => setLocationId(event.target.value)}
+          >
+            <option value="">Todos los locales</option>
+            {locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {filtered.length === 0 ? (
         <p className="field-help">No hay productos para ese filtro.</p>

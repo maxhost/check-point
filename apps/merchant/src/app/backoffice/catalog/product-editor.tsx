@@ -123,7 +123,13 @@ export function ProductEditor({
       description="Completá solo lo que ya tengas. La imagen, el costo y el precio de venta son opcionales."
       onClose={onCancel}
     >
-      <form className="catalog-editor" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+      <form
+        className="catalog-editor"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
         <TextField
           autoFocus
           label="Nombre del producto"
@@ -136,18 +142,31 @@ export function ProductEditor({
         <SelectField
           label="Categoría"
           selectedKey={categoryId || "none"}
-          onSelectionChange={(key) => setCategoryId(key === "none" ? "" : String(key))}
-          options={[{ id: "none", label: "Sin categoría" }, ...categories.map((category) => ({ id: category.id, label: category.name }))]}
+          onSelectionChange={(key) =>
+            setCategoryId(key === "none" ? "" : String(key))
+          }
+          options={[
+            { id: "none", label: "Sin categoría" },
+            ...categories.map((category) => ({
+              id: category.id,
+              label: category.name,
+            })),
+          ]}
         />
         <div className="catalog-inline-add">
           <TextField
             label="Crear una categoría sin salir"
-          value={newCategory}
-          maxLength={60}
+            value={newCategory}
+            maxLength={60}
             onChange={setNewCategory}
             placeholder="Ej. Bebidas calientes"
           />
-          <button type="button" className="small-button" disabled={!newCategory.trim()} onClick={() => void createCategory()}>
+          <button
+            type="button"
+            className="small-button"
+            disabled={!newCategory.trim()}
+            onClick={() => void createCategory()}
+          >
             <Plus aria-hidden="true" /> Crear
           </button>
         </div>
@@ -172,41 +191,61 @@ export function ProductEditor({
           />
         </div>
         <ProductImageField image={image} name={name} onError={onError} />
-        {locations.length > 1 && <fieldset className="catalog-visibility">
-          <legend>Disponibilidad por local</legend>
-          <p className="field-help">Elegí dónde estará disponible este producto.</p>
-          <label className="catalog-choice">
-            <input type="radio" name="availability" checked={availableAll} onChange={() => setAvailableAll(true)} />
-            <span><strong>Todos los locales</strong><small>También se aplicará a los locales que agregues después.</small></span>
-          </label>
-          <label className="catalog-choice">
-            <input type="radio" name="availability" checked={!availableAll} onChange={() => setAvailableAll(false)} />
-            <span><strong>Locales específicos</strong><small>Seleccioná uno o más locales.</small></span>
-          </label>
-          {!availableAll && <div className="catalog-location-options">
-            {locations.map((location) => (
-              <label className="catalog-check" key={location.id}>
-                <input
-                  type="checkbox"
-                  checked={locationIds.includes(location.id)}
-                  onChange={() => toggleLocation(location.id)}
-                />
-                {location.name}
-              </label>
-            ))}
-          </div>}
-        </fieldset>}
+        {locations.length > 1 && (
+          <fieldset className="catalog-visibility">
+            <legend>Disponibilidad por local</legend>
+            <p className="field-help">
+              Elegí dónde estará disponible este producto.
+            </p>
+            <label className="catalog-choice">
+              <input
+                type="radio"
+                name="availability"
+                checked={availableAll}
+                onChange={() => setAvailableAll(true)}
+              />
+              <span>
+                <strong>Todos los locales</strong>
+                <small>
+                  También se aplicará a los locales que agregues después.
+                </small>
+              </span>
+            </label>
+            <label className="catalog-choice">
+              <input
+                type="radio"
+                name="availability"
+                checked={!availableAll}
+                onChange={() => setAvailableAll(false)}
+              />
+              <span>
+                <strong>Locales específicos</strong>
+                <small>Seleccioná uno o más locales.</small>
+              </span>
+            </label>
+            {!availableAll && (
+              <div className="catalog-location-options">
+                {locations.map((location) => (
+                  <label className="catalog-check" key={location.id}>
+                    <input
+                      type="checkbox"
+                      checked={locationIds.includes(location.id)}
+                      onChange={() => toggleLocation(location.id)}
+                    />
+                    {location.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
+        )}
         <div className="catalog-editor-actions">
-        <button className="button alt" type="button" onClick={onCancel}>
-          Cancelar
-        </button>
-        <button
-          className="button"
-          type="submit"
-          disabled={saving}
-        >
-          {saving ? "Guardando…" : "Guardar producto"}
-        </button>
+          <button className="button alt" type="button" onClick={onCancel}>
+            Cancelar
+          </button>
+          <button className="button" type="submit" disabled={saving}>
+            {saving ? "Guardando…" : "Guardar producto"}
+          </button>
         </div>
       </form>
     </StaffFormModal>

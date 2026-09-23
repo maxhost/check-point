@@ -37,42 +37,61 @@ export function ProductImageField({
 
   return (
     <section className="catalog-image-field">
-      <div><strong>Imagen del producto (opcional)</strong><p className="field-help">Usá una foto propia o elegí una de la biblioteca. Si no cargás una, mostraremos un placeholder.</p></div>
-        <input
-          className="sr-only"
-          ref={fileInput}
-          type="file"
-          accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
-          disabled={image.isAnalyzing}
-          onChange={(event) => {
-            void image.choose(event.target.files?.[0], onError);
-          }}
-        />
+      <div>
+        <strong>Imagen del producto (opcional)</strong>
+        <p className="field-help">
+          Usá una foto propia o elegí una de la biblioteca. Si no cargás una,
+          mostraremos un placeholder.
+        </p>
+      </div>
+      <input
+        className="sr-only"
+        ref={fileInput}
+        type="file"
+        accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
+        disabled={image.isAnalyzing}
+        onChange={(event) => {
+          void image.choose(event.target.files?.[0], onError);
+        }}
+      />
       <div className="catalog-image-actions">
-        <button type="button" className="button alt" disabled={image.isAnalyzing} onClick={() => fileInput.current?.click()}><Upload aria-hidden="true" /> Subir imagen</button>
-      {isTouch && (
-        <>
-          <input
-            className="sr-only"
-            ref={cameraInput}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(event) => {
-              void image.choose(event.target.files?.[0], onError);
-            }}
-          />
-          <button
-            type="button"
-            className="button alt"
-            disabled={image.isAnalyzing}
-            onClick={() => cameraInput.current?.click()}
-          >
-            <Camera aria-hidden="true" /> Tomar foto
-          </button>
-        </>
-      )}
-        <button type="button" className="button alt" onClick={() => setShowPicker(true)}><MediaImage aria-hidden="true" /> Biblioteca</button>
+        <button
+          type="button"
+          className="button alt"
+          disabled={image.isAnalyzing}
+          onClick={() => fileInput.current?.click()}
+        >
+          <Upload aria-hidden="true" /> Subir imagen
+        </button>
+        {isTouch && (
+          <>
+            <input
+              className="sr-only"
+              ref={cameraInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(event) => {
+                void image.choose(event.target.files?.[0], onError);
+              }}
+            />
+            <button
+              type="button"
+              className="button alt"
+              disabled={image.isAnalyzing}
+              onClick={() => cameraInput.current?.click()}
+            >
+              <Camera aria-hidden="true" /> Tomar foto
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className="button alt"
+          onClick={() => setShowPicker(true)}
+        >
+          <MediaImage aria-hidden="true" /> Biblioteca
+        </button>
       </div>
       {image.isAnalyzing && <p className="field-help">Preparando imagen…</p>}
       {image.visible && (

@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const session = await requireBackofficeSession();
-  if (!session.membership.permissions.includes("catalog")) redirect("/backoffice");
+  if (!session.membership.permissions.includes("catalog"))
+    redirect("/backoffice");
   return <CatalogPage canDelete={session.membership.role === "owner"} />;
 }

@@ -54,13 +54,15 @@ export function CatalogList({
             >
               Editar
             </button>
-            {canDelete && <button
-              type="button"
-              className="small-button danger"
-              onClick={() => onDelete(product)}
-            >
-              Borrar
-            </button>}
+            {canDelete && (
+              <button
+                type="button"
+                className="small-button danger"
+                onClick={() => onDelete(product)}
+              >
+                Borrar
+              </button>
+            )}
           </div>
         </li>
       ))}

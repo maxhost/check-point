@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { MagicWand, Plus } from "iconoir-react";
 import { ConfirmDialog } from "../../components/confirm-dialog";
-import { ModuleHeader, Skeleton, SkeletonScreen, Toast } from "../../components/ui";
+import {
+  ModuleHeader,
+  Skeleton,
+  SkeletonScreen,
+  Toast,
+} from "../../components/ui";
 import { CatalogAiImport } from "./catalog-ai-import";
 import { CategoryManager } from "./category-manager";
 import { ProductEditor } from "./product-editor";
@@ -16,7 +21,11 @@ type Confirm =
 
 type Tab = "products" | "categories";
 
-export default function CatalogPage({ canDelete = true }: { canDelete?: boolean }) {
+export default function CatalogPage({
+  canDelete = true,
+}: {
+  canDelete?: boolean;
+}) {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [tab, setTab] = useState<Tab>("products");
   const [creating, setCreating] = useState(false);
@@ -175,7 +184,9 @@ export default function CatalogPage({ canDelete = true }: { canDelete?: boolean 
           </div>
           <div>
             <span>{catalog.categories.length}</span>
-            <p>{catalog.categories.length === 1 ? "categoría" : "categorías"}</p>
+            <p>
+              {catalog.categories.length === 1 ? "categoría" : "categorías"}
+            </p>
           </div>
           <div>
             <span>{catalog.locations.length}</span>
@@ -183,81 +194,96 @@ export default function CatalogPage({ canDelete = true }: { canDelete?: boolean 
           </div>
         </section>
         <section className="catalog-ai-banner">
-          <div className="catalog-ai-icon" aria-hidden="true"><MagicWand /></div>
+          <div className="catalog-ai-icon" aria-hidden="true">
+            <MagicWand />
+          </div>
           <div>
             <p className="eyebrow">Carga inteligente</p>
             <h2>Convertí una foto o PDF en tu catálogo</h2>
-            <p>La IA preparará categorías, productos y precios para que solo revises y completes.</p>
+            <p>
+              La IA preparará categorías, productos y precios para que solo
+              revises y completes.
+            </p>
           </div>
-          <button className="button alt" type="button" onClick={() => setShowAiImport(true)}>
+          <button
+            className="button alt"
+            type="button"
+            onClick={() => setShowAiImport(true)}
+          >
             Probar importador
           </button>
         </section>
         <div className="catalog-section-head">
-          <div className="catalog-tabs" role="tablist" aria-label="Vista del catálogo">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === "products"}
-                className={tab === "products" ? "active" : ""}
-                onClick={() => setTab("products")}
-              >
-                Productos
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={tab === "categories"}
-                className={tab === "categories" ? "active" : ""}
-                onClick={() => setTab("categories")}
-              >
-                Categorías
-              </button>
-            </div>
-          <button className="button catalog-primary-action" type="button" onClick={() => {
-            setEditing(null);
-            setCreating(true);
-          }}>
+          <div
+            className="catalog-tabs"
+            role="tablist"
+            aria-label="Vista del catálogo"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "products"}
+              className={tab === "products" ? "active" : ""}
+              onClick={() => setTab("products")}
+            >
+              Productos
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "categories"}
+              className={tab === "categories" ? "active" : ""}
+              onClick={() => setTab("categories")}
+            >
+              Categorías
+            </button>
+          </div>
+          <button
+            className="button catalog-primary-action"
+            type="button"
+            onClick={() => {
+              setEditing(null);
+              setCreating(true);
+            }}
+          >
             <Plus aria-hidden="true" /> Nuevo producto
           </button>
         </div>
-            {tab === "products" ? (
-              <ProductsTab
-                products={catalog.products}
-                categories={catalog.categories}
-                locations={catalog.locations}
-                currencyCode={catalog.currencyCode}
-                onNew={() => {
-                  setEditing(null);
-                  setCreating(true);
-                }}
-                onEdit={(product) => {
-                  setCreating(false);
-                  setEditing(product);
-                }}
-                onDelete={(product) => setConfirm({ kind: "product", product })}
-                canDelete={canDelete}
-              />
-            ) : (
-              <CategoryManager
-                categories={catalog.categories}
-                onCreate={(name) =>
-                  createCategory(name).then((cat) => cat !== null)
-                }
-                onRename={(id, name) =>
-                  mutate(
-                    `/api/catalog/category/${id}`,
-                    jsonInit("PUT", { name }),
-                    "Categoría renombrada.",
-                    "No pudimos renombrar la categoría.",
-                  )
-                }
-                onDelete={(category) =>
-                  setConfirm({ kind: "category", category })
-                }
-                canDelete={canDelete}
-              />
-            )}
+        {tab === "products" ? (
+          <ProductsTab
+            products={catalog.products}
+            categories={catalog.categories}
+            locations={catalog.locations}
+            currencyCode={catalog.currencyCode}
+            onNew={() => {
+              setEditing(null);
+              setCreating(true);
+            }}
+            onEdit={(product) => {
+              setCreating(false);
+              setEditing(product);
+            }}
+            onDelete={(product) => setConfirm({ kind: "product", product })}
+            canDelete={canDelete}
+          />
+        ) : (
+          <CategoryManager
+            categories={catalog.categories}
+            onCreate={(name) =>
+              createCategory(name).then((cat) => cat !== null)
+            }
+            onRename={(id, name) =>
+              mutate(
+                `/api/catalog/category/${id}`,
+                jsonInit("PUT", { name }),
+                "Categoría renombrada.",
+                "No pudimos renombrar la categoría.",
+              )
+            }
+            onDelete={(category) => setConfirm({ kind: "category", category })}
+            canDelete={canDelete}
+          />
+        )}
         <ProductEditor
           key={`${editing?.id ?? "new"}-${editorOpen ? "open" : "closed"}`}
           open={editorOpen}
@@ -296,11 +322,32 @@ export default function CatalogPage({ canDelete = true }: { canDelete?: boolean 
 
 export function CatalogSkeleton() {
   return (
-    <SkeletonScreen label="Cargando catálogo" className="brand-page catalog-page catalog-skeleton">
-      <div className="catalog-skeleton-head"><div><Skeleton width={90} height={14} /><Skeleton width="min(430px, 80vw)" height={38} /><Skeleton width="min(520px, 85vw)" height={18} /></div><Skeleton width={44} height={44} radius={22} /></div>
-      <div className="catalog-overview">{[0, 1, 2].map((item) => <div key={item}><Skeleton width={42} height={28} /><Skeleton width={72} height={14} /></div>)}</div>
+    <SkeletonScreen
+      label="Cargando catálogo"
+      className="brand-page catalog-page catalog-skeleton"
+    >
+      <div className="catalog-skeleton-head">
+        <div>
+          <Skeleton width={90} height={14} />
+          <Skeleton width="min(430px, 80vw)" height={38} />
+          <Skeleton width="min(520px, 85vw)" height={18} />
+        </div>
+        <Skeleton width={44} height={44} radius={22} />
+      </div>
+      <div className="catalog-overview">
+        {[0, 1, 2].map((item) => (
+          <div key={item}>
+            <Skeleton width={42} height={28} />
+            <Skeleton width={72} height={14} />
+          </div>
+        ))}
+      </div>
       <Skeleton height={150} radius={20} />
-      <div className="catalog-skeleton-cards">{[0, 1, 2].map((item) => <Skeleton key={item} height={104} radius={18} />)}</div>
+      <div className="catalog-skeleton-cards">
+        {[0, 1, 2].map((item) => (
+          <Skeleton key={item} height={104} radius={18} />
+        ))}
+      </div>
     </SkeletonScreen>
   );
 }

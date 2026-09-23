@@ -93,13 +93,15 @@ export function CategoryManager({
                   >
                     Renombrar
                   </button>
-                  {canDelete && <button
-                    type="button"
-                    className="small-button danger"
-                    onClick={() => onDelete(category)}
-                  >
-                    Borrar
-                  </button>}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      className="small-button danger"
+                      onClick={() => onDelete(category)}
+                    >
+                      Borrar
+                    </button>
+                  )}
                 </>
               )}
             </li>
