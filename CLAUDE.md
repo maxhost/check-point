@@ -171,6 +171,8 @@ esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
   unico que puede tumbar `main` despues de un push «con todo verde». **Toda spec que toque UI, CSS
   GLOBAL o una pantalla de `/backoffice` lo lleva en su DoD**, y se corre antes de pushear: los
   browsers se bajan aparte (`pnpm exec playwright install chromium`). Caso en `LECCIONES.md`.
+- **Las 105 suites `.neon.integration` se auto-skipean** sin sus dos variables, y vitest no lee `.env.local`:
+  van con `tools/neon-test.sh [archivo]`. **Nunca contra `DATABASE_URL`: es `main`, o sea PROD.** Entera (~20 min) = CI.
 - **Gates: Node 24 + scripts de ROOT.** El shell del agente arranca en Node 22 (es el Node del
   harness, que se antepone en el `PATH`) y el repo pide 24: correr
   `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` (**sin argumento**: hay `.nvmrc`)

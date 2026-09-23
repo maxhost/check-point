@@ -249,6 +249,24 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
   pedir confirmacion del owner antes de borrar ramas efimeras. Alternativa sin gate: crear la
   rama efimera con `expiresAt` (ISO) para que Neon la borre sola.
+- **Las suites `.neon.integration` (105 de los 276 archivos de test) NO se corren con `pnpm test`.**
+  Se auto-skipean salvo que existan **dos** variables —`NEON_INTEGRATION_DATABASE_URL` y el
+  interlock explicito `NEON_INTEGRATION_ISOLATED=true`— y **vitest no lee `.env.local`**
+  (`apps/merchant/vitest.config.ts` no tiene dotenv), asi que tienen que estar en el shell. La
+  receta completa es `ci.yml:47-57` y esta empaquetada en **`tools/neon-test.sh [archivo…]`**:
+  valida las dos claves, **aborta si la URL de pruebas comparte host con `DATABASE_URL`**,
+  corre `db:migrate` contra la rama de CI y despues los tests.
+  **Nunca contra `DATABASE_URL`: es la rama `main`, la que sirve produccion** (verificado
+  comparando hosts: `ep-icy-block-axsac3mu`). El teardown de cada archivo **borra mundos
+  enteros**; apuntarlo a `main` es perdida de datos, no un test rojo. La rama de pruebas es
+  `ci-integration` (`br-icy-hat-axsfqc8k`), y **nace de `main` y se queda atras de las
+  migraciones**: por eso el script migra siempre (drizzle aplica solo las pendientes).
+  **Medido:** los 171 archivos unit suman **8,7 s** de computo y corren en 22 s; los
+  `.neon.integration` promedian **11,5 s cada uno** —la latencia a `us-east-2`, no CPU— o sea
+  **~20 min la tanda entera**. Por eso: local van **solo los archivos que toca la spec**
+  (los 3 de la 0091 ≈ 40 s) y **la tanda entera es trabajo de la CI**. Una corrida larga en
+  background desde el agente **no sobrevive**: se murio dos veces por teardown de sesion,
+  dejando un `ELIFECYCLE` que parece un test rojo y no lo es.
 - **Al BORRAR una ruta API (`app/api/.../route.ts`), `pnpm typecheck` puede fallar con
   `.next/types/validator.ts(...): Cannot find module '.../route.js'`** — es un tipo GENERADO
   que quedo viejo apuntando a la ruta borrada, no un error del codigo. Fix: `rm -f

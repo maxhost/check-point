@@ -8,6 +8,41 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ LAS SUITES NEON YA CORREN LOCAL (2026-09-23) — `tools/neon-test.sh`
+
+**El limite declarado desde la 0090 —«las 6 suites `.neon.integration` NUNCA CORRIERON, 583 tests
+en `skipped`»— esta levantado.** No faltaba nada del owner: faltaba la receta.
+
+| lo que se creia | lo que era, medido |
+|---|---|
+| «falta `NEON_CI_DATABASE_URL`» | el codigo lee **`NEON_INTEGRATION_DATABASE_URL`** + el interlock **`NEON_INTEGRATION_ISOLATED=true`** (`catalog-import-integration-support.ts:4-7`). `NEON_CI_*` es el nombre del **secret de GitHub**; la CI traduce (`ci.yml:40,54`) |
+| «esta en `.env.local`, deberia andar» | **vitest no lee `.env.local`** (`vitest.config.ts` sin dotenv): tienen que estar en el shell |
+| «la clave esta cargada» | la linea 5 era el **nombre pelado, sin `=` y sin valor**. Un listado de CLAVES no dice si hay VALOR |
+
+**Hecho:** `apps/merchant/.env.local` (git-ignored, `.gitignore:9`) ahora tiene
+`NEON_CI_DATABASE_URL` y `NEON_CI_DATABASE_URL_UNPOOLED` apuntando a la rama **`ci-integration`**
+(`br-icy-hat-axsfqc8k`), y nace **`tools/neon-test.sh`**, que corre la receta de `ci.yml:47-57`:
+valida las dos claves, **aborta si la URL de pruebas comparte host con `DATABASE_URL`** (comparando
+el host sin `-pooler`), migra la rama de CI y corre los tests. **Nunca imprime un valor.**
+Las migraciones pendientes **ya se aplicaron** a `ci-integration` (estaba atras de la 0042).
+
+**Resultado EJECUTADO:** `catalog-import.neon.integration.test.ts` → **7 passed / 7**, 24 s.
+
+**NUNCA contra `main`.** Verificado comparando hosts: el `DATABASE_URL` de `.env.local` **es la rama
+`main`** (`ep-icy-block-axsac3mu`), la que sirve `checkpass.club`. El teardown de cada archivo borra
+mundos enteros. Y el flake de rama compartida **empeora** en `main`, que acumula mas filas: el
+arreglo real es el fix de una linea del `seedConsumer` que espera decision en `PARQUEADO.md`, o una
+rama efimera por corrida (ofrecida al owner, **sin respuesta todavia**).
+
+**Presupuesto, medido:** unit = 171 archivos, **8,7 s** de computo, 22 s de reloj.
+`.neon.integration` = 105 archivos, **11,5 s promedio cada uno** (latencia a `us-east-2`, no CPU) →
+**~20 min la tanda entera**. **Regla: local van solo los archivos que toca la spec; la tanda entera
+es de la CI.** Y una corrida larga en background **no sobrevive al teardown de sesion**: se murio
+dos veces dejando un `ELIFECYCLE` que **parece un test rojo y no lo es** (no hay resumen de vitest).
+
+**Credencial:** la connection string de `ci-integration` quedo en el transcript de esta sesion. El
+owner dijo (2026-09-23) que **rota todo al terminar el desarrollo**.
+
 ## ⇥ ADR 0084 + SPEC 0091 REESCRITOS Y SIMPLIFICADOS (2026-09-23) — LISTOS PARA IMPLEMENTAR
 
 **Decision del owner (2026-09-23), textual:** *«Cargar una foto o fotos o un pdf, extraer, crear,

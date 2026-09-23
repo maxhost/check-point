@@ -1606,3 +1606,45 @@ Y el meta-hallazgo, que es el que importa: **esto no lo destapo un test nuevo, l
 `git push` en dos dias.** Las 6 suites `.neon.integration` quedan `skipped` local —583 tests— y
 **un `skipped` se lee igual que un `passed`**. El lag entre «el commit que rompe» y «el push que lo
 muestra» es exactamente la ventana en la que el diagnostico se vuelve caro.
+
+## 2026-09-23 — Las 105 suites Neon no corrian por DOS variables y un dotenv que no existe, y la salida facil era borrar prod
+
+**El sintoma**, arrastrado desde la 0090: «las suites `.neon.integration` NUNCA CORRIERON, 583
+tests en `skipped`, y un `skipped` se lee igual que un `passed`». Se venia declarando como limite
+en cada spec en vez de arreglarse, y el diagnostico escrito era «falta la variable».
+
+**Lo que era en realidad, medido en tres pasos:**
+
+1. El nombre estaba mal. Las suites leen **`NEON_INTEGRATION_DATABASE_URL`** y ademas exigen el
+   interlock explicito **`NEON_INTEGRATION_ISOLATED=true`** (`catalog-import-integration-support.ts:4-7`).
+   Yo le pedi al owner una `NEON_CI_DATABASE_URL`, que es como se llama **el secret de GitHub**, no
+   la variable del codigo: la CI traduce una en otra (`ci.yml:40,54`). **Pedir por el nombre
+   equivocado es indistinguible de que falte.**
+2. **`vitest` no lee `.env.local`** (`apps/merchant/vitest.config.ts` no tiene dotenv). Aunque el
+   nombre hubiera coincidido, el valor no habria llegado igual. Nadie lo habia notado porque el
+   modo de fallo es un skip silencioso.
+3. La clave existia en `.env.local` **como nombre pelado, sin `=` y sin valor** (linea 5). Mi
+   primer barrido —`grep -oE '^[A-Za-z0-9_]+'`— la listo como si estuviera cargada: **un listado de
+   CLAVES no dice nada sobre si hay VALOR**, y ahi arranco media hora de diagnostico equivocado.
+
+**El error que casi cometo el owner, y que es el que importa:** propuso «estamos en desarrollo,
+corramos todo sobre `main`». Verificado comparando hosts, el `DATABASE_URL` de su `.env.local` **es
+la rama `main`** (`ep-icy-block-axsac3mu`), que es la que sirve `checkpass.club`. El teardown de
+cada archivo `.neon.integration` **borra mundos enteros**: apuntarlas ahi no es un test rojo, es
+perdida de datos de produccion. Y el argumento que lo motivaba —«la rama compartida tiene
+flakes»— va al reves: el flake parqueado es una **colision de cumpleaños** del `seedConsumer`
+(`Math.random()` sobre una columna UNIQUE) **contra una rama que acumula filas**, y `main` acumula
+mas que `ci-integration`.
+
+**El fix estructural:** `tools/neon-test.sh`, que empaqueta la receta entera de `ci.yml:47-57` —las
+dos variables, `db:migrate` contra la rama de CI (que nace de `main` y **se queda atras** de las
+migraciones) y los tests—, **nunca imprime un valor** (solo la clave y su largo) y **aborta si la URL
+de pruebas comparte host con `DATABASE_URL`**, comparando el host **sin `-pooler`** para que pegar la
+pooled de prod tampoco pase. Resultado ejecutado: `catalog-import.neon.integration` **7/7 en verde**.
+
+**Y la leccion de presupuesto, medida:** los 171 archivos unit suman **8,7 s** de computo; los 105
+`.neon.integration` promedian **11,5 s cada uno** —latencia a `us-east-2`, no CPU— o sea **~20 min**
+la tanda entera. Local van **solo los archivos que toca la spec**; la tanda entera es de la CI. Y
+**una corrida larga en background desde el agente no sobrevive**: se murio dos veces por teardown de
+sesion, y las dos veces dejo un `ELIFECYCLE` al final del log **que parece un test rojo y no lo es** —
+la unica forma de distinguirlo fue que no habia ni una linea de resumen de vitest.
