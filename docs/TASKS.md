@@ -23,20 +23,26 @@ pusheado**, y pushear dispara deploy de produccion.
 
 Las dos specs tienen `estado: implementada` con `PASS` de un revisor independiente (ADR 0071).
 
-### LO QUE FALTA ANTES DE PUSHEAR
+### `pnpm test:e2e` — CORRIDO Y VERDE (2026-09-23)
 
-1. **`pnpm test:e2e` NO SE CORRIO NUNCA.** Las dos specs tocan `.tsx`, asi que el gate
-   **aplica**. Esta bloqueado porque hay un `next dev` de merchant del owner en el **puerto
-   3000** y `playwright.config.ts` espera merchant en el **3001**: Playwright intenta levantar
-   otro y el lock de `next dev` lo rechaza. **No se mata ese proceso.** Con el 3000 libre,
-   `pnpm exec playwright install chromium && pnpm test:e2e`.
-   **Corrige el memory note «el puerto 3000 ocupado NO bloquea el e2e»: en este estado SI
-   bloquea.** Acotacion verificada dos veces: `tests/e2e/` tiene `health.spec.ts` (tres
-   `GET /api/health`) y `loyalty-real.spec.ts` (se saltea sin `E2E_*`), y **ninguno visita
-   `/backoffice/catalog`**, asi que el riesgo residual para estas specs es ~cero.
+El owner libero el puerto 3000 y el gate corrio: **exit 0, 3 passed / 1 skipped** en 14,1 s
+(`health.spec.ts` × 3 contratos de `/api/health`; `loyalty-real.spec.ts` skipeado por falta de
+`E2E_*`). **Era el ultimo gate pendiente de las specs 0091 y 0092.** Los tres `next-env.d.ts`
+que ensucia se revirtieron.
 
-### Y DESPUES DE PUSHEAR, EN ESTE ORDEN — NO ES OPCIONAL
+**La condicion exacta del bloqueo, para no volver a perder el turno:** el lock de `next dev` es
+**por app, no por puerto**. `playwright.config.ts` levanta consumer en 3000, merchant en 3001 y
+platform en 3002 con `reuseExistingServer`. Si el 3000 lo ocupa el dev server de **consumer**,
+Playwright lo reusa y todo corre; si lo ocupa el de **merchant** —que es la app que Playwright
+necesita levantar en el 3001— `next dev` se niega con *«Another next dev server is already
+running»* y el gate muere sin correr un solo test. Las dos versiones que esta nota tuvo antes
+(«bloquea» / «no bloquea») eran observaciones correctas de situaciones distintas.
 
+**Los seis gates de las dos specs estan verdes.** Queda pushear.
+
+### AL PUSHEAR, EN ESTE ORDEN — NO ES OPCIONAL
+
+1. **Pushear** (dispara deploy de produccion).
 2. **Esperar que el deploy de Vercel que sirve `checkpass.club` este `READY` con ese sha.**
 3. **RECIEN AHI aplicar la migracion `0043_sin_notified_at.sql`.** El codigo que corre HOY en
    produccion **escribe** `notified_at`: aplicarla antes del deploy le rompe la importacion al
