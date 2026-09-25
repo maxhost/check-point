@@ -8,21 +8,29 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): 0093 PUSHEADA (`6ced544`) CON LOS 6 GATES VERDES — REVISOR EN CURSO
+## ⇥ ESTADO (2026-09-25): 0093 IMPLEMENTADA Y PUSHEADA (`ed17fcc`) — VERCEL NO DESPLEGO
 
-**El repo se mudo a LOCAL: `~/Documents/claude-workspace/check-point`.** El NAS
-(`/Volumes/NAS/...`) se desmontaba y cortaba cada operacion larga (`ETIMEDOUT uv_cwd`): no se
-trabaja mas desde ahi. Toolchain instalado: nvm + Node 24.20.0 + pnpm 11.4.0 + Chromium.
+**El repo se mudo a LOCAL: `~/Documents/claude-workspace/check-point`.** El NAS se desmontaba
+(`ETIMEDOUT uv_cwd`). **La sesion que arranco en el NAS tiene el Stop hook corriendo sobre la copia
+vieja del NAS (sin `node_modules`)**: falla con `turbo: command not found` sin que haya nada roto.
+Arreglo: abrir Claude Code desde el repo local.
 
-**`origin/main` = `6ced544`** (spec `86f95e5` + codigo `b90c2c0` + doc `6ced544`), pusheado a pedido
-del owner. **Los 6 gates, sobre `6ced544`, Node 24:** `typecheck` 3/3 (0 cached), `lint` limpio,
-`test` 172 archivos / **1776 passed**, 0 failed (595 skipped = Neon), `format:check` limpio,
-`build` 3/3, `test:e2e` **3 passed / 1 skipped**. El test nuevo con vitest real: **26/26**.
+**`origin/main` = `ed17fcc`** (verificado con `git ls-remote`). Spec 0093 **`implementada`**: 6
+gates verdes sobre `6ced544` (test 1776 passed, e2e 3/1 skipped) y re-corridos typecheck/lint/test/
+format sobre `ed17fcc`; PASS del revisor independiente; su mutacion MC (copy que promete un
+«correo») sobrevivia y se cerro en `ed17fcc` (rojo medido: `expected '...correo...' not to contain
+'correo'`, revertida con diff vacio, shasum `b1089a7c…`).
 
-**Pendiente:** el revisor independiente de la 0093 (la spec sigue `cerrada`, NO `implementada`
-hasta su PASS); verificar que el deploy de Vercel de `checkpass.club` este `READY` con `6ced544`
-(el MCP de Vercel pide autenticacion; la API de GitHub no lista deployments); QA del owner del
-modal.
+**BLOQUEO ABIERTO: Vercel no desplego.** El owner ve el ultimo deploy de hace ~19 h, aunque GitHub
+tiene `6ced544` y `ed17fcc`. En el repo no hay `ignoreCommand` (`apps/merchant/vercel.json`). Causa
+sin medir: falta ver el dashboard/MCP de Vercel (se pidio autenticar el MCP).
+
+**Hallazgo del revisor, a decidir (previo a la 0093):** si el `DELETE` de cancelar falla, el poll
+queda muerto (`pollGenerationRef` ya incrementado, `use-catalog-import.ts:245`) hasta cerrar y
+reabrir. No encierra al merchant: el error habilita el cierre.
+
+**Lo que sigue:** diagnosticar el deploy → deploy `READY` con `ed17fcc` → QA del owner del modal →
+aplicar `0043_sin_notified_at.sql` en prod (despues del deploy, nunca antes).
 
 **Tambien hecho hoy:** email de `b4@test.com` (merchant) marcado confirmado en prod por MCP de Neon,
 a pedido del owner (`email_verified = true`, releido). El MCP de Neon esta conectado al proyecto
