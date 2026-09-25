@@ -8,22 +8,21 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): SPEC 0093 COMMITEADA EN `b90c2c0`, SIN GATES Y SIN PUSHEAR
+## ⇥ ESTADO (2026-09-25): 0093 PUSHEADA (`6ced544`) CON LOS 6 GATES VERDES — REVISOR EN CURSO
 
-**HEAD `b90c2c0`** (codigo de la 0093, incluido «Cancelar» oculto durante la subida). `origin/main`
-= **`d746a76`**: 0091/0092 YA ESTAN PUSHEADAS; la 0093 (`86f95e5` spec + `b90c2c0` codigo) **no**.
-Estado de la 0093: `cerrada`, NO implementada — sin gates y sin revisor.
+**El repo se mudo a LOCAL: `~/Documents/claude-workspace/check-point`.** El NAS
+(`/Volumes/NAS/...`) se desmontaba y cortaba cada operacion larga (`ETIMEDOUT uv_cwd`): no se
+trabaja mas desde ahi. Toolchain instalado: nvm + Node 24.20.0 + pnpm 11.4.0 + Chromium.
 
-**El push se intento a pedido del owner y lo bloqueo el clasificador de permisos** (push a prod sin
-gates). No se reintento: lo corre el owner o se pushea despues de los gates.
+**`origin/main` = `6ced544`** (spec `86f95e5` + codigo `b90c2c0` + doc `6ced544`), pusheado a pedido
+del owner. **Los 6 gates, sobre `6ced544`, Node 24:** `typecheck` 3/3 (0 cached), `lint` limpio,
+`test` 172 archivos / **1776 passed**, 0 failed (595 skipped = Neon), `format:check` limpio,
+`build` 3/3, `test:e2e` **3 passed / 1 skipped**. El test nuevo con vitest real: **26/26**.
 
-**El bloqueo de gates:** la Mac no tenia toolchain. `~/.nvm` ya esta instalado; **falta** Node
-24.20.0, pnpm 11.4.0, `pnpm install` y `playwright install chromium` (comando en el chat, lo corre
-el owner). El Stop hook falla con `turbo/eslint/vitest: command not found` por eso, no por el
-codigo. El test del modulo puro corrio con el Node de Cursor + shim: 26/26, M1-M3 en rojo.
-
-**Lo que sigue, en orden:** los 6 gates → revisor independiente → push → deploy `READY` con ese
-sha → QA del owner del modal.
+**Pendiente:** el revisor independiente de la 0093 (la spec sigue `cerrada`, NO `implementada`
+hasta su PASS); verificar que el deploy de Vercel de `checkpass.club` este `READY` con `6ced544`
+(el MCP de Vercel pide autenticacion; la API de GitHub no lista deployments); QA del owner del
+modal.
 
 **Tambien hecho hoy:** email de `b4@test.com` (merchant) marcado confirmado en prod por MCP de Neon,
 a pedido del owner (`email_verified = true`, releido). El MCP de Neon esta conectado al proyecto
