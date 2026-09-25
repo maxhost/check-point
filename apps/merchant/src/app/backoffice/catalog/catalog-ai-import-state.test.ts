@@ -75,6 +75,7 @@ describe("processingMessage", () => {
     for (const message of PROCESSING_MESSAGES) {
       expect(message.toLowerCase()).not.toContain("email");
       expect(message.toLowerCase()).not.toContain("avis");
+      expect(message.toLowerCase()).not.toContain("correo");
     }
   });
 });

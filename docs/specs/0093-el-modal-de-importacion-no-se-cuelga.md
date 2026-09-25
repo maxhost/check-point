@@ -1,7 +1,7 @@
 ---
 spec: 0093
 fecha: 2026-09-24
-estado: cerrada
+estado: implementada
 resumen: Tres arreglos del modal de importacion de catalogo pedidos por el owner en su QA. (1) Fuera el copy «te avisamos por email» (ADR 0085), reemplazado por un mensaje ROTATIVO mientras se procesa. (2) Mientras se sube o se analiza, el modal NO se cierra (ni X, ni scrim, ni Escape, ni boton «Cerrar»); «Cancelar importacion» se queda. (3) Un import `accepted` nunca se repinta al abrir (ni tras reload): el modal vuelve a la eleccion de archivos.
 disjunta: si
 archivos: apps/merchant/src/app/backoffice/catalog/{catalog-ai-import.tsx,use-catalog-import.ts,catalog-ai-import-state.ts,catalog-ai-import-state.test.ts}, apps/merchant/src/app/backoffice/staff/staff-form-modal.tsx
