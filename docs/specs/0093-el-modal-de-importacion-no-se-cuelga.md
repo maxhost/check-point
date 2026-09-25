@@ -2,7 +2,7 @@
 spec: 0093
 fecha: 2026-09-24
 estado: cerrada
-resumen: Tres arreglos del modal de importacion de catalogo pedidos por el owner en su QA. (1) Fuera el copy «te avisamos por email» (ADR 0085), reemplazado por un mensaje ROTATIVO mientras se procesa. (2) Mientras se sube o se analiza, el modal NO se cierra (ni X, ni scrim, ni Escape, ni boton «Cerrar»); «Cancelar importacion» se queda. (3) Despues de ver el resultado, reabrir el modal vuelve a la eleccion de archivos en vez de quedar trabado en el resumen.
+resumen: Tres arreglos del modal de importacion de catalogo pedidos por el owner en su QA. (1) Fuera el copy «te avisamos por email» (ADR 0085), reemplazado por un mensaje ROTATIVO mientras se procesa. (2) Mientras se sube o se analiza, el modal NO se cierra (ni X, ni scrim, ni Escape, ni boton «Cerrar»); «Cancelar importacion» se queda. (3) Un import `accepted` nunca se repinta al abrir (ni tras reload): el modal vuelve a la eleccion de archivos.
 disjunta: si
 archivos: apps/merchant/src/app/backoffice/catalog/{catalog-ai-import.tsx,use-catalog-import.ts,catalog-ai-import-state.ts,catalog-ai-import-state.test.ts}, apps/merchant/src/app/backoffice/staff/staff-form-modal.tsx
 ---
@@ -56,17 +56,26 @@ oraculo sin DOM (vitest corre en `node`, `vitest.config.ts:10`):
    **`processingMessage(tick)`** → `PROCESSING_MESSAGES[tick % length]`. El componente avanza
    `tick` cada **3 s** con un `setInterval` que solo corre mientras `isProcessing`. El texto va en
    un elemento con `aria-live="polite"`. Ningun texto menciona email ni aviso.
-3. **`importToShow(found, shownResultId)`** → devuelve `null` si `found` es `accepted` y su `id`
-   es `shownResultId`; si no, devuelve `found`. El hook guarda en un `ref` el id del ultimo import
-   `accepted` cuyo resultado **se pinto** (en `land()`), y al abrir filtra lo que devuelve el `GET`
-   por esta funcion. Consecuencia: en la misma carga de pagina, cerrar el resumen y reabrir muestra
-   la eleccion de archivos. `CatalogAiImport` queda montado aunque este cerrado
-   (`StaffFormModal` devuelve `null`, el componente padre no se desmonta), asi que el `ref` vive.
+3. **`importToShow(found)`** → devuelve `null` si `found` es `accepted`; si no, devuelve `found`.
+   El hook filtra por esta funcion lo que devuelve el `GET` **al abrir**. Consecuencia: un import
+   `accepted` **nunca** se vuelve a pintar al abrir el modal —ni en la misma carga de pagina ni
+   despues de un reload—: se ve la eleccion de archivos. El resumen se ve **solo** cuando el poll
+   presencia la transicion a `accepted` con el modal abierto (`land()` desde el poll).
+   **Enmienda del owner (2026-09-24), textual:** *«al recargar el modal sigue alli, el ADR 0084 fue
+   mal interpretado. tenemos que regenerar el modal al salir de el luego de una importacion
+   exitosa»*. El `GET` del servidor no cambia (sigue devolviendo el ultimo import, que la pantalla
+   usa para `failed`/`cancelled`/`expired` y para retomar uno en curso).
 
 **El modal:** `StaffFormModal` gana `dismissible?: boolean` (default `true`). Con `false`: no se
 renderiza la X, el scrim no cierra y Escape no cierra. `CatalogAiImport` pasa
 `dismissible={!processing}`. La rama de espera pierde el boton «Cerrar y continuar después» y
 conserva **«Cancelar importación»**, que sigue funcionando igual (`DELETE`, y cierra).
+
+**«Cancelar importación» durante la subida (owner, 2026-09-25):** mientras `busy` (se estan subiendo
+los archivos) el boton **no se renderiza** —antes estaba deshabilitado, y cancelar ahi competiria con
+el `analyze()` en vuelo—. Aparece en `queued`/`analyzing`, que es el tramo largo y el que cuesta
+plata. Textual: *«si cancelar importacion esta desabilitado y habilitarlo genera un problema,
+entonces lo quitemos»*.
 
 **Error durante el procesamiento:** si el poll falla, `error` se pinta y el estado sigue siendo
 `queued/analyzing`; para que el merchant no quede encerrado, **con `error` presente el modal
@@ -91,8 +100,8 @@ vuelve a ser cerrable** (`dismissible={!processing || error !== null}`). Un `fai
 - [ ] `rg -n "Cerrar y continuar" apps/merchant/src` → vacio.
 - [ ] `catalog-ai-import-state.test.ts` en verde, cubriendo: los 7 estados × `busy` de
       `isProcessing`; la rotacion (`tick` 0, 1, `length`, `length+1`) y que ningun texto contenga
-      `email`; `importToShow` con `accepted` visto → `null`, `accepted` de OTRO id → el import,
-      `analyzing` con el mismo id → el import, `null` → `null`.
+      `email`; `importToShow` con `accepted` → `null`, y cada uno de los otros 6 estados → el mismo
+      import, `null` → `null`.
 - [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`,
       `build`, **y `test:e2e`** (toca un componente de `/backoffice`).
 - [ ] `rg -n MUTATION apps tools` → vacio.
@@ -102,7 +111,7 @@ vuelve a ser cerrable** (`dismissible={!processing || error !== null}`). Un `fai
 | # | Mutacion (archivo:funcion) | Oraculo que tiene que ponerse ROJO |
 |---|---|---|
 | M1 | `catalog-ai-import-state.ts:isProcessing` — olvidar el caso `pending_upload && busy` | el caso `pending_upload`/`busy:true` del test |
-| M2 | `catalog-ai-import-state.ts:importToShow` — filtrar por id sin mirar el `status` (esconde un `analyzing` del mismo id) | el caso `analyzing` con el mismo id |
+| M2 | `catalog-ai-import-state.ts:importToShow` — esconder tambien los terminales (`status !== "queued" && status !== "analyzing"` → `null`), lo que se come el `failed` y su mensaje | el caso `failed` → el import |
 | M3 | `catalog-ai-import-state.ts:processingMessage` — `tick % (length - 1)` | el caso `tick = length - 1` / `length` |
 
 **Protocolo:** el de la skill `protocolo-de-verificacion`. **Condicion de corte:** dos vueltas
@@ -114,8 +123,9 @@ seguidas de «el fix abrio la siguiente» → se corta y va al owner.
   en `land()`, que el intervalo corra): no hay tests de componente en el repo y el e2e no visita
   `/backoffice/catalog`. Lo cubre el **QA del owner**: subir un PDF, intentar cerrar con X/Escape/
   scrim, ver rotar el mensaje, terminar, «Ver mi catálogo», reabrir y ver la eleccion de archivos.
-- **Tras un reload** el resumen del ultimo import se muestra **una vez mas** (el `ref` no
-  sobrevive la recarga). Es lo que el ADR 0084 §6 pidio a proposito; cerrarlo lleva al picker.
+- **Un import que termina mientras la pagina no esta abierta** (el merchant recargo o se fue a
+  mitad del analisis): al volver ve la eleccion de archivos, no el resumen. El catalogo ya esta
+  escrito y se ve en el listado. Es la consecuencia directa de la enmienda del owner.
 
 ## Handoff
 

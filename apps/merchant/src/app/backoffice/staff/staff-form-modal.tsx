@@ -3,12 +3,18 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Xmark } from "iconoir-react";
 
+/**
+ * `dismissible` (spec 0093, default `true`): con `false` el modal no se cierra por la X (no se
+ * renderiza), ni por el scrim, ni por Escape. Lo usa la importacion de catalogo mientras procesa;
+ * el cierre queda en manos de los botones del contenido.
+ */
 export function StaffFormModal({
   open,
   eyebrow,
   title,
   description,
   onClose,
+  dismissible = true,
   children,
 }: {
   open: boolean;
@@ -16,15 +22,21 @@ export function StaffFormModal({
   title: string;
   description?: string;
   onClose: () => void;
+  dismissible?: boolean;
   children: ReactNode;
 }) {
   const titleId = useId();
   const modalRef = useRef<HTMLElement>(null);
   const closeRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
 
   useEffect(() => {
     closeRef.current = onClose;
   }, [onClose]);
+
+  useEffect(() => {
+    dismissibleRef.current = dismissible;
+  }, [dismissible]);
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +49,7 @@ export function StaffFormModal({
         ?.focus(),
     );
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
+      if (event.key === "Escape" && dismissibleRef.current) closeRef.current();
     };
     document.addEventListener("keydown", escape);
     return () => {
@@ -68,11 +80,15 @@ export function StaffFormModal({
   if (!open) return null;
   return (
     <div className="staff-modal-layer">
-      <button
-        aria-label="Cerrar formulario"
-        className="staff-modal-scrim"
-        onClick={onClose}
-      />
+      {dismissible ? (
+        <button
+          aria-label="Cerrar formulario"
+          className="staff-modal-scrim"
+          onClick={onClose}
+        />
+      ) : (
+        <div aria-hidden="true" className="staff-modal-scrim" />
+      )}
       <section
         ref={modalRef}
         className="staff-modal"
@@ -87,14 +103,16 @@ export function StaffFormModal({
             <h2 id={titleId}>{title}</h2>
             {description && <p>{description}</p>}
           </div>
-          <button
-            aria-label="Cerrar"
-            className="staff-modal-close"
-            onClick={onClose}
-            type="button"
-          >
-            <Xmark aria-hidden="true" />
-          </button>
+          {dismissible && (
+            <button
+              aria-label="Cerrar"
+              className="staff-modal-close"
+              onClick={onClose}
+              type="button"
+            >
+              <Xmark aria-hidden="true" />
+            </button>
+          )}
         </header>
         {children}
       </section>

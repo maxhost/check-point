@@ -1,10 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Page, Spark } from "iconoir-react";
 import { StaffFormModal } from "../staff/staff-form-modal";
 import { CatalogAiImportPicker } from "./catalog-ai-import-picker";
 import { CatalogAiImportResult } from "./catalog-ai-import-result";
 import { statusCopy } from "./catalog-ai-import-api";
+import {
+  isProcessing,
+  processingMessage,
+  PROCESSING_MESSAGE_INTERVAL_MS,
+} from "./catalog-ai-import-state";
 import { useCatalogImport } from "./use-catalog-import";
 
 /**
@@ -15,9 +21,12 @@ import { useCatalogImport } from "./use-catalog-import";
  * aceptar— porque cuando hay algo para mostrar el catalogo YA esta escrito. Lo que quedo
  * dudoso se corrige en el catalogo, que es donde se corrige cualquier producto.
  *
- * El analisis es asincrono **a favor**: se puede cerrar el modal y volver. `GET
- * /api/catalog/imports` devuelve el ULTIMO import, terminal incluido, asi que un reload
- * despues de importar encuentra el resumen en vez de una pantalla en blanco.
+ * Mientras se sube o se analiza el modal NO se cierra (spec 0093): solo queda «Cancelar
+ * importación», y un mensaje rotativo muestra que se esta trabajando. Si el poll falla, el
+ * error vuelve a habilitar el cierre para que nadie quede encerrado. `GET
+ * /api/catalog/imports` devuelve el ULTIMO import, terminal incluido; al abrir, un `accepted`
+ * se descarta y vuelve la eleccion de archivos (enmienda del owner a la 0093). El resumen se
+ * ve solo cuando el poll presencia el final con el modal abierto.
  */
 export function CatalogAiImport({
   open,
@@ -33,6 +42,7 @@ export function CatalogAiImport({
     files,
     loading,
     busy,
+    cancelling,
     error,
     result,
     choose,
@@ -41,8 +51,19 @@ export function CatalogAiImport({
     restart,
   } = useCatalogImport({ open, onClose, onAccepted });
 
-  const waiting =
-    activeImport?.status === "queued" || activeImport?.status === "analyzing";
+  const processing = isProcessing({ status: activeImport?.status, busy });
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!open || !processing) return;
+    setTick(0);
+    const timer = window.setInterval(
+      () => setTick((current) => current + 1),
+      PROCESSING_MESSAGE_INTERVAL_MS,
+    );
+    return () => window.clearInterval(timer);
+  }, [open, processing]);
+
   const canStartAgain =
     activeImport?.status === "failed" ||
     activeImport?.status === "cancelled" ||
@@ -55,6 +76,7 @@ export function CatalogAiImport({
       title="Creá el catálogo desde un archivo"
       description="Subí fotos o un PDF de tu menú. Lo leemos y cargamos el catálogo por vos."
       onClose={onClose}
+      dismissible={!processing || error !== null}
     >
       <div className="catalog-ai-modal">
         <p className="catalog-demo-note">
@@ -95,34 +117,41 @@ export function CatalogAiImport({
         ) : activeImport ? (
           <>
             <div className="catalog-ai-result-head">
-              {waiting ? (
+              {processing ? (
                 <Spark aria-hidden="true" />
               ) : (
                 <Page aria-hidden="true" />
               )}
               <div>
-                <strong>{statusCopy(activeImport.status)}</strong>
-                <p>
-                  {waiting
-                    ? "Podés cerrar esta pantalla y volver más tarde: te avisamos por email cuando esté."
-                    : (activeImport.error?.message ??
-                      "Los archivos elegidos ya no están en este dispositivo.")}
-                </p>
+                <strong>
+                  {processing
+                    ? "Procesando tu menú"
+                    : statusCopy(activeImport.status)}
+                </strong>
+                {processing ? (
+                  <p aria-live="polite">{processingMessage(tick)}</p>
+                ) : (
+                  <p>
+                    {activeImport.error?.message ??
+                      "Los archivos elegidos ya no están en este dispositivo."}
+                  </p>
+                )}
               </div>
             </div>
-            <div className="catalog-editor-actions">
-              <button
-                className="button alt"
-                type="button"
-                disabled={busy}
-                onClick={() => void cancel()}
-              >
-                {busy ? "Cancelando…" : "Cancelar importación"}
-              </button>
-              <button className="button" type="button" onClick={onClose}>
-                Cerrar y continuar después
-              </button>
-            </div>
+            {/* Mientras se suben los archivos no se ofrece: cancelar ahi competiria con el
+                `analyze()` en vuelo. Aparece cuando el analisis ya esta en el proveedor. */}
+            {!busy && (
+              <div className="catalog-editor-actions">
+                <button
+                  className="button alt"
+                  type="button"
+                  disabled={cancelling}
+                  onClick={() => void cancel()}
+                >
+                  {cancelling ? "Cancelando…" : "Cancelar importación"}
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <CatalogAiImportPicker

@@ -13,6 +13,7 @@ import {
   type ImportResult,
   type Upload,
 } from "./catalog-ai-import-api";
+import { importToShow } from "./catalog-ai-import-state";
 
 /**
  * TODA la conversacion con `/api/catalog/imports/*` (spec 0091 / ADR 0084), para que el
@@ -35,6 +36,11 @@ export function useCatalogImport({
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
+  /**
+   * El `DELETE` en curso, aparte de `busy` (spec 0093): `busy` es la subida, que cuenta como
+   * «procesando»; cancelar no lo es y no tiene que cambiar el titulo ni trabar el cierre.
+   */
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const pollGenerationRef = useRef(0);
@@ -68,7 +74,8 @@ export function useCatalogImport({
       )
       .then(({ import: found }) => {
         debug("last-import:response", importSummary(found));
-        if (current) land(found);
+        // Un `accepted` no se repinta al abrir (spec 0093): vuelve el picker.
+        if (current) land(importToShow(found));
       })
       .catch((reason: unknown) => {
         debugError("last-import:error", reason);
@@ -236,7 +243,7 @@ export function useCatalogImport({
       return;
     }
     pollGenerationRef.current += 1;
-    setBusy(true);
+    setCancelling(true);
     setError(null);
     try {
       debug("cancel:start", { importId: activeImport.id });
@@ -257,7 +264,7 @@ export function useCatalogImport({
           : "No pudimos cancelar la importación.",
       );
     } finally {
-      setBusy(false);
+      setCancelling(false);
     }
   }
 
@@ -266,6 +273,7 @@ export function useCatalogImport({
     files,
     loading,
     busy,
+    cancelling,
     error,
     result,
     choose,
