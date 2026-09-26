@@ -8,14 +8,22 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): 0093 Y 0094 IMPLEMENTADAS Y PUSHEADAS (`b068434`)
+## ⇥ ESTADO (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`e021739`)
+
+**0095 (`e021739`):** «Importar con IA» + filtros de categoria/local con `SelectField`; 6 gates
+verdes y PASS del revisor. Falta QA del owner. **Pregunta abierta al owner:** el copy bajo el boton
+dice «para que solo revises y completes», del flujo viejo con revision; se propuso «La IA crea las
+categorías, productos y precios por vos». **Deuda declarada:** el bloque flex de la primera
+`.catalog-toolbar` (`globals.css`) es codigo muerto (la segunda, grid, lo pisa).
+
+### Antes (0093 y 0094)
 
 **El repo se mudo a LOCAL: `~/Documents/claude-workspace/check-point`.** El NAS se desmontaba
 (`ETIMEDOUT uv_cwd`). La sesion que arranco en el NAS tiene el Stop hook corriendo sobre la copia
 vieja del NAS (sin `node_modules`): falla con `turbo: command not found` sin que haya nada roto.
 Arreglo: abrir Claude Code desde el repo local.
 
-**`origin/main` = `b068434`.** QA del owner de la 0093 en prod: **cancelar funciono, reabrir y
+**`origin/main` era `b068434` antes de la 0095.** QA del owner de la 0093 en prod: **cancelar funciono, reabrir y
 reanalizar un PDF funciono, y no se duplicaron categorias ni productos** (ya existian). La 0094
 (icono que late, mensaje con fundido, barra indeterminada, Cancelar a ancho completo) tiene 6 gates
 verdes (test 1776 passed, e2e 3/1 skipped) y PASS del revisor; **falta el QA visual del owner**,
