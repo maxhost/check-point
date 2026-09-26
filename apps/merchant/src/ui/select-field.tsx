@@ -28,6 +28,9 @@ export type SelectFieldProps = Omit<
   errorMessage?: string;
   placeholder?: string;
   className?: string;
+  /** El label sigue nombrando al control para lectores de pantalla, pero no ocupa lugar
+   * (p. ej. un filtro de toolbar). Spec 0095. */
+  hideLabel?: boolean;
 };
 
 export function SelectField({
@@ -37,6 +40,7 @@ export function SelectField({
   errorMessage,
   placeholder = "Seleccioná una opción",
   className,
+  hideLabel = false,
   ...props
 }: SelectFieldProps) {
   return (
@@ -46,7 +50,12 @@ export function SelectField({
       isInvalid={props.isInvalid ?? Boolean(errorMessage)}
       className={cx("grid gap-1.5", className)}
     >
-      <Label className="cp-field-label text-base font-bold leading-5 text-content">
+      <Label
+        className={cx(
+          "cp-field-label text-base font-bold leading-5 text-content",
+          hideLabel && "sr-only",
+        )}
+      >
         {label}
       </Label>
       <Button

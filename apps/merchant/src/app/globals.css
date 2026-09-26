@@ -3977,8 +3977,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: #176548;
   border-bottom-color: #176548;
 }
-.catalog-search,
-.catalog-filter {
+.catalog-search {
   min-height: 44px;
   padding: 10px 12px;
   border-radius: 10px;
@@ -4074,8 +4073,10 @@ input.cp-number-input::-webkit-outer-spin-button {
 .catalog-toolbar .catalog-search {
   flex: 1 1 160px;
 }
-.catalog-toolbar .catalog-filter {
-  flex: 1 1 140px;
+/* Los filtros del listado son `SelectField` del sistema de diseño (spec 0095). El ancho lo
+   decide el `grid-template-columns` de la segunda `.catalog-toolbar`; aca solo se deja truncar. */
+.catalog-toolbar .catalog-toolbar-select {
+  min-width: 0;
 }
 .catalog-toolbar .button {
   width: auto;
@@ -4301,15 +4302,6 @@ input.cp-number-input::-webkit-outer-spin-button {
   outline: 0;
   color: var(--color-content);
   background: transparent;
-}
-.catalog-filter {
-  min-width: 0;
-  min-height: 46px;
-  padding: 9px 34px 9px 12px;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 12px;
-  color: var(--color-content);
-  background: var(--color-surface);
 }
 .staff-modal:has(.catalog-editor) {
   overflow-x: hidden;

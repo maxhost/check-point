@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CatalogList } from "./catalog-list";
 import { Search } from "iconoir-react";
+import { SelectField } from "../../../ui";
 import type { Category, Location, Product } from "./types";
 
 type Props = {
@@ -85,33 +86,41 @@ export function ProductsTab({
             onChange={(event) => setSearch(event.target.value)}
           />
         </label>
-        <select
-          className="catalog-filter"
-          value={categoryId}
-          aria-label="Filtrar por categoría"
-          onChange={(event) => setCategoryId(event.target.value)}
-        >
-          <option value="">Todas las categorías</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
+        {/* «Todas» usa el id `all`: react-aria no admite bien una `Key` vacia, y el estado
+            sigue guardando `""` para «sin filtro» (spec 0095). */}
+        <SelectField
+          hideLabel
+          className="catalog-toolbar-select"
+          label="Filtrar por categoría"
+          selectedKey={categoryId || "all"}
+          onSelectionChange={(key) =>
+            setCategoryId(key == null || key === "all" ? "" : String(key))
+          }
+          options={[
+            { id: "all", label: "Todas las categorías" },
+            ...categories.map((category) => ({
+              id: category.id,
+              label: category.name,
+            })),
+          ]}
+        />
         {locations.length > 1 && (
-          <select
-            className="catalog-filter"
-            value={locationId}
-            aria-label="Filtrar por local"
-            onChange={(event) => setLocationId(event.target.value)}
-          >
-            <option value="">Todos los locales</option>
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
+          <SelectField
+            hideLabel
+            className="catalog-toolbar-select"
+            label="Filtrar por local"
+            selectedKey={locationId || "all"}
+            onSelectionChange={(key) =>
+              setLocationId(key == null || key === "all" ? "" : String(key))
+            }
+            options={[
+              { id: "all", label: "Todos los locales" },
+              ...locations.map((location) => ({
+                id: location.id,
+                label: location.name,
+              })),
+            ]}
+          />
         )}
       </div>
       {filtered.length === 0 ? (

@@ -139,7 +139,7 @@ export default function CatalogPage({
             type="button"
             onClick={() => setShowAiImport(true)}
           >
-            Probar importador
+            Importar con IA
           </button>
         </section>
         {importando && <p className="field-help">{IMPORTANDO}</p>}
