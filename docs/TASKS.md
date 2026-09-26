@@ -51,10 +51,10 @@ MISMO working tree. Hubo colisiones transitorias del Stop hook (`typecheck`/`lin
 corriendo sobre archivos `.tsx` ajenos, a mitad de edicion) — no relacionadas con esta
 spec. Los 3 archivos de la 0099 (`client-view.ts`, `loyalty-client-view.test.ts`,
 `0099-contratos-de-api.md`) estan intactos y verificados. Sin commitear todavia (compartido
-con cambios sin commitear de la otra sesion). El owner autorizó publicar ambas entregas
+con cambios sin commitear de la otra sesion). DTO publicado en `df1d523`. El owner autorizó publicar ambas entregas
 el 2026-09-26 al cerrar la UI 0098; commits separados para mantener su alcance.
 
-## Trabajo actual — spec 0098 implementada localmente (2026-09-26)
+## Trabajo actual — spec 0098 pusheada para QA live (2026-09-26)
 
 [Spec 0098](specs/0098-loyalty-sistema-de-diseno-del-backoffice.md): **cerrada con UI
 implementada y QA pendiente**, [ADR 0089](adr/0089-loyalty-reutiliza-el-sistema-del-wizard-merchant.md)
@@ -76,7 +76,8 @@ clamp de entero cero, marcas checkbox/radio y overlay de confirmación.
 Turbopack sigue bloqueado por EPERM de proceso/puerto, incluso en retry autorizado sin
 caché. E2E general quedó impedido por puertos del sandbox; el owner pidió omitir la
 escalación y pasar a QA live. Commit/push autorizados el 2026-09-26, con UI 0098 y DTO
-0099 en commits separados; no afirmar despliegue verificado.
+0099 en commits separados. Push confirmado a `origin/main`: `df1d523` (DTO 0099) y
+`bd3a7b8` (UI 0098). Siguiente paso: QA live de Loyalty; despliegue no verificado.
 
 **QA pendiente:** sesiones owner/staff aisladas, storage/cámara reales e iOS/Android
 (picker, recorte, teclado, scroll). Fixtures no acreditan esos resultados ni producción;
