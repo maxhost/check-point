@@ -8,7 +8,16 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): TOURS Y ESPACIADO DE AYUDA PUSHEADOS (`b58f8c8`); QA REAL PENDIENTE
+## ⇥ ESTADO (2026-09-25): TOURS DE MARCA PUSHEADOS (`0c1c847`); QA REAL PENDIENTE
+
+**`0c1c847`:** UI de onboarding y seis ayudas de Marca commiteada y pusheada a
+`origin/main` en `maxhost/check-point`. PASS independiente después de corregir Quitar
+durante preparación de imagen. Seis gates root verdes: 1801 passed / 595 skipped;
+Playwright 48 passed / 5 skipped. Detalle y pendientes en la sección Marca abajo.
+El owner pidió commit/push para QA y luego indicó «no necesitamos verificar el deploy en
+vercel». No se comprobó READY ni el SHA servido por el dominio; no afirmar despliegue verificado.
+
+## Estado anterior (2026-09-25): TOURS Y ESPACIADO DE CATÁLOGO PUSHEADOS (`b58f8c8`)
 
 El owner aprobó cuatro pasos de orientación (Importar con IA → Productos → Categorías → Ayuda)
 y ocho ayudas independientes. [Spec 0096](specs/0096-tours-de-onboarding-y-ayuda-del-catalogo.md)
@@ -35,13 +44,47 @@ selección de productos permite ajustar filtros sin resultados; import con resul
 conserva la guía. Pendiente: sesiones owner/staff reales de desarrollo y QA de cámara,
 archivos, teclado y claro/oscuro en iOS/Android.
 
-## Siguiente sesión — diseñar onboarding y ayudas de Marca
+## En QA — onboarding y ayudas de Marca: UI con PASS independiente, pusheada
+
+El owner aprobó el alcance propuesto: «me cierra, sobre afiche tambien comparto».
+[Spec 0097](specs/0097-tours-de-onboarding-y-ayuda-de-marca.md) **cerrada** y
+[ADR 0088](adr/0088-los-tours-de-marca-acompanan-el-borrador-y-el-guardado.md) **aceptada**.
+Cinco pasos: Identidad y logo → Paleta y vista previa → Configuración regional →
+Guardar marca → Ayuda y Crear afiche. Seis ayudas: nombre, cargar/cambiar logo, quitar
+logo, colores, zona horaria y moneda. La ayuda completa de afiche se diseña aparte.
+
+UI en `0c1c847`, commiteada y pusheada a `origin/main`: checklist inicia orientación; Ayuda ofrece
+las seis tareas sin persistir onboarding; elegir/quitar logo conserva borrador hasta PUT
+exitoso. Guardar aplica todos los cambios pendientes y adopta el DTO definitivo. Conflicto
+o respuesta perdida ofrece consultar por GET y confirmar antes de descartar el borrador.
+Página y navegación delegan Marca por permiso `brand`; afiche conserva owner-only.
+Sin cambios de backend de producción. La prueba de formatos conserva sus aserciones y
+apunta al componente de identidad extraído.
+
+**Seis gates root verdes, Node 24.20.0:** typecheck, lint, format:check, test (1801 passed /
+595 skipped), build y Playwright estándar (48 passed / 5 skipped). Marca aporta 27 casos
+de navegador aprobados; sus dos smoke autenticados están omitidos por falta de sesiones
+owner/staff de desarrollo aislado. Seis defectos plausibles detectados por mutación, con
+restauración comprobada. [Handoff](archivo/spec-0097-handoff-ui.md) y
+[bitácora](archivo/spec-0097-bitacora-de-mutaciones.md).
+
+**Revisión independiente:** [PASS de la UI verificable](archivo/spec-0097-revision-ui.md).
+FAIL inicial R1 reproducido y corregido: invalidar selección al quitar/cancelar/reset
+limpia `isAnalyzing`; el probe viejo no restaura el logo. Regresión y gates actualizados.
+Conservar la spec `cerrada` por QA real pendiente, como 0096.
+**Próximo paso:** smoke autenticado y QA nativo iOS/Android de
+picker/cámara/recorte, teclado y scroll, claro/oscuro y movimiento reducido.
+Checklist flotante puede cubrir Guardar en desktop; colapsar el resumen permite clic real.
+QA de disposición en página autenticada pendiente. Producción y despliegue no verificados;
+verificación de Vercel omitida por instrucción explícita del owner. Codex UI; Claude Code API/servidor.
+
+### Pedido de retorno y referencias
 
 Pedido del owner antes de `/clear` (2026-09-25): diseñar onboarding y ayuda para
 `https://www.checkpass.club/backoffice/brand`, siguiendo los patrones de Catálogo, Staff y
 Locales. Primero revisar la UI, documentación y APIs actuales de Marca; acordar recorridos
-y preparar spec y ADR si hay una decisión nueva. Todavía no implementar ni dar por
-aprobados pasos concretos de Marca.
+y preparar spec y ADR si hay una decisión nueva. Ese diseño quedó aprobado en esta sesión;
+la UI, revisión independiente y gates terminaron; entrega pusheada para QA real.
 
 Patrones a conservar: orientación breve desde el checklist, ayudas independientes sin
 persistir onboarding, contenido/selectores locales, avance por resultados confirmados,
