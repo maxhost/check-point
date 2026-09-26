@@ -143,7 +143,9 @@ test("edición puntos, vacío NaN y minmax visibles; teclado y descarte conserva
   await page.getByRole("checkbox", { name: /Permitir canjes/ }).focus();
   await page.keyboard.press("Space");
   await next(page);
-  await page.getByRole("link", { name: "Volver al Backoffice" }).click();
+  await page
+    .getByRole("button", { name: "Cerrar Programa de fidelización" })
+    .click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("aria-describedby", /./);

@@ -422,6 +422,12 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+Ajuste autorizado por owner (2026-09-26): eliminar enlace inferior «Volver al Backoffice»
+de Loyalty; usar la X de ModuleHeader como única salida de la pantalla. Mantener la
+confirmación de descarte y protección durante guardado de la X. Actualizar los dos
+casos existentes que activaban el enlace para que activen la X; sin nuevas pruebas ni
+mutaciones. Publicar para continuar QA live.
+
 Rediseño de consulta autorizado por owner (2026-09-26): tarjeta guardada de Sellos/Puntos
 con jerarquía visual (título/estado, meta o acumulación destacada, preview Sellos,
 mecánica y reglas de canje, premios agrupados, acciones separadas y fechas si en cierre).

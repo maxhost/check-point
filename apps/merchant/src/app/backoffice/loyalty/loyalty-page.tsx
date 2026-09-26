@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { Alert, Button } from "../../../ui";
 import { ProgramClosing } from "./program-closing";
@@ -115,23 +114,6 @@ export default function LoyaltyProgramPage({
         ) : (
           <ProgramView vm={vm} />
         )}
-        <p className="text-sm text-content-muted">
-          <Link
-            href="/backoffice"
-            onClick={(event) => {
-              if (vm.saving) {
-                event.preventDefault();
-                return;
-              }
-              if (editor) {
-                event.preventDefault();
-                vm.setConfirmDiscard(true);
-              }
-            }}
-          >
-            Volver al Backoffice
-          </Link>
-        </p>
         <LoyaltyConfirmDialog
           open={vm.confirmDiscard && !vm.saving}
           title="¿Salir sin guardar?"

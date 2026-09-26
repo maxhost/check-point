@@ -66,7 +66,9 @@ for (const width of [320, 390, 768, 1280])
       await capture("rewards");
       await next(page);
       await capture("review");
-      await page.getByRole("link", { name: "Volver al Backoffice" }).click();
+      await page
+        .getByRole("button", { name: "Cerrar Programa de fidelización" })
+        .click();
       const overlay = page.locator(".loyalty-dialog-overlay");
       expect(
         await overlay.evaluate(

@@ -69,6 +69,10 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Salida única por X (QA owner, 2026-09-26): enlace inferior retirado. Diff conserva
+ModuleHeader/onClose/guardado y confirmación de descarte. Caso existente de edición,
+teclado y descarte ahora activa la X: 1/1 PASS (3.5 s); sin nuevos tests ni mutaciones.
+
 Rediseño de consulta por QA del owner (2026-09-26): revisión independiente de tarjeta
 guardada Sellos/Puntos, activo/en cierre, owner/staff a 320/390/1280 px light/dark.
 Seis casos con 24 renders: datos, premios catálogo/libres/descuento y costos, fechas/zona,
