@@ -7392,6 +7392,10 @@ ul.loyalty-fields {
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
+.loyalty-page [data-tour="loyalty-rules"]:has(.loyalty-program-preview)
+  .loyalty-program-rules {
+  margin-top: 24px;
+}
 .loyalty-page .loyalty-program-rules > div,
 .loyalty-page .loyalty-program-closing {
   padding: 16px;
