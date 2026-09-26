@@ -41,6 +41,12 @@ contra padding del control y opciones/inputs contra el interior de la tarjeta.
 Capturas inspeccionadas, formato PASS. Sin nuevos gates generales ni mutaciones.
 Next-env externos preservados. QA live pendiente; despliegue no verificado.
 
+Padding derecho solicitado por owner en `2e58cf9`: 24 px escritorio / 16 px móvil
+en las opciones compactas de acumulación/premio. Revisión independiente 8/8 PASS
+(20.3 s), 32 recorridos light/dark a 320/390/768/1280 px: separación real texto/borde,
+contención de opciones/campos y ausencia de overflow. Sólo dos declaraciones CSS;
+formato PASS. Next-env externos preservados; tours parqueados, QA live pendiente.
+
 ## ⇥ SPEC 0099 IMPLEMENTADA — PASS de revisor independiente (2026-09-26)
 
 **`estado: implementada`.** Endurece `toClientProgram` a lista blanca explicita (ya no
