@@ -69,6 +69,20 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Contención adicional por QA owner (2026-09-26): opciones compactas con ancho por
+contenido, padding explícito y texto sin reducción; grupos/tarjeta con min-width 0
+y columna minmax(0,1fr). Móvil ≤479 px usa texto 14 px/gap 8 px/padding horizontal
+12 px para que Producto del catálogo quepa dentro de la tarjeta; escritorio conserva
+16 px/padding 16 px. Primera medición del árbol anterior no reprodujo el corte
+horizontal del texto; la captura del primer refuerzo mostró invasión del padding de
+la tarjeta de premio y del input, corregida antes de publicar. Probe ampliado mide
+Range dentro del padding del radio en ambos ejes, marca y campos/opciones dentro del
+área interior de la tarjeta. Final independiente: 8/8 PASS (19.6 s), 32 recorridos
+creación/edición Puntos/Sellos light/dark, 320/390/768/1280 px, sin overflow de página;
+ancho y espaciado anteriores conservados. Inspección final de ambos pasos en desktop
+claro y Premios móvil oscuro confirma contención. CSS/formato PASS; handlers/ChoiceGroup
+global sin cambios. No nuevas mutaciones ni repetición de gates generales.
+
 Ajustes de los cinco pasos por QA owner (2026-09-26): ayudas numéricas separadas
 8 px del control y footer separado al menos 24 px del contenido en todos los pasos.
 Dirección del degradé comparte color, tamaño y peso con labels del wizard merchant;

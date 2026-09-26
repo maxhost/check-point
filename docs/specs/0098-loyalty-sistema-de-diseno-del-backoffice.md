@@ -422,6 +422,16 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+Corrección adicional de QA owner (2026-09-26): los contenedores de Por monto/Por
+compra y Tipo de premio deben encerrar su texto completo con espacio interior visible.
+Hacer explícitos ancho por contenido, padding y comportamiento del texto en opciones
+compactas Loyalty; variante móvil con texto 14 px/gap 8 px/padding horizontal 12 px
+para contener la opción más larga y conservar objetivo táctil ≥48 px. Verificar que texto y marca queden dentro del borde (horizontal y
+vertical) y dentro de la tarjeta de premio, que las opciones envuelvan completas y
+que no haya overflow a 320–1280 px,
+light/dark, sin modificar radios/handlers ni otras pantallas. Presupuesto: 0 mutaciones
+nuevas, una revisión visual acotada final; mismos límites de QA live del ajuste previo.
+
 Ajustes de QA autorizados por owner (2026-09-26): separar ayudas del control (8 px)
 y contenido de botones de navegación (24 px) consistentemente en todos los pasos;
 label Dirección del degradé con estilo/color del wizard merchant. Opciones de Modo

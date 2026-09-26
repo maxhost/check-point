@@ -1700,3 +1700,17 @@ confirmaciones: resaltar sólo Borrar impedía pulsar Cancelar; el diálogo comp
 ambas decisiones. Probar clics operativos además de valores de campos. Los listboxes de
 ReactAria se montan en portal: comprobar el DOM real (`data-rac`/`data-placement`) antes de
 escribir reglas de z-index o foco. Ver pruebas `catalog-tour-filters`, `delete` y `keyboard`.
+
+## 2026-09-26 — una línea de texto no acredita que quepa en su opción (0098)
+
+El QA owner reportó corte de texto en opciones compactas de acumulación/premio tras
+un ajuste cuya sonda comprobaba una línea y ausencia de overflow de página. Esos
+oráculos no comprueban que el texto quede dentro de su propio borde. Se amplió la
+revisión acotada para medir los límites reales del texto con Range frente al área
+interior de cada opción (horizontal/vertical), la marca del radio y el padding; con
+capturas de ambos pasos. La corrida previa local no reprodujo el corte horizontal,
+por lo que no se presenta una causa de producción como medida. La captura móvil del primer refuerzo sí mostró que la opción más larga ampliaba el
+grupo e invadía el padding de la tarjeta de premio, junto con el input siguiente. Se
+amplió la medición a los límites interiores de esa tarjeta. Regla para este QA:
+verificar la contención dentro del control y de su tarjeta, además de líneas y
+overflow de página.

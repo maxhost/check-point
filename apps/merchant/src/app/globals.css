@@ -7152,8 +7152,26 @@ input.cp-number-input::-webkit-outer-spin-button {
 .loyalty-page .loyalty-editor-footer {
   margin-top: 24px;
 }
+.loyalty-page [role="radiogroup"]:has(> .cp-choices:not(.cp-choice-cards)),
+.loyalty-page .loyalty-reward > * {
+  min-width: 0;
+}
+.loyalty-page .cp-choices:not(.cp-choice-cards) {
+  min-width: 0;
+  flex-wrap: wrap;
+}
 .loyalty-page .cp-choices:not(.cp-choice-cards) .cp-choice {
   flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 16px;
+}
+.loyalty-page
+  .cp-choices:not(.cp-choice-cards)
+  .cp-choice
+  > span:has(> strong) {
+  flex: 0 0 auto;
+  min-width: max-content;
 }
 .loyalty-page .cp-choices:not(.cp-choice-cards) .cp-choice strong {
   white-space: nowrap;
@@ -7184,6 +7202,7 @@ ul.loyalty-fields {
   gap: 24px;
 }
 .loyalty-reward {
+  grid-template-columns: minmax(0, 1fr);
   padding: 16px;
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-md);
@@ -7256,6 +7275,11 @@ ul.loyalty-fields {
   }
 }
 @media (max-width: 479px) {
+  .loyalty-page .cp-choices:not(.cp-choice-cards) .cp-choice {
+    gap: 8px;
+    padding-inline: 12px;
+    font-size: 14px;
+  }
   .loyalty-actions {
     flex-direction: column;
   }
