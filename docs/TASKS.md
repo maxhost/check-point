@@ -23,7 +23,7 @@ Diseño conserva una columna móvil y dos en escritorio. Plan/ADR/parqueado incl
 en el mismo commit; nada de tours implementado. Next-env externos de las tres apps
 preservados. Siguiente paso: continuar ajustes y QA live del formulario.
 
-QA de los cinco pasos: ayudas numéricas con 8 px de separación; 24 px antes de
+QA de los cinco pasos en `d35ee09`: ayudas numéricas con 8 px de separación; 24 px antes de
 Atrás/Continuar/Guardar en todos los pasos. Dirección del degradé usa los labels del
 wizard merchant; opciones de acumulación/premio sin texto partido ni overflow.
 Revisión agrupa Premios como consulta y corrige fondo/contraste de Valor del programa;
@@ -31,6 +31,15 @@ términos separados de los botones. TypeScript y formato PASS; revisión indepen
 32 recorridos Puntos/Sellos creación/edición, light/dark y 320/390/768/1280 px,
 con ancho conservado, footer medido y contraste ≥4.5:1. Tours siguen parqueados.
 Siguiente paso: QA live de estos ajustes; despliegue no verificado.
+
+Corrección adicional en `1660200`: opciones compactas con ancho por
+contenido y padding explícito; grupos y tarjeta de premio ya no propagan min-content.
+En móvil las opciones ajustan texto/gap/padding para contener la más larga sin partirla;
+los campos también respetan el interior de la tarjeta. Revisión independiente final
+8/8 PASS (19.6 s), 32 recorridos a 320/390/768/1280 px light/dark; mide texto/marca
+contra padding del control y opciones/inputs contra el interior de la tarjeta.
+Capturas inspeccionadas, formato PASS. Sin nuevos gates generales ni mutaciones.
+Next-env externos preservados. QA live pendiente; despliegue no verificado.
 
 ## ⇥ SPEC 0099 IMPLEMENTADA — PASS de revisor independiente (2026-09-26)
 
