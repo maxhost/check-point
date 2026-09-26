@@ -215,6 +215,14 @@ habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
   Estado: **cerrada**, UI implementada localmente con PASS independiente acotado; QA real pendiente; no disjunta.
   [Handoff y evidencia](archivo/spec-0096-handoff-ui.md), [revisión independiente](archivo/spec-0096-revision-ui.md); sin cambios de API.
 
+- **ADR 0088:** [Los tours de Marca acompañan el borrador y el guardado](adr/0088-los-tours-de-marca-acompanan-el-borrador-y-el-guardado.md).
+  Cinco pasos, seis ayudas, guardado completo y acceso por permiso brand; afiche separado.
+  Estado: **aceptada**; API existente suficiente, sin cambio backend identificado.
+- **Spec 0097:** [Tours de onboarding y ayuda de Marca](specs/0097-tours-de-onboarding-y-ayuda-de-marca.md).
+  Recorridos aprobados, contratos, recuperación del borrador, permisos y verificación móvil.
+  Estado: **cerrada**, UI implementada con PASS independiente y seis gates verdes; QA real pendiente; no disjunta.
+  [Handoff](archivo/spec-0097-handoff-ui.md), [revisión independiente](archivo/spec-0097-revision-ui.md), [mutaciones](archivo/spec-0097-bitacora-de-mutaciones.md).
+
 ## Convenciones
 
 - **ADR** = una decision y su motivo. Se escribe cuando la decision se toma, no despues.

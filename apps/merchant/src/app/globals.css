@@ -7000,3 +7000,129 @@ input.cp-number-input::-webkit-outer-spin-button {
     border-radius: 24px;
   }
 }
+
+/* Marca: editor y guía comparten el borrador, también dentro del recorte. */
+.brand-identity-group {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.brand-page > .staff-help-button {
+  margin-bottom: 18px;
+}
+.brand-tour-notice,
+.brand-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.brand-recovery p,
+.brand-recovery h2 {
+  flex-basis: 100%;
+  margin: 0;
+}
+.brand-recovery dl {
+  width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.brand-recovery dt {
+  font-weight: 700;
+}
+.brand-recovery dd {
+  margin: 4px 0 12px;
+}
+.brand-recovery img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.brand-recovery-actions {
+  display: grid;
+  gap: 12px;
+}
+.brand-recovery-actions .button {
+  white-space: normal;
+}
+.brand-tour-notice button,
+.brand-recovery button,
+.brand-remove-logo {
+  min-height: 44px;
+}
+.brand-tour-popover .driver-popover-close-btn {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 12px auto;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+.driver-active:has(.brand-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"]),
+.driver-active:has(.brand-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"])
+  * {
+  pointer-events: auto;
+}
+.driver-active:has(.brand-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"]),
+.driver-active:has(.brand-tour-popover)
+  .staff-modal-layer:has(.brand-recovery-actions) {
+  z-index: 1000000001 !important;
+}
+.driver-active:has(.brand-tour-popover)
+  .staff-modal-layer:has(.brand-recovery-actions),
+.driver-active:has(.brand-tour-popover)
+  .staff-modal-layer:has(.brand-recovery-actions)
+  * {
+  pointer-events: auto;
+}
+
+.driver-active:has(.brand-tour-popover) .dialog-backdrop:has(.image-cropper) {
+  z-index: 999999999;
+}
+.driver-active:has(.brand-tour-popover) .image-cropper,
+.driver-active:has(.brand-tour-popover) .image-cropper * {
+  pointer-events: auto;
+}
+
+.driver-active:has(.brand-tour-popover) .dialog-backdrop:has(.image-cropper) {
+  align-items: start;
+  padding: 12px;
+}
+.driver-active:has(.brand-tour-popover) .image-cropper {
+  max-height: calc(100dvh - 260px);
+  gap: 8px;
+  padding: 12px;
+}
+.driver-active:has(.brand-tour-popover) .image-cropper-stage {
+  flex: 1 1 auto;
+  min-height: 72px;
+  height: clamp(72px, calc(100dvh - 460px), 330px);
+  aspect-ratio: auto;
+}
+
+.brand-page .image-cropper {
+  color: var(--ui-text);
+  background: var(--ui-surface);
+}
+.driver-active:has(.brand-tour-popover) .image-cropper {
+  overflow: auto;
+}
+
+.brand-page {
+  color: var(--ui-text);
+}
+
+.merchant-shell:has(> .brand-page),
+.backoffice-content:has(.brand-page) {
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+}

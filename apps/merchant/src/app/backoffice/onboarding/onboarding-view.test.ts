@@ -70,4 +70,11 @@ describe("estados visuales del checklist", () => {
     ];
     expect(onboardingStepState(items[1], items)).toBe("current");
   });
+  it("marca está publicada para el checklist real", () => {
+    const items = [
+      item("verify-email", 1, true, true),
+      item("brand", 6, false),
+    ];
+    expect(onboardingStepState(items[1], items)).toBe("current");
+  });
 });

@@ -23,7 +23,7 @@ type MenuName = "business" | "loyalty" | "more";
 
 /**
  * `delegado` NO es «el permiso existe» —los siete existen desde la spec 0086— sino **«la
- * PANTALLA ya esta gateada por permiso y no por rol»**. Staff, Locales y Catálogo ya lo están.
+ * PANTALLA ya esta gateada por permiso y no por rol»**. Staff, Locales, Catálogo y Marca ya lo están.
  * Las otras siguen con `requireOwner()`, asi que pintarle el link a un integrante con
  * ese permiso lo mandaria a un rebote: un menu que ofrece una puerta cerrada es peor que uno
  * que no la ofrece. Cuando una pantalla mas migre, se marca acá y aparece sola.
@@ -35,6 +35,7 @@ const businessLinks = [
     icon: Palette,
     segment: "brand",
     permission: "brand",
+    delegado: true,
   },
   {
     href: "/backoffice/locations",

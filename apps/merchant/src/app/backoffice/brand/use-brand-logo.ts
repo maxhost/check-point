@@ -5,6 +5,7 @@ import {
 } from "../../../lib/image-formats";
 import { croppedFileName, decideImageChoice } from "../../../lib/crop-image";
 import { resolveDecodableImage } from "../../../lib/image-decode-probe";
+import { BrandRequestError } from "./brand-api";
 
 /**
  * Client state for the deferred brand logo: choosing or removing only changes the
@@ -29,6 +30,7 @@ export function useBrandLogo() {
   const [removed, setRemoved] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const choiceSequence = useRef(0);
 
   useEffect(
     () => () => {
@@ -38,7 +40,13 @@ export function useBrandLogo() {
   );
 
   // Unmounting mid-crop must not leak the probe's object URL either.
-  useEffect(() => () => releasePending.current?.(), []);
+  useEffect(
+    () => () => {
+      choiceSequence.current++;
+      releasePending.current?.();
+    },
+    [],
+  );
 
   /** Drops the crop candidate and releases the src the probe resolved for it. */
   function dropPending() {
@@ -69,9 +77,14 @@ export function useBrandLogo() {
       return;
     }
     setIsAnalyzing(true);
-    const resolved = await resolveDecodableImage(file).finally(() =>
-      setIsAnalyzing(false),
-    );
+    const sequence = ++choiceSequence.current;
+    const resolved = await resolveDecodableImage(file).finally(() => {
+      if (sequence === choiceSequence.current) setIsAnalyzing(false);
+    });
+    if (sequence !== choiceSequence.current) {
+      resolved?.cleanup();
+      return;
+    }
     const choice = decideImageChoice(file, resolved !== null);
     if (choice.mode === "crop") {
       // `crop` is returned exactly when the probe resolved; the guard is for the compiler.
@@ -80,7 +93,7 @@ export function useBrandLogo() {
       releasePending.current = resolved.cleanup;
       setPending(choice.pending);
       setPendingSrc(resolved.src);
-      return;
+      return "crop" as const;
     }
     // Fallback (ADR 0047 §1): the original file is uploaded untouched.
     dropPending();
@@ -88,6 +101,7 @@ export function useBrandLogo() {
     setSelected(choice.selected);
     setRemoved(false);
     show(choice.selected);
+    return "selected" as const;
   }
 
   /** Promotes the cropper's square blob to the file that will be uploaded. */
@@ -104,11 +118,14 @@ export function useBrandLogo() {
 
   /** Drops the candidate without touching `selected`; clears the input so the same file re-fires. */
   function cancelCrop() {
+    invalidateChoice();
     dropPending();
     if (fileInput.current) fileInput.current.value = "";
+    if (cameraInput.current) cameraInput.current.value = "";
   }
 
   function remove() {
+    invalidateChoice();
     setSelected(null);
     dropPending();
     setCropped(false);
@@ -118,9 +135,11 @@ export function useBrandLogo() {
       return null;
     });
     if (fileInput.current) fileInput.current.value = "";
+    if (cameraInput.current) cameraInput.current.value = "";
   }
 
   function reset() {
+    invalidateChoice();
     setSelected(null);
     dropPending();
     setCropped(false);
@@ -130,6 +149,12 @@ export function useBrandLogo() {
       return null;
     });
     if (fileInput.current) fileInput.current.value = "";
+    if (cameraInput.current) cameraInput.current.value = "";
+  }
+
+  function invalidateChoice() {
+    choiceSequence.current++;
+    setIsAnalyzing(false);
   }
 
   async function upload(): Promise<string | null> {
@@ -148,8 +173,9 @@ export function useBrandLogo() {
       error?: string;
     } | null;
     if (!prepared.ok || !preparation?.uploadId || !preparation.uploadUrl) {
-      throw new Error(
+      throw new BrandRequestError(
         preparation?.error ?? "No pudimos preparar la carga del logo.",
+        prepared.status,
       );
     }
     const uploaded = await fetch(preparation.uploadUrl, {

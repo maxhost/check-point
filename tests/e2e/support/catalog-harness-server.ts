@@ -4,7 +4,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 /** Component browser fixture: real UI/Driver/CSS, mocked Next navigation, no server guard. */
-export async function startCatalogHarness() {
+export async function startCatalogHarness(
+  entryPoint = "tests/e2e/support/catalog-harness.tsx",
+) {
   const vitestRequire = createRequire(
     path.resolve("node_modules/vitest/package.json"),
   );
@@ -16,7 +18,7 @@ export async function startCatalogHarness() {
   const postcss = merchantRequire("postcss");
   const tailwind = merchantRequire("@tailwindcss/postcss");
   const compiled = await build({
-    entryPoints: ["tests/e2e/support/catalog-harness.tsx"],
+    entryPoints: [entryPoint],
     bundle: true,
     write: false,
     platform: "browser",

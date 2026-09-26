@@ -20,6 +20,7 @@ type Props = {
   currencyCode: string;
   onTimezoneChange: (value: string) => void;
   onCurrencyChange: (value: string) => void;
+  disabled?: boolean;
 };
 
 /** Regional settings for the business: timezone and the ISO 4217 price currency. */
@@ -28,6 +29,7 @@ export function RegionalFields({
   currencyCode,
   onTimezoneChange,
   onCurrencyChange,
+  disabled = false,
 }: Props) {
   const timezoneOptions = [
     ...(!timezones.includes(timezone) ? [timezone] : []),
@@ -36,23 +38,29 @@ export function RegionalFields({
 
   return (
     <div className="brand-regional-grid">
-      <SelectField
-        label="Zona horaria del negocio"
-        description="Define las fechas y horarios de programas y campañas."
-        options={timezoneOptions}
-        selectedKey={timezone}
-        onSelectionChange={(key) => onTimezoneChange(String(key))}
-      />
-      <SelectField
-        label="Moneda"
-        description="Se usa para mostrar los precios de tu catálogo."
-        options={SUPPORTED_CURRENCIES.map((currency) => ({
-          id: currency.code,
-          label: currency.label,
-        }))}
-        selectedKey={currencyCode}
-        onSelectionChange={(key) => onCurrencyChange(String(key))}
-      />
+      <div data-tour="brand-timezone">
+        <SelectField
+          isDisabled={disabled}
+          label="Zona horaria del negocio"
+          description="Define las fechas y horarios de programas y campañas."
+          options={timezoneOptions}
+          selectedKey={timezone}
+          onSelectionChange={(key) => onTimezoneChange(String(key))}
+        />
+      </div>
+      <div data-tour="brand-currency">
+        <SelectField
+          isDisabled={disabled}
+          label="Moneda"
+          description="Se usa para mostrar los precios de tu catálogo."
+          options={SUPPORTED_CURRENCIES.map((currency) => ({
+            id: currency.code,
+            label: currency.label,
+          }))}
+          selectedKey={currencyCode}
+          onSelectionChange={(key) => onCurrencyChange(String(key))}
+        />
+      </div>
     </div>
   );
 }

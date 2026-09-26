@@ -1,10 +1,12 @@
-import { requireOwner } from "../../../server/auth-guards";
+import { redirect } from "next/navigation";
+import { requireBackofficeSession } from "../../../server/auth-guards";
 import BrandPage from "./brand-page";
 
 export const dynamic = "force-dynamic";
 
-// Owner-only (ADR 0044): a staff member is redirected to the counter console.
 export default async function Page() {
-  await requireOwner();
-  return <BrandPage />;
+  const session = await requireBackofficeSession();
+  if (!session.membership.permissions.includes("brand"))
+    redirect("/backoffice");
+  return <BrandPage isOwner={session.membership.role === "owner"} />;
 }

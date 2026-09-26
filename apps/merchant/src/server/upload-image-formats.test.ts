@@ -147,7 +147,7 @@ describe("brand logo prep upload accepts mobile photo formats", () => {
 describe("the file inputs of the three upload surfaces share the accept list", () => {
   const EXPECTED = 'accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}';
   const SURFACES = {
-    brand: "src/app/backoffice/brand/brand-page.tsx",
+    brand: "src/app/backoffice/brand/brand-identity.tsx",
     stamp: "src/app/backoffice/loyalty/steps/step-card-design.tsx",
     catalog: "src/app/backoffice/catalog/product-image-field.tsx",
   } as const;
