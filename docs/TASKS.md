@@ -35,6 +35,26 @@ selección de productos permite ajustar filtros sin resultados; import con resul
 conserva la guía. Pendiente: sesiones owner/staff reales de desarrollo y QA de cámara,
 archivos, teclado y claro/oscuro en iOS/Android.
 
+## Siguiente sesión — diseñar onboarding y ayudas de Marca
+
+Pedido del owner antes de `/clear` (2026-09-25): diseñar onboarding y ayuda para
+`https://www.checkpass.club/backoffice/brand`, siguiendo los patrones de Catálogo, Staff y
+Locales. Primero revisar la UI, documentación y APIs actuales de Marca; acordar recorridos
+y preparar spec y ADR si hay una decisión nueva. Todavía no implementar ni dar por
+aprobados pasos concretos de Marca.
+
+Patrones a conservar: orientación breve desde el checklist, ayudas independientes sin
+persistir onboarding, contenido/selectores locales, avance por resultados confirmados,
+recuperación de errores, salida que conserva la operación, permisos y accesibilidad móvil.
+Codex escribe toda la UI; Claude Code mantiene API/servidor. Verificar contratos antes de
+identificar trabajo de backend; no inventar endpoints ni duplicar estado del servidor.
+
+Punto de retorno: tours de Catálogo en `3c9be45`; espaciado Ayuda–Carga inteligente de
+18 px en `b58f8c8`, con estado documentado en `98212a5`. Todo pusheado a `origin/main`.
+Revisión independiente de UI y seis gates verdes; pruebas autenticadas y QA nativo de
+Catálogo siguen pendientes. Referencias: spec 0096, ADR 0087 y sus handoffs de revisión.
+No se verificó el estado del despliegue de producción.
+
 ## Estado anterior (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`6b128a9`)
 
 **`6b128a9`:** filtro y buscador del catalogo alineados y de 48 px. Causa medida en Chromium: el
