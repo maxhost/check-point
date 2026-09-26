@@ -422,6 +422,13 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+Ajuste autorizado por owner (2026-09-26): unificar ancho de todos los pasos del editor
+de creación/edición Sellos/Puntos. Usar ancho de la página (máximo compartido 860 px),
+sin excepción dinámica al montar Diseño. Mantener campos/validación/pasos, dos columnas
+de diseño en escritorio y una en móvil. Medir ancho constante al avanzar/volver en
+ambas modalidades y creación/edición, responsive; sin nuevas mutaciones/gates generales.
+Tours 0100 parqueados por owner para priorizar estos ajustes.
+
 Ajuste autorizado por owner (2026-09-26): eliminar enlace inferior «Volver al Backoffice»
 de Loyalty; usar la X de ModuleHeader como única salida de la pantalla. Mantener la
 confirmación de descarte y protección durante guardado de la X. Actualizar los dos

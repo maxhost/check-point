@@ -7144,10 +7144,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   padding: 16px;
 }
 .loyalty-wizard {
-  max-width: var(--content-form, 34rem);
-}
-.loyalty-page:has(.card-design-grid) .loyalty-wizard {
-  max-width: none;
+  width: 100%;
 }
 .loyalty-fields {
   display: grid;

@@ -69,6 +69,15 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Ancho consistente por QA owner (2026-09-26): todos los pasos del editor usan 100% del
+contenedor, sin excepción al montar Diseño. Revisión independiente final 8/8 PASS
+(17.7 s): 32 recorridos de creación/edición Puntos/Sellos, light/dark a
+320/390/768/1280 px; 288 medidas de avance/retroceso. Anchos respectivos constantes
+272/342/672/860 px, alineados con su página, sin overflow ni escrituras; Diseño conserva
+una columna móvil y dos desde 768 px. La primera medición se interrumpió por el click
+del probe sobre un radio oculto; se usó la interacción por teclado del caso existente,
+sin cambiar app por ese artefacto. Tours0100 parqueados por owner y preservados en disco.
+
 Salida única por X (QA owner, 2026-09-26): enlace inferior retirado. Diff conserva
 ModuleHeader/onClose/guardado y confirmación de descarte. Caso existente de edición,
 teclado y descarte ahora activa la X: 1/1 PASS (3.5 s); sin nuevos tests ni mutaciones.

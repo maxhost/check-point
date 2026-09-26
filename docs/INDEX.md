@@ -225,6 +225,10 @@ habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
 
 ## Sistema de diseño de Loyalty — aprobado el 2026-09-26
 
+- **ADR 0090 / Spec 0100:** [Tours de onboarding y ayuda de Loyalty](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md).
+  Orientación general y ayudas para crear, editar, cerrar y políticas sobre el editor existente.
+  Estado: **parqueada por owner el 2026-09-26**, propuesta/borrador en [PARQUEADO](PARQUEADO.md); sin código.
+
 - **ADR 0089:** [Loyalty reutiliza el sistema del wizard merchant](adr/0089-loyalty-reutiliza-el-sistema-del-wizard-merchant.md).
   Unifica consulta, formularios, progreso y cierre con el catálogo compartido, conservando reglas/API.
   Estado: **aceptada** por el owner; UI implementada localmente el 2026-09-26.

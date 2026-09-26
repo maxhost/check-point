@@ -11,6 +11,21 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+## Planes diferidos por prioridad
+
+### Tours de Loyalty — parqueados por el owner el 2026-09-26
+
+- [Plan / spec 0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md) y
+  [ADR 0090](adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md): tour general
+  de onboarding y cuatro ayudas (crear, editar, cerrar, políticas). Documentos en disco;
+  sin código, sin aprobación final ni implementación. Id/API `program` ya existen;
+  falta conexión del checklist y controller/UI.
+- Motivo: el owner priorizó arreglar el formulario de creación/edición de Loyalty,
+  empezando por igualar el ancho de todos sus pasos. Retomar sólo por nuevo pedido.
+- Al retomar: confirmar si políticas incluye sólo términos o también canje sin saldo;
+  cerrar copy/anchors/oráculos y aprobar spec antes de implementar. No volver a tratar
+  este borrador como trabajo activo ni como diseño aprobado.
+
 ## Decisiones tomadas que esperan spec
 
 | # | Que | Origen | Por que se paro |
