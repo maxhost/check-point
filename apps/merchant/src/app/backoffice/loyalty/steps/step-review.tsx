@@ -120,30 +120,44 @@ export function StepReview({ vm }: { vm: LoyaltyVm }) {
           />
         </>
       )}
-      <h3>Premios</h3>
-      <ul className="review-rewards">
-        {vm.earn.rewards.map((reward, index) => {
-          const spend = rewardSpend(vm, reward);
-          const label =
-            reward.label ||
-            (reward.type === "discount"
-              ? `${reward.discountPercent}% de descuento`
-              : "Premio");
-          return (
-            <li key={index}>
-              <span className="review-reward-name">
-                {label}
-                {vm.kind === "points" ? ` — ${reward.pointsCost} pts` : ""}
-              </span>
-              {spend > 0 && (
-                <span className="review-reward-sales">
-                  Cada canje ≈ {formatMoney(spend, vm.currencyCode)} en ventas
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <div className="loyalty-program-rewards">
+        <h3>Premios</h3>
+        <ul>
+          {vm.earn.rewards.map((reward, index) => {
+            const spend = rewardSpend(vm, reward);
+            const label =
+              reward.label ||
+              (reward.type === "discount"
+                ? `${reward.discountPercent}% de descuento`
+                : "Premio");
+            return (
+              <li key={index}>
+                <div>
+                  <strong>{label}</strong>
+                  <p className="loyalty-program-caption">
+                    {reward.type === "discount"
+                      ? `${reward.discountPercent}% de descuento`
+                      : reward.type === "catalog_product"
+                        ? "Producto del catálogo"
+                        : "Premio libre"}
+                  </p>
+                  {spend > 0 && (
+                    <p className="loyalty-program-caption">
+                      Cada canje ≈ {formatMoney(spend, vm.currencyCode)} en
+                      ventas
+                    </p>
+                  )}
+                </div>
+                {vm.kind === "points" && (
+                  <span className="loyalty-program-cost">
+                    {reward.pointsCost} {vm.plural}
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
       {metric && (
         <section className="value-metric">
           <h3>Valor del programa</h3>

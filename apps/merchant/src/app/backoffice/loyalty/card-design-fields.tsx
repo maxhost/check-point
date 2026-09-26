@@ -73,7 +73,7 @@ export function CardDesignFields({ card }: { card: CardDesignVm }) {
             onChange={(value) => card.setGradientAngle(Number(value))}
           >
             <div className="flex justify-between">
-              <Label className="text-base font-bold">
+              <Label className="cp-field-label text-base font-bold text-content">
                 Dirección del degradé
               </Label>
               <SliderOutput>

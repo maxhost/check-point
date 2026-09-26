@@ -6,6 +6,7 @@ export function NumberDraftField(
 ) {
   return (
     <div
+      className="loyalty-number-draft"
       onInputCapture={(event) => {
         const input = event.target;
         if (input instanceof HTMLInputElement)

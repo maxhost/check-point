@@ -7146,6 +7146,18 @@ input.cp-number-input::-webkit-outer-spin-button {
 .loyalty-wizard {
   width: 100%;
 }
+.loyalty-page .loyalty-number-draft > * {
+  row-gap: 8px;
+}
+.loyalty-page .loyalty-editor-footer {
+  margin-top: 24px;
+}
+.loyalty-page .cp-choices:not(.cp-choice-cards) .cp-choice {
+  flex: 0 0 auto;
+}
+.loyalty-page .cp-choices:not(.cp-choice-cards) .cp-choice strong {
+  white-space: nowrap;
+}
 .loyalty-fields {
   display: grid;
   gap: 20px;
@@ -7301,7 +7313,8 @@ ul.loyalty-fields {
   font-weight: 700;
   line-height: 1.3;
 }
-.loyalty-page .loyalty-program-view h3 {
+.loyalty-page .loyalty-program-view h3,
+.loyalty-page .loyalty-program-rewards h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
@@ -7420,6 +7433,20 @@ ul.loyalty-fields {
   font-size: 20px;
   font-weight: 700;
   line-height: 1.3;
+}
+.loyalty-page .value-metric {
+  margin-top: 0;
+  border-color: var(--ui-border);
+  background: var(--ui-surface-subtle);
+  color: var(--ui-text);
+}
+.loyalty-page .value-metric-headline,
+.loyalty-page .value-metric-pct,
+.loyalty-page .value-metric-spend {
+  color: var(--ui-text);
+}
+.loyalty-page .value-metric-note {
+  color: var(--ui-text-muted);
 }
 @media (min-width: 768px) {
   .loyalty-page .loyalty-program-hero:has(.loyalty-program-preview) {

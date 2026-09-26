@@ -121,7 +121,7 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
             Terminá o cancelá el recorte antes de continuar.
           </Alert>
         )}
-        <div className="loyalty-actions">
+        <div className="loyalty-actions loyalty-editor-footer">
           {clamped > 0 && (
             <Button
               variant="secondary"

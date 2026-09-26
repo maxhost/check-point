@@ -69,6 +69,21 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Ajustes de los cinco pasos por QA owner (2026-09-26): ayudas numéricas separadas
+8 px del control y footer separado al menos 24 px del contenido en todos los pasos.
+Dirección del degradé comparte color, tamaño y peso con labels del wizard merchant;
+opciones de acumulación/premio conservan sus textos en una línea, envolviendo opciones
+completas sin overflow. Premios de revisión reutilizan agrupación, nombres destacados,
+tipo y costo de consulta; Valor del programa usa fondo/texto semánticos y contraste
+computado ≥4.5:1 en sus textos. Cálculos y handlers sin cambios. TypeScript merchant
+`tsc --noEmit` exit 0. Revisión independiente en `/tmp/spec0098-review`, componentes y
+CSS reales con transporte controlado: 8/8 PASS (19.1 s), 32 recorridos y 288 medidas
+de creación/edición Puntos/Sellos a
+320/390/768/1280 px light/dark, sin escrituras. Inspección propia de Diseño móvil
+claro y Revisión escritorio claro/móvil oscuro. La primera corrida del probe apagó
+un degradé que ya estaba activo; corregida la precondición del probe, sin cambiar app
+por ese artefacto. Sin nuevas mutaciones ni gates generales; tours siguen parqueados.
+
 Ancho consistente por QA owner (2026-09-26): todos los pasos del editor usan 100% del
 contenedor, sin excepción al montar Diseño. Revisión independiente final 8/8 PASS
 (17.7 s): 32 recorridos de creación/edición Puntos/Sellos, light/dark a

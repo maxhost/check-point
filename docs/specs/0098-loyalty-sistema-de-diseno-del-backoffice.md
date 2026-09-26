@@ -422,6 +422,17 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+Ajustes de QA autorizados por owner (2026-09-26): separar ayudas del control (8 px)
+y contenido de botones de navegación (24 px) consistentemente en todos los pasos;
+label Dirección del degradé con estilo/color del wizard merchant. Opciones de Modo
+de acumulación y Tipo de premio con ancho suficiente para no partir sus textos
+(envolver opciones completas en móvil). Revisión: Premios agrupados como consulta,
+con nombre/tipo/costo y venta estimada; Valor del programa con fondo/texto semánticos
+legibles light/dark. Términos separados del footer. Preservar ancho uniforme, datos,
+validación, métricas y handlers; tours siguen parqueados. Verificar estilos/contraste,
+espaciado y ausencia de overflow en creación/edición Sellos/Puntos; sin gates generales
+ni nuevas mutaciones para estos cambios de presentación.
+
 Ajuste autorizado por owner (2026-09-26): unificar ancho de todos los pasos del editor
 de creación/edición Sellos/Puntos. Usar ancho de la página (máximo compartido 860 px),
 sin excepción dinámica al montar Diseño. Mantener campos/validación/pasos, dos columnas

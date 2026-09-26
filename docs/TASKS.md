@@ -23,6 +23,15 @@ Diseño conserva una columna móvil y dos en escritorio. Plan/ADR/parqueado incl
 en el mismo commit; nada de tours implementado. Next-env externos de las tres apps
 preservados. Siguiente paso: continuar ajustes y QA live del formulario.
 
+QA de los cinco pasos: ayudas numéricas con 8 px de separación; 24 px antes de
+Atrás/Continuar/Guardar en todos los pasos. Dirección del degradé usa los labels del
+wizard merchant; opciones de acumulación/premio sin texto partido ni overflow.
+Revisión agrupa Premios como consulta y corrige fondo/contraste de Valor del programa;
+términos separados de los botones. TypeScript y formato PASS; revisión independiente
+32 recorridos Puntos/Sellos creación/edición, light/dark y 320/390/768/1280 px,
+con ancho conservado, footer medido y contraste ≥4.5:1. Tours siguen parqueados.
+Siguiente paso: QA live de estos ajustes; despliegue no verificado.
+
 ## ⇥ SPEC 0099 IMPLEMENTADA — PASS de revisor independiente (2026-09-26)
 
 **`estado: implementada`.** Endurece `toClientProgram` a lista blanca explicita (ya no
