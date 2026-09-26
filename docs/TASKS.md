@@ -56,6 +56,14 @@ el 2026-09-26 al cerrar la UI 0098; commits separados para mantener su alcance.
 
 ## Trabajo actual — spec 0098 pusheada para QA live (2026-09-26)
 
+**Rediseño de consulta (`e8feef4`):** tarjeta Sellos/Puntos con título/estado, cifra
+principal, preview, mecánica/canje por bloques, premios agrupados y acciones separadas.
+Términos con colores semánticos y encabezado propio; legibles en claro/oscuro,
+contraste medido 14.44:1 / 13.39:1. Revisión independiente final: 6 casos / 24 renders
+a 320/390/1280 px light/dark, activo/en cierre y owner/staff, sin overflow; conserva
+datos y permisos. TypeScript merchant y formato PASS. Sin gates generales nuevos ni
+mutaciones; sigue QA live. Next-env externos preservados fuera de esta entrega.
+
 **Ajuste de QA de cabecera (`cf0296b`):** separa la primera tarjeta 24 px como Catálogo,
 restaura eyebrow/descripción y unifica color del título ModuleHeader. Comparación
 independiente renderizada Loyalty/Catálogo/Locales a 390/1280 px light/dark: 4/4 PASS,
