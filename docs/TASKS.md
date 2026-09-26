@@ -8,6 +8,21 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## Trabajo actual — consistencia del formulario de Loyalty (2026-09-26)
+
+Owner parqueó la planificación de tours y priorizó arreglos en creación/edición:
+los pasos deben tener el mismo ancho. Plan0100/ADR0090 preservados en disco y
+registrados en [PARQUEADO](PARQUEADO.md); no iniciar tours ni pedir ahora decisiones
+sobre políticas. La spec0100 conserva estado borrador, sin aprobación ni código.
+
+Ajuste bajo spec0098 en `387f107`: todos los pasos usan el ancho de la página, sin
+límite distinto para Diseño; campos, validación, datos y navegación conservados.
+PASS independiente 8/8, 32 recorridos creación/edición Puntos/Sellos light/dark a
+320/390/768/1280 px, 288 medidas constantes de avance/retroceso y sin overflow.
+Diseño conserva una columna móvil y dos en escritorio. Plan/ADR/parqueado incluidos
+en el mismo commit; nada de tours implementado. Next-env externos de las tres apps
+preservados. Siguiente paso: continuar ajustes y QA live del formulario.
+
 ## ⇥ SPEC 0099 IMPLEMENTADA — PASS de revisor independiente (2026-09-26)
 
 **`estado: implementada`.** Endurece `toClientProgram` a lista blanca explicita (ya no
