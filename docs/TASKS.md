@@ -11,14 +11,36 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 ## ⇥ ESTADO (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`6b128a9`)
 
 **`6b128a9`:** filtro y buscador del catalogo alineados y de 48 px. Causa medida en Chromium: el
-buscador (`<label>`) heredaba `margin-top: 15px` global. Addendum en la spec 0095. Falta QA del
-owner. **No se escribe mas en el NAS** (instruccion del owner): todo en el repo local.
+buscador (`<label>`) heredaba `margin-top: 15px` global. Addendum en la spec 0095. **QA del owner:
+hecho y funcional.** **No se escribe mas en el NAS** (instruccion del owner): todo en el repo
+local.
 
 **0095 (`e021739`):** «Importar con IA» + filtros de categoria/local con `SelectField`; 6 gates
-verdes y PASS del revisor. Falta QA del owner. **Pregunta abierta al owner:** el copy bajo el boton
-dice «para que solo revises y completes», del flujo viejo con revision; se propuso «La IA crea las
-categorías, productos y precios por vos». **Deuda declarada:** el bloque flex de la primera
-`.catalog-toolbar` (`globals.css`) es codigo muerto (la segunda, grid, lo pisa).
+verdes y PASS del revisor. **QA del owner: hecho y funcional.**
+
+**Addendum de esta sesion (2026-09-25, `453db30`), sobre 0095/0093, 6 gates verdes (typecheck,
+lint, format:check, test 1776 passed, build, e2e 3 passed/1 skipped). Sin pushear.**
+
+- **Copy resuelto** (`catalog-page.tsx`): el owner eligio la propuesta —«La IA crea las
+  categorías, productos y precios por vos»— en vez de «para que solo revises y completes»,
+  del flujo viejo con revision.
+- **Codigo muerto borrado** (`globals.css`): el bloque flex de la primera `.catalog-toolbar`
+  (`display: flex`, `.catalog-search { flex: ... }`, `.catalog-toolbar .button`) — la segunda
+  regla, grid, lo pisaba entero y no hay ningun `.button` dentro de `.catalog-toolbar` en el JSX
+  actual (`products-tab.tsx`). Se conservo `.catalog-toolbar-select { min-width: 0 }`, que sigue
+  siendo el que deja truncar en el grid.
+- **Hallazgo del revisor CERRADO** (`use-catalog-import.ts:245`, spec 0093): `cancel()`
+  incrementaba `pollGenerationRef.current` ANTES de saber si el `DELETE` salia bien. Si fallaba,
+  la generacion quedaba bumpeada sin que ningun efecto la reprogramara — el poll en curso pasaba
+  a descartar todas las respuestas (`generation !== pollGenerationRef.current`) y quedaba sordo
+  hasta cerrar y reabrir el modal. Fix: el incremento se movio a DESPUES del `DELETE` exitoso,
+  justo antes de `setActiveImport(null)`. Si el `DELETE` falla, la generacion no se toca y el
+  poll que ya estaba corriendo sigue actualizando el estado con normalidad.
+
+**Migracion `0043_sin_notified_at.sql` — que hace:** `ALTER TABLE core.catalog_import DROP COLUMN
+notified_at`. Sigue SIN aplicar en prod (confirmado por SQL el 2026-09-23). Se aplica recien
+cuando el deploy que sirve `checkpass.club` este `READY` con el commit de esta sesion (el codigo
+viejo todavia escribe esa columna; aplicarla antes le rompe la importacion, gotcha 0081).
 
 ### Antes (0093 y 0094)
 
