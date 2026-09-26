@@ -5,12 +5,17 @@ const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
   drive: vi.fn(),
   record: vi.fn().mockResolvedValue(undefined),
+  active: vi.fn().mockReturnValue(true),
 }));
 
 vi.mock("driver.js", () => ({
   driver: (config: Record<string, (...args: never[]) => void>) => {
     mocks.config = config;
-    return { destroy: mocks.destroy, drive: mocks.drive };
+    return {
+      destroy: mocks.destroy,
+      drive: mocks.drive,
+      isActive: mocks.active,
+    };
   },
 }));
 
@@ -18,11 +23,12 @@ vi.mock("./onboarding-api", () => ({
   recordOnboardingTour: mocks.record,
 }));
 
-import { startOnboardingTour } from "./onboarding-tour";
+import { startOnboardingTour, disposeOnboardingTour } from "./onboarding-tour";
 
 beforeEach(() => {
   mocks.config = null;
   vi.clearAllMocks();
+  mocks.record.mockResolvedValue(undefined);
 });
 
 describe("driver del onboarding", () => {
@@ -69,5 +75,23 @@ describe("driver del onboarding", () => {
       }
     )?.steps[0];
     expect(firstStep?.popover?.showButtons).toEqual(["next", "close"]);
+  });
+  it("desmontar un tour no registra skipped y limpia el driver", () => {
+    const tour = startOnboardingTour({ tourId: "catalog", steps: [] });
+    disposeOnboardingTour(tour);
+    mocks.config?.onDestroyStarted();
+    expect(mocks.record).not.toHaveBeenCalled();
+    expect(mocks.destroy).toHaveBeenCalled();
+  });
+  it("un fallo de persistencia entrega el mismo estado para reintentar", async () => {
+    mocks.record.mockRejectedValueOnce(new Error("offline"));
+    const onSaved = vi.fn();
+    const onSaveError = vi.fn();
+    startOnboardingTour({ tourId: "catalog", steps: [], onSaved, onSaveError });
+    mocks.config?.onDoneClick();
+    await vi.waitFor(() =>
+      expect(onSaveError).toHaveBeenCalledWith("completed"),
+    );
+    expect(onSaved).not.toHaveBeenCalled();
   });
 });

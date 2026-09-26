@@ -18,6 +18,7 @@ type Props = {
   onSave: (payload: ProductPayload, id: string | null) => Promise<boolean>;
   onCancel: () => void;
   onError: (message: string) => void;
+  categoryCreationDisabled?: boolean;
 };
 
 function toMoney(value: string): number | null {
@@ -36,6 +37,7 @@ export function ProductEditor({
   onSave,
   onCancel,
   onError,
+  categoryCreationDisabled = false,
 }: Props) {
   const [name, setName] = useState(product?.name ?? "");
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? "");
@@ -131,6 +133,7 @@ export function ProductEditor({
         }}
       >
         <TextField
+          data-tour="catalog-product-name"
           autoFocus
           label="Nombre del producto"
           value={name}
@@ -140,6 +143,7 @@ export function ProductEditor({
           isRequired
         />
         <SelectField
+          data-tour="catalog-product-category"
           label="Categoría"
           selectedKey={categoryId || "none"}
           onSelectionChange={(key) =>
@@ -164,13 +168,13 @@ export function ProductEditor({
           <button
             type="button"
             className="small-button"
-            disabled={!newCategory.trim()}
+            disabled={categoryCreationDisabled || !newCategory.trim()}
             onClick={() => void createCategory()}
           >
             <Plus aria-hidden="true" /> Crear
           </button>
         </div>
-        <div className="catalog-money">
+        <div className="catalog-money" data-tour="catalog-product-prices">
           <TextField
             label="Precio de venta (opcional)"
             type="number"
@@ -190,9 +194,14 @@ export function ProductEditor({
             description="Solo para tus reportes internos"
           />
         </div>
-        <ProductImageField image={image} name={name} onError={onError} />
+        <div data-tour="catalog-product-image">
+          <ProductImageField image={image} name={name} onError={onError} />
+        </div>
         {locations.length > 1 && (
-          <fieldset className="catalog-visibility">
+          <fieldset
+            className="catalog-visibility"
+            data-tour="catalog-product-availability"
+          >
             <legend>Disponibilidad por local</legend>
             <p className="field-help">
               Elegí dónde estará disponible este producto.
@@ -243,7 +252,12 @@ export function ProductEditor({
           <button className="button alt" type="button" onClick={onCancel}>
             Cancelar
           </button>
-          <button className="button" type="submit" disabled={saving}>
+          <button
+            className="button"
+            data-tour="catalog-product-save"
+            type="submit"
+            disabled={saving}
+          >
             {saving ? "Guardando…" : "Guardar producto"}
           </button>
         </div>

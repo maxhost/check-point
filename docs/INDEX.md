@@ -205,6 +205,16 @@ desactualizado es peor que no tenerlo.
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
 
+## Tours de catálogo — alcance acordado el 2026-09-25
+
+- **ADR 0087:** [Los tours de catálogo son UI y consumen estado del API](adr/0087-los-tours-de-catalogo-son-ui-y-consumen-estado-del-api.md).
+  Fija orientación/ayudas, avance confirmado y responsabilidades Codex UI / Claude Code API.
+  Estado: **aceptada**; API existente suficiente, sin desarrollo backend requerido.
+- **Spec 0096:** [Tours de onboarding y ayuda del catálogo](specs/0096-tours-de-onboarding-y-ayuda-del-catalogo.md).
+  Cuatro pasos de orientación y ocho ayudas, con permisos, errores y validación móvil.
+  Estado: **cerrada**, UI implementada localmente con PASS independiente acotado; QA real pendiente; no disjunta.
+  [Handoff y evidencia](archivo/spec-0096-handoff-ui.md), [revisión independiente](archivo/spec-0096-revision-ui.md); sin cambios de API.
+
 ## Convenciones
 
 - **ADR** = una decision y su motivo. Se escribe cuando la decision se toma, no despues.

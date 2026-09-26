@@ -17,6 +17,7 @@ type Props = {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   canDelete: boolean;
+  actionsDisabled?: boolean;
 };
 
 export function ProductsTab({
@@ -29,6 +30,7 @@ export function ProductsTab({
   onEdit,
   onDelete,
   canDelete,
+  actionsDisabled,
 }: Props) {
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
@@ -74,7 +76,7 @@ export function ProductsTab({
   }
 
   return (
-    <>
+    <div data-tour="catalog-product-management">
       <div className="catalog-toolbar">
         <label className="catalog-search">
           <Search aria-hidden="true" />
@@ -124,7 +126,10 @@ export function ProductsTab({
         )}
       </div>
       {filtered.length === 0 ? (
-        <p className="field-help">No hay productos para ese filtro.</p>
+        <p className="field-help" data-tour="catalog-product-list">
+          No hay productos para ese filtro. Ajustá los filtros o la búsqueda
+          para elegir un producto.
+        </p>
       ) : (
         <CatalogList
           products={filtered}
@@ -133,8 +138,9 @@ export function ProductsTab({
           onEdit={onEdit}
           onDelete={onDelete}
           canDelete={canDelete}
+          actionsDisabled={actionsDisabled}
         />
       )}
-    </>
+    </div>
   );
 }

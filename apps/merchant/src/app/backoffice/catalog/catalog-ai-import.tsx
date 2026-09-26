@@ -12,6 +12,7 @@ import {
   PROCESSING_MESSAGE_INTERVAL_MS,
 } from "./catalog-ai-import-state";
 import { useCatalogImport } from "./use-catalog-import";
+import { useCatalogTour } from "./catalog-tour-context";
 
 /**
  * LA CARGA INTELIGENTE DE CATALOGO (spec 0091 / ADR 0084).
@@ -52,6 +53,41 @@ export function CatalogAiImport({
   } = useCatalogImport({ open, onClose, onAccepted });
 
   const processing = isProcessing({ status: activeImport?.status, busy });
+  const tour = useCatalogTour();
+  const notify = tour?.notify;
+  const stop = tour?.stop;
+  useEffect(() => {
+    if (!open || loading || !notify) return;
+    if (
+      error ||
+      (activeImport &&
+        ["failed", "cancelled", "expired"].includes(activeImport.status))
+    ) {
+      stop?.();
+      return;
+    }
+    notify({
+      type: "import",
+      phase: result
+        ? "result"
+        : busy || processing || activeImport
+          ? "processing"
+          : files.length
+            ? "analyze"
+            : "picker",
+    });
+  }, [
+    open,
+    loading,
+    error,
+    activeImport?.status,
+    processing,
+    busy,
+    result,
+    files.length,
+    notify,
+    stop,
+  ]);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -78,7 +114,16 @@ export function CatalogAiImport({
       onClose={onClose}
       dismissible={!processing || error !== null}
     >
-      <div className="catalog-ai-modal">
+      <div
+        className="catalog-ai-modal"
+        data-tour={
+          result
+            ? "catalog-import-result"
+            : busy || processing || activeImport
+              ? "catalog-import-processing"
+              : "catalog-import-picker"
+        }
+      >
         <p className="catalog-demo-note">
           <Spark aria-hidden="true" /> Tus archivos serán procesados con un
           proveedor externo de IA.

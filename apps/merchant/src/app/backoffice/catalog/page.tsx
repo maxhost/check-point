@@ -8,5 +8,10 @@ export default async function Page() {
   const session = await requireBackofficeSession();
   if (!session.membership.permissions.includes("catalog"))
     redirect("/backoffice");
-  return <CatalogPage canDelete={session.membership.role === "owner"} />;
+  return (
+    <CatalogPage
+      canDelete={session.membership.role === "owner"}
+      isOwner={session.membership.role === "owner"}
+    />
+  );
 }

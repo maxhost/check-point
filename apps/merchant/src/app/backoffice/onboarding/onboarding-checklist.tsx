@@ -16,7 +16,10 @@ import {
   ONBOARDING_TOUR_HREFS,
   onboardingStepState,
 } from "./onboarding-view";
-import { ONBOARDING_TOUR_STARTED_EVENT } from "./onboarding-tour";
+import {
+  ONBOARDING_TOUR_STARTED_EVENT,
+  ONBOARDING_TOUR_ENDED_EVENT,
+} from "./onboarding-tour";
 
 type SendState = "idle" | "sending" | "sent" | "error";
 
@@ -31,9 +34,16 @@ export function OnboardingChecklist() {
 
   useEffect(() => {
     const hide = () => setHiddenForTour(true);
+    const restore = () => {
+      setHiddenForTour(false);
+      setReloadKey((key) => key + 1);
+    };
     window.addEventListener(ONBOARDING_TOUR_STARTED_EVENT, hide);
-    return () =>
+    window.addEventListener(ONBOARDING_TOUR_ENDED_EVENT, restore);
+    return () => {
       window.removeEventListener(ONBOARDING_TOUR_STARTED_EVENT, hide);
+      window.removeEventListener(ONBOARDING_TOUR_ENDED_EVENT, restore);
+    };
   }, []);
 
   useEffect(() => {

@@ -33,7 +33,7 @@ describe("estados visuales del checklist", () => {
   it("un tour sin UI publicada queda como próximo después del email", () => {
     const items = [
       item("verify-email", 1, true, true),
-      item("catalog", 2, false),
+      item("program", 2, false),
     ];
     expect(onboardingStepState(items[1], items)).toBe("upcoming");
   });
@@ -60,6 +60,13 @@ describe("estados visuales del checklist", () => {
     const items = [
       item("verify-email", 1, true, true),
       item("locations", 2, false),
+    ];
+    expect(onboardingStepState(items[1], items)).toBe("current");
+  });
+  it("catálogo está publicado para el checklist real", () => {
+    const items = [
+      item("verify-email", 1, true, true),
+      item("catalog", 2, false),
     ];
     expect(onboardingStepState(items[1], items)).toBe("current");
   });

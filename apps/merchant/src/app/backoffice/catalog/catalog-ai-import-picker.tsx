@@ -37,6 +37,7 @@ export function CatalogAiImportPicker({
       <button
         className={`catalog-dropzone${isDragging ? " is-dragging" : ""}`}
         type="button"
+        disabled={busy}
         onClick={() => fileRef.current?.click()}
         onDragEnter={(event) => {
           event.preventDefault();
@@ -103,6 +104,7 @@ export function CatalogAiImportPicker({
           <button
             className="button alt"
             type="button"
+            disabled={busy}
             onClick={() => cameraRef.current?.click()}
           >
             <Camera aria-hidden="true" /> Tomar foto
@@ -111,6 +113,7 @@ export function CatalogAiImportPicker({
         <button
           className="button alt"
           type="button"
+          disabled={busy}
           onClick={() => fileRef.current?.click()}
         >
           <Page aria-hidden="true" /> Buscar archivos
@@ -128,6 +131,7 @@ export function CatalogAiImportPicker({
         {!hasSelectedPdf && (
           <button
             className="button"
+            data-tour="catalog-import-analyze"
             type="button"
             disabled={!files.length || busy}
             aria-describedby={files.length ? undefined : "catalog-analyze-help"}

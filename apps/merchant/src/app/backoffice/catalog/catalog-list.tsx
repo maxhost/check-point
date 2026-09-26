@@ -10,6 +10,7 @@ type Props = {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   canDelete: boolean;
+  actionsDisabled?: boolean;
 };
 
 export function CatalogList({
@@ -19,13 +20,18 @@ export function CatalogList({
   onEdit,
   onDelete,
   canDelete,
+  actionsDisabled,
 }: Props) {
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
   return (
-    <ul className="catalog-list">
+    <ul className="catalog-list" data-tour="catalog-product-list">
       {products.map((product) => (
-        <li key={product.id} className="catalog-item">
+        <li
+          key={product.id}
+          className="catalog-item"
+          data-catalog-id={product.id}
+        >
           <div className="catalog-thumb" aria-hidden="true">
             {product.imagePath ? (
               <img src={product.imagePath} alt="" />
@@ -50,6 +56,7 @@ export function CatalogList({
             <button
               type="button"
               className="small-button"
+              disabled={actionsDisabled}
               onClick={() => onEdit(product)}
             >
               Editar
@@ -58,6 +65,7 @@ export function CatalogList({
               <button
                 type="button"
                 className="small-button danger"
+                disabled={actionsDisabled}
                 onClick={() => onDelete(product)}
               >
                 Borrar

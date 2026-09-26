@@ -8,7 +8,29 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`6b128a9`)
+## ⇥ ESTADO (2026-09-25): UI DE TOURS DE CATÁLOGO IMPLEMENTADA LOCALMENTE; QA REAL PENDIENTE
+
+El owner aprobó cuatro pasos de orientación (Importar con IA → Productos → Categorías → Ayuda)
+y ocho ayudas independientes. [Spec 0096](specs/0096-tours-de-onboarding-y-ayuda-del-catalogo.md)
+**cerrada con UI implementada y QA pendiente**, con [ADR 0087](adr/0087-los-tours-de-catalogo-son-ui-y-consumen-estado-del-api.md)
+**aceptada**. UI y pruebas implementadas localmente, sin commit, push ni despliegue.
+[Revisión independiente](archivo/spec-0096-revision-ui.md): **PASS de la UI verificable**.
+La DoD completa sigue pendiente de pruebas autenticadas y dispositivos reales; se conserva
+la spec `cerrada`, sin declarar producción verificada.
+
+**Responsables:** Codex implementa toda la UI, incluidos clientes HTTP locales y pruebas;
+Claude Code mantiene rutas API, dominio, guards, IA y persistencia. Las APIs existentes cubren
+el alcance: **ningún desarrollo backend requerido identificado**. Coordinar cualquier cambio
+de contrato antes de consumirlo. No implementar recorridos/API en paralelo sobre los mismos
+archivos. Evidencia y límites en [handoff UI](archivo/spec-0096-handoff-ui.md) y
+[bitácora de seis defectos](archivo/spec-0096-bitacora-de-mutaciones.md).
+Typecheck, lint, tests y build estándar ejecutados en verde; navegador: 21 passed / 3 skipped.
+Correcciones de revisión verificadas: GET401/403 termina ayuda y mantiene error de acceso;
+selección de productos permite ajustar filtros sin resultados; import con resultado rápido
+conserva la guía. Pendiente: sesiones owner/staff reales de desarrollo y QA de cámara,
+archivos, teclado y claro/oscuro en iOS/Android.
+
+## Estado anterior (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`6b128a9`)
 
 **`6b128a9`:** filtro y buscador del catalogo alineados y de 48 px. Causa medida en Chromium: el
 buscador (`<label>`) heredaba `margin-top: 15px` global. Addendum en la spec 0095. **QA del owner:

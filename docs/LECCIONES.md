@@ -1689,3 +1689,14 @@ pasaba. Un estado imposible bajo la mutacion es la firma de que el codigo mutado
   del fallo, no su posibilidad**. Con eso, la mutacion paso a ROJO con la asercion exacta
   (`expected 0, received 1` en el outbox): el merchant recibia «tu menu ya esta en el catalogo» con el
   catalogo VACIO, y encima perdia el aviso real de fallo porque la marca ya estaba reclamada.
+
+## 2026-09-25 — el spotlight debe dejar ejecutar lo que pide el copy (0096)
+
+La lista de productos vacía por filtros tenía anchor y un texto que pedía ajustar la búsqueda,
+pero el buscador quedaba fuera del spotlight: Driver bloqueaba su clic. Reproducido al editar
+y borrar, aunque `fill()` de Playwright por sí solo habría ocultado el defecto. El anchor de
+selección ahora abarca filtros y lista en un contenedor persistente. Igual criterio para
+confirmaciones: resaltar sólo Borrar impedía pulsar Cancelar; el diálogo completo conserva
+ambas decisiones. Probar clics operativos además de valores de campos. Los listboxes de
+ReactAria se montan en portal: comprobar el DOM real (`data-rac`/`data-placement`) antes de
+escribir reglas de z-index o foco. Ver pruebas `catalog-tour-filters`, `delete` y `keyboard`.

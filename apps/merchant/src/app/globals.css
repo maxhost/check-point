@@ -6953,6 +6953,40 @@ input.cp-number-input::-webkit-outer-spin-button {
 .driver-popover-has-skip .driver-popover-title {
   padding-right: 72px;
 }
+.catalog-tour-popover .driver-popover-close-btn {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 12px auto;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+.catalog-help-options > button {
+  min-height: 60px;
+}
+.catalog-tour-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+}
+.catalog-tour-notice button {
+  min-height: 44px;
+}
+.driver-active:has(.catalog-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"]),
+.driver-active:has(.catalog-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"])
+  * {
+  pointer-events: auto;
+}
+.driver-active:has(.catalog-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"]) {
+  z-index: 1000000001 !important;
+}
 @media (min-width: 700px) {
   .staff-help-layer {
     align-items: center;

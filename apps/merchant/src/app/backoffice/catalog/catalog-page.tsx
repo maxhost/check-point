@@ -1,22 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { MagicWand, Plus } from "iconoir-react";
-import { ConfirmDialog } from "../../components/confirm-dialog";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { CatalogAiImport } from "./catalog-ai-import";
 import { CatalogSkeleton } from "./catalog-skeleton";
 import { CategoryManager } from "./category-manager";
 import { ProductEditor } from "./product-editor";
 import { ProductsTab } from "./products-tab";
-import { jsonInit, useCatalog } from "./use-catalog";
-import type { Category, Product, ProductPayload } from "./types";
-
-type Confirm =
-  | { kind: "product"; product: Product }
-  | { kind: "category"; category: Category };
-
-type Tab = "products" | "categories";
+import { useCatalogActions } from "./use-catalog-actions";
+import { CatalogDeleteDialog } from "./catalog-delete-dialog";
+import { CatalogTourProvider } from "./catalog-tour-context";
+import { CatalogTourController } from "./catalog-tour-controller";
 
 /** ADR 0086 — el copy del bloqueo. La proteccion es el 409 del servidor; esto es su reflejo,
  * para que el merchant no choque contra un error que no esperaba. */
@@ -25,8 +19,23 @@ const IMPORTANDO =
 
 export default function CatalogPage({
   canDelete = true,
+  isOwner = true,
 }: {
   canDelete?: boolean;
+  isOwner?: boolean;
+}) {
+  return (
+    <CatalogTourProvider>
+      <CatalogContent canDelete={canDelete} isOwner={isOwner} />
+    </CatalogTourProvider>
+  );
+}
+function CatalogContent({
+  canDelete,
+  isOwner,
+}: {
+  canDelete: boolean;
+  isOwner: boolean;
 }) {
   const {
     catalog,
@@ -35,59 +44,48 @@ export default function CatalogPage({
     setNotice,
     setError,
     reload,
-    mutate,
     createCategory,
-  } = useCatalog();
-  const [tab, setTab] = useState<Tab>("products");
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [confirm, setConfirm] = useState<Confirm | null>(null);
-  const [showAiImport, setShowAiImport] = useState(false);
-
-  async function saveProduct(payload: ProductPayload, id: string | null) {
-    const ok = await mutate(
-      id ? `/api/catalog/product/${id}` : "/api/catalog/product",
-      jsonInit(id ? "PUT" : "POST", payload),
-      "Producto guardado.",
-      "No pudimos guardar el producto.",
-    );
-    if (ok) {
-      setCreating(false);
-      setEditing(null);
-    }
-    return ok;
-  }
-
-  function runConfirm() {
-    if (!confirm) return;
-    const target = confirm;
-    setConfirm(null);
-    if (target.kind === "product") {
-      void mutate(
-        `/api/catalog/product/${target.product.id}`,
-        { method: "DELETE" },
-        "Producto borrado.",
-        "No pudimos borrar el producto.",
-      );
-    } else {
-      void mutate(
-        `/api/catalog/category/${target.category.id}`,
-        { method: "DELETE" },
-        "Categoría borrada.",
-        "No pudimos borrar la categoría.",
-      );
-    }
-  }
+    tab,
+    setTab,
+    editing,
+    confirm,
+    showAiImport,
+    setShowAiImport,
+    editorOpen,
+    newProduct,
+    editProduct,
+    deleteProduct,
+    deleteCategory,
+    saveProduct,
+    renameCategory,
+    runConfirm,
+    closeEditor,
+    closeConfirm,
+    closeImport,
+    prepareHelp,
+    refreshFailed,
+    writing,
+  } = useCatalogActions();
 
   if (!catalog) {
     return (
       <main className="merchant-shell">
-        {error ? <p className="form-error">{error}</p> : <CatalogSkeleton />}
+        {error ? (
+          <>
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+            <button className="button" onClick={() => void reload()}>
+              Reintentar
+            </button>
+          </>
+        ) : (
+          <CatalogSkeleton />
+        )}
       </main>
     );
   }
 
-  const editorOpen = creating || editing !== null;
   const importando = catalog.importInProgress;
   return (
     <main className="merchant-shell">
@@ -122,14 +120,43 @@ export default function CatalogPage({
             <p>{catalog.locations.length === 1 ? "local" : "locales"}</p>
           </div>
         </section>
-        <section className="catalog-ai-banner">
+        <CatalogTourController
+          catalog={catalog}
+          canDelete={canDelete}
+          isOwner={isOwner}
+          blocked={
+            editorOpen ||
+            confirm !== null ||
+            showAiImport ||
+            writing ||
+            refreshFailed
+          }
+          onPrepare={prepareHelp}
+          onNotice={setNotice}
+        />
+        {refreshFailed && (
+          <div className="catalog-tour-notice" role="alert">
+            <span>Los cambios ya se guardaron. Falta actualizar la lista.</span>
+            <button
+              data-tour="catalog-refresh"
+              className="small-button"
+              onClick={() => void reload()}
+            >
+              Reintentar lectura
+            </button>
+          </div>
+        )}
+        <section className="catalog-ai-banner" data-tour="catalog-import-entry">
           <div className="catalog-ai-icon" aria-hidden="true">
             <MagicWand />
           </div>
           <div>
             <p className="eyebrow">Carga inteligente</p>
             <h2>Convertí una foto o PDF en tu catálogo</h2>
-            <p>La IA crea las categorías, productos y precios por vos.</p>
+            <p>
+              La IA crea categorías, productos y precios. Después podés revisar
+              y completar tu catálogo.
+            </p>
           </div>
           <button
             className="button alt"
@@ -149,6 +176,7 @@ export default function CatalogPage({
             <button
               type="button"
               role="tab"
+              data-tour="catalog-products-entry"
               aria-selected={tab === "products"}
               className={tab === "products" ? "active" : ""}
               onClick={() => setTab("products")}
@@ -158,6 +186,7 @@ export default function CatalogPage({
             <button
               type="button"
               role="tab"
+              data-tour="catalog-categories-entry"
               aria-selected={tab === "categories"}
               className={tab === "categories" ? "active" : ""}
               onClick={() => setTab("categories")}
@@ -168,12 +197,10 @@ export default function CatalogPage({
           <button
             className="button catalog-primary-action"
             type="button"
-            disabled={importando}
+            data-tour="catalog-new-product"
+            disabled={importando || writing || refreshFailed}
             title={importando ? IMPORTANDO : undefined}
-            onClick={() => {
-              setEditing(null);
-              setCreating(true);
-            }}
+            onClick={newProduct}
           >
             <Plus aria-hidden="true" /> Nuevo producto
           </button>
@@ -184,35 +211,24 @@ export default function CatalogPage({
             categories={catalog.categories}
             locations={catalog.locations}
             currencyCode={catalog.currencyCode}
-            importInProgress={importando}
-            onNew={() => {
-              setEditing(null);
-              setCreating(true);
-            }}
-            onEdit={(product) => {
-              setCreating(false);
-              setEditing(product);
-            }}
-            onDelete={(product) => setConfirm({ kind: "product", product })}
+            importInProgress={importando || writing || refreshFailed}
+            onNew={newProduct}
+            onEdit={editProduct}
+            onDelete={deleteProduct}
             canDelete={canDelete}
+            actionsDisabled={writing || refreshFailed}
           />
         ) : (
           <CategoryManager
             categories={catalog.categories}
-            importInProgress={importando}
+            importInProgress={importando || writing || refreshFailed}
             onCreate={(name) =>
               createCategory(name).then((cat) => cat !== null)
             }
-            onRename={(id, name) =>
-              mutate(
-                `/api/catalog/category/${id}`,
-                jsonInit("PUT", { name }),
-                "Categoría renombrada.",
-                "No pudimos renombrar la categoría.",
-              )
-            }
-            onDelete={(category) => setConfirm({ kind: "category", category })}
+            onRename={renameCategory}
+            onDelete={deleteCategory}
             canDelete={canDelete}
+            actionsDisabled={writing || refreshFailed}
           />
         )}
         <ProductEditor
@@ -224,31 +240,23 @@ export default function CatalogPage({
           currencyCode={catalog.currencyCode}
           onCreateCategory={createCategory}
           onSave={saveProduct}
-          onCancel={() => {
-            setCreating(false);
-            setEditing(null);
-          }}
+          onCancel={closeEditor}
           onError={setError}
+          categoryCreationDisabled={importando || writing || refreshFailed}
         />
         <CatalogAiImport
           open={showAiImport}
-          onClose={() => setShowAiImport(false)}
-          onAccepted={reload}
+          onClose={closeImport}
+          onAccepted={async () => {
+            await reload();
+          }}
         />
       </div>
-      <ConfirmDialog
-        open={confirm !== null}
-        title={
-          confirm?.kind === "category" ? "Borrar categoría" : "Borrar producto"
-        }
-        description={
-          confirm?.kind === "category"
-            ? "Sus productos quedarán sin categoría. Esta acción no se puede deshacer."
-            : "El producto se eliminará del catálogo. Esta acción no se puede deshacer."
-        }
-        confirmLabel="Borrar"
-        onCancel={() => setConfirm(null)}
-        onConfirm={runConfirm}
+      <CatalogDeleteDialog
+        confirm={confirm}
+        busy={writing}
+        onCancel={closeConfirm}
+        onConfirm={() => void runConfirm()}
       />
     </main>
   );
