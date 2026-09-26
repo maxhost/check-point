@@ -69,6 +69,14 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Padding derecho adicional por QA owner (2026-09-26): 24 px en opciones compactas
+Loyalty y 16 px hasta 479 px; conserva padding izquierdo, texto, radio y handlers.
+Dos declaraciones CSS. Revisión independiente del espaciado real texto/borde y
+contención de opciones/inputs en su tarjeta: 8/8 PASS (20.3 s), 32 recorridos
+Puntos/Sellos creación/edición a 320/390/768/1280 px light/dark. Sin texto partido,
+ni overflow de tarjeta/página; ancho y footer anteriores conservados. Formato PASS.
+Sin nuevos gates generales ni mutaciones; tours siguen parqueados.
+
 Contención adicional por QA owner (2026-09-26): opciones compactas con ancho por
 contenido, padding explícito y texto sin reducción; grupos/tarjeta con min-width 0
 y columna minmax(0,1fr). Móvil ≤479 px usa texto 14 px/gap 8 px/padding horizontal

@@ -422,6 +422,12 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+QA owner (2026-09-26): aumentar espacio entre texto y borde derecho de las opciones
+compactas de acumulación/premio recién corregidas. Padding derecho 24 px en escritorio
+y 16 px hasta 479 px, conservando padding izquierdo y demás medidas; comprobar espacio
+real y contención en tarjeta a 320/390/768/1280 px light/dark. Cambio CSS local, sin
+handlers ni otras opciones; 0 nuevas mutaciones y revisión acotada sin gates generales.
+
 Corrección adicional de QA owner (2026-09-26): los contenedores de Por monto/Por
 compra y Tipo de premio deben encerrar su texto completo con espacio interior visible.
 Hacer explícitos ancho por contenido, padding y comportamiento del texto en opciones

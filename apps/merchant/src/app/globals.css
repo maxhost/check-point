@@ -7165,6 +7165,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   width: max-content;
   max-width: 100%;
   padding: 8px 16px;
+  padding-right: 24px;
 }
 .loyalty-page
   .cp-choices:not(.cp-choice-cards)
@@ -7278,6 +7279,7 @@ ul.loyalty-fields {
   .loyalty-page .cp-choices:not(.cp-choice-cards) .cp-choice {
     gap: 8px;
     padding-inline: 12px;
+    padding-right: 16px;
     font-size: 14px;
   }
   .loyalty-actions {
