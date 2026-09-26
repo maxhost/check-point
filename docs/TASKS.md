@@ -56,6 +56,10 @@ el 2026-09-26 al cerrar la UI 0098; commits separados para mantener su alcance.
 
 ## Trabajo actual — spec 0098 pusheada para QA live (2026-09-26)
 
+**Salida por X (`50346b4`):** retirado «Volver al Backoffice»; la X conserva descarte y
+protección durante guardado. Dos selectores existentes migrados a la X; caso de edición,
+teclado y descarte 1/1 PASS. Sin nuevas pruebas/mutaciones; sigue QA live.
+
 **Rediseño de consulta (`e8feef4`):** tarjeta Sellos/Puntos con título/estado, cifra
 principal, preview, mecánica/canje por bloques, premios agrupados y acciones separadas.
 Términos con colores semánticos y encabezado propio; legibles en claro/oscuro,
