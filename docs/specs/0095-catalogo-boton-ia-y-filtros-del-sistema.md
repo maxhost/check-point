@@ -56,6 +56,19 @@ nativos del backoffice.
   incluida `.catalog-toolbar .catalog-filter`.
 - `catalog-page.tsx`: «Probar importador» → «Importar con IA».
 
+## Addendum (2026-09-25) — alineacion con el buscador
+
+QA del owner, textual: *«el dropdown no esta alineado al buscador verticalmente en catalogo
+deberian tener el mismo alto y estar alineados en desktop dropdown esta ligeramente arriba»*.
+
+**Causa, MEDIDA** en Chromium (Playwright sobre el CSS compilado, a 1280 px): el buscador es un
+`<label class="catalog-search">` y heredaba `margin-top: 15px` de la regla global `label`
+(`globals.css`); medido: buscador `top 51 / 46 px`, dropdown `top 42.5 / 48 px`. **Fix:**
+`.catalog-toolbar { align-items: center }` y `.catalog-toolbar .catalog-search { min-height: 48px;
+margin: 0 }` (48 px = `min-h-12` de `SelectField`). **Despues:** los dos `top 36 / bottom 84 / 48
+px` a 1280 px; a 400 px apilados, ambos de 48 px. El harness no carga las variables de marca, asi
+que no mide colores ni bordes.
+
 ## Archivos
 
 | Archivo | Accion |

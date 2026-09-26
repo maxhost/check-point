@@ -4290,6 +4290,15 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: var(--color-content-muted);
   background: var(--color-surface);
 }
+/* El buscador es un `<label>` y heredaba el `margin-top: 15px` global de `label`: quedaba mas
+   abajo que el filtro. Mismo alto que `SelectField` (`min-h-12`, 48px) y centrados (spec 0095). */
+.catalog-toolbar {
+  align-items: center;
+}
+.catalog-toolbar .catalog-search {
+  min-height: 48px;
+  margin: 0;
+}
 .catalog-search:focus-within {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
