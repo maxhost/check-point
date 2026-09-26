@@ -273,3 +273,18 @@ con [PASS independiente de la UI verificable](../archivo/spec-0096-revision-ui.m
 la DoD completa continúa pendiente de sesiones auténticas y dispositivos reales.
 Implementación en `3c9be45`, pusheada a `origin/main` por instrucción del owner.
 El despliegue de producción no está verificado.
+
+## Addendum de QA — separación de Ayuda (2026-09-25)
+
+Pedido aprobado por el owner: separar el botón Ayuda de la tarjeta Carga inteligente.
+La página de catálogo usa flujo normal; `.staff-help-button` sólo tiene margen superior y
+`.catalog-ai-banner` no tiene margen superior. Añadir 18 px de margen inferior a Ayuda
+con selector acotado a `.catalog-page`, coherente con el espaciado del resumen.
+Verificar distancia visible en móvil/escritorio y los seis gates; revisión independiente
+acotada al CSS. Presupuesto de nuevas mutaciones: cero, cambio visual reversible.
+
+Verificado: separación medida en Chromium de 0 → 18 px a 390 px y 1280 px, con UI y
+CSS reales y API controlada. PASS independiente de `/root/review_catalog_spacing`,
+reproducido por el implementador. Sin cambios en Ayuda de Staff/Locales.
+Gates root Node 24: typecheck, lint, test, formato, build y Playwright exit 0;
+1789 tests passed / 595 skipped; navegador 21 passed / 3 skipped.

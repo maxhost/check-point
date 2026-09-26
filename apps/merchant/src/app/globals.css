@@ -4184,6 +4184,9 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: var(--color-content-muted);
   font-size: 13px;
 }
+.catalog-page .staff-help-button {
+  margin-bottom: 18px;
+}
 .catalog-ai-banner {
   display: grid;
   grid-template-columns: auto 1fr auto;
