@@ -24,8 +24,9 @@ confirmación con GET válido o vista pendiente. No hay cambios de backend/schem
 Typecheck root pasó en las tres apps (dos resultados en caché). Build Turbopack de
 Merchant falló por EPERM al crear proceso/puerto, también en reintento autorizado;
 Consumer/Platform tienen build válido en caché. Merchant compila con Webpack,
-TypeScript y generación de 33 páginas. Revisión estática independiente PASS acotado;
-commit preparado para publicación. No se afirma despliegue ni producción verificados.
+TypeScript y generación de 33 páginas. Revisión estática independiente PASS acotado.
+UI publicada en `origin/main`: `78ec592`; push confirmado. No se afirma despliegue ni
+producción verificados. Siguiente paso: QA live del owner.
 
 [Plan original](archivo/spec-0100-handoff-plan.md),
 [handoff UI](archivo/spec-0100-handoff-ui.md) y

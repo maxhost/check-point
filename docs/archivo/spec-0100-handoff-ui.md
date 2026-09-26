@@ -11,6 +11,9 @@ generadas. Logs: `/tmp/spec0100/typecheck.log`, `build.log`, `build-escalated.lo
 `build-webpack-final.log`. [Revisión independiente estática](spec-0100-revision-ui.md):
 PASS acotado; sin evidencia funcional de navegador ni producción.
 
+Publicación: commit `78ec592` en `main`, push a `origin/main` confirmado el 2026-09-26.
+Deploy no inspeccionado; siguiente paso QA live del owner.
+
 Archivos tocados:
 
 - Loyalty: `loyalty-tour-context.tsx`, `loyalty-tour-controller.tsx`, `loyalty-tour-definitions.ts`, `loyalty-tour-focus.ts`, `loyalty-tour-state.ts`, `loyalty-tour-step.ts`.
