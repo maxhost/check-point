@@ -8,6 +8,7 @@ import {
 } from "react-aria-components";
 import { Button } from "../../../ui";
 export function LoyaltyConfirmDialog({
+  tourAnchor,
   open,
   title,
   description,
@@ -15,6 +16,7 @@ export function LoyaltyConfirmDialog({
   onCancel,
   onConfirm,
 }: {
+  tourAnchor?: string;
   open: boolean;
   title: string;
   description: string;
@@ -33,7 +35,11 @@ export function LoyaltyConfirmDialog({
       className="loyalty-dialog-overlay fixed inset-0 z-50 grid place-items-center bg-overlay p-4"
     >
       <Modal className="w-full max-w-lg rounded-lg border border-border bg-surface-raised p-6 text-content shadow-lg">
-        <Dialog className="outline-none" aria-describedby={descriptionId}>
+        <Dialog
+          data-tour={tourAnchor}
+          className="outline-none"
+          aria-describedby={descriptionId}
+        >
           <Heading slot="title" className="text-xl font-bold">
             {title}
           </Heading>

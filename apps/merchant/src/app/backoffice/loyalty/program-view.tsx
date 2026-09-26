@@ -23,8 +23,11 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
       : unit;
   return (
     <>
-      <section className="loyalty-section loyalty-program-view">
-        <div className="loyalty-summary-heading">
+      <section
+        data-tour="loyalty-result"
+        className="loyalty-section loyalty-program-view"
+      >
+        <div data-tour="loyalty-program" className="loyalty-summary-heading">
           <h2>
             {program.kind === "points"
               ? "Programa de puntos"
@@ -34,63 +37,68 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
             {vm.isClosing ? "En cierre" : "Activo"}
           </strong>
         </div>
-        <div className="loyalty-program-hero">
-          <div className="loyalty-program-metric">
-            <p className="loyalty-program-caption">
-              {program.kind === "points" ? "Acumulación" : "Objetivo"}
-            </p>
-            <p className="loyalty-program-value">
-              {program.kind === "points"
-                ? (accrual?.grant ?? "Por compra")
-                : String(configuration.target)}
-            </p>
-            <p className="loyalty-program-detail">
-              {program.kind === "stamps"
-                ? `${targetUnit} para completar`
-                : accrual
-                  ? `${accrual.grant === 1 ? configuration.unitSingular : unit} ${accrual.mode === "per_purchase" ? "por compra" : `cada ${formatMoney(Number(accrual.blockAmount), vm.currencyCode)} (${vm.currencyCode})`}`
-                  : unit}
-            </p>
-            {program.kind === "points" && (
+        <div data-tour="loyalty-rules">
+          <div className="loyalty-program-hero">
+            <div className="loyalty-program-metric">
               <p className="loyalty-program-caption">
-                Unidades: {String(configuration.unitSingular)} / {unit}
+                {program.kind === "points" ? "Acumulación" : "Objetivo"}
               </p>
+              <p className="loyalty-program-value">
+                {program.kind === "points"
+                  ? (accrual?.grant ?? "Por compra")
+                  : String(configuration.target)}
+              </p>
+              <p className="loyalty-program-detail">
+                {program.kind === "stamps"
+                  ? `${targetUnit} para completar`
+                  : accrual
+                    ? `${accrual.grant === 1 ? configuration.unitSingular : unit} ${accrual.mode === "per_purchase" ? "por compra" : `cada ${formatMoney(Number(accrual.blockAmount), vm.currencyCode)} (${vm.currencyCode})`}`
+                    : unit}
+              </p>
+              {program.kind === "points" && (
+                <p className="loyalty-program-caption">
+                  Unidades: {String(configuration.unitSingular)} / {unit}
+                </p>
+              )}
+            </div>
+            {program.kind === "stamps" && (
+              <div className="loyalty-program-preview">
+                <CardPreview
+                  target={Number(configuration.target)}
+                  design={{
+                    backgroundColor:
+                      program.cardBackgroundColor ??
+                      vm.context!.business.brandPrimaryColor,
+                    backgroundColor2: program.cardBackgroundColor2,
+                    gradientAngle: program.cardBackgroundGradientAngle,
+                    borderColor:
+                      program.cardBorderColor ??
+                      vm.context!.business.brandAccentColor,
+                  }}
+                  stampImagePath={program.stampImagePath}
+                />
+              </div>
             )}
           </div>
-          {program.kind === "stamps" && (
-            <div className="loyalty-program-preview">
-              <CardPreview
-                target={Number(configuration.target)}
-                design={{
-                  backgroundColor:
-                    program.cardBackgroundColor ??
-                    vm.context!.business.brandPrimaryColor,
-                  backgroundColor2: program.cardBackgroundColor2,
-                  gradientAngle: program.cardBackgroundGradientAngle,
-                  borderColor:
-                    program.cardBorderColor ??
-                    vm.context!.business.brandAccentColor,
-                }}
-                stampImagePath={program.stampImagePath}
-              />
+          <dl className="loyalty-summary loyalty-program-rules">
+            <div>
+              <dt>Mecánica de acumulación</dt>
+              <dd>{accumulation}</dd>
             </div>
-          )}
+            <div>
+              <dt>Canje sin saldo suficiente</dt>
+              <dd>
+                {program.redeemAllowInsufficient
+                  ? "Permitido; el saldo queda en 0 y se registra la entrega."
+                  : "No permitido"}
+              </dd>
+            </div>
+          </dl>
         </div>
-        <dl className="loyalty-summary loyalty-program-rules">
-          <div>
-            <dt>Mecánica de acumulación</dt>
-            <dd>{accumulation}</dd>
-          </div>
-          <div>
-            <dt>Canje sin saldo suficiente</dt>
-            <dd>
-              {program.redeemAllowInsufficient
-                ? "Permitido; el saldo queda en 0 y se registra la entrega."
-                : "No permitido"}
-            </dd>
-          </div>
-        </dl>
-        <div className="loyalty-program-rewards">
+        <div
+          data-tour="loyalty-rewards-view"
+          className="loyalty-program-rewards"
+        >
           <h3>Premios</h3>
           <ul>
             {program.rewards.map((reward, index) => (
@@ -115,7 +123,10 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
           </ul>
         </div>
         {vm.isClosing ? (
-          <div className="loyalty-program-closing">
+          <div
+            data-tour="loyalty-closing-dates"
+            className="loyalty-program-closing"
+          >
             <h3>Cierre programado</h3>
             <dl className="loyalty-summary">
               <div>
@@ -133,7 +144,10 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
           </div>
         ) : null}
         {(!vm.isClosing || vm.isOwner) && (
-          <div className="loyalty-actions loyalty-program-footer">
+          <div
+            data-tour="loyalty-management"
+            className="loyalty-actions loyalty-program-footer"
+          >
             {vm.isClosing ? (
               <Button
                 isDisabled={vm.saving}
@@ -145,6 +159,7 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
               <>
                 <Button
                   isDisabled={vm.saving}
+                  data-tour="loyalty-edit-action"
                   onPress={() => vm.setEditing(true)}
                 >
                   Editar programa
@@ -153,6 +168,7 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
                   <Button
                     variant="secondary"
                     isDisabled={vm.saving}
+                    data-tour="loyalty-close-action"
                     onPress={() => vm.setClosing(true)}
                   >
                     Cerrar programa
@@ -163,7 +179,10 @@ export function ProgramView({ vm }: { vm: LoyaltyVm }) {
           </div>
         )}
       </section>
-      <section className="loyalty-section loyalty-program-terms">
+      <section
+        data-tour="loyalty-terms-view"
+        className="loyalty-section loyalty-program-terms"
+      >
         <h2>Términos y condiciones</h2>
         <p className="published-term">{program.termsMarkdown}</p>
       </section>

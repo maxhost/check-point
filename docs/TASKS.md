@@ -8,23 +8,29 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## Trabajo actual — spec 0100 aprobada, handoff antes del clear (2026-09-26)
+## Trabajo actual — spec 0100: entrega para QA live (2026-09-26)
 
-Owner aprobó la versión completa y pidió handoff + clear, regreso para implementar.
-[Spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md) `cerrada` y
-[ADR0090](adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md) `aceptado`
-en `21881dd`. Sin código de tours ni decisiones pendientes. Políticas incluye términos
-y condiciones más Permitir canjes sin saldo suficiente.
+Owner pidió implementar [Spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md)
+y luego limitó explícitamente la verificación a compilación, autorizó commit/push y
+decidió probar en live. No ejecutar suites adicionales ni las cuatro mutaciones
+previstas; no presentar esa omisión como PASS automatizado.
 
-Plan: tour general de cinco pasos y cuatro ayudas: crear, editar, programar cierre,
-políticas. Copy/anchors, señales/outcome de escritura, permisos, borrador y recuperación,
-oráculos/DoD y comandos definidos. Un implementador y revisor independiente; máximo
-cuatro mutaciones/dos rondas y una ronda de gates generales, con límites documentados.
+UI: orientación de cinco pasos y cuatro ayudas (crear, editar, programar cierre,
+políticas), sobre el editor existente. Políticas conserva el borrador y cubre términos
+más canje sin saldo. Progreso sólo para onboarding owner; las ayudas no persisten.
+Resultados de escritura con attemptId distinguen rechazo, resultado incierto y
+confirmación con GET válido o vista pendiente. No hay cambios de backend/schema.
 
-[Handoff completo](archivo/spec-0100-handoff-plan.md) listo en disco. El contexto aún no
-está limpio: no existe herramienta para invocar /clear; owner debe ejecutar /clear o
-abrir sesión nueva. Retorno: «Implementar spec 0100». No iniciar código antes del retorno.
-Preservar next-env externos de las tres apps. Tours retirados de PARQUEADO.
+Typecheck root pasó en las tres apps (dos resultados en caché). Build Turbopack de
+Merchant falló por EPERM al crear proceso/puerto, también en reintento autorizado;
+Consumer/Platform tienen build válido en caché. Merchant compila con Webpack,
+TypeScript y generación de 33 páginas. Revisión estática independiente PASS acotado;
+commit preparado para publicación. No se afirma despliegue ni producción verificados.
+
+[Plan original](archivo/spec-0100-handoff-plan.md),
+[handoff UI](archivo/spec-0100-handoff-ui.md) y
+[revisión](archivo/spec-0100-revision-ui.md). Spec permanece `cerrada` con UI entregada
+y QA live pendiente. Preservar next-env externos y notas de Marketing de la otra sesión.
 
 ## Ajustes publicados del formulario de Loyalty (2026-09-26)
 

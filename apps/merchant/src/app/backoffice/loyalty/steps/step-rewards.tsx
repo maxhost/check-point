@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { NumberDraftField } from "../number-draft-field";
 import {
   Alert,
@@ -158,9 +159,11 @@ function RewardCard({
 export function StepRewards({
   vm,
   errors,
+  navigation,
 }: {
   vm: LoyaltyVm;
   errors: Record<string, string>;
+  navigation?: ReactNode;
 }) {
   const earn = vm.earn;
   return (
@@ -203,7 +206,7 @@ export function StepRewards({
           )}
         </>
       )}
-      <section className="loyalty-fields">
+      <section data-tour="loyalty-redemption-policy" className="loyalty-fields">
         <h3>Configuración avanzada</h3>
         <CheckboxField
           label="Permitir canjes sin saldo suficiente"
@@ -211,6 +214,7 @@ export function StepRewards({
           onChange={earn.setAllowInsufficient}
           description={`Si está activo, tu mostrador puede entregar un premio aunque al cliente le falten ${vm.kind === "points" ? "puntos" : "sellos"}: se descuenta lo que tenga y su saldo queda en 0. Queda registrado como entrega sin saldo.`}
         />
+        {navigation}
       </section>
     </>
   );

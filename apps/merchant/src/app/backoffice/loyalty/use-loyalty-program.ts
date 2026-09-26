@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { loyaltyRequest, asLoyaltyError, LoyaltyApiError } from "./loyalty-api";
 import { isContext, areTemplates } from "./loyalty-response";
 import { programPayload } from "./program-payload";
+import type { LoyaltyWriteOutcome } from "./loyalty-tour-state";
 import { firstInvalidStep } from "./program-form-state";
 import { useStampUpload } from "./use-stamp-upload";
 import { type BrandDefaults, useCardDesign } from "./use-card-design";
@@ -32,6 +33,11 @@ export function useLoyaltyProgram({
   canReadCatalog: boolean;
 }) {
   const writing = useRef(false);
+  const attempts = useRef(0);
+  const [writeOutcome, setWriteOutcome] = useState<LoyaltyWriteOutcome | null>(
+    null,
+  );
+  const [editorIntent, setEditorIntent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<LoyaltyApiError | null>(null);
   const [operationError, setOperationError] = useState<LoyaltyApiError | null>(
@@ -153,6 +159,15 @@ export function useLoyaltyProgram({
     )
       return;
     writing.current = true;
+    const attemptId = ++attempts.current;
+    const operation =
+      method === "DELETE"
+        ? "close"
+        : method === "PATCH"
+          ? "cancel"
+          : program
+            ? "edit"
+            : "create";
     setSaving(true);
     setOperationError(null);
     setError(null);
@@ -170,11 +185,21 @@ export function useLoyaltyProgram({
       )
         throw new LoyaltyApiError(200, undefined, undefined, true);
       setNotice(success);
-      await load(false, true);
+      const refreshed = await load(false, true);
+      setWriteOutcome({
+        attemptId,
+        operation,
+        status: refreshed ? "confirmed+refreshed" : "confirmed+refreshFailed",
+      });
     } catch (reason) {
       const failure = asLoyaltyError(reason);
       setOperationError(failure);
       setError(failure.message);
+      setWriteOutcome({
+        attemptId,
+        operation,
+        status: failure.uncertain ? "uncertain" : "rejected",
+      });
     } finally {
       writing.current = false;
       setSaving(false);
@@ -236,6 +261,13 @@ export function useLoyaltyProgram({
   function vm() {
     return {
       context,
+      writeOutcome,
+      editorIntent,
+      consumeEditorIntent: () => setEditorIntent(0),
+      preparePolicies: () => {
+        setEditing(true);
+        setEditorIntent((value) => value + 1);
+      },
       isOwner,
       canReadCatalog,
       loading,

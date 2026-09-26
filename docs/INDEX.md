@@ -227,7 +227,7 @@ habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
 
 - **ADR 0090 / Spec 0100:** [Tours de onboarding y ayuda de Loyalty](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md).
   Orientación general y ayudas para crear, editar, cerrar y políticas sobre el editor existente.
-  Estado: **spec cerrada / ADR aceptado por owner el 2026-09-26**, políticas incluye términos y canje sin saldo; handoff listo para implementación después del clear, sin código.
+  Estado: **spec cerrada con UI implementada para QA live / ADR aceptado**, políticas incluye términos y canje sin saldo. Owner limitó la verificación a compilación y autorizó commit/push; suites y mutaciones pendientes, sin afirmar producción verificada. [Entrega](archivo/spec-0100-handoff-ui.md), [revisión estática](archivo/spec-0100-revision-ui.md).
 
 - **ADR 0089:** [Loyalty reutiliza el sistema del wizard merchant](adr/0089-loyalty-reutiliza-el-sistema-del-wizard-merchant.md).
   Unifica consulta, formularios, progreso y cierre con el catálogo compartido, conservando reglas/API.

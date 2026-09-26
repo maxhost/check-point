@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { OnboardingItem } from "./onboarding-api";
-import { onboardingStepState } from "./onboarding-view";
+import {
+  AVAILABLE_ONBOARDING_ANCHORS,
+  ONBOARDING_TOUR_HREFS,
+  onboardingStepState,
+} from "./onboarding-view";
 
 const item = (
   id: string,
@@ -18,6 +22,14 @@ const item = (
 });
 
 describe("estados visuales del checklist", () => {
+  it("program está disponible y deriva su destino del mismo mapa", () => {
+    expect(ONBOARDING_TOUR_HREFS.program).toBe(
+      "/backoffice/loyalty?tour=onboarding",
+    );
+    expect(AVAILABLE_ONBOARDING_ANCHORS.has("program")).toBe(true);
+    const program = item("program", 7, false);
+    expect(onboardingStepState(program, [program])).toBe("current");
+  });
   it("el email pendiente es actual y bloquea los pasos posteriores", () => {
     const items = [item("verify-email", 1, true), item("catalog", 2, false)];
 
@@ -33,7 +45,7 @@ describe("estados visuales del checklist", () => {
   it("un tour sin UI publicada queda como próximo después del email", () => {
     const items = [
       item("verify-email", 1, true, true),
-      item("program", 2, false),
+      item("unpublished", 2, false),
     ];
     expect(onboardingStepState(items[1], items)).toBe("upcoming");
   });

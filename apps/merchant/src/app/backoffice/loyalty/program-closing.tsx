@@ -14,7 +14,7 @@ export function ProgramClosing({ vm }: { vm: LoyaltyVm }) {
     /^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(vm.redemptionEndsAt) &&
     vm.redemptionEndsAt > vm.earningEndsAt;
   return (
-    <section className="loyalty-section">
+    <section data-tour="loyalty-close-form" className="loyalty-section">
       <h2>Cierre del programa</h2>
       <p>
         Desde el fin de acumulación no se otorgarán más beneficios. Las personas

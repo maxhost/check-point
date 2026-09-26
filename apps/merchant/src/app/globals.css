@@ -7483,3 +7483,66 @@ ul.loyalty-fields {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Loyalty help accompanies the real form, dialogs and error recovery. */
+.loyalty-tour-popover .driver-popover-close-btn {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.65rem;
+  font: inherit;
+}
+.driver-active:has(.loyalty-tour-popover) .loyalty-page,
+.driver-active:has(.loyalty-tour-popover) .loyalty-page *,
+.driver-active:has(.loyalty-tour-popover) .loyalty-dialog-overlay,
+.driver-active:has(.loyalty-tour-popover) .loyalty-dialog-overlay *,
+.driver-active:has(.loyalty-tour-popover) .dialog-backdrop,
+.driver-active:has(.loyalty-tour-popover) .image-cropper *,
+.driver-active:has(.loyalty-tour-popover) [data-rac][data-placement],
+.driver-active:has(.loyalty-tour-popover) [data-rac][data-placement] * {
+  pointer-events: auto;
+}
+.driver-active:has(.loyalty-tour-popover) .loyalty-dialog-overlay,
+.driver-active:has(.loyalty-tour-popover) .dialog-backdrop:has(.image-cropper) {
+  z-index: 1000000001;
+}
+.loyalty-tour-popover {
+  max-height: min(35vh, 17rem);
+  overflow: auto;
+}
+@media (max-width: 767px) {
+  .loyalty-tour-popover {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0.5rem !important;
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    width: auto;
+    max-width: none;
+  }
+  .driver-active:has(.loyalty-tour-popover) .loyalty-page {
+    padding-bottom: 40vh;
+  }
+}
+
+.driver-active:has(.loyalty-tour-popover)
+  [data-rac][data-placement]:has([role="listbox"]) {
+  z-index: 1000000002;
+}
+.loyalty-tour-popover {
+  z-index: 1000000002;
+}
+.driver-active:has(.loyalty-tour-popover) .dialog-backdrop:has(.image-cropper) {
+  align-items: start;
+  padding: 12px;
+}
+.driver-active:has(.loyalty-tour-popover) .image-cropper {
+  max-height: calc(100dvh - 260px);
+  overflow: auto;
+}
+.driver-active:has(.loyalty-tour-popover) .image-cropper-stage {
+  min-height: 72px;
+  height: clamp(72px, calc(100dvh - 460px), 330px);
+  aspect-ratio: auto;
+}

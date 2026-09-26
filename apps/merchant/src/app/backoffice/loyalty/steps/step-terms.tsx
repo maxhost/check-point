@@ -33,7 +33,9 @@ export function StepTerms({
         autoGrow
         errorMessage={errors.terms}
       />
-      <AccrualFields vm={vm} errors={errors} />
+      <div data-tour="loyalty-accrual">
+        <AccrualFields vm={vm} errors={errors} />
+      </div>
     </>
   );
 }

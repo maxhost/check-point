@@ -1,3 +1,4 @@
+import { LOYALTY_ONBOARDING_TOUR_HREF } from "../loyalty/loyalty-tour-definitions";
 import { STAFF_ONBOARDING_TOUR_HREF } from "../staff/staff-tour-definitions";
 import { LOCATIONS_ONBOARDING_TOUR_HREF } from "../locations/locations-tour-definitions";
 import type { OnboardingItem } from "./onboarding-api";
@@ -20,6 +21,7 @@ export const ONBOARDING_TOUR_HREFS: Readonly<Record<string, string>> = {
   staff: STAFF_ONBOARDING_TOUR_HREF,
   catalog: CATALOG_ONBOARDING_TOUR_HREF,
   brand: BRAND_ONBOARDING_TOUR_HREF,
+  program: LOYALTY_ONBOARDING_TOUR_HREF,
 };
 
 export const AVAILABLE_ONBOARDING_ANCHORS: ReadonlySet<string> = new Set([

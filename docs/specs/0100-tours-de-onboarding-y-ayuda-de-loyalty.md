@@ -9,6 +9,24 @@ archivos: apps/merchant/src/app/backoffice/loyalty/, apps/merchant/src/app/backo
 
 # 0100 — Tours de onboarding y ayuda de Loyalty
 
+## Entrega UI y cambio de verificación — 2026-09-26
+
+Owner retomó con «implementar spec 0100» y durante implementación indicó:
+«no es necesario que corras las pruebas mas alla de asegurarte de que compila bien
+todo, lo comiteas haces el push y lo veo en live cuando este listo».
+Esta instrucción sustituye la ejecución de suites y mutaciones prevista abajo para
+esta entrega. Se conserva el plan como referencia de QA; no se declara su DoD completa
+ni producción verificada. Estado `cerrada`, UI implementada para QA live del owner.
+
+Orientación y cuatro ayudas reutilizan el editor y el motor existentes; sólo la
+orientación owner iniciada desde checklist persiste progreso. El writer expone
+outcomes por intento; políticas usa intención de apertura en Términos sin rehidratar.
+La revisión independiente es estática y acotada por esa instrucción.
+
+Evidencia y límites en [handoff UI](../archivo/spec-0100-handoff-ui.md) y
+[revisión independiente](../archivo/spec-0100-revision-ui.md). Los párrafos siguientes
+describen la planificación aprobada antes de implementar.
+
 **Planificación retomada por owner el 2026-09-26**, tras los ajustes del formulario.
 **Aprobada por owner el 2026-09-26.** Plan cerrado y handoff preparado antes del
 clear; implementar en la siguiente sesión, no iniciar código ahora.

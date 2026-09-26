@@ -8,7 +8,19 @@ import { LoyaltyConfirmDialog } from "./loyalty-confirm-dialog";
 import { LoyaltyError } from "./loyalty-error";
 import { LoyaltySkeleton } from "./ui";
 import { useLoyaltyProgram } from "./use-loyalty-program";
-export default function LoyaltyProgramPage({
+import { LoyaltyTourProvider } from "./loyalty-tour-context";
+import { LoyaltyTourController } from "./loyalty-tour-controller";
+export default function LoyaltyProgramPage(props: {
+  isOwner: boolean;
+  canReadCatalog: boolean;
+}) {
+  return (
+    <LoyaltyTourProvider>
+      <LoyaltyPage {...props} />
+    </LoyaltyTourProvider>
+  );
+}
+function LoyaltyPage({
   isOwner,
   canReadCatalog,
 }: {
@@ -77,19 +89,22 @@ export default function LoyaltyProgramPage({
                 : undefined
           }
         />
+        <LoyaltyTourController vm={vm} />
         {vm.refreshFailed && (
-          <Alert
-            kind="warning"
-            title="Se guardó el cambio, pero no pudimos actualizar la vista"
-          >
-            <Button
-              variant="secondary"
-              onPress={() => void vm.load(false, true)}
-              isLoading={vm.loading}
+          <div data-tour="loyalty-refresh">
+            <Alert
+              kind="warning"
+              title="Se guardó el cambio, pero no pudimos actualizar la vista"
             >
-              Actualizar vista
-            </Button>
-          </Alert>
+              <Button
+                variant="secondary"
+                onPress={() => void vm.load(false, true)}
+                isLoading={vm.loading}
+              >
+                Actualizar vista
+              </Button>
+            </Alert>
+          </div>
         )}
         {vm.loadError && (
           <LoyaltyError
@@ -129,6 +144,7 @@ export default function LoyaltyProgramPage({
           }}
         />
         <LoyaltyConfirmDialog
+          tourAnchor="loyalty-close-confirm"
           open={isOwner && vm.confirmClose}
           title="¿Programar el cierre?"
           description={`Fin de acumulación: ${vm.earningEndsAt.replace("T", " ")}\nCanje hasta: ${vm.redemptionEndsAt.replace("T", " ")}\nZona horaria: ${vm.timezone}. No podrás editar el programa después de confirmar.`}
