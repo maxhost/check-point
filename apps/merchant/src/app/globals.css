@@ -4063,26 +4063,10 @@ input.cp-number-input::-webkit-outer-spin-button {
 .catalog-editor-actions .button {
   margin-top: 0;
 }
-.catalog-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-}
-.catalog-toolbar .catalog-search {
-  flex: 1 1 160px;
-}
 /* Los filtros del listado son `SelectField` del sistema de diseño (spec 0095). El ancho lo
    decide el `grid-template-columns` de la segunda `.catalog-toolbar`; aca solo se deja truncar. */
 .catalog-toolbar .catalog-toolbar-select {
   min-width: 0;
-}
-.catalog-toolbar .button {
-  width: auto;
-  margin-top: 0;
-  padding: 10px 16px;
-  flex-shrink: 0;
 }
 .catalog-list {
   list-style: none;

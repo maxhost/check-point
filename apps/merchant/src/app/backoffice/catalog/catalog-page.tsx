@@ -129,10 +129,7 @@ export default function CatalogPage({
           <div>
             <p className="eyebrow">Carga inteligente</p>
             <h2>Convertí una foto o PDF en tu catálogo</h2>
-            <p>
-              La IA preparará categorías, productos y precios para que solo
-              revises y completes.
-            </p>
+            <p>La IA crea las categorías, productos y precios por vos.</p>
           </div>
           <button
             className="button alt"

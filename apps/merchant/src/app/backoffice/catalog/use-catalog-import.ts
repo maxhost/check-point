@@ -242,7 +242,6 @@ export function useCatalogImport({
       onClose();
       return;
     }
-    pollGenerationRef.current += 1;
     setCancelling(true);
     setError(null);
     try {
@@ -254,6 +253,11 @@ export function useCatalogImport({
         "No pudimos cancelar la importación.",
       );
       debug("cancel:complete", { importId: activeImport.id });
+      // El poll solo se apaga si el DELETE salio bien: si falla, la generacion queda
+      // intacta y el intervalo en curso sigue actualizando el estado (spec 0093, hallazgo
+      // del revisor). Incrementarla antes de saber el resultado dejaba el poll sordo —
+      // matcheaba una generacion que ya nadie iba a reprogramar— hasta cerrar y reabrir.
+      pollGenerationRef.current += 1;
       setActiveImport(null);
       setFiles([]);
       onClose();
