@@ -271,4 +271,5 @@ Resultados ejecutados, seis defectos plausibles y restauración documentados en
 [bitácora](../archivo/spec-0096-bitacora-de-mutaciones.md). La spec conserva `cerrada`
 con [PASS independiente de la UI verificable](../archivo/spec-0096-revision-ui.md);
 la DoD completa continúa pendiente de sesiones auténticas y dispositivos reales.
-No hubo commit, push ni despliegue.
+Implementación en `3c9be45`, pusheada a `origin/main` por instrucción del owner.
+El despliegue de producción no está verificado.

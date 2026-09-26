@@ -8,12 +8,13 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): UI DE TOURS DE CATÁLOGO IMPLEMENTADA LOCALMENTE; QA REAL PENDIENTE
+## ⇥ ESTADO (2026-09-25): TOURS DE CATÁLOGO PUSHEADOS (`3c9be45`); QA REAL PENDIENTE
 
 El owner aprobó cuatro pasos de orientación (Importar con IA → Productos → Categorías → Ayuda)
 y ocho ayudas independientes. [Spec 0096](specs/0096-tours-de-onboarding-y-ayuda-del-catalogo.md)
 **cerrada con UI implementada y QA pendiente**, con [ADR 0087](adr/0087-los-tours-de-catalogo-son-ui-y-consumen-estado-del-api.md)
-**aceptada**. UI y pruebas implementadas localmente, sin commit, push ni despliegue.
+**aceptada**. UI, documentación y pruebas en `3c9be45`, pusheado a `origin/main`.
+El despliegue de producción no está verificado.
 [Revisión independiente](archivo/spec-0096-revision-ui.md): **PASS de la UI verificable**.
 La DoD completa sigue pendiente de pruebas autenticadas y dispositivos reales; se conserva
 la spec `cerrada`, sin declarar producción verificada.

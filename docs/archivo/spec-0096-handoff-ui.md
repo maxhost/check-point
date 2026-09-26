@@ -1,6 +1,6 @@
 # Handoff — Spec 0096
 
-Fecha: 2026-09-25. Estado: UI implementada localmente con PASS independiente acotado; QA real pendiente.
+Fecha: 2026-09-25. Estado: UI y pruebas en `3c9be45`, pusheado a `origin/main`, con PASS independiente acotado; QA real pendiente.
 
 ## Entrega
 
@@ -62,7 +62,8 @@ nativo ni la calidad de extracción. No se declara ejecución de esas comprobaci
 
 Codex mantiene toda la UI. Claude Code conserva API, autorización, dominio e IA.
 Ningún cambio de backend identificado; para QA autenticado hacen falta fixtures/sesiones
-reales de desarrollo, no una API nueva. Sin commit, push ni despliegue en esta entrega.
+reales de desarrollo, no una API nueva. Implementación en `3c9be45`, pusheada a `origin/main`;
+el despliegue de producción no está verificado.
 
 ## Correcciones de la primera revisión
 
