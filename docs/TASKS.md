@@ -56,6 +56,13 @@ el 2026-09-26 al cerrar la UI 0098; commits separados para mantener su alcance.
 
 ## Trabajo actual — spec 0098 pusheada para QA live (2026-09-26)
 
+**Ajuste de QA de cabecera (`cf0296b`):** separa la primera tarjeta 24 px como Catálogo,
+restaura eyebrow/descripción y unifica color del título ModuleHeader. Comparación
+independiente renderizada Loyalty/Catálogo/Locales a 390/1280 px light/dark: 4/4 PASS,
+fuentes, tamaños, pesos, colores y márgenes iguales; sin overflow. Formato/diff limpios.
+No se repitieron gates generales ni mutaciones. Cambios generados de `next-env.d.ts`
+de las tres apps preservados fuera del commit. Siguiente paso: seguir QA live.
+
 [Spec 0098](specs/0098-loyalty-sistema-de-diseno-del-backoffice.md): **cerrada con UI
 implementada y QA pendiente**, [ADR 0089](adr/0089-loyalty-reutiliza-el-sistema-del-wizard-merchant.md)
 aceptada. Consulta, creación/edición, revisión, diseño/imagen y cierre reutilizan el
