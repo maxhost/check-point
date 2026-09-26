@@ -220,7 +220,7 @@ habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
   Estado: **aceptada**; API existente suficiente, sin cambio backend identificado.
 - **Spec 0097:** [Tours de onboarding y ayuda de Marca](specs/0097-tours-de-onboarding-y-ayuda-de-marca.md).
   Recorridos aprobados, contratos, recuperación del borrador, permisos y verificación móvil.
-  Estado: **cerrada**, UI implementada con PASS independiente y seis gates verdes; QA real pendiente; no disjunta.
+  Estado: **cerrada**, UI pusheada con PASS independiente, seis gates y aprobación general del owner; QA específico pendiente; no disjunta.
   [Handoff](archivo/spec-0097-handoff-ui.md), [revisión independiente](archivo/spec-0097-revision-ui.md), [mutaciones](archivo/spec-0097-bitacora-de-mutaciones.md).
 
 ## Convenciones

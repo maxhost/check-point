@@ -243,3 +243,8 @@ resolución vieja se descarta y libera su recurso. Reproducción roja del reviso
 implementador; regresión real `brand-logo-lifecycle.spec.ts` verde y seis gates actualizados.
 El checklist flotante puede cubrir Guardar en desktop; colapsar el resumen permite clic
 real. Limitación recuperable documentada para QA autenticado, no declarada corregida.
+
+**QA del owner y handoff:** después del commit/push (`0c1c847` UI; `0e78f3f` docs), el
+owner indicó «quedo perfecto» y pidió handoff/clear para continuar. Se registra aprobación
+general de la entrega sin atribuir dispositivos ni escenarios no informados. La siguiente
+entrega propuesta es la ayuda de afiche, separada; punto de retorno en TASKS.

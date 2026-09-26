@@ -8,14 +8,23 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): TOURS DE MARCA PUSHEADOS (`0c1c847`); QA REAL PENDIENTE
+## ⇥ ESTADO (2026-09-25): MARCA PUSHEADA Y APROBADA POR EL OWNER; RETOMAR AYUDA DE AFICHE
 
 **`0c1c847`:** UI de onboarding y seis ayudas de Marca commiteada y pusheada a
 `origin/main` en `maxhost/check-point`. PASS independiente después de corregir Quitar
 durante preparación de imagen. Seis gates root verdes: 1801 passed / 595 skipped;
 Playwright 48 passed / 5 skipped. Detalle y pendientes en la sección Marca abajo.
+Documentación de entrega en `0e78f3f`, también pusheada. El owner respondió
+«quedo perfecto. hacemos handoff, clear y volvemos al trabajo»: aprobación de la entrega
+de Marca. No detalló dispositivos ni escenarios; no convertir esa aprobación general
+en evidencia de cámara, iOS/Android o smoke autenticado automatizado.
 El owner pidió commit/push para QA y luego indicó «no necesitamos verificar el deploy en
 vercel». No se comprobó READY ni el SHA servido por el dominio; no afirmar despliegue verificado.
+
+**Retorno después de `/clear`:** continuar onboarding/ayudas con Crear afiche (Brand Kit),
+separado de Marca según ADR 0088. Primero revisar editor/wizard, contratos existentes y
+patrones de tour; proponer el alcance y cerrar nueva spec antes de tocar código. No
+rehacer Marca ni repetir sus gates sin un hallazgo nuevo. Todo en el repo local, no NAS.
 
 ## Estado anterior (2026-09-25): TOURS Y ESPACIADO DE CATÁLOGO PUSHEADOS (`b58f8c8`)
 
@@ -44,7 +53,7 @@ selección de productos permite ajustar filtros sin resultados; import con resul
 conserva la guía. Pendiente: sesiones owner/staff reales de desarrollo y QA de cámara,
 archivos, teclado y claro/oscuro en iOS/Android.
 
-## En QA — onboarding y ayudas de Marca: UI con PASS independiente, pusheada
+## Entregado — onboarding y ayudas de Marca: PASS independiente y aprobación del owner
 
 El owner aprobó el alcance propuesto: «me cierra, sobre afiche tambien comparto».
 [Spec 0097](specs/0097-tours-de-onboarding-y-ayuda-de-marca.md) **cerrada** y
@@ -71,14 +80,28 @@ restauración comprobada. [Handoff](archivo/spec-0097-handoff-ui.md) y
 **Revisión independiente:** [PASS de la UI verificable](archivo/spec-0097-revision-ui.md).
 FAIL inicial R1 reproducido y corregido: invalidar selección al quitar/cancelar/reset
 limpia `isAnalyzing`; el probe viejo no restaura el logo. Regresión y gates actualizados.
-Conservar la spec `cerrada` por QA real pendiente, como 0096.
-**Próximo paso:** smoke autenticado y QA nativo iOS/Android de
+**QA del owner:** aprobación general «quedo perfecto» tras commit/push. Conservar la spec
+`cerrada` mientras falten las comprobaciones específicas de su DoD, como 0096.
+**Límites todavía no acreditados:** smoke autenticado y QA nativo iOS/Android de
 picker/cámara/recorte, teclado y scroll, claro/oscuro y movimiento reducido.
 Checklist flotante puede cubrir Guardar en desktop; colapsar el resumen permite clic real.
 QA de disposición en página autenticada pendiente. Producción y despliegue no verificados;
 verificación de Vercel omitida por instrucción explícita del owner. Codex UI; Claude Code API/servidor.
 
-### Pedido de retorno y referencias
+### Pedido de retorno después de este handoff
+
+Continuar con la ayuda de afiche como entrega independiente; todavía no tiene nueva
+spec de tours ni implementación de ayuda. Revisar `apps/merchant/src/app/backoffice/brand/kit/`
+y spec 0041 del Brand Kit; el acceso actual es owner-only. Mantener los patrones de
+Catálogo/Staff/Locales/Marca: orientación breve, tareas independientes, avance por resultado
+confirmado, borrador conservado, recuperación y accesibilidad móvil. Verificar API antes
+de proponer trabajo backend. Codex UI; Claude Code API/servidor.
+
+Referencias de Marca: spec 0097, ADR 0088, handoff UI, revisión independiente y bitácora
+enlazados arriba. UI `0c1c847`, documentación `0e78f3f`, ambos en `origin/main`.
+Handoff de cierre sólo documental; no hay cambios nuevos de código que exijan repetir gates.
+
+### Pedido anterior de Marca y referencias
 
 Pedido del owner antes de `/clear` (2026-09-25): diseñar onboarding y ayuda para
 `https://www.checkpass.club/backoffice/brand`, siguiendo los patrones de Catálogo, Staff y

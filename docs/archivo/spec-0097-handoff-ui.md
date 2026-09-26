@@ -106,3 +106,16 @@ puntero: el checklist flotante restaurado cubría Guardar en el fixture de escri
 Se verificó ese caso por teclado (foco y Enter), sin forzar clic ni esconder la UI. La
 corrida estándar final pasó. Revisar disposición real del checklist frente al footer
 durante el smoke autenticado; esta prueba no acredita que el clic quede libre ahí.
+
+## Cierre de sesión y retorno
+
+UI publicada en `0c1c847`; documentación de entrega en `0e78f3f`, ambos pusheados a
+`origin/main` en `maxhost/check-point`. El owner respondió «quedo perfecto. hacemos
+handoff, clear y volvemos al trabajo»: aprobación general de la entrega, sin detalle
+de dispositivos o escenarios. No completa por sí sola las casillas específicas de QA
+nativo/smoke autenticado ni verifica el despliegue que pidió no consultar.
+
+Punto de retorno: `docs/TASKS.md`. Continuar con el diseño de onboarding/ayuda de Crear
+afiche, separado según ADR 0088; revisar Brand Kit y sus contratos antes de proponer y
+cerrar nueva spec. No reiniciar la implementación de Marca. Este cierre sólo modifica
+documentación; los gates de código siguen siendo los registrados arriba.
