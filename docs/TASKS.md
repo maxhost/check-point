@@ -8,26 +8,29 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## Trabajo actual — cierre del plan de tours Loyalty, spec 0100 (2026-09-26)
+## Trabajo actual — spec 0100 aprobada, handoff antes del clear (2026-09-26)
 
-Owner retomó planificación, pidió cerrar el plan, hacer clear y volver a implementar.
-Confirmó políticas: términos y condiciones más Permitir canjes sin saldo suficiente.
-Plan actualizado en `4b60aef`: [spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md)
-y [ADR0090](adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md). Borrador listo
-para aprobación general, con copy/anchors, contratos de señales, oráculos/presupuesto
-máximo cuatro mutaciones/dos rondas y gates definidos. Tours retirados de PARQUEADO.
-Sin código de tours; no interpretar planificación como autorización para implementar
-ahora. Pendiente aprobación final, marcar cerrada/aceptado y actualizar handoff antes
-del clear. [Handoff de retorno](archivo/spec-0100-handoff-plan.md).
+Owner aprobó la versión completa y pidió handoff + clear, regreso para implementar.
+[Spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md) `cerrada` y
+[ADR0090](adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md) `aceptado`
+en `21881dd`. Sin código de tours ni decisiones pendientes. Políticas incluye términos
+y condiciones más Permitir canjes sin saldo suficiente.
 
-Retorno después del clear: «Implementar spec 0100». Next-env externos preservados.
+Plan: tour general de cinco pasos y cuatro ayudas: crear, editar, programar cierre,
+políticas. Copy/anchors, señales/outcome de escritura, permisos, borrador y recuperación,
+oráculos/DoD y comandos definidos. Un implementador y revisor independiente; máximo
+cuatro mutaciones/dos rondas y una ronda de gates generales, con límites documentados.
+
+[Handoff completo](archivo/spec-0100-handoff-plan.md) listo en disco. El contexto aún no
+está limpio: no existe herramienta para invocar /clear; owner debe ejecutar /clear o
+abrir sesión nueva. Retorno: «Implementar spec 0100». No iniciar código antes del retorno.
+Preservar next-env externos de las tres apps. Tours retirados de PARQUEADO.
 
 ## Ajustes publicados del formulario de Loyalty (2026-09-26)
 
-Owner parqueó la planificación de tours y priorizó arreglos en creación/edición:
-los pasos deben tener el mismo ancho. Plan0100/ADR0090 preservados en disco y
-registrados en [PARQUEADO](PARQUEADO.md); no iniciar tours ni pedir ahora decisiones
-sobre políticas. La spec0100 conserva estado borrador, sin aprobación ni código.
+Antecedente: el owner había parqueado tours para priorizar ancho y estilo del editor.
+Los ajustes 0098 de esta sección están publicados. El plan0100 fue retomado y aprobado;
+su estado vigente está en el bloque superior, sin código de tours todavía.
 
 Ajuste bajo spec0098 en `387f107`: todos los pasos usan el ancho de la página, sin
 límite distinto para Diseño; campos, validación, datos y navegación conservados.
