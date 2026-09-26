@@ -8,7 +8,21 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## Trabajo actual — consistencia del formulario de Loyalty (2026-09-26)
+## Trabajo actual — cierre del plan de tours Loyalty, spec 0100 (2026-09-26)
+
+Owner retomó planificación, pidió cerrar el plan, hacer clear y volver a implementar.
+Confirmó políticas: términos y condiciones más Permitir canjes sin saldo suficiente.
+Plan actualizado en `4b60aef`: [spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md)
+y [ADR0090](adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md). Borrador listo
+para aprobación general, con copy/anchors, contratos de señales, oráculos/presupuesto
+máximo cuatro mutaciones/dos rondas y gates definidos. Tours retirados de PARQUEADO.
+Sin código de tours; no interpretar planificación como autorización para implementar
+ahora. Pendiente aprobación final, marcar cerrada/aceptado y actualizar handoff antes
+del clear. [Handoff de retorno](archivo/spec-0100-handoff-plan.md).
+
+Retorno después del clear: «Implementar spec 0100». Next-env externos preservados.
+
+## Ajustes publicados del formulario de Loyalty (2026-09-26)
 
 Owner parqueó la planificación de tours y priorizó arreglos en creación/edición:
 los pasos deben tener el mismo ancho. Plan0100/ADR0090 preservados en disco y
