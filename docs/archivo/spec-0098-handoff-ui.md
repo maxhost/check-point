@@ -1,8 +1,8 @@
 # Handoff — Spec 0098
 
-Estado: UI implementada localmente y revisión independiente aprobada; QA autenticado y
-nativo pendiente. El implementador no realizó commit/push; el orquestador coordina la
-publicación por pedido del owner, condicionada al build.
+Estado: UI implementada y revisión independiente aprobada; QA autenticado y nativo
+pendiente. Push confirmado a `origin/main`: `bd3a7b8` (UI 0098), precedido por `df1d523`
+(DTO 0099). Publicación autorizada por owner para QA live; despliegue no verificado.
 
 ## Alcance y archivos tocados
 
