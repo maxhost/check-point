@@ -1,3 +1,5 @@
+import { Button } from "../../../../ui";
+import { CardDesignFields } from "../card-design-fields";
 import { useRef } from "react";
 import dynamic from "next/dynamic";
 import { CardPreview } from "../../../../components/loyalty/card-preview";
@@ -12,13 +14,6 @@ const ImageCropper = dynamic(
   { ssr: false },
 );
 
-const ANGLE_PRESETS = [
-  { label: "Vertical", angle: 180 },
-  { label: "Horizontal", angle: 90 },
-  { label: "Diagonal ↘", angle: 135 },
-  { label: "Diagonal ↗", angle: 45 },
-];
-
 export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
   const { card, stamp } = vm;
   const stampInput = useRef<HTMLInputElement>(null);
@@ -29,76 +24,10 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
     (!stamp.removed ? (vm.program?.stampImagePath ?? null) : null);
   return (
     <>
-      <h2>Diseño de la tarjeta</h2>
       <div className="card-design-grid">
-        <div className="card-design-controls">
-          <label className="color-field">
-            Color de fondo
-            <input
-              type="color"
-              value={card.backgroundColor}
-              onChange={(event) => card.setBackgroundColor(event.target.value)}
-            />
-          </label>
-          <label className="toggle-field">
-            <input
-              type="checkbox"
-              checked={card.gradientEnabled}
-              onChange={(event) =>
-                card.setGradientEnabled(event.target.checked)
-              }
-            />
-            Usar degradé (segundo color)
-          </label>
-          {card.gradientEnabled && (
-            <>
-              <label className="color-field">
-                Segundo color
-                <input
-                  type="color"
-                  value={card.backgroundColor2}
-                  onChange={(event) =>
-                    card.setBackgroundColor2(event.target.value)
-                  }
-                />
-              </label>
-              <div className="angle-field">
-                <span>Dirección del degradé</span>
-                <div className="angle-presets">
-                  {ANGLE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.angle}
-                      type="button"
-                      className={`chip ${card.gradientAngle === preset.angle ? "selected" : ""}`}
-                      onClick={() => card.setGradientAngle(preset.angle)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="360"
-                  step="15"
-                  value={card.gradientAngle}
-                  onChange={(event) =>
-                    card.setGradientAngle(Number(event.target.value))
-                  }
-                />
-                <span className="field-help">{card.gradientAngle}°</span>
-              </div>
-            </>
-          )}
-          <label className="color-field">
-            Color del borde de los sellos
-            <input
-              type="color"
-              value={card.borderColor}
-              onChange={(event) => card.setBorderColor(event.target.value)}
-            />
-          </label>
-          <div className="stamp-image-field">
+        <div className="loyalty-fields">
+          <CardDesignFields card={card} />
+          <div className="stamp-image-field loyalty-fields">
             <strong>Imagen del sello</strong>
             {stampPreview && (
               <div className="stamp-image-row">
@@ -107,33 +36,43 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
                   src={stampPreview}
                   alt="Vista previa del sello"
                 />
-                <button
-                  type="button"
-                  className="small-button"
-                  onClick={() => {
+                <Button
+                  variant="danger"
+                  onPress={() => {
                     stamp.remove();
                     if (stampInput.current) stampInput.current.value = "";
                   }}
                 >
                   Quitar
-                </button>
+                </Button>
               </div>
             )}
             <input
+              className="sr-only"
+              aria-label="Archivo del sello"
               ref={stampInput}
               type="file"
               accept={isTouch ? "image/*" : ACCEPTED_IMAGE_ACCEPT_ATTR}
-              disabled={stamp.isAnalyzing}
+              disabled={vm.saving}
               onChange={(event) => {
                 void stamp.choose(event.target.files?.[0], vm.setErrorToast);
               }}
             />
+            <Button
+              variant="secondary"
+              isDisabled={vm.saving}
+              onPress={() => stampInput.current?.click()}
+            >
+              {stampPreview ? "Cambiar sello" : "Elegir sello"}
+            </Button>
             {isTouch && (
               <>
                 <input
                   className="sr-only"
+                  aria-label="Foto del sello"
                   ref={cameraInput}
                   type="file"
+                  disabled={vm.saving}
                   accept="image/*"
                   capture="environment"
                   onChange={(event) => {
@@ -143,20 +82,24 @@ export function StepCardDesign({ vm }: { vm: LoyaltyVm }) {
                     );
                   }}
                 />
-                <button
-                  className="small-button"
-                  type="button"
-                  disabled={stamp.isAnalyzing}
-                  onClick={() => cameraInput.current?.click()}
+                <Button
+                  variant="secondary"
+                  isDisabled={vm.saving}
+                  onPress={() => cameraInput.current?.click()}
                 >
                   Tomar foto
-                </button>
+                </Button>
               </>
             )}
             <p className="field-help">
               PNG, JPEG, WebP, HEIC o AVIF · máximo 5 MB · hasta 2048 × 2048 px.
               Se aplica al guardar.
             </p>
+            {stamp.isAnalyzing && (
+              <Button variant="secondary" onPress={stamp.cancelCrop}>
+                Cancelar preparación
+              </Button>
+            )}
             {stamp.isAnalyzing && (
               <p className="field-help">Preparando imagen…</p>
             )}

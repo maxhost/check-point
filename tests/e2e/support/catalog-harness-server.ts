@@ -24,7 +24,10 @@ export async function startCatalogHarness(
     platform: "browser",
     jsx: "automatic",
     nodePaths: [path.resolve("apps/merchant/node_modules")],
-    define: { "process.env.NODE_ENV": '"production"' },
+    define: {
+      "process.env.NODE_ENV": '"production"',
+      "process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY": '""',
+    },
     plugins: [
       {
         name: "next-navigation-fixture",
@@ -47,7 +50,7 @@ export async function startCatalogHarness(
             namespace: "fixture",
           }));
           builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useRouter(){return {push(href){window.location.href=href}}}`,
+            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return "loyalty"} export function useRouter(){return {push(href){window.location.href=href}}}`,
             loader: "js",
             resolveDir: path.resolve("apps/merchant"),
           }));

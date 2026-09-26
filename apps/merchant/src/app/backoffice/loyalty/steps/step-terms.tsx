@@ -1,37 +1,39 @@
-import { AutoGrowTextarea } from "../ui";
+import { TextAreaField, Button } from "../../../../ui";
 import type { LoyaltyVm } from "../use-loyalty-program";
 import { AccrualFields } from "./accrual-fields";
-
-export function StepTerms({ vm }: { vm: LoyaltyVm }) {
+export function StepTerms({
+  vm,
+  errors,
+}: {
+  vm: LoyaltyVm;
+  errors: Record<string, string>;
+}) {
   return (
     <>
-      <h2>Términos y condiciones</h2>
       <p>
-        Son informativos. Inserta una plantilla como punto de partida y edita el
-        texto antes de guardar.
+        Insertá una plantilla como punto de partida y editá el texto antes de
+        guardar.
       </p>
-      <div className="template-actions">
+      <div className="loyalty-actions">
         {vm.templates.map((template) => (
-          <button
+          <Button
             key={template.id}
-            type="button"
-            className="terms-template-insert"
-            onClick={() => vm.insertTemplate(template)}
+            variant="secondary"
+            onPress={() => vm.insertTemplate(template)}
           >
             + {template.title}
-          </button>
+          </Button>
         ))}
       </div>
-      <label>
-        Texto de términos
-        <AutoGrowTextarea
-          className="loyalty-terms-input"
-          value={vm.terms}
-          onChange={(event) => vm.setTerms(event.target.value)}
-          placeholder="Escribe los términos o inserta una plantilla"
-        />
-      </label>
-      <AccrualFields vm={vm} />
+      <TextAreaField
+        label="Texto de términos"
+        value={vm.terms}
+        onChange={vm.setTerms}
+        placeholder="Escribí los términos o insertá una plantilla"
+        autoGrow
+        errorMessage={errors.terms}
+      />
+      <AccrualFields vm={vm} errors={errors} />
     </>
   );
 }

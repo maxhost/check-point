@@ -1,230 +1,217 @@
+import { NumberDraftField } from "../number-draft-field";
+import {
+  Alert,
+  Button,
+  CheckboxField,
+  ChoiceGroup,
+  SelectField,
+  TextField,
+} from "../../../../ui";
 import { formatMoney, spendToRedeem } from "../format";
 import type { RewardDraft, RewardType } from "../use-rewards";
 import type { LoyaltyVm } from "../use-loyalty-program";
-
-const TYPE_LABELS: Record<RewardType, string> = {
-  catalog_product: "Producto del catálogo",
-  custom: "Premio libre",
-  discount: "Descuento %",
-};
-
+const types = [
+  { value: "catalog_product", label: "Producto del catálogo" },
+  { value: "custom", label: "Premio libre" },
+  { value: "discount", label: "Descuento %" },
+];
 function RewardCard({
   vm,
   reward,
   index,
+  errors,
 }: {
   vm: LoyaltyVm;
   reward: RewardDraft;
   index: number;
+  errors: Record<string, string>;
 }) {
   const earn = vm.earn;
-  const isPoints = vm.kind === "points";
   const patch = (next: Partial<RewardDraft>) => earn.patch(index, next);
-
+  const existing =
+    reward.productId &&
+    !earn.products.some((product) => product.id === reward.productId);
+  const options = earn.products.map((product) => ({
+    id: product.id,
+    label:
+      product.name +
+      (product.unitPrice !== null
+        ? ` — ${formatMoney(product.unitPrice, vm.currencyCode)}`
+        : ""),
+  }));
+  if (existing)
+    options.unshift({
+      id: reward.productId!,
+      label: reward.label || "Producto guardado",
+    });
   return (
-    <li className="reward-card">
-      <div className="reward-head">
-        <div
-          className="reward-type"
-          role="radiogroup"
-          aria-label="Tipo de premio"
-        >
-          {(Object.keys(TYPE_LABELS) as RewardType[]).map((type) => (
-            <label
-              key={type}
-              className={`chip ${reward.type === type ? "selected" : ""}`}
-            >
-              <input
-                className="sr-only"
-                type="radio"
-                checked={reward.type === type}
-                onChange={() => patch({ type })}
-              />
-              {TYPE_LABELS[type]}
-            </label>
-          ))}
-        </div>
-        {isPoints && earn.rewards.length > 1 && (
-          <button
-            type="button"
-            className="reward-remove"
-            onClick={() => earn.remove(index)}
-          >
-            Quitar
-          </button>
+    <li className="loyalty-reward loyalty-fields">
+      <h3>Premio {index + 1}</h3>
+      <ChoiceGroup
+        label="Tipo de premio"
+        value={reward.type}
+        onChange={(value) => patch({ type: value as RewardType })}
+        options={types.filter(
+          (type) =>
+            vm.canReadCatalog ||
+            type.value !== "catalog_product" ||
+            reward.type === "catalog_product",
         )}
-      </div>
-
-      {reward.type === "catalog_product" &&
-        (earn.products.length === 0 ? (
-          <p className="form-hint">
-            No hay productos en tu catálogo. Usá un premio libre o un descuento.
-          </p>
-        ) : (
-          <label className="reward-field">
-            Producto
-            <select
-              value={reward.productId ?? ""}
-              onChange={(event) => {
-                const product =
-                  earn.products.find(
-                    (item) => item.id === event.target.value,
-                  ) ?? null;
-                earn.selectProduct(index, product);
-              }}
-            >
-              <option value="">Elegí un producto…</option>
-              {earn.products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name}
-                  {product.unitPrice !== null
-                    ? ` — ${formatMoney(product.unitPrice, vm.currencyCode)}`
-                    : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-
-      {reward.type === "custom" && (
-        <label className="reward-field">
-          Nombre del premio
-          <input
-            value={reward.label}
-            onChange={(event) => patch({ label: event.target.value })}
-            placeholder="Café gratis"
-          />
-        </label>
-      )}
-
-      {reward.type === "discount" && (
-        <label className="reward-field">
-          Porcentaje de descuento
-          <input
-            type="number"
-            min={1}
-            max={100}
-            step={1}
-            value={reward.discountPercent}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              patch({
-                discountPercent: Number.isFinite(next) ? Math.trunc(next) : 0,
-              });
-            }}
-          />
-        </label>
-      )}
-
-      {isPoints && (
-        <label className="reward-field">
-          Costo en puntos
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={reward.pointsCost}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              patch({
-                pointsCost: Number.isFinite(next) ? Math.trunc(next) : 0,
-              });
-            }}
-          />
-          {reward.pointsCost > 0 && (
-            <span className="reward-equiv">
-              El cliente gasta{" "}
-              <strong>
-                ≈{" "}
-                {formatMoney(
-                  spendToRedeem(
-                    reward.pointsCost,
-                    earn.blockAmount,
-                    earn.grant,
-                  ),
-                  vm.currencyCode,
-                )}
-              </strong>{" "}
-              para juntar {reward.pointsCost} {vm.plural} y ganar este premio.
-            </span>
+        isDisabled={vm.saving}
+      />
+      {reward.type === "catalog_product" && (
+        <>
+          {earn.catalogState === "loading" && (
+            <p role="status">Cargando catálogo…</p>
           )}
-        </label>
+          {earn.catalogState === "error" && (
+            <Alert kind="error" title="No pudimos consultar el catálogo">
+              <p>
+                {earn.catalogError?.code === "missing_permission"
+                  ? "No tenés permiso para consultar el catálogo."
+                  : "Podés seguir con premio libre o descuento."}
+              </p>
+              <Button
+                variant="secondary"
+                onPress={() => void earn.loadCatalog(vm.canReadCatalog)}
+              >
+                Reintentar catálogo
+              </Button>
+            </Alert>
+          )}
+          {earn.catalogState === "ready" && earn.products.length === 0 && (
+            <p>
+              No hay productos en tu catálogo. Usá un premio libre o un
+              descuento.
+            </p>
+          )}
+          <SelectField
+            label="Producto"
+            options={options}
+            selectedKey={reward.productId}
+            onSelectionChange={(key) =>
+              earn.selectProduct(
+                index,
+                earn.products.find((product) => product.id === key) ??
+                  (key === reward.productId
+                    ? {
+                        id: reward.productId!,
+                        name: reward.label,
+                        unitPrice: null,
+                      }
+                    : null),
+              )
+            }
+            placeholder="Elegí un producto"
+            isDisabled={
+              !vm.canReadCatalog || earn.catalogState !== "ready" || vm.saving
+            }
+            errorMessage={errors[`product-${index}`]}
+            description={
+              existing
+                ? "Se conserva el producto guardado aunque no esté en el catálogo disponible."
+                : undefined
+            }
+          />
+        </>
+      )}
+      {reward.type === "custom" && (
+        <TextField
+          label="Nombre del premio"
+          value={reward.label}
+          onChange={(label) => patch({ label })}
+          placeholder="Ej.: Café gratis"
+          errorMessage={errors[`label-${index}`]}
+        />
+      )}
+      {reward.type === "discount" && (
+        <NumberDraftField
+          label="Porcentaje de descuento"
+          minValue={1}
+          maxValue={100}
+          step={1}
+          value={reward.discountPercent}
+          onChange={(discountPercent) => patch({ discountPercent })}
+          description="Elegí un porcentaje entre 1 y 100 %."
+          errorMessage={errors[`discount-${index}`]}
+        />
+      )}
+      {vm.kind === "points" && (
+        <NumberDraftField
+          label="Costo en puntos"
+          minValue={1}
+          step={1}
+          value={reward.pointsCost}
+          onChange={(pointsCost) => patch({ pointsCost })}
+          errorMessage={errors[`cost-${index}`]}
+          description={`El cliente gasta ≈ ${formatMoney(spendToRedeem(reward.pointsCost, earn.blockAmount, earn.grant), vm.currencyCode)} para juntar ${reward.pointsCost} ${vm.plural} y ganar este premio.`}
+        />
+      )}
+      {vm.kind === "points" && earn.rewards.length > 1 && (
+        <Button variant="danger" onPress={() => earn.remove(index)}>
+          Quitar premio {index + 1}
+        </Button>
       )}
     </li>
   );
 }
-
-/** Step 4: the reward list (spec 0036). Puntos = 1..N canjes with points cost; Sellos = 1. */
-export function StepRewards({ vm }: { vm: LoyaltyVm }) {
+export function StepRewards({
+  vm,
+  errors,
+}: {
+  vm: LoyaltyVm;
+  errors: Record<string, string>;
+}) {
   const earn = vm.earn;
-  const isPoints = vm.kind === "points";
-  const blockAmount = Number(earn.blockAmount);
-  const rateReady =
-    isPoints &&
-    Number.isFinite(blockAmount) &&
-    blockAmount > 0 &&
-    earn.grant > 0;
   return (
     <>
-      <h2>Premios</h2>
       <p>
-        {isPoints
-          ? "Poné el costo en puntos de cada premio. Debajo te mostramos cuánto tiene que gastar el cliente para llegar a ese costo, según tu tasa."
+        {vm.kind === "points"
+          ? "Poné el costo en puntos de cada premio."
           : "Elegí el premio que gana el cliente al completar la tarjeta."}
       </p>
-      {rateReady && (
-        <p className="reward-rate">
-          Tu tasa de acumulación:{" "}
-          <strong>
-            {earn.grant} {vm.plural}
-          </strong>{" "}
-          por cada <strong>{formatMoney(blockAmount, vm.currencyCode)}</strong>{" "}
-          que gasta el cliente.
-        </p>
+      {!vm.canReadCatalog && (
+        <Alert title="No tenés permiso para consultar el catálogo">
+          Podés usar premio libre o descuento. Los productos guardados se
+          conservan.
+        </Alert>
       )}
-      <ul className="reward-list">
+      <ul className="loyalty-fields">
         {earn.rewards.map((reward, index) => (
-          <RewardCard key={index} vm={vm} reward={reward} index={index} />
+          <RewardCard
+            key={index}
+            vm={vm}
+            reward={reward}
+            index={index}
+            errors={errors}
+          />
         ))}
       </ul>
-      {isPoints && (
-        <button type="button" className="reward-add" onClick={() => earn.add()}>
-          + Agregar premio
-        </button>
+      {vm.kind === "points" && (
+        <>
+          <Button
+            variant="secondary"
+            isDisabled={earn.rewards.length >= 20}
+            onPress={earn.add}
+          >
+            Agregar premio
+          </Button>
+          {earn.rewards.length >= 20 && (
+            <p className="text-sm text-content-muted">
+              Podés agregar hasta 20 premios.
+            </p>
+          )}
+        </>
       )}
-      <AdvancedRedeem vm={vm} />
-    </>
-  );
-}
-
-/**
- * Advanced setting of the program (spec 0055 §5), decided by the owner and not by the
- * system: may the counter hand a reward over to someone who has not reached its cost?
- * Off by default — the redemption is blocked. On, the balance is spent down to 0 and
- * never below (§9), and every such redemption is recorded as an override so the owner
- * can audit exactly how much was given away.
- */
-function AdvancedRedeem({ vm }: { vm: LoyaltyVm }) {
-  const earn = vm.earn;
-  const unit = vm.kind === "points" ? "puntos" : "sellos";
-  return (
-    <section className="reward-advanced">
-      <h3>Configuración avanzada</h3>
-      <label className="reward-advanced-toggle">
-        <input
-          type="checkbox"
-          checked={earn.allowInsufficient}
-          onChange={(event) => earn.setAllowInsufficient(event.target.checked)}
+      <section className="loyalty-fields">
+        <h3>Configuración avanzada</h3>
+        <CheckboxField
+          label="Permitir canjes sin saldo suficiente"
+          isSelected={earn.allowInsufficient}
+          onChange={earn.setAllowInsufficient}
+          description={`Si está activo, tu mostrador puede entregar un premio aunque al cliente le falten ${vm.kind === "points" ? "puntos" : "sellos"}: se descuenta lo que tenga y su saldo queda en 0. Queda registrado como entrega sin saldo.`}
         />
-        <span>
-          <strong>Permitir canjes sin saldo suficiente</strong>
-          <small>
-            Si está activo, tu mostrador puede entregar un premio aunque al
-            cliente le falten {unit}: se descuenta lo que tenga y su saldo queda
-            en 0. Queda registrado como entrega sin saldo.
-          </small>
-        </span>
-      </label>
-    </section>
+      </section>
+    </>
   );
 }

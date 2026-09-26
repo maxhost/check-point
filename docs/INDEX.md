@@ -223,6 +223,30 @@ habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
   Estado: **cerrada**, UI pusheada con PASS independiente, seis gates y aprobación general del owner; QA específico pendiente; no disjunta.
   [Handoff](archivo/spec-0097-handoff-ui.md), [revisión independiente](archivo/spec-0097-revision-ui.md), [mutaciones](archivo/spec-0097-bitacora-de-mutaciones.md).
 
+## Sistema de diseño de Loyalty — aprobado el 2026-09-26
+
+- **ADR 0089:** [Loyalty reutiliza el sistema del wizard merchant](adr/0089-loyalty-reutiliza-el-sistema-del-wizard-merchant.md).
+  Unifica consulta, formularios, progreso y cierre con el catálogo compartido, conservando reglas/API.
+  Estado: **aceptada** por el owner; UI implementada localmente el 2026-09-26.
+- **Spec 0098:** [Loyalty: sistema de diseño del backoffice](specs/0098-loyalty-sistema-de-diseno-del-backoffice.md).
+  Comparación por superficie/campo y verificación; revisión 2026-09-26 incorpora PUT 0079 y permisos/codes 0086, con acceso staff por loyalty.
+  Estado: **cerrada con UI implementada y QA pendiente**, no disjunta; [entrega](archivo/spec-0098-handoff-ui.md) y [PASS independiente](archivo/spec-0098-revision-ui.md).
+
+## API de Loyalty — auditoria del 2026-09-25
+
+- **Spec 0099:** [El DTO del programa a lista blanca, y el contrato vigente consolidado](specs/0099-el-dto-del-programa-y-el-contrato-vigente.md).
+  Endurece `toClientProgram` (hoy filtra 6 columnas internas via spread) y consolida en un
+  anexo el contrato vigente de las 4 rutas de `/api/loyalty-program`, corrigiendo el `code`
+  403 que el anexo 0079 dejo desactualizado tras la 0086 (`not_owner` → `not_member` /
+  `missing_permission` en `GET`/`PUT`).
+  Estado: **implementada**, con PASS de revisor independiente (2 mutaciones del
+  presupuesto, ambas ROJAS bajo mutacion y revertidas con `diff` vacio; anexo verificado
+  linea por linea contra `api-permission.ts`/`api-owner.ts`/`route.ts`, sin aceptar
+  ninguna cita como prueba de si misma). No toca el contrato de escritura ni habilita
+  `tiers`/`cashback`.
+  `specs/0099-el-dto-del-programa-y-el-contrato-vigente.md` + anexo
+  `specs/0099-contratos-de-api.md`.
+
 ## Convenciones
 
 - **ADR** = una decision y su motivo. Se escribe cuando la decision se toma, no despues.

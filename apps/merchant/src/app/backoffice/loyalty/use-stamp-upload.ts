@@ -1,3 +1,4 @@
+import { loyaltyRequest, LoyaltyApiError } from "./loyalty-api";
 import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_IMAGE_LABEL,
@@ -18,6 +19,7 @@ import { resolveDecodableImage } from "../../../lib/image-decode-probe";
  * drops the candidate and the caller clears its own input.
  */
 export function useStampUpload() {
+  const generation = useRef(0);
   const [selected, setSelected] = useState<File | null>(null);
   const [pending, setPending] = useState<File | null>(null);
   // The src the probe proved loadable, handed straight to the cropper (spec 0052 §3), plus
@@ -37,7 +39,13 @@ export function useStampUpload() {
   );
 
   // Unmounting mid-crop must not leak the probe's object URL either.
-  useEffect(() => () => releasePending.current?.(), []);
+  useEffect(
+    () => () => {
+      generation.current++;
+      releasePending.current?.();
+    },
+    [],
+  );
 
   /** Drops the crop candidate and releases the src the probe resolved for it. */
   function dropPending() {
@@ -58,7 +66,13 @@ export function useStampUpload() {
     file: File | undefined,
     onError: (message: string) => void,
   ) {
-    if (!file) return;
+    const ticket = ++generation.current;
+    setIsAnalyzing(false);
+    dropPending();
+    if (!file) {
+      setIsAnalyzing(false);
+      return;
+    }
     if (!isAcceptedImageType(file.type)) {
       onError(`El sello debe ser ${ACCEPTED_IMAGE_LABEL}.`);
       return;
@@ -68,9 +82,13 @@ export function useStampUpload() {
       return;
     }
     setIsAnalyzing(true);
-    const resolved = await resolveDecodableImage(file).finally(() =>
-      setIsAnalyzing(false),
+    const resolved = await resolveDecodableImage(file).finally(
+      () => ticket === generation.current && setIsAnalyzing(false),
     );
+    if (ticket !== generation.current) {
+      resolved?.cleanup();
+      return;
+    }
     const choice = decideImageChoice(file, resolved !== null);
     if (choice.mode === "crop") {
       // `crop` is returned exactly when the probe resolved; the guard is for the compiler.
@@ -101,10 +119,14 @@ export function useStampUpload() {
   }
 
   function cancelCrop() {
+    generation.current++;
+    setIsAnalyzing(false);
     dropPending();
   }
 
   function remove() {
+    generation.current++;
+    setIsAnalyzing(false);
     setSelected(null);
     dropPending();
     setCropped(false);
@@ -116,6 +138,8 @@ export function useStampUpload() {
   }
 
   function reset() {
+    generation.current++;
+    setIsAnalyzing(false);
     setSelected(null);
     dropPending();
     setCropped(false);
@@ -128,31 +152,21 @@ export function useStampUpload() {
 
   async function upload(): Promise<string | null> {
     if (!selected) return null;
-    const prepared = await fetch("/api/loyalty-program/stamp-upload", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contentType: selected.type,
-        byteSize: selected.size,
-      }),
-    });
-    const preparation = (await prepared.json().catch(() => null)) as {
+    const preparation = await loyaltyRequest<{
       uploadId?: string;
       uploadUrl?: string;
-      error?: string;
-    } | null;
-    if (!prepared.ok || !preparation?.uploadId || !preparation.uploadUrl) {
-      throw new Error(
-        preparation?.error ?? "No pudimos preparar la carga del sello.",
-      );
-    }
+    }>("/api/loyalty-program/stamp-upload", "POST", {
+      contentType: selected.type,
+      byteSize: selected.size,
+    });
+    if (!preparation.uploadId || !preparation.uploadUrl)
+      throw new LoyaltyApiError(200, undefined, undefined, true);
     const uploaded = await fetch(preparation.uploadUrl, {
       method: "PUT",
       headers: { "content-type": selected.type },
       body: selected,
     });
-    if (!uploaded.ok)
-      throw new Error("No pudimos cargar el sello. Intenta nuevamente.");
+    if (!uploaded.ok) throw new LoyaltyApiError(uploaded.status);
     return preparation.uploadId;
   }
 

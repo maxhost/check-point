@@ -1,12 +1,15 @@
+import { NumberDraftField } from "../number-draft-field";
+import { ChoiceGroup, TextField } from "../../../../ui";
 import { formatMoney } from "../format";
+import { parseMoney } from "../program-form-state";
 import type { LoyaltyVm } from "../use-loyalty-program";
-
-/**
- * Accrual mechanics block for the terms step (spec 0036): how many units are granted
- * per purchase or per block of spend, with a live example in the business currency.
- * Puntos is always `per_amount` (no toggle); Sellos offers `por monto` / `por compra`.
- */
-export function AccrualFields({ vm }: { vm: LoyaltyVm }) {
+export function AccrualFields({
+  vm,
+  errors,
+}: {
+  vm: LoyaltyVm;
+  errors: Record<string, string>;
+}) {
   const earn = vm.earn;
   const mode = earn.effectiveMode(vm.kind);
   const unit =
@@ -15,71 +18,49 @@ export function AccrualFields({ vm }: { vm: LoyaltyVm }) {
         ? vm.singular
         : vm.plural
       : vm.stampName;
-  const block = Number(earn.blockAmount);
-  const example =
-    mode === "per_purchase"
-      ? `Otorgás ${earn.grant} ${unit.toLowerCase()} por compra.`
-      : `Otorgás ${earn.grant} ${unit.toLowerCase()} cada ${
-          Number.isFinite(block) && block > 0
-            ? formatMoney(block, vm.currencyCode)
-            : "…"
-        } gastados en el local.`;
-
+  const block = parseMoney(earn.blockAmount);
   return (
-    <fieldset className="accrual-fields">
-      <legend>Mecánica de acumulación</legend>
+    <section className="loyalty-fields">
+      <h3>Mecánica de acumulación</h3>
       {vm.kind === "stamps" && (
-        <div
-          className="accrual-mode"
-          role="radiogroup"
-          aria-label="Modo de acumulación"
-        >
-          {(["per_amount", "per_purchase"] as const).map((value) => (
-            <label
-              key={value}
-              className={`chip ${earn.accrualMode === value ? "selected" : ""}`}
-            >
-              <input
-                className="sr-only"
-                type="radio"
-                checked={earn.accrualMode === value}
-                onChange={() => earn.setAccrualMode(value)}
-              />
-              {value === "per_amount" ? "Por monto" : "Por compra"}
-            </label>
-          ))}
-        </div>
+        <ChoiceGroup
+          label="Modo de acumulación"
+          value={mode}
+          onChange={(value) =>
+            earn.setAccrualMode(
+              value === "per_purchase" ? "per_purchase" : "per_amount",
+            )
+          }
+          options={[
+            { value: "per_amount", label: "Por monto" },
+            { value: "per_purchase", label: "Por compra" },
+          ]}
+        />
       )}
-      <div className="accrual-grid">
-        <label>
-          {vm.kind === "points" ? "Puntos otorgados" : "Sellos otorgados"}
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={earn.grant}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              earn.setGrant(Number.isFinite(next) ? Math.trunc(next) : 0);
-            }}
-          />
-        </label>
-        {mode === "per_amount" && (
-          <label>
-            Monto por bloque ({vm.currencyCode})
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={earn.blockAmount}
-              onChange={(event) => earn.setBlockAmount(event.target.value)}
-            />
-          </label>
-        )}
-      </div>
-      <p className="accrual-example" aria-live="polite">
-        {example}
+      <NumberDraftField
+        label={vm.kind === "points" ? "Puntos otorgados" : "Sellos otorgados"}
+        minValue={1}
+        step={1}
+        value={earn.grant}
+        onChange={earn.setGrant}
+        errorMessage={errors.grant}
+      />
+      {mode === "per_amount" && (
+        <TextField
+          label="Monto por bloque"
+          inputMode="decimal"
+          value={earn.blockAmount}
+          onChange={earn.setBlockAmount}
+          placeholder="Ej.: 5,00"
+          description={`Moneda: ${vm.currencyCode}.`}
+          errorMessage={errors.blockAmount}
+        />
+      )}
+      <p aria-live="polite" className="text-sm text-content-muted">
+        {mode === "per_purchase"
+          ? `Otorgás ${earn.grant} ${unit.toLowerCase()} por compra.`
+          : `Otorgás ${earn.grant} ${unit.toLowerCase()} cada ${Number.isFinite(block) && block > 0 ? formatMoney(block, vm.currencyCode) : "…"} gastados en el local.`}
       </p>
-    </fieldset>
+    </section>
   );
 }

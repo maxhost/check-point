@@ -1,3 +1,4 @@
+import { parseMoney } from "./program-form-state";
 /**
  * Formats an amount in the business currency for the wizard's live examples and the
  * value metric (spec 0036). Mirrors the catalog `formatMoney`; falls back to the raw
@@ -24,7 +25,7 @@ export function spendToRedeem(
   blockAmount: string,
   grant: number,
 ): number {
-  const block = Number(blockAmount);
+  const block = parseMoney(blockAmount);
   if (!Number.isFinite(block) || block <= 0 || grant <= 0) return 0;
   return (pointsCost * block) / grant;
 }

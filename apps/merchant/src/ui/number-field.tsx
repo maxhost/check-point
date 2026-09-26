@@ -21,6 +21,8 @@ export type NumberFieldProps = Omit<
   description?: string;
   errorMessage?: string;
   className?: string;
+  /** Keep typed out-of-range values for visible form validation. Default clamps. */
+  clampOnBlur?: boolean;
 };
 
 export function NumberField({
@@ -28,11 +30,16 @@ export function NumberField({
   description,
   errorMessage,
   className,
+  clampOnBlur = true,
+  minValue,
+  maxValue,
   ...props
 }: NumberFieldProps) {
   return (
     <AriaNumberField
       {...props}
+      minValue={clampOnBlur ? minValue : undefined}
+      maxValue={clampOnBlur ? maxValue : undefined}
       validationBehavior={props.validationBehavior ?? "aria"}
       isInvalid={props.isInvalid ?? Boolean(errorMessage)}
       className={cx("grid gap-1.5", className)}
@@ -43,6 +50,14 @@ export function NumberField({
       <Group className="cp-number-stepper grid grid-cols-[3rem_1fr_3rem] overflow-hidden rounded-md border border-border-strong bg-surface focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
         <Button
           slot="decrement"
+          isDisabled={
+            props.isDisabled ||
+            (!clampOnBlur &&
+              minValue !== undefined &&
+              (props.value ?? NaN) <= minValue)
+              ? true
+              : undefined
+          }
           className="grid min-h-12 place-items-center border-r border-border text-content outline-none hover:bg-primary-soft disabled:bg-disabled disabled:text-on-disabled"
         >
           <Minus className="size-5" aria-hidden="true" />
@@ -51,6 +66,14 @@ export function NumberField({
         <Input className="cp-number-input min-w-0 border-0 bg-transparent px-2 text-center text-lg font-bold text-content outline-none" />
         <Button
           slot="increment"
+          isDisabled={
+            props.isDisabled ||
+            (!clampOnBlur &&
+              maxValue !== undefined &&
+              (props.value ?? NaN) >= maxValue)
+              ? true
+              : undefined
+          }
           className="grid min-h-12 place-items-center border-l border-border text-content outline-none hover:bg-primary-soft disabled:bg-disabled disabled:text-on-disabled"
         >
           <Plus className="size-5" aria-hidden="true" />

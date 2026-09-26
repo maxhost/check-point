@@ -3,12 +3,14 @@ export type ProgressStep = { label: string };
 export function ProgressIndicator({
   currentStep,
   steps,
+  ariaLabel = "Progreso del alta",
 }: {
   currentStep: number;
   steps: ProgressStep[];
+  ariaLabel?: string;
 }) {
   return (
-    <div aria-label="Progreso del alta">
+    <div aria-label={ariaLabel}>
       <p className="text-sm font-bold text-primary">
         Paso {currentStep} de {steps.length}
       </p>

@@ -1,4 +1,6 @@
 import { CardPreview } from "../../../../components/loyalty/card-preview";
+import { parseMoney } from "../program-form-state";
+import { Alert } from "../../../../ui";
 import { formatMoney, spendToRedeem } from "../format";
 import type { RewardDraft } from "../use-rewards";
 import type { LoyaltyVm } from "../use-loyalty-program";
@@ -17,7 +19,7 @@ function rewardSpend(vm: LoyaltyVm, reward: RewardDraft): number {
   if (vm.kind === "points") {
     return spendToRedeem(reward.pointsCost, earn.blockAmount, earn.grant);
   }
-  const block = Number(earn.blockAmount);
+  const block = parseMoney(earn.blockAmount);
   return earn.effectiveMode("stamps") === "per_amount" && Number.isFinite(block)
     ? vm.target * block
     : 0;
@@ -101,7 +103,6 @@ export function StepReview({ vm }: { vm: LoyaltyVm }) {
   const metric = buildValueMetric(vm);
   return (
     <>
-      <h2>Revisión</h2>
       {vm.kind === "points" ? (
         <p>
           Programa de <strong>Puntos</strong>: «{vm.singular}» / «{vm.plural}».
@@ -150,9 +151,7 @@ export function StepReview({ vm }: { vm: LoyaltyVm }) {
             <p className="value-metric-headline">{metric.headline}</p>
           )}
           {metric.pct && <p className="value-metric-pct">{metric.pct}</p>}
-          {metric.caution && (
-            <p className="value-metric-caution">{metric.caution}</p>
-          )}
+          {metric.caution && <Alert kind="warning" title={metric.caution} />}
           {metric.spendLines.map((line, index) => (
             <p key={index} className="value-metric-spend">
               {line}

@@ -214,3 +214,30 @@ Mapeo único:
 5. Mantener 44 px de objetivo mínimo y foco visible de dos píxeles.
 6. Documentar propósito, props, estados y ejemplo antes de exportarlo.
 7. Añadir a la comprobación cualquier nuevo par texto/fondo o borde/fondo.
+
+### `TextAreaField`, `ChoiceGroup` y `CheckboxField`
+
+Documentadas para la 0098. `TextAreaField` acepta la API de `TextField`, más `autoGrow`:
+label, description, errorMessage, placeholder, value/onChange, required/disabled/invalid
+se asocian con React Aria. Autoaltura mínima 160 px. Estados vacío, valor, error y foco.
+`ChoiceGroup` acepta label, description, errorMessage, options `{value,label,description?}`,
+value/onChange, isRequired/isDisabled/isInvalid y variante `cards | compact`. Radios con
+teclado, seleccionado, error y foco; área mínima 48 px. `CheckboxField` acepta label,
+description, isSelected/onChange, isDisabled y className; área mínima 44 px, descripción
+incluida en su nombre accesible. Piezas neutrales, sin requests ni reglas del programa.
+
+```tsx
+<TextAreaField label="Descripción" value={text} onChange={setText} autoGrow />
+<ChoiceGroup label="Modo" options={[{value: "one", label: "Uno"}]} value={mode} onChange={setMode} />
+<CheckboxField label="Habilitar" description="Permite esta opción." isSelected={enabled} onChange={setEnabled} />
+```
+
+`ProgressIndicator` agrega `ariaLabel` opcional; por defecto conserva «Progreso del alta».
+Loyalty usa «Progreso del programa». El adaptador local `ClosingDateField` conserva input
+`datetime-local` como string en zona del negocio; label de 16 px, control de 48 px y
+ayuda/error asociados por id. Es una excepción especializada, sin casts ni datepicker.
+
+`NumberField` mantiene el clamp nativo por defecto. `clampOnBlur={false}` permite
+validar un entero escrito fuera del rango sin corregirlo silenciosamente al salir:
+los botones siguen deshabilitados en los límites. Loyalty captura el borrador al escribir
+para validar el valor visible en el mismo submit; vacío permanece NaN hasta corregirse.

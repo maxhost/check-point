@@ -317,7 +317,7 @@ select {
   color: #647168;
   background: #e9edeb;
 }
-button {
+button:where(:not(.loyalty-page button, .loyalty-dialog-overlay button)) {
   border: 0;
   cursor: pointer;
 }
@@ -386,7 +386,7 @@ p {
   line-height: 1.45;
   color: #5e6c63;
 }
-label {
+label:where(:not(.cp-choice, .cp-checkbox)) {
   display: grid;
   gap: 7px;
   margin-top: 15px;
@@ -403,14 +403,14 @@ label.cp-field-label {
   font-size: 1rem;
   line-height: 1.25rem;
 }
-input {
+input:where(:not(.loyalty-page input)) {
   width: 100%;
   padding: 13px;
   border: 1px solid #cbd7ce;
   border-radius: 11px;
   font-size: 16px;
 }
-input:focus {
+input:focus:where(:not(.loyalty-page input)) {
   outline: 3px solid #c9ead7;
   border-color: #176548;
 }
@@ -7125,4 +7125,172 @@ input.cp-number-input::-webkit-outer-spin-button {
 .backoffice-content:has(.brand-page) {
   background: var(--ui-canvas);
   color: var(--ui-text);
+}
+
+/* Loyalty: composition only; catalogue controls keep their semantic roles. */
+.loyalty-page {
+  color: var(--ui-text);
+  padding-bottom: 6rem;
+}
+.loyalty-page .loyalty-section {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  background: var(--ui-surface);
+  padding: 16px;
+}
+.loyalty-wizard {
+  max-width: var(--content-form, 34rem);
+}
+.loyalty-page:has(.card-design-grid) .loyalty-wizard {
+  max-width: none;
+}
+.loyalty-fields {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.loyalty-fields ul,
+ul.loyalty-fields {
+  list-style: none;
+}
+.loyalty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.loyalty-page .cp-number-input {
+  font-size: 16px;
+}
+.loyalty-page .card-design-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.loyalty-reward {
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+}
+.loyalty-summary {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+.loyalty-summary dt {
+  color: var(--ui-text-muted);
+  font-size: 14px;
+}
+.loyalty-summary dd {
+  margin: 6px 0 0;
+}
+.loyalty-summary-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+.loyalty-color {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 12px;
+}
+.loyalty-page .loyalty-color input[type="color"] {
+  width: 44px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.loyalty-date {
+  appearance: auto;
+}
+.cp-choice-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cp-radio-mark {
+  flex: 0 0 18px;
+  height: 18px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: 50%;
+}
+.cp-choice[data-selected] .cp-radio-mark {
+  border: 5px solid var(--brand-primary-action);
+}
+.cp-checkbox-mark {
+  flex: 0 0 20px;
+  height: 20px;
+  border: 2px solid var(--ui-border-strong);
+  border-radius: 4px;
+}
+.cp-checkbox[data-selected] .cp-checkbox-mark {
+  background: var(--brand-primary-action);
+  border-color: var(--brand-primary-action);
+  box-shadow: inset 0 0 0 3px var(--ui-surface);
+}
+@media (min-width: 768px) {
+  .loyalty-page .loyalty-section {
+    padding: 24px;
+  }
+  .loyalty-page .card-design-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (max-width: 479px) {
+  .loyalty-actions {
+    flex-direction: column;
+  }
+  .loyalty-actions > button {
+    width: 100%;
+  }
+  .cp-choice-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cp-choice,
+.cp-checkbox {
+  margin-top: 0;
+  font-size: 16px;
+  font-weight: normal;
+}
+.cp-choice input,
+.cp-checkbox input {
+  width: 1px;
+  padding: 0;
+  border: 0;
+}
+.loyalty-page p,
+.loyalty-dialog-overlay p {
+  color: inherit;
+}
+.loyalty-page .field-help {
+  color: var(--ui-text-muted);
+}
+.loyalty-step-title:focus {
+  outline: none;
+}
+.cp-textarea {
+  resize: vertical;
+}
+.cp-textarea:focus {
+  border-color: var(--ui-border-strong);
+}
+.cp-choice,
+.cp-checkbox {
+  display: flex;
+}
+.loyalty-dialog-overlay {
+  background: var(--ui-overlay);
+}
+.loyalty-page button[aria-pressed="true"] {
+  border-color: var(--brand-primary-action);
+  background: var(--brand-primary-soft);
 }

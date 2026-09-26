@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { loyaltyRequest, asLoyaltyError, LoyaltyApiError } from "./loyalty-api";
+import { isContext, areTemplates } from "./loyalty-response";
+import { programPayload } from "./program-payload";
+import { firstInvalidStep } from "./program-form-state";
 import { useStampUpload } from "./use-stamp-upload";
 import { type BrandDefaults, useCardDesign } from "./use-card-design";
 import { useRewards } from "./use-rewards";
@@ -20,7 +24,21 @@ const brandDefaultsOf = (business: Business): BrandDefaults => ({
   accent: business.brandAccentColor,
 });
 
-export function useLoyaltyProgram() {
+export function useLoyaltyProgram({
+  isOwner,
+  canReadCatalog,
+}: {
+  isOwner: boolean;
+  canReadCatalog: boolean;
+}) {
+  const writing = useRef(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<LoyaltyApiError | null>(null);
+  const [operationError, setOperationError] = useState<LoyaltyApiError | null>(
+    null,
+  );
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [stampPlural, setStampPlural] = useState<unknown>(undefined);
   const [context, setContext] = useState<Context | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [kind, setKind] = useState<Kind>("points");
@@ -63,6 +81,7 @@ export function useLoyaltyProgram() {
       setSingular(String(next.program.configuration.unitSingular ?? "Punto"));
       setPlural(String(next.program.configuration.unitPlural ?? "Puntos"));
     } else {
+      setStampPlural(next.program.configuration.unitPlural);
       setStampName(String(next.program.configuration.unitName ?? "Sello"));
       setTarget(Number(next.program.configuration.target ?? 10));
     }
@@ -70,30 +89,40 @@ export function useLoyaltyProgram() {
     earn.hydrate(next.program);
   }
 
-  async function load() {
+  async function load(preserveDraft = false, afterWrite = false) {
+    setLoading(true);
+    setLoadError(null);
     try {
-      const [programResponse, templateResponse] = await Promise.all([
-        fetch("/api/loyalty-program"),
-        fetch("/api/loyalty-terms/templates"),
+      const [next, termsData] = await Promise.all([
+        loyaltyRequest<Context>("/api/loyalty-program"),
+        loyaltyRequest<{ templates: Template[] }>(
+          "/api/loyalty-terms/templates",
+        ),
       ]);
-      if (!programResponse.ok || !templateResponse.ok) throw new Error();
-      const next = (await programResponse.json()) as Context;
+      if (!isContext(next) || !areTemplates(termsData))
+        throw new LoyaltyApiError(200);
       setContext(next);
-      void earn.loadCatalog();
-      populate(next);
-      setTemplates(
-        ((await templateResponse.json()) as { templates: Template[] })
-          .templates,
-      );
-    } catch {
-      setErrorToast(
-        "No pudimos cargar tu programa. Intenta recargar la página.",
-      );
+      setTemplates(termsData.templates);
+      setRefreshFailed(false);
+      setOperationError(null);
+      if (!preserveDraft) populate(next);
+      if (afterWrite) {
+        setEditing(false);
+        setClosing(false);
+        stamp.reset();
+      }
+      return true;
+    } catch (reason) {
+      setLoadError(asLoyaltyError(reason));
+      if (afterWrite) setRefreshFailed(true);
+      return false;
+    } finally {
+      setLoading(false);
     }
   }
-
   useEffect(() => {
     void load();
+    void earn.loadCatalog(canReadCatalog);
   }, []);
 
   /** Resolves the terms variables against the live form so the inserted copy is final text. */
@@ -113,163 +142,156 @@ export function useLoyaltyProgram() {
     );
   }
 
-  async function save() {
-    if (!terms.trim()) {
-      setError("Añade al menos una cláusula de términos antes de guardar.");
+  async function write(method: string, body: unknown, success: string) {
+    if (
+      writing.current ||
+      refreshFailed ||
+      loadError?.status === 401 ||
+      loadError?.status === 403 ||
+      operationError?.status === 401 ||
+      operationError?.status === 403
+    )
       return;
-    }
+    writing.current = true;
     setSaving(true);
+    setOperationError(null);
     setError(null);
+    try {
+      const result = await loyaltyRequest<{
+        programId?: string;
+        created?: boolean;
+        ok?: boolean;
+      }>("/api/loyalty-program", method, body);
+      if (
+        method === "PUT"
+          ? typeof result.programId !== "string" ||
+            typeof result.created !== "boolean"
+          : result.ok !== true
+      )
+        throw new LoyaltyApiError(200, undefined, undefined, true);
+      setNotice(success);
+      await load(false, true);
+    } catch (reason) {
+      const failure = asLoyaltyError(reason);
+      setOperationError(failure);
+      setError(failure.message);
+    } finally {
+      writing.current = false;
+      setSaving(false);
+    }
+  }
+  async function save() {
+    if (
+      writing.current ||
+      refreshFailed ||
+      operationError?.status === 401 ||
+      operationError?.status === 403 ||
+      loadError?.status === 401 ||
+      loadError?.status === 403 ||
+      firstInvalidStep(vm()) ||
+      stamp.isAnalyzing ||
+      stamp.pending
+    )
+      return;
+    // Acquire before preparing an upload, which is itself an asynchronous write.
+    writing.current = true;
+    setSaving(true);
     try {
       const stampAction = kind === "stamps" ? stamp.action : "keep";
       const stampUploadId =
         stampAction === "replace" ? await stamp.upload() : null;
-      const response = await fetch("/api/loyalty-program", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          kind,
-          configuration:
-            kind === "points"
-              ? { unitSingular: singular, unitPlural: plural }
-              : { unitName: stampName, target },
-          clauses: [{ text: terms }],
-          stampAction,
-          ...(stampUploadId
-            ? { stampUploadId, stampCropped: stamp.cropped }
-            : {}),
-          cardDesign: kind === "stamps" ? card.payload() : null,
-          accrual: earn.accrualPayload(kind),
-          rewards: earn.rewardsPayload(kind),
-          // Advanced setting of the program, not of a reward (spec 0055 §5).
-          redeemAllowInsufficient: earn.allowInsufficient,
-        }),
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok)
-        throw new Error(payload?.error ?? "No pudimos guardar el programa.");
-      stamp.reset();
-      setEditing(false);
-      setNotice(program ? "Programa actualizado." : "Programa activado.");
-      await load();
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "No pudimos guardar el programa.",
+      writing.current = false;
+      await write(
+        "PUT",
+        programPayload(vm(), stampPlural, stampUploadId),
+        program ? "Programa actualizado." : "Programa activado.",
       );
+    } catch (reason) {
+      const failure = asLoyaltyError(reason);
+      setOperationError(failure);
+      setError(failure.message);
     } finally {
+      writing.current = false;
       setSaving(false);
     }
   }
-
   async function closeProgram() {
+    if (!isOwner) return;
     setConfirmClose(false);
-    setSaving(true);
-    setErrorToast(null);
-    try {
-      const response = await fetch("/api/loyalty-program", {
-        method: "DELETE",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ earningEndsAt, redemptionEndsAt }),
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok)
-        throw new Error(payload?.error ?? "No pudimos iniciar el cierre.");
-      setClosing(false);
-      setNotice("El cierre del programa fue programado.");
-      await load();
-    } catch (reason) {
-      setErrorToast(
-        reason instanceof Error
-          ? reason.message
-          : "No pudimos iniciar el cierre.",
-      );
-    } finally {
-      setSaving(false);
-    }
+    await write(
+      "DELETE",
+      { earningEndsAt, redemptionEndsAt },
+      "El cierre del programa fue programado.",
+    );
   }
-
   async function cancelClose() {
+    if (!isOwner) return;
     setConfirmCancel(false);
-    setSaving(true);
-    setErrorToast(null);
-    try {
-      const response = await fetch("/api/loyalty-program", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "cancel-close" }),
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok)
-        throw new Error(payload?.error ?? "No pudimos cancelar el cierre.");
-      setNotice("El cierre fue cancelado. El programa vuelve a estar activo.");
-      await load();
-    } catch (reason) {
-      setErrorToast(
-        reason instanceof Error
-          ? reason.message
-          : "No pudimos cancelar el cierre.",
-      );
-    } finally {
-      setSaving(false);
-    }
+    await write(
+      "PATCH",
+      { action: "cancel-close" },
+      "El cierre fue cancelado.",
+    );
   }
-
-  return {
-    context,
-    templates,
-    kind,
-    singular,
-    plural,
-    stampName,
-    target,
-    terms,
-    editing,
-    closing,
-    earningEndsAt,
-    redemptionEndsAt,
-    confirmDiscard,
-    confirmClose,
-    confirmCancel,
-    saving,
-    notice,
-    error,
-    errorToast,
-    program,
-    timezone,
-    currencyCode,
-    isClosing,
-    stamp,
-    card,
-    earn,
-    setKind,
-    setSingular,
-    setPlural,
-    setStampName,
-    setTarget,
-    setTerms,
-    insertTemplate,
-    setEditing,
-    setClosing,
-    setEarningEndsAt,
-    setRedemptionEndsAt,
-    setConfirmDiscard,
-    setConfirmClose,
-    setConfirmCancel,
-    setNotice,
-    setErrorToast,
-    populate,
-    save,
-    closeProgram,
-    cancelClose,
-  };
+  function vm() {
+    return {
+      context,
+      isOwner,
+      canReadCatalog,
+      loading,
+      loadError,
+      operationError,
+      refreshFailed,
+      load,
+      clearAccessError: () => setOperationError(null),
+      templates,
+      kind,
+      singular,
+      plural,
+      stampName,
+      target,
+      terms,
+      editing,
+      closing,
+      earningEndsAt,
+      redemptionEndsAt,
+      confirmDiscard,
+      confirmClose,
+      confirmCancel,
+      saving,
+      notice,
+      error,
+      errorToast,
+      program,
+      timezone,
+      currencyCode,
+      isClosing,
+      stamp,
+      card,
+      earn,
+      setKind,
+      setSingular,
+      setPlural,
+      setStampName,
+      setTarget,
+      setTerms,
+      insertTemplate,
+      setEditing,
+      setClosing,
+      setEarningEndsAt,
+      setRedemptionEndsAt,
+      setConfirmDiscard,
+      setConfirmClose,
+      setConfirmCancel,
+      setNotice,
+      setErrorToast,
+      populate,
+      save,
+      closeProgram,
+      cancelClose,
+    };
+  }
+  return vm();
 }
 
 export type LoyaltyVm = ReturnType<typeof useLoyaltyProgram>;

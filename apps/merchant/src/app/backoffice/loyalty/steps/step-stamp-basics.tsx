@@ -1,26 +1,32 @@
+import { NumberDraftField } from "../number-draft-field";
+import { TextField } from "../../../../ui";
 import type { LoyaltyVm } from "../use-loyalty-program";
-
-export function StepStampBasics({ vm }: { vm: LoyaltyVm }) {
+export function StepStampBasics({
+  vm,
+  errors,
+}: {
+  vm: LoyaltyVm;
+  errors: Record<string, string>;
+}) {
   return (
     <>
-      <h2>Sello y objetivo</h2>
-      <label>
-        Nombre del sello
-        <input
-          value={vm.stampName}
-          onChange={(event) => vm.setStampName(event.target.value)}
-        />
-      </label>
-      <label>
-        Sellos para completar
-        <input
-          type="number"
-          min="2"
-          max="50"
-          value={vm.target}
-          onChange={(event) => vm.setTarget(Number(event.target.value))}
-        />
-      </label>
+      <TextField
+        label="Nombre del sello"
+        value={vm.stampName}
+        onChange={vm.setStampName}
+        placeholder="Ej.: Sello"
+        errorMessage={errors.stampName}
+      />
+      <NumberDraftField
+        label="Sellos para completar"
+        minValue={2}
+        maxValue={50}
+        step={1}
+        value={vm.target}
+        onChange={vm.setTarget}
+        description="Elegí entre 2 y 50 sellos."
+        errorMessage={errors.target}
+      />
     </>
   );
 }

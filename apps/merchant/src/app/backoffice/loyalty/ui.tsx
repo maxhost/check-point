@@ -1,5 +1,4 @@
-import { type ComponentProps, useLayoutEffect, useRef } from "react";
-
+import { Skeleton, SkeletonScreen } from "../../components/ui";
 /** Money in the business currency; rounds to whole units when the amount is integral. */
 export function formatMoney(amount: number, currency: string) {
   const fractionDigits = Number.isInteger(amount) ? 0 : 2;
@@ -41,33 +40,23 @@ export function localDateTimeInput(timezone: string, date: Date = new Date()) {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
-/** A textarea that grows to fit its content, so pasted templates stay fully visible. */
-export function AutoGrowTextarea({
-  value,
-  ...props
-}: ComponentProps<"textarea">) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  }, [value]);
-  return <textarea ref={ref} value={value} {...props} />;
-}
-
 export function LoyaltySkeleton() {
   return (
-    <main className="merchant-shell" aria-busy="true">
-      <div className="brand-page loyalty-page loyalty-skeleton">
-        <span className="skeleton-line skeleton-eyebrow" />
-        <span className="skeleton-line skeleton-title" />
-        <span className="skeleton-line skeleton-description" />
-        <section className="panel loyalty-panel">
-          <span className="skeleton-line skeleton-section-title" />
-          <span className="skeleton-line skeleton-card" />
+    <main className="merchant-shell">
+      <SkeletonScreen
+        label="Cargando programa…"
+        className="brand-page loyalty-page loyalty-fields"
+      >
+        <Skeleton height={12} width={160} />
+        <Skeleton height={34} width="80%" />
+        <Skeleton height={16} width="90%" />
+        <section className="loyalty-section">
+          <Skeleton height={20} width="60%" />
+          <Skeleton height={48} width="100%" />
+          <Skeleton height={48} width="100%" />
+          <Skeleton height={44} width="100%" />
         </section>
-      </div>
+      </SkeletonScreen>
     </main>
   );
 }

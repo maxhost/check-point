@@ -65,9 +65,17 @@ const businessLinks = [
 
 /** Lo que ve un integrante: solo las pantallas delegadas para las que tiene permiso. */
 export function delegatedLinks(permissions: string[]) {
-  return businessLinks.filter(
-    (item) => item.delegado && permissions.includes(item.permission),
-  );
+  return [
+    ...businessLinks,
+    {
+      href: "/backoffice/loyalty",
+      label: "Fidelización",
+      icon: Gift,
+      segment: "loyalty",
+      permission: "loyalty",
+      delegado: true,
+    },
+  ].filter((item) => item.delegado && permissions.includes(item.permission));
 }
 
 const loyaltyLinks = [
@@ -286,9 +294,16 @@ export function BackofficeNavigation({
                 <span>Negocio</span>
               </button>
             ) : (
-              delegados.map((item) => (
-                <NavLink {...item} key={item.label} selectedSegment={segment} />
-              ))
+              <button
+                aria-controls="backoffice-mobile-menu"
+                aria-expanded={openMenu === "business"}
+                className="mobile-nav-trigger"
+                onClick={() => toggleMenu("business")}
+                type="button"
+              >
+                <Dashboard aria-hidden="true" width={22} height={22} />
+                <span>Administración</span>
+              </button>
             )}
           </>
         )}
@@ -336,7 +351,7 @@ export function BackofficeNavigation({
         )}
       </nav>
 
-      {openMenu && isOwner && (
+      {openMenu && (
         <div className="mobile-menu-layer">
           <button
             aria-label="Cerrar menú"
@@ -373,7 +388,7 @@ export function BackofficeNavigation({
             </header>
             <div className="mobile-menu-links">
               {openMenu === "business" &&
-                businessLinks.map((item) =>
+                (isOwner ? businessLinks : delegados).map((item) =>
                   item.href ? (
                     <NavLink
                       {...item}

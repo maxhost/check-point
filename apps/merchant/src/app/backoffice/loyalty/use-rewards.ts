@@ -1,3 +1,9 @@
+import { parseMoney } from "./program-form-state";
+import {
+  loyaltyRequest,
+  asLoyaltyError,
+  type LoyaltyApiError,
+} from "./loyalty-api";
 import { useState } from "react";
 import type { Kind, Program } from "./use-loyalty-program";
 
@@ -58,6 +64,12 @@ export function useRewards() {
   const [grant, setGrant] = useState(10);
   const [blockAmount, setBlockAmount] = useState("3");
   const [rewards, setRewards] = useState<RewardDraft[]>([emptyReward()]);
+  const [catalogState, setCatalogState] = useState<
+    "loading" | "ready" | "error" | "denied"
+  >("loading");
+  const [catalogError, setCatalogError] = useState<LoyaltyApiError | null>(
+    null,
+  );
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   /** Advanced setting of the program (spec 0055 §5), not of a single reward: may the
    * counter hand a reward over without enough balance? Default `false` = the redemption
@@ -78,7 +90,11 @@ export function useRewards() {
    */
   function selectProduct(index: number, product: CatalogProduct | null) {
     const suggested = product
-      ? suggestPointsCost(product.unitPrice ?? 0, grant, Number(blockAmount))
+      ? suggestPointsCost(
+          product.unitPrice ?? 0,
+          grant,
+          parseMoney(blockAmount),
+        )
       : 0;
     patch(index, {
       productId: product?.id ?? null,
@@ -86,20 +102,30 @@ export function useRewards() {
       ...(suggested > 0 ? { pointsCost: suggested } : {}),
     });
   }
-  const add = () => setRewards((list) => [...list, emptyReward()]);
+  const add = () =>
+    setRewards((list) => (list.length < 20 ? [...list, emptyReward()] : list));
   const remove = (index: number) =>
     setRewards((list) =>
       list.length > 1 ? list.filter((_, i) => i !== index) : list,
     );
 
-  async function loadCatalog() {
+  async function loadCatalog(canRead = true) {
+    if (!canRead) {
+      setCatalogState("denied");
+      return;
+    }
+    setCatalogState("loading");
+    setCatalogError(null);
     try {
-      const response = await fetch("/api/catalog");
-      if (!response.ok) return;
-      const data = (await response.json()) as { products: CatalogProduct[] };
-      setProducts(data.products ?? []);
-    } catch {
-      // The selector simply stays empty; the owner can still use custom/discount.
+      const data = await loyaltyRequest<{ products: CatalogProduct[] }>(
+        "/api/catalog",
+      );
+      if (!Array.isArray(data.products)) throw new Error();
+      setProducts(data.products);
+      setCatalogState("ready");
+    } catch (error) {
+      setCatalogError(asLoyaltyError(error));
+      setCatalogState("error");
     }
   }
 
@@ -146,7 +172,8 @@ export function useRewards() {
     return {
       mode,
       grant,
-      blockAmount: mode === "per_purchase" ? null : blockAmount,
+      blockAmount:
+        mode === "per_purchase" ? null : String(parseMoney(blockAmount)),
     };
   }
 
@@ -168,6 +195,8 @@ export function useRewards() {
     blockAmount,
     rewards,
     products,
+    catalogState,
+    catalogError,
     allowInsufficient,
     setAllowInsufficient,
     setAccrualMode,

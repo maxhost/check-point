@@ -8,6 +8,82 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ SPEC 0099 IMPLEMENTADA — PASS de revisor independiente (2026-09-26)
+
+**`estado: implementada`.** Endurece `toClientProgram` a lista blanca explicita (ya no
+filtra `businessId`, `createdBy`, `schemaVersion`, `termsHash`, `termsUpdatedAt` ni el
+`stampImageVersion` crudo por un `...rest`) y crea el anexo consolidado
+`specs/0099-contratos-de-api.md` con el contrato vigente de las 4 rutas de
+`/api/loyalty-program`, corrigiendo el `403 not_owner` que el anexo 0079 §4 dejaba
+desactualizado para `GET`/`PUT` desde la 0086 (ahora `not_member`/`missing_permission`).
+
+**Verificado por el orquestador y por un revisor independiente, no por auto-reporte:**
+
+- Las 2 mutaciones del presupuesto reprodujeron ROJO exacto (el spread viejo trae de
+  vuelta las 5 columnas internas; borrar `redeemAllowInsufficient` lo deja `undefined`) y
+  volvieron a VERDE con `diff` vacio contra la copia limpia — corridas DOS VECES, una por
+  el implementador y otra, de cero, por el revisor.
+- El anexo se verifico linea por linea contra `api-permission.ts`, `api-owner.ts` y
+  `route.ts` (no se acepto ninguna cita del propio anexo como prueba de si misma).
+- `consumer/programs.ts` (que la spec prohibe tocar) sigue sin cambios, confirmado con
+  `git status` y su suite en verde (5/5).
+- Gates acotados de la spec: `vitest` (17/17 loyalty-program + loyalty-client-view),
+  `tsc --noEmit` del paquete merchant, `prettier --check` y `eslint` sobre los 3 archivos
+  propios — todos verdes.
+
+**Dos hallazgos de calidad, cerrados en este mismo turno:** la fila de `docs/INDEX.md`
+decia "sin implementar todavia" pese a estar ya implementada (corregida), y el docblock
+de `client-view.ts` afirmaba que "los tres campos de acumulacion" quedaban opcionales
+cuando en realidad son 15 campos los opcionales, no 3 (corregido — el motivo real sigue
+siendo el mismo: `consumer/programs.ts` llama con un objeto de 3 campos y forzar el resto
+a obligatorio rompe esa llamada).
+
+**Desviacion tecnica declarada, no bloqueante:** `ProgramRow` dejo opcionales mas campos
+de los que el §Diseño-1 de la spec listaba literalmente (15 en vez de 3), porque la letra
+literal de la spec era incompatible con su propia restriccion de no tocar
+`consumer/programs.ts`. El invariante de producto (columnas internas nunca servidas) no
+depende de esto — lo da la construccion campo a campo del DTO, verificada con las 2
+mutaciones.
+
+**Nota de concurrencia:** esta spec se implemento en paralelo con la sesion que esta
+armando la UI de la spec 0098 (`/backoffice/loyalty`, ver seccion siguiente) sobre el
+MISMO working tree. Hubo colisiones transitorias del Stop hook (`typecheck`/`lint`
+corriendo sobre archivos `.tsx` ajenos, a mitad de edicion) — no relacionadas con esta
+spec. Los 3 archivos de la 0099 (`client-view.ts`, `loyalty-client-view.test.ts`,
+`0099-contratos-de-api.md`) estan intactos y verificados. Sin commitear todavia (compartido
+con cambios sin commitear de la otra sesion). El owner autorizó publicar ambas entregas
+el 2026-09-26 al cerrar la UI 0098; commits separados para mantener su alcance.
+
+## Trabajo actual — spec 0098 implementada localmente (2026-09-26)
+
+[Spec 0098](specs/0098-loyalty-sistema-de-diseno-del-backoffice.md): **cerrada con UI
+implementada y QA pendiente**, [ADR 0089](adr/0089-loyalty-reutiliza-el-sistema-del-wizard-merchant.md)
+aceptada. Consulta, creación/edición, revisión, diseño/imagen y cierre reutilizan el
+sistema del wizard; validación conserva borrador y contratos completos. Staff con loyalty
+puede consultar/crear/editar; cierre sólo owner y catálogo como permiso independiente.
+
+**PASS independiente de la UI verificable:** 50 casos de navegador passed / 1 skipped
+(47 Loyalty y tres casos propios); 11 tests de adaptador/permisos, preview y costos passed.
+Cuatro mutaciones detectadas por sus aserciones y restauradas con copia/SHA/diff. Matriz
+320/390/768/1280, light/dark y smoke Marca/Catálogo/Staff/Locales con componentes reales
+más HTTP controlado. La revisión encontró y verificó correcciones de DTO parcial,
+clamp de entero cero, marcas checkbox/radio y overlay de confirmación.
+
+[Handoff de implementación](archivo/spec-0098-handoff-ui.md),
+[revisión independiente](archivo/spec-0098-revision-ui.md) y
+[bitácora](archivo/spec-0098-bitacora-de-mutaciones.md). Typecheck/lint/test/format, contraste y tipos UI verdes. Merchant compila con Webpack
+(exit 0, TypeScript y 33 páginas); Consumer/Platform tenían build aprobado en caché.
+Turbopack sigue bloqueado por EPERM de proceso/puerto, incluso en retry autorizado sin
+caché. E2E general quedó impedido por puertos del sandbox; el owner pidió omitir la
+escalación y pasar a QA live. Commit/push autorizados el 2026-09-26, con UI 0098 y DTO
+0099 en commits separados; no afirmar despliegue verificado.
+
+**QA pendiente:** sesiones owner/staff aisladas, storage/cámara reales e iOS/Android
+(picker, recorte, teclado, scroll). Fixtures no acreditan esos resultados ni producción;
+el smoke autenticado conservado tiene un recorrido antiguo que requiere migración antes
+de usarlo. No hay decisiones de diseño ni endpoint nuevo bloqueantes. No retomar afiche
+hasta nuevo pedido del owner. El estado siguiente corresponde a entregas anteriores.
+
 ## ⇥ ESTADO (2026-09-25): MARCA PUSHEADA Y APROBADA POR EL OWNER; RETOMAR AYUDA DE AFICHE
 
 **`0c1c847`:** UI de onboarding y seis ayudas de Marca commiteada y pusheada a

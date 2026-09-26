@@ -6,3 +6,6 @@ export * from "./number-field";
 export * from "./progress-indicator";
 export * from "./select-field";
 export * from "./text-field";
+export * from "./text-area-field";
+export * from "./choice-group";
+export * from "./checkbox-field";
