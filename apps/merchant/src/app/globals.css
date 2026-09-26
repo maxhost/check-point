@@ -7296,3 +7296,140 @@ ul.loyalty-fields {
   border-color: var(--brand-primary-action);
   background: var(--brand-primary-soft);
 }
+
+/* Published program: hierarchy and grouping without changing editor controls. */
+.loyalty-page .loyalty-program-view h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.loyalty-page .loyalty-program-view h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.loyalty-page .loyalty-program-status {
+  padding: 6px 12px;
+  border: 1px solid var(--brand-primary-border);
+  border-radius: 999px;
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary-action);
+  font-size: 13px;
+  font-weight: 600;
+}
+.loyalty-page .loyalty-program-hero {
+  display: grid;
+  align-items: center;
+  gap: 24px;
+}
+.loyalty-page .loyalty-program-metric {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.loyalty-page .loyalty-program-caption {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 14px;
+}
+.loyalty-page .loyalty-program-value {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.loyalty-page .loyalty-program-detail {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.loyalty-page .loyalty-program-preview {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+.loyalty-page .loyalty-program-rules {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.loyalty-page .loyalty-program-rules > div,
+.loyalty-page .loyalty-program-closing {
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  background: var(--ui-surface-subtle);
+  overflow-wrap: anywhere;
+}
+.loyalty-page .loyalty-program-rewards,
+.loyalty-page .loyalty-program-closing {
+  display: grid;
+  gap: 16px;
+}
+.loyalty-page .loyalty-program-rewards ul {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.loyalty-page .loyalty-program-rewards li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  overflow-wrap: anywhere;
+}
+.loyalty-page .loyalty-program-rewards li + li {
+  border-top: 1px solid var(--ui-border);
+}
+.loyalty-page .loyalty-program-rewards li > div {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+.loyalty-page .loyalty-program-cost {
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.loyalty-page .loyalty-program-closing > p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 14px;
+}
+.loyalty-page .loyalty-program-footer {
+  padding-top: 24px;
+  border-top: 1px solid var(--ui-border);
+}
+.loyalty-page .published-term {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid var(--brand-primary-action);
+  border-radius: var(--radius-md);
+  background: var(--ui-surface-subtle);
+  color: var(--ui-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.loyalty-page .loyalty-program-terms h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+@media (min-width: 768px) {
+  .loyalty-page .loyalty-program-hero:has(.loyalty-program-preview) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  }
+  .loyalty-page .loyalty-program-rules,
+  .loyalty-page .loyalty-program-closing .loyalty-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -422,6 +422,16 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+Rediseño de consulta autorizado por owner (2026-09-26): tarjeta guardada de Sellos/Puntos
+con jerarquía visual (título/estado, meta o acumulación destacada, preview Sellos,
+mecánica y reglas de canje, premios agrupados, acciones separadas y fechas si en cierre).
+Mantener todo dato del DTO y permisos/handlers; no modificar editor ni CardPreview.
+Términos con fondo/texto semánticos legibles en claro/oscuro, preservando saltos de línea.
+Alcance: `program-view.tsx` y CSS local; referencia de cabecera ya corregida intacta.
+Revisión independiente renderizada Sellos/Puntos, activo/en cierre, owner/staff y
+responsive light/dark; medición contraste términos. Sin nuevas mutaciones (presentación,
+presupuesto original agotado), ni repetir gates generales; publicar para QA live.
+
 Ajuste de QA autorizado por owner (2026-09-26): igualar cabecera Loyalty con las de
 Catálogo/Locales (familia, tamaño, peso, color y márgenes) y separación hasta primera
 tarjeta con Catálogo. Mantener el componente ModuleHeader compartido y alcance CSS

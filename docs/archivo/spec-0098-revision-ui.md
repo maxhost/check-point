@@ -69,6 +69,15 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Rediseño de consulta por QA del owner (2026-09-26): revisión independiente de tarjeta
+guardada Sellos/Puntos, activo/en cierre, owner/staff a 320/390/1280 px light/dark.
+Seis casos con 24 renders: datos, premios catálogo/libres/descuento y costos, fechas/zona,
+acciones por rol y ausencia de overflow. Términos preservan texto/saltos de línea;
+contraste computado 14.44:1 claro y 13.39:1 oscuro. TypeScript merchant `tsc --noEmit`
+exit 0. Capturas/casos acotados en `/tmp/spec0098-review`; inspección propia de desktop
+Sellos y móvil Puntos dark confirma agrupación/jerarquía y fondo semántico de términos.
+No nuevos gates generales ni mutaciones; QA live sigue pendiente.
+
 Ajuste de cabecera por QA del owner (2026-09-26): PASS independiente de cuatro
 comparaciones renderizadas a 390/1280 px, light/dark (4.4 s). Familia, tamaño, peso,
 interlineado, espaciado, colores y márgenes de eyebrow/título/descripción iguales en
