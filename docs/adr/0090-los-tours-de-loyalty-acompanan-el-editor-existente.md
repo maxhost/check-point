@@ -7,8 +7,9 @@ resumen: Loyalty incorpora orientación general y cuatro ayudas sobre su editor 
 
 # 0090 — Los tours de Loyalty acompañan el editor existente
 
-Propuesta parqueada por owner el 2026-09-26; se prioriza consistencia del formulario.
-Detalle de retorno en [PARQUEADO](../PARQUEADO.md).
+Planificación retomada por owner el 2026-09-26 tras corregir el formulario.
+Políticas confirmado: términos y condiciones más canje sin saldo. Propuesta completa
+pendiente de aprobación general antes del clear y la implementación.
 
 ## Contexto
 
@@ -28,13 +29,14 @@ cancelar cierre usa PATCH. No existe un guardado separado de políticas.
    escribir el programa. La entrada de checklist será `?tour=onboarding` y usará el id
    persistido `program`; repetir desde Ayuda no modificará ese progreso.
 2. Ayuda ofrece cuatro tareas: crear, editar, programar cierre y editar políticas.
-   El alcance exacto de políticas está pendiente de aclaración del owner. Se propone
-   términos y condiciones; la regla de canje se incluirá si así lo indica.
+   Owner confirmó que políticas incluye términos y condiciones y la regla de canje
+   sin saldo suficiente, para Puntos y Sellos.
 3. Cada ayuda acompaña el flujo normal y sus validaciones. Sólo el usuario guarda,
    elige archivos y confirma cierre/descarte. La guía avanza por estado de la UI y
    confirmación HTTP, nunca por haber hecho clic en un botón.
 4. Editar políticas abre el editor existente en Términos, conservando el resto del
-   programa y cualquier borrador. Guardar sigue enviando el payload completo y requiere
+   programa y cualquier borrador; después acompaña la regla de canje en Premios.
+   Guardar sigue enviando el payload completo y requiere
    revisión; no se agrega una API ni guardado parcial.
 5. Owner y staff con loyalty pueden crear/editar según permisos y estado actuales.
    Sólo owner programa cierre. Staff no escribe progreso de onboarding; sí puede usar

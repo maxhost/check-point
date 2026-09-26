@@ -9,8 +9,8 @@ archivos: apps/merchant/src/app/backoffice/loyalty/, apps/merchant/src/app/backo
 
 # 0100 — Tours de onboarding y ayuda de Loyalty
 
-**Parqueada por owner el 2026-09-26** para priorizar arreglos del formulario de Loyalty.
-Plan preservado en disco; no implementar hasta que se retome y apruebe. Ver [PARQUEADO](../PARQUEADO.md).
+**Planificación retomada por owner el 2026-09-26**, tras los ajustes del formulario.
+Borrador preparado para aprobación y handoff antes del clear; no iniciar código aún.
 
 Propuesta de planificación, sin implementación. Consume
 [ADR 0090](../adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md).
@@ -73,7 +73,85 @@ No avanzar el editor ni abrir formularios para fabricar anchors. Pasos informati
 elemento sólo cuando la sección aún no existe; nunca esperar un selector desmontado.
 La variante con programa en cierre explica fechas/bloqueo de edición, sin mostrar
 controles de propietario a staff. Siguiente/Anterior sólo recorren explicaciones.
-Copy final y anchors exactos se cerrarán antes de implementar.
+Durante edición, incluso con programa guardado, usar la variante editor sin navegar:
+primer paso ancla el contenido actual y explica el borrador; segundo ancla el progreso.
+Si hay formulario de cierre/confirmación abierto, completar o salir de ese flujo antes
+de abrir otra ayuda u orientación. Preparación, recorte, escritura y recuperación de
+acceso bloquean inicio; conservar el estado y explicar el motivo en Ayuda.
+
+## Copy y anchors definidos para implementación
+
+Añadir `data-tour="loyalty-…"` al contenedor indicado; usar selectores locales estables,
+sin depender del texto, número del paso ni posición de un premio. Cada spotlight debe
+incluir los controles que pide operar. Los anchors siguientes son contratos nuevos a
+implementar, no atributos ya presentes en el árbol.
+
+| Anchor | Contenedor real previsto |
+| --- | --- |
+| `loyalty-help` | Botón Ayuda junto a ModuleHeader |
+| `loyalty-program` | Encabezado/tipo/estado de ProgramView |
+| `loyalty-rules` | Métrica y reglas de acumulación/canje en ProgramView |
+| `loyalty-rewards-view` | Grupo de premios publicado |
+| `loyalty-management`, `loyalty-terms-view`, `loyalty-closing-dates` | Footer de gestión, sección de términos y fechas de cierre, respectivamente; el paso general elige un anchor presente según estado |
+| `loyalty-editor-progress` | ProgressIndicator del editor |
+| `loyalty-editor-step` | Contenido del paso actual y navegación; genérico para orientación en borrador |
+| `loyalty-modality`, `loyalty-units`, `loyalty-basics`, `loyalty-design` | Contenido y navegación de cada paso real |
+| `loyalty-terms` | Plantillas, textarea y navegación; acumulación usa su propio anchor |
+| `loyalty-accrual` | AccrualFields completo con sus controles/ayudas |
+| `loyalty-rewards-edit` | Premios editables y botón Agregar, si corresponde |
+| `loyalty-redemption-policy` | Configuración avanzada/checkbox/descripción y navegación |
+| `loyalty-review` | Revisión completa y botón Activar/Guardar |
+| `loyalty-edit-action`, `loyalty-close-action` | Botón de entrada respectivo |
+| `loyalty-close-form` | Consecuencias, ambas fechas, zona horaria y Continuar |
+| `loyalty-close-confirm` | Diálogo completo con Confirmar y Cancelar |
+| `loyalty-result` | Consulta tras GET válido de la operación actual |
+| `loyalty-refresh` | Aviso de escritura confirmada/GET fallido y Actualizar vista |
+
+Copy de orientación (cinco pasos; Anterior/Siguiente/Listo, Saltar al inicio):
+
+1. **Tu programa de fidelización.** Consulta: «Acá ves si tu programa es de sellos o
+   puntos y si está activo o en cierre». Creación: «Elegí sellos para completar una
+   tarjeta o puntos para asignar un costo a cada premio». Edición: «Estás trabajando
+   en un borrador. Los cambios se aplican cuando revisás y guardás el programa».
+2. **Cómo se ganan beneficios.** Consulta: «Revisá cómo acumulan tus clientes y qué
+   objetivo deben alcanzar». Editor: «Este indicador muestra los pasos. Vas a definir
+   cómo se acumulan los beneficios dentro del formulario».
+3. **Qué reciben tus clientes.** Consulta: «Estos son tus premios. En un programa de
+   puntos, cada premio muestra su costo». Editor, sin anchor: «Más adelante configurás
+   los premios; podés usar un producto del catálogo, un premio libre o un descuento».
+   Sin catalog: mencionar sólo premios libres/descuentos y conservación de productos
+   guardados; no sugerir una operación sin permiso.
+4. **Términos y gestión.** Consulta activa: «Acá consultás los términos y podés editar
+   el programa»; owner añade «También podés programar su cierre». En cierre: «Estas
+   fechas indican hasta cuándo se acumula y se canjea. Durante el cierre no se puede
+   editar el programa» (anchor de cierre/fechas, sin controles inexistentes). Editor,
+   sin anchor: «Revisá los términos y todos los cambios antes de activar o guardar».
+5. **Ayuda cuando la necesites.** «Desde Ayuda podés volver a este recorrido o abrir
+   una guía para crear, editar, programar el cierre o editar políticas, según el estado
+   del programa y tus permisos».
+
+Copy operativo por fase (el spotlight acompaña, nunca opera por el usuario):
+
+| Fase | Mensaje principal |
+| --- | --- |
+| Modalidad | «Elegí Sellos o Puntos y pulsá Continuar para configurar tu programa». |
+| Unidades | «Elegí cómo se llama una unidad y cómo se nombran varias». |
+| Sello y objetivo | «Poné el nombre del sello y cuántos necesita el cliente para completar la tarjeta». |
+| Diseño | «Personalizá la tarjeta. La imagen es opcional; si abrís el recorte, terminá o cancelá antes de continuar». |
+| Términos | «Escribí tus términos. Las plantillas son opcionales y se añaden al texto actual». |
+| Acumulación | «Definí cómo se ganan beneficios. Elegí valores válidos y pulsá Continuar». |
+| Premios | «Elegí el premio; en Puntos, definí el costo de cada uno. Continuar conserva tu borrador». |
+| Canje sin saldo | «Decidí si el mostrador puede entregar un premio sin saldo suficiente. Si lo permitís, el saldo queda en 0 y la entrega queda registrada». |
+| Revisión | «Se guardarán todos los cambios pendientes del programa. Revisalos y pulsá Activar programa o Guardar cambios cuando estés listo». |
+| Cierre | «Elegí el fin de acumulación y una fecha posterior de canje en la zona horaria del negocio. Después revisá la confirmación». |
+| Confirmación de cierre | «Confirmar programa el cierre y bloquea la edición. Cancelar vuelve al formulario sin programarlo». |
+| Guardado confirmado | «El programa quedó activado/actualizado» según operación, sólo después de respuesta válida y GET válido. |
+| Cierre confirmado | «El cierre quedó programado. Revisá las fechas» sólo después de DELETE válido y GET válido. |
+| Vista pendiente | «El cambio está confirmado, pero falta actualizar la vista. Pulsá Actualizar vista; no hace falta guardar otra vez». |
+
+En fases operativas, el botón de la guía no sustituye Continuar/Guardar/Confirmar del
+formulario: sólo avanza explicaciones que no requieren una operación. Errores conservan
+su mensaje de UI; no inventar un éxito ni ocultar Alert con el popover.
 
 ## Cuatro ayudas
 
@@ -82,7 +160,7 @@ Copy final y anchors exactos se cerrarán antes de implementar.
 | Crear un programa | Sin programa y con acceso de escritura | Modalidad → unidades Puntos o sello/meta Sellos → diseño sólo Sellos → términos/acumulación → premios → revisión → Activar → confirmación de escritura y GET |
 | Editar un programa | Programa activo | Editar programa → pasos reales por modalidad → revisar todos los cambios → Guardar cambios → confirmación y GET |
 | Programar el cierre | Owner, programa activo | Cerrar programa → explicar consecuencias → fin de acumulación → fecha final de canje/zona horaria → Continuar → diálogo de confirmación → cierre confirmado y GET |
-| Editar políticas | Programa activo; alcance por confirmar | Abrir editor en Términos → plantillas opcionales → editar texto → revisión → Guardar cambios → confirmación y GET |
+| Editar políticas | Programa activo | Abrir editor en Términos → plantillas opcionales/texto → Permitir canjes sin saldo suficiente en Premios → Revisión → Guardar cambios → confirmación y GET |
 
 Ayudas no disponibles muestran motivo («Primero creá un programa», «Ya hay un programa
 activo», «No se puede editar durante el cierre»). Cierre no se ofrece a staff.
@@ -93,10 +171,13 @@ Ayuda de políticas: se propone acceso directo al paso Términos, conservando da
 Ir a Revisión valida el borrador completo; si otro campo está inválido, llevar al paso
 real que requiere corrección. Antes de Guardar, explicar: «Se guardarán todos los
 cambios pendientes del programa». No representar la operación como guardado parcial.
-La pregunta al owner es si políticas incluye sólo términos o también canje sin saldo.
-Si incluye canje, añadir el control «Permitir canjes sin saldo suficiente» de
-Configuración avanzada en Premios (ambas modalidades), sin introducir un segundo
-editor ni un endpoint nuevo.
+Owner confirmó el 2026-09-26: «cubramos terminos y condiciones mas permitir canje
+sin saldo». La guía incluye el checkbox de Configuración avanzada en Premios para
+ambas modalidades. Términos → Continuar validado → Premios, resaltando sólo la regla
+de canje → Continuar validado → Revisión. La edición de acumulación o premios completos
+se acompaña en Editar programa; políticas conserva esos datos sin ocultar controles ni
+saltarse validaciones. Si un borrador previo está inválido, la guía acompaña el error
+del paso real hasta poder revisar. No introducir un segundo editor ni endpoint.
 
 ## Conducta de las guías
 
@@ -142,6 +223,14 @@ Progreso según 0084: owner/email verificado, 200; 400 invalid_body, 404 unknown
 | `globals.css` | Composición responsive/popover scoped, reutilizar estilo de ayudas |
 | Tests unitarios y navegador de Loyalty | Estado, permisos, borrador y recorridos reales con HTTP controlado |
 
+Señales a añadir: paso actual validado y modalidad desde ProgramEditor; apertura/cierre
+de recorte desde estado stamp; resultado estructurado de escritura con identificador
+de intento (confirmed+refreshed, confirmed+refreshFailed, rejected, uncertain). Hoy
+`write` captura errores y resuelve sin resultado: la guía **no** puede usar la resolución
+de `save`/`closeProgram` como éxito. Emitir/observar el resultado validado en `write`,
+conservar guards, requests y un único flujo de escritura. Eventos de guía incluyen
+instance; los de operación incluyen attemptId para ignorar respuestas tardías.
+
 No disjunta con 0098: misma página/editor/hooks. Un implementador y revisión independiente
 al final, sin paralelizar modificaciones sobre estas piezas.
 
@@ -159,16 +248,49 @@ al final, sin paralelizar modificaciones sobre estas piezas.
   las restricciones de sandbox y QA live acordadas se registran, no se declaran verdes.
 - [ ] Cuatro defectos plausibles para medir: persistir ayudas; avanzar tras submit
   rechazado; perder borrador al entrar a políticas; anunciar cierre antes de confirmación.
-  Mecanismos/oráculos se localizarán antes de cerrar spec, no son pruebas ejecutadas.
+  Puntos existentes y contratos nuevos se detallan abajo; no son pruebas ejecutadas.
 
 Máximo dos rondas y cuatro mutaciones en esta futura spec; copia/hash/bitácora/restauración
 según protocolo. No reutilizar como evidencia las mutaciones de 0098. Fuera: sesiones,
 storage, cámara y dispositivos reales sin QA específico; no afirmar producción verificada.
 
-## Decisiones pendientes
+## Oráculos y comandos previstos
 
-1. Alcance de «políticas»: términos solos o términos y regla de canje.
-2. Aprobar cinco pasos generales, cuatro ayudas y acceso directo a Términos.
-3. Cerrar copy, anchors por estado y oráculos exactos antes de implementar.
+Casos nuevos en `tests/e2e/loyalty-tours.spec.ts`,
+`loyalty-tour-help.spec.ts` y `loyalty-tour-errors.spec.ts`, apoyados en el fixture
+HTTP existente y componentes/CSS reales. Suites unitarias locales para reducer y
+parser/definiciones; onboarding-view test verifica que disponible y destino se derivan
+del mismo mapa. No editar oráculos existentes para obtener verde.
 
-No hay cambio backend identificado. Este borrador no autoriza iniciar código.
+| Defecto plausible / mutación máxima | Punto del árbol o contrato nuevo | Oráculo que debe fallar |
+| --- | --- | --- |
+| M1. Persistir una ayuda | Controller nuevo llama startOnboardingTour con persist:false; motor existente persiste por default | Completar/salir de cada ayuda o repetir general deja 0 POST de progreso; onboarding owner Listo/Saltar envía exactamente 1 POST correcto |
+| M2. Dar por exitoso un submit rechazado | write de use-loyalty-program valida DTO/captura error; nueva señal de resultado y reducer de tour | PUT 422 o JSON inválido conserva fase/borrador/Alert; no aparece copy de confirmado ni se termina la guía; retry válido conserva una sola operación por intento |
+| M3. Rehidratar al abrir políticas | populate actual resetea imagen/earn; nuevo preparePolicies debe cambiar intención/paso sin populate | Con borrador distinto en términos, premios y diseño, entrar/salir de políticas conserva los tres valores y el paso esperado; PUT final contiene cambios completos |
+| M4. Cierre completado al abrir diálogo | ProgramClosing actual sólo setConfirmClose; escritura DELETE sólo closeProgram confirmado | Abrir/cancelar diálogo deja 0 DELETE y guía sin éxito; confirmar con respuesta demorada no anuncia éxito hasta DELETE+GET válidos |
+
+Puntos nuevos se localizarán por archivo/línea y hashes antes de ejecutar mutaciones;
+esta tabla define el encargo y no presenta mecanismos nuevos como implementados ni
+mutaciones ya corridas. Máximo cuatro mutaciones, dos rondas; si no se caza el defecto
+por su aserción prevista, registrar FAIL y corregir antes de publicar. Dos rondas con
+nuevos defectos encadenados obligan a declarar pendientes/cortar, no ampliar presupuesto.
+
+Con Node de `.nvmrc`, una ronda de gates root antes de publicar:
+`pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run format:check`,
+`pnpm run build` y `pnpm run test:e2e`. Revisión independiente comparte esa evidencia
+general y ejecuta por su cuenta casos de tour relevantes; no duplica gates completos.
+Si sandbox impide build/puertos o faltan credenciales aisladas, registrar la salida real
+y la alternativa acordada con owner; no convertir skip en PASS. Build Merchant Webpack
+es alternativa local conocida de 0098, no un resultado de esta spec. No monitorizar CI
+ni afirmar deploy/producción verificados. El owner decidirá QA live tras la entrega.
+
+## Cierre del plan y retorno
+
+Alcance de políticas resuelto por owner: términos y condiciones más canje sin saldo.
+Copy, anchors, disponibilidad, señales, oráculos y presupuesto definidos en este plan.
+Pendiente únicamente aprobación general de esta versión para marcar spec `cerrada` y
+ADR `aceptado`; no atribuir aprobación a decisiones propuestas antes de recibirla.
+
+Tras aprobar, actualizar TASKS/handoff con el estado cerrado, hacer clear y regresar
+con «Implementar spec 0100». Un implementador para la spec y un revisor independiente,
+según AGENT-WORKFLOW. No iniciar código en esta sesión de planificación.
