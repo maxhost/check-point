@@ -1,15 +1,15 @@
 ---
 adr: 0090
 fecha: 2026-09-26
-estado: propuesta
+estado: aceptado
 resumen: Loyalty incorpora orientación general y cuatro ayudas sobre su editor existente; el onboarding persiste sólo progreso y las ayudas conservan borrador y confirmaciones.
 ---
 
 # 0090 — Los tours de Loyalty acompañan el editor existente
 
 Planificación retomada por owner el 2026-09-26 tras corregir el formulario.
-Políticas confirmado: términos y condiciones más canje sin saldo. Propuesta completa
-pendiente de aprobación general antes del clear y la implementación.
+Políticas confirmado: términos y condiciones más canje sin saldo. Plan completo
+aprobado por owner el 2026-09-26; implementación después del clear.
 
 ## Contexto
 
@@ -22,7 +22,7 @@ su destino en `onboarding-view.ts`. Loyalty conserva un editor por pasos y un ú
 completo para crear/editar, incluidos los términos; cerrar usa DELETE con fechas y
 cancelar cierre usa PATCH. No existe un guardado separado de políticas.
 
-## Propuesta
+## Decisión aprobada
 
 1. Reutilizar Driver.js y el motor de onboarding, con contenido local y anchors estables.
    El recorrido general explica la pantalla sin completar campos, navegar el editor ni
@@ -44,7 +44,7 @@ cancelar cierre usa PATCH. No existe un guardado separado de políticas.
 6. Salir de la guía retira únicamente la guía. La X de la pantalla mantiene el descarte
    normal; errores y guardados no confirmados conservan borrador y recuperación actuales.
 
-Esta es una propuesta para revisar, no una aprobación atribuida al owner. Se mantiene
+Owner aprobó esta versión el 2026-09-26. Se mantiene
 fuera implementar la guía de cancelar cierre, cambiar mecánica/API y extender políticas
 a configuraciones que todavía no existen.
 

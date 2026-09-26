@@ -1,7 +1,7 @@
 ---
 spec: 0100
 fecha: 2026-09-26
-estado: borrador
+estado: cerrada
 resumen: Tour general de Loyalty y cuatro ayudas para crear, editar, programar cierre y editar políticas, reutilizando el editor y el progreso de onboarding existentes.
 disjunta: no
 archivos: apps/merchant/src/app/backoffice/loyalty/, apps/merchant/src/app/backoffice/onboarding/onboarding-view.ts, tests/e2e/loyalty-*.spec.ts
@@ -10,12 +10,13 @@ archivos: apps/merchant/src/app/backoffice/loyalty/, apps/merchant/src/app/backo
 # 0100 — Tours de onboarding y ayuda de Loyalty
 
 **Planificación retomada por owner el 2026-09-26**, tras los ajustes del formulario.
-Borrador preparado para aprobación y handoff antes del clear; no iniciar código aún.
+**Aprobada por owner el 2026-09-26.** Plan cerrado y handoff preparado antes del
+clear; implementar en la siguiente sesión, no iniciar código ahora.
 
-Propuesta de planificación, sin implementación. Consume
+Plan de implementación aprobado, todavía sin código. Consume
 [ADR 0090](../adr/0090-los-tours-de-loyalty-acompanan-el-editor-existente.md).
 El owner definió un recorrido general y cuatro ayudas. Las entradas, pasos y conducta
-siguientes son una propuesta para aprobar; no se atribuyen al owner como decisiones.
+siguientes fueron aprobadas en esta versión por el owner el 2026-09-26.
 
 ## Evidencia actual
 
@@ -59,7 +60,7 @@ entrega. Definir esa guía requeriría ampliar el alcance.
   catálogo si falta permiso. Crear/editar/políticas owner o staff con loyalty; cierre
   sólo owner. Ninguna ayuda habilita acciones bloqueadas por API o estado.
 
-## Orientación general: cinco pasos propuestos
+## Orientación general: cinco pasos
 
 | Paso | Con programa guardado | Sin programa |
 | --- | --- | --- |
@@ -155,7 +156,7 @@ su mensaje de UI; no inventar un éxito ni ocultar Alert con el popover.
 
 ## Cuatro ayudas
 
-| Ayuda | Disponible | Recorrido propuesto |
+| Ayuda | Disponible | Recorrido aprobado |
 | --- | --- | --- |
 | Crear un programa | Sin programa y con acceso de escritura | Modalidad → unidades Puntos o sello/meta Sellos → diseño sólo Sellos → términos/acumulación → premios → revisión → Activar → confirmación de escritura y GET |
 | Editar un programa | Programa activo | Editar programa → pasos reales por modalidad → revisar todos los cambios → Guardar cambios → confirmación y GET |
@@ -167,7 +168,7 @@ activo», «No se puede editar durante el cierre»). Cierre no se ofrece a staff
 Creación se ramifica en cuanto el usuario elige modalidad; cambiarla recalcula fases
 sin adoptar un selector de Sellos en Puntos. No obliga a cambiar valores existentes.
 
-Ayuda de políticas: se propone acceso directo al paso Términos, conservando datos.
+Ayuda de políticas: acceso directo al paso Términos, conservando datos.
 Ir a Revisión valida el borrador completo; si otro campo está inválido, llevar al paso
 real que requiere corrección. Antes de Guardar, explicar: «Se guardarán todos los
 cambios pendientes del programa». No representar la operación como guardado parcial.
@@ -234,7 +235,7 @@ instance; los de operación incluyen attemptId para ignorar respuestas tardías.
 No disjunta con 0098: misma página/editor/hooks. Un implementador y revisión independiente
 al final, sin paralelizar modificaciones sobre estas piezas.
 
-## Verificación propuesta para la futura implementación
+## Verificación para la implementación
 
 - [ ] Orientación por estado, Listo/Saltar persistidos una vez; repetir y staff sin POST.
 - [ ] Cuatro ayudas, ambas modalidades, rol/estado correctos; salto a Términos conserva
@@ -288,9 +289,9 @@ ni afirmar deploy/producción verificados. El owner decidirá QA live tras la en
 
 Alcance de políticas resuelto por owner: términos y condiciones más canje sin saldo.
 Copy, anchors, disponibilidad, señales, oráculos y presupuesto definidos en este plan.
-Pendiente únicamente aprobación general de esta versión para marcar spec `cerrada` y
-ADR `aceptado`; no atribuir aprobación a decisiones propuestas antes de recibirla.
+Owner aprobó esta versión el 2026-09-26: «la aprebo, hace el handoff el clear y
+regresamos para imeplentar». Spec `cerrada`, ADR `aceptado`; sin decisiones pendientes.
 
-Tras aprobar, actualizar TASKS/handoff con el estado cerrado, hacer clear y regresar
+TASKS/handoff preservan el estado cerrado. Hacer clear y regresar
 con «Implementar spec 0100». Un implementador para la spec y un revisor independiente,
 según AGENT-WORKFLOW. No iniciar código en esta sesión de planificación.
