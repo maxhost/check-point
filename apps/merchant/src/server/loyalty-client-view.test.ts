@@ -177,3 +177,55 @@ describe("el consumidor hereda el path del sello (spec 0069 §D5)", () => {
     expect(JSON.stringify(summary)).not.toContain("ObjectKey");
   });
 });
+
+/**
+ * Spec 0099 — `toClientProgram` pasa de `{ ...rest, ... }` (spread de la fila completa) a
+ * una lista blanca explicita. Este es el ORACULO de las dos mutaciones del presupuesto:
+ * la #1 revierte al spread (las 5 columnas internas vuelven a aparecer en el JSON), la #2
+ * borra `redeemAllowInsufficient` de la construccion (deja de viajar `true`).
+ *
+ * `businessId`, `createdBy`, `schemaVersion`, `termsHash` y `termsUpdatedAt` NO son parte
+ * del tipo `ProgramRow` nuevo — se agregan via `as` para simular una fila de DB real, tal
+ * como la trae `db.select()` en `owner.ts:69-79` (todas las columnas de la tabla).
+ */
+describe("toClientProgram a lista blanca (spec 0099)", () => {
+  it("no sirve columnas internas y si sirve redeemAllowInsufficient", () => {
+    const row = {
+      id: "prog-1",
+      kind: "stamps",
+      configuration: { target: 8 },
+      status: "active",
+      activatedAt: new Date("2026-09-01T00:00:00.000Z"),
+      earningEndsAt: null,
+      redemptionEndsAt: null,
+      termsMarkdown: "t",
+      stampImageObjectKey: null as string | null,
+      stampImageVersion: 0,
+      cardBackgroundColor: null,
+      cardBackgroundColor2: null,
+      cardBackgroundGradientAngle: null,
+      cardBorderColor: null,
+      redeemAllowInsufficient: true,
+      accrualMode: "per_purchase" as string | null,
+      accrualGrant: 1 as number | null,
+      accrualBlockAmount: null as string | null,
+      // Columnas internas de la fila real de `loyalty_program`, fuera de `ProgramRow`:
+      // simulan lo que `db.select()` trae de verdad y que la lista blanca tiene que frenar.
+      businessId: "biz-1",
+      createdBy: "user-1",
+      schemaVersion: "1",
+      termsHash: "abc123",
+      termsUpdatedAt: new Date("2026-09-01T00:00:00.000Z"),
+    };
+
+    const dto = toClientProgram(row, "biz-1");
+    const json = JSON.stringify(dto);
+
+    expect(json).not.toContain("businessId");
+    expect(json).not.toContain("createdBy");
+    expect(json).not.toContain("schemaVersion");
+    expect(json).not.toContain("termsHash");
+    expect(json).not.toContain("termsUpdatedAt");
+    expect(dto?.redeemAllowInsufficient).toBe(true);
+  });
+});
