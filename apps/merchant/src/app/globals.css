@@ -4424,6 +4424,10 @@ input.cp-number-input::-webkit-outer-spin-button {
 .catalog-editor-actions .button {
   margin: 0;
 }
+/* Un solo boton ocupa el ancho en vez de la mitad izquierda (spec 0094). */
+.catalog-editor-actions.is-single {
+  grid-template-columns: 1fr;
+}
 .catalog-list {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -4572,6 +4576,63 @@ input.cp-number-input::-webkit-outer-spin-button {
 .catalog-ai-result-head p {
   margin: 3px 0 0;
   color: var(--color-content-muted);
+}
+/* Mientras se procesa, algo se mueve siempre: el icono late, cada mensaje entra con un
+   fundido y la barra corre. Que no parezca colgado (spec 0094). */
+.catalog-ai-result-head.is-processing > div {
+  flex: 1;
+  min-width: 0;
+}
+.catalog-ai-result-head.is-processing > svg {
+  animation: catalog-ai-pulse 1.6s ease-in-out infinite;
+}
+.catalog-ai-processing-message {
+  animation: catalog-ai-message-in 0.45s ease-out;
+}
+.catalog-ai-progress {
+  position: relative;
+  display: block;
+  height: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+.catalog-ai-progress::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--color-primary);
+  content: "";
+  animation: catalog-ai-progress 1.4s ease-in-out infinite;
+}
+@keyframes catalog-ai-pulse {
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+@keyframes catalog-ai-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes catalog-ai-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-ai-result-head.is-processing > svg,
+  .catalog-ai-processing-message,
+  .catalog-ai-progress::after {
+    animation: none;
+  }
 }
 /* El resumen de lo que la importacion escribio (spec 0091 §9). */
 .catalog-ai-result-list {

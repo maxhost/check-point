@@ -116,7 +116,9 @@ export function CatalogAiImport({
           </>
         ) : activeImport ? (
           <>
-            <div className="catalog-ai-result-head">
+            <div
+              className={`catalog-ai-result-head${processing ? " is-processing" : ""}`}
+            >
               {processing ? (
                 <Spark aria-hidden="true" />
               ) : (
@@ -129,7 +131,15 @@ export function CatalogAiImport({
                     : statusCopy(activeImport.status)}
                 </strong>
                 {processing ? (
-                  <p aria-live="polite">{processingMessage(tick)}</p>
+                  // La `key` atada al tick remonta el `<p>` en cada cambio para que la animacion de
+                  // entrada corra de nuevo (spec 0094). El `aria-live` va en el contenedor,
+                  // que no se remonta, asi cada mensaje se anuncia una sola vez.
+                  <div aria-live="polite">
+                    <p key={tick} className="catalog-ai-processing-message">
+                      {processingMessage(tick)}
+                    </p>
+                    <span className="catalog-ai-progress" aria-hidden="true" />
+                  </div>
                 ) : (
                   <p>
                     {activeImport.error?.message ??
@@ -141,7 +151,7 @@ export function CatalogAiImport({
             {/* Mientras se suben los archivos no se ofrece: cancelar ahi competiria con el
                 `analyze()` en vuelo. Aparece cuando el analisis ya esta en el proveedor. */}
             {!busy && (
-              <div className="catalog-editor-actions">
+              <div className="catalog-editor-actions is-single">
                 <button
                   className="button alt"
                   type="button"
