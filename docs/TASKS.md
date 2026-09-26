@@ -8,22 +8,22 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): 0093 IMPLEMENTADA Y PUSHEADA (`ed17fcc`) — VERCEL NO DESPLEGO
+## ⇥ ESTADO (2026-09-25): 0093 Y 0094 IMPLEMENTADAS Y PUSHEADAS (`b068434`)
 
 **El repo se mudo a LOCAL: `~/Documents/claude-workspace/check-point`.** El NAS se desmontaba
-(`ETIMEDOUT uv_cwd`). **La sesion que arranco en el NAS tiene el Stop hook corriendo sobre la copia
-vieja del NAS (sin `node_modules`)**: falla con `turbo: command not found` sin que haya nada roto.
+(`ETIMEDOUT uv_cwd`). La sesion que arranco en el NAS tiene el Stop hook corriendo sobre la copia
+vieja del NAS (sin `node_modules`): falla con `turbo: command not found` sin que haya nada roto.
 Arreglo: abrir Claude Code desde el repo local.
 
-**`origin/main` = `ed17fcc`** (verificado con `git ls-remote`). Spec 0093 **`implementada`**: 6
-gates verdes sobre `6ced544` (test 1776 passed, e2e 3/1 skipped) y re-corridos typecheck/lint/test/
-format sobre `ed17fcc`; PASS del revisor independiente; su mutacion MC (copy que promete un
-«correo») sobrevivia y se cerro en `ed17fcc` (rojo medido: `expected '...correo...' not to contain
-'correo'`, revertida con diff vacio, shasum `b1089a7c…`).
+**`origin/main` = `b068434`.** QA del owner de la 0093 en prod: **cancelar funciono, reabrir y
+reanalizar un PDF funciono, y no se duplicaron categorias ni productos** (ya existian). La 0094
+(icono que late, mensaje con fundido, barra indeterminada, Cancelar a ancho completo) tiene 6 gates
+verdes (test 1776 passed, e2e 3/1 skipped) y PASS del revisor; **falta el QA visual del owner**,
+que es su unico oraculo.
 
-**BLOQUEO ABIERTO: Vercel no desplego.** El owner ve el ultimo deploy de hace ~19 h, aunque GitHub
-tiene `6ced544` y `ed17fcc`. En el repo no hay `ignoreCommand` (`apps/merchant/vercel.json`). Causa
-sin medir: falta ver el dashboard/MCP de Vercel (se pidio autenticar el MCP).
+**Deploy:** el owner vio antes el ultimo deploy de hace ~19 h, pero despues probo la 0093 en prod y
+funciono, asi que el deploy de la 0093 llego. El de `b068434` no esta verificado (el MCP de Vercel
+sigue sin autenticar).
 
 **Hallazgo del revisor, a decidir (previo a la 0093):** si el `DELETE` de cancelar falla, el poll
 queda muerto (`pollGenerationRef` ya incrementado, `use-catalog-import.ts:245`) hasta cerrar y
