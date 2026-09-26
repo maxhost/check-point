@@ -8,7 +8,11 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`e021739`)
+## ⇥ ESTADO (2026-09-25): 0093, 0094 Y 0095 IMPLEMENTADAS Y PUSHEADAS (`6b128a9`)
+
+**`6b128a9`:** filtro y buscador del catalogo alineados y de 48 px. Causa medida en Chromium: el
+buscador (`<label>`) heredaba `margin-top: 15px` global. Addendum en la spec 0095. Falta QA del
+owner. **No se escribe mas en el NAS** (instruccion del owner): todo en el repo local.
 
 **0095 (`e021739`):** «Importar con IA» + filtros de categoria/local con `SelectField`; 6 gates
 verdes y PASS del revisor. Falta QA del owner. **Pregunta abierta al owner:** el copy bajo el boton
