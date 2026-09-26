@@ -69,6 +69,15 @@ para QA live; no se presenta como seis gates root verdes.
 
 ## Límites
 
+Ajuste de cabecera por QA del owner (2026-09-26): PASS independiente de cuatro
+comparaciones renderizadas a 390/1280 px, light/dark (4.4 s). Familia, tamaño, peso,
+interlineado, espaciado, colores y márgenes de eyebrow/título/descripción iguales en
+Loyalty, Catálogo y Locales; 24 px entre cabecera y tarjeta Loyalty, igual a Catálogo,
+sin overflow. Se excluyó ModuleHeader del color genérico de párrafos Loyalty y se
+unificó el color heredado del título en ModuleHeader con `--ui-text`. Mediciones y
+capturas en `/tmp/spec0098-review`; CSS real, no inspección autenticada de producción.
+Tres líneas CSS; no nuevas mutaciones ni repetición de gates generales.
+
 No se acreditan sesiones/guards reales, R2/storage, cámara nativa, QA iOS/Android ni
 despliegue con fixtures. El caso autenticado se omite sin credenciales aisladas; su
 flujo antiguo necesita migración antes de usarlo para ese QA. El contrato de sesión se

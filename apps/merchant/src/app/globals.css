@@ -1508,6 +1508,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  color: var(--ui-text);
 }
 .module-topline .eyebrow {
   margin: 0;
@@ -7136,6 +7137,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   display: grid;
   gap: 24px;
   min-width: 0;
+  margin-top: 24px;
   border: 1px solid var(--ui-border);
   border-radius: var(--radius-lg);
   background: var(--ui-surface);
@@ -7267,7 +7269,7 @@ ul.loyalty-fields {
   padding: 0;
   border: 0;
 }
-.loyalty-page p,
+.loyalty-page p:where(:not(.module-topline p)),
 .loyalty-dialog-overlay p {
   color: inherit;
 }

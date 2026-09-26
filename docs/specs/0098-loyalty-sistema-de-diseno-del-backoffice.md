@@ -422,6 +422,12 @@ UI; esta entrega corresponde a la reanudación autorizada.
 
 ## Abierto
 
+Ajuste de QA autorizado por owner (2026-09-26): igualar cabecera Loyalty con las de
+Catálogo/Locales (familia, tamaño, peso, color y márgenes) y separación hasta primera
+tarjeta con Catálogo. Mantener el componente ModuleHeader compartido y alcance CSS
+acotado. Comparar estilos/geometría renderizados a 390/1280 px en light/dark; no repetir
+suite general ni mutaciones (presupuesto original agotado). QA live posterior.
+
 No hay decisiones de diseño pendientes ni se identifica un endpoint nuevo necesario.
 Acceso staff implementa la decisión ya
 vigente del 0086/ADR 0079; los tours permanecen fuera de esta entrega.
