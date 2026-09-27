@@ -8,7 +8,7 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: spec 0101 IMPLEMENTADA, falta migrar PROD + push (2026-09-26)
+## ⇥ ESTADO — MARKETING: spec 0101 IMPLEMENTADA, EN PROD Y PUSHEADA; falta QA del owner (2026-09-26)
 
 **Hecho y verificado:** codigo en `900dfcb` (local, SIN pushear). Orquestador: typecheck, lint, test
 (1842 passed), prettier de los archivos de la spec; `tools/neon-test.sh` contra `ci-integration`: las 7
@@ -18,9 +18,10 @@ existen. Revisor independiente: **PASS**, M1–M6 ROJO por la propiedad, contrat
 18 codes, +25 citas). Docblocks falsos que cazo el revisor, corregidos en el mismo commit.
 `format:check` rojo SOLO por `globals.css` (ya fallaba en `HEAD`, commit `b328126`, sesion de loyalty).
 
-**Sigue, en orden (con OK del owner):** 1) aplicar migracion `0044` a PROD (skill `gotchas-del-repo`,
-Neon) ANTES del deploy que lee la columna; 2) push de `main`; 3) verificar deploy Vercel `READY` con el
-sha; 4) verificacion manual de la spec (JSON de `/api/marketing/templates`, enable/disable desde consola).
+**Hecho con OK del owner:** migracion `0044` aplicada a PROD (proyecto `red-violet-38772073`, rama
+`main`): leido por SQL → 45 migraciones, CHECK + unico parcial + columna nullable, esquemas intactos.
+`main` pusheado hasta `5a09495` (mas este commit de docs). **Sigue:** el OWNER verifica el deploy
+`READY` y hace el QA manual (pasos en la spec, «Verificacion manual»); el orquestador no lo sondea.
 
 **Declarado, no bloquea:** `marketing-routes.test.ts` en 459 lineas (>300; ya tenia 397) → candidato a
 dividir; el oraculo de carrera filtra `pg_stat_activity` por texto (con suites en paralelo podria dar un
