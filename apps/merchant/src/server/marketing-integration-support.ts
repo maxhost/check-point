@@ -5,7 +5,6 @@ import {
   campaignLocations,
   campaignTurns,
   campaigns,
-  couponRedemptions,
   locations,
   orders,
   programMemberships,
@@ -85,7 +84,14 @@ export async function seedCampaign(opts: {
       // muy anterior a cualquier `NOW` de la suite expresa lo que el default siempre quiso
       // decir —«la campaña ya empezó»— sin depender de cuándo se corre.
       startsAt: opts.startsAt ?? new Date("2026-01-01T00:00:00.000Z"),
-      endsAt: opts.endsAt ?? null,
+      // A campaign WITH a coupon needs `ends_at` (`CHECK core_campaign_coupon_needs_end_check`,
+      // ADR 0094): the default is far in the future, so «the coupon runs» holds for any NOW.
+      endsAt:
+        opts.endsAt !== undefined
+          ? opts.endsAt
+          : opts.coupon
+            ? new Date("2099-01-01T00:00:00.000Z")
+            : null,
       createdByUserId: opts.createdByUserId,
     })
     .returning({ id: campaigns.id });
@@ -216,38 +222,6 @@ export async function seedTurn(opts: {
       outcome: opts.outcome ?? null,
     })
     .returning({ id: campaignTurns.id });
-  return row.id;
-}
-
-/** A coupon handed over at the counter. Phase C owns the route; the tick only needs the
- * ROW to exist to write `outcome = 'coupon_redeemed'`. */
-export async function seedCouponRedemption(opts: {
-  turnId: string;
-  campaignId: string;
-  businessId: string;
-  consumerId: string;
-  membershipId: string;
-  locationId: string | null;
-  userId: string;
-  /** The cost the counter honoured. Left open because results sum the SNAPSHOTS, and a
-   * fixture where every row carries the same number cannot tell that from `n × costo`. */
-  costSnapshot?: string;
-}): Promise<string> {
-  const [row] = await getDb()
-    .insert(couponRedemptions)
-    .values({
-      turnId: opts.turnId,
-      campaignId: opts.campaignId,
-      businessId: opts.businessId,
-      consumerId: opts.consumerId,
-      membershipId: opts.membershipId,
-      locationId: opts.locationId,
-      labelSnapshot: "2x1 en picadas",
-      costSnapshot: opts.costSnapshot ?? "3.00",
-      createdByUserId: opts.userId,
-      clientRequestId: randomUUID(),
-    })
-    .returning({ id: couponRedemptions.id });
   return row.id;
 }
 

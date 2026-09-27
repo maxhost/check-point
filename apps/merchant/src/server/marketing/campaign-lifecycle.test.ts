@@ -147,7 +147,10 @@ describe("the composer's body", () => {
     };
 
     it("takes the three together", () => {
-      expect(ok({ ...BASE, ...FULL })).toMatchObject({
+      // Spec 0102: a coupon needs an end date (its absence has its own case in
+      // `campaign-input.test.ts`).
+      const END = { endsAt: "2026-11-01T12:00:00.000Z" };
+      expect(ok({ ...BASE, ...FULL, ...END })).toMatchObject({
         couponLabel: "2x1 en panes",
         couponCost: "1.50",
         couponMaxRedemptions: 50,
@@ -183,6 +186,8 @@ describe("the PATCH", () => {
       couponLabel: "2x1 en panes",
       couponCost: 1.5,
       couponMaxRedemptions: 50,
+      // Spec 0102: a campaign with a coupon needs an end date.
+      endsAt: "2026-11-01T12:00:00.000Z",
     }),
     status: "draft",
   };
@@ -230,8 +235,14 @@ describe("the PATCH", () => {
   it("clears `endsAt` when it sends it as null, and keeps it when absent", () => {
     // `?? current` would be wrong here: `null` is a VALUE the owner can send («sin fin»),
     // and treating it as «no lo mandó» would make the date impossible to erase.
+    // WITHOUT a coupon: since spec 0102 a campaign with one cannot lose its end date
+    // (`campaign-input.test.ts` pins that refusal).
     const withEnd: CampaignInput & { status: CampaignStatus } = {
       ...current,
+      couponLabel: null,
+      couponCost: null,
+      couponMaxRedemptions: null,
+      couponProductId: null,
       endsAt: new Date("2026-10-05T12:00:00.000Z"),
     };
     const cleared = parseCampaignPatch({ endsAt: null }, withEnd);

@@ -115,6 +115,12 @@ export const campaigns = core.table(
       "core_campaign_coupon_all_or_nothing_check",
       sql`(${table.couponLabel} is null) = (${table.couponCost} is null) and (${table.couponLabel} is null) = (${table.couponMaxRedemptions} is null)`,
     ),
+    // ADR 0094 §3: an issued coupon lives until `ends_at`, so a campaign with a coupon
+    // needs one. The composer and `enable` refuse it first with a 400 (spec 0102).
+    check(
+      "core_campaign_coupon_needs_end_check",
+      sql`${table.couponLabel} is null or ${table.endsAt} is not null`,
+    ),
     check(
       "core_campaign_dates_check",
       sql`${table.endsAt} is null or ${table.endsAt} > ${table.startsAt}`,

@@ -17,6 +17,7 @@ import { businesses, locations } from "./business";
 import { consumerAccounts, programMemberships } from "./consumer";
 import { orders } from "./order";
 import { campaigns } from "./campaign";
+import { campaignCoupons } from "./campaign-coupon";
 
 /**
  * A TURN: the loan of one slot of one consumer's wallet pass to one business for a
@@ -130,15 +131,16 @@ export const campaignTurns = core.table(
 );
 
 /**
- * One coupon handed over at the counter (spec 0065, phase C). Append-only accounting
+ * One coupon handed over at the counter (spec 0065, phase C; by coupon since spec 0102). Append-only accounting
  * record, same shape as `core.reward_redemption` (ADR 0053): WHAT (`label_snapshot` /
  * `cost_snapshot`, never recomputed from the campaign), WHO claims it
  * (`membership_id` + `consumer_id`), WHO confirmed it (`created_by_user_id`) and
  * WHERE (`business_id` + `location_id`, ADR 0042).
  *
  * Two uniques, with two different jobs:
- *  - `turn_id` unique — one redemption per turn. It is a BACKSTOP, not the mechanism:
- *    it only fires for a DIFFERENT `client_request_id` (→ 409 `already_redeemed`).
+ *  - `coupon_id` unique — one redemption per coupon (spec 0102). It is a BACKSTOP, not
+ *    the mechanism: it only fires for a DIFFERENT `client_request_id` (→ 409
+ *    `already_redeemed`).
  *  - `(business_id, client_request_id)` unique — idempotency, same pattern as
  *    `core."order"` and `core.reward_redemption`. The counter's legitimate retry (a
  *    network timeout, same `clientRequestId`) is resolved by READING this row under
@@ -151,9 +153,11 @@ export const couponRedemptions = core.table(
   "coupon_redemption",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    turnId: uuid("turn_id")
+    // The COUPON, not the turn (spec 0102 / ADR 0093 §3): the counter redeems what the
+    // consumer holds without knowing which channel issued it.
+    couponId: uuid("coupon_id")
       .notNull()
-      .references(() => campaignTurns.id),
+      .references((): AnyPgColumn => campaignCoupons.id),
     campaignId: uuid("campaign_id")
       .notNull()
       .references(() => campaigns.id),
@@ -183,7 +187,7 @@ export const couponRedemptions = core.table(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("core_coupon_redemption_turn_unique").on(table.turnId),
+    uniqueIndex("core_coupon_redemption_coupon_unique").on(table.couponId),
     uniqueIndex("core_coupon_redemption_business_client_request_unique").on(
       table.businessId,
       table.clientRequestId,

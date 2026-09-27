@@ -145,7 +145,7 @@ Cuerpo (`parseCampaignInput`, `server/marketing/campaign-input.ts:169-222`):
 | `message` | string | 1..60 tras `trim` (`:174`) |
 | `dormantDays` | entero | 7..365; default `30` (`:175-182`) |
 | `startsAt` | fecha ISO | **obligatorio** (`:183-188`) |
-| `endsAt` | fecha ISO \| `null` | opcional; posterior a `startsAt` (`:189-194`) |
+| `endsAt` | fecha ISO \| `null` | opcional; posterior a `startsAt` (`:189-194`). **Obligatorio si hay cupon** (spec 0102 / ADR 0094): sin el → `400 validation`, `fields.endsAt` = «Una campaña con cupón necesita fecha de fin.» (`requireEndForCoupon`) |
 | `locationIds` | uuid[] | al menos uno; duplicados colapsan (`:157-167`) |
 | `couponLabel`, `couponCost`, `couponMaxRedemptions` | string 1..40, numero ≥ 0, entero 1..1.000.000 | **los tres o ninguno** (`parseCoupon`, `:103-155`) |
 | `couponProductId` | uuid \| `null` | opcional, informativo |
@@ -164,6 +164,8 @@ es **`404 not_found`**, nunca 403 (`getCampaign`, `campaign-store.ts:149-163`, `
 `campaigns/[id]/route.ts:28-46` → `updateCampaign` (`campaign-store.ts:228-275`). Cuerpo:
 cualquier subconjunto de las claves de 3.2; lo ausente se conserva, y si nombra **alguna**
 clave del cupon lo reemplaza entero (`parseCampaignPatch`, `campaign-input.ts:225-259`).
+Se re-valida con las reglas de 3.2 sobre el resultado: quitar el `endsAt` de una campaña que
+conserva su cupon es `400 validation` en `endsAt` (spec 0102).
 `200 { "campaign": Campaign }`.
 
 Orden de errores: `400 invalid_body` → `404 not_found` → **`409 template_not_editable`** si
@@ -271,7 +273,7 @@ Cuerpo JSON (**`{}` es valido**; un POST sin cuerpo es `400 invalid_body`). Todo
 | `excludedLocationIds` | uuid[]; duplicados colapsan (`:75-85`) | `[]` |
 | `couponLabel`, `couponCost`, `couponMaxRedemptions`, `couponProductId` | **las mismas reglas que el compositor** (`parseCoupon`, `campaign-input.ts:103`) | sin cupon |
 | `startsAt` | fecha ISO | ahora |
-| `endsAt` | fecha ISO \| `null`; posterior a `startsAt` | `null` |
+| `endsAt` | fecha ISO \| `null`; posterior a `startsAt`; **obligatorio si hay cupon** (spec 0102: sin el → `400 validation`, `fields.endsAt`) | `null` |
 
 Cualquier otra clave (`templateKey`, `name`, `locationIds`, un id de negocio) se ignora.
 **Locales:** todos los del negocio `active` y con `latitude`/`longitude`, **menos** los

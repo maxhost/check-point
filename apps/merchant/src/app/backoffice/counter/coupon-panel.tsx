@@ -27,7 +27,7 @@ export function CouponBanner({
         <p className="eyebrow">Cupón</p>
         <strong>{coupon.label}</strong>
         <span>
-          {coupon.campaignName} · válido hasta {formatDay(coupon.windowEnd)}
+          {coupon.campaignName} · válido hasta {formatDay(coupon.validUntil)}
         </span>
       </div>
       <button
@@ -42,11 +42,11 @@ export function CouponBanner({
   );
 }
 
-/** `window_end` arrives as an ISO string over JSON (a `Date` does not survive
+/** `valid_until` arrives as an ISO string over JSON (a `Date` does not survive
  * `JSON.stringify`), so the day is cut from the string and never re-parsed into a local
  * `Date` — that is what would move the expiry a day for anyone west of Greenwich. */
-function formatDay(windowEnd: string): string {
-  return windowEnd.slice(0, 10);
+function formatDay(validUntil: string): string {
+  return validUntil.slice(0, 10);
 }
 
 /** Done screen of a coupon: what to HAND OVER, big, and the manual restart (the console
@@ -92,7 +92,7 @@ export function CouponDone({
  */
 export async function postCouponRedeem(body: {
   clientRequestId: string;
-  turnId: string;
+  couponId: string;
   locationId: string | null;
 }): Promise<CouponRedeemResponse> {
   const response = await fetch("/api/counter/coupon-redeem", {

@@ -154,6 +154,23 @@ export function parseCoupon(
   };
 }
 
+/**
+ * ADR 0094 §3: an issued coupon is valid until the campaign's `ends_at`, so a campaign
+ * with a coupon MUST have one. The `CHECK core_campaign_coupon_needs_end_check` is the
+ * backstop; this is what turns it into a 400 `validation` on the `endsAt` field instead of
+ * a 503. `deal`/`endsAt` are `undefined` when their own parse already failed — then there
+ * is nothing to add. Called by `parseCampaignInput` (create and `PATCH`) and by
+ * `parseTemplateInput` (`enable`): two call sites, two wirings.
+ */
+export function requireEndForCoupon(
+  errors: FieldErrors,
+  deal: { couponLabel: string | null } | undefined,
+  endsAt: Date | null | undefined,
+): void {
+  if (deal !== undefined && deal.couponLabel !== null && endsAt === null)
+    errors.endsAt = "Una campaña con cupón necesita fecha de fin.";
+}
+
 function locationIds(errors: FieldErrors, raw: unknown): string[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) {
     errors.locationIds = "Elegí al menos un local.";
@@ -194,6 +211,7 @@ export function parseCampaignInput(value: unknown): ParseResult<CampaignInput> {
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
   const doors = locationIds(errors, body.locationIds);
   const deal = parseCoupon(errors, body);
+  requireEndForCoupon(errors, deal, endsAt);
 
   if (
     Object.keys(errors).length > 0 ||

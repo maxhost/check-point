@@ -8,12 +8,12 @@ import {
 import { campaignTickAudiences, passPlacements } from "./schema";
 import {
   seedCampaign,
-  seedCouponRedemption,
   seedLocation,
   seedMembership,
   seedTurn,
   seedWalletPass,
 } from "./marketing-integration-support";
+import { seedCouponRedemption } from "./marketing-coupon-support";
 import { dropCampaigns } from "./marketing-read-support";
 
 /**

@@ -8,7 +8,7 @@ import {
 } from "./core";
 import {
   type PersistedCoupon,
-  assertSameTurn,
+  assertSameCoupon,
   persistCouponRedemption,
   readCouponByRequest,
 } from "./coupon-store";
@@ -28,7 +28,7 @@ export type CouponRedeemResult = {
 };
 
 /** Response allow-list: what the operator has to HAND OVER and which campaign it came
- * from. No turn id, no consumer id, no membership id, no `client_request_id`. */
+ * from. No coupon id, no consumer id, no membership id, no `client_request_id`. */
 function toResult(redemption: PersistedCoupon): CouponRedeemResult {
   return {
     coupon: {
@@ -44,7 +44,7 @@ export async function redeemCoupon(
   raw: Record<string, unknown>,
 ): Promise<CouponRedeemResult> {
   const clientRequestId = parseUuid(raw.clientRequestId, "clientRequestId");
-  const turnId = parseUuid(raw.turnId, "turnId");
+  const couponId = parseUuid(raw.couponId, "couponId");
   const locationId =
     raw.locationId === null ||
     raw.locationId === undefined ||
@@ -59,7 +59,7 @@ export async function redeemCoupon(
   try {
     redemption = await persistCouponRedemption({
       businessId: business.id,
-      turnId,
+      couponId,
       locationId,
       createdByUserId: operatorUserId,
       clientRequestId,
@@ -67,8 +67,8 @@ export async function redeemCoupon(
   } catch (error) {
     // Only the idempotency backstop is absorbed. `23505` here can be EITHER unique:
     // `(business_id, client_request_id)` — the legit retry that lost the race — or
-    // `turn_id` — two DIFFERENT requests over the same coupon. They are told apart by
-    // whether a row with THIS key exists: if it does not, the collision was on the turn
+    // `coupon_id` — two DIFFERENT requests over the same coupon. They are told apart by
+    // whether a row with THIS key exists: if it does not, the collision was on the coupon
     // and the honest answer is `already_redeemed`, not a 503.
     if (pgErrorCode(error) !== "23505") throw error;
     const existing = await readCouponByRequest(business.id, clientRequestId);
@@ -78,7 +78,7 @@ export async function redeemCoupon(
         "already_redeemed",
         "Este cupón ya fue canjeado.",
       );
-    assertSameTurn(existing, turnId);
+    assertSameCoupon(existing, couponId);
     // A reread carries no campaign name (the lock is gone); the label is what the
     // operator needs and it is the SNAPSHOT, which is the whole point.
     redemption = { ...existing, campaignName: "", pushQueueId: null };

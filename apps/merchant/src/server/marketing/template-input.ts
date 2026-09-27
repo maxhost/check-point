@@ -2,6 +2,7 @@ import {
   type FieldErrors,
   type ParseResult,
   parseCoupon,
+  requireEndForCoupon,
 } from "./campaign-input";
 import { asObject } from "./campaign-values";
 import type { TemplateDefinition } from "./templates";
@@ -118,6 +119,7 @@ export function parseTemplateInput(
     : when(errors, body.endsAt, "endsAt", "La fecha de fin");
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
+  requireEndForCoupon(errors, deal, endsAt);
 
   if (
     Object.keys(errors).length > 0 ||

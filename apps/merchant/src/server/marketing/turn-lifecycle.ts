@@ -38,13 +38,17 @@ export async function expireTurns(
   now: Date,
   businessIds?: string[],
 ): Promise<number> {
-  const redeemed = sql`exists (select 1 from core.coupon_redemption cr where cr.turn_id = t.id)`;
+  // Through the COUPON (spec 0102): the redemption points at `campaign_coupon`, and the
+  // coupon's `turn_id` is its provenance. `cc.turn_id = t.id` — by TURN, never by
+  // campaign: two turns of one campaign are two coupons.
+  const redemptionOfTurn = sql`from core.coupon_redemption cr join core.campaign_coupon cc on cc.id = cr.coupon_id where cc.turn_id = t.id`;
+  const redeemed = sql`exists (select 1 ${redemptionOfTurn})`;
   const firstOrder = sql`(select o.id from core."order" o where o.business_id = t.business_id and o.consumer_id = t.consumer_id and o.created_at >= t.window_start and o.created_at <= t.window_end order by o.created_at asc, o.id asc limit 1)`;
   const result = await db.execute<{ id: string }>(sql`
     update core.campaign_turn t set
       status = 'done',
       outcome_at = ${now},
-      outcome_redemption_id = (select cr.id from core.coupon_redemption cr where cr.turn_id = t.id),
+      outcome_redemption_id = (select cr.id ${redemptionOfTurn}),
       outcome_order_id = case when ${redeemed} then null else ${firstOrder} end,
       outcome = case
         when ${redeemed} then 'coupon_redeemed'

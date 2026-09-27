@@ -5,9 +5,9 @@ import { counterError, readJson, requireOperator } from "../_auth";
 export const runtime = "nodejs";
 
 /**
- * Hands over the coupon of an active campaign turn (spec 0065 phase C). Atomic and
- * idempotent by `clientRequestId`: the same id answers 200 with the same row, a
- * different id over the same turn is 409 `already_redeemed`.
+ * Hands over a campaign coupon (spec 0065 phase C; by `couponId` since spec 0102). Atomic
+ * and idempotent by `clientRequestId`: the same id answers 200 with the same row, a
+ * different id over the same coupon is 409 `already_redeemed`.
  *
  * `requireOperator`, NOT `requireBackofficeSession`: the latter is a PAGE guard that
  * answers with `redirect("/")` — spec 0067 §7 retargeted it there when the sign-in page

@@ -316,6 +316,13 @@
       "when": 1790473911783,
       "tag": "0044_plantillas_de_campana",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1790479657094,
+      "tag": "0045_cupon_de_campana",
+      "breakpoints": true
     }
   ]
 }

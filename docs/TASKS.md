@@ -244,6 +244,25 @@ cambiando de forma sustantiva, no perseguirlo — es trabajo ajeno en vuelo, no 
 propio. Vale la pena declarar esto en `CLAUDE.md`/`LECCIONES.md` si se repite una tercera
 vez (dos es la primera senal, no la regla todavia).
 
+## Bitacora de mutaciones — spec 0102, implementador (2026-09-26)
+
+Copias limpias en el scratchpad de la sesion del implementador. Restauracion de emergencia: copiar
+la copia limpia encima y confirmar el `shasum`. Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M7 | `apps/merchant/src/server/marketing/template-input.ts` | `41d085b96cecd355ece2c03b1cf8d525ef404015` | `parseTemplateInput` llama a `requireEndForCoupon` (cableado) | **ROJO 1/207** (alcance `src/server/marketing/` + `marketing-template-routes.test` + `marketing-routes.test`): `template-input.test` «a coupon without endsAt is refused on endsAt» → `Error: esperaba errores y el cuerpo paso` (`:115`, el cuerpo con cupon y sin `endsAt` parseo OK = la propiedad). Revertida: `diff` vacio, shasum igual |
+| M2 | `apps/merchant/src/server/marketing/coupon-issue.ts` | `a7b3f7101500b1e039c574781b75c3cd20a810db` | `couponToIssue` no emite al holdout | **ROJO 1/133** (alcance `src/server/marketing/` + `src/server/counter/`): `coupon-issue.test` «a HOLDOUT issues nothing» → `AssertionError: expected { …(5) } to be null` (devolvio la fila con `turnId`, `validUntil`). **La mitad de integracion (b) NO se midio** (bloqueo Neon, abajo). Revertida: `diff` vacio, shasum igual |
+| M1 | `apps/merchant/src/server/marketing/placement.ts` | `13574390f5855fab691e343ae726bd9dca7565ea` | `applyPlan` llama a `issueTurnCoupon` (cableado de la emision) | **ROJO 2/13** (alcance `marketing-coupon-issue` + `marketing-outcome` + `marketing-placement`): «issues ONE coupon per placed turn…» → `AssertionError: expected [] to deeply equal [ …(2) ]` (ninguna fila en `campaign_coupon`) y «the expired turn…» → `expected [] to have a length of 2 but got +0`. Revertida: diff solo la mutacion, shasum igual |
+| M2b | `apps/merchant/src/server/marketing/coupon-issue.ts` | `a7b3f7101500b1e039c574781b75c3cd20a810db` | holdout sin cupon, mitad de integracion (b) | **ROJO 1/13** (mismo alcance que M1): «issues ONE coupon per placed turn, none to the holdout…» → `AssertionError: expected [ …(3) ] to deeply equal [ …(2) ]` (el holdout recibio cupon). Revertida, shasum igual |
+| M3 | `apps/merchant/src/server/counter/coupon-store.ts` + `counter/coupon-decision.ts` | `dd7502b28f1687c7714c5ad2ee525992e57c926e` / `6e4f9cca67f29be712bb55b2c0938c01ec30f22e` | scan y decision NO miran el estado de la campaña | **ROJO**, en dos partes. Scan + decision (alcance `counter-coupon-validity` + `counter-coupon` + `counter-coupon-races`): 2/19 — (a') finalizada `expected null to match object { …(2) }` y (a') pausada `expected null to match object { Object (couponId) }`. Solo decision (scan revertido): 1/6 — (a') finalizada `promise rejected "Error: Este cupón ya no está vigente." … { status: 409, code: 'coupon_not_active' }` instead of resolving. Unit `coupon-decision.test`: 7 rojos; el de la propiedad es `paused: expected { ok: false, status: 409, …(2) } to deeply equal { ok: true }` (los otros 6 caen porque su fixture no trae `status`). Revertidas las dos, shasums iguales |
+| M4 | `apps/merchant/src/server/counter/coupon-store.ts` | `dd7502b28f1687c7714c5ad2ee525992e57c926e` | `FOR UPDATE` de la campaña serializa el tope | **ROJO 1/13** (alcance `counter-coupon-races` + `counter-coupon`): «with ONE slot left in the cap, two DIFFERENT coupons leave ONE row» → `expected [ { …(5) }, { …(5) }, { …(5) } ] to have a length of 2 but got 3`. Revertida, shasum igual |
+| M5 | `apps/merchant/src/server/marketing/turn-lifecycle.ts` | `5cc29c78d8e754a8fcd82fdaa6f3d834928760d0` | `expireTurns` canjeado via `cc.turn_id = t.id` | **ROJO 4/20** (alcance `marketing-coupon-issue` + `marketing-outcome` + `marketing-merit` + `marketing-results`): «…its sibling of the SAME campaign is not» → recibido `outcome: "coupon_redeemed"` + `outcomeRedemptionId: "b5b4…"` en lugar de `none`/`null`; y 3 de `marketing-outcome` (purchase, none, holdout) → `expected { …(12) } to match object { status: 'done', outcome: 'purchase' }` y similares. Revertida, shasum igual |
+| M6 | `apps/merchant/src/server/counter/coupon-store.ts` | `dd7502b28f1687c7714c5ad2ee525992e57c926e` | el canje marca el turno (paso 4) | **ROJO 1/21** (alcance `counter-coupon` + `counter-coupon-validity` + `counter-coupon-races` + `marketing-coupon-issue`): «writes the row and the outcome…» → `AssertionError: expected null to be 'coupon_redeemed'`. Revertida, shasum igual |
+
+**Bloqueo de la rama `ci-integration` RESUELTO por el orquestador** (autorizacion del owner: a los restos del 2026-09-23 se les puso `ends_at` y se borraron sus canjes). `0045` aplicada en esa rama por `tools/neon-test.sh`; las suites de cupon y marketing estan verdes.
+
+
 ## Trabajo actual — spec 0100: entrega para QA live (2026-09-26)
 
 Owner pidió implementar [Spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md)

@@ -6,6 +6,7 @@ import {
   campaignTurns,
   campaigns,
   consumerAccounts,
+  campaignCoupons,
   couponRedemptions,
   passPlacements,
 } from "./schema";
@@ -86,9 +87,9 @@ export async function dropCampaigns(businessId: string): Promise<void> {
   await db
     .delete(passPlacements)
     .where(eq(passPlacements.businessId, businessId));
-  // `campaign_turn` ⇄ `coupon_redemption` is a CIRCULAR fk pair (`outcome_redemption_id`
-  // one way, `turn_id` the other), so neither side can go first: the pointer has to be
-  // cut before the row it points at can be deleted.
+  // `campaign_turn` → `coupon_redemption` (`outcome_redemption_id`) → `campaign_coupon`
+  // (`coupon_id`) → `campaign_turn` (`turn_id`) is a CYCLE of fks (spec 0102), so no side
+  // can go first: the turn's pointer is cut, then redemptions, coupons and turns go.
   await db
     .update(campaignTurns)
     .set({ outcomeRedemptionId: null })
@@ -96,6 +97,9 @@ export async function dropCampaigns(businessId: string): Promise<void> {
   await db
     .delete(couponRedemptions)
     .where(eq(couponRedemptions.businessId, businessId));
+  await db
+    .delete(campaignCoupons)
+    .where(eq(campaignCoupons.businessId, businessId));
   await db
     .delete(campaignTurns)
     .where(eq(campaignTurns.businessId, businessId));

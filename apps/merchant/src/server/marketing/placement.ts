@@ -15,11 +15,19 @@
 
 import { eq, sql } from "drizzle-orm";
 import type { DbTransaction } from "../db";
-import { campaignTurns, consumerAccounts, passPlacements } from "../schema";
+import {
+  campaignCoupons,
+  campaignTurns,
+  campaigns,
+  consumerAccounts,
+  passPlacements,
+} from "../schema";
+import { couponToIssue } from "./coupon-issue";
 import type { MeritTable } from "./merit";
 import {
   type PlacementLimits,
   type PlacementPlan,
+  type TurnActivation,
   planConsumerPlacement,
 } from "./placement-plan";
 import {
@@ -39,6 +47,45 @@ export type PlacementSummary = {
   holdouts: number;
   refreshes: number;
 };
+
+/**
+ * Issues the campaign coupon of an activated turn (spec 0102 / ADR 0093 §2), inside the
+ * tick's transaction. `couponToIssue` DECIDES (holdout, label, validity) and it is asked
+ * for EVERY activation on purpose: pre-filtering here would leave a second copy of the
+ * rule that no unit test sees. `valid_until` is the campaign's `ends_at` read now and
+ * COPIED (ADR 0094 §1). `on conflict (turn_id) do nothing` makes a re-run harmless; the
+ * unique is NOT partial, so the target needs no predicate.
+ */
+async function issueTurnCoupon(
+  db: DbTransaction,
+  activation: TurnActivation,
+): Promise<void> {
+  const [turn] = await db
+    .select({
+      campaignId: campaignTurns.campaignId,
+      businessId: campaignTurns.businessId,
+      consumerId: campaignTurns.consumerId,
+      membershipId: campaignTurns.membershipId,
+      endsAt: campaigns.endsAt,
+    })
+    .from(campaignTurns)
+    .innerJoin(campaigns, eq(campaigns.id, campaignTurns.campaignId))
+    .where(eq(campaignTurns.id, activation.turnId))
+    .limit(1);
+  if (!turn) return;
+  const coupon = couponToIssue(activation, turn.endsAt);
+  if (!coupon) return;
+  await db
+    .insert(campaignCoupons)
+    .values({
+      campaignId: turn.campaignId,
+      businessId: turn.businessId,
+      consumerId: turn.consumerId,
+      membershipId: turn.membershipId,
+      ...coupon,
+    })
+    .onConflictDoNothing({ target: campaignCoupons.turnId });
+}
 
 /**
  * Writes the plan.
@@ -75,6 +122,7 @@ async function applyPlan(
         couponCostSnapshot: activation.couponCostSnapshot,
       })
       .where(eq(campaignTurns.id, activation.turnId));
+    await issueTurnCoupon(db, activation);
   }
   if (!plan.refresh) return 0;
   await db

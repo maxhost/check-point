@@ -31,11 +31,16 @@ export type World = {
   campaignId: string;
   doorId: string;
   consumerIds: string[];
+  /** Same order as `consumerIds`: what the counter scans. */
+  qrTokens: string[];
 };
 
 export async function seedWorld(opts: {
   label: string;
   people: number;
+  /** A campaign WITH a coupon (spec 0102) and the `ends_at` its coupons copy. */
+  coupon?: { label: string; cost: string; maxRedemptions: number };
+  endsAt?: Date;
 }): Promise<World> {
   const seed = await seedBusiness({
     name: `${opts.label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
@@ -49,8 +54,11 @@ export async function seedWorld(opts: {
     businessId: seed.business.id,
     createdByUserId: seed.userId,
     locationIds: [doorId],
+    coupon: opts.coupon,
+    endsAt: opts.endsAt,
   });
   const consumerIds: string[] = [];
+  const qrTokens: string[] = [];
   for (let index = 0; index < opts.people; index += 1) {
     const consumer = await seedConsumer();
     await seedMembership({
@@ -61,8 +69,9 @@ export async function seedWorld(opts: {
     });
     await seedWalletPass(consumer.id);
     consumerIds.push(consumer.id);
+    qrTokens.push(consumer.qrToken);
   }
-  return { seed, campaignId, doorId, consumerIds };
+  return { seed, campaignId, doorId, consumerIds, qrTokens };
 }
 
 export function tickWorld(

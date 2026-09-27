@@ -10,10 +10,10 @@ import { CouponBanner, CouponDone } from "./coupon-panel";
  */
 
 const coupon = {
-  turnId: "33333333-3333-4333-8333-333333333333",
+  couponId: "33333333-3333-4333-8333-333333333333",
   label: "2x1 en picadas",
   campaignName: "Dormidos de septiembre",
-  windowEnd: "2026-09-21T12:00:00.000Z",
+  validUntil: "2026-09-21T12:00:00.000Z",
 };
 
 describe("the coupon banner at the counter", () => {
@@ -33,7 +33,7 @@ describe("the coupon banner at the counter", () => {
     // anyone west of Greenwich — the coupon would read as expiring the day before.
     const late = renderToStaticMarkup(
       createElement(CouponBanner, {
-        coupon: { ...coupon, windowEnd: "2026-09-21T02:00:00.000Z" },
+        coupon: { ...coupon, validUntil: "2026-09-21T02:00:00.000Z" },
         busy: false,
         onRedeem: () => {},
       }),

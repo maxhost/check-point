@@ -9,6 +9,7 @@ import {
 } from "./counter-integration-support";
 import { dropCampaigns } from "./marketing-read-support";
 import { seedCampaign, seedTurn } from "./marketing-integration-support";
+import { seedCampaignCoupon } from "./marketing-coupon-support";
 import { getDb } from "./db";
 import { campaignTurns, couponRedemptions, walletPushQueue } from "./schema";
 import { resolveScan } from "./counter/resolve";
@@ -16,9 +17,11 @@ import { resolveScan } from "./counter/resolve";
 /**
  * The world of the coupon at the counter (spec 0065 phase C): one business with a
  * `points` program and an ACTIVE campaign that carries a coupon, plus a factory for
- * consumers who each hold a live turn of that campaign.
+ * consumers who each hold a live turn of that campaign AND the coupon that turn issued
+ * (spec 0102: the counter redeems the coupon, the turn is only its provenance).
  *
- * It seeds the turn DIRECTLY instead of running the tick. That is deliberate and
+ * It seeds the turn and its coupon DIRECTLY instead of running the tick (the tick's
+ * issuing has its own suite, `marketing-coupon-issue`). That is deliberate and
  * declared: what phase C has to prove is the redemption's atomicity, and driving the
  * tick would make every assertion here depend on the placement rules of phase A — a red
  * would no longer say which of the two broke.
@@ -31,11 +34,14 @@ const DAY = 86_400_000;
 export type CouponWorld = {
   seed: Seed;
   campaignId: string;
+  /** The campaign's `ends_at`, which every coupon of this world copies as `valid_until`. */
+  endsAt: Date;
 };
 
 export async function seedCouponWorld(
   prefix: string,
   cap = 100,
+  endsAt: Date = new Date(Date.now() + 30 * DAY),
 ): Promise<CouponWorld> {
   const seed = await seedBusiness({
     name: `${prefix} ${Date.now()}`,
@@ -50,8 +56,9 @@ export async function seedCouponWorld(
     locationIds: [seed.locationId],
     status: "active",
     coupon: { label: COUPON_LABEL, cost: COUPON_COST, maxRedemptions: cap },
+    endsAt,
   });
-  return { seed, campaignId };
+  return { seed, campaignId, endsAt };
 }
 
 export async function dropCouponWorld(world: CouponWorld): Promise<void> {
@@ -63,6 +70,7 @@ export type CouponCard = {
   consumerId: string;
   membershipId: string;
   turnId: string;
+  couponId: string;
   qrToken: string;
 };
 
@@ -97,10 +105,24 @@ export async function newCouponCard(
     couponCostSnapshot: COUPON_COST,
     ...over,
   });
+  // The coupon the tick would have issued at activation: valid from the window's start
+  // until the campaign's `ends_at`, copied (ADR 0094 §1).
+  const couponId = await seedCampaignCoupon({
+    campaignId: world.campaignId,
+    businessId: world.seed.business.id,
+    consumerId: consumer.id,
+    membershipId: resolved.membership.id,
+    turnId,
+    label: COUPON_LABEL,
+    cost: COUPON_COST,
+    validFrom: new Date(now - DAY),
+    validUntil: world.endsAt,
+  });
   return {
     consumerId: consumer.id,
     membershipId: resolved.membership.id,
     turnId,
+    couponId,
     qrToken: consumer.qrToken,
   };
 }
@@ -108,7 +130,7 @@ export async function newCouponCard(
 export function couponBody(card: CouponCard, seed: Seed, key?: string) {
   return {
     clientRequestId: key ?? randomUUID(),
-    turnId: card.turnId,
+    couponId: card.couponId,
     locationId: seed.locationId,
   };
 }
@@ -119,7 +141,7 @@ export async function readCoupons(campaignId: string) {
   return getDb()
     .select({
       id: couponRedemptions.id,
-      turnId: couponRedemptions.turnId,
+      couponId: couponRedemptions.couponId,
       labelSnapshot: couponRedemptions.labelSnapshot,
       costSnapshot: couponRedemptions.costSnapshot,
       clientRequestId: couponRedemptions.clientRequestId,

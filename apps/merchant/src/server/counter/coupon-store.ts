@@ -1,7 +1,9 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "../db";
+import { requireDate } from "../marketing/driver-values";
 import {
   businesses,
+  campaignCoupons,
   campaignTurns,
   campaigns,
   couponRedemptions,
@@ -12,74 +14,72 @@ import { CounterError } from "./core";
 import { decideCouponRedemption } from "./coupon-decision";
 
 /**
- * The DB half of the coupon (spec 0065 phase C): what the SCAN shows and what the
- * redemption writes. `coupon-decision.ts` decides; this file only asks the rows and
+ * The DB half of the coupon (spec 0065 phase C; over `campaign_coupon` since spec 0102):
+ * what the SCAN shows and what the redemption writes. `coupon-decision.ts` decides; this file only asks the rows and
  * applies the answer.
  */
 
 export type ActiveCoupon = {
-  turnId: string;
+  couponId: string;
   label: string;
   campaignName: string;
-  windowEnd: Date;
+  validUntil: Date;
 };
 
 /**
- * The coupon this consumer can be handed AT THIS COUNTER, or `null`. Same conditions the
- * redemption re-checks under the lock — this one only decides what to PAINT, and the
- * balance may move between the scan and the confirmation, which is why the real guard is
- * the transaction and never this read.
+ * The coupon this consumer can be handed AT THIS COUNTER, or `null` (spec 0102). Same
+ * conditions the redemption re-checks under the lock — this one only decides what to
+ * PAINT, and the cap may move between the scan and the confirmation, which is why the
+ * real guard is the transaction and never this read.
  *
- * `outcome <> 'coupon_redeemed'` is a DECISION OF THE ORCHESTRATOR: the spec lists the
- * conditions and does not name this one. A turn keeps `status = 'active'` until the tick
- * closes its window, so without it the panel would keep offering «Canjear cupón» for days
- * after the coupon was handed over, and every press would answer 409. A button that is
- * always an error is worse than no button.
+ * It looks at the COUPON only: `valid_from <= now <= valid_until` and no redemption
+ * pointing at it. **Not at the turn, not at the campaign's status** (ADR 0094 §2): a
+ * paused or ended campaign keeps showing its coupons until their `valid_until`, and a
+ * cancelled turn does not take back a coupon the consumer already got. The cap is not
+ * read here either: it is decided at the counter, under the lock, with its own message.
+ *
+ * Raw SQL on purpose: the `not exists` is a CORRELATED subquery, and drizzle renders a
+ * bare column unqualified — every alias is explicit (`c.id`). Total order
+ * `valid_until asc, id asc`: the one about to expire first is the one to hand over.
  */
 export async function loadActiveCoupon(
   businessId: string,
   consumerId: string,
   now: Date = new Date(),
 ): Promise<ActiveCoupon | null> {
-  const [row] = await getDb()
-    .select({
-      turnId: campaignTurns.id,
-      label: campaignTurns.couponLabelSnapshot,
-      campaignName: campaigns.name,
-      windowEnd: campaignTurns.windowEnd,
-    })
-    .from(campaignTurns)
-    .innerJoin(campaigns, eq(campaigns.id, campaignTurns.campaignId))
-    .where(
-      and(
-        eq(campaignTurns.businessId, businessId),
-        eq(campaignTurns.consumerId, consumerId),
-        eq(campaignTurns.status, "active"),
-        eq(campaignTurns.holdout, false),
-        isNotNull(campaignTurns.couponLabelSnapshot),
-        eq(campaigns.status, "active"),
-        sql`${campaignTurns.windowStart} <= ${now}`,
-        sql`${campaignTurns.windowEnd} >= ${now}`,
-        sql`${campaignTurns.outcome} is distinct from 'coupon_redeemed'`,
-      ),
-    )
-    // At most one turn per business is live per consumer (the partial unique of the
-    // migration 0031 enforces it), so the order is belt and braces — but a `select`
-    // without one returns whatever the scan produced (`CLAUDE.md`).
-    .orderBy(campaignTurns.queuedAt)
-    .limit(1);
-  if (!row || row.label === null || row.windowEnd === null) return null;
+  const at = now.toISOString();
+  const result = await getDb().execute<{
+    id: string;
+    label_snapshot: string;
+    campaign_name: string;
+    valid_until: unknown;
+  }>(sql`
+    select c.id, c.label_snapshot, k.name as campaign_name, c.valid_until
+    from core.campaign_coupon c
+    join core.campaign k on k.id = c.campaign_id
+    where c.business_id = ${businessId}
+      and c.consumer_id = ${consumerId}
+      and c.valid_from <= ${at}::timestamptz
+      and c.valid_until >= ${at}::timestamptz
+      and not exists (
+        select 1 from core.coupon_redemption cr where cr.coupon_id = c.id
+      )
+    order by c.valid_until asc, c.id asc
+    limit 1
+  `);
+  const [row] = result.rows;
+  if (!row) return null;
   return {
-    turnId: row.turnId,
-    label: row.label,
-    campaignName: row.campaignName,
-    windowEnd: row.windowEnd,
+    couponId: row.id,
+    label: row.label_snapshot,
+    campaignName: row.campaign_name,
+    validUntil: requireDate(row.valid_until),
   };
 }
 
 export type PersistedCoupon = {
   id: string;
-  turnId: string;
+  couponId: string;
   labelSnapshot: string;
   campaignName: string;
   /** The `wallet_push_queue` row enqueued in the SAME transaction; `null` on the
@@ -89,14 +89,17 @@ export type PersistedCoupon = {
 
 const redemptionColumns = {
   id: couponRedemptions.id,
-  turnId: couponRedemptions.turnId,
+  couponId: couponRedemptions.couponId,
   labelSnapshot: couponRedemptions.labelSnapshot,
 };
 
 /** A retry may only return the coupon it asked for. A `clientRequestId` reused over a
- * DIFFERENT turn is refused rather than answered with somebody else's coupon. */
-function assertSameTurn(previous: { turnId: string }, turnId: string): void {
-  if (previous.turnId !== turnId)
+ * DIFFERENT coupon is refused rather than answered with somebody else's coupon. */
+function assertSameCoupon(
+  previous: { couponId: string },
+  couponId: string,
+): void {
+  if (previous.couponId !== couponId)
     throw new CounterError(
       409,
       "request_id_reused",
@@ -107,7 +110,7 @@ function assertSameTurn(previous: { turnId: string }, turnId: string): void {
 export async function readCouponByRequest(
   businessId: string,
   clientRequestId: string,
-): Promise<{ id: string; turnId: string; labelSnapshot: string } | null> {
+): Promise<{ id: string; couponId: string; labelSnapshot: string } | null> {
   const [row] = await getDb()
     .select(redemptionColumns)
     .from(couponRedemptions)
@@ -123,31 +126,30 @@ export async function readCouponByRequest(
 
 /**
  * The redemption, as an INTERACTIVE TRANSACTION with the order the spec declares
- * normative:
+ * normative (spec 0065, over the coupon since spec 0102):
  *
- *  0. Resolve which campaign to lock. Scoped by `business_id`, so a foreign turn is a
- *     404 here and never reaches the lock. This read is NOT under a lock and does not
- *     need to be: a turn's `campaign_id` never changes, and everything decided later is
- *     re-read under the lock.
- *  1. `FOR UPDATE` on the CAMPAIGN — this serializes every redemption of every turn of
- *     the campaign, which is what makes the cap hold — and then on the TURN.
- *  2. Idempotency, under the lock and BEFORE any business guard: a concurrent redemption
- *     with this `client_request_id` either already committed (it made us wait) or has not
- *     started (it waits for us). Nothing here depends on a property of the planner.
+ *  0. Resolve which campaign to lock. Scoped by `business_id`, so a foreign coupon is a
+ *     404 here and never reaches the lock. Not under a lock and it does not need to be: a
+ *     coupon's `campaign_id` never changes, and everything decided later is re-read.
+ *  1. `FOR UPDATE` on the CAMPAIGN — this serializes every redemption of every coupon of
+ *     the campaign, which is what makes the cap hold — and then on the COUPON.
+ *  2. Idempotency, under the lock and BEFORE any business guard.
  *  3. Decide with the PURE function over the LOCKED rows and a `count` taken under the
  *     same lock.
- *  4. Insert, and mark the turn's outcome.
+ *  4. Insert with the coupon's SNAPSHOTS, and — when the coupon came from a turn — mark
+ *     that turn's outcome (the turn is still proximity's unit of measurement, ADR 0093 §3).
+ *     DECLARED: a coupon whose turn was CANCELLED (e.g. `opt_out`) still marks that turn
+ *     `coupon_redeemed` — literal step 4 of spec 0102, accepted by the orchestrator.
+ *     Results count only `done` turns, so it inflates no metric.
  *  5. Outbox push in the same transaction (ADR 0037).
  *
- * `unique (turn_id)` and `unique (business_id, client_request_id)` stay as BACKSTOPS
- * (ADR 0054 §3), not as the mechanism. **And the `count` under the lock is the guard, not
- * an `EXPLAIN`**: the `FOR UPDATE` and the `count` are two statements and no plan shows a
- * lock — the oracle is the real race in the integration suite, plus the mutation that
- * removes the lock.
+ * `unique (coupon_id)` and `unique (business_id, client_request_id)` stay as BACKSTOPS
+ * (ADR 0054 §3), not as the mechanism. The oracle of the lock is the real race in the
+ * integration suite plus the mutation that removes it — no plan shows a lock.
  */
 export async function persistCouponRedemption(input: {
   businessId: string;
-  turnId: string;
+  couponId: string;
   locationId: string | null;
   createdByUserId: string;
   clientRequestId: string;
@@ -155,48 +157,44 @@ export async function persistCouponRedemption(input: {
 }): Promise<PersistedCoupon> {
   const now = input.now ?? new Date();
   return withDbTransaction(async (tx) => {
-    // (0) Which campaign does this turn belong to? Scoped: a foreign turn is a 404.
+    // (0) Which campaign does this coupon belong to? Scoped: a foreign one is a 404.
     const [head] = await tx
-      .select({ campaignId: campaignTurns.campaignId })
-      .from(campaignTurns)
+      .select({ campaignId: campaignCoupons.campaignId })
+      .from(campaignCoupons)
       .where(
         and(
-          eq(campaignTurns.id, input.turnId),
-          eq(campaignTurns.businessId, input.businessId),
+          eq(campaignCoupons.id, input.couponId),
+          eq(campaignCoupons.businessId, input.businessId),
         ),
       )
       .limit(1);
     if (!head)
-      throw new CounterError(404, "unknown_turn", "Ese cupón no existe.");
+      throw new CounterError(404, "unknown_coupon", "Ese cupón no existe.");
 
-    // (1) Lock the campaign, then the turn.
+    // (1) Lock the campaign, then the coupon.
     const [campaign] = await tx
       .select({
         id: campaigns.id,
         name: campaigns.name,
-        status: campaigns.status,
-        couponCost: campaigns.couponCost,
         couponMaxRedemptions: campaigns.couponMaxRedemptions,
       })
       .from(campaigns)
       .where(eq(campaigns.id, head.campaignId))
       .limit(1)
       .for("update");
-    const [turn] = await tx
+    const [coupon] = await tx
       .select({
-        id: campaignTurns.id,
-        consumerId: campaignTurns.consumerId,
-        membershipId: campaignTurns.membershipId,
-        status: campaignTurns.status,
-        holdout: campaignTurns.holdout,
-        couponLabelSnapshot: campaignTurns.couponLabelSnapshot,
-        couponCostSnapshot: campaignTurns.couponCostSnapshot,
-        windowStart: campaignTurns.windowStart,
-        windowEnd: campaignTurns.windowEnd,
-        outcome: campaignTurns.outcome,
+        id: campaignCoupons.id,
+        consumerId: campaignCoupons.consumerId,
+        membershipId: campaignCoupons.membershipId,
+        turnId: campaignCoupons.turnId,
+        labelSnapshot: campaignCoupons.labelSnapshot,
+        costSnapshot: campaignCoupons.costSnapshot,
+        validFrom: campaignCoupons.validFrom,
+        validUntil: campaignCoupons.validUntil,
       })
-      .from(campaignTurns)
-      .where(eq(campaignTurns.id, input.turnId))
+      .from(campaignCoupons)
+      .where(eq(campaignCoupons.id, input.couponId))
       .limit(1)
       .for("update");
 
@@ -212,7 +210,7 @@ export async function persistCouponRedemption(input: {
       )
       .limit(1);
     if (previous) {
-      assertSameTurn(previous, input.turnId);
+      assertSameCoupon(previous, input.couponId);
       return { ...previous, campaignName: campaign.name, pushQueueId: null };
     }
 
@@ -221,8 +219,13 @@ export async function persistCouponRedemption(input: {
       .select({ total: sql<number>`count(*)`.mapWith(Number) })
       .from(couponRedemptions)
       .where(eq(couponRedemptions.campaignId, campaign.id));
+    const [spent] = await tx
+      .select({ id: couponRedemptions.id })
+      .from(couponRedemptions)
+      .where(eq(couponRedemptions.couponId, coupon.id))
+      .limit(1);
     const decision = decideCouponRedemption({
-      turn,
+      coupon: { ...coupon, redeemed: spent !== undefined },
       campaign,
       redeemedCount: counted?.total ?? 0,
       now,
@@ -230,32 +233,32 @@ export async function persistCouponRedemption(input: {
     if (!decision.ok)
       throw new CounterError(decision.status, decision.code, decision.message);
 
-    // (4) Write. The label and the cost are SNAPSHOTS of the turn, never of the campaign
-    // as it reads today: editing a paused campaign's coupon may not restate what the
-    // counter already handed over (same rule as the incurred cost in results).
+    // (4) Write. Label and cost are SNAPSHOTS of the coupon, never of the campaign as it
+    // reads today: editing a campaign may not restate what the counter already handed over.
     const [row] = await tx
       .insert(couponRedemptions)
       .values({
-        turnId: turn.id,
+        couponId: coupon.id,
         campaignId: campaign.id,
         businessId: input.businessId,
-        consumerId: turn.consumerId,
-        membershipId: turn.membershipId,
+        consumerId: coupon.consumerId,
+        membershipId: coupon.membershipId,
         locationId: input.locationId,
-        labelSnapshot: turn.couponLabelSnapshot as string,
-        costSnapshot: turn.couponCostSnapshot ?? campaign.couponCost ?? "0.00",
+        labelSnapshot: coupon.labelSnapshot,
+        costSnapshot: coupon.costSnapshot,
         createdByUserId: input.createdByUserId,
         clientRequestId: input.clientRequestId,
       })
       .returning(redemptionColumns);
-    await tx
-      .update(campaignTurns)
-      .set({
-        outcome: "coupon_redeemed",
-        outcomeRedemptionId: row.id,
-        outcomeAt: now,
-      })
-      .where(eq(campaignTurns.id, turn.id));
+    if (coupon.turnId !== null)
+      await tx
+        .update(campaignTurns)
+        .set({
+          outcome: "coupon_redeemed",
+          outcomeRedemptionId: row.id,
+          outcomeAt: now,
+        })
+        .where(eq(campaignTurns.id, coupon.turnId));
 
     // (5) Outbox push, same transaction. `transactional` on purpose: it is the receipt of
     // something that just happened at the counter, not marketing — so it is NOT subject
@@ -268,7 +271,7 @@ export async function persistCouponRedemption(input: {
     const [push] = await tx
       .insert(walletPushQueue)
       .values({
-        consumerId: turn.consumerId,
+        consumerId: coupon.consumerId,
         class: "transactional",
         title: business?.name ?? "CheckPass Club",
         body: buildCouponBody(row.labelSnapshot),
@@ -280,4 +283,4 @@ export async function persistCouponRedemption(input: {
   });
 }
 
-export { assertSameTurn };
+export { assertSameCoupon };

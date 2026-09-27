@@ -197,7 +197,7 @@ export function CounterConsole({
       setCouponRedeemed(
         await postCouponRedeem({
           clientRequestId: couponRequestId,
-          turnId: resolved.coupon.turnId,
+          couponId: resolved.coupon.couponId,
           locationId,
         }),
       );

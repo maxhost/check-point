@@ -87,7 +87,13 @@ describe("parseTemplateInput", () => {
   it("a full coupon is carried as the composer normalizes it", () => {
     const parsed = parseTemplateInput(
       winBack,
-      { couponLabel: " 2x1 ", couponCost: 2.5, couponMaxRedemptions: 50 },
+      {
+        couponLabel: " 2x1 ",
+        couponCost: 2.5,
+        couponMaxRedemptions: 50,
+        // Spec 0102: a coupon needs an end date.
+        endsAt: "2026-12-31T00:00:00.000Z",
+      },
       NOW,
     );
     expect(parsed.ok && parsed.value).toMatchObject({
@@ -96,6 +102,26 @@ describe("parseTemplateInput", () => {
       couponMaxRedemptions: 50,
       couponProductId: null,
     });
+  });
+
+  it("a coupon without endsAt is refused on endsAt (spec 0102 / ADR 0094)", () => {
+    // ORACULO DEL CABLEADO de `requireEndForCoupon` en `parseTemplateInput` (M7): the
+    // composer's parser has its own call, and the CHECK would answer 500, not 400.
+    const coupon = {
+      couponLabel: "2x1",
+      couponCost: 2,
+      couponMaxRedemptions: 5,
+    };
+    expect(errorsOf(coupon)).toEqual({
+      endsAt: "Una campaña con cupón necesita fecha de fin.",
+    });
+    expect(errorsOf({ ...coupon, endsAt: null })).toHaveProperty("endsAt");
+    const dated = parseTemplateInput(
+      missedYou,
+      { ...coupon, endsAt: "2026-12-31T00:00:00.000Z" },
+      NOW,
+    );
+    expect(dated.ok).toBe(true);
   });
 
   it("endsAt must be after startsAt; null means no end", () => {

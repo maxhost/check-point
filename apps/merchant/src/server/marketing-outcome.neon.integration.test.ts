@@ -9,15 +9,18 @@ import {
 import {
   NEAR,
   seedCampaign,
-  seedCouponRedemption,
   seedLocation,
   seedMembership,
   seedOrder,
   seedTurn,
   seedWalletPass,
 } from "./marketing-integration-support";
+import { seedCouponRedemption } from "./marketing-coupon-support";
 import { dropCampaigns, readTurns } from "./marketing-read-support";
 import { runMarketingTick, type TickSummary } from "./marketing/tick";
+import { eq } from "drizzle-orm";
+import { getDb } from "./db";
+import { campaignTurns } from "./schema";
 
 /**
  * Step 2 (spec 0065): a window closes and the turn is `done` WITH its result. The four
@@ -50,6 +53,7 @@ describe.skipIf(!integrationEnabled)("marketing outcome", () => {
   let campaignId: string;
   const cases: Record<string, Case> = {};
   let summary: TickSummary;
+  let redemptionId: string;
 
   async function turnFor(name: string, holdout = false): Promise<Case> {
     const consumer = await seedConsumer();
@@ -120,7 +124,7 @@ describe.skipIf(!integrationEnabled)("marketing outcome", () => {
 
     const redeemed = await turnFor("coupon_redeemed");
     await order(redeemed, new Date(WINDOW_START.getTime() + HOUR));
-    await seedCouponRedemption({
+    redemptionId = await seedCouponRedemption({
       turnId: redeemed.turnId,
       campaignId,
       businessId: seed.business.id,
@@ -167,6 +171,13 @@ describe.skipIf(!integrationEnabled)("marketing outcome", () => {
       outcome: "none",
       outcomeOrderId: null,
     });
+    // Spec 0102: read THROUGH the coupon (`cc.turn_id = t.id`). The other three turns
+    // are of the SAME campaign and none of them may pick this redemption up.
+    const [row] = await getDb()
+      .select({ outcomeRedemptionId: campaignTurns.outcomeRedemptionId })
+      .from(campaignTurns)
+      .where(eq(campaignTurns.id, cases.coupon_redeemed.turnId));
+    expect(row.outcomeRedemptionId).toBe(redemptionId);
   });
 
   it("lets the coupon win over the purchase, and records no order", async () => {
@@ -179,6 +190,13 @@ describe.skipIf(!integrationEnabled)("marketing outcome", () => {
       // results on one row would make the merit table count it twice.
       outcomeOrderId: null,
     });
+    // Spec 0102: read THROUGH the coupon (`cc.turn_id = t.id`). The other three turns
+    // are of the SAME campaign and none of them may pick this redemption up.
+    const [row] = await getDb()
+      .select({ outcomeRedemptionId: campaignTurns.outcomeRedemptionId })
+      .from(campaignTurns)
+      .where(eq(campaignTurns.id, cases.coupon_redeemed.turnId));
+    expect(row.outcomeRedemptionId).toBe(redemptionId);
   });
 
   it("measures the HOLDOUT too: a base line that did not measure would not be one", async () => {

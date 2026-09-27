@@ -17,14 +17,14 @@ import { redeemCoupon } from "./counter/coupon";
  * Two races, and they are NOT the same guard (the lesson of spec 0055, where a plan of
  * mutations claimed one test covered the lock and the measurement said otherwise):
  *
- *  - **Same turn.** Here `unique (turn_id)` alone is already sufficient: the loser's
+ *  - **Same coupon.** Here `unique (coupon_id)` alone is already sufficient: the loser's
  *    `23505` aborts its whole transaction, so removing the `FOR UPDATE` would leave this
  *    GREEN. It is kept because it is a DoD item, not because it pins the lock.
- *  - **Different turns, one slot left in the cap.** THIS is the lock's oracle. There is
- *    no unique key to collide on — two different turns, two different rows — so the only
+ *  - **Different coupons, one slot left in the cap.** THIS is the lock's oracle. There is
+ *    no unique key to collide on — two different coupons, two different rows — so the only
  *    thing that stops both from passing `count < cap` is the campaign's `FOR UPDATE`.
  *
- * A single pair of requests may not interleave, so the same-turn race repeats over fresh
+ * A single pair of requests may not interleave, so the same-coupon race repeats over fresh
  * cards; the cap race is deterministic by construction.
  */
 
@@ -42,84 +42,87 @@ async function world(prefix: string, cap?: number): Promise<CouponWorld> {
   return created;
 }
 
-describe.skipIf(!integrationEnabled)("coupon races (spec 0065 C)", () => {
-  for (let attempt = 1; attempt <= RACES; attempt += 1) {
-    it(`race ${attempt}/${RACES}: ${CONCURRENCY} concurrent redemptions of the SAME turn leave ONE row`, async () => {
-      const w = await world(`Carrera mismo turno ${attempt}`);
+describe.skipIf(!integrationEnabled)(
+  "coupon races (spec 0065 C / 0102)",
+  () => {
+    for (let attempt = 1; attempt <= RACES; attempt += 1) {
+      it(`race ${attempt}/${RACES}: ${CONCURRENCY} concurrent redemptions of the SAME coupon leave ONE row`, async () => {
+        const w = await world(`Carrera mismo cupon ${attempt}`);
+        const card = await newCouponCard(w);
+        const body = couponBody(card, w.seed, randomUUID());
+
+        const settled = await Promise.allSettled(
+          Array.from({ length: CONCURRENCY }, () =>
+            redeemCoupon(w.seed.business, w.seed.userId, body),
+          ),
+        );
+
+        // Every caller gets a 2xx: the losers are absorbed by the idempotent read under
+        // the lock, or by the `23505` backstop followed by a reread.
+        expect(
+          settled
+            .filter((r) => r.status === "rejected")
+            .map((r) => String(r.reason)),
+        ).toEqual([]);
+        const rows = await readCoupons(w.campaignId);
+        expect(rows).toHaveLength(1);
+        expect(rows[0].couponId).toBe(card.couponId);
+      }, 180_000);
+    }
+
+    it("DOS OPERADORES sobre el mismo cupón: una fila, un 409 con nombre", async () => {
+      // LA CARRERA QUE EL DoD PIDE Y QUE NINGUNA DE LAS 4 DE ARRIBA CUBRIA (revisión
+      // independiente de la fase C): las cuatro comparten UN `clientRequestId` —el
+      // `couponBody(…, randomUUID())` está FUERA del `Promise.allSettled`—, así que lo que
+      // pinnean es la concurrencia del REINTENTO IDEMPOTENTE. Dos mostradores con dos
+      // dispositivos mandan DOS identificadores distintos, y ahí el que decide es el unique
+      // `coupon_id`: uno entra y el otro tiene que salir con un 409 que se pueda leer, nunca
+      // con un 503 ni con una segunda fila.
+      const w = await world("Carrera dos operadores");
       const card = await newCouponCard(w);
-      const body = couponBody(card, w.seed, randomUUID());
 
-      const settled = await Promise.allSettled(
-        Array.from({ length: CONCURRENCY }, () =>
-          redeemCoupon(w.seed.business, w.seed.userId, body),
-        ),
-      );
+      const settled = await Promise.allSettled([
+        redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+        redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+      ]);
 
-      // Every caller gets a 2xx: the losers are absorbed by the idempotent read under
-      // the lock, or by the `23505` backstop followed by a reread.
-      expect(
-        settled
-          .filter((r) => r.status === "rejected")
-          .map((r) => String(r.reason)),
-      ).toEqual([]);
-      const rows = await readCoupons(w.campaignId);
-      expect(rows).toHaveLength(1);
-      expect(rows[0].turnId).toBe(card.turnId);
+      expect(await readCoupons(w.campaignId)).toHaveLength(1);
+      const rejected = settled.filter((r) => r.status === "rejected");
+      expect(rejected).toHaveLength(1);
+      expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+        status: 409,
+        code: "already_redeemed",
+      });
     }, 180_000);
-  }
 
-  it("DOS OPERADORES sobre el mismo turno: una fila, un 409 con nombre", async () => {
-    // LA CARRERA QUE EL DoD PIDE Y QUE NINGUNA DE LAS 4 DE ARRIBA CUBRIA (revisión
-    // independiente de la fase C): las cuatro comparten UN `clientRequestId` —el
-    // `couponBody(…, randomUUID())` está FUERA del `Promise.allSettled`—, así que lo que
-    // pinnean es la concurrencia del REINTENTO IDEMPOTENTE. Dos mostradores con dos
-    // dispositivos mandan DOS identificadores distintos, y ahí el que decide es el unique
-    // `turn_id`: uno entra y el otro tiene que salir con un 409 que se pueda leer, nunca
-    // con un 503 ni con una segunda fila.
-    const w = await world("Carrera dos operadores");
-    const card = await newCouponCard(w);
+    it("with ONE slot left in the cap, two DIFFERENT coupons leave ONE row", async () => {
+      // cap 2, one already handed over → exactly one slot. Without the campaign's
+      // `FOR UPDATE` both readers see `count = 1 < 2` and both insert.
+      const w = await world("Carrera cupo", 2);
+      const spent = await newCouponCard(w);
+      await redeemCoupon(
+        w.seed.business,
+        w.seed.userId,
+        couponBody(spent, w.seed),
+      );
+      expect(await readCoupons(w.campaignId)).toHaveLength(1);
 
-    const settled = await Promise.allSettled([
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
-    ]);
+      const a = await newCouponCard(w);
+      const b = await newCouponCard(w);
+      const settled = await Promise.allSettled([
+        redeemCoupon(w.seed.business, w.seed.userId, couponBody(a, w.seed)),
+        redeemCoupon(w.seed.business, w.seed.userId, couponBody(b, w.seed)),
+      ]);
 
-    expect(await readCoupons(w.campaignId)).toHaveLength(1);
-    const rejected = settled.filter((r) => r.status === "rejected");
-    expect(rejected).toHaveLength(1);
-    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
-      status: 409,
-      code: "already_redeemed",
-    });
-  }, 180_000);
-
-  it("with ONE slot left in the cap, two DIFFERENT turns leave ONE row", async () => {
-    // cap 2, one already handed over → exactly one slot. Without the campaign's
-    // `FOR UPDATE` both readers see `count = 1 < 2` and both insert.
-    const w = await world("Carrera cupo", 2);
-    const spent = await newCouponCard(w);
-    await redeemCoupon(
-      w.seed.business,
-      w.seed.userId,
-      couponBody(spent, w.seed),
-    );
-    expect(await readCoupons(w.campaignId)).toHaveLength(1);
-
-    const a = await newCouponCard(w);
-    const b = await newCouponCard(w);
-    const settled = await Promise.allSettled([
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(a, w.seed)),
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(b, w.seed)),
-    ]);
-
-    const rows = await readCoupons(w.campaignId);
-    expect(rows).toHaveLength(2);
-    // One winner, one named refusal — never two rows and never a 503.
-    const rejected = settled.filter((r) => r.status === "rejected");
-    expect(rejected).toHaveLength(1);
-    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
-      status: 409,
-      code: "coupon_cap_reached",
-    });
-  }, 180_000);
-});
+      const rows = await readCoupons(w.campaignId);
+      expect(rows).toHaveLength(2);
+      // One winner, one named refusal — never two rows and never a 503.
+      const rejected = settled.filter((r) => r.status === "rejected");
+      expect(rejected).toHaveLength(1);
+      expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+        status: 409,
+        code: "coupon_cap_reached",
+      });
+    }, 180_000);
+  },
+);

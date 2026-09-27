@@ -191,6 +191,45 @@ negocio `suspended` recibe **`email_not_verified`**, no `business_suspended`.
 `suspension_reason` es una nota interna sobre la cuenta del negocio. Se serializa **solo al
 owner** (spec 0072 §D4).
 
+### 2.1 El cupon de campaña en el mostrador (spec 0102, ADR 0093/0094)
+
+El mostrador canjea el **cupon** (`core.campaign_coupon`), no el turno: no sabe por que canal
+llego. Un cupon vale desde que se emite hasta el `ends_at` de su campaña (copiado al emitir),
+**aunque la campaña se pause o finalice y aunque su turno se cancele**; lo cortan solo esa
+fecha, el canje o el tope de la campaña.
+
+`POST /api/counter/resolve` — en la respuesta, `coupon` es `null` o:
+
+```jsonc
+{
+  "couponId": "uuid",          // antes: turnId
+  "label": "2x1 en picadas",
+  "campaignName": "Recuperar perdidos",
+  "validUntil": "2026-10-01T03:00:00.000Z"  // ISO string; antes: windowEnd
+}
+```
+
+Si hay varios vigentes, se pinta el que vence primero (`valid_until asc, id asc`).
+
+`POST /api/counter/coupon-redeem` — cuerpo `{ clientRequestId: uuid, couponId: uuid,
+locationId?: uuid | null }` (antes `turnId`). `200 → { coupon: { label, campaignName } }` (sin
+ids). El mismo `clientRequestId` contesta 200 con la MISMA fila (idempotente).
+
+| Caso | Status | `code` |
+|---|---|---|
+| cuerpo no JSON | 400 | `invalid_body` |
+| `clientRequestId`/`couponId`/`locationId` no es uuid | 422 | `invalid_input` (`parseUuid`, estado actual — la spec 0102 escribio «400 `invalid_body`») |
+| `locationId` no es un local activo del negocio | 422 | `unknown_location` |
+| cupon inexistente o de OTRO negocio | 404 | `unknown_coupon` (nunca 403) |
+| fuera de `valid_from..valid_until` | 409 | `coupon_not_active` |
+| ya canjeado (otro `clientRequestId`) | 409 | `already_redeemed` |
+| tope de canjes de la campaña agotado | 409 | `coupon_cap_reached` |
+| `clientRequestId` ya usado para OTRO cupon | 409 | `request_id_reused` |
+| otra falla | 503 | (sin `code`) |
+
+El orden de los tres 409 de negocio es normativo: `coupon_not_active` → `already_redeemed` →
+`coupon_cap_reached` (`server/counter/coupon-decision.ts`).
+
 **Por que el guard vive acá y no solo en el login:** `server/auth.ts` no pisa
 `session.expiresIn`, asi que rige el default de better-auth 1.6.26 — **7 dias**. Un
 integrante con la sesion ya abierta seguiria acreditando **una semana** despues del cierre.
