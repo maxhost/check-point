@@ -8,7 +8,14 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: C (#4) SPEC 0105 `cerrada` (`d8866ad`), IMPLEMENTADOR DESPACHADO (2026-09-27)
+## ⇥ ESTADO — MARKETING: C (#4) SPEC 0105 IMPLEMENTADA EN `6013db2` (sin push), EN REVISION (2026-09-27)
+
+**Implementador:** commit `6013db2`, gates verdes (1929 tests), `test:e2e` 105/5/1 con el rojo previo
+`loyalty-tour-help.spec.ts:40` reproducido en `d8866ad`; Neon 14 archivos 61/61 en la rama de CI (la
+`0048` aplicada SOLO ahi); M1–M8 en ROJO + 2 extra (dia local vs UTC, piso en push). Desvio: el caso de
+M3 usa 18:30/20:30 locales (cruzan la medianoche UTC). Hallazgos: `BalanceCandidate` omite el habito
+de visitas (#7/#8 no lo necesitan); el compositor pierde siempre contra una plantilla en proximidad
+(ADR 0097 §4), sin mutar. **Revisor independiente despachado.** Prod NO migrada; OK de la `0048` no dado.
 
 **OK del owner a la 0105 (textual en la spec, «Abierto»):** «ok por ahora … para implementar conexion
 entre el api y ui para entenderlo mejor y alli ajustare»; anticipa que quiza sobren campañas que se
