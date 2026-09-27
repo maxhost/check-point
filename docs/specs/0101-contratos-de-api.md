@@ -430,7 +430,7 @@ como rango 0: va despues de toda plantilla), `dormant_days desc, created_at asc,
 (`loadActiveCampaigns`, `server/marketing/audience-store.ts:82-90`) y la primera se queda con
 el turno. Asi #4 a 14 d le gana a #3 a 30 d el turno del habitual en riesgo, y #5 le gana a
 las dos. Una campaña **solo push** no
-entra a ese paso (`audience-store.ts:68`): no encola turnos ni escribe foto de audiencia.
+entra a ese paso (`audience-store.ts:74`): no encola turnos ni escribe foto de audiencia.
 El canal push tiene su propio orden y su propia regla (grupos, §4): el tick evalua las
 campañas push por `rank` desc y la de rango mayor decide primero (spec 0103).
 

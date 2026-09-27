@@ -120,6 +120,12 @@ describe("decidePushEligibility — at risk (#4)", () => {
     );
   });
 
+  // Spec 0105, R3 of the review: the rhythm rule goes AFTER opt_out — the photo counts the reason.
+  it("an opted-out customer who is not a habit is still opt_out", () => {
+    const over = { ...habit([0], 30), marketingOptOutAt: NOW };
+    expect(decide14(over)).toBe("opt_out");
+  });
+
   it("without atRisk the old rule is intact", () => {
     expect(decide14(habit([0, 30, 60], 20), null)).toBe("eligible");
     expect(decide14(habit(DAILY, 12), null)).toBe("not_dormant");

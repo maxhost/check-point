@@ -223,7 +223,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       .where(eq(campaigns.businessId, seed.business.id));
     expect(rows.map((r) => r.id).sort()).toEqual([first.id, second.id].sort());
 
-    const [missedYou, winBack] = await listTemplates(seed.business.id);
+    const [missedYou, atRisk] = await listTemplates(seed.business.id);
     expect(missedYou.live?.id).toBe(second.id);
     expect(missedYou.live?.dormantDays).toBe(30);
     expect(missedYou.runs).toEqual([
@@ -234,7 +234,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
         endedAt: expect.any(Date),
       },
     ]);
-    expect(winBack).toMatchObject({ live: null, runs: [] });
+    expect(atRisk).toMatchObject({ live: null, runs: [] });
   }, 180_000);
 
   it("a template run is never PATCHed, not even paused; a custom POST never carries a template", async () => {

@@ -235,6 +235,16 @@ describe("decideTurnEligibility — at risk (#4)", () => {
       decideTurnEligibility(habit(DAILY, 12), context({ dormantDays: 14 })),
     ).toEqual({ kind: "excluded", reason: "not_dormant" });
   });
+
+  // Spec 0105, R3 of the review: the rhythm rule goes AFTER opt_out — the photo counts the reason.
+  it("an opted-out customer who is not a habit is still opt_out", () => {
+    expect(
+      decideTurnEligibility(
+        { ...habit([0], 30), marketingOptOutAt: NOW },
+        context({ dormantDays: 14, atRisk: AT_RISK }),
+      ),
+    ).toEqual({ kind: "excluded", reason: "opt_out" });
+  });
 });
 
 describe("summarizeAudience", () => {
