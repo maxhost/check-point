@@ -8,6 +8,195 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO — MARKETING: spec 0101 CERRADA, lista para implementar (2026-09-26)
+
+**Retomar con: «Implementar spec 0101».** Sin codigo escrito todavia. Protocolo (CLAUDE.md §7 /
+ADR 0071): UN `implementador` para toda la spec + UN `revisor` independiente al final; cargar la
+skill `protocolo-de-verificacion` antes de encargar; presupuesto de mutaciones = las 6 filas
+M1-M6 de la spec, clase = errores plausibles. La spec lleva migracion `0044` (se aplica a PROD
+antes del deploy que lee la columna — skill `gotchas-del-repo`, Neon). `test:e2e` no aplica
+(no toca `.tsx`). Antes de pushear: 5 gates + suites `.neon` de marketing via
+`tools/neon-test.sh`; despues del push, verificar deploy `READY` con el sha (no esperar CI).
+
+- **Spec:** `docs/specs/0101-plantillas-de-campana-sobre-proximidad.md` (`cerrada`, OK textual del
+  owner «me cierra»). **ADRs:** 0091 (catalogo de 16 campañas, dos modos, prioridad por flujo) y
+  0092 (plantilla = corrida con parametros congelados). Commits `b72b218`, `51541bd`.
+- **Entrega de la 0101:** plantillas `missed_you` (#3) y `win_back` (#5) por proximidad; rutas
+  `GET /api/marketing/templates`, `POST …/{key}/enable`, `POST …/{key}/disable` (owner-only);
+  `ORDER BY dormant_days desc` en el tick; `docs/specs/0101-contratos-de-api.md` (13 rutas).
+- **Despues de la 0101 (orden acordado):** spec B = canal push de campañas (#7/#8 + push en
+  #3/#5; wallet si hay pase, si no Web Push, nunca duplicado; registrar clicks; tope 1 push por
+  negocio/consumidor cada 7 d; prioridad #8>#7>#4>#5>#3 aprox. — revisar con el modelo de GRUPOS
+  estilo Talon.One + tope GLOBAL estilo Toast, propuesta del orquestador sin decidir) → spec C
+  (#4 en riesgo) → catalogo de premios → Bienvenida+Segunda visita (#1+#2).
+- **Pendientes del owner (no bloquean la 0101):** anti-hartazgo/abuso; revisar solapamiento
+  (confirmar si «Sumo» = SumUp); free vs premium de la Bienvenida; fecha de nacimiento (la carga
+  el cliente, global); limite oculto de eventos (#11) sin consola de plataforma (`apps/platform`
+  vacia). PARQUEADO #61: vencimiento de saldo y cashback del programa.
+- **Sesion paralela:** la spec 0100 (tours de loyalty) la implementa otra sesion; no tocar
+  `app/backoffice/loyalty/**`.
+
+El historial detallado de la conversacion con el owner (sus respuestas textuales, mediciones)
+sigue abajo, en orden cronologico.
+
+### Historial — ⇥ HANDOFF — retomar con el MOTOR DE MARKETING (2026-09-26)
+
+**Cierre de esta rama de trabajo (loyalty API):** spec 0099 (`estado: implementada`, ver
+seccion propia mas abajo) esta **pusheada a `origin/main`** junto con la spec 0098 (UI de
+loyalty, hecha por la sesion paralela `claude-workspace-9f`/ChatGPT). Verificado por el
+orquestador sobre el commit real en `origin/main` (`5b873d9` al momento de esta nota, la
+otra sesion siguio avanzando despues con la 0100 — ver seccion de abajo, no es de esta
+rama): **los 6 gates corridos y verdes**, incluido `test:e2e` (**95 passed, 5 skipped, 0
+failed** — el bloqueo de puertos que esa sesion declaro era de SU sandbox, no reproduce
+en este entorno). `git status` limpio, `HEAD == origin/main`. Nada pendiente de commit de
+esta rama.
+
+**Proxima sesion — cambio de tema, no continuacion de loyalty:** analizar el motor de
+MARKETING actual (`apps/merchant/src/app/backoffice/marketing/*` y su server,
+`apps/merchant/src/server/marketing*`), comparandolo contra lo que el owner tenia
+imaginado para el, con la mira puesta en documentarlo como API consumible por GPT para
+construir una UI nueva — mismo patron que se acaba de correr con loyalty: auditar que
+existe hoy (endpoints, guards, DTOs, contratos escritos, tests), decidir si es
+production-grade o si faltan specs chicas de hardening/documentacion (no asumir que hace
+falta construir de cero: loyalty resulto ya estar mas maduro de lo esperado). Retomar
+con: **"Analicemos el motor de marketing como hicimos con loyalty."**
+
+**Avance 2026-09-26 (sesion `check-point-9d`, solo lectura, sin codigo):** se le entrego al owner
+el resumen de lo IMPLEMENTADO (spec 0065: un solo `kind='proximity'`, compositor de 5 bloques,
+tick, turnos, holdout, merito por lift, cupon, opt-out, freno por plan; 11 rutas en
+`api/marketing/**` + tick + coupon-redeem + opt-out) y de lo PLANIFICADO (ADR 0064: tipos de fase 1
+por push —reactivacion, falta-un-sello/saldo dormido, franja muerta, local nuevo, aniversario,
+categoria abandonada, ticket bajo, cumpleaños—; fase 2 motor reactivo ADR 0018/spec 0003;
+«Segmentos» RFM como propuesta sin ADR; specs 0021/0009/0007 en borrador/diferidas). **Sigue:** el
+owner va a contar como imaginaba las campañas; comparar contra esto antes de tocar specs. La
+auditoria de API (endpoints/DTOs/contratos) todavia NO se hizo.
+
+**Vision del owner (2026-09-26, textual resumida):** DOS MODOS — **custom** (form para combinar) y
+**prearmadas** estilo Fivestars AutoPilot (toggle + pocos parametros: inicio/fin, premio, dias de
+inactividad «7,14,24», mensaje de proximidad pre-llenado y editable). Cupon: quiere un **sistema
+propio dentro de campañas, validable por QR, para trackear resultados**. Comparacion entregada: el
+compositor actual = modo custom de UN tipo; plantillas no existen pero son baratas sobre `kind`
+proximity; el cupon YA existe embebido en la campaña (canje por QR del PASE en mostrador, atado al
+turno, `server/counter/coupon.ts`) pero no como entidad; el cuello real son los CANALES (solo
+proximidad; push de campaña sin spec). Orden propuesto por el orquestador (NO decidido): 1)
+plantillas sobre proximity, 2) cupones como entidad (revive 0021), 3) push de campaña, 4) reactivo
+(bienvenida/cumpleaños), 5) custom generalizado. **Pendiente del owner:** (a) QR propio del cupon
+vs QR del pase (recomendado: pase), (b) primera tanda solo-proximidad o esperar push+cupones, (c)
+«24» dias ¿o 30? (cooldown actual 30). Despues: ADR «dos modos» + spec chica del paso 1.
+
+**Plan del owner (2026-09-26), en 3 pasos:** 1) listar TODAS las campañas, 2) diseñar cada
+plantilla (que es fijo, que se edita, que falta), 3) recien ahi el catalogo de premios como
+feature propia. **SMS y email FUERA (decision del owner).** Quiere un catalogo amplio (push,
+proximidad, etc.) porque marketing es el motivo para pagar premium. **Paso 1 cerrado — el owner
+aprobo la lista («perfecta y muy atomica»)**: A) 1 Bienvenida, 2 Segunda visita, 3 Te extrañamos
+(existe por proximidad), 4 En riesgo, 5 Perdidos, 6 VIP (push, NO proximidad por ADR 0065 §13);
+B) 7 Te falta poco, 8 Premio sin canjear; C) 9 Aniversario, 10 Cumpleaños (falta DOB), 11 Fecha
+especial (envio programado, no existe); D) 12 Franja floja, 13 Local nuevo, 14 Producto/categoria,
+15 Subir ticket; E) 16 Pedir opinion (sin premio). Fuera: red cruzada, referidos, permanencia,
+juegos. «Push» = push del Wallet Y/O Web Push (aclarado al owner). 13/16 dependen de un canal push
+de campaña que no existe; `campaign` hoy tiene fan-out provisional sin uso (`push-transports.ts:211`).
+**Duda del owner abierta:** las campañas solo valen con base enrolada → priorizar crecimiento del
+enroll. Propuesta del ORQUESTADOR (no decidida): priorizar campañas de «flujo» sobre las de
+«stock» — 1+2 fusionadas («escaneá y en tu proxima visita te llevas X»), luego 7/8, luego 3; el
+catalogo de premios pasa a ser dependencia de la prioridad 1; resultados para bases chicas solo con
+metricas observadas. Marcadas para que el owner decida si revisa: referidos y red cruzada.
+**Sigue:** que el owner confirme el orden; paso 2 arrancando por Bienvenida/Segunda visita.
+
+**Orden CONFIRMADO por el owner → ADR 0091 commiteado (`b72b218`, con fila en INDEX).** Paso 2,
+plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26):** (1) el premio vale por
+defecto en la PROXIMA visita, pero es opcion EDITABLE por el merchant (puede elegir «misma visita»);
+(3) free vs premium: «lo pensaremos luego»; (4) la oferta se anuncia SOLO en la pagina de alta
+(`/enroll/[programId]`), NO en el afiche — en el local la comunica el merchant. (2) antiabuso sin OTP
+(no hay OTP en el alta, ADR 0057; SMS en Ecuador ~$0,25 se come el margen — idea del owner: OTP como
+feature premium): el owner pregunto si se puede filtrar por wallet ya existente. **Medido:** Apple
+registra `device_library_id` por pase en `consumer.wallet_push_device` (`schema/consumer.ts:223`) →
+filtro «ese iPhone ya tiene el pase de OTRO consumidor = sin regalo». Google: nada equivalente en el
+codigo (si la API lo expone: POR VERIFICAR). IMEI imposible desde web. Propuesta del orquestador
+PENDIENTE de OK: regalo solo con pase instalado + filtro Apple por dispositivo + tope mensual +
+canje presencial. Sigue despues: plantillas #7/#8, luego catalogo de premios.
+**→ El owner APROBO esa propuesta antiabuso («si me cierra», 2026-09-26).**
+
+**Paso 2, plantillas #7 (Te falta poco) y #8 (Premio sin canjear) — propuestas al owner, sin
+respuesta aun.** Medido: puntos/sellos NO vencen (el `expired` de `schema/loyalty.ts:173` es cierre
+de programa); el calculo «te faltan N» ya existe en `marketing/utility-text.ts:44-70`; el push de
+acreditacion dice solo «Se acreditó 1 sello en tu cuenta 🎉» (`wallet/push-text.ts:27`). #7: push,
+umbral editable (1/2/3 sellos o ≤10/20 % puntos), dias sin venir 3/7/14, mensaje pre-llenado, una
+vez por ciclo, SIN premio. #8: push, dias 7/14/30, repeticion (una vez | cada 30 d, max 2), SIN
+premio. **Consecuencia: #7/#8 no dependen del catalogo de premios → son las primeras lanzables**
+(necesitan canal push de campaña + plantilla con toggle + audiencia de saldo). **Preguntas abiertas
+al owner:** (1) prioridad #8 > #7 > #3 y tope 1 push de campaña por negocio y consumidor cada 7 d;
+¿proximidad y push independientes? (2) ¿el push de acreditacion muestra progreso («te faltan 2
+para un cafe»), gratis para todos los planes? (3) ¿«sello/puntos dobles» en #7? (recomendado: v2;
+la spec 0065 prohibe que la campaña toque saldos).
+**Respuestas del owner (2026-09-26):** (1) SI a la prioridad #8 > #7 > #3 y al tope de 1 push por
+negocio y consumidor cada 7 d («de momento, editable en cualquier caso»); (2) push de acreditacion
+con progreso: buena UX, **condicionado a medir el largo en iOS y Android** (QA en pantalla, no
+doc); (3) NO a sellos/puntos dobles. Descubrimiento → **PARQUEADO #61**: vencimiento de saldo y
+cashback en el programa. Proximidad vs push independientes: el owner NO lo respondio — sigue
+ABIERTO (propuesta del orquestador: independientes). Sigue: plantillas #3/#4/#5 (reactivacion).
+**#3/#4/#5 — respuestas del owner (2026-09-26):** #3 y #5 SEPARADAS (#3: 14/30 d, def. 30, premio
+opcional; #5: 60/90/180 d, def. 90, premio recomendado); #4 arranca con «≥3 visitas y ausencia >
+2× su ritmo», EDITABLE; convivencia #4 > #3 > #5. Proximidad y push INDEPENDIENTES («me parece que
+si») **pero queda pendiente diseñar anti-hartazgo y anti-abuso** (owner). Orden de lanzamiento
+derivado (orquestador): base plantillas+push → #7/#8/#3/#5 → #4 → catalogo de premios → #1+#2.
+Sigue: #6 VIP, #9 Aniversario, #10 Cumpleaños, #11 Fecha especial.
+**#6/#9/#10/#11 — respuestas del owner (2026-09-26):** #6 VIP «no se trata de regalar margen, se
+trata de RECONOCER CON UN GESTO» → cupon/premio como gesto (recomendado, no descuento); criterio
+visitas vs gasto NO respondido. #10: agregar la FECHA DE NACIMIENTO «a la base de datos del
+comerciante para que en algun momento pueda llenarlo» (quien la carga —comercio/staff o consumidor—
+y si es por negocio o global: a confirmar). #11 = campaña de EVENTO (inauguracion, musica…); sin
+limite visible para el merchant, pero la PLATAFORMA debe poder fijar «n eventos/mes» por negocio
+sin que el merchant se entere, para frenar abusos. **Medido:** no existe superficie «Clientes» en el
+backoffice (`app/backoffice/` sin ella) y `apps/platform` esta vacia (solo `api/health`): no hay
+consola de plataforma donde fijar ese limite. Relacion #11 vs tope 7 d: sin respuesta.
+**Cierre de estas (owner, 2026-09-26):** fecha de nacimiento la carga EL PROPIO CLIENTE desde su
+perfil («esto es otra cosa») y es GLOBAL (del consumidor, no por negocio). Un EVENTO (#11) NO
+respeta el tope de 7 d. #6/#9/#10/#11 y #12-#16 «para mas adelante». **Siguiente paso pedido por el
+owner:** ver que falta para la SPEC e implementar COMO API las plantillas que NO requieren catalogo;
+despues la spec del catalogo de premios (la necesita la Bienvenida, la mas importante).
+**Relevamiento para esa spec (medido 2026-09-26):** sin catalogo salen #3, #5 (proximidad YA,
+push despues), #7, #8 (push) y #4 (audiencia nueva); #6/#9 necesitan premio fuera de turno →
+catalogo. API actual: 11 rutas en `api/marketing/**` con `requireMarketingOwner` (acciones via
+`campaignActionRoute` en `_auth.ts`); contratos SOLO parciales (0072 codigos, 0086 permisos) — no
+hay contrato de marketing con DTOs. `wallet_push_queue` NO tiene `campaign_id` ni `business_id`
+(`schema/consumer.ts:259`) → hoy un push de campaña no se puede atribuir ni topear por negocio.
+**Hallazgo:** el ADR 0064 §6 dice que push tiene oraculo «entrega + click en `public/sw.js`», pero
+`sw.js:24` solo navega; el click NO se registra en el servidor. Propuesta al owner: specs A
+(plantillas sobre proximidad, lanza #3/#5 ya + contrato de API), B (canal push: atribucion, tope
+7 d, prioridad, holdout, suma push a #3/#5 y lanza #7/#8), C (#4). Preguntas abiertas: division
+A/B/C; borrar el compositor viejo (ADR 0070 §17); transporte del push; registrar clicks.
+**Respuestas del owner (2026-09-26):** (1) SI a specs A/B/C; (2) el compositor viejo se BORRA cuando
+exista la UI nueva, «de momento la dejamos»; (3) push de campaña: mismo criterio que el
+transaccional — wallet si hay pase alcanzable, si no Web Push, NUNCA duplicado; (4) registrar clicks
+«si es posible». **En curso: escribiendo la spec A (plantillas sobre proximidad + contrato de API).**
+**Decisiones del owner para la spec A (2026-09-26):** solapamiento #3/#5 → gana #5 «de momento»
+(va a revisar; quizas no deje activar similares); plantilla activa NO se edita («hay que detenerla y
+lanzar una nueva» por estadisticas); corre en todos los locales, puede excluir; apagar = FINALIZAR.
+**Hecho, commit `51541bd`:** ADR 0092 + spec **0101 en `borrador`** (espera OK del owner para
+`cerrada`) + filas en INDEX. Hallazgo medido: `loadActiveCampaigns` sin `ORDER BY` → azar entre
+campañas del mismo negocio (la 0101 lo arregla). Investigacion de solapamiento (verificada por el
+orquestador en las fuentes): Toast = tope GLOBAL de 28 d entre automaticas; SumUp (compro Fivestars;
+probable «Sumo» del owner, a confirmar) «prevents message overlap» sin detalle; Fivestars At-Risk
+15/30/45, Lapsed 30-150, Lost 180/270/365, sin regla de solapamiento documentada. Talon.One
+(verificado en docs.talon.one, 2026-09-26): «evaluation tree» de GRUPOS ordenados, cada grupo con
+modo Stackable | First campaign | Highest discount; «evaluated from top to bottom»; topes por
+cliente = «profile budgets» sobre CANJES, no sobre mensajes; evalua al momento de la compra (motor
+de promociones, no de outreach). La 0101 equivale a un grupo «First campaign» con orden fijo. **Sigue:** OK del
+owner a la 0101 → `cerrada` → implementador + revisor.
+
+**Gotcha nuevo de esta sesion, para la que viene:** trabajar con OTRA sesion de Claude
+Code (o el owner pegando codigo de ChatGPT) sobre el MISMO working tree hace que el Stop
+hook (`verify.sh`, `tasks-fresh.sh`) bloquee el turno por archivos AJENOS a mitad de
+edicion — paso dos veces en esta sesion (un JSX sin cerrar, un `no-empty-pattern` de
+ESLint), ninguno relacionado con el trabajo propio. `ListAgents` puede mostrar a esa
+sesion como `idle` aun cuando el archivo sigue cambiando en disco (edicion humana directa,
+no un tool-call de Claude) — no asumir que "idle" significa "estable". La resolucion que
+funciono las dos veces: leer el archivo, confirmar que el quiebre es un typo sintactico
+trivial (no una decision de diseño), corregir SOLO eso, remedir. Si el archivo sigue
+cambiando de forma sustantiva, no perseguirlo — es trabajo ajeno en vuelo, no un hallazgo
+propio. Vale la pena declarar esto en `CLAUDE.md`/`LECCIONES.md` si se repite una tercera
+vez (dos es la primera senal, no la regla todavia).
+
 ## Trabajo actual — spec 0100: entrega para QA live (2026-09-26)
 
 Owner pidió implementar [Spec0100](specs/0100-tours-de-onboarding-y-ayuda-de-loyalty.md)

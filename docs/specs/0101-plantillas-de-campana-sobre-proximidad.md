@@ -1,7 +1,7 @@
 ---
 spec: 0101
 fecha: 2026-09-26
-estado: borrador (espera el OK del owner para pasar a `cerrada`)
+estado: cerrada (2026-09-26, OK del owner: «me cierra»)
 resumen: Primeras campañas PREARMADAS (ADR 0091/0092) como API — «Te extrañamos» (#3) y «Recuperar perdidos» (#5) sobre el motor de proximidad existente. Tres rutas nuevas (listar plantillas, encender, apagar), columna `campaign.template_key` con una corrida viva por plantilla y negocio, parametros congelados (sin `PATCH`), apagar = finalizar (owner-only), locales = todos los usables menos los excluidos, y el tick con orden determinista (gana el mayor `dormant_days`). Entrega ademas el CONTRATO DE API completo de `/api/marketing/*` para quien construye la UI. No toca un `.tsx`.
 disjunta: si (la unica spec abierta, 0100, toca solo `app/backoffice/loyalty/**`)
 archivos: apps/merchant/drizzle/0044_*.sql, apps/merchant/drizzle/meta/**, apps/merchant/src/server/schema/campaign.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,campaign-input,campaign-store,audience-store}.ts, apps/merchant/src/app/api/marketing/{_auth.ts,templates/**}, apps/merchant/src/server/{marketing-route-names.ts,marketing-routes.test.ts,marketing-templates.neon.integration.test.ts,marketing-overlap.neon.integration.test.ts}, apps/merchant/src/server/marketing/{templates,template-input}.test.ts, docs/specs/0101-contratos-de-api.md
