@@ -8,7 +8,12 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: C (#4) EN SPEC 0105 `borrador`, ESPERA OK DEL OWNER (2026-09-27)
+## ⇥ ESTADO — MARKETING: C (#4) SPEC 0105 `cerrada` (`d8866ad`), IMPLEMENTADOR DESPACHADO (2026-09-27)
+
+**OK del owner a la 0105 (textual en la spec, «Abierto»):** «ok por ahora … para implementar conexion
+entre el api y ui para entenderlo mejor y alli ajustare»; anticipa que quiza sobren campañas que se
+pisan (#5 / #3 / evento). **OK para migrar prod la `0048`: NO dado** — pedirlo tras el PASS. Sigue:
+resultado del implementador → revisor independiente → migrar (con OK) → push.
 
 **C arrancada, commit `3c7267f`:** ADR 0097 + spec **0105 en `borrador`** + filas en INDEX. Cero codigo.
 **Owner (2026-09-27, AskUserQuestion, textual en el ADR 0097):** parametros «el ritmo ni yo lo comprendo.
