@@ -214,6 +214,55 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
     expect(web.calls).toEqual([]);
     expect((await readAccount(built.consumerId)).latestMessage).toBeNull();
   }, 120_000);
+
+  it("SEND despite ANOTHER consumer's unredeemed coupon and a purchase at ANOTHER business", async () => {
+    const built = await world("Push not mine");
+    const other = await seedConsumer();
+    const otherMembership = await seedMembership({
+      consumerId: other.id,
+      programId: built.seed.programId,
+      businessId: built.seed.business.id,
+    });
+    await getDb()
+      .insert(campaignCoupons)
+      .values({
+        campaignId: built.campaignId,
+        businessId: built.seed.business.id,
+        consumerId: other.id,
+        membershipId: otherMembership,
+        labelSnapshot: "2x1 en picadas",
+        costSnapshot: "2.50",
+        validFrom: new Date(NOON.getTime() - 24 * HOUR),
+        validUntil: ENDS,
+      });
+    const elsewhere = await seedBusiness({
+      name: `Push elsewhere ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+      kind: "stamps",
+      mode: "per_purchase",
+      grant: 1,
+      blockAmount: null,
+    });
+    seeds.push(elsewhere);
+    await seedOrder({
+      businessId: elsewhere.business.id,
+      locationId: elsewhere.locationId,
+      programId: elsewhere.programId,
+      membershipId: await seedMembership({
+        consumerId: built.consumerId,
+        programId: elsewhere.programId,
+        businessId: elsewhere.business.id,
+      }),
+      consumerId: built.consumerId,
+      userId: elsewhere.userId,
+      createdAt: new Date(NOON.getTime() - HOUR),
+    });
+    await work(built, NOON);
+    expect(await readPush(built.pushId)).toMatchObject({
+      sentAt: NOON,
+      cancelledAt: null,
+    });
+    expect(await coupons(built.consumerId)).toHaveLength(1);
+  }, 120_000);
 });
 
 async function expectCancelled(

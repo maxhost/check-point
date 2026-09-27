@@ -87,8 +87,17 @@ describe.skipIf(!integrationEnabled)("campaign results — push block", () => {
         });
       }
     };
-    // Sent 10 days ago: bought on day 6 (counts, and clicked) / day 8 (does not).
-    await decide({ decidedAt: T0, sentAt: T0, clickedAt: T0 }, 6);
+    // Sent 10 days ago: bought on day 6 (counts, and clicked) / day 8 (does not). The
+    // first was DECIDED two days before it went out: day 6 from `sent_at` is day 8 from
+    // `decided_at`, so measuring the sent group from the decision drops it.
+    await decide(
+      {
+        decidedAt: new Date(T0.getTime() - 2 * DAY),
+        sentAt: T0,
+        clickedAt: T0,
+      },
+      6,
+    );
     await decide({ decidedAt: T0, sentAt: T0 }, 8);
     // Sent 2 days ago: its 7 days are not over, it is not part of the rate.
     const recent = new Date(NOW.getTime() - 2 * DAY);
