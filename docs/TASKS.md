@@ -8,15 +8,23 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0103 (B1) IMPLEMENTADA CON PASS, SIN PUSH; ESPERA OK DEL OWNER PARA MIGRAR PROD (2026-09-27)
+## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; SIGUE LA B2 (#7/#8) (2026-09-27)
 
-**Retomar con: OK explicito del owner para aplicar la migracion `0046` a PROD** (`red-violet-38772073`
-/ `main`), ANTES del push: el codigo nuevo lee `campaign.channel_proximity` y rompe el tick sin ella; el
-codigo viejo con la migracion aplicada no se rompe. Despues: push, deploy de Vercel `READY` con el sha,
-QA del owner (encender #3 con `["push"]`, cliente dormido con Web Push, ver llegar y tocar el aviso).
-Commits locales sin push: `4185363`, `f8b867c`, `73bb503` (+ los de docs). Revisor: **PASS**.
-Orquestador reprodujo: Neon 6 archivos 26/26, y R2/R4/R3 en rojo con los casos nuevos (detalle en el
-«Cierre» de la spec). Sigue despues: **B2** (#7/#8).
+**Retomar con: «Arrancamos la B2»** (plantillas #7 Te falta poco y #8 Premio sin canjear, por push,
+sobre el canal de la 0103; propuesta de parametros ya respondida por el owner mas abajo —«Paso 2,
+plantillas #7 y #8»—, NO re-preguntar lo respondido). **Decision del owner (2026-09-27): el QA se hace
+TODO JUNTO al final**, cuando el arco entero (B2, C) este como API y ChatGPT haya construido la UI;
+no se le pide QA por spec. El QA pendiente acumulado: cupon en el mostrador (0102) y push de campaña
+(0103: encender #3 con `["push"]`, cliente dormido con Web Push, ver llegar/tocar el aviso, `clicked`
+en resultados).
+**0103 en PROD:** migracion `0046` aplicada con OK del owner a `red-violet-38772073`/`main`,
+verificada por SQL (migracion id 47; `channel_proximity`/`channel_push`, `push_window_*`,
+`core.campaign_push`, `campaign_coupon.push_id`, `cancelled` en el check de la cola, los 3 checks
+nuevos; esquemas `core`/`consumer`/`merchant_auth` intactos). Push `c003b59..35cb716`. Deploy
+verificado por efecto (no por sha: `gh` no esta en el PATH del shell del agente):
+`POST https://www.checkpass.club/api/public/push/click` con `{}` → **400** (ruta nueva).
+**Accion del owner:** rotar la password de `neondb_owner` (la connection string quedo en el
+transcript al migrar).
 **Objetivo del owner (2026-09-26): terminar TODO el arco de marketing como API —B1, B2, C— para que
 ChatGPT construya la UI**; cada spec entrega su contrato HTTP (`docs/specs/0101-contratos-de-api.md`).
 El QA del cupon (0102) lo hace el owner en paralelo y no bloquea.
