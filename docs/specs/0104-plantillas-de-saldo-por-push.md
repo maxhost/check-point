@@ -230,7 +230,7 @@ verificados en el arbol el 2026-09-27. Rojo por la propiedad (leer la asercion).
 | M4 | repeticion `every_30_days` | quitar la condicion de 30 d | unit/integracion: 2da decision a los 29 d → no |
 | M5 | canje en `visited` del gate | quitar el `exists` de `reward_redemption` | integracion: canje entre decision y entrega → `visited` |
 | M6 | `renderGap` por cliente | renderizar con el gap del PRIMER candidato | integracion: dos clientes con gap distinto → dos cuerpos distintos |
-| M7 | umbral segun el `kind` al tick | usar siempre `nearRewardStamps` | integracion: negocio Puntos, gap 15 de 100 con P 10 → no |
+| M7 | umbral segun el `kind` al tick | usar siempre `nearRewardStamps` | integracion: negocio Puntos, gap 10 de 100 con P 10 → SI (el umbral de sellos, 2, lo excluiria). *Corregida en la implementacion: la version original «gap 15 con P 10 → no» no distinguia la mutacion (15 > 2 excluye por las dos reglas; medido en verde por el implementador).* |
 | M8 | `no_usable_location` en `activate` | condicion incondicional (forma actual) | integracion: pause + activate solo-push sin puertas → `active` |
 | M9 | rechazo de cupon con `couponAllowed: false` | aceptarlo | unit `template-input`: #7 con cupon → 400 `couponLabel` |
 
