@@ -1714,3 +1714,18 @@ grupo e invadía el padding de la tarjeta de premio, junto con el input siguient
 amplió la medición a los límites interiores de esa tarjeta. Regla para este QA:
 verificar la contención dentro del control y de su tarjeta, además de líneas y
 overflow de página.
+
+## 2026-09-26 — la fila M2 de la 0101 nombraba un oraculo que no llegaba al codigo mutado
+
+Tercera fila falsa de una tabla de mutaciones escrita por el orquestador (despues de la M5 de la
+0085 y la M6 de la 0086). La M2 mandaba a mapear el `23505` del unico parcial a `503` y esperaba el
+rojo del caso de concurrencia (`Promise.all` de dos `enable`). Medido: VERDE — los dos `enable` se
+serializan lo suficiente para que el perdedor vea la fila ya commiteada en el `select` previo
+(`template-store.ts`), asi que el `catch` del `23505` nunca corria. El §2.0 se cumplio a medias: se
+verifico que el MECANISMO existia (`rg`), no que el ORACULO LLEGABA a el (§2.0-quinquies-bis). Se
+arreglo con un oraculo de carrera REAL (`marketing-templates-race.neon.integration.test.ts`): la tx
+A inserta sin commitear, B entra por el `enable` real, A lee `pg_stat_activity` hasta ver a B
+esperando el lock y recien ahi commitea; el caso asevera esa precondicion antes del resultado. M2
+re-medida → ROJO. **Regla:** en una fila cuyo oraculo es una CARRERA o un camino de error, el §2.0
+exige nombrar que hace que el test entre por esa rama y no por la que la precede; `Promise.all`
+sobre la misma base no es simultaneidad.

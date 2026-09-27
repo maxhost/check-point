@@ -8,19 +8,27 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: spec 0101 CERRADA, lista para implementar (2026-09-26)
+## ⇥ ESTADO — MARKETING: spec 0101 IMPLEMENTADA, falta migrar PROD + push (2026-09-26)
 
-**Retomar con: «Implementar spec 0101».** Sin codigo escrito todavia. Protocolo (CLAUDE.md §7 /
-ADR 0071): UN `implementador` para toda la spec + UN `revisor` independiente al final; cargar la
-skill `protocolo-de-verificacion` antes de encargar; presupuesto de mutaciones = las 6 filas
-M1-M6 de la spec, clase = errores plausibles. La spec lleva migracion `0044` (se aplica a PROD
-antes del deploy que lee la columna — skill `gotchas-del-repo`, Neon). `test:e2e` no aplica
-(no toca `.tsx`). Antes de pushear: 5 gates + suites `.neon` de marketing via
-`tools/neon-test.sh`; despues del push, verificar deploy `READY` con el sha (no esperar CI).
+**Hecho y verificado:** codigo en `900dfcb` (local, SIN pushear). Orquestador: typecheck, lint, test
+(1842 passed), prettier de los archivos de la spec; `tools/neon-test.sh` contra `ci-integration`: las 7
+suites de marketing (templates, templates-race, overlap, tick, lifecycle, campaign-actions, campaigns)
+verdes; SQL en esa rama: `core_campaign_template_key_check` y `core_campaign_template_live_unique`
+existen. Revisor independiente: **PASS**, M1–M6 ROJO por la propiedad, contrato verificado (13 rutas,
+18 codes, +25 citas). Docblocks falsos que cazo el revisor, corregidos en el mismo commit.
+`format:check` rojo SOLO por `globals.css` (ya fallaba en `HEAD`, commit `b328126`, sesion de loyalty).
 
-- **Spec:** `docs/specs/0101-plantillas-de-campana-sobre-proximidad.md` (`cerrada`, OK textual del
-  owner «me cierra»). **ADRs:** 0091 (catalogo de 16 campañas, dos modos, prioridad por flujo) y
-  0092 (plantilla = corrida con parametros congelados). Commits `b72b218`, `51541bd`.
+**Sigue, en orden (con OK del owner):** 1) aplicar migracion `0044` a PROD (skill `gotchas-del-repo`,
+Neon) ANTES del deploy que lee la columna; 2) push de `main`; 3) verificar deploy Vercel `READY` con el
+sha; 4) verificacion manual de la spec (JSON de `/api/marketing/templates`, enable/disable desde consola).
+
+**Declarado, no bloquea:** `marketing-routes.test.ts` en 459 lineas (>300; ya tenia 397) → candidato a
+dividir; el oraculo de carrera filtra `pg_stat_activity` por texto (con suites en paralelo podria dar un
+verde debil, nunca un rojo falso); el cableado de M3 solo tiene oraculo `.neon`; `enable` sin cuerpo →
+`400 invalid_body` (documentado en el contrato). Leccion de la fila M2 en `LECCIONES.md`.
+
+- **Spec:** `docs/specs/0101-plantillas-de-campana-sobre-proximidad.md` (`implementada`). **ADRs:** 0091
+  y 0092. **Contrato para la UI:** `docs/specs/0101-contratos-de-api.md`.
 - **Entrega de la 0101:** plantillas `missed_you` (#3) y `win_back` (#5) por proximidad; rutas
   `GET /api/marketing/templates`, `POST …/{key}/enable`, `POST …/{key}/disable` (owner-only);
   `ORDER BY dormant_days desc` en el tick; `docs/specs/0101-contratos-de-api.md` (13 rutas).
