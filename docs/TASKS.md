@@ -22,8 +22,9 @@ QA de #4 (al final): activar `at_risk` en un negocio de prueba con un cliente de
 15 dias de ausencia; tick; ver el push o el turno.
 
 **UI de marketing EN CURSO por GPT sobre ESTE working tree (2026-09-27):** aparecieron sin commitear
-`app/backoffice/marketing/{marketing-api.ts,marketing-types.ts,marketing-ui.tsx}` — NO son de esta
-sesion; no tocarlos ni commitearlos desde aca. El prompt que se le paso a GPT esta en el chat (lee el
+`app/backoffice/marketing/{marketing-api.ts,marketing-types.ts,marketing-ui.tsx,marketing-home.tsx}` y
+`page.tsx` modificado — NO son de esta sesion; no tocarlos ni commitearlos desde aca. Un rojo intermedio
+(`page.tsx` importando `./marketing-home` antes de existir) se resolvio solo cuando GPT creo el archivo. El prompt que se le paso a GPT esta en el chat (lee el
 contrato 0101, los ADRs 0091–0097, `docs/design-system.md` y usa `backoffice/loyalty` de referencia).
 **API faltante que reporto GPT — VERIFICADA por el orquestador, sin arreglar (el owner pidio no hacer
 nada todavia):** (1) `GET /api/marketing/audience-preview` solo es exacta para #3/#5 por proximidad:
