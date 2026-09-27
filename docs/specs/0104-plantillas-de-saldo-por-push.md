@@ -1,7 +1,7 @@
 ---
 spec: 0104
 fecha: 2026-09-27
-estado: cerrada
+estado: implementada
 resumen: Spec B2 — plantillas #7 «Te falta poco» (`near_reward`) y #8 «Premio sin canjear» (`unclaimed_reward`), solo push y sin cupon, grupo `balance` (#8 > #7), sobre el canal de la 0103 (implementa el ADR 0096). Audiencia = dormidos + saldo contra el premio mas barato del programa operativo; #7 una vez por ciclo de canje con marcador `{faltan}` renderizado por cliente; #8 una vez o cada 30 d (max 2) por ausencia; el canje cancela el push como `visited`. Arregla el `activate` de campañas solo-push (exigia puertas). Migracion `0047`.
 disjunta: si
 archivos: apps/merchant/drizzle/0047_*, apps/merchant/src/server/schema/campaign.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,campaign-store,campaign-actions,push-store,push-delivery,tick,utility-text}.ts + nuevos balance-*.ts, docs/specs/0101-contratos-de-api.md
@@ -252,3 +252,19 @@ con error y porque no se puede activar» → el mensaje del 409 dice el motivo y
 mensaje de #7** (aclarado por AskUserQuestion; fuera de #7 sigue dando 400); (4) «ok de momento si» a
 los dos grupos sin tope. **OK del owner para migrar prod** («aplica la migracion»): la `0047` se aplica
 a `red-violet-38772073`/`main` despues del PASS del revisor y ANTES del deploy.
+
+## Cierre (2026-09-27)
+
+Implementada en `7376984` + `066ace6` (oraculos R1/R4). Implementador: 5 gates verdes (1916 tests),
+Neon 18 archivos 86/86, M1–M9 en rojo (M7 con el caso corregido en `6f0853a`). Revisor independiente:
+**PASS** (gates re-corridos, build sin cache, Neon 7 archivos 37/37, sonda de la `0047` sobre filas como
+las de prod). Mutaciones del revisor: R2 (`{faltan}` obligatorio) y R3 (409 solo en `balance`) en rojo;
+R1 (filtro por programa operativo) y R4 (`own_decisions` sin canceladas) sobrevivian por falta de caso
+→ el orquestador agrego `marketing-balance-push-filters.neon.integration.test.ts` y las re-midio: las
+dos en ROJO por la propiedad (`pushDecided` 2 en vez de 1; 0 en vez de 1). `test:e2e`: 105/5/1 rojo
+previo (`loyalty-tour-help.spec.ts:40`, spec 0100).
+**Prod:** `0047` aplicada a `red-violet-38772073`/`main` (migracion id 48), verificada por SQL; push
+`45e35d1..066ace6`, Vercel `success` en `066ace6`.
+**Declarado:** el filtro por programa operativo lo agrego el implementador (la spec no lo decia); el
+comentario de `template-store.ts:166-167` es impreciso (inocuo); el orden `no_reward_yet`/
+`already_reached` de #8 solo cambia el motivo de exclusion.

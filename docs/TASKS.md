@@ -8,15 +8,24 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; B2 = SPEC 0104 IMPLEMENTADA (`7376984`), EN REVISION (2026-09-27)
+## ⇥ ESTADO — MARKETING: 0104 (B2, #7/#8) EN PROD; SIGUE LA C (#4) (2026-09-27)
 
-**Retomar con: «Arrancamos la B2»** (plantillas #7 Te falta poco y #8 Premio sin canjear, por push,
-sobre el canal de la 0103; propuesta de parametros ya respondida por el owner mas abajo —«Paso 2,
-plantillas #7 y #8»—, NO re-preguntar lo respondido). **Decision del owner (2026-09-27): el QA se hace
-TODO JUNTO al final**, cuando el arco entero (B2, C) este como API y ChatGPT haya construido la UI;
-no se le pide QA por spec. El QA pendiente acumulado: cupon en el mostrador (0102) y push de campaña
-(0103: encender #3 con `["push"]`, cliente dormido con Web Push, ver llegar/tocar el aviso, `clicked`
-en resultados).
+**Retomar con: «Arrancamos la C»** (plantilla #4 «En riesgo»: owner 2026-09-26 — arranca con «≥3
+visitas y ausencia > 2× su ritmo», EDITABLE; grupo REACTIVACION rango 3, #4 > #5 > #3; ver bloque
+«#3/#4/#5» mas abajo). **El QA se hace TODO JUNTO al final** (owner), cuando el arco sea API y ChatGPT
+haya hecho la UI. QA acumulado: cupon en mostrador (0102); push de campaña (0103: #3 con `["push"]`,
+Web Push, tocar, `clicked`); **#7/#8 (0104): encender #7 con un cliente dormido a 1 sello con Web
+Push → «¡Estás a 1 sello de tu premio!»; #8 con premio disponible; 409 `no_loyalty_reward` como toast.**
+**0104 en PROD:** migracion `0047` aplicada con OK del owner a `red-violet-38772073`/`main` (id 48),
+verificada por SQL (3 columnas, 6 checks, esquemas intactos); push `45e35d1..066ace6`; Vercel
+`success` en `066ace6`. Revisor: PASS; R1/R4 cerrados por el orquestador en `066ace6`.
+**Accion del owner:** rotar OTRA VEZ la password de `neondb_owner` (la connection string volvio a
+quedar en el transcript al migrar la `0047`).
+**Hallazgo sin arreglar:** el hook `.claude/hooks/file-size.sh` sale 0 SIN MIRAR si `node` no esta en
+el PATH (medido por el implementador de la 0104: 301 lineas → EXIT=0 sin nvm, EXIT=2 con nvm) → un
+guard que falla abierto; candidato a mistake→rule (hacerlo fallar ruidoso).
+**Pendiente ajeno:** `test:e2e` rojo en `main` por `loyalty-tour-help.spec.ts:40` (0100, otra sesion).
+
 **B2 — decisiones del owner (2026-09-27, AskUserQuestion):** (1) el faltante de #7 va con un
 **MARCADOR `{faltan}`** en el mensaje editable (eligio esto sobre el «automatico» recomendado); (2)
 **defaults = los propuestos**: #7 faltan ≤2 sellos o ≤20 % de puntos, 7 dias sin venir, una vez por
