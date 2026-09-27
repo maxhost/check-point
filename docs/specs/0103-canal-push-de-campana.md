@@ -1,7 +1,7 @@
 ---
 spec: 0103
 fecha: 2026-09-26
-estado: cerrada
+estado: implementada
 resumen: Spec B1 — canal push de campaña para las plantillas #3/#5 (implementa el ADR 0095). `enable` recibe `channels` (proximidad, push o ambos; default ambos); el tick decide envios en `core.campaign_push` (holdout 10 %, grupos #5 > #3 desde la ultima visita) y encola `campaign` en `wallet_push_queue`; el worker re-chequea al entregar (cancela o reprograma al horario del negocio), entrega como el transaccional, emite el cupon y marca `sent_at`; click por Web Push; conversion a 7 dias en resultados; `GET/PATCH /api/marketing/settings` para el horario. Migracion `0046`.
 disjunta: si
 archivos: apps/merchant/drizzle/0046_*, apps/merchant/src/server/schema/{campaign,campaign-coupon,campaign-push,business,consumer,index}.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,audience-store,tick,campaign-store,results,results-store}.ts + nuevos push-*.ts, apps/merchant/src/server/wallet/{push,push-transports}.ts, apps/merchant/src/server/push/webpush-channel.ts, apps/merchant/public/sw.js, apps/merchant/src/app/api/marketing/settings/route.ts, apps/merchant/src/app/api/public/push/click/route.ts, docs/specs/0101-contratos-de-api.md
@@ -333,3 +333,17 @@ Nada. **El owner aprobo la spec y los 4 puntos *(ORQUESTADOR)* de abajo («ok, c
 2. Solo-push no exige puertas con coordenadas.
 3. Holdout cuenta como «ya decidido» para la regla de grupos.
 4. Consecuencia: sin tope, hasta 2 push por ausencia por negocio (#3 y #5).
+
+## Cierre (2026-09-27)
+
+Implementada en `4185363` + `f8b867c` (contrato) + `73bb503` (oraculos). Revisor independiente:
+**PASS** (gates re-corridos, 1894 tests; Neon 15 archivos 74/74; `test:e2e` solo con el rojo previo de
+la 0100). M1-M8 en rojo (implementador). Mutaciones del revisor: R1 (orden por rank) y R5 (`>=`) en
+rojo; R2 (cupon ajeno), R4 (compra en otro negocio) y R3 (`t0 = sent_at`) sobrevivian por falta de caso
+→ el orquestador agrego los casos y las re-midio: las tres en ROJO por la propiedad.
+**Declarado:** `membership_gone` es inalcanzable en la base (FK sin `on delete`; ningun camino de la
+app borra membresias; FKs NO ACTION hermanas ya existian) — solo oraculo unit; `WorkerSummary.sent`
+cuenta cancel/reschedule (observabilidad); si `recordCampaignPushSent` falla tras el envio, `sent_at`
+queda null (push enviado sin cupon ni conversion; no reintenta para no duplicar); `templates` expone
+`group`/`rank`; click 500 si cae la base (el `sw.js` lo ignora); un cancel del gate adelanta el reloj
+del planner y puede demorar 3 min otra `campaign` del mismo consumidor.

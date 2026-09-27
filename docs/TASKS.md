@@ -8,17 +8,15 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: SPEC 0103 (B1) IMPLEMENTADA SIN PUSH, EN REVISION INDEPENDIENTE (2026-09-27)
+## ⇥ ESTADO — MARKETING: 0103 (B1) IMPLEMENTADA CON PASS, SIN PUSH; ESPERA OK DEL OWNER PARA MIGRAR PROD (2026-09-27)
 
-**Retomar con: el veredicto del revisor de la 0103.** Implementada en `4185363` (codigo, migracion
-`0046`, tests) + `f8b867c` (contrato en `0101-contratos-de-api.md`), SIN push. Reporte del
-implementador (sin reproducir aun por el orquestador salvo arbol limpio y sin mutaciones): 5 gates
-verdes, `test:e2e` con solo el rojo previo de la 0100, Neon 14 archivos 68/68, M1-M8 en rojo.
-Hallazgos que se le pasaron al revisor: `WorkerSummary.sent` cuenta cancel/reschedule; fallo de
-`recordCampaignPushSent` tragado (`sent_at` null con push enviado); `membership_gone` inalcanzable por
-la FK `campaign_push.membership_id` (¿regresion en un borrado de membresia?); `templates` expone
-`group`/`rank`; click 500 si cae la base. Despues del PASS: OK explicito del owner para migrar
-`0046` a PROD ANTES del deploy, push, deploy `READY`, QA del owner.
+**Retomar con: OK explicito del owner para aplicar la migracion `0046` a PROD** (`red-violet-38772073`
+/ `main`), ANTES del push: el codigo nuevo lee `campaign.channel_proximity` y rompe el tick sin ella; el
+codigo viejo con la migracion aplicada no se rompe. Despues: push, deploy de Vercel `READY` con el sha,
+QA del owner (encender #3 con `["push"]`, cliente dormido con Web Push, ver llegar y tocar el aviso).
+Commits locales sin push: `4185363`, `f8b867c`, `73bb503` (+ los de docs). Revisor: **PASS**.
+Orquestador reprodujo: Neon 6 archivos 26/26, y R2/R4/R3 en rojo con los casos nuevos (detalle en el
+«Cierre» de la spec). Sigue despues: **B2** (#7/#8).
 **Objetivo del owner (2026-09-26): terminar TODO el arco de marketing como API —B1, B2, C— para que
 ChatGPT construya la UI**; cada spec entrega su contrato HTTP (`docs/specs/0101-contratos-de-api.md`).
 El QA del cupon (0102) lo hace el owner en paralelo y no bloquea.
