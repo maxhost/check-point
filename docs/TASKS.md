@@ -8,25 +8,24 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: spec 0101 IMPLEMENTADA, EN PROD Y PUSHEADA; falta QA del owner (2026-09-26)
+## ⇥ ESTADO — MARKETING: 0101 EN PROD; SIGUE LA SPEC B (canal push de campañas) (2026-09-26)
 
-**Hecho y verificado:** codigo en `900dfcb` (local, SIN pushear). Orquestador: typecheck, lint, test
-(1842 passed), prettier de los archivos de la spec; `tools/neon-test.sh` contra `ci-integration`: las 7
-suites de marketing (templates, templates-race, overlap, tick, lifecycle, campaign-actions, campaigns)
-verdes; SQL en esa rama: `core_campaign_template_key_check` y `core_campaign_template_live_unique`
-existen. Revisor independiente: **PASS**, M1–M6 ROJO por la propiedad, contrato verificado (13 rutas,
-18 codes, +25 citas). Docblocks falsos que cazo el revisor, corregidos en el mismo commit.
-`format:check` rojo SOLO por `globals.css` (ya fallaba en `HEAD`, commit `b328126`, sesion de loyalty).
+**Retomar con: «Arrancamos la spec B».** Antes de escribir prosa (ADR 0071) hay que pedirle al owner
+DOS decisiones, que siguen abiertas: **(1) solapamiento** — hoy gana el mayor `dormant_days` (0101);
+propuesta del orquestador SIN decidir: GRUPOS estilo Talon.One (una campaña por grupo llega al
+cliente) + tope GLOBAL estilo Toast; el owner iba a revisar Fivestars/«Sumo» (¿= SumUp?);
+**(2) anti-hartazgo/abuso** — ¿alcanza el tope de 1 push por negocio/cliente cada 7 d o algo mas
+(tope mensual, silenciar un negocio)? Lo YA acordado de la B esta en la vineta «Despues de la 0101».
 
-**Hecho con OK del owner:** migracion `0044` aplicada a PROD (proyecto `red-violet-38772073`, rama
-`main`): leido por SQL → 45 migraciones, CHECK + unico parcial + columna nullable, esquemas intactos.
-`main` pusheado hasta `5a09495` (mas este commit de docs). **Sigue:** el OWNER verifica el deploy
-`READY` y hace el QA manual (pasos en la spec, «Verificacion manual»); el orquestador no lo sondea.
+**0101 cerrada:** en PROD (migracion `0044` leida por SQL en `red-violet-38772073`/`main`) y pusheada;
+el owner la vio andar y la re-verifica cuando tenga la UI. **Deuda cerrada en `74a6740`:**
+`marketing-routes.test.ts` dividido (299 lineas + `marketing-routes-support.ts`; mismos 76 tests, el
+guard de `disable` mutado sigue dando 3 rojos) y `globals.css` formateado → `format:check` verde otra
+vez. `test:e2e` no se corrio: el cambio de CSS es un salto de linea dentro de un selector.
 
-**Declarado, no bloquea:** `marketing-routes.test.ts` en 459 lineas (>300; ya tenia 397) → candidato a
-dividir; el oraculo de carrera filtra `pg_stat_activity` por texto (con suites en paralelo podria dar un
-verde debil, nunca un rojo falso); el cableado de M3 solo tiene oraculo `.neon`; `enable` sin cuerpo →
-`400 invalid_body` (documentado en el contrato). Leccion de la fila M2 en `LECCIONES.md`.
+**Declarado de la 0101, no bloquea:** el oraculo de carrera filtra `pg_stat_activity` por texto (con
+suites en paralelo podria dar un verde debil, nunca un rojo falso); el cableado de M3 solo tiene
+oraculo `.neon`; `enable` sin cuerpo → `400 invalid_body` (en el contrato).
 
 - **Spec:** `docs/specs/0101-plantillas-de-campana-sobre-proximidad.md` (`implementada`). **ADRs:** 0091
   y 0092. **Contrato para la UI:** `docs/specs/0101-contratos-de-api.md`.
