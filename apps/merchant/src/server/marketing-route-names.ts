@@ -4,8 +4,8 @@
  *
  *  - `marketing-routes-coverage.test.ts` derives the same set from the FILESYSTEM and
  *    demands they are equal, so a route born without a guard cannot hide;
- *  - `marketing-routes.test.ts` demands its hand-written `HANDLERS` table covers exactly
- *    these names, so a listed route with nobody exercising its guard cannot hide either.
+ *  - `marketing-routes.test.ts` demands the hand-written `HANDLERS` table (built in
+ *    `marketing-routes-support.ts`) covers exactly these names, so a listed route with nobody exercising its guard cannot hide either.
  *
  * The two checks live apart because only the second one needs the module mocks; the
  * sweep is a static property and loads nothing. Transitively they pin what matters: the

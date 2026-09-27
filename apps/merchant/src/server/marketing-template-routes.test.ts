@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Spec 0101 — what the three template routes hand the domain and how they answer. The
  * GUARDS of the same routes (401, 403 `not_owner` on `disable`, the caller's business) are
- * in `marketing-routes.test.ts`, in the shared `HANDLERS` table; this file exists apart
- * only because that one is past the size budget.
+ * in `marketing-routes.test.ts`, over the shared `HANDLERS` table of
+ * `marketing-routes-support.ts`; the cases here are the ones that are not guards.
  */
 
 const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";

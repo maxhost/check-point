@@ -7,7 +7,7 @@ import { MARKETING_ROUTE_NAMES } from "./marketing-route-names";
  * A route file that is born WITHOUT a guard while the suite stays green is the shape of
  * spec 0046 (a locked door beside an open wall) and of the MIME sweep. This derives the
  * expected `METHOD /path` set from the FILESYSTEM and demands it equals the declared
- * one; `marketing-routes.test.ts` then demands its `HANDLERS` table covers exactly that
+ * one; `marketing-routes.test.ts` then demands the `HANDLERS` table covers exactly that
  * declared set.
  *
  * PROXY, and labelled as such: it pins that every handler is LISTED, never that its
