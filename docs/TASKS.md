@@ -8,12 +8,18 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: C (#4) SPEC 0105 IMPLEMENTADA, PASS (`6013db2`+`f086615`, docs `c59b95b`), SIN PUSH (2026-09-27)
+## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
-**Revisor: PASS.** R1/R2/R3 (sin oraculo) cerrados por el orquestador en `f086615` y re-medidos en ROJO;
-gates verdes (1931 tests), Neon 15/15. **Falta, en este orden:** OK del owner para aplicar la `0048` a
-`red-violet-38772073`/`main` (pedido, NO dado) → migrar y verificar por SQL → push → deploy con el sha
-en `READY`. Con eso el arco B1/B2/C queda como API; sigue la UI (ChatGPT) y el QA todo junto.
+**Retomar con: la UI del arco de marketing** (ChatGPT, contra `docs/specs/0101-contratos-de-api.md`);
+despues el QA TODO JUNTO (owner). El owner va a revisar ahi los parametros de #4 (3 visitas, 2×) y si
+sobran campañas que se pisan (#3/#5/evento).
+**0105 en PROD:** `0048` aplicada con OK del owner a `red-violet-38772073`/`main`, verificada por SQL
+(migracion id 49, check con `at_risk`, `core`/`consumer`/`merchant_auth` intactos, 18 checks en
+`core.campaign`); push `74f7773..a1f84de`; Vercel `success` en `a1f84de`. Revisor: PASS; R1/R2/R3 cerrados en `f086615`.
+**Accion del owner:** rotar la password de `neondb_owner` (la connection string volvio a quedar en el
+transcript al migrar la `0048`).
+QA de #4 (al final): activar `at_risk` en un negocio de prueba con un cliente de 3 visitas semanales y
+15 dias de ausencia; tick; ver el push o el turno.
 **Historial de esta C (abajo, antes del PASS):**
 
 **Implementador:** commit `6013db2`, gates verdes (1929 tests), `test:e2e` 105/5/1 con el rojo previo

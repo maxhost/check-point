@@ -181,5 +181,6 @@ de `opt_out`) sobrevivian por falta de caso → el orquestador agrego
 y los re-midio: R1, R2 (en los dos loaders) y R3 (en los dos caminos) en ROJO por la propiedad.
 Gates re-corridos tras `f086615`: 1931 tests, Neon 3 archivos 15/15.
 **Declarado:** `BalanceCandidate` omite el habito de visitas (#7/#8 no lo usan); el build del revisor
-salio de la cache de turbo. **Prod:** `0048` sin aplicar y sin push — espera el OK del owner.
+salio de la cache de turbo. **Prod:** `0048` aplicada con OK del owner a `red-violet-38772073`/`main` (migracion id 49), verificada
+por SQL; push `74f7773..a1f84de`.
 
