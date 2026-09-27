@@ -8,13 +8,17 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: SPEC 0103 (B1, CANAL PUSH) CERRADA, EN IMPLEMENTACION (2026-09-26)
+## ⇥ ESTADO — MARKETING: SPEC 0103 (B1) IMPLEMENTADA SIN PUSH, EN REVISION INDEPENDIENTE (2026-09-27)
 
-**Retomar con: estado del implementador de la 0103** (`docs/specs/0103-canal-push-de-campana.md`, ADR
-0095). El owner la aprobo con sus 4 puntos *(ORQUESTADOR)* («ok, cerrada y mandala a implementar»).
-Flujo: UN implementador → UN revisor independiente → migrar `0046` a prod SOLO con OK explicito del
-owner y ANTES del deploy → push. Si la sesion se cae: `git log`/`git status` dicen hasta donde llego el
-implementador; `ListAgents` antes de tocar una mutacion heredada.
+**Retomar con: el veredicto del revisor de la 0103.** Implementada en `4185363` (codigo, migracion
+`0046`, tests) + `f8b867c` (contrato en `0101-contratos-de-api.md`), SIN push. Reporte del
+implementador (sin reproducir aun por el orquestador salvo arbol limpio y sin mutaciones): 5 gates
+verdes, `test:e2e` con solo el rojo previo de la 0100, Neon 14 archivos 68/68, M1-M8 en rojo.
+Hallazgos que se le pasaron al revisor: `WorkerSummary.sent` cuenta cancel/reschedule; fallo de
+`recordCampaignPushSent` tragado (`sent_at` null con push enviado); `membership_gone` inalcanzable por
+la FK `campaign_push.membership_id` (¿regresion en un borrado de membresia?); `templates` expone
+`group`/`rank`; click 500 si cae la base. Despues del PASS: OK explicito del owner para migrar
+`0046` a PROD ANTES del deploy, push, deploy `READY`, QA del owner.
 **Objetivo del owner (2026-09-26): terminar TODO el arco de marketing como API —B1, B2, C— para que
 ChatGPT construya la UI**; cada spec entrega su contrato HTTP (`docs/specs/0101-contratos-de-api.md`).
 El QA del cupon (0102) lo hace el owner en paralelo y no bloquea.
