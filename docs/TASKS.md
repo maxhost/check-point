@@ -16,6 +16,33 @@ propuesta del orquestador SIN decidir: GRUPOS estilo Talon.One (una campaña por
 cliente) + tope GLOBAL estilo Toast; el owner iba a revisar Fivestars/«Sumo» (¿= SumUp?);
 **(2) anti-hartazgo/abuso** — ¿alcanza el tope de 1 push por negocio/cliente cada 7 d o algo mas
 (tope mensual, silenciar un negocio)? Lo YA acordado de la B esta en la vineta «Despues de la 0101».
+**Respuestas del owner (2026-09-26, sesion de la spec B):** (1) solapamiento → **GRUPOS estilo
+Talon.One** (no prioridad fija, no bloquear similares); (2) **SIN tope global** entre negocios (solo
+el de 1 push cada 7 d por negocio/consumidor); (3) horario de envio **editable por negocio**, 9–21 h
+por defecto, solo push de campaña (lo transaccional no se toca). Silenciar un negocio YA existe
+(opt-out 0065, `program_membership.marketing_opt_out_at`). **Segunda ronda (owner, 2026-09-26):**
+grupos **FIJOS de plataforma** (SALDO #8 > #7; REACTIVACION #4 > #5 > #3; modo «primera campaña»;
+sin API de grupos); tope de 7 d → **«sin limite de momento hasta que entendamos como aplicarlo de
+forma correcta»** (revoca el «SI al tope de 7 d» anterior). Consecuencia a declarar en la spec, NO
+decidida por el owner: la frecuencia la limitan solo las reglas propias de cada plantilla (#7 una vez
+por ciclo; #8 una vez | cada 30 d, max 2) y un cliente puede recibir push de los dos grupos del mismo
+negocio en dias seguidos.
+**Tercera ronda (owner, 2026-09-26):** (a) canales de #3/#5: «al activar siempre se muestra el editor
+antes de confirmar la activacion, desde alli puede cambiar configuraciones, por ejemplo entre
+proximidad, push o ambos» (UX/UI aparte, la hace el owner) → la API de `enable` recibe los canales;
+el default (ambos) es propuesta del ORQUESTADOR; (b) la B se PARTE: **B1 = canal push de campaña**
+(atribucion, horario por negocio, holdout, clicks Web Push, grupos) estrenado en #3/#5; **B2 = #7/#8**
+con sus audiencias de saldo. **Medido para la B1:** `core.business.timezone` existe (`schema/
+business.ts:84`); tick cada 6 h (`.github/workflows/marketing-tick.yml`), worker de push cada 5 min
+(`wallet-push-cron.yml`); el cooldown de la cola es de 3 min por consumidor (`wallet/push.ts:17`, no
+es de marketing); Apple lleva el texto por `consumer_account.latest_message` del pase compartido
+(`push.ts:141`); `sw.js` solo navega (sin click al servidor).
+**Cuarta ronda (owner, 2026-09-26):** el cupon atado al canal es «ridiculo» → el cupon es del
+CLIENTE DENTRO DE LA CAMPAÑA, canjeable con el pase llegue por el canal que llegue. Hoy esta atado al
+turno (`coupon_redemption.turn_id NOT NULL`; el mostrador busca un `campaign_turn` `active`,
+`counter/coupon-store.ts:57`). **Decision: spec PROPIA antes de la B1** (el desacople toca el canje
+del mostrador). Orden nuevo: **B0 cupon desacoplado → B1 canal push → B2 #7/#8 → C #4.**
+**En curso: ADR + spec B0.**
 
 **0101 cerrada:** en PROD (migracion `0044` leida por SQL en `red-violet-38772073`/`main`) y pusheada;
 el owner la vio andar y la re-verifica cuando tenga la UI. **Deuda cerrada en `74a6740`:**
