@@ -1,7 +1,7 @@
 ---
 spec: 0105
 fecha: 2026-09-27
-estado: borrador
+estado: cerrada
 resumen: Spec C — plantilla #4 «Cliente en riesgo» (`at_risk`), implementa el ADR 0097. Reactivacion como #3/#5 (proximidad, push o ambos; cupon opcional); audiencia = dormido ≥ N dias (14/30/45, def. 14) Y habitual que rompio su ritmo (≥3 dias con compra, ausencia > 2× su intervalo promedio; 3 y 2× fijos). Escalera #3 → #4 → #5 (rangos 1/2/3) y proximidad ordenada por rango. Migracion `0048` (solo el check de `template_key`).
 disjunta: si
 archivos: apps/merchant/drizzle/0048_*, apps/merchant/src/server/schema/campaign.ts, apps/merchant/src/server/marketing/{templates,audience,audience-store,push-audience,push-store,tick}.ts + nuevo at-risk.ts, docs/specs/0101-contratos-de-api.md
@@ -162,6 +162,8 @@ la `0048` aplicada no se rompe (el check solo se ensancha).
 
 ## Abierto
 
-Nada que bloquee. Pendiente de OK del owner para pasar a `cerrada`: las elecciones *(ORQUESTADOR)* del
-ADR 0097 (3 visitas y 2× fijos, escalera #3 → #4 → #5, proximidad por rango, canje fuera del ritmo) y
-el OK para migrar prod la `0048` tras el PASS.
+Nada. **OK del owner (2026-09-27, textual):** «ok por ahora. vamos por alli quiero acabar, para
+implementar conexion entre el api y ui para entenderlo mejor y alli ajustare. incluso puede que lo que
+hoy vemos que se pisa por ejemplo "cliente en perdida" con "te extrañamos" con "evento" u otros, no sea
+necesario tener tantas campañas» → las elecciones *(ORQUESTADOR)* del ADR 0097 quedan como estan, a
+revisar con la UI. **El OK para migrar prod la `0048` NO fue dado todavia:** se pide tras el PASS.
