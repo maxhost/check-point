@@ -1,7 +1,7 @@
 ---
 adr: 0093
 fecha: 2026-09-26
-estado: aceptada
+estado: aceptada — §4 SUPERSEDIDO por el ADR 0094 (vigencia hasta `ends_at` de la campaña)
 resumen: El cupon de una campaña deja de vivir en el TURNO de proximidad y pasa a ser una fila propia, `core.campaign_coupon` = «el cupon de ESTE cliente en ESTA campaña», con su ventana de validez y su snapshot de label/costo. El canal (proximidad hoy, push en la B1) solo lo EMITE; el mostrador lo canjea escaneando el pase sin saber por donde llego. `coupon_redemption` referencia al cupon, no al turno. Un cupon emitido sobrevive a lo que le pase al turno (opt-out, local archivado); lo corta solo el estado de la campaña, su ventana, su canje o el tope.
 ---
 

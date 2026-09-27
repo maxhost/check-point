@@ -2,9 +2,9 @@
 spec: 0102
 fecha: 2026-09-26
 estado: borrador
-resumen: El cupon de campaña pasa del turno de proximidad a una fila propia `core.campaign_coupon` (ADR 0093); la proximidad lo emite al activar un turno no-holdout, el mostrador lo pinta y lo canja por `couponId` sin saber el canal, y `coupon_redemption` referencia al cupon. Prerrequisito de la B1 (push de campaña).
+resumen: El cupon de campaña pasa del turno de proximidad a una fila propia `core.campaign_coupon` (ADR 0093), valida desde que se emite hasta el `ends_at` de su campaña aunque la apaguen (ADR 0094); campaña con cupon exige fecha de fin; la proximidad lo emite al activar un turno no-holdout, el mostrador lo canjea por `couponId` sin saber el canal. Prerrequisito de la B1.
 disjunta: si
-archivos: apps/merchant/src/server/schema/campaign-turn.ts, apps/merchant/drizzle/0045_*.sql, apps/merchant/src/server/marketing/placement.ts, apps/merchant/src/server/marketing/turn-lifecycle.ts, apps/merchant/src/server/counter/coupon-store.ts, apps/merchant/src/server/counter/coupon-decision.ts, apps/merchant/src/server/counter/coupon.ts, apps/merchant/src/app/backoffice/counter/{types.ts,coupon-panel.tsx,counter-console.tsx}, tests y supports de cupon
+archivos: apps/merchant/src/server/schema/{campaign-turn.ts,campaign.ts}, apps/merchant/src/server/marketing/{campaign-input.ts,template-input.ts}, apps/merchant/drizzle/0045_*.sql, apps/merchant/src/server/marketing/placement.ts, apps/merchant/src/server/marketing/turn-lifecycle.ts, apps/merchant/src/server/counter/coupon-store.ts, apps/merchant/src/server/counter/coupon-decision.ts, apps/merchant/src/server/counter/coupon.ts, apps/merchant/src/app/backoffice/counter/{types.ts,coupon-panel.tsx,counter-console.tsx}, tests y supports de cupon
 ---
 
 # 0102 — Cupon de campaña desacoplado del canal (B0)
@@ -16,14 +16,19 @@ snapshot (`coupon_label_snapshot`, `coupon_cost_snapshot`), `coupon_redemption.t
 `NOT NULL`, y el mostrador busca un turno `active`, no holdout, con ventana abierta
 (`server/counter/coupon-store.ts:57-59`) para pintar y canjear. La spec B1 suma el push como canal de
 campaña: con el modelo actual, un cliente alcanzado por push no tendria cupon canjeable. El owner lo
-rechazo (ADR 0093) y pidio desacoplarlo en una spec propia antes de la B1.
+rechazo (ADR 0093) y pidio desacoplarlo en una spec propia antes de la B1. Y fijo la vigencia (ADR 0094):
+un cupon emitido vale hasta la fecha de fin de su campaña aunque la apaguen, lo que obliga a que toda
+campaña con cupon tenga fecha de fin — hoy las plantillas se encienden sin ella por defecto.
 
 ## Alcance
 
 **Entra:**
 - Tabla `core.campaign_coupon` y migracion `0045`.
 - `coupon_redemption.turn_id` → `coupon_id`.
-- Emision del cupon al activar un turno de proximidad (no holdout, campaña con cupon).
+- Emision del cupon al activar un turno de proximidad (no holdout, campaña con cupon), vigente hasta el
+  `ends_at` de la campaña.
+- Campaña con cupon ⇒ `ends_at` obligatorio: `CHECK` en la base + 400 `validation` en compositor (crear y `PATCH`) y
+  en `enable` de plantillas.
 - Mostrador: scan (`resolve`) y canje (`coupon-redeem`) sobre el cupon, con el contrato renombrado.
 - El resultado del turno (`expireTurns` y el canje) leyendo el canje a traves del cupon.
 - Contrato HTTP del mostrador para el cupon, escrito (seccion «Contrato»).
@@ -34,6 +39,8 @@ rechazo (ADR 0093) y pidio desacoplarlo en una spec propia antes de la B1.
 - Que el consumidor vea sus cupones en el portal.
 - Quitar `coupon_label_snapshot`/`coupon_cost_snapshot` de `campaign_turn`: los sigue usando el
   texto del pase (`placement-plan.ts:211`). No se tocan.
+- El aviso al comercio de que apagar no anula los cupones (UI, owner). La pantalla vieja del
+  compositor no se adapta: si manda un cupon sin fecha de fin recibe el 400 `validation` con su mensaje.
 - Rediseño de la UI del mostrador: solo se renombran los campos que consume (ADR 0070: la UI nueva
   la hace el owner por fuera).
 
@@ -57,10 +64,13 @@ rechazo (ADR 0093) y pidio desacoplarlo en una spec propia antes de la B1.
 | `turn_id` | uuid → `core.campaign_turn` | nullable, **unico** (un turno emite a lo sumo un cupon); nullable para la B1 (push sin turno) |
 | `label_snapshot` | text | `NOT NULL`, 1..40 (mismo check que `coupon_label`) |
 | `cost_snapshot` | numeric(12,2) | `NOT NULL`, `>= 0` |
-| `valid_from`, `valid_until` | timestamptz | `NOT NULL`, check `valid_until > valid_from` |
+| `valid_from`, `valid_until` | timestamptz | `NOT NULL`, check `valid_until > valid_from`. `valid_until` = `campaign.ends_at` COPIADO al emitir (ADR 0094 §1) |
 | `created_at` | timestamptz | `defaultNow()` |
 
 Indice `(business_id, consumer_id, valid_until)` para el scan.
+
+`core.campaign`: `CHECK core_campaign_coupon_needs_end_check` = `coupon_label is null or ends_at is
+not null` (prod: 0 filas, nada que lo viole).
 
 `core.coupon_redemption`: se borra `turn_id` y su unico `core_coupon_redemption_turn_unique`; se
 agrega `coupon_id uuid NOT NULL → core.campaign_coupon` con unico
@@ -71,16 +81,19 @@ coupon_redemption.id` se conserva.
 **Emision (proximidad).** En `applyPlan` (`server/marketing/placement.ts:65`), dentro de la misma
 transaccion del tick, por cada activacion con `holdout = false` y `couponLabelSnapshot !== null`, se
 inserta un `campaign_coupon` con `turn_id` = el turno, `valid_from = windowStart`,
-`valid_until = windowEnd`, snapshots = los de la activacion (`cost_snapshot` =
+`valid_until = ends_at` de la campaña del turno (leido en la misma transaccion; el check de arriba
+garantiza que no es null, y un turno solo se activa con la campaña en fecha, asi que
+`ends_at > windowStart`), snapshots = los de la activacion (`cost_snapshot` =
 `couponCostSnapshot ?? "0.00"`, como hoy en `coupon-store.ts`). `on conflict (turn_id) do nothing`
 (unico NO parcial: no aplica el gotcha de `on conflict` sobre parciales). **El holdout no emite**: hoy
 `placement-plan.ts:211` copia el label tambien a los holdout, asi que la condicion es obligatoria.
-Se exporta una funcion pura `couponToIssue(activation)` → fila o `null`, que es la que decide.
+Se exporta una funcion pura `couponToIssue(activation, campaignEndsAt)` → fila o `null`, que es la
+que decide.
 
 **Scan (`loadActiveCoupon`).** Busca en `campaign_coupon` del `(business, consumer)`:
-`valid_from <= now <= valid_until`, campaña `active`, y sin fila en `coupon_redemption`
-(`not exists … cr.coupon_id = c.id`). Orden total `valid_until asc, id asc`, `limit 1`. **No mira
-el turno** (ADR 0093 §4). Devuelve `{ couponId, label, campaignName, validUntil }`.
+`valid_from <= now <= valid_until` y sin fila en `coupon_redemption` (`not exists … cr.coupon_id =
+c.id`). Orden total `valid_until asc, id asc`, `limit 1`. **No mira el turno ni el estado de la
+campaña** (ADR 0094 §2): una campaña pausada o finalizada sigue mostrando sus cupones vigentes. Devuelve `{ couponId, label, campaignName, validUntil }`.
 
 **Canje (`persistCouponRedemption`).** Mismo orden normativo que hoy, con el cupon en lugar del turno:
 (0) leer `campaign_id` del cupon con scope `business_id` (ajeno → 404 `unknown_coupon`); (1)
@@ -94,13 +107,20 @@ que hoy (fila con esa clave → reintento; sin fila → el unico que salto es el
 409 `already_redeemed`).
 
 **Decision (`decideCouponRedemption`).** Hechos: `{ coupon: { validFrom, validUntil,
-redeemed }, campaign: { status, couponMaxRedemptions }, redeemedCount, now }`. Orden normativo:
-1. `coupon_not_active` (409) — campaña no `active`, o `now` fuera de `valid_from..valid_until`.
+redeemed }, campaign: { couponMaxRedemptions }, redeemedCount, now }`. Orden normativo:
+1. `coupon_not_active` (409) — `now` fuera de `valid_from..valid_until`.
 2. `already_redeemed` (409).
 3. `coupon_cap_reached` (409) — `redeemedCount >= couponMaxRedemptions`; `null` = sin tope.
 
-Desaparecen del canje los casos «turno no `active`» y «holdout»: un holdout no tiene cupon y el estado
-del turno ya no cuenta (ADR 0093 §4).
+Desaparecen del canje los casos «turno no `active`», «holdout» y «campaña no `active`»: un holdout no
+tiene cupon, y ni el turno ni el estado de la campaña cuentan (ADR 0094 §2). El `FOR UPDATE` de la
+campaña se conserva: es lo que serializa el tope.
+
+**Fecha de fin obligatoria.** Una funcion `requireEndForCoupon(errors, deal, endsAt)` en
+`campaign-input.ts` pone `errors.endsAt = "Una campaña con cupón necesita fecha de fin."` cuando hay
+cupon y `endsAt === null`. La llaman `parseCampaignInput` (cubre crear y `PATCH`, que re-parsea con
+ella en `campaign-input.ts:258`) y `parseTemplateInput`. Respuesta: el 400 `validation` que ya
+devuelven esas rutas (`campaign-store.ts:173,249`, `template-store.ts:138`), con el campo `endsAt`. El `CHECK` es el backstop.
 
 **Resultado del turno (`expireTurns`, `turn-lifecycle.ts:41`).** «Canjeado» pasa a ser
 `exists (select 1 from core.coupon_redemption cr join core.campaign_coupon cc on cc.id =
@@ -142,6 +162,9 @@ ADR 0093 (este cambio), 0065 (turnos, holdout), 0054 §3 (unicos como backstop),
 | Archivo | Accion |
 |---|---|
 | `apps/merchant/src/server/schema/campaign-turn.ts` | editar: `campaignCoupons`, `couponRedemptions.couponId` |
+| `apps/merchant/src/server/schema/campaign.ts` | editar: check cupon ⇒ `ends_at` |
+| `apps/merchant/src/server/marketing/campaign-input.ts`, `template-input.ts` | editar: `requireEndForCoupon` y sus dos llamadas |
+| `docs/specs/0101-contratos-de-api.md` | editar: la regla nueva en crear/`PATCH`/`enable` |
 | `apps/merchant/drizzle/0045_*.sql` + `meta/` | crear (generado) |
 | `apps/merchant/src/server/marketing/placement.ts` | editar: emision en `applyPlan` |
 | `apps/merchant/src/server/marketing/coupon-issue.ts` | crear: `couponToIssue` puro |
@@ -168,26 +191,35 @@ Ninguno que el orquestador deba dejar listo.
 - [ ] Migracion `0045` generada; aplicada en la rama de CI por `tools/neon-test.sh`.
 - [ ] Un turno activado, no holdout, de campaña con cupon deja UN `campaign_coupon` con la ventana del
   turno; un holdout no deja ninguno; correr el tick dos veces no duplica.
-- [ ] El scan pinta el cupon aunque el turno se haya cancelado por `opt_out` o `location_archived`, y
-  deja de pintarlo al canjearlo, al pausar la campaña o fuera de su ventana.
+- [ ] El scan pinta el cupon aunque el turno se haya cancelado por `opt_out` y aunque la campaña este
+  pausada o finalizada; deja de pintarlo al canjearlo o pasado el `ends_at` de la campaña.
+- [ ] Crear, `PATCH` y `enable` con cupon y sin `endsAt` → 400 `validation` con `errors.endsAt`; un `insert` directo viola el
+  `CHECK`.
 - [ ] El canje escribe `coupon_redemption.coupon_id`, marca el turno `coupon_redeemed`, y las carreras
   de `counter-coupon-races` siguen dejando una fila (mismo cupon) y respetando el tope (cupones
   distintos).
 - [ ] `expireTurns` marca `coupon_redeemed` a un turno cuyo cupon se canjeo.
 - [ ] `rg -n 'turnId|unknown_turn|turn_not_active|windowEnd' apps/merchant/src/server/counter apps/merchant/src/app/backoffice/counter` → vacio.
-- [ ] Contrato del cupon copiado a `0072-contratos-de-api.md`.
+- [ ] Contrato del cupon copiado a `0072-contratos-de-api.md`; regla de fecha de fin en
+  `0101-contratos-de-api.md`.
 - [ ] Seis gates verdes: `typecheck`, `lint`, `test`, `format:check`, `build`, `test:e2e` (toca pantalla
   del mostrador) + los `.neon.integration` de cupon y marketing con `tools/neon-test.sh`.
 
 ## Plan de pruebas y verificación
 
-- [ ] **Unit `coupon-issue.test.ts`:** `couponToIssue` → fila con ventana y snapshots; `null` para
-  holdout; `null` sin label; `cost_snapshot` `"0.00"` si el costo es null.
+- [ ] **Unit `coupon-issue.test.ts`:** `couponToIssue` → fila con `valid_until` = el `ends_at` recibido y
+  snapshots; `null` para holdout; `null` sin label; `cost_snapshot` `"0.00"` si el costo es null.
+- [ ] **Unit `campaign-input.test.ts` / `template-input.test.ts`:** cupon sin `endsAt` → `errors.endsAt`;
+  cupon con `endsAt` → ok; sin cupon y sin `endsAt` → ok. Uno por parser (oraculos de CABLEADO de M7),
+  y uno de `parseCampaignPatch` que quita el `endsAt` de una campaña con cupon.
 - [ ] **Unit `coupon-decision.test.ts`** (reescrito al contrato nuevo): ventana no abierta / vencida /
-  campaña pausada → `coupon_not_active`; `already_redeemed` gana al tope; tope `>=`; tope `null` = sin
+  → `coupon_not_active` (y una campaña pausada ya NO lo es: la decision no recibe el estado); `already_redeemed` gana al tope; tope `>=`; tope `null` = sin
   tope; `coupon_not_active` gana a los otros dos.
 - [ ] **Integracion `counter-coupon.neon.integration.test.ts`:** los casos actuales al contrato nuevo, mas:
-  (a) turno cancelado por `opt_out` → el scan sigue pintando el cupon y el canje da 200; (b) holdout →
+  (a) turno cancelado por `opt_out` → el scan sigue pintando el cupon y el canje da 200; (a') campaña
+  FINALIZADA con el cupon en fecha → el scan lo pinta y el canje da 200 (el caso actual «ni el de una
+  campaña pausada» se invierte: ahora la pinta); (a'') pasado `ends_at` → no la pinta y el canje da 409
+  `coupon_not_active`; (b) holdout →
   el scan no pinta nada y no existe fila en `campaign_coupon`; (c) cupon de otro negocio → 404
   `unknown_coupon`.
 - [ ] **Integracion del tick** (en `marketing-outcome` o un archivo nuevo `marketing-coupon-issue`):
@@ -205,7 +237,7 @@ Ninguno que el orquestador deba dejar listo.
 - [ ] Verificacion manual: el owner, en el mostrador, escanea un pase con cupon y lo canjea
   (requiere una campaña con cupon y un turno activo; QA del owner con la UI actual).
 
-### Mutaciones (presupuesto: 6; clase: errores PLAUSIBLES de un refactor de canje)
+### Mutaciones (presupuesto: 7; clase: errores PLAUSIBLES de un refactor de canje)
 
 Cada fila nombra un mecanismo que la spec crea (o que ya existe, con su linea) y el oraculo que lo
 distingue. Protocolo: skill `protocolo-de-verificacion` (shasum, bitacora, etiqueta, `diff`).
@@ -214,14 +246,15 @@ distingue. Protocolo: skill `protocolo-de-verificacion` (shasum, bitacora, etiqu
 |---|---|---|---|
 | M1 | emision en `applyPlan` (`placement.ts`) | borrar la llamada que inserta el cupon | integracion del tick: «un `campaign_coupon` por turno activado» (CABLEADO; el unit de `couponToIssue` no lo ve) |
 | M2 | `couponToIssue`: condicion `holdout` | quitar la condicion | unit «`null` para holdout» + integracion (b) |
-| M3 | `loadActiveCoupon` sin mirar el turno | re-agregar `join campaign_turn … status = 'active'` | integracion (a): turno cancelado por `opt_out` y el cupon se sigue pintando |
+| M3 | `loadActiveCoupon` sin mirar turno ni campaña | re-agregar `campaigns.status = 'active'` al scan y a la decision (la forma plausible: copiar la guarda vieja) | integracion (a'): campaña finalizada con cupon en fecha se sigue pintando y canjeando |
 | M4 | `FOR UPDATE` de la campaña (hoy `coupon-store.ts:184`) | quitar el `.for("update")` de la campaña | carrera «ONE slot left in the cap, two DIFFERENT coupons leave ONE row» |
 | M5 | `expireTurns`: canjeado via `cc.turn_id = t.id` | cambiar el predicado a `cc.campaign_id = t.campaign_id` (join plausible y equivocado) | integracion del tick con DOS turnos vencidos de la MISMA campaña, uno solo canjeado: el otro tiene que quedar `purchase`/`none`, no `coupon_redeemed` (el caso tiene que existir; con un solo turno la mutacion da verde) |
 | M6 | marcado del turno en el canje (paso 4) | borrar el `update` del turno | `counter-coupon`: «writes the row and the outcome» |
+| M7 | llamada a `requireEndForCoupon` en `parseTemplateInput` | borrar la llamada | unit de `template-input` «cupon sin `endsAt`» (el de `campaign-input` no la ve: son dos cableados; el `CHECK` daria 500, no 400) |
 
 **Declarado fuera:** que el cupon sobreviva a `location_archived` y `membership_gone` se cubre con
-un solo caso (`opt_out`), porque el scan no lee el turno (M3 ataca la unica forma plausible de
-volver a leerlo). La UI del mostrador se cubre solo con typecheck + e2e de humo; el QA visual es del
+un solo caso (`opt_out`), porque el scan no lee el turno. El cableado de `requireEndForCoupon` en
+`parseCampaignInput` tiene su unit pero no su mutacion (presupuesto): lo cubre ademas el `CHECK`. La UI del mostrador se cubre solo con typecheck + e2e de humo; el QA visual es del
 owner.
 
 ## Handoff requerido
@@ -236,5 +269,4 @@ sin filas que perder). Por eso: migrar y pushear en seguida, y verificar el depl
 
 ## Abierto
 
-Nada bloqueante. A confirmar por el owner al dar el OK: ADR 0093 §4 (el cupon emitido sobrevive a la
-cancelacion del turno), que es consecuencia del desacople y no palabra suya.
+Nada. La vigencia la decidio el owner (ADR 0094).
