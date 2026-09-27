@@ -20,6 +20,19 @@ sobran campañas que se pisan (#3/#5/evento).
 transcript al migrar la `0048`).
 QA de #4 (al final): activar `at_risk` en un negocio de prueba con un cliente de 3 visitas semanales y
 15 dias de ausencia; tick; ver el push o el turno.
+
+**UI de marketing EN CURSO por GPT sobre ESTE working tree (2026-09-27):** aparecieron sin commitear
+`app/backoffice/marketing/{marketing-api.ts,marketing-types.ts,marketing-ui.tsx}` — NO son de esta
+sesion; no tocarlos ni commitearlos desde aca. El prompt que se le paso a GPT esta en el chat (lee el
+contrato 0101, los ADRs 0091–0097, `docs/design-system.md` y usa `backoffice/loyalty` de referencia).
+**API faltante que reporto GPT — VERIFICADA por el orquestador, sin arreglar (el owner pidio no hacer
+nada todavia):** (1) `GET /api/marketing/audience-preview` solo es exacta para #3/#5 por proximidad:
+no conoce el ritmo (#4 infla), ni el saldo (#7/#8), rechaza < 7 dias (`audience-preview.ts:34`, pero #7
+ofrece 3 → 400), y para push cuenta `hasPass`, no alcanzabilidad push; (2) la lista de locales solo sale
+de `GET /api/locations` con el permiso `locations` (`app/api/locations/_auth.ts`), asi que un staff con
+`marketing` sin `locations` no puede excluir locales (el owner si). El §5 paso 2 del contrato 0101 manda
+a usar las dos: defecto NUESTRO. Propuesta (sin decidir): spec chica sin migracion — preview por
+plantilla+canal reusando las decisiones del tick, y lectura de locales bajo el guard de marketing.
 **Historial de esta C (abajo, antes del PASS):**
 
 **Implementador:** commit `6013db2`, gates verdes (1929 tests), `test:e2e` 105/5/1 con el rojo previo
