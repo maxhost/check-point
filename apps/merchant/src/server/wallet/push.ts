@@ -12,6 +12,10 @@ import {
   webPushChannelFromEnv,
 } from "../push/webpush-channel";
 import { deliverTransports } from "./push-transports";
+import {
+  gateCampaignPush,
+  recordCampaignPushSent,
+} from "../marketing/push-delivery";
 
 /** Minimum spacing between two pushes to the same consumer (ADR 0037). */
 export const COOLDOWN_MINUTES = Number(
@@ -130,6 +134,14 @@ async function deliverClaimed(
   const message: PushMessage = { header: claim.title, body: claim.body };
   const latest = claim.title ? `${claim.title}: ${claim.body}` : claim.body;
   try {
+    // Spec 0103: a `campaign` asks marketing FIRST — it may cancel or reschedule the row
+    // (which then writes nothing here), and a send carries the push's click id.
+    let clickId: string | undefined;
+    if (claim.class === "campaign") {
+      const gate = await gateCampaignPush(id, now);
+      if (gate.kind !== "send") return;
+      clickId = gate.clickId;
+    }
     if (!silent)
       await getDb()
         .update(consumerAccounts)
@@ -142,7 +154,7 @@ async function deliverClaimed(
       claim.consumerId,
       message,
       claim.class,
-      { channel, webPushChannel },
+      { channel, webPushChannel, clickId },
     );
     const deliveryError = deliveryErrors.length
       ? deliveryErrors.join(" | ").slice(0, 500)
@@ -152,6 +164,7 @@ async function deliverClaimed(
       SET status = 'sent', sent_at = ${now.toISOString()},
           last_error = ${deliveryError}
       WHERE id = ${id}`);
+    if (clickId) await recordSent(clickId, now);
     if (silent) return;
     await getDb()
       .update(consumerAccounts)
@@ -176,6 +189,16 @@ async function deliverClaimed(
                         THEN not_before
                         ELSE ${new Date(now.getTime() + BACKOFF_MS).toISOString()} END
       WHERE id = ${id}`);
+  }
+}
+
+/** The row is already `sent`: a failure here must NOT fall into the retry path (that
+ * would push the notice again), so it is logged and the push keeps `sent_at` null. */
+async function recordSent(pushId: string, now: Date): Promise<void> {
+  try {
+    await recordCampaignPushSent(pushId, now);
+  } catch (error) {
+    console.error("[wallet-push] campaign_push sent_at/coupon failed", error);
   }
 }
 

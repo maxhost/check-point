@@ -82,6 +82,10 @@ export const businesses = core.table(
     /** ISO 4217 currency for prices; default derived from the country at migration time. */
     currencyCode: text("currency_code").notNull().default("USD"),
     timezone: text("timezone").notNull(),
+    /** Spec 0103 / ADR 0095 §6: the hours `[start, end)`, in `timezone`, in which a
+     * CAMPAIGN push may go out. Only the push of a campaign reads them. */
+    pushWindowStartHour: integer("push_window_start_hour").notNull().default(9),
+    pushWindowEndHour: integer("push_window_end_hour").notNull().default(21),
     brandPrimaryColor: text("brand_primary_color").notNull().default("#176548"),
     brandComplementaryColor: text("brand_complementary_color")
       .notNull()
@@ -118,6 +122,10 @@ export const businesses = core.table(
     ),
     check("business_brand_revision_check", sql`${table.brandRevision} >= 1`),
     check("business_logo_version_check", sql`${table.logoVersion} >= 0`),
+    check(
+      "core_business_push_window_check",
+      sql`${table.pushWindowStartHour} between 0 and 23 and ${table.pushWindowEndHour} between 1 and 24 and ${table.pushWindowStartHour} < ${table.pushWindowEndHour}`,
+    ),
     check(
       "business_currency_code_check",
       sql`${table.currencyCode} ~ '^[A-Z]{3}$'`,

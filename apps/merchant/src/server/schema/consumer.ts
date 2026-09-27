@@ -253,7 +253,8 @@ export const walletPushDevices = consumer.table(
  * `transactional` row is enqueued INSIDE `persistGrant`'s transaction (0030), so an
  * accredited order ⇔ its push row. The worker claims a row (`pending` → `sending`),
  * delivers it, and closes it (`sent`) or backs it off (`pending`, then `failed` after
- * N attempts). `not_before` gates when it may go out (default now); the worker never
+ * N attempts), or —a `campaign` only, spec 0103— `cancelled` by marketing's delivery gate.
+ * `not_before` gates when it may go out (default now); the worker never
  * sends earlier. No token/secret columns — the whole row is safe to serialize.
  */
 export const walletPushQueue = consumer.table(
@@ -292,7 +293,7 @@ export const walletPushQueue = consumer.table(
     ),
     check(
       "wallet_push_queue_status_check",
-      sql`${table.status} in ('pending', 'sending', 'sent', 'failed')`,
+      sql`${table.status} in ('pending', 'sending', 'sent', 'failed', 'cancelled')`,
     ),
   ],
 );

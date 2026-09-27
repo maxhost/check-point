@@ -35,3 +35,15 @@ export const boughtList = sql.join(
   BOUGHT_OUTCOMES.map((outcome) => sql`${outcome}`),
   sql`, `,
 );
+
+/** Spec 0103: the two channel booleans of `core.campaign` as the DTO's `channels`, always
+ * in this order. The composer's campaigns come out `["proximity"]`. */
+export function channelsOf(row: {
+  channelProximity: boolean;
+  channelPush: boolean;
+}): ("proximity" | "push")[] {
+  return [
+    ...(row.channelProximity ? (["proximity"] as const) : []),
+    ...(row.channelPush ? (["push"] as const) : []),
+  ];
+}

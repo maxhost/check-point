@@ -13,6 +13,7 @@ import { businesses } from "./business";
 import { consumerAccounts, programMemberships } from "./consumer";
 import { campaigns } from "./campaign";
 import { campaignTurns } from "./campaign-turn";
+import { campaignPushes } from "./campaign-push";
 
 /**
  * THE COUPON OF ONE CONSUMER IN ONE CAMPAIGN (spec 0102 / ADR 0093). A channel only
@@ -28,6 +29,8 @@ import { campaignTurns } from "./campaign-turn";
  * `turn_id` is the PROVENANCE: nullable because the push channel (spec B1) issues coupons
  * without a turn, and unique because a turn issues at most one coupon — the unique is
  * NOT partial, so the issuer's `on conflict (turn_id) do nothing` needs no predicate.
+ * `push_id` (spec 0103) is the same for the push channel: one coupon per delivered push,
+ * `on conflict (push_id) do nothing`. A coupon has at most ONE origin.
  */
 export const campaignCoupons = core.table(
   "campaign_coupon",
@@ -46,6 +49,7 @@ export const campaignCoupons = core.table(
       .notNull()
       .references(() => programMemberships.id),
     turnId: uuid("turn_id").references(() => campaignTurns.id),
+    pushId: uuid("push_id").references(() => campaignPushes.id),
     labelSnapshot: text("label_snapshot").notNull(),
     costSnapshot: numeric("cost_snapshot", {
       precision: 12,
@@ -71,6 +75,11 @@ export const campaignCoupons = core.table(
       sql`${table.validUntil} > ${table.validFrom}`,
     ),
     uniqueIndex("core_campaign_coupon_turn_unique").on(table.turnId),
+    uniqueIndex("core_campaign_coupon_push_unique").on(table.pushId),
+    check(
+      "core_campaign_coupon_single_origin_check",
+      sql`${table.turnId} is null or ${table.pushId} is null`,
+    ),
     // The counter's scan: this consumer's coupons at this business, soonest to expire.
     index("core_campaign_coupon_scan_idx").on(
       table.businessId,

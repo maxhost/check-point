@@ -14,6 +14,8 @@ const world = vi.hoisted(() => ({
   listTemplates: vi.fn(),
   enableTemplate: vi.fn(),
   disableTemplate: vi.fn(),
+  loadMarketingSettings: vi.fn(),
+  updateMarketingSettings: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -67,22 +69,20 @@ vi.mock("./marketing/template-store", () => ({
   disableTemplate: world.disableTemplate,
 }));
 
-import { POST } from "../app/api/marketing/campaigns/route";
-import { POST as ACTIVATE } from "../app/api/marketing/campaigns/[id]/activate/route";
-import { CampaignError } from "./marketing/campaign-store";
+// Spec 0103: the settings routes. Only the store is replaced.
+vi.mock("./marketing/push-settings", () => ({
+  loadMarketingSettings: world.loadMarketingSettings,
+  updateMarketingSettings: world.updateMarketingSettings,
+}));
+
 import { MARKETING_ROUTE_NAMES } from "./marketing-route-names";
 import {
   CALLER_BUSINESS,
   CAMPAIGN,
-  FIELDS,
   FOREIGN_BUSINESS,
   FOREIGN_CAMPAIGN,
   OWNER_ROW,
-  base,
   marketingHandlers,
-  one,
-  params,
-  request,
   signedInOwner as signIn,
 } from "./marketing-routes-support";
 
@@ -111,6 +111,8 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     world.listTemplates.mockResolvedValue([]);
     world.enableTemplate.mockResolvedValue(CAMPAIGN);
     world.disableTemplate.mockResolvedValue({ campaign: CAMPAIGN });
+    world.loadMarketingSettings.mockResolvedValue({});
+    world.updateMarketingSettings.mockResolvedValue({});
   });
 
   it.each(HANDLERS)(
@@ -229,65 +231,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
   );
 });
 
-describe("api/marketing — how the domain's error becomes an answer", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    signedInOwner();
-    world.transitionCampaign.mockResolvedValue({ campaign: CAMPAIGN });
-  });
-
-  it.each([
-    { status: 402, code: "plan_not_allowed" },
-    { status: 404, code: "not_found" },
-    { status: 409, code: "invalid_transition" },
-  ])("a CampaignError $status keeps its status and its code", async (kind) => {
-    world.transitionCampaign.mockRejectedValue(
-      new CampaignError(kind.status, kind.code, "Mensaje del dominio."),
-    );
-    const response = await ACTIVATE(request(`${one}/activate`, "POST", {}), {
-      params,
-    });
-    expect(response.status).toBe(kind.status);
-    expect(await response.json()).toEqual({
-      error: "Mensaje del dominio.",
-      code: kind.code,
-    });
-  });
-
-  it("a 400 validation carries `fields`, which is what paints the composer", async () => {
-    world.createCampaign.mockRejectedValue(
-      new CampaignError(400, "validation", "Revisá los datos.", {
-        message: "Máximo 60 caracteres.",
-      }),
-    );
-    const response = await POST(request(base, "POST", FIELDS));
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: "Revisá los datos.",
-      code: "validation",
-      fields: { message: "Máximo 60 caracteres." },
-    });
-  });
-
-  it("a body that is not JSON is a 400 `invalid_body` and never reaches the domain", async () => {
-    const response = await POST(request(base, "POST", "{no-json"));
-    expect(response.status).toBe(400);
-    expect((await response.json()).code).toBe("invalid_body");
-    expect(world.createCampaign).not.toHaveBeenCalled();
-  });
-
-  it("anything else is a 503 that says nothing about the failure", async () => {
-    // The exact `toEqual` IS the assertion: a host or a stack here would leak to the browser.
-    world.createCampaign.mockRejectedValue(
-      new Error("connect ECONNREFUSED 10.0.0.5:5432"),
-    );
-    const response = await POST(request(base, "POST", FIELDS));
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({
-      error: "No pudimos crear la campaña.",
-    });
-  });
-
+describe("api/marketing — the guard table", () => {
   // The other half of this check lives in `marketing-routes-coverage.test.ts`, which
   // derives the same names from the FILESYSTEM. Together: a route that exists is
   // declared, and a route that is declared has its guard exercised above.

@@ -64,6 +64,8 @@ export async function loadActiveCampaigns(
     .where(
       and(
         eq(campaigns.status, "active"),
+        // Spec 0103: a push-only template queues no turn and writes no photo.
+        eq(campaigns.channelProximity, true),
         lte(campaigns.startsAt, now),
         or(isNull(campaigns.endsAt), gt(campaigns.endsAt, now)),
         businessIds && businessIds.length > 0

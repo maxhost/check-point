@@ -26,4 +26,7 @@ export const MARKETING_ROUTE_NAMES = [
   "GET /api/marketing/templates",
   "POST /api/marketing/templates/:key/enable",
   "POST /api/marketing/templates/:key/disable",
+  // Spec 0103 — the campaign-push hours.
+  "GET /api/marketing/settings",
+  "PATCH /api/marketing/settings",
 ];

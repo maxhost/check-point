@@ -85,6 +85,41 @@ export type CouponFacts = {
   incurredCost: string | null;
 };
 
+/**
+ * The push channel of the campaign (spec 0103 §10 / ADR 0095 §9), as counted by SQL.
+ * `conversion` only counts decisions whose 7 days are OVER: a push sent yesterday has not
+ * had its chance yet and cannot be part of a rate (same reason as `window.holdoutN`).
+ * «Bought» = an order of the business within `(t0, t0 + 7 d]`, `t0` = `sent_at` for the
+ * sent group and `decided_at` for the holdout.
+ */
+export type PushFacts = {
+  decided: number;
+  held: number;
+  pending: number;
+  sent: number;
+  cancelled: {
+    campaign_inactive: number;
+    membership_gone: number;
+    opt_out: number;
+    visited: number;
+  };
+  clicked: number;
+  conversion: {
+    sent: { purchases: number; of: number };
+    held: { purchases: number; of: number };
+  };
+};
+
+export const PUSH_CONVERSION_DAYS = 7;
+
+export type PushResults = Omit<PushFacts, "conversion"> & {
+  quality: "observada";
+  conversion: {
+    windowDays: typeof PUSH_CONVERSION_DAYS;
+  } & PushFacts["conversion"];
+  effect: EffectLine;
+};
+
 export type ResultsFacts = {
   audience: AudiencePhoto | null;
   turns: TurnTally;
@@ -93,6 +128,8 @@ export type ResultsFacts = {
   byLocation: LocationRow[];
   /** Per BUSINESS, not per campaign: «estás en el pase de K de tus C clientes». */
   passReach: { inPass: number; members: number };
+  /** `null` when the campaign has no push channel. */
+  push: PushFacts | null;
 };
 
 export type EffectLine =
@@ -112,6 +149,7 @@ export type CampaignResults = {
   coupon: { quality: Quality } & CouponFacts;
   byLocation: { quality: Quality; rows: LocationRow[] };
   passReach: { quality: Quality; inPass: number; members: number };
+  push: PushResults | null;
 };
 
 /** A rate with the empty case explicit — same guard as `merit.ts`: with no turns the
@@ -180,5 +218,22 @@ export function buildCampaignResults(facts: ResultsFacts): CampaignResults {
     coupon: { quality: "estimado_configurado", ...facts.coupon },
     byLocation: { quality: "observada", rows: facts.byLocation },
     passReach: { quality: "observada", ...facts.passReach },
+    push: facts.push === null ? null : buildPushResults(facts.push),
+  };
+}
+
+/** The same `estimateEffect` (and floor of 30 holdouts) as proximity, over the 7-day
+ * conversion: sent is the treated group, holdout the control. */
+export function buildPushResults(push: PushFacts): PushResults {
+  return {
+    quality: "observada",
+    ...push,
+    conversion: { windowDays: PUSH_CONVERSION_DAYS, ...push.conversion },
+    effect: estimateEffect({
+      placedN: push.conversion.sent.of,
+      placedPurchases: push.conversion.sent.purchases,
+      holdoutN: push.conversion.held.of,
+      holdoutPurchases: push.conversion.held.purchases,
+    }),
   };
 }

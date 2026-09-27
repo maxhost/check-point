@@ -11,6 +11,10 @@ import { GET as RESULTS } from "../app/api/marketing/campaigns/[id]/results/rout
 import { GET as TEMPLATES } from "../app/api/marketing/templates/route";
 import { POST as ENABLE } from "../app/api/marketing/templates/[key]/enable/route";
 import { POST as DISABLE } from "../app/api/marketing/templates/[key]/disable/route";
+import {
+  GET as SETTINGS,
+  PATCH as SETTINGS_PATCH,
+} from "../app/api/marketing/settings/route";
 
 /**
  * The `HANDLERS` table of `marketing-routes.test.ts` and its fixtures, split out so that
@@ -41,6 +45,8 @@ export type MarketingRoutesWorld = {
   listTemplates: Spy;
   enableTemplate: Spy;
   disableTemplate: Spy;
+  loadMarketingSettings: Spy;
+  updateMarketingSettings: Spy;
 };
 
 export const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
@@ -179,6 +185,25 @@ export function marketingHandlers(
       spy: world.disableTemplate,
       action: null,
       ownerOnly: true,
+    },
+    // Spec 0103 — delegable like `enable`: the hours are reversible.
+    {
+      name: "GET /api/marketing/settings",
+      call: () =>
+        SETTINGS(
+          request(`/api/marketing/settings?b=${FOREIGN_BUSINESS}`, "GET"),
+        ),
+      spy: world.loadMarketingSettings,
+      action: null,
+      ownerOnly: false,
+    },
+    {
+      name: "PATCH /api/marketing/settings",
+      call: () =>
+        SETTINGS_PATCH(request(`/api/marketing/settings`, "PATCH", FIELDS)),
+      spy: world.updateMarketingSettings,
+      action: null,
+      ownerOnly: false,
     },
   ];
 }

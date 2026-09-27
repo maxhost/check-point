@@ -41,6 +41,13 @@ import {
   type PlacementLimits,
 } from "./placement-plan";
 import { placeConsumers } from "./placement";
+import { decidePushEligibility } from "./push-audience";
+import {
+  type PushCampaign,
+  loadPushCampaigns,
+  loadPushCandidates,
+  recordPushDecision,
+} from "./push-store";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
 
 export type TickSummary = {
@@ -52,6 +59,10 @@ export type TickSummary = {
   cancelled: number;
   consumers: number;
   refreshes: number;
+  /** Spec 0103: `campaign_push` rows written this run (holdouts included)… */
+  pushDecided: number;
+  /** …and how many of them are holdouts (no queue row). */
+  pushHeld: number;
 };
 
 export type TickResult = TickSummary | { skipped: "tick_in_flight" };
@@ -134,6 +145,39 @@ async function runCampaign(
   );
 }
 
+/**
+ * Step «1b push» for ONE campaign (spec 0103 §4): every eligible membership gets ONE
+ * decision, holdout drawn with the same rate as a turn. Idempotent without a unique: the
+ * rows written here are the `lastGroupDecisionAt` the next run reads (`already_reached`),
+ * and the advisory lock keeps two runs from interleaving.
+ */
+async function runPushCampaign(
+  db: DbTransaction,
+  campaign: PushCampaign,
+  now: Date,
+  draw: () => boolean,
+): Promise<{ decided: number; held: number }> {
+  const candidates = await loadPushCandidates(
+    db,
+    campaign.businessId,
+    campaign.template,
+  );
+  let decided = 0;
+  let held = 0;
+  for (const candidate of candidates) {
+    const eligibility = decidePushEligibility(candidate, {
+      now,
+      dormantDays: campaign.dormantDays,
+    });
+    if (eligibility.kind !== "eligible") continue;
+    const holdout = draw();
+    await recordPushDecision(db, campaign, candidate, holdout, now);
+    decided += 1;
+    if (holdout) held += 1;
+  }
+  return { decided, held };
+}
+
 export async function runMarketingTick(
   options: TickOptions = {},
 ): Promise<TickResult> {
@@ -151,6 +195,25 @@ export async function runMarketingTick(
     for (const campaign of campaigns)
       enqueued += await runCampaign(db, campaign, now, limits.cooldownDays);
 
+    // 1b push — AFTER step 1, in the same transaction, higher rank first.
+    const random = options.random ?? Math.random;
+    let pushDecided = 0;
+    let pushHeld = 0;
+    for (const campaign of await loadPushCampaigns(
+      db,
+      now,
+      options.businessIds,
+    )) {
+      const push = await runPushCampaign(
+        db,
+        campaign,
+        now,
+        () => random() < limits.holdoutRate,
+      );
+      pushDecided += push.decided;
+      pushHeld += push.held;
+    }
+
     const expired = await expireTurns(db, now, options.businessIds);
     const cancelled = Object.values(
       await cancelTurns(db, options.businessIds),
@@ -159,7 +222,7 @@ export async function runMarketingTick(
     const merit = buildMeritTable(await loadBusinessTurnStats(db));
     const placement = await placeConsumers(db, {
       now,
-      random: options.random ?? Math.random,
+      random,
       merit,
       limits: options.limits,
       consumerIds: options.consumerIds,
@@ -170,6 +233,8 @@ export async function runMarketingTick(
       expired,
       cancelled,
       ...placement,
+      pushDecided,
+      pushHeld,
     } satisfies TickSummary;
   });
   // Emitted AND returned: the route answers with it and the integration asserts it, so

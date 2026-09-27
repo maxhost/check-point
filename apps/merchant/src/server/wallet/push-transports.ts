@@ -167,7 +167,7 @@ export async function consumerHasReachableWallet(
  * routing is unit-testable without a DB — the effectful send lives in
  * {@link deliverTransports}. `transactional` goes ONLY by wallet when it is reachable, and
  * falls back to Web Push ONLY when it is not (the two never coexist → never a duplicate).
- * `campaign` keeps the provisional fan-out until the campaign spec refines it.
+ * `campaign` (spec 0103) routes exactly like `transactional`; the ADR 0038 fan-out is gone.
  *
  * The two Google transports are SEPARATE flags (spec 0065): `googleAddMessage` notifies
  * (that IS `addMessage`) and `googlePatch` does not. A single `google` flag made the
@@ -183,7 +183,8 @@ export function planTransports(
   noticeClass: string,
   reachableWallet: boolean,
 ): TransportPlan {
-  if (noticeClass === "transactional") {
+  // Spec 0103 / ADR 0095 §4: a `campaign` goes exactly like a `transactional`.
+  if (noticeClass === "transactional" || noticeClass === "campaign") {
     return reachableWallet
       ? {
           apple: true,
@@ -208,13 +209,7 @@ export function planTransports(
       googleAddMessage: false,
       webPush: false,
     };
-  // `campaign` (provisional, no rows in prod): keep the ADR 0038 fan-out.
-  return {
-    apple: true,
-    googleAddMessage: true,
-    googlePatch: false,
-    webPush: true,
-  };
+  throw new Error(`planTransports: clase desconocida ${noticeClass}`);
 }
 
 /**
@@ -222,7 +217,9 @@ export function planTransports(
  * the ADR 0038 §3 fan-out). A `transactional` goes by wallet (Apple APNs + Google
  * `addMessage`, spec 0033) when the consumer has a reachable pass, else falls back to Web
  * Push (spec 0037) — never both, so no duplicate. A `pass_refresh` (spec 0065) goes by
- * APNs + the silent Google `PATCH` only. `campaign` keeps the provisional fan-out. Each transport is best-effort — one failing transport never blocks the others —
+ * APNs + the silent Google `PATCH` only. A `campaign` (spec 0103) goes like a
+ * `transactional`, and its `clickId` rides the Web Push payload so the service worker can
+ * report the click. Each transport is best-effort — one failing transport never blocks the others —
  * and every error is collected so the caller records it on the queue row. This is a SINGLE
  * notice: the per-consumer cooldown counts it once (the caller closes exactly one row).
  */
@@ -230,10 +227,14 @@ export async function deliverTransports(
   consumerId: string,
   message: PushMessage,
   noticeClass: string,
-  opts: { channel: PushChannel; webPushChannel: WebPushChannel | null },
+  opts: {
+    channel: PushChannel;
+    webPushChannel: WebPushChannel | null;
+    clickId?: string;
+  },
 ): Promise<string[]> {
   const reachable =
-    noticeClass === "transactional"
+    noticeClass === "transactional" || noticeClass === "campaign"
       ? await consumerHasReachableWallet(consumerId)
       : false;
   const plan = planTransports(noticeClass, reachable);
@@ -248,7 +249,12 @@ export async function deliverTransports(
     errors.push(
       ...(await deliverWebPush(
         consumerId,
-        { title: message.header, body: message.body, url: NOTICE_URL },
+        {
+          title: message.header,
+          body: message.body,
+          url: NOTICE_URL,
+          ...(opts.clickId ? { clickId: opts.clickId } : {}),
+        },
         opts.webPushChannel,
       )),
     );

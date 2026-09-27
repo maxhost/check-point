@@ -22,6 +22,7 @@ const campaign = (over: Partial<Campaign> = {}): Campaign => ({
   id: ID,
   name: "Dormidos de septiembre",
   templateKey: null,
+  channels: ["proximity"],
   status: "draft",
   pauseReason: null,
   dormantDays: 45,
@@ -64,6 +65,7 @@ const results = buildCampaignResults({
   coupon: { label: null, cap: null, redeemed: 0, incurredCost: null },
   byLocation: [],
   passReach: { inPass: 0, members: 0 },
+  push: null,
 });
 
 function detailHtml(status: CampaignStatus, over: Partial<Campaign> = {}) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TEMPLATES, templateByKey } from "./templates";
+import { TEMPLATES, templateByKey, templateKeysAtOrAbove } from "./templates";
 
 /**
  * The catalog of prebuilt campaigns (spec 0101). The exact values ARE the assertion: the
@@ -18,7 +18,9 @@ describe("marketing templates catalog", () => {
         title: "Te extrañamos",
         description:
           "Le recuerda tu local a los clientes que hace un tiempo no vienen, cuando pasan cerca.",
-        channel: "proximity",
+        channels: ["proximity", "push"],
+        group: "reactivation",
+        rank: 1,
         dormantDays: { options: [14, 30], default: 30 },
         message: {
           default: "Hace rato no te vemos. ¡Te esperamos!",
@@ -31,7 +33,9 @@ describe("marketing templates catalog", () => {
         title: "Recuperar perdidos",
         description:
           "Busca a los clientes que dejaron de venir hace meses, cuando pasan cerca de tu local.",
-        channel: "proximity",
+        channels: ["proximity", "push"],
+        group: "reactivation",
+        rank: 2,
         dormantDays: { options: [60, 90, 180], default: 90 },
         message: { default: "¡Volvé! Te estamos esperando.", maxLength: 60 },
         couponRecommended: true,
@@ -65,5 +69,16 @@ describe("marketing templates catalog", () => {
     expect(templateByKey("birthday")).toBeNull();
     expect(templateByKey("")).toBeNull();
     expect(templateByKey("MISSED_YOU")).toBeNull();
+  });
+
+  /** Spec 0103 §2: the group rule escalates (#3 → #5) and never goes back (#5 → #3). */
+  it("templateKeysAtOrAbove: #3 is blocked by itself and #5; #5 only by itself", () => {
+    expect(templateKeysAtOrAbove(templateByKey("missed_you")!)).toEqual([
+      "missed_you",
+      "win_back",
+    ]);
+    expect(templateKeysAtOrAbove(templateByKey("win_back")!)).toEqual([
+      "win_back",
+    ]);
   });
 });

@@ -91,8 +91,11 @@ export function attributableLocation(
 }
 
 /** «Vino y no volvio» AND «se enrolo y nunca volvio»: the later of the two dates is
- * what has to be old enough, which is why the rule is a `greatest`, not an `or`. */
-function dormantSince(candidate: AudienceCandidate): Date {
+ * what has to be old enough, which is why the rule is a `greatest`, not an `or`. Also
+ * «since their last visit» for the push channel's group rule (`push-audience.ts`). */
+export function dormantSince(
+  candidate: Pick<AudienceCandidate, "enrolledAt" | "lastOrderAt">,
+): Date {
   const enrolled = candidate.enrolledAt.getTime();
   const ordered = candidate.lastOrderAt?.getTime() ?? 0;
   return new Date(Math.max(enrolled, ordered));

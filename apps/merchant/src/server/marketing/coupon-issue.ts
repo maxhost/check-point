@@ -54,3 +54,38 @@ export function couponToIssue(
     validUntil: campaignEndsAt,
   };
 }
+
+/**
+ * The same decision for the PUSH channel (spec 0103 §7 / ADR 0095 §8), PURE: the coupon is
+ * issued when the push is DELIVERED (`sent_at`), never when it is decided — a cancelled push
+ * would otherwise leave a coupon the consumer never saw. `null` when:
+ *  - the push is a holdout (never sent: the control group gets no treatment);
+ *  - the campaign has no coupon, or no `ends_at`, or an `ends_at` already reached;
+ *  - the consumer ALREADY holds an unredeemed coupon of this campaign (owner's OK, point
+ *    1 of the spec): the notice still goes out, a second coupon does not.
+ */
+export type PushCouponToIssue = Omit<CouponToIssue, "turnId"> & {
+  pushId: string;
+};
+
+export function pushCouponToIssue(push: {
+  pushId: string;
+  holdout: boolean;
+  couponLabel: string | null;
+  couponCost: string | null;
+  endsAt: Date | null;
+  sentAt: Date;
+  hasUnredeemedCoupon: boolean;
+}): PushCouponToIssue | null {
+  if (push.holdout) return null;
+  if (push.couponLabel === null) return null;
+  if (push.endsAt === null || push.endsAt <= push.sentAt) return null;
+  if (push.hasUnredeemedCoupon) return null;
+  return {
+    pushId: push.pushId,
+    labelSnapshot: push.couponLabel,
+    costSnapshot: push.couponCost ?? "0.00",
+    validFrom: push.sentAt,
+    validUntil: push.endsAt,
+  };
+}

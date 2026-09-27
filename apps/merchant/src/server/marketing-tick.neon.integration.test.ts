@@ -256,6 +256,9 @@ describe.skipIf(!integrationEnabled)("marketing tick", () => {
       activated: 3,
       holdouts: 0,
       refreshes: 3,
+      // Spec 0103: the push step logs too; this suite's campaign is proximity-only.
+      pushDecided: 0,
+      pushHeld: 0,
     });
   });
 

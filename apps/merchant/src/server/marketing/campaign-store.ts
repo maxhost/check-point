@@ -8,6 +8,7 @@ import {
 } from "./campaign-input";
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import { channelsOf } from "./campaign-values";
 
 /**
  * Every read and write of `core.campaign` the backoffice does (spec 0065 phase B). Two
@@ -41,6 +42,8 @@ export type Campaign = {
    * builds a `Campaign` by hand has to say `templateKey: null` explicitly.
    */
   templateKey: string | null;
+  /** Spec 0103: `proximity`, `push` or both, in that order. */
+  channels: ("proximity" | "push")[];
   name: string;
   status: CampaignStatus;
   pauseReason: string | null;
@@ -61,6 +64,8 @@ export type Campaign = {
 const columns = {
   id: campaigns.id,
   templateKey: campaigns.templateKey,
+  channelProximity: campaigns.channelProximity,
+  channelPush: campaigns.channelPush,
   name: campaigns.name,
   status: campaigns.status,
   pauseReason: campaigns.pauseReason,
@@ -76,6 +81,19 @@ const columns = {
   endedAt: campaigns.endedAt,
   createdAt: campaigns.createdAt,
 };
+
+/** The row of `columns` as the DTO: the two booleans travel as `channels`. */
+function toCampaign(
+  row: { channelProximity: boolean; channelPush: boolean },
+  locationIds: string[],
+): Campaign {
+  const { channelProximity, channelPush, ...rest } = row;
+  return {
+    ...(rest as Omit<Campaign, "locationIds" | "channels">),
+    channels: channelsOf({ channelProximity, channelPush }),
+    locationIds,
+  };
+}
 
 function notFound(): CampaignError {
   return new CampaignError(404, "not_found", "No encontramos esa campaña.");
@@ -139,10 +157,7 @@ export async function listCampaigns(businessId: string): Promise<Campaign[]> {
     .orderBy(desc(campaigns.createdAt));
   const db = getDb();
   return await Promise.all(
-    rows.map(async (row) => ({
-      ...(row as Omit<Campaign, "locationIds">),
-      locationIds: await doorsOf(db, row.id),
-    })),
+    rows.map(async (row) => toCampaign(row, await doorsOf(db, row.id))),
   );
 }
 
@@ -156,10 +171,7 @@ export async function getCampaign(
     .where(and(eq(campaigns.id, id), eq(campaigns.businessId, businessId)))
     .limit(1);
   if (!row) throw notFound();
-  return {
-    ...(row as Omit<Campaign, "locationIds">),
-    locationIds: await doorsOf(getDb(), id),
-  };
+  return toCampaign(row, await doorsOf(getDb(), id));
 }
 
 export async function createCampaign(

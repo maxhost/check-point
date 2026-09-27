@@ -24,6 +24,9 @@ describe("parseTemplateInput", () => {
     expect(parseTemplateInput(missedYou, {}, NOW)).toEqual({
       ok: true,
       value: {
+        // Spec 0103: no `channels` is BOTH (owner's decision).
+        channelProximity: true,
+        channelPush: true,
         dormantDays: 30,
         message: "Hace rato no te vemos. ¡Te esperamos!",
         excludedLocationIds: [],
@@ -168,5 +171,31 @@ describe("parseTemplateInput", () => {
         NOW,
       ),
     ).toEqual(parseTemplateInput(missedYou, {}, NOW));
+  });
+
+  /** Spec 0103 §3 — `channels`: a non-empty set of the two known channels. */
+  it("channels: absent/null is both; one or both are accepted; anything else is 400", () => {
+    for (const absent of [{}, { channels: null }]) {
+      const parsed = parseTemplateInput(missedYou, absent, NOW);
+      expect(
+        parsed.ok && [parsed.value.channelProximity, parsed.value.channelPush],
+      ).toEqual([true, true]);
+    }
+    const cases: [unknown, boolean, boolean][] = [
+      [["push"], false, true],
+      [["proximity"], true, false],
+      [["push", "proximity"], true, true],
+    ];
+    for (const [channels, proximity, push] of cases) {
+      const parsed = parseTemplateInput(missedYou, { channels }, NOW);
+      expect(
+        parsed.ok && [parsed.value.channelProximity, parsed.value.channelPush],
+      ).toEqual([proximity, push]);
+    }
+    for (const bad of [[], ["sms"], ["push", "push"], "push", [1], {}]) {
+      expect(errorsOf({ channels: bad })).toEqual({
+        channels: "Elegí al menos un canal válido.",
+      });
+    }
   });
 });

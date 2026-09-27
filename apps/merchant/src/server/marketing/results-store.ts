@@ -21,6 +21,7 @@ import {
   passPlacements,
   programMemberships,
 } from "../schema";
+import { loadPushFacts } from "./push-results-store";
 import {
   buildCampaignResults,
   type CampaignResults,
@@ -195,14 +196,17 @@ export async function loadCampaignResults(
   businessId: string,
   campaignId: string,
   coupon: { label: string | null; cap: number | null },
+  now: Date = new Date(),
 ): Promise<CampaignResults> {
-  const [audience, turns, redeemed, byLocation, passReach] = await Promise.all([
-    loadAudiencePhoto(campaignId),
-    loadTurnFacts(businessId, campaignId),
-    loadCouponFacts(businessId, campaignId),
-    loadByLocation(businessId, campaignId),
-    loadPassReach(businessId),
-  ]);
+  const [audience, turns, redeemed, byLocation, passReach, push] =
+    await Promise.all([
+      loadAudiencePhoto(campaignId),
+      loadTurnFacts(businessId, campaignId),
+      loadCouponFacts(businessId, campaignId),
+      loadByLocation(businessId, campaignId),
+      loadPassReach(businessId),
+      loadPushFacts(businessId, campaignId, now),
+    ]);
   const facts: ResultsFacts = {
     audience,
     turns: {
@@ -226,6 +230,7 @@ export async function loadCampaignResults(
     },
     byLocation,
     passReach,
+    push,
   };
   return buildCampaignResults(facts);
 }

@@ -151,7 +151,9 @@ export async function enableTemplate(
           PLAN_NOT_ALLOWED_MESSAGE,
         );
       const doors = await runDoors(tx, businessId, input.excludedLocationIds);
-      if (doors.length === 0)
+      // Spec 0103: the doors are PROXIMITY's. A push-only run needs none, and is created
+      // with no `campaign_location` rows at all.
+      if (input.channelProximity && doors.length === 0)
         throw new CampaignError(
           409,
           "no_usable_location",
@@ -175,6 +177,8 @@ export async function enableTemplate(
           businessId,
           kind: "proximity",
           templateKey: template.key,
+          channelProximity: input.channelProximity,
+          channelPush: input.channelPush,
           name: template.title,
           status: "active",
           activatedAt: now,
@@ -189,11 +193,12 @@ export async function enableTemplate(
           endsAt: input.endsAt,
         })
         .returning({ id: campaigns.id });
-      await tx
-        .insert(campaignLocations)
-        .values(
-          doors.map((locationId) => ({ campaignId: created.id, locationId })),
-        );
+      if (doors.length > 0)
+        await tx
+          .insert(campaignLocations)
+          .values(
+            doors.map((locationId) => ({ campaignId: created.id, locationId })),
+          );
       return created.id;
     });
   } catch (error) {

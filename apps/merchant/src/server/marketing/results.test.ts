@@ -23,6 +23,7 @@ const facts = (over: Partial<ResultsFacts> = {}): ResultsFacts => ({
   coupon: { label: "2x1", cap: 50, redeemed: 3, incurredCost: "9.00" },
   byLocation: [],
   passReach: { inPass: 4, members: 10 },
+  push: null,
   ...over,
 });
 

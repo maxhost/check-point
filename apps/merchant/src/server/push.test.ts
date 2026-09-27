@@ -189,15 +189,22 @@ describe("transport routing by class (spec 0038 / ADR 0040)", () => {
     }
   });
 
-  it("campaign keeps the provisional fan-out regardless of reachability", () => {
-    const fanOut = {
+  // Spec 0103 / ADR 0095 §4: the provisional fan-out is GONE — a `campaign` routes like a
+  // `transactional` (wallet when reachable, else Web Push, never both). This case replaced
+  // «campaign keeps the provisional fan-out regardless of reachability».
+  it("campaign + reachable wallet → wallet only; unreachable → Web Push only", () => {
+    expect(planTransports("campaign", true)).toEqual({
       apple: true,
       googleAddMessage: true,
       googlePatch: false,
+      webPush: false,
+    });
+    expect(planTransports("campaign", false)).toEqual({
+      apple: false,
+      googleAddMessage: false,
+      googlePatch: false,
       webPush: true,
-    };
-    expect(planTransports("campaign", true)).toEqual(fanOut);
-    expect(planTransports("campaign", false)).toEqual(fanOut);
+    });
   });
 });
 

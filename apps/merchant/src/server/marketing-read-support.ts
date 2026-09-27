@@ -7,6 +7,7 @@ import {
   campaigns,
   consumerAccounts,
   campaignCoupons,
+  campaignPushes,
   couponRedemptions,
   passPlacements,
 } from "./schema";
@@ -100,6 +101,11 @@ export async function dropCampaigns(businessId: string): Promise<void> {
   await db
     .delete(campaignCoupons)
     .where(eq(campaignCoupons.businessId, businessId));
+  // Spec 0103: the push decisions point at campaigns and memberships (NO ACTION), and
+  // their coupons (`push_id`) are already gone.
+  await db
+    .delete(campaignPushes)
+    .where(eq(campaignPushes.businessId, businessId));
   await db
     .delete(campaignTurns)
     .where(eq(campaignTurns.businessId, businessId));

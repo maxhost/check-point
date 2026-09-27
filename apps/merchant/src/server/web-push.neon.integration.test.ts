@@ -167,11 +167,12 @@ describe.skipIf(!integrationEnabled)(
       expect(await purgeConsumerSubscriptions(consumer.id)).toBe(0);
     }, 30_000);
 
-    // A `campaign` keeps the ADR 0038 fan-out (wallet + Web Push). The transactional NO
-    // LONGER fans out (spec 0038 / ADR 0040 routes it by class: wallet, else Web Push
-    // fallback — never both); that contract is proven in
-    // `wallet-push-routing.neon.integration.test.ts`.
-    it("a campaign fans out by webpush AND wallet and counts as ONE cooldown/queue row", async () => {
+    // Spec 0103 / ADR 0095 §4: the ADR 0038 fan-out of `campaign` is GONE — it routes like
+    // a transactional (wallet when reachable, else Web Push, never both; the transactional
+    // contract is proven in `wallet-push-routing.neon.integration.test.ts`). This case used
+    // to read «a campaign fans out by webpush AND wallet»; the row is an ORPHAN `campaign`
+    // (no `campaign_push` behind it), which the delivery gate sends as is.
+    it("a campaign with a reachable wallet goes by wallet ONLY and counts as ONE cooldown/queue row", async () => {
       const consumer = await newConsumer();
       const apple = await ensureWalletPass(consumer.id, "apple");
       await ensureWalletPass(consumer.id, "google");
@@ -203,14 +204,14 @@ describe.skipIf(!integrationEnabled)(
       expect(summary.sent).toBe(1);
       expect((await queueRow(id)).status).toBe("sent");
 
-      // All three transports were hit for the single notice.
+      // The wallet transports were hit; Web Push was NOT (no duplicate).
       expect(
         walletFake.calls.some(
           (c) => c.kind === "apple" && c.pushToken === "apns-fanout",
         ),
       ).toBe(true);
       expect(walletFake.calls.some((c) => c.kind === "google")).toBe(true);
-      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(true);
+      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(false);
 
       // The cooldown base moved exactly once.
       const [acc] = await getDb()

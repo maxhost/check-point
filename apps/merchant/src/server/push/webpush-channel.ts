@@ -15,8 +15,14 @@ export type WebPushTarget = {
   authKey: string;
 };
 
-/** The notice to deliver; serialized to the SW as `{title, body, url}`. */
-export type WebPushPayload = { title: string; body: string; url?: string };
+/** The notice to deliver; serialized to the SW as `{title, body, url, clickId?}`.
+ * `clickId` (spec 0103) is the `campaign_push` id the SW reports on click. */
+export type WebPushPayload = {
+  title: string;
+  body: string;
+  url?: string;
+  clickId?: string;
+};
 
 /**
  * Thrown when the push service reports the subscription is dead (404/410): the caller

@@ -323,6 +323,13 @@
       "when": 1790479657094,
       "tag": "0045_cupon_de_campana",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1790484326690,
+      "tag": "0046_canal_push_de_campana",
+      "breakpoints": true
     }
   ]
 }

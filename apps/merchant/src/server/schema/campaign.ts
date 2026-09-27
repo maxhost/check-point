@@ -1,4 +1,5 @@
 import {
+  boolean,
   check,
   index,
   integer,
@@ -34,6 +35,10 @@ import { products } from "./catalog";
  * lands on `free`/`none` without passing through our own route) and
  * `no_active_locations`. The tick reads it to pick the turn's `cancel_reason`.
  *
+ * The CHANNELS (spec 0103 / ADR 0095) are two booleans, never a `kind`: `kind` describes
+ * the AUDIENCE, and a template runs by proximity, push or both. At least one is on
+ * (`core_campaign_channel_check`); the composer always creates `proximity` alone.
+ *
  * `template_key` (spec 0101 / ADR 0092) marks a PREBUILT campaign: `null` is a custom one
  * from the composer. The catalog itself (texts, options, defaults) lives in code
  * (`marketing/templates.ts`); the `check` only pins the known keys. ONE live run per
@@ -51,6 +56,8 @@ export const campaigns = core.table(
       .references(() => businesses.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     templateKey: text("template_key"),
+    channelProximity: boolean("channel_proximity").notNull().default(true),
+    channelPush: boolean("channel_push").notNull().default(false),
     name: text("name").notNull(),
     status: text("status").notNull().default("draft"),
     pauseReason: text("pause_reason"),
@@ -78,6 +85,10 @@ export const campaigns = core.table(
   },
   (table) => [
     check("core_campaign_kind_check", sql`${table.kind} in ('proximity')`),
+    check(
+      "core_campaign_channel_check",
+      sql`${table.channelProximity} or ${table.channelPush}`,
+    ),
     check(
       "core_campaign_status_check",
       sql`${table.status} in ('draft', 'active', 'paused', 'ended', 'archived')`,

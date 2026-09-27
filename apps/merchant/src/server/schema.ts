@@ -20,3 +20,4 @@ export * from "./schema/reward-redemption";
 export * from "./schema/campaign";
 export * from "./schema/campaign-turn";
 export * from "./schema/campaign-coupon";
+export * from "./schema/campaign-push";

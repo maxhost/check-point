@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { couponToIssue } from "./coupon-issue";
+import { couponToIssue, pushCouponToIssue } from "./coupon-issue";
 
 /**
  * Spec 0102 — which activation issues a campaign coupon. PURE; the WIRING in `applyPlan`
@@ -54,5 +54,43 @@ describe("couponToIssue", () => {
     expect(
       couponToIssue(activation(), new Date(START.getTime() - 1)),
     ).toBeNull();
+  });
+});
+
+/** Spec 0103 §7 — the push channel's coupon. PURE; the wiring (the worker issuing it at
+ * delivery) is pinned by `marketing-push-delivery.neon.integration.test.ts`. */
+describe("pushCouponToIssue", () => {
+  const push = (
+    over: Partial<Parameters<typeof pushCouponToIssue>[0]> = {},
+  ) => ({
+    pushId: "22222222-2222-4222-8222-222222222222",
+    holdout: false,
+    couponLabel: "2x1 en picadas",
+    couponCost: "2.50",
+    endsAt: ENDS,
+    sentAt: START,
+    hasUnredeemedCoupon: false,
+    ...over,
+  });
+
+  it("a delivered push with a coupon issues one valid from sent_at until ends_at", () => {
+    expect(pushCouponToIssue(push())).toEqual({
+      pushId: "22222222-2222-4222-8222-222222222222",
+      labelSnapshot: "2x1 en picadas",
+      costSnapshot: "2.50",
+      validFrom: START,
+      validUntil: ENDS,
+    });
+    expect(pushCouponToIssue(push({ couponCost: null }))?.costSnapshot).toBe(
+      "0.00",
+    );
+  });
+
+  it("holdout, no label, no/elapsed ends_at, or an unredeemed coupon already held → null", () => {
+    expect(pushCouponToIssue(push({ holdout: true }))).toBeNull();
+    expect(pushCouponToIssue(push({ couponLabel: null }))).toBeNull();
+    expect(pushCouponToIssue(push({ endsAt: null }))).toBeNull();
+    expect(pushCouponToIssue(push({ endsAt: START }))).toBeNull();
+    expect(pushCouponToIssue(push({ hasUnredeemedCoupon: true }))).toBeNull();
   });
 });

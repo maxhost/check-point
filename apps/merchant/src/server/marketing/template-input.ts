@@ -20,9 +20,14 @@ import type { TemplateDefinition } from "./templates";
  * range: «Recuperar perdidos» at 45 days would be a different campaign wearing its name.
  * The coupon reuses the composer's parser (`parseCoupon`) so both surfaces refuse the
  * same half-declared coupon with the same message.
+ *
+ * `channels` (spec 0103 / ADR 0095): a non-empty array of `"proximity"`/`"push"` without
+ * repeats; absent or `null` is BOTH (owner's decision: the 0101 contract stays valid).
  */
 
 export type TemplateInput = {
+  channelProximity: boolean;
+  channelPush: boolean;
   dormantDays: number;
   message: string;
   excludedLocationIds: string[];
@@ -85,6 +90,28 @@ function excluded(errors: FieldErrors, raw: unknown): string[] | undefined {
   return [...new Set((raw as string[]).map((id) => id.toLowerCase()))];
 }
 
+const CHANNELS = ["proximity", "push"] as const;
+
+function channels(
+  errors: FieldErrors,
+  raw: unknown,
+): { channelProximity: boolean; channelPush: boolean } | undefined {
+  if (absent(raw)) return { channelProximity: true, channelPush: true };
+  if (
+    !Array.isArray(raw) ||
+    raw.length === 0 ||
+    new Set(raw).size !== raw.length ||
+    !raw.every((value) => (CHANNELS as readonly unknown[]).includes(value))
+  ) {
+    errors.channels = "Elegí al menos un canal válido.";
+    return undefined;
+  }
+  return {
+    channelProximity: raw.includes("proximity"),
+    channelPush: raw.includes("push"),
+  };
+}
+
 function when(
   errors: FieldErrors,
   raw: unknown,
@@ -107,6 +134,7 @@ export function parseTemplateInput(
   const body = asObject(value);
   const errors: FieldErrors = {};
 
+  const lanes = channels(errors, body.channels);
   const days = dormantDays(errors, body.dormantDays, template);
   const text = message(errors, body.message, template);
   const doorsOut = excluded(errors, body.excludedLocationIds);
@@ -123,6 +151,7 @@ export function parseTemplateInput(
 
   if (
     Object.keys(errors).length > 0 ||
+    lanes === undefined ||
     days === undefined ||
     text === undefined ||
     doorsOut === undefined ||
@@ -135,6 +164,7 @@ export function parseTemplateInput(
   return {
     ok: true,
     value: {
+      ...lanes,
       dormantDays: days,
       message: text,
       excludedLocationIds: doorsOut,
