@@ -59,9 +59,7 @@ export function utilityText(
   const stamps = program.kind === "stamps";
   const balance = stamps ? membership.stampsCount : membership.pointsBalance;
   const unit = stamps ? "sellos" : "puntos";
-  const cost = stamps
-    ? stampsTarget(program.configuration, rewards)
-    : cheapestPointsCost(rewards);
+  const cost = rewardCost(program, rewards);
   const sentence =
     cost === null
       ? `${membership.businessName}: ${balance} ${unit}`
@@ -69,6 +67,21 @@ export function utilityText(
         ? `${membership.businessName}: tenes un premio para canjear`
         : `${membership.businessName}: te faltan ${cost - balance} ${unit}`;
   return truncateText(sentence, cap);
+}
+
+/**
+ * THE COST OF THE CHEAPEST REWARD of a program, read as described above — `null` when
+ * there is nothing redeemable. One reading for the utility bag and for the balance
+ * templates (spec 0104 §4 / ADR 0096 §2): «te faltan N» on the pass and «¡Estás a N de tu
+ * premio!» by push can never disagree.
+ */
+export function rewardCost(
+  program: UtilityProgram,
+  rewards: UtilityReward[],
+): number | null {
+  return program.kind === "stamps"
+    ? stampsTarget(program.configuration, rewards)
+    : cheapestPointsCost(rewards);
 }
 
 /**

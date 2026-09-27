@@ -4,6 +4,7 @@ import { campaignLocations, campaigns, locations } from "../schema";
 import { transitionCampaign } from "./campaign-actions";
 import { type Campaign, CampaignError, getCampaign } from "./campaign-store";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import { loadRewardCost } from "./balance-store";
 import { parseTemplateInput } from "./template-input";
 import { TEMPLATES, type TemplateDefinition, templateByKey } from "./templates";
 
@@ -150,6 +151,17 @@ export async function enableTemplate(
           "plan_not_allowed",
           PLAN_NOT_ALLOWED_MESSAGE,
         );
+      // Spec 0104 §3: a BALANCE template measures the balance against a reward; without
+      // one it would run forever with an empty audience. The UI shows it as a toast.
+      if (
+        template.group === "balance" &&
+        (await loadRewardCost(tx, businessId)) === null
+      )
+        throw new CampaignError(
+          409,
+          "no_loyalty_reward",
+          "No se puede activar: necesitás un programa de fidelización con un premio.",
+        );
       const doors = await runDoors(tx, businessId, input.excludedLocationIds);
       // Spec 0103: the doors are PROXIMITY's. A push-only run needs none, and is created
       // with no `campaign_location` rows at all.
@@ -189,6 +201,9 @@ export async function enableTemplate(
           couponCost: input.couponCost,
           couponMaxRedemptions: input.couponMaxRedemptions,
           couponProductId: input.couponProductId,
+          nearRewardStamps: input.nearRewardStamps,
+          nearRewardPercent: input.nearRewardPercent,
+          rewardRepeat: input.rewardRepeat,
           startsAt: input.startsAt,
           endsAt: input.endsAt,
         })

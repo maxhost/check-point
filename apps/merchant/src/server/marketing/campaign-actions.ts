@@ -68,7 +68,12 @@ export async function transitionCampaign(
           "plan_not_allowed",
           PLAN_NOT_ALLOWED_MESSAGE,
         );
-      if ((await usableDoors(tx, id)) === 0)
+      // Spec 0104 §8: the doors are PROXIMITY's (the same rule `enable` has since 0103).
+      // A push-only campaign —#7/#8 always are— reactivates with none.
+      if (
+        current.channels.includes("proximity") &&
+        (await usableDoors(tx, id)) === 0
+      )
         throw new CampaignError(
           409,
           "no_usable_location",

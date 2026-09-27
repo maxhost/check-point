@@ -7,8 +7,14 @@ import { TEMPLATES, templateByKey, templateKeysAtOrAbove } from "./templates";
  * a 400 on the first click of the toggle.
  */
 describe("marketing templates catalog", () => {
-  it("has exactly the two templates of the spec, in catalog order", () => {
-    expect(TEMPLATES.map((t) => t.key)).toEqual(["missed_you", "win_back"]);
+  it("has exactly the four templates of the specs, in catalog order", () => {
+    // Spec 0101 (#3, #5) + spec 0104 (#7, #8).
+    expect(TEMPLATES.map((t) => t.key)).toEqual([
+      "missed_you",
+      "win_back",
+      "near_reward",
+      "unclaimed_reward",
+    ]);
   });
 
   it("carries the exact values of the spec's table", () => {
@@ -25,8 +31,12 @@ describe("marketing templates catalog", () => {
         message: {
           default: "Hace rato no te vemos. ¡Te esperamos!",
           maxLength: 60,
+          gapMarker: false,
         },
         couponRecommended: false,
+        couponAllowed: true,
+        nearReward: null,
+        repeat: null,
       },
       {
         key: "win_back",
@@ -37,8 +47,57 @@ describe("marketing templates catalog", () => {
         group: "reactivation",
         rank: 2,
         dormantDays: { options: [60, 90, 180], default: 90 },
-        message: { default: "¡Volvé! Te estamos esperando.", maxLength: 60 },
+        message: {
+          default: "¡Volvé! Te estamos esperando.",
+          maxLength: 60,
+          gapMarker: false,
+        },
         couponRecommended: true,
+        couponAllowed: true,
+        nearReward: null,
+        repeat: null,
+      },
+      // Spec 0104 / ADR 0096 — the owner's options and defaults.
+      {
+        key: "near_reward",
+        title: "Te falta poco",
+        description:
+          "Avisa por notificación a los clientes que no vienen y están a poco de su premio.",
+        channels: ["push"],
+        group: "balance",
+        rank: 1,
+        dormantDays: { options: [3, 7, 14], default: 7 },
+        message: {
+          default: "¡Estás a {faltan} de tu premio!",
+          maxLength: 60,
+          gapMarker: true,
+        },
+        couponRecommended: false,
+        couponAllowed: false,
+        nearReward: {
+          stamps: { options: [1, 2, 3], default: 2 },
+          pointsPercent: { options: [10, 20], default: 20 },
+        },
+        repeat: null,
+      },
+      {
+        key: "unclaimed_reward",
+        title: "Premio sin canjear",
+        description:
+          "Avisa por notificación a los clientes que ya tienen un premio y no vuelven a canjearlo.",
+        channels: ["push"],
+        group: "balance",
+        rank: 2,
+        dormantDays: { options: [7, 14, 30], default: 14 },
+        message: {
+          default: "Tenés un premio esperándote. ¡Vení a canjearlo!",
+          maxLength: 60,
+          gapMarker: false,
+        },
+        couponRecommended: false,
+        couponAllowed: false,
+        nearReward: null,
+        repeat: { options: ["once", "every_30_days"], default: "once" },
       },
     ]);
   });
@@ -53,11 +112,16 @@ describe("marketing templates catalog", () => {
       expect(template.message.default.length).toBeLessThanOrEqual(
         template.message.maxLength,
       );
+      // Spec 0104: `{faltan}` is mandatory where it is allowed and a 400 elsewhere, so a
+      // default on the wrong side would turn `{}` into a 400.
+      expect(template.message.default.includes("{faltan}")).toBe(
+        template.message.gapMarker,
+      );
       // The database check is 1..80 for the name the template gives the campaign.
       expect(template.title.length).toBeLessThanOrEqual(80);
-      // …and 7..365 for the days.
+      // …and 3..365 for the days (spec 0104 lowered the floor for #7's «3 días»).
       for (const days of template.dormantDays.options) {
-        expect(days).toBeGreaterThanOrEqual(7);
+        expect(days).toBeGreaterThanOrEqual(3);
         expect(days).toBeLessThanOrEqual(365);
       }
     },
@@ -79,6 +143,17 @@ describe("marketing templates catalog", () => {
     ]);
     expect(templateKeysAtOrAbove(templateByKey("win_back")!)).toEqual([
       "win_back",
+    ]);
+  });
+
+  /** Spec 0104: SALDO is its own group, #8 above #7, and never mixes with reactivation. */
+  it("templateKeysAtOrAbove: #7 is blocked by itself and #8; #8 only by itself", () => {
+    expect(templateKeysAtOrAbove(templateByKey("near_reward")!)).toEqual([
+      "near_reward",
+      "unclaimed_reward",
+    ]);
+    expect(templateKeysAtOrAbove(templateByKey("unclaimed_reward")!)).toEqual([
+      "unclaimed_reward",
     ]);
   });
 });

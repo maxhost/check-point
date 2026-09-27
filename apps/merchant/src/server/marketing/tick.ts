@@ -41,6 +41,7 @@ import {
   type PlacementLimits,
 } from "./placement-plan";
 import { placeConsumers } from "./placement";
+import { runBalancePushCampaign } from "./balance-push";
 import { decidePushEligibility } from "./push-audience";
 import {
   type PushCampaign,
@@ -149,7 +150,8 @@ async function runCampaign(
  * Step «1b push» for ONE campaign (spec 0103 §4): every eligible membership gets ONE
  * decision, holdout drawn with the same rate as a turn. Idempotent without a unique: the
  * rows written here are the `lastGroupDecisionAt` the next run reads (`already_reached`),
- * and the advisory lock keeps two runs from interleaving.
+ * and the advisory lock keeps two runs from interleaving. A BALANCE template (#7/#8,
+ * spec 0104) is not «dormant = push»: it goes to `runBalancePushCampaign`.
  */
 async function runPushCampaign(
   db: DbTransaction,
@@ -157,6 +159,8 @@ async function runPushCampaign(
   now: Date,
   draw: () => boolean,
 ): Promise<{ decided: number; held: number }> {
+  if (campaign.template.group === "balance")
+    return await runBalancePushCampaign(db, campaign, now, draw);
   const candidates = await loadPushCandidates(
     db,
     campaign.businessId,

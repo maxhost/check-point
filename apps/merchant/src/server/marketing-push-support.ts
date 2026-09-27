@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import {
   campaignPushes,
   campaigns,
+  rewardRedemptions,
   walletPasses,
   walletPushQueue,
   webPushSubscriptions,
@@ -28,7 +29,13 @@ export async function seedPushCampaign(opts: {
   coupon?: { label: string; cost: string; maxRedemptions: number };
   endsAt?: Date | null;
   createdAt?: Date;
+  /** Spec 0104: #7's thresholds (default 2 / 20) and #8's repetition (default `once`) —
+   * the `core_campaign_balance_shape_check` demands them exactly on those templates. */
+  nearRewardStamps?: number;
+  nearRewardPercent?: number;
+  rewardRepeat?: "once" | "every_30_days";
 }): Promise<string> {
+  const near = opts.templateKey === "near_reward";
   const [row] = await getDb()
     .insert(campaigns)
     .values({
@@ -44,6 +51,12 @@ export async function seedPushCampaign(opts: {
       couponLabel: opts.coupon?.label ?? null,
       couponCost: opts.coupon?.cost ?? null,
       couponMaxRedemptions: opts.coupon?.maxRedemptions ?? null,
+      nearRewardStamps: near ? (opts.nearRewardStamps ?? 2) : null,
+      nearRewardPercent: near ? (opts.nearRewardPercent ?? 20) : null,
+      rewardRepeat:
+        opts.templateKey === "unclaimed_reward"
+          ? (opts.rewardRepeat ?? "once")
+          : null,
       startsAt: new Date("2026-01-01T00:00:00.000Z"),
       endsAt:
         opts.endsAt !== undefined
@@ -56,6 +69,33 @@ export async function seedPushCampaign(opts: {
     })
     .returning({ id: campaigns.id });
   return row.id;
+}
+
+/** A redemption at the counter, inserted directly (the tick and the gate only read its
+ * `membership_id` and `created_at`; every NOT NULL column carries a real-looking value). */
+export async function seedRedemption(opts: {
+  businessId: string;
+  programId: string;
+  membershipId: string;
+  consumerId: string;
+  userId: string;
+  createdAt: Date;
+}): Promise<void> {
+  await getDb().insert(rewardRedemptions).values({
+    businessId: opts.businessId,
+    programId: opts.programId,
+    membershipId: opts.membershipId,
+    consumerId: opts.consumerId,
+    rewardType: "custom",
+    rewardLabel: "Café gratis",
+    accrualKind: "stamps",
+    unitsDebited: 10,
+    balanceBefore: 10,
+    balanceAfter: 0,
+    createdByUserId: opts.userId,
+    clientRequestId: randomUUID(),
+    createdAt: opts.createdAt,
+  });
 }
 
 export async function seedWebPush(consumerId: string): Promise<string> {

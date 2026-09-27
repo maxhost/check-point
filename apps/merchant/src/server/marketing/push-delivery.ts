@@ -33,7 +33,8 @@ export type GateFacts = {
   endsAt: Date | null;
   membershipExists: boolean;
   optedOut: boolean;
-  /** An order of this business and consumer AFTER the decision (`decided_at`). */
+  /** An order of this business and consumer, OR a redemption of the membership (spec
+   * 0104 / ADR 0096 §5: a redemption is a visit), AFTER the decision (`decided_at`). */
   visitedSinceDecision: boolean;
   timeZone: string;
   windowStart: number;
@@ -79,8 +80,8 @@ function rowsOf<T>(result: unknown): T[] {
 }
 
 /**
- * RAW SQL with its own aliases (`cp`, `c`, `b`, `m`, `o`): the `exists` over orders is a
- * correlated subquery, and the builder would bind its outer column to the inner table
+ * RAW SQL with its own aliases (`cp`, `c`, `b`, `m`, `o`, `r`): the `exists` over orders
+ * and redemptions are correlated subqueries, and the builder would bind its outer column to the inner table
  * (see `audience-store.ts`). The membership is a LEFT join: its absence is a reason.
  */
 async function loadGateFacts(queueId: string): Promise<GateFacts | null> {
@@ -91,10 +92,13 @@ async function loadGateFacts(queueId: string): Promise<GateFacts | null> {
       c.ends_at,
       (m.id is not null) as membership_exists,
       (m.marketing_opt_out_at is not null) as opted_out,
-      exists (select 1 from core."order" o
-               where o.business_id = cp.business_id
-                 and o.consumer_id = cp.consumer_id
-                 and o.created_at > cp.decided_at) as visited,
+      (exists (select 1 from core."order" o
+                where o.business_id = cp.business_id
+                  and o.consumer_id = cp.consumer_id
+                  and o.created_at > cp.decided_at)
+       or exists (select 1 from core.reward_redemption r
+                   where r.membership_id = cp.membership_id
+                     and r.created_at > cp.decided_at)) as visited,
       b.timezone,
       b.push_window_start_hour,
       b.push_window_end_hour

@@ -1,0 +1,11 @@
+ALTER TABLE "core"."campaign" DROP CONSTRAINT "core_campaign_dormant_days_check";--> statement-breakpoint
+ALTER TABLE "core"."campaign" DROP CONSTRAINT "core_campaign_template_key_check";--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD COLUMN "near_reward_stamps" integer;--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD COLUMN "near_reward_percent" integer;--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD COLUMN "reward_repeat" text;--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_near_reward_stamps_check" CHECK ("core"."campaign"."near_reward_stamps" is null or "core"."campaign"."near_reward_stamps" between 1 and 3);--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_near_reward_percent_check" CHECK ("core"."campaign"."near_reward_percent" is null or "core"."campaign"."near_reward_percent" in (10, 20));--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_reward_repeat_check" CHECK ("core"."campaign"."reward_repeat" is null or "core"."campaign"."reward_repeat" in ('once', 'every_30_days'));--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_balance_shape_check" CHECK ((coalesce("core"."campaign"."template_key", '') = 'near_reward') = ("core"."campaign"."near_reward_stamps" is not null and "core"."campaign"."near_reward_percent" is not null) and (coalesce("core"."campaign"."template_key", '') = 'unclaimed_reward') = ("core"."campaign"."reward_repeat" is not null) and ("core"."campaign"."near_reward_stamps" is null) = ("core"."campaign"."near_reward_percent" is null));--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_dormant_days_check" CHECK ("core"."campaign"."dormant_days" between 3 and 365);--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_template_key_check" CHECK ("core"."campaign"."template_key" is null or "core"."campaign"."template_key" in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward'));

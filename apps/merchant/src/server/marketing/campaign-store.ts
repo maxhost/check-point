@@ -53,6 +53,10 @@ export type Campaign = {
   couponCost: string | null;
   couponMaxRedemptions: number | null;
   couponProductId: string | null;
+  /** Spec 0104: #7's thresholds and #8's repetition; `null` in any other campaign. */
+  nearRewardStamps: number | null;
+  nearRewardPercent: number | null;
+  rewardRepeat: "once" | "every_30_days" | null;
   startsAt: Date;
   endsAt: Date | null;
   activatedAt: Date | null;
@@ -75,6 +79,9 @@ const columns = {
   couponCost: campaigns.couponCost,
   couponMaxRedemptions: campaigns.couponMaxRedemptions,
   couponProductId: campaigns.couponProductId,
+  nearRewardStamps: campaigns.nearRewardStamps,
+  nearRewardPercent: campaigns.nearRewardPercent,
+  rewardRepeat: campaigns.rewardRepeat,
   startsAt: campaigns.startsAt,
   endsAt: campaigns.endsAt,
   activatedAt: campaigns.activatedAt,

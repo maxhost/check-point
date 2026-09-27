@@ -5,7 +5,8 @@ import {
   requireEndForCoupon,
 } from "./campaign-input";
 import { asObject } from "./campaign-values";
-import type { TemplateDefinition } from "./templates";
+import { balanceParams, couponRefused, gapMarkerOk } from "./balance-input";
+import type { RewardRepeat, TemplateDefinition } from "./templates";
 
 /**
  * The body of `POST /api/marketing/templates/{key}/enable` (spec 0101). PURE.
@@ -16,13 +17,20 @@ import type { TemplateDefinition } from "./templates";
  * IGNORED: the name is the template's title and the doors are «all the usable ones minus
  * the excluded» (ADR 0092 §5), so nothing in the body can steer either.
  *
- * `dormantDays` is validated against the TEMPLATE's options, not the database's 7..365
+ * `dormantDays` is validated against the TEMPLATE's options, not the database's 3..365
  * range: «Recuperar perdidos» at 45 days would be a different campaign wearing its name.
  * The coupon reuses the composer's parser (`parseCoupon`) so both surfaces refuse the
  * same half-declared coupon with the same message.
  *
  * `channels` (spec 0103 / ADR 0095): a non-empty array of `"proximity"`/`"push"` without
- * repeats; absent or `null` is BOTH (owner's decision: the 0101 contract stays valid).
+ * repeats, every one OFFERED by the template; absent or `null` is the template's own
+ * `channels` (spec 0104) — for #3/#5 that is still BOTH, so the 0101 contract stays valid.
+ *
+ * BALANCE (spec 0104 / ADR 0096): a template with `couponAllowed: false` refuses any coupon
+ * field; `nearRewardStamps`/`nearRewardPercent` (#7) and `rewardRepeat` (#8) are checked
+ * against the template's options and default when absent — in a template that does not
+ * declare them they are IGNORED like any other foreign key, and stored `null`. The
+ * `{faltan}` marker is MANDATORY in #7's message and a 400 anywhere else.
  */
 
 export type TemplateInput = {
@@ -35,6 +43,9 @@ export type TemplateInput = {
   couponCost: string | null;
   couponMaxRedemptions: number | null;
   couponProductId: string | null;
+  nearRewardStamps: number | null;
+  nearRewardPercent: number | null;
+  rewardRepeat: RewardRepeat | null;
   startsAt: Date;
   endsAt: Date | null;
 };
@@ -75,7 +86,7 @@ function message(
     errors.message = `El mensaje no puede pasar de ${template.message.maxLength} caracteres.`;
     return undefined;
   }
-  return value;
+  return gapMarkerOk(errors, value, template) ? value : undefined;
 }
 
 function excluded(errors: FieldErrors, raw: unknown): string[] | undefined {
@@ -95,8 +106,9 @@ const CHANNELS = ["proximity", "push"] as const;
 function channels(
   errors: FieldErrors,
   raw: unknown,
+  template: TemplateDefinition,
 ): { channelProximity: boolean; channelPush: boolean } | undefined {
-  if (absent(raw)) return { channelProximity: true, channelPush: true };
+  if (absent(raw)) raw = [...template.channels];
   if (
     !Array.isArray(raw) ||
     raw.length === 0 ||
@@ -104,6 +116,14 @@ function channels(
     !raw.every((value) => (CHANNELS as readonly unknown[]).includes(value))
   ) {
     errors.channels = "Elegí al menos un canal válido.";
+    return undefined;
+  }
+  if (
+    !raw.every((value) =>
+      (template.channels as readonly unknown[]).includes(value),
+    )
+  ) {
+    errors.channels = `Esta campaña solo sale por ${template.channels.join(", ")}.`;
     return undefined;
   }
   return {
@@ -134,11 +154,14 @@ export function parseTemplateInput(
   const body = asObject(value);
   const errors: FieldErrors = {};
 
-  const lanes = channels(errors, body.channels);
+  const lanes = channels(errors, body.channels, template);
   const days = dormantDays(errors, body.dormantDays, template);
   const text = message(errors, body.message, template);
   const doorsOut = excluded(errors, body.excludedLocationIds);
-  const deal = parseCoupon(errors, body);
+  const deal = couponRefused(errors, body, template)
+    ? undefined
+    : parseCoupon(errors, body);
+  const balance = balanceParams(errors, body, template);
   const startsAt = absent(body.startsAt)
     ? now
     : when(errors, body.startsAt, "startsAt", "La fecha de inicio");
@@ -156,6 +179,7 @@ export function parseTemplateInput(
     text === undefined ||
     doorsOut === undefined ||
     deal === undefined ||
+    balance === undefined ||
     startsAt === undefined ||
     endsAt === undefined
   )
@@ -171,6 +195,7 @@ export function parseTemplateInput(
       startsAt,
       endsAt,
       ...deal,
+      ...balance,
     },
   };
 }

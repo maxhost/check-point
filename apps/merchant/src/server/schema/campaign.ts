@@ -71,6 +71,11 @@ export const campaigns = core.table(
     }),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }),
+    // Spec 0104 / ADR 0096: the parameters of the BALANCE templates. #7 keeps BOTH
+    // thresholds (the tick applies the one of the program's kind); #8 its repetition.
+    nearRewardStamps: integer("near_reward_stamps"),
+    nearRewardPercent: integer("near_reward_percent"),
+    rewardRepeat: text("reward_repeat"),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id")
@@ -99,7 +104,7 @@ export const campaigns = core.table(
     ),
     check(
       "core_campaign_dormant_days_check",
-      sql`${table.dormantDays} between 7 and 365`,
+      sql`${table.dormantDays} between 3 and 365`,
     ),
     check(
       "core_campaign_name_check",
@@ -142,7 +147,25 @@ export const campaigns = core.table(
     ),
     check(
       "core_campaign_template_key_check",
-      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back')`,
+      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward')`,
+    ),
+    check(
+      "core_campaign_near_reward_stamps_check",
+      sql`${table.nearRewardStamps} is null or ${table.nearRewardStamps} between 1 and 3`,
+    ),
+    check(
+      "core_campaign_near_reward_percent_check",
+      sql`${table.nearRewardPercent} is null or ${table.nearRewardPercent} in (10, 20)`,
+    ),
+    check(
+      "core_campaign_reward_repeat_check",
+      sql`${table.rewardRepeat} is null or ${table.rewardRepeat} in ('once', 'every_30_days')`,
+    ),
+    // The SHAPE of the balance parameters (spec 0104 §1). ⚠️ The `coalesce` is load-bearing:
+    // a `check` whose expression is NULL PASSES, and the composer writes `template_key = null`.
+    check(
+      "core_campaign_balance_shape_check",
+      sql`(coalesce(${table.templateKey}, '') = 'near_reward') = (${table.nearRewardStamps} is not null and ${table.nearRewardPercent} is not null) and (coalesce(${table.templateKey}, '') = 'unclaimed_reward') = (${table.rewardRepeat} is not null) and (${table.nearRewardStamps} is null) = (${table.nearRewardPercent} is null)`,
     ),
     // One live run per business and template (see the table comment).
     uniqueIndex("core_campaign_template_live_unique")

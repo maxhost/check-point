@@ -29,6 +29,7 @@ import type { PushCandidate } from "./push-audience";
 import { pushBody } from "./push-text";
 import { nextSendableAt } from "./push-window";
 import {
+  type RewardRepeat,
   type TemplateDefinition,
   templateByKey,
   templateKeysAtOrAbove,
@@ -41,6 +42,10 @@ export type PushCampaign = {
   dormantDays: number;
   message: string;
   couponLabel: string | null;
+  /** Spec 0104: #7's thresholds and #8's repetition (`null` in every other template). */
+  nearRewardStamps: number | null;
+  nearRewardPercent: number | null;
+  rewardRepeat: RewardRepeat | null;
   businessName: string;
   timeZone: string;
   windowStart: number;
@@ -66,6 +71,9 @@ export async function loadPushCampaigns(
       dormantDays: campaigns.dormantDays,
       message: campaigns.message,
       couponLabel: campaigns.couponLabel,
+      nearRewardStamps: campaigns.nearRewardStamps,
+      nearRewardPercent: campaigns.nearRewardPercent,
+      rewardRepeat: campaigns.rewardRepeat,
       businessName: businesses.name,
       timeZone: businesses.timezone,
       windowStart: businesses.pushWindowStartHour,
@@ -86,9 +94,18 @@ export async function loadPushCampaigns(
       ),
     )
     .orderBy(asc(campaigns.createdAt), asc(campaigns.id));
-  const known = rows.flatMap(({ templateKey, ...row }) => {
+  const known = rows.flatMap(({ templateKey, rewardRepeat, ...row }) => {
     const template = templateByKey(templateKey ?? "");
-    return template ? [{ ...row, template }] : [];
+    return template
+      ? [
+          {
+            ...row,
+            // The `core_campaign_reward_repeat_check` pins the two values.
+            rewardRepeat: rewardRepeat as RewardRepeat | null,
+            template,
+          },
+        ]
+      : [];
   });
   // `sort` is stable: equal ranks keep the `created_at`, `id` order of the query.
   return known.sort((a, b) => b.template.rank - a.template.rank);
@@ -155,7 +172,9 @@ export async function loadPushCandidates(
 /**
  * Writes ONE decision. A holdout is recorded with no queue row (the control group); any
  * other enqueues the `campaign` notice —title = business name, body frozen now, not
- * before the next opening of the business's window— and points at it.
+ * before the next opening of the business's window— and points at it. `body` is the
+ * already-rendered text of a balance template (#7's `{faltan}` per consumer, spec 0104);
+ * without it the body is `pushBody` of the campaign.
  */
 export async function recordPushDecision(
   db: DbTransaction,
@@ -163,6 +182,7 @@ export async function recordPushDecision(
   candidate: Pick<PushCandidate, "consumerId" | "membershipId">,
   holdout: boolean,
   now: Date,
+  body?: string,
 ): Promise<void> {
   let queueId: string | null = null;
   if (!holdout) {
@@ -172,7 +192,7 @@ export async function recordPushDecision(
         consumerId: candidate.consumerId,
         class: "campaign",
         title: campaign.businessName,
-        body: pushBody(campaign.message, campaign.couponLabel),
+        body: body ?? pushBody(campaign.message, campaign.couponLabel),
         status: "pending",
         notBefore: nextSendableAt(
           now,
