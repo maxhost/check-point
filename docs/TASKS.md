@@ -8,41 +8,46 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0101 EN PROD; SIGUE LA SPEC B (canal push de campañas) (2026-09-26)
+## ⇥ ESTADO — MARKETING: SPEC 0102 (B0, cupon desacoplado) EN BORRADOR, ESPERA OK DEL OWNER (2026-09-26)
 
-**Retomar con: «Arrancamos la spec B».** Antes de escribir prosa (ADR 0071) hay que pedirle al owner
-DOS decisiones, que siguen abiertas: **(1) solapamiento** — hoy gana el mayor `dormant_days` (0101);
-propuesta del orquestador SIN decidir: GRUPOS estilo Talon.One (una campaña por grupo llega al
-cliente) + tope GLOBAL estilo Toast; el owner iba a revisar Fivestars/«Sumo» (¿= SumUp?);
-**(2) anti-hartazgo/abuso** — ¿alcanza el tope de 1 push por negocio/cliente cada 7 d o algo mas
-(tope mensual, silenciar un negocio)? Lo YA acordado de la B esta en la vineta «Despues de la 0101».
-**Respuestas del owner (2026-09-26, sesion de la spec B):** (1) solapamiento → **GRUPOS estilo
-Talon.One** (no prioridad fija, no bloquear similares); (2) **SIN tope global** entre negocios (solo
-el de 1 push cada 7 d por negocio/consumidor); (3) horario de envio **editable por negocio**, 9–21 h
-por defecto, solo push de campaña (lo transaccional no se toca). Silenciar un negocio YA existe
-(opt-out 0065, `program_membership.marketing_opt_out_at`). **Segunda ronda (owner, 2026-09-26):**
-grupos **FIJOS de plataforma** (SALDO #8 > #7; REACTIVACION #4 > #5 > #3; modo «primera campaña»;
-sin API de grupos); tope de 7 d → **«sin limite de momento hasta que entendamos como aplicarlo de
-forma correcta»** (revoca el «SI al tope de 7 d» anterior). Consecuencia a declarar en la spec, NO
-decidida por el owner: la frecuencia la limitan solo las reglas propias de cada plantilla (#7 una vez
-por ciclo; #8 una vez | cada 30 d, max 2) y un cliente puede recibir push de los dos grupos del mismo
-negocio en dias seguidos.
-**Tercera ronda (owner, 2026-09-26):** (a) canales de #3/#5: «al activar siempre se muestra el editor
-antes de confirmar la activacion, desde alli puede cambiar configuraciones, por ejemplo entre
-proximidad, push o ambos» (UX/UI aparte, la hace el owner) → la API de `enable` recibe los canales;
-el default (ambos) es propuesta del ORQUESTADOR; (b) la B se PARTE: **B1 = canal push de campaña**
-(atribucion, horario por negocio, holdout, clicks Web Push, grupos) estrenado en #3/#5; **B2 = #7/#8**
-con sus audiencias de saldo. **Medido para la B1:** `core.business.timezone` existe (`schema/
-business.ts:84`); tick cada 6 h (`.github/workflows/marketing-tick.yml`), worker de push cada 5 min
-(`wallet-push-cron.yml`); el cooldown de la cola es de 3 min por consumidor (`wallet/push.ts:17`, no
-es de marketing); Apple lleva el texto por `consumer_account.latest_message` del pase compartido
-(`push.ts:141`); `sw.js` solo navega (sin click al servidor).
-**Cuarta ronda (owner, 2026-09-26):** el cupon atado al canal es «ridiculo» → el cupon es del
-CLIENTE DENTRO DE LA CAMPAÑA, canjeable con el pase llegue por el canal que llegue. Hoy esta atado al
-turno (`coupon_redemption.turn_id NOT NULL`; el mostrador busca un `campaign_turn` `active`,
-`counter/coupon-store.ts:57`). **Decision: spec PROPIA antes de la B1** (el desacople toca el canje
-del mostrador). Orden nuevo: **B0 cupon desacoplado → B1 canal push → B2 #7/#8 → C #4.**
-**En curso: ADR + spec B0.**
+**Retomar con: «OK a la 0102»** (→ `cerrada` → implementador + revisor) **o sus correcciones.** Commit
+`68a0702`: ADR 0093 (el cupon es del cliente en la campaña, no del canal) + spec
+`docs/specs/0102-cupon-de-campana-desacoplado-del-canal.md` (`borrador`) + filas en INDEX. Nada de
+codigo tocado. **A confirmar por el owner al dar el OK:** ADR 0093 §4 — un cupon emitido sobrevive a
+la cancelacion de su turno (opt-out, local archivado); es consecuencia del desacople, NO palabra suya.
+Migracion `0045` a prod: **ANTES** del deploy (razon en el Handoff de la spec). Prod tiene 0 campañas,
+0 turnos, 0 canjes (SQL, 2026-09-26) → sin backfill.
+
+**Orden de marketing:** **B0 (0102) → B1 canal push → B2 #7/#8 → C #4** → catalogo de premios →
+Bienvenida+Segunda visita. **B1 NO esta escrita**; sus decisiones del owner ya estan todas abajo
+(no re-preguntarlas). Diseño que el orquestador tenia pensado para la B1 (SIN escribir, SIN aprobar):
+`campaign.channel_proximity`/`channel_push` (check al menos uno); `business.push_window_start/end_hour`
+(9/21) + ruta para editarlo; tabla `campaign_push` (holdout 10 % como la proximidad, `queue_id`,
+`sent_at`, `clicked_at`); plan de transporte `campaign` = el de `transactional` (wallet alcanzable,
+si no Web Push, nunca los dos); estado `cancelled` en `wallet_push_queue` + re-chequeo al entregar
+(campaña activa, sin opt-out, sin visita desde que se encolo); click solo Web Push (`sw.js` → POST
+publico con el id); grupos = una campaña de un grupo NO se envia si el cliente ya recibio, desde su
+ultima visita, un push de ella o de una de MAYOR rango del mismo grupo (escala #3→#5, nunca #5→#3);
+conversion = compra dentro de N dias del envio vs holdout (N a proponer). El cupon por push se emite
+como `campaign_coupon` sin turno (lo habilita la 0102).
+
+**Decisiones del owner para la B (2026-09-26, textuales resumidas):** (1) solapamiento → **GRUPOS
+estilo Talon.One**, **FIJOS de plataforma** (SALDO #8 > #7; REACTIVACION #4 > #5 > #3; modo «primera
+campaña»; sin API de grupos); (2) **SIN tope global** entre negocios, y el tope de 1 push cada 7 d
+por negocio → **«sin limite de momento hasta que entendamos como aplicarlo de forma correcta»**
+(revoca el «SI al tope de 7 d» anterior) → la frecuencia la limitan solo las reglas de cada plantilla
+(consecuencia a declarar, no decidida por el owner); (3) horario de envio **editable por negocio**,
+9–21 h por defecto, solo push de campaña; (4) canales de #3/#5: «al activar siempre se muestra el
+editor antes de confirmar la activacion, desde alli puede cambiar configuraciones, por ejemplo entre
+proximidad, push o ambos» → `enable` recibe los canales (default «ambos» = ORQUESTADOR); (5) la B se
+parte en B1/B2; (6) el cupon atado al canal es «ridiculo» → spec propia antes de la B1 (= 0102).
+Silenciar un negocio YA existe (opt-out 0065, `program_membership.marketing_opt_out_at`).
+**Medido para la B1:** `core.business.timezone` existe (`schema/business.ts:84`); tick cada 6 h
+(`.github/workflows/marketing-tick.yml`), worker de push cada 5 min (`wallet-push-cron.yml`); el
+cooldown de la cola es de 3 min por consumidor (`wallet/push.ts:17`, no es de marketing); Apple lleva
+el texto por `consumer_account.latest_message` del pase compartido (`push.ts:141`); `sw.js` solo
+navega; `deliverTransports` solo calcula alcanzabilidad para `transactional` (`push-transports.ts`);
+el cupon requiere turno `active` (`counter/coupon-store.ts:57`, lo que corrige la 0102).
 
 **0101 cerrada:** en PROD (migracion `0044` leida por SQL en `red-violet-38772073`/`main`) y pusheada;
 el owner la vio andar y la re-verifica cuando tenga la UI. **Deuda cerrada en `74a6740`:**
