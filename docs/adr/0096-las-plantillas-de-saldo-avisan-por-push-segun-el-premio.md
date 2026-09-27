@@ -2,7 +2,7 @@
 adr: 0096
 fecha: 2026-09-27
 estado: aceptada
-resumen: Las plantillas de SALDO #7 «Te falta poco» y #8 «Premio sin canjear» son plantillas solo-push y sin cupon del grupo fijo `balance` (#8 > #7), sobre el canal de la 0103. La audiencia es la de dormidos MAS una condicion sobre el saldo contra el premio mas barato del programa operativo (la misma lectura que la bolsa de utilidad): #7 = le falta poco (≤ N sellos o ≤ P % de puntos), una vez por ciclo de canje; #8 = ya tiene el premio, una vez o cada 30 d (max 2) por ausencia. El faltante va en el mensaje con el marcador `{faltan}` (owner), renderizado por cliente al decidir. Un canje despues de la decision cancela el push como `visited`.
+resumen: Las plantillas de SALDO #7 «Te falta poco» y #8 «Premio sin canjear» son plantillas solo-push y sin cupon del grupo fijo `balance` (#8 > #7), sobre el canal de la 0103. La audiencia es la de dormidos MAS una condicion sobre el saldo contra el premio mas barato del programa operativo (la misma lectura que la bolsa de utilidad): #7 = le falta poco (≤ N sellos o ≤ P % de puntos), una vez por ciclo de canje; #8 = ya tiene el premio, una vez o cada 30 d (max 2) por ausencia. El faltante va en el mensaje con el marcador `{faltan}`, obligatorio en #7 (owner), renderizado por cliente al decidir. Un canje despues de la decision cancela el push como `visited`.
 ---
 
 # 0096 — Las plantillas de saldo avisan por push segun el premio
@@ -40,7 +40,7 @@ entero ≥ 1).
      `every_30_days` = hasta 2 por ausencia, separadas por ≥ 30 d. (Nada esta por encima de #8.)
    - El holdout cuenta como decidido (igual que la 0095).
 4. **Texto.** El mensaje de #7 admite `{faltan}`, que al decidir se reemplaza por el faltante de ESE
-   cliente («2 sellos», «1 sello», «15 puntos», «1 punto»). Opcional: sin marcador el texto es fijo.
+   cliente («2 sellos», «1 sello», «15 puntos», «1 punto»). **Obligatorio** en #7 (owner, 2026-09-27): sin marcador → 400.
    Otra plantilla con `{faltan}` → 400. Se congela al encolar, como todo push.
 5. **Un canje es una visita para el gate.** El gate al entregar (0103 §6) cancela `visited` tambien si
    hay un `reward_redemption` de la membresia posterior a la decision — para TODAS las plantillas.

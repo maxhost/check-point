@@ -1,7 +1,7 @@
 ---
 spec: 0104
 fecha: 2026-09-27
-estado: borrador
+estado: cerrada
 resumen: Spec B2 — plantillas #7 «Te falta poco» (`near_reward`) y #8 «Premio sin canjear» (`unclaimed_reward`), solo push y sin cupon, grupo `balance` (#8 > #7), sobre el canal de la 0103 (implementa el ADR 0096). Audiencia = dormidos + saldo contra el premio mas barato del programa operativo; #7 una vez por ciclo de canje con marcador `{faltan}` renderizado por cliente; #8 una vez o cada 30 d (max 2) por ausencia; el canje cancela el push como `visited`. Arregla el `activate` de campañas solo-push (exigia puertas). Migracion `0047`.
 disjunta: si
 archivos: apps/merchant/drizzle/0047_*, apps/merchant/src/server/schema/campaign.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,campaign-store,campaign-actions,push-store,push-delivery,tick,utility-text}.ts + nuevos balance-*.ts, docs/specs/0101-contratos-de-api.md
@@ -85,10 +85,13 @@ Prod: las filas existentes son #3/#5/compositor → columnas nuevas `null`, cump
   `fields.rewardRepeat`. En una plantilla que no los declara, se IGNORAN (regla del docblock de
   `template-input.ts`) y se guardan `null`.
 - `{faltan}` en el mensaje de una plantilla sin `gapMarker` → `400`, `fields.message = "El marcador
-  {faltan} solo vale en «Te falta poco»."`. El largo (60) se mide sobre el texto CRUDO.
+  {faltan} solo vale en «Te falta poco»."`. En #7 es **OBLIGATORIO** (owner): un mensaje sin
+  `{faltan}` → `400`, `fields.message = "El mensaje tiene que incluir {faltan}."`. El largo (60) se mide
+  sobre el texto CRUDO.
 - Plantilla del grupo `balance` y el negocio sin programa operativo (`status in ('active','closing')`)
-  con costo usable (§4) → **`409 no_loyalty_reward`**, «Necesitás un programa de fidelización con un
-  premio.» *(ORQUESTADOR)*. Se evalua despues del 402 y antes de `template_already_live`.
+  con costo usable (§4) → **`409 no_loyalty_reward`**, «No se puede activar: necesitás un programa
+  de fidelización con un premio.» (owner: la UI lo muestra en un toast con el motivo; el contrato lo
+  dice). Se evalua despues del 402 y antes de `template_already_live`.
 - `TemplateInput` y el `insert` ganan los tres campos. El DTO `Campaign` (`campaign-store.ts`) gana
   `nearRewardStamps`, `nearRewardPercent`, `rewardRepeat` (`campaign-store.ts` esta en 287 lineas:
   si pasa de 300, se divide).
@@ -122,7 +125,7 @@ Orden: `opt_out` → `not_reachable` → `not_dormant` (igual que `decidePushEli
   `ownDecisions >= dormantSince`: `once` → ≥ 1; `every_30_days` → ≥ 2, o la ultima `> now − 30 d`.
   (Nada esta por encima de #8: la regla de grupos de si misma la reemplaza la repeticion.)
 
-`renderGap(message, gap, kind)`: reemplaza TODAS las `{faltan}` por `1 sello`/`N sellos`/`1 punto`/`N
+`renderGap(message, gap, kind)`: reemplaza TODAS las `{faltan}` (en #7 siempre hay al menos una) por `1 sello`/`N sellos`/`1 punto`/`N
 puntos`.
 
 #### 6. Tick (`tick.ts`, `push-store.ts`, `marketing/balance-push.ts` nuevo)
@@ -196,8 +199,8 @@ Ninguno.
   y N+1; Puntos cost 100, P 20, gap 20 (elegible) y 21; `balance = cost` → #7 `has_reward`, #8
   elegible; ciclo con decision 1 ms antes / en el instante del canje; `every_30_days` con 1 decision
   hace 30 d exactos (elegible), 29 d (no), 2 decisiones (no).
-- [ ] **Unit** `renderGap`: singular/plural, dos marcadores, sin marcador.
-- [ ] **Unit** `template-input`: los 400 de §3 y los defaults.
+- [ ] **Unit** `renderGap`: singular/plural, dos marcadores.
+- [ ] **Unit** `template-input`: los 400 de §3 (incluido #7 sin `{faltan}`) y los defaults.
 - [ ] **Integracion** `marketing-balance-push.neon…` (tick, `random` inyectado): negocio Sellos y
   negocio Puntos; dormidos cerca/lejos/con premio; asserts por SQL sobre `campaign_push` y el `body`
   de `wallet_push_queue`; ciclo (#7 → orden → no; → canje → si); #8 repeticion con reloj movido; doble
@@ -231,8 +234,8 @@ verificados en el arbol el 2026-09-27. Rojo por la propiedad (leer la asercion).
 | M8 | `no_usable_location` en `activate` | condicion incondicional (forma actual) | integracion: pause + activate solo-push sin puertas → `active` |
 | M9 | rechazo de cupon con `couponAllowed: false` | aceptarlo | unit `template-input`: #7 con cupon → 400 `couponLabel` |
 
-**Declarado fuera:** `409 no_loyalty_reward` y el 400 de `{faltan}` fuera de #7 tienen oraculo sin
-mutacion (presupuesto); el programa `closing` como operativo no se prueba aparte.
+**Declarado fuera:** `409 no_loyalty_reward`, el 400 de `{faltan}` fuera de #7 y el de #7 sin marcador tienen
+oraculo sin mutacion (presupuesto); el programa `closing` como operativo no se prueba aparte.
 
 ## Handoff requerido
 
@@ -243,10 +246,9 @@ que escribe).
 
 ## Abierto
 
-Para el OK del owner (*ORQUESTADOR*, no decididos por el):
-1. #7/#8 sin programa con premio → `409 no_loyalty_reward` al encender.
-2. Un canje cuenta como visita en el gate, para TODAS las plantillas (un push de «Te extrañamos» ya
-   encolado no sale si el cliente vino a canjear).
-3. `{faltan}` es opcional en #7 (sin marcador, texto fijo) y fuera de #7 da 400.
-4. Consecuencia: SALDO y REACTIVACION son grupos distintos → en una misma ausencia un cliente puede
-   recibir un push de cada uno por negocio.
+Nada. **Respuestas del owner (2026-09-27) a los 4 puntos:** (1) si al 409, «tenemos que mostrar un toast
+con error y porque no se puede activar» → el mensaje del 409 dice el motivo y el contrato indica toast;
+(2) el canje cuenta como visita, «si cuenta»; (3) `{faltan}` NO es opcional: **obligatorio en todo
+mensaje de #7** (aclarado por AskUserQuestion; fuera de #7 sigue dando 400); (4) «ok de momento si» a
+los dos grupos sin tope. **OK del owner para migrar prod** («aplica la migracion»): la `0047` se aplica
+a `red-violet-38772073`/`main` despues del PASS del revisor y ANTES del deploy.
