@@ -7495,7 +7495,9 @@ ul.loyalty-fields {
   height: auto;
   min-height: 2.75rem;
   padding: 0.4rem 0.65rem;
-  font: inherit;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 .driver-active:has(.loyalty-tour-popover) .loyalty-page,
 .driver-active:has(.loyalty-tour-popover) .loyalty-page *,

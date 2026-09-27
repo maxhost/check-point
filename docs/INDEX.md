@@ -208,6 +208,9 @@ habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
 
 ## Tours de catálogo — alcance acordado el 2026-09-25
 
+Referencia visual permanente: [Estilo de los tours de onboarding](onboarding-tour-style.md).
+El tour de orientación de Staff es la referencia para nuevos tours en todas las pantallas.
+
 - **ADR 0087:** [Los tours de catálogo son UI y consumen estado del API](adr/0087-los-tours-de-catalogo-son-ui-y-consumen-estado-del-api.md).
   Fija orientación/ayudas, avance confirmado y responsabilidades Codex UI / Claude Code API.
   Estado: **aceptada**; API existente suficiente, sin desarrollo backend requerido.
