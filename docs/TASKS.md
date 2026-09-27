@@ -8,16 +8,15 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0102 (B0) IMPLEMENTADA + PASS; FALTA MIGRAR PROD Y PUSHEAR (2026-09-26)
+## ⇥ ESTADO — MARKETING: 0102 (B0) EN PROD; ESPERA QA DEL OWNER; SIGUE LA B1 (2026-09-26)
 
-**Retomar con:** aplicar la migracion `0045` a PROD (`red-violet-38772073`/`main`) **ANTES** del push
-(el codigo nuevo sin la tabla rompe todo scan del mostrador) → push → deploy `READY` con el sha →
-QA del owner en el mostrador. **El clasificador de permisos DENEGO la migracion a prod desde el
-agente** («Production Deploy»): la corre el owner o autoriza el permiso. Comando (Node 24):
-`DATABASE_URL_UNPOOLED="$DATABASE_URL" pnpm --filter @mi-pasaporte/merchant db:migrate` con el
-`DATABASE_URL` de `apps/merchant/.env.local` (host directo `ep-icy-block`, verificado sin imprimirlo).
-Prod verificado por SQL despues de la denegacion: ultima migracion id 45 (= `0044`), sin
-`campaign_coupon`, `turn_id` presente, 0 campañas con cupon sin fin, 0 canjes → la `0045` aplica limpia.
+**Retomar con: QA del owner** (escanear y canjear un cupon en el mostrador; requiere una campaña con
+cupon y fecha de fin y un turno activo) **y despues «Arrancamos la B1»** (canal push; decisiones del
+owner y diseño tentativo mas abajo, no re-preguntar). Migracion `0045` aplicada a PROD con OK explicito
+del owner (verificado por SQL: migracion id 46, `core.campaign_coupon` existe, `coupon_id NOT NULL`,
+`turn_id` borrado, `core_campaign_coupon_needs_end_check` presente, esquemas intactos). Push
+`60f26aa..154c037`; status de Vercel del commit `154c037` = `success` («Deployment has completed»).
+**Pendiente ajeno:** `test:e2e` rojo en `main` por `loyalty-tour-help.spec.ts:61` (0100, otra sesion).
 
 **0102 implementada en `f4a512e`** (sin push). Implementador: 5 gates verdes, 6 suites Neon 29/29,
 7/7 mutaciones de la spec en ROJO por la propiedad. **Revisor independiente: PASS** — gates re-corridos
