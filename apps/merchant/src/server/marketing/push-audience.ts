@@ -1,3 +1,4 @@
+import { type AtRiskRule, isAtRisk } from "./at-risk";
 import { dormantSince } from "./audience";
 
 /**
@@ -10,7 +11,8 @@ import { dormantSince } from "./audience";
  *     consumer with no transport is still `opt_out`).
  *  2. `not_reachable` — no transport can carry a push: no Apple pass with a device, no
  *     Google pass, no Web Push subscription.
- *  3. `not_dormant` — not the target of this campaign (same rule as proximity).
+ *  3. `not_dormant` — not the target of this campaign (same rule as proximity, the
+ *     at-risk rhythm of #4 included — spec 0105).
  *  4. `already_reached` — THE GROUP RULE (ADR 0095 §5): since their last visit they
  *     already have a non-cancelled decision —holdout included— of this template or of a
  *     higher-ranked one of its group. `>=`: a decision at the very instant of the visit
@@ -23,6 +25,9 @@ export type PushCandidate = {
   marketingOptOutAt: Date | null;
   enrolledAt: Date;
   lastOrderAt: Date | null;
+  /** Spec 0105: the habit of the at-risk rule (see `AudienceCandidate`). */
+  visitDays: number;
+  firstOrderAt: Date | null;
   pushReachable: boolean;
   /** `max(decided_at)` of the consumer's NON-cancelled pushes at this business whose
    * campaign's template is at or above this one in its group. */
@@ -43,7 +48,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function decidePushEligibility(
   candidate: PushCandidate,
-  context: { now: Date; dormantDays: number },
+  context: { now: Date; dormantDays: number; atRisk: AtRiskRule | null },
 ): PushEligibility {
   const excluded = (reason: PushExclusion): PushEligibility => ({
     kind: "excluded",
@@ -56,6 +61,8 @@ export function decidePushEligibility(
     context.now.getTime() - context.dormantDays * DAY_MS,
   );
   if (since > dormantFloor) return excluded("not_dormant");
+  if (context.atRisk && !isAtRisk(candidate, context.now, context.atRisk))
+    return excluded("not_dormant");
   if (candidate.lastGroupDecisionAt && candidate.lastGroupDecisionAt >= since)
     return excluded("already_reached");
   return { kind: "eligible" };

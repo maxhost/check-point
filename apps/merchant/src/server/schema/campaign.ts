@@ -147,7 +147,7 @@ export const campaigns = core.table(
     ),
     check(
       "core_campaign_template_key_check",
-      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward')`,
+      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward', 'at_risk')`,
     ),
     check(
       "core_campaign_near_reward_stamps_check",

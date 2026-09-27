@@ -16,8 +16,13 @@
  * (the merchant picks among `channels` at `enable`). `group`/`rank` are the platform's
  * fixed overlap groups for the PUSH channel: a template is not pushed to a consumer who,
  * since their last visit, already had a push of it or of a HIGHER-OR-EQUAL rank of its
- * group — it escalates (#3 → #5), never goes back (#5 → #3). The #4 of spec C will be
- * rank 3 of `reactivation`.
+ * group — it escalates (#3 → #5), never goes back (#5 → #3).
+ *
+ * AT RISK (spec 0105 / ADR 0097): #4 «Cliente en riesgo» sits in the MIDDLE of the
+ * reactivation ladder — #3 rank 1 → #4 rank 2 → #5 rank 3 — so a customer pushed with #4
+ * no longer gets #3 in that absence but still gets #5 if they stay away. Its audience is
+ * the dormant rule AND the habitual who broke their rhythm (`atRisk`, `at-risk.ts`); the
+ * 3 visits and the 2× are platform constants, shown by `GET templates` and not editable.
  *
  * BALANCE (spec 0104 / ADR 0096): #7 «Te falta poco» and #8 «Premio sin canjear» are
  * push-only and carry no coupon (`couponAllowed: false`). #7 has the two thresholds
@@ -26,11 +31,14 @@
  * repetition (`repeat`). Their audience lives in `balance-audience.ts`.
  *
  * The keys are ALSO pinned by the `core_campaign_template_key_check` (migrations `0044`,
- * `0047`): adding a template here without a migration makes `enable` die on the check.
+ * `0047`, `0048`): adding a template here without a migration makes `enable` die on the check.
  */
+
+import type { AtRiskRule } from "./at-risk";
 
 export type TemplateKey =
   | "missed_you"
+  | "at_risk"
   | "win_back"
   | "near_reward"
   | "unclaimed_reward";
@@ -66,6 +74,8 @@ export type TemplateDefinition = {
   } | null;
   /** #8's repetition per absence. */
   repeat: { options: readonly RewardRepeat[]; default: RewardRepeat } | null;
+  /** #4's rhythm rule (`at-risk.ts`): informative, fixed by the platform. */
+  atRisk: AtRiskRule | null;
 };
 
 export const TEMPLATES: readonly TemplateDefinition[] = [
@@ -87,6 +97,27 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     couponAllowed: true,
     nearReward: null,
     repeat: null,
+    atRisk: null,
+  },
+  {
+    key: "at_risk",
+    title: "Cliente en riesgo",
+    description:
+      "Busca a los clientes habituales que dejaron de venir con su ritmo de siempre.",
+    channels: ["proximity", "push"],
+    group: "reactivation",
+    rank: 2,
+    dormantDays: { options: [14, 30, 45], default: 14 },
+    message: {
+      default: "Hace unos días que no te vemos. ¡Te esperamos!",
+      maxLength: 60,
+      gapMarker: false,
+    },
+    couponRecommended: false,
+    couponAllowed: true,
+    nearReward: null,
+    repeat: null,
+    atRisk: { minVisits: 3, rhythmFactor: 2 },
   },
   {
     key: "win_back",
@@ -95,7 +126,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
       "Busca a los clientes que dejaron de venir hace meses, cuando pasan cerca de tu local.",
     channels: ["proximity", "push"],
     group: "reactivation",
-    rank: 2,
+    rank: 3,
     dormantDays: { options: [60, 90, 180], default: 90 },
     message: {
       default: "¡Volvé! Te estamos esperando.",
@@ -106,6 +137,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     couponAllowed: true,
     nearReward: null,
     repeat: null,
+    atRisk: null,
   },
   {
     key: "near_reward",
@@ -128,6 +160,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
       pointsPercent: { options: [10, 20], default: 20 },
     },
     repeat: null,
+    atRisk: null,
   },
   {
     key: "unclaimed_reward",
@@ -147,6 +180,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     couponAllowed: false,
     nearReward: null,
     repeat: { options: ["once", "every_30_days"], default: "once" },
+    atRisk: null,
   },
 ];
 

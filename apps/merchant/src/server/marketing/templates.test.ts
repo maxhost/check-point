@@ -7,10 +7,11 @@ import { TEMPLATES, templateByKey, templateKeysAtOrAbove } from "./templates";
  * a 400 on the first click of the toggle.
  */
 describe("marketing templates catalog", () => {
-  it("has exactly the four templates of the specs, in catalog order", () => {
-    // Spec 0101 (#3, #5) + spec 0104 (#7, #8).
+  it("has exactly the five templates of the specs, in catalog order", () => {
+    // Spec 0101 (#3, #5) + spec 0105 (#4) + spec 0104 (#7, #8).
     expect(TEMPLATES.map((t) => t.key)).toEqual([
       "missed_you",
+      "at_risk",
       "win_back",
       "near_reward",
       "unclaimed_reward",
@@ -37,6 +38,28 @@ describe("marketing templates catalog", () => {
         couponAllowed: true,
         nearReward: null,
         repeat: null,
+        atRisk: null,
+      },
+      // Spec 0105 / ADR 0097: the middle of the reactivation ladder; 3 and 2× fixed.
+      {
+        key: "at_risk",
+        title: "Cliente en riesgo",
+        description:
+          "Busca a los clientes habituales que dejaron de venir con su ritmo de siempre.",
+        channels: ["proximity", "push"],
+        group: "reactivation",
+        rank: 2,
+        dormantDays: { options: [14, 30, 45], default: 14 },
+        message: {
+          default: "Hace unos días que no te vemos. ¡Te esperamos!",
+          maxLength: 60,
+          gapMarker: false,
+        },
+        couponRecommended: false,
+        couponAllowed: true,
+        nearReward: null,
+        repeat: null,
+        atRisk: { minVisits: 3, rhythmFactor: 2 },
       },
       {
         key: "win_back",
@@ -45,7 +68,7 @@ describe("marketing templates catalog", () => {
           "Busca a los clientes que dejaron de venir hace meses, cuando pasan cerca de tu local.",
         channels: ["proximity", "push"],
         group: "reactivation",
-        rank: 2,
+        rank: 3,
         dormantDays: { options: [60, 90, 180], default: 90 },
         message: {
           default: "¡Volvé! Te estamos esperando.",
@@ -56,6 +79,7 @@ describe("marketing templates catalog", () => {
         couponAllowed: true,
         nearReward: null,
         repeat: null,
+        atRisk: null,
       },
       // Spec 0104 / ADR 0096 — the owner's options and defaults.
       {
@@ -79,6 +103,7 @@ describe("marketing templates catalog", () => {
           pointsPercent: { options: [10, 20], default: 20 },
         },
         repeat: null,
+        atRisk: null,
       },
       {
         key: "unclaimed_reward",
@@ -98,6 +123,7 @@ describe("marketing templates catalog", () => {
         couponAllowed: false,
         nearReward: null,
         repeat: { options: ["once", "every_30_days"], default: "once" },
+        atRisk: null,
       },
     ]);
   });
@@ -130,15 +156,22 @@ describe("marketing templates catalog", () => {
   it("templateByKey finds each key and answers null to anything else", () => {
     expect(templateByKey("missed_you")?.title).toBe("Te extrañamos");
     expect(templateByKey("win_back")?.title).toBe("Recuperar perdidos");
+    expect(templateByKey("at_risk")?.title).toBe("Cliente en riesgo");
     expect(templateByKey("birthday")).toBeNull();
     expect(templateByKey("")).toBeNull();
     expect(templateByKey("MISSED_YOU")).toBeNull();
   });
 
-  /** Spec 0103 §2: the group rule escalates (#3 → #5) and never goes back (#5 → #3). */
-  it("templateKeysAtOrAbove: #3 is blocked by itself and #5; #5 only by itself", () => {
+  /** Spec 0103 §2 + spec 0105: the group rule escalates (#3 → #4 → #5) and never goes
+   * back — a customer pushed with #4 still gets #5, never #3. */
+  it("templateKeysAtOrAbove: #3 is blocked by itself, #4 and #5; #4 by itself and #5; #5 only by itself", () => {
     expect(templateKeysAtOrAbove(templateByKey("missed_you")!)).toEqual([
       "missed_you",
+      "at_risk",
+      "win_back",
+    ]);
+    expect(templateKeysAtOrAbove(templateByKey("at_risk")!)).toEqual([
+      "at_risk",
       "win_back",
     ]);
     expect(templateKeysAtOrAbove(templateByKey("win_back")!)).toEqual([

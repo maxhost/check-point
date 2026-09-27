@@ -1,0 +1,2 @@
+ALTER TABLE "core"."campaign" DROP CONSTRAINT "core_campaign_template_key_check";--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_template_key_check" CHECK ("core"."campaign"."template_key" is null or "core"."campaign"."template_key" in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward', 'at_risk'));

@@ -145,6 +145,8 @@ export async function previewAudience(
         dormantDays: query.dormantDays,
         cooldownDays: DEFAULT_PLACEMENT_LIMITS.cooldownDays,
         eligibleLocationIds: usableLocationIds,
+        // The composer has no template, so no rhythm rule (spec 0105 / ADR 0097).
+        atRisk: null,
       }),
     }));
     return {

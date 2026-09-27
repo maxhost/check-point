@@ -27,7 +27,11 @@ import { GAP_MARKER, type RewardRepeat, type TemplateKey } from "./templates";
  * Every «decision» counts the holdouts and skips the cancelled ones (ADR 0095).
  */
 
-export type BalanceCandidate = PushCandidate & {
+/** Without the at-risk habit (spec 0105): the balance templates never read a rhythm. */
+export type BalanceCandidate = Omit<
+  PushCandidate,
+  "visitDays" | "firstOrderAt"
+> & {
   /** `stamps_count` or `points_balance`, by the program's kind. */
   balance: number;
   /** `max(reward_redemption.created_at)` of the membership. */
@@ -80,8 +84,13 @@ export function decideBalancePush(
     reason,
   });
   const base = decidePushEligibility(
-    { ...candidate, lastGroupDecisionAt: null },
-    { now: ctx.now, dormantDays: ctx.dormantDays },
+    {
+      ...candidate,
+      lastGroupDecisionAt: null,
+      visitDays: 0,
+      firstOrderAt: null,
+    },
+    { now: ctx.now, dormantDays: ctx.dormantDays, atRisk: null },
   );
   if (base.kind === "excluded") return base;
   const reward = ctx.reward;

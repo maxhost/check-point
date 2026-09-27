@@ -337,6 +337,13 @@
       "when": 1790528231325,
       "tag": "0047_plantillas_de_saldo",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1790545204063,
+      "tag": "0048_plantilla_en_riesgo",
+      "breakpoints": true
     }
   ]
 }

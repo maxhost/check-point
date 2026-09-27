@@ -13,13 +13,17 @@
  * rules at once and is counted under exactly one). It is, and each step says why:
  *  1. `opt_out` — the consumer asked not to be marketed to; nothing else matters.
  *  2. `not_reachable` — no wallet pass: the channel does not exist for them.
- *  3. `not_dormant` — they are not the target of this campaign at all.
+ *  3. `not_dormant` — they are not the target of this campaign at all. For #4 «Cliente
+ *     en riesgo» (spec 0105) that is the dormant floor AND, after it, the rhythm rule
+ *     (`at-risk.ts`): a dormant customer who has not broken their rhythm is not the target.
  *  4. `no_location` — no attributable door among the campaign's usable ones.
  *  5. `cooldown` — this business already had its window recently.
  *  6. `live_turn` — a turn of this business is already queued/active for them.
  * Rules 4 and 5 are re-evaluated later, under the per-consumer lock, by
  * `planConsumerPlacement`: a turn can wait days in the queue and the world moves.
  */
+
+import { type AtRiskRule, isAtRisk } from "./at-risk";
 
 /** The facts about one membership that the decision needs, as SQL returns them. */
 export type AudienceCandidate = {
@@ -30,6 +34,10 @@ export type AudienceCandidate = {
   enrolledAt: Date;
   /** `max(order.created_at)` of THIS business, null when they never bought. */
   lastOrderAt: Date | null;
+  /** Spec 0105: distinct local days (business timezone) with an order here, and the
+   * first of those orders — the habit the at-risk rule reads. */
+  visitDays: number;
+  firstOrderAt: Date | null;
   /** `location_id` of their most recent order with this business (nullable column). */
   lastOrderLocationId: string | null;
   originLocationId: string | null;
@@ -52,6 +60,8 @@ export type AudienceContext = {
    * or ungeocoded would otherwise be queued and cancelled in the SAME run, forever (a
    * cancelled turn does not hold the partial unique, so the next run re-inserts it). */
   eligibleLocationIds: readonly string[];
+  /** Spec 0105: the template's rhythm rule (only #4); `null` = the dormant rule alone. */
+  atRisk: AtRiskRule | null;
 };
 
 export type ExclusionReason =
@@ -115,6 +125,8 @@ export function decideTurnEligibility(
     context.now.getTime() - context.dormantDays * DAY_MS,
   );
   if (dormantSince(candidate) > dormantFloor) return excluded("not_dormant");
+  if (context.atRisk && !isAtRisk(candidate, context.now, context.atRisk))
+    return excluded("not_dormant");
   const locationId = attributableLocation(
     candidate,
     context.eligibleLocationIds,

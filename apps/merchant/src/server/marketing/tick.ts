@@ -29,6 +29,7 @@ import {
   summarizeAudience,
 } from "./audience";
 import {
+  type ActiveCampaign,
   enqueueTurns,
   loadActiveCampaigns,
   loadAudienceCandidates,
@@ -49,6 +50,7 @@ import {
   loadPushCandidates,
   recordPushDecision,
 } from "./push-store";
+import { templateByKey } from "./templates";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
 
 export type TickSummary = {
@@ -106,10 +108,12 @@ export const TICK_LOCK_NAMESPACE = "marketing_tick";
  */
 async function runCampaign(
   db: DbTransaction,
-  campaign: { id: string; businessId: string; dormantDays: number },
+  campaign: ActiveCampaign,
   now: Date,
   cooldownDays: number,
 ): Promise<number> {
+  // Spec 0105: #4's rhythm rule; `null` for every other template and the composer.
+  const atRisk = templateByKey(campaign.templateKey ?? "")?.atRisk ?? null;
   const eligibleLocationIds = await loadUsableCampaignLocations(
     db,
     campaign.id,
@@ -125,6 +129,7 @@ async function runCampaign(
       dormantDays: campaign.dormantDays,
       cooldownDays,
       eligibleLocationIds,
+      atRisk,
     }),
   }));
   await recordTickAudience(db, campaign.id, now, summarizeAudience(evaluated));
@@ -172,6 +177,7 @@ async function runPushCampaign(
     const eligibility = decidePushEligibility(candidate, {
       now,
       dormantDays: campaign.dormantDays,
+      atRisk: campaign.template.atRisk,
     });
     if (eligibility.kind !== "eligible") continue;
     const holdout = draw();

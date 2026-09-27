@@ -28,6 +28,7 @@ import {
 } from "../schema";
 import type { AudienceCandidate, AudienceCounts } from "./audience";
 import { requireDate, toDate } from "./driver-values";
+import { templateByKey } from "./templates";
 
 /** What step 1 needs of a campaign; the message and the coupon are read at ACTIVATION
  * (step 4), from the campaign row, and copied into the turn's snapshots. */
@@ -35,6 +36,8 @@ export type ActiveCampaign = {
   id: string;
   businessId: string;
   dormantDays: number;
+  /** `null` = a composer campaign. The tick reads the template's `atRisk` from it. */
+  templateKey: string | null;
 };
 
 /**
@@ -45,20 +48,23 @@ export type ActiveCampaign = {
  * THE ORDER IS THE RULE OF OVERLAP (spec 0101 / ADR 0092 §6): the tick queues campaign by
  * campaign and the turn insert does `on conflict do nothing` over the one-live-turn-per-
  * (business, consumer) index (`enqueueTurns`), so the FIRST campaign to evaluate a consumer
- * keeps them. Highest `dormant_days` first means a lost customer gets the lost-customer
- * message; `created_at`, `id` make the tie stable. Without an `order by` the winner was
- * whatever order the heap returned.
+ * keeps them. FIRST by the template's RANK desc (spec 0105 / ADR 0097 §4; the composer,
+ * with no template, ranks 0 and goes after every template), THEN highest `dormant_days`,
+ * then `created_at`, `id` for a stable tie. The rank goes first because days alone would
+ * hand #3 at 30 d the turn of every habitual at risk (#4 at 14 d) away more than 30 d.
+ * Without an `order by` the winner was whatever order the heap returned.
  */
 export async function loadActiveCampaigns(
   db: DbTransaction,
   now: Date,
   businessIds?: string[],
 ): Promise<ActiveCampaign[]> {
-  return await db
+  const rows = await db
     .select({
       id: campaigns.id,
       businessId: campaigns.businessId,
       dormantDays: campaigns.dormantDays,
+      templateKey: campaigns.templateKey,
     })
     .from(campaigns)
     .where(
@@ -78,6 +84,10 @@ export async function loadActiveCampaigns(
       asc(campaigns.createdAt),
       asc(campaigns.id),
     );
+  const rank = (row: ActiveCampaign) =>
+    templateByKey(row.templateKey ?? "")?.rank ?? 0;
+  // `sort` is stable: equal ranks keep the `dormant_days`, `created_at`, `id` order.
+  return rows.sort((a, b) => rank(b) - rank(a));
 }
 
 /**
@@ -130,6 +140,8 @@ export async function loadAudienceCandidates(
     marketing_opt_out_at: string | null;
     enrolled_at: string;
     last_order_at: string | null;
+    visit_days: number;
+    first_order_at: string | null;
     last_order_location_id: string | null;
     origin_location_id: string | null;
     has_pass: boolean;
@@ -144,6 +156,11 @@ export async function loadAudienceCandidates(
       m.origin_location_id,
       (select max(o.created_at) from core."order" o
          where o.business_id = m.business_id and o.consumer_id = m.consumer_id) as last_order_at,
+      (select count(distinct (o.created_at at time zone b.timezone)::date)::int
+         from core."order" o join core.business b on b.id = o.business_id
+         where o.business_id = m.business_id and o.consumer_id = m.consumer_id) as visit_days,
+      (select min(o.created_at) from core."order" o
+         where o.business_id = m.business_id and o.consumer_id = m.consumer_id) as first_order_at,
       (select o.location_id from core."order" o
          where o.business_id = m.business_id and o.consumer_id = m.consumer_id
          order by o.created_at desc, o.id desc limit 1) as last_order_location_id,
@@ -164,6 +181,8 @@ export async function loadAudienceCandidates(
     marketingOptOutAt: toDate(row.marketing_opt_out_at),
     enrolledAt: requireDate(row.enrolled_at),
     lastOrderAt: toDate(row.last_order_at),
+    visitDays: Number(row.visit_days),
+    firstOrderAt: toDate(row.first_order_at),
     lastOrderLocationId: row.last_order_location_id,
     originLocationId: row.origin_location_id,
     hasPass: row.has_pass,

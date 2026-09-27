@@ -113,10 +113,12 @@ export async function loadPushCampaigns(
 
 /**
  * Every membership of the business with the push facts. RAW SQL with its own aliases
- * (`m`, `o`, `d`, `p`, `g`, `w`, `cp`, `c`): a correlated subquery written with the
+ * (`m`, `o`, `b`, `d`, `p`, `g`, `w`, `cp`, `c`): a correlated subquery written with the
  * builder renders the outer column UNQUALIFIED and silently binds to the inner table (see
  * `audience-store.ts`, measured in A5). `push_reachable` is `consumerHasReachableWallet`
- * (`wallet/push-transports.ts`) plus Web Push.
+ * (`wallet/push-transports.ts`) plus Web Push. `visit_days`/`first_order_at` are #4's habit
+ * (spec 0105): distinct days in the BUSINESS's timezone, the same expression as
+ * `loadAudienceCandidates`.
  */
 export async function loadPushCandidates(
   db: DbTransaction,
@@ -133,6 +135,8 @@ export async function loadPushCandidates(
     marketing_opt_out_at: string | null;
     enrolled_at: string;
     last_order_at: string | null;
+    visit_days: number;
+    first_order_at: string | null;
     push_reachable: boolean;
     last_group_decision_at: string | null;
   }>(sql`
@@ -143,6 +147,11 @@ export async function loadPushCandidates(
       m.enrolled_at,
       (select max(o.created_at) from core."order" o
          where o.business_id = m.business_id and o.consumer_id = m.consumer_id) as last_order_at,
+      (select count(distinct (o.created_at at time zone b.timezone)::date)::int
+         from core."order" o join core.business b on b.id = o.business_id
+         where o.business_id = m.business_id and o.consumer_id = m.consumer_id) as visit_days,
+      (select min(o.created_at) from core."order" o
+         where o.business_id = m.business_id and o.consumer_id = m.consumer_id) as first_order_at,
       (exists (select 1 from consumer.wallet_push_device d
                  join consumer.wallet_pass p on p.id = d.wallet_pass_id
                where p.consumer_id = m.consumer_id and p.provider = 'apple')
@@ -164,6 +173,8 @@ export async function loadPushCandidates(
     marketingOptOutAt: toDate(row.marketing_opt_out_at),
     enrolledAt: requireDate(row.enrolled_at),
     lastOrderAt: toDate(row.last_order_at),
+    visitDays: Number(row.visit_days),
+    firstOrderAt: toDate(row.first_order_at),
     pushReachable: row.push_reachable,
     lastGroupDecisionAt: toDate(row.last_group_decision_at),
   }));

@@ -270,12 +270,13 @@ los del negocio `active` y geocodificados, ordenados por id.
 
 ## 4. Plantillas (rutas 11-13) — spec 0101
 
-Catalogo en codigo (`server/marketing/templates.ts:71-151`), en este orden:
+Catalogo en codigo (`server/marketing/templates.ts:81-185`), en este orden:
 
 | `key` | `title` | `channels` | `group` / `rank` | `dormantDays.options` | `default` | `message.default` | `couponRecommended` / `couponAllowed` |
 |---|---|---|---|---|---|---|---|
 | `missed_you` | Te extrañamos | `["proximity","push"]` | `reactivation` / 1 | `[14, 30]` | `30` | `Hace rato no te vemos. ¡Te esperamos!` | `false` / `true` |
-| `win_back` | Recuperar perdidos | `["proximity","push"]` | `reactivation` / 2 | `[60, 90, 180]` | `90` | `¡Volvé! Te estamos esperando.` | `true` / `true` |
+| `at_risk` | Cliente en riesgo | `["proximity","push"]` | `reactivation` / 2 | `[14, 30, 45]` | `14` | `Hace unos días que no te vemos. ¡Te esperamos!` | `false` / `true` |
+| `win_back` | Recuperar perdidos | `["proximity","push"]` | `reactivation` / 3 | `[60, 90, 180]` | `90` | `¡Volvé! Te estamos esperando.` | `true` / `true` |
 | `near_reward` | Te falta poco | `["push"]` | `balance` / 1 | `[3, 7, 14]` | `7` | `¡Estás a {faltan} de tu premio!` | `false` / `false` |
 | `unclaimed_reward` | Premio sin canjear | `["push"]` | `balance` / 2 | `[7, 14, 30]` | `14` | `Tenés un premio esperándote. ¡Vení a canjearlo!` | `false` / `false` |
 
@@ -285,13 +286,16 @@ plantilla; spec 0103 — **reemplaza al `channel: "proximity"` de la 0101, que y
 `group` y `rank`. Campos de la 0104: `couponAllowed` (`false` → `enable` rechaza el cupon),
 `nearReward` (solo #7: `{ "stamps": { "options": [1,2,3], "default": 2 }, "pointsPercent": {
 "options": [10,20], "default": 20 } }`, `null` en las demas) y `repeat` (solo #8: `{ "options":
-["once","every_30_days"], "default": "once" }`, `null` en las demas). Los textos
+["once","every_30_days"], "default": "once" }`, `null` en las demas). Campo de la 0105:
+`atRisk` (solo #4: `{ "minVisits": 3, "rhythmFactor": 2 }`, `null` en las demas) —
+INFORMATIVO, fijo de plataforma, no se manda en `enable`. Los textos
 (`description`, `message.default`) cambian sin spec.
 
 **Grupos (ADR 0095 §5, solo canal push):** una plantilla no le envia un push a un cliente que,
 desde su ultima visita (ultima compra, o el alta si nunca compro), ya tiene un push no
 cancelado —holdout incluido— de ella misma o de una de rango MAYOR del mismo grupo
-(`templateKeysAtOrAbove`, `templates.ts:163-170`): escala #3 → #5 y #7 → #8, nunca al reves.
+(`templateKeysAtOrAbove`, `templates.ts:197-203`): escala #3 → #4 → #5 y #7 → #8, nunca al
+reves — un cliente avisado con #4 ya no recibe #3 en esa ausencia pero SI #5 (spec 0105).
 Los grupos no se mezclan: sin tope global (owner), un cliente puede recibir en la misma
 ausencia un push de SALDO y uno de REACTIVACION del mismo negocio.
 
@@ -305,8 +309,16 @@ reemplaza por el faltante de CADA cliente al decidir («2 sellos», «1 sello»,
 «1 punto»). **#8** = ya tiene el premio; `once` = un push por ausencia, `every_30_days` = hasta
 2 por ausencia separados por ≥ 30 dias. Ninguna de las dos lleva cupon.
 
+**En riesgo (#4, spec 0105 / ADR 0097):** la audiencia es la de dormidos (piso `dormantDays`,
+que nunca se saltea) MAS el cliente HABITUAL que rompio su ritmo: visitas = dias distintos con
+compra en el negocio, en la `timezone` del negocio (varias compras el mismo dia son una; un
+canje no es visita); ritmo = (ultima compra − primera) / (visitas − 1); entra si visitas ≥
+`atRisk.minVisits` (3) y la ausencia es ESTRICTAMENTE mayor que `atRisk.rhythmFactor` (2) × el
+ritmo. Mismos canales y cupon opcional que #3/#5. El que no esta en riesgo cuenta como
+`not_dormant` (la foto de audiencia no lo desglosa); `audience-preview` no conoce el ritmo.
+
 Las claves estan fijadas tambien por el `CHECK core_campaign_template_key_check` (migraciones
-`0044`, `0047`). Una sola corrida viva (`draft`/`active`/`paused`) por negocio y plantilla,
+`0044`, `0047`, `0048`). Una sola corrida viva (`draft`/`active`/`paused`) por negocio y plantilla,
 garantizada por el unico parcial `core_campaign_template_live_unique`
 (`server/schema/campaign.ts`).
 
@@ -332,6 +344,7 @@ garantizada por el unico parcial `core_campaign_template_live_unique`
       "couponAllowed": true,       // spec 0104
       "nearReward": null,          // spec 0104: objeto solo en near_reward (ver §4)
       "repeat": null,              // spec 0104: objeto solo en unclaimed_reward (ver §4)
+      "atRisk": null,              // spec 0105: objeto solo en at_risk (ver §4)
       "live": null,          // o el DTO Campaign COMPLETO (§2) de la corrida viva — su `channels` son los ELEGIDOS
       "runs": [              // corridas anteriores: ended | archived
         { "id": "uuid", "status": "ended",
@@ -357,9 +370,9 @@ Cuerpo JSON (**`{}` es valido**; un POST sin cuerpo es `400 invalid_body`). Todo
 
 | Campo | Regla | Default |
 |---|---|---|
-| `channels` | arreglo NO vacio de `"proximity"`/`"push"`, sin repetidos (`:106-133`). `[]`, `["sms"]`, `["push","push"]`, un string → `400 validation`, `fields.channels` = «Elegí al menos un canal válido.» — spec 0103. Un canal que la plantilla NO ofrece (`["proximity"]` en #7/#8) → `400 validation`, `fields.channels` — spec 0104 | los `channels` **de la plantilla** (ausente o `null`): `["proximity","push"]` en #3/#5, `["push"]` en #7/#8 |
-| `dormantDays` | entero **dentro de `options`** de la plantilla (`:57-72`) | `default` |
-| `message` | 1..60 tras `trim`, medido sobre el texto CRUDO (con el marcador) (`:74-90`). **#7: tiene que incluir `{faltan}`** (sin el → `400`, `fields.message` = «El mensaje tiene que incluir {faltan}.»); **en #3/#5/#8 `{faltan}` → `400`**, `fields.message` = «El marcador {faltan} solo vale en «Te falta poco».» (`balance-input.ts:18-33`) | `message.default` |
+| `channels` | arreglo NO vacio de `"proximity"`/`"push"`, sin repetidos (`:106-133`). `[]`, `["sms"]`, `["push","push"]`, un string → `400 validation`, `fields.channels` = «Elegí al menos un canal válido.» — spec 0103. Un canal que la plantilla NO ofrece (`["proximity"]` en #7/#8) → `400 validation`, `fields.channels` — spec 0104 | los `channels` **de la plantilla** (ausente o `null`): `["proximity","push"]` en #3/#4/#5, `["push"]` en #7/#8 |
+| `dormantDays` | entero **dentro de `options`** de la plantilla (`:57-72`); en #4 `14`/`30`/`45` (`7` → `400`, `fields.dormantDays`) | `default` |
+| `message` | 1..60 tras `trim`, medido sobre el texto CRUDO (con el marcador) (`:74-90`). **#7: tiene que incluir `{faltan}`** (sin el → `400`, `fields.message` = «El mensaje tiene que incluir {faltan}.»); **en #3/#4/#5/#8 `{faltan}` → `400`**, `fields.message` = «El marcador {faltan} solo vale en «Te falta poco».» (`balance-input.ts:18-33`) | `message.default` |
 | `excludedLocationIds` | uuid[]; duplicados colapsan (`:92-102`) | `[]` |
 | `couponLabel`, `couponCost`, `couponMaxRedemptions`, `couponProductId` | **las mismas reglas que el compositor** (`parseCoupon`, `campaign-input.ts:103`). **En #7/#8 (`couponAllowed: false`) cualquiera de los tres primeros → `400`**, `fields.couponLabel` = «Esta campaña no lleva cupón.» (`balance-input.ts:98-110`) | sin cupon |
 | `nearRewardStamps` | solo #7: `1` \| `2` \| `3`; otro valor → `400`, `fields.nearRewardStamps` | `2` |
@@ -411,9 +424,12 @@ corrida viva (`transitionCampaign(…, "end")`): es irreversible; volver a encen
 ### 4.4 Solapamiento
 
 Con dos campañas activas del mismo negocio que califican al mismo consumidor, **gana la de
-mayor `dormantDays`**: el tick las evalua en orden `dormant_days desc, created_at asc, id asc`
-(`loadActiveCampaigns`, `server/marketing/audience-store.ts:76-80`) y la primera se queda con
-el turno. Rige para todas, custom incluidas (ADR 0092 §6). Una campaña **solo push** no
+mayor `rank` de plantilla, y a igual rango la de mayor `dormantDays`** (spec 0105 / ADR 0097
+§4): el tick las evalua en orden `rank desc` (el compositor custom, sin plantilla, cuenta
+como rango 0: va despues de toda plantilla), `dormant_days desc, created_at asc, id asc`
+(`loadActiveCampaigns`, `server/marketing/audience-store.ts:82-90`) y la primera se queda con
+el turno. Asi #4 a 14 d le gana a #3 a 30 d el turno del habitual en riesgo, y #5 le gana a
+las dos. Una campaña **solo push** no
 entra a ese paso (`audience-store.ts:68`): no encola turnos ni escribe foto de audiencia.
 El canal push tiene su propio orden y su propia regla (grupos, §4): el tick evalua las
 campañas push por `rank` desc y la de rango mayor decide primero (spec 0103).
@@ -429,7 +445,7 @@ campañas push por `rank` desc y la de rango mayor decide primero (spec 0103).
    Mirar `preview.eligible` (o `reachable` para el alcance total).
 3. **Toggle ON:** `POST /api/marketing/templates/{key}/enable` con `{}` o los parametros
    elegidos → `201`, queda `active`. Si ya estaba encendida: `409 template_already_live`.
-   El editor ofrece los `channels` de la plantilla (#3/#5: proximidad, push o ambos, `{}` =
+   El editor ofrece los `channels` de la plantilla (#3/#4/#5: proximidad, push o ambos, `{}` =
    ambos; #7/#8: solo push, `{}` = push). Con solo `["push"]` no hace falta ningun local con
    mapa. #7/#8 sin programa con premio: `409 no_loyalty_reward` → **toast con el `error`**
    (dice el motivo). El editor de #7 tiene que conservar `{faltan}` en el mensaje.

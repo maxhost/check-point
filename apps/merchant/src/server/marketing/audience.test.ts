@@ -21,6 +21,9 @@ function candidate(
     // Enrolled long ago and last seen 90 days ago: dormant by any reading.
     enrolledAt: new Date(NOW.getTime() - 400 * DAY),
     lastOrderAt: new Date(NOW.getTime() - 90 * DAY),
+    // Spec 0105: no habit by default; only the at-risk cases below read it.
+    visitDays: 0,
+    firstOrderAt: null,
     lastOrderLocationId: DOOR,
     originLocationId: null,
     hasPass: true,
@@ -36,6 +39,7 @@ function context(overrides: Partial<AudienceContext> = {}): AudienceContext {
     dormantDays: 30,
     cooldownDays: 30,
     eligibleLocationIds: [DOOR, OTHER_DOOR],
+    atRisk: null,
     ...overrides,
   };
 }
@@ -167,6 +171,69 @@ describe("decideTurnEligibility", () => {
       kind: "excluded",
       reason: "opt_out",
     });
+  });
+});
+
+/**
+ * Spec 0105 / ADR 0097: #4 «Cliente en riesgo» = the dormant floor AND the habitual who
+ * broke their rhythm. The rhythm is checked AFTER the floor, which it never skips.
+ */
+describe("decideTurnEligibility — at risk (#4)", () => {
+  const AT_RISK = { minVisits: 3, rhythmFactor: 2 };
+  /** Visits on these days (0 = the first), `away` days after the last one. */
+  const habit = (days: number[], away: number) => {
+    const last = NOW.getTime() - away * DAY;
+    const at = (day: number) =>
+      new Date(last - (days[days.length - 1] - day) * DAY);
+    return candidate({
+      enrolledAt: new Date(at(days[0]).getTime() - DAY),
+      visitDays: days.length,
+      firstOrderAt: at(days[0]),
+      lastOrderAt: at(days[days.length - 1]),
+    });
+  };
+  const DAILY = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  // ORACULO DE M8: the daily customer broke their rhythm (12 d > 2 × 1 d) but is 2 days
+  // short of the 14-day floor. Skipping the floor for #4 would queue them.
+  it("a daily customer away 12 days is not_dormant under a 14-day floor, rhythm or not", () => {
+    expect(
+      decideTurnEligibility(
+        habit(DAILY, 12),
+        context({ dormantDays: 14, atRisk: AT_RISK }),
+      ),
+    ).toEqual({ kind: "excluded", reason: "not_dormant" });
+  });
+
+  it("past the floor, the habitual who broke their rhythm is queued", () => {
+    expect(
+      decideTurnEligibility(
+        habit(DAILY, 20),
+        context({ dormantDays: 14, atRisk: AT_RISK }),
+      ),
+    ).toEqual({ kind: "eligible", locationId: DOOR });
+  });
+
+  it("past the floor, a steady customer inside 2× their rhythm is not the target", () => {
+    // Every 30 days, away 20: dormant for #4's floor, but 20 ≤ 2 × 30.
+    expect(
+      decideTurnEligibility(
+        habit([0, 30, 60], 20),
+        context({ dormantDays: 14, atRisk: AT_RISK }),
+      ),
+    ).toEqual({ kind: "excluded", reason: "not_dormant" });
+  });
+
+  it("without atRisk the old rule is intact: the same steady customer is queued", () => {
+    expect(
+      decideTurnEligibility(
+        habit([0, 30, 60], 20),
+        context({ dormantDays: 14 }),
+      ),
+    ).toEqual({ kind: "eligible", locationId: DOOR });
+    expect(
+      decideTurnEligibility(habit(DAILY, 12), context({ dormantDays: 14 })),
+    ).toEqual({ kind: "excluded", reason: "not_dormant" });
   });
 });
 
