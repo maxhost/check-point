@@ -22,6 +22,9 @@ const world = vi.hoisted(() => ({
   transitionCampaign: vi.fn(),
   previewAudience: vi.fn(),
   loadCampaignResults: vi.fn(),
+  listTemplates: vi.fn(),
+  enableTemplate: vi.fn(),
+  disableTemplate: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -30,8 +33,9 @@ vi.mock("./auth", () => ({
 
 /**
  * Spec 0086 — **se doblan LOS DOS resolvedores, y la asimetria es la decision de esa spec**:
- * `archive` y `end` son IRREVERSIBLES y conservan `requireApiOwner` (→ `ownerContext`,
- * `403 not_owner`); las otras seis entradas son delegables y pasan por
+ * `archive`, `end` y —spec 0101— `templates/:key/disable` (apagar = finalizar) son
+ * IRREVERSIBLES y conservan `requireApiOwner` (→ `ownerContext`, `403 not_owner`); las
+ * otras entradas son delegables y pasan por
  * `requireApiPermission` (→ `membershipContext`, `403 missing_permission`). Un doble solo
  * dejaria al otro resolvedor apuntando a la base y el archivo no correria sin `DATABASE_URL`.
  */
@@ -68,6 +72,14 @@ vi.mock("./marketing/results-store", () => ({
   loadCampaignResults: world.loadCampaignResults,
 }));
 
+// Spec 0101: the three template routes. Only the store is replaced; the routes' guards
+// and `campaignError` mapping stay real.
+vi.mock("./marketing/template-store", () => ({
+  listTemplates: world.listTemplates,
+  enableTemplate: world.enableTemplate,
+  disableTemplate: world.disableTemplate,
+}));
+
 import { GET, POST } from "../app/api/marketing/campaigns/route";
 import { GET as ONE, PATCH } from "../app/api/marketing/campaigns/[id]/route";
 import { POST as ACTIVATE } from "../app/api/marketing/campaigns/[id]/activate/route";
@@ -76,6 +88,9 @@ import { POST as END } from "../app/api/marketing/campaigns/[id]/end/route";
 import { POST as ARCHIVE } from "../app/api/marketing/campaigns/[id]/archive/route";
 import { GET as PREVIEW } from "../app/api/marketing/audience-preview/route";
 import { GET as RESULTS } from "../app/api/marketing/campaigns/[id]/results/route";
+import { GET as TEMPLATES } from "../app/api/marketing/templates/route";
+import { POST as ENABLE } from "../app/api/marketing/templates/[key]/enable/route";
+import { POST as DISABLE } from "../app/api/marketing/templates/[key]/disable/route";
 import { CampaignError } from "./marketing/campaign-store";
 import { MARKETING_ROUTE_NAMES } from "./marketing-route-names";
 
@@ -95,25 +110,39 @@ const one = `${base}/${FOREIGN_CAMPAIGN}`;
 const FIELDS = { name: "Ajena", businessId: FOREIGN_BUSINESS };
 
 const CAMPAIGN = { id: "camp-1", name: "Vecinos", status: "draft" };
+const templates = `/api/marketing/templates`;
+const ENABLE_KEY = Promise.resolve({ key: "missed_you" });
+const DISABLE_KEY = Promise.resolve({ key: "win_back" });
 
 /**
- * The eight handlers of `api/marketing/**`, each with how to call it and which domain
+ * The handlers of `api/marketing/**`, each with how to call it and which domain
  * function it must reach ONLY after the guard. Every call carries a foreign business in
  * the query string and in the body, and a foreign campaign id in the path — none of it
  * may steer the handler.
+ *
+ * `ownerOnly` is the IRREVERSIBLE set (ADR 0079 §2): `archive`, `end` and —spec 0101—
+ * turning a template off, which IS `end`.
  */
-const HANDLERS = [
+const HANDLERS: {
+  name: string;
+  call: () => Promise<Response>;
+  spy: ReturnType<typeof vi.fn>;
+  action: "activate" | "pause" | "end" | "archive" | null;
+  ownerOnly: boolean;
+}[] = [
   {
     name: "GET /api/marketing/campaigns",
     call: () => GET(request(`${base}?b=${FOREIGN_BUSINESS}`, "GET")),
     spy: world.listCampaigns,
     action: null,
+    ownerOnly: false,
   },
   {
     name: "POST /api/marketing/campaigns",
     call: () => POST(request(`${base}?b=${FOREIGN_BUSINESS}`, "POST", FIELDS)),
     spy: world.createCampaign,
     action: null,
+    ownerOnly: false,
   },
   {
     name: "GET /api/marketing/audience-preview",
@@ -126,24 +155,28 @@ const HANDLERS = [
       ),
     spy: world.previewAudience,
     action: null,
+    ownerOnly: false,
   },
   {
     name: "GET /api/marketing/campaigns/:id/results",
     call: () => RESULTS(request(`${one}/results`, "GET"), { params }),
     spy: world.loadCampaignResults,
     action: null,
+    ownerOnly: false,
   },
   {
     name: "GET /api/marketing/campaigns/:id",
     call: () => ONE(request(one, "GET"), { params }),
     spy: world.getCampaign,
     action: null,
+    ownerOnly: false,
   },
   {
     name: "PATCH /api/marketing/campaigns/:id",
     call: () => PATCH(request(one, "PATCH", FIELDS), { params }),
     spy: world.updateCampaign,
     action: null,
+    ownerOnly: false,
   },
   ...(
     [
@@ -158,7 +191,35 @@ const HANDLERS = [
       handler(request(`${one}/${action}`, "POST", FIELDS), { params }),
     spy: world.transitionCampaign,
     action,
+    ownerOnly: action === "archive" || action === "end",
   })),
+  {
+    name: "GET /api/marketing/templates",
+    call: () => TEMPLATES(request(`${templates}?b=${FOREIGN_BUSINESS}`, "GET")),
+    spy: world.listTemplates,
+    action: null,
+    ownerOnly: false,
+  },
+  {
+    name: "POST /api/marketing/templates/:key/enable",
+    call: () =>
+      ENABLE(request(`${templates}/missed_you/enable`, "POST", FIELDS), {
+        params: ENABLE_KEY,
+      }),
+    spy: world.enableTemplate,
+    action: null,
+    ownerOnly: false,
+  },
+  {
+    name: "POST /api/marketing/templates/:key/disable",
+    call: () =>
+      DISABLE(request(`${templates}/win_back/disable`, "POST", FIELDS), {
+        params: DISABLE_KEY,
+      }),
+    spy: world.disableTemplate,
+    action: null,
+    ownerOnly: true,
+  },
 ];
 
 const OWNER_ROW = {
@@ -207,6 +268,9 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     world.transitionCampaign.mockResolvedValue({ campaign: CAMPAIGN });
     world.previewAudience.mockResolvedValue({ quality: "observada" });
     world.loadCampaignResults.mockResolvedValue({ turns: {} });
+    world.listTemplates.mockResolvedValue([]);
+    world.enableTemplate.mockResolvedValue(CAMPAIGN);
+    world.disableTemplate.mockResolvedValue({ campaign: CAMPAIGN });
   });
 
   it.each(HANDLERS)(
@@ -236,15 +300,16 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
 
   /**
    * Spec 0086 §3 / ADR 0079 §2 — **LO IRREVERSIBLE NO SE DELEGA, y acá se ve cuál es cuál.**
-   * Un integrante con el permiso `marketing` completo entra a las seis entradas delegables y
-   * recibe `403 not_owner` en `archive` y `end`, que no se deshacen.
+   * Un integrante con el permiso `marketing` completo entra a las entradas delegables y
+   * recibe `403 not_owner` en `archive`, `end` y `templates/:key/disable`, que no se
+   * deshacen (`ownerOnly` de `HANDLERS`).
    *
    * El control positivo va en el MISMO vector: sin él, un guard roto que contestara 403 a
    * todo pasaría este caso sin distinguir «acotado» de «muerto».
    */
   it.each(HANDLERS)(
     "$name: un STAFF con el permiso `marketing` entra, salvo en lo irreversible",
-    async ({ call, spy, action }) => {
+    async ({ call, spy, ownerOnly }) => {
       world.session = { user: { id: "user-staff", emailVerified: false } };
       world.membershipContext.mockResolvedValue({
         ...OWNER_ROW,
@@ -255,7 +320,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
       // exactamente lo que hace a `archive` y `end` owner-only.
       world.ownerContext.mockResolvedValue(null);
       const response = await call();
-      if (action === "archive" || action === "end") {
+      if (ownerOnly) {
         expect(response.status).toBe(403);
         expect((await response.json()).code).toBe("not_owner");
         expect(spy).not.toHaveBeenCalled();
@@ -270,7 +335,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
    * `missing_permission`, no `not_owner` (cambio de contrato de la 0086). */
   it.each(HANDLERS)(
     "$name: un STAFF SIN el permiso `marketing` → 403 `missing_permission`",
-    async ({ call, spy, action }) => {
+    async ({ call, spy, ownerOnly }) => {
       world.session = { user: { id: "user-staff", emailVerified: false } };
       world.membershipContext.mockResolvedValue({
         ...OWNER_ROW,
@@ -283,9 +348,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
       // `archive`/`end` cortan antes, en el paso 2 de `requireApiOwner`, y ese `code` sigue
       // siendo `not_owner` a proposito: ahi es literalmente lo que pasa.
       expect((await response.json()).code).toBe(
-        action === "archive" || action === "end"
-          ? "not_owner"
-          : "missing_permission",
+        ownerOnly ? "not_owner" : "missing_permission",
       );
       expect(spy).not.toHaveBeenCalled();
     },
@@ -293,7 +356,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
 
   it.each(HANDLERS)(
     "$name acts on the CALLER's business, never on one named by the request",
-    async ({ call, spy, action }) => {
+    async ({ call, spy, ownerOnly }) => {
       signedInOwner();
       const response = await call();
       expect(response.status).toBeLessThan(400);
@@ -303,10 +366,9 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
       expect(business).not.toBe(FOREIGN_BUSINESS);
       // …y la sesion de la que lo resolvio es la del caller, no una del header. Cual de los
       // dos resolvedores corrio depende de si la accion es irreversible (spec 0086 §3).
-      const resolvedor =
-        action === "archive" || action === "end"
-          ? world.ownerContext
-          : world.membershipContext;
+      const resolvedor = ownerOnly
+        ? world.ownerContext
+        : world.membershipContext;
       expect(resolvedor).toHaveBeenCalledWith("user-owner");
     },
   );

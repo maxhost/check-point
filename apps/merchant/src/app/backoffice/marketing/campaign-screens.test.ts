@@ -21,6 +21,7 @@ const ID = "33333333-3333-4333-8333-333333333333";
 const campaign = (over: Partial<Campaign> = {}): Campaign => ({
   id: ID,
   name: "Dormidos de septiembre",
+  templateKey: null,
   status: "draft",
   pauseReason: null,
   dormantDays: 45,

@@ -91,7 +91,11 @@ export async function readJson(request: Request): Promise<unknown> {
  * El guard sale de la ACCION y no de un parametro del llamador a proposito: una ruta nueva
  * que se sume a esta fabrica hereda la clasificacion en vez de elegirla, y una accion
  * irreversible que alguien agregue sin tocar esta lista cae del lado **delegable** — por eso
- * el conjunto owner-only esta aseverado en `marketing-permission.test.ts`.
+ * el conjunto owner-only esta aseverado en `server/marketing-routes.test.ts`, en el
+ * `it.each(HANDLERS)` «un STAFF con el permiso `marketing` entra, salvo en lo irreversible»
+ * (la rama `ownerOnly` → `403 not_owner`). Spec 0101 corrigio esta cita: nombraba un
+ * `marketing-permission.test.ts` que no existe. `templates/:key/disable` (apagar =
+ * finalizar) no pasa por esta fabrica pero usa el mismo `requireCampaignOwner`.
  */
 const ACCIONES_SOLO_DEL_OWNER: ReadonlySet<CampaignAction> = new Set([
   "archive",

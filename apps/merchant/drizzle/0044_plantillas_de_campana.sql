@@ -1,0 +1,3 @@
+ALTER TABLE "core"."campaign" ADD COLUMN "template_key" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "core_campaign_template_live_unique" ON "core"."campaign" USING btree ("business_id","template_key") WHERE "core"."campaign"."template_key" is not null and "core"."campaign"."status" in ('draft', 'active', 'paused');--> statement-breakpoint
+ALTER TABLE "core"."campaign" ADD CONSTRAINT "core_campaign_template_key_check" CHECK ("core"."campaign"."template_key" is null or "core"."campaign"."template_key" in ('missed_you', 'win_back'));

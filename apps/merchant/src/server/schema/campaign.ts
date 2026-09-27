@@ -6,6 +6,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -32,6 +33,14 @@ import { products } from "./catalog";
  * `plan_downgraded` (the defensive pause of `billing/webhook-apply.ts` when the plan
  * lands on `free`/`none` without passing through our own route) and
  * `no_active_locations`. The tick reads it to pick the turn's `cancel_reason`.
+ *
+ * `template_key` (spec 0101 / ADR 0092) marks a PREBUILT campaign: `null` is a custom one
+ * from the composer. The catalog itself (texts, options, defaults) lives in code
+ * (`marketing/templates.ts`); the `check` only pins the known keys. ONE live run per
+ * business and template is guaranteed HERE, by the partial unique index over
+ * `draft`/`active`/`paused` — the `select` the store does first only answers faster; two
+ * simultaneous `enable` requests are stopped by the index (`23505` → 409
+ * `template_already_live`).
  */
 export const campaigns = core.table(
   "campaign",
@@ -41,6 +50,7 @@ export const campaigns = core.table(
       .notNull()
       .references(() => businesses.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
+    templateKey: text("template_key"),
     name: text("name").notNull(),
     status: text("status").notNull().default("draft"),
     pauseReason: text("pause_reason"),
@@ -113,6 +123,16 @@ export const campaigns = core.table(
       table.businessId,
       table.status,
     ),
+    check(
+      "core_campaign_template_key_check",
+      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back')`,
+    ),
+    // One live run per business and template (see the table comment).
+    uniqueIndex("core_campaign_template_live_unique")
+      .on(table.businessId, table.templateKey)
+      .where(
+        sql`${table.templateKey} is not null and ${table.status} in ('draft', 'active', 'paused')`,
+      ),
   ],
 );
 

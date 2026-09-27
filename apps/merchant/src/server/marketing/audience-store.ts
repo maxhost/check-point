@@ -7,6 +7,8 @@
 
 import {
   and,
+  asc,
+  desc,
   eq,
   gt,
   inArray,
@@ -39,6 +41,13 @@ export type ActiveCampaign = {
  * Campaigns whose window is open right now. `businessIds` narrows the run to the
  * businesses a test seeded — the same scoping `wallet/push-worker.ts` uses for its
  * drain, so an integration run is deterministic and never touches another file's rows.
+ *
+ * THE ORDER IS THE RULE OF OVERLAP (spec 0101 / ADR 0092 §6): the tick queues campaign by
+ * campaign and the turn insert does `on conflict do nothing` over the one-live-turn-per-
+ * (business, consumer) index (`enqueueTurns`), so the FIRST campaign to evaluate a consumer
+ * keeps them. Highest `dormant_days` first means a lost customer gets the lost-customer
+ * message; `created_at`, `id` make the tie stable. Without an `order by` the winner was
+ * whatever order the heap returned.
  */
 export async function loadActiveCampaigns(
   db: DbTransaction,
@@ -61,6 +70,11 @@ export async function loadActiveCampaigns(
           ? inArray(campaigns.businessId, businessIds)
           : undefined,
       ),
+    )
+    .orderBy(
+      desc(campaigns.dormantDays),
+      asc(campaigns.createdAt),
+      asc(campaigns.id),
     );
 }
 

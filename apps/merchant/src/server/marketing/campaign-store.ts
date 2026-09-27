@@ -35,6 +35,12 @@ export class CampaignError extends Error {
 
 export type Campaign = {
   id: string;
+  /**
+   * Spec 0101: the prebuilt template it runs, or `null` for a custom campaign. Every read
+   * of this file ALWAYS sets it (`columns` below), so the type REQUIRES it: a fixture that
+   * builds a `Campaign` by hand has to say `templateKey: null` explicitly.
+   */
+  templateKey: string | null;
   name: string;
   status: CampaignStatus;
   pauseReason: string | null;
@@ -54,6 +60,7 @@ export type Campaign = {
 
 const columns = {
   id: campaigns.id,
+  templateKey: campaigns.templateKey,
   name: campaigns.name,
   status: campaigns.status,
   pauseReason: campaigns.pauseReason,
@@ -204,12 +211,27 @@ export async function createCampaign(
   return await getCampaign(businessId, id);
 }
 
+/**
+ * Spec 0101 / ADR 0092 §3 — A PREBUILT CAMPAIGN IS NEVER EDITED, in ANY status (a paused
+ * one included): «si cambia parametros las estadisticas se vuelven irrelevantes» (owner).
+ * Changing it is turning it off (= end) and on again, which starts a new run.
+ */
+function assertNotTemplate(current: Campaign): void {
+  if (current.templateKey !== null)
+    throw new CampaignError(
+      409,
+      "template_not_editable",
+      "Una campaña prearmada no se edita: apagala y encendé una nueva.",
+    );
+}
+
 export async function updateCampaign(
   businessId: string,
   id: string,
   body: unknown,
 ): Promise<Campaign> {
   const current = await getCampaign(businessId, id);
+  assertNotTemplate(current);
   if (!isEditable(current.status))
     throw new CampaignError(
       409,

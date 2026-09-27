@@ -22,4 +22,8 @@ export const MARKETING_ROUTE_NAMES = [
   "POST /api/marketing/campaigns/:id/pause",
   "POST /api/marketing/campaigns/:id/end",
   "POST /api/marketing/campaigns/:id/archive",
+  // Spec 0101 — the prebuilt campaigns.
+  "GET /api/marketing/templates",
+  "POST /api/marketing/templates/:key/enable",
+  "POST /api/marketing/templates/:key/disable",
 ];

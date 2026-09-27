@@ -96,8 +96,14 @@ function when(
  * half-declared campaign the database refuses: a label with no cap reaches the counter
  * with nothing to stop it, and a cost with no label reaches the results with nothing to
  * name. `couponProductId` is informative in this phase (ADR 0002) and never required.
+ *
+ * Exported since spec 0101: `enable` of a template (`template-input.ts`) reuses it, so the
+ * coupon of a prebuilt campaign follows EXACTLY the composer's rules instead of a copy.
  */
-function coupon(errors: FieldErrors, body: Record<string, unknown>) {
+export function parseCoupon(
+  errors: FieldErrors,
+  body: Record<string, unknown>,
+) {
   const given = ["couponLabel", "couponCost", "couponMaxRedemptions"].filter(
     (key) => body[key] !== undefined && body[key] !== null,
   );
@@ -187,7 +193,7 @@ export function parseCampaignInput(value: unknown): ParseResult<CampaignInput> {
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
   const doors = locationIds(errors, body.locationIds);
-  const deal = coupon(errors, body);
+  const deal = parseCoupon(errors, body);
 
   if (
     Object.keys(errors).length > 0 ||
