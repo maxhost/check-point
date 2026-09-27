@@ -8,16 +8,16 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: SPEC 0103 (B1, CANAL PUSH) EN BORRADOR, ESPERA OK DEL OWNER (2026-09-26)
+## ⇥ ESTADO — MARKETING: SPEC 0103 (B1, CANAL PUSH) CERRADA, EN IMPLEMENTACION (2026-09-26)
 
-**Retomar con: el OK del owner a la spec 0103** (`docs/specs/0103-canal-push-de-campana.md`, ADR
-0095). Con el OK: pasarla a `cerrada` y despachar UN implementador + UN revisor. Para el OK hay que
-mostrarle los 4 puntos *(ORQUESTADOR)* de su «Abierto» (cupon unico sin canjear por campaña,
-solo-push sin puertas, holdout cuenta para grupos, hasta 2 push por ausencia por negocio). Las
-decisiones del owner de la B1 estan abajo y NO se re-preguntan. **Objetivo del owner (2026-09-26):
-terminar TODO el arco de marketing como API —B1, B2, C— para que ChatGPT construya la UI**; cada spec
-entrega su contrato HTTP escrito (`docs/specs/0101-contratos-de-api.md` es el de marketing).
-El QA del cupon (0102) en el mostrador lo hace el owner en paralelo y no bloquea.
+**Retomar con: estado del implementador de la 0103** (`docs/specs/0103-canal-push-de-campana.md`, ADR
+0095). El owner la aprobo con sus 4 puntos *(ORQUESTADOR)* («ok, cerrada y mandala a implementar»).
+Flujo: UN implementador → UN revisor independiente → migrar `0046` a prod SOLO con OK explicito del
+owner y ANTES del deploy → push. Si la sesion se cae: `git log`/`git status` dicen hasta donde llego el
+implementador; `ListAgents` antes de tocar una mutacion heredada.
+**Objetivo del owner (2026-09-26): terminar TODO el arco de marketing como API —B1, B2, C— para que
+ChatGPT construya la UI**; cada spec entrega su contrato HTTP (`docs/specs/0101-contratos-de-api.md`).
+El QA del cupon (0102) lo hace el owner en paralelo y no bloquea.
 **Pendiente ajeno:** `test:e2e` rojo en `main` por `loyalty-tour-help.spec.ts:61` (0100, otra sesion).
 
 **0102 (B0) en PROD:** migracion `0045` aplicada con OK del owner (verificado por SQL), push

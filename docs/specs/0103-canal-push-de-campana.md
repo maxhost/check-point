@@ -1,7 +1,7 @@
 ---
 spec: 0103
 fecha: 2026-09-26
-estado: borrador
+estado: cerrada
 resumen: Spec B1 — canal push de campaña para las plantillas #3/#5 (implementa el ADR 0095). `enable` recibe `channels` (proximidad, push o ambos; default ambos); el tick decide envios en `core.campaign_push` (holdout 10 %, grupos #5 > #3 desde la ultima visita) y encola `campaign` en `wallet_push_queue`; el worker re-chequea al entregar (cancela o reprograma al horario del negocio), entrega como el transaccional, emite el cupon y marca `sent_at`; click por Web Push; conversion a 7 dias en resultados; `GET/PATCH /api/marketing/settings` para el horario. Migracion `0046`.
 disjunta: si
 archivos: apps/merchant/drizzle/0046_*, apps/merchant/src/server/schema/{campaign,campaign-coupon,campaign-push,business,consumer,index}.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,audience-store,tick,campaign-store,results,results-store}.ts + nuevos push-*.ts, apps/merchant/src/server/wallet/{push,push-transports}.ts, apps/merchant/src/server/push/webpush-channel.ts, apps/merchant/public/sw.js, apps/merchant/src/app/api/marketing/settings/route.ts, apps/merchant/src/app/api/public/push/click/route.ts, docs/specs/0101-contratos-de-api.md
@@ -328,7 +328,7 @@ tabla nueva que no lee, `cancelled` que no escribe).
 
 ## Abierto
 
-Nada que bloquee. Para el OK del owner, lo *(ORQUESTADOR)*:
+Nada. **El owner aprobo la spec y los 4 puntos *(ORQUESTADOR)* de abajo («ok, cerrada y mandala a implementar», 2026-09-26):**
 1. Un cliente con cupon sin canjear de la campaña no recibe un segundo por push (el aviso igual sale).
 2. Solo-push no exige puertas con coordenadas.
 3. Holdout cuenta como «ya decidido» para la regla de grupos.
