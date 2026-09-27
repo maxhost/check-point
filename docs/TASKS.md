@@ -8,18 +8,20 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0102 (B0) EN PROD; ESPERA QA DEL OWNER; SIGUE LA B1 (2026-09-26)
+## ⇥ ESTADO — MARKETING: SPEC 0103 (B1, CANAL PUSH) EN BORRADOR, ESPERA OK DEL OWNER (2026-09-26)
 
-**Retomar con: «Arrancamos la B1»** (canal push; decisiones del owner y diseño tentativo mas abajo, no
-re-preguntar). **Objetivo del owner (2026-09-26): terminar TODO el arco de marketing como API —B1, B2,
-C— para que ChatGPT construya la UI**; cada spec entrega su contrato HTTP escrito
-(`docs/specs/0101-contratos-de-api.md` es el contrato de marketing, `0072` el del mostrador). El QA del
-cupon (0102) en el mostrador lo hace el owner en paralelo (requiere campaña con cupon y fecha de fin y
-un turno activo) y no bloquea la B1. Migracion `0045` aplicada a PROD con OK explicito
-del owner (verificado por SQL: migracion id 46, `core.campaign_coupon` existe, `coupon_id NOT NULL`,
-`turn_id` borrado, `core_campaign_coupon_needs_end_check` presente, esquemas intactos). Push
-`60f26aa..154c037`; status de Vercel del commit `154c037` = `success` («Deployment has completed»).
+**Retomar con: el OK del owner a la spec 0103** (`docs/specs/0103-canal-push-de-campana.md`, ADR
+0095). Con el OK: pasarla a `cerrada` y despachar UN implementador + UN revisor. Para el OK hay que
+mostrarle los 4 puntos *(ORQUESTADOR)* de su «Abierto» (cupon unico sin canjear por campaña,
+solo-push sin puertas, holdout cuenta para grupos, hasta 2 push por ausencia por negocio). Las
+decisiones del owner de la B1 estan abajo y NO se re-preguntan. **Objetivo del owner (2026-09-26):
+terminar TODO el arco de marketing como API —B1, B2, C— para que ChatGPT construya la UI**; cada spec
+entrega su contrato HTTP escrito (`docs/specs/0101-contratos-de-api.md` es el de marketing).
+El QA del cupon (0102) en el mostrador lo hace el owner en paralelo y no bloquea.
 **Pendiente ajeno:** `test:e2e` rojo en `main` por `loyalty-tour-help.spec.ts:61` (0100, otra sesion).
+
+**0102 (B0) en PROD:** migracion `0045` aplicada con OK del owner (verificado por SQL), push
+`60f26aa..154c037`, deploy `154c037` `success`.
 
 **0102 implementada en `f4a512e`** (sin push). Implementador: 5 gates verdes, 6 suites Neon 29/29,
 7/7 mutaciones de la spec en ROJO por la propiedad. **Revisor independiente: PASS** — gates re-corridos
@@ -43,8 +45,8 @@ frase; interpretacion del orquestador). Campaña sin `ends_at` → el owner elig
 fin»** a toda campaña con cupon.
 
 **Orden de marketing:** **B0 (0102) → B1 canal push → B2 #7/#8 → C #4** → catalogo de premios →
-Bienvenida+Segunda visita. **B1 NO esta escrita**; sus decisiones del owner ya estan todas abajo
-(no re-preguntarlas). Diseño que el orquestador tenia pensado para la B1 (SIN escribir, SIN aprobar):
+Bienvenida+Segunda visita. **B1 escrita como spec 0103 (borrador)**; lo de abajo es el diseño previo,
+ya volcado a la spec y al ADR 0095 (que mandan):
 `campaign.channel_proximity`/`channel_push` (check al menos uno); `business.push_window_start/end_hour`
 (9/21) + ruta para editarlo; tabla `campaign_push` (holdout 10 % como la proximidad, `queue_id`,
 `sent_at`, `clicked_at`); plan de transporte `campaign` = el de `transactional` (wallet alcanzable,
@@ -54,6 +56,12 @@ publico con el id); grupos = una campaña de un grupo NO se envia si el cliente 
 ultima visita, un push de ella o de una de MAYOR rango del mismo grupo (escala #3→#5, nunca #5→#3);
 conversion = compra dentro de N dias del envio vs holdout (N a proponer). El cupon por push se emite
 como `campaign_coupon` sin turno (lo habilita la 0102).
+
+**Decisiones del owner para la B1 (2026-09-26, por AskUserQuestion, eligio las 4 recomendadas):**
+(a) conversion del push = compra dentro de **7 dias** del envio vs holdout; (b) el push usa el
+**MISMO mensaje** de la campaña (titulo = nombre del negocio, cuerpo = `message`, 60 car.); (c) el
+canal push es **SOLO para plantillas** (#3/#5), el compositor custom queda en proximidad; (d)
+`enable` sin canales → **ambos** por defecto (no rompe el contrato de la 0101).
 
 **Decisiones del owner para la B (2026-09-26, textuales resumidas):** (1) solapamiento → **GRUPOS
 estilo Talon.One**, **FIJOS de plataforma** (SALDO #8 > #7; REACTIVACION #4 > #5 > #3; modo «primera
