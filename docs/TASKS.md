@@ -8,7 +8,7 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; SIGUE LA B2 (#7/#8) (2026-09-27)
+## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; B2 = SPEC 0104 EN BORRADOR (2026-09-27)
 
 **Retomar con: «Arrancamos la B2»** (plantillas #7 Te falta poco y #8 Premio sin canjear, por push,
 sobre el canal de la 0103; propuesta de parametros ya respondida por el owner mas abajo —«Paso 2,
@@ -17,6 +17,19 @@ TODO JUNTO al final**, cuando el arco entero (B2, C) este como API y ChatGPT hay
 no se le pide QA por spec. El QA pendiente acumulado: cupon en el mostrador (0102) y push de campaña
 (0103: encender #3 con `["push"]`, cliente dormido con Web Push, ver llegar/tocar el aviso, `clicked`
 en resultados).
+**B2 — decisiones del owner (2026-09-27, AskUserQuestion):** (1) el faltante de #7 va con un
+**MARCADOR `{faltan}`** en el mensaje editable (eligio esto sobre el «automatico» recomendado); (2)
+**defaults = los propuestos**: #7 faltan ≤2 sellos o ≤20 % de puntos, 7 dias sin venir, una vez por
+ciclo (hasta que canjea); #8 14 dias sin venir con el premio disponible, una vez; los dos solo push,
+sin premio. **Medido para la B2:** `dormant_days` tiene check `between 7 and 365`
+(`schema/campaign.ts:100`) → la opcion «3 dias» de #7 pide migracion; `template_key` fijado por check
+(`:143`); un solo programa operativo por negocio (`schema/loyalty.ts:137`); el canje DEBITA
+(`counter/redeem-plan.ts:64`, `balance - required`); el «te faltan» ya se calcula en
+`marketing/utility-text.ts:53` (premio mas barato). **ADR 0096 + spec 0104 en `borrador`, commit
+`a90788f`** (con filas en INDEX). **Espera el OK del owner** a los 4 puntos *(ORQUESTADOR)* de «Abierto»
+de la 0104; con el OK → `cerrada` → implementador + revisor. **Hallazgo medido:** `activate` de una
+campaña solo-push exige puertas (`marketing/campaign-actions.ts:71-75`) → un #3 solo-push pausado no se
+reactiva; lo arregla la 0104 §8.
 **0103 en PROD:** migracion `0046` aplicada con OK del owner a `red-violet-38772073`/`main`,
 verificada por SQL (migracion id 47; `channel_proximity`/`channel_push`, `push_window_*`,
 `core.campaign_push`, `campaign_coupon.push_id`, `cancelled` en el check de la cola, los 3 checks
