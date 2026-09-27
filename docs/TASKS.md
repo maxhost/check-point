@@ -10,9 +10,12 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ ESTADO — MARKETING: 0102 (B0) EN PROD; ESPERA QA DEL OWNER; SIGUE LA B1 (2026-09-26)
 
-**Retomar con: QA del owner** (escanear y canjear un cupon en el mostrador; requiere una campaña con
-cupon y fecha de fin y un turno activo) **y despues «Arrancamos la B1»** (canal push; decisiones del
-owner y diseño tentativo mas abajo, no re-preguntar). Migracion `0045` aplicada a PROD con OK explicito
+**Retomar con: «Arrancamos la B1»** (canal push; decisiones del owner y diseño tentativo mas abajo, no
+re-preguntar). **Objetivo del owner (2026-09-26): terminar TODO el arco de marketing como API —B1, B2,
+C— para que ChatGPT construya la UI**; cada spec entrega su contrato HTTP escrito
+(`docs/specs/0101-contratos-de-api.md` es el contrato de marketing, `0072` el del mostrador). El QA del
+cupon (0102) en el mostrador lo hace el owner en paralelo (requiere campaña con cupon y fecha de fin y
+un turno activo) y no bloquea la B1. Migracion `0045` aplicada a PROD con OK explicito
 del owner (verificado por SQL: migracion id 46, `core.campaign_coupon` existe, `coupon_id NOT NULL`,
 `turn_id` borrado, `core_campaign_coupon_needs_end_check` presente, esquemas intactos). Push
 `60f26aa..154c037`; status de Vercel del commit `154c037` = `success` («Deployment has completed»).
