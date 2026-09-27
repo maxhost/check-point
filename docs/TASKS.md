@@ -8,7 +8,13 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: C (#4) SPEC 0105 IMPLEMENTADA EN `6013db2` (sin push), EN REVISION (2026-09-27)
+## ⇥ ESTADO — MARKETING: C (#4) SPEC 0105 IMPLEMENTADA, PASS (`6013db2`+`f086615`, docs `c59b95b`), SIN PUSH (2026-09-27)
+
+**Revisor: PASS.** R1/R2/R3 (sin oraculo) cerrados por el orquestador en `f086615` y re-medidos en ROJO;
+gates verdes (1931 tests), Neon 15/15. **Falta, en este orden:** OK del owner para aplicar la `0048` a
+`red-violet-38772073`/`main` (pedido, NO dado) → migrar y verificar por SQL → push → deploy con el sha
+en `READY`. Con eso el arco B1/B2/C queda como API; sigue la UI (ChatGPT) y el QA todo junto.
+**Historial de esta C (abajo, antes del PASS):**
 
 **Implementador:** commit `6013db2`, gates verdes (1929 tests), `test:e2e` 105/5/1 con el rojo previo
 `loyalty-tour-help.spec.ts:40` reproducido en `d8866ad`; Neon 14 archivos 61/61 en la rama de CI (la
