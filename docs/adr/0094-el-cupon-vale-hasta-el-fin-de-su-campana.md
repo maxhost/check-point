@@ -11,10 +11,11 @@ resumen: Supersede el §4 del ADR 0093. Un cupon de campaña emitido vale desde 
 
 El ADR 0093 §4 decia, como propuesta del orquestador pendiente de confirmacion, que un cupon emitido
 lo cortaban la campaña no `active` o la ventana del turno (5 dias). Al pedirle el OK, el owner
-respondio (2026-09-26, textual): «si el merchant apaga la campaña, los cupones deberia seguir siendo
+respondio (2026-09-26, textual): «si el cliente apaga la campaña, los cupones deberia seguir siendo
 validos dentro de la fecha en la que se creo la campaña es decir si la campaña va del 1/9 al 30/9 los
 cupones emitidos serian validos dentro de ese periodo. si el merchant apaga la campaña se le avisa
-eso, es una cuestion de UI».
+eso, es una cuestion de UI» (typos corregidos; «cliente» leido como el COMERCIO por la segunda frase —el
+consumidor no puede apagar una campaña—, interpretacion del orquestador).
 
 Medido: las plantillas se encienden sin `ends_at` por defecto (`template-input.ts`: `endsAt` ausente
 → `null`), y el compositor tambien lo permite. Preguntado que pasa entonces, el owner eligio (mismo
