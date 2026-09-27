@@ -1729,3 +1729,14 @@ esperando el lock y recien ahi commitea; el caso asevera esa precondicion antes 
 re-medida → ROJO. **Regla:** en una fila cuyo oraculo es una CARRERA o un camino de error, el §2.0
 exige nombrar que hace que el test entre por esa rama y no por la que la precede; `Promise.all`
 sobre la misma base no es simultaneidad.
+
+## 2026-09-27 — la fila M7 de la 0104 tenia un caso que excluian LAS DOS reglas
+
+Cuarta fila falsa escrita por el orquestador (M5/0085, M6/0086, M2/0101). La M7 mutaba «usar siempre
+el umbral de sellos» y la atacaba con «Puntos, faltan 15 de 100, P 10 → no». Pero 15 > 2 (umbral de
+sellos) TAMBIEN excluye: el caso da el mismo resultado con y sin la mutacion. El implementador lo
+midio en VERDE con una sonda de solo ese caso; el que distingue es «faltan 10, P 10 → SI» (entra por
+porcentaje, lo excluiria el de sellos). **Regla:** cuando la mutacion REEMPLAZA una regla por otra,
+el caso del oraculo tiene que estar en la DIFERENCIA de las dos (uno que una acepta y la otra
+rechaza); un caso que las dos rechazan no mide nada. Se chequea evaluando el caso con las dos reglas
+antes de escribir la fila.

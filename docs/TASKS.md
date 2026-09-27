@@ -8,7 +8,7 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; B2 = SPEC 0104 CERRADA, EN IMPLEMENTACION (2026-09-27)
+## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; B2 = SPEC 0104 IMPLEMENTADA (`7376984`), EN REVISION (2026-09-27)
 
 **Retomar con: «Arrancamos la B2»** (plantillas #7 Te falta poco y #8 Premio sin canjear, por push,
 sobre el canal de la 0103; propuesta de parametros ya respondida por el owner mas abajo —«Paso 2,
@@ -28,8 +28,14 @@ sin premio. **Medido para la B2:** `dormant_days` tiene check `between 7 and 365
 `marketing/utility-text.ts:53` (premio mas barato). **ADR 0096 + spec 0104 en `borrador`, commit
 `a90788f`** (con filas en INDEX). **Spec `cerrada` en `32519c6`** con las respuestas del owner (409 con motivo
 para toast; canje = visita; `{faltan}` OBLIGATORIO en #7; dos grupos sin tope «ok de momento»).
-**OK del owner para migrar prod** la `0047` tras el PASS y antes del deploy. Implementador despachado
-(sin commit suyo todavia al escribir esto); despues, revisor independiente. **Hallazgo medido:** `activate` de una
+**OK del owner para migrar prod** la `0047` tras el PASS y antes del deploy. **Implementada en `7376984`** (sin push; migracion
+`0047` NO aplicada en prod). Implementador: 5 gates verdes (1916 tests), `test:e2e` 105/5/1 rojo previo
+(`loyalty-tour-help.spec.ts:40`, reproducido en `1616215`), Neon 18 archivos 86/86, M1–M9 en rojo. La
+fila M7 de la spec era FALSA (caso que excluian las dos reglas) → corregida en `6f0853a`, caso en
+`LECCIONES.md`. Desvio a juzgar: `loadBalanceCandidates` filtra por el programa operativo. **Revisor
+independiente despachado.** Hallazgos del implementador sin arreglar: comentario de
+`template-store.ts:166-167` impreciso (solo-push SI inserta puertas si las hay; inocuo); el hook
+`file-size.sh` sale 0 sin mirar si `node` no esta en el PATH (medido: 301 lineas → EXIT=0 sin nvm). **Hallazgo medido:** `activate` de una
 campaña solo-push exige puertas (`marketing/campaign-actions.ts:71-75`) → un #3 solo-push pausado no se
 reactiva; lo arregla la 0104 §8.
 **0103 en PROD:** migracion `0046` aplicada con OK del owner a `red-violet-38772073`/`main`,
