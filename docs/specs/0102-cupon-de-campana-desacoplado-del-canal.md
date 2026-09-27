@@ -1,7 +1,7 @@
 ---
 spec: 0102
 fecha: 2026-09-26
-estado: cerrada
+estado: implementada
 resumen: El cupon de campaña pasa del turno de proximidad a una fila propia `core.campaign_coupon` (ADR 0093), valida desde que se emite hasta el `ends_at` de su campaña aunque la apaguen (ADR 0094); campaña con cupon exige fecha de fin; la proximidad lo emite al activar un turno no-holdout, el mostrador lo canjea por `couponId` sin saber el canal. Prerrequisito de la B1.
 disjunta: si
 archivos: apps/merchant/src/server/schema/{campaign-turn.ts,campaign.ts}, apps/merchant/src/server/marketing/{campaign-input.ts,template-input.ts}, apps/merchant/drizzle/0045_*.sql, apps/merchant/src/server/marketing/placement.ts, apps/merchant/src/server/marketing/turn-lifecycle.ts, apps/merchant/src/server/counter/coupon-store.ts, apps/merchant/src/server/counter/coupon-decision.ts, apps/merchant/src/server/counter/coupon.ts, apps/merchant/src/app/backoffice/counter/{types.ts,coupon-panel.tsx,counter-console.tsx}, tests y supports de cupon

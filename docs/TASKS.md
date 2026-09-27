@@ -8,15 +8,30 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: SPEC 0102 (B0, cupon desacoplado) EN BORRADOR, ESPERA OK DEL OWNER (2026-09-26)
+## ⇥ ESTADO — MARKETING: 0102 (B0) IMPLEMENTADA + PASS; FALTA MIGRAR PROD Y PUSHEAR (2026-09-26)
 
-**Retomar con: «OK a la 0102»** (→ `cerrada` → implementador + revisor) **o sus correcciones.** Specs
-y ADRs commiteados (`68a0702`, `f80a2d2`, `4845959`): ADR 0093 (el cupon es del cliente en la campaña,
-no del canal), ADR **0094** (supersede 0093 §4: el cupon vale hasta el `ends_at` de su campaña aunque
-la apaguen; campaña con cupon EXIGE fecha de fin — check + 400 `validation`) y spec
-`docs/specs/0102-cupon-de-campana-desacoplado-del-canal.md` (`borrador`, 7 mutaciones) + filas en
-INDEX. Nada de codigo tocado. Migracion `0045` a prod: **ANTES** del deploy (razon en el Handoff de la
-spec). Prod tiene 0 campañas, 0 turnos, 0 canjes (SQL, 2026-09-26) → sin backfill.
+**Retomar con:** aplicar la migracion `0045` a PROD (`red-violet-38772073`/`main`) **ANTES** del push
+(el codigo nuevo sin la tabla rompe todo scan del mostrador) → push → deploy `READY` con el sha →
+QA del owner en el mostrador. **El clasificador de permisos DENEGO la migracion a prod desde el
+agente** («Production Deploy»): la corre el owner o autoriza el permiso. Comando (Node 24):
+`DATABASE_URL_UNPOOLED="$DATABASE_URL" pnpm --filter @mi-pasaporte/merchant db:migrate` con el
+`DATABASE_URL` de `apps/merchant/.env.local` (host directo `ep-icy-block`, verificado sin imprimirlo).
+Prod verificado por SQL despues de la denegacion: ultima migracion id 45 (= `0044`), sin
+`campaign_coupon`, `turn_id` presente, 0 campañas con cupon sin fin, 0 canjes → la `0045` aplica limpia.
+
+**0102 implementada en `f4a512e`** (sin push). Implementador: 5 gates verdes, 6 suites Neon 29/29,
+7/7 mutaciones de la spec en ROJO por la propiedad. **Revisor independiente: PASS** — gates re-corridos
+(1852 tests), Neon 29/29, 4 mutaciones propias en rojo (vigencia desde `ends_at`, scan sin canjeados,
+scope de negocio en el canje, `requireEndForCoupon` en el compositor). **Orquestador reprodujo**
+Neon 6 archivos / 29 tests verdes. `test:e2e`: 105/5/**1 rojo** IDENTICO en `f4a512e` y en `534ce3b`
+(`tests/e2e/loyalty-tour-help.spec.ts:61`, click en «Premio libre» interceptado por un label) → previo,
+de la 0100 (sesion paralela), no de la 0102.
+**Declarado:** el caso (c) de `counter-coupon` muerde por el motivo correcto pero el rojo lo tapa el
+`finally` (sale como error de teardown); `request_id_reused` sin oraculo propio; borde `>=`/`>` de
+`valid_until` sin medir; filas del negocio de prueba «Cupon ajeno» quedaron en `ci-integration` por la
+R3 del revisor (no bloquean: re-corrida 13/13 verde); `formatDay` del mostrador corta en UTC (UI).
+Limpieza autorizada por el owner en `ci-integration` (2026-09-26): 11 canjes de restos del 23/9
+borrados y 7 campañas con `ends_at` = inicio + 30 d.
 
 **Owner, vigencia del cupon (2026-09-26, textual):** «si el cliente apaga la campaña, los cupones
 deberia seguir siendo validos dentro de la fecha en la que se creo la campaña es decir si la campaña
