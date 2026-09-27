@@ -10,13 +10,20 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ ESTADO — MARKETING: SPEC 0102 (B0, cupon desacoplado) EN BORRADOR, ESPERA OK DEL OWNER (2026-09-26)
 
-**Retomar con: «OK a la 0102»** (→ `cerrada` → implementador + revisor) **o sus correcciones.** Commit
-`68a0702`: ADR 0093 (el cupon es del cliente en la campaña, no del canal) + spec
-`docs/specs/0102-cupon-de-campana-desacoplado-del-canal.md` (`borrador`) + filas en INDEX. Nada de
-codigo tocado. **A confirmar por el owner al dar el OK:** ADR 0093 §4 — un cupon emitido sobrevive a
-la cancelacion de su turno (opt-out, local archivado); es consecuencia del desacople, NO palabra suya.
-Migracion `0045` a prod: **ANTES** del deploy (razon en el Handoff de la spec). Prod tiene 0 campañas,
-0 turnos, 0 canjes (SQL, 2026-09-26) → sin backfill.
+**Retomar con: «OK a la 0102»** (→ `cerrada` → implementador + revisor) **o sus correcciones.** Specs
+y ADRs commiteados (`68a0702`, `f80a2d2`, `4845959`): ADR 0093 (el cupon es del cliente en la campaña,
+no del canal), ADR **0094** (supersede 0093 §4: el cupon vale hasta el `ends_at` de su campaña aunque
+la apaguen; campaña con cupon EXIGE fecha de fin — check + 400 `validation`) y spec
+`docs/specs/0102-cupon-de-campana-desacoplado-del-canal.md` (`borrador`, 7 mutaciones) + filas en
+INDEX. Nada de codigo tocado. Migracion `0045` a prod: **ANTES** del deploy (razon en el Handoff de la
+spec). Prod tiene 0 campañas, 0 turnos, 0 canjes (SQL, 2026-09-26) → sin backfill.
+
+**Owner, vigencia del cupon (2026-09-26, textual):** «si el cliente apaga la campaña, los cupones
+deberia seguir siendo validos dentro de la fecha en la que se creo la campaña es decir si la campaña
+va del 1/9 al 30/9 los cupones emitidos serian validos dentro de ese periodo. si el merchant apaga la
+campaña se le avisa eso, es una cuestion de UI» («cliente» leido como el comercio por la segunda
+frase; interpretacion del orquestador). Campaña sin `ends_at` → el owner eligio **«Obligar fecha de
+fin»** a toda campaña con cupon.
 
 **Orden de marketing:** **B0 (0102) → B1 canal push → B2 #7/#8 → C #4** → catalogo de premios →
 Bienvenida+Segunda visita. **B1 NO esta escrita**; sus decisiones del owner ya estan todas abajo
