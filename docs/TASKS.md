@@ -8,11 +8,20 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0104 (B2, #7/#8) EN PROD; SIGUE LA C (#4) (2026-09-27)
+## ⇥ ESTADO — MARKETING: C (#4) EN SPEC 0105 `borrador`, ESPERA OK DEL OWNER (2026-09-27)
 
-**Retomar con: «Arrancamos la C»** (plantilla #4 «En riesgo»: owner 2026-09-26 — arranca con «≥3
+**C arrancada, commit `3c7267f`:** ADR 0097 + spec **0105 en `borrador`** + filas en INDEX. Cero codigo.
+**Owner (2026-09-27, AskUserQuestion, textual en el ADR 0097):** parametros «el ritmo ni yo lo comprendo.
+elije una cosa»; piso «en riesgo luego de 14 dias sin visita» (estudiar Fivestars/Talon.One/Perkstar →
+hecho y citado en el ADR); grupos «armalo de alguna manera para que podamos probar»; canales «Como
+#3/#5». **Elecciones del ORQUESTADOR por esa delegacion:** ≥3 dias distintos con compra y ausencia > 2×
+ritmo FIJOS (no editables); `dormantDays` 14/30/45 def. 14; escalera #3 → #4 → #5 (rangos 1/2/3, #5 pasa
+de 2 a 3); proximidad ordenada por rango (compositor al final); canje fuera del ritmo. **Sigue:** OK del
+owner a esas elecciones → `cerrada` → implementador + revisor; OK para migrar prod la `0048` tras el PASS.
+
+**Antes (0104):** plantilla #4 «En riesgo»: owner 2026-09-26 — arranca con «≥3
 visitas y ausencia > 2× su ritmo», EDITABLE; grupo REACTIVACION rango 3, #4 > #5 > #3; ver bloque
-«#3/#4/#5» mas abajo). **El QA se hace TODO JUNTO al final** (owner), cuando el arco sea API y ChatGPT
+«#3/#4/#5» mas abajo. **El QA se hace TODO JUNTO al final** (owner), cuando el arco sea API y ChatGPT
 haya hecho la UI. QA acumulado: cupon en mostrador (0102); push de campaña (0103: #3 con `["push"]`,
 Web Push, tocar, `clicked`); **#7/#8 (0104): encender #7 con un cliente dormido a 1 sello con Web
 Push → «¡Estás a 1 sello de tu premio!»; #8 con premio disponible; 409 `no_loyalty_reward` como toast.**
