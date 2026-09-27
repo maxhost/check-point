@@ -8,7 +8,7 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; B2 = SPEC 0104 EN BORRADOR (2026-09-27)
+## ⇥ ESTADO — MARKETING: 0103 (B1) EN PROD; B2 = SPEC 0104 CERRADA, EN IMPLEMENTACION (2026-09-27)
 
 **Retomar con: «Arrancamos la B2»** (plantillas #7 Te falta poco y #8 Premio sin canjear, por push,
 sobre el canal de la 0103; propuesta de parametros ya respondida por el owner mas abajo —«Paso 2,
@@ -26,8 +26,10 @@ sin premio. **Medido para la B2:** `dormant_days` tiene check `between 7 and 365
 (`:143`); un solo programa operativo por negocio (`schema/loyalty.ts:137`); el canje DEBITA
 (`counter/redeem-plan.ts:64`, `balance - required`); el «te faltan» ya se calcula en
 `marketing/utility-text.ts:53` (premio mas barato). **ADR 0096 + spec 0104 en `borrador`, commit
-`a90788f`** (con filas en INDEX). **Espera el OK del owner** a los 4 puntos *(ORQUESTADOR)* de «Abierto»
-de la 0104; con el OK → `cerrada` → implementador + revisor. **Hallazgo medido:** `activate` de una
+`a90788f`** (con filas en INDEX). **Spec `cerrada` en `32519c6`** con las respuestas del owner (409 con motivo
+para toast; canje = visita; `{faltan}` OBLIGATORIO en #7; dos grupos sin tope «ok de momento»).
+**OK del owner para migrar prod** la `0047` tras el PASS y antes del deploy. Implementador despachado
+(sin commit suyo todavia al escribir esto); despues, revisor independiente. **Hallazgo medido:** `activate` de una
 campaña solo-push exige puertas (`marketing/campaign-actions.ts:71-75`) → un #3 solo-push pausado no se
 reactiva; lo arregla la 0104 §8.
 **0103 en PROD:** migracion `0046` aplicada con OK del owner a `red-violet-38772073`/`main`,
