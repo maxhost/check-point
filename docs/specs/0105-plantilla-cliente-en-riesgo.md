@@ -1,7 +1,7 @@
 ---
 spec: 0105
 fecha: 2026-09-27
-estado: cerrada
+estado: implementada
 resumen: Spec C — plantilla #4 «Cliente en riesgo» (`at_risk`), implementa el ADR 0097. Reactivacion como #3/#5 (proximidad, push o ambos; cupon opcional); audiencia = dormido ≥ N dias (14/30/45, def. 14) Y habitual que rompio su ritmo (≥3 dias con compra, ausencia > 2× su intervalo promedio; 3 y 2× fijos). Escalera #3 → #4 → #5 (rangos 1/2/3) y proximidad ordenada por rango. Migracion `0048` (solo el check de `template_key`).
 disjunta: si
 archivos: apps/merchant/drizzle/0048_*, apps/merchant/src/server/schema/campaign.ts, apps/merchant/src/server/marketing/{templates,audience,audience-store,push-audience,push-store,tick}.ts + nuevo at-risk.ts, docs/specs/0101-contratos-de-api.md
@@ -167,3 +167,19 @@ implementar conexion entre el api y ui para entenderlo mejor y alli ajustare. in
 hoy vemos que se pisa por ejemplo "cliente en perdida" con "te extrañamos" con "evento" u otros, no sea
 necesario tener tantas campañas» → las elecciones *(ORQUESTADOR)* del ADR 0097 quedan como estan, a
 revisar con la UI. **El OK para migrar prod la `0048` NO fue dado todavia:** se pide tras el PASS.
+
+## Cierre (2026-09-27)
+
+Implementada en `6013db2` + `f086615` (oraculos R1–R3). Implementador: 5 gates verdes (1929 tests),
+`test:e2e` 105/5/1 con el rojo previo `loyalty-tour-help.spec.ts:40` (reproducido en `d8866ad`), Neon
+14 archivos 61/61, M1–M8 en ROJO + 2 extra (dia local vs UTC; piso en push). Desvio: el caso de M3 usa
+18:30/20:30 locales, que cruzan la medianoche UTC. Revisor independiente: **PASS** (gates re-corridos,
+Neon 13 archivos 57/57, check de la `0048` leido en la rama de CI). R4 (dia en la timezone, push) en
+ROJO; R1 (compositor detras de las plantillas), R2 (`first_order_at` por negocio) y R3 (ritmo despues
+de `opt_out`) sobrevivian por falta de caso → el orquestador agrego
+`marketing-at-risk-filters.neon.integration.test.ts` y un caso en `audience.test`/`push-audience.test`
+y los re-midio: R1, R2 (en los dos loaders) y R3 (en los dos caminos) en ROJO por la propiedad.
+Gates re-corridos tras `f086615`: 1931 tests, Neon 3 archivos 15/15.
+**Declarado:** `BalanceCandidate` omite el habito de visitas (#7/#8 no lo usan); el build del revisor
+salio de la cache de turbo. **Prod:** `0048` sin aplicar y sin push — espera el OK del owner.
+
