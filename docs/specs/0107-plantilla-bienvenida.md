@@ -1,7 +1,7 @@
 ---
 spec: 0107
 fecha: 2026-09-27
-estado: cerrada
+estado: implementada
 resumen: Plantilla #1+#2 «Bienvenida» (`welcome`), implementa el ADR 0099. Cupon con premio estructurado a cada alta nueva al INSTALAR el pase (registro Apple, callback firmado de Google, alta con pase ya instalado, barrido en el tick); vale desde el dia siguiente (zona del negocio) o misma visita; vence 7/15/30 d con push de aviso 1/3/7 d antes; tope mensual por negocio; filtro Apple durable por negocio; oferta en la pagina de alta; estado `scheduled` en los cupones del cliente. Migracion `0052`. Contrato `specs/0107-contratos-de-api.md`.
 disjunta: si
 archivos: apps/merchant/drizzle/0052_*, apps/merchant/src/server/schema/{campaign,campaign-coupon,consumer}.ts + nuevo schema/welcome-device.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,reward-input,campaign-values,push-delivery,tick}.ts + nuevos welcome-*.ts, apps/merchant/src/server/wallet/ nuevo google-callback.ts, apps/merchant/src/server/consumer/{enrollment,coupons,coupon-status}.ts + nuevo enroll-landing.ts, rutas de passkit register, enroll y nueva google/callback, tools/google-wallet-callback.ts, docs/specs/0101-contratos-de-api.md, docs/specs/0107-contratos-de-api.md
@@ -288,3 +288,21 @@ antes del deploy). La configuracion de `callbackOptions` (E3) se corre con OK, d
 Nada. **OK del owner (2026-09-27, textual):** «ok, cerrado y despacha el omplementador». Incluye las
 elecciones *(ORQUESTADOR)* del ADR 0099. **El OK para migrar prod la `0052` NO esta dado:** se pide
 antes del deploy de E1.
+
+## Cierre (2026-09-28)
+
+Implementada en `6d77b49` (E1), `4f1b0a7` (E2), `74e655c` (E3), `28c3aae` (E4), `af3b9e6` (E5),
+`bb32155` (contrato). Implementador: gates verdes (2013 tests, build, e2e 106/5/0), Neon 27 archivos
+123/123, M1–M13 en ROJO por la propiedad. Desvios: `enrolled_at` (no existe `created_at` en la
+membresia); divisiones por tamaño; `excludedLocationIds: []` aceptado; aviso «1 día» en singular.
+Revisor independiente: **PASS** (gates re-corridos, Neon 8 archivos 30/30, `0052` leida en la rama de
+CI; re-M1, re-M4, re-M11 en ROJO; R-M2 cableado del barrido en ROJO). R1: el cableado del alta no
+tenia oraculo → el revisor agrego el caso y lo midio en ROJO (`ca463a7`).
+**Declarado, sin riesgo de produccion:** R2 — el `on conflict (welcome_membership_id)` no tiene oraculo
+propio (el prefiltro corta antes en el disparador secuencial; el unico no parcial garantiza un cupon;
+sin la clausula, una carrera daria 23505 y, si es el barrido, abortaria el tick). R3 — el tope por
+NEGOCIO no tiene caso propio (sus rojos dependen de otros mundos en la base compartida); el caso que
+falta: dos negocios con tope 1, el regalo de A no bloquea a B.
+**Prod (orden del owner, antes del PASS):** `0052` aplicada (migracion id 53, verificada por SQL); push
+`8d8196d..ca463a7`, Vercel `success`. Pendiente con OK: `callbackOptions` de la clase de Google; QA
+del owner con iPhone y Android reales; UI de GPT (prompt entregado).
