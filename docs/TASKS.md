@@ -8,11 +8,12 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — BIENVENIDA: ADR 0099 + SPEC 0107 EN BORRADOR (2026-09-27)
+## ⇥ WORKTREE `motor` — BIENVENIDA: SPEC 0107 CERRADA, IMPLEMENTADOR DESPACHADO (2026-09-27)
 
-**Retomar con: OK del owner a la spec 0107** (`d0fca53`: ADR 0099, spec 0107, contrato
-`specs/0107-contratos-de-api.md`, filas en INDEX). Con el OK → `cerrada` → UN implementador (E1→E5) →
-revisor independiente → migrar prod la `0052` con OK. Cero codigo escrito. Decisiones del owner: abajo.
+**Spec 0107 CERRADA** (`e6f2b5e`, OK del owner textual en la spec). **Implementador despachado** en
+este worktree (E1→E5, un commit por entrega, sin push ni migrar prod; 13 mutaciones). **Retomar con:**
+su handoff → revisor independiente → OK del owner para migrar prod la `0052` → push. Si la sesion se
+cae: `ListAgents` antes de tocar el arbol (puede estar midiendo una mutacion).
 **Antes (historial):** la plantilla #1+#2 «Bienvenida + Segunda visita» (ADR 0091 §5, prioridad 1). Lo que el owner ya dijo esta mas abajo en este
 archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26)**»): premio en
 la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
