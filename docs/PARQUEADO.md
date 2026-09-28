@@ -40,6 +40,7 @@ explicitamente «necesita spec» — eso es literal.
 
 | Que | Origen | Nota |
 |---|---|---|
+| Deuda declarada de la **spec 0107** (revisor, PASS) | R2 y R3 del revisor, 2026-09-28 | R2: el `on conflict (welcome_membership_id) do nothing` (`marketing/welcome-issue.ts`) no tiene oraculo propio — el prefiltro corta antes en el disparador secuencial; el unico NO parcial garantiza un cupon; sin la clausula una carrera da 23505 y, si es el barrido, aborta el tick. R3: el tope mensual por NEGOCIO (`welcome-store.ts`, `countMonthGifts`) no tiene caso propio — sus rojos dependian de otros mundos en la base compartida; falta: dos negocios con tope 1, el regalo de A no bloquea a B. Tambien: la cache de claves raiz de Google solo se renueva cuando vencen todas (`wallet/google-callback.ts`) |
 | **0058 y 0059 no tienen oraculo de comportamiento**: su unica cobertura es un barrido estatico de strings | tarea 50, demostrado **por mutacion** el 2026-09-09 | Borrar `setIsAnalyzing(true)` de `use-brand-logo.ts` apaga «Preparando imagen…» —el **DoD #1** de la 0059— con los **5 gates verdes**. La tecnica que lo cierra ya existe en el repo: `login-form-retry.test.ts` stubea `useState` con `vi.mock("react")`, ~45 lineas y cero paquetes |
 | Deuda declarada de la **spec 0065** | handoff de la 0065 | `stages.tsx` en 299/300 · la precedencia de `cancel_reason` · el cableado de los botones (solo lo cierra el QA humano) · los limites de la fase A: los 400 m sin caso de integracion, el orden de los seis motivos de exclusion, y «sin el advisory lock dos corridas se pasan de cuota» (racear dos ticks reales es un volado, declarado por la propia spec) |
 | **`no-mutations-left.sh` solo ve `.ts`/`.tsx` bajo los `src/`** | medido el 2026-09-16 al implementar la 0066 | Una mutacion sobre un `.md`, un `.sh` o un hook **no la caza nadie**: las dos mutaciones de esta spec (una en una skill, otra en `CLAUDE.md`) habrian sobrevivido al Stop. Se **declara** en vez de arreglarse porque tocar los hooks existentes esta fuera del alcance de la 0066 |
@@ -49,6 +50,8 @@ explicitamente «necesita spec» — eso es literal.
 
 | Que | Origen |
 |---|---|
+| **Registrar el aviso de «guardado» en la clase de Google Wallet** (sin esto Android NO entrega el regalo de bienvenida; iPhone si). En `check-point-wt/motor`, con Node 24 y las dos variables de Vercel Production `GOOGLE_WALLET_ISSUER_ID` y `GOOGLE_WALLET_SA_JSON` exportadas: `node tools/google-wallet-callback.ts https://www.checkpass.club/api/public/wallet/google/callback` (dry-run) y despues el mismo comando con `--apply`. Idempotente, no imprime credenciales. No medido: si Google exige un campo extra al PATCH de la clase. OK del owner dado; parqueado por el owner el 2026-09-28 | spec **0107** / ADR **0099** §2 |
+| **QA de la Bienvenida con iPhone y Android reales**: encender la plantilla en un negocio de prueba; ver la oferta en `/enroll/[programId]` (requiere la UI de GPT); alta; instalar el pase; ver el regalo «desde mañana»; escanear hoy (no aparece) y mañana (aparece y se canjea). Android solo despues del `--apply` de la fila anterior. Es lo unico que prueba el formato REAL de la firma de Google y el registro real de Apple | spec **0107** |
 | Alta del remitente en **Resend** + envs en Vercel + QA en vivo del recovery | spec **0046** |
 
 ## Legado de la era demo/scaffold

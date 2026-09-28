@@ -1769,3 +1769,15 @@ funcion que valida al guardar.
 servido bajo el MISMO guard que la pantalla. Antes de cerrar un contrato: por cada regla que la API
 exige al escribir, buscar la lectura que se la informa a la UI; si no existe, falta un campo.
 
+
+## 2026-09-28 — la spec 0107 nombraba una columna que no existe
+
+**Que paso.** La spec 0107 §3 (escrita por el orquestador) mandaba a comparar
+`membership.created_at >= campaign.activated_at`. `consumer.program_membership` no tiene
+`created_at`: la fecha de alta es `enrolled_at` (`schema/consumer.ts:149`). El orquestador habia
+leido el esquema de `campaign` y de `campaign_coupon`, pero no el de la membresia, y escribio la
+columna por analogia. Lo cazo el implementador y lo declaro como desvio. No llego a produccion.
+
+**Regla (ya vigente, este es su caso):** toda columna, funcion o archivo que una spec nombra se
+señala con `archivo:línea` ANTES de cerrarla — no solo las filas de la tabla de mutaciones. El
+barrido es de dos minutos: `rg -n '<nombre>' <schema>` por cada identificador del diseño.

@@ -8,28 +8,25 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — BIENVENIDA: 0107 IMPLEMENTADA Y EN PROD (PASS) (2026-09-27)
+## ⇥ WORKTREE `motor` — BIENVENIDA EN PROD; SIGUE LA SPEC DE OTRA FEATURE (2026-09-28)
 
-**Spec 0107 EN PROD (2026-09-28, por orden del owner, ANTES del PASS del revisor).** Migracion `0052`
-aplicada a `red-violet-38772073`/`main` por `run_sql_transaction` (sin connection string en el
-transcript): id 53, hash = sha256 del `.sql`, `core.welcome_device` y las 7 columnas presentes,
-`core`/`consumer`/`merchant_auth` intactos (verificado por SQL). Push `8d8196d..ca463a7` desde el
-worktree `motor-wt/deploy-0107` (gates: typecheck forzado 3/3, lint, format, test 2013, build forzado
-3/3); Vercel `success` en `ca463a7`; humo: `POST /api/public/wallet/google/callback` con `{}` → 400.
-Commits: `6d77b49` E1, `4f1b0a7` E2, `74e655c` E3, `28c3aae` E4, `af3b9e6` E5, `bb32155` contrato,
-`ca463a7` test del revisor (cableado del alta).
-**Revisor independiente: PASS** (spec 0107 `implementada`; cierre en la spec). Arbol limpio de
-mutaciones (verificado). Declarados sin riesgo: R2 (`on conflict` sin oraculo) y R3 (tope por negocio
-sin caso propio: dos negocios con tope 1).
-**`--apply` de Google: OK del owner DADO (2026-09-28), pero el agente NO puede correrlo** (sin CLI
-de Vercel y sin `GOOGLE_WALLET_SA_JSON`/`GOOGLE_WALLET_ISSUER_ID` en ningun `.env.local`): lo corre el
-owner con las dos variables de Vercel. **Retomar con:** confirmar que lo corrio; UI de GPT; QA del owner.
+**Retomar con: armar la spec de la PROXIMA feature** (la elige el owner al abrir la sesion) mientras GPT
+hace la UI de la Bienvenida; cuando GPT termine, revisar con el owner que hay que mejorar.
+**Spec 0107 «Bienvenida» — IMPLEMENTADA (PASS del revisor) y EN PROD.** Migracion `0052` aplicada a
+`red-violet-38772073`/`main` por `run_sql_transaction` (id 53, verificada por SQL; sin connection
+string en el transcript). Push `8d8196d..ca463a7` (gates: typecheck forzado 3/3, lint, format, 2013
+tests, build forzado 3/3); Vercel `success`; humo del callback de Google → 400. Cierre y deuda (R2/R3)
+en la spec y en `PARQUEADO.md`.
 **UI de GPT ROTA hasta su arreglo (aceptado por el owner):** la tarjeta «Bienvenida» lee
-`template.dormantDays.default` sin null-check (`app/backoffice/marketing/template-draft.ts:26`, `:51`).
-Prompt para GPT entregado al owner (contrato `specs/0107-contratos-de-api.md`).
-**Pendiente con OK del owner:** configurar `callbackOptions` de la clase de Google
-(`tools/google-wallet-callback.ts --apply`) — sin eso Android no entrega regalos. QA del owner (iPhone y
-Android reales). Hallazgo: la cache de claves raiz de Google solo se renueva cuando vencen todas.
+`template.dormantDays.default` sin null-check (`app/backoffice/marketing/template-draft.ts:26`). El
+prompt para GPT se le entrego al owner; contrato `docs/specs/0107-contratos-de-api.md`.
+**Parqueado por el owner (2026-09-28), en `PARQUEADO.md` → «Pendientes del owner»:** el `--apply` del
+callback de Google (sin el, Android no entrega el regalo; el agente no tiene las credenciales) y el QA con
+iPhone y Android reales.
+**Git:** `motor` va adelante de `origin/main` solo con commits de docs (subir con el proximo push). El
+worktree `check-point-wt/motor-wt/deploy-0107` (rama `deploy-0107`, en `ca463a7`) ya cumplio; se puede
+borrar con `git worktree remove … && git branch -D deploy-0107` (pedir OK: borra una rama).
+
 **Antes (historial):** la plantilla #1+#2 «Bienvenida + Segunda visita» (ADR 0091 §5, prioridad 1). Lo que el owner ya dijo esta mas abajo en este
 archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26)**»): premio en
 la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
