@@ -40,7 +40,8 @@ Declarado: sellos extra sin tope de casilleros (la acreditacion normal tampoco t
 **Hallazgos de E3 a decidir por el owner:** (1) un negocio SUSPENDIDO sigue mostrando sus cupones
 vigentes al cliente (mismo criterio que el scan); (2) la lista no tiene tope ni paginacion.
 **En curso:** E4 (resultados por premio) por el mismo implementador; sus cambios sin commitear son
-SUYOS. Despues: revisor independiente de toda la 0106, y la Bienvenida.
+SUYOS (hoy: `marketing/reward-results*`, `marketing-routes-errors.test.ts`); un rojo intermedio de
+typecheck mientras escribe es esperable — `ListAgents` antes de tocar nada. Despues: revisor independiente de toda la 0106, y la Bienvenida.
 **Hallazgo para GPT:** `marketing-backoffice-pages.neon` da 7 rojos PREVIOS a E1 (`page.tsx` lee
 `permissions` y el doble de sesion no lo trae). Despues: E3, E4, revisor, y la Bienvenida.
 
