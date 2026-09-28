@@ -21,7 +21,9 @@ Commits: `6d77b49` E1, `4f1b0a7` E2, `74e655c` E3, `28c3aae` E4, `af3b9e6` E5, `
 **Revisor independiente: PASS** (spec 0107 `implementada`; cierre en la spec). Arbol limpio de
 mutaciones (verificado). Declarados sin riesgo: R2 (`on conflict` sin oraculo) y R3 (tope por negocio
 sin caso propio: dos negocios con tope 1).
-**Retomar con:** OK del owner para `tools/google-wallet-callback.ts --apply`; UI de GPT; QA del owner.
+**`--apply` de Google: OK del owner DADO (2026-09-28), pero el agente NO puede correrlo** (sin CLI
+de Vercel y sin `GOOGLE_WALLET_SA_JSON`/`GOOGLE_WALLET_ISSUER_ID` en ningun `.env.local`): lo corre el
+owner con las dos variables de Vercel. **Retomar con:** confirmar que lo corrio; UI de GPT; QA del owner.
 **UI de GPT ROTA hasta su arreglo (aceptado por el owner):** la tarjeta «Bienvenida» lee
 `template.dormantDays.default` sin null-check (`app/backoffice/marketing/template-draft.ts:26`, `:51`).
 Prompt para GPT entregado al owner (contrato `specs/0107-contratos-de-api.md`).
