@@ -31,7 +31,7 @@
 | `startsAt` / `endsAt` | opcionales; `endsAt` **no** es obligatorio aunque haya premio |
 
 Errores nuevos, `400 validation` con `fields`: `couponLabel` (sin premio), `couponMaxRedemptions`
-(presente), `channels` / `dormantDays` / `excludedLocationIds` (presentes), `welcomeValidDays`,
+(presente), `channels` / `dormantDays` (presentes) / `excludedLocationIds` (no vacio; `[]` se acepta), `welcomeValidDays`,
 `welcomeReminderDays` (fuera de opciones o ≥ vigencia), `welcomeMonthlyCap`, `welcomeRedeemFrom`.
 Cualquier `welcome*` en OTRA plantilla → 400 con ese campo. `disable` sin cambios: los regalos ya
 entregados siguen valiendo hasta su vencimiento.
@@ -71,4 +71,4 @@ hasta `validFrom`.
 ## Sin contrato de UI
 
 El callback de Google (`POST /api/public/wallet/google/callback`) y el push de aviso de vencimiento
-(«Tu regalo de bienvenida vence en N días») no tienen pantalla.
+(«Tu regalo de bienvenida vence en N días»; con N = 1, «1 día») no tienen pantalla.
