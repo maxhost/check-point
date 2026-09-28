@@ -3,6 +3,7 @@ import {
   createCampaign,
   listCampaigns,
 } from "../../../../server/marketing/campaign-store";
+import { allowedCouponKinds } from "../../../../server/marketing/reward-store";
 import { campaignError, readJson, requireMarketingOwner } from "../_auth";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       campaigns: await listCampaigns(auth.business.id),
       currencyCode: auth.business.currencyCode,
+      // Spec 0106 E1b: the reward types this business can choose today.
+      couponKinds: await allowedCouponKinds(auth.business.id),
     });
   } catch (error) {
     return campaignError(error, "No pudimos leer tus campañas.");

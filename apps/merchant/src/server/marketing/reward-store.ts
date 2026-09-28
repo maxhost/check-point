@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import { type DbTransaction, getDb } from "../db";
 import { campaigns, loyaltyPrograms, products } from "../schema";
 import { CampaignError } from "./campaign-error";
 import { type CouponKind, INVALID_PRODUCT } from "./reward-input";
@@ -45,19 +45,22 @@ export async function assertOwnProduct(
     });
 }
 
+/** The three rewards any business can offer; the extra one depends on its program. */
+const BASE_KINDS = ["free_product", "two_for_one", "discount"] as const;
+
 /**
- * ADR 0098 §6: extra STAMPS only with a stamps program, extra POINTS only with a points
- * one. «The program» is the business's single OPERATIONAL accreditable program — the same
- * predicate as `accreditableProgram` (`counter/resolve.ts`): `active`/`closing`, kind
- * points/stamps, accrual defined. No such program → neither extra is allowed.
+ * ADR 0098 §6 — THE ONE SOURCE for which extra a business may offer: `extra_stamps` with a
+ * stamps program, `extra_points` with a points one, neither without. «The program» is the
+ * business's single OPERATIONAL accreditable program — the same predicate as
+ * `accreditableProgram` (`counter/resolve.ts`): `active`/`closing`, kind points/stamps,
+ * accrual defined. Used to DECIDE (`assertExtrasFitProgram`, on every write) and to INFORM
+ * (`allowedCouponKinds`, spec 0106 E1b), so the two can never disagree.
  */
-export async function assertExtrasFitProgram(
-  tx: DbTransaction,
+async function extraKindOf(
+  db: DbTransaction | ReturnType<typeof getDb>,
   businessId: string,
-  kind: CouponKind | null,
-): Promise<void> {
-  if (kind !== "extra_stamps" && kind !== "extra_points") return;
-  const [program] = await tx
+): Promise<"extra_stamps" | "extra_points" | null> {
+  const [program] = await db
     .select({ kind: loyaltyPrograms.kind })
     .from(loyaltyPrograms)
     .where(
@@ -69,11 +72,34 @@ export async function assertExtrasFitProgram(
       ),
     )
     .limit(1);
-  const wanted = kind === "extra_stamps" ? "stamps" : "points";
-  if (program?.kind !== wanted)
+  if (program?.kind === "stamps") return "extra_stamps";
+  if (program?.kind === "points") return "extra_points";
+  return null;
+}
+
+/**
+ * Spec 0106 E1b: the reward types THIS business can choose today, for the root
+ * `couponKinds` of the marketing reads — a staff member with `marketing` but not `loyalty`
+ * has no other way to know which extra to offer.
+ */
+export async function allowedCouponKinds(
+  businessId: string,
+): Promise<CouponKind[]> {
+  const extra = await extraKindOf(getDb(), businessId);
+  return extra ? [...BASE_KINDS, extra] : [...BASE_KINDS];
+}
+
+/** The write-side check: an `extra_*` that is not THIS business's extra → 400 on `couponKind`. */
+export async function assertExtrasFitProgram(
+  tx: DbTransaction,
+  businessId: string,
+  kind: CouponKind | null,
+): Promise<void> {
+  if (kind !== "extra_stamps" && kind !== "extra_points") return;
+  if ((await extraKindOf(tx, businessId)) !== kind)
     throw new CampaignError(400, "validation", VALIDATION, {
       couponKind:
-        wanted === "stamps"
+        kind === "extra_stamps"
           ? "Los sellos extra necesitan un programa de sellos activo."
           : "Los puntos extra necesitan un programa de puntos activo.",
     });

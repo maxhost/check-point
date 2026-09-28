@@ -3,6 +3,7 @@ import {
   getCampaign,
   updateCampaign,
 } from "../../../../../server/marketing/campaign-store";
+import { allowedCouponKinds } from "../../../../../server/marketing/reward-store";
 import { campaignError, readJson, requireMarketingOwner } from "../../_auth";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export async function GET(
     return NextResponse.json({
       campaign: await getCampaign(auth.business.id, id),
       currencyCode: auth.business.currencyCode,
+      couponKinds: await allowedCouponKinds(auth.business.id),
     });
   } catch (error) {
     return campaignError(error, "No pudimos leer la campaña.");

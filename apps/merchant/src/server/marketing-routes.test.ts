@@ -12,6 +12,7 @@ const world = vi.hoisted(() => ({
   previewAudience: vi.fn(),
   loadCampaignResults: vi.fn(),
   loadRewardResults: vi.fn(),
+  allowedCouponKinds: vi.fn(),
   listTemplates: vi.fn(),
   enableTemplate: vi.fn(),
   disableTemplate: vi.fn(),
@@ -44,6 +45,13 @@ vi.mock("./marketing/campaign-store", async (importOriginal) => ({
   createCampaign: world.createCampaign,
   getCampaign: world.getCampaign,
   updateCampaign: world.updateCampaign,
+}));
+
+// Spec 0106 E1b: `couponKinds` of the reads. Only the informer is replaced; the write-side
+// checks of the same module stay real.
+vi.mock("./marketing/reward-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./marketing/reward-store")>()),
+  allowedCouponKinds: world.allowedCouponKinds,
 }));
 
 vi.mock("./marketing/campaign-actions", async (importOriginal) => ({
@@ -115,6 +123,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     world.previewAudience.mockResolvedValue({ quality: "observada" });
     world.loadCampaignResults.mockResolvedValue({ turns: {} });
     world.loadRewardResults.mockResolvedValue([]);
+    world.allowedCouponKinds.mockResolvedValue(["free_product"]);
     world.listTemplates.mockResolvedValue([]);
     world.enableTemplate.mockResolvedValue(CAMPAIGN);
     world.disableTemplate.mockResolvedValue({ campaign: CAMPAIGN });

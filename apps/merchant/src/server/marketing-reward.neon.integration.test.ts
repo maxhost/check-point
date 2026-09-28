@@ -2,10 +2,12 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./locations-integration-support";
 import { getDb } from "./db";
-import { campaigns, products } from "./schema";
+import { campaigns, loyaltyPrograms, products } from "./schema";
 import { createCampaign, updateCampaign } from "./marketing/campaign-store";
 import { enableTemplate } from "./marketing/template-store";
 import { INVALID_PRODUCT } from "./marketing/reward-input";
+import { allowedCouponKinds } from "./marketing/reward-store";
+import { dropBusiness, seedBusiness } from "./counter-integration-support";
 import {
   campaignBody as body,
   campaignWorld as world,
@@ -23,6 +25,10 @@ import {
  */
 
 afterAll(dropCampaignWorlds, 120_000);
+const stampBusinesses: string[] = [];
+afterAll(async () => {
+  for (const id of stampBusinesses.splice(0)) await dropBusiness(id);
+}, 120_000);
 
 const END = "2026-12-31T12:00:00.000Z";
 
@@ -186,6 +192,35 @@ describe.skipIf(!integrationEnabled)(
         couponKind: "extra_points",
         couponExtraUnits: 5,
       });
+    }, 120_000);
+
+    it("E1b: couponKinds tells the business's own extra — points, stamps, or none", async () => {
+      // The SAME source that decides the 400 above informs the UI (spec 0106 E1b).
+      const base = ["free_product", "two_for_one", "discount"];
+      const points = await world("plus", "Reward kinds points");
+      expect(await allowedCouponKinds(points.business.id)).toEqual([
+        ...base,
+        "extra_points",
+      ]);
+
+      const stamps = await seedBusiness({
+        name: `Reward kinds stamps ${Date.now()}`,
+        kind: "stamps",
+        mode: "per_purchase",
+        grant: 1,
+        blockAmount: null,
+      });
+      stampBusinesses.push(stamps.business.id);
+      expect(await allowedCouponKinds(stamps.business.id)).toEqual([
+        ...base,
+        "extra_stamps",
+      ]);
+
+      await getDb()
+        .update(loyaltyPrograms)
+        .set({ status: "inactive" })
+        .where(eq(loyaltyPrograms.id, stamps.programId));
+      expect(await allowedCouponKinds(stamps.business.id)).toEqual(base);
     }, 120_000);
   },
 );

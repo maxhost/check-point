@@ -18,6 +18,7 @@ const world = vi.hoisted(() => ({
   listTemplates: vi.fn(),
   enableTemplate: vi.fn(),
   disableTemplate: vi.fn(),
+  allowedCouponKinds: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -28,6 +29,13 @@ vi.mock("./staff", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./staff")>()),
   membershipContext: world.membershipContext,
   ownerContext: world.ownerContext,
+}));
+
+// Spec 0106 E1b: `couponKinds` of the reads. Only the informer is replaced; the write-side
+// checks of the same module stay real.
+vi.mock("./marketing/reward-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./marketing/reward-store")>()),
+  allowedCouponKinds: world.allowedCouponKinds,
 }));
 
 vi.mock("./marketing/template-store", () => ({
@@ -72,6 +80,12 @@ describe("api/marketing/templates — what reaches the domain and what comes bac
       role: "owner",
       permissions: [],
     });
+    world.allowedCouponKinds.mockResolvedValue([
+      "free_product",
+      "two_for_one",
+      "discount",
+      "extra_stamps",
+    ]);
   });
 
   it("GET answers the catalog the domain built for the caller's business", async () => {
@@ -80,11 +94,14 @@ describe("api/marketing/templates — what reaches the domain and what comes bac
       new NextRequest(`${base}?b=${FOREIGN_BUSINESS}`),
     );
     expect(response.status).toBe(200);
-    // Spec 0106: the business currency travels at the root, from the guard's own row.
+    // Spec 0106: the business currency travels at the root, from the guard's own row, and
+    // (E1b) the reward types THIS business can choose, asked for the CALLER's business.
     expect(await response.json()).toEqual({
       templates: [{ key: "missed_you" }],
       currencyCode: "USD",
+      couponKinds: ["free_product", "two_for_one", "discount", "extra_stamps"],
     });
+    expect(world.allowedCouponKinds).toHaveBeenCalledWith(CALLER_BUSINESS);
     expect(world.listTemplates).toHaveBeenCalledWith(CALLER_BUSINESS);
   });
 
