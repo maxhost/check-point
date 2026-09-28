@@ -21,17 +21,19 @@ sin limite de UX), costo por canje, todo copiado al cupon; cashback extra fuera 
 desplegables (E1 premio con tipo + migracion `0049` + snapshot + cierre de `couponProductId` de otro
 negocio; E2 mostrador con extras; E3 cupones del cliente; E4 resultados por premio), un implementador
 y un revisor al final, 6 mutaciones.
-**E1 implementada** en `motor` (`03f1549` + bitacora `1bdb402`, sin push): gates verdes segun el
-implementador; re-verificado por el orquestador typecheck forzado 3/3, unit marketing+counter 368,
-neon `marketing-reward` 4/4 y `marketing-push-delivery` 8/8; M1/M2 rojos por el motivo correcto.
-**En curso:** el mismo implementador escribe la migracion `0050_default_de_tipo_en_snapshots`
-(`DEFAULT 'free_product'` en `kind_snapshot` de `campaign_coupon` y `coupon_redemption`) porque la
-`0049` sola no es compatible hacia atras: el codigo viejo de prod no escribe el tipo. Los cambios de
-schema sin commitear son SUYOS. **La rama de CI de Neon ya tiene la `0049`** (neon-test migra).
-**Siguiente:** verificar `0050` → aplicar `0049`+`0050` a PROD (OK del owner dado) → integrar `motor`
-en `main` + push inmediato (**falta OK del owner**; GPT tiene cambios sin commitear en `main`).
+**E1 EN PROD (2026-09-27):** `0049`+`0050` aplicadas a `red-violet-38772073`/`main` con OK del
+owner, verificado por SQL (ultima migracion id 51, 5 columnas en `core.campaign`, default
+`free_product` en los dos `kind_snapshot`, 21 checks, `core`/`consumer`/`merchant_auth` intactos, 0
+campañas con cupon). Merge de `origin/main` (UI de GPT) sobre E1 en `e668412`, gates verdes en el
+arbol mergeado (typecheck/build forzados 3/3, lint, format, test 1957), push `284aaba..e668412`,
+Vercel `success` en `e668412`. **Se desplego E1 ANTES del PASS del revisor** por pedido del owner
+(entregas incrementales); la revision independiente sigue al final de la spec.
+**Accion del owner:** rotar la password de `neondb_owner` (la connection string volvio a quedar en
+el transcript). **GPT:** `git pull` en `main` (fast-forward) para tener el contrato E1.
+**En curso:** E2 (mostrador) por el mismo implementador en este worktree; sus cambios sin commitear
+son SUYOS. Al terminar E2: mergear `origin/main` en `motor` antes de integrar.
 **Hallazgo para GPT:** `marketing-backoffice-pages.neon` da 7 rojos PREVIOS a E1 (`page.tsx` lee
-`permissions` y el doble de sesion no lo trae). Despues: E2 (mismo implementador) y la Bienvenida.
+`permissions` y el doble de sesion no lo trae). Despues: E3, E4, revisor, y la Bienvenida.
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
