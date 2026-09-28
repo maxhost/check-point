@@ -73,6 +73,7 @@ export default async function EnrollPage({
         defaultCountryIso={landing.countryCode ?? "EC"}
         brandPrimaryColor={landing.brandPrimaryColor}
         vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
+        welcomeOffer={landing.welcomeOffer}
       />
     </main>
   );

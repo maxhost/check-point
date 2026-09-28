@@ -16,6 +16,7 @@ import { RewardFields } from "./reward-fields";
 import { suggestedRewardLabel } from "./reward-draft";
 import { MarketingAudiencePreview } from "./marketing-audience-preview";
 import { MarketingLocationPicker } from "./marketing-location-picker";
+import { WelcomeFields } from "./welcome-fields";
 
 const channelLabels = { proximity: "Proximidad", push: "Push" };
 const repeatLabels = {
@@ -44,6 +45,19 @@ export function TemplateFields({
   couponKinds: CouponKind[];
   currencyCode: string;
 }) {
+  if (template.welcome)
+    return (
+      <WelcomeFields
+        template={template}
+        draft={draft}
+        change={change}
+        errors={errors}
+        settings={settings}
+        canReadCatalog={canReadCatalog}
+        couponKinds={couponKinds}
+        currencyCode={currencyCode}
+      />
+    );
   const channelOptions =
     template.channels.length === 2
       ? [
@@ -76,24 +90,28 @@ export function TemplateFields({
           })
         }
       />
-      <ChoiceGroup
-        label="Días sin venir"
-        description="La campaña considera a quienes cumplen este mínimo de ausencia."
-        options={template.dormantDays.options.map((days) => ({
-          value: String(days),
-          label: `${days} días`,
-        }))}
-        value={String(draft.dormantDays)}
-        errorMessage={errors.dormantDays}
-        onChange={(value) => change({ dormantDays: Number(value) })}
-      />
-      <MarketingAudiencePreview
-        templateKey={template.key}
-        channels={draft.channels}
-        dormantDays={draft.dormantDays}
-        locations={locations}
-        excludedLocationIds={draft.excludedLocationIds}
-      />
+      {template.dormantDays && (
+        <ChoiceGroup
+          label="Días sin venir"
+          description="La campaña considera a quienes cumplen este mínimo de ausencia."
+          options={template.dormantDays.options.map((days) => ({
+            value: String(days),
+            label: `${days} días`,
+          }))}
+          value={String(draft.dormantDays)}
+          errorMessage={errors.dormantDays}
+          onChange={(value) => change({ dormantDays: Number(value) })}
+        />
+      )}
+      {draft.dormantDays !== null && (
+        <MarketingAudiencePreview
+          templateKey={template.key}
+          channels={draft.channels}
+          dormantDays={draft.dormantDays}
+          locations={locations}
+          excludedLocationIds={draft.excludedLocationIds}
+        />
+      )}
       {template.atRisk && (
         <Alert title="¿Quién está en riesgo?">
           Clientes con al menos {template.atRisk.minVisits} visitas que llevan

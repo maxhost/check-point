@@ -15,7 +15,12 @@ export type ChoiceGroupProps = Omit<
   label: string;
   description?: string;
   errorMessage?: string;
-  options: { value: string; label: string; description?: string }[];
+  options: {
+    value: string;
+    label: string;
+    description?: string;
+    isDisabled?: boolean;
+  }[];
   variant?: "cards" | "compact";
   className?: string;
 };
@@ -48,6 +53,7 @@ export function ChoiceGroup({
           <Radio
             key={option.value}
             value={option.value}
+            isDisabled={option.isDisabled}
             className="cp-choice flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-border-strong bg-surface px-3 py-2 text-base text-content data-[selected]:border-primary data-[selected]:bg-primary-soft data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-focus data-[disabled]:bg-disabled data-[disabled]:text-on-disabled"
           >
             <span aria-hidden="true" className="cp-radio-mark" />

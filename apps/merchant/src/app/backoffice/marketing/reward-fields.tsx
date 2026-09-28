@@ -18,6 +18,7 @@ export function RewardFields({
   currencyCode,
   canReadCatalog,
   couponKinds,
+  withRedemptionCap = true,
 }: {
   draft: RewardDraft;
   change: (patch: Partial<RewardDraft>) => void;
@@ -25,6 +26,7 @@ export function RewardFields({
   currencyCode: string;
   canReadCatalog: boolean;
   couponKinds: CouponKind[];
+  withRedemptionCap?: boolean;
 }) {
   const options = couponKinds.map((kind) => ({
     value: kind,
@@ -136,7 +138,11 @@ export function RewardFields({
           change({ couponLabel, couponLabelEdited: true })
         }
         maxLength={40}
-        description="Lo verá el cliente y puede aparecer en el push. Podés editar la sugerencia."
+        description={
+          withRedemptionCap
+            ? "Lo verá el cliente y puede aparecer en el push. Podés editar la sugerencia."
+            : "Se muestra en la oferta de alta y en el regalo. Podés editar la sugerencia."
+        }
         errorMessage={errors.couponLabel}
       />
       <TextAreaField
@@ -155,15 +161,19 @@ export function RewardFields({
           errorMessage={errors.couponCost}
           placeholder="Ej.: 2.50"
         />
-        <NumberField
-          label="Tope de canjes"
-          value={draft.couponMaxRedemptions}
-          minValue={1}
-          maxValue={1_000_000}
-          clampOnBlur={false}
-          onChange={(couponMaxRedemptions) => change({ couponMaxRedemptions })}
-          errorMessage={errors.couponMaxRedemptions}
-        />
+        {withRedemptionCap && (
+          <NumberField
+            label="Tope de canjes"
+            value={draft.couponMaxRedemptions}
+            minValue={1}
+            maxValue={1_000_000}
+            clampOnBlur={false}
+            onChange={(couponMaxRedemptions) =>
+              change({ couponMaxRedemptions })
+            }
+            errorMessage={errors.couponMaxRedemptions}
+          />
+        )}
       </div>
     </div>
   );
