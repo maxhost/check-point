@@ -1,4 +1,11 @@
 export type Channel = "proximity" | "push";
+export type CouponKind =
+  | "free_product"
+  | "two_for_one"
+  | "discount"
+  | "extra_stamps"
+  | "extra_points";
+export type DiscountUnit = "percent" | "amount";
 export type CampaignStatus =
   | "draft"
   | "active"
@@ -19,6 +26,11 @@ export type Campaign = {
   couponCost: string | null;
   couponMaxRedemptions: number | null;
   couponProductId: string | null;
+  couponKind?: CouponKind | null;
+  couponDiscountUnit?: DiscountUnit | null;
+  couponDiscountValue?: string | null;
+  couponExtraUnits?: number | null;
+  couponRule?: string | null;
   nearRewardStamps: number | null;
   nearRewardPercent: number | null;
   rewardRepeat: "once" | "every_30_days" | null;
@@ -107,6 +119,7 @@ export type CampaignResults = {
   effect: Effect;
   coupon: {
     quality: Quality;
+    kind?: CouponKind | null;
     label: string | null;
     cap: number | null;
     redeemed: number;

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Switch } from "react-aria-components";
 import { Button } from "../../../ui";
 import type { TemplateView } from "./marketing-types";
@@ -33,6 +34,7 @@ export function TemplateRow({
   onResume: () => void;
 }) {
   const router = useRouter();
+  const [opening, setOpening] = useState(false);
   const live = template.live;
   const active = live?.status === "active";
   const paused = live?.status === "paused";
@@ -44,22 +46,43 @@ export function TemplateRow({
         : STATUS_LABELS[live.status]
     : "Apagada";
   const editorHref = `/backoffice/marketing/templates/${encodeURIComponent(template.key)}`;
+  useEffect(() => {
+    if (!opening) return;
+    const timeout = window.setTimeout(() => setOpening(false), 10000);
+    return () => window.clearTimeout(timeout);
+  }, [opening]);
+  const prefetchEditor = () => {
+    if (!live) router.prefetch?.(editorHref);
+  };
 
   return (
-    <li className="border-b border-border py-5 last:border-0">
+    <li
+      className="border-b border-border py-5 last:border-0"
+      onPointerEnter={prefetchEditor}
+      onFocusCapture={prefetchEditor}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h3 className="text-lg font-bold">{template.title}</h3>
-          <span className="rounded-full border border-border-strong px-2.5 py-0.5 text-sm font-semibold">
-            {status}
+          <span
+            role={opening ? "status" : undefined}
+            className="rounded-full border border-border-strong px-2.5 py-0.5 text-sm font-semibold"
+          >
+            {opening ? "Abriendo editor…" : status}
           </span>
         </div>
         <Switch
-          aria-label={`${active ? "Finalizar" : live ? "Campaña en curso" : "Abrir configuración de"} ${template.title}`}
+          aria-label={`${opening ? "Abriendo configuración de" : active ? "Finalizar" : live ? "Campaña en curso" : "Abrir configuración de"} ${template.title}`}
+          aria-busy={opening}
           isSelected={active}
-          isDisabled={busy || Boolean(live && !active) || (active && !isOwner)}
+          isDisabled={
+            opening || busy || Boolean(live && !active) || (active && !isOwner)
+          }
           onChange={(selected) => {
-            if (selected && !live) router.push(editorHref);
+            if (selected && !live) {
+              setOpening(true);
+              router.push(editorHref);
+            }
             if (!selected && active) onFinalize();
           }}
           className="inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-md outline-none data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2 data-[focus-visible]:outline-focus data-[disabled]:cursor-not-allowed"
@@ -67,10 +90,10 @@ export function TemplateRow({
           {({ isSelected }) => (
             <span
               aria-hidden="true"
-              className={`flex h-7 w-12 shrink-0 items-center rounded-full border border-border-strong p-0.5 transition-colors duration-[var(--duration-fast)] ${isSelected ? "bg-primary" : "bg-disabled"}`}
+              className={`flex h-7 w-12 shrink-0 items-center rounded-full border border-border-strong p-0.5 transition-colors duration-[var(--duration-fast)] ${isSelected || opening ? "bg-primary" : "bg-disabled"}`}
             >
               <span
-                className={`size-5 rounded-full bg-surface shadow-sm transition-transform duration-[var(--duration-fast)] ${isSelected ? "translate-x-5" : "translate-x-0"}`}
+                className={`size-5 rounded-full bg-surface shadow-sm transition-transform duration-[var(--duration-fast)] ${isSelected || opening ? "translate-x-5" : "translate-x-0"}`}
               />
             </span>
           )}

@@ -7,6 +7,7 @@ import type {
 } from "./marketing-types";
 import { MarketingPanel } from "./marketing-ui";
 import { QUALITY_LABELS } from "./campaign-labels";
+import { money, REWARD_KIND_LABELS } from "./reward-labels";
 
 type Results = CampaignResults | ServerResults;
 function QualityMark({ value }: { value: Quality }) {
@@ -182,9 +183,11 @@ export function CampaignResultsView({
             <p>Esta campaña no tiene cupón.</p>
           ) : (
             <p>
-              {coupon.label}: {coupon.redeemed} de {coupon.cap} canjeados ·{" "}
-              {currencyCode} {coupon.incurredCost ?? "0.00"} de costo estimado
-              incurrido
+              {coupon.label}
+              {coupon.kind ? ` · ${REWARD_KIND_LABELS[coupon.kind]}` : ""}:{" "}
+              {coupon.redeemed} de {coupon.cap} canjeados ·{" "}
+              {money(coupon.incurredCost ?? "0.00", currencyCode)} de costo
+              estimado incurrido
             </p>
           )}
         </ResultCard>

@@ -6,7 +6,12 @@ import {
   marketingRequest,
   MarketingApiError,
 } from "./marketing-api";
-import type { Campaign, Location, MarketingSettings } from "./marketing-types";
+import type {
+  Campaign,
+  CouponKind,
+  Location,
+  MarketingSettings,
+} from "./marketing-types";
 import {
   customBody,
   customErrors,
@@ -57,6 +62,7 @@ export function CampaignComposer({
   const [locations, setLocations] = useState<Location[] | null>(
     initialLocations ?? null,
   );
+  const [couponKinds, setCouponKinds] = useState<CouponKind[] | null>(null);
   const [settings, setSettings] = useState<MarketingSettings | null>(
     initialLocations
       ? {
@@ -90,31 +96,37 @@ export function CampaignComposer({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [doors, config, stored] = await Promise.all([
+      const [doors, config, source] = await Promise.all([
         readMarketingLocations(canReadLocations),
         marketingRequest<{ settings: MarketingSettings }>(
           "/api/marketing/settings",
         ),
         effectiveId
-          ? marketingRequest<{ campaign: Campaign }>(
-              `/api/marketing/campaigns/${encodeURIComponent(effectiveId)}`,
-            )
-          : Promise.resolve(null),
+          ? marketingRequest<{
+              campaign: Campaign;
+              couponKinds: CouponKind[];
+            }>(`/api/marketing/campaigns/${encodeURIComponent(effectiveId)}`)
+          : marketingRequest<{
+              campaigns: Campaign[];
+              couponKinds: CouponKind[];
+            }>("/api/marketing/campaigns"),
       ]);
-      if (stored?.campaign.templateKey)
+      const stored = "campaign" in source ? source.campaign : null;
+      if (stored?.templateKey)
         throw new MarketingApiError(409, "template_not_editable");
       if (
-        stored?.campaign.status !== undefined &&
-        !["draft", "paused"].includes(stored.campaign.status)
+        stored?.status !== undefined &&
+        !["draft", "paused"].includes(stored.status)
       )
         throw new MarketingApiError(409, "not_editable");
       setLocations(doors);
+      setCouponKinds(source.couponKinds);
       setSettings(config.settings);
       setDraft(
         (current) =>
           current ?? {
             ...initialCustomDraft(
-              stored?.campaign ?? null,
+              stored,
               config.settings.timeZone,
               (doors ?? [])
                 .filter((location) => location.status === "active")
@@ -181,7 +193,7 @@ export function CampaignComposer({
       error?.uncertain
     )
       return;
-    const issues = customErrors(draft, settings.timeZone);
+    const issues = customErrors(draft, settings.timeZone, couponKinds ?? []);
     setFields(issues);
     if (Object.keys(issues).length) {
       requestAnimationFrame(() =>
@@ -255,6 +267,7 @@ export function CampaignComposer({
       isOwner={isOwner}
       canReadLocations={locations !== null}
       canReadCatalog={canReadCatalog}
+      couponKinds={couponKinds}
       locations={locations}
       settings={settings}
       draft={draft}

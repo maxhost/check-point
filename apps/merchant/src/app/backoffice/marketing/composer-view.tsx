@@ -8,9 +8,14 @@ import {
   MarketingToast,
 } from "./marketing-ui";
 import type { MarketingApiError } from "./marketing-api";
-import type { Location, MarketingSettings } from "./marketing-types";
+import type {
+  CouponKind,
+  Location,
+  MarketingSettings,
+} from "./marketing-types";
 import type { CustomDraft } from "./custom-draft";
 import { CustomFields, type AudiencePreview } from "./custom-fields";
+import { rewardConfirmation } from "./reward-draft";
 
 export function ComposerView({
   effectiveId,
@@ -18,6 +23,7 @@ export function ComposerView({
   isOwner,
   canReadLocations,
   canReadCatalog,
+  couponKinds,
   locations,
   settings,
   draft,
@@ -42,6 +48,7 @@ export function ComposerView({
   isOwner: boolean;
   canReadLocations: boolean;
   canReadCatalog: boolean;
+  couponKinds: CouponKind[] | null;
   locations: Location[] | null;
   settings: MarketingSettings | null;
   draft: CustomDraft | null;
@@ -61,7 +68,7 @@ export function ComposerView({
   setConfirm: (value: boolean) => void;
   setNotice: (value: string | null) => void;
 }) {
-  if (!settings && !error)
+  if ((!settings || !couponKinds) && !error)
     return <MarketingLoading label="Cargando compositor…" />;
   return (
     <MarketingShell
@@ -107,61 +114,65 @@ export function ComposerView({
           </Link>
         </Alert>
       )}
-      {draft && settings && (canReadLocations || Boolean(effectiveId)) && (
-        <>
-          <CustomFields
-            draft={draft}
-            change={change}
-            errors={fields}
-            locations={locations}
-            preview={preview}
-            previewError={previewError}
-            timeZone={settings.timeZone}
-            currencyCode={currencyCode}
-            remainingQuota={remainingQuota}
-            canReadCatalog={canReadCatalog}
-          />
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button
-              isLoading={busy}
-              isDisabled={
-                Boolean(createdId) ||
-                error?.status === 401 ||
-                error?.status === 403 ||
-                Boolean(error?.uncertain)
-              }
-              onPress={() => review(false)}
-            >
-              {effectiveId ? "Guardar cambios" : "Guardar borrador"}
-            </Button>
-            {!effectiveId && (
+      {draft &&
+        settings &&
+        couponKinds &&
+        (canReadLocations || Boolean(effectiveId)) && (
+          <>
+            <CustomFields
+              draft={draft}
+              change={change}
+              errors={fields}
+              locations={locations}
+              preview={preview}
+              previewError={previewError}
+              timeZone={settings.timeZone}
+              currencyCode={currencyCode}
+              remainingQuota={remainingQuota}
+              canReadCatalog={canReadCatalog}
+              couponKinds={couponKinds}
+            />
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Button
-                variant="secondary"
+                isLoading={busy}
                 isDisabled={
-                  busy ||
                   Boolean(createdId) ||
                   error?.status === 401 ||
                   error?.status === 403 ||
                   Boolean(error?.uncertain)
                 }
-                onPress={() => review(true)}
+                onPress={() => review(false)}
               >
-                Guardar y activar
+                {effectiveId ? "Guardar cambios" : "Guardar borrador"}
               </Button>
-            )}
-            <Link
-              className="marketing-link"
-              href={
-                effectiveId
-                  ? `/backoffice/marketing/${effectiveId}`
-                  : "/backoffice/marketing"
-              }
-            >
-              Cancelar
-            </Link>
-          </div>
-        </>
-      )}
+              {!effectiveId && (
+                <Button
+                  variant="secondary"
+                  isDisabled={
+                    busy ||
+                    Boolean(createdId) ||
+                    error?.status === 401 ||
+                    error?.status === 403 ||
+                    Boolean(error?.uncertain)
+                  }
+                  onPress={() => review(true)}
+                >
+                  Guardar y activar
+                </Button>
+              )}
+              <Link
+                className="marketing-link"
+                href={
+                  effectiveId
+                    ? `/backoffice/marketing/${effectiveId}`
+                    : "/backoffice/marketing"
+                }
+              >
+                Cancelar
+              </Link>
+            </div>
+          </>
+        )}
       <MarketingConfirm
         open={confirm}
         busy={busy}
@@ -169,7 +180,7 @@ export function ComposerView({
         confirmLabel="Guardar y activar"
         description={
           draft && settings
-            ? `Audiencia: ${draft.dormantDays} días sin venir en ${draft.locationIds.length} locales.\nMensaje: ${draft.message}\nInicio: ${draft.startsAt}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon ? `\nCupón: ${draft.couponLabel} · tope ${draft.couponMaxRedemptions}` : ""}\nZona horaria: ${settings.timeZone}`
+            ? `Audiencia: ${draft.dormantDays} días sin venir en ${draft.locationIds.length} locales.\nMensaje: ${draft.message}\nInicio: ${draft.startsAt}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon ? `\nPremio: ${rewardConfirmation(draft, currencyCode)}` : ""}\nZona horaria: ${settings.timeZone}`
             : ""
         }
         onCancel={() => setConfirm(false)}

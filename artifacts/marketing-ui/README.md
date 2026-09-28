@@ -14,3 +14,7 @@ Datos HTTP controlados; UI real del repositorio. Resoluciones: móvil 390 px y e
 | Resultados custom          | [Ver](custom_results-mobile-light.png)     | [Ver](custom_results-mobile-dark.png)     | [Ver](custom_results-desktop-light.png)     | [Ver](custom_results-desktop-dark.png)     |
 | Horario de push            | [Ver](settings-mobile-light.png)           | [Ver](settings-mobile-dark.png)           | [Ver](settings-desktop-light.png)           | [Ver](settings-desktop-dark.png)           |
 | Compositor custom          | [Ver](composer-mobile-light.png)           | [Ver](composer-mobile-dark.png)           | [Ver](composer-desktop-light.png)           | [Ver](composer-desktop-dark.png)           |
+| Carga del catálogo         | [Ver](catalog_skeleton-mobile-light.png)   | [Ver](catalog_skeleton-mobile-dark.png)   | [Ver](catalog_skeleton-desktop-light.png)   | [Ver](catalog_skeleton-desktop-dark.png)   |
+| Carga del editor           | [Ver](editor_skeleton-mobile-light.png)    | [Ver](editor_skeleton-mobile-dark.png)    | [Ver](editor_skeleton-desktop-light.png)    | [Ver](editor_skeleton-desktop-dark.png)    |
+
+El [toggle abriendo el editor](toggle-opening-mobile-light.png) muestra un estado transitorio; la campaña sigue apagada hasta guardar y confirmar.

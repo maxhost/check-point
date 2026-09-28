@@ -1,16 +1,19 @@
-import type { Campaign } from "./marketing-types";
+import type { Campaign, CouponKind } from "./marketing-types";
 import { businessDateIso, localBusinessDate } from "./marketing-date";
+import {
+  emptyReward,
+  rewardBody,
+  rewardErrors,
+  rewardFromCampaign,
+  type RewardDraft,
+} from "./reward-draft";
 
-export type CustomDraft = {
+export type CustomDraft = RewardDraft & {
   name: string;
   dormantDays: number;
   locationIds: string[];
   message: string;
   coupon: boolean;
-  couponLabel: string;
-  couponCost: string;
-  couponMaxRedemptions: number;
-  couponProductId: string | null;
   startsAt: string;
   endsAt: string;
 };
@@ -27,10 +30,7 @@ export function initialCustomDraft(
         locationIds: [...campaign.locationIds],
         message: campaign.message,
         coupon: campaign.couponLabel !== null,
-        couponLabel: campaign.couponLabel ?? "",
-        couponCost: campaign.couponCost ?? "",
-        couponMaxRedemptions: campaign.couponMaxRedemptions ?? 100,
-        couponProductId: campaign.couponProductId,
+        ...rewardFromCampaign(campaign),
         startsAt: localBusinessDate(campaign.startsAt, timeZone),
         endsAt: campaign.endsAt
           ? localBusinessDate(campaign.endsAt, timeZone)
@@ -42,16 +42,17 @@ export function initialCustomDraft(
         locationIds,
         message: "",
         coupon: false,
-        couponLabel: "",
-        couponCost: "",
-        couponMaxRedemptions: 100,
-        couponProductId: null,
+        ...emptyReward(),
         startsAt: "",
         endsAt: "",
       };
 }
 
-export function customErrors(draft: CustomDraft, timeZone: string) {
+export function customErrors(
+  draft: CustomDraft,
+  timeZone: string,
+  couponKinds?: CouponKind[],
+) {
   const fields: Record<string, string> = {};
   if (!draft.name.trim() || draft.name.trim().length > 80)
     fields.name = "Escribí un nombre de hasta 80 caracteres.";
@@ -72,20 +73,7 @@ export function customErrors(draft: CustomDraft, timeZone: string) {
   if (start && end && end <= start)
     fields.endsAt = "El fin debe ser posterior al inicio.";
   if (draft.coupon) {
-    if (!draft.couponLabel.trim() || draft.couponLabel.trim().length > 40)
-      fields.couponLabel = "Escribí un nombre de hasta 40 caracteres.";
-    if (
-      !draft.couponCost.trim() ||
-      !Number.isFinite(Number(draft.couponCost)) ||
-      Number(draft.couponCost) < 0
-    )
-      fields.couponCost = "Ingresá un costo válido.";
-    if (
-      !Number.isInteger(draft.couponMaxRedemptions) ||
-      draft.couponMaxRedemptions < 1 ||
-      draft.couponMaxRedemptions > 1_000_000
-    )
-      fields.couponMaxRedemptions = "Elegí entre 1 y 1.000.000 canjes.";
+    Object.assign(fields, rewardErrors(draft, couponKinds));
     if (!end) fields.endsAt = "Una campaña con cupón necesita fecha de fin.";
   }
   return fields;
@@ -99,9 +87,6 @@ export function customBody(draft: CustomDraft, timeZone: string) {
     message: draft.message.trim(),
     startsAt: businessDateIso(draft.startsAt, timeZone),
     endsAt: draft.endsAt ? businessDateIso(draft.endsAt, timeZone) : null,
-    couponLabel: draft.coupon ? draft.couponLabel.trim() : null,
-    couponCost: draft.coupon ? draft.couponCost.trim() : null,
-    couponMaxRedemptions: draft.coupon ? draft.couponMaxRedemptions : null,
-    couponProductId: draft.coupon ? draft.couponProductId : null,
+    ...rewardBody(draft, draft.coupon),
   };
 }
