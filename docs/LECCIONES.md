@@ -1781,3 +1781,24 @@ columna por analogia. Lo cazo el implementador y lo declaro como desvio. No lleg
 **Regla (ya vigente, este es su caso):** toda columna, funcion o archivo que una spec nombra se
 señala con `archivo:línea` ANTES de cerrarla — no solo las filas de la tabla de mutaciones. El
 barrido es de dos minutos: `rg -n '<nombre>' <schema>` por cada identificador del diseño.
+
+
+## 2026-09-28 — un costo por escritura sin su escala, y una pregunta que el dominio ya contestaba
+
+**Que paso (1).** Al planear la 0108 el orquestador le mostro al owner «costo extra por cada compra:
+3,5 ms» en una tabla. El owner lo leyo, con razon, como un costo que crece con las compras y declaro
+el diseño inviable. Era una sola escritura medida con `EXPLAIN` y cache fria; medido bien (2.000
+upserts por corrida) da 0,05–0,4 ms y **no crece**: la proyeccion tiene una fila por cliente. Hubo que
+remedir y re-explicar.
+
+**Regla.** Todo costo que se le reporta al owner va con **su escala** —constante, crece con X,
+crece con Y— y con **como se midio** (una muestra fria no es un costo por operacion). Un numero sin
+su escala es una afirmacion de costo a medio medir.
+
+**Que paso (2).** El orquestador le pregunto al owner si canjear un cupon en mostrador «cuenta como
+visita». En este producto **todo evento de mostrador —compra, canje de premio, canje de cupon— exige
+escanear el QR del cliente**: sin escaneo no hay canje, y con escaneo hubo visita. La pregunta no
+tenia dos respuestas posibles.
+
+**Regla.** Antes de subir un «a confirmar» al owner, preguntarse si el dominio admite la otra
+respuesta. Si no la admite, es una regla del producto: se escribe y no se pregunta.
