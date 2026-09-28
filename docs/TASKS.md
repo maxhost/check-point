@@ -45,8 +45,13 @@ Declarado: un producto borrado se funde con los premios de texto del mismo tipo 
 **Ajuste E3b CONFIRMADO por el owner y escrito** (`cfd7a24`, spec §E3b + contrato §E3): la lista del
 cliente trae `status` (`redeemed` > `expired` > `unavailable` > `valid`), `reason`
 (`business_suspended`/`business_closed`) y `redeemedAt`; estado calculado; historial 90 dias / max 50;
-orden valid → unavailable → historial. **En curso:** lo implementa el mismo implementador (sus cambios
-sin commitear son SUYOS), M5b. Es API: la seccion de UI es de GPT.
+orden valid → unavailable → historial. **E3b EN PROD:** `d4d76a3` + bitacora `2106678` (M5b rojo por
+el motivo correcto; re-verificado `consumer-coupons` 3/3), push `fc264a6..2106678`, Vercel `success`.
+**Ajuste E1b (hueco del contrato cazado por GPT):** marketing se guarda por PERMISO, asi que un
+empleado con `marketing` sin `loyalty` no podia saber que tipo extra ofrecer. Contrato actualizado
+(`a0feaa0`): `couponKinds` en la raiz de `GET /templates`, `/campaigns`, `/campaigns/{id}`. **En curso:**
+lo implementa el mismo implementador (cambios sin commitear SUYOS). La nota de GPT en
+`docs/api-faltantes.md` (sin commitear en `main`) queda resuelta cuando E1b llegue a prod.
 **Selector de producto (owner):** usa `GET /api/catalog` (todos los productos, sin paginar, con
 `unitCost`) y filtra en el front; no hay «producto activo» en el catalogo.
 **Sigue:** verificar y pushear E3b → revisor independiente de toda la 0106 (agente aparte; el
