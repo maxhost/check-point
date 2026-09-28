@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
+import { type SeedCoupon, couponColumns } from "./marketing-coupon-support";
 import {
   campaignLocations,
   campaignTurns,
@@ -59,7 +60,7 @@ export async function seedCampaign(opts: {
   dormantDays?: number;
   startsAt?: Date;
   endsAt?: Date | null;
-  coupon?: { label: string; cost: string; maxRedemptions: number } | null;
+  coupon?: SeedCoupon | null;
 }): Promise<string> {
   const [row] = await getDb()
     .insert(campaigns)
@@ -71,9 +72,7 @@ export async function seedCampaign(opts: {
       pauseReason: opts.pauseReason ?? null,
       dormantDays: opts.dormantDays ?? 30,
       message: opts.message ?? "2x1 en picadas",
-      couponLabel: opts.coupon?.label ?? null,
-      couponCost: opts.coupon?.cost ?? null,
-      couponMaxRedemptions: opts.coupon?.maxRedemptions ?? null,
+      ...couponColumns(opts.coupon),
       // NO se usa el reloj REAL acá. El default era `Date.now() - 24 h`, y los tests que
       // consumen este fixture corren el tick con un `NOW` FIJADO (`2026-09-16T12:00:00Z`).
       // Mezclar los dos relojes es una BOMBA DE TIEMPO: mientras el reloj real esté dentro

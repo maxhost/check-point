@@ -1,6 +1,7 @@
 import {
   check,
   index,
+  integer,
   numeric,
   text,
   timestamp,
@@ -14,6 +15,8 @@ import { consumerAccounts, programMemberships } from "./consumer";
 import { campaigns } from "./campaign";
 import { campaignTurns } from "./campaign-turn";
 import { campaignPushes } from "./campaign-push";
+import { products } from "./catalog";
+import { rewardChecks } from "./reward-checks";
 
 /**
  * THE COUPON OF ONE CONSUMER IN ONE CAMPAIGN (spec 0102 / ADR 0093). A channel only
@@ -25,6 +28,12 @@ import { campaignPushes } from "./campaign-push";
  * `ends_at` COPIED at issue time (ADR 0094 §1): pausing, ending or archiving the campaign
  * does NOT cut it, and neither does cancelling its turn — only that date, the redemption
  * and the campaign's cap do (ADR 0094 §2).
+ *
+ * Spec 0106 / ADR 0098 §8: the whole REWARD is copied too — type, product, discount, extra
+ * units and rule — with the same shape checks as the campaign (`reward-checks.ts`). A
+ * discount by `amount` also copies the business currency (`currency_code_snapshot`): the
+ * value means nothing without it, and the business may change it later. `product_id` is
+ * `set null` so deleting a product never deletes a coupon (the label keeps naming it).
  *
  * `turn_id` is the PROVENANCE: nullable because the push channel (spec B1) issues coupons
  * without a turn, and unique because a turn issues at most one coupon — the unique is
@@ -55,6 +64,18 @@ export const campaignCoupons = core.table(
       precision: 12,
       scale: 2,
     }).notNull(),
+    kindSnapshot: text("kind_snapshot").notNull(),
+    productId: uuid("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
+    discountUnitSnapshot: text("discount_unit_snapshot"),
+    discountValueSnapshot: numeric("discount_value_snapshot", {
+      precision: 12,
+      scale: 2,
+    }),
+    currencyCodeSnapshot: text("currency_code_snapshot"),
+    extraUnitsSnapshot: integer("extra_units_snapshot"),
+    ruleSnapshot: text("rule_snapshot"),
     validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
     validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -69,6 +90,18 @@ export const campaignCoupons = core.table(
     check(
       "core_campaign_coupon_cost_snapshot_check",
       sql`${table.costSnapshot} >= 0`,
+    ),
+    ...rewardChecks("core_campaign_coupon_reward", {
+      kind: table.kindSnapshot,
+      productId: table.productId,
+      unit: table.discountUnitSnapshot,
+      value: table.discountValueSnapshot,
+      extraUnits: table.extraUnitsSnapshot,
+      rule: table.ruleSnapshot,
+    }),
+    check(
+      "core_campaign_coupon_reward_currency_check",
+      sql`(${table.currencyCodeSnapshot} is not null) = (coalesce(${table.discountUnitSnapshot}, '') = 'amount') and (${table.currencyCodeSnapshot} is null or ${table.currencyCodeSnapshot} ~ '^[A-Z]{3}$')`,
     ),
     check(
       "core_campaign_coupon_validity_check",

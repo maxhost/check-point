@@ -13,6 +13,8 @@
  * fuente no disponible».
  */
 
+import type { CouponKind } from "./reward-input";
+
 /**
  * The literal title of the purchases block, in the DTO and not in the screen, because
  * it is a PRODUCT guarantee and not decoration: the spec says it must read «compraron
@@ -79,6 +81,9 @@ export type LocationRow = {
 
 export type CouponFacts = {
   label: string | null;
+  /** Spec 0106: the campaign's reward type (`null` without coupon). Optional in the type
+   * only for hand-built fixtures; the route always sets it. */
+  kind?: CouponKind | null;
   cap: number | null;
   redeemed: number;
   /** `sum(cost_snapshot)` as the driver returns numeric: a STRING, never a float. */

@@ -23,7 +23,10 @@ export async function POST(
       key,
       await readJson(request),
     );
-    return NextResponse.json({ campaign }, { status: 201 });
+    return NextResponse.json(
+      { campaign, currencyCode: auth.business.currencyCode },
+      { status: 201 },
+    );
   } catch (error) {
     return campaignError(error, "No pudimos encender la campaña.");
   }

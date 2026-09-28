@@ -190,6 +190,8 @@ export async function persistCouponRedemption(input: {
         turnId: campaignCoupons.turnId,
         labelSnapshot: campaignCoupons.labelSnapshot,
         costSnapshot: campaignCoupons.costSnapshot,
+        kindSnapshot: campaignCoupons.kindSnapshot,
+        productId: campaignCoupons.productId,
         validFrom: campaignCoupons.validFrom,
         validUntil: campaignCoupons.validUntil,
       })
@@ -246,6 +248,9 @@ export async function persistCouponRedemption(input: {
         locationId: input.locationId,
         labelSnapshot: coupon.labelSnapshot,
         costSnapshot: coupon.costSnapshot,
+        // Spec 0106: what the rewards results group by, copied from the coupon too.
+        kindSnapshot: coupon.kindSnapshot,
+        productId: coupon.productId,
         createdByUserId: input.createdByUserId,
         clientRequestId: input.clientRequestId,
       })

@@ -22,6 +22,7 @@ import {
   programMemberships,
 } from "../schema";
 import { loadPushFacts } from "./push-results-store";
+import type { CouponKind } from "./reward-input";
 import {
   buildCampaignResults,
   type CampaignResults,
@@ -195,7 +196,12 @@ async function loadPassReach(businessId: string) {
 export async function loadCampaignResults(
   businessId: string,
   campaignId: string,
-  coupon: { label: string | null; cap: number | null },
+  coupon: {
+    label: string | null;
+    cap: number | null;
+    /** Spec 0106: the campaign's reward type; absent = no coupon. */
+    kind?: CouponKind | null;
+  },
   now: Date = new Date(),
 ): Promise<CampaignResults> {
   const [audience, turns, redeemed, byLocation, passReach, push] =
@@ -224,6 +230,7 @@ export async function loadCampaignResults(
     },
     coupon: {
       label: coupon.label,
+      kind: coupon.kind ?? null,
       cap: coupon.cap,
       redeemed: redeemed.redeemed,
       incurredCost: redeemed.incurredCost,

@@ -6,6 +6,8 @@ import { type Campaign, CampaignError, getCampaign } from "./campaign-store";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
 import { loadRewardCost } from "./balance-store";
 import { parseTemplateInput } from "./template-input";
+import { pickReward } from "./reward-input";
+import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
 import { TEMPLATES, type TemplateDefinition, templateByKey } from "./templates";
 
 /**
@@ -183,6 +185,8 @@ export async function enableTemplate(
       // the `catch` below — pinned by `marketing-templates-race.neon.integration.test.ts`.
       if ((await liveRunId(tx, businessId, template.key)) !== null)
         throw alreadyLive();
+      await assertOwnProduct(tx, businessId, input.couponProductId);
+      await assertExtrasFitProgram(tx, businessId, input.couponKind);
       const [created] = await tx
         .insert(campaigns)
         .values({
@@ -197,10 +201,7 @@ export async function enableTemplate(
           createdByUserId: userId,
           dormantDays: input.dormantDays,
           message: input.message,
-          couponLabel: input.couponLabel,
-          couponCost: input.couponCost,
-          couponMaxRedemptions: input.couponMaxRedemptions,
-          couponProductId: input.couponProductId,
+          ...pickReward(input),
           nearRewardStamps: input.nearRewardStamps,
           nearRewardPercent: input.nearRewardPercent,
           rewardRepeat: input.rewardRepeat,

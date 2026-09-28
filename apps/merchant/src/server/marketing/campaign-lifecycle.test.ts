@@ -243,6 +243,8 @@ describe("the PATCH", () => {
       couponCost: null,
       couponMaxRedemptions: null,
       couponProductId: null,
+      // Spec 0106: no coupon = no reward type either (`core_campaign_coupon_kind_presence_check`).
+      couponKind: null,
       endsAt: new Date("2026-10-05T12:00:00.000Z"),
     };
     const cleared = parseCampaignPatch({ endsAt: null }, withEnd);

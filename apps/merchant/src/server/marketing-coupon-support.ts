@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { campaignCoupons, couponRedemptions } from "./schema";
 import { getDb } from "./db";
+import type { CouponKind, DiscountUnit } from "./marketing/reward-input";
 
 /**
  * Seeds of the campaign coupon (spec 0102) for the integration suites, split from
@@ -8,8 +9,40 @@ import { getDb } from "./db";
  *
  * A seeded coupon has the shape of one the tick issues: `valid_from < valid_until`
  * (`core_campaign_coupon_validity_check`), snapshots copied, and — when it comes from
- * proximity — the `turn_id` of its turn.
+ * proximity — the `turn_id` of its turn. Since spec 0106 it also carries its reward type
+ * (`kind_snapshot`, NOT NULL): the label-only reward every coupon was before, `free_product`.
  */
+
+/**
+ * The coupon of a SEEDED CAMPAIGN (`seedCampaign`, `seedPushCampaign`). Spec 0106: a coupon
+ * has a type (`core_campaign_coupon_kind_presence_check`), `free_product` unless the case
+ * asks for another reward.
+ */
+export type SeedCoupon = {
+  label: string;
+  cost: string;
+  maxRedemptions: number;
+  kind?: CouponKind;
+  productId?: string | null;
+  discountUnit?: DiscountUnit | null;
+  discountValue?: string | null;
+  extraUnits?: number | null;
+  rule?: string | null;
+};
+
+export function couponColumns(coupon: SeedCoupon | null | undefined) {
+  return {
+    couponLabel: coupon?.label ?? null,
+    couponCost: coupon?.cost ?? null,
+    couponMaxRedemptions: coupon?.maxRedemptions ?? null,
+    couponKind: coupon ? (coupon.kind ?? "free_product") : null,
+    couponProductId: coupon?.productId ?? null,
+    couponDiscountUnit: coupon?.discountUnit ?? null,
+    couponDiscountValue: coupon?.discountValue ?? null,
+    couponExtraUnits: coupon?.extraUnits ?? null,
+    couponRule: coupon?.rule ?? null,
+  };
+}
 
 const EPOCH = new Date("2026-01-01T00:00:00.000Z");
 const FAR = new Date("2099-01-01T00:00:00.000Z");
@@ -35,6 +68,7 @@ export async function seedCampaignCoupon(opts: {
       turnId: opts.turnId,
       labelSnapshot: opts.label ?? "2x1 en picadas",
       costSnapshot: opts.cost ?? "3.00",
+      kindSnapshot: "free_product",
       validFrom: opts.validFrom ?? EPOCH,
       validUntil: opts.validUntil ?? FAR,
     })
@@ -76,6 +110,7 @@ export async function seedCouponRedemption(opts: {
       locationId: opts.locationId,
       labelSnapshot: "2x1 en picadas",
       costSnapshot: opts.costSnapshot ?? "3.00",
+      kindSnapshot: "free_product",
       createdByUserId: opts.userId,
       clientRequestId: randomUUID(),
     })

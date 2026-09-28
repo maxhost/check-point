@@ -24,7 +24,9 @@ export async function GET(
       results: await loadCampaignResults(auth.business.id, campaign.id, {
         label: campaign.couponLabel,
         cap: campaign.couponMaxRedemptions,
+        kind: campaign.couponKind ?? null,
       }),
+      currencyCode: auth.business.currencyCode,
     });
   } catch (error) {
     return campaignError(error, "No pudimos leer los resultados.");

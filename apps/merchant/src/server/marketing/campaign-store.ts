@@ -9,6 +9,13 @@ import {
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
 import { channelsOf } from "./campaign-values";
+import { CampaignError } from "./campaign-error";
+import { type CouponKind, type DiscountUnit, pickReward } from "./reward-input";
+import {
+  assertExtrasFitProgram,
+  assertOwnProduct,
+  rewardSelect,
+} from "./reward-store";
 
 /**
  * Every read and write of `core.campaign` the backoffice does (spec 0065 phase B). Two
@@ -23,16 +30,7 @@ import { channelsOf } from "./campaign-values";
  *     sees the door on their own pass would reasonably think it failed.
  */
 
-export class CampaignError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    readonly fields?: Record<string, string>,
-  ) {
-    super(message);
-  }
-}
+export { CampaignError };
 
 export type Campaign = {
   id: string;
@@ -53,6 +51,16 @@ export type Campaign = {
   couponCost: string | null;
   couponMaxRedemptions: number | null;
   couponProductId: string | null;
+  /**
+   * Spec 0106: the reward's type and fields. Every read of this file ALWAYS sets them
+   * (`rewardSelect`); they are OPTIONAL in the type only so the backoffice fixtures that
+   * build a `Campaign` by hand (being rewritten outside this spec) keep compiling.
+   */
+  couponKind?: CouponKind | null;
+  couponDiscountUnit?: DiscountUnit | null;
+  couponDiscountValue?: string | null;
+  couponExtraUnits?: number | null;
+  couponRule?: string | null;
   /** Spec 0104: #7's thresholds and #8's repetition; `null` in any other campaign. */
   nearRewardStamps: number | null;
   nearRewardPercent: number | null;
@@ -79,6 +87,7 @@ const columns = {
   couponCost: campaigns.couponCost,
   couponMaxRedemptions: campaigns.couponMaxRedemptions,
   couponProductId: campaigns.couponProductId,
+  ...rewardSelect,
   nearRewardStamps: campaigns.nearRewardStamps,
   nearRewardPercent: campaigns.nearRewardPercent,
   rewardRepeat: campaigns.rewardRepeat,
@@ -100,6 +109,12 @@ function toCampaign(
     channels: channelsOf({ channelProximity, channelPush }),
     locationIds,
   };
+}
+
+/** The columns the composer writes: its fields and the whole reward (spec 0106). */
+function campaignFields(input: CampaignInput) {
+  const { name, message, dormantDays, startsAt, endsAt } = input;
+  return { name, message, dormantDays, startsAt, endsAt, ...pickReward(input) };
 }
 
 function notFound(): CampaignError {
@@ -207,21 +222,15 @@ export async function createCampaign(
         PLAN_NOT_ALLOWED_MESSAGE,
       );
     const doors = await ownDoors(tx, businessId, input.locationIds);
+    await assertOwnProduct(tx, businessId, input.couponProductId);
+    await assertExtrasFitProgram(tx, businessId, input.couponKind);
     const [created] = await tx
       .insert(campaigns)
       .values({
+        ...campaignFields(input),
         businessId,
         kind: "proximity",
         createdByUserId: userId,
-        name: input.name,
-        message: input.message,
-        dormantDays: input.dormantDays,
-        couponLabel: input.couponLabel,
-        couponCost: input.couponCost,
-        couponMaxRedemptions: input.couponMaxRedemptions,
-        couponProductId: input.couponProductId,
-        startsAt: input.startsAt,
-        endsAt: input.endsAt,
       })
       .returning({ id: campaigns.id });
     await writeDoors(tx, created.id, doors);
@@ -273,20 +282,11 @@ export async function updateCampaign(
   const input = parsed.value;
   await withDbTransaction(async (tx) => {
     const doors = await ownDoors(tx, businessId, input.locationIds);
+    await assertOwnProduct(tx, businessId, input.couponProductId);
+    await assertExtrasFitProgram(tx, businessId, input.couponKind);
     await tx
       .update(campaigns)
-      .set({
-        name: input.name,
-        message: input.message,
-        dormantDays: input.dormantDays,
-        couponLabel: input.couponLabel,
-        couponCost: input.couponCost,
-        couponMaxRedemptions: input.couponMaxRedemptions,
-        couponProductId: input.couponProductId,
-        startsAt: input.startsAt,
-        endsAt: input.endsAt,
-        updatedAt: new Date(),
-      })
+      .set({ ...campaignFields(input), updatedAt: new Date() })
       .where(and(eq(campaigns.id, id), eq(campaigns.businessId, businessId)));
     await writeDoors(tx, id, doors);
   });

@@ -344,6 +344,13 @@
       "when": 1790545204063,
       "tag": "0048_plantilla_en_riesgo",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1790561713794,
+      "tag": "0049_premio_estructurado",
+      "breakpoints": true
     }
   ]
 }

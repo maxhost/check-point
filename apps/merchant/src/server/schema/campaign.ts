@@ -15,6 +15,7 @@ import { core } from "./_schemas";
 import { users } from "./auth";
 import { businesses, locations } from "./business";
 import { products } from "./catalog";
+import { rewardChecks } from "./reward-checks";
 
 /**
  * A marketing campaign (spec 0065 / ADR 0064). `kind` is the extension point: this
@@ -26,9 +27,11 @@ import { products } from "./catalog";
  * campaign either carries the three coupon columns (`label`, `cost`,
  * `max_redemptions`) or none of them. A half-declared coupon is representable in the
  * type system and would reach the counter with no cap or no cost to report, so the
- * database refuses it. `coupon_product_id` is informative only in this phase (ADR
- * 0002: declared cost, no margin math) and `set null` so deleting a product never
- * deletes a campaign.
+ * database refuses it. Since spec 0106 (ADR 0098) the coupon also has a TYPE
+ * (`coupon_kind`, present exactly when the label is) and the fields that type needs;
+ * `coupon_product_id` names the product of a `free_product`/`two_for_one` — a product OF
+ * THIS BUSINESS, which the stores check (`marketing/reward-store.ts`): the fk alone would
+ * accept any business's product. `set null` so deleting a product never deletes a campaign.
  *
  * `pause_reason` distinguishes who pulled the brake: `owner` (the pause button),
  * `plan_downgraded` (the defensive pause of `billing/webhook-apply.ts` when the plan
@@ -69,6 +72,15 @@ export const campaigns = core.table(
     couponProductId: uuid("coupon_product_id").references(() => products.id, {
       onDelete: "set null",
     }),
+    // Spec 0106 / ADR 0098: the reward's TYPE and its fields (shape in `reward-checks.ts`).
+    couponKind: text("coupon_kind"),
+    couponDiscountUnit: text("coupon_discount_unit"),
+    couponDiscountValue: numeric("coupon_discount_value", {
+      precision: 12,
+      scale: 2,
+    }),
+    couponExtraUnits: integer("coupon_extra_units"),
+    couponRule: text("coupon_rule"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     // Spec 0104 / ADR 0096: the parameters of the BALANCE templates. #7 keeps BOTH
@@ -131,6 +143,19 @@ export const campaigns = core.table(
       "core_campaign_coupon_all_or_nothing_check",
       sql`(${table.couponLabel} is null) = (${table.couponCost} is null) and (${table.couponLabel} is null) = (${table.couponMaxRedemptions} is null)`,
     ),
+    // Spec 0106: the reward has a type exactly when there is a coupon.
+    check(
+      "core_campaign_coupon_kind_presence_check",
+      sql`(${table.couponKind} is null) = (${table.couponLabel} is null)`,
+    ),
+    ...rewardChecks("core_campaign_reward", {
+      kind: table.couponKind,
+      productId: table.couponProductId,
+      unit: table.couponDiscountUnit,
+      value: table.couponDiscountValue,
+      extraUnits: table.couponExtraUnits,
+      rule: table.couponRule,
+    }),
     // ADR 0094 §3: an issued coupon lives until `ends_at`, so a campaign with a coupon
     // needs one. The composer and `enable` refuse it first with a 400 (spec 0102).
     check(

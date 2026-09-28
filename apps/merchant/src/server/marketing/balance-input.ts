@@ -1,4 +1,5 @@
 import type { FieldErrors } from "./campaign-input";
+import { REWARD_KEYS } from "./reward-input";
 import type { TemplateInput } from "./template-input";
 import { GAP_MARKER, type TemplateDefinition } from "./templates";
 
@@ -6,7 +7,8 @@ import { GAP_MARKER, type TemplateDefinition } from "./templates";
  * The BALANCE half of `enable`'s body (spec 0104 §3 / ADR 0096). PURE, called only by
  * `parseTemplateInput` (`template-input.ts`) — it lives apart for the size budget.
  *
- *  - `couponAllowed: false` (#7, #8) refuses ANY of the three coupon fields.
+ *  - `couponAllowed: false` (#7, #8) refuses ANY field of the reward (spec 0106: the
+ *    type, its values, the rule and the product too — not only the trio).
  *  - `nearRewardStamps`/`nearRewardPercent` (#7) and `rewardRepeat` (#8): one of the
  *    template's options, its default when absent. A template that does not declare them
  *    IGNORES them (the docblock rule of `template-input.ts`) and they are stored `null`.
@@ -102,9 +104,7 @@ export function couponRefused(
   template: TemplateDefinition,
 ): boolean {
   if (template.couponAllowed) return false;
-  const given = ["couponLabel", "couponCost", "couponMaxRedemptions"].some(
-    (key) => !absent(body[key]),
-  );
+  const given = REWARD_KEYS.some((key) => !absent(body[key]));
   if (given) errors.couponLabel = "Esta campaña no lleva cupón.";
   return given;
 }

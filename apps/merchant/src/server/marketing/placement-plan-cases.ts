@@ -14,6 +14,17 @@ import type {
 export const NOW = new Date("2026-09-15T12:00:00.000Z");
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** A campaign with no coupon: no reward to copy (spec 0106). */
+const NO_REWARD = {
+  kind: null,
+  productId: null,
+  discountUnit: null,
+  discountValue: null,
+  extraUnits: null,
+  rule: null,
+  currencyCode: "USD",
+};
+
 /** Buenos Aires, Plaza de Mayo. Everything else is an offset from here. */
 const BASE = { latitude: -34.6083, longitude: -58.3712 };
 
@@ -44,6 +55,7 @@ export function queued(
     message: `Promo ${id}`,
     couponLabel: null,
     couponCost: null,
+    couponReward: NO_REWARD,
     ...overrides,
   };
 }

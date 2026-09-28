@@ -110,6 +110,18 @@ describe.skipIf(!integrationEnabled)("campaign results", () => {
     expect(Number(results.coupon.incurredCost)).toBe(7.5);
     expect(results.coupon.quality).toBe("estimado_configurado");
     expect(results.coupon.cap).toBe(50);
+    // Spec 0106: the block names the reward type it was given (the route passes the
+    // campaign's `couponKind`); absent, it is `null`.
+    expect(results.coupon.kind).toBeNull();
+    const typed = await loadCampaignResults(
+      world.businessId,
+      world.campaignId,
+      {
+        ...COUPON,
+        kind: "two_for_one",
+      },
+    );
+    expect(typed.coupon.kind).toBe("two_for_one");
   }, 120_000);
 
   it("reads the LAST tick photo, not whichever row the scan returns first", async () => {

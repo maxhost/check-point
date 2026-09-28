@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   try {
     return NextResponse.json({
       templates: await listTemplates(auth.business.id),
+      currencyCode: auth.business.currencyCode,
     });
   } catch (error) {
     return campaignError(error, "No pudimos leer las campañas prearmadas.");

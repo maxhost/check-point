@@ -22,11 +22,17 @@ import type { CampaignAction } from "../../../server/marketing/campaign-transiti
  * on a POST is a 307 and not the 403 the spec's isolation item demands. The adversarial
  * review of that spec caught exactly that confusion before any code existed.
  */
+/** Spec 0106: the business currency travels with the guard's answer — every response of
+ * `/api/marketing/campaigns*` and `/templates` carries it at the root (`currencyCode`), and
+ * it comes from the SAME row the guard just evaluated, at no extra query. */
+export type MarketingCaller = {
+  business: { id: string; currencyCode: string };
+  userId: string;
+};
+
 export async function requireMarketingOwner(
   request: Request,
-): Promise<
-  { business: { id: string }; userId: string } | { response: NextResponse }
-> {
+): Promise<MarketingCaller | { response: NextResponse }> {
   const auth = await requireApiPermission(request, "marketing", {
     missingPermission: "No tienes permiso para gestionar las campañas.",
     emailNotVerified: "Verificá tu email para gestionar las campañas.",
@@ -34,7 +40,13 @@ export async function requireMarketingOwner(
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
   }
-  return { business: { id: auth.business.id }, userId: auth.userId };
+  return {
+    business: {
+      id: auth.business.id,
+      currencyCode: auth.business.currencyCode,
+    },
+    userId: auth.userId,
+  };
 }
 
 /**
@@ -47,9 +59,7 @@ export async function requireMarketingOwner(
  */
 export async function requireCampaignOwner(
   request: Request,
-): Promise<
-  { business: { id: string }; userId: string } | { response: NextResponse }
-> {
+): Promise<MarketingCaller | { response: NextResponse }> {
   const auth = await requireApiOwner(request, {
     notOwner: "Solo el owner puede archivar o finalizar una campaña.",
     emailNotVerified: "Verificá tu email para gestionar las campañas.",
@@ -57,7 +67,13 @@ export async function requireCampaignOwner(
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
   }
-  return { business: { id: auth.business.id }, userId: auth.userId };
+  return {
+    business: {
+      id: auth.business.id,
+      currencyCode: auth.business.currencyCode,
+    },
+    userId: auth.userId,
+  };
 }
 
 /** `fields` travels only on a 400 `validation`: it is what lets the composer paint the
@@ -113,9 +129,10 @@ export function campaignActionRoute(action: CampaignAction, fallback: string) {
     if ("response" in auth) return auth.response;
     try {
       const { id } = await params;
-      return NextResponse.json(
-        await transitionCampaign(auth.business.id, id, action),
-      );
+      return NextResponse.json({
+        ...(await transitionCampaign(auth.business.id, id, action)),
+        currencyCode: auth.business.currencyCode,
+      });
     } catch (error) {
       return campaignError(error, fallback);
     }

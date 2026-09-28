@@ -1,5 +1,11 @@
 import { asObject } from "./campaign-values";
 import type { CampaignStatus } from "./campaign-transitions";
+import {
+  type CouponDeal,
+  type FieldErrors,
+  REWARD_KEYS,
+  parseCoupon,
+} from "./reward-input";
 
 /**
  * The composer's body, validated field by field (spec 0065: «400 `validation` por
@@ -14,20 +20,17 @@ import type { CampaignStatus } from "./campaign-transitions";
  * would build exactly the half-declared state the check forbids.
  */
 
-export type CampaignInput = {
+/** The reward (`CouponDeal`) is validated by `reward-input.ts` (spec 0106). */
+export type CampaignInput = CouponDeal & {
   name: string;
   dormantDays: number;
   message: string;
-  couponLabel: string | null;
-  couponCost: string | null;
-  couponMaxRedemptions: number | null;
-  couponProductId: string | null;
   startsAt: Date;
   endsAt: Date | null;
   locationIds: string[];
 };
 
-export type FieldErrors = Record<string, string>;
+export type { FieldErrors };
 
 export type ParseResult<T> =
   | { ok: true; value: T }
@@ -89,69 +92,6 @@ function when(
     return undefined;
   }
   return value;
-}
-
-/**
- * The coupon, as ONE decision. Reading the three columns separately is what produces the
- * half-declared campaign the database refuses: a label with no cap reaches the counter
- * with nothing to stop it, and a cost with no label reaches the results with nothing to
- * name. `couponProductId` is informative in this phase (ADR 0002) and never required.
- *
- * Exported since spec 0101: `enable` of a template (`template-input.ts`) reuses it, so the
- * coupon of a prebuilt campaign follows EXACTLY the composer's rules instead of a copy.
- */
-export function parseCoupon(
-  errors: FieldErrors,
-  body: Record<string, unknown>,
-) {
-  const given = ["couponLabel", "couponCost", "couponMaxRedemptions"].filter(
-    (key) => body[key] !== undefined && body[key] !== null,
-  );
-  if (given.length === 0) {
-    return {
-      couponLabel: null,
-      couponCost: null,
-      couponMaxRedemptions: null,
-      couponProductId: null,
-    };
-  }
-  if (given.length < 3) {
-    errors.couponLabel =
-      "El cupón va completo: etiqueta, costo estimado y tope de canjes.";
-    return undefined;
-  }
-  const label = text(
-    errors,
-    body.couponLabel,
-    "couponLabel",
-    40,
-    "La etiqueta",
-  );
-  const cost = Number(body.couponCost);
-  if (!Number.isFinite(cost) || cost < 0) {
-    errors.couponCost = "El costo estimado no puede ser negativo.";
-  }
-  const max = whole(
-    errors,
-    body.couponMaxRedemptions,
-    "couponMaxRedemptions",
-    1,
-    1_000_000,
-    "El tope de canjes",
-  );
-  const productId = body.couponProductId;
-  if (productId !== undefined && productId !== null) {
-    if (typeof productId !== "string" || !UUID.test(productId))
-      errors.couponProductId = "El producto no es válido.";
-  }
-  if (label === undefined || max === undefined || errors.couponCost)
-    return undefined;
-  return {
-    couponLabel: label,
-    couponCost: cost.toFixed(2),
-    couponMaxRedemptions: max,
-    couponProductId: typeof productId === "string" ? productId : null,
-  };
 }
 
 /**
@@ -254,24 +194,11 @@ export function parseCampaignPatch(
       "endsAt" in body ? body.endsAt : (current.endsAt?.toISOString() ?? null),
     locationIds: body.locationIds ?? current.locationIds,
   };
-  // The coupon travels as a trio or not at all: if the PATCH names ANY of its three keys
-  // it replaces the whole thing, otherwise the current one is carried over untouched.
-  const touchesCoupon = [
-    "couponLabel",
-    "couponCost",
-    "couponMaxRedemptions",
-    "couponProductId",
-  ].some((key) => key in body);
-  if (touchesCoupon) {
-    merged.couponLabel = body.couponLabel ?? null;
-    merged.couponCost = body.couponCost ?? null;
-    merged.couponMaxRedemptions = body.couponMaxRedemptions ?? null;
-    merged.couponProductId = body.couponProductId ?? null;
-  } else {
-    merged.couponLabel = current.couponLabel;
-    merged.couponCost = current.couponCost;
-    merged.couponMaxRedemptions = current.couponMaxRedemptions;
-    merged.couponProductId = current.couponProductId;
-  }
+  // The reward travels whole or not at all (spec 0106): if the PATCH names ANY of its keys
+  // it replaces the whole thing —the absent ones become `null`—, otherwise the current one
+  // is carried over untouched.
+  const touchesCoupon = REWARD_KEYS.some((key) => key in body);
+  for (const key of REWARD_KEYS)
+    merged[key] = touchesCoupon ? (body[key] ?? null) : (current[key] ?? null);
   return parseCampaignInput(merged);
 }

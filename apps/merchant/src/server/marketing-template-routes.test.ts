@@ -80,8 +80,10 @@ describe("api/marketing/templates — what reaches the domain and what comes bac
       new NextRequest(`${base}?b=${FOREIGN_BUSINESS}`),
     );
     expect(response.status).toBe(200);
+    // Spec 0106: the business currency travels at the root, from the guard's own row.
     expect(await response.json()).toEqual({
       templates: [{ key: "missed_you" }],
+      currencyCode: "USD",
     });
     expect(world.listTemplates).toHaveBeenCalledWith(CALLER_BUSINESS);
   });
@@ -99,7 +101,10 @@ describe("api/marketing/templates — what reaches the domain and what comes bac
       BODY,
     );
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({ campaign: CAMPAIGN });
+    expect(await response.json()).toEqual({
+      campaign: CAMPAIGN,
+      currencyCode: "USD",
+    });
   });
 
   it("disable hands the key of the PATH and answers 200 { campaign, notice }", async () => {
@@ -116,6 +121,7 @@ describe("api/marketing/templates — what reaches the domain and what comes bac
     expect(await response.json()).toEqual({
       campaign: CAMPAIGN,
       notice: NOTICE,
+      currencyCode: "USD",
     });
   });
 

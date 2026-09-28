@@ -20,6 +20,7 @@ import {
 } from "../schema";
 import { toLatLng } from "../wallet/pass-locations";
 import type { ActiveTurn, PlacedSlot, QueuedTurn } from "./placement-plan";
+import type { CouponKind, DiscountUnit } from "./reward-input";
 
 /**
  * Who gets planned: every consumer with a live turn OR a row already in the pass. The
@@ -121,7 +122,8 @@ export async function loadActiveTurns(
 }
 
 /**
- * `queued` turns with what activation has to snapshot. The message and the coupon are
+ * `queued` turns with what activation has to snapshot. The message and the coupon (its
+ * whole reward since spec 0106, plus the business currency) are
  * read from the CAMPAIGN here — the snapshot columns are written at activation, so
  * while the turn waits in the queue they are still null, and editing a paused campaign
  * before its turn activates is meant to change what that turn will say.
@@ -144,6 +146,13 @@ export async function loadQueuedTurns(
       message: campaigns.message,
       couponLabel: campaigns.couponLabel,
       couponCost: campaigns.couponCost,
+      couponKind: campaigns.couponKind,
+      couponProductId: campaigns.couponProductId,
+      couponDiscountUnit: campaigns.couponDiscountUnit,
+      couponDiscountValue: campaigns.couponDiscountValue,
+      couponExtraUnits: campaigns.couponExtraUnits,
+      couponRule: campaigns.couponRule,
+      currencyCode: businesses.currencyCode,
     })
     .from(campaignTurns)
     .innerJoin(locations, eq(locations.id, campaignTurns.locationId))
@@ -170,6 +179,15 @@ export async function loadQueuedTurns(
         message: row.message,
         couponLabel: row.couponLabel,
         couponCost: row.couponCost,
+        couponReward: {
+          kind: row.couponKind as CouponKind | null,
+          productId: row.couponProductId,
+          discountUnit: row.couponDiscountUnit as DiscountUnit | null,
+          discountValue: row.couponDiscountValue,
+          extraUnits: row.couponExtraUnits,
+          rule: row.couponRule,
+          currencyCode: row.currencyCode,
+        },
         ...point,
       },
     ];

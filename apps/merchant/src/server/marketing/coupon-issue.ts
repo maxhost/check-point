@@ -1,4 +1,50 @@
 import type { TurnActivation } from "./placement-plan";
+import type { CouponKind, DiscountUnit } from "./reward-input";
+
+/**
+ * The campaign's REWARD as the issuer reads it (spec 0106 / ADR 0098 §8), plus the
+ * business currency at that moment. `kind` is `null` only when the campaign has no coupon.
+ */
+export type CouponReward = {
+  kind: CouponKind | null;
+  productId: string | null;
+  discountUnit: DiscountUnit | null;
+  discountValue: string | null;
+  extraUnits: number | null;
+  rule: string | null;
+  currencyCode: string;
+};
+
+/** The reward columns of `core.campaign_coupon`. */
+export type RewardSnapshot = {
+  kindSnapshot: CouponKind;
+  productId: string | null;
+  discountUnitSnapshot: DiscountUnit | null;
+  discountValueSnapshot: string | null;
+  currencyCodeSnapshot: string | null;
+  extraUnitsSnapshot: number | null;
+  ruleSnapshot: string | null;
+};
+
+/**
+ * The WHOLE reward is copied onto the coupon: editing the campaign or deleting the product
+ * later never changes a coupon already given (ADR 0098 §8). The currency is copied only
+ * for a discount by `amount` — the one value that means nothing without it
+ * (`core_campaign_coupon_reward_currency_check`). A label with no kind cannot exist after
+ * migration `0049`; if it ever did, it is the label-only reward it always was.
+ */
+export function rewardSnapshot(reward: CouponReward): RewardSnapshot {
+  return {
+    kindSnapshot: reward.kind ?? "free_product",
+    productId: reward.productId,
+    discountUnitSnapshot: reward.discountUnit,
+    discountValueSnapshot: reward.discountValue,
+    currencyCodeSnapshot:
+      reward.discountUnit === "amount" ? reward.currencyCode : null,
+    extraUnitsSnapshot: reward.extraUnits,
+    ruleSnapshot: reward.rule,
+  };
+}
 
 /**
  * Whether activating THIS turn issues a campaign coupon, and which one (spec 0102 /
@@ -23,7 +69,7 @@ import type { TurnActivation } from "./placement-plan";
  * `cost_snapshot` falls back to `"0.00"`, the same fallback the counter used when the
  * coupon lived in the turn.
  */
-export type CouponToIssue = {
+export type CouponToIssue = RewardSnapshot & {
   turnId: string;
   labelSnapshot: string;
   costSnapshot: string;
@@ -39,6 +85,7 @@ export function couponToIssue(
     | "windowStart"
     | "couponLabelSnapshot"
     | "couponCostSnapshot"
+    | "couponReward"
   >,
   campaignEndsAt: Date | null,
 ): CouponToIssue | null {
@@ -47,6 +94,7 @@ export function couponToIssue(
   if (campaignEndsAt === null || campaignEndsAt <= activation.windowStart)
     return null;
   return {
+    ...rewardSnapshot(activation.couponReward),
     turnId: activation.turnId,
     labelSnapshot: activation.couponLabelSnapshot,
     costSnapshot: activation.couponCostSnapshot ?? "0.00",
@@ -73,6 +121,7 @@ export function pushCouponToIssue(push: {
   holdout: boolean;
   couponLabel: string | null;
   couponCost: string | null;
+  reward: CouponReward;
   endsAt: Date | null;
   sentAt: Date;
   hasUnredeemedCoupon: boolean;
@@ -82,6 +131,7 @@ export function pushCouponToIssue(push: {
   if (push.endsAt === null || push.endsAt <= push.sentAt) return null;
   if (push.hasUnredeemedCoupon) return null;
   return {
+    ...rewardSnapshot(push.reward),
     pushId: push.pushId,
     labelSnapshot: push.couponLabel,
     costSnapshot: push.couponCost ?? "0.00",

@@ -61,6 +61,11 @@ describe("parseCampaignPatch — coupon needs an end date", () => {
     couponCost: "2.00",
     couponMaxRedemptions: 5,
     couponProductId: null,
+    couponKind: "free_product",
+    couponDiscountUnit: null,
+    couponDiscountValue: null,
+    couponExtraUnits: null,
+    couponRule: null,
     status: "paused",
   };
 
@@ -79,6 +84,58 @@ describe("parseCampaignPatch — coupon needs an end date", () => {
     expect(parsed.ok && parsed.value).toMatchObject({
       endsAt: null,
       couponLabel: null,
+    });
+  });
+});
+
+describe("parseCampaignPatch — the reward is replaced WHOLE", () => {
+  const current: CampaignInput & { status: "paused" } = {
+    name: "Vuelvan",
+    message: "Te extrañamos",
+    dormantDays: 30,
+    startsAt: new Date(START),
+    endsAt: new Date(END),
+    locationIds: [DOOR],
+    couponLabel: "2x1 en Café",
+    couponCost: "1.20",
+    couponMaxRedemptions: 5,
+    couponProductId: "22222222-2222-4222-8222-222222222222",
+    couponKind: "two_for_one",
+    couponDiscountUnit: null,
+    couponDiscountValue: null,
+    couponExtraUnits: null,
+    couponRule: "Solo medianos",
+    status: "paused",
+  };
+
+  it("naming ONE new key (couponRule) drops every reward field it did not send", () => {
+    const parsed = parseCampaignPatch({ couponRule: "Otra regla" }, current);
+    // Without the trio the whole reward is gone, so a lone rule is refused.
+    expect(parsed.ok).toBe(false);
+    const whole = parseCampaignPatch(
+      {
+        ...COUPON,
+        couponKind: "discount",
+        couponDiscountUnit: "percent",
+        couponDiscountValue: 15,
+      },
+      current,
+    );
+    expect(whole.ok && whole.value).toMatchObject({
+      couponKind: "discount",
+      couponDiscountValue: "15.00",
+      couponProductId: null,
+      couponRule: null,
+      couponLabel: "2x1",
+    });
+  });
+
+  it("a PATCH that names no reward key carries the whole current reward", () => {
+    const parsed = parseCampaignPatch({ message: "Otro" }, current);
+    expect(parsed.ok && parsed.value).toMatchObject({
+      couponKind: "two_for_one",
+      couponProductId: "22222222-2222-4222-8222-222222222222",
+      couponRule: "Solo medianos",
     });
   });
 });

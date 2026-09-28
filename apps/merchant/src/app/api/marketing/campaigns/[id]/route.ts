@@ -18,6 +18,7 @@ export async function GET(
     const { id } = await params;
     return NextResponse.json({
       campaign: await getCampaign(auth.business.id, id),
+      currencyCode: auth.business.currencyCode,
     });
   } catch (error) {
     return campaignError(error, "No pudimos leer la campaña.");
@@ -39,6 +40,7 @@ export async function PATCH(
         id,
         await readJson(request),
       ),
+      currencyCode: auth.business.currencyCode,
     });
   } catch (error) {
     return campaignError(error, "No pudimos actualizar la campaña.");

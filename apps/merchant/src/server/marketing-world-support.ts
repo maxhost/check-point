@@ -1,3 +1,4 @@
+import type { SeedCoupon } from "./marketing-coupon-support";
 import {
   type Seed,
   dropBusiness,
@@ -39,7 +40,7 @@ export async function seedWorld(opts: {
   label: string;
   people: number;
   /** A campaign WITH a coupon (spec 0102) and the `ends_at` its coupons copy. */
-  coupon?: { label: string; cost: string; maxRedemptions: number };
+  coupon?: SeedCoupon;
   endsAt?: Date;
 }): Promise<World> {
   const seed = await seedBusiness({

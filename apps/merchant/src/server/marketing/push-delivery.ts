@@ -11,7 +11,7 @@
 
 import { sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "../db";
-import { pushCouponToIssue } from "./coupon-issue";
+import { type CouponReward, pushCouponToIssue } from "./coupon-issue";
 import { toDate } from "./driver-values";
 import { isInPushWindow, nextSendableAt } from "./push-window";
 
@@ -155,9 +155,30 @@ export async function gateCampaignPush(
   return gate;
 }
 
+/** The campaign's reward as the raw `returning` of `recordCampaignPushSent` hands it over
+ * (`numeric` is a string from the driver, `integer` a number). */
+function rewardOf(row: Record<string, unknown>): CouponReward {
+  const text = (value: unknown) =>
+    value === null || value === undefined ? null : String(value);
+  return {
+    kind: text(row.coupon_kind) as CouponReward["kind"],
+    productId: text(row.coupon_product_id),
+    discountUnit: text(
+      row.coupon_discount_unit,
+    ) as CouponReward["discountUnit"],
+    discountValue: text(row.coupon_discount_value),
+    extraUnits:
+      text(row.coupon_extra_units) === null
+        ? null
+        : Number(row.coupon_extra_units),
+    rule: text(row.coupon_rule),
+    currencyCode: String(row.currency_code),
+  };
+}
+
 /**
  * After the queue row closed as `sent`: stamps `sent_at` and issues the push's coupon
- * (`pushCouponToIssue`), in ONE transaction. `on conflict (push_id) do nothing` over the
+ * (`pushCouponToIssue`) with the campaign's WHOLE reward (spec 0106), in ONE transaction. `on conflict (push_id) do nothing` over the
  * NON-partial unique makes a replay harmless.
  */
 export async function recordCampaignPushSent(
@@ -171,7 +192,11 @@ export async function recordCampaignPushSent(
       from core.campaign c
       where cp.id = ${pushId} and c.id = cp.campaign_id
       returning cp.campaign_id, cp.business_id, cp.consumer_id, cp.membership_id,
-        cp.holdout, c.coupon_label, c.coupon_cost, c.ends_at,
+        cp.holdout, c.coupon_label, c.coupon_cost, c.ends_at, c.coupon_kind,
+        c.coupon_product_id, c.coupon_discount_unit, c.coupon_discount_value,
+        c.coupon_extra_units, c.coupon_rule,
+        (select b.currency_code from core.business b
+          where b.id = cp.business_id) as currency_code,
         exists (select 1 from core.campaign_coupon cc
                  where cc.campaign_id = cp.campaign_id
                    and cc.consumer_id = cp.consumer_id
@@ -184,6 +209,7 @@ export async function recordCampaignPushSent(
       holdout: row.holdout === true,
       couponLabel: (row.coupon_label as string | null) ?? null,
       couponCost: (row.coupon_cost as string | null) ?? null,
+      reward: rewardOf(row),
       endsAt: toDate(row.ends_at),
       sentAt: now,
       hasUnredeemedCoupon: row.has_unredeemed === true,
@@ -192,10 +218,15 @@ export async function recordCampaignPushSent(
     await tx.execute(sql`
       insert into core.campaign_coupon
         (campaign_id, business_id, consumer_id, membership_id, push_id,
-         label_snapshot, cost_snapshot, valid_from, valid_until)
+         label_snapshot, cost_snapshot, kind_snapshot, product_id,
+         discount_unit_snapshot, discount_value_snapshot, currency_code_snapshot,
+         extra_units_snapshot, rule_snapshot, valid_from, valid_until)
       values (${row.campaign_id}, ${row.business_id}, ${row.consumer_id},
         ${row.membership_id}, ${coupon.pushId}, ${coupon.labelSnapshot},
-        ${coupon.costSnapshot}, ${coupon.validFrom.toISOString()},
+        ${coupon.costSnapshot}, ${coupon.kindSnapshot}, ${coupon.productId},
+        ${coupon.discountUnitSnapshot}, ${coupon.discountValueSnapshot},
+        ${coupon.currencyCodeSnapshot}, ${coupon.extraUnitsSnapshot},
+        ${coupon.ruleSnapshot}, ${coupon.validFrom.toISOString()},
         ${coupon.validUntil.toISOString()})
       on conflict (push_id) do nothing`);
   });

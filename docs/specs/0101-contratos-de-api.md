@@ -101,6 +101,8 @@ filesystem por `server/marketing-routes-coverage.test.ts`.
 
 ## 2. El DTO `Campaign`
 
+> **Premio estructurado (spec 0106):** tipo, valores, regla y `currencyCode` en la raiz — ver [`0106-contratos-de-api.md`](0106-contratos-de-api.md).
+
 Lo devuelven las rutas 1-4, 6-9, 11 (`live`), 12 y 13. Tipo en
 `server/marketing/campaign-store.ts:37-66`, columnas en `:68-90`, armado en `toCampaign`
 (`:93-103`):
@@ -152,6 +154,8 @@ todas las del negocio (custom y de plantilla), `createdAt` desc
 (`campaign-store.ts:152-162`). Errores: guard; `503`.
 
 ### 3.2 `POST /api/marketing/campaigns`
+
+> **Premio estructurado (spec 0106):** tipo, valores, regla y `currencyCode` en la raiz — ver [`0106-contratos-de-api.md`](0106-contratos-de-api.md).
 
 `campaigns/route.ts:24-37` → `createCampaign` (`campaign-store.ts:177-224`). Crea un
 **`draft`**. `201 { "campaign": Campaign }`. **Siempre** `templateKey: null`: una clave
@@ -359,6 +363,8 @@ garantizada por el unico parcial `core_campaign_template_live_unique`
 Tipo `TemplateView` en `template-store.ts:34-37`. Errores: guard; `503`.
 
 ### 4.2 `POST /api/marketing/templates/{key}/enable`
+
+> **Premio estructurado (spec 0106):** tipo, valores, regla y `currencyCode` en la raiz — ver [`0106-contratos-de-api.md`](0106-contratos-de-api.md).
 
 `app/api/marketing/templates/[key]/enable/route.ts:12-30` → `enableTemplate`
 (`template-store.ts:127-225`). Crea la corrida **ya `active`** (`activatedAt = ahora`,

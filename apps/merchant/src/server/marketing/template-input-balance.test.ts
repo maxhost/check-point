@@ -84,6 +84,22 @@ describe("parseTemplateInput — balance templates", () => {
     expect(valueOf(COUPON, winBack).couponLabel).toBe("2x1");
   });
 
+  it("spec 0106: the NEW reward fields alone are refused on #7/#8 too", () => {
+    const fields = {
+      couponKind: "discount",
+      couponDiscountUnit: "percent",
+      couponDiscountValue: "10",
+      couponExtraUnits: 3,
+      couponRule: "Solo medianos",
+      couponProductId: "11111111-1111-4111-8111-111111111111",
+    };
+    for (const template of [near, unclaimed])
+      for (const [key, value] of Object.entries(fields))
+        expect(errorsOf({ [key]: value }, template)).toEqual({
+          couponLabel: "Esta campaña no lleva cupón.",
+        });
+  });
+
   it("#7's thresholds: every option, defaults when absent, anything else is 400", () => {
     for (const stamps of [1, 2, 3])
       expect(valueOf({ nearRewardStamps: stamps }).nearRewardStamps).toBe(

@@ -1,9 +1,9 @@
 import {
   type FieldErrors,
   type ParseResult,
-  parseCoupon,
   requireEndForCoupon,
 } from "./campaign-input";
+import { type CouponDeal, parseCoupon } from "./reward-input";
 import { asObject } from "./campaign-values";
 import { balanceParams, couponRefused, gapMarkerOk } from "./balance-input";
 import type { RewardRepeat, TemplateDefinition } from "./templates";
@@ -33,16 +33,13 @@ import type { RewardRepeat, TemplateDefinition } from "./templates";
  * `{faltan}` marker is MANDATORY in #7's message and a 400 anywhere else.
  */
 
-export type TemplateInput = {
+/** The reward (`CouponDeal`) follows the composer's rules exactly (spec 0106). */
+export type TemplateInput = CouponDeal & {
   channelProximity: boolean;
   channelPush: boolean;
   dormantDays: number;
   message: string;
   excludedLocationIds: string[];
-  couponLabel: string | null;
-  couponCost: string | null;
-  couponMaxRedemptions: number | null;
-  couponProductId: string | null;
   nearRewardStamps: number | null;
   nearRewardPercent: number | null;
   rewardRepeat: RewardRepeat | null;

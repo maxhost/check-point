@@ -14,7 +14,13 @@ import {
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
 import { getDb } from "./db";
-import { campaignCoupons, campaignTurns, couponRedemptions } from "./schema";
+import {
+  campaignCoupons,
+  campaignTurns,
+  campaigns,
+  couponRedemptions,
+  products,
+} from "./schema";
 import type { TickSummary } from "./marketing/tick";
 
 /**
@@ -48,6 +54,10 @@ async function couponsOf(businessId: string) {
       consumerId: campaignCoupons.consumerId,
       labelSnapshot: campaignCoupons.labelSnapshot,
       costSnapshot: campaignCoupons.costSnapshot,
+      kindSnapshot: campaignCoupons.kindSnapshot,
+      productId: campaignCoupons.productId,
+      ruleSnapshot: campaignCoupons.ruleSnapshot,
+      currencyCodeSnapshot: campaignCoupons.currencyCodeSnapshot,
       validFrom: campaignCoupons.validFrom,
       validUntil: campaignCoupons.validUntil,
     })
@@ -103,6 +113,42 @@ describe.skipIf(!integrationEnabled)(
 
       await tickWorld(built, NS, { random: () => 1 });
       expect(await couponsOf(built.seed.business.id)).toHaveLength(2);
+    }, 180_000);
+
+    it("spec 0106: the coupon copies the WHOLE reward —type, product, rule— and editing the campaign later does not touch it", async () => {
+      const built = await world(1);
+      const businessId = built.seed.business.id;
+      const [product] = await getDb()
+        .insert(products)
+        .values({ businessId, name: "Café" })
+        .returning({ id: products.id });
+      await getDb()
+        .update(campaigns)
+        .set({
+          couponKind: "two_for_one",
+          couponProductId: product.id,
+          couponRule: "Solo tamaño mediano",
+        })
+        .where(eq(campaigns.id, built.campaignId));
+      await tickWorld(built, NS, { random: () => 1 });
+      await getDb()
+        .update(campaigns)
+        .set({
+          couponKind: "free_product",
+          couponProductId: null,
+          couponRule: null,
+        })
+        .where(eq(campaigns.id, built.campaignId));
+
+      expect(await couponsOf(businessId)).toEqual([
+        expect.objectContaining({
+          labelSnapshot: LABEL,
+          kindSnapshot: "two_for_one",
+          productId: product.id,
+          ruleSnapshot: "Solo tamaño mediano",
+          currencyCodeSnapshot: null,
+        }),
+      ]);
     }, 180_000);
 
     it("the expired turn whose coupon was redeemed is `coupon_redeemed` with its redemption; its sibling of the SAME campaign is not", async () => {

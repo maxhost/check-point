@@ -34,6 +34,12 @@ describe("parseTemplateInput", () => {
         couponCost: null,
         couponMaxRedemptions: null,
         couponProductId: null,
+        // Spec 0106: no coupon, no reward.
+        couponKind: null,
+        couponDiscountUnit: null,
+        couponDiscountValue: null,
+        couponExtraUnits: null,
+        couponRule: null,
         // Spec 0104: the balance parameters are `null` outside #7/#8.
         nearRewardStamps: null,
         nearRewardPercent: null,

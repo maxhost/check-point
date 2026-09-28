@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import { getDb } from "./db";
+import { type SeedCoupon, couponColumns } from "./marketing-coupon-support";
 import {
   campaignPushes,
   campaigns,
@@ -26,7 +27,7 @@ export async function seedPushCampaign(opts: {
   push?: boolean;
   status?: "active" | "paused" | "ended";
   message?: string;
-  coupon?: { label: string; cost: string; maxRedemptions: number };
+  coupon?: SeedCoupon;
   endsAt?: Date | null;
   createdAt?: Date;
   /** Spec 0104: #7's thresholds (default 2 / 20) and #8's repetition (default `once`) —
@@ -48,9 +49,7 @@ export async function seedPushCampaign(opts: {
       status: opts.status ?? "active",
       dormantDays: opts.dormantDays,
       message: opts.message ?? "¡Volvé!",
-      couponLabel: opts.coupon?.label ?? null,
-      couponCost: opts.coupon?.cost ?? null,
-      couponMaxRedemptions: opts.coupon?.maxRedemptions ?? null,
+      ...couponColumns(opts.coupon),
       nearRewardStamps: near ? (opts.nearRewardStamps ?? 2) : null,
       nearRewardPercent: near ? (opts.nearRewardPercent ?? 20) : null,
       rewardRepeat:

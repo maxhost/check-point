@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   index,
+  integer,
   numeric,
   primaryKey,
   text,
@@ -18,6 +19,8 @@ import { consumerAccounts, programMemberships } from "./consumer";
 import { orders } from "./order";
 import { campaigns } from "./campaign";
 import { campaignCoupons } from "./campaign-coupon";
+import { products } from "./catalog";
+import { couponKindList } from "./reward-checks";
 
 /**
  * A TURN: the loan of one slot of one consumer's wallet pass to one business for a
@@ -146,8 +149,11 @@ export const campaignTurns = core.table(
  *    network timeout, same `clientRequestId`) is resolved by READING this row under
  *    the campaign lock BEFORE any business guard, and answering 200 with it.
  *
- * It does NOT touch `points_balance`/`stamps_count`: a coupon is not a reward of the
- * program (spec 0065, «No entra»).
+ * Spec 0106 / ADR 0098 §6: the redemption copies the coupon's `kind_snapshot` and
+ * `product_id` (what the rewards results group by), and a coupon of EXTRA stamps/points is
+ * the one case that credits the program: `units_granted`/`balance_after` record it, and
+ * they exist exactly for those two kinds. Every other coupon still does NOT touch
+ * `points_balance`/`stamps_count` (spec 0065, «No entra»).
  */
 export const couponRedemptions = core.table(
   "coupon_redemption",
@@ -178,6 +184,12 @@ export const couponRedemptions = core.table(
       precision: 12,
       scale: 2,
     }).notNull(),
+    kindSnapshot: text("kind_snapshot").notNull(),
+    productId: uuid("product_id").references(() => products.id, {
+      onDelete: "set null",
+    }),
+    unitsGranted: integer("units_granted"),
+    balanceAfter: integer("balance_after"),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => users.id),
@@ -187,6 +199,18 @@ export const couponRedemptions = core.table(
       .defaultNow(),
   },
   (table) => [
+    check(
+      "core_coupon_redemption_kind_check",
+      sql`${table.kindSnapshot} in (${couponKindList})`,
+    ),
+    check(
+      "core_coupon_redemption_product_kind_check",
+      sql`${table.productId} is null or ${table.kindSnapshot} in ('free_product', 'two_for_one')`,
+    ),
+    check(
+      "core_coupon_redemption_units_check",
+      sql`(${table.unitsGranted} is not null) = (${table.kindSnapshot} in ('extra_stamps', 'extra_points')) and (${table.balanceAfter} is null) = (${table.unitsGranted} is null) and (${table.unitsGranted} is null or ${table.unitsGranted} between 1 and 1000) and (${table.balanceAfter} is null or ${table.balanceAfter} >= 0)`,
+    ),
     uniqueIndex("core_coupon_redemption_coupon_unique").on(table.couponId),
     uniqueIndex("core_coupon_redemption_business_client_request_unique").on(
       table.businessId,

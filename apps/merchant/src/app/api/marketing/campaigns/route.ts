@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   try {
     return NextResponse.json({
       campaigns: await listCampaigns(auth.business.id),
+      currencyCode: auth.business.currencyCode,
     });
   } catch (error) {
     return campaignError(error, "No pudimos leer tus campañas.");
@@ -30,7 +31,10 @@ export async function POST(request: Request) {
       auth.userId,
       await readJson(request),
     );
-    return NextResponse.json({ campaign }, { status: 201 });
+    return NextResponse.json(
+      { campaign, currencyCode: auth.business.currencyCode },
+      { status: 201 },
+    );
   } catch (error) {
     return campaignError(error, "No pudimos crear la campaña.");
   }

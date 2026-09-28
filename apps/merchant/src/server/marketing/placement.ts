@@ -53,7 +53,8 @@ export type PlacementSummary = {
  * tick's transaction. `couponToIssue` DECIDES (holdout, label, validity) and it is asked
  * for EVERY activation on purpose: pre-filtering here would leave a second copy of the
  * rule that no unit test sees. `valid_until` is the campaign's `ends_at` read now and
- * COPIED (ADR 0094 §1). `on conflict (turn_id) do nothing` makes a re-run harmless; the
+ * COPIED (ADR 0094 §1), and so is the whole reward (spec 0106: `coupon` carries its
+ * snapshot columns). `on conflict (turn_id) do nothing` makes a re-run harmless; the
  * unique is NOT partial, so the target needs no predicate.
  */
 async function issueTurnCoupon(

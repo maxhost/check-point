@@ -11,6 +11,7 @@
  */
 
 import { composeRelevantText, RELEVANT_TEXT_CAP } from "./relevant-text";
+import type { CouponReward } from "./coupon-issue";
 
 /** A door. The only geometry the planner knows. */
 export type LatLng = { latitude: number; longitude: number };
@@ -34,6 +35,8 @@ export type QueuedTurn = ActiveTurn & {
   couponLabel: string | null;
   /** `numeric` comes back from the driver as a string; it is copied, never computed. */
   couponCost: string | null;
+  /** Spec 0106: the rest of the reward, copied onto the coupon at activation. */
+  couponReward: CouponReward;
 };
 
 /** A live relationship: the consumer's own balance at a door, with its text already
@@ -70,6 +73,7 @@ export type TurnActivation = {
   messageSnapshot: string;
   couponLabelSnapshot: string | null;
   couponCostSnapshot: string | null;
+  couponReward: CouponReward;
 };
 
 export type PlacementPlan = {
@@ -210,6 +214,7 @@ function planActivations(
       messageSnapshot: candidate.message,
       couponLabelSnapshot: candidate.couponLabel,
       couponCostSnapshot: candidate.couponCost,
+      couponReward: candidate.couponReward,
     });
     withLiveTurn.add(candidate.businessId);
     if (holdout) continue;

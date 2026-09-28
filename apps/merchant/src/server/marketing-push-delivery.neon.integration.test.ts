@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import {
-  type Seed,
   dropBusiness,
   integrationEnabled,
   seedBusiness,
@@ -13,102 +12,37 @@ import {
   seedOrder,
   setCampaignState,
 } from "./marketing-integration-support";
+import { readPush, readQueue } from "./marketing-push-support";
 import {
-  readPush,
-  readQueue,
-  seedDecision,
-  seedPushCampaign,
-  seedWebPush,
-} from "./marketing-push-support";
+  ENDS,
+  HOUR,
+  NEXT_NINE,
+  NIGHT,
+  NOON,
+  coupons,
+  seeds,
+  work,
+  world,
+} from "./marketing-push-delivery-support";
 import { dropCampaigns, readAccount } from "./marketing-read-support";
 import { getDb } from "./db";
-import { campaignCoupons } from "./schema";
+import { businesses, campaignCoupons, campaigns } from "./schema";
 import { recordPushClick } from "./marketing/push-delivery";
-import { FakePushChannel } from "./wallet/push-channel";
-import { runPushWorker } from "./wallet/push-worker";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+import type { FakeWebPushChannel } from "./push/webpush-channel";
 
 /**
  * The worker's side of a campaign push (spec 0103 §6-§9) against a real database, through
  * the REAL `runPushWorker` with fake transports. The consumers only have Web Push, so the
  * notice goes by Web Push (transport = transactional) and the click id is observable in
- * the payload. Business zone: America/Guayaquil (UTC-5), window 9–21.
+ * the payload. Business zone: America/Guayaquil (UTC-5), window 9–21 (the world lives in
+ * `marketing-push-delivery-support.ts`).
  */
-const HOUR = 3_600_000;
-const NOON = new Date("2026-09-16T17:00:00.000Z"); // 12:00 local — inside
-const NIGHT = new Date("2026-09-17T03:00:00.000Z"); // 22:00 local — outside
-const NEXT_NINE = new Date("2026-09-17T14:00:00.000Z");
-const ENDS = new Date("2026-12-31T00:00:00.000Z");
-const seeds: Seed[] = [];
-
 afterAll(async () => {
   for (const seed of seeds.splice(0)) {
     await dropCampaigns(seed.business.id);
     await dropBusiness(seed.business.id);
   }
 }, 120_000);
-
-/** One business, one push campaign with a coupon, one dormant consumer reachable only
- * by Web Push, and ONE pending decision taken two hours before `NOON`. */
-async function world(label: string) {
-  const seed = await seedBusiness({
-    name: `${label} ${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
-    kind: "stamps",
-    mode: "per_purchase",
-    grant: 1,
-    blockAmount: null,
-  });
-  seeds.push(seed);
-  const campaignId = await seedPushCampaign({
-    businessId: seed.business.id,
-    userId: seed.userId,
-    templateKey: "win_back",
-    dormantDays: 60,
-    coupon: { label: "2x1 en picadas", cost: "2.50", maxRedemptions: 50 },
-    endsAt: ENDS,
-  });
-  const consumer = await seedConsumer();
-  const membershipId = await seedMembership({
-    consumerId: consumer.id,
-    programId: seed.programId,
-    businessId: seed.business.id,
-  });
-  const endpoint = await seedWebPush(consumer.id);
-  const decision = await seedDecision({
-    campaignId,
-    businessId: seed.business.id,
-    consumerId: consumer.id,
-    membershipId,
-    decidedAt: new Date(NOON.getTime() - 2 * HOUR),
-    title: "La Gringa",
-    body: "¡Volvé! · 2x1 en picadas",
-  });
-  return {
-    seed,
-    campaignId,
-    consumerId: consumer.id,
-    membershipId,
-    endpoint,
-    ...decision,
-  };
-}
-
-async function work(built: { consumerId: string }, now: Date) {
-  const web = new FakeWebPushChannel();
-  await runPushWorker({
-    channel: new FakePushChannel(),
-    webPushChannel: web,
-    now,
-    consumerIds: [built.consumerId],
-  });
-  return web;
-}
-
-const coupons = (consumerId: string) =>
-  getDb()
-    .select()
-    .from(campaignCoupons)
-    .where(eq(campaignCoupons.consumerId, consumerId));
 
 describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
   it("SEND: Web Push with the click id, `sent_at`, «Última novedad» and ONE coupon", async () => {
@@ -156,6 +90,40 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
     await recordPushClick("99999999-9999-4999-8999-999999999999");
   }, 120_000);
 
+  it("spec 0106: the delivered coupon copies the WHOLE reward and the business currency", async () => {
+    // ORACULO DE M2. A discount by AMOUNT with a rule, and a currency that is not the
+    // seed's default: a copy that dropped the type or the rule, or wrote a fixed currency,
+    // shows here.
+    const built = await world("Push reward");
+    await getDb()
+      .update(campaigns)
+      .set({
+        couponKind: "discount",
+        couponDiscountUnit: "amount",
+        couponDiscountValue: "5.00",
+        couponRule: "Solo de lunes a jueves",
+      })
+      .where(eq(campaigns.id, built.campaignId));
+    await getDb()
+      .update(businesses)
+      .set({ currencyCode: "ARS" })
+      .where(eq(businesses.id, built.seed.business.id));
+    await work(built, NOON);
+    expect(await coupons(built.consumerId)).toEqual([
+      expect.objectContaining({
+        pushId: built.pushId,
+        labelSnapshot: "2x1 en picadas",
+        kindSnapshot: "discount",
+        productId: null,
+        discountUnitSnapshot: "amount",
+        discountValueSnapshot: "5.00",
+        currencyCodeSnapshot: "ARS",
+        extraUnitsSnapshot: null,
+        ruleSnapshot: "Solo de lunes a jueves",
+      }),
+    ]);
+  }, 120_000);
+
   it("an unredeemed coupon of the campaign already held: the push goes, a second coupon does not", async () => {
     const built = await world("Push second coupon");
     await getDb()
@@ -167,6 +135,7 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
         membershipId: built.membershipId,
         labelSnapshot: "2x1 en picadas",
         costSnapshot: "2.50",
+        kindSnapshot: "free_product",
         validFrom: new Date(NOON.getTime() - 24 * HOUR),
         validUntil: ENDS,
       });
@@ -232,6 +201,7 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
         membershipId: otherMembership,
         labelSnapshot: "2x1 en picadas",
         costSnapshot: "2.50",
+        kindSnapshot: "free_product",
         validFrom: new Date(NOON.getTime() - 24 * HOUR),
         validUntil: ENDS,
       });

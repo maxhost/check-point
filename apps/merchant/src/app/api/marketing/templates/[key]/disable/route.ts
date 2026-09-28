@@ -16,7 +16,10 @@ export async function POST(
   if ("response" in auth) return auth.response;
   try {
     const { key } = await params;
-    return NextResponse.json(await disableTemplate(auth.business.id, key));
+    return NextResponse.json({
+      ...(await disableTemplate(auth.business.id, key)),
+      currencyCode: auth.business.currencyCode,
+    });
   } catch (error) {
     return campaignError(error, "No pudimos apagar la campaña.");
   }
