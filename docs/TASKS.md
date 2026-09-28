@@ -34,15 +34,10 @@ por premio. PASS del revisor (`2d2437a`). Migraciones `0049`,`0050`,`0051` en PR
 `drizzle.__drizzle_migrations`, verificado por SQL: `kind_snapshot` NOT NULL sin default). Ultimo push
 `97e7307..165d771`, Vercel `success`.
 
-**ROJO AJENO EN `main` (para GPT):** `pnpm run test` da **10 fallos en 4 archivos** de
-`app/backoffice/marketing/` (`composer.test.ts`, `campaign-screens.test.ts`, `results-view.test.ts` y
-uno mas): la UI nueva pinta distinto de lo que los tests viejos esperan (p. ej. «28,20 US$» por
-`Intl` donde el test espera «USD 28.20»; «Turnos que va a ocupar:» ya no existe). El Stop hook del
-orquestador lo reclama en cada turno; NO se arregla desde `motor` (son archivos de GPT, que los esta
-tocando). Vienen
-del push de GPT `97e7307`: `motor` no toca `app/backoffice/**` (verificado con `git diff --stat
-97e7307 HEAD`). Y `marketing-backoffice-pages.neon` tiene 7 rojos previos (el doble de sesion no trae
-`permissions`). Typecheck, lint, format y build: verdes.
+**Tests de `main` VERDES otra vez:** GPT arreglo los rojos de `app/backoffice/marketing/` en `6dbc880`;
+mergeado en `motor` y pusheado (`6dbc880..80a28be`): `pnpm run test` 200 archivos / 1978 tests verdes,
+typecheck forzado 3/3, lint y format limpios. Queda de antes `marketing-backoffice-pages.neon` con 7
+rojos (el doble de sesion no trae `permissions`) — de GPT, no medido de nuevo.
 
 **Accion del owner:** rotar la password de `neondb_owner` (la connection string quedo en el transcript
 al migrar la `0049`; la `0051` se aplico por `run_sql_transaction` sin exponerla).
