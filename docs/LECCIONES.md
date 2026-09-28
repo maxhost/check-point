@@ -1740,3 +1740,17 @@ porcentaje, lo excluiria el de sellos). **Regla:** cuando la mutacion REEMPLAZA 
 el caso del oraculo tiene que estar en la DIFERENCIA de las dos (uno que una acepta y la otra
 rechaza); un caso que las dos rechazan no mide nada. Se chequea evaluando el caso con las dos reglas
 antes de escribir la fila.
+
+## 2026-09-27 — un commit «de docs» se llevo 66 archivos de UI de otro agente
+
+GPT reescribia la UI de marketing sobre el MISMO working tree y dejo sus archivos en el index con
+`git add`. El orquestador corrio `git add docs/TASKS.md && git commit -m "docs: estado — …"`, que
+commitea el index ENTERO: `f61b163` salio con 66 archivos (la UI, `globals.css`, 45 capturas) bajo un
+mensaje de docs, y se pusheo con el resto. El contenido era correcto (gates verdes sobre `e6f6053`,
+e2e con solo el rojo previo) y la historia pusheada no se reescribio; el error queda declarado aca.
+**Regla (hook `foreign-staged.sh`, PreToolUse de Bash):** si al momento del `git commit` el index ya
+tiene paths que el comando no nombra, se bloquea y se listan; lo propio se commitea con
+`git commit -- <paths>`. Medido: bloquea la forma exacta del error (exit 2), deja pasar el commit con
+pathspec, un comando que no es commit y un index limpio, y mira el index de la carpeta donde corre el
+commit (un worktree tiene el suyo). **Y la prevencion de fondo:** dos agentes no escriben sobre el
+mismo working tree — uno se va a un worktree (`tools/worktree-new.sh`).

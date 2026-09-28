@@ -190,9 +190,9 @@ esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
   `node_modules` y despues `--offline` miente con `Already up to date` dejando la raiz vacia
   (sintoma: `sh: turbo: command not found`). Fix:
   `rm -f node_modules/.modules.yaml node_modules/.pnpm-workspace-state-v1.json && pnpm install --offline`.
-- **Worktrees: crealos con `tools/worktree-new.sh <nombre>`**, que instala un `node_modules` propio
-  offline. Un worktree con `node_modules` symlinkeado al repo real es una trampa: `pnpm run` y
-  `pnpm exec` adentro disparan un `pnpm install` que **intenta purgar las dependencias posta**.
+- **Worktrees: crealos con `tools/worktree-new.sh <nombre>`** (`node_modules` propio offline; uno
+  symlinkeado al repo real hace que `pnpm run`/`exec` intenten purgar las dependencias posta). **Si
+  otro agente escribe en este arbol, vos te vas a un worktree** (hook `foreign-staged.sh`).
 - **`git push` falla con «Invalid username or token» aunque `gh` este logueado**: hay un `GH_TOKEN`
   invalido en el entorno. `export GH_TOKEN=; gh auth switch --hostname github.com --user maxhost`
   y despues `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push origin main` — el
