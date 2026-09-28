@@ -10,6 +10,7 @@ import {
   campaignPushes,
   couponRedemptions,
   passPlacements,
+  welcomeDevices,
 } from "./schema";
 
 /**
@@ -98,6 +99,10 @@ export async function dropCampaigns(businessId: string): Promise<void> {
   await db
     .delete(couponRedemptions)
     .where(eq(couponRedemptions.businessId, businessId));
+  // Spec 0107: the durable Apple filter points at the welcome coupons (NO ACTION).
+  await db
+    .delete(welcomeDevices)
+    .where(eq(welcomeDevices.businessId, businessId));
   await db
     .delete(campaignCoupons)
     .where(eq(campaignCoupons.businessId, businessId));

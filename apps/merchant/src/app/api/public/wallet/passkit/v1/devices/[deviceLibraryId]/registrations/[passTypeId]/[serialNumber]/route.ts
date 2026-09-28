@@ -5,6 +5,7 @@ import {
   unregisterDevice,
 } from "../../../../../../../../../../../server/wallet/passkit";
 import { passKitLimiter } from "../../../../../../../../../../../server/wallet/pass-rate-limit";
+import { issueWelcomeGiftsSafely } from "../../../../../../../../../../../server/marketing/welcome-issue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,6 +53,9 @@ export async function POST(request: NextRequest, { params }: Params) {
     deviceLibraryId,
     pushToken,
   });
+  // Spec 0107 / ADR 0099: the registration IS the Apple install — the welcome gift goes
+  // out here, best-effort (a failure is logged; the tick's sweep recovers it).
+  await issueWelcomeGiftsSafely(auth.pass.consumerId, { deviceLibraryId });
   return new NextResponse(null, { status: created ? 201 : 200 });
 }
 

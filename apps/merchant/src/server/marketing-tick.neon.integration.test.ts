@@ -259,6 +259,8 @@ describe.skipIf(!integrationEnabled)("marketing tick", () => {
       // Spec 0103: the push step logs too; this suite's campaign is proximity-only.
       pushDecided: 0,
       pushHeld: 0,
+      // Spec 0107: the welcome sweep logs too; this suite has no welcome campaign.
+      welcomeIssued: 0,
     });
   });
 

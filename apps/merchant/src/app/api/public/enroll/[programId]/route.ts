@@ -11,6 +11,7 @@ import { validateEnrollInput } from "../../../../../server/consumer/validation";
 import { enforceEnrollRateLimit } from "../../../../../server/consumer/rate-limit";
 import { enroll } from "../../../../../server/consumer/enrollment";
 import { issueSession } from "../../../../../server/consumer/session";
+import { issueWelcomeGiftsSafely } from "../../../../../server/marketing/welcome-issue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,6 +50,9 @@ export async function POST(
       input,
       loc,
     );
+    // Spec 0107: a consumer whose pass is ALREADY installed (from another business) gets
+    // the welcome gift now; best-effort, it never changes this answer.
+    await issueWelcomeGiftsSafely(account.id);
     // Only a successful enroll opens a session (a 409 never reaches here).
     const token = await issueSession(account.id);
     const response = NextResponse.json(

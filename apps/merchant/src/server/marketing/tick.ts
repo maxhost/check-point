@@ -52,6 +52,7 @@ import {
 } from "./push-store";
 import { templateByKey } from "./templates";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
+import { sweepWelcomeGifts } from "./welcome-issue";
 
 export type TickSummary = {
   campaigns: number;
@@ -66,6 +67,8 @@ export type TickSummary = {
   pushDecided: number;
   /** …and how many of them are holdouts (no queue row). */
   pushHeld: number;
+  /** Spec 0107: welcome gifts the sweep issued (a lost trigger, recovered). */
+  welcomeIssued: number;
 };
 
 export type TickResult = TickSummary | { skipped: "tick_in_flight" };
@@ -224,6 +227,14 @@ export async function runMarketingTick(
       pushHeld += push.held;
     }
 
+    // Spec 0107: the welcome sweep, after 1b, in the same transaction and lock.
+    const welcomeIssued = await sweepWelcomeGifts(
+      db,
+      now,
+      options.businessIds,
+      options.consumerIds,
+    );
+
     const expired = await expireTurns(db, now, options.businessIds);
     const cancelled = Object.values(
       await cancelTurns(db, options.businessIds),
@@ -245,6 +256,7 @@ export async function runMarketingTick(
       ...placement,
       pushDecided,
       pushHeld,
+      welcomeIssued,
     } satisfies TickSummary;
   });
   // Emitted AND returned: the route answers with it and the integration asserts it, so

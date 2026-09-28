@@ -53,6 +53,7 @@ describe("GET /api/internal/marketing-tick", () => {
       refreshes: 0,
       pushDecided: 0,
       pushHeld: 0,
+      welcomeIssued: 0,
     });
     const response = await GET(request("Bearer s3cret"));
     expect(response.status).toBe(200);
