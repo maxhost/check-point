@@ -21,7 +21,11 @@
 
 **Todo o nada:** sin cupon, todos `null`. Con cupon, `endsAt` obligatorio (ADR 0094, sin cambios).
 **Tipos segun programa:** `extra_stamps` solo si el programa operativo es de sellos; `extra_points`
-solo si es de puntos; sin programa operativo, ninguno. La UI los ofrece asi; la API lo exige.
+solo si es de puntos; sin programa operativo, ninguno. La API lo exige al guardar y **lo informa**:
+`GET /api/marketing/templates`, `GET /api/marketing/campaigns` y `GET /api/marketing/campaigns/{id}`
+traen en la raiz `couponKinds: CouponKind[]` — los tipos que ESE negocio puede elegir hoy (p. ej.
+`["free_product","two_for_one","discount","extra_stamps"]`). La UI ofrece exactamente esa lista; no
+necesita el permiso `loyalty` (ajuste E1b, pedido desde la UI 2026-09-27).
 **Moneda:** las respuestas de marketing traen `currencyCode` (ISO 4217, p. ej. `"USD"`, `"ARS"`,
 `"EUR"`) a nivel raiz; el simbolo lo pone la UI (`Intl.NumberFormat`). Nunca viaja un simbolo.
 
