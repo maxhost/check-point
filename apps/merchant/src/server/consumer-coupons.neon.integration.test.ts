@@ -159,6 +159,8 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       "redeemedAt",
       "rule",
       "status",
+      // Spec 0107: from when it is worth something (`scheduled` until then).
+      "validFrom",
       "validUntil",
     ]);
     expect(mine[0]).toMatchObject({

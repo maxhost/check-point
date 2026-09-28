@@ -14,14 +14,16 @@ import {
  * reads it (it never goes in the pass or the push). The consumer comes ONLY from the session
  * (`resolveSession`), never from the request: `consumerId` is the isolation.
  *
- * What enters, in this order (contract §E3):
- *  1. `valid`, then 2. `unavailable` — the coupons still in date and unredeemed, each group by
- *     `validUntil` asc (the LIVE read: the counter scan's predicate, `counter/coupon-scan.ts`);
- *  3. `redeemed` and `expired` of the last 90 days (by `redeemedAt` / `validUntil`), most
+ * What enters, in this order (contract §E3, spec 0107):
+ *  1. `valid`, 2. `scheduled`, 3. `unavailable` — the coupons not expired and unredeemed,
+ *     each group by `validUntil` asc (the LIVE read). Since spec 0107 it includes the ones
+ *     whose `valid_from` is still AHEAD (`scheduled`, with `validFrom`): the welcome gift
+ *     «desde mañana» is shown the day of the enrolment — the counter still hides it
+ *     (`counter/coupon-scan.ts`);
+ *  4. `redeemed` and `expired` of the last 90 days (by `redeemedAt` / `validUntil`), most
  *     recent first, at most 50 (the HISTORY read).
- * The state is CALCULATED (`coupon-status.ts`) from the redemption and `core.business.status`.
- * A coupon whose `valid_from` is still ahead is in neither read (it does not exist yet for
- * the consumer).
+ * The state is CALCULATED (`coupon-status.ts`) from the redemption, the dates and
+ * `core.business.status`.
  *
  * Allow-list, by contract: no campaign name, no cost, no membership/consumer id.
  * `currencyCode` as in the scan: the snapshot for an `amount` discount, else the business's.
@@ -39,6 +41,8 @@ export type ConsumerCoupon = {
   discountValue: string | null;
   currencyCode: string;
   extraUnits: number | null;
+  /** Spec 0107: from when it is worth something (`scheduled` until then). */
+  validFrom: Date;
   validUntil: Date;
   status: CouponStatus;
   reason: CouponReason | null;
@@ -61,6 +65,7 @@ type Row = {
   discount_value_snapshot: string | null;
   currency_code: string;
   extra_units_snapshot: number | null;
+  valid_from: unknown;
   valid_until: unknown;
   redeemed_at: unknown;
 };
@@ -68,7 +73,7 @@ type Row = {
 const COLUMNS = sql`
   c.id, c.business_id, b.name as business_name, b.status as business_status,
   c.label_snapshot, c.kind_snapshot, c.rule_snapshot, c.discount_unit_snapshot,
-  c.discount_value_snapshot, c.extra_units_snapshot, c.valid_until,
+  c.discount_value_snapshot, c.extra_units_snapshot, c.valid_from, c.valid_until,
   coalesce(c.currency_code_snapshot, b.currency_code) as currency_code,
   cr.created_at as redeemed_at
   from core.campaign_coupon c
@@ -76,6 +81,7 @@ const COLUMNS = sql`
   left join core.coupon_redemption cr on cr.coupon_id = c.id`;
 
 function toCoupon(row: Row, now: Date): ConsumerCoupon {
+  const validFrom = requireDate(row.valid_from);
   const validUntil = requireDate(row.valid_until);
   const redeemedAt = toDate(row.redeemed_at);
   return {
@@ -92,9 +98,11 @@ function toCoupon(row: Row, now: Date): ConsumerCoupon {
       row.extra_units_snapshot === null
         ? null
         : Number(row.extra_units_snapshot),
+    validFrom,
     validUntil,
     ...couponStatus({
       redeemedAt,
+      validFrom,
       validUntil,
       businessStatus: row.business_status,
       now,
@@ -112,7 +120,6 @@ export async function listConsumerCoupons(
   const live = await getDb().execute<Row>(sql`
     select ${COLUMNS}
     where c.consumer_id = ${consumerId}
-      and c.valid_from <= ${at}::timestamptz
       and c.valid_until >= ${at}::timestamptz
       and cr.id is null
     order by c.valid_until asc, c.id asc
@@ -132,6 +139,7 @@ export async function listConsumerCoupons(
   const current = live.rows.map((row) => toCoupon(row, now));
   return [
     ...current.filter((coupon) => coupon.status === "valid"),
+    ...current.filter((coupon) => coupon.status === "scheduled"),
     ...current.filter((coupon) => coupon.status === "unavailable"),
     ...history.rows.map((row) => toCoupon(row, now)),
   ];

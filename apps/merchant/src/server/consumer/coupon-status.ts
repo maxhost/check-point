@@ -8,14 +8,23 @@
  *  2. `expired` — `now > validUntil`;
  *  3. `unavailable` — the business is not `active` (suspended/closed): not the consumer's
  *     fault, and the counter would refuse it anyway (`counter/core.ts`);
- *  4. `valid` — the rest.
+ *  4. `scheduled` — it does not run YET (`now < validFrom`): the welcome gift «desde mañana»
+ *     (spec 0107 / ADR 0099) shown the day of the enrolment so the consumer sees it; the
+ *     counter still hides it until `validFrom` (`counter/coupon-scan.ts`);
+ *  5. `valid` — the rest.
  */
 
-export type CouponStatus = "valid" | "unavailable" | "redeemed" | "expired";
+export type CouponStatus =
+  | "valid"
+  | "scheduled"
+  | "unavailable"
+  | "redeemed"
+  | "expired";
 export type CouponReason = "business_suspended" | "business_closed";
 
 export function couponStatus(facts: {
   redeemedAt: Date | null;
+  validFrom: Date;
   validUntil: Date;
   businessStatus: string;
   now: Date;
@@ -30,5 +39,6 @@ export function couponStatus(facts: {
           ? "business_closed"
           : "business_suspended",
     };
+  if (facts.now < facts.validFrom) return { status: "scheduled", reason: null };
   return { status: "valid", reason: null };
 }
