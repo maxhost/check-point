@@ -28,6 +28,11 @@ de esta sesion: no tocarlo ni commitearlo desde aca; sus gates y su commit son d
 intermedios de typecheck mientras escribe son esperables (uno se resolvio solo). Se le paso a GPT, via
 el owner, como trabajar sin las dos APIs faltantes (preview solo #3/#5 por proximidad; locales con
 fallback si `GET /api/locations` da 403).
+**Trabajo en paralelo PROPUESTO, sin OK del owner todavia:** el orquestador pasa a un worktree
+(`tools/worktree-new.sh motor` → `~/Documents/claude-workspace/check-point-wt/motor`, rama `motor`; o
+`check-point/.wt/` si el owner prefiere dentro del repo) para el motor/API; GPT sigue en `main` con la
+UI. Coordinacion: contrato 0101 y `TASKS.md` se reconcilian al integrar; merge/push y migraciones solo
+el orquestador, con OK. El hook `tasks-fresh.sh` dispara por archivos de GPT que esta sesion no toco.
 **API faltante que reporto GPT — VERIFICADA por el orquestador, sin arreglar (el owner pidio no hacer
 nada todavia):** (1) `GET /api/marketing/audience-preview` solo es exacta para #3/#5 por proximidad:
 no conoce el ritmo (#4 infla), ni el saldo (#7/#8), rechaza < 7 dias (`audience-preview.ts:34`, pero #7
