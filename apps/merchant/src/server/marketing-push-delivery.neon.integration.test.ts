@@ -28,6 +28,8 @@ import { dropCampaigns, readAccount } from "./marketing-read-support";
 import { getDb } from "./db";
 import { businesses, campaignCoupons, campaigns } from "./schema";
 import { recordPushClick } from "./marketing/push-delivery";
+import { loadActiveCoupon } from "./counter/coupon-scan";
+import { listConsumerCoupons } from "./consumer/coupons";
 import type { FakeWebPushChannel } from "./push/webpush-channel";
 
 /**
@@ -90,7 +92,7 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
     await recordPushClick("99999999-9999-4999-8999-999999999999");
   }, 120_000);
 
-  it("spec 0106: the delivered coupon copies the WHOLE reward and the business currency", async () => {
+  it("spec 0106: the delivered coupon copies the WHOLE reward and the business currency, and keeps it when the business changes it", async () => {
     // ORACULO DE M2. A discount by AMOUNT with a rule, and a currency that is not the
     // seed's default: a copy that dropped the type or the rule, or wrote a fixed currency,
     // shows here.
@@ -122,6 +124,28 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
         ruleSnapshot: "Solo de lunes a jueves",
       }),
     ]);
+
+    // The business changes its currency AFTER the coupon was issued: an amount means
+    // nothing in another currency, so the scan and the consumer's list keep the SNAPSHOT's
+    // (reviewer's P2, `counter/coupon-scan.ts` and `consumer/coupons.ts`).
+    const later = new Date(NOON.getTime() + HOUR);
+    try {
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "EUR" })
+        .where(eq(businesses.id, built.seed.business.id));
+      expect(
+        await loadActiveCoupon(built.seed.business.id, built.consumerId, later),
+      ).toMatchObject({ discountUnit: "amount", currencyCode: "ARS" });
+      expect(await listConsumerCoupons(built.consumerId, later)).toEqual([
+        expect.objectContaining({ currencyCode: "ARS", status: "valid" }),
+      ]);
+    } finally {
+      await getDb()
+        .update(businesses)
+        .set({ currencyCode: "ARS" })
+        .where(eq(businesses.id, built.seed.business.id));
+    }
   }, 120_000);
 
   it("an unredeemed coupon of the campaign already held: the push goes, a second coupon does not", async () => {

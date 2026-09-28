@@ -64,11 +64,7 @@ export const campaignCoupons = core.table(
       precision: 12,
       scale: 2,
     }).notNull(),
-    // Default only for the migration→deploy window (0050): old code writes text coupons = free_product.
-    kindSnapshot: text("kind_snapshot")
-      .$type<CouponKindValue>()
-      .notNull()
-      .default("free_product"),
+    kindSnapshot: text("kind_snapshot").$type<CouponKindValue>().notNull(),
     productId: uuid("product_id").references(() => products.id, {
       onDelete: "set null",
     }),
