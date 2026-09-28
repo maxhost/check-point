@@ -120,8 +120,14 @@ describe.skipIf(!integrationEnabled)(
       const byName = await list("a", "?q=Yolanda");
       expect(byName.body.items).toEqual([]);
       expect(byName.body.total).toBe(0);
-      const foreign = await list("a", `?phone=${encodeURIComponent(world.y.phone)}`);
-      const missing = await list("a", `?phone=${encodeURIComponent("+59300000000")}`);
+      const foreign = await list(
+        "a",
+        `?phone=${encodeURIComponent(world.y.phone)}`,
+      );
+      const missing = await list(
+        "a",
+        `?phone=${encodeURIComponent("+59300000000")}`,
+      );
       expect(foreign.status).toBe(200);
       expect(foreign.body).toEqual(missing.body);
       expect(foreign.body).toEqual({
@@ -132,7 +138,10 @@ describe.skipIf(!integrationEnabled)(
         totalPages: 0,
       });
       // Control: B SI lo encuentra por telefono.
-      const own = await list("b", `?phone=${encodeURIComponent(world.y.phone)}`);
+      const own = await list(
+        "b",
+        `?phone=${encodeURIComponent(world.y.phone)}`,
+      );
       expect(names(own.body)).toEqual([world.y.name]);
     }, 60_000);
 
@@ -174,17 +183,24 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it.each([
-      ["consumer.consumer_account", sql`SELECT 1 FROM consumer.consumer_account LIMIT 1`],
+      [
+        "consumer.consumer_account",
+        sql`SELECT 1 FROM consumer.consumer_account LIMIT 1`,
+      ],
       ['core."order"', sql`SELECT 1 FROM core."order" LIMIT 1`],
-    ])("capa 2: %s → permission denied", async (_name, query) => {
-      expect(
-        await failure(() =>
-          withCustomerReader(world.a.business.id, (reader) =>
-            reader.execute(query),
+    ])(
+      "capa 2: %s → permission denied",
+      async (_name, query) => {
+        expect(
+          await failure(() =>
+            withCustomerReader(world.a.business.id, (reader) =>
+              reader.execute(query),
+            ),
           ),
-        ),
-      ).toContain("permission denied");
-    }, 60_000);
+        ).toContain("permission denied");
+      },
+      60_000,
+    );
 
     it("capa 2: la funcion de busqueda devuelve solo coincidencias de A", async () => {
       // «a» coincide con los cuatro nombres del mundo; desde A tienen que salir solo los tres.
@@ -220,7 +236,9 @@ describe.skipIf(!integrationEnabled)(
       expect(cajero.status).toBe(200);
       expect(cajero.body.total).toBe(3);
       expect((await list("a")).status).toBe(200);
-      const anon = await GET(new Request("http://localhost:3001/api/customers"));
+      const anon = await GET(
+        new Request("http://localhost:3001/api/customers"),
+      );
       expect(anon.status).toBe(401);
       expect((await anon.json()).code).toBe("unauthorized");
     }, 60_000);
@@ -228,8 +246,14 @@ describe.skipIf(!integrationEnabled)(
     it("saldo: Z trae el del programa operativo; W null; un negocio sin programa operativo, null en todas", async () => {
       const a = await list("a");
       const byName = Object.fromEntries(a.body.items.map((i) => [i.name, i]));
-      expect(byName[world.z.name].balance).toEqual({ kind: "points", value: 7 });
-      expect(byName[world.x.name].balance).toEqual({ kind: "points", value: 0 });
+      expect(byName[world.z.name].balance).toEqual({
+        kind: "points",
+        value: 7,
+      });
+      expect(byName[world.x.name].balance).toEqual({
+        kind: "points",
+        value: 0,
+      });
       expect(byName[world.w.name].balance).toBeNull();
       const b = await list("b");
       expect(b.body.items.map((i) => i.balance)).toEqual([

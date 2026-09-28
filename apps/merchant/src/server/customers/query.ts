@@ -39,7 +39,8 @@ export function parseCustomerQuery(params: URLSearchParams): CustomerQuery {
   if (rawPage !== null) {
     const parsed = /^\d+$/.test(rawPage) ? Number(rawPage) : Number.NaN;
     if (!Number.isSafeInteger(parsed) || parsed < 1)
-      fields.page = "La página tiene que ser un número entero mayor o igual a 1.";
+      fields.page =
+        "La página tiene que ser un número entero mayor o igual a 1.";
     else page = parsed;
   }
 

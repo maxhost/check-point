@@ -266,7 +266,8 @@ describe.skipIf(!integrationEnabled)(
         );
       });
       const live = rowsOf(
-        await getDb().execute(sql`SELECT ${sql.raw(columns)} FROM core.business_customer
+        await getDb()
+          .execute(sql`SELECT ${sql.raw(columns)} FROM core.business_customer
           WHERE business_id IN (${ids}) ORDER BY business_id, consumer_id`),
       );
       // Piso: el mundo tiene las tres clases de visita y altas multiples.
