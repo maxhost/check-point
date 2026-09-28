@@ -11,7 +11,7 @@ import {
 } from "./counter-coupon-support";
 import { seedCampaignCoupon } from "./marketing-coupon-support";
 import { getDb } from "./db";
-import { campaignCoupons } from "./schema";
+import { businesses, campaignCoupons, couponRedemptions } from "./schema";
 import { SESSION_COOKIE } from "./consumer/core";
 import { issueSession } from "./consumer/session";
 import { redeemCoupon } from "./counter/coupon";
@@ -21,8 +21,9 @@ import { GET } from "../app/api/public/consumer/coupons/route";
 /**
  * Spec 0106 E3 — `GET /api/public/consumer/coupons` against a real database, through the
  * REAL route and a real session. What it pins: the consumer sees ONLY their own coupons
- * (ORACULO DE M5), from EVERY business, only the usable ones (neither redeemed nor
- * expired), with the rule, in `validUntil` order, and with EXACTLY the contract's keys.
+ * (ORACULO DE M5), from EVERY business, with the rule and EXACTLY the contract's keys; and
+ * since E3b (owner, 2026-09-27) the CALCULATED state — `valid` > `unavailable` (the business
+ * is not active, ORACULO DE M5b) > history of `redeemed`/`expired` of the last 90 days.
  */
 
 const DAY = 86_400_000;
@@ -54,7 +55,7 @@ async function couponsOf(consumerId: string) {
 }
 
 describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
-  it("lists ONLY the session consumer's usable coupons, from every business, with the rule", async () => {
+  it("lists ONLY the session consumer's coupons: the usable ones first, then the last 90 days of redeemed/expired", async () => {
     const w1 = await world("Cupones cliente uno");
     const w2 = await world("Cupones cliente dos");
     const now = Date.now();
@@ -85,7 +86,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
         currencyCodeSnapshot: "ARS",
       })
       .where(eq(campaignCoupons.id, discount));
-    // … one already redeemed and one expired, which must NOT show.
+    // … one redeemed and one expired (history), and two older than 90 days (not shown).
     const spent = await seedCampaignCoupon({
       campaignId: w1.campaignId,
       businessId: w1.seed.business.id,
@@ -99,7 +100,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       ...couponBody(a, w1.seed),
       couponId: spent,
     });
-    await seedCampaignCoupon({
+    const expired = await seedCampaignCoupon({
       campaignId: w1.campaignId,
       businessId: w1.seed.business.id,
       consumerId: a.consumerId,
@@ -108,11 +109,42 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       validFrom: new Date(now - 5 * DAY),
       validUntil: new Date(now - DAY),
     });
+    await seedCampaignCoupon({
+      campaignId: w1.campaignId,
+      businessId: w1.seed.business.id,
+      consumerId: a.consumerId,
+      membershipId: a.membershipId,
+      turnId: null,
+      validFrom: new Date(now - 110 * DAY),
+      validUntil: new Date(now - 100 * DAY),
+    });
+    const oldSpent = await seedCampaignCoupon({
+      campaignId: w1.campaignId,
+      businessId: w1.seed.business.id,
+      consumerId: a.consumerId,
+      membershipId: a.membershipId,
+      turnId: null,
+      validFrom: new Date(now - DAY),
+      validUntil: new Date(now + 5 * DAY),
+    });
+    await redeemCoupon(w1.seed.business, w1.seed.userId, {
+      ...couponBody(a, w1.seed),
+      couponId: oldSpent,
+    });
+    await getDb()
+      .update(couponRedemptions)
+      .set({ createdAt: new Date(now - 100 * DAY) })
+      .where(eq(couponRedemptions.couponId, oldSpent));
     // B: another consumer with a coupon at the SAME business.
     const b = await newCouponCard(w1);
 
     const mine = await couponsOf(a.consumerId);
-    expect(mine.map((coupon) => coupon.id)).toEqual([discount, a.couponId]);
+    expect(mine.map((coupon) => coupon.id)).toEqual([
+      discount,
+      a.couponId,
+      spent,
+      expired,
+    ]);
     expect(Object.keys(mine[0]).sort()).toEqual([
       "businessId",
       "businessName",
@@ -123,7 +155,10 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       "id",
       "kind",
       "label",
+      "reason",
+      "redeemedAt",
       "rule",
+      "status",
       "validUntil",
     ]);
     expect(mine[0]).toMatchObject({
@@ -133,6 +168,9 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       discountValue: "5.00",
       currencyCode: "ARS",
       rule: null,
+      status: "valid",
+      reason: null,
+      redeemedAt: null,
     });
     expect(mine[1]).toMatchObject({
       businessId: w1.seed.business.id,
@@ -140,11 +178,64 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       rule: "Solo tamaño mediano",
       currencyCode: "USD",
       validUntil: w1.endsAt.toISOString(),
+      status: "valid",
+    });
+    expect(mine[2]).toMatchObject({ status: "redeemed", reason: null });
+    expect(typeof mine[2].redeemedAt).toBe("string");
+    expect(mine[3]).toMatchObject({
+      status: "expired",
+      reason: null,
+      redeemedAt: null,
     });
 
     expect((await couponsOf(b.consumerId)).map((coupon) => coupon.id)).toEqual([
       b.couponId,
     ]);
+  }, 180_000);
+
+  it("a suspended business turns its coupon UNAVAILABLE (after the valid ones), and back to VALID when reactivated", async () => {
+    // ORACULO DE M5b. The w2 coupon expires FIRST, so only the state puts it second.
+    const w1 = await world("Cupones estado uno");
+    const w2 = await world("Cupones estado dos");
+    const a = await newCouponCard(w1);
+    const atTwo = await resolveScan(w2.seed.business, a.qrToken);
+    const now = Date.now();
+    const theirs = await seedCampaignCoupon({
+      campaignId: w2.campaignId,
+      businessId: w2.seed.business.id,
+      consumerId: a.consumerId,
+      membershipId: atTwo.membership.id,
+      turnId: null,
+      validFrom: new Date(now - DAY),
+      validUntil: new Date(now + 10 * DAY),
+    });
+    const setStatus = (status: "active" | "suspended" | "closed") =>
+      getDb()
+        .update(businesses)
+        .set({ status })
+        .where(eq(businesses.id, w2.seed.business.id));
+    try {
+      await setStatus("suspended");
+      const suspended = await couponsOf(a.consumerId);
+      expect(suspended.map((c) => [c.id, c.status, c.reason])).toEqual([
+        [a.couponId, "valid", null],
+        [theirs, "unavailable", "business_suspended"],
+      ]);
+      await setStatus("closed");
+      expect((await couponsOf(a.consumerId))[1]).toMatchObject({
+        status: "unavailable",
+        reason: "business_closed",
+      });
+      await setStatus("active");
+      expect(
+        (await couponsOf(a.consumerId)).map((c) => [c.id, c.status]),
+      ).toEqual([
+        [theirs, "valid"],
+        [a.couponId, "valid"],
+      ]);
+    } finally {
+      await setStatus("active");
+    }
   }, 180_000);
 
   it("without a session it is 401 unauthenticated", async () => {
