@@ -75,11 +75,25 @@ Ejemplo (`enable` de `missed_you`):
 { "coupons": [ { "id": "…", "businessId": "…", "businessName": "Café Central",
   "label": "2x1 en Café", "kind": "two_for_one", "rule": "Solo tamaño mediano",
   "discountUnit": null, "discountValue": null, "currencyCode": "USD", "extraUnits": null,
-  "validUntil": "2026-10-31T23:59:59.000Z" } ] }
+  "validUntil": "2026-10-31T23:59:59.000Z",
+  "status": "valid", "reason": null, "redeemedAt": null } ] }
 ```
 
-Solo cupones vigentes y sin canje, orden `validUntil` ascendente. Sin sesion: `401 unauthenticated`.
-No trae nombre de campaña, costo ni ids internos.
+**Estado (ajuste E3b, decision del owner 2026-09-27):** la lista trae tambien los cupones que ya no
+sirven, para la seccion «cupones ya no validos o usados». El estado se CALCULA al pedir, no se guarda
+(si el comercio se reactiva, el cupon vuelve a `valid` solo). Precedencia, primera que aplica:
+
+| `status` | `reason` | Cuando |
+|---|---|---|
+| `redeemed` | `null` | tiene canje (`redeemedAt` = fecha del canje) |
+| `expired` | `null` | `now > validUntil` |
+| `unavailable` | `business_suspended` \| `business_closed` | el comercio no esta `active` (no es culpa del cliente) |
+| `valid` | `null` | el resto |
+
+**Que entra y en que orden:** (1) `valid`, por `validUntil` ascendente; (2) `unavailable`, por
+`validUntil` ascendente; (3) `redeemed` y `expired` de los ultimos **90 dias** (por `redeemedAt` o
+`validUntil`), del mas reciente al mas viejo, **maximo 50**. Sin sesion: `401 unauthenticated`. No trae
+nombre de campaña, costo ni ids internos.
 
 ## E4 — Resultados por premio
 

@@ -129,6 +129,16 @@ que la campaña.
 `rule`, `discountUnit`, `discountValue`, `currencyCode`, `extraUnits`, `validUntil`. **No** devuelve
 nombre de campaña (es interno del comercio), costo, ni ids de membresia. Sin sesion → `401 unauthenticated` (como `public/consumer/marketing-opt-out`).
 
+### E3b — Cupones no validos (ajuste, decision del owner 2026-09-27)
+
+Un comercio suspendido NO oculta los cupones: la lista del cliente suma `status`, `reason` y
+`redeemedAt` e incluye los canjeados, vencidos y no disponibles, con la precedencia, el historial
+(90 dias / 50) y el orden del contrato §E3. Estado calculado con `core.business.status`
+(`schema/business.ts:108-109`: `active`/`suspended`/`closed`) y la existencia de `coupon_redemption`.
+El mostrador ya rechaza a un comercio no activo (`server/api-owner.ts:37`, `counter/core.ts:68`): esto
+solo lo hace visible al cliente. Mutacion **M5b**: invertir la precedencia de `unavailable` sobre
+`valid` (un cupon de comercio suspendido sale `valid`) → rojo en la integracion.
+
 ### E4 — Resultados por premio
 
 `GET /api/marketing/rewards/results?from=YYYY-MM-DD&to=YYYY-MM-DD` (guard de marketing existente,
