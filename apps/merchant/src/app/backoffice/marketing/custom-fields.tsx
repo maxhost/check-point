@@ -5,10 +5,11 @@ import {
   TextAreaField,
   TextField,
 } from "../../../ui";
-import type { Location } from "./marketing-types";
+import type { CouponKind, Location } from "./marketing-types";
 import type { CustomDraft } from "./custom-draft";
 import { MarketingPanel } from "./marketing-ui";
-import { CouponProductPicker } from "./coupon-product-picker";
+import { RewardFields } from "./reward-fields";
+import { suggestedRewardLabel } from "./reward-draft";
 import { MarketingLocationPicker } from "./marketing-location-picker";
 
 export type AudiencePreview = {
@@ -33,6 +34,7 @@ export function CustomFields({
   currencyCode,
   remainingQuota,
   canReadCatalog,
+  couponKinds,
 }: {
   draft: CustomDraft;
   change: (patch: Partial<CustomDraft>) => void;
@@ -44,6 +46,7 @@ export function CustomFields({
   currencyCode: string;
   remainingQuota?: number;
   canReadCatalog?: boolean;
+  couponKinds: CouponKind[];
 }) {
   return (
     <>
@@ -127,45 +130,24 @@ export function CustomFields({
             label="Agregar cupón"
             description="Los cupones emitidos seguirán válidos hasta el fin de la campaña aunque la finalices antes."
             isSelected={draft.coupon}
-            onChange={(coupon) => change({ coupon })}
+            onChange={(coupon) =>
+              change({
+                coupon,
+                ...(coupon && !draft.couponLabelEdited
+                  ? { couponLabel: suggestedRewardLabel(draft, currencyCode) }
+                  : {}),
+              })
+            }
           />
           {draft.coupon && (
-            <>
-              <TextField
-                label="Nombre del cupón"
-                value={draft.couponLabel}
-                onChange={(couponLabel) => change({ couponLabel })}
-                errorMessage={errors.couponLabel}
-                maxLength={40}
-                placeholder="Ej.: Café gratis"
-              />
-              <div className="grid gap-5 sm:grid-cols-2">
-                <TextField
-                  label={`Costo por canje (${currencyCode})`}
-                  inputMode="decimal"
-                  value={draft.couponCost}
-                  onChange={(couponCost) => change({ couponCost })}
-                  errorMessage={errors.couponCost}
-                  placeholder="Ej.: 2.50"
-                />
-                <NumberField
-                  label="Tope de canjes"
-                  value={draft.couponMaxRedemptions}
-                  minValue={1}
-                  maxValue={1_000_000}
-                  clampOnBlur={false}
-                  onChange={(couponMaxRedemptions) =>
-                    change({ couponMaxRedemptions })
-                  }
-                  errorMessage={errors.couponMaxRedemptions}
-                />
-              </div>
-              <CouponProductPicker
-                canReadCatalog={Boolean(canReadCatalog)}
-                productId={draft.couponProductId}
-                onChange={(couponProductId) => change({ couponProductId })}
-              />
-            </>
+            <RewardFields
+              draft={draft}
+              change={change}
+              errors={errors}
+              currencyCode={currencyCode}
+              canReadCatalog={Boolean(canReadCatalog)}
+              couponKinds={couponKinds}
+            />
           )}
         </div>
       </MarketingPanel>

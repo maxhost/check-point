@@ -17,6 +17,7 @@ import {
 } from "./marketing-ui";
 import type {
   Campaign,
+  CouponKind,
   Location,
   MarketingSettings,
   TemplateView,
@@ -31,6 +32,7 @@ import { TemplateFields } from "./template-fields";
 import { readMarketingLocations } from "./marketing-locations";
 import { useTemplateExit } from "./template-exit";
 import { MarketingTemplateSkeleton } from "./marketing-skeletons";
+import { rewardConfirmation } from "./reward-draft";
 
 export function TemplateEditor({
   templateKey,
@@ -44,6 +46,8 @@ export function TemplateEditor({
   canReadCatalog?: boolean;
 }) {
   const [template, setTemplate] = useState<TemplateView | null>(null);
+  const [currencyCode, setCurrencyCode] = useState<string | null>(null);
+  const [couponKinds, setCouponKinds] = useState<CouponKind[] | null>(null);
   const [settings, setSettings] = useState<MarketingSettings | null>(null);
   const [locations, setLocations] = useState<Location[] | null>(null);
   const [draft, setDraft] = useState<TemplateDraft | null>(null);
@@ -61,9 +65,11 @@ export function TemplateEditor({
     setError(null);
     try {
       const [catalog, config, doors] = await Promise.all([
-        marketingRequest<{ templates: TemplateView[] }>(
-          "/api/marketing/templates",
-        ),
+        marketingRequest<{
+          templates: TemplateView[];
+          currencyCode: string;
+          couponKinds: CouponKind[];
+        }>("/api/marketing/templates"),
         marketingRequest<{ settings: MarketingSettings }>(
           "/api/marketing/settings",
         ),
@@ -72,6 +78,8 @@ export function TemplateEditor({
       const found = catalog.templates.find((item) => item.key === templateKey);
       if (!found) throw new MarketingApiError(404, "not_found");
       setTemplate(found);
+      setCurrencyCode(catalog.currencyCode);
+      setCouponKinds(catalog.couponKinds);
       setSettings(config.settings);
       setLocations(doors);
       setDraft((current) => current ?? initialTemplateDraft(found));
@@ -96,13 +104,19 @@ export function TemplateEditor({
       !template ||
       !draft ||
       !settings ||
+      !couponKinds ||
       error?.status === 401 ||
       error?.status === 403 ||
       error?.uncertain
     )
       return;
     setAttempted(true);
-    const issues = templateDraftErrors(template, draft, settings.timeZone);
+    const issues = templateDraftErrors(
+      template,
+      draft,
+      settings.timeZone,
+      couponKinds,
+    );
     setFields(issues);
     if (Object.keys(issues).length) {
       requestAnimationFrame(() =>
@@ -192,47 +206,54 @@ export function TemplateEditor({
           </Link>
         </Alert>
       )}
-      {template && draft && settings && !template.live && (
-        <MarketingPanel
-          title="Configuración"
-          description={template.description}
-        >
-          <div className="max-w-3xl">
-            <TemplateFields
-              template={template}
-              draft={draft}
-              settings={settings}
-              locations={locations}
-              canReadCatalog={canReadCatalog}
-              change={change}
-              errors={attempted || Object.keys(fields).length ? fields : {}}
-            />
-            {error?.code === "validation" && (
-              <Alert
-                kind="error"
-                title="Revisá los campos señalados"
-                className="mt-5"
+      {template &&
+        draft &&
+        settings &&
+        currencyCode &&
+        couponKinds &&
+        !template.live && (
+          <MarketingPanel
+            title="Configuración"
+            description={template.description}
+          >
+            <div className="max-w-3xl">
+              <TemplateFields
+                template={template}
+                draft={draft}
+                settings={settings}
+                locations={locations}
+                canReadCatalog={canReadCatalog}
+                couponKinds={couponKinds}
+                currencyCode={currencyCode}
+                change={change}
+                errors={attempted || Object.keys(fields).length ? fields : {}}
               />
-            )}
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button
-                isDisabled={
-                  busy ||
-                  error?.status === 401 ||
-                  error?.status === 403 ||
-                  Boolean(error?.uncertain)
-                }
-                onPress={review}
-              >
-                Guardar y activar
-              </Button>
-              <Button variant="secondary" onPress={() => exit.ask()}>
-                Volver al listado
-              </Button>
+              {error?.code === "validation" && (
+                <Alert
+                  kind="error"
+                  title="Revisá los campos señalados"
+                  className="mt-5"
+                />
+              )}
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Button
+                  isDisabled={
+                    busy ||
+                    error?.status === 401 ||
+                    error?.status === 403 ||
+                    Boolean(error?.uncertain)
+                  }
+                  onPress={review}
+                >
+                  Guardar y activar
+                </Button>
+                <Button variant="secondary" onPress={() => exit.ask()}>
+                  Volver al listado
+                </Button>
+              </div>
             </div>
-          </div>
-        </MarketingPanel>
-      )}
+          </MarketingPanel>
+        )}
       <MarketingConfirm
         open={confirm}
         busy={busy}
@@ -240,7 +261,7 @@ export function TemplateEditor({
         confirmLabel="Guardar y activar"
         description={
           draft && settings
-            ? `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}\nAusencia: ${draft.dormantDays} días\nMensaje: ${draft.message.trim()}\nInicio: ${draft.startsAt || "Ahora"}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon ? `\nCupón: ${draft.couponLabel} · tope ${draft.couponMaxRedemptions}` : ""}${template?.nearReward ? `\nUmbral: ${draft.nearRewardStamps} sellos o ${draft.nearRewardPercent} % en puntos` : ""}${template?.repeat ? `\nRepetición: ${draft.rewardRepeat === "every_30_days" ? "cada 30 días, hasta dos veces" : "una vez"}` : ""}\nZona horaria: ${settings.timeZone}`
+            ? `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}\nAusencia: ${draft.dormantDays} días\nMensaje: ${draft.message.trim()}\nInicio: ${draft.startsAt || "Ahora"}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon && currencyCode ? `\nPremio: ${rewardConfirmation(draft, currencyCode)}` : ""}${template?.nearReward ? `\nUmbral: ${draft.nearRewardStamps} sellos o ${draft.nearRewardPercent} % en puntos` : ""}${template?.repeat ? `\nRepetición: ${draft.rewardRepeat === "every_30_days" ? "cada 30 días, hasta dos veces" : "una vez"}` : ""}\nZona horaria: ${settings.timeZone}`
             : ""
         }
         onCancel={() => setConfirm(false)}

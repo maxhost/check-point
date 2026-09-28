@@ -24,6 +24,7 @@ import {
   availableActions,
 } from "../campaign-labels";
 import { CampaignResultsView } from "../results-view";
+import { money, REWARD_KIND_LABELS } from "../reward-labels";
 
 type CampaignLike = Campaign | ServerCampaign;
 const dateLabel = (value: string | Date | null) =>
@@ -157,9 +158,35 @@ export function CampaignDetail({
             <dd>
               {campaign.couponLabel === null
                 ? "Sin cupón"
-                : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje · tope ${campaign.couponMaxRedemptions}`}
+                : `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind ?? "free_product"]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje · tope ${campaign.couponMaxRedemptions}`}
             </dd>
           </div>
+          {campaign.couponKind === "discount" && (
+            <div>
+              <dt>Descuento</dt>
+              <dd>
+                {campaign.couponDiscountUnit === "percent"
+                  ? `${Number(campaign.couponDiscountValue)} %`
+                  : money(campaign.couponDiscountValue ?? "0", currencyCode)}
+              </dd>
+            </div>
+          )}
+          {(campaign.couponKind === "extra_stamps" ||
+            campaign.couponKind === "extra_points") && (
+            <div>
+              <dt>Se acredita al canjear</dt>
+              <dd>
+                {campaign.couponExtraUnits}{" "}
+                {campaign.couponKind === "extra_stamps" ? "sellos" : "puntos"}
+              </dd>
+            </div>
+          )}
+          {campaign.couponRule && (
+            <div className="sm:col-span-2">
+              <dt>Condiciones</dt>
+              <dd>{campaign.couponRule}</dd>
+            </div>
+          )}
           {campaign.nearRewardStamps !== null && (
             <div>
               <dt>Faltante máximo</dt>

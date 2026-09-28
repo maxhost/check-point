@@ -2,17 +2,18 @@ import {
   Alert,
   ChoiceGroup,
   CheckboxField,
-  NumberField,
   TextAreaField,
   TextField,
 } from "../../../ui";
 import type {
+  CouponKind,
   Location,
   MarketingSettings,
   TemplateView,
 } from "./marketing-types";
 import type { TemplateDraft } from "./template-draft";
-import { CouponProductPicker } from "./coupon-product-picker";
+import { RewardFields } from "./reward-fields";
+import { suggestedRewardLabel } from "./reward-draft";
 import { MarketingAudiencePreview } from "./marketing-audience-preview";
 import { MarketingLocationPicker } from "./marketing-location-picker";
 
@@ -30,6 +31,8 @@ export function TemplateFields({
   settings,
   locations,
   canReadCatalog,
+  couponKinds,
+  currencyCode,
 }: {
   template: TemplateView;
   draft: TemplateDraft;
@@ -38,6 +41,8 @@ export function TemplateFields({
   settings: MarketingSettings;
   locations: Location[] | null;
   canReadCatalog: boolean;
+  couponKinds: CouponKind[];
+  currencyCode: string;
 }) {
   const channelOptions =
     template.channels.length === 2
@@ -186,45 +191,24 @@ export function TemplateFields({
             label="Agregar cupón"
             description={`${template.couponRecommended ? "Recomendado para esta campaña. " : ""}Los cupones emitidos siguen vigentes hasta la fecha de fin aunque finalices la campaña.`}
             isSelected={draft.coupon}
-            onChange={(coupon) => change({ coupon })}
+            onChange={(coupon) =>
+              change({
+                coupon,
+                ...(coupon && !draft.couponLabelEdited
+                  ? { couponLabel: suggestedRewardLabel(draft, currencyCode) }
+                  : {}),
+              })
+            }
           />
           {draft.coupon && (
-            <div className="grid gap-5">
-              <TextField
-                label="Nombre del cupón"
-                value={draft.couponLabel}
-                onChange={(couponLabel) => change({ couponLabel })}
-                maxLength={40}
-                errorMessage={errors.couponLabel}
-                placeholder="Ej.: Café gratis"
-              />
-              <div className="grid gap-5 sm:grid-cols-2">
-                <TextField
-                  label="Costo por canje"
-                  inputMode="decimal"
-                  value={draft.couponCost}
-                  onChange={(couponCost) => change({ couponCost })}
-                  errorMessage={errors.couponCost}
-                  placeholder="Ej.: 2.50"
-                />
-                <NumberField
-                  label="Tope de canjes"
-                  value={draft.couponMaxRedemptions}
-                  minValue={1}
-                  maxValue={1_000_000}
-                  clampOnBlur={false}
-                  onChange={(couponMaxRedemptions) =>
-                    change({ couponMaxRedemptions })
-                  }
-                  errorMessage={errors.couponMaxRedemptions}
-                />
-              </div>
-              <CouponProductPicker
-                canReadCatalog={canReadCatalog}
-                productId={draft.couponProductId}
-                onChange={(couponProductId) => change({ couponProductId })}
-              />
-            </div>
+            <RewardFields
+              draft={draft}
+              change={change}
+              errors={errors}
+              currencyCode={currencyCode}
+              canReadCatalog={canReadCatalog}
+              couponKinds={couponKinds}
+            />
           )}
         </div>
       )}
