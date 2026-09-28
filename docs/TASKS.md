@@ -39,11 +39,18 @@ Declarado: sellos extra sin tope de casilleros (la acreditacion normal tampoco t
 `consumer-coupons` 2/2, `counter-coupon` 7/7), push `8c7140d..664097e`, Vercel `success`.
 **Hallazgos de E3 a decidir por el owner:** (1) un negocio SUSPENDIDO sigue mostrando sus cupones
 vigentes al cliente (mismo criterio que el scan); (2) la lista no tiene tope ni paginacion.
-**En curso:** E4 (resultados por premio) por el mismo implementador; sus cambios sin commitear son
-SUYOS (hoy: `marketing/reward-results*`, `marketing-routes-errors.test.ts`); un rojo intermedio de
-typecheck mientras escribe es esperable — `ListAgents` antes de tocar nada. Despues: revisor independiente de toda la 0106, y la Bienvenida.
-**Hallazgo para GPT:** `marketing-backoffice-pages.neon` da 7 rojos PREVIOS a E1 (`page.tsx` lee
-`permissions` y el doble de sesion no lo trae). Despues: E3, E4, revisor, y la Bienvenida.
+**E4 EN PROD:** `1859d4a` + bitacora `fc264a6` (M6 rojo por el motivo correcto; re-verificado
+typecheck forzado 3/3 y `marketing-reward-results` 2/2), push `664097e..fc264a6`, Vercel `success`.
+Declarado: un producto borrado se funde con los premios de texto del mismo tipo (FK `set null`).
+**Decision del owner (2026-09-27) — ajuste de E3 PENDIENTE de escribir:** un comercio suspendido NO
+oculta los cupones: la lista del cliente trae tambien los no validos con `status`
+(`valid`/`redeemed`/`expired`/`unavailable`) y `reason` (`business_suspended`/`business_closed`)
+para una seccion de «cupones ya no validos o usados». Propuesto al owner, SIN confirmar: estado
+calculado (no guardado), historial 90 dias / max 50, orden vigentes primero.
+**Selector de producto (owner):** usa `GET /api/catalog` (todos los productos, sin paginar, con
+`unitCost`) y filtra en el front; no hay «producto activo» en el catalogo.
+**Sigue:** confirmar los detalles del ajuste E3 → implementarlo → revisor independiente de toda la
+0106 → la Bienvenida.
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
