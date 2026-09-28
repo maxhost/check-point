@@ -188,6 +188,7 @@ export function CampaignComposer({
     if (
       !draft ||
       !settings ||
+      (draft.coupon && !couponKinds) ||
       error?.status === 401 ||
       error?.status === 403 ||
       error?.uncertain

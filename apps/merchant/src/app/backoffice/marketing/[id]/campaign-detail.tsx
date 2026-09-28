@@ -158,7 +158,9 @@ export function CampaignDetail({
             <dd>
               {campaign.couponLabel === null
                 ? "Sin cupón"
-                : `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind ?? "free_product"]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje · tope ${campaign.couponMaxRedemptions}`}
+                : campaign.couponKind
+                  ? `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje · tope ${campaign.couponMaxRedemptions}`
+                  : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje · tope ${campaign.couponMaxRedemptions}`}
             </dd>
           </div>
           {campaign.couponKind === "discount" && (
