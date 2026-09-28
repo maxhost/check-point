@@ -8,6 +8,7 @@ import { POST as END } from "../app/api/marketing/campaigns/[id]/end/route";
 import { POST as ARCHIVE } from "../app/api/marketing/campaigns/[id]/archive/route";
 import { GET as PREVIEW } from "../app/api/marketing/audience-preview/route";
 import { GET as RESULTS } from "../app/api/marketing/campaigns/[id]/results/route";
+import { GET as REWARD_RESULTS } from "../app/api/marketing/rewards/results/route";
 import { GET as TEMPLATES } from "../app/api/marketing/templates/route";
 import { POST as ENABLE } from "../app/api/marketing/templates/[key]/enable/route";
 import { POST as DISABLE } from "../app/api/marketing/templates/[key]/disable/route";
@@ -42,6 +43,7 @@ export type MarketingRoutesWorld = {
   transitionCampaign: Spy;
   previewAudience: Spy;
   loadCampaignResults: Spy;
+  loadRewardResults: Spy;
   listTemplates: Spy;
   enableTemplate: Spy;
   disableTemplate: Spy;
@@ -126,6 +128,19 @@ export function marketingHandlers(
       name: "GET /api/marketing/campaigns/:id/results",
       call: () => RESULTS(request(`${one}/results`, "GET"), { params }),
       spy: world.loadCampaignResults,
+      action: null,
+      ownerOnly: false,
+    },
+    {
+      name: "GET /api/marketing/rewards/results",
+      call: () =>
+        REWARD_RESULTS(
+          request(
+            `/api/marketing/rewards/results?from=2026-09-01&to=2026-09-30&b=${FOREIGN_BUSINESS}`,
+            "GET",
+          ),
+        ),
+      spy: world.loadRewardResults,
       action: null,
       ownerOnly: false,
     },

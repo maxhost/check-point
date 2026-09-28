@@ -17,6 +17,7 @@ const world = vi.hoisted(() => ({
   transitionCampaign: vi.fn(),
   previewAudience: vi.fn(),
   loadCampaignResults: vi.fn(),
+  loadRewardResults: vi.fn(),
   listTemplates: vi.fn(),
   enableTemplate: vi.fn(),
   disableTemplate: vi.fn(),

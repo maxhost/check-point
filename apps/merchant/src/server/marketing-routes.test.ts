@@ -11,6 +11,7 @@ const world = vi.hoisted(() => ({
   transitionCampaign: vi.fn(),
   previewAudience: vi.fn(),
   loadCampaignResults: vi.fn(),
+  loadRewardResults: vi.fn(),
   listTemplates: vi.fn(),
   enableTemplate: vi.fn(),
   disableTemplate: vi.fn(),
@@ -61,6 +62,11 @@ vi.mock("./marketing/results-store", () => ({
   loadCampaignResults: world.loadCampaignResults,
 }));
 
+// Spec 0106 E4: results by reward. Only the loader is replaced (the range is parsed inside it).
+vi.mock("./marketing/reward-results", () => ({
+  loadRewardResults: world.loadRewardResults,
+}));
+
 // Spec 0101: the three template routes. Only the store is replaced; the routes' guards
 // and `campaignError` mapping stay real.
 vi.mock("./marketing/template-store", () => ({
@@ -108,6 +114,7 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     world.transitionCampaign.mockResolvedValue({ campaign: CAMPAIGN });
     world.previewAudience.mockResolvedValue({ quality: "observada" });
     world.loadCampaignResults.mockResolvedValue({ turns: {} });
+    world.loadRewardResults.mockResolvedValue([]);
     world.listTemplates.mockResolvedValue([]);
     world.enableTemplate.mockResolvedValue(CAMPAIGN);
     world.disableTemplate.mockResolvedValue({ campaign: CAMPAIGN });

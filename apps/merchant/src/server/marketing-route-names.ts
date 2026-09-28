@@ -29,4 +29,6 @@ export const MARKETING_ROUTE_NAMES = [
   // Spec 0103 — the campaign-push hours.
   "GET /api/marketing/settings",
   "PATCH /api/marketing/settings",
+  // Spec 0106 E4 — results by reward.
+  "GET /api/marketing/rewards/results",
 ];
