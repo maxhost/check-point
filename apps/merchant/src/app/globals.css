@@ -6898,8 +6898,17 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: var(--ui-text);
   padding-bottom: 6rem;
 }
-.marketing-page p:not([class*="text-"]) {
+.marketing-page p:not(.toast) {
   color: inherit;
+}
+.marketing-page p.text-content-muted {
+  color: var(--ui-text-muted);
+}
+.marketing-page p.text-warning {
+  color: var(--ui-warning);
+}
+.marketing-page p.text-danger {
+  color: var(--ui-danger);
 }
 .marketing-page .marketing-link,
 .marketing-page .marketing-card-link {

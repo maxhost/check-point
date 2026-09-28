@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, Clock } from "iconoir-react";
-import { Alert, Button } from "../../../ui";
+import { Alert } from "../../../ui";
 import {
   asMarketingError,
   errorText,
@@ -17,23 +17,13 @@ import {
   MarketingShell,
   MarketingToast,
 } from "./marketing-ui";
-import type { Campaign, TemplateView } from "./marketing-types";
-import { STATUS_LABELS } from "./campaign-labels";
+import type {
+  Campaign,
+  MarketingSettings,
+  TemplateView,
+} from "./marketing-types";
 import { CampaignsList } from "./campaigns-list";
-
-const channelName = { proximity: "Proximidad", push: "Push" };
-const groups: Record<string, { title: string; description: string }> = {
-  reactivation: {
-    title: "Volver a verlos",
-    description:
-      "Acompañá a quienes dejaron de venir, desde la primera ausencia hasta la recuperación.",
-  },
-  balance: {
-    title: "Acercarlos al premio",
-    description:
-      "Avisá cuando falta poco o cuando ya tienen un premio para canjear.",
-  },
-};
+import { TemplateRow } from "./template-row";
 
 export function MarketingHome({
   isOwner,
@@ -44,6 +34,7 @@ export function MarketingHome({
 }) {
   const [templates, setTemplates] = useState<TemplateView[] | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [timeZone, setTimeZone] = useState<string | null>(null);
   const [error, setError] = useState<MarketingApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<TemplateView | null>(null);
@@ -52,14 +43,18 @@ export function MarketingHome({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [catalog, list] = await Promise.all([
+      const [catalog, list, config] = await Promise.all([
         marketingRequest<{ templates: TemplateView[] }>(
           "/api/marketing/templates",
         ),
         marketingRequest<{ campaigns: Campaign[] }>("/api/marketing/campaigns"),
+        marketingRequest<{ settings: MarketingSettings }>(
+          "/api/marketing/settings",
+        ).catch(() => null),
       ]);
       setTemplates(catalog.templates);
       setCampaigns(list.campaigns);
+      setTimeZone(config?.settings?.timeZone ?? null);
     } catch (reason) {
       setError(asMarketingError(reason));
     }
@@ -104,8 +99,8 @@ export function MarketingHome({
   if (!templates && !error) return <MarketingLoading />;
   return (
     <MarketingShell
-      title="Campañas que trabajan por vos"
-      description="Elegí una campaña lista para usar o armá una a medida."
+      title="Campañas"
+      description="Prendé una campaña para configurarla. Quedará activa cuando la guardes en el editor."
     >
       <MarketingToast message={notice} dismiss={() => setNotice(null)} />
       {error && (
@@ -124,121 +119,25 @@ export function MarketingHome({
               </p>
             </MarketingPanel>
           )}
-          {Array.from(new Set(templates.map((template) => template.group))).map(
-            (group) => {
-              const items = templates
-                .filter((template) => template.group === group)
-                .sort((a, b) => a.rank - b.rank);
-              return (
-                <MarketingPanel
-                  key={group}
-                  title={groups[group]?.title ?? group}
-                  description={groups[group]?.description}
-                >
-                  <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-                    {items.map((template) => (
-                      <article
-                        key={template.key}
-                        className="flex min-w-0 flex-col rounded-md border border-border bg-surface-subtle p-4"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <h3 className="text-lg font-bold">
-                            {template.title}
-                          </h3>
-                          <span className="rounded-full border border-border-strong px-3 py-1 text-sm font-semibold">
-                            {template.live
-                              ? STATUS_LABELS[template.live.status]
-                              : "Apagada"}
-                          </span>
-                        </div>
-                        <p className="mt-3 flex-1 text-sm leading-6 text-content-muted">
-                          {template.description}
-                        </p>
-                        <p className="mt-3 text-sm text-content-muted">
-                          {template.channels
-                            .map((channel) => channelName[channel])
-                            .join(" · ")}
-                        </p>
-                        {template.live && (
-                          <p className="mt-3 text-sm">
-                            Desde{" "}
-                            {new Date(
-                              template.live.activatedAt ??
-                                template.live.createdAt,
-                            ).toLocaleDateString("es-EC")}
-                          </p>
-                        )}
-                        <div className="mt-5 flex flex-col gap-2">
-                          {template.live ? (
-                            <>
-                              <Link
-                                className="marketing-link"
-                                href={`/backoffice/marketing/${template.live.id}`}
-                              >
-                                Ver campaña{" "}
-                                <ArrowRight aria-hidden className="size-4" />
-                              </Link>
-                              {template.live.status === "paused" && (
-                                <Button
-                                  variant="secondary"
-                                  isLoading={busy}
-                                  onPress={() =>
-                                    void action(template, "activate")
-                                  }
-                                >
-                                  Reanudar
-                                </Button>
-                              )}
-                              {isOwner && template.live.status !== "draft" && (
-                                <Button
-                                  variant="quiet"
-                                  isDisabled={busy}
-                                  onPress={() => setConfirm(template)}
-                                >
-                                  Finalizar corrida
-                                </Button>
-                              )}
-                            </>
-                          ) : (
-                            <Link
-                              className="marketing-link marketing-link-primary"
-                              href={`/backoffice/marketing/templates/${encodeURIComponent(template.key)}`}
-                            >
-                              Configurar y activar{" "}
-                              <ArrowRight aria-hidden className="size-4" />
-                            </Link>
-                          )}
-                        </div>
-                        {template.runs.length > 0 && (
-                          <div className="mt-4 border-t border-border pt-3 text-sm">
-                            <p className="font-semibold">
-                              Corridas anteriores ({template.runs.length})
-                            </p>
-                            <ul className="mt-2 grid gap-2">
-                              {template.runs.map((run) => (
-                                <li key={run.id}>
-                                  <Link
-                                    className="underline underline-offset-2"
-                                    href={`/backoffice/marketing/${run.id}`}
-                                  >
-                                    {run.activatedAt
-                                      ? new Date(
-                                          run.activatedAt,
-                                        ).toLocaleDateString("es-EC")
-                                      : "Sin fecha"}{" "}
-                                    · {STATUS_LABELS[run.status]}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </article>
-                    ))}
-                  </div>
-                </MarketingPanel>
-              );
-            },
+          {templates.length > 0 && (
+            <MarketingPanel
+              title="Campañas listas para usar"
+              description="Cada fila muestra si la campaña está prendida y cuándo termina."
+            >
+              <ul>
+                {templates.map((template) => (
+                  <TemplateRow
+                    key={template.key}
+                    template={template}
+                    timeZone={timeZone}
+                    isOwner={isOwner}
+                    busy={busy}
+                    onFinalize={() => setConfirm(template)}
+                    onResume={() => void action(template, "activate")}
+                  />
+                ))}
+              </ul>
+            </MarketingPanel>
           )}
           <MarketingPanel
             title="Campañas a medida"
