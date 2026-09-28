@@ -351,6 +351,13 @@
       "when": 1790561713794,
       "tag": "0049_premio_estructurado",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790563043325,
+      "tag": "0050_default_de_tipo_en_snapshots",
+      "breakpoints": true
     }
   ]
 }

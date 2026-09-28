@@ -184,7 +184,8 @@ export const couponRedemptions = core.table(
       precision: 12,
       scale: 2,
     }).notNull(),
-    kindSnapshot: text("kind_snapshot").notNull(),
+    // Default only for the migration→deploy window (0050): old code writes text coupons = free_product.
+    kindSnapshot: text("kind_snapshot").notNull().default("free_product"),
     productId: uuid("product_id").references(() => products.id, {
       onDelete: "set null",
     }),
