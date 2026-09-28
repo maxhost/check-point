@@ -186,8 +186,10 @@ export function CampaignResultsView({
               {coupon.label}
               {coupon.kind ? ` · ${REWARD_KIND_LABELS[coupon.kind]}` : ""}:{" "}
               {coupon.redeemed} de {coupon.cap} canjeados ·{" "}
-              {money(coupon.incurredCost ?? "0.00", currencyCode)} de costo
-              estimado incurrido
+              {coupon.kind
+                ? money(coupon.incurredCost ?? "0.00", currencyCode)
+                : `${currencyCode} ${coupon.incurredCost ?? "0.00"}`}{" "}
+              de costo estimado incurrido
             </p>
           )}
         </ResultCard>

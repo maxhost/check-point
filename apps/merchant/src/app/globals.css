@@ -7152,6 +7152,24 @@ ul.loyalty-fields {
 .cp-checkbox {
   display: flex;
 }
+.cp-choice {
+  position: relative;
+}
+/* React Aria envuelve el input en un span oculto. El input ocupa la tarjeta para que
+   mouse, tacto y pruebas automaticas activen el mismo control nativo. */
+.cp-choice > span:first-child {
+  display: contents !important;
+}
+.cp-choice input[type="radio"] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 .loyalty-dialog-overlay {
   background: var(--ui-overlay);
 }

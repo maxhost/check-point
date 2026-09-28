@@ -46,7 +46,7 @@ export function CustomFields({
   currencyCode: string;
   remainingQuota?: number;
   canReadCatalog?: boolean;
-  couponKinds: CouponKind[];
+  couponKinds: CouponKind[] | null;
 }) {
   return (
     <>
@@ -139,7 +139,7 @@ export function CustomFields({
               })
             }
           />
-          {draft.coupon && (
+          {draft.coupon && couponKinds && (
             <RewardFields
               draft={draft}
               change={change}
@@ -148,6 +148,11 @@ export function CustomFields({
               canReadCatalog={Boolean(canReadCatalog)}
               couponKinds={couponKinds}
             />
+          )}
+          {draft.coupon && !couponKinds && (
+            <p className="text-sm text-content-muted" role="status">
+              Cargando tipos de premio…
+            </p>
           )}
         </div>
       </MarketingPanel>

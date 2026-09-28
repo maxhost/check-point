@@ -68,7 +68,7 @@ export function ComposerView({
   setConfirm: (value: boolean) => void;
   setNotice: (value: string | null) => void;
 }) {
-  if ((!settings || !couponKinds) && !error)
+  if (!settings && !error)
     return <MarketingLoading label="Cargando compositor…" />;
   return (
     <MarketingShell
@@ -114,65 +114,64 @@ export function ComposerView({
           </Link>
         </Alert>
       )}
-      {draft &&
-        settings &&
-        couponKinds &&
-        (canReadLocations || Boolean(effectiveId)) && (
-          <>
-            <CustomFields
-              draft={draft}
-              change={change}
-              errors={fields}
-              locations={locations}
-              preview={preview}
-              previewError={previewError}
-              timeZone={settings.timeZone}
-              currencyCode={currencyCode}
-              remainingQuota={remainingQuota}
-              canReadCatalog={canReadCatalog}
-              couponKinds={couponKinds}
-            />
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+      {draft && settings && (canReadLocations || Boolean(effectiveId)) && (
+        <>
+          <CustomFields
+            draft={draft}
+            change={change}
+            errors={fields}
+            locations={locations}
+            preview={preview}
+            previewError={previewError}
+            timeZone={settings.timeZone}
+            currencyCode={currencyCode}
+            remainingQuota={remainingQuota}
+            canReadCatalog={canReadCatalog}
+            couponKinds={couponKinds}
+          />
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Button
+              isLoading={busy}
+              isDisabled={
+                Boolean(createdId) ||
+                (draft.coupon && !couponKinds) ||
+                error?.status === 401 ||
+                error?.status === 403 ||
+                Boolean(error?.uncertain)
+              }
+              onPress={() => review(false)}
+            >
+              {effectiveId ? "Guardar cambios" : "Guardar borrador"}
+            </Button>
+            {!effectiveId && (
               <Button
-                isLoading={busy}
+                variant="secondary"
                 isDisabled={
+                  busy ||
                   Boolean(createdId) ||
+                  (draft.coupon && !couponKinds) ||
                   error?.status === 401 ||
                   error?.status === 403 ||
                   Boolean(error?.uncertain)
                 }
-                onPress={() => review(false)}
+                onPress={() => review(true)}
               >
-                {effectiveId ? "Guardar cambios" : "Guardar borrador"}
+                Guardar y activar
               </Button>
-              {!effectiveId && (
-                <Button
-                  variant="secondary"
-                  isDisabled={
-                    busy ||
-                    Boolean(createdId) ||
-                    error?.status === 401 ||
-                    error?.status === 403 ||
-                    Boolean(error?.uncertain)
-                  }
-                  onPress={() => review(true)}
-                >
-                  Guardar y activar
-                </Button>
-              )}
-              <Link
-                className="marketing-link"
-                href={
-                  effectiveId
-                    ? `/backoffice/marketing/${effectiveId}`
-                    : "/backoffice/marketing"
-                }
-              >
-                Cancelar
-              </Link>
-            </div>
-          </>
-        )}
+            )}
+            <Link
+              className="marketing-link"
+              href={
+                effectiveId
+                  ? `/backoffice/marketing/${effectiveId}`
+                  : "/backoffice/marketing"
+              }
+            >
+              Cancelar
+            </Link>
+          </div>
+        </>
+      )}
       <MarketingConfirm
         open={confirm}
         busy={busy}
