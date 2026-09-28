@@ -41,6 +41,7 @@ de `GET /api/locations` con el permiso `locations` (`app/api/locations/_auth.ts`
 `marketing` sin `locations` no puede excluir locales (el owner si). El §5 paso 2 del contrato 0101 manda
 a usar las dos: defecto NUESTRO. Propuesta (sin decidir): spec chica sin migracion — preview por
 plantilla+canal reusando las decisiones del tick, y lectura de locales bajo el guard de marketing.
+Estado actual de la UI y casos de uso: [`docs/api-faltantes.md`](api-faltantes.md).
 **Historial de esta C (abajo, antes del PASS):**
 
 **Implementador:** commit `6013db2`, gates verdes (1929 tests), `test:e2e` 105/5/1 con el rojo previo
