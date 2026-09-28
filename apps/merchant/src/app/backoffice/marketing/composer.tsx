@@ -18,6 +18,7 @@ import { ComposerView } from "./composer-view";
 import { localBusinessDate } from "./marketing-date";
 import type { Campaign as ServerCampaign } from "../../../server/marketing/campaign-store";
 import type { AudiencePreview as ServerPreview } from "../../../server/marketing/audience-preview";
+import { readMarketingLocations } from "./marketing-locations";
 
 function serializedCampaign(campaign: ServerCampaign): Campaign {
   return {
@@ -90,9 +91,7 @@ export function CampaignComposer({
     setError(null);
     try {
       const [doors, config, stored] = await Promise.all([
-        canReadLocations
-          ? marketingRequest<{ locations: Location[] }>("/api/locations")
-          : Promise.resolve({ locations: [] }),
+        readMarketingLocations(canReadLocations),
         marketingRequest<{ settings: MarketingSettings }>(
           "/api/marketing/settings",
         ),
@@ -109,7 +108,7 @@ export function CampaignComposer({
         !["draft", "paused"].includes(stored.campaign.status)
       )
         throw new MarketingApiError(409, "not_editable");
-      setLocations(doors.locations);
+      setLocations(doors);
       setSettings(config.settings);
       setDraft(
         (current) =>
@@ -117,7 +116,7 @@ export function CampaignComposer({
             ...initialCustomDraft(
               stored?.campaign ?? null,
               config.settings.timeZone,
-              doors.locations
+              (doors ?? [])
                 .filter((location) => location.status === "active")
                 .map((location) => location.id),
             ),
@@ -140,7 +139,7 @@ export function CampaignComposer({
   }, [load]);
 
   useEffect(() => {
-    if (!draft || !locations) return;
+    if (!draft || !locations || draft.dormantDays < 7) return;
     const sequence = ++previewSequence.current;
     const timer = window.setTimeout(async () => {
       try {
@@ -254,12 +253,12 @@ export function CampaignComposer({
       effectiveId={effectiveId}
       currencyCode={currencyCode}
       isOwner={isOwner}
-      canReadLocations={canReadLocations}
+      canReadLocations={locations !== null}
       canReadCatalog={canReadCatalog}
       locations={locations}
       settings={settings}
       draft={draft}
-      preview={preview}
+      preview={draft && draft.dormantDays >= 7 ? preview : null}
       previewError={previewError}
       error={error}
       fields={fields}

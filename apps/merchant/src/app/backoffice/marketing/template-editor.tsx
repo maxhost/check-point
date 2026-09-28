@@ -30,6 +30,7 @@ import {
   type TemplateDraft,
 } from "./template-draft";
 import { TemplateFields } from "./template-fields";
+import { readMarketingLocations } from "./marketing-locations";
 
 export function TemplateEditor({
   templateKey,
@@ -65,17 +66,13 @@ export function TemplateEditor({
         marketingRequest<{ settings: MarketingSettings }>(
           "/api/marketing/settings",
         ),
-        canReadLocations
-          ? marketingRequest<{ locations: Location[] }>("/api/locations").catch(
-              () => null,
-            )
-          : Promise.resolve(null),
+        readMarketingLocations(canReadLocations),
       ]);
       const found = catalog.templates.find((item) => item.key === templateKey);
       if (!found) throw new MarketingApiError(404, "not_found");
       setTemplate(found);
       setSettings(config.settings);
-      setLocations(doors?.locations ?? null);
+      setLocations(doors);
       setDraft((current) => current ?? initialTemplateDraft(found));
     } catch (reason) {
       setError(asMarketingError(reason));
@@ -133,7 +130,12 @@ export function TemplateEditor({
     setBusy(true);
     setError(null);
     try {
-      const body = templateDraftBody(template, draft, settings.timeZone);
+      const body = templateDraftBody(
+        template,
+        draft,
+        settings.timeZone,
+        locations !== null && draft.channels.includes("proximity"),
+      );
       const result = await marketingRequest<{ campaign: Campaign }>(
         `/api/marketing/templates/${encodeURIComponent(template.key)}/enable`,
         "POST",

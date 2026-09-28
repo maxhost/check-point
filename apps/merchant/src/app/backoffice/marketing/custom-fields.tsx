@@ -9,6 +9,7 @@ import type { Location } from "./marketing-types";
 import type { CustomDraft } from "./custom-draft";
 import { MarketingPanel } from "./marketing-ui";
 import { CouponProductPicker } from "./coupon-product-picker";
+import { MarketingLocationPicker } from "./marketing-location-picker";
 
 export type AudiencePreview = {
   quality: "observada";
@@ -36,7 +37,7 @@ export function CustomFields({
   draft: CustomDraft;
   change: (patch: Partial<CustomDraft>) => void;
   errors: Record<string, string>;
-  locations: Location[];
+  locations: Location[] | null;
   preview: AudiencePreview | null;
   previewError: string | null;
   timeZone: string;
@@ -69,43 +70,18 @@ export function CustomFields({
             errorMessage={errors.dormantDays}
             description="Entre 7 y 365 días desde la última compra."
           />
-          <fieldset className="grid gap-3 rounded-md border border-border p-4">
-            <legend className="px-1 font-bold">Locales</legend>
-            {locations
-              .filter((location) => location.status === "active")
-              .map((location) => (
-                <div key={location.id}>
-                  <CheckboxField
-                    label={location.name}
-                    description={location.addressLabel}
-                    isSelected={draft.locationIds.includes(location.id)}
-                    onChange={(checked) =>
-                      change({
-                        locationIds: checked
-                          ? [...draft.locationIds, location.id]
-                          : draft.locationIds.filter(
-                              (id) => id !== location.id,
-                            ),
-                      })
-                    }
-                  />
-                  {draft.locationIds.includes(location.id) &&
-                    preview &&
-                    !preview.usableLocationIds.includes(location.id) && (
-                      <p className="mt-1 text-sm text-warning">
-                        Este local no tiene ubicación en el mapa.
-                      </p>
-                    )}
-                </div>
-              ))}
-            {errors.locationIds && (
-              <p className="text-sm font-semibold text-danger">
-                {errors.locationIds}
-              </p>
-            )}
-          </fieldset>
+          <MarketingLocationPicker
+            locations={locations}
+            selectedIds={draft.locationIds}
+            onChange={(locationIds) => change({ locationIds })}
+            title="Locales"
+            error={errors.locationIds}
+            usableLocationIds={preview?.usableLocationIds}
+          />
           {preview && (
-            <Alert title={`Hoy son ${preview.total} personas`}>
+            <Alert
+              title={`Hoy son ${preview.total} personas · alcance por proximidad`}
+            >
               {preview.reachable} alcanzables por Wallet · {preview.noLocation}{" "}
               sin local atribuible · {preview.cooldown} en cooldown ·{" "}
               {preview.eligible} elegibles ahora.

@@ -111,12 +111,15 @@ export function templateDraftBody(
   template: TemplateView,
   draft: TemplateDraft,
   timeZone: string,
+  includeExcludedLocationIds = true,
 ) {
   return {
     channels: draft.channels,
     dormantDays: draft.dormantDays,
     message: draft.message.trim(),
-    excludedLocationIds: draft.excludedLocationIds,
+    ...(includeExcludedLocationIds
+      ? { excludedLocationIds: draft.excludedLocationIds }
+      : {}),
     ...(draft.startsAt
       ? { startsAt: businessDateIso(draft.startsAt, timeZone) }
       : {}),

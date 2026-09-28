@@ -1,7 +1,7 @@
 import {
   Alert,
-  CheckboxField,
   ChoiceGroup,
+  CheckboxField,
   NumberField,
   TextAreaField,
   TextField,
@@ -13,6 +13,8 @@ import type {
 } from "./marketing-types";
 import type { TemplateDraft } from "./template-draft";
 import { CouponProductPicker } from "./coupon-product-picker";
+import { MarketingAudiencePreview } from "./marketing-audience-preview";
+import { MarketingLocationPicker } from "./marketing-location-picker";
 
 const channelLabels = { proximity: "Proximidad", push: "Push" };
 const repeatLabels = {
@@ -79,6 +81,13 @@ export function TemplateFields({
         value={String(draft.dormantDays)}
         errorMessage={errors.dormantDays}
         onChange={(value) => change({ dormantDays: Number(value) })}
+      />
+      <MarketingAudiencePreview
+        templateKey={template.key}
+        channels={draft.channels}
+        dormantDays={draft.dormantDays}
+        locations={locations}
+        excludedLocationIds={draft.excludedLocationIds}
       />
       {template.atRisk && (
         <Alert title="¿Quién está en riesgo?">
@@ -151,46 +160,25 @@ export function TemplateFields({
           errorMessage={errors.endsAt}
         />
       </div>
-      {draft.channels.includes("proximity") && locations && (
-        <fieldset className="grid gap-3 rounded-md border border-border p-4">
-          <legend className="px-1 font-bold">Locales incluidos</legend>
-          <p className="text-sm text-content-muted">
-            Se usarán los locales activos con ubicación, excepto los que
-            destildes.
-          </p>
-          {locations
-            .filter((location) => location.status === "active")
-            .map((location) => (
-              <CheckboxField
-                key={location.id}
-                label={location.name}
-                isSelected={!draft.excludedLocationIds.includes(location.id)}
-                onChange={(checked) =>
-                  change({
-                    excludedLocationIds: checked
-                      ? draft.excludedLocationIds.filter(
-                          (id) => id !== location.id,
-                        )
-                      : [...draft.excludedLocationIds, location.id],
-                  })
-                }
-              />
-            ))}
-          {locations.every((location) => location.status !== "active") && (
-            <p>No hay locales activos.</p>
-          )}
-          {errors.excludedLocationIds && (
-            <p className="text-sm font-semibold text-danger">
-              {errors.excludedLocationIds}
-            </p>
-          )}
-        </fieldset>
-      )}
-      {draft.channels.includes("proximity") && !locations && (
-        <Alert title="Se usarán todos los locales disponibles">
-          Tu permiso de Marketing permite activar esta campaña. No tenés acceso
-          a la lista de Locales para excluir alguno.
-        </Alert>
+      {draft.channels.includes("proximity") && (
+        <MarketingLocationPicker
+          locations={locations}
+          selectedIds={(locations ?? [])
+            .filter(
+              (location) => !draft.excludedLocationIds.includes(location.id),
+            )
+            .map((location) => location.id)}
+          onChange={(ids) =>
+            change({
+              excludedLocationIds: (locations ?? [])
+                .filter((location) => !ids.includes(location.id))
+                .map((location) => location.id),
+            })
+          }
+          title="Locales incluidos"
+          description="Se usarán los locales activos con ubicación, excepto los que destildes."
+          error={errors.excludedLocationIds}
+        />
       )}
       {template.couponAllowed && (
         <div className="grid gap-5 rounded-md border border-border p-4">
