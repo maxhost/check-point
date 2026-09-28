@@ -35,7 +35,12 @@ re-verificado: `counter-coupon-extras` 3/3, `counter-coupon-races` 7/7). `origin
 `motor` (`8c7140d`), gates verdes (typecheck/build forzados 3/3, lint, format, test 1962). **E2 EN PROD:** push
 `e668412..8c7140d` con OK del owner, Vercel `success` en `8c7140d` (sin migracion).
 Declarado: sellos extra sin tope de casilleros (la acreditacion normal tampoco topea).
-**En curso:** E3 (cupones del cliente) por el mismo implementador; sus cambios sin commitear son SUYOS.
+**E3 EN PROD:** `abcbced` + bitacora `664097e` (M5 rojo por el motivo correcto; re-verificado
+`consumer-coupons` 2/2, `counter-coupon` 7/7), push `8c7140d..664097e`, Vercel `success`.
+**Hallazgos de E3 a decidir por el owner:** (1) un negocio SUSPENDIDO sigue mostrando sus cupones
+vigentes al cliente (mismo criterio que el scan); (2) la lista no tiene tope ni paginacion.
+**En curso:** E4 (resultados por premio) por el mismo implementador; sus cambios sin commitear son
+SUYOS. Despues: revisor independiente de toda la 0106, y la Bienvenida.
 **Hallazgo para GPT:** `marketing-backoffice-pages.neon` da 7 rojos PREVIOS a E1 (`page.tsx` lee
 `permissions` y el doble de sesion no lo trae). Despues: E3, E4, revisor, y la Bienvenida.
 
