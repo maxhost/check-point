@@ -53,8 +53,14 @@ empleado con `marketing` sin `loyalty` no podia saber que tipo extra ofrecer. Co
 PROD:** `707ebfc` + bitacora `f878e02` (M1b rojo; re-verificado `marketing-reward` 5/5), push
 `2106678..f878e02`, Vercel `success`. GPT: reemplazar la consulta a `/api/loyalty-program` por
 `couponKinds` y sacar la nota de `docs/api-faltantes.md`.
-**En curso:** REVISOR independiente de toda la 0106 (subagente; puede dejar mutaciones etiquetadas
-mientras mide — `ListAgents` antes de tocar nada). Su doc: `docs/archivo/spec-0106-revision.md`.
+**0106 IMPLEMENTADA: PASS del revisor independiente** (`2d2437a`, `docs/archivo/spec-0106-revision.md`):
+8 mutaciones de la tabla + 3 propias, contrato contrastado campo por campo sin diferencias, sin drift de
+schema, aislamiento cazado en los tres ejes. Dos hallazgos BAJOS, sin riesgo de prod hoy:
+(1) sin test que fije la moneda del SNAPSHOT en un descuento por monto (`counter/coupon-scan.ts:66`,
+`consumer/coupons.ts:72`; la P2 del revisor sobrevive); (2) el `DEFAULT 'free_product'` de la `0050`
+era solo para la ventana, que ya cerro: propuesta del orquestador, pendiente de OK del owner, migracion
+`0051` que lo quita (vuelve a proteger el NOT NULL contra un emisor que olvide el tipo).
+**Sigue:** esos dos arreglos chicos (el 2 necesita OK para migrar a prod) → la Bienvenida (#1+#2).
 **Selector de producto (owner):** usa `GET /api/catalog` (todos los productos, sin paginar, con
 `unitCost`) y filtra en el front; no hay «producto activo» en el catalogo.
 **Sigue:** verificar y pushear E3b → revisor independiente de toda la 0106 (agente aparte; el

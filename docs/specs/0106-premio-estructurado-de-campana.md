@@ -1,7 +1,7 @@
 ---
 spec: 0106
 fecha: 2026-09-27
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0098 en CUATRO ENTREGAS independientes, cada una desplegable y con su contrato para la UI — E1 premio con tipo en campañas y plantillas (+ migracion 0049 y snapshot al cupon), E2 mostrador (scan con tipo/regla, canje que acredita sellos/puntos extra), E3 cupones del cliente con su regla, E4 resultados por premio. Contrato HTTP en `specs/0106-contratos-de-api.md`.
 disjunta: no
 archivos: apps/merchant/drizzle, apps/merchant/src/server/{schema,marketing,counter,consumer}, apps/merchant/src/app/api/{marketing,counter,public/consumer}, docs/specs/0101-contratos-de-api.md
