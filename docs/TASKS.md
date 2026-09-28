@@ -20,8 +20,14 @@ sin limite de UX), costo por canje, todo copiado al cupon; cashback extra fuera 
 **Spec 0106 CERRADA** (`3641162`) con contrato `specs/0106-contratos-de-api.md`: 4 entregas
 desplegables (E1 premio con tipo + migracion `0049` + snapshot + cierre de `couponProductId` de otro
 negocio; E2 mostrador con extras; E3 cupones del cliente; E4 resultados por premio), un implementador
-y un revisor al final, 6 mutaciones. **Retomar con:** despachar el implementador sobre E1 (o esperar
-el OK del owner); la migracion `0049` a prod necesita OK del owner. Despues: la Bienvenida (#1+#2).
+y un revisor al final, 6 mutaciones.
+**E1 EN CURSO:** un implementador (subagente) esta escribiendo E1 en este worktree; el codigo de
+`api/marketing/**`, `server/marketing/**`, schema y la migracion `0049` que aparezca sin commitear es
+SUYO — no tocarlo; si la sesion se cae, `ListAgents` primero. Instruccion: no push, no prod, commit en
+`motor` y parar. **OK del owner (2026-09-27) para aplicar `0049` a PROD** — despues de verificar E1 y
+de probar la migracion en una rama efimera de Neon. **Falta OK del owner** para integrar `motor` en
+`main` + push (GPT tiene cambios sin commitear en `main`). Orden: migracion antes del deploy.
+Despues: E2 (mismo implementador, por mensaje) y la Bienvenida (#1+#2).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
