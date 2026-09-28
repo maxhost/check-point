@@ -16,6 +16,17 @@ archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner
 la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
 antiabuso aprobado = regalo solo con pase instalado + filtro Apple por dispositivo + tope mensual +
 canje presencial; free vs premium «lo pensaremos luego». El premio ya existe: **spec 0106**.
+**Respuestas del owner (2026-09-27, textual resumido):** (1) «proxima visita» = **cualquier escaneo
+posterior**; (2) vencimiento del cupon **15 dias por defecto, editable** por el merchant; (3) el tope
+mensual lo fija **cada negocio** (por negocio, NO por local); (4) los clientes ya enrolados al encender
+la plantilla **no reciben nada**; (5) **push antes de que venza** tambien.
+**Medido (2026-09-27):** hoy `has_pass` = pase GENERADO (`consumer.wallet_pass` se crea en
+`ensureWalletPass`, `wallet/core.ts:183`, al servir el pase), no instalado. Apple: instalacion real =
+fila en `consumer.wallet_push_device`. Google: callback `save`/`del` por `callbackOptions` de la clase,
+best-effort, SIN id de dispositivo (docs de Google Wallet, «use callbacks for saves and deletions»); el
+codigo no lo tiene. **Owner (AskUserQuestion, 2026-09-27):** Android = **callback de Google** (endpoint
+nuevo; si Google pierde el aviso, sin regalo — se declara); tope por defecto **50 por mes**; push de
+vencimiento **3 dias antes, editable** (1/3/7).
 
 **Como se trabaja (acordado con el owner):** este worktree (`check-point-wt/motor`, rama `motor`) es el
 backend/API/schema/docs; GPT hace la UI en `main` (`check-point`). Cada uno pushea lo suyo a `main`:
