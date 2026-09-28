@@ -16,6 +16,7 @@ import { users } from "./auth";
 import { businesses, locations } from "./business";
 import { products } from "./catalog";
 import { rewardChecks } from "./reward-checks";
+import { welcomeChecks } from "./welcome-checks";
 
 /**
  * A marketing campaign (spec 0065 / ADR 0064). `kind` is the extension point: this
@@ -40,7 +41,8 @@ import { rewardChecks } from "./reward-checks";
  *
  * The CHANNELS (spec 0103 / ADR 0095) are two booleans, never a `kind`: `kind` describes
  * the AUDIENCE, and a template runs by proximity, push or both. At least one is on
- * (`core_campaign_channel_check`); the composer always creates `proximity` alone.
+ * (`core_campaign_channel_check`) — except «Bienvenida» (spec 0107), which has NONE; the
+ * composer always creates `proximity` alone.
  *
  * `template_key` (spec 0101 / ADR 0092) marks a PREBUILT campaign: `null` is a custom one
  * from the composer. The catalog itself (texts, options, defaults) lives in code
@@ -88,6 +90,12 @@ export const campaigns = core.table(
     nearRewardStamps: integer("near_reward_stamps"),
     nearRewardPercent: integer("near_reward_percent"),
     rewardRepeat: text("reward_repeat"),
+    // Spec 0107 / ADR 0099: the parameters of «Bienvenida» — present exactly in `welcome`
+    // (`core_campaign_welcome_shape_check`, in `welcome-checks.ts`).
+    welcomeValidDays: integer("welcome_valid_days"),
+    welcomeReminderDays: integer("welcome_reminder_days"),
+    welcomeMonthlyCap: integer("welcome_monthly_cap"),
+    welcomeRedeemFrom: text("welcome_redeem_from"),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id")
@@ -102,9 +110,11 @@ export const campaigns = core.table(
   },
   (table) => [
     check("core_campaign_kind_check", sql`${table.kind} in ('proximity')`),
+    // Spec 0107: «Bienvenida» goes with NO channel (it is issued when the pass is
+    // installed); every other campaign with at least one.
     check(
       "core_campaign_channel_check",
-      sql`${table.channelProximity} or ${table.channelPush}`,
+      sql`(coalesce(${table.templateKey}, '') = 'welcome') = (not ${table.channelProximity} and not ${table.channelPush})`,
     ),
     check(
       "core_campaign_status_check",
@@ -138,10 +148,11 @@ export const campaigns = core.table(
       "core_campaign_coupon_max_redemptions_check",
       sql`${table.couponMaxRedemptions} is null or ${table.couponMaxRedemptions} >= 1`,
     ),
-    // The coupon is all or nothing (see table comment).
+    // The coupon is all or nothing (see table comment). «Bienvenida» (spec 0107) has label
+    // and cost and NEVER a redemption cap: its brake is the monthly delivery cap.
     check(
       "core_campaign_coupon_all_or_nothing_check",
-      sql`(${table.couponLabel} is null) = (${table.couponCost} is null) and (${table.couponLabel} is null) = (${table.couponMaxRedemptions} is null)`,
+      sql`(coalesce(${table.templateKey}, '') = 'welcome' and ${table.couponLabel} is not null and ${table.couponCost} is not null and ${table.couponMaxRedemptions} is null) or (coalesce(${table.templateKey}, '') <> 'welcome' and (${table.couponLabel} is null) = (${table.couponCost} is null) and (${table.couponLabel} is null) = (${table.couponMaxRedemptions} is null))`,
     ),
     // Spec 0106: the reward has a type exactly when there is a coupon.
     check(
@@ -158,9 +169,10 @@ export const campaigns = core.table(
     }),
     // ADR 0094 §3: an issued coupon lives until `ends_at`, so a campaign with a coupon
     // needs one. The composer and `enable` refuse it first with a 400 (spec 0102).
+    // «Bienvenida» is exempt: its coupon expires by its own days (spec 0107).
     check(
       "core_campaign_coupon_needs_end_check",
-      sql`${table.couponLabel} is null or ${table.endsAt} is not null`,
+      sql`coalesce(${table.templateKey}, '') = 'welcome' or ${table.couponLabel} is null or ${table.endsAt} is not null`,
     ),
     check(
       "core_campaign_dates_check",
@@ -172,7 +184,7 @@ export const campaigns = core.table(
     ),
     check(
       "core_campaign_template_key_check",
-      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward', 'at_risk')`,
+      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward', 'at_risk', 'welcome')`,
     ),
     check(
       "core_campaign_near_reward_stamps_check",
@@ -192,6 +204,7 @@ export const campaigns = core.table(
       "core_campaign_balance_shape_check",
       sql`(coalesce(${table.templateKey}, '') = 'near_reward') = (${table.nearRewardStamps} is not null and ${table.nearRewardPercent} is not null) and (coalesce(${table.templateKey}, '') = 'unclaimed_reward') = (${table.rewardRepeat} is not null) and (${table.nearRewardStamps} is null) = (${table.nearRewardPercent} is null)`,
     ),
+    ...welcomeChecks(table),
     // One live run per business and template (see the table comment).
     uniqueIndex("core_campaign_template_live_unique")
       .on(table.businessId, table.templateKey)

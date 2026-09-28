@@ -7,6 +7,12 @@ import { type CouponDeal, parseCoupon } from "./reward-input";
 import { asObject } from "./campaign-values";
 import { balanceParams, couponRefused, gapMarkerOk } from "./balance-input";
 import type { RewardRepeat, TemplateDefinition } from "./templates";
+import {
+  WELCOME_STORED_DORMANT_DAYS,
+  type WelcomeParams,
+  welcomeDeal,
+  welcomeParams,
+} from "./welcome-input";
 
 /**
  * The body of `POST /api/marketing/templates/{key}/enable` (spec 0101). PURE.
@@ -31,21 +37,26 @@ import type { RewardRepeat, TemplateDefinition } from "./templates";
  * against the template's options and default when absent — in a template that does not
  * declare them they are IGNORED like any other foreign key, and stored `null`. The
  * `{faltan}` marker is MANDATORY in #7's message and a 400 anywhere else.
+ *
+ * WELCOME (spec 0107): its own rules live in `welcome-input.ts` — no channel, no dormant
+ * days, no doors, a MANDATORY coupon without redemption cap and `endsAt` optional even with
+ * it; `welcome*` in any other template is a 400.
  */
 
 /** The reward (`CouponDeal`) follows the composer's rules exactly (spec 0106). */
-export type TemplateInput = CouponDeal & {
-  channelProximity: boolean;
-  channelPush: boolean;
-  dormantDays: number;
-  message: string;
-  excludedLocationIds: string[];
-  nearRewardStamps: number | null;
-  nearRewardPercent: number | null;
-  rewardRepeat: RewardRepeat | null;
-  startsAt: Date;
-  endsAt: Date | null;
-};
+export type TemplateInput = CouponDeal &
+  WelcomeParams & {
+    channelProximity: boolean;
+    channelPush: boolean;
+    dormantDays: number;
+    message: string;
+    excludedLocationIds: string[];
+    nearRewardStamps: number | null;
+    nearRewardPercent: number | null;
+    rewardRepeat: RewardRepeat | null;
+    startsAt: Date;
+    endsAt: Date | null;
+  };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,13 +67,15 @@ function dormantDays(
   raw: unknown,
   template: TemplateDefinition,
 ): number | undefined {
-  if (absent(raw)) return template.dormantDays.default;
+  const spec = template.dormantDays;
+  if (spec === null) return WELCOME_STORED_DORMANT_DAYS;
+  if (absent(raw)) return spec.default;
   if (
     typeof raw !== "number" ||
     !Number.isInteger(raw) ||
-    !template.dormantDays.options.includes(raw)
+    !spec.options.includes(raw)
   ) {
-    errors.dormantDays = `Los días sin venir tienen que ser ${template.dormantDays.options.join(", ")}.`;
+    errors.dormantDays = `Los días sin venir tienen que ser ${spec.options.join(", ")}.`;
     return undefined;
   }
   return raw;
@@ -151,14 +164,22 @@ export function parseTemplateInput(
   const body = asObject(value);
   const errors: FieldErrors = {};
 
-  const lanes = channels(errors, body.channels, template);
-  const days = dormantDays(errors, body.dormantDays, template);
+  const welcome = template.welcome !== null;
+  const lanes = welcome
+    ? { channelProximity: false, channelPush: false }
+    : channels(errors, body.channels, template);
+  const days = welcome
+    ? WELCOME_STORED_DORMANT_DAYS
+    : dormantDays(errors, body.dormantDays, template);
   const text = message(errors, body.message, template);
-  const doorsOut = excluded(errors, body.excludedLocationIds);
-  const deal = couponRefused(errors, body, template)
-    ? undefined
-    : parseCoupon(errors, body);
+  const doorsOut = welcome ? [] : excluded(errors, body.excludedLocationIds);
+  const deal = welcome
+    ? welcomeDeal(errors, body)
+    : couponRefused(errors, body, template)
+      ? undefined
+      : parseCoupon(errors, body);
   const balance = balanceParams(errors, body, template);
+  const gift = welcomeParams(errors, body, template);
   const startsAt = absent(body.startsAt)
     ? now
     : when(errors, body.startsAt, "startsAt", "La fecha de inicio");
@@ -167,7 +188,8 @@ export function parseTemplateInput(
     : when(errors, body.endsAt, "endsAt", "La fecha de fin");
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
-  requireEndForCoupon(errors, deal, endsAt);
+  // Spec 0107: the welcome coupon expires by its own days, not by the campaign's end.
+  if (!welcome) requireEndForCoupon(errors, deal, endsAt);
 
   if (
     Object.keys(errors).length > 0 ||
@@ -177,6 +199,7 @@ export function parseTemplateInput(
     doorsOut === undefined ||
     deal === undefined ||
     balance === undefined ||
+    gift === undefined ||
     startsAt === undefined ||
     endsAt === undefined
   )
@@ -193,6 +216,7 @@ export function parseTemplateInput(
       endsAt,
       ...deal,
       ...balance,
+      ...gift,
     },
   };
 }

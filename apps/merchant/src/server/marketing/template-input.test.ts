@@ -44,6 +44,11 @@ describe("parseTemplateInput", () => {
         nearRewardStamps: null,
         nearRewardPercent: null,
         rewardRepeat: null,
+        // Spec 0107: the welcome parameters are `null` outside «Bienvenida».
+        welcomeValidDays: null,
+        welcomeReminderDays: null,
+        welcomeMonthlyCap: null,
+        welcomeRedeemFrom: null,
         startsAt: NOW,
         endsAt: null,
       },

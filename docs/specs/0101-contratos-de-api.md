@@ -328,6 +328,9 @@ garantizada por el unico parcial `core_campaign_template_live_unique`
 
 ### 4.1 `GET /api/marketing/templates`
 
+> **Plantilla «Bienvenida» (`welcome`, spec 0107):** va PRIMERA; trae `channels: []`, `dormantDays: null`,
+> `couponRequired` (campo nuevo en todas) y el bloque `welcome` — ver [`0107-contratos-de-api.md`](0107-contratos-de-api.md).
+
 `app/api/marketing/templates/route.ts:9-19` → `listTemplates`
 (`server/marketing/template-store.ts:244-287`). Sin query.
 `200 { "templates": TemplateView[] }`, en el orden del catalogo:
@@ -363,6 +366,10 @@ garantizada por el unico parcial `core_campaign_template_live_unique`
 Tipo `TemplateView` en `template-store.ts:34-37`. Errores: guard; `503`.
 
 ### 4.2 `POST /api/marketing/templates/{key}/enable`
+
+> **`welcome` (spec 0107):** premio OBLIGATORIO y sin `couponMaxRedemptions`; sin `channels`,
+> `dormantDays` ni locales excluidos; `endsAt` opcional; y sus cuatro `welcome*` — ver
+> [`0107-contratos-de-api.md`](0107-contratos-de-api.md). En cualquier otra plantilla, un `welcome*` → `400`.
 
 > **Premio estructurado (spec 0106):** tipo, valores, regla y `currencyCode` en la raiz — ver [`0106-contratos-de-api.md`](0106-contratos-de-api.md).
 

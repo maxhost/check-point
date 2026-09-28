@@ -365,6 +365,13 @@
       "when": 1790567333944,
       "tag": "0051_sin_default_de_tipo",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1790571723749,
+      "tag": "0052_plantilla_bienvenida",
+      "breakpoints": true
     }
   ]
 }

@@ -30,13 +30,18 @@
  * and the `{faltan}` marker (`message.gapMarker`), mandatory in its message; #8 has its
  * repetition (`repeat`). Their audience lives in `balance-audience.ts`.
  *
+ * WELCOME (spec 0107 / ADR 0099): #1+#2 «Bienvenida» goes FIRST. It has NO channel —the
+ * gift is issued when the consumer INSTALLS the pass (`welcome-issue.ts`)— and no dormant
+ * days; its coupon is MANDATORY (`couponRequired`) and its parameters are `welcome`.
+ *
  * The keys are ALSO pinned by the `core_campaign_template_key_check` (migrations `0044`,
- * `0047`, `0048`): adding a template here without a migration makes `enable` die on the check.
+ * `0047`, `0048`, `0052`): adding a template here without a migration makes `enable` die on the check.
  */
 
 import type { AtRiskRule } from "./at-risk";
 
 export type TemplateKey =
+  | "welcome"
   | "missed_you"
   | "at_risk"
   | "win_back"
@@ -45,7 +50,20 @@ export type TemplateKey =
 
 export type CampaignChannel = "proximity" | "push";
 
-export type TemplateGroup = "reactivation" | "balance";
+export type TemplateGroup = "welcome" | "reactivation" | "balance";
+
+export type WelcomeRedeemFrom = "next_day" | "same_visit";
+
+/** «Bienvenida»'s parameters (spec 0107 §2): validity, reminder, monthly cap, from when. */
+export type WelcomeDefinition = {
+  validDays: { options: readonly number[]; default: number };
+  reminderDays: { options: readonly number[]; default: number };
+  monthlyCap: { min: number; max: number; default: number };
+  redeemFrom: {
+    options: readonly WelcomeRedeemFrom[];
+    default: WelcomeRedeemFrom;
+  };
+};
 
 export type RewardRepeat = "once" | "every_30_days";
 
@@ -61,12 +79,15 @@ export type TemplateDefinition = {
   group: TemplateGroup;
   /** Higher = further along the group's escalation (see the file comment). */
   rank: number;
-  dormantDays: { options: readonly number[]; default: number };
+  /** `null` in «Bienvenida»: it has no audience of dormant customers. */
+  dormantDays: { options: readonly number[]; default: number } | null;
   /** `gapMarker`: the message admits —and REQUIRES— {@link GAP_MARKER} (only #7). */
   message: { default: string; maxLength: 60; gapMarker: boolean };
   couponRecommended: boolean;
   /** `false` → `enable` refuses any coupon field (400 `couponLabel`). */
   couponAllowed: boolean;
+  /** `true` → `enable` refuses a body with no coupon (400 `couponLabel`); only welcome. */
+  couponRequired: boolean;
   /** #7's thresholds: at most N sellos, or at most P % of the cost in puntos. */
   nearReward: {
     stamps: { options: readonly number[]; default: number };
@@ -76,9 +97,37 @@ export type TemplateDefinition = {
   repeat: { options: readonly RewardRepeat[]; default: RewardRepeat } | null;
   /** #4's rhythm rule (`at-risk.ts`): informative, fixed by the platform. */
   atRisk: AtRiskRule | null;
+  welcome: WelcomeDefinition | null;
 };
 
 export const TEMPLATES: readonly TemplateDefinition[] = [
+  {
+    key: "welcome",
+    title: "Bienvenida",
+    description:
+      "Regala un premio a cada cliente nuevo que instala su pase, para que vuelva.",
+    channels: [],
+    group: "welcome",
+    rank: 1,
+    dormantDays: null,
+    message: {
+      default: "Sumate hoy y en tu próxima visita te llevás un regalo",
+      maxLength: 60,
+      gapMarker: false,
+    },
+    couponRecommended: true,
+    couponAllowed: true,
+    couponRequired: true,
+    nearReward: null,
+    repeat: null,
+    atRisk: null,
+    welcome: {
+      validDays: { options: [7, 15, 30], default: 15 },
+      reminderDays: { options: [1, 3, 7], default: 3 },
+      monthlyCap: { min: 1, max: 10000, default: 50 },
+      redeemFrom: { options: ["next_day", "same_visit"], default: "next_day" },
+    },
+  },
   {
     key: "missed_you",
     title: "Te extrañamos",
@@ -95,9 +144,11 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     },
     couponRecommended: false,
     couponAllowed: true,
+    couponRequired: false,
     nearReward: null,
     repeat: null,
     atRisk: null,
+    welcome: null,
   },
   {
     key: "at_risk",
@@ -115,9 +166,11 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     },
     couponRecommended: false,
     couponAllowed: true,
+    couponRequired: false,
     nearReward: null,
     repeat: null,
     atRisk: { minVisits: 3, rhythmFactor: 2 },
+    welcome: null,
   },
   {
     key: "win_back",
@@ -135,9 +188,11 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     },
     couponRecommended: true,
     couponAllowed: true,
+    couponRequired: false,
     nearReward: null,
     repeat: null,
     atRisk: null,
+    welcome: null,
   },
   {
     key: "near_reward",
@@ -155,12 +210,14 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     },
     couponRecommended: false,
     couponAllowed: false,
+    couponRequired: false,
     nearReward: {
       stamps: { options: [1, 2, 3], default: 2 },
       pointsPercent: { options: [10, 20], default: 20 },
     },
     repeat: null,
     atRisk: null,
+    welcome: null,
   },
   {
     key: "unclaimed_reward",
@@ -178,9 +235,11 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     },
     couponRecommended: false,
     couponAllowed: false,
+    couponRequired: false,
     nearReward: null,
     repeat: { options: ["once", "every_30_days"], default: "once" },
     atRisk: null,
+    welcome: null,
   },
 ];
 

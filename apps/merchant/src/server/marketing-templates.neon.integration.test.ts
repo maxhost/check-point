@@ -223,7 +223,8 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       .where(eq(campaigns.businessId, seed.business.id));
     expect(rows.map((r) => r.id).sort()).toEqual([first.id, second.id].sort());
 
-    const [missedYou, atRisk] = await listTemplates(seed.business.id);
+    // Spec 0107: «Bienvenida» goes first in the catalog.
+    const [, missedYou, atRisk] = await listTemplates(seed.business.id);
     expect(missedYou.live?.id).toBe(second.id);
     expect(missedYou.live?.dormantDays).toBe(30);
     expect(missedYou.runs).toEqual([

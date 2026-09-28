@@ -8,14 +8,11 @@ import {
 } from "./campaign-input";
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
-import { channelsOf } from "./campaign-values";
+import type { CampaignWelcome } from "./campaign-values";
+import { columns, toCampaign } from "./campaign-row";
 import { CampaignError } from "./campaign-error";
 import { type CouponKind, type DiscountUnit, pickReward } from "./reward-input";
-import {
-  assertExtrasFitProgram,
-  assertOwnProduct,
-  rewardSelect,
-} from "./reward-store";
+import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
 
 /**
  * Every read and write of `core.campaign` the backoffice does (spec 0065 phase B). Two
@@ -36,7 +33,7 @@ export type Campaign = {
   id: string;
   /**
    * Spec 0101: the prebuilt template it runs, or `null` for a custom campaign. Every read
-   * of this file ALWAYS sets it (`columns` below), so the type REQUIRES it: a fixture that
+   * of this file ALWAYS sets it (`columns`, `campaign-row.ts`), so the type REQUIRES it: a fixture that
    * builds a `Campaign` by hand has to say `templateKey: null` explicitly.
    */
   templateKey: string | null;
@@ -65,6 +62,8 @@ export type Campaign = {
   nearRewardStamps: number | null;
   nearRewardPercent: number | null;
   rewardRepeat: "once" | "every_30_days" | null;
+  /** Spec 0107: «Bienvenida»'s parameters. Always set by the reads; optional for fixtures. */
+  welcome?: CampaignWelcome | null;
   startsAt: Date;
   endsAt: Date | null;
   activatedAt: Date | null;
@@ -72,44 +71,6 @@ export type Campaign = {
   createdAt: Date;
   locationIds: string[];
 };
-
-const columns = {
-  id: campaigns.id,
-  templateKey: campaigns.templateKey,
-  channelProximity: campaigns.channelProximity,
-  channelPush: campaigns.channelPush,
-  name: campaigns.name,
-  status: campaigns.status,
-  pauseReason: campaigns.pauseReason,
-  dormantDays: campaigns.dormantDays,
-  message: campaigns.message,
-  couponLabel: campaigns.couponLabel,
-  couponCost: campaigns.couponCost,
-  couponMaxRedemptions: campaigns.couponMaxRedemptions,
-  couponProductId: campaigns.couponProductId,
-  ...rewardSelect,
-  nearRewardStamps: campaigns.nearRewardStamps,
-  nearRewardPercent: campaigns.nearRewardPercent,
-  rewardRepeat: campaigns.rewardRepeat,
-  startsAt: campaigns.startsAt,
-  endsAt: campaigns.endsAt,
-  activatedAt: campaigns.activatedAt,
-  endedAt: campaigns.endedAt,
-  createdAt: campaigns.createdAt,
-};
-
-/** The row of `columns` as the DTO: the two booleans travel as `channels`. */
-function toCampaign(
-  row: { channelProximity: boolean; channelPush: boolean },
-  locationIds: string[],
-): Campaign {
-  const { channelProximity, channelPush, ...rest } = row;
-  return {
-    ...(rest as Omit<Campaign, "locationIds" | "channels">),
-    channels: channelsOf({ channelProximity, channelPush }),
-    locationIds,
-  };
-}
 
 /** The columns the composer writes: its fields and the whole reward (spec 0106). */
 function campaignFields(input: CampaignInput) {

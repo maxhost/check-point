@@ -7,9 +7,10 @@ import { TEMPLATES, templateByKey, templateKeysAtOrAbove } from "./templates";
  * a 400 on the first click of the toggle.
  */
 describe("marketing templates catalog", () => {
-  it("has exactly the five templates of the specs, in catalog order", () => {
-    // Spec 0101 (#3, #5) + spec 0105 (#4) + spec 0104 (#7, #8).
+  it("has exactly the six templates of the specs, in catalog order", () => {
+    // Spec 0107 (#1+#2, FIRST) + spec 0101 (#3, #5) + spec 0105 (#4) + spec 0104 (#7, #8).
     expect(TEMPLATES.map((t) => t.key)).toEqual([
+      "welcome",
       "missed_you",
       "at_risk",
       "win_back",
@@ -20,6 +21,37 @@ describe("marketing templates catalog", () => {
 
   it("carries the exact values of the spec's table", () => {
     expect(TEMPLATES).toEqual([
+      // Spec 0107 / ADR 0099: no channel, no dormant days, coupon mandatory.
+      {
+        key: "welcome",
+        title: "Bienvenida",
+        description:
+          "Regala un premio a cada cliente nuevo que instala su pase, para que vuelva.",
+        channels: [],
+        group: "welcome",
+        rank: 1,
+        dormantDays: null,
+        message: {
+          default: "Sumate hoy y en tu próxima visita te llevás un regalo",
+          maxLength: 60,
+          gapMarker: false,
+        },
+        couponRecommended: true,
+        couponAllowed: true,
+        couponRequired: true,
+        nearReward: null,
+        repeat: null,
+        atRisk: null,
+        welcome: {
+          validDays: { options: [7, 15, 30], default: 15 },
+          reminderDays: { options: [1, 3, 7], default: 3 },
+          monthlyCap: { min: 1, max: 10000, default: 50 },
+          redeemFrom: {
+            options: ["next_day", "same_visit"],
+            default: "next_day",
+          },
+        },
+      },
       {
         key: "missed_you",
         title: "Te extrañamos",
@@ -36,9 +68,11 @@ describe("marketing templates catalog", () => {
         },
         couponRecommended: false,
         couponAllowed: true,
+        couponRequired: false,
         nearReward: null,
         repeat: null,
         atRisk: null,
+        welcome: null,
       },
       // Spec 0105 / ADR 0097: the middle of the reactivation ladder; 3 and 2× fixed.
       {
@@ -57,9 +91,11 @@ describe("marketing templates catalog", () => {
         },
         couponRecommended: false,
         couponAllowed: true,
+        couponRequired: false,
         nearReward: null,
         repeat: null,
         atRisk: { minVisits: 3, rhythmFactor: 2 },
+        welcome: null,
       },
       {
         key: "win_back",
@@ -77,9 +113,11 @@ describe("marketing templates catalog", () => {
         },
         couponRecommended: true,
         couponAllowed: true,
+        couponRequired: false,
         nearReward: null,
         repeat: null,
         atRisk: null,
+        welcome: null,
       },
       // Spec 0104 / ADR 0096 — the owner's options and defaults.
       {
@@ -98,12 +136,14 @@ describe("marketing templates catalog", () => {
         },
         couponRecommended: false,
         couponAllowed: false,
+        couponRequired: false,
         nearReward: {
           stamps: { options: [1, 2, 3], default: 2 },
           pointsPercent: { options: [10, 20], default: 20 },
         },
         repeat: null,
         atRisk: null,
+        welcome: null,
       },
       {
         key: "unclaimed_reward",
@@ -121,9 +161,11 @@ describe("marketing templates catalog", () => {
         },
         couponRecommended: false,
         couponAllowed: false,
+        couponRequired: false,
         nearReward: null,
         repeat: { options: ["once", "every_30_days"], default: "once" },
         atRisk: null,
+        welcome: null,
       },
     ]);
   });
@@ -131,9 +173,10 @@ describe("marketing templates catalog", () => {
   it.each(TEMPLATES)(
     "$key: its default days are one of its options and its default message fits",
     (template) => {
-      expect(template.dormantDays.options).toContain(
-        template.dormantDays.default,
-      );
+      // Spec 0107: only «Bienvenida» has no dormant days.
+      expect(template.dormantDays === null).toBe(template.key === "welcome");
+      const days = template.dormantDays ?? { options: [30], default: 30 };
+      expect(days.options).toContain(days.default);
       expect(template.message.default.length).toBeGreaterThan(0);
       expect(template.message.default.length).toBeLessThanOrEqual(
         template.message.maxLength,
@@ -146,12 +189,30 @@ describe("marketing templates catalog", () => {
       // The database check is 1..80 for the name the template gives the campaign.
       expect(template.title.length).toBeLessThanOrEqual(80);
       // …and 3..365 for the days (spec 0104 lowered the floor for #7's «3 días»).
-      for (const days of template.dormantDays.options) {
-        expect(days).toBeGreaterThanOrEqual(3);
-        expect(days).toBeLessThanOrEqual(365);
+      for (const option of days.options) {
+        expect(option).toBeGreaterThanOrEqual(3);
+        expect(option).toBeLessThanOrEqual(365);
       }
     },
   );
+
+  it("welcome: every default is one of its options and the default reminder falls inside the default validity", () => {
+    const welcome = templateByKey("welcome")!.welcome!;
+    expect(welcome.validDays.options).toContain(welcome.validDays.default);
+    expect(welcome.reminderDays.options).toContain(
+      welcome.reminderDays.default,
+    );
+    expect(welcome.redeemFrom.options).toContain(welcome.redeemFrom.default);
+    expect(welcome.reminderDays.default).toBeLessThan(
+      welcome.validDays.default,
+    );
+    expect(welcome.monthlyCap.default).toBeGreaterThanOrEqual(
+      welcome.monthlyCap.min,
+    );
+    expect(TEMPLATES.filter((t) => t.couponRequired).map((t) => t.key)).toEqual(
+      ["welcome"],
+    );
+  });
 
   it("templateByKey finds each key and answers null to anything else", () => {
     expect(templateByKey("missed_you")?.title).toBe("Te extrañamos");

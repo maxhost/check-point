@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
 import { businesses } from "./business";
 import { consumerAccounts, programMemberships } from "./consumer";
+import { walletPushQueue } from "./wallet-push";
 import { campaigns } from "./campaign";
 import { campaignTurns } from "./campaign-turn";
 import { campaignPushes } from "./campaign-push";
@@ -40,6 +41,11 @@ import { type CouponKindValue, rewardChecks } from "./reward-checks";
  * NOT partial, so the issuer's `on conflict (turn_id) do nothing` needs no predicate.
  * `push_id` (spec 0103) is the same for the push channel: one coupon per delivered push,
  * `on conflict (push_id) do nothing`. A coupon has at most ONE origin.
+ *
+ * Spec 0107 / ADR 0099: `welcome_membership_id` is the third origin — the gift of
+ * «Bienvenida» for ONE enrolment, forever (NON-partial unique, `on conflict
+ * (welcome_membership_id) do nothing`). `reminder_queue_id` is its expiry notice once
+ * queued (one coupon, one notice); only a welcome coupon has one.
  */
 export const campaignCoupons = core.table(
   "campaign_coupon",
@@ -59,6 +65,12 @@ export const campaignCoupons = core.table(
       .references(() => programMemberships.id),
     turnId: uuid("turn_id").references(() => campaignTurns.id),
     pushId: uuid("push_id").references(() => campaignPushes.id),
+    welcomeMembershipId: uuid("welcome_membership_id").references(
+      () => programMemberships.id,
+    ),
+    reminderQueueId: uuid("reminder_queue_id").references(
+      () => walletPushQueue.id,
+    ),
     labelSnapshot: text("label_snapshot").notNull(),
     costSnapshot: numeric("cost_snapshot", {
       precision: 12,
@@ -109,9 +121,19 @@ export const campaignCoupons = core.table(
     ),
     uniqueIndex("core_campaign_coupon_turn_unique").on(table.turnId),
     uniqueIndex("core_campaign_coupon_push_unique").on(table.pushId),
+    uniqueIndex("core_campaign_coupon_welcome_unique").on(
+      table.welcomeMembershipId,
+    ),
+    uniqueIndex("core_campaign_coupon_reminder_queue_unique").on(
+      table.reminderQueueId,
+    ),
     check(
       "core_campaign_coupon_single_origin_check",
-      sql`${table.turnId} is null or ${table.pushId} is null`,
+      sql`num_nonnulls(${table.turnId}, ${table.pushId}, ${table.welcomeMembershipId}) <= 1`,
+    ),
+    check(
+      "core_campaign_coupon_reminder_check",
+      sql`${table.reminderQueueId} is null or ${table.welcomeMembershipId} is not null`,
     ),
     // The counter's scan: this consumer's coupons at this business, soonest to expire.
     index("core_campaign_coupon_scan_idx").on(

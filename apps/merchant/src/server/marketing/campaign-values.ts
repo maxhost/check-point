@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { campaigns } from "../schema";
 
 /** Same helper as `locations/shared.ts`: a body that is not an object is an empty one,
  * so every field reports its own `validation` error instead of the whole request
@@ -46,4 +47,38 @@ export function channelsOf(row: {
     ...(row.channelProximity ? (["proximity"] as const) : []),
     ...(row.channelPush ? (["push"] as const) : []),
   ];
+}
+
+/** Spec 0107: «Bienvenida»'s parameters in the DTO; `null` in every other campaign. */
+export type CampaignWelcome = {
+  validDays: number;
+  reminderDays: number;
+  monthlyCap: number;
+  redeemFrom: "next_day" | "same_visit";
+};
+
+/** The four columns as ONE nested select (`welcome` of the campaign reads). */
+export const welcomeSelect = {
+  validDays: campaigns.welcomeValidDays,
+  reminderDays: campaigns.welcomeReminderDays,
+  monthlyCap: campaigns.welcomeMonthlyCap,
+  redeemFrom: campaigns.welcomeRedeemFrom,
+};
+
+/** `null` unless the four are there (`core_campaign_welcome_shape_check`: all or none). */
+export function welcomeOf(row: {
+  validDays: number | null;
+  reminderDays: number | null;
+  monthlyCap: number | null;
+  redeemFrom: string | null;
+}): CampaignWelcome | null {
+  const { validDays, reminderDays, monthlyCap, redeemFrom } = row;
+  if (validDays === null || reminderDays === null || monthlyCap === null)
+    return null;
+  return {
+    validDays,
+    reminderDays,
+    monthlyCap,
+    redeemFrom: redeemFrom as CampaignWelcome["redeemFrom"],
+  };
 }

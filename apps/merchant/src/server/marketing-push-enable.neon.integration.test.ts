@@ -83,7 +83,8 @@ describe.skipIf(!integrationEnabled)("enable with channels", () => {
       channelPush: true,
     });
     expect(created.channels).toEqual(["proximity", "push"]);
-    const [missedYou, winBack] = await listTemplates(seed.business.id);
+    // Spec 0107: «Bienvenida» goes first in the catalog.
+    const [, missedYou, winBack] = await listTemplates(seed.business.id);
     expect(missedYou.channels).toEqual(["proximity", "push"]);
     expect(missedYou.live?.channels).toEqual(["proximity", "push"]);
     expect(winBack.channels).toEqual(["proximity", "push"]);

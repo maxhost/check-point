@@ -10,11 +10,8 @@ import {
 import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
 import { businesses } from "./business";
-import {
-  consumerAccounts,
-  programMemberships,
-  walletPushQueue,
-} from "./consumer";
+import { consumerAccounts, programMemberships } from "./consumer";
+import { walletPushQueue } from "./wallet-push";
 import { campaigns } from "./campaign";
 
 /**
