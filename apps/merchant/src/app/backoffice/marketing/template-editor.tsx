@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Alert, Button } from "../../../ui";
 import {
   asMarketingError,
@@ -31,6 +30,7 @@ import {
 } from "./template-draft";
 import { TemplateFields } from "./template-fields";
 import { readMarketingLocations } from "./marketing-locations";
+import { useTemplateExit } from "./template-exit";
 
 export function TemplateEditor({
   templateKey,
@@ -43,7 +43,6 @@ export function TemplateEditor({
   canReadLocations: boolean;
   canReadCatalog?: boolean;
 }) {
-  const router = useRouter();
   const [template, setTemplate] = useState<TemplateView | null>(null);
   const [settings, setSettings] = useState<MarketingSettings | null>(null);
   const [locations, setLocations] = useState<Location[] | null>(null);
@@ -55,6 +54,8 @@ export function TemplateEditor({
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const writing = useRef(false);
+  const editing = Boolean(template && !template.live);
+  const exit = useTemplateExit(editing);
 
   const load = useCallback(async () => {
     setError(null);
@@ -136,13 +137,13 @@ export function TemplateEditor({
         settings.timeZone,
         locations !== null && draft.channels.includes("proximity"),
       );
-      const result = await marketingRequest<{ campaign: Campaign }>(
+      await marketingRequest<{ campaign: Campaign }>(
         `/api/marketing/templates/${encodeURIComponent(template.key)}/enable`,
         "POST",
         body,
       );
       setConfirm(false);
-      router.push(`/backoffice/marketing/${result.campaign.id}`);
+      exit.activated();
     } catch (reason) {
       const failure = asMarketingError(reason);
       setConfirm(false);
@@ -160,9 +161,12 @@ export function TemplateEditor({
     return <MarketingLoading label="Cargando plantilla…" />;
   return (
     <MarketingShell
-      title={template ? `Activá «${template.title}»` : "Activar plantilla"}
-      description="Revisá los parámetros antes de lanzar una corrida. Una vez activa, quedan congelados."
+      title={
+        template ? `Configurá «${template.title}»` : "Configurar plantilla"
+      }
+      description="La campaña seguirá apagada hasta que guardes y confirmes la activación."
       closeHref="/backoffice/marketing"
+      onClose={editing ? () => exit.ask() : undefined}
     >
       <MarketingToast
         kind="error"
@@ -221,11 +225,11 @@ export function TemplateEditor({
                 }
                 onPress={review}
               >
-                Revisar y activar
+                Guardar y activar
               </Button>
-              <Link className="marketing-link" href="/backoffice/marketing">
-                Volver al catálogo
-              </Link>
+              <Button variant="secondary" onPress={() => exit.ask()}>
+                Volver al listado
+              </Button>
             </div>
           </div>
         </MarketingPanel>
@@ -233,8 +237,8 @@ export function TemplateEditor({
       <MarketingConfirm
         open={confirm}
         busy={busy}
-        title={`¿Activar «${template?.title ?? "esta plantilla"}»?`}
-        confirmLabel="Activar campaña"
+        title={`¿Guardar y activar «${template?.title ?? "esta plantilla"}»?`}
+        confirmLabel="Guardar y activar"
         description={
           draft && settings
             ? `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}\nAusencia: ${draft.dormantDays} días\nMensaje: ${draft.message.trim()}\nInicio: ${draft.startsAt || "Ahora"}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon ? `\nCupón: ${draft.couponLabel} · tope ${draft.couponMaxRedemptions}` : ""}${template?.nearReward ? `\nUmbral: ${draft.nearRewardStamps} sellos o ${draft.nearRewardPercent} % en puntos` : ""}${template?.repeat ? `\nRepetición: ${draft.rewardRepeat === "every_30_days" ? "cada 30 días, hasta dos veces" : "una vez"}` : ""}\nZona horaria: ${settings.timeZone}`
@@ -242,6 +246,16 @@ export function TemplateEditor({
         }
         onCancel={() => setConfirm(false)}
         onConfirm={() => void activate()}
+      />
+      <MarketingConfirm
+        open={Boolean(exit.target)}
+        title="¿Salir sin activar la campaña?"
+        description="La campaña seguirá apagada. Los cambios que hiciste en el editor se perderán."
+        confirmLabel="Salir sin activar"
+        cancelLabel="Seguir editando"
+        danger
+        onCancel={exit.stay}
+        onConfirm={exit.leave}
       />
     </MarketingShell>
   );
