@@ -8,12 +8,18 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — BIENVENIDA: SPEC 0107 CERRADA, IMPLEMENTADOR DESPACHADO (2026-09-27)
+## ⇥ WORKTREE `motor` — BIENVENIDA: 0107 IMPLEMENTADA, REVISOR DESPACHADO (2026-09-27)
 
-**Spec 0107 CERRADA** (`e6f2b5e`, OK del owner textual en la spec). **Implementador despachado** en
-este worktree (E1→E5, un commit por entrega, sin push ni migrar prod; 13 mutaciones). **Retomar con:**
-su handoff → revisor independiente → OK del owner para migrar prod la `0052` → push. Si la sesion se
-cae: `ListAgents` antes de tocar el arbol (puede estar midiendo una mutacion).
+**Spec 0107 IMPLEMENTADA por el implementador** (`6d77b49` E1, `4f1b0a7` E2, `74e655c` E3, `28c3aae` E4,
+`af3b9e6` E5, `bb32155` contrato; sin push, prod sin migrar). Reporte suyo: 5 gates verdes (2013 tests),
+e2e 106/5/0, neon 27/27, M1–M13 en rojo. **Revisor independiente DESPACHADO** (4 mutaciones propias:
+cableado del alta, barrido del tick, unico del regalo, aislamiento; + 3 re-ejecutadas). **Retomar con:**
+su PASS/FAIL → OK del owner para migrar prod la `0052` → push. Si la sesion se cae: `ListAgents` primero.
+**Hallazgo a decidir (verificado por el orquestador):** la UI de GPT lee `template.dormantDays.default`
+sin null-check (`app/backoffice/marketing/template-draft.ts:26`, `:51`) → con E1 desplegada, abrir la
+tarjeta «Bienvenida» tira TypeError, y su `enable` manda `channels`/`dormantDays` (400). Coordinar el
+deploy con GPT (contrato `specs/0107-contratos-de-api.md`). Otros del implementador: cache de claves raiz
+de Google solo se renueva cuando vencen todas; `file-size.sh` sale 0 sin node (ya conocido).
 **Antes (historial):** la plantilla #1+#2 «Bienvenida + Segunda visita» (ADR 0091 §5, prioridad 1). Lo que el owner ya dijo esta mas abajo en este
 archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26)**»): premio en
 la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
