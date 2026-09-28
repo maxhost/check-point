@@ -8,77 +8,25 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — BIENVENIDA EN PROD; SIGUE LA SPEC DE OTRA FEATURE (2026-09-28)
+## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» CERRADA, SIN IMPLEMENTAR (2026-09-28)
 
-**Retomar con: armar la spec de la PROXIMA feature** (la elige el owner al abrir la sesion) mientras GPT
-hace la UI de la Bienvenida; cuando GPT termine, revisar con el owner que hay que mejorar.
-**Spec 0107 «Bienvenida» — IMPLEMENTADA (PASS del revisor) y EN PROD.** Migracion `0052` aplicada a
-`red-violet-38772073`/`main` por `run_sql_transaction` (id 53, verificada por SQL; sin connection
-string en el transcript). Push `8d8196d..ca463a7` (gates: typecheck forzado 3/3, lint, format, 2013
-tests, build forzado 3/3); Vercel `success`; humo del callback de Google → 400. Cierre y deuda (R2/R3)
-en la spec y en `PARQUEADO.md`.
-**UI de GPT ROTA hasta su arreglo (aceptado por el owner):** la tarjeta «Bienvenida» lee
-`template.dormantDays.default` sin null-check (`app/backoffice/marketing/template-draft.ts:26`). El
-prompt para GPT se le entrego al owner; contrato `docs/specs/0107-contratos-de-api.md`.
-**Parqueado por el owner (2026-09-28), en `PARQUEADO.md` → «Pendientes del owner»:** el `--apply` del
-callback de Google (sin el, Android no entrega el regalo; el agente no tiene las credenciales) y el QA con
-iPhone y Android reales.
-**Git:** `motor` va adelante de `origin/main` solo con commits de docs (subir con el proximo push). El
-worktree `check-point-wt/motor-wt/deploy-0107` (rama `deploy-0107`, en `ca463a7`) ya cumplio; se puede
-borrar con `git worktree remove … && git branch -D deploy-0107` (pedir OK: borra una rama).
-
-**Antes (historial):** la plantilla #1+#2 «Bienvenida + Segunda visita» (ADR 0091 §5, prioridad 1). Lo que el owner ya dijo esta mas abajo en este
-archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26)**»): premio en
-la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
-antiabuso aprobado = regalo solo con pase instalado + filtro Apple por dispositivo + tope mensual +
-canje presencial; free vs premium «lo pensaremos luego». El premio ya existe: **spec 0106**.
-**Respuestas del owner (2026-09-27, textual resumido):** (1) «proxima visita» = **cualquier escaneo
-posterior**; (2) vencimiento del cupon **15 dias por defecto, editable** por el merchant; (3) el tope
-mensual lo fija **cada negocio** (por negocio, NO por local); (4) los clientes ya enrolados al encender
-la plantilla **no reciben nada**; (5) **push antes de que venza** tambien.
-**Medido (2026-09-27):** hoy `has_pass` = pase GENERADO (`consumer.wallet_pass` se crea en
-`ensureWalletPass`, `wallet/core.ts:183`, al servir el pase), no instalado. Apple: instalacion real =
-fila en `consumer.wallet_push_device`. Google: callback `save`/`del` por `callbackOptions` de la clase,
-best-effort, SIN id de dispositivo (docs de Google Wallet, «use callbacks for saves and deletions»); el
-codigo no lo tiene. **Owner (AskUserQuestion, 2026-09-27):** Android = **callback de Google** (endpoint
-nuevo; si Google pierde el aviso, sin regalo — se declara); tope por defecto **50 por mes**; push de
-vencimiento **3 dias antes, editable** (1/3/7).
-**Medido:** borrar el pase de Apple BORRA el registro (`unregisterDevice`, `wallet/passkit.ts:108`) →
-el filtro literal se esquiva. **Owner (AskUserQuestion, 2026-09-27, segunda ronda):** «proxima visita»
-= el cupon vale **desde el dia siguiente** (zona del negocio) — reemplaza a «cualquier escaneo
-posterior», que chocaba con el escaneo del alta; filtro Apple **durable y por negocio** (el iPhone
-que ya recibio la bienvenida de ESTE negocio no la recibe de nuevo); vencimiento **7/15/30** (def.
-15); tope mensual = **numero libre** (def. 50).
-
-**Como se trabaja (acordado con el owner):** este worktree (`check-point-wt/motor`, rama `motor`) es el
-backend/API/schema/docs; GPT hace la UI en `main` (`check-point`). Cada uno pushea lo suyo a `main`:
-antes de pushear, `git fetch` + merge de `origin/main` en `motor` + gates sobre el arbol mergeado; push
-fast-forward (`GH_TOKEN= git push origin HEAD:main`); nunca `--force`. Entregas incrementales: cada
-entrega se despliega al terminar (con OK del owner para migrar), el revisor independiente va al final
-de la spec. `gh` NO esta en el PATH del agente: el estado del deploy se lee con
-`curl -s https://api.github.com/repos/maxhost/check-point/commits/<sha>/status` (context `Vercel`).
-
-**Spec 0106 «Premio estructurado de campaña» — IMPLEMENTADA y EN PROD** (ADR 0098, contrato
-`specs/0106-contratos-de-api.md`): sin catalogo de premios; tipos producto gratis/2x1 (producto del
-catalogo o texto), descuento %/monto (moneda del negocio), sellos/puntos extra (al canjear, sin visita,
-409 `program_changed`); regla para cliente y cajero; `couponKinds` en las lecturas de marketing;
-cupones del cliente con `status`/`reason`/`redeemedAt` (comercio suspendido = `unavailable`); resultados
-por premio. PASS del revisor (`2d2437a`). Migraciones `0049`,`0050`,`0051` en PROD (id 50–52 en
-`drizzle.__drizzle_migrations`, verificado por SQL: `kind_snapshot` NOT NULL sin default). Ultimo push
-`97e7307..165d771`, Vercel `success`.
-
-**Tests de `main` VERDES otra vez:** GPT arreglo los rojos de `app/backoffice/marketing/` en `6dbc880`;
-mergeado en `motor` y pusheado (`6dbc880..80a28be`): `pnpm run test` 200 archivos / 1978 tests verdes,
-typecheck forzado 3/3, lint y format limpios. Queda de antes `marketing-backoffice-pages.neon` con 7
-rojos (el doble de sesion no trae `permissions`) — de GPT, no medido de nuevo.
-
-**Accion del owner:** rotar la password de `neondb_owner` (la connection string quedo en el transcript
-al migrar la `0049`; la `0051` se aplico por `run_sql_transaction` sin exponerla).
-
-**Declarado de la 0106, sin tarea:** sellos extra sin tope de casilleros (igual que la acreditacion
-normal); un producto borrado se funde con los premios de texto en E4; la lista del cliente no topea los
-vigentes. Investigacion de mercado del catalogo: `reports/Catálogo de premios en fidelización.md` (fuera
-de git).
+**Retomar con: despachar la spec 0108 a UN implementador y despues UN revisor** (ADR 0071), o lo que
+el owner elija. **Spec `specs/0108-listado-de-clientes-del-comercio.md` — CERRADA** (commit `371f371`),
+con su ADR **0100** (proyeccion `core.business_customer`, aislamiento por filtro, no RLS) y el contrato
+para GPT `specs/0108-contratos-de-api.md`. Decisiones del owner (2026-09-28): tiers FUERA; aparecen
+todos los historicos del negocio, una fila por persona; ultima visita = compra o canje; orden fijo por
+ultima visita; paginas numeradas + anterior/siguiente; lo ven owner y staff `counter`; UI la hace GPT.
+**A confirmar con el owner, sin bloquear:** que el canje de CUPON en mostrador cuente como visita
+(decision del orquestador, spec §Escrituras).
+**Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`, hija de
+`ci-integration`) SIGUE VIVA** con el benchmark (esquema `bench`, 3M filas, rol `bench_app`): borrarla
+pide OK del owner (`delete_branch` es destructivo). El revisor puede reusarla para el benchmark de
+aceptacion o crear otra.
+**Bienvenida (0107):** en PROD; la UI de GPT sigue rota hasta su arreglo (`template-draft.ts:26`); el
+`--apply` del callback de Google y el QA con telefonos reales siguen en `PARQUEADO.md` → «Pendientes
+del owner».
+**Git:** `motor` va adelante de `origin/main` solo con commits de docs. El worktree
+`check-point-wt/motor-wt/deploy-0107` (rama `deploy-0107`) se puede borrar (pedir OK: borra una rama).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
