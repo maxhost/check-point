@@ -21,13 +21,17 @@ sin limite de UX), costo por canje, todo copiado al cupon; cashback extra fuera 
 desplegables (E1 premio con tipo + migracion `0049` + snapshot + cierre de `couponProductId` de otro
 negocio; E2 mostrador con extras; E3 cupones del cliente; E4 resultados por premio), un implementador
 y un revisor al final, 6 mutaciones.
-**E1 EN CURSO:** un implementador (subagente) esta escribiendo E1 en este worktree; el codigo de
-`api/marketing/**`, `server/marketing/**`, schema y la migracion `0049` que aparezca sin commitear es
-SUYO — no tocarlo; si la sesion se cae, `ListAgents` primero. Instruccion: no push, no prod, commit en
-`motor` y parar. **OK del owner (2026-09-27) para aplicar `0049` a PROD** — despues de verificar E1 y
-de probar la migracion en una rama efimera de Neon. **Falta OK del owner** para integrar `motor` en
-`main` + push (GPT tiene cambios sin commitear en `main`). Orden: migracion antes del deploy.
-Despues: E2 (mismo implementador, por mensaje) y la Bienvenida (#1+#2).
+**E1 implementada** en `motor` (`03f1549` + bitacora `1bdb402`, sin push): gates verdes segun el
+implementador; re-verificado por el orquestador typecheck forzado 3/3, unit marketing+counter 368,
+neon `marketing-reward` 4/4 y `marketing-push-delivery` 8/8; M1/M2 rojos por el motivo correcto.
+**En curso:** el mismo implementador escribe la migracion `0050_default_de_tipo_en_snapshots`
+(`DEFAULT 'free_product'` en `kind_snapshot` de `campaign_coupon` y `coupon_redemption`) porque la
+`0049` sola no es compatible hacia atras: el codigo viejo de prod no escribe el tipo. Los cambios de
+schema sin commitear son SUYOS. **La rama de CI de Neon ya tiene la `0049`** (neon-test migra).
+**Siguiente:** verificar `0050` → aplicar `0049`+`0050` a PROD (OK del owner dado) → integrar `motor`
+en `main` + push inmediato (**falta OK del owner**; GPT tiene cambios sin commitear en `main`).
+**Hallazgo para GPT:** `marketing-backoffice-pages.neon` da 7 rojos PREVIOS a E1 (`page.tsx` lee
+`permissions` y el doble de sesion no lo trae). Despues: E2 (mismo implementador) y la Bienvenida.
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
