@@ -8,10 +8,12 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — PREMIO DE CAMPAÑA CERRADO; SIGUE LA BIENVENIDA (2026-09-27)
+## ⇥ WORKTREE `motor` — BIENVENIDA: ADR 0099 + SPEC 0107 EN BORRADOR (2026-09-27)
 
-**Retomar con: la plantilla #1+#2 «Bienvenida + Segunda visita»** (ADR 0091 §5, prioridad 1). Primero
-ADR + spec (decisiones del owner ANTES de la prosa). Lo que el owner ya dijo esta mas abajo en este
+**Retomar con: OK del owner a la spec 0107** (`d0fca53`: ADR 0099, spec 0107, contrato
+`specs/0107-contratos-de-api.md`, filas en INDEX). Con el OK → `cerrada` → UN implementador (E1→E5) →
+revisor independiente → migrar prod la `0052` con OK. Cero codigo escrito. Decisiones del owner: abajo.
+**Antes (historial):** la plantilla #1+#2 «Bienvenida + Segunda visita» (ADR 0091 §5, prioridad 1). Lo que el owner ya dijo esta mas abajo en este
 archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26)**»): premio en
 la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
 antiabuso aprobado = regalo solo con pase instalado + filtro Apple por dispositivo + tope mensual +
