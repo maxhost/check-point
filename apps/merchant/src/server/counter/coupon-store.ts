@@ -1,6 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "../db";
-import { requireDate } from "../marketing/driver-values";
 import {
   businesses,
   campaignCoupons,
@@ -12,6 +11,9 @@ import {
 import { buildCouponBody } from "../wallet/push";
 import { CounterError } from "./core";
 import { decideCouponRedemption } from "./coupon-decision";
+import { grantCouponExtras } from "./coupon-extras";
+
+export { type ActiveCoupon, loadActiveCoupon } from "./coupon-scan";
 
 /**
  * The DB half of the coupon (spec 0065 phase C; over `campaign_coupon` since spec 0102):
@@ -19,68 +21,15 @@ import { decideCouponRedemption } from "./coupon-decision";
  * applies the answer.
  */
 
-export type ActiveCoupon = {
-  couponId: string;
-  label: string;
-  campaignName: string;
-  validUntil: Date;
-};
-
-/**
- * The coupon this consumer can be handed AT THIS COUNTER, or `null` (spec 0102). Same
- * conditions the redemption re-checks under the lock — this one only decides what to
- * PAINT, and the cap may move between the scan and the confirmation, which is why the
- * real guard is the transaction and never this read.
- *
- * It looks at the COUPON only: `valid_from <= now <= valid_until` and no redemption
- * pointing at it. **Not at the turn, not at the campaign's status** (ADR 0094 §2): a
- * paused or ended campaign keeps showing its coupons until their `valid_until`, and a
- * cancelled turn does not take back a coupon the consumer already got. The cap is not
- * read here either: it is decided at the counter, under the lock, with its own message.
- *
- * Raw SQL on purpose: the `not exists` is a CORRELATED subquery, and drizzle renders a
- * bare column unqualified — every alias is explicit (`c.id`). Total order
- * `valid_until asc, id asc`: the one about to expire first is the one to hand over.
- */
-export async function loadActiveCoupon(
-  businessId: string,
-  consumerId: string,
-  now: Date = new Date(),
-): Promise<ActiveCoupon | null> {
-  const at = now.toISOString();
-  const result = await getDb().execute<{
-    id: string;
-    label_snapshot: string;
-    campaign_name: string;
-    valid_until: unknown;
-  }>(sql`
-    select c.id, c.label_snapshot, k.name as campaign_name, c.valid_until
-    from core.campaign_coupon c
-    join core.campaign k on k.id = c.campaign_id
-    where c.business_id = ${businessId}
-      and c.consumer_id = ${consumerId}
-      and c.valid_from <= ${at}::timestamptz
-      and c.valid_until >= ${at}::timestamptz
-      and not exists (
-        select 1 from core.coupon_redemption cr where cr.coupon_id = c.id
-      )
-    order by c.valid_until asc, c.id asc
-    limit 1
-  `);
-  const [row] = result.rows;
-  if (!row) return null;
-  return {
-    couponId: row.id,
-    label: row.label_snapshot,
-    campaignName: row.campaign_name,
-    validUntil: requireDate(row.valid_until),
-  };
-}
-
 export type PersistedCoupon = {
   id: string;
   couponId: string;
   labelSnapshot: string;
+  /** Spec 0106: the reward type, and what an `extra_*` coupon credited (`null` otherwise).
+   * On an idempotent retry they are the STORED values, never recomputed. */
+  kindSnapshot: string;
+  unitsGranted: number | null;
+  balanceAfter: number | null;
   campaignName: string;
   /** The `wallet_push_queue` row enqueued in the SAME transaction; `null` on the
    * idempotent-retry path, so a retry never re-notifies the consumer. */
@@ -91,6 +40,9 @@ const redemptionColumns = {
   id: couponRedemptions.id,
   couponId: couponRedemptions.couponId,
   labelSnapshot: couponRedemptions.labelSnapshot,
+  kindSnapshot: couponRedemptions.kindSnapshot,
+  unitsGranted: couponRedemptions.unitsGranted,
+  balanceAfter: couponRedemptions.balanceAfter,
 };
 
 /** A retry may only return the coupon it asked for. A `clientRequestId` reused over a
@@ -110,7 +62,7 @@ function assertSameCoupon(
 export async function readCouponByRequest(
   businessId: string,
   clientRequestId: string,
-): Promise<{ id: string; couponId: string; labelSnapshot: string } | null> {
+): Promise<Omit<PersistedCoupon, "campaignName" | "pushQueueId"> | null> {
   const [row] = await getDb()
     .select(redemptionColumns)
     .from(couponRedemptions)
@@ -136,6 +88,8 @@ export async function readCouponByRequest(
  *  2. Idempotency, under the lock and BEFORE any business guard.
  *  3. Decide with the PURE function over the LOCKED rows and a `count` taken under the
  *     same lock.
+ *  3b. Spec 0106: an `extra_*` coupon credits the program (`coupon-extras.ts`), or answers
+ *     409 `program_changed` without writing anything.
  *  4. Insert with the coupon's SNAPSHOTS, and — when the coupon came from a turn — mark
  *     that turn's outcome (the turn is still proximity's unit of measurement, ADR 0093 §3).
  *     DECLARED: a coupon whose turn was CANCELLED (e.g. `opt_out`) still marks that turn
@@ -192,6 +146,7 @@ export async function persistCouponRedemption(input: {
         costSnapshot: campaignCoupons.costSnapshot,
         kindSnapshot: campaignCoupons.kindSnapshot,
         productId: campaignCoupons.productId,
+        extraUnitsSnapshot: campaignCoupons.extraUnitsSnapshot,
         validFrom: campaignCoupons.validFrom,
         validUntil: campaignCoupons.validUntil,
       })
@@ -235,6 +190,16 @@ export async function persistCouponRedemption(input: {
     if (!decision.ok)
       throw new CounterError(decision.status, decision.code, decision.message);
 
+    // (3b) Spec 0106: an `extra_*` coupon credits the program HERE — same transaction, after
+    // the locks and the decision, before the insert (`coupon-extras.ts`). A program that
+    // changed is a 409 `program_changed` and nothing is written.
+    const grant = await grantCouponExtras(tx, {
+      businessId: input.businessId,
+      membershipId: coupon.membershipId,
+      kindSnapshot: coupon.kindSnapshot,
+      extraUnitsSnapshot: coupon.extraUnitsSnapshot,
+    });
+
     // (4) Write. Label and cost are SNAPSHOTS of the coupon, never of the campaign as it
     // reads today: editing a campaign may not restate what the counter already handed over.
     const [row] = await tx
@@ -251,6 +216,8 @@ export async function persistCouponRedemption(input: {
         // Spec 0106: what the rewards results group by, copied from the coupon too.
         kindSnapshot: coupon.kindSnapshot,
         productId: coupon.productId,
+        unitsGranted: grant?.unitsGranted ?? null,
+        balanceAfter: grant?.balanceAfter ?? null,
         createdByUserId: input.createdByUserId,
         clientRequestId: input.clientRequestId,
       })

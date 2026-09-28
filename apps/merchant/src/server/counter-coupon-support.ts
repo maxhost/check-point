@@ -81,11 +81,14 @@ export type CouponCard = {
  */
 type TurnOverrides = Partial<
   Omit<Parameters<typeof seedTurn>[0], "campaignId" | "businessId">
->;
+> & {
+  /** Spec 0106: the card's coupon credits extra stamps/points. */
+  extra?: Parameters<typeof seedCampaignCoupon>[0]["extra"];
+};
 
 export async function newCouponCard(
   world: CouponWorld,
-  over: TurnOverrides = {},
+  { extra, ...over }: TurnOverrides = {},
 ): Promise<CouponCard> {
   const consumer = await seedConsumer();
   const resolved = await resolveScan(world.seed.business, consumer.qrToken);
@@ -117,6 +120,7 @@ export async function newCouponCard(
     cost: COUPON_COST,
     validFrom: new Date(now - DAY),
     validUntil: world.endsAt,
+    extra,
   });
   return {
     consumerId: consumer.id,

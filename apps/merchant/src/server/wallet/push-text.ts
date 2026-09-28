@@ -56,8 +56,9 @@ export function buildRedemptionBody(
  *
  * The label is the SNAPSHOT the redemption row stored, never the campaign's label as it
  * reads today — editing a paused campaign's coupon may not rewrite a notice about a
- * coupon already handed over. There is no balance in it because a coupon does NOT touch
- * `points_balance` nor `stamps_count`: saying «te quedan N» here would imply it did.
+ * coupon already handed over. There is no balance in it: only an `extra_*` coupon (spec
+ * 0106) touches `points_balance`/`stamps_count`, and the pass shows the new balance through
+ * the refresh this same push triggers — the text stays the label.
  */
 export function buildCouponBody(label: string): string {
   return `Canjeaste el cupón «${label}» 🎁`;

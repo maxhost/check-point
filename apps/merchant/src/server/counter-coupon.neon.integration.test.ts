@@ -55,10 +55,17 @@ describe.skipIf(!integrationEnabled)(
       // new field — whatever it is called — turns this red until someone adds it on
       // purpose. Nothing internal travels: no consumer id, no membership id, no
       // `client_request_id`, no `*ObjectKey`.
+      // Spec 0106 added the reward, on purpose (contract §E2): still no cost, no ids.
       expect(Object.keys(before.coupon as object).sort()).toEqual([
         "campaignName",
         "couponId",
+        "currencyCode",
+        "discountUnit",
+        "discountValue",
+        "extraUnits",
+        "kind",
         "label",
+        "rule",
         "validUntil",
       ]);
 

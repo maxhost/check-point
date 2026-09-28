@@ -24,16 +24,26 @@ import {
  */
 
 export type CouponRedeemResult = {
-  coupon: { label: string; campaignName: string };
+  coupon: {
+    label: string;
+    campaignName: string;
+    kind: string;
+    unitsGranted: number | null;
+    balanceAfter: number | null;
+  };
 };
 
 /** Response allow-list: what the operator has to HAND OVER and which campaign it came
- * from. No coupon id, no consumer id, no membership id, no `client_request_id`. */
+ * from, and (spec 0106) what an `extra_*` coupon credited — the STORED values, also on an
+ * idempotent retry. No coupon id, no consumer id, no membership id, no `client_request_id`. */
 function toResult(redemption: PersistedCoupon): CouponRedeemResult {
   return {
     coupon: {
       label: redemption.labelSnapshot,
       campaignName: redemption.campaignName,
+      kind: redemption.kindSnapshot,
+      unitsGranted: redemption.unitsGranted,
+      balanceAfter: redemption.balanceAfter,
     },
   };
 }

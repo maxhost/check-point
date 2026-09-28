@@ -57,6 +57,8 @@ export async function seedCampaignCoupon(opts: {
   cost?: string;
   validFrom?: Date;
   validUntil?: Date;
+  /** Spec 0106: an `extra_*` coupon (default: the label-only `free_product`). */
+  extra?: { kind: "extra_stamps" | "extra_points"; units: number };
 }): Promise<string> {
   const [row] = await getDb()
     .insert(campaignCoupons)
@@ -68,7 +70,8 @@ export async function seedCampaignCoupon(opts: {
       turnId: opts.turnId,
       labelSnapshot: opts.label ?? "2x1 en picadas",
       costSnapshot: opts.cost ?? "3.00",
-      kindSnapshot: "free_product",
+      kindSnapshot: opts.extra?.kind ?? "free_product",
+      extraUnitsSnapshot: opts.extra?.units ?? null,
       validFrom: opts.validFrom ?? EPOCH,
       validUntil: opts.validUntil ?? FAR,
     })

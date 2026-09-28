@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
-import { integrationEnabled } from "./counter-integration-support";
+import {
+  integrationEnabled,
+  readBalances,
+} from "./counter-integration-support";
 import {
   type CouponWorld,
   couponBody,
@@ -123,6 +126,30 @@ describe.skipIf(!integrationEnabled)(
         status: 409,
         code: "coupon_cap_reached",
       });
+    }, 180_000);
+
+    it("spec 0106: two operators on the same EXTRA POINTS coupon credit ONCE", async () => {
+      // ORACULO DE M4. The credit happens inside the redemption's transaction, after the
+      // locks: the loser is refused (`already_redeemed`) before crediting, or its insert
+      // aborts and the credit rolls back with it. Crediting in another transaction, or
+      // before the locks, gives 77 + 5 + 5.
+      const w = await world("Carrera extras");
+      const card = await newCouponCard(w, {
+        extra: { kind: "extra_points", units: 5 },
+      });
+
+      await Promise.allSettled(
+        Array.from({ length: CONCURRENCY }, () =>
+          redeemCoupon(
+            w.seed.business,
+            w.seed.userId,
+            couponBody(card, w.seed),
+          ),
+        ),
+      );
+
+      expect(await readCoupons(w.campaignId)).toHaveLength(1);
+      expect((await readBalances(card.membershipId)).points).toBe(82);
     }, 180_000);
   },
 );
