@@ -12,6 +12,7 @@ import { getDb } from "./db";
 import {
   campaignCoupons,
   campaigns,
+  couponRedemptions,
   walletPasses,
   walletPushDevices,
   welcomeDevices,
@@ -146,6 +147,27 @@ export async function readGoogleSavedAt(serial: string): Promise<Date | null> {
     .from(walletPasses)
     .where(eq(walletPasses.serialNumber, serial));
   return row.savedAt;
+}
+
+/** The counter's redemption of a welcome coupon, inserted directly. */
+export async function redeemWelcome(
+  world: WelcomeWorld,
+  person: WelcomeConsumer,
+  couponId: string,
+): Promise<void> {
+  await getDb().insert(couponRedemptions).values({
+    couponId,
+    campaignId: world.campaignId,
+    businessId: world.seed.business.id,
+    consumerId: person.consumerId,
+    membershipId: person.membershipId,
+    locationId: world.seed.locationId,
+    labelSnapshot: "Un café gratis",
+    costSnapshot: "1.20",
+    kindSnapshot: "free_product",
+    createdByUserId: world.seed.userId,
+    clientRequestId: randomUUID(),
+  });
 }
 
 export async function readWelcomeCoupons(businessId: string) {

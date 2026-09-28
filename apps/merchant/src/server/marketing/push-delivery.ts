@@ -14,12 +14,16 @@ import { getDb, withDbTransaction } from "../db";
 import { type CouponReward, pushCouponToIssue } from "./coupon-issue";
 import { toDate } from "./driver-values";
 import { isInPushWindow, nextSendableAt } from "./push-window";
+import { gateWelcomeReminder } from "./welcome-reminder";
 
 export type PushCancelReason =
   | "campaign_inactive"
   | "membership_gone"
   | "opt_out"
-  | "visited";
+  | "visited"
+  // Spec 0107: the welcome expiry notice (`welcome-reminder.ts`).
+  | "redeemed"
+  | "expired";
 
 export type CampaignGate =
   | { kind: "send"; clickId?: string }
@@ -134,8 +138,11 @@ export async function gateCampaignPush(
   now: Date,
 ): Promise<CampaignGate> {
   const facts = await loadGateFacts(queueId);
+  // Spec 0107: no `campaign_push` behind the row → it may be a welcome expiry notice,
+  // decided by its coupon; with no coupon either it is still a plain send.
+  if (!facts) return await gateWelcomeReminder(queueId, now);
   const gate = decideCampaignGate(facts, now);
-  if (gate.kind === "cancel" && facts) {
+  if (gate.kind === "cancel") {
     await withDbTransaction(async (tx) => {
       await tx.execute(sql`
         update consumer.wallet_push_queue

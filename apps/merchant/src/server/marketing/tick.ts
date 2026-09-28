@@ -53,6 +53,7 @@ import {
 import { templateByKey } from "./templates";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
 import { sweepWelcomeGifts } from "./welcome-issue";
+import { enqueueWelcomeReminders } from "./welcome-reminder";
 
 export type TickSummary = {
   campaigns: number;
@@ -234,6 +235,8 @@ export async function runMarketingTick(
       options.businessIds,
       options.consumerIds,
     );
+    // …and its expiry notices (spec 0107 §5), after the sweep.
+    await enqueueWelcomeReminders(db, now, options.businessIds);
 
     const expired = await expireTurns(db, now, options.businessIds);
     const cancelled = Object.values(
