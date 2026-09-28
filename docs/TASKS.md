@@ -60,7 +60,11 @@ schema, aislamiento cazado en los tres ejes. Dos hallazgos BAJOS, sin riesgo de 
 `consumer/coupons.ts:72`; la P2 del revisor sobrevive); (2) el `DEFAULT 'free_product'` de la `0050`
 era solo para la ventana, que ya cerro: propuesta del orquestador, pendiente de OK del owner, migracion
 `0051` que lo quita (vuelve a proteger el NOT NULL contra un emisor que olvide el tipo).
-**Sigue:** esos dos arreglos chicos (el 2 necesita OK para migrar a prod) → la Bienvenida (#1+#2).
+**OK del owner (2026-09-27) para la `0051` a PROD.** **En curso:** el implementador hace los dos
+arreglos (migracion `0051_sin_default_de_tipo` + test de moneda del snapshot); sus cambios sin commitear
+son SUYOS. GPT esta commiteando y pusheando toda la UI a `main` en paralelo: antes de migrar/pushear,
+`git fetch` + merge de `origin/main` en `motor` + gates. **Despues:** handoff + `/clear` (pedido del
+owner) y la Bienvenida (#1+#2).
 **Selector de producto (owner):** usa `GET /api/catalog` (todos los productos, sin paginar, con
 `unitCost`) y filtra en el front; no hay «producto activo» en el catalogo.
 **Sigue:** verificar y pushear E3b → revisor independiente de toda la 0106 (agente aparte; el
