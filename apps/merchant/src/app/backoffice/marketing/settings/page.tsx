@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireBackofficeSession } from "../../../../server/auth-guards";
-import { CampaignComposer } from "../composer";
+import { MarketingSettingsPage } from "../settings-page";
 
 export const dynamic = "force-dynamic";
 export default async function Page() {
@@ -8,11 +8,6 @@ export default async function Page() {
   if (!session.membership.permissions.includes("marketing"))
     redirect("/backoffice");
   return (
-    <CampaignComposer
-      currencyCode={session.business.currencyCode}
-      isOwner={session.membership.role === "owner"}
-      canReadLocations={session.membership.permissions.includes("locations")}
-      canReadCatalog={session.membership.permissions.includes("catalog")}
-    />
+    <MarketingSettingsPage isOwner={session.membership.role === "owner"} />
   );
 }

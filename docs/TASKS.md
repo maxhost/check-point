@@ -21,11 +21,13 @@ transcript al migrar la `0048`).
 QA de #4 (al final): activar `at_risk` en un negocio de prueba con un cliente de 3 visitas semanales y
 15 dias de ausencia; tick; ver el push o el turno.
 
-**UI de marketing EN CURSO por GPT sobre ESTE working tree (2026-09-27):** aparecieron sin commitear
-`app/backoffice/marketing/{marketing-api.ts,marketing-types.ts,marketing-ui.tsx,marketing-home.tsx}` y
-`page.tsx` modificado — NO son de esta sesion; no tocarlos ni commitearlos desde aca. Un rojo intermedio
-(`page.tsx` importando `./marketing-home` antes de existir) se resolvio solo cuando GPT creo el archivo. El prompt que se le paso a GPT esta en el chat (lee el
-contrato 0101, los ADRs 0091–0097, `docs/design-system.md` y usa `backoffice/loyalty` de referencia).
+**UI de marketing EN CURSO por GPT sobre ESTE working tree (2026-09-27):** GPT esta reescribiendo
+TODO `app/backoffice/marketing/**` (archivos nuevos `marketing-*.ts(x)`, `template-draft.ts`; editados
+`page.tsx`, `[id]/**`, `campaigns-list.tsx`) y `app/backoffice/backoffice-navigation.tsx`. NADA de eso es
+de esta sesion: no tocarlo ni commitearlo desde aca; sus gates y su commit son de GPT/owner. Rojos
+intermedios de typecheck mientras escribe son esperables (uno se resolvio solo). Se le paso a GPT, via
+el owner, como trabajar sin las dos APIs faltantes (preview solo #3/#5 por proximidad; locales con
+fallback si `GET /api/locations` da 403).
 **API faltante que reporto GPT — VERIFICADA por el orquestador, sin arreglar (el owner pidio no hacer
 nada todavia):** (1) `GET /api/marketing/audience-preview` solo es exacta para #3/#5 por proximidad:
 no conoce el ritmo (#4 infla), ni el saldo (#7/#8), rechaza < 7 dias (`audience-preview.ts:34`, pero #7

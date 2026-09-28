@@ -75,6 +75,14 @@ export function delegatedLinks(permissions: string[]) {
       permission: "loyalty",
       delegado: true,
     },
+    {
+      href: "/backoffice/marketing",
+      label: "Marketing",
+      icon: Megaphone,
+      segment: "marketing",
+      permission: "marketing",
+      delegado: true,
+    },
   ].filter((item) => item.delegado && permissions.includes(item.permission));
 }
 
@@ -87,7 +95,7 @@ const loyaltyLinks = [
   },
   {
     href: "/backoffice/marketing",
-    label: "Campañas",
+    label: "Marketing",
     icon: Megaphone,
     segment: "marketing",
   },

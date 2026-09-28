@@ -1,0 +1,246 @@
+"use client";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Alert, Button } from "../../../ui";
+import {
+  asMarketingError,
+  errorText,
+  marketingRequest,
+  MarketingApiError,
+} from "./marketing-api";
+import {
+  MarketingConfirm,
+  MarketingError,
+  MarketingLoading,
+  MarketingPanel,
+  MarketingShell,
+  MarketingToast,
+} from "./marketing-ui";
+import type {
+  Campaign,
+  Location,
+  MarketingSettings,
+  TemplateView,
+} from "./marketing-types";
+import {
+  initialTemplateDraft,
+  templateDraftBody,
+  templateDraftErrors,
+  type TemplateDraft,
+} from "./template-draft";
+import { TemplateFields } from "./template-fields";
+
+export function TemplateEditor({
+  templateKey,
+  isOwner,
+  canReadLocations,
+  canReadCatalog = false,
+}: {
+  templateKey: string;
+  isOwner: boolean;
+  canReadLocations: boolean;
+  canReadCatalog?: boolean;
+}) {
+  const router = useRouter();
+  const [template, setTemplate] = useState<TemplateView | null>(null);
+  const [settings, setSettings] = useState<MarketingSettings | null>(null);
+  const [locations, setLocations] = useState<Location[] | null>(null);
+  const [draft, setDraft] = useState<TemplateDraft | null>(null);
+  const [error, setError] = useState<MarketingApiError | null>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [attempted, setAttempted] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const writing = useRef(false);
+
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const [catalog, config, doors] = await Promise.all([
+        marketingRequest<{ templates: TemplateView[] }>(
+          "/api/marketing/templates",
+        ),
+        marketingRequest<{ settings: MarketingSettings }>(
+          "/api/marketing/settings",
+        ),
+        canReadLocations
+          ? marketingRequest<{ locations: Location[] }>("/api/locations").catch(
+              () => null,
+            )
+          : Promise.resolve(null),
+      ]);
+      const found = catalog.templates.find((item) => item.key === templateKey);
+      if (!found) throw new MarketingApiError(404, "not_found");
+      setTemplate(found);
+      setSettings(config.settings);
+      setLocations(doors?.locations ?? null);
+      setDraft((current) => current ?? initialTemplateDraft(found));
+    } catch (reason) {
+      setError(asMarketingError(reason));
+    }
+  }, [canReadLocations, templateKey]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  function change(patch: Partial<TemplateDraft>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setFields((current) => {
+      const next = { ...current };
+      Object.keys(patch).forEach((key) => delete next[key]);
+      return next;
+    });
+  }
+  function review() {
+    if (
+      !template ||
+      !draft ||
+      !settings ||
+      error?.status === 401 ||
+      error?.status === 403 ||
+      error?.uncertain
+    )
+      return;
+    setAttempted(true);
+    const issues = templateDraftErrors(template, draft, settings.timeZone);
+    setFields(issues);
+    if (Object.keys(issues).length) {
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLElement>(
+            '[aria-invalid="true"] input, [aria-invalid="true"] textarea, [aria-invalid="true"] button',
+          )
+          ?.focus(),
+      );
+      return;
+    }
+    setConfirm(true);
+  }
+  async function activate() {
+    if (
+      !template ||
+      !draft ||
+      !settings ||
+      writing.current ||
+      error?.status === 401 ||
+      error?.status === 403 ||
+      error?.uncertain
+    )
+      return;
+    writing.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      const body = templateDraftBody(template, draft, settings.timeZone);
+      const result = await marketingRequest<{ campaign: Campaign }>(
+        `/api/marketing/templates/${encodeURIComponent(template.key)}/enable`,
+        "POST",
+        body,
+      );
+      setConfirm(false);
+      router.push(`/backoffice/marketing/${result.campaign.id}`);
+    } catch (reason) {
+      const failure = asMarketingError(reason);
+      setConfirm(false);
+      setFields(failure.fields);
+      setError(failure);
+      if (failure.code === "no_loyalty_reward") setToast(errorText(failure));
+      if (failure.code === "template_already_live") void load();
+    } finally {
+      writing.current = false;
+      setBusy(false);
+    }
+  }
+
+  if (!template && !error)
+    return <MarketingLoading label="Cargando plantilla…" />;
+  return (
+    <MarketingShell
+      title={template ? `Activá «${template.title}»` : "Activar plantilla"}
+      description="Revisá los parámetros antes de lanzar una corrida. Una vez activa, quedan congelados."
+      closeHref="/backoffice/marketing"
+    >
+      <MarketingToast
+        kind="error"
+        message={toast}
+        dismiss={() => setToast(null)}
+      />
+      {error && error.code !== "no_loyalty_reward" && (
+        <MarketingError
+          error={error}
+          retry={() => void load()}
+          isOwner={isOwner}
+        />
+      )}
+      {template?.live && (
+        <Alert
+          kind="warning"
+          title="Esta plantilla ya tiene una corrida en curso"
+        >
+          <Link
+            className="underline"
+            href={`/backoffice/marketing/${template.live.id}`}
+          >
+            Ver la corrida actual
+          </Link>
+        </Alert>
+      )}
+      {template && draft && settings && !template.live && (
+        <MarketingPanel
+          title="Configuración"
+          description={template.description}
+        >
+          <div className="max-w-3xl">
+            <TemplateFields
+              template={template}
+              draft={draft}
+              settings={settings}
+              locations={locations}
+              canReadCatalog={canReadCatalog}
+              change={change}
+              errors={attempted || Object.keys(fields).length ? fields : {}}
+            />
+            {error?.code === "validation" && (
+              <Alert
+                kind="error"
+                title="Revisá los campos señalados"
+                className="mt-5"
+              />
+            )}
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button
+                isDisabled={
+                  busy ||
+                  error?.status === 401 ||
+                  error?.status === 403 ||
+                  Boolean(error?.uncertain)
+                }
+                onPress={review}
+              >
+                Revisar y activar
+              </Button>
+              <Link className="marketing-link" href="/backoffice/marketing">
+                Volver al catálogo
+              </Link>
+            </div>
+          </div>
+        </MarketingPanel>
+      )}
+      <MarketingConfirm
+        open={confirm}
+        busy={busy}
+        title={`¿Activar «${template?.title ?? "esta plantilla"}»?`}
+        confirmLabel="Activar campaña"
+        description={
+          draft && settings
+            ? `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}\nAusencia: ${draft.dormantDays} días\nMensaje: ${draft.message.trim()}\nInicio: ${draft.startsAt || "Ahora"}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon ? `\nCupón: ${draft.couponLabel} · tope ${draft.couponMaxRedemptions}` : ""}${template?.nearReward ? `\nUmbral: ${draft.nearRewardStamps} sellos o ${draft.nearRewardPercent} % en puntos` : ""}${template?.repeat ? `\nRepetición: ${draft.rewardRepeat === "every_30_days" ? "cada 30 días, hasta dos veces" : "una vez"}` : ""}\nZona horaria: ${settings.timeZone}`
+            : ""
+        }
+        onCancel={() => setConfirm(false)}
+        onConfirm={() => void activate()}
+      />
+    </MarketingShell>
+  );
+}

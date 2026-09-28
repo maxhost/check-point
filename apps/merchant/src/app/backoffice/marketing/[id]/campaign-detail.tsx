@@ -1,154 +1,242 @@
 "use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ModuleHeader, Toast } from "../../../components/ui";
-import type { Campaign } from "../../../../server/marketing/campaign-store";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Button } from "../../../../ui";
+import type { Campaign as ServerCampaign } from "../../../../server/marketing/campaign-store";
+import type { CampaignResults as ServerResults } from "../../../../server/marketing/results";
 import {
-  isEditable,
-  type CampaignAction,
-} from "../../../../server/marketing/campaign-transitions";
-import type { CampaignResults } from "../../../../server/marketing/results";
+  asMarketingError,
+  marketingRequest,
+  type MarketingApiError,
+} from "../marketing-api";
+import {
+  MarketingConfirm,
+  MarketingError,
+  MarketingPanel,
+  MarketingShell,
+  MarketingToast,
+} from "../marketing-ui";
+import type { Campaign, CampaignResults } from "../marketing-types";
 import {
   ACTION_LABELS,
   PAUSE_REASON_LABELS,
   STATUS_LABELS,
   availableActions,
-  formatDay,
 } from "../campaign-labels";
 import { CampaignResultsView } from "../results-view";
 
-/**
- * The detail screen (spec 0065): the definition, the four actions and the results.
- *
- * The buttons offered come from `availableActions`, which reads the SAME transition table
- * the routes read — a second list here is how the screen ends up offering a button the
- * server answers with 409 `invalid_transition`.
- *
- * `notice` is displayed and not swallowed: `pause` and `end` do NOT retire the live
- * turns, the next tick does, and an owner who reads «pausada» while their door is still
- * on a customer's pass would reasonably think it failed.
- */
+type CampaignLike = Campaign | ServerCampaign;
+const dateLabel = (value: string | Date | null) =>
+  value ? new Date(value).toISOString().slice(0, 10) : "sin fecha de fin";
+
 export function CampaignDetail({
   campaign: initial,
   results,
   locationNames,
   currencyCode,
+  isOwner = true,
+  refresh,
+  loadError,
 }: {
-  campaign: Campaign;
-  results: CampaignResults;
+  campaign: CampaignLike;
+  results: CampaignResults | ServerResults;
   locationNames: Record<string, string>;
   currencyCode: string;
+  isOwner?: boolean;
+  refresh?: () => void;
+  loadError?: MarketingApiError | null;
 }) {
-  const router = useRouter();
-  const [campaign, setCampaign] = useState(initial);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [campaign, setCampaign] = useState<CampaignLike>(initial);
+  useEffect(() => setCampaign(initial), [initial]);
+  const [error, setError] = useState<MarketingApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<"end" | "archive" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const writing = useRef(false);
+  const actions = availableActions(campaign.status).filter((action) => {
+    if ((action === "end" || action === "archive") && !isOwner) return false;
+    if (campaign.templateKey && action === "archive") return false;
+    return true;
+  });
 
-  async function run(action: CampaignAction) {
-    if (busy) return;
+  async function run(action: "activate" | "pause" | "end" | "archive") {
+    if (
+      writing.current ||
+      ((action === "end" || action === "archive") && !isOwner)
+    )
+      return;
+    writing.current = true;
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const res = await fetch(
-        `/api/marketing/campaigns/${campaign.id}/${action}`,
-        { method: "POST" },
-      );
-      const payload = (await res.json().catch(() => null)) as {
-        campaign?: Campaign;
+      const url =
+        action === "end" && campaign.templateKey
+          ? `/api/marketing/templates/${encodeURIComponent(campaign.templateKey)}/disable`
+          : `/api/marketing/campaigns/${campaign.id}/${action}`;
+      const response = await marketingRequest<{
+        campaign: Campaign;
         notice?: string;
-        error?: string;
-      } | null;
-      if (!res.ok || !payload?.campaign)
-        throw new Error(payload?.error ?? "No pudimos aplicar esa acción.");
-      setCampaign(payload.campaign);
+      }>(url, "POST");
+      setCampaign(response.campaign);
+      setConfirm(null);
       setNotice(
-        payload.notice ??
-          `Campaña ${STATUS_LABELS[payload.campaign.status].toLowerCase()}.`,
+        response.notice ??
+          `Campaña ${STATUS_LABELS[response.campaign.status].toLowerCase()}.`,
       );
-      // The results are server-rendered: after a transition they are stale (the tick may
-      // have moved turns since) and a refresh is what re-reads them.
-      router.refresh();
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "No pudimos aplicar esa acción.",
-      );
+      refresh?.();
+    } catch (reason) {
+      setError(asMarketingError(reason));
     } finally {
+      writing.current = false;
       setBusy(false);
     }
   }
-
   return (
-    <main className="merchant-shell">
-      <div className="backoffice-home">
-        <ModuleHeader
-          eyebrow="Campaña"
-          title={campaign.name}
-          closeHref="/backoffice/marketing"
+    <MarketingShell
+      title={campaign.name}
+      description="Configuración y resultados de esta corrida."
+      closeHref="/backoffice/marketing"
+    >
+      <MarketingToast message={notice} dismiss={() => setNotice(null)} />
+      {(error || loadError) && (
+        <MarketingError
+          error={(error || loadError)!}
+          retry={refresh}
+          isOwner={isOwner}
         />
-        <Toast
-          message={error ?? notice}
-          kind={error ? "error" : "success"}
-          onDismiss={() => {
-            setError(null);
-            setNotice(null);
-          }}
-        />
-        <section className="rule-builder">
-          <span className={`status ${campaign.status}`}>
-            {STATUS_LABELS[campaign.status]}
-          </span>
-          {campaign.status === "paused" && campaign.pauseReason !== null && (
-            <p className="field-help">
-              {PAUSE_REASON_LABELS[campaign.pauseReason] ??
-                campaign.pauseReason}
-            </p>
-          )}
-          <ul>
-            <li>Dormidos hace {campaign.dormantDays} días</li>
-            <li>Mensaje: «{campaign.message}»</li>
-            <li>
-              Locales:{" "}
-              {campaign.locationIds
-                .map((id) => locationNames[id] ?? "local archivado")
-                .join(", ")}
-            </li>
-            <li>
-              Desde {formatDay(campaign.startsAt)} hasta{" "}
-              {formatDay(campaign.endsAt)}
-            </li>
-            <li>
+      )}
+      <MarketingPanel title="La campaña">
+        <span className="inline-flex rounded-full border border-border-strong bg-surface-subtle px-3 py-1 text-sm font-semibold">
+          {STATUS_LABELS[campaign.status]}
+        </span>
+        {campaign.status === "paused" && campaign.pauseReason && (
+          <Alert className="mt-4" kind="warning" title="Campaña pausada">
+            {PAUSE_REASON_LABELS[campaign.pauseReason] ??
+              "La campaña está pausada."}
+          </Alert>
+        )}
+        <dl className="marketing-details mt-5 grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt>Audiencia</dt>
+            <dd>Dormidos hace {campaign.dormantDays} días</dd>
+          </div>
+          <div>
+            <dt>Canales</dt>
+            <dd>
+              {campaign.channels
+                .map((channel) => (channel === "push" ? "Push" : "Proximidad"))
+                .join(" y ")}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt>Mensaje</dt>
+            <dd>{campaign.message}</dd>
+          </div>
+          <div>
+            <dt>Vigencia</dt>
+            <dd>
+              Desde {dateLabel(campaign.startsAt)} hasta{" "}
+              {dateLabel(campaign.endsAt)}
+            </dd>
+          </div>
+          <div>
+            <dt>Locales</dt>
+            <dd>
+              {campaign.locationIds.length
+                ? Object.keys(locationNames).length
+                  ? campaign.locationIds
+                      .map((id) => locationNames[id] ?? "local archivado")
+                      .join(", ")
+                  : `${campaign.locationIds.length} locales seleccionados`
+                : "No se usan locales en esta corrida"}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt>Cupón</dt>
+            <dd>
               {campaign.couponLabel === null
                 ? "Sin cupón"
-                : `Cupón: ${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje · tope ${campaign.couponMaxRedemptions}`}
-            </li>
-          </ul>
-          <div className="composer-actions">
-            {isEditable(campaign.status) && (
+                : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje · tope ${campaign.couponMaxRedemptions}`}
+            </dd>
+          </div>
+          {campaign.nearRewardStamps !== null && (
+            <div>
+              <dt>Faltante máximo</dt>
+              <dd>
+                {campaign.nearRewardStamps} sellos o{" "}
+                {campaign.nearRewardPercent} % en puntos
+              </dd>
+            </div>
+          )}
+          {campaign.rewardRepeat && (
+            <div>
+              <dt>Repetición</dt>
+              <dd>
+                {campaign.rewardRepeat === "once"
+                  ? "Una vez"
+                  : "Cada 30 días, hasta dos veces"}
+              </dd>
+            </div>
+          )}
+        </dl>
+        {campaign.templateKey && (
+          <p className="mt-4 text-sm text-content-muted">
+            Para cambiar los parámetros, finalizá esta corrida y activá una
+            nueva desde el catálogo.
+          </p>
+        )}
+        <div className="mt-6 flex flex-col flex-wrap gap-3 sm:flex-row">
+          {!campaign.templateKey &&
+            (campaign.status === "draft" || campaign.status === "paused") && (
               <Link
-                className="small-button"
+                className="marketing-link"
                 href={`/backoffice/marketing/${campaign.id}/edit`}
               >
                 Editar
               </Link>
             )}
-            {availableActions(campaign.status).map((action) => (
-              <button
-                key={action}
-                className={action === "activate" ? "button" : "small-button"}
-                disabled={busy}
-                onClick={() => void run(action)}
-              >
-                {ACTION_LABELS[action]}
-              </button>
-            ))}
-          </div>
-        </section>
-        <CampaignResultsView results={results} currencyCode={currencyCode} />
-      </div>
-    </main>
+          {actions.map((action) => (
+            <Button
+              key={action}
+              variant={
+                action === "activate"
+                  ? "primary"
+                  : action === "end" || action === "archive"
+                    ? "danger"
+                    : "secondary"
+              }
+              isDisabled={busy}
+              onPress={() =>
+                action === "end" || action === "archive"
+                  ? setConfirm(action)
+                  : void run(action)
+              }
+            >
+              {ACTION_LABELS[action]}
+            </Button>
+          ))}
+        </div>
+      </MarketingPanel>
+      <CampaignResultsView
+        results={results}
+        currencyCode={currencyCode}
+        channels={campaign.channels}
+      />
+      <MarketingConfirm
+        open={Boolean(confirm)}
+        title={
+          confirm === "archive" ? "¿Archivar campaña?" : "¿Finalizar campaña?"
+        }
+        description={`${confirm === "archive" ? "La campaña quedará archivada." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
+        confirmLabel={confirm === "archive" ? "Archivar" : "Finalizar"}
+        danger
+        busy={busy}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          if (confirm) void run(confirm);
+        }}
+      />
+    </MarketingShell>
   );
 }

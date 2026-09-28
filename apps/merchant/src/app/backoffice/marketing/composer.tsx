@@ -1,253 +1,279 @@
 "use client";
-
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ModuleHeader, Toast } from "../../components/ui";
-import { ConfirmDialog } from "../../components/confirm-dialog";
-import type { AudiencePreview } from "../../../server/marketing/audience-preview";
-import type { LocationDTO } from "../../../server/locations";
-import { AudienceBlock, ChannelBlock, MessageBlock } from "./composer-blocks";
-import { CouponBlock, ReviewBlock } from "./composer-review";
 import {
-  draftBody,
-  draftFromCampaign,
-  emptyDraft,
-  todayISO,
-  type ComposerDraft,
-} from "./composer-draft";
-import type { Campaign } from "../../../server/marketing/campaign-store";
+  asMarketingError,
+  marketingRequest,
+  MarketingApiError,
+} from "./marketing-api";
+import type { Campaign, Location, MarketingSettings } from "./marketing-types";
+import {
+  customBody,
+  customErrors,
+  initialCustomDraft,
+  type CustomDraft,
+} from "./custom-draft";
+import type { AudiencePreview } from "./custom-fields";
+import { ComposerView } from "./composer-view";
+import { localBusinessDate } from "./marketing-date";
+import type { Campaign as ServerCampaign } from "../../../server/marketing/campaign-store";
+import type { AudiencePreview as ServerPreview } from "../../../server/marketing/audience-preview";
 
-const JSON_HEADERS = { "content-type": "application/json" };
+function serializedCampaign(campaign: ServerCampaign): Campaign {
+  return {
+    ...campaign,
+    startsAt: campaign.startsAt.toISOString(),
+    endsAt: campaign.endsAt?.toISOString() ?? null,
+    activatedAt: campaign.activatedAt?.toISOString() ?? null,
+    endedAt: campaign.endedAt?.toISOString() ?? null,
+    createdAt: campaign.createdAt.toISOString(),
+  };
+}
 
-type ApiError = {
-  error?: string;
-  code?: string;
-  fields?: Record<string, string>;
-};
-
-/**
- * The composer (spec 0065): one page that reads like a sentence, five closed blocks, no
- * free text outside the name, the message and the coupon's label.
- *
- * `initialPreview` is computed by the PAGE, server-side, over the default audience. It
- * is not test scaffolding: without it the first paint shows «calculando» and the owner
- * watches the numbers they came for arrive a beat late. The live refresh while they
- * change days or doors is the `useEffect` below.
- *
- * `createdId` is what stops a second press from creating a second campaign. «Activar» is
- * two calls — create, then activate — and if the second one fails (402 `plan_not_allowed`
- * is the expected one) the campaign EXISTS as a draft. Saying so and linking to it is
- * the honest answer; retrying then activates the draft that is already there.
- *
- * With `campaign` set it is the EDIT screen instead (`draft`/`paused` only, which the
- * page resolves): same five blocks, a `PATCH`, and NO «Activar» — activating stays on the
- * detail screen, where the four transitions live together.
- */
 export function CampaignComposer({
-  locations,
-  products,
-  remainingQuota,
-  currencyCode,
+  campaignId,
+  currencyCode = "USD",
+  isOwner = true,
+  canReadLocations = true,
+  canReadCatalog = false,
+  locations: initialLocations,
   initialPreview,
-  campaign,
+  campaign: initialCampaign,
+  remainingQuota,
 }: {
-  locations: LocationDTO[];
-  products: { id: string; name: string }[];
-  remainingQuota: number;
-  currencyCode: string;
-  initialPreview: AudiencePreview | null;
-  campaign?: Campaign;
+  campaignId?: string;
+  currencyCode?: string;
+  isOwner?: boolean;
+  canReadLocations?: boolean;
+  canReadCatalog?: boolean;
+  locations?: Location[];
+  initialPreview?: ServerPreview;
+  campaign?: ServerCampaign;
+  remainingQuota?: number;
 }) {
   const router = useRouter();
-  const [draft, setDraft] = useState<ComposerDraft>(() =>
-    campaign
-      ? draftFromCampaign(campaign)
-      : emptyDraft(
-          todayISO(),
-          locations.map((location) => location.id),
-        ),
+  const effectiveId = campaignId ?? initialCampaign?.id;
+  const [locations, setLocations] = useState<Location[] | null>(
+    initialLocations ?? null,
+  );
+  const [settings, setSettings] = useState<MarketingSettings | null>(
+    initialLocations
+      ? {
+          timeZone: "America/Guayaquil",
+          pushWindow: { startHour: 9, endHour: 21 },
+        }
+      : null,
+  );
+  const [draft, setDraft] = useState<CustomDraft | null>(
+    initialLocations
+      ? initialCustomDraft(
+          initialCampaign ? serializedCampaign(initialCampaign) : null,
+          "America/Guayaquil",
+          initialLocations.map((location) => location.id),
+        )
+      : null,
   );
   const [preview, setPreview] = useState<AudiencePreview | null>(
-    initialPreview,
+    initialPreview ?? null,
   );
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [error, setError] = useState<MarketingApiError | null>(null);
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  // «confirmacion + respuesta del servidor; sin exito optimista» (spec 0065): activating
-  // puts the campaign in front of real people, so it asks first, and nothing on screen
-  // moves until the server answers.
-  const [confirming, setConfirming] = useState(false);
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const writing = useRef(false);
+  const previewSequence = useRef(0);
 
-  const chosenDoors = draft.locationIds.join(",");
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams({
-      dormantDays: String(draft.dormantDays),
-      locationIds: chosenDoors,
-    });
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const res = await fetch(
-            `/api/marketing/audience-preview?${params.toString()}`,
-            { signal: controller.signal },
-          );
-          const payload = (await res.json()) as {
-            preview?: AudiencePreview;
-          };
-          // A 400 over `dormantDays` out of range is NOT an error toast: the owner is
-          // mid-typing. The counts go blank and the block says «calculando», which is
-          // what an unanswerable audience looks like.
-          setPreview(res.ok ? (payload.preview ?? null) : null);
-        } catch {
-          /* aborted or offline: the previous counts stay on screen */
-        }
-      })();
-    }, 300);
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [draft.dormantDays, chosenDoors]);
-
-  async function send(url: string, method: string, body?: unknown) {
-    const res = await fetch(url, {
-      method,
-      headers: JSON_HEADERS,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    const payload = (await res.json().catch(() => null)) as
-      | (ApiError & { campaign?: { id: string } })
-      | null;
-    if (!res.ok) {
-      setErrors(payload?.fields ?? {});
-      throw new Error(payload?.error ?? "No pudimos guardar la campaña.");
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const [doors, config, stored] = await Promise.all([
+        canReadLocations
+          ? marketingRequest<{ locations: Location[] }>("/api/locations")
+          : Promise.resolve({ locations: [] }),
+        marketingRequest<{ settings: MarketingSettings }>(
+          "/api/marketing/settings",
+        ),
+        effectiveId
+          ? marketingRequest<{ campaign: Campaign }>(
+              `/api/marketing/campaigns/${encodeURIComponent(effectiveId)}`,
+            )
+          : Promise.resolve(null),
+      ]);
+      if (stored?.campaign.templateKey)
+        throw new MarketingApiError(409, "template_not_editable");
+      if (
+        stored?.campaign.status !== undefined &&
+        !["draft", "paused"].includes(stored.campaign.status)
+      )
+        throw new MarketingApiError(409, "not_editable");
+      setLocations(doors.locations);
+      setSettings(config.settings);
+      setDraft(
+        (current) =>
+          current ?? {
+            ...initialCustomDraft(
+              stored?.campaign ?? null,
+              config.settings.timeZone,
+              doors.locations
+                .filter((location) => location.status === "active")
+                .map((location) => location.id),
+            ),
+            ...(stored
+              ? {}
+              : {
+                  startsAt: localBusinessDate(
+                    new Date().toISOString(),
+                    config.settings.timeZone,
+                  ),
+                }),
+          },
+      );
+    } catch (reason) {
+      setError(asMarketingError(reason));
     }
-    setErrors({});
-    return payload?.campaign?.id ?? null;
-  }
+  }, [effectiveId, canReadLocations]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  async function create(): Promise<string> {
-    if (createdId !== null) return createdId;
-    const id = await send("/api/marketing/campaigns", "POST", draftBody(draft));
-    if (id === null) throw new Error("No pudimos guardar la campaña.");
-    setCreatedId(id);
-    return id;
-  }
+  useEffect(() => {
+    if (!draft || !locations) return;
+    const sequence = ++previewSequence.current;
+    const timer = window.setTimeout(async () => {
+      try {
+        const query = new URLSearchParams({
+          dormantDays: String(draft.dormantDays),
+          locationIds: draft.locationIds.join(","),
+        });
+        const data = await marketingRequest<{ preview: AudiencePreview }>(
+          `/api/marketing/audience-preview?${query}`,
+        );
+        if (sequence === previewSequence.current) {
+          setPreview(data.preview);
+          setPreviewError(null);
+        }
+      } catch {
+        if (sequence === previewSequence.current) {
+          setPreview(null);
+          setPreviewError("Volvé a intentar cambiando los días o los locales.");
+        }
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [draft?.dormantDays, draft?.locationIds, locations]);
 
+  function change(patch: Partial<CustomDraft>) {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setFields((current) => {
+      const next = { ...current };
+      Object.keys(patch).forEach((key) => delete next[key]);
+      return next;
+    });
+  }
+  function review(activate: boolean) {
+    if (
+      !draft ||
+      !settings ||
+      error?.status === 401 ||
+      error?.status === 403 ||
+      error?.uncertain
+    )
+      return;
+    const issues = customErrors(draft, settings.timeZone);
+    setFields(issues);
+    if (Object.keys(issues).length) {
+      requestAnimationFrame(() =>
+        document
+          .querySelector<HTMLElement>(
+            '[aria-invalid="true"] input, [aria-invalid="true"] textarea',
+          )
+          ?.focus(),
+      );
+      return;
+    }
+    if (activate) setConfirm(true);
+    else void save(false);
+  }
   async function save(activate: boolean) {
-    if (busy) return;
+    if (
+      !draft ||
+      !settings ||
+      writing.current ||
+      createdId ||
+      error?.status === 401 ||
+      error?.status === 403 ||
+      error?.uncertain
+    )
+      return;
+    writing.current = true;
     setBusy(true);
     setError(null);
     try {
-      if (campaign) {
-        await send(
-          `/api/marketing/campaigns/${campaign.id}`,
-          "PATCH",
-          draftBody(draft),
-        );
-        router.push(`/backoffice/marketing/${campaign.id}`);
-        return;
-      }
-      const id = await create();
-      if (activate)
-        await send(`/api/marketing/campaigns/${id}/activate`, "POST");
-      router.push(`/backoffice/marketing/${id}`);
-    } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "No pudimos guardar la campaña.",
+      const body = customBody(draft, settings.timeZone);
+      const data = await marketingRequest<{ campaign: Campaign }>(
+        effectiveId
+          ? `/api/marketing/campaigns/${encodeURIComponent(effectiveId)}`
+          : "/api/marketing/campaigns",
+        effectiveId ? "PATCH" : "POST",
+        body,
       );
+      const id = data.campaign.id;
+      setCreatedId(id);
+      if (activate) {
+        try {
+          await marketingRequest(
+            `/api/marketing/campaigns/${id}/activate`,
+            "POST",
+          );
+        } catch (reason) {
+          setError(asMarketingError(reason));
+          setConfirm(false);
+          setNotice(
+            "El borrador se guardó. La activación necesita atención; consultá la campaña antes de reintentar.",
+          );
+          return;
+        }
+      }
+      router.push(`/backoffice/marketing/${id}`);
+    } catch (reason) {
+      const failure = asMarketingError(reason);
+      setError(failure);
+      setFields(failure.fields);
+      setConfirm(false);
+    } finally {
+      writing.current = false;
       setBusy(false);
     }
   }
 
   return (
-    <main className="merchant-shell">
-      <div className="backoffice-home">
-        <ModuleHeader
-          eyebrow={campaign ? "Editar campaña" : "Nueva campaña"}
-          title={campaign ? campaign.name : "Armá tu campaña de proximidad"}
-          closeHref={
-            campaign
-              ? `/backoffice/marketing/${campaign.id}`
-              : "/backoffice/marketing"
-          }
-        />
-        <Toast message={error} kind="error" onDismiss={() => setError(null)} />
-        {error !== null && createdId !== null && (
-          <p className="field-help">
-            La campaña quedó guardada como borrador.{" "}
-            <Link href={`/backoffice/marketing/${createdId}`}>Verla</Link>
-          </p>
-        )}
-        <section className="rule-builder">
-          <label htmlFor="campaign-name">Nombre de la campaña</label>
-          <input
-            id="campaign-name"
-            maxLength={80}
-            value={draft.name}
-            placeholder="Dormidos de septiembre"
-            onChange={(event) =>
-              setDraft({ ...draft, name: event.target.value })
-            }
-          />
-          {errors.name && <p className="field-error">{errors.name}</p>}
-        </section>
-        <AudienceBlock
-          draft={draft}
-          onChange={setDraft}
-          errors={errors}
-          locations={locations}
-          preview={preview}
-        />
-        <ChannelBlock />
-        <MessageBlock draft={draft} onChange={setDraft} errors={errors} />
-        <CouponBlock
-          draft={draft}
-          onChange={setDraft}
-          errors={errors}
-          products={products}
-        />
-        <ReviewBlock
-          draft={draft}
-          onChange={setDraft}
-          errors={errors}
-          preview={preview}
-          remainingQuota={remainingQuota}
-          currencyCode={currencyCode}
-        />
-        <div className="composer-actions">
-          <button
-            className="small-button"
-            disabled={busy}
-            onClick={() => void save(false)}
-          >
-            {campaign ? "Guardar cambios" : "Guardar borrador"}
-          </button>
-          {!campaign && (
-            <button
-              className="button"
-              disabled={busy}
-              onClick={() => setConfirming(true)}
-            >
-              Activar
-            </button>
-          )}
-        </div>
-        <ConfirmDialog
-          open={confirming}
-          title="¿Activar esta campaña?"
-          description="Tu local va a empezar a aparecer en el Wallet de la audiencia elegida cuando pase cerca. Un 10 % al azar no lo va a ver: así medimos si funciona."
-          confirmLabel="Activar"
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => {
-            setConfirming(false);
-            void save(true);
-          }}
-        />
-      </div>
-    </main>
+    <ComposerView
+      effectiveId={effectiveId}
+      currencyCode={currencyCode}
+      isOwner={isOwner}
+      canReadLocations={canReadLocations}
+      canReadCatalog={canReadCatalog}
+      locations={locations}
+      settings={settings}
+      draft={draft}
+      preview={preview}
+      previewError={previewError}
+      error={error}
+      fields={fields}
+      confirm={confirm}
+      busy={busy}
+      createdId={createdId}
+      notice={notice}
+      remainingQuota={remainingQuota}
+      load={load}
+      change={change}
+      review={review}
+      save={save}
+      setConfirm={setConfirm}
+      setNotice={setNotice}
+    />
   );
 }
