@@ -1,7 +1,7 @@
 ---
 spec: 0107
 fecha: 2026-09-27
-estado: borrador
+estado: cerrada
 resumen: Plantilla #1+#2 «Bienvenida» (`welcome`), implementa el ADR 0099. Cupon con premio estructurado a cada alta nueva al INSTALAR el pase (registro Apple, callback firmado de Google, alta con pase ya instalado, barrido en el tick); vale desde el dia siguiente (zona del negocio) o misma visita; vence 7/15/30 d con push de aviso 1/3/7 d antes; tope mensual por negocio; filtro Apple durable por negocio; oferta en la pagina de alta; estado `scheduled` en los cupones del cliente. Migracion `0052`. Contrato `specs/0107-contratos-de-api.md`.
 disjunta: si
 archivos: apps/merchant/drizzle/0052_*, apps/merchant/src/server/schema/{campaign,campaign-coupon,consumer}.ts + nuevo schema/welcome-device.ts, apps/merchant/src/server/marketing/{templates,template-input,template-store,reward-input,campaign-values,push-delivery,tick}.ts + nuevos welcome-*.ts, apps/merchant/src/server/wallet/ nuevo google-callback.ts, apps/merchant/src/server/consumer/{enrollment,coupons,coupon-status}.ts + nuevo enroll-landing.ts, rutas de passkit register, enroll y nueva google/callback, tools/google-wallet-callback.ts, docs/specs/0101-contratos-de-api.md, docs/specs/0107-contratos-de-api.md
@@ -285,5 +285,6 @@ antes del deploy). La configuracion de `callbackOptions` (E3) se corre con OK, d
 
 ## Abierto
 
-Nada bloqueante: todas las decisiones de producto estan en el ADR 0099. **Falta el OK del owner a esta
-spec** para pasarla a `cerrada`.
+Nada. **OK del owner (2026-09-27, textual):** «ok, cerrado y despacha el omplementador». Incluye las
+elecciones *(ORQUESTADOR)* del ADR 0099. **El OK para migrar prod la `0052` NO esta dado:** se pide
+antes del deploy de E1.
