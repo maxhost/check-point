@@ -11,7 +11,6 @@ import {
 import {
   MarketingConfirm,
   MarketingError,
-  MarketingLoading,
   MarketingPanel,
   MarketingShell,
   MarketingToast,
@@ -31,6 +30,7 @@ import {
 import { TemplateFields } from "./template-fields";
 import { readMarketingLocations } from "./marketing-locations";
 import { useTemplateExit } from "./template-exit";
+import { MarketingTemplateSkeleton } from "./marketing-skeletons";
 
 export function TemplateEditor({
   templateKey,
@@ -157,8 +157,7 @@ export function TemplateEditor({
     }
   }
 
-  if (!template && !error)
-    return <MarketingLoading label="Cargando plantilla…" />;
+  if (!template && !error) return <MarketingTemplateSkeleton />;
   return (
     <MarketingShell
       title={

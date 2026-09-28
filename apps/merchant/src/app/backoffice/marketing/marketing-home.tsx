@@ -12,7 +12,6 @@ import {
 import {
   MarketingConfirm,
   MarketingError,
-  MarketingLoading,
   MarketingPanel,
   MarketingShell,
   MarketingToast,
@@ -24,6 +23,7 @@ import type {
 } from "./marketing-types";
 import { CampaignsList } from "./campaigns-list";
 import { TemplateRow } from "./template-row";
+import { MarketingCatalogSkeleton } from "./marketing-skeletons";
 
 export function MarketingHome({
   isOwner,
@@ -96,7 +96,7 @@ export function MarketingHome({
     }
   }
 
-  if (!templates && !error) return <MarketingLoading />;
+  if (!templates && !error) return <MarketingCatalogSkeleton />;
   return (
     <MarketingShell
       title="Campañas"
