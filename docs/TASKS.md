@@ -17,10 +17,11 @@ sin catalogo de premios; premio con TIPO (producto gratis/2x1 del catalogo de pr
 descuento %/monto en la moneda del negocio; sellos/puntos extra acreditados al canjear, sin contar
 visita, rechazados si el programa cambio), regla opcional (cliente en su cuenta + cajero al escanear,
 sin limite de UX), costo por canje, todo copiado al cupon; cashback extra fuera (PARQUEADO #61).
-**Retomar con:** la spec de implementacion del ADR 0098 (plantilla grande: migracion de `coupon_*`
-en `core.campaign` y `core.campaign_coupon`, canje con extras en `counter/coupon-store.ts`, API de
-consumidor para ver sus cupones) con su contrato HTTP para GPT. Re-medir en prod cuantas campañas con
-cupon hay antes de fijar la migracion.
+**Spec 0106 CERRADA** (`3641162`) con contrato `specs/0106-contratos-de-api.md`: 4 entregas
+desplegables (E1 premio con tipo + migracion `0049` + snapshot + cierre de `couponProductId` de otro
+negocio; E2 mostrador con extras; E3 cupones del cliente; E4 resultados por premio), un implementador
+y un revisor al final, 6 mutaciones. **Retomar con:** despachar el implementador sobre E1 (o esperar
+el OK del owner); la migracion `0049` a prod necesita OK del owner. Despues: la Bienvenida (#1+#2).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
