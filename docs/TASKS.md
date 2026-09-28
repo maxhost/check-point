@@ -49,9 +49,12 @@ orden valid → unavailable → historial. **E3b EN PROD:** `d4d76a3` + bitacora
 el motivo correcto; re-verificado `consumer-coupons` 3/3), push `fc264a6..2106678`, Vercel `success`.
 **Ajuste E1b (hueco del contrato cazado por GPT):** marketing se guarda por PERMISO, asi que un
 empleado con `marketing` sin `loyalty` no podia saber que tipo extra ofrecer. Contrato actualizado
-(`a0feaa0`): `couponKinds` en la raiz de `GET /templates`, `/campaigns`, `/campaigns/{id}`. **En curso:**
-lo implementa el mismo implementador (cambios sin commitear SUYOS). La nota de GPT en
-`docs/api-faltantes.md` (sin commitear en `main`) queda resuelta cuando E1b llegue a prod.
+(`a0feaa0`): `couponKinds` en la raiz de `GET /templates`, `/campaigns`, `/campaigns/{id}`. **E1b EN
+PROD:** `707ebfc` + bitacora `f878e02` (M1b rojo; re-verificado `marketing-reward` 5/5), push
+`2106678..f878e02`, Vercel `success`. GPT: reemplazar la consulta a `/api/loyalty-program` por
+`couponKinds` y sacar la nota de `docs/api-faltantes.md`.
+**En curso:** REVISOR independiente de toda la 0106 (subagente; puede dejar mutaciones etiquetadas
+mientras mide — `ListAgents` antes de tocar nada). Su doc: `docs/archivo/spec-0106-revision.md`.
 **Selector de producto (owner):** usa `GET /api/catalog` (todos los productos, sin paginar, con
 `unitCost`) y filtra en el front; no hay «producto activo» en el catalogo.
 **Sigue:** verificar y pushear E3b → revisor independiente de toda la 0106 (agente aparte; el
