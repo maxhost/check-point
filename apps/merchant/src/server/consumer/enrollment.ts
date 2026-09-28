@@ -1,11 +1,11 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
+import { insertMembershipWithProjection } from "../customers/projection";
 import {
   businesses,
   consumerAccounts,
   locations,
   loyaltyPrograms,
-  programMemberships,
 } from "../schema";
 import {
   type ConsumerAccountRow,
@@ -209,15 +209,14 @@ export async function enroll(
 
   let membership: MembershipRow;
   try {
-    [membership] = await db
-      .insert(programMemberships)
-      .values({
-        consumerId: account.id,
-        programId: program.id,
-        businessId: program.businessId,
-        originLocationId: resolvedOriginLocationId,
-      })
-      .returning();
+    // Spec 0108: the membership and its row of `core.business_customer` in ONE statement. A
+    // 409 aborts the whole statement, so an existing member leaves the projection untouched.
+    membership = await insertMembershipWithProjection({
+      consumerId: account.id,
+      programId: program.id,
+      businessId: program.businessId,
+      originLocationId: resolvedOriginLocationId,
+    });
   } catch (error) {
     // The account is never written on a reused phone (ADR 0051), so a rejected
     // enroll — the 409 below or any other failure — leaves it untouched.

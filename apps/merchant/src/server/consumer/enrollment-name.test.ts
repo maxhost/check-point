@@ -115,8 +115,39 @@ vi.mock("../db", async () => {
     return chain;
   }
 
+  // Spec 0108: the membership insert is now ONE raw statement that also writes its row of
+  // `core.business_customer` (`customers/projection.ts`). The double records EVERY table the
+  // statement inserts into, read from the rendered SQL, and keeps the membership knob: a set
+  // `insertMembershipError` rejects the whole statement, exactly like the real `23505`.
+  const { PgDialect } = await import("drizzle-orm/pg-core");
+  const dialect = new PgDialect();
+  async function execute(query: never) {
+    const { sql: text, params } = dialect.sqlToQuery(query);
+    const tables = [...text.matchAll(/INSERT INTO\s+\w+\.(\w+)/gi)].map(
+      (match) => match[1],
+    );
+    for (const table of tables)
+      state.statements.push({ kind: "insert", table });
+    if (state.insertMembershipError) throw state.insertMembershipError;
+    return {
+      rows: [
+        {
+          id: "membership-1",
+          consumer_id: params[0],
+          program_id: params[1],
+          business_id: params[2],
+          origin_location_id: params[3],
+          points_balance: 0,
+          stamps_count: 0,
+          enrolled_at: "2026-09-05T00:00:00Z",
+        },
+      ],
+    };
+  }
+
   return {
     getDb: () => ({
+      execute,
       select: () => builder("select"),
       insert: (table: unknown) => builder("insert").from(table),
       update: (table: unknown) => builder("update").from(table),
@@ -251,7 +282,7 @@ describe("enroll() reuses the stored profile as-is — spec 0054 / ADR 0051", ()
     expect(existingAccount).toBe(false);
   });
 
-  it("a successful re-enroll writes ONLY the membership — no statement ever targets the account", async () => {
+  it("a successful re-enroll writes ONLY the membership and its projection row — no statement ever targets the account", async () => {
     const existing = storedAccount();
     queueProgram();
     state.reads.consumer_account = [[existing]];
@@ -261,6 +292,7 @@ describe("enroll() reuses the stored profile as-is — spec 0054 / ADR 0051", ()
     const writes = state.statements.filter((s) => s.kind !== "select");
     expect(writes.map((s) => `${s.kind} ${s.table}`)).toEqual([
       "insert program_membership",
+      "insert business_customer",
     ]);
   });
 

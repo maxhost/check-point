@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { orders } from "../schema";
 import { rowsOf } from "./core";
 import { buildTransactionalBody } from "../wallet/push";
+import { upsertVisitSql } from "../customers/projection";
 
 export type GrantItem = {
   productId: string | null;
@@ -80,6 +81,9 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
  *     conflict with `DO NOTHING` used to hide the extra bump and made the API report a
  *     balance that did not exist.
  *  3. `items` inserts the detailed lines FROM `ins` (only when a new order was created).
+ *  3b. `visit` (spec 0108) moves `core.business_customer.last_visit_at` FROM `ins` — so a
+ *     retry or a rolled-back grant never counts as a visit, and the projection commits with
+ *     the order or not at all.
  *  4. `pushq` (spec 0033) inserts ONE `wallet_push_queue` `transactional` row FROM
  *     `ins` — so it fires only when a NEW order was created: a grant rollback (including
  *     the `23505` abort above) leaves no push row, and a sequential retry (`bumped`
@@ -134,8 +138,12 @@ export async function persistGrant(
                    THEN bumped.points_balance ELSE bumped.stamps_count END)::integer,
              ${input.createdByUserId}::text, ${input.clientRequestId}::uuid
       FROM bumped
-      RETURNING id, units_granted, balance_after, accrual_kind
+      RETURNING id, units_granted, balance_after, accrual_kind,
+                business_id, consumer_id, created_at
     )${itemsCte},
+    visit AS (${upsertVisitSql(sql`(
+      SELECT ins.business_id, ins.consumer_id, ins.created_at AS visited_at FROM ins
+    )`)}),
     pushq AS (
       INSERT INTO consumer.wallet_push_queue
         (consumer_id, class, title, body, status, not_before)

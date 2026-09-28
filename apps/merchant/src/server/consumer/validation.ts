@@ -2,7 +2,7 @@ import { isValidCountryIso } from "../../lib/countries";
 import { ConsumerError, type EnrollInput } from "./core";
 
 /** E.164: a leading '+', a non-zero first digit, then up to 14 more digits. */
-const E164 = /^\+[1-9]\d{1,14}$/;
+export const E164 = /^\+[1-9]\d{1,14}$/;
 const MAX_NAME = 120;
 
 function normalizeName(value: unknown, label: string): string {

@@ -12,6 +12,7 @@ import { buildCouponBody } from "../wallet/push";
 import { CounterError } from "./core";
 import { decideCouponRedemption } from "./coupon-decision";
 import { grantCouponExtras } from "./coupon-extras";
+import { recordRedemptionVisit } from "../customers/projection";
 import type { CouponKind } from "../marketing/reward-input";
 
 export { type ActiveCoupon, loadActiveCoupon } from "./coupon-scan";
@@ -223,6 +224,8 @@ export async function persistCouponRedemption(input: {
         clientRequestId: input.clientRequestId,
       })
       .returning(redemptionColumns);
+    // (4b) Spec 0108: every coupon redemption at the counter is a visit — same transaction.
+    await recordRedemptionVisit(tx, "coupon_redemption", row.id);
     if (coupon.turnId !== null)
       await tx
         .update(campaignTurns)

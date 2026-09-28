@@ -16,6 +16,7 @@ import {
 } from "./core";
 import { type ActiveCoupon, loadActiveCoupon } from "./coupon-store";
 import { loadProgramRewards } from "../loyalty-program/persistence";
+import { insertMembershipWithProjection } from "../customers/projection";
 import { type RewardDTO, toRewardDTO } from "../loyalty-program/client-view";
 
 const QR_UNRESOLVED = "No pudimos leer este código. Probá de nuevo.";
@@ -172,25 +173,28 @@ export async function resolveScan(
 }
 
 /** Reads the (consumer, program) membership or auto-enrolls it with a zero balance.
- * A concurrent auto-enroll (23505 on the unique) is reread, never a 500. */
+ * A concurrent auto-enroll (23505 on the unique) is reread, never a 500. The auto-enroll
+ * writes its row of `core.business_customer` in the SAME statement (spec 0108); the `23505`
+ * aborts that statement whole, so the reread path never half-writes the projection. */
 async function resolveMembership(
   consumerId: string,
   programId: string,
   businessId: string,
 ) {
-  const db = getDb();
   const existing = await readMembership(consumerId, programId);
   if (existing) return { ...existing, justEnrolled: false };
   try {
-    const [row] = await db
-      .insert(programMemberships)
-      .values({ consumerId, programId, businessId })
-      .returning({
-        id: programMemberships.id,
-        pointsBalance: programMemberships.pointsBalance,
-        stampsCount: programMemberships.stampsCount,
-      });
-    return { ...row, justEnrolled: true };
+    const row = await insertMembershipWithProjection({
+      consumerId,
+      programId,
+      businessId,
+    });
+    return {
+      id: row.id,
+      pointsBalance: row.pointsBalance,
+      stampsCount: row.stampsCount,
+      justEnrolled: true,
+    };
   } catch (error) {
     if (pgErrorCode(error) === "23505") {
       const reread = await readMembership(consumerId, programId);

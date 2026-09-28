@@ -9,6 +9,7 @@ import {
 import { buildRedemptionBody } from "../wallet/push";
 import { CounterError } from "./core";
 import { planRedemption } from "./redeem-plan";
+import { recordRedemptionVisit } from "../customers/projection";
 
 export type RedemptionReward = {
   id: string;
@@ -202,6 +203,9 @@ export async function persistRedemption(
         clientRequestId: input.clientRequestId,
       })
       .returning(redemptionColumns);
+
+    // (4b) Spec 0108: a redemption at the counter is a visit — same transaction.
+    await recordRedemptionVisit(tx, "reward_redemption", row.id);
 
     // (5) Outbox push, same transaction.
     const [business] = await tx
