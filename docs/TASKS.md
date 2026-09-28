@@ -8,25 +8,30 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» CERRADA, SIN IMPLEMENTAR (2026-09-28)
+## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» EN IMPLEMENTACION (2026-09-28)
 
-**Retomar con: despachar la spec 0108 a UN implementador y despues UN revisor** (ADR 0071), o lo que
-el owner elija. **Spec `specs/0108-listado-de-clientes-del-comercio.md` — CERRADA** (ultima version
-`2111525`), con su ADR **0100** y el contrato para GPT `specs/0108-contratos-de-api.md`. Aislamiento
-en DOS capas, pedido del owner: guard (sesion + `counter`) y en la base `SET LOCAL ROLE
-customer_reader` + RLS por `app.business_id`; busqueda por nombre en una funcion SECURITY DEFINER.
-Decisiones del owner (2026-09-28): tiers FUERA; todos los historicos del negocio, una fila por
-persona; ultima visita = compra o canje (todo canje es visita: sin QR no hay canje); orden fijo por
-ultima visita; paginas numeradas + anterior/siguiente; owner y staff `counter`; UI de GPT.
-**Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`, hija de
-`ci-integration`) SIGUE VIVA**: el owner dio OK para borrarla, pero el clasificador de permisos
-bloqueo `delete_branch`. La borra el owner desde la consola de Neon (o se reusa para el benchmark de
-aceptacion del revisor).
-**Bienvenida (0107):** en PROD; la UI de GPT sigue rota hasta su arreglo (`template-draft.ts:26`); el
-`--apply` del callback de Google y el QA con telefonos reales siguen en `PARQUEADO.md` → «Pendientes
-del owner».
+**Retomar con: esperar / revisar el handoff del implementador de la 0108 y despues lanzar UN revisor**
+(ADR 0071). **Estado del arbol en este momento:** un subagente implementador esta escribiendo en este
+worktree (se colgo una vez por el watchdog y se retomo). Su trabajo esta **SIN COMMITEAR**: migracion
+`drizzle/0053_listado_de_clientes.sql` + snapshot/journal, `schema/business-customer.ts`,
+`server/customers/`, y ediciones en `consumer/enrollment.ts`, `consumer/validation.ts`,
+`counter/{coupon-store,orders,redemptions,resolve}.ts` y `schema.ts`. `pnpm run test` esta ROJO en
+`consumer/enrollment-name.test.ts` (7 tests: el mock no tiene `getDb().execute`), obra del cambio en
+curso; se le paso el dato al implementador. **No hay mutaciones puestas** (ningun `MUTATION` en
+`apps/merchant`, verificado). Si la sesion se cae: `ListAgents` primero; si no hay implementador
+vivo, el arbol es un WIP a revisar con `git diff`, no un trabajo terminado.
+**Spec `specs/0108-listado-de-clientes-del-comercio.md` — CERRADA** (`2111525`), ADR **0100**,
+contrato `specs/0108-contratos-de-api.md`. Aislamiento en DOS capas (guard + `SET LOCAL ROLE
+customer_reader` con RLS; busqueda por funcion SECURITY DEFINER). Decisiones del owner (2026-09-28):
+tiers FUERA; todos los historicos, una fila por persona; ultima visita = compra o canje (todo canje es
+visita); orden fijo por ultima visita; paginas numeradas; owner y staff `counter`; UI de GPT.
+**Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`) SIGUE VIVA**: el
+owner dio OK para borrarla pero el clasificador de permisos bloqueo `delete_branch`; la borra el owner
+desde la consola, despues del benchmark del revisor.
+**Bienvenida (0107):** en PROD; UI de GPT rota hasta su arreglo (`template-draft.ts:26`); callback de
+Google y QA con telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
 **Git:** `motor` va adelante de `origin/main` solo con commits de docs. El worktree
-`check-point-wt/motor-wt/deploy-0107` (rama `deploy-0107`) se puede borrar (pedir OK: borra una rama).
+`check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
