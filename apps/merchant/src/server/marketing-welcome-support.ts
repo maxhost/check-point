@@ -131,6 +131,23 @@ export async function installOn(
     });
 }
 
+/** A GOOGLE pass (generated; installed only when its `save` callback lands). */
+export async function googlePass(consumerId: string): Promise<string> {
+  const serial = `gw-${randomUUID()}`;
+  await getDb()
+    .insert(walletPasses)
+    .values({ consumerId, provider: "google", serialNumber: serial });
+  return serial;
+}
+
+export async function readGoogleSavedAt(serial: string): Promise<Date | null> {
+  const [row] = await getDb()
+    .select({ savedAt: walletPasses.googleSavedAt })
+    .from(walletPasses)
+    .where(eq(walletPasses.serialNumber, serial));
+  return row.savedAt;
+}
+
 export async function readWelcomeCoupons(businessId: string) {
   return await getDb()
     .select({
