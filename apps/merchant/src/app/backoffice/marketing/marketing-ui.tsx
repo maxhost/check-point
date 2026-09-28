@@ -22,11 +22,13 @@ export function MarketingShell({
   description,
   children,
   closeHref = "/backoffice",
+  onClose,
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
   closeHref?: string;
+  onClose?: () => void;
 }) {
   return (
     <main className="merchant-shell">
@@ -36,6 +38,7 @@ export function MarketingShell({
           title={title}
           description={description}
           closeHref={closeHref}
+          onClose={onClose}
         />
         {children}
       </div>
@@ -127,6 +130,7 @@ export function MarketingConfirm({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancelar",
   danger = false,
   busy = false,
   onCancel,
@@ -136,6 +140,7 @@ export function MarketingConfirm({
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   danger?: boolean;
   busy?: boolean;
   onCancel: () => void;
@@ -170,7 +175,7 @@ export function MarketingConfirm({
               isDisabled={busy}
               onPress={onCancel}
             >
-              Cancelar
+              {cancelLabel}
             </Button>
             <Button
               variant={danger ? "danger" : "primary"}
