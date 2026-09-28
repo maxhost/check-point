@@ -25,6 +25,8 @@ export const COUPON_KIND_VALUES = [
   "extra_points",
 ] as const;
 
+export type CouponKindValue = (typeof COUPON_KIND_VALUES)[number];
+
 export const couponKindList = sql.raw(
   COUPON_KIND_VALUES.map((kind) => `'${kind}'`).join(", "),
 );

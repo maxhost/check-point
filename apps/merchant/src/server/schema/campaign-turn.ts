@@ -20,7 +20,7 @@ import { orders } from "./order";
 import { campaigns } from "./campaign";
 import { campaignCoupons } from "./campaign-coupon";
 import { products } from "./catalog";
-import { couponKindList } from "./reward-checks";
+import { type CouponKindValue, couponKindList } from "./reward-checks";
 
 /**
  * A TURN: the loan of one slot of one consumer's wallet pass to one business for a
@@ -185,7 +185,10 @@ export const couponRedemptions = core.table(
       scale: 2,
     }).notNull(),
     // Default only for the migration→deploy window (0050): old code writes text coupons = free_product.
-    kindSnapshot: text("kind_snapshot").notNull().default("free_product"),
+    kindSnapshot: text("kind_snapshot")
+      .$type<CouponKindValue>()
+      .notNull()
+      .default("free_product"),
     productId: uuid("product_id").references(() => products.id, {
       onDelete: "set null",
     }),

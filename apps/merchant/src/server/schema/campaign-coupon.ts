@@ -16,7 +16,7 @@ import { campaigns } from "./campaign";
 import { campaignTurns } from "./campaign-turn";
 import { campaignPushes } from "./campaign-push";
 import { products } from "./catalog";
-import { rewardChecks } from "./reward-checks";
+import { type CouponKindValue, rewardChecks } from "./reward-checks";
 
 /**
  * THE COUPON OF ONE CONSUMER IN ONE CAMPAIGN (spec 0102 / ADR 0093). A channel only
@@ -65,7 +65,10 @@ export const campaignCoupons = core.table(
       scale: 2,
     }).notNull(),
     // Default only for the migration→deploy window (0050): old code writes text coupons = free_product.
-    kindSnapshot: text("kind_snapshot").notNull().default("free_product"),
+    kindSnapshot: text("kind_snapshot")
+      .$type<CouponKindValue>()
+      .notNull()
+      .default("free_product"),
     productId: uuid("product_id").references(() => products.id, {
       onDelete: "set null",
     }),

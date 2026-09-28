@@ -1,3 +1,4 @@
+import type { CouponKind } from "../marketing/reward-input";
 import { dispatchGranted } from "../wallet/push";
 import {
   CounterError,
@@ -27,7 +28,7 @@ export type CouponRedeemResult = {
   coupon: {
     label: string;
     campaignName: string;
-    kind: string;
+    kind: CouponKind;
     unitsGranted: number | null;
     balanceAfter: number | null;
   };

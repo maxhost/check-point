@@ -12,6 +12,7 @@ import { buildCouponBody } from "../wallet/push";
 import { CounterError } from "./core";
 import { decideCouponRedemption } from "./coupon-decision";
 import { grantCouponExtras } from "./coupon-extras";
+import type { CouponKind } from "../marketing/reward-input";
 
 export { type ActiveCoupon, loadActiveCoupon } from "./coupon-scan";
 
@@ -27,7 +28,7 @@ export type PersistedCoupon = {
   labelSnapshot: string;
   /** Spec 0106: the reward type, and what an `extra_*` coupon credited (`null` otherwise).
    * On an idempotent retry they are the STORED values, never recomputed. */
-  kindSnapshot: string;
+  kindSnapshot: CouponKind;
   unitsGranted: number | null;
   balanceAfter: number | null;
   campaignName: string;

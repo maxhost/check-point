@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { requireDate } from "../marketing/driver-values";
+import type { CouponKind, DiscountUnit } from "../marketing/reward-input";
 
 /**
  * What the SCAN shows of the campaign coupon (spec 0065 phase C, over `campaign_coupon` since
@@ -17,9 +18,9 @@ export type ActiveCoupon = {
   label: string;
   campaignName: string;
   validUntil: Date;
-  kind: string;
+  kind: CouponKind;
   rule: string | null;
-  discountUnit: string | null;
+  discountUnit: DiscountUnit | null;
   discountValue: string | null;
   currencyCode: string;
   extraUnits: number | null;
@@ -52,9 +53,9 @@ export async function loadActiveCoupon(
     label_snapshot: string;
     campaign_name: string;
     valid_until: unknown;
-    kind_snapshot: string;
+    kind_snapshot: CouponKind;
     rule_snapshot: string | null;
-    discount_unit_snapshot: string | null;
+    discount_unit_snapshot: DiscountUnit | null;
     discount_value_snapshot: string | null;
     currency_code: string;
     extra_units_snapshot: number | null;
