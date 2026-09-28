@@ -18,8 +18,10 @@ worktree `motor-wt/deploy-0107` (gates: typecheck forzado 3/3, lint, format, tes
 3/3); Vercel `success` en `ca463a7`; humo: `POST /api/public/wallet/google/callback` con `{}` → 400.
 Commits: `6d77b49` E1, `4f1b0a7` E2, `74e655c` E3, `28c3aae` E4, `af3b9e6` E5, `bb32155` contrato,
 `ca463a7` test del revisor (cableado del alta).
-**Revisor independiente TODAVIA CORRIENDO** en este worktree (tenia una mutacion puesta en
-`welcome-rules.ts` al 2026-09-28: `ListAgents` antes de tocar el arbol). **Retomar con:** su PASS/FAIL.
+**Revisor independiente TODAVIA CORRIENDO** en este worktree, con mutaciones SUYAS en curso (vistas el
+2026-09-28: `welcome-rules.ts`, `welcome-issue.ts:129` re-M4, `push-delivery.ts:143` re-M11). Si la
+sesion se cae: `ListAgents`; si el revisor murio, MEDIR y revertir cada una con `diff` contra
+`git show HEAD:<archivo>` (todas son ` M` sobre archivos commiteados). **Retomar con:** su PASS/FAIL.
 **UI de GPT ROTA hasta su arreglo (aceptado por el owner):** la tarjeta «Bienvenida» lee
 `template.dormantDays.default` sin null-check (`app/backoffice/marketing/template-draft.ts:26`, `:51`).
 Prompt para GPT entregado al owner (contrato `specs/0107-contratos-de-api.md`).
