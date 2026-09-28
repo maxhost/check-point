@@ -27,6 +27,12 @@ best-effort, SIN id de dispositivo (docs de Google Wallet, «use callbacks for s
 codigo no lo tiene. **Owner (AskUserQuestion, 2026-09-27):** Android = **callback de Google** (endpoint
 nuevo; si Google pierde el aviso, sin regalo — se declara); tope por defecto **50 por mes**; push de
 vencimiento **3 dias antes, editable** (1/3/7).
+**Medido:** borrar el pase de Apple BORRA el registro (`unregisterDevice`, `wallet/passkit.ts:108`) →
+el filtro literal se esquiva. **Owner (AskUserQuestion, 2026-09-27, segunda ronda):** «proxima visita»
+= el cupon vale **desde el dia siguiente** (zona del negocio) — reemplaza a «cualquier escaneo
+posterior», que chocaba con el escaneo del alta; filtro Apple **durable y por negocio** (el iPhone
+que ya recibio la bienvenida de ESTE negocio no la recibe de nuevo); vencimiento **7/15/30** (def.
+15); tope mensual = **numero libre** (def. 50).
 
 **Como se trabaja (acordado con el owner):** este worktree (`check-point-wt/motor`, rama `motor`) es el
 backend/API/schema/docs; GPT hace la UI en `main` (`check-point`). Cada uno pushea lo suyo a `main`:
