@@ -276,6 +276,10 @@ variable que se escribe y nunca se lee es la firma de una linea que falta (y `li
   lo que rompia era un mecanismo de conteo, y eso no tiene rojo. Caso en `LECCIONES.md`.
 - **Un sintoma no es una causa.** Antes de escribir «esto pasa PORQUE X», **buscá X en el arbol**:
   si no podes señalar el codigo que lo produce, no es un diagnostico, es una historia.
+- **Un contrato que le pide a la UI decidir algo le da el DATO, bajo el mismo guard que la pantalla.**
+  Por cada regla que la API exige al escribir, buscar la LECTURA que se la informa a la UI; si no
+  existe, falta un campo. Medido en la 0106: «la UI ofrece solo el extra del programa» sin ningun campo
+  de marketing que lo dijera, y la unica ruta con el dato exigia otro permiso (caso en `LECCIONES.md`).
 - **Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral
   que nadie acordo va como *hallazgo a decidir*.
 

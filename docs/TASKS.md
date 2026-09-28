@@ -8,67 +8,49 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — PREMIO DE CAMPAÑA (2026-09-27)
+## ⇥ WORKTREE `motor` — PREMIO DE CAMPAÑA CERRADO; SIGUE LA BIENVENIDA (2026-09-27)
 
-Rama `motor` (worktree `check-point-wt/motor`), en paralelo a la UI de GPT sobre `main`.
-**Hecho:** investigacion de mercado sobre si hace falta un catalogo de premios (informe en
-`reports/Catálogo de premios en fidelización.md`, fuera de git) y **ADR 0098 aceptado** (`b27b201`):
-sin catalogo de premios; premio con TIPO (producto gratis/2x1 del catalogo de productos o texto;
-descuento %/monto en la moneda del negocio; sellos/puntos extra acreditados al canjear, sin contar
-visita, rechazados si el programa cambio), regla opcional (cliente en su cuenta + cajero al escanear,
-sin limite de UX), costo por canje, todo copiado al cupon; cashback extra fuera (PARQUEADO #61).
-**Spec 0106 CERRADA** (`3641162`) con contrato `specs/0106-contratos-de-api.md`: 4 entregas
-desplegables (E1 premio con tipo + migracion `0049` + snapshot + cierre de `couponProductId` de otro
-negocio; E2 mostrador con extras; E3 cupones del cliente; E4 resultados por premio), un implementador
-y un revisor al final, 6 mutaciones.
-**E1 EN PROD (2026-09-27):** `0049`+`0050` aplicadas a `red-violet-38772073`/`main` con OK del
-owner, verificado por SQL (ultima migracion id 51, 5 columnas en `core.campaign`, default
-`free_product` en los dos `kind_snapshot`, 21 checks, `core`/`consumer`/`merchant_auth` intactos, 0
-campañas con cupon). Merge de `origin/main` (UI de GPT) sobre E1 en `e668412`, gates verdes en el
-arbol mergeado (typecheck/build forzados 3/3, lint, format, test 1957), push `284aaba..e668412`,
-Vercel `success` en `e668412`. **Se desplego E1 ANTES del PASS del revisor** por pedido del owner
-(entregas incrementales); la revision independiente sigue al final de la spec.
-**Accion del owner:** rotar la password de `neondb_owner` (la connection string volvio a quedar en
-el transcript). **GPT:** `git pull` en `main` (fast-forward) para tener el contrato E1.
-**E2 implementada** (`ae7bd5d` + bitacora `80002f0`; M3/M4 rojos por el motivo correcto;
-re-verificado: `counter-coupon-extras` 3/3, `counter-coupon-races` 7/7). `origin/main` mergeado en
-`motor` (`8c7140d`), gates verdes (typecheck/build forzados 3/3, lint, format, test 1962). **E2 EN PROD:** push
-`e668412..8c7140d` con OK del owner, Vercel `success` en `8c7140d` (sin migracion).
-Declarado: sellos extra sin tope de casilleros (la acreditacion normal tampoco topea).
-**E3 EN PROD:** `abcbced` + bitacora `664097e` (M5 rojo por el motivo correcto; re-verificado
-`consumer-coupons` 2/2, `counter-coupon` 7/7), push `8c7140d..664097e`, Vercel `success`.
-**Hallazgos de E3 a decidir por el owner:** (1) un negocio SUSPENDIDO sigue mostrando sus cupones
-vigentes al cliente (mismo criterio que el scan); (2) la lista no tiene tope ni paginacion.
-**E4 EN PROD:** `1859d4a` + bitacora `fc264a6` (M6 rojo por el motivo correcto; re-verificado
-typecheck forzado 3/3 y `marketing-reward-results` 2/2), push `664097e..fc264a6`, Vercel `success`.
-Declarado: un producto borrado se funde con los premios de texto del mismo tipo (FK `set null`).
-**Ajuste E3b CONFIRMADO por el owner y escrito** (`cfd7a24`, spec §E3b + contrato §E3): la lista del
-cliente trae `status` (`redeemed` > `expired` > `unavailable` > `valid`), `reason`
-(`business_suspended`/`business_closed`) y `redeemedAt`; estado calculado; historial 90 dias / max 50;
-orden valid → unavailable → historial. **E3b EN PROD:** `d4d76a3` + bitacora `2106678` (M5b rojo por
-el motivo correcto; re-verificado `consumer-coupons` 3/3), push `fc264a6..2106678`, Vercel `success`.
-**Ajuste E1b (hueco del contrato cazado por GPT):** marketing se guarda por PERMISO, asi que un
-empleado con `marketing` sin `loyalty` no podia saber que tipo extra ofrecer. Contrato actualizado
-(`a0feaa0`): `couponKinds` en la raiz de `GET /templates`, `/campaigns`, `/campaigns/{id}`. **E1b EN
-PROD:** `707ebfc` + bitacora `f878e02` (M1b rojo; re-verificado `marketing-reward` 5/5), push
-`2106678..f878e02`, Vercel `success`. GPT: reemplazar la consulta a `/api/loyalty-program` por
-`couponKinds` y sacar la nota de `docs/api-faltantes.md`.
-**0106 IMPLEMENTADA: PASS del revisor independiente** (`2d2437a`, `docs/archivo/spec-0106-revision.md`):
-8 mutaciones de la tabla + 3 propias, contrato contrastado campo por campo sin diferencias, sin drift de
-schema, aislamiento cazado en los tres ejes. Dos hallazgos BAJOS, sin riesgo de prod hoy:
-(1) sin test que fije la moneda del SNAPSHOT en un descuento por monto (`counter/coupon-scan.ts:66`,
-`consumer/coupons.ts:72`; la P2 del revisor sobrevive); (2) el `DEFAULT 'free_product'` de la `0050`
-era solo para la ventana, que ya cerro: propuesta del orquestador, pendiente de OK del owner, migracion
-`0051` que lo quita (vuelve a proteger el NOT NULL contra un emisor que olvide el tipo).
-**OK del owner (2026-09-27) para la `0051` a PROD.** **En curso:** el implementador hace los dos
-arreglos (migracion `0051_sin_default_de_tipo` + test de moneda del snapshot); sus cambios sin commitear
-son SUYOS. GPT esta commiteando y pusheando toda la UI a `main` en paralelo: antes de migrar/pushear,
-`git fetch` + merge de `origin/main` en `motor` + gates. **Despues:** handoff + `/clear` (pedido del
-owner) y la Bienvenida (#1+#2).
-**Selector de producto (owner):** usa `GET /api/catalog` (todos los productos, sin paginar, con
-`unitCost`) y filtra en el front; no hay «producto activo» en el catalogo.
-**Sigue:** verificar y pushear E3b → revisor independiente de toda la 0106 (agente aparte; el
-orquestador reproduce su evidencia) → la Bienvenida.
+**Retomar con: la plantilla #1+#2 «Bienvenida + Segunda visita»** (ADR 0091 §5, prioridad 1). Primero
+ADR + spec (decisiones del owner ANTES de la prosa). Lo que el owner ya dijo esta mas abajo en este
+archivo (buscar «plantilla Bienvenida+Segunda visita — **respuestas del owner (2026-09-26)**»): premio en
+la PROXIMA visita por defecto, editable a «misma visita»; se anuncia SOLO en `/enroll/[programId]`;
+antiabuso aprobado = regalo solo con pase instalado + filtro Apple por dispositivo + tope mensual +
+canje presencial; free vs premium «lo pensaremos luego». El premio ya existe: **spec 0106**.
+
+**Como se trabaja (acordado con el owner):** este worktree (`check-point-wt/motor`, rama `motor`) es el
+backend/API/schema/docs; GPT hace la UI en `main` (`check-point`). Cada uno pushea lo suyo a `main`:
+antes de pushear, `git fetch` + merge de `origin/main` en `motor` + gates sobre el arbol mergeado; push
+fast-forward (`GH_TOKEN= git push origin HEAD:main`); nunca `--force`. Entregas incrementales: cada
+entrega se despliega al terminar (con OK del owner para migrar), el revisor independiente va al final
+de la spec. `gh` NO esta en el PATH del agente: el estado del deploy se lee con
+`curl -s https://api.github.com/repos/maxhost/check-point/commits/<sha>/status` (context `Vercel`).
+
+**Spec 0106 «Premio estructurado de campaña» — IMPLEMENTADA y EN PROD** (ADR 0098, contrato
+`specs/0106-contratos-de-api.md`): sin catalogo de premios; tipos producto gratis/2x1 (producto del
+catalogo o texto), descuento %/monto (moneda del negocio), sellos/puntos extra (al canjear, sin visita,
+409 `program_changed`); regla para cliente y cajero; `couponKinds` en las lecturas de marketing;
+cupones del cliente con `status`/`reason`/`redeemedAt` (comercio suspendido = `unavailable`); resultados
+por premio. PASS del revisor (`2d2437a`). Migraciones `0049`,`0050`,`0051` en PROD (id 50–52 en
+`drizzle.__drizzle_migrations`, verificado por SQL: `kind_snapshot` NOT NULL sin default). Ultimo push
+`97e7307..165d771`, Vercel `success`.
+
+**ROJO AJENO EN `main` (para GPT):** `pnpm run test` da **10 fallos en 4 archivos** de
+`app/backoffice/marketing/` (`composer.test.ts`, `campaign-screens.test.ts`, `results-view.test.ts` y
+uno mas): la UI nueva pinta distinto de lo que los tests viejos esperan (p. ej. «28,20 US$» por
+`Intl` donde el test espera «USD 28.20»; «Turnos que va a ocupar:» ya no existe). El Stop hook del
+orquestador lo reclama en cada turno; NO se arregla desde `motor` (son archivos de GPT, que los esta
+tocando). Vienen
+del push de GPT `97e7307`: `motor` no toca `app/backoffice/**` (verificado con `git diff --stat
+97e7307 HEAD`). Y `marketing-backoffice-pages.neon` tiene 7 rojos previos (el doble de sesion no trae
+`permissions`). Typecheck, lint, format y build: verdes.
+
+**Accion del owner:** rotar la password de `neondb_owner` (la connection string quedo en el transcript
+al migrar la `0049`; la `0051` se aplico por `run_sql_transaction` sin exponerla).
+
+**Declarado de la 0106, sin tarea:** sellos extra sin tope de casilleros (igual que la acreditacion
+normal); un producto borrado se funde con los premios de texto en E4; la lista del cliente no topea los
+vigentes. Investigacion de mercado del catalogo: `reports/Catálogo de premios en fidelización.md` (fuera
+de git).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 

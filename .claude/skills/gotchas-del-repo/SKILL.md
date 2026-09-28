@@ -249,6 +249,13 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
   pedir confirmacion del owner antes de borrar ramas efimeras. Alternativa sin gate: crear la
   rama efimera con `expiresAt` (ISO) para que Neon la borre sola.
+- **Una migracion CHICA se puede aplicar a prod SIN traer la connection string** (medido con la `0051`,
+  2026-09-27): `mcp__neon__run_sql_transaction` con las sentencias del `.sql` (sin el
+  `--> statement-breakpoint`) mas `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) SELECT
+  '<sha256 del archivo .sql ENTERO>', <when del _journal.json> WHERE NOT EXISTS (… created_at = <when>)`.
+  El hash es `crypto.createHash("sha256").update(<archivo>)` (`drizzle-orm/migrator.js:23`; verificado:
+  el hash de la `0049` aplicada por `db:migrate` coincide con `shasum -a 256` del archivo). Para
+  migraciones largas sigue valiendo `db:migrate` (transcribir decenas de sentencias a mano es otro riesgo).
 - **Las suites `.neon.integration` (105 de los 276 archivos de test) NO se corren con `pnpm test`.**
   Se auto-skipean salvo que existan **dos** variables —`NEON_INTEGRATION_DATABASE_URL` y el
   interlock explicito `NEON_INTEGRATION_ISOLATED=true`— y **vitest no lee `.env.local`**

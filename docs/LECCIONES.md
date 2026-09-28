@@ -1754,3 +1754,18 @@ tiene paths que el comando no nombra, se bloquea y se listan; lo propio se commi
 pathspec, un comando que no es commit y un index limpio, y mira el index de la carpeta donde corre el
 commit (un worktree tiene el suyo). **Y la prevencion de fondo:** dos agentes no escriben sobre el
 mismo working tree — uno se va a un worktree (`tools/worktree-new.sh`).
+
+## 2026-09-27 — el contrato le pedia a la UI una decision sin darle el dato
+
+**Que paso.** El contrato de la spec 0106 decia «`extra_stamps` solo si el programa es de sellos; la
+UI los ofrece asi». Ninguna respuesta de `api/marketing/*` traia el tipo de programa, y la unica ruta
+que lo tenia (`GET /api/loyalty-program`) exige el permiso `loyalty`. Marketing se guarda por PERMISO
+(`requireApiPermission(…, "marketing")`), asi que un empleado con `marketing` sin `loyalty` no podia
+cumplir el contrato. Lo cazo GPT haciendo la UI (`docs/api-faltantes.md`), no el orquestador ni el
+revisor. Arreglo: `couponKinds` en la raiz de las lecturas de marketing (E1b), decidido por la MISMA
+funcion que valida al guardar.
+
+**Regla.** Todo «la UI decide / ofrece / oculta X» en un contrato se acompaña del CAMPO que lo decide,
+servido bajo el MISMO guard que la pantalla. Antes de cerrar un contrato: por cada regla que la API
+exige al escribir, buscar la lectura que se la informa a la UI; si no existe, falta un campo.
+
