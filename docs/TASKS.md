@@ -11,17 +11,17 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 ## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» CERRADA, SIN IMPLEMENTAR (2026-09-28)
 
 **Retomar con: despachar la spec 0108 a UN implementador y despues UN revisor** (ADR 0071), o lo que
-el owner elija. **Spec `specs/0108-listado-de-clientes-del-comercio.md` — CERRADA** (commit `371f371`),
-con su ADR **0100** (proyeccion `core.business_customer`, aislamiento por filtro, no RLS) y el contrato
-para GPT `specs/0108-contratos-de-api.md`. Decisiones del owner (2026-09-28): tiers FUERA; aparecen
-todos los historicos del negocio, una fila por persona; ultima visita = compra o canje; orden fijo por
-ultima visita; paginas numeradas + anterior/siguiente; lo ven owner y staff `counter`; UI la hace GPT.
-**A confirmar con el owner, sin bloquear:** que el canje de CUPON en mostrador cuente como visita
-(decision del orquestador, spec §Escrituras).
+el owner elija. **Spec `specs/0108-listado-de-clientes-del-comercio.md` — CERRADA** (ultima version
+`2111525`), con su ADR **0100** y el contrato para GPT `specs/0108-contratos-de-api.md`. Aislamiento
+en DOS capas, pedido del owner: guard (sesion + `counter`) y en la base `SET LOCAL ROLE
+customer_reader` + RLS por `app.business_id`; busqueda por nombre en una funcion SECURITY DEFINER.
+Decisiones del owner (2026-09-28): tiers FUERA; todos los historicos del negocio, una fila por
+persona; ultima visita = compra o canje (todo canje es visita: sin QR no hay canje); orden fijo por
+ultima visita; paginas numeradas + anterior/siguiente; owner y staff `counter`; UI de GPT.
 **Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`, hija de
-`ci-integration`) SIGUE VIVA** con el benchmark (esquema `bench`, 3M filas, rol `bench_app`): borrarla
-pide OK del owner (`delete_branch` es destructivo). El revisor puede reusarla para el benchmark de
-aceptacion o crear otra.
+`ci-integration`) SIGUE VIVA**: el owner dio OK para borrarla, pero el clasificador de permisos
+bloqueo `delete_branch`. La borra el owner desde la consola de Neon (o se reusa para el benchmark de
+aceptacion del revisor).
 **Bienvenida (0107):** en PROD; la UI de GPT sigue rota hasta su arreglo (`template-draft.ts:26`); el
 `--apply` del callback de Google y el QA con telefonos reales siguen en `PARQUEADO.md` → «Pendientes
 del owner».
