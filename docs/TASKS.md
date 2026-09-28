@@ -30,8 +30,12 @@ Vercel `success` en `e668412`. **Se desplego E1 ANTES del PASS del revisor** por
 (entregas incrementales); la revision independiente sigue al final de la spec.
 **Accion del owner:** rotar la password de `neondb_owner` (la connection string volvio a quedar en
 el transcript). **GPT:** `git pull` en `main` (fast-forward) para tener el contrato E1.
-**En curso:** E2 (mostrador) por el mismo implementador en este worktree; sus cambios sin commitear
-son SUYOS. Al terminar E2: mergear `origin/main` en `motor` antes de integrar.
+**E2 implementada** (`ae7bd5d` + bitacora `80002f0`; M3/M4 rojos por el motivo correcto;
+re-verificado: `counter-coupon-extras` 3/3, `counter-coupon-races` 7/7). `origin/main` mergeado en
+`motor` (`8c7140d`), gates verdes (typecheck/build forzados 3/3, lint, format, test 1962). **E2 NO
+esta pusheada: falta el OK del owner** (push fast-forward de `8c7140d` a `main`; sin migracion).
+Declarado: sellos extra sin tope de casilleros (la acreditacion normal tampoco topea).
+**En curso:** E3 (cupones del cliente) por el mismo implementador; sus cambios sin commitear son SUYOS.
 **Hallazgo para GPT:** `marketing-backoffice-pages.neon` da 7 rojos PREVIOS a E1 (`page.tsx` lee
 `permissions` y el doble de sesion no lo trae). Despues: E3, E4, revisor, y la Bienvenida.
 
