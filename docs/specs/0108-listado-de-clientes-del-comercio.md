@@ -1,7 +1,7 @@
 ---
 spec: 0108
 fecha: 2026-09-28
-estado: cerrada
+estado: implementada
 resumen: El comercio (owner y staff con `counter`) ve el listado paginado de SUS clientes —nombre, alta, ultima visita, puntos/sellos del programa activo— y busca por nombre o por telefono exacto, leido de la proyeccion `core.business_customer` con aislamiento en dos capas (guard + rol de base con RLS, ADR 0100). API + contrato; la UI la hace GPT.
 disjunta: no — toca `counter/orders.ts`, `counter/redemptions.ts`, `counter/coupon-store.ts`, `counter/resolve.ts` y `consumer/enrollment.ts`; serializar contra cualquier spec abierta sobre el mostrador o el alta
 archivos: apps/merchant/src/server/schema/business-customer.ts, apps/merchant/src/server/schema.ts, apps/merchant/drizzle/0053_*.sql, apps/merchant/drizzle/meta/*, apps/merchant/src/server/customers/*, apps/merchant/src/app/api/customers/route.ts, apps/merchant/src/server/consumer/enrollment.ts, apps/merchant/src/server/counter/resolve.ts, apps/merchant/src/server/counter/orders.ts, apps/merchant/src/server/counter/redemptions.ts, apps/merchant/src/server/counter/coupon-store.ts, docs/specs/0108-contratos-de-api.md
@@ -301,3 +301,55 @@ final con este presupuesto. Aplicar `0053` a prod es paso del orquestador **desp
 ## Abierto
 
 Nada.
+
+## Cierre (2026-09-28)
+
+**Implementada con PASS del revisor independiente**, sin aplicar a prod todavia. Commits: `c1f8ce6`
+(feat), `22b7458`, `f2f2075`, `cc15449`, `b3c075d` (tests del implementador) y `7086a4e` (oraculo que
+cerro el orquestador tras la revision).
+
+**Gates (revisor, Node 24.20.0):** typecheck y build forzados (`Cached: 0`), lint, `format:check`,
+`test` 2035 verdes / 709 salteados; `.neon.integration`: 3 suites nuevas 27/27 y 12 archivos (nuevas +
+9 existentes del mostrador y del alta, con RLS en `program_membership`) 88/88.
+
+**Mutaciones:** el implementador corrio las 8 (todas rojas). El revisor re-ejecuto M1, M3, M4 (rojas por
+la propiedad) y **M7, que dio VERDE**: la lista sin filtro no lee `consumer_id`, asi que un
+`consumerId` en el DTO desaparecia al serializar; solo la busqueda por nombre lo lee. El orquestador
+extendio el test del DTO a las tres formas de respuesta y re-midio: **ROJO 1/19** con
+`expected [balance, consumerId, …]`. Mutaciones propias del revisor: O1 (programa `inactive` como
+operativo) ROJO; O3 (join del saldo sin el programa operativo) ROJO; **O2 (`excluded.last_visit_at` en
+vez de `greatest`) VERDE, declarada**: no hay oraculo para una visita mas vieja que la actual; el riesgo
+exige dos operaciones concurrentes sobre el mismo cliente confirmando en orden inverso.
+
+**Benchmark de aceptacion** — lo corrio el ORQUESTADOR por el MCP de Neon, no el revisor (desvio: el
+revisor no tiene acceso a la rama y darle una connection string expondria la credencial del rol de
+prod). Rama `bench-clientes-comercio` con la `0053` real (sin backfill ni FKs, rama descartable), 3M
+filas, negocio de 200.000, SQL exacto de `list.ts` y la funcion real, como `customer_reader` con RLS;
+vale la 2a corrida:
+
+| Consulta | Medido | Umbral |
+|---|---|---|
+| pagina 1 + conteo | 0,40 + 49,4 = **49,8 ms** | < 150 |
+| ultima pagina + conteo | 61,0 + 49,4 = **110,4 ms** | < 250 |
+| nombre: `maria` (10.000) / `nez` (20.906) / `villacis` (8.000) / `xqzw` | **19,3 / 32,1 / 17,6 / 0,13 ms** | < 50 |
+| telefono | **0,05 ms** | < 5 |
+
+Correctitud en la misma rama: `___` → 0 (escape), `MÁRÍA` → las mismas 10.000 que `maria`.
+**Limite declarado:** el costo de la busqueda por nombre crece con la cantidad de COINCIDENCIAS (la
+funcion cuenta y ordena todas antes de paginar). Termino amplio `ia ` (30.000 = 15% del negocio):
+49,2 ms la primera pagina, 67,2 ms la ultima, 336,6 ms la primera corrida en frio.
+
+**Desvios del implementador (el revisor los dio por correctos):** `unaccent` calificado con su
+diccionario (`search_path` de la funcion sin `public`); la funcion siempre devuelve la fila del total;
+`JOIN core.business` en el backfill (la membresia no tiene FK al negocio); escritura de respaldo si una
+visita no encuentra fila; `validation.ts` exporta `E164`; el doble de `enrollment-name` se movio a su
+support (tamaño) y su lista exacta de escrituras suma `insert business_customer` — 35 `expect` antes y
+despues, ninguno debilitado.
+
+**Declarado fuera:** el `business_id = $1` explicito sin oraculo mientras RLS este sana; escrituras de
+cupon y de las dos altas sin mutacion propia; O2; `RESET ROLE` por inyeccion (ADR 0100); el doble de
+`enrollment-name` solo registra los `INSERT INTO` de un `execute` crudo.
+
+**Falta para prod:** aplicar `0053` a `main` ANTES del deploy (aditiva; el codigo nuevo escribe la
+tabla en cada compra) y verificar por SQL rol, politicas y funcion; despues push.
+
