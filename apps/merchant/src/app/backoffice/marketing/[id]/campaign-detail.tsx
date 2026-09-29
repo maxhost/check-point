@@ -25,6 +25,7 @@ import {
 } from "../campaign-labels";
 import { CampaignResultsView } from "../results-view";
 import { money, REWARD_KIND_LABELS } from "../reward-labels";
+import { WelcomeDetails } from "../welcome-details";
 
 type CampaignLike = Campaign | ServerCampaign;
 const dateLabel = (value: string | Date | null) =>
@@ -54,6 +55,7 @@ export function CampaignDetail({
   const [confirm, setConfirm] = useState<"end" | "archive" | null>(null);
   const [busy, setBusy] = useState(false);
   const writing = useRef(false);
+  const welcome = campaign.templateKey === "welcome" ? campaign.welcome : null;
   const actions = availableActions(campaign.status).filter((action) => {
     if ((action === "end" || action === "archive") && !isOwner) return false;
     if (campaign.templateKey && action === "archive") return false;
@@ -119,15 +121,23 @@ export function CampaignDetail({
         )}
         <dl className="marketing-details mt-5 grid gap-4 sm:grid-cols-2">
           <div>
-            <dt>Audiencia</dt>
-            <dd>Dormidos hace {campaign.dormantDays} días</dd>
+            <dt>{welcome ? "Destinatarios" : "Audiencia"}</dt>
+            <dd>
+              {welcome
+                ? "Clientes nuevos que instalan su pase"
+                : `Dormidos hace ${campaign.dormantDays} días`}
+            </dd>
           </div>
           <div>
             <dt>Canales</dt>
             <dd>
-              {campaign.channels
-                .map((channel) => (channel === "push" ? "Push" : "Proximidad"))
-                .join(" y ")}
+              {welcome
+                ? "Se entrega al instalar el pase"
+                : campaign.channels
+                    .map((channel) =>
+                      channel === "push" ? "Push" : "Proximidad",
+                    )
+                    .join(" y ")}
             </dd>
           </div>
           <div className="sm:col-span-2">
@@ -144,23 +154,26 @@ export function CampaignDetail({
           <div>
             <dt>Locales</dt>
             <dd>
-              {campaign.locationIds.length
-                ? Object.keys(locationNames).length
-                  ? campaign.locationIds
-                      .map((id) => locationNames[id] ?? "local archivado")
-                      .join(", ")
-                  : `${campaign.locationIds.length} locales seleccionados`
-                : "No se usan locales en esta corrida"}
+              {welcome
+                ? "Todo el negocio"
+                : campaign.locationIds.length
+                  ? Object.keys(locationNames).length
+                    ? campaign.locationIds
+                        .map((id) => locationNames[id] ?? "local archivado")
+                        .join(", ")
+                    : `${campaign.locationIds.length} locales seleccionados`
+                  : "No se usan locales en esta corrida"}
             </dd>
           </div>
+          {welcome && <WelcomeDetails welcome={welcome} />}
           <div className="sm:col-span-2">
             <dt>Cupón</dt>
             <dd>
               {campaign.couponLabel === null
                 ? "Sin cupón"
                 : campaign.couponKind
-                  ? `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje · tope ${campaign.couponMaxRedemptions}`
-                  : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje · tope ${campaign.couponMaxRedemptions}`}
+                  ? `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje${welcome ? "" : ` · tope ${campaign.couponMaxRedemptions}`}`
+                  : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje${welcome ? "" : ` · tope ${campaign.couponMaxRedemptions}`}`}
             </dd>
           </div>
           {campaign.couponKind === "discount" && (
@@ -251,13 +264,14 @@ export function CampaignDetail({
         results={results}
         currencyCode={currencyCode}
         channels={campaign.channels}
+        isWelcome={campaign.templateKey === "welcome"}
       />
       <MarketingConfirm
         open={Boolean(confirm)}
         title={
           confirm === "archive" ? "¿Archivar campaña?" : "¿Finalizar campaña?"
         }
-        description={`${confirm === "archive" ? "La campaña quedará archivada." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
+        description={`${confirm === "archive" ? "La campaña quedará archivada." : welcome ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel && !welcome ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
         confirmLabel={confirm === "archive" ? "Archivar" : "Finalizar"}
         danger
         busy={busy}

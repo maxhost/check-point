@@ -10,6 +10,8 @@ import {
 } from "../../../../lib/countries";
 import { readableTextColor } from "../../../../lib/brand-color";
 import { EnrollConfirmation } from "./enroll-confirmation";
+import type { WelcomeOffer as WelcomeOfferData } from "../../../../server/consumer/enroll-landing";
+import { WelcomeOffer } from "./welcome-offer";
 
 type Screen =
   | { kind: "form" }
@@ -48,6 +50,7 @@ export function EnrollForm({
   defaultCountryIso,
   brandPrimaryColor,
   vapidPublicKey,
+  welcomeOffer,
 }: {
   programId: string;
   /** Origin local from the poster QR `?loc=` (ADR 0042); null for a global QR. */
@@ -56,6 +59,7 @@ export function EnrollForm({
   defaultCountryIso: string;
   brandPrimaryColor: string;
   vapidPublicKey: string | null;
+  welcomeOffer: WelcomeOfferData | null;
 }) {
   const initialIso = isValidCountryIso(defaultCountryIso)
     ? defaultCountryIso
@@ -188,6 +192,7 @@ export function EnrollForm({
 
   return (
     <section>
+      {welcomeOffer && <WelcomeOffer offer={welcomeOffer} />}
       <p style={{ color: "#555", marginTop: 8, marginBottom: 24 }}>
         Sumate al programa de fidelidad. Solo necesitamos tu nombre y tu
         teléfono.

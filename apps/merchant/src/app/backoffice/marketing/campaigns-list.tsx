@@ -30,7 +30,9 @@ export function CampaignsList({
             </span>
             <strong className="mt-1 block">{campaign.name}</strong>
             <span className="mt-1 block text-sm">
-              Dormidos hace {campaign.dormantDays} días
+              {campaign.templateKey === "welcome"
+                ? "Se entrega al instalar el pase"
+                : `Dormidos hace ${campaign.dormantDays} días`}
             </span>
             {overview && (
               <span className="mt-3 block text-sm">

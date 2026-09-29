@@ -82,7 +82,9 @@ export function MarketingHome({
       setConfirm(null);
       setNotice(
         name === "disable"
-          ? "Campaña finalizada. Los turnos activos se retirarán en el próximo refresco."
+          ? template.welcome
+            ? "Bienvenida finalizada. Los regalos ya entregados siguen valiendo hasta su vencimiento."
+            : "Campaña finalizada. Los turnos activos se retirarán en el próximo refresco."
           : "Campaña reanudada.",
       );
       await load();
@@ -174,7 +176,11 @@ export function MarketingHome({
         danger
         busy={busy}
         confirmLabel="Finalizar corrida"
-        description={`Los parámetros y resultados de esta corrida quedarán guardados. Para cambiarla tendrás que activar una nueva.\n${confirm?.live?.couponLabel ? `Los cupones ya emitidos seguirán válidos hasta ${new Date(confirm.live.endsAt!).toLocaleDateString("es-EC")}.` : ""}\nLos turnos activos se retiran en el próximo refresco.`}
+        description={
+          confirm?.welcome
+            ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento."
+            : `Los parámetros y resultados de esta corrida quedarán guardados. Para cambiarla tendrás que activar una nueva.\n${confirm?.live?.couponLabel && confirm.live.endsAt ? `Los cupones ya emitidos seguirán válidos hasta ${new Date(confirm.live.endsAt).toLocaleDateString("es-EC")}.` : ""}\nLos turnos activos se retiran en el próximo refresco.`
+        }
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           if (confirm) void action(confirm, "disable");

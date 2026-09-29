@@ -6,6 +6,13 @@ export type CouponKind =
   | "extra_stamps"
   | "extra_points";
 export type DiscountUnit = "percent" | "amount";
+export type WelcomeRedeemFrom = "next_day" | "same_visit";
+export type CampaignWelcome = {
+  validDays: number;
+  reminderDays: number;
+  monthlyCap: number;
+  redeemFrom: WelcomeRedeemFrom;
+};
 export type CampaignStatus =
   | "draft"
   | "active"
@@ -34,6 +41,7 @@ export type Campaign = {
   nearRewardStamps: number | null;
   nearRewardPercent: number | null;
   rewardRepeat: "once" | "every_30_days" | null;
+  welcome?: CampaignWelcome | null;
   startsAt: string;
   endsAt: string | null;
   activatedAt: string | null;
@@ -49,10 +57,20 @@ export type TemplateView = {
   channels: Channel[];
   group: string;
   rank: number;
-  dormantDays: { options: number[]; default: number };
+  dormantDays: { options: number[]; default: number } | null;
   message: { default: string; maxLength: number; gapMarker: boolean };
   couponRecommended: boolean;
   couponAllowed: boolean;
+  couponRequired: boolean;
+  welcome: {
+    validDays: { options: number[]; default: number };
+    reminderDays: { options: number[]; default: number };
+    monthlyCap: { min: number; max: number; default: number };
+    redeemFrom: {
+      options: WelcomeRedeemFrom[];
+      default: WelcomeRedeemFrom;
+    };
+  } | null;
   nearReward: {
     stamps: { options: number[]; default: number };
     pointsPercent: { options: number[]; default: number };
