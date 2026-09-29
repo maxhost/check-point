@@ -68,6 +68,14 @@ export function delegatedLinks(permissions: string[]) {
   return [
     ...businessLinks,
     {
+      href: "/backoffice/customers",
+      label: "Clientes",
+      icon: Group,
+      segment: "customers",
+      permission: "counter",
+      delegado: true,
+    },
+    {
       href: "/backoffice/loyalty",
       label: "Fidelización",
       icon: Gift,
@@ -87,6 +95,12 @@ export function delegatedLinks(permissions: string[]) {
 }
 
 const loyaltyLinks = [
+  {
+    href: "/backoffice/customers",
+    label: "Clientes",
+    icon: Group,
+    segment: "customers",
+  },
   {
     href: "/backoffice/loyalty",
     label: "Programa de fidelización",

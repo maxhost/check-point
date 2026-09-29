@@ -6887,6 +6887,202 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: var(--ui-text);
 }
 
+.customers-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-bottom: 5rem;
+}
+.customers-search,
+.customers-list {
+  margin-top: 24px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  background: var(--ui-surface);
+  box-shadow: 0 8px 28px var(--ui-shadow-sm);
+}
+.customers-search {
+  padding: 24px;
+}
+.customers-search-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--ui-surface-subtle);
+}
+.customers-search-tabs button {
+  min-height: 40px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ui-text-muted);
+  font-weight: 750;
+  cursor: pointer;
+}
+.customers-search-tabs button[aria-pressed="true"] {
+  background: var(--ui-surface);
+  color: var(--brand-primary-action);
+  box-shadow: 0 2px 8px var(--ui-shadow-sm);
+}
+.customers-name-search,
+.customers-phone-search {
+  display: grid;
+  max-width: 650px;
+  gap: 8px;
+  margin-top: 22px;
+}
+.customers-name-search label,
+.customers-phone-search label {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 750;
+}
+.customers-name-search input,
+.customers-phone-search input,
+.customers-phone-search select {
+  width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font-size: 16px;
+}
+.customers-name-search p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+.customers-phone-line {
+  display: flex;
+  gap: 10px;
+}
+.customers-phone-line button,
+.customers-pagination button {
+  min-height: 44px;
+  padding: 9px 17px;
+  border: 1px solid var(--brand-primary-action);
+  border-radius: var(--radius-md);
+  background: var(--brand-primary-action);
+  color: var(--brand-on-primary);
+  font-weight: 750;
+  cursor: pointer;
+}
+.customers-field-error {
+  margin: 10px 0 0;
+  color: var(--ui-danger);
+  font-size: 13px;
+}
+.customers-retry {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  color: var(--brand-primary-action);
+  font-weight: 750;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.customers-list {
+  overflow: hidden;
+}
+.customers-list-header {
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.customers-list-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.customers-list-header p {
+  margin: 5px 0 0;
+  color: var(--ui-text-muted);
+  font-size: 14px;
+}
+.customers-loading {
+  display: grid;
+  gap: 10px;
+  padding: 22px 24px;
+}
+.customers-empty {
+  padding: 48px 24px;
+  text-align: center;
+}
+.customers-empty h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.customers-empty p {
+  margin: 8px 0 0;
+  color: var(--ui-text-muted);
+}
+.customers-table-wrap {
+  overflow-x: auto;
+}
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.customers-table th,
+.customers-table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--ui-border);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.customers-table thead th {
+  background: var(--ui-surface-subtle);
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.customers-table tbody th {
+  color: var(--ui-text);
+  font-weight: 750;
+}
+.customers-table tbody td {
+  color: var(--ui-text-muted);
+}
+.customers-table tbody tr:last-child th,
+.customers-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.customers-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px;
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-muted);
+  font-size: 14px;
+}
+.customers-pagination button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 620px) {
+  .customers-search {
+    padding: 18px;
+  }
+  .customers-list-header {
+    padding: 18px;
+  }
+  .customers-table th,
+  .customers-table td {
+    padding: 14px 18px;
+  }
+  .customers-phone-line {
+    flex-direction: column;
+  }
+}
+
 .merchant-shell:has(> .brand-page),
 .backoffice-content:has(.brand-page) {
   background: var(--ui-canvas);

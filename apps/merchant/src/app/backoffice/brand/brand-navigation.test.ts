@@ -9,3 +9,12 @@ it("navegación publica Marca sólo para staff con brand", () => {
     "/backoffice/brand",
   );
 });
+
+it("publica Clientes para el personal con permiso de mostrador", () => {
+  expect(delegatedLinks(["counter"]).map((link) => link.href)).toContain(
+    "/backoffice/customers",
+  );
+  expect(delegatedLinks(["marketing"]).map((link) => link.href)).not.toContain(
+    "/backoffice/customers",
+  );
+});
