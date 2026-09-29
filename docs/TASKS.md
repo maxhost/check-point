@@ -8,52 +8,31 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES: 0108 IMPLEMENTADA, 0109 (RENDIMIENTO) EN IMPLEMENTACION (2026-09-28)
+## ⇥ WORKTREE `motor` — 0108 EN PROD; 0109 IMPLEMENTADA, FALTA CORREGIR LA BUSQUEDA (2026-09-28)
 
-**Retomar con: esperar el veredicto del REVISOR de la 0109 (corriendo) y conseguir PERMISO del owner
-para migraciones.** La 0109 esta IMPLEMENTADA (`794b545`, `474c4c1`; 5 mutaciones rojas segun el
-implementador). El clasificador de permisos bloqueo ademas preparar la `0054` para la rama del
-benchmark («Production Deploy»), asi que **el benchmark de la 0109 esta pendiente de permiso**, igual
-que la `0053` a prod. La spec 0109 nombraba una columna inexistente (`name`): corregida (`756cb0d`) y
-anotada en `LECCIONES.md`. El owner pidio (2026-09-28) mejorar los
-numeros antes de ir a prod: **spec `specs/0109-rendimiento-del-listado-de-clientes.md` — CERRADA**
-(`1887ff3`), ADR **0101**: contador por negocio con trigger, busqueda con pagina y total separados,
-lectura en 4 viajes; migracion `0054` aditiva. Un subagente implementador esta escribiendo en este
-worktree ahora. **Foto del arbol (2026-09-28, sin commits suyos todavia, sin `MUTATION` puesto):**
-SIN COMMITEAR `drizzle/0054_contador_de_clientes.sql` + snapshot/journal,
-`schema/business-customer.ts`, `customers/{reader,list}.ts`, `customers-{isolation,list}` editadas y
-`customers-{count,migration}.neon.integration.test.ts` nuevas; si la sesion se cae: `ListAgents` primero, y si no hay implementador vivo el arbol es
-un WIP a revisar con `git diff`.
-**Spec 0108 — IMPLEMENTADA con PASS del revisor** (cierre `70f4a67`), sin aplicar a prod. Prod = `0053`
-+ `0054` JUNTAS a `red-violet-38772073`/`main` ANTES del deploy, verificar por SQL rol, politicas,
-funcion y trigger, despues push. Contrato para GPT `specs/0108-contratos-de-api.md` (no cambia con la 0109).
-**Decisiones del owner pendientes (ADR 0101):** mover las funciones de Vercel de `iad1` a `cle1` (la
-base esta en `us-east-2`; latencia no medida) y subir el minimo del computo de prod (hoy 0,25 CU).
-**Rama efimera `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`) VIVA, con la `0053` y 3M
-filas**: se reusa para el benchmark de la 0109 (aplicarle la `0054`). El owner dio OK para borrarla
-despues, pero `delete_branch` esta bloqueado por el clasificador: la borra el owner desde la consola.
-**Bienvenida (0107):** en PROD; UI de GPT rota hasta su arreglo (`template-draft.ts:26`); callback de
-Google y QA con telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
-**Git:** `motor` va adelante de `origin/main` con la 0108 y la 0109. **Rama `clientes-0108` pusheada
-a GitHub en `794b545`** (pedido del owner, para que GPT haga la UI del listado sobre ella); **NO a
-`main`**: el codigo escribe `core.business_customer` en cada compra y sin la `0053` en prod las
-compras fallarian. `origin/main` tiene `a3221de` (UI de Bienvenida de GPT) que la rama no contiene:
-integrarlo al mergear. El
-worktree `check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
+**Retomar con: esperar el veredicto del REVISOR de la 0109 (corriendo) y despues encargar la migracion
+`0055`**: `core.search_business_customers` en `LANGUAGE plpgsql` con `RETURN QUERY EXECUTE format(…%L…)`
+(misma firma y salida). Medido en la rama: busqueda 9–15,5 ms; la version `sql` de la `0054` da 31–79
+ms (peor que la 0108) porque se planifica sin el termino. Detalle en `specs/0109-…` §Benchmark y en el
+ADR 0101 §Enmienda. Umbrales de la 0109 que SI cumple: pagina 1 + total 0,33 ms, ultima 64,8 ms,
+telefono 0,10 ms.
+**Spec 0108 — EN PROD** (pedido del owner): `0053` y `0054` aplicadas a `red-violet-38772073`/`main`
+por `run_sql_transaction` con aprobacion manual del owner, verificadas por SQL (huellas de funciones,
+trigger, politicas, grants, filas de Drizzle `bb404c3f…` y `b5547938…`). Push `a3221de..8dc8841` a
+`main` (rama `deploy-0108` = 0108 + UI de Bienvenida de GPT; gates verdes salvo `test:e2e`, que no
+corrio por el puerto 3000 ocupado por otra sesion). Deploy verificado: `/api/customers` → 401.
+**GPT hace la UI del listado sobre `main`**; contrato `specs/0108-contratos-de-api.md`. Prod tiene hoy la
+`0054` (funcion `sql`, lenta con muchos clientes; hoy hay 0) y el codigo de la 0108 (usa `count(*)`, no el
+contador): es compatible.
+**Git:** `main` = `8dc8841`, que NO esta en la historia de `motor` (es un merge en `deploy-0108`): al
+llevar la 0109 a `main`, mergear `origin/main` en `motor` primero. Worktrees `motor-wt/deploy-0108` y
+`motor-wt/deploy-0107` ya cumplieron (borrarlos pide OK: borran ramas). Rama `clientes-0108` en GitHub
+quedo vieja (GPT ya puede usar `main`).
+**Rama efimera `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`)** tiene la `0053`, la `0054` y
+3M filas; sigue sirviendo para medir la `0055`. El owner dio OK para borrarla al final.
+**Bienvenida (0107):** en PROD; la UI de GPT ya esta en `main` (`a3221de`). Callback de Google y QA con
+telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
 
-
-**DEPLOY DE LA 0108 PREPARADO Y FRENADO (2026-09-28).** El owner pidio push a `main` + migracion para
-que GPT trabaje en `main`. Va SOLO la 0108 (PASS); la 0109 no esta revisada. Worktree
-`check-point-wt/motor-wt/deploy-0108`, rama `deploy-0108` en **`8dc8841`** = `7675105` (0108) +
-merge de `origin/main` (`a3221de`, UI de Bienvenida de GPT). Gates sobre ese arbol: typecheck y build
-forzados (`Cached: 0`), lint, format, test 2042 verdes. **`test:e2e` NO corrio**: el puerto 3000 lo
-tiene un `next-server` de otra sesion (`central-hill`), que no se mato. **La migracion `0053` a
-`main` la bloqueo el clasificador de permisos («Production Deploy»)**; prod verificada intacta en
-`0052`, sin tabla ni rol. **NO pushear `8dc8841` a `main` antes de la `0053`**: rompe las compras.
-Pasos pendientes, en orden: `0053` a prod (el owner, o con permiso) → verificar por SQL (tabla, rol,
-politicas, `md5(prosrc)` de `core.search_business_customers` = `b3adbb0654c0a620e66346d631eeb463`,
-fila en `drizzle.__drizzle_migrations` con hash `bb404c3f…` y `created_at` 1790611663857) → push
-`8dc8841` a `main` → deploy de Vercel en `READY` con ese sha.
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
 **Retomar con: la UI del arco de marketing** (ChatGPT, contra `docs/specs/0101-contratos-de-api.md`);
