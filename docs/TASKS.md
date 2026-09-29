@@ -8,29 +8,25 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» EN IMPLEMENTACION (2026-09-28)
+## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» IMPLEMENTADA, SIN APLICAR A PROD (2026-09-28)
 
-**Retomar con: esperar / revisar el handoff del implementador de la 0108 y despues lanzar UN revisor**
-(ADR 0071). **Estado del arbol en este momento:** un subagente implementador esta escribiendo en este
-worktree (se colgo una vez por el watchdog y se retomo). Su trabajo esta **SIN COMMITEAR**: migracion
-`drizzle/0053_listado_de_clientes.sql` + snapshot/journal, `schema/business-customer.ts`,
-`server/customers/`, y ediciones en `consumer/enrollment.ts`, `consumer/validation.ts`,
-`counter/{coupon-store,orders,redemptions,resolve}.ts` y `schema.ts`. `pnpm run test` esta ROJO en
-`consumer/enrollment-name.test.ts` (7 tests: el mock no tiene `getDb().execute`), obra del cambio en
-curso; se le paso el dato al implementador. **No hay mutaciones puestas** (ningun `MUTATION` en
-`apps/merchant`, verificado). Si la sesion se cae: `ListAgents` primero; si no hay implementador
-vivo, el arbol es un WIP a revisar con `git diff`, no un trabajo terminado.
-**Spec `specs/0108-listado-de-clientes-del-comercio.md` — CERRADA** (`2111525`), ADR **0100**,
-contrato `specs/0108-contratos-de-api.md`. Aislamiento en DOS capas (guard + `SET LOCAL ROLE
-customer_reader` con RLS; busqueda por funcion SECURITY DEFINER). Decisiones del owner (2026-09-28):
-tiers FUERA; todos los historicos, una fila por persona; ultima visita = compra o canje (todo canje es
-visita); orden fijo por ultima visita; paginas numeradas; owner y staff `counter`; UI de GPT.
-**Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`) SIGUE VIVA**: el
-owner dio OK para borrarla pero el clasificador de permisos bloqueo `delete_branch`; la borra el owner
-desde la consola, despues del benchmark del revisor.
+**Retomar con: pedir OK al owner para llevar la 0108 a prod** — aplicar la migracion `0053` a
+`red-violet-38772073`/`main` (por `run_sql_transaction` o `db:migrate`) ANTES del deploy, verificar por
+SQL rol `customer_reader`, politicas y funcion, y despues pushear `motor` a `main`. **Spec
+`specs/0108-listado-de-clientes-del-comercio.md` — IMPLEMENTADA con PASS del revisor** (cierre en
+`70f4a67`; codigo `c1f8ce6`…`7086a4e`), ADR **0100**, contrato para GPT
+`specs/0108-contratos-de-api.md` (sumo: omitir `q` vacia y codificar el `+`). Benchmark de aceptacion
+en umbral (lo corrio el orquestador por MCP): pagina 1 + total 50 ms, ultima + total 110 ms, nombre
+18–32 ms, telefono 0,05 ms en un negocio de 200.000. El revisor cazo que M7 (fuga de `consumerId`)
+quedaba verde; el orquestador extendio el test a las tres formas y re-midio ROJO 1/19. Declarado
+fuera: O2 (visita mas vieja sin oraculo) y el costo de busqueda que crece con las coincidencias.
+Arbol limpio, sin mutaciones puestas; `ci-integration` ya tiene la `0053`.
+**Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`) SIGUE VIVA** y ya
+cumplio: el owner dio OK para borrarla pero el clasificador de permisos bloqueo `delete_branch`; la
+borra el owner desde la consola de Neon.
 **Bienvenida (0107):** en PROD; UI de GPT rota hasta su arreglo (`template-draft.ts:26`); callback de
 Google y QA con telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
-**Git:** `motor` va adelante de `origin/main` solo con commits de docs. El worktree
+**Git:** `motor` va adelante de `origin/main` con la 0108 (codigo + docs), sin pushear. El worktree
 `check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
