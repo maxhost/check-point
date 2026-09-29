@@ -8,7 +8,19 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ MARKETING — ETAPAS DE CICLO DE VIDA POR RUBRO: DECISIONES CERRADAS, FALTA ADR + SPEC (2026-09-29)
+## ⇥ MARKETING — ETAPAS POR RUBRO: ADR 0102 + SPEC 0110 ESCRITOS, ESPERAN EL OK DEL OWNER (2026-09-29)
+
+**Retomar con: el OK del owner para pasar la spec 0110 a `cerrada`** (y validar sus elecciones
+*(ORQUESTADOR)*: default de #3 = T2; borde de perdido `I + 1 dia`; suma de #7/#8 solo en push; etapa ajena
+= `not_dormant`; texto nuevo de #4). Con el OK: UN implementador + UN revisor (ADR 0071), sin migracion.
+Escritos en `0b319b9`: `adr/0102-…`, `specs/0110-etapas-de-ciclo-de-vida-por-rubro.md`, contrato
+`specs/0110-contratos-de-api.md`, filas del INDEX, ADR 0097 → reemplazado. La tabla de la spec se comparo por
+script contra `CONSOLIDADO.md`: 16/16 filas identicas. Prod medido por SQL: 0 campañas → sin compatibilidad.
+**Respuestas del owner de esta sesion (AskUserQuestion):** fin de «activo» = los dias que eligio en #3 (sin #3,
+T1); dias de #7/#8 = solo las opciones `< T1` del rubro; suma de #7/#8 = en cada envio; proximidad = solo
+respeta la etapa, sin cadencia. Cero codigo tocado.
+
+### Historial — decisiones que alimentaron el ADR 0102
 
 **Retomar con: escribir el ADR y la spec de «etapas de ciclo de vida por rubro»** (plantilla `TEMPLATE.md`:
 hay migracion probable y reemplaza partes de los ADR 0095 —grupos/rangos— y 0097 —en riesgo por ritmo—).
