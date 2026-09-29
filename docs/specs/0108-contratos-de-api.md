@@ -27,6 +27,11 @@ permiso «Mostrador»**. Escalera identica a la de `0101` §Guard, con `counter`
 
 `q` y `phone` son excluyentes. Sin ninguno, lista todo.
 
+- **Con la caja de busqueda vacia, la UI OMITE `q`** (no manda `q=`): `q` vacio o de solo espacios es
+  un `400` `fields.q`.
+- **El `+` del telefono va codificado** (`encodeURIComponent` → `%2B`): sin codificar, la query lo
+  convierte en espacio y la respuesta es `400` `fields.phone`.
+
 **200:**
 
 ```ts

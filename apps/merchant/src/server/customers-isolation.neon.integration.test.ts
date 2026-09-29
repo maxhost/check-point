@@ -145,21 +145,29 @@ describe.skipIf(!integrationEnabled)(
       expect(names(own.body)).toEqual([world.y.name]);
     }, 60_000);
 
-    it("DTO: cada fila tiene EXACTAMENTE name, enrolledAt, lastVisitAt y balance", async () => {
-      const a = await list("a");
-      expect(a.body.items.length).toBeGreaterThan(0);
-      for (const item of a.body.items)
-        expect(Object.keys(item).sort()).toEqual([
-          "balance",
-          "enrolledAt",
-          "lastVisitAt",
-          "name",
-        ]);
-      const serialized = JSON.stringify(a.body);
-      for (const person of [world.x, world.z, world.w]) {
-        expect(serialized).not.toContain(person.id);
-        expect(serialized).not.toContain(person.phone);
-        expect(serialized).not.toContain(person.qrToken);
+    // Las TRES formas de la respuesta: la busqueda por nombre SI lee `consumer_id` de la funcion
+    // (para el join del saldo), asi que la lista sin filtro sola no ve una fuga por ahi.
+    it("DTO: cada fila tiene EXACTAMENTE name, enrolledAt, lastVisitAt y balance, en las tres formas", async () => {
+      const shapes = [
+        await list("a"),
+        await list("a", `?q=${encodeURIComponent(world.x.name.split(" ")[0])}`),
+        await list("a", `?phone=${encodeURIComponent(world.x.phone)}`),
+      ];
+      for (const a of shapes) {
+        expect(a.body.items.length).toBeGreaterThan(0);
+        for (const item of a.body.items)
+          expect(Object.keys(item).sort()).toEqual([
+            "balance",
+            "enrolledAt",
+            "lastVisitAt",
+            "name",
+          ]);
+        const serialized = JSON.stringify(a.body);
+        for (const person of [world.x, world.z, world.w]) {
+          expect(serialized).not.toContain(person.id);
+          expect(serialized).not.toContain(person.phone);
+          expect(serialized).not.toContain(person.qrToken);
+        }
       }
     }, 60_000);
 
