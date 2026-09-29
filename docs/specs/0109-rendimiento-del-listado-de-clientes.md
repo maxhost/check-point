@@ -1,7 +1,7 @@
 ---
 spec: 0109
 fecha: 2026-09-28
-estado: cerrada
+estado: implementada
 resumen: Tres mejoras de rendimiento al listado de clientes (spec 0108) antes de ir a prod — contador por negocio mantenido por trigger, busqueda con pagina y total separados, y 4 viajes a la base en vez de 7 (ADR 0101). Migracion `0054` aditiva; el contrato HTTP no cambia.
 disjunta: no — toca `server/customers/*` y los tests de la 0108; serializar contra cualquier cambio a la 0108
 archivos: apps/merchant/drizzle/0054_*.sql, apps/merchant/drizzle/meta/*, apps/merchant/src/server/schema/business-customer.ts, apps/merchant/src/server/customers/reader.ts, apps/merchant/src/server/customers/list.ts, apps/merchant/src/server/customers-*.neon.integration.test.ts, apps/merchant/src/server/customers-integration-support.ts
@@ -178,3 +178,24 @@ fila del total en 0, sin error.
 **Pendiente:** el revisor de la 0109 revisa la version `sql` (`794b545`); la `0055` **no tiene revision
 independiente** y las suites `customers-*` todavia no corrieron contra ella en `ci-integration` (el
 revisor estaba usando esa rama): correrlas cuando termine. El codigo de la 0109 sigue sin estar en `main`.
+
+## Cierre (2026-09-28)
+
+**PASS del revisor independiente** sobre `794b545`/`474c4c1` con la `0054`: re-ejecuto M1, M3, M4 (rojas
+por la propiedad) y dos propias — O1 (programa operativo sin `status IN (…)`) ROJO y O2 (la pagina vacia
+pierde la fila del total) ROJO. Gates verdes; 95 tests `.neon` en 15 archivos. Su `EXPLAIN` confirmo la
+causa de la regresion de la busqueda: desde la 6a llamada de la sesion la funcion `sql` usa el plan
+GENERICO (`rows=1000` para el `LIKE`, bitmap + sort) y duplica el costo; detras de un pool lo normal es
+el generico. La `0055` (`EXECUTE`) planifica cada llamada con el termino real. Tras el veredicto, las 5
+suites `customers-*` corrieron contra la `0055` en `ci-integration`: 36/36.
+
+**Hallazgos declarados del revisor:** (1) el total de una busqueda sigue pagando el `count(*)` de todas
+las coincidencias; (2) el trigger por fila escala mal en operaciones MASIVAS dentro de una transaccion
+(200k altas: 355 s; borrar un negocio de 200k: 769 s) — hoy no hay ningun camino productivo que lo
+haga; parqueado en `PARQUEADO.md` con el arreglo posible (trigger `FOR EACH STATEMENT` con tablas de
+transicion); (3) el oraculo de «4 viajes» cuenta las llamadas a `execute` del `tx`, no lo que llega a la
+base; alcanza porque `CustomerReader` solo expone `execute`.
+
+**La `0055` no tuvo revision independiente** (la escribio el orquestador por pedido del owner); la
+cubren las 36 suites y el benchmark con la funcion real.
+
