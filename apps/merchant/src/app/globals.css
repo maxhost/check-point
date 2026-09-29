@@ -6887,6 +6887,44 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: var(--ui-text);
 }
 
+/* ModuleHeader predates the token typography; keep its description legible in dark mode. */
+.subscription-page .module-topline > div > p:not(.eyebrow) {
+  color: var(--ui-text-muted);
+}
+.subscription-page p.text-content-muted {
+  color: var(--ui-text-muted);
+}
+.subscription-page p.text-content {
+  color: var(--ui-text);
+}
+.subscription-page button[data-variant] {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.subscription-page button[data-variant="secondary"] {
+  border: 1px solid var(--ui-border-strong);
+  color: var(--ui-text);
+  background: var(--ui-surface);
+}
+.subscription-page [aria-label="Período de facturación"] button {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.backoffice-layout
+  .subscription-page
+  button[data-variant="primary"]:focus-visible {
+  color: var(--brand-on-primary);
+  background: var(--brand-primary-action);
+}
+.backoffice-layout
+  .subscription-page
+  button[data-variant="secondary"]:focus-visible {
+  color: var(--ui-text);
+  background: var(--ui-surface-subtle);
+}
+
 .customers-page {
   max-width: 1100px;
   margin: 0 auto;
