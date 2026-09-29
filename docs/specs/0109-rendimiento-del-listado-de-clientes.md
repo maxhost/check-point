@@ -134,3 +134,32 @@ Prod: `0053` y `0054` juntas, antes del deploy, con OK del owner.
 ## Abierto
 
 Nada.
+
+## Benchmark y hallazgo (2026-09-28) — la busqueda NO cumple; hay que corregirla
+
+Implementada (`794b545`, `474c4c1`); revisor corriendo. `0054` aplicada a PROD (pedido del owner, junto
+con la `0053`; verificada: `md5` busqueda `326fd2bf…`, trigger `22909f9e…`, trigger `AFTER INSERT OR
+DELETE`, cuatro politicas, `loyalty_program` con grant `business_id,id,kind,status` y RLS `ENABLE`,
+fila de Drizzle `b5547938…`/1790643238459) y a `bench-clientes-comercio`. Prod tiene 0 clientes: la
+regresion de abajo hoy no afecta a nadie, y el codigo de la 0109 NO esta en `main`.
+
+Benchmark (SQL exacto de `list.ts` + funcion real, como `customer_reader`, 2a corrida; el comercio
+sintetico no tiene programa, asi que el join del saldo no encuentra membresias —~0,3 ms en la 0108—):
+
+| Consulta | Umbral | Medido |
+|---|---|---|
+| pagina 1 + total | < 5 ms | **0,33 ms** OK |
+| pagina 40 | — | 0,54 ms |
+| ultima pagina + total | < 100 ms | **64,8 ms** OK |
+| telefono | < 5 ms | **0,10 ms** OK |
+| nombre `maria` / `nez` / `ia ` / `villacis` / `xqzw` | < 25 ms | **31,8 / 62,3 / 78,9 / 29,8 / 0,16 ms — NO CUMPLE** |
+
+**Causa (medida):** la funcion es `LANGUAGE sql SECURITY DEFINER`, que no se inlinea y se planifica
+sin el valor del termino, asi que el planner no puede elegir entre el indice de orden y el de trigramas.
+La medicion del ADR 0101 (9–18 ms) se hizo con el termino LITERAL, no dentro de la funcion.
+**Correccion medida en la rama:** la misma consulta en `LANGUAGE plpgsql` con `RETURN QUERY EXECUTE
+format(…%L…)` (plan con el termino real en cada llamada): `maria` 9,0 / `nez` 12,5 / `ia ` 15,5 /
+`villacis` 9,5 / `xqzw` 0,3 ms; ultima pagina de `ia ` 39,6 ms; escape (`___` → 0), tildes y
+aislamiento (B ve sus 112) intactos. Va como migracion `0055` (`CREATE OR REPLACE`, misma firma y
+salida) antes de cerrar esta spec.
+

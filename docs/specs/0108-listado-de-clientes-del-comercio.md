@@ -350,6 +350,9 @@ despues, ninguno debilitado.
 cupon y de las dos altas sin mutacion propia; O2; `RESET ROLE` por inyeccion (ADR 0100); el doble de
 `enrollment-name` solo registra los `INSERT INTO` de un `execute` crudo.
 
-**Falta para prod:** aplicar `0053` a `main` ANTES del deploy (aditiva; el codigo nuevo escribe la
-tabla en cada compra) y verificar por SQL rol, politicas y funcion; despues push.
+**EN PROD (2026-09-28).** `0053` aplicada a `main` por `run_sql_transaction` (aprobada por el owner) y
+verificada por SQL: `md5(prosrc)` de la busqueda `b3adbb06…`, `proacl` sin PUBLIC, rol `false/false`,
+dos politicas, fila de Drizzle `bb404c3f…`/1790611663857. Push `a3221de..8dc8841` a `main` (0108 +
+merge de la UI de Bienvenida de GPT). Deploy verificado: `/api/customers` 404 → **401** a las 20:38,
+`/api/health` 200. `test:e2e` NO corrio local (puerto 3000 ocupado por otra sesion): lo corre la CI.
 

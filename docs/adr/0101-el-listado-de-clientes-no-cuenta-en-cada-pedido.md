@@ -67,3 +67,12 @@ filas, un negocio de 200.000, la `0053` real, como `customer_reader` con RLS, 2a
   `ci-integration`). Las dos van a prod juntas, antes del deploy.
 - **Fuera de este ADR, decision del owner:** mover las funciones de Vercel a `cle1` (junto a la base)
   y subir el minimo del computo de prod (hoy 0,25 CU). Afectan a toda la app y tienen costo.
+
+## Enmienda (2026-09-28) — la busqueda va en `plpgsql` con `EXECUTE`
+
+La decision 2 se implemento como `LANGUAGE sql` y en el benchmark **empeoro** (31–79 ms contra 19–49 de
+la 0108): esa funcion se planifica sin el termino y el planner no puede elegir indice. Medido en la rama
+con la misma consulta en `plpgsql` + `RETURN QUERY EXECUTE format(… %L …)`: 9–15,5 ms. La busqueda se
+arma por llamada con el termino como literal citado (`%L`) y los enteros tipados: sin inyeccion posible.
+La tabla de «9–18 ms» del Contexto se midio con el termino LITERAL, no dentro de la funcion.
+

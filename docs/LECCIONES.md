@@ -1817,3 +1817,15 @@ la regla estaba en `LECCIONES.md` y no se aplico al escribir un ejemplo del plan
 los ejemplos del plan de pruebas y de la tabla de mutaciones**, no solo el diseño: un ejemplo de test
 es una afirmacion sobre el esquema. Antes de cerrar: `rg -n '<columna>' apps/merchant/src/server/schema/`
 por cada columna que la spec nombre en SQL, incluida la que se usa para mostrar un error.
+
+
+## 2026-09-28 — una mejora «medida» con SQL literal empeoro dentro de la funcion real
+
+**Que paso.** Para el ADR 0101 el orquestador midio «busqueda con pagina y total separados: 9–18 ms»
+corriendo el SQL con el termino LITERAL. La implementacion lo puso dentro de una funcion `LANGUAGE sql
+SECURITY DEFINER`, que no se inlinea y se planifica sin el valor del parametro: el benchmark real dio
+31–79 ms, PEOR que antes. La mejora estaba medida sobre un mecanismo que no es el que corre.
+
+**Regla.** Un benchmark que justifica un diseño se corre **en la forma en que va a ejecutarse**: dentro
+de la funcion, con parametros, con el rol real. Medir la consulta suelta con literales mide otro plan.
+Es la «tercera de la familia» de `CLAUDE.md` (mecanismo medido hasta el final) aplicada a rendimiento.
