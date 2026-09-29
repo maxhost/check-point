@@ -163,3 +163,18 @@ format(…%L…)` (plan con el termino real en cada llamada): `maria` 9,0 / `nez
 aislamiento (B ve sus 112) intactos. Va como migracion `0055` (`CREATE OR REPLACE`, misma firma y
 salida) antes de cerrar esta spec.
 
+
+### `0055` aplicada (2026-09-28, pedido del owner: «aplica todas las migraciones de una vez»)
+
+Escrita por el orquestador (`drizzle/0055_busqueda_plpgsql.sql`, `drizzle-kit generate --custom`,
+commit `a207e49`). En la rama del benchmark, con la funcion real: `maria` 8,7 / `nez` 12,2 / `ia `
+15,4–18,9 / `villacis` 9,3 / `xqzw` 0,3 ms — **cumple el umbral < 25 ms**; ultima pagina de `ia ` 43,6
+ms; `___` → 0; `MÁRÍA` → 10.000; sin resultados → la fila del total; pagina vacia conserva el total; B
+ve sus 112; sin `app.business_id` → error (falla cerrado). **En PROD:** `md5(prosrc)` `b45a9521…`,
+`plpgsql`, `prosecdef`, `search_path=core, pg_temp`, `proacl` sin PUBLIC, fila de Drizzle
+`f06bb7e9…`/1790646206872; una llamada real como `customer_reader` sobre un negocio de prod devuelve la
+fila del total en 0, sin error.
+
+**Pendiente:** el revisor de la 0109 revisa la version `sql` (`794b545`); la `0055` **no tiene revision
+independiente** y las suites `customers-*` todavia no corrieron contra ella en `ci-integration` (el
+revisor estaba usando esa rama): correrlas cuando termine. El codigo de la 0109 sigue sin estar en `main`.

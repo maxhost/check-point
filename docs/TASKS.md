@@ -8,14 +8,14 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — 0108 EN PROD; 0109 IMPLEMENTADA, FALTA CORREGIR LA BUSQUEDA (2026-09-28)
+## ⇥ WORKTREE `motor` — 0108 EN PROD; MIGRACIONES 0053–0055 EN PROD; CODIGO 0109 SIN REVISAR (2026-09-28)
 
-**Retomar con: esperar el veredicto del REVISOR de la 0109 (corriendo) y despues encargar la migracion
-`0055`**: `core.search_business_customers` en `LANGUAGE plpgsql` con `RETURN QUERY EXECUTE format(…%L…)`
-(misma firma y salida). Medido en la rama: busqueda 9–15,5 ms; la version `sql` de la `0054` da 31–79
-ms (peor que la 0108) porque se planifica sin el termino. Detalle en `specs/0109-…` §Benchmark y en el
-ADR 0101 §Enmienda. Umbrales de la 0109 que SI cumple: pagina 1 + total 0,33 ms, ultima 64,8 ms,
-telefono 0,10 ms.
+**Retomar con: veredicto del REVISOR de la 0109 (corriendo), despues correr las suites `customers-*` en
+`ci-integration` contra la `0055` (el revisor usaba esa rama y se le aviso que no la migre), y recien ahi
+llevar el CODIGO de la 0109 a `main`** (mergear `origin/main` en `motor` primero: `main` = `8dc8841`).
+**Prod tiene `0053`, `0054` y `0055`** (pedido del owner, todas verificadas por SQL; la `0055` = busqueda
+en `plpgsql` + `EXECUTE`, 9–19 ms en 200.000 clientes, commit `a207e49`, SIN revision independiente).
+El codigo que corre en prod es el de la 0108 y es compatible con las tres.
 **Spec 0108 — EN PROD** (pedido del owner): `0053` y `0054` aplicadas a `red-violet-38772073`/`main`
 por `run_sql_transaction` con aprobacion manual del owner, verificadas por SQL (huellas de funciones,
 trigger, politicas, grants, filas de Drizzle `bb404c3f…` y `b5547938…`). Push `a3221de..8dc8841` a
