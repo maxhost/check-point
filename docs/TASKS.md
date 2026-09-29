@@ -8,30 +8,29 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — 0108 EN PROD; MIGRACIONES 0053–0055 EN PROD; CODIGO 0109 SIN REVISAR (2026-09-28)
+## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES (0108 + 0109) EN MAIN; MIGRACIONES 0053–0055 EN PROD (2026-09-28)
 
-**Retomar con: veredicto del REVISOR de la 0109 (corriendo), despues correr las suites `customers-*` en
-`ci-integration` contra la `0055` (el revisor usaba esa rama y se le aviso que no la migre), y recien ahi
-llevar el CODIGO de la 0109 a `main`** (mergear `origin/main` en `motor` primero: `main` = `8dc8841`).
-**Prod tiene `0053`, `0054` y `0055`** (pedido del owner, todas verificadas por SQL; la `0055` = busqueda
-en `plpgsql` + `EXECUTE`, 9–19 ms en 200.000 clientes, commit `a207e49`, SIN revision independiente).
-El codigo que corre en prod es el de la 0108 y es compatible con las tres.
-**Spec 0108 — EN PROD** (pedido del owner): `0053` y `0054` aplicadas a `red-violet-38772073`/`main`
-por `run_sql_transaction` con aprobacion manual del owner, verificadas por SQL (huellas de funciones,
-trigger, politicas, grants, filas de Drizzle `bb404c3f…` y `b5547938…`). Push `a3221de..8dc8841` a
-`main` (rama `deploy-0108` = 0108 + UI de Bienvenida de GPT; gates verdes salvo `test:e2e`, que no
-corrio por el puerto 3000 ocupado por otra sesion). Deploy verificado: `/api/customers` → 401.
-**GPT hace la UI del listado sobre `main`**; contrato `specs/0108-contratos-de-api.md`. Prod tiene hoy la
-`0054` (funcion `sql`, lenta con muchos clientes; hoy hay 0) y el codigo de la 0108 (usa `count(*)`, no el
-contador): es compatible.
-**Git:** `main` = `8dc8841`, que NO esta en la historia de `motor` (es un merge en `deploy-0108`): al
-llevar la 0109 a `main`, mergear `origin/main` en `motor` primero. Worktrees `motor-wt/deploy-0108` y
-`motor-wt/deploy-0107` ya cumplieron (borrarlos pide OK: borran ramas). Rama `clientes-0108` en GitHub
-quedo vieja (GPT ya puede usar `main`).
-**Rama efimera `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`)** tiene la `0053`, la `0054` y
-3M filas; sigue sirviendo para medir la `0055`. El owner dio OK para borrarla al final.
-**Bienvenida (0107):** en PROD; la UI de GPT ya esta en `main` (`a3221de`). Callback de Google y QA con
-telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
+**Retomar con: confirmar que el deploy de `3a39bcd` quedo `success` en Vercel** (estado del commit en
+GitHub; al escribir esto estaba `pending`) y despues decidir con el owner lo pendiente de abajo.
+**Spec 0108 y 0109 — IMPLEMENTADAS con PASS de revisor, codigo en `main`** (push `8dc8841..3a39bcd`,
+fast-forward; gates sobre el arbol combinado: typecheck y build forzados `Cached: 0`, lint, format, test
+2042; `test:e2e` NO corrio: puerto 3000 ocupado por otra sesion, y la 0109 no toca UI). **Prod tiene
+`0053`, `0054` y `0055`**, aplicadas por `run_sql_transaction` con aprobacion manual del owner y
+verificadas por SQL. La `0055` (busqueda en `plpgsql` + `EXECUTE`) la escribio el orquestador por
+pedido del owner, SIN revision independiente; la cubren las 5 suites `customers-*` (36/36 contra ella en
+`ci-integration`) y el benchmark. Numeros en un negocio de 200.000: pagina 1 + total 0,33 ms, ultima
+64,8 ms, busqueda 9–19 ms, telefono 0,10 ms.
+**GPT hace la UI del listado sobre `main`**; contrato `specs/0108-contratos-de-api.md` (no cambio).
+**Pendientes de decision del owner:** mover las funciones de Vercel de `iad1` a `cle1` y subir el
+minimo del computo de prod (ADR 0101); el trigger del contador que escala mal en operaciones masivas
+(`PARQUEADO.md`, antes de cualquier borrado de negocio o importacion masiva); RLS con rol de login propio
+(`PARQUEADO.md` #62).
+**Limpieza que pide OK (borra ramas):** worktrees `motor-wt/deploy-0107` y `motor-wt/deploy-0108`; rama
+`clientes-0108` en GitHub (ya no hace falta). **Rama efimera de Neon `bench-clientes-comercio`
+(`br-sparkling-frost-ax393z0s`)**: el owner dio OK para borrarla; `delete_branch` estaba bloqueado en
+auto mode.
+**Bienvenida (0107):** en PROD con la UI de GPT (`a3221de`). Callback de Google y QA con telefonos
+reales en `PARQUEADO.md` → «Pendientes del owner».
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
