@@ -15,7 +15,10 @@ UN revisor, y recien despues pedir OK al owner para prod.** El owner pidio (2026
 numeros antes de ir a prod: **spec `specs/0109-rendimiento-del-listado-de-clientes.md` — CERRADA**
 (`1887ff3`), ADR **0101**: contador por negocio con trigger, busqueda con pagina y total separados,
 lectura en 4 viajes; migracion `0054` aditiva. Un subagente implementador esta escribiendo en este
-worktree ahora; si la sesion se cae: `ListAgents` primero, y si no hay implementador vivo el arbol es
+worktree ahora. **Foto del arbol (2026-09-28, sin commits suyos todavia, sin `MUTATION` puesto):**
+SIN COMMITEAR `drizzle/0054_contador_de_clientes.sql` + snapshot/journal,
+`schema/business-customer.ts`, `customers/{reader,list}.ts`, `customers-{isolation,list}` editadas y
+`customers-{count,migration}.neon.integration.test.ts` nuevas; si la sesion se cae: `ListAgents` primero, y si no hay implementador vivo el arbol es
 un WIP a revisar con `git diff`.
 **Spec 0108 — IMPLEMENTADA con PASS del revisor** (cierre `70f4a67`), sin aplicar a prod. Prod = `0053`
 + `0054` JUNTAS a `red-violet-38772073`/`main` ANTES del deploy, verificar por SQL rol, politicas,
