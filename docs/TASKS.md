@@ -63,6 +63,10 @@ propios = «Todo filtrado» (los beneficios de comercios donde ya es miembro TAM
 ubicacion = «GPS del telefono» (si niega el permiso, cae al ultimo escaneo); radio = «2 km». **Efecto a decidir
 (no acordado):** con «Todo filtrado», el «te extrañamos» del Cafe A no se ve si el cliente esta a > 2 km o escanea
 en otro cafe. **A verificar en un telefono:** si tocar un aviso de Wallet abre el pase (y no la PWA).
+**Owner (2026-09-29, «quizas», a pensar mas):** de los 3 avisos diarios del pase, 1 = timbre general («visita tus
+beneficios»); los otros 2 no hay que desperdiciarlos → «te extrañamos» (recurrencia), con un ORDEN entre los 20
+comercios que compiten, y «nisiquiera conviene que salgan dos te extraño el mismo dia»; idea: si el consumidor esta
+en el radio de 2 km del comercio, ve su «te extrañamos». Pide «traer ideas frescas». SIN decidir.
 
 ### Historial — decisiones que alimentaron el ADR 0102
 
