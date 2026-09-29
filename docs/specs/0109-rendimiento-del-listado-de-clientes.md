@@ -1,0 +1,136 @@
+---
+spec: 0109
+fecha: 2026-09-28
+estado: cerrada
+resumen: Tres mejoras de rendimiento al listado de clientes (spec 0108) antes de ir a prod — contador por negocio mantenido por trigger, busqueda con pagina y total separados, y 4 viajes a la base en vez de 7 (ADR 0101). Migracion `0054` aditiva; el contrato HTTP no cambia.
+disjunta: no — toca `server/customers/*` y los tests de la 0108; serializar contra cualquier cambio a la 0108
+archivos: apps/merchant/drizzle/0054_*.sql, apps/merchant/drizzle/meta/*, apps/merchant/src/server/schema/business-customer.ts, apps/merchant/src/server/customers/reader.ts, apps/merchant/src/server/customers/list.ts, apps/merchant/src/server/customers-*.neon.integration.test.ts, apps/merchant/src/server/customers-integration-support.ts
+---
+
+# 0109 — Rendimiento del listado de clientes
+
+> Implementa el **ADR 0101**, que trae la medicion. Enmienda la 0108 **antes** de que llegue a prod:
+> las migraciones `0053` y `0054` van juntas. El contrato `specs/0108-contratos-de-api.md` **no cambia**.
+
+## Problema
+
+En un negocio de 200.000 clientes (ADR 0101, medido): el total sin filtro cuesta 44–49 ms en cada
+pedido y domina la pagina 1 (0,4 ms); la busqueda por nombre cuesta 17–45 ms porque cuenta y ordena
+todas las coincidencias antes de paginar; y la lectura hace 7 viajes a una base que esta en otra
+region.
+
+## Alcance
+
+**Entra** (pedido del owner, 2026-09-28: «implementa las tres mejoras y dejalas documentadas»):
+
+1. Contador de clientes por negocio, mantenido por trigger.
+2. Busqueda con pagina y total calculados por separado.
+3. La lectura en 4 viajes.
+
+**No entra:** mover la region de Vercel, el tamaño del computo de Neon (decisiones del owner, ADR 0101),
+paginacion por cursor, cualquier cambio al contrato HTTP o a la UI.
+
+## Diseño
+
+### Migracion `0054` (aditiva; la `0053` no se toca)
+
+1. `core.business_customer_count`: `business_id uuid PK` FK `core.business(id) on delete cascade`,
+   `customers int not null default 0`, `CHECK (customers >= 0)`.
+2. Funcion de trigger (`plpgsql`) + trigger `AFTER INSERT OR DELETE ON core.business_customer FOR EACH
+   ROW`: en `INSERT`, upsert del contador (+1); en `DELETE`, `-1`. Medido en la rama (ADR 0101): un
+   `INSERT … ON CONFLICT DO UPDATE` que actualiza **no** dispara el `AFTER INSERT`; uno que inserta si; un
+   borrado en cascada del padre dispara el `AFTER DELETE`. Si el contador del negocio ya se borro por su
+   propio cascade, el `UPDATE` afecta 0 filas: correcto.
+3. Backfill: `INSERT … SELECT business_id, count(*) FROM core.business_customer GROUP BY 1`.
+4. `GRANT SELECT ON core.business_customer_count TO customer_reader`; `ENABLE ROW LEVEL SECURITY`;
+   politica `FOR SELECT TO customer_reader USING (business_id = current_setting('app.business_id')::uuid)`.
+5. `GRANT SELECT (id, business_id, kind, status) ON core.loyalty_program TO customer_reader`; `ENABLE
+   ROW LEVEL SECURITY`; la misma politica. El dueño tiene `BYPASSRLS`: el resto de la app no cambia (se
+   prueba con las suites existentes que leen programas).
+6. `CREATE OR REPLACE FUNCTION core.search_business_customers` con la **misma firma, el mismo
+   `SECURITY DEFINER`, el mismo `search_path`, el mismo escape y la misma forma de salida** (siempre la
+   fila del total), pero con pagina y total como subconsultas independientes: la pagina directo sobre
+   `core.business_customer` con `ORDER BY last_visit_at DESC NULLS LAST, consumer_id LIMIT/OFFSET`, y el
+   total con su propio `count(*)`; **ninguna de las dos lee de un CTE materializado con todas las
+   coincidencias**. Despues del `CREATE OR REPLACE`, confirmar por SQL que el `proacl` sigue sin
+   `PUBLIC` y con `EXECUTE` para `customer_reader`.
+
+### Lectura
+
+- `withCustomerReader`: `BEGIN`; **una** sentencia
+  `SELECT set_config('role','customer_reader',true), set_config('app.business_id',$1,true)`; la
+  consulta; `COMMIT`. Ya no resuelve el programa como dueño antes de cambiar de rol.
+- **Cada forma (todos / nombre / telefono) es UNA sentencia** que resuelve el programa operativo
+  (`core.loyalty_program` con `status IN ('active','closing')`, como `customer_reader`), la pagina, el
+  saldo y el total, y devuelve el `kind` del programa en la fila. Sin filtro, el total sale de
+  `core.business_customer_count` (`coalesce(…, 0)` si el negocio no tiene fila todavia). Por nombre,
+  de la funcion. Por telefono, de las filas.
+- Se mantiene el `business_id = $1` explicito en cada consulta, ademas de RLS (ADR 0100 §3).
+- El DTO, el orden, las paginas y los errores no cambian.
+
+## Archivos
+
+| Archivo | Accion |
+|---|---|
+| `apps/merchant/drizzle/0054_*.sql` + `meta/` | crear |
+| `apps/merchant/src/server/schema/business-customer.ts` | editar (tabla del contador; el trigger y las politicas van en SQL) |
+| `apps/merchant/src/server/customers/reader.ts`, `list.ts` | editar |
+| `apps/merchant/src/server/customers-*.neon.integration.test.ts`, `customers-integration-support.ts` | editar / extender |
+
+### Disjunta?
+
+No: es la misma superficie que la 0108. Nada mas abierto la toca.
+
+## Definition of Done
+
+- [ ] `0054` aplicada en `ci-integration`: tabla, trigger, backfill, grants, politicas y funcion nueva,
+      verificado por SQL.
+- [ ] Las 3 suites de la 0108 y las existentes que leen `core.loyalty_program` o escriben la
+      proyeccion, verdes.
+- [ ] Contador correcto tras alta nueva, re-alta (409), compra, canje y borrado en cascada.
+- [ ] La lectura hace **4** viajes (oraculo abajo).
+- [ ] Benchmark (lo corre el orquestador por MCP, como en la 0108): pagina 1 + total < 5 ms; busqueda
+      por nombre (`maria`, `nez`, `ia `, `villacis`, `xqzw`) < 25 ms; ultima pagina + total < 100 ms;
+      telefono < 5 ms.
+- [ ] Gates: `typecheck`, `lint`, `test`, `format:check`, `build` (de a uno, forzados). Sin `test:e2e`.
+
+## Plan de pruebas y verificacion
+
+- [ ] **Contador (integracion):** en el mundo de la 0108, `customers` de A = filas de A en la
+      proyeccion; sube en 1 con un cliente nuevo; **no** cambia con una re-alta 409, una compra ni un
+      canje; baja al borrar una cuenta (cascade). La respuesta sin filtro trae ese `total`.
+- [ ] **Capa 2 extendida:** con `withCustomerReader(A)`, `select count(*)` sin filtro sobre
+      `core.loyalty_program` y sobre `core.business_customer_count` ve solo lo de A;
+      `select name from core.loyalty_program` (columna no otorgada) → `permission denied`.
+- [ ] **Busqueda:** total correcto con mas de una pagina de coincidencias (p. ej. 30 que matchean → 25 +
+      5, `total` 30 en las dos); pagina mas alla de la ultima → `[]` con el total real; escape intacto.
+- [ ] **Viajes:** un test cuenta las sentencias que `withCustomerReader` + `listCustomers` mandan a la
+      base (envolviendo el `execute` de la transaccion) y asevera 2 sentencias propias por pedido en las
+      tres formas (el `BEGIN`/`COMMIT` los pone `withDbTransaction`).
+- [ ] Todas las aserciones de la 0108 siguen verdes sin tocarlas (salvo las que dependan de cuantas
+      sentencias se mandan, si las hubiera: se declara).
+
+**Mutaciones** — presupuesto **5**, protocolo de la skill `protocolo-de-verificacion`. Condicion de
+corte: las 5 muerden por el motivo correcto; la que no, se reporta como oraculo faltante. Clase de error:
+**contador desincronizado, total de busqueda mal calculado, aislamiento roto por la refactorizacion.**
+
+| # | Mutacion | Mecanismo | Tiene que morder |
+|---|---|---|---|
+| M1 | el trigger como `AFTER INSERT OR UPDATE OR DELETE` (cuenta compras) | trigger de la `0054` (en la base del test) | contador tras una compra |
+| M2 | el trigger sin la rama `DELETE` | idem | contador tras el cascade |
+| M3 | el total de la busqueda = filas de la pagina | funcion de la `0054` | 30 coincidencias → total 30 |
+| M4 | sacar `set_config('role', …)` de la sentencia | `server/customers/reader.ts` | capa 2 |
+| M5 | la politica de `loyalty_program` con `USING (true)` | `0054` (en la base del test) | capa 2 sobre `loyalty_program` |
+
+**Declarado fuera:** la latencia de red entre Vercel `iad1` y Neon `us-east-2` (no medida; la mejora
+de viajes se asevera por conteo de sentencias, no por tiempo); la contencion en la fila del contador
+entre altas simultaneas del mismo negocio (aceptada en el ADR 0101).
+
+## Handoff requerido
+
+Un implementador y un revisor independiente (ADR 0071). El benchmark lo corre el orquestador por MCP.
+Prod: `0053` y `0054` juntas, antes del deploy, con OK del owner.
+
+## Abierto
+
+Nada.
