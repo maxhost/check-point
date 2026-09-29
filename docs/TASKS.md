@@ -39,6 +39,15 @@ Apple, varios pases juntos (`.pkpasses` en Safari, `addPasses` en app — Distri
 tope de push de pase (solo throttling no documentado). NO verificado: el interruptor de notificaciones POR pase en
 iOS/Android (se prueba en un telefono). El pase compartido toca 24 archivos no-test (grep). La 0110 no depende de
 esta eleccion (decide por comercio; el reparto iria aguas abajo, en la cola).
+**Owner (2026-09-29, textual resumido):** B = opcion «Premium» mas cara (canal exclusivo), con efecto red «para
+sumarse a otros con un simple click»; A NO es imposible: «tenemos que encontrar la manera de hacerlo funcionar y
+venderlo», como Meta/Google Ads (sin alcance garantizado, se ve rendimiento); idea: si tiene ambos canales, wallet
+para lo especifico y «te ganaste 20 puntos» por push del navegador. **Opciones propuestas por el orquestador, SIN
+decidir:** (1) el «+1 sello» sin notificacion (ya existe la clase silenciosa `pass_refresh`, `push-transports.ts:202-210`)
+→ los 3 de Google quedan para marketing; (2) presupuesto diario de campaña por cliente; (3) ranking por merito
+(lift del ADR 0066) + urgencia; (4) resumen/bandeja: un aviso con varios comercios que abre la vista web del pase;
+(5) Web Push como desborde (iOS: solo PWA en inicio, 16.4+, permiso tras un toque — webkit.org/blog/13878, leido);
+(6) informe «enviados / en espera / sin lugar». Prod: 0 consumidores (SQL) → los numeros iniciales son supuestos.
 
 ### Historial — decisiones que alimentaron el ADR 0102
 
