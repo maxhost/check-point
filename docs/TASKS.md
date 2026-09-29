@@ -19,6 +19,18 @@ script contra `CONSOLIDADO.md`: 16/16 filas identicas. Prod medido por SQL: 0 ca
 **Respuestas del owner de esta sesion (AskUserQuestion):** fin de «activo» = los dias que eligio en #3 (sin #3,
 T1); dias de #7/#8 = solo las opciones `< T1` del rubro; suma de #7/#8 = en cada envio; proximidad = solo
 respeta la etapa, sin cadencia. Cero codigo tocado.
+**Hallazgo a decidir ANTES de implementar (owner, 2026-09-29: «un cliente puede estar en varios programas…
+quien llega ultimo gana la atencion»):** medido en el arbol, el cliente tiene UN pase para todos los comercios
+(`wallet_pass_consumer_provider_unique`, `schema/consumer.ts:102`) con UN slot «Ultima novedad»
+(`consumer_account.latest_message`, `:40-45`); el unico freno entre comercios es un cooldown de 3 min
+(`wallet/push.ts:21-24`). Google Wallet: «maximum of 3 messages that trigger a push notification in a 24 hour
+period» por pase, excedido → `QuotaExceededException` (developers.google.com/wallet/retail/loyalty-cards/use-cases/
+trigger-push-notifications, leido) — y cada aviso nuestro, el «+1 sello» incluido, es `TEXT_AND_NOTIFY`
+(`wallet/google-object.ts:147-164`); `QuotaExceeded` no tiene manejo propio (grep vacio). Programas por persona:
+Bond 2024 «19 different loyalty programs» (prnewswire, leido; EE.UU., todas las categorias; ~9 activos segun
+resumenes de 2025, no leido en la fuente). Tolerancia: solo encuestas de segunda mano (Helplama: 1/semana → 10 %
+desactiva; 3–6/semana → 40 %), calidad baja. Falta: tope GLOBAL por cliente entre comercios y quien gana (el
+ADR 0095 lo dejo afuera «hasta que entendamos como aplicarlo»).
 
 ### Historial — decisiones que alimentaron el ADR 0102
 
