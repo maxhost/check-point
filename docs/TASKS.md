@@ -8,26 +8,27 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — SPEC 0108 «LISTADO DE CLIENTES» IMPLEMENTADA, SIN APLICAR A PROD (2026-09-28)
+## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES: 0108 IMPLEMENTADA, 0109 (RENDIMIENTO) EN IMPLEMENTACION (2026-09-28)
 
-**Retomar con: pedir OK al owner para llevar la 0108 a prod** — aplicar la migracion `0053` a
-`red-violet-38772073`/`main` (por `run_sql_transaction` o `db:migrate`) ANTES del deploy, verificar por
-SQL rol `customer_reader`, politicas y funcion, y despues pushear `motor` a `main`. **Spec
-`specs/0108-listado-de-clientes-del-comercio.md` — IMPLEMENTADA con PASS del revisor** (cierre en
-`70f4a67`; codigo `c1f8ce6`…`7086a4e`), ADR **0100**, contrato para GPT
-`specs/0108-contratos-de-api.md` (sumo: omitir `q` vacia y codificar el `+`). Benchmark de aceptacion
-en umbral (lo corrio el orquestador por MCP): pagina 1 + total 50 ms, ultima + total 110 ms, nombre
-18–32 ms, telefono 0,05 ms en un negocio de 200.000. El revisor cazo que M7 (fuga de `consumerId`)
-quedaba verde; el orquestador extendio el test a las tres formas y re-midio ROJO 1/19. Declarado
-fuera: O2 (visita mas vieja sin oraculo) y el costo de busqueda que crece con las coincidencias.
-Arbol limpio, sin mutaciones puestas; `ci-integration` ya tiene la `0053`.
-**Rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`) SIGUE VIVA** y ya
-cumplio: el owner dio OK para borrarla pero el clasificador de permisos bloqueo `delete_branch`; la
-borra el owner desde la consola de Neon.
+**Retomar con: esperar el handoff del implementador de la 0109, correr el benchmark por MCP, lanzar
+UN revisor, y recien despues pedir OK al owner para prod.** El owner pidio (2026-09-28) mejorar los
+numeros antes de ir a prod: **spec `specs/0109-rendimiento-del-listado-de-clientes.md` — CERRADA**
+(`1887ff3`), ADR **0101**: contador por negocio con trigger, busqueda con pagina y total separados,
+lectura en 4 viajes; migracion `0054` aditiva. Un subagente implementador esta escribiendo en este
+worktree ahora; si la sesion se cae: `ListAgents` primero, y si no hay implementador vivo el arbol es
+un WIP a revisar con `git diff`.
+**Spec 0108 — IMPLEMENTADA con PASS del revisor** (cierre `70f4a67`), sin aplicar a prod. Prod = `0053`
++ `0054` JUNTAS a `red-violet-38772073`/`main` ANTES del deploy, verificar por SQL rol, politicas,
+funcion y trigger, despues push. Contrato para GPT `specs/0108-contratos-de-api.md` (no cambia con la 0109).
+**Decisiones del owner pendientes (ADR 0101):** mover las funciones de Vercel de `iad1` a `cle1` (la
+base esta en `us-east-2`; latencia no medida) y subir el minimo del computo de prod (hoy 0,25 CU).
+**Rama efimera `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`) VIVA, con la `0053` y 3M
+filas**: se reusa para el benchmark de la 0109 (aplicarle la `0054`). El owner dio OK para borrarla
+despues, pero `delete_branch` esta bloqueado por el clasificador: la borra el owner desde la consola.
 **Bienvenida (0107):** en PROD; UI de GPT rota hasta su arreglo (`template-draft.ts:26`); callback de
 Google y QA con telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
-**Git:** `motor` va adelante de `origin/main` con la 0108 (codigo + docs), sin pushear. El worktree
-`check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
+**Git:** `motor` va adelante de `origin/main` con la 0108 y los docs de la 0109, sin pushear. El
+worktree `check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
