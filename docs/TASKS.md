@@ -37,6 +37,19 @@ compras fallarian. `origin/main` tiene `a3221de` (UI de Bienvenida de GPT) que l
 integrarlo al mergear. El
 worktree `check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
 
+
+**DEPLOY DE LA 0108 PREPARADO Y FRENADO (2026-09-28).** El owner pidio push a `main` + migracion para
+que GPT trabaje en `main`. Va SOLO la 0108 (PASS); la 0109 no esta revisada. Worktree
+`check-point-wt/motor-wt/deploy-0108`, rama `deploy-0108` en **`8dc8841`** = `7675105` (0108) +
+merge de `origin/main` (`a3221de`, UI de Bienvenida de GPT). Gates sobre ese arbol: typecheck y build
+forzados (`Cached: 0`), lint, format, test 2042 verdes. **`test:e2e` NO corrio**: el puerto 3000 lo
+tiene un `next-server` de otra sesion (`central-hill`), que no se mato. **La migracion `0053` a
+`main` la bloqueo el clasificador de permisos («Production Deploy»)**; prod verificada intacta en
+`0052`, sin tabla ni rol. **NO pushear `8dc8841` a `main` antes de la `0053`**: rompe las compras.
+Pasos pendientes, en orden: `0053` a prod (el owner, o con permiso) → verificar por SQL (tabla, rol,
+politicas, `md5(prosrc)` de `core.search_business_customers` = `b3adbb0654c0a620e66346d631eeb463`,
+fila en `drizzle.__drizzle_migrations` con hash `bb404c3f…` y `created_at` 1790611663857) → push
+`8dc8841` a `main` → deploy de Vercel en `READY` con ese sha.
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
 **Retomar con: la UI del arco de marketing** (ChatGPT, contra `docs/specs/0101-contratos-de-api.md`);
