@@ -1829,3 +1829,15 @@ SECURITY DEFINER`, que no se inlinea y se planifica sin el valor del parametro: 
 **Regla.** Un benchmark que justifica un diseño se corre **en la forma en que va a ejecutarse**: dentro
 de la funcion, con parametros, con el rol real. Medir la consulta suelta con literales mide otro plan.
 Es la «tercera de la familia» de `CLAUDE.md` (mecanismo medido hasta el final) aplicada a rendimiento.
+
+
+## 2026-09-29 — una tabla «derivada de una formula» que la formula no reproducia
+
+**Que paso.** Al consolidar la escalera de reactivacion por rubro, el orquestador propuso derivar la
+cadencia de «En riesgo» como `round(0,7 × R)` y presento una tabla «ya calculada asi». La tabla estaba
+hecha a mano: para R = 45 decia 32 (mensajes 77/109) y la formula da 31 (76/107). Lo cazo el owner
+(«la formula que propones no da los numeros de la tabla»); un script de 8 lineas lo confirmo.
+
+**Regla.** Una tabla que se presenta como salida de una formula se **genera con la formula** (script),
+no se escribe a mano al lado. Es la misma familia que «el ejemplo es una afirmacion» de `CLAUDE.md`:
+si decis «sale de X», X tiene que haberse ejecutado.

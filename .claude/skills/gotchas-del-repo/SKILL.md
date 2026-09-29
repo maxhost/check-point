@@ -249,6 +249,22 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
   pedir confirmacion del owner antes de borrar ramas efimeras. Alternativa sin gate: crear la
   rama efimera con `expiresAt` (ISO) para que Neon la borre sola.
+- **RLS, `leakproof` y funciones en Neon — medido el 2026-09-28 (specs 0108/0109, ADR 0100/0101).**
+  (1) La app se conecta con `neondb_owner`, que tiene **`rolbypassrls = true`**: una politica RLS sola
+  **no aisla nada** (probado con `FORCE`). Para que muerda hay que cambiar de rol dentro de la
+  transaccion (`set_config('role','customer_reader',true)`, que equivale a `SET LOCAL ROLE`, y requiere
+  `GRANT <rol> TO neondb_owner WITH SET TRUE`). (2) Con RLS, `LIKE` **no es `leakproof`** y el indice de
+  trigramas queda afuera (0,05 → 180 ms), y marcar algo `leakproof` **no se puede**: «only superuser can
+  define a leakproof function». (3) Una funcion **`LANGUAGE sql SECURITY DEFINER` no se inlinea y desde
+  la 6a llamada de la sesion usa el plan GENERICO** (sin el valor del parametro): una busqueda paso de
+  9–18 ms a 31–79 ms. Si el plan depende del parametro, `plpgsql` + `RETURN QUERY EXECUTE format(…%L…)`.
+  **Un benchmark se corre en la forma en que va a ejecutarse** (dentro de la funcion, con el rol real):
+  el SQL suelto con literales mide otro plan. (4) `auto_explain` esta bloqueado en Neon («access to
+  library "auto_explain" is not allowed»).
+- **En auto mode, el clasificador BLOQUEA toda migracion a prod (y hasta preparar una para una rama
+  efimera) como «Production Deploy»**, aunque el owner lo pida en el chat. Salen con el owner saliendo
+  de auto mode y aprobando la llamada a mano (`run_sql_transaction`). El `delete_branch` tambien lo
+  bloquea. No buscar otro camino: pedirle al owner que apruebe.
 - **Una migracion CHICA se puede aplicar a prod SIN traer la connection string** (medido con la `0051`,
   2026-09-27): `mcp__neon__run_sql_transaction` con las sentencias del `.sql` (sin el
   `--> statement-breakpoint`) mas `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) SELECT

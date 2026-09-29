@@ -8,30 +8,106 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES (0108 + 0109) EN MAIN; MIGRACIONES 0053–0055 EN PROD (2026-09-28)
+## ⇥ MARKETING — ETAPAS DE CICLO DE VIDA POR RUBRO: DECISIONES CERRADAS, FALTA ADR + SPEC (2026-09-29)
 
-**Retomar con: decidir con el owner lo pendiente de abajo.** Deploy de `3a39bcd` VERIFICADO: estado
-Vercel del commit en GitHub = `success` («Deployment has completed», 20:52); `/api/customers` → 401,
-`/api/health` → 200.
-**Spec 0108 y 0109 — IMPLEMENTADAS con PASS de revisor, codigo en `main`** (push `8dc8841..3a39bcd`,
-fast-forward; gates sobre el arbol combinado: typecheck y build forzados `Cached: 0`, lint, format, test
-2042; `test:e2e` NO corrio: puerto 3000 ocupado por otra sesion, y la 0109 no toca UI). **Prod tiene
-`0053`, `0054` y `0055`**, aplicadas por `run_sql_transaction` con aprobacion manual del owner y
-verificadas por SQL. La `0055` (busqueda en `plpgsql` + `EXECUTE`) la escribio el orquestador por
-pedido del owner, SIN revision independiente; la cubren las 5 suites `customers-*` (36/36 contra ella en
-`ci-integration`) y el benchmark. Numeros en un negocio de 200.000: pagina 1 + total 0,33 ms, ultima
-64,8 ms, busqueda 9–19 ms, telefono 0,10 ms.
-**GPT hace la UI del listado sobre `main`**; contrato `specs/0108-contratos-de-api.md` (no cambio).
-**Pendientes de decision del owner:** mover las funciones de Vercel de `iad1` a `cle1` y subir el
-minimo del computo de prod (ADR 0101); el trigger del contador que escala mal en operaciones masivas
-(`PARQUEADO.md`, antes de cualquier borrado de negocio o importacion masiva); RLS con rol de login propio
-(`PARQUEADO.md` #62).
+**Retomar con: escribir el ADR y la spec de «etapas de ciclo de vida por rubro»** (plantilla `TEMPLATE.md`:
+hay migracion probable y reemplaza partes de los ADR 0095 —grupos/rangos— y 0097 —en riesgo por ritmo—).
+Insumos, en este orden: las decisiones (1)–(15) de esta seccion (textuales del owner), la tabla final
+`research_notes/ciclo-de-vida-por-rubro/CONSOLIDADO.md` (cargada A MANO, 16 filas con `gcid:store`), y el
+codigo actual: `apps/merchant/src/server/marketing/{templates,audience,push-audience,balance-audience,at-risk,welcome-issue,welcome-reminder}.ts`,
+`audience-store.ts:87`, `push-store.ts`, `tick.ts`. **El owner quiere arrancar con el implementador**, pero
+la regla del repo es spec CERRADA primero: escribir ADR + spec, pedir el OK del owner para `cerrada`, y
+recien despues implementador + revisor. Cero codigo en esta sesion; nada commiteado todavia salvo lo que
+diga `git log`.
+
+**Hallazgo medido (orquestador):** los dias de #3/#4/#5 son PISOS abiertos (`audience.ts`,
+`dormantSince > dormantFloor`), no franjas; la superposicion la resuelve el rango (proximidad:
+`audience-store.ts:87` + turno unico/cooldown 30 d; push: regla de grupo `push-audience.ts`). #7/#8 son
+OTRO grupo → pueden salir junto con #3/#4/#5 en el mismo tick. Bienvenida vs #3 a 14 d: borde.
+**Modelo propuesto por el owner (textual resumido, 2026-09-29):** cada cliente en UNA etapa. Bienvenida
+activa + cupon sin usar → no entra en te extrañamos/riesgo/perdido/falta poco, solo el recordatorio de
+canje del cupon. #3 «Te extrañamos»: el merchant elige **7 o 14 dias**; se REPITE con esa cadencia hasta
+caer en riesgo («a 7 → 4 mensajes en un mes; a 14 → 2»). #4 «En riesgo»: a los 30 dias. #5 «Recuperar
+perdido»: entra a los 90 dias sin visita; mensajes el dia 91, «luego a los 14 dias, luego a los 60, luego
+a los 90» y despues **irrecuperable** (quiza campaña futura). #7 «Te falta poco»: el dificil de encajar.
+**Respuestas del owner (2026-09-29):** (1) cupon de bienvenida vencido sin usar → cae en la etapa que le
+toca por dias desde que se anoto; (2) «En riesgo» = **solo 30 dias** (deja sin efecto la regla de ritmo
+del ADR 0097); (3) #5 escalonado con tope, como arriba.
+**Propuesta del orquestador, SIN decidir:** #7/#8 como campaña propia solo en etapa «activo»; en etapas de
+reactivacion enriquecen el mensaje de la etapa en vez de salir aparte.
+**A confirmar:** los 14/60/90 de #5 ¿cuentan desde el dia 91 o son intervalos entre mensajes?
+**Investigacion hecha (2026-09-29, fuentes primarias leidas por el orquestador):** Fivestars AutoPilot =
+campañas SUELTAS por dias: At-Risk 15/30/45, Lapsed 30–150, Lost 180/270/365, Growth cada 3a/5a/10a visita;
+sin regla de solapamiento documentada (blog.fivestars.com). Toast = UNA regla global: «if a guest has received
+an automated marketing campaign from you in the past 28 days, they cannot receive another automated one», sin
+prioridad documentada (support.toasttab.com FAQ). Square: grupo Regulars = 3 visitas en 6 meses; Lapsed = «were
+regulars, but haven't visited in the last six weeks» (help 6245). Klaviyo: Smart Sending, push 24 h, lo salteado
+NO se reprograma; empezar el win-back donde «75–85% of all customers would repurchase»; cortar el win-back
+(«sunset»). Braze Canvas: recorrido con exit criteria («Place an Order» saca al usuario). Talon.One: ya
+verificado el 2026-09-26 (motor de promociones al comprar, no de outreach). Perkstar: solo marketing, sin
+detalle de reglas. **Lectura del orquestador:** el modelo del owner = un RECORRIDO con salida por visita
+(Braze) con los dias de Fivestars (30/90 coinciden). Riesgos detectados: #3 a 7 d repetido pega 4 push y el
+ultimo cae 2 dias antes del de riesgo (dia 28 vs 30) → falta un respiro minimo entre mensajes; 7 d fijos es
+temprano para negocios de visita mensual. Pendiente: respuesta del owner.
+**Respuestas del owner (2026-09-29, cont.):** (4) 2 dias entre etapas «no me parece mal» → SIN respiro minimo
+entre mensajes (el «7 d» era del orquestador, sin fuente; lo unico con fuente: Toast 28 d, Klaviyo push 24 h);
+(5) dias de cada etapa POR RUBRO («B»): defaults por `category_gcid` (16 categorias, `lib/business-categories.ts`);
+calibrar con los datos del negocio («C») queda para despues → «En riesgo» deja de ser 30 fijos (a confirmar).
+(6) calendario de #5 = **opcion A**: 14/60/90 contados desde el PRIMER mensaje → dias 91, 105, 151, 181 desde
+la ultima visita; despues irrecuperable. (7) #4 «En riesgo» **se repite cada 21 dias** (escalado por rubro)
+hasta pasar a Perdido — cafe: dias 30, 51, 72; (8) los offsets de #5 **se escalan con el rubro**.
+(9) **campañas SUELTAS**, no un recorrido unico («da la impresion de tener mas opciones») — la exclusion por
+etapa la garantiza el motor igual; (10) #7/#8 **solo en etapa activo** (si ademas enriquecen el mensaje de
+reactivacion: NO confirmado, preguntar); (11) tabla por rubro: el owner pidio **un research con un agente por
+rubro** con datos reales (ciclo de vida, reactivacion, perdidos) — lanzado 2026-09-29, 15 rubros de
+`lib/business-categories.ts`; `gcid:store` (relleno) necesita una escalera por defecto. Resultados →
+`research_notes/ciclo-de-vida-por-rubro/` (a consolidar y verificar por el orquestador antes de la spec).
+**Research TERMINADO (15/15) y consolidado:** `research_notes/ciclo-de-vida-por-rubro/CONSOLIDADO.md` (tabla, regla
+de derivacion propuesta, fuentes verificadas por el orquestador; farmacia/JAMA NO verificada por captcha). 
+**Respuestas del owner (2026-09-29, cierre):** (12) tabla A MANO, sin formula (la formula del orquestador no
+reproducia su propia tabla: `0,7×45` → 31, no 32); (13) heladeria SIN pausa invernal; (14) gimnasio: ajustar
+dias → Perdido 46/60/120/181, Irrecuperable 181; (15) #7/#8 SI se suman al mensaje de la etapa de reactivacion
+(«ademas el texto es editable»). **Decisiones completas para escribir ADR + spec** (reemplaza partes de 0095/0097;
+TEMPLATE.md: hay decision de producto y probablemente migracion). Proximo paso: handoff → /clear → ADR + spec.
+
+## ⇥ WORKTREE `motor` — PROXIMA SESION: REVISAR EL MOTOR DE MARKETING (HAY Y FALTA) (2026-09-28)
+
+**Retomar con: revisar CON EL OWNER el motor de marketing — que hay hoy en prod y que falta, incluido lo
+parqueado.** Es una sesion de relevamiento, no de codigo: armar el mapa y que el owner elija la proxima
+spec. Leer en este orden, sin abrir todo el repo: ADR **0064** (el motor arranca por audiencias), ADR
+**0091** (catalogo de campañas prearmadas priorizado por flujo — su §5 es el orden de prioridades), ADRs
+**0092–0099** (plantilla = corrida congelada, cupon, push, saldo, en riesgo, premio estructurado,
+bienvenida), las filas de las specs **0101–0107** en `docs/INDEX.md` (plantillas de proximidad, cupon,
+push, saldo, en riesgo, premio, bienvenida — todas implementadas) y `docs/PARQUEADO.md` entero
+(secciones «Decisiones tomadas que esperan spec», «Hallazgos a decidir», «Deuda de verificacion» y
+«Pendientes del owner»). Contrastar el §5 del ADR 0091 contra lo implementado y listar lo que falta.
+
+**Lo que cerro esta sesion (verificado):** listado de clientes del comercio — specs **0108** y **0109**,
+ADRs **0100** y **0101**, IMPLEMENTADAS con PASS de revisor independiente y EN PROD. Migraciones `0053`,
+`0054` y `0055` aplicadas a `red-violet-38772073`/`main` por `run_sql_transaction` con aprobacion
+manual del owner (auto mode las bloquea: «Production Deploy»), verificadas por SQL (huellas de funciones,
+trigger, politicas, grants, filas de Drizzle). Codigo en `main` (`3a39bcd`; docs hasta `ddfe36c`); deploy
+de Vercel `success` (20:52), `/api/customers` → 401. Gates sobre ese arbol: typecheck y build forzados
+`Cached: 0`, lint, format, test 2042 verdes; 36/36 suites `customers-*` contra la `0055`. `test:e2e` no
+corrio (puerto 3000 ocupado por otra sesion; la 0109 no toca UI). **GPT hace la UI del listado sobre
+`main`** con el contrato `specs/0108-contratos-de-api.md`. Numeros (negocio de 200.000): pagina 1 + total
+0,33 ms, ultima 64,8 ms, busqueda 9–19 ms, telefono 0,10 ms. La `0055` la escribio el orquestador por
+pedido del owner, sin revision independiente.
+
+**Descartado midiendo (no reintentar sin medir):** RLS pura para la busqueda por nombre (`LIKE` no es
+`leakproof`: 180 ms sin resultados) y marcarla `leakproof` (Neon: «only superuser can define a leakproof
+function»); un indice angosto solo por `business_id` para el conteo (49 → 44 ms, no sirve); la busqueda
+en funcion `LANGUAGE sql` (plan generico desde la 6a llamada: 31–79 ms, peor). Detalle en ADR 0100/0101.
+
+**Pendientes de decision del owner (no bloquean el motor):** mover las funciones de Vercel de `iad1` a
+`cle1` y subir el minimo del computo de prod, hoy 0,25 CU (ADR 0101, latencia no medida); el trigger del
+contador que escala mal en operaciones masivas y el rol de base con login propio (los dos en
+`PARQUEADO.md`).
 **Limpieza que pide OK (borra ramas):** worktrees `motor-wt/deploy-0107` y `motor-wt/deploy-0108`; rama
-`clientes-0108` en GitHub (ya no hace falta). **Rama efimera de Neon `bench-clientes-comercio`
-(`br-sparkling-frost-ax393z0s`)**: el owner dio OK para borrarla; `delete_branch` estaba bloqueado en
-auto mode.
-**Bienvenida (0107):** en PROD con la UI de GPT (`a3221de`). Callback de Google y QA con telefonos
-reales en `PARQUEADO.md` → «Pendientes del owner».
+`clientes-0108` en GitHub; rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`,
+el owner ya dio OK; `delete_branch` estaba bloqueado en auto mode).
+**Bienvenida (0107):** en PROD con la UI de GPT. El `--apply` del callback de Google y el QA con
+telefonos reales siguen en `PARQUEADO.md` → «Pendientes del owner».
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
