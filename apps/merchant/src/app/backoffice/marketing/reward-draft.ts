@@ -93,7 +93,11 @@ export function suggestedRewardLabel(
   return label.slice(0, 40);
 }
 
-export function rewardErrors(reward: RewardDraft, couponKinds?: CouponKind[]) {
+export function rewardErrors(
+  reward: RewardDraft,
+  couponKinds?: CouponKind[],
+  withRedemptionCap = true,
+) {
   const errors: Record<string, string> = {};
   if (couponKinds && !couponKinds.includes(reward.couponKind))
     errors.couponKind = "Este tipo de premio ya no está disponible.";
@@ -106,9 +110,10 @@ export function rewardErrors(reward: RewardDraft, couponKinds?: CouponKind[]) {
   )
     errors.couponCost = "Ingresá un costo válido.";
   if (
-    !Number.isInteger(reward.couponMaxRedemptions) ||
-    reward.couponMaxRedemptions < 1 ||
-    reward.couponMaxRedemptions > 1_000_000
+    withRedemptionCap &&
+    (!Number.isInteger(reward.couponMaxRedemptions) ||
+      reward.couponMaxRedemptions < 1 ||
+      reward.couponMaxRedemptions > 1_000_000)
   )
     errors.couponMaxRedemptions = "Elegí un tope entre 1 y 1.000.000.";
   if (reward.couponRule.length > 2000)
@@ -137,7 +142,11 @@ export function rewardErrors(reward: RewardDraft, couponKinds?: CouponKind[]) {
   return errors;
 }
 
-export function rewardBody(reward: RewardDraft, enabled: boolean) {
+export function rewardBody(
+  reward: RewardDraft,
+  enabled: boolean,
+  withRedemptionCap = true,
+) {
   if (!enabled)
     return {
       couponKind: null,
@@ -156,7 +165,9 @@ export function rewardBody(reward: RewardDraft, enabled: boolean) {
     couponKind: reward.couponKind,
     couponLabel: reward.couponLabel.trim(),
     couponCost: reward.couponCost.trim(),
-    couponMaxRedemptions: reward.couponMaxRedemptions,
+    ...(withRedemptionCap
+      ? { couponMaxRedemptions: reward.couponMaxRedemptions }
+      : {}),
     couponProductId: productKind ? reward.couponProductId : null,
     couponDiscountUnit:
       reward.couponKind === "discount" ? reward.couponDiscountUnit : null,
@@ -173,7 +184,11 @@ export function rewardBody(reward: RewardDraft, enabled: boolean) {
   };
 }
 
-export function rewardConfirmation(reward: RewardDraft, currencyCode: string) {
+export function rewardConfirmation(
+  reward: RewardDraft,
+  currencyCode: string,
+  withRedemptionCap = true,
+) {
   const details = [
     `${REWARD_KIND_LABELS[reward.couponKind]}: ${reward.couponLabel.trim()}`,
   ];
@@ -195,7 +210,7 @@ export function rewardConfirmation(reward: RewardDraft, currencyCode: string) {
     details.push(`Regla: ${rule.slice(0, 120)}${rule.length > 120 ? "…" : ""}`);
   }
   details.push(
-    `Costo estimado: ${money(reward.couponCost, currencyCode)} por canje · tope ${reward.couponMaxRedemptions}`,
+    `Costo estimado: ${money(reward.couponCost, currencyCode)} por canje${withRedemptionCap ? ` · tope ${reward.couponMaxRedemptions}` : ""}`,
   );
   return details.join(" · ");
 }

@@ -60,10 +60,12 @@ export function CampaignResultsView({
   results,
   currencyCode,
   channels = ["proximity"],
+  isWelcome = false,
 }: {
   results: Results;
   currencyCode: string;
   channels?: Channel[];
+  isWelcome?: boolean;
 }) {
   const {
     audience,
@@ -185,7 +187,11 @@ export function CampaignResultsView({
             <p>
               {coupon.label}
               {coupon.kind ? ` · ${REWARD_KIND_LABELS[coupon.kind]}` : ""}:{" "}
-              {coupon.redeemed} de {coupon.cap} canjeados ·{" "}
+              {coupon.redeemed}{" "}
+              {isWelcome || coupon.cap === null
+                ? "canjeados"
+                : `de ${coupon.cap} canjeados`}{" "}
+              ·{" "}
               {coupon.kind
                 ? money(coupon.incurredCost ?? "0.00", currencyCode)
                 : `${currencyCode} ${coupon.incurredCost ?? "0.00"}`}{" "}

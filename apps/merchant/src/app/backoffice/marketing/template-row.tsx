@@ -9,6 +9,7 @@ import { STATUS_LABELS } from "./campaign-labels";
 
 const channelNames = { proximity: "Proximidad", push: "Push" };
 const groupNames: Record<string, string> = {
+  welcome: "Nuevos clientes",
   reactivation: "Reactivación",
   balance: "Saldo y premios",
 };
@@ -104,7 +105,11 @@ export function TemplateRow({
       </p>
       <p className="mt-2 text-sm text-content-muted">
         {groupNames[template.group] ?? template.group} ·{" "}
-        {template.channels.map((channel) => channelNames[channel]).join(" y ")}
+        {template.welcome
+          ? "Se entrega al instalar el pase"
+          : template.channels
+              .map((channel) => channelNames[channel])
+              .join(" y ")}
       </p>
       {live && (
         <p className="mt-2 text-sm font-semibold">

@@ -32,7 +32,8 @@ import { TemplateFields } from "./template-fields";
 import { readMarketingLocations } from "./marketing-locations";
 import { useTemplateExit } from "./template-exit";
 import { MarketingTemplateSkeleton } from "./marketing-skeletons";
-import { rewardConfirmation } from "./reward-draft";
+import { templateConfirmation } from "./template-confirmation";
+import { suggestedRewardLabel } from "./reward-draft";
 
 export function TemplateEditor({
   templateKey,
@@ -73,7 +74,7 @@ export function TemplateEditor({
         marketingRequest<{ settings: MarketingSettings }>(
           "/api/marketing/settings",
         ),
-        readMarketingLocations(canReadLocations),
+        readMarketingLocations(canReadLocations && templateKey !== "welcome"),
       ]);
       const found = catalog.templates.find((item) => item.key === templateKey);
       if (!found) throw new MarketingApiError(404, "not_found");
@@ -82,7 +83,16 @@ export function TemplateEditor({
       setCouponKinds(catalog.couponKinds);
       setSettings(config.settings);
       setLocations(doors);
-      setDraft((current) => current ?? initialTemplateDraft(found));
+      setDraft((current) => {
+        if (current) return current;
+        const initial = initialTemplateDraft(found);
+        return found.couponRequired
+          ? {
+              ...initial,
+              couponLabel: suggestedRewardLabel(initial, catalog.currencyCode),
+            }
+          : initial;
+      });
     } catch (reason) {
       setError(asMarketingError(reason));
     }
@@ -260,8 +270,13 @@ export function TemplateEditor({
         title={`¿Guardar y activar «${template?.title ?? "esta plantilla"}»?`}
         confirmLabel="Guardar y activar"
         description={
-          draft && settings
-            ? `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}\nAusencia: ${draft.dormantDays} días\nMensaje: ${draft.message.trim()}\nInicio: ${draft.startsAt || "Ahora"}\nFin: ${draft.endsAt || "Sin fecha de fin"}${draft.coupon && currencyCode ? `\nPremio: ${rewardConfirmation(draft, currencyCode)}` : ""}${template?.nearReward ? `\nUmbral: ${draft.nearRewardStamps} sellos o ${draft.nearRewardPercent} % en puntos` : ""}${template?.repeat ? `\nRepetición: ${draft.rewardRepeat === "every_30_days" ? "cada 30 días, hasta dos veces" : "una vez"}` : ""}\nZona horaria: ${settings.timeZone}`
+          template && draft && settings && currencyCode
+            ? templateConfirmation(
+                template,
+                draft,
+                settings.timeZone,
+                currencyCode,
+              )
             : ""
         }
         onCancel={() => setConfirm(false)}
