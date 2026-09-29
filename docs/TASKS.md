@@ -58,6 +58,11 @@ cruzado en el escaneo (cafe → gym, sin pago entre comercios), informe en plata
 web publica. Hecho medido: el pase ya enlaza a `/c/[webViewToken]` (`wallet/apple.ts:101-103`,
 `wallet/google-object.ts:112`). **La spec 0110 queda en espera**: su calendario pasaria a decidir que entra a «Mis
 beneficios»; falta el ADR de este modelo.
+**Respuestas del owner (AskUserQuestion, 2026-09-29):** competidor = «Mismo rubro exacto» (mismo `category_gcid`);
+propios = «Todo filtrado» (los beneficios de comercios donde ya es miembro TAMBIEN pasan por rubro + radio);
+ubicacion = «GPS del telefono» (si niega el permiso, cae al ultimo escaneo); radio = «2 km». **Efecto a decidir
+(no acordado):** con «Todo filtrado», el «te extrañamos» del Cafe A no se ve si el cliente esta a > 2 km o escanea
+en otro cafe. **A verificar en un telefono:** si tocar un aviso de Wallet abre el pase (y no la PWA).
 
 ### Historial — decisiones que alimentaron el ADR 0102
 
