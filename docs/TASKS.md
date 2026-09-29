@@ -48,6 +48,16 @@ decidir:** (1) el «+1 sello» sin notificacion (ya existe la clase silenciosa `
 (lift del ADR 0066) + urgencia; (4) resumen/bandeja: un aviso con varios comercios que abre la vista web del pase;
 (5) Web Push como desborde (iOS: solo PWA en inicio, 16.4+, permiso tras un toque — webkit.org/blog/13878, leido);
 (6) informe «enviados / en espera / sin lugar». Prod: 0 consumidores (SQL) → los numeros iniciales son supuestos.
+**Rumbo del owner (2026-09-29, tras el informe `reports/Redes de comercios y atención compartida.md`):** el push del
+pase compartido NO justifica pagar (con 20 comercios la cola crece mas rapido de lo que se vacia). Planteo que el
+owner acepto como «mucho mas encaminado»: separar ENTREGAR (cada campaña cae en «Mis beneficios», sin tope) de
+AVISAR (un timbre compartido). Textual resumido: «"mis beneficios" seria la pantalla inicial [de la PWA], no el QR
+con el pase»; filtra los beneficios por «1: rubro no competidor. 2: cercania» — radio de «1-2km maximo» alrededor
+del comercio donde se escanea el pase. Descartado por ahora: WhatsApp. Ya pensado antes (no es nuevo): cupon
+cruzado en el escaneo (cafe → gym, sin pago entre comercios), informe en plata dentro de estadisticas, rutas en la
+web publica. Hecho medido: el pase ya enlaza a `/c/[webViewToken]` (`wallet/apple.ts:101-103`,
+`wallet/google-object.ts:112`). **La spec 0110 queda en espera**: su calendario pasaria a decidir que entra a «Mis
+beneficios»; falta el ADR de este modelo.
 
 ### Historial — decisiones que alimentaron el ADR 0102
 
