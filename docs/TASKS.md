@@ -31,6 +31,14 @@ Bond 2024 «19 different loyalty programs» (prnewswire, leido; EE.UU., todas la
 resumenes de 2025, no leido en la fuente). Tolerancia: solo encuestas de segunda mano (Helplama: 1/semana → 10 %
 desactiva; 3–6/semana → 40 %), calidad baja. Falta: tope GLOBAL por cliente entre comercios y quien gana (el
 ADR 0095 lo dejo afuera «hasta que entendamos como aplicarlo»).
+**Disyuntiva abierta del owner (2026-09-29), SIN decidir:** (A) pase unico + «mercado» de slots por cliente
+(como los turnos de proximidad del ADR 0065, que YA reparten las 10 ubicaciones del pase compartido) o (B) un
+pase por programa emitido por CheckPass (canal y topes propios de cada comercio). Datos: Google permite varios
+objetos en un solo boton «Save» (JWT, developers.google.com/wallet/retail/loyalty-cards/use-cases/save-multiple-pass-types);
+Apple, varios pases juntos (`.pkpasses` en Safari, `addPasses` en app — Distributing Passes); Apple no publica
+tope de push de pase (solo throttling no documentado). NO verificado: el interruptor de notificaciones POR pase en
+iOS/Android (se prueba en un telefono). El pase compartido toca 24 archivos no-test (grep). La 0110 no depende de
+esta eleccion (decide por comercio; el reparto iria aguas abajo, en la cola).
 
 ### Historial — decisiones que alimentaron el ADR 0102
 
