@@ -10,8 +10,9 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES (0108 + 0109) EN MAIN; MIGRACIONES 0053–0055 EN PROD (2026-09-28)
 
-**Retomar con: confirmar que el deploy de `3a39bcd` quedo `success` en Vercel** (estado del commit en
-GitHub; al escribir esto estaba `pending`) y despues decidir con el owner lo pendiente de abajo.
+**Retomar con: decidir con el owner lo pendiente de abajo.** Deploy de `3a39bcd` VERIFICADO: estado
+Vercel del commit en GitHub = `success` («Deployment has completed», 20:52); `/api/customers` → 401,
+`/api/health` → 200.
 **Spec 0108 y 0109 — IMPLEMENTADAS con PASS de revisor, codigo en `main`** (push `8dc8841..3a39bcd`,
 fast-forward; gates sobre el arbol combinado: typecheck y build forzados `Cached: 0`, lint, format, test
 2042; `test:e2e` NO corrio: puerto 3000 ocupado por otra sesion, y la 0109 no toca UI). **Prod tiene
