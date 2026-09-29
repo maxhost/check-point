@@ -30,7 +30,11 @@ filas**: se reusa para el benchmark de la 0109 (aplicarle la `0054`). El owner d
 despues, pero `delete_branch` esta bloqueado por el clasificador: la borra el owner desde la consola.
 **Bienvenida (0107):** en PROD; UI de GPT rota hasta su arreglo (`template-draft.ts:26`); callback de
 Google y QA con telefonos reales en `PARQUEADO.md` → «Pendientes del owner».
-**Git:** `motor` va adelante de `origin/main` con la 0108 y los docs de la 0109, sin pushear. El
+**Git:** `motor` va adelante de `origin/main` con la 0108 y la 0109. **Rama `clientes-0108` pusheada
+a GitHub en `794b545`** (pedido del owner, para que GPT haga la UI del listado sobre ella); **NO a
+`main`**: el codigo escribe `core.business_customer` en cada compra y sin la `0053` en prod las
+compras fallarian. `origin/main` tiene `a3221de` (UI de Bienvenida de GPT) que la rama no contiene:
+integrarlo al mergear. El
 worktree `check-point-wt/motor-wt/deploy-0107` se puede borrar (pedir OK: borra una rama).
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
