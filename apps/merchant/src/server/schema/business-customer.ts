@@ -1,5 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   index,
+  integer,
   primaryKey,
   text,
   timestamp,
@@ -66,6 +69,32 @@ export const businessCustomers = core.table(
       "gin",
       table.businessId,
       table.searchName.op("gin_trgm_ops"),
+    ),
+  ],
+);
+
+/**
+ * HOW MANY CUSTOMERS A BUSINESS HAS (spec 0109 / ADR 0101): the `total` of the unfiltered list,
+ * so it is not a `count(*)` of the whole business on every request.
+ *
+ * Nobody writes it from the app: a trigger `AFTER INSERT OR DELETE` on `core.business_customer`
+ * (migration `0054`) adds one per NEW customer and subtracts one per deleted row, whatever
+ * deletes it (an account or a business in cascade). An upsert that ends in `DO UPDATE` (a
+ * purchase, a re-alta) does not fire the `INSERT` trigger, so it does not move the count.
+ * `customer_reader` reads it with RLS by `app.business_id`.
+ */
+export const businessCustomerCounts = core.table(
+  "business_customer_count",
+  {
+    businessId: uuid("business_id")
+      .primaryKey()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    customers: integer("customers").notNull().default(0),
+  },
+  (table) => [
+    check(
+      "business_customer_count_customers_check",
+      sql`${table.customers} >= 0`,
     ),
   ],
 );

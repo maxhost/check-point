@@ -379,6 +379,13 @@
       "when": 1790611663857,
       "tag": "0053_listado_de_clientes",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1790643238459,
+      "tag": "0054_contador_de_clientes",
+      "breakpoints": true
     }
   ]
 }

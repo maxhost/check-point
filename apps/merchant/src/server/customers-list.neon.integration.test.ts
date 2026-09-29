@@ -124,12 +124,24 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("busqueda: una pagina mas alla de la ultima trae [] con el total real", async () => {
+      // Spec 0109: 30 coincidencias → 25 + 5, con el total 30 en LAS DOS paginas.
+      const first = await listCustomers(many.business.id, {
+        page: 1,
+        filter: "name",
+        q: "treinta",
+      });
+      expect(first).toMatchObject({ total: 30, totalPages: 2 });
+      expect(first.items).toHaveLength(25);
       const found = await listCustomers(many.business.id, {
         page: 2,
         filter: "name",
         q: "treinta",
       });
       expect(found.items).toHaveLength(5);
+      expect(found.total).toBe(30);
+      expect(
+        new Set([...first.items, ...found.items].map((i) => i.name)).size,
+      ).toBe(30);
       const beyond = await listCustomers(many.business.id, {
         page: 9,
         filter: "name",

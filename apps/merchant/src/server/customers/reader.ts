@@ -2,49 +2,36 @@ import { type SQL, sql } from "drizzle-orm";
 import { type DbTransaction, withDbTransaction } from "../db";
 import { rowsOf } from "../counter/core";
 
-/** The operational program of the business (at most one, `core_loyalty_program_one_operational`). */
-export type OperationalProgram = { id: string; kind: string } | null;
-
 export type CustomerReader = {
   /** Every statement of the listing goes through here: it runs as `customer_reader`. */
   execute(query: SQL): Promise<Record<string, unknown>[]>;
   businessId: string;
-  program: OperationalProgram;
 };
 
 /**
- * THE ONLY DOOR TO `core.business_customer` FOR THE MERCHANT (spec 0108 / ADR 0100 §3).
+ * THE ONLY DOOR TO `core.business_customer` FOR THE MERCHANT (spec 0108 / ADR 0100 §3, trips
+ * cut by spec 0109 / ADR 0101 §3).
  *
- * One transaction that, in this order:
- *  1. resolves the operational program (id and `kind`) AS THE APP'S ROLE — the restricted role
- *     cannot read `core.loyalty_program`;
- *  2. `SET LOCAL ROLE customer_reader` — no BYPASSRLS, only `business_customer` and the balance
- *     columns of `program_membership`, and RLS by `app.business_id` on both;
- *  3. fixes `app.business_id` with `set_config(…, true)` (transaction-local);
- *  4. and only then runs `fn`.
+ * One transaction that, in ONE statement, becomes `customer_reader` (`set_config('role', …,
+ * true)`, the same as `SET LOCAL ROLE`: no BYPASSRLS, only the projection, its count, the
+ * balance columns of `program_membership` and four columns of `loyalty_program`, all with RLS
+ * by `app.business_id`) and fixes `app.business_id` — and only then runs `fn`. The operational
+ * program is resolved by `fn`'s own statement, AS the restricted role: nothing runs as the
+ * app's role between `BEGIN` and `COMMIT`.
  *
- * `SET LOCAL` and the local `set_config` die with the transaction, so nothing leaks to another
- * request of the WebSocket pool (ADR 0067). The business comes from the guard, never from the
- * request.
+ * Both settings are transaction-local and die with it, so nothing leaks to another request of
+ * the WebSocket pool (ADR 0067). The business comes from the guard, never from the request.
  */
 export async function withCustomerReader<T>(
   businessId: string,
   fn: (reader: CustomerReader) => Promise<T>,
 ): Promise<T> {
   return withDbTransaction(async (tx: DbTransaction) => {
-    const [program] = rowsOf(
-      await tx.execute(sql`
-        SELECT id, kind FROM core.loyalty_program
-        WHERE business_id = ${businessId}::uuid AND status IN ('active', 'closing')
-        LIMIT 1`),
-    ) as Array<{ id: string; kind: string }>;
-    await tx.execute(sql`SET LOCAL ROLE customer_reader`);
-    await tx.execute(
-      sql`SELECT set_config('app.business_id', ${businessId}, true)`,
-    );
+    await tx.execute(sql`
+      SELECT set_config('role', 'customer_reader', true),
+             set_config('app.business_id', ${businessId}, true)`);
     return fn({
       businessId,
-      program: program ? { id: String(program.id), kind: program.kind } : null,
       execute: async (query) =>
         rowsOf(await tx.execute(query)) as Record<string, unknown>[],
     });

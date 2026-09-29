@@ -182,12 +182,21 @@ describe.skipIf(!integrationEnabled)(
             SELECT count(*)::int AS n,
                    bool_and(business_id = ${world.a.business.id}::uuid) AS only_a
             FROM consumer.program_membership`),
+          // Spec 0109: the programs and the count, same RLS.
+          reader.execute(sql`SELECT count(*)::int AS n,
+            bool_and(business_id = ${world.a.business.id}::uuid) AS only_a
+            FROM core.loyalty_program`),
+          reader.execute(sql`SELECT count(*)::int AS n, sum(customers)::int AS customers
+            FROM core.business_customer_count`),
         ]),
       );
-      const [[bc], [pm]] = seen;
+      const [[bc], [pm], [lp], [bcc]] = seen;
       expect(bc).toEqual({ n: 3, bizs: 1, only_a: true });
       // X, Z (x2: old + operational) and W: four memberships of A.
       expect(pm).toEqual({ n: 4, only_a: true });
+      // A has two programs: the operational one and the old one.
+      expect(lp).toEqual({ n: 2, only_a: true });
+      expect(bcc).toEqual({ n: 1, customers: 3 });
     }, 60_000);
 
     it.each([
@@ -196,6 +205,12 @@ describe.skipIf(!integrationEnabled)(
         sql`SELECT 1 FROM consumer.consumer_account LIMIT 1`,
       ],
       ['core."order"', sql`SELECT 1 FROM core."order" LIMIT 1`],
+      // Spec 0109: only four columns of the programs are granted (the spec said `name`, a column
+      // that does not exist: it would fail with «does not exist», not with the grant).
+      [
+        "core.loyalty_program (configuration)",
+        sql`SELECT configuration FROM core.loyalty_program LIMIT 1`,
+      ],
     ])(
       "capa 2: %s → permission denied",
       async (_name, query) => {
