@@ -140,8 +140,9 @@ describe.skipIf(!integrationEnabled)(
 
     it("alta nueva +1; re-alta 409, compra y canje no lo mueven; la lista sin filtro trae ese total; borrar la cuenta −1", async () => {
       const business = world.a.business;
-      const start = await counted(business.id);
-      expect(start).toBe(3);
+      // Deltas from the starting value, so each operation is observed on its own line.
+      const start = (await counted(business.id)) as number;
+      expect(start).not.toBeNull();
 
       const number = phone();
       const { account } = await enroll(world.a.programId, {
@@ -150,7 +151,7 @@ describe.skipIf(!integrationEnabled)(
         phoneE164: number,
         countryIso: "EC",
       });
-      expect(await counted(business.id)).toBe(4);
+      expect(await counted(business.id)).toBe(start + 1);
 
       await expect(
         enroll(world.a.programId, {
@@ -160,7 +161,7 @@ describe.skipIf(!integrationEnabled)(
           countryIso: "EC",
         }),
       ).rejects.toMatchObject({ status: 409, code: "already_member" });
-      expect(await counted(business.id)).toBe(4);
+      expect(await counted(business.id)).toBe(start + 1);
 
       // Compra: el upsert de la visita termina en DO UPDATE.
       const inA = await resolveScan(business, world.x.qrToken);
@@ -170,7 +171,7 @@ describe.skipIf(!integrationEnabled)(
         mode: "quick",
         total: "3.00",
       });
-      expect(await counted(business.id)).toBe(4);
+      expect(await counted(business.id)).toBe(start + 1);
 
       // Canje de premio: la otra visita.
       const rewardId = await seedReward({
@@ -185,8 +186,9 @@ describe.skipIf(!integrationEnabled)(
         rewardId,
         locationId: world.a.locationId,
       });
-      expect(await counted(business.id)).toBe(4);
+      expect(await counted(business.id)).toBe(start + 1);
       expect(await projected(business.id)).toBe(4);
+      expect(await counted(business.id)).toBe(4);
 
       const list = await listCustomers(business.id, { page: 1, filter: "all" });
       expect(list.total).toBe(4);
@@ -197,7 +199,8 @@ describe.skipIf(!integrationEnabled)(
         .delete(consumerAccounts)
         .where(eq(consumerAccounts.id, account.id));
       expect(await projected(business.id)).toBe(3);
-      expect(await counted(business.id)).toBe(3);
+      expect(await counted(business.id)).toBe(start);
+      expect(start).toBe(3);
       expect(
         (await listCustomers(business.id, { page: 1, filter: "all" })).total,
       ).toBe(3);
