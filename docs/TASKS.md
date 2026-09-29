@@ -10,8 +10,12 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES: 0108 IMPLEMENTADA, 0109 (RENDIMIENTO) EN IMPLEMENTACION (2026-09-28)
 
-**Retomar con: esperar el handoff del implementador de la 0109, correr el benchmark por MCP, lanzar
-UN revisor, y recien despues pedir OK al owner para prod.** El owner pidio (2026-09-28) mejorar los
+**Retomar con: esperar el veredicto del REVISOR de la 0109 (corriendo) y conseguir PERMISO del owner
+para migraciones.** La 0109 esta IMPLEMENTADA (`794b545`, `474c4c1`; 5 mutaciones rojas segun el
+implementador). El clasificador de permisos bloqueo ademas preparar la `0054` para la rama del
+benchmark («Production Deploy»), asi que **el benchmark de la 0109 esta pendiente de permiso**, igual
+que la `0053` a prod. La spec 0109 nombraba una columna inexistente (`name`): corregida (`756cb0d`) y
+anotada en `LECCIONES.md`. El owner pidio (2026-09-28) mejorar los
 numeros antes de ir a prod: **spec `specs/0109-rendimiento-del-listado-de-clientes.md` — CERRADA**
 (`1887ff3`), ADR **0101**: contador por negocio con trigger, busqueda con pagina y total separados,
 lectura en 4 viajes; migracion `0054` aditiva. Un subagente implementador esta escribiendo en este
