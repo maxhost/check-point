@@ -1802,3 +1802,18 @@ tenia dos respuestas posibles.
 
 **Regla.** Antes de subir un «a confirmar» al owner, preguntarse si el dominio admite la otra
 respuesta. Si no la admite, es una regla del producto: se escribe y no se pregunta.
+
+
+## 2026-09-28 — la spec 0109 nombraba otra columna que no existe (segunda en dos dias)
+
+**Que paso.** La spec 0109 (escrita por el orquestador) mandaba a probar `select name from
+core.loyalty_program` para demostrar que una columna no otorgada da `permission denied`.
+`core.loyalty_program` no tiene `name` (`schema/loyalty.ts`): la consulta habria fallado por
+columna inexistente —un rojo por el motivo equivocado que se lee como exito—. Lo cazo el implementador
+y uso `configuration`. Es el mismo error que la 0107 del dia anterior, **con la regla ya escrita**:
+la regla estaba en `LECCIONES.md` y no se aplico al escribir un ejemplo del plan de pruebas.
+
+**Regla (refuerzo).** El barrido «cada identificador de la spec con `archivo:linea`» cubre **tambien
+los ejemplos del plan de pruebas y de la tabla de mutaciones**, no solo el diseño: un ejemplo de test
+es una afirmacion sobre el esquema. Antes de cerrar: `rg -n '<columna>' apps/merchant/src/server/schema/`
+por cada columna que la spec nombre en SQL, incluida la que se usa para mostrar un error.

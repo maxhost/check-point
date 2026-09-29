@@ -101,7 +101,7 @@ No: es la misma superficie que la 0108. Nada mas abierto la toca.
       canje; baja al borrar una cuenta (cascade). La respuesta sin filtro trae ese `total`.
 - [ ] **Capa 2 extendida:** con `withCustomerReader(A)`, `select count(*)` sin filtro sobre
       `core.loyalty_program` y sobre `core.business_customer_count` ve solo lo de A;
-      `select name from core.loyalty_program` (columna no otorgada) → `permission denied`.
+      `select configuration from core.loyalty_program` (columna no otorgada) → `permission denied`. **Corregido tras la implementacion:** la spec decia `name`, columna que NO existe (`schema/loyalty.ts`); la habria rechazado la base por inexistente, no por el grant.
 - [ ] **Busqueda:** total correcto con mas de una pagina de coincidencias (p. ej. 30 que matchean → 25 +
       5, `total` 30 en las dos); pagina mas alla de la ultima → `[]` con el total real; escape intacto.
 - [ ] **Viajes:** un test cuenta las sentencias que `withCustomerReader` + `listCustomers` mandan a la
