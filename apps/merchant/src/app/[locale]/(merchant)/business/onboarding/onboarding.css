@@ -1,0 +1,146 @@
+.merchant-onboarding {
+  --ui-canvas: #faf9f5;
+  --ui-surface-subtle: #eff2ed;
+  --ui-text: #1d332c;
+  --ui-text-muted: #52645a;
+  --ui-border: #d9dfd7;
+  --ui-border-strong: #9eafa3;
+  --brand-primary-action: #1d332c;
+  --brand-primary-hover: #315748;
+  --brand-primary-pressed: #274938;
+  --brand-primary-soft: #e9eee7;
+  --brand-primary-border: #9eafa3;
+  --brand-on-primary: #fff;
+  --ui-focus: #1d332c;
+  color-scheme: light;
+  background: var(--ui-canvas);
+}
+
+.merchant-onboarding-inner {
+  position: relative;
+}
+
+.merchant-onboarding-brandbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.merchant-onboarding-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+  font-weight: 800;
+  letter-spacing: -0.065em;
+}
+
+.merchant-onboarding-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 33px;
+  height: 33px;
+  padding-right: 3px;
+  border-radius: 9px;
+  background: var(--brand-primary-action);
+  color: var(--brand-on-primary);
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.12em;
+}
+
+.merchant-onboarding-mark span,
+.merchant-onboarding-wordmark span {
+  color: #a55a43;
+}
+
+.merchant-onboarding-wordmark {
+  font-size: 19px;
+}
+
+.merchant-onboarding-context {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.merchant-onboarding-content {
+  padding-top: 36px;
+}
+
+.merchant-onboarding-eyebrow {
+  color: #a55a43;
+  letter-spacing: 0.12em;
+}
+
+/* Las reglas heredadas de globals.css para <p> son posteriores a Tailwind. */
+.merchant-onboarding p.text-content-muted {
+  color: var(--ui-text-muted);
+}
+
+.merchant-onboarding p.text-primary {
+  color: var(--brand-primary-action);
+}
+
+.merchant-onboarding p.text-danger {
+  color: var(--ui-danger);
+}
+
+@media (max-width: 390px) {
+  .merchant-onboarding-wordmark {
+    font-size: 17px;
+  }
+
+  .merchant-onboarding-context {
+    font-size: 11px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .merchant-onboarding {
+    --ui-canvas: #0d1713;
+    --ui-surface-subtle: #1b2c24;
+    --ui-text: #edf7f1;
+    --ui-text-muted: #b6c8be;
+    --ui-border: #3b5146;
+    --ui-border-strong: #668074;
+    --brand-primary-action: #72d0a9;
+    --brand-primary-hover: #56b891;
+    --brand-primary-pressed: #7bcead;
+    --brand-primary-soft: #143a2c;
+    --brand-primary-border: #438d70;
+    --brand-on-primary: #071b13;
+    --ui-focus: #72d0a9;
+    color-scheme: dark;
+  }
+
+  :root:not([data-theme="light"]) .merchant-onboarding-eyebrow {
+    color: #e2a891;
+  }
+}
+
+:root[data-theme="dark"] .merchant-onboarding {
+  --ui-canvas: #0d1713;
+  --ui-surface-subtle: #1b2c24;
+  --ui-text: #edf7f1;
+  --ui-text-muted: #b6c8be;
+  --ui-border: #3b5146;
+  --ui-border-strong: #668074;
+  --brand-primary-action: #72d0a9;
+  --brand-primary-hover: #56b891;
+  --brand-primary-pressed: #7bcead;
+  --brand-primary-soft: #143a2c;
+  --brand-primary-border: #438d70;
+  --brand-on-primary: #071b13;
+  --ui-focus: #72d0a9;
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] .merchant-onboarding-eyebrow {
+  color: #e2a891;
+}

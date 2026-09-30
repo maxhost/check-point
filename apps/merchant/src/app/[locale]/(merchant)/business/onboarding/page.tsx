@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
+import "./onboarding.css";
 
 export const metadata: Metadata = {
   title: "Creá tu negocio · CheckPass Club",
