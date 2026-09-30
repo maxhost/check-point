@@ -81,3 +81,15 @@ Solo aparece **mientras la franja esta abierta**, una por campaña y local, con 
 C2 (`POST …/{campaignId}/claim`): para una valle, el cuerpo lleva `"locationId"` (obligatorio; en una cruzada →
 `400 fields.locationId`). El cupon vale **hasta `window.endsAt`** de hoy. Una vez por persona y por local: si ya tuvo
 uno de ese local → `404 offer_unavailable`. `kind: "custom"` se muestra con su `label`.
+
+## H5 — Precisiones (revision independiente + owner, 2026-09-30)
+
+- **C1, oferta valle:** `validDays` viene `null` (el cupon vale hasta `window.endsAt`, no N dias).
+- **H2 `PUT …/windows`:** responde `200 { "location": <un elemento de la lista de GET valley/locations> }`.
+- **H1 `/hours`:** un `locationId` que no es UUID → `422 invalid_input` (la convencion de todas las rutas de
+  locales); un local de otro comercio → `404`.
+- **C2:** un reclamo de una oferta valle SIN `locationId` → `400 fields.locationId`.
+- **E3 (`GET /api/public/consumer/coupons`):** un cupon valle sale con `origin: "cross"` (owner: «Dejarlo como
+  "cross"»; para el cliente los dos son beneficios reclamados desde «Mis beneficios»).
+- **Bienvenida:** reclamar una oferta valle de un comercio **no** impide recibir despues su Bienvenida (owner:
+  «Sí, valle no cuenta»). Solo el cupon de la oferta CRUZADA la reemplaza.

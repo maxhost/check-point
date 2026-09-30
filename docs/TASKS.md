@@ -6950,3 +6950,12 @@ y `TURBO_FORCE=1 build`, todos verdes. Integraciones con `tools/neon-test.sh`, s
 decidir, ninguno bloqueante: el contrato H4/H2/H1 no escribe `validDays: null` en la valle, `PUT windows → 200 {location}`,
 `422 invalid_input` para un id que no es UUID, ni el `400 fields.locationId` de una valle sin local; y el cupon valle sale
 con `origin: "cross"` en E3.
+
+## Decision del owner sobre la 0113 + su oraculo (orquestador, 2026-09-30)
+
+Owner (AskUserQuestion): reclamar valle **no** impide la Bienvenida («Sí, valle no cuenta»); `origin` del cupon valle
+queda `"cross"`. Cambio: `hasCrossCouponFrom` (`marketing/cross-store.ts`) suma `and cc.valley_location_id is null`.
+Oraculo nuevo `consumer-valley-welcome.neon.integration.test.ts` («ORACULO DE O-M11»). Mutacion O-M11 = el codigo SIN
+esa linea (el arbol previo al cambio, `48aa02e`): corrida con el oraculo ya escrito → **ROJO** 1/1 (`expected [] to
+deeply equal [ Array(1) ]`, sin Bienvenida). Con la linea: verde, junto con `consumer-cross-counter` (4/4: la
+cruzada sigue bloqueando). Contrato: seccion H5 (los 4 huecos del revisor + las 2 decisiones).

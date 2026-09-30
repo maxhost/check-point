@@ -1,7 +1,7 @@
 ---
 spec: 0113
 fecha: 2026-09-29
-estado: cerrada
+estado: implementada
 resumen: Horas valle por API — horario de apertura por local (por dia, hasta 2 rangos), deteccion de la franja floja por la red (bloque de 1 h < 40 % de la mediana en ≥ 5 de 8 semanas, minimo 150 escaneos) con franjas editables por el comercio, plantilla «Horas valle» (premio incl. texto libre, cupo mensual, no clientes + dormidos), visible en «Mis beneficios» solo con la franja abierta y con el filtro de la cruzada, cupon valido hasta el cierre de la franja del dia, una vez por persona y por local. Migracion 0058. Sin UI. Despues de la 0112.
 disjunta: no
 archivos: apps/merchant/drizzle/0058_*.sql, apps/merchant/src/server/schema/{business.ts,valley.ts,campaign.ts,campaign-coupon.ts,reward-checks.ts,_barrel si aplica}, apps/merchant/src/server/locations/hours*.ts, apps/merchant/src/app/api/locations/[locationId]/hours/route.ts, apps/merchant/src/server/marketing/{valley-detect.ts,valley-rules.ts,valley-store.ts,valley-input.ts,templates.ts,template-input.ts,reward-input.ts,tick.ts,cross-rules.ts,cross-store.ts}, apps/merchant/src/app/api/marketing/valley/**, apps/merchant/src/server/consumer/{cross-offers.ts,cross-facts.ts,valley-offers.ts}, apps/merchant/src/server/marketing/{campaign-store.ts,campaign-row.ts,cross-input.ts}, apps/merchant/src/app/api/public/consumer/cross-offers/**, docs/specs/0113-contratos-de-api.md

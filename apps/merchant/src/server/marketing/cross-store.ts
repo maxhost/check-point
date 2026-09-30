@@ -203,7 +203,9 @@ export async function countMonthCrossCoupons(
   return Number(row?.given ?? 0);
 }
 
-/** ADR 0104 §5: whether the consumer holds a cross coupon of THIS business (any state). */
+/** ADR 0104 §5: whether the consumer holds a cross coupon of THIS business (any state). A
+ * VALLEY coupon does not count (owner, 2026-09-30): the valley fills a hole, it is not the
+ * entry gift, so whoever claimed one still gets the «Bienvenida». */
 export async function hasCrossCouponFrom(
   db: Db,
   consumerId: string,
@@ -214,7 +216,8 @@ export async function hasCrossCouponFrom(
       select exists (select 1 from core.campaign_coupon cc
                       where cc.consumer_id = ${consumerId}
                         and cc.business_id = ${businessId}
-                        and cc.cross_claimed_at is not null) as found`),
+                        and cc.cross_claimed_at is not null
+                        and cc.valley_location_id is null) as found`),
   );
   return row?.found === true;
 }
