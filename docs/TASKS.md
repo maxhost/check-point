@@ -10,14 +10,19 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: el OK del owner para migrar `0056` a PROD** (spec 0111 implementada: `00e6586` + fix `07c83fb`,
-PASS del revisor; resultado en la spec §Resultado, `097aac2`). Despues: push a `main`, deploy de Vercel READY con
-ese sha, QA del owner en Android (3 acreditaciones en 10 min → suenan 2; la cuenta muestra las 3). **Pregunta
-abierta al owner:** techo horario del recordatorio (hoy puede salir a las 23:00 si el cliente se vuelve elegible
-tarde). **Mistake→rule pendiente:** tercera spec seguida con una fila de mutacion falsa escrita por el orquestador
-(M6 de la 0111: el oraculo no distinguia porque otra condicion ya cubria el caso) → va a `LECCIONES.md` cuando
-se resuelvan los cambios ajenos sin commitear que hay en ese archivo. Gates corridos por el orquestador tras el
-fix: typecheck 0, test 211 archivos/2082 tests verdes, lint y format verdes, hook de tamaño EXIT 0.
+**Retomar con: el QA del owner en un Android** (spec 0111 EN PROD). Enrolarse con el telefono, hacer 3
+acreditaciones en 10 min → suenan 2, la 3.ª no; la cuenta muestra las 3; el texto termina en «· Revisa tus
+beneficios en checkpass.club». **Hecho y verificado (2026-09-29):** migracion `0056` aplicada a PROD por
+`run_sql_transaction` con OK del owner, verificada por SQL (columna, los dos `check` nuevos, indice, fila en
+`drizzle.__drizzle_migrations`, esquemas intactos); merge de `origin/main` (UI de clientes/suscripcion de otra
+sesion; conflicto solo en `TASKS.md`) y push `ea96914..20196df` a `main`; deploy de Vercel del commit `20196df` =
+`success`; `/api/health` 200, `/api/internal/wallet-push` 401. Gates sobre el arbol combinado: typecheck y build
+forzados (`Cached: 0`), lint, format, test 2086 verdes; integraciones de la 0111 11/11. `test:e2e` NO corrido
+(la 0111 no toca UI; la UI nueva la trajo `main`). Prod: 0 consumidores → sin datos reales todavia. **Techo de las
+21:00 del recordatorio (owner) implementado** (`18dcef3`, oraculo mutado: rojo). **Mistake→rule pendiente:**
+tercera spec seguida con una fila de mutacion falsa escrita por el orquestador (M6 de la 0111) → `LECCIONES.md`
+cuando se resuelvan los cambios ajenos sin commitear que hay en ese archivo. Siguientes specs del ADR 0103
+posibles: horas valle, «Mis beneficios», el arbitro del orden.
 **Owner (2026-09-29):** 1.ª
 spec del ADR 0103 = aviso del escaneo; cuentan para el tope de 2 «las tres» (acreditar, canje de premio, canje
 de cupon); ventana = ultimas 24 h; «algo nuevo» = cupon nuevo + cupon por vencer; recordatorio si hay algo nuevo
