@@ -36,17 +36,27 @@ export function UpgradeCard({
   busy: boolean;
 }) {
   return (
-    <article className="plan-card" aria-label="Plan Plus">
-      <p className="plan-card-eyebrow">Para hacer crecer tu negocio</p>
-      <h2>Plus</h2>
-      <p className="plan-card-price">
+    <article
+      className="min-w-0 rounded-lg border border-border bg-surface p-4 text-content sm:p-6"
+      aria-label="Plan Plus"
+    >
+      <p className="text-sm text-content-muted">Para hacer crecer tu negocio</p>
+      <h2 className="mt-2 text-xl font-bold">Plus</h2>
+      <p className="mt-4 text-3xl font-bold text-content">
         {billingInterval === "year" ? "USD 200" : "USD 20"}
-        <small> / {billingInterval === "year" ? "año" : "mes"}</small>
+        <small className="text-sm font-semibold text-content-muted">
+          {" "}
+          / {billingInterval === "year" ? "año" : "mes"}
+        </small>
       </p>
-      <div className="billing-toggle" aria-label="Período de facturación">
+      <div
+        className="mt-5 grid grid-cols-2 gap-1 rounded-md border border-border bg-surface-subtle p-1"
+        role="group"
+        aria-label="Período de facturación"
+      >
         <button
           type="button"
-          className={billingInterval === "month" ? "active" : ""}
+          className={`min-h-12 rounded-sm px-2 py-1 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${billingInterval === "month" ? "bg-surface text-content shadow-sm" : "text-content-muted"}`}
           aria-pressed={billingInterval === "month"}
           onClick={() => onSelectInterval("month")}
         >
@@ -54,20 +64,39 @@ export function UpgradeCard({
         </button>
         <button
           type="button"
-          className={billingInterval === "year" ? "active" : ""}
+          className={`min-h-12 rounded-sm px-2 py-1 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${billingInterval === "year" ? "bg-surface text-content shadow-sm" : "text-content-muted"}`}
           aria-pressed={billingInterval === "year"}
           onClick={() => onSelectInterval("year")}
         >
-          Anual <span>Ahorra USD 40</span>
+          Anual{" "}
+          <span className="block text-xs text-content-muted">
+            Ahorrás USD 40
+          </span>
         </button>
       </div>
-      <ul className="plan-card-features">
-        <li>3 locales activos</li>
-        <li>Campañas y beneficios avanzados</li>
-        <li>Analíticas para hacer crecer el negocio</li>
+      <ul className="mt-5 grid gap-3 border-t border-border pt-5 text-sm">
+        <li className="flex gap-2">
+          <span aria-hidden="true" className="font-bold text-primary">
+            ✓
+          </span>
+          3 locales activos
+        </li>
+        <li className="flex gap-2">
+          <span aria-hidden="true" className="font-bold text-primary">
+            ✓
+          </span>
+          Campañas y beneficios avanzados
+        </li>
+        <li className="flex gap-2">
+          <span aria-hidden="true" className="font-bold text-primary">
+            ✓
+          </span>
+          Analíticas para hacer crecer el negocio
+        </li>
       </ul>
       <button
-        className="button"
+        data-variant="primary"
+        className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-base font-bold text-on-primary transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-disabled disabled:text-on-disabled"
         type="button"
         disabled={busy}
         onClick={onCheckout}

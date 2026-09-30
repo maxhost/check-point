@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
+import { Alert } from "../../../ui";
 import { CancelDialog } from "./cancel-dialog";
 import { IntervalDialog } from "./interval-dialog";
 import { UpgradeCard } from "./upgrade-card";
-import { formatAmount, formatDate } from "./subscription-format";
+import { SubscriptionFacts } from "./subscription-facts";
+import { formatDate } from "./subscription-format";
 import type {
   SubscriptionOffers,
   SubscriptionView,
@@ -113,11 +115,11 @@ export function SubscriptionConsole({
 
   return (
     <main className="merchant-shell">
-      <div className="backoffice-home">
+      <div className="brand-page subscription-page pb-24 font-sans">
         <ModuleHeader
           eyebrow="Suscripción"
           title="Tu plan"
-          description="Mejorá, cambiá el período de facturación o volvé a Free."
+          description="Consultá tu plan, tus cobros y las opciones disponibles para tu negocio."
           closeHref="/backoffice"
         />
         <Toast
@@ -129,129 +131,128 @@ export function SubscriptionConsole({
           }}
         />
         {stripeUnconfirmed && (
-          <p className="field-help" role="status">
-            No pudimos confirmar tu suscripción con Stripe. Te mostramos lo
-            último que registramos.
-          </p>
+          <Alert
+            kind="warning"
+            className="mt-6"
+            title="No pudimos confirmar tu suscripción con Stripe"
+          >
+            Te mostramos lo último que registramos.
+          </Alert>
         )}
-        <section className="locations-list">
-          <h2>
-            {/* Para `none` la etiqueta ya ES «Sin plan»: anteponer «Plan» imprimía «Plan
+        <div
+          className={`mt-6 grid items-start gap-6 ${offers.upgrade ? "md:grid-cols-2" : ""}`}
+        >
+          <section
+            className="min-w-0 rounded-lg border border-border bg-surface p-4 text-content sm:p-6"
+            aria-labelledby="subscription-current-title"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-content-muted">
+                Tu plan actual
+              </p>
+              <span
+                className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${offers.paymentPending ? "border-warning bg-warning-soft text-warning" : "border-border-strong bg-surface-subtle text-content"}`}
+              >
+                {offers.status}
+              </span>
+            </div>
+            <h2
+              id="subscription-current-title"
+              className="mt-3 text-xl font-bold"
+            >
+              {/* Para `none` la etiqueta ya ES «Sin plan»: anteponer «Plan» imprimía «Plan
                 Sin plan», el string exacto que la home dejó de imprimir (decisión 3).
                 Desde la spec 0064 `offers.plan` trae el INTERVALO («Plus mensual» / «Plus
                 anual»): lo compone `planWithInterval` en el servidor, no un ternario acá. */}
-            {offers.noPlan ? offers.plan : `Plan ${offers.plan}`} ·{" "}
-            {offers.status}
-          </h2>
-          <p className="counter-hint">
-            {activeLocations}{" "}
-            {activeLocations === 1 ? "local activo" : "locales activos"}.
-          </p>
-          {/* F2-3 — LA FECHA DE RENOVACIÓN, en mensual y en anual. NO se imprime cuando hay
-              una baja programada: ahí no hay próximo pago, y las dos líneas juntas se
-              contradirían («tu plan baja el X» + «tu próximo pago es el X»). El caso existe
-              de verdad — es la cancelación hecha desde el dashboard de Stripe, lo único que
-              todavía crea este estado (decisión n.º 1 de la spec). */}
-          {facts.renewalAt !== null && offers.pendingDowngrade === null && (
-            <p className="field-help">
-              Tu próximo pago es el {formatDate(facts.renewalAt, timezone)}.
+              {offers.noPlan ? offers.plan : `Plan ${offers.plan}`}
+            </h2>
+            <p className="mt-2 text-sm text-content-muted">
+              {activeLocations}{" "}
+              {activeLocations === 1 ? "local activo" : "locales activos"}
             </p>
-          )}
-          {/* F2-4 — EL IMPORTE COBRADO Y EL LINK AL RECIBO (decisión literal del owner). Es
-              la ÚLTIMA FACTURA PAGADA —también literal: «claro que la última que tiene
-              pagada»—, elegida por `created` máximo en `readBillingFacts`. El link es el que
-              Stripe publica para mandarle al cliente por email (decisión O-2 del anexo); si
-              Stripe no publicó ninguno, se muestra el importe SIN link en vez de esconder
-              también el importe. */}
-          {facts.lastPaidInvoice !== null && (
-            <p className="field-help">
-              Último cobro:{" "}
-              {formatAmount(
-                facts.lastPaidInvoice.amountPaid,
-                facts.lastPaidInvoice.currency,
+            <SubscriptionFacts
+              facts={facts}
+              pendingDowngrade={offers.pendingDowngrade}
+              timezone={timezone}
+            />
+            <div className="mt-5 grid gap-3 empty:hidden">
+              {offers.noPlan && (
+                <Alert title="Tu suscripción terminó">
+                  No estás en ningún plan.
+                </Alert>
               )}
-              .{" "}
-              {facts.lastPaidInvoice.receiptUrl !== null && (
-                <a
-                  href={facts.lastPaidInvoice.receiptUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Ver el recibo
-                </a>
+              {offers.paymentPending && (
+                <Alert kind="warning" title="Hay un cobro pendiente">
+                  Actualizá el medio de pago con el link que te envió Stripe;
+                  mientras tanto no podés cambiar de plan ni de período.
+                </Alert>
               )}
-            </p>
-          )}
-          {offers.noPlan && (
-            <p className="field-help">
-              Tu suscripción terminó. No estás en ningún plan.
-            </p>
-          )}
-          {offers.paymentPending && (
-            <p className="field-help">
-              Hay un cobro pendiente. Actualizá el medio de pago con el link que
-              te envió Stripe; mientras tanto no podés cambiar de plan ni de
-              período.
-            </p>
-          )}
-          {offers.pendingDowngrade === "with_date" && (
-            <p className="field-help">
-              Tu plan baja a Free el{" "}
-              {formatDate(subscription.pendingPlanAt, timezone)}.
-            </p>
-          )}
-          {offers.pendingDowngrade === "without_date" && (
-            <p className="field-help">
-              Tu plan baja a Free al final del período actual.
-            </p>
-          )}
-          {offers.intervalUpgrade && (
-            <>
-              {/* F2-2 — EL BOTÓN YA NO COBRA: ABRE EL MODAL. Hasta la spec 0064 este
+              {offers.pendingDowngrade === "with_date" && (
+                <Alert title="Baja programada">
+                  Tu plan baja a Free el{" "}
+                  {formatDate(subscription.pendingPlanAt, timezone)}.
+                </Alert>
+              )}
+              {offers.pendingDowngrade === "without_date" && (
+                <Alert title="Baja programada">
+                  Tu plan baja a Free al final del período actual.
+                </Alert>
+              )}
+            </div>
+            {(offers.intervalUpgrade || offers.downgrade) && (
+              <div className="mt-6 grid gap-3 border-t border-border pt-6">
+                {offers.intervalUpgrade && (
+                  <>
+                    {/* F2-2 — EL BOTÓN YA NO COBRA: ABRE EL MODAL. Hasta la spec 0064 este
                   `onClick` posteaba a `/api/billing/interval` directo, y esa ruta cobra
                   inmediato (`always_invoice`). Era plata sin confirmar. */}
-              <button
-                className="button"
-                type="button"
-                disabled={busy}
-                onClick={() => setConfirmingInterval(true)}
-              >
-                Pasar a anual
-              </button>
-              <p className="field-help">
-                Se cobra ahora la diferencia, con crédito por los días que no
-                usaste del mes.
-              </p>
-            </>
+                    <button
+                      data-variant="primary"
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 py-2.5 text-base font-bold text-on-primary transition-colors hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:bg-disabled disabled:text-on-disabled"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setConfirmingInterval(true)}
+                    >
+                      Pasar a anual
+                    </button>
+                    <p className="text-sm text-content-muted">
+                      Se cobra ahora la diferencia, con crédito por los días que
+                      no usaste del mes.
+                    </p>
+                  </>
+                )}
+                {offers.downgrade && (
+                  <button
+                    data-variant="secondary"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-border-strong bg-surface px-4 py-2.5 text-base font-bold text-content transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:border-disabled disabled:bg-disabled disabled:text-on-disabled"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setConfirming(true)}
+                  >
+                    {offers.downgrade.label}
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+          {offers.upgrade && (
+            <UpgradeCard
+              label={offers.upgrade}
+              billingInterval={billingInterval}
+              onSelectInterval={setBillingInterval}
+              busy={busy}
+              onCheckout={() =>
+                void send(
+                  "/api/billing/checkout",
+                  // `from: "subscription"` decide a dónde vuelve Stripe ([R2-I8]): sin esto
+                  // el que paga acá aterriza en la home del backoffice.
+                  { interval: billingInterval, from: "subscription" },
+                  "checkout",
+                )
+              }
+            />
           )}
-          {offers.downgrade && (
-            <button
-              className="archive-button"
-              type="button"
-              disabled={busy}
-              onClick={() => setConfirming(true)}
-            >
-              {offers.downgrade.label}
-            </button>
-          )}
-        </section>
-        {offers.upgrade && (
-          <UpgradeCard
-            label={offers.upgrade}
-            billingInterval={billingInterval}
-            onSelectInterval={setBillingInterval}
-            busy={busy}
-            onCheckout={() =>
-              void send(
-                "/api/billing/checkout",
-                // `from: "subscription"` decide a dónde vuelve Stripe ([R2-I8]): sin esto
-                // el que paga acá aterriza en la home del backoffice.
-                { interval: billingInterval, from: "subscription" },
-                "checkout",
-              )
-            }
-          />
-        )}
+        </div>
         <IntervalDialog
           open={confirmingInterval}
           busy={busy}
