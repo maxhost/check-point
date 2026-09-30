@@ -10,6 +10,17 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
+**ESTADO (2026-09-30, cierre): 0112 Y 0113 EN PROD, ESPERAN QA DEL OWNER.** 0113 implementada (`cbbb037`+`95c467d`,
+bitacora M1–M9 rojas `871ffd5`; revisor PASS `48aa02e`, 5 re-mediciones rojas) + decision del owner (valle NO bloquea la
+Bienvenida; `origin` del valle = `"cross"`) con oraculo O-M11 medido (`d353664`, contrato H5). Migracion `0058` aplicada a
+PROD con OK del owner (32 sentencias generadas del archivo); PROD == `ci-integration` en md5 de constraints, columnas
+(con defaults) e indices de las 7 tablas tocadas; 59 migraciones en las dos. Push `95c6c63..d353664`; deploy Vercel de
+`d353664` = `success`; `/api/health` 200, `cross-offers` y `marketing/valley/locations` 401 sin sesion. **UI:** la
+hace el owner (GPT) con `specs/0112-contratos-de-api.md` y `specs/0113-contratos-de-api.md`; la 0113 toco 6 lineas de
+tipos en `app/backoffice/marketing/{marketing-types,reward-labels,reward-draft}.ts` (autorizadas, para que compile:
+`CouponKind` suma `"custom"`) — GPT tiene que saberlo al mergear. **Sigue:** QA del owner de las dos (cruzada: activar,
+ver desde un cliente de otro rubro cerca, reclamar, canjear; valle: horario con cortado, franja propia que incluya la
+hora, activar, ver/reclamar dentro de la franja, no verla fuera). Despues: el arbitro del orden (ADR 0103 §6) o la 0110.
 **ESTADO (2026-09-30): 0112 EN PROD. 0113 (horas valle) SE ESTA IMPLEMENTANDO en este arbol** (subagente
 `implementador`, despachado con OK del owner; `ListAgents` antes de tocar nada; sus `MUTATION` son suyas). **Hecho y
 verificado:** migracion `0057` aplicada a PROD por `run_sql_transaction` con OK del owner (22 sentencias generadas
