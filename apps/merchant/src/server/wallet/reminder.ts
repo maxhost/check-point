@@ -4,7 +4,7 @@ import { ACCOUNT_INVITE } from "./push-text";
  * THE DAY-WITHOUT-PURCHASE REMINDER (spec 0111 D6 / ADR 0103 §3 and §7), pure and DB-free.
  * On a day the consumer did not scan anywhere, ONE notice invites them to open their
  * account — if there is something new in it (a new coupon, a coupon about to expire) or if
- * they have been inactive for 2 days (neither opened checkpass.club nor scanned). It goes
+ * they have been inactive for 2 days (neither opened my.checkpass.club nor scanned). It goes
  * out at their usual time: a little before the median time they scan, 12:30 by default.
  */
 

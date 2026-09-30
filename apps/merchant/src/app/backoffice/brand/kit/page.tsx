@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { requireOwner } from "../../../../server/auth-guards";
 import { getBrandKitData } from "../../../../server/brand-kit/data";
+import { consumerOriginOr } from "../../../../server/hosts";
 import { ModuleHeader } from "../../../components/ui";
 import { BrandKitWizard } from "./brand-kit-wizard";
 
@@ -11,12 +12,12 @@ export default async function BrandKitPage() {
   const { business } = await requireOwner();
   const headerList = await headers();
 
-  // Absolute origin for the poster QR (the code must encode an absolute enroll URL).
-  // Derived from the request — there is no env-based URL helper in this repo.
+  // Absolute origin for the poster QR (the code must encode an absolute enroll URL):
+  // `CONSUMER_ORIGIN` (my., spec 0114) when set, otherwise derived from the request.
   const host =
     headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "";
   const proto = headerList.get("x-forwarded-proto") ?? "https";
-  const origin = `${proto}://${host}`;
+  const origin = consumerOriginOr(`${proto}://${host}`);
 
   const data = await getBrandKitData(business.id, origin);
 

@@ -7,9 +7,10 @@
 /**
  * Spec 0111 / ADR 0103 §3: every counter notice credits AND invites the consumer to open
  * their account. Provisional text accepted by the owner (2026-09-29); an admin panel will
- * edit it later (not built).
+ * edit it later (not built). Spec 0114 / ADR 0106: the consumer's account lives at
+ * `my.checkpass.club` (`checkpass.club` is now the landing for businesses).
  */
-export const ACCOUNT_INVITE = "Revisa tus beneficios en checkpass.club";
+export const ACCOUNT_INVITE = "Revisa tus beneficios en my.checkpass.club";
 
 /**
  * The longest counter notice body, counted in code points (`[...str].length`). Neither

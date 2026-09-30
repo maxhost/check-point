@@ -226,13 +226,13 @@ describe("decideReminder — the three reasons and their priority", () => {
 describe("reminder texts", () => {
   it("each body ends in the invite and is ≤ 80 characters", () => {
     for (const body of Object.values(REMINDER_BODIES)) {
-      expect(body.endsWith("· Revisa tus beneficios en checkpass.club")).toBe(
-        true,
-      );
+      expect(
+        body.endsWith("· Revisa tus beneficios en my.checkpass.club"),
+      ).toBe(true);
       expect([...body].length).toBeLessThanOrEqual(80);
     }
     expect(REMINDER_BODIES.coupon_expiring).toBe(
-      "Tienes un cupón que vence pronto · Revisa tus beneficios en checkpass.club",
+      "Tienes un cupón que vence pronto · Revisa tus beneficios en my.checkpass.club",
     );
   });
 });

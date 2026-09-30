@@ -4,6 +4,7 @@ import { resolveSession } from "../../../../../server/consumer/session";
 import { ensureWalletPass } from "../../../../../server/wallet/core";
 import { passLocationsForConsumer } from "../../../../../server/wallet/pass-locations-store";
 import { getWalletProvider } from "../../../../../server/wallet/provider";
+import { consumerOriginOr } from "../../../../../server/hosts";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,7 +35,8 @@ export async function GET(request: NextRequest) {
     qrToken: account.qrToken,
     firstName: account.firstName,
     lastName: account.lastName,
-    origin: request.nextUrl.origin,
+    // Spec 0114: `CONSUMER_ORIGIN` (my.) si esta; si no, el del request.
+    origin: consumerOriginOr(request.nextUrl.origin),
     webViewToken: account.webViewToken,
     // The doors of spec 0065: a pass installed today already carries its geofences.
     passLocations: await passLocationsForConsumer(account.id),

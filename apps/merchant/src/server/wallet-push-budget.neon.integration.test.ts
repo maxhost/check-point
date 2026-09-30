@@ -147,7 +147,7 @@ describe.skipIf(!integrationEnabled)(
       // The account shows the 2nd notice, stamped at the 2nd delivery — not the 3rd.
       const acct = await account(consumer.id);
       expect(acct.latestMessage).toBe(
-        "La Gringa: Se acreditaron 2 sellos en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+        "La Gringa: Se acreditaron 2 sellos en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
       );
       expect(acct.lastPushAt?.getTime()).toBe(times[1].getTime());
       expect(acct.messageUpdatedAt?.getTime()).toBe(times[1].getTime());

@@ -69,29 +69,30 @@ describe("APNs provider JWT (ES256)", () => {
 describe("buildTransactionalBody", () => {
   it("reads as a full sentence, agreeing verb/noun with the count", () => {
     expect(buildTransactionalBody(1, "stamps")).toBe(
-      "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+      "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
     );
     expect(buildTransactionalBody(3, "stamps")).toBe(
-      "Se acreditaron 3 sellos en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+      "Se acreditaron 3 sellos en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
     );
     expect(buildTransactionalBody(1, "points")).toBe(
-      "Se acreditó 1 punto en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+      "Se acreditó 1 punto en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
     );
     expect(buildTransactionalBody(20, "points")).toBe(
-      "Se acreditaron 20 puntos en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+      "Se acreditaron 20 puntos en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
     );
   });
 });
 
 describe("counter notices invite to the account (spec 0111 D1)", () => {
-  const INVITE = " · Revisa tus beneficios en checkpass.club";
+  const INVITE = " · Revisa tus beneficios en my.checkpass.club";
 
-  it("the owner's example is 76 characters", () => {
+  // 79 = the owner's 76-character example + «my.» (spec 0114 H6 / ADR 0106).
+  it("the owner's example is 79 characters", () => {
     const body = buildTransactionalBody(1, "stamps");
     expect(body).toBe(
-      "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+      "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
     );
-    expect([...body].length).toBe(76);
+    expect([...body].length).toBe(79);
   });
 
   it("the redemption and the coupon notices end in the invite too", () => {

@@ -107,7 +107,7 @@ describe.skipIf(!integrationEnabled)(
       expect(rows[0].status).toBe("pending");
       expect(rows[0].title).toBe("La Gringa");
       expect(rows[0].body).toBe(
-        "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+        "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
       );
     }, 30_000);
 

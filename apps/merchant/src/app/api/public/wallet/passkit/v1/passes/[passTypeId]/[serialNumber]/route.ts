@@ -7,6 +7,7 @@ import { passKitLimiter } from "../../../../../../../../../server/wallet/pass-ra
 import { getWalletProvider } from "../../../../../../../../../server/wallet/provider";
 import { ensureWalletPass } from "../../../../../../../../../server/wallet/core";
 import { passLocationsForConsumer } from "../../../../../../../../../server/wallet/pass-locations-store";
+import { consumerOriginOr } from "../../../../../../../../../server/hosts";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,7 +66,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     qrToken: data.qrToken,
     firstName: data.firstName,
     lastName: data.lastName,
-    origin: request.nextUrl.origin,
+    // Spec 0114: un pase instalado con `www` grabado se actualiza a `CONSUMER_ORIGIN` (my.)
+    // en esta descarga; sin la env, el origin del request.
+    origin: consumerOriginOr(request.nextUrl.origin),
     webViewToken: data.webViewToken,
     latestMessage: data.latestMessage,
     // The doors of spec 0065. This route is the one an INSTALLED pass pulls, so it is
