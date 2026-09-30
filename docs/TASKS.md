@@ -10,12 +10,12 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: el handoff del IMPLEMENTADOR de la spec 0111** (cerrada en `1b075ba`; despachado en esta sesion,
-sin migrar PROD). Despues: UN revisor independiente con presupuesto M1–M6; con PASS, migracion `0056` a PROD
-**con OK del owner**, deploy y QA en un Android (3 acreditaciones en 10 min → suenan 2). Largo de los avisos
-medido: ni Google (`Message`) ni Apple (`changeMessage`) publican maximo → regla propia ≤ 120 caracteres; Google
-(doc oficial) abre el FRENTE DEL PASE al tocar el aviso → 2 toques hasta la cuenta. Textos provisorios aceptados
-por el owner («pones cualquiera que pueda funcionar»); se editaran desde un panel de admin que no existe.
+**Retomar con: el veredicto del REVISOR de la spec 0111** (despachado sobre `00e6586`, presupuesto 5 mutaciones
+propias + re-correr M3/M6). Implementador: gates verdes segun su handoff; el orquestador re-corrio las 4 suites de
+unidad nuevas/tocadas (50/50) y `grep MUTATION` vacio. Declarado por el implementador: la fila M6 de la spec era
+falsa (la condicion 2 de `decideReminder` ya impide el segundo reminder; oraculo nuevo «stale read»), edito
+`wallet-pass-refresh-worker.test.ts:107` (`planned: 0`), suites del worker dependientes de la hora. Con PASS:
+migracion `0056` a PROD **con OK del owner**, push, deploy READY con el sha y QA en Android. La 0056 NO esta en PROD.
 **Owner (2026-09-29):** 1.ª
 spec del ADR 0103 = aviso del escaneo; cuentan para el tope de 2 «las tres» (acreditar, canje de premio, canje
 de cupon); ventana = ultimas 24 h; «algo nuevo» = cupon nuevo + cupon por vencer; recordatorio si hay algo nuevo
