@@ -66,8 +66,9 @@ archivos: apps/merchant/drizzle/0058_*.sql, apps/merchant/src/server/schema/{bus
    emision del cupon valle.
 6. Contrato `docs/specs/0113-contratos-de-api.md`.
 
-**No entra:** ninguna pantalla (tampoco las etiquetas de `app/backoffice/marketing/*`: `CouponKind` de la UI es un
-union propio, `marketing-types.ts:2`, y no rompe); aviso/push de la franja (lo decide el arbitro, ADR 0103 §6);
+**No entra:** ninguna pantalla (**corregido 2026-09-30:** la afirmacion original «`CouponKind` de la UI es un union propio y no rompe» era FALSA —
+`composer.tsx:29` asigna el `Campaign` del servidor al de la UI—; el orquestador autorizo SOLO sumar `"custom"` al union
+de `marketing-types.ts` y su etiqueta en `reward-labels.ts`, para que compile); aviso/push de la franja (lo decide el arbitro, ADR 0103 §6);
 el informe «volvio a precio completo» (§2.6 punto 3 del doc, otra spec); el grupo de control; el recibo del
 escaneo; enforcement del local en el mostrador (V7).
 

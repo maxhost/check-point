@@ -1885,3 +1885,15 @@ owner.
 **Regla.** Lo que el codigo exige HOY es un costo de implementacion, no una restriccion del producto: va a la spec
 («hace falta una migracion»), nunca a las opciones de una pregunta al owner. Antes de preguntar, releer las
 palabras textuales del owner sobre ESE concepto y preguntar solo lo que ellas no cierran.
+
+## 2026-09-30 — «no rompe» escrito sin medir el flujo de TIPOS entre servidor y UI
+
+**Que paso.** La spec 0113 suma el tipo de premio `custom` y afirmaba que la UI de Marketing no se rompia porque su
+`CouponKind` es un union propio (`app/backoffice/marketing/marketing-types.ts:2`). Se midio que el union existia, no
+por donde entra el dato: `composer.tsx:29` asigna el `Campaign` del SERVIDOR al tipo de la UI, y `results-view.tsx`
+y `campaign-detail.tsx` indexan `Record<CouponKind, string>`. El typecheck se puso rojo con el implementador ya
+despachado y la spec prohibiendo tocar `app/backoffice/**`.
+
+**Regla.** Ampliar un union/enum del servidor exige, antes de cerrar la spec, un `rg` de sus CONSUMIDORES (incluida la
+UI) y un typecheck de prueba con el valor agregado — dos minutos. «Tiene su propio tipo» no prueba que no le llegue
+el del servidor. Es la tercera de la familia de CLAUDE.md: una afirmacion de mecanismo medida hasta la mitad.
