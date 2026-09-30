@@ -10,6 +10,7 @@ import { type CampaignStatus, isEditable } from "./campaign-transitions";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
 import type { CampaignWelcome } from "./campaign-values";
 import type { CampaignCross } from "./cross-store";
+import type { CampaignValley } from "./valley-store";
 import { columns, toCampaign } from "./campaign-row";
 import { CampaignError } from "./campaign-error";
 import { type CouponKind, type DiscountUnit, pickReward } from "./reward-input";
@@ -67,6 +68,8 @@ export type Campaign = {
   welcome?: CampaignWelcome | null;
   /** Spec 0112: «Oferta cruzada»'s parameters. Always set by the reads; optional for fixtures. */
   cross?: CampaignCross | null;
+  /** Spec 0113: «Horas valle»'s cap. Always set by the reads; optional for fixtures. */
+  valley?: CampaignValley | null;
   startsAt: Date;
   endsAt: Date | null;
   activatedAt: Date | null;

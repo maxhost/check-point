@@ -16,6 +16,11 @@ import {
   GET as SETTINGS,
   PATCH as SETTINGS_PATCH,
 } from "../app/api/marketing/settings/route";
+import { GET as VALLEY } from "../app/api/marketing/valley/locations/route";
+import {
+  DELETE as WINDOWS_DELETE,
+  PUT as WINDOWS_PUT,
+} from "../app/api/marketing/valley/locations/[locationId]/windows/route";
 
 /**
  * The `HANDLERS` table of `marketing-routes.test.ts` and its fixtures, split out so that
@@ -49,6 +54,9 @@ export type MarketingRoutesWorld = {
   disableTemplate: Spy;
   loadMarketingSettings: Spy;
   updateMarketingSettings: Spy;
+  listValleyLocations: Spy;
+  replaceMerchantWindows: Spy;
+  clearMerchantWindows: Spy;
 };
 
 export const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
@@ -74,6 +82,8 @@ export const CAMPAIGN = { id: "camp-1", name: "Vecinos", status: "draft" };
 const templates = `/api/marketing/templates`;
 const ENABLE_KEY = Promise.resolve({ key: "missed_you" });
 const DISABLE_KEY = Promise.resolve({ key: "win_back" });
+const valley = `/api/marketing/valley/locations`;
+const VALLEY_LOCATION = Promise.resolve({ locationId: FOREIGN_CAMPAIGN });
 
 export type MarketingHandler = {
   name: string;
@@ -217,6 +227,36 @@ export function marketingHandlers(
       call: () =>
         SETTINGS_PATCH(request(`/api/marketing/settings`, "PATCH", FIELDS)),
       spy: world.updateMarketingSettings,
+      action: null,
+      ownerOnly: false,
+    },
+    // Spec 0113 — delegable: the windows are reversible (DELETE goes back to the network).
+    {
+      name: "GET /api/marketing/valley/locations",
+      call: () => VALLEY(request(`${valley}?b=${FOREIGN_BUSINESS}`, "GET")),
+      spy: world.listValleyLocations,
+      action: null,
+      ownerOnly: false,
+    },
+    {
+      name: "PUT /api/marketing/valley/locations/:locationId/windows",
+      call: () =>
+        WINDOWS_PUT(
+          request(`${valley}/${FOREIGN_CAMPAIGN}/windows`, "PUT", FIELDS),
+          { params: VALLEY_LOCATION },
+        ),
+      spy: world.replaceMerchantWindows,
+      action: null,
+      ownerOnly: false,
+    },
+    {
+      name: "DELETE /api/marketing/valley/locations/:locationId/windows",
+      call: () =>
+        WINDOWS_DELETE(
+          request(`${valley}/${FOREIGN_CAMPAIGN}/windows`, "DELETE"),
+          { params: VALLEY_LOCATION },
+        ),
+      spy: world.clearMerchantWindows,
       action: null,
       ownerOnly: false,
     },

@@ -78,10 +78,22 @@ const NO_COUPON: CouponDeal = {
   couponRule: null,
 };
 
-function kindOf(errors: FieldErrors, raw: unknown): CouponKind | undefined {
+/** V8 of spec 0113: the free-text reward exists ONLY in «Horas valle». */
+export const CUSTOM_ONLY_IN_VALLEY =
+  "El premio de texto libre es solo de la campaña «Horas valle».";
+
+function kindOf(
+  errors: FieldErrors,
+  raw: unknown,
+  allowCustom: boolean,
+): CouponKind | undefined {
   if (absent(raw)) return "free_product";
   if (!(COUPON_KINDS as readonly unknown[]).includes(raw)) {
     errors.couponKind = "El tipo de premio no es válido.";
+    return undefined;
+  }
+  if (raw === "custom" && !allowCustom) {
+    errors.couponKind = CUSTOM_ONLY_IN_VALLEY;
     return undefined;
   }
   return raw as CouponKind;
@@ -174,9 +186,15 @@ function ruleOf(errors: FieldErrors, raw: unknown): string | null {
   return value.length === 0 ? null : value;
 }
 
+/**
+ * `allowCustom` (spec 0113): only «Horas valle» passes `true`; everywhere else
+ * `couponKind: "custom"` is a 400 on `couponKind` (V8). A `custom` reward is the label
+ * alone — its product, discount and extra are refused like in any kind that lacks them.
+ */
 export function parseCoupon(
   errors: FieldErrors,
   body: Record<string, unknown>,
+  allowCustom = false,
 ): CouponDeal | undefined {
   const given = TRIO.filter((key) => !absent(body[key]));
   if (given.length === 0) {
@@ -204,7 +222,7 @@ export function parseCoupon(
   else if (max < 1 || max > 1_000_000)
     errors.couponMaxRedemptions =
       "El tope de canjes tiene que estar entre 1 y 1000000.";
-  const kind = kindOf(errors, body.couponKind);
+  const kind = kindOf(errors, body.couponKind, allowCustom);
   const deal =
     kind === undefined
       ? undefined

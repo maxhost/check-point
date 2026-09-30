@@ -23,6 +23,10 @@ export const COUPON_KIND_VALUES = [
   "discount",
   "extra_stamps",
   "extra_points",
+  // Spec 0113 / ADR 0105: free text («2x1 en cerveza»), ONLY in «Horas valle» (the input
+  // layers refuse it elsewhere). Its shape is the label alone: no product, no discount,
+  // no units — none of the checks below admits them for it.
+  "custom",
 ] as const;
 
 export type CouponKindValue = (typeof COUPON_KIND_VALUES)[number];

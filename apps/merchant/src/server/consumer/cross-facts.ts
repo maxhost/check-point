@@ -4,16 +4,73 @@ import type {
   CrossMembership,
   GeoPoint,
 } from "../marketing/cross-rules";
-import { type Db, rowsOf } from "../marketing/cross-store";
+import {
+  type CrossCampaign,
+  type CrossLocation,
+  type Db,
+  rowsOf,
+} from "../marketing/cross-store";
 import { requireDate, toDate } from "../marketing/driver-values";
+import type { CouponKind, DiscountUnit } from "../marketing/reward-input";
 
 /**
  * THE CONSUMER'S FACTS for «Oferta cruzada» (spec 0112): where they are, their memberships
  * and the cross coupons they already claimed. Read for ONE consumer —the session's— and
  * decided by `decideCrossOffer` (`marketing/cross-rules.ts`) — and `parseGeo`, the GPS of
  * the request (O4: never stored). Apart from `marketing/cross-store.ts` (the campaign's
- * side) and `cross-offers.ts` only for the size budget.
+ * side) and `cross-offers.ts` only for the size budget — as is the offer's DTO, shared by
+ * the cross offers and the valley ones (spec 0113, `valley-offers.ts`).
  */
+
+/**
+ * One offer of C1. Allow-list: no cost, no cap, no membership id, no R2 key. Spec 0113
+ * adds `type`; a `"valley"` one also carries `locationId` and `window` (`valley-offers.ts`)
+ * and `validDays: null` — its coupon lives until `window.endsAt`, not for days.
+ */
+export type CrossOffer = {
+  type: "cross";
+  campaignId: string;
+  businessId: string;
+  businessName: string;
+  logoPath: string | null;
+  message: string;
+  label: string;
+  kind: CouponKind;
+  rule: string | null;
+  discountUnit: DiscountUnit | null;
+  discountValue: string | null;
+  currencyCode: string;
+  extraUnits: number | null;
+  validDays: number;
+  distanceMeters: number;
+  nearestLocation: { name: string; addressLabel: string };
+};
+
+export function toOffer(
+  campaign: CrossCampaign,
+  nearest: CrossLocation,
+  meters: number,
+): CrossOffer {
+  const { reward } = campaign;
+  return {
+    type: "cross",
+    campaignId: campaign.id,
+    businessId: campaign.businessId,
+    businessName: campaign.businessName,
+    logoPath: campaign.logoPath,
+    message: campaign.message,
+    label: campaign.couponLabel,
+    kind: reward.kind ?? "free_product",
+    rule: reward.rule,
+    discountUnit: reward.discountUnit,
+    discountValue: reward.discountValue,
+    currencyCode: reward.currencyCode,
+    extraUnits: reward.extraUnits,
+    validDays: campaign.validDays,
+    distanceMeters: Math.round(meters),
+    nearestLocation: { name: nearest.name, addressLabel: nearest.addressLabel },
+  };
+}
 
 const EVENTS = (consumerId: string) => sql`(
   select o.business_id, o.location_id, o.created_at from core."order" o

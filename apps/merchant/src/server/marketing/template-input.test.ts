@@ -53,6 +53,8 @@ describe("parseTemplateInput", () => {
         crossAudience: null,
         crossValidDays: null,
         crossMonthlyCap: null,
+        // Spec 0113: the valley cap is `null` outside «Horas valle».
+        valleyMonthlyCap: null,
         startsAt: NOW,
         endsAt: null,
       },

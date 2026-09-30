@@ -13,7 +13,13 @@ import { capAllows } from "./welcome-rules";
  * depend on the consumer).
  */
 
-export type CrossAudience = "non_members" | "dormant" | "any";
+/**
+ * `not_active` (spec 0113 / ADR 0105) is INTERNAL: «Horas valle»'s fixed audience — not a
+ * member, or a dormant one. No cross campaign can be enabled with it (`cross-input.ts`
+ * checks against `CROSS_TEMPLATE`'s options) and `core_campaign_cross_audience_check`
+ * does not admit it.
+ */
+export type CrossAudience = "non_members" | "dormant" | "any" | "not_active";
 
 /** «Oferta cruzada»'s parameters (spec 0112): audience, validity from the claim, cap. */
 export type CrossDefinition = {
@@ -56,6 +62,7 @@ export const CROSS_TEMPLATE: TemplateDefinition = {
     validDays: { options: [7, 15, 30], default: 15 },
     monthlyCap: { min: 1, max: 10000, default: 50 },
   },
+  valley: null,
 };
 
 /** ADR 0103: the radius of the network. At most this far from the origin point. */
@@ -159,11 +166,16 @@ export type CrossDecision =
   | { ok: true; distanceMeters: number }
   | { ok: false; reason: CrossRefusal };
 
-/** Whether the audience of the campaign includes this consumer (spec 0112, reason 4). */
+/**
+ * Whether the audience of the campaign includes this consumer (spec 0112, reason 4).
+ * `not_active` (spec 0113): the non-member is in; a member only when dormant, like
+ * `dormant` — the ACTIVE member never.
+ */
 function inAudience(facts: CrossOfferFacts): boolean {
   const { audience, dormantDays } = facts.offer;
   if (audience === "any") return true;
   if (audience === "non_members") return facts.membership === null;
+  if (audience === "not_active" && facts.membership === null) return true;
   if (facts.membership === null) return false;
   const floor = new Date(facts.now.getTime() - dormantDays * DAY_MS);
   return dormantSince(facts.membership) <= floor;

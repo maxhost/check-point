@@ -23,6 +23,10 @@ const world = vi.hoisted(() => ({
   disableTemplate: vi.fn(),
   loadMarketingSettings: vi.fn(),
   updateMarketingSettings: vi.fn(),
+  // Spec 0113: the valley windows doubles `MarketingRoutesWorld` now carries.
+  listValleyLocations: vi.fn(),
+  replaceMerchantWindows: vi.fn(),
+  clearMerchantWindows: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({

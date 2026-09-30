@@ -89,6 +89,9 @@ export function suggestedRewardLabel(
     case "extra_points":
       label = `${reward.couponExtraUnits} ${reward.couponExtraUnits === 1 ? "punto" : "puntos"} extra`;
       break;
+    case "custom":
+      label = reward.couponLabel;
+      break;
   }
   return label.slice(0, 40);
 }

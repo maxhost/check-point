@@ -7,6 +7,7 @@ import { type CouponDeal, parseCoupon } from "./reward-input";
 import { asObject } from "./campaign-values";
 import { balanceParams, couponRefused, gapMarkerOk } from "./balance-input";
 import { type CrossParams, crossDeal, crossParams } from "./cross-input";
+import { type ValleyParams, valleyDeal, valleyParams } from "./valley-input";
 import type { RewardRepeat, TemplateDefinition } from "./templates";
 import {
   WELCOME_STORED_DORMANT_DAYS,
@@ -45,12 +46,16 @@ import {
  *
  * CROSS (spec 0112): the same shape as welcome, in `cross-input.ts` — no channel, no doors,
  * a MANDATORY coupon without redemption cap, `endsAt` optional; `cross*` elsewhere is a 400.
+ *
+ * VALLEY (spec 0113): the same shape again, in `valley-input.ts` — plus `couponKind:
+ * "custom"`, which only this template admits; `valleyMonthlyCap` elsewhere is a 400.
  */
 
 /** The reward (`CouponDeal`) follows the composer's rules exactly (spec 0106). */
 export type TemplateInput = CouponDeal &
   WelcomeParams &
-  CrossParams & {
+  CrossParams &
+  ValleyParams & {
     channelProximity: boolean;
     channelPush: boolean;
     dormantDays: number;
@@ -171,8 +176,11 @@ export function parseTemplateInput(
 
   const welcome = template.welcome !== null;
   const cross = template.cross !== null;
+  const valley = template.valley !== null;
+  // Spec 0112/0113: the «Mis beneficios» templates have no channel and no doors.
+  const offer = cross || valley;
   const lanes =
-    welcome || cross
+    welcome || offer
       ? { channelProximity: false, channelPush: false }
       : channels(errors, body.channels, template);
   const days = welcome
@@ -180,17 +188,20 @@ export function parseTemplateInput(
     : dormantDays(errors, body.dormantDays, template);
   const text = message(errors, body.message, template);
   const doorsOut =
-    welcome || cross ? [] : excluded(errors, body.excludedLocationIds);
+    welcome || offer ? [] : excluded(errors, body.excludedLocationIds);
   const deal = welcome
     ? welcomeDeal(errors, body)
     : cross
       ? crossDeal(errors, body)
-      : couponRefused(errors, body, template)
-        ? undefined
-        : parseCoupon(errors, body);
+      : valley
+        ? valleyDeal(errors, body)
+        : couponRefused(errors, body, template)
+          ? undefined
+          : parseCoupon(errors, body);
   const balance = balanceParams(errors, body, template);
   const gift = welcomeParams(errors, body, template);
   const network = crossParams(errors, body, template);
+  const slack = valleyParams(errors, body, template);
   const startsAt = absent(body.startsAt)
     ? now
     : when(errors, body.startsAt, "startsAt", "La fecha de inicio");
@@ -199,8 +210,8 @@ export function parseTemplateInput(
     : when(errors, body.endsAt, "endsAt", "La fecha de fin");
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
-  // Spec 0107/0112: the welcome and cross coupons expire by their own days, not by the end.
-  if (!welcome && !cross) requireEndForCoupon(errors, deal, endsAt);
+  // Spec 0107/0112/0113: those coupons expire by their own rule, not by the end.
+  if (!welcome && !offer) requireEndForCoupon(errors, deal, endsAt);
 
   if (
     Object.keys(errors).length > 0 ||
@@ -212,6 +223,7 @@ export function parseTemplateInput(
     balance === undefined ||
     gift === undefined ||
     network === undefined ||
+    slack === undefined ||
     startsAt === undefined ||
     endsAt === undefined
   )
@@ -230,6 +242,7 @@ export function parseTemplateInput(
       ...balance,
       ...gift,
       ...network,
+      ...slack,
     },
   };
 }

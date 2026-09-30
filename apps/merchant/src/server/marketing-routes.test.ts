@@ -18,6 +18,9 @@ const world = vi.hoisted(() => ({
   disableTemplate: vi.fn(),
   loadMarketingSettings: vi.fn(),
   updateMarketingSettings: vi.fn(),
+  listValleyLocations: vi.fn(),
+  replaceMerchantWindows: vi.fn(),
+  clearMerchantWindows: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -89,6 +92,13 @@ vi.mock("./marketing/push-settings", () => ({
   updateMarketingSettings: world.updateMarketingSettings,
 }));
 
+// Spec 0113: the valley windows routes. Only the domain is replaced.
+vi.mock("./marketing/valley-windows", () => ({
+  listValleyLocations: world.listValleyLocations,
+  replaceMerchantWindows: world.replaceMerchantWindows,
+  clearMerchantWindows: world.clearMerchantWindows,
+}));
+
 import { MARKETING_ROUTE_NAMES } from "./marketing-route-names";
 import {
   CALLER_BUSINESS,
@@ -129,6 +139,9 @@ describe("api/marketing — owner-only guard (spec 0065, DoD [B])", () => {
     world.disableTemplate.mockResolvedValue({ campaign: CAMPAIGN });
     world.loadMarketingSettings.mockResolvedValue({});
     world.updateMarketingSettings.mockResolvedValue({});
+    world.listValleyLocations.mockResolvedValue([]);
+    world.replaceMerchantWindows.mockResolvedValue({});
+    world.clearMerchantWindows.mockResolvedValue(undefined);
   });
 
   it.each(HANDLERS)(

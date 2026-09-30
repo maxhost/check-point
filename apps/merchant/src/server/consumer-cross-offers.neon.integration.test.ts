@@ -221,6 +221,8 @@ describe.skipIf(!integrationEnabled)("cross offers — C1", () => {
       "message",
       "nearestLocation",
       "rule",
+      // Spec 0113 (contract H4): every offer says its `type`.
+      "type",
       "validDays",
     ]);
     expect(offer).toMatchObject({

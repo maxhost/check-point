@@ -17,6 +17,7 @@ import { businesses, locations } from "./business";
 import { products } from "./catalog";
 import { rewardChecks } from "./reward-checks";
 import { welcomeChecks } from "./welcome-checks";
+import { NO_CHANNEL_TEMPLATES, offerChecks } from "./offer-checks";
 
 /**
  * A marketing campaign (spec 0065 / ADR 0064). `kind` is the extension point: this
@@ -100,6 +101,8 @@ export const campaigns = core.table(
     crossAudience: text("cross_audience"),
     crossValidDays: integer("cross_valid_days"),
     crossMonthlyCap: integer("cross_monthly_cap"),
+    // Spec 0113 / ADR 0105: «Horas valle»'s monthly cap — present exactly in `valley`.
+    valleyMonthlyCap: integer("valley_monthly_cap"),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id")
@@ -115,11 +118,11 @@ export const campaigns = core.table(
   (table) => [
     check("core_campaign_kind_check", sql`${table.kind} in ('proximity')`),
     // Spec 0107: «Bienvenida» goes with NO channel (it is issued when the pass is
-    // installed), and so does «Oferta cruzada» (spec 0112: its only channel is «Mis
-    // beneficios»); every other campaign with at least one.
+    // installed), and so do «Oferta cruzada» and «Horas valle» (specs 0112/0113: their only
+    // channel is «Mis beneficios»); every other campaign with at least one.
     check(
       "core_campaign_channel_check",
-      sql`(coalesce(${table.templateKey}, '') in ('welcome', 'cross')) = (not ${table.channelProximity} and not ${table.channelPush})`,
+      sql`(coalesce(${table.templateKey}, '') in (${NO_CHANNEL_TEMPLATES})) = (not ${table.channelProximity} and not ${table.channelPush})`,
     ),
     check(
       "core_campaign_status_check",
@@ -153,12 +156,12 @@ export const campaigns = core.table(
       "core_campaign_coupon_max_redemptions_check",
       sql`${table.couponMaxRedemptions} is null or ${table.couponMaxRedemptions} >= 1`,
     ),
-    // The coupon is all or nothing (see table comment). «Bienvenida» (spec 0107) and «Oferta
-    // cruzada» (spec 0112) have label and cost and NEVER a redemption cap: their brake is
-    // the monthly cap.
+    // The coupon is all or nothing (see table comment). «Bienvenida», «Oferta cruzada» and
+    // «Horas valle» (specs 0107/0112/0113) have label and cost and NEVER a redemption cap:
+    // their brake is the monthly cap.
     check(
       "core_campaign_coupon_all_or_nothing_check",
-      sql`(coalesce(${table.templateKey}, '') in ('welcome', 'cross') and ${table.couponLabel} is not null and ${table.couponCost} is not null and ${table.couponMaxRedemptions} is null) or (coalesce(${table.templateKey}, '') not in ('welcome', 'cross') and (${table.couponLabel} is null) = (${table.couponCost} is null) and (${table.couponLabel} is null) = (${table.couponMaxRedemptions} is null))`,
+      sql`(coalesce(${table.templateKey}, '') in (${NO_CHANNEL_TEMPLATES}) and ${table.couponLabel} is not null and ${table.couponCost} is not null and ${table.couponMaxRedemptions} is null) or (coalesce(${table.templateKey}, '') not in (${NO_CHANNEL_TEMPLATES}) and (${table.couponLabel} is null) = (${table.couponCost} is null) and (${table.couponLabel} is null) = (${table.couponMaxRedemptions} is null))`,
     ),
     // Spec 0106: the reward has a type exactly when there is a coupon.
     check(
@@ -175,10 +178,11 @@ export const campaigns = core.table(
     }),
     // ADR 0094 §3: an issued coupon lives until `ends_at`, so a campaign with a coupon
     // needs one. The composer and `enable` refuse it first with a 400 (spec 0102).
-    // «Bienvenida» and «Oferta cruzada» are exempt: their coupon expires by its own days.
+    // «Bienvenida», «Oferta cruzada» and «Horas valle» are exempt: their coupon expires by
+    // its own rule (days, or the end of the valley window).
     check(
       "core_campaign_coupon_needs_end_check",
-      sql`coalesce(${table.templateKey}, '') in ('welcome', 'cross') or ${table.couponLabel} is null or ${table.endsAt} is not null`,
+      sql`coalesce(${table.templateKey}, '') in (${NO_CHANNEL_TEMPLATES}) or ${table.couponLabel} is null or ${table.endsAt} is not null`,
     ),
     check(
       "core_campaign_dates_check",
@@ -190,7 +194,7 @@ export const campaigns = core.table(
     ),
     check(
       "core_campaign_template_key_check",
-      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward', 'at_risk', 'welcome', 'cross')`,
+      sql`${table.templateKey} is null or ${table.templateKey} in ('missed_you', 'win_back', 'near_reward', 'unclaimed_reward', 'at_risk', 'welcome', 'cross', 'valley')`,
     ),
     check(
       "core_campaign_near_reward_stamps_check",
@@ -211,23 +215,7 @@ export const campaigns = core.table(
       sql`(coalesce(${table.templateKey}, '') = 'near_reward') = (${table.nearRewardStamps} is not null and ${table.nearRewardPercent} is not null) and (coalesce(${table.templateKey}, '') = 'unclaimed_reward') = (${table.rewardRepeat} is not null) and (${table.nearRewardStamps} is null) = (${table.nearRewardPercent} is null)`,
     ),
     ...welcomeChecks(table),
-    // Spec 0112: the three parameters of «Oferta cruzada», EACH present exactly in `cross`.
-    check(
-      "core_campaign_cross_shape_check",
-      sql`(coalesce(${table.templateKey}, '') = 'cross') = (${table.crossAudience} is not null) and (coalesce(${table.templateKey}, '') = 'cross') = (${table.crossValidDays} is not null) and (coalesce(${table.templateKey}, '') = 'cross') = (${table.crossMonthlyCap} is not null)`,
-    ),
-    check(
-      "core_campaign_cross_audience_check",
-      sql`${table.crossAudience} is null or ${table.crossAudience} in ('non_members', 'dormant', 'any')`,
-    ),
-    check(
-      "core_campaign_cross_valid_days_check",
-      sql`${table.crossValidDays} is null or ${table.crossValidDays} in (7, 15, 30)`,
-    ),
-    check(
-      "core_campaign_cross_monthly_cap_check",
-      sql`${table.crossMonthlyCap} is null or ${table.crossMonthlyCap} between 1 and 10000`,
-    ),
+    ...offerChecks(table),
     // One live run per business and template (see the table comment).
     uniqueIndex("core_campaign_template_live_unique")
       .on(table.businessId, table.templateKey)

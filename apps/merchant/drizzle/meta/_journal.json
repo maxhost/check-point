@@ -407,6 +407,13 @@
       "when": 1790739641738,
       "tag": "0057_oferta_cruzada",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1790744348693,
+      "tag": "0058_horas_valle",
+      "breakpoints": true
     }
   ]
 }

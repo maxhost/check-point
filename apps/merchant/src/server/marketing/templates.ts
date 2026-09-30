@@ -37,13 +37,15 @@
  * CROSS (spec 0112 / ADR 0104): «Oferta cruzada» goes LAST. No channel either —its only
  * surface is the consumer's «Mis beneficios»—, coupon MANDATORY, parameters in `cross`.
  * Its entry lives in `cross-rules.ts` (`CROSS_TEMPLATE`) only for this file's size budget.
+ * VALLEY (spec 0113 / ADR 0105): «Horas valle» after it, the same shape (`valley-rules.ts`).
  *
  * The keys are ALSO pinned by the `core_campaign_template_key_check` (migrations `0044`,
- * `0047`, `0048`, `0052`, `0057`): adding a template here without a migration makes `enable` die on the check.
+ * `0047`, `0048`, `0052`, `0057`, `0058`): adding a template here without a migration makes `enable` die on the check.
  */
 
 import type { AtRiskRule } from "./at-risk";
 import { CROSS_TEMPLATE, type CrossDefinition } from "./cross-rules";
+import { VALLEY_TEMPLATE, type ValleyDefinition } from "./valley-rules";
 
 export type TemplateKey =
   | "welcome"
@@ -52,11 +54,17 @@ export type TemplateKey =
   | "win_back"
   | "near_reward"
   | "unclaimed_reward"
-  | "cross";
+  | "cross"
+  | "valley";
 
 export type CampaignChannel = "proximity" | "push";
 
-export type TemplateGroup = "welcome" | "reactivation" | "balance" | "cross";
+export type TemplateGroup =
+  | "welcome"
+  | "reactivation"
+  | "balance"
+  | "cross"
+  | "valley";
 
 export type WelcomeRedeemFrom = "next_day" | "same_visit";
 
@@ -105,6 +113,7 @@ export type TemplateDefinition = {
   atRisk: AtRiskRule | null;
   welcome: WelcomeDefinition | null;
   cross: CrossDefinition | null;
+  valley: ValleyDefinition | null;
 };
 
 export const TEMPLATES: readonly TemplateDefinition[] = [
@@ -135,6 +144,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
       redeemFrom: { options: ["next_day", "same_visit"], default: "next_day" },
     },
     cross: null,
+    valley: null,
   },
   {
     key: "missed_you",
@@ -158,6 +168,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     atRisk: null,
     welcome: null,
     cross: null,
+    valley: null,
   },
   {
     key: "at_risk",
@@ -181,6 +192,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     atRisk: { minVisits: 3, rhythmFactor: 2 },
     welcome: null,
     cross: null,
+    valley: null,
   },
   {
     key: "win_back",
@@ -204,6 +216,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     atRisk: null,
     welcome: null,
     cross: null,
+    valley: null,
   },
   {
     key: "near_reward",
@@ -230,6 +243,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     atRisk: null,
     welcome: null,
     cross: null,
+    valley: null,
   },
   {
     key: "unclaimed_reward",
@@ -253,8 +267,10 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     atRisk: null,
     welcome: null,
     cross: null,
+    valley: null,
   },
   CROSS_TEMPLATE,
+  VALLEY_TEMPLATE,
 ];
 
 /** The template of a key, or `null` for anything outside the catalog (→ 404). */

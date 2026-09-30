@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   account: null as { id: string } | null,
   list: vi.fn(),
   claim: vi.fn(),
+  claimValley: vi.fn(),
 }));
 
 vi.mock("../../../../../server/consumer/session", () => ({
@@ -22,6 +23,11 @@ vi.mock("../../../../../server/consumer/session", () => ({
 vi.mock("../../../../../server/consumer/cross-offers", () => ({
   listCrossOffers: state.list,
   claimCrossOffer: state.claim,
+}));
+
+// Spec 0113: a claim WITH `locationId` is a valley claim.
+vi.mock("../../../../../server/consumer/valley-offers", () => ({
+  claimValleyOffer: state.claimValley,
 }));
 
 import { GET } from "./route";
@@ -50,6 +56,7 @@ beforeEach(() => {
   state.account = { id: "consumer-of-the-session" };
   state.list.mockReset().mockResolvedValue({ origin: "none", offers: [] });
   state.claim.mockReset().mockResolvedValue({ status: 404 });
+  state.claimValley.mockReset().mockResolvedValue({ status: 404 });
 });
 
 describe("GET /api/public/consumer/cross-offers", () => {
@@ -150,5 +157,57 @@ describe("POST /api/public/consumer/cross-offers/{campaignId}/claim", () => {
       expect(await response.json()).toMatchObject({ code: "validation" });
     }
     expect(state.claim).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST …/claim — spec 0113: `locationId` makes it a valley claim", () => {
+  const LOCATION = "0113c2c2-0000-4000-8000-000000000002";
+
+  it("with `locationId`: the valley claim, for the SESSION's consumer, never the cross one", async () => {
+    state.claimValley.mockResolvedValueOnce({
+      status: 201,
+      coupon: { id: "v1" },
+    });
+    const response = await post(
+      JSON.stringify({
+        lat: -34.6,
+        lng: -58.38,
+        locationId: LOCATION,
+        consumerId: "x",
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(state.claimValley).toHaveBeenCalledWith(
+      "consumer-of-the-session",
+      CAMPAIGN,
+      LOCATION,
+      { latitude: -34.6, longitude: -58.38 },
+    );
+    expect(state.claim).not.toHaveBeenCalled();
+  });
+
+  it("a `locationId` that is not a UUID is 400 fields.locationId before the domain", async () => {
+    for (const locationId of ["abc", 7, null, ""]) {
+      const response = await post(JSON.stringify({ locationId }));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: "validation",
+        fields: { locationId: expect.any(String) },
+      });
+    }
+    expect(state.claimValley).not.toHaveBeenCalled();
+    expect(state.claim).not.toHaveBeenCalled();
+  });
+
+  it("the domain's 400 (locationId on a cross offer, or missing on a valley one) is 400 fields.locationId", async () => {
+    const fields = { locationId: "Mensaje del dominio." };
+    state.claimValley.mockResolvedValueOnce({ status: 400, fields });
+    let response = await post(JSON.stringify({ locationId: LOCATION }));
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "validation", fields });
+    state.claim.mockResolvedValueOnce({ status: 400, fields });
+    response = await post("{}");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "validation", fields });
   });
 });

@@ -4,7 +4,8 @@ export type CouponKind =
   | "two_for_one"
   | "discount"
   | "extra_stamps"
-  | "extra_points";
+  | "extra_points"
+  | "custom";
 export type DiscountUnit = "percent" | "amount";
 export type WelcomeRedeemFrom = "next_day" | "same_visit";
 export type CampaignWelcome = {

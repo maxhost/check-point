@@ -20,4 +20,6 @@ export type {
 export { createLocation, updateLocation } from "./address";
 export { listLocations, setLocationStatus } from "./store";
 export { parseLocationId } from "./shared";
+export { getLocationHours, putLocationHours } from "./hours-store";
+export type { WeekHours } from "./hours-store";
 export type { ActiveLocationCap } from "./shared";

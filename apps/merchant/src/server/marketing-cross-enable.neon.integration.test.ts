@@ -58,8 +58,10 @@ describe.skipIf(!integrationEnabled)(
       const index = await getDb().execute<{ indexdef: string }>(sql`
       select indexdef from pg_indexes
       where schemaname = 'core' and indexname = 'core_campaign_coupon_cross_unique'`);
+      // Spec 0113 (migration 0058) narrowed the predicate: a valley coupon is also a claim
+      // but has its own unique per LOCATION, so it stays out of this one.
       expect(index.rows[0].indexdef).toMatch(
-        /\(campaign_id, consumer_id\) WHERE \(cross_claimed_at IS NOT NULL\)/,
+        /\(campaign_id, consumer_id\) WHERE \(\(cross_claimed_at IS NOT NULL\) AND \(valley_location_id IS NULL\)\)/,
       );
       const checks = await getDb().execute<{ conname: string }>(sql`
       select conname from pg_constraint
@@ -76,7 +78,7 @@ describe.skipIf(!integrationEnabled)(
       ]);
     }, 60_000);
 
-    it("enable with a coupon alone → active, no channel, `cross` in the DTO; GET templates lists it LAST", async () => {
+    it("enable with a coupon alone → active, no channel, `cross` in the DTO; GET templates lists it (last before «Horas valle»)", async () => {
       const seed = await world("plus", "Cross enable");
       const campaign = await enableTemplate(
         seed.business.id,
@@ -110,10 +112,12 @@ describe.skipIf(!integrationEnabled)(
         dormantDays: 30,
       });
       const templates = await listTemplates(seed.business.id);
-      expect(templates.at(-1)).toMatchObject({
+      // Spec 0113: «Horas valle» went after it; the cross offer is now second to last.
+      expect(templates.at(-2)).toMatchObject({
         key: "cross",
         live: { id: campaign.id },
       });
+      expect(templates.at(-1)).toMatchObject({ key: "valley" });
       // Another template's DTO says `cross: null`.
       const other = await enableTemplate(
         seed.business.id,

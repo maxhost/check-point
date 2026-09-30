@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
-import { businesses } from "./business";
+import { businesses, locations } from "./business";
 import { consumerAccounts, programMemberships } from "./consumer";
 import { walletPushQueue } from "./wallet-push";
 import { campaigns } from "./campaign";
@@ -51,7 +51,15 @@ import { type CouponKindValue, rewardChecks } from "./reward-checks";
  * «Oferta cruzada» from «Mis beneficios». It is the ONLY coupon that may have no
  * `membership_id` (the consumer need not be enrolled; the counter enrols on the scan), and
  * there is ONE per consumer and campaign, forever: a PARTIAL unique, so its `on conflict`
- * repeats the predicate (`… where cross_claimed_at is not null do nothing`).
+ * repeats the predicate (`… where cross_claimed_at is not null and valley_location_id is
+ * null do nothing`).
+ *
+ * Spec 0113 / ADR 0105: a «Horas valle» coupon is ALSO a claim (`cross_claimed_at`, the
+ * check below) and names its location (`valley_location_id`): ONE per consumer and
+ * location, forever, of ANY campaign (ADR 0105 §4) — its own partial unique. So the cross
+ * unique above leaves the valley coupons out (`valley_location_id is null`): a valley
+ * campaign with two locations gives one coupon per location, not one per campaign.
+ * `set null` so a deleted location never deletes a coupon (the app only archives them).
  */
 export const campaignCoupons = core.table(
   "campaign_coupon",
@@ -76,6 +84,12 @@ export const campaignCoupons = core.table(
       () => walletPushQueue.id,
     ),
     crossClaimedAt: timestamp("cross_claimed_at", { withTimezone: true }),
+    valleyLocationId: uuid("valley_location_id").references(
+      () => locations.id,
+      {
+        onDelete: "set null",
+      },
+    ),
     labelSnapshot: text("label_snapshot").notNull(),
     costSnapshot: numeric("cost_snapshot", {
       precision: 12,
@@ -142,7 +156,16 @@ export const campaignCoupons = core.table(
     ),
     uniqueIndex("core_campaign_coupon_cross_unique")
       .on(table.campaignId, table.consumerId)
-      .where(sql`${table.crossClaimedAt} is not null`),
+      .where(
+        sql`${table.crossClaimedAt} is not null and ${table.valleyLocationId} is null`,
+      ),
+    uniqueIndex("core_campaign_coupon_valley_unique")
+      .on(table.valleyLocationId, table.consumerId)
+      .where(sql`${table.valleyLocationId} is not null`),
+    check(
+      "core_campaign_coupon_valley_check",
+      sql`${table.valleyLocationId} is null or ${table.crossClaimedAt} is not null`,
+    ),
     check(
       "core_campaign_coupon_reminder_check",
       sql`${table.reminderQueueId} is null or ${table.welcomeMembershipId} is not null`,

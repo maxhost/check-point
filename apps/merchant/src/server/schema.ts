@@ -24,3 +24,4 @@ export * from "./schema/campaign-coupon";
 export * from "./schema/campaign-push";
 export * from "./schema/welcome-device";
 export * from "./schema/business-customer";
+export * from "./schema/valley";

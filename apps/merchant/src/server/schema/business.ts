@@ -192,6 +192,8 @@ export const brandAssetCleanups = core.table(
  *  - `longitude`/`latitude` are NULLABLE: a location whose address was typed and that
  *    Geoapify could not find has plain text and NO georeference. Decision 3 of the spec
  *    forbids fabricating an approximate coordinate — missing is information, wrong is a lie.
+ *  - `hours_version` (spec 0113): bumped by every `PUT` of its opening hours
+ *    (`core.location_hours`), so the marketing tick knows the valley detection is stale.
  */
 export const locations = core.table(
   "location",
@@ -208,6 +210,7 @@ export const locations = core.table(
     status: text("status").notNull().default("active"),
     activeVerificationId: uuid("active_verification_id"),
     addressSnapshot: jsonb("address_snapshot").notNull(),
+    hoursVersion: integer("hours_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

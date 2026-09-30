@@ -11,6 +11,7 @@ import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
 import { TEMPLATES, type TemplateDefinition, templateByKey } from "./templates";
 import { pickWelcome } from "./welcome-input";
 import { pickCross } from "./cross-input";
+import { pickValley } from "./valley-input";
 
 /**
  * The prebuilt campaigns against the database (spec 0101 / ADR 0092). A template run is
@@ -209,6 +210,7 @@ export async function enableTemplate(
           rewardRepeat: input.rewardRepeat,
           ...pickWelcome(input),
           ...pickCross(input),
+          ...pickValley(input),
           startsAt: input.startsAt,
           endsAt: input.endsAt,
         })

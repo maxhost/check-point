@@ -15,6 +15,10 @@ import type { CouponKind, DiscountUnit } from "./reward-input";
  * business `active`, and the plan allows campaigns (`campaignsAllowedFor`) — the same
  * conditions as `loadWelcomeCampaign` (`welcome-store.ts`). Raw SQL with explicit aliases;
  * dates cross `driver-values.ts`, counts are `::int` and numerics are `Number(...)`.
+ *
+ * Spec 0113: «Horas valle» is read by the SAME loader (`template = 'valley'`, same
+ * conditions): its audience is the fixed `not_active`, its cap `valley_monthly_cap`, and
+ * its `validDays` is 0 — its coupon lives until the window closes, not for days.
  */
 
 export type Db = DbTransaction | ReturnType<typeof getDb>;
@@ -54,8 +58,11 @@ export function crossOf(row: {
   return { audience: audience as CrossAudience, validDays, monthlyCap };
 }
 
+export type OfferTemplate = "cross" | "valley";
+
 export type CrossCampaign = {
   id: string;
+  template: OfferTemplate;
   businessId: string;
   businessName: string;
   categoryGcid: string;
@@ -73,8 +80,10 @@ export type CrossCampaign = {
 
 function toCrossCampaign(row: Record<string, unknown>): CrossCampaign {
   const businessId = String(row.business_id);
+  const valley = row.template_key === "valley";
   return {
     id: String(row.id),
+    template: valley ? "valley" : "cross",
     businessId,
     businessName: String(row.business_name),
     categoryGcid: String(row.category_gcid),
@@ -84,9 +93,11 @@ function toCrossCampaign(row: Record<string, unknown>): CrossCampaign {
       : null,
     message: String(row.message),
     dormantDays: Number(row.dormant_days),
-    audience: String(row.cross_audience) as CrossAudience,
-    validDays: Number(row.cross_valid_days),
-    monthlyCap: Number(row.cross_monthly_cap),
+    audience: valley
+      ? "not_active"
+      : (String(row.cross_audience) as CrossAudience),
+    validDays: valley ? 0 : Number(row.cross_valid_days),
+    monthlyCap: Number(valley ? row.valley_monthly_cap : row.cross_monthly_cap),
     couponLabel: String(row.coupon_label),
     couponCost: String(row.coupon_cost),
     reward: {
@@ -102,16 +113,17 @@ function toCrossCampaign(row: Record<string, unknown>): CrossCampaign {
   };
 }
 
-/** Every CANDIDATE cross campaign (or only `campaignId`'s), by id. */
+/** Every CANDIDATE cross (or valley) campaign — or only `campaignId`'s —, by id. */
 export async function loadCrossCampaigns(
   db: Db,
   now: Date,
   campaignId?: string,
+  template: OfferTemplate = "cross",
 ): Promise<CrossCampaign[]> {
   const at = now.toISOString();
   const result = await db.execute(sql`
-    select c.id, c.business_id, c.message, c.dormant_days, c.cross_audience,
-      c.cross_valid_days, c.cross_monthly_cap, c.coupon_label, c.coupon_cost,
+    select c.id, c.template_key, c.business_id, c.message, c.dormant_days, c.cross_audience,
+      c.cross_valid_days, c.cross_monthly_cap, c.valley_monthly_cap, c.coupon_label, c.coupon_cost,
       c.coupon_kind, c.coupon_product_id, c.coupon_discount_unit, c.coupon_discount_value,
       c.coupon_extra_units, c.coupon_rule, b.name as business_name, b.category_gcid,
       b.timezone, b.currency_code, b.logo_object_key, b.logo_version,
@@ -119,7 +131,7 @@ export async function loadCrossCampaigns(
     from core.campaign c
     join core.business b on b.id = c.business_id
     left join core.subscription s on s.business_id = c.business_id
-    where c.template_key = 'cross'
+    where c.template_key = ${template}
       and c.status = 'active'
       and c.activated_at is not null
       and c.starts_at <= ${at}::timestamptz
@@ -144,6 +156,7 @@ export async function loadCrossCampaigns(
 }
 
 export type CrossLocation = GeoPoint & {
+  id: string;
   businessId: string;
   name: string;
   addressLabel: string;
@@ -160,12 +173,13 @@ export async function loadCrossLocations(
     sql`, `,
   );
   const result = await db.execute(sql`
-    select l.business_id, l.name, l.address_label, l.latitude, l.longitude
+    select l.id, l.business_id, l.name, l.address_label, l.latitude, l.longitude
     from core.location l
     where l.business_id in (${list}) and l.status = 'active'
       and l.latitude is not null and l.longitude is not null
     order by l.id`);
   return rowsOf<Record<string, unknown>>(result).map((row) => ({
+    id: String(row.id),
     businessId: String(row.business_id),
     name: String(row.name),
     addressLabel: String(row.address_label),

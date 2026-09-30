@@ -18,15 +18,17 @@ import {
   loadCrossLocations,
   rowsOf,
 } from "../marketing/cross-store";
-import type { CouponKind, DiscountUnit } from "../marketing/reward-input";
 import { localMonthStart } from "../marketing/welcome-rules";
 import { type ConsumerCoupon, readConsumerCoupon } from "./coupons";
 import {
   type CrossMembershipRow,
+  type CrossOffer,
   loadClaimedCrossCoupons,
   loadConsumerPosition,
   loadCrossMemberships,
+  toOffer,
 } from "./cross-facts";
+import { type ValleyOffer, listValleyOffers } from "./valley-offers";
 
 /**
  * «MIS BENEFICIOS» — THE CROSS OFFERS (spec 0112 / ADR 0104; contract C1 and C2 of
@@ -38,55 +40,25 @@ import {
  *  - `claimCrossOffer` (C2) issues the coupon in ONE transaction: `for update` on the
  *    campaign row, «already has it → 200 with it» (idempotent, not re-evaluated), then the
  *    rules re-decided over facts read INSIDE the transaction (the cap counted under the
- *    lock), and the insert with `on conflict … where cross_claimed_at is not null do
- *    nothing` + re-read as the backstop of O8. No push, no Wallet (ADR 0103 §2).
+ *    lock), and the insert with `on conflict … where cross_claimed_at is not null and
+ *    valley_location_id is null do nothing` (the partial unique's predicate since 0113) +
+ *    re-read as the backstop of O8. No push, no Wallet (ADR 0103 §2).
+ *
+ * Spec 0113: C1 also lists the «Horas valle» offers and C2 claims them, both in
+ * `valley-offers.ts`; here only the calls. A valley campaign claimed WITHOUT `locationId`
+ * is a 400 on `locationId`.
  */
 
 const DAY_MS = 86_400_000;
 
-/** One offer of C1. Allow-list: no cost, no cap, no membership id, no R2 key. */
-export type CrossOffer = {
-  campaignId: string;
-  businessId: string;
-  businessName: string;
-  logoPath: string | null;
-  message: string;
-  label: string;
-  kind: CouponKind;
-  rule: string | null;
-  discountUnit: DiscountUnit | null;
-  discountValue: string | null;
-  currencyCode: string;
-  extraUnits: number | null;
-  validDays: number;
-  distanceMeters: number;
-  nearestLocation: { name: string; addressLabel: string };
-};
+export type { CrossOffer } from "./cross-facts";
+export type { ValleyOffer } from "./valley-offers";
 
-function toOffer(
-  campaign: CrossCampaign,
-  nearest: CrossLocation,
-  meters: number,
-): CrossOffer {
-  const { reward } = campaign;
-  return {
-    campaignId: campaign.id,
-    businessId: campaign.businessId,
-    businessName: campaign.businessName,
-    logoPath: campaign.logoPath,
-    message: campaign.message,
-    label: campaign.couponLabel,
-    kind: reward.kind ?? "free_product",
-    rule: reward.rule,
-    discountUnit: reward.discountUnit,
-    discountValue: reward.discountValue,
-    currencyCode: reward.currencyCode,
-    extraUnits: reward.extraUnits,
-    validDays: campaign.validDays,
-    distanceMeters: Math.round(meters),
-    nearestLocation: { name: nearest.name, addressLabel: nearest.addressLabel },
-  };
-}
+/** Spec 0113: the valley offers go first (they close today), then by distance. */
+const rank = (offer: CrossOffer | ValleyOffer) =>
+  offer.type === "valley" ? 0 : 1;
+const tieKey = (offer: CrossOffer | ValleyOffer) =>
+  `${offer.campaignId}:${offer.type === "valley" ? offer.locationId : ""}`;
 
 function factsFor(
   campaign: CrossCampaign,
@@ -118,12 +90,12 @@ const monthCount = (db: Db, campaign: CrossCampaign, now: Date) =>
     localMonthStart(now, campaign.timeZone),
   );
 
-/** C1: the cross offers the session consumer can claim, nearest first (O6). */
+/** C1: the offers the session consumer can claim — valley first, then nearest (O6). */
 export async function listCrossOffers(
   consumerId: string,
   gps: GeoPoint | null,
   now: Date = new Date(),
-): Promise<{ origin: CrossOrigin; offers: CrossOffer[] }> {
+): Promise<{ origin: CrossOrigin; offers: (CrossOffer | ValleyOffer)[] }> {
   const db = getDb();
   const position = await loadConsumerPosition(db, consumerId, gps);
   const origin = crossOrigin(position);
@@ -134,7 +106,7 @@ export async function listCrossOffers(
   ]);
   const memberships = await loadCrossMemberships(db, consumerId);
   const claimed = await loadClaimedCrossCoupons(db, consumerId);
-  const found: { offer: CrossOffer; meters: number }[] = [];
+  const found: { offer: CrossOffer | ValleyOffer; meters: number }[] = [];
   for (const campaign of campaigns) {
     const own = locations.filter((l) => l.businessId === campaign.businessId);
     const facts = (count: number) =>
@@ -159,9 +131,14 @@ export async function listCrossOffers(
       meters: decision.distanceMeters,
     });
   }
+  found.push(
+    ...(await listValleyOffers(db, consumerId, { now, position }, memberships)),
+  );
   found.sort(
     (a, b) =>
-      a.meters - b.meters || (a.offer.campaignId < b.offer.campaignId ? -1 : 1),
+      rank(a.offer) - rank(b.offer) ||
+      a.meters - b.meters ||
+      (tieKey(a.offer) < tieKey(b.offer) ? -1 : 1),
   );
   return { origin: origin.kind, offers: found.map((entry) => entry.offer) };
 }
@@ -188,7 +165,8 @@ async function insertCrossCoupon(
         ${reward.discountValueSnapshot}, ${reward.currencyCodeSnapshot},
         ${reward.extraUnitsSnapshot}, ${reward.ruleSnapshot}, ${now.toISOString()},
         ${validUntil.toISOString()}, ${now.toISOString()})
-      on conflict (campaign_id, consumer_id) where cross_claimed_at is not null
+      on conflict (campaign_id, consumer_id)
+        where cross_claimed_at is not null and valley_location_id is null
       do nothing
       returning id`),
   );
@@ -197,7 +175,8 @@ async function insertCrossCoupon(
 
 export type ClaimResult =
   | { status: 200 | 201; coupon: ConsumerCoupon }
-  | { status: 404 };
+  | { status: 404 }
+  | { status: 400; fields: Record<string, string> };
 
 /** C2: claim one cross offer for the session consumer. */
 export async function claimCrossOffer(
@@ -207,13 +186,14 @@ export async function claimCrossOffer(
   now: Date = new Date(),
 ): Promise<ClaimResult> {
   const outcome = await withDbTransaction(async (tx) => {
-    const [locked] = rowsOf<{ id: string }>(
+    const [locked] = rowsOf<{ template_key: string }>(
       await tx.execute(sql`
-        select c.id from core.campaign c
-        where c.id = ${campaignId} and c.template_key = 'cross'
+        select c.template_key from core.campaign c
+        where c.id = ${campaignId} and c.template_key in ('cross', 'valley')
         for update`),
     );
     if (!locked) return null;
+    if (locked.template_key === "valley") return { status: 400 as const };
     const existing = (
       await loadClaimedCrossCoupons(tx, consumerId, campaignId)
     ).get(campaignId);
@@ -248,6 +228,11 @@ export async function claimCrossOffer(
     return again ? { status: 200 as const, id: again } : null;
   });
   if (outcome === null) return { status: 404 };
+  if (outcome.status === 400)
+    return {
+      status: 400,
+      fields: { locationId: "Falta el local de la oferta de horas valle." },
+    };
   const coupon = await readConsumerCoupon(consumerId, outcome.id, now);
   if (!coupon)
     throw new Error("El cupón cruzado recién emitido no se pudo leer.");

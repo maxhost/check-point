@@ -54,6 +54,7 @@ import { templateByKey } from "./templates";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
 import { sweepWelcomeGifts } from "./welcome-issue";
 import { enqueueWelcomeReminders } from "./welcome-reminder";
+import { refreshValleyDetections } from "./valley-store";
 
 export type TickSummary = {
   campaigns: number;
@@ -237,6 +238,8 @@ export async function runMarketingTick(
     );
     // …and its expiry notices (spec 0107 §5), after the sweep.
     await enqueueWelcomeReminders(db, now, options.businessIds);
+    // Spec 0113 V4: the valley detections that are stale (> 7 days, or new opening hours).
+    await refreshValleyDetections(db, now, options.businessIds);
 
     const expired = await expireTurns(db, now, options.businessIds);
     const cancelled = Object.values(
