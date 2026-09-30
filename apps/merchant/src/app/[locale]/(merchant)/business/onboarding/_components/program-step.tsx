@@ -16,6 +16,7 @@ import type {
 } from "../_lib/contracts";
 import { createProgram, WizardApiError } from "../_lib/onboarding-api";
 import { ImpactCalculator } from "./program-impact";
+import { StepHeader } from "./wizard-shared";
 
 type FieldErrors = Record<string, string | undefined>;
 
@@ -128,22 +129,11 @@ export function ProgramStep({
 
   return (
     <>
-      <header className="mb-8 grid gap-5">
-        <div>
-          <p className="mb-2 text-sm font-bold text-primary">Paso 3 de 3</p>
-          <h1
-            id="wizard-heading"
-            tabIndex={-1}
-            className="text-2xl font-bold leading-tight outline-none sm:text-3xl"
-          >
-            Creá tu programa de fidelización
-          </h1>
-          <p className="mt-2 leading-6 text-content-muted">
-            Elegí cómo querés premiar a los clientes de{" "}
-            {business?.name ?? "tu negocio"}.
-          </p>
-        </div>
-      </header>
+      <StepHeader
+        step={3}
+        title="Creá tu programa de fidelización"
+        description={`Elegí cómo querés premiar a los clientes de ${business?.name ?? "tu negocio"}.`}
+      />
       <Form onSubmit={submit} className="grid gap-5">
         {apiError && (
           <Alert kind="error" title="No pudimos continuar">

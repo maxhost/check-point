@@ -180,9 +180,24 @@ export function OnboardingWizard() {
 
 function WizardShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-svh bg-canvas px-4 py-6 text-content sm:px-6 sm:py-10">
-      <div className="mx-auto w-full max-w-[var(--content-form)]">
-        {children}
+    <main className="merchant-onboarding min-h-svh px-4 py-6 text-content sm:px-6 sm:py-10">
+      <div className="merchant-onboarding-inner mx-auto w-full max-w-[var(--content-form)]">
+        <header className="merchant-onboarding-brandbar">
+          <div
+            className="merchant-onboarding-brand"
+            role="img"
+            aria-label="CheckPass Club"
+          >
+            <span className="merchant-onboarding-mark" aria-hidden="true">
+              c<span>.</span>
+            </span>
+            <span className="merchant-onboarding-wordmark" aria-hidden="true">
+              checkpass<span>.</span>club
+            </span>
+          </div>
+          <span className="merchant-onboarding-context">Alta de negocios</span>
+        </header>
+        <div className="merchant-onboarding-content">{children}</div>
       </div>
     </main>
   );
