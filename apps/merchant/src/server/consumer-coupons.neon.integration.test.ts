@@ -155,6 +155,8 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       "id",
       "kind",
       "label",
+      // Spec 0112 C3: `cross` for a claimed cross offer, else `campaign`.
+      "origin",
       "reason",
       "redeemedAt",
       "rule",
@@ -173,6 +175,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       status: "valid",
       reason: null,
       redeemedAt: null,
+      origin: "campaign",
     });
     expect(mine[1]).toMatchObject({
       businessId: w1.seed.business.id,

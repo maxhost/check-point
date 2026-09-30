@@ -99,6 +99,7 @@ export function welcomeValidUntil(now: Date, validDays: number): Date {
 export type WelcomeVerdict =
   | "issue"
   | "enrolled_before"
+  | "came_by_cross"
   | "not_installed"
   | "device_already_gifted";
 
@@ -108,6 +109,10 @@ export type WelcomeVerdict =
  * of 2026-09-27). «Installed» is an Apple device registered (or the one registering right
  * now) or Google's `save`. An iPhone that already got THIS business's welcome — even after
  * deleting the pass — gets nothing again.
+ *
+ * Spec 0112 / ADR 0104 §5 («Solo el cruzado», owner): a consumer holding a CROSS coupon of
+ * this business came in through the network and already has their gift — no welcome. It
+ * goes right after `enrolled_before`.
  */
 export function decideWelcomeGift(facts: {
   enrolledAt: Date;
@@ -115,8 +120,10 @@ export function decideWelcomeGift(facts: {
   appleDevices: number;
   googleSaved: boolean;
   deviceAlreadyGifted: boolean;
+  crossCouponFromBusiness: boolean;
 }): WelcomeVerdict {
   if (facts.enrolledAt < facts.activatedAt) return "enrolled_before";
+  if (facts.crossCouponFromBusiness) return "came_by_cross";
   if (facts.appleDevices === 0 && !facts.googleSaved) return "not_installed";
   if (facts.deviceAlreadyGifted) return "device_already_gifted";
   return "issue";

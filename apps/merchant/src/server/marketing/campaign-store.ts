@@ -9,6 +9,7 @@ import {
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
 import type { CampaignWelcome } from "./campaign-values";
+import type { CampaignCross } from "./cross-store";
 import { columns, toCampaign } from "./campaign-row";
 import { CampaignError } from "./campaign-error";
 import { type CouponKind, type DiscountUnit, pickReward } from "./reward-input";
@@ -64,6 +65,8 @@ export type Campaign = {
   rewardRepeat: "once" | "every_30_days" | null;
   /** Spec 0107: «Bienvenida»'s parameters. Always set by the reads; optional for fixtures. */
   welcome?: CampaignWelcome | null;
+  /** Spec 0112: «Oferta cruzada»'s parameters. Always set by the reads; optional for fixtures. */
+  cross?: CampaignCross | null;
   startsAt: Date;
   endsAt: Date | null;
   activatedAt: Date | null;

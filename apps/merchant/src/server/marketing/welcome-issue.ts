@@ -10,12 +10,13 @@ import {
   welcomeValidUntil,
 } from "./welcome-rules";
 import { countMonthGifts, loadWelcomeCampaign } from "./welcome-store";
+import { hasCrossCouponFrom } from "./cross-store";
 
 /**
  * THE DELIVERY OF THE WELCOME GIFT (spec 0107 §3 / ADR 0099). One consumer, every
  * membership whose business has an ELIGIBLE welcome campaign (`welcome-store.ts`), in ONE
- * transaction, and for each one in the spec's order: enrolled after the switch-on →
- * installed pass → durable Apple filter of THAT business → monthly cap under the
+ * transaction, and for each one in the spec's order: enrolled after the switch-on → no
+ * cross coupon of that business (spec 0112, «solo el cruzado») → installed pass → durable Apple filter of THAT business → monthly cap under the
  * campaign's `for update` → the coupon (`on conflict (welcome_membership_id) do nothing`)
  * and, if it was inserted, every device of the consumer burned in `core.welcome_device`.
  *
@@ -117,6 +118,11 @@ export async function issueWelcomeGiftsIn(
         tx,
         businessId,
         installed.devices,
+      ),
+      crossCouponFromBusiness: await hasCrossCouponFrom(
+        tx,
+        consumerId,
+        businessId,
       ),
     });
     if (verdict !== "issue") continue;

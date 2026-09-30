@@ -7,8 +7,9 @@ import { TEMPLATES, templateByKey, templateKeysAtOrAbove } from "./templates";
  * a 400 on the first click of the toggle.
  */
 describe("marketing templates catalog", () => {
-  it("has exactly the six templates of the specs, in catalog order", () => {
-    // Spec 0107 (#1+#2, FIRST) + spec 0101 (#3, #5) + spec 0105 (#4) + spec 0104 (#7, #8).
+  it("has exactly the seven templates of the specs, in catalog order", () => {
+    // Spec 0107 (#1+#2, FIRST) + spec 0101 (#3, #5) + spec 0105 (#4) + spec 0104 (#7, #8)
+    // + spec 0112 («Oferta cruzada», LAST).
     expect(TEMPLATES.map((t) => t.key)).toEqual([
       "welcome",
       "missed_you",
@@ -16,6 +17,7 @@ describe("marketing templates catalog", () => {
       "win_back",
       "near_reward",
       "unclaimed_reward",
+      "cross",
     ]);
   });
 
@@ -51,6 +53,7 @@ describe("marketing templates catalog", () => {
             default: "next_day",
           },
         },
+        cross: null,
       },
       {
         key: "missed_you",
@@ -73,6 +76,7 @@ describe("marketing templates catalog", () => {
         repeat: null,
         atRisk: null,
         welcome: null,
+        cross: null,
       },
       // Spec 0105 / ADR 0097: the middle of the reactivation ladder; 3 and 2× fixed.
       {
@@ -96,6 +100,7 @@ describe("marketing templates catalog", () => {
         repeat: null,
         atRisk: { minVisits: 3, rhythmFactor: 2 },
         welcome: null,
+        cross: null,
       },
       {
         key: "win_back",
@@ -118,6 +123,7 @@ describe("marketing templates catalog", () => {
         repeat: null,
         atRisk: null,
         welcome: null,
+        cross: null,
       },
       // Spec 0104 / ADR 0096 — the owner's options and defaults.
       {
@@ -144,6 +150,7 @@ describe("marketing templates catalog", () => {
         repeat: null,
         atRisk: null,
         welcome: null,
+        cross: null,
       },
       {
         key: "unclaimed_reward",
@@ -166,6 +173,38 @@ describe("marketing templates catalog", () => {
         repeat: { options: ["once", "every_30_days"], default: "once" },
         atRisk: null,
         welcome: null,
+        cross: null,
+      },
+      // Spec 0112 / ADR 0104: no channel, coupon mandatory, audience/validity/cap.
+      {
+        key: "cross",
+        title: "Oferta cruzada",
+        description:
+          "Regala un premio a clientes de otros comercios cercanos, para que te descubran.",
+        channels: [],
+        group: "cross",
+        rank: 1,
+        dormantDays: { options: [30, 60, 90], default: 30 },
+        message: {
+          default: "Te esperamos con un regalo",
+          maxLength: 60,
+          gapMarker: false,
+        },
+        couponRecommended: true,
+        couponAllowed: true,
+        couponRequired: true,
+        nearReward: null,
+        repeat: null,
+        atRisk: null,
+        welcome: null,
+        cross: {
+          audience: {
+            options: ["non_members", "dormant", "any"],
+            default: "non_members",
+          },
+          validDays: { options: [7, 15, 30], default: 15 },
+          monthlyCap: { min: 1, max: 10000, default: 50 },
+        },
       },
     ]);
   });
@@ -210,7 +249,7 @@ describe("marketing templates catalog", () => {
       welcome.monthlyCap.min,
     );
     expect(TEMPLATES.filter((t) => t.couponRequired).map((t) => t.key)).toEqual(
-      ["welcome"],
+      ["welcome", "cross"],
     );
   });
 

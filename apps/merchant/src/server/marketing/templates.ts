@@ -34,11 +34,16 @@
  * gift is issued when the consumer INSTALLS the pass (`welcome-issue.ts`)— and no dormant
  * days; its coupon is MANDATORY (`couponRequired`) and its parameters are `welcome`.
  *
+ * CROSS (spec 0112 / ADR 0104): «Oferta cruzada» goes LAST. No channel either —its only
+ * surface is the consumer's «Mis beneficios»—, coupon MANDATORY, parameters in `cross`.
+ * Its entry lives in `cross-rules.ts` (`CROSS_TEMPLATE`) only for this file's size budget.
+ *
  * The keys are ALSO pinned by the `core_campaign_template_key_check` (migrations `0044`,
- * `0047`, `0048`, `0052`): adding a template here without a migration makes `enable` die on the check.
+ * `0047`, `0048`, `0052`, `0057`): adding a template here without a migration makes `enable` die on the check.
  */
 
 import type { AtRiskRule } from "./at-risk";
+import { CROSS_TEMPLATE, type CrossDefinition } from "./cross-rules";
 
 export type TemplateKey =
   | "welcome"
@@ -46,11 +51,12 @@ export type TemplateKey =
   | "at_risk"
   | "win_back"
   | "near_reward"
-  | "unclaimed_reward";
+  | "unclaimed_reward"
+  | "cross";
 
 export type CampaignChannel = "proximity" | "push";
 
-export type TemplateGroup = "welcome" | "reactivation" | "balance";
+export type TemplateGroup = "welcome" | "reactivation" | "balance" | "cross";
 
 export type WelcomeRedeemFrom = "next_day" | "same_visit";
 
@@ -98,6 +104,7 @@ export type TemplateDefinition = {
   /** #4's rhythm rule (`at-risk.ts`): informative, fixed by the platform. */
   atRisk: AtRiskRule | null;
   welcome: WelcomeDefinition | null;
+  cross: CrossDefinition | null;
 };
 
 export const TEMPLATES: readonly TemplateDefinition[] = [
@@ -127,6 +134,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
       monthlyCap: { min: 1, max: 10000, default: 50 },
       redeemFrom: { options: ["next_day", "same_visit"], default: "next_day" },
     },
+    cross: null,
   },
   {
     key: "missed_you",
@@ -149,6 +157,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     repeat: null,
     atRisk: null,
     welcome: null,
+    cross: null,
   },
   {
     key: "at_risk",
@@ -171,6 +180,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     repeat: null,
     atRisk: { minVisits: 3, rhythmFactor: 2 },
     welcome: null,
+    cross: null,
   },
   {
     key: "win_back",
@@ -193,6 +203,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     repeat: null,
     atRisk: null,
     welcome: null,
+    cross: null,
   },
   {
     key: "near_reward",
@@ -218,6 +229,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     repeat: null,
     atRisk: null,
     welcome: null,
+    cross: null,
   },
   {
     key: "unclaimed_reward",
@@ -240,7 +252,9 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     repeat: { options: ["once", "every_30_days"], default: "once" },
     atRisk: null,
     welcome: null,
+    cross: null,
   },
+  CROSS_TEMPLATE,
 ];
 
 /** The template of a key, or `null` for anything outside the catalog (→ 404). */

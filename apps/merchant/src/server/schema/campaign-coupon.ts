@@ -46,6 +46,12 @@ import { type CouponKindValue, rewardChecks } from "./reward-checks";
  * «Bienvenida» for ONE enrolment, forever (NON-partial unique, `on conflict
  * (welcome_membership_id) do nothing`). `reminder_queue_id` is its expiry notice once
  * queued (one coupon, one notice); only a welcome coupon has one.
+ *
+ * Spec 0112 / ADR 0104: `cross_claimed_at` is the fourth origin — the consumer CLAIMED an
+ * «Oferta cruzada» from «Mis beneficios». It is the ONLY coupon that may have no
+ * `membership_id` (the consumer need not be enrolled; the counter enrols on the scan), and
+ * there is ONE per consumer and campaign, forever: a PARTIAL unique, so its `on conflict`
+ * repeats the predicate (`… where cross_claimed_at is not null do nothing`).
  */
 export const campaignCoupons = core.table(
   "campaign_coupon",
@@ -60,9 +66,7 @@ export const campaignCoupons = core.table(
     consumerId: uuid("consumer_id")
       .notNull()
       .references(() => consumerAccounts.id),
-    membershipId: uuid("membership_id")
-      .notNull()
-      .references(() => programMemberships.id),
+    membershipId: uuid("membership_id").references(() => programMemberships.id),
     turnId: uuid("turn_id").references(() => campaignTurns.id),
     pushId: uuid("push_id").references(() => campaignPushes.id),
     welcomeMembershipId: uuid("welcome_membership_id").references(
@@ -71,6 +75,7 @@ export const campaignCoupons = core.table(
     reminderQueueId: uuid("reminder_queue_id").references(
       () => walletPushQueue.id,
     ),
+    crossClaimedAt: timestamp("cross_claimed_at", { withTimezone: true }),
     labelSnapshot: text("label_snapshot").notNull(),
     costSnapshot: numeric("cost_snapshot", {
       precision: 12,
@@ -129,8 +134,15 @@ export const campaignCoupons = core.table(
     ),
     check(
       "core_campaign_coupon_single_origin_check",
-      sql`num_nonnulls(${table.turnId}, ${table.pushId}, ${table.welcomeMembershipId}) <= 1`,
+      sql`num_nonnulls(${table.turnId}, ${table.pushId}, ${table.welcomeMembershipId}, ${table.crossClaimedAt}) <= 1`,
     ),
+    check(
+      "core_campaign_coupon_membership_check",
+      sql`${table.membershipId} is not null or ${table.crossClaimedAt} is not null`,
+    ),
+    uniqueIndex("core_campaign_coupon_cross_unique")
+      .on(table.campaignId, table.consumerId)
+      .where(sql`${table.crossClaimedAt} is not null`),
     check(
       "core_campaign_coupon_reminder_check",
       sql`${table.reminderQueueId} is null or ${table.welcomeMembershipId} is not null`,

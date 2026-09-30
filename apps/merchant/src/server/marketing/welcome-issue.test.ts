@@ -88,6 +88,7 @@ describe("decideWelcomeGift", () => {
     appleDevices: 1,
     googleSaved: false,
     deviceAlreadyGifted: false,
+    crossCouponFromBusiness: false,
   };
 
   it("in the spec's order: enrolled before → not installed → device already gifted → issue", () => {
@@ -110,6 +111,25 @@ describe("decideWelcomeGift", () => {
     ).toBe("issue");
     expect(decideWelcomeGift({ ...base, deviceAlreadyGifted: true })).toBe(
       "device_already_gifted",
+    );
+  });
+
+  it("spec 0112: a cross coupon of the business is `came_by_cross`, right after `enrolled_before`", () => {
+    const cross = { ...base, crossCouponFromBusiness: true };
+    expect(decideWelcomeGift(cross)).toBe("came_by_cross");
+    // After `enrolled_before` …
+    expect(
+      decideWelcomeGift({
+        ...cross,
+        enrolledAt: new Date("2026-08-31T23:59:59.000Z"),
+      }),
+    ).toBe("enrolled_before");
+    // … and before every installation fact.
+    expect(decideWelcomeGift({ ...cross, appleDevices: 0 })).toBe(
+      "came_by_cross",
+    );
+    expect(decideWelcomeGift({ ...cross, deviceAlreadyGifted: true })).toBe(
+      "came_by_cross",
     );
   });
 

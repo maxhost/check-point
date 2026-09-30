@@ -49,6 +49,10 @@ describe("parseTemplateInput", () => {
         welcomeReminderDays: null,
         welcomeMonthlyCap: null,
         welcomeRedeemFrom: null,
+        // Spec 0112: the cross parameters are `null` outside «Oferta cruzada».
+        crossAudience: null,
+        crossValidDays: null,
+        crossMonthlyCap: null,
         startsAt: NOW,
         endsAt: null,
       },

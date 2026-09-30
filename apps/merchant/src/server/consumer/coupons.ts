@@ -28,6 +28,10 @@ import {
  * Allow-list, by contract: no campaign name, no cost, no membership/consumer id.
  * `currencyCode` as in the scan: the snapshot for an `amount` discount, else the business's.
  * Raw SQL with explicit aliases (the redemption is joined by the coupon's id).
+ *
+ * Spec 0112 (contract C3): every coupon says its `origin` — `cross` when the consumer
+ * CLAIMED it from an «Oferta cruzada» (`cross_claimed_at`), `campaign` otherwise. The cross
+ * coupon is here because it has the consumer's id; like every own coupon, UNFILTERED.
  */
 
 export type ConsumerCoupon = {
@@ -47,6 +51,7 @@ export type ConsumerCoupon = {
   status: CouponStatus;
   reason: CouponReason | null;
   redeemedAt: Date | null;
+  origin: "cross" | "campaign";
 };
 
 const HISTORY_DAYS = 90;
@@ -68,6 +73,7 @@ type Row = {
   valid_from: unknown;
   valid_until: unknown;
   redeemed_at: unknown;
+  cross_claimed_at: unknown;
 };
 
 const COLUMNS = sql`
@@ -75,7 +81,7 @@ const COLUMNS = sql`
   c.label_snapshot, c.kind_snapshot, c.rule_snapshot, c.discount_unit_snapshot,
   c.discount_value_snapshot, c.extra_units_snapshot, c.valid_from, c.valid_until,
   coalesce(c.currency_code_snapshot, b.currency_code) as currency_code,
-  cr.created_at as redeemed_at
+  cr.created_at as redeemed_at, c.cross_claimed_at
   from core.campaign_coupon c
   join core.business b on b.id = c.business_id
   left join core.coupon_redemption cr on cr.coupon_id = c.id`;
@@ -108,6 +114,7 @@ function toCoupon(row: Row, now: Date): ConsumerCoupon {
       now,
     }),
     redeemedAt,
+    origin: toDate(row.cross_claimed_at) ? "cross" : "campaign",
   };
 }
 
@@ -143,4 +150,18 @@ export async function listConsumerCoupons(
     ...current.filter((coupon) => coupon.status === "unavailable"),
     ...history.rows.map((row) => toCoupon(row, now)),
   ];
+}
+
+/** ONE coupon of the session consumer by id (the claim's answer), or `null`. */
+export async function readConsumerCoupon(
+  consumerId: string,
+  couponId: string,
+  now: Date = new Date(),
+): Promise<ConsumerCoupon | null> {
+  const result = await getDb().execute<Row>(sql`
+    select ${COLUMNS}
+    where c.consumer_id = ${consumerId} and c.id = ${couponId}
+  `);
+  const [row] = result.rows;
+  return row ? toCoupon(row, now) : null;
 }

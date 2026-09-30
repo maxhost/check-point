@@ -1,11 +1,12 @@
-import { and, eq, sql } from "drizzle-orm";
-import { getDb, withDbTransaction } from "../db";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { type DbTransaction, getDb, withDbTransaction } from "../db";
 import {
   businesses,
   campaignCoupons,
   campaignTurns,
   campaigns,
   couponRedemptions,
+  programMemberships,
   walletPushQueue,
 } from "../schema";
 import { buildCouponBody } from "../wallet/push";
@@ -90,6 +91,10 @@ export async function readCouponByRequest(
  *  2. Idempotency, under the lock and BEFORE any business guard.
  *  3. Decide with the PURE function over the LOCKED rows and a `count` taken under the
  *     same lock.
+ *  3a. Spec 0112: the MEMBERSHIP of the redemption is the coupon's, or —a cross coupon
+ *     claimed by a non-member— the consumer's membership in this business, read here (the
+ *     scan auto-enrols, ADR 0033). None at all → 409 `not_enrolled`. The coupon is not
+ *     rewritten.
  *  3b. Spec 0106: an `extra_*` coupon credits the program (`coupon-extras.ts`), or answers
  *     409 `program_changed` without writing anything.
  *  4. Insert with the coupon's SNAPSHOTS, and — when the coupon came from a turn — mark
@@ -192,12 +197,17 @@ export async function persistCouponRedemption(input: {
     if (!decision.ok)
       throw new CounterError(decision.status, decision.code, decision.message);
 
+    // (3a) Spec 0112: whose membership this redemption is.
+    const membershipId =
+      coupon.membershipId ??
+      (await enrolledMembership(tx, coupon.consumerId, input.businessId));
+
     // (3b) Spec 0106: an `extra_*` coupon credits the program HERE — same transaction, after
     // the locks and the decision, before the insert (`coupon-extras.ts`). A program that
     // changed is a 409 `program_changed` and nothing is written.
     const grant = await grantCouponExtras(tx, {
       businessId: input.businessId,
-      membershipId: coupon.membershipId,
+      membershipId,
       kindSnapshot: coupon.kindSnapshot,
       extraUnitsSnapshot: coupon.extraUnitsSnapshot,
     });
@@ -211,7 +221,7 @@ export async function persistCouponRedemption(input: {
         campaignId: campaign.id,
         businessId: input.businessId,
         consumerId: coupon.consumerId,
-        membershipId: coupon.membershipId,
+        membershipId,
         locationId: input.locationId,
         labelSnapshot: coupon.labelSnapshot,
         costSnapshot: coupon.costSnapshot,
@@ -257,6 +267,32 @@ export async function persistCouponRedemption(input: {
 
     return { ...row, campaignName: campaign.name, pushQueueId: push.id };
   });
+}
+
+/** The consumer's membership in this business (latest enrolment), or 409 `not_enrolled`. */
+async function enrolledMembership(
+  tx: DbTransaction,
+  consumerId: string,
+  businessId: string,
+): Promise<string> {
+  const [row] = await tx
+    .select({ id: programMemberships.id })
+    .from(programMemberships)
+    .where(
+      and(
+        eq(programMemberships.consumerId, consumerId),
+        eq(programMemberships.businessId, businessId),
+      ),
+    )
+    .orderBy(desc(programMemberships.enrolledAt), programMemberships.id)
+    .limit(1);
+  if (!row)
+    throw new CounterError(
+      409,
+      "not_enrolled",
+      "Escaneá el QR del cliente primero.",
+    );
+  return row.id;
 }
 
 export { assertSameCoupon };

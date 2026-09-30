@@ -2,6 +2,7 @@ import { campaigns } from "../schema";
 import type { Campaign } from "./campaign-store";
 import { channelsOf, welcomeOf, welcomeSelect } from "./campaign-values";
 import { rewardSelect } from "./reward-store";
+import { crossOf, crossSelect } from "./cross-store";
 
 /**
  * The columns every read of `core.campaign` selects and the row → DTO mapping. Apart from
@@ -26,6 +27,7 @@ export const columns = {
   nearRewardPercent: campaigns.nearRewardPercent,
   rewardRepeat: campaigns.rewardRepeat,
   welcome: welcomeSelect,
+  cross: crossSelect,
   startsAt: campaigns.startsAt,
   endsAt: campaigns.endsAt,
   activatedAt: campaigns.activatedAt,
@@ -39,14 +41,16 @@ export function toCampaign(
     channelProximity: boolean;
     channelPush: boolean;
     welcome: Parameters<typeof welcomeOf>[0];
+    cross: Parameters<typeof crossOf>[0];
   },
   locationIds: string[],
 ): Campaign {
-  const { channelProximity, channelPush, welcome, ...rest } = row;
+  const { channelProximity, channelPush, welcome, cross, ...rest } = row;
   return {
     ...(rest as Omit<Campaign, "locationIds" | "channels">),
     channels: channelsOf({ channelProximity, channelPush }),
     welcome: welcomeOf(welcome),
+    cross: crossOf(cross),
     locationIds,
   };
 }
