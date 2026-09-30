@@ -10,16 +10,18 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: las respuestas del owner a las decisiones A–G** de `docs/red-horas-valle-y-modelo.md`
-(commit `f169800`). Los 3 pasos de la sesion anterior estan HECHOS en ese doc: §1 cifras re-verificadas por el
-orquestador con busqueda web (Groupon/Dholakia 20 %, 21,7 %, 324 → 55,5/26,6/17,9 %, ~80 % nuevos: LEIDO en Wharton
-y en el articulo de Dholakia; ClassPass 94 % y SmartRate +20 %/2×/+14 %: LEIDO en Athletech; **Panera «4 → 10» NO
-aparece** → corregido a +200 % / 15+ dias por mes; TGTG 58/76 % solo snippet del blog oficial; Nunes: paper
-confirmado, 34/19 % solo secundaria); §2 horas valle (leccion de Groupon, deteccion desde `core.order.created_at`,
-publico, oferta, informe); §3 modelo conceptual (5 piezas, 4 momentos, flujo, quien decide). **Hallazgo medido:
-no existe horario de apertura en el schema** → la red no distingue «valle» de «cerrado» (decision A). Sin
-responder todavia: A (horario), B (publico), C (beneficio), D (quien propone la franja), E (cupon cruzado en el
-recibo desde el dia uno), F (orden inicial), G (donde ve la persona el recibo). Cero codigo tocado.
+**Retomar con: la respuesta del owner a F** (orden cuando varios comercios compiten por un lugar: urgencia →
+rotacion → cercania propuesto, rendimiento despues) y al **hallazgo de Apple** (cupon cruzado dentro del
+`changeMessage` que notifica = zona gris con la HIG; alternativa: notificar solo el sello y dejar el cupon en el
+pase sin notificar + «Mis beneficios»). Con eso: ADR del modelo (entregar vs avisar + horas valle) y spec.
+Doc: `docs/red-horas-valle-y-modelo.md` (commits `f169800`, `c6b1912`). **Owner (2026-09-29, textual resumido):**
+A horario de apertura «lo puede cargar el comercio en Marca»; B valle visible para no-clientes Y dormidos
+(«ambos son opcion»); C beneficio = sellos/puntos extra segun el programa, producto del menu, o texto libre
+(«2x1 en cerveza»); D la franja la elige «la red», editable por el comercio que quiera mas control; E cupon
+cruzado en el recibo desde el dia uno: si; G el cliente escanea solo al enrolarse, despues escanea el comercio →
+el recibo ES el aviso de Wallet que ya sale tras cada escaneo (`wallet/google-object.ts:142-165`,
+`wallet/apple.ts:86-94`). Cifras re-verificadas: §1 del doc (Panera «4 → 10» corregido). Hallazgo medido: no hay
+horario de apertura en el schema (lo resuelve A). Cero codigo tocado.
 
 **Decisiones del owner sobre la sintesis (2026-09-29, textual resumido):** concepto 3 «llegar como conocido»:
 el referido entre consumidores esta bien, pero **NO se le puede pedir a los comercios que costeen sellos extra ni
