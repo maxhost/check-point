@@ -158,7 +158,19 @@ describe("decideHostRoute — H1 and H2", () => {
   });
 
   it("no loop: the target of a redirect is served, not redirected again", () => {
-    const paths = ["/", "/wallet", "/c/t", "/backoffice", "/es/business/o"];
+    // `/wallet/business` & co. (revisor 0114): paginas del cliente cuyo 2.º segmento es
+    // «business» — con una regex de locale amplia tambien parecian del comercio y rebotaban.
+    const paths = [
+      "/",
+      "/wallet",
+      "/c/t",
+      "/backoffice",
+      "/es/business/o",
+      "/wallet/business",
+      "/c/business",
+      "/enroll/business",
+      "/recover/business",
+    ];
     let redirects = 0;
     for (const host of ["business.checkpass.club", "my.checkpass.club"]) {
       for (const path of paths) {
@@ -171,7 +183,7 @@ describe("decideHostRoute — H1 and H2", () => {
         );
       }
     }
-    expect(redirects).toBe(5);
+    expect(redirects).toBe(9);
   });
 });
 

@@ -44,7 +44,7 @@ correcto o redirigir (textual en el ADR 0106).
 **Entra:**
 1. `server/hosts.ts` (puro): `decideHostRoute({ host, pathname, search, merchantOrigin, consumerOrigin })` →
    `{ redirect: url } | null`. Paginas del cliente: `/wallet` (y `/wallet/*`), `/c/*`, `/enroll/*`, `/recover`
-   (y `/recover/*`). Paginas del comercio: `/backoffice` (y `/*`), `/<locale>/business/*`. En `business.` una
+   (y `/recover/*`). Paginas del comercio: `/backoffice` (y `/*`), `/<locale>/business/*` con un locale de `supportedLocales` (hoy solo `es`: un primer segmento cualquiera hacia que `/wallet/business` rebotara entre hosts — revisor, 2026-09-30). En `business.` una
    pagina del cliente → 308 a `consumerOrigin` (mismo path + query); en `my.` una del comercio → 308 a
    `merchantOrigin`; en `my.` `/` → 308 a `/wallet` (H4). `/api/*`, `/_next/*`, archivos con extension y todo lo
    demas → `null`. Host comparado sin puerto y en minusculas.
@@ -62,7 +62,7 @@ correcto o redirigir (textual en el ADR 0106).
 6. `apps/public`: se borra el `assetPrefix` y su rewrite `/public-zone` de `0442841`; `src/legacy-routes.ts` (puro)
    exporta `legacyRedirects(merchantOrigin, consumerOrigin)` y `legacyRewrites(merchantApiOrigin)` que
    `next.config.ts` usa en `redirects()` / `rewrites()`:
-   - 308 → `business.`: `/backoffice`, `/backoffice/:path*`, `/:locale/business/:path*`;
+   - 308 → `business.`: `/backoffice`, `/backoffice/:path*`, `/es/business/:path*`;
    - 308 → `my.`: `/wallet`, `/wallet/:path*`, `/c/:path*`, `/enroll/:path*`, `/recover`, `/recover/:path*`;
    - rewrite: `/api/:path*` → `${merchantApiOrigin}/api/:path*` (H5).
    Defaults: `https://business.checkpass.club`, `https://my.checkpass.club`; env `MERCHANT_ORIGIN`,

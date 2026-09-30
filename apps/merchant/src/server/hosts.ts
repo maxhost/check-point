@@ -12,6 +12,8 @@
  * dos (`www`, `*.vercel.app` y `localhost` no se tocan). H3: `/api/*` nunca.
  */
 
+import { isSupportedLocale } from "../i18n/locales";
+
 export type HostRouteInput = {
   /** El header `host` tal cual llega (puede traer puerto y mayusculas). */
   host: string | null | undefined;
@@ -36,13 +38,14 @@ function isConsumerPage(pathname: string): boolean {
   );
 }
 
-/** Paginas del comercio: `/backoffice` y `/<locale>/business/*`. */
+/** Paginas del comercio: `/backoffice` y `/<locale>/business/*`, SOLO con un locale real
+ * (`supportedLocales`): un primer segmento cualquiera hacia que `/wallet/business` fuera
+ * del cliente Y del comercio a la vez → bucle de 308 entre `business.` y `my.` (revisor 0114). */
 function isMerchantPage(pathname: string): boolean {
-  return (
-    pathname === "/backoffice" ||
-    pathname.startsWith("/backoffice/") ||
-    /^\/[^/]+\/business(?:\/|$)/.test(pathname)
-  );
+  if (pathname === "/backoffice" || pathname.startsWith("/backoffice/"))
+    return true;
+  const [, locale, section] = pathname.split("/");
+  return section === "business" && isSupportedLocale(locale ?? "");
 }
 
 /** Lo que nunca se redirige: la API (H3), los assets de Next y los archivos con extension. */

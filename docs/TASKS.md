@@ -7024,3 +7024,12 @@ entre `business.` y `my.` para `/wallet/business`, `/c/business`, `/enroll/busin
 (`hosts.ts:44`) usa `/^\/[^/]+\/business(?:\/|$)/`, la misma forma amplia que `1d10f10` corrigio en el publico pero no
 en merchant. Ninguna URL emitida cae ahi (tokens base64url, programId UUID). Gates verdes; H1, `/api`, pases con `my.`
 y el proxy de `www/api` verificados ejecutando.
+
+## Arreglo del FAIL de la revision de la 0114 (orquestador, 2026-09-30)
+
+Defecto del revisor: `hosts.ts` reconocia `/<cualquier>/business` como pagina del comercio → `/wallet/business`,
+`/c/business`, `/enroll/business`, `/recover/business` rebotaban 308 entre `business.` y `my.`. Oraculo: el test «no
+loop» de `hosts.test.ts` suma esos 4 paths (redirects esperados 5 → 9). Sobre el codigo previo: **ROJO** 1/42
+(`expected { Object (redirect) } to be null`). Arreglo: `isMerchantPage` exige un locale de `supportedLocales`
+(`i18n/locales.ts`, hoy `["es"]`). Con el arreglo: 42/42. Gates: typecheck, lint, test, format 0. Spec: prosa de
+`/:locale` → `/es` corregida.
