@@ -107,6 +107,18 @@ los ultimos 7 dias, reparto semanal justo, lugar para comercios nuevos; prioriza
 lo que exige grupo de control desde el dia uno. **Hueco declarado:** un cliente de iPhone con el pase y sin la PWA
 no puede recibir ningun aviso de marketing.
 
+## 6c. Ejercicio de ideas laterales (2026-09-29)
+
+Pedido del owner: «falta creatividad… entender como en industria A se consigue B y como desde B podemos llegar a
+C». Siete equipos (perfil tipo Meta, juegos/habitos, canales sin app, capacidad ociosa, social/referidos,
+pagos/aliados en Ecuador, industrias lejanas) + sintesis en `reports/Ideas laterales para la red local.md`:
+6 conceptos que forman un ciclo (mostrador como canal → cerebro de la red con grupo de control → llegar como
+conocido → horas valle → juego de la ciudad → aliado que paga). **Nada decidido.** Cifras externas: el cupo de
+busquedas web de la sesion se agoto; lo marcado [NV] no esta verificado y el orquestador no pudo re-verificar
+ninguna cifra externa de esta ronda. Verificado en el arbol: holdout por envio (`schema/campaign-push.ts:47`),
+consentimiento de marketing POR COMERCIO (`schema/consumer.ts:141-147`) → un perfil de red necesita consentimiento
+propio (LOPDP).
+
 ## 7. Que queda en espera
 
 La **spec 0110** (etapas por rubro) no se implementa hasta el ADR de este modelo: su calendario pasaria a
