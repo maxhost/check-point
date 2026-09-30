@@ -10,6 +10,12 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
+**ACTUALIZACION: 0112 implementada (`bd4f833`, bitacora M1–M9 todas rojas en `91c9991`; gates re-corridos por el
+orquestador: typecheck/lint/test/format 0). REVISOR INDEPENDIENTE CORRIENDO en este arbol** (sus mutaciones `R-M*`
+son suyas: `ListAgents` antes de tocar). **Owner (2026-09-29):** la tarjeta «Oferta cruzada» de la pantalla de
+Marketing la adapta el owner en su UI («La adapto yo en mi UI»; GPT la esta haciendo) — la API no se toca.
+Hallazgo confirmado: `app/backoffice/marketing/template-draft.ts:147-163` manda `channels` a toda plantilla no-welcome.
+Lo de abajo es el estado previo al despacho:
 **ESTADO (2026-09-29, noche): la 0112 SE ESTA IMPLEMENTANDO** — un subagente `implementador` despachado con OK
 del owner trabaja en ESTE arbol (`motor`): hay codigo suyo SIN commitear en `server/marketing/{templates,template-input,template-store,cross-input,cross-rules}.ts`,
 `server/schema/campaign*.ts`, `server/counter/coupon-store.ts` (typecheck/test rojos = trabajo a medias, no un bug:
@@ -6849,3 +6855,22 @@ git checkout bd4f833 -- apps/merchant/src/server/marketing/cross-rules.ts apps/m
 | M7 | `consumer/cross-offers.ts` | `576359672c914fcd87580ac0b014e99f4892dbca` | la lectura previa «ya lo tiene → 200». Hermano: el unico parcial + `on conflict` (si queda verde, se muta el `on conflict`) | unit entera + neon `consumer-cross-claim`, `consumer-cross-counter` | **ROJO** (1/10 neon): «ORACULO DE M7» → `expected 404 to be 200`. El motivo es el correcto: el 2.º reclamo va SIN GPS a proposito, asi que sin la lectura previa se RE-EVALUA y cae en `no_origin`; con ella contesta el cupon que ya tiene sin re-evaluar (la propiedad de la spec). Como dio rojo, NO se muto el `on conflict` (la fila solo lo pedia si quedaba verde): el respaldo queda sin oraculo propio — solo es alcanzable sin el lock. Unit 0 rojos. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
 | M8 | `counter/coupon-store.ts` | `2da2c8a007cbda2b46c33f8678f07a2dd77d1ff6` | la membresia del canje `coupon.membershipId ?? …`. Hermano: ninguno | unit entera + neon `consumer-cross-counter` y los 4 `counter-coupon*` | **ROJO** (2/26 neon, los dos de `consumer-cross-counter`): «ORACULO DE M8» → `Failed query: insert into "core"."coupon_redemption" …` con `code: '23502'` (`membership_id` NOT NULL, la fila tiene `null`), y el de `not_enrolled` → `expected Error: Failed query … to match object { status: 409, code: 'not_enrolled' }`. Los 4 `counter-coupon*` (24 tests) verdes: sus cupones traen membresia. Unit 0 rojos. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
 | M9 | `marketing/welcome-issue.ts` | `59758def3acd99b6b140a00e5379bc4415c6e629` | el CABLEADO de `crossCouponFromBusiness` (se borra la llamada). Hermano: la regla pura tiene su test aparte | unit entera + neon `consumer-cross-counter` y los 6 `marketing-welcome-*` | **ROJO** (1/25 neon): «ORACULO DE M9» → `expected [ …(2) ] to deeply equal [ Array(1) ]` (el que vino por la cruzada recibe TAMBIEN la Bienvenida; el control la recibe en las dos versiones). Unit 0 rojos: el test puro de `came_by_cross` no ve el cableado (§2.0-quater), como se esperaba. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
+
+## Revision independiente — spec 0112 (2026-09-29)
+
+Revisor independiente sobre `bd4f833` (rama `motor`). Presupuesto: 5 re-mediciones (M6 x3 corridas, M8, M9, M1 + 1
+libre), clase de error plausible. Restauracion de emergencia (los 4 archivos estan limpios en `bd4f833`):
+`git checkout bd4f833 -- apps/merchant/src/server/marketing/cross-rules.ts apps/merchant/src/server/consumer/cross-offers.ts apps/merchant/src/server/counter/coupon-store.ts apps/merchant/src/server/marketing/welcome-issue.ts`
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M6 | `consumer/cross-offers.ts` | `576359672c914fcd87580ac0b014e99f4892dbca` | `for update` de la campaña en el claim (cupo 1, dos clientes en paralelo) | **ROJO en las 3 corridas** de `consumer-cross-claim` (neon): 2/3, 2/3 y 1/3 carreras → `expected [ 201, 201 ] to deeply equal [ 201, 404 ]`; el resto del archivo verde. Revertida (`git checkout bd4f833`): `diff` vs copia = identico, shasum limpio |
+| R-M8 | `counter/coupon-store.ts` | `2da2c8a007cbda2b46c33f8678f07a2dd77d1ff6` | membresia del canje `coupon.membershipId ?? enrolledMembership` | **ROJO** 2/3 `consumer-cross-counter` (neon): ORACULO DE M8 → `23502` NOT NULL en `coupon_redemption.membership_id`; `not_enrolled` → llega el error de insert en vez del 409. M9 verde. Revertida: `diff` = identico, shasum limpio |
+| R-M9 | `marketing/welcome-issue.ts` | `59758def3acd99b6b140a00e5379bc4415c6e629` | cableado de `crossCouponFromBusiness` (se borra la llamada) | **ROJO** 1/3 `consumer-cross-counter` (neon): ORACULO DE M9 → `expected [ …(2) ] to deeply equal [ Array(1) ]` (el cruzado recibe tambien la Bienvenida). Revertida: `diff` = identico, shasum limpio |
+| R-M1 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | rubro del ultimo escaneado (razon 2a) | **ROJO**. Unit `cross-rules*.test` 2/16 (`same_category` del ultimo escaneado → `ok: true`; orden → `too_far`). Neon `consumer-cross-offers` 1/8: ORACULO DE M1 → `expected [ …(2) ] to deeply equal [ Array(1) ]`. Revertida: `diff` = identico, shasum limpio |
+| R-M10 | `marketing/cross-store.ts` | `a0b764f4a191f2ade1080eafd3cf6f1b782de61f` | candidata = campaña `status = 'active'` (una cruzada deshabilitada no se lista ni se reclama; contrato C2 «campaña terminada» → 404) | **VERDE — sin oraculo.** Unit `server/marketing` + `app/api/public/consumer` 373/373; neon claim+offers+counter+cross-enable 22/22. Alcanzable: `loadCrossCampaigns` es la unica lectura de candidatas de C1 y C2, y `end` (`campaign-actions.ts:105,122`) no toca `ends_at` ni `activated_at`, asi que es el UNICO guard contra una cruzada deshabilitada. Revertida: `diff` = identico, shasum limpio. Hallazgo del revisor |
+
+Veredicto: **PASS** con un hallazgo (R-M10: la exclusion de una cruzada deshabilitada/pausada es correcta en el
+codigo pero no tiene oraculo; falta un caso «`disable` → C1 no la lista y C2 da 404»). Gates en limpio sobre
+`bd4f833` (Node 24): typecheck, lint, test (2118 passed / 751 skipped), format:check y `TURBO_FORCE=1 pnpm run build`
+(0 cached), exit 0. Neon limpio: claim+counter+offers 18/18. Arbol sin mutaciones al cerrar.
