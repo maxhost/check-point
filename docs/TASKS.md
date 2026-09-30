@@ -10,12 +10,12 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: la eleccion del owner entre las dos variantes del aviso del escaneo** (1: un aviso por compra,
-hasta 3/dia; 2: hasta 2 de compra + 1 recordatorio el dia sin compra) y su OK a los agregados de F propuestos por
-el orquestador (§3.8 del doc). Con eso: ADR del modelo + spec. **Owner (2026-09-29):** G = el cupon de otro
-comercio NUNCA va en Wallet; vive en la cuenta checkpass.club; el aviso del escaneo acredita e invita a abrir la
-cuenta. F = «urgencia mas rotacion mas cercania», abierto a enriquecerlo. Sin verificar: si tocar el aviso de
-Wallet abre el pase o la cuenta (telefono).
+**Retomar con: el alcance de la PRIMERA spec del ADR 0103** (`6e7f8ee`, aceptado: los beneficios viven en la
+cuenta checkpass.club, la Wallet solo avisa, horas valle, orden entre comercios). Candidatas: aviso del escaneo
+variante 2 (chica, wallet); horas valle (horario en Marca + franja + beneficio con ventana: migracion); «Mis
+beneficios» como inicio de la cuenta; el arbitro del orden. **Owner (2026-09-29):** aviso del escaneo =
+variante 2 (≤ 2/dia con compra + 1 recordatorio sin compra); F += novedad, comercio nuevo, exploracion, su
+horario. Sin responder: recordatorio siempre o solo con novedad; filtros cupo agotado / ignorado 3 veces.
 Doc: `docs/red-horas-valle-y-modelo.md` (commits `f169800`, `c6b1912`). **Owner (2026-09-29, textual resumido):**
 A horario de apertura «lo puede cargar el comercio en Marca»; B valle visible para no-clientes Y dormidos
 («ambos son opcion»); C beneficio = sellos/puntos extra segun el programa, producto del menu, o texto libre
