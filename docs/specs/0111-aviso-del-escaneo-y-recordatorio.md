@@ -1,7 +1,7 @@
 ---
 spec: 0111
 fecha: 2026-09-29
-estado: borrador
+estado: cerrada
 resumen: El aviso del mostrador invita a abrir la cuenta y suena como mucho 2 veces cada 24 h (el 3.º se acredita en silencio); nunca salen mas de 3 avisos con sonido por cliente cada 24 h (el tope de Google), y el dia sin compra sale 1 recordatorio a su hora habitual (12:30 por defecto) si tiene un cupon nuevo o por vencer, o si lleva 2 dias sin actividad. Migracion 0056.
 disjunta: no
 archivos: apps/merchant/src/server/wallet/{push.ts,push-text.ts,push-plan.ts,push-worker.ts,push-transports.ts,push-budget.ts,push-budget-store.ts,reminder.ts,reminder-store.ts}, apps/merchant/src/server/schema/{consumer.ts,wallet-push.ts}, apps/merchant/drizzle/0056_*.sql, apps/merchant/src/app/(consumer)/c/[webViewToken]/route.ts, apps/merchant/src/app/(consumer)/wallet/page.tsx
@@ -63,7 +63,17 @@ cuarto responde `QuotaExceededException` (doc oficial, leida el 2026-09-29). Hoy
 Constante `ACCOUNT_INVITE = "Revisa tus beneficios en checkpass.club"` en `wallet/push-text.ts`. Los tres
 builders (`buildTransactionalBody`, `buildRedemptionBody`, `buildCouponBody`) terminan en
 `<texto actual> · ${ACCOUNT_INVITE}`. Ejemplo: «Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios
-en checkpass.club». *(Texto: propuesta del orquestador, a validar al cerrar.)*
+en checkpass.club» (76 caracteres). Textos provisorios aceptados por el owner (2026-09-29: «pones cualquiera
+que pueda funcionar de momento»; se editaran desde un panel de administracion que hoy no existe — esta spec NO
+lo construye).
+
+**Largo (medido 2026-09-29):** ni Google ni Apple publican un maximo. Google, `Message` (reference/rest/v1/Message,
+leida): `header`/`body` sin limite documentado. Apple, `PassFieldContent.changeMessage` (JSON de la doc
+oficial, leido): «Localizable format string», sin limite. Lo que acota es lo que se VE: la notificacion colapsada
+de Android muestra una linea y la pantalla de bloqueo de iOS unas pocas (sin fuente oficial). Regla de esta spec:
+**lo importante va primero** (lo acreditado/canjeado), y el cuerpo completo **≤ 120 caracteres**
+(`MAX_NOTICE_BODY = 120`, contados como `[...str].length`): si `<texto actual> · ${ACCOUNT_INVITE}` se pasa
+(una etiqueta de premio larga), se manda `<texto actual>` sin la invitacion — nunca se corta lo acreditado.
 
 ### D2. El presupuesto de avisos (funcion pura, `wallet/push-budget.ts`)
 
@@ -146,7 +156,7 @@ Un fallo al escribirla no rompe la pagina (se loguea).
 - Prioridad del `reason` (elige el texto): `coupon_expiring` > `coupon_new` > `inactive_48h`.
 - Zona: la del comercio del ultimo escaneo del cliente; sin escaneos, `America/Guayaquil`.
 
-**Texto** *(propuesta del orquestador, a validar al cerrar)*: titulo `CheckPass`; cuerpo por `reason`:
+**Texto** (provisorio, aceptado por el owner; todos ≤ 80 caracteres): titulo `CheckPass`; cuerpo por `reason`:
 - `coupon_expiring`: «Tienes un cupón que vence pronto · Revisa tus beneficios en checkpass.club»
 - `coupon_new`: «Tienes un cupón nuevo · Revisa tus beneficios en checkpass.club»
 - `inactive_48h`: «Hay beneficios esperándote · Revisa tus beneficios en checkpass.club»
@@ -194,7 +204,8 @@ serializan; hoy la 0110 no corre.
 
 ## Definition of Done
 
-- [ ] Los tres avisos del mostrador terminan en «· Revisa tus beneficios en checkpass.club».
+- [ ] Los tres avisos del mostrador terminan en «· Revisa tus beneficios en checkpass.club», salvo que el cuerpo
+      pase de 120 caracteres: entonces van sin la invitacion (test con una etiqueta de premio larga).
 - [ ] Con 2 avisos del mostrador enviados en las ultimas 24 h, el 3.º queda `suppressed`, no llama a ningun
       transporte y no cambia `latest_message` ni `last_push_at`; el saldo del cliente SI queda acreditado.
 - [ ] Con 3 avisos con sonido en 24 h (cualquier mezcla), una `campaign` se reprograma a `oldest + 24 h` y un
@@ -246,8 +257,8 @@ Formato de `docs/AGENT-WORKFLOW.md`. UN implementador + UN revisor independiente
 
 ## Abierto
 
-- **Textos de D1 y D6** — propuesta del orquestador; el owner los valida al pasar a `cerrada`.
-- **Sin verificar (telefono):** si tocar el aviso de Wallet abre el pase (2 toques hasta la cuenta) o la cuenta.
-  No bloquea: la spec no depende de eso.
+- **Donde lleva el toque:** Google, leido en la doc oficial (trigger-push-notifications): «Once the user taps the
+  notification it opens Google Wallet to the front of the pass» → hasta la cuenta son 2 toques (aviso → enlace del
+  pase). Apple: sin verificar (telefono). No bloquea esta spec.
 - **Insumo para la spec de horas valle (no pendiente de esta):** «en franjas que no compra si son para llevar
   gente a un lugar en hora valle» (owner).
