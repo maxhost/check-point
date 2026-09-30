@@ -10,12 +10,16 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**ACTUALIZACION: 0112 implementada (`bd4f833`, bitacora M1–M9 todas rojas en `91c9991`; gates re-corridos por el
-orquestador: typecheck/lint/test/format 0). REVISOR INDEPENDIENTE CORRIENDO en este arbol** (sus mutaciones `R-M*`
-son suyas: `ListAgents` antes de tocar). **Owner (2026-09-29):** la tarjeta «Oferta cruzada» de la pantalla de
-Marketing la adapta el owner en su UI («La adapto yo en mi UI»; GPT la esta haciendo) — la API no se toca.
-Hallazgo confirmado: `app/backoffice/marketing/template-draft.ts:147-163` manda `channels` a toda plantilla no-welcome.
-Lo de abajo es el estado previo al despacho:
+**ESTADO (2026-09-29, cierre): 0112 IMPLEMENTADA con PASS del revisor** (`bd4f833` implementacion, `91c9991`
+bitacora M1–M9 rojas, revisor `fbae56b`: 5 re-mediciones rojas + hallazgo R-M10 sin oraculo → caso nuevo del orquestador
+en `c234b3d`, mutado: ROJO, revertido). Gates del orquestador sobre `c234b3d`: typecheck/lint/test/format 0. **SIN PUSH;
+migracion `0057` NO esta en PROD (necesita OK del owner).** **0113 (horas valle) re-medida contra la 0112** (commit
+siguiente a `c234b3d`): lista para despachar. **Owner:** la tarjeta «Oferta cruzada» de Marketing la adapta el owner
+(GPT) en su UI — `template-draft.ts:147-163` manda `channels` a toda plantilla no-welcome. **Hallazgo a decidir
+(revisor, verificado):** el recordatorio de la 0111 cuenta un cupon cruzado reclamado como «cupon nuevo»
+(`wallet/reminder-store.ts:97-102` lee todos los `campaign_coupon`); texto generico, sin nombrar comercio.
+Elecciones del implementador informadas (membresia mas reciente si hay varias, opt-out de cualquier membresia).
+Historial de esta sesion abajo:
 **ESTADO (2026-09-29, noche): la 0112 SE ESTA IMPLEMENTANDO** — un subagente `implementador` despachado con OK
 del owner trabaja en ESTE arbol (`motor`): hay codigo suyo SIN commitear en `server/marketing/{templates,template-input,template-store,cross-input,cross-rules}.ts`,
 `server/schema/campaign*.ts`, `server/counter/coupon-store.ts` (typecheck/test rojos = trabajo a medias, no un bug:
