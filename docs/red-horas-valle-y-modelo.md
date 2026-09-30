@@ -106,13 +106,13 @@ Lo que cuesta poco en ese hueco, nunca «50 % en todo»:
    **volvieron a precio completo fuera de la franja en 30 dias** → contra el grupo de control, si fueron visitas
    extra o las mismas mudadas de hora → lo que regalo en total.
 
-### 2.7 Decisiones para el owner (no tomadas)
+### 2.7 Decisiones del owner (2026-09-29, textual resumido)
 
-- **A. Horario de apertura:** ¿lo declara el comercio (una pantalla mas en el alta) o se infiere de los escaneos?
-- **B. Publico:** ¿solo no-clientes, o tambien sus dormidos?
-- **C. Beneficio:** ¿sellos ×2, agregado con piso, o ambos a eleccion del comercio?
-- **D. Propuesta:** ¿la red sugiere la franja y el comercio aprueba, o el comercio la elige y la red solo la
-  muestra?
+- **A. Horario de apertura:** «lo puede cargar el comercio en Marca».
+- **B. Publico:** «ambos son opcion» — no-clientes y dormidos.
+- **C. Beneficio:** «las dos opciones»: sellos o puntos extra (segun el programa activo), un producto especifico
+  del menu, o un texto libre («2x1 en cerveza»).
+- **D. Quien elige la franja:** «la red», con una opcion a editar para los comercios que quieran mas control.
 
 ## 3. El modelo conceptual: el mostrador y el cerebro de la red
 
@@ -191,10 +191,24 @@ por partes sin rehacer nada.
 - **El timbre** del owner = un aviso cuyo contenido es «tenes N cosas en Mis beneficios».
 - La **spec 0110** pasa a definir **cuando una relacion cambia de etapa** (el paso 2), no cuantos push salen.
 
-### 3.8 Decisiones para el owner (no tomadas)
+### 3.8 Decisiones del owner y lo que queda abierto
 
-- **E.** ¿El recibo del escaneo muestra beneficios de otros comercios desde el dia uno (el cupon cruzado) o solo
-  los del mismo comercio al principio?
-- **F.** El orden del paso 3 para empezar: ¿rotacion → cercania (propuesta) u otro?
-- **G.** ¿Donde ve la persona el recibo? Hoy el escaneo lo hace el comercio: la persona necesita la vista web
-  abierta o el frente del pase. A medir en el primer experimento (`reports/Ideas laterales…` §1.6).
+- **E. (owner, 2026-09-29):** si — el recibo muestra beneficios de otros comercios desde el dia uno.
+- **G. (owner, 2026-09-29):** la pregunta estaba mal planteada. El cliente escanea solo al enrolarse; despues
+  escanea siempre el comercio, y por eso el aviso de Wallet es lo que le llega. **Medido:** tras cada escaneo ya
+  sale un aviso con notificacion («te dieron puntos»: `wallet/google-object.ts:142-165`, `TEXT_AND_NOTIFY`;
+  Apple, `changeMessage` en el slot «Ultima novedad», `wallet/apple.ts:86-94`). → **El recibo ES ese aviso**: el
+  cupon cruzado viaja dentro de el y no gasta un aviso extra. *Hallazgo a decidir (no acordado):* la guia de
+  Apple dice «Never use a change message for marketing» — en iPhone, meter el cupon cruzado en el texto que
+  notifica es zona gris; la alternativa es que la notificacion diga solo el sello y el cupon quede en el pase
+  (campo del frente o del dorso, sin notificar) y en «Mis beneficios».
+- **F. Abierto — el orden cuando varios comercios compiten por un mismo lugar.** El recibo tiene 1 lugar y el
+  aviso dirigido 1 por dia; si hay 3 candidatos, algo decide cual sale. Criterios posibles:
+  1. **Urgencia:** primero lo que vence antes (una franja valle abierta AHORA, un cupon que vence hoy).
+  2. **Rotacion:** primero el comercio que hace mas tiempo no le aparece a esta persona → reparto justo entre los
+     que pagan.
+  3. **Cercania:** primero el mas cerca de donde esta la persona.
+  4. **Rendimiento:** primero el que mas visitas extra trae (medido contra el grupo de control). Necesita datos:
+     no sirve el primer mes.
+  Se combinan en cascada: el primero decide y los siguientes desempatan. *Propuesta (orquestador):* urgencia →
+  rotacion → cercania al arrancar; rendimiento se suma cuando haya datos.
