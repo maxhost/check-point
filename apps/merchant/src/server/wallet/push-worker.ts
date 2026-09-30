@@ -101,7 +101,13 @@ export async function runPushWorker(opts: {
 }): Promise<WorkerSummary> {
   const now = opts.now ?? new Date();
   // Spec 0111 D7: queue the day-without-purchase reminders first, so this pass drains them.
-  const { planned } = await planReminders(now, opts.consumerIds);
+  // Isolated: a failing planner must not stop the drain of what is already due.
+  let planned = 0;
+  try {
+    ({ planned } = await planReminders(now, opts.consumerIds));
+  } catch (error) {
+    console.error("[wallet-push] reminder planner failed", error);
+  }
   const byConsumer = await selectDue(now, opts.consumerIds);
   const summary: WorkerSummary = {
     sent: 0,
