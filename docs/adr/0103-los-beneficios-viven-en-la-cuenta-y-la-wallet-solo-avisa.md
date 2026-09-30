@@ -57,6 +57,13 @@ noncritical communication». Con 20 comercios por cliente, la cola de avisos cre
    red, el horario habitual de la persona y una fraccion de exploracion al azar (medible contra el grupo de
    control, ADR 0066).
 
+7. **(owner, 2026-09-29, AskUserQuestion)** El recordatorio del dia sin compra sale **si hay algo nuevo** en la
+   cuenta **o si pasaron 2 dias sin actividad** (ni abrio checkpass.club ni escaneo en ningun comercio) —
+   «tambien me interesa mantener la actividad en mi red».
+8. **(owner, 2026-09-29, AskUserQuestion)** Antes de ordenar se filtra: **cupo del comercio agotado** → no sale;
+   **beneficio ignorado 3 veces** por esa persona → descansa.
+9. **(owner, 2026-09-29)** La primera spec de este ADR es **el aviso del escaneo** (decision 3 + 7).
+
 ## Consecuencias
 
 - La spec 0110 (etapas por rubro) sigue valiendo para **la etapa** de cada relacion; su push por campaña queda
@@ -67,9 +74,6 @@ noncritical communication». Con 20 comercios por cliente, la cola de avisos cre
 
 ## Abierto (no decidido — va a la spec o al owner)
 
-- *(orquestador)* el recordatorio del dia sin compra, ¿siempre o solo si hay algo nuevo en la cuenta?
-- *(orquestador)* los filtros previos al orden: cupo del comercio agotado → no sale; beneficio ignorado 3 veces →
-  descansa. El owner no los eligio ni los descarto.
 - Pesos exactos del orden, umbral de «franja floja» (propuesta: < 40 % de la mediana, repetida 5 de 8 semanas),
   fraccion de exploracion (propuesta ~10 %).
 - Sin verificar en un telefono: si tocar el aviso de Wallet abre el pase (2 toques hasta la cuenta) o la cuenta.
