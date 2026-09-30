@@ -23,3 +23,15 @@ Para conservar las rutas en un solo origen, configurar [Vercel Microfrontends](h
 Tras configurar el enrutamiento, actualizar las variables de URL si cambian los orígenes, verificar el recorrido landing → alta → dashboard en producción y después asignar el dominio. Hasta ese momento, el dominio temporal de la app pública permite revisar el sitio sin alterar el merchant actual.
 
 Referencias: [Vercel monorepos](https://vercel.com/docs/monorepos), [varios proyectos bajo un dominio](https://vercel.com/kb/guide/how-can-i-serve-multiple-projects-under-a-single-domain).
+
+## Hecho (2026-09-30): multi-zones con el dominio en merchant
+
+`www.checkpass.club` **sigue asignado al proyecto merchant**. Con la variable `PUBLIC_APP_ORIGIN` (dominio de
+produccion del proyecto de `apps/public`, sin barra final) merchant reescribe `/`, `/explorar`, `/negocios`,
+`/lugares/:slug`, `/robots.txt`, `/sitemap.xml`, `/icon.svg`, `/images/*` y `/public-zone/*` hacia la app publica
+(`apps/merchant/next.config.ts`). La app publica sirve sus assets bajo `/public-zone` (`assetPrefix`,
+`apps/public/next.config.ts`) para no chocar con los `/_next` de merchant. Sin la variable, merchant no reescribe
+nada. Verificado local (2026-09-30): landing, CSS por `/public-zone`, imagenes, `/explorar`, `/lugares/*` → 200 via
+merchant; alta, `/api/health` y `/wallet` siguen en merchant. **Una ruta publica nueva hay que sumarla a
+`PUBLIC_PATHS`.** Si la app publica tiene Vercel Authentication activa, el dominio muestra el login de Vercel:
+desactivarla en ese proyecto (no tiene datos privados).
