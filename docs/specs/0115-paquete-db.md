@@ -1,7 +1,7 @@
 ---
 spec: 0115
 fecha: 2026-09-30
-estado: cerrada
+estado: implementada
 resumen: Fase 1 del ADR 0107 — el esquema, el cliente de base, el catalogo de permisos, drizzle.config y las migraciones salen de apps/merchant a packages/db (@mi-pasaporte/db); los 285 archivos que importan se reescriben al paquete, sin shims; cero cambio de comportamiento, probado con drizzle-kit generate («sin cambios») y los sha256 de las 58 migraciones identicos.
 disjunta: si
 archivos: packages/db/**, pnpm-workspace.yaml, pnpm-lock.yaml, package.json (root), tools/neon-test.sh, .github/workflows/*.yml (solo si nombran la ruta), apps/merchant/{package.json,next.config.ts,tsconfig.json,vitest.config.ts,drizzle.config.ts,drizzle/**}, apps/merchant/src/** (solo lineas de import), vitest.config.ts, docs/**

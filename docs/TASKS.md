@@ -10,6 +10,17 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
+**ESTADO (2026-09-30, noche): SPEC 0115 (FASE 1 DEL ADR 0107, `packages/db`) SE ESTA IMPLEMENTANDO en este arbol**
+(subagente `implementador`; `ListAgents` antes de tocar; typecheck/test rojos mientras mueve = trabajo a medias).
+**Owner:** separar cliente de comercio con paquetes internos, rol de base por app en la fase 3, las 3 fases seguidas
+(ADR 0107, `a508d4e`). **0114 en PROD** (`57164f3`, PASS del revisor tras arreglar un bucle `/wallet/business`).
+**Estado de dominios (medido 2026-09-30):** `www` YA esta en el proyecto publico (el owner hizo el paso 6 antes del 3);
+`business.` responde con certificado; **`my.checkpass.club` NO responde (TLS) → los QR impresos `www/enroll/*` y el
+link `/c/*` del pase estan ROTOS** hasta que el owner agregue `my.` al proyecto merchant; las env del paso 3
+(`MERCHANT_ORIGIN`, `CONSUMER_ORIGIN`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`) NO estan cargadas
+(`business./wallet` da 200 sin redirigir). Pendiente del owner: eso + aviso a Plantano + Stripe/secrets (paso 8).
+**Plan de sesiones (owner):** cerrar 0115 (revisor + push) → handoff → `/clear` → 0116 en sesion nueva → handoff →
+`/clear` → 0117.
 **ESTADO (2026-09-30, tarde): SPEC 0114 (UN SUBDOMINIO POR AUDIENCIA) SE ESTA IMPLEMENTANDO en este arbol**
 (subagente `implementador`; `ListAgents` antes de tocar; sus `MUTATION` son suyas). ADR 0106 + spec 0114 en `a94227d`.
 **Owner (2026-09-30):** subdominios; comercio `business.checkpass.club`; cliente `my.checkpass.club`; avisar a Plantano
