@@ -65,7 +65,9 @@ describe.skipIf(!integrationEnabled)("valley offers — C2 claim", () => {
     });
     expect(row.crossClaimedAt!.toISOString()).toBe(now.toISOString());
     expect(row.validFrom.toISOString()).toBe(now.toISOString());
-    expect(row.validUntil.toISOString()).toBe("2026-10-06T20:00:00.000Z");
+    // `soft`: a wrong `valid_until` must not stop the case before the counter's read below,
+    // which is the other half of the oracle (the coupon is gone at 17:05).
+    expect.soft(row.validUntil.toISOString()).toBe("2026-10-06T20:00:00.000Z");
     expect(answer.status === 201 && answer.coupon).toMatchObject({
       id: row.id,
       kind: "custom",
