@@ -10,6 +10,15 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
+**ESTADO (2026-09-30): 0112 EN PROD. 0113 (horas valle) SE ESTA IMPLEMENTANDO en este arbol** (subagente
+`implementador`, despachado con OK del owner; `ListAgents` antes de tocar nada; sus `MUTATION` son suyas). **Hecho y
+verificado:** migracion `0057` aplicada a PROD por `run_sql_transaction` con OK del owner (22 sentencias generadas
+del archivo; fila en `drizzle.__drizzle_migrations` con hash sha256 del .sql, metodo validado reproduciendo el hash
+de la 0056); PROD == rama `ci-integration` en md5 de constraints (88), columnas e indices de `campaign` y
+`campaign_coupon`. Push `3b5c72e..95c6c63` a `main`; deploy de Vercel de `95c6c63` = `success`; `/api/health` 200,
+`/api/public/consumer/cross-offers` 401 sin sesion. **Owner:** el recordatorio que cuenta un cupon cruzado como
+«cupon nuevo» «esta bien asi». **Sigue:** handoff del implementador de la 0113 → gates → revisor independiente →
+migracion `0058` (OK del owner) → push. QA de la 0112 cuando GPT tenga la UI de Marketing.
 **ESTADO (2026-09-29, cierre): 0112 IMPLEMENTADA con PASS del revisor** (`bd4f833` implementacion, `91c9991`
 bitacora M1–M9 rojas, revisor `fbae56b`: 5 re-mediciones rojas + hallazgo R-M10 sin oraculo → caso nuevo del orquestador
 en `c234b3d`, mutado: ROJO, revertido). Gates del orquestador sobre `c234b3d`: typecheck/lint/test/format 0. **SIN PUSH;
