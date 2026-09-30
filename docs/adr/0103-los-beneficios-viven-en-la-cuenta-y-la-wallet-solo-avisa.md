@@ -60,6 +60,8 @@ noncritical communication». Con 20 comercios por cliente, la cola de avisos cre
 7. **(owner, 2026-09-29, AskUserQuestion)** El recordatorio del dia sin compra sale **si hay algo nuevo** en la
    cuenta **o si pasaron 2 dias sin actividad** (ni abrio checkpass.club ni escaneo en ningun comercio) —
    «tambien me interesa mantener la actividad en mi red».
+   Hora: 12:30 por defecto, adaptativa a la hora habitual de compra del cliente; **nunca desde las 21:00**
+   (owner, 2026-09-29).
 8. **(owner, 2026-09-29, AskUserQuestion)** Antes de ordenar se filtra: **cupo del comercio agotado** → no sale;
    **beneficio ignorado 3 veces** por esa persona → descansa.
 9. **(owner, 2026-09-29)** La primera spec de este ADR es **el aviso del escaneo** (decision 3 + 7).

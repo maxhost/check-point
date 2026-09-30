@@ -275,6 +275,8 @@ mutaciones propias). **Falta:** migracion `0056` en PROD (con OK del owner), dep
   `wallet-push-worker-planner-isolation.test.ts` (rojo sin el fix, verde con el).
 - **Huecos de oraculo declarados (codigo correcto hoy, sin test que lo fije):** R1 contar `campaign` como aviso del
   mostrador; R2 minuto habitual en UTC en vez de la zona del comercio; R3 ignorar la zona del ultimo escaneo.
-- **A decidir por el owner:** la condicion 1 no tiene techo horario — un cliente que se vuelve elegible a las 23:00
-  recibe el recordatorio a las 23:00.
+- **Techo horario (owner, 2026-09-29: «no sale despues de las 21, esta bien»):** desde las 21:00 locales el
+  recordatorio no sale (`too_late`) y espera al dia siguiente; la hora objetivo se recorta a **[9:00, 20:30]** para
+  dejar 30 min antes del corte (commit posterior a `097aac2`; oraculo en `wallet-reminder.test.ts`, mutado: rojo).
+  Declarado: el cooldown de 3 min del drenado puede correr un recordatorio de las 20:59 hasta las 21:02.
 
