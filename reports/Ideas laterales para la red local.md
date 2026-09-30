@@ -473,7 +473,9 @@ grupo de control) si fueron visitas extra o las mismas mudadas de hora.
 - ClassPass 94 % nuevos, ~20 % más de pago **[V/M]** (auto-reportado). La historia del cierre del plan
   «ilimitado» en 2016 **[NV: B]**.
 - TGTG 58 % / 76 % **[V/M-B]** (encuesta). Escala de ~164.000 comercios y ~62 M usuarios **[V/M]**.
-- Panera Sip Club, de ~4 a ~10 visitas por mes en el piloto **[V/M]** (cifras del CEO).
+- Panera Sip Club: **corregido el 2026-09-29** — el «~4 → ~10 visitas por mes» no aparece en las fuentes; lo
+  leído dice +200 % de frecuencia y 15+ días por mes en el piloto (cifras de la empresa; ver
+  `docs/red-horas-valle-y-modelo.md` §1).
 - Blackbird, bonus en días flojos para un segmento **[V/M]**, sin datos públicos de resultado.
 
 ### 4.4 Por qué es difícil de copiar

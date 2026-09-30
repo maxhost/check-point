@@ -119,6 +119,9 @@ ninguna cifra externa de esta ronda. Verificado en el arbol: holdout por envio (
 consentimiento de marketing POR COMERCIO (`schema/consumer.ts:141-147`) → un perfil de red necesita consentimiento
 propio (LOPDP).
 
+**Siguiente paso (2026-09-29):** `docs/red-horas-valle-y-modelo.md` — cifras re-verificadas, horas valle y el
+modelo conceptual del mostrador + cerebro.
+
 ## 7. Que queda en espera
 
 La **spec 0110** (etapas por rubro) no se implementa hasta el ADR de este modelo: su calendario pasaria a
