@@ -1,7 +1,7 @@
 ---
 spec: 0111
 fecha: 2026-09-29
-estado: cerrada
+estado: implementada
 resumen: El aviso del mostrador invita a abrir la cuenta y suena como mucho 2 veces cada 24 h (el 3.º se acredita en silencio); nunca salen mas de 3 avisos con sonido por cliente cada 24 h (el tope de Google), y el dia sin compra sale 1 recordatorio a su hora habitual (12:30 por defecto) si tiene un cupon nuevo o por vencer, o si lleva 2 dias sin actividad. Migracion 0056.
 disjunta: no
 archivos: apps/merchant/src/server/wallet/{push.ts,push-text.ts,push-plan.ts,push-worker.ts,push-transports.ts,push-budget.ts,push-budget-store.ts,reminder.ts,reminder-store.ts}, apps/merchant/src/server/schema/{consumer.ts,wallet-push.ts}, apps/merchant/drizzle/0056_*.sql, apps/merchant/src/app/(consumer)/c/[webViewToken]/route.ts, apps/merchant/src/app/(consumer)/wallet/page.tsx
@@ -262,3 +262,19 @@ Formato de `docs/AGENT-WORKFLOW.md`. UN implementador + UN revisor independiente
   pase). Apple: sin verificar (telefono). No bloquea esta spec.
 - **Insumo para la spec de horas valle (no pendiente de esta):** «en franjas que no compra si son para llevar
   gente a un lugar en hora valle» (owner).
+
+## Resultado (2026-09-29)
+
+Implementada en `00e6586` + fix `07c83fb`; **PASS del revisor independiente** (M3 y M6 re-ejecutadas en rojo, 5
+mutaciones propias). **Falta:** migracion `0056` en PROD (con OK del owner), deploy y QA en Android.
+- **Fila M6 de esta spec era FALSA** tal como se escribio: «dos corridas → 1» queda verde sin el `not exists`
+  (la condicion 2 de `decideReminder` ya lo impide). Oraculo real: el caso «stale read» (dos pasadas del cron
+  solapadas, escenario real segun el revisor: `curl --max-time 60` no corta la ejecucion en Vercel).
+- **Hallazgo del revisor, arreglado:** `planReminders` corria sin aislamiento antes del drenado
+  (`push-worker.ts:104`); ahora un fallo se loguea y el drenado sigue. Oraculo:
+  `wallet-push-worker-planner-isolation.test.ts` (rojo sin el fix, verde con el).
+- **Huecos de oraculo declarados (codigo correcto hoy, sin test que lo fije):** R1 contar `campaign` como aviso del
+  mostrador; R2 minuto habitual en UTC en vez de la zona del comercio; R3 ignorar la zona del ultimo escaneo.
+- **A decidir por el owner:** la condicion 1 no tiene techo horario — un cliente que se vuelve elegible a las 23:00
+  recibe el recordatorio a las 23:00.
+
