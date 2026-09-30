@@ -194,21 +194,21 @@ por partes sin rehacer nada.
 ### 3.8 Decisiones del owner y lo que queda abierto
 
 - **E. (owner, 2026-09-29):** si — el recibo muestra beneficios de otros comercios desde el dia uno.
-- **G. (owner, 2026-09-29):** la pregunta estaba mal planteada. El cliente escanea solo al enrolarse; despues
-  escanea siempre el comercio, y por eso el aviso de Wallet es lo que le llega. **Medido:** tras cada escaneo ya
-  sale un aviso con notificacion («te dieron puntos»: `wallet/google-object.ts:142-165`, `TEXT_AND_NOTIFY`;
-  Apple, `changeMessage` en el slot «Ultima novedad», `wallet/apple.ts:86-94`). → **El recibo ES ese aviso**: el
-  cupon cruzado viaja dentro de el y no gasta un aviso extra. *Hallazgo a decidir (no acordado):* la guia de
-  Apple dice «Never use a change message for marketing» — en iPhone, meter el cupon cruzado en el texto que
-  notifica es zona gris; la alternativa es que la notificacion diga solo el sello y el cupon quede en el pase
-  (campo del frente o del dorso, sin notificar) y en «Mis beneficios».
-- **F. Abierto — el orden cuando varios comercios compiten por un mismo lugar.** El recibo tiene 1 lugar y el
-  aviso dirigido 1 por dia; si hay 3 candidatos, algo decide cual sale. Criterios posibles:
-  1. **Urgencia:** primero lo que vence antes (una franja valle abierta AHORA, un cupon que vence hoy).
-  2. **Rotacion:** primero el comercio que hace mas tiempo no le aparece a esta persona → reparto justo entre los
-     que pagan.
-  3. **Cercania:** primero el mas cerca de donde esta la persona.
-  4. **Rendimiento:** primero el que mas visitas extra trae (medido contra el grupo de control). Necesita datos:
-     no sirve el primer mes.
-  Se combinan en cascada: el primero decide y los siguientes desempatan. *Propuesta (orquestador):* urgencia →
-  rotacion → cercania al arrancar; rendimiento se suma cuando haya datos.
+- **G. (owner, 2026-09-29, textual resumido):** «en el wallet nunca metemos el cupon de otro comercio […] el cupon
+  vive en la cuenta checkpass.club del cliente». El aviso del escaneo sigue, pero cambia su texto: acredita los
+  puntos/sellos **e invita a abrir checkpass.club** para ver sus beneficios. Dos variantes que planteo el owner,
+  SIN elegir: **(1)** un aviso por cada compra (hasta 3/dia); **(2)** hasta 2 avisos de compra por dia y, el dia sin
+  compra, 1 recordatorio para abrir la cuenta. Medido: el escaneo ya notifica (`wallet/google-object.ts:142-165`,
+  `TEXT_AND_NOTIFY`; Apple `changeMessage`, `wallet/apple.ts:86-94`); el pase enlaza a `/c/[webViewToken]`
+  (`wallet/apple.ts:101-103`, `wallet/google-object.ts:112`). **Sin verificar:** si tocar el aviso abre el pase
+  (y de ahi el enlace, 2 toques) o la cuenta directo — se prueba en un telefono.
+- **F. (owner, 2026-09-29):** «una combinacion de varias, primero urgencia mas rotacion mas cercania», abierto a
+  enriquecerlo. *Propuestas del orquestador para enriquecerlo, SIN decidir:* filtros duros antes de ordenar
+  (cupo del comercio agotado → no sale; beneficio ignorado 3 veces por esta persona → descansa); **novedad**
+  (primero lo que nunca vio); **su horario** (primero lo que puede usar a las horas en que suele escanear);
+  **comercio nuevo en la red** (empujon las primeras semanas); **exploracion** (~1 de cada 10 lugares al azar,
+  para medir contra el grupo de control); **rendimiento** cuando haya datos.
+- *Contexto de F:* cuando varios comercios compiten por un mismo lugar (el destacado de la cuenta, el aviso
+  dirigido), algo decide cual sale. Criterios: **urgencia** (vence antes: franja valle abierta ahora, cupon que
+  vence hoy), **rotacion** (el que hace mas que no le aparece a esta persona: reparto justo entre los que pagan),
+  **cercania**, **rendimiento** (visitas extra contra el grupo de control; necesita datos).
