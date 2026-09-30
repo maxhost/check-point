@@ -24,8 +24,8 @@ describe("legacyRedirects", () => {
         permanent: true,
       },
       {
-        source: "/:locale/business/:path*",
-        destination: `${BUSINESS}/:locale/business/:path*`,
+        source: "/es/business/:path*",
+        destination: `${BUSINESS}/es/business/:path*`,
         permanent: true,
       },
       { source: "/wallet", destination: `${MY}/wallet`, permanent: true },

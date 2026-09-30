@@ -10,6 +10,14 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
+**ESTADO (2026-09-30, tarde): SPEC 0114 (UN SUBDOMINIO POR AUDIENCIA) SE ESTA IMPLEMENTANDO en este arbol**
+(subagente `implementador`; `ListAgents` antes de tocar; sus `MUTATION` son suyas). ADR 0106 + spec 0114 en `a94227d`.
+**Owner (2026-09-30):** subdominios; comercio `business.checkpass.club`; cliente `my.checkpass.club`; avisar a Plantano
+en el punto correcto. Microfrontends descartado por plan (Hobby: 2 proyectos). **Hecho en PROD hoy:** multi-zones
+(`0442841`, se RETIRA con la 0114); emails de 2 owners marcados verificados por SQL a pedido del owner (los 3
+`@staff.invalid` no). **Medido:** DNS en Namecheap; `business` y `my` ya resuelven a `216.198.79.1`. **Owner, ahora:**
+agregar `business.`/`my.` al proyecto merchant (sin env todavia). **Sigue:** handoff del implementador → gates →
+revisor → push → runbook de la spec 0114 (el owner) → verificacion PROD por curl.
 **ESTADO (2026-09-30, cierre): 0112 Y 0113 EN PROD, ESPERAN QA DEL OWNER.** 0113 implementada (`cbbb037`+`95c467d`,
 bitacora M1–M9 rojas `871ffd5`; revisor PASS `48aa02e`, 5 re-mediciones rojas) + decision del owner (valle NO bloquea la
 Bienvenida; `origin` del valle = `"cross"`) con oraculo O-M11 medido (`d353664`, contrato H5). Migracion `0058` aplicada a

@@ -29,7 +29,9 @@ export const DEFAULT_CONSUMER_ORIGIN = "https://my.checkpass.club";
 const MERCHANT_PATHS = [
   "/backoffice",
   "/backoffice/:path*",
-  "/:locale/business/:path*",
+  // Solo el locale real (`supportedLocales` de merchant = ["es"]): `/:locale/...` tambien
+  // atrapaba `/lugares/business`, una ficha publica.
+  "/es/business/:path*",
 ];
 
 const CONSUMER_PATHS = [
