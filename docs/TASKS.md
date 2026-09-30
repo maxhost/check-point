@@ -7060,3 +7060,13 @@ vacio). Copias limpias en el scratchpad de la sesion. Restauracion de emergencia
 | M3 | `apps/merchant/src/server/staff.ts` | `ebaad1e5c0daf211099b20499593c97b1e890876` | ningun import relativo a `db`/`schema`/`permissions-catalog` quedo en merchant: el `rg` de la DoD da vacio | **ROJO**: linea 2 `from "./db"` → el `rg` de la DoD lista `apps/merchant/src/server/staff.ts` (exit 0). Hermano: typecheck `staff.ts(2,23) TS2307 Cannot find module './db'`. Revertido: `diff` vacio, shasum `ebaad1e5`, los dos `rg` → 0 archivos |
 
 Al cerrar: `rg -l MUTATION apps packages tools` vacio; `git status` sin cambios de codigo.
+
+## Revision independiente — spec 0115 (2026-09-30)
+
+Presupuesto: 4 verificaciones (a lockfile, b codemod, c tests editados + mutacion del barrido, d neon-test), clase de
+error plausible de un movimiento. Arbol revisado: `85f39de` (+ `98b0726`, solo docs). Copia limpia en el scratchpad.
+Restauracion de emergencia: `git checkout 85f39de -- packages/db/src/schema/web-push.ts`.
+
+| id | archivo | shasum limpio | invariante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R1 | `packages/db/src/schema/web-push.ts` | `519d0b85dcf0439973722ef6ea139a11ec25b817` | el barrido de `marketing_opt_out_at` sigue mirando el esquema movido a `packages/db/src`. Mutacion: un `.set({ marketingOptOutAt })` en un archivo del paquete | `consumer-opt-out-writer.test.ts` (merchant, un archivo) | **ROJO** 1/4 — «sólo `consumer/marketing-opt-out.ts` la escribe» → `expected [ …(2) ] to deeply equal [ Array(1) ]`, recibido de mas `../../../packages/db/src/schema/web-push.ts` (motivo correcto: el barrido ve el paquete). Revertida con la copia: `diff` vacio, shasum `519d0b85…b817` confirmado, 4/4 verde |
