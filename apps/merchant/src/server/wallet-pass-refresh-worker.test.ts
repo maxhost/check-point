@@ -104,7 +104,12 @@ describe("runPushWorker keeps a pass_refresh out of the transactional lane", () 
       consumerIds: ["c1"],
     });
 
-    expect(summary).toEqual({ sent: 2, rescheduled: 0, skipped: 0 });
+    expect(summary).toEqual({
+      sent: 2,
+      rescheduled: 0,
+      skipped: 0,
+      planned: 0,
+    });
     // The account writes are the CAMPAIGN's two — its `latest_message` and its
     // `last_push_at` — and NOTHING else: the refresh contributed none. `queueUpdates`
     // collects every `update().set()`, so a refresh collapsed to `transactional` would

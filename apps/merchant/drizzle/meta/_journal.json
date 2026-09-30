@@ -393,6 +393,13 @@
       "when": 1790646206872,
       "tag": "0055_busqueda_plpgsql",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1790734999223,
+      "tag": "0056_aviso_del_escaneo",
+      "breakpoints": true
     }
   ]
 }

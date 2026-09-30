@@ -5,6 +5,7 @@ import {
 } from "../../../../server/consumer/core";
 import { issueSession } from "../../../../server/consumer/session";
 import { resolveWebViewToken } from "../../../../server/wallet/core";
+import { markAccountOpened } from "../../../../server/wallet/reminder-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,6 +29,8 @@ export async function GET(
     );
   }
 
+  // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
+  await markAccountOpened(account.id);
   const token = await issueSession(account.id);
   const response = NextResponse.redirect(
     new URL("/wallet", request.nextUrl.origin),

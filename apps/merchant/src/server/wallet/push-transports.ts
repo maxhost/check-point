@@ -179,12 +179,21 @@ export type TransportPlan = {
   googlePatch: boolean;
   webPush: boolean;
 };
+/** `transactional`, `campaign` (spec 0103) and `reminder` (spec 0111) share ONE route:
+ * wallet when reachable, else Web Push. */
+function routesLikeTransactional(noticeClass: string): boolean {
+  return (
+    noticeClass === "transactional" ||
+    noticeClass === "campaign" ||
+    noticeClass === "reminder"
+  );
+}
 export function planTransports(
   noticeClass: string,
   reachableWallet: boolean,
 ): TransportPlan {
   // Spec 0103 / ADR 0095 §4: a `campaign` goes exactly like a `transactional`.
-  if (noticeClass === "transactional" || noticeClass === "campaign") {
+  if (routesLikeTransactional(noticeClass)) {
     return reachableWallet
       ? {
           apple: true,
@@ -233,10 +242,9 @@ export async function deliverTransports(
     clickId?: string;
   },
 ): Promise<string[]> {
-  const reachable =
-    noticeClass === "transactional" || noticeClass === "campaign"
-      ? await consumerHasReachableWallet(consumerId)
-      : false;
+  const reachable = routesLikeTransactional(noticeClass)
+    ? await consumerHasReachableWallet(consumerId)
+    : false;
   const plan = planTransports(noticeClass, reachable);
   const errors: string[] = [];
   if (plan.apple)

@@ -54,7 +54,9 @@ export const walletPushDevices = consumer.table(
  * `transactional` row is enqueued INSIDE `persistGrant`'s transaction (0030), so an
  * accredited order ⇔ its push row. The worker claims a row (`pending` → `sending`),
  * delivers it, and closes it (`sent`) or backs it off (`pending`, then `failed` after
- * N attempts), or —a `campaign` only, spec 0103— `cancelled` by marketing's delivery gate.
+ * N attempts), or —a `campaign` only, spec 0103— `cancelled` by marketing's delivery gate,
+ * or `suppressed` by the 24 h notice budget (spec 0111, `last_error = 'budget_24h'`). The
+ * fourth class, `reminder` (spec 0111), is the day-without-purchase nudge to open the account.
  * `not_before` gates when it may go out (default now); the worker never
  * sends earlier. No token/secret columns — the whole row is safe to serialize.
  */
@@ -85,16 +87,21 @@ export const walletPushQueue = consumer.table(
       table.notBefore,
     ),
     index("wallet_push_queue_consumer_idx").on(table.consumerId),
+    // Spec 0111: the 24 h notice budget (`loadBudget`) and the reminder planner read the
+    // SENT rows of one consumer by `sent_at`.
+    index("wallet_push_queue_consumer_sent_idx")
+      .on(table.consumerId, table.sentAt)
+      .where(sql`${table.status} = 'sent'`),
     // NO unique index for `pass_refresh`, on purpose: the worker returns a failed row to
     // 'pending' in the SAME update that bumps `attempts`, so a partial unique over
     // status='pending' would wedge it in 'sending' forever (spec 0065) — see that spec.
     check(
       "wallet_push_queue_class_check",
-      sql`${table.class} in ('transactional', 'campaign', 'pass_refresh')`,
+      sql`${table.class} in ('transactional', 'campaign', 'pass_refresh', 'reminder')`,
     ),
     check(
       "wallet_push_queue_status_check",
-      sql`${table.status} in ('pending', 'sending', 'sent', 'failed', 'cancelled')`,
+      sql`${table.status} in ('pending', 'sending', 'sent', 'failed', 'cancelled', 'suppressed')`,
     ),
   ],
 );

@@ -5,38 +5,23 @@ import { type PushChannel } from "./push-channel";
 import { type WebPushChannel } from "../push/webpush-channel";
 import {
   COOLDOWN_MS,
-  type NoticeClass,
   type QueueRow,
   deliverRow,
   planConsumerDrain,
 } from "./push";
+import { parseQueueClass } from "./push-plan";
+import { planReminders } from "./reminder-store";
 
-/**
- * Maps the raw `class` column to the planner's {@link NoticeClass}. Exhaustive and
- * total: an unknown class THROWS, it never degrades to `transactional`. Until spec 0065
- * this was `r.klass === "campaign" ? "campaign" : "transactional"`, so a `pass_refresh`
- * row entered the planner AS a transactional — skipping the cooldown, advancing the
- * clock and preempting the next `campaign`, the three invariants the class exists to
- * hold — and `typecheck` stayed GREEN because the ternary always yields a valid union
- * member. Pure and exported so the mapping has a unit oracle: `selectDue` needs a DB,
- * this does not. The DB check constraint already restricts the column to these three
- * values, so the throw is a tripwire for a schema/code drift, not an expected path.
- */
-export function parseQueueClass(raw: string): NoticeClass {
-  switch (raw) {
-    case "transactional":
-    case "campaign":
-    case "pass_refresh":
-      return raw;
-    default:
-      throw new Error(`wallet_push_queue.class desconocida: ${raw}`);
-  }
-}
+// `parseQueueClass` lives in `push-plan.ts` (the budget store needs it too, and importing
+// it from here would close an import cycle through `./push`); re-exported for its tests.
+export { parseQueueClass } from "./push-plan";
 
 export type WorkerSummary = {
   sent: number;
   rescheduled: number;
   skipped: number;
+  /** `reminder` rows queued by this pass (spec 0111), drained in the same pass. */
+  planned: number;
 };
 
 /**
@@ -115,8 +100,15 @@ export async function runPushWorker(opts: {
   consumerIds?: string[];
 }): Promise<WorkerSummary> {
   const now = opts.now ?? new Date();
+  // Spec 0111 D7: queue the day-without-purchase reminders first, so this pass drains them.
+  const { planned } = await planReminders(now, opts.consumerIds);
   const byConsumer = await selectDue(now, opts.consumerIds);
-  const summary: WorkerSummary = { sent: 0, rescheduled: 0, skipped: 0 };
+  const summary: WorkerSummary = {
+    sent: 0,
+    rescheduled: 0,
+    skipped: 0,
+    planned,
+  };
 
   for (const [consumerId, rows] of byConsumer) {
     const last = await lastPushAt(consumerId);

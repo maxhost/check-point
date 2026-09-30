@@ -45,6 +45,10 @@ export const consumerAccounts = consumer.table(
     latestMessage: text("latest_message"),
     messageUpdatedAt: timestamp("message_updated_at", { withTimezone: true }),
     lastPushAt: timestamp("last_push_at", { withTimezone: true }),
+    // Spec 0111 / ADR 0103 §7: the last time the consumer opened their account
+    // (`/c/[token]` or `/wallet` with a session). Feeds the reminder's «cupon nuevo»
+    // and «2 dias sin actividad». Written with a 15-minute guard, never in a DTO.
+    lastOpenedAt: timestamp("last_opened_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

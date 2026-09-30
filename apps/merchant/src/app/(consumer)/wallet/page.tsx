@@ -10,6 +10,7 @@ import { renderQrSvg } from "../../../server/wallet/core";
 import { vapidFromEnv } from "../../../server/push/vapid";
 import { listConsumerPrograms } from "../../../server/consumer/programs";
 import { hasWebPushSubscription } from "../../../server/push/subscriptions";
+import { markAccountOpened } from "../../../server/wallet/reminder-store";
 import { WalletShell } from "./wallet-shell";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,8 @@ export default async function WalletPage() {
     headers().then((h) => h.get("user-agent") ?? ""),
     listConsumerPrograms(account.id),
     hasWebPushSubscription(account.id),
+    // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
+    markAccountOpened(account.id),
   ]);
   // Show only the Wallet platform supported by the current device.
   const isIos = /iphone|ipad|ipod/i.test(ua);

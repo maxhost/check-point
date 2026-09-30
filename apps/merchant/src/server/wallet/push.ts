@@ -12,6 +12,7 @@ import {
   webPushChannelFromEnv,
 } from "../push/webpush-channel";
 import { deliverTransports } from "./push-transports";
+import { applyBudget } from "./push-budget-store";
 import {
   gateCampaignPush,
   recordCampaignPushSent,
@@ -142,6 +143,8 @@ async function deliverClaimed(
       if (gate.kind !== "send") return;
       clickId = gate.clickId;
     }
+    // Spec 0111: the 24 h notice budget, BEFORE anything is written (it closes the row).
+    if (!(await applyBudget(id, claim, now))) return;
     if (!silent)
       await getDb()
         .update(consumerAccounts)

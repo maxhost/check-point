@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import { buildApnsJwt, buildApnsRequest } from "./wallet/apns";
 import {
   type QueueRow,
+  buildCouponBody,
+  buildRedemptionBody,
   buildTransactionalBody,
   planConsumerDrain,
 } from "./wallet/push";
+import { MAX_NOTICE_BODY } from "./wallet/push-text";
 import {
   walletPushDeviceResponse,
   walletPushQueueResponse,
@@ -66,17 +69,55 @@ describe("APNs provider JWT (ES256)", () => {
 describe("buildTransactionalBody", () => {
   it("reads as a full sentence, agreeing verb/noun with the count", () => {
     expect(buildTransactionalBody(1, "stamps")).toBe(
-      "Se acreditó 1 sello en tu cuenta 🎉",
+      "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
     );
     expect(buildTransactionalBody(3, "stamps")).toBe(
-      "Se acreditaron 3 sellos en tu cuenta 🎉",
+      "Se acreditaron 3 sellos en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
     );
     expect(buildTransactionalBody(1, "points")).toBe(
-      "Se acreditó 1 punto en tu cuenta 🎉",
+      "Se acreditó 1 punto en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
     );
     expect(buildTransactionalBody(20, "points")).toBe(
-      "Se acreditaron 20 puntos en tu cuenta 🎉",
+      "Se acreditaron 20 puntos en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
     );
+  });
+});
+
+describe("counter notices invite to the account (spec 0111 D1)", () => {
+  const INVITE = " · Revisa tus beneficios en checkpass.club";
+
+  it("the owner's example is 76 characters", () => {
+    const body = buildTransactionalBody(1, "stamps");
+    expect(body).toBe(
+      "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en checkpass.club",
+    );
+    expect([...body].length).toBe(76);
+  });
+
+  it("the redemption and the coupon notices end in the invite too", () => {
+    expect(buildRedemptionBody("Café gratis", "stamps", 1)).toBe(
+      `Canjeaste «Café gratis» 🎁 Te queda 1 sello.${INVITE}`,
+    );
+    expect(buildCouponBody("2x1 en picadas")).toBe(
+      `Canjeaste el cupón «2x1 en picadas» 🎁${INVITE}`,
+    );
+  });
+
+  it("a body that would pass 120 characters goes WITHOUT the invite, never cut", () => {
+    const label = "Picada grande para compartir con papas, chorizo y queso";
+    const body = buildRedemptionBody(label, "points", 120);
+    expect(MAX_NOTICE_BODY).toBe(120);
+    expect(body).toBe(`Canjeaste «${label}» 🎁 Te quedan 120 puntos.`);
+    expect([...`${body}${INVITE}`].length).toBeGreaterThan(120);
+  });
+
+  it("exactly at the limit the invite stays", () => {
+    // 120 − len("Canjeaste el cupón «» 🎁" + INVITE) = label length that lands on 120.
+    const base = [...`Canjeaste el cupón «» 🎁${INVITE}`].length;
+    const label = "x".repeat(120 - base);
+    expect([...buildCouponBody(label)].length).toBe(120);
+    expect(buildCouponBody(label).endsWith(INVITE)).toBe(true);
+    expect(buildCouponBody(`${label}x`).endsWith(INVITE)).toBe(false);
   });
 });
 
