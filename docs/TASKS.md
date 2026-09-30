@@ -10,13 +10,16 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: escribir la spec de «MIS BENEFICIOS»** (primera del ADR 0103 tras la 0111; decision 10 del ADR,
-owner 2026-09-29): la cuenta del cliente como pantalla de inicio con los beneficios filtrados (rubro distinto, 2 km,
-GPS o ultimo escaneo, «Todo filtrado»). **Solo API + contrato HTTP escrito**: la UI la hace el owner por fuera.
-Antes de escribir la prosa: medir que muestra hoy `/wallet` y que endpoints usa, y pedirle al owner las
-decisiones que falten (ADR 0071). Despues: la spec de horas valle (deteccion, tope 1 vez por local, horario en
-Marca — todo decidido en el ADR 0103 §5 y §10). **QA de la 0111: el owner lo hace mas adelante** (no bloquea).
-**QA pendiente de la 0111** (EN PROD, lo hace el owner mas adelante): enrolarse con el telefono, hacer 3
+**Retomar con: DESPACHAR LA SPEC 0112** (`specs/0112-mis-beneficios-y-oferta-cruzada.md`, **cerrada**, commit
+`1a9ab89`; ADR 0104; contrato `specs/0112-contratos-de-api.md`) — un implementador + un revisor (AGENT-WORKFLOW),
+9 mutaciones. **Antes: el owner puede objetar las elecciones O1–O8 de la spec** (reclamo explicito, vigencia desde
+el reclamo, 100 m = «parado», GPS no se guarda, «ultimo escaneo» = order/reward/coupon redemption, orden por
+distancia, opt-out oculta la cruzada, una por persona) — se le informaron al cerrar. **Owner (2026-09-29,
+textual en el ADR 0104):** Mis beneficios = cupones propios SIN filtro + ofertas cruzadas; la cruzada es una
+plantilla que activa el comercio (premio, publico no clientes / dormidos / cualquiera); su cupon NO exige estar
+enrolado; el filtro de rubro (ultimo escaneado + local donde esta parado) y 2 km es SOLO de la cruzada (corrige
+el 0103 §4); sin ubicacion → ninguna cruzada; entra por la cruzada → sin Bienvenida. Migracion `0057` a PROD
+necesita OK del owner. Despues: la spec de horas valle (ADR 0103 §5 y §10). **QA pendiente de la 0111** (EN PROD, lo hace el owner mas adelante): enrolarse con el telefono, hacer 3
 acreditaciones en 10 min → suenan 2, la 3.ª no; la cuenta muestra las 3; el texto termina en «· Revisa tus
 beneficios en checkpass.club». **Hecho y verificado (2026-09-29):** migracion `0056` aplicada a PROD por
 `run_sql_transaction` con OK del owner, verificada por SQL (columna, los dos `check` nuevos, indice, fila en
