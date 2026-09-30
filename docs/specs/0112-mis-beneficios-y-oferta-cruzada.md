@@ -1,7 +1,7 @@
 ---
 spec: 0112
 fecha: 2026-09-29
-estado: cerrada
+estado: implementada
 resumen: «Mis beneficios» por API — la plantilla de campaña «Oferta cruzada» (premio, cupo mensual, vigencia, publico no clientes / dormidos / cualquiera), su lista para el cliente filtrada por rubro distinto (ultimo escaneado + local donde esta parado) y ≤ 2 km (GPS o ultimo local escaneado), el reclamo que emite un cupon SIN membresia, su canje en el mostrador y el «solo el cruzado» frente a la Bienvenida. Migracion 0057. Sin UI.
 disjunta: si
 archivos: apps/merchant/src/server/schema/{campaign.ts,campaign-coupon.ts}, apps/merchant/drizzle/0057_*.sql, apps/merchant/src/server/marketing/{templates.ts,template-input.ts,template-store.ts,cross-input.ts,cross-rules.ts,cross-store.ts,welcome-rules.ts,welcome-issue.ts}, apps/merchant/src/server/consumer/{coupons.ts,cross-offers.ts}, apps/merchant/src/server/counter/coupon-store.ts, apps/merchant/src/app/api/public/consumer/cross-offers/**, docs/specs/0112-contratos-de-api.md

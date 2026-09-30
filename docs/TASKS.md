@@ -6874,3 +6874,13 @@ Veredicto: **PASS** con un hallazgo (R-M10: la exclusion de una cruzada deshabil
 codigo pero no tiene oraculo; falta un caso «`disable` → C1 no la lista y C2 da 404»). Gates en limpio sobre
 `bd4f833` (Node 24): typecheck, lint, test (2118 passed / 751 skipped), format:check y `TURBO_FORCE=1 pnpm run build`
 (0 cached), exit 0. Neon limpio: claim+counter+offers 18/18. Arbol sin mutaciones al cerrar.
+
+## Oraculo de R-M10 — spec 0112, orquestador (2026-09-29)
+
+Caso nuevo en `consumer-cross-claim.neon.integration.test.ts` («a cross offer the business turned off…»): verde en
+limpio (8/8). Mutacion O-M10: `apps/merchant/src/server/marketing/cross-store.ts`, shasum limpio
+`a0b764f4a191f2ade1080eafd3cf6f1b782de61f`, copia en el scratchpad de la sesion (`cross-store.clean.ts`); ataca
+`and c.status = 'active'` de `loadCrossCampaigns` (guard hermano: ninguno — `disableTemplate` no toca `ends_at` ni
+`activated_at`, `campaign-actions.ts:105,122`, medido por el revisor). Resultado EJECUTADO: **ROJO** 1/8 (`expected
+[ Array(1) ] to deeply equal []` — la oferta apagada seguia listada); los otros 7 verdes. Revertida con copia; `diff`
+identico; shasum limpio confirmado.

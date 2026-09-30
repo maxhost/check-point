@@ -20,6 +20,7 @@ import { seedCampaign } from "./marketing-integration-support";
 import { getDb } from "./db";
 import { campaignPushes, walletPushQueue } from "./schema";
 import { listConsumerCoupons } from "./consumer/coupons";
+import { disableTemplate } from "./marketing/template-store";
 
 /**
  * Spec 0112 C2 — `POST /api/public/consumer/cross-offers/{campaignId}/claim` against a
@@ -179,5 +180,28 @@ describe.skipIf(!integrationEnabled)("cross offers — C2 claim", () => {
     expect((await claim(consumer.id, campaignId, here)).status).toBe(201);
     const [row] = await readCrossCoupons(campaignId);
     expect(row.membershipId).toBe(membershipId);
+  }, 180_000);
+
+  // ORACULO DE R-M10 (revisor): `c.status = 'active'` in `loadCrossCampaigns` is the ONLY
+  // guard of a turned-off offer — `disableTemplate` ends the run (`status = 'ended'`) and
+  // leaves `ends_at`/`activated_at` alone, so no other condition catches it.
+  it("a cross offer the business turned off is no longer listed nor claimable (404)", async () => {
+    const cat = category("off");
+    const here = base(19);
+    const x = await crossBusiness("Cruz off", cat("gym"), north(here, 300));
+    const campaignId = await crossCampaign(x);
+    const consumer = await crossConsumer();
+    // Control: live, it is offered.
+    expect(offeredBy(await offersOf(consumer.id, here), x)).toEqual([
+      x.seed.business.id,
+    ]);
+
+    await disableTemplate(x.seed.business.id, "cross");
+
+    expect(offeredBy(await offersOf(consumer.id, here), x)).toEqual([]);
+    const answer = await claim(consumer.id, campaignId, here);
+    expect(answer.status).toBe(404);
+    expect(answer.body).toMatchObject({ code: "offer_unavailable" });
+    expect(await readCrossCoupons(campaignId)).toEqual([]);
   }, 180_000);
 });
