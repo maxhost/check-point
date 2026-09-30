@@ -10,12 +10,17 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: el alcance de la PRIMERA spec del ADR 0103** (`6e7f8ee`, aceptado: los beneficios viven en la
-cuenta checkpass.club, la Wallet solo avisa, horas valle, orden entre comercios). Candidatas: aviso del escaneo
-variante 2 (chica, wallet); horas valle (horario en Marca + franja + beneficio con ventana: migracion); «Mis
-beneficios» como inicio de la cuenta; el arbitro del orden. **Owner (2026-09-29):** aviso del escaneo =
-variante 2 (≤ 2/dia con compra + 1 recordatorio sin compra); F += novedad, comercio nuevo, exploracion, su
-horario. Sin responder: recordatorio siempre o solo con novedad; filtros cupo agotado / ignorado 3 veces.
+**Retomar con: el OK del owner para pasar la spec 0111 a `cerrada`** (`specs/0111-aviso-del-escaneo-y-recordatorio.md`,
+commit `42e3156`; valida los textos de D1 y D6, propuestos por el orquestador). Con el OK: UN implementador + UN
+revisor (ADR 0071), migracion `0056`, presupuesto de 6 mutaciones escrito en la spec. **Owner (2026-09-29):** 1.ª
+spec del ADR 0103 = aviso del escaneo; cuentan para el tope de 2 «las tres» (acreditar, canje de premio, canje
+de cupon); ventana = ultimas 24 h; «algo nuevo» = cupon nuevo + cupon por vencer; recordatorio si hay algo nuevo
+O 2 dias sin actividad (ni abrio la cuenta ni escaneo); hora = 12:30 por defecto y adaptativa a la hora
+habitual del cliente (la variante «franjas donde no compra» va con horas valle); filtros previos al orden = cupo
+agotado + ignorado 3 veces (ADR 0103 §7–9, `9abe5fb`). Medido para la spec: el aviso de vencimiento del cupon de
+bienvenida sale como `campaign` (`marketing/welcome-reminder.ts:176-183`) → entra al tope global de 3; el pase
+no muestra saldo (`wallet/apple.ts:81-104`) → un escaneo silenciado no necesita tocar el pase; `push.ts` tiene
+280 lineas (limite 300).
 Doc: `docs/red-horas-valle-y-modelo.md` (commits `f169800`, `c6b1912`). **Owner (2026-09-29, textual resumido):**
 A horario de apertura «lo puede cargar el comercio en Marca»; B valle visible para no-clientes Y dormidos
 («ambos son opcion»); C beneficio = sellos/puntos extra segun el programa, producto del menu, o texto libre
