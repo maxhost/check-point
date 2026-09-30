@@ -1872,3 +1872,16 @@ flujo produce el mismo resultado?** Si existe, el oraculo tiene que puentearlo (
 escenario donde no alcanza) o la fila mide el guard equivocado. Vale aunque el mecanismo todavia no exista: se
 razona sobre el diseño de la propia spec (protocolo en la skill `protocolo-de-verificacion` §2.0).
 
+
+## 2026-09-29 — una restriccion del ESQUEMA se le presento al owner como si fuera del PRODUCTO
+
+**Que paso.** Pidiendo decisiones para «Mis beneficios», el owner definio la oferta cruzada como «una campaña que
+active el merchant como la de bienvenida». El orquestador midio que `campaign_coupon.membership_id` es `NOT NULL` y
+armo la pregunta siguiente sobre esa base: «¿como la obtiene? (un cupon hoy exige ser miembro)», con opciones que
+todas pasaban por enrolarse. El owner: «estas confundiendote. y mucho […] ese cupon no requiere que el cliente este
+enrolado». Una columna de hoy se volvio una premisa del producto, y costo una ronda de preguntas y la paciencia del
+owner.
+
+**Regla.** Lo que el codigo exige HOY es un costo de implementacion, no una restriccion del producto: va a la spec
+(«hace falta una migracion»), nunca a las opciones de una pregunta al owner. Antes de preguntar, releer las
+palabras textuales del owner sobre ESE concepto y preguntar solo lo que ellas no cierran.
