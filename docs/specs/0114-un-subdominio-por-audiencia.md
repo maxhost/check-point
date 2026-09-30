@@ -1,7 +1,7 @@
 ---
 spec: 0114
 fecha: 2026-09-30
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0106 — merchant enruta por host (business./my., 308 al host correcto, apagado sin env), los pases y el QR del afiche se emiten con my., el aviso dice my.checkpass.club, la web publica en www hace 308 de las paginas viejas y proxy de /api/* a merchant, y se retiran los rewrites multi-zones de 0442841. Incluye el runbook de dominios con el punto exacto del aviso a Plantano. Sin migracion.
 disjunta: si
 archivos: apps/merchant/src/proxy.ts, apps/merchant/src/server/hosts.ts(+test), apps/merchant/next.config.ts, apps/merchant/src/app/api/public/wallet/{apple.pkpass,google}/route.ts, apps/merchant/src/app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route.ts, apps/merchant/src/app/backoffice/brand/kit/page.tsx, apps/merchant/src/server/wallet/{push-text.ts,push-text.test.ts,reminder.ts}, apps/public/next.config.ts, apps/public/src/app/site-config.ts, apps/public/src/legacy-routes.ts(+test), apps/public/vitest.config.ts, vitest.config.ts, docs/despliegue-publico.md
