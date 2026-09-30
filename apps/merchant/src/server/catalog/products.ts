@@ -1,12 +1,12 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   locations,
   productCategories,
   productLocations,
   products,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import {
   CatalogError,
   type OwnerBusiness,

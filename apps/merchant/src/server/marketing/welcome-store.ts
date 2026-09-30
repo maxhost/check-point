@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import type { DbTransaction, getDb } from "../db";
+import type { DbTransaction, getDb } from "@mi-pasaporte/db";
 import type { CouponReward } from "./coupon-issue";
 import { requireDate } from "./driver-values";
 import { campaignsAllowedFor } from "./plan-gate";

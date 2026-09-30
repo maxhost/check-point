@@ -25,8 +25,12 @@ import {
   world,
 } from "./marketing-push-delivery-support";
 import { dropCampaigns, readAccount } from "./marketing-read-support";
-import { getDb } from "./db";
-import { businesses, campaignCoupons, campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  campaignCoupons,
+  campaigns,
+} from "@mi-pasaporte/db/schema";
 import { recordPushClick } from "./marketing/push-delivery";
 import { loadActiveCoupon } from "./counter/coupon-scan";
 import { listConsumerCoupons } from "./consumer/coupons";

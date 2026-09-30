@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./locations-integration-support";
-import { getDb, withDbTransaction } from "./db";
-import { campaigns } from "./schema";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import { enableTemplate } from "./marketing/template-store";
 import {
   campaignWorld as world,

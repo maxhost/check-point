@@ -10,8 +10,8 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { sessions, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { sessions, users } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
 import {
   ONBOARDING_GRANT_MINUTES,

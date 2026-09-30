@@ -1,6 +1,6 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts, consumerSessions } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts, consumerSessions } from "@mi-pasaporte/db/schema";
 import {
   type ConsumerAccountRow,
   SESSION_TTL_DAYS,

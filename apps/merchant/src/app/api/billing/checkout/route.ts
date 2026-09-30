@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { withDbTransaction } from "../../../../server/db";
-import { subscriptions } from "../../../../server/schema";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { subscriptions } from "@mi-pasaporte/db/schema";
 import {
   BillingError,
   billingErrorResponse,

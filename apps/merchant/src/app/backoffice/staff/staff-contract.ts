@@ -1,4 +1,4 @@
-import type { PermissionScope } from "../../../server/permissions-catalog";
+import type { PermissionScope } from "@mi-pasaporte/db/permissions-catalog";
 
 /**
  * LA COPIA DE LOS SIETE PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**

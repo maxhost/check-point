@@ -19,7 +19,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { type Row, type Statement, state } from "./enrollment-name-support";
 
-vi.mock("../db", async () =>
+vi.mock("@mi-pasaporte/db", async () =>
   (await import("./enrollment-name-support")).dbDouble(),
 );
 

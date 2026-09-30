@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import type { DbTransaction, getDb } from "../db";
-import { loyaltyPrograms, loyaltyRewards } from "../schema";
+import type { DbTransaction, getDb } from "@mi-pasaporte/db";
+import { loyaltyPrograms, loyaltyRewards } from "@mi-pasaporte/db/schema";
 import type { BalanceCandidate, RewardCost } from "./balance-audience";
 import { requireDate, toDate } from "./driver-values";
 import {

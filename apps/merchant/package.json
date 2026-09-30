@@ -3,8 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
     "dev": "next dev",
     "build": "NODE_ENV=production next build",
     "typecheck": "tsc --noEmit",
@@ -15,6 +13,7 @@
     "@aws-sdk/client-s3": "^3.1107.0",
     "@aws-sdk/s3-request-presigner": "^3.1107.0",
     "@mapbox/search-js-react": "^1.6.0",
+    "@mi-pasaporte/db": "workspace:*",
     "@neondatabase/serverless": "^1.1.0",
     "better-auth": "^1.6.26",
     "driver.js": "^1.8.0",

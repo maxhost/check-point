@@ -6,8 +6,8 @@ import {
   permisosIntegrationEnabled as enabled,
   seedOwnerDeNegocio,
 } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { businesses, memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0086 §1 — **LOS TRES `CHECK` DE LA MIGRACIÓN 0041, POR SQL CRUDO.**

@@ -1,13 +1,13 @@
 import { desc, eq, max, sql } from "drizzle-orm";
 import type { CardDesignColors } from "../../components/loyalty/card-preview";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyPrograms,
   orders,
   programMemberships,
   rewardRedemptions,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import {
   type RewardDTO,
   toClientProgram,

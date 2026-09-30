@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { orders } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { orders } from "@mi-pasaporte/db/schema";
 import { rowsOf } from "./core";
 import { buildTransactionalBody } from "../wallet/push";
 import { upsertVisitSql } from "../customers/projection";

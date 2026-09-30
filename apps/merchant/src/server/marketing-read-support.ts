@@ -1,5 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   campaignLocations,
   campaignTickAudiences,
@@ -11,7 +11,7 @@ import {
   couponRedemptions,
   passPlacements,
   welcomeDevices,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 
 /**
  * The READ half of the marketing integration support (spec 0065 phase A5): what the

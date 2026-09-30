@@ -5,8 +5,8 @@ import {
   seedLocationsBusiness,
 } from "./locations-integration-support";
 import { dropBusiness } from "./counter-integration-support";
-import { getDb } from "./db";
-import { locationHours, locations } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { locationHours, locations } from "@mi-pasaporte/db/schema";
 import { LocationError, getLocationHours, putLocationHours } from "./locations";
 
 /**

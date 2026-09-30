@@ -8,7 +8,7 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   consumerAccounts,
@@ -16,7 +16,7 @@ import {
   loyaltyPrograms,
   programMemberships,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { enroll } from "./consumer/enrollment";
 
 // Attribution of a self-service alta by local (ADR 0042 / spec 0041). The `?loc=` from

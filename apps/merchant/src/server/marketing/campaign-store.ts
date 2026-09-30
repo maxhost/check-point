@@ -1,6 +1,10 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
-import { campaignLocations, campaigns, locations } from "../schema";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaigns,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import {
   type CampaignInput,
   parseCampaignInput,

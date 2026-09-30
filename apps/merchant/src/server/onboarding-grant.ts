@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { sessions } from "./schema";
-import type { getDb } from "./db";
+import { sessions } from "@mi-pasaporte/db/schema";
+import type { getDb } from "@mi-pasaporte/db";
 
 /**
  * Spec 0077 §4 / ADR 0076 §2 — EL PERMISO DE ALTA, su decisión y su caducidad.

@@ -25,8 +25,8 @@ import {
 import { dropBusiness } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedCampaign, seedLocation } from "./marketing-integration-support";
-import { getDb } from "./db";
-import { campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0065, fase D — EL FRENO DEFENSIVO, contra Postgres.

@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImportFiles } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImportFiles } from "@mi-pasaporte/db/schema";
 import { createTemporaryUploadUrl } from "../r2";
 import { CatalogImportError, type UploadTicket } from "./types";
 import { MAX_IMAGE_BYTES, MAX_PDF_BYTES } from "./validation";

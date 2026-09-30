@@ -6,13 +6,13 @@ import {
   seedConsumer,
 } from "./counter-integration-support";
 import { enqueue, queueRow } from "./wallet-push-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   walletPasses,
   walletPushQueue,
   webPushSubscriptions,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { ensureWalletPass } from "./wallet/core";
 import { registerDevice } from "./wallet/passkit";
 import { upsertSubscription } from "./push/subscriptions";

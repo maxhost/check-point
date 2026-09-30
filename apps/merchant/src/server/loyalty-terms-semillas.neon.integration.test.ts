@@ -8,8 +8,8 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { termsTemplates } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { termsTemplates } from "@mi-pasaporte/db/schema";
 
 /**
  * LAS SEMILLAS DEL TOS, aseveradas contra la base y sin ningún negocio de por medio
@@ -30,10 +30,16 @@ import { termsTemplates } from "./schema";
  *    del caso trampa de la 0081.
  */
 const MIGRATION_0038 = fileURLToPath(
-  new URL("../../drizzle/0038_terms_por_pais.sql", import.meta.url),
+  new URL(
+    "../../../../packages/db/drizzle/0038_terms_por_pais.sql",
+    import.meta.url,
+  ),
 );
 const MIGRATION_0039 = fileURLToPath(
-  new URL("../../drizzle/0039_tos_variables_del_negocio.sql", import.meta.url),
+  new URL(
+    "../../../../packages/db/drizzle/0039_tos_variables_del_negocio.sql",
+    import.meta.url,
+  ),
 );
 
 const PAIS_SCOPES = ["default", "EC"];

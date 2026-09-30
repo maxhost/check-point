@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   dropBusiness,
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { campaignTickAudiences, passPlacements } from "./schema";
+import { campaignTickAudiences, passPlacements } from "@mi-pasaporte/db/schema";
 import {
   seedCampaign,
   seedLocation,

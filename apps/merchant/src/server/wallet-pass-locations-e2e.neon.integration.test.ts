@@ -18,8 +18,8 @@ import {
   seedTurn,
 } from "./marketing-integration-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { getDb } from "./db";
-import { passPlacements } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { passPlacements } from "@mi-pasaporte/db/schema";
 import { passLocationsForConsumer } from "./wallet/pass-locations-store";
 import { walletProviderFromEnv } from "./wallet/provider";
 

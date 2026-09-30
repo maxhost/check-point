@@ -10,8 +10,8 @@ import {
   seedPushCampaign,
   seedWebPush,
 } from "./marketing-push-support";
-import { getDb } from "./db";
-import { campaignCoupons } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignCoupons } from "@mi-pasaporte/db/schema";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
 import { FakeWebPushChannel } from "./push/webpush-channel";

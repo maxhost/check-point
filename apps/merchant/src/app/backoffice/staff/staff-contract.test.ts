@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PERMISSIONS as CATALOGO } from "../../../server/permissions-catalog";
+import { PERMISSIONS as CATALOGO } from "@mi-pasaporte/db/permissions-catalog";
 import { PERMISSIONS, errorCopy } from "./staff-contract";
 
 /**

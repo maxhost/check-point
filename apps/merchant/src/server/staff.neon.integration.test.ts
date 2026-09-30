@@ -13,8 +13,8 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { memberships, orders, sessions, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, orders, sessions, users } from "@mi-pasaporte/db/schema";
 import { listStaff, setStaffStatus } from "./staff";
 import { createStaff } from "./staff-create";
 import { listTodaysAccreditations } from "./counter/history";

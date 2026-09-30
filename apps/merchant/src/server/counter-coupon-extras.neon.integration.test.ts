@@ -13,8 +13,12 @@ import {
   readCoupons,
   seedCouponWorld,
 } from "./counter-coupon-support";
-import { getDb } from "./db";
-import { couponRedemptions, loyaltyPrograms, orders } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  couponRedemptions,
+  loyaltyPrograms,
+  orders,
+} from "@mi-pasaporte/db/schema";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
 

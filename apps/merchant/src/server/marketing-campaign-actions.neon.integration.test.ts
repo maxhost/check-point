@@ -4,8 +4,8 @@ import {
   integrationEnabled,
   seedExtraLocation,
 } from "./locations-integration-support";
-import { getDb } from "./db";
-import { locations, subscriptions } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { locations, subscriptions } from "@mi-pasaporte/db/schema";
 import {
   createCampaign,
   getCampaign,

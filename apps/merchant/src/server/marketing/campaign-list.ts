@@ -14,8 +14,8 @@
  */
 
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { campaignTickAudiences, campaignTurns } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignTickAudiences, campaignTurns } from "@mi-pasaporte/db/schema";
 import { type Campaign, listCampaigns } from "./campaign-store";
 import { boughtList } from "./campaign-values";
 

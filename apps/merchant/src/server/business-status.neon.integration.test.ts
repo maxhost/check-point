@@ -13,8 +13,8 @@ import {
   seedMember,
   type Seed,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { businesses, memberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships } from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
 import { enroll } from "./consumer/enrollment";

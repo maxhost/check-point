@@ -11,8 +11,8 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { authStartAttempts, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { authStartAttempts, users } from "@mi-pasaporte/db/schema";
 import {
   type GrantSeed,
   dropGrantSeed,

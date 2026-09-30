@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { getDb } from "./db";
-import { users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { users } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0067 §2 — la decision de la PANTALLA 1 del wizard: el owner escribe su email y el

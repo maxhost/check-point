@@ -17,8 +17,8 @@ import {
   readCrossCoupons,
 } from "./consumer-cross-support";
 import { seedCampaign } from "./marketing-integration-support";
-import { getDb } from "./db";
-import { campaignPushes, walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignPushes, walletPushQueue } from "@mi-pasaporte/db/schema";
 import { listConsumerCoupons } from "./consumer/coupons";
 import { disableTemplate } from "./marketing/template-store";
 

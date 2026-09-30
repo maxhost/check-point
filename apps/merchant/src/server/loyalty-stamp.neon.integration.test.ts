@@ -8,14 +8,14 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyProgramEvents,
   loyaltyPrograms,
   memberships,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import {
   programForOwner,
   saveProgram,

@@ -1,5 +1,5 @@
 import { requireOwner } from "../../../server/auth-guards";
-import { withDbTransaction } from "../../../server/db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   activeLocationCount,
   lockBusiness,

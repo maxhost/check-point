@@ -65,7 +65,7 @@ const objetivo: { role: string; permissions: string[] } = {
   permissions: ["staff"],
 };
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "update", "set", "delete"]) {
     chain[m] = () => chain;

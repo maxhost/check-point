@@ -11,8 +11,8 @@
  */
 
 import { eq, sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
-import { campaignTurns } from "../schema/campaign-turn";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { campaignTurns } from "@mi-pasaporte/db/schema/campaign-turn";
 import { boughtList } from "./campaign-values";
 
 /** Weight of the prior, in turns (ORQUESTADOR, ADR 0066 §3). */

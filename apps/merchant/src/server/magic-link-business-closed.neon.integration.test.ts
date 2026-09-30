@@ -11,14 +11,14 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   authStartAttempts,
   businesses,
   memberships,
   sessions,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { POST as START } from "../app/api/merchant/auth/start/route";
 import { GET as CONSUME } from "../app/api/merchant/auth/magic-link/route";
 

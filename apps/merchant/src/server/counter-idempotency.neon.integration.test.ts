@@ -8,8 +8,12 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { orders, programMemberships, walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  orders,
+  programMemberships,
+  walletPushQueue,
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 import { pgErrorCode } from "./counter/core";

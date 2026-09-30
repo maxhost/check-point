@@ -8,7 +8,7 @@ import {
 import { seedLocationsBusiness } from "./locations-integration-support";
 import { seedMembership } from "./marketing-integration-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaigns,
@@ -16,7 +16,7 @@ import {
   walletPasses,
   walletPushDevices,
   welcomeDevices,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import type { WelcomeRedeemFrom } from "./marketing/templates";
 
 /**

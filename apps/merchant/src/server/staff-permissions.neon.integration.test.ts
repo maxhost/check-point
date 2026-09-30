@@ -9,8 +9,8 @@ import {
   permisosIntegrationEnabled as enabled,
   seedOwnerDeNegocio,
 } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { memberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships } from "@mi-pasaporte/db/schema";
 import {
   POST as CREATE_STAFF,
   GET as LIST_STAFF,

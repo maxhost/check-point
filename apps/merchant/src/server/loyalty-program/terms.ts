@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { locations, termsTemplates } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { locations, termsTemplates } from "@mi-pasaporte/db/schema";
 import { LoyaltyError, type ProgramInput } from "./core";
 import { renderTermsText } from "./validation";
 

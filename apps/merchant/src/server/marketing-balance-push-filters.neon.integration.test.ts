@@ -8,7 +8,7 @@ import {
   seedConsumer,
   seedReward,
 } from "./counter-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { seedMembership } from "./marketing-integration-support";
 import {
   readPushes,
@@ -17,7 +17,7 @@ import {
   seedWebPush,
 } from "./marketing-push-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { loyaltyPrograms } from "./schema";
+import { loyaltyPrograms } from "@mi-pasaporte/db/schema";
 import { type TickSummary, runMarketingTick } from "./marketing/tick";
 
 /**

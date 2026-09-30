@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   programMemberships,
   rewardRedemptions,
   walletPushQueue,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { buildRedemptionBody } from "../wallet/push";
 import { CounterError } from "./core";
 import { planRedemption } from "./redeem-plan";

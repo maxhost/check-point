@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../server/auth";
-import { getDb } from "../../../../server/db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   locations,
@@ -10,7 +10,7 @@ import {
   memberships,
   ownerProfiles,
   subscriptions,
-} from "../../../../server/schema";
+} from "@mi-pasaporte/db/schema";
 import {
   isSupportedCountryCode,
   verifyLocation,

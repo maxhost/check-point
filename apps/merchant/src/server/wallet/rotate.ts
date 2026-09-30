@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { generateOpaqueToken } from "../consumer/core";
 
 /**

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { campaigns } from "../schema";
+import { campaigns } from "@mi-pasaporte/db/schema";
 
 /** Same helper as `locations/shared.ts`: a body that is not an object is an empty one,
  * so every field reports its own `validation` error instead of the whole request

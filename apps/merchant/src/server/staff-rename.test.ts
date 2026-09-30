@@ -26,7 +26,7 @@ let sets: Array<Record<string, unknown>> = [];
 /** Lo que el `returning` del `UPDATE` TIRA en vez de resolver: la carrera del unico. */
 let updateError: unknown = null;
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "insert", "update", "delete"]) {
     chain[m] = () => chain;

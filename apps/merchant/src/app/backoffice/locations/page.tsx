@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { requireBackofficeSession } from "../../../server/auth-guards";
-import { getDb } from "../../../server/db";
-import { businesses, subscriptions } from "../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, subscriptions } from "@mi-pasaporte/db/schema";
 import {
   effectiveLocationLimit,
   listLocations,

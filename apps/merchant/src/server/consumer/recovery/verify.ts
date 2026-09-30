@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
-import { withDbTransaction } from "../../db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import { generateOpaqueToken, hashToken } from "../core";
-import { consumerAccounts, otpChallenges } from "../../schema";
+import { consumerAccounts, otpChallenges } from "@mi-pasaporte/db/schema";
 import {
   decideOtpVerification,
   otpContext,

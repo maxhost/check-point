@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb, withDbTransaction } from "../db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { isUuid } from "../counter/core";
 import { CampaignError } from "./campaign-store";
 import { type Db, rowsOf } from "./cross-store";

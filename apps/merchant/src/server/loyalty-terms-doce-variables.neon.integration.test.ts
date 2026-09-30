@@ -7,8 +7,8 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { businesses, locations, termsTemplates } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, locations, termsTemplates } from "@mi-pasaporte/db/schema";
 import type { ProgramInput } from "./loyalty-program/core";
 import { renderedTerms } from "./loyalty-program/terms";
 

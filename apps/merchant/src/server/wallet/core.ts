@@ -1,7 +1,7 @@
 import { toString as qrToStringCb } from "qrcode";
 import { and, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts, walletPasses } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts, walletPasses } from "@mi-pasaporte/db/schema";
 import {
   type ConsumerAccountRow,
   generateOpaqueToken,

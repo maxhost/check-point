@@ -14,14 +14,14 @@
  */
 
 import { eq, sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaignTurns,
   campaigns,
   consumerAccounts,
   passPlacements,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { couponToIssue } from "./coupon-issue";
 import type { MeritTable } from "./merit";
 import {

@@ -8,8 +8,8 @@ import {
   permisosIntegrationEnabled,
   seedOwnerDeNegocio,
 } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import { POST as CREATE_STAFF } from "../app/api/staff/route";
 import { PATCH as RENAME } from "../app/api/staff/[userId]/route";
 import { POST as SET_STATUS } from "../app/api/staff/[userId]/status/route";

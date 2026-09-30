@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { getDb } from "../../../../../../server/db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   memberships,
   sessions,
   staffPinLockouts,
   users,
-} from "../../../../../../server/schema";
+} from "@mi-pasaporte/db/schema";
 import { generatePin, hashPin } from "../../../../../../server/staff-pin";
 import {
   assertTargetNotAdministrator,

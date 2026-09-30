@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { type SeedCoupon, couponColumns } from "./marketing-coupon-support";
 import {
   campaignLocations,
@@ -10,7 +10,7 @@ import {
   orders,
   programMemberships,
   walletPasses,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 
 /**
  * Seeds for the marketing tick suites (spec 0065 phase A5), kept out of the test files

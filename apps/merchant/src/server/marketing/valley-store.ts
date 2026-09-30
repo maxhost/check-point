@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { campaigns } from "../schema";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import { type Db, rowsOf } from "./cross-store";
 import {
   type DayHours,

@@ -11,8 +11,8 @@ import {
   seedWalletPass,
 } from "./marketing-integration-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { getDb } from "./db";
-import { campaignTurns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignTurns } from "@mi-pasaporte/db/schema";
 import { runMarketingTick } from "./marketing/tick";
 import { enableTemplate } from "./marketing/template-store";
 import type { TemplateKey } from "./marketing/templates";

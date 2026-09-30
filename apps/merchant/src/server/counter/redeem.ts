@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { loyaltyRewards } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { loyaltyRewards } from "@mi-pasaporte/db/schema";
 import { dispatchGranted } from "../wallet/push";
 import {
   CounterError,

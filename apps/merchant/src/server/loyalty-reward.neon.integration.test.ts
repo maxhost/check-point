@@ -8,7 +8,7 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyProgramEvents,
@@ -17,7 +17,7 @@ import {
   memberships,
   products,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { sql } from "drizzle-orm";
 import { LoyaltyError, programForOwner, saveProgram } from "./loyalty-program";
 

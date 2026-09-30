@@ -1,8 +1,8 @@
 import type Stripe from "stripe";
 import { eq, sql } from "drizzle-orm";
 
-import type { DbTransaction } from "../db";
-import { subscriptions } from "../schema";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { subscriptions } from "@mi-pasaporte/db/schema";
 import { pauseCampaignsForDowngrade } from "../marketing/plan-brake";
 import type { planFromSubscription, SubscriptionRow } from "./derive";
 

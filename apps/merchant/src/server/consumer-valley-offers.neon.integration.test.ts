@@ -24,8 +24,8 @@ import {
   valleyCampaign,
   valleyOffersOf,
 } from "./consumer-valley-support";
-import { getDb } from "./db";
-import { campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0113 C1 (H4) — the valley offers in «Mis beneficios» against a real base, with an

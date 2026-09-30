@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { requireDate, toDate } from "../marketing/driver-values";
 import type { CouponKind, DiscountUnit } from "../marketing/reward-input";
 import {

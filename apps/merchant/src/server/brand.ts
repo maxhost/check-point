@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { getDb } from "./db";
-import { brandAssetUploads, businesses, memberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  brandAssetUploads,
+  businesses,
+  memberships,
+} from "@mi-pasaporte/db/schema";
 import {
   deleteObjectKeys,
   getPrivateObject,

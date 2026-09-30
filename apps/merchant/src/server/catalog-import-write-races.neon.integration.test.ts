@@ -20,9 +20,9 @@ vi.mock("./r2", async () => {
 
 const { writeImportedCatalog, insertOrReuseCategory } =
   await import("./catalog-import/write");
-const { getDb, withDbTransaction } = await import("./db");
+const { getDb, withDbTransaction } = await import("@mi-pasaporte/db");
 const { catalogImports, productCategories, products } =
-  await import("./schema");
+  await import("@mi-pasaporte/db/schema");
 
 /**
  * Spec 0091 §6 — LAS CARRERAS DEL WRITER, que **solo** existen contra Postgres: el

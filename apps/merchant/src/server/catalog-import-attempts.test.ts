@@ -27,7 +27,7 @@ const estado = {
   submits: 0,
 };
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const nuevaCadena = () => {
     const cadena: Record<string, unknown> = {};
     for (const metodo of [

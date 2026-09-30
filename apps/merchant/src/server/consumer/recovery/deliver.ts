@@ -1,6 +1,6 @@
 import { and, eq, gt, sql } from "drizzle-orm";
-import { withDbTransaction } from "../../db";
-import { otpChallenges, otpDeliveries } from "../../schema";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { otpChallenges, otpDeliveries } from "@mi-pasaporte/db/schema";
 import {
   decryptOtp,
   encryptOtp,

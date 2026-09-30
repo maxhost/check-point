@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import type { DbTransaction, getDb } from "../db";
-import { campaigns } from "../schema";
+import type { DbTransaction, getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import type { CouponReward } from "./coupon-issue";
 import type { CrossAudience, GeoPoint } from "./cross-rules";
 import { campaignsAllowedFor } from "./plan-gate";

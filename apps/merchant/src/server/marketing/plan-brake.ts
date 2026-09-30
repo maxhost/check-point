@@ -1,6 +1,6 @@
 import { and, count, eq } from "drizzle-orm";
-import type { DbTransaction } from "../db";
-import { campaigns } from "../schema";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0065, fase D — LO QUE BILLING NECESITA SABER DE LAS CAMPAÑAS.

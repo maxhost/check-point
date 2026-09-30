@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImports } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImports } from "@mi-pasaporte/db/schema";
 import type { CatalogExtractionProvider } from "./types";
 import { catalogExtractionProviderFromEnv } from "./providers/provider";
 import { ANALYZE_LEASE_MS, MAX_ATTEMPTS } from "./prepare";

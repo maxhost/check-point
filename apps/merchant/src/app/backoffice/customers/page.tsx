@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { requireBackofficeSession } from "../../../server/auth-guards";
-import { getDb } from "../../../server/db";
-import { businesses } from "../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses } from "@mi-pasaporte/db/schema";
 import { CustomersPage } from "./customers-page";
 
 export const dynamic = "force-dynamic";

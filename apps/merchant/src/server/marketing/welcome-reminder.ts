@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { type DbTransaction, getDb } from "../db";
+import { type DbTransaction, getDb } from "@mi-pasaporte/db";
 import { requireDate } from "./driver-values";
 import type { CampaignGate, PushCancelReason } from "./push-delivery";
 import { isInPushWindow, nextSendableAt } from "./push-window";

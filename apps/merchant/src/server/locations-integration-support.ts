@@ -6,8 +6,12 @@ import {
   seedBusiness,
   type Seed,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { locations, locationVerifications, subscriptions } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  locations,
+  locationVerifications,
+  subscriptions,
+} from "@mi-pasaporte/db/schema";
 
 export { integrationEnabled };
 

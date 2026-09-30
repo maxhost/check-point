@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImportFiles, catalogImports } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImportFiles, catalogImports } from "@mi-pasaporte/db/schema";
 import { catalogImportObjectKey } from "../r2";
 import { isUniqueViolation } from "../catalog/categories";
 import {
   CATALOG_IMPORT_OPEN_STATUSES,
   type CatalogImportStatus,
-} from "../schema/catalog-import";
+} from "@mi-pasaporte/db/schema/catalog-import";
 import {
   CatalogImportError,
   type CatalogImportDTO,

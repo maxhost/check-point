@@ -11,8 +11,8 @@
  */
 
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
-import { locations, loyaltyRewards } from "../schema";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { locations, loyaltyRewards } from "@mi-pasaporte/db/schema";
 import { toLatLng } from "../wallet/pass-locations";
 import { attributableLocation } from "./audience";
 import { requireDate, toDate } from "./driver-values";

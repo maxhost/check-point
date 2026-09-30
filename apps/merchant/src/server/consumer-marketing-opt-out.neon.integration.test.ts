@@ -5,8 +5,8 @@ import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { programMemberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
 import { SESSION_COOKIE } from "./consumer/core";
 import { issueSession } from "./consumer/session";
 import { readPlacement, readTurns } from "./marketing-read-support";

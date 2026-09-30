@@ -1,6 +1,10 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses, loyaltyPrograms, memberships } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  loyaltyPrograms,
+  memberships,
+} from "@mi-pasaporte/db/schema";
 import { loadProgramRewards, updateWithEvent } from "./persistence";
 
 /**

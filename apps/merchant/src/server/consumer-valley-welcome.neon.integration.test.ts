@@ -17,8 +17,12 @@ import {
   valleyBusiness,
   valleyCampaign,
 } from "./consumer-valley-support";
-import { getDb, withDbTransaction } from "./db";
-import { campaignCoupons, campaigns, walletPasses } from "./schema";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import {
+  campaignCoupons,
+  campaigns,
+  walletPasses,
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { sweepWelcomeGifts } from "./marketing/welcome-issue";
 

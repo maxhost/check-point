@@ -3,7 +3,7 @@ import {
   CATALOG_IMPORT_OPEN_STATUSES,
   CATALOG_IMPORT_STATUSES,
   CATALOG_IMPORT_TERMINAL_STATUSES,
-} from "./schema/catalog-import";
+} from "@mi-pasaporte/db/schema/catalog-import";
 
 /**
  * Spec 0090 §1 — LA MAQUINA DE ESTADOS, medida por COMPORTAMIENTO y no por una copia de la
@@ -26,7 +26,7 @@ const estado = {
  * El doble **evalua el `where`** (`catalog-import-predicado.ts`). Antes lo descartaba, y esa
  * era la razon por la que «un import de OTRO negocio da 404» pasaba con y sin el filtro.
  */
-vi.mock("./db", async () => {
+vi.mock("@mi-pasaporte/db", async () => {
   const { dbDobleHonesto } = await import("./catalog-import-predicado");
   return dbDobleHonesto(estado);
 });

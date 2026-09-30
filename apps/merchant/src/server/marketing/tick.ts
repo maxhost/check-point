@@ -21,7 +21,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { withDbTransaction, type DbTransaction } from "../db";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
   type AudienceCandidate,
   type Eligibility,

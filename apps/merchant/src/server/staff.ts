@@ -1,7 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { businesses, memberships, sessions, users } from "./schema";
-import { normalizePermissions } from "./permissions-catalog";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  memberships,
+  sessions,
+  users,
+} from "@mi-pasaporte/db/schema";
+import { normalizePermissions } from "@mi-pasaporte/db/permissions-catalog";
 import { StaffError } from "./staff-error";
 import { assertTargetNotAdministrator } from "./staff-admin-target";
 

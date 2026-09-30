@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../server/auth";
 import { businessStatusFailure } from "../../../server/api-owner";
-import { hasScope } from "../../../server/permissions-catalog";
+import { hasScope } from "@mi-pasaporte/db/permissions-catalog";
 import {
   CounterError,
   type OperatorBusiness,

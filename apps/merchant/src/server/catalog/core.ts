@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses, memberships } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships } from "@mi-pasaporte/db/schema";
 import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
 
 /**

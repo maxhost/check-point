@@ -8,8 +8,8 @@ import {
   seedReward,
   setBalance,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { rewardRedemptions, walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { rewardRedemptions, walletPushQueue } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 
 /**

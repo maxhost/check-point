@@ -4,8 +4,8 @@ import { integrationEnabled } from "./counter-integration-support";
 import { POST as register } from "../app/api/public/wallet/passkit/v1/devices/[deviceLibraryId]/registrations/[passTypeId]/[serialNumber]/route";
 import { POST as enrollRoute } from "../app/api/public/enroll/[programId]/route";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { consumerAccounts } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts } from "@mi-pasaporte/db/schema";
 import { seedLocationsBusiness } from "./locations-integration-support";
 import {
   DAY,

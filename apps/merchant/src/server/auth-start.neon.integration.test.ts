@@ -16,8 +16,8 @@ const enabled =
 // getDb() lee DATABASE_URL de forma perezosa; apuntarlo a la rama aislada.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { authStartAttempts, sessions, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { authStartAttempts, sessions, users } from "@mi-pasaporte/db/schema";
 import { getMerchantAuth } from "./auth";
 import { START_RATE_LIMITS } from "./auth-start";
 import { POST as START } from "../app/api/merchant/auth/start/route";

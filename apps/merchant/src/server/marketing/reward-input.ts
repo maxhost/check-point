@@ -1,4 +1,4 @@
-import { COUPON_KIND_VALUES } from "../schema/reward-checks";
+import { COUPON_KIND_VALUES } from "@mi-pasaporte/db/schema/reward-checks";
 
 /**
  * THE REWARD OF A CAMPAIGN, as ONE decision (spec 0106 / ADR 0098). PURE. Shared by the

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { programMemberships } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0065, fase D — EL OPT-OUT DE PROMOCIONES, escrito por el consumidor y por nadie más.

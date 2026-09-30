@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { CampaignError } from "./campaign-error";
 import type { CouponKind } from "./reward-input";
 

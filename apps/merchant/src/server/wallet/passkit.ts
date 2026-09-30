@@ -1,7 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts, walletPasses, walletPushDevices } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  consumerAccounts,
+  walletPasses,
+  walletPushDevices,
+} from "@mi-pasaporte/db/schema";
 import { hashToken } from "../consumer/core";
 
 /** neon-http returns `{ rows }`; normalize to an array of records. */

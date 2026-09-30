@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { PUSH_CONVERSION_DAYS, type PushFacts } from "./results";
 
 /**

@@ -1,12 +1,12 @@
 import { asc, eq } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   campaignTurns,
   consumerAccounts,
   locations,
   passPlacements,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { buildObjectPatch } from "./google-object";
 import {
   type PassLocation,

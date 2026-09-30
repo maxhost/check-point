@@ -1,6 +1,10 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
-import { campaignLocations, campaigns, locations } from "../schema";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaigns,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import { transitionCampaign } from "./campaign-actions";
 import { type Campaign, CampaignError, getCampaign } from "./campaign-store";
 import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";

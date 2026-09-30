@@ -17,8 +17,11 @@ import {
   seedWebPush,
 } from "./marketing-push-support";
 import { dropCampaigns, readTurns } from "./marketing-read-support";
-import { getDb } from "./db";
-import { campaignLocations, campaignTickAudiences } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaignTickAudiences,
+} from "@mi-pasaporte/db/schema";
 import { type TickSummary, runMarketingTick } from "./marketing/tick";
 
 /**

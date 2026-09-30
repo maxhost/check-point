@@ -16,8 +16,8 @@
  */
 
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { withDbTransaction } from "../db";
-import { locations } from "../schema";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 import {
   decideTurnEligibility,
   summarizeAudience,

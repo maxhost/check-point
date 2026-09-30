@@ -1,6 +1,6 @@
 import { asc, eq, inArray, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { loyaltyRewards, products } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { loyaltyRewards, products } from "@mi-pasaporte/db/schema";
 import type { EventAction, RewardInput } from "./core";
 
 export type Db = ReturnType<typeof getDb>;

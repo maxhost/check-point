@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { withDbTransaction, type DbTransaction } from "../../db";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import { hashToken, SESSION_TTL_DAYS } from "../core";
 import { OtpError, OtpProviderError, type OtpChannel } from "../../otp/core";
 import { rotatePassCredentials } from "../../wallet/rotate";

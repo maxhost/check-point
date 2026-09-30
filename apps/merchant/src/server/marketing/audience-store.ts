@@ -18,14 +18,14 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   campaignLocations,
   campaignTickAudiences,
   campaignTurns,
   campaigns,
   locations,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import type { AudienceCandidate, AudienceCounts } from "./audience";
 import { requireDate, toDate } from "./driver-values";
 import { templateByKey } from "./templates";

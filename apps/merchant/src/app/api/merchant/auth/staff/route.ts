@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { getDb } from "../../../../../server/db";
-import { businesses, memberships, users } from "../../../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../../server/merchant-session";
 import { staffError } from "../../../staff/_auth";
 import { businessStatusFailure } from "../../../../../server/api-owner";

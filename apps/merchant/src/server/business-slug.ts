@@ -1,6 +1,6 @@
 import { eq, like } from "drizzle-orm";
-import { getDb } from "./db";
-import { businesses } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses } from "@mi-pasaporte/db/schema";
 import { RESERVED_SLUGS, isValidSlug, nextSuggestion, slugify } from "./slug";
 
 /**

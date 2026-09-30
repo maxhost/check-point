@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   campaignCoupons,
@@ -8,7 +8,7 @@ import {
   couponRedemptions,
   programMemberships,
   walletPushQueue,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { buildCouponBody } from "../wallet/push";
 import { CounterError } from "./core";
 import { decideCouponRedemption } from "./coupon-decision";

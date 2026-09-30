@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { and, asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../../server/auth";
-import { getDb } from "../../../../../server/db";
-import {
-  businesses,
-  memberships,
-  sessions,
-} from "../../../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
 
 export const dynamic = "force-dynamic";
 

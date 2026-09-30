@@ -148,7 +148,7 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   `lint`, `test`, `format:check`, `build` son scripts de
   **root** (`pnpm run <script>`), NO del paquete — `pnpm --filter @mi-pasaporte/merchant lint`
   tira `None of the selected packages has a "lint" script`. El paquete merchant solo define
-  `typecheck` (y `db:migrate`); para unit de un archivo suelto: `pnpm --filter
+  `typecheck` (`db:migrate`/`db:generate` viven en `@mi-pasaporte/db` desde la spec 0115); para unit de un archivo suelto: `pnpm --filter
   @mi-pasaporte/merchant exec vitest run <path>`. El Stop hook (`.claude/hooks/verify.sh`) corre
   typecheck+lint+test de root (no prettier ni build).
 
@@ -240,7 +240,7 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   deploy: aparecen cuando un usuario los toca.** Verificar el estado de la base **para el codigo
   que se acaba de desplegar**, corriendo **la consulta exacta que hace el codigo**, no una parecida.
 - **Migracion a prod (Neon):** `DATABASE_URL_UNPOOLED='<conn de la rama default, host SIN
-  -pooler>' pnpm --filter @mi-pasaporte/merchant db:migrate`. La connection string se saca con
+  -pooler>' pnpm --filter @mi-pasaporte/db db:migrate` (desde la spec 0115 las migraciones viven en `packages/db/drizzle`). La connection string se saca con
   `mcp__neon__get_connection_string` — **viene con el host POOLED: hay que sacarle el `-pooler`
   a mano** — y **queda en el transcript: avisarle al owner que rote la password despues**. `drizzle-kit migrate` aplica
   solo las pendientes (lleva su propia tabla `drizzle.__drizzle_migrations`). Verificar

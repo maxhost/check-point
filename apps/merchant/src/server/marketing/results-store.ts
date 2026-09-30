@@ -12,7 +12,7 @@
  */
 
 import { and, desc, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { boughtList } from "./campaign-values";
 import {
   campaignTickAudiences,
@@ -20,7 +20,7 @@ import {
   couponRedemptions,
   passPlacements,
   programMemberships,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { loadPushFacts } from "./push-results-store";
 import type { CouponKind } from "./reward-input";
 import {

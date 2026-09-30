@@ -1,5 +1,5 @@
 import { type SQL, sql } from "drizzle-orm";
-import { type DbTransaction, getDb } from "../db";
+import { type DbTransaction, getDb } from "@mi-pasaporte/db";
 import { rowsOf } from "../counter/core";
 import { requireDate } from "../marketing/driver-values";
 

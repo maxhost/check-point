@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { integrationEnabled } from "./customers-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { rowsOf } from "./counter/core";
 
 /**

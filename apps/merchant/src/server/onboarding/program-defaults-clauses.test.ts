@@ -34,8 +34,8 @@ vi.mock("../loyalty-program/owner", async (importOriginal) => ({
   ownerBusiness: world.ownerBusiness,
 }));
 
-vi.mock("../db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../db")>()),
+vi.mock("@mi-pasaporte/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
   getDb: world.getDb,
 }));
 

@@ -199,8 +199,8 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
 
   it("con `cancel_requested_at` cierra en `cancelled` y descarta el resultado", async () => {
     const id = await analizando();
-    const { getDb } = await import("./db");
-    const { catalogImports } = await import("./schema");
+    const { getDb } = await import("@mi-pasaporte/db");
+    const { catalogImports } = await import("@mi-pasaporte/db/schema");
     const { eq } = await import("drizzle-orm");
     await getDb()
       .update(catalogImports)

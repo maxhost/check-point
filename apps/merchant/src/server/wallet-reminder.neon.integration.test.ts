@@ -11,13 +11,13 @@ import {
   newCouponCard,
   seedCouponWorld,
 } from "./counter-coupon-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   orders,
   walletPasses,
   walletPushQueue,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { persistGrant } from "./counter/orders";
 import { ensureWalletPass } from "./wallet/core";
 import { FakePushChannel } from "./wallet/push-channel";

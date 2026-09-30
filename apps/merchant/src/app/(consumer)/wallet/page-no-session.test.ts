@@ -23,8 +23,8 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
 }));
 
-vi.mock("../../../server/db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../../server/db")>()),
+vi.mock("@mi-pasaporte/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
   getDb: () => {
     throw new Error("la página sin sesión no puede tocar la base");
   },

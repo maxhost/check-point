@@ -19,8 +19,8 @@ import {
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0065 phase C — the coupon at the counter, against Neon.

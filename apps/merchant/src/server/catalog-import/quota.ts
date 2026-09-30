@@ -1,6 +1,6 @@
 import { and, count, eq, gte, isNotNull, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImports, subscriptions } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImports, subscriptions } from "@mi-pasaporte/db/schema";
 import {
   limitOf,
   retryAfterSeconds,

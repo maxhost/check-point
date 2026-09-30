@@ -7,8 +7,8 @@ import {
   seedExtraLocation,
   seedLocationsBusiness,
 } from "./locations-integration-support";
-import { getDb } from "./db";
-import { locations } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 
 /** The session the two pages under test run with. Filled by `beforeAll` with the seeded
  * business; the guard itself (ADR 0044) has its own tests and is not re-tested here. */

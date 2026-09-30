@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses, locations, memberships } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, locations, memberships } from "@mi-pasaporte/db/schema";
 import type { AccrualInput } from "../loyalty-program/core";
 
 /** Typed domain error: HTTP status + stable machine `code` + user message. */

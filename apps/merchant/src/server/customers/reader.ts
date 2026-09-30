@@ -1,5 +1,5 @@
 import { type SQL, sql } from "drizzle-orm";
-import { type DbTransaction, withDbTransaction } from "../db";
+import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
 import { rowsOf } from "../counter/core";
 
 export type CustomerReader = {

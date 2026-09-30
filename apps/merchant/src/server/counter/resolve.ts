@@ -1,12 +1,12 @@
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   loyaltyPrograms,
   productCategories,
   products,
   programMemberships,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import {
   CounterError,
   type OperatorBusiness,

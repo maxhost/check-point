@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { campaignCoupons, couponRedemptions } from "./schema";
-import { getDb } from "./db";
+import { campaignCoupons, couponRedemptions } from "@mi-pasaporte/db/schema";
+import { getDb } from "@mi-pasaporte/db";
 import type { CouponKind, DiscountUnit } from "./marketing/reward-input";
 
 /**

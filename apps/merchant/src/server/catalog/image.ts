@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { productAssetUploads, products } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { productAssetUploads, products } from "@mi-pasaporte/db/schema";
 import {
   AssetImageError,
   MAX_INPUT_PIXELS_CROPPED,

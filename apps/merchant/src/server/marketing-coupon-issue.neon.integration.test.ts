@@ -13,14 +13,14 @@ import {
 } from "./marketing-world-support";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaignTurns,
   campaigns,
   couponRedemptions,
   products,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import type { TickSummary } from "./marketing/tick";
 
 /**

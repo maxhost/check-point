@@ -8,8 +8,8 @@ import {
   newCouponCard,
   seedCouponWorld,
 } from "./counter-coupon-support";
-import { getDb } from "./db";
-import { couponRedemptions, products } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { couponRedemptions, products } from "@mi-pasaporte/db/schema";
 import { loadRewardResults } from "./marketing/reward-results";
 import type { CouponKind } from "./marketing/reward-input";
 

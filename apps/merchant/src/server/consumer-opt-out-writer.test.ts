@@ -25,10 +25,12 @@ import { describe, expect, it } from "vitest";
  */
 
 const ROOT = join(import.meta.dirname, "..");
+/** El esquema vive en `packages/db` desde la spec 0115 (ADR 0107): el barrido lo sigue mirando. */
+const DB_ROOT = join(ROOT, "..", "..", "..", "packages", "db", "src");
 /** El único escritor permitido, relativo a `apps/merchant/src`. */
 const WRITER = join("server", "consumer", "marketing-opt-out.ts");
 /** El schema DECLARA la columna (y la migración la crea); no la escribe. */
-const SCHEMA = join("server", "schema", "consumer.ts");
+const SCHEMA = relative(ROOT, join(DB_ROOT, "schema", "consumer.ts"));
 
 /** Todo el árbol de producción: los tests y sus supports quedan afuera, y eso se declara —
  * los seeds de integración escriben la marca por SQL a propósito, para construir estados que
@@ -55,7 +57,7 @@ const WRITE = /\.(set|values)\(\s*\{[\s\S]{0,400}?marketingOptOutAt/;
 const RAW_WRITE = /marketing_opt_out_at\s*=/;
 
 describe("quién escribe `marketing_opt_out_at` (spec 0065, fase D)", () => {
-  const files = productionFiles(ROOT);
+  const files = [...productionFiles(ROOT), ...productionFiles(DB_ROOT)];
 
   it("el barrido mira el árbol entero, no tres archivos", () => {
     // PISO: un barrido que se quedó sin archivos —un `readdirSync` sobre la carpeta

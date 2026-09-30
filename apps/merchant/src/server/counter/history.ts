@@ -1,6 +1,11 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts, orders, rewardRedemptions, users } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  consumerAccounts,
+  orders,
+  rewardRedemptions,
+  users,
+} from "@mi-pasaporte/db/schema";
 
 /**
  * One row of the counter's day history (spec 0030, extended by spec 0055). No qr_token

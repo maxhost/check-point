@@ -10,8 +10,8 @@ import {
   type Seed,
 } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import { POST as CREATE_CATEGORY } from "../app/api/catalog/category/route";
 import {
   DELETE as DELETE_CATEGORY,

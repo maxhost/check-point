@@ -1,6 +1,6 @@
 import { and, eq, gte, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { enrollAttempts } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { enrollAttempts } from "@mi-pasaporte/db/schema";
 import { ConsumerError } from "./core";
 
 /** Max enroll attempts allowed per phone within the window before the next one is blocked. */

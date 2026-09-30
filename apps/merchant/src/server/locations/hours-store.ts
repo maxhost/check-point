@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
-import { locationHours, locations } from "../schema";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { locationHours, locations } from "@mi-pasaporte/db/schema";
 import { LocationError } from "./core";
 import { type DayHours, parseHours } from "./hours-input";
 import { parseLocationId } from "./shared";

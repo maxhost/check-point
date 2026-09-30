@@ -22,7 +22,7 @@ const objetivo: { role: string; permissions: string[] } = {
   permissions: ["staff", "catalog"],
 };
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "update", "set"]) {
     chain[m] = () => chain;

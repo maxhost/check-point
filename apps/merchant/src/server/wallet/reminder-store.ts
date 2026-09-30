@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   DEFAULT_REMINDER_TIMEZONE,
   type OpenCoupon,

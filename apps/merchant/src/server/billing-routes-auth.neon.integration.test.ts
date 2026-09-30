@@ -24,8 +24,8 @@ import {
 } from "./billing-webhook-support";
 import { dropBusiness, type Seed } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
-import { getDb } from "./db";
-import { businesses, memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { setStaffStatus } from "./staff";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";

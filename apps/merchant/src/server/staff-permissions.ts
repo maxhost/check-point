@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import {
   isPermission,
   normalizePermissions,
   PERMISSIONS,
-} from "./permissions-catalog";
+} from "@mi-pasaporte/db/permissions-catalog";
 import { type StaffDTO, StaffError, toStaffDTO } from "./staff";
 
 /**

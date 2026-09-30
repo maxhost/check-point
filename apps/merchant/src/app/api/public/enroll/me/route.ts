@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
-import { getDb } from "../../../../../server/db";
-import { programMemberships } from "../../../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
 import {
   SESSION_COOKIE,
   consumerAccountResponse,

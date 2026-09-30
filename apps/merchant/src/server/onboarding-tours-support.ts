@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
-import { getDb } from "./db";
-import { businesses, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, users } from "@mi-pasaporte/db/schema";
 import type { GrantSeed } from "./onboarding-grant-support";
 import { POST } from "../app/api/onboarding/tours/[tourId]/route";
 

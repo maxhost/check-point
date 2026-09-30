@@ -4,8 +4,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedConsumer } from "./counter-integration-support";
 import { seedMembership } from "./marketing-integration-support";
-import { getDb } from "./db";
-import { businesses, orders, valleyDetections } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, orders, valleyDetections } from "@mi-pasaporte/db/schema";
 import { runMarketingTick } from "./marketing/tick";
 import {
   clearMerchantWindows,

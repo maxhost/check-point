@@ -12,13 +12,13 @@ import {
   dropCrossWorlds,
   north,
 } from "./consumer-cross-support";
-import { getDb, withDbTransaction } from "./db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaigns,
   couponRedemptions,
   walletPasses,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
 import { sweepWelcomeGifts } from "./marketing/welcome-issue";

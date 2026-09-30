@@ -2,8 +2,8 @@ import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedConsumer } from "./counter-integration-support";
-import { getDb } from "./db";
-import { campaignCoupons, campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignCoupons, campaigns } from "@mi-pasaporte/db/schema";
 import { enableTemplate, listTemplates } from "./marketing/template-store";
 import { getCampaign } from "./marketing/campaign-store";
 import {

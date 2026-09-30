@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImports } from "../schema";
-import { CATALOG_IMPORT_OPEN_STATUSES } from "../schema/catalog-import";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImports } from "@mi-pasaporte/db/schema";
+import { CATALOG_IMPORT_OPEN_STATUSES } from "@mi-pasaporte/db/schema/catalog-import";
 import { CatalogError } from "./core";
 
 /**

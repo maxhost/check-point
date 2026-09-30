@@ -17,13 +17,13 @@ import {
   or,
 } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   campaignPushes,
   campaigns,
   walletPushQueue,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { requireDate, toDate } from "./driver-values";
 import type { PushCandidate } from "./push-audience";
 import { pushBody } from "./push-text";

@@ -11,8 +11,12 @@ import {
   integrationEnabled,
   seedBusiness,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { memberships, sessions, staffPinLockouts } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  memberships,
+  sessions,
+  staffPinLockouts,
+} from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
 import { POST as LOGIN } from "../app/api/merchant/auth/staff/route";

@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { requireBackofficeSession } from "../../../server/auth-guards";
-import { getDb } from "../../../server/db";
-import { locations } from "../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 import { listTodaysAccreditations } from "../../../server/counter";
 import { CounterConsole } from "./counter-console";
 

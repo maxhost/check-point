@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
-import { withDbTransaction, type DbTransaction } from "../db";
-import { locations, locationVerifications } from "../schema";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
+import { locations, locationVerifications } from "@mi-pasaporte/db/schema";
 import {
   LocationError,
   parseLocationName,

@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts } from "@mi-pasaporte/db/schema";
 import {
   type PushChannel,
   type PushMessage,

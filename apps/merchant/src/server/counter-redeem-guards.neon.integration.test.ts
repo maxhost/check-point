@@ -21,8 +21,8 @@ import {
   redeemBody,
   seedRedeemWorld,
 } from "./counter-redeem-support";
-import { getDb } from "./db";
-import { loyaltyPrograms, loyaltyRewards } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { loyaltyPrograms, loyaltyRewards } from "@mi-pasaporte/db/schema";
 import { operatorBusiness } from "./counter/core";
 import { redeemReward } from "./counter/redeem";
 import { saveProgram } from "./loyalty-program";

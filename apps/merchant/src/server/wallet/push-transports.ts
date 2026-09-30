@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { walletPasses, walletPushDevices } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { walletPasses, walletPushDevices } from "@mi-pasaporte/db/schema";
 import {
   ApnsGoneError,
   type PushChannel,

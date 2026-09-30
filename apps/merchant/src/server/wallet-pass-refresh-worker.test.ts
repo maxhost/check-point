@@ -18,7 +18,7 @@ const selectResponses: unknown[][] = [];
 const claimResponses: Record<string, unknown>[][] = [];
 const queueUpdates: Record<string, unknown>[] = [];
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   // Renders a drizzle `sql` template to text so the CLAIM statement can be told apart
   // from the ones `deliverClaimed` runs afterwards (a chunk can be a raw `null`, so it
   // is guarded: a throw in here would be swallowed and look like a delivery failure).

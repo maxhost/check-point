@@ -10,8 +10,8 @@ import {
   type Seed,
 } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { businesses, memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { ownerBusiness, saveBrand } from "./brand";
 import { GET as BRAND_GET, PUT as BRAND_PUT } from "../app/api/brand/route";
 import { POST as LOGO_UPLOAD } from "../app/api/brand/logo-upload/route";

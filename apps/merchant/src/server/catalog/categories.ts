@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { productCategories } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { productCategories } from "@mi-pasaporte/db/schema";
 import { CatalogError, type OwnerBusiness, uuidPattern } from "./core";
 import { assertNoOpenImport } from "./import-guard";
 import { validateCategoryName } from "./validation";

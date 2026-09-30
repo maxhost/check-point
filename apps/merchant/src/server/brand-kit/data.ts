@@ -1,6 +1,10 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses, locations, loyaltyPrograms } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  locations,
+  loyaltyPrograms,
+} from "@mi-pasaporte/db/schema";
 import { enrollUrl } from "./enroll-url";
 import { renderEnrollQr } from "./qr";
 

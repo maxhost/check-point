@@ -34,7 +34,7 @@ function sqlText(query: unknown): string {
     .trim();
 }
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const thenable = (rows: unknown[]) => {
     const chain: Record<string, unknown> = {};
     for (const m of [

@@ -9,7 +9,7 @@
  */
 
 import { and, eq, inArray, sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   businesses,
   campaignTurns,
@@ -17,7 +17,7 @@ import {
   consumerAccounts,
   locations,
   passPlacements,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { toLatLng } from "../wallet/pass-locations";
 import type { ActiveTurn, PlacedSlot, QueuedTurn } from "./placement-plan";
 import type { CouponKind, DiscountUnit } from "./reward-input";

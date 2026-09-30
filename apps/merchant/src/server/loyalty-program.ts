@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { businessStatusFailure } from "./business-status";
 import {
   loyaltyProgramEvents,
   loyaltyPrograms,
   loyaltyRewards,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { type CloseInput, LoyaltyError } from "./loyalty-program/core";
 import { validateProgramInput } from "./loyalty-program/validation";
 import { resolveRewards } from "./loyalty-program/rewards";

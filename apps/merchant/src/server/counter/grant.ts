@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { products, programMemberships } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { products, programMemberships } from "@mi-pasaporte/db/schema";
 import { computeAccrual } from "../loyalty-program/accrual";
 import type { AccrualInput } from "../loyalty-program/core";
 import {

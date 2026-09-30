@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { type SeedCoupon, couponColumns } from "./marketing-coupon-support";
 import {
   campaignPushes,
@@ -9,7 +9,7 @@ import {
   walletPasses,
   walletPushQueue,
   webPushSubscriptions,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import type { TemplateKey } from "./marketing/templates";
 
 /**

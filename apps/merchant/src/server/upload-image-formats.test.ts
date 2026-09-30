@@ -27,7 +27,7 @@ function selectChain(rows: unknown[]) {
   };
   return chain;
 }
-vi.mock("./db", () => ({
+vi.mock("@mi-pasaporte/db", () => ({
   getDb: () => ({
     select: () => selectChain([OWNER_BUSINESS]),
     insert: () => ({ values: async () => undefined }),

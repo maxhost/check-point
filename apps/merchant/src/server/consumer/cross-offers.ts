@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { rewardSnapshot } from "../marketing/coupon-issue";
 import {
   type CrossOfferFacts,

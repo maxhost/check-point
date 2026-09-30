@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { getDb } from "./db";
-import { walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { walletPushQueue } from "@mi-pasaporte/db/schema";
 import { gateCampaignPush } from "./marketing/push-delivery";
 import { runMarketingTick } from "./marketing/tick";
 import { issueWelcomeGifts } from "./marketing/welcome-issue";

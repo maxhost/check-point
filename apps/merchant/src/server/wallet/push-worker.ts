@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts, walletPushQueue } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts, walletPushQueue } from "@mi-pasaporte/db/schema";
 import { type PushChannel } from "./push-channel";
 import { type WebPushChannel } from "../push/webpush-channel";
 import {

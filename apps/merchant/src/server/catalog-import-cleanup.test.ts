@@ -23,7 +23,7 @@ const r2 = {
   falla: false,
 };
 
-vi.mock("./db", async () => {
+vi.mock("@mi-pasaporte/db", async () => {
   const { dbDobleHonesto } = await import("./catalog-import-predicado");
   return dbDobleHonesto(estado);
 });

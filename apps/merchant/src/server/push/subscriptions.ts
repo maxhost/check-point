@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { webPushSubscriptions } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { webPushSubscriptions } from "@mi-pasaporte/db/schema";
 import {
   type WebPushChannel,
   type WebPushPayload,

@@ -13,8 +13,8 @@ import {
   seedExtraLocation,
   seedLocationsBusiness,
 } from "./locations-integration-support";
-import { getDb } from "./db";
-import { orders, rewardRedemptions } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { orders, rewardRedemptions } from "@mi-pasaporte/db/schema";
 import { setLocationStatus } from "./locations";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";

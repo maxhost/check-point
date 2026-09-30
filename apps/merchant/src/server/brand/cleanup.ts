@@ -1,6 +1,6 @@
 import { asc, eq, lt } from "drizzle-orm";
-import { getDb } from "../db";
-import { brandAssetCleanups, brandAssetUploads } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { brandAssetCleanups, brandAssetUploads } from "@mi-pasaporte/db/schema";
 import { deleteLogoPrefix, deleteObjectKeys } from "../r2";
 
 export async function enqueueCleanup(businessId: string, objectPrefix: string) {

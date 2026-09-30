@@ -1,12 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { insertMembershipWithProjection } from "../customers/projection";
 import {
   businesses,
   consumerAccounts,
   locations,
   loyaltyPrograms,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import {
   type ConsumerAccountRow,
   ConsumerError,

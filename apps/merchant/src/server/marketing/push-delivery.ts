@@ -10,7 +10,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { getDb, withDbTransaction } from "../db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { type CouponReward, pushCouponToIssue } from "./coupon-issue";
 import { toDate } from "./driver-values";
 import { isInPushWindow, nextSendableAt } from "./push-window";

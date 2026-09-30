@@ -21,8 +21,8 @@ import {
 } from "./marketing-read-support";
 import { enqueue, queueRow } from "./wallet-push-integration-support";
 import { runMarketingTick } from "./marketing/tick";
-import { getDb } from "./db";
-import { passPlacements, walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { passPlacements, walletPushQueue } from "@mi-pasaporte/db/schema";
 import { ensureWalletPass } from "./wallet/core";
 import { listUpdatedSerials, registerDevice } from "./wallet/passkit";
 import { FakePushChannel } from "./wallet/push-channel";

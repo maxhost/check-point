@@ -22,7 +22,7 @@ const estado = {
   sets: [] as Record<string, unknown>[],
 };
 
-vi.mock("./db", async () => {
+vi.mock("@mi-pasaporte/db", async () => {
   const { dbDobleHonesto } = await import("./catalog-import-predicado");
   return dbDobleHonesto(estado);
 });

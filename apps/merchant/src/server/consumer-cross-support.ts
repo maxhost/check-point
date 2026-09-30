@@ -9,8 +9,13 @@ import {
 import { seedLocationsBusiness } from "./locations-integration-support";
 import { seedMembership, seedOrder } from "./marketing-integration-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { getDb } from "./db";
-import { businesses, campaignCoupons, campaigns, locations } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  campaignCoupons,
+  campaigns,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import { SESSION_COOKIE } from "./consumer/core";
 import { issueSession } from "./consumer/session";
 import { type GeoPoint, haversineMeters } from "./marketing/cross-rules";

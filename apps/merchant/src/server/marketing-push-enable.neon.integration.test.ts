@@ -2,8 +2,12 @@ import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./locations-integration-support";
 import { breakLocation } from "./marketing-integration-support";
-import { getDb } from "./db";
-import { businesses, campaignLocations, campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  campaignLocations,
+  campaigns,
+} from "@mi-pasaporte/db/schema";
 import { seedReward } from "./counter-integration-support";
 import { transitionCampaign } from "./marketing/campaign-actions";
 import { enableTemplate, listTemplates } from "./marketing/template-store";

@@ -13,7 +13,7 @@ import {
   verifyRecovery,
 } from "./consumer/recovery";
 import { generateOpaqueToken, hashToken } from "./consumer/core";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { FakeOtpChannel } from "./otp/fake";
 import { OtpProviderError } from "./otp/core";
 import {
@@ -26,7 +26,7 @@ import {
   walletPushDevices,
   walletPushQueue,
   webPushSubscriptions,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 
 const phones = [
   "+59395",

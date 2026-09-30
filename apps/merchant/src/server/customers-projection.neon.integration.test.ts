@@ -19,8 +19,8 @@ import {
   newCouponCard,
   seedCouponWorld,
 } from "./counter-coupon-support";
-import { getDb, withDbTransaction } from "./db";
-import { businessCustomers, programMemberships } from "./schema";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { businessCustomers, programMemberships } from "@mi-pasaporte/db/schema";
 import { rowsOf } from "./counter/core";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
@@ -228,7 +228,10 @@ describe.skipIf(!integrationEnabled)(
 
     it("backfill de la 0053: sobre el mundo sembrado da EXACTAMENTE lo que escribieron las escrituras", async () => {
       const migration = readFileSync(
-        join(__dirname, "../../drizzle/0053_listado_de_clientes.sql"),
+        join(
+          __dirname,
+          "../../../../packages/db/drizzle/0053_listado_de_clientes.sql",
+        ),
         "utf8",
       );
       const statements = migration.split("--> statement-breakpoint");

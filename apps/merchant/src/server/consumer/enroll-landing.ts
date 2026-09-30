@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses, loyaltyPrograms } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, loyaltyPrograms } from "@mi-pasaporte/db/schema";
 import type { CouponKind } from "../marketing/reward-input";
 import type { WelcomeRedeemFrom } from "../marketing/templates";
 import { capAllows, localMonthStart } from "../marketing/welcome-rules";

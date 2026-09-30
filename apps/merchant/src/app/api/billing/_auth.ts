@@ -3,7 +3,7 @@ import {
   apiOwnerFailureResponse,
   requireApiOwner,
 } from "../../../server/api-owner";
-import { withDbTransaction, type DbTransaction } from "../../../server/db";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
   activeLocationCount,
   lockBusiness,

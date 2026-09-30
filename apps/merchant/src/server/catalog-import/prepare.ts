@@ -1,6 +1,6 @@
 import { and, asc, eq, isNull, or, lte, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImportFiles, catalogImports } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImportFiles, catalogImports } from "@mi-pasaporte/db/schema";
 import { getPrivateObject, readObjectAtMost } from "../r2";
 import { normalizeImageToJpeg } from "../assets/image";
 import {

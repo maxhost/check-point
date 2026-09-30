@@ -10,8 +10,12 @@ import {
   seedConsumer,
 } from "./counter-integration-support";
 import { enqueue, queueRow } from "./wallet-push-integration-support";
-import { getDb } from "./db";
-import { consumerAccounts, walletPasses, walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  consumerAccounts,
+  walletPasses,
+  walletPushQueue,
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { persistGrant } from "./counter/orders";
 import { ensureWalletPass } from "./wallet/core";

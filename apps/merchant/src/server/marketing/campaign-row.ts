@@ -1,4 +1,4 @@
-import { campaigns } from "../schema";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import type { Campaign } from "./campaign-store";
 import { channelsOf, welcomeOf, welcomeSelect } from "./campaign-values";
 import { rewardSelect } from "./reward-store";

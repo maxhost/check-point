@@ -13,10 +13,10 @@ import {
   resendRecovery,
   verifyRecovery,
 } from "./consumer/recovery";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { FakeOtpChannel } from "./otp/fake";
 import { OtpProviderError } from "./otp/core";
-import { consumerAccounts, otpChallenges } from "./schema";
+import { consumerAccounts, otpChallenges } from "@mi-pasaporte/db/schema";
 
 const phones = ["+59377", "+59376"].map(
   (prefix) => `${prefix}${Math.floor(1_000_000 + Math.random() * 8_000_000)}`,

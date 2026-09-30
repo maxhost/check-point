@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { type DbTransaction, getDb } from "../db";
-import { campaigns, loyaltyPrograms, products } from "../schema";
+import { type DbTransaction, getDb } from "@mi-pasaporte/db";
+import { campaigns, loyaltyPrograms, products } from "@mi-pasaporte/db/schema";
 import { CampaignError } from "./campaign-error";
 import { type CouponKind, INVALID_PRODUCT } from "./reward-input";
 

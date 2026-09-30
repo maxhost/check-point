@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { parseQueueClass } from "./push-plan";
 import { BUDGET_WINDOW_MS, type Budget, decideBudget } from "./push-budget";
 

@@ -12,8 +12,8 @@ import {
   type SeededSubscription,
 } from "./locations-integration-support";
 import { POST as webhookPost } from "../app/api/stripe/webhook/route";
-import { getDb } from "./db";
-import { stripeWebhookEvents } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { stripeWebhookEvents } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0063 — la ENTREGA de un evento por la ruta real, compartida por los tests de

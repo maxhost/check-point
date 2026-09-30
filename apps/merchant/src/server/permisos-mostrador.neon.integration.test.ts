@@ -10,8 +10,8 @@ import {
   type Seed,
 } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import { POST as RESOLVE } from "../app/api/counter/resolve/route";
 import { POST as GRANT } from "../app/api/counter/grant/route";
 import { POST as REDEEM } from "../app/api/counter/redeem/route";

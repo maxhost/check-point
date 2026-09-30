@@ -14,8 +14,8 @@ import {
 import { dropBusiness, type Seed } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedCampaign } from "./marketing-integration-support";
-import { getDb } from "./db";
-import { campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import { eq } from "drizzle-orm";
 
 let fake: FakeStripe = fakeStripe();

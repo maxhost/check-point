@@ -4,7 +4,7 @@ import type Stripe from "stripe";
 import { describe, expect, it } from "vitest";
 
 import { LEASE_WINDOW_SECONDS, claimStatement } from "./billing";
-import * as schema from "./schema";
+import * as schema from "@mi-pasaporte/db/schema";
 import { maxDuration } from "../app/api/stripe/webhook/route";
 
 /**

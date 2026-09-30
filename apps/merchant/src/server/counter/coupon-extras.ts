@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
-import type { DbTransaction } from "../db";
-import { loyaltyPrograms, programMemberships } from "../schema";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { loyaltyPrograms, programMemberships } from "@mi-pasaporte/db/schema";
 import { CounterError } from "./core";
 
 /**

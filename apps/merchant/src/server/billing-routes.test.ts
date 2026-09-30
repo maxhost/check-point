@@ -59,13 +59,13 @@ vi.mock("./staff", async (importOriginal) => ({
 
 /** El `tx` no se usa de verdad —el store va doblado— salvo por la escritura del
  * `stripe_customer_id` del checkout, que arma un builder de drizzle sobre él. */
-vi.mock("./db", async (importOriginal) => {
+vi.mock("@mi-pasaporte/db", async (importOriginal) => {
   const chain = {
     set: () => chain,
     where: async () => undefined,
   } as unknown as Record<string, unknown>;
   return {
-    ...(await importOriginal<typeof import("./db")>()),
+    ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
     withDbTransaction: async (work: (tx: unknown) => Promise<unknown>) =>
       work({ update: () => chain }),
   };

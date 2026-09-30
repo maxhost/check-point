@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, lt, sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyAssetCleanups,
   loyaltyAssetUploads,
   loyaltyPrograms,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import {
   AssetImageError,
   MAX_INPUT_PIXELS_CROPPED,

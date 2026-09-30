@@ -10,7 +10,10 @@ import {
   businessStatusFailure,
   DEFAULT_MESSAGES,
 } from "./business-status";
-import { hasScope, type PermissionScope } from "./permissions-catalog";
+import {
+  hasScope,
+  type PermissionScope,
+} from "@mi-pasaporte/db/permissions-catalog";
 
 /**
  * Spec 0086 §2 / ADR 0079 §5 — **EL** resolvedor de las DIEZ superficies DELEGABLES.

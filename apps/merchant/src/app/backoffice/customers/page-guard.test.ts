@@ -9,7 +9,7 @@ const { requireBackofficeSession, redirect, getDb } = vi.hoisted(() => ({
 }));
 vi.mock("../../../server/auth-guards", () => ({ requireBackofficeSession }));
 vi.mock("next/navigation", () => ({ redirect }));
-vi.mock("../../../server/db", () => ({ getDb }));
+vi.mock("@mi-pasaporte/db", () => ({ getDb }));
 vi.mock("./customers-page", () => ({ CustomersPage: () => null }));
 
 const { default: Page } = await import("./page");

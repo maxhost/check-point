@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { apiOwnerFailureResponse } from "../../../../server/api-owner";
 import { requireApiPermissionSinGateDeEmail } from "../../../../server/api-permission";
-import { getDb } from "../../../../server/db";
-import { businesses } from "../../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses } from "@mi-pasaporte/db/schema";
 import { programForOwner } from "../../../../server/loyalty-program";
 import { enrollUrl } from "../../../../server/brand-kit/enroll-url";
 import {

@@ -37,7 +37,7 @@ vi.mock("./auth", () => ({
   }),
 }));
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of [
     "select",
@@ -226,7 +226,7 @@ describe("createStaff: el identificador y el PIN — spec 0067 §4", () => {
 
 /** Fuerza el error del `returning` del insert de membresía sin tocar el módulo real. */
 async function createStaffWithInsertError(error: unknown) {
-  const db = (await import("./db")).getDb() as unknown as Record<
+  const db = (await import("@mi-pasaporte/db")).getDb() as unknown as Record<
     string,
     unknown
   >;

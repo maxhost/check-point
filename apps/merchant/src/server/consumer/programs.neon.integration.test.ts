@@ -7,7 +7,7 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   consumerAccounts,
@@ -16,7 +16,7 @@ import {
   programMemberships,
   users,
   webPushSubscriptions,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import { hasWebPushSubscription } from "../push/subscriptions";
 import { listConsumerPrograms } from "./programs";
 

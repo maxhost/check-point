@@ -8,13 +8,13 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   walletPasses,
   walletPushDevices,
   walletPushQueue,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { type PersistGrantInput, persistGrant } from "./counter/orders";
 import { ensureWalletPass } from "./wallet/core";

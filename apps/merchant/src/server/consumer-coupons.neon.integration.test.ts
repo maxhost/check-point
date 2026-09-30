@@ -10,8 +10,12 @@ import {
   seedCouponWorld,
 } from "./counter-coupon-support";
 import { seedCampaignCoupon } from "./marketing-coupon-support";
-import { getDb } from "./db";
-import { businesses, campaignCoupons, couponRedemptions } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  campaignCoupons,
+  couponRedemptions,
+} from "@mi-pasaporte/db/schema";
 import { SESSION_COOKIE } from "./consumer/core";
 import { issueSession } from "./consumer/session";
 import { redeemCoupon } from "./counter/coupon";

@@ -4,14 +4,14 @@ import {
   crossBusiness,
   offeredBy,
 } from "./consumer-cross-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   campaignCoupons,
   campaigns,
   locations,
   valleyWindows,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { listCrossOffers } from "./consumer/cross-offers";
 import { claimValleyOffer } from "./consumer/valley-offers";
 import type { GeoPoint } from "./marketing/cross-rules";
