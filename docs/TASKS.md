@@ -7033,3 +7033,17 @@ loop» de `hosts.test.ts` suma esos 4 paths (redirects esperados 5 → 9). Sobre
 (`expected { Object (redirect) } to be null`). Arreglo: `isMerchantPage` exige un locale de `supportedLocales`
 (`i18n/locales.ts`, hoy `["es"]`). Con el arreglo: 42/42. Gates: typecheck, lint, test, format 0. Spec: prosa de
 `/:locale` → `/es` corregida.
+
+### Re-revision del fix `039d8e2` (bucle `/<consumer>/business`)
+
+Restauracion de emergencia: `git checkout 039d8e2 -- apps/merchant/src/server/hosts.ts`.
+
+| id | archivo | shasum limpio | invariante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R6 | `merchant/src/server/hosts.ts` | `adf68c701409837d1349ebcfa2e3120b3303846a` | sin bucle: `isMerchantPage` solo con un locale real. Mutacion: vuelve la regex amplia `/^\/[^/]+\/business(?:\/\|$)/` | unit root | **ROJO** 1/2229 — `hosts.test.ts` «no loop: the target of a redirect is served, not redirected again» → `expected { Object (redirect) } to be null` (el destino vuelve a redirigir: motivo correcto). Revertida con la copia: `diff` vacio, shasum `adf68c70…846a` confirmado |
+
+Con `039d8e2` limpio: typecheck + lint + test → exit 0 (2229 pasan, 773 saltados). `next build` merchant + `next start`
+con las dos env, curl: `business./wallet/business` → 308 `my./wallet/business`; `my./wallet/business` → 404,
+`my./c/business` → 404, `my./enroll/business` → 200, `my./recover/business` → 404 (ninguno 308: sin bucle);
+`my./es/business/onboarding` → 308 `business.` (igual que antes); `my./lugares/business` → 404 sin 308. Servidor apagado,
+`grep MUTATION` vacio. **Veredicto del revisor sobre el fix: PASS** — la spec 0114 queda en PASS.
