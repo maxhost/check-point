@@ -67,8 +67,11 @@ describe("decideHostRoute — my.", () => {
     });
   });
 
-  // ORACULO DE M3: la API se atiende en los dos hosts (H3).
+  // ORACULO DE M3: la API se atiende en los dos hosts (H3). Las paginas se reconocen por
+  // lista blanca, asi que la unica `/api` que la exclusion salva hoy es `/api/business/*`
+  // (tiene la forma de `/<locale>/business/*`): sin ese caso, borrar la exclusion da verde.
   it.each([
+    "/api/business/webhook",
     "/api/public/wallet/passkit/v1/log",
     "/api/health",
     "/api",
