@@ -193,6 +193,10 @@ por partes sin rehacer nada.
 
 ### 3.8 Decisiones del owner y lo que queda abierto
 
+**Consolidado en el ADR 0103 (2026-09-29).** Ultimas respuestas del owner: aviso del escaneo = **variante 2**;
+F se enriquece con **novedad, comercio nuevo, exploracion y su horario** (no eligio los filtros de cupo agotado /
+ignorado 3 veces ni «rendimiento»; tampoco respondio si el recordatorio sale solo con novedad).
+
 - **E. (owner, 2026-09-29):** si — el recibo muestra beneficios de otros comercios desde el dia uno.
 - **G. (owner, 2026-09-29, textual resumido):** «en el wallet nunca metemos el cupon de otro comercio […] el cupon
   vive en la cuenta checkpass.club del cliente». El aviso del escaneo sigue, pero cambia su texto: acredita los
