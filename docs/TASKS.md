@@ -8,7 +8,31 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ MARKETING — ETAPAS POR RUBRO: ADR 0102 + SPEC 0110 ESCRITOS, ESPERAN EL OK DEL OWNER (2026-09-29)
+## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
+
+**Retomar con: las respuestas del owner a las decisiones A–G** de `docs/red-horas-valle-y-modelo.md`
+(commit `f169800`). Los 3 pasos de la sesion anterior estan HECHOS en ese doc: §1 cifras re-verificadas por el
+orquestador con busqueda web (Groupon/Dholakia 20 %, 21,7 %, 324 → 55,5/26,6/17,9 %, ~80 % nuevos: LEIDO en Wharton
+y en el articulo de Dholakia; ClassPass 94 % y SmartRate +20 %/2×/+14 %: LEIDO en Athletech; **Panera «4 → 10» NO
+aparece** → corregido a +200 % / 15+ dias por mes; TGTG 58/76 % solo snippet del blog oficial; Nunes: paper
+confirmado, 34/19 % solo secundaria); §2 horas valle (leccion de Groupon, deteccion desde `core.order.created_at`,
+publico, oferta, informe); §3 modelo conceptual (5 piezas, 4 momentos, flujo, quien decide). **Hallazgo medido:
+no existe horario de apertura en el schema** → la red no distingue «valle» de «cerrado» (decision A). Sin
+responder todavia: A (horario), B (publico), C (beneficio), D (quien propone la franja), E (cupon cruzado en el
+recibo desde el dia uno), F (orden inicial), G (donde ve la persona el recibo). Cero codigo tocado.
+
+**Decisiones del owner sobre la sintesis (2026-09-29, textual resumido):** concepto 3 «llegar como conocido»:
+el referido entre consumidores esta bien, pero **NO se le puede pedir a los comercios que costeen sellos extra ni
+un nivel VIP de red** («no me parece correcto»); concepto 5 «juego de la ciudad»: **no es parte del producto
+ahora**; concepto 6 «aliado que paga»: **no enfocarse ahora**; concepto 4 horas valle: **prioridad**; concepto 1:
+hay que llevarlo a algo conceptual. **Pregunta pendiente al owner:** si el cliente puede compartir invitaciones
+por WhatsApp desde su propio telefono (el owner descarto WhatsApp como canal de la PLATAFORMA). **En espera:**
+spec 0110 (etapas por rubro, borrador) hasta el ADR del modelo «entregar a Mis beneficios vs avisar».
+Informes de la sesion (todos commiteados): `reports/Redes de comercios y atención compartida.md`,
+`reports/Tecnología web y atención en redes.md`, `reports/Ideas laterales para la red local.md` + sus
+`research_notes/`. Ultimo commit de trabajo: `5cbdb89`. Cero codigo tocado en toda la sesion.
+
+## ⇥ MARKETING — ETAPAS POR RUBRO: ADR 0102 + SPEC 0110 ESCRITOS, EN ESPERA (2026-09-29)
 
 **Retomar con: el OK del owner para pasar la spec 0110 a `cerrada`** (y validar sus elecciones
 *(ORQUESTADOR)*: default de #3 = T2; borde de perdido `I + 1 dia`; suma de #7/#8 solo en push; etapa ajena
