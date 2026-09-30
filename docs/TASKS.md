@@ -10,12 +10,14 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: el veredicto del REVISOR de la spec 0111** (despachado sobre `00e6586`, presupuesto 5 mutaciones
-propias + re-correr M3/M6). Implementador: gates verdes segun su handoff; el orquestador re-corrio las 4 suites de
-unidad nuevas/tocadas (50/50) y `grep MUTATION` vacio. Declarado por el implementador: la fila M6 de la spec era
-falsa (la condicion 2 de `decideReminder` ya impide el segundo reminder; oraculo nuevo «stale read»), edito
-`wallet-pass-refresh-worker.test.ts:107` (`planned: 0`), suites del worker dependientes de la hora. Con PASS:
-migracion `0056` a PROD **con OK del owner**, push, deploy READY con el sha y QA en Android. La 0056 NO esta en PROD.
+**Retomar con: el OK del owner para migrar `0056` a PROD** (spec 0111 implementada: `00e6586` + fix `07c83fb`,
+PASS del revisor; resultado en la spec §Resultado, `097aac2`). Despues: push a `main`, deploy de Vercel READY con
+ese sha, QA del owner en Android (3 acreditaciones en 10 min → suenan 2; la cuenta muestra las 3). **Pregunta
+abierta al owner:** techo horario del recordatorio (hoy puede salir a las 23:00 si el cliente se vuelve elegible
+tarde). **Mistake→rule pendiente:** tercera spec seguida con una fila de mutacion falsa escrita por el orquestador
+(M6 de la 0111: el oraculo no distinguia porque otra condicion ya cubria el caso) → va a `LECCIONES.md` cuando
+se resuelvan los cambios ajenos sin commitear que hay en ese archivo. Gates corridos por el orquestador tras el
+fix: typecheck 0, test 211 archivos/2082 tests verdes, lint y format verdes, hook de tamaño EXIT 0.
 **Owner (2026-09-29):** 1.ª
 spec del ADR 0103 = aviso del escaneo; cuentan para el tope de 2 «las tres» (acreditar, canje de premio, canje
 de cupon); ventana = ultimas 24 h; «algo nuevo» = cupon nuevo + cupon por vencer; recordatorio si hay algo nuevo
