@@ -10,9 +10,17 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: DESPACHAR LA SPEC 0112** (`specs/0112-mis-beneficios-y-oferta-cruzada.md`, **cerrada**, commit
+**ESTADO (2026-09-29, noche): la 0112 SE ESTA IMPLEMENTANDO** — un subagente `implementador` despachado con OK
+del owner trabaja en ESTE arbol (`motor`): hay codigo suyo SIN commitear en `server/marketing/{templates,template-input,template-store,cross-input,cross-rules}.ts`,
+`server/schema/campaign*.ts`, `server/counter/coupon-store.ts` (typecheck/test rojos = trabajo a medias, no un bug:
+NO tocarlos; `ListAgents` primero). Si la sesion se cae: auditar el arbol (`git status`, bitacora de mutaciones al
+final de este archivo, `rg MUTATION apps/merchant/src`) antes de seguir. Despues: revisor independiente de la 0112,
+y recien con su PASS se despacha la **0113 (horas valle, cerrada, `5a68f72`, ADR 0105)**, re-medida contra la 0112
+implementada. **Horas valle — owner (2026-09-29, AskUserQuestion):** plantilla propia; filtro igual que la cruzada;
+cupon vale solo la franja del dia; horario por local con cortado. Elecciones V1–V9 del orquestador, informadas.
+**0112** (`specs/0112-mis-beneficios-y-oferta-cruzada.md`, **cerrada**, commit
 `1a9ab89`; ADR 0104; contrato `specs/0112-contratos-de-api.md`) — un implementador + un revisor (AGENT-WORKFLOW),
-9 mutaciones. **Antes: el owner puede objetar las elecciones O1–O8 de la spec** (reclamo explicito, vigencia desde
+9 mutaciones. **El owner puede objetar las elecciones O1–O8 de la spec** (reclamo explicito, vigencia desde
 el reclamo, 100 m = «parado», GPS no se guarda, «ultimo escaneo» = order/reward/coupon redemption, orden por
 distancia, opt-out oculta la cruzada, una por persona) — se le informaron al cerrar. **Owner (2026-09-29,
 textual en el ADR 0104):** Mis beneficios = cupones propios SIN filtro + ofertas cruzadas; la cruzada es una
