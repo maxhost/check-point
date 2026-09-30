@@ -60,8 +60,8 @@ describe("reminderTargetMinute", () => {
     expect(reminderTargetMinute([400, 420, 450])).toBe(540);
   });
 
-  it("clamped to 21:00 at the top", () => {
-    expect(reminderTargetMinute([1400, 1410, 1420])).toBe(1260);
+  it("clamped to 20:30 at the top (30 min before the 21:00 cutoff)", () => {
+    expect(reminderTargetMinute([1400, 1410, 1420])).toBe(1230);
   });
 });
 
@@ -88,6 +88,21 @@ describe("decideReminder — each condition of the table, failing alone", () => 
     });
     const onTime = new Date("2026-09-29T17:30:00Z"); // 12:30 local
     expect(decideReminder(input(), onTime).kind).toBe("send");
+  });
+
+  it("1 — at or after 21:00 local: too_late (owner, 2026-09-29)", () => {
+    const lastMinute = new Date("2026-09-30T01:59:00Z"); // 20:59 local
+    expect(decideReminder(input(), lastMinute).kind).toBe("send");
+    const cutoff = new Date("2026-09-30T02:00:00Z"); // 21:00 local
+    expect(decideReminder(input(), cutoff)).toEqual({
+      kind: "skip",
+      why: "too_late",
+    });
+    const late = new Date("2026-09-30T04:00:00Z"); // 23:00 local
+    expect(decideReminder(input(), late)).toEqual({
+      kind: "skip",
+      why: "too_late",
+    });
   });
 
   it("1 — the target follows the consumer's habit", () => {

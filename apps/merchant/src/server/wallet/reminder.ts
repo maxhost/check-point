@@ -17,9 +17,12 @@ export const DEFAULT_REMINDER_MINUTE = 12 * 60 + 30;
 export const MIN_SCANS_FOR_HABIT = 3;
 /** How far before the usual scan time the reminder goes. */
 export const REMINDER_LEAD_MINUTES = 30;
-/** The target is clamped to [9:00, 21:00] local. */
+/** No reminder at or after 21:00 local (owner, 2026-09-29): it waits for the next day. */
+export const REMINDER_CUTOFF_MINUTE = 21 * 60;
+/** The target is clamped to [9:00, 20:30] local, so it always leaves 30 minutes before
+ * the cutoff (the worker runs every 5 min). */
 export const REMINDER_EARLIEST_MINUTE = 9 * 60;
-export const REMINDER_LATEST_MINUTE = 21 * 60;
+export const REMINDER_LATEST_MINUTE = REMINDER_CUTOFF_MINUTE - 30;
 /** At most one reminder per consumer in this span (any status). */
 export const REMINDER_SPACING_MS = 20 * HOUR_MS;
 /** A scan in this span means «bought today»: no reminder. */
@@ -46,7 +49,7 @@ export const REMINDER_BODIES: Record<ReminderReason, string> = {
  * The local minute of the day (0–1439) the reminder is due at, from the minute of day of
  * the consumer's recent scans (each in its business's zone). With fewer than
  * {@link MIN_SCANS_FOR_HABIT}: 12:30. Otherwise the median minus 30 minutes (an even count
- * averages the two middle ones, rounded), clamped to [9:00, 21:00].
+ * averages the two middle ones, rounded), clamped to [9:00, 20:30].
  */
 export function reminderTargetMinute(scanLocalMinutes: number[]): number {
   if (scanLocalMinutes.length < MIN_SCANS_FOR_HABIT)
@@ -94,10 +97,14 @@ export type ReminderInput = {
 
 export type ReminderDecision =
   | { kind: "send"; reason: ReminderReason }
-  | { kind: "skip"; why: "not_yet" | "already" | "scanned" | "nothing" };
+  | {
+      kind: "skip";
+      why: "not_yet" | "too_late" | "already" | "scanned" | "nothing";
+    };
 
 /**
- * The table of spec 0111 D6, in order: (1) the local time reached the target, (2) no
+ * The table of spec 0111 D6, in order: (1) the local time reached the target and is
+ * before the 21:00 cutoff, (2) no
  * reminder in the last 20 h, (3) no scan in the last 24 h, (4) a new coupon, a coupon
  * about to expire, or 48 h of inactivity. The reason picks the text, by priority
  * `coupon_expiring` > `coupon_new` > `inactive_48h`.
@@ -108,8 +115,10 @@ export function decideReminder(
 ): ReminderDecision {
   const t = now.getTime();
   const target = reminderTargetMinute(input.scanLocalMinutes);
-  if (localMinuteOfDay(now, input.timeZone) < target)
-    return { kind: "skip", why: "not_yet" };
+  const localMinute = localMinuteOfDay(now, input.timeZone);
+  if (localMinute < target) return { kind: "skip", why: "not_yet" };
+  if (localMinute >= REMINDER_CUTOFF_MINUTE)
+    return { kind: "skip", why: "too_late" };
   if (
     input.lastReminderAt &&
     input.lastReminderAt.getTime() > t - REMINDER_SPACING_MS
