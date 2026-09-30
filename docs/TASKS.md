@@ -6998,3 +6998,29 @@ git checkout e97b3e1 -- apps/merchant/src/server/hosts.ts apps/merchant/src/app/
 | M5 | `public/src/legacy-routes.ts` | `1f1c9fdce9248a0b364f5ea12454615398ce03f5` | la entrada `/api/:path*` de `legacyRewrites`. Hermano: ninguno | unit root entera (372 archivos; el oraculo vive en el proyecto `@mi-pasaporte/public`, que entra a la suite por el punto 9) | **ROJO**. Mutacion: `legacyRewrites` devuelve `[]`. 1/2229 rojo — «ORACULO DE M5» (`public/src/legacy-routes.test.ts`, «proxies /api/:path* to MERCHANT_API_ORIGIN — and nothing else») → `expected [] to deeply equal [ { source: '/api/:path*', destination: 'https://api-origin.test/api/:path*' } ]`. El cableado a `next.config.ts` no lo ve este oraculo: se midio con `next start` + `curl` (`www/api/health` → 200 con el cuerpo de merchant). Revertida con la copia: `diff` identico, shasum limpio confirmado |
 
 Al cerrar: los 3 archivos con su shasum limpio, `git status --short apps` sin cambios salvo el oraculo sumado para M3-bis (`hosts.test.ts`), y `grep -rnE '\b(MUTATION|MUTACION)\b' apps/merchant/src apps/public/src` vacio.
+
+## Revision independiente — spec 0114 (2026-09-30)
+
+Presupuesto: 5 re-mediciones (a–e del encargo), clase de error plausible. Copias limpias en el scratchpad de la
+sesion (`…/scratchpad/limpios/`). Restauracion de emergencia (los 4 archivos estan limpios en `1d10f10`):
+
+```
+git checkout 1d10f10 -- apps/merchant/src/server/hosts.ts "apps/merchant/src/app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route.ts" apps/public/src/legacy-routes.ts
+```
+
+| id | archivo | shasum limpio | invariante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R1 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | (a) H1: sin env no se redirige. Variante plausible: defaults `business.`/`my.` cuando falta la env | unit root | **ROJO**. Mutacion: `normalizeOrigin(input.merchantOrigin ?? "https://business.checkpass.club")` (idem consumer con `my.`). 1/2229 rojo — `hosts.test.ts` «H1: without the two origins nothing is redirected» → `expected { Object (redirect) } to be null`. Revertida con la copia: `diff` vacio, shasum limpio |
+| R2 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | (b) `/api/*` nunca redirige: se borra la exclusion del puro y se mide si el `matcher` de `proxy.ts` muerde en el borde real | unit root + `next build` merchant + curl | **ROJO en unit, y el matcher MUERDE en el borde**. Mutacion: se borran las dos lineas `/api` de `isNeverRouted`. Unit: 1/2229 rojo («/api/business/webhook stays on my.»). `next build` merchant con la mutacion + `next start` con las dos env: `POST my./api/business/webhook` → 404, `my./api/business` → 404, `my./api` → 404 (sin 308: el `matcher` los deja afuera); control `my./apix/business` → 308 `business.` (el proxy SI corre fuera de `/api`). Revertida con la copia: `diff` vacio, shasum limpio, merchant reconstruido limpio |
+| R3 | `merchant/.../passkit/v1/passes/[passTypeId]/[serialNumber]/route.ts` | `d1ab1c18ae939c2696f5e11b4742bae4b4d6fd6f` | (c) el pase INSTALADO (Plantano) se re-emite con `my.` | unit root | **ROJO**. Mutacion: `origin: consumerOriginOr(...) && request.nextUrl.origin`. 1/2229 rojo — `wallet-consumer-origin-wiring.test.ts` «PassKit serve: a pass installed with www is re-issued on my.» (`expected { …(2) } to deeply equal`). Revertida con la copia: `diff` vacio, shasum limpio |
+| R4 | `public/src/legacy-routes.ts` | `2a461d312e6234fbd8e276ac3cb850d96e4e477d` | (d) el 308 de `/business` solo para `es` (fix `1d10f10`): se vuelve a `/:locale/business/:path*` | unit root | **ROJO**. Mutacion: `"/:locale/business/:path*"` en `MERCHANT_PATHS`. 1/2229 rojo — `public/src/legacy-routes.test.ts` «is exactly the §6 list» (recibe `/:locale/business/:path*`). Revertida con la copia: `diff` vacio, shasum limpio |
+| R5 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | (e) libre, docblock «los dos origenes en el mismo host … bucle»: se borra ese guard | unit root | **ROJO**. Mutacion: se borra `if (merchantHost === consumerHost) return null;`. 1/2229 rojo — «the same host for both origins is not routed (it would loop)». Revertida con la copia: `diff` vacio, shasum limpio |
+
+Al cerrar: los 4 archivos con su shasum limpio, `git status --short apps` vacio, `grep -rnE '\b(MUTATION|MUTACION)\b' apps/merchant/src apps/public/src` → 0 lineas; servidores 3011–3013 apagados.
+
+**Veredicto del revisor: FAIL (un defecto de la clase «bucle», bajo riesgo real).** `decideHostRoute` hace ping-pong
+entre `business.` y `my.` para `/wallet/business`, `/c/business`, `/enroll/business`, `/recover/business` (ejecutado con
+`next start` + curl: `business.` → 308 `my.` y `my.` → 308 `business.` con el mismo path). Causa: `isMerchantPage`
+(`hosts.ts:44`) usa `/^\/[^/]+\/business(?:\/|$)/`, la misma forma amplia que `1d10f10` corrigio en el publico pero no
+en merchant. Ninguna URL emitida cae ahi (tokens base64url, programId UUID). Gates verdes; H1, `/api`, pases con `my.`
+y el proxy de `www/api` verificados ejecutando.
