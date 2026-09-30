@@ -10,7 +10,13 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
-**Retomar con: el QA del owner en un Android** (spec 0111 EN PROD). Enrolarse con el telefono, hacer 3
+**Retomar con: escribir la spec de «MIS BENEFICIOS»** (primera del ADR 0103 tras la 0111; decision 10 del ADR,
+owner 2026-09-29): la cuenta del cliente como pantalla de inicio con los beneficios filtrados (rubro distinto, 2 km,
+GPS o ultimo escaneo, «Todo filtrado»). **Solo API + contrato HTTP escrito**: la UI la hace el owner por fuera.
+Antes de escribir la prosa: medir que muestra hoy `/wallet` y que endpoints usa, y pedirle al owner las
+decisiones que falten (ADR 0071). Despues: la spec de horas valle (deteccion, tope 1 vez por local, horario en
+Marca — todo decidido en el ADR 0103 §5 y §10). **QA de la 0111: el owner lo hace mas adelante** (no bloquea).
+**QA pendiente de la 0111** (EN PROD, lo hace el owner mas adelante): enrolarse con el telefono, hacer 3
 acreditaciones en 10 min → suenan 2, la 3.ª no; la cuenta muestra las 3; el texto termina en «· Revisa tus
 beneficios en checkpass.club». **Hecho y verificado (2026-09-29):** migracion `0056` aplicada a PROD por
 `run_sql_transaction` con OK del owner, verificada por SQL (columna, los dos `check` nuevos, indice, fila en
@@ -19,9 +25,9 @@ sesion; conflicto solo en `TASKS.md`) y push `ea96914..20196df` a `main`; deploy
 `success`; `/api/health` 200, `/api/internal/wallet-push` 401. Gates sobre el arbol combinado: typecheck y build
 forzados (`Cached: 0`), lint, format, test 2086 verdes; integraciones de la 0111 11/11. `test:e2e` NO corrido
 (la 0111 no toca UI; la UI nueva la trajo `main`). Prod: 0 consumidores → sin datos reales todavia. **Techo de las
-21:00 del recordatorio (owner) implementado** (`18dcef3`, oraculo mutado: rojo). **Mistake→rule pendiente:**
-tercera spec seguida con una fila de mutacion falsa escrita por el orquestador (M6 de la 0111) → `LECCIONES.md`
-cuando se resuelvan los cambios ajenos sin commitear que hay en ese archivo. Siguientes specs del ADR 0103
+21:00 del recordatorio (owner) implementado** (`18dcef3`, oraculo mutado: rojo). **Mistake→rule hecho:** la
+fila M6 falsa de la 0111 va a `LECCIONES.md` + regla en la skill `protocolo-de-verificacion` §2.0 («nombrar el
+guard hermano»). Siguientes specs del ADR 0103
 posibles: horas valle, «Mis beneficios», el arbitro del orden.
 **Owner (2026-09-29):** 1.ª
 spec del ADR 0103 = aviso del escaneo; cuentan para el tope de 2 «las tres» (acreditar, canje de premio, canje

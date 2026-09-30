@@ -1841,3 +1841,34 @@ hecha a mano: para R = 45 decia 32 (mensajes 77/109) y la formula da 31 (76/107)
 **Regla.** Una tabla que se presenta como salida de una formula se **genera con la formula** (script),
 no se escribe a mano al lado. Es la misma familia que «el ejemplo es una afirmacion» de `CLAUDE.md`:
 si decis «sale de X», X tiene que haberse ejecutado.
+
+## 2026-09-29 — una guia citada como prohibicion, y retorica de un sintetizador pasada como hallazgo
+
+**Que paso.** (1) El orquestador verifico textual la HIG de Apple («Never use a change message for marketing…») y
+la presento como «el Wallet no sirve para marketing». El owner: «mentira, todas las apps lo usan para esto, el
+limite es el problema». La cita era cierta; la CONCLUSION convirtio una guia de diseño (sin enforcement sobre los
+pases) en una prohibicion. (2) Paso al owner la frase de un redactor de informe («el tope de Google pasa a ser una
+disciplina que las mejores plataformas se imponen solas»); el owner pregunto «¿como nos beneficia?» y no habia
+respuesta: era adorno. (3) Siete agentes de investigacion en paralelo agotaron el cupo de 200 busquedas web de la
+sesion y el orquestador quedo sin poder verificar ninguna cifra de esa ronda.
+
+**Regla.** Al citar una politica, decir su NIVEL: guia/recomendacion, regla con enforcement, o ley — «should
+not» no es «cannot». Una frase de un sintetizador que no es un hecho verificable no se reenvia al owner. Y un
+fan-out de investigacion web se dimensiona contra el cupo de busquedas de la sesion, reservando busquedas para
+la verificacion del orquestador (protocolo en la skill `protocolo-de-verificacion` §4).
+
+## 2026-09-29 — tercera spec seguida con una fila de mutacion falsa: el oraculo no aislaba el guard
+
+**Que paso.** La fila M6 de la spec 0111 mandaba borrar el `not exists` de 20 h del insert del recordatorio
+(`wallet/reminder-store.ts`) y esperaba rojo en «dos corridas → 1». Medido por el implementador y re-medido por el
+revisor: queda VERDE, porque la condicion 2 de `decideReminder` (ningun reminder en 20 h) ya impide el segundo
+insert — dos guards producen el mismo resultado y el oraculo no distinguia cual. El oraculo real fue un caso «stale
+read» (dos pasadas del cron solapadas, escenario real: `curl --max-time 60` no corta la ejecucion en Vercel). Es la
+tercera spec seguida (M5 de la 0085, M6 de la 0086, M6 de la 0111) con una fila escrita por el orquestador que no
+media lo que decia.
+
+**Regla.** Por cada fila de la tabla de mutaciones, ANTES de cerrar la spec, preguntar: **¿que OTRO guard del mismo
+flujo produce el mismo resultado?** Si existe, el oraculo tiene que puentearlo (un doble que lo desactive, un
+escenario donde no alcanza) o la fila mide el guard equivocado. Vale aunque el mecanismo todavia no exista: se
+razona sobre el diseño de la propia spec (protocolo en la skill `protocolo-de-verificacion` §2.0).
+

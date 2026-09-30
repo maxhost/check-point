@@ -66,6 +66,14 @@ noncritical communication». Con 20 comercios por cliente, la cola de avisos cre
    **beneficio ignorado 3 veces** por esa persona → descansa.
 9. **(owner, 2026-09-29)** La primera spec de este ADR es **el aviso del escaneo** (decision 3 + 7).
 
+10. **(owner, 2026-09-29, AskUserQuestion) Orden y forma de las specs siguientes:** «Mis beneficios» PRIMERO (la
+    cuenta como inicio, con el filtro de rubro y 2 km); horas valle despues, como un tipo de beneficio mas. Las
+    pantallas (horario en Marca, franja editable, vista del cliente) las construye **el owner por fuera**: las
+    specs entregan API + contrato HTTP escrito (forma de `specs/0055-contratos-del-orquestador.md`). Deteccion de
+    la franja floja: la propuesta de `docs/red-horas-valle-y-modelo.md` §2.3 (bloque de 1 h < 40 % de la mediana
+    del local, en ≥ 5 de 8 semanas; con < ~150 escaneos se le pregunta al comercio). Tope: **una vez por persona y
+    por local**.
+
 ## Consecuencias
 
 - La spec 0110 (etapas por rubro) sigue valiendo para **la etapa** de cada relacion; su push por campaña queda
