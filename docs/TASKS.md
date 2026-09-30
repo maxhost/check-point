@@ -7047,3 +7047,16 @@ con las dos env, curl: `business./wallet/business` → 308 `my./wallet/business`
 `my./c/business` → 404, `my./enroll/business` → 200, `my./recover/business` → 404 (ninguno 308: sin bucle);
 `my./es/business/onboarding` → 308 `business.` (igual que antes); `my./lugares/business` → 404 sin 308. Servidor apagado,
 `grep MUTATION` vacio. **Veredicto del revisor sobre el fix: PASS** — la spec 0114 queda en PASS.
+
+## Bitacora de mutaciones — spec 0115, implementador (2026-09-30)
+
+Arbol de partida de las mutaciones: `85f39de` (trabajo de la 0115 commiteado; los tres archivos limpios, `git status`
+vacio). Copias limpias en el scratchpad de la sesion. Restauracion de emergencia: `git checkout 85f39de -- <archivo>`.
+
+| id | archivo | shasum limpio | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `packages/db/src/schema/valley.ts` | `ea35688f80eb6283714efd573624dab887d524c0` | el esquema movido es el mismo que describe la 0058: `drizzle-kit generate` dice «No schema changes» | **ROJO**: `opens: time("opens")` sin `.notNull()` → generate escribio `drizzle/0059_busy_aqueduct.sql` = `ALTER TABLE "core"."location_hours" ALTER COLUMN "opens" DROP NOT NULL;` (+ `meta/0059_snapshot.json` y `_journal.json`, descartados: `rm` + `git checkout`). Hermano: typecheck tambien rojo (`hours-store.ts(46,38) TS2345 string\|null`). Revertido: `diff` vacio, shasum `ea35688f`, generate de nuevo «No schema changes» |
+| M2 | `packages/db/drizzle/0058_horas_valle.sql` | `8495f212513615fc2571cd87afc3b6e5de85c510` | las migraciones se movieron byte a byte: la lista de sha256 antes/despues es identica | **ROJO**: linea `-- MUTATION M2` al final → `diff` de la lista da 1 linea distinta (`./0058_horas_valle.sql` `f3134564…` → `7919178d…`), exit 1. Revertido: `diff` vacio, shasum `8495f212`, lista de 119 sha256 igual a la de partida |
+| M3 | `apps/merchant/src/server/staff.ts` | `ebaad1e5c0daf211099b20499593c97b1e890876` | ningun import relativo a `db`/`schema`/`permissions-catalog` quedo en merchant: el `rg` de la DoD da vacio | **ROJO**: linea 2 `from "./db"` → el `rg` de la DoD lista `apps/merchant/src/server/staff.ts` (exit 0). Hermano: typecheck `staff.ts(2,23) TS2307 Cannot find module './db'`. Revertido: `diff` vacio, shasum `ebaad1e5`, los dos `rg` → 0 archivos |
+
+Al cerrar: `rg -l MUTATION apps packages tools` vacio; `git status` sin cambios de codigo.
