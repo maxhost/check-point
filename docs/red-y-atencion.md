@@ -85,6 +85,28 @@ Wallet abre el pase o la PWA? (probar en un telefono).
   web** que se pueda usar dado el limite («queremos construir un canal que le permita a los pequeños/medianos
   comercios crecer, conseguir nuevos clientes»).
 
+## 6b. Lo que cambio la segunda investigacion (`reports/Tecnología web y atención en redes.md`)
+
+**Verificado por el orquestador en la fuente (2026-09-29):**
+- **Apple, HIG de Wallet:** «Never use a change message for marketing or other noncritical communication.» →
+  el push de campaña por Wallet (ADR 0095) va contra la guia de Apple. En iPhone, el marketing tiene que ir por
+  Web Push (PWA en pantalla de inicio, iOS 16.4+, permiso tras un toque — webkit.org/blog/13878).
+- **Google, AUP de Wallet:** un pase relacionado tiene que «Be connected to the same issuer as the original Pass
+  (i.e. an issuer cannot promote a separate issuer's products or offers through a related pass)». CheckPass es el
+  unico emisor: en la letra se cumple; en el espiritu, promocionar a otro comercio es zona gris → consultar a Google.
+- **Modelo de demanda** (`research_notes/Tecnología web y atención en redes/modelo_de_demanda.py`, re-corrido por el
+  orquestador, mismos numeros): cliente en 20 comercios → 0,31 avisos de reactivacion/dia (peor escenario 0,75)
+  contra 2 libres; el problema son DIAS de choque (41 % de los clientes tiene alguno con > 2 en 6 meses). Con cupo
+  1/dia, descartar lo del dia pierde 13,8 %; con vencimiento a 3 dias, 0 %. Supuestos sin fuente: churn, mezcla de
+  rubros; no hay datos de Cuenca. Cuenta solo la escalera de reactivacion, no otras campañas.
+
+**Propuestas del informe (SIN decidir):** Wallet solo para lo transaccional y critico; timbre y «te extrañamos»
+por Web Push (Wallet de respaldo solo en Android); cupon cruzado en la pantalla post-escaneo y en «Mis beneficios»,
+nunca por push; un arbitro por persona, 1 aviso dirigido/dia, vencimiento 3 dias, penalizar al comercio que gano en
+los ultimos 7 dias, reparto semanal justo, lugar para comercios nuevos; priorizar a los «persuadibles» (uplift),
+lo que exige grupo de control desde el dia uno. **Hueco declarado:** un cliente de iPhone con el pase y sin la PWA
+no puede recibir ningun aviso de marketing.
+
 ## 7. Que queda en espera
 
 La **spec 0110** (etapas por rubro) no se implementa hasta el ADR de este modelo: su calendario pasaria a
