@@ -8,6 +8,10 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ UI MERCHANT — CLIENTES Y SUSCRIPCIÓN (2026-09-29)
+
+**Hecho en `main` y enviado a `origin/main`:** UI de Clientes (`d6e132c`) y ajuste visual móvil primero de Suscripción al sistema del dashboard (`e7e95cc`). TypeScript, ESLint, tests focalizados y builds con webpack pasaron; Suscripción se revisó en capturas locales a 320/390 px, escritorio y oscuro. **No se verificó el despliegue de esos commits en Vercel.** No queda trabajo abierto de esta sesión; el siguiente encargo del owner aún no se definió. Evidencia y límites: [`handoff-merchant-ui-2026-09-29.md`](handoff-merchant-ui-2026-09-29.md).
+
 ## ⇥ WORKTREE `motor` — LISTADO DE CLIENTES (0108 + 0109) EN MAIN; MIGRACIONES 0053–0055 EN PROD (2026-09-28)
 
 **Retomar con: decidir con el owner lo pendiente de abajo.** Deploy de `3a39bcd` VERIFICADO: estado
@@ -21,7 +25,7 @@ verificadas por SQL. La `0055` (busqueda en `plpgsql` + `EXECUTE`) la escribio e
 pedido del owner, SIN revision independiente; la cubren las 5 suites `customers-*` (36/36 contra ella en
 `ci-integration`) y el benchmark. Numeros en un negocio de 200.000: pagina 1 + total 0,33 ms, ultima
 64,8 ms, busqueda 9–19 ms, telefono 0,10 ms.
-**GPT hace la UI del listado sobre `main`**; contrato `specs/0108-contratos-de-api.md` (no cambio).
+**La UI del listado ya está en `main`** (`d6e132c`); contrato `specs/0108-contratos-de-api.md` (no cambió).
 **Pendientes de decision del owner:** mover las funciones de Vercel de `iad1` a `cle1` y subir el
 minimo del computo de prod (ADR 0101); el trigger del contador que escala mal en operaciones masivas
 (`PARQUEADO.md`, antes de cualquier borrado de negocio o importacion masiva); RLS con rol de login propio
