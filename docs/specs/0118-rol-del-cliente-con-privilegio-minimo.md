@@ -1,7 +1,7 @@
 ---
 spec: 0118
 fecha: 2026-10-01
-estado: cerrada
+estado: implementada
 resumen: ADR 0110 — el rol checkpass_consumer pasa de DML en 52 tablas + BYPASSRLS a GRANT minimo por tabla (medido funcion por funcion desde las 22 rutas del cliente) y politicas RLS propias en las 4 tablas con RLS, NOBYPASSRLS, tablas nuevas cerradas; migracion 0059 a mano como la 0053; oraculo positivo = flujos del cliente conectados COMO el rol en la rama de CI, negativo = sondas SET ROLE que deben dar 42501.
 disjunta: si
 archivos: packages/db/drizzle/0059_*.sql (+ meta/_journal.json), packages/domain/src/** (ninguna linea de logica), apps/consumer/src/server/*.neon.integration.test.ts (nuevos), apps/consumer/src/server/*-support.ts (nuevos), tools/neon-test.sh, .github/workflows/ci.yml, docs/**

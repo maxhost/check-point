@@ -8,24 +8,26 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-01, tarde) — 0118 REVISADA (PASS), MERGE DE `origin/main` EN `motor` A MEDIAS, SIN COMMIT
+## ⇥ ESTADO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
 
-**Hecho y verificado:** URL de CI del rol corregida por el owner (`.env.local` y secret de GitHub; conecta como
-`checkpass_consumer`, sin bypass, endpoint de `ci-integration`). Oraculo 42/42 con la URL real. Revisor PASS (`85fce24`,
-R-M1 y R-M3 rojas con la URL real, revertidas). Vercel: el owner habia pegado la URL de CI en los proyectos y la volvio a
-la de `main`; redeploy hecho; `my./enroll/<LaCraft>` lee PROD (programa solo-PROD visible). `check-point-public` no usa base.
-**A medias (arbol de `motor`, sin commitear):** merge de `origin/main` (`f3982ef` y 8 mas). Choque de numeracion:
-`main` trae `0059_home_launch_welcome` (YA en PROD) → la del rol se renumero a **`0060_rol_del_cliente.sql`** (contenido
-intacto, shasum `24c03aa7…`), snapshot `0060` y journal (`when` 1790878886657); `drizzle-kit generate` → «No schema
-changes». En la rama `ci-integration` se movio el `created_at` de la fila hash `756b5b2f…` a 1790878886657 para que
-`db:migrate` no la reaplique.
-**Arreglado en el merge (sin commitear):** `wallet-account-opened.test.ts` venia ROJO de `main` (`f3982ef` hizo que
-`/wallet` llame a `listWelcomeCoupons` y el test no la doblaba → `DATABASE_URL no está configurada`); se agrego SOLO el
-doble que faltaba (mismo patron que `listConsumerPrograms`), aserciones intactas → 4/4.
-**Sigue:** (1) decision del owner: opcion A (terminar el merge auditando rutas nuevas) u opcion B (pushear sin la 0060
-en PROD); (2) auditar las rutas/consultas nuevas del
-cliente que trae `main` (p. ej. `api/public/home/launch`, `welcome-coupons`) contra los GRANT de la 0060 y re-correr
-el oraculo del rol; (3) gates + commit del merge + push; (4) `0060` a PROD solo con OK del owner.
+**Retomar con:** OK del owner para aplicar `0060_rol_del_cliente.sql` en PROD (rama `main` de Neon), y despues sacar el
+`BYPASSRLS` y el GRANT amplio que hoy tiene `checkpass_consumer` en PROD. Antes de aplicarla: QA del owner en el telefono
+(alta, billetera, instalar la app, Bienvenida) contra `my.checkpass.club`, porque el rol minimo cambia que puede tocar el
+cliente. **Y verificar el deploy** de `ef22ffb` en READY en los proyectos de Vercel (no hay `vercel`/`gh` CLI en este
+shell: lo mira el owner en el dashboard).
+**Hecho y verificado (2026-10-01):** URL de CI del rol corregida (`.env.local` + secret `NEON_CI_CONSUMER_DATABASE_URL`;
+conecta como `checkpass_consumer`, sin bypass, endpoint `ep-plain-firefly` = `ci-integration`). Revisor PASS (`85fce24`).
+Merge de `origin/main` (`e15ebbe`, `ef22ffb`): `main` habia ocupado la `0059` (`home_launch_welcome`, YA en PROD) → la
+del rol es la **`0060`** (shasum `24c03aa7…` intacto); en `ci-integration` se movio el `created_at` de su fila
+(hash `756b5b2f…`) a 1790878886657 = `when` del journal. Oraculo del rol al dia con `main`: caso `POST home/launch`
+nuevo (O-M1 rojo y revertido), seed de `consumer-role-wallet` con app abierta + push (regla nueva de la Bienvenida,
+`f3982ef`), y el doble faltante en `wallet-account-opened.test.ts` (venia rojo de `main`). Gates 5/5 verdes; oraculo
+43/43. Vercel: el owner habia pegado la URL de CI en los proyectos; la volvio a la de `main` y redeployo;
+`my./enroll/<LaCraft>` lee PROD; `check-point-public` no usa base.
+**Deuda heredada de `main`, NO de la 0118:** `test:e2e` ROJO 52 casos del backoffice (copy de `4a69db7` «unify LATAM
+copy», p. ej. «Dale identidad» → «Da identidad», sin actualizar los e2e). La CI de `main` lo va a marcar.
+**Declarado:** el «inventario por funcion con `archivo:linea`» de la DoD no esta en el arbol (el revisor no lo encontro);
+lo cubren las 22 rutas importadas por el oraculo + `home/launch`.
 
 ## ⇥ ESTADO (2026-10-01, madrugada) — EL CLIENTE YA CORRE EN SU PROPIO PROYECTO (`my.checkpass.club`)
 

@@ -12,7 +12,7 @@ Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de 
 explicitamente «necesita spec» — eso es literal.
 
 
-## PARQUEADO 2026-10-01 — spec 0118 (rol del cliente con privilegio minimo), a pedido del owner
+## ~~PARQUEADO 2026-10-01 — spec 0118~~ → RETOMADA e implementada el mismo dia (`main` `ef22ffb`; ver TASKS). Solo queda la 0060 a PROD con OK del owner
 
 **Donde quedo:** implementada en la rama local `motor` (`b005721` codigo + `4b4991b` bitacora M1–M5 rojas; NO pusheada).
 Rama de CI de Neon con la `0059` aplicada y verificada por el orquestador (sin bypass, 27 legibles, 14 escribibles,
