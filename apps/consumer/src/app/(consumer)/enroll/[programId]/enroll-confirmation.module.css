@@ -1,0 +1,208 @@
+.confirmation {
+  color: #19312d;
+  padding: 2px 0 28px;
+}
+
+.accountNotice {
+  padding: 12px 14px;
+  border: 1px solid #bdd7e9;
+  border-radius: 14px;
+  background: #edf7fc;
+  color: #174364;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hero {
+  padding: 18px 0 20px;
+}
+
+.heroMark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: #d9f3e5;
+  color: #166746;
+  font-size: 27px;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #5a746e;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: clamp(27px, 7vw, 34px);
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+.hero > p:last-child {
+  margin: 12px 0 0;
+  color: #52645f;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.hero strong {
+  color: #18392e;
+}
+.loading {
+  color: #63726e;
+}
+
+.actions {
+  display: grid;
+  gap: 12px;
+}
+
+.action {
+  padding: 19px;
+  border: 1px solid #e1e8e2;
+  border-radius: 21px;
+  background: #fff;
+  box-shadow: 0 5px 20px rgba(23, 53, 39, 0.045);
+}
+
+.featured {
+  border-color: #bfdccb;
+  background: linear-gradient(145deg, #f0faf3 0%, #fff 82%);
+}
+
+.actionTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 13px;
+}
+
+.number {
+  color: #44715b;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border-radius: 12px;
+  background: #e9f4ec;
+  color: #245c42;
+}
+
+.icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.action h3 {
+  margin: 0;
+  color: #17372c;
+  font-size: 19px;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
+}
+
+.action p {
+  color: #52645e;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+.action a,
+.action button {
+  min-height: 48px;
+}
+
+.action a {
+  margin-top: 16px !important;
+}
+
+.homeButton {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--brand, #174c39);
+  color: var(--brand-ink, #fff);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.homeButton span {
+  font-size: 19px;
+}
+.homeButton:focus-visible,
+.walletLink:focus-visible {
+  outline: 3px solid #245c42;
+  outline-offset: 3px;
+}
+.success {
+  color: #176847 !important;
+  font-weight: 700;
+}
+
+.action .instructions {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #edf4ef;
+  color: #294b3c;
+}
+
+.iosSteps {
+  display: grid;
+  gap: 9px;
+  margin-top: 15px;
+  padding: 14px;
+  border-radius: 13px;
+  background: #fff;
+  color: #2e4940;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.smallNote {
+  font-size: 12px !important;
+}
+
+.walletLink {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 15px;
+  color: #245d45;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (min-width: 600px) {
+  .hero {
+    padding-top: 27px;
+  }
+  .action {
+    padding: 22px;
+  }
+}
