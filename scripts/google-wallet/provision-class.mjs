@@ -154,11 +154,12 @@ async function main() {
     const res = await fetch(`${API}/${encodeURIComponent(classId)}`, {
       method: "PATCH",
       headers: { ...authHeader, "content-type": "application/json" },
-      // Keep Google's existing approval state when rebranding a live class.
+      // Google requires an approved class to re-enter review when edited.
       body: JSON.stringify({
         issuerName: "Mi CheckPass",
         programName: "Mi CheckPass",
         programLogo: { sourceUri: { uri: logoUrl } },
+        reviewStatus: "UNDER_REVIEW",
         hexBackgroundColor: "#0f2a3a",
       }),
     });
