@@ -99,13 +99,22 @@ aviso a Plantano.
 
 El orquestador verifica la precondicion de cada paso y entrega el siguiente **de a uno**.
 
+**Orden corregido tras la revision (hallazgo del revisor, verificado):** el codigo de la 0117 NO va a `main` hasta que
+`my.` responda. Al desplegarse, merchant y `www` reenvian `/api/public/*` a `my.`, y el backoffice pide en relativo
+logos e imagenes por `/api/public/...` (`brand-kit/data.ts:71`, `catalog/core.ts:74`, `client-view.ts:132`, …): con `my.`
+caido se romperian pantallas de comercios. Por eso: se pushea la rama `motor` (no `main`); el proyecto del cliente
+usa **Production Branch = `motor`** durante R2–R4; con `my.` verificado, el orquestador pushea `motor` → `main` (R4b) y
+el owner vuelve la Production Branch del cliente a `main` (R4c).
+
 | # | Paso (owner) | Precondicion que verifica el orquestador antes de darlo |
 |---|---|---|
-| R1 | Neon → rama `main` → SQL Editor: correr el bloque SQL de arriba con tu contraseña; armar la URL del rol | 0117 con PASS y en `main`; despues de R1 el orquestador verifica sin membresias y `false` sobre `merchant_auth` antes de dar R2 |
-| R2 | Vercel → Add New Project → repo `maxhost/check-point`, **Root Directory `apps/consumer`**, framework Next.js. Variables (Production): `DATABASE_URL` = URL de R1; `CONSUMER_ORIGIN=https://my.checkpass.club`; y **copiadas de merchant**: `APPLE_PASS_CERT_P12`, `APPLE_PASS_CERT_PASSWORD`, `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_WWDR_CERT`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_JSON`, `WALLET_PROVIDER`, `WALLET_PUSH_CHANNEL`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_SUBJECT`, `OTP_PROVIDER`, `OTP_ENCRYPTION_KEY`, `OTP_HMAC_SECRET`, `RECOVERY_ENABLED`, `CLICKSEND_*`, `TWILIO_*`, `R2_*`, `STOCK_PROVIDER`, `PEXELS_API_KEY`, `WALLET_PASSKIT_RATE_*` (las que existan en merchant). Deploy | 0117 con PASS del revisor y en `main` |
+| R1 | Neon → rama `main` → SQL Editor: correr el bloque SQL de arriba con tu contraseña; armar la URL del rol | 0117 con PASS y pusheada a `origin/motor` (NO a `main`); despues de R1 el orquestador verifica sin membresias y `false` sobre `merchant_auth` antes de dar R2 |
+| R2 | Vercel → Add New Project → repo `maxhost/check-point`, **Root Directory `apps/consumer`**, framework Next.js, **Production Branch `motor`** (Settings → Git). Variables (Production): `DATABASE_URL` = URL de R1; `CONSUMER_ORIGIN=https://my.checkpass.club`; y **copiadas de merchant**: `APPLE_PASS_CERT_P12`, `APPLE_PASS_CERT_PASSWORD`, `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_WWDR_CERT`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_JSON`, `WALLET_PROVIDER`, `WALLET_PUSH_CHANNEL`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_SUBJECT`, `OTP_PROVIDER`, `OTP_ENCRYPTION_KEY`, `OTP_HMAC_SECRET`, `RECOVERY_ENABLED`, `CLICKSEND_*`, `TWILIO_*`, `R2_*`, `STOCK_PROVIDER`, `PEXELS_API_KEY`, `WALLET_PASSKIT_RATE_*` (las que existan en merchant). Deploy | R1 verificado (rol sin membresias, `false` en `merchant_auth`) |
 | R3 | Abrir en el **telefono** la URL `*.vercel.app` del proyecto: `/wallet`, `/recover`, un `/enroll/<programa real>` | `curl` a `<vercel.app>/api/health` 200, `/` 308 → `/wallet`, `/api/public/consumer/coupons` 401 |
 | R4 | Vercel (cliente) → Domains → agregar `my.checkpass.club` | owner confirmo R3 en el telefono |
-| R5 | Merchant (Production): `MERCHANT_ORIGIN=https://business.checkpass.club`, `CONSUMER_ORIGIN=https://my.checkpass.club`, `BETTER_AUTH_URL=https://business.checkpass.club`, `BETTER_AUTH_TRUSTED_ORIGINS=https://www.checkpass.club,https://checkpass.club`; borrar `PUBLIC_APP_ORIGIN`; Redeploy | `my./api/health` 200 con certificado (`--resolve`) |
+| R4b | (orquestador) push `motor` → `main`; deploys de merchant y public `success` con el sha | `my./api/health` 200 con certificado |
+| R4c | Vercel (cliente) → Settings → Git → Production Branch = `main` | R4b verificado: `business./api/public/consumer/coupons` 401 (proxy a `my.`) y un logo del backoffice 200 |
+| R5 | Merchant (Production): `MERCHANT_ORIGIN=https://business.checkpass.club`, `CONSUMER_ORIGIN=https://my.checkpass.club`, `BETTER_AUTH_URL=https://business.checkpass.club`, `BETTER_AUTH_TRUSTED_ORIGINS=https://www.checkpass.club,https://checkpass.club`; borrar `PUBLIC_APP_ORIGIN`; Redeploy | R4c hecho y `my./api/health` 200 |
 | R6 | Public (`www`): `CONSUMER_API_ORIGIN=https://my.checkpass.club` (opcional: es el default); Redeploy | `business./wallet` 308 → `my./wallet`; `business./api/public/consumer/coupons` 401 via proxy |
 | R7 | Stripe webhook y secrets `MARKETING_TICK_ENDPOINT`/`WALLET_PUSH_ENDPOINT`/`CATALOG_IMPORT_RECONCILE_ENDPOINT` → `business.` | `www/api/public/consumer/coupons` 401 y `www/enroll/<id>` 308 → `my.` |
 | R8 | Avisar a Plantano («entren por business.checkpass.club; reingresar una vez») | R5–R7 verificados |
@@ -157,8 +166,8 @@ prueba por sondas y por las rutas GET; un `POST` real del cliente en PROD lo hac
 
 ## Handoff requerido
 
-Un implementador (codigo, puntos 1–12) y un revisor. Con el PASS: push, rol en CI (DoD base), rol en PROD con OK del
-owner, y runbook R1–R8 de a un paso.
+Un implementador (codigo, puntos 1–12) y un revisor. Con el PASS: push de la rama `motor` (no `main`), rol en CI (DoD base), rol en PROD con
+OK del owner, y runbook R1–R8 de a un paso (R4b = push a `main`).
 
 ## Abierto
 
