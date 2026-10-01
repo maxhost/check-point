@@ -68,13 +68,26 @@ Plantano y el link `/c/*` del pase: estan rotos. El cliente sigue corriendo dent
 **creado por SQL como `neondb_owner`, NUNCA por la API ni la consola de Neon**: medido 2026-09-30 en la rama de CI, un
 rol creado por la API entra como miembro de `neon_superuser` (con `BYPASSRLS` y `CREATEROLE`), lee `merchant_auth`, y
 `REVOKE neon_superuser` da `permission denied`; uno creado con `CREATE ROLE` no tiene membresias ni acceso a
-`merchant_auth`/`drizzle` (sonda en transaccion revertida). Un script local (`tools/consumer-role.mjs`, del orquestador)
-lee la URL del dueño desde `apps/merchant/.env.local` sin imprimirla, genera la contraseña con `crypto.randomBytes`,
-ejecuta `CREATE ROLE checkpass_consumer LOGIN PASSWORD …`, `GRANT USAGE ON SCHEMA core, consumer`, `GRANT SELECT,
-INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA core, consumer`, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA core,
-consumer`, `ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA core, consumer GRANT …` (las mismas dos; el
-dueño unico de las 57 tablas es `neondb_owner`, medido) y escribe la URL del rol en un archivo `0600` del scratchpad.
-Imprime solo largo y huella. **Nada** en `merchant_auth` ni en `drizzle`.
+`merchant_auth`/`drizzle` (sonda en transaccion revertida). **Ninguna credencial pasa por el agente:**
+- **Rama de CI:** el orquestador crea `checkpass_consumer` **`NOLOGIN`** por `run_sql` (no hace falta contraseña para
+  medir privilegios ni para M6).
+- **PROD:** el owner corre en el editor SQL de la consola de Neon (rama `main`) el bloque de abajo con una contraseña
+  propia, y arma la URL del rol reemplazando usuario y contraseña en la URL pooled de `neondb_owner`.
+
+```sql
+CREATE ROLE checkpass_consumer LOGIN PASSWORD '<contraseña del owner>';
+GRANT USAGE ON SCHEMA core, consumer TO checkpass_consumer;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA core, consumer TO checkpass_consumer;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA core, consumer TO checkpass_consumer;
+ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA core, consumer
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO checkpass_consumer;
+ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA core, consumer
+  GRANT USAGE, SELECT ON SEQUENCES TO checkpass_consumer;
+```
+
+`neondb_owner` es el dueño unico de las 57 tablas (medido en la rama de CI). **Nada** en `merchant_auth` ni en
+`drizzle`. El orquestador verifica en cada rama con `pg_auth_members` (sin membresias), `has_schema_privilege` y
+`has_table_privilege` (`merchant_auth`/`drizzle` → `false`; las 52 tablas de `core`/`consumer` con DML → `true`).
 
 **Entra (owner, runbook de abajo):** proyecto Vercel, variables, dominio, env de merchant y de `www`, Stripe/secrets,
 aviso a Plantano.
@@ -88,7 +101,7 @@ El orquestador verifica la precondicion de cada paso y entrega el siguiente **de
 
 | # | Paso (owner) | Precondicion que verifica el orquestador antes de darlo |
 |---|---|---|
-| R1 | Abrir el archivo local que deja el script de rol (PROD) y copiar la URL del rol `checkpass_consumer` | rol creado en PROD **por SQL**, sin membresias, y la sonda negativa da `false` sobre `merchant_auth` |
+| R1 | Neon → rama `main` → SQL Editor: correr el bloque SQL de arriba con tu contraseña; armar la URL del rol | 0117 con PASS y en `main`; despues de R1 el orquestador verifica sin membresias y `false` sobre `merchant_auth` antes de dar R2 |
 | R2 | Vercel → Add New Project → repo `maxhost/check-point`, **Root Directory `apps/consumer`**, framework Next.js. Variables (Production): `DATABASE_URL` = URL de R1; `CONSUMER_ORIGIN=https://my.checkpass.club`; y **copiadas de merchant**: `APPLE_PASS_CERT_P12`, `APPLE_PASS_CERT_PASSWORD`, `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_WWDR_CERT`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_JSON`, `WALLET_PROVIDER`, `WALLET_PUSH_CHANNEL`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_SUBJECT`, `OTP_PROVIDER`, `OTP_ENCRYPTION_KEY`, `OTP_HMAC_SECRET`, `RECOVERY_ENABLED`, `CLICKSEND_*`, `TWILIO_*`, `R2_*`, `STOCK_PROVIDER`, `PEXELS_API_KEY`, `WALLET_PASSKIT_RATE_*` (las que existan en merchant). Deploy | 0117 con PASS del revisor y en `main` |
 | R3 | Abrir en el **telefono** la URL `*.vercel.app` del proyecto: `/wallet`, `/recover`, un `/enroll/<programa real>` | `curl` a `<vercel.app>/api/health` 200, `/` 308 → `/wallet`, `/api/public/consumer/coupons` 401 |
 | R4 | Vercel (cliente) → Domains → agregar `my.checkpass.club` | owner confirmo R3 en el telefono |
@@ -116,10 +129,11 @@ Vuelta atras de R4: quitar el dominio del proyecto del cliente (vuelve a «no re
 
 ## DoD (base y PROD, orquestador)
 
-- [ ] Rama de CI: rol creado; `select 1 from merchant_auth."user" limit 1` como el rol → `permission denied`;
-      `select 1 from core.business limit 1` y un `insert` + `rollback` en una tabla de `consumer` → OK. Consumer
-      levantado con la URL del rol contra la rama de CI: las 8 rutas GET de la 0116 dan los mismos codigos.
-- [ ] PROD: lo mismo con OK del owner; R1–R8 verificados con `curl --resolve <host>:443:216.198.79.1`.
+- [ ] Rama de CI: rol `NOLOGIN` creado por SQL; sin membresias; `has_*_privilege` → `false` en `merchant_auth` y
+      `drizzle`, `true` (DML) en las 52 tablas de `core`/`consumer`. M6 mutada y revertida sobre ese rol.
+      **Limite declarado:** no se levanta consumer con el rol en CI (no hay contraseña sin pasar una credencial por el
+      agente); la prueba con conexion real es R3 en PROD (telefono, enrolarse).
+- [ ] PROD: las mismas sondas de privilegios tras R1; R1–R8 verificados con `curl --resolve <host>:443:216.198.79.1`.
 
 ## Plan de pruebas y verificación
 
