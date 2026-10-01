@@ -8,7 +8,35 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
+## ⇥ ESTADO (2026-10-01, cierre de sesion) — `main` sincronizada y paginas legales publicadas
+
+- **Git:** checkout en `main`, sin worktree ni rama nueva en esta sesion. `main` y `origin/main` apuntaban a
+  `c3a2551af0088732edc7fc96b0751f06329f7305` al cierre; `git status --short --branch` solo mostraba
+  `## main...origin/main` antes de este handoff. El merge incorporo la interfaz de ofertas cruzadas que ya estaba
+  commiteada localmente (`fa7ae2f`) y los cambios de `origin/main`. Commit de paginas legales: `fea71e9`;
+  merge publicado: `c3a2551`.
+- **Publicacion verificada:** `curl -sS -L -o /dev/null -w '%{http_code} %{url_effective}'` devolvio `200` para
+  `https://checkpass.club/es/privacy` y `https://checkpass.club/es/tos` (redireccion a `www`); el sitemap tambien
+  devolvio `200`. Las paginas contienen la politica y los terminos de CheckPass Club, datos de The No-Code Company
+  OÜ y contacto; estan enlazadas desde los footers publicos. El build de `apps/public` habia pasado con Next
+  `--webpack` sobre una copia de los archivos finales antes del merge. No se corrio un gate completo del monorepo
+  despues del merge; `pnpm` intento reconciliar dependencias y fallo por DNS del registry. La deuda e2e heredada
+  que figura debajo no se volvio a medir en este cierre.
+- **Trabajo local anterior preservado:** `stash@{0}` (`3f6cb1acc29c4919837783802483a2886f20f5fa`, mensaje
+  «Preserve pre-existing local changes before syncing main for legal pages») contiene cambios del onboarding merchant,
+  documentacion, configuracion, fuentes y artefactos
+  de la app publica. Incluye archivos que ahora existen en `main`; inspeccionar con
+  `git stash show --include-untracked --name-only stash@{0}` y recuperar selectivamente. No hacer `stash pop` a
+  ciegas ni borrarlo: no se verifico si todas esas variantes siguen siendo necesarias.
+- **Agentes y ramas:** `collaboration.list_agents` mostro solo `/root`; no hay agentes secundarios que cerrar.
+  Ramas locales observadas: `main`, `motor`, `deploy-0107`, `deploy-0108`, `deploy-business-landing`. No se
+  eliminaron ramas ni se modifico `motor` durante este cierre. Antes de cualquier limpieza de ramas, comparar
+  sus commits con `main` y respetar el trabajo ajeno.
+- **Siguiente tarea:** esperar el nuevo encargo del owner. Para retomar el trabajo guardado en el stash, revisar
+  cada archivo contra `main` y aplicar solo los cambios vigentes. La migracion `0060` y los pendientes operativos
+  de la 0118 se describen en el estado historico siguiente; no se aplicaron en este cierre.
+
+## ⇥ ESTADO HISTORICO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
 
 **PRIMERO, cuando el owner avise que GPT cerro sus ramas — ALINEAR TODO A `main` + `motor` (pedido del owner
 2026-10-01, medido ese dia):** la `main` LOCAL de `check-point` estaba divergida (base 29/09; 8 commits sin push, 6 son
