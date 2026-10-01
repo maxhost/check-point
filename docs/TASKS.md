@@ -8,6 +8,14 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-10-01, noche) — SPEC 0119 CERRADA (`22fd5c9`): EL CLIENTE ENTRA CON GOOGLE O APPLE
+
+ADR 0111 + spec 0119 commiteados en `motor` (`22fd5c9`), sin push. Solo docs: **no hay codigo de la 0119 todavia**.
+**Antes de despachar al implementador** (precondicion de la spec): el owner crea el cliente OAuth de Google y el
+Services ID + clave `.p8` de Apple y carga las env en el proyecto Vercel del cliente; y la `0060` tiene que estar en
+PROD (sigue esperando su OK, bloque de abajo). Hallazgos nuevos a decidir: #64 y #65 en `PARQUEADO.md`.
+Lo de abajo (alinear ramas, e2e, `0060` a PROD) sigue vigente.
+
 ## ⇥ ESTADO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
 
 **PRIMERO, cuando el owner avise que GPT cerro sus ramas — ALINEAR TODO A `main` + `motor` (pedido del owner
