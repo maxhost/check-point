@@ -74,7 +74,8 @@ describe("los vi.mock relativos apuntan a un archivo (spec 0116)", () => {
   it("el barrido mira las apps y los paquetes, no tres archivos", () => {
     // PISO: un barrido sobre la carpeta equivocada no encuentra nada y pasa en verde.
     expect(calls.length).toBeGreaterThanOrEqual(150);
-    expect(relativeCalls.length).toBeGreaterThan(0);
+    // Los relativos son lo que este guard protege: 136 tras la 0116 (183 antes del movimiento).
+    expect(relativeCalls.length).toBeGreaterThanOrEqual(120);
     const rels = roots.map((root) => relative(ROOT, root));
     expect(rels).toContain(join("apps", "merchant", "src"));
     expect(rels).toContain(join("packages", "domain", "src"));

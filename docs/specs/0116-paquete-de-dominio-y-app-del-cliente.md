@@ -76,8 +76,9 @@ Medido sobre `d20f2c5` (cierre de imports relativos estaticos, `import()` e `imp
      `allowedDevOrigins`.
    - `vitest.config.ts`: el `esbuild: { jsx: "automatic", jsxImportSource: "react" }` de merchant.
 4. **`tools/vi-mock-targets.test.ts`** (nuevo, permanente): todo `vi.mock`/`vi.doMock` con especificador relativo en
-   `apps/*/src` y `packages/*/src` resuelve a un archivo existente (`.ts`, `.tsx`, `/index.ts`). Piso: **≥ 150**
-   ocurrencias escaneadas (hoy 183 − las 49 que pasan a paquete + las que queden).
+   `apps/*/src` y `packages/*/src` resuelve a un archivo existente (`.ts`, `.tsx`, `/index.ts`). Piso: **≥ 120**
+   `vi.mock` relativos (medido tras el movimiento: 136; la spec decia 150 por un error de cuenta del orquestador:
+   183 − 49 = 134).
 5. `tools/google-wallet-callback.test.ts:2` → `../packages/domain/src/server/wallet/google-object`.
 6. `pnpm install --offline` y lockfile commiteado (si `--offline` no alcanza por DNS: declarar y frenar, no
    `pnpm fetch`).
@@ -164,5 +165,7 @@ la UI que haga con GPT tiene que importar de ahi.
 
 ## Abierto
 
-Nada que bloquee. Para la 0117: destino de los 28 modulos solo-cliente y de los tests de las pantallas; tokens
+Nada que bloquee. **Medido en la implementacion:** las capturas de `/recover` y `/wallet` difieren entre las dos
+apps porque el CSS de consumer no trae reglas de ELEMENTO del `globals.css` de merchant (`select` 40–46, `h1`/`h2`/`p`
+235–246, `label:where(…)` desde 247): se suman en la 0117 antes del QA en telefono. Para la 0117: destino de los 28 modulos solo-cliente y de los tests de las pantallas; tokens
 duplicados (`tokens.css` en las dos apps).
