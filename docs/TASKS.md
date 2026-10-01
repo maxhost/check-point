@@ -8,6 +8,17 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-09-30, noche) — SPEC 0116 CERRADA (`7eca84f`) Y SE ESTA IMPLEMENTANDO EN ESTE ARBOL
+
+**Spec 0116** (`specs/0116-paquete-de-dominio-y-app-del-cliente.md`, ADR 0108 «un solo paquete de dominio»): 111 modulos
+a `packages/domain` byte a byte + copias identicas de las 45 pantallas/rutas del cliente en `apps/consumer`. Un
+subagente `implementador` trabaja en ESTE arbol: typecheck/test rojos = trabajo a medias; `ListAgents` antes de tocar;
+sus `MUTATION` son suyas. **Sigue:** handoff del implementador → gates del orquestador → revisor → push → avisar al
+owner que 14 pantallas de `app/backoffice/**` importan de `@mi-pasaporte/domain` (GPT). El bloque de abajo sigue
+vigente para lo pendiente del owner (dominio `my.`, env de merchant).
+
+### Bloque anterior (cierre de la sesion de la 0115)
+
 ## ⇥ ESTADO (2026-09-30, cierre de sesion) — SEPARAR CLIENTE DE COMERCIO: FASE 1 HECHA, SIGUE LA 0116
 
 **Retomar con: escribir la SPEC 0116 (fase 2 del ADR 0107)** — paquetes internos de dominio que usan las dos apps
