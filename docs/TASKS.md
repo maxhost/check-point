@@ -8,14 +8,24 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-30, noche) — SPEC 0116 CERRADA (`7eca84f`) Y SE ESTA IMPLEMENTANDO EN ESTE ARBOL
+## ⇥ ESTADO (2026-09-30, noche) — FASE 2 HECHA: 0116 EN PROD, SIGUE LA 0117
 
-**Spec 0116** (`specs/0116-paquete-de-dominio-y-app-del-cliente.md`, ADR 0108 «un solo paquete de dominio»): 111 modulos
-a `packages/domain` byte a byte + copias identicas de las 45 pantallas/rutas del cliente en `apps/consumer`. Un
-subagente `implementador` trabaja en ESTE arbol: typecheck/test rojos = trabajo a medias; `ListAgents` antes de tocar;
-sus `MUTATION` son suyas. **Sigue:** handoff del implementador → gates del orquestador → revisor → push → avisar al
-owner que 14 pantallas de `app/backoffice/**` importan de `@mi-pasaporte/domain` (GPT). El bloque de abajo sigue
-vigente para lo pendiente del owner (dominio `my.`, env de merchant).
+**Retomar con: escribir la SPEC 0117 (fase 3 del ADR 0107, el corte)** — proyecto Vercel del cliente, verificacion en
+su dominio temporal y en un telefono, traspaso de `my.checkpass.club`, cron de avisos de Wallet, rol Postgres sin
+`merchant_auth`, borrado del cliente en merchant (pantallas, tests de pantallas a consumer, destino de los 28 modulos
+solo-cliente). **Antes del QA en telefono:** sumar al CSS de consumer las reglas de elemento que faltan (`select`,
+`h1/h2/p`, `label:where(…)` del `globals.css` de merchant; las capturas de `/recover` difieren, spec 0116 §Abierto).
+Medir contra `627e6f7` antes de escribir. Deuda menor del revisor: `stale-validator.sh` solo mira merchant.
+
+**Hecho y verificado (2026-09-30):** spec 0116 (`packages/domain`, ADR 0108) implementada `48b3a98`+`51b018e`+`3611de1`,
+PASS del revisor `ec89869` (3 re-mediciones rojas, gates 6/6). Push `563d817..627e6f7` a `main`; deploys merchant y
+public `success` para `627e6f7`; PROD: `business./api/health` 200, `business./api/public/consumer/coupons` 401,
+`business./es/business/onboarding` 200, `www/api/health` 200. **Owner informado:** 14 pantallas de `app/backoffice/**`
+importan de `@mi-pasaporte/domain/...` (prompt para GPT entregado en el chat; propuesto bajarlo a `apps/merchant/AGENTS.md`).
+
+**PENDIENTE DEL OWNER — URGENTE (re-medido 2026-09-30 noche):** `my.checkpass.club` sigue SIN responder (curl exit 35,
+TLS) y `business./wallet` da 200 sin redirigir (env de la 0114 sin cargar). Los pasos (1)–(4) del bloque de abajo
+siguen vigentes; QR impresos de Plantano y link `/c/*` del pase ROTOS hasta entonces.
 
 ### Bloque anterior (cierre de la sesion de la 0115)
 
