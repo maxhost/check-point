@@ -12,9 +12,16 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ADR 0111 + spec 0119 commiteados en `motor` (`22fd5c9`), sin push. Solo docs: **no hay codigo de la 0119 todavia**.
 **Antes de despachar al implementador** (precondicion de la spec): el owner crea el cliente OAuth de Google y el
-Services ID + clave `.p8` de Apple y carga las env en el proyecto Vercel del cliente; y la `0060` tiene que estar en
-PROD (sigue esperando su OK, bloque de abajo). Hallazgos nuevos a decidir: #64 y #65 en `PARQUEADO.md`.
-Lo de abajo (alinear ramas, e2e, `0060` a PROD) sigue vigente.
+Services ID + clave `.p8` de Apple y carga las env en el proyecto Vercel del cliente (pasos dados en el chat
+2026-10-01). Hallazgos nuevos a decidir: #64 y #65 en `PARQUEADO.md`.
+**La `0060` ESTA EN PROD (aplicada 2026-10-01 con OK del owner, `run_sql_transaction` + fila del journal).** Antes:
+oraculo del rol re-corrido con el codigo de `motor` (incluye el rediseño `39e1ffc` de la PWA) → **43/43** en CI.
+Despues, por SQL en PROD: 61 migraciones, hash `756b5b2f…` presente, `rolbypassrls=false`, 10 politicas
+`consumer_app_*`, 27 tablas con GRANT, 0 en `merchant_auth`/`drizzle`, sin INSERT en `core.order`; COMO el rol se
+ven las mismas filas que como dueño (9 membresias, 7 programas, 9 clientes). En vivo: `my./api/health` 200,
+`my./enroll/<Platano>` 200 con el nombre del negocio, `/wallet` 200, `enroll/me` sin sesion 401. Con esto el
+BYPASSRLS y el GRANT amplio ya no existen (los revoca la propia 0060). **Falta el QA del owner en el telefono**.
+Lo de abajo (alinear ramas, e2e) sigue vigente; lo de la `0060` a PROD queda hecho.
 
 ## ⇥ ESTADO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
 
