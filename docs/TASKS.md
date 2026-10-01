@@ -7157,3 +7157,52 @@ Capturas 390×844 (scratchpad de la sesion, `shots/{merchant,consumer}-{recover,
 consumer faltan las reglas de ELEMENTO del `globals.css` de merchant fuera de los rangos copiados (`select` 40–46, `h1`/
 `h2`/`p` 235–246, `label:where(…)` 247+): labels y select sin negrita/grid y margenes de titulo distintos. Se lleva al
 QA de la 0117. CSS de merchant byte a byte igual al de `d20f2c5` (sha256 de los 3 `.css` del build) y misma tabla de 118 rutas.
+
+## Revision independiente — spec 0116 (revisor, 2026-09-30)
+
+Bitacora de mutaciones del revisor (filas abiertas ANTES de medir; arbol de partida `3611de1`, limpio). Copias limpias en
+el scratchpad de la sesion. Restauracion de emergencia: `git checkout 3611de1 -- <archivo>`; para M2 ademas
+`rm apps/merchant/src/lib/currencies.ts` (no existe en el arbol limpio).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M2 | `apps/merchant/src/lib/currencies.ts` (ausente) + `apps/merchant/src/app/api/onboarding/business/route.ts` | route `806cdb1e80235a4ca1312d6592265b9e3b745e54` | los 111 se movieron, no se copiaron | **ROJO** en el chequeo de la DoD: `lib/currencies.ts` restaurado en merchant (contenido del paquete + `// MUTATION R-M2`) y `route.ts:23` importando `../../../../lib/currencies` → script de movimiento `EXISTS merchant lib/currencies.ts`, `ok=110 bad=1`. Hermanos VERDES, como dice la fila: `tsc --noEmit` de merchant rc=0; `vitest run src/server/onboarding` 8 archivos/94 tests verdes. Revertida: route shasum `806cdb1e…`, `currencies.ts` sacado del arbol (no existe en limpio) |
+| R-M5 | `apps/merchant/src/server/wallet-manifest.test.ts` | `212c063c80af8f5ccf2aecafbce6b07c3c0c60f7` | todo `vi.mock` relativo resuelve (variante: comillas simples + salto de linea) | **ROJO** 1/2 en `tools/vi-mock-targets.test.ts`: «todo especificador relativo resuelve…» `AssertionError: expected [ Array(1) ] to deeply equal []`, recibido `"apps/merchant/src/server/wallet-manifest.test.ts: ./wallet/core"` (motivo correcto: la regex ve comillas simples con salto de linea). El test mutado quedo VERDE 9/9: vitest acepta el mock colgante en silencio. Revertida: `diff` contra la copia mostro solo las 5 lineas de la mutacion; shasum `212c063c…` |
+| R-M4 | `apps/consumer/src/app/layout.tsx` | `f088779b55ff57a5182560f9f6d103a0c135b63c` | el barrido de `marketingOptOutAt` mira la raiz `apps/consumer/src` (la implementacion midio solo la de domain) | **ROJO** 1/4 en `consumer-opt-out-writer.test.ts`: «sólo `consumer/marketing-opt-out.ts` la escribe» `expected [ …(2) ] to deeply equal [ Array(1) ]`, recibido de mas `../../consumer/src/app/layout.tsx` (la raiz CONSUMER_ROOT muerde, no solo la de domain). Revertida: `diff` solo las 4 lineas; shasum `f088779b…` |
+
+Ninguna sobrevive: `grep -rnE '\bMUTATION\b' apps/*/src packages/*/src tools` → vacio; `git status --short apps packages
+tools` → vacio.
+
+**Veredicto del revisor: PASS** (sobre `3611de1`). Presupuesto: 3 mutaciones, clase plausible de movimiento mecanico.
+Evidencia EJECUTADA por el revisor:
+- Movimiento: 111/111 ausentes en merchant, presentes en `packages/domain/src` con sha256 = `d20f2c5`; y
+  `packages/domain/src` contiene EXACTAMENTE la lista (111 archivos, `diff` de nombres vacio).
+- Copia: los dos `diff -r -x '*.test.ts'` rc=0; 45/45 archivos; ningun `*.test.ts` copiado a consumer; `cmp` de
+  `tokens.css`, `sw.js`, `wallet-logo.png`, `postcss.config.mjs` identicos; demos borradas (`ls` → no existen).
+- Codemod sin efectos laterales: de los 296 archivos modificados de `apps/merchant` (fd292b8..HEAD), normalizando
+  espacios, comas finales y todo especificador relativo / `@mi-pasaporte/domain/…`, difieren solo 7, todos previstos por
+  la spec (`next.config.ts`, `package.json`, prosa de `staff-contract.ts`, y los 4 tests de ruta/barrido). Merchant:
+  365 archivos de test antes y despues, ningun `it`/`describe` agregado ni quitado.
+- Lockfile: copia de manifiestos + `pnpm-lock.yaml` en el scratchpad (store del repo), `pnpm install --frozen-lockfile
+  --offline --ignore-scripts` rc=0 y el lockfile queda byte a byte igual (`shasum -c` OK, `cmp` OK). Binarios de
+  plataforma (`@next/swc-*`, `@img/sharp-*`, `lightningcss-*`): 90 en `fd292b8` y 90 en HEAD.
+- Gates (Node v24.20.0): `TURBO_FORCE=1 typecheck` rc=0 (6 tareas, incluye `@mi-pasaporte/domain`); `lint` rc=0;
+  `format:check` rc=0; `test` rc=0 — merchant 365/2982, consumer 1/1, tools 4/13 (platform 1/1, public 1/6), total
+  372/3003; `TURBO_FORCE=1 build` rc=0 (4 tareas, cache bypass); clases del build de consumer 49/49; `test:e2e` rc=0,
+  106 passed / 5 skipped.
+- `51b018e` (upload-image-formats): legitimo. El codemod reescribio el import de las tres superficies y los tres hooks
+  (`brand-identity.tsx:6` era `../../../lib/image-formats` en `d20f2c5`, hoy `@mi-pasaporte/domain/lib/image-formats`,
+  y `lib/image-formats.ts` esta en la lista). Ojo: el commit cambia DOS aserciones (lineas 167 y 234), no una; las dos
+  son de la misma forma y pasan de «cualquier `(../)+lib/image-formats`» a un especificador exacto: igual o mas estrictas.
+- Clase H6 en `apps/merchant/src/**/*.test.ts`: 17 tests leen fuentes. Los barridos por `readdir` (billing/locations/
+  marketing routes sobre `app/api/*`, upload-image-formats y image-cropper-contract sobre `app/**/*.tsx`) no perdieron
+  alcance: de `app/` no se movio ningun archivo (el unico `.tsx` movido, `components/loyalty/card-preview.tsx`, no tiene
+  `accept=` ni `<ImageCropper`), y las copias de consumer son iguales en bytes a las barridas. Las lecturas de archivo
+  unico sobre rutas movidas fallarian con ENOENT (rojo), no en silencio. Ningun `vi.mock` de merchant apunta a una
+  dependencia npm que salio de merchant (`@aws-sdk/*`, `qrcode`).
+
+Declarado y NO perseguido: diferencia visual de capturas (ya declarada para la 0117); diferencial HTTP y
+`neon-test.sh` no re-corridos (requieren levantar las dos apps contra la rama de CI); el hook `stale-validator.sh` mira
+solo `apps/merchant/.next/types/validator.ts`, no el de consumer (no es riesgo de produccion: consumer no recibe
+trafico; para la 0117); `tools/vi-mock-targets.test.ts` no resuelve especificadores con sufijo `.js` (daria un falso
+rojo, no una fuga).
