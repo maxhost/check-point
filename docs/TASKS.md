@@ -8,6 +8,15 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-09-30, noche, mas tarde) — SPEC 0117 CERRADA (`1ade8b3`) Y SE ESTA IMPLEMENTANDO EN ESTE ARBOL
+
+**Owner (2026-09-30):** «no quiero parche» (my. NO pasa por merchant); proyecto Vercel lo crea el owner en el dashboard;
+«Todo junto»; raiz de my. → /wallet (ADR 0109). Un subagente `implementador` hace los puntos 1–12 de la 0117 en ESTE
+arbol (rojos = trabajo a medias; `ListAgents` antes de tocar). **Sigue:** revisor → push → rol `checkpass_consumer` en
+rama de CI (sondas + M6) → rol en PROD con OK del owner → runbook R1–R8 DE A UN PASO con su precondicion.
+
+### Bloque anterior
+
 ## ⇥ ESTADO (2026-09-30, noche) — FASE 2 HECHA: 0116 EN PROD, SIGUE LA 0117
 
 **Retomar con: escribir la SPEC 0117 (fase 3 del ADR 0107, el corte)** — proyecto Vercel del cliente, verificacion en
