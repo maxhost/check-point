@@ -65,13 +65,18 @@ vi.mock("./onboarding/program-defaults", async (importOriginal) => ({
   programInput: world.programInput,
 }));
 
-vi.mock("./loyalty-program", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./loyalty-program")>()),
-  saveProgram: world.saveProgram,
-}));
+vi.mock(
+  "@mi-pasaporte/domain/server/loyalty-program",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/loyalty-program")
+    >()),
+    saveProgram: world.saveProgram,
+  }),
+);
 
 import { PUT } from "../app/api/loyalty-program/route";
-import { LoyaltyError } from "./loyalty-program/core";
+import { LoyaltyError } from "@mi-pasaporte/domain/server/loyalty-program/core";
 
 const post = () =>
   PUT(

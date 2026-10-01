@@ -101,7 +101,7 @@ export function MarketingError({
   return (
     <Alert kind="error" title={errorText(error)}>
       {error.code === "not_member" || error.code === "missing_permission" ? (
-        <Link href="/backoffice">Volver al Backoffice</Link>
+        <Link href="/backoffice">Volver al panel</Link>
       ) : (
         retry && (
           <Button variant="secondary" onPress={retry}>

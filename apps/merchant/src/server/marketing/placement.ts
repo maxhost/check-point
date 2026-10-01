@@ -14,22 +14,22 @@
  */
 
 import { eq, sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaignTurns,
   campaigns,
   consumerAccounts,
   passPlacements,
-} from "../schema";
-import { couponToIssue } from "./coupon-issue";
+} from "@mi-pasaporte/db/schema";
+import { couponToIssue } from "@mi-pasaporte/domain/server/marketing/coupon-issue";
 import type { MeritTable } from "./merit";
 import {
   type PlacementLimits,
   type PlacementPlan,
   type TurnActivation,
   planConsumerPlacement,
-} from "./placement-plan";
+} from "@mi-pasaporte/domain/server/marketing/placement-plan";
 import {
   loadActiveTurns,
   loadBusinessActiveTurns,

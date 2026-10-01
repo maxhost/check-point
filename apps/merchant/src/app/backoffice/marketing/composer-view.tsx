@@ -73,7 +73,7 @@ export function ComposerView({
   return (
     <MarketingShell
       title={effectiveId ? "Editar campaña a medida" : "Crear campaña a medida"}
-      description="Definí a quién llamar, qué mensaje mostrar y cuándo correr la campaña."
+      description="Define a quién llamar, qué mensaje mostrar y cuándo correr la campaña."
       closeHref={
         effectiveId
           ? `/backoffice/marketing/${effectiveId}`
@@ -93,15 +93,15 @@ export function ComposerView({
         />
       )}
       {!canReadLocations && !effectiveId && (
-        <Alert kind="warning" title="Necesitás acceso a Locales">
-          La campaña a medida requiere elegir locales. Pedile al propietario el
-          permiso de Locales.
+        <Alert kind="warning" title="Necesitas acceso a Locales">
+          La campaña a medida requiere elegir locales. Pide a la persona
+          propietaria el permiso de Locales.
         </Alert>
       )}
       {!canReadLocations && effectiveId && (
         <Alert title="Locales conservados">
-          Podés cambiar otros parámetros. Para ver o cambiar los locales
-          necesitás el permiso de Locales.
+          Puedes cambiar otros parámetros. Para ver o cambiar los locales
+          necesitas el permiso de Locales.
         </Alert>
       )}
       {createdId && (

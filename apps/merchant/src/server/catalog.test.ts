@@ -1,10 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { CatalogError, toProductDTO, type ProductRecord } from "./catalog/core";
+import {
+  CatalogError,
+  toProductDTO,
+  type ProductRecord,
+} from "@mi-pasaporte/domain/server/catalog/core";
 import {
   validateCategoryName,
   validateProductInput,
-} from "./catalog/validation";
-import { currencyForCountry, isSupportedCurrency } from "../lib/currencies";
+} from "@mi-pasaporte/domain/server/catalog/validation";
+import {
+  currencyForCountry,
+  isSupportedCurrency,
+} from "@mi-pasaporte/domain/lib/currencies";
 
 const base = {
   name: "Café",

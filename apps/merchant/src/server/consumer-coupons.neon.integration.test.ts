@@ -10,13 +10,17 @@ import {
   seedCouponWorld,
 } from "./counter-coupon-support";
 import { seedCampaignCoupon } from "./marketing-coupon-support";
-import { getDb } from "./db";
-import { businesses, campaignCoupons, couponRedemptions } from "./schema";
-import { SESSION_COOKIE } from "./consumer/core";
-import { issueSession } from "./consumer/session";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  campaignCoupons,
+  couponRedemptions,
+} from "@mi-pasaporte/db/schema";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
-import { GET } from "../app/api/public/consumer/coupons/route";
+import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route";
 
 /**
  * Spec 0106 E3 — `GET /api/public/consumer/coupons` against a real database, through the
@@ -155,6 +159,8 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       "id",
       "kind",
       "label",
+      // Spec 0112 C3: `cross` for a claimed cross offer, else `campaign`.
+      "origin",
       "reason",
       "redeemedAt",
       "rule",
@@ -173,6 +179,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       status: "valid",
       reason: null,
       redeemedAt: null,
+      origin: "campaign",
     });
     expect(mine[1]).toMatchObject({
       businessId: w1.seed.business.id,

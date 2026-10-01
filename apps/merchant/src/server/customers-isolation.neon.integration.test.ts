@@ -8,8 +8,8 @@ import {
 } from "./customers-integration-support";
 import { seedMember } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
-import { getDb, withDbTransaction } from "./db";
-import { memberships, users } from "./schema";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import { withCustomerReader } from "./customers/reader";
 import { GET } from "../app/api/customers/route";
 

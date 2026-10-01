@@ -18,7 +18,7 @@ const selectResponses: unknown[][] = [];
 const claimResponses: Record<string, unknown>[][] = [];
 const queueUpdates: Record<string, unknown>[] = [];
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   // Renders a drizzle `sql` template to text so the CLAIM statement can be told apart
   // from the ones `deliverClaimed` runs afterwards (a chunk can be a raw `null`, so it
   // is guarded: a throw in here would be swallowed and look like a delivery failure).
@@ -104,7 +104,12 @@ describe("runPushWorker keeps a pass_refresh out of the transactional lane", () 
       consumerIds: ["c1"],
     });
 
-    expect(summary).toEqual({ sent: 2, rescheduled: 0, skipped: 0 });
+    expect(summary).toEqual({
+      sent: 2,
+      rescheduled: 0,
+      skipped: 0,
+      planned: 0,
+    });
     // The account writes are the CAMPAIGN's two — its `latest_message` and its
     // `last_push_at` — and NOTHING else: the refresh contributed none. `queueUpdates`
     // collects every `update().set()`, so a refresh collapsed to `transactional` would

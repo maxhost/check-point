@@ -14,21 +14,21 @@ import {
   seedReward,
   setBalance,
 } from "./counter-integration-support";
-import { type DbTransaction, getDb, withDbTransaction } from "./db";
-import { consumerAccounts } from "./schema";
-import { rowsOf } from "./counter/core";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { consumerAccounts } from "@mi-pasaporte/db/schema";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 import { redeemReward } from "./counter/redeem";
-import { enroll } from "./consumer/enrollment";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { listCustomers } from "./customers/list";
 import type { CustomerQuery } from "./customers/query";
 
 // Spec 0109 — THE TRIPS ORACLE: every statement sent through the transaction's `execute` is
 // recorded (rendered to its SQL text). `BEGIN`/`COMMIT` come from `withDbTransaction` itself.
 const trips = vi.hoisted(() => ({ statements: [] as string[] }));
-vi.mock("./db", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./db")>();
+vi.mock("@mi-pasaporte/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@mi-pasaporte/db")>();
   const { PgDialect } = await import("drizzle-orm/pg-core");
   const dialect = new PgDialect();
   return {
@@ -101,7 +101,10 @@ describe.skipIf(!integrationEnabled)(
       expect(await projected(world.a.business.id)).toBe(3);
 
       const migration = readFileSync(
-        join(__dirname, "../../drizzle/0054_contador_de_clientes.sql"),
+        join(
+          __dirname,
+          "../../../../packages/db/drizzle/0054_contador_de_clientes.sql",
+        ),
         "utf8",
       );
       const backfill = migration

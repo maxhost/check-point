@@ -107,7 +107,7 @@ export function StepPreview({
       <div className="brand-kit-controls no-print">
         <header className="brand-kit-step-intro">
           <p className="eyebrow">Personalización</p>
-          <h2>Ajustá tu afiche</h2>
+          <h2>Ajusta tu afiche</h2>
           <p>Los cambios se reflejan al instante en la vista previa.</p>
         </header>
         <div className="brand-kit-brand-note">

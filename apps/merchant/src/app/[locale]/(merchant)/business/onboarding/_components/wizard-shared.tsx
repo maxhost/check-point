@@ -40,7 +40,9 @@ export function StepHeader({
     <header className="mb-8 grid gap-5">
       <ProgressIndicator currentStep={step} steps={steps} />
       <div>
-        <p className="mb-2 text-sm font-bold text-primary">CheckPass Club</p>
+        <p className="merchant-onboarding-eyebrow mb-2 text-xs font-bold uppercase">
+          Tu negocio en CheckPass
+        </p>
         <h1
           id="wizard-heading"
           tabIndex={-1}

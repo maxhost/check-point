@@ -8,8 +8,8 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { orderItems, orders, products } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { orderItems, orders, products } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 

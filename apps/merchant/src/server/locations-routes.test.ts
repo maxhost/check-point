@@ -1,11 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, sep } from "node:path";
-import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
-const FOREIGN_BUSINESS = "22222222-2222-4222-8222-222222222222";
-const FOREIGN_LOCATION = "33333333-3333-4333-8333-333333333333";
 
 const world = vi.hoisted(() => ({
   /**
@@ -22,6 +17,8 @@ const world = vi.hoisted(() => ({
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
   setLocationStatus: vi.fn(),
+  getLocationHours: vi.fn(),
+  putLocationHours: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -33,7 +30,7 @@ vi.mock("./staff", async (importOriginal) => ({
   membershipContext: world.membershipContext,
 }));
 
-// Only the four domain entry points are replaced; `LocationError` stays real, because
+// Only the domain entry points are replaced; `LocationError` stays real, because
 // `_auth.ts` maps it to the HTTP status and a fake would be testing the fake.
 vi.mock("./locations", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./locations")>()),
@@ -41,75 +38,23 @@ vi.mock("./locations", async (importOriginal) => ({
   createLocation: world.createLocation,
   updateLocation: world.updateLocation,
   setLocationStatus: world.setLocationStatus,
+  // Spec 0113: the opening hours.
+  getLocationHours: world.getLocationHours,
+  putLocationHours: world.putLocationHours,
 }));
 
-import { GET, POST } from "../app/api/locations/route";
+import {
+  CALLER_BUSINESS,
+  FOREIGN_BUSINESS,
+  FOREIGN_LOCATION,
+  locationHandlers,
+  params,
+  request,
+} from "./locations-routes-support";
 import { PATCH } from "../app/api/locations/[locationId]/route";
-import { POST as STATUS } from "../app/api/locations/[locationId]/status/route";
+import { GET } from "../app/api/locations/route";
 
-const request = (path: string, method: string, body?: unknown) =>
-  new NextRequest(`https://merchant.test${path}`, {
-    method,
-    headers: { "content-type": "application/json" },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-
-const params = Promise.resolve({ locationId: FOREIGN_LOCATION });
-
-/**
- * The four handlers of `api/locations/**`, each described by how to call it and which
- * domain function it must reach only AFTER the guard. Every call deliberately carries a
- * FOREIGN business/location in the URL, the query string and the path — the point is that
- * none of it can steer the handler.
- */
-const HANDLERS = [
-  {
-    name: "GET /api/locations",
-    call: () => GET(request(`/api/locations?b=${FOREIGN_BUSINESS}`, "GET")),
-    spy: world.listLocations,
-    /** Which argument carries the business the handler decided to act on. */
-    businessArg: (args: unknown[]) => args[0],
-  },
-  {
-    name: "POST /api/locations",
-    call: () =>
-      POST(
-        request(`/api/locations?b=${FOREIGN_BUSINESS}`, "POST", {
-          name: "Sucursal ajena",
-          address: { label: "Calle 1" },
-          businessId: FOREIGN_BUSINESS,
-        }),
-      ),
-    spy: world.createLocation,
-    businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
-  },
-  {
-    name: "PATCH /api/locations/:locationId",
-    call: () =>
-      PATCH(
-        request(`/api/locations/${FOREIGN_LOCATION}`, "PATCH", {
-          name: "Secuestrado",
-          businessId: FOREIGN_BUSINESS,
-        }),
-        { params },
-      ),
-    spy: world.updateLocation,
-    businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
-  },
-  {
-    name: "POST /api/locations/:locationId/status",
-    call: () =>
-      STATUS(
-        request(`/api/locations/${FOREIGN_LOCATION}/status`, "POST", {
-          status: "archived",
-          businessId: FOREIGN_BUSINESS,
-        }),
-        { params },
-      ),
-    spy: world.setLocationStatus,
-    businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
-  },
-];
+const HANDLERS = locationHandlers(world);
 
 /**
  * Spec 0061, decision 4 — «only the owner administers locations», pinned at the HTTP
@@ -144,6 +89,8 @@ describe("api/locations — owner-only guard (spec 0061, decision 4)", () => {
       addressLabel: "Y",
       status: "archived",
     });
+    world.getLocationHours.mockResolvedValue({ days: [] });
+    world.putLocationHours.mockResolvedValue({ ok: true, hours: { days: [] } });
   });
 
   it.each(HANDLERS)(

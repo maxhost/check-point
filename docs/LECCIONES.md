@@ -1829,3 +1829,95 @@ SECURITY DEFINER`, que no se inlinea y se planifica sin el valor del parametro: 
 **Regla.** Un benchmark que justifica un diseño se corre **en la forma en que va a ejecutarse**: dentro
 de la funcion, con parametros, con el rol real. Medir la consulta suelta con literales mide otro plan.
 Es la «tercera de la familia» de `CLAUDE.md` (mecanismo medido hasta el final) aplicada a rendimiento.
+
+
+## 2026-09-29 — una tabla «derivada de una formula» que la formula no reproducia
+
+**Que paso.** Al consolidar la escalera de reactivacion por rubro, el orquestador propuso derivar la
+cadencia de «En riesgo» como `round(0,7 × R)` y presento una tabla «ya calculada asi». La tabla estaba
+hecha a mano: para R = 45 decia 32 (mensajes 77/109) y la formula da 31 (76/107). Lo cazo el owner
+(«la formula que propones no da los numeros de la tabla»); un script de 8 lineas lo confirmo.
+
+**Regla.** Una tabla que se presenta como salida de una formula se **genera con la formula** (script),
+no se escribe a mano al lado. Es la misma familia que «el ejemplo es una afirmacion» de `CLAUDE.md`:
+si decis «sale de X», X tiene que haberse ejecutado.
+
+## 2026-09-29 — una guia citada como prohibicion, y retorica de un sintetizador pasada como hallazgo
+
+**Que paso.** (1) El orquestador verifico textual la HIG de Apple («Never use a change message for marketing…») y
+la presento como «el Wallet no sirve para marketing». El owner: «mentira, todas las apps lo usan para esto, el
+limite es el problema». La cita era cierta; la CONCLUSION convirtio una guia de diseño (sin enforcement sobre los
+pases) en una prohibicion. (2) Paso al owner la frase de un redactor de informe («el tope de Google pasa a ser una
+disciplina que las mejores plataformas se imponen solas»); el owner pregunto «¿como nos beneficia?» y no habia
+respuesta: era adorno. (3) Siete agentes de investigacion en paralelo agotaron el cupo de 200 busquedas web de la
+sesion y el orquestador quedo sin poder verificar ninguna cifra de esa ronda.
+
+**Regla.** Al citar una politica, decir su NIVEL: guia/recomendacion, regla con enforcement, o ley — «should
+not» no es «cannot». Una frase de un sintetizador que no es un hecho verificable no se reenvia al owner. Y un
+fan-out de investigacion web se dimensiona contra el cupo de busquedas de la sesion, reservando busquedas para
+la verificacion del orquestador (protocolo en la skill `protocolo-de-verificacion` §4).
+
+## 2026-09-29 — tercera spec seguida con una fila de mutacion falsa: el oraculo no aislaba el guard
+
+**Que paso.** La fila M6 de la spec 0111 mandaba borrar el `not exists` de 20 h del insert del recordatorio
+(`wallet/reminder-store.ts`) y esperaba rojo en «dos corridas → 1». Medido por el implementador y re-medido por el
+revisor: queda VERDE, porque la condicion 2 de `decideReminder` (ningun reminder en 20 h) ya impide el segundo
+insert — dos guards producen el mismo resultado y el oraculo no distinguia cual. El oraculo real fue un caso «stale
+read» (dos pasadas del cron solapadas, escenario real: `curl --max-time 60` no corta la ejecucion en Vercel). Es la
+tercera spec seguida (M5 de la 0085, M6 de la 0086, M6 de la 0111) con una fila escrita por el orquestador que no
+media lo que decia.
+
+**Regla.** Por cada fila de la tabla de mutaciones, ANTES de cerrar la spec, preguntar: **¿que OTRO guard del mismo
+flujo produce el mismo resultado?** Si existe, el oraculo tiene que puentearlo (un doble que lo desactive, un
+escenario donde no alcanza) o la fila mide el guard equivocado. Vale aunque el mecanismo todavia no exista: se
+razona sobre el diseño de la propia spec (protocolo en la skill `protocolo-de-verificacion` §2.0).
+
+
+## 2026-09-29 — una restriccion del ESQUEMA se le presento al owner como si fuera del PRODUCTO
+
+**Que paso.** Pidiendo decisiones para «Mis beneficios», el owner definio la oferta cruzada como «una campaña que
+active el merchant como la de bienvenida». El orquestador midio que `campaign_coupon.membership_id` es `NOT NULL` y
+armo la pregunta siguiente sobre esa base: «¿como la obtiene? (un cupon hoy exige ser miembro)», con opciones que
+todas pasaban por enrolarse. El owner: «estas confundiendote. y mucho […] ese cupon no requiere que el cliente este
+enrolado». Una columna de hoy se volvio una premisa del producto, y costo una ronda de preguntas y la paciencia del
+owner.
+
+**Regla.** Lo que el codigo exige HOY es un costo de implementacion, no una restriccion del producto: va a la spec
+(«hace falta una migracion»), nunca a las opciones de una pregunta al owner. Antes de preguntar, releer las
+palabras textuales del owner sobre ESE concepto y preguntar solo lo que ellas no cierran.
+
+## 2026-09-30 — «no rompe» escrito sin medir el flujo de TIPOS entre servidor y UI
+
+**Que paso.** La spec 0113 suma el tipo de premio `custom` y afirmaba que la UI de Marketing no se rompia porque su
+`CouponKind` es un union propio (`app/backoffice/marketing/marketing-types.ts:2`). Se midio que el union existia, no
+por donde entra el dato: `composer.tsx:29` asigna el `Campaign` del SERVIDOR al tipo de la UI, y `results-view.tsx`
+y `campaign-detail.tsx` indexan `Record<CouponKind, string>`. El typecheck se puso rojo con el implementador ya
+despachado y la spec prohibiendo tocar `app/backoffice/**`.
+
+**Regla.** Ampliar un union/enum del servidor exige, antes de cerrar la spec, un `rg` de sus CONSUMIDORES (incluida la
+UI) y un typecheck de prueba con el valor agregado — dos minutos. «Tiene su propio tipo» no prueba que no le llegue
+el del servidor. Es la tercera de la familia de CLAUDE.md: una afirmacion de mecanismo medida hasta la mitad.
+
+## 2026-09-30 — un runbook entregado antes del deploy se ejecuto fuera de orden
+
+**Que paso.** El runbook de la 0114 se le dio al owner con 8 pasos en orden mientras el codigo todavia no estaba en
+PROD. El owner movio `www` al proyecto publico (paso 6) antes de agregar `my.` y cargar las env (pasos 2–3): `www`
+empezo a redirigir los QR impresos y el link del pase a un `my.checkpass.club` que no respondia. Nada lo impedia: los
+pasos eran prosa.
+
+**Regla.** Un runbook para el owner marca en cada paso su PRECONDICION verificable («no hagas el 6 hasta que
+`curl https://my.checkpass.club/api/health` de 200») y el orquestador verifica esa precondicion antes de dar el paso
+siguiente; los pasos irreversibles o visibles para clientes reales van al final y se entregan de a uno.
+
+## 2026-09-30 — el rol de permisos minimos se verifico con `has_table_privilege` y RLS lo dejo ciego
+
+**Que paso.** Tras el corte de la 0117, `my.checkpass.club/enroll/<programa activo>` mostraba «Este programa no esta
+disponible». El rol `checkpass_consumer` tenia DML en las 52 tablas (medido con `has_table_privilege`), pero
+`core.loyalty_program`, `consumer.program_membership`, `core.business_customer` y `core.business_customer_count` tienen
+RLS con politicas solo para `customer_reader`: para cualquier otro rol que no sea el dueño, cero filas y sin error.
+Merchant nunca lo vio porque conecta como `neondb_owner` (el dueño se saltea RLS). Se arreglo en PROD con
+`ALTER ROLE checkpass_consumer BYPASSRLS` (los GRANT siguen dejando afuera `merchant_auth`).
+
+**Regla.** Un rol nuevo se verifica tambien contra RLS: `select relname from pg_class where relrowsecurity` en los
+esquemas que toca, y para cada tabla con RLS decidir politica o `BYPASSRLS` ANTES del corte. `has_table_privilege`
+no ve politicas. Y la prueba que cuenta es una lectura real con ese rol, no una funcion de catalogo.

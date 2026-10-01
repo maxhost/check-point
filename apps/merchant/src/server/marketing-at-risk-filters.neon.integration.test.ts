@@ -18,9 +18,13 @@ import {
   seedWebPush,
 } from "./marketing-push-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { getDb } from "./db";
-import { campaignLocations, campaignTurns, campaigns } from "./schema";
-import type { TemplateKey } from "./marketing/templates";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaignTurns,
+  campaigns,
+} from "@mi-pasaporte/db/schema";
+import type { TemplateKey } from "@mi-pasaporte/domain/server/marketing/templates";
 import { type TickSummary, runMarketingTick } from "./marketing/tick";
 
 /**

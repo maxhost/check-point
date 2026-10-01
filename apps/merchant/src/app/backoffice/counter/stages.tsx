@@ -47,7 +47,7 @@ export function Console({
       <ModuleHeader
         eyebrow="Mostrador"
         title="Acreditar puntos"
-        description="Escaneá el QR del cliente y sumá su compra."
+        description="Escanea el QR del cliente y suma su compra."
         closeHref="/backoffice"
       />
       {children}
@@ -73,7 +73,7 @@ export function LocationGate({
     <section className="counter-panel">
       <h2>¿En qué local estás?</h2>
       <p className="counter-hint">
-        Elegí el local para registrar las ventas ahí.
+        Elige el local para registrar las ventas ahí.
       </p>
       <div className="counter-locations">
         {locations.map((loc) => (

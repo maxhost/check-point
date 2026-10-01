@@ -8,23 +8,23 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   walletPasses,
   walletPushDevices,
   walletPushQueue,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { type PersistGrantInput, persistGrant } from "./counter/orders";
-import { ensureWalletPass } from "./wallet/core";
-import { hashToken } from "./consumer/core";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { hashToken } from "@mi-pasaporte/domain/server/consumer/core";
 import {
   authorizePass,
   listUpdatedSerials,
   registerDevice,
   unregisterDevice,
-} from "./wallet/passkit";
+} from "@mi-pasaporte/domain/server/wallet/passkit";
 import { rotatePassCredentials } from "./wallet/push";
 
 const consumerIds: string[] = [];
@@ -106,7 +106,9 @@ describe.skipIf(!integrationEnabled)(
       expect(rows[0].class).toBe("transactional");
       expect(rows[0].status).toBe("pending");
       expect(rows[0].title).toBe("La Gringa");
-      expect(rows[0].body).toBe("Se acreditó 1 sello en tu cuenta 🎉");
+      expect(rows[0].body).toBe(
+        "Se acreditó 1 sello en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
+      );
     }, 30_000);
 
     it("a bogus membership creates neither an order nor a queue row (rollback invariant)", async () => {

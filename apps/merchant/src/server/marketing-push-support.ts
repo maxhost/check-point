@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { type SeedCoupon, couponColumns } from "./marketing-coupon-support";
 import {
   campaignPushes,
@@ -9,8 +9,8 @@ import {
   walletPasses,
   walletPushQueue,
   webPushSubscriptions,
-} from "./schema";
-import type { TemplateKey } from "./marketing/templates";
+} from "@mi-pasaporte/db/schema";
+import type { TemplateKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * Seeds and reads of the push-channel suites (spec 0103), out of the test files for the
@@ -48,7 +48,7 @@ export async function seedPushCampaign(opts: {
       name: opts.templateKey,
       status: opts.status ?? "active",
       dormantDays: opts.dormantDays,
-      message: opts.message ?? "¡Volvé!",
+      message: opts.message ?? "¡Vuelve!",
       ...couponColumns(opts.coupon),
       nearRewardStamps: near ? (opts.nearRewardStamps ?? 2) : null,
       nearRewardPercent: near ? (opts.nearRewardPercent ?? 20) : null,
@@ -145,7 +145,7 @@ export async function seedDecision(opts: {
         consumerId: opts.consumerId,
         class: "campaign",
         title: opts.title ?? "La Gringa",
-        body: opts.body ?? "¡Volvé!",
+        body: opts.body ?? "¡Vuelve!",
         status: opts.sentAt ? "sent" : opts.cancel ? "cancelled" : "pending",
         notBefore: opts.notBefore ?? opts.decidedAt,
       })

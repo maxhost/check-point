@@ -1,0 +1,27 @@
+// Barrel for the merchant database schema. Split by domain to stay within the
+// file-size budget; every `from "./schema"` import resolves here unchanged.
+export * from "./schema/_schemas";
+export * from "./schema/auth";
+export * from "./schema/auth-start";
+export * from "./schema/business";
+export * from "./schema/membership";
+export * from "./schema/onboarding-tour";
+export * from "./schema/billing";
+export * from "./schema/staff-pin";
+export * from "./schema/loyalty";
+export * from "./schema/loyalty-reward";
+export * from "./schema/consumer";
+export * from "./schema/wallet-push";
+export * from "./schema/otp";
+export * from "./schema/web-push";
+export * from "./schema/catalog";
+export * from "./schema/catalog-import";
+export * from "./schema/order";
+export * from "./schema/reward-redemption";
+export * from "./schema/campaign";
+export * from "./schema/campaign-turn";
+export * from "./schema/campaign-coupon";
+export * from "./schema/campaign-push";
+export * from "./schema/welcome-device";
+export * from "./schema/business-customer";
+export * from "./schema/valley";

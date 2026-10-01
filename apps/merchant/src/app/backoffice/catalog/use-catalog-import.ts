@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PDF_CONTENT_TYPE } from "../../../lib/image-formats";
+import { PDF_CONTENT_TYPE } from "@mi-pasaporte/domain/lib/image-formats";
 import {
   CatalogImportRequestError,
   debug,
@@ -228,7 +228,7 @@ export function useCatalogImport({
       (containsPdf && next.some((file) => file.type !== PDF_CONTENT_TYPE))
     ) {
       setFiles([]);
-      setError("Elegí un PDF o solamente imágenes, sin mezclarlos.");
+      setError("Elige un PDF o solamente imágenes, sin mezclarlos.");
       return;
     }
     setFiles(next);

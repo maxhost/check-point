@@ -3,7 +3,7 @@ import {
   requestRecovery,
   resendRecovery,
   verifyRecovery,
-} from "./consumer/recovery";
+} from "@mi-pasaporte/domain/server/consumer/recovery";
 
 describe("recovery rollout flag", () => {
   afterEach(() => delete process.env.RECOVERY_ENABLED);

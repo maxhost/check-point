@@ -104,7 +104,7 @@ export function MarketingHome({
   return (
     <MarketingShell
       title="Campañas"
-      description="Prendé una campaña para configurarla. Quedará activa cuando la guardes en el editor."
+      description="Enciende una campaña para configurarla. Quedará activa cuando la guardes en el editor."
     >
       <MarketingToast message={notice} dismiss={() => setNotice(null)} />
       {error && (
@@ -119,7 +119,7 @@ export function MarketingHome({
           {templates.length === 0 && (
             <MarketingPanel title="Todavía no hay plantillas">
               <p>
-                Volvé más tarde para encontrar campañas listas para activar.
+                Vuelve más tarde para encontrar campañas listas para activar.
               </p>
             </MarketingPanel>
           )}
@@ -145,22 +145,22 @@ export function MarketingHome({
           )}
           <MarketingPanel
             title="Campañas a medida"
-            description="Definí tu audiencia, el mensaje, los locales y un cupón opcional."
+            description="Define tu audiencia, el mensaje, los locales y un cupón opcional."
           >
             <CampaignsList
               campaigns={campaigns.filter((campaign) => !campaign.templateKey)}
               showCreate={canReadLocations}
             />
             {!canReadLocations && (
-              <Alert className="mt-5" title="Necesitás acceso a Locales">
-                Para crear una campaña a medida se deben elegir locales. Pedile
-                al propietario el permiso de Locales.
+              <Alert className="mt-5" title="Necesitas acceso a Locales">
+                Para crear una campaña a medida se deben elegir locales. Pide a
+                la persona propietaria el permiso de Locales.
               </Alert>
             )}
           </MarketingPanel>
           <MarketingPanel
             title="Horario de push"
-            description="Elegí cuándo pueden salir los avisos de tus campañas."
+            description="Elige cuándo pueden salir los avisos de tus campañas."
           >
             <Link
               className="marketing-link"

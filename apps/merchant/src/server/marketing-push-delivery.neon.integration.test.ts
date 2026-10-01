@@ -25,12 +25,16 @@ import {
   world,
 } from "./marketing-push-delivery-support";
 import { dropCampaigns, readAccount } from "./marketing-read-support";
-import { getDb } from "./db";
-import { businesses, campaignCoupons, campaigns } from "./schema";
-import { recordPushClick } from "./marketing/push-delivery";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  campaignCoupons,
+  campaigns,
+} from "@mi-pasaporte/db/schema";
+import { recordPushClick } from "@mi-pasaporte/domain/server/marketing/push-delivery";
 import { loadActiveCoupon } from "./counter/coupon-scan";
-import { listConsumerCoupons } from "./consumer/coupons";
-import type { FakeWebPushChannel } from "./push/webpush-channel";
+import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
+import type { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 
 /**
  * The worker's side of a campaign push (spec 0103 §6-§9) against a real database, through

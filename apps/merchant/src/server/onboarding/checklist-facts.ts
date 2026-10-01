@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getMerchantAuth } from "../auth";
-import { getDb } from "../db";
-import { businessOnboardingTours } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businessOnboardingTours } from "@mi-pasaporte/db/schema";
 import type { ChecklistFacts } from "./checklist";
 
 /**

@@ -5,11 +5,22 @@
 # `NEON_INTEGRATION_ISOLATED=true`, vitest NO lee `.env.local`, y la rama de CI se queda atras
 # de las migraciones. Un `skipped` se lee igual que un `passed`: por eso esto existe.
 #
-#   tools/neon-test.sh                      # toda la suite
-#   tools/neon-test.sh src/server/x.test.ts # un archivo (rutas relativas a apps/merchant)
+#   tools/neon-test.sh                                    # toda la suite
+#   tools/neon-test.sh src/server/x.test.ts               # un archivo (relativo a apps/merchant)
+#   tools/neon-test.sh --app consumer src/server/x.test.ts # un archivo de apps/consumer (spec 0117)
 #
 # NUNCA imprime el valor de una credencial: solo la clave y su largo.
 set -euo pipefail
+
+APP="merchant"
+if [ "${1:-}" = "--app" ]; then
+  APP="${2:-}"
+  shift 2 || { echo "uso: tools/neon-test.sh [--app merchant|consumer] [archivos...]"; exit 1; }
+fi
+case "$APP" in
+  merchant | consumer) ;;
+  *) echo "app desconocida: '$APP' (merchant | consumer)"; exit 1 ;;
+esac
 
 cd "$(dirname "$0")/.."
 ENV_FILE="apps/merchant/.env.local"
@@ -42,6 +53,21 @@ if [ -n "$PROD" ] && [ "$(host "$CI_POOLED")" = "$(host "$PROD")" ]; then
   exit 1
 fi
 
+# Spec 0118: el oraculo del rol del cliente se conecta COMO `checkpass_consumer` (la URL de la
+# rama de CI con ese usuario). Opcional para el script —sin ella ese archivo FALLA, no se
+# saltea— pero si esta, tiene que ser la rama de CI y nunca la base real.
+CI_CONSUMER="$(leer NEON_CI_CONSUMER_DATABASE_URL)"
+if [ -n "$CI_CONSUMER" ]; then
+  if [ "$(host "$CI_CONSUMER")" != "$(host "$CI_POOLED")" ]; then
+    echo "ABORTADO: NEON_CI_CONSUMER_DATABASE_URL no apunta a la rama de CI."
+    exit 1
+  fi
+  echo "ok NEON_CI_CONSUMER_DATABASE_URL (largo ${#CI_CONSUMER})"
+  export NEON_INTEGRATION_CONSUMER_DATABASE_URL="$CI_CONSUMER"
+else
+  echo "aviso: NEON_CI_CONSUMER_DATABASE_URL sin valor en $ENV_FILE (el oraculo del rol va a fallar)"
+fi
+
 # La rama de CI nace de `main` y se queda atras cuando llega una migracion nueva. drizzle-kit
 # aplica solo las pendientes, asi que correrlo siempre es idempotente (igual que la CI).
 echo "→ migrando la rama de CI"
@@ -52,5 +78,5 @@ if [ "$#" -eq 0 ]; then
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true pnpm run test
 else
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
-    pnpm --filter @mi-pasaporte/merchant exec vitest run "$@"
+    pnpm --filter "@mi-pasaporte/$APP" exec vitest run "$@"
 fi

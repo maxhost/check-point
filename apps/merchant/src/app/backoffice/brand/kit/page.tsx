@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { requireOwner } from "../../../../server/auth-guards";
 import { getBrandKitData } from "../../../../server/brand-kit/data";
+import { consumerOriginOr } from "@mi-pasaporte/domain/server/hosts";
 import { ModuleHeader } from "../../../components/ui";
 import { BrandKitWizard } from "./brand-kit-wizard";
 
@@ -11,12 +12,12 @@ export default async function BrandKitPage() {
   const { business } = await requireOwner();
   const headerList = await headers();
 
-  // Absolute origin for the poster QR (the code must encode an absolute enroll URL).
-  // Derived from the request — there is no env-based URL helper in this repo.
+  // Absolute origin for the poster QR (the code must encode an absolute enroll URL):
+  // `CONSUMER_ORIGIN` (my., spec 0114) when set, otherwise derived from the request.
   const host =
     headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "";
   const proto = headerList.get("x-forwarded-proto") ?? "https";
-  const origin = `${proto}://${host}`;
+  const origin = consumerOriginOr(`${proto}://${host}`);
 
   const data = await getBrandKitData(business.id, origin);
 
@@ -27,13 +28,13 @@ export default async function BrandKitPage() {
           <ModuleHeader
             eyebrow="Marca"
             title="Afiche de enrolamiento"
-            description="Generá el afiche imprimible con el QR para sumar clientes."
+            description="Genera el afiche imprimible con el QR para sumar clientes."
             closeHref="/backoffice/brand"
           />
           <div className="brand-kit-block">
-            <h2>Todavía no tenés un programa</h2>
+            <h2>Todavía no tienes un programa</h2>
             <p>
-              Creá tu programa de fidelización antes de generar el afiche: el QR
+              Crea tu programa de fidelización antes de generar el afiche: el QR
               necesita un programa al que sumar a tus clientes.
             </p>
             <a className="brand-kit-block-cta" href="/backoffice/loyalty">

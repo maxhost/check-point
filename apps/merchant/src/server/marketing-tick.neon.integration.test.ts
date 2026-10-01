@@ -23,8 +23,8 @@ import {
   readTurns,
 } from "./marketing-read-support";
 import { runMarketingTick, type TickSummary } from "./marketing/tick";
-import { getDb } from "./db";
-import { campaignTickAudiences } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignTickAudiences } from "@mi-pasaporte/db/schema";
 import { eq } from "drizzle-orm";
 
 /**

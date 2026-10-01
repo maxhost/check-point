@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withDbTransaction } from "../../../server/db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   clearPendingPlan,
   scheduleDowngrade,

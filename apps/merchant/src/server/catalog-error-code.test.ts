@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CatalogError } from "./catalog/core";
+import { CatalogError } from "@mi-pasaporte/domain/server/catalog/core";
 import { catalogError } from "../app/api/catalog/_auth";
 
 /**

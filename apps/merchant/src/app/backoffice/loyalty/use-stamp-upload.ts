@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_IMAGE_LABEL,
   isAcceptedImageType,
-} from "../../../lib/image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 import { croppedFileName, decideImageChoice } from "../../../lib/crop-image";
 import { resolveDecodableImage } from "../../../lib/image-decode-probe";
 

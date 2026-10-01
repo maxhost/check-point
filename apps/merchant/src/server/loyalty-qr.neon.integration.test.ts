@@ -10,7 +10,7 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyProgramEvents,
@@ -18,8 +18,11 @@ import {
   loyaltyRewards,
   memberships,
   users,
-} from "./schema";
-import { programForOwner, saveProgram } from "./loyalty-program";
+} from "@mi-pasaporte/db/schema";
+import {
+  programForOwner,
+  saveProgram,
+} from "@mi-pasaporte/domain/server/loyalty-program";
 import { openMerchantSession } from "./merchant-session";
 import { GET } from "../app/api/loyalty-program/qr/route";
 

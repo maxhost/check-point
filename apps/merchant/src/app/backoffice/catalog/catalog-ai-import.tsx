@@ -109,8 +109,8 @@ export function CatalogAiImport({
     <StaffFormModal
       open={open}
       eyebrow="Carga inteligente"
-      title="Creá el catálogo desde un archivo"
-      description="Subí fotos o un PDF de tu menú. Lo leemos y cargamos el catálogo por vos."
+      title="Crea el catálogo desde un archivo"
+      description="Sube fotos o un PDF de tu menú. Lo leemos y cargamos el catálogo por ti."
       onClose={onClose}
       dismissible={!processing || error !== null}
     >
@@ -146,7 +146,7 @@ export function CatalogAiImport({
                 <strong>{statusCopy(activeImport.status)}</strong>
                 <p>
                   {activeImport.error?.message ??
-                    "Podés elegir los archivos nuevamente."}
+                    "Puedes elegir los archivos nuevamente."}
                 </p>
               </div>
             </div>

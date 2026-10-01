@@ -11,11 +11,14 @@ import {
   requestRecovery,
   resendRecovery,
   verifyRecovery,
-} from "./consumer/recovery";
-import { generateOpaqueToken, hashToken } from "./consumer/core";
-import { getDb } from "./db";
-import { FakeOtpChannel } from "./otp/fake";
-import { OtpProviderError } from "./otp/core";
+} from "@mi-pasaporte/domain/server/consumer/recovery";
+import {
+  generateOpaqueToken,
+  hashToken,
+} from "@mi-pasaporte/domain/server/consumer/core";
+import { getDb } from "@mi-pasaporte/db";
+import { FakeOtpChannel } from "@mi-pasaporte/domain/server/otp/fake";
+import { OtpProviderError } from "@mi-pasaporte/domain/server/otp/core";
 import {
   consumerAccounts,
   consumerSessions,
@@ -26,7 +29,7 @@ import {
   walletPushDevices,
   walletPushQueue,
   webPushSubscriptions,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 
 const phones = [
   "+59395",

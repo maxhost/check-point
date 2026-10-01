@@ -20,8 +20,8 @@ import {
 } from "./marketing-world-support";
 import { loadBusinessTurnStats } from "./marketing/merit";
 import { runMarketingTick, type TickSummary } from "./marketing/tick";
-import { getDb, withDbTransaction } from "./db";
-import { campaignTurns } from "./schema";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { campaignTurns } from "@mi-pasaporte/db/schema";
 
 /**
  * The MERIT wiring (ADR 0066, spec 0065 phase A5). `businessScore` and `byMerit` have

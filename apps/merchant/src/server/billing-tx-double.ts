@@ -1,5 +1,5 @@
 import { getTableName, type Table } from "drizzle-orm";
-import type { DbTransaction } from "./db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 
 /**
  * EL DOBLE DE `tx` DE BILLING, compartido por `billing-store.test.ts` y

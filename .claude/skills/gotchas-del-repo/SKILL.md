@@ -148,7 +148,7 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   `lint`, `test`, `format:check`, `build` son scripts de
   **root** (`pnpm run <script>`), NO del paquete — `pnpm --filter @mi-pasaporte/merchant lint`
   tira `None of the selected packages has a "lint" script`. El paquete merchant solo define
-  `typecheck` (y `db:migrate`); para unit de un archivo suelto: `pnpm --filter
+  `typecheck` (`db:migrate`/`db:generate` viven en `@mi-pasaporte/db` desde la spec 0115); para unit de un archivo suelto: `pnpm --filter
   @mi-pasaporte/merchant exec vitest run <path>`. El Stop hook (`.claude/hooks/verify.sh`) corre
   typecheck+lint+test de root (no prettier ni build).
 
@@ -240,7 +240,7 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   deploy: aparecen cuando un usuario los toca.** Verificar el estado de la base **para el codigo
   que se acaba de desplegar**, corriendo **la consulta exacta que hace el codigo**, no una parecida.
 - **Migracion a prod (Neon):** `DATABASE_URL_UNPOOLED='<conn de la rama default, host SIN
-  -pooler>' pnpm --filter @mi-pasaporte/merchant db:migrate`. La connection string se saca con
+  -pooler>' pnpm --filter @mi-pasaporte/db db:migrate` (desde la spec 0115 las migraciones viven en `packages/db/drizzle`). La connection string se saca con
   `mcp__neon__get_connection_string` — **viene con el host POOLED: hay que sacarle el `-pooler`
   a mano** — y **queda en el transcript: avisarle al owner que rote la password despues**. `drizzle-kit migrate` aplica
   solo las pendientes (lleva su propia tabla `drizzle.__drizzle_migrations`). Verificar
@@ -249,6 +249,38 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
   pedir confirmacion del owner antes de borrar ramas efimeras. Alternativa sin gate: crear la
   rama efimera con `expiresAt` (ISO) para que Neon la borre sola.
+- **Un rol de permisos minimos NO se crea por la API ni la consola de Neon (medido 2026-09-30, spec 0117).**
+  `mcp__neon__create_postgres_role` (y la consola) lo hacen **miembro de `neon_superuser`** con `BYPASSRLS` y
+  `CREATEROLE`: lee `merchant_auth` sin un solo `GRANT`, y `REVOKE neon_superuser` da `permission denied`. Ademas
+  **devuelve la contraseña en la salida de la herramienta** (queda en el transcript). Se crea con `CREATE ROLE … LOGIN
+  PASSWORD` como `neondb_owner` desde un script local que genera la contraseña y no la imprime; asi no tiene
+  membresias. Verificar con `has_schema_privilege`/`has_table_privilege` y `pg_auth_members`, no asumiendo.
+  **Y RLS:** 4 tablas (`core.loyalty_program`, `consumer.program_membership`, `core.business_customer`,
+  `core.business_customer_count`) tienen politicas solo para `customer_reader`; un rol que no es dueño ve 0 filas SIN
+  error. `has_table_privilege` no lo muestra: listar `relrowsecurity` y dar politica o `BYPASSRLS` (caso 0117).
+- **Un `Pool` de `@neondatabase/serverless` sin listener de `error` VUELCA su config —con el `connectionString` y la
+  contraseña— al fallar (medido 2026-10-01, spec 0118: una credencial de CI quedo en el transcript).** Todo script que
+  abra un `Pool` lleva `pool.on("error", …)` y `client.on("error", …)` que impriman solo `code`/`message`, y su salida se
+  filtra antes de mostrarla.
+- **`SET ROLE` de sesion por la URL `-pooler` (pgbouncer, modo transaccion) se reparte entre backends:** el rol se filtra
+  a otras conexiones (medido en la 0118). Un arnes que cambie de rol usa la URL DIRECTA o `SET LOCAL` dentro de una
+  transaccion.
+- **RLS, `leakproof` y funciones en Neon — medido el 2026-09-28 (specs 0108/0109, ADR 0100/0101).**
+  (1) La app se conecta con `neondb_owner`, que tiene **`rolbypassrls = true`**: una politica RLS sola
+  **no aisla nada** (probado con `FORCE`). Para que muerda hay que cambiar de rol dentro de la
+  transaccion (`set_config('role','customer_reader',true)`, que equivale a `SET LOCAL ROLE`, y requiere
+  `GRANT <rol> TO neondb_owner WITH SET TRUE`). (2) Con RLS, `LIKE` **no es `leakproof`** y el indice de
+  trigramas queda afuera (0,05 → 180 ms), y marcar algo `leakproof` **no se puede**: «only superuser can
+  define a leakproof function». (3) Una funcion **`LANGUAGE sql SECURITY DEFINER` no se inlinea y desde
+  la 6a llamada de la sesion usa el plan GENERICO** (sin el valor del parametro): una busqueda paso de
+  9–18 ms a 31–79 ms. Si el plan depende del parametro, `plpgsql` + `RETURN QUERY EXECUTE format(…%L…)`.
+  **Un benchmark se corre en la forma en que va a ejecutarse** (dentro de la funcion, con el rol real):
+  el SQL suelto con literales mide otro plan. (4) `auto_explain` esta bloqueado en Neon («access to
+  library "auto_explain" is not allowed»).
+- **En auto mode, el clasificador BLOQUEA toda migracion a prod (y hasta preparar una para una rama
+  efimera) como «Production Deploy»**, aunque el owner lo pida en el chat. Salen con el owner saliendo
+  de auto mode y aprobando la llamada a mano (`run_sql_transaction`). El `delete_branch` tambien lo
+  bloquea. No buscar otro camino: pedirle al owner que apruebe.
 - **Una migracion CHICA se puede aplicar a prod SIN traer la connection string** (medido con la `0051`,
   2026-09-27): `mcp__neon__run_sql_transaction` con las sentencias del `.sql` (sin el
   `--> statement-breakpoint`) mas `INSERT INTO drizzle.__drizzle_migrations (hash, created_at) SELECT
@@ -307,7 +339,7 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 - **EL TOS: `renderTermsText` tira 422 CUANDO EL VALOR DE LA VARIABLE ES VACIO, no solo cuando la
   variable no esta en el allowlist.** La condicion es
   `!allowedVariables.includes(key) || !variables[key]`
-  (`apps/merchant/src/server/loyalty-program/validation.ts:259-270`). **Consecuencia que sorprende:
+  (`packages/domain/src/server/loyalty-program/validation.ts:259-270`). **Consecuencia que sorprende:
   una plantilla con una variable que «a veces no aplica» IMPIDE GUARDAR EL PROGRAMA** — no deja un
   hueco en el texto, corta el `PUT` con 422. Asi que **una variable de TOS que no siempre tiene
   valor no se resuelve con un default vacio**: o la plantilla que la usa es una plantilla APARTE

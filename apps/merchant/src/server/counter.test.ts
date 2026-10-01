@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeAccrual } from "./loyalty-program/accrual";
-import type { AccrualInput } from "./loyalty-program/core";
+import { computeAccrual } from "@mi-pasaporte/domain/server/loyalty-program/accrual";
+import type { AccrualInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
 import {
   type CartLine,
   balanceFor,

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { businessOnboardingTours } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businessOnboardingTours } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0084 / ADR 0078 §2-3 — EL CATALOGO DE TOURS Y LA ESCRITURA DE SU PROGRESO.

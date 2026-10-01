@@ -1,4 +1,4 @@
-import type { CouponKind } from "../marketing/reward-input";
+import type { CouponKind } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { dispatchGranted } from "../wallet/push";
 import {
   CounterError,
@@ -6,7 +6,7 @@ import {
   assertLocationInBusiness,
   parseUuid,
   pgErrorCode,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import {
   type PersistedCoupon,
   assertSameCoupon,

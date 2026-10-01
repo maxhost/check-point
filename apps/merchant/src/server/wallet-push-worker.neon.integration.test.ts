@@ -6,15 +6,15 @@ import {
   seedConsumer,
 } from "./counter-integration-support";
 import { enqueue, queueRow } from "./wallet-push-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   walletPasses,
   walletPushDevices,
   walletPushQueue,
-} from "./schema";
-import { ensureWalletPass } from "./wallet/core";
-import { registerDevice } from "./wallet/passkit";
+} from "@mi-pasaporte/db/schema";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
 import { FakePushChannel } from "./wallet/push-channel";
 import { COOLDOWN_MS, dispatchInline, deliverRow } from "./wallet/push";
 import { runPushWorker } from "./wallet/push-worker";

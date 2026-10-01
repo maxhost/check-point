@@ -2,9 +2,9 @@ import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../../server/api-owner";
 import { requireApiPermission } from "../../../../server/api-permission";
-import { getDb } from "../../../../server/db";
+import { getDb } from "@mi-pasaporte/db";
 import { termsScopeCandidates } from "../../../../server/loyalty-program/terms-scope";
-import { termsTemplates } from "../../../../server/schema";
+import { termsTemplates } from "@mi-pasaporte/db/schema";
 
 /** Spec 0072 §D3: el guard es el unico, no el resolvedor ad hoc del dominio — que no
  * filtraba `memberships.status='active'` ni miraba el email verificado.
@@ -24,7 +24,7 @@ import { termsTemplates } from "../../../../server/schema";
 export async function GET(request: Request) {
   const auth = await requireApiPermission(request, "loyalty", {
     missingPermission: "No tienes permiso para ver las plantillas.",
-    emailNotVerified: "Verificá tu email para ver las plantillas.",
+    emailNotVerified: "Verifica tu email para ver las plantillas.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const templates = await getDb()

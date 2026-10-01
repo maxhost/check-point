@@ -1,4 +1,4 @@
-import { CardPreview } from "../../../../components/loyalty/card-preview";
+import { CardPreview } from "@mi-pasaporte/domain/components/loyalty/card-preview";
 import { parseMoney } from "../program-form-state";
 import { Alert } from "../../../../ui";
 import { formatMoney, spendToRedeem } from "../format";
@@ -84,11 +84,11 @@ function buildValueMetric(vm: LoyaltyVm): Metric | null {
       const hi = pctOver(max);
       pct =
         lo === hi
-          ? `Generás un ${lo}% más en ventas de lo que regalás en premios.`
-          : `Generás entre un ${lo}% y un ${hi}% más en ventas de lo que regalás.`;
+          ? `Generas un ${lo}% más en ventas de lo que regalas en premios.`
+          : `Generas entre un ${lo}% y un ${hi}% más en ventas de lo que regalas.`;
     } else {
       caution =
-        "En al menos un premio entregás más valor del que genera en ventas. Subí su costo en puntos para no perder dinero.";
+        "En al menos un premio entregas más valor del que genera en ventas. Sube su costo en puntos para no perder dinero.";
     }
     note = "Asume que todos canjean; los que no, son ganancia extra.";
   }

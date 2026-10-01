@@ -9,7 +9,7 @@
  */
 
 import { sql, type SQL } from "drizzle-orm";
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 
 /** `and t.business_id in (…)`, or nothing at all. Built with `sql.join` so each id
  * travels as a bound parameter instead of being pasted into the statement. */

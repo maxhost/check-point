@@ -67,7 +67,7 @@ export function RewardFields({
         errorMessage={
           errors.couponKind ||
           (!selectedAvailable
-            ? "Este tipo de premio ya no está disponible. Elegí otro."
+            ? "Este tipo de premio ya no está disponible. Elige otro."
             : undefined)
         }
       />
@@ -142,8 +142,8 @@ export function RewardFields({
         maxLength={40}
         description={
           withRedemptionCap
-            ? "Lo verá el cliente y puede aparecer en el push. Podés editar la sugerencia."
-            : noCapLabelDescription
+            ? "Lo verá el cliente y puede aparecer en el push. Puedes editar la sugerencia."
+            : "Se muestra en la oferta de alta y en el regalo. Puedes editar la sugerencia."
         }
         errorMessage={errors.couponLabel}
       />

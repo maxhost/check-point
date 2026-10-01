@@ -1,4 +1,4 @@
-import type { DbTransaction } from "../db";
+import type { DbTransaction } from "@mi-pasaporte/db";
 import { decideBalancePush, renderGap } from "./balance-audience";
 import { loadBalanceCandidates, loadRewardCost } from "./balance-store";
 import { type PushCampaign, recordPushDecision } from "./push-store";

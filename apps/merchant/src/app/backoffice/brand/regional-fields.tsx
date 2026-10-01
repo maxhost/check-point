@@ -1,6 +1,6 @@
 "use client";
 
-import { SUPPORTED_CURRENCIES } from "../../../lib/currencies";
+import { SUPPORTED_CURRENCIES } from "@mi-pasaporte/domain/lib/currencies";
 import { SelectField } from "../../../ui";
 
 const timezones = [

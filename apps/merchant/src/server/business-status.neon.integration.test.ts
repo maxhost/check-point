@@ -13,11 +13,11 @@ import {
   seedMember,
   type Seed,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { businesses, memberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships } from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
-import { enroll } from "./consumer/enrollment";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { requireOperator } from "../app/api/counter/_auth";
 
 import { GET as LOCATIONS } from "../app/api/locations/route";

@@ -1,0 +1,25 @@
+{
+  "name": "@mi-pasaporte/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/client.ts",
+    "./schema": "./src/schema.ts",
+    "./schema/*": "./src/schema/*.ts",
+    "./permissions-catalog": "./src/permissions-catalog.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "drizzle-kit": "^0.31.10"
+  }
+}

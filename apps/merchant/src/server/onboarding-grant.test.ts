@@ -13,7 +13,7 @@ import {
   ONBOARDING_GRANT_MINUTES,
   onboardingGrantActive,
   programEditDenied,
-} from "./onboarding-grant";
+} from "@mi-pasaporte/domain/server/onboarding-grant";
 
 /**
  * Spec 0077 §4 y §5 — LA DECISIÓN PURA del permiso de alta y el invariante crear ≠ editar.

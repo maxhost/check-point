@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { LoyaltyError } from "../loyalty-program/core";
-import { validateProgramInput } from "../loyalty-program/validation";
+import { LoyaltyError } from "@mi-pasaporte/domain/server/loyalty-program/core";
+import { validateProgramInput } from "@mi-pasaporte/domain/server/loyalty-program/validation";
 import {
   DEFAULT_STAMP_UNIT_NAME,
   DEFAULT_STAMP_UNIT_PLURAL,

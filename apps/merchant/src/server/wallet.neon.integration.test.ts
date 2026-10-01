@@ -9,7 +9,7 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   consumerAccounts,
@@ -18,11 +18,14 @@ import {
   programMemberships,
   users,
   walletPasses,
-} from "./schema";
-import { enroll } from "./consumer/enrollment";
-import { ensureWalletPass, resolveWebViewToken } from "./wallet/core";
-import { authorizePass } from "./wallet/passkit";
-import { walletProviderFromEnv } from "./wallet/provider";
+} from "@mi-pasaporte/db/schema";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import {
+  ensureWalletPass,
+  resolveWebViewToken,
+} from "@mi-pasaporte/domain/server/wallet/core";
+import { authorizePass } from "@mi-pasaporte/domain/server/wallet/passkit";
+import { walletProviderFromEnv } from "@mi-pasaporte/domain/server/wallet/provider";
 
 describe.skipIf(!enabled)("wallet passes against Neon", () => {
   const userId = `int-${randomUUID()}`;

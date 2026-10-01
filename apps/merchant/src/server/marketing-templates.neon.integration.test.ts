@@ -5,8 +5,8 @@ import {
   seedExtraLocation,
 } from "./locations-integration-support";
 import { seedLocation } from "./marketing-integration-support";
-import { getDb } from "./db";
-import { campaignLocations, campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignLocations, campaigns } from "@mi-pasaporte/db/schema";
 import { createCampaign, updateCampaign } from "./marketing/campaign-store";
 import { TURNS_NOTICE, transitionCampaign } from "./marketing/campaign-actions";
 import {
@@ -14,7 +14,7 @@ import {
   enableTemplate,
   listTemplates,
 } from "./marketing/template-store";
-import { TEMPLATES } from "./marketing/templates";
+import { TEMPLATES } from "@mi-pasaporte/domain/server/marketing/templates";
 import {
   campaignBody as body,
   campaignWorld as world,

@@ -13,8 +13,8 @@ import {
 } from "iconoir-react";
 import { requireOwner } from "../../server/auth-guards";
 import { planLabel, statusLabel } from "../../server/billing";
-import { getDb } from "../../server/db";
-import { subscriptions } from "../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { subscriptions } from "@mi-pasaporte/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ const businessItems = [
     icon: Shop,
   },
   {
-    title: "Staff",
+    title: "Equipo",
     description: "Las personas que atienden contigo",
     href: null,
     icon: Group,

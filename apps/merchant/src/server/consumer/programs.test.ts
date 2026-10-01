@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { toConsumerProgramSummary, type ConsumerProgramRow } from "./programs";
+import {
+  toConsumerProgramSummary,
+  type ConsumerProgramRow,
+} from "@mi-pasaporte/domain/server/consumer/programs";
 
 function row(overrides: Partial<ConsumerProgramRow> = {}): ConsumerProgramRow {
   return {

@@ -95,7 +95,7 @@ export class CatalogImportRequestError extends Error {
   constructor(payload: ApiError | null, fallback: string) {
     const retry = payload?.retryAfterSeconds;
     super(
-      `${payload?.error ?? fallback}${typeof retry === "number" ? ` Podés intentar nuevamente en ${retry} segundos.` : ""}`,
+      `${payload?.error ?? fallback}${typeof retry === "number" ? ` Puedes intentar nuevamente en ${retry} segundos.` : ""}`,
     );
     this.code = payload?.code;
   }

@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImports } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImports } from "@mi-pasaporte/db/schema";
 import type { ProviderExtraction } from "./types";
 import { writeImportedCatalog } from "./write";
 import { touch } from "./quota";

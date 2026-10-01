@@ -5,7 +5,7 @@ import {
   type FieldErrors,
   REWARD_KEYS,
   parseCoupon,
-} from "./reward-input";
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * The composer's body, validated field by field (spec 0065: «400 `validation` por
@@ -113,7 +113,7 @@ export function requireEndForCoupon(
 
 function locationIds(errors: FieldErrors, raw: unknown): string[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) {
-    errors.locationIds = "Elegí al menos un local.";
+    errors.locationIds = "Elige al menos un local.";
     return undefined;
   }
   if (!raw.every((id) => typeof id === "string" && UUID.test(id))) {

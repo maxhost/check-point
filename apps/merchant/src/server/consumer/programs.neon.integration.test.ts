@@ -7,7 +7,7 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   consumerAccounts,
@@ -16,9 +16,9 @@ import {
   programMemberships,
   users,
   webPushSubscriptions,
-} from "../schema";
-import { hasWebPushSubscription } from "../push/subscriptions";
-import { listConsumerPrograms } from "./programs";
+} from "@mi-pasaporte/db/schema";
+import { hasWebPushSubscription } from "@mi-pasaporte/domain/server/push/subscriptions";
+import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/programs";
 
 describe.skipIf(!enabled)(
   "consumer programs against an isolated Neon branch",

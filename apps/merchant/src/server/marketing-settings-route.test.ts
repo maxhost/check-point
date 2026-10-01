@@ -18,7 +18,7 @@ vi.mock("../app/api/marketing/_auth", async (importOriginal) => ({
   requireMarketingOwner: world.auth,
 }));
 
-vi.mock("./db", () => ({
+vi.mock("@mi-pasaporte/db", () => ({
   getDb: () => ({
     select: () => ({
       from: () => ({ where: () => ({ limit: async () => world.rows }) }),

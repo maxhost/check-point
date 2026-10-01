@@ -1,4 +1,4 @@
-import { E164 } from "../consumer/validation";
+import { E164 } from "@mi-pasaporte/domain/server/consumer/validation";
 
 /** Fixed page size of the customer list (contract `0108-contratos-de-api.md`). */
 export const CUSTOMERS_PAGE_SIZE = 25;
@@ -19,7 +19,7 @@ export class CustomerQueryError extends Error {
   readonly status = 400;
   readonly code = "validation";
   constructor(readonly fields: CustomerQueryFields) {
-    super("Revisá los filtros del listado.");
+    super("Revisa los filtros del listado.");
   }
 }
 
@@ -45,8 +45,8 @@ export function parseCustomerQuery(params: URLSearchParams): CustomerQuery {
   }
 
   if (rawQ !== null && rawPhone !== null) {
-    fields.q = "Buscá por nombre o por teléfono, no por los dos.";
-    fields.phone = "Buscá por nombre o por teléfono, no por los dos.";
+    fields.q = "Busca por nombre o por teléfono, no por los dos.";
+    fields.phone = "Busca por nombre o por teléfono, no por los dos.";
     throw new CustomerQueryError(fields);
   }
 

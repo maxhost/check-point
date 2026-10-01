@@ -18,8 +18,8 @@ import {
   seedRedeemWorld,
   sleep,
 } from "./counter-redeem-support";
-import { withDbTransaction } from "./db";
-import { programMemberships } from "./schema";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
 import { redeemReward } from "./counter/redeem";
 import { grantAccrual } from "./counter/grant";
 

@@ -3,7 +3,7 @@ import {
   CATALOG_IMPORT_OPEN_STATUSES,
   CATALOG_IMPORT_STATUSES,
   CATALOG_IMPORT_TERMINAL_STATUSES,
-} from "./schema/catalog-import";
+} from "@mi-pasaporte/db/schema/catalog-import";
 
 /**
  * Spec 0090 §1 — LA MAQUINA DE ESTADOS, medida por COMPORTAMIENTO y no por una copia de la
@@ -26,14 +26,16 @@ const estado = {
  * El doble **evalua el `where`** (`catalog-import-predicado.ts`). Antes lo descartaba, y esa
  * era la razon por la que «un import de OTRO negocio da 404» pasaba con y sin el filtro.
  */
-vi.mock("./db", async () => {
+vi.mock("@mi-pasaporte/db", async () => {
   const { dbDobleHonesto } = await import("./catalog-import-predicado");
   return dbDobleHonesto(estado);
 });
 
 /** El objeto de R2 con una cabecera JPEG real: el sniff por bytes es parte del camino. */
-vi.mock("./r2", async () => {
-  const real = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const real = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...real,
     getPrivateObject: async () => ({
@@ -49,7 +51,8 @@ vi.mock("./r2", async () => {
 
 const { cancelImport, createImport } = await import("./catalog-import/core");
 const { startAnalyze } = await import("./catalog-import/analyze");
-const { limitOf } = await import("./entitlements");
+const { limitOf } =
+  await import("@mi-pasaporte/domain/server/entitlements/index");
 
 /** El tope sale del catalogo: lo que este caso mide es que el 429 llega ANTES de escribir,
  * no cuanto vale el tope — ese numero lo pinnea `entitlements-window.test.ts`. */

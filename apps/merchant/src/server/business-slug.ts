@@ -1,6 +1,6 @@
 import { eq, like } from "drizzle-orm";
-import { getDb } from "./db";
-import { businesses } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses } from "@mi-pasaporte/db/schema";
 import { RESERVED_SLUGS, isValidSlug, nextSuggestion, slugify } from "./slug";
 
 /**
@@ -61,7 +61,7 @@ export function parseSlug(value: unknown): string {
     throw new SlugError(
       400,
       "invalid_slug",
-      "Usá entre 3 y 30 letras, números o guiones, sin guion al principio ni al final.",
+      "Usa entre 3 y 30 letras, números o guiones, sin guion al principio ni al final.",
     );
   if (RESERVED_SLUGS.includes(slug))
     throw new SlugError(
@@ -105,7 +105,7 @@ export async function changeBusinessSlug(
       throw new SlugError(
         503,
         "slug_unavailable",
-        "No pudimos guardar el identificador. Intentá de nuevo.",
+        "No pudimos guardar el identificador. Intenta de nuevo.",
       );
     throw new SlugError(
       409,

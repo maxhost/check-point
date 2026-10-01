@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../../server/api-owner";
 import { requireApiPermission } from "../../../../server/api-permission";
-import { BrandError, createLogoUpload } from "../../../../server/brand";
+import {
+  BrandError,
+  createLogoUpload,
+} from "@mi-pasaporte/domain/server/brand";
 
 export const runtime = "nodejs";
 
@@ -11,7 +14,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const auth = await requireApiPermission(request, "brand", {
     missingPermission: "No tienes permiso para gestionar la marca.",
-    emailNotVerified: "Verificá tu email para gestionar la marca.",
+    emailNotVerified: "Verifica tu email para gestionar la marca.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   let body: unknown;

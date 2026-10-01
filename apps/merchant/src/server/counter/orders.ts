@@ -1,9 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { orders } from "../schema";
-import { rowsOf } from "./core";
+import { getDb } from "@mi-pasaporte/db";
+import { orders } from "@mi-pasaporte/db/schema";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 import { buildTransactionalBody } from "../wallet/push";
-import { upsertVisitSql } from "../customers/projection";
+import { upsertVisitSql } from "@mi-pasaporte/domain/server/customers/projection";
 
 export type GrantItem = {
   productId: string | null;

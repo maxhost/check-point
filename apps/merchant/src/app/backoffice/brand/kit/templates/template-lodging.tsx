@@ -29,10 +29,10 @@ export function TemplateLodging(props: PosterProps) {
             <li>Premios para disfrutar más</li>
             <li>Registro rápido y gratuito</li>
           </ul>
-          <span className="tpl-lodging-foot">Abrí la cámara y escaneá</span>
+          <span className="tpl-lodging-foot">Abre la cámara y escanea</span>
         </div>
         <div className="tpl-lodging-qr">
-          <span>Sumate ahora</span>
+          <span>Únete ahora</span>
           <QrBlock svg={qrSvg} />
         </div>
       </div>

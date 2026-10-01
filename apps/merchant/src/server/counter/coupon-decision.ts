@@ -67,7 +67,7 @@ export function decideCouponRedemption(facts: {
     return no(
       409,
       "coupon_not_active",
-      "Este cupón ya no está vigente. Pedile al cliente que abra su pase.",
+      "Este cupón ya no está vigente. Pide al cliente que abra su pase.",
     );
 
   if (coupon.redeemed)

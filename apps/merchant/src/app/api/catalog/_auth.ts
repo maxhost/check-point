@@ -4,7 +4,10 @@ import {
   requireApiOwner,
 } from "../../../server/api-owner";
 import { requireApiPermission } from "../../../server/api-permission";
-import { CatalogError, type OwnerBusiness } from "../../../server/catalog";
+import {
+  CatalogError,
+  type OwnerBusiness,
+} from "@mi-pasaporte/domain/server/catalog";
 
 /**
  * Spec 0086 §3 — EL GUARD DE `/api/catalog/*`: el permiso `catalog`.
@@ -27,7 +30,7 @@ export async function requireOwner(
 ): Promise<{ business: OwnerBusiness } | { response: NextResponse }> {
   const auth = await requireApiPermission(request, "catalog", {
     missingPermission: "No tienes permiso para gestionar el catálogo.",
-    emailNotVerified: "Verificá tu email para gestionar el catálogo.",
+    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
@@ -54,8 +57,9 @@ export async function requireCatalogOwner(
   request: Request,
 ): Promise<{ business: OwnerBusiness } | { response: NextResponse }> {
   const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede borrar del catálogo.",
-    emailNotVerified: "Verificá tu email para gestionar el catálogo.",
+    notOwner:
+      "Solo la persona propietaria puede eliminar productos del catálogo.",
+    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

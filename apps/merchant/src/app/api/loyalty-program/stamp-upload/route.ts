@@ -4,7 +4,7 @@ import { requireApiPermission } from "../../../../server/api-permission";
 import {
   LoyaltyError,
   createStampUpload,
-} from "../../../../server/loyalty-program";
+} from "@mi-pasaporte/domain/server/loyalty-program";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const auth = await requireApiPermission(request, "loyalty", {
     missingPermission: "No tienes permiso para gestionar el programa.",
-    emailNotVerified: "Verificá tu email para gestionar el programa.",
+    emailNotVerified: "Verifica tu email para gestionar el programa.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   let body: unknown;

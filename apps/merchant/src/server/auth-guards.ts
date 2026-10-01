@@ -2,9 +2,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "./auth";
-import { getDb } from "./db";
-import { businesses, memberships, sessions } from "./schema";
-import { permissionsForRole } from "./permissions-catalog";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
+import { permissionsForRole } from "@mi-pasaporte/db/permissions-catalog";
 
 /**
  * Reason code the guard puts on `/?e=…` when it bounces a deactivated staff member

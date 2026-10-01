@@ -8,7 +8,7 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   consumerAccounts,
@@ -17,8 +17,8 @@ import {
   loyaltyPrograms,
   programMemberships,
   users,
-} from "./schema";
-import { enroll } from "./consumer/enrollment";
+} from "@mi-pasaporte/db/schema";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 
 /**
  * The re-enroll leaves the account row untouched (ADR 0051 / spec 0054 — the exact

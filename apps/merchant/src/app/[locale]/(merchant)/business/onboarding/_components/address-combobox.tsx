@@ -198,7 +198,7 @@ export function AddressCombobox({
           slot="description"
           className="text-sm leading-5 text-content-muted"
         >
-          Escribí al menos tres letras y elegí una dirección de la lista.
+          Escribe al menos tres letras y elige una dirección de la lista.
         </Text>
         <FieldError className="text-sm font-semibold leading-5 text-danger">
           {errorMessage}
@@ -215,13 +215,13 @@ export function AddressCombobox({
           {isLoading
             ? "Buscando lugares…"
             : searchError === "credentials"
-              ? "El buscador de direcciones no está autorizado. Revisá la clave y los dominios permitidos de Geoapify."
-              : "No pudimos buscar lugares. Revisá tu conexión e intentá otra vez."}
+              ? "El buscador de direcciones no está autorizado. Revisa la clave y los dominios permitidos de Geoapify."
+              : "No pudimos buscar lugares. Revisa tu conexión e intenta otra vez."}
         </p>
       )}
       {hasSearched && results.length === 0 && !searchError && (
         <p role="status" className="text-sm text-content-muted">
-          No encontramos direcciones en el país seleccionado. Probá con calle,
+          No encontramos direcciones en el país seleccionado. Prueba con calle,
           número y ciudad.
         </p>
       )}

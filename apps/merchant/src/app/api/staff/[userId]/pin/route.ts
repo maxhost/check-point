@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../../server/auth";
 import { staffError } from "../../_auth";
-import { getDb } from "../../../../../server/db";
-import { memberships } from "../../../../../server/schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships } from "@mi-pasaporte/db/schema";
 import {
   hashPin,
   isValidPin,

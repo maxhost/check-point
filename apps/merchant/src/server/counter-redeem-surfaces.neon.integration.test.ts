@@ -13,7 +13,7 @@ import { redeemBody } from "./counter-redeem-support";
 import { resolveScan } from "./counter/resolve";
 import { redeemReward } from "./counter/redeem";
 import { listTodaysAccreditations } from "./counter/history";
-import { listConsumerPrograms } from "./consumer/programs";
+import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/programs";
 
 /**
  * Spec 0055 — the surfaces the redemption feeds: the `resolve` DTO (the reward list the

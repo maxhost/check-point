@@ -12,8 +12,8 @@ import {
 } from "./marketing-world-support";
 import type { TickSummary } from "./marketing/tick";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 
 /**
  * The two ends of a door's life, which the rest of the phase-A suites do NOT pin: how a

@@ -16,8 +16,8 @@ import {
   redeemBody,
   seedRedeemWorld,
 } from "./counter-redeem-support";
-import { getDb } from "./db";
-import { programMemberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
 import { redeemReward } from "./counter/redeem";
 
 /**

@@ -35,7 +35,7 @@ export async function requireMarketingOwner(
 ): Promise<MarketingCaller | { response: NextResponse }> {
   const auth = await requireApiPermission(request, "marketing", {
     missingPermission: "No tienes permiso para gestionar las campañas.",
-    emailNotVerified: "Verificá tu email para gestionar las campañas.",
+    emailNotVerified: "Verifica tu email para gestionar las campañas.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
@@ -61,8 +61,9 @@ export async function requireCampaignOwner(
   request: Request,
 ): Promise<MarketingCaller | { response: NextResponse }> {
   const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede archivar o finalizar una campaña.",
-    emailNotVerified: "Verificá tu email para gestionar las campañas.",
+    notOwner:
+      "Solo la persona propietaria puede archivar o finalizar una campaña.",
+    emailNotVerified: "Verifica tu email para gestionar las campañas.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

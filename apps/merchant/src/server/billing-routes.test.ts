@@ -59,13 +59,13 @@ vi.mock("./staff", async (importOriginal) => ({
 
 /** El `tx` no se usa de verdad —el store va doblado— salvo por la escritura del
  * `stripe_customer_id` del checkout, que arma un builder de drizzle sobre él. */
-vi.mock("./db", async (importOriginal) => {
+vi.mock("@mi-pasaporte/db", async (importOriginal) => {
   const chain = {
     set: () => chain,
     where: async () => undefined,
   } as unknown as Record<string, unknown>;
   return {
-    ...(await importOriginal<typeof import("./db")>()),
+    ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
     withDbTransaction: async (work: (tx: unknown) => Promise<unknown>) =>
       work({ update: () => chain }),
   };
@@ -223,7 +223,7 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
       // y cambia porque el contrato cambió — el status sigue siendo 403 y el `error` sigue
       // siendo la copia de billing.
       expect(await response.json()).toEqual({
-        error: "Solo el owner puede gestionar la suscripción.",
+        error: "Solo la persona propietaria puede gestionar la suscripción.",
         code: "not_owner",
       });
       expect(world.readSubscription).not.toHaveBeenCalled();

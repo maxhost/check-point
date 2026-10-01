@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "../../../../server/auth";
-import { getDb } from "../../../../server/db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyPrograms,
   memberships,
-} from "../../../../server/schema";
+} from "@mi-pasaporte/db/schema";
 import {
   NOT_AUTHENTICATED,
   toOnboardingView,

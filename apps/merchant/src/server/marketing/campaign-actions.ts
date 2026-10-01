@@ -1,9 +1,16 @@
 import { and, eq, isNotNull } from "drizzle-orm";
-import { withDbTransaction } from "../db";
-import { campaignLocations, campaigns, locations } from "../schema";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaigns,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import { CampaignError, type Campaign, getCampaign } from "./campaign-store";
 import { type CampaignAction, nextStatus } from "./campaign-transitions";
-import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import {
+  PLAN_NOT_ALLOWED_MESSAGE,
+  planAllowsCampaigns,
+} from "@mi-pasaporte/domain/server/marketing/plan-gate";
 
 /**
  * The four buttons of the detail page (spec 0065 phase B). They move `status` and
@@ -77,7 +84,7 @@ export async function transitionCampaign(
         throw new CampaignError(
           409,
           "no_usable_location",
-          "Necesitás al menos un local activo y con ubicación en el mapa.",
+          "Necesitas al menos un local activo y con ubicación en el mapa.",
         );
       // «fechas validas» of the spec, read at its narrowest: a campaign whose end has
       // already passed has nothing to do but sit there. Anything beyond that (a start in
@@ -95,7 +102,7 @@ export async function transitionCampaign(
         throw new CampaignError(
           409,
           "campaign_expired",
-          "La fecha de fin ya pasó: cambiala antes de activar.",
+          "La fecha de fin ya pasó: cámbiala antes de activar.",
         );
     }
 

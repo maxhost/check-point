@@ -34,13 +34,13 @@ vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: async () => world.session } }),
 }));
 
-vi.mock("./db", async (importOriginal) => {
+vi.mock("@mi-pasaporte/db", async (importOriginal) => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "innerJoin", "where", "orderBy"])
     chain[m] = () => chain;
   chain.limit = async () => world.rows.shift() ?? [];
   return {
-    ...(await importOriginal<typeof import("./db")>()),
+    ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
     getDb: () => chain,
     withDbTransaction: async (work: (tx: unknown) => Promise<unknown>) =>
       work({}),

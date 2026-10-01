@@ -1,17 +1,30 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
-import { campaignLocations, campaigns, locations } from "../schema";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaigns,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import {
   type CampaignInput,
   parseCampaignInput,
   parseCampaignPatch,
 } from "./campaign-input";
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
-import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import {
+  PLAN_NOT_ALLOWED_MESSAGE,
+  planAllowsCampaigns,
+} from "@mi-pasaporte/domain/server/marketing/plan-gate";
 import type { CampaignWelcome } from "./campaign-values";
+import type { CampaignCross } from "@mi-pasaporte/domain/server/marketing/cross-store";
+import type { CampaignValley } from "@mi-pasaporte/domain/server/marketing/valley-store";
 import { columns, toCampaign } from "./campaign-row";
 import { CampaignError } from "./campaign-error";
-import { type CouponKind, type DiscountUnit, pickReward } from "./reward-input";
+import {
+  type CouponKind,
+  type DiscountUnit,
+  pickReward,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
 
 /**
@@ -64,6 +77,10 @@ export type Campaign = {
   rewardRepeat: "once" | "every_30_days" | null;
   /** Spec 0107: «Bienvenida»'s parameters. Always set by the reads; optional for fixtures. */
   welcome?: CampaignWelcome | null;
+  /** Spec 0112: «Oferta cruzada»'s parameters. Always set by the reads; optional for fixtures. */
+  cross?: CampaignCross | null;
+  /** Spec 0113: «Horas valle»'s cap. Always set by the reads; optional for fixtures. */
+  valley?: CampaignValley | null;
   startsAt: Date;
   endsAt: Date | null;
   activatedAt: Date | null;
@@ -113,7 +130,7 @@ async function ownDoors(
       ),
     );
   if (rows.length !== locationIds.length)
-    throw new CampaignError(400, "validation", "Revisá los locales elegidos.", {
+    throw new CampaignError(400, "validation", "Revisa los locales elegidos.", {
       locationIds: "Hay un local que no es tuyo o no existe.",
     });
   return rows.map((row) => row.id);
@@ -167,7 +184,7 @@ export async function createCampaign(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la campaña.",
+      "Revisa los datos de la campaña.",
       parsed.errors,
     );
   const input = parsed.value;
@@ -210,7 +227,7 @@ function assertNotTemplate(current: Campaign): void {
     throw new CampaignError(
       409,
       "template_not_editable",
-      "Una campaña prearmada no se edita: apagala y encendé una nueva.",
+      "Una campaña prearmada no se edita: apágala y enciende una nueva.",
     );
 }
 
@@ -237,7 +254,7 @@ export async function updateCampaign(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la campaña.",
+      "Revisa los datos de la campaña.",
       parsed.errors,
     );
   const input = parsed.value;

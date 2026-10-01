@@ -10,10 +10,10 @@ import {
 } from "./customers-integration-support";
 import { type Seed, dropBusiness } from "./counter-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
-import { rowsOf } from "./counter/core";
-import { insertMembershipWithProjection } from "./customers/projection";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
+import { insertMembershipWithProjection } from "@mi-pasaporte/domain/server/customers/projection";
 import { listCustomers } from "./customers/list";
 import { GET } from "../app/api/customers/route";
 

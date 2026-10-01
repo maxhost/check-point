@@ -139,7 +139,7 @@ export function TemplateFields({
         onChange={(message) => change({ message })}
         maxLength={template.message.maxLength}
         errorMessage={errors.message}
-        description={`${draft.message.length}/${template.message.maxLength} caracteres.${template.message.gapMarker ? " Conservá {faltan}: se cambia por el saldo de cada cliente." : template.channels.length > 1 ? " El mismo mensaje se usa en ambos canales." : ""}`}
+        description={`${draft.message.length}/${template.message.maxLength} caracteres.${template.message.gapMarker ? " Conserva {faltan}: se cambia por el saldo de cada cliente." : template.channels.length > 1 ? " El mismo mensaje se usa en ambos canales." : ""}`}
       />
       {template.nearReward && (
         <div className="grid gap-5 sm:grid-cols-2">
@@ -185,7 +185,7 @@ export function TemplateFields({
           label="Inicio"
           value={draft.startsAt}
           onChange={(startsAt) => change({ startsAt })}
-          description={`Dejá vacío para activar ahora. Hora de ${settings.timeZone}.`}
+          description={`Deja vacío para activar ahora. Hora de ${settings.timeZone}.`}
           errorMessage={errors.startsAt}
         />
         <TextField
@@ -193,7 +193,7 @@ export function TemplateFields({
           label="Fin"
           value={draft.endsAt}
           onChange={(endsAt) => change({ endsAt })}
-          description={`Obligatorio si agregás un cupón. Hora de ${settings.timeZone}.`}
+          description={`Obligatorio si agregas un cupón. Hora de ${settings.timeZone}.`}
           errorMessage={errors.endsAt}
         />
       </div>

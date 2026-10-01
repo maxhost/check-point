@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { integrationEnabled } from "./customers-integration-support";
-import { getDb } from "./db";
-import { rowsOf } from "./counter/core";
+import { getDb } from "@mi-pasaporte/db";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 
 /**
  * Spec 0109 — los objetos de la migracion `0054` leidos por SQL: el contador, su trigger, los

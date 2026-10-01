@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getStockProvider } from "./stock/provider";
+import { getStockProvider } from "@mi-pasaporte/domain/server/stock/provider";
 
 const ORIGINAL = {
   provider: process.env.STOCK_PROVIDER,
@@ -53,7 +53,8 @@ describe("pexels provider (anti-SSRF)", () => {
       throw new Error("must not fetch a non-allow-listed host");
     });
     vi.stubGlobal("fetch", fetchMock);
-    const { pexelsProvider } = await import("./stock/pexels");
+    const { pexelsProvider } =
+      await import("@mi-pasaporte/domain/server/stock/pexels");
     await expect(pexelsProvider.resolve("1")).rejects.toMatchObject({
       status: 502,
     });
@@ -63,7 +64,8 @@ describe("pexels provider (anti-SSRF)", () => {
 
   it("requires an API key (503) and a numeric photo id (422)", async () => {
     process.env.PEXELS_API_KEY = "";
-    const { pexelsProvider } = await import("./stock/pexels");
+    const { pexelsProvider } =
+      await import("@mi-pasaporte/domain/server/stock/pexels");
     await expect(pexelsProvider.search("x")).rejects.toMatchObject({
       status: 503,
     });

@@ -6,6 +6,7 @@ export const REWARD_KIND_LABELS: Record<CouponKind, string> = {
   discount: "Descuento",
   extra_stamps: "Sellos extra",
   extra_points: "Puntos extra",
+  custom: "Texto libre",
 };
 
 export function money(value: string | number, currencyCode: string) {

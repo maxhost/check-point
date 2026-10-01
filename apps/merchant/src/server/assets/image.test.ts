@@ -5,7 +5,7 @@ import {
   MAX_INPUT_PIXELS_CROPPED,
   MAX_INPUT_PIXELS_FALLBACK,
   normalizeImage,
-} from "./image";
+} from "@mi-pasaporte/domain/server/assets/image";
 
 /** 3000×2000 = 6 MP: over the strict 2048² bound, well under the 50 MP fallback bound. */
 async function phonePhoto() {

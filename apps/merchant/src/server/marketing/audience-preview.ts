@@ -16,17 +16,17 @@
  */
 
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { withDbTransaction } from "../db";
-import { locations } from "../schema";
+import { withDbTransaction } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 import {
   decideTurnEligibility,
   summarizeAudience,
   type AudienceCandidate,
   type Eligibility,
-} from "./audience";
+} from "@mi-pasaporte/domain/server/marketing/audience";
 import { loadAudienceCandidates } from "./audience-store";
 import { CampaignError } from "./campaign-store";
-import { DEFAULT_PLACEMENT_LIMITS } from "./placement-plan";
+import { DEFAULT_PLACEMENT_LIMITS } from "@mi-pasaporte/domain/server/marketing/placement-plan";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -85,7 +85,7 @@ export function parseAudiencePreviewQuery(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la audiencia.",
+      "Revisa los datos de la audiencia.",
       fields,
     );
   return { dormantDays: days, locationIds };

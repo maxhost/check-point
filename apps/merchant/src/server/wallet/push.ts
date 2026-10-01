@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { eq, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { consumerAccounts } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts } from "@mi-pasaporte/db/schema";
 import {
   type PushChannel,
   type PushMessage,
@@ -10,12 +10,13 @@ import {
 import {
   type WebPushChannel,
   webPushChannelFromEnv,
-} from "../push/webpush-channel";
+} from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { deliverTransports } from "./push-transports";
+import { applyBudget } from "./push-budget-store";
 import {
   gateCampaignPush,
   recordCampaignPushSent,
-} from "../marketing/push-delivery";
+} from "@mi-pasaporte/domain/server/marketing/push-delivery";
 
 /** Minimum spacing between two pushes to the same consumer (ADR 0037). */
 export const COOLDOWN_MINUTES = Number(
@@ -62,7 +63,7 @@ export {
   buildTransactionalBody,
   buildRedemptionBody,
   buildCouponBody,
-} from "./push-text";
+} from "@mi-pasaporte/domain/server/wallet/push-text";
 
 type Claim = {
   consumerId: string;
@@ -142,6 +143,8 @@ async function deliverClaimed(
       if (gate.kind !== "send") return;
       clickId = gate.clickId;
     }
+    // Spec 0111: the 24 h notice budget, BEFORE anything is written (it closes the row).
+    if (!(await applyBudget(id, claim, now))) return;
     if (!silent)
       await getDb()
         .update(consumerAccounts)
@@ -277,4 +280,4 @@ export async function deliverRow(
 
 // The rotation mechanism (spec 0032 invokes it) lives in `./rotate`; re-exported here
 // so existing importers keep using `./push`. Split out to stay under the file-size hook.
-export { rotatePassCredentials } from "./rotate";
+export { rotatePassCredentials } from "@mi-pasaporte/domain/server/wallet/rotate";

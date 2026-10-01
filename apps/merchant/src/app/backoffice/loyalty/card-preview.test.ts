@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   cardBackground,
   filledCount,
-} from "../../../components/loyalty/card-preview";
+} from "@mi-pasaporte/domain/components/loyalty/card-preview";
 
 describe("card preview helpers", () => {
   it("builds a linear gradient at the angle when a second color is present", () => {

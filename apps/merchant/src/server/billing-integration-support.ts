@@ -16,9 +16,13 @@ import type { SeededSubscription } from "./locations-integration-support";
 // barrel, `billing-pages*.neon.integration.test.ts` COLGABAN para siempre (ni `vitest
 // list` terminaba). Es el mismo deadlock que ya documenta `billing-pages.neon.integration.test.ts`.
 import { readSubscription, scheduleDowngrade } from "./billing/store";
-import { getDb, withDbTransaction } from "./db";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "./locations/shared";
-import { locations, stripeWebhookEvents, subscriptions } from "./schema";
+import {
+  locations,
+  stripeWebhookEvents,
+  subscriptions,
+} from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0063, [R2-I7] — el mundo compartido de la integración de billing: las env, el

@@ -6,9 +6,13 @@ import {
   generateOpaqueToken,
   hashToken,
   membershipResponse,
-} from "./consumer/core";
-import { validateEnrollInput } from "./consumer/validation";
-import { composeE164, flagEmoji, isValidCountryIso } from "../lib/countries";
+} from "@mi-pasaporte/domain/server/consumer/core";
+import { validateEnrollInput } from "@mi-pasaporte/domain/server/consumer/validation";
+import {
+  composeE164,
+  flagEmoji,
+  isValidCountryIso,
+} from "@mi-pasaporte/domain/lib/countries";
 
 describe("consumer opaque tokens", () => {
   it("emits unguessable tokens of at least 128 bits with no PII", () => {

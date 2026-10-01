@@ -26,7 +26,7 @@ vi.mock("./auth", () => ({
   }),
 }));
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "innerJoin", "where", "orderBy"]) {
     chain[m] = () => chain;

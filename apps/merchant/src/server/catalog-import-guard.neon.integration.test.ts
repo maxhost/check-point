@@ -49,7 +49,7 @@ const {
   listCatalog,
   renameCategory,
   updateProduct,
-} = await import("./catalog");
+} = await import("@mi-pasaporte/domain/server/catalog");
 
 const pedir = (url: string, body: unknown) =>
   new Request(url, {

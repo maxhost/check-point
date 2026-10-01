@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { loyaltyRewards } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { loyaltyRewards } from "@mi-pasaporte/db/schema";
 import { dispatchGranted } from "../wallet/push";
 import {
   CounterError,
@@ -9,7 +9,7 @@ import {
   parseUuid,
   pgErrorCode,
   rawTarget,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import { accreditableProgram } from "./resolve";
 import {
   type PersistedRedemption,
@@ -63,7 +63,7 @@ async function loadRewardInProgram(
     throw new CounterError(
       422,
       "unknown_reward",
-      "Ese premio ya no está disponible. Volvé a escanear.",
+      "Ese premio ya no está disponible. Vuelve a escanear.",
     );
   }
   return row;
@@ -144,7 +144,7 @@ export async function redeemReward(
       throw new CounterError(
         503,
         "redeem_failed",
-        "No pudimos canjear. Probá de nuevo.",
+        "No pudimos canjear. Prueba de nuevo.",
       );
     }
     assertSameReward(existing, rewardId);

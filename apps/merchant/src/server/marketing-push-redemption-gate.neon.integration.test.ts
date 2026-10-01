@@ -18,7 +18,7 @@ import {
 import { dropCampaigns } from "./marketing-read-support";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 
 /**
  * Spec 0104 §7 / ADR 0096 §5: A REDEMPTION IS A VISIT for the gate of a campaign push, for

@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
-import type { DbTransaction } from "../db";
-import { loyaltyPrograms, programMemberships } from "../schema";
-import { CounterError } from "./core";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { loyaltyPrograms, programMemberships } from "@mi-pasaporte/db/schema";
+import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 
 /**
  * THE EXTRA STAMPS / POINTS OF A CAMPAIGN COUPON (spec 0106 / ADR 0098 §6): the one coupon

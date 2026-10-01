@@ -23,13 +23,15 @@ const r2 = {
   falla: false,
 };
 
-vi.mock("./db", async () => {
+vi.mock("@mi-pasaporte/db", async () => {
   const { dbDobleHonesto } = await import("./catalog-import-predicado");
   return dbDobleHonesto(estado);
 });
 
-vi.mock("./r2", async () => {
-  const real = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const real = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...real,
     deleteObjectKeys: async (keys: string[]) => {

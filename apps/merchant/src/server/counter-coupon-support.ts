@@ -10,8 +10,12 @@ import {
 import { dropCampaigns } from "./marketing-read-support";
 import { seedCampaign, seedTurn } from "./marketing-integration-support";
 import { seedCampaignCoupon } from "./marketing-coupon-support";
-import { getDb } from "./db";
-import { campaignTurns, couponRedemptions, walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  campaignTurns,
+  couponRedemptions,
+  walletPushQueue,
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 
 /**

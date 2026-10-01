@@ -26,13 +26,13 @@ import {
   seedMember,
   type Seed,
 } from "../../../../server/counter-integration-support";
-import { getDb } from "../../../../server/db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   memberships,
   sessions,
   users,
-} from "../../../../server/schema";
+} from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../server/merchant-session";
 import { requireBackofficeSession } from "../../../../server/auth-guards";
 

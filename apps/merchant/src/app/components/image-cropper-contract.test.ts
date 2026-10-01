@@ -96,23 +96,37 @@ describe("the three upload hooks own the resolved src", () => {
   });
 
   it("nothing in the app still imports the removed canDecodeImage probe", async () => {
-    const entries = await readdir(new URL("../", APP), {
-      recursive: true,
-      withFileTypes: true,
-    });
+    // Since spec 0116 (ADR 0108) the image helpers live in `packages/domain` and the consumer
+    // screens are copied to `apps/consumer`: the sweep follows the code, one floor per root.
+    const roots = [
+      new URL("../", APP),
+      new URL("../../../../packages/domain/src/", APP),
+      new URL("../../../consumer/src/", APP),
+    ];
     const offenders: string[] = [];
-    let scanned = 0;
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      if (!/\.tsx?$/.test(entry.name)) continue;
-      // Tests name the removed API in prose on purpose; only shipped code is swept.
-      if (/\.test\.tsx?$/.test(entry.name)) continue;
-      scanned += 1;
-      const path = `${entry.parentPath}/${entry.name}`;
-      const source = await readFile(path, "utf8");
-      if (source.includes("canDecodeImage")) offenders.push(path);
+    const scannedPerRoot: number[] = [];
+    for (const root of roots) {
+      const entries = await readdir(root, {
+        recursive: true,
+        withFileTypes: true,
+      });
+      let scanned = 0;
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        if (!/\.tsx?$/.test(entry.name)) continue;
+        // Tests name the removed API in prose on purpose; only shipped code is swept.
+        if (/\.test\.tsx?$/.test(entry.name)) continue;
+        scanned += 1;
+        const path = `${entry.parentPath}/${entry.name}`;
+        const source = await readFile(path, "utf8");
+        if (source.includes("canDecodeImage")) offenders.push(path);
+      }
+      scannedPerRoot.push(scanned);
     }
     expect(offenders).toEqual([]);
-    expect(scanned).toBeGreaterThan(100);
+    const [merchant, domain, consumer] = scannedPerRoot;
+    expect(merchant).toBeGreaterThan(100);
+    expect(domain).toBeGreaterThan(100);
+    expect(consumer).toBeGreaterThan(40);
   });
 });

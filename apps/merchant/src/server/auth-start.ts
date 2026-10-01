@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { getDb } from "./db";
-import { users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { users } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0067 §2 — la decision de la PANTALLA 1 del wizard: el owner escribe su email y el
@@ -85,7 +85,7 @@ export function isUndeliverableEmail(email: string): boolean {
 export function normalizeEmail(raw: unknown): string {
   const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   if (!email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-    throw new AuthStartError(400, "invalid_email", "Ingresá un email válido.");
+    throw new AuthStartError(400, "invalid_email", "Ingresa un email válido.");
   return email;
 }
 
@@ -129,7 +129,7 @@ export async function assertStartWithinLimits(input: {
     throw new AuthStartError(
       429,
       "rate_limited",
-      "Demasiados intentos. Probá de nuevo más tarde.",
+      "Demasiados intentos. Prueba de nuevo más tarde.",
     );
 }
 

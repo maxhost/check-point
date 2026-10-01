@@ -5,7 +5,7 @@ import {
   stampInitial,
   stampPlaceholderPng,
   stampPlaceholderSvg,
-} from "./stamp-placeholder";
+} from "@mi-pasaporte/domain/server/loyalty-program/stamp-placeholder";
 
 /** Los 8 primeros bytes de todo PNG (RFC 2083 §3.1). */
 const PNG_MAGIC = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);

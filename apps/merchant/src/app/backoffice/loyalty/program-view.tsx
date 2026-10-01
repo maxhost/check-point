@@ -1,5 +1,5 @@
 import { Button } from "../../../ui";
-import { CardPreview } from "../../../components/loyalty/card-preview";
+import { CardPreview } from "@mi-pasaporte/domain/components/loyalty/card-preview";
 import { formatDate } from "./ui";
 import { formatMoney } from "./format";
 import type { LoyaltyVm } from "./use-loyalty-program";

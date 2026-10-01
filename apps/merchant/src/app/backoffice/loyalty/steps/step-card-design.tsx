@@ -2,10 +2,10 @@ import { Button } from "../../../../ui";
 import { CardDesignFields } from "../card-design-fields";
 import { useRef } from "react";
 import dynamic from "next/dynamic";
-import { CardPreview } from "../../../../components/loyalty/card-preview";
+import { CardPreview } from "@mi-pasaporte/domain/components/loyalty/card-preview";
 import type { LoyaltyVm } from "../use-loyalty-program";
 import { useIsTouch } from "../../catalog/use-is-touch";
-import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../../lib/image-formats";
+import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "@mi-pasaporte/domain/lib/image-formats";
 
 // Deferred on purpose: `react-easy-crop` must not ride in the initial bundle of the
 // loyalty editor (ADR 0041 §3). `ssr: false` because the cropper is canvas/DOM-only.

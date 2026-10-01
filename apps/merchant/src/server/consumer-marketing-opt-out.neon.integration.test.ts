@@ -5,10 +5,10 @@ import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { programMemberships } from "./schema";
-import { SESSION_COOKIE } from "./consumer/core";
-import { issueSession } from "./consumer/session";
+import { getDb } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { readPlacement, readTurns } from "./marketing-read-support";
 import {
   type World,
@@ -16,13 +16,13 @@ import {
   seedWorld,
   tickWorld,
 } from "./marketing-world-support";
-import { POST } from "../app/api/public/consumer/marketing-opt-out/route";
+import { POST } from "../../../consumer/src/app/api/public/consumer/marketing-opt-out/route";
 
 /**
  * Spec 0065, fase D — EL OPT-OUT, de punta a punta: la ruta que lo escribe y lo que el
  * tick hace despues.
  *
- * La mitad de la UI (la pestaña) tiene su render en `app/(consumer)/wallet/settings-tab.test.ts`
+ * La mitad de la UI (la pestaña) tiene su render en `apps/consumer/src/app/(consumer)/wallet/settings-tab.test.ts`
  * y su interacción en `settings-tab-switch.test.ts`, al lado. Lo que
  * sólo contesta una base está acá, y son dos cosas distintas:
  *

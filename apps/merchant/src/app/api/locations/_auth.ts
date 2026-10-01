@@ -27,7 +27,7 @@ export async function requireLocationsOwner(
 ): Promise<{ business: { id: string } } | { response: NextResponse }> {
   const auth = await requireApiPermission(request, "locations", {
     missingPermission: "No tienes permiso para gestionar los locales.",
-    emailNotVerified: "Verificá tu email para gestionar los locales.",
+    emailNotVerified: "Verifica tu email para gestionar los locales.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

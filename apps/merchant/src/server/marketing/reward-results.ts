@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { CampaignError } from "./campaign-error";
-import type { CouponKind } from "./reward-input";
+import type { CouponKind } from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * RESULTS BY REWARD (spec 0106 E4 / ADR 0098): the business's coupon redemptions in a date
@@ -70,7 +70,7 @@ export function parseRewardRange(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá el rango de fechas.",
+      "Revisa el rango de fechas.",
       fields,
     );
   return { from: from as string, to: to as string };

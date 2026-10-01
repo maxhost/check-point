@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { campaignsAllowedFor, type CampaignPlanRow } from "./plan-gate";
+import {
+  campaignsAllowedFor,
+  type CampaignPlanRow,
+} from "@mi-pasaporte/domain/server/marketing/plan-gate";
 
 /**
  * Spec 0065, fase D — las TRES condiciones del gate de plan de campañas, cada una con su

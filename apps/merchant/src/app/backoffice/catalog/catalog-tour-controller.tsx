@@ -156,7 +156,7 @@ export function CatalogTourController({
           return;
         }
         onNotice(
-          "No encontramos el control de esta tarea. Ajustá los filtros o volvé a elegir desde Ayuda.",
+          "No encontramos el control de esta tarea. Ajusta los filtros o vuelve a elegir desde Ayuda.",
         );
         stop();
         return;
@@ -173,7 +173,7 @@ export function CatalogTourController({
       : catalog.categories;
     if (!items.some((item) => item.id === session.entityId)) {
       onNotice(
-        "Ese elemento ya no está en el catálogo. Volvé a elegir desde Ayuda.",
+        "Ese elemento ya no está en el catálogo. Vuelve a elegir desde Ayuda.",
       );
       stop();
     }
@@ -207,7 +207,9 @@ export function CatalogTourController({
         onClick={() =>
           blocked ||
           document.querySelector('[data-tour="catalog-category-edit-name"]')
-            ? onNotice("Terminá o cerrá la acción actual para iniciar la guía.")
+            ? onNotice(
+                "Termina o cierra la acción actual para iniciar la guía.",
+              )
             : setHelpOpen(true)
         }
       >
@@ -228,7 +230,7 @@ export function CatalogTourController({
       <StaffFormModal
         open={helpOpen}
         eyebrow="Ayuda"
-        title="¿Qué querés hacer?"
+        title="¿Qué quieres hacer?"
         description="Estas guías te acompañan sobre tu catálogo real."
         onClose={() => setHelpOpen(false)}
       >

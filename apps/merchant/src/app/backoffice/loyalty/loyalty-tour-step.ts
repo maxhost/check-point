@@ -17,7 +17,7 @@ export function loyaltyHelpStep(
   const outcome = outcomeFor(session, current.writeOutcome);
   let key: string | null = null;
   let title = "Tu guía";
-  let description = "Usá los controles del formulario para continuar.";
+  let description = "Usa los controles del formulario para continuar.";
   let manual = false;
   let success = false;
   const refreshed =
@@ -32,7 +32,7 @@ export function loyaltyHelpStep(
       session.task === "close" ? "Cierre confirmado" : "Guardado confirmado";
     description =
       session.task === "close"
-        ? "El cierre quedó programado. Revisá las fechas."
+        ? "El cierre quedó programado. Revisa las fechas."
         : session.task === "create"
           ? "El programa quedó activado."
           : "El programa quedó actualizado.";
@@ -40,7 +40,7 @@ export function loyaltyHelpStep(
     key = "refresh";
     title = "Vista pendiente";
     description =
-      "El cambio está confirmado, pero falta actualizar la vista. Pulsá Actualizar vista; no hace falta guardar otra vez.";
+      "El cambio está confirmado, pero falta actualizar la vista. Pulsa Actualizar vista; no hace falta guardar otra vez.";
   } else if (session.task === "close") {
     key = current.confirmClose
       ? "close-confirm"
@@ -49,10 +49,10 @@ export function loyaltyHelpStep(
         : "close-action";
     title = current.confirmClose ? "Confirmación de cierre" : "Cierre";
     description = current.saving
-      ? "Estamos confirmando el cierre. Esperá el resultado."
+      ? "Estamos confirmando el cierre. Espera el resultado."
       : current.confirmClose
         ? "Confirmar programa el cierre y bloquea la edición. Cancelar vuelve al formulario sin programarlo."
-        : "Elegí el fin de acumulación y una fecha posterior de canje en la zona horaria del negocio. Después revisá la confirmación.";
+        : "Elige el fin de acumulación y una fecha posterior de canje en la zona horaria del negocio. Después revisa la confirmación.";
     if (current.saving) key = null;
   } else if (current.editing || !current.program) {
     const step = editor?.step ?? (current.program ? "basics" : "modality");
@@ -69,24 +69,24 @@ export function loyaltyHelpStep(
       key = "redemption-policy";
       title = "Canje sin saldo";
       description =
-        "Decidí si el mostrador puede entregar un premio sin saldo suficiente. Si lo permitís, el saldo queda en 0 y la entrega queda registrada. Pulsá Continuar para revisar todos los cambios.";
+        "Decide si el mostrador puede entregar un premio sin saldo suficiente. Si lo permites, el saldo queda en 0 y la entrega queda registrada. Pulsa Continuar para revisar todos los cambios.";
     }
     if (current.stamp.pending) {
       key = null;
-      title = "Ajustá el sello";
+      title = "Ajusta el sello";
       description =
-        "Terminá o cancelá el recorte. La imagen sigue en el borrador y todavía no se guarda.";
+        "Termina o cancela el recorte. La imagen sigue en el borrador y todavía no se guarda.";
     }
     if (current.saving || current.stamp.isAnalyzing) {
       manual = false;
       description =
-        "Esperá a que termine la operación. Tu borrador se conserva.";
+        "Espera a que termine la operación. Tu borrador se conserva.";
     }
   } else {
     key = "edit-action";
     title = "Editar un programa";
     description =
-      "Pulsá Editar programa para trabajar sobre el borrador existente.";
+      "Pulsa Editar programa para trabajar sobre el borrador existente.";
   }
   if (key && !document.querySelector(loyaltyAnchor(key))) return null;
   const step: DriveStep = {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import { getStripeClient, getStripeConfiguration } from "../stripe-config";
 import { claimEvent } from "./claim";
 import type { IgnoredReason } from "./derive";

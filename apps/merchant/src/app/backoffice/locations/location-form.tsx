@@ -79,8 +79,8 @@ export function LocationForm({
     <StaffFormModal
       open
       eyebrow={draft.id ? "Editar local" : "Nuevo local"}
-      title={draft.id ? "Actualizá sus datos" : "Sumá una nueva sucursal"}
-      description="Usá un nombre fácil de reconocer y la dirección donde atendés."
+      title={draft.id ? "Actualiza sus datos" : "Suma una nueva sucursal"}
+      description="Usa un nombre fácil de reconocer y la dirección donde atiendes."
       onClose={onCancel}
     >
       <form
@@ -102,9 +102,9 @@ export function LocationForm({
           isRequired
         />
         <div className="location-address-search" data-tour="location-address">
-          <span className="location-form-label">Buscá la dirección</span>
+          <span className="location-form-label">Busca la dirección</span>
           <p className="field-help">
-            Elegí una sugerencia para verificarla automáticamente.
+            Elige una sugerencia para verificarla automáticamente.
           </p>
           <AddressAutofillField
             countryCode={countryCode}
@@ -122,7 +122,7 @@ export function LocationForm({
           className="staff-name-field"
           data-tour="location-manual-address"
           label="Dirección escrita"
-          description="También podés escribirla si el buscador no la encuentra."
+          description="También puedes escribirla si el buscador no la encuentra."
           maxLength={240}
           value={draft.addressLabel}
           placeholder="Ej. Av. Amazonas 123, Quito"

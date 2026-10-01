@@ -89,6 +89,9 @@ export function suggestedRewardLabel(
     case "extra_points":
       label = `${reward.couponExtraUnits} ${reward.couponExtraUnits === 1 ? "punto" : "puntos"} extra`;
       break;
+    case "custom":
+      label = reward.couponLabel;
+      break;
   }
   return label.slice(0, 40);
 }
@@ -102,20 +105,20 @@ export function rewardErrors(
   if (couponKinds && !couponKinds.includes(reward.couponKind))
     errors.couponKind = "Este tipo de premio ya no está disponible.";
   if (!reward.couponLabel.trim() || reward.couponLabel.trim().length > 40)
-    errors.couponLabel = "Escribí un nombre de hasta 40 caracteres.";
+    errors.couponLabel = "Escribe un nombre de hasta 40 caracteres.";
   if (
     !reward.couponCost.trim() ||
     !Number.isFinite(Number(reward.couponCost)) ||
     Number(reward.couponCost) < 0
   )
-    errors.couponCost = "Ingresá un costo válido.";
+    errors.couponCost = "Ingresa un costo válido.";
   if (
     withRedemptionCap &&
     (!Number.isInteger(reward.couponMaxRedemptions) ||
       reward.couponMaxRedemptions < 1 ||
       reward.couponMaxRedemptions > 1_000_000)
   )
-    errors.couponMaxRedemptions = "Elegí un tope entre 1 y 1.000.000.";
+    errors.couponMaxRedemptions = "Elige un tope entre 1 y 1.000.000.";
   if (reward.couponRule.length > 2000)
     errors.couponRule = "La regla no puede superar los 2000 caracteres.";
   if (reward.couponKind === "discount") {
@@ -128,8 +131,8 @@ export function rewardErrors(
     )
       errors.couponDiscountValue =
         reward.couponDiscountUnit === "percent"
-          ? "Elegí un porcentaje entero entre 1 y 100."
-          : "Ingresá un monto mayor que cero.";
+          ? "Elige un porcentaje entero entre 1 y 100."
+          : "Ingresa un monto mayor que cero.";
   }
   if (
     (reward.couponKind === "extra_stamps" ||
@@ -138,7 +141,7 @@ export function rewardErrors(
       reward.couponExtraUnits < 1 ||
       reward.couponExtraUnits > 1000)
   )
-    errors.couponExtraUnits = "Elegí entre 1 y 1000 unidades.";
+    errors.couponExtraUnits = "Elige entre 1 y 1000 unidades.";
   return errors;
 }
 

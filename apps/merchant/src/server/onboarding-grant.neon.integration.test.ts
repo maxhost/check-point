@@ -11,8 +11,8 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { authStartAttempts, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { authStartAttempts, users } from "@mi-pasaporte/db/schema";
 import {
   type GrantSeed,
   dropGrantSeed,
@@ -22,7 +22,7 @@ import {
   seedUnverifiedOwner,
   wipePrograms,
 } from "./onboarding-grant-support";
-import { ONBOARDING_GRANT_MINUTES } from "./onboarding-grant";
+import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { createStaff } from "./staff-create";
 import { POST as START } from "../app/api/merchant/auth/start/route";
 import { POST as STAFF_LOGIN } from "../app/api/merchant/auth/staff/route";

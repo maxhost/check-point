@@ -4,7 +4,7 @@ import {
   type AudienceContext,
   decideTurnEligibility,
   summarizeAudience,
-} from "./audience";
+} from "@mi-pasaporte/domain/server/marketing/audience";
 
 const NOW = new Date("2026-09-16T12:00:00.000Z");
 const DAY = 86_400_000;

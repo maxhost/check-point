@@ -36,7 +36,7 @@ vi.mock("../../../../../../server/staff-pin", () => ({
   hashPin: async () => "hash-de-prueba",
 }));
 
-vi.mock("../../../../../../server/db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "where", "update", "set", "delete"]) {
     chain[m] = () => chain;

@@ -7,8 +7,8 @@ import {
   seedExtraLocation,
   seedLocationsBusiness,
 } from "./locations-integration-support";
-import { getDb } from "./db";
-import { locations } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 import {
   createLocation,
   listLocations,

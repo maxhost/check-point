@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { walletPushQueue } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { walletPushQueue } from "@mi-pasaporte/db/schema";
 
 /** Shared helpers for the wallet-push Neon integration suites (kept out of the test
  * files so each stays under the file-size budget). */

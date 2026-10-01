@@ -49,7 +49,7 @@ export function CatalogAiImportResult({
           <li>
             {result.productsWithoutPrice} productos quedaron{" "}
             <strong>sin precio</strong> porque no pudimos leerlo con seguridad.
-            Podés completarlos cuando quieras.
+            Puedes completarlos cuando quieras.
           </li>
         )}
       </ul>
@@ -71,7 +71,7 @@ export function CatalogAiImportResult({
           </ul>
           {result.discarded.length < result.discardedCount && (
             <p className="field-help">
-              Mostramos las primeras {result.discarded.length}. Cargá el resto a
+              Mostramos las primeras {result.discarded.length}. Carga el resto a
               mano desde el catálogo.
             </p>
           )}

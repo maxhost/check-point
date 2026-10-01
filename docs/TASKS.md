@@ -8,6 +8,423 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
+
+**PRIMERO, cuando el owner avise que GPT cerro sus ramas — ALINEAR TODO A `main` + `motor` (pedido del owner
+2026-10-01, medido ese dia):** la `main` LOCAL de `check-point` estaba divergida (base 29/09; 8 commits sin push, 6 son
+copias con otro sha de commits ya en `origin`, 1 nuevo `17f623b` «Redesign consumer PWA…»; 19 archivos sin commitear).
+Plan: (1) confirmar que GPT ya no escribe ahi (`ListAgents` + `git log` del arbol); (2) re-medir lo que quede sin
+pushear y traerlo a `motor` con gates; (3) cambios sin commitear → rama de respaldo `wip-check-point-<fecha>` (no
+descartar sin OK); (4) `main` local = `origin/main`; (5) borrar ramas sin nada propio: `deploy-0107`, `deploy-0108`,
+`deploy-business-landing`, `deploy-public-app` (+ sus worktrees en `/private/tmp` y `motor-wt/`), y en remoto
+`origin/motor`, `origin/clientes-0108`; dependabot (5) = preguntar al owner; (6) **arreglar `test:e2e`**: 52 rojos del
+backoffice por el copy de `4a69db7` (p. ej. «Dale identidad» → «Da identidad»), actualizar los e2e al texto nuevo y
+correr hasta verde. Re-medir todo antes: GPT puede haber cambiado el cuadro.
+**Despues:** OK del owner para aplicar `0060_rol_del_cliente.sql` en PROD (rama `main` de Neon), y despues sacar el
+`BYPASSRLS` y el GRANT amplio que hoy tiene `checkpass_consumer` en PROD. Antes de aplicarla: QA del owner en el telefono
+(alta, billetera, instalar la app, Bienvenida) contra `my.checkpass.club`, porque el rol minimo cambia que puede tocar el
+cliente. **Y verificar el deploy** de `ef22ffb` en READY en los proyectos de Vercel (no hay `vercel`/`gh` CLI en este
+shell: lo mira el owner en el dashboard).
+**Hecho y verificado (2026-10-01):** URL de CI del rol corregida (`.env.local` + secret `NEON_CI_CONSUMER_DATABASE_URL`;
+conecta como `checkpass_consumer`, sin bypass, endpoint `ep-plain-firefly` = `ci-integration`). Revisor PASS (`85fce24`).
+Merge de `origin/main` (`e15ebbe`, `ef22ffb`): `main` habia ocupado la `0059` (`home_launch_welcome`, YA en PROD) → la
+del rol es la **`0060`** (shasum `24c03aa7…` intacto); en `ci-integration` se movio el `created_at` de su fila
+(hash `756b5b2f…`) a 1790878886657 = `when` del journal. Oraculo del rol al dia con `main`: caso `POST home/launch`
+nuevo (O-M1 rojo y revertido), seed de `consumer-role-wallet` con app abierta + push (regla nueva de la Bienvenida,
+`f3982ef`), y el doble faltante en `wallet-account-opened.test.ts` (venia rojo de `main`). Gates 5/5 verdes; oraculo
+43/43. Vercel: el owner habia pegado la URL de CI en los proyectos; la volvio a la de `main` y redeployo;
+`my./enroll/<LaCraft>` lee PROD; `check-point-public` no usa base.
+**Deuda heredada de `main`, NO de la 0118:** `test:e2e` ROJO 52 casos del backoffice (copy de `4a69db7` «unify LATAM
+copy», p. ej. «Dale identidad» → «Da identidad», sin actualizar los e2e). La CI de `main` lo va a marcar.
+**Declarado:** el «inventario por funcion con `archivo:linea`» de la DoD no esta en el arbol (el revisor no lo encontro);
+lo cubren las 22 rutas importadas por el oraculo + `home/launch`.
+
+## ⇥ ESTADO (2026-10-01, madrugada) — EL CLIENTE YA CORRE EN SU PROPIO PROYECTO (`my.checkpass.club`)
+
+**Hecho y verificado en PROD (curl con `--resolve`, 2026-10-01):** `main` = `84ce4dd` (0116 + 0117), deploys merchant,
+public y el proyecto nuevo del cliente (`check-point`) `success`. `my./api/health` 200, `my./` 308 → `/wallet`,
+`my./wallet` y `/recover` 200, `my./backoffice` 404; `business./wallet` y `/enroll/*` 308 → `my.` (env de R5 cargadas);
+`www/enroll/*` y `/wallet` 308 → `my.`; `/api/public/consumer/coupons` 401 en `my.`, `business.` y `www` (proxies);
+`my./enroll/<LaCraft>` y `<Platano Garden>` muestran el formulario; sello placeholder 200 `image/png`.
+**Rol `checkpass_consumer`** (PROD y CI): creado por SQL, sin membresias, sin `merchant_auth`/`drizzle`, DML en 52
+tablas, **`BYPASSRLS`** (agregado tras el corte: RLS de 4 tablas lo dejaba en 0 filas → «programa no disponible»;
+`LECCIONES.md` 2026-09-30). Variables del cliente cargadas por el owner (Tanda 1+2); VAPID nuevo en los dos proyectos.
+
+**Pendiente del owner:** R7 — webhook de Stripe y secrets de GitHub `MARKETING_TICK_ENDPOINT`/`WALLET_PUSH_ENDPOINT`/
+`CATALOG_IMPORT_RECONCILE_ENDPOINT` → `https://business.checkpass.club/...` (hoy pasan por el proxy de `www`); R8 — aviso
+a Plantano; QA en telefono: enrolarse, ver la billetera, agregar el pase. **Despues:** marcar 0117 `implementada`.
+Deuda: `@mapbox/search-js-react` sin import en merchant (anterior a la 0117); el guard `merchant-without-consumer` solo
+cubre 4 rutas literales (revisor, declarado).
+
+## Bitacora de mutaciones — spec 0118, implementador (2026-10-01)
+
+Archivo: `packages/db/drizzle/0059_rol_del_cliente.sql` (`??`, sin blob: copia limpia en el scratchpad de la sesion,
+`0059.clean.sql`). **shasum limpio `24c03aa79c04b122cfb5e8bb21d3a1a9ab2f6c36`.** Las mutaciones son de BASE en la rama de
+CI (`ci-integration`): se aplican reaplicando el `.sql` mutado como dueño (antes `DROP POLICY IF EXISTS consumer_app_*`) y
+se revierten reaplicando el limpio + re-corriendo la sonda. **Restauracion de emergencia:** copiar `0059.clean.sql` encima
+del archivo, confirmar el shasum y reaplicarlo en la rama de CI (drop de las 10 politicas `consumer_app_*` + el archivo).
+Oraculo positivo medido con un arnes TEMPORAL (`SET ROLE checkpass_consumer` sobre la conexion del dueño) porque la URL de
+login del rol esta rota (hallazgo en el handoff); el arnes no se commitea. Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | 0059 | `24c03aa7…` | sin `INSERT` en `consumer.consumer_account` el alta se rompe con 42501 | **ROJO 2/25** (alcance: los 4 archivos positivos, arnes SET ROLE por la conexion DIRECTA): «POST enroll…» → `AssertionError: {"error":"No pudimos completar el enrolamiento.","code":"enroll_failed"}: expected 503 to be 201` y «verify de un telefono nuevo → perfil» → `expected 409 to be 201` (las rutas mapean el error a 503/409). Causa leida con sonda `SET LOCAL ROLE` + el `INSERT`: `42501 permission denied for table consumer_account`. Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 13/13 verde |
+| M2 | 0059 | `24c03aa7…` | un `INSERT ON core."order"` de mas lo caza el negativo (no da 42501) | **ROJO 1/17** (alcance: `consumer-role-denied`; el positivo no puede ver un GRANT de mas): «INSERT en core."order" → 42501» → `AssertionError: expected '23502' to be '42501'` (el INSERT paso el permiso y murio en un NOT NULL). Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 17/17 verde |
+| M3 | 0059 | `24c03aa7…` | sin la politica SELECT de `program_membership` el cliente ve 0 filas (sin error) | **ROJO 6/25** (alcance: los 4 positivos, arnes por la DIRECTA). Por **0 filas, sin error**: «GET enroll/me» y «pagina /wallet» → `AssertionError: expected [] to deeply equal [ Array(1) ]`; la Bienvenida de «PassKit: registrar…» y de «google/callback» → `expected [] to have a length of 1 but got +0` (el emisor lee 0 membresias y no regala, tragado). Ademas «POST marketing-opt-out» → `expected 404 to be 200` (el UPDATE no ve la fila) y «POST enroll» → `503 enroll_failed` (el `RETURNING` del INSERT sin politica SELECT si es error). Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 16/16 verde |
+| M4 | 0059 | `24c03aa7…` | `BYPASSRLS` al final de la 0059 lo caza el negativo | **ROJO** (alcance: negativo + los 4 positivos). Negativo 1/17: «no tiene BYPASSRLS» → `AssertionError: expected [ { rolbypassrls: true } ] to deeply equal [ { rolbypassrls: false } ]`. Positivos 4/25: el caso de guarda de cada archivo, «corre COMO checkpass_consumer, sin BYPASSRLS» → `expected [ { who: 'checkpass_consumer', …(1) } ] to deeply equal …` (el `who` coincide; difiere `bypass`). Los flujos quedan VERDES bajo el bypass, como se esperaba: el bypass no rompe nada, solo lo ven las sondas. Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 17/17 verde |
+| M5 | 0059 | `24c03aa7…` | sin revocar los default privileges una tabla nueva queda legible | **ROJO 2/17** (alcance: `consumer-role-denied`). Montaje: se restauro antes el `pg_default_acl` de HOY (`checkpass_consumer=arwd` en tablas, `rU` en secuencias, de core y consumer — leido por SQL) y se aplico la 0059 sin sus dos `ALTER DEFAULT PRIVILEGES … REVOKE`. «una tabla NUEVA de core nace cerrada…» y «y una de consumer tambien» → `AssertionError: expected 'la sentencia NO fue denegada' to be '42501'`. Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada (`pg_default_acl` de neondb_owner vacio), sonda 17/17 verde |
+
+**Las 5 revertidas** (archivo == `24c03aa7…`; ninguna etiqueta `MUTATION` en el arbol). Trabajo en `b005721`. Rama de CI con
+la 0059 LIMPIA (hash registrado `756b5b2f…` = sha256 del archivo; `rolbypassrls=false`; 10 politicas `consumer_app_*`;
+`pg_default_acl` de neondb_owner vacio). **BLOQUEO DEL OWNER:** `NEON_CI_CONSUMER_DATABASE_URL` trae el usuario
+`ci-integration` (no `checkpass_consumer`) y da `28P01 password authentication failed`: el oraculo positivo con la URL
+real esta ROJO 25/25 por autenticacion (verde 25/25 solo con el arnes `SET ROLE`). Ver el handoff de la 0118.
+
+## Bitacora de mutaciones — spec 0118, REVISOR (2026-10-01, URL REAL del rol, sin arnes)
+
+Mutaciones de BASE en `ci-integration`, aplicadas como dueño con la sentencia equivalente (el archivo NO se toca:
+`0059_rol_del_cliente.sql` shasum limpio `24c03aa79c04b122cfb5e8bb21d3a1a9ab2f6c36`, hash en la rama `756b5b2f…`).
+Reversion: reaplicar la 0059 limpia (drop de las 10 `consumer_app_*` + el archivo) y re-correr la sonda.
+**Restauracion de emergencia:** igual que la de arriba (drop de las 10 politicas + reaplicar el archivo limpio).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M1 | 0059 (base: `REVOKE INSERT ON consumer.consumer_account`) | `24c03aa7…` | sin ese INSERT el alta se rompe COMO el rol real | **ROJO 2/25** (alcance: los 4 positivos, URL REAL `checkpass_consumer` por el pooler, sin arnes): «POST enroll…» → `expected 503 to be 201` (`enroll_failed`) y «verify de un telefono nuevo → perfil» → `expected 409 to be 201`. Causa leida: `SET LOCAL ROLE` + `INSERT` → `42501 permission denied for table consumer_account`. Revertida: 0059 limpia reaplicada, matriz `has_table_privilege` identica a la linea base (diff vacio), archivo `24c03aa7…` |
+| R-M3 | 0059 (base: `DROP POLICY consumer_app_select ON consumer.program_membership`) | `24c03aa7…` | sin la politica SELECT el cliente ve 0 filas, sin error | **ROJO 6/25** (mismo alcance, URL REAL): «GET enroll/me» y «pagina /wallet» → `expected [] to deeply equal [ Array(1) ]` (0 filas, sin error); «PassKit: registrar…» y «google/callback» → `expected [] to have a length of 1 but got +0` (Bienvenida no emitida); «marketing-opt-out» → `expected 404 to be 200`; «POST enroll» → `503`. Revertida: 0059 limpia reaplicada (10 `consumer_app_*`, bypass false, defacl 0, hash `756b5b2f…`), matriz identica (diff vacio), sonda 5 archivos **42/42 verde** |
+
+## Bitacora de mutaciones — 0118 tras el merge de `main` (orquestador, 2026-10-01)
+
+| id | donde | invariante | resultado EJECUTADO |
+|---|---|---|---|
+| O-M1 | base `ci-integration`: `REVOKE INSERT ON core.campaign_coupon FROM checkpass_consumer` (revertir: `GRANT INSERT ON core.campaign_coupon TO checkpass_consumer`) | el caso nuevo `POST home/launch` caza un GRANT faltante del regalo aunque la ruta lo trague | **ROJO 1/10** (alcance: `consumer-role.neon`): «POST home/launch…» → `AssertionError: expected [ [ …(2) ] ] to deeply equal []` con `[welcome] issueWelcomeGifts failed` + `DrizzleQueryError` en `insert into core.campaign_coupon` (el espia ve el error que la ruta traga). Revertida con el GRANT; `role_table_grants` = INSERT, SELECT (igual que la 0060); oraculo 43/43 verde |
+
+### Bloque anterior
+
+## ⇥ ESTADO (2026-09-30, noche) — FASE 2 HECHA: 0116 EN PROD, SIGUE LA 0117
+
+**Retomar con: escribir la SPEC 0117 (fase 3 del ADR 0107, el corte)** — proyecto Vercel del cliente, verificacion en
+su dominio temporal y en un telefono, traspaso de `my.checkpass.club`, cron de avisos de Wallet, rol Postgres sin
+`merchant_auth`, borrado del cliente en merchant (pantallas, tests de pantallas a consumer, destino de los 28 modulos
+solo-cliente). **Antes del QA en telefono:** sumar al CSS de consumer las reglas de elemento que faltan (`select`,
+`h1/h2/p`, `label:where(…)` del `globals.css` de merchant; las capturas de `/recover` difieren, spec 0116 §Abierto).
+Medir contra `627e6f7` antes de escribir. Deuda menor del revisor: `stale-validator.sh` solo mira merchant.
+
+**Hecho y verificado (2026-09-30):** spec 0116 (`packages/domain`, ADR 0108) implementada `48b3a98`+`51b018e`+`3611de1`,
+PASS del revisor `ec89869` (3 re-mediciones rojas, gates 6/6). Push `563d817..627e6f7` a `main`; deploys merchant y
+public `success` para `627e6f7`; PROD: `business./api/health` 200, `business./api/public/consumer/coupons` 401,
+`business./es/business/onboarding` 200, `www/api/health` 200. **Owner informado:** 14 pantallas de `app/backoffice/**`
+importan de `@mi-pasaporte/domain/...` (prompt para GPT entregado en el chat; propuesto bajarlo a `apps/merchant/AGENTS.md`).
+
+**PENDIENTE DEL OWNER — URGENTE (re-medido 2026-09-30 noche):** `my.checkpass.club` sigue SIN responder (curl exit 35,
+TLS) y `business./wallet` da 200 sin redirigir (env de la 0114 sin cargar). Los pasos (1)–(4) del bloque de abajo
+siguen vigentes; QR impresos de Plantano y link `/c/*` del pase ROTOS hasta entonces.
+
+### Bloque anterior (cierre de la sesion de la 0115)
+
+## ⇥ ESTADO (2026-09-30, cierre de sesion) — SEPARAR CLIENTE DE COMERCIO: FASE 1 HECHA, SIGUE LA 0116
+
+**Retomar con: escribir la SPEC 0116 (fase 2 del ADR 0107)** — paquetes internos de dominio que usan las dos apps
+(pases/cola de Wallet, consumer, cupones y ofertas de marketing, OTP, R2, loyalty DTO, catalog/brand de las rutas
+publicas) + `apps/consumer` REAL con las pantallas `app/(consumer)/*` y `app/api/public/*` de merchant (hoy 45
+archivos), borrando sus demos; merchant sigue sirviendo todo (sin trafico a consumer). Medir contra el arbol de
+`563d817` ANTES de escribir (el mapa de imports del ADR 0107 es de antes del movimiento). Despues: handoff → `/clear`
+→ 0117 (corte: proyecto Vercel del cliente, rol Postgres sin `merchant_auth`, traspaso de `my.`, borrado en merchant).
+**Owner (2026-09-30):** paquetes internos; rol de base por app en la fase 3; las 3 fases seguidas; mientras tanto
+NO se suman features del cliente.
+
+**Hecho y verificado hoy (todo en `main` = `563d817`):**
+- 0112 oferta cruzada y 0113 horas valle: EN PROD (migraciones 0057/0058 por `run_sql_transaction` con OK del owner,
+  PROD == rama `ci-integration` por md5 de constraints/columnas/indices). Esperan QA del owner con la UI de GPT.
+- 0114 un subdominio por audiencia (ADR 0106): EN PROD (`57164f3`). 0115 `packages/db`: EN PROD (`563d817`, PASS
+  `385e587`; deploys merchant y public `success`; `www/` 200, `www/api/health` 200, `business./api/health` 200,
+  `business./es/business/onboarding` 200).
+- 2 emails de owners marcados verificados por SQL a pedido del owner (los 3 `@staff.invalid` no).
+
+**PENDIENTE DEL OWNER — URGENTE (medido 2026-09-30 al cierre):** `www` ya esta en el proyecto publico (hizo el paso 6
+del runbook de la 0114 antes del 3). **`my.checkpass.club` NO responde (falla TLS)** → los QR impresos
+`www/enroll/*` de Plantano y el link `/c/*` del pase estan ROTOS hasta que el owner: (1) agregue `my.checkpass.club`
+al proyecto merchant en Vercel (DNS Namecheap ya OK: A `216.198.79.1`); (2) cargue en merchant (Production)
+`MERCHANT_ORIGIN=https://business.checkpass.club`, `CONSUMER_ORIGIN=https://my.checkpass.club`,
+`BETTER_AUTH_URL=https://business.checkpass.club`, `BETTER_AUTH_TRUSTED_ORIGINS=https://www.checkpass.club,https://checkpass.club`,
+borre `PUBLIC_APP_ORIGIN` y haga Redeploy (hoy `business./wallet` da 200 sin redirigir = env sin cargar); (3) avise
+a Plantano («entren por business.checkpass.club, reingresar una vez»); (4) paso 8: webhook de Stripe y secrets
+`MARKETING_TICK_ENDPOINT`/`WALLET_PUSH_ENDPOINT`/`CATALOG_IMPORT_RECONCILE_ENDPOINT` a `business.` (el proxy de
+`www/api` los cubre mientras tanto; la firma de Stripe a traves del proxy NO esta probada). Verificar despues con
+`curl` usando `--resolve <host>:443:216.198.79.1` (el resolver local del agente no resuelve los subdominios).
+
+**Deuda declarada (no bloquea):** `apps/merchant/src/server/brand.ts` 304 lineas (hook de edicion, no gate de CI;
+partir en la proxima spec que lo toque); comentarios con rutas viejas en `packages/db/src/schema/{billing,membership,staff-pin}.ts`
+y `apps/merchant/src/app/backoffice/staff/staff-contract.ts:6` (limpiar en la 0116); `drizzle-kit` queda en devDeps
+de merchant a proposito (peer de better-auth). Arbitro del orden (ADR 0103 §6): NO ahora (no hay superficie escasa);
+posible spec chica de registrar impresiones. QA de la 0111 pendiente.
+
+### Historial de esta sesion (bloques ESTADO anteriores)
+
+## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
+
+**ESTADO (2026-09-30, noche): SPEC 0115 (FASE 1 DEL ADR 0107, `packages/db`) SE ESTA IMPLEMENTANDO en este arbol**
+(subagente `implementador`; `ListAgents` antes de tocar; typecheck/test rojos mientras mueve = trabajo a medias).
+**Owner:** separar cliente de comercio con paquetes internos, rol de base por app en la fase 3, las 3 fases seguidas
+(ADR 0107, `a508d4e`). **0114 en PROD** (`57164f3`, PASS del revisor tras arreglar un bucle `/wallet/business`).
+**Estado de dominios (medido 2026-09-30):** `www` YA esta en el proyecto publico (el owner hizo el paso 6 antes del 3);
+`business.` responde con certificado; **`my.checkpass.club` NO responde (TLS) → los QR impresos `www/enroll/*` y el
+link `/c/*` del pase estan ROTOS** hasta que el owner agregue `my.` al proyecto merchant; las env del paso 3
+(`MERCHANT_ORIGIN`, `CONSUMER_ORIGIN`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`) NO estan cargadas
+(`business./wallet` da 200 sin redirigir). Pendiente del owner: eso + aviso a Plantano + Stripe/secrets (paso 8).
+**Plan de sesiones (owner):** cerrar 0115 (revisor + push) → handoff → `/clear` → 0116 en sesion nueva → handoff →
+`/clear` → 0117.
+**ESTADO (2026-09-30, tarde): SPEC 0114 (UN SUBDOMINIO POR AUDIENCIA) SE ESTA IMPLEMENTANDO en este arbol**
+(subagente `implementador`; `ListAgents` antes de tocar; sus `MUTATION` son suyas). ADR 0106 + spec 0114 en `a94227d`.
+**Owner (2026-09-30):** subdominios; comercio `business.checkpass.club`; cliente `my.checkpass.club`; avisar a Plantano
+en el punto correcto. Microfrontends descartado por plan (Hobby: 2 proyectos). **Hecho en PROD hoy:** multi-zones
+(`0442841`, se RETIRA con la 0114); emails de 2 owners marcados verificados por SQL a pedido del owner (los 3
+`@staff.invalid` no). **Medido:** DNS en Namecheap; `business` y `my` ya resuelven a `216.198.79.1`. **Owner, ahora:**
+agregar `business.`/`my.` al proyecto merchant (sin env todavia). **Sigue:** handoff del implementador → gates →
+revisor → push → runbook de la spec 0114 (el owner) → verificacion PROD por curl.
+**ESTADO (2026-09-30, cierre): 0112 Y 0113 EN PROD, ESPERAN QA DEL OWNER.** 0113 implementada (`cbbb037`+`95c467d`,
+bitacora M1–M9 rojas `871ffd5`; revisor PASS `48aa02e`, 5 re-mediciones rojas) + decision del owner (valle NO bloquea la
+Bienvenida; `origin` del valle = `"cross"`) con oraculo O-M11 medido (`d353664`, contrato H5). Migracion `0058` aplicada a
+PROD con OK del owner (32 sentencias generadas del archivo); PROD == `ci-integration` en md5 de constraints, columnas
+(con defaults) e indices de las 7 tablas tocadas; 59 migraciones en las dos. Push `95c6c63..d353664`; deploy Vercel de
+`d353664` = `success`; `/api/health` 200, `cross-offers` y `marketing/valley/locations` 401 sin sesion. **UI:** la
+hace el owner (GPT) con `specs/0112-contratos-de-api.md` y `specs/0113-contratos-de-api.md`; la 0113 toco 6 lineas de
+tipos en `app/backoffice/marketing/{marketing-types,reward-labels,reward-draft}.ts` (autorizadas, para que compile:
+`CouponKind` suma `"custom"`) — GPT tiene que saberlo al mergear. **Sigue:** QA del owner de las dos (cruzada: activar,
+ver desde un cliente de otro rubro cerca, reclamar, canjear; valle: horario con cortado, franja propia que incluya la
+hora, activar, ver/reclamar dentro de la franja, no verla fuera). Despues: el arbitro del orden (ADR 0103 §6) o la 0110.
+**ESTADO (2026-09-30): 0112 EN PROD. 0113 (horas valle) SE ESTA IMPLEMENTANDO en este arbol** (subagente
+`implementador`, despachado con OK del owner; `ListAgents` antes de tocar nada; sus `MUTATION` son suyas). **Hecho y
+verificado:** migracion `0057` aplicada a PROD por `run_sql_transaction` con OK del owner (22 sentencias generadas
+del archivo; fila en `drizzle.__drizzle_migrations` con hash sha256 del .sql, metodo validado reproduciendo el hash
+de la 0056); PROD == rama `ci-integration` en md5 de constraints (88), columnas e indices de `campaign` y
+`campaign_coupon`. Push `3b5c72e..95c6c63` a `main`; deploy de Vercel de `95c6c63` = `success`; `/api/health` 200,
+`/api/public/consumer/cross-offers` 401 sin sesion. **Owner:** el recordatorio que cuenta un cupon cruzado como
+«cupon nuevo» «esta bien asi». **Sigue:** handoff del implementador de la 0113 → gates → revisor independiente →
+migracion `0058` (OK del owner) → push. QA de la 0112 cuando GPT tenga la UI de Marketing.
+**ESTADO (2026-09-29, cierre): 0112 IMPLEMENTADA con PASS del revisor** (`bd4f833` implementacion, `91c9991`
+bitacora M1–M9 rojas, revisor `fbae56b`: 5 re-mediciones rojas + hallazgo R-M10 sin oraculo → caso nuevo del orquestador
+en `c234b3d`, mutado: ROJO, revertido). Gates del orquestador sobre `c234b3d`: typecheck/lint/test/format 0. **SIN PUSH;
+migracion `0057` NO esta en PROD (necesita OK del owner).** **0113 (horas valle) re-medida contra la 0112** (commit
+siguiente a `c234b3d`): lista para despachar. **Owner:** la tarjeta «Oferta cruzada» de Marketing la adapta el owner
+(GPT) en su UI — `template-draft.ts:147-163` manda `channels` a toda plantilla no-welcome. **Hallazgo a decidir
+(revisor, verificado):** el recordatorio de la 0111 cuenta un cupon cruzado reclamado como «cupon nuevo»
+(`wallet/reminder-store.ts:97-102` lee todos los `campaign_coupon`); texto generico, sin nombrar comercio.
+Elecciones del implementador informadas (membresia mas reciente si hay varias, opt-out de cualquier membresia).
+Historial de esta sesion abajo:
+**ESTADO (2026-09-29, noche): la 0112 SE ESTA IMPLEMENTANDO** — un subagente `implementador` despachado con OK
+del owner trabaja en ESTE arbol (`motor`): hay codigo suyo SIN commitear en `server/marketing/{templates,template-input,template-store,cross-input,cross-rules}.ts`,
+`server/schema/campaign*.ts`, `server/counter/coupon-store.ts` (typecheck/test rojos = trabajo a medias, no un bug:
+NO tocarlos; `ListAgents` primero). Si la sesion se cae: auditar el arbol (`git status`, bitacora de mutaciones al
+final de este archivo, `rg MUTATION apps/merchant/src`) antes de seguir. Despues: revisor independiente de la 0112,
+y recien con su PASS se despacha la **0113 (horas valle, cerrada, `5a68f72`, ADR 0105)**, re-medida contra la 0112
+implementada. **Horas valle — owner (2026-09-29, AskUserQuestion):** plantilla propia; filtro igual que la cruzada;
+cupon vale solo la franja del dia; horario por local con cortado. Elecciones V1–V9 del orquestador, informadas.
+**0112** (`specs/0112-mis-beneficios-y-oferta-cruzada.md`, **cerrada**, commit
+`1a9ab89`; ADR 0104; contrato `specs/0112-contratos-de-api.md`) — un implementador + un revisor (AGENT-WORKFLOW),
+9 mutaciones. **El owner puede objetar las elecciones O1–O8 de la spec** (reclamo explicito, vigencia desde
+el reclamo, 100 m = «parado», GPS no se guarda, «ultimo escaneo» = order/reward/coupon redemption, orden por
+distancia, opt-out oculta la cruzada, una por persona) — se le informaron al cerrar. **Owner (2026-09-29,
+textual en el ADR 0104):** Mis beneficios = cupones propios SIN filtro + ofertas cruzadas; la cruzada es una
+plantilla que activa el comercio (premio, publico no clientes / dormidos / cualquiera); su cupon NO exige estar
+enrolado; el filtro de rubro (ultimo escaneado + local donde esta parado) y 2 km es SOLO de la cruzada (corrige
+el 0103 §4); sin ubicacion → ninguna cruzada; entra por la cruzada → sin Bienvenida. Migracion `0057` a PROD
+necesita OK del owner. Despues: la spec de horas valle (ADR 0103 §5 y §10). **QA pendiente de la 0111** (EN PROD, lo hace el owner mas adelante): enrolarse con el telefono, hacer 3
+acreditaciones en 10 min → suenan 2, la 3.ª no; la cuenta muestra las 3; el texto termina en «· Revisa tus
+beneficios en checkpass.club». **Hecho y verificado (2026-09-29):** migracion `0056` aplicada a PROD por
+`run_sql_transaction` con OK del owner, verificada por SQL (columna, los dos `check` nuevos, indice, fila en
+`drizzle.__drizzle_migrations`, esquemas intactos); merge de `origin/main` (UI de clientes/suscripcion de otra
+sesion; conflicto solo en `TASKS.md`) y push `ea96914..20196df` a `main`; deploy de Vercel del commit `20196df` =
+`success`; `/api/health` 200, `/api/internal/wallet-push` 401. Gates sobre el arbol combinado: typecheck y build
+forzados (`Cached: 0`), lint, format, test 2086 verdes; integraciones de la 0111 11/11. `test:e2e` NO corrido
+(la 0111 no toca UI; la UI nueva la trajo `main`). Prod: 0 consumidores → sin datos reales todavia. **Techo de las
+21:00 del recordatorio (owner) implementado** (`18dcef3`, oraculo mutado: rojo). **Mistake→rule hecho:** la
+fila M6 falsa de la 0111 va a `LECCIONES.md` + regla en la skill `protocolo-de-verificacion` §2.0 («nombrar el
+guard hermano»). Siguientes specs del ADR 0103
+posibles: horas valle, «Mis beneficios», el arbitro del orden.
+**Owner (2026-09-29):** 1.ª
+spec del ADR 0103 = aviso del escaneo; cuentan para el tope de 2 «las tres» (acreditar, canje de premio, canje
+de cupon); ventana = ultimas 24 h; «algo nuevo» = cupon nuevo + cupon por vencer; recordatorio si hay algo nuevo
+O 2 dias sin actividad (ni abrio la cuenta ni escaneo); hora = 12:30 por defecto y adaptativa a la hora
+habitual del cliente (la variante «franjas donde no compra» va con horas valle); filtros previos al orden = cupo
+agotado + ignorado 3 veces (ADR 0103 §7–9, `9abe5fb`). Medido para la spec: el aviso de vencimiento del cupon de
+bienvenida sale como `campaign` (`marketing/welcome-reminder.ts:176-183`) → entra al tope global de 3; el pase
+no muestra saldo (`wallet/apple.ts:81-104`) → un escaneo silenciado no necesita tocar el pase; `push.ts` tiene
+280 lineas (limite 300).
+Doc: `docs/red-horas-valle-y-modelo.md` (commits `f169800`, `c6b1912`). **Owner (2026-09-29, textual resumido):**
+A horario de apertura «lo puede cargar el comercio en Marca»; B valle visible para no-clientes Y dormidos
+(«ambos son opcion»); C beneficio = sellos/puntos extra segun el programa, producto del menu, o texto libre
+(«2x1 en cerveza»); D la franja la elige «la red», editable por el comercio que quiera mas control; E cupon
+cruzado en el recibo desde el dia uno: si; G el cliente escanea solo al enrolarse, despues escanea el comercio →
+el recibo ES el aviso de Wallet que ya sale tras cada escaneo (`wallet/google-object.ts:142-165`,
+`wallet/apple.ts:86-94`). Cifras re-verificadas: §1 del doc (Panera «4 → 10» corregido). Hallazgo medido: no hay
+horario de apertura en el schema (lo resuelve A). Cero codigo tocado.
+
+**Decisiones del owner sobre la sintesis (2026-09-29, textual resumido):** concepto 3 «llegar como conocido»:
+el referido entre consumidores esta bien, pero **NO se le puede pedir a los comercios que costeen sellos extra ni
+un nivel VIP de red** («no me parece correcto»); concepto 5 «juego de la ciudad»: **no es parte del producto
+ahora**; concepto 6 «aliado que paga»: **no enfocarse ahora**; concepto 4 horas valle: **prioridad**; concepto 1:
+hay que llevarlo a algo conceptual. **Pregunta pendiente al owner:** si el cliente puede compartir invitaciones
+por WhatsApp desde su propio telefono (el owner descarto WhatsApp como canal de la PLATAFORMA). **En espera:**
+spec 0110 (etapas por rubro, borrador) hasta el ADR del modelo «entregar a Mis beneficios vs avisar».
+Informes de la sesion (todos commiteados): `reports/Redes de comercios y atención compartida.md`,
+`reports/Tecnología web y atención en redes.md`, `reports/Ideas laterales para la red local.md` + sus
+`research_notes/`. Ultimo commit de trabajo: `5cbdb89`. Cero codigo tocado en toda la sesion.
+
+## ⇥ MARKETING — ETAPAS POR RUBRO: ADR 0102 + SPEC 0110 ESCRITOS, EN ESPERA (2026-09-29)
+
+**Retomar con: el OK del owner para pasar la spec 0110 a `cerrada`** (y validar sus elecciones
+*(ORQUESTADOR)*: default de #3 = T2; borde de perdido `I + 1 dia`; suma de #7/#8 solo en push; etapa ajena
+= `not_dormant`; texto nuevo de #4). Con el OK: UN implementador + UN revisor (ADR 0071), sin migracion.
+Escritos en `0b319b9`: `adr/0102-…`, `specs/0110-etapas-de-ciclo-de-vida-por-rubro.md`, contrato
+`specs/0110-contratos-de-api.md`, filas del INDEX, ADR 0097 → reemplazado. La tabla de la spec se comparo por
+script contra `CONSOLIDADO.md`: 16/16 filas identicas. Prod medido por SQL: 0 campañas → sin compatibilidad.
+**Respuestas del owner de esta sesion (AskUserQuestion):** fin de «activo» = los dias que eligio en #3 (sin #3,
+T1); dias de #7/#8 = solo las opciones `< T1` del rubro; suma de #7/#8 = en cada envio; proximidad = solo
+respeta la etapa, sin cadencia. Cero codigo tocado.
+**Hallazgo a decidir ANTES de implementar (owner, 2026-09-29: «un cliente puede estar en varios programas…
+quien llega ultimo gana la atencion»):** medido en el arbol, el cliente tiene UN pase para todos los comercios
+(`wallet_pass_consumer_provider_unique`, `schema/consumer.ts:102`) con UN slot «Ultima novedad»
+(`consumer_account.latest_message`, `:40-45`); el unico freno entre comercios es un cooldown de 3 min
+(`wallet/push.ts:21-24`). Google Wallet: «maximum of 3 messages that trigger a push notification in a 24 hour
+period» por pase, excedido → `QuotaExceededException` (developers.google.com/wallet/retail/loyalty-cards/use-cases/
+trigger-push-notifications, leido) — y cada aviso nuestro, el «+1 sello» incluido, es `TEXT_AND_NOTIFY`
+(`wallet/google-object.ts:147-164`); `QuotaExceeded` no tiene manejo propio (grep vacio). Programas por persona:
+Bond 2024 «19 different loyalty programs» (prnewswire, leido; EE.UU., todas las categorias; ~9 activos segun
+resumenes de 2025, no leido en la fuente). Tolerancia: solo encuestas de segunda mano (Helplama: 1/semana → 10 %
+desactiva; 3–6/semana → 40 %), calidad baja. Falta: tope GLOBAL por cliente entre comercios y quien gana (el
+ADR 0095 lo dejo afuera «hasta que entendamos como aplicarlo»).
+**Disyuntiva abierta del owner (2026-09-29), SIN decidir:** (A) pase unico + «mercado» de slots por cliente
+(como los turnos de proximidad del ADR 0065, que YA reparten las 10 ubicaciones del pase compartido) o (B) un
+pase por programa emitido por CheckPass (canal y topes propios de cada comercio). Datos: Google permite varios
+objetos en un solo boton «Save» (JWT, developers.google.com/wallet/retail/loyalty-cards/use-cases/save-multiple-pass-types);
+Apple, varios pases juntos (`.pkpasses` en Safari, `addPasses` en app — Distributing Passes); Apple no publica
+tope de push de pase (solo throttling no documentado). NO verificado: el interruptor de notificaciones POR pase en
+iOS/Android (se prueba en un telefono). El pase compartido toca 24 archivos no-test (grep). La 0110 no depende de
+esta eleccion (decide por comercio; el reparto iria aguas abajo, en la cola).
+**Owner (2026-09-29, textual resumido):** B = opcion «Premium» mas cara (canal exclusivo), con efecto red «para
+sumarse a otros con un simple click»; A NO es imposible: «tenemos que encontrar la manera de hacerlo funcionar y
+venderlo», como Meta/Google Ads (sin alcance garantizado, se ve rendimiento); idea: si tiene ambos canales, wallet
+para lo especifico y «te ganaste 20 puntos» por push del navegador. **Opciones propuestas por el orquestador, SIN
+decidir:** (1) el «+1 sello» sin notificacion (ya existe la clase silenciosa `pass_refresh`, `push-transports.ts:202-210`)
+→ los 3 de Google quedan para marketing; (2) presupuesto diario de campaña por cliente; (3) ranking por merito
+(lift del ADR 0066) + urgencia; (4) resumen/bandeja: un aviso con varios comercios que abre la vista web del pase;
+(5) Web Push como desborde (iOS: solo PWA en inicio, 16.4+, permiso tras un toque — webkit.org/blog/13878, leido);
+(6) informe «enviados / en espera / sin lugar». Prod: 0 consumidores (SQL) → los numeros iniciales son supuestos.
+**Rumbo del owner (2026-09-29, tras el informe `reports/Redes de comercios y atención compartida.md`):** el push del
+pase compartido NO justifica pagar (con 20 comercios la cola crece mas rapido de lo que se vacia). Planteo que el
+owner acepto como «mucho mas encaminado»: separar ENTREGAR (cada campaña cae en «Mis beneficios», sin tope) de
+AVISAR (un timbre compartido). Textual resumido: «"mis beneficios" seria la pantalla inicial [de la PWA], no el QR
+con el pase»; filtra los beneficios por «1: rubro no competidor. 2: cercania» — radio de «1-2km maximo» alrededor
+del comercio donde se escanea el pase. Descartado por ahora: WhatsApp. Ya pensado antes (no es nuevo): cupon
+cruzado en el escaneo (cafe → gym, sin pago entre comercios), informe en plata dentro de estadisticas, rutas en la
+web publica. Hecho medido: el pase ya enlaza a `/c/[webViewToken]` (`wallet/apple.ts:101-103`,
+`wallet/google-object.ts:112`). **La spec 0110 queda en espera**: su calendario pasaria a decidir que entra a «Mis
+beneficios»; falta el ADR de este modelo.
+**Respuestas del owner (AskUserQuestion, 2026-09-29):** competidor = «Mismo rubro exacto» (mismo `category_gcid`);
+propios = «Todo filtrado» (los beneficios de comercios donde ya es miembro TAMBIEN pasan por rubro + radio);
+ubicacion = «GPS del telefono» (si niega el permiso, cae al ultimo escaneo); radio = «2 km». **Efecto a decidir
+(no acordado):** con «Todo filtrado», el «te extrañamos» del Cafe A no se ve si el cliente esta a > 2 km o escanea
+en otro cafe. **A verificar en un telefono:** si tocar un aviso de Wallet abre el pase (y no la PWA).
+**Owner (2026-09-29, «quizas», a pensar mas):** de los 3 avisos diarios del pase, 1 = timbre general («visita tus
+beneficios»); los otros 2 no hay que desperdiciarlos → «te extrañamos» (recurrencia), con un ORDEN entre los 20
+comercios que compiten, y «nisiquiera conviene que salgan dos te extraño el mismo dia»; idea: si el consumidor esta
+en el radio de 2 km del comercio, ve su «te extrañamos». Pide «traer ideas frescas». SIN decidir.
+
+### Historial — decisiones que alimentaron el ADR 0102
+
+**Retomar con: escribir el ADR y la spec de «etapas de ciclo de vida por rubro»** (plantilla `TEMPLATE.md`:
+hay migracion probable y reemplaza partes de los ADR 0095 —grupos/rangos— y 0097 —en riesgo por ritmo—).
+Insumos, en este orden: las decisiones (1)–(15) de esta seccion (textuales del owner), la tabla final
+`research_notes/ciclo-de-vida-por-rubro/CONSOLIDADO.md` (cargada A MANO, 16 filas con `gcid:store`), y el
+codigo actual: `apps/merchant/src/server/marketing/{templates,audience,push-audience,balance-audience,at-risk,welcome-issue,welcome-reminder}.ts`,
+`audience-store.ts:87`, `push-store.ts`, `tick.ts`. **El owner quiere arrancar con el implementador**, pero
+la regla del repo es spec CERRADA primero: escribir ADR + spec, pedir el OK del owner para `cerrada`, y
+recien despues implementador + revisor. Cero codigo en esta sesion; nada commiteado todavia salvo lo que
+diga `git log`.
+
+**Hallazgo medido (orquestador):** los dias de #3/#4/#5 son PISOS abiertos (`audience.ts`,
+`dormantSince > dormantFloor`), no franjas; la superposicion la resuelve el rango (proximidad:
+`audience-store.ts:87` + turno unico/cooldown 30 d; push: regla de grupo `push-audience.ts`). #7/#8 son
+OTRO grupo → pueden salir junto con #3/#4/#5 en el mismo tick. Bienvenida vs #3 a 14 d: borde.
+**Modelo propuesto por el owner (textual resumido, 2026-09-29):** cada cliente en UNA etapa. Bienvenida
+activa + cupon sin usar → no entra en te extrañamos/riesgo/perdido/falta poco, solo el recordatorio de
+canje del cupon. #3 «Te extrañamos»: el merchant elige **7 o 14 dias**; se REPITE con esa cadencia hasta
+caer en riesgo («a 7 → 4 mensajes en un mes; a 14 → 2»). #4 «En riesgo»: a los 30 dias. #5 «Recuperar
+perdido»: entra a los 90 dias sin visita; mensajes el dia 91, «luego a los 14 dias, luego a los 60, luego
+a los 90» y despues **irrecuperable** (quiza campaña futura). #7 «Te falta poco»: el dificil de encajar.
+**Respuestas del owner (2026-09-29):** (1) cupon de bienvenida vencido sin usar → cae en la etapa que le
+toca por dias desde que se anoto; (2) «En riesgo» = **solo 30 dias** (deja sin efecto la regla de ritmo
+del ADR 0097); (3) #5 escalonado con tope, como arriba.
+**Propuesta del orquestador, SIN decidir:** #7/#8 como campaña propia solo en etapa «activo»; en etapas de
+reactivacion enriquecen el mensaje de la etapa en vez de salir aparte.
+**A confirmar:** los 14/60/90 de #5 ¿cuentan desde el dia 91 o son intervalos entre mensajes?
+**Investigacion hecha (2026-09-29, fuentes primarias leidas por el orquestador):** Fivestars AutoPilot =
+campañas SUELTAS por dias: At-Risk 15/30/45, Lapsed 30–150, Lost 180/270/365, Growth cada 3a/5a/10a visita;
+sin regla de solapamiento documentada (blog.fivestars.com). Toast = UNA regla global: «if a guest has received
+an automated marketing campaign from you in the past 28 days, they cannot receive another automated one», sin
+prioridad documentada (support.toasttab.com FAQ). Square: grupo Regulars = 3 visitas en 6 meses; Lapsed = «were
+regulars, but haven't visited in the last six weeks» (help 6245). Klaviyo: Smart Sending, push 24 h, lo salteado
+NO se reprograma; empezar el win-back donde «75–85% of all customers would repurchase»; cortar el win-back
+(«sunset»). Braze Canvas: recorrido con exit criteria («Place an Order» saca al usuario). Talon.One: ya
+verificado el 2026-09-26 (motor de promociones al comprar, no de outreach). Perkstar: solo marketing, sin
+detalle de reglas. **Lectura del orquestador:** el modelo del owner = un RECORRIDO con salida por visita
+(Braze) con los dias de Fivestars (30/90 coinciden). Riesgos detectados: #3 a 7 d repetido pega 4 push y el
+ultimo cae 2 dias antes del de riesgo (dia 28 vs 30) → falta un respiro minimo entre mensajes; 7 d fijos es
+temprano para negocios de visita mensual. Pendiente: respuesta del owner.
+**Respuestas del owner (2026-09-29, cont.):** (4) 2 dias entre etapas «no me parece mal» → SIN respiro minimo
+entre mensajes (el «7 d» era del orquestador, sin fuente; lo unico con fuente: Toast 28 d, Klaviyo push 24 h);
+(5) dias de cada etapa POR RUBRO («B»): defaults por `category_gcid` (16 categorias, `lib/business-categories.ts`);
+calibrar con los datos del negocio («C») queda para despues → «En riesgo» deja de ser 30 fijos (a confirmar).
+(6) calendario de #5 = **opcion A**: 14/60/90 contados desde el PRIMER mensaje → dias 91, 105, 151, 181 desde
+la ultima visita; despues irrecuperable. (7) #4 «En riesgo» **se repite cada 21 dias** (escalado por rubro)
+hasta pasar a Perdido — cafe: dias 30, 51, 72; (8) los offsets de #5 **se escalan con el rubro**.
+(9) **campañas SUELTAS**, no un recorrido unico («da la impresion de tener mas opciones») — la exclusion por
+etapa la garantiza el motor igual; (10) #7/#8 **solo en etapa activo** (si ademas enriquecen el mensaje de
+reactivacion: NO confirmado, preguntar); (11) tabla por rubro: el owner pidio **un research con un agente por
+rubro** con datos reales (ciclo de vida, reactivacion, perdidos) — lanzado 2026-09-29, 15 rubros de
+`lib/business-categories.ts`; `gcid:store` (relleno) necesita una escalera por defecto. Resultados →
+`research_notes/ciclo-de-vida-por-rubro/` (a consolidar y verificar por el orquestador antes de la spec).
+**Research TERMINADO (15/15) y consolidado:** `research_notes/ciclo-de-vida-por-rubro/CONSOLIDADO.md` (tabla, regla
+de derivacion propuesta, fuentes verificadas por el orquestador; farmacia/JAMA NO verificada por captcha). 
+**Respuestas del owner (2026-09-29, cierre):** (12) tabla A MANO, sin formula (la formula del orquestador no
+reproducia su propia tabla: `0,7×45` → 31, no 32); (13) heladeria SIN pausa invernal; (14) gimnasio: ajustar
+dias → Perdido 46/60/120/181, Irrecuperable 181; (15) #7/#8 SI se suman al mensaje de la etapa de reactivacion
+(«ademas el texto es editable»). **Decisiones completas para escribir ADR + spec** (reemplaza partes de 0095/0097;
+TEMPLATE.md: hay decision de producto y probablemente migracion). Proximo paso: handoff → /clear → ADR + spec.
+
+## ⇥ WORKTREE `motor` — PROXIMA SESION: REVISAR EL MOTOR DE MARKETING (HAY Y FALTA) (2026-09-28)
+
+**Retomar con: revisar CON EL OWNER el motor de marketing — que hay hoy en prod y que falta, incluido lo
+parqueado.** Es una sesion de relevamiento, no de codigo: armar el mapa y que el owner elija la proxima
+spec. Leer en este orden, sin abrir todo el repo: ADR **0064** (el motor arranca por audiencias), ADR
+**0091** (catalogo de campañas prearmadas priorizado por flujo — su §5 es el orden de prioridades), ADRs
+**0092–0099** (plantilla = corrida congelada, cupon, push, saldo, en riesgo, premio estructurado,
+bienvenida), las filas de las specs **0101–0107** en `docs/INDEX.md` (plantillas de proximidad, cupon,
+push, saldo, en riesgo, premio, bienvenida — todas implementadas) y `docs/PARQUEADO.md` entero
+(secciones «Decisiones tomadas que esperan spec», «Hallazgos a decidir», «Deuda de verificacion» y
+«Pendientes del owner»). Contrastar el §5 del ADR 0091 contra lo implementado y listar lo que falta.
+
+**Lo que cerro esta sesion (verificado):** listado de clientes del comercio — specs **0108** y **0109**,
+ADRs **0100** y **0101**, IMPLEMENTADAS con PASS de revisor independiente y EN PROD. Migraciones `0053`,
+`0054` y `0055` aplicadas a `red-violet-38772073`/`main` por `run_sql_transaction` con aprobacion
+manual del owner (auto mode las bloquea: «Production Deploy»), verificadas por SQL (huellas de funciones,
+trigger, politicas, grants, filas de Drizzle). Codigo en `main` (`3a39bcd`; docs hasta `ddfe36c`); deploy
+de Vercel `success` (20:52), `/api/customers` → 401. Gates sobre ese arbol: typecheck y build forzados
+`Cached: 0`, lint, format, test 2042 verdes; 36/36 suites `customers-*` contra la `0055`. `test:e2e` no
+corrio (puerto 3000 ocupado por otra sesion; la 0109 no toca UI). **GPT hace la UI del listado sobre
+`main`** con el contrato `specs/0108-contratos-de-api.md`. Numeros (negocio de 200.000): pagina 1 + total
+0,33 ms, ultima 64,8 ms, busqueda 9–19 ms, telefono 0,10 ms. La `0055` la escribio el orquestador por
+pedido del owner, sin revision independiente.
+
+**Descartado midiendo (no reintentar sin medir):** RLS pura para la busqueda por nombre (`LIKE` no es
+`leakproof`: 180 ms sin resultados) y marcarla `leakproof` (Neon: «only superuser can define a leakproof
+function»); un indice angosto solo por `business_id` para el conteo (49 → 44 ms, no sirve); la busqueda
+en funcion `LANGUAGE sql` (plan generico desde la 6a llamada: 31–79 ms, peor). Detalle en ADR 0100/0101.
+
+**Pendientes de decision del owner (no bloquean el motor):** mover las funciones de Vercel de `iad1` a
+`cle1` y subir el minimo del computo de prod, hoy 0,25 CU (ADR 0101, latencia no medida); el trigger del
+contador que escala mal en operaciones masivas y el rol de base con login propio (los dos en
+`PARQUEADO.md`).
 ## ⇥ UI MERCHANT — CLIENTES Y SUSCRIPCIÓN (2026-09-29)
 
 **Hecho en `main` y enviado a `origin/main`:** UI de Clientes (`d6e132c`) y ajuste visual móvil primero de Suscripción al sistema del dashboard (`e7e95cc`). TypeScript, ESLint, tests focalizados y builds con webpack pasaron; Suscripción se revisó en capturas locales a 320/390 px, escritorio y oscuro. **No se verificó el despliegue de esos commits en Vercel.** No queda trabajo abierto de esta sesión; el siguiente encargo del owner aún no se definió. Evidencia y límites: [`handoff-merchant-ui-2026-09-29.md`](handoff-merchant-ui-2026-09-29.md).
@@ -31,11 +448,10 @@ minimo del computo de prod (ADR 0101); el trigger del contador que escala mal en
 (`PARQUEADO.md`, antes de cualquier borrado de negocio o importacion masiva); RLS con rol de login propio
 (`PARQUEADO.md` #62).
 **Limpieza que pide OK (borra ramas):** worktrees `motor-wt/deploy-0107` y `motor-wt/deploy-0108`; rama
-`clientes-0108` en GitHub (ya no hace falta). **Rama efimera de Neon `bench-clientes-comercio`
-(`br-sparkling-frost-ax393z0s`)**: el owner dio OK para borrarla; `delete_branch` estaba bloqueado en
-auto mode.
-**Bienvenida (0107):** en PROD con la UI de GPT (`a3221de`). Callback de Google y QA con telefonos
-reales en `PARQUEADO.md` → «Pendientes del owner».
+`clientes-0108` en GitHub; rama efimera de Neon `bench-clientes-comercio` (`br-sparkling-frost-ax393z0s`,
+el owner ya dio OK; `delete_branch` estaba bloqueado en auto mode).
+**Bienvenida (0107):** en PROD con la UI de GPT. El `--apply` del callback de Google y el QA con
+telefonos reales siguen en `PARQUEADO.md` → «Pendientes del owner».
 
 ## ⇥ ESTADO — MARKETING: ARCO B1/B2/C COMO API; 0105 (#4) EN PROD (2026-09-27)
 
@@ -6612,3 +7028,378 @@ UPDATE core.terms_template
 SET variables_allowlist = '["business_legal_name", "program_name", "program_unit_plural", "country_code"]'::jsonb
 WHERE jurisdiction_scope IN ('default', 'EC');
 ```
+
+## Bitacora de mutaciones — spec 0112, implementador (2026-09-29)
+
+Arbol: rama `motor`, implementacion commiteada en `bd4f833` (los 4 archivos mutados estan LIMPIOS en ese commit,
+asi que `git checkout <archivo>` restaura sin perder trabajo). Copias limpias tambien en el scratchpad de la sesion
+(`…/scratchpad/limpios-0112/`). Restauracion de emergencia:
+
+```
+git checkout bd4f833 -- apps/merchant/src/server/marketing/cross-rules.ts apps/merchant/src/server/consumer/cross-offers.ts apps/merchant/src/server/counter/coupon-store.ts apps/merchant/src/server/marketing/welcome-issue.ts
+```
+
+| id | archivo | shasum limpio | invariante que ataca / guard hermano puenteado | alcance medido | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | rubro del ULTIMO escaneado (razon 2a). Hermano: «parado en» no corre sin GPS (el caso va sin GPS) | unit merchant entera (352 archivos) + neon `consumer-cross-offers` y `consumer-cross-claim` | **ROJO**. Neon 1/15: «ORACULO DE M1» → `expected [ …(2) ] to deeply equal [ Array(1) ]` (el cafe B aparece junto al gym). Unit 2/2855: `cross-rules.test` «2. same_category — the rubro of the LAST scanned business» → `expected { ok: true, …(1) } to deeply equal { ok: false, reason: 'same_category' }`, y el de orden (`too_far` en vez de `same_category`). Revertida: `diff` = solo la mutacion, shasum limpio confirmado |
+| M2 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | rubro del local donde esta PARADO ≤ 100 m (razon 2b). Hermano: el ultimo escaneo es un gym, M1 no la tapa | unit entera + neon `consumer-cross-offers`, `consumer-cross-claim` | **ROJO**. Neon 1/15: «ORACULO DE M2» → `expected [ …(2) ] to deeply equal [ Array(1) ]` (cafe D aparece junto a la panaderia). Unit 1/2855: «standing 99 m … out, 101 m in» → `expected { ok: true, …(1) } to deeply equal { ok: false, reason: 'same_category' }`. Revertida: `diff` = solo la mutacion, shasum limpio confirmado |
+| M3 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | el radio de 2000 m (razon 3). Hermano: ninguno | unit entera + neon `consumer-cross-offers`, `consumer-cross-claim` | **ROJO**. Neon 2/15: «ORACULO DE M3» → `expected [ …(3) ] to deeply equal [ …(2) ]` (entra el de 2,5 km), y el claim del lejano → `expected 201 to be 404`. Unit 2/2855: «3. too_far — 1999 in, 2001 out» → `expected { ok: true, …(1) } to deeply equal { ok: false, reason: 'too_far' }`, y el de orden. Revertida: `diff` = solo la mutacion, shasum limpio confirmado |
+| M4 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | publico `non_members` (razon 4). Hermano: X de otro rubro, a 300 m, sin opt-out | unit entera + neon `consumer-cross-offers`, `consumer-cross-claim` | **ROJO**. Neon 2/15: «ORACULO DE M4» → `expected [ …(2) ] to deeply equal [ Array(1) ]` (X aparece para su propio miembro), y el claim del publico ajeno → `expected 201 to be 404`. Unit 2/2855: «4. audience non_members» → `expected { ok: true, …(1) } to deeply equal { ok: false, reason: 'audience' }`, y el de orden (`opt_out` en vez de `audience`). Revertida: `diff` = solo la mutacion, shasum limpio confirmado |
+| M5 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | publico `dormant` (razon 4). Hermano: idem M4 + el ultimo escaneo es OTRO comercio (el pedido en X no la vuelve «mismo rubro») | unit entera + neon `consumer-cross-offers`, `consumer-cross-claim` | **ROJO**. Neon 1/15: «ORACULO DE M5» → `expected { …(2) } to deeply equal { '5': [], …(1) }` (el del pedido hace 5 dias la ve). Unit 1/2855: «4. audience dormant» → `expected { ok: true, …(1) } to deeply equal { ok: false, reason: 'audience' }`. (La 1.ª corrida neon murio en `db:migrate` sin mensaje —transitorio de red, 0 tests corridos—; se re-corrio con la mutacion puesta.) Revertida: `diff` = solo la mutacion, shasum limpio confirmado |
+| M6 | `consumer/cross-offers.ts` | `576359672c914fcd87580ac0b014e99f4892dbca` | el `for update` de la campaña en el claim. Hermano: el unico parcial es por (campaña, cliente) — dos clientes distintos | unit entera + neon `consumer-cross-claim`, `consumer-cross-counter` | **ROJO en 2 de las 3 carreras** (la 1.ª serializo sola): «ORACULO DE M6 — race 2/3» y «3/3» → `expected [ 201, 201 ] to deeply equal [ 201, 404 ]` (dos cupones con cupo 1). Unit 0 rojos (esperado: el lock no tiene oraculo puro). Es una carrera real: una corrida con las 3 verdes bajo la mutacion es posible; por eso son 3. Revertida (`git checkout` del commit limpio): `diff` contra la copia = identico, shasum limpio confirmado |
+| M7 | `consumer/cross-offers.ts` | `576359672c914fcd87580ac0b014e99f4892dbca` | la lectura previa «ya lo tiene → 200». Hermano: el unico parcial + `on conflict` (si queda verde, se muta el `on conflict`) | unit entera + neon `consumer-cross-claim`, `consumer-cross-counter` | **ROJO** (1/10 neon): «ORACULO DE M7» → `expected 404 to be 200`. El motivo es el correcto: el 2.º reclamo va SIN GPS a proposito, asi que sin la lectura previa se RE-EVALUA y cae en `no_origin`; con ella contesta el cupon que ya tiene sin re-evaluar (la propiedad de la spec). Como dio rojo, NO se muto el `on conflict` (la fila solo lo pedia si quedaba verde): el respaldo queda sin oraculo propio — solo es alcanzable sin el lock. Unit 0 rojos. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
+| M8 | `counter/coupon-store.ts` | `2da2c8a007cbda2b46c33f8678f07a2dd77d1ff6` | la membresia del canje `coupon.membershipId ?? …`. Hermano: ninguno | unit entera + neon `consumer-cross-counter` y los 4 `counter-coupon*` | **ROJO** (2/26 neon, los dos de `consumer-cross-counter`): «ORACULO DE M8» → `Failed query: insert into "core"."coupon_redemption" …` con `code: '23502'` (`membership_id` NOT NULL, la fila tiene `null`), y el de `not_enrolled` → `expected Error: Failed query … to match object { status: 409, code: 'not_enrolled' }`. Los 4 `counter-coupon*` (24 tests) verdes: sus cupones traen membresia. Unit 0 rojos. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
+| M9 | `marketing/welcome-issue.ts` | `59758def3acd99b6b140a00e5379bc4415c6e629` | el CABLEADO de `crossCouponFromBusiness` (se borra la llamada). Hermano: la regla pura tiene su test aparte | unit entera + neon `consumer-cross-counter` y los 6 `marketing-welcome-*` | **ROJO** (1/25 neon): «ORACULO DE M9» → `expected [ …(2) ] to deeply equal [ Array(1) ]` (el que vino por la cruzada recibe TAMBIEN la Bienvenida; el control la recibe en las dos versiones). Unit 0 rojos: el test puro de `came_by_cross` no ve el cableado (§2.0-quater), como se esperaba. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
+
+## Revision independiente — spec 0112 (2026-09-29)
+
+Revisor independiente sobre `bd4f833` (rama `motor`). Presupuesto: 5 re-mediciones (M6 x3 corridas, M8, M9, M1 + 1
+libre), clase de error plausible. Restauracion de emergencia (los 4 archivos estan limpios en `bd4f833`):
+`git checkout bd4f833 -- apps/merchant/src/server/marketing/cross-rules.ts apps/merchant/src/server/consumer/cross-offers.ts apps/merchant/src/server/counter/coupon-store.ts apps/merchant/src/server/marketing/welcome-issue.ts`
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M6 | `consumer/cross-offers.ts` | `576359672c914fcd87580ac0b014e99f4892dbca` | `for update` de la campaña en el claim (cupo 1, dos clientes en paralelo) | **ROJO en las 3 corridas** de `consumer-cross-claim` (neon): 2/3, 2/3 y 1/3 carreras → `expected [ 201, 201 ] to deeply equal [ 201, 404 ]`; el resto del archivo verde. Revertida (`git checkout bd4f833`): `diff` vs copia = identico, shasum limpio |
+| R-M8 | `counter/coupon-store.ts` | `2da2c8a007cbda2b46c33f8678f07a2dd77d1ff6` | membresia del canje `coupon.membershipId ?? enrolledMembership` | **ROJO** 2/3 `consumer-cross-counter` (neon): ORACULO DE M8 → `23502` NOT NULL en `coupon_redemption.membership_id`; `not_enrolled` → llega el error de insert en vez del 409. M9 verde. Revertida: `diff` = identico, shasum limpio |
+| R-M9 | `marketing/welcome-issue.ts` | `59758def3acd99b6b140a00e5379bc4415c6e629` | cableado de `crossCouponFromBusiness` (se borra la llamada) | **ROJO** 1/3 `consumer-cross-counter` (neon): ORACULO DE M9 → `expected [ …(2) ] to deeply equal [ Array(1) ]` (el cruzado recibe tambien la Bienvenida). Revertida: `diff` = identico, shasum limpio |
+| R-M1 | `marketing/cross-rules.ts` | `29c2b2514d68abe7f8a97a18f265f2194b8d272a` | rubro del ultimo escaneado (razon 2a) | **ROJO**. Unit `cross-rules*.test` 2/16 (`same_category` del ultimo escaneado → `ok: true`; orden → `too_far`). Neon `consumer-cross-offers` 1/8: ORACULO DE M1 → `expected [ …(2) ] to deeply equal [ Array(1) ]`. Revertida: `diff` = identico, shasum limpio |
+| R-M10 | `marketing/cross-store.ts` | `a0b764f4a191f2ade1080eafd3cf6f1b782de61f` | candidata = campaña `status = 'active'` (una cruzada deshabilitada no se lista ni se reclama; contrato C2 «campaña terminada» → 404) | **VERDE — sin oraculo.** Unit `server/marketing` + `app/api/public/consumer` 373/373; neon claim+offers+counter+cross-enable 22/22. Alcanzable: `loadCrossCampaigns` es la unica lectura de candidatas de C1 y C2, y `end` (`campaign-actions.ts:105,122`) no toca `ends_at` ni `activated_at`, asi que es el UNICO guard contra una cruzada deshabilitada. Revertida: `diff` = identico, shasum limpio. Hallazgo del revisor |
+
+Veredicto: **PASS** con un hallazgo (R-M10: la exclusion de una cruzada deshabilitada/pausada es correcta en el
+codigo pero no tiene oraculo; falta un caso «`disable` → C1 no la lista y C2 da 404»). Gates en limpio sobre
+`bd4f833` (Node 24): typecheck, lint, test (2118 passed / 751 skipped), format:check y `TURBO_FORCE=1 pnpm run build`
+(0 cached), exit 0. Neon limpio: claim+counter+offers 18/18. Arbol sin mutaciones al cerrar.
+
+## Oraculo de R-M10 — spec 0112, orquestador (2026-09-29)
+
+Caso nuevo en `consumer-cross-claim.neon.integration.test.ts` («a cross offer the business turned off…»): verde en
+limpio (8/8). Mutacion O-M10: `apps/merchant/src/server/marketing/cross-store.ts`, shasum limpio
+`a0b764f4a191f2ade1080eafd3cf6f1b782de61f`, copia en el scratchpad de la sesion (`cross-store.clean.ts`); ataca
+`and c.status = 'active'` de `loadCrossCampaigns` (guard hermano: ninguno — `disableTemplate` no toca `ends_at` ni
+`activated_at`, `campaign-actions.ts:105,122`, medido por el revisor). Resultado EJECUTADO: **ROJO** 1/8 (`expected
+[ Array(1) ] to deeply equal []` — la oferta apagada seguia listada); los otros 7 verdes. Revertida con copia; `diff`
+identico; shasum limpio confirmado.
+
+## Bitacora de mutaciones — spec 0113, implementador (2026-09-29)
+
+Arbol: rama `motor`, implementacion commiteada en `cbbb037` (los 5 archivos mutados estan LIMPIOS en ese commit,
+asi que `git checkout <archivo>` restaura sin perder trabajo). Copias limpias tambien en el scratchpad de la sesion
+(`…/scratchpad/limpios-0113/`). Restauracion de emergencia:
+
+```
+git checkout cbbb037 -- apps/merchant/src/server/marketing/valley-detect.ts apps/merchant/src/server/marketing/valley-rules.ts apps/merchant/src/server/marketing/cross-rules.ts apps/merchant/src/server/consumer/valley-offers.ts apps/merchant/src/server/marketing/valley-store.ts
+```
+
+Filas abiertas ANTES de medir; el resultado se transcribe de la corrida. El oraculo de M7 se mejoro durante la
+medicion (`expect.soft`, commit `95c467d`) y se re-midio con la mutacion puesta. Al cerrar: los 5 archivos con su
+shasum limpio y `rg '\b(MUTATION|MUTACION)\b' apps/merchant/src` vacio.
+
+| id | archivo | shasum limpio | invariante que ataca / guard hermano puenteado | alcance medido | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `marketing/valley-detect.ts` | `a555e296bb0ffc1372d5b29f46ba0db43309ad48` | umbral 0.4 de la mediana (`VALLEY_SLACK_RATIO`). Hermano: ninguno | unit merchant entera (362 archivos) + neon `marketing-valley` | **ROJO**. Mutacion: `VALLEY_SLACK_RATIO = 0.5`. Unit 1/2933: «ORACULO DE M1 — a block at 35 % … at 45 % it is not» → `expected { status: 'proposed', …(2) } to match object { status: 'none', windows: [] }` (el 45 % pasa a ser valle). Neon `marketing-valley` 3/3 verde (su hueco es 10 % de la mediana: valle con 0.4 y con 0.5; no distingue el umbral, esperado). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M2 | `marketing/valley-detect.ts` | `a555e296bb0ffc1372d5b29f46ba0db43309ad48` | la regla ≥ 5 de 8 semanas. Hermano: el umbral (M1) — el caso usa 20 % | unit merchant entera (362 archivos) + neon `marketing-valley` | **ROJO**. Mutacion: `weeks >= VALLEY_MIN_WEEKS - 1`. Unit 1/2933: «ORACULO DE M2 — slack (20 %) in 5 of 8 weeks is valley; in 4 of 8 it is not» → `expected { status: 'proposed', …(2) } to match object { status: 'none', windows: [] }`. El caso usa 20 % (bajo 0.4 con cualquier umbral plausible): solo decide el conteo de semanas. Neon `marketing-valley` 3/3 verde (su hueco es flojo 8 de 8). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M3 | `marketing/valley-detect.ts` | `a555e296bb0ffc1372d5b29f46ba0db43309ad48` | el minimo de 150 escaneos. Hermano: con 149 la mediana sigue > 0 | unit merchant entera (362 archivos) + neon `marketing-valley` | **ROJO**. Mutacion: `if (scans < 0)`. Unit 1/2933: «ORACULO DE M3 — 149 scans …» → recibido `{ scans: 149, status: 'proposed', windows: [{ weekday: 1, startHour: 14, endHour: 15 }] }` en vez de `insufficient_data` (con 149 la mediana es 4 > 0 y el hueco se propone: nada mas lo corta). Neon `marketing-valley` 3/3 verde (168 escaneos, sobre el minimo). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M4 | `marketing/valley-rules.ts` | `aa8149f98336d2f44f54cdac4bc6ddf83e5df073` | «franja abierta ahora» (`openWindow`, fin exclusivo). Hermano: ninguno | unit merchant entera (362 archivos) + neon `consumer-valley-offers`, `consumer-valley-claim` | **ROJO**. Mutacion: `clock.hour <= window.endHour`. Neon 2/11: «ORACULO DE M4» → `expected [ Array(1) ] to deeply equal []` (a las 17:00 la oferta sigue listada); y el claim de las 17:00 de «404: the window is closed…» ya no es 404: llega al insert y lo frena el check `core_campaign_coupon_validity_check` (`23514`, `valid_until` = `valid_from` = 20:00Z) — rojo colateral por el motivo correcto (la franja cerrada se trato como abierta). Unit 1/2933: «a window is OPEN from start_hour and CLOSED at end_hour» → `expected { weekday: 2, startHour: 15, …(1) } to be null`. Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M5 | `marketing/cross-rules.ts` | `2393dcc1675eecfa557bb41e71f21e1303fd1a00` | la rama `not_active` de `inAudience`. Hermano: rubro/distancia — ultimo escaneo en un gym, local a 300 m | unit merchant entera (362 archivos) + neon `consumer-valley-offers`, `consumer-valley-claim` | **ROJO**. Mutacion: `if (audience === "not_active") return true` (todo miembro entra). Neon 1/11: «ORACULO DE M5» → `expected { …(3) } to deeply equal { active: [], …(2) }` (el miembro con pedido hace 3 dias ve la oferta; su ultimo escaneo es un gym a 900 m y el local valle esta a 300 m, asi que ni rubro ni distancia lo cortan). Unit 1/2933: «an ACTIVE member (an order 3 days ago) is out» → `expected { ok: true, …(1) } to deeply equal { ok: false, reason: 'audience' }`. Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M6 | `consumer/valley-offers.ts` | `1ec0180eba6fb0c445f1ecac77008c4f2a503f99` | la LLAMADA a `decideCrossOffer` en la lista valle. Hermano: la regla pura tiene su test (no ve el cableado) | unit merchant entera (362 archivos) + neon `consumer-valley-offers`, `consumer-valley-claim` | **ROJO**. Mutacion: se borran las dos llamadas a `decideCrossOffer` de `listValleyOffers` (decision fija ok). Neon 4/11: «ORACULO DE M6» → `expected [ Array(1) ] to deeply equal []` (el que escaneo en un cafe ve el valle de otro cafe a 300 m; el control lo ve en las dos versiones); tambien M5 (el activo la ve), M8 (la 2.ª campaña se lista en el local ya usado) y «once per LOCATION» (`expected [ …(2) ] to deeply equal [ Array(1) ]`): todos pasan por la misma llamada. Unit 0 rojos (2933 verdes): el test puro no ve el cableado (§2.0-quater), esperado. El claim (`consumer-valley-claim`) 5/5 verde: su camino llama a `decideCrossOffer` aparte. Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M7 | `marketing/valley-rules.ts` | `aa8149f98336d2f44f54cdac4bc6ddf83e5df073` | `valid_until` = fin de la franja (`windowEndsAt`). Hermano: ninguno | unit merchant entera (362 archivos) + neon `consumer-valley-offers`, `consumer-valley-claim` | **ROJO**. Mutacion: `windowEndsAt` usa la hora 24 (fin del dia) en vez de `window.endHour`. Neon 2/11: «ORACULO DE M7» → `expected '2026-10-07T03:00:00.000Z' to be '2026-10-06T20:00:00.000Z'` (el `valid_until` leido por SQL); y «ORACULO DE M4» por el `window.endsAt` de la oferta. La 1.ª corrida cortaba el caso en el assert de `valid_until`, ANTES de la lectura del mostrador; se paso ese assert a `expect.soft` y se RE-MIDIO con la mutacion puesta (solo `-t M7`): rojo en las DOS mitades — `valid_until` (idem) y el mostrador a las 17:05 → `expected { …(10) } to be null` (el cupon sigue ofrecido pasada la franja). Unit 2/2933: «valid_until … UTC-3» y «… DST» → `expected '2026-07-15T04:00:00.000Z' to be '2026-07-14T21:00:00.000Z'`. Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M8 | `consumer/valley-offers.ts` | `1ec0180eba6fb0c445f1ecac77008c4f2a503f99` | tope por local: lectura previa (`loadValleyClaims`). Hermano: el unico parcial `(valley_location_id, consumer_id)` | unit merchant entera (362 archivos) + neon `consumer-valley-offers`, `consumer-valley-claim` | **ROJO**. Mutacion: `loadValleyClaims` con `and false` (la lectura previa no ve ningun cupon valle). Neon 3/11: «ORACULO DE M8» → `expected [ Array(1) ] to deeply equal []` (la 2.ª campaña se lista en el local donde ya reclamo), «once per LOCATION» → `expected [ …(2) ] to deeply equal [ Array(1) ]`, e «idempotent» → `expected [ 201, 404 ] to deeply equal [ 201, 200 ]`. Como la LISTA dio rojo, el claim de la 2.ª campaña no se llego a medir bajo la mutacion (el caso corta antes); el respaldo del unico parcial SI se vio en «idempotent»: el 2.º insert choco con `(valley_location_id, consumer_id)` sin error ni fila duplicada y, con la re-lectura tambien mutada, contesto 404. Unit 0 rojos (esperado: la lectura es SQL). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M9 | `marketing/valley-store.ts` | `5cee801275dce1f72113b57e1ba076fa2abeb1ce` | el tick respeta `source = 'merchant'` (`replaceWindows`). Hermano: ninguno | unit merchant entera (362 archivos) + neon `marketing-valley` | **ROJO**. 1.er intento FALSO ROJO, descartado: la mutacion `… and ${source} is not null` rompio el SQL (`42P18` could not determine data type of parameter $2) y tumbo los 3 casos por el motivo equivocado; revertida con `diff` identico y re-mutada. Mutacion medida: el `delete` de `replaceWindows` sin `and w.source = …`. Neon 1/3: «ORACULO DE M9» → `effective: 'merchant'` → recibido `'network'` y `merchantWindows: [{ weekday: 2, startHour: 15, endHour: 17 }]` → recibido `[]` (el tick borro la franja del comercio); la propuesta de la red (12–13) sigue igual. Los otros 2 casos verdes (ninguno corre el tick despues de una franja propia). Unit 0 rojos (esperado: es SQL). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+
+## Revision independiente — spec 0113 (2026-09-30)
+
+Presupuesto: 5 re-mediciones (M7, M5, M6, M9 + 1 libre), clase de error plausible. Variantes DISTINTAS de las del
+implementador (misma invariante, otra forma de romperla). Copias limpias en el scratchpad de la sesion
+(`…/scratchpad/limpios/`). Restauracion de emergencia (los 5 archivos estan limpios en `cbbb037`):
+
+```
+git checkout cbbb037 -- apps/merchant/src/server/marketing/valley-rules.ts apps/merchant/src/server/marketing/cross-store.ts apps/merchant/src/server/consumer/valley-offers.ts apps/merchant/src/server/marketing/valley-store.ts apps/merchant/src/server/consumer/valley-facts.ts
+```
+
+| id | archivo | shasum limpio | invariante / variante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R-M7 | `marketing/valley-rules.ts` | `aa8149f98336d2f44f54cdac4bc6ddf83e5df073` | `valid_until` = cierre de la franja; variante: la hora local tomada como UTC (`new Date(Date.UTC(y, m-1, d, endHour))`) | neon `consumer-valley-claim` + `consumer-valley-offers`; unit `valley-rules.test.ts` | **ROJO**. Unit 2/8: «valid_until … UTC-3» `expected '2026-10-06T17:00:00.000Z' to be '2026-10-06T20:00:00.000Z'` y «… DST» `'2026-07-14T17:00:00.000Z'` vs `'…21:00…'`. Neon 4/11: C1 «ORACULO DE M4» por `window.endsAt`; en C2 el claim cae ANTES del assert, por el check `core_campaign_coupon_validity_check` (23514: valid_until 17:00Z < valid_from 18:10Z) — guard hermano de la base, no el oraculo; la mitad del mostrador la midio el implementador con la hora 24. Revertida: `diff` solo la mutacion, shasum limpio |
+| R-M5 | `marketing/cross-store.ts` | `67035391d6c955bd8b12e9af07e0c9a1ac6fe815` | el activo no ve la valle; variante: el loader cablea la audiencia valle como `"any"` en vez de `"not_active"` | unit `src/server/marketing` (554) + neon `consumer-valley-claim` + `consumer-valley-offers` | **ROJO**. Unit 0 rojos (406 verdes: es cableado, esperado). Neon 1/11: «ORACULO DE M5» → `active: []` recibido `active: [<business id>]` (el miembro con pedido hace 3 dias ve la valle). Revertida: `diff` solo la mutacion, shasum limpio |
+| R-M6 | `consumer/valley-offers.ts` | `1ec0180eba6fb0c445f1ecac77008c4f2a503f99` | cableado del filtro en el camino valle; variante: el CLAIM ignora `decision.ok` (el implementador muto solo la LISTA) | neon `consumer-valley-claim` + `consumer-valley-offers` | **ROJO**. Neon 2/11: «404: … no position» → `expected 201 to be 404` (linea 146, el caso SIN posicion) y «the monthly cap» → `expected 201 to be 404`. La lista sigue verde (6/6), como se esperaba: es otro camino. Revertida: `diff` solo la mutacion, shasum limpio |
+| R-M9 | `marketing/valley-store.ts` | `5cee801275dce1f72113b57e1ba076fa2abeb1ce` | el tick no pisa las del comercio; variante: `storeDetection` escribe con `source = "merchant"` | neon `marketing-valley` | **ROJO**. Neon 2/3: «ORACULO DE M9» → esperado `merchantWindows: [15–17]` y `networkWindows: [12–13]`, recibido `merchantWindows: [12–13]` y `networkWindows: []` (el tick piso la del comercio); «V4» → `networkWindows: []`. Revertida: `diff` solo la mutacion, shasum limpio |
+| R-L1 | `consumer/valley-facts.ts` | `215729c5db89d81d319b4b28c16724c68a5dabfb` | libre: `openSlots` solo junta locales del MISMO negocio que la campaña; variante: se borra ese filtro | neon `consumer-valley-claim` + `consumer-valley-offers` + `consumer-cross-offers` | **ROJO**. Neon 4/19: «ORACULO DE M6» (control) → la campaña de cafe B listada DOS veces (la 2.ª en el local de otro negocio con franja abierta); «M8», «once per LOCATION» y «order» por ofertas fantasma. El claim (5/5) queda verde porque su `loadCrossLocations(tx, [campaign.businessId])` ya filtra: la mutacion solo produce ofertas fantasma en C1 que dan 404 al reclamar. Revertida: `diff` solo la mutacion, shasum limpio |
+
+Al cerrar: los 5 archivos con su shasum limpio, `git status` sin cambios en `apps/`, y `grep -rnE '\b(MUTATION|MUTACION)\b' apps/merchant/src` vacio (0 lineas).
+
+**Veredicto del revisor: PASS.** Gates de root en Node 24: typecheck, lint, test (2175 pasan, 772 saltados), format:check
+y `TURBO_FORCE=1 build`, todos verdes. Integraciones con `tools/neon-test.sh`, sobre la rama de CI migrada hasta la 0058:
+9 suites (valle + cruzada 0112), 43/43. La `0057` sigue byte-identica a `95c6c63` (sha256 `c54364d3…d1b4`). Hallazgos a
+decidir, ninguno bloqueante: el contrato H4/H2/H1 no escribe `validDays: null` en la valle, `PUT windows → 200 {location}`,
+`422 invalid_input` para un id que no es UUID, ni el `400 fields.locationId` de una valle sin local; y el cupon valle sale
+con `origin: "cross"` en E3.
+
+## Decision del owner sobre la 0113 + su oraculo (orquestador, 2026-09-30)
+
+Owner (AskUserQuestion): reclamar valle **no** impide la Bienvenida («Sí, valle no cuenta»); `origin` del cupon valle
+queda `"cross"`. Cambio: `hasCrossCouponFrom` (`marketing/cross-store.ts`) suma `and cc.valley_location_id is null`.
+Oraculo nuevo `consumer-valley-welcome.neon.integration.test.ts` («ORACULO DE O-M11»). Mutacion O-M11 = el codigo SIN
+esa linea (el arbol previo al cambio, `48aa02e`): corrida con el oraculo ya escrito → **ROJO** 1/1 (`expected [] to
+deeply equal [ Array(1) ]`, sin Bienvenida). Con la linea: verde, junto con `consumer-cross-counter` (4/4: la
+cruzada sigue bloqueando). Contrato: seccion H5 (los 4 huecos del revisor + las 2 decisiones).
+
+## Bitacora de mutaciones — spec 0114, implementador (2026-09-30)
+
+Arbol limpio en `e97b3e1` (implementacion). Copias limpias en el scratchpad de la sesion (`…/scratchpad/limpios/`).
+Restauracion de emergencia (los 3 archivos estan limpios en `e97b3e1`):
+
+```
+git checkout e97b3e1 -- apps/merchant/src/server/hosts.ts apps/merchant/src/app/api/public/wallet/apple.pkpass/route.ts apps/public/src/legacy-routes.ts
+```
+
+| id | archivo | shasum limpio | invariante atacada / guard hermano | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | rama «pagina del cliente en `business.`» → 308 a `my.`. Hermano: ninguno | unit root entera (`pnpm run test`: 372 archivos, incluye `apps/public`) | **ROJO**. Mutacion: `if (false && host === merchantHost && isConsumerPage(pathname))`. 9/2228 rojos, todos en `hosts.test.ts`: los 6 «a consumer page … → 308 to my.» → `expected null to deeply equal { Object (redirect) }` (ORACULO DE M1: `business./wallet` → `my./wallet`), «host … without port and case-insensitively», «trailing slash» e «no loop» (`expected 3 to be 5`). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M2 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | rama «pagina del comercio en `my.`» → 308 a `business.` con query. Hermano: ninguno | unit root entera (372 archivos) | **ROJO**. Mutacion: `if (false && isMerchantPage(pathname))` en la rama `my.`. 6/2228 rojos, todos en `hosts.test.ts`: los 4 «a merchant page … → 308 to business.» → `expected null to deeply equal { Object (redirect) }` (ORACULO DE M2: `my./backoffice/x?a=1` → `business./backoffice/x?a=1`), «host … case-insensitively» e «no loop» (`expected 3 to be 5`). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M3 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | exclusion de `/api/*`. Hermano: el `matcher` de `src/proxy.ts` (segundo guard, no se muta) | unit root entera (372 archivos) | **VERDE — la fila de la spec era falsa tal como estaba escrita.** Mutacion: se borran `pathname === "/api" \|\| pathname.startsWith("/api/")` de `isNeverRouted`. 2228/2228 verdes. Causa (leida en el codigo): las paginas se clasifican por LISTA BLANCA (`/wallet`, `/c/`, `/enroll/`, `/recover`, `/backoffice`, `/<seg>/business`), asi que `my./api/public/wallet/passkit/v1/log` da `null` con o sin la exclusion — el oraculo de la spec no distingue la mutacion. Hay un TERCER guard hermano, no nombrado en la spec: la propia lista blanca. La unica preimagen hoy es `/api/business/*` en `my.` (matchea `/<locale>/business/*`). Revertida con la copia: `diff` identico, shasum limpio confirmado. Sigue M3-bis |
+| M3-bis | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | la misma mutacion que M3, despues de sumar al oraculo el caso `my./api/business/webhook` → `null` (la unica preimagen). Hermano: el `matcher` de `proxy.ts` (no se muta) | unit root entera (372 archivos) | **ROJO**. Oraculo sumado ANTES de mutar (`hosts.test.ts`, «ORACULO DE M3»: `my./api/business/webhook` → `null`), verde con el arbol limpio (42/42). Misma mutacion que M3: 1/2229 rojo — «/api/business/webhook stays on my.» → `expected { Object (redirect) } to be null`. Solo ese caso: el resto de las `/api` ya no caen en la lista blanca. El `matcher` de `proxy.ts` sigue siendo el segundo guard en el borde real (no se muto). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M4 | `merchant/src/app/api/public/wallet/apple.pkpass/route.ts` | `96d2e8c5fbfc558d292b01701810c3b8196882e0` | `consumerOriginOr` en el primer pase de Apple. Hermano: ninguno | unit root entera (372 archivos) | **ROJO**. Mutacion: `origin: request.nextUrl.origin` en vez de `consumerOriginOr(request.nextUrl.origin)` (el import queda sin uso: rojo de lint COLATERAL, no se arreglo ni se midio). 1/2229 rojo — «ORACULO DE M4» (`wallet-consumer-origin-wiring.test.ts`, «apple.pkpass (first install): webServiceURL and /c/ link on my.»): esperado `webServiceURL: https://my.checkpass.club/api/public/wallet/passkit` y `link: https://my.checkpass.club/c/WVT`, recibido `https://www.checkpass.club/…` en los dos (leidos del `buildPassJson` REAL). Las otras dos rutas y el afiche siguen verdes: cada una tiene su caso. Revertida con la copia: `diff` identico, shasum limpio confirmado |
+| M5 | `public/src/legacy-routes.ts` | `1f1c9fdce9248a0b364f5ea12454615398ce03f5` | la entrada `/api/:path*` de `legacyRewrites`. Hermano: ninguno | unit root entera (372 archivos; el oraculo vive en el proyecto `@mi-pasaporte/public`, que entra a la suite por el punto 9) | **ROJO**. Mutacion: `legacyRewrites` devuelve `[]`. 1/2229 rojo — «ORACULO DE M5» (`public/src/legacy-routes.test.ts`, «proxies /api/:path* to MERCHANT_API_ORIGIN — and nothing else») → `expected [] to deeply equal [ { source: '/api/:path*', destination: 'https://api-origin.test/api/:path*' } ]`. El cableado a `next.config.ts` no lo ve este oraculo: se midio con `next start` + `curl` (`www/api/health` → 200 con el cuerpo de merchant). Revertida con la copia: `diff` identico, shasum limpio confirmado |
+
+Al cerrar: los 3 archivos con su shasum limpio, `git status --short apps` sin cambios salvo el oraculo sumado para M3-bis (`hosts.test.ts`), y `grep -rnE '\b(MUTATION|MUTACION)\b' apps/merchant/src apps/public/src` vacio.
+
+## Revision independiente — spec 0114 (2026-09-30)
+
+Presupuesto: 5 re-mediciones (a–e del encargo), clase de error plausible. Copias limpias en el scratchpad de la
+sesion (`…/scratchpad/limpios/`). Restauracion de emergencia (los 4 archivos estan limpios en `1d10f10`):
+
+```
+git checkout 1d10f10 -- apps/merchant/src/server/hosts.ts "apps/merchant/src/app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route.ts" apps/public/src/legacy-routes.ts
+```
+
+| id | archivo | shasum limpio | invariante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R1 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | (a) H1: sin env no se redirige. Variante plausible: defaults `business.`/`my.` cuando falta la env | unit root | **ROJO**. Mutacion: `normalizeOrigin(input.merchantOrigin ?? "https://business.checkpass.club")` (idem consumer con `my.`). 1/2229 rojo — `hosts.test.ts` «H1: without the two origins nothing is redirected» → `expected { Object (redirect) } to be null`. Revertida con la copia: `diff` vacio, shasum limpio |
+| R2 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | (b) `/api/*` nunca redirige: se borra la exclusion del puro y se mide si el `matcher` de `proxy.ts` muerde en el borde real | unit root + `next build` merchant + curl | **ROJO en unit, y el matcher MUERDE en el borde**. Mutacion: se borran las dos lineas `/api` de `isNeverRouted`. Unit: 1/2229 rojo («/api/business/webhook stays on my.»). `next build` merchant con la mutacion + `next start` con las dos env: `POST my./api/business/webhook` → 404, `my./api/business` → 404, `my./api` → 404 (sin 308: el `matcher` los deja afuera); control `my./apix/business` → 308 `business.` (el proxy SI corre fuera de `/api`). Revertida con la copia: `diff` vacio, shasum limpio, merchant reconstruido limpio |
+| R3 | `merchant/.../passkit/v1/passes/[passTypeId]/[serialNumber]/route.ts` | `d1ab1c18ae939c2696f5e11b4742bae4b4d6fd6f` | (c) el pase INSTALADO (Plantano) se re-emite con `my.` | unit root | **ROJO**. Mutacion: `origin: consumerOriginOr(...) && request.nextUrl.origin`. 1/2229 rojo — `wallet-consumer-origin-wiring.test.ts` «PassKit serve: a pass installed with www is re-issued on my.» (`expected { …(2) } to deeply equal`). Revertida con la copia: `diff` vacio, shasum limpio |
+| R4 | `public/src/legacy-routes.ts` | `2a461d312e6234fbd8e276ac3cb850d96e4e477d` | (d) el 308 de `/business` solo para `es` (fix `1d10f10`): se vuelve a `/:locale/business/:path*` | unit root | **ROJO**. Mutacion: `"/:locale/business/:path*"` en `MERCHANT_PATHS`. 1/2229 rojo — `public/src/legacy-routes.test.ts` «is exactly the §6 list» (recibe `/:locale/business/:path*`). Revertida con la copia: `diff` vacio, shasum limpio |
+| R5 | `merchant/src/server/hosts.ts` | `a8c305678930e06250f4c91302c7cd7a72a06974` | (e) libre, docblock «los dos origenes en el mismo host … bucle»: se borra ese guard | unit root | **ROJO**. Mutacion: se borra `if (merchantHost === consumerHost) return null;`. 1/2229 rojo — «the same host for both origins is not routed (it would loop)». Revertida con la copia: `diff` vacio, shasum limpio |
+
+Al cerrar: los 4 archivos con su shasum limpio, `git status --short apps` vacio, `grep -rnE '\b(MUTATION|MUTACION)\b' apps/merchant/src apps/public/src` → 0 lineas; servidores 3011–3013 apagados.
+
+**Veredicto del revisor: FAIL (un defecto de la clase «bucle», bajo riesgo real).** `decideHostRoute` hace ping-pong
+entre `business.` y `my.` para `/wallet/business`, `/c/business`, `/enroll/business`, `/recover/business` (ejecutado con
+`next start` + curl: `business.` → 308 `my.` y `my.` → 308 `business.` con el mismo path). Causa: `isMerchantPage`
+(`hosts.ts:44`) usa `/^\/[^/]+\/business(?:\/|$)/`, la misma forma amplia que `1d10f10` corrigio en el publico pero no
+en merchant. Ninguna URL emitida cae ahi (tokens base64url, programId UUID). Gates verdes; H1, `/api`, pases con `my.`
+y el proxy de `www/api` verificados ejecutando.
+
+## Arreglo del FAIL de la revision de la 0114 (orquestador, 2026-09-30)
+
+Defecto del revisor: `hosts.ts` reconocia `/<cualquier>/business` como pagina del comercio → `/wallet/business`,
+`/c/business`, `/enroll/business`, `/recover/business` rebotaban 308 entre `business.` y `my.`. Oraculo: el test «no
+loop» de `hosts.test.ts` suma esos 4 paths (redirects esperados 5 → 9). Sobre el codigo previo: **ROJO** 1/42
+(`expected { Object (redirect) } to be null`). Arreglo: `isMerchantPage` exige un locale de `supportedLocales`
+(`i18n/locales.ts`, hoy `["es"]`). Con el arreglo: 42/42. Gates: typecheck, lint, test, format 0. Spec: prosa de
+`/:locale` → `/es` corregida.
+
+### Re-revision del fix `039d8e2` (bucle `/<consumer>/business`)
+
+Restauracion de emergencia: `git checkout 039d8e2 -- apps/merchant/src/server/hosts.ts`.
+
+| id | archivo | shasum limpio | invariante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R6 | `merchant/src/server/hosts.ts` | `adf68c701409837d1349ebcfa2e3120b3303846a` | sin bucle: `isMerchantPage` solo con un locale real. Mutacion: vuelve la regex amplia `/^\/[^/]+\/business(?:\/\|$)/` | unit root | **ROJO** 1/2229 — `hosts.test.ts` «no loop: the target of a redirect is served, not redirected again» → `expected { Object (redirect) } to be null` (el destino vuelve a redirigir: motivo correcto). Revertida con la copia: `diff` vacio, shasum `adf68c70…846a` confirmado |
+
+Con `039d8e2` limpio: typecheck + lint + test → exit 0 (2229 pasan, 773 saltados). `next build` merchant + `next start`
+con las dos env, curl: `business./wallet/business` → 308 `my./wallet/business`; `my./wallet/business` → 404,
+`my./c/business` → 404, `my./enroll/business` → 200, `my./recover/business` → 404 (ninguno 308: sin bucle);
+`my./es/business/onboarding` → 308 `business.` (igual que antes); `my./lugares/business` → 404 sin 308. Servidor apagado,
+`grep MUTATION` vacio. **Veredicto del revisor sobre el fix: PASS** — la spec 0114 queda en PASS.
+
+## Bitacora de mutaciones — spec 0115, implementador (2026-09-30)
+
+Arbol de partida de las mutaciones: `85f39de` (trabajo de la 0115 commiteado; los tres archivos limpios, `git status`
+vacio). Copias limpias en el scratchpad de la sesion. Restauracion de emergencia: `git checkout 85f39de -- <archivo>`.
+
+| id | archivo | shasum limpio | invariante que ataca | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `packages/db/src/schema/valley.ts` | `ea35688f80eb6283714efd573624dab887d524c0` | el esquema movido es el mismo que describe la 0058: `drizzle-kit generate` dice «No schema changes» | **ROJO**: `opens: time("opens")` sin `.notNull()` → generate escribio `drizzle/0059_busy_aqueduct.sql` = `ALTER TABLE "core"."location_hours" ALTER COLUMN "opens" DROP NOT NULL;` (+ `meta/0059_snapshot.json` y `_journal.json`, descartados: `rm` + `git checkout`). Hermano: typecheck tambien rojo (`hours-store.ts(46,38) TS2345 string\|null`). Revertido: `diff` vacio, shasum `ea35688f`, generate de nuevo «No schema changes» |
+| M2 | `packages/db/drizzle/0058_horas_valle.sql` | `8495f212513615fc2571cd87afc3b6e5de85c510` | las migraciones se movieron byte a byte: la lista de sha256 antes/despues es identica | **ROJO**: linea `-- MUTATION M2` al final → `diff` de la lista da 1 linea distinta (`./0058_horas_valle.sql` `f3134564…` → `7919178d…`), exit 1. Revertido: `diff` vacio, shasum `8495f212`, lista de 119 sha256 igual a la de partida |
+| M3 | `apps/merchant/src/server/staff.ts` | `ebaad1e5c0daf211099b20499593c97b1e890876` | ningun import relativo a `db`/`schema`/`permissions-catalog` quedo en merchant: el `rg` de la DoD da vacio | **ROJO**: linea 2 `from "./db"` → el `rg` de la DoD lista `apps/merchant/src/server/staff.ts` (exit 0). Hermano: typecheck `staff.ts(2,23) TS2307 Cannot find module './db'`. Revertido: `diff` vacio, shasum `ebaad1e5`, los dos `rg` → 0 archivos |
+
+Al cerrar: `rg -l MUTATION apps packages tools` vacio; `git status` sin cambios de codigo.
+
+## Revision independiente — spec 0115 (2026-09-30)
+
+Presupuesto: 4 verificaciones (a lockfile, b codemod, c tests editados + mutacion del barrido, d neon-test), clase de
+error plausible de un movimiento. Arbol revisado: `85f39de` (+ `98b0726`, solo docs). Copia limpia en el scratchpad.
+Restauracion de emergencia: `git checkout 85f39de -- packages/db/src/schema/web-push.ts`.
+
+| id | archivo | shasum limpio | invariante | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| R1 | `packages/db/src/schema/web-push.ts` | `519d0b85dcf0439973722ef6ea139a11ec25b817` | el barrido de `marketing_opt_out_at` sigue mirando el esquema movido a `packages/db/src`. Mutacion: un `.set({ marketingOptOutAt })` en un archivo del paquete | `consumer-opt-out-writer.test.ts` (merchant, un archivo) | **ROJO** 1/4 — «sólo `consumer/marketing-opt-out.ts` la escribe» → `expected [ …(2) ] to deeply equal [ Array(1) ]`, recibido de mas `../../../packages/db/src/schema/web-push.ts` (motivo correcto: el barrido ve el paquete). Revertida con la copia: `diff` vacio, shasum `519d0b85…b817` confirmado, 4/4 verde |
+
+## Bitacora de mutaciones — spec 0116, implementador (2026-09-30)
+
+Arbol de partida de las mutaciones: `51b018e` (trabajo de la 0116 commiteado; los cinco archivos limpios, `git status`
+vacio). Copias limpias en el scratchpad de la sesion. Restauracion de emergencia: `git checkout 51b018e -- <archivo>`;
+para M2 ademas `rm apps/merchant/src/lib/currencies.ts` (no existe en el arbol limpio).
+
+| id | archivo | shasum limpio | invariante que ataca | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `apps/consumer/src/app/(consumer)/wallet/qr-tab.tsx` | `1b04fc6c226cc640f30e7c70d3e834bf3328286a` | la copia de consumer es byte a byte la de merchant: el `diff -r` de la DoD da vacio | `diff -r -x '*.test.ts'` de `(consumer)` y `api/public`; typecheck de consumer (hermano) | **ROJO**: linea 1 `// MUTATION M1` + `Mi QR`→`Mi Qr` en el `<h2>` → `diff -r` de `(consumer)` exit 1 y lista `consumer/src/app/(consumer)/wallet/qr-tab.tsx` (`17c18 < Mi QR --- > Mi Qr`); `api/public` exit 0. Hermano: `tsc` de consumer exit 0 (verde, como dice la fila). Revertida con la copia: `diff` vacio, shasum `1b04fc6c…286a`, `diff -r` de la DoD vacio |
+| M2 | `apps/merchant/src/lib/currencies.ts` (no existe: se restaura con el contenido del paquete, `42e95fe1148051d8bd82e0b409a1a440b1135614`) + `apps/merchant/src/app/api/onboarding/business/route.ts` | route: `806cdb1e80235a4ca1312d6592265b9e3b745e54` | los 111 se MOVIERON, no se copiaron: el chequeo «no existe en merchant» de la DoD lo marca | script de la DoD «Movimiento» (111 rutas); typecheck + test de merchant (hermanos) | **ROJO**: `lib/currencies.ts` restaurado en merchant (contenido del paquete + linea `// MUTATION M2`) y `route.ts:23` importando `../../../../lib/currencies` → el script de la DoD imprime `EXISTE EN MERCHANT: lib/currencies.ts`, `ok 110/111, fallas 1`, exit 1. Hermanos medidos VERDES (por eso existe la fila): `tsc` de merchant exit 0; vitest de merchant 217 archivos pasan / 148 skip, 2209 tests / 773 skip. Revertida: `rm` del archivo, `diff` vacio del route, shasum `806cdb1e…4e54`, script `ok 111/111` |
+| M3 | `apps/consumer/src/app/globals.css` | `9a0833709f1f2aee80bbf51eca6cf08988b17efc` | el CSS del cliente esta completo: las 49 clases aparecen como selector en el build de consumer | `next build` de consumer + chequeo `rg -P` de las 49 clases | **ROJO**: lineas 218–227 (regla `.consumer-qr {…}`) reemplazadas por `/* MUTATION M3 */` → `next build` de consumer exit 0 y el chequeo da `found 48/49`, `missing: consumer-qr` (no nombra `consumer-qr-tab`: la regex lo excluye). Revertida: `diff` vacio, shasum `9a083370…7efc` |
+| M4 | `packages/domain/src/server/wallet/rotate.ts` | `b543f9416459db0eecfe0f0db99edf00380a3cee` | el barrido de quien escribe `marketingOptOutAt` mira `packages/domain/src` | `consumer-opt-out-writer.test.ts` | **ROJO** 1/4: `export const deadOptOutWriteM4 = (q) => q.set({ marketingOptOutAt: null })` al final de `rotate.ts` → «sólo `consumer/marketing-opt-out.ts` la escribe» `AssertionError: expected [ …(2) ] to deeply equal [ Array(1) ]`, recibido de mas `../../../packages/domain/src/server/wallet/rotate.ts` (motivo correcto: el barrido ve el paquete). Revertida: `diff` vacio, shasum `b543f941…0cee`, 4/4 verde |
+| M5 | `apps/merchant/src/server/onboarding/program-defaults-clauses.test.ts` | `8b1a09652ad71ee6de60e159c30e96837737e103` | todo `vi.mock` relativo resuelve a un archivo | `tools/vi-mock-targets.test.ts` + el test mutado | **ROJO** 1/2: linea 32 `vi.mock("../wallet/core")` (`server/wallet/core.ts` ya no existe en merchant) → «todo especificador relativo resuelve…» `AssertionError: expected [ Array(1) ] to deeply equal []`, recibido `"apps/merchant/src/server/onboarding/program-defaults-clauses.test.ts: ../wallet/core"`. El test mutado quedo VERDE 7/7: vitest acepta el mock colgante en silencio, que es lo que el guard existe para ver. Revertida: `diff` vacio, shasum `8b1a0965…e103`, 2/2 verde |
+
+Ninguna sobrevive: `rg '\bMUTATION\b|\bMUTACION\b' apps/*/src packages/*/src` → vacio; `git status` limpio salvo este archivo.
+
+**Evidencia de la DoD (implementador, sobre `51b018e`):** movimiento 111/111 (ausente en merchant, sha256 = `d20f2c5`);
+`diff -r` de las copias vacio, 45/45; `cmp` de tokens/sw/logo/postcss identicos; CSS del build de consumer 49/49;
+diferencial HTTP `next start` merchant :3101 / consumer :3100 con `DATABASE_URL` = rama de CI (interlock de host), solo
+GET: `/api/health` 200/200, `/recover` 200/200, `/wallet` 200/200, `/wallet/manifest.webmanifest` 200/200, `/c/x`
+404/404, `/enroll/0000…` 200/200, `/api/public/consumer/coupons` 401/401, `/api/public/consumer/cross-offers` 401/401.
+Capturas 390×844 (scratchpad de la sesion, `shots/{merchant,consumer}-{recover,wallet}.png`): `cmp` DIFIEREN — en
+consumer faltan las reglas de ELEMENTO del `globals.css` de merchant fuera de los rangos copiados (`select` 40–46, `h1`/
+`h2`/`p` 235–246, `label:where(…)` 247+): labels y select sin negrita/grid y margenes de titulo distintos. Se lleva al
+QA de la 0117. CSS de merchant byte a byte igual al de `d20f2c5` (sha256 de los 3 `.css` del build) y misma tabla de 118 rutas.
+
+## Revision independiente — spec 0116 (revisor, 2026-09-30)
+
+Bitacora de mutaciones del revisor (filas abiertas ANTES de medir; arbol de partida `3611de1`, limpio). Copias limpias en
+el scratchpad de la sesion. Restauracion de emergencia: `git checkout 3611de1 -- <archivo>`; para M2 ademas
+`rm apps/merchant/src/lib/currencies.ts` (no existe en el arbol limpio).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M2 | `apps/merchant/src/lib/currencies.ts` (ausente) + `apps/merchant/src/app/api/onboarding/business/route.ts` | route `806cdb1e80235a4ca1312d6592265b9e3b745e54` | los 111 se movieron, no se copiaron | **ROJO** en el chequeo de la DoD: `lib/currencies.ts` restaurado en merchant (contenido del paquete + `// MUTATION R-M2`) y `route.ts:23` importando `../../../../lib/currencies` → script de movimiento `EXISTS merchant lib/currencies.ts`, `ok=110 bad=1`. Hermanos VERDES, como dice la fila: `tsc --noEmit` de merchant rc=0; `vitest run src/server/onboarding` 8 archivos/94 tests verdes. Revertida: route shasum `806cdb1e…`, `currencies.ts` sacado del arbol (no existe en limpio) |
+| R-M5 | `apps/merchant/src/server/wallet-manifest.test.ts` | `212c063c80af8f5ccf2aecafbce6b07c3c0c60f7` | todo `vi.mock` relativo resuelve (variante: comillas simples + salto de linea) | **ROJO** 1/2 en `tools/vi-mock-targets.test.ts`: «todo especificador relativo resuelve…» `AssertionError: expected [ Array(1) ] to deeply equal []`, recibido `"apps/merchant/src/server/wallet-manifest.test.ts: ./wallet/core"` (motivo correcto: la regex ve comillas simples con salto de linea). El test mutado quedo VERDE 9/9: vitest acepta el mock colgante en silencio. Revertida: `diff` contra la copia mostro solo las 5 lineas de la mutacion; shasum `212c063c…` |
+| R-M4 | `apps/consumer/src/app/layout.tsx` | `f088779b55ff57a5182560f9f6d103a0c135b63c` | el barrido de `marketingOptOutAt` mira la raiz `apps/consumer/src` (la implementacion midio solo la de domain) | **ROJO** 1/4 en `consumer-opt-out-writer.test.ts`: «sólo `consumer/marketing-opt-out.ts` la escribe» `expected [ …(2) ] to deeply equal [ Array(1) ]`, recibido de mas `../../consumer/src/app/layout.tsx` (la raiz CONSUMER_ROOT muerde, no solo la de domain). Revertida: `diff` solo las 4 lineas; shasum `f088779b…` |
+
+Ninguna sobrevive: `grep -rnE '\bMUTATION\b' apps/*/src packages/*/src tools` → vacio; `git status --short apps packages
+tools` → vacio.
+
+**Veredicto del revisor: PASS** (sobre `3611de1`). Presupuesto: 3 mutaciones, clase plausible de movimiento mecanico.
+Evidencia EJECUTADA por el revisor:
+- Movimiento: 111/111 ausentes en merchant, presentes en `packages/domain/src` con sha256 = `d20f2c5`; y
+  `packages/domain/src` contiene EXACTAMENTE la lista (111 archivos, `diff` de nombres vacio).
+- Copia: los dos `diff -r -x '*.test.ts'` rc=0; 45/45 archivos; ningun `*.test.ts` copiado a consumer; `cmp` de
+  `tokens.css`, `sw.js`, `wallet-logo.png`, `postcss.config.mjs` identicos; demos borradas (`ls` → no existen).
+- Codemod sin efectos laterales: de los 296 archivos modificados de `apps/merchant` (fd292b8..HEAD), normalizando
+  espacios, comas finales y todo especificador relativo / `@mi-pasaporte/domain/…`, difieren solo 7, todos previstos por
+  la spec (`next.config.ts`, `package.json`, prosa de `staff-contract.ts`, y los 4 tests de ruta/barrido). Merchant:
+  365 archivos de test antes y despues, ningun `it`/`describe` agregado ni quitado.
+- Lockfile: copia de manifiestos + `pnpm-lock.yaml` en el scratchpad (store del repo), `pnpm install --frozen-lockfile
+  --offline --ignore-scripts` rc=0 y el lockfile queda byte a byte igual (`shasum -c` OK, `cmp` OK). Binarios de
+  plataforma (`@next/swc-*`, `@img/sharp-*`, `lightningcss-*`): 90 en `fd292b8` y 90 en HEAD.
+- Gates (Node v24.20.0): `TURBO_FORCE=1 typecheck` rc=0 (6 tareas, incluye `@mi-pasaporte/domain`); `lint` rc=0;
+  `format:check` rc=0; `test` rc=0 — merchant 365/2982, consumer 1/1, tools 4/13 (platform 1/1, public 1/6), total
+  372/3003; `TURBO_FORCE=1 build` rc=0 (4 tareas, cache bypass); clases del build de consumer 49/49; `test:e2e` rc=0,
+  106 passed / 5 skipped.
+- `51b018e` (upload-image-formats): legitimo. El codemod reescribio el import de las tres superficies y los tres hooks
+  (`brand-identity.tsx:6` era `../../../lib/image-formats` en `d20f2c5`, hoy `@mi-pasaporte/domain/lib/image-formats`,
+  y `lib/image-formats.ts` esta en la lista). Ojo: el commit cambia DOS aserciones (lineas 167 y 234), no una; las dos
+  son de la misma forma y pasan de «cualquier `(../)+lib/image-formats`» a un especificador exacto: igual o mas estrictas.
+- Clase H6 en `apps/merchant/src/**/*.test.ts`: 17 tests leen fuentes. Los barridos por `readdir` (billing/locations/
+  marketing routes sobre `app/api/*`, upload-image-formats y image-cropper-contract sobre `app/**/*.tsx`) no perdieron
+  alcance: de `app/` no se movio ningun archivo (el unico `.tsx` movido, `components/loyalty/card-preview.tsx`, no tiene
+  `accept=` ni `<ImageCropper`), y las copias de consumer son iguales en bytes a las barridas. Las lecturas de archivo
+  unico sobre rutas movidas fallarian con ENOENT (rojo), no en silencio. Ningun `vi.mock` de merchant apunta a una
+  dependencia npm que salio de merchant (`@aws-sdk/*`, `qrcode`).
+
+Declarado y NO perseguido: diferencia visual de capturas (ya declarada para la 0117); diferencial HTTP y
+`neon-test.sh` no re-corridos (requieren levantar las dos apps contra la rama de CI); el hook `stale-validator.sh` mira
+solo `apps/merchant/.next/types/validator.ts`, no el de consumer (no es riesgo de produccion: consumer no recibe
+trafico; para la 0117); `tools/vi-mock-targets.test.ts` no resuelve especificadores con sufijo `.js` (daria un falso
+rojo, no una fuga).
+
+## Bitacora de mutaciones — spec 0117, implementador (2026-09-30)
+
+Arbol de partida de las mutaciones: `10ebaf9` (trabajo de la 0117 commiteado; `git status` sin cambios de codigo). Copias
+limpias en el scratchpad de la sesion (`clean/`). Restauracion de emergencia: `git checkout 10ebaf9 -- <archivo>`; para M1
+`rm apps/merchant/src/app/api/public/push/click/route.ts` y las carpetas vacias `api/public/push/click`, `push`, `public`
+(no existen en el arbol limpio). Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante que ataca | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `apps/merchant/src/app/api/public/push/click/route.ts` (ausente en limpio) | — (no existe) | una ruta del cliente que sobrevive en merchant: `merchant-without-consumer.test.ts` la nombra | unit root entera + typecheck de merchant (hermano) | **ROJO** 1/3017: `route.ts` de `push/click` restaurado en merchant (copia del de consumer + `// MUTATION M1`) → `merchant-without-consumer.test.ts` › «src/app/api/public no existe» `AssertionError: src/app/api/public: expected true to be false` (nombra la carpeta). Hermano: `tsc --noEmit` de merchant sin errores (fuera de `.next/types`): VERDE, como dice la fila. Revertida: `rm` del archivo + `rmdir` de las 3 carpetas; `ls` → no existe; `git status` limpio |
+| M2 | `apps/merchant/src/app/api/health/route.ts` | `81dc4021881ecf08d0d98a4e45377d6ea234c962` | un modulo de PRODUCCION de merchant importa de `apps/consumer/src`: `tools/app-boundary.test.ts` lo nombra | unit root entera + typecheck (hermano) | **ROJO** 1/3017: `route.ts` de `/api/health` importa `GET` de `../../../../../consumer/src/app/api/health/route` → `tools/app-boundary.test.ts` › «merchant no importa nada de apps/consumer» `expected [ Array(1) ] to deeply equal []`, recibido `"apps/merchant/src/app/api/health/route.ts: ../../../../../consumer/src/app/api/health/route"`. Hermano: `tsc` de merchant VERDE (compila). Revertida con la copia: `diff` vacio, shasum `81dc4021…c962` |
+| M3 | `apps/merchant/next.config.ts` | `4c6a41be6d795f32d666cca01d699167bd3d1f24` | el proxy `/api/public/:path*` de merchant al cliente | unit root entera | **ROJO** 2/3017: `consumerApiRewrites` devuelve `[]` → `consumer-api-proxy.test.ts` › «defaults to my.checkpass.club» y «reads CONSUMER_ORIGIN…» `expected [] to deeply equal [ { …(2) } ]` (falta `{ source: "/api/public/:path*", destination: "https://my.checkpass.club/api/public/:path*" }`); «is what next.config.ts hands to Next» VERDE (compara contra la misma funcion mutada). Variante M3b (el CABLEADO: se borra `async rewrites()` del config) → **ROJO** 1/3017 «is what next.config.ts hands to Next» `expected undefined to be type of 'function'`. Revertidas con la copia: `diff` vacio, shasum `4c6a41be…1f24` (las dos veces). Borde real medido aparte con `next start`: merchant construido con `CONSUMER_ORIGIN=http://127.0.0.1:3100` → `/api/public/consumer/coupons` 401 con el cuerpo de consumer (merchant ya no tiene la ruta) |
+| M4 | `apps/public/src/legacy-routes.ts` | `a010a8815a0bcc71c658fb3c8592e6950fd7d7d7` | `www` manda `/api/public/*` al cliente ANTES que `/api/*` a merchant | unit root entera | **ROJO** 1/3017: `legacyRewrites` con `/api/:path*` primero → `legacy-routes.test.ts` › «proxies /api/public/:path* to CONSUMER_API_ORIGIN first, then /api/:path* …» `expected [ …(2) ] to deeply equal [ { …(2) }, …(1) ]` con el diff de orden (`/api/public` esperado primero). Revertida con la copia: `diff` vacio, shasum `a010a881…d7d7` |
+| M5 | `apps/consumer/next.config.ts` | `21415d8f8ef4e5964184304415da7a6c85a87391` | la raiz de consumer `/` → 308 `/wallet` | unit root entera | **ROJO** 1/3017: se borra `async redirects()` del config → `root-redirect.test.ts` › «is what next.config.ts hands to Next» `expected undefined to be type of 'function'`. Variante M5b (`consumerRedirects` devuelve `[]`) → **ROJO** 1/3017 «`/` → `/wallet`, permanent (308), and nothing else» `expected [] to deeply equal [ { source: '/', …(2) } ]`. Revertidas con la copia: `diff` vacio, shasum `21415d8f…7391` (las dos veces). Borde real: `next start` de consumer → `/` 308 → `/wallet` |
+
+Ninguna sobrevive: `grep -rnE '\b(MUTATION|MUTACION)\b' apps/*/src packages/*/src tools apps/*/next.config.ts` → vacio;
+`git status --short apps packages tools` → vacio. M6 (rol en la rama de CI) es del orquestador: no se hizo.
+
+**Evidencia de la DoD (implementador, sobre `10ebaf9`):**
+- Capturas de referencia de merchant tomadas ANTES del borrado (HEAD `1ade8b3`, `next start` :3101 con `DATABASE_URL` =
+  rama de CI e interlock de host; 390×844): scratchpad de la sesion `shots/ref-merchant-{recover,wallet}.png`
+  (sha256 `ae17c3f2…1ace` y `085afc36…0293`; una segunda toma dio `cmp` identica). Con el CSS del punto 3, consumer
+  `next start` :3100 → `shots/consumer-{recover,wallet}.png`: **`cmp` IDENTICAS las dos**.
+- Diferencial HTTP (solo GET): consumer :3100 = merchant de referencia en las 8 rutas de la 0116 (`/api/health` 200,
+  `/recover` 200, `/wallet` 200, `/wallet/manifest.webmanifest` 200, `/c/x` 404, `/enroll/0000…` 200,
+  `/api/public/consumer/coupons` 401, `/api/public/consumer/cross-offers` 401); consumer `/` 308 → `/wallet`. Merchant
+  despues del corte (127.0.0.1): paginas del cliente 404, `/sw.js` y `/wallet-logo.png` 404, `/api/public/consumer/*` 401
+  via el proxy; con `MERCHANT_ORIGIN=https://business.checkpass.club` y Host `business.`: `/wallet`, `/recover`,
+  `/enroll/abc?x=1`, `/c/tok` → 308 al `CONSUMER_ORIGIN` con path y query.
+- Tests: antes (`1ade8b3`) merchant 365/2982, consumer 1/1, tools 4/13, public 1/6, platform 1/1 = 372/3003. Despues
+  merchant 350/2891, consumer 19/102, tools 5/17, public 1/6, platform 1/1 = 376/3017. Por archivo (sin el prefijo de
+  app) las 372 filas de antes estan iguales despues; las 4 nuevas: `root-redirect` 2, `consumer-api-proxy` 3,
+  `merchant-without-consumer` 5, `app-boundary` 4 (+14 = 3017).
+- Gates (Node v24.20.0): `TURBO_FORCE=1` build rc=0 (0 cached, 4); `TURBO_FORCE=1` typecheck rc=0 (0 cached, 6); lint
+  rc=0; format:check rc=0; test rc=0 (228 pasan / 148 skip, 2244 / 773); test:e2e rc=0 (106 passed, 5 skipped).
+  `next-env.d.ts` restaurados. `pnpm install --frozen-lockfile --offline` rc=0, lockfile igual (`shasum -c` OK; ningun
+  `package.json` cambio).
+- Neon (rama de CI): `tools/neon-test.sh --app consumer src/server/loyalty-stamp-placeholder.neon.integration.test.ts`
+  8/8; `tools/neon-test.sh src/server/consumer-coupons.neon.integration.test.ts` 3/3; ademas los otros 11 que cruzan a
+  consumer (opt-out, welcome x3, web-push, cross x3, valley x3) 48/48.
+
+
+## Revision independiente — spec 0117, revisor (2026-09-30)
+
+Presupuesto: 3 re-mediciones (M3 y M4 obligatorias, R3 elegida), clase de error PLAUSIBLE del corte. Arbol: `f22e858`.
+Copias limpias en el scratchpad del revisor (`clean/`). Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante que ataca | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| RM3 | `apps/merchant/next.config.ts` | `4c6a41be6d795f32d666cca01d699167bd3d1f24` | el proxy `/api/public/:path*` de merchant (pases de Apple con `business.`) | `pnpm run test` de root (376 archivos) | **ROJO** 2/3017: `consumerApiRewrites` devuelve `[]` (`// MUTATION RM3`) → `consumer-api-proxy.test.ts` › «defaults to my.checkpass.club» y «reads CONSUMER_ORIGIN…» `AssertionError: expected [] to deeply equal [ { …(2) } ]`. Revertida con la copia: `diff` vacio, shasum `4c6a41be…1f24`, `git status` sin `apps` |
+| RM4 | `apps/public/src/legacy-routes.ts` | `a010a8815a0bcc71c658fb3c8592e6950fd7d7d7` | `legacyRewrites`: `/api/public` antes que `/api/` | `pnpm run test` de root | **ROJO** 1/3017: `/api/:path*` primero (`// MUTATION RM4`) → `legacy-routes.test.ts` › «proxies /api/public/:path* to CONSUMER_API_ORIGIN first…» `AssertionError: expected [ …(2) ] to deeply equal [ { …(2) }, …(1) ]`. Revertida con la copia: `diff` vacio, shasum `a010a881…d7d7` |
+| RR3 | `apps/merchant/src/app/wallet/page.tsx` (ausente en limpio) | — (no existe) | una pantalla del cliente que sobrevive en merchant FUERA del grupo `(consumer)` | `pnpm run test` de root + `tsc --noEmit` de merchant (hermano) | **VERDE** 228/228 (sobrevive): `merchant-without-consumer.test.ts` mira 4 rutas literales, no «pantallas del cliente». Hermano: `tsc` ROJO solo porque la copia de `page.tsx` sola no resuelve `./wallet-shell` (TS2307); una copia de la carpeta entera compilaria. Riesgo de produccion bajo: `proxy.ts` 308 `/wallet` de `business.` a `my.` con las env de R5. Se declara, no se persigue. Revertida: `rm` + `rmdir`; `ls` → no existe; `git status --short apps packages tools` vacio |
+
+Ninguna sobrevive: `grep -rnE '\bMUTATION\b' apps/*/src packages/*/src tools apps/*/next.config.ts` (sin tests) → vacio;
+`git status --short apps packages tools` → vacio.
+
+**Veredicto (codigo, puntos 1–12): PASS.** Ejecutado por el revisor sobre `f22e858`, Node 24 (`nvm use`):
+- typecheck rc=0, lint rc=0, test rc=0 (376 archivos: 228 pasan / 148 skip; 3017 tests: 2244 / 773 — la suma de las
+  cifras por proyecto del implementador, 350+19+5+1+1 / 2891+102+17+6+1), format:check rc=0, `TURBO_FORCE=1` build rc=0
+  (4/4). `git status` limpio despues del build (ningun `next-env.d.ts` reescrito). `test:e2e` no corrido (lo corrio el
+  implementador: 106).
+- `routes-manifest.json` de ESTE build: merchant `afterFiles` = solo `/api/public/:path*` → `https://my.checkpass.club/api/public/:path*`;
+  public `afterFiles` = `/api/public/:path*` → `my.` y DESPUES `/api/:path*` → `business.`; consumer redirects = `/` →
+  `/wallet` 308. `app-paths-manifest` de merchant: 0 rutas `wallet|recover|api/public`.
+- Borrados: `ls` de `src/app/(consumer)`, `src/app/api/public`, `public/sw.js`, `public/wallet-logo.png` → no existen
+  (`apps/merchant/public` entero ya no existe: solo tenia esos dos); `rg '\.consumer-' globals.css` → exit 1.
+- Tests mudados: `git diff -M a8f56db f22e858 --summary` → 17 renames, los 17 al **100%** (byte-identicos). Los 8 que se
+  quedan + `consumer-cross-support.ts`: el diff son solo especificadores `../app/...` → `../../../consumer/src/app/...`,
+  un reflow de prettier y un comentario con la ruta nueva. Ninguna asercion tocada.
+- Barridos con `readdir`: `image-cropper-contract`, `upload-image-formats` (piso por raiz), `consumer-opt-out-writer`
+  (incluye `CONSUMER_ROOT`), `vi-mock-targets` (`apps/*/src`, consumer entra solo) y los de `app/api/{billing,locations,marketing}`
+  (no miraban al cliente). Los dos mudados (`enroll-existing-account`, `enroll-install-hint`) leen `../app/(consumer)`
+  relativo, ahora el de consumer, con piso. No encontre otro barrido que haya perdido alcance.
+- `app-boundary`: replique `productionFiles` fuera del test. Consumer: 47 no-test, 47 produccion, 0 excluidos. Merchant:
+  481 no-test, 435 produccion, 46 excluidos; los 46 solo los importan tests (`*-support.ts`, `*-cases.ts`, fakes, y 5
+  sin ningun import de produccion: `app/analytics.ts`, `app/demo.ts`, `app/loyalty.ts`, `composer-draft.ts`,
+  `composer-summary.ts`, verificado con `rg`). No hay alias `@/` en ninguna app, asi que el cierre relativo no pierde
+  nada de produccion. Fuera del barrido: `apps/*/next.config.ts` (no esta en `src`).
+
+**Hallazgo a decidir (orquestador, runbook; NO es del codigo):** el PUSH de la 0117 es en si mismo un corte en PROD.
+Medido hoy: `business.checkpass.club/api/public/consumer/coupons` → 401 (lo sirve merchant) y `my.checkpass.club` →
+curl exit 35. Con este commit desplegado en merchant y en `www`, `business./api/public/*` y `www/api/public/*` se
+reenvian a `my.` y fallan hasta R4. Eso rompe: las actualizaciones de pases de Apple con `business.`/`www.` grabado, el
+callback de Google y las imagenes del PROPIO backoffice, que usan rutas relativas `/api/public/...`
+(`server/brand-kit/data.ts:71`, `app/api/brand/route.ts:41`, `server/counter/resolve.ts:92`, `catalog/core.ts:74`, el
+sello de `client-view.ts:132`). El ADR 0109 dice «no hay ventana rota extra», pero eso lo afirma del deploy del
+proyecto NUEVO; la ventana de merchant y `www` no la cubre. Lo que no verifique: que merchant y `www` se desplieguen
+solos en cada push a `main`. Opciones: hacer R2–R4 antes de que merchant y `www` tomen el commit (proyecto del cliente
+desde la rama, o deploys de merchant/`www` pausados hasta R4), o aceptar la ventana de forma explicita.
+
+Declarado y NO perseguido: RR3 (el guard de §10 mira 4 rutas literales; con `proxy.ts` el riesgo de produccion es bajo).
+Tampoco hay test del CABLEADO de `apps/public/next.config.ts`: `legacyRewrites(consumer, merchant)` con los argumentos
+cambiados tipa (son dos `string`) y ningun test lo ve. El manifest de este build esta bien; sumar un test «is what
+next.config.ts hands to Next» como el de merchant costaria unas 10 lineas. M6 y PROD no son del revisor.

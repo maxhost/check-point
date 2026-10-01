@@ -70,7 +70,7 @@ export function UpgradeCard({
         >
           Anual{" "}
           <span className="block text-xs text-content-muted">
-            Ahorrás USD 40
+            Ahorras USD 40
           </span>
         </button>
       </div>

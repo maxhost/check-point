@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { Camera, MediaImage, Upload } from "iconoir-react";
 import dynamic from "next/dynamic";
-import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "../../../lib/image-formats";
+import { ACCEPTED_IMAGE_ACCEPT_ATTR } from "@mi-pasaporte/domain/lib/image-formats";
 import type { CatalogImage } from "./use-catalog-image";
 import { useIsTouch } from "./use-is-touch";
 import { StockPicker } from "./stock-picker";
@@ -40,7 +40,7 @@ export function ProductImageField({
       <div>
         <strong>Imagen del producto (opcional)</strong>
         <p className="field-help">
-          Usá una foto propia o elegí una de la biblioteca. Si no cargás una,
+          Usa una foto propia o elige una de la biblioteca. Si no cargas una,
           mostraremos un placeholder.
         </p>
       </div>

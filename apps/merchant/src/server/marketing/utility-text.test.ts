@@ -4,7 +4,7 @@ import {
   utilityText,
   type UtilityProgram,
   type UtilityReward,
-} from "./utility-text";
+} from "@mi-pasaporte/domain/server/marketing/utility-text";
 
 const POINTS: UtilityProgram = { kind: "points", configuration: {} };
 const STAMPS: UtilityProgram = {

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { choosePushPromptView, type PushPromptView } from "./push-prompt-view";
+import {
+  choosePushPromptView,
+  type PushPromptView,
+} from "@mi-pasaporte/domain/lib/push-prompt-view";
 
 /**
  * Task 38 — the rule that `/wallet` shows an iPhone how to install the app even when Web

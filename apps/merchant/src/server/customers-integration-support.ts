@@ -7,15 +7,15 @@ import {
   seedBusiness,
   setBalance,
 } from "./counter-integration-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businessCustomers,
   consumerAccounts,
   loyaltyPrograms,
   programMemberships,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
-import { insertMembershipWithProjection } from "./customers/projection";
+import { insertMembershipWithProjection } from "@mi-pasaporte/domain/server/customers/projection";
 
 export { integrationEnabled };
 

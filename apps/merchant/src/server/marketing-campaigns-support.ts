@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { type Seed, dropBusiness } from "./counter-integration-support";
 import { seedLocationsBusiness } from "./locations-integration-support";
-import { getDb } from "./db";
-import { campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import { CampaignError } from "./marketing/campaign-store";
 
 /**

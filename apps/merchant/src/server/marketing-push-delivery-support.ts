@@ -10,11 +10,11 @@ import {
   seedPushCampaign,
   seedWebPush,
 } from "./marketing-push-support";
-import { getDb } from "./db";
-import { campaignCoupons } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignCoupons } from "@mi-pasaporte/db/schema";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 
 /**
  * The world of `marketing-push-delivery.neon.integration.test.ts`, split out by the size
@@ -61,7 +61,7 @@ export async function world(label: string) {
     membershipId,
     decidedAt: new Date(NOON.getTime() - 2 * HOUR),
     title: "La Gringa",
-    body: "¡Volvé! · 2x1 en picadas",
+    body: "¡Vuelve! · 2x1 en picadas",
   });
   return {
     seed,

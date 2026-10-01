@@ -3,10 +3,18 @@ import {
   type ParseResult,
   requireEndForCoupon,
 } from "./campaign-input";
-import { type CouponDeal, parseCoupon } from "./reward-input";
+import {
+  type CouponDeal,
+  parseCoupon,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { asObject } from "./campaign-values";
 import { balanceParams, couponRefused, gapMarkerOk } from "./balance-input";
-import type { RewardRepeat, TemplateDefinition } from "./templates";
+import { type CrossParams, crossDeal, crossParams } from "./cross-input";
+import { type ValleyParams, valleyDeal, valleyParams } from "./valley-input";
+import type {
+  RewardRepeat,
+  TemplateDefinition,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 import {
   WELCOME_STORED_DORMANT_DAYS,
   type WelcomeParams,
@@ -41,11 +49,19 @@ import {
  * WELCOME (spec 0107): its own rules live in `welcome-input.ts` — no channel, no dormant
  * days, no doors, a MANDATORY coupon without redemption cap and `endsAt` optional even with
  * it; `welcome*` in any other template is a 400.
+ *
+ * CROSS (spec 0112): the same shape as welcome, in `cross-input.ts` — no channel, no doors,
+ * a MANDATORY coupon without redemption cap, `endsAt` optional; `cross*` elsewhere is a 400.
+ *
+ * VALLEY (spec 0113): the same shape again, in `valley-input.ts` — plus `couponKind:
+ * "custom"`, which only this template admits; `valleyMonthlyCap` elsewhere is a 400.
  */
 
 /** The reward (`CouponDeal`) follows the composer's rules exactly (spec 0106). */
 export type TemplateInput = CouponDeal &
-  WelcomeParams & {
+  WelcomeParams &
+  CrossParams &
+  ValleyParams & {
     channelProximity: boolean;
     channelPush: boolean;
     dormantDays: number;
@@ -125,7 +141,7 @@ function channels(
     new Set(raw).size !== raw.length ||
     !raw.every((value) => (CHANNELS as readonly unknown[]).includes(value))
   ) {
-    errors.channels = "Elegí al menos un canal válido.";
+    errors.channels = "Elige al menos un canal válido.";
     return undefined;
   }
   if (
@@ -165,21 +181,33 @@ export function parseTemplateInput(
   const errors: FieldErrors = {};
 
   const welcome = template.welcome !== null;
-  const lanes = welcome
-    ? { channelProximity: false, channelPush: false }
-    : channels(errors, body.channels, template);
+  const cross = template.cross !== null;
+  const valley = template.valley !== null;
+  // Spec 0112/0113: the «Mis beneficios» templates have no channel and no doors.
+  const offer = cross || valley;
+  const lanes =
+    welcome || offer
+      ? { channelProximity: false, channelPush: false }
+      : channels(errors, body.channels, template);
   const days = welcome
     ? WELCOME_STORED_DORMANT_DAYS
     : dormantDays(errors, body.dormantDays, template);
   const text = message(errors, body.message, template);
-  const doorsOut = welcome ? [] : excluded(errors, body.excludedLocationIds);
+  const doorsOut =
+    welcome || offer ? [] : excluded(errors, body.excludedLocationIds);
   const deal = welcome
     ? welcomeDeal(errors, body)
-    : couponRefused(errors, body, template)
-      ? undefined
-      : parseCoupon(errors, body);
+    : cross
+      ? crossDeal(errors, body)
+      : valley
+        ? valleyDeal(errors, body)
+        : couponRefused(errors, body, template)
+          ? undefined
+          : parseCoupon(errors, body);
   const balance = balanceParams(errors, body, template);
   const gift = welcomeParams(errors, body, template);
+  const network = crossParams(errors, body, template);
+  const slack = valleyParams(errors, body, template);
   const startsAt = absent(body.startsAt)
     ? now
     : when(errors, body.startsAt, "startsAt", "La fecha de inicio");
@@ -188,8 +216,8 @@ export function parseTemplateInput(
     : when(errors, body.endsAt, "endsAt", "La fecha de fin");
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
-  // Spec 0107: the welcome coupon expires by its own days, not by the campaign's end.
-  if (!welcome) requireEndForCoupon(errors, deal, endsAt);
+  // Spec 0107/0112/0113: those coupons expire by their own rule, not by the end.
+  if (!welcome && !offer) requireEndForCoupon(errors, deal, endsAt);
 
   if (
     Object.keys(errors).length > 0 ||
@@ -200,6 +228,8 @@ export function parseTemplateInput(
     deal === undefined ||
     balance === undefined ||
     gift === undefined ||
+    network === undefined ||
+    slack === undefined ||
     startsAt === undefined ||
     endsAt === undefined
   )
@@ -217,6 +247,8 @@ export function parseTemplateInput(
       ...deal,
       ...balance,
       ...gift,
+      ...network,
+      ...slack,
     },
   };
 }

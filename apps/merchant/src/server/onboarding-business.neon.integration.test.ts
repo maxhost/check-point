@@ -49,7 +49,7 @@ vi.mock("./location-providers", async (importOriginal) => {
   };
 });
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   locationVerifications,
@@ -58,7 +58,7 @@ import {
   ownerProfiles,
   subscriptions,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
 import { POST } from "../app/api/onboarding/business/route";
 

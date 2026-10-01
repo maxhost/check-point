@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { requireDate } from "../marketing/driver-values";
-import type { CouponKind, DiscountUnit } from "../marketing/reward-input";
+import { getDb } from "@mi-pasaporte/db";
+import { requireDate } from "@mi-pasaporte/domain/server/marketing/driver-values";
+import type {
+  CouponKind,
+  DiscountUnit,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * What the SCAN shows of the campaign coupon (spec 0065 phase C, over `campaign_coupon` since

@@ -25,7 +25,7 @@ export async function requireImportAccess(
 ): Promise<ImportCaller | { response: NextResponse }> {
   const auth = await requireApiPermission(request, "catalog", {
     missingPermission: "No tienes permiso para gestionar el catálogo.",
-    emailNotVerified: "Verificá tu email para gestionar el catálogo.",
+    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

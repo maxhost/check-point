@@ -1,10 +1,10 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import { magicLinkEmail } from "./email/channel";
 import { emailChannelFromEnv } from "./email/provider";
-import * as schema from "./schema";
+import * as schema from "@mi-pasaporte/db/schema";
 
 export function getMerchantAuth() {
   const secret = process.env.BETTER_AUTH_SECRET;

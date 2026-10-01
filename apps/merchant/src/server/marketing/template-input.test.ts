@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseCampaignInput } from "./campaign-input";
 import { parseTemplateInput } from "./template-input";
-import { templateByKey } from "./templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 const NOW = new Date("2026-09-26T12:00:00.000Z");
 const missedYou = templateByKey("missed_you")!;
@@ -49,6 +49,12 @@ describe("parseTemplateInput", () => {
         welcomeReminderDays: null,
         welcomeMonthlyCap: null,
         welcomeRedeemFrom: null,
+        // Spec 0112: the cross parameters are `null` outside «Oferta cruzada».
+        crossAudience: null,
+        crossValidDays: null,
+        crossMonthlyCap: null,
+        // Spec 0113: the valley cap is `null` outside «Horas valle».
+        valleyMonthlyCap: null,
         startsAt: NOW,
         endsAt: null,
       },
@@ -209,7 +215,7 @@ describe("parseTemplateInput", () => {
     }
     for (const bad of [[], ["sms"], ["push", "push"], "push", [1], {}]) {
       expect(errorsOf({ channels: bad })).toEqual({
-        channels: "Elegí al menos un canal válido.",
+        channels: "Elige al menos un canal válido.",
       });
     }
   });

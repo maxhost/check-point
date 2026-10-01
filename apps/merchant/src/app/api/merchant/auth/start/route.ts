@@ -10,7 +10,7 @@ import {
   recordStartAttempt,
 } from "../../../../../server/auth-start";
 import { openMerchantSession } from "../../../../../server/merchant-session";
-import { ONBOARDING_GRANT_MINUTES } from "../../../../../server/onboarding-grant";
+import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 
 export const dynamic = "force-dynamic";
 
@@ -62,8 +62,22 @@ export async function POST(request: Request) {
         Date.now() + ONBOARDING_GRANT_MINUTES * 60_000,
       ),
     });
+    // El alta abre sesión antes del envío. Si Resend falla, la cuenta sigue utilizable y
+    // el cliente ofrece reintentar con /verify-email desde esa misma sesión.
+    let verificationSent = false;
+    try {
+      await getMerchantAuth().api.signInMagicLink({
+        body: { email, callbackURL: "/backoffice" },
+        headers: request.headers,
+      });
+      verificationSent = true;
+    } catch (error) {
+      console.error("merchant_signup_verification_delivery_failed", {
+        name: error instanceof Error ? error.name : typeof error,
+      });
+    }
     return NextResponse.json(
-      { sent: false },
+      { sent: false, verificationSent },
       { status: 200, headers: { "set-cookie": cookie } },
     );
   } catch (error) {
@@ -112,7 +126,7 @@ function startError(error: unknown): NextResponse {
   });
   return NextResponse.json(
     {
-      error: "No pudimos continuar. Intentá de nuevo.",
+      error: "No pudimos continuar. Intenta de nuevo.",
       code: "auth_unavailable",
     },
     { status: 503 },

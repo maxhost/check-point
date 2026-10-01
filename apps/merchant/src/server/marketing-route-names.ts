@@ -31,4 +31,8 @@ export const MARKETING_ROUTE_NAMES = [
   "PATCH /api/marketing/settings",
   // Spec 0106 E4 — results by reward.
   "GET /api/marketing/rewards/results",
+  // Spec 0113 H2 — the valley windows per location.
+  "GET /api/marketing/valley/locations",
+  "PUT /api/marketing/valley/locations/:locationId/windows",
+  "DELETE /api/marketing/valley/locations/:locationId/windows",
 ];

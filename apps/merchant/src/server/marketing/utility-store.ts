@@ -11,13 +11,16 @@
  */
 
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import type { DbTransaction } from "../db";
-import { locations, loyaltyRewards } from "../schema";
-import { toLatLng } from "../wallet/pass-locations";
-import { attributableLocation } from "./audience";
-import { requireDate, toDate } from "./driver-values";
-import type { UtilityCandidate } from "./placement-plan";
-import { utilityText } from "./utility-text";
+import type { DbTransaction } from "@mi-pasaporte/db";
+import { locations, loyaltyRewards } from "@mi-pasaporte/db/schema";
+import { toLatLng } from "@mi-pasaporte/domain/server/wallet/pass-locations";
+import { attributableLocation } from "@mi-pasaporte/domain/server/marketing/audience";
+import {
+  requireDate,
+  toDate,
+} from "@mi-pasaporte/domain/server/marketing/driver-values";
+import type { UtilityCandidate } from "@mi-pasaporte/domain/server/marketing/placement-plan";
+import { utilityText } from "@mi-pasaporte/domain/server/marketing/utility-text";
 
 /** ORQUESTADOR (spec 0065): «relacion viva» counts an order this recent. */
 export const UTILITY_FRESH_DAYS = 30;

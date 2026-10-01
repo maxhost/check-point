@@ -52,7 +52,7 @@ vi.mock("./staff", async (importOriginal) => {
 import { renderToStaticMarkup } from "react-dom/server";
 import { subscriptionOffers } from "./billing";
 import { settleToFree } from "./billing/store";
-import { withDbTransaction } from "./db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "./locations/shared";
 import { useBusiness } from "./billing-pages-support";
 import SubscriptionPage from "../app/backoffice/subscription/page";

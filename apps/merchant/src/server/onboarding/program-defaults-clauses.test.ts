@@ -29,18 +29,23 @@ const world = vi.hoisted(() => ({
   getDb: vi.fn(),
 }));
 
-vi.mock("../loyalty-program/owner", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../loyalty-program/owner")>()),
-  ownerBusiness: world.ownerBusiness,
-}));
+vi.mock(
+  "@mi-pasaporte/domain/server/loyalty-program/owner",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/loyalty-program/owner")
+    >()),
+    ownerBusiness: world.ownerBusiness,
+  }),
+);
 
-vi.mock("../db", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../db")>()),
+vi.mock("@mi-pasaporte/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@mi-pasaporte/db")>()),
   getDb: world.getDb,
 }));
 
-import { LoyaltyError } from "../loyalty-program/core";
-import { validateProgramInput } from "../loyalty-program/validation";
+import { LoyaltyError } from "@mi-pasaporte/domain/server/loyalty-program/core";
+import { validateProgramInput } from "@mi-pasaporte/domain/server/loyalty-program/validation";
 import { composedAccrualMode, programInput } from "./program-defaults";
 
 /**

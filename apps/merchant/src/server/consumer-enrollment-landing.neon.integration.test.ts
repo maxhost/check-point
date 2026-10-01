@@ -8,9 +8,9 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { businesses, loyaltyPrograms, users } from "./schema";
-import { getEnrollLanding } from "./consumer/enrollment";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, loyaltyPrograms, users } from "@mi-pasaporte/db/schema";
+import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
 
 // Split out of consumer-enrollment.neon.integration.test.ts (file-size hook, 300 lines):
 // the branding of the enroll landing (spec 0039) gets its own seed + assertions.

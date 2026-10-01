@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb, withDbTransaction } from "../db";
-import { locations } from "../schema";
+import { getDb, withDbTransaction } from "@mi-pasaporte/db";
+import { locations } from "@mi-pasaporte/db/schema";
 import { LocationError, toLocationDTO, type LocationDTO } from "./core";
 import {
   activeLocationCount,

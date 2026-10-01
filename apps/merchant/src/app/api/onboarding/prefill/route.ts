@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMerchantAuth } from "../../../../server/auth";
 import { SUPPORTED_COUNTRIES } from "../../../../server/location-providers";
-import { currencyForCountry } from "../../../../lib/currencies";
+import { currencyForCountry } from "@mi-pasaporte/domain/lib/currencies";
 import { BUSINESS_CATEGORIES } from "../../../../lib/business-categories";
 
 export const dynamic = "force-dynamic";

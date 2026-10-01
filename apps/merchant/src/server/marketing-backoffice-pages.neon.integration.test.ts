@@ -12,8 +12,8 @@ import {
 import { createCampaign } from "./marketing/campaign-store";
 import { seedMembership, seedTurn } from "./marketing-integration-support";
 import { seedConsumer } from "./counter-integration-support";
-import { getDb } from "./db";
-import { campaignTickAudiences, products } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignTickAudiences, products } from "@mi-pasaporte/db/schema";
 
 /** The session the pages under test run with; `requireOwner` itself (ADR 0044) has its
  * own tests and is not re-tested here. */

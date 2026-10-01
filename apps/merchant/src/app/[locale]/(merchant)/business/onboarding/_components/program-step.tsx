@@ -16,6 +16,7 @@ import type {
 } from "../_lib/contracts";
 import { createProgram, WizardApiError } from "../_lib/onboarding-api";
 import { ImpactCalculator } from "./program-impact";
+import { StepHeader } from "./wizard-shared";
 
 type FieldErrors = Record<string, string | undefined>;
 
@@ -71,18 +72,18 @@ export function ProgramStep({
     event.preventDefault();
     const nextErrors: FieldErrors = {};
     if (!reward.trim()) {
-      nextErrors.reward = "Escribí el premio que recibirá el cliente.";
+      nextErrors.reward = "Escribe el premio que recibirá el cliente.";
     }
     if (
       kind === "stamps" &&
       (!Number.isInteger(target) || target < 2 || target > 50)
     ) {
-      nextErrors.target = "Elegí un número entero entre 2 y 50.";
+      nextErrors.target = "Elige un número entero entre 2 y 50.";
     }
     const parsedAmount = parseDecimal(purchaseAmount);
     if (kind === "points") {
       if (!Number.isInteger(pointsGranted) || pointsGranted <= 0) {
-        nextErrors.pointsGranted = "Ingresá un número entero mayor que 0.";
+        nextErrors.pointsGranted = "Ingresa un número entero mayor que 0.";
       }
       if (
         parsedAmount === null ||
@@ -90,10 +91,10 @@ export function ProgramStep({
         parsedAmount > 9999999999.99
       ) {
         nextErrors.purchaseAmount =
-          "Ingresá un monto mayor que 0, con hasta 2 decimales y dentro del límite permitido.";
+          "Ingresa un monto mayor que 0, con hasta 2 decimales y dentro del límite permitido.";
       }
       if (!Number.isInteger(rewardPointsCost) || rewardPointsCost <= 0) {
-        nextErrors.rewardPointsCost = "Ingresá un número entero mayor que 0.";
+        nextErrors.rewardPointsCost = "Ingresa un número entero mayor que 0.";
       }
     }
     setErrors(nextErrors);
@@ -128,22 +129,11 @@ export function ProgramStep({
 
   return (
     <>
-      <header className="mb-8 grid gap-5">
-        <div>
-          <p className="mb-2 text-sm font-bold text-primary">Paso 3 de 3</p>
-          <h1
-            id="wizard-heading"
-            tabIndex={-1}
-            className="text-2xl font-bold leading-tight outline-none sm:text-3xl"
-          >
-            Creá tu programa de fidelización
-          </h1>
-          <p className="mt-2 leading-6 text-content-muted">
-            Elegí cómo querés premiar a los clientes de{" "}
-            {business?.name ?? "tu negocio"}.
-          </p>
-        </div>
-      </header>
+      <StepHeader
+        step={3}
+        title="Crea tu programa de fidelización"
+        description={`Elige cómo quieres premiar a los clientes de ${business?.name ?? "tu negocio"}.`}
+      />
       <Form onSubmit={submit} className="grid gap-5">
         {apiError && (
           <Alert kind="error" title="No pudimos continuar">
@@ -174,7 +164,7 @@ export function ProgramStep({
         {kind === "stamps" ? (
           <NumberField
             label="Sellos para ganar"
-            description="Podés elegir entre 2 y 50. Recomendamos una meta fácil de entender."
+            description="Puedes elegir entre 2 y 50. Recomendamos una meta fácil de entender."
             minValue={2}
             maxValue={50}
             value={target}

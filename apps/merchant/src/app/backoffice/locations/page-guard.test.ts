@@ -23,7 +23,7 @@ const { requireBackofficeSession, redirect } = vi.hoisted(() => ({
 vi.mock("../../../server/auth-guards", () => ({ requireBackofficeSession }));
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("./locations-console", () => ({ LocationsConsole: () => null }));
-vi.mock("../../../server/db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of ["select", "from", "leftJoin", "where"])
     chain[m] = () => chain;

@@ -8,9 +8,13 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { businesses, memberships, users } from "./schema";
-import { BrandError, ownerBusiness, saveBrand } from "./brand";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
+import {
+  BrandError,
+  ownerBusiness,
+  saveBrand,
+} from "@mi-pasaporte/domain/server/brand";
 
 const brandInput = (revision: number) => ({
   name: "Marca Integración",

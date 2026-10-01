@@ -3,7 +3,7 @@ import {
   apiOwnerFailureResponse,
   requireApiOwner,
 } from "../../../server/api-owner";
-import { withDbTransaction, type DbTransaction } from "../../../server/db";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
   activeLocationCount,
   lockBusiness,
@@ -69,8 +69,8 @@ export async function requireBillingOwner(
   request: Request,
 ): Promise<{ business: { id: string } } | { response: NextResponse }> {
   const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede gestionar la suscripción.",
-    emailNotVerified: "Verificá tu email para gestionar la suscripción.",
+    notOwner: "Solo la persona propietaria puede gestionar la suscripción.",
+    emailNotVerified: "Verifica tu email para gestionar la suscripción.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

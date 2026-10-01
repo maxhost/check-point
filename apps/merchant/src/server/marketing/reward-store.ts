@@ -1,8 +1,11 @@
 import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { type DbTransaction, getDb } from "../db";
-import { campaigns, loyaltyPrograms, products } from "../schema";
+import { type DbTransaction, getDb } from "@mi-pasaporte/db";
+import { campaigns, loyaltyPrograms, products } from "@mi-pasaporte/db/schema";
 import { CampaignError } from "./campaign-error";
-import { type CouponKind, INVALID_PRODUCT } from "./reward-input";
+import {
+  type CouponKind,
+  INVALID_PRODUCT,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * The half of the reward (spec 0106 / ADR 0098) that needs the database: what the pure
@@ -11,7 +14,7 @@ import { type CouponKind, INVALID_PRODUCT } from "./reward-input";
  * `enableTemplate` (`template-store.ts`) — so three call sites are three wirings.
  */
 
-const VALIDATION = "Revisá los datos de la campaña.";
+const VALIDATION = "Revisa los datos de la campaña.";
 
 /** The reward columns the `Campaign` DTO adds to the ones it already had. */
 export const rewardSelect = {

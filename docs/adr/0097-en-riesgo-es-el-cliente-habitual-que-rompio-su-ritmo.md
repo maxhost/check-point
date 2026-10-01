@@ -1,7 +1,7 @@
 ---
 adr: 0097
 fecha: 2026-09-27
-estado: aceptada
+estado: reemplazada por el ADR 0102 (2026-09-29)
 resumen: La plantilla #4 «Cliente en riesgo» (`at_risk`) es una plantilla de reactivacion como #3/#5 (proximidad, push o ambos; cupon opcional) cuya audiencia es el cliente HABITUAL que rompio su ritmo — ≥3 dias distintos con compra, ausencia ≥ N dias (14/30/45, default 14: owner) y ausencia > 2× su intervalo promedio entre visitas. 3 y 2× son FIJOS de plataforma (el owner delego: «elegí una cosa»). En el grupo `reactivation` queda en el MEDIO de la escalera (#3 rango 1 → #4 rango 2 → #5 rango 3): un cliente avisado con #4 todavia recibe #5 si se pierde. En proximidad las plantillas se ordenan por rango antes que por dias.
 ---
 

@@ -7,23 +7,27 @@ import {
   seedConsumer,
 } from "./counter-integration-support";
 import { enqueue, queueRow } from "./wallet-push-integration-support";
-import { getDb } from "./db";
-import { consumerAccounts, walletPasses, webPushSubscriptions } from "./schema";
-import { ensureWalletPass } from "./wallet/core";
-import { registerDevice } from "./wallet/passkit";
-import { issueSession } from "./consumer/session";
-import { SESSION_COOKIE } from "./consumer/core";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  consumerAccounts,
+  walletPasses,
+  webPushSubscriptions,
+} from "@mi-pasaporte/db/schema";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import {
   deliverWebPush,
   listConsumerSubscriptions,
   purgeConsumerSubscriptions,
   upsertSubscription,
-} from "./push/subscriptions";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+} from "@mi-pasaporte/domain/server/push/subscriptions";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
 import { rotatePassCredentials } from "./wallet/push";
-import { POST as subscribePost } from "../app/api/public/push/subscribe/route";
+import { POST as subscribePost } from "../../../consumer/src/app/api/public/push/subscribe/route";
 
 const consumerIds: string[] = [];
 

@@ -1,8 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { products, programMemberships } from "../schema";
-import { computeAccrual } from "../loyalty-program/accrual";
-import type { AccrualInput } from "../loyalty-program/core";
+import { getDb } from "@mi-pasaporte/db";
+import { products, programMemberships } from "@mi-pasaporte/db/schema";
+import { computeAccrual } from "@mi-pasaporte/domain/server/loyalty-program/accrual";
+import type { AccrualInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
 import {
   CounterError,
   type OperatorBusiness,
@@ -10,7 +10,7 @@ import {
   assertLocationInBusiness,
   parseUuid,
   pgErrorCode,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import { accreditableProgram } from "./resolve";
 import {
   type GrantItem,
@@ -113,7 +113,7 @@ async function buildDetailed(
   rawItems: unknown,
 ): Promise<{ total: string; items: GrantItem[] }> {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
-    throw new CounterError(422, "empty_cart", "Agregá al menos un producto.");
+    throw new CounterError(422, "empty_cart", "Agrega al menos un producto.");
   }
   const parsed = rawItems.map((raw) => {
     const item = (raw ?? {}) as Record<string, unknown>;
@@ -268,7 +268,7 @@ export async function grantAccrual(
     throw new CounterError(
       503,
       "grant_failed",
-      "No pudimos acreditar. Probá de nuevo.",
+      "No pudimos acreditar. Prueba de nuevo.",
     );
   }
 

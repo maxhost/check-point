@@ -1,8 +1,11 @@
 import { and, asc, eq, isNull, or, lte, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImportFiles, catalogImports } from "../schema";
-import { getPrivateObject, readObjectAtMost } from "../r2";
-import { normalizeImageToJpeg } from "../assets/image";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImportFiles, catalogImports } from "@mi-pasaporte/db/schema";
+import {
+  getPrivateObject,
+  readObjectAtMost,
+} from "@mi-pasaporte/domain/server/r2";
+import { normalizeImageToJpeg } from "@mi-pasaporte/domain/server/assets/image";
 import {
   type CatalogExtractionPage,
   type CatalogExtractionProvider,
@@ -275,6 +278,6 @@ function classify(error: unknown): { code: string; detail: string } {
   }
   return {
     code: "provider_unavailable",
-    detail: "No pudimos analizar el menú. Probá de nuevo.",
+    detail: "No pudimos analizar el menú. Prueba de nuevo.",
   };
 }

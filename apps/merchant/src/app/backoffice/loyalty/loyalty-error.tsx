@@ -37,7 +37,7 @@ export function LoyaltyError({
   return (
     <Alert kind="error" title={error.message}>
       {code === "not_member" || code === "missing_permission" ? (
-        <a href="/backoffice">Volver al Backoffice</a>
+        <a href="/backoffice">Volver al panel</a>
       ) : (
         <Button variant="secondary" onPress={onRead}>
           {error.uncertain || code === "program_exists"

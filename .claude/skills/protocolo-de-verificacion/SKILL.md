@@ -62,6 +62,10 @@ verde), y la M6 de la 0086 mandaba a mutar *«el evaluador del plan del catalogo
 existe** — `ENTITLEMENTS` tiene exactamente `locations.max` y `campaigns.enabled`. En los dos
 casos la fila llego hasta el agente que iba a ejecutarla.
 
+**Y una tercera cosa que la fila afirma sin decirlo: que NINGUN OTRO guard produce el mismo resultado** (caso
+2026-09-29, M6 de la 0111). Si dos guards del mismo flujo cortan igual, borrar uno da VERDE y la fila miente. Por
+fila: nombrar el guard hermano; si existe, el oraculo lo puentea (doble que lo desactiva, escenario donde no llega).
+
 ### 2.0-ter El FALSO ROJO, que es mas caro porque se lee como exito (2026-09-21)
 
 **Van TRES specs seguidas** en las que un **doble de test devuelve una fila que la base no puede
@@ -282,6 +286,11 @@ variable que se escribe y nunca se lee es la firma de una linea que falta (y `li
   de marketing que lo dijera, y la unica ruta con el dato exigia otro permiso (caso en `LECCIONES.md`).
 - **Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral
   que nadie acordo va como *hallazgo a decidir*.
+
+**Investigacion web delegada (caso 2026-09-29, `LECCIONES.md`):** la sesion tiene un cupo de busquedas web
+(200); un fan-out de N agentes lo consume entero y el orquestador queda sin poder verificar. Al encargar, poner
+un tope de busquedas por agente y reservar ~20 para la verificacion propia. Al reenviar: una politica se cita con
+su nivel (guia / regla aplicada / ley), y la retorica de un sintetizador no es un hallazgo.
 
 ## 5. Numeros y docs
 

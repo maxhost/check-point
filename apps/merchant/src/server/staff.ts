@@ -1,7 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { businesses, memberships, sessions, users } from "./schema";
-import { normalizePermissions } from "./permissions-catalog";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  memberships,
+  sessions,
+  users,
+} from "@mi-pasaporte/db/schema";
+import { normalizePermissions } from "@mi-pasaporte/db/permissions-catalog";
 import { StaffError } from "./staff-error";
 import { assertTargetNotAdministrator } from "./staff-admin-target";
 
@@ -225,7 +230,7 @@ export async function setStaffStatus(
   if (target.role === "owner") {
     throw new StaffError(
       409,
-      "No puedes desactivar al owner del negocio.",
+      "No puedes desactivar a la persona propietaria del negocio.",
       "target_is_owner",
     );
   }

@@ -11,6 +11,24 @@ conserva).
 Regla al sacar algo de aca: **nada toca codigo sin su spec cerrada.** Varias de estas filas dicen
 explicitamente «necesita spec» — eso es literal.
 
+
+## ~~PARQUEADO 2026-10-01 — spec 0118~~ → RETOMADA e implementada el mismo dia (`main` `ef22ffb`; ver TASKS). Solo queda la 0060 a PROD con OK del owner
+
+**Donde quedo:** implementada en la rama local `motor` (`b005721` codigo + `4b4991b` bitacora M1–M5 rojas; NO pusheada).
+Rama de CI de Neon con la `0059` aplicada y verificada por el orquestador (sin bypass, 27 legibles, 14 escribibles,
+`order`/`business` bloqueados, 10 politicas, default ACL vacio). Oraculo negativo 17/17; positivo 25/25 solo con arnes
+temporal. PROD sigue con el rol amplio + `BYPASSRLS` (estado del corte, funciona).
+**Para retomar:** (1) owner rota la contraseña de `checkpass_consumer` en la rama `ci-integration` (se filtro en el
+transcript; si es la misma que PROD, rotar tambien PROD y `DATABASE_URL` del proyecto del cliente) y corrige
+`NEON_CI_CONSUMER_DATABASE_URL` (usuario `checkpass_consumer`, no `ci-integration`) en `apps/merchant/.env.local` y en
+el secret de GitHub; (2) `tools/neon-test.sh --app consumer` sobre los 4 `consumer-role*.neon.integration.test.ts`
+positivos; (3) revisor; (4) mergear `origin/main` (trae `8ee0a80`, `b2729d1` de otra sesion) antes de pushear — el
+`ci.yml` nuevo exige el secret; (5) `0059` a PROD con OK del owner. Decisiones tecnicas informadas: `UPDATE(updated_at)`
+en `core.campaign` (lock `FOR UPDATE`), `SELECT` en `business_customer` (lo exige el upsert del alta).
+**Tambien pendiente del corte (0117):** QA del owner en telefono, aviso a Plantano, secrets de GitHub de los crons a
+`business.` (`MARKETING_TICK_ENDPOINT`, `WALLET_PUSH_ENDPOINT`, `CATALOG_IMPORT_RECONCILE_ENDPOINT`), Stripe (fuera
+por ahora, decision del owner); marcar 0117 `implementada` tras el QA.
+
 ## Decisiones tomadas que esperan spec
 
 | # | Que | Origen | Por que se paro |

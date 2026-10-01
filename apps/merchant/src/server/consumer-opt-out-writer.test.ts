@@ -25,10 +25,20 @@ import { describe, expect, it } from "vitest";
  */
 
 const ROOT = join(import.meta.dirname, "..");
-/** El único escritor permitido, relativo a `apps/merchant/src`. */
-const WRITER = join("server", "consumer", "marketing-opt-out.ts");
+/** El esquema vive en `packages/db` desde la spec 0115 (ADR 0107): el barrido lo sigue mirando. */
+const DB_ROOT = join(ROOT, "..", "..", "..", "packages", "db", "src");
+/** El dominio que comparten las dos apps vive en `packages/domain` desde la spec 0116 (ADR 0108),
+ * y la app del cliente tiene su copia de las pantallas y rutas: el barrido mira las cuatro raíces. */
+const DOMAIN_ROOT = join(ROOT, "..", "..", "..", "packages", "domain", "src");
+const CONSUMER_ROOT = join(ROOT, "..", "..", "consumer", "src");
+const ROOTS = [ROOT, DB_ROOT, DOMAIN_ROOT, CONSUMER_ROOT];
+/** El único escritor permitido, relativo a `apps/merchant/src` (vive en el paquete de dominio). */
+const WRITER = relative(
+  ROOT,
+  join(DOMAIN_ROOT, "server", "consumer", "marketing-opt-out.ts"),
+);
 /** El schema DECLARA la columna (y la migración la crea); no la escribe. */
-const SCHEMA = join("server", "schema", "consumer.ts");
+const SCHEMA = relative(ROOT, join(DB_ROOT, "schema", "consumer.ts"));
 
 /** Todo el árbol de producción: los tests y sus supports quedan afuera, y eso se declara —
  * los seeds de integración escriben la marca por SQL a propósito, para construir estados que
@@ -55,7 +65,7 @@ const WRITE = /\.(set|values)\(\s*\{[\s\S]{0,400}?marketingOptOutAt/;
 const RAW_WRITE = /marketing_opt_out_at\s*=/;
 
 describe("quién escribe `marketing_opt_out_at` (spec 0065, fase D)", () => {
-  const files = productionFiles(ROOT);
+  const files = ROOTS.flatMap((root) => productionFiles(root));
 
   it("el barrido mira el árbol entero, no tres archivos", () => {
     // PISO: un barrido que se quedó sin archivos —un `readdirSync` sobre la carpeta
@@ -86,5 +96,13 @@ describe("quién escribe `marketing_opt_out_at` (spec 0065, fase D)", () => {
     // miraría otra cosa (o nada).
     expect(ROOT.endsWith(join("apps", "merchant", "src"))).toBe(true);
     expect(files.some((file) => file.startsWith(`app${sep}`))).toBe(true);
+    // Y cada raíz aporta al menos un archivo: una raíz mal escrita se leería vacía y el
+    // barrido dejaría de mirar ese árbol sin que el piso de arriba se entere.
+    for (const root of ROOTS) {
+      expect(
+        files.some((file) => join(ROOT, file).startsWith(`${root}${sep}`)),
+        root,
+      ).toBe(true);
+    }
   });
 });

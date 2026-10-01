@@ -7,12 +7,12 @@ import {
   normalizeVapidSubject,
   vapidAuthHeader,
   vapidFromEnv,
-} from "./push/vapid";
-import { encryptWebPushPayload } from "./push/webpush-crypto";
+} from "@mi-pasaporte/domain/server/push/vapid";
+import { encryptWebPushPayload } from "@mi-pasaporte/domain/server/push/webpush-crypto";
 import {
   derivePlatform,
   webPushSubscriptionResponse,
-} from "./push/subscriptions";
+} from "@mi-pasaporte/domain/server/push/subscriptions";
 import { planTransports } from "./wallet/push-transports";
 
 /** A raw web-push-style VAPID pair: public = 65-byte uncompressed b64url, private = d b64url. */

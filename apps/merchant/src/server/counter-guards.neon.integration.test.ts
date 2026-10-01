@@ -7,8 +7,8 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { getDb } from "./db";
-import { loyaltyPrograms, programMemberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { loyaltyPrograms, programMemberships } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 

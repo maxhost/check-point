@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { withDbTransaction } from "../../../../server/db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import {
   BillingError,
   billingErrorResponse,

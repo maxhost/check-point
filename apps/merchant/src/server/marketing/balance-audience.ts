@@ -1,10 +1,14 @@
-import { dormantSince } from "./audience";
+import { dormantSince } from "@mi-pasaporte/domain/server/marketing/audience";
 import {
   type PushCandidate,
   type PushExclusion,
   decidePushEligibility,
 } from "./push-audience";
-import { GAP_MARKER, type RewardRepeat, type TemplateKey } from "./templates";
+import {
+  GAP_MARKER,
+  type RewardRepeat,
+  type TemplateKey,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * The BALANCE templates' audience as a PURE decision (spec 0104 §5 / ADR 0096): for ONE

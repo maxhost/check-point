@@ -16,7 +16,7 @@
 import { randomInt } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { getMerchantAuth } from "./auth";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 
 /** La fila de `core.staff_pin_lockout`, keyeada por `(business_id, user_id)`. */
 export type StaffPinLockoutState = {

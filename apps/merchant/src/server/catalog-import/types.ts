@@ -1,4 +1,4 @@
-import type { CatalogImportStatus } from "../schema/catalog-import";
+import type { CatalogImportStatus } from "@mi-pasaporte/db/schema/catalog-import";
 
 export type { CatalogImportStatus };
 

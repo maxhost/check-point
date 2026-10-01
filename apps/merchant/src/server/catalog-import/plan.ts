@@ -1,5 +1,5 @@
-import { parseOptionalMoney } from "../catalog/validation";
-import { CatalogError } from "../catalog/core";
+import { parseOptionalMoney } from "@mi-pasaporte/domain/server/catalog/validation";
+import { CatalogError } from "@mi-pasaporte/domain/server/catalog/core";
 import type { DiscardedItem, ProviderExtraction } from "./types";
 
 /**

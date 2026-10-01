@@ -1,4 +1,7 @@
-import { ENTITLEMENTS, limitOf } from "../entitlements";
+import {
+  ENTITLEMENTS,
+  limitOf,
+} from "@mi-pasaporte/domain/server/entitlements/index";
 import {
   isSupportedCountryCode,
   verifyLocation,

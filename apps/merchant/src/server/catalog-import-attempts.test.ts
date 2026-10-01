@@ -27,7 +27,7 @@ const estado = {
   submits: 0,
 };
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const nuevaCadena = () => {
     const cadena: Record<string, unknown> = {};
     for (const metodo of [
@@ -67,8 +67,10 @@ const PDF = Buffer.from(
   "latin1",
 );
 
-vi.mock("./r2", async () => {
-  const real = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const real = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...real,
     getPrivateObject: async () => ({
@@ -82,7 +84,8 @@ vi.mock("./r2", async () => {
 
 const { runAnalysis } = await import("./catalog-import/prepare");
 const { withinAttemptBudget } = await import("./catalog-import/quota");
-const { limitOf } = await import("./entitlements");
+const { limitOf } =
+  await import("@mi-pasaporte/domain/server/entitlements/index");
 
 const IMPORT_ID = "11111111-1111-4111-8111-111111111111";
 const NEGOCIO_ID = "22222222-2222-4222-8222-222222222222";

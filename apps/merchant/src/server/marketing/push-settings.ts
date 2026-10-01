@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { businesses } from "@mi-pasaporte/db/schema";
 import { CampaignError } from "./campaign-store";
 import type { FieldErrors, ParseResult } from "./campaign-input";
 import { asObject } from "./campaign-values";
@@ -70,7 +70,7 @@ export async function updateMarketingSettings(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá el horario de envío.",
+      "Revisa el horario de envío.",
       parsed.errors,
     );
   await getDb()

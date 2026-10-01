@@ -8,7 +8,7 @@ export const integrationEnabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (integrationEnabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   consumerAccounts,
@@ -20,7 +20,7 @@ import {
   programMemberships,
   rewardRedemptions,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import type { OperatorBusiness } from "./counter";
 
 export type Seed = {

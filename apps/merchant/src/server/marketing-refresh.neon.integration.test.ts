@@ -21,12 +21,15 @@ import {
 } from "./marketing-read-support";
 import { enqueue, queueRow } from "./wallet-push-integration-support";
 import { runMarketingTick } from "./marketing/tick";
-import { getDb } from "./db";
-import { passPlacements, walletPushQueue } from "./schema";
-import { ensureWalletPass } from "./wallet/core";
-import { listUpdatedSerials, registerDevice } from "./wallet/passkit";
+import { getDb } from "@mi-pasaporte/db";
+import { passPlacements, walletPushQueue } from "@mi-pasaporte/db/schema";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import {
+  listUpdatedSerials,
+  registerDevice,
+} from "@mi-pasaporte/domain/server/wallet/passkit";
 import { FakePushChannel } from "./wallet/push-channel";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { runPushWorker } from "./wallet/push-worker";
 
 /**

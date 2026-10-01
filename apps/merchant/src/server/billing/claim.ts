@@ -1,8 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
-import { getDb } from "../db";
-import { stripeWebhookEvents } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { stripeWebhookEvents } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0063, D12 (ADR 0061) — EL CLAIM DEL WEBHOOK, con TRES resultados.

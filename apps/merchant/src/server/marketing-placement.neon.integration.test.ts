@@ -19,7 +19,7 @@ import {
   runMarketingTick,
   type TickSummary,
 } from "./marketing/tick";
-import { withDbTransaction } from "./db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 
 /**
  * The properties of step 4 that only a database can answer (spec 0065 phase A5): the

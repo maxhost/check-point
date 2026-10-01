@@ -189,7 +189,7 @@ export function TemplateEditor({
   return (
     <MarketingShell
       title={
-        template ? `Configurá «${template.title}»` : "Configurar plantilla"
+        template ? `Configura «${template.title}»` : "Configurar plantilla"
       }
       description="La campaña seguirá apagada hasta que guardes y confirmes la activación."
       closeHref="/backoffice/marketing"
@@ -245,7 +245,7 @@ export function TemplateEditor({
               {error?.code === "validation" && (
                 <Alert
                   kind="error"
-                  title="Revisá los campos señalados"
+                  title="Revisa los campos señalados"
                   className="mt-5"
                 />
               )}

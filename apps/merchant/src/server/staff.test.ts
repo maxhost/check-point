@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 // Controlled data for the fake db.
 let existingUsers: Array<{ id: string }> = [];
 
-vi.mock("./db", () => {
+vi.mock("@mi-pasaporte/db", () => {
   const chain: Record<string, unknown> = {};
   for (const m of [
     "select",

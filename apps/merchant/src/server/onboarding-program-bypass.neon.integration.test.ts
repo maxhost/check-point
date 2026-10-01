@@ -9,8 +9,8 @@ const enabled =
   Boolean(url) && process.env.NEON_INTEGRATION_ISOLATED === "true";
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { loyaltyPrograms, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { loyaltyPrograms, users } from "@mi-pasaporte/db/schema";
 import {
   type GrantSeed,
   dropGrantSeed,
@@ -19,7 +19,7 @@ import {
   wipePrograms,
   wipeSessions,
 } from "./onboarding-grant-support";
-import { ONBOARDING_GRANT_MINUTES } from "./onboarding-grant";
+import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { PUT } from "../app/api/loyalty-program/route";
 
 /**

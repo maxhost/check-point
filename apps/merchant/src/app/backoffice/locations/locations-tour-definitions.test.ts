@@ -39,7 +39,7 @@ describe("tours de Locales", () => {
     expect(locationsTourSteps("edit")[3]?.advanceOnClick).toBe(false);
     expect(locationsTourSteps("edit")[4]?.advanceOnClick).toBe(true);
     expect(locationsTourSteps("edit")[4]?.popover?.title).toBe(
-      "Guardá los cambios",
+      "Guarda los cambios",
     );
   });
 

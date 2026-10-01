@@ -27,7 +27,7 @@ function selectChain(rows: unknown[]) {
   };
   return chain;
 }
-vi.mock("./db", () => ({
+vi.mock("@mi-pasaporte/db", () => ({
   getDb: () => ({
     select: () => selectChain([OWNER_BUSINESS]),
     insert: () => ({ values: async () => undefined }),
@@ -35,22 +35,24 @@ vi.mock("./db", () => ({
   }),
 }));
 
-vi.mock("./r2", async () => {
-  const actual = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const actual = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...actual,
     createTemporaryUploadUrl: vi.fn(async () => "https://r2.example/upload"),
   };
 });
 
-import { createStampUpload } from "./loyalty-program/stamp";
-import { createProductUpload } from "./catalog";
-import { createLogoUpload } from "./brand";
+import { createStampUpload } from "@mi-pasaporte/domain/server/loyalty-program/stamp";
+import { createProductUpload } from "@mi-pasaporte/domain/server/catalog";
+import { createLogoUpload } from "@mi-pasaporte/domain/server/brand";
 import {
   ACCEPTED_IMAGE_CONTENT_TYPES,
   ACCEPTED_IMAGE_CONTENT_TYPE_SET,
   isAcceptedImageType,
-} from "../lib/image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 
 const BUSINESS = "11111111-1111-4111-8111-111111111111";
 const byteSize = 1024;
@@ -162,7 +164,7 @@ describe("the file inputs of the three upload surfaces share the accept list", (
       expect(source).toContain(EXPECTED);
       // …and imports it from the single source of truth rather than redeclaring it.
       expect(source).toMatch(
-        /import \{[^}]*ACCEPTED_IMAGE_ACCEPT_ATTR[^}]*\} from "(\.\.\/)+lib\/image-formats"/s,
+        /import \{[^}]*ACCEPTED_IMAGE_ACCEPT_ATTR[^}]*\} from "@mi-pasaporte\/domain\/lib\/image-formats"/s,
       );
       // No comma-joined MIME list anywhere in the file: that is the bug shape.
       expect(source).not.toMatch(/image\/[a-z+]+,image\//);
@@ -178,33 +180,44 @@ describe("the file inputs of the three upload surfaces share the accept list", (
 
   it("finds no hardcoded accept list in ANY .tsx under app/ (demo pages included)", async () => {
     const { readdir, readFile } = await import("node:fs/promises");
-    const root = new URL("../app/", import.meta.url);
+    // Since spec 0117 the consumer screens live in `apps/consumer`: the sweep follows them,
+    // with a floor per root so neither can silently drop out.
+    const roots = [
+      new URL("../app/", import.meta.url),
+      new URL("../../../consumer/src/app/", import.meta.url),
+    ];
     const offenders: string[] = [];
-    let scanned = 0;
+    const scannedPerRoot: number[] = [];
     let attributes = 0;
-    const entries = await readdir(root, {
-      recursive: true,
-      withFileTypes: true,
-    });
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(".tsx")) continue;
-      scanned += 1;
-      const path = `${entry.parentPath}/${entry.name}`;
-      const source = await readFile(path, "utf8");
-      for (const match of source.matchAll(ACCEPT_ATTR)) {
-        attributes += 1;
-        const value = match[1] ?? match[2] ?? "";
-        const isCameraInput =
-          value === "image/*" && source.includes('capture="environment"');
-        if (!value.includes("ACCEPTED_IMAGE_ACCEPT_ATTR") && !isCameraInput) {
-          offenders.push(`${path}: ${match[0]}`);
+    for (const root of roots) {
+      let scanned = 0;
+      const entries = await readdir(root, {
+        recursive: true,
+        withFileTypes: true,
+      });
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".tsx")) continue;
+        scanned += 1;
+        const path = `${entry.parentPath}/${entry.name}`;
+        const source = await readFile(path, "utf8");
+        for (const match of source.matchAll(ACCEPT_ATTR)) {
+          attributes += 1;
+          const value = match[1] ?? match[2] ?? "";
+          const isCameraInput =
+            value === "image/*" && source.includes('capture="environment"');
+          if (!value.includes("ACCEPTED_IMAGE_ACCEPT_ATTR") && !isCameraInput) {
+            offenders.push(`${path}: ${match[0]}`);
+          }
         }
       }
+      scannedPerRoot.push(scanned);
     }
     expect(offenders).toEqual([]);
     // Guard against the sweep silently scanning nothing (a moved directory, a broken glob):
     // an empty run would make `offenders` trivially empty and the test permanently green.
-    expect(scanned).toBeGreaterThan(50);
+    const [merchantScanned, consumerScanned] = scannedPerRoot;
+    expect(merchantScanned).toBeGreaterThan(50);
+    expect(consumerScanned).toBeGreaterThan(10);
     expect(attributes).toBeGreaterThanOrEqual(5);
   });
 });
@@ -229,7 +242,7 @@ describe("the three upload hooks share the client-side type guard", () => {
         "utf8",
       );
       expect(source).toMatch(
-        /import \{[^}]*isAcceptedImageType[^}]*\} from "(\.\.\/)+lib\/image-formats"/s,
+        /import \{[^}]*isAcceptedImageType[^}]*\} from "@mi-pasaporte\/domain\/lib\/image-formats"/s,
       );
       expect(source).toContain("isAcceptedImageType(file.type)");
       // The looser rule this replaced.

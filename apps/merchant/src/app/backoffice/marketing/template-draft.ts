@@ -69,27 +69,27 @@ export function templateDraftErrors(
     (!draft.channels.length ||
       draft.channels.some((channel) => !template.channels.includes(channel)))
   )
-    errors.channels = "Elegí al menos un canal disponible.";
+    errors.channels = "Elige al menos un canal disponible.";
   if (
     template.dormantDays &&
     (!template.cross || draft.crossAudience === "dormant") &&
     !template.dormantDays.options.includes(draft.dormantDays ?? NaN)
   )
-    errors.dormantDays = "Elegí una opción de días.";
+    errors.dormantDays = "Elige una opción de días.";
   const message = draft.message.trim();
   if (!message || message.length > template.message.maxLength)
-    errors.message = `Escribí entre 1 y ${template.message.maxLength} caracteres.`;
+    errors.message = `Escribe entre 1 y ${template.message.maxLength} caracteres.`;
   if (template.message.gapMarker && !message.includes("{faltan}"))
     errors.message = "El mensaje tiene que incluir {faltan}.";
   if (!template.message.gapMarker && message.includes("{faltan}"))
     errors.message = "El marcador {faltan} solo vale en «Te falta poco».";
   if (draft.startsAt && !businessDateIso(draft.startsAt, timeZone))
-    errors.startsAt = "Ingresá una fecha válida.";
+    errors.startsAt = "Ingresa una fecha válida.";
   const start = draft.startsAt
     ? businessDateIso(draft.startsAt, timeZone)
     : new Date().toISOString();
   const end = draft.endsAt ? businessDateIso(draft.endsAt, timeZone) : null;
-  if (draft.endsAt && !end) errors.endsAt = "Ingresá una fecha válida.";
+  if (draft.endsAt && !end) errors.endsAt = "Ingresa una fecha válida.";
   if (end && start && end <= start)
     errors.endsAt = "La fecha de fin debe ser posterior al inicio.";
   if (template.couponRequired && !draft.coupon)
@@ -123,26 +123,26 @@ export function templateDraftErrors(
   if (template.welcome) {
     const welcome = template.welcome;
     if (!welcome.validDays.options.includes(draft.welcomeValidDays ?? NaN))
-      errors.welcomeValidDays = "Elegí una vigencia disponible.";
+      errors.welcomeValidDays = "Elige una vigencia disponible.";
     if (
       !welcome.reminderDays.options.includes(
         draft.welcomeReminderDays ?? NaN,
       ) ||
       (draft.welcomeReminderDays ?? Infinity) >= (draft.welcomeValidDays ?? 0)
     )
-      errors.welcomeReminderDays = "Elegí un aviso anterior al vencimiento.";
+      errors.welcomeReminderDays = "Elige un aviso anterior al vencimiento.";
     if (
       !Number.isInteger(draft.welcomeMonthlyCap) ||
       (draft.welcomeMonthlyCap ?? 0) < welcome.monthlyCap.min ||
       (draft.welcomeMonthlyCap ?? Infinity) > welcome.monthlyCap.max
     )
-      errors.welcomeMonthlyCap = `Elegí un tope entre ${welcome.monthlyCap.min} y ${welcome.monthlyCap.max}.`;
+      errors.welcomeMonthlyCap = `Elige un tope entre ${welcome.monthlyCap.min} y ${welcome.monthlyCap.max}.`;
     if (
       !welcome.redeemFrom.options.includes(
         draft.welcomeRedeemFrom as WelcomeRedeemFrom,
       )
     )
-      errors.welcomeRedeemFrom = "Elegí desde cuándo vale el regalo.";
+      errors.welcomeRedeemFrom = "Elige desde cuándo vale el regalo.";
   }
   if (template.nearReward) {
     if (
@@ -150,13 +150,13 @@ export function templateDraftErrors(
         draft.nearRewardStamps ?? NaN,
       )
     )
-      errors.nearRewardStamps = "Elegí un umbral de sellos.";
+      errors.nearRewardStamps = "Elige un umbral de sellos.";
     if (
       !template.nearReward.pointsPercent.options.includes(
         draft.nearRewardPercent ?? NaN,
       )
     )
-      errors.nearRewardPercent = "Elegí un porcentaje.";
+      errors.nearRewardPercent = "Elige un porcentaje.";
   }
   if (
     template.repeat &&
@@ -164,7 +164,7 @@ export function templateDraftErrors(
       draft.rewardRepeat as "once" | "every_30_days",
     )
   )
-    errors.rewardRepeat = "Elegí una frecuencia.";
+    errors.rewardRepeat = "Elige una frecuencia.";
   return errors;
 }
 

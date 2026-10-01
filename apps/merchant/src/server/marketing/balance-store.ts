@@ -1,15 +1,18 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import type { DbTransaction, getDb } from "../db";
-import { loyaltyPrograms, loyaltyRewards } from "../schema";
+import type { DbTransaction, getDb } from "@mi-pasaporte/db";
+import { loyaltyPrograms, loyaltyRewards } from "@mi-pasaporte/db/schema";
 import type { BalanceCandidate, RewardCost } from "./balance-audience";
-import { requireDate, toDate } from "./driver-values";
+import {
+  requireDate,
+  toDate,
+} from "@mi-pasaporte/domain/server/marketing/driver-values";
 import {
   type TemplateDefinition,
   type TemplateKey,
   templateKeysAtOrAbove,
-} from "./templates";
-import { rewardCost } from "./utility-text";
+} from "@mi-pasaporte/domain/server/marketing/templates";
+import { rewardCost } from "@mi-pasaporte/domain/server/marketing/utility-text";
 
 /**
  * The DB half of the BALANCE templates (spec 0104 §4 and §6 / ADR 0096).

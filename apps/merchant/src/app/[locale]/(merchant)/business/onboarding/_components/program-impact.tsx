@@ -39,7 +39,7 @@ export function ImpactCalculator(props: {
     >
       <div>
         <h2 id="program-impact-title" className="text-lg font-bold">
-          Calculá el impacto del premio
+          Calcula el impacto del premio
         </h2>
         <p className="mt-1 text-sm leading-5 text-content-muted">
           Es una estimación opcional. No modifica las reglas del programa.

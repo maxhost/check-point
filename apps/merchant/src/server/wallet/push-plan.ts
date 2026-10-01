@@ -9,7 +9,34 @@
  * only reloads the pass; it is a THIRD member on purpose, not a flavour of
  * `transactional` — see {@link planConsumerDrain}.
  */
-export type NoticeClass = "transactional" | "campaign" | "pass_refresh";
+export type NoticeClass =
+  | "transactional"
+  | "campaign"
+  | "pass_refresh"
+  | "reminder";
+
+/**
+ * Maps the raw `class` column to the planner's {@link NoticeClass}. Exhaustive and
+ * total: an unknown class THROWS, it never degrades to `transactional`. Until spec 0065
+ * this was `r.klass === "campaign" ? "campaign" : "transactional"`, so a `pass_refresh`
+ * row entered the planner AS a transactional — skipping the cooldown, advancing the
+ * clock and preempting the next `campaign`, the three invariants the class exists to
+ * hold — and `typecheck` stayed GREEN because the ternary always yields a valid union
+ * member. Pure and exported so the mapping has a unit oracle: `selectDue` needs a DB,
+ * this does not. The DB check constraint already restricts the column to these four
+ * values, so the throw is a tripwire for a schema/code drift, not an expected path.
+ */
+export function parseQueueClass(raw: string): NoticeClass {
+  switch (raw) {
+    case "transactional":
+    case "campaign":
+    case "pass_refresh":
+    case "reminder":
+      return raw;
+    default:
+      throw new Error(`wallet_push_queue.class desconocida: ${raw}`);
+  }
+}
 
 export type QueueRow = {
   id: string;
@@ -34,6 +61,8 @@ const CLASS_RANK: Record<NoticeClass, number> = {
   transactional: 0,
   pass_refresh: 1,
   campaign: 2,
+  // Spec 0111: the day-without-purchase reminder goes last, behind any campaign.
+  reminder: 3,
 };
 
 /**
@@ -55,6 +84,8 @@ function orderKey(row: QueueRow): number {
  * - `transactional` always sends (skips cooldown) and advances the clock to `now`, which
  *   **preempts** any following `campaign` (rescheduled to `now + cooldown`);
  * - `campaign` sends only when `now ≥ lastPush + cooldown`, else it is rescheduled;
+ * - `reminder` (spec 0111) follows the `campaign` rule: it respects the cooldown and is
+ *   rescheduled behind it, never preempts;
  * - `pass_refresh` (spec 0065) ALWAYS sends and leaves `lastPush` untouched, so it never
  *   consumes the consumer's push budget and can never preempt a following `campaign`.
  *   That is the whole class: the pass reloads in silence. Because it never writes the

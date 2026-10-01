@@ -38,7 +38,7 @@ export function SelectField({
   options,
   description,
   errorMessage,
-  placeholder = "Seleccioná una opción",
+  placeholder = "Selecciona una opción",
   className,
   hideLabel = false,
   ...props

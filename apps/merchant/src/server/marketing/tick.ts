@@ -21,13 +21,13 @@
  */
 
 import { sql } from "drizzle-orm";
-import { withDbTransaction, type DbTransaction } from "../db";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import {
   type AudienceCandidate,
   type Eligibility,
   decideTurnEligibility,
   summarizeAudience,
-} from "./audience";
+} from "@mi-pasaporte/domain/server/marketing/audience";
 import {
   type ActiveCampaign,
   enqueueTurns,
@@ -40,7 +40,7 @@ import { buildMeritTable, loadBusinessTurnStats } from "./merit";
 import {
   DEFAULT_PLACEMENT_LIMITS,
   type PlacementLimits,
-} from "./placement-plan";
+} from "@mi-pasaporte/domain/server/marketing/placement-plan";
 import { placeConsumers } from "./placement";
 import { runBalancePushCampaign } from "./balance-push";
 import { decidePushEligibility } from "./push-audience";
@@ -50,10 +50,11 @@ import {
   loadPushCandidates,
   recordPushDecision,
 } from "./push-store";
-import { templateByKey } from "./templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
-import { sweepWelcomeGifts } from "./welcome-issue";
-import { enqueueWelcomeReminders } from "./welcome-reminder";
+import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
+import { enqueueWelcomeReminders } from "@mi-pasaporte/domain/server/marketing/welcome-reminder";
+import { refreshValleyDetections } from "@mi-pasaporte/domain/server/marketing/valley-store";
 
 export type TickSummary = {
   campaigns: number;
@@ -237,6 +238,8 @@ export async function runMarketingTick(
     );
     // …and its expiry notices (spec 0107 §5), after the sweep.
     await enqueueWelcomeReminders(db, now, options.businessIds);
+    // Spec 0113 V4: the valley detections that are stale (> 7 days, or new opening hours).
+    await refreshValleyDetections(db, now, options.businessIds);
 
     const expired = await expireTurns(db, now, options.businessIds);
     const cancelled = Object.values(

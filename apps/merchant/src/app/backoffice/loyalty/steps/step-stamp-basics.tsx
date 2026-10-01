@@ -24,7 +24,7 @@ export function StepStampBasics({
         step={1}
         value={vm.target}
         onChange={vm.setTarget}
-        description="Elegí entre 2 y 50 sellos."
+        description="Elige entre 2 y 50 sellos."
         errorMessage={errors.target}
       />
     </>

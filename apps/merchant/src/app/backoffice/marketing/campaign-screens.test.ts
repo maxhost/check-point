@@ -151,7 +151,7 @@ describe("the campaign detail screen", () => {
       "Se pausó al bajar de plan.",
     );
     expect(detailHtml("paused", { pauseReason: "owner" })).toContain(
-      "La pausaste vos.",
+      "Pausaste la campaña.",
     );
   });
 

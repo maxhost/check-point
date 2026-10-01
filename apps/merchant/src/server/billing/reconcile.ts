@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 
-import { withDbTransaction } from "../db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "../locations/shared";
 import { assessEventApplicability } from "./applicability";
 import { planFromSubscription } from "./derive";

@@ -1,5 +1,5 @@
 import { locationLimitForPlan } from "../locations/core";
-import { hasLiveSubscription } from "../entitlements/live-subscription";
+import { hasLiveSubscription } from "@mi-pasaporte/domain/server/entitlements/live-subscription";
 
 /**
  * Spec 0063, D4 — CONTRATO. Lo dejó el orquestador antes de despachar; el implementador
@@ -92,7 +92,7 @@ export type PlanChangeDecision =
 export {
   DEAD_STRIPE_STATUS,
   hasLiveSubscription,
-} from "../entitlements/live-subscription";
+} from "@mi-pasaporte/domain/server/entitlements/live-subscription";
 
 /**
  * GUARDAS, EN ORDEN. PRIMER MATCH GANA. ES NORMATIVO — el unit

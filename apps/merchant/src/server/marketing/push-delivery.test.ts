@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { type GateFacts, decideCampaignGate } from "./push-delivery";
+import {
+  type GateFacts,
+  decideCampaignGate,
+} from "@mi-pasaporte/domain/server/marketing/push-delivery";
 
 /** Spec 0103 §6 — the gate's decision, PURE and in the spec's order. The wiring (the
  * worker calling it) is pinned by `marketing-push-delivery.neon.integration.test.ts`. */

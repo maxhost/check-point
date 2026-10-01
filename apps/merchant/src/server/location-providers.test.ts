@@ -4,7 +4,7 @@ import {
   isSupportedCountryCode,
   verifyLocation,
 } from "./location-providers";
-import { currencyForCountry } from "../lib/currencies";
+import { currencyForCountry } from "@mi-pasaporte/domain/lib/currencies";
 
 const originalGeoapifyKey = process.env.GEOAPIFY_API_KEY;
 

@@ -5,7 +5,7 @@ import { Camera, MediaImage, Page } from "iconoir-react";
 import {
   ACCEPTED_IMAGE_ACCEPT_ATTR,
   PDF_CONTENT_TYPE,
-} from "../../../lib/image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 import { useIsTouch } from "./use-is-touch";
 
 /**
@@ -64,10 +64,10 @@ export function CatalogAiImportPicker({
         <strong>
           {files.length
             ? files.map((file) => file.name).join(", ")
-            : "Subí tu menú o lista de precios"}
+            : "Sube tu menú o lista de precios"}
         </strong>
         <small>
-          Arrastrá y soltá acá varias imágenes o un único PDF, o hacé clic para
+          Arrastra y suelta aquí varias imágenes o un único PDF, o haz clic para
           buscarlos. El servidor validará los límites vigentes.
         </small>
       </button>
@@ -143,7 +143,7 @@ export function CatalogAiImportPicker({
       </div>
       {!files.length && (
         <p className="field-help" id="catalog-analyze-help">
-          Agregá al menos una foto para habilitar el análisis. Los PDF se
+          Agrega al menos una foto para habilitar el análisis. Los PDF se
           analizan automáticamente.
         </p>
       )}

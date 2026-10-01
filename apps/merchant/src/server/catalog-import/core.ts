@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImportFiles, catalogImports } from "../schema";
-import { catalogImportObjectKey } from "../r2";
-import { isUniqueViolation } from "../catalog/categories";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImportFiles, catalogImports } from "@mi-pasaporte/db/schema";
+import { catalogImportObjectKey } from "@mi-pasaporte/domain/server/r2";
+import { isUniqueViolation } from "@mi-pasaporte/domain/server/catalog/categories";
 import {
   CATALOG_IMPORT_OPEN_STATUSES,
   type CatalogImportStatus,
-} from "../schema/catalog-import";
+} from "@mi-pasaporte/db/schema/catalog-import";
 import {
   CatalogImportError,
   type CatalogImportDTO,
@@ -63,7 +63,7 @@ export function toImportDTO(row: ImportRow): CatalogImportDTO {
             code: row.failureCode ?? "catalog_import_failed",
             message:
               row.failureDetail ??
-              "No pudimos analizar el menú. Probá de nuevo.",
+              "No pudimos analizar el menú. Prueba de nuevo.",
           }
         : null,
   };

@@ -108,11 +108,9 @@ export function TemplateRow({
         {groupNames[template.group] ?? template.group} ·{" "}
         {template.welcome
           ? "Se entrega al activar notificaciones en CheckPass"
-          : template.cross
-            ? "Aparece en Mis beneficios"
-            : template.channels
-                .map((channel) => channelNames[channel])
-                .join(" y ")}
+          : template.channels
+              .map((channel) => channelNames[channel])
+              .join(" y ")}
       </p>
       {live && (
         <p className="mt-2 text-sm font-semibold">

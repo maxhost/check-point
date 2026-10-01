@@ -16,8 +16,8 @@ import {
 } from "./marketing-integration-support";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
-import { getDb } from "./db";
-import { campaignTurns, campaigns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignTurns, campaigns } from "@mi-pasaporte/db/schema";
 
 /**
  * Spec 0102 / ADR 0094 — WHAT CUTS AN ISSUED COUPON, against Neon. Only three things do:

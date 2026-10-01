@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { UNDELIVERABLE_EMAIL_DOMAIN } from "./auth-start";
-import { getDb } from "./db";
-import { memberships, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { memberships, users } from "@mi-pasaporte/db/schema";
 import { nextSuggestion, slugify } from "./slug";
 import { generatePin, hashPin } from "./staff-pin";
 import {

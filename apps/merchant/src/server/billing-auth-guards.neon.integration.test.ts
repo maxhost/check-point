@@ -13,7 +13,7 @@ import {
   stripeEnvEntries,
 } from "./billing-webhook-support";
 import { dropBusiness } from "./counter-integration-support";
-import { withDbTransaction } from "./db";
+import { withDbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "./locations/shared";
 import { integrationEnabled } from "./locations-integration-support";
 

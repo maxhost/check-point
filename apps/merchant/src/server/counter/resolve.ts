@@ -1,27 +1,30 @@
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   loyaltyPrograms,
   productCategories,
   products,
   programMemberships,
-} from "../schema";
+} from "@mi-pasaporte/db/schema";
 import {
   CounterError,
   type OperatorBusiness,
   type ProgramRow,
   pgErrorCode,
   programDTO,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import { type ActiveCoupon, loadActiveCoupon } from "./coupon-store";
-import { loadProgramRewards } from "../loyalty-program/persistence";
-import { insertMembershipWithProjection } from "../customers/projection";
-import { type RewardDTO, toRewardDTO } from "../loyalty-program/client-view";
+import { loadProgramRewards } from "@mi-pasaporte/domain/server/loyalty-program/persistence";
+import { insertMembershipWithProjection } from "@mi-pasaporte/domain/server/customers/projection";
+import {
+  type RewardDTO,
+  toRewardDTO,
+} from "@mi-pasaporte/domain/server/loyalty-program/client-view";
 
-const QR_UNRESOLVED = "No pudimos leer este código. Probá de nuevo.";
+const QR_UNRESOLVED = "No pudimos leer este código. Prueba de nuevo.";
 const NO_PROGRAM =
-  "Este negocio no tiene un programa activo para acreditar. Configuralo primero.";
+  "Este negocio no tiene un programa activo para acreditar. Configúralo primero.";
 
 /** The single operational (active|closing) accreditable program of a business:
  * a Puntos/Sellos program with its accrual mechanics defined (spec 0036). At most

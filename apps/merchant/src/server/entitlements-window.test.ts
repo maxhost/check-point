@@ -6,7 +6,7 @@ import {
   windowOf,
   windowStart,
   type EntitlementContext,
-} from "./entitlements";
+} from "@mi-pasaporte/domain/server/entitlements/index";
 
 /**
  * Spec 0090 §8 / ADR 0082 §10 — EL CUPO DE ANALISIS COMO VALOR DEL CATALOGO, con ventana.

@@ -54,7 +54,7 @@ export const QUALITY_LABELS: Record<Quality, string> = {
  * written by billing and by the tick, and saying so is the difference between «la pausé
  * yo» and «me la pausaron». */
 export const PAUSE_REASON_LABELS: Record<string, string> = {
-  owner: "La pausaste vos.",
+  owner: "Pausaste la campaña.",
   plan_downgraded: "Se pausó al bajar de plan.",
   no_active_locations:
     "Se pausó porque no quedan locales activos con ubicación.",

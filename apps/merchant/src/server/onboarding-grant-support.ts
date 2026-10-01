@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyProgramEvents,
@@ -9,7 +9,7 @@ import {
   memberships,
   sessions,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
 
 /**

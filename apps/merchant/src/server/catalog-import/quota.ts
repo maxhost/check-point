@@ -1,6 +1,6 @@
 import { and, count, eq, gte, isNotNull, sql } from "drizzle-orm";
-import { getDb } from "../db";
-import { catalogImports, subscriptions } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import { catalogImports, subscriptions } from "@mi-pasaporte/db/schema";
 import {
   limitOf,
   retryAfterSeconds,
@@ -8,7 +8,7 @@ import {
   windowStart,
   type EntitlementContext,
   type LimitKey,
-} from "../entitlements";
+} from "@mi-pasaporte/domain/server/entitlements/index";
 import { CatalogImportError } from "./types";
 
 /**
@@ -104,8 +104,8 @@ export async function assertQuota(
       429,
       "catalog_import_rate_limited",
       key === "catalog.imports.attempts"
-        ? "Se agotaron los intentos de análisis por hoy. Probá de nuevo mañana."
-        : "Ya usaste tu análisis de menú de hoy. Probá de nuevo mañana.",
+        ? "Se agotaron los intentos de análisis por hoy. Prueba de nuevo mañana."
+        : "Ya usaste tu análisis de menú de hoy. Prueba de nuevo mañana.",
       retryAfter,
     );
   }

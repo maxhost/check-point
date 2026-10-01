@@ -22,7 +22,7 @@
  * alternativa —copiar los siete valores acá— seria una quinta fuente de verdad para el
  * conjunto que el `CHECK` de la base declara cerrado.
  */
-import { permissionsForRole } from "./permissions-catalog";
+import { permissionsForRole } from "@mi-pasaporte/db/permissions-catalog";
 
 export type SessionUser = {
   id: string;

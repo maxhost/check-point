@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AtRiskRule } from "./at-risk";
+import type { AtRiskRule } from "@mi-pasaporte/domain/server/marketing/at-risk";
 import { type PushCandidate, decidePushEligibility } from "./push-audience";
 
 /** Spec 0103 §4 — who gets a push decided, and why not. PURE. */

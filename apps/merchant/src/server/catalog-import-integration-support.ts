@@ -8,7 +8,7 @@ export const importIntegrationEnabled =
 // `getDb()` lee `DATABASE_URL` de forma perezosa; apuntarlo ANTES de importarlo.
 if (importIntegrationEnabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   catalogImportCleanups,
@@ -18,7 +18,7 @@ import {
   productCategories,
   products,
   users,
-} from "./schema";
+} from "@mi-pasaporte/db/schema";
 
 /**
  * EL MONTAJE de las suites de integracion de la spec 0090.

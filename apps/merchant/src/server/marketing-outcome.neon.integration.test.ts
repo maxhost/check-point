@@ -19,8 +19,8 @@ import { seedCouponRedemption } from "./marketing-coupon-support";
 import { dropCampaigns, readTurns } from "./marketing-read-support";
 import { runMarketingTick, type TickSummary } from "./marketing/tick";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { campaignTurns } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaignTurns } from "@mi-pasaporte/db/schema";
 
 /**
  * Step 2 (spec 0065): a window closes and the turn is `done` WITH its result. The four

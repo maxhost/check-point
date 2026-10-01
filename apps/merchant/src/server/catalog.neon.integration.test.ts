@@ -8,8 +8,14 @@ const enabled =
 // getDb() reads DATABASE_URL lazily; point it at the isolated integration branch.
 if (enabled) process.env.DATABASE_URL = url;
 
-import { getDb } from "./db";
-import { businesses, locations, memberships, products, users } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  locations,
+  memberships,
+  products,
+  users,
+} from "@mi-pasaporte/db/schema";
 import {
   type OwnerBusiness,
   createCategory,
@@ -19,7 +25,7 @@ import {
   listCatalog,
   ownerBusiness,
   updateProduct,
-} from "./catalog";
+} from "@mi-pasaporte/domain/server/catalog";
 
 type Seed = { userId: string; businessId: string; locationId: string };
 

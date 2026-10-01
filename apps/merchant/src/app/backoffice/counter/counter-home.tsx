@@ -31,7 +31,7 @@ export function CounterHome({
         <div>
           <p className="eyebrow">Mostrador</p>
           <h1>Hola, {operatorName}</h1>
-          <p>Escaneá el QR del cliente para acreditar su compra.</p>
+          <p>Escanea el QR del cliente para acreditar su compra.</p>
         </div>
         <SignOutButton />
       </header>

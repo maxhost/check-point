@@ -53,7 +53,7 @@ export async function requestBrand(init?: RequestInit): Promise<Brand> {
     response = await fetch("/api/brand", init);
   } catch {
     throw new BrandRequestError(
-      "No pudimos confirmar el resultado. Revisá la conexión y consultá la marca actual.",
+      "No pudimos confirmar el resultado. Revisa la conexión y consulta la marca actual.",
       0,
       init?.method === "PUT",
     );
@@ -63,12 +63,12 @@ export async function requestBrand(init?: RequestInit): Promise<Brand> {
     throw new BrandRequestError(
       typeof payload?.error === "string"
         ? payload.error
-        : "No pudimos acceder a la marca. Intentá nuevamente.",
+        : "No pudimos acceder a la marca. Intenta nuevamente.",
       response.status,
     );
   if (!isBrand(payload))
     throw new BrandRequestError(
-      "No pudimos confirmar la respuesta de la marca. Consultá la versión guardada.",
+      "No pudimos confirmar la respuesta de la marca. Consulta la versión guardada.",
       response.status,
       init?.method === "PUT",
     );

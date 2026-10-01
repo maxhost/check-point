@@ -1,15 +1,28 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import { type DbTransaction, getDb, withDbTransaction } from "../db";
-import { campaignLocations, campaigns, locations } from "../schema";
+import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
+import {
+  campaignLocations,
+  campaigns,
+  locations,
+} from "@mi-pasaporte/db/schema";
 import { transitionCampaign } from "./campaign-actions";
 import { type Campaign, CampaignError, getCampaign } from "./campaign-store";
-import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import {
+  PLAN_NOT_ALLOWED_MESSAGE,
+  planAllowsCampaigns,
+} from "@mi-pasaporte/domain/server/marketing/plan-gate";
 import { loadRewardCost } from "./balance-store";
 import { parseTemplateInput } from "./template-input";
-import { pickReward } from "./reward-input";
+import { pickReward } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
-import { TEMPLATES, type TemplateDefinition, templateByKey } from "./templates";
+import {
+  TEMPLATES,
+  type TemplateDefinition,
+  templateByKey,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 import { pickWelcome } from "./welcome-input";
+import { pickCross } from "./cross-input";
+import { pickValley } from "./valley-input";
 
 /**
  * The prebuilt campaigns against the database (spec 0101 / ADR 0092). A template run is
@@ -107,7 +120,7 @@ async function runDoors(
       throw new CampaignError(
         400,
         "validation",
-        "Revisá los locales excluidos.",
+        "Revisa los locales excluidos.",
         { excludedLocationIds: "Hay un local que no es tuyo o no existe." },
       );
   }
@@ -141,7 +154,7 @@ export async function enableTemplate(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la campaña.",
+      "Revisa los datos de la campaña.",
       parsed.errors,
     );
   const input = parsed.value;
@@ -163,7 +176,7 @@ export async function enableTemplate(
         throw new CampaignError(
           409,
           "no_loyalty_reward",
-          "No se puede activar: necesitás un programa de fidelización con un premio.",
+          "No se puede activar: necesitas un programa de fidelización con un premio.",
         );
       const doors = await runDoors(tx, businessId, input.excludedLocationIds);
       // Spec 0103: the doors are PROXIMITY's. A push-only run needs none, and is created
@@ -172,13 +185,13 @@ export async function enableTemplate(
         throw new CampaignError(
           409,
           "no_usable_location",
-          "Necesitás al menos un local activo y con ubicación en el mapa.",
+          "Necesitas al menos un local activo y con ubicación en el mapa.",
         );
       if (input.endsAt !== null && input.endsAt <= now)
         throw new CampaignError(
           409,
           "campaign_expired",
-          "La fecha de fin ya pasó: elegí otra.",
+          "La fecha de fin ya pasó: elige otra.",
         );
       // Answers fast in the common case. What GUARANTEES one live run is the partial
       // unique index: when two requests truly overlap (the second one's select runs before
@@ -207,6 +220,8 @@ export async function enableTemplate(
           nearRewardPercent: input.nearRewardPercent,
           rewardRepeat: input.rewardRepeat,
           ...pickWelcome(input),
+          ...pickCross(input),
+          ...pickValley(input),
           startsAt: input.startsAt,
           endsAt: input.endsAt,
         })

@@ -28,19 +28,19 @@ export function TemplateRetail(props: PosterProps) {
       <p className="tpl-retail-sub">{subheadline}</p>
       <ul className="poster-benefits tpl-retail-benefits">
         <li>
-          <b>01</b> Comprá y acumulá
+          <b>01</b> Compra y acumula
         </li>
         <li>
-          <b>02</b> Desbloqueá recompensas
+          <b>02</b> Desbloquea recompensas
         </li>
         <li>
-          <b>03</b> Volvé por tu próximo premio
+          <b>03</b> Vuelve por tu próximo premio
         </li>
       </ul>
       <div className="tpl-retail-qr">
         <div className="poster-qr-copy">
-          <span className="tpl-retail-scan">Escaneá para sumarte</span>
-          <small>Apuntá la cámara al código</small>
+          <span className="tpl-retail-scan">Escanea para sumarte</span>
+          <small>Apunta la cámara al código</small>
         </div>
         <QrBlock svg={qrSvg} />
       </div>

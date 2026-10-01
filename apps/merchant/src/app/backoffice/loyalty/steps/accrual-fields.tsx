@@ -58,8 +58,8 @@ export function AccrualFields({
       )}
       <p aria-live="polite" className="text-sm text-content-muted">
         {mode === "per_purchase"
-          ? `Otorgás ${earn.grant} ${unit.toLowerCase()} por compra.`
-          : `Otorgás ${earn.grant} ${unit.toLowerCase()} cada ${Number.isFinite(block) && block > 0 ? formatMoney(block, vm.currencyCode) : "…"} gastados en el local.`}
+          ? `Otorgas ${earn.grant} ${unit.toLowerCase()} por compra.`
+          : `Otorgas ${earn.grant} ${unit.toLowerCase()} cada ${Number.isFinite(block) && block > 0 ? formatMoney(block, vm.currencyCode) : "…"} gastados en el local.`}
       </p>
     </section>
   );

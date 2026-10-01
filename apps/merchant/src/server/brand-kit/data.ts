@@ -1,6 +1,10 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { getDb } from "../db";
-import { businesses, locations, loyaltyPrograms } from "../schema";
+import { getDb } from "@mi-pasaporte/db";
+import {
+  businesses,
+  locations,
+  loyaltyPrograms,
+} from "@mi-pasaporte/db/schema";
 import { enrollUrl } from "./enroll-url";
 import { renderEnrollQr } from "./qr";
 
@@ -78,21 +82,21 @@ export function kitDefaults(kind: string): {
   if (kind === "stamps") {
     return {
       label: "Beneficios para clientes",
-      headline: "Juntá sellos. Llevate premios.",
-      subheadline: "Sumate gratis y recibí tu primer sello.",
+      headline: "Acumula sellos. Gana premios.",
+      subheadline: "Únete gratis y recibe tu primer sello.",
     };
   }
   if (kind === "points") {
     return {
       label: "Beneficios para clientes",
-      headline: "Sumá puntos en cada visita",
-      subheadline: "Sumate gratis y empezá a acumular puntos.",
+      headline: "Suma puntos en cada visita",
+      subheadline: "Únete gratis y empieza a acumular puntos.",
     };
   }
   return {
     label: "Beneficios para clientes",
     headline: "Tus visitas tienen premio",
-    subheadline: "Sumate gratis y empezá a recibir beneficios.",
+    subheadline: "Únete gratis y empieza a recibir beneficios.",
   };
 }
 

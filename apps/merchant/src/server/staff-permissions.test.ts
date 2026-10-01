@@ -15,7 +15,7 @@ import {
   isPermission,
   normalizePermissions,
   permissionsForRole,
-} from "./permissions-catalog";
+} from "@mi-pasaporte/db/permissions-catalog";
 import {
   assertDemotable,
   assertGrantable,

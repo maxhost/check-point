@@ -20,8 +20,8 @@ import {
 } from "./marketing-integration-support";
 import { dropCampaigns, readTurns } from "./marketing-read-support";
 import { runMarketingTick, type TickSummary } from "./marketing/tick";
-import { getDb } from "./db";
-import { programMemberships } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { programMemberships } from "@mi-pasaporte/db/schema";
 import { eq } from "drizzle-orm";
 
 /**

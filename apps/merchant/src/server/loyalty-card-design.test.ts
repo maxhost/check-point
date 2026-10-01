@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateCardDesign } from "./loyalty-program";
+import { validateCardDesign } from "@mi-pasaporte/domain/server/loyalty-program";
 
 describe("card design validation", () => {
   it("rejects a design on Puntos and allows omitting it on Sellos", () => {

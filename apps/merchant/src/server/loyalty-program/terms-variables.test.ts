@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ProgramInput } from "./core";
+import type { ProgramInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
 import { earningClauseKey } from "./terms-scope";
-import { termsVariables } from "./terms";
+import { termsVariables } from "@mi-pasaporte/domain/server/loyalty-program/terms";
 
 /**
  * Spec 0081 §1 y §2 — EL DICCIONARIO DE VARIABLES DEL TOS, y la clave de la cláusula de

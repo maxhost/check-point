@@ -66,7 +66,7 @@ export function CouponDone({
       <p className="counter-check" aria-hidden>
         ✓
       </p>
-      <h2>Entregá</h2>
+      <h2>Entrega</h2>
       <p className="counter-reward-delivered">{redeemed.coupon.label}</p>
       <p className="counter-hint">para {displayName}</p>
       <p className="counter-hint">

@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./locations-integration-support";
-import { getDb } from "./db";
-import { campaigns, loyaltyPrograms, products } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns, loyaltyPrograms, products } from "@mi-pasaporte/db/schema";
 import { createCampaign, updateCampaign } from "./marketing/campaign-store";
 import { enableTemplate } from "./marketing/template-store";
-import { INVALID_PRODUCT } from "./marketing/reward-input";
+import { INVALID_PRODUCT } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { allowedCouponKinds } from "./marketing/reward-store";
 import { dropBusiness, seedBusiness } from "./counter-integration-support";
 import {

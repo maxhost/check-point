@@ -1,6 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
-import { withDbTransaction, type DbTransaction } from "../db";
-import { catalogImports, productCategories, products } from "../schema";
+import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
+import {
+  catalogImports,
+  productCategories,
+  products,
+} from "@mi-pasaporte/db/schema";
 import type { ImportResult, ProviderExtraction } from "./types";
 import { buildAdditivePlan, type CatalogSnapshot } from "./plan";
 import { touch } from "./quota";

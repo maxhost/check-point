@@ -11,13 +11,13 @@ import {
   integrationEnabled,
   seedMember,
 } from "../../../../server/counter-integration-support";
-import { getDb } from "../../../../server/db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   businesses,
   loyaltyPrograms,
   memberships,
   users,
-} from "../../../../server/schema";
+} from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../server/merchant-session";
 
 import { GET } from "./route";
