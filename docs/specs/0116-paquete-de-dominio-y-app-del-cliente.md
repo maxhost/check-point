@@ -1,7 +1,7 @@
 ---
 spec: 0116
 fecha: 2026-09-30
-estado: cerrada
+estado: implementada
 resumen: Fase 2 del ADR 0107 — los 111 modulos que arrastran las pantallas y rutas del cliente salen de merchant a packages/domain (@mi-pasaporte/domain, ADR 0108) byte a byte; apps/consumer pasa a tener COPIAS identicas de app/(consumer)/** y app/api/public/** (45 archivos), su CSS y sus assets, y se borran sus demos; merchant sigue sirviendo todo y consumer no recibe trafico.
 disjunta: si
 archivos: packages/domain/**, apps/merchant/src/** (git mv de 111 modulos + lineas de import), apps/merchant/{package.json,next.config.ts}, apps/consumer/**, tools/google-wallet-callback.test.ts, tools/vi-mock-targets.test.ts, pnpm-lock.yaml, packages/db/src/schema/{billing,membership,staff-pin}.ts (comentarios), .claude/skills/gotchas-del-repo/SKILL.md, docs/**
