@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
-import type { WelcomeCouponSummary } from "@mi-pasaporte/domain/server/consumer/welcome-coupons";
+import type { ConsumerCoupon } from "@mi-pasaporte/domain/server/consumer/coupons";
 import { PushPrompt } from "../push-prompt";
 import { WalletButtons } from "../wallet-cta";
+import { ActivityView } from "./activity-view";
+import { BenefitsTab } from "./benefits-tab";
 import { BottomNav, type WalletTab } from "./bottom-nav";
 import { ProgramsTab } from "./programs-tab";
 import { QrTab } from "./qr-tab";
@@ -24,8 +26,10 @@ function standalone() {
 export function WalletShell({
   accountId,
   firstName,
+  lastName,
+  phone,
   programs,
-  welcomeCoupons,
+  coupons,
   initialTab,
   qrSvg,
   isIos,
@@ -34,8 +38,10 @@ export function WalletShell({
 }: {
   accountId: string;
   firstName: string;
+  lastName: string;
+  phone: string;
   programs: ConsumerProgramSummary[];
-  welcomeCoupons: WelcomeCouponSummary[];
+  coupons: ConsumerCoupon[];
   initialTab: WalletTab;
   qrSvg: string;
   isIos: boolean;
@@ -44,6 +50,7 @@ export function WalletShell({
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<WalletTab>(initialTab);
+  const [showActivity, setShowActivity] = useState(false);
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [launchReady, setLaunchReady] = useState(false);
   const [launchError, setLaunchError] = useState(false);
@@ -118,37 +125,80 @@ export function WalletShell({
 
   return (
     <main className="consumer-wallet-shell">
-      <header>
-        <p>Check Pass Club</p>
-        <h1>¡Hola, {firstName}!</h1>
+      <header className="cp-app-header">
+        <div className="cp-wordmark">
+          <span aria-hidden="true">C</span> CheckPass
+        </div>
+        <button
+          className="cp-activity-button"
+          type="button"
+          aria-label="Ver actividad"
+          onClick={() => setShowActivity(true)}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3a9 9 0 1 0 9 9M12 7v5l3 2" />
+          </svg>
+        </button>
       </header>
-      {activeTab === "programs" && (
-        <ProgramsTab
+      {showActivity ? (
+        <ActivityView
+          coupons={coupons}
           programs={programs}
-          welcomeCoupons={welcomeCoupons}
-          onShowQr={() => setActiveTab("qr")}
-        />
-      )}
-      {activeTab === "qr" && (
-        <QrTab
-          qrSvg={qrSvg}
-          isIos={isIos}
-          vapidPublicKey={installedMode ? vapidPublicKey : null}
-          showWalletButtons={showWalletButtons}
-          onSubscribed={(issued) => {
-            setWelcomeIssued(issued);
-            setOverlay(null);
+          onBack={() => setShowActivity(false)}
+          onShowBenefits={() => {
+            setShowActivity(false);
+            setActiveTab("benefits");
+          }}
+          onShowPrograms={() => {
+            setShowActivity(false);
             setActiveTab("programs");
-            router.refresh();
           }}
         />
+      ) : (
+        <>
+          {activeTab === "benefits" && (
+            <BenefitsTab
+              coupons={coupons}
+              onShowQr={() => setActiveTab("qr")}
+              onShowPrograms={() => setActiveTab("programs")}
+            />
+          )}
+          {activeTab === "programs" && <ProgramsTab programs={programs} />}
+          {activeTab === "qr" && (
+            <QrTab
+              qrSvg={qrSvg}
+              isIos={isIos}
+              vapidPublicKey={installedMode ? vapidPublicKey : null}
+              showWalletButtons={showWalletButtons}
+              onSubscribed={(issued) => {
+                setWelcomeIssued(issued);
+                setOverlay(null);
+                setActiveTab("benefits");
+                router.refresh();
+              }}
+            />
+          )}
+          {activeTab === "settings" && (
+            <SettingsTab
+              programs={programs}
+              firstName={firstName}
+              lastName={lastName}
+              phone={phone}
+            />
+          )}
+        </>
       )}
-      {activeTab === "settings" && <SettingsTab programs={programs} />}
-      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+      <BottomNav
+        activeTab={activeTab}
+        onChange={(tab) => {
+          setShowActivity(false);
+          setActiveTab(tab);
+        }}
+      />
 
       {welcomeIssued > 0 && overlay === null && (
         <div className={styles.toast} role="status">
-          ¡Tu beneficio de bienvenida ya está listo! Revisá tus programas.
+          ¡Tu beneficio de bienvenida ya está listo! Revisá tus beneficios.
           <button
             type="button"
             onClick={() => setWelcomeIssued(0)}
@@ -206,7 +256,7 @@ export function WalletShell({
                     onSubscribed={(issued) => {
                       setWelcomeIssued(issued);
                       setOverlay(null);
-                      setActiveTab("programs");
+                      setActiveTab("benefits");
                       router.refresh();
                     }}
                   />
