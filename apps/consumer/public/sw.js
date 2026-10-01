@@ -1,4 +1,4 @@
-// CheckPass Club service worker (spec 0037). Served from the root scope (`/sw.js` ⇒ scope
+// Check Pass Club service worker (spec 0037). Served from the root scope (`/sw.js` ⇒ scope
 // `/`) so it can receive Web Push for the whole origin. Deliberately minimal: no offline
 // caching (out of scope) — only `push` (show the notice) and `notificationclick` (open
 // the portal). The push payload is the JSON the `webpush` channel encrypts: {title, body,
@@ -13,11 +13,11 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "CheckPass Club";
+  const title = data.title || "Check Pass Club";
   const options = {
     body: data.body || "",
-    icon: "/wallet-logo.png",
-    badge: "/wallet-logo.png",
+    icon: "/checkpass-icon-192.png",
+    badge: "/checkpass-badge-96.png",
     data: { url: data.url || "/wallet", clickId: data.clickId || null },
   };
   event.waitUntil(self.registration.showNotification(title, options));

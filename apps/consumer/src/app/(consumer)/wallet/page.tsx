@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
       : WALLET_MANIFEST_PATH,
     appleWebApp: {
       capable: true,
-      title: "CheckPass Club",
+      title: "CheckPass",
       statusBarStyle: "default",
     },
   };
@@ -56,7 +56,7 @@ export default async function WalletPage() {
     return (
       <main style={{ ...page, textAlign: "center" }}>
         <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-          CheckPass Club
+          Check Pass Club
         </p>
         <h1 style={{ fontSize: 22, marginTop: 4 }}>
           Tu tarjeta no está abierta

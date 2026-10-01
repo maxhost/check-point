@@ -58,7 +58,7 @@ function AndroidInstallAction() {
 
   if (installed)
     return (
-      <p className={styles.success}>CheckPass Club ya está en tu inicio ✓</p>
+      <p className={styles.success}>Check Pass Club ya está en tu inicio ✓</p>
     );
   return (
     <>
