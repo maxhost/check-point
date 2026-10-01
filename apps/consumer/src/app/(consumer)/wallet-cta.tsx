@@ -16,11 +16,18 @@ const walletButton: React.CSSProperties = {
   marginTop: 12,
 };
 
-export function WalletButtons({ isIos }: { isIos: boolean }) {
+export function WalletButtons({
+  isIos,
+  onAction,
+}: {
+  isIos: boolean;
+  onAction?: () => void;
+}) {
   if (isIos) {
     return (
       <a
         href="/api/public/wallet/apple.pkpass"
+        onClick={onAction}
         style={{
           ...walletButton,
           display: "flex",
@@ -44,6 +51,7 @@ export function WalletButtons({ isIos }: { isIos: boolean }) {
   return (
     <a
       href="/api/public/wallet/google"
+      onClick={onAction}
       style={{
         ...walletButton,
         display: "flex",

@@ -414,6 +414,13 @@
       "when": 1790744348693,
       "tag": "0058_horas_valle",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790875470731,
+      "tag": "0059_home_launch_welcome",
+      "breakpoints": true
     }
   ]
 }

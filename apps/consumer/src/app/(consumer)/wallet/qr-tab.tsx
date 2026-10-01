@@ -6,11 +6,13 @@ export function QrTab({
   isIos,
   vapidPublicKey,
   onSubscribed,
+  showWalletButtons = true,
 }: {
   qrSvg: string;
   isIos: boolean;
   vapidPublicKey: string | null;
-  onSubscribed: () => void;
+  onSubscribed: (welcomeIssued: number) => void;
+  showWalletButtons?: boolean;
 }) {
   return (
     <section className="consumer-qr-tab" aria-labelledby="qr-tab-title">
@@ -21,9 +23,11 @@ export function QrTab({
         aria-label="Tu código QR"
         dangerouslySetInnerHTML={{ __html: qrSvg }}
       />
-      <div className="consumer-wallet-buttons">
-        <WalletButtons isIos={isIos} />
-      </div>
+      {showWalletButtons && (
+        <div className="consumer-wallet-buttons">
+          <WalletButtons isIos={isIos} />
+        </div>
+      )}
       <PushPrompt vapidPublicKey={vapidPublicKey} onSubscribed={onSubscribed} />
     </section>
   );

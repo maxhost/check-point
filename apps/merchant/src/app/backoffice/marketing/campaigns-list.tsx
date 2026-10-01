@@ -31,7 +31,7 @@ export function CampaignsList({
             <strong className="mt-1 block">{campaign.name}</strong>
             <span className="mt-1 block text-sm">
               {campaign.templateKey === "welcome"
-                ? "Se entrega al instalar el pase"
+                ? "Se entrega al activar notificaciones en CheckPass"
                 : `Dormidos hace ${campaign.dormantDays} días`}
             </span>
             {overview && (
@@ -55,7 +55,7 @@ export function CampaignsList({
       {showCreate && (
         <Link className="marketing-card-link" href="/backoffice/marketing/new">
           <strong>Crear campaña a medida</strong>
-          <span className="mt-1 block text-sm">Define tus propias reglas.</span>
+          <span className="mt-1 block text-sm">Definí tus propias reglas.</span>
         </Link>
       )}
     </div>

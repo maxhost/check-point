@@ -52,7 +52,7 @@ export function PushPrompt({
   /** Optional `#RRGGBB` brand color for the "Activar notificaciones" button (and the
    * install hint when rendered on iOS Safari). Absent → neutral colors (`/wallet`). */
   accentColor?: string;
-  onSubscribed?: () => void;
+  onSubscribed?: (welcomeIssued: number) => void;
   /** Removes the generic card when the enrollment screen supplies its own layout. */
   embedded?: boolean;
 }) {
@@ -89,15 +89,16 @@ export function PushPrompt({
   async function enable() {
     setStatus("working");
     try {
-      const reg = await navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-      });
-      await navigator.serviceWorker.ready;
+      // Ask within the click's user activation, especially on iOS Home Screen.
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setStatus("denied");
         return;
       }
+      const reg = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+      });
+      await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey!),
@@ -113,7 +114,12 @@ export function PushPrompt({
       });
       if (res.ok) {
         setStatus("subscribed");
-        onSubscribed?.();
+        const data = (await res.json().catch(() => null)) as {
+          welcomeIssued?: unknown;
+        } | null;
+        onSubscribed?.(
+          typeof data?.welcomeIssued === "number" ? data.welcomeIssued : 0,
+        );
       } else {
         setStatus("error");
       }

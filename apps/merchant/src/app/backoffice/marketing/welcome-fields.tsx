@@ -53,7 +53,7 @@ export function WelcomeFields({
         value={draft.message}
         onChange={(message) => change({ message })}
         maxLength={template.message.maxLength}
-        description={`${draft.message.length}/${template.message.maxLength} caracteres. Se muestra antes de instalar el pase.`}
+        description={`${draft.message.length}/${template.message.maxLength} caracteres. Se muestra antes de añadir CheckPass al inicio.`}
         errorMessage={errors.message}
       />
       <ChoiceGroup
@@ -121,7 +121,7 @@ export function WelcomeFields({
           label="Inicio"
           value={draft.startsAt}
           onChange={(startsAt) => change({ startsAt })}
-          description={`Deja vacío para activar ahora. Hora de ${settings.timeZone}.`}
+          description={`Dejá vacío para activar ahora. Hora de ${settings.timeZone}.`}
           errorMessage={errors.startsAt}
         />
         <TextField
@@ -149,7 +149,7 @@ export function WelcomeFields({
         errors.dormantDays ||
         errors.excludedLocationIds ||
         errors.couponMaxRedemptions) && (
-        <Alert kind="error" title="Revisa la configuración">
+        <Alert kind="error" title="Revisá la configuración">
           {errors.channels ||
             errors.dormantDays ||
             errors.excludedLocationIds ||

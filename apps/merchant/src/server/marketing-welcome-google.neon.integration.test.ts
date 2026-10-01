@@ -11,6 +11,7 @@ import {
 import { integrationEnabled } from "./counter-integration-support";
 import { POST as callback } from "../../../consumer/src/app/api/public/wallet/google/callback/route";
 import { GOOGLE_ROOT_KEYS_URL } from "@mi-pasaporte/domain/server/wallet/google-callback";
+import { issueWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 import {
   ecKeyPair,
   rootKeyOf,
@@ -18,6 +19,7 @@ import {
 } from "./google-callback-support";
 import {
   DAY,
+  activateHomePush,
   dropWelcomeWorlds,
   googlePass,
   readGoogleSavedAt,
@@ -82,7 +84,7 @@ async function androidWorld(label: string) {
 }
 
 describe.skipIf(!integrationEnabled)("welcome gift — Google callback", () => {
-  it("ORACULO DE M8: a signed `save` stamps google_saved_at and issues the gift", async () => {
+  it("a signed `save` records Wallet, while Home plus push unlock the gift", async () => {
     const { world, person, serial } = await androidWorld("Welcome M8");
     const response = await post(
       signedCallback({
@@ -94,6 +96,9 @@ describe.skipIf(!integrationEnabled)("welcome gift — Google callback", () => {
     );
     expect(response.status).toBe(200);
     expect(await readGoogleSavedAt(serial)).toBeInstanceOf(Date);
+    expect(await readWelcomeCoupons(world.seed.business.id)).toEqual([]);
+    await activateHomePush(person);
+    expect(await issueWelcomeGifts(person.consumerId)).toBe(1);
     expect(
       (await readWelcomeCoupons(world.seed.business.id)).map(
         (c) => c.membershipId,

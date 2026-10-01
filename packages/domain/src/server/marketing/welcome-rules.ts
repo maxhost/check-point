@@ -100,14 +100,14 @@ export type WelcomeVerdict =
   | "issue"
   | "enrolled_before"
   | "came_by_cross"
-  | "not_installed"
+  | "home_not_opened"
+  | "notifications_not_active"
   | "device_already_gifted";
 
 /**
  * Steps 1–3 of spec 0107 §3, in order. `enrolledAt` is the membership's enrolment; a
- * consumer already enrolled when the template was switched on gets nothing (owner, point 4
- * of 2026-09-27). «Installed» is an Apple device registered (or the one registering right
- * now) or Google's `save`. An iPhone that already got THIS business's welcome — even after
+ * consumer already enrolled when the template was switched on gets nothing. The installed
+ * PWA must have opened and Web Push must be active. An iPhone that already got THIS business's welcome — even after
  * deleting the pass — gets nothing again.
  *
  * Spec 0112 / ADR 0104 §5 («Solo el cruzado», owner): a consumer holding a CROSS coupon of
@@ -117,14 +117,15 @@ export type WelcomeVerdict =
 export function decideWelcomeGift(facts: {
   enrolledAt: Date;
   activatedAt: Date;
-  appleDevices: number;
-  googleSaved: boolean;
+  homeLaunched: boolean;
+  pushSubscribed: boolean;
   deviceAlreadyGifted: boolean;
   crossCouponFromBusiness: boolean;
 }): WelcomeVerdict {
   if (facts.enrolledAt < facts.activatedAt) return "enrolled_before";
   if (facts.crossCouponFromBusiness) return "came_by_cross";
-  if (facts.appleDevices === 0 && !facts.googleSaved) return "not_installed";
+  if (!facts.homeLaunched) return "home_not_opened";
+  if (!facts.pushSubscribed) return "notifications_not_active";
   if (facts.deviceAlreadyGifted) return "device_already_gifted";
   return "issue";
 }

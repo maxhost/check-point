@@ -21,7 +21,8 @@ import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaigns,
-  walletPasses,
+  consumerAccounts,
+  webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
@@ -83,15 +84,20 @@ describe.skipIf(!integrationEnabled)("valley coupon — welcome", () => {
         createdByUserId: x.seed.userId,
       })
       .returning({ id: campaigns.id });
-    // Auto-enrolled by the counter's scan AFTER the switch-on, with a saved Google pass.
+    // Auto-enrolled by the counter's scan AFTER the switch-on, then Home + push activated.
     await resolveScan(x.seed.business, consumer.qrToken);
     await getDb()
-      .insert(walletPasses)
+      .update(consumerAccounts)
+      .set({ homeLaunchedAt: new Date() })
+      .where(eq(consumerAccounts.id, consumer.id));
+    await getDb()
+      .insert(webPushSubscriptions)
       .values({
         consumerId: consumer.id,
-        provider: "google",
-        serialNumber: `gv-${randomUUID()}`,
-        googleSavedAt: new Date(),
+        endpoint: `https://push.test/${randomUUID()}`,
+        p256dhKey: "test-key",
+        authKey: "test-auth",
+        platform: "android",
       });
 
     const issued = await withDbTransaction((tx) =>

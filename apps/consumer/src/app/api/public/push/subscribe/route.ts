@@ -5,6 +5,7 @@ import {
   upsertSubscription,
   webPushSubscriptionResponse,
 } from "@mi-pasaporte/domain/server/push/subscriptions";
+import { issueWelcomeGiftsSafely } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -58,9 +59,12 @@ export async function POST(request: NextRequest) {
     authKey: auth,
     userAgent: request.headers.get("user-agent"),
   });
+  // A home launch is checked inside the issuer. Reposting the same endpoint never
+  // duplicates a coupon or its first welcome notification.
+  const welcomeIssued = await issueWelcomeGiftsSafely(account.id);
 
   return NextResponse.json(
-    { subscription: webPushSubscriptionResponse(row) },
+    { subscription: webPushSubscriptionResponse(row), welcomeIssued },
     { status: 201 },
   );
 }

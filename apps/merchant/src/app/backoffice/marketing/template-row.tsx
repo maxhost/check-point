@@ -106,7 +106,7 @@ export function TemplateRow({
       <p className="mt-2 text-sm text-content-muted">
         {groupNames[template.group] ?? template.group} ·{" "}
         {template.welcome
-          ? "Se entrega al instalar el pase"
+          ? "Se entrega al activar notificaciones en CheckPass"
           : template.channels
               .map((channel) => channelNames[channel])
               .join(" y ")}

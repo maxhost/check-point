@@ -132,7 +132,7 @@ export function CampaignDetail({
             <dt>Canales</dt>
             <dd>
               {welcome
-                ? "Se entrega al instalar el pase"
+                ? "Se entrega al activar notificaciones en CheckPass"
                 : campaign.channels
                     .map((channel) =>
                       channel === "push" ? "Push" : "Proximidad",

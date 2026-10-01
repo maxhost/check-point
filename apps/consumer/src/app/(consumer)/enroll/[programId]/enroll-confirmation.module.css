@@ -1,208 +1,204 @@
 .confirmation {
-  color: #19312d;
-  padding: 2px 0 28px;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 4px 0 32px;
+  color: #12313a;
 }
-
 .accountNotice {
   padding: 12px 14px;
-  border: 1px solid #bdd7e9;
-  border-radius: 14px;
-  background: #edf7fc;
+  border-radius: 13px;
+  background: #e8f3f7;
   color: #174364;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
-
 .hero {
-  padding: 18px 0 20px;
+  padding: 28px 22px 26px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 90% 12%, #2b6071 0, transparent 48%), #102d3d;
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(16, 45, 61, 0.17);
 }
-
-.heroMark {
+.appIcon {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 68px;
+  height: 68px;
+  margin-bottom: 26px;
   border-radius: 18px;
-  background: #d9f3e5;
-  color: #166746;
-  font-size: 27px;
-  font-weight: 800;
-  margin-bottom: 18px;
+  background: #f5fbf7;
+  color: #102d3d;
+  font-size: 45px;
+  font-weight: 750;
+  line-height: 1;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
 }
-
-.eyebrow {
-  margin: 0 0 8px;
-  color: #5a746e;
+.step {
+  color: #b9ddce;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
 }
-
-.hero h2 {
-  margin: 0;
-  font-size: clamp(27px, 7vw, 34px);
+.hero h1 {
+  margin: 9px 0 0;
+  font-size: clamp(30px, 8vw, 38px);
   letter-spacing: -0.045em;
-  line-height: 1.08;
+  line-height: 1.07;
 }
-
-.hero > p:last-child {
+.hero p {
   margin: 12px 0 0;
-  color: #52645f;
+  color: #d7e8e7;
   font-size: 15px;
   line-height: 1.55;
 }
-
 .hero strong {
-  color: #18392e;
+  color: #fff;
 }
-.loading {
-  color: #63726e;
-}
-
-.actions {
+.benefits {
   display: grid;
   gap: 12px;
+  margin: 22px 0;
 }
-
-.action {
-  padding: 19px;
-  border: 1px solid #e1e8e2;
-  border-radius: 21px;
-  background: #fff;
-  box-shadow: 0 5px 20px rgba(23, 53, 39, 0.045);
-}
-
-.featured {
-  border-color: #bfdccb;
-  background: linear-gradient(145deg, #f0faf3 0%, #fff 82%);
-}
-
-.actionTop {
+.benefits > div {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 13px;
+  gap: 13px;
 }
-
-.number {
-  color: #44715b;
-  font-size: 12px;
-  font-weight: 850;
-  letter-spacing: 0.1em;
-}
-
-.icon {
+.benefits span {
   display: grid;
+  flex: 0 0 36px;
   place-items: center;
-  width: 39px;
-  height: 39px;
-  border-radius: 12px;
-  background: #e9f4ec;
-  color: #245c42;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #eaf5ee;
+  color: #1d6246;
+  font-size: 21px;
+  font-weight: 700;
 }
-
-.icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.action h3 {
+.benefits p {
   margin: 0;
-  color: #17372c;
-  font-size: 19px;
-  letter-spacing: -0.025em;
-  line-height: 1.22;
-}
-
-.action p {
-  color: #52645e;
   font-size: 14px;
-  line-height: 1.5;
-  margin: 8px 0 0;
+  font-weight: 650;
 }
-
-.action a,
-.action button {
-  min-height: 48px;
-}
-
-.action a {
-  margin-top: 16px !important;
-}
-
-.homeButton {
+.reward {
   display: flex;
-  width: 100%;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #f1dcaa;
+  border-radius: 18px;
+  background: #fff8e9;
+}
+.rewardIcon {
+  color: #a46a19;
+  font-size: 25px;
+  line-height: 1;
+}
+.reward strong {
+  font-size: 14px;
+}
+.reward p {
+  margin: 4px 0;
+  font-size: 16px;
+  font-weight: 750;
+}
+.reward small {
+  color: #69573d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.installArea {
+  margin-top: 22px;
+}
+.installButton {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 16px;
-  padding: 12px 16px;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
   border: 0;
-  border-radius: 12px;
-  background: var(--brand, #174c39);
-  color: var(--brand-ink, #fff);
+  border-radius: 15px;
+  background: #166849;
+  color: #fff;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 750;
+  text-decoration: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
-
-.homeButton span {
-  font-size: 19px;
+.installButton span {
+  font-size: 20px;
 }
-.homeButton:focus-visible,
-.walletLink:focus-visible {
-  outline: 3px solid #245c42;
+.installButton:focus-visible,
+.skipLink:focus-visible {
+  outline: 3px solid #166849;
   outline-offset: 3px;
 }
-.success {
-  color: #176847 !important;
-  font-weight: 700;
-}
-
-.action .instructions {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 10px;
-  background: #edf4ef;
-  color: #294b3c;
-}
-
-.iosSteps {
-  display: grid;
-  gap: 9px;
-  margin-top: 15px;
+.instructions,
+.installed {
   padding: 14px;
-  border-radius: 13px;
-  background: #fff;
-  color: #2e4940;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.smallNote {
-  font-size: 12px !important;
-}
-
-.walletLink {
-  display: flex;
-  min-height: 48px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 15px;
-  color: #245d45;
+  border-radius: 12px;
+  background: #eaf5ee;
+  color: #205341;
   font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
+  line-height: 1.55;
 }
-
+.iosSteps {
+  padding: 18px;
+  border: 1px solid #cce1d4;
+  border-radius: 18px;
+  background: #f0faf3;
+}
+.iosSteps strong {
+  font-size: 16px;
+}
+.iosSteps ol {
+  margin: 14px 0 0;
+  padding-left: 21px;
+}
+.iosSteps li {
+  padding-left: 3px;
+  margin: 9px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.iosSteps li strong {
+  font-size: inherit;
+}
+.iosSteps p {
+  margin: 12px 0 0;
+  color: #566a5d;
+  font-size: 12px;
+}
+.nextStep {
+  margin: 12px 5px 0;
+  color: #667970;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.skipLink {
+  display: block;
+  margin-top: 22px;
+  color: #35654f;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.loading {
+  color: #667970;
+}
 @media (min-width: 600px) {
   .hero {
-    padding-top: 27px;
+    padding: 34px 30px;
   }
-  .action {
-    padding: 22px;
+  .benefits {
+    margin: 27px 4px;
   }
 }
