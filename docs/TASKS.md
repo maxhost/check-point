@@ -15,7 +15,11 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 `main` (`main` = `0930d4b`)**: con `my.` caido, merchant y `www` romperian `/api/public/*` (pases, logos e imagenes del
 backoffice). **Rama de CI:** rol `checkpass_consumer` NOLOGIN por SQL, sin membresias, `false` en `merchant_auth`/`drizzle`,
 DML en las 52 tablas; M6 mutada (true/1) y revertida (false/0). El rol de la API de Neon (miembro de `neon_superuser`)
-se borro con OK del owner. **Sigue:** runbook R1–R8 de la spec 0117 DE A UN PASO, verificando la precondicion de cada uno;
+se borro con OK del owner. **PROD (2026-09-30, a pedido del owner «ejecuta tu todo lo que hay que hacer en main»):** rol `checkpass_consumer`
+creado por `run_sql` en la rama `main` de Neon como **NOLOGIN** (sin contraseña por el agente) con los mismos GRANT y
+DEFAULT PRIVILEGES; sondas: sin membresias, `false/false/false/false` (super/bypassrls/createrole/login), `false` en
+`merchant_auth` (0 tablas legibles) y `drizzle`, DML en 52/52. Falta que el owner active el login con su contraseña
+(`ALTER ROLE … LOGIN PASSWORD`). **Sigue:** runbook R1–R8 de la spec 0117 DE A UN PASO, verificando la precondicion de cada uno;
 R4b = push `motor` → `main`. Despues marcar la 0117 implementada.
 
 ### Bloque anterior
