@@ -26,13 +26,13 @@ export function TemplateMinimal(props: PosterProps) {
         <h1 className="tpl-minimal-headline">{headline}</h1>
         <p className="tpl-minimal-sub">{subheadline}</p>
         <ul className="poster-benefits tpl-minimal-benefits">
-          <li>Sumá</li>
-          <li>Canjeá</li>
-          <li>Disfrutá</li>
+          <li>Suma</li>
+          <li>Canjea</li>
+          <li>Disfruta</li>
         </ul>
       </div>
       <div className="tpl-minimal-qr">
-        <span className="tpl-minimal-scan">Escaneá. Sumate. Listo.</span>
+        <span className="tpl-minimal-scan">Escanea. Únete. Listo.</span>
         <QrBlock svg={qrSvg} />
         <span className="tpl-minimal-proof">Gratis · sin descargar nada</span>
       </div>

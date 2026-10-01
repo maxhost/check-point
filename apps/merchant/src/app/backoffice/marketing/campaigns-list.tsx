@@ -55,7 +55,7 @@ export function CampaignsList({
       {showCreate && (
         <Link className="marketing-card-link" href="/backoffice/marketing/new">
           <strong>Crear campaña a medida</strong>
-          <span className="mt-1 block text-sm">Definí tus propias reglas.</span>
+          <span className="mt-1 block text-sm">Define tus propias reglas.</span>
         </Link>
       )}
     </div>

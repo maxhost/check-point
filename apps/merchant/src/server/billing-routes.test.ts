@@ -223,7 +223,7 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
       // y cambia porque el contrato cambió — el status sigue siendo 403 y el `error` sigue
       // siendo la copia de billing.
       expect(await response.json()).toEqual({
-        error: "Solo el owner puede gestionar la suscripción.",
+        error: "Solo la persona propietaria puede gestionar la suscripción.",
         code: "not_owner",
       });
       expect(world.readSubscription).not.toHaveBeenCalled();

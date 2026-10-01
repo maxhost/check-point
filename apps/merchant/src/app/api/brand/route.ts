@@ -21,7 +21,7 @@ export const runtime = "nodejs";
  */
 const MESSAGES = {
   missingPermission: "No tienes permiso para gestionar la marca.",
-  emailNotVerified: "Verificá tu email para gestionar la marca.",
+  emailNotVerified: "Verifica tu email para gestionar la marca.",
 };
 
 async function readJson(request: Request) {

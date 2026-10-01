@@ -97,7 +97,7 @@ export function DetailedSale({
               <span>{product.name}</span>
               <small>
                 {product.unitPrice === null
-                  ? "Sin precio · lo tecleás"
+                  ? "Sin precio · lo tecleas"
                   : formatMoney(product.unitPrice, currencyCode)}
               </small>
             </button>
@@ -152,7 +152,7 @@ export function QuickSale({
       </label>
       <p className="counter-hint">
         La venta rápida no se puede editar después. Para desglosar por producto,
-        usá la venta detallada.
+        usa la venta detallada.
       </p>
     </div>
   );

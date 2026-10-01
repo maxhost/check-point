@@ -39,7 +39,7 @@ export async function PUT(request: Request, { params }: Params) {
     if (!result.ok)
       return NextResponse.json(
         {
-          error: "Revisá el horario.",
+          error: "Revisa el horario.",
           code: "validation",
           fields: result.fields,
         },

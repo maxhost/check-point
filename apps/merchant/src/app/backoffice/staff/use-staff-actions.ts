@@ -35,10 +35,10 @@ export function useStaffActions({
     setActionToast({
       message:
         target.action === "pin"
-          ? "Regenerando el PIN, esperá un momento…"
+          ? "Regenerando el PIN, espera un momento…"
           : target.member.status === "active"
-            ? "Dando de baja al integrante, esperá un momento…"
-            : "Reactivando al integrante, esperá un momento…",
+            ? "Dando de baja al integrante, espera un momento…"
+            : "Reactivando al integrante, espera un momento…",
       kind: "warning",
       pending: true,
     });

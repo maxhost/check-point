@@ -46,7 +46,7 @@ export function ProgramClosing({ vm }: { vm: LoyaltyVm }) {
             timezone={vm.timezone}
             error={
               attempted && !earningValid
-                ? "Elegí una fecha futura válida"
+                ? "Elige una fecha futura válida"
                 : undefined
             }
           />

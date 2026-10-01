@@ -11,8 +11,8 @@ export default function MerchantEntryPage() {
         <p className="eyebrow">CheckPass Club · Negocios</p>
         <h1>Fidelización simple para tu negocio</h1>
         <p>
-          Sumá clientes con tu programa de puntos o sellos, acreditá desde el
-          mostrador y llegá a tus clientes por su billetera.
+          Suma clientes con tu programa de puntos o sellos, acredita desde el
+          mostrador y llega a tus clientes por su billetera.
         </p>
       </section>
     </main>

@@ -126,7 +126,7 @@ function startError(error: unknown): NextResponse {
   });
   return NextResponse.json(
     {
-      error: "No pudimos continuar. Intentá de nuevo.",
+      error: "No pudimos continuar. Intenta de nuevo.",
       code: "auth_unavailable",
     },
     { status: 503 },

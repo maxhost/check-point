@@ -20,24 +20,24 @@ const HELP: Array<{
   {
     id: "limit",
     title: "¿Por qué no puedo añadir locales?",
-    body: "Revisá cuántos locales activos incluye tu plan.",
+    body: "Revisa cuántos locales activos incluye tu plan.",
   },
   {
     id: "create",
     title: "Añadir un nuevo local",
-    body: "Completá el nombre y la dirección de una sucursal.",
+    body: "Completa el nombre y la dirección de una sucursal.",
     needsCapacity: true,
   },
   {
     id: "edit",
     title: "Editar un local",
-    body: "Actualizá el nombre o la dirección de un local activo.",
+    body: "Actualiza el nombre o la dirección de un local activo.",
     needsLocation: true,
   },
   {
     id: "archive",
     title: "Archivar un local",
-    body: "Retirá un local de la operación sin borrar su historial.",
+    body: "Retira un local de la operación sin borrar su historial.",
     needsLocation: true,
   },
 ];
@@ -92,7 +92,7 @@ export function LocationsTourController({
             <header>
               <div>
                 <p className="eyebrow">Ayuda</p>
-                <h2 id="locations-help-title">¿Qué querés hacer?</h2>
+                <h2 id="locations-help-title">¿Qué quieres hacer?</h2>
               </div>
               <button aria-label="Cerrar" onClick={() => setHelpOpen(false)}>
                 <Xmark aria-hidden="true" />
@@ -118,7 +118,7 @@ export function LocationsTourController({
                       </small>
                     )}
                     {item.needsLocation && !hasActiveLocations && (
-                      <small>Primero añadí un local activo.</small>
+                      <small>Primero añade un local activo.</small>
                     )}
                   </button>
                 );

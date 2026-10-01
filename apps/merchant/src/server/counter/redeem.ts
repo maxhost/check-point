@@ -63,7 +63,7 @@ async function loadRewardInProgram(
     throw new CounterError(
       422,
       "unknown_reward",
-      "Ese premio ya no está disponible. Volvé a escanear.",
+      "Ese premio ya no está disponible. Vuelve a escanear.",
     );
   }
   return row;
@@ -144,7 +144,7 @@ export async function redeemReward(
       throw new CounterError(
         503,
         "redeem_failed",
-        "No pudimos canjear. Probá de nuevo.",
+        "No pudimos canjear. Prueba de nuevo.",
       );
     }
     assertSameReward(existing, rewardId);

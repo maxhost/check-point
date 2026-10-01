@@ -24,7 +24,7 @@ export function BrandRecovery({
       aria-label="Revisar la marca guardada"
     >
       <p>
-        Tu borrador se conserva. Consultá la marca actual antes de volver a
+        Tu borrador se conserva. Consulta la marca actual antes de volver a
         guardar.
       </p>
       <button

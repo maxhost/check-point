@@ -28,13 +28,13 @@ export default async function BrandKitPage() {
           <ModuleHeader
             eyebrow="Marca"
             title="Afiche de enrolamiento"
-            description="Generá el afiche imprimible con el QR para sumar clientes."
+            description="Genera el afiche imprimible con el QR para sumar clientes."
             closeHref="/backoffice/brand"
           />
           <div className="brand-kit-block">
-            <h2>Todavía no tenés un programa</h2>
+            <h2>Todavía no tienes un programa</h2>
             <p>
-              Creá tu programa de fidelización antes de generar el afiche: el QR
+              Crea tu programa de fidelización antes de generar el afiche: el QR
               necesita un programa al que sumar a tus clientes.
             </p>
             <a className="brand-kit-block-cta" href="/backoffice/loyalty">

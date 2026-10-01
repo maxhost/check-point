@@ -230,7 +230,7 @@ export async function setStaffStatus(
   if (target.role === "owner") {
     throw new StaffError(
       409,
-      "No puedes desactivar al owner del negocio.",
+      "No puedes desactivar a la persona propietaria del negocio.",
       "target_is_owner",
     );
   }

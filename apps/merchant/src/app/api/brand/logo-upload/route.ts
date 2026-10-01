@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const auth = await requireApiPermission(request, "brand", {
     missingPermission: "No tienes permiso para gestionar la marca.",
-    emailNotVerified: "Verificá tu email para gestionar la marca.",
+    emailNotVerified: "Verifica tu email para gestionar la marca.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   let body: unknown;

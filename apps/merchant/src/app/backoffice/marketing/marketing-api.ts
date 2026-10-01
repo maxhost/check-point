@@ -10,34 +10,34 @@ export class MarketingApiError extends Error {
     super(
       copy ||
         (uncertain
-          ? "No pudimos confirmar el cambio. Consultá el estado antes de reintentar."
+          ? "No pudimos confirmar el cambio. Consulta el estado antes de reintentar."
           : "No pudimos completar la operación."),
     );
   }
 }
 
 const reasons: Record<string, string> = {
-  unauthorized: "Tu sesión terminó. Volvé a ingresar.",
-  not_member: "No tenés una membresía activa.",
-  missing_permission: "No tenés permiso para administrar marketing.",
+  unauthorized: "Tu sesión terminó. Vuelve a ingresar.",
+  not_member: "No tienes una membresía activa.",
+  missing_permission: "No tienes permiso para administrar marketing.",
   not_owner: "Solo el propietario puede finalizar esta campaña.",
-  email_not_verified: "Verificá tu email para continuar.",
+  email_not_verified: "Verifica tu email para continuar.",
   business_suspended: "El negocio está suspendido.",
   business_closed: "El negocio está cerrado.",
   plan_not_allowed: "Tu plan no incluye campañas.",
   no_loyalty_reward:
-    "No se puede activar: necesitás un programa de fidelización con un premio.",
+    "No se puede activar: necesitas un programa de fidelización con un premio.",
   no_usable_location: "No hay locales activos con ubicación para proximidad.",
   campaign_expired: "La fecha de fin ya pasó.",
   template_already_live: "Esta plantilla ya tiene una campaña en curso.",
   template_not_live: "Esta plantilla ya no tiene una campaña en curso.",
   template_not_editable:
-    "Esta plantilla tiene parámetros congelados. Finalizala y lanzá una nueva corrida.",
+    "Esta plantilla tiene parámetros congelados. Finalízala y lanza una nueva campaña.",
   not_editable: "Esta campaña ya no se puede editar.",
-  invalid_transition: "El estado de la campaña cambió. Actualizá la vista.",
+  invalid_transition: "El estado de la campaña cambió. Actualiza la vista.",
   not_found: "No encontramos esta campaña.",
-  invalid_body: "No pudimos enviar los datos. Revisalos e intentá de nuevo.",
-  validation: "Revisá los campos señalados.",
+  invalid_body: "No pudimos enviar los datos. Revísalos e intenta de nuevo.",
+  validation: "Revisa los campos señalados.",
 };
 
 export function errorText(error: MarketingApiError) {

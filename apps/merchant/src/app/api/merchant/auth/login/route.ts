@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(
       {
-        error: "No pudimos enviar el enlace. Intentá de nuevo.",
+        error: "No pudimos enviar el enlace. Intenta de nuevo.",
         code: "auth_unavailable",
       },
       { status: 503 },

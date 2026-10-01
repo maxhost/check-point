@@ -88,7 +88,9 @@ describe("recorridos de catálogo", () => {
       canDelete: false,
       importing: true,
     };
-    expect(catalogHelpDisabled("delete-product", facts)).toMatch(/owner/);
+    expect(catalogHelpDisabled("delete-product", facts)).toMatch(
+      /persona propietaria/,
+    );
     expect(catalogHelpDisabled("edit-product", facts)).toMatch(/producto/);
     expect(catalogHelpDisabled("edit-category", facts)).toMatch(/categoría/);
     expect(catalogHelpDisabled("create-product", facts)).toMatch(/importación/);

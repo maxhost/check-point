@@ -92,7 +92,7 @@ export async function requireOperator(
     return {
       response: NextResponse.json(
         {
-          error: "Verificá tu email para operar el mostrador.",
+          error: "Verifica tu email para operar el mostrador.",
           code: "email_not_verified",
         },
         { status: 403 },

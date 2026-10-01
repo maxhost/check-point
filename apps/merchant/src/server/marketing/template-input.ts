@@ -141,7 +141,7 @@ function channels(
     new Set(raw).size !== raw.length ||
     !raw.every((value) => (CHANNELS as readonly unknown[]).includes(value))
   ) {
-    errors.channels = "Elegí al menos un canal válido.";
+    errors.channels = "Elige al menos un canal válido.";
     return undefined;
   }
   if (

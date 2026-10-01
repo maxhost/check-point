@@ -26,15 +26,15 @@ export function TemplateBar(props: PosterProps) {
         <h1 className="tpl-bar-headline">{headline}</h1>
         <p className="tpl-bar-sub">{subheadline}</p>
         <ul className="poster-benefits tpl-bar-benefits">
-          <li>Sumá en cada visita</li>
-          <li>Canjeá premios exclusivos</li>
+          <li>Suma en cada visita</li>
+          <li>Canjea premios exclusivos</li>
           <li>Todo desde tu celular</li>
         </ul>
       </div>
       <div className="tpl-bar-qrcard">
         <div className="poster-qr-copy">
           <span className="poster-step">01</span>
-          <span className="tpl-bar-scan">Escaneá y empezá hoy</span>
+          <span className="tpl-bar-scan">Escanea y empieza hoy</span>
         </div>
         <QrBlock svg={qrSvg} />
         <span className="tpl-bar-cta">Gratis · sin descargar una app</span>

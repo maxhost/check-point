@@ -121,8 +121,8 @@ export function ProductEditor({
     <StaffFormModal
       open={open}
       eyebrow={product ? "Editar producto" : "Nuevo producto"}
-      title={product ? "Actualizá el producto" : "Sumá un producto al catálogo"}
-      description="Completá solo lo que ya tengas. La imagen, el costo y el precio de venta son opcionales."
+      title={product ? "Actualiza el producto" : "Suma un producto al catálogo"}
+      description="Completa solo lo que ya tengas. La imagen, el costo y el precio de venta son opcionales."
       onClose={onCancel}
     >
       <form
@@ -204,7 +204,7 @@ export function ProductEditor({
           >
             <legend>Disponibilidad por local</legend>
             <p className="field-help">
-              Elegí dónde estará disponible este producto.
+              Elige dónde estará disponible este producto.
             </p>
             <label className="catalog-choice">
               <input
@@ -229,7 +229,7 @@ export function ProductEditor({
               />
               <span>
                 <strong>Locales específicos</strong>
-                <small>Seleccioná uno o más locales.</small>
+                <small>Selecciona uno o más locales.</small>
               </span>
             </label>
             {!availableAll && (

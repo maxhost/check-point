@@ -137,7 +137,7 @@ export function OnboardingWizard() {
             No pudimos recuperar tu avance
           </h1>
           <p className="mt-2 leading-6 text-content-muted">
-            {error?.message ?? "Revisá tu conexión y volvé a intentarlo."}
+            {error?.message ?? "Revisa tu conexión y vuelve a intentarlo."}
           </p>
           <Button onPress={() => void restore()} className="mt-5">
             Reintentar
@@ -253,20 +253,23 @@ function VerificationNotice({
       kind={status === "sent" ? "info" : "warning"}
       title={
         status === "sent"
-          ? "Revisá tu email"
+          ? "Revisa tu email"
           : "No pudimos enviar el enlace de verificación"
       }
       className="mb-6"
     >
       {status === "sent" ? (
         <p>
-          Te enviamos un enlace para confirmar tu email. Podés continuar con el
+          Te enviamos un enlace para confirmar tu email. Puedes continuar con el
           alta mientras tanto.
         </p>
       ) : (
         <div className="grid gap-2">
           <p>
-            Tu cuenta ya está creada. Reintentá el envío para habilitar el QR.
+            Acabamos de crear tu cuenta con el email del paso anterior, pero no
+            pudimos enviar el enlace de verificación. Puedes continuar con tu
+            negocio y reintentar el envío aquí. Necesitarás verificar el email
+            para obtener tu QR.
           </p>
           <Button
             variant="quiet"

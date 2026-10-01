@@ -47,10 +47,10 @@ export function BusinessStep({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: FieldErrors = {};
-    if (!name.trim()) nextErrors.name = "Escribí el nombre de tu negocio.";
-    if (!category) nextErrors.category = "Seleccioná una categoría.";
-    if (!country) nextErrors.country = "Seleccioná un país.";
-    if (!address) nextErrors.address = "Elegí una dirección de la lista.";
+    if (!name.trim()) nextErrors.name = "Escribe el nombre de tu negocio.";
+    if (!category) nextErrors.category = "Selecciona una categoría.";
+    if (!country) nextErrors.country = "Selecciona un país.";
+    if (!address) nextErrors.address = "Elige una dirección de la lista.";
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean) || !category || !address)
       return;
@@ -86,8 +86,8 @@ export function BusinessStep({
     <>
       <StepHeader
         step={2}
-        title="Contanos sobre tu negocio"
-        description="Usamos estos datos para crear tu comercio y su primer local. Podés cambiarlos después."
+        title="Cuéntanos sobre tu negocio"
+        description="Usamos estos datos para crear tu comercio y su primer local. Puedes cambiarlos después."
       />
       <Form onSubmit={submit} className="grid gap-5">
         <InlineApiError error={apiError} />
@@ -114,7 +114,7 @@ export function BusinessStep({
             id: item.gcid,
             label: item.displayName,
           }))}
-          placeholder="Elegí la categoría"
+          placeholder="Elige la categoría"
           isRequired
           isInvalid={Boolean(errors.category)}
           errorMessage={errors.category}
@@ -131,7 +131,7 @@ export function BusinessStep({
             label: item.name,
             description: currencyDescription(item.currencyCode),
           }))}
-          placeholder="Elegí el país"
+          placeholder="Elige el país"
           isRequired
           isInvalid={Boolean(errors.country)}
           errorMessage={errors.country}

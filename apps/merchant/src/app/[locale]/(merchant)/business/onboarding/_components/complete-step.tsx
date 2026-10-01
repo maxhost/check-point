@@ -60,7 +60,7 @@ export function CompleteStep({
   );
 
   const heading = verificationRequired
-    ? "Verificá tu email para obtener el QR"
+    ? "Verifica tu email para obtener el QR"
     : qrUrl
       ? "Tu QR está listo"
       : "Preparando tu QR";
@@ -90,11 +90,11 @@ export function CompleteStep({
       downloadBlob(blob, file.name);
       setShowWhatsappFallback(true);
       setShareMessage(
-        "Descargamos el QR. Abrí WhatsApp y adjuntalo al mensaje.",
+        "Descargamos el QR. Abre WhatsApp y adjúntalo al mensaje.",
       );
     } catch (caught) {
       if ((caught as { name?: string }).name !== "AbortError") {
-        setShareMessage("No pudimos compartir el QR. Probá descargarlo.");
+        setShareMessage("No pudimos compartir el QR. Prueba descargarlo.");
       }
     } finally {
       setIsSharing(false);

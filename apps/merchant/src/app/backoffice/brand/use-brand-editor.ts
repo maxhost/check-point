@@ -85,7 +85,7 @@ export function useBrandEditor() {
       draft.name.trim().length > 120 ||
       !brandColors.every(([key]) => validBrandColor(draft[key]))
     ) {
-      setError("Revisá el nombre y los colores de marca.");
+      setError("Revisa el nombre y los colores de marca.");
       return;
     }
     const notify = tour.ticket();

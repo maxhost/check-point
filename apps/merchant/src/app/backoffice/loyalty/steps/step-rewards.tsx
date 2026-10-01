@@ -69,8 +69,8 @@ function RewardCard({
             <Alert kind="error" title="No pudimos consultar el catálogo">
               <p>
                 {earn.catalogError?.code === "missing_permission"
-                  ? "No tenés permiso para consultar el catálogo."
-                  : "Podés seguir con premio libre o descuento."}
+                  ? "No tienes permiso para consultar el catálogo."
+                  : "Puedes seguir con premio libre o descuento."}
               </p>
               <Button
                 variant="secondary"
@@ -82,7 +82,7 @@ function RewardCard({
           )}
           {earn.catalogState === "ready" && earn.products.length === 0 && (
             <p>
-              No hay productos en tu catálogo. Usá un premio libre o un
+              No hay productos en tu catálogo. Usa un premio libre o un
               descuento.
             </p>
           )}
@@ -103,7 +103,7 @@ function RewardCard({
                     : null),
               )
             }
-            placeholder="Elegí un producto"
+            placeholder="Elige un producto"
             isDisabled={
               !vm.canReadCatalog || earn.catalogState !== "ready" || vm.saving
             }
@@ -133,7 +133,7 @@ function RewardCard({
           step={1}
           value={reward.discountPercent}
           onChange={(discountPercent) => patch({ discountPercent })}
-          description="Elegí un porcentaje entre 1 y 100 %."
+          description="Elige un porcentaje entre 1 y 100 %."
           errorMessage={errors[`discount-${index}`]}
         />
       )}
@@ -170,12 +170,12 @@ export function StepRewards({
     <>
       <p>
         {vm.kind === "points"
-          ? "Poné el costo en puntos de cada premio."
-          : "Elegí el premio que gana el cliente al completar la tarjeta."}
+          ? "Pon el costo en puntos de cada premio."
+          : "Elige el premio que gana el cliente al completar la tarjeta."}
       </p>
       {!vm.canReadCatalog && (
-        <Alert title="No tenés permiso para consultar el catálogo">
-          Podés usar premio libre o descuento. Los productos guardados se
+        <Alert title="No tienes permiso para consultar el catálogo">
+          Puedes usar premio libre o descuento. Los productos guardados se
           conservan.
         </Alert>
       )}
@@ -201,7 +201,7 @@ export function StepRewards({
           </Button>
           {earn.rewards.length >= 20 && (
             <p className="text-sm text-content-muted">
-              Podés agregar hasta 20 premios.
+              Puedes agregar hasta 20 premios.
             </p>
           )}
         </>

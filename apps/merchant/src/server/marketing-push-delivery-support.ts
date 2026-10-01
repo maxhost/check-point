@@ -61,7 +61,7 @@ export async function world(label: string) {
     membershipId,
     decidedAt: new Date(NOON.getTime() - 2 * HOUR),
     title: "La Gringa",
-    body: "¡Volvé! · 2x1 en picadas",
+    body: "¡Vuelve! · 2x1 en picadas",
   });
   return {
     seed,

@@ -57,9 +57,9 @@ export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
     vm.confirmClose ||
     vm.closing;
   const reason = denied
-    ? "Recuperá el acceso antes de iniciar una guía."
+    ? "Recupera el acceso antes de iniciar una guía."
     : blocked
-      ? "Terminá o cerrá la acción actual para iniciar una guía. Tu borrador se conserva."
+      ? "Termina o cierra la acción actual para iniciar una guía. Tu borrador se conserva."
       : null;
   function returnFocus() {
     requestAnimationFrame(() => {
@@ -157,7 +157,7 @@ export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
           {
             popover: {
               title: "Tu guía",
-              description: "Acompañá el formulario.",
+              description: "Acompaña el formulario.",
             },
           },
         ],
@@ -249,7 +249,7 @@ export function LoyaltyTourController({ vm }: { vm: LoyaltyVm }) {
       <StaffFormModal
         open={helpOpen}
         eyebrow="Ayuda"
-        title="¿Qué querés hacer?"
+        title="¿Qué quieres hacer?"
         description="Las guías acompañan tus acciones. Guardar aplica todos los cambios pendientes del programa."
         onClose={() => setHelpOpen(false)}
       >

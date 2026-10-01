@@ -60,7 +60,7 @@ export async function welcomeWorld(
       name: "Bienvenida",
       status: "active",
       activatedAt: opts.activatedAt,
-      message: "Sumate hoy y en tu próxima visita te llevás un regalo",
+      message: "Únete hoy y recibe un regalo en tu próxima visita",
       couponLabel: "Un café gratis",
       couponCost: "1.20",
       couponKind: "free_product",

@@ -130,12 +130,12 @@ export function catalogHelpDisabled(
   },
 ): string | null {
   if (task.startsWith("delete-") && !facts.canDelete)
-    return "Solo el owner puede eliminar.";
+    return "Solo la persona propietaria puede eliminar.";
   if (task.startsWith("create-") && facts.importing)
-    return "Esperá a que termine la importación para crear a mano.";
+    return "Espera a que termine la importación para crear a mano.";
   if (["edit-product", "delete-product"].includes(task) && !facts.products)
-    return "Primero creá o importá un producto.";
+    return "Primero crea o importa un producto.";
   if (["edit-category", "delete-category"].includes(task) && !facts.categories)
-    return "Primero creá o importá una categoría.";
+    return "Primero crea o importa una categoría.";
   return null;
 }

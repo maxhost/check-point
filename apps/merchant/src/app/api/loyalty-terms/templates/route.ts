@@ -24,7 +24,7 @@ import { termsTemplates } from "@mi-pasaporte/db/schema";
 export async function GET(request: Request) {
   const auth = await requireApiPermission(request, "loyalty", {
     missingPermission: "No tienes permiso para ver las plantillas.",
-    emailNotVerified: "Verificá tu email para ver las plantillas.",
+    emailNotVerified: "Verifica tu email para ver las plantillas.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const templates = await getDb()

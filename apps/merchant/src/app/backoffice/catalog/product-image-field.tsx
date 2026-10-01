@@ -40,7 +40,7 @@ export function ProductImageField({
       <div>
         <strong>Imagen del producto (opcional)</strong>
         <p className="field-help">
-          Usá una foto propia o elegí una de la biblioteca. Si no cargás una,
+          Usa una foto propia o elige una de la biblioteca. Si no cargas una,
           mostraremos un placeholder.
         </p>
       </div>

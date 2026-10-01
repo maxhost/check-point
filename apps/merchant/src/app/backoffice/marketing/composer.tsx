@@ -169,7 +169,9 @@ export function CampaignComposer({
       } catch {
         if (sequence === previewSequence.current) {
           setPreview(null);
-          setPreviewError("Volvé a intentar cambiando los días o los locales.");
+          setPreviewError(
+            "Vuelve a intentar cambiando los días o los locales.",
+          );
         }
       }
     }, 300);
@@ -244,7 +246,7 @@ export function CampaignComposer({
           setError(asMarketingError(reason));
           setConfirm(false);
           setNotice(
-            "El borrador se guardó. La activación necesita atención; consultá la campaña antes de reintentar.",
+            "El borrador se guardó. La activación necesita atención; consulta la campaña antes de reintentar.",
           );
           return;
         }

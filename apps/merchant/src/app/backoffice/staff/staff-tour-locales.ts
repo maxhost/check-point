@@ -1,68 +1,68 @@
 export const STAFF_TOUR_COPY = {
   es: {
-    add: ["Añadí un integrante", "Tocá este botón para abrir el formulario."],
+    add: ["Añade un integrante", "Toca este botón para abrir el formulario."],
     manage: [
-      "Gestioná tu equipo",
-      "Desde Gestionar podés editar el nombre y los permisos, regenerar el PIN o dar de baja a un integrante.",
+      "Gestiona tu equipo",
+      "Desde Gestionar puedes editar el nombre y los permisos, regenerar el PIN o dar de baja a un integrante.",
     ],
     name: [
-      "Completá el nombre",
-      "Escribí el nombre con el que identificarás a esta persona.",
+      "Completa el nombre",
+      "Escribe el nombre con el que identificarás a esta persona.",
     ],
     counter: [
       "Mostrador ya viene activado",
-      "Es el permiso recomendado para quien atiende: acreditar compras y canjear premios. Podés apagarlo o sumar otros antes de crear.",
+      "Es el permiso recomendado para quien atiende: acreditar compras y canjear premios. Puedes apagarlo o sumar otros antes de crear.",
     ],
     create: [
-      "Creá y mostrale su PIN",
-      "Confirmá el alta. Es una acción real y el PIN aparecerá una sola vez.",
+      "Crea su cuenta y muéstrale el PIN",
+      "Confirma el alta. Es una acción real y el PIN aparecerá una sola vez.",
     ],
     copy: [
-      "Compartí las credenciales",
-      "Copiá el identificador y el PIN. Debés enviárselos vos: no recibe email.",
+      "Comparte las credenciales",
+      "Copia el identificador y el PIN y compártelos con esta persona: no recibirá un email.",
     ],
     closeCredentials: [
-      "Guardá estos datos",
-      "Cuando ya los hayas copiado, cerrá este diálogo para continuar.",
+      "Guarda estos datos",
+      "Cuando ya los hayas copiado, cierra este diálogo para continuar.",
     ],
     managePin: [
-      "Elegí un integrante",
-      "Abrí Gestionar sobre el integrante cuyo PIN querés regenerar.",
+      "Elige un integrante",
+      "Abre Gestionar sobre el integrante cuyo PIN quieres regenerar.",
     ],
     manageEdit: [
-      "Elegí un integrante",
-      "Abrí Gestionar para modificar su nombre o sus permisos.",
+      "Elige un integrante",
+      "Abre Gestionar para modificar su nombre o sus permisos.",
     ],
     editName: [
-      "Editá su nombre",
-      "Si cambiás el nombre, también cambiará su identificador de acceso. Tendrás que comunicárselo.",
+      "Edita su nombre",
+      "Si cambias el nombre, también cambiará su identificador de acceso. Tendrás que comunicárselo.",
     ],
     editPermissions: [
-      "Modificá sus permisos",
-      "Activá o desactivá cada acceso. El cambio reemplaza todos sus permisos actuales.",
+      "Modifica sus permisos",
+      "Activa o desactiva cada acceso. El cambio reemplaza todos sus permisos actuales.",
     ],
     saveEdit: [
-      "Guardá los cambios",
+      "Guarda los cambios",
       "Nombre y permisos se guardan por separado y verás el resultado de cada operación.",
     ],
     pin: [
-      "Regenerá el PIN",
+      "Regenera el PIN",
       "El PIN anterior dejará de funcionar y sus sesiones se cerrarán.",
     ],
     pinConfirm: [
-      "Confirmá la regeneración",
-      "Esta acción rota el PIN realmente. Confirmala para obtener el nuevo.",
+      "Confirma la regeneración",
+      "Esta acción cambia el PIN. Confírmala para obtener el nuevo.",
     ],
     manageDisable: [
-      "Elegí un integrante",
-      "Abrí Gestionar sobre la persona cuyo acceso querés cambiar.",
+      "Elige un integrante",
+      "Abre Gestionar sobre la persona cuyo acceso quieres cambiar.",
     ],
     disable: [
-      "Cortá o restablecé su acceso",
+      "Desactiva o restablece su acceso",
       "Este botón alterna: dice «Dar de baja» si está activo y «Reactivar» si ya está de baja. La baja es reversible.",
     ],
     disableConfirm: [
-      "Confirmá lo que pide el diálogo",
+      "Confirma lo que pide el diálogo",
       "Si es una baja, su sesión se cierra y pierde acceso de inmediato; si es una reactivación, lo recupera.",
     ],
   },

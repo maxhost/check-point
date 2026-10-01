@@ -66,8 +66,10 @@ export async function POST(
 ) {
   try {
     const auth = await requireApiOwner(request, {
-      notOwner: "Solo el owner puede registrar el progreso de un tour.",
-      emailNotVerified: "Verifica tu email antes de avanzar con el onboarding.",
+      notOwner:
+        "Solo la persona propietaria puede registrar el progreso de la guía.",
+      emailNotVerified:
+        "Verifica tu email antes de avanzar con la configuración.",
     });
     if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
 

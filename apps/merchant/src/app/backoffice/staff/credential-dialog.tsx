@@ -27,7 +27,7 @@ export function CredentialDialog({
         <p className="eyebrow">Credenciales de {name}</p>
         <h2>{regenerated ? "PIN regenerado" : "Integrante creado"}</h2>
         <p>
-          Guardá y compartí estos datos ahora. El PIN se muestra una sola vez y
+          Guarda y comparte estos datos ahora. El PIN se muestra una sola vez y
           no se envía por email.
           {regenerated && " Las sesiones anteriores quedaron cerradas."}
         </p>

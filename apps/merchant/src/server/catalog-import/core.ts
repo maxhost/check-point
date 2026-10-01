@@ -63,7 +63,7 @@ export function toImportDTO(row: ImportRow): CatalogImportDTO {
             code: row.failureCode ?? "catalog_import_failed",
             message:
               row.failureDetail ??
-              "No pudimos analizar el menú. Probá de nuevo.",
+              "No pudimos analizar el menú. Prueba de nuevo.",
           }
         : null,
   };

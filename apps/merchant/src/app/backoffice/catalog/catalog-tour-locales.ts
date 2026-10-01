@@ -8,17 +8,17 @@ export const CATALOG_HELP: Array<{
   {
     id: "import-pdf",
     title: "Importar un PDF",
-    body: "Convertí tu menú en categorías y productos.",
+    body: "Convierte tu menú en categorías y productos.",
   },
   {
     id: "import-photos",
     title: "Importar fotos desde el celular",
-    body: "Usá la cámara o elegí imágenes de tu menú.",
+    body: "Usa la cámara o elige imágenes de tu menú.",
   },
   {
     id: "create-category",
     title: "Crear una categoría",
-    body: "Organizá los productos en grupos.",
+    body: "Organiza los productos en grupos.",
   },
   {
     id: "create-product",
@@ -28,7 +28,7 @@ export const CATALOG_HELP: Array<{
   {
     id: "edit-product",
     title: "Editar un producto",
-    body: "Actualizá sus datos, imagen y disponibilidad.",
+    body: "Actualiza sus datos, imagen y disponibilidad.",
   },
   {
     id: "edit-category",
@@ -52,63 +52,63 @@ export const CATALOG_PHASE_COPY: Record<
   readonly [string, string]
 > = {
   entry: [
-    "Abrí el formulario",
-    "Tocá el control resaltado para empezar. Las acciones de esta guía se aplican a tu catálogo real.",
+    "Abre el formulario",
+    "Toca el control resaltado para empezar. Las acciones de esta guía se aplican a tu catálogo real.",
   ],
   picker: [
-    "Elegí los archivos",
-    "Al elegir un PDF empieza la carga automáticamente y la IA crea lo que falta. Con fotos, elegí imágenes legibles del menú completo y sus precios. Buscar archivos reemplaza la selección; cada foto de la cámara se agrega.",
+    "Elige los archivos",
+    "Al elegir un PDF empieza la carga automáticamente y la IA crea lo que falta. Con fotos, elige imágenes legibles del menú completo y sus precios. Buscar archivos reemplaza la selección; cada foto de la cámara se agrega.",
   ],
   analyze: [
-    "Analizá las fotos",
-    "Cuando hayas elegido todas las fotos, tocá Analizar catálogo. La IA creará lo que falta sin modificar tus productos existentes.",
+    "Analiza las fotos",
+    "Cuando hayas elegido todas las fotos, toca Analizar catálogo. La IA creará lo que falta sin modificar tus productos existentes.",
   ],
   processing: [
     "Estamos procesando tu menú",
-    "El catálogo se carga automáticamente. Podés salir de esta guía sin cancelar la importación. Cancelar importación es una acción diferente.",
+    "El catálogo se carga automáticamente. Puedes salir de esta guía sin cancelar la importación. Cancelar importación es una acción diferente.",
   ],
   result: [
     "Tu catálogo ya está cargado",
-    "Revisá el resumen: lo creado, lo que ya existía, los productos sin precio y las líneas descartadas. Después podés corregir los datos desde el catálogo. Tocá Ver mi catálogo para terminar.",
+    "Revisa el resumen: lo creado, lo que ya existía, los productos sin precio y las líneas descartadas. Después puedes corregir los datos desde el catálogo. Toca Ver mi catálogo para terminar.",
   ],
   select: [
-    "Elegí qué querés gestionar",
-    "Tocá la acción de la fila que querés cambiar. Si no encontrás el producto, ajustá los filtros o la búsqueda. La guía seguirá con esa misma entidad.",
+    "Elige qué quieres gestionar",
+    "Toca la acción de la fila que quieres cambiar. Si no encuentras el producto, ajusta los filtros o la búsqueda. La guía seguirá con esa misma entidad.",
   ],
   name: [
-    "Completá el nombre",
-    "Usá un nombre claro. Este dato es obligatorio; podés continuar cuando estés listo.",
+    "Completa el nombre",
+    "Usa un nombre claro. Este dato es obligatorio; puedes continuar cuando estés listo.",
   ],
   category: [
-    "Elegí una categoría",
-    "Podés elegir una categoría, dejar el producto sin categoría o crear una sin salir del formulario.",
+    "Elige una categoría",
+    "Puedes elegir una categoría, dejar el producto sin categoría o crear una sin salir del formulario.",
   ],
   prices: [
     "Precio y costo son opcionales",
-    "El precio de venta se usa al vender. El costo es para tus reportes internos. Podés completar estos datos después.",
+    "El precio de venta se usa al vender. El costo es para tus reportes internos. Puedes completar estos datos después.",
   ],
   image: [
     "Imagen del producto",
-    "Podés agregar una imagen o continuar sin cambiarla. La foto del producto es independiente de las fotos del menú que usa el importador.",
+    "Puedes agregar una imagen o continuar sin cambiarla. La foto del producto es independiente de las fotos del menú que usa el importador.",
   ],
   availability: [
     "Disponibilidad por local",
-    "Elegí todos los locales o algunos específicos. Si elegís específicos, marcá al menos uno. La guía no cambia esta selección por vos.",
+    "Elige todos los locales o algunos específicos. Si eliges específicos, marca al menos uno. La guía no cambia esta selección por ti.",
   ],
   save: [
-    "Guardá los datos",
-    "Tocá Guardar o Añadir en el formulario. La guía continúa cuando el servidor confirma la operación. Si hay un error, corregilo e intentá nuevamente.",
+    "Guarda los datos",
+    "Toca Guardar o Añadir en el formulario. La guía continúa cuando el servidor confirma la operación. Si hay un error, corrígelo e intenta nuevamente.",
   ],
   confirm: [
-    "Confirmá sólo si querés eliminar",
-    "Revisá el nombre en el diálogo. Esta acción no se puede deshacer. Eliminar una categoría conserva sus productos sin categoría. Cancelar termina la guía sin eliminar nada.",
+    "Confirma sólo si quieres eliminar",
+    "Revisa el nombre en el diálogo. Esta acción no se puede deshacer. Eliminar una categoría conserva sus productos sin categoría. Cancelar termina la guía sin eliminar nada.",
   ],
   success: [
     "Operación confirmada",
-    "El catálogo está actualizado. Podés volver a Ayuda cuando quieras aprender otra tarea.",
+    "El catálogo está actualizado. Puedes volver a Ayuda cuando quieras aprender otra tarea.",
   ],
   refresh: [
     "Los cambios ya se guardaron",
-    "Falta actualizar la lista. Tocá Reintentar lectura; no volveremos a guardar ni eliminar el elemento.",
+    "Falta actualizar la lista. Toca Reintentar lectura; no volveremos a guardar ni eliminar el elemento.",
   ],
 };

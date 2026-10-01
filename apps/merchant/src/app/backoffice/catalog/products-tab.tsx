@@ -60,8 +60,8 @@ export function ProductsTab({
         <h2>Tu catálogo empieza con un producto</h2>
         <p>
           {importInProgress
-            ? "Estamos importando tu menú. En cuanto termine vas a ver los productos acá."
-            : "Podés cargarlo manualmente o usar el importador inteligente desde una foto o PDF."}
+            ? "Estamos importando tu menú. En cuanto termine vas a ver los productos aquí."
+            : "Puedes cargarlo manualmente o usar el importador inteligente desde una foto o PDF."}
         </p>
         <button
           className="button"
@@ -127,7 +127,7 @@ export function ProductsTab({
       </div>
       {filtered.length === 0 ? (
         <p className="field-help" data-tour="catalog-product-list">
-          No hay productos para ese filtro. Ajustá los filtros o la búsqueda
+          No hay productos para ese filtro. Ajusta los filtros o la búsqueda
           para elegir un producto.
         </p>
       ) : (

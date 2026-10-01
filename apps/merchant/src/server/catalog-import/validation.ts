@@ -57,7 +57,7 @@ export function validateImportFiles(value: unknown): ReservedFiles {
   }
   const raw = (value as Record<string, unknown>).files;
   if (!Array.isArray(raw) || raw.length === 0) {
-    throw invalid("Subí al menos un archivo.");
+    throw invalid("Sube al menos un archivo.");
   }
   if (raw.length > MAX_IMAGE_FILES) {
     throw invalid(`Como máximo ${MAX_IMAGE_FILES} archivos.`);
@@ -67,10 +67,10 @@ export function validateImportFiles(value: unknown): ReservedFiles {
     (file) => file.contentType === PDF_CONTENT_TYPE,
   ).length;
   if (pdfCount > 0 && pdfCount !== files.length) {
-    throw invalid("Subí un PDF o fotos, no una mezcla de los dos.");
+    throw invalid("Sube un PDF o fotos, no una mezcla de los dos.");
   }
   if (pdfCount > 1) {
-    throw invalid("Subí un solo PDF.");
+    throw invalid("Sube un solo PDF.");
   }
   if (pdfCount === 1) {
     if (files[0].byteSize > MAX_PDF_BYTES) {

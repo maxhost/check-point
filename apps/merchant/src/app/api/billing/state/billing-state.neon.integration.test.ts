@@ -120,7 +120,7 @@ describe.skipIf(!integrationEnabled)(
       expect(response.status).toBe(403);
       const body = await response.json();
       expect(body).toEqual({
-        error: "Solo el owner puede gestionar la suscripción.",
+        error: "Solo la persona propietaria puede gestionar la suscripción.",
         code: "not_owner",
       });
       expect(body.suspensionReason).toBeUndefined();

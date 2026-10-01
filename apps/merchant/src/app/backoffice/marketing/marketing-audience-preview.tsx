@@ -81,7 +81,7 @@ export function MarketingAudiencePreview({
   if (result?.key === key && result.failed)
     return (
       <Alert kind="warning" title="No pudimos consultar el alcance">
-        Podés continuar; el alcance se verá en los resultados.
+        Puedes continuar; el alcance se verá en los resultados.
       </Alert>
     );
   if (result?.key !== key || !result.preview)

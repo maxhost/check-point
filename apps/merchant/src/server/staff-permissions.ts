@@ -65,7 +65,7 @@ export function parsePermissions(value: unknown): string[] {
   if (!Array.isArray(value)) {
     throw new StaffError(
       400,
-      "Elegí al menos un permiso.",
+      "Elige al menos un permiso.",
       STAFF_PERMISSION_CODES.permissionsRequired,
     );
   }
@@ -85,7 +85,7 @@ export function parsePermissions(value: unknown): string[] {
   if (permissions.length === 0) {
     throw new StaffError(
       400,
-      "Elegí al menos un permiso.",
+      "Elige al menos un permiso.",
       STAFF_PERMISSION_CODES.permissionsRequired,
     );
   }
@@ -105,7 +105,7 @@ export function assertGrantable(callerRole: string, permissions: string[]) {
   if (permissions.includes("staff")) {
     throw new StaffError(
       403,
-      "Solo el owner puede otorgar el permiso de administrar staff.",
+      "Solo la persona propietaria puede otorgar el permiso de administrar el equipo.",
       STAFF_PERMISSION_CODES.permissionNotGrantable,
     );
   }
@@ -135,7 +135,7 @@ export function assertDemotable(
   if ((targetPermissions ?? []).includes("staff")) {
     throw new StaffError(
       403,
-      "Solo el owner puede quitar el permiso de administrar staff.",
+      "Solo la persona propietaria puede quitar el permiso de administrar el equipo.",
       STAFF_PERMISSION_CODES.permissionNotGrantable,
     );
   }
@@ -209,7 +209,7 @@ export async function setStaffPermissions(
     // 0041 es la red: aunque este guard se cayera, la base rechaza un owner con permisos.
     throw new StaffError(
       409,
-      "No puedes cambiar los permisos del owner del negocio.",
+      "No puedes cambiar los permisos de la persona propietaria.",
       STAFF_PERMISSION_CODES.targetIsOwner,
     );
   }

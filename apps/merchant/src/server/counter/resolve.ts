@@ -22,9 +22,9 @@ import {
   toRewardDTO,
 } from "@mi-pasaporte/domain/server/loyalty-program/client-view";
 
-const QR_UNRESOLVED = "No pudimos leer este código. Probá de nuevo.";
+const QR_UNRESOLVED = "No pudimos leer este código. Prueba de nuevo.";
 const NO_PROGRAM =
-  "Este negocio no tiene un programa activo para acreditar. Configuralo primero.";
+  "Este negocio no tiene un programa activo para acreditar. Configúralo primero.";
 
 /** The single operational (active|closing) accreditable program of a business:
  * a Puntos/Sellos program with its accrual mechanics defined (spec 0036). At most

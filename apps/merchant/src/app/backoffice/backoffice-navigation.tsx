@@ -47,7 +47,7 @@ const businessLinks = [
   },
   {
     href: "/backoffice/staff",
-    label: "Staff",
+    label: "Equipo",
     icon: Group,
     segment: "staff",
     permission: "staff",

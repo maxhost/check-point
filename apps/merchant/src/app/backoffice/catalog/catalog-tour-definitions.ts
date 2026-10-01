@@ -16,23 +16,23 @@ export function catalogOnboardingStart() {
   const copy = [
     [
       "import-entry",
-      "Cargá tu menú con IA",
-      "Importá un PDF o fotos desde el celular. La IA crea lo que falta; después podés revisar y completar el catálogo.",
+      "Carga tu menú con IA",
+      "Importa un PDF o fotos desde el celular. La IA crea lo que falta; después puedes revisar y completar el catálogo.",
     ],
     [
       "products-entry",
-      "Creá y gestioná productos",
-      "Desde Nuevo producto cargás uno a mano. En Productos podés editar sus datos y, si sos owner, eliminarlo.",
+      "Crea y gestiona productos",
+      "Desde Nuevo producto puedes cargar uno manualmente. En Productos puedes editar sus datos y, si eres la persona propietaria, eliminarlo.",
     ],
     [
       "categories-entry",
-      "Organizá tu menú",
-      "En Categorías podés crear y renombrar grupos. Al eliminar una categoría, sus productos quedan sin categoría.",
+      "Organiza tu menú",
+      "En Categorías puedes crear y renombrar grupos. Al eliminar una categoría, sus productos quedan sin categoría.",
     ],
     [
       "help-entry",
-      "Aprendé una tarea cuando la necesites",
-      "Abrí Ayuda para importar, crear, editar o eliminar con una guía paso a paso.",
+      "Aprende una tarea cuando la necesites",
+      "Abre Ayuda para importar, crear, editar o eliminar con una guía paso a paso.",
     ],
   ];
   return {

@@ -69,7 +69,7 @@ export function parseHours(value: unknown): HoursParse {
   const days = body.days;
   const fields: Record<string, string> = {};
   if (!Array.isArray(days))
-    return { ok: false, fields: { days: "Mandá los 7 días de la semana." } };
+    return { ok: false, fields: { days: "Indica los 7 días de la semana." } };
   const weekdays = days.map((day: unknown) =>
     day && typeof day === "object"
       ? (day as { weekday?: unknown }).weekday
@@ -86,7 +86,7 @@ export function parseHours(value: unknown): HoursParse {
     return {
       ok: false,
       fields: {
-        days: "Mandá los 7 días de la semana (1 a 7), cada uno una vez.",
+        days: "Indica los 7 días de la semana (1 a 7), cada uno una vez.",
       },
     };
   const out: DayHours[] = [];

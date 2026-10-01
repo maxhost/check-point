@@ -278,6 +278,6 @@ function classify(error: unknown): { code: string; detail: string } {
   }
   return {
     code: "provider_unavailable",
-    detail: "No pudimos analizar el menú. Probá de nuevo.",
+    detail: "No pudimos analizar el menú. Prueba de nuevo.",
   };
 }

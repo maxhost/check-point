@@ -81,7 +81,7 @@ function BrandEditor({ isOwner }: { isOwner: boolean }) {
         />
         <div className="brand-toolbar">
           <div>
-            <strong>Personalizá tu presencia</strong>
+            <strong>Personaliza tu presencia</strong>
             <span>Los cambios se aplican en todas las experiencias.</span>
           </div>
           {isOwner && (
@@ -154,7 +154,7 @@ function BrandEditor({ isOwner }: { isOwner: boolean }) {
                 </span>
                 <div>
                   <h2 id="colors-title">Paleta de colores</h2>
-                  <p>Definí los tonos que identifican a tu negocio.</p>
+                  <p>Define los tonos que identifican a tu negocio.</p>
                 </div>
               </header>
               <div className="brand-colors-grid">
@@ -206,7 +206,7 @@ function BrandEditor({ isOwner }: { isOwner: boolean }) {
                 </span>
                 <div>
                   <h2 id="regional-title">Configuración regional</h2>
-                  <p>Controlá cómo se interpretan horarios y precios.</p>
+                  <p>Controla cómo se interpretan horarios y precios.</p>
                 </div>
               </header>
               <RegionalFields
@@ -225,7 +225,7 @@ function BrandEditor({ isOwner }: { isOwner: boolean }) {
             <div className="brand-save-bar" data-tour="brand-save">
               <div>
                 <strong>¿Todo listo?</strong>
-                <span>Revisá la vista previa antes de guardar.</span>
+                <span>Revisa la vista previa antes de guardar.</span>
               </div>
               <button
                 className="button"

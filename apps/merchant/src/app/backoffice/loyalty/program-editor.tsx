@@ -174,7 +174,7 @@ export function ProgramEditor({ vm }: { vm: LoyaltyVm }) {
             </RadioGroupContext.Provider>
             {busyImage && (
               <Alert title="Preparando el sello">
-                Terminá o cancelá el recorte antes de continuar.
+                Termina o cancela el recorte antes de continuar.
               </Alert>
             )}
             {step !== "rewards" && navigation}

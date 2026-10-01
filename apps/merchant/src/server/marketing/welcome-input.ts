@@ -106,7 +106,7 @@ export function welcomeParams(
     reminderDays >= validDays
   ) {
     errors.welcomeReminderDays =
-      "El aviso tiene que ser antes del vencimiento: elegí menos días.";
+      "El aviso tiene que ser antes del vencimiento: elige menos días.";
   }
   const cap = absent(body.welcomeMonthlyCap)
     ? def.monthlyCap.default

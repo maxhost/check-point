@@ -70,7 +70,7 @@ export async function updateMarketingSettings(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá el horario de envío.",
+      "Revisa el horario de envío.",
       parsed.errors,
     );
   await getDb()

@@ -96,7 +96,7 @@ export function OnboardingChecklist() {
         </div>
         <div className="onboarding-error-copy">
           <p className="eyebrow">Configuración pendiente</p>
-          <h2>No pudimos cargar tu onboarding</h2>
+          <h2>No pudimos cargar los pasos de configuración</h2>
           <p>Revisa la conexión con la base de datos e inténtalo nuevamente.</p>
         </div>
         <button

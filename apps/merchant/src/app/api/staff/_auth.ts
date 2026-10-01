@@ -31,8 +31,8 @@ export async function requireStaffOwner(
   { business: { id: string; slug: string } } | { response: NextResponse }
 > {
   const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede gestionar el personal.",
-    emailNotVerified: "Verificá tu email para gestionar el personal.",
+    notOwner: "Solo la persona propietaria puede gestionar el equipo.",
+    emailNotVerified: "Verifica tu email para gestionar el personal.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
@@ -65,7 +65,7 @@ export async function requireStaffAccess(request: Request): Promise<
 > {
   const auth = await requireApiPermission(request, "staff", {
     missingPermission: "No tienes permiso para gestionar el personal.",
-    emailNotVerified: "Verificá tu email para gestionar el personal.",
+    emailNotVerified: "Verifica tu email para gestionar el personal.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

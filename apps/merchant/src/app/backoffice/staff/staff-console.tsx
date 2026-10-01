@@ -71,9 +71,9 @@ export function StaffConsole() {
   async function createMember() {
     if (busy) return;
     if (!createName.trim())
-      return setError("Escribí el nombre del integrante.");
+      return setError("Escribe el nombre del integrante.");
     if (!createPermissions.length)
-      return setError("Elegí al menos un permiso.");
+      return setError("Elige al menos un permiso.");
     setBusy(true);
     setError(null);
     try {
@@ -151,9 +151,9 @@ export function StaffConsole() {
     <main className="merchant-shell">
       <div className="backoffice-home staff-page">
         <ModuleHeader
-          eyebrow="Staff"
+          eyebrow="Equipo"
           title="Tu equipo"
-          description="Definí quién entra al backoffice y qué puede gestionar."
+          description="Define quién entra al panel y qué puede gestionar."
           closeHref="/backoffice"
         />
         <StaffTourController
@@ -248,7 +248,7 @@ export function StaffConsole() {
             confirm?.action === "pin"
               ? "El PIN actual dejará de funcionar y se cerrarán sus sesiones. El nuevo PIN se mostrará una sola vez."
               : confirm?.member.status === "active"
-                ? "Perderá el acceso y se cerrarán sus sesiones. Podés reactivarlo cuando quieras."
+                ? "Perderá el acceso y se cerrarán sus sesiones. Puedes reactivarlo cuando quieras."
                 : "Recuperará el acceso con su identificador y PIN actuales."
           }
           confirmLabel={

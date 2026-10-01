@@ -32,7 +32,7 @@ const businessItems = [
     icon: Shop,
   },
   {
-    title: "Staff",
+    title: "Equipo",
     description: "Las personas que atienden contigo",
     href: null,
     icon: Group,

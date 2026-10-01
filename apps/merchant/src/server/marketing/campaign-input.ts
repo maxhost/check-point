@@ -113,7 +113,7 @@ export function requireEndForCoupon(
 
 function locationIds(errors: FieldErrors, raw: unknown): string[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) {
-    errors.locationIds = "Elegí al menos un local.";
+    errors.locationIds = "Elige al menos un local.";
     return undefined;
   }
   if (!raw.every((id) => typeof id === "string" && UUID.test(id))) {

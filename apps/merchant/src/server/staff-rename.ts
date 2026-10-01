@@ -74,7 +74,7 @@ export function parseRenameInput(value: unknown): { name: string } {
   if ("permissions" in body) {
     throw new StaffError(
       400,
-      "Los permisos se editan en PATCH /api/staff/{userId}/permissions.",
+      "Los permisos se editan por separado desde Equipo.",
       STAFF_RENAME_CODES.permissionsNotHere,
     );
   }
@@ -230,14 +230,14 @@ async function rejectionFor(
     // asi que una membresia de owner `disabled` no se puede fabricar por la API.
     return new StaffError(
       409,
-      "No puedes editar al owner del negocio.",
+      "No puedes editar el acceso de la persona propietaria.",
       STAFF_RENAME_CODES.targetIsOwner,
     );
   }
   if (target && target.status !== "active") {
     return new StaffError(
       409,
-      "Ese integrante está dado de baja. Reactívalo y volvé a intentarlo.",
+      "Ese integrante está dado de baja. Reactívalo y vuelve a intentarlo.",
       STAFF_RENAME_CODES.targetDisabled,
     );
   }

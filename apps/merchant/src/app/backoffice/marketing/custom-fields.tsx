@@ -52,7 +52,7 @@ export function CustomFields({
     <>
       <MarketingPanel
         title="1 · Audiencia"
-        description="Elegí a quién recordar tu negocio."
+        description="Elige a quién recordar tu negocio."
       >
         <div className="grid max-w-2xl gap-5">
           <TextField
@@ -123,7 +123,7 @@ export function CustomFields({
       </MarketingPanel>
       <MarketingPanel
         title="4 · Beneficio"
-        description="Podés agregar un cupón para canjear en el mostrador."
+        description="Puedes agregar un cupón para canjear en el mostrador."
       >
         <div className="grid max-w-2xl gap-5">
           <CheckboxField
@@ -158,7 +158,7 @@ export function CustomFields({
       </MarketingPanel>
       <MarketingPanel
         title="5 · Límites y revisión"
-        description="Elegí el inicio y, si corresponde, el final de la campaña."
+        description="Elige el inicio y, si corresponde, el final de la campaña."
       >
         <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
           <TextField

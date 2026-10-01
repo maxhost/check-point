@@ -36,7 +36,7 @@ export function AccountStep({
     event.preventDefault();
     const normalized = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(normalized)) {
-      setFieldError("Escribí un email válido, por ejemplo nombre@negocio.com.");
+      setFieldError("Escribe un email válido, por ejemplo nombre@negocio.com.");
       return;
     }
     setFieldError(undefined);
@@ -97,8 +97,8 @@ export function AccountStep({
       {mode === "signup" ? (
         <StepHeader
           step={1}
-          title="Creá tu cuenta"
-          description="Solo necesitás tu email. No hay contraseñas ni planes para elegir ahora."
+          title="Crea tu cuenta"
+          description="Solo necesitas tu email. No hay contraseñas ni planes para elegir ahora."
         />
       ) : (
         <header className="mb-8">
@@ -110,10 +110,10 @@ export function AccountStep({
             tabIndex={-1}
             className="text-2xl font-bold leading-tight outline-none sm:text-3xl"
           >
-            Entrá a tu cuenta
+            Entra a tu cuenta
           </h1>
           <p className="mt-2 leading-6 text-content-muted">
-            Te enviaremos un enlace seguro para entrar. No necesitás contraseña.
+            Te enviaremos un enlace seguro para entrar. No necesitas contraseña.
           </p>
         </header>
       )}
@@ -133,8 +133,8 @@ export function AccountStep({
           errorMessage={fieldError}
           description={
             mode === "signup"
-              ? "Si ya tenés una cuenta, te enviaremos un enlace seguro para entrar."
-              : "Usá el email con el que registraste tu negocio."
+              ? "Si este email ya estaba registrado, te enviaremos un enlace de acceso en lugar de continuar con el alta."
+              : "Usa el email con el que registraste tu negocio."
           }
         />
         <Button type="submit" fullWidth isLoading={isSubmitting}>
@@ -162,11 +162,11 @@ export function MagicLinkState({
         tabIndex={-1}
         className="mt-5 text-2xl font-bold outline-none"
       >
-        Revisá tu correo
+        Revisa tu correo
       </h1>
       <p className="mt-2 leading-6 text-content-muted">
         Si hay una cuenta con ese email, te enviamos un enlace de acceso que
-        sirve una sola vez durante 15 minutos. Revisá también la carpeta de
+        sirve una sola vez durante 15 minutos. Revisa también la carpeta de
         spam.
       </p>
       <Button variant="quiet" onPress={onUseAnotherEmail} className="mt-5">

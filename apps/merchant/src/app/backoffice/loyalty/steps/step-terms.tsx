@@ -11,7 +11,7 @@ export function StepTerms({
   return (
     <>
       <p>
-        Insertá una plantilla como punto de partida y editá el texto antes de
+        Inserta una plantilla como punto de partida y edita el texto antes de
         guardar.
       </p>
       <div className="loyalty-actions">
@@ -29,7 +29,7 @@ export function StepTerms({
         label="Texto de términos"
         value={vm.terms}
         onChange={vm.setTerms}
-        placeholder="Escribí los términos o insertá una plantilla"
+        placeholder="Escribe los términos o inserta una plantilla"
         autoGrow
         errorMessage={errors.terms}
       />

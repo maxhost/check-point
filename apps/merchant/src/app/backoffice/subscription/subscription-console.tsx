@@ -119,7 +119,7 @@ export function SubscriptionConsole({
         <ModuleHeader
           eyebrow="Suscripción"
           title="Tu plan"
-          description="Consultá tu plan, tus cobros y las opciones disponibles para tu negocio."
+          description="Consulta tu plan, tus cobros y las opciones disponibles para tu negocio."
           closeHref="/backoffice"
         />
         <Toast
@@ -183,8 +183,8 @@ export function SubscriptionConsole({
               )}
               {offers.paymentPending && (
                 <Alert kind="warning" title="Hay un cobro pendiente">
-                  Actualizá el medio de pago con el link que te envió Stripe;
-                  mientras tanto no podés cambiar de plan ni de período.
+                  Actualiza el medio de pago con el link que te envió Stripe;
+                  mientras tanto no puedes cambiar de plan ni de período.
                 </Alert>
               )}
               {offers.pendingDowngrade === "with_date" && (
