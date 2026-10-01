@@ -54,6 +54,13 @@ beforeAll(async () => {
   android = await seedMember(world);
   await owner`insert into consumer.pass_placement (consumer_id, location_id, slot_kind, business_id, relevant_text)
     values (${apple.id}, ${world.homeLocation}, 'utility', ${world.home}, 'Estas cerca')`;
+  // La Bienvenida exige la app abierta y el Web Push activo (`welcome-rules.ts`, `f3982ef`): los
+  // dos clientes se siembran asi para que registrar/guardar el pase siga emitiendola COMO el rol.
+  for (const consumer of [apple, android]) {
+    await owner`update consumer.consumer_account set home_launched_at = now() where id = ${consumer.id}`;
+    await owner`insert into consumer.web_push_subscription (consumer_id, endpoint, p256dh_key, auth_key)
+      values (${consumer.id}, ${`https://push.example.test/${consumer.id}`}, 'p256dh-0118', 'auth-0118')`;
+  }
 }, 120_000);
 
 afterAll(dropWorld, 120_000);

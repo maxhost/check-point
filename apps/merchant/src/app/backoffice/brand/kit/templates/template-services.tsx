@@ -34,19 +34,19 @@ export function TemplateServices(props: PosterProps) {
       <div className="tpl-services-panel">
         <ol className="tpl-services-steps">
           <li>
-            <b>1</b> Escaneá el código
+            <b>1</b> Escanea el código
           </li>
           <li>
-            <b>2</b> Registrate con tu teléfono
+            <b>2</b> Regístrate con tu teléfono
           </li>
           <li>
-            <b>3</b> Empezá a sumar beneficios
+            <b>3</b> Empieza a sumar beneficios
           </li>
         </ol>
         <div className="tpl-services-qr">
-          <span>Empezá acá</span>
+          <span>Empieza aquí</span>
           <QrBlock svg={qrSvg} />
-          <small>Escaneá con tu cámara</small>
+          <small>Escanea con tu cámara</small>
         </div>
       </div>
     </div>

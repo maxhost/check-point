@@ -37,6 +37,8 @@ export const consumerAccounts = consumer.table(
     // ≥128 bits. Stored in the clear as the stable handle for `/c/[token]` but
     // NEVER serialized in a DTO.
     webViewToken: text("web_view_token").notNull(),
+    // First launch in installed, standalone mode. A browser tab never sets this.
+    homeLaunchedAt: timestamp("home_launched_at", { withTimezone: true }),
     // Wallet push channel (spec 0033). The single visible "Última novedad" slot of
     // the shared pass: `latestMessage` is the last notice text shown (e.g. "La
     // Gringa: +1 sello"); `messageUpdatedAt` is the "pass changed" tag backing the

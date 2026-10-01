@@ -51,8 +51,8 @@ export function PermissionPicker({
                   Quien lo tenga puede crear a terceros, ver sus PIN y
                   asignarles cualquier permiso.
                   {locked
-                    ? " Sólo el owner puede otorgarlo o quitarlo."
-                    : " Otorgalo sólo a alguien de confianza."}
+                    ? " Solo la persona propietaria puede otorgarlo o quitarlo."
+                    : " Otórgalo solo a alguien de confianza."}
                 </em>
               )}
             </span>

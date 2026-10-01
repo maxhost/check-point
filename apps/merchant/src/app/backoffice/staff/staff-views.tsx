@@ -80,7 +80,7 @@ export function CreateStaffPanel({
       open={open}
       eyebrow="Alta"
       title="Nuevo integrante"
-      description="Definí su nombre y a qué partes del negocio tendrá acceso."
+      description="Define su nombre y a qué partes del negocio tendrá acceso."
       onClose={onCancel}
     >
       <TextField
@@ -125,9 +125,9 @@ export function StaffList({
   if (!members.length)
     return (
       <section className="staff-empty" data-tour="staff-members">
-        <h2>Sumá a tu primera persona</h2>
+        <h2>Suma a tu primera persona</h2>
         <p>
-          Elegí al menos un permiso. El identificador lo crea el sistema y el
+          Elige al menos un permiso. El identificador lo crea el sistema y el
           PIN aparecerá una sola vez.
         </p>
       </section>
@@ -214,7 +214,7 @@ export function StaffEditor({
       />
       {draft.member.status === "disabled" && (
         <p className="staff-inline-warning">
-          Está dado de baja. Reactivalo para poder renombrarlo.
+          Está dado de baja. Reactívalo para poder renombrarlo.
         </p>
       )}
       {draft.name.trim() !== draft.member.name && (
@@ -234,13 +234,13 @@ export function StaffEditor({
       </div>
       {own && (
         <p className="field-help">
-          No podés editar tus propios permisos, pero sí tu nombre.
+          No puedes editar tus propios permisos, pero sí tu nombre.
         </p>
       )}
       {protectedAdministrator && (
         <p className="field-help">
-          Sólo el owner puede modificar los permisos de un Administrador,
-          regenerar su PIN o darlo de baja.
+          Solo la persona propietaria puede modificar los permisos de un
+          Administrador, regenerar su PIN o darlo de baja.
         </p>
       )}
       <button
@@ -298,7 +298,7 @@ export function StaffEditor({
       </div>
       {own && (
         <p className="field-help">
-          No podés regenerar tu propio PIN: cerraría tu sesión al instante.
+          No puedes regenerar tu propio PIN: cerraría tu sesión al instante.
         </p>
       )}
     </StaffFormModal>

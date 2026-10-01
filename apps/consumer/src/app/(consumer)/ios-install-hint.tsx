@@ -118,7 +118,7 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
   return (
     <section style={card}>
       <h3 style={{ fontSize: 17, margin: 0, color: ink }}>
-        Instalá tu pasaporte en la pantalla de inicio
+        Añadí Check Pass Club a tu pantalla de inicio
       </h3>
       <p
         style={{
@@ -151,8 +151,8 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
         <div style={stepRow}>
           <span style={stepNumStyle}>3</span>
           <p style={{ ...stepText, color: "#334155" }}>
-            Tocá <strong>Añadir</strong>. Listo: ya tenés el ícono de Mi
-            Pasaporte en tu teléfono.
+            Tocá <strong>Añadir</strong>. Listo: ya tenés el ícono de CheckPass
+            en tu teléfono.
           </p>
         </div>
       </div>

@@ -9,24 +9,24 @@ export class LoyaltyApiError extends Error {
       code
         ? (messages[code] ?? "No pudimos completar esta operación.")
         : uncertain
-          ? "No pudimos confirmar el resultado. Consultá el programa antes de volver a guardar."
+          ? "No pudimos confirmar el resultado. Consulta el programa antes de volver a guardar."
           : "No pudimos completar esta operación.",
     );
   }
 }
 const messages: Record<string, string> = {
-  unauthorized: "Tu sesión terminó. Volvé a ingresar.",
-  not_member: "No tenés una membresía activa.",
-  missing_permission: "No tenés permiso para administrar fidelización.",
-  email_not_verified: "Verificá tu email para continuar.",
+  unauthorized: "Tu sesión terminó. Vuelve a ingresar.",
+  not_member: "No tienes una membresía activa.",
+  missing_permission: "No tienes permiso para administrar fidelización.",
+  email_not_verified: "Verifica tu email para continuar.",
   business_suspended: "El negocio está suspendido.",
   business_closed: "El negocio está cerrado.",
   not_owner: "Esta acción es solo para propietarios.",
-  invalid_body: "No pudimos enviar el programa. Revisá los datos.",
-  invalid_program: "Revisá los datos del programa y volvé a intentar.",
+  invalid_body: "No pudimos enviar el programa. Revisa los datos.",
+  invalid_program: "Revisa los datos del programa y vuelve a intentar.",
   program_exists:
-    "El estado del programa cambió. Consultá el programa antes de continuar.",
-  program_unavailable: "El programa no está disponible. Volvé a intentar.",
+    "El estado del programa cambió. Consulta el programa antes de continuar.",
+  program_unavailable: "El programa no está disponible. Vuelve a intentar.",
 };
 export async function loyaltyRequest<T>(
   url: string,

@@ -30,7 +30,7 @@ export async function requireOwner(
 ): Promise<{ business: OwnerBusiness } | { response: NextResponse }> {
   const auth = await requireApiPermission(request, "catalog", {
     missingPermission: "No tienes permiso para gestionar el catálogo.",
-    emailNotVerified: "Verificá tu email para gestionar el catálogo.",
+    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
@@ -57,8 +57,9 @@ export async function requireCatalogOwner(
   request: Request,
 ): Promise<{ business: OwnerBusiness } | { response: NextResponse }> {
   const auth = await requireApiOwner(request, {
-    notOwner: "Solo el owner puede borrar del catálogo.",
-    emailNotVerified: "Verificá tu email para gestionar el catálogo.",
+    notOwner:
+      "Solo la persona propietaria puede eliminar productos del catálogo.",
+    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

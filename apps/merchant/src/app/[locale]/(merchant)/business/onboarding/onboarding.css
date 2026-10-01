@@ -73,6 +73,37 @@
   padding-top: 36px;
 }
 
+.merchant-account-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 32px;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: 9px;
+  background: var(--ui-surface-subtle);
+}
+
+.merchant-account-switch button {
+  min-height: 44px;
+  border-radius: 6px;
+  color: var(--ui-text-muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.merchant-account-switch button[aria-pressed="true"] {
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+
+.merchant-account-switch button:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
+}
+
 .merchant-onboarding-eyebrow {
   color: #a55a43;
   letter-spacing: 0.12em;

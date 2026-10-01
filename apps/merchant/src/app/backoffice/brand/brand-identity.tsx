@@ -33,7 +33,7 @@ export function BrandIdentity({
       if (result === "crop") notify({ type: "cropping" });
       if (result === "selected") notify({ type: "selected" });
     } catch {
-      setError("No pudimos preparar la imagen. Intentá nuevamente.");
+      setError("No pudimos preparar la imagen. Intenta nuevamente.");
     }
   }
   return (
@@ -75,7 +75,7 @@ export function BrandIdentity({
           </span>
           <div>
             <h2 id="logo-title">Logo</h2>
-            <p>Usá una imagen cuadrada, clara y fácil de reconocer.</p>
+            <p>Usa una imagen cuadrada, clara y fácil de reconocer.</p>
           </div>
         </header>
         <div className="brand-logo-editor">

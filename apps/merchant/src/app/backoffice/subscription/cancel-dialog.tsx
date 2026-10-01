@@ -83,13 +83,13 @@ export function CancelDialog({
       description={
         block === null ? (
           <>
-            La baja es inmediata: al confirmar perdés el acceso a Plus en el
+            La baja es inmediata: al confirmar pierdes el acceso a Plus en el
             acto y no se devuelve el tiempo que ya pagaste.
             {convenient !== null && (
               <>
                 {" "}
-                Ya pagaste hasta el {formatDate(renewalAt, timezone)}. Si querés
-                aprovecharlo, conviene volver y dar de baja el{" "}
+                Ya pagaste hasta el {formatDate(renewalAt, timezone)}. Si
+                quieres aprovecharlo, conviene volver y dar de baja el{" "}
                 {formatDate(convenient, timezone)}.
               </>
             )}

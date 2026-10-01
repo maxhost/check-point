@@ -228,7 +228,7 @@ export function useCatalogImport({
       (containsPdf && next.some((file) => file.type !== PDF_CONTENT_TYPE))
     ) {
       setFiles([]);
-      setError("Elegí un PDF o solamente imágenes, sin mezclarlos.");
+      setError("Elige un PDF o solamente imágenes, sin mezclarlos.");
       return;
     }
     setFiles(next);

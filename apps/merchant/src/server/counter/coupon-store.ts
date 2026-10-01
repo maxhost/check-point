@@ -290,7 +290,7 @@ async function enrolledMembership(
     throw new CounterError(
       409,
       "not_enrolled",
-      "Escaneá el QR del cliente primero.",
+      "Escanea el QR del cliente primero.",
     );
   return row.id;
 }

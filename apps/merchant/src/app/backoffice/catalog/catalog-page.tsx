@@ -15,7 +15,7 @@ import { CatalogTourController } from "./catalog-tour-controller";
 /** ADR 0086 — el copy del bloqueo. La proteccion es el 409 del servidor; esto es su reflejo,
  * para que el merchant no choque contra un error que no esperaba. */
 const IMPORTANDO =
-  "Estamos importando tu menú. Mientras termina no podés crear productos ni categorías; sí podés editar y borrar lo que ya está.";
+  "Estamos importando tu menú. Mientras termina no puedes crear productos ni categorías; sí puedes editar y borrar lo que ya está.";
 
 export default function CatalogPage({
   canDelete = true,
@@ -101,7 +101,7 @@ function CatalogContent({
         <ModuleHeader
           eyebrow="Catálogo"
           title="Productos listos para vender"
-          description="Organizá productos, precios y disponibilidad para cada local."
+          description="Organiza productos, precios y disponibilidad para cada local."
           closeHref="/backoffice"
         />
         <section className="catalog-overview" aria-label="Resumen del catálogo">
@@ -152,9 +152,9 @@ function CatalogContent({
           </div>
           <div>
             <p className="eyebrow">Carga inteligente</p>
-            <h2>Convertí una foto o PDF en tu catálogo</h2>
+            <h2>Convierte una foto o PDF en tu catálogo</h2>
             <p>
-              La IA crea categorías, productos y precios. Después podés revisar
+              La IA crea categorías, productos y precios. Después puedes revisar
               y completar tu catálogo.
             </p>
           </div>

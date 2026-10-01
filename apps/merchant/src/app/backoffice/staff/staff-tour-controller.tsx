@@ -18,7 +18,7 @@ const HELP: Array<{
 }> = [
   {
     id: "create",
-    title: "Añadir un miembro del staff",
+    title: "Añadir un integrante del equipo",
     body: "Nombre, permisos, alta y entrega de credenciales.",
   },
   {
@@ -89,7 +89,7 @@ export function StaffTourController({
             <header>
               <div>
                 <p className="eyebrow">Ayuda</p>
-                <h2 id="staff-help-title">¿Qué querés hacer?</h2>
+                <h2 id="staff-help-title">¿Qué quieres hacer?</h2>
               </div>
               <button aria-label="Cerrar" onClick={() => setHelpOpen(false)}>
                 <Xmark aria-hidden="true" />
@@ -105,7 +105,7 @@ export function StaffTourController({
                   <strong>{item.title}</strong>
                   <span>{item.body}</span>
                   {item.needsMember && !hasMembers && (
-                    <small>Primero añadí un integrante.</small>
+                    <small>Primero añade un integrante.</small>
                   )}
                 </button>
               ))}

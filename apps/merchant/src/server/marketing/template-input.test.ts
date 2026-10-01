@@ -215,7 +215,7 @@ describe("parseTemplateInput", () => {
     }
     for (const bad of [[], ["sms"], ["push", "push"], "push", [1], {}]) {
       expect(errorsOf({ channels: bad })).toEqual({
-        channels: "Elegí al menos un canal válido.",
+        channels: "Elige al menos un canal válido.",
       });
     }
   });

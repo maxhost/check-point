@@ -47,14 +47,14 @@ import { toClientProgram } from "@mi-pasaporte/domain/server/loyalty-program/cli
  */
 const MESSAGES = {
   missingPermission: "No tienes permiso para gestionar el programa.",
-  emailNotVerified: "Verificá tu email para gestionar el programa.",
+  emailNotVerified: "Verifica tu email para gestionar el programa.",
 };
 
 /** La copia OWNER-ONLY de `DELETE` y `PATCH`. Separada de {@link MESSAGES} porque los `code`
  * son distintos y el tipo de las dos funciones lo hace explicito. */
 const OWNER_MESSAGES = {
-  notOwner: "Solo el owner puede cerrar o reabrir el programa.",
-  emailNotVerified: "Verificá tu email para gestionar el programa.",
+  notOwner: "Solo la persona propietaria puede cerrar o reabrir el programa.",
+  emailNotVerified: "Verifica tu email para gestionar el programa.",
 };
 
 /**

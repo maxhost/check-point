@@ -1,117 +1,192 @@
 "use client";
 
-import { useEffect } from "react";
-import { WalletButtons } from "../../wallet-cta";
-import { IosInstallHint, isIosSafariBrowser } from "../../ios-install-hint";
-import { PushPrompt } from "../../push-prompt";
+import { useEffect, useState } from "react";
+import type { WelcomeOffer } from "@mi-pasaporte/domain/server/consumer/enroll-landing";
+import styles from "./enroll-confirmation.module.css";
 
-/**
- * Post-enroll confirmation (spec 0051 / ADR 0049): ONE screen with the felicitación,
- * the "add to home screen" instructions and the Apple Wallet button. The icon installed
- * from here must open the consumer's wallet, so the manifest handed over by the 201
- * (`walletManifestPath`, `start_url = /c/<token>`) is injected below.
- */
-/** Exact copy decided by the owner (ADR 0051): informs why the stored data won. */
 const EXISTING_ACCOUNT_NOTICE =
   "Ya tienes una cuenta con ese teléfono: te enrolaste en el programa con tus datos.";
+
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+function isStandalone() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
 
 export function EnrollConfirmation({
   firstName,
   businessName,
-  brandPrimaryColor,
-  vapidPublicKey,
-  walletManifestPath,
+  welcomeOffer,
   existingAccount,
 }: {
   firstName: string;
   businessName: string;
-  brandPrimaryColor: string;
-  vapidPublicKey: string | null;
-  /** Per-consumer manifest path from the enroll 201; null when the response lacked it. */
-  walletManifestPath: string | null;
-  /** From the enroll 201 (spec 0054 / ADR 0051): the phone already had an account and
-   * the profile was reused as-is. Shows a non-blocking notice; a fresh alta shows none. */
+  welcomeOffer: WelcomeOffer | null;
   existingAccount: boolean;
 }) {
-  // ADR 0049: inject `<link rel="manifest">` only while the confirmation is mounted.
-  // Before the 201 the page has NO manifest on purpose — an icon added from the form
-  // has no wallet to open (the original spec-0050 bug). If the response did not carry
-  // the path (older server, odd failure) we inject nothing and the rest still works.
-  useEffect(() => {
-    if (!walletManifestPath) return;
-    const link = document.createElement("link");
-    link.rel = "manifest";
-    link.href = walletManifestPath;
-    document.head.appendChild(link);
-    return () => {
-      link.remove();
-    };
-  }, [walletManifestPath]);
+  const [platform, setPlatform] = useState<"ios" | "android" | "other" | null>(
+    null,
+  );
+  const [installed, setInstalled] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
+    null,
+  );
+  const [showManual, setShowManual] = useState(false);
 
-  // Client-side detection selects the Wallet platform available on this device.
-  const isIos =
-    typeof navigator !== "undefined" &&
-    /iphone|ipad|ipod/i.test(navigator.userAgent);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setPlatform(
+      /iphone|ipad|ipod/i.test(ua)
+        ? "ios"
+        : /android/i.test(ua)
+          ? "android"
+          : "other",
+    );
+    setInstalled(isStandalone());
+    const onPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallPrompt(null);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  async function install() {
+    if (!installPrompt) {
+      setShowManual(true);
+      return;
+    }
+    const prompt = installPrompt;
+    setInstallPrompt(null);
+    await prompt.prompt();
+    const choice = await prompt.userChoice;
+    if (choice.outcome !== "accepted") setShowManual(true);
+  }
 
   return (
-    <section>
-      {/* Toast-style notice (spec 0054 / ADR 0051): informational and non-blocking,
-          fixed above the felicitación — never rendered on a fresh alta. */}
-      {existingAccount ? (
-        <p
-          role="status"
-          style={{
-            marginBottom: 16,
-            padding: "10px 12px",
-            background: "#eef6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: 10,
-            color: "#1e40af",
-            fontSize: 14,
-          }}
-        >
+    <section className={styles.confirmation}>
+      {existingAccount && (
+        <p role="status" className={styles.accountNotice}>
           {EXISTING_ACCOUNT_NOTICE}
         </p>
-      ) : null}
-      <h2 style={{ fontSize: 20 }}>¡Listo, {firstName}! 🎉</h2>
-      <p style={{ color: "#333", marginTop: 8 }}>
-        Ya sos parte del programa de <strong>{businessName}</strong>.
-      </p>
-      {/* Opt-in by platform (spec 0038 / ADR 0040), restored by ADR 0049. iOS Safari
-          gets the "add to home screen" hint DIRECTLY — decoupled from Web Push being
-          configured, it stands for the portal/pass even when `vapidPublicKey` is null.
-          Everyone else — Android, desktop, and iOS already installed as a PWA — gets the
-          Web Push permission button, and on THIS branch `PushPrompt` renders nothing when
-          Web Push is disabled (`vapidPublicKey === null`). Not a claim about `PushPrompt`
-          in general: since task 38 its own iOS-Safari branch outlives a null key too, but
-          that branch is unreachable from here — the ternary tests the same predicate and
-          already took that case. */}
-      {isIosSafariBrowser() ? (
-        <IosInstallHint accentColor={brandPrimaryColor} />
-      ) : (
-        <PushPrompt
-          vapidPublicKey={vapidPublicKey}
-          accentColor={brandPrimaryColor}
-        />
       )}
-      {/* Session cookie is already set by the POST — the buttons hit the
-          session-authorized endpoint directly, no extra navigation. */}
-      <div style={{ marginTop: 20 }}>
-        <WalletButtons isIos={isIos} />
+      <div className={styles.hero}>
+        <div className={styles.appIcon} aria-hidden="true">
+          C
+        </div>
+        <span className={styles.step}>
+          PASO 1 DE 2 · TU REGISTRO ESTÁ LISTO
+        </span>
+        <h1>¡Listo, {firstName}!</h1>
+        <p>
+          Ya sos parte del programa de <strong>{businessName}</strong>. Poné
+          CheckPass en tu inicio para encontrar tus beneficios siempre a mano.
+        </p>
       </div>
-      {/* Secondary action: the protagonist of this screen is install + Apple Wallet. */}
-      <a
-        href="/wallet"
-        style={{
-          display: "block",
-          textAlign: "center",
-          marginTop: 16,
-          fontSize: 14,
-          color: "#2563eb",
-          textDecoration: "underline",
-        }}
+
+      <div
+        className={styles.benefits}
+        aria-label="Beneficios de tener CheckPass en el inicio"
       >
-        Ver mi tarjeta y código QR
+        <div>
+          <span aria-hidden="true">⌁</span>
+          <p>Todos tus programas en un lugar</p>
+        </div>
+        <div>
+          <span aria-hidden="true">✦</span>
+          <p>Cupones y ofertas para vos</p>
+        </div>
+        <div>
+          <span aria-hidden="true">↗</span>
+          <p>Acceso rápido desde tu inicio</p>
+        </div>
+      </div>
+
+      {welcomeOffer && (
+        <div className={styles.reward}>
+          <span className={styles.rewardIcon} aria-hidden="true">
+            ✦
+          </span>
+          <div>
+            <strong>Te espera un beneficio de bienvenida</strong>
+            <small>
+              Abrí CheckPass desde tu inicio y activá las notificaciones para
+              descubrirlo, sujeto a disponibilidad.
+            </small>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.installArea}>
+        {installed ? (
+          <p className={styles.installed}>
+            CheckPass ya está en tu inicio ✓ Abrilo desde su ícono para
+            continuar.
+          </p>
+        ) : platform === "android" ? (
+          <>
+            <button
+              className={styles.installButton}
+              type="button"
+              onClick={install}
+            >
+              {installPrompt
+                ? "Añadir CheckPass a mi inicio"
+                : "Cómo añadir CheckPass a mi inicio"}
+              <span aria-hidden="true">↗</span>
+            </button>
+            {showManual && (
+              <p className={styles.instructions}>
+                En Chrome, abrí el menú <strong>⋮</strong> y elegí{" "}
+                <strong>Instalar app</strong>. Si ya está instalado, abrilo
+                desde el ícono de CheckPass.
+              </p>
+            )}
+          </>
+        ) : platform === "ios" ? (
+          <div className={styles.iosSteps}>
+            <strong>Añadí CheckPass a tu inicio</strong>
+            <ol>
+              <li>
+                En Safari, tocá <strong>Compartir</strong>.
+              </li>
+              <li>
+                Elegí <strong>Añadir a pantalla de inicio</strong>.
+              </li>
+              <li>
+                Tocá <strong>Añadir</strong> y abrí CheckPass desde su ícono.
+              </li>
+            </ol>
+            <p>Si abriste el QR en otra app, abrí esta página en Safari.</p>
+          </div>
+        ) : platform === null ? (
+          <p className={styles.loading}>Preparando tu instalación…</p>
+        ) : (
+          <a className={styles.installButton} href="/wallet">
+            Abrir CheckPass <span aria-hidden="true">↗</span>
+          </a>
+        )}
+        <p className={styles.nextStep}>
+          Después, dentro de CheckPass, activás los avisos para recibir tus
+          beneficios.
+        </p>
+      </div>
+      <a className={styles.skipLink} href="/wallet">
+        Ver mi pase ahora
       </a>
     </section>
   );

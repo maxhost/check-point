@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
+import type { WelcomeCouponSummary } from "@mi-pasaporte/domain/server/consumer/welcome-coupons";
 import { ProgramCard } from "./program-card";
 
 export function visiblePrograms(
@@ -15,8 +16,12 @@ export function visiblePrograms(
 
 export function ProgramsTab({
   programs,
+  welcomeCoupons = [],
+  onShowQr,
 }: {
   programs: ConsumerProgramSummary[];
+  welcomeCoupons?: WelcomeCouponSummary[];
+  onShowQr?: () => void;
 }) {
   const [showClosed, setShowClosed] = useState(false);
   const visible = visiblePrograms(programs, showClosed);
@@ -25,6 +30,33 @@ export function ProgramsTab({
   );
   return (
     <section aria-labelledby="programs-tab-title">
+      {welcomeCoupons.length > 0 && (
+        <div
+          className="consumer-welcome-coupons"
+          aria-label="Beneficios de bienvenida"
+        >
+          {welcomeCoupons.map((coupon) => (
+            <article className="consumer-welcome-coupon" key={coupon.id}>
+              <span className="consumer-welcome-coupon-tag">
+                BENEFICIO DE BIENVENIDA
+              </span>
+              <h3>{coupon.label}</h3>
+              <p>{coupon.businessName}</p>
+              {coupon.rule && <p>{coupon.rule}</p>}
+              <p>
+                {coupon.available
+                  ? `Válido hasta ${new Date(coupon.validUntil).toLocaleDateString("es", { day: "numeric", month: "long", timeZone: coupon.timeZone })}`
+                  : `Disponible desde ${new Date(coupon.validFrom).toLocaleDateString("es", { day: "numeric", month: "long", timeZone: coupon.timeZone })}`}
+              </p>
+              {onShowQr && (
+                <button type="button" onClick={onShowQr}>
+                  Ver mi código QR
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
       <div className="consumer-programs-heading">
         <div>
           <h2 id="programs-tab-title">Tus programas</h2>

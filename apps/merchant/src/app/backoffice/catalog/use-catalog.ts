@@ -40,8 +40,8 @@ export function useCatalog() {
       if (res.status === 401 || res.status === 403) {
         readAccessError.current =
           res.status === 401
-            ? "Tu sesión venció. Volvé a iniciar sesión para continuar."
-            : "Ya no tenés permiso para acceder al catálogo.";
+            ? "Tu sesión venció. Vuelve a iniciar sesión para continuar."
+            : "Ya no tienes permiso para acceder al catálogo.";
         pendingRefresh.current = null;
         stop?.();
         throw new Error(readAccessError.current);
@@ -97,7 +97,7 @@ export function useCatalog() {
           notify?.({ type: "refresh" });
           setError(
             readAccessError.current ??
-              "Se guardó, pero no pudimos actualizar la lista. Reintentá la lectura del catálogo.",
+              "Se guardó, pero no pudimos actualizar la lista. Reintenta la lectura del catálogo.",
           );
           return true;
         }
@@ -146,7 +146,7 @@ export function useCatalog() {
           notify?.({ type: "refresh", task: "create-category" });
           setError(
             readAccessError.current ??
-              "Se guardó, pero no pudimos actualizar la lista. Reintentá la lectura del catálogo.",
+              "Se guardó, pero no pudimos actualizar la lista. Reintenta la lectura del catálogo.",
           );
           return cat;
         }

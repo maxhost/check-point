@@ -85,7 +85,7 @@ export function parseAudiencePreviewQuery(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la audiencia.",
+      "Revisa los datos de la audiencia.",
       fields,
     );
   return { dormantDays: days, locationIds };

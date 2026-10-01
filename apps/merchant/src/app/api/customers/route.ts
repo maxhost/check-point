@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = await requireApiPermission(request, "counter", {
     missingPermission: "No tienes permiso para ver los clientes.",
-    emailNotVerified: "Verificá tu email para ver los clientes.",
+    emailNotVerified: "Verifica tu email para ver los clientes.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {

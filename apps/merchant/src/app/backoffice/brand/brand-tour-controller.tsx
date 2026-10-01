@@ -142,9 +142,9 @@ export function BrandTourController({
         step.element = '[data-tour="brand-recovery"]';
         step.popover = {
           ...step.popover,
-          title: "Revisá la versión guardada",
+          title: "Revisa la versión guardada",
           description:
-            "Tu borrador se conserva. Consultá la marca actual. Usar la versión guardada requiere confirmar el descarte del borrador.",
+            "Tu borrador se conserva. Consulta la marca actual. Usar la versión guardada requiere confirmar el descarte del borrador.",
         };
       }
       // The deferred cropper can take a moment to mount; keep the logo spotlight until then.
@@ -200,7 +200,9 @@ export function BrandTourController({
         disabled={Boolean(session) || orienting || accessDenied}
         onClick={() =>
           blocked
-            ? onNotice("Terminá o cerrá la acción actual para iniciar la guía.")
+            ? onNotice(
+                "Termina o cierra la acción actual para iniciar la guía.",
+              )
             : setHelpOpen(true)
         }
       >
@@ -221,7 +223,7 @@ export function BrandTourController({
       <StaffFormModal
         open={helpOpen}
         eyebrow="Ayuda"
-        title="¿Qué querés hacer?"
+        title="¿Qué quieres hacer?"
         description="Estas guías te acompañan sobre tu marca real. Guardar aplica todos los cambios pendientes."
         onClose={() => setHelpOpen(false)}
       >
@@ -238,7 +240,7 @@ export function BrandTourController({
               <strong>{item.title}</strong>
               <span>{item.body}</span>
               {item.id === "remove-logo" && !hasLogo && (
-                <small>Primero agregá un logo.</small>
+                <small>Primero agrega un logo.</small>
               )}
             </button>
           ))}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, Button } from "../../../../../../ui";
-import { AccountStep, MagicLinkState } from "./account-step";
+import { Alert, ApiError, Button } from "../../../../../../ui";
+import { AccountStep, MagicLinkState, type AccountMode } from "./account-step";
 import { BusinessStep } from "./business-step";
 import { CompleteStep } from "./complete-step";
 import { ProgramStep } from "./program-step";
@@ -15,6 +15,7 @@ import type {
 import {
   getOnboardingPrefill,
   getOnboardingState,
+  requestVerificationEmail,
   WizardApiError,
 } from "../_lib/onboarding-api";
 import { restoredStage } from "../_lib/onboarding-flow";
@@ -28,6 +29,8 @@ type Stage =
   | "program"
   | "complete";
 
+type VerificationStatus = "sent" | "failed" | "sending" | null;
+
 export function OnboardingWizard() {
   const [stage, setStage] = useState<Stage>("loading");
   const [prefill, setPrefill] = useState<OnboardingPrefill | null>(null);
@@ -35,6 +38,9 @@ export function OnboardingWizard() {
   const [program, setProgram] = useState<ProgramSummary | null>(null);
   const [currencyCode, setCurrencyCode] = useState<string | null>(null);
   const [error, setError] = useState<WizardApiError | null>(null);
+  const [accountMode, setAccountMode] = useState<AccountMode>("signup");
+  const [verificationStatus, setVerificationStatus] =
+    useState<VerificationStatus>(null);
   const hasShownInitialStage = useRef(false);
 
   const loadPrefill = useCallback(async () => {
@@ -82,7 +88,20 @@ export function OnboardingWizard() {
 
   function resetToAccount() {
     setError(null);
+    setAccountMode("login");
     setStage("account");
+  }
+
+  async function retryVerification() {
+    setVerificationStatus("sending");
+    try {
+      const result = await requestVerificationEmail();
+      setVerificationStatus(
+        result.verified ? null : result.sent ? "sent" : "failed",
+      );
+    } catch {
+      setVerificationStatus("failed");
+    }
   }
 
   const ownerCode = gateCode(error);
@@ -118,7 +137,7 @@ export function OnboardingWizard() {
             No pudimos recuperar tu avance
           </h1>
           <p className="mt-2 leading-6 text-content-muted">
-            {error?.message ?? "Revisá tu conexión y volvé a intentarlo."}
+            {error?.message ?? "Revisa tu conexión y vuelve a intentarlo."}
           </p>
           <Button onPress={() => void restore()} className="mt-5">
             Reintentar
@@ -134,42 +153,60 @@ export function OnboardingWizard() {
         <AccountStep
           apiError={error}
           onError={setError}
-          onNewAccount={async () => {
+          mode={accountMode}
+          onModeChange={setAccountMode}
+          onNewAccount={async (verificationSent) => {
+            setVerificationStatus(verificationSent ? "sent" : "failed");
             await loadPrefill();
             setStage("business");
           }}
-          onMagicLink={() => setStage("magic-link")}
+          onMagicLink={() => {
+            setAccountMode("login");
+            setStage("magic-link");
+          }}
         />
       )}
       {stage === "magic-link" && (
         <MagicLinkState onUseAnotherEmail={resetToAccount} />
       )}
       {stage === "business" && prefill && (
-        <BusinessStep
-          prefill={prefill}
-          apiError={error}
-          onError={setError}
-          onComplete={(created, createdCurrencyCode) => {
-            setBusiness(created);
-            setCurrencyCode(createdCurrencyCode);
-            setError(null);
-            setStage("program");
-          }}
-          onAlreadyExists={() => void restore()}
-        />
+        <>
+          <VerificationNotice
+            status={verificationStatus}
+            onRetry={retryVerification}
+          />
+          <BusinessStep
+            prefill={prefill}
+            apiError={error}
+            onError={setError}
+            onComplete={(created, createdCurrencyCode) => {
+              setBusiness(created);
+              setCurrencyCode(createdCurrencyCode);
+              setError(null);
+              setStage("program");
+            }}
+            onAlreadyExists={() => void restore()}
+          />
+        </>
       )}
       {stage === "program" && (
-        <ProgramStep
-          business={business}
-          currencyCode={currencyCode}
-          apiError={error}
-          onError={setError}
-          onComplete={(created) => {
-            setProgram(created);
-            setError(null);
-            setStage("complete");
-          }}
-        />
+        <>
+          <VerificationNotice
+            status={verificationStatus}
+            onRetry={retryVerification}
+          />
+          <ProgramStep
+            business={business}
+            currencyCode={currencyCode}
+            apiError={error}
+            onError={setError}
+            onComplete={(created) => {
+              setProgram(created);
+              setError(null);
+              setStage("complete");
+            }}
+          />
+        </>
       )}
       {stage === "complete" && business && program && (
         <CompleteStep business={business} onGateError={setError} />
@@ -195,11 +232,55 @@ function WizardShell({ children }: { children: React.ReactNode }) {
               checkpass<span>.</span>club
             </span>
           </div>
-          <span className="merchant-onboarding-context">Alta de negocios</span>
+          <span className="merchant-onboarding-context">Para negocios</span>
         </header>
         <div className="merchant-onboarding-content">{children}</div>
       </div>
     </main>
+  );
+}
+
+function VerificationNotice({
+  status,
+  onRetry,
+}: {
+  status: VerificationStatus;
+  onRetry: () => Promise<void>;
+}) {
+  if (!status) return null;
+  return (
+    <Alert
+      kind={status === "sent" ? "info" : "warning"}
+      title={
+        status === "sent"
+          ? "Revisa tu email"
+          : "No pudimos enviar el enlace de verificación"
+      }
+      className="mb-6"
+    >
+      {status === "sent" ? (
+        <p>
+          Te enviamos un enlace para confirmar tu email. Puedes continuar con el
+          alta mientras tanto.
+        </p>
+      ) : (
+        <div className="grid gap-2">
+          <p>
+            Acabamos de crear tu cuenta con el email del paso anterior, pero no
+            pudimos enviar el enlace de verificación. Puedes continuar con tu
+            negocio y reintentar el envío aquí. Necesitarás verificar el email
+            para obtener tu QR.
+          </p>
+          <Button
+            variant="quiet"
+            onPress={() => void onRetry()}
+            isLoading={status === "sending"}
+          >
+            {status === "sending" ? "Enviando…" : "Reenviar enlace"}
+          </Button>
+        </div>
+      )}
+    </Alert>
   );
 }
 

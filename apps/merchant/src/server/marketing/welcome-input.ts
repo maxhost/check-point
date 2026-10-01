@@ -106,7 +106,7 @@ export function welcomeParams(
     reminderDays >= validDays
   ) {
     errors.welcomeReminderDays =
-      "El aviso tiene que ser antes del vencimiento: elegí menos días.";
+      "El aviso tiene que ser antes del vencimiento: elige menos días.";
   }
   const cap = absent(body.welcomeMonthlyCap)
     ? def.monthlyCap.default
@@ -146,7 +146,7 @@ export function welcomeDeal(
 ): CouponDeal | undefined {
   if (!absent(body.channels))
     errors.channels =
-      "La bienvenida no sale por un canal: se entrega al instalar el pase.";
+      "La bienvenida se entrega al abrir CheckPass desde el inicio y activar las notificaciones.";
   if (!absent(body.dormantDays))
     errors.dormantDays = "La bienvenida no usa días sin venir.";
   if (

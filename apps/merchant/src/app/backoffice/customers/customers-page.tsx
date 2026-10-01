@@ -66,11 +66,11 @@ export function CustomersPage({
     const trimmed = name.trim();
     const length = Array.from(trimmed).length;
     if (length > 0 && length < 3) {
-      setFieldError("Escribí al menos 3 caracteres para buscar por nombre.");
+      setFieldError("Escribe al menos 3 caracteres para buscar por nombre.");
       return;
     }
     if (length > 60) {
-      setFieldError("Usá como máximo 60 caracteres.");
+      setFieldError("Usa como máximo 60 caracteres.");
       return;
     }
     setFieldError(null);
@@ -130,12 +130,12 @@ export function CustomersPage({
   function searchPhone(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!localPhone.trim()) {
-      setFieldError("Escribí un teléfono para buscar.");
+      setFieldError("Escribe un teléfono para buscar.");
       return;
     }
     const phone = composeE164(countryByIso(countryIso)?.dial ?? "", localPhone);
     if (!/^\+[1-9]\d{1,14}$/.test(phone)) {
-      setFieldError("Ingresá un teléfono válido con código de país.");
+      setFieldError("Ingresa un teléfono válido con código de país.");
       return;
     }
     setFieldError(null);
@@ -190,7 +190,7 @@ export function CustomersPage({
                 }
               />
               <p>
-                Escribí al menos 3 caracteres. La búsqueda se actualiza
+                Escribe al menos 3 caracteres. La búsqueda se actualiza
                 automáticamente.
               </p>
             </div>
@@ -257,7 +257,7 @@ export function CustomersPage({
               <h2>Listado de clientes</h2>
               <p>
                 {nameInvalid
-                  ? "Completá la búsqueda"
+                  ? "Completa la búsqueda"
                   : result
                     ? `${result.total} ${result.total === 1 ? "cliente" : "clientes"}`
                     : "Cargando clientes…"}
@@ -266,7 +266,7 @@ export function CustomersPage({
           </header>
           {nameInvalid ? (
             <div className="customers-empty">
-              <p>Escribí entre 3 y 60 caracteres para ver resultados.</p>
+              <p>Escribe entre 3 y 60 caracteres para ver resultados.</p>
             </div>
           ) : null}
           {loading && !nameInvalid ? (
@@ -286,7 +286,7 @@ export function CustomersPage({
               <p>
                 {filter.kind === "all"
                   ? "Todavía no hay clientes inscritos en los programas de fidelización."
-                  : "Probá con otra búsqueda."}
+                  : "Prueba con otra búsqueda."}
               </p>
             </div>
           ) : null}

@@ -132,7 +132,7 @@ export function CampaignDetail({
             <dt>Canales</dt>
             <dd>
               {welcome
-                ? "Se entrega al instalar el pase"
+                ? "Se entrega al activar notificaciones en CheckPass"
                 : campaign.channels
                     .map((channel) =>
                       channel === "push" ? "Push" : "Proximidad",
@@ -224,7 +224,7 @@ export function CampaignDetail({
         </dl>
         {campaign.templateKey && (
           <p className="mt-4 text-sm text-content-muted">
-            Para cambiar los parámetros, finalizá esta corrida y activá una
+            Para cambiar los parámetros, finaliza esta corrida y activa una
             nueva desde el catálogo.
           </p>
         )}

@@ -102,7 +102,7 @@ export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
         void scan();
       } catch {
         setError(
-          "No pudimos abrir la cámara. Revisá los permisos del navegador.",
+          "No pudimos abrir la cámara. Revisa los permisos del navegador.",
         );
       }
     }
@@ -123,7 +123,7 @@ export function QrScanner({ onDecode }: { onDecode: (text: string) => void }) {
       <video ref={videoRef} className="counter-video" muted playsInline />
       <div className="counter-reticle" aria-hidden />
       <canvas ref={canvasRef} hidden />
-      <p className="counter-scan-hint">Apuntá al código QR del cliente</p>
+      <p className="counter-scan-hint">Apunta al código QR del cliente</p>
     </div>
   );
 }

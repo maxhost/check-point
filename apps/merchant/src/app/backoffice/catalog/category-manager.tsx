@@ -76,8 +76,8 @@ export function CategoryManager({
       </div>
       {importInProgress && (
         <p className="field-help">
-          Estamos importando tu menú. Mientras termina no podés crear
-          categorías; sí podés renombrar y borrar las que ya están.
+          Estamos importando tu menú. Mientras termina no puedes crear
+          categorías; sí puedes renombrar y borrar las que ya están.
         </p>
       )}
       {categories.length === 0 ? (

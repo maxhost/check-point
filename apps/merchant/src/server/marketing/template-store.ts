@@ -120,7 +120,7 @@ async function runDoors(
       throw new CampaignError(
         400,
         "validation",
-        "Revisá los locales excluidos.",
+        "Revisa los locales excluidos.",
         { excludedLocationIds: "Hay un local que no es tuyo o no existe." },
       );
   }
@@ -154,7 +154,7 @@ export async function enableTemplate(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la campaña.",
+      "Revisa los datos de la campaña.",
       parsed.errors,
     );
   const input = parsed.value;
@@ -176,7 +176,7 @@ export async function enableTemplate(
         throw new CampaignError(
           409,
           "no_loyalty_reward",
-          "No se puede activar: necesitás un programa de fidelización con un premio.",
+          "No se puede activar: necesitas un programa de fidelización con un premio.",
         );
       const doors = await runDoors(tx, businessId, input.excludedLocationIds);
       // Spec 0103: the doors are PROXIMITY's. A push-only run needs none, and is created
@@ -185,13 +185,13 @@ export async function enableTemplate(
         throw new CampaignError(
           409,
           "no_usable_location",
-          "Necesitás al menos un local activo y con ubicación en el mapa.",
+          "Necesitas al menos un local activo y con ubicación en el mapa.",
         );
       if (input.endsAt !== null && input.endsAt <= now)
         throw new CampaignError(
           409,
           "campaign_expired",
-          "La fecha de fin ya pasó: elegí otra.",
+          "La fecha de fin ya pasó: elige otra.",
         );
       // Answers fast in the common case. What GUARANTEES one live run is the partial
       // unique index: when two requests truly overlap (the second one's select runs before

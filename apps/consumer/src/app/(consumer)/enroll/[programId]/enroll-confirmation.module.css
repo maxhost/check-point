@@ -1,0 +1,204 @@
+.confirmation {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 4px 0 32px;
+  color: #12313a;
+}
+.accountNotice {
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: #e8f3f7;
+  color: #174364;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.hero {
+  padding: 28px 22px 26px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 90% 12%, #2b6071 0, transparent 48%), #102d3d;
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(16, 45, 61, 0.17);
+}
+.appIcon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin-bottom: 26px;
+  border-radius: 18px;
+  background: #f5fbf7;
+  color: #102d3d;
+  font-size: 45px;
+  font-weight: 750;
+  line-height: 1;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+.step {
+  color: #b9ddce;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.hero h1 {
+  margin: 9px 0 0;
+  font-size: clamp(30px, 8vw, 38px);
+  letter-spacing: -0.045em;
+  line-height: 1.07;
+}
+.hero p {
+  margin: 12px 0 0;
+  color: #d7e8e7;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.hero strong {
+  color: #fff;
+}
+.benefits {
+  display: grid;
+  gap: 12px;
+  margin: 22px 0;
+}
+.benefits > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+.benefits span {
+  display: grid;
+  flex: 0 0 36px;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #eaf5ee;
+  color: #1d6246;
+  font-size: 21px;
+  font-weight: 700;
+}
+.benefits p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+.reward {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #f1dcaa;
+  border-radius: 18px;
+  background: #fff8e9;
+}
+.rewardIcon {
+  color: #a46a19;
+  font-size: 25px;
+  line-height: 1;
+}
+.reward strong {
+  font-size: 14px;
+}
+.reward p {
+  margin: 4px 0;
+  font-size: 16px;
+  font-weight: 750;
+}
+.reward small {
+  color: #69573d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.installArea {
+  margin-top: 22px;
+}
+.installButton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 15px;
+  background: #166849;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.installButton span {
+  font-size: 20px;
+}
+.installButton:focus-visible,
+.skipLink:focus-visible {
+  outline: 3px solid #166849;
+  outline-offset: 3px;
+}
+.instructions,
+.installed {
+  padding: 14px;
+  border-radius: 12px;
+  background: #eaf5ee;
+  color: #205341;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.iosSteps {
+  padding: 18px;
+  border: 1px solid #cce1d4;
+  border-radius: 18px;
+  background: #f0faf3;
+}
+.iosSteps strong {
+  font-size: 16px;
+}
+.iosSteps ol {
+  margin: 14px 0 0;
+  padding-left: 21px;
+}
+.iosSteps li {
+  padding-left: 3px;
+  margin: 9px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.iosSteps li strong {
+  font-size: inherit;
+}
+.iosSteps p {
+  margin: 12px 0 0;
+  color: #566a5d;
+  font-size: 12px;
+}
+.nextStep {
+  margin: 12px 5px 0;
+  color: #667970;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.skipLink {
+  display: block;
+  margin-top: 22px;
+  color: #35654f;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.loading {
+  color: #667970;
+}
+@media (min-width: 600px) {
+  .hero {
+    padding: 34px 30px;
+  }
+  .benefits {
+    margin: 27px 4px;
+  }
+}

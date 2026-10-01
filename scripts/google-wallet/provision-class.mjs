@@ -13,7 +13,8 @@
 //     --issuer 3388000000022... \      # your Google Wallet Issuer ID
 //     --logo https://.../logo.png      # public HTTPS logo (Google requires programLogo)
 //
-// Env fallbacks: GOOGLE_WALLET_SA_JSON_FILE, GOOGLE_WALLET_ISSUER_ID, GOOGLE_WALLET_LOGO_URL.
+// Env fallbacks: GOOGLE_WALLET_SA_JSON or GOOGLE_WALLET_SA_JSON_FILE,
+// GOOGLE_WALLET_ISSUER_ID, GOOGLE_WALLET_LOGO_URL.
 
 import { createSign } from "node:crypto";
 import { readFileSync as readFile } from "node:fs";
@@ -72,8 +73,8 @@ async function accessToken(sa) {
 function classBody(issuerId, logoUrl) {
   return {
     id: `${issuerId}.${CLASS_SUFFIX}`,
-    issuerName: "CheckPass Club",
-    programName: "CheckPass Club",
+    issuerName: "Mi CheckPass",
+    programName: "Mi CheckPass",
     programLogo: { sourceUri: { uri: logoUrl } },
     reviewStatus: "UNDER_REVIEW",
     hexBackgroundColor: "#0f2a3a",
@@ -84,13 +85,19 @@ async function main() {
   const saPath = arg("sa", "GOOGLE_WALLET_SA_JSON_FILE");
   const issuerId = arg("issuer", "GOOGLE_WALLET_ISSUER_ID");
   const logoUrl = arg("logo", "GOOGLE_WALLET_LOGO_URL");
-  if (!saPath || !issuerId || !logoUrl) {
+  if (
+    (!saPath && !process.env.GOOGLE_WALLET_SA_JSON) ||
+    !issuerId ||
+    !logoUrl
+  ) {
     console.error(
       "Faltan argumentos. Uso:\n  node scripts/google-wallet/provision-class.mjs --sa ./sa.json --issuer <ISSUER_ID> --logo <https URL de logo>",
     );
     process.exit(2);
   }
-  const sa = JSON.parse(readFile(saPath, "utf8"));
+  const sa = JSON.parse(
+    saPath ? readFile(saPath, "utf8") : process.env.GOOGLE_WALLET_SA_JSON,
+  );
   if (!sa.client_email || !sa.private_key)
     throw new Error(
       "El JSON de la service account no tiene client_email/private_key.",
@@ -103,6 +110,25 @@ async function main() {
   const getRes = await fetch(`${API}/${encodeURIComponent(classId)}`, {
     headers: authHeader,
   });
+
+  if (process.argv.includes("--inspect")) {
+    if (!getRes.ok) throw new Error(`get class failed (${getRes.status})`);
+    const current = await getRes.json();
+    console.log(
+      JSON.stringify(
+        {
+          id: current.id,
+          issuerName: current.issuerName,
+          programName: current.programName,
+          programLogo: current.programLogo?.sourceUri?.uri,
+          reviewStatus: current.reviewStatus,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
 
   if (getRes.status === 404) {
     const res = await fetch(API, {
@@ -128,7 +154,14 @@ async function main() {
     const res = await fetch(`${API}/${encodeURIComponent(classId)}`, {
       method: "PATCH",
       headers: { ...authHeader, "content-type": "application/json" },
-      body: JSON.stringify(classBody(issuerId, logoUrl)),
+      // Google requires an approved class to re-enter review when edited.
+      body: JSON.stringify({
+        issuerName: "Mi CheckPass",
+        programName: "Mi CheckPass",
+        programLogo: { sourceUri: { uri: logoUrl } },
+        reviewStatus: "UNDER_REVIEW",
+        hexBackgroundColor: "#0f2a3a",
+      }),
     });
     const body = await res.json();
     if (!res.ok)

@@ -57,7 +57,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const auth = await requireApiOwnerSinGateDeEmail(request, {
-      notOwner: "Solo el owner puede ver el checklist del onboarding.",
+      notOwner:
+        "Solo la persona propietaria puede ver los pasos de configuración.",
     });
     if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
 

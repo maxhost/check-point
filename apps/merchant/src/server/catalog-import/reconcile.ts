@@ -71,7 +71,7 @@ export async function runCatalogImportReconcile(
     await failImport(
       row.id,
       "provider_unavailable",
-      "No pudimos analizar el menú. Volvé a intentarlo.",
+      "No pudimos analizar el menú. Vuelve a intentarlo.",
     );
     summary.failed += 1;
   }
@@ -115,7 +115,7 @@ export async function runCatalogImportReconcile(
       await failImport(
         row.id,
         "provider_unavailable",
-        "No pudimos analizar el menú. Volvé a intentarlo.",
+        "No pudimos analizar el menú. Vuelve a intentarlo.",
       );
       summary.failed += 1;
       continue;

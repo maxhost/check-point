@@ -20,7 +20,7 @@ export default function RecoverPage() {
         }}
       >
         <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>
-          CheckPass Club
+          Check Pass Club
         </p>
         <h1 style={{ fontSize: 26, margin: "6px 0 8px" }}>
           Recuperá tu tarjeta

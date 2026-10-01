@@ -50,9 +50,17 @@ export class ResendEmailChannel implements EmailChannel {
       );
       const payload = (await response.json().catch(() => null)) as {
         id?: unknown;
+        name?: unknown;
       } | null;
-      if (!response.ok || typeof payload?.id !== "string")
+      if (!response.ok || typeof payload?.id !== "string") {
+        // El código y estado ayudan a distinguir dominio no verificado, clave inválida
+        // o límite del proveedor sin registrar destinatario, cuerpo ni credenciales.
+        console.error("resend_email_rejected", {
+          status: response.status,
+          code: typeof payload?.name === "string" ? payload.name : null,
+        });
         throw new EmailProviderError("resend", "rejected");
+      }
       return { provider: "resend" as const, providerMessageId: payload.id };
     } catch (error) {
       if (error instanceof EmailProviderError) throw error;

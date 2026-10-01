@@ -39,7 +39,7 @@ export function CouponProductPicker({
     return (
       <Alert title="Producto opcional no disponible">
         Tu permiso de Marketing permite configurar el cupón. Para asociarlo a un
-        producto necesitás permiso de Catálogo.
+        producto necesitas permiso de Catálogo.
         {errorMessage && <p className="text-danger">{errorMessage}</p>}
         {productId && (
           <Button variant="secondary" onPress={() => onChange(null)}>
@@ -51,7 +51,7 @@ export function CouponProductPicker({
   if (failed)
     return (
       <Alert kind="warning" title="No pudimos consultar los productos">
-        Podés guardar el cupón sin producto asociado.{" "}
+        Puedes guardar el cupón sin producto asociado.{" "}
         {errorMessage && <p className="text-danger">{errorMessage}</p>}
         {productId && (
           <Button variant="secondary" onPress={() => onChange(null)}>

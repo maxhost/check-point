@@ -28,43 +28,43 @@ const copy = {
     "La cantidad de locales activos depende de tu plan. Este indicador muestra tu límite actual.",
   ],
   add: [
-    "Añadí un local",
-    "Abrí el formulario para registrar una nueva sucursal.",
+    "Añade un local",
+    "Abre el formulario para registrar una nueva sucursal.",
   ],
   list: [
-    "Gestioná tus locales",
-    "Acá podés editar sus datos, archivarlos o reactivar los que ya no operaban.",
+    "Gestiona tus locales",
+    "Aquí puedes editar sus datos, archivarlos o reactivar los que ya no operaban.",
   ],
   edit: [
-    "Elegí el local",
-    "Tocá Editar en el local cuyos datos querés actualizar.",
+    "Elige el local",
+    "Toca Editar en el local cuyos datos quieres actualizar.",
   ],
   archive: [
-    "Elegí el local",
-    "Tocá Archivar. La baja es reversible y conserva el historial.",
+    "Elige el local",
+    "Toca Archivar. La baja es reversible y conserva el historial.",
   ],
   name: [
-    "Añadí un nombre al local",
-    "Usá un nombre corto que tu equipo pueda reconocer fácilmente.",
+    "Añade un nombre al local",
+    "Usa un nombre corto que tu equipo pueda reconocer fácilmente.",
   ],
   address: [
-    "Buscá la dirección de tu local",
-    "Escribí al menos tres letras y seleccioná la dirección correcta en el listado.",
+    "Busca la dirección de tu local",
+    "Escribe al menos tres letras y selecciona la dirección correcta en el listado.",
   ],
   manualAddress: [
     "¿No encontraste la dirección?",
-    "Podés escribirla manualmente en este campo.",
+    "Puedes escribirla manualmente en este campo.",
   ],
   save: [
-    "Creá el local",
-    "Confirmá los datos para crear el local. El servidor volverá a revisar la dirección elegida.",
+    "Crea el local",
+    "Confirma los datos para crear el local. El servidor volverá a revisar la dirección elegida.",
   ],
   saveEdit: [
-    "Guardá los cambios",
-    "Confirmá para actualizar el local. El servidor volverá a revisar la dirección si la modificaste.",
+    "Guarda los cambios",
+    "Confirma para actualizar el local. El servidor volverá a revisar la dirección si la modificaste.",
   ],
   archiveConfirm: [
-    "Confirmá el archivo",
+    "Confirma el archivo",
     "El local dejará de operar. Si es el último local activo, el sistema protegerá al negocio y no permitirá archivarlo.",
   ],
 } as const;

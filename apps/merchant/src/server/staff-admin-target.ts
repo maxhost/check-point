@@ -31,7 +31,7 @@ export function assertTargetNotAdministrator(
   if ((targetPermissions ?? []).includes("staff")) {
     throw new StaffError(
       403,
-      "Solo el owner puede regenerar el PIN o dar de baja a un Administrador.",
+      "Solo la persona propietaria puede regenerar el PIN o dar de baja a un Administrador.",
       "target_is_administrator",
     );
   }

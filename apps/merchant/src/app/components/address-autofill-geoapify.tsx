@@ -144,7 +144,7 @@ export default function GeoapifyPlaceSearch({
       {loading && <p className="field-help">Buscando lugares…</p>}
       {failed && !loading && (
         <p className="field-help">
-          No pudimos buscar lugares ahora. Revisá tu conexión y volvé a
+          No pudimos buscar lugares ahora. Revisa tu conexión y vuelve a
           intentar.
         </p>
       )}

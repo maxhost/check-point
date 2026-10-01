@@ -1,0 +1,127 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(8, 32, 39, 0.68);
+  box-sizing: border-box;
+}
+.dialog {
+  width: min(100%, 440px);
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 26px 22px 22px;
+  border-radius: 26px;
+  background: #fff;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.24);
+  box-sizing: border-box;
+}
+.step {
+  color: #318365;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
+.symbol {
+  display: grid;
+  place-items: center;
+  width: 55px;
+  height: 55px;
+  margin-top: 21px;
+  border-radius: 17px;
+  background: #e7f5ec;
+  color: #186847;
+  font-size: 31px;
+}
+.dialog h2 {
+  margin: 19px 0 0;
+  color: #12313a;
+  font-size: 27px;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+.dialog > p {
+  margin: 11px 0 0;
+  color: #5a706c;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.reward {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 15px;
+  border-radius: 15px;
+  background: #fff6e6;
+  color: #4a381d;
+}
+.reward strong {
+  font-size: 13px;
+}
+.reward span {
+  font-size: 17px;
+  font-weight: 750;
+}
+.reward small {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.later {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  border: 0;
+  background: transparent;
+  color: #60766e;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.retry {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 12px;
+  background: #166849;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+}
+.toast {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 86px;
+  z-index: 1001;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 14px 38px 14px 16px;
+  border-radius: 15px;
+  background: #163e31;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+.toast button {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+@media (min-width: 600px) {
+  .backdrop {
+    align-items: center;
+  }
+}

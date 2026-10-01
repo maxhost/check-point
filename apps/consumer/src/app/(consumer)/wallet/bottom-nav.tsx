@@ -16,7 +16,7 @@ export function BottomNav({
   return (
     <nav
       className="consumer-bottom-nav"
-      aria-label="Secciones de CheckPass Club"
+      aria-label="Secciones de Check Pass Club"
     >
       <button
         type="button"

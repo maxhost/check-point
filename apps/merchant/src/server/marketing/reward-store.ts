@@ -14,7 +14,7 @@ import {
  * `enableTemplate` (`template-store.ts`) — so three call sites are three wirings.
  */
 
-const VALIDATION = "Revisá los datos de la campaña.";
+const VALIDATION = "Revisa los datos de la campaña.";
 
 /** The reward columns the `Campaign` DTO adds to the ones it already had. */
 export const rewardSelect = {

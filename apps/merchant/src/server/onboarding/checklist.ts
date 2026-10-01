@@ -92,23 +92,23 @@ export type ChecklistView = {
  */
 const TOUR_COPY: Record<OnboardingTourId, { title: string; body: string }> = {
   locations: {
-    title: "Conocé tus locales",
-    body: "Un recorrido corto por donde agregás, editás y archivás los locales donde operás.",
+    title: "Conoce tus locales",
+    body: "Un recorrido corto por donde agregas, editas y archivas los locales donde operas.",
   },
   staff: {
-    title: "Conocé la pantalla de Equipo",
+    title: "Conoce la pantalla de Equipo",
     body: "Un recorrido corto por donde se da de alta a quien atiende el mostrador.",
   },
   catalog: {
-    title: "Conocé tu catálogo",
-    body: "Un recorrido corto por donde cargás y editás lo que vendés.",
+    title: "Conoce tu catálogo",
+    body: "Un recorrido corto por donde cargas y editas lo que vendes.",
   },
   program: {
-    title: "Conocé tu programa de fidelidad",
+    title: "Conoce tu programa de fidelidad",
     body: "Un recorrido corto por los sellos, los premios y las condiciones.",
   },
   brand: {
-    title: "Conocé tu marca",
+    title: "Conoce tu marca",
     body: "Un recorrido corto por el logo, los colores y cómo se ve tu tarjeta.",
   },
 };
@@ -135,8 +135,8 @@ export const CHECKLIST_ITEMS: Record<string, ChecklistItemDef> = {
     // mas […] de hecho ser la unica».
     required: true,
     anchor: "verify-email",
-    title: "Verificá tu email",
-    body: "Te enviamos un enlace al correo con el que te registraste. Confirmalo para desbloquear el resto del onboarding.",
+    title: "Verifica tu email",
+    body: "Te enviamos un enlace al correo con el que te registraste. Confírmalo para continuar con la configuración.",
     done: (facts: ChecklistFacts) => facts.emailVerified,
   },
   ...Object.fromEntries(

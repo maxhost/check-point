@@ -24,7 +24,7 @@ type ErrorPresentation = {
 export const ownerGateErrors: Record<OwnerGateErrorCode, ErrorPresentation> = {
   unauthorized: {
     title: "Tu sesión terminó",
-    description: "Volvé a ingresar para continuar de forma segura.",
+    description: "Vuelve a ingresar para continuar de forma segura.",
     action: "login",
     actionLabel: "Volver a ingresar",
   },
@@ -35,16 +35,16 @@ export const ownerGateErrors: Record<OwnerGateErrorCode, ErrorPresentation> = {
     actionLabel: "Volver",
   },
   email_not_verified: {
-    title: "Verificá tu email para continuar",
+    title: "Verifica tu email para continuar",
     description:
-      "Te enviaremos un enlace para confirmar que tenés acceso a esa dirección.",
+      "Te enviaremos un enlace para confirmar que tienes acceso a esa dirección.",
     action: "verify-email",
     actionLabel: "Enviar enlace",
   },
   business_suspended: {
     title: "La cuenta del negocio está suspendida",
     description:
-      "La suspensión la gestiona CheckPass. Contactanos si necesitás ayuda.",
+      "La suspensión la gestiona CheckPass. Contáctanos si necesitas ayuda.",
     action: "contact",
     actionLabel: "Contactar a CheckPass",
   },
@@ -104,18 +104,18 @@ export function ApiError({
       const result = (await response.json()) as VerificationResponse;
       if (result.verified) {
         setVerificationMessage(
-          "Tu email ya estaba verificado. Ya podés continuar.",
+          "Tu email ya estaba verificado. Ya puedes continuar.",
         );
         onEmailVerified?.();
       } else if (result.sent) {
-        setVerificationMessage("Te enviamos el enlace. Revisá tu correo.");
+        setVerificationMessage("Te enviamos el enlace. Revisa tu correo.");
       } else {
         throw new Error("verify-email-invalid-response");
       }
     } catch {
       setVerificationFailed(true);
       setVerificationMessage(
-        "No pudimos enviar el enlace. Esperá un momento y volvé a intentar.",
+        "No pudimos enviar el enlace. Espera un momento y vuelve a intentar.",
       );
     } finally {
       setIsVerifying(false);

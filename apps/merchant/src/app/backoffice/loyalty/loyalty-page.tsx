@@ -36,7 +36,7 @@ function LoyaltyPage({
           <ModuleHeader
             eyebrow="Programa de fidelización"
             title="Tu programa de fidelización"
-            description="Consultá y configurá los beneficios de tu negocio."
+            description="Consulta y configura los beneficios de tu negocio."
             closeHref="/backoffice"
           />
           <LoyaltyError
@@ -64,17 +64,17 @@ function LoyaltyPage({
           eyebrow="Programa de fidelización"
           title={
             closingForm
-              ? "Programá el cierre"
+              ? "Programa el cierre"
               : editor
                 ? vm.program
-                  ? "Editá tu programa"
-                  : "Creá tu programa"
+                  ? "Edita tu programa"
+                  : "Crea tu programa"
                 : "Tu programa de fidelización"
           }
           description={
             closingForm
-              ? "Definí hasta cuándo se acumula y se puede canjear."
-              : "Elegí cómo premiar a tus clientes."
+              ? "Define hasta cuándo se acumula y se puede canjear."
+              : "Elige cómo premiar a tus clientes."
           }
           closeHref="/backoffice"
           onClose={

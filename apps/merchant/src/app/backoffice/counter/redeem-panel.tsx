@@ -142,7 +142,7 @@ export function RedeemDone({
       <p className="counter-check" aria-hidden>
         ✓
       </p>
-      <h2>Entregá</h2>
+      <h2>Entrega</h2>
       <p className="counter-reward-delivered">
         {redemption.rewardType === "discount" &&
         redemption.discountPercent !== null

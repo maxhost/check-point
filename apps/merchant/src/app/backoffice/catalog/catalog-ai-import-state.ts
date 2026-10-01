@@ -24,7 +24,7 @@ export function isProcessing({
 }
 
 export const PROCESSING_MESSAGES = [
-  "Esperá, estamos procesando tu menú…",
+  "Espera, estamos procesando tu menú…",
   "Estamos leyendo los productos y sus precios…",
   "Ordenando las categorías de tu catálogo…",
   "Ya casi: estamos cargando los productos…",

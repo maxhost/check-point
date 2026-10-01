@@ -85,13 +85,13 @@ describe("decideWelcomeGift", () => {
   const base = {
     enrolledAt: new Date("2026-10-01T00:00:00.000Z"),
     activatedAt: new Date("2026-09-01T00:00:00.000Z"),
-    appleDevices: 1,
-    googleSaved: false,
+    homeLaunched: true,
+    pushSubscribed: true,
     deviceAlreadyGifted: false,
     crossCouponFromBusiness: false,
   };
 
-  it("in the spec's order: enrolled before → not installed → device already gifted → issue", () => {
+  it("requires home launch and active push before issuing the gift", () => {
     expect(decideWelcomeGift(base)).toBe("issue");
     expect(
       decideWelcomeGift({
@@ -103,12 +103,12 @@ describe("decideWelcomeGift", () => {
     expect(decideWelcomeGift({ ...base, enrolledAt: base.activatedAt })).toBe(
       "issue",
     );
-    expect(decideWelcomeGift({ ...base, appleDevices: 0 })).toBe(
-      "not_installed",
+    expect(decideWelcomeGift({ ...base, homeLaunched: false })).toBe(
+      "home_not_opened",
     );
-    expect(
-      decideWelcomeGift({ ...base, appleDevices: 0, googleSaved: true }),
-    ).toBe("issue");
+    expect(decideWelcomeGift({ ...base, pushSubscribed: false })).toBe(
+      "notifications_not_active",
+    );
     expect(decideWelcomeGift({ ...base, deviceAlreadyGifted: true })).toBe(
       "device_already_gifted",
     );
@@ -125,7 +125,7 @@ describe("decideWelcomeGift", () => {
       }),
     ).toBe("enrolled_before");
     // … and before every installation fact.
-    expect(decideWelcomeGift({ ...cross, appleDevices: 0 })).toBe(
+    expect(decideWelcomeGift({ ...cross, homeLaunched: false })).toBe(
       "came_by_cross",
     );
     expect(decideWelcomeGift({ ...cross, deviceAlreadyGifted: true })).toBe(

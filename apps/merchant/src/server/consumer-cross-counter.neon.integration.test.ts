@@ -17,7 +17,8 @@ import {
   campaignCoupons,
   campaigns,
   couponRedemptions,
-  walletPasses,
+  consumerAccounts,
+  webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
@@ -124,15 +125,20 @@ describe.skipIf(!integrationEnabled)(
         .returning({ id: campaigns.id });
       const control = await crossConsumer();
       for (const person of [consumer, control]) {
-        // Auto-enrolled by the counter's scan AFTER the switch-on, with a saved Google pass.
+        // Auto-enrolled by the counter's scan AFTER the switch-on, then Home + push activated.
         await resolveScan(x.seed.business, person.qrToken);
         await getDb()
-          .insert(walletPasses)
+          .update(consumerAccounts)
+          .set({ homeLaunchedAt: new Date() })
+          .where(eq(consumerAccounts.id, person.id));
+        await getDb()
+          .insert(webPushSubscriptions)
           .values({
             consumerId: person.id,
-            provider: "google",
-            serialNumber: `gx-${randomUUID()}`,
-            googleSavedAt: new Date(),
+            endpoint: `https://push.test/${randomUUID()}`,
+            p256dhKey: "test-key",
+            authKey: "test-auth",
+            platform: "android",
           });
       }
 

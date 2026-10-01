@@ -21,7 +21,7 @@ useRoleConnection();
  * Spec 0118 — ORACULO POSITIVO del rol del cliente: «Mis beneficios». Listar las ofertas
  * cruzada y de horas valle (lee campañas, comercios, suscripciones, locales, ventanas,
  * pedidos, canjes y cupones), reclamar cada una (el `FOR UPDATE` de la campaña exige el
- * `UPDATE (updated_at)` de la 0059, y el cupon es un `INSERT` en `campaign_coupon`) y la
+ * `UPDATE (updated_at)` de la 0060, y el cupon es un `INSERT` en `campaign_coupon`) y la
  * lista de cupones. Corre con el reloj REAL: la ventana de valle abre los 7 dias de 0 a 24.
  */
 

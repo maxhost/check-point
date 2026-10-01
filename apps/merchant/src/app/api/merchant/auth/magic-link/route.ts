@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Adonde cae el owner cuando el link sirvio, y adonde cuando no. */
 const OK_DESTINATION = "/backoffice";
+const ONBOARDING_DESTINATION = "/es/business/onboarding";
 const FAILED_DESTINATION = "/?e=magic_link_invalid";
 /** Spec 0072 §D4: el negocio esta CERRADO, asi que no se emite sesion. Mismo canal de
  * codigos de rebote que `staff_disabled` (`server/auth-guards.ts`). **`email_not_verified` ya
@@ -77,11 +78,17 @@ export async function GET(request: Request) {
    * hay fila que consultar y el alta es justamente lo que viene despues.
    */
   const userId = await verifiedUserId(verified);
-  if (userId && (await businessIsClosed(userId))) {
+  const status = userId ? await businessStatus(userId) : null;
+  if (userId && status === "closed") {
     await getDb().delete(sessions).where(eq(sessions.userId, userId));
     return bounce(CLOSED_DESTINATION);
   }
-  return bounce(OK_DESTINATION, cookie);
+  // El email de verificación sale ahora en cuanto se crea la cuenta, antes de que
+  // exista un negocio. Tras confirmar el buzón, el owner debe retomar el wizard.
+  return bounce(
+    userId && !status ? ONBOARDING_DESTINATION : OK_DESTINATION,
+    cookie,
+  );
 }
 
 /** El `user.id` del cuerpo JSON del verify. Sin `callbackURL` el plugin contesta
@@ -114,7 +121,7 @@ async function verifiedUserId(verified: Response): Promise<string | null> {
  * consultas coinciden; el dia que un user tenga dos, hay que unificarlas en un solo
  * resolvedor. Es la misma familia que la divergencia `asc`/`desc` de `loyalty-program.ts:66`.
  */
-async function businessIsClosed(userId: string): Promise<boolean> {
+async function businessStatus(userId: string) {
   const [row] = await getDb()
     .select({ status: businesses.status })
     .from(memberships)
@@ -124,7 +131,7 @@ async function businessIsClosed(userId: string): Promise<boolean> {
     )
     .orderBy(asc(businesses.createdAt))
     .limit(1);
-  return row?.status === "closed";
+  return row?.status ?? null;
 }
 
 /**

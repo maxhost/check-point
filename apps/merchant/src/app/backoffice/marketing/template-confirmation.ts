@@ -10,7 +10,7 @@ export function templateConfirmation(
 ) {
   const lines = template.welcome
     ? [
-        "Entrega: al instalar el pase de Apple o Google Wallet",
+        "Entrega: al abrir CheckPass desde el inicio y activar notificaciones",
         `Válido: ${draft.welcomeRedeemFrom === "same_visit" ? "en la misma visita" : "desde el día siguiente"}`,
         `Vence a los: ${draft.welcomeValidDays} días`,
         `Aviso push: ${draft.welcomeReminderDays} días antes`,

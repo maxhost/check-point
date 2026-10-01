@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const startUrl = account ? `/c/${account.webViewToken}` : "/wallet";
 
   const manifest = {
-    name: "CheckPass Club",
+    name: "CheckPass",
     short_name: "CheckPass",
     description:
       "Tu pase, tus programas y tu código QR en la pantalla de inicio.",
@@ -41,10 +41,22 @@ export async function GET(request: NextRequest) {
     theme_color: "#0f2a3a",
     icons: [
       {
-        src: "/wallet-logo.png",
-        sizes: "660x660",
+        src: "/checkpass-icon-192-v2.png",
+        sizes: "192x192",
         type: "image/png",
-        purpose: "any maskable",
+        purpose: "any",
+      },
+      {
+        src: "/checkpass-icon-512-v2.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/checkpass-icon-maskable-512-v2.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };

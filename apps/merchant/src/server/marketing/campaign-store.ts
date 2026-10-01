@@ -130,7 +130,7 @@ async function ownDoors(
       ),
     );
   if (rows.length !== locationIds.length)
-    throw new CampaignError(400, "validation", "Revisá los locales elegidos.", {
+    throw new CampaignError(400, "validation", "Revisa los locales elegidos.", {
       locationIds: "Hay un local que no es tuyo o no existe.",
     });
   return rows.map((row) => row.id);
@@ -184,7 +184,7 @@ export async function createCampaign(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la campaña.",
+      "Revisa los datos de la campaña.",
       parsed.errors,
     );
   const input = parsed.value;
@@ -227,7 +227,7 @@ function assertNotTemplate(current: Campaign): void {
     throw new CampaignError(
       409,
       "template_not_editable",
-      "Una campaña prearmada no se edita: apagala y encendé una nueva.",
+      "Una campaña prearmada no se edita: apágala y enciende una nueva.",
     );
 }
 
@@ -254,7 +254,7 @@ export async function updateCampaign(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá los datos de la campaña.",
+      "Revisa los datos de la campaña.",
       parsed.errors,
     );
   const input = parsed.value;

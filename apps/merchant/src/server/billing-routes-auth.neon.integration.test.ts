@@ -193,7 +193,8 @@ describe.skipIf(!integrationEnabled)(
           // El `code` es NUEVO (spec 0072 §D3, decisión del owner del 2026-09-17): los
           // 401/403 de las 10 superficies del owner lo llevan normalizado.
           expect(await response.json(), name).toEqual({
-            error: "Solo el owner puede gestionar la suscripción.",
+            error:
+              "Solo la persona propietaria puede gestionar la suscripción.",
             code: "not_owner",
           });
         }

@@ -418,8 +418,15 @@
     {
       "idx": 59,
       "version": "7",
-      "when": 1790831580236,
-      "tag": "0059_rol_del_cliente",
+      "when": 1790875470731,
+      "tag": "0059_home_launch_welcome",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790878886657,
+      "tag": "0060_rol_del_cliente",
       "breakpoints": true
     }
   ]

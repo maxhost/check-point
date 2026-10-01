@@ -9,21 +9,11 @@ import {
   isValidCountryIso,
 } from "@mi-pasaporte/domain/lib/countries";
 import { readableTextColor } from "@mi-pasaporte/domain/lib/brand-color";
-import { EnrollConfirmation } from "./enroll-confirmation";
 import type { WelcomeOffer as WelcomeOfferData } from "@mi-pasaporte/domain/server/consumer/enroll-landing";
 import { WelcomeOffer } from "./welcome-offer";
 
 type Screen =
   | { kind: "form" }
-  // `walletManifestPath` comes from the 201 (spec 0051/ADR 0049); null if absent.
-  // `existingAccount` too (spec 0054/ADR 0051): true → the phone already had an
-  // account and the profile was reused as-is, so the confirmation shows the toast.
-  | {
-      kind: "done";
-      firstName: string;
-      walletManifestPath: string | null;
-      existingAccount: boolean;
-    }
   | { kind: "already_member" }
   | { kind: "unavailable" };
 
@@ -49,7 +39,6 @@ export function EnrollForm({
   businessName,
   defaultCountryIso,
   brandPrimaryColor,
-  vapidPublicKey,
   welcomeOffer,
 }: {
   programId: string;
@@ -58,7 +47,6 @@ export function EnrollForm({
   businessName: string;
   defaultCountryIso: string;
   brandPrimaryColor: string;
-  vapidPublicKey: string | null;
   welcomeOffer: WelcomeOfferData | null;
 }) {
   const initialIso = isValidCountryIso(defaultCountryIso)
@@ -91,24 +79,15 @@ export function EnrollForm({
         }),
       });
       if (res.status === 201) {
-        // The 201 hands over the per-consumer manifest path (spec 0051/ADR 0049).
-        // A body that cannot be read or lacks the field degrades to null — the
-        // confirmation then simply injects no manifest.
         const data = (await res.json().catch(() => null)) as {
-          walletManifestPath?: unknown;
           existingAccount?: unknown;
         } | null;
-        setScreen({
-          kind: "done",
-          firstName: firstName.trim(),
-          walletManifestPath:
-            typeof data?.walletManifestPath === "string"
-              ? data.walletManifestPath
-              : null,
-          // Only an explicit true shows the toast — an absent/odd field means a
-          // fresh alta (or an older server) and the confirmation stays as-is.
-          existingAccount: data?.existingAccount === true,
-        });
+        // A full navigation gives Chrome the account's manifest in the first
+        // HTML response, before it evaluates whether to offer installation.
+        const ready = `/enroll/${encodeURIComponent(programId)}/ready`;
+        window.location.assign(
+          data?.existingAccount === true ? `${ready}?existing=1` : ready,
+        );
         return;
       }
       const data = (await res.json().catch(() => ({}))) as {
@@ -129,19 +108,6 @@ export function EnrollForm({
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (screen.kind === "done") {
-    return (
-      <EnrollConfirmation
-        firstName={screen.firstName}
-        businessName={businessName}
-        brandPrimaryColor={brandPrimaryColor}
-        vapidPublicKey={vapidPublicKey}
-        walletManifestPath={screen.walletManifestPath}
-        existingAccount={screen.existingAccount}
-      />
-    );
   }
 
   if (screen.kind === "already_member") {

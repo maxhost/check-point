@@ -16,7 +16,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(errorCopy(payload, "No pudimos completar la acción."));
   if (!payload)
     throw new Error(
-      "La respuesta del servidor no es válida. Intentá otra vez.",
+      "La respuesta del servidor no es válida. Intenta otra vez.",
     );
   return payload;
 }

@@ -1,10 +1,8 @@
-@import "tailwindcss";
-@import "./tokens.css";
-
 :root {
+  color-scheme: light;
   font-family: Arial, sans-serif;
-  color: #17251d;
-  background: #f5f7f4;
+  background: #f7f6f2;
+  color: #18221c;
 }
 * {
   box-sizing: border-box;
@@ -12,385 +10,400 @@
 body {
   margin: 0;
 }
-button,
-input {
-  font: inherit;
+a {
+  color: inherit;
 }
-select {
-  width: 100%;
-  padding: 13px;
-  border: 1px solid #cbd7ce;
-  border-radius: 11px;
-  font-size: 16px;
+.screen {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.card {
+  width: min(100%, 430px);
+  overflow: hidden;
+  border-radius: 28px;
   background: #fff;
+  box-shadow: 0 16px 50px #20312622;
+}
+.hero {
+  min-height: 190px;
+  padding: 24px;
+  display: flex;
+  align-items: end;
+  color: #fff;
+  background: linear-gradient(135deg, #154d3a, #e78132);
+}
+.content {
+  padding: 28px 24px;
+}
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #68736b;
 }
 h1 {
   margin: 0;
-  font-size: 30px;
-  line-height: 1.1;
+  font-size: 32px;
+  line-height: 1.08;
 }
 h2 {
-  margin: 0 0 8px;
+  margin: 0 0 12px;
+  font-size: 25px;
 }
 p {
-  line-height: 1.45;
-  color: #5e6c63;
+  line-height: 1.5;
 }
-label:where(:not(.cp-choice, .cp-checkbox)) {
-  display: grid;
-  gap: 7px;
-  margin-top: 15px;
-  color: #344238;
-  font-size: 14px;
-  font-weight: 700;
+.muted {
+  color: #657168;
 }
-
-.card-preview {
+button,
+.button {
   width: 100%;
-  max-width: 320px;
-  padding: 20px;
-  border-radius: 18px;
-  box-shadow: 0 10px 30px rgba(20, 40, 30, 0.18);
+  display: block;
+  border: 0;
+  border-radius: 14px;
+  padding: 16px;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  color: white;
+  background: #176548;
+  cursor: pointer;
+  text-decoration: none;
 }
-.card-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
-.card-slot {
-  aspect-ratio: 1;
+.secondary {
+  margin-top: 12px;
+  color: #176548;
+  background: #e9f4ed;
+}
+.notice {
+  padding: 13px;
+  border-radius: 12px;
+  background: #fff2db;
+  color: #754300;
+}
+.success {
+  background: #e5f5e9;
+  color: #175c35;
+}
+.qr {
+  display: block;
+  width: min(100%, 280px);
+  margin: 20px auto;
+  background: white;
+}
+.asset {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 15px;
+  background: #f3f6f2;
+}
+.asset strong,
+.asset span {
+  display: block;
+}
+.section-title {
+  margin-top: 28px;
+}
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #176548;
+  font-weight: 700;
+  text-decoration: none;
+}
+.merchant-header {
   display: flex;
+  gap: 14px;
   align-items: center;
-  justify-content: center;
-  border: 2px solid #ffffff;
-  border-radius: 10px;
-  background: #ffffff;
-  overflow: hidden;
 }
-.card-slot img {
-  width: 82%;
-  height: 82%;
-  object-fit: contain;
+.merchant-header h1 {
+  font-size: 28px;
 }
-
-/* Micro-portal del consumidor (spec 0031) */
-.consumer-wallet-shell {
-  min-height: 100dvh;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 28px 18px calc(105px + env(safe-area-inset-bottom));
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #172126;
-  background: #f5f6f8;
+.merchant-header .eyebrow {
+  margin-bottom: 4px;
 }
-.consumer-wallet-shell header > p {
-  margin: 0;
-  color: #7b8288;
-  font-size: 13px;
-  letter-spacing: 0.4px;
-}
-.consumer-wallet-shell h1 {
-  margin: 4px 0 24px;
-  font-size: 26px;
-}
-.consumer-wallet-shell h2 {
-  margin: 0;
-  font-size: 23px;
-}
-.consumer-programs-heading > div > p,
-.consumer-qr-tab > p {
-  margin: 6px 0 18px;
-  color: #687078;
-}
-.consumer-programs-heading {
-  display: grid;
-  gap: 12px;
-}
-.consumer-closed-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
+.merchant-header .muted {
+  margin: 4px 0;
   font-size: 14px;
 }
-.consumer-program-list {
+.merchant-logo {
   display: grid;
-  gap: 18px;
-  margin-top: 18px;
-}
-.consumer-program-card {
-  position: relative;
-  border-radius: 22px;
-  box-shadow: 0 8px 28px rgba(20, 31, 38, 0.12);
-  background: #fff;
-  overflow: hidden;
-}
-.consumer-program-card.is-closed
-  > :not(.consumer-status-badge):not(.consumer-info-button):not(
-    .consumer-modal-backdrop
-  ) {
-  opacity: 0.5;
-}
-.consumer-program-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.consumer-program-brand img,
-.consumer-program-brand > span {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  object-fit: contain;
-  background: rgba(255, 255, 255, 0.9);
-  display: grid;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
   place-items: center;
-  color: #172126;
+  border-radius: 18px;
+  color: #fff;
+  font-weight: 800;
+  background: linear-gradient(145deg, #176548, #e78132);
 }
-.consumer-stamps-card {
-  padding: 18px;
-}
-.consumer-stamps-card .card-preview {
-  box-sizing: border-box;
-  margin-top: 14px;
-}
-.consumer-stamps-card > p {
-  margin: 12px 0 0;
+.location {
+  margin: 8px 0 0;
+  color: #176548;
   font-size: 14px;
   font-weight: 700;
 }
-.consumer-points-card {
-  min-height: 190px;
-  box-sizing: border-box;
-  padding: 24px;
-  border: 2px solid;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+.points-card {
+  display: grid;
+  gap: 3px;
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 20px;
+  color: #fff;
+  background: #176548;
 }
-.consumer-points-balance {
-  margin: 24px 0 0;
-  font-size: 18px;
-}
-.consumer-points-balance b {
-  display: block;
-  font-size: 48px;
+.points-card strong {
+  font-size: 45px;
   line-height: 1;
 }
-.consumer-info-button {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: #172126;
-  font-family: Georgia, serif;
-  font-weight: 700;
-  font-size: 17px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
-  cursor: pointer;
+.points-card small {
+  opacity: 0.82;
 }
-.consumer-status-badge {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: #343a40;
+.horizontal-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-width: thin;
+}
+.coupon-card {
+  display: grid;
+  flex: 0 0 250px;
+  min-height: 152px;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 18px;
   color: #fff;
+}
+.coupon-card strong {
+  font-size: 19px;
+}
+.coupon-card small {
+  opacity: 0.82;
+}
+.coupon-primary {
+  background: linear-gradient(145deg, #e78132, #ba4e30);
+}
+.coupon-secondary {
+  background: linear-gradient(145deg, #315f8c, #233a67);
+}
+.redemptions {
+  display: grid;
+  gap: 10px;
+}
+.merchant-wallet {
+  min-height: 100svh;
+  background: #f7f6f2;
+}
+.merchant-cover {
+  min-height: 195px;
+  color: #fff;
+  background: linear-gradient(135deg, #123d30, #176548 58%, #e78132);
+}
+.cover-content,
+.wallet-content {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 24px;
+}
+.wallet-content {
+  padding-top: 20px;
+  padding-bottom: 42px;
+}
+.merchant-cover .back-link {
+  color: #fff;
+  opacity: 0.9;
+}
+.merchant-cover .merchant-header .eyebrow,
+.merchant-cover .merchant-header .muted {
+  color: #e4f0e8;
+}
+.merchant-cover .location {
+  color: #fff;
+}
+.promotion-banner {
+  display: grid;
+  gap: 5px;
+  padding: 18px;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(120deg, #cf642c, #e78132);
+}
+.promotion-banner span {
   font-size: 12px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
 }
-.consumer-settings-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 18px;
-  padding: 20px 18px;
-  border-radius: 20px;
-  background: #fff;
+.promotion-banner strong {
+  font-size: 18px;
 }
-.consumer-settings-row label {
+.promotion-banner small {
+  opacity: 0.86;
+}
+.points-summary {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 15px;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid #dbe6dc;
+  border-radius: 16px;
+  background: #fff;
 }
-.consumer-settings-note {
-  margin: 4px 0 0;
-  color: #687078;
+.points-summary span,
+.points-summary small {
+  display: block;
+  color: #637067;
+}
+.checkin-page {
+  min-height: 100svh;
+  background: #f7f6f2;
+}
+.checkin-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.checkin-rewards span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  color: #176548;
+  font-size: 13px;
+  font-weight: 700;
+  background: #e9f4ed;
+}
+.checkin-cover {
+  min-height: 205px;
+}
+.checkin-content {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 20px 24px 42px;
+}
+.checkin-campaign {
+  display: grid;
+  gap: 7px;
+  padding: 20px;
+  border-radius: 18px;
+  color: #fff;
+  background: linear-gradient(120deg, #cf642c, #e78132);
+}
+.checkin-campaign span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.checkin-campaign strong {
+  font-size: 20px;
+  line-height: 1.2;
+}
+.checkin-campaign small {
+  opacity: 0.88;
+}
+.checkin-action,
+.result-panel {
+  margin-top: 16px;
+  padding: 4px 0;
+}
+.checkin-action h2,
+.result-panel h2 {
+  margin-top: 20px;
+}
+.permission-copy {
+  margin: 15px 6px 0;
+  color: #637067;
+  font-size: 13px;
+  text-align: center;
+}
+.points-summary strong {
+  display: block;
+  margin-top: 3px;
+  color: #176548;
+  font-size: 25px;
+}
+.points-summary small {
+  max-width: 130px;
+  font-size: 12px;
+  text-align: right;
+}
+.redemption-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f3f6f2;
+}
+.redemption-card span {
+  color: #526058;
+}
+.redemption-card button {
+  width: auto;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #637067;
+  background: #e1e6e1;
+}
+.asset span {
+  margin-top: 4px;
+  color: #637067;
+}
+
+.consumer-welcome-coupons {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.consumer-welcome-coupon {
+  padding: 19px;
+  border: 1px solid #eacb8b;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #fff8e8, #fffdf8);
+  box-shadow: 0 8px 24px rgba(95, 66, 22, 0.08);
+}
+.consumer-welcome-coupon-tag {
+  color: #8f631e;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+}
+.consumer-welcome-coupon h3 {
+  margin: 7px 0 3px;
+  color: #3c2b16;
+  font-size: 21px;
+  line-height: 1.2;
+}
+.consumer-welcome-coupon p {
+  margin: 6px 0;
+  color: #68553a;
   font-size: 13px;
   line-height: 1.45;
 }
-.consumer-settings-error {
-  margin: 6px 0 0;
-  color: #c0392b;
-  font-size: 13px;
-}
-.consumer-empty {
-  margin-top: 24px;
-  padding: 28px 20px;
-  text-align: center;
-  border-radius: 20px;
-  background: #fff;
-  color: #687078;
-}
-.consumer-empty h3 {
-  color: #172126;
-}
-.consumer-qr-tab {
-  text-align: center;
-}
-.consumer-qr {
-  width: 240px;
-  max-width: 100%;
-  box-sizing: border-box;
-  margin: 20px auto 0;
-  padding: 16px;
-  border: 1px solid #e4e6e8;
-  border-radius: 20px;
-  background: #fff;
-}
-.consumer-wallet-buttons {
-  margin-top: 24px;
-}
-.consumer-bottom-nav {
-  position: fixed;
-  z-index: 20;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: grid;
-  /* Tres pestañas desde la spec 0065 fase D (ADR 0068). */
-  grid-template-columns: repeat(3, 1fr);
-  padding: 8px max(18px, calc((100vw - 480px) / 2))
-    calc(8px + env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(250, 250, 252, 0.94);
-  backdrop-filter: blur(18px);
-}
-.consumer-bottom-nav button {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
+.consumer-welcome-coupon button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
   border: 0;
-  background: transparent;
-  color: #899098;
+  border-radius: 11px;
+  background: #166849;
+  color: #fff;
   font: inherit;
-  font-size: 11px;
+  font-size: 14px;
+  font-weight: 750;
   cursor: pointer;
-}
-.consumer-bottom-nav button[aria-current="page"] {
-  color: #0877e6;
-}
-.consumer-bottom-nav svg {
-  width: 25px;
-  height: 25px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-}
-.consumer-modal-backdrop {
-  position: fixed;
-  z-index: 50;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-}
-.consumer-terms-sheet {
-  position: relative;
-  width: min(100%, 480px);
-  max-height: 78dvh;
-  overflow: auto;
-  box-sizing: border-box;
-  padding: 28px 22px calc(24px + env(safe-area-inset-bottom));
-  border-radius: 24px 24px 0 0;
-  background: #fff;
-  color: #172126;
-}
-.consumer-modal-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: #e9ebee;
-  font-size: 24px;
-  cursor: pointer;
-}
-.consumer-terms-business {
-  color: #687078;
-}
-.consumer-terms-copy {
-  white-space: pre-wrap;
-  line-height: 1.55;
-}
-
-/* Hoja de información del programa + catálogo de premios (spec 0055) */
-.consumer-info-options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 18px;
-}
-.consumer-info-options button {
-  padding: 16px;
-  border: 1px solid #dfe3e7;
-  border-radius: 14px;
-  background: #fff;
-  color: #172126;
-  font: inherit;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-.consumer-rewards {
-  list-style: none;
-  margin: 18px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.consumer-reward {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid #e9ebee;
-  border-radius: 14px;
-}
-.consumer-reward img {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  object-fit: cover;
-  flex: 0 0 auto;
-}
-.consumer-reward > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-.consumer-reward-cost {
-  color: #687078;
-  font-size: 13px;
-}
-.consumer-reward-gap {
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 700;
-  color: #8a5a12;
-  text-align: right;
-}
-.consumer-reward-gap.is-ready {
-  color: #176548;
 }

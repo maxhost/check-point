@@ -46,12 +46,15 @@ export function PushPrompt({
   vapidPublicKey,
   accentColor,
   onSubscribed,
+  embedded = false,
 }: {
   vapidPublicKey: string | null;
   /** Optional `#RRGGBB` brand color for the "Activar notificaciones" button (and the
    * install hint when rendered on iOS Safari). Absent → neutral colors (`/wallet`). */
   accentColor?: string;
-  onSubscribed?: () => void;
+  onSubscribed?: (welcomeIssued: number) => void;
+  /** Removes the generic card when the enrollment screen supplies its own layout. */
+  embedded?: boolean;
 }) {
   const [isIos, setIsIos] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -86,15 +89,16 @@ export function PushPrompt({
   async function enable() {
     setStatus("working");
     try {
-      const reg = await navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-      });
-      await navigator.serviceWorker.ready;
+      // Ask within the click's user activation, especially on iOS Home Screen.
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setStatus("denied");
         return;
       }
+      const reg = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/",
+      });
+      await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey!),
@@ -110,7 +114,12 @@ export function PushPrompt({
       });
       if (res.ok) {
         setStatus("subscribed");
-        onSubscribed?.();
+        const data = (await res.json().catch(() => null)) as {
+          welcomeIssued?: unknown;
+        } | null;
+        onSubscribed?.(
+          typeof data?.welcomeIssued === "number" ? data.welcomeIssued : 0,
+        );
       } else {
         setStatus("error");
       }
@@ -137,8 +146,10 @@ export function PushPrompt({
   if (view === "nothing") return null;
 
   return (
-    <section style={card}>
-      <h3 style={{ fontSize: 15, margin: 0 }}>Avisos de tus beneficios</h3>
+    <section style={embedded ? undefined : card}>
+      {!embedded && (
+        <h3 style={{ fontSize: 15, margin: 0 }}>Avisos de tus beneficios</h3>
+      )}
       {status === "subscribed" ? (
         <p style={{ color: "#2a7", marginTop: 8, fontSize: 14 }}>
           Notificaciones activadas ✓
@@ -146,7 +157,9 @@ export function PushPrompt({
       ) : (
         <>
           <p style={{ color: "#555", marginTop: 8, fontSize: 14 }}>
-            Enterate al instante cuando sumás puntos o sellos.
+            {embedded
+              ? "Recibí avisos de ofertas cerca de vos y premios antes de que venzan."
+              : "Enterate al instante cuando sumás puntos o sellos."}
           </p>
           <button
             type="button"

@@ -31,6 +31,8 @@ import { GET as enrollMe } from "../app/api/public/enroll/me/route";
 import { POST as optOut } from "../app/api/public/consumer/marketing-opt-out/route";
 import { POST as subscribe } from "../app/api/public/push/subscribe/route";
 import { POST as click } from "../app/api/public/push/click/route";
+import { POST as homeLaunch } from "../app/api/public/home/launch/route";
+import { listWelcomeCoupons } from "@mi-pasaporte/domain/server/consumer/welcome-coupons";
 import { GET as logo } from "../app/api/public/brands/[businessId]/logo/route";
 import { GET as productImage } from "../app/api/public/catalog/[productId]/image/route";
 import { GET as stamp } from "../app/api/public/loyalty/[businessId]/[programId]/stamp/route";
@@ -198,6 +200,39 @@ roleSuite("rol del cliente — alta, programas, push e imagenes", () => {
     const [row] =
       await owner`select clicked_at from core.campaign_push where id = ${push.id}`;
     expect(row.clicked_at).not.toBeNull();
+  });
+
+  it("POST home/launch: marca home_launched_at, emite la Bienvenida sin error tragado y lista los cupones", async () => {
+    // `issueWelcomeGiftsSafely` traga su error: sin el espia, un GRANT faltante del regalo daria
+    // el mismo 200 que el camino feliz.
+    const swallowed = vi.spyOn(console, "error");
+    try {
+      const response = await homeLaunch(
+        request("/api/public/home/launch", {
+          method: "POST",
+          token: member.token,
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(
+        swallowed.mock.calls.filter((call) =>
+          String(call[0]).startsWith("[welcome]"),
+        ),
+      ).toEqual([]);
+    } finally {
+      swallowed.mockRestore();
+    }
+    const [row] =
+      await owner`select home_launched_at from consumer.consumer_account where id = ${member.id}`;
+    expect(row.home_launched_at).not.toBeNull();
+    const expected =
+      await owner`select c.id from core.campaign_coupon c where c.consumer_id = ${member.id}
+      and c.welcome_membership_id is not null and c.valid_until > now()
+      and not exists (select 1 from core.coupon_redemption r where r.coupon_id = c.id)`;
+    const coupons = await listWelcomeCoupons(member.id);
+    expect(coupons.map((c) => c.id).sort()).toEqual(
+      expected.map((r) => String(r.id)).sort(),
+    );
   });
 
   it("GET logo, imagen de producto y sello: 200 con los bytes (el sello es el placeholder PNG)", async () => {

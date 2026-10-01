@@ -77,7 +77,7 @@ export function LocationsConsole({
     if (!draft || busy) return;
     if (!draft.name.trim()) return setError("El nombre es obligatorio.");
     if (!draft.selection && !draft.addressLabel.trim()) {
-      return setError("Elegí o escribí una dirección.");
+      return setError("Elige o escribe una dirección.");
     }
     setBusy(true);
     setError(null);
@@ -150,7 +150,7 @@ export function LocationsConsole({
         <ModuleHeader
           eyebrow="Locales"
           title="Las sucursales de tu negocio"
-          description="Da de alta, corrige o archiva los locales donde operás."
+          description="Da de alta, corrige o archiva los locales donde operas."
           closeHref="/backoffice"
         />
         <LocationsTourController
@@ -188,7 +188,7 @@ export function LocationsConsole({
         <p className="locations-plan-banner" data-tour="locations-limit">
           Tu plan permite {activeLimit}{" "}
           {activeLimit === 1 ? "local activo" : "locales activos"}.
-          {!canAdd && " Archivá uno para poder añadir otro."}
+          {!canAdd && " Archiva uno para poder añadir otro."}
         </p>
         {draft && (
           <LocationForm
@@ -208,7 +208,7 @@ export function LocationsConsole({
           {active.length === 0 && (
             <div className="locations-empty">
               <Shop aria-hidden="true" />
-              <p>No tenés locales activos.</p>
+              <p>No tienes locales activos.</p>
             </div>
           )}
           {active.map((location) => (

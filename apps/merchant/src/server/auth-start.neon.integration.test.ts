@@ -103,7 +103,10 @@ describe.skipIf(!enabled)(
 
       const response = await start(unknown);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ sent: false });
+      expect(await response.json()).toEqual({
+        sent: false,
+        verificationSent: true,
+      });
 
       const cookie = response.headers.get("set-cookie") ?? "";
       expect(cookie).toContain("HttpOnly");

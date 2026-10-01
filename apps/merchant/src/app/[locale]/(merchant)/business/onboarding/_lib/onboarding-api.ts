@@ -73,10 +73,27 @@ export async function getOnboardingState(): Promise<OnboardingState> {
 }
 
 export function startMerchantAuth(email: string) {
-  return jsonRequest<{ sent: boolean }>("/api/merchant/auth/start", {
+  return jsonRequest<{ sent: boolean; verificationSent?: boolean }>(
+    "/api/merchant/auth/start",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+  );
+}
+
+export function requestMerchantLogin(email: string) {
+  return jsonRequest<{ accepted: boolean }>("/api/merchant/auth/login", {
     method: "POST",
     body: JSON.stringify({ email }),
   });
+}
+
+export function requestVerificationEmail() {
+  return jsonRequest<{ sent: boolean; verified: boolean }>(
+    "/api/merchant/auth/verify-email",
+    { method: "POST" },
+  );
 }
 
 export function getOnboardingPrefill() {

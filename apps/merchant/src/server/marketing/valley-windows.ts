@@ -155,7 +155,7 @@ export async function replaceMerchantWindows(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá las franjas.",
+      "Revisa las franjas.",
       parsed.fields,
     );
   const own = await withDbTransaction(async (tx) => {

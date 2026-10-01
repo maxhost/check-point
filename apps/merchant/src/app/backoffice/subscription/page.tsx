@@ -71,7 +71,7 @@ export default async function SubscriptionPage({
     return (
       <main className="merchant-shell">
         <p className="toast error" role="status">
-          No pudimos leer tu suscripción. Volvé a intentar en unos minutos.
+          No pudimos leer tu suscripción. Vuelve a intentar en unos minutos.
         </p>
       </main>
     );

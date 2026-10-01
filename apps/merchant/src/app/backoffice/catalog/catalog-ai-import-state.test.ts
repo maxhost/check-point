@@ -60,7 +60,7 @@ describe("processingMessage", () => {
 
   it("hay al menos tres textos y el primero es el que pidio el owner", () => {
     expect(length).toBeGreaterThanOrEqual(3);
-    expect(PROCESSING_MESSAGES[0]).toBe("Esperá, estamos procesando tu menú…");
+    expect(PROCESSING_MESSAGES[0]).toBe("Espera, estamos procesando tu menú…");
   });
 
   it("rota en orden y vuelve al principio", () => {

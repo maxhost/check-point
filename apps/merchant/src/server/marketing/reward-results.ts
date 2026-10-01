@@ -70,7 +70,7 @@ export function parseRewardRange(
     throw new CampaignError(
       400,
       "validation",
-      "Revisá el rango de fechas.",
+      "Revisa el rango de fechas.",
       fields,
     );
   return { from: from as string, to: to as string };

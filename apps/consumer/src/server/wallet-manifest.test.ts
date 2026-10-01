@@ -59,7 +59,13 @@ async function manifestBody(query = "") {
     "application/manifest+json",
   );
   expect(response.headers.get("cache-control")).toBe("no-store");
-  return (await response.json()) as { start_url: string; id: string };
+  return (await response.json()) as {
+    start_url: string;
+    id: string;
+    name: string;
+    short_name: string;
+    icons: Array<{ src: string; sizes: string; purpose: string }>;
+  };
 }
 
 describe("consumer PWA manifest start_url (spec 0050 / ADR 0048)", () => {
@@ -114,6 +120,27 @@ describe("consumer PWA manifest start_url (spec 0050 / ADR 0048)", () => {
     expect((await manifestBody()).id).toBe("/wallet");
   });
 
+  it("uses CheckPass and the new C icon on the home screen", async () => {
+    walletCore.resolveWebViewToken.mockResolvedValue(account);
+    const manifest = await manifestBody(`?c=${TOKEN}`);
+    expect(manifest.name).toBe("CheckPass");
+    expect(manifest.short_name).toBe("CheckPass");
+    expect(manifest.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          src: "/checkpass-icon-192-v2.png",
+          sizes: "192x192",
+          purpose: "any",
+        }),
+        expect.objectContaining({
+          src: "/checkpass-icon-maskable-512-v2.png",
+          sizes: "512x512",
+          purpose: "maskable",
+        }),
+      ]),
+    );
+  });
+
   it("never echoes the raw query into start_url — only the stored token", async () => {
     walletCore.resolveWebViewToken.mockResolvedValue(account);
     const manifest = await manifestBody("?c=%2Fevil%3Fx%3D1");
@@ -138,7 +165,7 @@ describe("/wallet hands the token to the manifest URL (spec 0050)", () => {
     // The iOS standalone hook survives the switch to generateMetadata.
     expect(metadata.appleWebApp).toMatchObject({
       capable: true,
-      title: "CheckPass Club",
+      title: "CheckPass",
     });
   });
 

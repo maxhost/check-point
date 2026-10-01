@@ -104,8 +104,8 @@ export async function assertQuota(
       429,
       "catalog_import_rate_limited",
       key === "catalog.imports.attempts"
-        ? "Se agotaron los intentos de análisis por hoy. Probá de nuevo mañana."
-        : "Ya usaste tu análisis de menú de hoy. Probá de nuevo mañana.",
+        ? "Se agotaron los intentos de análisis por hoy. Prueba de nuevo mañana."
+        : "Ya usaste tu análisis de menú de hoy. Prueba de nuevo mañana.",
       retryAfter,
     );
   }

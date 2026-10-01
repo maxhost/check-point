@@ -11,9 +11,9 @@ import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { pgErrorCode } from "@mi-pasaporte/domain/server/consumer/core";
 
 /**
- * Spec 0118 / ADR 0110 — ORACULO NEGATIVO del rol del cliente: lo que la `0059` NO le da.
+ * Spec 0118 / ADR 0110 — ORACULO NEGATIVO del rol del cliente: lo que la `0060` NO le da.
  * Cada sonda corre como dueño dentro de una transaccion, baja a `checkpass_consumer` con
- * `SET LOCAL ROLE` (el `GRANT … WITH SET TRUE` de la 0059) y se deshace siempre. Se lee el
+ * `SET LOCAL ROLE` (el `GRANT … WITH SET TRUE` de la 0060) y se deshace siempre. Se lee el
  * CODIGO del error: tiene que ser `42501` (permiso), no un `23502`/`23503` de un INSERT que
  * paso el permiso y murio despues en una restriccion — ese seria el GRANT de mas.
  * ORACULO DE M2 (un INSERT de mas en `order`), M4 (el bypass que vuelve) y M5 (tablas nuevas).

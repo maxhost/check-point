@@ -14,7 +14,7 @@ import {
  * Spec 0118 / ADR 0110 — EL MUNDO DEL ORACULO POSITIVO DEL ROL DEL CLIENTE. Se siembra COMO
  * DUEÑO (`NEON_INTEGRATION_DATABASE_URL`, cliente propio) y las rutas corren con
  * `DATABASE_URL` = la URL del rol (`NEON_INTEGRATION_CONSUMER_DATABASE_URL`): todo lo que el
- * codigo del cliente lee o escribe pasa por los GRANT y las politicas de la `0059`.
+ * codigo del cliente lee o escribe pasa por los GRANT y las politicas de la `0060`.
  *
  * Con `NEON_INTEGRATION_ISOLATED=true` y SIN la URL del rol el archivo FALLA (ver
  * `roleUrlPresent`), no se saltea: un oraculo que se apaga solo no protege nada.

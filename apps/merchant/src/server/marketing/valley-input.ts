@@ -110,7 +110,7 @@ export function parseValleyWindows(value: unknown): WindowsParse {
       ok: false,
       fields: {
         windows:
-          "Cargá al menos una franja (para volver a las de la red, borralas).",
+          "Carga al menos una franja (para volver a las de la red, bórralas).",
       },
     };
   const fields: Record<string, string> = {};

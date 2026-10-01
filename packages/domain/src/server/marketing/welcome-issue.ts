@@ -11,12 +11,14 @@ import {
 } from "./welcome-rules";
 import { countMonthGifts, loadWelcomeCampaign } from "./welcome-store";
 import { hasCrossCouponFrom } from "./cross-store";
+import { deliverWebPush } from "../push/subscriptions";
+import { webPushChannelFromEnv } from "../push/webpush-channel";
 
 /**
  * THE DELIVERY OF THE WELCOME GIFT (spec 0107 §3 / ADR 0099). One consumer, every
  * membership whose business has an ELIGIBLE welcome campaign (`welcome-store.ts`), in ONE
  * transaction, and for each one in the spec's order: enrolled after the switch-on → no
- * cross coupon of that business (spec 0112, «solo el cruzado») → installed pass → durable Apple filter of THAT business → monthly cap under the
+ * cross coupon of that business → installed app opened and Web Push active → durable Apple filter of THAT business → monthly cap under the
  * campaign's `for update` → the coupon (`on conflict (welcome_membership_id) do nothing`)
  * and, if it was inserted, every device of the consumer burned in `core.welcome_device`.
  *
@@ -37,12 +39,16 @@ function rowsOf<T>(result: unknown): T[] {
   return Array.isArray(value) ? value : (value?.rows ?? []);
 }
 
-/** The consumer's installed-pass facts: Apple devices (+ the trigger's) and Google's save. */
-async function installedFacts(
+/** App activation facts plus Apple devices for the existing anti-duplicate filter. */
+async function activationFacts(
   tx: DbTransaction,
   consumerId: string,
   trigger: WelcomeTrigger,
-): Promise<{ devices: string[]; googleSaved: boolean }> {
+): Promise<{
+  devices: string[];
+  homeLaunched: boolean;
+  pushSubscribed: boolean;
+}> {
   const result = await tx.execute(sql`
     select d.device_library_id
     from consumer.wallet_push_device d
@@ -54,12 +60,19 @@ async function installedFacts(
     ),
   );
   if (trigger.deviceLibraryId) devices.add(trigger.deviceLibraryId);
-  const google = await tx.execute(sql`
-    select exists (select 1 from consumer.wallet_pass g
-                    where g.consumer_id = ${consumerId} and g.provider = 'google'
-                      and g.google_saved_at is not null) as saved`);
-  const [row] = rowsOf<{ saved: boolean }>(google);
-  return { devices: [...devices], googleSaved: row?.saved === true };
+  const activation = await tx.execute(sql`
+    select a.home_launched_at is not null as home_launched,
+      exists (select 1 from consumer.web_push_subscription s
+              where s.consumer_id = a.id) as push_subscribed
+    from consumer.consumer_account a where a.id = ${consumerId}`);
+  const [row] = rowsOf<{ home_launched: boolean; push_subscribed: boolean }>(
+    activation,
+  );
+  return {
+    devices: [...devices],
+    homeLaunched: row?.home_launched === true,
+    pushSubscribed: row?.push_subscribed === true,
+  };
 }
 
 /** Whether any of these devices already got THIS business's welcome (the durable filter). */
@@ -103,7 +116,7 @@ export async function issueWelcomeGiftsIn(
       order by m.enrolled_at, m.id`),
   );
   if (memberships.length === 0) return 0;
-  const installed = await installedFacts(tx, consumerId, trigger);
+  const activation = await activationFacts(tx, consumerId, trigger);
   let issued = 0;
   for (const membership of memberships) {
     const businessId = String(membership.business_id);
@@ -112,12 +125,12 @@ export async function issueWelcomeGiftsIn(
     const verdict = decideWelcomeGift({
       enrolledAt: requireDate(membership.enrolled_at),
       activatedAt: campaign.activatedAt,
-      appleDevices: installed.devices.length,
-      googleSaved: installed.googleSaved,
+      homeLaunched: activation.homeLaunched,
+      pushSubscribed: activation.pushSubscribed,
       deviceAlreadyGifted: await deviceAlreadyGifted(
         tx,
         businessId,
-        installed.devices,
+        activation.devices,
       ),
       crossCouponFromBusiness: await hasCrossCouponFrom(
         tx,
@@ -162,7 +175,7 @@ export async function issueWelcomeGiftsIn(
     const [coupon] = inserted;
     if (!coupon) continue;
     issued += 1;
-    for (const device of installed.devices)
+    for (const device of activation.devices)
       await tx.execute(sql`
         insert into core.welcome_device (business_id, device_library_id, coupon_id)
         values (${businessId}, ${device}, ${coupon.id})
@@ -182,7 +195,7 @@ function inList(column: string, ids: string[] | undefined) {
 
 /**
  * THE TICK's SWEEP (spec 0107 §3): consumers with an enrolment after the switch-on of an
- * active welcome, no gift yet and an installed pass → `issueWelcomeGiftsIn`. It recovers a
+ * active welcome, no gift yet, home opened and push enabled → `issueWelcomeGiftsIn`. It recovers a
  * trigger that was lost (a best-effort failure, a deploy in between). Runs in the tick's
  * transaction, under its lock. `businessIds`/`consumerIds` are the tick's test scope.
  */
@@ -204,24 +217,32 @@ export async function sweepWelcomeGifts(
         and (c.ends_at is null or c.ends_at > ${at}::timestamptz)
       where not exists (select 1 from core.campaign_coupon cc
                          where cc.welcome_membership_id = m.id)
-        and (exists (select 1 from consumer.wallet_push_device d
-                       join consumer.wallet_pass p on p.id = d.wallet_pass_id
-                     where p.consumer_id = m.consumer_id and p.provider = 'apple')
-             or exists (select 1 from consumer.wallet_pass g
-                         where g.consumer_id = m.consumer_id and g.provider = 'google'
-                           and g.google_saved_at is not null))
+        and exists (select 1 from consumer.consumer_account a
+                    where a.id = m.consumer_id and a.home_launched_at is not null)
+        and exists (select 1 from consumer.web_push_subscription s
+                    where s.consumer_id = m.consumer_id)
         ${inList("m.business_id", businessIds)}
         ${inList("m.consumer_id", consumerIds)}`),
   );
   let issued = 0;
-  for (const row of consumers)
-    issued += await issueWelcomeGiftsIn(
+  for (const row of consumers) {
+    const recovered = await issueWelcomeGiftsIn(
       tx,
       row.consumer_id,
       now,
       {},
       businessIds,
     );
+    issued += recovered;
+    if (recovered > 0)
+      await tx.execute(sql`
+        insert into consumer.wallet_push_queue
+          (consumer_id, class, title, body, status, not_before)
+        values (${row.consumer_id}, 'transactional',
+          '¡Tu bienvenida ya está lista!',
+          'Recibiste un beneficio de bienvenida. Abrí CheckPass para verlo.',
+          'pending', ${now.toISOString()})`);
+  }
   return issued;
 }
 
@@ -240,10 +261,32 @@ export async function issueWelcomeGifts(
 export async function issueWelcomeGiftsSafely(
   consumerId: string,
   trigger: WelcomeTrigger = {},
-): Promise<void> {
+): Promise<number> {
   try {
-    await issueWelcomeGifts(consumerId, new Date(), trigger);
+    const issued = await issueWelcomeGifts(consumerId, new Date(), trigger);
+    if (issued > 0) await announceWelcome(consumerId, issued);
+    return issued;
   } catch (error) {
     console.error("[welcome] issueWelcomeGifts failed", error);
+    return 0;
+  }
+}
+
+async function announceWelcome(consumerId: string, issued: number) {
+  try {
+    await deliverWebPush(
+      consumerId,
+      {
+        title: "¡Tu bienvenida ya está lista!",
+        body:
+          issued === 1
+            ? "Recibiste un beneficio de bienvenida. Abrí CheckPass para verlo."
+            : `Recibiste ${issued} beneficios de bienvenida. Abrí CheckPass para verlos.`,
+        url: "/wallet",
+      },
+      webPushChannelFromEnv(),
+    );
+  } catch (error) {
+    console.error("[welcome] first push failed", error);
   }
 }

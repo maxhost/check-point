@@ -8,12 +8,24 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-01) — 0118 PARQUEADA A PEDIDO DEL OWNER (hay un problema mas importante)
+## ⇥ ESTADO (2026-10-01, tarde) — 0118 REVISADA (PASS), MERGE DE `origin/main` EN `motor` A MEDIAS, SIN COMMIT
 
-**Retomar:** lo que traiga el owner. La 0118 esta en `PARQUEADO.md` (primera seccion) con los pasos exactos; su codigo
-vive SOLO en la rama local `motor` (`b005721`, `4b4991b`, sin push) — **no pushear `motor` a `main` sin mergear
-`origin/main` (`8ee0a80`, `b2729d1` de otra sesion) y sin el secret corregido**. PROD: cliente en su proyecto en `my.`,
-rol `checkpass_consumer` amplio + `BYPASSRLS` (funciona). Bloque de abajo: estado verificado del corte.
+**Hecho y verificado:** URL de CI del rol corregida por el owner (`.env.local` y secret de GitHub; conecta como
+`checkpass_consumer`, sin bypass, endpoint de `ci-integration`). Oraculo 42/42 con la URL real. Revisor PASS (`85fce24`,
+R-M1 y R-M3 rojas con la URL real, revertidas). Vercel: el owner habia pegado la URL de CI en los proyectos y la volvio a
+la de `main`; redeploy hecho; `my./enroll/<LaCraft>` lee PROD (programa solo-PROD visible). `check-point-public` no usa base.
+**A medias (arbol de `motor`, sin commitear):** merge de `origin/main` (`f3982ef` y 8 mas). Choque de numeracion:
+`main` trae `0059_home_launch_welcome` (YA en PROD) → la del rol se renumero a **`0060_rol_del_cliente.sql`** (contenido
+intacto, shasum `24c03aa7…`), snapshot `0060` y journal (`when` 1790878886657); `drizzle-kit generate` → «No schema
+changes». En la rama `ci-integration` se movio el `created_at` de la fila hash `756b5b2f…` a 1790878886657 para que
+`db:migrate` no la reaplique.
+**Arreglado en el merge (sin commitear):** `wallet-account-opened.test.ts` venia ROJO de `main` (`f3982ef` hizo que
+`/wallet` llame a `listWelcomeCoupons` y el test no la doblaba → `DATABASE_URL no está configurada`); se agrego SOLO el
+doble que faltaba (mismo patron que `listConsumerPrograms`), aserciones intactas → 4/4.
+**Sigue:** (1) decision del owner: opcion A (terminar el merge auditando rutas nuevas) u opcion B (pushear sin la 0060
+en PROD); (2) auditar las rutas/consultas nuevas del
+cliente que trae `main` (p. ej. `api/public/home/launch`, `welcome-coupons`) contra los GRANT de la 0060 y re-correr
+el oraculo del rol; (3) gates + commit del merge + push; (4) `0060` a PROD solo con OK del owner.
 
 ## ⇥ ESTADO (2026-10-01, madrugada) — EL CLIENTE YA CORRE EN SU PROPIO PROYECTO (`my.checkpass.club`)
 
@@ -67,6 +79,12 @@ Reversion: reaplicar la 0059 limpia (drop de las 10 `consumer_app_*` + el archiv
 |---|---|---|---|---|
 | R-M1 | 0059 (base: `REVOKE INSERT ON consumer.consumer_account`) | `24c03aa7…` | sin ese INSERT el alta se rompe COMO el rol real | **ROJO 2/25** (alcance: los 4 positivos, URL REAL `checkpass_consumer` por el pooler, sin arnes): «POST enroll…» → `expected 503 to be 201` (`enroll_failed`) y «verify de un telefono nuevo → perfil» → `expected 409 to be 201`. Causa leida: `SET LOCAL ROLE` + `INSERT` → `42501 permission denied for table consumer_account`. Revertida: 0059 limpia reaplicada, matriz `has_table_privilege` identica a la linea base (diff vacio), archivo `24c03aa7…` |
 | R-M3 | 0059 (base: `DROP POLICY consumer_app_select ON consumer.program_membership`) | `24c03aa7…` | sin la politica SELECT el cliente ve 0 filas, sin error | **ROJO 6/25** (mismo alcance, URL REAL): «GET enroll/me» y «pagina /wallet» → `expected [] to deeply equal [ Array(1) ]` (0 filas, sin error); «PassKit: registrar…» y «google/callback» → `expected [] to have a length of 1 but got +0` (Bienvenida no emitida); «marketing-opt-out» → `expected 404 to be 200`; «POST enroll» → `503`. Revertida: 0059 limpia reaplicada (10 `consumer_app_*`, bypass false, defacl 0, hash `756b5b2f…`), matriz identica (diff vacio), sonda 5 archivos **42/42 verde** |
+
+## Bitacora de mutaciones — 0118 tras el merge de `main` (orquestador, 2026-10-01)
+
+| id | donde | invariante | resultado EJECUTADO |
+|---|---|---|---|
+| O-M1 | base `ci-integration`: `REVOKE INSERT ON core.campaign_coupon FROM checkpass_consumer` (revertir: `GRANT INSERT ON core.campaign_coupon TO checkpass_consumer`) | el caso nuevo `POST home/launch` caza un GRANT faltante del regalo aunque la ruta lo trague | **ROJO 1/10** (alcance: `consumer-role.neon`): «POST home/launch…» → `AssertionError: expected [ [ …(2) ] ] to deeply equal []` con `[welcome] issueWelcomeGifts failed` + `DrizzleQueryError` en `insert into core.campaign_coupon` (el espia ve el error que la ruta traga). Revertida con el GRANT; `role_table_grants` = INSERT, SELECT (igual que la 0060); oraculo 43/43 verde |
 
 ### Bloque anterior
 

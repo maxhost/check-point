@@ -66,7 +66,7 @@ export function BrandKitWizard({ data }: { data: BrandKitReady }) {
         <ModuleHeader
           eyebrow="Marca"
           title="Afiche de enrolamiento"
-          description="Generá el afiche imprimible con el QR para sumar clientes en tu local."
+          description="Genera el afiche imprimible con el QR para sumar clientes en tu local."
           closeHref="/backoffice/brand"
         />
 
