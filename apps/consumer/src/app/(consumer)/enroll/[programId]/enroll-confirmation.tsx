@@ -21,28 +21,16 @@ function isStandalone() {
   );
 }
 
-function AndroidInstallAction() {
-  const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
+function AndroidInstallAction({
+  prompt,
+  installed,
+  clearPrompt,
+}: {
+  prompt: InstallPromptEvent | null;
+  installed: boolean;
+  clearPrompt: () => void;
+}) {
   const [showManual, setShowManual] = useState(false);
-
-  useEffect(() => {
-    setInstalled(isStandalone());
-    const onPrompt = (event: Event) => {
-      event.preventDefault();
-      setPrompt(event as InstallPromptEvent);
-    };
-    const onInstalled = () => {
-      setInstalled(true);
-      setPrompt(null);
-    };
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
 
   async function install() {
     if (!prompt) {
@@ -50,7 +38,7 @@ function AndroidInstallAction() {
       return;
     }
     const currentPrompt = prompt;
-    setPrompt(null);
+    clearPrompt();
     await currentPrompt.prompt();
     const choice = await currentPrompt.userChoice;
     if (choice.outcome !== "accepted") setShowManual(true);
@@ -71,7 +59,8 @@ function AndroidInstallAction() {
           En Chrome, abrí el menú <strong>⋮</strong> y elegí{" "}
           <strong>Instalar app</strong> o{" "}
           <strong>Añadir a pantalla de inicio</strong>. Si abriste el QR en otra
-          app, abrí esta página en Chrome primero.
+          app, abrí esta página en Chrome primero. Si CheckPass ya está instalado,
+          abrilo desde tu inicio.
         </p>
       )}
     </>
@@ -164,17 +153,28 @@ export function EnrollConfirmation({
   );
   const [standalone, setStandalone] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
+    null,
+  );
+  const [installed, setInstalled] = useState(false);
 
-  // The icon must open this consumer's wallet, so install metadata is injected
-  // only after the enrollment response provides its tokenized manifest URL.
   useEffect(() => {
-    if (!walletManifestPath) return;
-    const link = document.createElement("link");
-    link.rel = "manifest";
-    link.href = walletManifestPath;
-    document.head.appendChild(link);
-    return () => link.remove();
-  }, [walletManifestPath]);
+    setInstalled(isStandalone());
+    const onPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallPrompt(null);
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     const ua = navigator.userAgent;
@@ -291,7 +291,11 @@ export function EnrollConfirmation({
                 especiales en un toque.
               </p>
               {walletManifestPath ? (
-                <AndroidInstallAction />
+                <AndroidInstallAction
+                  prompt={installPrompt}
+                  installed={installed}
+                  clearPrompt={() => setInstallPrompt(null)}
+                />
               ) : (
                 <p className={styles.smallNote}>
                   Abrí tu pase para añadir CheckPass al inicio.

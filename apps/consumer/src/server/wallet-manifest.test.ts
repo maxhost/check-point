@@ -128,12 +128,12 @@ describe("consumer PWA manifest start_url (spec 0050 / ADR 0048)", () => {
     expect(manifest.icons).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          src: "/checkpass-icon-192.png",
+          src: "/checkpass-icon-192-v2.png",
           sizes: "192x192",
           purpose: "any",
         }),
         expect.objectContaining({
-          src: "/checkpass-icon-maskable-512.png",
+          src: "/checkpass-icon-maskable-512-v2.png",
           sizes: "512x512",
           purpose: "maskable",
         }),

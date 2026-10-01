@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": mime,
-      "Content-Disposition": 'attachment; filename="mi-pasaporte.pkpass"',
+      "Content-Disposition": 'attachment; filename="mi-checkpass.pkpass"',
       "Cache-Control": "no-store",
     },
   });

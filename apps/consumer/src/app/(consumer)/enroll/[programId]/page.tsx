@@ -1,5 +1,4 @@
 import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
-import { vapidFromEnv } from "@mi-pasaporte/domain/server/push/vapid";
 import { EnrollForm } from "./enroll-form";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +71,6 @@ export default async function EnrollPage({
         businessName={landing.businessName}
         defaultCountryIso={landing.countryCode ?? "EC"}
         brandPrimaryColor={landing.brandPrimaryColor}
-        vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
         welcomeOffer={landing.welcomeOffer}
       />
     </main>

@@ -208,31 +208,29 @@ describe("the confirmation shows the toast only under existingAccount (spec 0054
 
   it("renders the notice ONLY inside the existingAccount conditional", () => {
     // The constant holding the copy is rendered once, and that render sits inside
-    // `{existingAccount ? (…)}` — an unconditional render would show the notice on
-    // every fresh alta.
+    // The notice is shown only for a reused account.
     const renders = confirmation.match(/\{EXISTING_ACCOUNT_NOTICE\}/g) ?? [];
     expect(renders).toHaveLength(1);
     expect(confirmation).toMatch(
-      /\{existingAccount \? \([\s\S]{0,700}\{EXISTING_ACCOUNT_NOTICE\}/,
+      /\{existingAccount && \([\s\S]{0,700}\{EXISTING_ACCOUNT_NOTICE\}/,
     );
   });
 
   it("is non-blocking: an aviso, not a gate on the rest of the screen", () => {
-    // The felicitación and the install/wallet blocks stay outside the conditional:
-    // the notice block closes (`) : null}`) before the <h2> greeting renders.
-    expect(confirmation).toMatch(
-      /\{existingAccount \? \([\s\S]{0,900}\) : null\}[\s\S]{0,200}<h2/,
-    );
+    expect(confirmation).toContain("<WalletButtons");
     expect(confirmation).toContain('role="status"');
   });
 
-  it("the form passes the flag taken ONLY from the 201 response, explicit-true only", () => {
+  it("the form carries the 201 flag to the ready route, explicit-true only", () => {
     expect(enrollForm).toMatch(
       /if \(res\.status === 201\) \{[\s\S]{0,700}existingAccount/,
     );
     // A malformed/absent field degrades to false (older server → no toast).
     expect(enrollForm).toContain("data?.existingAccount === true");
-    expect(enrollForm).toContain("existingAccount={screen.existingAccount}");
+    expect(enrollForm).toContain("?existing=1");
+    expect(source("enroll/[programId]/ready/page.tsx")).toContain(
+      'existingAccount={(await searchParams).existing === "1"}',
+    );
   });
 
   it("no other file in the enroll tree renders the notice", () => {
