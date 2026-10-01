@@ -7225,3 +7225,45 @@ Declarado y NO perseguido: diferencia visual de capturas (ya declarada para la 0
 solo `apps/merchant/.next/types/validator.ts`, no el de consumer (no es riesgo de produccion: consumer no recibe
 trafico; para la 0117); `tools/vi-mock-targets.test.ts` no resuelve especificadores con sufijo `.js` (daria un falso
 rojo, no una fuga).
+
+## Bitacora de mutaciones — spec 0117, implementador (2026-09-30)
+
+Arbol de partida de las mutaciones: `10ebaf9` (trabajo de la 0117 commiteado; `git status` sin cambios de codigo). Copias
+limpias en el scratchpad de la sesion (`clean/`). Restauracion de emergencia: `git checkout 10ebaf9 -- <archivo>`; para M1
+`rm apps/merchant/src/app/api/public/push/click/route.ts` y las carpetas vacias `api/public/push/click`, `push`, `public`
+(no existen en el arbol limpio). Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante que ataca | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| M1 | `apps/merchant/src/app/api/public/push/click/route.ts` (ausente en limpio) | — (no existe) | una ruta del cliente que sobrevive en merchant: `merchant-without-consumer.test.ts` la nombra | unit root entera + typecheck de merchant (hermano) | **ROJO** 1/3017: `route.ts` de `push/click` restaurado en merchant (copia del de consumer + `// MUTATION M1`) → `merchant-without-consumer.test.ts` › «src/app/api/public no existe» `AssertionError: src/app/api/public: expected true to be false` (nombra la carpeta). Hermano: `tsc --noEmit` de merchant sin errores (fuera de `.next/types`): VERDE, como dice la fila. Revertida: `rm` del archivo + `rmdir` de las 3 carpetas; `ls` → no existe; `git status` limpio |
+| M2 | `apps/merchant/src/app/api/health/route.ts` | `81dc4021881ecf08d0d98a4e45377d6ea234c962` | un modulo de PRODUCCION de merchant importa de `apps/consumer/src`: `tools/app-boundary.test.ts` lo nombra | unit root entera + typecheck (hermano) | **ROJO** 1/3017: `route.ts` de `/api/health` importa `GET` de `../../../../../consumer/src/app/api/health/route` → `tools/app-boundary.test.ts` › «merchant no importa nada de apps/consumer» `expected [ Array(1) ] to deeply equal []`, recibido `"apps/merchant/src/app/api/health/route.ts: ../../../../../consumer/src/app/api/health/route"`. Hermano: `tsc` de merchant VERDE (compila). Revertida con la copia: `diff` vacio, shasum `81dc4021…c962` |
+| M3 | `apps/merchant/next.config.ts` | `4c6a41be6d795f32d666cca01d699167bd3d1f24` | el proxy `/api/public/:path*` de merchant al cliente | unit root entera | **ROJO** 2/3017: `consumerApiRewrites` devuelve `[]` → `consumer-api-proxy.test.ts` › «defaults to my.checkpass.club» y «reads CONSUMER_ORIGIN…» `expected [] to deeply equal [ { …(2) } ]` (falta `{ source: "/api/public/:path*", destination: "https://my.checkpass.club/api/public/:path*" }`); «is what next.config.ts hands to Next» VERDE (compara contra la misma funcion mutada). Variante M3b (el CABLEADO: se borra `async rewrites()` del config) → **ROJO** 1/3017 «is what next.config.ts hands to Next» `expected undefined to be type of 'function'`. Revertidas con la copia: `diff` vacio, shasum `4c6a41be…1f24` (las dos veces). Borde real medido aparte con `next start`: merchant construido con `CONSUMER_ORIGIN=http://127.0.0.1:3100` → `/api/public/consumer/coupons` 401 con el cuerpo de consumer (merchant ya no tiene la ruta) |
+| M4 | `apps/public/src/legacy-routes.ts` | `a010a8815a0bcc71c658fb3c8592e6950fd7d7d7` | `www` manda `/api/public/*` al cliente ANTES que `/api/*` a merchant | unit root entera | **ROJO** 1/3017: `legacyRewrites` con `/api/:path*` primero → `legacy-routes.test.ts` › «proxies /api/public/:path* to CONSUMER_API_ORIGIN first, then /api/:path* …» `expected [ …(2) ] to deeply equal [ { …(2) }, …(1) ]` con el diff de orden (`/api/public` esperado primero). Revertida con la copia: `diff` vacio, shasum `a010a881…d7d7` |
+| M5 | `apps/consumer/next.config.ts` | `21415d8f8ef4e5964184304415da7a6c85a87391` | la raiz de consumer `/` → 308 `/wallet` | unit root entera | **ROJO** 1/3017: se borra `async redirects()` del config → `root-redirect.test.ts` › «is what next.config.ts hands to Next» `expected undefined to be type of 'function'`. Variante M5b (`consumerRedirects` devuelve `[]`) → **ROJO** 1/3017 «`/` → `/wallet`, permanent (308), and nothing else» `expected [] to deeply equal [ { source: '/', …(2) } ]`. Revertidas con la copia: `diff` vacio, shasum `21415d8f…7391` (las dos veces). Borde real: `next start` de consumer → `/` 308 → `/wallet` |
+
+Ninguna sobrevive: `grep -rnE '\b(MUTATION|MUTACION)\b' apps/*/src packages/*/src tools apps/*/next.config.ts` → vacio;
+`git status --short apps packages tools` → vacio. M6 (rol en la rama de CI) es del orquestador: no se hizo.
+
+**Evidencia de la DoD (implementador, sobre `10ebaf9`):**
+- Capturas de referencia de merchant tomadas ANTES del borrado (HEAD `1ade8b3`, `next start` :3101 con `DATABASE_URL` =
+  rama de CI e interlock de host; 390×844): scratchpad de la sesion `shots/ref-merchant-{recover,wallet}.png`
+  (sha256 `ae17c3f2…1ace` y `085afc36…0293`; una segunda toma dio `cmp` identica). Con el CSS del punto 3, consumer
+  `next start` :3100 → `shots/consumer-{recover,wallet}.png`: **`cmp` IDENTICAS las dos**.
+- Diferencial HTTP (solo GET): consumer :3100 = merchant de referencia en las 8 rutas de la 0116 (`/api/health` 200,
+  `/recover` 200, `/wallet` 200, `/wallet/manifest.webmanifest` 200, `/c/x` 404, `/enroll/0000…` 200,
+  `/api/public/consumer/coupons` 401, `/api/public/consumer/cross-offers` 401); consumer `/` 308 → `/wallet`. Merchant
+  despues del corte (127.0.0.1): paginas del cliente 404, `/sw.js` y `/wallet-logo.png` 404, `/api/public/consumer/*` 401
+  via el proxy; con `MERCHANT_ORIGIN=https://business.checkpass.club` y Host `business.`: `/wallet`, `/recover`,
+  `/enroll/abc?x=1`, `/c/tok` → 308 al `CONSUMER_ORIGIN` con path y query.
+- Tests: antes (`1ade8b3`) merchant 365/2982, consumer 1/1, tools 4/13, public 1/6, platform 1/1 = 372/3003. Despues
+  merchant 350/2891, consumer 19/102, tools 5/17, public 1/6, platform 1/1 = 376/3017. Por archivo (sin el prefijo de
+  app) las 372 filas de antes estan iguales despues; las 4 nuevas: `root-redirect` 2, `consumer-api-proxy` 3,
+  `merchant-without-consumer` 5, `app-boundary` 4 (+14 = 3017).
+- Gates (Node v24.20.0): `TURBO_FORCE=1` build rc=0 (0 cached, 4); `TURBO_FORCE=1` typecheck rc=0 (0 cached, 6); lint
+  rc=0; format:check rc=0; test rc=0 (228 pasan / 148 skip, 2244 / 773); test:e2e rc=0 (106 passed, 5 skipped).
+  `next-env.d.ts` restaurados. `pnpm install --frozen-lockfile --offline` rc=0, lockfile igual (`shasum -c` OK; ningun
+  `package.json` cambio).
+- Neon (rama de CI): `tools/neon-test.sh --app consumer src/server/loyalty-stamp-placeholder.neon.integration.test.ts`
+  8/8; `tools/neon-test.sh src/server/consumer-coupons.neon.integration.test.ts` 3/3; ademas los otros 11 que cruzan a
+  consumer (opt-out, welcome x3, web-push, cross x3, valley x3) 48/48.
+
