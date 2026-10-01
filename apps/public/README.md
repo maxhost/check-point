@@ -13,7 +13,7 @@ El explorador usa fotos locales de Pexels y datos de ejemplo aislados en `src/ap
 ## Variables opcionales
 
 - `PUBLIC_SITE_URL`: origen de canonical y sitemap. Por defecto `https://www.checkpass.club`.
-- `MERCHANT_ONBOARDING_URL`: destino de los CTA de alta. Por defecto `https://www.checkpass.club/es/business/onboarding`.
+- `MERCHANT_ONBOARDING_URL`: destino de los CTA de alta. Por defecto `https://business.checkpass.club/es/business/onboarding`.
 - `CONSUMER_WALLET_URL`: destino de «Mi pase». Por defecto `https://www.checkpass.club/wallet`.
 
 El despliegue de esta app requiere un proyecto Vercel propio con directorio raíz `apps/public`. La configuración del dominio y de las rutas compartidas con merchant se describe en [despliegue de la web pública](../../docs/despliegue-publico.md).

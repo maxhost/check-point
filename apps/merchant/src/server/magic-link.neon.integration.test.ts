@@ -131,7 +131,7 @@ describe.skipIf(!enabled)(
       }
     }, 30_000);
 
-    it("start → token → consumo: 303 a /backoffice, con cookie y con el email verificado", async () => {
+    it("start → token → consumo: 303 al onboarding si aún no hay negocio, con cookie y email verificado", async () => {
       expect(await verifiedFlag()).toBe(false);
 
       const started = await START(
@@ -153,7 +153,7 @@ describe.skipIf(!enabled)(
 
       const response = await consume(token!);
       expect(response.status).toBe(303);
-      expect(response.headers.get("location")).toBe("/backoffice");
+      expect(response.headers.get("location")).toBe("/es/business/onboarding");
 
       const cookie = response.headers.get("set-cookie") ?? "";
       expect(cookie).toContain("HttpOnly");
