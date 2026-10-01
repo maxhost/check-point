@@ -56,6 +56,18 @@ la 0059 LIMPIA (hash registrado `756b5b2f…` = sha256 del archivo; `rolbypassrl
 `ci-integration` (no `checkpass_consumer`) y da `28P01 password authentication failed`: el oraculo positivo con la URL
 real esta ROJO 25/25 por autenticacion (verde 25/25 solo con el arnes `SET ROLE`). Ver el handoff de la 0118.
 
+## Bitacora de mutaciones — spec 0118, REVISOR (2026-10-01, URL REAL del rol, sin arnes)
+
+Mutaciones de BASE en `ci-integration`, aplicadas como dueño con la sentencia equivalente (el archivo NO se toca:
+`0059_rol_del_cliente.sql` shasum limpio `24c03aa79c04b122cfb5e8bb21d3a1a9ab2f6c36`, hash en la rama `756b5b2f…`).
+Reversion: reaplicar la 0059 limpia (drop de las 10 `consumer_app_*` + el archivo) y re-correr la sonda.
+**Restauracion de emergencia:** igual que la de arriba (drop de las 10 politicas + reaplicar el archivo limpio).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M1 | 0059 (base: `REVOKE INSERT ON consumer.consumer_account`) | `24c03aa7…` | sin ese INSERT el alta se rompe COMO el rol real | **ROJO 2/25** (alcance: los 4 positivos, URL REAL `checkpass_consumer` por el pooler, sin arnes): «POST enroll…» → `expected 503 to be 201` (`enroll_failed`) y «verify de un telefono nuevo → perfil» → `expected 409 to be 201`. Causa leida: `SET LOCAL ROLE` + `INSERT` → `42501 permission denied for table consumer_account`. Revertida: 0059 limpia reaplicada, matriz `has_table_privilege` identica a la linea base (diff vacio), archivo `24c03aa7…` |
+| R-M3 | 0059 (base: `DROP POLICY consumer_app_select ON consumer.program_membership`) | `24c03aa7…` | sin la politica SELECT el cliente ve 0 filas, sin error | **ROJO 6/25** (mismo alcance, URL REAL): «GET enroll/me» y «pagina /wallet» → `expected [] to deeply equal [ Array(1) ]` (0 filas, sin error); «PassKit: registrar…» y «google/callback» → `expected [] to have a length of 1 but got +0` (Bienvenida no emitida); «marketing-opt-out» → `expected 404 to be 200`; «POST enroll» → `503`. Revertida: 0059 limpia reaplicada (10 `consumer_app_*`, bypass false, defacl 0, hash `756b5b2f…`), matriz identica (diff vacio), sonda 5 archivos **42/42 verde** |
+
 ### Bloque anterior
 
 ## ⇥ ESTADO (2026-09-30, noche) — FASE 2 HECHA: 0116 EN PROD, SIGUE LA 0117
