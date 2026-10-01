@@ -258,6 +258,13 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   **Y RLS:** 4 tablas (`core.loyalty_program`, `consumer.program_membership`, `core.business_customer`,
   `core.business_customer_count`) tienen politicas solo para `customer_reader`; un rol que no es dueño ve 0 filas SIN
   error. `has_table_privilege` no lo muestra: listar `relrowsecurity` y dar politica o `BYPASSRLS` (caso 0117).
+- **Un `Pool` de `@neondatabase/serverless` sin listener de `error` VUELCA su config —con el `connectionString` y la
+  contraseña— al fallar (medido 2026-10-01, spec 0118: una credencial de CI quedo en el transcript).** Todo script que
+  abra un `Pool` lleva `pool.on("error", …)` y `client.on("error", …)` que impriman solo `code`/`message`, y su salida se
+  filtra antes de mostrarla.
+- **`SET ROLE` de sesion por la URL `-pooler` (pgbouncer, modo transaccion) se reparte entre backends:** el rol se filtra
+  a otras conexiones (medido en la 0118). Un arnes que cambie de rol usa la URL DIRECTA o `SET LOCAL` dentro de una
+  transaccion.
 - **RLS, `leakproof` y funciones en Neon — medido el 2026-09-28 (specs 0108/0109, ADR 0100/0101).**
   (1) La app se conecta con `neondb_owner`, que tiene **`rolbypassrls = true`**: una politica RLS sola
   **no aisla nada** (probado con `FORCE`). Para que muerda hay que cambiar de rol dentro de la
