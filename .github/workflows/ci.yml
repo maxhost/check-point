@@ -38,9 +38,15 @@ jobs:
       - name: La integracion Neon tiene que correr, no skipearse
         env:
           NEON_INTEGRATION_DATABASE_URL: ${{ secrets.NEON_CI_DATABASE_URL }}
+          # Spec 0118: el oraculo del rol del cliente se conecta COMO `checkpass_consumer`.
+          NEON_INTEGRATION_CONSUMER_DATABASE_URL: ${{ secrets.NEON_CI_CONSUMER_DATABASE_URL }}
         run: |
           if [ -z "$NEON_INTEGRATION_DATABASE_URL" ]; then
             echo "::error::NEON_CI_DATABASE_URL ausente: la integracion se skipearia en silencio"
+            exit 1
+          fi
+          if [ -z "$NEON_INTEGRATION_CONSUMER_DATABASE_URL" ]; then
+            echo "::error::NEON_CI_CONSUMER_DATABASE_URL ausente: el oraculo del rol del cliente no correria"
             exit 1
           fi
       # La rama de CI nace de `main` y se queda atras cuando llega una migracion nueva:
@@ -52,6 +58,7 @@ jobs:
       - name: Unit + integracion Neon
         env:
           NEON_INTEGRATION_DATABASE_URL: ${{ secrets.NEON_CI_DATABASE_URL }}
+          NEON_INTEGRATION_CONSUMER_DATABASE_URL: ${{ secrets.NEON_CI_CONSUMER_DATABASE_URL }}
           # Interlock deliberado del repo: sin `true` explicito, los tests no apuntan a
           # ninguna base aunque tengan la URL. Evita correrlos contra prod por accidente.
           NEON_INTEGRATION_ISOLATED: "true"

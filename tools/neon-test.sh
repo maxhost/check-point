@@ -53,6 +53,21 @@ if [ -n "$PROD" ] && [ "$(host "$CI_POOLED")" = "$(host "$PROD")" ]; then
   exit 1
 fi
 
+# Spec 0118: el oraculo del rol del cliente se conecta COMO `checkpass_consumer` (la URL de la
+# rama de CI con ese usuario). Opcional para el script —sin ella ese archivo FALLA, no se
+# saltea— pero si esta, tiene que ser la rama de CI y nunca la base real.
+CI_CONSUMER="$(leer NEON_CI_CONSUMER_DATABASE_URL)"
+if [ -n "$CI_CONSUMER" ]; then
+  if [ "$(host "$CI_CONSUMER")" != "$(host "$CI_POOLED")" ]; then
+    echo "ABORTADO: NEON_CI_CONSUMER_DATABASE_URL no apunta a la rama de CI."
+    exit 1
+  fi
+  echo "ok NEON_CI_CONSUMER_DATABASE_URL (largo ${#CI_CONSUMER})"
+  export NEON_INTEGRATION_CONSUMER_DATABASE_URL="$CI_CONSUMER"
+else
+  echo "aviso: NEON_CI_CONSUMER_DATABASE_URL sin valor en $ENV_FILE (el oraculo del rol va a fallar)"
+fi
+
 # La rama de CI nace de `main` y se queda atras cuando llega una migracion nueva. drizzle-kit
 # aplica solo las pendientes, asi que correrlo siempre es idempotente (igual que la CI).
 echo "→ migrando la rama de CI"
