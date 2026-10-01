@@ -10,7 +10,17 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
 ## ⇥ ESTADO (2026-10-01, tarde) — 0118 IMPLEMENTADA Y EN `main` (`ef22ffb`); LA `0060` NO ESTA EN PROD
 
-**Retomar con:** OK del owner para aplicar `0060_rol_del_cliente.sql` en PROD (rama `main` de Neon), y despues sacar el
+**PRIMERO, cuando el owner avise que GPT cerro sus ramas — ALINEAR TODO A `main` + `motor` (pedido del owner
+2026-10-01, medido ese dia):** la `main` LOCAL de `check-point` estaba divergida (base 29/09; 8 commits sin push, 6 son
+copias con otro sha de commits ya en `origin`, 1 nuevo `17f623b` «Redesign consumer PWA…»; 19 archivos sin commitear).
+Plan: (1) confirmar que GPT ya no escribe ahi (`ListAgents` + `git log` del arbol); (2) re-medir lo que quede sin
+pushear y traerlo a `motor` con gates; (3) cambios sin commitear → rama de respaldo `wip-check-point-<fecha>` (no
+descartar sin OK); (4) `main` local = `origin/main`; (5) borrar ramas sin nada propio: `deploy-0107`, `deploy-0108`,
+`deploy-business-landing`, `deploy-public-app` (+ sus worktrees en `/private/tmp` y `motor-wt/`), y en remoto
+`origin/motor`, `origin/clientes-0108`; dependabot (5) = preguntar al owner; (6) **arreglar `test:e2e`**: 52 rojos del
+backoffice por el copy de `4a69db7` (p. ej. «Dale identidad» → «Da identidad»), actualizar los e2e al texto nuevo y
+correr hasta verde. Re-medir todo antes: GPT puede haber cambiado el cuadro.
+**Despues:** OK del owner para aplicar `0060_rol_del_cliente.sql` en PROD (rama `main` de Neon), y despues sacar el
 `BYPASSRLS` y el GRANT amplio que hoy tiene `checkpass_consumer` en PROD. Antes de aplicarla: QA del owner en el telefono
 (alta, billetera, instalar la app, Bienvenida) contra `my.checkpass.club`, porque el rol minimo cambia que puede tocar el
 cliente. **Y verificar el deploy** de `ef22ffb` en READY en los proyectos de Vercel (no hay `vercel`/`gh` CLI en este
