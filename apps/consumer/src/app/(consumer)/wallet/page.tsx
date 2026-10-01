@@ -64,9 +64,24 @@ export default async function WalletPage() {
           Tu tarjeta no está abierta
         </h1>
         <p style={{ color: "#555", marginTop: 12 }}>
-          Sumate a un programa desde el enlace de un local para ver tu tarjeta y
-          tu código QR.
+          Ingresá con tu número de teléfono para volver a ver tus programas,
+          beneficios y tu pase.
         </p>
+        <a
+          href="/recover"
+          style={{
+            display: "block",
+            marginTop: 24,
+            padding: 15,
+            borderRadius: 14,
+            background: "#176548",
+            color: "#fff",
+            fontWeight: 700,
+            textDecoration: "none",
+          }}
+        >
+          Ingresar con mi teléfono
+        </a>
       </main>
     );
   }
