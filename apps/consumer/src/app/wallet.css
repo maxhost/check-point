@@ -358,3 +358,455 @@
 .consumer-reward-gap.is-ready {
   color: #176548;
 }
+
+/* Consumer PWA: compact, thumb-friendly views for the installed app. */
+.consumer-wallet-shell {
+  min-height: 100dvh;
+  max-width: 520px;
+  padding: calc(16px + env(safe-area-inset-top)) 20px
+    calc(104px + env(safe-area-inset-bottom));
+  background: #f6f7f4;
+  color: #18352e;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.cp-app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 46px;
+  margin-bottom: 29px;
+}
+.cp-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.cp-wordmark > span {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 10px;
+  background: #146b4c;
+  color: white;
+  font-size: 19px;
+}
+.consumer-wallet-shell .cp-activity-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #e1e9e3;
+  border-radius: 15px;
+  background: white;
+  color: #214337;
+}
+.cp-activity-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+.cp-screen-heading {
+  margin-bottom: 22px;
+}
+.cp-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #507866;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.consumer-wallet-shell .cp-screen-heading h2,
+.consumer-wallet-shell .consumer-programs-heading h2 {
+  margin: 0;
+  font-size: clamp(30px, 8vw, 36px);
+  font-weight: 760;
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+.cp-screen-heading p,
+.consumer-programs-heading > div > p {
+  margin: 8px 0 0;
+  color: #688075;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.cp-feature-summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 124px;
+  padding: 22px;
+  overflow: hidden;
+  border-radius: 25px;
+  background: linear-gradient(130deg, #124937, #1d7958);
+  color: white;
+  box-shadow: 0 16px 26px rgba(15, 75, 54, 0.13);
+}
+.cp-feature-summary::after {
+  position: absolute;
+  right: -22px;
+  bottom: -83px;
+  width: 180px;
+  height: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  content: "";
+}
+.cp-feature-symbol {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 28px;
+}
+.cp-feature-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.cp-feature-summary strong {
+  font-size: 35px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+.cp-feature-summary div span {
+  font-size: 14px;
+  color: #e1f5e7;
+}
+.cp-benefit-list {
+  display: grid;
+  gap: 11px;
+  margin-top: 18px;
+}
+.consumer-wallet-shell .cp-benefit-card {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  min-height: 142px;
+  padding: 18px;
+  border: 1px solid #e4eae3;
+  border-radius: 21px;
+  background: #fff;
+  box-shadow: 0 5px 16px rgba(22, 52, 40, 0.035);
+  color: #18352e;
+  text-align: left;
+}
+.cp-benefit-topline,
+.cp-benefit-bottomline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.cp-benefit-topline {
+  font-size: 13px;
+  font-weight: 700;
+}
+.cp-benefit-icon {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 9px;
+  background: #e9f4ec;
+  color: #167351;
+}
+.cp-benefit-card > strong {
+  font-size: 19px;
+  line-height: 1.16;
+  letter-spacing: -0.025em;
+}
+.cp-benefit-bottomline {
+  justify-content: space-between;
+  color: #658074;
+  font-size: 12px;
+  font-weight: 650;
+}
+.cp-benefit-bottomline span:last-child {
+  color: #146b4c;
+}
+.cp-benefit-group {
+  margin-top: 32px;
+}
+.cp-benefit-group h3,
+.cp-section-title {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+.cp-history {
+  margin-top: 26px;
+}
+.cp-history summary {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  color: #566e62;
+  font-weight: 700;
+}
+.cp-history .cp-benefit-card {
+  opacity: 0.72;
+}
+.cp-empty {
+  margin-top: 18px;
+  padding: 26px 21px;
+  border: 1px dashed #cdded0;
+  border-radius: 21px;
+  background: white;
+  text-align: center;
+}
+.cp-empty > span {
+  color: #468265;
+  font-size: 29px;
+}
+.cp-empty h3 {
+  margin: 11px 0 4px;
+  font-size: 18px;
+}
+.cp-empty p {
+  margin: 0;
+  color: #6b8074;
+  font-size: 14px;
+}
+.consumer-wallet-shell .cp-empty button,
+.consumer-wallet-shell .cp-primary-action {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 19px;
+  border-radius: 13px;
+  background: #166b4b;
+  color: white;
+}
+.cp-benefit-detail > p {
+  color: #6b8074;
+}
+.cp-benefit-rule {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 13px;
+  background: #f4f8f3;
+}
+.cp-benefit-rule p {
+  margin: 5px 0 0;
+  font-size: 14px;
+}
+.consumer-programs-heading {
+  gap: 4px;
+}
+.consumer-program-list {
+  gap: 13px;
+  margin-top: 23px;
+}
+.consumer-program-card {
+  border: 1px solid #e2e9e3;
+  box-shadow: 0 6px 18px rgba(22, 52, 40, 0.06);
+}
+.consumer-points-card {
+  min-height: 178px;
+  border: 0;
+}
+.consumer-stamps-card {
+  padding: 20px;
+}
+.consumer-closed-toggle {
+  min-height: 40px;
+  color: #5c7768;
+}
+.consumer-qr-tab {
+  text-align: left;
+}
+.cp-pass-card {
+  display: grid;
+  justify-items: center;
+  padding: 22px 20px 26px;
+  border: 1px solid #e0e9e2;
+  border-radius: 27px;
+  background: white;
+  box-shadow: 0 13px 32px rgba(22, 52, 40, 0.065);
+  text-align: center;
+}
+.cp-pass-mark {
+  justify-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  color: #1a6548;
+  font-size: 15px;
+  font-weight: 800;
+}
+.cp-pass-mark span {
+  font-size: 22px;
+}
+.consumer-qr {
+  width: min(100%, 270px);
+  margin: 16px auto 9px;
+  padding: 10px;
+  border: 0;
+  border-radius: 0;
+}
+.consumer-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cp-pass-card > strong {
+  font-size: 17px;
+}
+.cp-pass-card > small {
+  margin-top: 5px;
+  color: #6b8074;
+  font-size: 13px;
+}
+.consumer-wallet-buttons {
+  margin-top: 18px;
+}
+.cp-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 22px 0 30px;
+  padding: 18px;
+  border: 1px solid #e3e9e2;
+  border-radius: 20px;
+  background: white;
+}
+.cp-profile-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 51px;
+  height: 51px;
+  border-radius: 17px;
+  background: #dff1e4;
+  color: #176a4c;
+  font-size: 24px;
+  font-weight: 800;
+}
+.cp-profile-card > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.cp-profile-card strong {
+  font-size: 17px;
+}
+.cp-profile-card div span {
+  color: #688075;
+  font-size: 14px;
+}
+.consumer-settings-list {
+  margin-top: 13px;
+  border: 1px solid #e3e9e2;
+  box-shadow: 0 5px 16px rgba(22, 52, 40, 0.035);
+}
+.consumer-settings-row {
+  min-height: 40px;
+}
+.consumer-bottom-nav {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 8px max(12px, calc((100vw - 520px) / 2))
+    calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e3e9e4;
+  background: rgba(255, 255, 255, 0.96);
+}
+.consumer-bottom-nav button {
+  min-width: 0;
+  min-height: 55px;
+  gap: 3px;
+  color: #75877e;
+  font-size: 11px;
+  font-weight: 650;
+}
+.consumer-bottom-nav button[aria-current="page"] {
+  background: #eaf4ed;
+  color: #176a4c;
+}
+.consumer-bottom-nav svg {
+  width: 23px;
+  height: 23px;
+}
+.consumer-wallet-shell .cp-back {
+  display: inline-flex;
+  width: auto;
+  margin-bottom: 20px;
+  padding: 0;
+  background: none;
+  color: #176a4c;
+  font-size: 14px;
+}
+.cp-activity-list {
+  display: grid;
+  gap: 9px;
+}
+.consumer-wallet-shell .cp-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #e3e9e2;
+  border-radius: 17px;
+  background: white;
+  color: #18352e;
+  text-align: left;
+}
+.cp-activity-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #e8f4ea;
+  color: #167351;
+  font-size: 20px;
+}
+.cp-activity-content {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+.cp-activity-content strong {
+  font-size: 14px;
+}
+.cp-activity-content span {
+  overflow: hidden;
+  color: #5a7164;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-activity-content small {
+  color: #8a9c90;
+  font-size: 11px;
+}
+.consumer-wallet-shell button:focus-visible,
+.consumer-bottom-nav button:focus-visible {
+  outline: 3px solid #f1a44a;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cp-benefit-card,
+  .consumer-bottom-nav button {
+    transition:
+      transform 0.16s ease,
+      background 0.16s ease;
+  }
+  .cp-benefit-card:active {
+    transform: scale(0.985);
+  }
+}

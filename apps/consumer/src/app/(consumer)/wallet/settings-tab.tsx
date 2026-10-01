@@ -20,17 +20,36 @@ import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consume
  */
 export function SettingsTab({
   programs,
+  firstName,
+  lastName,
+  phone,
 }: {
   programs: ConsumerProgramSummary[];
+  firstName: string;
+  lastName: string;
+  phone: string;
 }) {
   return (
-    <section aria-labelledby="settings-tab-title">
+    <section aria-labelledby="settings-tab-title" className="cp-screen">
       <div className="consumer-programs-heading">
         <div>
-          <h2 id="settings-tab-title">Configuración</h2>
-          <p>Elegí de qué comercios querés recibir promociones.</p>
+          <span className="cp-eyebrow">TUS DATOS</span>
+          <h2 id="settings-tab-title">Tu cuenta</h2>
+          <p>Tu información y tus preferencias en un lugar.</p>
         </div>
       </div>
+      <div className="cp-profile-card">
+        <span className="cp-profile-avatar" aria-hidden="true">
+          {firstName.slice(0, 1).toUpperCase()}
+        </span>
+        <div>
+          <strong>
+            {firstName} {lastName}
+          </strong>
+          <span>{phone}</span>
+        </div>
+      </div>
+      <h3 className="cp-section-title">Notificaciones por comercio</h3>
       {programs.length ? (
         <div className="consumer-settings-list">
           {programs.map((program) => (
