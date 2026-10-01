@@ -7267,3 +7267,56 @@ Ninguna sobrevive: `grep -rnE '\b(MUTATION|MUTACION)\b' apps/*/src packages/*/sr
   8/8; `tools/neon-test.sh src/server/consumer-coupons.neon.integration.test.ts` 3/3; ademas los otros 11 que cruzan a
   consumer (opt-out, welcome x3, web-push, cross x3, valley x3) 48/48.
 
+
+## Revision independiente — spec 0117, revisor (2026-09-30)
+
+Presupuesto: 3 re-mediciones (M3 y M4 obligatorias, R3 elegida), clase de error PLAUSIBLE del corte. Arbol: `f22e858`.
+Copias limpias en el scratchpad del revisor (`clean/`). Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante que ataca | alcance | resultado EJECUTADO |
+|---|---|---|---|---|---|
+| RM3 | `apps/merchant/next.config.ts` | `4c6a41be6d795f32d666cca01d699167bd3d1f24` | el proxy `/api/public/:path*` de merchant (pases de Apple con `business.`) | `pnpm run test` de root (376 archivos) | **ROJO** 2/3017: `consumerApiRewrites` devuelve `[]` (`// MUTATION RM3`) → `consumer-api-proxy.test.ts` › «defaults to my.checkpass.club» y «reads CONSUMER_ORIGIN…» `AssertionError: expected [] to deeply equal [ { …(2) } ]`. Revertida con la copia: `diff` vacio, shasum `4c6a41be…1f24`, `git status` sin `apps` |
+| RM4 | `apps/public/src/legacy-routes.ts` | `a010a8815a0bcc71c658fb3c8592e6950fd7d7d7` | `legacyRewrites`: `/api/public` antes que `/api/` | `pnpm run test` de root | **ROJO** 1/3017: `/api/:path*` primero (`// MUTATION RM4`) → `legacy-routes.test.ts` › «proxies /api/public/:path* to CONSUMER_API_ORIGIN first…» `AssertionError: expected [ …(2) ] to deeply equal [ { …(2) }, …(1) ]`. Revertida con la copia: `diff` vacio, shasum `a010a881…d7d7` |
+| RR3 | `apps/merchant/src/app/wallet/page.tsx` (ausente en limpio) | — (no existe) | una pantalla del cliente que sobrevive en merchant FUERA del grupo `(consumer)` | `pnpm run test` de root + `tsc --noEmit` de merchant (hermano) | **VERDE** 228/228 (sobrevive): `merchant-without-consumer.test.ts` mira 4 rutas literales, no «pantallas del cliente». Hermano: `tsc` ROJO solo porque la copia de `page.tsx` sola no resuelve `./wallet-shell` (TS2307); una copia de la carpeta entera compilaria. Riesgo de produccion bajo: `proxy.ts` 308 `/wallet` de `business.` a `my.` con las env de R5. Se declara, no se persigue. Revertida: `rm` + `rmdir`; `ls` → no existe; `git status --short apps packages tools` vacio |
+
+Ninguna sobrevive: `grep -rnE '\bMUTATION\b' apps/*/src packages/*/src tools apps/*/next.config.ts` (sin tests) → vacio;
+`git status --short apps packages tools` → vacio.
+
+**Veredicto (codigo, puntos 1–12): PASS.** Ejecutado por el revisor sobre `f22e858`, Node 24 (`nvm use`):
+- typecheck rc=0, lint rc=0, test rc=0 (376 archivos: 228 pasan / 148 skip; 3017 tests: 2244 / 773 — la suma de las
+  cifras por proyecto del implementador, 350+19+5+1+1 / 2891+102+17+6+1), format:check rc=0, `TURBO_FORCE=1` build rc=0
+  (4/4). `git status` limpio despues del build (ningun `next-env.d.ts` reescrito). `test:e2e` no corrido (lo corrio el
+  implementador: 106).
+- `routes-manifest.json` de ESTE build: merchant `afterFiles` = solo `/api/public/:path*` → `https://my.checkpass.club/api/public/:path*`;
+  public `afterFiles` = `/api/public/:path*` → `my.` y DESPUES `/api/:path*` → `business.`; consumer redirects = `/` →
+  `/wallet` 308. `app-paths-manifest` de merchant: 0 rutas `wallet|recover|api/public`.
+- Borrados: `ls` de `src/app/(consumer)`, `src/app/api/public`, `public/sw.js`, `public/wallet-logo.png` → no existen
+  (`apps/merchant/public` entero ya no existe: solo tenia esos dos); `rg '\.consumer-' globals.css` → exit 1.
+- Tests mudados: `git diff -M a8f56db f22e858 --summary` → 17 renames, los 17 al **100%** (byte-identicos). Los 8 que se
+  quedan + `consumer-cross-support.ts`: el diff son solo especificadores `../app/...` → `../../../consumer/src/app/...`,
+  un reflow de prettier y un comentario con la ruta nueva. Ninguna asercion tocada.
+- Barridos con `readdir`: `image-cropper-contract`, `upload-image-formats` (piso por raiz), `consumer-opt-out-writer`
+  (incluye `CONSUMER_ROOT`), `vi-mock-targets` (`apps/*/src`, consumer entra solo) y los de `app/api/{billing,locations,marketing}`
+  (no miraban al cliente). Los dos mudados (`enroll-existing-account`, `enroll-install-hint`) leen `../app/(consumer)`
+  relativo, ahora el de consumer, con piso. No encontre otro barrido que haya perdido alcance.
+- `app-boundary`: replique `productionFiles` fuera del test. Consumer: 47 no-test, 47 produccion, 0 excluidos. Merchant:
+  481 no-test, 435 produccion, 46 excluidos; los 46 solo los importan tests (`*-support.ts`, `*-cases.ts`, fakes, y 5
+  sin ningun import de produccion: `app/analytics.ts`, `app/demo.ts`, `app/loyalty.ts`, `composer-draft.ts`,
+  `composer-summary.ts`, verificado con `rg`). No hay alias `@/` en ninguna app, asi que el cierre relativo no pierde
+  nada de produccion. Fuera del barrido: `apps/*/next.config.ts` (no esta en `src`).
+
+**Hallazgo a decidir (orquestador, runbook; NO es del codigo):** el PUSH de la 0117 es en si mismo un corte en PROD.
+Medido hoy: `business.checkpass.club/api/public/consumer/coupons` → 401 (lo sirve merchant) y `my.checkpass.club` →
+curl exit 35. Con este commit desplegado en merchant y en `www`, `business./api/public/*` y `www/api/public/*` se
+reenvian a `my.` y fallan hasta R4. Eso rompe: las actualizaciones de pases de Apple con `business.`/`www.` grabado, el
+callback de Google y las imagenes del PROPIO backoffice, que usan rutas relativas `/api/public/...`
+(`server/brand-kit/data.ts:71`, `app/api/brand/route.ts:41`, `server/counter/resolve.ts:92`, `catalog/core.ts:74`, el
+sello de `client-view.ts:132`). El ADR 0109 dice «no hay ventana rota extra», pero eso lo afirma del deploy del
+proyecto NUEVO; la ventana de merchant y `www` no la cubre. Lo que no verifique: que merchant y `www` se desplieguen
+solos en cada push a `main`. Opciones: hacer R2–R4 antes de que merchant y `www` tomen el commit (proyecto del cliente
+desde la rama, o deploys de merchant/`www` pausados hasta R4), o aceptar la ventana de forma explicita.
+
+Declarado y NO perseguido: RR3 (el guard de §10 mira 4 rutas literales; con `proxy.ts` el riesgo de produccion es bajo).
+Tampoco hay test del CABLEADO de `apps/public/next.config.ts`: `legacyRewrites(consumer, merchant)` con los argumentos
+cambiados tipa (son dos `string`) y ningun test lo ve. El manifest de este build esta bien; sumar un test «is what
+next.config.ts hands to Next» como el de merchant costaria unas 10 lineas. M6 y PROD no son del revisor.
