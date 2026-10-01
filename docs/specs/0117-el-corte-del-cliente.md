@@ -64,12 +64,17 @@ Plantano y el link `/c/*` del pase: estan rotos. El cliente sigue corriendo dent
 12. Los barridos que miraban `app/(consumer)` de merchant (`consumer-opt-out-writer`, `image-cropper-contract`) siguen
     con sus pisos verdes sin bajarlos (la raiz de consumer ya esta incluida desde la 0116).
 
-**Entra (base, orquestador, con OK del owner en el momento):** rol `checkpass_consumer` en la rama de CI y en PROD:
-`CREATE ROLE … LOGIN` (via Neon), `GRANT USAGE ON SCHEMA core, consumer`, `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL
-TABLES IN SCHEMA core, consumer`, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA core, consumer`, `ALTER DEFAULT
-PRIVILEGES FOR ROLE <tableowner> IN SCHEMA core, consumer GRANT …` (las mismas dos; `<tableowner>` = lo que devuelva
-`select distinct tableowner from pg_tables where schemaname in ('core','consumer')` en esa rama — se espera uno solo); **nada** en
-`merchant_auth` ni en `drizzle`. La contraseña no se imprime: el owner copia la URL desde la consola de Neon.
+**Entra (base, orquestador, con OK del owner en el momento):** rol `checkpass_consumer` en la rama de CI y en PROD,
+**creado por SQL como `neondb_owner`, NUNCA por la API ni la consola de Neon**: medido 2026-09-30 en la rama de CI, un
+rol creado por la API entra como miembro de `neon_superuser` (con `BYPASSRLS` y `CREATEROLE`), lee `merchant_auth`, y
+`REVOKE neon_superuser` da `permission denied`; uno creado con `CREATE ROLE` no tiene membresias ni acceso a
+`merchant_auth`/`drizzle` (sonda en transaccion revertida). Un script local (`tools/consumer-role.mjs`, del orquestador)
+lee la URL del dueño desde `apps/merchant/.env.local` sin imprimirla, genera la contraseña con `crypto.randomBytes`,
+ejecuta `CREATE ROLE checkpass_consumer LOGIN PASSWORD …`, `GRANT USAGE ON SCHEMA core, consumer`, `GRANT SELECT,
+INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA core, consumer`, `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA core,
+consumer`, `ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA core, consumer GRANT …` (las mismas dos; el
+dueño unico de las 57 tablas es `neondb_owner`, medido) y escribe la URL del rol en un archivo `0600` del scratchpad.
+Imprime solo largo y huella. **Nada** en `merchant_auth` ni en `drizzle`.
 
 **Entra (owner, runbook de abajo):** proyecto Vercel, variables, dominio, env de merchant y de `www`, Stripe/secrets,
 aviso a Plantano.
@@ -83,7 +88,7 @@ El orquestador verifica la precondicion de cada paso y entrega el siguiente **de
 
 | # | Paso (owner) | Precondicion que verifica el orquestador antes de darlo |
 |---|---|---|
-| R1 | Neon: copiar la URL pooled del rol `checkpass_consumer` (PROD) | rol creado en PROD y la sonda negativa da `permission denied` sobre `merchant_auth.users` |
+| R1 | Abrir el archivo local que deja el script de rol (PROD) y copiar la URL del rol `checkpass_consumer` | rol creado en PROD **por SQL**, sin membresias, y la sonda negativa da `false` sobre `merchant_auth` |
 | R2 | Vercel → Add New Project → repo `maxhost/check-point`, **Root Directory `apps/consumer`**, framework Next.js. Variables (Production): `DATABASE_URL` = URL de R1; `CONSUMER_ORIGIN=https://my.checkpass.club`; y **copiadas de merchant**: `APPLE_PASS_CERT_P12`, `APPLE_PASS_CERT_PASSWORD`, `APPLE_PASS_TYPE_ID`, `APPLE_TEAM_ID`, `APPLE_WWDR_CERT`, `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_JSON`, `WALLET_PROVIDER`, `WALLET_PUSH_CHANNEL`, `WEB_PUSH_VAPID_PRIVATE_KEY`, `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_SUBJECT`, `OTP_PROVIDER`, `OTP_ENCRYPTION_KEY`, `OTP_HMAC_SECRET`, `RECOVERY_ENABLED`, `CLICKSEND_*`, `TWILIO_*`, `R2_*`, `STOCK_PROVIDER`, `PEXELS_API_KEY`, `WALLET_PASSKIT_RATE_*` (las que existan en merchant). Deploy | 0117 con PASS del revisor y en `main` |
 | R3 | Abrir en el **telefono** la URL `*.vercel.app` del proyecto: `/wallet`, `/recover`, un `/enroll/<programa real>` | `curl` a `<vercel.app>/api/health` 200, `/` 308 → `/wallet`, `/api/public/consumer/coupons` 401 |
 | R4 | Vercel (cliente) → Domains → agregar `my.checkpass.club` | owner confirmo R3 en el telefono |
@@ -111,7 +116,7 @@ Vuelta atras de R4: quitar el dominio del proyecto del cliente (vuelve a «no re
 
 ## DoD (base y PROD, orquestador)
 
-- [ ] Rama de CI: rol creado; `select 1 from merchant_auth.users limit 1` como el rol → `permission denied`;
+- [ ] Rama de CI: rol creado; `select 1 from merchant_auth."user" limit 1` como el rol → `permission denied`;
       `select 1 from core.business limit 1` y un `insert` + `rollback` en una tabla de `consumer` → OK. Consumer
       levantado con la URL del rol contra la rama de CI: las 8 rutas GET de la 0116 dan los mismos codigos.
 - [ ] PROD: lo mismo con OK del owner; R1–R8 verificados con `curl --resolve <host>:443:216.198.79.1`.
@@ -129,7 +134,7 @@ emitidos), la raiz sin redirigir, el rol con acceso a `merchant_auth`, CSS de cl
 | M3 | quitar la regla `/api/public/:path*` de los `rewrites()` de merchant | su test rojo | ninguno (en dev nadie llama) |
 | M4 | invertir el orden de `legacyRewrites` (merchant primero) | test de `legacy-routes` rojo («primero `/api/public`») | ninguno: con el orden mal `/api/public` iria a merchant y daria 404 |
 | M5 | borrar el `redirects()` de `/` en consumer | su test rojo | ninguno |
-| M6 | (rama de CI, orquestador o revisor) `GRANT USAGE ON SCHEMA merchant_auth` + `SELECT` sobre `merchant_auth.users` al rol | la sonda negativa deja de dar `permission denied` → rojo; despues `REVOKE` y re-sonda | ninguno |
+| M6 | (rama de CI, orquestador o revisor) `GRANT USAGE ON SCHEMA merchant_auth` + `SELECT` sobre `merchant_auth."user"` al rol | la sonda negativa deja de dar `permission denied` → rojo; despues `REVOKE` y re-sonda | ninguno |
 
 Protocolo de la skill `protocolo-de-verificacion` §2. M6 se revierte con `REVOKE` y se re-mide la sonda.
 
