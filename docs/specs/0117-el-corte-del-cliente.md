@@ -27,7 +27,7 @@ Plantano y el link `/c/*` del pase: estan rotos. El cliente sigue corriendo dent
    procedimiento de la 0116 (`next start`, rama de CI, interlock de host). Son el oraculo del punto 3.
 2. **Consumer, raiz:** `/` → 308 a `/wallet` (en `next.config.ts` `redirects()`, funcion exportada y testeada).
 3. **Consumer, CSS:** sumar al `globals.css` las reglas de elemento del de merchant que faltan, copiadas tal cual:
-   lineas **40–46** (`select`) y **235–254** (`h1`, `h2`, `p`, `label:where(…)`). Oraculo: las capturas de consumer
+   lineas **40–47** (`select`; la spec decia 40–46 y dejaba afuera la `}`: hallazgo del implementador) y **235–254** (`h1`, `h2`, `p`, `label:where(…)`). Oraculo: las capturas de consumer
    quedan `cmp`-identicas a las de referencia del punto 1. Si alguna difiere tras eso, se describe y se lleva al QA del
    owner (no se persigue).
 4. **Consumer, deploy:** `apps/consumer/vercel.json` como el de merchant **sin `crons`** (`installCommand`

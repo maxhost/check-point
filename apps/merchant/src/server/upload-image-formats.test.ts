@@ -180,33 +180,44 @@ describe("the file inputs of the three upload surfaces share the accept list", (
 
   it("finds no hardcoded accept list in ANY .tsx under app/ (demo pages included)", async () => {
     const { readdir, readFile } = await import("node:fs/promises");
-    const root = new URL("../app/", import.meta.url);
+    // Since spec 0117 the consumer screens live in `apps/consumer`: the sweep follows them,
+    // with a floor per root so neither can silently drop out.
+    const roots = [
+      new URL("../app/", import.meta.url),
+      new URL("../../../consumer/src/app/", import.meta.url),
+    ];
     const offenders: string[] = [];
-    let scanned = 0;
+    const scannedPerRoot: number[] = [];
     let attributes = 0;
-    const entries = await readdir(root, {
-      recursive: true,
-      withFileTypes: true,
-    });
-    for (const entry of entries) {
-      if (!entry.isFile() || !entry.name.endsWith(".tsx")) continue;
-      scanned += 1;
-      const path = `${entry.parentPath}/${entry.name}`;
-      const source = await readFile(path, "utf8");
-      for (const match of source.matchAll(ACCEPT_ATTR)) {
-        attributes += 1;
-        const value = match[1] ?? match[2] ?? "";
-        const isCameraInput =
-          value === "image/*" && source.includes('capture="environment"');
-        if (!value.includes("ACCEPTED_IMAGE_ACCEPT_ATTR") && !isCameraInput) {
-          offenders.push(`${path}: ${match[0]}`);
+    for (const root of roots) {
+      let scanned = 0;
+      const entries = await readdir(root, {
+        recursive: true,
+        withFileTypes: true,
+      });
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".tsx")) continue;
+        scanned += 1;
+        const path = `${entry.parentPath}/${entry.name}`;
+        const source = await readFile(path, "utf8");
+        for (const match of source.matchAll(ACCEPT_ATTR)) {
+          attributes += 1;
+          const value = match[1] ?? match[2] ?? "";
+          const isCameraInput =
+            value === "image/*" && source.includes('capture="environment"');
+          if (!value.includes("ACCEPTED_IMAGE_ACCEPT_ATTR") && !isCameraInput) {
+            offenders.push(`${path}: ${match[0]}`);
+          }
         }
       }
+      scannedPerRoot.push(scanned);
     }
     expect(offenders).toEqual([]);
     // Guard against the sweep silently scanning nothing (a moved directory, a broken glob):
     // an empty run would make `offenders` trivially empty and the test permanently green.
-    expect(scanned).toBeGreaterThan(50);
+    const [merchantScanned, consumerScanned] = scannedPerRoot;
+    expect(merchantScanned).toBeGreaterThan(50);
+    expect(consumerScanned).toBeGreaterThan(10);
     expect(attributes).toBeGreaterThanOrEqual(5);
   });
 });
