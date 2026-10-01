@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { couponStatus } from "./coupon-status";
+import { couponStatus } from "@mi-pasaporte/domain/server/consumer/coupon-status";
 
 /** Spec 0106 E3b + spec 0107 (`scheduled`) — the precedence of the calculated state, the
  * first that applies: redeemed → expired → unavailable → scheduled → valid. */

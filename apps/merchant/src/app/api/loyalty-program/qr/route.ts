@@ -4,7 +4,7 @@ import { apiOwnerFailureResponse } from "../../../../server/api-owner";
 import { requireApiPermissionSinGateDeEmail } from "../../../../server/api-permission";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses } from "@mi-pasaporte/db/schema";
-import { programForOwner } from "../../../../server/loyalty-program";
+import { programForOwner } from "@mi-pasaporte/domain/server/loyalty-program";
 import { enrollUrl } from "../../../../server/brand-kit/enroll-url";
 import {
   renderEnrollQr,

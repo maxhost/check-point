@@ -16,17 +16,17 @@ const state = vi.hoisted(() => ({
   claimValley: vi.fn(),
 }));
 
-vi.mock("../../../../../server/consumer/session", () => ({
+vi.mock("@mi-pasaporte/domain/server/consumer/session", () => ({
   resolveSession: async () => state.account,
 }));
 
-vi.mock("../../../../../server/consumer/cross-offers", () => ({
+vi.mock("@mi-pasaporte/domain/server/consumer/cross-offers", () => ({
   listCrossOffers: state.list,
   claimCrossOffer: state.claim,
 }));
 
 // Spec 0113: a claim WITH `locationId` is a valley claim.
-vi.mock("../../../../../server/consumer/valley-offers", () => ({
+vi.mock("@mi-pasaporte/domain/server/consumer/valley-offers", () => ({
   claimValleyOffer: state.claimValley,
 }));
 

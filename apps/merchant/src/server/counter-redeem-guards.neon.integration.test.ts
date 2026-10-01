@@ -23,9 +23,9 @@ import {
 } from "./counter-redeem-support";
 import { getDb } from "@mi-pasaporte/db";
 import { loyaltyPrograms, loyaltyRewards } from "@mi-pasaporte/db/schema";
-import { operatorBusiness } from "./counter/core";
+import { operatorBusiness } from "@mi-pasaporte/domain/server/counter/core";
 import { redeemReward } from "./counter/redeem";
-import { saveProgram } from "./loyalty-program";
+import { saveProgram } from "@mi-pasaporte/domain/server/loyalty-program";
 
 /**
  * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck

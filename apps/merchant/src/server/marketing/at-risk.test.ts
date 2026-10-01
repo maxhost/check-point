@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAtRisk } from "./at-risk";
+import { isAtRisk } from "@mi-pasaporte/domain/server/marketing/at-risk";
 
 /**
  * Spec 0105 / ADR 0097 — the rhythm rule of #4, PURE. Visits are given as day offsets

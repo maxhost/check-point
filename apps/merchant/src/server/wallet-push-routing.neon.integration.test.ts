@@ -13,11 +13,11 @@ import {
   walletPushQueue,
   webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
-import { ensureWalletPass } from "./wallet/core";
-import { registerDevice } from "./wallet/passkit";
-import { upsertSubscription } from "./push/subscriptions";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
+import { upsertSubscription } from "@mi-pasaporte/domain/server/push/subscriptions";
 import { FakePushChannel } from "./wallet/push-channel";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { consumerHasReachableWallet } from "./wallet/push-transports";
 import { runPushWorker } from "./wallet/push-worker";
 

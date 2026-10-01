@@ -1,6 +1,6 @@
 import { type SQL, sql } from "drizzle-orm";
 import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
-import { rowsOf } from "../counter/core";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 
 export type CustomerReader = {
   /** Every statement of the listing goes through here: it runs as `customer_reader`. */

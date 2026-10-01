@@ -7,7 +7,10 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { CampaignError, type Campaign, getCampaign } from "./campaign-store";
 import { type CampaignAction, nextStatus } from "./campaign-transitions";
-import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import {
+  PLAN_NOT_ALLOWED_MESSAGE,
+  planAllowsCampaigns,
+} from "@mi-pasaporte/domain/server/marketing/plan-gate";
 
 /**
  * The four buttons of the detail page (spec 0065 phase B). They move `status` and

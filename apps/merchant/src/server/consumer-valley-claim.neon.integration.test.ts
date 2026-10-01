@@ -18,7 +18,7 @@ import {
   valleyBusiness,
   valleyCampaign,
 } from "./consumer-valley-support";
-import { claimCrossOffer } from "./consumer/cross-offers";
+import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offers";
 import { loadActiveCoupon } from "./counter/coupon-scan";
 
 /**

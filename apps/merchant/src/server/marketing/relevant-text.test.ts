@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { composeRelevantText, RELEVANT_TEXT_CAP } from "./relevant-text";
+import {
+  composeRelevantText,
+  RELEVANT_TEXT_CAP,
+} from "@mi-pasaporte/domain/server/marketing/relevant-text";
 
 const BALANCE = "Bar La Esquina: te faltan 2 sellos";
 const CAMPAIGN = {

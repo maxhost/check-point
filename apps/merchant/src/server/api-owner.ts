@@ -6,7 +6,7 @@ import {
   type ApiOwnerFailure,
   businessStatusFailure,
   DEFAULT_MESSAGES,
-} from "./business-status";
+} from "@mi-pasaporte/domain/server/business-status";
 
 /** Re-exportados desde la HOJA `business-status.ts`, para que los 12 consumidores de este
  * modulo no cambien su import. El docblock de ese archivo explica por que la decision pura no
@@ -16,7 +16,7 @@ export {
   API_OWNER_CODES,
   type ApiOwnerFailure,
   businessStatusFailure,
-} from "./business-status";
+} from "@mi-pasaporte/domain/server/business-status";
 
 /**
  * Spec 0072 §D3 / ADR 0073 §1 — **EL** resolvedor de owner de las 10 superficies de API.

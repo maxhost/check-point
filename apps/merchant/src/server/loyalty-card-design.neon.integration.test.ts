@@ -16,7 +16,10 @@ import {
   memberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { programForOwner, saveProgram } from "./loyalty-program";
+import {
+  programForOwner,
+  saveProgram,
+} from "@mi-pasaporte/domain/server/loyalty-program";
 
 /**
  * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck

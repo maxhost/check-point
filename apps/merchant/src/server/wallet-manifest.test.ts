@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConsumerAccountRow } from "./consumer/core";
+import type { ConsumerAccountRow } from "@mi-pasaporte/domain/server/consumer/core";
 
 /**
  * Spec 0050 / ADR 0048 — the per-consumer manifest takes its token from its OWN URL
@@ -17,14 +17,21 @@ const nextHeaders = vi.hoisted(() => ({
   headersImpl: vi.fn(() => new Map()),
 }));
 
-vi.mock("./wallet/core", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./wallet/core")>()),
+vi.mock("@mi-pasaporte/domain/server/wallet/core", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@mi-pasaporte/domain/server/wallet/core")
+  >()),
   ...walletCore,
 }));
-vi.mock("./consumer/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./consumer/session")>()),
-  ...session,
-}));
+vi.mock(
+  "@mi-pasaporte/domain/server/consumer/session",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/consumer/session")
+    >()),
+    ...session,
+  }),
+);
 vi.mock("next/headers", () => ({
   cookies: () => nextHeaders.cookiesImpl(),
   headers: () => nextHeaders.headersImpl(),

@@ -8,13 +8,13 @@ import {
   buildTransactionalBody,
   planConsumerDrain,
 } from "./wallet/push";
-import { MAX_NOTICE_BODY } from "./wallet/push-text";
+import { MAX_NOTICE_BODY } from "@mi-pasaporte/domain/server/wallet/push-text";
 import {
   walletPushDeviceResponse,
   walletPushQueueResponse,
-} from "./wallet/core";
-import { createSlidingWindowLimiter } from "./wallet/pass-rate-limit";
-import { buildAddMessageRequest } from "./wallet/google";
+} from "@mi-pasaporte/domain/server/wallet/core";
+import { createSlidingWindowLimiter } from "@mi-pasaporte/domain/server/wallet/pass-rate-limit";
+import { buildAddMessageRequest } from "@mi-pasaporte/domain/server/wallet/google";
 
 function ecKeypair() {
   return generateKeyPairSync("ec", {

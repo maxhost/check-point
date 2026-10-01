@@ -17,7 +17,7 @@ import {
   walletPushDevices,
   welcomeDevices,
 } from "@mi-pasaporte/db/schema";
-import type { WelcomeRedeemFrom } from "./marketing/templates";
+import type { WelcomeRedeemFrom } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * The world of the «Bienvenida» suites (spec 0107): a `plus` business with a LIVE

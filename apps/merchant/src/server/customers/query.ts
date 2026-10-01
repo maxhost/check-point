@@ -1,4 +1,4 @@
-import { E164 } from "../consumer/validation";
+import { E164 } from "@mi-pasaporte/domain/server/consumer/validation";
 
 /** Fixed page size of the customer list (contract `0108-contratos-de-api.md`). */
 export const CUSTOMERS_PAGE_SIZE = 25;

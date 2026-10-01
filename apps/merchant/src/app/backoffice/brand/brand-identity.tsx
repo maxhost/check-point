@@ -3,7 +3,7 @@ import { TextField } from "../../../ui";
 import {
   ACCEPTED_IMAGE_ACCEPT_ATTR,
   ACCEPTED_IMAGE_LABEL,
-} from "../../../lib/image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 import type { Brand } from "./brand-api";
 import type { useBrandLogo } from "./use-brand-logo";
 import { useBrandTour } from "./brand-tour-context";

@@ -14,8 +14,10 @@ import { conCookie, cookieDe } from "./permissions-integration-support";
 
 /** R2 fake: el presign necesita credenciales que la rama de integracion no tiene, y lo que
  * estas suites miden son **filas**, no la firma de AWS (que tiene su propio camino). */
-vi.mock("./r2", async () => {
-  const real = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const real = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...real,
     createTemporaryUploadUrl: async (input: { objectKey: string }) =>

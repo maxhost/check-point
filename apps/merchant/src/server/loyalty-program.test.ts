@@ -6,9 +6,9 @@ import {
   validateClosingWindow,
   validateProgramInput,
   zonedDateTimeToUtc,
-} from "./loyalty-program";
-import { isIanaTimezone } from "./timezone";
-import { toClientProgram } from "./loyalty-program/client-view";
+} from "@mi-pasaporte/domain/server/loyalty-program";
+import { isIanaTimezone } from "@mi-pasaporte/domain/server/timezone";
+import { toClientProgram } from "@mi-pasaporte/domain/server/loyalty-program/client-view";
 
 describe("loyalty program contract", () => {
   it("accepts Puntos and Sellos and rejects malformed payloads with 422", () => {

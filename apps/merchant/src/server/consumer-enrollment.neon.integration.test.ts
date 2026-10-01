@@ -18,9 +18,15 @@ import {
   programMemberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { enroll } from "./consumer/enrollment";
-import { RATE_LIMIT_MAX, enforceEnrollRateLimit } from "./consumer/rate-limit";
-import { issueSession, resolveSession } from "./consumer/session";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import {
+  RATE_LIMIT_MAX,
+  enforceEnrollRateLimit,
+} from "@mi-pasaporte/domain/server/consumer/rate-limit";
+import {
+  issueSession,
+  resolveSession,
+} from "@mi-pasaporte/domain/server/consumer/session";
 
 function baseProgram(id: string, businessId: string) {
   return {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { readableTextColor, shade, tint } from "./brand-color";
+import {
+  readableTextColor,
+  shade,
+  tint,
+} from "@mi-pasaporte/domain/lib/brand-color";
 
 describe("readableTextColor", () => {
   it("picks white text over the dark default brand green (#176548)", () => {

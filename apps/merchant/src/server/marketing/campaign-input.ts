@@ -5,7 +5,7 @@ import {
   type FieldErrors,
   REWARD_KEYS,
   parseCoupon,
-} from "./reward-input";
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * The composer's body, validated field by field (spec 0065: «400 `validation` por

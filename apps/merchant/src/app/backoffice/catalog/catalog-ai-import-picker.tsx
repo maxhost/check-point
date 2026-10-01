@@ -5,7 +5,7 @@ import { Camera, MediaImage, Page } from "iconoir-react";
 import {
   ACCEPTED_IMAGE_ACCEPT_ATTR,
   PDF_CONTENT_TYPE,
-} from "../../../lib/image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 import { useIsTouch } from "./use-is-touch";
 
 /**

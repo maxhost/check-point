@@ -5,7 +5,7 @@ import { businesses } from "./business";
 // Spec 0069: `subscription` y `stripe_webhook_event` salieron de `schema/business.ts`
 // porque ese archivo llego al limite del hook `file-size` (300 lineas) al sumarle
 // `category_gcid` — mismo motivo por el que `staff-pin.ts` ya vive aparte. El barrel
-// `server/schema.ts` las reexporta, asi que ningun `from "./schema"` cambia.
+// `src/schema.ts` las reexporta, asi que ningun `from "./schema"` cambia.
 
 export const subscriptions = core.table(
   "subscription",

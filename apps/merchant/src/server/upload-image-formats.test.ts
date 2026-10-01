@@ -35,22 +35,24 @@ vi.mock("@mi-pasaporte/db", () => ({
   }),
 }));
 
-vi.mock("./r2", async () => {
-  const actual = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const actual = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...actual,
     createTemporaryUploadUrl: vi.fn(async () => "https://r2.example/upload"),
   };
 });
 
-import { createStampUpload } from "./loyalty-program/stamp";
-import { createProductUpload } from "./catalog";
-import { createLogoUpload } from "./brand";
+import { createStampUpload } from "@mi-pasaporte/domain/server/loyalty-program/stamp";
+import { createProductUpload } from "@mi-pasaporte/domain/server/catalog";
+import { createLogoUpload } from "@mi-pasaporte/domain/server/brand";
 import {
   ACCEPTED_IMAGE_CONTENT_TYPES,
   ACCEPTED_IMAGE_CONTENT_TYPE_SET,
   isAcceptedImageType,
-} from "../lib/image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 
 const BUSINESS = "11111111-1111-4111-8111-111111111111";
 const byteSize = 1024;

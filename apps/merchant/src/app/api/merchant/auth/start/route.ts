@@ -10,7 +10,7 @@ import {
   recordStartAttempt,
 } from "../../../../../server/auth-start";
 import { openMerchantSession } from "../../../../../server/merchant-session";
-import { ONBOARDING_GRANT_MINUTES } from "../../../../../server/onboarding-grant";
+import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 
 export const dynamic = "force-dynamic";
 

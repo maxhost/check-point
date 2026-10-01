@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 // Keep the route's rate-limit branch off the DB: stub the passkit lookups so a request
 // that passes the limiter returns 404 (never touching getDb), and the one over the
 // limit returns 429 before auth runs at all.
-vi.mock("./wallet/passkit", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/passkit", () => ({
   authorizePass: async () => ({ status: "not_found" }) as const,
   passServeData: async () => null,
 }));

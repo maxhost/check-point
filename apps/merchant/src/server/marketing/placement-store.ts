@@ -18,9 +18,16 @@ import {
   locations,
   passPlacements,
 } from "@mi-pasaporte/db/schema";
-import { toLatLng } from "../wallet/pass-locations";
-import type { ActiveTurn, PlacedSlot, QueuedTurn } from "./placement-plan";
-import type { CouponKind, DiscountUnit } from "./reward-input";
+import { toLatLng } from "@mi-pasaporte/domain/server/wallet/pass-locations";
+import type {
+  ActiveTurn,
+  PlacedSlot,
+  QueuedTurn,
+} from "@mi-pasaporte/domain/server/marketing/placement-plan";
+import type {
+  CouponKind,
+  DiscountUnit,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * Who gets planned: every consumer with a live turn OR a row already in the pass. The

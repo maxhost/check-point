@@ -16,9 +16,12 @@ import {
   memberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { programForOwner, saveProgram } from "./loyalty-program";
-import { stampForPublicProgram } from "./loyalty-program/stamp";
-import { toClientProgram } from "./loyalty-program/client-view";
+import {
+  programForOwner,
+  saveProgram,
+} from "@mi-pasaporte/domain/server/loyalty-program";
+import { stampForPublicProgram } from "@mi-pasaporte/domain/server/loyalty-program/stamp";
+import { toClientProgram } from "@mi-pasaporte/domain/server/loyalty-program/client-view";
 import { GET } from "../app/api/public/loyalty/[businessId]/[programId]/stamp/route";
 
 /**

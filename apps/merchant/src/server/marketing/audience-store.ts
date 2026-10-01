@@ -26,9 +26,15 @@ import {
   campaigns,
   locations,
 } from "@mi-pasaporte/db/schema";
-import type { AudienceCandidate, AudienceCounts } from "./audience";
-import { requireDate, toDate } from "./driver-values";
-import { templateByKey } from "./templates";
+import type {
+  AudienceCandidate,
+  AudienceCounts,
+} from "@mi-pasaporte/domain/server/marketing/audience";
+import {
+  requireDate,
+  toDate,
+} from "@mi-pasaporte/domain/server/marketing/driver-values";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /** What step 1 needs of a campaign; the message and the coupon are read at ACTIVATION
  * (step 4), from the campaign row, and copied into the turn's snapshots. */

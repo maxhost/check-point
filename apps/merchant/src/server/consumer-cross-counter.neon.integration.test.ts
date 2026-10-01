@@ -21,7 +21,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
-import { sweepWelcomeGifts } from "./marketing/welcome-issue";
+import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 
 /**
  * Spec 0112 — what happens AFTER the claim, against a real base:

@@ -1,5 +1,8 @@
-import { type AtRiskRule, isAtRisk } from "./at-risk";
-import { dormantSince } from "./audience";
+import {
+  type AtRiskRule,
+  isAtRisk,
+} from "@mi-pasaporte/domain/server/marketing/at-risk";
+import { dormantSince } from "@mi-pasaporte/domain/server/marketing/audience";
 
 /**
  * Step «1b push» of the tick as a PURE decision (spec 0103 §4 / ADR 0095): for ONE

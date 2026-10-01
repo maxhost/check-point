@@ -7,7 +7,7 @@ import {
   can,
   limitOf,
   type EntitlementContext,
-} from "./entitlements";
+} from "@mi-pasaporte/domain/server/entitlements/index";
 
 /**
  * Spec 0072 §D2 — LA CAPA DE ENTITLEMENTS.

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { crossOrigin, decideCrossOffer, haversineMeters } from "./cross-rules";
+import {
+  crossOrigin,
+  decideCrossOffer,
+  haversineMeters,
+} from "@mi-pasaporte/domain/server/marketing/cross-rules";
 import {
   CAFE,
   GYM,

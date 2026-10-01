@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { SESSION_COOKIE } from "./consumer/core";
-import { getEnrollLanding } from "./consumer/enrollment";
-import { issueSession } from "./consumer/session";
-import { issueWelcomeGifts } from "./marketing/welcome-issue";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { issueWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 import { GET } from "../app/api/public/consumer/coupons/route";
 import {
   DAY,

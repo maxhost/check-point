@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   resolveRewards,
   validateRewardsInput,
-} from "./loyalty-program/rewards";
-import { LoyaltyError } from "./loyalty-program/core";
+} from "@mi-pasaporte/domain/server/loyalty-program/rewards";
+import { LoyaltyError } from "@mi-pasaporte/domain/server/loyalty-program/core";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { expireClosingPrograms } from "../../../../server/loyalty-program";
+import { expireClosingPrograms } from "@mi-pasaporte/domain/server/loyalty-program";
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;

@@ -4,7 +4,10 @@ import {
   requireApiOwner,
 } from "../../../server/api-owner";
 import { requireApiPermission } from "../../../server/api-permission";
-import { CatalogError, type OwnerBusiness } from "../../../server/catalog";
+import {
+  CatalogError,
+  type OwnerBusiness,
+} from "@mi-pasaporte/domain/server/catalog";
 
 /**
  * Spec 0086 §3 — EL GUARD DE `/api/catalog/*`: el permiso `catalog`.

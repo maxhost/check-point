@@ -8,7 +8,7 @@ import {
   windowStart,
   type EntitlementContext,
   type LimitKey,
-} from "../entitlements";
+} from "@mi-pasaporte/domain/server/entitlements/index";
 import { CatalogImportError } from "./types";
 
 /**

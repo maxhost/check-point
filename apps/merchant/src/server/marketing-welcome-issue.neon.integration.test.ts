@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
 import { loadActiveCoupon } from "./counter/coupon-scan";
-import { unregisterDevice } from "./wallet/passkit";
-import { issueWelcomeGifts } from "./marketing/welcome-issue";
+import { unregisterDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
+import { issueWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 import { runMarketingTick } from "./marketing/tick";
 import {
   DAY,

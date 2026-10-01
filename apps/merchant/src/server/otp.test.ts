@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { ClickSendOtpChannel } from "./otp/clicksend";
-import { TwilioOtpChannel } from "./otp/twilio";
+import { ClickSendOtpChannel } from "@mi-pasaporte/domain/server/otp/clicksend";
+import { TwilioOtpChannel } from "@mi-pasaporte/domain/server/otp/twilio";
 import {
   decryptOtp,
   decideOtpVerification,
@@ -11,9 +11,9 @@ import {
   otpMessage,
   validateRecoveryPhone,
   verifyOtpHash,
-} from "./otp/core";
-import { otpChannelFromEnv } from "./otp/provider";
-import { ConsoleOtpChannel } from "./otp/fake";
+} from "@mi-pasaporte/domain/server/otp/core";
+import { otpChannelFromEnv } from "@mi-pasaporte/domain/server/otp/provider";
+import { ConsoleOtpChannel } from "@mi-pasaporte/domain/server/otp/fake";
 
 const input = {
   phoneE164: "+593987654321",

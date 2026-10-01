@@ -3,12 +3,18 @@ import {
   type ParseResult,
   requireEndForCoupon,
 } from "./campaign-input";
-import { type CouponDeal, parseCoupon } from "./reward-input";
+import {
+  type CouponDeal,
+  parseCoupon,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { asObject } from "./campaign-values";
 import { balanceParams, couponRefused, gapMarkerOk } from "./balance-input";
 import { type CrossParams, crossDeal, crossParams } from "./cross-input";
 import { type ValleyParams, valleyDeal, valleyParams } from "./valley-input";
-import type { RewardRepeat, TemplateDefinition } from "./templates";
+import type {
+  RewardRepeat,
+  TemplateDefinition,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 import {
   WELCOME_STORED_DORMANT_DAYS,
   type WelcomeParams,

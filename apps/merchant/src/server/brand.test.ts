@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { BrandError, validateBrandInput } from "./brand";
-import { normalizeImage } from "./assets/image";
-import { isIanaTimezone } from "./timezone";
+import {
+  BrandError,
+  validateBrandInput,
+} from "@mi-pasaporte/domain/server/brand";
+import { normalizeImage } from "@mi-pasaporte/domain/server/assets/image";
+import { isIanaTimezone } from "@mi-pasaporte/domain/server/timezone";
 
 const valid = {
   name: "La Craft Beer Garden",

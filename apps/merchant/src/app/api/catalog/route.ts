@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listCatalog } from "../../../server/catalog";
+import { listCatalog } from "@mi-pasaporte/domain/server/catalog";
 import { catalogError, requireOwner } from "./_auth";
 
 export const runtime = "nodejs";

@@ -11,7 +11,7 @@ import {
 import { getDb } from "@mi-pasaporte/db";
 import { couponRedemptions, products } from "@mi-pasaporte/db/schema";
 import { loadRewardResults } from "./marketing/reward-results";
-import type { CouponKind } from "./marketing/reward-input";
+import type { CouponKind } from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * Spec 0106 E4 — results by reward against a real database. The redemptions are inserted

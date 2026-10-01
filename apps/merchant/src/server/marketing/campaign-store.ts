@@ -11,13 +11,20 @@ import {
   parseCampaignPatch,
 } from "./campaign-input";
 import { type CampaignStatus, isEditable } from "./campaign-transitions";
-import { PLAN_NOT_ALLOWED_MESSAGE, planAllowsCampaigns } from "./plan-gate";
+import {
+  PLAN_NOT_ALLOWED_MESSAGE,
+  planAllowsCampaigns,
+} from "@mi-pasaporte/domain/server/marketing/plan-gate";
 import type { CampaignWelcome } from "./campaign-values";
-import type { CampaignCross } from "./cross-store";
-import type { CampaignValley } from "./valley-store";
+import type { CampaignCross } from "@mi-pasaporte/domain/server/marketing/cross-store";
+import type { CampaignValley } from "@mi-pasaporte/domain/server/marketing/valley-store";
 import { columns, toCampaign } from "./campaign-row";
 import { CampaignError } from "./campaign-error";
-import { type CouponKind, type DiscountUnit, pickReward } from "./reward-input";
+import {
+  type CouponKind,
+  type DiscountUnit,
+  pickReward,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
 
 /**

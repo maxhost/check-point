@@ -1,4 +1,4 @@
-import { renderQrSvg } from "../wallet/core";
+import { renderQrSvg } from "@mi-pasaporte/domain/server/wallet/core";
 
 // Brand kit (spec 0041): the enrollment poster QR. Wraps the shared `renderQrSvg`
 // (lib `qrcode`, SVG string, no new dependency) at error-correction level **H** so a

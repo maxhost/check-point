@@ -1,6 +1,12 @@
 import type { FieldErrors } from "./campaign-input";
-import { type CouponDeal, parseCoupon } from "./reward-input";
-import type { TemplateDefinition, WelcomeRedeemFrom } from "./templates";
+import {
+  type CouponDeal,
+  parseCoupon,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
+import type {
+  TemplateDefinition,
+  WelcomeRedeemFrom,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * THE «BIENVENIDA» HALF OF `enable`'s BODY (spec 0107 §2 / ADR 0099). PURE, called only by

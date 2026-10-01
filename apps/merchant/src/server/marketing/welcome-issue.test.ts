@@ -6,7 +6,7 @@ import {
   startOfNextLocalDay,
   welcomeValidFrom,
   welcomeValidUntil,
-} from "./welcome-rules";
+} from "@mi-pasaporte/domain/server/marketing/welcome-rules";
 
 /**
  * The PURE rules of the welcome gift (spec 0107 §3). The zones: Guayaquil (UTC−5, no DST)

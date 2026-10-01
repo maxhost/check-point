@@ -8,8 +8,8 @@ if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
 import { termsTemplates } from "@mi-pasaporte/db/schema";
-import type { ProgramInput } from "./loyalty-program/core";
-import { renderedTerms } from "./loyalty-program/terms";
+import type { ProgramInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
+import { renderedTerms } from "@mi-pasaporte/domain/server/loyalty-program/terms";
 
 /**
  * Spec 0078 — LOS BORDES DEL RENDERIZADO, con las plantillas de verdad en la base.

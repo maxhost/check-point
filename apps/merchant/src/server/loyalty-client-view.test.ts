@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { toClientProgram } from "./loyalty-program/client-view";
-import { toConsumerProgramSummary } from "./consumer/programs";
+import { toClientProgram } from "@mi-pasaporte/domain/server/loyalty-program/client-view";
+import { toConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
 
 const PRODUCT_ID = "11111111-1111-4111-8111-111111111111";
 

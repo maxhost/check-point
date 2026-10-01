@@ -1,8 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { termsTemplates } from "@mi-pasaporte/db/schema";
-import { LoyaltyError } from "../loyalty-program/core";
-import { ownerBusiness } from "../loyalty-program/owner";
+import { LoyaltyError } from "@mi-pasaporte/domain/server/loyalty-program/core";
+import { ownerBusiness } from "@mi-pasaporte/domain/server/loyalty-program/owner";
 import {
   earningClauseKey,
   type ScopedTemplate,

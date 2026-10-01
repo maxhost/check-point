@@ -3,7 +3,7 @@ import type { PermissionScope } from "@mi-pasaporte/db/permissions-catalog";
 /**
  * LA COPIA DE LOS SIETE PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**
  *
- * `server/permissions-catalog.ts` declara el conjunto CERRADO (el mismo que el `CHECK` de la
+ * `@mi-pasaporte/db/permissions-catalog` declara el conjunto CERRADO (el mismo que el `CHECK` de la
  * migracion 0041) y dice explicitamente por que no tiene un solo `import`: para que nadie
  * tenga que copiar el arreglo. Esta pantalla es su quinta consumidora, asi que **toma el
  * tipo de alla**: `Record<PermissionScope, …>` hace que un permiso nuevo en el catalogo

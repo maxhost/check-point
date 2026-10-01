@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../../server/api-owner";
 import { requireApiPermission } from "../../../../server/api-permission";
-import { BrandError, createLogoUpload } from "../../../../server/brand";
+import {
+  BrandError,
+  createLogoUpload,
+} from "@mi-pasaporte/domain/server/brand";
 
 export const runtime = "nodejs";
 

@@ -1,5 +1,5 @@
-import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "../../lib/image-formats";
-import { PDF_CONTENT_TYPE } from "../../lib/image-formats";
+import { ACCEPTED_IMAGE_CONTENT_TYPE_SET } from "@mi-pasaporte/domain/lib/image-formats";
+import { PDF_CONTENT_TYPE } from "@mi-pasaporte/domain/lib/image-formats";
 import {
   CatalogImportError,
   type DiscardedItem,

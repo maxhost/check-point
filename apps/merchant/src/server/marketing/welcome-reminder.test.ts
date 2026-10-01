@@ -5,7 +5,7 @@ import {
   reminderBody,
   reminderDaysLeft,
   reminderDueAt,
-} from "./welcome-reminder";
+} from "@mi-pasaporte/domain/server/marketing/welcome-reminder";
 
 /** The PURE half of the welcome expiry notice (spec 0107 §5). Guayaquil, hours 9–21. */
 const NOON = new Date("2026-10-14T17:00:00.000Z"); // 12:00 local

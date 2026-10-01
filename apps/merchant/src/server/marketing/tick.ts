@@ -27,7 +27,7 @@ import {
   type Eligibility,
   decideTurnEligibility,
   summarizeAudience,
-} from "./audience";
+} from "@mi-pasaporte/domain/server/marketing/audience";
 import {
   type ActiveCampaign,
   enqueueTurns,
@@ -40,7 +40,7 @@ import { buildMeritTable, loadBusinessTurnStats } from "./merit";
 import {
   DEFAULT_PLACEMENT_LIMITS,
   type PlacementLimits,
-} from "./placement-plan";
+} from "@mi-pasaporte/domain/server/marketing/placement-plan";
 import { placeConsumers } from "./placement";
 import { runBalancePushCampaign } from "./balance-push";
 import { decidePushEligibility } from "./push-audience";
@@ -50,11 +50,11 @@ import {
   loadPushCandidates,
   recordPushDecision,
 } from "./push-store";
-import { templateByKey } from "./templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 import { cancelTurns, expireTurns } from "./turn-lifecycle";
-import { sweepWelcomeGifts } from "./welcome-issue";
-import { enqueueWelcomeReminders } from "./welcome-reminder";
-import { refreshValleyDetections } from "./valley-store";
+import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
+import { enqueueWelcomeReminders } from "@mi-pasaporte/domain/server/marketing/welcome-reminder";
+import { refreshValleyDetections } from "@mi-pasaporte/domain/server/marketing/valley-store";
 
 export type TickSummary = {
   campaigns: number;

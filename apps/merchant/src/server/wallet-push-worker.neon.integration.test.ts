@@ -13,8 +13,8 @@ import {
   walletPushDevices,
   walletPushQueue,
 } from "@mi-pasaporte/db/schema";
-import { ensureWalletPass } from "./wallet/core";
-import { registerDevice } from "./wallet/passkit";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
 import { FakePushChannel } from "./wallet/push-channel";
 import { COOLDOWN_MS, dispatchInline, deliverRow } from "./wallet/push";
 import { runPushWorker } from "./wallet/push-worker";

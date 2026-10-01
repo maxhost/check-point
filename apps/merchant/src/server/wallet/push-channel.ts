@@ -1,5 +1,8 @@
 import { type ApnsCredentials, ApnsGoneError, sendApnsEmptyPush } from "./apns";
-import { patchGoogleLoyaltyObject, postGoogleMessage } from "./google";
+import {
+  patchGoogleLoyaltyObject,
+  postGoogleMessage,
+} from "@mi-pasaporte/domain/server/wallet/google";
 
 export { ApnsGoneError };
 

@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import { eq, type SQL } from "drizzle-orm";
 
-import { parseUuid } from "../counter/core";
+import { parseUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { withDbTransaction, type DbTransaction } from "@mi-pasaporte/db";
 import { lockBusiness } from "../locations/shared";
 import { stripeWebhookEvents, subscriptions } from "@mi-pasaporte/db/schema";

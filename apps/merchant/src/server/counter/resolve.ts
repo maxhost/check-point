@@ -13,11 +13,14 @@ import {
   type ProgramRow,
   pgErrorCode,
   programDTO,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import { type ActiveCoupon, loadActiveCoupon } from "./coupon-store";
-import { loadProgramRewards } from "../loyalty-program/persistence";
-import { insertMembershipWithProjection } from "../customers/projection";
-import { type RewardDTO, toRewardDTO } from "../loyalty-program/client-view";
+import { loadProgramRewards } from "@mi-pasaporte/domain/server/loyalty-program/persistence";
+import { insertMembershipWithProjection } from "@mi-pasaporte/domain/server/customers/projection";
+import {
+  type RewardDTO,
+  toRewardDTO,
+} from "@mi-pasaporte/domain/server/loyalty-program/client-view";
 
 const QR_UNRESOLVED = "No pudimos leer este código. Probá de nuevo.";
 const NO_PROGRAM =

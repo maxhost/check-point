@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TEMPLATES } from "./templates";
+import { TEMPLATES } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * The catalog's exact table (spec 0101 and every spec that added a template). Moved out of

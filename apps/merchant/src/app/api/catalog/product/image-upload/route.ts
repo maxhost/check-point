@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createProductUpload } from "../../../../../server/catalog";
+import { createProductUpload } from "@mi-pasaporte/domain/server/catalog";
 import { catalogError, readJson, requireOwner } from "../../_auth";
 
 export const runtime = "nodejs";

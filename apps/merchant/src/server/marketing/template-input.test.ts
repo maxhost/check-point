@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseCampaignInput } from "./campaign-input";
 import { parseTemplateInput } from "./template-input";
-import { templateByKey } from "./templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 const NOW = new Date("2026-09-26T12:00:00.000Z");
 const missedYou = templateByKey("missed_you")!;

@@ -12,7 +12,7 @@ import {
 import { conCookie, cookieDe } from "./permissions-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
-import { ownerBusiness, saveBrand } from "./brand";
+import { ownerBusiness, saveBrand } from "@mi-pasaporte/domain/server/brand";
 import { GET as BRAND_GET, PUT as BRAND_PUT } from "../app/api/brand/route";
 import { POST as LOGO_UPLOAD } from "../app/api/brand/logo-upload/route";
 import {

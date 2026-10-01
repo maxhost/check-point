@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ConsumerProgramSummary } from "../../../server/consumer/programs";
+import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
 import { visiblePrograms } from "./programs-tab";
 
 const base = {

@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { BrandError, validateBrandInput } from "./brand";
-import { CatalogError } from "./catalog/core";
-import { validateProductInput } from "./catalog/validation";
-import { LoyaltyError, validateProgramInput } from "./loyalty-program";
+import {
+  BrandError,
+  validateBrandInput,
+} from "@mi-pasaporte/domain/server/brand";
+import { CatalogError } from "@mi-pasaporte/domain/server/catalog/core";
+import { validateProductInput } from "@mi-pasaporte/domain/server/catalog/validation";
+import {
+  LoyaltyError,
+  validateProgramInput,
+} from "@mi-pasaporte/domain/server/loyalty-program";
 
 /**
  * The `cropped` flag of spec 0040 across the three save contracts.

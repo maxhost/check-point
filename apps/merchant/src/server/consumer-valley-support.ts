@@ -12,10 +12,13 @@ import {
   locations,
   valleyWindows,
 } from "@mi-pasaporte/db/schema";
-import { listCrossOffers } from "./consumer/cross-offers";
-import { claimValleyOffer } from "./consumer/valley-offers";
-import type { GeoPoint } from "./marketing/cross-rules";
-import { type ValleyWindow, localClock } from "./marketing/valley-rules";
+import { listCrossOffers } from "@mi-pasaporte/domain/server/consumer/cross-offers";
+import { claimValleyOffer } from "@mi-pasaporte/domain/server/consumer/valley-offers";
+import type { GeoPoint } from "@mi-pasaporte/domain/server/marketing/cross-rules";
+import {
+  type ValleyWindow,
+  localClock,
+} from "@mi-pasaporte/domain/server/marketing/valley-rules";
 
 /**
  * The world of «Horas valle» (spec 0113) against a real base, on top of the cross offer's

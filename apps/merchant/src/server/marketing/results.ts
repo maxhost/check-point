@@ -13,7 +13,7 @@
  * fuente no disponible».
  */
 
-import type { CouponKind } from "./reward-input";
+import type { CouponKind } from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * The literal title of the purchases block, in the DTO and not in the screen, because

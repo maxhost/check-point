@@ -4,7 +4,7 @@ import {
   ACCEPTED_IMAGE_CONTENT_TYPES,
   ACCEPTED_IMAGE_CONTENT_TYPE_SET,
   ACCEPTED_IMAGE_LABEL,
-} from "./image-formats";
+} from "@mi-pasaporte/domain/lib/image-formats";
 
 describe("accepted image formats (shared source of truth)", () => {
   it("accepts the mobile-camera formats (HEIC/HEIF/AVIF) plus the classic web ones", () => {

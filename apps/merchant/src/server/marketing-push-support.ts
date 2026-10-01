@@ -10,7 +10,7 @@ import {
   walletPushQueue,
   webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
-import type { TemplateKey } from "./marketing/templates";
+import type { TemplateKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * Seeds and reads of the push-channel suites (spec 0103), out of the test files for the

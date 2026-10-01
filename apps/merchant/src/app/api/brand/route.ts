@@ -6,7 +6,7 @@ import {
   type BrandRecord,
   brandForBusiness,
   saveBrand,
-} from "../../../server/brand";
+} from "@mi-pasaporte/domain/server/brand";
 
 export const runtime = "nodejs";
 

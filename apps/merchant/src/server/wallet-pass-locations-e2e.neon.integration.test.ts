@@ -20,8 +20,8 @@ import {
 import { dropCampaigns } from "./marketing-read-support";
 import { getDb } from "@mi-pasaporte/db";
 import { passPlacements } from "@mi-pasaporte/db/schema";
-import { passLocationsForConsumer } from "./wallet/pass-locations-store";
-import { walletProviderFromEnv } from "./wallet/provider";
+import { passLocationsForConsumer } from "@mi-pasaporte/domain/server/wallet/pass-locations-store";
+import { walletProviderFromEnv } from "@mi-pasaporte/domain/server/wallet/provider";
 
 /**
  * The two segments of «the doors reach the pass» that NOTHING pinned before, both found

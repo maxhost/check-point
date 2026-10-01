@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { cleanupExpiredBrandAssets } from "../../../../server/brand";
-import { cleanupExpiredLoyaltyAssets } from "../../../../server/loyalty-program";
-import { cleanupExpiredCatalogAssets } from "../../../../server/catalog";
+import { cleanupExpiredBrandAssets } from "@mi-pasaporte/domain/server/brand";
+import { cleanupExpiredLoyaltyAssets } from "@mi-pasaporte/domain/server/loyalty-program";
+import { cleanupExpiredCatalogAssets } from "@mi-pasaporte/domain/server/catalog";
 import { cleanupExpiredCatalogImports } from "../../../../server/catalog-import";
 
 export const runtime = "nodejs";

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { consumerOriginOr, decideHostRoute } from "./hosts";
+import {
+  consumerOriginOr,
+  decideHostRoute,
+} from "@mi-pasaporte/domain/server/hosts";
 
 /**
  * La tabla de casos de `decideHostRoute` (spec 0114 §1, H1–H4). El cableado a

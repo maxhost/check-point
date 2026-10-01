@@ -18,7 +18,7 @@ import {
   programMemberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { enroll } from "./consumer/enrollment";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 
 /**
  * The re-enroll leaves the account row untouched (ADR 0051 / spec 0054 — the exact

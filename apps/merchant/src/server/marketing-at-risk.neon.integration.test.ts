@@ -30,7 +30,7 @@ import {
   campaigns,
 } from "@mi-pasaporte/db/schema";
 import { enableTemplate } from "./marketing/template-store";
-import type { TemplateKey } from "./marketing/templates";
+import type { TemplateKey } from "@mi-pasaporte/domain/server/marketing/templates";
 import { type TickSummary, runMarketingTick } from "./marketing/tick";
 
 /**

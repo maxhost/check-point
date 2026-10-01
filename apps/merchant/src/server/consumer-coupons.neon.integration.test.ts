@@ -16,8 +16,8 @@ import {
   campaignCoupons,
   couponRedemptions,
 } from "@mi-pasaporte/db/schema";
-import { SESSION_COOKIE } from "./consumer/core";
-import { issueSession } from "./consumer/session";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
 import { GET } from "../app/api/public/consumer/coupons/route";

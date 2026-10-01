@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { PublicStamp } from "./loyalty-program/stamp";
+import type { PublicStamp } from "@mi-pasaporte/domain/server/loyalty-program/stamp";
 
 /**
  * Spec 0069 §D5 — la RUTA pública del sello, sus tres desenlaces y la no-filtración.
@@ -19,11 +19,11 @@ const PROGRAM_ID = "22222222-2222-4222-8222-222222222222";
 
 let resolved: PublicStamp | null = null;
 
-vi.mock("./loyalty-program", () => ({
+vi.mock("@mi-pasaporte/domain/server/loyalty-program", () => ({
   stampForPublicProgram: async () => resolved,
 }));
 
-vi.mock("./r2", () => ({
+vi.mock("@mi-pasaporte/domain/server/r2", () => ({
   getPrivateObject: async (key: string) => ({
     Body: (async function* () {
       yield new TextEncoder().encode(`bytes-de:${key}`);

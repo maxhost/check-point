@@ -8,7 +8,7 @@ import {
   GoogleCallbackError,
   lengthValue,
   verifyGoogleCallback,
-} from "./google-callback";
+} from "@mi-pasaporte/domain/server/wallet/google-callback";
 
 /**
  * `ECv2SigningOnly` verification (spec 0107 §4) with keys generated HERE: root →

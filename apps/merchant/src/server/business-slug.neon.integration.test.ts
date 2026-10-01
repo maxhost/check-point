@@ -14,7 +14,7 @@ if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
-import { saveBrand } from "./brand";
+import { saveBrand } from "@mi-pasaporte/domain/server/brand";
 import { openMerchantSession } from "./merchant-session";
 import { PATCH } from "../app/api/merchant/business/slug/route";
 

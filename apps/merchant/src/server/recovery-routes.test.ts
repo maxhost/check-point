@@ -8,7 +8,7 @@ const recovery = vi.hoisted(() => ({
   completeRecoveryProfile: vi.fn(),
 }));
 
-vi.mock("./consumer/recovery", () => recovery);
+vi.mock("@mi-pasaporte/domain/server/consumer/recovery", () => recovery);
 
 import { POST as requestRoute } from "../app/api/public/recovery/request/route";
 import { POST as resendRoute } from "../app/api/public/recovery/resend/route";

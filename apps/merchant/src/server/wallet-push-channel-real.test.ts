@@ -23,7 +23,7 @@ import { pushChannelFromEnv } from "./wallet/push-channel";
 const patchGoogleLoyaltyObject = vi.fn();
 const postGoogleMessage = vi.fn();
 
-vi.mock("./wallet/google", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/google", () => ({
   patchGoogleLoyaltyObject: (...args: unknown[]) =>
     patchGoogleLoyaltyObject(...args),
   postGoogleMessage: (...args: unknown[]) => postGoogleMessage(...args),

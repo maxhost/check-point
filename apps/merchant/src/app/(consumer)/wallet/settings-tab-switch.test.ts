@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
-import type { ConsumerProgramSummary } from "../../../server/consumer/programs";
+import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
 import { SettingsTab } from "./settings-tab";
 
 /**

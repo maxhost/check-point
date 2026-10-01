@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planConsumerPlacement } from "./placement-plan";
+import { planConsumerPlacement } from "@mi-pasaporte/domain/server/marketing/placement-plan";
 import {
   DAY_MS,
   NOW,

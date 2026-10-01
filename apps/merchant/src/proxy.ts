@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { decideHostRoute } from "./server/hosts";
+import { decideHostRoute } from "@mi-pasaporte/domain/server/hosts";
 
 /**
  * Enrutamiento por host (spec 0114 / ADR 0106). La decision es de `decideHostRoute`

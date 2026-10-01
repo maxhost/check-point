@@ -11,7 +11,7 @@ import { getMerchantAuth } from "../../../server/auth";
 import {
   type ProgramCaller,
   onboardingGrantActive,
-} from "../../../server/onboarding-grant";
+} from "@mi-pasaporte/domain/server/onboarding-grant";
 import { programInput } from "../../../server/onboarding/program-defaults";
 import {
   LoyaltyError,
@@ -19,8 +19,8 @@ import {
   closeProgram,
   programForOwner,
   saveProgram,
-} from "../../../server/loyalty-program";
-import { toClientProgram } from "../../../server/loyalty-program/client-view";
+} from "@mi-pasaporte/domain/server/loyalty-program";
+import { toClientProgram } from "@mi-pasaporte/domain/server/loyalty-program/client-view";
 
 /**
  * Spec 0072 §D3 — las CUATRO superficies de esta ruta resuelven owner con

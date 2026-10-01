@@ -1,7 +1,10 @@
 import type { FieldErrors } from "./campaign-input";
-import { type CouponDeal, parseCoupon } from "./reward-input";
-import type { TemplateDefinition } from "./templates";
-import type { ValleyWindow } from "./valley-rules";
+import {
+  type CouponDeal,
+  parseCoupon,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
+import type { TemplateDefinition } from "@mi-pasaporte/domain/server/marketing/templates";
+import type { ValleyWindow } from "@mi-pasaporte/domain/server/marketing/valley-rules";
 
 /**
  * THE «HORAS VALLE» HALVES OF TWO BODIES (spec 0113 / ADR 0105). PURE.

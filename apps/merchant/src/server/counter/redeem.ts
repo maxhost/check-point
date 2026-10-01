@@ -9,7 +9,7 @@ import {
   parseUuid,
   pgErrorCode,
   rawTarget,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import { accreditableProgram } from "./resolve";
 import {
   type PersistedRedemption,

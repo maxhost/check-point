@@ -7,9 +7,9 @@ import {
   type PushMessage,
   passTypeIdFromEnv,
 } from "./push-channel";
-import { googleObjectPatchFor } from "./pass-locations-store";
-import { type WebPushChannel } from "../push/webpush-channel";
-import { deliverWebPush } from "../push/subscriptions";
+import { googleObjectPatchFor } from "@mi-pasaporte/domain/server/wallet/pass-locations-store";
+import { type WebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
+import { deliverWebPush } from "@mi-pasaporte/domain/server/push/subscriptions";
 
 /** The consumer portal path a notification click opens (served inside the PWA/tab). */
 const NOTICE_URL = "/wallet";

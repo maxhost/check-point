@@ -323,7 +323,7 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 - **EL TOS: `renderTermsText` tira 422 CUANDO EL VALOR DE LA VARIABLE ES VACIO, no solo cuando la
   variable no esta en el allowlist.** La condicion es
   `!allowedVariables.includes(key) || !variables[key]`
-  (`apps/merchant/src/server/loyalty-program/validation.ts:259-270`). **Consecuencia que sorprende:
+  (`packages/domain/src/server/loyalty-program/validation.ts:259-270`). **Consecuencia que sorprende:
   una plantilla con una variable que «a veces no aplica» IMPIDE GUARDAR EL PROGRAMA** — no deja un
   hueco en el texto, corta el `PUT` con 422. Asi que **una variable de TOS que no siempre tiene
   valor no se resuelve con un default vacio**: o la plantilla que la usa es una plantilla APARTE

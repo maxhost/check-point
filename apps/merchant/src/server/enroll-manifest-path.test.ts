@@ -7,7 +7,7 @@ import {
   type ConsumerAccountRow,
   type MembershipRow,
   walletManifestPathFor,
-} from "./consumer/core";
+} from "@mi-pasaporte/domain/server/consumer/core";
 
 /**
  * Spec 0051 / ADR 0049 — the 201 of the enroll POST carries `walletManifestPath` so the
@@ -22,16 +22,26 @@ const rateLimit = vi.hoisted(() => ({ enforceEnrollRateLimit: vi.fn() }));
 const enrollment = vi.hoisted(() => ({ enroll: vi.fn() }));
 const session = vi.hoisted(() => ({ issueSession: vi.fn() }));
 
-vi.mock("./consumer/validation", () => validation);
-vi.mock("./consumer/rate-limit", () => rateLimit);
-vi.mock("./consumer/enrollment", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./consumer/enrollment")>()),
-  ...enrollment,
-}));
-vi.mock("./consumer/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./consumer/session")>()),
-  ...session,
-}));
+vi.mock("@mi-pasaporte/domain/server/consumer/validation", () => validation);
+vi.mock("@mi-pasaporte/domain/server/consumer/rate-limit", () => rateLimit);
+vi.mock(
+  "@mi-pasaporte/domain/server/consumer/enrollment",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/consumer/enrollment")
+    >()),
+    ...enrollment,
+  }),
+);
+vi.mock(
+  "@mi-pasaporte/domain/server/consumer/session",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/consumer/session")
+    >()),
+    ...session,
+  }),
+);
 
 import { POST as enrollRoute } from "../app/api/public/enroll/[programId]/route";
 

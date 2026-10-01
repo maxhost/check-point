@@ -20,7 +20,7 @@ import { PERMISSIONS } from "../permissions-catalog";
  * columna `permissions` y sus tres `CHECK` adentro pasaba de 300 lineas (medido con el hook
  * `file-size`). La regla del repo es **dividir, no extender**, y es el mismo movimiento que
  * ya hicieron `schema/staff-pin.ts` y `schema/billing.ts`. Es un traslado LITERAL de la
- * tabla salvo lo que la 0086 agrega; el barril `server/schema.ts` re-exporta, asi que ningun
+ * tabla salvo lo que la 0086 agrega; el barril `src/schema.ts` re-exporta, asi que ningun
  * `from "./schema"` cambia una linea.
  */
 export const memberships = core.table(

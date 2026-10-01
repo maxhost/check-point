@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parseTemplateInput } from "./template-input";
-import { templateByKey } from "./templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 import { parseValleyWindows } from "./valley-input";
-import { CUSTOM_ONLY_IN_VALLEY } from "./reward-input";
+import { CUSTOM_ONLY_IN_VALLEY } from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * Spec 0113 H3 — `enable` of «Horas valle» (and what the others refuse because of it), and

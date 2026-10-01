@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildPassJson } from "./wallet/apple";
-import { buildLoyaltyObject } from "./wallet/google-object";
+import { buildPassJson } from "@mi-pasaporte/domain/server/wallet/apple";
+import { buildLoyaltyObject } from "@mi-pasaporte/domain/server/wallet/google-object";
 
 /**
  * EL CABLEADO de `consumerOriginOr` (spec 0114 §3 / ADR 0106 §5): lo que se EMITE desde
@@ -21,11 +21,11 @@ const appleInputs: Record<string, unknown>[] = [];
 const googleInputs: Record<string, unknown>[] = [];
 const kitOrigins: string[] = [];
 
-vi.mock("./wallet/pass-locations-store", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/pass-locations-store", () => ({
   passLocationsForConsumer: async () => [],
 }));
 
-vi.mock("./wallet/provider", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/provider", () => ({
   getWalletProvider: () => ({
     appleConfigured: true,
     googleConfigured: true,
@@ -43,8 +43,10 @@ vi.mock("./wallet/provider", () => ({
   }),
 }));
 
-vi.mock("./wallet/core", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./wallet/core")>()),
+vi.mock("@mi-pasaporte/domain/server/wallet/core", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@mi-pasaporte/domain/server/wallet/core")
+  >()),
   ensureWalletPass: async (consumerId: string, provider: string) => ({
     id: "pass-row",
     serialNumber: `serial-${provider}`,
@@ -53,7 +55,7 @@ vi.mock("./wallet/core", async (importOriginal) => ({
   }),
 }));
 
-vi.mock("./consumer/session", () => ({
+vi.mock("@mi-pasaporte/domain/server/consumer/session", () => ({
   resolveSession: async () => ({
     id: "consumer-id",
     qrToken: "QR",
@@ -63,7 +65,7 @@ vi.mock("./consumer/session", () => ({
   }),
 }));
 
-vi.mock("./wallet/passkit", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/passkit", () => ({
   authorizePass: async () => ({ status: "ok" }) as const,
   passServeData: async () => ({
     consumerId: "consumer-id",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { pickCross } from "./cross-input";
 import { parseTemplateInput } from "./template-input";
-import { templateByKey } from "./templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 const NOW = new Date("2026-09-29T12:00:00.000Z");
 const cross = templateByKey("cross")!;

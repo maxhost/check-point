@@ -20,7 +20,7 @@ import {
   programForOwner,
   saveProgram,
   stampForPublicProgram,
-} from "./loyalty-program";
+} from "@mi-pasaporte/domain/server/loyalty-program";
 
 /**
  * Spec 0077 §5 — el TERCER argumento de `saveProgram`, obligatorio para que el typecheck

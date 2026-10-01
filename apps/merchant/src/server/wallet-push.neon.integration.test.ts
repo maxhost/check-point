@@ -17,14 +17,14 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { type PersistGrantInput, persistGrant } from "./counter/orders";
-import { ensureWalletPass } from "./wallet/core";
-import { hashToken } from "./consumer/core";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { hashToken } from "@mi-pasaporte/domain/server/consumer/core";
 import {
   authorizePass,
   listUpdatedSerials,
   registerDevice,
   unregisterDevice,
-} from "./wallet/passkit";
+} from "@mi-pasaporte/domain/server/wallet/passkit";
 import { rotatePassCredentials } from "./wallet/push";
 
 const consumerIds: string[] = [];

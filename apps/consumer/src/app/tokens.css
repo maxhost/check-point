@@ -1,0 +1,213 @@
+/*
+ * CheckPass design tokens — the only source of color values for the new UI.
+ * Runtime brand values may override --brand-{primary,complement,accent} on a
+ * subtree. Semantic UI colors stay independent so an unsafe merchant color
+ * can never reduce the legibility of forms or system messages.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Merchant defaults stored in core.business. */
+  --brand-primary: #176548;
+  --brand-complement: #2d8b68;
+  --brand-accent: #e78132;
+
+  /* Derived brand roles. */
+  --brand-primary-action: #176548;
+  --brand-primary-hover: #12523b;
+  --brand-primary-pressed: #0e402f;
+  --brand-primary-soft: #e8f4ee;
+  --brand-primary-border: #87b8a5;
+  --brand-on-primary: #ffffff;
+  --brand-complement-action: #267657;
+  --brand-complement-soft: #e6f3ee;
+  --brand-on-complement: #ffffff;
+  --brand-accent-hover: #cf6b22;
+  --brand-accent-pressed: #ad5315;
+  --brand-accent-soft: #fff0e3;
+  --brand-on-accent: #241205;
+
+  /* Neutral semantic roles. */
+  --ui-canvas: #f7faf8;
+  --ui-surface: #ffffff;
+  --ui-surface-subtle: #eef4f0;
+  --ui-surface-raised: #ffffff;
+  --ui-text: #10251d;
+  --ui-text-muted: #52645b;
+  --ui-text-disabled: #77877f;
+  --ui-border: #cbd8d1;
+  --ui-border-strong: #82998d;
+  --ui-disabled: #e2e9e5;
+  --ui-on-disabled: #5b6b63;
+  --ui-overlay: #10251db3;
+
+  /* Feedback roles. */
+  --ui-danger: #8e2a2a;
+  --ui-danger-hover: #742020;
+  --ui-danger-soft: #fff1f0;
+  --ui-on-danger: #ffffff;
+  --ui-warning: #7b4b00;
+  --ui-warning-soft: #fff4dc;
+  --ui-success: #176548;
+  --ui-success-soft: #e8f4ee;
+  --ui-info: #145f82;
+  --ui-info-soft: #e7f5fb;
+
+  /* Interaction and elevation. */
+  --ui-focus: #176548;
+  --ui-focus-offset: #ffffff;
+  --ui-shadow-sm: #10251d14;
+  --ui-shadow-md: #10251d24;
+
+  /* Typography, geometry and motion. */
+  --font-sans: Arial, Helvetica, sans-serif;
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-full: 9999px;
+  --control-min: 2.75rem;
+  --control-main: 3rem;
+  --content-form: 34rem;
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --brand-primary-action: #72d0a9;
+    --brand-primary-hover: #56b891;
+    --brand-primary-pressed: #7bcead;
+    --brand-primary-soft: #143a2c;
+    --brand-primary-border: #438d70;
+    --brand-on-primary: #071b13;
+    --brand-complement-action: #60c19c;
+    --brand-complement-soft: #173b2f;
+    --brand-on-complement: #071b13;
+    --brand-accent-hover: #f29b58;
+    --brand-accent-pressed: #f7b47f;
+    --brand-accent-soft: #492a16;
+    --brand-on-accent: #241205;
+    --ui-canvas: #0d1713;
+    --ui-surface: #14221c;
+    --ui-surface-subtle: #1b2c24;
+    --ui-surface-raised: #1d3028;
+    --ui-text: #edf7f1;
+    --ui-text-muted: #b6c8be;
+    --ui-text-disabled: #7f9188;
+    --ui-border: #3b5146;
+    --ui-border-strong: #668074;
+    --ui-disabled: #26372f;
+    --ui-on-disabled: #92a49b;
+    --ui-overlay: #050a08cc;
+    --ui-danger: #ff9c98;
+    --ui-danger-hover: #ffb9b6;
+    --ui-danger-soft: #421f20;
+    --ui-on-danger: #2c0808;
+    --ui-warning: #ffc66d;
+    --ui-warning-soft: #3b2c14;
+    --ui-success: #72d0a9;
+    --ui-success-soft: #143a2c;
+    --ui-info: #80c9e8;
+    --ui-info-soft: #153442;
+    --ui-focus: #72d0a9;
+    --ui-focus-offset: #14221c;
+    --ui-shadow-sm: #0000003d;
+    --ui-shadow-md: #00000066;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --brand-primary-action: #72d0a9;
+  --brand-primary-hover: #56b891;
+  --brand-primary-pressed: #7bcead;
+  --brand-primary-soft: #143a2c;
+  --brand-primary-border: #438d70;
+  --brand-on-primary: #071b13;
+  --brand-complement-action: #60c19c;
+  --brand-complement-soft: #173b2f;
+  --brand-on-complement: #071b13;
+  --brand-accent-hover: #f29b58;
+  --brand-accent-pressed: #f7b47f;
+  --brand-accent-soft: #492a16;
+  --brand-on-accent: #241205;
+  --ui-canvas: #0d1713;
+  --ui-surface: #14221c;
+  --ui-surface-subtle: #1b2c24;
+  --ui-surface-raised: #1d3028;
+  --ui-text: #edf7f1;
+  --ui-text-muted: #b6c8be;
+  --ui-text-disabled: #7f9188;
+  --ui-border: #3b5146;
+  --ui-border-strong: #668074;
+  --ui-disabled: #26372f;
+  --ui-on-disabled: #92a49b;
+  --ui-overlay: #050a08cc;
+  --ui-danger: #ff9c98;
+  --ui-danger-hover: #ffb9b6;
+  --ui-danger-soft: #421f20;
+  --ui-on-danger: #2c0808;
+  --ui-warning: #ffc66d;
+  --ui-warning-soft: #3b2c14;
+  --ui-success: #72d0a9;
+  --ui-success-soft: #143a2c;
+  --ui-info: #80c9e8;
+  --ui-info-soft: #153442;
+  --ui-focus: #72d0a9;
+  --ui-focus-offset: #14221c;
+  --ui-shadow-sm: #0000003d;
+  --ui-shadow-md: #00000066;
+}
+
+/* Tailwind v4 theme configuration consumes the semantic variables above. */
+@theme inline {
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-surface-subtle: var(--ui-surface-subtle);
+  --color-surface-raised: var(--ui-surface-raised);
+  --color-content: var(--ui-text);
+  --color-content-muted: var(--ui-text-muted);
+  --color-content-disabled: var(--ui-text-disabled);
+  --color-border: var(--ui-border);
+  --color-border-strong: var(--ui-border-strong);
+  --color-disabled: var(--ui-disabled);
+  --color-on-disabled: var(--ui-on-disabled);
+  --color-primary: var(--brand-primary-action);
+  --color-primary-hover: var(--brand-primary-hover);
+  --color-primary-pressed: var(--brand-primary-pressed);
+  --color-primary-soft: var(--brand-primary-soft);
+  --color-on-primary: var(--brand-on-primary);
+  --color-complement: var(--brand-complement-action);
+  --color-complement-soft: var(--brand-complement-soft);
+  --color-on-complement: var(--brand-on-complement);
+  --color-accent: var(--brand-accent);
+  --color-accent-hover: var(--brand-accent-hover);
+  --color-accent-pressed: var(--brand-accent-pressed);
+  --color-accent-soft: var(--brand-accent-soft);
+  --color-on-accent: var(--brand-on-accent);
+  --color-danger: var(--ui-danger);
+  --color-danger-hover: var(--ui-danger-hover);
+  --color-danger-soft: var(--ui-danger-soft);
+  --color-on-danger: var(--ui-on-danger);
+  --color-warning: var(--ui-warning);
+  --color-warning-soft: var(--ui-warning-soft);
+  --color-success: var(--ui-success);
+  --color-success-soft: var(--ui-success-soft);
+  --color-info: var(--ui-info);
+  --color-info-soft: var(--ui-info-soft);
+  --color-focus: var(--ui-focus);
+  --font-sans: var(--font-sans);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

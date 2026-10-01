@@ -2,7 +2,7 @@ import type {
   ConsumerPosition,
   CrossOfferFacts,
   GeoPoint,
-} from "./cross-rules";
+} from "@mi-pasaporte/domain/server/marketing/cross-rules";
 
 /**
  * The fixtures of the PURE rules' suites (`cross-rules*.test.ts`, spec 0112): a consumer at

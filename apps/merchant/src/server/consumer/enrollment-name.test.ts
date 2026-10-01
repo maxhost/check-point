@@ -23,7 +23,7 @@ vi.mock("@mi-pasaporte/db", async () =>
   (await import("./enrollment-name-support")).dbDouble(),
 );
 
-import { enroll } from "./enrollment";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 
 const PHONE = "+593998877654321";
 

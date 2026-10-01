@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   StockError,
   getStockProvider,
-} from "../../../../../server/stock/provider";
+} from "@mi-pasaporte/domain/server/stock/provider";
 import { requireOwner } from "../../_auth";
 
 export const runtime = "nodejs";

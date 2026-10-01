@@ -23,7 +23,7 @@ import {
   expireClosingPrograms,
   programForOwner,
   saveProgram,
-} from "./loyalty-program";
+} from "@mi-pasaporte/domain/server/loyalty-program";
 
 /** Spec 0077 §5 — el 3er argumento de `saveProgram`. Estos casos son de DOMINIO, no del
  * gate: escriben como un owner con el email verificado, igual que antes de la spec. */

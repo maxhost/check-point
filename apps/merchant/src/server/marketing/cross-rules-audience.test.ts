@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideCrossOffer } from "./cross-rules";
+import { decideCrossOffer } from "@mi-pasaporte/domain/server/marketing/cross-rules";
 import {
   CAFE,
   DAY,

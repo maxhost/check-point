@@ -13,17 +13,17 @@ import {
   walletPasses,
   webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
-import { ensureWalletPass } from "./wallet/core";
-import { registerDevice } from "./wallet/passkit";
-import { issueSession } from "./consumer/session";
-import { SESSION_COOKIE } from "./consumer/core";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import {
   deliverWebPush,
   listConsumerSubscriptions,
   purgeConsumerSubscriptions,
   upsertSubscription,
-} from "./push/subscriptions";
-import { FakeWebPushChannel } from "./push/webpush-channel";
+} from "@mi-pasaporte/domain/server/push/subscriptions";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
 import { rotatePassCredentials } from "./wallet/push";

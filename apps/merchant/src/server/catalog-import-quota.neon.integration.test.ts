@@ -10,8 +10,10 @@ import {
 } from "./catalog-import-integration-support";
 import { conCookie, cookieDe } from "./permissions-integration-support";
 
-vi.mock("./r2", async () => {
-  const real = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const real = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...real,
     createTemporaryUploadUrl: async (input: { objectKey: string }) =>
@@ -22,7 +24,8 @@ vi.mock("./r2", async () => {
 
 const { POST: CREAR } = await import("../app/api/catalog/imports/route");
 const { runAnalysis } = await import("./catalog-import/prepare");
-const { limitOf } = await import("./entitlements");
+const { limitOf } =
+  await import("@mi-pasaporte/domain/server/entitlements/index");
 
 /**
  * **Los dos topes salen del catalogo, no de un numero escrito acá.** Lo que estos casos miden

@@ -11,11 +11,14 @@ import {
   requestRecovery,
   resendRecovery,
   verifyRecovery,
-} from "./consumer/recovery";
-import { generateOpaqueToken, hashToken } from "./consumer/core";
+} from "@mi-pasaporte/domain/server/consumer/recovery";
+import {
+  generateOpaqueToken,
+  hashToken,
+} from "@mi-pasaporte/domain/server/consumer/core";
 import { getDb } from "@mi-pasaporte/db";
-import { FakeOtpChannel } from "./otp/fake";
-import { OtpProviderError } from "./otp/core";
+import { FakeOtpChannel } from "@mi-pasaporte/domain/server/otp/fake";
+import { OtpProviderError } from "@mi-pasaporte/domain/server/otp/core";
 import {
   consumerAccounts,
   consumerSessions,

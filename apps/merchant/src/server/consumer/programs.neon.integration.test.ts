@@ -17,8 +17,8 @@ import {
   users,
   webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
-import { hasWebPushSubscription } from "../push/subscriptions";
-import { listConsumerPrograms } from "./programs";
+import { hasWebPushSubscription } from "@mi-pasaporte/domain/server/push/subscriptions";
+import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/programs";
 
 describe.skipIf(!enabled)(
   "consumer programs against an isolated Neon branch",

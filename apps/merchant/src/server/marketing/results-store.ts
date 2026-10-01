@@ -22,7 +22,7 @@ import {
   programMemberships,
 } from "@mi-pasaporte/db/schema";
 import { loadPushFacts } from "./push-results-store";
-import type { CouponKind } from "./reward-input";
+import type { CouponKind } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import {
   buildCampaignResults,
   type CampaignResults,

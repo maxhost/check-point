@@ -19,7 +19,10 @@ import {
   memberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { programForOwner, saveProgram } from "./loyalty-program";
+import {
+  programForOwner,
+  saveProgram,
+} from "@mi-pasaporte/domain/server/loyalty-program";
 import { openMerchantSession } from "./merchant-session";
 import { GET } from "../app/api/loyalty-program/qr/route";
 

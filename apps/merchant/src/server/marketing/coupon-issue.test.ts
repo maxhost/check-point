@@ -4,7 +4,7 @@ import {
   couponToIssue,
   pushCouponToIssue,
   rewardSnapshot,
-} from "./coupon-issue";
+} from "@mi-pasaporte/domain/server/marketing/coupon-issue";
 
 /**
  * Spec 0102 — which activation issues a campaign coupon. PURE; the WIRING in `applyPlan`

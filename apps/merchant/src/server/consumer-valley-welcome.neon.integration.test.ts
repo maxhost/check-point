@@ -24,7 +24,7 @@ import {
   walletPasses,
 } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
-import { sweepWelcomeGifts } from "./marketing/welcome-issue";
+import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 
 /**
  * Owner, 2026-09-30: a VALLEY coupon does NOT count as «came by the cross offer» — whoever

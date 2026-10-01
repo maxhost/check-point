@@ -1,7 +1,10 @@
 import type { FieldErrors } from "./campaign-input";
-import { REWARD_KEYS } from "./reward-input";
+import { REWARD_KEYS } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import type { TemplateInput } from "./template-input";
-import { GAP_MARKER, type TemplateDefinition } from "./templates";
+import {
+  GAP_MARKER,
+  type TemplateDefinition,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * The BALANCE half of `enable`'s body (spec 0104 §3 / ADR 0096). PURE, called only by

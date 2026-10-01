@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isInPushWindow, localHour, nextSendableAt } from "./push-window";
+import {
+  isInPushWindow,
+  localHour,
+  nextSendableAt,
+} from "@mi-pasaporte/domain/server/marketing/push-window";
 
 /** Spec 0103 §5 — the business's push hours, `[start, end)` in its own zone. PURE. */
 const AR = "America/Argentina/Buenos_Aires"; // UTC-3, no DST

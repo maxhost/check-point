@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * `marketing-push-delivery.neon.integration.test.ts`.
  */
 const world = vi.hoisted(() => ({ recordPushClick: vi.fn() }));
-vi.mock("./marketing/push-delivery", () => ({
+vi.mock("@mi-pasaporte/domain/server/marketing/push-delivery", () => ({
   recordPushClick: world.recordPushClick,
 }));
 

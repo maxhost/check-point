@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { consumerAccounts, walletPushQueue } from "@mi-pasaporte/db/schema";
 import { type PushChannel } from "./push-channel";
-import { type WebPushChannel } from "../push/webpush-channel";
+import { type WebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import {
   COOLDOWN_MS,
   type QueueRow,
@@ -10,7 +10,7 @@ import {
   planConsumerDrain,
 } from "./push";
 import { parseQueueClass } from "./push-plan";
-import { planReminders } from "./reminder-store";
+import { planReminders } from "@mi-pasaporte/domain/server/wallet/reminder-store";
 
 // `parseQueueClass` lives in `push-plan.ts` (the budget store needs it too, and importing
 // it from here would close an import cycle through `./push`); re-exported for its tests.

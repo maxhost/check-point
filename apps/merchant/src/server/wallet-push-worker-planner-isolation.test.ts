@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
  * The planner is doubled to throw; a due `pass_refresh` must still be sent.
  */
 
-vi.mock("./wallet/reminder-store", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/reminder-store", () => ({
   planReminders: () => Promise.reject(new Error("planner query failed")),
 }));
 

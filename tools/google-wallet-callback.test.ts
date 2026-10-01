@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GOOGLE_CLASS_SUFFIX } from "../apps/merchant/src/server/wallet/google-object";
+import { GOOGLE_CLASS_SUFFIX } from "../packages/domain/src/server/wallet/google-object";
 import {
   CLASS_SUFFIX,
   classIdOf,

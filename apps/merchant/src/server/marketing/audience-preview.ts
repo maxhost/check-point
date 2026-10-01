@@ -23,10 +23,10 @@ import {
   summarizeAudience,
   type AudienceCandidate,
   type Eligibility,
-} from "./audience";
+} from "@mi-pasaporte/domain/server/marketing/audience";
 import { loadAudienceCandidates } from "./audience-store";
 import { CampaignError } from "./campaign-store";
-import { DEFAULT_PLACEMENT_LIMITS } from "./placement-plan";
+import { DEFAULT_PLACEMENT_LIMITS } from "@mi-pasaporte/domain/server/marketing/placement-plan";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

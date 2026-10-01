@@ -15,7 +15,7 @@ import { getDb } from "@mi-pasaporte/db";
 import { campaignTurns } from "@mi-pasaporte/db/schema";
 import { runMarketingTick } from "./marketing/tick";
 import { enableTemplate } from "./marketing/template-store";
-import type { TemplateKey } from "./marketing/templates";
+import type { TemplateKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * SOLAPAMIENTO (spec 0101 / ADR 0092 §6): two live campaigns of one business want the

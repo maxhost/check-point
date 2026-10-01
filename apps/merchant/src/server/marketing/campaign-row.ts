@@ -2,8 +2,14 @@ import { campaigns } from "@mi-pasaporte/db/schema";
 import type { Campaign } from "./campaign-store";
 import { channelsOf, welcomeOf, welcomeSelect } from "./campaign-values";
 import { rewardSelect } from "./reward-store";
-import { crossOf, crossSelect } from "./cross-store";
-import { valleyOf, valleySelect } from "./valley-store";
+import {
+  crossOf,
+  crossSelect,
+} from "@mi-pasaporte/domain/server/marketing/cross-store";
+import {
+  valleyOf,
+  valleySelect,
+} from "@mi-pasaporte/domain/server/marketing/valley-store";
 
 /**
  * The columns every read of `core.campaign` selects and the row → DTO mapping. Apart from

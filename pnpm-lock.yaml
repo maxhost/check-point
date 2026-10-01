@@ -48,6 +48,15 @@ importers:
 
   apps/consumer:
     dependencies:
+      '@mi-pasaporte/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@mi-pasaporte/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@neondatabase/serverless@1.1.0)(kysely@0.29.5)
       next:
         specifier: 16.3.0
         version: 16.3.0(@playwright/test@1.57.0)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -58,6 +67,9 @@ importers:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
     devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.2.1
+        version: 4.3.3
       '@types/node':
         specifier: 24.13.3
         version: 24.13.3
@@ -67,21 +79,21 @@ importers:
       '@types/react-dom':
         specifier: 19.2.2
         version: 19.2.2(@types/react@19.2.2)
+      tailwindcss:
+        specifier: ^4.2.1
+        version: 4.3.3
 
   apps/merchant:
     dependencies:
-      '@aws-sdk/client-s3':
-        specifier: ^3.1107.0
-        version: 3.1107.0
-      '@aws-sdk/s3-request-presigner':
-        specifier: ^3.1107.0
-        version: 3.1107.0
       '@mapbox/search-js-react':
         specifier: ^1.6.0
         version: 1.6.0(mapbox-gl@3.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@mi-pasaporte/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@mi-pasaporte/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@neondatabase/serverless':
         specifier: ^1.1.0
         version: 1.1.0
@@ -109,9 +121,6 @@ importers:
       node-forge:
         specifier: ^1.4.0
         version: 1.4.0
-      qrcode:
-        specifier: ^1.5.4
-        version: 1.5.4
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -140,9 +149,6 @@ importers:
       '@types/node-forge':
         specifier: ^1.3.14
         version: 1.3.14
-      '@types/qrcode':
-        specifier: ^1.5.6
-        version: 1.5.6
       '@types/react':
         specifier: 19.2.2
         version: 19.2.2
@@ -215,6 +221,49 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+
+  packages/domain:
+    dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.1107.0
+        version: 3.1107.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.1107.0
+        version: 3.1107.0
+      '@mi-pasaporte/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@neondatabase/serverless@1.1.0)(kysely@0.29.5)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
+      node-forge:
+        specifier: ^1.4.0
+        version: 1.4.0
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      sharp:
+        specifier: 0.35.3
+        version: 0.35.3(@types/node@24.13.3)
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      '@types/node-forge':
+        specifier: ^1.3.14
+        version: 1.3.14
+      '@types/qrcode':
+        specifier: ^1.5.6
+        version: 1.5.6
+      '@types/react':
+        specifier: 19.2.2
+        version: 19.2.2
 
 packages:
 

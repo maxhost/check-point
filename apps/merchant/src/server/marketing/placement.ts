@@ -22,14 +22,14 @@ import {
   consumerAccounts,
   passPlacements,
 } from "@mi-pasaporte/db/schema";
-import { couponToIssue } from "./coupon-issue";
+import { couponToIssue } from "@mi-pasaporte/domain/server/marketing/coupon-issue";
 import type { MeritTable } from "./merit";
 import {
   type PlacementLimits,
   type PlacementPlan,
   type TurnActivation,
   planConsumerPlacement,
-} from "./placement-plan";
+} from "@mi-pasaporte/domain/server/marketing/placement-plan";
 import {
   loadActiveTurns,
   loadBusinessActiveTurns,

@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { buildPassJson } from "./wallet/apple";
-import { buildLoyaltyObject, buildObjectPatch } from "./wallet/google-object";
+import { buildPassJson } from "@mi-pasaporte/domain/server/wallet/apple";
+import {
+  buildLoyaltyObject,
+  buildObjectPatch,
+} from "@mi-pasaporte/domain/server/wallet/google-object";
 import {
   MAX_PASS_LOCATIONS,
   type PassLocation,
   type PassPlacementRow,
   toPassLocations,
-} from "./wallet/pass-locations";
-import type { PassBuildInput } from "./wallet/provider";
+} from "@mi-pasaporte/domain/server/wallet/pass-locations";
+import type { PassBuildInput } from "@mi-pasaporte/domain/server/wallet/provider";
 
 /**
  * The doors of spec 0065 reaching the pass (phase A4): the pure mapper from

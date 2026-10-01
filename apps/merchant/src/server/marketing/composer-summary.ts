@@ -11,7 +11,7 @@
  * what the owner sees on screen is the oracle that defines.
  */
 
-import { DEFAULT_PLACEMENT_LIMITS } from "./placement-plan";
+import { DEFAULT_PLACEMENT_LIMITS } from "@mi-pasaporte/domain/server/marketing/placement-plan";
 
 /** Concurrent non-holdout turns one business may hold platform-wide. Read from the
  * placement limits and not re-declared: the composer promising 50 while the tick caps at

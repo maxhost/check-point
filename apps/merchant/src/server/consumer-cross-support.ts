@@ -16,10 +16,13 @@ import {
   campaigns,
   locations,
 } from "@mi-pasaporte/db/schema";
-import { SESSION_COOKIE } from "./consumer/core";
-import { issueSession } from "./consumer/session";
-import { type GeoPoint, haversineMeters } from "./marketing/cross-rules";
-import type { CrossAudience } from "./marketing/cross-rules";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import {
+  type GeoPoint,
+  haversineMeters,
+} from "@mi-pasaporte/domain/server/marketing/cross-rules";
+import type { CrossAudience } from "@mi-pasaporte/domain/server/marketing/cross-rules";
 import { GET } from "../app/api/public/consumer/cross-offers/route";
 import { POST } from "../app/api/public/consumer/cross-offers/[campaignId]/claim/route";
 

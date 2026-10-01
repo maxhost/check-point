@@ -22,7 +22,7 @@ import {
   seedUnverifiedOwner,
   wipePrograms,
 } from "./onboarding-grant-support";
-import { ONBOARDING_GRANT_MINUTES } from "./onboarding-grant";
+import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { createStaff } from "./staff-create";
 import { POST as START } from "../app/api/merchant/auth/start/route";
 import { POST as STAFF_LOGIN } from "../app/api/merchant/auth/staff/route";

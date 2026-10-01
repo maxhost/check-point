@@ -19,10 +19,13 @@ import {
   users,
   walletPasses,
 } from "@mi-pasaporte/db/schema";
-import { enroll } from "./consumer/enrollment";
-import { ensureWalletPass, resolveWebViewToken } from "./wallet/core";
-import { authorizePass } from "./wallet/passkit";
-import { walletProviderFromEnv } from "./wallet/provider";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import {
+  ensureWalletPass,
+  resolveWebViewToken,
+} from "@mi-pasaporte/domain/server/wallet/core";
+import { authorizePass } from "@mi-pasaporte/domain/server/wallet/passkit";
+import { walletProviderFromEnv } from "@mi-pasaporte/domain/server/wallet/provider";
 
 describe.skipIf(!enabled)("wallet passes against Neon", () => {
   const userId = `int-${randomUUID()}`;

@@ -19,7 +19,7 @@ import {
   wipePrograms,
   wipeSessions,
 } from "./onboarding-grant-support";
-import { ONBOARDING_GRANT_MINUTES } from "./onboarding-grant";
+import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { PUT } from "../app/api/loyalty-program/route";
 
 /**

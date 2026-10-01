@@ -24,7 +24,7 @@ import {
   campaignTurns,
   campaigns,
 } from "@mi-pasaporte/db/schema";
-import type { TemplateKey } from "./marketing/templates";
+import type { TemplateKey } from "@mi-pasaporte/domain/server/marketing/templates";
 import { type TickSummary, runMarketingTick } from "./marketing/tick";
 
 /**

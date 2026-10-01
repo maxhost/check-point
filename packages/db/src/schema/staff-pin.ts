@@ -27,7 +27,7 @@ import { memberships } from "./membership";
  * 299 lineas** con el `slug` y las columnas del PIN (medido: `wc -l`), contra el limite de
  * 300 del hook `file-size` — que en esta sesion contesto `EXIT=2` a 301, 302 y 306 lineas.
  * Meter esta tabla adentro lo dejaba arriba de 330: **dividir, no extender**. Es el mismo
- * criterio con el que ya esta partido el barrel `server/schema.ts`.
+ * criterio con el que ya esta partido el barrel `src/schema.ts`.
  *
  * La maquina de estados que decide que escribir aca es `server/staff-pin.ts`
  * (`nextLockout`), pura y testeada sin base.

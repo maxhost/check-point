@@ -32,8 +32,10 @@ vi.mock("@mi-pasaporte/db", async () => {
 });
 
 /** El objeto de R2 con una cabecera JPEG real: el sniff por bytes es parte del camino. */
-vi.mock("./r2", async () => {
-  const real = await vi.importActual<typeof import("./r2")>("./r2");
+vi.mock("@mi-pasaporte/domain/server/r2", async () => {
+  const real = await vi.importActual<
+    typeof import("@mi-pasaporte/domain/server/r2")
+  >("@mi-pasaporte/domain/server/r2");
   return {
     ...real,
     getPrivateObject: async () => ({
@@ -49,7 +51,8 @@ vi.mock("./r2", async () => {
 
 const { cancelImport, createImport } = await import("./catalog-import/core");
 const { startAnalyze } = await import("./catalog-import/analyze");
-const { limitOf } = await import("./entitlements");
+const { limitOf } =
+  await import("@mi-pasaporte/domain/server/entitlements/index");
 
 /** El tope sale del catalogo: lo que este caso mide es que el 429 llega ANTES de escribir,
  * no cuanto vale el tope — ese numero lo pinnea `entitlements-window.test.ts`. */

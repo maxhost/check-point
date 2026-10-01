@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCoupon } from "./reward-input";
+import { parseCoupon } from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 /**
  * Spec 0106 / ADR 0098 — the reward's TYPE and its fields, table-driven: one valid and at

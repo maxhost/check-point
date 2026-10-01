@@ -12,10 +12,10 @@ import {
   requestRecovery,
   resendRecovery,
   verifyRecovery,
-} from "./consumer/recovery";
+} from "@mi-pasaporte/domain/server/consumer/recovery";
 import { getDb } from "@mi-pasaporte/db";
-import { FakeOtpChannel } from "./otp/fake";
-import { OtpProviderError } from "./otp/core";
+import { FakeOtpChannel } from "@mi-pasaporte/domain/server/otp/fake";
+import { OtpProviderError } from "@mi-pasaporte/domain/server/otp/core";
 import { consumerAccounts, otpChallenges } from "@mi-pasaporte/db/schema";
 
 const phones = ["+59377", "+59376"].map(

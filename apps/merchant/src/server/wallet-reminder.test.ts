@@ -6,7 +6,7 @@ import {
   decideReminder,
   localMinuteOfDay,
   reminderTargetMinute,
-} from "./wallet/reminder";
+} from "@mi-pasaporte/domain/server/wallet/reminder";
 
 /**
  * The day-without-purchase reminder (spec 0111 D6), pure: the target time and the four

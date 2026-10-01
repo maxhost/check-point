@@ -1,7 +1,10 @@
 import type { FieldErrors } from "./campaign-input";
-import { type CouponDeal, parseCoupon } from "./reward-input";
-import type { CrossAudience } from "./cross-rules";
-import type { TemplateDefinition } from "./templates";
+import {
+  type CouponDeal,
+  parseCoupon,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
+import type { CrossAudience } from "@mi-pasaporte/domain/server/marketing/cross-rules";
+import type { TemplateDefinition } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * THE «OFERTA CRUZADA» HALF OF `enable`'s BODY (spec 0112 / ADR 0104). PURE, called only by

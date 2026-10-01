@@ -3,7 +3,7 @@ import {
   type GoogleRootKey,
   type RootKeySource,
   lengthValue,
-} from "./wallet/google-callback";
+} from "@mi-pasaporte/domain/server/wallet/google-callback";
 
 /**
  * Keys and envelopes of Google's `ECv2SigningOnly` callback, made up by the TESTS (spec

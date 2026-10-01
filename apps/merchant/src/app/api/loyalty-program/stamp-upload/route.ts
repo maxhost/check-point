@@ -4,7 +4,7 @@ import { requireApiPermission } from "../../../../server/api-permission";
 import {
   LoyaltyError,
   createStampUpload,
-} from "../../../../server/loyalty-program";
+} from "@mi-pasaporte/domain/server/loyalty-program";
 
 export const runtime = "nodejs";
 

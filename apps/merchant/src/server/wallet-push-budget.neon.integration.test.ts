@@ -18,7 +18,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
 import { persistGrant } from "./counter/orders";
-import { ensureWalletPass } from "./wallet/core";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
 import { FakePushChannel } from "./wallet/push-channel";
 import { deliverRow } from "./wallet/push";
 

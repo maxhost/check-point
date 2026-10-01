@@ -1,5 +1,5 @@
 import { type SQL, sql } from "drizzle-orm";
-import { toDate } from "../marketing/driver-values";
+import { toDate } from "@mi-pasaporte/domain/server/marketing/driver-values";
 import { CUSTOMERS_PAGE_SIZE, type CustomerQuery } from "./query";
 import { type CustomerReader, withCustomerReader } from "./reader";
 

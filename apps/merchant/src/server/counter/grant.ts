@@ -1,8 +1,8 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { products, programMemberships } from "@mi-pasaporte/db/schema";
-import { computeAccrual } from "../loyalty-program/accrual";
-import type { AccrualInput } from "../loyalty-program/core";
+import { computeAccrual } from "@mi-pasaporte/domain/server/loyalty-program/accrual";
+import type { AccrualInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
 import {
   CounterError,
   type OperatorBusiness,
@@ -10,7 +10,7 @@ import {
   assertLocationInBusiness,
   parseUuid,
   pgErrorCode,
-} from "./core";
+} from "@mi-pasaporte/domain/server/counter/core";
 import { accreditableProgram } from "./resolve";
 import {
   type GrantItem,

@@ -7,8 +7,8 @@ import {
 } from "./counter-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import { programMemberships } from "@mi-pasaporte/db/schema";
-import { SESSION_COOKIE } from "./consumer/core";
-import { issueSession } from "./consumer/session";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { readPlacement, readTurns } from "./marketing-read-support";
 import {
   type World,

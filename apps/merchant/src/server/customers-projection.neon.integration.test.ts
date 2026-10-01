@@ -21,12 +21,12 @@ import {
 } from "./counter-coupon-support";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { businessCustomers, programMemberships } from "@mi-pasaporte/db/schema";
-import { rowsOf } from "./counter/core";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 import { redeemReward } from "./counter/redeem";
 import { redeemCoupon } from "./counter/coupon";
-import { enroll } from "./consumer/enrollment";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { listCustomers } from "./customers/list";
 
 /**

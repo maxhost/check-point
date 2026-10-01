@@ -2,16 +2,22 @@ import { createHash, createVerify, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import forge from "node-forge";
 import { unzipSync } from "fflate";
-import { buildApplePkpass, selfSignedSigner } from "./wallet/apple";
+import {
+  buildApplePkpass,
+  selfSignedSigner,
+} from "@mi-pasaporte/domain/server/wallet/apple";
 import {
   GOOGLE_CLASS_SUFFIX,
   buildGoogleSaveJwt,
   loyaltyClassId,
   loyaltyObjectId,
-} from "./wallet/google";
-import { walletPassResponse } from "./wallet/core";
-import { type PassBuildInput, walletProviderFromEnv } from "./wallet/provider";
-import { generateOpaqueToken } from "./consumer/core";
+} from "@mi-pasaporte/domain/server/wallet/google";
+import { walletPassResponse } from "@mi-pasaporte/domain/server/wallet/core";
+import {
+  type PassBuildInput,
+  walletProviderFromEnv,
+} from "@mi-pasaporte/domain/server/wallet/provider";
+import { generateOpaqueToken } from "@mi-pasaporte/domain/server/consumer/core";
 
 const QR = "QR-TOKEN-abc123_-";
 const input: PassBuildInput = {

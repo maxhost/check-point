@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ConsumerAccountRow } from "./consumer/core";
+import type { ConsumerAccountRow } from "@mi-pasaporte/domain/server/consumer/core";
 
 /**
  * Spec 0111 D5 — the CABLEADO of `last_opened_at`: opening `/c/[webViewToken]` and
@@ -19,22 +19,34 @@ const session = vi.hoisted(() => ({
   issueSession: vi.fn(async () => "session-token"),
 }));
 
-vi.mock("./wallet/reminder-store", () => opened);
-vi.mock("./wallet/core", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./wallet/core")>()),
+vi.mock("@mi-pasaporte/domain/server/wallet/reminder-store", () => opened);
+vi.mock("@mi-pasaporte/domain/server/wallet/core", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@mi-pasaporte/domain/server/wallet/core")
+  >()),
   ...walletCore,
 }));
-vi.mock("./consumer/session", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./consumer/session")>()),
-  ...session,
-}));
-vi.mock("./consumer/programs", () => ({
+vi.mock(
+  "@mi-pasaporte/domain/server/consumer/session",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/consumer/session")
+    >()),
+    ...session,
+  }),
+);
+vi.mock("@mi-pasaporte/domain/server/consumer/programs", () => ({
   listConsumerPrograms: vi.fn(async () => []),
 }));
-vi.mock("./push/subscriptions", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("./push/subscriptions")>()),
-  hasWebPushSubscription: vi.fn(async () => false),
-}));
+vi.mock(
+  "@mi-pasaporte/domain/server/push/subscriptions",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/push/subscriptions")
+    >()),
+    hasWebPushSubscription: vi.fn(async () => false),
+  }),
+);
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: () => ({ value: "cookie" }) }),
   headers: async () => new Map([["user-agent", "Android"]]),

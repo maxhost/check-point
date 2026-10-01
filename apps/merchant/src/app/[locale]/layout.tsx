@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { isSupportedLocale, supportedLocales } from "../../i18n/locales";
+import {
+  isSupportedLocale,
+  supportedLocales,
+} from "@mi-pasaporte/domain/i18n/locales";
 
 export function generateStaticParams() {
   return supportedLocales.map((locale) => ({ locale }));

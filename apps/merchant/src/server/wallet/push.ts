@@ -10,13 +10,13 @@ import {
 import {
   type WebPushChannel,
   webPushChannelFromEnv,
-} from "../push/webpush-channel";
+} from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { deliverTransports } from "./push-transports";
 import { applyBudget } from "./push-budget-store";
 import {
   gateCampaignPush,
   recordCampaignPushSent,
-} from "../marketing/push-delivery";
+} from "@mi-pasaporte/domain/server/marketing/push-delivery";
 
 /** Minimum spacing between two pushes to the same consumer (ADR 0037). */
 export const COOLDOWN_MINUTES = Number(
@@ -63,7 +63,7 @@ export {
   buildTransactionalBody,
   buildRedemptionBody,
   buildCouponBody,
-} from "./push-text";
+} from "@mi-pasaporte/domain/server/wallet/push-text";
 
 type Claim = {
   consumerId: string;
@@ -280,4 +280,4 @@ export async function deliverRow(
 
 // The rotation mechanism (spec 0032 invokes it) lives in `./rotate`; re-exported here
 // so existing importers keep using `./push`. Split out to stay under the file-size hook.
-export { rotatePassCredentials } from "./rotate";
+export { rotatePassCredentials } from "@mi-pasaporte/domain/server/wallet/rotate";

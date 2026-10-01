@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { deleteProduct, updateProduct } from "../../../../../server/catalog";
+import {
+  deleteProduct,
+  updateProduct,
+} from "@mi-pasaporte/domain/server/catalog";
 import {
   catalogError,
   readJson,

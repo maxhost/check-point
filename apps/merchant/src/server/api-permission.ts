@@ -9,7 +9,7 @@ import {
   type ApiOwnerFailure,
   businessStatusFailure,
   DEFAULT_MESSAGES,
-} from "./business-status";
+} from "@mi-pasaporte/domain/server/business-status";
 import {
   hasScope,
   type PermissionScope,

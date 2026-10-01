@@ -16,11 +16,11 @@ import {
 } from "./counter-integration-support";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import { consumerAccounts } from "@mi-pasaporte/db/schema";
-import { rowsOf } from "./counter/core";
+import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 import { redeemReward } from "./counter/redeem";
-import { enroll } from "./consumer/enrollment";
+import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { listCustomers } from "./customers/list";
 import type { CustomerQuery } from "./customers/query";
 

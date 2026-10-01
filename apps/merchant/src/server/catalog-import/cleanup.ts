@@ -6,7 +6,7 @@ import {
   catalogImportFiles,
   catalogImports,
 } from "@mi-pasaporte/db/schema";
-import { deleteObjectKeys } from "../r2";
+import { deleteObjectKeys } from "@mi-pasaporte/domain/server/r2";
 import { touch } from "./quota";
 
 /**

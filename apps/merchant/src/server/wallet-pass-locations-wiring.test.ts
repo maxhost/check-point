@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
-import type { PassLocation } from "./wallet/pass-locations";
+import type { PassLocation } from "@mi-pasaporte/domain/server/wallet/pass-locations";
 
 /**
  * The CABLEADO of spec 0065 phase A4: the doors do not reach the pass by editing
@@ -31,7 +31,7 @@ const readerCalls: string[] = [];
 const appleInputs: Record<string, unknown>[] = [];
 const googleInputs: Record<string, unknown>[] = [];
 
-vi.mock("./wallet/pass-locations-store", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/pass-locations-store", () => ({
   passLocationsForConsumer: async (consumerId: string) => {
     readerCalls.push(consumerId);
     return DOORS;
@@ -39,7 +39,7 @@ vi.mock("./wallet/pass-locations-store", () => ({
   googleObjectPatchFor: async () => ({}),
 }));
 
-vi.mock("./wallet/provider", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/provider", () => ({
   getWalletProvider: () => ({
     appleConfigured: true,
     googleConfigured: true,
@@ -57,7 +57,7 @@ vi.mock("./wallet/provider", () => ({
   }),
 }));
 
-vi.mock("./wallet/core", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/core", () => ({
   ensureWalletPass: async (consumerId: string, provider: string) => ({
     id: "pass-row",
     serialNumber: `serial-${provider}`,
@@ -66,7 +66,7 @@ vi.mock("./wallet/core", () => ({
   }),
 }));
 
-vi.mock("./consumer/session", () => ({
+vi.mock("@mi-pasaporte/domain/server/consumer/session", () => ({
   resolveSession: async () => ({
     id: "consumer-session-id",
     qrToken: "QR",
@@ -76,7 +76,7 @@ vi.mock("./consumer/session", () => ({
   }),
 }));
 
-vi.mock("./wallet/passkit", () => ({
+vi.mock("@mi-pasaporte/domain/server/wallet/passkit", () => ({
   authorizePass: async () => ({ status: "ok" }) as const,
   passServeData: async () => ({
     consumerId: "consumer-serve-id",

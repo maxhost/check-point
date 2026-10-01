@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PDF_CONTENT_TYPE } from "../../../lib/image-formats";
+import { PDF_CONTENT_TYPE } from "@mi-pasaporte/domain/lib/image-formats";
 import {
   CatalogImportRequestError,
   debug,

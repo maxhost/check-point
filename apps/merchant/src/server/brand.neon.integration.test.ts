@@ -10,7 +10,11 @@ if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
-import { BrandError, ownerBusiness, saveBrand } from "./brand";
+import {
+  BrandError,
+  ownerBusiness,
+  saveBrand,
+} from "@mi-pasaporte/domain/server/brand";
 
 const brandInput = (revision: number) => ({
   name: "Marca Integración",

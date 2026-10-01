@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
 import { POST as callback } from "../app/api/public/wallet/google/callback/route";
-import { GOOGLE_ROOT_KEYS_URL } from "./wallet/google-callback";
+import { GOOGLE_ROOT_KEYS_URL } from "@mi-pasaporte/domain/server/wallet/google-callback";
 import {
   ecKeyPair,
   rootKeyOf,

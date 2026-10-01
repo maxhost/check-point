@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { catalogImportFiles, catalogImports } from "@mi-pasaporte/db/schema";
-import { catalogImportObjectKey } from "../r2";
-import { isUniqueViolation } from "../catalog/categories";
+import { catalogImportObjectKey } from "@mi-pasaporte/domain/server/r2";
+import { isUniqueViolation } from "@mi-pasaporte/domain/server/catalog/categories";
 import {
   CATALOG_IMPORT_OPEN_STATUSES,
   type CatalogImportStatus,

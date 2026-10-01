@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type QueueRow, planConsumerDrain } from "./wallet/push";
 import { parseQueueClass } from "./wallet/push-worker";
 import { planTransports } from "./wallet/push-transports";
-import { buildPatchObjectRequest } from "./wallet/google";
+import { buildPatchObjectRequest } from "@mi-pasaporte/domain/server/wallet/google";
 import { FakePushChannel } from "./wallet/push-channel";
 
 /**

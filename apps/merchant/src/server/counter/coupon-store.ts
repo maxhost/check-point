@@ -10,11 +10,11 @@ import {
   walletPushQueue,
 } from "@mi-pasaporte/db/schema";
 import { buildCouponBody } from "../wallet/push";
-import { CounterError } from "./core";
+import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 import { decideCouponRedemption } from "./coupon-decision";
 import { grantCouponExtras } from "./coupon-extras";
-import { recordRedemptionVisit } from "../customers/projection";
-import type { CouponKind } from "../marketing/reward-input";
+import { recordRedemptionVisit } from "@mi-pasaporte/domain/server/customers/projection";
+import type { CouponKind } from "@mi-pasaporte/domain/server/marketing/reward-input";
 
 export { type ActiveCoupon, loadActiveCoupon } from "./coupon-scan";
 

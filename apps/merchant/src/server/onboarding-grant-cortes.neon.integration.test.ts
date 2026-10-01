@@ -16,7 +16,7 @@ import { openMerchantSession } from "./merchant-session";
 import {
   ONBOARDING_GRANT_MINUTES,
   onboardingGrantActive,
-} from "./onboarding-grant";
+} from "@mi-pasaporte/domain/server/onboarding-grant";
 import {
   type GrantSeed,
   dropGrantSeed,

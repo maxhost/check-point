@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { TEMPLATES, templateByKey, templateKeysAtOrAbove } from "./templates";
+import {
+  TEMPLATES,
+  templateByKey,
+  templateKeysAtOrAbove,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * The catalog of prebuilt campaigns (spec 0101). The exact values ARE the assertion: the

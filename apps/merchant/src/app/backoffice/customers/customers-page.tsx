@@ -8,7 +8,7 @@ import {
   composeE164,
   countryByIso,
   flagEmoji,
-} from "../../../lib/countries";
+} from "@mi-pasaporte/domain/lib/countries";
 
 type Customer = {
   name: string;

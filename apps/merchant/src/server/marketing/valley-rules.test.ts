@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { decideCrossOffer } from "./cross-rules";
+import { decideCrossOffer } from "@mi-pasaporte/domain/server/marketing/cross-rules";
 import { facts, member, offer } from "./cross-rules-fixtures";
 import {
   effectiveWindows,
   localClock,
   openWindow,
   windowEndsAt,
-} from "./valley-rules";
+} from "@mi-pasaporte/domain/server/marketing/valley-rules";
 
 /**
  * Spec 0113 — the PURE rules of «Horas valle» that decide in time, and its audience

@@ -22,8 +22,8 @@ import {
   users,
 } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
-import type { ProgramInput } from "./loyalty-program/core";
-import { renderedTerms } from "./loyalty-program/terms";
+import type { ProgramInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
+import { renderedTerms } from "@mi-pasaporte/domain/server/loyalty-program/terms";
 import { PUT } from "../app/api/loyalty-program/route";
 
 /**

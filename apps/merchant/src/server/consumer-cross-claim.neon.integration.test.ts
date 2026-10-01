@@ -19,7 +19,7 @@ import {
 import { seedCampaign } from "./marketing-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import { campaignPushes, walletPushQueue } from "@mi-pasaporte/db/schema";
-import { listConsumerCoupons } from "./consumer/coupons";
+import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
 import { disableTemplate } from "./marketing/template-store";
 
 /**

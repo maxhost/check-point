@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { requireOwner } from "../../../../server/auth-guards";
 import { getBrandKitData } from "../../../../server/brand-kit/data";
-import { consumerOriginOr } from "../../../../server/hosts";
+import { consumerOriginOr } from "@mi-pasaporte/domain/server/hosts";
 import { ModuleHeader } from "../../../components/ui";
 import { BrandKitWizard } from "./brand-kit-wizard";
 

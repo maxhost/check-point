@@ -1,23 +1,26 @@
 import { sql } from "drizzle-orm";
 import { getDb, withDbTransaction } from "@mi-pasaporte/db";
-import { isUuid } from "../counter/core";
+import { isUuid } from "@mi-pasaporte/domain/server/counter/core";
 import { CampaignError } from "./campaign-store";
-import { type Db, rowsOf } from "./cross-store";
-import { toDate } from "./driver-values";
-import type { DetectionStatus } from "./valley-detect";
+import {
+  type Db,
+  rowsOf,
+} from "@mi-pasaporte/domain/server/marketing/cross-store";
+import { toDate } from "@mi-pasaporte/domain/server/marketing/driver-values";
+import type { DetectionStatus } from "@mi-pasaporte/domain/server/marketing/valley-detect";
 import { parseValleyWindows } from "./valley-input";
 import {
   type ValleyWindow,
   type WindowSource,
   effectiveWindows,
-} from "./valley-rules";
+} from "@mi-pasaporte/domain/server/marketing/valley-rules";
 import {
   heatmapOf,
   loadHours,
   loadScanCells,
   loadWindowRows,
   replaceWindows,
-} from "./valley-store";
+} from "@mi-pasaporte/domain/server/marketing/valley-store";
 
 /**
  * THE MERCHANT'S «HORAS VALLE» API (spec 0113 H2 of `0113-contratos-de-api.md`): per

@@ -1,4 +1,4 @@
-import { CardPreview } from "../../../../components/loyalty/card-preview";
+import { CardPreview } from "@mi-pasaporte/domain/components/loyalty/card-preview";
 import { parseMoney } from "../program-form-state";
 import { Alert } from "../../../../ui";
 import { formatMoney, spendToRedeem } from "../format";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { ConsumerProgramSummary } from "../../../server/consumer/programs";
+import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
 import { BottomNav } from "./bottom-nav";
 import { SettingsTab } from "./settings-tab";
 

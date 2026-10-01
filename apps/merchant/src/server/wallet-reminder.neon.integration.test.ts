@@ -19,11 +19,14 @@ import {
   walletPushQueue,
 } from "@mi-pasaporte/db/schema";
 import { persistGrant } from "./counter/orders";
-import { ensureWalletPass } from "./wallet/core";
+import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
-import { markAccountOpened, planReminders } from "./wallet/reminder-store";
-import { REMINDER_BODIES } from "./wallet/reminder";
+import {
+  markAccountOpened,
+  planReminders,
+} from "@mi-pasaporte/domain/server/wallet/reminder-store";
+import { REMINDER_BODIES } from "@mi-pasaporte/domain/server/wallet/reminder";
 
 /**
  * The reminder planner against real rows (spec 0111 D5 + D7). `staleRead` simulates the
@@ -32,20 +35,26 @@ import { REMINDER_BODIES } from "./wallet/reminder";
  * row, and only the `not exists` of the insert keeps the second one out (ORACULO DE M6).
  */
 const flags = vi.hoisted(() => ({ staleRead: false }));
-vi.mock("./wallet/reminder", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./wallet/reminder")>();
-  return {
-    ...actual,
-    decideReminder: (
-      input: Parameters<typeof actual.decideReminder>[0],
-      now: Date,
-    ) =>
-      actual.decideReminder(
-        flags.staleRead ? { ...input, lastReminderAt: null } : input,
-        now,
-      ),
-  };
-});
+vi.mock(
+  "@mi-pasaporte/domain/server/wallet/reminder",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@mi-pasaporte/domain/server/wallet/reminder")
+      >();
+    return {
+      ...actual,
+      decideReminder: (
+        input: Parameters<typeof actual.decideReminder>[0],
+        now: Date,
+      ) =>
+        actual.decideReminder(
+          flags.staleRead ? { ...input, lastReminderAt: null } : input,
+          now,
+        ),
+    };
+  },
+);
 
 const HOUR = 60 * 60 * 1000;
 const consumerIds: string[] = [];

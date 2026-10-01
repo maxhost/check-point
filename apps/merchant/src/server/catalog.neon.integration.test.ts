@@ -25,7 +25,7 @@ import {
   listCatalog,
   ownerBusiness,
   updateProduct,
-} from "./catalog";
+} from "@mi-pasaporte/domain/server/catalog";
 
 type Seed = { userId: string; businessId: string; locationId: string };
 

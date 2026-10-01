@@ -5,7 +5,7 @@ import {
   VALLEY_WEEKS,
   detectValleys,
   openBlocks,
-} from "./valley-detect";
+} from "@mi-pasaporte/domain/server/marketing/valley-detect";
 
 /**
  * Spec 0113 «Deteccion» — the owner's rule (ADR 0103 §5) over SYNTHETIC grids. Each case

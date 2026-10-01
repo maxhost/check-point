@@ -14,7 +14,7 @@ import {
   enableTemplate,
   listTemplates,
 } from "./marketing/template-store";
-import { TEMPLATES } from "./marketing/templates";
+import { TEMPLATES } from "@mi-pasaporte/domain/server/marketing/templates";
 import {
   campaignBody as body,
   campaignWorld as world,

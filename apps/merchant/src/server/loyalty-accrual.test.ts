@@ -3,8 +3,8 @@ import {
   computeAccrual,
   spendToRedeem,
   validateAccrual,
-} from "./loyalty-program/accrual";
-import { LoyaltyError } from "./loyalty-program/core";
+} from "@mi-pasaporte/domain/server/loyalty-program/accrual";
+import { LoyaltyError } from "@mi-pasaporte/domain/server/loyalty-program/core";
 
 describe("validateAccrual (spec 0036)", () => {
   it("accepts per_amount with a positive grant and block amount", () => {
