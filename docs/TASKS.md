@@ -8,19 +8,22 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-30, noche) — 0117: CODIGO CON PASS EN `origin/motor`; RUNBOOK DEL OWNER EN R1
+## ⇥ ESTADO (2026-10-01, madrugada) — EL CLIENTE YA CORRE EN SU PROPIO PROYECTO (`my.checkpass.club`)
 
-**0117 codigo:** `10ebaf9` (implementador) + `f22e858`/`3480994` (orquestador: barrido `accept=` y cableado de
-`www`, los dos mutados rojos) — PASS del revisor `5da5c3a`. Root test 377/3019 verde. **Pusheado a `origin/motor`, NO a
-`main` (`main` = `0930d4b`)**: con `my.` caido, merchant y `www` romperian `/api/public/*` (pases, logos e imagenes del
-backoffice). **Rama de CI:** rol `checkpass_consumer` NOLOGIN por SQL, sin membresias, `false` en `merchant_auth`/`drizzle`,
-DML en las 52 tablas; M6 mutada (true/1) y revertida (false/0). El rol de la API de Neon (miembro de `neon_superuser`)
-se borro con OK del owner. **PROD (2026-09-30, a pedido del owner «ejecuta tu todo lo que hay que hacer en main»):** rol `checkpass_consumer`
-creado por `run_sql` en la rama `main` de Neon como **NOLOGIN** (sin contraseña por el agente) con los mismos GRANT y
-DEFAULT PRIVILEGES; sondas: sin membresias, `false/false/false/false` (super/bypassrls/createrole/login), `false` en
-`merchant_auth` (0 tablas legibles) y `drizzle`, DML en 52/52. Falta que el owner active el login con su contraseña
-(`ALTER ROLE … LOGIN PASSWORD`). **Sigue:** runbook R1–R8 de la spec 0117 DE A UN PASO, verificando la precondicion de cada uno;
-R4b = push `motor` → `main`. Despues marcar la 0117 implementada.
+**Hecho y verificado en PROD (curl con `--resolve`, 2026-10-01):** `main` = `84ce4dd` (0116 + 0117), deploys merchant,
+public y el proyecto nuevo del cliente (`check-point`) `success`. `my./api/health` 200, `my./` 308 → `/wallet`,
+`my./wallet` y `/recover` 200, `my./backoffice` 404; `business./wallet` y `/enroll/*` 308 → `my.` (env de R5 cargadas);
+`www/enroll/*` y `/wallet` 308 → `my.`; `/api/public/consumer/coupons` 401 en `my.`, `business.` y `www` (proxies);
+`my./enroll/<LaCraft>` y `<Platano Garden>` muestran el formulario; sello placeholder 200 `image/png`.
+**Rol `checkpass_consumer`** (PROD y CI): creado por SQL, sin membresias, sin `merchant_auth`/`drizzle`, DML en 52
+tablas, **`BYPASSRLS`** (agregado tras el corte: RLS de 4 tablas lo dejaba en 0 filas → «programa no disponible»;
+`LECCIONES.md` 2026-09-30). Variables del cliente cargadas por el owner (Tanda 1+2); VAPID nuevo en los dos proyectos.
+
+**Pendiente del owner:** R7 — webhook de Stripe y secrets de GitHub `MARKETING_TICK_ENDPOINT`/`WALLET_PUSH_ENDPOINT`/
+`CATALOG_IMPORT_RECONCILE_ENDPOINT` → `https://business.checkpass.club/...` (hoy pasan por el proxy de `www`); R8 — aviso
+a Plantano; QA en telefono: enrolarse, ver la billetera, agregar el pase. **Despues:** marcar 0117 `implementada`.
+Deuda: `@mapbox/search-js-react` sin import en merchant (anterior a la 0117); el guard `merchant-without-consumer` solo
+cubre 4 rutas literales (revisor, declarado).
 
 ### Bloque anterior
 

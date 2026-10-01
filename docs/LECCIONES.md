@@ -1908,3 +1908,16 @@ pasos eran prosa.
 **Regla.** Un runbook para el owner marca en cada paso su PRECONDICION verificable («no hagas el 6 hasta que
 `curl https://my.checkpass.club/api/health` de 200») y el orquestador verifica esa precondicion antes de dar el paso
 siguiente; los pasos irreversibles o visibles para clientes reales van al final y se entregan de a uno.
+
+## 2026-09-30 — el rol de permisos minimos se verifico con `has_table_privilege` y RLS lo dejo ciego
+
+**Que paso.** Tras el corte de la 0117, `my.checkpass.club/enroll/<programa activo>` mostraba «Este programa no esta
+disponible». El rol `checkpass_consumer` tenia DML en las 52 tablas (medido con `has_table_privilege`), pero
+`core.loyalty_program`, `consumer.program_membership`, `core.business_customer` y `core.business_customer_count` tienen
+RLS con politicas solo para `customer_reader`: para cualquier otro rol que no sea el dueño, cero filas y sin error.
+Merchant nunca lo vio porque conecta como `neondb_owner` (el dueño se saltea RLS). Se arreglo en PROD con
+`ALTER ROLE checkpass_consumer BYPASSRLS` (los GRANT siguen dejando afuera `merchant_auth`).
+
+**Regla.** Un rol nuevo se verifica tambien contra RLS: `select relname from pg_class where relrowsecurity` en los
+esquemas que toca, y para cada tabla con RLS decidir politica o `BYPASSRLS` ANTES del corte. `has_table_privilege`
+no ve politicas. Y la prueba que cuenta es una lectura real con ese rol, no una funcion de catalogo.

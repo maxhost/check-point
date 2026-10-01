@@ -255,6 +255,9 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   **devuelve la contraseña en la salida de la herramienta** (queda en el transcript). Se crea con `CREATE ROLE … LOGIN
   PASSWORD` como `neondb_owner` desde un script local que genera la contraseña y no la imprime; asi no tiene
   membresias. Verificar con `has_schema_privilege`/`has_table_privilege` y `pg_auth_members`, no asumiendo.
+  **Y RLS:** 4 tablas (`core.loyalty_program`, `consumer.program_membership`, `core.business_customer`,
+  `core.business_customer_count`) tienen politicas solo para `customer_reader`; un rol que no es dueño ve 0 filas SIN
+  error. `has_table_privilege` no lo muestra: listar `relrowsecurity` y dar politica o `BYPASSRLS` (caso 0117).
 - **RLS, `leakproof` y funciones en Neon — medido el 2026-09-28 (specs 0108/0109, ADR 0100/0101).**
   (1) La app se conecta con `neondb_owner`, que tiene **`rolbypassrls = true`**: una politica RLS sola
   **no aisla nada** (probado con `FORCE`). Para que muerda hay que cambiar de rol dentro de la

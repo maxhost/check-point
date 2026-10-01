@@ -83,6 +83,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA core, consumer
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO checkpass_consumer;
 ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA core, consumer
   GRANT USAGE, SELECT ON SEQUENCES TO checkpass_consumer;
+-- Agregado en PROD 2026-09-30 tras el corte: 4 tablas tienen RLS con politicas solo para
+-- customer_reader; sin esto el rol ve 0 filas ("programa no disponible").
+ALTER ROLE checkpass_consumer BYPASSRLS;
 ```
 
 `neondb_owner` es el dueño unico de las 57 tablas (medido en la rama de CI). **Nada** en `merchant_auth` ni en
