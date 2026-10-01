@@ -53,7 +53,7 @@ export function WelcomeFields({
         value={draft.message}
         onChange={(message) => change({ message })}
         maxLength={template.message.maxLength}
-        description={`${draft.message.length}/${template.message.maxLength} caracteres. Se muestra antes de instalar el pase.`}
+        description={`${draft.message.length}/${template.message.maxLength} caracteres. Se muestra antes de añadir CheckPass al inicio.`}
         errorMessage={errors.message}
       />
       <ChoiceGroup

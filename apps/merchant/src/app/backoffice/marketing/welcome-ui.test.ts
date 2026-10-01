@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { templateByKey } from "../../../server/marketing/templates";
-import { WelcomeOffer } from "../../(consumer)/enroll/[programId]/welcome-offer";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
+import { WelcomeOffer } from "../../../../../consumer/src/app/(consumer)/enroll/[programId]/welcome-offer";
 import type { TemplateView } from "./marketing-types";
 import {
   initialTemplateDraft,
@@ -113,7 +113,7 @@ describe("Bienvenida en la UI", () => {
       expect(body).not.toHaveProperty(field);
   });
 
-  it("la oferta pública muestra las condiciones y explica cuándo llega", () => {
+  it("la oferta pública anuncia la bienvenida sin revelar el premio bloqueado", () => {
     const html = renderToStaticMarkup(
       createElement(WelcomeOffer, {
         offer: {
@@ -126,10 +126,10 @@ describe("Bienvenida en la UI", () => {
         },
       }),
     );
-    expect(html).toContain("Sumate y ganá");
-    expect(html).toContain("Solo en mostrador");
-    expect(html).toContain("en esta misma visita");
-    expect(html).toContain("Apple o Google Wallet");
+    expect(html).toContain("Hay una bienvenida para vos");
+    expect(html).toContain("activá las notificaciones");
+    expect(html).not.toContain("Un café gratis");
+    expect(html).not.toContain("Solo en mostrador");
   });
 
   it("la lista y el detalle de bienvenida no muestran inactividad ni topes nulos", () => {
@@ -193,10 +193,12 @@ describe("Bienvenida en la UI", () => {
         currencyCode: "USD",
       }),
     );
-    expect(list).toContain("Se entrega al instalar el pase");
+    expect(list).toContain("Se entrega al activar notificaciones en CheckPass");
     expect(list).not.toContain("Dormidos hace");
     expect(detail).toContain("Tope de regalos por mes");
-    expect(detail).toContain("Se entrega al instalar el pase");
+    expect(detail).toContain(
+      "Se entrega al activar notificaciones en CheckPass",
+    );
     expect(detail).not.toContain("Dormidos hace");
     expect(detail).not.toContain("tope null");
     expect(detail).not.toContain("de null canjeados");

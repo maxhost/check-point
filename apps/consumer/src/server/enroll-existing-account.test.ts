@@ -217,7 +217,7 @@ describe("the confirmation shows the toast only under existingAccount (spec 0054
   });
 
   it("is non-blocking: an aviso, not a gate on the rest of the screen", () => {
-    expect(confirmation).toContain("<WalletButtons");
+    expect(confirmation).toContain("Añadí CheckPass a tu inicio");
     expect(confirmation).toContain('role="status"');
   });
 

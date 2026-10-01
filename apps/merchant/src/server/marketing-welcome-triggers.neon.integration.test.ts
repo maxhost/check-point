@@ -1,14 +1,23 @@
 import { NextRequest } from "next/server";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { POST as register } from "../app/api/public/wallet/passkit/v1/devices/[deviceLibraryId]/registrations/[passTypeId]/[serialNumber]/route";
-import { POST as enrollRoute } from "../app/api/public/enroll/[programId]/route";
+import { POST as register } from "../../../consumer/src/app/api/public/wallet/passkit/v1/devices/[deviceLibraryId]/registrations/[passTypeId]/[serialNumber]/route";
+import { POST as enrollRoute } from "../../../consumer/src/app/api/public/enroll/[programId]/route";
+import { POST as homeLaunch } from "../../../consumer/src/app/api/public/home/launch/route";
+import { POST as subscribe } from "../../../consumer/src/app/api/public/push/subscribe/route";
+import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import {
+  FakeWebPushChannel,
+  webPushChannelFromEnv,
+} from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { eq } from "drizzle-orm";
-import { getDb } from "./db";
-import { consumerAccounts } from "./schema";
+import { getDb } from "@mi-pasaporte/db";
+import { consumerAccounts } from "@mi-pasaporte/db/schema";
 import { seedLocationsBusiness } from "./locations-integration-support";
 import {
   DAY,
+  activateHomePush,
   dropWelcomeWorlds,
   installOn,
   readWelcomeCoupons,
@@ -28,12 +37,59 @@ import {
 afterAll(dropWelcomeWorlds, 120_000);
 
 describe.skipIf(!integrationEnabled)("welcome gift — trigger routes", () => {
-  it("ORACULO DE M7: PassKit's registration issues the gift (no tick)", async () => {
+  it("Home launch then push opt-in issues one gift and one first notice", async () => {
+    const now = Date.now();
+    const world = await welcomeWorld("Welcome Home", {
+      activatedAt: new Date(now - DAY),
+    });
+    const person = await welcomeConsumer(world, new Date(now - 60_000));
+    const session = await issueSession(person.consumerId);
+    const headers = { cookie: `${SESSION_COOKIE}=${session}` };
+
+    const launched = await homeLaunch(
+      new NextRequest("https://example.test/api/public/home/launch", {
+        method: "POST",
+        headers,
+      }),
+    );
+    expect(launched.status).toBe(200);
+    expect(await readWelcomeCoupons(world.seed.business.id)).toEqual([]);
+
+    const url = "https://push.test/welcome-home-" + now;
+    const channel = webPushChannelFromEnv() as FakeWebPushChannel;
+    const beforePushes = channel.calls.length;
+    const body = JSON.stringify({
+      endpoint: url,
+      keys: { p256dh: "test-key", auth: "test-auth" },
+    });
+    async function optIn() {
+      return subscribe(
+        new NextRequest("https://example.test/api/public/push/subscribe", {
+          method: "POST",
+          headers: { ...headers, "content-type": "application/json" },
+          body,
+        }),
+      );
+    }
+    const first = await optIn();
+    expect(first.status).toBe(201);
+    expect((await first.json()).welcomeIssued).toBe(1);
+    expect(channel.calls.slice(beforePushes)).toHaveLength(1);
+    expect(channel.calls.at(-1)?.payload.title).toContain("bienvenida");
+    expect(await readWelcomeCoupons(world.seed.business.id)).toHaveLength(1);
+    const replay = await optIn();
+    expect((await replay.json()).welcomeIssued).toBe(0);
+    expect(channel.calls.slice(beforePushes)).toHaveLength(1);
+    expect(await readWelcomeCoupons(world.seed.business.id)).toHaveLength(1);
+  }, 120_000);
+
+  it("PassKit registration can recover an eligible welcome trigger (no tick)", async () => {
     const now = Date.now();
     const world = await welcomeWorld("Welcome M7", {
       activatedAt: new Date(now - DAY),
     });
     const person = await welcomeConsumer(world, new Date(now - 60_000));
+    await activateHomePush(person);
     const device = `dev-m7-${now}`;
     const response = await register(
       new NextRequest(

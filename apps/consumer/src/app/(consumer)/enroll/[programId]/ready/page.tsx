@@ -7,7 +7,6 @@ import {
   walletManifestPathFor,
 } from "@mi-pasaporte/domain/server/consumer/core";
 import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
-import { vapidFromEnv } from "@mi-pasaporte/domain/server/push/vapid";
 import { EnrollConfirmation } from "../enroll-confirmation";
 
 export const dynamic = "force-dynamic";
@@ -52,9 +51,7 @@ export default async function EnrollReadyPage({
       <EnrollConfirmation
         firstName={account.firstName}
         businessName={landing.businessName}
-        brandPrimaryColor={landing.brandPrimaryColor}
-        vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
-        walletManifestPath={walletManifestPathFor(account.webViewToken)}
+        welcomeOffer={landing.welcomeOffer}
         existingAccount={(await searchParams).existing === "1"}
       />
     </main>

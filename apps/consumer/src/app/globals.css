@@ -363,3 +363,47 @@ button:disabled {
   margin-top: 4px;
   color: #637067;
 }
+
+.consumer-welcome-coupons {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.consumer-welcome-coupon {
+  padding: 19px;
+  border: 1px solid #eacb8b;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #fff8e8, #fffdf8);
+  box-shadow: 0 8px 24px rgba(95, 66, 22, 0.08);
+}
+.consumer-welcome-coupon-tag {
+  color: #8f631e;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+}
+.consumer-welcome-coupon h3 {
+  margin: 7px 0 3px;
+  color: #3c2b16;
+  font-size: 21px;
+  line-height: 1.2;
+}
+.consumer-welcome-coupon p {
+  margin: 6px 0;
+  color: #68553a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.consumer-welcome-coupon button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 11px;
+  background: #166849;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+}

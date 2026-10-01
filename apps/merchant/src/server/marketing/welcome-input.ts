@@ -1,6 +1,12 @@
 import type { FieldErrors } from "./campaign-input";
-import { type CouponDeal, parseCoupon } from "./reward-input";
-import type { TemplateDefinition, WelcomeRedeemFrom } from "./templates";
+import {
+  type CouponDeal,
+  parseCoupon,
+} from "@mi-pasaporte/domain/server/marketing/reward-input";
+import type {
+  TemplateDefinition,
+  WelcomeRedeemFrom,
+} from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * THE «BIENVENIDA» HALF OF `enable`'s BODY (spec 0107 §2 / ADR 0099). PURE, called only by
@@ -100,7 +106,7 @@ export function welcomeParams(
     reminderDays >= validDays
   ) {
     errors.welcomeReminderDays =
-      "El aviso tiene que ser antes del vencimiento: elegí menos días.";
+      "El aviso tiene que ser antes del vencimiento: elige menos días.";
   }
   const cap = absent(body.welcomeMonthlyCap)
     ? def.monthlyCap.default
@@ -140,7 +146,7 @@ export function welcomeDeal(
 ): CouponDeal | undefined {
   if (!absent(body.channels))
     errors.channels =
-      "La bienvenida no sale por un canal: se entrega al instalar el pase.";
+      "La bienvenida se entrega al abrir CheckPass desde el inicio y activar las notificaciones.";
   if (!absent(body.dormantDays))
     errors.dormantDays = "La bienvenida no usa días sin venir.";
   if (

@@ -8,23 +8,25 @@ import {
 import { seedLocationsBusiness } from "./locations-integration-support";
 import { seedMembership } from "./marketing-integration-support";
 import { dropCampaigns } from "./marketing-read-support";
-import { getDb } from "./db";
+import { getDb } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
   campaigns,
+  consumerAccounts,
   couponRedemptions,
+  webPushSubscriptions,
   walletPasses,
   walletPushDevices,
   welcomeDevices,
-} from "./schema";
-import type { WelcomeRedeemFrom } from "./marketing/templates";
+} from "@mi-pasaporte/db/schema";
+import type { WelcomeRedeemFrom } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
  * The world of the «Bienvenida» suites (spec 0107): a `plus` business with a LIVE
  * subscription (the plan gate is `campaigns.enabled`, `plan-gate.ts`) in
  * `America/Guayaquil` (UTC−5, no DST — the seed's zone), its welcome campaign switched on
- * at a chosen instant, and consumers enrolled at a chosen instant with an Apple pass —
- * INSTALLED only when the case registers a device. Every assertion reads by SQL.
+ * at a chosen instant, and consumers enrolled at a chosen instant with an Apple pass.
+ * `installOn` also activates Home and Web Push for the existing integration cases.
  */
 
 export const DAY = 86_400_000;
@@ -60,7 +62,7 @@ export async function welcomeWorld(
       name: "Bienvenida",
       status: "active",
       activatedAt: opts.activatedAt,
-      message: "Sumate hoy y en tu próxima visita te llevás un regalo",
+      message: "Únete hoy y recibe un regalo en tu próxima visita",
       couponLabel: "Un café gratis",
       couponCost: "1.20",
       couponKind: "free_product",
@@ -129,6 +131,24 @@ export async function installOn(
       walletPassId: person.passId,
       deviceLibraryId,
       pushToken: `push-${randomUUID()}`,
+    });
+  await activateHomePush(person);
+}
+
+/** Test fixture: the app opened from Home and its Web Push subscription was saved. */
+export async function activateHomePush(person: WelcomeConsumer): Promise<void> {
+  await getDb()
+    .update(consumerAccounts)
+    .set({ homeLaunchedAt: new Date() })
+    .where(eq(consumerAccounts.id, person.consumerId));
+  await getDb()
+    .insert(webPushSubscriptions)
+    .values({
+      consumerId: person.consumerId,
+      endpoint: `https://push.test/${randomUUID()}`,
+      p256dhKey: "test-key",
+      authKey: "test-auth",
+      platform: "android",
     });
 }
 
