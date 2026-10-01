@@ -249,6 +249,12 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   del revisor, nunca antes. `delete_branch` (MCP Neon) esta gateado como destructivo:
   pedir confirmacion del owner antes de borrar ramas efimeras. Alternativa sin gate: crear la
   rama efimera con `expiresAt` (ISO) para que Neon la borre sola.
+- **Un rol de permisos minimos NO se crea por la API ni la consola de Neon (medido 2026-09-30, spec 0117).**
+  `mcp__neon__create_postgres_role` (y la consola) lo hacen **miembro de `neon_superuser`** con `BYPASSRLS` y
+  `CREATEROLE`: lee `merchant_auth` sin un solo `GRANT`, y `REVOKE neon_superuser` da `permission denied`. Ademas
+  **devuelve la contraseña en la salida de la herramienta** (queda en el transcript). Se crea con `CREATE ROLE … LOGIN
+  PASSWORD` como `neondb_owner` desde un script local que genera la contraseña y no la imprime; asi no tiene
+  membresias. Verificar con `has_schema_privilege`/`has_table_privilege` y `pg_auth_members`, no asumiendo.
 - **RLS, `leakproof` y funciones en Neon — medido el 2026-09-28 (specs 0108/0109, ADR 0100/0101).**
   (1) La app se conecta con `neondb_owner`, que tiene **`rolbypassrls = true`**: una politica RLS sola
   **no aisla nada** (probado con `FORCE`). Para que muerda hay que cambiar de rol dentro de la
