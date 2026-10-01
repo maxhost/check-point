@@ -17,6 +17,7 @@ import { suggestedRewardLabel } from "./reward-draft";
 import { MarketingAudiencePreview } from "./marketing-audience-preview";
 import { MarketingLocationPicker } from "./marketing-location-picker";
 import { WelcomeFields } from "./welcome-fields";
+import { CrossFields } from "./cross-fields";
 
 const channelLabels = { proximity: "Proximidad", push: "Push" };
 const repeatLabels = {
@@ -48,6 +49,19 @@ export function TemplateFields({
   if (template.welcome)
     return (
       <WelcomeFields
+        template={template}
+        draft={draft}
+        change={change}
+        errors={errors}
+        settings={settings}
+        canReadCatalog={canReadCatalog}
+        couponKinds={couponKinds}
+        currencyCode={currencyCode}
+      />
+    );
+  if (template.cross)
+    return (
+      <CrossFields
         template={template}
         draft={draft}
         change={change}

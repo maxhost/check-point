@@ -74,7 +74,11 @@ export function TemplateEditor({
         marketingRequest<{ settings: MarketingSettings }>(
           "/api/marketing/settings",
         ),
-        readMarketingLocations(canReadLocations && templateKey !== "welcome"),
+        readMarketingLocations(
+          canReadLocations &&
+            templateKey !== "welcome" &&
+            templateKey !== "cross",
+        ),
       ]);
       const found = catalog.templates.find((item) => item.key === templateKey);
       if (!found) throw new MarketingApiError(404, "not_found");

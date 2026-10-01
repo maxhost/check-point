@@ -1,6 +1,7 @@
 import type {
   Channel,
   CouponKind,
+  CrossAudience,
   TemplateView,
   WelcomeRedeemFrom,
 } from "./marketing-types";
@@ -27,6 +28,9 @@ export type TemplateDraft = RewardDraft & {
   welcomeReminderDays: number | null;
   welcomeMonthlyCap: number | null;
   welcomeRedeemFrom: WelcomeRedeemFrom | null;
+  crossAudience: CrossAudience | null;
+  crossValidDays: number | null;
+  crossMonthlyCap: number | null;
 };
 
 export function initialTemplateDraft(template: TemplateView): TemplateDraft {
@@ -46,6 +50,9 @@ export function initialTemplateDraft(template: TemplateView): TemplateDraft {
     welcomeReminderDays: template.welcome?.reminderDays.default ?? null,
     welcomeMonthlyCap: template.welcome?.monthlyCap.default ?? null,
     welcomeRedeemFrom: template.welcome?.redeemFrom.default ?? null,
+    crossAudience: template.cross?.audience.default ?? null,
+    crossValidDays: template.cross?.validDays.default ?? null,
+    crossMonthlyCap: template.cross?.monthlyCap.default ?? null,
   };
 }
 
@@ -58,12 +65,14 @@ export function templateDraftErrors(
   const errors: Record<string, string> = {};
   if (
     !template.welcome &&
+    !template.cross &&
     (!draft.channels.length ||
       draft.channels.some((channel) => !template.channels.includes(channel)))
   )
     errors.channels = "Elegí al menos un canal disponible.";
   if (
     template.dormantDays &&
+    (!template.cross || draft.crossAudience === "dormant") &&
     !template.dormantDays.options.includes(draft.dormantDays ?? NaN)
   )
     errors.dormantDays = "Elegí una opción de días.";
@@ -86,9 +95,30 @@ export function templateDraftErrors(
   if (template.couponRequired && !draft.coupon)
     errors.couponLabel = "La bienvenida necesita un premio.";
   if (draft.coupon) {
-    Object.assign(errors, rewardErrors(draft, couponKinds, !template.welcome));
-    if (!end && !template.welcome)
+    Object.assign(
+      errors,
+      rewardErrors(draft, couponKinds, !template.welcome && !template.cross),
+    );
+    if (!end && !template.welcome && !template.cross)
       errors.endsAt = "Una campaña con cupón necesita fecha de fin.";
+  }
+  if (template.cross) {
+    if (!draft.coupon)
+      errors.couponLabel = "La oferta cruzada necesita un premio.";
+    if (
+      !template.cross.audience.options.includes(
+        draft.crossAudience as CrossAudience,
+      )
+    )
+      errors.crossAudience = "Elegí un público disponible.";
+    if (!template.cross.validDays.options.includes(draft.crossValidDays ?? NaN))
+      errors.crossValidDays = "Elegí una vigencia disponible.";
+    if (
+      !Number.isInteger(draft.crossMonthlyCap) ||
+      (draft.crossMonthlyCap ?? 0) < template.cross.monthlyCap.min ||
+      (draft.crossMonthlyCap ?? Infinity) > template.cross.monthlyCap.max
+    )
+      errors.crossMonthlyCap = `Elegí un tope entre ${template.cross.monthlyCap.min} y ${template.cross.monthlyCap.max}.`;
   }
   if (template.welcome) {
     const welcome = template.welcome;
@@ -152,9 +182,18 @@ export function templateDraftBody(
           welcomeMonthlyCap: draft.welcomeMonthlyCap,
           welcomeRedeemFrom: draft.welcomeRedeemFrom,
         }
-      : { channels: draft.channels, dormantDays: draft.dormantDays }),
+      : template.cross
+        ? {
+            crossAudience: draft.crossAudience,
+            crossValidDays: draft.crossValidDays,
+            crossMonthlyCap: draft.crossMonthlyCap,
+            ...(draft.crossAudience === "dormant"
+              ? { dormantDays: draft.dormantDays }
+              : {}),
+          }
+        : { channels: draft.channels, dormantDays: draft.dormantDays }),
     message: draft.message.trim(),
-    ...(!template.welcome && includeExcludedLocationIds
+    ...(!template.welcome && !template.cross && includeExcludedLocationIds
       ? { excludedLocationIds: draft.excludedLocationIds }
       : {}),
     ...(draft.startsAt
@@ -162,7 +201,7 @@ export function templateDraftBody(
       : {}),
     endsAt: draft.endsAt ? businessDateIso(draft.endsAt, timeZone) : null,
     ...(draft.coupon && template.couponAllowed
-      ? rewardBody(draft, true, !template.welcome)
+      ? rewardBody(draft, true, !template.welcome && !template.cross)
       : {}),
     ...(template.nearReward
       ? {

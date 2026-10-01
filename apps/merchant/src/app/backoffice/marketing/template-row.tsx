@@ -12,6 +12,7 @@ const groupNames: Record<string, string> = {
   welcome: "Nuevos clientes",
   reactivation: "Reactivación",
   balance: "Saldo y premios",
+  cross: "Descubrimiento",
 };
 const formatDate = (value: string, timeZone: string | null) =>
   new Intl.DateTimeFormat("es-EC", {
@@ -106,10 +107,12 @@ export function TemplateRow({
       <p className="mt-2 text-sm text-content-muted">
         {groupNames[template.group] ?? template.group} ·{" "}
         {template.welcome
-          ? "Se entrega al instalar el pase"
-          : template.channels
-              .map((channel) => channelNames[channel])
-              .join(" y ")}
+          ? "Se entrega al activar notificaciones en CheckPass"
+          : template.cross
+            ? "Aparece en Mis beneficios"
+            : template.channels
+                .map((channel) => channelNames[channel])
+                .join(" y ")}
       </p>
       {live && (
         <p className="mt-2 text-sm font-semibold">

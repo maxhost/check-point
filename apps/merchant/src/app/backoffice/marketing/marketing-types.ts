@@ -7,6 +7,7 @@ export type CouponKind =
   | "extra_points";
 export type DiscountUnit = "percent" | "amount";
 export type WelcomeRedeemFrom = "next_day" | "same_visit";
+export type CrossAudience = "non_members" | "dormant" | "any";
 export type CampaignWelcome = {
   validDays: number;
   reminderDays: number;
@@ -42,6 +43,11 @@ export type Campaign = {
   nearRewardPercent: number | null;
   rewardRepeat: "once" | "every_30_days" | null;
   welcome?: CampaignWelcome | null;
+  cross?: {
+    audience: CrossAudience;
+    validDays: number;
+    monthlyCap: number;
+  } | null;
   startsAt: string;
   endsAt: string | null;
   activatedAt: string | null;
@@ -70,6 +76,11 @@ export type TemplateView = {
       options: WelcomeRedeemFrom[];
       default: WelcomeRedeemFrom;
     };
+  } | null;
+  cross?: {
+    audience: { options: CrossAudience[]; default: CrossAudience };
+    validDays: { options: number[]; default: number };
+    monthlyCap: { min: number; max: number; default: number };
   } | null;
   nearReward: {
     stamps: { options: number[]; default: number };
