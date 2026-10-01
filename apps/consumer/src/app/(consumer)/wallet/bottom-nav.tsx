@@ -4,7 +4,7 @@
  * declarado en el ADR: la sección no tiene URL propia y la barra pasa de dos botones a tres
  * (`grid-template-columns` de `.consumer-bottom-nav` en `globals.css`).
  */
-export type WalletTab = "programs" | "qr" | "settings";
+export type WalletTab = "benefits" | "programs" | "qr" | "settings";
 
 export function BottomNav({
   activeTab,
@@ -18,6 +18,17 @@ export function BottomNav({
       className="consumer-bottom-nav"
       aria-label="Secciones de Check Pass Club"
     >
+      <button
+        type="button"
+        aria-current={activeTab === "benefits" ? "page" : undefined}
+        onClick={() => onChange("benefits")}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16v5a2.5 2.5 0 0 0 0 5v2H4v-2a2.5 2.5 0 0 0 0-5V7Z" />
+          <path d="M12 7v12" strokeDasharray="2 2" />
+        </svg>
+        <span>Beneficios</span>
+      </button>
       <button
         type="button"
         aria-current={activeTab === "programs" ? "page" : undefined}
@@ -37,7 +48,7 @@ export function BottomNav({
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M8 8h2v2H8zM14 8h2v2h-2zM8 14h2v2H8zM14 14h2v2h-2z" />
         </svg>
-        <span>Mi QR</span>
+        <span>Pase</span>
       </button>
       <button
         type="button"
@@ -48,7 +59,7 @@ export function BottomNav({
           <circle cx="12" cy="12" r="3.2" />
           <path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.7-1.3-1.9-3.3-2 .8a7.6 7.6 0 0 0-2.6-1.5L14.2 3H9.8l-.4 2.2a7.6 7.6 0 0 0-2.6 1.5l-2-.8-1.9 3.3 1.7 1.3a7.6 7.6 0 0 0 0 3l-1.7 1.3 1.9 3.3 2-.8a7.6 7.6 0 0 0 2.6 1.5l.4 2.2h4.4l.4-2.2a7.6 7.6 0 0 0 2.6-1.5l2 .8 1.9-3.3z" />
         </svg>
-        <span>Configuración</span>
+        <span>Cuenta</span>
       </button>
     </nav>
   );

@@ -64,7 +64,12 @@ function find(
 /** El `onChange` del `<input>` del switch, con sus hooks ya montados en `store.states`
  * (0 = `on`, 1 = `busy`, 2 = `failed`, en el orden en que el componente los declara). */
 function switchOnChange(): (event: unknown) => Promise<void> {
-  const tab = SettingsTab({ programs: [program] }) as ReactElement;
+  const tab = SettingsTab({
+    programs: [program],
+    firstName: "Ana",
+    lastName: "Pérez",
+    phone: "+593999999999",
+  }) as ReactElement;
   const child = find(tab, (element) => typeof element.type === "function");
   if (!child) throw new Error("no se encontró el MarketingSwitch en el árbol");
   const rendered = (child.type as (props: unknown) => ReactElement)(

@@ -30,6 +30,9 @@ describe("la pestaña de Configuración — render", () => {
   it("una fila por membresía, encendida por defecto y apagada si hay opt-out", () => {
     const html = renderToStaticMarkup(
       h(SettingsTab, {
+        firstName: "Ana",
+        lastName: "Pérez",
+        phone: "+593999999999",
         programs: [
           program(),
           program({
@@ -51,22 +54,29 @@ describe("la pestaña de Configuración — render", () => {
   });
 
   it("sin membresías no muestra ningún interruptor ni el texto de promociones", () => {
-    const html = renderToStaticMarkup(h(SettingsTab, { programs: [] }));
+    const html = renderToStaticMarkup(
+      h(SettingsTab, {
+        programs: [],
+        firstName: "Ana",
+        lastName: "Pérez",
+        phone: "+593999999999",
+      }),
+    );
     expect(html).not.toContain("<input");
     expect(html).not.toContain("Promociones de");
     expect(html).toContain("Todavía no hay nada que configurar");
   });
 
-  it("la barra inferior tiene TRES pestañas y marca la activa", () => {
+  it("la barra inferior tiene cuatro destinos y marca el activo", () => {
     const html = renderToStaticMarkup(
       h(BottomNav, { activeTab: "settings", onChange: () => {} }),
     );
-    expect(html.match(/<button/g) ?? []).toHaveLength(3);
+    expect(html.match(/<button/g) ?? []).toHaveLength(4);
     // `aria-current="page"` en una sola, y en la tercera: con las tres marcadas —o con
     // ninguna— el usuario no sabe dónde está.
     expect(html.match(/aria-current="page"/g) ?? []).toHaveLength(1);
     expect(html.lastIndexOf('aria-current="page"')).toBeGreaterThan(
-      html.lastIndexOf("Mi QR"),
+      html.lastIndexOf("Pase"),
     );
   });
 });

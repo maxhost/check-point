@@ -9,9 +9,8 @@ import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { renderQrSvg } from "@mi-pasaporte/domain/server/wallet/core";
 import { vapidFromEnv } from "@mi-pasaporte/domain/server/push/vapid";
 import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/programs";
-import { listWelcomeCoupons } from "@mi-pasaporte/domain/server/consumer/welcome-coupons";
+import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
 import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
-import { hasWebPushSubscription } from "@mi-pasaporte/domain/server/push/subscriptions";
 import { markAccountOpened } from "@mi-pasaporte/domain/server/wallet/reminder-store";
 import { WalletShell } from "./wallet-shell";
 
@@ -86,16 +85,14 @@ export default async function WalletPage() {
     );
   }
 
-  const [qrSvg, ua, programs, hasSubscription, welcomeCoupons] =
-    await Promise.all([
-      renderQrSvg(account.qrToken),
-      headers().then((h) => h.get("user-agent") ?? ""),
-      listConsumerPrograms(account.id),
-      hasWebPushSubscription(account.id),
-      listWelcomeCoupons(account.id),
-      // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
-      markAccountOpened(account.id),
-    ]);
+  const [qrSvg, ua, programs, coupons] = await Promise.all([
+    renderQrSvg(account.qrToken),
+    headers().then((h) => h.get("user-agent") ?? ""),
+    listConsumerPrograms(account.id),
+    listConsumerCoupons(account.id),
+    // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
+    markAccountOpened(account.id),
+  ]);
   // Show only the Wallet platform supported by the current device.
   const isIos = /iphone|ipad|ipod/i.test(ua);
   const welcomeLanding = programs[0]
@@ -106,9 +103,11 @@ export default async function WalletPage() {
     <WalletShell
       accountId={account.id}
       firstName={account.firstName}
+      lastName={account.lastName}
+      phone={account.phoneE164}
       programs={programs}
-      welcomeCoupons={welcomeCoupons}
-      initialTab={hasSubscription ? "programs" : "qr"}
+      coupons={coupons}
+      initialTab="benefits"
       qrSvg={qrSvg}
       isIos={isIos}
       vapidPublicKey={vapidFromEnv()?.publicKey ?? null}
