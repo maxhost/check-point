@@ -38,9 +38,15 @@ vi.mock(
 vi.mock("@mi-pasaporte/domain/server/consumer/programs", () => ({
   listConsumerPrograms: vi.fn(async () => []),
 }));
-vi.mock("@mi-pasaporte/domain/server/consumer/welcome-coupons", () => ({
-  listWelcomeCoupons: vi.fn(async () => []),
-}));
+vi.mock(
+  "@mi-pasaporte/domain/server/consumer/coupons",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/consumer/coupons")
+    >()),
+    listConsumerCoupons: vi.fn(async () => []),
+  }),
+);
 vi.mock(
   "@mi-pasaporte/domain/server/push/subscriptions",
   async (importOriginal) => ({
