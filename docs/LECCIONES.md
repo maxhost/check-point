@@ -1897,3 +1897,14 @@ despachado y la spec prohibiendo tocar `app/backoffice/**`.
 **Regla.** Ampliar un union/enum del servidor exige, antes de cerrar la spec, un `rg` de sus CONSUMIDORES (incluida la
 UI) y un typecheck de prueba con el valor agregado — dos minutos. «Tiene su propio tipo» no prueba que no le llegue
 el del servidor. Es la tercera de la familia de CLAUDE.md: una afirmacion de mecanismo medida hasta la mitad.
+
+## 2026-09-30 — un runbook entregado antes del deploy se ejecuto fuera de orden
+
+**Que paso.** El runbook de la 0114 se le dio al owner con 8 pasos en orden mientras el codigo todavia no estaba en
+PROD. El owner movio `www` al proyecto publico (paso 6) antes de agregar `my.` y cargar las env (pasos 2–3): `www`
+empezo a redirigir los QR impresos y el link del pase a un `my.checkpass.club` que no respondia. Nada lo impedia: los
+pasos eran prosa.
+
+**Regla.** Un runbook para el owner marca en cada paso su PRECONDICION verificable («no hagas el 6 hasta que
+`curl https://my.checkpass.club/api/health` de 200») y el orquestador verifica esa precondicion antes de dar el paso
+siguiente; los pasos irreversibles o visibles para clientes reales van al final y se entregan de a uno.

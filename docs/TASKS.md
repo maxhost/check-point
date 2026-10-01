@@ -8,6 +8,45 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-09-30, cierre de sesion) — SEPARAR CLIENTE DE COMERCIO: FASE 1 HECHA, SIGUE LA 0116
+
+**Retomar con: escribir la SPEC 0116 (fase 2 del ADR 0107)** — paquetes internos de dominio que usan las dos apps
+(pases/cola de Wallet, consumer, cupones y ofertas de marketing, OTP, R2, loyalty DTO, catalog/brand de las rutas
+publicas) + `apps/consumer` REAL con las pantallas `app/(consumer)/*` y `app/api/public/*` de merchant (hoy 45
+archivos), borrando sus demos; merchant sigue sirviendo todo (sin trafico a consumer). Medir contra el arbol de
+`563d817` ANTES de escribir (el mapa de imports del ADR 0107 es de antes del movimiento). Despues: handoff → `/clear`
+→ 0117 (corte: proyecto Vercel del cliente, rol Postgres sin `merchant_auth`, traspaso de `my.`, borrado en merchant).
+**Owner (2026-09-30):** paquetes internos; rol de base por app en la fase 3; las 3 fases seguidas; mientras tanto
+NO se suman features del cliente.
+
+**Hecho y verificado hoy (todo en `main` = `563d817`):**
+- 0112 oferta cruzada y 0113 horas valle: EN PROD (migraciones 0057/0058 por `run_sql_transaction` con OK del owner,
+  PROD == rama `ci-integration` por md5 de constraints/columnas/indices). Esperan QA del owner con la UI de GPT.
+- 0114 un subdominio por audiencia (ADR 0106): EN PROD (`57164f3`). 0115 `packages/db`: EN PROD (`563d817`, PASS
+  `385e587`; deploys merchant y public `success`; `www/` 200, `www/api/health` 200, `business./api/health` 200,
+  `business./es/business/onboarding` 200).
+- 2 emails de owners marcados verificados por SQL a pedido del owner (los 3 `@staff.invalid` no).
+
+**PENDIENTE DEL OWNER — URGENTE (medido 2026-09-30 al cierre):** `www` ya esta en el proyecto publico (hizo el paso 6
+del runbook de la 0114 antes del 3). **`my.checkpass.club` NO responde (falla TLS)** → los QR impresos
+`www/enroll/*` de Plantano y el link `/c/*` del pase estan ROTOS hasta que el owner: (1) agregue `my.checkpass.club`
+al proyecto merchant en Vercel (DNS Namecheap ya OK: A `216.198.79.1`); (2) cargue en merchant (Production)
+`MERCHANT_ORIGIN=https://business.checkpass.club`, `CONSUMER_ORIGIN=https://my.checkpass.club`,
+`BETTER_AUTH_URL=https://business.checkpass.club`, `BETTER_AUTH_TRUSTED_ORIGINS=https://www.checkpass.club,https://checkpass.club`,
+borre `PUBLIC_APP_ORIGIN` y haga Redeploy (hoy `business./wallet` da 200 sin redirigir = env sin cargar); (3) avise
+a Plantano («entren por business.checkpass.club, reingresar una vez»); (4) paso 8: webhook de Stripe y secrets
+`MARKETING_TICK_ENDPOINT`/`WALLET_PUSH_ENDPOINT`/`CATALOG_IMPORT_RECONCILE_ENDPOINT` a `business.` (el proxy de
+`www/api` los cubre mientras tanto; la firma de Stripe a traves del proxy NO esta probada). Verificar despues con
+`curl` usando `--resolve <host>:443:216.198.79.1` (el resolver local del agente no resuelve los subdominios).
+
+**Deuda declarada (no bloquea):** `apps/merchant/src/server/brand.ts` 304 lineas (hook de edicion, no gate de CI;
+partir en la proxima spec que lo toque); comentarios con rutas viejas en `packages/db/src/schema/{billing,membership,staff-pin}.ts`
+y `apps/merchant/src/app/backoffice/staff/staff-contract.ts:6` (limpiar en la 0116); `drizzle-kit` queda en devDeps
+de merchant a proposito (peer de better-auth). Arbitro del orden (ADR 0103 §6): NO ahora (no hay superficie escasa);
+posible spec chica de registrar impresiones. QA de la 0111 pendiente.
+
+### Historial de esta sesion (bloques ESTADO anteriores)
+
 ## ⇥ PRODUCTO — LA RED Y LA ATENCION: HORAS VALLE + MODELO CONCEPTUAL DEL MOSTRADOR (2026-09-29)
 
 **ESTADO (2026-09-30, noche): SPEC 0115 (FASE 1 DEL ADR 0107, `packages/db`) SE ESTA IMPLEMENTANDO en este arbol**
