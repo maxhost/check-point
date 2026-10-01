@@ -25,6 +25,30 @@ a Plantano; QA en telefono: enrolarse, ver la billetera, agregar el pase. **Desp
 Deuda: `@mapbox/search-js-react` sin import en merchant (anterior a la 0117); el guard `merchant-without-consumer` solo
 cubre 4 rutas literales (revisor, declarado).
 
+## Bitacora de mutaciones — spec 0118, implementador (2026-10-01)
+
+Archivo: `packages/db/drizzle/0059_rol_del_cliente.sql` (`??`, sin blob: copia limpia en el scratchpad de la sesion,
+`0059.clean.sql`). **shasum limpio `24c03aa79c04b122cfb5e8bb21d3a1a9ab2f6c36`.** Las mutaciones son de BASE en la rama de
+CI (`ci-integration`): se aplican reaplicando el `.sql` mutado como dueño (antes `DROP POLICY IF EXISTS consumer_app_*`) y
+se revierten reaplicando el limpio + re-corriendo la sonda. **Restauracion de emergencia:** copiar `0059.clean.sql` encima
+del archivo, confirmar el shasum y reaplicarlo en la rama de CI (drop de las 10 politicas `consumer_app_*` + el archivo).
+Oraculo positivo medido con un arnes TEMPORAL (`SET ROLE checkpass_consumer` sobre la conexion del dueño) porque la URL de
+login del rol esta rota (hallazgo en el handoff); el arnes no se commitea. Filas abiertas ANTES de medir.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | 0059 | `24c03aa7…` | sin `INSERT` en `consumer.consumer_account` el alta se rompe con 42501 | **ROJO 2/25** (alcance: los 4 archivos positivos, arnes SET ROLE por la conexion DIRECTA): «POST enroll…» → `AssertionError: {"error":"No pudimos completar el enrolamiento.","code":"enroll_failed"}: expected 503 to be 201` y «verify de un telefono nuevo → perfil» → `expected 409 to be 201` (las rutas mapean el error a 503/409). Causa leida con sonda `SET LOCAL ROLE` + el `INSERT`: `42501 permission denied for table consumer_account`. Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 13/13 verde |
+| M2 | 0059 | `24c03aa7…` | un `INSERT ON core."order"` de mas lo caza el negativo (no da 42501) | **ROJO 1/17** (alcance: `consumer-role-denied`; el positivo no puede ver un GRANT de mas): «INSERT en core."order" → 42501» → `AssertionError: expected '23502' to be '42501'` (el INSERT paso el permiso y murio en un NOT NULL). Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 17/17 verde |
+| M3 | 0059 | `24c03aa7…` | sin la politica SELECT de `program_membership` el cliente ve 0 filas (sin error) | **ROJO 6/25** (alcance: los 4 positivos, arnes por la DIRECTA). Por **0 filas, sin error**: «GET enroll/me» y «pagina /wallet» → `AssertionError: expected [] to deeply equal [ Array(1) ]`; la Bienvenida de «PassKit: registrar…» y de «google/callback» → `expected [] to have a length of 1 but got +0` (el emisor lee 0 membresias y no regala, tragado). Ademas «POST marketing-opt-out» → `expected 404 to be 200` (el UPDATE no ve la fila) y «POST enroll» → `503 enroll_failed` (el `RETURNING` del INSERT sin politica SELECT si es error). Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 16/16 verde |
+| M4 | 0059 | `24c03aa7…` | `BYPASSRLS` al final de la 0059 lo caza el negativo | **ROJO** (alcance: negativo + los 4 positivos). Negativo 1/17: «no tiene BYPASSRLS» → `AssertionError: expected [ { rolbypassrls: true } ] to deeply equal [ { rolbypassrls: false } ]`. Positivos 4/25: el caso de guarda de cada archivo, «corre COMO checkpass_consumer, sin BYPASSRLS» → `expected [ { who: 'checkpass_consumer', …(1) } ] to deeply equal …` (el `who` coincide; difiere `bypass`). Los flujos quedan VERDES bajo el bypass, como se esperaba: el bypass no rompe nada, solo lo ven las sondas. Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada, sonda 17/17 verde |
+| M5 | 0059 | `24c03aa7…` | sin revocar los default privileges una tabla nueva queda legible | **ROJO 2/17** (alcance: `consumer-role-denied`). Montaje: se restauro antes el `pg_default_acl` de HOY (`checkpass_consumer=arwd` en tablas, `rU` en secuencias, de core y consumer — leido por SQL) y se aplico la 0059 sin sus dos `ALTER DEFAULT PRIVILEGES … REVOKE`. «una tabla NUEVA de core nace cerrada…» y «y una de consumer tambien» → `AssertionError: expected 'la sentencia NO fue denegada' to be '42501'`. Revertida: `diff` vacio, shasum igual, 0059 limpia reaplicada (`pg_default_acl` de neondb_owner vacio), sonda 17/17 verde |
+
+**Las 5 revertidas** (archivo == `24c03aa7…`; ninguna etiqueta `MUTATION` en el arbol). Trabajo en `b005721`. Rama de CI con
+la 0059 LIMPIA (hash registrado `756b5b2f…` = sha256 del archivo; `rolbypassrls=false`; 10 politicas `consumer_app_*`;
+`pg_default_acl` de neondb_owner vacio). **BLOQUEO DEL OWNER:** `NEON_CI_CONSUMER_DATABASE_URL` trae el usuario
+`ci-integration` (no `checkpass_consumer`) y da `28P01 password authentication failed`: el oraculo positivo con la URL
+real esta ROJO 25/25 por autenticacion (verde 25/25 solo con el arnes `SET ROLE`). Ver el handoff de la 0118.
+
 ### Bloque anterior
 
 ## ⇥ ESTADO (2026-09-30, noche) — FASE 2 HECHA: 0116 EN PROD, SIGUE LA 0117
