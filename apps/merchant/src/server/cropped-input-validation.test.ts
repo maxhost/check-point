@@ -236,6 +236,11 @@ describe("loyalty `stampCropped`", () => {
 // is covered for real in `assets/image.test.ts`). A consumer that stopped honouring the flag,
 // or that inverted the two bounds, turns this red.
 describe("the flag selects the strict decode bound in the three consumers", () => {
+  // The three consumers live in `packages/domain` since spec 0116 (ADR 0108), moved byte for byte.
+  const DOMAIN_SERVER = new URL(
+    "../../../../packages/domain/src/server/",
+    import.meta.url,
+  );
   const CONSUMERS = {
     brand: "brand.ts",
     catalog: "catalog/image.ts",
@@ -245,7 +250,7 @@ describe("the flag selects the strict decode bound in the three consumers", () =
   for (const [surface, file] of Object.entries(CONSUMERS)) {
     it(`${surface} maps cropped → MAX_INPUT_PIXELS_CROPPED`, async () => {
       const { readFile } = await import("node:fs/promises");
-      const source = await readFile(new URL(file, import.meta.url), "utf8");
+      const source = await readFile(new URL(file, DOMAIN_SERVER), "utf8");
       expect(source).toMatch(
         /maxInputPixels:\s*[\w.]*cropped\s*\?\s*MAX_INPUT_PIXELS_CROPPED\s*:\s*MAX_INPUT_PIXELS_FALLBACK/s,
       );

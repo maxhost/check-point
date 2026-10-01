@@ -164,7 +164,7 @@ describe("the file inputs of the three upload surfaces share the accept list", (
       expect(source).toContain(EXPECTED);
       // …and imports it from the single source of truth rather than redeclaring it.
       expect(source).toMatch(
-        /import \{[^}]*ACCEPTED_IMAGE_ACCEPT_ATTR[^}]*\} from "(\.\.\/)+lib\/image-formats"/s,
+        /import \{[^}]*ACCEPTED_IMAGE_ACCEPT_ATTR[^}]*\} from "@mi-pasaporte\/domain\/lib\/image-formats"/s,
       );
       // No comma-joined MIME list anywhere in the file: that is the bug shape.
       expect(source).not.toMatch(/image\/[a-z+]+,image\//);
@@ -231,7 +231,7 @@ describe("the three upload hooks share the client-side type guard", () => {
         "utf8",
       );
       expect(source).toMatch(
-        /import \{[^}]*isAcceptedImageType[^}]*\} from "(\.\.\/)+lib\/image-formats"/s,
+        /import \{[^}]*isAcceptedImageType[^}]*\} from "@mi-pasaporte\/domain\/lib\/image-formats"/s,
       );
       expect(source).toContain("isAcceptedImageType(file.type)");
       // The looser rule this replaced.
