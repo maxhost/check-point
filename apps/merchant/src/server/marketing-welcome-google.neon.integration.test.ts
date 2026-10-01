@@ -9,7 +9,7 @@ import {
   vi,
 } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { POST as callback } from "../app/api/public/wallet/google/callback/route";
+import { POST as callback } from "../../../consumer/src/app/api/public/wallet/google/callback/route";
 import { GOOGLE_ROOT_KEYS_URL } from "@mi-pasaporte/domain/server/wallet/google-callback";
 import {
   ecKeyPair,

@@ -23,8 +23,8 @@ import {
   haversineMeters,
 } from "@mi-pasaporte/domain/server/marketing/cross-rules";
 import type { CrossAudience } from "@mi-pasaporte/domain/server/marketing/cross-rules";
-import { GET } from "../app/api/public/consumer/cross-offers/route";
-import { POST } from "../app/api/public/consumer/cross-offers/[campaignId]/claim/route";
+import { GET } from "../../../consumer/src/app/api/public/consumer/cross-offers/route";
+import { POST } from "../../../consumer/src/app/api/public/consumer/cross-offers/[campaignId]/claim/route";
 
 /**
  * The world of «Oferta cruzada» (spec 0112) against a real base: `plus` businesses with a

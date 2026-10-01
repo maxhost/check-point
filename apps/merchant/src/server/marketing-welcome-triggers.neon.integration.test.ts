@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { POST as register } from "../app/api/public/wallet/passkit/v1/devices/[deviceLibraryId]/registrations/[passTypeId]/[serialNumber]/route";
-import { POST as enrollRoute } from "../app/api/public/enroll/[programId]/route";
+import { POST as register } from "../../../consumer/src/app/api/public/wallet/passkit/v1/devices/[deviceLibraryId]/registrations/[passTypeId]/[serialNumber]/route";
+import { POST as enrollRoute } from "../../../consumer/src/app/api/public/enroll/[programId]/route";
 import { eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { consumerAccounts } from "@mi-pasaporte/db/schema";

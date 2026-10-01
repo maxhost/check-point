@@ -5,7 +5,7 @@ import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { issueWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
-import { GET } from "../app/api/public/consumer/coupons/route";
+import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route";
 import {
   DAY,
   dropWelcomeWorlds,

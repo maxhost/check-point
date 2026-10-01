@@ -61,9 +61,17 @@ describe("legacyRedirects", () => {
 });
 
 describe("legacyRewrites", () => {
-  // ORACULO DE M5: `/api/*` de `www` se reenvia a merchant (MERCHANT_API_ORIGIN).
-  it("proxies /api/:path* to MERCHANT_API_ORIGIN — and nothing else", () => {
-    expect(legacyRewrites("https://api-origin.test")).toEqual([
+  // ORACULO DE M5 (0114): `/api/*` de `www` se reenvia a merchant (MERCHANT_API_ORIGIN).
+  // ORACULO DE M4 (0117): primero `/api/public/*` al cliente — Next toma la primera regla que
+  // matchea, y con el orden invertido `/api/public` iria a merchant.
+  it("proxies /api/public/:path* to CONSUMER_API_ORIGIN first, then /api/:path* to MERCHANT_API_ORIGIN — and nothing else", () => {
+    expect(
+      legacyRewrites("https://api-origin.test", "https://consumer-api.test"),
+    ).toEqual([
+      {
+        source: "/api/public/:path*",
+        destination: "https://consumer-api.test/api/public/:path*",
+      },
       {
         source: "/api/:path*",
         destination: "https://api-origin.test/api/:path*",
@@ -73,36 +81,41 @@ describe("legacyRewrites", () => {
 });
 
 describe("legacyOriginsFromEnv", () => {
-  it("defaults to business. / my. / business.", () => {
+  it("defaults to business. / my. / business. / my.", () => {
     expect(legacyOriginsFromEnv({})).toEqual({
       merchantOrigin: BUSINESS,
       consumerOrigin: MY,
       merchantApiOrigin: BUSINESS,
+      consumerApiOrigin: MY,
     });
     expect(
       legacyOriginsFromEnv({
         MERCHANT_ORIGIN: " ",
         CONSUMER_ORIGIN: "",
         MERCHANT_API_ORIGIN: "",
+        CONSUMER_API_ORIGIN: " ",
       }),
     ).toEqual({
       merchantOrigin: BUSINESS,
       consumerOrigin: MY,
       merchantApiOrigin: BUSINESS,
+      consumerApiOrigin: MY,
     });
   });
 
-  it("reads MERCHANT_ORIGIN, CONSUMER_ORIGIN and MERCHANT_API_ORIGIN", () => {
+  it("reads MERCHANT_ORIGIN, CONSUMER_ORIGIN, MERCHANT_API_ORIGIN and CONSUMER_API_ORIGIN", () => {
     expect(
       legacyOriginsFromEnv({
         MERCHANT_ORIGIN: "https://b.test/",
         CONSUMER_ORIGIN: "https://m.test",
         MERCHANT_API_ORIGIN: "https://merchant-prod.vercel.app",
+        CONSUMER_API_ORIGIN: "https://consumer-prod.vercel.app/",
       }),
     ).toEqual({
       merchantOrigin: "https://b.test",
       consumerOrigin: "https://m.test",
       merchantApiOrigin: "https://merchant-prod.vercel.app",
+      consumerApiOrigin: "https://consumer-prod.vercel.app",
     });
   });
 });

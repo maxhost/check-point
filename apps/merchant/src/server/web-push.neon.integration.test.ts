@@ -27,7 +27,7 @@ import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-cha
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
 import { rotatePassCredentials } from "./wallet/push";
-import { POST as subscribePost } from "../app/api/public/push/subscribe/route";
+import { POST as subscribePost } from "../../../consumer/src/app/api/public/push/subscribe/route";
 
 const consumerIds: string[] = [];
 

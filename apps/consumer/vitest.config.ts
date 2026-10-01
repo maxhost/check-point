@@ -7,5 +7,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Como merchant: los teardowns de las suites `.neon.integration` (spec 0117 mudo una aca)
+    // borran mundos contra una rama compartida y pasan los 10 s del default de vitest.
+    hookTimeout: 120_000,
   },
 });

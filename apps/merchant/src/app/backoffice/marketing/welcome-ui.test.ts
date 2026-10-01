@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
-import { WelcomeOffer } from "../../(consumer)/enroll/[programId]/welcome-offer";
+import { WelcomeOffer } from "../../../../../consumer/src/app/(consumer)/enroll/[programId]/welcome-offer";
 import type { TemplateView } from "./marketing-types";
 import {
   initialTemplateDraft,

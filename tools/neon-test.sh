@@ -5,11 +5,22 @@
 # `NEON_INTEGRATION_ISOLATED=true`, vitest NO lee `.env.local`, y la rama de CI se queda atras
 # de las migraciones. Un `skipped` se lee igual que un `passed`: por eso esto existe.
 #
-#   tools/neon-test.sh                      # toda la suite
-#   tools/neon-test.sh src/server/x.test.ts # un archivo (rutas relativas a apps/merchant)
+#   tools/neon-test.sh                                    # toda la suite
+#   tools/neon-test.sh src/server/x.test.ts               # un archivo (relativo a apps/merchant)
+#   tools/neon-test.sh --app consumer src/server/x.test.ts # un archivo de apps/consumer (spec 0117)
 #
 # NUNCA imprime el valor de una credencial: solo la clave y su largo.
 set -euo pipefail
+
+APP="merchant"
+if [ "${1:-}" = "--app" ]; then
+  APP="${2:-}"
+  shift 2 || { echo "uso: tools/neon-test.sh [--app merchant|consumer] [archivos...]"; exit 1; }
+fi
+case "$APP" in
+  merchant | consumer) ;;
+  *) echo "app desconocida: '$APP' (merchant | consumer)"; exit 1 ;;
+esac
 
 cd "$(dirname "$0")/.."
 ENV_FILE="apps/merchant/.env.local"
@@ -52,5 +63,5 @@ if [ "$#" -eq 0 ]; then
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true pnpm run test
 else
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
-    pnpm --filter @mi-pasaporte/merchant exec vitest run "$@"
+    pnpm --filter "@mi-pasaporte/$APP" exec vitest run "$@"
 fi

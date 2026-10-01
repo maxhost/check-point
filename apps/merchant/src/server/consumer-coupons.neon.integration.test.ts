@@ -20,7 +20,7 @@ import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
-import { GET } from "../app/api/public/consumer/coupons/route";
+import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route";
 
 /**
  * Spec 0106 E3 — `GET /api/public/consumer/coupons` against a real database, through the

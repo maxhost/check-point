@@ -128,7 +128,7 @@ function applePassUrls(input: Record<string, unknown>) {
 
 async function serveInstalledPass() {
   const { GET } =
-    await import("../app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route");
+    await import("../../../consumer/src/app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route");
   return GET(
     request(`${REQUEST_ORIGIN}/api/public/wallet/passkit/v1/passes/pt/s1`),
     { params: Promise.resolve({ serialNumber: "serial-served" }) },
@@ -136,12 +136,14 @@ async function serveInstalledPass() {
 }
 
 async function downloadApplePass() {
-  const { GET } = await import("../app/api/public/wallet/apple.pkpass/route");
+  const { GET } =
+    await import("../../../consumer/src/app/api/public/wallet/apple.pkpass/route");
   return GET(request(`${REQUEST_ORIGIN}/api/public/wallet/apple.pkpass`));
 }
 
 async function googleSaveUrl() {
-  const { GET } = await import("../app/api/public/wallet/google/route");
+  const { GET } =
+    await import("../../../consumer/src/app/api/public/wallet/google/route");
   return GET(request(`${REQUEST_ORIGIN}/api/public/wallet/google`));
 }
 

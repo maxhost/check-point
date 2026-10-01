@@ -6,7 +6,8 @@
  * - las paginas viejas del comercio → 308 a `business.`; las del cliente → 308 a `my.`
  *   (Next pasa la query al destino);
  * - `/api/*` → PROXY (rewrite) a merchant, no 308: un `POST` de Stripe, de un cron o de un
- *   iPhone no sigue un 308 con garantia (H5).
+ *   iPhone no sigue un 308 con garantia (H5). Salvo `/api/public/*`, que es del cliente
+ *   (ADR 0109, spec 0117): esa va PRIMERO al cliente — Next toma la primera que matchea.
  */
 
 export type LegacyRedirect = {
@@ -21,6 +22,7 @@ export type LegacyOrigins = {
   merchantOrigin: string;
   consumerOrigin: string;
   merchantApiOrigin: string;
+  consumerApiOrigin: string;
 };
 
 export const DEFAULT_MERCHANT_ORIGIN = "https://business.checkpass.club";
@@ -47,7 +49,10 @@ function trimOrigin(origin: string): string {
   return origin.trim().replace(/\/+$/, "");
 }
 
-/** Los tres origenes desde el env, con sus defaults (`MERCHANT_API_ORIGIN` → `business.`). */
+/**
+ * Los origenes desde el env, con sus defaults (`MERCHANT_API_ORIGIN` → `business.`,
+ * `CONSUMER_API_ORIGIN` → `my.`).
+ */
 export function legacyOriginsFromEnv(
   env: Record<string, string | undefined>,
 ): LegacyOrigins {
@@ -57,6 +62,7 @@ export function legacyOriginsFromEnv(
     merchantOrigin: pick(env.MERCHANT_ORIGIN, DEFAULT_MERCHANT_ORIGIN),
     consumerOrigin: pick(env.CONSUMER_ORIGIN, DEFAULT_CONSUMER_ORIGIN),
     merchantApiOrigin: pick(env.MERCHANT_API_ORIGIN, DEFAULT_MERCHANT_ORIGIN),
+    consumerApiOrigin: pick(env.CONSUMER_API_ORIGIN, DEFAULT_CONSUMER_ORIGIN),
   };
 }
 
@@ -75,8 +81,15 @@ export function legacyRedirects(
   ];
 }
 
-export function legacyRewrites(merchantApiOrigin: string): LegacyRewrite[] {
+export function legacyRewrites(
+  merchantApiOrigin: string,
+  consumerApiOrigin: string,
+): LegacyRewrite[] {
   return [
+    {
+      source: "/api/public/:path*",
+      destination: `${trimOrigin(consumerApiOrigin)}/api/public/:path*`,
+    },
     {
       source: "/api/:path*",
       destination: `${trimOrigin(merchantApiOrigin)}/api/:path*`,
