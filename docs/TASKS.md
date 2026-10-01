@@ -8,6 +8,13 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-10-01) — 0118 PARQUEADA A PEDIDO DEL OWNER (hay un problema mas importante)
+
+**Retomar:** lo que traiga el owner. La 0118 esta en `PARQUEADO.md` (primera seccion) con los pasos exactos; su codigo
+vive SOLO en la rama local `motor` (`b005721`, `4b4991b`, sin push) — **no pushear `motor` a `main` sin mergear
+`origin/main` (`8ee0a80`, `b2729d1` de otra sesion) y sin el secret corregido**. PROD: cliente en su proyecto en `my.`,
+rol `checkpass_consumer` amplio + `BYPASSRLS` (funciona). Bloque de abajo: estado verificado del corte.
+
 ## ⇥ ESTADO (2026-10-01, madrugada) — EL CLIENTE YA CORRE EN SU PROPIO PROYECTO (`my.checkpass.club`)
 
 **Hecho y verificado en PROD (curl con `--resolve`, 2026-10-01):** `main` = `84ce4dd` (0116 + 0117), deploys merchant,
