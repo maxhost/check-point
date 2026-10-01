@@ -8,12 +8,15 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-09-30, noche, mas tarde) — SPEC 0117 CERRADA (`1ade8b3`) Y SE ESTA IMPLEMENTANDO EN ESTE ARBOL
+## ⇥ ESTADO (2026-09-30, noche) — 0117: CODIGO CON PASS EN `origin/motor`; RUNBOOK DEL OWNER EN R1
 
-**Owner (2026-09-30):** «no quiero parche» (my. NO pasa por merchant); proyecto Vercel lo crea el owner en el dashboard;
-«Todo junto»; raiz de my. → /wallet (ADR 0109). Un subagente `implementador` hace los puntos 1–12 de la 0117 en ESTE
-arbol (rojos = trabajo a medias; `ListAgents` antes de tocar). **Sigue:** revisor → push → rol `checkpass_consumer` en
-rama de CI (sondas + M6) → rol en PROD con OK del owner → runbook R1–R8 DE A UN PASO con su precondicion.
+**0117 codigo:** `10ebaf9` (implementador) + `f22e858`/`3480994` (orquestador: barrido `accept=` y cableado de
+`www`, los dos mutados rojos) — PASS del revisor `5da5c3a`. Root test 377/3019 verde. **Pusheado a `origin/motor`, NO a
+`main` (`main` = `0930d4b`)**: con `my.` caido, merchant y `www` romperian `/api/public/*` (pases, logos e imagenes del
+backoffice). **Rama de CI:** rol `checkpass_consumer` NOLOGIN por SQL, sin membresias, `false` en `merchant_auth`/`drizzle`,
+DML en las 52 tablas; M6 mutada (true/1) y revertida (false/0). El rol de la API de Neon (miembro de `neon_superuser`)
+se borro con OK del owner. **Sigue:** runbook R1–R8 de la spec 0117 DE A UN PASO, verificando la precondicion de cada uno;
+R4b = push `motor` → `main`. Despues marcar la 0117 implementada.
 
 ### Bloque anterior
 
