@@ -31,6 +31,11 @@ archivos: packages/db/src/schema/consumer.ts, packages/db/src/schema/otp.ts, pac
 - Borrado: formulario, `/recover`, `api/public/recovery/*`, `server/otp/*`, `consumer/recovery*`, `rate-limit.ts`,
   `validation.ts` (alta), `rotate.ts`, tablas `otp_challenge`/`otp_delivery`/`enroll_attempt`, y sus tests.
 - Fallback de nombre vacio en el DTO del listado del comercio.
+- **El nombre de marca es «CheckPass Club», junto** (owner, 2026-10-01: «que se llame CheckPass Club»). Lo pide
+  Google: la verificacion de marca rechazo «Check Pass Club» porque la web publica dice «CheckPass Club». Medido con
+  `rg -n "Check Pass"`: 8 apariciones en 7 archivos, todas en `apps/consumer` (`public/sw.js:1,16`, `layout.tsx:6`,
+  `ios-install-hint.tsx:121`, `wallet/page.tsx:60`, `wallet/bottom-nav.tsx:19`, `enroll/[programId]/page.tsx:50`, y
+  `recover/page.tsx:23`, que se borra). Ningun test las nombra.
 
 **No entra:**
 - Cargar o editar el telefono (ni ningun dato) desde el perfil: el owner lo dejo para «si lo necesito en algun
@@ -186,6 +191,7 @@ confirmacion), 0070 §17 (borrar lo viejo), 0106 (`my.`), 0110 (rol minimo).
 | `apps/consumer/src/app/(consumer)/wallet/{page,settings-tab}.tsx` | editar |
 | `apps/public/src/legacy-routes.ts` | editar |
 | `apps/merchant/src/server/customers/list.ts` | editar (`:48`, nombre vacio → «Sin nombre») |
+| `apps/consumer/public/sw.js`, `apps/consumer/src/app/layout.tsx`, `(consumer)/ios-install-hint.tsx`, `(consumer)/wallet/bottom-nav.tsx` | editar («CheckPass Club») |
 | tests: los de recovery/OTP/enroll por telefono (`recovery-routes`, `consumer-role-recovery`, `enroll-existing-account`, `otp`, `recovery-config`, `consumer-recovery*` en merchant) | borrar; `consumer-role*`, `consumer-role-support.ts`, `hosts.test`, `legacy-routes.test`, `wallet-manifest.test` | editar |
 
 ### Disjunta?
@@ -203,6 +209,7 @@ vuelve a abrirse.
 - [ ] `rg -n 'phoneE164|recover|otp' apps/consumer/src packages/domain/src/server/consumer` solo devuelve
       `phoneE164` nullable del DTO/schema (se lista lo que queda y por que).
 - [ ] `rg -n "'/recover'|\"/recover\"" apps packages -g '!**/node_modules/**' -g '!**/.next/**'` → vacio.
+- [ ] `rg -n 'Check Pass' apps packages -g '!**/node_modules/**' -g '!**/.next/**'` → vacio.
 - [ ] Las 7 mutaciones medidas, transcritas y revertidas con `diff` vacio.
 - [ ] Revisor independiente: PASS.
 - [ ] Deploy de `my.checkpass.club` en READY con el sha, y QA del owner (abajo) hecho.
