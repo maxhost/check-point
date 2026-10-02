@@ -61,11 +61,13 @@ export function CampaignResultsView({
   currencyCode,
   channels = ["proximity"],
   isWelcome = false,
+  isCross = false,
 }: {
   results: Results;
   currencyCode: string;
   channels?: Channel[];
   isWelcome?: boolean;
+  isCross?: boolean;
 }) {
   const {
     audience,
@@ -199,12 +201,14 @@ export function CampaignResultsView({
             </p>
           )}
         </ResultCard>
-        <ResultCard title="Alcance del pase" quality={passReach.quality}>
-          <p>
-            Estás en el pase de {passReach.inPass} de tus {passReach.members}{" "}
-            clientes.
-          </p>
-        </ResultCard>
+        {!isCross && (
+          <ResultCard title="Alcance del pase" quality={passReach.quality}>
+            <p>
+              Estás en el pase de {passReach.inPass} de tus {passReach.members}{" "}
+              clientes.
+            </p>
+          </ResultCard>
+        )}
       </div>
     </MarketingPanel>
   );

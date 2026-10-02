@@ -1,4 +1,5 @@
 import { onboardingUrl } from "../site-config";
+import { BrandMark } from "../brand-mark";
 
 const faqs = [
   {
@@ -160,9 +161,7 @@ export function LandingFooter() {
         href="/"
         aria-label="CheckPass Club, inicio para negocios"
       >
-        <span className="brand-symbol">
-          c<span>.</span>
-        </span>
+        <BrandMark />
         <span className="brand-name">
           checkpass<span>.</span>club
         </span>
@@ -173,6 +172,8 @@ export function LandingFooter() {
         <a href="#como-funciona">Cómo funciona</a>
         <a href="#planes">Planes</a>
         <a href="#preguntas">Preguntas</a>
+        <a href="/es/privacy">Privacidad</a>
+        <a href="/es/tos">Términos de uso</a>
       </div>
       <small>
         © {new Date().getFullYear()} CheckPass Club · Cuenca, Ecuador

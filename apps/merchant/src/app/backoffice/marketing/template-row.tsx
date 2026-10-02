@@ -12,6 +12,7 @@ const groupNames: Record<string, string> = {
   welcome: "Nuevos clientes",
   reactivation: "Reactivación",
   balance: "Saldo y premios",
+  cross: "Descubrimiento",
 };
 const formatDate = (value: string, timeZone: string | null) =>
   new Intl.DateTimeFormat("es-EC", {

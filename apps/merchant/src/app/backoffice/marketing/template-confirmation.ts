@@ -2,6 +2,12 @@ import type { TemplateView } from "./marketing-types";
 import type { TemplateDraft } from "./template-draft";
 import { rewardConfirmation } from "./reward-draft";
 
+const crossAudienceLabels = {
+  non_members: "Personas que aún no son clientes",
+  dormant: "Clientes dormidos",
+  any: "Cualquiera de los dos públicos",
+};
+
 export function templateConfirmation(
   template: TemplateView,
   draft: TemplateDraft,
@@ -16,10 +22,20 @@ export function templateConfirmation(
         `Aviso push: ${draft.welcomeReminderDays} días antes`,
         `Tope mensual: ${draft.welcomeMonthlyCap} regalos por negocio`,
       ]
-    : [
-        `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}`,
-        `Ausencia: ${draft.dormantDays} días`,
-      ];
+    : template.cross
+      ? [
+          "Aparece en: Mis beneficios",
+          `Público: ${draft.crossAudience ? crossAudienceLabels[draft.crossAudience] : "Sin elegir"}`,
+          ...(draft.crossAudience === "dormant"
+            ? [`Ausencia: ${draft.dormantDays} días`]
+            : []),
+          `Vigencia desde el reclamo: ${draft.crossValidDays} días`,
+          `Tope mensual: ${draft.crossMonthlyCap} cupones reclamados por negocio`,
+        ]
+      : [
+          `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}`,
+          `Ausencia: ${draft.dormantDays} días`,
+        ];
   lines.push(
     `Mensaje: ${draft.message.trim()}`,
     `Inicio: ${draft.startsAt || "Ahora"}`,
@@ -27,7 +43,7 @@ export function templateConfirmation(
   );
   if (draft.coupon)
     lines.push(
-      `Premio: ${rewardConfirmation(draft, currencyCode, !template.welcome)}`,
+      `Premio: ${rewardConfirmation(draft, currencyCode, !template.welcome && !template.cross)}`,
     );
   if (template.nearReward)
     lines.push(

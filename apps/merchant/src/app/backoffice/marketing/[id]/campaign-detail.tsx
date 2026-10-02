@@ -56,6 +56,14 @@ export function CampaignDetail({
   const [busy, setBusy] = useState(false);
   const writing = useRef(false);
   const welcome = campaign.templateKey === "welcome" ? campaign.welcome : null;
+  const cross =
+    campaign.templateKey === "cross" ? (campaign as Campaign).cross : null;
+  const crossAudience =
+    cross?.audience === "non_members"
+      ? "Personas que aún no son clientes"
+      : cross?.audience === "dormant"
+        ? `Clientes dormidos hace ${campaign.dormantDays} días`
+        : "Personas que aún no son clientes y clientes dormidos";
   const actions = availableActions(campaign.status).filter((action) => {
     if ((action === "end" || action === "archive") && !isOwner) return false;
     if (campaign.templateKey && action === "archive") return false;
@@ -125,7 +133,9 @@ export function CampaignDetail({
             <dd>
               {welcome
                 ? "Clientes nuevos que instalan su pase"
-                : `Dormidos hace ${campaign.dormantDays} días`}
+                : cross
+                  ? crossAudience
+                  : `Dormidos hace ${campaign.dormantDays} días`}
             </dd>
           </div>
           <div>
@@ -156,24 +166,38 @@ export function CampaignDetail({
             <dd>
               {welcome
                 ? "Todo el negocio"
-                : campaign.locationIds.length
-                  ? Object.keys(locationNames).length
-                    ? campaign.locationIds
-                        .map((id) => locationNames[id] ?? "local archivado")
-                        .join(", ")
-                    : `${campaign.locationIds.length} locales seleccionados`
-                  : "No se usan locales en esta corrida"}
+                : cross
+                  ? "Locales activos del negocio"
+                  : campaign.locationIds.length
+                    ? Object.keys(locationNames).length
+                      ? campaign.locationIds
+                          .map((id) => locationNames[id] ?? "local archivado")
+                          .join(", ")
+                      : `${campaign.locationIds.length} locales seleccionados`
+                    : "No se usan locales en esta corrida"}
             </dd>
           </div>
           {welcome && <WelcomeDetails welcome={welcome} />}
+          {cross && (
+            <>
+              <div>
+                <dt>Vigencia desde el reclamo</dt>
+                <dd>{cross.validDays} días</dd>
+              </div>
+              <div>
+                <dt>Tope mensual</dt>
+                <dd>{cross.monthlyCap} cupones reclamados por negocio</dd>
+              </div>
+            </>
+          )}
           <div className="sm:col-span-2">
             <dt>Cupón</dt>
             <dd>
               {campaign.couponLabel === null
                 ? "Sin cupón"
                 : campaign.couponKind
-                  ? `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje${welcome ? "" : ` · tope ${campaign.couponMaxRedemptions}`}`
-                  : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje${welcome ? "" : ` · tope ${campaign.couponMaxRedemptions}`}`}
+                  ? `${campaign.couponLabel} · ${REWARD_KIND_LABELS[campaign.couponKind]} · ${money(campaign.couponCost ?? "0", currencyCode)} por canje${welcome || cross ? "" : ` · tope ${campaign.couponMaxRedemptions}`}`
+                  : `${campaign.couponLabel} · ${currencyCode} ${campaign.couponCost} por canje${welcome || cross ? "" : ` · tope ${campaign.couponMaxRedemptions}`}`}
             </dd>
           </div>
           {campaign.couponKind === "discount" && (
@@ -265,13 +289,14 @@ export function CampaignDetail({
         currencyCode={currencyCode}
         channels={campaign.channels}
         isWelcome={campaign.templateKey === "welcome"}
+        isCross={campaign.templateKey === "cross"}
       />
       <MarketingConfirm
         open={Boolean(confirm)}
         title={
           confirm === "archive" ? "¿Archivar campaña?" : "¿Finalizar campaña?"
         }
-        description={`${confirm === "archive" ? "La campaña quedará archivada." : welcome ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel && !welcome ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
+        description={`${confirm === "archive" ? "La campaña quedará archivada." : welcome ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento." : cross ? "Para cambiarla tendrás que activar una nueva oferta cruzada. Los cupones ya reclamados siguen valiendo hasta su vencimiento." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel && !welcome && !cross ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
         confirmLabel={confirm === "archive" ? "Archivar" : "Finalizar"}
         danger
         busy={busy}

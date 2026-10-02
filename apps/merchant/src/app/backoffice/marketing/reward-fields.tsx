@@ -19,6 +19,7 @@ export function RewardFields({
   canReadCatalog,
   couponKinds,
   withRedemptionCap = true,
+  noCapLabelDescription = "Se muestra en la oferta de alta y en el regalo. Podés editar la sugerencia.",
 }: {
   draft: RewardDraft;
   change: (patch: Partial<RewardDraft>) => void;
@@ -27,6 +28,7 @@ export function RewardFields({
   canReadCatalog: boolean;
   couponKinds: CouponKind[];
   withRedemptionCap?: boolean;
+  noCapLabelDescription?: string;
 }) {
   const options = couponKinds.map((kind) => ({
     value: kind,

@@ -73,20 +73,13 @@ summary:focus-visible {
   font-weight: 800;
   letter-spacing: -0.065em;
 }
-.brand-symbol {
-  display: grid;
-  place-items: center;
+.brand-mark {
+  display: block;
+  flex: none;
   width: 39px;
   height: 39px;
-  border-radius: 12px;
-  background: var(--ink);
-  color: var(--cream);
-  font-size: 28px;
-  line-height: 1;
-  letter-spacing: -0.12em;
-  padding-right: 4px;
+  border-radius: 10px;
 }
-.brand-symbol span,
 .brand-name span {
   color: var(--orange);
 }
@@ -1080,6 +1073,7 @@ h2 em {
 }
 .site-footer > div {
   display: flex;
+  flex-wrap: wrap;
   gap: 22px;
   font-size: 13px;
   font-weight: 700;
@@ -1171,10 +1165,10 @@ h2 em {
     padding: 0 5%;
     gap: 9px;
   }
-  .brand-symbol {
+  .brand-mark {
     width: 35px;
     height: 35px;
-    font-size: 25px;
+    border-radius: 9px;
   }
   .brand-name {
     font-size: 20px;

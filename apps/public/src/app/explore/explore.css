@@ -715,6 +715,7 @@
 
 .explore-footer nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 22px;
   font-size: 13px;
   font-weight: 700;
@@ -1114,10 +1115,10 @@
     padding: 0 5%;
   }
 
-  .explore-header .brand-symbol {
+  .explore-header .brand-mark {
     width: 35px;
     height: 35px;
-    font-size: 25px;
+    border-radius: 9px;
   }
 
   .explore-header .brand-name {
