@@ -1,29 +1,34 @@
 #!/usr/bin/env node
-// One-time provisioning of the CheckPass Club "identity" Loyalty Class in Google
-// Wallet (spec 0029 / ADR 0033). The app's google.ts creates a Loyalty *Object*
-// per consumer via the "Save to Wallet" JWT, but Google requires the *Class* to
-// exist first. Run this ONCE per issuer (re-run is idempotent: it PATCHes the
-// existing class). No app dependency — pure Node built-ins (global fetch + crypto).
-//
-// The class id must match google.ts: `<issuerId>.mipasaporte_identity`.
-//
-// Usage:
-//   node scripts/google-wallet/provision-class.mjs \
-//     --sa ./sa.json \                 # path to the service-account JSON key
-//     --issuer 3388000000022... \      # your Google Wallet Issuer ID
-//     --logo https://.../logo.png      # public HTTPS logo (Google requires programLogo)
-//
-// Env fallbacks: GOOGLE_WALLET_SA_JSON or GOOGLE_WALLET_SA_JSON_FILE,
-// GOOGLE_WALLET_ISSUER_ID, GOOGLE_WALLET_LOGO_URL.
+// Provisions the CheckPass Club identity Loyalty Class (spec 0122).
+// --inspect is read-only; --apply creates or patches. --class-suffix isolates QA.
 
 import { createSign } from "node:crypto";
 import { readFileSync as readFile } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
-const CLASS_SUFFIX = "mipasaporte_identity"; // keep in sync with google.ts GOOGLE_CLASS_SUFFIX
-const SCOPE = "https://www.googleapis.com/auth/wallet_object.issuer";
-const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const CLASS_SUFFIX = "mipasaporte_identity"; // keep in sync with google-object.ts
 const API =
   "https://walletobjects.googleapis.com/walletobjects/v1/loyaltyClass";
+const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const LOGO_URL = "https://my.checkpass.club/wallet-logo-trama-v1.png";
+const HERO_URL = "https://my.checkpass.club/wallet-trama-hero-v1.png";
+const CARD_TEMPLATE = {
+  cardRowTemplateInfos: [
+    {
+      oneItem: {
+        item: { firstValue: { fields: [{ fieldPath: "object.accountName" }] } },
+      },
+    },
+  ],
+};
+const LIST_TEMPLATE = {
+  firstRowOption: {
+    fieldOption: { fields: [{ fieldPath: "class.programName" }] },
+  },
+  secondRowOption: { fields: [{ fieldPath: "object.accountName" }] },
+};
 
 function arg(name, envKey) {
   const i = process.argv.indexOf(`--${name}`);
@@ -31,154 +36,207 @@ function arg(name, envKey) {
   return envKey ? process.env[envKey] : undefined;
 }
 
-function base64url(input) {
-  return Buffer.from(input).toString("base64url");
-}
-
 async function accessToken(sa) {
-  const now = Math.floor(Date.now() / 1000);
-  const header = base64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const claims = base64url(
+  const iat = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(
+    JSON.stringify({ alg: "RS256", typ: "JWT" }),
+  ).toString("base64url");
+  const claims = Buffer.from(
     JSON.stringify({
       iss: sa.client_email,
-      scope: SCOPE,
+      scope: "https://www.googleapis.com/auth/wallet_object.issuer",
       aud: TOKEN_URL,
-      iat: now,
-      exp: now + 3600,
+      iat,
+      exp: iat + 3600,
     }),
-  );
+  ).toString("base64url");
   const signingInput = `${header}.${claims}`;
   const signature = createSign("RSA-SHA256")
     .update(signingInput)
     .sign(sa.private_key)
     .toString("base64url");
-  const assertion = `${signingInput}.${signature}`;
-
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion,
+      assertion: `${signingInput}.${signature}`,
     }),
   });
+  if (!res.ok) throw new Error(`token exchange failed (${res.status})`);
   const body = await res.json();
-  if (!res.ok)
-    throw new Error(
-      `token exchange failed (${res.status}): ${JSON.stringify(body)}`,
-    );
+  if (!body.access_token)
+    throw new Error("token exchange returned no access_token");
   return body.access_token;
 }
 
-function classBody(issuerId, logoUrl) {
+const image = (uri) => ({ sourceUri: { uri } });
+
+/** Complete visual contract for newly created classes. */
+export function classBody(
+  issuerId,
+  logoUrl = LOGO_URL,
+  heroUrl = HERO_URL,
+  suffix = CLASS_SUFFIX,
+) {
   return {
-    id: `${issuerId}.${CLASS_SUFFIX}`,
-    issuerName: "Mi CheckPass",
-    programName: "Mi CheckPass",
-    programLogo: { sourceUri: { uri: logoUrl } },
+    id: `${issuerId}.${suffix}`,
+    issuerName: "CheckPass Club",
+    programName: "CheckPass Club",
+    programLogo: image(logoUrl),
+    heroImage: image(heroUrl),
     reviewStatus: "UNDER_REVIEW",
     hexBackgroundColor: "#0f2a3a",
+    accountNameLabel: "Miembro",
+    classTemplateInfo: {
+      cardTemplateOverride: CARD_TEMPLATE,
+      listTemplateOverride: LIST_TEMPLATE,
+    },
   };
 }
 
+/** Patch owned fields, preserving unrelated and nested template fields. */
+export function classPatch(current, desired) {
+  const patch = {};
+  for (const key of [
+    "issuerName",
+    "programName",
+    "hexBackgroundColor",
+    "accountNameLabel",
+  ]) {
+    if (current[key] !== desired[key]) patch[key] = desired[key];
+  }
+  for (const key of ["programLogo", "heroImage"]) {
+    const uri = desired[key].sourceUri.uri;
+    if (current[key]?.sourceUri?.uri !== uri) {
+      patch[key] = {
+        ...current[key],
+        sourceUri: { ...current[key]?.sourceUri, uri },
+      };
+    }
+  }
+  const oldTemplate = current.classTemplateInfo ?? {};
+  const template = {
+    ...oldTemplate,
+    cardTemplateOverride: {
+      ...oldTemplate.cardTemplateOverride,
+      cardRowTemplateInfos:
+        desired.classTemplateInfo.cardTemplateOverride.cardRowTemplateInfos,
+    },
+    listTemplateOverride: {
+      ...oldTemplate.listTemplateOverride,
+      firstRowOption:
+        desired.classTemplateInfo.listTemplateOverride.firstRowOption,
+      secondRowOption:
+        desired.classTemplateInfo.listTemplateOverride.secondRowOption,
+    },
+  };
+  if (!isDeepStrictEqual(oldTemplate, template))
+    patch.classTemplateInfo = template;
+  return Object.keys(patch).length
+    ? { ...patch, reviewStatus: "UNDER_REVIEW" }
+    : null;
+}
+
+/** Presentation-only snapshot for inspection and rollback; no consumer/token data. */
+export function classPresentation(current) {
+  return Object.fromEntries(
+    [
+      "id",
+      "issuerName",
+      "programName",
+      "programLogo",
+      "heroImage",
+      "hexBackgroundColor",
+      "accountNameLabel",
+      "classTemplateInfo",
+      "reviewStatus",
+    ].map((key) => [key, current[key]]),
+  );
+}
+
+async function verifyAsset(url) {
+  const res = await fetch(url);
+  if (
+    !res.ok ||
+    !res.headers.get("content-type")?.toLowerCase().startsWith("image/png")
+  ) {
+    throw new Error(`PNG público no disponible: ${url} (${res.status})`);
+  }
+  await res.body?.cancel();
+}
+
 async function main() {
+  const inspect = process.argv.includes("--inspect");
+  const apply = process.argv.includes("--apply");
+  if (inspect === apply)
+    throw new Error("Elegí exactamente una operación: --inspect o --apply.");
   const saPath = arg("sa", "GOOGLE_WALLET_SA_JSON_FILE");
   const issuerId = arg("issuer", "GOOGLE_WALLET_ISSUER_ID");
-  const logoUrl = arg("logo", "GOOGLE_WALLET_LOGO_URL");
-  if (
-    (!saPath && !process.env.GOOGLE_WALLET_SA_JSON) ||
-    !issuerId ||
-    !logoUrl
-  ) {
-    console.error(
-      "Faltan argumentos. Uso:\n  node scripts/google-wallet/provision-class.mjs --sa ./sa.json --issuer <ISSUER_ID> --logo <https URL de logo>",
+  const logoUrl = arg("logo") ?? LOGO_URL;
+  const heroUrl = arg("hero") ?? HERO_URL;
+  const suffix = arg("class-suffix") ?? CLASS_SUFFIX;
+  if (!/^[A-Za-z0-9_-]+$/.test(suffix))
+    throw new Error("--class-suffix inválido");
+  if (!issuerId || (!saPath && !process.env.GOOGLE_WALLET_SA_JSON)) {
+    throw new Error(
+      "Faltan --issuer y --sa (o GOOGLE_WALLET_ISSUER_ID y GOOGLE_WALLET_SA_JSON).",
     );
-    process.exit(2);
+  }
+  if (
+    apply &&
+    [logoUrl, heroUrl].some((url) => new URL(url).protocol !== "https:")
+  ) {
+    throw new Error("Las imágenes del pase deben usar HTTPS.");
   }
   const sa = JSON.parse(
     saPath ? readFile(saPath, "utf8") : process.env.GOOGLE_WALLET_SA_JSON,
   );
-  if (!sa.client_email || !sa.private_key)
+  if (!sa.client_email || !sa.private_key) {
     throw new Error(
       "El JSON de la service account no tiene client_email/private_key.",
     );
-
+  }
   const token = await accessToken(sa);
-  const classId = `${issuerId}.${CLASS_SUFFIX}`;
-  const authHeader = { authorization: `Bearer ${token}` };
-
-  const getRes = await fetch(`${API}/${encodeURIComponent(classId)}`, {
-    headers: authHeader,
-  });
-
-  if (process.argv.includes("--inspect")) {
+  const desired = classBody(issuerId, logoUrl, heroUrl, suffix);
+  const url = `${API}/${encodeURIComponent(desired.id)}`;
+  const headers = { authorization: `Bearer ${token}` };
+  const getRes = await fetch(url, { headers });
+  if (inspect) {
     if (!getRes.ok) throw new Error(`get class failed (${getRes.status})`);
-    const current = await getRes.json();
     console.log(
-      JSON.stringify(
-        {
-          id: current.id,
-          issuerName: current.issuerName,
-          programName: current.programName,
-          programLogo: current.programLogo?.sourceUri?.uri,
-          reviewStatus: current.reviewStatus,
-        },
-        null,
-        2,
-      ),
+      JSON.stringify(classPresentation(await getRes.json()), null, 2),
     );
     return;
   }
-
-  if (getRes.status === 404) {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { ...authHeader, "content-type": "application/json" },
-      body: JSON.stringify(classBody(issuerId, logoUrl)),
-    });
-    const body = await res.json();
-    if (!res.ok) {
-      if (res.status === 403)
-        console.error(
-          "403: la service account no tiene acceso al issuer. En el Pay & Wallet console -> Users, agregá el email de la SA (client_email) con rol Developer/Admin.",
-        );
-      throw new Error(`create failed (${res.status}): ${JSON.stringify(body)}`);
-    }
-    console.log(
-      `✓ Loyalty Class creada: ${body.id} (reviewStatus=${body.reviewStatus})`,
-    );
+  if (!getRes.ok && getRes.status !== 404)
+    throw new Error(`get class failed (${getRes.status})`);
+  const current = getRes.ok ? await getRes.json() : null;
+  const patch = current ? classPatch(current, desired) : null;
+  if (current && !patch) {
+    console.log(`✓ Loyalty Class sin cambios: ${desired.id}`);
     return;
   }
-
-  if (getRes.ok) {
-    const res = await fetch(`${API}/${encodeURIComponent(classId)}`, {
-      method: "PATCH",
-      headers: { ...authHeader, "content-type": "application/json" },
-      // Google requires an approved class to re-enter review when edited.
-      body: JSON.stringify({
-        issuerName: "Mi CheckPass",
-        programName: "Mi CheckPass",
-        programLogo: { sourceUri: { uri: logoUrl } },
-        reviewStatus: "UNDER_REVIEW",
-        hexBackgroundColor: "#0f2a3a",
-      }),
-    });
-    const body = await res.json();
-    if (!res.ok)
-      throw new Error(`patch failed (${res.status}): ${JSON.stringify(body)}`);
-    console.log(`✓ Loyalty Class ya existía; actualizada: ${body.id}`);
-    return;
-  }
-
-  const body = await getRes.text();
-  if (getRes.status === 403)
-    console.error(
-      "403: la service account no tiene acceso al issuer. Agregá su email en Pay & Wallet console -> Users (Developer/Admin).",
-    );
-  throw new Error(`get class failed (${getRes.status}): ${body}`);
+  await Promise.all([verifyAsset(logoUrl), verifyAsset(heroUrl)]);
+  const res = await fetch(current ? url : API, {
+    method: current ? "PATCH" : "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify(current ? patch : desired),
+  });
+  if (!res.ok)
+    throw new Error(`${current ? "patch" : "create"} failed (${res.status})`);
+  const body = await res.json();
+  console.log(
+    `✓ Loyalty Class ${current ? "actualizada" : "creada"}: ${body.id} (reviewStatus=${body.reviewStatus})`,
+  );
 }
 
-main().catch((err) => {
-  console.error(err.message ?? err);
-  process.exit(1);
-});
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  main().catch((err) => {
+    console.error(err.message ?? err);
+    process.exitCode = 1;
+  });
+}

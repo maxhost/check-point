@@ -9,7 +9,7 @@ import {
   Sparks,
 } from "iconoir-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getOnboardingChecklist, type OnboardingItem } from "./onboarding-api";
 import {
   AVAILABLE_ONBOARDING_ANCHORS,
@@ -25,6 +25,7 @@ type SendState = "idle" | "sending" | "sent" | "error";
 
 export function OnboardingChecklist() {
   const router = useRouter();
+  const isCounter = usePathname() === "/backoffice/counter";
   const [items, setItems] = useState<OnboardingItem[] | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [sendState, setSendState] = useState<SendState>("idle");
@@ -47,6 +48,7 @@ export function OnboardingChecklist() {
   }, []);
 
   useEffect(() => {
+    if (isCounter) return;
     const controller = new AbortController();
     setLoadFailed(false);
     void getOnboardingChecklist(controller.signal)
@@ -58,7 +60,7 @@ export function OnboardingChecklist() {
           setLoadFailed(true);
       });
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [reloadKey, isCounter]);
 
   async function sendVerification() {
     setSendState("sending");
@@ -87,6 +89,8 @@ export function OnboardingChecklist() {
       setSendState("error");
     }
   }
+
+  if (isCounter) return null;
 
   if (loadFailed)
     return (

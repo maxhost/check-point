@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import forge from "node-forge";
 import { zipSync } from "fflate";
 import { WALLET_BRAND } from "./core";
+import { APPLE_PASS_ART } from "./apple-art";
 import { MAX_PASS_LOCATIONS } from "./pass-locations";
 import type { ApplePassBuildInput } from "./provider";
 
@@ -18,13 +19,6 @@ export type ApplePkpassInput = ApplePassBuildInput & {
   passTypeIdentifier: string;
   teamIdentifier: string;
 };
-
-// A minimal valid PNG (solid brand square) so the archive carries the required
-// `icon.png`/`logo.png`. Structural fidelity only; the rich card art is spec 0031.
-const BRAND_PNG_BASE64 =
-  "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAKklEQVR42u3NMQEAAAgDoK1/" +
-  "aM3g4QcVqDPSyiVpJDkAAAAAAAAAAADg2QAsMwGf5m1Y7QAAAABJRU5ErkJggg==";
-const BRAND_PNG = new Uint8Array(Buffer.from(BRAND_PNG_BASE64, "base64"));
 
 function sha1Hex(bytes: Uint8Array): string {
   return createHash("sha1").update(bytes).digest("hex");
@@ -68,7 +62,7 @@ export function buildPassJson(
     teamIdentifier: input.teamIdentifier,
     serialNumber: input.serialNumber,
     organizationName: WALLET_BRAND.organizationName,
-    description: WALLET_BRAND.description,
+    description: "Pase de miembro de CheckPass Club",
     logoText: WALLET_BRAND.organizationName,
     backgroundColor: WALLET_BRAND.backgroundColor,
     foregroundColor: WALLET_BRAND.foregroundColor,
@@ -102,6 +96,13 @@ export function buildPassJson(
           value: programsUrl,
           attributedValue: `<a href="${programsUrl}">Ver mis programas</a>`,
         },
+        {
+          key: "contact",
+          label: "Contacto",
+          value: "hola@checkpass.club",
+          attributedValue:
+            '<a href="mailto:hola@checkpass.club">hola@checkpass.club</a>',
+        },
       ],
     },
   };
@@ -121,8 +122,7 @@ export async function buildApplePkpass(
   );
   const files: Record<string, Uint8Array> = {
     "pass.json": passJson,
-    "icon.png": BRAND_PNG,
-    "logo.png": BRAND_PNG,
+    ...APPLE_PASS_ART,
   };
 
   const manifest: Record<string, string> = {};

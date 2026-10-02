@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trama viva — adaptación para Apple Wallet</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+        background: #091b25;
+        color: #eef6f3;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 44px 24px 72px; }
+      main { max-width: 1000px; margin: auto; }
+      h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -0.04em; }
+      p { max-width: 720px; color: #b5c9ca; line-height: 1.5; }
+      .eyebrow { color: #df7759; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+      .grid { display: flex; flex-wrap: wrap; gap: 36px; align-items: flex-start; margin-top: 36px; }
+      .panel { flex: 0 1 445px; }
+      .panel h2 { font-size: 15px; letter-spacing: .03em; font-weight: 650; margin: 0 0 16px; }
+      .wallet-frame { background: #1d232b; border-radius: 38px; padding: 20px; box-shadow: 0 20px 60px #0008; }
+      .card { overflow: hidden; border-radius: 17px; background: #0f2a3a; box-shadow: 0 8px 28px #0006; }
+      .card-header { height: 61px; display: flex; align-items: center; gap: 9px; padding: 0 20px; }
+      .card-header img { width: 32px; height: 32px; border-radius: 8px; }
+      .card-header strong { font-size: 17px; letter-spacing: -.025em; }
+      .strip { position: relative; height: 144px; background: url("apple-wallet-trama-strip-v1@2x.png") center / cover no-repeat; }
+      .member { position: absolute; left: 21px; top: 51px; width: 205px; text-shadow: 0 1px 2px #0f2a3a66; }
+      .label { display: block; color: #bbd1d5; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+      .member strong { display: block; margin-top: 3px; font-size: 22px; line-height: 1.1; letter-spacing: -.035em; }
+      .news { min-height: 66px; padding: 17px 21px 8px; }
+      .news p { margin: 3px 0 0; color: white; font-size: 15px; line-height: 1.25; }
+      .qr-area { padding: 13px 21px 25px; display: flex; justify-content: center; }
+      .qr-area img { display: block; width: 168px; height: 168px; padding: 10px; border-radius: 8px; background: white; }
+      .caption { font-size: 12px; line-height: 1.45; margin: 12px 2px 0; }
+      .fallback .strip { height: 80px; background: #0f2a3a; }
+      .fallback .member { top: 11px; }
+      .watch { width: 210px; min-height: 260px; border-radius: 34px; border: 7px solid #30363f; background: #0f2a3a; padding: 18px 14px; margin-top: 28px; box-shadow: 0 10px 25px #0007; }
+      .watch .brand { font-size: 14px; font-weight: 700; }
+      .watch .name { display: block; font-size: 18px; font-weight: 650; margin: 36px 0 24px; }
+      .watch img { width: 108px; height: 108px; padding: 7px; background: white; border-radius: 5px; display: block; margin: auto; }
+      @media (max-width: 550px) { body { padding: 24px 14px 50px; } .wallet-frame { padding: 10px; border-radius: 25px; } .panel { flex-basis: 100%; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">Estudio visual · Apple Wallet</div>
+      <h1>La misma Trama viva, en el lenguaje de Apple.</h1>
+      <p>La vista es una aproximación para decidir el arte. Wallet controla el recorte, las fuentes, los márgenes y la posición exacta del QR. El QR mostrado aquí es ficticio.</p>
+      <div class="grid">
+        <section class="panel">
+          <h2>iPhone · strip visible</h2>
+          <div class="wallet-frame">
+            <div class="card">
+              <div class="card-header"><img src="../../apps/consumer/public/wallet-logo-trama-v1.png" alt="" /><strong>CheckPass Club</strong></div>
+              <div class="strip"><div class="member"><span class="label">Titular</span><strong>Maxi Andrade</strong></div></div>
+              <div class="news"><span class="label">Última novedad</span><p>Volvé a tus lugares favoritos.</p></div>
+              <div class="qr-area"><img src="apple-wallet-trama-preview-qr.svg" alt="QR ficticio para maqueta" /></div>
+            </div>
+          </div>
+          <p class="caption">Arte concentrado a la derecha; el nombre queda sobre azul limpio. La trama no toca el QR.</p>
+        </section>
+        <section class="panel">
+          <h2>Sin strip · marca reconocible</h2>
+          <div class="wallet-frame">
+            <div class="card fallback">
+              <div class="card-header"><img src="../../apps/consumer/public/wallet-logo-trama-v1.png" alt="" /><strong>CheckPass Club</strong></div>
+              <div class="strip"><div class="member"><span class="label">Titular</span><strong>Maxi Andrade</strong></div></div>
+              <div class="news"><span class="label">Última novedad</span><p>Volvé a tus lugares favoritos.</p></div>
+              <div class="qr-area"><img src="apple-wallet-trama-preview-qr.svg" alt="QR ficticio para maqueta" /></div>
+            </div>
+          </div>
+          <p class="caption">Respaldo a validar en iOS recientes: logo, nombre y azul profundo siguen identificando el pase si Wallet omite el strip.</p>
+          <div class="watch"><span class="brand">C · CheckPass Club</span><span class="name">Maxi Andrade</span><img src="apple-wallet-trama-preview-qr.svg" alt="QR ficticio para maqueta" /></div>
+          <p class="caption">Esquema de legibilidad para Apple Watch; el render real se valida en dispositivo.</p>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

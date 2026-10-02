@@ -1,112 +1,234 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  type CartLine,
-  type CounterProduct,
-  cartTotal,
-  formatMoney,
-} from "./types";
+import { type CartLine, type CounterProduct, formatMoney } from "./types";
 
-/** Detailed sale: a searchable catalog picker feeding an editable cart. */
+/** The catalog stays in a stable order; personal picks are a separate shortcut. */
 export function DetailedSale({
   products,
+  categories,
+  habitualProductIds,
+  lastPurchase,
   currencyCode,
   cart,
   onAdd,
   onQty,
   onLinePrice,
+  onRepeat,
 }: {
   products: CounterProduct[];
+  categories: { id: string; name: string }[];
+  habitualProductIds: string[];
+  lastPurchase: { items: { productId: string; quantity: number }[] } | null;
   currencyCode: string;
   cart: CartLine[];
   onAdd: (product: CounterProduct) => void;
   onQty: (productId: string, delta: number) => void;
   onLinePrice: (productId: string, value: number) => void;
+  onRepeat: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q
-      ? products.filter((p) => p.name.toLowerCase().includes(q))
-      : products;
-  }, [products, query]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [repeatApplied, setRepeatApplied] = useState(false);
+  const sortedProducts = useMemo(
+    () => [...products].sort((a, b) => a.name.localeCompare(b.name, "es")),
+    [products],
+  );
+  const shown = useMemo(() => {
+    if (searchOpen) {
+      const q = query.trim().toLocaleLowerCase("es");
+      return q
+        ? sortedProducts.filter((p) =>
+            p.name.toLocaleLowerCase("es").includes(q),
+          )
+        : sortedProducts;
+    }
+    return categoryId === null
+      ? sortedProducts
+      : sortedProducts.filter((p) =>
+          categoryId === "other"
+            ? !p.categoryId ||
+              !categories.some((category) => category.id === p.categoryId)
+            : p.categoryId === categoryId,
+        );
+  }, [sortedProducts, searchOpen, query, categoryId, categories]);
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const habitual = habitualProductIds
+    .map((id) => byId.get(id))
+    .filter((p): p is CounterProduct => Boolean(p));
+  const visibleCategories = categories
+    .filter((category) =>
+      products.some((product) => product.categoryId === category.id),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  const hasOther = products.some(
+    (product) =>
+      product.categoryId === null ||
+      !categories.some((category) => category.id === product.categoryId),
+  );
+
+  function card(product: CounterProduct) {
+    const line = cart.find((item) => item.productId === product.id);
+    return (
+      <li key={product.id} className="counter-product">
+        <div className="counter-product-main">
+          <button
+            type="button"
+            className="counter-product-add"
+            onClick={() => onAdd(product)}
+            aria-label={`Agregar ${product.name}`}
+          >
+            <strong>{product.name}</strong>
+            <small>
+              {product.unitPrice === null
+                ? "Sin precio"
+                : formatMoney(product.unitPrice, currencyCode)}
+            </small>
+          </button>
+          {line && (
+            <div
+              className="counter-qty"
+              aria-label={`Cantidad de ${product.name}: ${line.quantity}`}
+            >
+              <button
+                type="button"
+                aria-label={`Quitar un ${product.name}`}
+                onClick={() => onQty(product.id, -1)}
+              >
+                −
+              </button>
+              <output>{line.quantity}</output>
+              <button
+                type="button"
+                aria-label={`Agregar un ${product.name}`}
+                onClick={() => onQty(product.id, 1)}
+              >
+                +
+              </button>
+            </div>
+          )}
+        </div>
+        {line && !line.hasStoredPrice && (
+          <label className="counter-line-price">
+            Precio unitario de {product.name}
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              value={line.unitPrice || ""}
+              onChange={(event) =>
+                onLinePrice(product.id, Number(event.target.value))
+              }
+            />
+          </label>
+        )}
+      </li>
+    );
+  }
 
   return (
     <div className="counter-detailed">
-      {cart.length > 0 && (
-        <ul className="counter-cart">
-          {cart.map((line) => (
-            <li key={line.productId} className="counter-cart-line">
-              <div className="counter-cart-name">
-                <strong>{line.name}</strong>
-                {line.hasStoredPrice ? (
-                  <span>{formatMoney(line.unitPrice, currencyCode)}</span>
-                ) : (
-                  <label className="counter-line-price">
-                    Importe
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step="0.01"
-                      value={line.unitPrice ? String(line.unitPrice) : ""}
-                      onChange={(e) =>
-                        onLinePrice(line.productId, Number(e.target.value))
-                      }
-                    />
-                  </label>
-                )}
-              </div>
-              <div className="counter-qty">
-                <button
-                  type="button"
-                  aria-label="Quitar uno"
-                  onClick={() => onQty(line.productId, -1)}
-                >
-                  −
-                </button>
-                <span>{line.quantity}</span>
-                <button
-                  type="button"
-                  aria-label="Agregar uno"
-                  onClick={() => onQty(line.productId, 1)}
-                >
-                  +
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {habitual.length > 0 && !searchOpen && (
+        <section
+          className="counter-picks"
+          aria-label="Habituales de este cliente"
+        >
+          <h3>Habituales de este cliente</h3>
+          <ul className="counter-product-list">{habitual.map(card)}</ul>
+        </section>
       )}
-      <p className="counter-total">
-        Total <strong>{formatMoney(cartTotal(cart), currencyCode)}</strong>
-      </p>
-
-      <input
-        className="counter-search"
-        type="search"
-        placeholder="Buscar producto…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <ul className="counter-picker">
-        {filtered.map((product) => (
-          <li key={product.id}>
-            <button type="button" onClick={() => onAdd(product)}>
-              <span>{product.name}</span>
-              <small>
-                {product.unitPrice === null
-                  ? "Sin precio · lo tecleas"
-                  : formatMoney(product.unitPrice, currencyCode)}
-              </small>
+      {lastPurchase && !searchOpen && (
+        <details className="counter-repeat">
+          <summary>Cargar última compra</summary>
+          <ul>
+            {lastPurchase.items.map((item) => (
+              <li key={item.productId}>
+                {item.quantity} × {byId.get(item.productId)?.name}
+              </li>
+            ))}
+          </ul>
+          <p>Se usarán los precios actuales del catálogo.</p>
+          <button
+            type="button"
+            disabled={repeatApplied}
+            onClick={() => {
+              onRepeat();
+              setRepeatApplied(true);
+            }}
+          >
+            {repeatApplied
+              ? "Compra agregada"
+              : "Agregar estos productos al carrito"}
+          </button>
+        </details>
+      )}
+      <div className="counter-catalog-heading">
+        <h3>Catálogo</h3>
+        <button
+          type="button"
+          aria-expanded={searchOpen}
+          onClick={() => {
+            setSearchOpen(!searchOpen);
+            setQuery("");
+          }}
+        >
+          {searchOpen ? "Cerrar búsqueda" : "Buscar"}
+        </button>
+      </div>
+      {searchOpen ? (
+        <input
+          className="counter-search"
+          type="search"
+          aria-label="Buscar producto"
+          placeholder="Buscar producto…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          autoFocus
+        />
+      ) : (
+        <div
+          className="counter-categories"
+          role="group"
+          aria-label="Categorías"
+        >
+          <button
+            type="button"
+            className={categoryId === null ? "is-active" : ""}
+            onClick={() => setCategoryId(null)}
+          >
+            Todos
+          </button>
+          {visibleCategories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              className={categoryId === category.id ? "is-active" : ""}
+              onClick={() => setCategoryId(category.id)}
+            >
+              {category.name}
             </button>
-          </li>
-        ))}
-        {filtered.length === 0 && (
-          <li className="counter-empty">No hay productos que coincidan.</li>
-        )}
-      </ul>
+          ))}
+          {hasOther && (
+            <button
+              type="button"
+              className={categoryId === "other" ? "is-active" : ""}
+              onClick={() => setCategoryId("other")}
+            >
+              Otros
+            </button>
+          )}
+        </div>
+      )}
+      <ul className="counter-product-list">{shown.map(card)}</ul>
+      {shown.length === 0 && (
+        <p className="counter-empty">
+          {products.length
+            ? "No hay productos que coincidan."
+            : "Este comercio aún no tiene productos en el catálogo."}
+        </p>
+      )}
     </div>
   );
 }

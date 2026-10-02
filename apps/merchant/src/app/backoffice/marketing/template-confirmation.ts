@@ -6,6 +6,7 @@ const crossAudienceLabels = {
   non_members: "Personas que aún no son clientes",
   dormant: "Clientes dormidos",
   any: "Cualquiera de los dos públicos",
+  not_active: "Personas que no están activas",
 };
 
 export function templateConfirmation(

@@ -18,6 +18,7 @@ import {
 import { resolveScan } from "./counter/resolve";
 import { type PersistGrantInput, persistGrant } from "./counter/orders";
 import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
+import { PASS_BRAND_UPDATED_AT } from "@mi-pasaporte/domain/server/wallet/pass-version";
 import {
   authorizePass,
   listUpdatedSerials,
@@ -199,7 +200,7 @@ describe.skipIf(!integrationEnabled)(
       // makes every pass show up once, so the iPhone re-fetches the new brand.
       const first = await listUpdatedSerials({ deviceLibraryId });
       expect(first).toEqual({
-        lastUpdated: "1790868480000",
+        lastUpdated: String(PASS_BRAND_UPDATED_AT.getTime()),
         serialNumbers: [pass.serialNumber],
       });
       // Echoing the server's tag back, as the iPhone does: nothing changed → 204 (null).

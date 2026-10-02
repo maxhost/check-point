@@ -63,7 +63,12 @@ const resolved = {
       borderColor: null,
     },
   },
-  catalog: { products: [], categories: [] },
+  catalog: {
+    products: [],
+    categories: [],
+    habitualProductIds: [],
+    lastPurchase: null,
+  },
   rewards: [
     {
       id: "r-cheap",

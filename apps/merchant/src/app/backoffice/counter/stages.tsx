@@ -16,6 +16,7 @@ import {
   type ResolveResponse,
   balanceFor,
   cartTotal,
+  formatMoney,
   previewUnits,
   unitLabel,
 } from "./types";
@@ -95,6 +96,7 @@ export function ResolvedStage({
   onAdd,
   onQty,
   onLinePrice,
+  onRepeat,
   quick,
   selectedRewardId,
   onSelectReward,
@@ -112,6 +114,7 @@ export function ResolvedStage({
   onAdd: (p: CounterProduct) => void;
   onQty: (id: string, delta: number) => void;
   onLinePrice: (id: string, value: number) => void;
+  onRepeat: () => void;
   quick: {
     amount: string;
     onAmount: (v: string) => void;
@@ -128,7 +131,9 @@ export function ResolvedStage({
 }) {
   const balance = balanceFor(resolved.program.kind, resolved.membership);
   return (
-    <section className="counter-panel">
+    <section
+      className={`counter-panel ${mode === "detailed" ? "counter-panel-detailed" : ""}`}
+    >
       <header className="counter-consumer">
         <h2>{resolved.consumer.displayName}</h2>
         {resolved.membership.justEnrolled ? (
@@ -172,11 +177,15 @@ export function ResolvedStage({
       ) : mode === "detailed" ? (
         <DetailedSale
           products={resolved.catalog.products}
+          categories={resolved.catalog.categories}
+          habitualProductIds={resolved.catalog.habitualProductIds}
+          lastPurchase={resolved.catalog.lastPurchase}
           currencyCode={currencyCode}
           cart={cart}
           onAdd={onAdd}
           onQty={onQty}
           onLinePrice={onLinePrice}
+          onRepeat={onRepeat}
         />
       ) : (
         <QuickSale
@@ -188,33 +197,85 @@ export function ResolvedStage({
         />
       )}
 
-      {mode !== "redeem" && (
+      {mode === "quick" && (
         <PointsPreview
           accrual={resolved.program.accrual}
           kind={resolved.program.kind}
-          total={
-            mode === "detailed" ? cartTotal(cart) : Number(quick.amount) || 0
-          }
+          total={Number(quick.amount) || 0}
         />
       )}
 
-      <div className="counter-actions">
-        <button type="button" className="counter-secondary" onClick={onCancel}>
-          Cancelar
-        </button>
-        <button
-          type="button"
-          className="counter-primary"
-          disabled={!canConfirm}
-          onClick={onConfirm}
-        >
-          {busy
-            ? mode === "redeem"
-              ? "Canjeando…"
-              : "Acreditando…"
-            : "Confirmar"}
-        </button>
-      </div>
+      {mode === "detailed" ? (
+        <div className="counter-detailed-footer">
+          <details className="counter-summary">
+            <summary>
+              <span>
+                {cart.reduce((sum, line) => sum + line.quantity, 0)} artículos ·{" "}
+                {formatMoney(cartTotal(cart), currencyCode)}
+              </span>
+              <small>Ver detalle</small>
+            </summary>
+            <ul>
+              {cart.map((line) => (
+                <li key={line.productId}>
+                  {line.quantity} × {line.name}{" "}
+                  <strong>
+                    {formatMoney(line.quantity * line.unitPrice, currencyCode)}
+                  </strong>
+                </li>
+              ))}
+            </ul>
+            <p>
+              Total registrado en CheckPass ·{" "}
+              {formatMoney(cartTotal(cart), currencyCode)}
+            </p>
+          </details>
+          <PointsPreview
+            accrual={resolved.program.accrual}
+            kind={resolved.program.kind}
+            total={cartTotal(cart)}
+          />
+          <div className="counter-actions">
+            <button
+              type="button"
+              className="counter-secondary"
+              onClick={onCancel}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="counter-primary"
+              disabled={!canConfirm}
+              onClick={onConfirm}
+            >
+              {busy ? "Acreditando…" : "Acreditar compra"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="counter-actions">
+          <button
+            type="button"
+            className="counter-secondary"
+            onClick={onCancel}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="counter-primary"
+            disabled={!canConfirm}
+            onClick={onConfirm}
+          >
+            {busy
+              ? mode === "redeem"
+                ? "Canjeando…"
+                : "Acreditando…"
+              : "Confirmar"}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

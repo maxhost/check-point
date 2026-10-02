@@ -1,5 +1,40 @@
 # TASKS
 
+## ⇥ SIGUIENTE TRABAJO DEL OWNER (2026-10-02) — TRAMA VIVA EN EL PASE DE LA PWA
+
+Después de `/clear`, leer el
+[handoff Apple → pase PWA](handoff-2026-10-02-wallet-apple-a-pase-pwa.md).
+El owner quiere diseñar una versión de Trama viva para «Tu pase» dentro de
+`my.checkpass.club`, con el QR en la tarjeta. La vista actual está en
+`apps/consumer/src/app/(consumer)/wallet/qr-tab.tsx` y `apps/consumer/src/app/wallet.css`.
+**No hay diseño de PWA ni spec aprobados todavía**: comenzar por exploración
+visual y revisión con el owner. Mantener el QR funcional y escaneable.
+
+## ⇥ ESTADO (2026-10-02) — APPLE WALLET 0123: «IPHONE · STRIP VISIBLE» APROBADO; ARTE IMPLEMENTADO LOCALMENTE
+
+El owner eligió la vista «iPhone · strip visible» de Trama viva. La spec 0123 está
+cerrada. `0790956` está pusheado en `origin/main`. El constructor `.pkpass` incluye icono, logo y `strip` a 1x/2x/3x,
+contacto público y revisión de marca nueva; preserva el QR y las referencias del
+pase. Prueba Wallet, typecheck, lint y build pasan. **Live sin verificar:** faltan QA en
+iPhone para confirmar que `strip` aparece en la versión objetivo, comprobar despliegue,
+refresco de un pase existente con APNs, y PASS independiente antes de marcar
+`implementada`. [Handoff](handoff-0123-apple-wallet-trama-viva-2026-10-02.md) y
+[guías de diseño](wallet/apple-wallet-design-rules.md) y de
+[actualización de pases viejos](wallet/apple-wallet-update-existing-passes.md).
+
+## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: CLASE REAL TRAMA VIVA ACTUALIZADA Y APPROVED; PUBLICACIÓN GENERAL POR CONFIRMAR
+
+Spec 0122 «Trama viva» aprobada por el owner. `f595842` está pusheado en `main`; ambos PNG
+responden HTTP 200 desde `my.checkpass.club` y su SHA-256 coincide con el commit. La clase
+`qa_trama_viva_0122` fue creada y Google devolvió `reviewStatus=approved`. El owner guardó
+el pase QA en Android y aprobó el diseño: «perfecto, funcionó, quedó hermoso». Las
+verificaciones de build, typecheck, lint, provisionador y regresión de Wallet pasan. La
+clase real recibió `PATCH` autorizado y la lectura posterior confirmó logo/hero Trama viva,
+emisor «CheckPass Club», plantilla y `reviewStatus=approved`. Siguiente secuencia:
+verificación de pase viejo/nuevo y QR/enlace reales, confirmar acceso de publicación del
+emisor en Console y PASS independiente. [Handoff](handoff-0122-google-wallet-trama-viva-2026-10-01.md)
+y [guía de diseño/publicación](wallet/google-wallet-design-and-release.md).
+
 **Estado actual del proyecto. Este es el punto de retorno.**
 
 Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay un hook `Stop` que
@@ -39,6 +74,16 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
   tiene NINGUNA campaña** → hay que activar la Bienvenida en «Prueba de Barrio» antes del QA, o no hay regalo.
 - **R2:** el CORS del bucket ahora admite `https://business.checkpass.club` (el owner lo agrego; preflight 204 medido).
 - PARQUEADO: bajaron #15, #41, #45, #58; entro #66 (telefonos al azar en `business-status`).
+
+## ⇥ ESTADO HISTORICO (2026-10-01, noche) — MOSTRADOR 0121 IMPLEMENTADA, QA DEL OWNER OK; TRABAJO CERRADO
+
+Código de la entrega = `1bd196b`. Rediseño de Mostrador `c2374a9`, corrección de contraste `2a6a190`,
+spec 0121 e índice marcados `implementada` en `1bd196b`. El owner probó en live después del arreglo de contraste:
+«perfecto, funcionando» y pidió cerrar el trabajo. Verificación técnica: typecheck, lint, build, 2247 tests,
+y prueba Neon aislada de catálogo y hábitos por local. **Medición con Café Plátano pendiente de uso real**;
+no hay línea base ni mejora de tiempo demostrada. Tampoco hubo PASS de revisor independiente para esta spec.
+[Handoff de la 0121](handoff-0121-mostrador-2026-10-01.md). No hay tarea activa de Mostrador; después de `/clear`,
+el siguiente objetivo lo define el owner.
 
 ## ⇥ ESTADO HISTORICO (2026-10-02) — 0119 + 0120 EN PROD Y CERRADAS POR EL OWNER; APPLE SIN PROBAR (DECISION DEL OWNER)
 

@@ -8,7 +8,7 @@ export type CouponKind =
   | "custom";
 export type DiscountUnit = "percent" | "amount";
 export type WelcomeRedeemFrom = "next_day" | "same_visit";
-export type CrossAudience = "non_members" | "dormant" | "any";
+export type CrossAudience = "non_members" | "dormant" | "any" | "not_active";
 export type CampaignWelcome = {
   validDays: number;
   reminderDays: number;

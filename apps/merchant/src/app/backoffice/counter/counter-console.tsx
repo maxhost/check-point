@@ -89,37 +89,40 @@ export function CounterConsole({
     router.refresh();
   }, [router]);
 
-  const onDecode = useCallback(async (qrToken: string) => {
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/counter/resolve", {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify({ qrToken }),
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok || !payload || !("membership" in payload)) {
-        throw new Error(payload?.error ?? "No pudimos resolver el código.");
+  const onDecode = useCallback(
+    async (qrToken: string) => {
+      setBusy(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/counter/resolve", {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ qrToken, locationId }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload || !("membership" in payload)) {
+          throw new Error(payload?.error ?? "No pudimos resolver el código.");
+        }
+        const data = payload as ResolveResponse;
+        setResolved(data);
+        setRequestId(crypto.randomUUID());
+        setCouponRequestId(crypto.randomUUID());
+        setMode(data.catalog.products.length > 0 ? "detailed" : "quick");
+        setStage("resolved");
+        setNotice(
+          data.membership.justEnrolled
+            ? "Cliente identificado · nuevo miembro"
+            : "Cliente identificado",
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No pudimos leer el código.");
+        setScanKey((k) => k + 1); // remount the scanner to try again
+      } finally {
+        setBusy(false);
       }
-      const data = payload as ResolveResponse;
-      setResolved(data);
-      setRequestId(crypto.randomUUID());
-      setCouponRequestId(crypto.randomUUID());
-      setMode(data.catalog.products.length > 0 ? "detailed" : "quick");
-      setStage("resolved");
-      setNotice(
-        data.membership.justEnrolled
-          ? "Cliente identificado · nuevo miembro"
-          : "Cliente identificado",
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No pudimos leer el código.");
-      setScanKey((k) => k + 1); // remount the scanner to try again
-    } finally {
-      setBusy(false);
-    }
-  }, []);
+    },
+    [locationId],
+  );
 
   const canConfirm =
     !busy &&
@@ -258,6 +261,24 @@ export function CounterConsole({
           onLinePrice={(id, value) =>
             setCart((lines) => setLineUnitPrice(lines, id, value))
           }
+          onRepeat={() => {
+            const products = new Map(
+              resolved.catalog.products.map((product) => [product.id, product]),
+            );
+            setCart((lines) => {
+              let next = lines;
+              for (const item of resolved.catalog.lastPurchase?.items ?? []) {
+                const product = products.get(item.productId);
+                if (!product) continue;
+                next = changeQuantity(
+                  addLine(next, product),
+                  product.id,
+                  item.quantity - 1,
+                );
+              }
+              return next;
+            });
+          }}
           quick={{ amount, onAmount: setAmount, note, onNote: setNote }}
           selectedRewardId={selectedRewardId}
           onSelectReward={setSelectedRewardId}
