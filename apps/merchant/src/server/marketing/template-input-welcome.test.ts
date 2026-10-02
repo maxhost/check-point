@@ -28,7 +28,7 @@ describe("parseTemplateInput — welcome", () => {
     expect(valueOf(GIFT)).toMatchObject({
       channelProximity: false,
       channelPush: false,
-      message: "Sumate hoy y en tu próxima visita te llevás un regalo",
+      message: "Únete hoy y en tu próxima visita te llevas un regalo",
       excludedLocationIds: [],
       couponKind: "free_product",
       couponLabel: "Un café gratis",

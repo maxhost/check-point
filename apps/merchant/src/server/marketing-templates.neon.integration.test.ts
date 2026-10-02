@@ -256,7 +256,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       .select({ message: campaigns.message })
       .from(campaigns)
       .where(eq(campaigns.id, run.id));
-    expect(kept.message).toBe("¡Volvé! Te estamos esperando.");
+    expect(kept.message).toBe("¡Vuelve! Te estamos esperando.");
 
     const custom = await createCampaign(
       seed.business.id,

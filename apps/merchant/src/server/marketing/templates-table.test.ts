@@ -20,7 +20,7 @@ describe("marketing templates catalog — the table", () => {
         rank: 1,
         dormantDays: null,
         message: {
-          default: "Sumate hoy y en tu próxima visita te llevás un regalo",
+          default: "Únete hoy y en tu próxima visita te llevas un regalo",
           maxLength: 60,
           gapMarker: false,
         },
@@ -101,7 +101,7 @@ describe("marketing templates catalog — the table", () => {
         rank: 3,
         dormantDays: { options: [60, 90, 180], default: 90 },
         message: {
-          default: "¡Volvé! Te estamos esperando.",
+          default: "¡Vuelve! Te estamos esperando.",
           maxLength: 60,
           gapMarker: false,
         },
@@ -153,7 +153,7 @@ describe("marketing templates catalog — the table", () => {
         rank: 2,
         dormantDays: { options: [7, 14, 30], default: 14 },
         message: {
-          default: "Tenés un premio esperándote. ¡Vení a canjearlo!",
+          default: "Tienes un premio esperándote. ¡Ven a canjearlo!",
           maxLength: 60,
           gapMarker: false,
         },

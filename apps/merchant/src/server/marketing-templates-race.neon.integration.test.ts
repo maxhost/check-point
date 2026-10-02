@@ -50,7 +50,7 @@ describe.skipIf(!integrationEnabled)("campaign templates — the race", () => {
         name: "Recuperar perdidos",
         status: "active",
         dormantDays: 90,
-        message: "¡Volvé! Te estamos esperando.",
+        message: "¡Vuelve! Te estamos esperando.",
         startsAt: new Date(),
         activatedAt: new Date(),
         createdByUserId: seed.userId,
