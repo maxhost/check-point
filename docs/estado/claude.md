@@ -8,22 +8,20 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, tarde-noche) — ADR 0115 ACEPTADO Y PUSHEADO (`05d2033`). SIGUIENTE: SPEC 1 DEL 0115
+## ⇥ ESTADO (2026-10-02, noche) — SPEC 0138 CERRADA Y PUSHEADA (`be9f8c8`). SIGUIENTE: IMPLEMENTARLA (con OK del owner)
 
-**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `05d2033` (solo docs desde
-`ef05b1a`, el ultimo con codigo). CI de `2d8f4cb`/`d21ae7b` quedo corriendo al empezar; ultimo verde conocido `8c6b003`.
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `be9f8c8` (solo docs desde
+`ef05b1a`, el ultimo con codigo).
 
-**Que paso:** se midio la #67 por fase (paso 4 = 87,7 s de ~89 s, ~8 consultas por consumidor a ~120 ms; detalle en
-`PARQUEADO.md` #67). El owner eligio «lote», y despues **paro la #67 por un cambio de rumbo**: las campañas pasan a
-la PWA. Resultado: **ADR 0115** (`docs/adr/0115-campanas-por-la-pwa.md`), con 9+ decisiones textuales del owner:
-solo Bienvenida y Venta cruzada activas (el resto oculto, apagado y pausado, codigo conservado; valle incluido),
-campañas y mostrador por push de la PWA o solo en la app (nunca Wallet), recordatorio por Wallet con respaldo PWA,
-**el paso 4 deja de correr (resuelve la #67)**, limites de hoy centralizados en un modulo, y la Venta cruzada con
-push + app «a pensar mejor». Hallazgo: la Bienvenida YA exige PWA + Web Push (`f3982ef`, sin ADR hasta el 0115).
+**Hecho hoy:** #67 medida por fase (paso 4 = 87,7 s de ~89 s) → el owner cambio el rumbo → **ADR 0115** (campañas de
+la Wallet a la PWA; solo Bienvenida y Venta cruzada; compositor apagado; paso 4 deja de correr; limites de hoy
+centralizados) → **spec 0138** (spec 1 del ADR: modulo `enabled-campaigns.ts`, API oculta/rechaza lo apagado, tick
+sin lo apagado ni el paso 4, valle fuera de «Mis beneficios», tests de lo apagado via `vi.mock`). Medido en PROD
+(solo lectura): 1 campaña (`welcome` activa), 0 turnos vivos, 8 negocios → no hay nada que pausar ni migrar.
 
-**Siguiente: la spec 1 del 0115 §Consecuencias** (apagar plantillas + paso 4 + pausar vivas + borrar los 99 turnos
-historicos de `ci-integration`). Antes de escribirla, preguntar al owner los dos «Abierto» del ADR (aviso al merchant
-de la pausa; que pasa con los `pass_placement` ya emitidos). Despues: canales (2), limites (3), aviso cruzada (4).
+**Siguiente:** despachar UN `implementador` para la 0138 y UN `revisor` al final (ADR 0071). Despues, §7 de la spec:
+borrar los 99 turnos vivos historicos de `ci-integration` **con OK del owner en el momento** (SQL destructivo). Luego
+las specs 2–4 del ADR 0115 (canales, limites, aviso de la cruzada — esta ultima con el owner antes de escribirla).
 
 **Medido en la corrida Neon completa (2026-10-02 22:00 UTC, ~10 min):** 6 failed / 3119 passed — `marketing-valley`
 (timeout, #67), **3 NUEVOS en `marketing-refresh`** (`expected [] to have a length of 1`, causa sin medir) y 2
