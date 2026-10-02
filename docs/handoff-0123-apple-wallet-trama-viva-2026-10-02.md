@@ -2,6 +2,12 @@
 
 Estado: implementación local preparada; QA de iPhone y PASS independiente pendientes.
 
+Actualización del 2026-10-02: código pusheado a `main` en `0790956`. La investigación
+operativa y guías de diseño/actualización de pases viejos se pushearon en `5777c59`.
+El despliegue y QA visual en iPhone no se han verificado; no se ha encolado el
+`pass_refresh` del rediseño. El trabajo siguiente del owner se registra en
+[handoff Apple → pase PWA](handoff-2026-10-02-wallet-apple-a-pase-pwa.md).
+
 ## Archivos tocados
 
 - `packages/domain/src/server/wallet/apple.ts`, `apple-art.ts`, `pass-version.ts`:

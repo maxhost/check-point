@@ -1,5 +1,15 @@
 # TASKS
 
+## ⇥ SIGUIENTE TRABAJO DEL OWNER (2026-10-02) — TRAMA VIVA EN EL PASE DE LA PWA
+
+Después de `/clear`, leer el
+[handoff Apple → pase PWA](handoff-2026-10-02-wallet-apple-a-pase-pwa.md).
+El owner quiere diseñar una versión de Trama viva para «Tu pase» dentro de
+`my.checkpass.club`, con el QR en la tarjeta. La vista actual está en
+`apps/consumer/src/app/(consumer)/wallet/qr-tab.tsx` y `apps/consumer/src/app/wallet.css`.
+**No hay diseño de PWA ni spec aprobados todavía**: comenzar por exploración
+visual y revisión con el owner. Mantener el QR funcional y escaneable.
+
 ## ⇥ ESTADO (2026-10-02) — APPLE WALLET 0123: «IPHONE · STRIP VISIBLE» APROBADO; ARTE IMPLEMENTADO LOCALMENTE
 
 El owner eligió la vista «iPhone · strip visible» de Trama viva. La spec 0123 está
