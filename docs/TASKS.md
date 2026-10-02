@@ -1,13 +1,14 @@
 # TASKS
 
-## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: CÓDIGO Y ARTE LOCALES LISTOS; QA Y PUBLICACIÓN PENDIENTES
+## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: PNG EN PROD Y CLASE QA CREADA; QA ANDROID Y CLASE REAL PENDIENTES
 
-Spec 0122 «Trama viva» aprobada por el owner. Assets PNG versionados, provisionador con
-`--inspect`/`--apply` y tests locales listos. `pnpm run build`, `typecheck`, `lint`, pruebas
-del provisionador y regresión de Wallet pasan; Next local sirve ambos PNG por HTTP 200.
-**No se actualizó la Loyalty Class real ni se desplegaron los assets.** Siguiente secuencia:
-deploy de `my.`, comprobar PNG públicos, clase de QA aislada y Android real, snapshot y
-`PATCH` de la clase compartida, QA de pase viejo/nuevo, PASS independiente. [Handoff](handoff-0122-google-wallet-trama-viva-2026-10-01.md)
+Spec 0122 «Trama viva» aprobada por el owner. `f595842` está pusheado en `main`; ambos PNG
+responden HTTP 200 desde `my.checkpass.club` y su SHA-256 coincide con el commit. La clase
+`qa_trama_viva_0122` fue creada y Google devolvió `reviewStatus=approved`; el enlace QA
+redirige a Google Login (302). `pnpm run build`, `typecheck`, `lint`, pruebas del
+provisionador y regresión de Wallet pasan. **No se actualizó la Loyalty Class real.**
+Siguiente secuencia: owner guarda y revisa el pase ficticio en Android; después, snapshot y
+`PATCH` de la clase compartida, QA de pase viejo/nuevo y PASS independiente. [Handoff](handoff-0122-google-wallet-trama-viva-2026-10-01.md)
 y [runbook](wallet-go-live.md).
 
 **Estado actual del proyecto. Este es el punto de retorno.**

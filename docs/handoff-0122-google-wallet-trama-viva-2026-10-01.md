@@ -1,7 +1,7 @@
 # Handoff — Spec 0122, pase Google Wallet «Trama viva»
 
 Fecha: 2026-10-01 (America/Guayaquil).
-Estado: código y assets preparados localmente; publicación y QA real pendientes.
+Estado: código publicado en `main` (`f595842`), PNG desplegados y clase aislada de QA creada; revisión visual en Android y clase real pendientes.
 
 ## Archivos tocados
 
@@ -26,6 +26,10 @@ Estado: código y assets preparados localmente; publicación y QA real pendiente
 | `pnpm exec prettier --check` sobre scripts y documentos de la spec | PASS. |
 | `curl -sSI http://127.0.0.1:3004/wallet-logo-trama-v1.png` y hero | Ambos HTTP 200, `Content-Type: image/png` desde Next en modo producción local. |
 | `git diff --check` | PASS. |
+| `git push origin main` | `f595842` publicado en `origin/main`. |
+| `GET https://my.checkpass.club/wallet-logo-trama-v1.png` y hero | Ambos HTTP 200, `Content-Type: image/png`; SHA-256 remoto igual al PNG del commit. |
+| Provisionador con `--class-suffix qa_trama_viva_0122 --apply` | Clase de QA creada; Google devolvió `reviewStatus=approved`. |
+| GET del enlace de guardado QA | HTTP 302 a `accounts.google.com` sin exponer el JWT en logs. |
 
 El primer `pnpm run typecheck` falló porque `.next/types/validator.ts` todavía referenciaba cinco rutas de recuperación retiradas antes de esta spec. `pnpm run build` regeneró los tipos y el segundo `pnpm run typecheck` pasó. No se modificaron esas rutas.
 
@@ -34,9 +38,10 @@ El primer `pnpm run typecheck` falló porque `.next/types/validator.ts` todavía
 - [x] Assets dimensionados, servidos localmente y visualizados; hero sin texto ni iconos sobre el QR.
 - [x] Payload de clase y lista fijado por pruebas; `PATCH` conserva callbacks, ubicaciones, mensajes y otros campos no gestionados.
 - [x] Sin modificación de la emisión del objeto, QR, enlaces, avisos o Apple Wallet.
-- [ ] PNG públicos desde `https://my.checkpass.club/` después del despliegue.
-- [ ] Clase de QA aislada y prueba de lista, pase abierto y detalle en Android real.
+- [x] PNG públicos desde `https://my.checkpass.club/` después del despliegue; bytes idénticos a los locales.
+- [x] Clase de QA aislada creada con arte y plantilla Trama viva.
+- [ ] Guardado y revisión de lista, pase abierto y detalle en Android real.
 - [ ] Lectura/snapshot, actualización y revisión de la clase real, más verificación de un pase ya guardado y uno nuevo.
 - [ ] PASS de revisor independiente para marcar la spec `implementada` según `docs/AGENT-WORKFLOW.md`.
 
-La Loyalty Class real **no fue modificada**. El provisionador requiere `--apply` y comprueba que los PNG respondan por HTTPS antes de escribir. Los pasos de QA, rollback y publicación están en `docs/wallet-go-live.md`. No se imprimieron ni copiaron credenciales ni tokens de pase.
+La Loyalty Class real **no fue modificada**. El provisionador requiere `--apply` y comprueba que los PNG respondan por HTTPS antes de escribir. El enlace de guardado QA usa un miembro ficticio y un QR sin validez para el mostrador; se entregó directamente al owner, no se incorporó al repositorio. Los pasos de QA, rollback y publicación están en `docs/wallet-go-live.md`. No se imprimieron ni copiaron credenciales privadas ni tokens de consumidores reales.
