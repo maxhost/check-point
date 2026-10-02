@@ -8,7 +8,22 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02) — 0119 IMPLEMENTADA EN `motor` (PASS + M1–M7); FALTA PUSH, DEPLOY Y LA `0061` EN PROD
+## ⇥ ESTADO (2026-10-02, madrugada) — 0119 EN PROD: CODIGO EN `main` (`0b869f7`) Y LA `0061` APLICADA; FALTA QA DEL OWNER
+
+Push `motor` → `main` (`1b375c8..0b869f7`, fast-forward, OK del owner). Deploy de `my.` confirmado sin Vercel por una
+señal que solo da el codigo nuevo: `GET /api/public/auth/google/start` → 302 a `accounts.google.com` con el client id
+cargado y `redirect_uri=https://my.checkpass.club/api/public/auth/google/callback`. **Despues** (el orden lo fija el
+codigo viejo), la `0061` en PROD por `run_sql_transaction` + fila del journal (hash `ee17d614…`, when 1790900152868);
+antes se verifico que el `DROP … CASCADE` solo alcanza la FK interna `otp_delivery → otp_challenge`. Por SQL despues:
+62 migraciones, `consumer_identity` existe, tablas OTP y `enroll_attempt` borradas, `phone_e164` nullable en cuenta y
+`business_customer`, columna `email`, rol con INSERT y sin UPDATE en la identidad, sin bypass; 9 cuentas y 9
+membresias intactas. En vivo: `/enroll/<Platano>` muestra «CheckPass Club» y «Continuar con Google / Apple» (sin
+telefono); `auth/apple/start` → 302 a `appleid.apple.com` con `client_id=club.checkpass.signin` y cookie
+`__Host-cp_oauth` `Secure; HttpOnly; SameSite=none; Max-Age=600`; `auth/twitter/start`, `/recover` y
+`recovery/request` → 404; `api/health` 200. **Falta:** QA del owner en el telefono (5 pasos de la spec 0119) — la
+firma real y el `form_post` de Apple solo se ven ahi. `.env.example` sin actualizar (deny de `.env*`: lo hace el owner).
+
+## ⇥ ESTADO HISTORICO (2026-10-02) — 0119 IMPLEMENTADA EN `motor` (PASS + M1–M7); FALTA PUSH, DEPLOY Y LA `0061` EN PROD
 
 `motor` = `2e5d33f`, **sin push**, 13 commits por delante de `origin/main` y con `origin/main` (`1b375c8`) mergeada
 (`888de92`). Gates locales tras el merge, Node 24: typecheck, lint, format:check verdes; test 2242/2242 (781 skip);
