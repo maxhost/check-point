@@ -2,9 +2,9 @@
 spec: 0138
 fecha: 2026-10-02
 estado: cerrada
-resumen: Spec 1 del ADR 0115. Un solo modulo decide que campañas existen (`welcome` y `cross`), el compositor libre y la proximidad apagados; la API los oculta y rechaza, el tick no corre las apagadas ni el paso 4 (resuelve la #67), y «Mis beneficios» deja de ofrecer valle. Codigo conservado; los tests de lo apagado lo re-encienden con `vi.mock` del modulo.
+resumen: Spec 1 del ADR 0115. Un solo modulo decide que campañas existen (`welcome` y `cross`), el compositor libre y la proximidad apagados; la API los oculta y rechaza, el tick no corre las apagadas ni el paso 4 (resuelve la #67), y «Mis beneficios» deja de ofrecer valle. Codigo conservado; sus tests se saltean mientras este apagado (`skipIf` atado al mismo modulo), por decision del owner.
 disjunta: si
-archivos: packages/domain/src/server/marketing/enabled-campaigns.ts (crear), apps/merchant/src/server/marketing/{template-store,campaign-store,campaign-actions,audience-store,push-store,tick}.ts, packages/domain/src/server/consumer/{cross-offers,valley-offers}.ts, tests de lo apagado (solo agregar el `vi.mock`), un test de integracion nuevo
+archivos: packages/domain/src/server/marketing/enabled-campaigns.ts (crear), apps/merchant/src/server/marketing/{template-store,campaign-store,campaign-actions,audience-store,push-store,tick}.ts, packages/domain/src/server/consumer/{cross-offers,valley-offers}.ts, tests de lo apagado (solo el `skipIf`), un test de integracion nuevo
 ---
 
 # 0138 — Solo Bienvenida y Venta cruzada
@@ -25,7 +25,7 @@ archivos: packages/domain/src/server/marketing/enabled-campaigns.ts (crear), app
 
 **Entra:** un modulo unico que decide lo encendido; el filtro en catalogo, listado y por id; el rechazo al crear,
 activar y encender; el tick sin lo apagado ni el paso 4; valle fuera de «Mis beneficios»; los tests de lo apagado
-re-encendiendolo por `vi.mock`; la limpieza de los turnos vivos historicos de `ci-integration`.
+salteados mientras este apagado (owner: «si esta apagado no se prueba»); la limpieza de los turnos vivos historicos de `ci-integration`.
 
 **No entra:** canales (spec 2 del 0115), limites (spec 3), aviso de la cruzada (spec 4), UI (GPT; aca va el
 contrato), borrar codigo de lo apagado (el owner pidio conservarlo), migraciones, pausar campañas (ver Diseño §5).
@@ -84,14 +84,32 @@ El ADR pide pausar las campañas vivas apagadas. **Medido en PROD el 2026-10-02*
 (`welcome`, `active`), 0 turnos vivos, 8 negocios. **No hay ninguna que pausar.** En cualquier otra base, una
 apagada que siga `active` queda oculta (§2) e ignorada por el tick (§3). Se declara; no hay migracion ni script.
 
-### 6. Los tests de lo apagado
+### 6. Los tests de lo apagado: se saltean, atados al modulo
 
-El codigo apagado se conserva **y sigue probado**: cada suite que ejercita algo apagado (plantillas de reactivacion,
-saldo o valle, compositor, paso 4) agrega **arriba** un `vi.mock` del modulo que enciende **solo lo que esa suite
-prueba** (ej. `marketing-valley` enciende `valley` pero NO el paso 4, asi deja de recorrer los clientes de otras
-suites). Es el unico cambio permitido en esas suites: **ningun `expect` se toca**. El implementador mide primero
-que el `vi.mock` alcance a los imports relativos de dentro de `packages/domain` (un tick re-encendido que encola
-es la prueba). Si no alcanza, se corta y va al orquestador, sin buscar otro mecanismo.
+Owner (2026-10-02, textual): «si esta apagado no se prueba, porque probar implica añadir tiempo de test a algo que
+no se usa». Los tests **se conservan** (como el codigo) y **se saltean** con la condicion del mismo modulo:
+
+```ts
+describe.skipIf(!campaignKindEnabled("missed_you"))(…)        // o it.skipIf, si el archivo mezcla
+describe.skipIf(!PROXIMITY_PLACEMENT_ENABLED)(…)               // paso 4
+describe.skipIf(!COMPOSER_ENABLED)(…)                          // compositor
+```
+
+El dia que se re-encienda algo, sus tests vuelven a correr solos. **Las suites `.neon` ya usan
+`describe.skipIf(!integrationEnabled)`**: la condicion se combina (`!integrationEnabled || !campaignKindEnabled(…)`).
+
+**Que se saltea y que no — la regla es el TEMA del caso, no lo que siembra:**
+- se saltea un caso cuyo **tema** es algo apagado: activar/correr/medir una plantilla apagada, el compositor, el
+  paso 4, la deteccion y las ofertas de valle;
+- **NO** se saltea un caso que solo **usa** una campaña apagada como fixture para probar algo vivo. Ejemplo medido:
+  las suites `counter-coupon*` siembran una campaña compositor (`counter-coupon-support.ts:45-66`) para probar el
+  canje del cupon en el mostrador, que sigue vivo (la Bienvenida y la cruzada emiten cupones). Esas suites siembran
+  por SQL y no pasan por los guards de §2–§3, asi que siguen verdes sin tocarlas;
+- si un caso de un tema VIVO (Bienvenida, cruzada, mostrador, lock, expirar/cancelar) se pone rojo por el apagado,
+  **no se saltea**: se para y va al orquestador, porque acusa una dependencia que esta spec no previo.
+
+El implementador entrega la **lista de casos salteados**, cada uno con la condicion que lo saltea. Es el unico
+cambio permitido en esas suites: ningun `expect` se toca y ningun test se borra.
 
 ### 7. Limpieza de `ci-integration`
 
@@ -109,7 +127,7 @@ trabajo del implementador.
 | `apps/merchant/src/server/marketing/audience-store.ts`, `push-store.ts`, `tick.ts` | editar |
 | `packages/domain/src/server/consumer/cross-offers.ts`, `valley-offers.ts` | editar |
 | `apps/merchant/src/server/marketing-disabled.neon.integration.test.ts` | crear (oraculos de §2–§4 con el modulo REAL, sin mock) |
-| suites que ejercitan lo apagado (hasta 46 archivos referencian esas claves; las que se pongan rojas) | solo el `vi.mock` de §6 |
+| suites cuyo tema es lo apagado (hasta 46 archivos referencian esas claves; el tema decide, §6) | solo el `skipIf` de §6 |
 
 **Disjunta?** Si. Toca solo la zona de servidor y paquetes (Claude, ADR 0114). La UI de GPT consume el contrato de §2.
 
@@ -125,12 +143,15 @@ trabajo del implementador.
     con turno vivo y fila de `pass_placement`: **0** `campaign_turn` nuevos, **0** `campaign_push`,
     `consumers: 0`, y `pass_placement` de ese consumidor byte-identico;
   - una deteccion de valle vieja no se recalcula; `listCrossOffers` no trae ofertas `valley`.
-- [ ] Las suites re-encendidas por `vi.mock` pasan **sin tocar ningun `expect`**: `git diff` de cada una muestra
-      solo el bloque del mock (transcribir la lista).
-- [ ] `tools/neon-test.sh src/server/marketing-valley.neon.integration.test.ts` en local: 3/3 verdes, cada uno < 180 s
-      (era el rojo de la #67); transcribir los tiempos.
+- [ ] La lista de casos salteados (§6), cada uno con su condicion; `git diff` de esas suites muestra solo el
+      `skipIf` (ningun `expect` tocado, ningun test borrado).
+- [ ] Ningun test vivo corre el paso 4: sobre el log de la corrida Neon completa,
+      `grep '^marketing_tick ' LOG | grep -vc '"consumers":0,'` → **0**. (Probado que discrimina: sobre el log del
+      2026-10-02, antes de la spec, da 41 de 70 lineas.)
+- [ ] Tiempos de la suite Neon completa antes (~10 min, 2026-10-02) y despues, transcriptos. Es informativo, no un
+      umbral.
 - [ ] `pnpm verify` en verde con Node 24, **una sola vez al final** (ADR 0113), con Neon completo (cambian
-      muchas suites) y su tabla final transcripta.
+      muchas suites) y su tabla final transcripta. Los `skipped` nuevos se cuentan y coinciden con la lista de §6.
 - [ ] `rg -n MUTATION apps packages tools` → vacio.
 
 ## Mutaciones — presupuesto: 9. Clase: los plausibles (un punto de entrada que se olvida de preguntar)
@@ -162,6 +183,8 @@ casos de API, para que el freno de plan (402, el guard hermano) no corte antes.
 - El refresco de valle apagado (§3) tiene su caso en la DoD, pero no tiene mutacion propia (presupuesto).
 - El reclamo de valle apagado (§4): sin mutacion propia.
 - Las campañas apagadas que queden `active` fuera de PROD (§5).
+- Los tests salteados se pudren en silencio mientras esten apagados (cambios de esquema, helpers): re-encender
+  algo implica correr sus tests y arreglarlos. Es el costo aceptado por el owner a cambio del tiempo de test.
 - Los 3 rojos nuevos de `marketing-refresh` en la corrida completa del 2026-10-02 (`PARQUEADO.md` #67): si siguen
   rojos al final, se transcriben y se declaran; no se persiguen en esta spec.
 

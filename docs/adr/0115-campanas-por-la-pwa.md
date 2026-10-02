@@ -135,3 +135,6 @@ Tambien detectar si la PWA esta instalada sin notificaciones para incentivar des
   usuarios reales, entonces no importa»** — no se limpian ni se reescriben.
 - ¿El compositor libre (campaña propia sin plantilla, `template_key` nulo) tambien se apaga? **«Sí, se apaga»**:
   igual que las plantillas de §1 (la API no deja crearla ni activarla, el tick no la corre, las vivas se pausan).
+- ¿Lo apagado se sigue probando? **No**, textual: «si esta apagado no se prueba, porque probar implica añadir tiempo
+  de test a algo que no se usa». Los tests de lo apagado se saltean mientras este apagado (atados al mismo modulo
+  que lo apaga) y se conservan, igual que el codigo.
