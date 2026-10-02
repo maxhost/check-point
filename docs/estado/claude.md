@@ -8,7 +8,33 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — PLAN 2 IMPLEMENTADO (ADR 0114 / spec 0135); SPEC 0112 DE LA OFERTA CRUZADA → 0136
+## ⇥ ESTADO (2026-10-02, cierre) — SIGUIENTE: PARQUEADO #67 (EL TICK DE MARKETING SIN ALCANCE). HANDOFF + `/clear`
+
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. El ultimo push (`2d8f4cb`, Plan 2 + renumerado 0112→0136) fue
+con `--no-verify` AUTORIZADO por el owner; su CI quedo CORRIENDO al cerrar (no se espero): mirarla primero. Arbol
+limpio, `motor` = `origin/main`. Los gates de `ef05b1a` (ultimo commit con codigo) dieron typecheck/lint/format/test verdes.
+
+**La tarea: corregir la #67 por su CAUSA DE FONDO, y recien despues el test** (decision del owner, PARQUEADO #67:
+«no tiene sentido arreglar el test»). Lo medido el 2026-10-02 (no re-medido desde entonces):
+- `apps/merchant/src/server/marketing/tick.ts:248-255`: despues del trabajo por campaña (que SI respeta
+  `businessIds`), `loadBusinessTurnStats(db)` y `placeConsumers(db, …)` corren SIN alcance de negocio.
+- `placeConsumers` (`marketing/placement.ts:175`) recorre cada consumidor de `loadPlacementConsumerIds`
+  (`placement-store.ts:40`: los con turno `queued|active` ∪ los con fila en `consumer.pass_placement`) y por cada uno
+  hace varias consultas (`lockConsumer`, `loadActiveTurns`, `loadQueuedTurns`, …) dentro de UNA transaccion.
+- En `ci-integration`: 79 consumidores en ese conjunto (consulta 374 ms); un tick ~80 s; `marketing-valley` V4 hace 3
+  ticks y corta a 180 s **en local** (en GitHub pasa: la latencia desde el owner pesa). El test no pasa `consumerIds`.
+- Otras suites dejan filas de `pass_placement` sin limpiar (por eso crece el conjunto).
+- **No medido:** el reparto del tiempo entre fases del tick. Es lo PRIMERO a medir (instrumentar o cronometrar cada
+  fase contra `ci-integration`) antes de escribir la spec.
+- Por que importa ya: con el hook `pre-push` (ADR 0114), todo push que dispare Neon completo (esquema, migraciones,
+  `package.json`) queda BLOQUEADO en local por esta suite. Y en PROD el costo crece lineal con los clientes reales.
+
+**Pendientes chicos (no bloquean):** `docs/AGENT-WORKFLOW.md` y `.claude/agents/*` aun mandan la bitacora a
+`docs/TASKS.md`; `.prettierignore` excluye `docs/`, asi que el modo solo-docs de `pnpm verify` no revisa nada;
+#68 (intermitente `push-enable`) y un intermitente de `catalog-import-guard` en corrida completa; borrar el worktree
+`motor` cuando el owner lo pida (esta sesion vive ahi).
+
+## ⇥ ESTADO HISTORICO (2026-10-02, noche) — PLAN 2 IMPLEMENTADO (ADR 0114 / spec 0135); SPEC 0112 DE LA OFERTA CRUZADA → 0136
 
 **0135** (`099b409`): `docs/TRABAJO-EN-PARALELO.md`, `AGENTS.md` (GPT), `.githooks/pre-push` (check-numbers + `pnpm
 verify`, modo solo-docs) **instalado** (`core.hooksPath=.githooks`, comun a los dos arboles), estado por agente

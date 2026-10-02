@@ -1921,3 +1921,25 @@ Merchant nunca lo vio porque conecta como `neondb_owner` (el dueño se saltea RL
 **Regla.** Un rol nuevo se verifica tambien contra RLS: `select relname from pg_class where relrowsecurity` en los
 esquemas que toca, y para cada tabla con RLS decidir politica o `BYPASSRLS` ANTES del corte. `has_table_privilege`
 no ve politicas. Y la prueba que cuenta es una lectura real con ese rol, no una funcion de catalogo.
+
+## 2026-10-02 — el primer rojo de una suite se dio como su causa, y tapaba otros siete
+
+**Que paso.** En la spec 0131, `marketing-backoffice-pages` daba `TypeError … reading 'includes'` (el doble de sesion
+sin `permissions`). El orquestador escribio la spec con esa causa. Arreglado el doble, los 7 casos SEGUIAN rojos: las
+paginas eran cascarones cliente desde `f61b163` y los casos describian pantallas SSR que ya no existian. El
+implementador freno (bien) y la spec se reescribio.
+
+**Regla.** Antes de escribir la causa de un rojo en una spec, arreglar el PRIMER error en una copia temporal y
+re-correr: un error temprano corta el caso antes de las aserciones que importan. Se hizo bien en la misma sesion con
+los e2e (stub de `usePathname` probado y revertido: quedaban 52).
+
+## 2026-10-02 — dos agentes numeraron specs a la vez y `main` quedo roja sin que nadie lo viera
+
+**Que paso.** Claude (en `motor`) y GPT (en `main`) escribieron las specs 0121-0123 por separado; las de Claude se
+renumeraron a 0124-0129 en el merge (54 archivos). Ademas la CI de `main` estaba roja en 4 suites Neon desde antes del
+tag `baseline` y nadie lo vio: no se esperaba la CI y tampoco se la miraba despues.
+
+**Regla (estructural, ya aplicada).** ADR 0113/0114: el numero se reserva pusheando la spec antes del codigo; el hook
+`pre-push` rechaza numeros duplicados (`tools/check-numbers.ts`) y corre `pnpm verify`; cada sesion empieza con
+`pnpm ci:status`.
+
