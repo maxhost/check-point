@@ -1,7 +1,7 @@
 ---
 spec: 0132
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Reparar el harness de navegación y actualizar los e2e de backoffice al texto vigente en tuteo para dejar Playwright en verde.
 disjunta: si
 archivos: tests/e2e/**, docs/INDEX.md, docs/specs/0132-e2e-backoffice-tuteo.md
@@ -35,9 +35,10 @@ Mantener los tests ligados al contrato visible de cada pantalla. Para cada texto
 
 ## Definition of Done
 
-- [ ] `pnpm test:e2e` pasa con Node 24 y Chromium instalado.
-- [ ] Gates de raíz con Node 24: `pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run format:check`, `pnpm run build`.
-- [ ] Los cambios de tests se corresponden con nombres o textos presentes en la UI actual; no se modifica copia de producto para aprobarlos.
+- [x] `pnpm test:e2e` pasa con Node 24 y Chromium instalado: 106 passed, 5 skipped.
+- [x] Con Node 24 pasan `pnpm run typecheck`, `pnpm run lint`, `pnpm run test` y `pnpm run format:check`.
+- [ ] `pnpm run build`: Turbopack falla al abrir un puerto interno para procesar CSS en consumer (`EPERM`), incluso fuera del sandbox. El build de consumer con `--webpack` pasa; este problema queda fuera del alcance de la spec.
+- [x] Los cambios de tests se corresponden con nombres o textos presentes en la UI actual; no se modifica copia de producto para aprobarlos.
 
 ## Mutaciones — presupuesto: 0
 
