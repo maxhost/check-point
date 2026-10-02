@@ -21,25 +21,26 @@ al cambiar de deploy.
 **Costo: $0.** La Google Wallet API es gratis (sin fee por pase, actualización, ni cuota
 anual).
 
-- [ ] **Business Profile completo** en el Google Pay & Wallet Console.
-- [ ] **≥1 Passes Class creada** → ✅ hecho (`<issuerId>.mipasaporte_identity`, `approved`;
+- [ ] **Business Profile completo** en el Google Pay & Wallet Console; confirmar estado allí.
+- [x] **≥1 Passes Class creada** (`<issuerId>.mipasaporte_identity`, `approved`;
       se crea/actualiza con `scripts/google-wallet/provision-class.mjs`).
-- [ ] **Assets Trama viva desplegados** desde `my.checkpass.club`: comprobar `GET` 200,
+- [x] **Assets Trama viva desplegados** desde `my.checkpass.club`: `GET` 200,
       `Content-Type: image/png` y dimensiones de `/wallet-logo-trama-v1.png` (660 × 660)
-      y `/wallet-trama-hero-v1.png` (1032 × 812) sin sesión.
-- [ ] **Clase de QA aislada:** usar un sufijo propio, como `--class-suffix qa_trama_viva`,
-      con cuenta/objeto de prueba. Tras el deploy de los PNG, ejecutar el provisionador
-      con `--apply`; inspeccionar con `--inspect` y validar lista, pase abierto, QR y enlace
-      en Android. El script no modifica ninguna clase si no se le pasa `--apply`.
+      y `/wallet-trama-hero-v1.png` (1032 × 812) sin sesión; SHA-256 remoto coincide con el commit.
+- [x] **Clase de QA aislada y diseño visual aprobado:** `qa_trama_viva_0122` creada; el
+      owner guardó el pase ficticio en Android y aprobó su aspecto. Su QR no acredita y
+      no verifica el funcionamiento del mostrador.
 - [ ] **Clase real:** guardar antes una salida de `--inspect` sin credenciales; ejecutar
       `--apply` sin `--class-suffix` solo después de aprobar el QA. El script hace `GET`,
       calcula un `PATCH` de presentación que conserva los demás campos y omite la escritura
       si ya coincide. Volver a inspeccionar `reviewStatus` y comprobar un pase ya guardado.
-- [ ] **Screenshots del pase** listos para adjuntar.
+- [ ] **Screenshots del pase** disponibles si Google los solicita; la documentación
+      actual de Google ya no los exige para enviar la solicitud de acceso de publicación.
 - [ ] **Secretos en Vercel (Production):** `GOOGLE_WALLET_ISSUER_ID` +
       `GOOGLE_WALLET_SA_JSON` (JSON **crudo**, no base64) → ✅ cargados para el QA demo.
-- [ ] **Request publishing access:** Console → **Google Wallet API → Request publishing
-      access** → enviar. Revisión de Google **~2 días hábiles**; avisan por email.
+- [ ] **Acceso de publicación para cualquier usuario:** confirmar en Console si ya fue
+      concedido. Si sigue en modo demo: Console → **Google Wallet API → Request publishing
+      access** y esperar la revisión de Google. Una clase `approved` no prueba este acceso.
 - [ ] Post-aprobación: cualquier usuario (no solo test accounts) puede guardar el pase.
 
 Ejemplo de comandos (las credenciales se pasan por variables de entorno o archivo local
