@@ -7,10 +7,10 @@ Directrices del proyecto. Se cargan siempre y cuestan tokens en cada request —
 solo lo que cambia una decision. Lo derivable del codigo no va: leelo del arbol.
 
 - **`docs/INDEX.md`** — mapa de ADRs y specs. **Empeza aca**, no leas todo.
-- **`docs/TASKS.md`** — estado actual. El punto de retorno si esta sesion se cae.
+- **`docs/estado/claude.md`** — TU estado, el punto de retorno si esta sesion se cae (`docs/TASKS.md` lo enlaza).
 - `.claude/settings.json` — lo que esta enforced (hooks + permisos).
 - **`docs/LECCIONES.md`** — el registro historico de `mistake→rule`, con el caso de cada regla.
-- **`docs/PARQUEADO.md`** — lo diferido/parado. `TASKS.md` es solo lo que esta en ejecucion.
+- **`docs/PARQUEADO.md`** — lo diferido/parado. `docs/estado/` es solo lo que esta en ejecucion.
 
 **Donde va cada cosa (spec 0066 / ADR 0069), para que este archivo no vuelva a crecer:** regla
 operativa corta que cambia una decision en **toda** sesion → aca; chequeable con un comando →
@@ -21,8 +21,9 @@ como si estuviera pegado aca y no ahorraria un solo token.
 
 ## Flujo de trabajo
 
-1. **Leer `docs/TASKS.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr
-   `pnpm ci:status`: si el ultimo `main` esta rojo, se arregla primero.
+1. **Leer `docs/estado/claude.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr
+   `pnpm ci:status`: si el ultimo `main` esta rojo, se arregla primero. **GPT trabaja en paralelo sobre
+   `main`: zonas, push, numeros y estado por agente en `docs/TRABAJO-EN-PARALELO.md` (ADR 0114).**
 2. **Ninguna tarea toca codigo sin su spec cerrada** (`docs/specs/`). La subespecificacion
    es el gatillo medido del exito fingido: en tareas resolubles y bien definidas el reward
    hacking cae a 0%; en tareas vagas, ~50%. **Que plantilla (ADR 0071):** `TEMPLATE-CHICA.md`
@@ -35,7 +36,7 @@ como si estuviera pegado aca y no ahorraria un solo token.
 4. **Agregar la fila a `docs/INDEX.md` en el mismo commit**, de **3 lineas**: que es, por
    que importa, estado (ADR 0071). El detalle vive en la spec, que es lo que la fila enlaza.
    Un indice viejo es peor que ninguno; uno de 2.000 palabras por fila se paga en cada sesion.
-5. **Actualizar `docs/TASKS.md` al terminar.** Hay un hook `Stop` que lo exige si quedo
+5. **Actualizar `docs/estado/claude.md` al terminar.** Hay un hook `Stop` que lo exige si quedo
    viejo respecto del codigo tocado. **Y el bloque ESTADO se escribe DESPUES del commit del
    trabajo, no antes**: si lo escribis antes, el commit que sigue lo invalida en el mismo
    turno y describe un arbol que ya no existe. Son dos commits (el trabajo, y despues el

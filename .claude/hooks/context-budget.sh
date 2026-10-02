@@ -52,12 +52,12 @@ cualitativa, no gradual: no vas a "andar un poco peor", vas a empezar a perder
 instrucciones y a no recuperarte de giros equivocados.
 
 Antes de seguir con trabajo nuevo, hace handoff:
-  1. Actualiza docs/TASKS.md con el estado real (que quedo hecho, que no, que sigue).
+  1. Actualiza docs/estado/claude.md con el estado real (que quedo hecho, que no, que sigue).
   2. Escribi lo aprendido que no este ya en disco (decision -> ADR, hallazgo -> spec).
   3. Commitea.
   4. Deci que el handoff esta listo y que conviene sesion nueva.
 
 Una sesion limpia con un buen prompt casi siempre le gana a una sesion larga con
-correcciones acumuladas. El punto de retorno es TASKS.md, no este chat.
+correcciones acumuladas. El punto de retorno es docs/estado/claude.md, no este chat.
 EOF
 exit 0

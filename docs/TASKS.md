@@ -1,70 +1,15 @@
 # TASKS
 
-## ⇥ SIGUIENTE TRABAJO DEL OWNER (2026-10-02) — TRAMA VIVA EN EL PASE DE LA PWA
+**El estado vigente vive por agente (ADR 0114, `TRABAJO-EN-PARALELO.md`):**
+[Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
+el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
-Después de `/clear`, leer el
-[handoff Apple → pase PWA](handoff-2026-10-02-wallet-apple-a-pase-pwa.md).
-El owner quiere diseñar una versión de Trama viva para «Tu pase» dentro de
-`my.checkpass.club`, con el QR en la tarjeta. La vista actual está en
-`apps/consumer/src/app/(consumer)/wallet/qr-tab.tsx` y `apps/consumer/src/app/wallet.css`.
-El owner aprobó la [maqueta Trama viva del pase PWA](design-explorations/pwa-pase-trama-viva.html)
-y aclaró que debe mostrarse un solo botón de Wallet según el SO, con su marca.
-[Spec 0130](specs/0130-pase-pwa-trama-viva.md) cerrada el 02/10/2026. Código local
-aplicado; tests afectados 8/8, typecheck, lint y build Webpack del consumidor verdes.
-Turbopack no pudo abrir un puerto interno en este entorno. Faltan QA en teléfono real,
-escaneo de mostrador y PASS independiente antes de marcarla implementada.
-[Handoff](handoff-0130-pase-pwa-trama-viva-2026-10-02.md).
+## Bitacora de mutaciones — spec 0135, implementador (2026-10-02)
 
-## ⇥ ESTADO (2026-10-02) — APPLE WALLET 0123: «IPHONE · STRIP VISIBLE» APROBADO; ARTE IMPLEMENTADO LOCALMENTE
-
-El owner eligió la vista «iPhone · strip visible» de Trama viva. La spec 0123 está
-cerrada. `0790956` está pusheado en `origin/main`. El constructor `.pkpass` incluye icono, logo y `strip` a 1x/2x/3x,
-contacto público y revisión de marca nueva; preserva el QR y las referencias del
-pase. Prueba Wallet, typecheck, lint y build pasan. **Live sin verificar:** faltan QA en
-iPhone para confirmar que `strip` aparece en la versión objetivo, comprobar despliegue,
-refresco de un pase existente con APNs, y PASS independiente antes de marcar
-`implementada`. [Handoff](handoff-0123-apple-wallet-trama-viva-2026-10-02.md) y
-[guías de diseño](wallet/apple-wallet-design-rules.md) y de
-[actualización de pases viejos](wallet/apple-wallet-update-existing-passes.md).
-
-## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: CLASE REAL TRAMA VIVA ACTUALIZADA Y APPROVED; PUBLICACIÓN GENERAL POR CONFIRMAR
-
-Spec 0122 «Trama viva» aprobada por el owner. `f595842` está pusheado en `main`; ambos PNG
-responden HTTP 200 desde `my.checkpass.club` y su SHA-256 coincide con el commit. La clase
-`qa_trama_viva_0122` fue creada y Google devolvió `reviewStatus=approved`. El owner guardó
-el pase QA en Android y aprobó el diseño: «perfecto, funcionó, quedó hermoso». Las
-verificaciones de build, typecheck, lint, provisionador y regresión de Wallet pasan. La
-clase real recibió `PATCH` autorizado y la lectura posterior confirmó logo/hero Trama viva,
-emisor «CheckPass Club», plantilla y `reviewStatus=approved`. Siguiente secuencia:
-verificación de pase viejo/nuevo y QR/enlace reales, confirmar acceso de publicación del
-emisor en Console y PASS independiente. [Handoff](handoff-0122-google-wallet-trama-viva-2026-10-01.md)
-y [guía de diseño/publicación](wallet/google-wallet-design-and-release.md).
-
-**Estado actual del proyecto. Este es el punto de retorno.**
-
-Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay un hook `Stop` que
-bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
-
-Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
-en pantalla. No "deberia andar". El auto-reporte no es evidencia.
-
-## ⇥ ESTADO (2026-10-02, noche) — `pnpm verify` EN MAIN (ADR 0113 / spec 0133)
-
-**Desde ahora el gate es `pnpm verify`** (gates segun lo que cambio) y cada sesion empieza con `pnpm ci:status`.
-Medido por el orquestador: `pnpm verify --files apps/merchant/src/server/marketing/template-store.ts` = **2 min 20 s**
-(Neon selectivo 11 suites en 92 s) contra ~20 min de Neon completo. Las 4 suites Neon que tenian roja la CI de `main`
-(#69) se arreglaron en la spec **0134** (`623eb4d`, solo tests; 21/21 re-corridas). **Verificado: `pnpm ci:status` → CI de
-`main` VERDE en `46eb63d`** (run 37039670082, Neon completo + e2e incluidos). #67 y #68 siguen anotados en PARQUEADO. Pendiente
-del handoff: `docs/AGENT-WORKFLOW.md` y skills que todavia citen «los 6 gates». **Siguiente con el owner: Plan 2.**
-
-## ⇥ ESTADO (2026-10-02, noche) — PLAN 1 CERRADO: `main` ALINEADO, TAG `baseline-2026-10-02` (= `49c7c9e`)
-
-Unica rama remota: `main`. 0131 (Claude, tests de servidor) y 0132 (GPT, e2e `437e7a2`) en main. **Los 6 gates verdes
-en `49c7c9e` con Node 24** (medido por Claude): typecheck, lint, test (2272), format:check, build, **test:e2e 106
-passed / 0 failed / 5 skipped**. **NO corridas** las suites `.neon.integration` completas (~20 min; el owner decidio
-no correrlas ahora): rojos conocidos ahi #67 (`marketing-valley`) y #68 (intermitente en `push-enable`). El tag lo
-declara en su mensaje. **Siguiente: Plan 2 (trabajo en paralelo Claude/GPT) con el owner.** Al cerrar esta sesion se
-borra el worktree `motor` (identico a main).
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `tools/check-numbers.ts` | `d89596864b2eddf28acfd9fee67dfd971559885a` | `duplicateNumbers` agrupa por NUMERO, no por nombre | `seen.set(name…)` → ROJO 2 de `check-numbers.test.ts` (`expected [] to deeply equal [ '0121' ]`, idem `['0125','0130']`); alcance: project `tools` entero, 8 archivos, 60/62 verdes. Revertida: `diff` vacio, shasum = limpio |
+| M2 | `tools/verify.ts` | `8a8910cecee2686cc044d11c82b76d1fc45a3901` | un `.ts` junto a docs NO es `docsOnly` | `every`→`some` → ROJO 3 de `verify.test.ts` «→ NO docsOnly» (docs+`.ts`, `AGENTS.md`+`apps/merchant/README.md`, docs+`package.json`; `expected true to be false`); alcance: project `tools` entero, 59/62 verdes. Revertida: `diff` vacio, shasum = limpio |
 
 ## ⇥ ESTADO HISTORICO (2026-10-02, noche) — ALINEACION: FASES 0-2 HECHAS; FASE 3 EN CURSO
 

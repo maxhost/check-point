@@ -4,12 +4,32 @@ import { planVerify } from "./verify";
 /** Spec 0133 / ADR 0113: que gates extra corren segun lo que cambio. Las reglas de
  * `planVerify` son la unica logica con decisiones de `pnpm verify`; el resto orquesta. */
 describe("planVerify", () => {
-  it("solo docs: ni e2e ni Neon", () => {
+  it("solo docs: ni e2e ni Neon, y docsOnly (spec 0135)", () => {
     expect(planVerify(["docs/x.md"])).toEqual({
+      docsOnly: true,
       e2e: false,
       neon: { mode: "none", merchant: [], consumer: [] },
-      reasons: [],
+      reasons: ["solo docs: solo format:check"],
     });
+  });
+
+  // Spec 0135: un push solo de docs corre solo `format:check`.
+  it.each([
+    [["docs/specs/0135-x.md", "docs/INDEX.md", "AGENTS.md"]],
+    [["CLAUDE.md", "README.md"]],
+    [["docs/estado/claude.md"]],
+  ])("%j → docsOnly", (files) => {
+    expect(planVerify(files).docsOnly).toBe(true);
+  });
+
+  // ORACULO DE M2 (spec 0135): un `.ts` junto a docs ya no es solo docs.
+  it.each([
+    [["docs/specs/0135-x.md", "tools/check-numbers.ts"]],
+    [["AGENTS.md", "apps/merchant/README.md"]],
+    [["docs/x.md", "package.json"]],
+    [[]],
+  ])("%j → NO docsOnly", (files) => {
+    expect(planVerify(files).docsOnly).toBe(false);
   });
 
   it("una pantalla (composer.tsx): e2e, sin Neon", () => {

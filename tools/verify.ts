@@ -7,7 +7,9 @@
  *   pnpm verify --full                  # todo, incluida la suite Neon entera
  *   pnpm verify --dry-run               # solo imprime el plan
  *
- * Siempre: typecheck, lint, format:check, test (unit), build. Despues e2e si se toco UI, y Neon:
+ * Solo docs (spec 0135): si TODO lo cambiado es `docs/**` o un `.md` de la raiz, corre SOLO
+ * `format:check`.
+ * Si no: typecheck, lint, format:check, test (unit), build. Despues e2e si se toco UI, y Neon:
  * selectivo (`vitest related`) si se toco servidor o `packages/domain`; completo ante lo que el
  * grafo de imports no ve (esquema, SQL, configuracion, lockfile, el propio `neon-test.sh`).
  * NO corta en el primer rojo: corre todo lo planeado y al final imprime la tabla.
@@ -26,12 +28,20 @@ import { pathToFileURL } from "node:url";
 export type NeonMode = "none" | "related" | "full";
 
 export type VerifyPlan = {
+  docsOnly: boolean;
   e2e: boolean;
   neon: { mode: NeonMode; merchant: string[]; consumer: string[] };
   reasons: string[];
 };
 
 const basename = (file: string) => file.slice(file.lastIndexOf("/") + 1);
+
+/** Docs: `docs/**` o un `.md` de la raiz (`AGENTS.md`, `CLAUDE.md`, `README.md`). */
+function isDoc(file: string): boolean {
+  return (
+    file.startsWith("docs/") || (!file.includes("/") && file.endsWith(".md"))
+  );
+}
 
 /** Lo que el grafo de imports no ve: Neon completo (y e2e). */
 function isFullTrigger(file: string): boolean {
@@ -73,6 +83,8 @@ function relatedApps(file: string): Array<"merchant" | "consumer"> {
 /** PURO: que gates extra corren para `files` (rutas relativas a la raiz del repo). */
 export function planVerify(files: string[]): VerifyPlan {
   const reasons: string[] = [];
+  const docsOnly = files.length > 0 && files.every(isDoc);
+  if (docsOnly) reasons.push("solo docs: solo format:check");
   const full = files.filter(isFullTrigger);
   const e2eFiles = files.filter(isE2eTrigger);
   for (const file of full) reasons.push(`neon full: ${file}`);
@@ -80,6 +92,7 @@ export function planVerify(files: string[]): VerifyPlan {
   if (full.length > 0) {
     if (e2eFiles.length === 0) reasons.push("e2e: implicado por neon full");
     return {
+      docsOnly,
       e2e: true,
       neon: { mode: "full", merchant: [], consumer: [] },
       reasons,
@@ -96,6 +109,7 @@ export function planVerify(files: string[]): VerifyPlan {
   const mode: NeonMode =
     merchant.length + consumer.length > 0 ? "related" : "none";
   return {
+    docsOnly,
     e2e: e2eFiles.length > 0,
     neon: { mode, merchant, consumer },
     reasons,
@@ -139,11 +153,15 @@ function gates(plan: VerifyPlan): Gate[] {
     "format:check",
     "test",
     "build",
-  ].map((script) => ({ name: script, cmd: ["pnpm", "run", script] }));
+  ].map((script) => ({
+    name: script,
+    cmd: ["pnpm", "run", script],
+    skip: plan.docsOnly && script !== "format:check" ? "solo docs" : undefined,
+  }));
   list.push({
     name: "test:e2e",
     cmd: ["pnpm", "run", "test:e2e"],
-    skip: plan.e2e ? undefined : "no se toco UI",
+    skip: plan.e2e ? undefined : plan.docsOnly ? "solo docs" : "no se toco UI",
   });
   const neon = join(ROOT, "tools/neon-test.sh");
   if (plan.neon.mode === "full") {
@@ -161,11 +179,13 @@ function gates(plan: VerifyPlan): Gate[] {
         cmd: [neon, "--app", app, "--related", ...files],
         skip:
           files.length === 0
-            ? plan.neon.mode === "none"
-              ? "no se toco servidor"
-              : plan.neon[app].length > 0
-                ? `los archivos de ${app} ya no existen`
-                : `nada de ${app}`
+            ? plan.docsOnly
+              ? "solo docs"
+              : plan.neon.mode === "none"
+                ? "no se toco servidor"
+                : plan.neon[app].length > 0
+                  ? `los archivos de ${app} ya no existen`
+                  : `nada de ${app}`
             : undefined,
       });
     }
@@ -226,6 +246,7 @@ function main(argv: string[]): number {
     : changedFiles(base);
   const plan: VerifyPlan = argv.includes("--full")
     ? {
+        docsOnly: false,
         e2e: true,
         neon: { mode: "full", merchant: [], consumer: [] },
         reasons: ["--full"],
@@ -236,7 +257,9 @@ function main(argv: string[]): number {
     `archivos cambiados (${files.length}${filesArg ? ", de --files" : `, contra ${base}`}):`,
   );
   for (const f of files) console.log(`  ${f}`);
-  console.log(`plan: e2e=${plan.e2e} neon=${plan.neon.mode}`);
+  console.log(
+    `plan: docsOnly=${plan.docsOnly} e2e=${plan.e2e} neon=${plan.neon.mode}`,
+  );
   for (const reason of plan.reasons) console.log(`  - ${reason}`);
   const list = gates(plan);
   if (argv.includes("--dry-run")) {

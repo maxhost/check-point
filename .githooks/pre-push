@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# pre-push comun de Claude y GPT (spec 0135 / ADR 0114). Se instala con `pnpm hooks:install`
+# (`core.hooksPath`); los worktrees comparten `.git`, asi que una instalacion cubre a los dos.
+#
+# Solo actua si alguna ref empujada es `refs/heads/main`:
+#   1. `node tools/check-numbers.ts` — numeros de spec/ADR duplicados.
+#   2. `pnpm verify` — los gates segun lo que cambio contra origin/main (solo docs = format:check).
+# Cualquier rojo bloquea el push. Escape: `git push --no-verify`, SOLO con OK del owner.
+
+set -uo pipefail
+
+# git pasa por stdin: <local ref> <local sha> <remote ref> <remote sha>, una linea por ref.
+to_main=0
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  [ "$remote_ref" = "refs/heads/main" ] && to_main=1
+done
+[ "$to_main" = 1 ] || exit 0
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# El repo pide Node 24 (.nvmrc); el shell puede venir con otro.
+if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+  nvm use >/dev/null || echo "pre-push: aviso: nvm use fallo; sigo con $(node -v)" >&2
+fi
+
+bloquear() {
+  {
+    echo
+    echo "pre-push: PUSH A main BLOQUEADO — fallo: $1"
+    echo "Arreglalo y volve a pushear. Nunca se pushea rojo (ADR 0114)."
+    echo "El escape \`git push --no-verify\` requiere OK explicito del owner."
+  } >&2
+  exit 1
+}
+
+echo "pre-push: push a main → check-numbers + pnpm verify" >&2
+node tools/check-numbers.ts || bloquear "numeros de spec/ADR duplicados (node tools/check-numbers.ts)"
+pnpm verify || bloquear "pnpm verify (mira la tabla de arriba)"
+exit 0

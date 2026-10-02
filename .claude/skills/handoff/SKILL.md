@@ -1,7 +1,7 @@
 ---
 name: handoff
 description: >
-  Cierra la sesion por artefactos: actualiza docs/TASKS.md con el estado real, baja a disco lo
+  Cierra la sesion por artefactos: actualiza docs/estado/claude.md con el estado real, baja a disco lo
   aprendido (decision → ADR, hallazgo → spec, fila en INDEX), aplica mistake→rule y propone el
   commit. Usar al terminar una sesion, cuando el aviso de contexto pide handoff, o antes de
   cambiar de tarea. La sesion siguiente hereda los archivos, no el chat.
@@ -10,7 +10,8 @@ description: >
 # Handoff — cerrar la sesion por artefactos
 
 El objetivo: que una sesion fresca retome EXACTAMENTE donde quedo esta leyendo solo disco.
-El punto de retorno es `docs/TASKS.md`, no este chat — el chat se compacta con perdida; el
+El punto de retorno es `docs/estado/claude.md` (tu ESTADO; `docs/TASKS.md` solo lo
+enlaza junto al de GPT y guarda el historico, ADR 0114), no este chat — el chat se compacta con perdida; el
 disco se re-lee entero.
 
 **EL HANDOFF NO LIBERA LA VENTANA DE CONTEXTO — solo baja el estado a disco. Para liberar
@@ -23,9 +24,9 @@ vivia solo en el chat. Por eso, si el usuario pregunta "compact o clear": la res
 
 1. **Gate primero** si hubo cambios de codigo: `npm run typecheck && npm run lint &&
    npm run test`. Reporta evidencia real (N tests, 0 errores), no "parece que anda".
-   No se hace handoff de codigo roto sin decirlo explicitamente en TASKS.md
+   No se hace handoff de codigo roto sin decirlo explicitamente en docs/estado/claude.md
    ("gate rojo por X, retomar ahi").
-2. **Actualiza `docs/TASKS.md`**: que quedo hecho (con verificacion real: comando + salida),
+2. **Actualiza `docs/estado/claude.md`** (nunca `docs/estado/gpt.md`): que quedo hecho (con verificacion real: comando + salida),
    que quedo a medias y EXACTAMENTE donde (archivo/funcion), que sigue, y cualquier gotcha
    descubierto. Los caminos descartados van a la tabla "Descartado" con su porque — sin
    registro se reintentan.

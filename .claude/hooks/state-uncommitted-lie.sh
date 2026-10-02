@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Stop — el bloque ESTADO de docs/TASKS.md dice "SIN COMMITEAR" con el arbol LIMPIO.
+# Stop — el bloque ESTADO de docs/estado/claude.md dice "SIN COMMITEAR" con el arbol LIMPIO.
+#
+# Desde la spec 0135 / ADR 0114 el ESTADO de Claude vive en docs/estado/claude.md (antes, arriba
+# de docs/TASKS.md, que ahora solo enlaza los estados por agente y guarda el historico).
 #
 # Por que existe (2026-09-16, fase C de la spec 0065): el orquestador escribio
 # "C esta SIN COMMITEAR" en el bloque ESTADO y despues commiteo — en el MISMO
@@ -13,14 +16,15 @@
 # advisory no lo evito dos veces seguidas, asi que pasa a hook.
 #
 # Chequeo deterministico: si `git status --short` esta VACIO (no hay nada sin
-# commitear) y las primeras PRIMERAS lineas de docs/TASKS.md dicen "SIN
+# commitear) y las primeras PRIMERAS lineas del estado dicen "SIN
 # COMMITEAR", el doc miente. Solo mira el encabezado — las secciones historicas
 # de mas abajo hablan de arcos viejos y son legitimas.
 
 set -uo pipefail
 
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
-[ -f docs/TASKS.md ] || exit 0
+STATE=docs/estado/claude.md
+[ -f "$STATE" ] || exit 0
 command -v git >/dev/null 2>&1 || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
@@ -28,18 +32,18 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 [ -z "$(git status --short)" ] || exit 0
 
 # Ojo con el rojo POR EL MOTIVO EQUIVOCADO: la primera version de este hook se
-# disparo sobre el propio parrafo de docs/TASKS.md que lo DESCRIBE, o sea sobre
+# disparo sobre el propio parrafo del estado que lo DESCRIBE, o sea sobre
 # una CITA de la frase y no sobre una afirmacion. Se caza:
 #   - sacando las lineas que nombran a este hook (su documentacion), y
 #   - sacando las apariciones entre comillas angulares «...», que en este repo
 #     son siempre una cita.
 # Verificado que sigue mordiendo despues del filtro (ver la prueba de abajo).
 HEAD_LINES=${TASKS_HEAD_LINES:-40}
-if head -n "$HEAD_LINES" docs/TASKS.md \
+if head -n "$HEAD_LINES" "$STATE" \
   | grep -v 'state-uncommitted-lie' \
   | sed 's/«[^»]*»//g' \
   | grep -qi 'SIN COMMITEAR'; then
-  printf 'docs/TASKS.md dice "SIN COMMITEAR" en sus primeras %s lineas, pero el arbol esta LIMPIO.\n' "$HEAD_LINES" >&2
+  printf '%s dice "SIN COMMITEAR" en sus primeras %s lineas, pero el arbol esta LIMPIO.\n' "$STATE" "$HEAD_LINES" >&2
   printf 'Una sesion fresca lee ese bloque como el estado real y va a buscar trabajo que ya esta commiteado.\n' >&2
   printf 'Reescribi el bloque ESTADO con el sha real (git log --oneline -1) antes de cerrar.\n' >&2
   exit 2

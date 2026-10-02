@@ -23,7 +23,8 @@
     "test:e2e": "playwright test",
     "build": "turbo run build",
     "verify": "node tools/verify.ts",
-    "ci:status": "node tools/ci-status.ts"
+    "ci:status": "node tools/ci-status.ts",
+    "hooks:install": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
