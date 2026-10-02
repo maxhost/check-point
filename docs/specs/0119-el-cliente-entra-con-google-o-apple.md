@@ -1,7 +1,7 @@
 ---
 spec: 0119
 fecha: 2026-10-01
-estado: cerrada
+estado: implementada
 resumen: Alta y login del cliente SOLO con Google o Apple (OIDC server-side, `jose`), identidad (proveedor, sub) en `consumer.consumer_identity`, telefono opcional, un toque con sesion viva; se borran el formulario, `/recover`, el OTP y sus tablas. Migracion 0061.
 disjunta: no
 archivos: packages/db/src/schema/consumer.ts, packages/db/src/schema/otp.ts, packages/db/src/schema/business-customer.ts, packages/db/drizzle/0061_*, packages/domain/src/server/consumer/*, packages/domain/src/server/otp/*, packages/domain/src/server/wallet/rotate.ts, packages/domain/src/server/hosts.ts, apps/consumer/src/app/(consumer)/enroll/**, apps/consumer/src/app/(consumer)/recover/**, apps/consumer/src/app/(consumer)/wallet/page.tsx, apps/consumer/src/app/api/public/{auth,enroll,recovery}/**, apps/public/src/legacy-routes.ts, apps/merchant/src/server/customers/list.ts

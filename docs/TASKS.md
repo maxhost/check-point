@@ -101,6 +101,29 @@ ANTES de medir; el resultado se transcribe de la corrida. **Restauracion de emer
 | M6 | `packages/domain/src/server/consumer/oauth/state-cookie.ts:21` (`sameSite: "lax"`) | `7512c923…` | atributos del `Set-Cookie` de `start`; hermano: ninguno (el efecto real, Apple sin cookie, solo en QA) | **ROJO 1/17** (alcance: `oauth-state-cookie`, `oauth-callback`, `oauth-callback-apple`): «el Set-Cookie trae __Host-, Secure, HttpOnly, SameSite=None, Path=/ y sin Domain» → `AssertionError: expected [ 'path=/', …(5) ] to include 'samesite=none'`. Revertida: `diff` vacio, shasum `7512c923…` igual |
 | M7 | `packages/db/drizzle/0061_identidad_del_cliente.sql:28` (sin el `GRANT … consumer_identity`), aplicada en `ci-integration` | `e61c47c5…` | el callback como `checkpass_consumer` muere con `42501`; hermano: ninguno (la tabla nace cerrada por los default privileges de la 0060) | **NO MEDIDA — BLOQUEADA** por el clasificador de auto mode (accion denegada al aplicar en `ci-integration`, como dueño, `REVOKE ALL ON consumer.consumer_identity FROM checkpass_consumer` = el estado de la 0061 sin su GRANT). No se aplico nada: archivo `e61c47c5…` intacto, privilegios en CI sin tocar (medidos antes: SELECT/INSERT `true`, UPDATE/DELETE `false`). Para medirla hace falta el OK del owner: (1) en `ci-integration` como dueño `REVOKE ALL ON consumer.consumer_identity FROM checkpass_consumer`; (2) `tools/neon-test.sh --app consumer src/server/consumer-role-auth.neon.integration.test.ts` (rojo esperado: el callback termina en `?error=auth` con `account_enroll_or_session_failed:42501` en el warn); (3) revertir con `GRANT SELECT, INSERT ON consumer.consumer_identity TO checkpass_consumer` y re-correr verde |
 
+## Bitacora de mutaciones — spec 0119, revisor (2026-10-01)
+
+Codigo en `37b474a`. Copias limpias en el scratchpad del revisor. Filas abiertas ANTES de medir. **Restauracion de
+emergencia:** `git checkout 37b474a -- <archivo>` y confirmar el shasum de la fila. Linea base limpia medida antes:
+`consumer-identity` + `consumer-role-auth` 9/9 verdes.
+
+| id | archivo:linea | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M1 | `packages/domain/src/server/consumer/identity.ts:56` (busca por `email` antes de crear) | `afc25732…` | dos `sub`, mismo email → dos cuentas | **ROJO 1/9** (alcance: `consumer-identity` + `consumer-role-auth` via `tools/neon-test.sh --app consumer`): «dos `sub` con el MISMO email → DOS cuentas» → `AssertionError: expected '1ef11ead-…' not to be '1ef11ead-…' // Object.is equality`. Revertida: `diff` vacio contra la copia, shasum `afc25732…` igual |
+| R-M2 | `apps/consumer/src/server/oauth-callback.ts:174` (sin comparar `state`) | `be760572…` | `state` distinto → `?error=auth` | **ROJO 1/17** (alcance: `oauth-callback`, `oauth-callback-apple`, `oauth-state-cookie`): «`state` distinto (con un id_token valido y el nonce de la cookie) → ?error=auth…» → `Expected: ".../enroll/prog-1?error=auth"` / `Received: ".../enroll/prog-1/ready"`. Solo lo caza la ruta de Google (el codigo es comun). Revertida: `diff` vacio, shasum `be760572…` igual |
+| R-M5 | `packages/domain/src/server/consumer/identity.ts:57` (identidad existente → `UPDATE` de nombres) | `afc25732…` | cuenta byte a byte igual | **ROJO 1/9** (mismo alcance que R-M1): «identidad existente + nombres nuevos → la cuenta queda byte a byte igual» → `AssertionError: expected 'OTRO' to be 'Bea'`. Revertida: `diff` vacio, shasum `afc25732…` igual |
+
+## Bitacora de mutaciones — spec 0119, orquestador (M7, OK del owner 2026-10-01: «medi M7»)
+
+Mutacion de BASE en `ci-integration` (`br-icy-hat-axsfqc8k`); el archivo `0061_identidad_del_cliente.sql` NO se toca
+(shasum `e61c47c5a92b51acfe3babe50e79719c2eb633af`). Linea base medida por SQL antes: `checkpass_consumer` en
+`consumer.consumer_identity` SELECT `true`, INSERT `true`, UPDATE `false`, DELETE `false`; 62 migraciones.
+**Restauracion de emergencia:** `GRANT SELECT, INSERT ON consumer.consumer_identity TO checkpass_consumer` en esa rama.
+
+| id | mutacion | invariante | resultado EJECUTADO |
+|---|---|---|---|
+| M7 | `REVOKE ALL ON consumer.consumer_identity FROM checkpass_consumer` (= la `0061` sin su `GRANT`, linea 28) | sin el GRANT el callback falla con `42501` | **ROJO 5/9** (alcance: `consumer-role-auth` + `consumer-identity`, COMO el rol). «callback de Google…» → `AssertionError: [["[oauth] google: account_enroll_or_session_failed:42501"]]` Expected `…/enroll/<id>/ready` Received `…/enroll/<id>?error=auth`; los 4 de `consumer-identity` → `Serialized Error: { code: '42501', routine: 'aclcheck_error' }`. «POST enroll» con/sin sesion siguen verdes (no tocan la tabla). **Revertida**: `GRANT SELECT, INSERT` reaplicado, privilegios = linea base (S/I `true`, U/D `false`), re-corrida **9/9 verde**, shasum de la `0061` igual |
+
 ## Bitacora de mutaciones — spec 0118, implementador (2026-10-01)
 
 Archivo: `packages/db/drizzle/0059_rol_del_cliente.sql` (`??`, sin blob: copia limpia en el scratchpad de la sesion,
