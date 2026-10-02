@@ -177,10 +177,10 @@ export default function MerchantLandingPage() {
               </article>
               <article>
                 <span className="step-number">02</span>
-                <h3>Invita en tu local</h3>
+                <h3>Escanea el QR y únete en un clic</h3>
                 <p>
-                  Tus clientes escanean tu QR cuando te visitan y se unen a tu
-                  programa.
+                  Tus clientes escanean el QR de tu local y se dan de alta en tu
+                  programa de fidelización con su cuenta de Google o Apple.
                 </p>
               </article>
               <article>
