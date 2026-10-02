@@ -1,17 +1,17 @@
 # TASKS
 
-## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: QA VISUAL ANDROID APROBADO; CLASE REAL Y PUBLICACIÓN GENERAL PENDIENTES
+## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: CLASE REAL TRAMA VIVA ACTUALIZADA Y APPROVED; PUBLICACIÓN GENERAL POR CONFIRMAR
 
 Spec 0122 «Trama viva» aprobada por el owner. `f595842` está pusheado en `main`; ambos PNG
 responden HTTP 200 desde `my.checkpass.club` y su SHA-256 coincide con el commit. La clase
 `qa_trama_viva_0122` fue creada y Google devolvió `reviewStatus=approved`. El owner guardó
 el pase QA en Android y aprobó el diseño: «perfecto, funcionó, quedó hermoso». Las
 verificaciones de build, typecheck, lint, provisionador y regresión de Wallet pasan. La
-clase real sigue con logo anterior y sin hero (`--inspect` leído). **No se actualizó la
-Loyalty Class real.** Siguiente secuencia: snapshot y `PATCH` de la clase compartida,
+clase real recibió `PATCH` autorizado y la lectura posterior confirmó logo/hero Trama viva,
+emisor «CheckPass Club», plantilla y `reviewStatus=approved`. Siguiente secuencia:
 verificación de pase viejo/nuevo y QR/enlace reales, confirmar acceso de publicación del
 emisor en Console y PASS independiente. [Handoff](handoff-0122-google-wallet-trama-viva-2026-10-01.md)
-y [runbook](wallet-go-live.md).
+y [guía de diseño/publicación](wallet/google-wallet-design-and-release.md).
 
 **Estado actual del proyecto. Este es el punto de retorno.**
 

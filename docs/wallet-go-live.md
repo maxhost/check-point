@@ -1,10 +1,13 @@
 # Wallet — checklist de go-live (demo → producción)
 
 Runbook operativo del pase de Wallet (spec 0029 / ADR 0033; arte Google en spec 0122).
+La guía de diseño, actualización global y futuras variantes está en
+[Google Wallet: diseño y publicación](wallet/google-wallet-design-and-release.md).
 
 Estado conocido: Google funcionó en Android real bajo el issuer demo; Apple instaló en iPhone
-real. La spec 0122 aporta los assets y el payload de «Trama viva» para Google. Su despliegue,
-prueba en Android y actualización de la clase compartida deben verificarse por separado.
+real. La spec 0122 aporta los assets y el payload de «Trama viva» para Google. Los PNG,
+el QA visual en Android y el `PATCH` de la clase real están verificados. Falta comprobar
+acceso de publicación del emisor y QR/enlace reales en un pase viejo y otro nuevo.
 
 ## Prerrequisito común: marca + arte final
 
@@ -30,10 +33,10 @@ anual).
 - [x] **Clase de QA aislada y diseño visual aprobado:** `qa_trama_viva_0122` creada; el
       owner guardó el pase ficticio en Android y aprobó su aspecto. Su QR no acredita y
       no verifica el funcionamiento del mostrador.
-- [ ] **Clase real:** guardar antes una salida de `--inspect` sin credenciales; ejecutar
-      `--apply` sin `--class-suffix` solo después de aprobar el QA. El script hace `GET`,
-      calcula un `PATCH` de presentación que conserva los demás campos y omite la escritura
-      si ya coincide. Volver a inspeccionar `reviewStatus` y comprobar un pase ya guardado.
+- [x] **Clase real actualizada:** `--inspect` previo, `--apply` sin `--class-suffix` y
+      `--inspect` posterior el 2026-10-01. Google devolvió `reviewStatus=approved` y
+      la lectura confirmó logo/hero Trama viva, emisor, color, etiqueta y plantilla.
+      La propagación al teléfono de un miembro real aún debe verificarse.
 - [ ] **Screenshots del pase** disponibles si Google los solicita; la documentación
       actual de Google ya no los exige para enviar la solicitud de acceso de publicación.
 - [ ] **Secretos en Vercel (Production):** `GOOGLE_WALLET_ISSUER_ID` +

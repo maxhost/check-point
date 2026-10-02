@@ -129,8 +129,9 @@ El nombre visible de Google se resuelve solo en la clase; `WALLET_BRAND` en `cor
 ## Definition of Done
 
 QA visual en Android aprobado por el owner el 2026-10-01 con el pase de prueba:
-«perfecto, funcionó, quedó hermoso». El QR de ese pase era ficticio; la prueba funcional
-con un pase real y la actualización de la clase compartida siguen pendientes.
+«perfecto, funcionó, quedó hermoso». La clase compartida real fue actualizada y Google
+devolvió `reviewStatus=approved`. El QR de prueba era ficticio; la prueba funcional
+con un pase real existente y otro nuevo sigue pendiente.
 
 - [ ] Los PNG finales cumplen dimensiones, margen seguro y ausencia de texto incrustado; el hero expresa dos trazos entrelazados sin perder legibilidad al reducirse.
 - [ ] La clase de prueba muestra «CheckPass Club»/«Mi CheckPass», logo circular, fondo azul y trama; lista con nombre de programa y miembro. Se registra si Google muestra el identificador opaco junto al QR.
