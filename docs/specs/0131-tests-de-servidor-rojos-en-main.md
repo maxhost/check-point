@@ -1,7 +1,7 @@
 ---
 spec: 0131
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Dos suites Neon de servidor rojas en `main` por tests desactualizados: el doble de sesion de `marketing-backoffice-pages` describe una sesion imposible (sin `permissions`) y `marketing-push-enable` espera el voseo «necesitás».
 disjunta: si
 archivos: apps/merchant/src/server/marketing-backoffice-pages.neon.integration.test.ts, apps/merchant/src/server/marketing-push-enable.neon.integration.test.ts
@@ -63,9 +63,9 @@ suite necesita un integrante SIN `marketing`, se le pasa explicito; no se invent
 
 ## Definition of Done
 
-- [ ] `tools/neon-test.sh` sobre las dos suites, de a una → verdes. Nunca contra `DATABASE_URL`.
-- [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
-- [ ] `rg -n MUTATION apps tools packages` → vacio.
+- [x] `tools/neon-test.sh` sobre las dos suites, de a una → verdes. Nunca contra `DATABASE_URL`.
+- [x] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
+- [x] `rg -n MUTATION apps tools packages` → vacio.
 
 ## Mutaciones — presupuesto: 1. Clase: los plausibles
 

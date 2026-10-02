@@ -58,9 +58,10 @@ versiones previas de `apps/public`; SHAs de las 6 ramas en `ramas-borradas.txt`)
 (`b3ef958`). Quedan solo `check-point` (main) y `motor` (esta sesion, identico a main; se borra al cerrarla).
 
 **Fase 3 (en curso):**
-- **Claude — spec 0131** (`2015611`, pusheada para reservar el numero): `marketing-backoffice-pages` (el doble de
-  sesion sin `permissions`, desde `f61b163`) y `marketing-push-enable` («necesitás»). El implementador esta trabajando
-  en esos dos archivos de test (diff sin commitear = suyo). Al volver: revision liviana, push.
+- **Claude — spec 0131: HECHA** (`c29cc2b`): `push-enable` «necesitas»; en `marketing-backoffice-pages` el doble gana
+  `permissions` reales y se BORRARON los 7 casos de las paginas SSR viejas (ADR 0070 §17; invariantes ya cubiertos
+  del lado API) + `marketing/page-guard.test.ts` nuevo (12 casos, M1 roja). Re-corridas por el orquestador:
+  page-guard 12/12, backoffice-pages 1/1, push-enable 5/5 (con 1 rojo intermitente en 3 corridas → PARQUEADO #68).
 - **GPT — spec 0132** (prompt entregado al owner): 55 e2e rojos preexistentes = stub sin `usePathname` (`c2374a9`) +
   52 e2e que esperan el voseo viejo («Dale identidad…», «¿Qué querés hacer?») tras `4a69db7`. Medido: con `usePathname`
   stubeado quedan 52.
