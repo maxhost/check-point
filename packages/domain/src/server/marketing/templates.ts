@@ -60,11 +60,7 @@ export type TemplateKey =
 export type CampaignChannel = "proximity" | "push";
 
 export type TemplateGroup =
-  | "welcome"
-  | "reactivation"
-  | "balance"
-  | "cross"
-  | "valley";
+  "welcome" | "reactivation" | "balance" | "cross" | "valley";
 
 export type WelcomeRedeemFrom = "next_day" | "same_visit";
 

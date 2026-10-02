@@ -1,9 +1,6 @@
 export type AnalyticsSector = "bar_restaurant" | "hotel" | "retail";
 export type DataQuality =
-  | "observed"
-  | "configured_estimate"
-  | "transactional"
-  | "unavailable";
+  "observed" | "configured_estimate" | "transactional" | "unavailable";
 export type Metric = {
   label: string;
   value: string;

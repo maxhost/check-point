@@ -27,10 +27,7 @@ export type ReconcileOutcome =
        * lista VACÍA, que NO alcanza para degradar un plan; `ignored` = el guard de pertenencia
        * o de adopción lo frenó. */
       reason:
-        | "no_customer"
-        | "no_subscription_row"
-        | "no_subscriptions"
-        | "ignored";
+        "no_customer" | "no_subscription_row" | "no_subscriptions" | "ignored";
     };
 
 /**

@@ -61,10 +61,7 @@ describe.skipIf(!integrationEnabled)("marketing cancel", () => {
       : Partial<{
           status: "draft" | "active" | "paused" | "ended" | "archived";
           pauseReason:
-            | "owner"
-            | "plan_downgraded"
-            | "no_active_locations"
-            | null;
+            "owner" | "plan_downgraded" | "no_active_locations" | null;
         }> = {},
   ): Promise<Case> {
     const consumer = await seedConsumer();

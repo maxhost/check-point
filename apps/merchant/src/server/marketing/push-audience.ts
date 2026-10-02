@@ -38,14 +38,10 @@ export type PushCandidate = {
 };
 
 export type PushExclusion =
-  | "opt_out"
-  | "not_reachable"
-  | "not_dormant"
-  | "already_reached";
+  "opt_out" | "not_reachable" | "not_dormant" | "already_reached";
 
 export type PushEligibility =
-  | { kind: "eligible" }
-  | { kind: "excluded"; reason: PushExclusion };
+  { kind: "eligible" } | { kind: "excluded"; reason: PushExclusion };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

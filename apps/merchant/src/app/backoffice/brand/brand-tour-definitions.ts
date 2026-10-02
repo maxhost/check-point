@@ -76,12 +76,10 @@ export function brandOnboardingStart() {
     tourId: "brand" as const,
     showSkipOnFirstStep: true,
     disableActiveInteraction: true,
-    steps: steps.map(
-      ([key, title, description]): DriveStep => ({
-        element: brandAnchor(key),
-        popover: { title, description, side: "bottom", align: "center" },
-      }),
-    ),
+    steps: steps.map(([key, title, description]): DriveStep => ({
+      element: brandAnchor(key),
+      popover: { title, description, side: "bottom", align: "center" },
+    })),
   };
 }
 const COPY: Record<BrandPhase, [string, string]> = {

@@ -11,11 +11,7 @@
  */
 
 export type CampaignStatus =
-  | "draft"
-  | "active"
-  | "paused"
-  | "ended"
-  | "archived";
+  "draft" | "active" | "paused" | "ended" | "archived";
 
 export type CampaignAction = "activate" | "pause" | "end" | "archive";
 

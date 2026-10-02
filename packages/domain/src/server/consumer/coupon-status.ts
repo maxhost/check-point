@@ -15,11 +15,7 @@
  */
 
 export type CouponStatus =
-  | "valid"
-  | "scheduled"
-  | "unavailable"
-  | "redeemed"
-  | "expired";
+  "valid" | "scheduled" | "unavailable" | "redeemed" | "expired";
 export type CouponReason = "business_suspended" | "business_closed";
 
 export function couponStatus(facts: {

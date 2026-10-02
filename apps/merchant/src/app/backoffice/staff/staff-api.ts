@@ -10,8 +10,7 @@ const JSON_HEADERS = { "content-type": "application/json" };
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
   const payload = (await response.json().catch(() => null)) as
-    | (T & ApiFailure)
-    | null;
+    (T & ApiFailure) | null;
   if (!response.ok)
     throw new Error(errorCopy(payload, "No pudimos completar la acción."));
   if (!payload)

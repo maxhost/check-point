@@ -29,9 +29,7 @@ export type Budget = {
 };
 
 export type BudgetDecision =
-  | { kind: "send" }
-  | { kind: "suppress" }
-  | { kind: "defer"; notBefore: Date };
+  { kind: "send" } | { kind: "suppress" } | { kind: "defer"; notBefore: Date };
 
 /**
  * The table of spec 0111 D2. A `campaign` is DEFERRED (it is still worth sending once a

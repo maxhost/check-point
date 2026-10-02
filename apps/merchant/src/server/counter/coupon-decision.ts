@@ -32,8 +32,7 @@ export type CouponCampaignFacts = {
 };
 
 export type CouponDecision =
-  | { ok: true }
-  | { ok: false; status: number; code: string; message: string };
+  { ok: true } | { ok: false; status: number; code: string; message: string };
 
 const OK: CouponDecision = { ok: true };
 

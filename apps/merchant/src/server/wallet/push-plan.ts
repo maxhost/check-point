@@ -10,10 +10,7 @@
  * `transactional` — see {@link planConsumerDrain}.
  */
 export type NoticeClass =
-  | "transactional"
-  | "campaign"
-  | "pass_refresh"
-  | "reminder";
+  "transactional" | "campaign" | "pass_refresh" | "reminder";
 
 /**
  * Maps the raw `class` column to the planner's {@link NoticeClass}. Exhaustive and

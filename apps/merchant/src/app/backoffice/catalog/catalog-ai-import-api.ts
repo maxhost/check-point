@@ -106,8 +106,7 @@ export async function json<T>(
   fallback: string,
 ): Promise<T> {
   const payload = (await response.json().catch(() => null)) as
-    | (T & ApiError)
-    | null;
+    (T & ApiError) | null;
   if (!response.ok) throw new CatalogImportRequestError(payload, fallback);
   if (!payload) throw new Error(fallback);
   return payload;

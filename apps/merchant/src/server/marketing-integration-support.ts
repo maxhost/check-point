@@ -253,10 +253,7 @@ export async function setCampaignState(
   campaignId: string,
   status: "draft" | "active" | "paused" | "ended" | "archived",
   pauseReason:
-    | "owner"
-    | "plan_downgraded"
-    | "no_active_locations"
-    | null = null,
+    "owner" | "plan_downgraded" | "no_active_locations" | null = null,
 ): Promise<void> {
   await getDb()
     .update(campaigns)

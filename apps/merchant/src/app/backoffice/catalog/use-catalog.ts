@@ -34,9 +34,7 @@ export function useCatalog() {
     try {
       const res = await fetch("/api/catalog");
       const payload = (await res.json().catch(() => null)) as
-        | Catalog
-        | { error?: string }
-        | null;
+        Catalog | { error?: string } | null;
       if (res.status === 401 || res.status === 403) {
         readAccessError.current =
           res.status === 401
@@ -128,9 +126,7 @@ export function useCatalog() {
           jsonInit("POST", { name }),
         );
         const cat = (await res.json().catch(() => null)) as
-          | Category
-          | { error?: string; code?: string }
-          | null;
+          Category | { error?: string; code?: string } | null;
         if (!res.ok || !cat || !("id" in cat)) {
           if (res.status === 401 || res.status === 403) stop?.();
           if (cat && "code" in cat && cat.code === "catalog_import_in_progress")

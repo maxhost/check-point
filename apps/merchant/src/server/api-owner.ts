@@ -61,8 +61,7 @@ export type ApiOwnerBusiness = {
 };
 
 export type ApiOwnerResult =
-  | { business: ApiOwnerBusiness; userId: string }
-  | { failure: ApiOwnerFailure };
+  { business: ApiOwnerBusiness; userId: string } | { failure: ApiOwnerFailure };
 
 /** Mensajes por defecto. Cada `_auth.ts` puede pisar el de `not_owner` y el de
  * `email_not_verified` con la copia de su dominio: el `code` es el contrato, el `error` es

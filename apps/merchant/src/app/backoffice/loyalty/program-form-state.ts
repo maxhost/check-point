@@ -1,12 +1,6 @@
 import type { Kind, LoyaltyVm } from "./use-loyalty-program";
 export type StepId =
-  | "modality"
-  | "units"
-  | "basics"
-  | "design"
-  | "terms"
-  | "rewards"
-  | "review";
+  "modality" | "units" | "basics" | "design" | "terms" | "rewards" | "review";
 export const stepLabels: Record<StepId, string> = {
   modality: "Modalidad",
   units: "Unidades",

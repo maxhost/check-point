@@ -28,10 +28,7 @@ export const WINDOW_PURCHASES_TITLE = "Compraron durante su ventana";
 export const MIN_HOLDOUT_FOR_ESTIMATE = 30;
 
 export type Quality =
-  | "observada"
-  | "estimada"
-  | "estimado_configurado"
-  | "no_disponible";
+  "observada" | "estimada" | "estimado_configurado" | "no_disponible";
 
 /** The last row of `core.campaign_tick_audience` for this campaign. `null` when the
  * tick has not run since the campaign was activated: there is no photo to show, and

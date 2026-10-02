@@ -2,10 +2,7 @@ import type { DriveStep } from "driver.js";
 import { STAFF_TOUR_COPY, type StaffTourLocale } from "./staff-tour-locales";
 
 export type StaffHelpTour =
-  | "create"
-  | "edit-permissions"
-  | "regenerate-pin"
-  | "disable";
+  "create" | "edit-permissions" | "regenerate-pin" | "disable";
 
 const anchors = {
   create: ["add", "name", "counter", "create", "copy", "closeCredentials"],

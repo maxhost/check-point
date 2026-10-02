@@ -17,10 +17,7 @@ export class EmailProviderError extends Error {
   constructor(
     readonly provider: string,
     readonly reason:
-      | "configuration"
-      | "timeout"
-      | "rejected"
-      | "invalid_response",
+      "configuration" | "timeout" | "rejected" | "invalid_response",
   ) {
     super(`Email provider ${provider} failed: ${reason}`);
     this.name = "EmailProviderError";

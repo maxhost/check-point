@@ -30,11 +30,7 @@ export const ANALYZE_LEASE_MS = 5 * 60 * 1000;
 export const MAX_ATTEMPTS = 3;
 
 export type AnalysisOutcome =
-  | "skipped"
-  | "cancelled"
-  | "submitted"
-  | "ready"
-  | "failed";
+  "skipped" | "cancelled" | "submitted" | "ready" | "failed";
 
 /**
  * Spec 0090 §1/§6 — EL TRABAJO LARGO. Corre en `after()` y tambien lo llama el

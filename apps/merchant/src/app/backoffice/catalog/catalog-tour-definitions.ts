@@ -39,12 +39,10 @@ export function catalogOnboardingStart() {
     tourId: "catalog" as const,
     showSkipOnFirstStep: true,
     disableActiveInteraction: true,
-    steps: copy.map(
-      ([key, title, description]): DriveStep => ({
-        element: catalogAnchor(key),
-        popover: { title, description, side: "bottom", align: "center" },
-      }),
-    ),
+    steps: copy.map(([key, title, description]): DriveStep => ({
+      element: catalogAnchor(key),
+      popover: { title, description, side: "bottom", align: "center" },
+    })),
   };
 }
 export function catalogHelpStep(

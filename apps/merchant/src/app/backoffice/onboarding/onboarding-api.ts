@@ -14,11 +14,7 @@ export type OnboardingChecklist = {
 };
 
 export type OnboardingTourId =
-  | "locations"
-  | "staff"
-  | "catalog"
-  | "program"
-  | "brand";
+  "locations" | "staff" | "catalog" | "program" | "brand";
 export type OnboardingTourStatus = "completed" | "skipped";
 
 function isItem(value: unknown): value is OnboardingItem {

@@ -125,9 +125,7 @@ async function readHead(object: {
   ContentLength?: number;
 }): Promise<Buffer> {
   const body = object.Body as
-    | AsyncIterable<Uint8Array>
-    | ReadableStream<Uint8Array>
-    | undefined;
+    AsyncIterable<Uint8Array> | ReadableStream<Uint8Array> | undefined;
   if (!body) throw new Error("empty_body");
   const chunks: Uint8Array[] = [];
   let size = 0;

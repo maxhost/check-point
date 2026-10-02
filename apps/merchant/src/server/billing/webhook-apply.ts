@@ -110,8 +110,7 @@ async function resolveBusinessId(
 
 export function customerId(
   customer:
-    | Stripe.Subscription["customer"]
-    | Stripe.Checkout.Session["customer"],
+    Stripe.Subscription["customer"] | Stripe.Checkout.Session["customer"],
 ): string | null {
   if (typeof customer === "string") return customer;
   return customer?.id ?? null;

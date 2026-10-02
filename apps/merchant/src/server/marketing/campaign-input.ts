@@ -33,8 +33,7 @@ export type CampaignInput = CouponDeal & {
 export type { FieldErrors };
 
 export type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; errors: FieldErrors };
+  { ok: true; value: T } | { ok: false; errors: FieldErrors };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

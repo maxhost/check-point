@@ -163,8 +163,7 @@ export type CrossRefusal =
   | "cap_reached";
 
 export type CrossDecision =
-  | { ok: true; distanceMeters: number }
-  | { ok: false; reason: CrossRefusal };
+  { ok: true; distanceMeters: number } | { ok: false; reason: CrossRefusal };
 
 /**
  * Whether the audience of the campaign includes this consumer (spec 0112, reason 4).
