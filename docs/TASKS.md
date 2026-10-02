@@ -8,7 +8,7 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, tarde) — 0121, 0122 Y 0123 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH
+## ⇥ ESTADO (2026-10-02, tarde) — 0121 A 0124 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH (el owner lo pidio asi)
 
 - **0121** (`seedConsumer` sin telefono, #58 de PARQUEADO): `68a1541`, revisor **PASS** (M1 roja por
   `consumer_account_phone_unique`). La fila de M1 que quedo en `ci-integration` (`+593999999999`) se borro por SQL
@@ -17,12 +17,15 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
   2 suites con `neon-test.sh` → verdes.
 - **0123** (3 plantillas por defecto a tuteo, texto aprobado por el owner): `00fd485`; el orquestador re-corrio
   `marketing-templates` y `-race` (verdes) y los 2 unit de plantillas. Las campañas YA creadas conservan el voseo.
-- **Siguen rojas en HEAD** 4 suites Neon sin spec (preexistentes, no por telefono): `marketing-backoffice-pages`
-  (`permissions` undefined), `wallet-push` y `marketing-refresh` (`passesUpdatedSince` no null), `marketing-valley`
-  (`detection: null` / timeout). Reportado por el implementador de la 0121; el orquestador no las re-corrio.
+- **0124** (`wallet-push` y `marketing-refresh` esperaban el `204` previo al piso de marca de `7275abb`): `5380584`; el
+  orquestador re-corrio las 2 suites → verdes. El piso se conserva.
+- **Siguen rojas en HEAD** 2 suites Neon: `marketing-backoffice-pages` (`permissions` undefined; reportado por el
+  implementador de la 0121, no re-corrida) y `marketing-valley` (V4 corta a 180 s). La de valley NO se arregla en el
+  test: decision del owner, primero el problema de fondo → PARQUEADO **#67** (`placeConsumers` sin alcance, 79
+  consumidores en `ci-integration`, ~80 s por tick).
+- **Campañas viejas con voseo en PROD:** el owner pidio actualizarlas; medido `core.campaign` vacia en PROD (8
+  negocios, 0 campañas) → nada que actualizar.
 - **R2:** el CORS del bucket ahora admite `https://business.checkpass.club` (el owner lo agrego; preflight 204 medido).
-- **Pregunta abierta al owner:** las campañas YA creadas con las plantillas viejas conservan el voseo (el mensaje se
-  copia al crear y no es editable). ¿Se actualizan en la base?
 - PARQUEADO: bajaron #15, #41, #45, #58; entro #66 (telefonos al azar en `business-status`).
 
 ## ⇥ ESTADO HISTORICO (2026-10-02) — 0119 + 0120 EN PROD Y CERRADAS POR EL OWNER; APPLE SIN PROBAR (DECISION DEL OWNER)

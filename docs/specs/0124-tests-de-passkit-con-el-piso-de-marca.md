@@ -1,7 +1,7 @@
 ---
 spec: 0124
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Dos suites de PassKit siguen esperando el `204` de antes del piso de marca de `listUpdatedSerials` (`7275abb`); pasan a usar el tag que devuelve el servidor, como hace el iPhone.
 disjunta: si
 archivos: apps/merchant/src/server/wallet-push.neon.integration.test.ts, apps/merchant/src/server/marketing-refresh.neon.integration.test.ts
@@ -53,17 +53,17 @@ hacer lo mismo en vez de inventar un tag:
 
 ## Definition of Done
 
-- [ ] `tools/neon-test.sh` sobre las dos suites, de a una → verdes, conteos transcriptos. Nunca contra `DATABASE_URL`.
+- [x] `tools/neon-test.sh` sobre las dos suites, de a una → verdes, conteos transcriptos. Nunca contra `DATABASE_URL`.
       Si `marketing-refresh` da el rojo intermitente `{"skipped":"tick_in_flight"}`, re-correrla sola y transcribir
       las dos corridas; no se arregla aca.
-- [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
-- [ ] `rg -n MUTATION apps tools packages` → vacio.
+- [x] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
+- [x] `rg -n MUTATION apps tools packages` → vacio.
 
 ## Mutaciones — presupuesto: 1. Clase: los plausibles
 
 | # | Mutacion | Oraculo que tiene que ponerse ROJO |
 |---|---|---|
-| M1 | `passkit.ts:159-162`: sacar el piso (`const t = r.messageUpdatedAt?.getTime() ?? 0;`) | `wallet-push.neon.integration.test.ts`, en el nuevo `toEqual` del primer poll (recibe `null`). A medir |
+| M1 | `passkit.ts:159-162`: sacar el piso (`const t = r.messageUpdatedAt?.getTime() ?? 0;`) | `wallet-push.neon.integration.test.ts:201`, en el nuevo `toEqual` del primer poll. **Medido:** recibe `{ lastUpdated: '0', serialNumbers: [serial] }` (sin piso, `t = 0` y un poll sin tag no filtra), NO `null` como decia esta fila antes de medir; el rojo es por el valor del piso. Revertida |
 
 **Protocolo:** `shasum` limpio → fila de bitacora antes de medir → etiqueta `MUTATION` → medir y transcribir →
 revertir con `diff` contra copia limpia. Leer la asercion del rojo.
