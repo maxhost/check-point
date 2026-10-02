@@ -48,7 +48,7 @@ describe.skipIf(!integrationEnabled)(
       });
       const landing = await getEnrollLanding(world.seed.programId);
       expect(landing?.welcomeOffer).toEqual({
-        message: "Sumate hoy y en tu próxima visita te llevás un regalo",
+        message: "Únete hoy y recibe un regalo en tu próxima visita",
         label: "Un café gratis",
         kind: "free_product",
         rule: null,

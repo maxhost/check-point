@@ -66,14 +66,14 @@ describe.skipIf(!integrationEnabled)("campaign push delivery", () => {
         endpoint: built.endpoint,
         payload: {
           title: "La Gringa",
-          body: "¡Volvé! · 2x1 en picadas",
+          body: "¡Vuelve! · 2x1 en picadas",
           url: "/wallet",
           clickId: built.pushId,
         },
       },
     ]);
     expect((await readAccount(built.consumerId)).latestMessage).toBe(
-      "La Gringa: ¡Volvé! · 2x1 en picadas",
+      "La Gringa: ¡Vuelve! · 2x1 en picadas",
     );
     expect(await coupons(built.consumerId)).toEqual([
       expect.objectContaining({
