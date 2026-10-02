@@ -124,7 +124,7 @@ describe.skipIf(!integrationEnabled)(
           status: 409,
           code: "no_loyalty_reward",
           message:
-            "No se puede activar: necesitás un programa de fidelización con un premio.",
+            "No se puede activar: necesitas un programa de fidelización con un premio.",
         });
       expect(
         await getDb()
