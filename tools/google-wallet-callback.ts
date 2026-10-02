@@ -6,8 +6,11 @@
  *   GOOGLE_WALLET_ISSUER_ID=… GOOGLE_WALLET_SA_JSON=… \
  *     node tools/google-wallet-callback.ts <url> --apply                            # aplica
  *
- * <url> = `https://www.checkpass.club/api/public/wallet/google/callback` (con `www.`: el apex
- * responde 308 y Google no sigue redirecciones de callback).
+ * <url> = `https://my.checkpass.club/api/public/wallet/google/callback` (la ruta vive en la app
+ * del cliente; host exacto: Google no sigue redirecciones de callback).
+ *
+ * El PATCH lleva `reviewStatus: "UNDER_REVIEW"`: Google rechaza editar una clase aprobada sin
+ * eso (HTTP 400 `Invalid review status "APPROVED"`) y la re-aprueba sola (spec 0125).
  *
  * POR DEFECTO ES DRY-RUN: imprime la clase y el PATCH que haria, sin credenciales ni red.
  * Con `--apply` usa la MISMA service account que emite el pase, lee la clase y solo hace
@@ -38,9 +41,26 @@ export function planCallback(
   url: string,
 ):
   | { action: "noop" }
-  | { action: "patch"; body: { callbackOptions: { url: string } } } {
+  | {
+      action: "patch";
+      body: { callbackOptions: { url: string }; reviewStatus: "UNDER_REVIEW" };
+    } {
   if (current?.callbackOptions?.url === url) return { action: "noop" };
-  return { action: "patch", body: { callbackOptions: { url } } };
+  return {
+    action: "patch",
+    body: { callbackOptions: { url }, reviewStatus: "UNDER_REVIEW" },
+  };
+}
+
+/** El `error.message` del cuerpo de Google, si es JSON; nunca credenciales (no las trae). */
+async function googleError(response: Response): Promise<string> {
+  try {
+    const json = (await response.json()) as { error?: { message?: unknown } };
+    const message = json?.error?.message;
+    return typeof message === "string" ? ` — ${message}` : "";
+  } catch {
+    return "";
+  }
 }
 
 async function accessToken(sa: {
@@ -108,7 +128,9 @@ async function main(argv: string[]): Promise<number> {
   };
   const current = await fetch(endpoint, { headers });
   if (!current.ok) {
-    console.error(`GET clase: HTTP ${current.status}`);
+    console.error(
+      `GET clase: HTTP ${current.status}${await googleError(current)}`,
+    );
     return 1;
   }
   const plan = planCallback((await current.json()) as ClassCallback, url);
@@ -121,8 +143,14 @@ async function main(argv: string[]): Promise<number> {
     headers,
     body: JSON.stringify(plan.body),
   });
+  if (!patched.ok) {
+    console.error(
+      `PATCH ${classId}: HTTP ${patched.status}${await googleError(patched)}`,
+    );
+    return 1;
+  }
   console.log(`PATCH ${classId}: HTTP ${patched.status}`);
-  return patched.ok ? 0 : 1;
+  return 0;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
