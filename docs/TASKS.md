@@ -8,6 +8,19 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-10-01, cierre) — SPEC 0119 IMPLEMENTADA EN `motor` (`37b474a`), ESPERA REVISOR; M7 SIN MEDIR
+
+Implementador: trabajo en `37b474a` (sin push). **No esta marcada `implementada`**: falta el PASS del revisor independiente.
+Gates locales (Node 24): typecheck 6/6 (`TURBO_FORCE`, 0 cached), lint limpio, test 232 archivos / 2238 tests verdes,
+format:check limpio, build 4/4 (0 cached). `test:e2e`: 54 passed / 52 failed / 5 skipped — los 52 son los del backoffice ya
+conocidos (brand/catalog/loyalty, copy de `4a69db7`); ninguno toca `/enroll`, `/wallet` ni `my.`; health de las 3 apps verde.
+Integracion (`tools/neon-test.sh`, rama `ci-integration`, que ahora TIENE la `0061` aplicada; PROD no): consumer 7 archivos
+57/57 verdes (identity, role-auth, role-denied, role, role-wallet, role-offers, stamp-placeholder); merchant 9 archivos 45/46 —
+el rojo es `wallet-push.neon` «register is an idempotent upsert…» (`expected { lastUpdated: '1790868480000' } to be null`),
+deuda AJENA: `PASS_BRAND_UPDATED_AT` de `7275abb` hace que toda serie se liste sin `passesUpdatedSince`.
+Mutaciones M1–M6 medidas y revertidas (bitacora abajo). **M7 BLOQUEADA** por el clasificador de auto mode (REVOKE en la rama de
+CI): queda para el owner/orquestador con los pasos de su fila.
+
 ## ⇥ ESTADO (2026-10-01, noche) — SPEC 0119 CERRADA (`22fd5c9`): EL CLIENTE ENTRA CON GOOGLE O APPLE
 
 ADR 0111 + spec 0119 commiteados en `motor` (`22fd5c9`), sin push. Solo docs: **no hay codigo de la 0119 todavia**.
@@ -70,6 +83,23 @@ tablas, **`BYPASSRLS`** (agregado tras el corte: RLS de 4 tablas lo dejaba en 0 
 a Plantano; QA en telefono: enrolarse, ver la billetera, agregar el pase. **Despues:** marcar 0117 `implementada`.
 Deuda: `@mapbox/search-js-react` sin import en merchant (anterior a la 0117); el guard `merchant-without-consumer` solo
 cubre 4 rutas literales (revisor, declarado).
+
+## Bitacora de mutaciones — spec 0119, implementador (2026-10-01)
+
+Trabajo en `37b474a` (rama `motor`). Copias limpias en el scratchpad de la sesion (`clean.<archivo>`). Cada fila se abre
+ANTES de medir; el resultado se transcribe de la corrida. **Restauracion de emergencia:** `git checkout 37b474a -- <archivo>`
+(los cinco estan commiteados) y confirmar el shasum de la fila; para M7 ademas reaplicar en `ci-integration` el
+`GRANT SELECT, INSERT ON consumer.consumer_identity TO checkpass_consumer`.
+
+| id | archivo:linea (mecanismo) | shasum limpio | invariante / guard hermano | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `packages/domain/src/server/consumer/identity.ts:56` (antes de crear se busca por `email`) | `afc25732…` | dos `sub` con el mismo email → dos cuentas; hermano: ninguno (el unico `(provider, subject)` no impide unir por email) | **ROJO 1/9** (alcance: `consumer-identity` + `consumer-role-auth`, como el rol real): «dos `sub` con el MISMO email → DOS cuentas» → `AssertionError: expected '49963454-…' not to be '49963454-…' // Object.is equality` (Apple recibio la cuenta de Google). Los otros 8 verdes. Revertida: `diff` vacio contra la copia, shasum `afc25732…` igual |
+| M2 | `apps/consumer/src/server/oauth-callback.ts:174` (sin comparar `state`) | `be760572…` | `state` distinto → `?error=auth` sin cuenta ni sesion; hermano: el `nonce` (`:109`), puenteado: el caso manda un id_token VALIDO con el `nonce` de la cookie | **ROJO, 1 caso** (alcance: `oauth-callback`, `oauth-callback-apple`, `oauth-state-cookie`, `enroll-install-hint`; archivos 1 rojo / 3 verdes): «`state` distinto (con un id_token valido y el nonce de la cookie) → ?error=auth…» → `Expected: "https://my.checkpass.test/enroll/prog-1?error=auth"` / `Received: "https://my.checkpass.test/enroll/prog-1/ready"` (el flujo llego al alta: el `nonce` no lo freno). Revertida: `diff` vacio, shasum `be760572…` igual |
+| M3 | `packages/domain/src/server/consumer/oauth/tokens.ts:75` (sin `audience`) | `b1430fdf…` | `aud` ajeno → rechazo; hermano: ninguno (mismo `iss`, misma clave) | **ROJO 2/19** (alcance: `oauth-tokens`, `oauth-callback`, `oauth-callback-apple`): «`aud` ajeno (token de OTRO cliente OAuth, mismo emisor y misma clave) → rechazo» → `Expected: "id_token_ERR_JWT_CLAIM_VALIDATION_FAILED"` / `Received: "ACEPTADO"`; y por la ruta de Apple «un id_token emitido para el cliente de GOOGLE no sirve en Apple (aud)» → `Expected: ".../enroll/prog-1?error=auth"` / `Received: ".../enroll/prog-1/ready"`. Revertida: `diff` vacio, shasum `b1430fdf…` igual |
+| M4 | `packages/domain/src/server/consumer/oauth/tokens.ts:85` (sin comparar `nonce`) | `b1430fdf…` | `nonce` distinto → rechazo; hermano: ninguno | **ROJO 3/19** (alcance: `oauth-tokens`, `oauth-callback`, `oauth-callback-apple`): «`nonce` distinto (token de OTRO intento) → rechazo» y «sin `nonce` → rechazo» → `Expected: "id_token_nonce"` / `Received: "ACEPTADO"`; por la ruta, «id_token con OTRO nonce → ?error=auth sin cuenta» → `Received: ".../enroll/prog-1/ready"`. Revertida: `diff` vacio, shasum `b1430fdf…` igual |
+| M5 | `packages/domain/src/server/consumer/identity.ts:57` (identidad existente → `UPDATE` de nombres) | `afc25732…` | la cuenta queda byte a byte igual; hermano: ninguno | **ROJO 1/9** (alcance: `consumer-identity` + `consumer-role-auth`, como el rol real): «identidad existente + nombres nuevos → la cuenta queda byte a byte igual» → `AssertionError: expected 'OTRO' to be 'Bea'` (el `UPDATE` paso con el GRANT del rol: el oraculo es el resultado, no un permiso). Revertida: `diff` vacio, shasum `afc25732…` igual |
+| M6 | `packages/domain/src/server/consumer/oauth/state-cookie.ts:21` (`sameSite: "lax"`) | `7512c923…` | atributos del `Set-Cookie` de `start`; hermano: ninguno (el efecto real, Apple sin cookie, solo en QA) | **ROJO 1/17** (alcance: `oauth-state-cookie`, `oauth-callback`, `oauth-callback-apple`): «el Set-Cookie trae __Host-, Secure, HttpOnly, SameSite=None, Path=/ y sin Domain» → `AssertionError: expected [ 'path=/', …(5) ] to include 'samesite=none'`. Revertida: `diff` vacio, shasum `7512c923…` igual |
+| M7 | `packages/db/drizzle/0061_identidad_del_cliente.sql:28` (sin el `GRANT … consumer_identity`), aplicada en `ci-integration` | `e61c47c5…` | el callback como `checkpass_consumer` muere con `42501`; hermano: ninguno (la tabla nace cerrada por los default privileges de la 0060) | **NO MEDIDA — BLOQUEADA** por el clasificador de auto mode (accion denegada al aplicar en `ci-integration`, como dueño, `REVOKE ALL ON consumer.consumer_identity FROM checkpass_consumer` = el estado de la 0061 sin su GRANT). No se aplico nada: archivo `e61c47c5…` intacto, privilegios en CI sin tocar (medidos antes: SELECT/INSERT `true`, UPDATE/DELETE `false`). Para medirla hace falta el OK del owner: (1) en `ci-integration` como dueño `REVOKE ALL ON consumer.consumer_identity FROM checkpass_consumer`; (2) `tools/neon-test.sh --app consumer src/server/consumer-role-auth.neon.integration.test.ts` (rojo esperado: el callback termina en `?error=auth` con `account_enroll_or_session_failed:42501` en el warn); (3) revertir con `GRANT SELECT, INSERT ON consumer.consumer_identity TO checkpass_consumer` y re-correr verde |
 
 ## Bitacora de mutaciones — spec 0118, implementador (2026-10-01)
 
