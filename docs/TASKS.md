@@ -48,6 +48,25 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-10-02, noche) — ALINEACION (PLAN 1 DEL OWNER): FASES 0-2 HECHAS; FASE 3 (MAIN VERDE) EN CURSO
+
+**Fases 0-2 (hechas, verificadas):** `origin/main` es la UNICA rama remota (se borraron `origin/motor` y
+`origin/clientes-0108`); se borraron los worktrees `motor-wt/deploy-0107`, `motor-wt/deploy-0108` y
+`/private/tmp/checkpass-deploy-business-landing` con sus ramas, y el `stash@{0}`. Todo tenia `ahead=0` contra
+`origin/main`. Respaldo fuera del repo en `~/Documents/claude-workspace/rescate-2026-10-02/` (landing vieja y stash =
+versiones previas de `apps/public`; SHAs de las 6 ramas en `ramas-borradas.txt`). GPT commiteo su WIP como spec 0130
+(`b3ef958`). Quedan solo `check-point` (main) y `motor` (esta sesion, identico a main; se borra al cerrarla).
+
+**Fase 3 (en curso):**
+- **Claude — spec 0131** (`2015611`, pusheada para reservar el numero): `marketing-backoffice-pages` (el doble de
+  sesion sin `permissions`, desde `f61b163`) y `marketing-push-enable` («necesitás»). El implementador esta trabajando
+  en esos dos archivos de test (diff sin commitear = suyo). Al volver: revision liviana, push.
+- **GPT — spec 0132** (prompt entregado al owner): 55 e2e rojos preexistentes = stub sin `usePathname` (`c2374a9`) +
+  52 e2e que esperan el voseo viejo («Dale identidad…», «¿Qué querés hacer?») tras `4a69db7`. Medido: con `usePathname`
+  stubeado quedan 52.
+- `marketing-valley` sigue declarado (#67). **Con 0131 + 0132 en main:** 6 gates verdes y tag `baseline`; despues, el
+  Plan 2 (trabajo en paralelo) con el owner.
+
 ## ⇥ ESTADO (2026-10-02, noche) — 0124 A 0129 EN PROD: `main` = `38065dd`, LOS 3 DEPLOYS DE VERCEL EN `success`
 
 Push `motor` → `main` (`fa45cd5..38065dd`, OK del owner) tras mergear `origin/main` (mostrador 0121 + Trama viva
