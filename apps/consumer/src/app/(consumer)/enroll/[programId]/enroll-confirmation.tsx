@@ -4,9 +4,6 @@ import { useEffect, useState } from "react";
 import type { WelcomeOffer } from "@mi-pasaporte/domain/server/consumer/enroll-landing";
 import styles from "./enroll-confirmation.module.css";
 
-const EXISTING_ACCOUNT_NOTICE =
-  "Ya tienes una cuenta con ese teléfono: te enrolaste en el programa con tus datos.";
-
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -23,12 +20,10 @@ export function EnrollConfirmation({
   firstName,
   businessName,
   welcomeOffer,
-  existingAccount,
 }: {
   firstName: string;
   businessName: string;
   welcomeOffer: WelcomeOffer | null;
-  existingAccount: boolean;
 }) {
   const [platform, setPlatform] = useState<"ios" | "android" | "other" | null>(
     null,
@@ -79,11 +74,6 @@ export function EnrollConfirmation({
 
   return (
     <section className={styles.confirmation}>
-      {existingAccount && (
-        <p role="status" className={styles.accountNotice}>
-          {EXISTING_ACCOUNT_NOTICE}
-        </p>
-      )}
       <div className={styles.hero}>
         <div className={styles.appIcon} aria-hidden="true">
           C
@@ -91,7 +81,7 @@ export function EnrollConfirmation({
         <span className={styles.step}>
           PASO 1 DE 2 · TU REGISTRO ESTÁ LISTO
         </span>
-        <h1>¡Listo, {firstName}!</h1>
+        <h1>{firstName.trim() ? `¡Listo, ${firstName.trim()}!` : "¡Listo!"}</h1>
         <p>
           Ya sos parte del programa de <strong>{businessName}</strong>. Poné
           CheckPass en tu inicio para encontrar tus beneficios siempre a mano.

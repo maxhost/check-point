@@ -40,12 +40,6 @@ describe("legacyRedirects", () => {
         destination: `${MY}/enroll/:path*`,
         permanent: true,
       },
-      { source: "/recover", destination: `${MY}/recover`, permanent: true },
-      {
-        source: "/recover/:path*",
-        destination: `${MY}/recover/:path*`,
-        permanent: true,
-      },
     ]);
   });
 

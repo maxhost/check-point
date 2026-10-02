@@ -13,16 +13,11 @@ import {
   businesses,
   consumerAccounts,
   consumerSessions,
-  enrollAttempts,
   loyaltyPrograms,
   programMemberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
-import {
-  RATE_LIMIT_MAX,
-  enforceEnrollRateLimit,
-} from "@mi-pasaporte/domain/server/consumer/rate-limit";
+import { enrollSeeded as enroll } from "./enroll-account-support";
 import {
   issueSession,
   resolveSession,
@@ -48,11 +43,10 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
   const programActive = randomUUID();
   const programInactive = randomUUID();
   const programClosing = randomUUID();
-  // Distinct phones keep each behavior isolated (attempts are per-phone).
+  // Distinct phones keep each behavior isolated.
   const phoneMain = "+59398" + Math.floor(1000000 + Math.random() * 8999999);
-  const phoneRate = "+59397" + Math.floor(1000000 + Math.random() * 8999999);
   const phoneOther = "+59396" + Math.floor(1000000 + Math.random() * 8999999);
-  const phones = [phoneMain, phoneRate, phoneOther];
+  const phones = [phoneMain, phoneOther];
 
   beforeAll(async () => {
     const db = getDb();
@@ -120,9 +114,6 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
         .where(inArray(programMemberships.consumerId, accIds));
     }
     await db
-      .delete(enrollAttempts)
-      .where(inArray(enrollAttempts.phoneE164, phones));
-    await db
       .delete(consumerAccounts)
       .where(inArray(consumerAccounts.phoneE164, phones));
     await db
@@ -140,7 +131,7 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
     await db.delete(users).where(eq(users.id, userId));
   }, 30_000);
 
-  it("enrolls into an active program: creates one unverified account + a membership", async () => {
+  it("enrolls an account into an active program: a membership of its business", async () => {
     const { account, membership } = await enroll(programActive, {
       firstName: "Marcos",
       lastName: "Pérez",
@@ -155,11 +146,9 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
     expect(membership.programId).toBe(programActive);
   });
 
-  it("reuses the same account across a second program: 1 account / 2 memberships", async () => {
+  it("the same account in a second program: 1 account / 2 memberships, profile untouched", async () => {
     const { account } = await enroll(programClosing, {
-      // Different form data must NOT overwrite the reused profile — the original
-      // behavior, restored by the ADR 0051 (which supersedes the 0050/spec 0053
-      // name refresh; this assertion is back to its pre-0053 form).
+      // The alta never writes the account (ADR 0051 / ADR 0111 §5).
       firstName: "OTRO",
       lastName: "NOMBRE",
       phoneE164: phoneMain,
@@ -249,18 +238,6 @@ describe.skipIf(!enabled)("consumer enrollment against Neon", () => {
     // The active-program membership belongs to business A and must be absent here.
     expect(scopedToB.some((m) => m.programId === programActive)).toBe(false);
     expect(scopedToB.every((m) => m.businessId === businessB)).toBe(true);
-  });
-
-  it("rate limit: the 4th attempt in the window → 429; a different phone is unaffected", async () => {
-    for (let i = 0; i < RATE_LIMIT_MAX; i += 1) {
-      await enforceEnrollRateLimit(phoneRate);
-    }
-    await expect(enforceEnrollRateLimit(phoneRate)).rejects.toMatchObject({
-      status: 429,
-      code: "rate_limited",
-    });
-    // A different phone starts fresh.
-    await expect(enforceEnrollRateLimit(phoneOther)).resolves.toBeUndefined();
   });
 
   it("session: a valid cookie resolves; absent/revoked/expired → null", async () => {

@@ -18,7 +18,7 @@ export const runtime = "nodejs";
  * no session and pinned `start_url` at `/wallet` forever (ADR 0048). The token is already
  * at-bearer and already travels in URLs (ADR 0014), so this adds no threat class.
  *
- * Absent, unknown or rotated-away token (recovery, spec 0032) → `/wallet`, the safe
+ * Absent or unknown token → `/wallet`, the safe
  * anonymous fallback. `id` stays `/wallet` so the PWA identity never fragments per
  * consumer nor changes when the token rotates (ADR 0048 §3).
  */

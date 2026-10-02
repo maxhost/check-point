@@ -120,21 +120,6 @@ export async function hasWebPushSubscription(
 }
 
 /**
- * Purges every Web Push subscription of one consumer — called by `rotatePassCredentials`
- * on account recovery (spec 0032), symmetric with the device wipe: the old installed PWA
- * icon then stops receiving notifications. Returns the number of rows removed.
- */
-export async function purgeConsumerSubscriptions(
-  consumerId: string,
-): Promise<number> {
-  const removed = await getDb()
-    .delete(webPushSubscriptions)
-    .where(eq(webPushSubscriptions.consumerId, consumerId))
-    .returning({ id: webPushSubscriptions.id });
-  return removed.length;
-}
-
-/**
  * Fan-out delivery to every Web Push subscription of one consumer (the `webpush`
  * transport of the notice, ADR 0038). A dead endpoint (404/410) is pruned; any other
  * per-subscription error does NOT abort the rest and IS collected so the caller records

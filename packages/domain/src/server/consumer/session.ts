@@ -47,6 +47,7 @@ export async function resolveSession(
       phoneVerifiedAt: consumerAccounts.phoneVerifiedAt,
       firstName: consumerAccounts.firstName,
       lastName: consumerAccounts.lastName,
+      email: consumerAccounts.email,
       countryIso: consumerAccounts.countryIso,
       qrToken: consumerAccounts.qrToken,
       webViewToken: consumerAccounts.webViewToken,

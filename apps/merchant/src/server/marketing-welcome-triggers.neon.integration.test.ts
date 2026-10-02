@@ -11,9 +11,6 @@ import {
   FakeWebPushChannel,
   webPushChannelFromEnv,
 } from "@mi-pasaporte/domain/server/push/webpush-channel";
-import { eq } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
-import { consumerAccounts } from "@mi-pasaporte/db/schema";
 import { seedLocationsBusiness } from "./locations-integration-support";
 import {
   DAY,
@@ -133,33 +130,27 @@ describe.skipIf(!integrationEnabled)("welcome gift — trigger routes", () => {
       new Date(now - 2 * DAY),
     );
     await installOn(person, `dev-enroll-${now}`);
-    const [account] = await getDb()
-      .select({ phone: consumerAccounts.phoneE164 })
-      .from(consumerAccounts)
-      .where(eq(consumerAccounts.id, person.consumerId));
-    // ...and now it signs up to the welcome business through the public route.
+    // ...and now it signs up to the welcome business through the public route: the one-tap
+    // alta of spec 0119 (the account is the session's).
+    const session = await issueSession(person.consumerId);
     const response = await enrollRoute(
       new NextRequest(
         `https://example.test/api/public/enroll/${world.seed.programId}`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            firstName: "Marcos",
-            lastName: "Pérez",
-            phoneE164: account.phone,
-            countryIso: "EC",
-          }),
+          headers: {
+            "content-type": "application/json",
+            cookie: `${SESSION_COOKIE}=${session}`,
+          },
+          body: "{}",
         },
       ),
       { params: Promise.resolve({ programId: world.seed.programId }) },
     );
     expect(response.status).toBe(201);
     const body = (await response.json()) as {
-      existingAccount: boolean;
       membership: { id: string };
     };
-    expect(body.existingAccount).toBe(true);
     const coupons = await readWelcomeCoupons(world.seed.business.id);
     expect(coupons.map((c) => [c.consumerId, c.membershipId])).toEqual([
       [person.consumerId, body.membership.id],

@@ -4,12 +4,10 @@ import {
   type World,
   dropWorld,
   owner,
-  phone,
   request,
   roleSuite,
   seedMember,
   seedWorld,
-  sessionFrom,
   useRoleConnection,
 } from "./consumer-role-support";
 
@@ -26,7 +24,6 @@ vi.mock("@mi-pasaporte/domain/server/r2", async (original) => ({
   }),
 }));
 
-import { POST as enrollPost } from "../app/api/public/enroll/[programId]/route";
 import { GET as enrollMe } from "../app/api/public/enroll/me/route";
 import { POST as optOut } from "../app/api/public/consumer/marketing-opt-out/route";
 import { POST as subscribe } from "../app/api/public/push/subscribe/route";
@@ -44,10 +41,11 @@ import { markAccountOpened } from "@mi-pasaporte/domain/server/wallet/reminder-s
 
 /**
  * Spec 0118 — ORACULO POSITIVO del rol del cliente (ADR 0110): alta, mis programas, las paginas,
- * el opt-out, el Web Push, las imagenes publicas y el sello, COMO `checkpass_consumer`. Cada caso
+ * el opt-out, el Web Push, las imagenes publicas y el sello, COMO `checkpass_consumer` (el alta con
+ * Google/Apple y la de un toque, spec 0119, estan en `consumer-role-auth`). Cada caso
  * asevera el RESULTADO DE NEGOCIO leido como dueño, no solo el codigo HTTP: varias escrituras
  * del cliente son best-effort y tragan su error (`markAccountOpened`, el regalo de bienvenida).
- * ORACULO DE M1 (el alta) y de M3 (`enroll/me` y mis programas: 0 filas, no un error).
+ * ORACULO DE M3 de la 0118 (`enroll/me` y mis programas: 0 filas, no un error).
  */
 
 let world: World;
@@ -61,60 +59,6 @@ beforeAll(async () => {
 afterAll(dropWorld, 120_000);
 
 roleSuite("rol del cliente — alta, programas, push e imagenes", () => {
-  it("POST enroll: cuenta, membresia con su local, proyeccion, contador, intento y sesion", async () => {
-    const number = phone();
-    const [before] =
-      await owner`select coalesce((select customers from core.business_customer_count
-      where business_id = ${world.home}), 0) as n`;
-    const response = await enrollPost(
-      request(`/api/public/enroll/${world.programId}`, {
-        method: "POST",
-        body: {
-          firstName: "Bea",
-          lastName: "Alta",
-          phoneE164: number,
-          countryIso: "EC",
-          loc: world.homeLocation,
-        },
-      }),
-      { params: Promise.resolve({ programId: world.programId }) },
-    );
-    expect(response.status, JSON.stringify(await response.clone().json())).toBe(
-      201,
-    );
-    const token = sessionFrom(response);
-    expect(token).toBeTruthy();
-    const [account] =
-      await owner`select a.id, m.origin_location_id, bc.display_name,
-        (select customers from core.business_customer_count where business_id = ${world.home}) as n,
-        (select count(*)::int from consumer.enroll_attempt where phone_e164 = ${number}) as attempts,
-        (select count(*)::int from consumer.consumer_session s where s.consumer_id = a.id) as sessions
-      from consumer.consumer_account a
-      join consumer.program_membership m on m.consumer_id = a.id and m.program_id = ${world.programId}
-      join core.business_customer bc on bc.consumer_id = a.id and bc.business_id = ${world.home}
-      where a.phone_e164 = ${number}`;
-    expect(account).toMatchObject({
-      origin_location_id: world.homeLocation,
-      display_name: "Bea Alta",
-      n: Number(before.n) + 1,
-      attempts: 1,
-      sessions: 1,
-    });
-    const again = await enrollPost(
-      request(`/api/public/enroll/${world.programId}`, {
-        method: "POST",
-        body: {
-          firstName: "Bea",
-          lastName: "Alta",
-          phoneE164: number,
-          countryIso: "EC",
-        },
-      }),
-      { params: Promise.resolve({ programId: world.programId }) },
-    );
-    expect(again.status).toBe(409);
-  });
-
   it("GET enroll/me: la membresia del cliente de la sesion (0 filas = politica SELECT ausente)", async () => {
     const response = await enrollMe(
       request("/api/public/enroll/me", { token: member.token }),

@@ -39,7 +39,7 @@ export function WalletShell({
   accountId: string;
   firstName: string;
   lastName: string;
-  phone: string;
+  phone: string | null;
   programs: ConsumerProgramSummary[];
   coupons: ConsumerCoupon[];
   initialTab: WalletTab;

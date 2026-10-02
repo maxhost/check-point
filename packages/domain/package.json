@@ -16,6 +16,7 @@
     "@mi-pasaporte/db": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "fflate": "^0.8.3",
+    "jose": "6.2.8",
     "node-forge": "^1.4.0",
     "qrcode": "^1.5.4",
     "sharp": "0.35.3"

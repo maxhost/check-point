@@ -62,6 +62,9 @@ export function composeE164(dial: string, raw: string): string {
   return `+${dial}${digits.replace(/^0+/, "")}`;
 }
 
+/** E.164: a leading '+', a non-zero first digit, then up to 14 more digits. */
+export const E164 = /^\+[1-9]\d{1,14}$/;
+
 /**
  * Flag emoji for an ISO-2 code, built from Unicode regional indicator symbols
  * (`0x1F1E6` is 'A'). Returns "" when the code is not two ASCII letters.

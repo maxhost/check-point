@@ -13,22 +13,27 @@ import { loyaltyPrograms } from "./loyalty";
 import { locations } from "./business";
 
 /**
- * Platform-level consumer identity (spec 0028). The phone is the identity key
- * but stays UNVERIFIED in this spec (`phoneVerifiedAt` always null); OTP
- * verification is deferred to spec 0032. `qrToken` is an opaque, unguessable,
- * PII-free bearer identifier emitted at creation — it is stored in the clear as
- * the stable handle for spec 0029 but NEVER serialized in a DTO.
+ * Platform-level consumer account (spec 0028). Since ADR 0111 the identity is NOT the
+ * phone but a `(provider, subject)` pair in `consumer_identity` (Google / Apple): the phone
+ * is optional forever (null for every account born from a provider) and `email` is
+ * informative, never a key. `qrToken` is an opaque, unguessable, PII-free bearer
+ * identifier emitted at creation — it is stored in the clear as the stable handle for
+ * spec 0029 but NEVER serialized in a DTO.
  */
 export const consumerAccounts = consumer.table(
   "consumer_account",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    phoneE164: text("phone_e164").notNull(),
+    // Optional (ADR 0111): the unique below admits several NULLs.
+    phoneE164: text("phone_e164"),
     phoneVerifiedAt: timestamp("phone_verified_at", { withTimezone: true }),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
-    // Country selected in the enroll form (ISO-2). Analytics metadata, not the
-    // identity key (the phone is) — nullable and never cross-checked vs. phone.
+    // From the provider's id_token at creation (ADR 0111 §4): informative, never a lookup
+    // key (no account linking by email) and never exposed to the merchant.
+    email: text("email"),
+    // Country (ISO-2) of the accounts born from the old phone form. Analytics
+    // metadata — null for the accounts born from a provider (ADR 0111).
     countryIso: text("country_iso"),
     qrToken: text("qr_token").notNull(),
     // Opaque bearer token for the "Ver mis programas" magic-link (spec 0029).
@@ -198,28 +203,38 @@ export const consumerSessions = consumer.table(
 );
 
 /**
- * Append-only log for the per-phone rate limit. Each `POST /enroll` counts the
- * rows for the same phone in the trailing hour; ≥3 → 429. No FK to the account
- * (the phone may not exist yet as an account). Pruning is deferred.
+ * The identity of a consumer (ADR 0111): the `(provider, subject)` of a verified
+ * `id_token`, unique per pair. An account is found ONLY through this pair — never by
+ * email (no account linking: Apple may relay the email, and two providers are two
+ * accounts). A row is never rewritten: the consumer role has SELECT/INSERT only.
  */
-export const enrollAttempts = consumer.table(
-  "enroll_attempt",
+export const consumerIdentities = consumer.table(
+  "consumer_identity",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    phoneE164: text("phone_e164").notNull(),
+    consumerId: uuid("consumer_id")
+      .notNull()
+      .references(() => consumerAccounts.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    // The `sub` claim of the id_token.
+    subject: text("subject").notNull(),
+    // From the id_token at creation; informative only.
+    email: text("email"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-    index("consumer_enroll_attempt_phone_idx").on(
-      table.phoneE164,
-      table.createdAt,
+    uniqueIndex("consumer_identity_provider_subject_unique").on(
+      table.provider,
+      table.subject,
+    ),
+    index("consumer_identity_consumer_idx").on(table.consumerId),
+    check(
+      "consumer_identity_provider_check",
+      sql`${table.provider} in ('google', 'apple')`,
     ),
   ],
 );
-
-// Recovery OTP tables (spec 0032) live in ./otp to keep this file within the
-// file-size budget (same split pattern as ./web-push). Re-exported by the barrel.
 
 // The PassKit devices and the push outbox live in ./wallet-push (size budget, spec 0107).

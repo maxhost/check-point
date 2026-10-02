@@ -2,84 +2,64 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   ConsumerError,
   SESSION_COOKIE,
-  SESSION_TTL_DAYS,
-  consumerAccountResponse,
   membershipResponse,
-  walletManifestPathFor,
 } from "@mi-pasaporte/domain/server/consumer/core";
-import { validateEnrollInput } from "@mi-pasaporte/domain/server/consumer/validation";
-import { enforceEnrollRateLimit } from "@mi-pasaporte/domain/server/consumer/rate-limit";
-import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
-import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { enrollAccount } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { issueWelcomeGiftsSafely } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/**
+ * Spec 0119 / ADR 0111 §7 — EL ALTA DE UN TOQUE: el cliente con sesion se suma a otro programa
+ * («Sumarme como <nombre>»). Sin datos en el cuerpo: la cuenta es la de la sesion. La cookie de
+ * sesion es `SameSite=Lax`, asi que un POST de otro sitio no la lleva y el toque no se puede
+ * forzar desde afuera. Sin sesion → 401 sin escribir nada. El cuerpo solo trae `loc` (ADR 0042).
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ programId: string }> },
 ) {
   const { programId } = await params;
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
+  const account = await resolveSession(
+    request.cookies.get(SESSION_COOKIE)?.value,
+  );
+  if (!account) {
     return NextResponse.json(
-      {
-        error: "El cuerpo de la solicitud no es válido.",
-        code: "invalid_body",
-      },
-      { status: 400 },
+      { error: "No autorizado.", code: "unauthenticated" },
+      { status: 401 },
     );
   }
+  let body: unknown = {};
+  const text = await request.text().catch(() => "");
+  if (text.trim()) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      return NextResponse.json(
+        {
+          error: "El cuerpo de la solicitud no es válido.",
+          code: "invalid_body",
+        },
+        { status: 400 },
+      );
+    }
+  }
+  const bodyLoc = (body as { loc?: unknown } | null)?.loc;
+  const loc =
+    typeof bodyLoc === "string"
+      ? bodyLoc
+      : request.nextUrl.searchParams.get("loc");
   try {
-    // Rate limit is checked (and recorded) before any write, keyed by phone.
-    const input = validateEnrollInput(body);
-    await enforceEnrollRateLimit(input.phoneE164);
-    // Origin local (ADR 0042): from the body (`loc`, sent by the branded form) or,
-    // as a fallback, the query string. Validated/ignored inside `enroll` — a foreign
-    // or malformed loc never breaks the alta, it just attributes null.
-    const bodyLoc = (body as { loc?: unknown } | null)?.loc;
-    const loc =
-      typeof bodyLoc === "string"
-        ? bodyLoc
-        : request.nextUrl.searchParams.get("loc");
-    const { account, membership, existingAccount } = await enroll(
-      programId,
-      input,
-      loc,
-    );
-    // Spec 0107: a consumer whose pass is ALREADY installed (from another business) gets
-    // the welcome gift now; best-effort, it never changes this answer.
+    const membership = await enrollAccount(programId, account.id, loc);
+    // Spec 0107: un cliente con el pase YA instalado (de otro negocio) recibe la Bienvenida
+    // ahora; best-effort, nunca cambia esta respuesta.
     await issueWelcomeGiftsSafely(account.id);
-    // Only a successful enroll opens a session (a 409 never reaches here).
-    const token = await issueSession(account.id);
-    const response = NextResponse.json(
-      {
-        account: consumerAccountResponse(account),
-        membership: membershipResponse(membership),
-        // Spec 0054 / ADR 0051: tells the confirmation the profile was reused as-is so
-        // it can show the "ya tienes una cuenta" toast. Same criterion as
-        // `walletManifestPath` below: it travels ONLY in this 201 — the response that
-        // issues the session, to the owner of that session — never on an error path.
-        existingAccount,
-        // Spec 0051 / ADR 0049: lets the confirmation inject the per-consumer manifest
-        // so the icon installed THERE opens the wallet. Safe to hand over precisely
-        // (and only) here: this 201 is the same response that issues the session —
-        // same recipient, same power. No error path ever includes it.
-        walletManifestPath: walletManifestPathFor(account.webViewToken),
-      },
+    return NextResponse.json(
+      { membership: membershipResponse(membership) },
       { status: 201 },
     );
-    response.cookies.set(SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_TTL_DAYS * 24 * 60 * 60,
-    });
-    return response;
   } catch (error) {
     if (error instanceof ConsumerError) {
       return NextResponse.json(

@@ -50,7 +50,8 @@ export const businessCustomers = core.table(
       .references(() => consumerAccounts.id, { onDelete: "cascade" }),
     displayName: text("display_name").notNull(),
     searchName: text("search_name").notNull(),
-    phoneE164: text("phone_e164").notNull(),
+    // Null for a consumer without a phone (ADR 0111); the unique admits several NULLs.
+    phoneE164: text("phone_e164"),
     enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull(),
     lastVisitAt: timestamp("last_visit_at", { withTimezone: true }),
   },

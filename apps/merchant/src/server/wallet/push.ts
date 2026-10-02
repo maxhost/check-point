@@ -277,7 +277,3 @@ export async function deliverRow(
   });
   return true;
 }
-
-// The rotation mechanism (spec 0032 invokes it) lives in `./rotate`; re-exported here
-// so existing importers keep using `./push`. Split out to stay under the file-size hook.
-export { rotatePassCredentials } from "@mi-pasaporte/domain/server/wallet/rotate";

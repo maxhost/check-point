@@ -26,15 +26,13 @@ export type HostRouteInput = {
 
 export type HostRoute = { redirect: string } | null;
 
-/** Paginas del cliente: `/wallet`, `/c/*`, `/enroll/*`, `/recover`. */
+/** Paginas del cliente: `/wallet`, `/c/*`, `/enroll/*`. */
 function isConsumerPage(pathname: string): boolean {
   return (
     pathname === "/wallet" ||
     pathname.startsWith("/wallet/") ||
     pathname.startsWith("/c/") ||
-    pathname.startsWith("/enroll/") ||
-    pathname === "/recover" ||
-    pathname.startsWith("/recover/")
+    pathname.startsWith("/enroll/")
   );
 }
 

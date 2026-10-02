@@ -12,6 +12,7 @@ import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/progr
 import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
 import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { markAccountOpened } from "@mi-pasaporte/domain/server/wallet/reminder-store";
+import { AuthErrorNotice, ProviderButtons } from "../provider-buttons";
 import { WalletShell } from "./wallet-shell";
 
 export const dynamic = "force-dynamic";
@@ -49,52 +50,47 @@ const page: React.CSSProperties = {
   fontFamily: "system-ui, sans-serif",
 };
 
-export default async function WalletPage() {
+export default async function WalletPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string | string[] }>;
+} = {}) {
   const store = await cookies();
   const account = await resolveSession(store.get(SESSION_COOKIE)?.value);
+  const ua = (await headers()).get("user-agent") ?? "";
+  // Show only the Wallet platform supported by the current device.
+  const isIos = /iphone|ipad|ipod/i.test(ua);
 
   if (!account) {
+    // Spec 0119 / ADR 0111 §8: entrar sin programa — los mismos dos botones, login puro.
+    const error = (await searchParams)?.error;
     return (
       <main style={{ ...page, textAlign: "center" }}>
         <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-          Check Pass Club
+          CheckPass Club
         </p>
         <h1 style={{ fontSize: 22, marginTop: 4 }}>
           Tu tarjeta no está abierta
         </h1>
         <p style={{ color: "#555", marginTop: 12 }}>
-          Ingresá con tu número de teléfono para volver a ver tus programas,
-          beneficios y tu pase.
+          Entrá con la misma cuenta con la que te sumaste para volver a ver tus
+          programas, beneficios y tu pase.
         </p>
-        <a
-          href="/recover"
-          style={{
-            display: "block",
-            marginTop: 24,
-            padding: 15,
-            borderRadius: 14,
-            background: "#176548",
-            color: "#fff",
-            fontWeight: 700,
-            textDecoration: "none",
-          }}
-        >
-          Ingresar con mi teléfono
-        </a>
+        {(Array.isArray(error) ? error[0] : error) === "auth" && (
+          <AuthErrorNotice />
+        )}
+        <ProviderButtons isIos={isIos} primaryColor="#176548" />
       </main>
     );
   }
 
-  const [qrSvg, ua, programs, coupons] = await Promise.all([
+  const [qrSvg, programs, coupons] = await Promise.all([
     renderQrSvg(account.qrToken),
-    headers().then((h) => h.get("user-agent") ?? ""),
     listConsumerPrograms(account.id),
     listConsumerCoupons(account.id),
     // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
     markAccountOpened(account.id),
   ]);
-  // Show only the Wallet platform supported by the current device.
-  const isIos = /iphone|ipad|ipod/i.test(ua);
   const welcomeLanding = programs[0]
     ? await getEnrollLanding(programs[0].programId)
     : null;

@@ -118,7 +118,7 @@ export function IosInstallHint({ accentColor }: { accentColor?: string }) {
   return (
     <section style={card}>
       <h3 style={{ fontSize: 17, margin: 0, color: ink }}>
-        Añadí Check Pass Club a tu pantalla de inicio
+        Añadí CheckPass Club a tu pantalla de inicio
       </h3>
       <p
         style={{

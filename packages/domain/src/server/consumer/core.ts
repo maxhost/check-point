@@ -16,13 +16,6 @@ export class ConsumerError extends Error {
   }
 }
 
-export type EnrollInput = {
-  firstName: string;
-  lastName: string;
-  phoneE164: string;
-  countryIso: string;
-};
-
 /** Opaque, PII-free, unguessable token: 32 random bytes (256 bits) as base64url. */
 export function generateOpaqueToken(): string {
   return randomBytes(32).toString("base64url");
@@ -59,10 +52,12 @@ export function walletManifestPathFor(webViewToken: string): string {
 
 export type ConsumerAccountRow = {
   id: string;
-  phoneE164: string;
+  // Optional since ADR 0111: null for every account born from Google/Apple.
+  phoneE164: string | null;
   phoneVerifiedAt: Date | null;
   firstName: string;
   lastName: string;
+  email: string | null;
   countryIso: string | null;
   qrToken: string;
   webViewToken: string;
@@ -84,7 +79,7 @@ export type MembershipRow = {
 /**
  * Client-facing shape of a consumer account. Built by explicit allow-list so it
  * can NEVER serialize the raw `qrToken` (nor any future column). Exposes only the
- * consumer's own profile plus a derived `phoneVerified` boolean.
+ * consumer's own profile.
  */
 export function consumerAccountResponse(account: ConsumerAccountRow) {
   return {
@@ -92,8 +87,8 @@ export function consumerAccountResponse(account: ConsumerAccountRow) {
     firstName: account.firstName,
     lastName: account.lastName,
     phoneE164: account.phoneE164,
+    email: account.email,
     countryIso: account.countryIso,
-    phoneVerified: account.phoneVerifiedAt !== null,
   };
 }
 

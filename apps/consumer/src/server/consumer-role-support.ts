@@ -268,10 +268,8 @@ export async function dropWorld(): Promise<void> {
   await owner`delete from core.campaign where business_id = any(${businessIds}::uuid[])`;
   await owner`delete from consumer.program_membership where consumer_id = any(${consumers}::uuid[])
     or business_id = any(${businessIds}::uuid[])`;
+  // `consumer_identity` y las sesiones caen en cascada con la cuenta.
   await owner`delete from consumer.consumer_account where id = any(${consumers}::uuid[])`;
-  await owner`delete from consumer.otp_delivery where phone_e164 = any(${phones})`;
-  await owner`delete from consumer.otp_challenge where phone_e164 = any(${phones})`;
-  await owner`delete from consumer.enroll_attempt where phone_e164 = any(${phones})`;
   await owner`delete from core.loyalty_reward where business_id = any(${businessIds}::uuid[])`;
   await owner`delete from core.loyalty_program where business_id = any(${businessIds}::uuid[])`;
   await owner`delete from core.business where id = any(${businessIds}::uuid[])`;

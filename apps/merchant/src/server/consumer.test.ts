@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   type ConsumerAccountRow,
-  ConsumerError,
   consumerAccountResponse,
   generateOpaqueToken,
   hashToken,
   membershipResponse,
 } from "@mi-pasaporte/domain/server/consumer/core";
-import { validateEnrollInput } from "@mi-pasaporte/domain/server/consumer/validation";
 import {
+  E164,
   composeE164,
   flagEmoji,
   isValidCountryIso,
@@ -43,6 +42,7 @@ describe("consumer DTOs never leak secrets", () => {
     phoneVerifiedAt: null,
     firstName: "Marcos",
     lastName: "Pérez",
+    email: "marcos@example.test",
     countryIso: "EC",
     qrToken: "SUPER-SECRET-QR-TOKEN",
     webViewToken: "SUPER-SECRET-WEB-VIEW-TOKEN",
@@ -50,7 +50,7 @@ describe("consumer DTOs never leak secrets", () => {
     updatedAt: new Date("2026-08-14T00:00:00Z"),
   };
 
-  it("account DTO omits the raw qrToken/webViewToken and derives phoneVerified", () => {
+  it("account DTO omits the raw qrToken/webViewToken", () => {
     const dto = consumerAccountResponse(account);
     expect(dto).not.toHaveProperty("qrToken");
     expect(dto).not.toHaveProperty("webViewToken");
@@ -62,9 +62,11 @@ describe("consumer DTOs never leak secrets", () => {
       firstName: "Marcos",
       lastName: "Pérez",
       phoneE164: "+593987654321",
+      email: "marcos@example.test",
       countryIso: "EC",
-      phoneVerified: false,
     });
+    // Spec 0119: no `phoneVerified` anymore (the identity is the provider's, ADR 0111).
+    expect(dto).not.toHaveProperty("phoneVerified");
   });
 
   it("account DTO exposes countryIso (metadata, not a secret) incl. null", () => {
@@ -74,12 +76,14 @@ describe("consumer DTOs never leak secrets", () => {
     ).toBeNull();
   });
 
-  it("account DTO reports phoneVerified true once verified", () => {
+  it("account DTO of an account born from a provider: phone and country null (spec 0119)", () => {
     const dto = consumerAccountResponse({
       ...account,
-      phoneVerifiedAt: new Date("2026-08-14T00:00:00Z"),
+      phoneE164: null,
+      countryIso: null,
     });
-    expect(dto.phoneVerified).toBe(true);
+    expect(dto.phoneE164).toBeNull();
+    expect(dto.countryIso).toBeNull();
   });
 
   it("membership DTO exposes only its public fields", () => {
@@ -137,65 +141,11 @@ describe("composeE164", () => {
   });
 });
 
-describe("validateEnrollInput", () => {
-  const valid = {
-    firstName: "Marcos",
-    lastName: "Pérez",
-    phoneE164: "+593987654321",
-    countryIso: "EC",
-  };
-
-  it("accepts and trims a valid payload", () => {
-    const out = validateEnrollInput({
-      firstName: "  Marcos ",
-      lastName: " Pérez ",
-      phoneE164: " +593987654321 ",
-      countryIso: " ec ",
-    });
-    expect(out).toEqual(valid);
-  });
-
-  it("accepts a known countryIso and rejects an unknown one with 422", () => {
-    expect(validateEnrollInput({ ...valid, countryIso: "br" }).countryIso).toBe(
-      "BR",
-    );
-    for (const iso of ["XX", "", "123", undefined]) {
-      expect(() =>
-        validateEnrollInput({ ...valid, countryIso: iso }),
-      ).toThrowError(
-        expect.objectContaining({ status: 422, code: "invalid_country" }),
-      );
-    }
-  });
-
-  it("rejects a non-E.164 phone with 422 invalid_phone", () => {
+describe("E164 (the merchant's search by phone)", () => {
+  it("accepts an international number and rejects the rest", () => {
+    expect(E164.test("+593987654321")).toBe(true);
     for (const phone of ["593987654321", "+0987654321", "abc", "+", ""]) {
-      expect(() =>
-        validateEnrollInput({ ...valid, phoneE164: phone }),
-      ).toThrowError(
-        expect.objectContaining({ status: 422, code: "invalid_phone" }),
-      );
+      expect(E164.test(phone)).toBe(false);
     }
-  });
-
-  it("rejects an empty name with 422", () => {
-    expect(() =>
-      validateEnrollInput({ ...valid, firstName: "   " }),
-    ).toThrowError(
-      expect.objectContaining({ status: 422, code: "invalid_name" }),
-    );
-  });
-
-  it("rejects a name over 120 chars with 422", () => {
-    expect(() =>
-      validateEnrollInput({ ...valid, lastName: "x".repeat(121) }),
-    ).toThrowError(
-      expect.objectContaining({ status: 422, code: "invalid_name" }),
-    );
-  });
-
-  it("rejects a non-object body with 422", () => {
-    expect(() => validateEnrollInput(null)).toThrowError(ConsumerError);
-    expect(() => validateEnrollInput("nope")).toThrowError(ConsumerError);
   });
 });

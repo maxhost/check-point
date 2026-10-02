@@ -20,13 +20,11 @@ import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import {
   deliverWebPush,
   listConsumerSubscriptions,
-  purgeConsumerSubscriptions,
   upsertSubscription,
 } from "@mi-pasaporte/domain/server/push/subscriptions";
 import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { FakePushChannel } from "./wallet/push-channel";
 import { runPushWorker } from "./wallet/push-worker";
-import { rotatePassCredentials } from "./wallet/push";
 import { POST as subscribePost } from "../../../consumer/src/app/api/public/push/subscribe/route";
 
 const consumerIds: string[] = [];
@@ -153,22 +151,6 @@ describe.skipIf(!integrationEnabled)(
       );
       expect(errors).toHaveLength(0); // a gone endpoint is pruned, not an error
       expect(await listConsumerSubscriptions(consumer.id)).toHaveLength(0);
-    }, 30_000);
-
-    it("rotatePassCredentials purges the consumer's subscriptions", async () => {
-      const consumer = await newConsumer();
-      await upsertSubscription({
-        consumerId: consumer.id,
-        endpoint: `https://push.test/${randomUUID()}`,
-        p256dhKey: "p256dh",
-        authKey: "auth",
-        userAgent: "UA",
-      });
-      expect(await listConsumerSubscriptions(consumer.id)).toHaveLength(1);
-      await rotatePassCredentials(consumer.id);
-      expect(await listConsumerSubscriptions(consumer.id)).toHaveLength(0);
-      // Idempotent purge helper.
-      expect(await purgeConsumerSubscriptions(consumer.id)).toBe(0);
     }, 30_000);
 
     // Spec 0103 / ADR 0095 §4: the ADR 0038 fan-out of `campaign` is GONE — it routes like

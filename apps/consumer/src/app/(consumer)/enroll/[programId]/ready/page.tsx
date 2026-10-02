@@ -26,10 +26,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function EnrollReadyPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ programId: string }>;
-  searchParams: Promise<{ existing?: string }>;
 }) {
   const { programId } = await params;
   const [account, landing] = await Promise.all([
@@ -52,7 +50,6 @@ export default async function EnrollReadyPage({
         firstName={account.firstName}
         businessName={landing.businessName}
         welcomeOffer={landing.welcomeOffer}
-        existingAccount={(await searchParams).existing === "1"}
       />
     </main>
   );

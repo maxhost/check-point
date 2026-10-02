@@ -17,7 +17,7 @@ import {
   programMemberships,
   users,
 } from "@mi-pasaporte/db/schema";
-import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { enrollSeeded as enroll } from "./enroll-account-support";
 
 // Attribution of a self-service alta by local (ADR 0042 / spec 0041). The `?loc=` from
 // the poster QR is validated against the program's business and persisted only on the

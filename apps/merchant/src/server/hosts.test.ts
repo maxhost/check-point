@@ -30,8 +30,6 @@ describe("decideHostRoute — business.", () => {
     ["/wallet/settings", `${CONSUMER}/wallet/settings`],
     ["/c/WVT", `${CONSUMER}/c/WVT`],
     ["/enroll/prog-1?loc=loc-9", `${CONSUMER}/enroll/prog-1?loc=loc-9`],
-    ["/recover", `${CONSUMER}/recover`],
-    ["/recover/code", `${CONSUMER}/recover/code`],
   ])("a consumer page %s → 308 to my. (%s)", (path, target) => {
     expect(route("business.checkpass.club", path)).toEqual({
       redirect: target,
@@ -48,6 +46,9 @@ describe("decideHostRoute — business.", () => {
     "/wallet/manifest.webmanifest",
     "/walletx",
     "/enroll",
+    // Spec 0119: `/recover` se borro con la recuperacion por SMS — ya no es del cliente.
+    "/recover",
+    "/recover/code",
   ])("%s stays on business.", (path) => {
     expect(route("business.checkpass.club", path)).toBeNull();
   });
@@ -172,7 +173,6 @@ describe("decideHostRoute — H1 and H2", () => {
       "/wallet/business",
       "/c/business",
       "/enroll/business",
-      "/recover/business",
     ];
     let redirects = 0;
     for (const host of ["business.checkpass.club", "my.checkpass.club"]) {
@@ -186,7 +186,7 @@ describe("decideHostRoute — H1 and H2", () => {
         );
       }
     }
-    expect(redirects).toBe(9);
+    expect(redirects).toBe(8);
   });
 });
 

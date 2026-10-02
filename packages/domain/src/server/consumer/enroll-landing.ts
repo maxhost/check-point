@@ -1,6 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { businesses, loyaltyPrograms } from "@mi-pasaporte/db/schema";
+import {
+  businesses,
+  loyaltyPrograms,
+  programMemberships,
+} from "@mi-pasaporte/db/schema";
 import type { CouponKind } from "../marketing/reward-input";
 import type { WelcomeRedeemFrom } from "../marketing/templates";
 import { capAllows, localMonthStart } from "../marketing/welcome-rules";
@@ -120,4 +124,26 @@ export async function getEnrollLanding(
     if (pgErrorCode(error) === "22P02") return null;
     throw error;
   }
+}
+
+/**
+ * Spec 0119: si la cuenta de la sesion YA es miembro de este programa — la landing con sesion
+ * muestra «Ya sos parte» en vez del boton de un toque. Solo con un `programId` que la landing ya
+ * resolvio (un uuid valido).
+ */
+export async function isProgramMember(
+  consumerId: string,
+  programId: string,
+): Promise<boolean> {
+  const rows = await getDb()
+    .select({ id: programMemberships.id })
+    .from(programMemberships)
+    .where(
+      and(
+        eq(programMemberships.consumerId, consumerId),
+        eq(programMemberships.programId, programId),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
 }

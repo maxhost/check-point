@@ -17,7 +17,7 @@ import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships } from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import { openMerchantSession } from "./merchant-session";
-import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { enrollSeeded as enroll } from "./enroll-account-support";
 import { requireOperator } from "../app/api/counter/_auth";
 
 import { GET as LOCATIONS } from "../app/api/locations/route";

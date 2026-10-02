@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   type Seed,
@@ -18,14 +18,12 @@ import {
 import { resolveScan } from "./counter/resolve";
 import { type PersistGrantInput, persistGrant } from "./counter/orders";
 import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
-import { hashToken } from "@mi-pasaporte/domain/server/consumer/core";
 import {
   authorizePass,
   listUpdatedSerials,
   registerDevice,
   unregisterDevice,
 } from "@mi-pasaporte/domain/server/wallet/passkit";
-import { rotatePassCredentials } from "./wallet/push";
 
 const consumerIds: string[] = [];
 
@@ -225,58 +223,6 @@ describe.skipIf(!integrationEnabled)(
         .from(walletPushDevices)
         .where(eq(walletPushDevices.walletPassId, pass.id));
       expect(gone).toHaveLength(0);
-    }, 30_000);
-
-    it("rotatePassCredentials rotates both tokens, wipes devices, enqueues re-emission; old qr_token dies", async () => {
-      const { consumer } = await enrolledMembership(seed);
-      const pass = await ensureWalletPass(consumer.id, "apple");
-      await registerDevice({
-        passId: pass.id,
-        deviceLibraryId: `dev-${randomUUID()}`,
-        pushToken: "apns-token",
-      });
-      const [before] = await getDb()
-        .select()
-        .from(consumerAccounts)
-        .where(eq(consumerAccounts.id, consumer.id));
-
-      const { qrToken, webViewToken } = await rotatePassCredentials(
-        consumer.id,
-      );
-      expect(qrToken).toMatch(/^[A-Za-z0-9_-]+$/);
-      expect(webViewToken).toMatch(/^[A-Za-z0-9_-]+$/);
-      expect(qrToken).not.toBe(webViewToken);
-      expect(qrToken).not.toBe(before.qrToken);
-      expect(webViewToken).not.toBe(before.webViewToken);
-
-      // Devices wiped.
-      const devices = await getDb()
-        .select()
-        .from(walletPushDevices)
-        .where(eq(walletPushDevices.walletPassId, pass.id));
-      expect(devices).toHaveLength(0);
-
-      // A re-emission transactional push was enqueued.
-      const rows = await getDb()
-        .select()
-        .from(walletPushQueue)
-        .where(
-          and(
-            eq(walletPushQueue.consumerId, consumer.id),
-            eq(walletPushQueue.class, "transactional"),
-          ),
-        );
-      expect(rows.length).toBeGreaterThanOrEqual(1);
-
-      // The old qr_token no longer resolves in the counter scan (0030).
-      await expect(
-        resolveScan(seed.business, before.qrToken),
-      ).rejects.toMatchObject({ status: 422 });
-      // The new one does.
-      const resolved = await resolveScan(seed.business, qrToken);
-      expect(resolved.consumer.displayName).toBeTruthy();
-      // hashToken is deterministic (sanity for the auth compare path).
-      expect(hashToken("x")).toBe(hashToken("x"));
     }, 30_000);
   },
 );

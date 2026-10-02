@@ -3,7 +3,7 @@ import "./globals.css";
 import "./wallet.css";
 
 export const metadata: Metadata = {
-  title: "Check Pass Club",
+  title: "CheckPass Club",
   icons: {
     icon: [
       {

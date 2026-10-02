@@ -428,6 +428,13 @@
       "when": 1790878886657,
       "tag": "0060_rol_del_cliente",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1790900152868,
+      "tag": "0061_identidad_del_cliente",
+      "breakpoints": true
     }
   ]
 }

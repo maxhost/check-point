@@ -42,10 +42,13 @@ export function balanceOf(
   return null;
 }
 
+/** The name shown for a customer whose provider gave none (spec 0119: `display_name` is " "). */
+export const NAMELESS_CUSTOMER = "Sin nombre";
+
 /** The DTO, built by allow-list from a raw row. */
 export function toCustomerRow(row: Record<string, unknown>): CustomerRow {
   return {
-    name: String(row.display_name),
+    name: String(row.display_name ?? "").trim() || NAMELESS_CUSTOMER,
     enrolledAt: iso(row.enrolled_at) ?? "",
     lastVisitAt: iso(row.last_visit_at),
     balance: balanceOf(row),

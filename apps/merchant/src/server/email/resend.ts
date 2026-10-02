@@ -8,9 +8,9 @@ type ResendOptions = {
 };
 
 /**
- * Resend adapter over the plain HTTP API (no `resend` npm dependency). Mirrors the
- * `ClickSendOtpChannel` pattern: validate config in the constructor, one `fetch` with an
- * AbortController timeout, bearer auth, JSON body, and a typed provider error on failure.
+ * Resend adapter over the plain HTTP API (no `resend` npm dependency): validate config in
+ * the constructor, one `fetch` with an AbortController timeout, bearer auth, JSON body, and a
+ * typed provider error on failure.
  */
 export class ResendEmailChannel implements EmailChannel {
   constructor(private readonly options: ResendOptions) {

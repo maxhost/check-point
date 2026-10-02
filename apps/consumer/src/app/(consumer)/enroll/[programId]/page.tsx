@@ -1,20 +1,41 @@
-import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
-import { EnrollForm } from "./enroll-form";
+import { cookies, headers } from "next/headers";
+import { readableTextColor } from "@mi-pasaporte/domain/lib/brand-color";
+import {
+  getEnrollLanding,
+  isProgramMember,
+} from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
+import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { AuthErrorNotice, ProviderButtons } from "../../provider-buttons";
+import { OneTapEnroll } from "./enroll-buttons";
+import { WelcomeOffer } from "./welcome-offer";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
+const first = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : (value ?? null);
+
+/**
+ * La landing del QR de un comercio (spec 0119 / ADR 0111). Sin sesion: los dos botones de
+ * proveedor (tocar uno es el consentimiento de sumarse a ESTE programa). Con sesion: «Ya sos
+ * parte» si ya es miembro, si no el alta de un toque. El marco es el de siempre: logo o nombre
+ * del negocio, su color en el boton primario y la oferta de bienvenida.
+ */
 export default async function EnrollPage({
   params,
   searchParams,
 }: {
   params: Promise<{ programId: string }>;
-  searchParams: Promise<{ loc?: string | string[] }>;
+  searchParams: Promise<{
+    loc?: string | string[];
+    error?: string | string[];
+  }>;
 }) {
   const { programId } = await params;
-  // `loc` (ADR 0042): the origin local encoded by the brand-kit poster QR. Carried
-  // into the form so it travels in the POST body; validated server-side at enroll.
-  const rawLoc = (await searchParams).loc;
-  const loc = Array.isArray(rawLoc) ? rawLoc[0] : (rawLoc ?? null);
+  const query = await searchParams;
+  // `loc` (ADR 0042): the origin local encoded by the brand-kit poster QR.
+  const loc = first(query.loc);
   const landing = await getEnrollLanding(programId);
 
   if (!landing) {
@@ -37,6 +58,13 @@ export default async function EnrollPage({
     );
   }
 
+  const [store, requestHeaders] = await Promise.all([cookies(), headers()]);
+  const account = await resolveSession(store.get(SESSION_COOKIE)?.value);
+  const member = account ? await isProgramMember(account.id, programId) : false;
+  const isIos = /iphone|ipad|ipod/i.test(
+    requestHeaders.get("user-agent") ?? "",
+  );
+
   return (
     <main
       style={{
@@ -47,7 +75,7 @@ export default async function EnrollPage({
       }}
     >
       <p style={{ color: "#888", fontSize: 13, letterSpacing: 0.4 }}>
-        Check Pass Club
+        CheckPass Club
       </p>
       {landing.hasLogo ? (
         // Public logo route serves from R2 without exposing the object key.
@@ -65,14 +93,55 @@ export default async function EnrollPage({
       ) : (
         <h1 style={{ fontSize: 24, marginTop: 4 }}>{landing.businessName}</h1>
       )}
-      <EnrollForm
-        programId={programId}
-        loc={loc}
-        businessName={landing.businessName}
-        defaultCountryIso={landing.countryCode ?? "EC"}
-        brandPrimaryColor={landing.brandPrimaryColor}
-        welcomeOffer={landing.welcomeOffer}
-      />
+      {member ? (
+        <section>
+          <h2 style={{ fontSize: 20, marginTop: 20 }}>
+            Ya sos parte de {landing.businessName}
+          </h2>
+          <a
+            href="/wallet"
+            style={{
+              display: "block",
+              marginTop: 20,
+              padding: "13px 14px",
+              borderRadius: 10,
+              textAlign: "center",
+              textDecoration: "none",
+              fontWeight: 600,
+              background: landing.brandPrimaryColor,
+              color: readableTextColor(landing.brandPrimaryColor),
+            }}
+          >
+            Ver mi tarjeta
+          </a>
+        </section>
+      ) : (
+        <section>
+          {landing.welcomeOffer && (
+            <WelcomeOffer offer={landing.welcomeOffer} />
+          )}
+          <p style={{ color: "#555", marginTop: 8 }}>
+            Sumate al programa de fidelidad de {landing.businessName}.
+          </p>
+          {first(query.error) === "auth" && <AuthErrorNotice />}
+          {account ? (
+            <OneTapEnroll
+              programId={programId}
+              loc={loc}
+              firstName={account.firstName}
+              primaryColor={landing.brandPrimaryColor}
+              isIos={isIos}
+            />
+          ) : (
+            <ProviderButtons
+              programId={programId}
+              loc={loc}
+              isIos={isIos}
+              primaryColor={landing.brandPrimaryColor}
+            />
+          )}
+        </section>
+      )}
     </main>
   );
 }

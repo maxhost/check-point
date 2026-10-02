@@ -1,4 +1,4 @@
-import { E164 } from "@mi-pasaporte/domain/server/consumer/validation";
+import { E164 } from "@mi-pasaporte/domain/lib/countries";
 
 /** Fixed page size of the customer list (contract `0108-contratos-de-api.md`). */
 export const CUSTOMERS_PAGE_SIZE = 25;
@@ -26,7 +26,7 @@ export class CustomerQueryError extends Error {
 /**
  * Validates the query string of the list (spec 0108). `page` is an integer ≥ 1 (default 1);
  * `q` is 3 to 60 characters AFTER trimming (counted as characters, not UTF-16 units); `phone`
- * is E.164 with the same regex as the enroll. `q` and `phone` together are a 400 with both
+ * is E.164 (`E164` of `lib/countries`). `q` and `phone` together are a 400 with both
  * fields. Every rule failing at once reports all of its fields.
  */
 export function parseCustomerQuery(params: URLSearchParams): CustomerQuery {

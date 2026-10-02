@@ -22,7 +22,7 @@ if (!neonConfig.webSocketConstructor && typeof WebSocket !== "undefined")
 
 // One pooled WebSocket connection per connection string, reused across warm serverless
 // invocations. Opening (and ending) a Pool per call added a socket handshake to every
-// request — and a single recovery request runs several transactions.
+// request — and a single request may run several transactions.
 const pools = new Map<string, Pool>();
 function poolFor(connectionString: string): Pool {
   let pool = pools.get(connectionString);

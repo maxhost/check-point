@@ -41,8 +41,6 @@ const CONSUMER_PATHS = [
   "/wallet/:path*",
   "/c/:path*",
   "/enroll/:path*",
-  "/recover",
-  "/recover/:path*",
 ];
 
 function trimOrigin(origin: string): string {

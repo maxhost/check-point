@@ -98,8 +98,8 @@ describe("consumer PWA manifest start_url (spec 0050 / ADR 0048)", () => {
     );
   });
 
-  it("falls back to /wallet for a token rotated away by account recovery (0032)", async () => {
-    // Rotation deletes the old token from the row: the lookup simply misses.
+  it("falls back to /wallet for a token that is no longer the account's", async () => {
+    // A replaced token is gone from the row: the lookup simply misses.
     walletCore.resolveWebViewToken.mockImplementation(async (t: string) =>
       t === "ROTATED-NEW" ? account : null,
     );

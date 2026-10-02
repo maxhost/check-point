@@ -70,6 +70,15 @@ const denied: [string, SQL][] = [
     "DELETE en consumer.program_membership",
     sql`delete from consumer.program_membership where false`,
   ],
+  // Spec 0119: una identidad nunca se reescribe ni se borra desde el cliente.
+  [
+    "UPDATE de consumer.consumer_identity",
+    sql`update consumer.consumer_identity set email = email where false`,
+  ],
+  [
+    "DELETE en consumer.consumer_identity",
+    sql`delete from consumer.consumer_identity where false`,
+  ],
   [
     'SELECT en merchant_auth."user"',
     sql`select 1 from merchant_auth."user" limit 1`,
@@ -117,6 +126,9 @@ describe.skipIf(!enabled)("rol del cliente — lo que NO puede (42501)", () => {
   it("control: lo concedido SI pasa (la sonda no deniega todo)", async () => {
     expect(
       await asRole(sql`select 1 from consumer.consumer_account limit 1`),
+    ).toBe(ALLOWED);
+    expect(
+      await asRole(sql`select 1 from consumer.consumer_identity limit 1`),
     ).toBe(ALLOWED);
     expect(
       await asRole(

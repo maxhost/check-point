@@ -19,7 +19,7 @@ import {
   users,
   walletPasses,
 } from "@mi-pasaporte/db/schema";
-import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { enrollSeeded as enroll } from "./enroll-account-support";
 import {
   ensureWalletPass,
   resolveWebViewToken,

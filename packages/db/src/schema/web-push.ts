@@ -17,8 +17,7 @@ import { consumerAccounts } from "./consumer";
  * upsert key); `p256dhKey` and `authKey` are the client's RFC 8291 encryption material.
  * All three are DEVICE SECRETS and are NEVER serialized in a DTO (see
  * `webPushSubscriptionResponse`). `platform` (`ios`/`android`/`other`) is derived from
- * the UA for analytics and the rotation purge. Rows cascade with the consumer and are
- * wiped on `rotatePassCredentials` (0032) — the old home-screen icon then goes dead.
+ * the UA for analytics. Rows cascade with the consumer.
  */
 export const webPushSubscriptions = consumer.table(
   "web_push_subscription",

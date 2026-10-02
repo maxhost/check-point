@@ -26,7 +26,7 @@ import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 import { redeemReward } from "./counter/redeem";
 import { redeemCoupon } from "./counter/coupon";
-import { enroll } from "@mi-pasaporte/domain/server/consumer/enrollment";
+import { enrollSeeded as enroll } from "./enroll-account-support";
 import { listCustomers } from "./customers/list";
 
 /**

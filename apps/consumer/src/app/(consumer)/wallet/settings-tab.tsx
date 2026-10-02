@@ -27,7 +27,8 @@ export function SettingsTab({
   programs: ConsumerProgramSummary[];
   firstName: string;
   lastName: string;
-  phone: string;
+  /** Opcional desde la spec 0119 (ADR 0111): sin telefono no hay fila. */
+  phone: string | null;
 }) {
   return (
     <section aria-labelledby="settings-tab-title" className="cp-screen">
@@ -46,7 +47,7 @@ export function SettingsTab({
           <strong>
             {firstName} {lastName}
           </strong>
-          <span>{phone}</span>
+          {phone ? <span>{phone}</span> : null}
         </div>
       </div>
       <h3 className="cp-section-title">Notificaciones por comercio</h3>

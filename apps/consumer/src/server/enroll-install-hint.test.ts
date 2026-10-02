@@ -13,10 +13,17 @@ function source(path: string) {
 
 describe("post-enrollment installation", () => {
   it("navigates after enrollment so the browser receives a fresh HTML document", () => {
-    const form = source("enroll-form.tsx");
-    expect(form).toContain("if (res.status === 201)");
-    expect(form).toContain("window.location.assign(");
-    expect(form).toContain("/ready");
+    // Spec 0119: the one-tap alta navigates on its 201; the provider callback answers a 303
+    // to the same `/ready` (a full document either way).
+    const oneTap = source("enroll-buttons.tsx");
+    expect(oneTap).toContain("if (res.status === 201)");
+    expect(oneTap).toContain("window.location.assign(");
+    expect(oneTap).toContain("/ready");
+    const callback = readFileSync(
+      join(import.meta.dirname, "oauth-callback.ts"),
+      "utf8",
+    );
+    expect(callback).toContain("/ready`");
   });
 
   it("serves the consumer manifest in the confirmation document metadata", () => {

@@ -100,8 +100,7 @@ export type TickOptions = {
   lockNamespace?: string;
 };
 
-/** Step 0. The key is derived from a NAME, the same way the recovery flows derive
- * theirs (`consumer/recovery/deliver.ts`), so nobody has to keep a registry of magic
+/** Step 0. The key is derived from a NAME, so nobody has to keep a registry of magic
  * integers. */
 export const TICK_LOCK_NAMESPACE = "marketing_tick";
 
