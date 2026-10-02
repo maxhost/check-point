@@ -1,7 +1,7 @@
 ---
 spec: 0121
 fecha: 2026-10-01
-estado: cerrada
+estado: implementada
 resumen: Rediseñar Mostrador para registrar compras detalladas con categorías, accesos basados en el historial del cliente y un carrito móvil compacto; comparar tiempo y exactitud contra el flujo actual en un piloto con Café Plátano.
 disjunta: no
 archivos: apps/merchant/src/app/backoffice/counter/*, apps/merchant/src/app/backoffice/onboarding/onboarding-checklist.tsx, apps/merchant/src/app/globals.css, apps/merchant/src/app/api/counter/resolve/route.ts, apps/merchant/src/server/counter/resolve.ts, apps/merchant/src/server/counter/grant.ts, apps/merchant/src/server/counter/*test.ts, docs/specs/0121-mostrador-rapido-con-catalogo.md, docs/INDEX.md
@@ -105,3 +105,10 @@ La implementación conserva las rutas y el esquema existentes; añade campos a u
 ## Abierto
 
 Nada que bloquee la implementación. El piloto registra el momento exacto de la segunda carga y verifica con el catálogo real la proporción de artículos categorizados, sin precio y con diferencias respecto al ticket Loyverse.
+
+## Cierre y QA
+
+- Implementación publicada en `main` con `c2374a9`; corrección de contraste publicada con `2a6a190`.
+- QA del owner en live: «perfecto, funcionando» después de probar el ajuste de contraste. Por decisión explícita del owner, la spec queda `implementada` y el trabajo de rediseño se cierra.
+- Verificación técnica ejecutada durante la entrega: `typecheck`, `lint`, `build`, suite de tests y prueba de integración del catálogo y los hábitos contra la rama aislada de Neon.
+- La comparación de tiempos y exactitud con Café Plátano sigue pendiente de uso real. Tampoco se completó la matriz automatizada de tamaños/texto ni hubo PASS de revisor independiente para esta spec; no se presenta ninguno de esos puntos como verificado. La medición será seguimiento del producto, sin bloquear el cierre de esta implementación solicitado por el owner.
