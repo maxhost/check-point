@@ -1,9 +1,14 @@
 # Diseño y publicación de pases en Apple Wallet
 
 Estado 2026-10-02: la [spec 0123](../specs/0123-pase-apple-wallet-trama-viva.md)
-fija «iPhone · strip visible» como dirección aprobada. El constructor local ya genera
-el `.pkpass` con Trama viva. **Aún falta QA en iPhone para confirmar que `strip` se
-ve en la versión de iOS objetivo; no declarar el diseño live antes de ese QA.**
+fija «iPhone · strip visible» como dirección aprobada. El commit `0790956` está en
+`origin/main` y el constructor genera el `.pkpass` con Trama viva. El despliegue y
+la visualización en iPhone no están verificados. **No declarar el diseño live antes
+del QA del `strip` en la versión de iOS objetivo.**
+
+Esta página resume el flujo. Para futuras revisiones, usar las guías específicas:
+[qué permite el diseño de Apple Wallet](apple-wallet-design-rules.md) y
+[cómo actualizar pases ya instalados](apple-wallet-update-existing-passes.md).
 
 ## Qué cambia a quién
 
@@ -62,6 +67,8 @@ para la respuesta PassKit que descarga un pase instalado. Al actualizar el arte:
    del mismo miembro, si lo tiene. Consultar cuántos consumidores Apple tienen
    dispositivos registrados antes de encolar; procesar una muestra primero. La
    operación de lote se realiza **una vez** por revisión de arte, después del QA.
+   Seguir las consultas, exclusión de pases históricos solo hash y comprobaciones
+   de credenciales de la [guía operativa](apple-wallet-update-existing-passes.md).
 4. Abrir el pase anterior: debe conservar serial y QR, recibir el diseño y responder
    `200` desde el servicio PassKit en lugar de `304` con una fecha anterior a la
    revisión. Registrar fecha y resultado, sin tokens ni datos del miembro.

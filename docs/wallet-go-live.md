@@ -1,8 +1,9 @@
 # Wallet — checklist de go-live (demo → producción)
 
 Runbook operativo del pase de Wallet (spec 0029 / ADR 0033; arte Google en spec 0122 y
-arte Apple en spec 0123). Guías de diseño y publicación: [Google](wallet/google-wallet-design-and-release.md)
-y [Apple](wallet/apple-wallet-design-and-release.md).
+arte Apple en spec 0123). Guías de diseño y publicación: [Google](wallet/google-wallet-design-and-release.md),
+[Apple: diseño](wallet/apple-wallet-design-rules.md) y
+[Apple: actualización de pases viejos](wallet/apple-wallet-update-existing-passes.md).
 
 Estado conocido: Google funcionó en Android real bajo el issuer demo; Apple instaló en iPhone
 real. La spec 0122 aporta los assets y el payload de «Trama viva» para Google. Los PNG,
@@ -93,9 +94,10 @@ Pendiente:
       llega a un pase ya instalado tras el despliegue y un push PassKit vacío.
 
 El constructor en `packages/domain/src/server/wallet/apple.ts` arma y firma el
-`.pkpass` con el arte de la spec 0123 en el código local. Seguir la
-[guía Apple de diseño y publicación](wallet/apple-wallet-design-and-release.md): el
-QA del `strip` en iPhone y el refresco de pases existentes siguen pendientes. El
+`.pkpass` con el arte de la spec 0123 en `origin/main`. Seguir la
+[guía Apple de actualización](wallet/apple-wallet-update-existing-passes.md): el
+despliegue, QA del `strip` en iPhone y refresco de pases existentes siguen sin
+verificarse. El
 **canal de push/actualización** del pase (web service PassKit + APNs) se definió en
 la **spec 0033**.
 
