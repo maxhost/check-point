@@ -8,32 +8,32 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — 0121 A 0126 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH
+## ⇥ ESTADO (2026-10-02, noche) — 0124 A 0129 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH
 
-- **0126 / ADR 0112** (la Bienvenida en todos los planes: free, plus y sin plan; la baja no la pausa ni la cuenta):
+- **0129 / ADR 0112** (la Bienvenida en todos los planes: free, plus y sin plan; la baja no la pausa ni la cuenta):
   `485244f`, revisor **PASS**. **Para el QA del owner falta el push a `main` con su OK** y despues: activar la
   Bienvenida en «Prueba de Barrio» (free) + QA en Android (su cuenta de prueba ya fue borrada).
-- Hallazgos de la 0126 sin decidir: `marketing-push-enable` roja en HEAD por voseo preexistente («necesitás» en el
+- Hallazgos de la 0129 sin decidir: `marketing-push-enable` roja en HEAD por voseo preexistente («necesitás» en el
   test, `4a69db7`); `template-store.ts` en 305 lineas (> 300 del hook, ya lo estaba); el texto «Las campañas son del
   plan Plus.» queda impreciso (UI del owner).
 
-- **0121** (`seedConsumer` sin telefono, #58 de PARQUEADO): `68a1541`, revisor **PASS** (M1 roja por
+- **0124** (`seedConsumer` sin telefono, #58 de PARQUEADO): `68a1541`, revisor **PASS** (M1 roja por
   `consumer_account_phone_unique`). La fila de M1 que quedo en `ci-integration` (`+593999999999`) se borro por SQL
   con OK del owner (guard de host contra `DATABASE_URL`; re-consulta vacia).
-- **0122** (2 suites de marketing esperaban voseo que su seed ya no siembra): `4366430`; el orquestador re-corrio las
+- **0125** (2 suites de marketing esperaban voseo que su seed ya no siembra): `4366430`; el orquestador re-corrio las
   2 suites con `neon-test.sh` → verdes.
-- **0123** (3 plantillas por defecto a tuteo, texto aprobado por el owner): `00fd485`; el orquestador re-corrio
+- **0126** (3 plantillas por defecto a tuteo, texto aprobado por el owner): `00fd485`; el orquestador re-corrio
   `marketing-templates` y `-race` (verdes) y los 2 unit de plantillas. Las campañas YA creadas conservan el voseo.
-- **0124** (`wallet-push` y `marketing-refresh` esperaban el `204` previo al piso de marca de `7275abb`): `5380584`; el
+- **0127** (`wallet-push` y `marketing-refresh` esperaban el `204` previo al piso de marca de `7275abb`): `5380584`; el
   orquestador re-corrio las 2 suites → verdes. El piso se conserva.
 - **Siguen rojas en HEAD** 2 suites Neon: `marketing-backoffice-pages` (`permissions` undefined; reportado por el
-  implementador de la 0121, no re-corrida) y `marketing-valley` (V4 corta a 180 s). La de valley NO se arregla en el
+  implementador de la 0124, no re-corrida) y `marketing-valley` (V4 corta a 180 s). La de valley NO se arregla en el
   test: decision del owner, primero el problema de fondo → PARQUEADO **#67** (`placeConsumers` sin alcance, 79
   consumidores en `ci-integration`, ~80 s por tick).
 - **Campañas viejas con voseo en PROD:** el owner pidio actualizarlas; medido `core.campaign` vacia en PROD (8
   negocios, 0 campañas) → nada que actualizar.
 - **Google Wallet:** aviso de «guardado» registrado en la clase (`my.checkpass.club/.../google/callback`), releido por GET:
-  `approved` + callback. `tools/google-wallet-callback.ts` arreglado (spec **0125**, `52ed22f`: manda `reviewStatus`).
+  `approved` + callback. `tools/google-wallet-callback.ts` arreglado (spec **0128**, `52ed22f`: manda `reviewStatus`).
   Para el QA: con OK del owner se borro por SQL en PROD su cuenta de prueba de Google (Maxi, `354c16c7…`: 4 ordenes de
   «Prueba de Barrio» + la cuenta; cascada a identidad, pase, 2 membresias, sesiones; re-consulta en 0). **OJO: PROD no
   tiene NINGUNA campaña** → hay que activar la Bienvenida en «Prueba de Barrio» antes del QA, o no hay regalo.

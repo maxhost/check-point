@@ -1,5 +1,5 @@
 ---
-spec: 0123
+spec: 0126
 fecha: 2026-10-02
 estado: implementada
 resumen: Los tres mensajes por defecto de las plantillas de marketing que seguian en voseo pasan a tuteo, como manda `apps/merchant/COPY.md`; texto aprobado por el owner.
@@ -7,7 +7,7 @@ disjunta: si
 archivos: packages/domain/src/server/marketing/templates.ts, apps/merchant/src/server/marketing/templates-table.test.ts, apps/merchant/src/server/marketing/template-input-welcome.test.ts, apps/merchant/src/server/marketing-templates.neon.integration.test.ts, apps/merchant/src/server/marketing-templates-race.neon.integration.test.ts
 ---
 
-# 0123 — Plantillas de marketing en tuteo
+# 0126 — Plantillas de marketing en tuteo
 
 > Decision del owner (2026-10-02): aprueba el texto de la tabla de abajo, palabra por palabra.
 

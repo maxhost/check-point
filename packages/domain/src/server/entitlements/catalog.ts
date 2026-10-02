@@ -95,7 +95,7 @@ export const ENTITLEMENTS = {
     pendingRule: "min",
   },
   /**
-   * ADR 0112 — LA BIENVENIDA ESTA INCLUIDA EN TODOS LOS PLANES (spec 0126). La activan y la
+   * ADR 0112 — LA BIENVENIDA ESTA INCLUIDA EN TODOS LOS PLANES (spec 0129). La activan y la
    * entregan `free`, `plus` y `none` (y un negocio sin fila de suscripcion, por `fallback`), y
    * NO exige suscripcion viva: es la campaña que trae clientes a la red, decision del owner
    * del 2026-10-02. Solo la consulta la plantilla `welcome` (`campaignAllowedFor` en

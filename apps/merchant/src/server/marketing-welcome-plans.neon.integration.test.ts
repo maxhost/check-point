@@ -19,7 +19,7 @@ import {
 } from "./marketing-campaigns-support";
 
 /**
- * ADR 0112 / spec 0126 — LA BIENVENIDA EN TODOS LOS PLANES, contra Postgres. Los cuatro
+ * ADR 0112 / spec 0129 — LA BIENVENIDA EN TODOS LOS PLANES, contra Postgres. Los cuatro
  * puntos donde el freno de plan la decidía con `campaigns.enabled` (activar, reanudar,
  * entregar, la baja de plan) ahora la deciden con `campaigns.welcome`, y cada caso tiene su
  * control: otra plantilla, en el MISMO negocio, sigue recibiendo 402 / siendo pausada.

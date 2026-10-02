@@ -1,5 +1,5 @@
 ---
-spec: 0122
+spec: 0125
 fecha: 2026-10-02
 estado: implementada
 resumen: Dos suites de marketing esperan el texto en voseo que sus propios seeds ya no siembran desde la unificacion de copy; la asercion vuelve a reflejar lo que el seed escribe.
@@ -7,9 +7,9 @@ disjunta: si
 archivos: apps/merchant/src/server/marketing-push-delivery.neon.integration.test.ts, apps/merchant/src/server/marketing-welcome-landing.neon.integration.test.ts
 ---
 
-# 0122 — Tests de marketing con el texto de su seed
+# 0125 — Tests de marketing con el texto de su seed
 
-> Pedido del owner el 2026-10-02. Hallazgo del implementador de la 0121, re-medido por el orquestador.
+> Pedido del owner el 2026-10-02. Hallazgo del implementador de la 0124, re-medido por el orquestador.
 
 ## Problema
 
@@ -31,7 +31,7 @@ exactamente el texto que siembra su support.
 **No entra:**
 - Las plantillas predeterminadas en voseo de `packages/domain/src/server/marketing/templates.ts`
   (126, 203, 254) contra `COPY.md`: es texto de producto; va al owner aparte.
-- Las otras 4 suites rojas reportadas por la 0121 (backoffice-pages, wallet-push, marketing-refresh,
+- Las otras 4 suites rojas reportadas por la 0124 (backoffice-pages, wallet-push, marketing-refresh,
   marketing-valley).
 - Cualquier cambio a codigo de produccion o a los support.
 
@@ -47,7 +47,7 @@ y se para: no se arregla.
 | `apps/merchant/src/server/marketing-push-delivery.neon.integration.test.ts` | editar (2 literales) |
 | `apps/merchant/src/server/marketing-welcome-landing.neon.integration.test.ts` | editar (1 literal) |
 
-**Disjunta?** Si (la 0121 toca `counter-integration-support.ts`).
+**Disjunta?** Si (la 0124 toca `counter-integration-support.ts`).
 
 ## Definition of Done
 

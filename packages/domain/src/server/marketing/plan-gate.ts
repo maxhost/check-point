@@ -70,7 +70,7 @@ export function campaignsAllowedFor(row: CampaignPlanRow | null): boolean {
 const WELCOME: TemplateKey = "welcome";
 
 /**
- * ADR 0112 / spec 0126 — EL FRENO DECIDE POR PLANTILLA. La Bienvenida consulta su propia
+ * ADR 0112 / spec 0129 — EL FRENO DECIDE POR PLANTILLA. La Bienvenida consulta su propia
  * entrada del catálogo, `campaigns.welcome` (incluida en todos los planes, sin exigir
  * suscripción viva); cualquier otra plantilla —o `null`, una campaña propia— sigue con
  * `campaignsAllowedFor` sin cambios.

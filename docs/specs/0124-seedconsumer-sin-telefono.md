@@ -1,5 +1,5 @@
 ---
-spec: 0121
+spec: 0124
 fecha: 2026-10-02
 estado: implementada
 resumen: El cliente de prueba de `seedConsumer` nace sin telefono, como el cliente real desde la 0119; elimina el choque intermitente contra el unico de `phone_e164`.
@@ -7,7 +7,7 @@ disjunta: si
 archivos: apps/merchant/src/server/counter-integration-support.ts
 ---
 
-# 0121 — `seedConsumer` sin telefono
+# 0124 — `seedConsumer` sin telefono
 
 > Cierra la fila **#58** de `PARQUEADO.md`. Decision del owner (2026-10-02): **opcion B** — «para
 > que queremos este telefono si ya no es obligatorio ni lo pedimos en el registro».

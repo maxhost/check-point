@@ -10,7 +10,7 @@
  * del cliente; host exacto: Google no sigue redirecciones de callback).
  *
  * El PATCH lleva `reviewStatus: "UNDER_REVIEW"`: Google rechaza editar una clase aprobada sin
- * eso (HTTP 400 `Invalid review status "APPROVED"`) y la re-aprueba sola (spec 0125).
+ * eso (HTTP 400 `Invalid review status "APPROVED"`) y la re-aprueba sola (spec 0128).
  *
  * POR DEFECTO ES DRY-RUN: imprime la clase y el PATCH que haria, sin credenciales ni red.
  * Con `--apply` usa la MISMA service account que emite el pase, lee la clase y solo hace

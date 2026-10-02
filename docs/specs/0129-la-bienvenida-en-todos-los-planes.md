@@ -1,5 +1,5 @@
 ---
-spec: 0126
+spec: 0129
 fecha: 2026-10-02
 estado: implementada
 resumen: La Bienvenida sale del freno de plan (ADR 0112): entrada `campaigns.welcome` en el catalogo, el freno decide por plantilla en activar/reanudar/entregar, y la facturacion no la pausa ni la cuenta al bajar de plan.
@@ -7,7 +7,7 @@ disjunta: si
 archivos: packages/domain/src/server/entitlements/catalog.ts, packages/domain/src/server/marketing/plan-gate.ts, packages/domain/src/server/marketing/welcome-store.ts, apps/merchant/src/server/marketing/template-store.ts, apps/merchant/src/server/marketing/campaign-actions.ts, apps/merchant/src/server/marketing/plan-brake.ts, tests
 ---
 
-# 0126 — La Bienvenida en todos los planes
+# 0129 — La Bienvenida en todos los planes
 
 > Implementa el **ADR 0112**. Decisiones del owner del 2026-10-02: free + plus + sin plan; mismo tope; la baja no la
 > pausa. Sin migraciones.

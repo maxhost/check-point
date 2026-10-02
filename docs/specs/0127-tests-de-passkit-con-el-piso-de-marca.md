@@ -1,5 +1,5 @@
 ---
-spec: 0124
+spec: 0127
 fecha: 2026-10-02
 estado: implementada
 resumen: Dos suites de PassKit siguen esperando el `204` de antes del piso de marca de `listUpdatedSerials` (`7275abb`); pasan a usar el tag que devuelve el servidor, como hace el iPhone.
@@ -7,7 +7,7 @@ disjunta: si
 archivos: apps/merchant/src/server/wallet-push.neon.integration.test.ts, apps/merchant/src/server/marketing-refresh.neon.integration.test.ts
 ---
 
-# 0124 — Tests de PassKit con el piso de marca
+# 0127 — Tests de PassKit con el piso de marca
 
 > Pedido del owner el 2026-10-02 («resolvamos el spec de wallet-push»). El comportamiento del codigo NO cambia:
 > el piso de marca de `7275abb` se conserva.

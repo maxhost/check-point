@@ -1,5 +1,5 @@
 ---
-spec: 0125
+spec: 0128
 fecha: 2026-10-02
 estado: implementada
 resumen: `tools/google-wallet-callback.ts` manda `reviewStatus: "UNDER_REVIEW"` en el PATCH (Google rechaza editar una clase aprobada sin eso) e imprime el mensaje de error de Google cuando falla.
@@ -7,7 +7,7 @@ disjunta: si
 archivos: tools/google-wallet-callback.ts, tools/google-wallet-callback.test.ts
 ---
 
-# 0125 — El script del callback de Google Wallet manda `reviewStatus`
+# 0128 — El script del callback de Google Wallet manda `reviewStatus`
 
 > Pedido del owner el 2026-10-02 («arreglemos esto tools/google-wallet-callback.ts»).
 
