@@ -48,7 +48,16 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — ALINEACION (PLAN 1 DEL OWNER): FASES 0-2 HECHAS; FASE 3 (MAIN VERDE) EN CURSO
+## ⇥ ESTADO (2026-10-02, noche) — PLAN 1 CERRADO: `main` ALINEADO, TAG `baseline-2026-10-02` (= `49c7c9e`)
+
+Unica rama remota: `main`. 0131 (Claude, tests de servidor) y 0132 (GPT, e2e `437e7a2`) en main. **Los 6 gates verdes
+en `49c7c9e` con Node 24** (medido por Claude): typecheck, lint, test (2272), format:check, build, **test:e2e 106
+passed / 0 failed / 5 skipped**. **NO corridas** las suites `.neon.integration` completas (~20 min; el owner decidio
+no correrlas ahora): rojos conocidos ahi #67 (`marketing-valley`) y #68 (intermitente en `push-enable`). El tag lo
+declara en su mensaje. **Siguiente: Plan 2 (trabajo en paralelo Claude/GPT) con el owner.** Al cerrar esta sesion se
+borra el worktree `motor` (identico a main).
+
+## ⇥ ESTADO HISTORICO (2026-10-02, noche) — ALINEACION: FASES 0-2 HECHAS; FASE 3 EN CURSO
 
 **Fases 0-2 (hechas, verificadas):** `origin/main` es la UNICA rama remota (se borraron `origin/motor` y
 `origin/clientes-0108`); se borraron los worktrees `motor-wt/deploy-0107`, `motor-wt/deploy-0108` y
