@@ -43,6 +43,8 @@ import {
 } from "@mi-pasaporte/domain/server/consumer/core";
 import { GET as googleCallback } from "../app/api/public/auth/google/callback/route";
 import { POST as enrollPost } from "../app/api/public/enroll/[programId]/route";
+import { POST as logoutPost } from "../app/api/public/session/logout/route";
+import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
 
 /**
  * Spec 0119 — el alta con proveedor y la de un toque, COMO `checkpass_consumer` (ADR 0110): el
@@ -182,5 +184,22 @@ roleSuite("rol del cliente — ingreso con Google y alta de un toque", () => {
     );
     expect(response.status).toBe(401);
     expect(await membershipsOf(world.programId)).toBe(before);
+  });
+
+  // Spec 0120 — ORACULO DE LA M1: cerrar sesion REVOCA en la base (no solo borra la cookie).
+  it("POST session/logout: revoca la sesion en la base, COMO el rol", async () => {
+    const lone = await loneAccountWithSession();
+    expect((await resolveSession(lone.token))?.id).toBe(lone.id);
+    const response = await logoutPost(
+      request("/api/public/session/logout", {
+        method: "POST",
+        token: lone.token,
+      }),
+    );
+    expect(response.status).toBe(204);
+    expect(await resolveSession(lone.token)).toBeNull();
+    const [row] =
+      await owner`select revoked_at from consumer.consumer_session where token_hash = ${hashToken(lone.token)}`;
+    expect(row.revoked_at).not.toBeNull();
   });
 });

@@ -67,6 +67,20 @@ describe("la pestaña de Configuración — render", () => {
     expect(html).toContain("Todavía no hay nada que configurar");
   });
 
+  it("spec 0120: «Cerrar sesión» al final, con o sin membresías", () => {
+    for (const programs of [[], [program()]]) {
+      const html = renderToStaticMarkup(
+        h(SettingsTab, {
+          programs,
+          firstName: "Ana",
+          lastName: "Pérez",
+          phone: null,
+        }),
+      );
+      expect(html).toContain("Cerrar sesión");
+    }
+  });
+
   it("la barra inferior tiene cuatro destinos y marca el activo", () => {
     const html = renderToStaticMarkup(
       h(BottomNav, { activeTab: "settings", onChange: () => {} }),

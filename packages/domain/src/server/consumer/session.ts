@@ -69,3 +69,24 @@ export async function resolveSession(
     .limit(1);
   return row ?? null;
 }
+
+/**
+ * Spec 0120: «Cerrar sesión». Marks the session of this raw cookie token as revoked, so
+ * `resolveSession` rejects it from now on. Absent or unknown token → no-op (idempotent);
+ * an already revoked session keeps its original `revoked_at`.
+ */
+export async function revokeSession(
+  rawToken: string | undefined,
+  now = new Date(),
+): Promise<void> {
+  if (!rawToken) return;
+  await getDb()
+    .update(consumerSessions)
+    .set({ revokedAt: now })
+    .where(
+      and(
+        eq(consumerSessions.tokenHash, hashToken(rawToken)),
+        isNull(consumerSessions.revokedAt),
+      ),
+    );
+}

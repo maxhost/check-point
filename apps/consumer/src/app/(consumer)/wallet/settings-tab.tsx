@@ -67,7 +67,64 @@ export function SettingsTab({
           <p>Sumate a un programa y vas a poder elegir qué recibís.</p>
         </div>
       )}
+      <LogoutButton />
     </section>
+  );
+}
+
+/**
+ * Spec 0120 — «Cerrar sesión»: revoca la sesion en la base (`POST /api/public/session/logout`)
+ * y vuelve a `/wallet`, que sin sesion muestra los botones de Google y Apple. Si falla, avisa y
+ * no navega. En la app instalada el icono vuelve a abrir la cuenta (su `start_url` lleva el
+ * token del pase, ADR 0048): limite declarado en la spec.
+ */
+function LogoutButton() {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function logout() {
+    if (busy) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      const response = await fetch("/api/public/session/logout", {
+        method: "POST",
+      });
+      if (response.status !== 204) throw new Error(String(response.status));
+      window.location.assign("/wallet");
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="consumer-settings-logout">
+      <button
+        type="button"
+        onClick={() => void logout()}
+        disabled={busy}
+        style={{
+          width: "100%",
+          marginTop: 24,
+          padding: "12px 14px",
+          fontSize: 15,
+          fontWeight: 600,
+          borderRadius: 10,
+          border: "1px solid #d0d0d0",
+          background: "#fff",
+          color: "#a1352c",
+          cursor: busy ? "default" : "pointer",
+        }}
+      >
+        {busy ? "Cerrando sesión…" : "Cerrar sesión"}
+      </button>
+      {failed && (
+        <p role="status" className="consumer-settings-error">
+          No pudimos cerrar la sesión. Probá de nuevo.
+        </p>
+      )}
+    </div>
   );
 }
 

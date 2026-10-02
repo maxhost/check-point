@@ -1,5 +1,4 @@
 import { cookies, headers } from "next/headers";
-import { readableTextColor } from "@mi-pasaporte/domain/lib/brand-color";
 import {
   getEnrollLanding,
   isProgramMember,
@@ -7,7 +6,7 @@ import {
 import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
 import { AuthErrorNotice, ProviderButtons } from "../../provider-buttons";
-import { OneTapEnroll } from "./enroll-buttons";
+import { MemberNotMe, OneTapEnroll } from "./enroll-buttons";
 import { WelcomeOffer } from "./welcome-offer";
 
 export const dynamic = "force-dynamic";
@@ -93,28 +92,15 @@ export default async function EnrollPage({
       ) : (
         <h1 style={{ fontSize: 24, marginTop: 4 }}>{landing.businessName}</h1>
       )}
-      {member ? (
-        <section>
-          <h2 style={{ fontSize: 20, marginTop: 20 }}>
-            Ya sos parte de {landing.businessName}
-          </h2>
-          <a
-            href="/wallet"
-            style={{
-              display: "block",
-              marginTop: 20,
-              padding: "13px 14px",
-              borderRadius: 10,
-              textAlign: "center",
-              textDecoration: "none",
-              fontWeight: 600,
-              background: landing.brandPrimaryColor,
-              color: readableTextColor(landing.brandPrimaryColor),
-            }}
-          >
-            Ver mi tarjeta
-          </a>
-        </section>
+      {member && account ? (
+        <MemberNotMe
+          programId={programId}
+          loc={loc}
+          businessName={landing.businessName}
+          firstName={account.firstName}
+          primaryColor={landing.brandPrimaryColor}
+          isIos={isIos}
+        />
       ) : (
         <section>
           {landing.welcomeOffer && (
@@ -133,12 +119,7 @@ export default async function EnrollPage({
               isIos={isIos}
             />
           ) : (
-            <ProviderButtons
-              programId={programId}
-              loc={loc}
-              isIos={isIos}
-              primaryColor={landing.brandPrimaryColor}
-            />
+            <ProviderButtons programId={programId} loc={loc} isIos={isIos} />
           )}
         </section>
       )}

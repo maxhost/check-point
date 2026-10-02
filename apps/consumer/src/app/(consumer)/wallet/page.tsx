@@ -79,7 +79,7 @@ export default async function WalletPage({
         {(Array.isArray(error) ? error[0] : error) === "auth" && (
           <AuthErrorNotice />
         )}
-        <ProviderButtons isIos={isIos} primaryColor="#176548" />
+        <ProviderButtons isIos={isIos} />
       </main>
     );
   }

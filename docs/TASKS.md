@@ -170,6 +170,15 @@ emergencia:** `git checkout 37b474a -- <archivo>` y confirmar el shasum de la fi
 | R-M2 | `apps/consumer/src/server/oauth-callback.ts:174` (sin comparar `state`) | `be760572…` | `state` distinto → `?error=auth` | **ROJO 1/17** (alcance: `oauth-callback`, `oauth-callback-apple`, `oauth-state-cookie`): «`state` distinto (con un id_token valido y el nonce de la cookie) → ?error=auth…» → `Expected: ".../enroll/prog-1?error=auth"` / `Received: ".../enroll/prog-1/ready"`. Solo lo caza la ruta de Google (el codigo es comun). Revertida: `diff` vacio, shasum `be760572…` igual |
 | R-M5 | `packages/domain/src/server/consumer/identity.ts:57` (identidad existente → `UPDATE` de nombres) | `afc25732…` | cuenta byte a byte igual | **ROJO 1/9** (mismo alcance que R-M1): «identidad existente + nombres nuevos → la cuenta queda byte a byte igual» → `AssertionError: expected 'OTRO' to be 'Bea'`. Revertida: `diff` vacio, shasum `afc25732…` igual |
 
+## Bitacora de mutaciones — spec 0120, orquestador (2026-10-02)
+
+Copias limpias en el scratchpad de la sesion (`session.clean.ts`, `logout.clean.ts`); los dos archivos son ` M`/`??`.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `packages/domain/src/server/consumer/session.ts` (`revokeSession` no escribe) | `caa22e40a53e…` | tras el logout `resolveSession` da `null` | **ROJO 1/5** (`consumer-role-auth`, COMO el rol): «POST session/logout: revoca la sesion en la base» → `AssertionError: expected { …(11) } to be null`. Revertida: `diff` vacio, shasum igual |
+| M2 | `apps/consumer/src/app/api/public/session/logout/route.ts` (borra la cookie aunque la base falle) | `3db4bafd5704…` | base caida → 503 SIN `Set-Cookie` | **ROJO 1/3** (`session-logout-route.test.ts`): «la base falla: 503 y SIN Set-Cookie» → `AssertionError: expected 204 to be 503`. Revertida: `diff` vacio, shasum igual |
+
 ## Bitacora de mutaciones — spec 0119, orquestador (M7, OK del owner 2026-10-01: «medi M7»)
 
 Mutacion de BASE en `ci-integration` (`br-icy-hat-axsfqc8k`); el archivo `0061_identidad_del_cliente.sql` NO se toca

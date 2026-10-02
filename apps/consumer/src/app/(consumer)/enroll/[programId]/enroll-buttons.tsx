@@ -65,14 +65,7 @@ export function OneTapEnroll({
   }
 
   if (notMe)
-    return (
-      <ProviderButtons
-        programId={programId}
-        loc={loc}
-        isIos={isIos}
-        primaryColor={primaryColor}
-      />
-    );
+    return <ProviderButtons programId={programId} loc={loc} isIos={isIos} />;
 
   return (
     <div style={{ marginTop: 24 }}>
@@ -120,5 +113,73 @@ export function OneTapEnroll({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Spec 0120 — EL ESTADO «YA SOS PARTE» CON SESION VIVA: dice con que cuenta se entro y ofrece
+ * «No soy yo», que muestra los botones de proveedor (el callback reemplaza la sesion). Sin esto
+ * una sesion vieja solo se cambiaba borrando los datos del navegador (QA del owner, 2026-10-02).
+ */
+export function MemberNotMe({
+  programId,
+  loc,
+  businessName,
+  firstName,
+  primaryColor,
+  isIos,
+}: {
+  programId: string;
+  loc: string | null;
+  businessName: string;
+  firstName: string;
+  primaryColor: string;
+  isIos: boolean;
+}) {
+  const [notMe, setNotMe] = useState(false);
+  const name = firstName.trim();
+  if (notMe)
+    return <ProviderButtons programId={programId} loc={loc} isIos={isIos} />;
+  return (
+    <section>
+      <h2 style={{ fontSize: 20, marginTop: 20 }}>
+        Ya sos parte de {businessName}
+      </h2>
+      {name ? (
+        <p style={{ color: "#555", marginTop: 6 }}>Entraste como {name}.</p>
+      ) : null}
+      <a
+        href="/wallet"
+        style={{
+          display: "block",
+          marginTop: 20,
+          padding: "13px 14px",
+          borderRadius: 10,
+          textAlign: "center",
+          textDecoration: "none",
+          fontWeight: 600,
+          background: primaryColor,
+          color: readableTextColor(primaryColor),
+        }}
+      >
+        Ver mi tarjeta
+      </a>
+      <button
+        type="button"
+        onClick={() => setNotMe(true)}
+        style={{
+          display: "block",
+          margin: "14px auto 0",
+          background: "none",
+          border: "none",
+          color: "#555",
+          fontSize: 14,
+          textDecoration: "underline",
+          cursor: "pointer",
+        }}
+      >
+        No soy yo
+      </button>
+    </section>
   );
 }
