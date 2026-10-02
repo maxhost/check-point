@@ -8,7 +8,7 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-01, cierre) — SPEC 0119 IMPLEMENTADA EN `motor` (`37b474a`), ESPERA REVISOR; M7 SIN MEDIR
+## ⇥ ESTADO (2026-10-01, cierre) — CODIGO DE LA 0119 EN `motor` (`37b474a`), ESPERA REVISOR; M7 SIN MEDIR
 
 Implementador: trabajo en `37b474a` (sin push). **No esta marcada `implementada`**: falta el PASS del revisor independiente.
 Gates locales (Node 24): typecheck 6/6 (`TURBO_FORCE`, 0 cached), lint limpio, test 232 archivos / 2238 tests verdes,
