@@ -1,7 +1,7 @@
 ---
 spec: 0125
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: `tools/google-wallet-callback.ts` manda `reviewStatus: "UNDER_REVIEW"` en el PATCH (Google rechaza editar una clase aprobada sin eso) e imprime el mensaje de error de Google cuando falla.
 disjunta: si
 archivos: tools/google-wallet-callback.ts, tools/google-wallet-callback.test.ts
@@ -46,11 +46,11 @@ archivos: tools/google-wallet-callback.ts, tools/google-wallet-callback.test.ts
 
 ## Definition of Done
 
-- [ ] `pnpm exec vitest run tools/google-wallet-callback.test.ts` → verde.
-- [ ] Dry-run (sin credenciales): `GOOGLE_WALLET_ISSUER_ID=338 node tools/google-wallet-callback.ts https://my.checkpass.club/api/public/wallet/google/callback`
+- [x] `pnpm exec vitest run tools/google-wallet-callback.test.ts` → verde.
+- [x] Dry-run (sin credenciales): `GOOGLE_WALLET_ISSUER_ID=338 node tools/google-wallet-callback.ts https://my.checkpass.club/api/public/wallet/google/callback`
       imprime un PATCH que contiene `"reviewStatus":"UNDER_REVIEW"`.
-- [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
-- [ ] `rg -n MUTATION apps tools packages` → vacio.
+- [x] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
+- [x] `rg -n MUTATION apps tools packages` → vacio.
 
 ## Mutaciones — presupuesto: 1. Clase: los plausibles
 
