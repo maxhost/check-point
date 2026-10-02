@@ -180,7 +180,7 @@ describe.skipIf(!integrationEnabled)("marketing pass_refresh", () => {
     expect(listed?.serialNumbers).toContain(serialNumber);
     const after = await listUpdatedSerials({
       deviceLibraryId,
-      passesUpdatedSince: String(NOW.getTime()),
+      passesUpdatedSince: listed!.lastUpdated,
     });
     expect(after).toBeNull();
   }, 60_000);

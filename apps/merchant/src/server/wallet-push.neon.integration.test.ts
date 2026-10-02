@@ -195,8 +195,20 @@ describe.skipIf(!integrationEnabled)(
       expect(devices).toHaveLength(1);
       expect(devices[0].pushToken).toBe("apns-token-2");
 
-      // Nothing changed yet → 204 (null).
-      expect(await listUpdatedSerials({ deviceLibraryId })).toBeNull();
+      // First poll without a tag: the brand floor (`PASS_BRAND_UPDATED_AT`)
+      // makes every pass show up once, so the iPhone re-fetches the new brand.
+      const first = await listUpdatedSerials({ deviceLibraryId });
+      expect(first).toEqual({
+        lastUpdated: "1790868480000",
+        serialNumbers: [pass.serialNumber],
+      });
+      // Echoing the server's tag back, as the iPhone does: nothing changed → 204 (null).
+      expect(
+        await listUpdatedSerials({
+          deviceLibraryId,
+          passesUpdatedSince: first!.lastUpdated,
+        }),
+      ).toBeNull();
 
       // Materialize a change on the consumer, then the serial shows up.
       const changedAt = new Date();
