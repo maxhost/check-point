@@ -8,7 +8,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — SPEC 0138 CERRADA Y PUSHEADA (`be9f8c8`). SIGUIENTE: IMPLEMENTARLA (con OK del owner)
+## ⇥ ESTADO (2026-10-02, noche) — SPEC 0138 CERRADA Y PUSHEADA (`be9f8c8`, ajuste `90ec4eb`). SIGUIENTE: IMPLEMENTARLA (con OK del owner)
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `be9f8c8` (solo docs desde
 `ef05b1a`, el ultimo con codigo).
@@ -16,7 +16,7 @@
 **Hecho hoy:** #67 medida por fase (paso 4 = 87,7 s de ~89 s) → el owner cambio el rumbo → **ADR 0115** (campañas de
 la Wallet a la PWA; solo Bienvenida y Venta cruzada; compositor apagado; paso 4 deja de correr; limites de hoy
 centralizados) → **spec 0138** (spec 1 del ADR: modulo `enabled-campaigns.ts`, API oculta/rechaza lo apagado, tick
-sin lo apagado ni el paso 4, valle fuera de «Mis beneficios», tests de lo apagado via `vi.mock`). Medido en PROD
+sin lo apagado ni el paso 4, valle fuera de «Mis beneficios», tests de lo apagado SALTEADOS con `skipIf` atado al modulo — owner: «si esta apagado no se prueba»; ultimo ajuste `90ec4eb`). Medido en PROD
 (solo lectura): 1 campaña (`welcome` activa), 0 turnos vivos, 8 negocios → no hay nada que pausar ni migrar.
 
 **Siguiente:** despachar UN `implementador` para la 0138 y UN `revisor` al final (ADR 0071). Despues, §7 de la spec:
