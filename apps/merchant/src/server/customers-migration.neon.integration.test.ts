@@ -11,6 +11,25 @@ import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 const one = async (query: ReturnType<typeof sql>) =>
   rowsOf(await getDb().execute(query));
 
+/** La politica de la 0054: SELECT por `app.business_id` para `customer_reader`. */
+const byBusiness = (tablename: string) => ({
+  tablename,
+  policyname: `${tablename}_by_business`,
+  cmd: "SELECT",
+  roles: "{customer_reader}",
+  qual: "(business_id = (current_setting('app.business_id'::text))::uuid)",
+});
+
+/** Las de la 0060 para `checkpass_consumer`, en orden de `policyname`. */
+const consumerApp = (tablename: string, cmds: string[]) =>
+  cmds.map((cmd) => ({
+    tablename,
+    policyname: `consumer_app_${cmd.toLowerCase()}`,
+    cmd,
+    roles: "{checkpass_consumer}",
+    qual: cmd === "INSERT" ? null : "true",
+  }));
+
 describe.skipIf(!integrationEnabled)(
   "listado de clientes — migracion 0054 (spec 0109)",
   () => {
@@ -49,19 +68,20 @@ describe.skipIf(!integrationEnabled)(
           FROM pg_policies
           WHERE schemaname = 'core'
             AND tablename IN ('business_customer_count', 'loyalty_program')
-          ORDER BY tablename`),
-      ).toEqual(
-        [
-          ["business_customer_count", "business_customer_count_by_business"],
-          ["loyalty_program", "loyalty_program_by_business"],
-        ].map(([tablename, policyname]) => ({
-          tablename,
-          policyname,
-          cmd: "SELECT",
-          roles: "{customer_reader}",
-          qual: "(business_id = (current_setting('app.business_id'::text))::uuid)",
-        })),
-      );
+          ORDER BY tablename, policyname`),
+      ).toEqual([
+        byBusiness("business_customer_count"),
+        // Migracion 0060 (`packages/db/drizzle/0060_rol_del_cliente.sql`, ADR 0110): el rol
+        // `checkpass_consumer` de la app del cliente lleva sus propias politicas `USING (true)`
+        // en estas tablas. Un INSERT solo tiene `WITH CHECK`, por eso su `qual` es `null`.
+        ...consumerApp("business_customer_count", [
+          "INSERT",
+          "SELECT",
+          "UPDATE",
+        ]),
+        ...consumerApp("loyalty_program", ["SELECT"]),
+        byBusiness("loyalty_program"),
+      ]);
     }, 60_000);
 
     it("grants: el contador entero; de los programas SOLO id, business_id, kind y status", async () => {

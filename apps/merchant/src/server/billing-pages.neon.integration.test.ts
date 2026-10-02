@@ -1,3 +1,5 @@
+// @ts-expect-error — build interno de Next, sin tipos (patron de `catalog/image-capture.test.ts`).
+import { parse } from "next/dist/compiled/node-html-parser";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -209,17 +211,23 @@ describe.skipIf(!integrationEnabled)(
       // debe hacer»): con `canCancel === false` el botón se renderiza IGUAL. Acá
       // `activeLocations = 2`, así que `decidePlanChange` bloquea y `canCancel` es false.
       //
-      // SE ASEVERA EL TAG COMPLETO a propósito: es lo único que distingue «el botón está» de
-      // «el botón está deshabilitado». Un `disabled={!canCancel}` en la consola —el reflejo
-      // natural, y lo que el owner rechazó— rompe este string.
+      // SE LEE EL BOTÓN POR SU DOM (spec 0134), no por su string: el tag literal se rompía con
+      // cualquier cambio de clases (`e7e95cc`). Lo que distingue «el botón está» de «el botón
+      // está deshabilitado» es el ATRIBUTO `disabled`: un `disabled={!canCancel}` en la consola
+      // —el reflejo natural, y lo que el owner rechazó— lo pone y esto sale rojo.
       seed = await seedBillingBusiness("plus", { interval: "month" });
       await seedExtraLocation(seed.business.id, "Sucursal Sur");
       useBusiness(seed);
       const html = await renderSubscription();
 
-      expect(html).toContain(
-        '<button class="archive-button" type="button">Bajar a Free</button>',
-      );
+      const downgrade = parse(html)
+        .querySelectorAll("button")
+        .filter(
+          (button: { text: string }) => button.text.trim() === "Bajar a Free",
+        );
+      expect(downgrade).toHaveLength(1);
+      expect(downgrade[0].getAttribute("type")).toBe("button");
+      expect(downgrade[0].hasAttribute("disabled")).toBe(false);
       expect(html).toContain("2 locales activos");
       // LO QUE ESTE RENDER NO PUEDE VER, y no se disimula: el CONTENIDO del modal. Está
       // cerrado en la carga (`ConfirmDialog` devuelve `null` con `open=false`) y abrirlo

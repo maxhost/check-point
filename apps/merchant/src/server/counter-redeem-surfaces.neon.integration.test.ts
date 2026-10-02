@@ -130,7 +130,19 @@ describe.skipIf(!integrationEnabled)(
         "borderColor",
         "gradientAngle",
       ]);
-      expect(keys(resolved.catalog)).toEqual(["categories", "products"]);
+      // Spec 0121 (mostrador) extends `catalog` on purpose with the purchase shortcuts.
+      expect(keys(resolved.catalog)).toEqual([
+        "categories",
+        "habitualProductIds",
+        "lastPurchase",
+        "products",
+      ]);
+      // DECLARED: this world resolves WITHOUT a location (`resolveScan` gets no
+      // `selectedLocationId`), so `purchaseShortcuts` returns its empty value and
+      // `lastPurchase` is `null` — there are no `lastPurchase.items` to read the keys of.
+      // Their shape (`productId`, `quantity`) is not pinned here.
+      expect(resolved.catalog.habitualProductIds).toEqual([]);
+      expect(resolved.catalog.lastPurchase).toBeNull();
       expect(keys(resolved.rewards[0])).toEqual([
         "discountPercent",
         "id",

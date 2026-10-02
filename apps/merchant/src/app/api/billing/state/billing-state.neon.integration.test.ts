@@ -132,7 +132,7 @@ describe.skipIf(!integrationEnabled)(
         const response = await GET(stateRequest(ownerCookie));
         expect(response.status).toBe(403);
         expect(await response.json()).toEqual({
-          error: "Verificá tu email para gestionar la suscripción.",
+          error: "Verifica tu email para gestionar la suscripción.",
           code: "email_not_verified",
         });
       } finally {
