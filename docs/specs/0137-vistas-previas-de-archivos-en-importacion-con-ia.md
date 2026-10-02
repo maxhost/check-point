@@ -1,0 +1,78 @@
+---
+spec: 0137
+fecha: 2026-10-02
+estado: cerrada
+resumen: Mostrar cada archivo elegido para importar el catálogo como una tarjeta con vista previa y control para quitarlo antes de analizar.
+disjunta: si
+archivos: apps/merchant/src/app/backoffice/catalog/catalog-ai-import-picker.tsx, apps/merchant/src/app/backoffice/catalog/catalog-ai-import.tsx, apps/merchant/src/app/backoffice/catalog/use-catalog-import.ts, apps/merchant/src/app/globals.css, tests/e2e/catalog-tour-import.spec.ts, docs/INDEX.md
+---
+
+# 0137 — Vistas previas de archivos en «Importar con IA»
+
+## Problema
+
+- `apps/merchant/src/app/backoffice/catalog/catalog-ai-import-picker.tsx:64-67` junta los nombres de todos los archivos en el título de la zona de carga. En un teléfono, tres fotos se presentan como una cadena de texto: no se distingue qué imagen corresponde a cada archivo ni hay un control para retirar una sola.
+- `apps/merchant/src/app/backoffice/catalog/catalog-ai-import-picker.tsx:74-99` permite elegir archivos y tomar fotos; la selección múltiple del buscador reemplaza la anterior, mientras la cámara agrega la nueva foto. No hay un patrón visual común para revisar lo seleccionado.
+- `apps/merchant/src/app/backoffice/catalog/use-catalog-import.ts:223-237` inicia el análisis de un PDF en cuanto se elige. El owner confirma conservar esa acción inmediata; el PDF requiere una representación visual durante el procesamiento, con la cancelación existente.
+
+## Alcance
+
+**Entra:** la presentación y edición local de los archivos elegidos en el modal «Importar con IA» de `/backoffice/catalog`, en teléfono y escritorio; fotos desde buscador, cámara y arrastrar y soltar; PDF único; pruebas e2e del flujo.
+
+**No entra:** cambios de API, límites y formatos admitidos, procesamiento de IA, orden manual de archivos, edición o recorte de imágenes, previsualización del contenido del PDF, ni rediseño del modal durante el procesamiento.
+
+## Diseño
+
+1. Mantener visible la zona de carga como entrada para agregar archivos. Su título permanece «Sube tu menú o lista de precios»; no se reemplaza por nombres. Debajo, mostrar una cuadrícula adaptable con **una tarjeta cuadrada por foto seleccionada**, en el mismo orden de selección. Tres fotos producen tres tarjetas.
+2. Cada imagen muestra una miniatura local con recorte visual `object-fit: cover`, sin modificar el archivo original que se enviará. La tarjeta incluye el nombre del archivo, truncado visualmente si es largo y disponible completo para tecnología asistiva. La miniatura tiene alternativa accesible con el nombre.
+3. Cada tarjeta de foto tiene una **X** visible en la esquina superior, con botón táctil de al menos 44 × 44 px y nombre accesible «Quitar {nombre del archivo}». Activarlo retira únicamente ese archivo antes de analizar. La cuadrícula y el botón «Analizar catálogo» reflejan de inmediato la nueva selección; al quitar el último archivo, el botón queda deshabilitado y vuelve la ayuda para agregar archivos. La X no abre el buscador.
+4. Los botones «Buscar archivos», «Tomar foto» y la zona de soltar conservan su función. Las nuevas fotos se **agregan** a las ya seleccionadas, tanto al volver a buscar como al tomar otra foto o soltar archivos. El diálogo cancelado no cambia la selección. Se limpia el valor de cada `input[type=file]` después de procesarlo para poder elegir otra vez el mismo archivo. Una nueva selección con un PDF sustituye las fotos y lanza el análisis automático; no se agregan PDF a fotos.
+5. Se mantiene la regla de **un PDF o varias imágenes, nunca mezclados**. Una selección simultánea de PDF e imágenes, o de varios PDF, muestra el error ya existente sin enviar archivos. El PDF conserva el **análisis automático** aprobado por el owner: aparece como tarjeta cuadrada con icono, etiqueta «PDF» y nombre durante la transición al estado de procesamiento, y sigue visible en ese estado mientras se analiza. El nombre se conserva solo en memoria local durante ese import; al reabrir un import en curso, el DTO no trae nombres y la tarjeta dice «PDF» sin inventar uno. No tiene X para quitar antes del envío, porque el envío empieza al seleccionarlo; durante el procesamiento se usa «Cancelar importación» según el flujo existente. No se añade una espera artificial.
+6. Las miniaturas usan URL local de objeto; se revocan al retirar la imagen, sustituir la selección, cerrar/desmontar el modal o iniciar el procesamiento. Una miniatura que no se pueda decodificar usa un marcador de imagen y conserva la opción de quitar; el servidor sigue siendo la autoridad para validar el archivo.
+7. Mientras `busy` sea verdadero se deshabilitan selección, eliminación y análisis. En el estado de procesamiento, la tarjeta PDF es informativa, no editable. No se altera el contrato HTTP ni se sube nada por seleccionar o quitar fotos.
+
+## Archivos
+
+| Archivo | Acción |
+|---|---|
+| `apps/merchant/src/app/backoffice/catalog/catalog-ai-import-picker.tsx` | editar presentación, miniaturas y controles |
+| `apps/merchant/src/app/backoffice/catalog/catalog-ai-import.tsx` | mostrar tarjeta PDF informativa durante el procesamiento |
+| `apps/merchant/src/app/backoffice/catalog/use-catalog-import.ts` | acumular fotos y conservar análisis automático de PDF |
+| `apps/merchant/src/app/globals.css` | agregar cuadrícula y tarjetas adaptables |
+| `tests/e2e/catalog-tour-import.spec.ts` | cubrir selección, vista previa, eliminación y regresión PDF |
+
+**Disjunta:** sí respecto de la spec 0130, que toca la PWA de consumidor. `docs/INDEX.md` es compartido por el proceso de reserva; se preservan filas ajenas al integrar.
+
+## Definition of Done
+
+- [ ] En viewport de 390 px, elegir tres imágenes muestra tres tarjetas con sus miniaturas y tres botones «Quitar …»; eliminar la segunda deja la primera y la tercera, y el POST de análisis contiene exactamente esas dos, en orden.
+- [ ] Tomar una foto, volver a buscar archivos y soltar otra foto agrega cada una en orden; cancelar el selector no cambia las tarjetas.
+- [ ] Elegir un PDF inicia el análisis automáticamente, muestra una tarjeta informativa «PDF» durante el procesamiento y nunca lo mezcla con imágenes; «Cancelar importación» conserva su comportamiento.
+- [ ] Tras quitar la última foto, «Analizar catálogo» queda deshabilitado y no sale ningún POST; seleccionar de nuevo el mismo archivo funciona.
+- [ ] Los botones de quitar son operables con teclado y lector de pantalla; el tamaño táctil es al menos 44 × 44 px. Las tarjetas no provocan desbordamiento horizontal a 390 px.
+- [ ] Las URL locales de miniaturas se revocan al retirar archivos y al salir del selector. El archivo enviado conserva bytes, nombre y tipo originales.
+- [ ] `pnpm test:e2e tests/e2e/catalog-tour-import.spec.ts` pasa con Node 24.
+- [ ] `pnpm verify` pasa con Node 24, una sola vez al final, con su tabla final transcrita.
+- [ ] `rg -n MUTATION apps/merchant/src/app/backoffice/catalog apps/merchant/src/app/globals.css tests/e2e/catalog-tour-import.spec.ts` → vacío al terminar.
+
+## Mutaciones — presupuesto: 2
+
+| # | Mutación | Oráculo que tiene que ponerse ROJO |
+|---|---|---|
+| 1 | Quitar una tarjeta deja su archivo en la selección usada por «Analizar catálogo». | E2E de tres fotos: el POST contiene la foto retirada y falla la aserción de nombres y orden. |
+| 2 | La X de una tarjeta dispara también la apertura del buscador. | E2E de eliminación: se dispara el selector o no se mantiene la selección esperada. |
+
+**Protocolo:** `shasum` limpio antes de mutar → fila de bitácora antes de medir → etiqueta `MUTATION` → medir y transcribir la salida ejecutada → revertir con `diff` contra copia limpia. Una mutación por vez; el rojo debe venir de la aserción buscada. Tras dos vueltas consecutivas donde un arreglo abre otro fallo, detener y consultar al owner.
+
+## Declarado afuera
+
+- QA de cámara real en iOS y Android, necesaria para confirmar las opciones del selector nativo; se documenta por separado si no hay dispositivos disponibles.
+- Vista de páginas dentro del PDF.
+
+## Handoff
+
+Un implementador para toda la spec y un revisor independiente al final. El revisor deja `PASS` con evidencia ejecutada antes de marcarla `implementada`.
+
+## Abierto
+
+Nada. El owner confirmó el análisis automático del PDF y la acumulación de fotos el 2026-10-02.
