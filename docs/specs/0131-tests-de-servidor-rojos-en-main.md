@@ -29,7 +29,22 @@ archivos: apps/merchant/src/server/marketing-backoffice-pages.neon.integration.t
 `@mi-pasaporte/db/permissions-catalog` (la funcion real, no una lista a mano); el literal de `push-enable` pasa a
 «necesitas».
 
-**No entra:** la pagina, `template-store.ts`, los e2e (GPT), `marketing-valley` (PARQUEADO #67).
+**Entra tambien (ampliado 2026-10-02 al medir, ADR 0070 §17):** con el `TypeError` resuelto, 7 de los 8 casos de
+`marketing-backoffice-pages` siguen rojos porque describen las paginas SSR anteriores a `f61b163`. Hoy
+`marketing/page.tsx`, `marketing/[id]/page.tsx` y `marketing/new/page.tsx` son cascarones: `requireBackofficeSession`
++ `redirect("/backoffice")` sin el permiso `marketing`, y un componente cliente que trae los datos por API
+(`composer.tsx:101-108`, `marketingRequest`). Ninguna consulta la base ni llama a `notFound()`.
+1. **Se borran esos 7 casos** (rastro de UI refactorizada, ADR 0070 §17). Se conserva el del tile «Campañas» si sigue
+   midiendo algo vigente; si la suite queda vacia o sin sentido, se borra el archivo entero. Sus invariantes YA tienen
+   oraculo del lado API (verificado 2026-10-02): aislamiento entre negocios en
+   `marketing-campaigns.neon.integration.test.ts:80-102` (leer/editar/activar ajena → 404 sin enumerar),
+   `marketing-results.neon.integration.test.ts:242`, 404 de rutas en `marketing-routes-errors.test.ts`, y sin
+   `imageObjectKey` en el catalogo en `catalog.test.ts:152,166` / `catalog.neon.integration.test.ts:93`.
+2. **Se agrega `apps/merchant/src/app/backoffice/marketing/page-guard.test.ts`**, con el patron de
+   `apps/merchant/src/app/backoffice/locations/page-guard.test.ts`: para las tres paginas, una sesion SIN `marketing`
+   → `redirect("/backoffice")`; con `marketing` → renderiza el componente cliente (sin redirect).
+
+**No entra:** los componentes cliente, `template-store.ts`, los e2e (GPT), `marketing-valley` (PARQUEADO #67).
 
 ## Diseño
 
@@ -42,6 +57,7 @@ suite necesita un integrante SIN `marketing`, se le pasa explicito; no se invent
 |---|---|
 | `apps/merchant/src/server/marketing-backoffice-pages.neon.integration.test.ts` | editar |
 | `apps/merchant/src/server/marketing-push-enable.neon.integration.test.ts` | editar (1 literal) |
+| `apps/merchant/src/app/backoffice/marketing/page-guard.test.ts` | crear |
 
 **Disjunta?** Si.
 
@@ -55,7 +71,7 @@ suite necesita un integrante SIN `marketing`, se le pasa explicito; no se invent
 
 | # | Mutacion | Oraculo que tiene que ponerse ROJO |
 |---|---|---|
-| M1 | `apps/merchant/src/app/backoffice/marketing/page.tsx:9`: el guard `!…permissions.includes("marketing")` pasa a `false` (la pagina deja de exigir el permiso) | algun caso de `marketing-backoffice-pages` que pruebe el 404 sin permiso. **A medir:** si ningun caso lo prueba, se declara el hueco (no se escribe uno nuevo en esta spec) |
+| M1 | `apps/merchant/src/app/backoffice/marketing/page.tsx:9`: el guard pasa a no exigir `marketing` (condicion siempre `false`) | `marketing/page-guard.test.ts`, el caso «sin `marketing` → redirect». Repetir el razonamiento para `[id]` y `new` solo si el presupuesto lo permite; si no, se declara |
 
 **Protocolo:** `shasum` limpio → fila de bitacora antes de medir → etiqueta `MUTATION` → medir y transcribir →
 revertir con `diff` contra copia limpia. Leer la asercion del rojo.
