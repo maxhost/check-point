@@ -96,6 +96,7 @@ verificados por el revisor independiente. Evitar criterios como "se ve bien" o
 "funciona" sin condición comprobable.
 
 - [ ] …
+- [ ] `pnpm verify` en verde con Node 24 (ADR 0113), con su tabla final transcripta.
 
 ## Plan de pruebas y verificación
 

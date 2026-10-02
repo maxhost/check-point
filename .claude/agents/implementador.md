@@ -75,10 +75,11 @@ exacta que lo es**.
 
 ```
 export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use
-pnpm run typecheck && pnpm run lint && pnpm run test
+pnpm verify
 ```
 
-Son scripts de **root** (`pnpm run <script>`), no del paquete. Para un archivo suelto:
+`pnpm verify` (ADR 0113) elige los gates segun lo que cambio contra `origin/main`; su tabla final
+va al handoff. Los scripts son de **root** (`pnpm run <script>`), no del paquete. Para un archivo suelto:
 `pnpm --filter @mi-pasaporte/merchant exec vitest run <path>`.
 
 ## Handoff (formato de `docs/AGENT-WORKFLOW.md`)

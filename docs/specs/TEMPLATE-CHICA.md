@@ -49,8 +49,8 @@ Cada criterio es **un comando o una asercion ejecutable**. **Los barridos `rg` s
 el arbol ANTES de cerrar la spec** — la 0067 cerro con cuatro criterios imposibles de cumplir.
 
 - [ ] …
-- [ ] Gates de root con Node 24, **una sola vez al final**: `typecheck`, `lint`, `test`,
-      `format:check`, `build`.
+- [ ] `pnpm verify` en verde con Node 24, **una sola vez al final** (ADR 0113), con su tabla final
+      transcripta.
 - [ ] `rg -n MUTATION apps tools` → vacio.
 
 ## Mutaciones — presupuesto: N. Clase: los plausibles

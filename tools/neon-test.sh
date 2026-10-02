@@ -8,6 +8,8 @@
 #   tools/neon-test.sh                                    # toda la suite
 #   tools/neon-test.sh src/server/x.test.ts               # un archivo (relativo a apps/merchant)
 #   tools/neon-test.sh --app consumer src/server/x.test.ts # un archivo de apps/consumer (spec 0117)
+#   tools/neon-test.sh --app merchant --related /abs/a.ts  # las suites que importan esos archivos
+#                                                          # (`vitest related`, spec 0133); lista vacia → sale 0
 #
 # NUNCA imprime el valor de una credencial: solo la clave y su largo.
 set -euo pipefail
@@ -15,12 +17,22 @@ set -euo pipefail
 APP="merchant"
 if [ "${1:-}" = "--app" ]; then
   APP="${2:-}"
-  shift 2 || { echo "uso: tools/neon-test.sh [--app merchant|consumer] [archivos...]"; exit 1; }
+  shift 2 || { echo "uso: tools/neon-test.sh [--app merchant|consumer] [--related] [archivos...]"; exit 1; }
 fi
 case "$APP" in
   merchant | consumer) ;;
   *) echo "app desconocida: '$APP' (merchant | consumer)"; exit 1 ;;
 esac
+RELATED=0
+if [ "${1:-}" = "--related" ]; then
+  RELATED=1
+  shift
+  # Spec 0133: sin archivos no hay grafo que seguir; no se migra ni se corre nada.
+  if [ "$#" -eq 0 ]; then
+    echo "--related sin archivos: nada que correr"
+    exit 0
+  fi
+fi
 
 cd "$(dirname "$0")/.."
 ENV_FILE="apps/merchant/.env.local"
@@ -74,7 +86,10 @@ echo "→ migrando la rama de CI"
 DATABASE_URL_UNPOOLED="$CI_DIRECT" pnpm db:migrate
 
 echo "→ tests"
-if [ "$#" -eq 0 ]; then
+if [ "$RELATED" -eq 1 ]; then
+  NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \
+    pnpm --filter "@mi-pasaporte/$APP" exec vitest related --run "$@"
+elif [ "$#" -eq 0 ]; then
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true pnpm run test
 else
   NEON_INTEGRATION_DATABASE_URL="$CI_POOLED" NEON_INTEGRATION_ISOLATED=true \

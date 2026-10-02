@@ -21,7 +21,9 @@
     "typecheck": "turbo run typecheck",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "verify": "node tools/verify.ts",
+    "ci:status": "node tools/ci-status.ts"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

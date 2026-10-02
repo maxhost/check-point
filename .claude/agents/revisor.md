@@ -37,7 +37,7 @@ revisor: **es del que encarga** (ADR 0062). Por eso vive aca.
 ## Como se verifica de verdad
 
 - **Ejecutá los comandos vos mismo**: `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` y
-  despues `pnpm run typecheck && pnpm run lint && pnpm run test` (scripts de **root**).
+  despues `pnpm verify` (ADR 0113: elige los gates segun lo que cambio; scripts de **root**).
 - **Una cita no es una verificacion.** «Esta mal, mira `archivo:linea`» es un puntero a donde
   verificar. Corré el `grep`, leé el archivo, ejecutá el statement. Si el hallazgo es sobre
   semantica de la base, se reproduce **en una base**, no en la cabeza.

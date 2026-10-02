@@ -21,7 +21,8 @@ como si estuviera pegado aca y no ahorraria un solo token.
 
 ## Flujo de trabajo
 
-1. **Leer `docs/TASKS.md` antes de empezar.** Es el estado real, no lo que diga el chat.
+1. **Leer `docs/TASKS.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr
+   `pnpm ci:status`: si el ultimo `main` esta rojo, se arregla primero.
 2. **Ninguna tarea toca codigo sin su spec cerrada** (`docs/specs/`). La subespecificacion
    es el gatillo medido del exito fingido: en tareas resolubles y bien definidas el reward
    hacking cae a 0%; en tareas vagas, ~50%. **Que plantilla (ADR 0071):** `TEMPLATE-CHICA.md`
@@ -165,12 +166,10 @@ Solo los que arruinan una sesion cualquiera. **Todo el resto —drizzle y SQL cr
 webhooks, Neon, Vercel, better-auth, wallet, formatos de imagen, middleware de Next, Geoapify—
 esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
 
-- **LOS GATES DE CI SON SEIS, NO CINCO: falta `pnpm test:e2e`.** El Stop hook corre
-  typecheck+lint+test, las specs listan cinco (con `format:check` y `build`) y **CI corre ademas
-  `test:e2e` con Playwright** (`ci.yml:64`). Es el unico que nadie corre local, y por eso es el
-  unico que puede tumbar `main` despues de un push «con todo verde». **Toda spec que toque UI, CSS
-  GLOBAL o una pantalla de `/backoffice` lo lleva en su DoD**, y se corre antes de pushear: los
-  browsers se bajan aparte (`pnpm exec playwright install chromium`). Caso en `LECCIONES.md`.
+- **Gates: `pnpm verify` (ADR 0113).** Corre typecheck/lint/format/test/build siempre; e2e si se toco
+  UI (browsers: `pnpm exec playwright install chromium`); Neon solo de las suites que importan lo
+  cambiado, o entero ante esquema/SQL/config. Su tabla final va al handoff. La CI corre todo y no se
+  espera: se mira con `pnpm ci:status`.
 - **Las 105 suites `.neon.integration` se auto-skipean** sin sus dos variables, y vitest no lee `.env.local`:
   van con `tools/neon-test.sh [archivo]`. **Nunca contra `DATABASE_URL`: es `main`, o sea PROD.** Entera (~20 min) = CI.
 - **Gates: Node 24 + scripts de ROOT.** El shell del agente arranca en Node 22 (es el Node del
