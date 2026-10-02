@@ -1,7 +1,7 @@
 ---
 spec: 0133
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: `pnpm verify` (gates segun lo que cambio, ADR 0113) y `pnpm ci:status` (estado de la CI del ultimo `main`); `neon-test.sh` gana `--related`; CLAUDE.md, plantillas y agentes pasan a usar `pnpm verify`.
 disjunta: si
 archivos: tools/verify.ts, tools/verify.test.ts, tools/ci-status.ts, tools/ci-status.test.ts, tools/neon-test.sh, package.json, CLAUDE.md, docs/specs/TEMPLATE.md, docs/specs/TEMPLATE-CHICA.md, .claude/agents/implementador.md, .claude/agents/revisor.md
@@ -41,8 +41,8 @@ archivos: tools/verify.ts, tools/verify.test.ts, tools/ci-status.ts, tools/ci-st
      `git diff --name-only HEAD` ∪ `git ls-files --others --exclude-standard` (sin duplicados, sin `.pnpm-store/`).
      Flags: `--base <ref>` (default `origin/main`), `--files a,b,c` (reemplaza el cálculo; para pruebas), `--full`
      (todo), `--dry-run` (solo imprime el plan). Corre en orden: `pnpm run typecheck`, `lint`, `format:check`, `test`,
-     `build`; después `pnpm run test:e2e` si `e2e`; después Neon: `full` → `tools/neon-test.sh` y
-     `tools/neon-test.sh --app consumer`; `related` → `tools/neon-test.sh --app <app> --related <archivos absolutos de
+     `build`; después `pnpm run test:e2e` si `e2e`; después Neon: `full` → `tools/neon-test.sh` UNA vez
+     (corregido al implementar: sin archivos corre `pnpm run test` de root, que ya incluye la app del cliente); `related` → `tools/neon-test.sh --app <app> --related <archivos absolutos de
      esa app + de packages/domain>`. **No corta en el primer rojo**: corre todo lo planeado y al final imprime una tabla
      `gate | corrió/salteado (motivo) | ok/ROJO | segundos`; exit 1 si hubo algún rojo.
    - No imprime credenciales (las maneja `neon-test.sh`, que ya solo imprime claves y largos).
@@ -84,19 +84,20 @@ con tabla de casos; `main` solo orquesta procesos.
 
 ## Definition of Done
 
-- [ ] `tools/verify.test.ts`: tabla de casos de `planVerify`, al menos: solo `docs/x.md` → nada extra; `composer.tsx`
-      → e2e, sin Neon; `apps/merchant/src/app/api/x/route.ts` → related merchant, sin e2e; `packages/domain/src/x.ts` →
+- [x] `tools/verify.test.ts`: tabla de casos de `planVerify`, al menos: solo `docs/x.md` → nada extra; `composer.tsx`
+      → e2e + related merchant (que selecciona 0 suites Neon; corregido al implementar: hay suites Neon que importan
+      pantallas, p. ej. `locations-backoffice-pages`, asi que sacarlas del related perderia cobertura); `apps/merchant/src/app/api/x/route.ts` → related merchant, sin e2e; `packages/domain/src/x.ts` →
       related en las dos apps; `packages/db/src/schema/x.ts` → full + e2e; `apps/merchant/src/app/globals.css` → e2e;
       `tests/e2e/x.spec.ts` → e2e sin Neon; `tools/neon-test.sh` → full.
-- [ ] `tools/ci-status.test.ts`: `summarizeRun` con un run verde y uno rojo con anotaciones.
-- [ ] `pnpm verify --dry-run --files apps/merchant/src/server/marketing/template-store.ts` imprime related merchant,
+- [x] `tools/ci-status.test.ts`: `summarizeRun` con un run verde y uno rojo con anotaciones.
+- [x] `pnpm verify --dry-run --files apps/merchant/src/server/marketing/template-store.ts` imprime related merchant,
       sin e2e (transcripto).
-- [ ] **Corrida REAL:** `pnpm verify --files apps/merchant/src/server/marketing/template-store.ts` → tabla final con
+- [x] **Corrida REAL:** `pnpm verify --files apps/merchant/src/server/marketing/template-store.ts` → tabla final con
       tiempos (transcripta), Neon selectivo incluido. Es la medición de que el ahorro existe.
-- [ ] `pnpm ci:status` contra el GitHub real (transcripto).
-- [ ] `pnpm verify` sobre el propio cambio de esta spec (toca `package.json` → full: es lo esperado y se acepta UNA vez;
+- [x] `pnpm ci:status` contra el GitHub real (transcripto).
+- [x] (Declarado: por decision del owner no se corrio el Neon completo; gates rapidos verdes) `pnpm verify` sobre el propio cambio de esta spec (toca `package.json` → full: es lo esperado y se acepta UNA vez;
       o, si el owner no quiere los 20 min, los gates rápidos + los dos tests nuevos, declarándolo).
-- [ ] `rg -n MUTATION apps tools packages` → vacío.
+- [x] `rg -n MUTATION apps tools packages` → vacío.
 
 ## Mutaciones — presupuesto: 2. Clase: los plausibles
 
