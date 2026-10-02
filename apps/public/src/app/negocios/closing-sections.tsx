@@ -1,4 +1,5 @@
 import { onboardingUrl } from "../site-config";
+import { BrandMark } from "../brand-mark";
 
 const faqs = [
   {
@@ -160,9 +161,7 @@ export function LandingFooter() {
         href="/"
         aria-label="CheckPass Club, inicio para negocios"
       >
-        <span className="brand-symbol">
-          c<span>.</span>
-        </span>
+        <BrandMark />
         <span className="brand-name">
           checkpass<span>.</span>club
         </span>

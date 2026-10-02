@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandMark } from "../brand-mark";
 import Image from "next/image";
 import { Explorer } from "../explore/explorer";
 import { consumerWalletUrl, siteUrl } from "../site-config";
@@ -100,9 +101,7 @@ export default function HomePage() {
       </a>
       <header className="explore-header">
         <a className="brand" href="/" aria-label="CheckPass Club, inicio">
-          <span className="brand-symbol">
-            c<span>.</span>
-          </span>
+          <BrandMark />
           <span className="brand-name">
             checkpass<span>.</span>club
           </span>
@@ -264,9 +263,7 @@ export default function HomePage() {
       <footer className="explore-footer">
         <div>
           <a className="brand" href="/" aria-label="CheckPass Club, inicio">
-            <span className="brand-symbol">
-              c<span>.</span>
-            </span>
+            <BrandMark />
             <span className="brand-name">
               checkpass<span>.</span>club
             </span>

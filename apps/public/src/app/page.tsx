@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { BrandMark } from "./brand-mark";
 import { DashboardPreview, HeroPreview } from "./negocios/preview";
 import { ClosingSections, LandingFooter } from "./negocios/closing-sections";
 import { CampaignSection } from "./negocios/campaign-section";
@@ -92,9 +93,7 @@ export default function MerchantLandingPage() {
             href="/"
             aria-label="CheckPass Club, inicio para negocios"
           >
-            <span className="brand-symbol">
-              c<span>.</span>
-            </span>
+            <BrandMark />
             <span className="brand-name">
               checkpass<span>.</span>club
             </span>

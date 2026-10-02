@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BrandMark } from "../../brand-mark";
 import "./legal.css";
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
@@ -9,9 +10,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
       </a>
       <header className="legal-header">
         <a className="brand" href="/" aria-label="CheckPass Club, inicio">
-          <span className="brand-symbol" aria-hidden="true">
-            c<span>.</span>
-          </span>
+          <BrandMark />
           <span>checkpass.club</span>
         </a>
         <nav aria-label="Navegación principal">

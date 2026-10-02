@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandMark } from "../../brand-mark";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -102,9 +103,7 @@ export default async function MockBusinessPage({ params }: Props) {
       </a>
       <header className="explore-header">
         <Link className="brand" href="/" aria-label="CheckPass Club, inicio">
-          <span className="brand-symbol">
-            c<span>.</span>
-          </span>
+          <BrandMark />
           <span className="brand-name">
             checkpass<span>.</span>club
           </span>
@@ -223,9 +222,7 @@ export default async function MockBusinessPage({ params }: Props) {
       <footer className="explore-footer">
         <div>
           <Link className="brand" href="/">
-            <span className="brand-symbol">
-              c<span>.</span>
-            </span>
+            <BrandMark />
             <span className="brand-name">
               checkpass<span>.</span>club
             </span>
