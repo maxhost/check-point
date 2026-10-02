@@ -1,5 +1,15 @@
 # TASKS
 
+## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: CÓDIGO Y ARTE LOCALES LISTOS; QA Y PUBLICACIÓN PENDIENTES
+
+Spec 0122 «Trama viva» aprobada por el owner. Assets PNG versionados, provisionador con
+`--inspect`/`--apply` y tests locales listos. `pnpm run build`, `typecheck`, `lint`, pruebas
+del provisionador y regresión de Wallet pasan; Next local sirve ambos PNG por HTTP 200.
+**No se actualizó la Loyalty Class real ni se desplegaron los assets.** Siguiente secuencia:
+deploy de `my.`, comprobar PNG públicos, clase de QA aislada y Android real, snapshot y
+`PATCH` de la clase compartida, QA de pase viejo/nuevo, PASS independiente. [Handoff](handoff-0122-google-wallet-trama-viva-2026-10-01.md)
+y [runbook](wallet-go-live.md).
+
 **Estado actual del proyecto. Este es el punto de retorno.**
 
 Si una sesion se cae, se cierra o se compacta, se vuelve aca — no al chat. Hay un hook `Stop` que

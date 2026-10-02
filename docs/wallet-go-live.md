@@ -1,22 +1,16 @@
 # Wallet — checklist de go-live (demo → producción)
 
-Runbook operativo del pase de Wallet (spec 0029 / ADR 0033). El **código ya está
-implementado y no cambia entre demo y producción**: ir a prod es puramente trámite de
-cuenta + secretos + arte final. Nada acá bloquea el código; son pasos del owner.
+Runbook operativo del pase de Wallet (spec 0029 / ADR 0033; arte Google en spec 0122).
 
-Estado al 2026-08-14: **ambos pases funcionando en producción sobre el deploy.** Google en
-**demo** (QA en Android real OK; falta publishing access para salir de demo). Apple **integrado
-con cert real** y verificado en **iPhone real** (cuenta Developer personal; pendiente el pasaje
-a organización). Falta el diseño/arte final de los dos y el canal de push (spec 0033).
+Estado conocido: Google funcionó en Android real bajo el issuer demo; Apple instaló en iPhone
+real. La spec 0122 aporta los assets y el payload de «Trama viva» para Google. Su despliegue,
+prueba en Android y actualización de la clase compartida deben verificarse por separado.
 
 ## Prerrequisito común: marca + arte final
 
-Antes de publicar cualquiera de los dos, definir el **rebrand** (¿"Mi Pasaporte" o
-**CheckPass**?) y generar el **arte final**: logo definitivo, colores de marca y —opcional—
-banner (`heroImage` en Google / `strip` en Apple). Google **revisa el branding** al dar
-publishing access, así que conviene tener el arte listo para no repetir el trámite. Ver la
-constante `WALLET_BRAND` en `apps/merchant/src/server/wallet/core.ts` y el logo en
-`apps/merchant/public/wallet-logo.png` (hoy placeholder).
+La marca es CheckPass Club. Google usa el logo y hero de «Trama viva» de
+`apps/consumer/public/`; Apple conserva su diseño actual hasta una spec propia. Google
+revisa el branding para dar acceso de publicación.
 
 ⚠️ **URL del logo estable:** el `programLogo`/imágenes deben servirse desde un **dominio
 definitivo**, no un dominio de deploy efímero (`*-pied.vercel.app`), para que no se rompan
@@ -30,14 +24,39 @@ anual).
 - [ ] **Business Profile completo** en el Google Pay & Wallet Console.
 - [ ] **≥1 Passes Class creada** → ✅ hecho (`<issuerId>.mipasaporte_identity`, `approved`;
       se crea/actualiza con `scripts/google-wallet/provision-class.mjs`).
-- [ ] **Arte final** cargado (logo + colores; opcional hero banner) y servido desde dominio
-      estable.
+- [ ] **Assets Trama viva desplegados** desde `my.checkpass.club`: comprobar `GET` 200,
+      `Content-Type: image/png` y dimensiones de `/wallet-logo-trama-v1.png` (660 × 660)
+      y `/wallet-trama-hero-v1.png` (1032 × 812) sin sesión.
+- [ ] **Clase de QA aislada:** usar un sufijo propio, como `--class-suffix qa_trama_viva`,
+      con cuenta/objeto de prueba. Tras el deploy de los PNG, ejecutar el provisionador
+      con `--apply`; inspeccionar con `--inspect` y validar lista, pase abierto, QR y enlace
+      en Android. El script no modifica ninguna clase si no se le pasa `--apply`.
+- [ ] **Clase real:** guardar antes una salida de `--inspect` sin credenciales; ejecutar
+      `--apply` sin `--class-suffix` solo después de aprobar el QA. El script hace `GET`,
+      calcula un `PATCH` de presentación que conserva los demás campos y omite la escritura
+      si ya coincide. Volver a inspeccionar `reviewStatus` y comprobar un pase ya guardado.
 - [ ] **Screenshots del pase** listos para adjuntar.
 - [ ] **Secretos en Vercel (Production):** `GOOGLE_WALLET_ISSUER_ID` +
       `GOOGLE_WALLET_SA_JSON` (JSON **crudo**, no base64) → ✅ cargados para el QA demo.
 - [ ] **Request publishing access:** Console → **Google Wallet API → Request publishing
       access** → enviar. Revisión de Google **~2 días hábiles**; avisan por email.
 - [ ] Post-aprobación: cualquier usuario (no solo test accounts) puede guardar el pase.
+
+Ejemplo de comandos (las credenciales se pasan por variables de entorno o archivo local
+fuera del repositorio; no se imprimen ni se incluyen en capturas):
+
+```sh
+node scripts/google-wallet/provision-class.mjs --inspect
+node scripts/google-wallet/provision-class.mjs --class-suffix qa_trama_viva --apply
+node scripts/google-wallet/provision-class.mjs --class-suffix qa_trama_viva --inspect
+node scripts/google-wallet/provision-class.mjs --apply
+node scripts/google-wallet/provision-class.mjs --inspect
+```
+
+Si el render o la revisión de Google falla, restaurar por `PATCH` los campos de presentación
+de la salida anterior, sin reemplazar callbacks, objetos o ubicaciones. No cambiar el ID
+`mipasaporte_identity`: los pases existentes lo usan. Un cambio de clase puede requerir
+`UNDER_REVIEW`; comprobar el estado final antes de dar por terminada la publicación.
 
 Notas de infra ya resueltas: la SA **no puede** tener key descargable bajo la org GCP
 (`iam.disableServiceAccountKeyCreation`); se usó un proyecto bajo **cuenta Gmail personal
