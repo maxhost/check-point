@@ -43,7 +43,19 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — 0124 A 0129 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH
+## ⇥ ESTADO (2026-10-02, noche) — 0124 A 0129 EN PROD: `main` = `38065dd`, LOS 3 DEPLOYS DE VERCEL EN `success`
+
+Push `motor` → `main` (`fa45cd5..38065dd`, OK del owner) tras mergear `origin/main` (mostrador 0121 + Trama viva
+0122/0123 de otra sesion). Las specs de esta sesion se **renumeraron 0121-0126 → 0124-0129** por choque. Fix del
+merge: `wallet-push` lee `PASS_BRAND_UPDATED_AT` exportado (main movio el piso a 2026-10-02T14:00Z); prettier en
+`catalog-shortcuts.neon` (origin/main fallaba `format:check`). 5 gates verdes sobre el merge; `wallet-push`,
+`marketing-refresh`, `marketing-welcome-plans` verdes. **`test:e2e`: 55 rojos PREEXISTENTES** — medido en worktree
+limpio de `origin/main` (`fa45cd5`): mismos 55 nombres. Causa principal: `c2374a9` usa `usePathname` y el stub de
+`tests/e2e/support/catalog-harness-server.ts` no lo exporta; ~10 mas por aserciones, sin investigar.
+
+**Siguiente para el QA del owner:** activar la Bienvenida en «Prueba de Barrio» (free, ADR 0112) → borrar el pase
+viejo de Google Wallet → alta con Google en Android → ver el regalo.
+
 
 - **0129 / ADR 0112** (la Bienvenida en todos los planes: free, plus y sin plan; la baja no la pausa ni la cuenta):
   `485244f`, revisor **PASS**. **Para el QA del owner falta el push a `main` con su OK** y despues: activar la
