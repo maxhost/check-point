@@ -8,7 +8,18 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, madrugada) — 0119 EN PROD: CODIGO EN `main` (`0b869f7`) Y LA `0061` APLICADA; FALTA QA DEL OWNER
+## ⇥ ESTADO (2026-10-02, mañana) — 0120 IMPLEMENTADA (`1c3e2a9`) Y PUSHEADA; FALTA QA DEL OWNER DE 0119 + 0120
+
+QA del owner en Android: «Ya sos parte de Maxi prueba» sin poder cambiar de cuenta. Medido: el servidor no cachea
+(`Cache-Control: private, no-store`, sin cookie muestra los botones), 0 identidades en PROD; era una sesion de alta por
+telefono del 2026-10-01 que el borrado de Chrome (rango por defecto corto) no alcanzo. Spec 0120 (plantilla chica,
+revision liviana por pedido del owner): «No soy yo» + «Entraste como <nombre>» en «Ya sos parte», `POST
+/api/public/session/logout` + `revokeSession` (503 sin borrar la cookie si la base falla), «Cerrar sesión» en
+Configuracion, botones con la marca de Google (claro) y Apple (negro). Gates verdes (test 2250), M1/M2 rojas y
+revertidas, revisor PASS (re-midio M1). Sin migracion. **Falta:** QA del owner (5 pasos de la 0119 + cambiar de
+cuenta y cerrar sesion). Limite declarado: en la app instalada el icono reabre la sesion (`/c/<token>`, hallazgo #65).
+
+## ⇥ ESTADO HISTORICO (2026-10-02, madrugada) — 0119 EN PROD: CODIGO EN `main` (`0b869f7`) Y LA `0061` APLICADA; FALTA QA DEL OWNER
 
 Push `motor` → `main` (`1b375c8..0b869f7`, fast-forward, OK del owner). Deploy de `my.` confirmado sin Vercel por una
 señal que solo da el codigo nuevo: `GET /api/public/auth/google/start` → 302 a `accounts.google.com` con el client id

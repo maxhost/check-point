@@ -1,7 +1,7 @@
 ---
 spec: 0120
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: «No soy yo» tambien en «Ya sos parte», «Cerrar sesion» en Configuracion (revoca la sesion en la base y borra la cookie) y los botones de Google y Apple con el estilo de marca oficial de cada uno.
 disjunta: si
 archivos: apps/consumer/src/app/(consumer)/provider-buttons.tsx, apps/consumer/src/app/(consumer)/enroll/[programId]/page.tsx, apps/consumer/src/app/(consumer)/enroll/[programId]/enroll-buttons.tsx, apps/consumer/src/app/(consumer)/wallet/settings-tab.tsx, apps/consumer/src/app/api/public/session/logout/route.ts, packages/domain/src/server/consumer/session.ts
