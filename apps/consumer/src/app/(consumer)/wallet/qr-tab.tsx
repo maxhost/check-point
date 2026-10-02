@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { PushPrompt } from "../push-prompt";
 import { WalletButtons } from "../wallet-cta";
 
@@ -6,13 +7,11 @@ export function QrTab({
   isIos,
   vapidPublicKey,
   onSubscribed,
-  showWalletButtons = true,
 }: {
   qrSvg: string;
   isIos: boolean;
   vapidPublicKey: string | null;
   onSubscribed: (welcomeIssued: number) => void;
-  showWalletButtons?: boolean;
 }) {
   return (
     <section
@@ -25,22 +24,32 @@ export function QrTab({
         <p>Un solo código para todos tus programas.</p>
       </div>
       <div className="cp-pass-card">
-        <div className="cp-pass-mark">
-          CheckPass <span aria-hidden="true">✦</span>
+        <div className="cp-pass-art">
+          <div className="cp-pass-mark">
+            <Image
+              src="/wallet-logo-trama-v1.png"
+              width={30}
+              height={30}
+              alt=""
+            />
+            <span>CheckPass Club</span>
+          </div>
         </div>
-        <div
-          className="consumer-qr"
-          aria-label="Tu código QR"
-          dangerouslySetInnerHTML={{ __html: qrSvg }}
-        />
-        <strong>Mostrá este código en caja</strong>
-        <small>Sumá puntos, sellos y usá tus beneficios.</small>
+        <div className="cp-pass-code-area">
+          <span className="cp-pass-code-label">TU CÓDIGO PERSONAL</span>
+          <div
+            className="consumer-qr"
+            aria-label="Tu código QR"
+            dangerouslySetInnerHTML={{ __html: qrSvg }}
+          />
+          <strong>Mostrá este código en caja</strong>
+          <small>Sumá puntos, sellos y usá tus beneficios.</small>
+        </div>
       </div>
-      {showWalletButtons && (
-        <div className="consumer-wallet-buttons">
-          <WalletButtons isIos={isIos} />
-        </div>
-      )}
+      <div className="consumer-wallet-buttons">
+        <p>Tu pase para volver a los lugares que hacen ciudad.</p>
+        <WalletButtons isIos={isIos} />
+      </div>
       <PushPrompt vapidPublicKey={vapidPublicKey} onSubscribed={onSubscribed} />
     </section>
   );

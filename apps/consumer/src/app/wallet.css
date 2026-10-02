@@ -630,48 +630,103 @@
   text-align: left;
 }
 .cp-pass-card {
-  display: grid;
-  justify-items: center;
-  padding: 22px 20px 26px;
-  border: 1px solid #e0e9e2;
+  overflow: hidden;
   border-radius: 27px;
   background: white;
-  box-shadow: 0 13px 32px rgba(22, 52, 40, 0.065);
+  box-shadow: 0 13px 32px rgba(22, 52, 40, 0.1);
   text-align: center;
 }
+.cp-pass-art {
+  min-height: 139px;
+  background: #0f2a3a url("/wallet-trama-hero-v1.png") center 49% / cover
+    no-repeat;
+}
 .cp-pass-mark {
-  justify-self: stretch;
   display: flex;
-  justify-content: space-between;
-  color: #1a6548;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  padding: 17px 18px;
+  color: white;
   font-size: 15px;
   font-weight: 800;
+  text-shadow: 0 1px 3px rgba(15, 42, 58, 0.85);
 }
-.cp-pass-mark span {
-  font-size: 22px;
+.cp-pass-mark img {
+  flex: none;
+  border-radius: 50%;
+}
+.cp-pass-code-area {
+  display: grid;
+  justify-items: center;
+  padding: 17px 12px 23px;
+}
+.cp-pass-code-label {
+  color: #5d7169;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
 }
 .consumer-qr {
-  width: min(100%, 270px);
-  margin: 16px auto 9px;
-  padding: 10px;
+  width: min(100%, 260px);
+  aspect-ratio: 1;
+  margin: 11px auto 9px;
+  padding: 14px;
   border: 0;
-  border-radius: 0;
+  border-radius: 12px;
+  background: white;
 }
 .consumer-qr svg {
   display: block;
   width: 100%;
   height: auto;
 }
-.cp-pass-card > strong {
+.cp-pass-code-area > strong {
   font-size: 17px;
 }
-.cp-pass-card > small {
+.cp-pass-code-area > small {
   margin-top: 5px;
   color: #6b8074;
   font-size: 13px;
 }
 .consumer-wallet-buttons {
-  margin-top: 18px;
+  margin-top: 17px;
+}
+.consumer-wallet-buttons > p {
+  margin: 0 0 10px;
+  color: #526b5c;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.consumer-wallet-buttons > a {
+  margin-top: 0 !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .consumer-wallet-shell {
+    background: #10252e;
+    color: #f4f6f0;
+  }
+  :root:not([data-theme="light"]) .consumer-wallet-shell .cp-screen-heading p,
+  :root:not([data-theme="light"])
+    .consumer-wallet-shell
+    .consumer-wallet-buttons
+    > p {
+    color: #bbccc6;
+  }
+  :root:not([data-theme="light"]) .consumer-wallet-shell .cp-eyebrow {
+    color: #a9cbb8;
+  }
+}
+:root[data-theme="dark"] .consumer-wallet-shell {
+  background: #10252e;
+  color: #f4f6f0;
+}
+:root[data-theme="dark"] .consumer-wallet-shell .cp-screen-heading p,
+:root[data-theme="dark"] .consumer-wallet-shell .consumer-wallet-buttons > p {
+  color: #bbccc6;
+}
+:root[data-theme="dark"] .consumer-wallet-shell .cp-eyebrow {
+  color: #a9cbb8;
 }
 .cp-profile-card {
   display: flex;

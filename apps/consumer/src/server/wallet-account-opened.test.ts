@@ -97,13 +97,13 @@ describe("last_opened_at is written when the account is opened (spec 0111 D5)", 
 
   it("/wallet with a session marks the account opened", async () => {
     session.resolveSession.mockResolvedValue(account);
-    await WalletPage();
+    await WalletPage({});
     expect(opened.markAccountOpened).toHaveBeenCalledWith("acc-1");
   });
 
   it("/wallet without a session marks nothing", async () => {
     session.resolveSession.mockResolvedValue(null);
-    await WalletPage();
+    await WalletPage({});
     expect(opened.markAccountOpened).not.toHaveBeenCalled();
   });
 });

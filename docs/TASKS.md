@@ -7,8 +7,13 @@ Después de `/clear`, leer el
 El owner quiere diseñar una versión de Trama viva para «Tu pase» dentro de
 `my.checkpass.club`, con el QR en la tarjeta. La vista actual está en
 `apps/consumer/src/app/(consumer)/wallet/qr-tab.tsx` y `apps/consumer/src/app/wallet.css`.
-**No hay diseño de PWA ni spec aprobados todavía**: comenzar por exploración
-visual y revisión con el owner. Mantener el QR funcional y escaneable.
+El owner aprobó la [maqueta Trama viva del pase PWA](design-explorations/pwa-pase-trama-viva.html)
+y aclaró que debe mostrarse un solo botón de Wallet según el SO, con su marca.
+[Spec 0130](specs/0130-pase-pwa-trama-viva.md) cerrada el 02/10/2026. Código local
+aplicado; tests afectados 8/8, typecheck, lint y build Webpack del consumidor verdes.
+Turbopack no pudo abrir un puerto interno en este entorno. Faltan QA en teléfono real,
+escaneo de mostrador y PASS independiente antes de marcarla implementada.
+[Handoff](handoff-0130-pase-pwa-trama-viva-2026-10-02.md).
 
 ## ⇥ ESTADO (2026-10-02) — APPLE WALLET 0123: «IPHONE · STRIP VISIBLE» APROBADO; ARTE IMPLEMENTADO LOCALMENTE
 

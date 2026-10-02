@@ -54,7 +54,6 @@ export function WalletShell({
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [launchReady, setLaunchReady] = useState(false);
   const [launchError, setLaunchError] = useState(false);
-  const [showWalletButtons, setShowWalletButtons] = useState(false);
   const [installedMode, setInstalledMode] = useState(false);
   const [welcomeIssued, setWelcomeIssued] = useState(0);
   const initialized = useRef(false);
@@ -96,9 +95,7 @@ export function WalletShell({
       if (opens === 1) setOverlay("notifications");
       if (opens >= 2 && !localStorage.getItem(walletKey)) {
         setOverlay("wallet");
-        setShowWalletButtons(true);
       }
-      if (opens >= 2) setShowWalletButtons(true);
       void recordLaunch();
     }
 
@@ -169,7 +166,6 @@ export function WalletShell({
               qrSvg={qrSvg}
               isIos={isIos}
               vapidPublicKey={installedMode ? vapidPublicKey : null}
-              showWalletButtons={showWalletButtons}
               onSubscribed={(issued) => {
                 setWelcomeIssued(issued);
                 setOverlay(null);

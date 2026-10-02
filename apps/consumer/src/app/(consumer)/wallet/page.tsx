@@ -54,7 +54,7 @@ export default async function WalletPage({
   searchParams,
 }: {
   searchParams?: Promise<{ error?: string | string[] }>;
-} = {}) {
+}) {
   const store = await cookies();
   const account = await resolveSession(store.get(SESSION_COOKIE)?.value);
   const ua = (await headers()).get("user-agent") ?? "";
