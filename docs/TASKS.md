@@ -25,6 +25,8 @@ en pantalla. No "deberia andar". El auto-reporte no es evidencia.
   consumidores en `ci-integration`, ~80 s por tick).
 - **Campañas viejas con voseo en PROD:** el owner pidio actualizarlas; medido `core.campaign` vacia en PROD (8
   negocios, 0 campañas) → nada que actualizar.
+- **Google Wallet:** aviso de «guardado» registrado en la clase (`my.checkpass.club/.../google/callback`), releido por GET:
+  `approved` + callback. Falta: QA del owner en Android; arreglar `tools/google-wallet-callback.ts` (no manda `reviewStatus`).
 - **R2:** el CORS del bucket ahora admite `https://business.checkpass.club` (el owner lo agrego; preflight 204 medido).
 - PARQUEADO: bajaron #15, #41, #45, #58; entro #66 (telefonos al azar en `business-status`).
 
