@@ -9,7 +9,7 @@ import { CampaignError, type Campaign, getCampaign } from "./campaign-store";
 import { type CampaignAction, nextStatus } from "./campaign-transitions";
 import {
   PLAN_NOT_ALLOWED_MESSAGE,
-  planAllowsCampaigns,
+  planAllowsCampaign,
 } from "@mi-pasaporte/domain/server/marketing/plan-gate";
 
 /**
@@ -69,7 +69,8 @@ export async function transitionCampaign(
       // El gate de plan (402) vive en `plan-gate.ts` y lo comparte con `createCampaign`:
       // componer y activar exigen lo mismo. La versión de B1 que vivía acá miraba sólo
       // `plan === 'plus'`; ver el docblock de `campaignsAllowedFor` por qué eso no alcanza.
-      if (!(await planAllowsCampaigns(tx, businessId)))
+      // ADR 0112: decide POR PLANTILLA — reanudar una Bienvenida no exige Plus.
+      if (!(await planAllowsCampaign(tx, businessId, current.templateKey)))
         throw new CampaignError(
           402,
           "plan_not_allowed",

@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
 
@@ -20,8 +20,18 @@ import { campaigns } from "@mi-pasaporte/db/schema";
 const ACTIVE = "active";
 
 /**
- * Cuántas campañas `active` tiene el negocio. Alimenta `downgrade_blocked_campaigns`
- * (`billing/plan-change.ts`) y, por él, el modal de la baja.
+ * ADR 0112 §3 — LA BIENVENIDA NO LA FRENA LA BAJA DE PLAN. Está incluida en todos los planes
+ * (`campaigns.welcome`), así que bajar de plan ni la pausa ni la cuenta para bloquear la
+ * baja: las dos funciones de abajo excluyen SOLO la plantilla `welcome`. Es `IS DISTINCT
+ * FROM` y no `<>` a propósito: una campaña propia tiene `template_key` NULL, y `NULL <>
+ * 'welcome'` es NULL — con `<>` las campañas propias dejarían de contarse y de pausarse.
+ */
+const NOT_WELCOME = sql`${campaigns.templateKey} is distinct from 'welcome'`;
+
+/**
+ * Cuántas campañas `active` tiene el negocio, sin contar la Bienvenida (ADR 0112).
+ * Alimenta `downgrade_blocked_campaigns` (`billing/plan-change.ts`) y, por él, el modal de
+ * la baja.
  */
 export async function activeCampaignCount(
   tx: DbTransaction,
@@ -31,7 +41,11 @@ export async function activeCampaignCount(
     .select({ value: count() })
     .from(campaigns)
     .where(
-      and(eq(campaigns.businessId, businessId), eq(campaigns.status, ACTIVE)),
+      and(
+        eq(campaigns.businessId, businessId),
+        eq(campaigns.status, ACTIVE),
+        NOT_WELCOME,
+      ),
     );
   return Number(row?.value ?? 0);
 }
@@ -43,6 +57,8 @@ export async function activeCampaignCount(
  * lección). Para que «un negocio free no corre campañas» no dependa de un camino que no
  * controlamos, la bajada de plan pausa las campañas activas EN LA MISMA TRANSACCIÓN que
  * escribe el plan. El tick cancela después sus turnos con `cancel_reason='plan_downgraded'`.
+ *
+ * La Bienvenida activa NO se pausa (ADR 0112 §3, `NOT_WELCOME`).
  *
  * Devuelve cuántas pausó, que es lo que el log del webhook reporta. Reanudar exige volver
  * a `plus`: `transitionCampaign` pasa por el gate de `plan-gate.ts`.
@@ -60,7 +76,11 @@ export async function pauseCampaignsForDowngrade(
     .update(campaigns)
     .set({ status: "paused", pauseReason: "plan_downgraded", updatedAt: now })
     .where(
-      and(eq(campaigns.businessId, businessId), eq(campaigns.status, ACTIVE)),
+      and(
+        eq(campaigns.businessId, businessId),
+        eq(campaigns.status, ACTIVE),
+        NOT_WELCOME,
+      ),
     )
     .returning({ id: campaigns.id });
   return paused.length;

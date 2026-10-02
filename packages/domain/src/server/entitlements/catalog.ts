@@ -95,6 +95,22 @@ export const ENTITLEMENTS = {
     pendingRule: "min",
   },
   /**
+   * ADR 0112 — LA BIENVENIDA ESTA INCLUIDA EN TODOS LOS PLANES (spec 0126). La activan y la
+   * entregan `free`, `plus` y `none` (y un negocio sin fila de suscripcion, por `fallback`), y
+   * NO exige suscripcion viva: es la campaña que trae clientes a la red, decision del owner
+   * del 2026-10-02. Solo la consulta la plantilla `welcome` (`campaignAllowedFor` en
+   * `marketing/plan-gate.ts`); el resto de las campañas sigue con `campaigns.enabled`.
+   * `pendingRule: "min"` es inocuo: los tres planes dan `true`. Cambiar que planes la
+   * incluyen es ESTA linea, no una busqueda por el codigo.
+   */
+  "campaigns.welcome": {
+    kind: "flag",
+    byPlan: { free: true, plus: true, none: true },
+    fallback: true,
+    requiresLiveSubscription: false,
+    pendingRule: "min",
+  },
+  /**
    * Spec 0090 §8 — ANALISIS DE IMPORTACION QUE LLEGARON A `ready`, por ventana.
    *
    * **Solo lo consume un analisis que llego a `ready`** (ADR 0082 §10, decision del owner):

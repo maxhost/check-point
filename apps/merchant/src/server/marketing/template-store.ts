@@ -9,7 +9,7 @@ import { transitionCampaign } from "./campaign-actions";
 import { type Campaign, CampaignError, getCampaign } from "./campaign-store";
 import {
   PLAN_NOT_ALLOWED_MESSAGE,
-  planAllowsCampaigns,
+  planAllowsCampaign,
 } from "@mi-pasaporte/domain/server/marketing/plan-gate";
 import { loadRewardCost } from "./balance-store";
 import { parseTemplateInput } from "./template-input";
@@ -161,7 +161,7 @@ export async function enableTemplate(
   let id: string;
   try {
     id = await withDbTransaction(async (tx) => {
-      if (!(await planAllowsCampaigns(tx, businessId)))
+      if (!(await planAllowsCampaign(tx, businessId, template.key)))
         throw new CampaignError(
           402,
           "plan_not_allowed",

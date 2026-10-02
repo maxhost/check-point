@@ -124,6 +124,35 @@ describe("entitlements — can sobre `campaigns.enabled`", () => {
   });
 });
 
+describe("entitlements — can sobre `campaigns.welcome` (ADR 0112)", () => {
+  it("la Bienvenida está en TODOS los planes, con o sin suscripción viva", () => {
+    expect(can(live("free"), "campaigns.welcome")).toBe(true);
+    expect(can(live("plus"), "campaigns.welcome")).toBe(true);
+    expect(can(live("none"), "campaigns.welcome")).toBe(true);
+    // Un negocio free REAL no tiene `stripe_subscription_id`: igual la tiene.
+    expect(
+      can(
+        {
+          plan: "free",
+          pendingPlan: null,
+          status: "active",
+          stripeSubscriptionId: null,
+        },
+        "campaigns.welcome",
+      ),
+    ).toBe(true);
+    // Sin fila de suscripción («sin plan») cae al fallback, que la admite.
+    expect(can({ plan: null }, "campaigns.welcome")).toBe(true);
+    // Una baja programada no la apaga.
+    expect(can(live("plus", "free"), "campaigns.welcome")).toBe(true);
+  });
+
+  it("y `campaigns.enabled` sigue exigiendo plus con suscripción viva", () => {
+    expect(can(live("free"), "campaigns.enabled")).toBe(false);
+    expect(can({ plan: null }, "campaigns.enabled")).toBe(false);
+  });
+});
+
 describe("entitlements — el catálogo declara TODOS los planes conocidos (§D2.3)", () => {
   it("cada entrada tiene fila explícita para cada plan, del tipo de su `kind`", () => {
     // Piso de barrido: si el catálogo o la lista de planes se vacían, esto se pone rojo

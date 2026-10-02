@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { subscriptions } from "@mi-pasaporte/db/schema";
 import { can } from "../entitlements";
+import type { TemplateKey } from "./templates";
 
 /**
  * Spec 0065, fase D — EL GATE DE PLAN DE LAS CAMPAÑAS (402 `plan_not_allowed`).
@@ -64,15 +65,32 @@ export function campaignsAllowedFor(row: CampaignPlanRow | null): boolean {
   return can(row, "campaigns.enabled");
 }
 
+/** La plantilla «Bienvenida». El catálogo de plantillas no exporta la clave como valor,
+ * así que va literal, tipada contra su `TemplateKey` para que un renombre no compile. */
+const WELCOME: TemplateKey = "welcome";
+
 /**
- * La fila del negocio + la decisión, DENTRO de la transacción del llamador: el gate se lee
- * en el mismo `tx` que escribe la campaña, o entre la verificación y la escritura cabe una
- * baja (ADR 0054 §2, el mismo motivo por el que el conteo de locales va bajo el lock).
+ * ADR 0112 / spec 0126 — EL FRENO DECIDE POR PLANTILLA. La Bienvenida consulta su propia
+ * entrada del catálogo, `campaigns.welcome` (incluida en todos los planes, sin exigir
+ * suscripción viva); cualquier otra plantilla —o `null`, una campaña propia— sigue con
+ * `campaignsAllowedFor` sin cambios.
+ *
+ * Un `row` nulo es un negocio SIN fila de suscripción: para la Bienvenida eso es «sin plan»,
+ * que la entrada admite por su `fallback` (decisión 1 del ADR 0112).
  */
-export async function planAllowsCampaigns(
+export function campaignAllowedFor(
+  row: CampaignPlanRow | null,
+  templateKey: string | null,
+): boolean {
+  if (templateKey === WELCOME)
+    return can(row ?? { plan: null }, "campaigns.welcome");
+  return campaignsAllowedFor(row);
+}
+
+async function readPlanRow(
   tx: DbTransaction,
   businessId: string,
-): Promise<boolean> {
+): Promise<CampaignPlanRow | null> {
   const [row] = await tx
     .select({
       plan: subscriptions.plan,
@@ -83,5 +101,31 @@ export async function planAllowsCampaigns(
     .from(subscriptions)
     .where(eq(subscriptions.businessId, businessId))
     .limit(1);
-  return campaignsAllowedFor(row ?? null);
+  return row ?? null;
+}
+
+/**
+ * La fila del negocio + la decisión, DENTRO de la transacción del llamador: el gate se lee
+ * en el mismo `tx` que escribe la campaña, o entre la verificación y la escritura cabe una
+ * baja (ADR 0054 §2, el mismo motivo por el que el conteo de locales va bajo el lock).
+ *
+ * Es el freno de crear una campaña PROPIA (`campaign-store.ts`), que sigue con
+ * `campaigns.enabled`. Activar o reanudar una plantilla pasa por `planAllowsCampaign`, que
+ * decide por su clave (ADR 0112).
+ */
+export async function planAllowsCampaigns(
+  tx: DbTransaction,
+  businessId: string,
+): Promise<boolean> {
+  return campaignsAllowedFor(await readPlanRow(tx, businessId));
+}
+
+/** La misma lectura que `planAllowsCampaigns`, decidida POR PLANTILLA con
+ * `campaignAllowedFor` (activar una plantilla y reanudar una campaña, ADR 0112). */
+export async function planAllowsCampaign(
+  tx: DbTransaction,
+  businessId: string,
+  templateKey: string | null,
+): Promise<boolean> {
+  return campaignAllowedFor(await readPlanRow(tx, businessId), templateKey);
 }

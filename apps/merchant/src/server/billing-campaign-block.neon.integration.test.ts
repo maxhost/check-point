@@ -14,9 +14,10 @@ import {
 import { dropBusiness, type Seed } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedCampaign } from "./marketing-integration-support";
+import { seedWelcomeCampaign } from "./marketing-welcome-support";
 import { getDb } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 
 let fake: FakeStripe = fakeStripe();
 
@@ -153,6 +154,42 @@ describe.skipIf(!integrationEnabled)(
         const response = await post();
         expect(response.status).toBe(200);
         expect((await readSubscriptionRow(seed.business.id)).plan).toBe("free");
+      } finally {
+        await drop(seed);
+      }
+    }, 60_000);
+
+    it("ADR 0112 §3: la Bienvenida NO cuenta — con ella y otra bloquea por 1, y sola no bloquea", async () => {
+      const seed = await seedWithCampaigns("campwelcome", 1);
+      routeOwner.businessId = seed.business.id;
+      const welcome = { activatedAt: new Date("2026-09-01T12:00:00.000Z") };
+      try {
+        const welcomeId = await seedWelcomeCampaign(seed, welcome);
+        const blocked = await post();
+        expect(blocked.status).toBe(409);
+        expect(await blocked.json()).toMatchObject({
+          code: "downgrade_blocked_campaigns",
+          deactivateCount: 1,
+        });
+
+        // Sólo queda la Bienvenida activa: la baja procede y ella sigue activa.
+        await getDb()
+          .update(campaigns)
+          .set({ status: "paused", pauseReason: "owner" })
+          .where(
+            and(
+              eq(campaigns.businessId, seed.business.id),
+              ne(campaigns.id, welcomeId),
+            ),
+          );
+        const response = await post();
+        expect(response.status).toBe(200);
+        expect((await readSubscriptionRow(seed.business.id)).plan).toBe("free");
+        const [kept] = await getDb()
+          .select({ status: campaigns.status })
+          .from(campaigns)
+          .where(eq(campaigns.id, welcomeId));
+        expect(kept.status).toBe("active");
       } finally {
         await drop(seed);
       }

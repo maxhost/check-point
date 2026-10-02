@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import type { DbTransaction, getDb } from "@mi-pasaporte/db";
 import type { CouponReward } from "./coupon-issue";
 import { requireDate } from "./driver-values";
-import { campaignsAllowedFor } from "./plan-gate";
+import { campaignAllowedFor } from "./plan-gate";
 import type { CouponKind, DiscountUnit } from "./reward-input";
 import type { WelcomeRedeemFrom } from "./templates";
 
@@ -12,9 +12,9 @@ import type { WelcomeRedeemFrom } from "./templates";
  * and the enroll page (`consumer/enroll-landing.ts`), so the page never offers a gift the
  * issuer would refuse.
  *
- * ELIGIBLE = `active`, started, not ended, its business `active`, and the plan allows
- * campaigns (`campaignsAllowedFor`, `plan-gate.ts` — the same entry every campaign obeys;
- * «free vs premium» is still open, ADR 0099 §7).
+ * ELIGIBLE = `active`, started, not ended, its business `active`, and the plan allows the
+ * welcome (`campaignAllowedFor(plan, "welcome")`, `plan-gate.ts` → `campaigns.welcome`):
+ * ADR 0112 put «Bienvenida» in EVERY plan —free, plus and none, live subscription or not.
  */
 
 type Db = DbTransaction | ReturnType<typeof getDb>;
@@ -77,7 +77,8 @@ export async function loadWelcomeCampaign(
           status: String(row.subscription_status),
           stripeSubscriptionId: text(row.stripe_subscription_id),
         };
-  if (!campaignsAllowedFor(plan)) return null;
+  // ADR 0112: la Bienvenida se entrega en todos los planes (`campaigns.welcome`).
+  if (!campaignAllowedFor(plan, "welcome")) return null;
   return {
     id: String(row.id),
     businessId: String(row.business_id),

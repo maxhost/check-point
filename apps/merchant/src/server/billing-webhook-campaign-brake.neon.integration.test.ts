@@ -25,6 +25,7 @@ import {
 import { dropBusiness } from "./counter-integration-support";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedCampaign, seedLocation } from "./marketing-integration-support";
+import { seedWelcomeCampaign } from "./marketing-welcome-support";
 import { getDb } from "@mi-pasaporte/db";
 import { campaigns } from "@mi-pasaporte/db/schema";
 
@@ -193,6 +194,36 @@ describe.skipIf(!integrationEnabled)(
             .where(eq(campaigns.businessId, world.seeded.business.id));
           await dropBusiness(world.seeded.business.id);
         }
+      }
+    }, 60_000);
+
+    it("ADR 0112 §3: con la Bienvenida y otra activas, la baja pausa SÓLO la otra", async () => {
+      const { seeded, ids } = await worldWithCampaigns("welcome", 1);
+      const welcome = await seedWelcomeCampaign(seeded, {
+        activatedAt: new Date("2026-09-01T12:00:00.000Z"),
+      });
+      try {
+        const response = await deliver({
+          id: events.next("welcome"),
+          created: Math.floor(Date.UTC(2026, 8, 12) / 1000),
+          type: "customer.subscription.deleted",
+          object: { id: "sub_welcome" },
+        });
+        expect(response.status).toBe(200);
+        expect((await readSubscriptionRow(seeded.business.id)).plan).toBe(
+          "none",
+        );
+        expect(await readCampaigns(ids)).toEqual([
+          { status: "paused", pauseReason: "plan_downgraded" },
+        ]);
+        expect(await readCampaigns([welcome])).toEqual([
+          { status: "active", pauseReason: null },
+        ]);
+      } finally {
+        await getDb()
+          .delete(campaigns)
+          .where(eq(campaigns.businessId, seeded.business.id));
+        await dropBusiness(seeded.business.id);
       }
     }, 60_000);
 

@@ -23,7 +23,8 @@ import type { WelcomeRedeemFrom } from "@mi-pasaporte/domain/server/marketing/te
 
 /**
  * The world of the «Bienvenida» suites (spec 0107): a `plus` business with a LIVE
- * subscription (the plan gate is `campaigns.enabled`, `plan-gate.ts`) in
+ * subscription (since ADR 0112 the welcome passes in every plan — `campaigns.welcome`,
+ * `plan-gate.ts` — so `plus` is just the historical default) in
  * `America/Guayaquil` (UTC−5, no DST — the seed's zone), its welcome campaign switched on
  * at a chosen instant, and consumers enrolled at a chosen instant with an Apple pass.
  * `installOn` also activates Home and Web Push for the existing integration cases.
@@ -34,23 +35,21 @@ export const welcomeWorlds: string[] = [];
 
 export type WelcomeWorld = { seed: Seed; campaignId: string };
 
-export async function welcomeWorld(
-  label: string,
-  opts: {
-    activatedAt: Date;
-    redeemFrom?: WelcomeRedeemFrom;
-    validDays?: number;
-    reminderDays?: number;
-    monthlyCap?: number;
-  },
-): Promise<WelcomeWorld> {
-  const live = randomUUID().slice(0, 8);
-  const seed = await seedLocationsBusiness(`${label} ${Date.now()}`, "plus", {
-    interval: "month",
-    stripeCustomerId: `cus_${live}`,
-    stripeSubscriptionId: `sub_${live}`,
-  });
-  welcomeWorlds.push(seed.business.id);
+export type WelcomeCampaignOpts = {
+  activatedAt: Date;
+  redeemFrom?: WelcomeRedeemFrom;
+  validDays?: number;
+  reminderDays?: number;
+  monthlyCap?: number;
+  /** `active` by default; `paused` is a run the owner (or a downgrade) stopped. */
+  status?: "active" | "paused";
+};
+
+/** The «Bienvenida» row of a business, inserted directly in the shape `enable` writes. */
+export async function seedWelcomeCampaign(
+  seed: Pick<Seed, "business" | "userId">,
+  opts: WelcomeCampaignOpts,
+): Promise<string> {
   const [row] = await getDb()
     .insert(campaigns)
     .values({
@@ -60,7 +59,7 @@ export async function welcomeWorld(
       channelProximity: false,
       channelPush: false,
       name: "Bienvenida",
-      status: "active",
+      status: opts.status ?? "active",
       activatedAt: opts.activatedAt,
       message: "Únete hoy y recibe un regalo en tu próxima visita",
       couponLabel: "Un café gratis",
@@ -74,7 +73,21 @@ export async function welcomeWorld(
       createdByUserId: seed.userId,
     })
     .returning({ id: campaigns.id });
-  return { seed, campaignId: row.id };
+  return row.id;
+}
+
+export async function welcomeWorld(
+  label: string,
+  opts: WelcomeCampaignOpts,
+): Promise<WelcomeWorld> {
+  const live = randomUUID().slice(0, 8);
+  const seed = await seedLocationsBusiness(`${label} ${Date.now()}`, "plus", {
+    interval: "month",
+    stripeCustomerId: `cus_${live}`,
+    stripeSubscriptionId: `sub_${live}`,
+  });
+  welcomeWorlds.push(seed.business.id);
+  return { seed, campaignId: await seedWelcomeCampaign(seed, opts) };
 }
 
 export type WelcomeConsumer = {

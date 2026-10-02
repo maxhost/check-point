@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  campaignAllowedFor,
   campaignsAllowedFor,
   type CampaignPlanRow,
 } from "@mi-pasaporte/domain/server/marketing/plan-gate";
@@ -75,5 +76,28 @@ describe("campaignsAllowedFor — el gate de plan de las campañas (spec 0065, f
     const outcomes = new Set(CASES.map(([, , expected]) => expected));
     expect([...outcomes].sort()).toEqual([false, true]);
     expect(CASES).toHaveLength(12);
+  });
+});
+
+describe("campaignAllowedFor — el freno decide POR PLANTILLA (ADR 0112)", () => {
+  const free: CampaignPlanRow = {
+    plan: "free",
+    pendingPlan: null,
+    status: "active",
+    stripeSubscriptionId: null,
+  };
+
+  it("la Bienvenida pasa en free y sin fila de suscripción", () => {
+    expect(campaignAllowedFor(free, "welcome")).toBe(true);
+    expect(campaignAllowedFor(null, "welcome")).toBe(true);
+    expect(campaignAllowedFor({ ...live, plan: "none" }, "welcome")).toBe(true);
+  });
+
+  it("cualquier otra plantilla, o una campaña propia, sigue con `campaigns.enabled`", () => {
+    expect(campaignAllowedFor(free, "win_back")).toBe(false);
+    expect(campaignAllowedFor(null, "win_back")).toBe(false);
+    expect(campaignAllowedFor(free, null)).toBe(false);
+    expect(campaignAllowedFor(live, "win_back")).toBe(true);
+    expect(campaignAllowedFor(live, null)).toBe(true);
   });
 });
