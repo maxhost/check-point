@@ -128,7 +128,7 @@ export function CrossFields({
           canReadCatalog={canReadCatalog}
           couponKinds={couponKinds}
           withRedemptionCap={false}
-          noCapLabelDescription="Se muestra en la oferta y en el cupón reclamado. Podés editar la sugerencia."
+          noCapLabelDescription="Se muestra en la oferta y en el cupón reclamado. Puedes editar la sugerencia."
         />
       </div>
     </div>

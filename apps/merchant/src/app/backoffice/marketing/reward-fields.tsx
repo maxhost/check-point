@@ -19,7 +19,7 @@ export function RewardFields({
   canReadCatalog,
   couponKinds,
   withRedemptionCap = true,
-  noCapLabelDescription = "Se muestra en la oferta de alta y en el regalo. Podés editar la sugerencia.",
+  noCapLabelDescription = "Se muestra en la oferta de alta y en el regalo. Puedes editar la sugerencia.",
 }: {
   draft: RewardDraft;
   change: (patch: Partial<RewardDraft>) => void;
@@ -143,7 +143,7 @@ export function RewardFields({
         description={
           withRedemptionCap
             ? "Lo verá el cliente y puede aparecer en el push. Puedes editar la sugerencia."
-            : "Se muestra en la oferta de alta y en el regalo. Puedes editar la sugerencia."
+            : noCapLabelDescription
         }
         errorMessage={errors.couponLabel}
       />

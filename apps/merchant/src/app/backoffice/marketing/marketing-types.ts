@@ -16,11 +16,7 @@ export type CampaignWelcome = {
   redeemFrom: WelcomeRedeemFrom;
 };
 export type CampaignStatus =
-  | "draft"
-  | "active"
-  | "paused"
-  | "ended"
-  | "archived";
+  "draft" | "active" | "paused" | "ended" | "archived";
 
 export type Campaign = {
   id: string;
@@ -45,7 +41,8 @@ export type Campaign = {
   rewardRepeat: "once" | "every_30_days" | null;
   welcome?: CampaignWelcome | null;
   cross?: {
-    audience: CrossAudience;
+    // The server also returns `not_active`, the fixed audience of «Horas valle» (spec 0113).
+    audience: CrossAudience | "not_active";
     validDays: number;
     monthlyCap: number;
   } | null;
@@ -113,10 +110,7 @@ export type MarketingSettings = {
 };
 
 export type Quality =
-  | "observada"
-  | "estimada"
-  | "estimado_configurado"
-  | "no_disponible";
+  "observada" | "estimada" | "estimado_configurado" | "no_disponible";
 export type Effect =
   | { quality: "estimada"; extraCustomers: number }
   | { quality: "no_disponible"; holdoutN: number; needed: number };
