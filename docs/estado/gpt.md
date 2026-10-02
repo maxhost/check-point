@@ -3,7 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ SIGUIENTE TRABAJO DEL OWNER (2026-10-02) — TRAMA VIVA EN EL PASE DE LA PWA
+## ⇥ ESTADO (2026-10-02) — SPEC 0137 CERRADA: VISTAS PREVIAS EN IMPORTAR CON IA
+
+El owner pidió tarjetas cuadradas para los archivos elegidos en «Importar con IA» del
+catálogo, con miniatura y X para quitar cada foto. Confirmó que las nuevas fotos se
+agregan a la selección y que el PDF conserva el análisis automático. La
+[spec 0137](../specs/0137-vistas-previas-de-archivos-en-importacion-con-ia.md)
+quedó cerrada en `489cdf1`, con fila en `docs/INDEX.md`; falta implementarla y obtener
+PASS independiente. El PDF tendrá una tarjeta informativa durante el procesamiento y
+usará «Cancelar importación» en vez de una X previa al envío, porque empieza de inmediato.
+
+## ⇥ TRABAJO ANTERIOR DEL OWNER (2026-10-02) — TRAMA VIVA EN EL PASE DE LA PWA
 
 Después de `/clear`, leer el
 [handoff Apple → pase PWA](../handoff-2026-10-02-wallet-apple-a-pase-pwa.md).
