@@ -232,7 +232,6 @@ export async function seedConsumer(): Promise<{ id: string; qrToken: string }> {
   const [row] = await getDb()
     .insert(consumerAccounts)
     .values({
-      phoneE164: `+593${Math.floor(100000000 + Math.random() * 800000000)}`,
       firstName: "Marcos",
       lastName: "Pérez",
       qrToken,
