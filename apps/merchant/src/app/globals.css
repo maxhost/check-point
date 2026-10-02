@@ -4605,6 +4605,219 @@ input.cp-number-input::-webkit-outer-spin-button {
   color: #176548;
 }
 
+/* Mostrador rápido (spec 0121) */
+.counter-history {
+  margin-top: 18px;
+}
+.counter-history summary,
+.counter-repeat summary,
+.counter-summary summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.counter-history summary {
+  padding: 14px 0;
+}
+.counter-panel-detailed {
+  padding-bottom: calc(170px + env(safe-area-inset-bottom));
+}
+.counter-shell .module-topline h1 {
+  font-size: 22px;
+  margin: 2px 0;
+}
+.counter-shell .module-topline p:not(.eyebrow) {
+  display: none;
+}
+.counter-picks h3,
+.counter-catalog-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.counter-picks {
+  padding: 12px;
+  border-radius: 14px;
+  background: #edf6ef;
+}
+.counter-product-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.counter-product {
+  min-width: 0;
+  border: 1px solid #dce8df;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+.counter-product-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.counter-product-add {
+  flex: 1 1 125px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: #1c2b22;
+}
+.counter-product-add strong,
+.counter-product-add small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.counter-product-add small {
+  margin-top: 3px;
+  color: #4a5b50;
+}
+.counter-product .counter-qty {
+  gap: 2px;
+  padding: 4px;
+}
+.counter-product .counter-qty button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.counter-product .counter-qty output {
+  min-width: 22px;
+  text-align: center;
+}
+.counter-product .counter-line-price {
+  padding: 8px;
+  border-top: 1px solid #e3ebe5;
+}
+.counter-product .counter-line-price input {
+  width: 100%;
+  min-height: 44px;
+}
+.counter-catalog-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.counter-catalog-heading button,
+.counter-repeat button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #bad4c1;
+  border-radius: 10px;
+  background: #fff;
+  color: #176548;
+  font-weight: 700;
+}
+.counter-categories {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  scrollbar-width: thin;
+}
+.counter-toggle {
+  overflow-x: auto;
+}
+.counter-toggle button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.counter-categories button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #cfdbd3;
+  border-radius: 99px;
+  background: #fff;
+  color: #33413a;
+  font-weight: 700;
+}
+.counter-categories button.is-active {
+  background: #176548;
+  border-color: #176548;
+  color: #fff;
+}
+.counter-repeat {
+  padding: 12px;
+  border: 1px solid #dce8df;
+  border-radius: 12px;
+}
+.counter-repeat p {
+  font-size: 13px;
+}
+.counter-detailed-footer {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: 0;
+  width: min(100%, 560px);
+  transform: translateX(-50%);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #dce8df;
+  box-shadow: 0 -8px 24px #16302018;
+}
+.counter-summary summary,
+.counter-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.counter-summary summary {
+  min-height: 44px;
+  align-items: center;
+}
+.counter-summary summary small {
+  white-space: nowrap;
+  color: #176548;
+}
+.counter-summary ul {
+  max-height: 32vh;
+  overflow: auto;
+  padding: 0;
+  margin: 4px 0;
+  list-style: none;
+}
+.counter-summary li {
+  padding: 4px 0;
+}
+.counter-summary p {
+  font-size: 12px;
+  margin: 6px 0;
+}
+.counter-detailed-footer .counter-points-preview {
+  padding: 4px;
+  font-size: 13px;
+}
+.counter-detailed-footer .counter-actions {
+  margin-top: 8px;
+}
+@media (max-width: 380px) {
+  .counter-product-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .counter-detailed-footer .counter-secondary {
+    flex-basis: 32%;
+  }
+}
+@media (min-width: 800px) {
+  .counter-panel-detailed {
+    padding-bottom: 20px;
+  }
+  .counter-detailed-footer {
+    position: sticky;
+    left: auto;
+    bottom: 0;
+    width: 100%;
+    transform: none;
+    margin-top: 10px;
+  }
+}
+
 /* Modo Canjear del mostrador (spec 0055) */
 .counter-rewards {
   list-style: none;

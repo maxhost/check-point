@@ -1,8 +1,10 @@
-import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   loyaltyPrograms,
+  orderItems,
+  orders,
   productCategories,
   products,
   programMemberships,
@@ -11,9 +13,12 @@ import {
   CounterError,
   type OperatorBusiness,
   type ProgramRow,
+  assertLocationInBusiness,
   pgErrorCode,
   programDTO,
 } from "@mi-pasaporte/domain/server/counter/core";
+import { availableAtCounter } from "./catalog-visibility";
+import { personalPicks } from "./personal-picks";
 import { type ActiveCoupon, loadActiveCoupon } from "./coupon-store";
 import { loadProgramRewards } from "@mi-pasaporte/domain/server/loyalty-program/persistence";
 import { insertMembershipWithProjection } from "@mi-pasaporte/domain/server/customers/projection";
@@ -64,7 +69,7 @@ export async function accreditableProgram(
 }
 
 /** Lean catalog for the detailed-sale cart: id, name, unit price, image path. */
-async function businessCatalog(businessId: string) {
+async function businessCatalog(businessId: string, locationId: string | null) {
   const rows = await getDb()
     .select({
       id: products.id,
@@ -75,7 +80,9 @@ async function businessCatalog(businessId: string) {
       imageVersion: products.imageVersion,
     })
     .from(products)
-    .where(eq(products.businessId, businessId))
+    .where(
+      and(eq(products.businessId, businessId), availableAtCounter(locationId)),
+    )
     .orderBy(asc(products.name));
   const categories = await getDb()
     .select({ id: productCategories.id, name: productCategories.name })
@@ -96,6 +103,51 @@ async function businessCatalog(businessId: string) {
   };
 }
 
+async function purchaseShortcuts(
+  businessId: string,
+  consumerId: string,
+  locationId: string | null,
+  catalog: Awaited<ReturnType<typeof businessCatalog>>,
+) {
+  const empty = {
+    habitualProductIds: [] as string[],
+    lastPurchase: null as {
+      items: { productId: string; quantity: number }[];
+    } | null,
+  };
+  if (!locationId) return empty;
+  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const recent = await getDb()
+    .select({ id: orders.id, createdAt: orders.createdAt })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.businessId, businessId),
+        eq(orders.consumerId, consumerId),
+        eq(orders.locationId, locationId),
+        eq(orders.mode, "detailed"),
+        gte(orders.createdAt, cutoff),
+      ),
+    )
+    .orderBy(desc(orders.createdAt), desc(orders.id))
+    .limit(20);
+  if (recent.length === 0) return empty;
+  const lines = await getDb()
+    .select({
+      orderId: orderItems.orderId,
+      productId: orderItems.productId,
+      quantity: orderItems.quantity,
+    })
+    .from(orderItems)
+    .where(
+      inArray(
+        orderItems.orderId,
+        recent.map((order) => order.id),
+      ),
+    );
+  return personalPicks(recent, lines, catalog.products);
+}
+
 export type ResolveResult = ReturnType<typeof buildResolveResult>;
 
 function buildResolveResult(opts: {
@@ -107,7 +159,8 @@ function buildResolveResult(opts: {
     justEnrolled: boolean;
   };
   program: ProgramRow;
-  catalog: Awaited<ReturnType<typeof businessCatalog>>;
+  catalog: Awaited<ReturnType<typeof businessCatalog>> &
+    Awaited<ReturnType<typeof purchaseShortcuts>>;
   rewards: RewardDTO[];
   coupon: ActiveCoupon | null;
 }) {
@@ -139,9 +192,13 @@ function buildResolveResult(opts: {
 export async function resolveScan(
   business: OperatorBusiness,
   qrToken: string,
+  selectedLocationId?: string | null,
 ): Promise<ResolveResult> {
   const token = typeof qrToken === "string" ? qrToken.trim() : "";
   if (!token) throw new CounterError(422, "qr_unresolved", QR_UNRESOLVED);
+  const locationId = selectedLocationId
+    ? await assertLocationInBusiness(business.id, selectedLocationId)
+    : null;
 
   const program = await accreditableProgram(business.id);
 
@@ -161,7 +218,16 @@ export async function resolveScan(
     program.id,
     business.id,
   );
-  const catalog = await businessCatalog(business.id);
+  const baseCatalog = await businessCatalog(business.id, locationId);
+  const catalog = {
+    ...baseCatalog,
+    ...(await purchaseShortcuts(
+      business.id,
+      account.id,
+      locationId,
+      baseCatalog,
+    )),
+  };
   const rewards = (await loadProgramRewards(program.id)).map(toRewardDTO);
   const coupon = await loadActiveCoupon(business.id, account.id);
 

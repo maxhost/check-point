@@ -54,6 +54,8 @@ export type ResolveResponse = {
   catalog: {
     products: CounterProduct[];
     categories: { id: string; name: string }[];
+    habitualProductIds: string[];
+    lastPurchase: { items: { productId: string; quantity: number }[] } | null;
   };
   /** The program's rewards, already ordered by `position` by the server. */
   rewards: CounterReward[];

@@ -19,6 +19,7 @@ import {
   readOrderByRequest,
 } from "./orders";
 import { dispatchGranted } from "../wallet/push";
+import { availableAtCounter } from "./catalog-visibility";
 
 const MAX_MONEY = 9_999_999_999.99;
 
@@ -110,6 +111,7 @@ async function loadMembershipInBusiness(
  * product without a stored price requires the operator's typed `unitPrice`. */
 async function buildDetailed(
   businessId: string,
+  locationId: string | null,
   rawItems: unknown,
 ): Promise<{ total: string; items: GrantItem[] }> {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
@@ -137,7 +139,13 @@ async function buildDetailed(
       unitPrice: products.unitPrice,
     })
     .from(products)
-    .where(and(eq(products.businessId, businessId), inArray(products.id, ids)));
+    .where(
+      and(
+        eq(products.businessId, businessId),
+        inArray(products.id, ids),
+        availableAtCounter(locationId),
+      ),
+    );
   const byId = new Map(rows.map((r) => [r.id, r]));
 
   let totalCents = 0;
@@ -228,7 +236,11 @@ export async function grantAccrual(
   let total: string;
   let items: GrantItem[] = [];
   if (mode === "detailed") {
-    ({ total, items } = await buildDetailed(business.id, raw.items));
+    ({ total, items } = await buildDetailed(
+      business.id,
+      locationId,
+      raw.items,
+    ));
   } else {
     total = parseMoney(raw.total, "El importe");
   }

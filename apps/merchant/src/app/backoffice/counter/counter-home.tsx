@@ -42,8 +42,8 @@ export function CounterHome({
       >
         Escanear
       </button>
-      <section className="locations-list">
-        <h2>Movimientos de hoy</h2>
+      <details className="counter-history">
+        <summary>Movimientos de hoy ({history.length})</summary>
         {history.length === 0 ? (
           <p className="counter-hint">Todavía no hay movimientos hoy.</p>
         ) : (
@@ -76,7 +76,7 @@ export function CounterHome({
             );
           })
         )}
-      </section>
+      </details>
     </main>
   );
 }
