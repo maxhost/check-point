@@ -8,6 +8,16 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
+## ⇥ ESTADO (2026-10-01, noche) — MOSTRADOR 0121 IMPLEMENTADA, QA DEL OWNER OK; TRABAJO CERRADO
+
+Código de la entrega = `1bd196b`. Rediseño de Mostrador `c2374a9`, corrección de contraste `2a6a190`,
+spec 0121 e índice marcados `implementada` en `1bd196b`. El owner probó en live después del arreglo de contraste:
+«perfecto, funcionando» y pidió cerrar el trabajo. Verificación técnica: typecheck, lint, build, 2247 tests,
+y prueba Neon aislada de catálogo y hábitos por local. **Medición con Café Plátano pendiente de uso real**;
+no hay línea base ni mejora de tiempo demostrada. Tampoco hubo PASS de revisor independiente para esta spec.
+[Handoff de la 0121](handoff-0121-mostrador-2026-10-01.md). No hay tarea activa de Mostrador; después de `/clear`,
+el siguiente objetivo lo define el owner.
+
 ## ⇥ ESTADO (2026-10-02) — 0119 + 0120 EN PROD Y CERRADAS POR EL OWNER; APPLE SIN PROBAR (DECISION DEL OWNER)
 
 `main` = `a6b027e`; `my.` sirve la 0120 (`POST session/logout` → 204; botones con marca medidos en el HTML).
