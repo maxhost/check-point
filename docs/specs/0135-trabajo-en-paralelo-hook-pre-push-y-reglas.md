@@ -1,7 +1,7 @@
 ---
 spec: 0135
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0114: `docs/TRABAJO-EN-PARALELO.md` + `AGENTS.md`, hook `pre-push` comun (numeros duplicados + `pnpm verify`, modo solo-docs), estado por agente en `docs/estado/` y los hooks de Claude apuntando a `docs/estado/claude.md`.
 disjunta: si
 archivos: docs/TRABAJO-EN-PARALELO.md, AGENTS.md, CLAUDE.md, .githooks/pre-push, tools/check-numbers.ts, tools/check-numbers.test.ts, tools/verify.ts, tools/verify.test.ts, package.json, docs/estado/claude.md, docs/estado/gpt.md, docs/TASKS.md, .claude/hooks/tasks-fresh.sh, .claude/hooks/state-uncommitted-lie.sh
@@ -63,16 +63,16 @@ Los del frontmatter.
 
 ## Definition of Done
 
-- [ ] `tools/check-numbers.test.ts` y los casos nuevos de `verify.test.ts` (solo-docs; docs + un `.ts` → NO solo-docs).
-- [ ] `node tools/check-numbers.ts` sobre el repo real → exit 0 (hoy no hay duplicados).
-- [ ] **El hook muerde** (protocolo §3 de la skill: exit y mensaje): con una spec duplicada temporal
+- [x] `tools/check-numbers.test.ts` y los casos nuevos de `verify.test.ts` (solo-docs; docs + un `.ts` → NO solo-docs).
+- [x] `node tools/check-numbers.ts` sobre el repo real → exit 0 (hoy no hay duplicados).
+- [x] **El hook muerde** (protocolo §3 de la skill: exit y mensaje): con una spec duplicada temporal
       (`docs/specs/0134-duplicado-temporal.md`, sin commitear), correr el hook a mano simulando un push a main
       (`echo "refs/heads/main <sha> refs/heads/main <sha>" | .githooks/pre-push origin <url>`) → exit 1 y el mensaje
       nombra 0134; borrar el temporal y repetir → exit 0 (o lo que diga `pnpm verify`). Transcripto.
-- [ ] `git config --get core.hooksPath` → `.githooks`.
-- [ ] `pnpm verify --dry-run --files docs/x.md` → solo `format:check`.
-- [ ] `pnpm verify` del cambio (tabla transcripta).
-- [ ] `rg -n MUTATION apps tools packages` → vacío.
+- [x] `git config --get core.hooksPath` → `.githooks`.
+- [x] `pnpm verify --dry-run --files docs/x.md` → solo `format:check`.
+- [x] `pnpm verify` del cambio (tabla transcripta).
+- [x] `rg -n MUTATION apps tools packages` → vacío.
 
 ## Mutaciones — presupuesto: 2. Clase: los plausibles
 
