@@ -8,7 +8,20 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, mañana) — 0120 IMPLEMENTADA (`1c3e2a9`) Y PUSHEADA; FALTA QA DEL OWNER DE 0119 + 0120
+## ⇥ ESTADO (2026-10-02) — 0119 + 0120 EN PROD Y CERRADAS POR EL OWNER; APPLE SIN PROBAR (DECISION DEL OWNER)
+
+`main` = `a6b027e`; `my.` sirve la 0120 (`POST session/logout` → 204; botones con marca medidos en el HTML).
+**QA del owner en Android: OK** (owner, 2026-10-02: «probe en android y todo funciono»): Google, «No soy yo»,
+«Cerrar sesión», botones. **iOS / Sign in with Apple NO se probo**: el owner lo dio por cerrado igual («con ios
+todavia no probe pero asumo que esta funcionando, damos por implementado y cerrado»). Es decision suya, no
+verificacion: el callback de Apple (`form_post` cross-site, cookie `SameSite=None`, firma ES256 con el `.p8` de
+Vercel, nombre del campo `user`) nunca corrio contra Apple real; lo unico medido en PROD es `auth/apple/start` → 302
+a `appleid.apple.com` con `client_id=club.checkpass.signin`. **Si el primer login real con Apple termina en
+`?error=auth`**, el motivo esta en los logs de Vercel del proyecto del cliente como `[oauth] apple: <motivo>`.
+Pendientes del owner: `.env.example` (sacar OTP, sumar las 5 variables nuevas); verificacion de marca de Google
+(nombre «CheckPass Club» en Branding + reenviar). Hallazgos a decidir: #64, #65 (`PARQUEADO.md`).
+
+## ⇥ ESTADO HISTORICO (2026-10-02, mañana) — 0120 IMPLEMENTADA (`1c3e2a9`) Y PUSHEADA; FALTA QA DEL OWNER DE 0119 + 0120
 
 QA del owner en Android: «Ya sos parte de Maxi prueba» sin poder cambiar de cuenta. Medido: el servidor no cachea
 (`Cache-Control: private, no-store`, sin cookie muestra los botones), 0 identidades en PROD; era una sesion de alta por
