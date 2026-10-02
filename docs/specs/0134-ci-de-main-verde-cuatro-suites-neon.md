@@ -1,7 +1,7 @@
 ---
 spec: 0134
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Las 4 suites Neon que tienen roja la CI de `main` (PARQUEADO #69) se ponen al dia con cambios intencionales: voseo de billing-state, campos del mostrador (spec 0121), politicas del rol del cliente (migracion 0060) y el boton «Bajar a Free» leido por su DOM y no por su string.
 disjunta: si
 archivos: apps/merchant/src/app/api/billing/state/billing-state.neon.integration.test.ts, apps/merchant/src/server/counter-redeem-surfaces.neon.integration.test.ts, apps/merchant/src/server/customers-migration.neon.integration.test.ts, apps/merchant/src/server/billing-pages.neon.integration.test.ts
@@ -56,9 +56,9 @@ archivos: apps/merchant/src/app/api/billing/state/billing-state.neon.integration
 
 ## Definition of Done
 
-- [ ] Las 4 suites verdes con `tools/neon-test.sh <los 4 archivos>` (transcripto).
-- [ ] `pnpm verify` en verde (tabla final transcripta). Toca solo tests de `apps/merchant/src/**` → Neon related.
-- [ ] `rg -n MUTATION apps tools packages` → vacio.
+- [x] Las 4 suites verdes con `tools/neon-test.sh <los 4 archivos>` (transcripto).
+- [x] `pnpm verify` en verde (tabla final transcripta). Toca solo tests de `apps/merchant/src/**` → Neon related.
+- [x] `rg -n MUTATION apps tools packages` → vacio.
 
 ## Mutaciones — presupuesto: 2. Clase: los plausibles
 
@@ -71,6 +71,10 @@ archivos: apps/merchant/src/app/api/billing/state/billing-state.neon.integration
 `diff`. Leer la asercion del rojo.
 
 ## Declarado AFUERA
+
+- Ampliacion aceptada al implementar: la consulta a `pg_policies` ordena por `tablename, policyname` (sin eso el
+  `toEqual` exacto no es determinista con varias politicas por tabla).
+- `counter-redeem-surfaces` resuelve sin local: no fija las claves de `lastPurchase.items`.
 
 - La lista exacta de politicas no se muta (es una consulta a `pg_policies`; una mutacion exigiria una migracion).
 
