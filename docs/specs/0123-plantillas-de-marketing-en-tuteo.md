@@ -60,10 +60,10 @@ Reemplazo literal de los tres strings, con los textos de la tabla exactos (acent
       *(Corregido por el orquestador al cerrar: el patron original `Tenés un premio esperándote` era mas ancho que
       el default y matcheaba el seed propio de `marketing-balance-push.neon.integration.test.ts:130,160`, que no
       pinnea la plantilla. Ese seed queda en voseo: es dato de test, fuera de alcance.)*
-- [ ] `rg -nF` de cada texto nuevo encuentra `templates.ts` y sus tests.
-- [ ] `tools/neon-test.sh` sobre `marketing-templates` y `marketing-templates-race`, de a una → verdes. Nunca contra `DATABASE_URL`.
-- [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
-- [ ] `rg -n MUTATION apps tools packages` → vacio.
+- [x] `rg -nF` de cada texto nuevo encuentra `templates.ts` y sus tests.
+- [x] `tools/neon-test.sh` sobre `marketing-templates` y `marketing-templates-race`, de a una → verdes. Nunca contra `DATABASE_URL`.
+- [x] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
+- [x] `rg -n MUTATION apps tools packages` → vacio.
 
 ## Mutaciones — presupuesto: 1. Clase: los plausibles
 
