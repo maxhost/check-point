@@ -1,7 +1,7 @@
 ---
 spec: 0126
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: La Bienvenida sale del freno de plan (ADR 0112): entrada `campaigns.welcome` en el catalogo, el freno decide por plantilla en activar/reanudar/entregar, y la facturacion no la pausa ni la cuenta al bajar de plan.
 disjunta: si
 archivos: packages/domain/src/server/entitlements/catalog.ts, packages/domain/src/server/marketing/plan-gate.ts, packages/domain/src/server/marketing/welcome-store.ts, apps/merchant/src/server/marketing/template-store.ts, apps/merchant/src/server/marketing/campaign-actions.ts, apps/merchant/src/server/marketing/plan-brake.ts, tests
@@ -95,16 +95,16 @@ Ninguno.
 
 ## Definition of Done
 
-- [ ] Un negocio **free** activa la plantilla `welcome` (200) y el mismo negocio recibe **402 `plan_not_allowed`** al
+- [x] Un negocio **free** activa la plantilla `welcome` (200) y el mismo negocio recibe **402 `plan_not_allowed`** al
       activar otra plantilla (p. ej. `win_back`).
-- [ ] Un negocio **sin fila de suscripción** activa `welcome` (200).
-- [ ] Con la Bienvenida activa en un negocio free, la entrega del regalo (`welcome-store`) la devuelve (ya no `null`).
-- [ ] Reanudar una Bienvenida pausada en free → 200; reanudar otra plantilla pausada en free → 402.
-- [ ] Bajar de plan con una Bienvenida y otra campaña activas: se pausa SOLO la otra; la baja bloqueada por campañas
+- [x] Un negocio **sin fila de suscripción** activa `welcome` (200).
+- [x] Con la Bienvenida activa en un negocio free, la entrega del regalo (`welcome-store`) la devuelve (ya no `null`).
+- [x] Reanudar una Bienvenida pausada en free → 200; reanudar otra plantilla pausada en free → 402.
+- [x] Bajar de plan con una Bienvenida y otra campaña activas: se pausa SOLO la otra; la baja bloqueada por campañas
       cuenta SOLO la otra (y una Bienvenida sola NO bloquea la baja).
-- [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
-- [ ] `tools/neon-test.sh` sobre las suites de integración tocadas/creadas, de a una. Nunca contra `DATABASE_URL`.
-- [ ] `rg -n MUTATION apps tools packages` → vacío.
+- [x] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
+- [x] `tools/neon-test.sh` sobre las suites de integración tocadas/creadas, de a una. Nunca contra `DATABASE_URL`.
+- [x] `rg -n MUTATION apps tools packages` → vacío.
 
 ## Plan de pruebas y verificación
 

@@ -8,7 +8,14 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, tarde) — 0121 A 0124 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH (el owner lo pidio asi)
+## ⇥ ESTADO (2026-10-02, noche) — 0121 A 0126 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH
+
+- **0126 / ADR 0112** (la Bienvenida en todos los planes: free, plus y sin plan; la baja no la pausa ni la cuenta):
+  `485244f`, revisor **PASS**. **Para el QA del owner falta el push a `main` con su OK** y despues: activar la
+  Bienvenida en «Prueba de Barrio» (free) + QA en Android (su cuenta de prueba ya fue borrada).
+- Hallazgos de la 0126 sin decidir: `marketing-push-enable` roja en HEAD por voseo preexistente («necesitás» en el
+  test, `4a69db7`); `template-store.ts` en 305 lineas (> 300 del hook, ya lo estaba); el texto «Las campañas son del
+  plan Plus.» queda impreciso (UI del owner).
 
 - **0121** (`seedConsumer` sin telefono, #58 de PARQUEADO): `68a1541`, revisor **PASS** (M1 roja por
   `consumer_account_phone_unique`). La fila de M1 que quedo en `ci-integration` (`+593999999999`) se borro por SQL
