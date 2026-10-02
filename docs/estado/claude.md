@@ -8,31 +8,29 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, cierre) — SIGUIENTE: PARQUEADO #67 (EL TICK DE MARKETING SIN ALCANCE). HANDOFF + `/clear`
+## ⇥ ESTADO (2026-10-02, tarde-noche) — ADR 0115 ACEPTADO Y PUSHEADO (`05d2033`). SIGUIENTE: SPEC 1 DEL 0115
 
-**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. El ultimo push (`2d8f4cb`, Plan 2 + renumerado 0112→0136) fue
-con `--no-verify` AUTORIZADO por el owner; su CI quedo CORRIENDO al cerrar (no se espero): mirarla primero. Arbol
-limpio, `motor` = `origin/main`. Los gates de `ef05b1a` (ultimo commit con codigo) dieron typecheck/lint/format/test verdes.
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `05d2033` (solo docs desde
+`ef05b1a`, el ultimo con codigo). CI de `2d8f4cb`/`d21ae7b` quedo corriendo al empezar; ultimo verde conocido `8c6b003`.
 
-**La tarea: corregir la #67 por su CAUSA DE FONDO, y recien despues el test** (decision del owner, PARQUEADO #67:
-«no tiene sentido arreglar el test»). Lo medido el 2026-10-02 (no re-medido desde entonces):
-- `apps/merchant/src/server/marketing/tick.ts:248-255`: despues del trabajo por campaña (que SI respeta
-  `businessIds`), `loadBusinessTurnStats(db)` y `placeConsumers(db, …)` corren SIN alcance de negocio.
-- `placeConsumers` (`marketing/placement.ts:175`) recorre cada consumidor de `loadPlacementConsumerIds`
-  (`placement-store.ts:40`: los con turno `queued|active` ∪ los con fila en `consumer.pass_placement`) y por cada uno
-  hace varias consultas (`lockConsumer`, `loadActiveTurns`, `loadQueuedTurns`, …) dentro de UNA transaccion.
-- En `ci-integration`: 79 consumidores en ese conjunto (consulta 374 ms); un tick ~80 s; `marketing-valley` V4 hace 3
-  ticks y corta a 180 s **en local** (en GitHub pasa: la latencia desde el owner pesa). El test no pasa `consumerIds`.
-- Otras suites dejan filas de `pass_placement` sin limpiar (por eso crece el conjunto).
-- **No medido:** el reparto del tiempo entre fases del tick. Es lo PRIMERO a medir (instrumentar o cronometrar cada
-  fase contra `ci-integration`) antes de escribir la spec.
-- Por que importa ya: con el hook `pre-push` (ADR 0114), todo push que dispare Neon completo (esquema, migraciones,
-  `package.json`) queda BLOQUEADO en local por esta suite. Y en PROD el costo crece lineal con los clientes reales.
+**Que paso:** se midio la #67 por fase (paso 4 = 87,7 s de ~89 s, ~8 consultas por consumidor a ~120 ms; detalle en
+`PARQUEADO.md` #67). El owner eligio «lote», y despues **paro la #67 por un cambio de rumbo**: las campañas pasan a
+la PWA. Resultado: **ADR 0115** (`docs/adr/0115-campanas-por-la-pwa.md`), con 9+ decisiones textuales del owner:
+solo Bienvenida y Venta cruzada activas (el resto oculto, apagado y pausado, codigo conservado; valle incluido),
+campañas y mostrador por push de la PWA o solo en la app (nunca Wallet), recordatorio por Wallet con respaldo PWA,
+**el paso 4 deja de correr (resuelve la #67)**, limites de hoy centralizados en un modulo, y la Venta cruzada con
+push + app «a pensar mejor». Hallazgo: la Bienvenida YA exige PWA + Web Push (`f3982ef`, sin ADR hasta el 0115).
 
-**Pendientes chicos (no bloquean):** `docs/AGENT-WORKFLOW.md` y `.claude/agents/*` aun mandan la bitacora a
-`docs/TASKS.md`; `.prettierignore` excluye `docs/`, asi que el modo solo-docs de `pnpm verify` no revisa nada;
-#68 (intermitente `push-enable`) y un intermitente de `catalog-import-guard` en corrida completa; borrar el worktree
-`motor` cuando el owner lo pida (esta sesion vive ahi).
+**Siguiente: la spec 1 del 0115 §Consecuencias** (apagar plantillas + paso 4 + pausar vivas + borrar los 99 turnos
+historicos de `ci-integration`). Antes de escribirla, preguntar al owner los dos «Abierto» del ADR (aviso al merchant
+de la pausa; que pasa con los `pass_placement` ya emitidos). Despues: canales (2), limites (3), aviso cruzada (4).
+
+**Medido en la corrida Neon completa (2026-10-02 22:00 UTC, ~10 min):** 6 failed / 3119 passed — `marketing-valley`
+(timeout, #67), **3 NUEVOS en `marketing-refresh`** (`expected [] to have a length of 1`, causa sin medir) y 2
+intermitentes de `catalog-import`. No dejo turnos vivos nuevos (total sigue 99).
+
+**Pendientes chicos:** `docs/AGENT-WORKFLOW.md` y `.claude/agents/*` aun mandan la bitacora a `docs/TASKS.md`;
+`.prettierignore` excluye `docs/`; #68; borrar el worktree `motor` cuando el owner lo pida.
 
 ## ⇥ ESTADO HISTORICO (2026-10-02, noche) — PLAN 2 IMPLEMENTADO (ADR 0114 / spec 0135); SPEC 0112 DE LA OFERTA CRUZADA → 0136
 
