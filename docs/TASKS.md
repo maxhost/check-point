@@ -8,7 +8,21 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-01, cierre) — CODIGO DE LA 0119 EN `motor` (`37b474a`), ESPERA REVISOR; M7 SIN MEDIR
+## ⇥ ESTADO (2026-10-02) — 0119 IMPLEMENTADA EN `motor` (PASS + M1–M7); FALTA PUSH, DEPLOY Y LA `0061` EN PROD
+
+`motor` = `2e5d33f`, **sin push**, 13 commits por delante de `origin/main` y con `origin/main` (`1b375c8`) mergeada
+(`888de92`). Gates locales tras el merge, Node 24: typecheck, lint, format:check verdes; test 2242/2242 (781 skip);
+build consumer, public y merchant OK. **`main` no compilaba el comercio** (tipo `not_active` en `composer.tsx` y la
+prop `noCapLabelDescription` perdida en el merge `c3a2551`) ni pasaba format (prettier 3.9.8): arreglado en `d65014f`
+y `2e5d33f`. Revisor de la 0119: PASS (R-M1, R-M2, R-M5 rojas; sondas de open redirect y fuga en logs verdes).
+M7 medida por el orquestador con OK del owner (bitacora abajo). La `0061` esta en `ci-integration`, NO en PROD.
+**Siguiente, con OK del owner (pedido 2026-10-02):** push `motor` → `main`; confirmar el deploy de `my.` en READY con
+ese sha (sin acceso a Vercel desde el agente: dashboard del owner o MCP de Vercel); recien entonces la `0061` en PROD
+por `run_sql_transaction` (el orden lo fija el codigo viejo: la `0061` borra `enroll_attempt` y las tablas OTP que el
+alta vieja usa); verificar por SQL y en vivo; QA del owner (5 pasos de la spec). No verificado: que el rojo de
+`wallet-push.neon` («register is an idempotent upsert») ya estuviera rojo antes de la 0119 (`passkit.ts:128`, `7275abb`).
+
+## ⇥ ESTADO HISTORICO (2026-10-01, cierre) — CODIGO DE LA 0119 EN `motor` (`37b474a`), ESPERA REVISOR; M7 SIN MEDIR
 
 Implementador: trabajo en `37b474a` (sin push). **No esta marcada `implementada`**: falta el PASS del revisor independiente.
 Gates locales (Node 24): typecheck 6/6 (`TURBO_FORCE`, 0 cached), lint limpio, test 232 archivos / 2238 tests verdes,
