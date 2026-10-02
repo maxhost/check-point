@@ -77,7 +77,7 @@ export type Campaign = {
   rewardRepeat: "once" | "every_30_days" | null;
   /** Spec 0107: «Bienvenida»'s parameters. Always set by the reads; optional for fixtures. */
   welcome?: CampaignWelcome | null;
-  /** Spec 0112: «Oferta cruzada»'s parameters. Always set by the reads; optional for fixtures. */
+  /** Spec 0136: «Oferta cruzada»'s parameters. Always set by the reads; optional for fixtures. */
   cross?: CampaignCross | null;
   /** Spec 0113: «Horas valle»'s cap. Always set by the reads; optional for fixtures. */
   valley?: CampaignValley | null;

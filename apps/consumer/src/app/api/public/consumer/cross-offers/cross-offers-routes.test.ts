@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Spec 0112 C1/C2 — the EDGES of the two routes, with the session and the domain doubled:
+ * Spec 0136 C1/C2 — the EDGES of the two routes, with the session and the domain doubled:
  * 401 without a session, 400 `validation` with `fields.lat`/`fields.lng`, the consumer
  * taken from the SESSION and never from the request, a non-UUID id answered as the same
  * 404 `offer_unavailable` before touching the base. The flows themselves run against a

@@ -7,7 +7,7 @@ import { campaignsAllowedFor } from "./plan-gate";
 import type { CouponKind, DiscountUnit } from "./reward-input";
 
 /**
- * The READS of «Oferta cruzada» (spec 0112 / ADR 0104) and its DTO block. The decision is
+ * The READS of «Oferta cruzada» (spec 0136 / ADR 0104) and its DTO block. The decision is
  * `cross-rules.ts`; the consumer's endpoints (`consumer/cross-offers.ts`) load these facts
  * and write the coupon. Apart from `template-store.ts` for its size budget.
  *
@@ -32,7 +32,7 @@ export function rowsOf<T>(result: unknown): T[] {
 const text = (value: unknown) =>
   value === null || value === undefined ? null : String(value);
 
-/** Spec 0112: «Oferta cruzada»'s parameters in the DTO; `null` in every other campaign. */
+/** Spec 0136: «Oferta cruzada»'s parameters in the DTO; `null` in every other campaign. */
 export type CampaignCross = {
   audience: CrossAudience;
   validDays: number;

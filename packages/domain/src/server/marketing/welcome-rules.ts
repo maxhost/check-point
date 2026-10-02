@@ -110,7 +110,7 @@ export type WelcomeVerdict =
  * PWA must have opened and Web Push must be active. An iPhone that already got THIS business's welcome — even after
  * deleting the pass — gets nothing again.
  *
- * Spec 0112 / ADR 0104 §5 («Solo el cruzado», owner): a consumer holding a CROSS coupon of
+ * Spec 0136 / ADR 0104 §5 («Solo el cruzado», owner): a consumer holding a CROSS coupon of
  * this business came in through the network and already has their gift — no welcome. It
  * goes right after `enrolled_before`.
  */

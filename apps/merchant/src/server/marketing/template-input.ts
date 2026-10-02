@@ -50,7 +50,7 @@ import {
  * days, no doors, a MANDATORY coupon without redemption cap and `endsAt` optional even with
  * it; `welcome*` in any other template is a 400.
  *
- * CROSS (spec 0112): the same shape as welcome, in `cross-input.ts` — no channel, no doors,
+ * CROSS (spec 0136): the same shape as welcome, in `cross-input.ts` — no channel, no doors,
  * a MANDATORY coupon without redemption cap, `endsAt` optional; `cross*` elsewhere is a 400.
  *
  * VALLEY (spec 0113): the same shape again, in `valley-input.ts` — plus `couponKind:
@@ -183,7 +183,7 @@ export function parseTemplateInput(
   const welcome = template.welcome !== null;
   const cross = template.cross !== null;
   const valley = template.valley !== null;
-  // Spec 0112/0113: the «Mis beneficios» templates have no channel and no doors.
+  // Spec 0136/0113: the «Mis beneficios» templates have no channel and no doors.
   const offer = cross || valley;
   const lanes =
     welcome || offer
@@ -216,7 +216,7 @@ export function parseTemplateInput(
     : when(errors, body.endsAt, "endsAt", "La fecha de fin");
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
-  // Spec 0107/0112/0113: those coupons expire by their own rule, not by the end.
+  // Spec 0107/0136/0113: those coupons expire by their own rule, not by the end.
   if (!welcome && !offer) requireEndForCoupon(errors, deal, endsAt);
 
   if (

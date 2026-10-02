@@ -35,6 +35,6 @@ Marca). El ADR 0104 definio la oferta cruzada y su filtro. Faltaba decidir como 
 
 ## Consecuencias
 
-- Depende de la spec 0112 (filtro, reclamo, cupon sin membresia): se implementa despues de su PASS.
+- Depende de la spec 0136 (filtro, reclamo, cupon sin membresia): se implementa despues de su PASS.
 - Nace un tipo de premio `custom` (texto libre), habilitado solo en esta plantilla.
 - Con 0 pedidos en PROD, al principio ningun local tiene datos: todas las franjas las carga el comercio.

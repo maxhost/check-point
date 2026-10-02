@@ -47,7 +47,7 @@ import { type CouponKindValue, rewardChecks } from "./reward-checks";
  * (welcome_membership_id) do nothing`). `reminder_queue_id` is its expiry notice once
  * queued (one coupon, one notice); only a welcome coupon has one.
  *
- * Spec 0112 / ADR 0104: `cross_claimed_at` is the fourth origin — the consumer CLAIMED an
+ * Spec 0136 / ADR 0104: `cross_claimed_at` is the fourth origin — the consumer CLAIMED an
  * «Oferta cruzada» from «Mis beneficios». It is the ONLY coupon that may have no
  * `membership_id` (the consumer need not be enrolled; the counter enrols on the scan), and
  * there is ONE per consumer and campaign, forever: a PARTIAL unique, so its `on conflict`

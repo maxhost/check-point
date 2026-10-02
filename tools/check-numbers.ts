@@ -40,16 +40,10 @@ export function duplicateNumbers(names: string[]): string[] {
 }
 
 /**
- * Duplicados que ya estaban en `main` cuando nacio este chequeo (medido el 2026-10-02), con sus
- * archivos EXACTOS: si un tercero reclama el mismo numero, vuelve a fallar. No se renumeran aca
- * porque son de otras specs (hallazgo de la 0135).
+ * Duplicados historicos aceptados, con sus archivos EXACTOS (si un tercero reclama el mismo numero,
+ * vuelve a fallar). Vacio: el unico que habia (0112) se renumero a 0136 el 2026-10-02.
  */
-const KNOWN: Record<string, string[]> = {
-  "docs/specs/0112": [
-    "0112-mis-beneficios-y-oferta-cruzada.md",
-    "0112-pwa-consumidor-mobile.md",
-  ],
-};
+const KNOWN: Record<string, string[]> = {};
 
 const ROOT = join(import.meta.dirname, "..");
 

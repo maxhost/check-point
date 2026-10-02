@@ -15,7 +15,7 @@ import {
 } from "./cross-rules-fixtures";
 
 /**
- * The PURE rules of «Oferta cruzada» (spec 0112 «Elegibilidad»): one case per reason, in
+ * The PURE rules of «Oferta cruzada» (spec 0136 «Elegibilidad»): one case per reason, in
  * the spec's order, and one per frontier — 1999 m in / 2001 m out; standing 99 m from a
  * location of the same rubro out / 101 m in; `dormant` exactly at `now - dormantDays` in.
  * The points are built by moving NORTH along a meridian, where the haversine distance is

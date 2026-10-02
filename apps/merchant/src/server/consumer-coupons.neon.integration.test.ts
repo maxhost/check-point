@@ -159,7 +159,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       "id",
       "kind",
       "label",
-      // Spec 0112 C3: `cross` for a claimed cross offer, else `campaign`.
+      // Spec 0136 C3: `cross` for a claimed cross offer, else `campaign`.
       "origin",
       "reason",
       "redeemedAt",

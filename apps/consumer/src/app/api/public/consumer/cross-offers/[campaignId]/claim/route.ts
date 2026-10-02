@@ -22,7 +22,7 @@ function invalidLocation(fields: Record<string, string>) {
 }
 
 /**
- * Spec 0112 C2 — `POST /api/public/consumer/cross-offers/{campaignId}/claim`, body
+ * Spec 0136 C2 — `POST /api/public/consumer/cross-offers/{campaignId}/claim`, body
  * `{ lat?, lng? }`. Issues the cross coupon to the SESSION's consumer (never a request
  * field): 201 issued now, 200 already had it (idempotent), 404 `offer_unavailable` for ANY
  * refusal — one code on purpose, the consumer is not told why. An id that is not a UUID is

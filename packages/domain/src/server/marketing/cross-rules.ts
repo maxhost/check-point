@@ -3,7 +3,7 @@ import type { TemplateDefinition } from "./templates";
 import { capAllows } from "./welcome-rules";
 
 /**
- * THE PURE RULES OF «OFERTA CRUZADA» (spec 0112 / ADR 0104). The database half lives in
+ * THE PURE RULES OF «OFERTA CRUZADA» (spec 0136 / ADR 0104). The database half lives in
  * `cross-store.ts` and `consumer/cross-offers.ts`; everything that DECIDES lives here, so
  * every reason has a table of cases as its oracle (`cross-rules.test.ts`).
  *
@@ -21,7 +21,7 @@ import { capAllows } from "./welcome-rules";
  */
 export type CrossAudience = "non_members" | "dormant" | "any" | "not_active";
 
-/** «Oferta cruzada»'s parameters (spec 0112): audience, validity from the claim, cap. */
+/** «Oferta cruzada»'s parameters (spec 0136): audience, validity from the claim, cap. */
 export type CrossDefinition = {
   audience: { options: readonly CrossAudience[]; default: CrossAudience };
   validDays: { options: readonly number[]; default: number };
@@ -166,7 +166,7 @@ export type CrossDecision =
   { ok: true; distanceMeters: number } | { ok: false; reason: CrossRefusal };
 
 /**
- * Whether the audience of the campaign includes this consumer (spec 0112, reason 4).
+ * Whether the audience of the campaign includes this consumer (spec 0136, reason 4).
  * `not_active` (spec 0113): the non-member is in; a member only when dormant, like
  * `dormant` — the ACTIVE member never.
  */
@@ -181,7 +181,7 @@ function inAudience(facts: CrossOfferFacts): boolean {
 }
 
 /**
- * Spec 0112 «Elegibilidad», in THIS order — the reason is the first one that applies:
+ * Spec 0136 «Elegibilidad», in THIS order — the reason is the first one that applies:
  * no origin → same rubro (the last scanned business's, or —only with GPS— the one of a
  * location within 100 m) → farther than 2 km (or no geocoded location) → audience → opt-out
  * → already claimed → monthly cap.

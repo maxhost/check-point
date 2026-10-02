@@ -34,7 +34,7 @@
  * gift is issued when the consumer INSTALLS the pass (`welcome-issue.ts`)— and no dormant
  * days; its coupon is MANDATORY (`couponRequired`) and its parameters are `welcome`.
  *
- * CROSS (spec 0112 / ADR 0104): «Oferta cruzada» goes LAST. No channel either —its only
+ * CROSS (spec 0136 / ADR 0104): «Oferta cruzada» goes LAST. No channel either —its only
  * surface is the consumer's «Mis beneficios»—, coupon MANDATORY, parameters in `cross`.
  * Its entry lives in `cross-rules.ts` (`CROSS_TEMPLATE`) only for this file's size budget.
  * VALLEY (spec 0113 / ADR 0105): «Horas valle» after it, the same shape (`valley-rules.ts`).

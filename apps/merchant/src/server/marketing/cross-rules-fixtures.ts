@@ -5,7 +5,7 @@ import type {
 } from "@mi-pasaporte/domain/server/marketing/cross-rules";
 
 /**
- * The fixtures of the PURE rules' suites (`cross-rules*.test.ts`, spec 0112): a consumer at
+ * The fixtures of the PURE rules' suites (`cross-rules*.test.ts`, spec 0136): a consumer at
  * Plaza de Mayo with GPS, last scanned in a café, and a gym's offer 640 m north. Points are
  * built by moving NORTH along a meridian, where haversine is exactly the arc (`meters / R`
  * radians): no hand-written distances. Apart only for the size budget.

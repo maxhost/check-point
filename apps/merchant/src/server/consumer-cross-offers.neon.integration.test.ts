@@ -19,7 +19,7 @@ import { seedOrder } from "./marketing-integration-support";
 import { optOut } from "./marketing-integration-support";
 
 /**
- * Spec 0112 C1 — `GET /api/public/consumer/cross-offers` against a real base, through the
+ * Spec 0136 C1 — `GET /api/public/consumer/cross-offers` against a real base, through the
  * REAL route and a real session. Each case pins one rule of the filter and carries a
  * CONTROL offer that passes, so an empty list can never be the reason a case is green.
  * Oracles of M1–M5 of the spec's table (the guard each one bypasses is written in the case).

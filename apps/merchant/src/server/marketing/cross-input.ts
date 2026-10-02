@@ -7,7 +7,7 @@ import type { CrossAudience } from "@mi-pasaporte/domain/server/marketing/cross-
 import type { TemplateDefinition } from "@mi-pasaporte/domain/server/marketing/templates";
 
 /**
- * THE «OFERTA CRUZADA» HALF OF `enable`'s BODY (spec 0112 / ADR 0104). PURE, called only by
+ * THE «OFERTA CRUZADA» HALF OF `enable`'s BODY (spec 0136 / ADR 0104). PURE, called only by
  * `parseTemplateInput` (`template-input.ts`); the mirror of `welcome-input.ts`.
  *
  *  - In `cross`: no `channels` (its only surface is «Mis beneficios»), no excluded doors

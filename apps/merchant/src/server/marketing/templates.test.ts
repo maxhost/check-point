@@ -13,7 +13,7 @@ import {
 describe("marketing templates catalog", () => {
   it("has exactly the eight templates of the specs, in catalog order", () => {
     // Spec 0107 (#1+#2, FIRST) + spec 0101 (#3, #5) + spec 0105 (#4) + spec 0104 (#7, #8)
-    // + spec 0112 («Oferta cruzada») + spec 0113 («Horas valle», LAST).
+    // + spec 0136 («Oferta cruzada») + spec 0113 («Horas valle», LAST).
     expect(TEMPLATES.map((t) => t.key)).toEqual([
       "welcome",
       "missed_you",

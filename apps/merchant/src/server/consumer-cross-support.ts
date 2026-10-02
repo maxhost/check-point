@@ -27,7 +27,7 @@ import { GET } from "../../../consumer/src/app/api/public/consumer/cross-offers/
 import { POST } from "../../../consumer/src/app/api/public/consumer/cross-offers/[campaignId]/claim/route";
 
 /**
- * The world of «Oferta cruzada» (spec 0112) against a real base: `plus` businesses with a
+ * The world of «Oferta cruzada» (spec 0136) against a real base: `plus` businesses with a
  * LIVE subscription (the plan gate), each with ONE active location placed on REAL CABA
  * coordinates, a rubro of its own and —when the case needs it— its cross campaign. The
  * distances are built with the SAME haversine the code uses (moving north along a

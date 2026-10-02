@@ -114,7 +114,7 @@ describe("decideWelcomeGift", () => {
     );
   });
 
-  it("spec 0112: a cross coupon of the business is `came_by_cross`, right after `enrolled_before`", () => {
+  it("spec 0136: a cross coupon of the business is `came_by_cross`, right after `enrolled_before`", () => {
     const cross = { ...base, crossCouponFromBusiness: true };
     expect(decideWelcomeGift(cross)).toBe("came_by_cross");
     // After `enrolled_before` …

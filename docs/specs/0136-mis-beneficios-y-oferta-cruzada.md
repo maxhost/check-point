@@ -1,16 +1,16 @@
 ---
-spec: 0112
+spec: 0136
 fecha: 2026-09-29
 estado: implementada
 resumen: «Mis beneficios» por API — la plantilla de campaña «Oferta cruzada» (premio, cupo mensual, vigencia, publico no clientes / dormidos / cualquiera), su lista para el cliente filtrada por rubro distinto (ultimo escaneado + local donde esta parado) y ≤ 2 km (GPS o ultimo local escaneado), el reclamo que emite un cupon SIN membresia, su canje en el mostrador y el «solo el cruzado» frente a la Bienvenida. Migracion 0057. Sin UI.
 disjunta: si
-archivos: apps/merchant/src/server/schema/{campaign.ts,campaign-coupon.ts}, apps/merchant/drizzle/0057_*.sql, apps/merchant/src/server/marketing/{templates.ts,template-input.ts,template-store.ts,cross-input.ts,cross-rules.ts,cross-store.ts,welcome-rules.ts,welcome-issue.ts}, apps/merchant/src/server/consumer/{coupons.ts,cross-offers.ts}, apps/merchant/src/server/counter/coupon-store.ts, apps/merchant/src/app/api/public/consumer/cross-offers/**, docs/specs/0112-contratos-de-api.md
+archivos: apps/merchant/src/server/schema/{campaign.ts,campaign-coupon.ts}, apps/merchant/drizzle/0057_*.sql, apps/merchant/src/server/marketing/{templates.ts,template-input.ts,template-store.ts,cross-input.ts,cross-rules.ts,cross-store.ts,welcome-rules.ts,welcome-issue.ts}, apps/merchant/src/server/consumer/{coupons.ts,cross-offers.ts}, apps/merchant/src/server/counter/coupon-store.ts, apps/merchant/src/app/api/public/consumer/cross-offers/**, docs/specs/0136-contratos-de-api.md
 ---
 
-# 0112 — «Mis beneficios» y la oferta cruzada
+# 0136 — «Mis beneficios» y la oferta cruzada
 
 > Implementa el **ADR 0104** (que corrige el §4 del ADR 0103). Plantilla grande: hay migracion y dos dominios
-> (marketing + consumidor). **Solo API + contrato** (`0112-contratos-de-api.md`): la UI la hace el owner (ADR 0070,
+> (marketing + consumidor). **Solo API + contrato** (`0136-contratos-de-api.md`): la UI la hace el owner (ADR 0070,
 > ADR 0103 §10).
 
 ## Problema
@@ -68,7 +68,7 @@ archivos: apps/merchant/src/server/schema/{campaign.ts,campaign-coupon.ts}, apps
 5. `GET /api/public/consumer/coupons` suma `origin` (el cupon cruzado reclamado aparece ahi, sin filtro).
 6. Canje en el mostrador de un cupon sin membresia.
 7. La Bienvenida no se emite a quien tiene un cupon cruzado de ese comercio.
-8. Contrato HTTP `docs/specs/0112-contratos-de-api.md`.
+8. Contrato HTTP `docs/specs/0136-contratos-de-api.md`.
 
 **No entra:**
 - Ninguna pantalla (ni la de Mis beneficios, ni la de la plantilla en Marketing, ni cambiar la pestaña inicial de
@@ -203,7 +203,7 @@ ADR 0104, 0103 §2 y §10, 0099 (Bienvenida), 0098 (premio estructurado), 0094 (
 | `server/consumer/cross-offers.ts` (+ tests), `server/consumer/coupons.ts` | crear / editar |
 | `server/counter/coupon-store.ts` | editar |
 | `app/api/public/consumer/cross-offers/route.ts`, `…/[campaignId]/claim/route.ts` (+ tests) | crear |
-| `docs/specs/0112-contratos-de-api.md` | crear (el orquestador, antes de despachar) |
+| `docs/specs/0136-contratos-de-api.md` | crear (el orquestador, antes de despachar) |
 
 Rutas relativas a `apps/merchant/src/` salvo las marcadas.
 
@@ -216,7 +216,7 @@ implementada.
 
 | Que | Quien lo deja listo | Cuando |
 |---|---|---|
-| `0112-contratos-de-api.md` | orquestador | antes de despachar |
+| `0136-contratos-de-api.md` | orquestador | antes de despachar |
 
 ## Definition of Done
 

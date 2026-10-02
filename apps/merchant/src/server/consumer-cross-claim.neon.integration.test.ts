@@ -23,7 +23,7 @@ import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupon
 import { disableTemplate } from "./marketing/template-store";
 
 /**
- * Spec 0112 C2 — `POST /api/public/consumer/cross-offers/{campaignId}/claim` against a
+ * Spec 0136 C2 — `POST /api/public/consumer/cross-offers/{campaignId}/claim` against a
  * real base, through the REAL route and a real session. Every state is READ BY SQL. Oracles
  * of M6 (the campaign's `for update` under a race of two DIFFERENT consumers, where the
  * partial unique — per consumer — cannot act) and M7 (the idempotent re-claim).

@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 
 /**
  * THE SHAPE OF THE «MIS BENEFICIOS» TEMPLATES ON `core.campaign`: «Oferta cruzada» (spec
- * 0112 / ADR 0104) and «Horas valle» (spec 0113 / ADR 0105). Apart from `campaign.ts` only
+ * 0136 / ADR 0104) and «Horas valle» (spec 0113 / ADR 0105). Apart from `campaign.ts` only
  * for the size budget (the cross checks moved here unchanged — same names, same SQL).
  *
  * ⚠️ The `coalesce(template_key, '')` is load-bearing: a `check` whose expression is NULL
@@ -27,7 +27,7 @@ type OfferColumns = {
 
 export function offerChecks(t: OfferColumns) {
   return [
-    // Spec 0112: the three parameters of «Oferta cruzada», EACH present exactly in `cross`.
+    // Spec 0136: the three parameters of «Oferta cruzada», EACH present exactly in `cross`.
     check(
       "core_campaign_cross_shape_check",
       sql`(coalesce(${t.templateKey}, '') = 'cross') = (${t.crossAudience} is not null) and (coalesce(${t.templateKey}, '') = 'cross') = (${t.crossValidDays} is not null) and (coalesce(${t.templateKey}, '') = 'cross') = (${t.crossMonthlyCap} is not null)`,

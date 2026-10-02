@@ -167,7 +167,7 @@ describe("marketing templates catalog — the table", () => {
         cross: null,
         valley: null,
       },
-      // Spec 0112 / ADR 0104: no channel, coupon mandatory, audience/validity/cap.
+      // Spec 0136 / ADR 0104: no channel, coupon mandatory, audience/validity/cap.
       {
         key: "cross",
         title: "Oferta cruzada",

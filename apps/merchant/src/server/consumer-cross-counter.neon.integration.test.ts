@@ -25,7 +25,7 @@ import { resolveScan } from "./counter/resolve";
 import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 
 /**
- * Spec 0112 — what happens AFTER the claim, against a real base:
+ * Spec 0136 — what happens AFTER the claim, against a real base:
  *  - the counter redeems a cross coupon of someone who was NOT a member: the scan
  *    auto-enrols (ADR 0033) and the redemption carries THAT membership (ORACULO DE M8 —
  *    with the coupon's `null`, `coupon_redemption.membership_id NOT NULL` refuses it);

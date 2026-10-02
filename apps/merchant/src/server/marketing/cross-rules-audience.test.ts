@@ -14,7 +14,7 @@ import {
 } from "./cross-rules-fixtures";
 
 /**
- * The PURE rules of «Oferta cruzada», reasons 4–7 (spec 0112 «Elegibilidad»): the audience
+ * The PURE rules of «Oferta cruzada», reasons 4–7 (spec 0136 «Elegibilidad»): the audience
  * (`dormant` exactly at `now - dormantDays` is in), the opt-out, one per consumer, the cap —
  * and that the reason is the FIRST that applies. Reasons 1–3 are in `cross-rules.test.ts`.
  */

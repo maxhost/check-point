@@ -51,6 +51,6 @@ las decisiones de la spec de «Mis beneficios», el owner acoto el alcance y def
 ## Consecuencias
 
 - `core.campaign_coupon.membership_id` deja de ser `NOT NULL` para el cupon cruzado (migracion).
-- La spec 0112 implementa esto. Horas valle (ADR 0103 §5) sigue siendo su propia spec; si usa el mismo filtro,
+- La spec 0136 implementa esto. Horas valle (ADR 0103 §5) sigue siendo su propia spec; si usa el mismo filtro,
   lo reutiliza.
 - El arbitro del orden (ADR 0103 §6) todavia no existe: las ofertas cruzadas salen por cercania.

@@ -22,7 +22,7 @@ function valueOf(body: unknown) {
 }
 
 /**
- * The body of `enable` for «Oferta cruzada» (spec 0112, contract table M1): one row of the
+ * The body of `enable` for «Oferta cruzada» (spec 0136, contract table M1): one row of the
  * table per case — the coupon mandatory, no redemption cap, no channel, no doors, no
  * `welcome*`; `crossAudience`/`dormantDays`/`crossValidDays`/`crossMonthlyCap` against their
  * options with their defaults; `cross*` in another template is a 400.

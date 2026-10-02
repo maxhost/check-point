@@ -1,6 +1,6 @@
-# 0112 — Contrato de API: «Mis beneficios» y la oferta cruzada
+# 0136 — Contrato de API: «Mis beneficios» y la oferta cruzada
 
-> Para quien hace la UI. Implementa la spec 0112 / ADR 0104. Rutas relativas a `apps/merchant/src/`. Errores:
+> Para quien hace la UI. Implementa la spec 0136 / ADR 0104. Rutas relativas a `apps/merchant/src/`. Errores:
 > `{ error, code }` y, en `400 validation`, `fields: { campo: mensaje }` (como `0101-contratos-de-api.md`).
 
 ## Que es «Mis beneficios», en datos

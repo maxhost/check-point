@@ -29,7 +29,7 @@ import {
  * `currencyCode` as in the scan: the snapshot for an `amount` discount, else the business's.
  * Raw SQL with explicit aliases (the redemption is joined by the coupon's id).
  *
- * Spec 0112 (contract C3): every coupon says its `origin` — `cross` when the consumer
+ * Spec 0136 (contract C3): every coupon says its `origin` — `cross` when the consumer
  * CLAIMED it from an «Oferta cruzada» (`cross_claimed_at`), `campaign` otherwise. The cross
  * coupon is here because it has the consumer's id; like every own coupon, UNFILTERED.
  */

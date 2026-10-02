@@ -1,6 +1,6 @@
 # 0113 — Contrato de API: horas valle
 
-> Para quien hace la UI. Implementa la spec 0113 / ADR 0105. Se suma al contrato `0112-contratos-de-api.md`.
+> Para quien hace la UI. Implementa la spec 0113 / ADR 0105. Se suma al contrato `0136-contratos-de-api.md`.
 > Errores `{ error, code }`; `400 validation` con `fields`. Horas en la zona horaria del comercio. Dias ISO:
 > 1 = lunes … 7 = domingo.
 
@@ -65,7 +65,7 @@ domingo) × 24 horas, escaneos de las ultimas 8 semanas. `effective`: cuales man
 El publico es fijo: quien no es cliente y los clientes dormidos (nunca el activo). DTO `Campaign` suma
 `valley: { monthlyCap } | null`. `couponKind: "custom"` en otra plantilla → `400 fields.couponKind`.
 
-## H4 — «Mis beneficios»: cambios en C1 y C2 (0112)
+## H4 — «Mis beneficios»: cambios en C1 y C2 (0136)
 
 C1 (`GET /api/public/consumer/cross-offers`): cada oferta suma `"type": "cross" | "valley"`. Una oferta valle trae
 ademas:

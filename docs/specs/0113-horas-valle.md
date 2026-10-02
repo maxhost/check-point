@@ -2,7 +2,7 @@
 spec: 0113
 fecha: 2026-09-29
 estado: implementada
-resumen: Horas valle por API — horario de apertura por local (por dia, hasta 2 rangos), deteccion de la franja floja por la red (bloque de 1 h < 40 % de la mediana en ≥ 5 de 8 semanas, minimo 150 escaneos) con franjas editables por el comercio, plantilla «Horas valle» (premio incl. texto libre, cupo mensual, no clientes + dormidos), visible en «Mis beneficios» solo con la franja abierta y con el filtro de la cruzada, cupon valido hasta el cierre de la franja del dia, una vez por persona y por local. Migracion 0058. Sin UI. Despues de la 0112.
+resumen: Horas valle por API — horario de apertura por local (por dia, hasta 2 rangos), deteccion de la franja floja por la red (bloque de 1 h < 40 % de la mediana en ≥ 5 de 8 semanas, minimo 150 escaneos) con franjas editables por el comercio, plantilla «Horas valle» (premio incl. texto libre, cupo mensual, no clientes + dormidos), visible en «Mis beneficios» solo con la franja abierta y con el filtro de la cruzada, cupon valido hasta el cierre de la franja del dia, una vez por persona y por local. Migracion 0058. Sin UI. Despues de la 0136.
 disjunta: no
 archivos: apps/merchant/drizzle/0058_*.sql, apps/merchant/src/server/schema/{business.ts,valley.ts,campaign.ts,campaign-coupon.ts,reward-checks.ts,_barrel si aplica}, apps/merchant/src/server/locations/hours*.ts, apps/merchant/src/app/api/locations/[locationId]/hours/route.ts, apps/merchant/src/server/marketing/{valley-detect.ts,valley-rules.ts,valley-store.ts,valley-input.ts,templates.ts,template-input.ts,reward-input.ts,tick.ts,cross-rules.ts,cross-store.ts}, apps/merchant/src/app/api/marketing/valley/**, apps/merchant/src/server/consumer/{cross-offers.ts,cross-facts.ts,valley-offers.ts}, apps/merchant/src/server/marketing/{campaign-store.ts,campaign-row.ts,cross-input.ts}, apps/merchant/src/app/api/public/consumer/cross-offers/**, docs/specs/0113-contratos-de-api.md
 ---
@@ -11,9 +11,9 @@ archivos: apps/merchant/drizzle/0058_*.sql, apps/merchant/src/server/schema/{bus
 
 > Implementa el **ADR 0105** (sobre el ADR 0103 §5 y §10 y el ADR 0104). Plantilla grande: migracion y tres dominios
 > (locales, marketing, consumidor). **Solo API + contrato** (`0113-contratos-de-api.md`); la UI la hace el owner.
-> **Se despacha despues del PASS de la 0112** (PASS 2026-09-29, `bd4f833` + `c234b3d`; esta spec ya esta re-medida
+> **Se despacha despues del PASS de la 0136** (PASS 2026-09-29, `bd4f833` + `c234b3d`; esta spec ya esta re-medida
 > contra ese arbol): reusa su filtro (`cross-rules.ts`), su lista y su reclamo
-> (`cross-offers`), y su cupon sin membresia (`cross_claimed_at`). Si al despachar la 0112 cambio de forma, se
+> (`cross-offers`), y su cupon sin membresia (`cross_claimed_at`). Si al despachar la 0136 cambio de forma, se
 > re-mide esta spec contra el arbol antes.
 
 ## Problema
@@ -143,7 +143,7 @@ solo aca (V8: en otra plantilla → 400 `couponKind`). DTO `Campaign` suma `vall
 
 ### Consumidor
 
-`GET /api/public/consumer/cross-offers` (0112) suma las ofertas valle. Por cada campaña valle elegible (mismas
+`GET /api/public/consumer/cross-offers` (0136) suma las ofertas valle. Por cada campaña valle elegible (mismas
 condiciones de campaña que la cruzada) y cada local suyo con una franja **abierta ahora**:
 se llama a **`decideCrossOffer`** (`cross-rules.ts:178`, la misma funcion de la cruzada, sin copiarla) con
 `offer.locations = [ese local]` (asi `too_far` se mide contra el local de la franja), `offer.audience =
@@ -156,7 +156,7 @@ cruzadas suman `type: "cross"`. Orden: las valle primero (vencen hoy), despues p
 
 La lista y el reclamo valle viven en `server/consumer/valley-offers.ts` (nuevo): `consumer/cross-offers.ts` tiene
 255 lineas y solo suma las llamadas. `POST …/{campaignId}/claim` con `{ lat?, lng?, locationId }` (`locationId` obligatorio para valle; en cruzada
-prohibido → 400): mismo lock y re-evaluacion que la 0112; cupon con `valley_location_id`, `cross_claimed_at = now`,
+prohibido → 400): mismo lock y re-evaluacion que la 0136; cupon con `valley_location_id`, `cross_claimed_at = now`,
 `valid_from = now`, `valid_until` = fin de la franja abierta de hoy (hora local → UTC). El `on conflict` del unico
 por local → re-lectura → 200 si es de esta campaña, 404 `offer_unavailable` si es de otra.
 
@@ -177,17 +177,17 @@ ADR 0105, 0104, 0103 §5/§10, 0098 (premio), 0094 (vigencia), 0061 (locales), 0
 | `app/api/locations/[locationId]/hours/route.ts` (+ test) | crear |
 | `server/marketing/valley-detect.ts`, `valley-rules.ts`, `valley-store.ts`, `valley-input.ts` (+ tests) | crear |
 | `server/marketing/templates.ts`, `template-input.ts`, `reward-input.ts`, `tick.ts`, `campaign-store.ts`, `campaign-row.ts` (DTO `valley`) | editar |
-| `server/marketing/cross-rules.ts`, `cross-store.ts` (0112) | editar |
+| `server/marketing/cross-rules.ts`, `cross-store.ts` (0136) | editar |
 | `app/api/marketing/valley/locations/route.ts`, `…/[locationId]/windows/route.ts` (+ tests) | crear |
 | `server/consumer/valley-offers.ts` (+ tests) | crear |
-| `server/consumer/cross-offers.ts`, `cross-facts.ts`, `app/api/public/consumer/cross-offers/**`, `server/marketing/cross-input.ts` (0112) | editar |
+| `server/consumer/cross-offers.ts`, `cross-facts.ts`, `app/api/public/consumer/cross-offers/**`, `server/marketing/cross-input.ts` (0136) | editar |
 | `docs/specs/0113-contratos-de-api.md` | crear (orquestador, antes de despachar) |
 
 Rutas relativas a `apps/merchant/src/` salvo las marcadas. Limite de 300 lineas: dividir, no extender.
 
 ### Disjunta?
 
-**No: se serializa detras de la 0112** (comparte `cross-rules.ts`, `cross-store.ts`, `cross-offers.ts`, las rutas de
+**No: se serializa detras de la 0136** (comparte `cross-rules.ts`, `cross-store.ts`, `cross-offers.ts`, las rutas de
 `cross-offers`, `campaign.ts`, `campaign-coupon.ts`, `templates.ts`, `template-input.ts`).
 
 ### Archivos compartidos
@@ -195,7 +195,7 @@ Rutas relativas a `apps/merchant/src/` salvo las marcadas. Limite de 300 lineas:
 | Que | Quien lo deja listo | Cuando |
 |---|---|---|
 | `0113-contratos-de-api.md` | orquestador | antes de despachar |
-| re-medicion de esta spec contra la 0112 implementada | orquestador | antes de despachar |
+| re-medicion de esta spec contra la 0136 implementada | orquestador | antes de despachar |
 
 ## Definition of Done
 
@@ -209,7 +209,7 @@ Rutas relativas a `apps/merchant/src/` salvo las marcadas. Limite de 300 lineas:
       de la franja de hoy.
 - [ ] `git diff --stat` sin archivos en `app/(consumer)/`, `app/backoffice/` ni `components/`.
 - [ ] Gates: `typecheck`, `lint`, `test`, `format:check`, `build` (root, Node 24); integraciones con
-      `tools/neon-test.sh`, incluidas las de la 0112 (regresion). `test:e2e` no aplica.
+      `tools/neon-test.sh`, incluidas las de la 0136 (regresion). `test:e2e` no aplica.
 - [ ] Mutaciones M1–M9 medidas y revertidas (bitacora en `TASKS.md`). PASS de revisor independiente.
 
 ## Plan de pruebas y verificación
@@ -233,7 +233,7 @@ dormido / no miembro; `valid_until` en una zona UTC-3 y en una con DST.
 | M3 | el minimo de 150 (`valley-detect.ts`) | 149 escaneos con un hueco obvio → `insufficient_data` | con 149 la mediana sigue > 0: nada mas lo corta |
 | M4 | «franja abierta ahora» (`valley-rules.ts`) | integracion: franja 15–17, reloj 17:00 hora local → la oferta no esta; 16:59 → esta | ninguno |
 | M5 | la rama `"not_active"` de `inAudience` (`cross-rules.ts`) | miembro con pedido hace 3 dias no la ve; no miembro si | filtro de rubro/distancia: local de otro rubro a 300 m |
-| M6 | la llamada a `decideCrossOffer` en el camino valle (`consumer/valley-offers.ts`) | ultimo escaneo en un cafe; valle de otro cafe a 300 m → no esta | la regla pura de la 0112 tiene su test: esta fila borra la LLAMADA en el camino valle |
+| M6 | la llamada a `decideCrossOffer` en el camino valle (`consumer/valley-offers.ts`) | ultimo escaneo en un cafe; valle de otro cafe a 300 m → no esta | la regla pura de la 0136 tiene su test: esta fila borra la LLAMADA en el camino valle |
 | M7 | `valid_until` = fin de la franja (`valley-rules.ts`, usado por `consumer/valley-offers.ts`) | claim 15:10 en franja 15–17 (UTC-3) → `validUntil` = 20:00Z; el resolve del mostrador a las 17:05 local → `coupon: null` | ninguno |
 | M8 | el tope por local: lectura previa (`consumer/valley-offers.ts`) | dos campañas valle del mismo comercio, mismo local: la 2.ª no se lista y su claim → 404 | el unico parcial `(valley_location_id, consumer_id)`: si la mutacion da verde en la lista, se mide el claim y se declara el respaldo |
 | M9 | el tick respeta `source = 'merchant'` (`valley-store.ts`) | local con franja del comercio; tick con datos que proponen otra → la del comercio sigue y es la efectiva | ninguno |
@@ -241,7 +241,7 @@ dormido / no miembro; `valid_until` en una zona UTC-3 y en una con DST.
 **Aislamiento:** horario y franjas de un local de otro negocio → 404; el rol sin permiso de locales/marketing → el
 error de su `_auth`; el cliente sale solo de la sesion.
 
-**Comandos:** los de la 0112, mas `tools/neon-test.sh` sobre los tests nuevos y los de `cross-offers`.
+**Comandos:** los de la 0136, mas `tools/neon-test.sh` sobre los tests nuevos y los de `cross-offers`.
 
 **QA del owner:** cargar horario con cortado a un local; cargar una franja propia que incluya la hora actual; activar
 «Horas valle»; desde el telefono de un no cliente cerca, `cross-offers` la muestra con `type: "valley"`; reclamar;
@@ -249,7 +249,7 @@ en el mostrador se ofrece y se canjea; pasada la franja, no se ofrece.
 
 ## Handoff requerido
 
-`docs/AGENT-WORKFLOW.md`: un implementador y un revisor independiente, despues del PASS de la 0112. Migracion a PROD
+`docs/AGENT-WORKFLOW.md`: un implementador y un revisor independiente, despues del PASS de la 0136. Migracion a PROD
 con OK del owner.
 
 ## Abierto

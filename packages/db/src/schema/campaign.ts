@@ -97,7 +97,7 @@ export const campaigns = core.table(
     welcomeReminderDays: integer("welcome_reminder_days"),
     welcomeMonthlyCap: integer("welcome_monthly_cap"),
     welcomeRedeemFrom: text("welcome_redeem_from"),
-    // Spec 0112 / ADR 0104: «Oferta cruzada» — present exactly in `cross`.
+    // Spec 0136 / ADR 0104: «Oferta cruzada» — present exactly in `cross`.
     crossAudience: text("cross_audience"),
     crossValidDays: integer("cross_valid_days"),
     crossMonthlyCap: integer("cross_monthly_cap"),
@@ -118,7 +118,7 @@ export const campaigns = core.table(
   (table) => [
     check("core_campaign_kind_check", sql`${table.kind} in ('proximity')`),
     // Spec 0107: «Bienvenida» goes with NO channel (it is issued when the pass is
-    // installed), and so do «Oferta cruzada» and «Horas valle» (specs 0112/0113: their only
+    // installed), and so do «Oferta cruzada» and «Horas valle» (specs 0136/0113: their only
     // channel is «Mis beneficios»); every other campaign with at least one.
     check(
       "core_campaign_channel_check",
@@ -157,7 +157,7 @@ export const campaigns = core.table(
       sql`${table.couponMaxRedemptions} is null or ${table.couponMaxRedemptions} >= 1`,
     ),
     // The coupon is all or nothing (see table comment). «Bienvenida», «Oferta cruzada» and
-    // «Horas valle» (specs 0107/0112/0113) have label and cost and NEVER a redemption cap:
+    // «Horas valle» (specs 0107/0136/0113) have label and cost and NEVER a redemption cap:
     // their brake is the monthly cap.
     check(
       "core_campaign_coupon_all_or_nothing_check",

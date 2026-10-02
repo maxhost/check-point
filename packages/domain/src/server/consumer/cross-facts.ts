@@ -14,7 +14,7 @@ import { requireDate, toDate } from "../marketing/driver-values";
 import type { CouponKind, DiscountUnit } from "../marketing/reward-input";
 
 /**
- * THE CONSUMER'S FACTS for «Oferta cruzada» (spec 0112): where they are, their memberships
+ * THE CONSUMER'S FACTS for «Oferta cruzada» (spec 0136): where they are, their memberships
  * and the cross coupons they already claimed. Read for ONE consumer —the session's— and
  * decided by `decideCrossOffer` (`marketing/cross-rules.ts`) — and `parseGeo`, the GPS of
  * the request (O4: never stored). Apart from `marketing/cross-store.ts` (the campaign's

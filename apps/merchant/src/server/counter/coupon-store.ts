@@ -91,7 +91,7 @@ export async function readCouponByRequest(
  *  2. Idempotency, under the lock and BEFORE any business guard.
  *  3. Decide with the PURE function over the LOCKED rows and a `count` taken under the
  *     same lock.
- *  3a. Spec 0112: the MEMBERSHIP of the redemption is the coupon's, or —a cross coupon
+ *  3a. Spec 0136: the MEMBERSHIP of the redemption is the coupon's, or —a cross coupon
  *     claimed by a non-member— the consumer's membership in this business, read here (the
  *     scan auto-enrols, ADR 0033). None at all → 409 `not_enrolled`. The coupon is not
  *     rewritten.
@@ -197,7 +197,7 @@ export async function persistCouponRedemption(input: {
     if (!decision.ok)
       throw new CounterError(decision.status, decision.code, decision.message);
 
-    // (3a) Spec 0112: whose membership this redemption is.
+    // (3a) Spec 0136: whose membership this redemption is.
     const membershipId =
       coupon.membershipId ??
       (await enrolledMembership(tx, coupon.consumerId, input.businessId));

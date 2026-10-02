@@ -31,8 +31,8 @@ import {
 import { type ValleyOffer, listValleyOffers } from "./valley-offers";
 
 /**
- * «MIS BENEFICIOS» — THE CROSS OFFERS (spec 0112 / ADR 0104; contract C1 and C2 of
- * `0112-contratos-de-api.md`). The consumer comes ONLY from the session: `consumerId` is the
+ * «MIS BENEFICIOS» — THE CROSS OFFERS (spec 0136 / ADR 0104; contract C1 and C2 of
+ * `0136-contratos-de-api.md`). The consumer comes ONLY from the session: `consumerId` is the
  * isolation, never a request field.
  *
  *  - `listCrossOffers` (C1) READS: it never issues a coupon (orchestrator's O1 — the monthly

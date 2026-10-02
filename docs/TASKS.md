@@ -368,7 +368,7 @@ archivos), borrando sus demos; merchant sigue sirviendo todo (sin trafico a cons
 NO se suman features del cliente.
 
 **Hecho y verificado hoy (todo en `main` = `563d817`):**
-- 0112 oferta cruzada y 0113 horas valle: EN PROD (migraciones 0057/0058 por `run_sql_transaction` con OK del owner,
+- 0136 oferta cruzada y 0113 horas valle: EN PROD (migraciones 0057/0058 por `run_sql_transaction` con OK del owner,
   PROD == rama `ci-integration` por md5 de constraints/columnas/indices). Esperan QA del owner con la UI de GPT.
 - 0114 un subdominio por audiencia (ADR 0106): EN PROD (`57164f3`). 0115 `packages/db`: EN PROD (`563d817`, PASS
   `385e587`; deploys merchant y public `success`; `www/` 200, `www/api/health` 200, `business./api/health` 200,
@@ -416,18 +416,18 @@ en el punto correcto. Microfrontends descartado por plan (Hobby: 2 proyectos). *
 `@staff.invalid` no). **Medido:** DNS en Namecheap; `business` y `my` ya resuelven a `216.198.79.1`. **Owner, ahora:**
 agregar `business.`/`my.` al proyecto merchant (sin env todavia). **Sigue:** handoff del implementador → gates →
 revisor → push → runbook de la spec 0114 (el owner) → verificacion PROD por curl.
-**ESTADO (2026-09-30, cierre): 0112 Y 0113 EN PROD, ESPERAN QA DEL OWNER.** 0113 implementada (`cbbb037`+`95c467d`,
+**ESTADO (2026-09-30, cierre): 0136 Y 0113 EN PROD, ESPERAN QA DEL OWNER.** 0113 implementada (`cbbb037`+`95c467d`,
 bitacora M1–M9 rojas `871ffd5`; revisor PASS `48aa02e`, 5 re-mediciones rojas) + decision del owner (valle NO bloquea la
 Bienvenida; `origin` del valle = `"cross"`) con oraculo O-M11 medido (`d353664`, contrato H5). Migracion `0058` aplicada a
 PROD con OK del owner (32 sentencias generadas del archivo); PROD == `ci-integration` en md5 de constraints, columnas
 (con defaults) e indices de las 7 tablas tocadas; 59 migraciones en las dos. Push `95c6c63..d353664`; deploy Vercel de
 `d353664` = `success`; `/api/health` 200, `cross-offers` y `marketing/valley/locations` 401 sin sesion. **UI:** la
-hace el owner (GPT) con `specs/0112-contratos-de-api.md` y `specs/0113-contratos-de-api.md`; la 0113 toco 6 lineas de
+hace el owner (GPT) con `specs/0136-contratos-de-api.md` y `specs/0113-contratos-de-api.md`; la 0113 toco 6 lineas de
 tipos en `app/backoffice/marketing/{marketing-types,reward-labels,reward-draft}.ts` (autorizadas, para que compile:
 `CouponKind` suma `"custom"`) — GPT tiene que saberlo al mergear. **Sigue:** QA del owner de las dos (cruzada: activar,
 ver desde un cliente de otro rubro cerca, reclamar, canjear; valle: horario con cortado, franja propia que incluya la
 hora, activar, ver/reclamar dentro de la franja, no verla fuera). Despues: el arbitro del orden (ADR 0103 §6) o la 0110.
-**ESTADO (2026-09-30): 0112 EN PROD. 0113 (horas valle) SE ESTA IMPLEMENTANDO en este arbol** (subagente
+**ESTADO (2026-09-30): 0136 EN PROD. 0113 (horas valle) SE ESTA IMPLEMENTANDO en este arbol** (subagente
 `implementador`, despachado con OK del owner; `ListAgents` antes de tocar nada; sus `MUTATION` son suyas). **Hecho y
 verificado:** migracion `0057` aplicada a PROD por `run_sql_transaction` con OK del owner (22 sentencias generadas
 del archivo; fila en `drizzle.__drizzle_migrations` con hash sha256 del .sql, metodo validado reproduciendo el hash
@@ -435,27 +435,27 @@ de la 0056); PROD == rama `ci-integration` en md5 de constraints (88), columnas 
 `campaign_coupon`. Push `3b5c72e..95c6c63` a `main`; deploy de Vercel de `95c6c63` = `success`; `/api/health` 200,
 `/api/public/consumer/cross-offers` 401 sin sesion. **Owner:** el recordatorio que cuenta un cupon cruzado como
 «cupon nuevo» «esta bien asi». **Sigue:** handoff del implementador de la 0113 → gates → revisor independiente →
-migracion `0058` (OK del owner) → push. QA de la 0112 cuando GPT tenga la UI de Marketing.
-**ESTADO (2026-09-29, cierre): 0112 IMPLEMENTADA con PASS del revisor** (`bd4f833` implementacion, `91c9991`
+migracion `0058` (OK del owner) → push. QA de la 0136 cuando GPT tenga la UI de Marketing.
+**ESTADO (2026-09-29, cierre): 0136 IMPLEMENTADA con PASS del revisor** (`bd4f833` implementacion, `91c9991`
 bitacora M1–M9 rojas, revisor `fbae56b`: 5 re-mediciones rojas + hallazgo R-M10 sin oraculo → caso nuevo del orquestador
 en `c234b3d`, mutado: ROJO, revertido). Gates del orquestador sobre `c234b3d`: typecheck/lint/test/format 0. **SIN PUSH;
-migracion `0057` NO esta en PROD (necesita OK del owner).** **0113 (horas valle) re-medida contra la 0112** (commit
+migracion `0057` NO esta en PROD (necesita OK del owner).** **0113 (horas valle) re-medida contra la 0136** (commit
 siguiente a `c234b3d`): lista para despachar. **Owner:** la tarjeta «Oferta cruzada» de Marketing la adapta el owner
 (GPT) en su UI — `template-draft.ts:147-163` manda `channels` a toda plantilla no-welcome. **Hallazgo a decidir
 (revisor, verificado):** el recordatorio de la 0111 cuenta un cupon cruzado reclamado como «cupon nuevo»
 (`wallet/reminder-store.ts:97-102` lee todos los `campaign_coupon`); texto generico, sin nombrar comercio.
 Elecciones del implementador informadas (membresia mas reciente si hay varias, opt-out de cualquier membresia).
 Historial de esta sesion abajo:
-**ESTADO (2026-09-29, noche): la 0112 SE ESTA IMPLEMENTANDO** — un subagente `implementador` despachado con OK
+**ESTADO (2026-09-29, noche): la 0136 SE ESTA IMPLEMENTANDO** — un subagente `implementador` despachado con OK
 del owner trabaja en ESTE arbol (`motor`): hay codigo suyo SIN commitear en `server/marketing/{templates,template-input,template-store,cross-input,cross-rules}.ts`,
 `server/schema/campaign*.ts`, `server/counter/coupon-store.ts` (typecheck/test rojos = trabajo a medias, no un bug:
 NO tocarlos; `ListAgents` primero). Si la sesion se cae: auditar el arbol (`git status`, bitacora de mutaciones al
-final de este archivo, `rg MUTATION apps/merchant/src`) antes de seguir. Despues: revisor independiente de la 0112,
-y recien con su PASS se despacha la **0113 (horas valle, cerrada, `5a68f72`, ADR 0105)**, re-medida contra la 0112
+final de este archivo, `rg MUTATION apps/merchant/src`) antes de seguir. Despues: revisor independiente de la 0136,
+y recien con su PASS se despacha la **0113 (horas valle, cerrada, `5a68f72`, ADR 0105)**, re-medida contra la 0136
 implementada. **Horas valle — owner (2026-09-29, AskUserQuestion):** plantilla propia; filtro igual que la cruzada;
 cupon vale solo la franja del dia; horario por local con cortado. Elecciones V1–V9 del orquestador, informadas.
-**0112** (`specs/0112-mis-beneficios-y-oferta-cruzada.md`, **cerrada**, commit
-`1a9ab89`; ADR 0104; contrato `specs/0112-contratos-de-api.md`) — un implementador + un revisor (AGENT-WORKFLOW),
+**0136** (`specs/0136-mis-beneficios-y-oferta-cruzada.md`, **cerrada**, commit
+`1a9ab89`; ADR 0104; contrato `specs/0136-contratos-de-api.md`) — un implementador + un revisor (AGENT-WORKFLOW),
 9 mutaciones. **El owner puede objetar las elecciones O1–O8 de la spec** (reclamo explicito, vigencia desde
 el reclamo, 100 m = «parado», GPS no se guarda, «ultimo escaneo» = order/reward/coupon redemption, orden por
 distancia, opt-out oculta la cruzada, una por persona) — se le informaron al cerrar. **Owner (2026-09-29,
@@ -7264,11 +7264,11 @@ SET variables_allowlist = '["business_legal_name", "program_name", "program_unit
 WHERE jurisdiction_scope IN ('default', 'EC');
 ```
 
-## Bitacora de mutaciones — spec 0112, implementador (2026-09-29)
+## Bitacora de mutaciones — spec 0136, implementador (2026-09-29)
 
 Arbol: rama `motor`, implementacion commiteada en `bd4f833` (los 4 archivos mutados estan LIMPIOS en ese commit,
 asi que `git checkout <archivo>` restaura sin perder trabajo). Copias limpias tambien en el scratchpad de la sesion
-(`…/scratchpad/limpios-0112/`). Restauracion de emergencia:
+(`…/scratchpad/limpios-0136/`). Restauracion de emergencia:
 
 ```
 git checkout bd4f833 -- apps/merchant/src/server/marketing/cross-rules.ts apps/merchant/src/server/consumer/cross-offers.ts apps/merchant/src/server/counter/coupon-store.ts apps/merchant/src/server/marketing/welcome-issue.ts
@@ -7286,7 +7286,7 @@ git checkout bd4f833 -- apps/merchant/src/server/marketing/cross-rules.ts apps/m
 | M8 | `counter/coupon-store.ts` | `2da2c8a007cbda2b46c33f8678f07a2dd77d1ff6` | la membresia del canje `coupon.membershipId ?? …`. Hermano: ninguno | unit entera + neon `consumer-cross-counter` y los 4 `counter-coupon*` | **ROJO** (2/26 neon, los dos de `consumer-cross-counter`): «ORACULO DE M8» → `Failed query: insert into "core"."coupon_redemption" …` con `code: '23502'` (`membership_id` NOT NULL, la fila tiene `null`), y el de `not_enrolled` → `expected Error: Failed query … to match object { status: 409, code: 'not_enrolled' }`. Los 4 `counter-coupon*` (24 tests) verdes: sus cupones traen membresia. Unit 0 rojos. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
 | M9 | `marketing/welcome-issue.ts` | `59758def3acd99b6b140a00e5379bc4415c6e629` | el CABLEADO de `crossCouponFromBusiness` (se borra la llamada). Hermano: la regla pura tiene su test aparte | unit entera + neon `consumer-cross-counter` y los 6 `marketing-welcome-*` | **ROJO** (1/25 neon): «ORACULO DE M9» → `expected [ …(2) ] to deeply equal [ Array(1) ]` (el que vino por la cruzada recibe TAMBIEN la Bienvenida; el control la recibe en las dos versiones). Unit 0 rojos: el test puro de `came_by_cross` no ve el cableado (§2.0-quater), como se esperaba. Revertida: `diff` contra la copia = identico, shasum limpio confirmado |
 
-## Revision independiente — spec 0112 (2026-09-29)
+## Revision independiente — spec 0136 (2026-09-29)
 
 Revisor independiente sobre `bd4f833` (rama `motor`). Presupuesto: 5 re-mediciones (M6 x3 corridas, M8, M9, M1 + 1
 libre), clase de error plausible. Restauracion de emergencia (los 4 archivos estan limpios en `bd4f833`):
@@ -7305,7 +7305,7 @@ codigo pero no tiene oraculo; falta un caso «`disable` → C1 no la lista y C2 
 `bd4f833` (Node 24): typecheck, lint, test (2118 passed / 751 skipped), format:check y `TURBO_FORCE=1 pnpm run build`
 (0 cached), exit 0. Neon limpio: claim+counter+offers 18/18. Arbol sin mutaciones al cerrar.
 
-## Oraculo de R-M10 — spec 0112, orquestador (2026-09-29)
+## Oraculo de R-M10 — spec 0136, orquestador (2026-09-29)
 
 Caso nuevo en `consumer-cross-claim.neon.integration.test.ts` («a cross offer the business turned off…»): verde en
 limpio (8/8). Mutacion O-M10: `apps/merchant/src/server/marketing/cross-store.ts`, shasum limpio
@@ -7363,7 +7363,7 @@ Al cerrar: los 5 archivos con su shasum limpio, `git status` sin cambios en `app
 
 **Veredicto del revisor: PASS.** Gates de root en Node 24: typecheck, lint, test (2175 pasan, 772 saltados), format:check
 y `TURBO_FORCE=1 build`, todos verdes. Integraciones con `tools/neon-test.sh`, sobre la rama de CI migrada hasta la 0058:
-9 suites (valle + cruzada 0112), 43/43. La `0057` sigue byte-identica a `95c6c63` (sha256 `c54364d3…d1b4`). Hallazgos a
+9 suites (valle + cruzada 0136), 43/43. La `0057` sigue byte-identica a `95c6c63` (sha256 `c54364d3…d1b4`). Hallazgos a
 decidir, ninguno bloqueante: el contrato H4/H2/H1 no escribe `validDays: null` en la valle, `PUT windows → 200 {location}`,
 `422 invalid_input` para un id que no es UUID, ni el `400 fields.locationId` de una valle sin local; y el cupon valle sale
 con `origin: "cross"` en E3.
