@@ -4328,6 +4328,7 @@ input.cp-number-input::-webkit-outer-spin-button {
 .counter-panel {
   padding: 20px;
   border-radius: 22px;
+  color: #10251d;
   background: #fff;
   box-shadow: 0 12px 32px #16302014;
   margin-top: 16px;
@@ -4382,6 +4383,7 @@ input.cp-number-input::-webkit-outer-spin-button {
 .counter-consumer h2 {
   margin: 0;
   font-size: 22px;
+  color: #10251d;
 }
 .counter-badge {
   padding: 4px 10px;
@@ -4469,6 +4471,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   border-radius: 10px;
   border: 1px solid #cfdbd3;
   background: #fff;
+  color: #176548;
   font-size: 20px;
   line-height: 1;
 }
@@ -4588,6 +4591,9 @@ input.cp-number-input::-webkit-outer-spin-button {
   align-items: center;
   text-align: center;
 }
+.counter-done h2 {
+  color: #10251d;
+}
 .counter-check {
   width: 64px;
   height: 64px;
@@ -4688,6 +4694,8 @@ input.cp-number-input::-webkit-outer-spin-button {
 .counter-product .counter-qty output {
   min-width: 22px;
   text-align: center;
+  color: #10251d;
+  font-weight: 800;
 }
 .counter-product .counter-line-price {
   padding: 8px;
@@ -4757,6 +4765,7 @@ input.cp-number-input::-webkit-outer-spin-button {
   width: min(100%, 560px);
   transform: translateX(-50%);
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  color: #10251d;
   background: #fff;
   border-top: 1px solid #dce8df;
   box-shadow: 0 -8px 24px #16302018;
@@ -4770,6 +4779,7 @@ input.cp-number-input::-webkit-outer-spin-button {
 .counter-summary summary {
   min-height: 44px;
   align-items: center;
+  color: #10251d;
 }
 .counter-summary summary small {
   white-space: nowrap;
@@ -4784,6 +4794,7 @@ input.cp-number-input::-webkit-outer-spin-button {
 }
 .counter-summary li {
   padding: 4px 0;
+  color: #10251d;
 }
 .counter-summary p {
   font-size: 12px;
