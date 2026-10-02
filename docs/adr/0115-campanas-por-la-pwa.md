@@ -128,8 +128,10 @@ Tambien detectar si la PWA esta instalada sin notificaciones para incentivar des
 - La UI de las plantillas apagadas es de GPT (zona pantallas, ADR 0114). Este lado entrega el filtro en la API y
   el contrato.
 
-## Abierto
+## Cerrado despues (owner, 2026-10-02)
 
-- Si la pausa de las campañas vivas apagadas se le avisa al merchant (y como). No preguntado.
-- Que pasa con los `pass_placement` ya escritos en los pases emitidos cuando el paso 4 deja de correr (el pase
-  sigue mostrando la ultima foto hasta que algo lo reescriba). Hallazgo a decidir en la spec 1.
+- ¿Se le avisa al merchant la pausa de sus campañas apagadas? **«no»**.
+- ¿Que pasa con los `pass_placement` ya escritos en pases emitidos cuando el paso 4 deja de correr? **«no hay
+  usuarios reales, entonces no importa»** — no se limpian ni se reescriben.
+- ¿El compositor libre (campaña propia sin plantilla, `template_key` nulo) tambien se apaga? **«Sí, se apaga»**:
+  igual que las plantillas de §1 (la API no deja crearla ni activarla, el tick no la corre, las vivas se pausan).
