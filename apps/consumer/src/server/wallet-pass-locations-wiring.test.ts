@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 import type { PassLocation } from "@mi-pasaporte/domain/server/wallet/pass-locations";
+import { PASS_BRAND_UPDATED_AT } from "@mi-pasaporte/domain/server/wallet/pass-version";
 
 /**
  * The CABLEADO of spec 0065 phase A4: the doors do not reach the pass by editing
@@ -86,17 +87,20 @@ vi.mock("@mi-pasaporte/domain/server/wallet/passkit", () => ({
     lastName: "Pérez",
     webViewToken: "WVT",
     latestMessage: "Se acreditó 1 sello 🎉",
-    messageUpdatedAt: null,
+    messageUpdatedAt: new Date("2026-09-01T00:00:00Z"),
     authToken: "auth-token-raw",
   }),
 }));
 
 /** A `NextRequest` stand-in: a real `Request` plus the two Next-only members these
  * routes read (`cookies` for the consumer session, `nextUrl` for the pass origin). */
-function request(url: string): NextRequest {
+function request(
+  url: string,
+  headers: Record<string, string> = {},
+): NextRequest {
   return Object.assign(
     new Request(url, {
-      headers: { authorization: "ApplePass auth-token-raw" },
+      headers: { authorization: "ApplePass auth-token-raw", ...headers },
     }),
     {
       cookies: { get: () => ({ value: "consumer-session-cookie" }) },
@@ -123,6 +127,33 @@ describe("the three emission call-sites fill `passLocations` from pass_placement
     expect(readerCalls).toEqual(["consumer-serve-id"]);
     expect(appleInputs).toHaveLength(1);
     expect(appleInputs[0].passLocations).toEqual(DOORS);
+  });
+
+  it("serves the new Apple brand to an installed pass with an older Last-Modified", async () => {
+    const { GET } =
+      await import("../app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route");
+    const url = "https://app.test/api/public/wallet/passkit/v1/passes/pt/s1";
+    const params = {
+      params: Promise.resolve({ serialNumber: "serial-served" }),
+    };
+    const old = await GET(
+      request(url, { "if-modified-since": "Tue, 01 Sep 2026 00:00:00 GMT" }),
+      params,
+    );
+    expect(old.status).toBe(200);
+    expect(old.headers.get("last-modified")).toBe(
+      PASS_BRAND_UPDATED_AT.toUTCString(),
+    );
+    expect(appleInputs).toHaveLength(1);
+
+    const fresh = await GET(
+      request(url, {
+        "if-modified-since": PASS_BRAND_UPDATED_AT.toUTCString(),
+      }),
+      params,
+    );
+    expect(fresh.status).toBe(304);
+    expect(appleInputs).toHaveLength(1);
   });
 
   it("apple.pkpass (first install) — by the session's consumer", async () => {

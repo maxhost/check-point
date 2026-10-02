@@ -87,6 +87,8 @@ Pendiente:
       cert bajo el nuevo Team ID y actualizar los 5 secretos (mismo proceso). Material de firma
       local vive en `.secrets-apple/` (gitignoreado + pre-commit hook).
 - [ ] Arte final del pase (logo/icon, colores, opcional `strip`) — tarea futura de diseño.
+- [ ] Verificar en iPhone que el cambio de nombre «Mi CheckPass» → «CheckPass Club»
+      llega a un pase ya instalado tras el despliegue y un push PassKit vacío.
 
 No hay trabajo de código: `apps/merchant/src/server/wallet/apple.ts` ya construye y firma el
 `.pkpass`; solo cambia el firmante según los secretos. El **canal de push/actualización**

@@ -27,8 +27,8 @@ La credencial debe expresar **«soy parte de una red local»** con un signo reco
 
 ### Vista del pase
 
-1. **Encabezado:** logo circular con la «C» de CheckPass Club; `issuerName = "CheckPass Club"` y `programName = "Mi CheckPass"`. Esta combinación evita el texto repetido actual. Se usa el encabezado estándar, no `wideProgramLogo`, para preservar el símbolo circular en la lista y la vista abierta.
-2. **Campo principal:** una sola fila `oneItem` que referencia `object.accountName`, con etiqueta `accountNameLabel = "Miembro"`. Se conserva el nombre completo recibido del perfil; si está vacío, el fallback actual del constructor sigue siendo «Mi CheckPass» hasta que se resuelva en la cuenta. No se muestra un nivel de membresía inventado.
+1. **Encabezado:** logo circular con la «C» de CheckPass Club; `issuerName = "CheckPass Club"` y `programName = "CheckPass Club"`, según el cambio de nombre pedido por el owner el 2026-10-01. Google decide si presenta ambos textos en la misma vista; revisar el resultado en Android. Se usa el encabezado estándar, no `wideProgramLogo`, para preservar el símbolo circular en la lista y la vista abierta.
+2. **Campo principal:** una sola fila `oneItem` que referencia `object.accountName`, con etiqueta `accountNameLabel = "Miembro"`. Se conserva el nombre completo recibido del perfil; si está vacío, el fallback del constructor es «CheckPass Club» hasta que se resuelva en la cuenta. No se muestra un nivel de membresía inventado.
 3. **QR:** permanece generado por Google desde `object.barcode.type = QR_CODE` y `object.barcode.value = qrToken`. El valor, `accountId` y `serialNumber` no se convierten en texto decorativo. No se agrega `barcode.alternateText`: Google lo reserva para un equivalente legible del valor que sirva cuando el QR no pueda escanearse, y una frase de marca no cumpliría esa función. El identificador opaco puede seguir apareciendo debajo del QR; se registra su aspecto en QA, sin alterar el contrato funcional. No se coloca ilustración ni imagen sobre el QR.
 4. **Hero:** ilustración abstracta de dos trazos anchos que se entrecruzan; evoca personas, recorridos y comercios conectados. Sin palabra, frase, logo, número, mapa real ni iconos de pago dentro de la imagen. Debe sentirse distintiva vista a tamaño de teléfono y dejar aire en los extremos. La imagen usa el área que Google asigna bajo el contenido principal; el render exacto no se reproduce en CSS propio.
 5. **Detalles:** se conserva el enlace «Ver mis programas», las novedades y los turnos cercanos existentes. No se agrega una fila «Comunidad / Local» de la maqueta: implicaría otro `textModulesData` permanente cuando el objeto ya usa módulos para novedades y ubicaciones. La pertenencia se comunica mediante nombre, arte y contexto del producto.
@@ -59,7 +59,7 @@ Forma objetivo de los campos nuevos o cambiados (sin credenciales ni IDs):
 ```json
 {
   "issuerName": "CheckPass Club",
-  "programName": "Mi CheckPass",
+  "programName": "CheckPass Club",
   "programLogo": { "sourceUri": { "uri": "https://my.checkpass.club/wallet-logo-trama-v1.png" } },
   "heroImage": { "sourceUri": { "uri": "https://my.checkpass.club/wallet-trama-hero-v1.png" } },
   "hexBackgroundColor": "#0f2a3a",
@@ -134,7 +134,7 @@ devolvió `reviewStatus=approved`. El QR de prueba era ficticio; la prueba funci
 con un pase real existente y otro nuevo sigue pendiente.
 
 - [ ] Los PNG finales cumplen dimensiones, margen seguro y ausencia de texto incrustado; el hero expresa dos trazos entrelazados sin perder legibilidad al reducirse.
-- [ ] La clase de prueba muestra «CheckPass Club»/«Mi CheckPass», logo circular, fondo azul y trama; lista con nombre de programa y miembro. Se registra si Google muestra el identificador opaco junto al QR.
+- [ ] La clase de prueba muestra «CheckPass Club», logo circular, fondo azul y trama; lista con nombre de programa y miembro. Se registra si Google muestra el identificador opaco junto al QR.
 - [ ] El pase abierto muestra nombre de miembro, QR operativo y hero; el QR escanea el mismo `qrToken` que el pase previo.
 - [ ] El enlace «Ver mis programas», última novedad y turnos cercanos continúan accesibles; las notificaciones existentes no cambian de contrato.
 - [ ] El provisionador deja intactos `callbackOptions` y cualquier campo de clase ajeno a esta spec, es idempotente y no revela secretos en salida.

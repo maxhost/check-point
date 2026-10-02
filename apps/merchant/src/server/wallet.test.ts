@@ -57,6 +57,9 @@ describe("apple .pkpass builder", () => {
     const pass = JSON.parse(Buffer.from(files["pass.json"]).toString());
     expect(pass.formatVersion).toBe(1);
     expect(pass.serialNumber).toBe(input.serialNumber);
+    expect(pass.organizationName).toBe("CheckPass Club");
+    expect(pass.description).toBe("CheckPass Club");
+    expect(pass.logoText).toBe("CheckPass Club");
     expect(pass.barcode.format).toBe("PKBarcodeFormatQR");
     expect(pass.barcode.message).toBe(QR);
     expect(pass.barcodes[0].message).toBe(QR);

@@ -8,6 +8,7 @@ import { getWalletProvider } from "@mi-pasaporte/domain/server/wallet/provider";
 import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
 import { passLocationsForConsumer } from "@mi-pasaporte/domain/server/wallet/pass-locations-store";
 import { consumerOriginOr } from "@mi-pasaporte/domain/server/hosts";
+import { passVersionUpdatedAt } from "@mi-pasaporte/domain/server/wallet/pass-version";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,8 +16,8 @@ export const runtime = "nodejs";
 type Params = { params: Promise<{ serialNumber: string }> };
 
 /** PassKit "get latest version of a pass" (spec 0033): serves the `.pkpass` with the
- * current "Última novedad" field. Authorized with the pass token; `Last-Modified` =
- * `message_updated_at`; `304` when `If-Modified-Since` is at/after that tag. */
+ * current "Última novedad" and brand. Authorized with the pass token; `Last-Modified`
+ * covers both content and design changes, so an old installed pass is not given 304. */
 export async function GET(request: NextRequest, { params }: Params) {
   const { serialNumber } = await params;
   if (!passKitLimiter.check(serialNumber)) {
@@ -39,15 +40,15 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   const data = await passServeData(serialNumber);
   if (!data) return new NextResponse(null, { status: 404 });
+  const updatedAt = passVersionUpdatedAt(data.messageUpdatedAt);
 
   // Conditional GET: 304 when the cached copy is at/after the current tag.
   const ims = request.headers.get("if-modified-since");
-  if (ims && data.messageUpdatedAt) {
+  if (ims) {
     const since = Date.parse(ims);
     if (
       Number.isFinite(since) &&
-      Math.floor(data.messageUpdatedAt.getTime() / 1000) <=
-        Math.floor(since / 1000)
+      Math.floor(updatedAt.getTime() / 1000) <= Math.floor(since / 1000)
     ) {
       return new NextResponse(null, { status: 304 });
     }
@@ -81,8 +82,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     "Content-Type": mime,
     "Cache-Control": "no-store",
   };
-  if (data.messageUpdatedAt)
-    headers["Last-Modified"] = data.messageUpdatedAt.toUTCString();
+  headers["Last-Modified"] = updatedAt.toUTCString();
 
   return new NextResponse(new Uint8Array(bytes), { status: 200, headers });
 }

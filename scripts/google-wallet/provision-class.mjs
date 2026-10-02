@@ -82,7 +82,7 @@ export function classBody(
   return {
     id: `${issuerId}.${suffix}`,
     issuerName: "CheckPass Club",
-    programName: "Mi CheckPass",
+    programName: "CheckPass Club",
     programLogo: image(logoUrl),
     heroImage: image(heroUrl),
     reviewStatus: "UNDER_REVIEW",

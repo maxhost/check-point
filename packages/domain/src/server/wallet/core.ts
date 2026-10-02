@@ -13,8 +13,8 @@ export type WalletProviderId = "apple" | "google";
 
 /** Consumer-facing identity pass title (ADR 0033). */
 export const WALLET_BRAND = {
-  organizationName: "Mi CheckPass",
-  description: "Mi CheckPass",
+  organizationName: "CheckPass Club",
+  description: "CheckPass Club",
   /** Deep-teal foreground/background/label used by both Apple and Google passes. */
   backgroundColor: "rgb(15, 42, 58)",
   foregroundColor: "rgb(255, 255, 255)",

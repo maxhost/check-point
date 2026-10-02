@@ -7,6 +7,7 @@ import {
   walletPushDevices,
 } from "@mi-pasaporte/db/schema";
 import { hashToken } from "../consumer/core";
+import { passVersionUpdatedAt } from "./pass-version";
 
 /** neon-http returns `{ rows }`; normalize to an array of records. */
 function rowsOf(result: unknown): Record<string, unknown>[] {
@@ -123,10 +124,6 @@ export async function unregisterDevice(opts: {
     );
 }
 
-// A pass issued before this release still has the old display name. Advancing the
-// update tag once makes PassKit fetch the newly branded pass on its next poll.
-const PASS_BRAND_UPDATED_AT = Date.parse("2026-10-01T15:28:00Z");
-
 /** The serials a device holds that changed since `tag` (epoch-ms string), plus the
  * new `lastUpdated` tag. Returns null when nothing changed (route answers `204`). */
 export async function listUpdatedSerials(opts: {
@@ -155,10 +152,7 @@ export async function listUpdatedSerials(opts: {
   let max = 0;
   const serials: string[] = [];
   for (const r of rows) {
-    const t = Math.max(
-      r.messageUpdatedAt?.getTime() ?? 0,
-      PASS_BRAND_UPDATED_AT,
-    );
+    const t = passVersionUpdatedAt(r.messageUpdatedAt).getTime();
     if (since !== null && !(t > since)) continue;
     serials.push(r.serialNumber);
     if (t > max) max = t;

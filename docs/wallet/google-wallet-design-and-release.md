@@ -113,8 +113,8 @@ dura la campaña y cómo vuelve el diseño base; validar el arte en las guías d
 - PNG públicos: `https://my.checkpass.club/wallet-logo-trama-v1.png` y
   `https://my.checkpass.club/wallet-trama-hero-v1.png`.
 - Clase de QA: `<issuerId>.qa_trama_viva_0122`; aspecto aprobado por el owner en Android.
-- Clase real: `3388000000023188934.mipasaporte_identity`; `PATCH` aplicado el
-  2026-10-01. `--inspect` posterior: `issuerName=CheckPass Club`,
+- Clase real: `3388000000023188934.mipasaporte_identity`; primer `PATCH` aplicado el
+  2026-10-01. La lectura posterior de ese primer cambio mostró `issuerName=CheckPass Club`,
   `programName=Mi CheckPass`, URLs Trama viva, fondo `#0f2a3a`, etiqueta `Miembro`,
   plantilla de tarjeta/lista y `reviewStatus=approved`.
 - Antes del cambio: `issuerName=Mi CheckPass`, `programName=Mi CheckPass`, logo
@@ -124,6 +124,23 @@ dura la campaña y cómo vuelve el diseño base; validar el arte en las guías d
   puede desaparecer al limpiar temporales).
 - Pendiente: confirmar publishing access del emisor en Console y QA funcional de
   un pase real existente y uno nuevo. La prueba con QR ficticio no cubre esos casos.
+
+### Ajuste posterior del nombre visible
+
+El 2026-10-01 el owner pidió reemplazar «Mi CheckPass» por «CheckPass Club» en
+Google y Apple Wallet. En Google, `class.programName` se actualiza con el mismo
+provisionador; `class.issuerName` ya decía «CheckPass Club». En Apple, el nombre
+viene de `WALLET_BRAND` en `packages/domain/src/server/wallet/core.ts` y se graba
+en `organizationName`, `description` y `logoText` de cada `.pkpass`.
+
+Google recibe la modificación para todos los objetos de la clase en el `PATCH`.
+Apple necesita desplegar el constructor nuevo y servir un `.pkpass` actualizado.
+El servidor compara la fecha de contenido con la revisión visual declarada en
+`packages/domain/src/server/wallet/pass-version.ts`; la ruta PassKit usa esa misma
+fecha para `Last-Modified` y evitar un `304` del pase antiguo. Para que un iPhone
+instalado consulte pronto la nueva versión, enviar un push PassKit vacío a sus
+dispositivos registrados después del deploy. La actualización mantiene Pass Type ID,
+serial, QR y token. Ver [protocolo de actualización de Apple](https://developer.apple.com/documentation/walletpasses/adding-a-web-service-to-update-passes).
 
 ## Fuentes de Google
 

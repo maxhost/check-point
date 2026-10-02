@@ -15,7 +15,7 @@ test("new class carries Trama viva visuals and the member layout", () => {
   );
   assert.equal(body.id, "issuer.qa_trama");
   assert.equal(body.issuerName, "CheckPass Club");
-  assert.equal(body.programName, "Mi CheckPass");
+  assert.equal(body.programName, "CheckPass Club");
   assert.equal(body.programLogo.sourceUri.uri, "https://example.com/logo.png");
   assert.equal(body.heroImage.sourceUri.uri, "https://example.com/hero.png");
   assert.equal(body.hexBackgroundColor, "#0f2a3a");
@@ -46,7 +46,7 @@ test("patch preserves callback, messages, locations and unknown template fields"
   const current = {
     id: desired.id,
     issuerName: "Mi CheckPass",
-    programName: desired.programName,
+    programName: "Mi CheckPass",
     programLogo: {
       sourceUri: { uri: "https://example.com/old.png", description: "old" },
       contentDescription: { defaultValue: { value: "logo" } },
@@ -67,6 +67,7 @@ test("patch preserves callback, messages, locations and unknown template fields"
   const patch = classPatch(current, desired);
   assert.equal(patch.reviewStatus, "UNDER_REVIEW");
   assert.equal(patch.issuerName, "CheckPass Club");
+  assert.equal(patch.programName, "CheckPass Club");
   assert.equal(patch.programLogo.contentDescription.defaultValue.value, "logo");
   assert.equal(patch.programLogo.sourceUri.description, "old");
   assert.equal(
