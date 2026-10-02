@@ -1,8 +1,8 @@
 # Wallet — checklist de go-live (demo → producción)
 
-Runbook operativo del pase de Wallet (spec 0029 / ADR 0033; arte Google en spec 0122).
-La guía de diseño, actualización global y futuras variantes está en
-[Google Wallet: diseño y publicación](wallet/google-wallet-design-and-release.md).
+Runbook operativo del pase de Wallet (spec 0029 / ADR 0033; arte Google en spec 0122 y
+arte Apple en spec 0123). Guías de diseño y publicación: [Google](wallet/google-wallet-design-and-release.md)
+y [Apple](wallet/apple-wallet-design-and-release.md).
 
 Estado conocido: Google funcionó en Android real bajo el issuer demo; Apple instaló en iPhone
 real. La spec 0122 aporta los assets y el payload de «Trama viva» para Google. Los PNG,
@@ -12,8 +12,9 @@ acceso de publicación del emisor y QR/enlace reales en un pase viejo y otro nue
 ## Prerrequisito común: marca + arte final
 
 La marca es CheckPass Club. Google usa el logo y hero de «Trama viva» de
-`apps/consumer/public/`; Apple conserva su diseño actual hasta una spec propia. Google
-revisa el branding para dar acceso de publicación.
+`apps/consumer/public/`. El arte Apple de la [spec 0123](specs/0123-pase-apple-wallet-trama-viva.md)
+está implementado localmente; producción conserva el diseño anterior hasta el QA
+de iPhone y el despliegue. Google revisa el branding para dar acceso de publicación.
 
 ⚠️ **URL del logo estable:** el `programLogo`/imágenes deben servirse desde un **dominio
 definitivo**, no un dominio de deploy efímero (`*-pied.vercel.app`), para que no se rompan
@@ -86,13 +87,17 @@ Pendiente:
 - [ ] **Pasaje cuenta personal → organización:** al aprobarse, **regenerar** Pass Type ID +
       cert bajo el nuevo Team ID y actualizar los 5 secretos (mismo proceso). Material de firma
       local vive en `.secrets-apple/` (gitignoreado + pre-commit hook).
-- [ ] Arte final del pase (logo/icon, colores, opcional `strip`) — tarea futura de diseño.
+- [x] Arte final del pase (logo/icon, colores, `strip`) — [spec 0123](specs/0123-pase-apple-wallet-trama-viva.md) aprobada e implementada localmente.
+- [ ] Validar la presencia del `strip` en iOS reciente antes de publicar; después probar un pase nuevo y el refresco de uno instalado.
 - [ ] Verificar en iPhone que el cambio de nombre «Mi CheckPass» → «CheckPass Club»
       llega a un pase ya instalado tras el despliegue y un push PassKit vacío.
 
-No hay trabajo de código: `apps/merchant/src/server/wallet/apple.ts` ya construye y firma el
-`.pkpass`; solo cambia el firmante según los secretos. El **canal de push/actualización**
-del pase (web service PassKit + APNs) es aparte: **spec 0033**.
+El constructor en `packages/domain/src/server/wallet/apple.ts` arma y firma el
+`.pkpass` con el arte de la spec 0123 en el código local. Seguir la
+[guía Apple de diseño y publicación](wallet/apple-wallet-design-and-release.md): el
+QA del `strip` en iPhone y el refresco de pases existentes siguen pendientes. El
+**canal de push/actualización** del pase (web service PassKit + APNs) se definió en
+la **spec 0033**.
 
 ## Resumen de costos
 

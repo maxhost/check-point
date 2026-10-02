@@ -1,5 +1,16 @@
 # TASKS
 
+## ⇥ ESTADO (2026-10-02) — APPLE WALLET 0123: «IPHONE · STRIP VISIBLE» APROBADO; ARTE IMPLEMENTADO LOCALMENTE
+
+El owner eligió la vista «iPhone · strip visible» de Trama viva. La spec 0123 está
+cerrada. El constructor `.pkpass` local incluye icono, logo y `strip` a 1x/2x/3x,
+contacto público y revisión de marca nueva; preserva el QR y las referencias del
+pase. Prueba Wallet, typecheck, lint y build pasan. **No está live:** faltan QA en
+iPhone para confirmar que `strip` aparece en la versión objetivo, despliegue,
+refresco de un pase existente con APNs, y PASS independiente antes de marcar
+`implementada`. [Handoff](handoff-0123-apple-wallet-trama-viva-2026-10-02.md) y
+[guía de publicación](wallet/apple-wallet-design-and-release.md).
+
 ## ⇥ ESTADO (2026-10-01) — GOOGLE WALLET 0122: CLASE REAL TRAMA VIVA ACTUALIZADA Y APPROVED; PUBLICACIÓN GENERAL POR CONFIRMAR
 
 Spec 0122 «Trama viva» aprobada por el owner. `f595842` está pusheado en `main`; ambos PNG

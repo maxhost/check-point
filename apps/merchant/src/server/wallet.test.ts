@@ -44,13 +44,30 @@ describe("apple .pkpass builder", () => {
     const files = unzipSync(new Uint8Array(bytes));
 
     // Archive carries the mandatory members.
+    const imageDimensions: Record<string, [number, number]> = {
+      "icon.png": [38, 38],
+      "icon@2x.png": [76, 76],
+      "icon@3x.png": [114, 114],
+      "logo.png": [50, 50],
+      "logo@2x.png": [100, 100],
+      "logo@3x.png": [150, 150],
+      "strip.png": [375, 144],
+      "strip@2x.png": [750, 288],
+      "strip@3x.png": [1125, 432],
+    };
     for (const name of [
       "pass.json",
       "manifest.json",
       "signature",
-      "icon.png",
+      ...Object.keys(imageDimensions),
     ]) {
       expect(files[name], `missing ${name}`).toBeTruthy();
+    }
+    for (const [name, [width, height]] of Object.entries(imageDimensions)) {
+      const png = Buffer.from(files[name]);
+      expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+      expect(png.readUInt32BE(16), `${name} width`).toBe(width);
+      expect(png.readUInt32BE(20), `${name} height`).toBe(height);
     }
 
     // pass.json is well-formed; barcode carries the qrToken, no PII in altText.
@@ -58,7 +75,7 @@ describe("apple .pkpass builder", () => {
     expect(pass.formatVersion).toBe(1);
     expect(pass.serialNumber).toBe(input.serialNumber);
     expect(pass.organizationName).toBe("CheckPass Club");
-    expect(pass.description).toBe("CheckPass Club");
+    expect(pass.description).toBe("Pase de miembro de CheckPass Club");
     expect(pass.logoText).toBe("CheckPass Club");
     expect(pass.barcode.format).toBe("PKBarcodeFormatQR");
     expect(pass.barcode.message).toBe(QR);
@@ -71,9 +88,17 @@ describe("apple .pkpass builder", () => {
     expect(JSON.stringify(pass.storeCard.backFields)).toContain(
       `${input.origin}/c/${input.webViewToken}`,
     );
+    expect(JSON.stringify(pass.storeCard.backFields)).toContain(
+      "hola@checkpass.club",
+    );
 
     // manifest.json holds the correct sha1 of every non-manifest/signature file.
     const manifest = JSON.parse(Buffer.from(files["manifest.json"]).toString());
+    expect(Object.keys(manifest).sort()).toEqual(
+      Object.keys(files)
+        .filter((name) => name !== "manifest.json" && name !== "signature")
+        .sort(),
+    );
     for (const [name, digest] of Object.entries(manifest)) {
       expect(files[name], `manifest lists absent ${name}`).toBeTruthy();
       const actual = createHash("sha1").update(files[name]).digest("hex");
