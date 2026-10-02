@@ -8,16 +8,15 @@ bloquea el fin del turno si se toco codigo y este archivo quedo viejo.
 Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista
 en pantalla. No "deberia andar". El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, tarde) — 0121 Y 0122 IMPLEMENTADAS; 0123 EN IMPLEMENTACION; TODO LOCAL EN `motor`, SIN PUSH
+## ⇥ ESTADO (2026-10-02, tarde) — 0121, 0122 Y 0123 IMPLEMENTADAS; TODO LOCAL EN `motor`, SIN PUSH
 
 - **0121** (`seedConsumer` sin telefono, #58 de PARQUEADO): `68a1541`, revisor **PASS** (M1 roja por
   `consumer_account_phone_unique`). La fila de M1 que quedo en `ci-integration` (`+593999999999`) se borro por SQL
   con OK del owner (guard de host contra `DATABASE_URL`; re-consulta vacia).
 - **0122** (2 suites de marketing esperaban voseo que su seed ya no siembra): `4366430`; el orquestador re-corrio las
   2 suites con `neon-test.sh` → verdes.
-- **0123** (3 plantillas por defecto a tuteo, texto aprobado por el owner): spec `7330cb2`. El implementador esta
-  trabajando: el diff en `templates.ts` y 4 tests esta en el arbol **sin commitear** (es suyo, no tocar). Al volver:
-  revision liviana (diff + `neon-test.sh` de `marketing-templates` y `-race`), marcar `implementada` en spec e INDEX.
+- **0123** (3 plantillas por defecto a tuteo, texto aprobado por el owner): `00fd485`; el orquestador re-corrio
+  `marketing-templates` y `-race` (verdes) y los 2 unit de plantillas. Las campañas YA creadas conservan el voseo.
 - **Siguen rojas en HEAD** 4 suites Neon sin spec (preexistentes, no por telefono): `marketing-backoffice-pages`
   (`permissions` undefined), `wallet-push` y `marketing-refresh` (`passesUpdatedSince` no null), `marketing-valley`
   (`detection: null` / timeout). Reportado por el implementador de la 0121; el orquestador no las re-corrio.

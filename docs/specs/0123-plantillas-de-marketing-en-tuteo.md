@@ -1,7 +1,7 @@
 ---
 spec: 0123
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Los tres mensajes por defecto de las plantillas de marketing que seguian en voseo pasan a tuteo, como manda `apps/merchant/COPY.md`; texto aprobado por el owner.
 disjunta: si
 archivos: packages/domain/src/server/marketing/templates.ts, apps/merchant/src/server/marketing/templates-table.test.ts, apps/merchant/src/server/marketing/template-input-welcome.test.ts, apps/merchant/src/server/marketing-templates.neon.integration.test.ts, apps/merchant/src/server/marketing-templates-race.neon.integration.test.ts
@@ -56,7 +56,10 @@ Reemplazo literal de los tres strings, con los textos de la tabla exactos (acent
 
 ## Definition of Done
 
-- [ ] `rg -n 'Sumate hoy y en tu|¡Volvé! Te estamos|Tenés un premio esperándote' apps packages -g '!**/.next/**'` → vacio.
+- [x] `rg -n 'Sumate hoy y en tu|¡Volvé! Te estamos|Tenés un premio esperándote. ¡Vení' apps packages -g '!**/.next/**'` → vacio.
+      *(Corregido por el orquestador al cerrar: el patron original `Tenés un premio esperándote` era mas ancho que
+      el default y matcheaba el seed propio de `marketing-balance-push.neon.integration.test.ts:130,160`, que no
+      pinnea la plantilla. Ese seed queda en voseo: es dato de test, fuera de alcance.)*
 - [ ] `rg -nF` de cada texto nuevo encuentra `templates.ts` y sus tests.
 - [ ] `tools/neon-test.sh` sobre `marketing-templates` y `marketing-templates-race`, de a una → verdes. Nunca contra `DATABASE_URL`.
 - [ ] Gates de root con Node 24, una vez al final: `typecheck`, `lint`, `test`, `format:check`, `build`.
