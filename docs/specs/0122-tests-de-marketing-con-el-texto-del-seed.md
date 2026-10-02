@@ -1,7 +1,7 @@
 ---
 spec: 0122
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Dos suites de marketing esperan el texto en voseo que sus propios seeds ya no siembran desde la unificacion de copy; la asercion vuelve a reflejar lo que el seed escribe.
 disjunta: si
 archivos: apps/merchant/src/server/marketing-push-delivery.neon.integration.test.ts, apps/merchant/src/server/marketing-welcome-landing.neon.integration.test.ts
