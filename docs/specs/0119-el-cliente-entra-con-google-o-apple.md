@@ -141,7 +141,12 @@ GRANT SELECT, INSERT ON consumer.consumer_identity TO checkpass_consumer;
 6. `issueSession` + cookie de sesion igual que hoy (`httpOnly`, `secure`, `lax`, 30 dias).
 7. 303 a `/enroll/<programId>/ready` (alta nueva), `/wallet` (ya era miembro, o login sin programa).
 
-`destino` = `/enroll/<programId>` si la cookie traia programa, si no `/wallet`. Logs: proveedor + motivo, **nunca**
+`destino` = `/enroll/<programId>` si la cookie traia programa, si no `/wallet`.
+
+**Decididos durante la implementacion (owner, 2026-10-01: «aceptado»):** (a) si el programa de la cookie ya no
+esta disponible (404, o 403 de un negocio cerrado/suspendido), el callback abre la sesion igual y redirige a
+`/enroll/<programId>`, que muestra «no disponible»; (b) `issueWelcomeGiftsSafely` se llama siempre que la cookie
+trae programa, tambien si ya era miembro (es idempotente). Logs: proveedor + motivo, **nunca**
 el `code`, el `id_token`, el `sub` ni el email.
 
 ### Pantallas
