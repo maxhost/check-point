@@ -25,7 +25,7 @@ for (const role of ["owner", "staff"] as const) {
       ).toBeVisible();
       if (role === "owner") {
         await expect(page.locator(".driver-popover-title")).toHaveText(
-          "Cargá tu menú con IA",
+          "Carga tu menú con IA",
         );
         await page.getByRole("button", { name: "Saltar tour" }).click();
         expect(api.progress).toEqual(["skipped"]);

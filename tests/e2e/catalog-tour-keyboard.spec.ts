@@ -20,18 +20,18 @@ test("selector de categoría, foco y spotlight en móvil y escritorio", async ({
     await page.getByRole("button", { name: "Ayuda", exact: true }).click();
     await page.getByRole("button", { name: /Crear un producto/ }).click();
     await expect(page.locator(".driver-popover-title")).toHaveText(
-      "Abrí el formulario",
+      "Abre el formulario",
     );
     await page.getByRole("button", { name: "Nuevo producto" }).click();
     await expect(page.locator(".driver-popover-title")).toHaveText(
-      "Completá el nombre",
+      "Completa el nombre",
     );
     await page
       .getByRole("textbox", { name: "Nombre del producto" })
       .fill("Nuevo");
     await page.locator(".driver-popover-next-btn").click();
     await expect(page.locator(".driver-popover-title")).toHaveText(
-      "Elegí una categoría",
+      "Elige una categoría",
     );
     await page
       .getByRole("button", { name: "Sin categoría Categoría", exact: true })

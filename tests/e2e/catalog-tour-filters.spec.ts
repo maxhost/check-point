@@ -14,7 +14,7 @@ for (const task of ["Editar un producto", "Eliminar un producto"] as const) {
     const search = page.getByRole("searchbox", { name: "Buscar producto" });
     await search.fill("inexistente");
     await help(page, task);
-    await expect(title(page)).toHaveText("Elegí qué querés gestionar");
+    await expect(title(page)).toHaveText("Elige qué quieres gestionar");
     await search.click({ timeout: 2000 });
     await search.fill("Torta");
     const row = page.locator('[data-catalog-id="product-second"]');

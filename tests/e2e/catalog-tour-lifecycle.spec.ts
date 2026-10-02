@@ -22,7 +22,7 @@ test("guardar con Enter termina por éxito aunque queden instrucciones", async (
   await page.goto(catalogHarness);
   await help(page, "Crear un producto");
   await page.getByRole("button", { name: "Nuevo producto" }).click();
-  await expect(title(page)).toHaveText("Completá el nombre");
+  await expect(title(page)).toHaveText("Completa el nombre");
   await page
     .getByRole("textbox", { name: "Nombre del producto" })
     .fill("Guardado con teclado");

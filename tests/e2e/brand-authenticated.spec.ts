@@ -22,7 +22,7 @@ for (const role of ["owner", "staff"] as const) {
       ).toBeVisible();
       if (role === "owner") {
         await expect(page.locator(".driver-popover-title")).toHaveText(
-          "Dale identidad a tu negocio",
+          "Da identidad a tu negocio",
         );
         await page.getByRole("button", { name: "Saltar tour" }).click();
         await expect.poll(() => api.progress).toEqual(["skipped"]);
@@ -32,7 +32,7 @@ for (const role of ["owner", "staff"] as const) {
         ).toHaveCount(0);
         await page.getByRole("button", { name: "Ayuda", exact: true }).click();
         await expect(
-          page.getByRole("dialog", { name: "¿Qué querés hacer?" }),
+          page.getByRole("dialog", { name: "¿Qué quieres hacer?" }),
         ).toBeVisible();
         expect(api.progress).toEqual([]);
       }

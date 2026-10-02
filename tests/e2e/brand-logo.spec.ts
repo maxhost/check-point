@@ -23,21 +23,21 @@ test("logo: selector cancelado e inválido no avanzan, recorte real y subida fal
   await page.goto(brandHarness);
   await help(page, "Cargar o cambiar el logo");
   await page.locator("#brand-logo-file").setInputFiles([]);
-  await expect(title(page)).toHaveText("Elegí tu logo");
+  await expect(title(page)).toHaveText("Elige tu logo");
   await page.locator("#brand-logo-file").setInputFiles({
     name: "invalido.txt",
     mimeType: "text/plain",
     buffer: Buffer.from("texto"),
   });
-  await expect(title(page)).toHaveText("Elegí tu logo");
+  await expect(title(page)).toHaveText("Elige tu logo");
   expect(api.uploads).toBe(0);
   await page.locator("#brand-logo-file").setInputFiles(png);
   await expect(
     page.getByRole("dialog", { name: "Recortar imagen" }),
   ).toBeVisible();
-  await expect(title(page)).toHaveText("Ajustá el encuadre");
+  await expect(title(page)).toHaveText("Ajusta el encuadre");
   await page.getByRole("button", { name: "Usar", exact: true }).click();
-  await expect(title(page)).toHaveText("Revisá la vista previa");
+  await expect(title(page)).toHaveText("Revisa la vista previa");
   expect(api.uploads).toBe(0);
   await next(page);
   api.failUpload = 503;
@@ -45,7 +45,7 @@ test("logo: selector cancelado e inválido no avanzan, recorte real y subida fal
     .getByRole("button", { name: "Guardar marca", exact: true })
     .click();
   await expect.poll(() => api.uploads).toBe(1);
-  await expect(title(page)).toHaveText("Guardá la marca");
+  await expect(title(page)).toHaveText("Guarda la marca");
   expect(api.writes).toEqual([]);
   api.failUpload = 0;
   await page
@@ -70,7 +70,7 @@ test("Salir deja recorte abierto; Cancelar termina ayuda y mantiene el nombre pe
     .fill("Pendiente");
   await help(page, "Cargar o cambiar el logo");
   await page.locator("#brand-logo-file").setInputFiles(png);
-  await expect(title(page)).toHaveText("Ajustá el encuadre");
+  await expect(title(page)).toHaveText("Ajusta el encuadre");
   await page.getByRole("button", { name: "Salir de la guía" }).click();
   await expect(
     page.getByRole("dialog", { name: "Recortar imagen" }),
@@ -81,7 +81,7 @@ test("Salir deja recorte abierto; Cancelar termina ayuda y mantiene el nombre pe
   ).toHaveValue("Pendiente");
   await help(page, "Cargar o cambiar el logo");
   await page.locator("#brand-logo-file").setInputFiles(png);
-  await expect(title(page)).toHaveText("Ajustá el encuadre");
+  await expect(title(page)).toHaveText("Ajusta el encuadre");
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await expect(page.locator(".driver-popover")).toHaveCount(0);
   expect(api.writes).toEqual([]);
@@ -100,7 +100,7 @@ test("archivo no decodificable usa fallback sin exigir recorte", async ({
     mimeType: "image/heic",
     buffer: Buffer.from("probe no decodificable"),
   });
-  await expect(title(page)).toHaveText("Revisá la vista previa");
+  await expect(title(page)).toHaveText("Revisa la vista previa");
   await expect(
     page.getByRole("dialog", { name: "Recortar imagen" }),
   ).toHaveCount(0);
@@ -122,7 +122,7 @@ test("teclado puede recorrer cropper y guía sin perder controles", async ({
   await page.goto(brandHarness);
   await help(page, "Cargar o cambiar el logo");
   await page.locator("#brand-logo-file").setInputFiles(png);
-  await expect(title(page)).toHaveText("Ajustá el encuadre");
+  await expect(title(page)).toHaveText("Ajusta el encuadre");
   await page.getByRole("slider", { name: "Zoom", exact: true }).focus();
   for (let i = 0; i < 6; i++) await page.keyboard.press("Tab");
   expect(

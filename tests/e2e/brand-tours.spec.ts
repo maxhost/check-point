@@ -15,11 +15,11 @@ test("cinco pasos sin editar y checklist, parámetro consumido y completed", asy
   const api = await brandFixture(page);
   await page.goto(`${brandHarness}/backoffice/brand?tour=onboarding&keep=1`);
   for (const expected of [
-    "Dale identidad a tu negocio",
-    "Usá los colores de tu marca",
-    "Revisá horarios y moneda",
-    "Aplicá tus cambios cuando estén listos",
-    "Encontrá una guía cuando la necesites",
+    "Da identidad a tu negocio",
+    "Usa los colores de tu marca",
+    "Revisa horarios y moneda",
+    "Aplica tus cambios cuando estén listos",
+    "Encuentra una guía cuando la necesites",
   ]) {
     await expect(title(page)).toHaveText(expected);
     await next(page);
@@ -42,7 +42,7 @@ test("Saltar con error permite reintentar sólo progreso", async ({
   const api = await brandFixture(page);
   api.failProgress = true;
   await page.goto(`${brandHarness}/backoffice/brand?tour=onboarding`);
-  await expect(title(page)).toHaveText("Dale identidad a tu negocio");
+  await expect(title(page)).toHaveText("Da identidad a tu negocio");
   await page.getByRole("button", { name: "Saltar tour" }).click();
   await expect(page.getByText("No pudimos guardar tu progreso.")).toBeVisible();
   await expect(page.locator(".onboarding-zone")).toBeVisible();
@@ -66,7 +66,7 @@ test("nombre conserva otras ediciones, fallo no avanza y success usa DTO normali
     .fill("  Café   Nuevo  ");
   await next(page);
   await next(page);
-  await expect(title(page)).toHaveText("Guardá la marca");
+  await expect(title(page)).toHaveText("Guarda la marca");
   await expect(page.locator(".driver-popover-description")).toContainText(
     "todos los cambios pendientes",
   );
@@ -78,7 +78,7 @@ test("nombre conserva otras ediciones, fallo no avanza y success usa DTO normali
   await expect(
     page.getByText("No pudimos aplicar esos cambios."),
   ).toBeVisible();
-  await expect(title(page)).toHaveText("Guardá la marca");
+  await expect(title(page)).toHaveText("Guarda la marca");
   await expect(
     page.getByRole("textbox", { name: "Nombre del negocio" }),
   ).toHaveValue("  Café   Nuevo  ");
@@ -122,7 +122,7 @@ for (const task of [
         .click();
     }
     for (let i = 0; i < task.steps; i++) await next(page);
-    await expect(title(page)).toHaveText("Guardá la marca");
+    await expect(title(page)).toHaveText("Guarda la marca");
     await page
       .getByRole("button", { name: "Guardar marca", exact: true })
       .click();
@@ -145,7 +145,7 @@ test("Quitar es borrador, guardado fallido no avanza y no persiste onboarding", 
   await page.goto(brandHarness);
   await help(page, "Quitar el logo");
   await page.getByRole("button", { name: "Quitar", exact: true }).click();
-  await expect(title(page)).toHaveText("Revisá la vista previa");
+  await expect(title(page)).toHaveText("Revisa la vista previa");
   expect(api.writes).toEqual([]);
   await next(page);
   api.failPut = 503;
@@ -156,7 +156,7 @@ test("Quitar es borrador, guardado fallido no avanza y no persiste onboarding", 
   await expect(
     page.getByText("No pudimos aplicar esos cambios."),
   ).toBeVisible();
-  await expect(title(page)).toHaveText("Guardá la marca");
+  await expect(title(page)).toHaveText("Guarda la marca");
   api.failPut = 0;
   await page
     .getByRole("button", { name: "Guardar marca", exact: true })
@@ -205,7 +205,7 @@ test("conflicto conserva borrador, GET fallido reintenta lectura y adopción req
   await page
     .getByRole("button", { name: "Guardar marca", exact: true })
     .click();
-  await expect(title(page)).toHaveText("Revisá la versión guardada");
+  await expect(title(page)).toHaveText("Revisa la versión guardada");
   api.failGet = 503;
   await page.getByRole("button", { name: "Consultar marca actual" }).click();
   await expect.poll(() => api.reads).toBe(2);

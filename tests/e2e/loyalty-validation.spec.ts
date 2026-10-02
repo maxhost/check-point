@@ -16,7 +16,7 @@ test("GET DTO inválido y templates inválidas muestran error recuperable", asyn
   api.program = null;
   await page.getByRole("button", { name: "Reintentar lectura" }).click();
   await expect(
-    page.getByRole("heading", { name: "Creá tu programa" }),
+    page.getByRole("heading", { name: "Crea tu programa" }),
   ).toBeVisible();
   await page.route("**/api/loyalty-terms/templates", (route) =>
     route.fulfill({ json: { templates: [{ id: "t" }] } }),
@@ -38,11 +38,11 @@ test("meta mínimo máximo y límite20, último premio conservado", async ({
   const target = page.getByRole("textbox", { name: "Sellos para completar" });
   await target.fill("");
   await next(page);
-  await expect(page.getByText("Elegí un entero entre 2 y 50")).toBeVisible();
+  await expect(page.getByText("Elige un entero entre 2 y 50")).toBeVisible();
   for (const value of ["1", "51"]) {
     await target.fill(value);
     await next(page);
-    await expect(page.getByText("Elegí un entero entre 2 y 50")).toBeVisible();
+    await expect(page.getByText("Elige un entero entre 2 y 50")).toBeVisible();
   }
   await target.fill("2");
   await target.press("Tab");
@@ -70,7 +70,9 @@ test("meta mínimo máximo y límite20, último premio conservado", async ({
     await page
       .getByRole("button", { name: "Agregar premio", exact: true })
       .click();
-  await expect(page.getByText("Podés agregar hasta 20 premios.")).toBeVisible();
+  await expect(
+    page.getByText("Puedes agregar hasta 20 premios."),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Agregar premio", exact: true }),
   ).toBeDisabled();

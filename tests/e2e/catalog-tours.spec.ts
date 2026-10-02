@@ -13,10 +13,10 @@ test("orientación vacía: cuatro pasos, ninguna escritura de dominio y progreso
     `${catalogHarness}/backoffice/catalog?tour=onboarding&keep=1`,
   );
   for (const expected of [
-    "Cargá tu menú con IA",
-    "Creá y gestioná productos",
-    "Organizá tu menú",
-    "Aprendé una tarea cuando la necesites",
+    "Carga tu menú con IA",
+    "Crea y gestiona productos",
+    "Organiza tu menú",
+    "Aprende una tarea cuando la necesites",
   ]) {
     await expect(title(page)).toHaveText(expected);
     await next(page);
@@ -40,7 +40,7 @@ test("Saltar guarda skipped y un fallo de progreso permite reintentar", async ({
   const api = await catalogApiFixture(page);
   api.failProgress = true;
   await page.goto(`${catalogHarness}/backoffice/catalog?tour=onboarding`);
-  await expect(title(page)).toHaveText("Cargá tu menú con IA");
+  await expect(title(page)).toHaveText("Carga tu menú con IA");
   await page.getByRole("button", { name: "Saltar tour" }).click();
   await expect(page.getByText("No pudimos guardar tu progreso.")).toBeVisible();
   expect(api.progress).toEqual([]);

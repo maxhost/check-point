@@ -20,20 +20,20 @@ export const next = (page: Page) =>
 export async function help(page: Page, task: string) {
   await page.getByRole("button", { name: "Ayuda", exact: true }).click();
   await page
-    .getByRole("dialog", { name: "¿Qué querés hacer?" })
+    .getByRole("dialog", { name: "¿Qué quieres hacer?" })
     .getByRole("button", { name: task })
     .click();
   await expect(page.locator(".driver-popover")).toBeVisible();
 }
 export async function fieldsToSave(page: Page) {
   for (const expected of [
-    "Completá el nombre",
-    "Elegí una categoría",
+    "Completa el nombre",
+    "Elige una categoría",
     "Precio y costo son opcionales",
     "Imagen del producto",
   ]) {
     await expect(title(page)).toHaveText(expected);
     await next(page);
   }
-  await expect(title(page)).toHaveText("Guardá los datos");
+  await expect(title(page)).toHaveText("Guarda los datos");
 }

@@ -12,11 +12,11 @@ test("orientación con logo conserva identidad y no escribe Marca", async ({
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
   await page.goto(`${brandHarness}?tour=onboarding`);
   for (const expected of [
-    "Dale identidad a tu negocio",
-    "Usá los colores de tu marca",
-    "Revisá horarios y moneda",
-    "Aplicá tus cambios cuando estén listos",
-    "Encontrá una guía cuando la necesites",
+    "Da identidad a tu negocio",
+    "Usa los colores de tu marca",
+    "Revisa horarios y moneda",
+    "Aplica tus cambios cuando estén listos",
+    "Encuentra una guía cuando la necesites",
   ]) {
     await expect(title(page)).toHaveText(expected);
     await next(page);
@@ -57,7 +57,7 @@ for (const status of [200, 503])
       });
     });
     await page.goto(`${brandHarness}?tour=onboarding`);
-    await expect(title(page)).toHaveText("Dale identidad a tu negocio");
+    await expect(title(page)).toHaveText("Da identidad a tu negocio");
     await page.getByRole("button", { name: "Saltar tour" }).click();
     await expect.poll(() => requested).toBe(true);
     await expect(page.locator(".onboarding-zone")).toBeVisible();

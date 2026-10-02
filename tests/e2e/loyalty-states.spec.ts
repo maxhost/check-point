@@ -11,10 +11,10 @@ for (const [status, code, text] of [
   [401, "unauthorized", "Tu sesión terminó"],
   [403, "not_member", "membresía activa"],
   [403, "missing_permission", "permiso para administrar"],
-  [403, "email_not_verified", "Verificá tu email"],
+  [403, "email_not_verified", "Verifica tu email"],
   [403, "business_suspended", "suspendida"],
   [403, "business_closed", "cerrado"],
-  [400, "invalid_body", "Revisá los datos"],
+  [400, "invalid_body", "Revisa los datos"],
   [409, "program_exists", "estado del programa cambió"],
   [503, "program_unavailable", "no está disponible"],
 ] as const)
@@ -124,20 +124,20 @@ test("edición puntos, vacío NaN y minmax visibles; teclado y descarte conserva
     .getByRole("textbox", { name: "Nombre singular", exact: true })
     .fill("");
   await next(page);
-  await expect(page.getByText("Completá este nombre")).toBeVisible();
+  await expect(page.getByText("Completa este nombre")).toBeVisible();
   await page
     .getByRole("textbox", { name: "Nombre singular", exact: true })
     .fill("Crédito nuevo");
   await next(page);
   await page.getByRole("textbox", { name: "Puntos otorgados" }).fill("");
   await next(page);
-  await expect(page.getByText("Ingresá un entero mayor que 0")).toBeVisible();
+  await expect(page.getByText("Ingresa un entero mayor que 0")).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Puntos otorgados" }),
   ).toHaveValue("");
   await page.getByRole("textbox", { name: "Puntos otorgados" }).fill("0");
   await next(page);
-  await expect(page.getByText("Ingresá un entero mayor que 0")).toBeVisible();
+  await expect(page.getByText("Ingresa un entero mayor que 0")).toBeVisible();
   await page.getByRole("textbox", { name: "Puntos otorgados" }).fill("7");
   await next(page);
   await page.getByRole("checkbox", { name: /Permitir canjes/ }).focus();
@@ -174,7 +174,7 @@ test("cierre fechas zona y confirmaciones DELETE PATCH; staff consulta cierre", 
     .getByRole("button", { name: "Cerrar programa", exact: true })
     .click();
   await page.getByRole("button", { name: "Continuar con el cierre" }).click();
-  await expect(page.getByText("Elegí una fecha futura válida")).toBeVisible();
+  await expect(page.getByText("Elige una fecha futura válida")).toBeVisible();
   await page
     .getByLabel("Fin de acumulación", { exact: true })
     .fill("2030-01-01T10:00");

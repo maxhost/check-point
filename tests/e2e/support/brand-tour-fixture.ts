@@ -23,7 +23,7 @@ export const next = (page: Page) =>
 export async function help(page: Page, name: string) {
   await page.getByRole("button", { name: "Ayuda", exact: true }).click();
   await page
-    .getByRole("dialog", { name: "¿Qué querés hacer?" })
+    .getByRole("dialog", { name: "¿Qué quieres hacer?" })
     .getByRole("button", { name })
     .click();
   await expect(page.locator(".driver-popover")).toBeVisible();
@@ -73,7 +73,7 @@ export async function brandFixture(page: Page) {
             required: false,
             done: api.progress.length > 0,
             title: "Marca",
-            body: "Revisá tu marca",
+            body: "Revisa tu marca",
           },
         ],
       },

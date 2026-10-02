@@ -50,7 +50,7 @@ export async function startCatalogHarness(
             namespace: "fixture",
           }));
           builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return "loyalty"} export function useRouter(){return {push(href){window.location.href=href}}}`,
+            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return "loyalty"} export function usePathname(){return "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href}}}`,
             loader: "js",
             resolveDir: path.resolve("apps/merchant"),
           }));

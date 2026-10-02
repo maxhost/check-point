@@ -14,7 +14,7 @@ test("PDF autoanaliza; salir de la guía no cancela y resultado explica sin prec
   await page
     .getByRole("button", { name: "Importar con IA", exact: true })
     .click();
-  await expect(title(page)).toHaveText("Elegí los archivos");
+  await expect(title(page)).toHaveText("Elige los archivos");
   await page
     .locator('input[type="file"]')
     .first()
@@ -54,7 +54,7 @@ test("fotos esperan Analizar y resultado termina la ayuda", async ({
   await page
     .getByRole("button", { name: "Importar con IA", exact: true })
     .click();
-  await expect(title(page)).toHaveText("Elegí los archivos");
+  await expect(title(page)).toHaveText("Elige los archivos");
   await page
     .locator('input[type="file"]')
     .first()
@@ -63,7 +63,7 @@ test("fotos esperan Analizar y resultado termina la ayuda", async ({
       mimeType: "image/jpeg",
       buffer: Buffer.from("image fixture"),
     });
-  await expect(title(page)).toHaveText("Analizá las fotos");
+  await expect(title(page)).toHaveText("Analiza las fotos");
   expect(api.writes).toEqual([]);
   api.importStatus = "accepted";
   await page
@@ -87,7 +87,7 @@ test("import existente y staff: permisos, bloqueo de altas y ningún progreso", 
   ).toBeVisible();
   await expect(page.locator(".driver-popover")).toHaveCount(0);
   await page.getByRole("button", { name: "Ayuda", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "¿Qué querés hacer?" });
+  const dialog = page.getByRole("dialog", { name: "¿Qué quieres hacer?" });
   await expect(
     dialog.getByRole("button", { name: /Crear un producto/ }),
   ).toBeDisabled();

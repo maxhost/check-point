@@ -30,7 +30,7 @@ test("crear categoría no avanza por un clic fallido ni persiste onboarding", as
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       ),
   );
-  await expect(title(page)).toHaveText("Guardá los datos");
+  await expect(title(page)).toHaveText("Guarda los datos");
   api.failWrite = false;
   await page.getByRole("button", { name: "Añadir", exact: true }).click();
   await expect(title(page)).toHaveText("Operación confirmada");
@@ -47,7 +47,7 @@ test("crear producto y reintentar una lectura no duplica el POST", async ({
   await page.goto(catalogHarness);
   await help(page, "Crear un producto");
   await page.getByRole("button", { name: "Nuevo producto" }).click();
-  await expect(title(page)).toHaveText("Completá el nombre");
+  await expect(title(page)).toHaveText("Completa el nombre");
   await page
     .getByRole("textbox", { name: "Nombre del producto" })
     .fill("Chocolate");
@@ -94,7 +94,7 @@ test("editar el segundo producto conserva el id y espera éxito", async ({
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       ),
   );
-  await expect(title(page)).toHaveText("Guardá los datos");
+  await expect(title(page)).toHaveText("Guarda los datos");
   api.failWrite = false;
   await page
     .getByRole("button", { name: "Guardar producto", exact: true })
@@ -125,11 +125,11 @@ test("editar categoría y Escape permite salir conservando el formulario", async
   expect(api.categories[1].name).toBe("Dulces");
   await help(page, "Crear un producto");
   await page.getByRole("button", { name: "Nuevo producto" }).click();
-  await expect(title(page)).toHaveText("Completá el nombre");
+  await expect(title(page)).toHaveText("Completa el nombre");
   await page.keyboard.press("Escape");
   await expect(page.locator(".driver-popover")).toHaveCount(0);
   await expect(
-    page.getByRole("dialog", { name: "Sumá un producto al catálogo" }),
+    page.getByRole("dialog", { name: "Suma un producto al catálogo" }),
   ).toBeVisible();
   expect(api.progress).toEqual([]);
 });

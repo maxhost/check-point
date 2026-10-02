@@ -59,7 +59,7 @@ test("monto vacío y cero no avanzan; foco y corrección decimal", async ({
   for (const value of ["", "0"]) {
     await page.getByRole("textbox", { name: "Monto por bloque" }).fill(value);
     await next(page);
-    await expect(page.getByText("Ingresá un monto mayor que 0")).toBeVisible();
+    await expect(page.getByText("Ingresa un monto mayor que 0")).toBeVisible();
     await expect(
       page.getByRole("textbox", { name: "Monto por bloque" }),
     ).toBeFocused();
@@ -82,7 +82,7 @@ test("GET503 muestra recuperación antes del skeleton", async ({
   api.failRead = 0;
   await page.getByRole("button", { name: "Reintentar lectura" }).click();
   await expect(
-    page.getByRole("heading", { name: "Creá tu programa" }),
+    page.getByRole("heading", { name: "Crea tu programa" }),
   ).toBeVisible();
 });
 test("sellos staff sin catálogo conserva snapshot, plural y flag; no cierre", async ({
@@ -102,7 +102,7 @@ test("sellos staff sin catálogo conserva snapshot, plural y flag; no cierre", a
   await next(page);
   await next(page);
   await expect(
-    page.getByText("No tenés permiso para consultar el catálogo"),
+    page.getByText("No tienes permiso para consultar el catálogo"),
   ).toBeVisible();
   await next(page);
   await page.getByRole("button", { name: "Guardar cambios" }).click();
@@ -155,7 +155,7 @@ test("PUT422 conserva borrador y refresh fallido sólo reintenta GET", async ({
   await page.goto(loyaltyHarness);
   await pointsReview(page);
   await page.getByRole("button", { name: "Activar programa" }).click();
-  await expect(page.getByRole("alert")).toContainText("Revisá los datos");
+  await expect(page.getByRole("alert")).toContainText("Revisa los datos");
   await page.getByRole("button", { name: "Atrás" }).click();
   await expect(
     page.getByRole("textbox", { name: "Nombre del premio" }),

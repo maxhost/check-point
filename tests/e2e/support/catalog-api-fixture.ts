@@ -86,7 +86,7 @@ export async function catalogApiFixture(page: Page, empty = false) {
             required: false,
             done: Boolean(state.progress.length),
             title: "Catálogo",
-            body: "Aprendé a usar tu catálogo",
+            body: "Aprende a usar tu catálogo",
           },
         ],
       });

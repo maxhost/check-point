@@ -16,7 +16,7 @@ for (const status of [401, 403] as const) {
       .getByRole("textbox", { name: "Nueva categoría" })
       .fill("Panadería");
     await next(page);
-    await expect(title(page)).toHaveText("Guardá los datos");
+    await expect(title(page)).toHaveText("Guarda los datos");
     await page.route("**/api/catalog", (route) =>
       route.fulfill({
         status,
@@ -28,8 +28,8 @@ for (const status of [401, 403] as const) {
     await expect(
       page.getByText(
         status === 401
-          ? "Tu sesión venció. Volvé a iniciar sesión para continuar."
-          : "Ya no tenés permiso para acceder al catálogo.",
+          ? "Tu sesión venció. Vuelve a iniciar sesión para continuar."
+          : "Ya no tienes permiso para acceder al catálogo.",
       ),
     ).toBeVisible();
     expect(api.writes).toHaveLength(1);

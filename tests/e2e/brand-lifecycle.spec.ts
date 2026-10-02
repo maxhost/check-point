@@ -13,7 +13,7 @@ test("desmontaje de orientación limpia Driver sin registrar Saltar", async ({
 }) => {
   const api = await brandFixture(page);
   await page.goto(`${brandHarness}?tour=onboarding`);
-  await expect(title(page)).toHaveText("Dale identidad a tu negocio");
+  await expect(title(page)).toHaveText("Da identidad a tu negocio");
   await page.evaluate(() =>
     window.dispatchEvent(new Event("brand-fixture-unmount")),
   );
@@ -36,7 +36,7 @@ test("respuesta perdida ofrece consulta sin fingir éxito ni repetir PUT", async
   await page
     .getByRole("button", { name: "Guardar marca", exact: true })
     .click();
-  await expect(title(page)).toHaveText("Revisá la versión guardada");
+  await expect(title(page)).toHaveText("Revisa la versión guardada");
   await page.getByRole("button", { name: "Consultar marca actual" }).click();
   await expect(
     page.getByRole("heading", { name: "Versión guardada" }),
@@ -90,7 +90,7 @@ test("GET inicial fallido permite reintentar sin iniciar tour en skeleton", asyn
   await expect(page.locator(".driver-popover")).toHaveCount(0);
   api.failGet = 0;
   await page.getByRole("button", { name: "Reintentar", exact: true }).click();
-  await expect(title(page)).toHaveText("Dale identidad a tu negocio");
+  await expect(title(page)).toHaveText("Da identidad a tu negocio");
   expect(api.writes).toEqual([]);
 });
 test("guardado en vuelo congela controles y salir no cancela ni duplica PUT", async ({
@@ -123,7 +123,7 @@ test("guardado en vuelo congela controles y salir no cancela ni duplica PUT", as
   ).toBeEnabled();
   await expect(page.locator(".driver-popover")).toHaveCount(0);
   await help(page, "Ajustar los colores");
-  await expect(title(page)).toHaveText("Elegí el color primario");
+  await expect(title(page)).toHaveText("Elige el color primario");
   expect(api.writes).toHaveLength(1);
   expect(api.progress).toEqual([]);
 });
@@ -137,7 +137,7 @@ for (const width of [320, 1280])
     await brandFixture(page);
     await page.goto(brandHarness);
     await help(page, "Cambiar el nombre");
-    await expect(title(page)).toHaveText("Completá el nombre");
+    await expect(title(page)).toHaveText("Completa el nombre");
     await expect(page.locator(".driver-popover")).toHaveCSS("opacity", "1");
     const style = await page.locator(".driver-popover").evaluate((element) => ({
       background: getComputedStyle(element).backgroundColor,
