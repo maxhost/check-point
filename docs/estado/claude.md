@@ -8,7 +8,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 IMPLEMENTADA Y COMMITEADA (`ab5e62e`), SIN PUSHEAR. FALTA LA 0063 EN PROD
+## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 IMPLEMENTADA Y COMMITEADA (`ab5e62e`), SIN PUSHEAR. LA 0063 YA ESTA EN PROD
 
 **Al retomar:** `motor` = `origin/main` (`76ce724`) + `ab5e62e` (codigo de la 0143) + este commit de estado. Nada pusheado.
 
@@ -18,8 +18,12 @@ close to 1`), revertida con diff vacio. `pnpm verify` del implementador ok (Neon
 orquestador corrio typecheck, lint, format:check y la suite nueva (2/2). Spec e INDEX en `implementada`. Caso de la fila M3
 falsa en `LECCIONES.md`.
 
-**Siguiente (en este orden):** (1) **OK del owner para aplicar la 0063 a PROD** — va ANTES del push: `recordPushClick` escribe
-en `core.cross_decision`, sin la tabla falla el clic de todo push; (2) push con el `pre-push`; (3) deploy de `checkpass.club` en
+**0063 en PROD** (OK del owner 2026-10-03, `run_sql_transaction` en `red-violet-38772073`/`br-curly-silence-ax8acywm`):
+verificado por SQL — 64 migraciones (ultima `1791055249624`), `core.cross_decision` y `core.cross_candidate` creadas,
+`checkpass_consumer` con UPDATE de `clicked_at` y SELECT de `id`, sin SELECT de `order_id`.
+
+**Siguiente (en este orden):** (1) push de `motor` a `main` (el clasificador de auto mode lo bloquea como «Production
+Deploy»: lo aprueba el owner); (2) con el `pre-push`; (3) deploy de `checkpass.club` en
 `READY` con el sha; (4) avisar a GPT: C1/C2 → 404, `endsAt` obligatorio en M1; (5) QA manual del owner (spec §«Verificacion
 manual»).
 
