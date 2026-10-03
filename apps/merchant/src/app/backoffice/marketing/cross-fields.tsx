@@ -45,12 +45,12 @@ export function CrossFields({
   return (
     <div className="grid gap-6">
       <Alert title="Una oferta para descubrir tu negocio">
-        Aparece en «Mis beneficios» a personas cerca de uno de tus locales y de
-        otro rubro. No envía notificaciones. El cliente reclama el cupón antes
-        de canjearlo en tu mostrador.
+        Tras una compra en otro comercio participante, tu campaña puede salir
+        elegida para entregar un cupón. El cliente lo ve en «Mis beneficios» y,
+        si activó las notificaciones, recibe un aviso de regalo.
       </Alert>
       <ChoiceGroup
-        label="¿A quién querés llegar?"
+        label="¿A quién quieres llegar?"
         variant="cards"
         options={cross.audience.options.map((value) => ({
           value,
@@ -82,7 +82,7 @@ export function CrossFields({
         errorMessage={errors.message}
       />
       <ChoiceGroup
-        label="Vigencia del cupón desde que se reclama"
+        label="Vigencia del cupón desde que se entrega"
         options={cross.validDays.options.map((days) => ({
           value: String(days),
           label: `${days} días`,
@@ -92,12 +92,12 @@ export function CrossFields({
         errorMessage={errors.crossValidDays}
       />
       <NumberField
-        label="Tope de cupones reclamados por mes"
+        label="Tope de cupones entregados por mes"
         value={draft.crossMonthlyCap ?? undefined}
         minValue={cross.monthlyCap.min}
         maxValue={cross.monthlyCap.max}
         clampOnBlur={false}
-        description="Por negocio y mes calendario de su zona horaria. Al llegar al tope, la oferta deja de mostrarse hasta el mes siguiente."
+        description="Por negocio y mes calendario de su zona horaria. Al llegar al tope, no se entregan más cupones hasta el mes siguiente."
         onChange={(crossMonthlyCap) => change({ crossMonthlyCap })}
         errorMessage={errors.crossMonthlyCap}
       />
@@ -107,15 +107,16 @@ export function CrossFields({
           label="Inicio"
           value={draft.startsAt}
           onChange={(startsAt) => change({ startsAt })}
-          description={`Dejá vacío para activar ahora. Hora de ${settings.timeZone}.`}
+          description={`Deja vacío para activar ahora. Hora de ${settings.timeZone}.`}
           errorMessage={errors.startsAt}
         />
         <TextField
           type="datetime-local"
-          label="Fin (opcional)"
+          label="Fin de la campaña"
+          isRequired
           value={draft.endsAt}
           onChange={(endsAt) => change({ endsAt })}
-          description="Cada cupón reclamado vence por separado, según su vigencia."
+          description={`Obligatoria. Hora de ${settings.timeZone}. Los cupones ya entregados vencen según su propia vigencia.`}
           errorMessage={errors.endsAt}
         />
       </div>
@@ -129,7 +130,7 @@ export function CrossFields({
           canReadCatalog={canReadCatalog}
           couponKinds={couponKinds}
           withRedemptionCap={false}
-          noCapLabelDescription="Se muestra en la oferta y en el cupón reclamado. Puedes editar la sugerencia."
+          noCapLabelDescription="Se muestra en el cupón entregado. Puedes editar la sugerencia."
         />
       </div>
     </div>

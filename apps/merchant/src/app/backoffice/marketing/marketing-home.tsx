@@ -182,7 +182,7 @@ export function MarketingHome({
           confirm?.welcome
             ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento."
             : confirm?.cross
-              ? "Para cambiarla tendrás que activar una nueva oferta cruzada. Los cupones ya reclamados siguen valiendo hasta su vencimiento."
+              ? "Para cambiarla tendrás que activar una nueva oferta cruzada. Los cupones ya entregados siguen valiendo hasta su vencimiento."
               : `Los parámetros y resultados de esta corrida quedarán guardados. Para cambiarla tendrás que activar una nueva.\n${confirm?.live?.couponLabel && confirm.live.endsAt ? `Los cupones ya emitidos seguirán válidos hasta ${new Date(confirm.live.endsAt).toLocaleDateString("es-EC")}.` : ""}\nLos turnos activos se retiran en el próximo refresco.`
         }
         onCancel={() => setConfirm(null)}

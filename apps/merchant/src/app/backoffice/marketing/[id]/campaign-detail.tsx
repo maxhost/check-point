@@ -181,12 +181,12 @@ export function CampaignDetail({
           {cross && (
             <>
               <div>
-                <dt>Vigencia desde el reclamo</dt>
+                <dt>Vigencia desde la entrega</dt>
                 <dd>{cross.validDays} días</dd>
               </div>
               <div>
                 <dt>Tope mensual</dt>
-                <dd>{cross.monthlyCap} cupones reclamados por negocio</dd>
+                <dd>{cross.monthlyCap} cupones entregados por negocio</dd>
               </div>
             </>
           )}
@@ -296,7 +296,7 @@ export function CampaignDetail({
         title={
           confirm === "archive" ? "¿Archivar campaña?" : "¿Finalizar campaña?"
         }
-        description={`${confirm === "archive" ? "La campaña quedará archivada." : welcome ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento." : cross ? "Para cambiarla tendrás que activar una nueva oferta cruzada. Los cupones ya reclamados siguen valiendo hasta su vencimiento." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel && !welcome && !cross ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
+        description={`${confirm === "archive" ? "La campaña quedará archivada." : welcome ? "Para cambiarla tendrás que activar una nueva bienvenida. Los regalos ya entregados siguen valiendo hasta su vencimiento." : cross ? "Para cambiarla tendrás que activar una nueva oferta cruzada. Los cupones ya entregados siguen valiendo hasta su vencimiento." : "Para cambiarla tendrás que lanzar una corrida nueva. Los turnos activos se retirarán en el próximo refresco."}${campaign.couponLabel && !welcome && !cross ? `\nLos cupones ya emitidos seguirán vigentes hasta ${dateLabel(campaign.endsAt)}.` : ""}`}
         confirmLabel={confirm === "archive" ? "Archivar" : "Finalizar"}
         danger
         busy={busy}

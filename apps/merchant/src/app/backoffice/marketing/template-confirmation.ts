@@ -25,13 +25,14 @@ export function templateConfirmation(
       ]
     : template.cross
       ? [
-          "Aparece en: Mis beneficios",
+          "Entrega: tras una compra en otro comercio, si la campaña sale elegida",
+          "El cupón aparece en: Mis beneficios",
           `Público: ${draft.crossAudience ? crossAudienceLabels[draft.crossAudience] : "Sin elegir"}`,
           ...(draft.crossAudience === "dormant"
             ? [`Ausencia: ${draft.dormantDays} días`]
             : []),
-          `Vigencia desde el reclamo: ${draft.crossValidDays} días`,
-          `Tope mensual: ${draft.crossMonthlyCap} cupones reclamados por negocio`,
+          `Vigencia desde la entrega: ${draft.crossValidDays} días`,
+          `Tope mensual: ${draft.crossMonthlyCap} cupones entregados por negocio`,
         ]
       : [
           `Canales: ${draft.channels.map((channel) => (channel === "push" ? "Push" : "Proximidad")).join(" y ")}`,

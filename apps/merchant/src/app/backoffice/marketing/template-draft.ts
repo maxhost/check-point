@@ -92,6 +92,8 @@ export function templateDraftErrors(
   if (draft.endsAt && !end) errors.endsAt = "Ingresa una fecha válida.";
   if (end && start && end <= start)
     errors.endsAt = "La fecha de fin debe ser posterior al inicio.";
+  if (!draft.endsAt && (template.cross || (draft.coupon && !template.welcome)))
+    errors.endsAt = "Una campaña con cupón necesita fecha de fin.";
   if (template.couponRequired && !draft.coupon)
     errors.couponLabel = "La bienvenida necesita un premio.";
   if (draft.coupon) {
@@ -99,8 +101,6 @@ export function templateDraftErrors(
       errors,
       rewardErrors(draft, couponKinds, !template.welcome && !template.cross),
     );
-    if (!end && !template.welcome && !template.cross)
-      errors.endsAt = "Una campaña con cupón necesita fecha de fin.";
   }
   if (template.cross) {
     if (!draft.coupon)
