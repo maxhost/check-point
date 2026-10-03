@@ -25,8 +25,7 @@ el disparo desde el escaneo (`persistGrant`/`counter/orders.ts`), la emision del
 el apagado de la lista a pedido (`listCrossOffers` en «Mis beneficios»), y el hallazgo del §«Para la spec» del 0117
 (`ends_at` nulo en `cross`). Contrato HTTP para GPT si cambia «Mis beneficios».
 
-**Pendientes:** CI de `main` con el intermitente de `catalog-import-guard` (sin confirmar); caso de `LECCIONES.md` de
-las filas falsas del plan de pruebas (0139 M3, 0141 M1/ruta/centinelas); los de la 0138; `AGENT-WORKFLOW.md`/agentes con
+**Pendientes:** CI de `main` con el intermitente de `catalog-import-guard` (sin confirmar); los de la 0138; `AGENT-WORKFLOW.md`/agentes con
 bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`.
 
 ## ⇥ ESTADO HISTORICO (2026-10-02, noche) — SPEC 0141 IMPLEMENTADA Y EN `main` (`d6178b1`). SIGUIENTE: SPEC 4 DEL ADR 0115

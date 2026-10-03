@@ -66,6 +66,11 @@ casos la fila llego hasta el agente que iba a ejecutarla.
 2026-09-29, M6 de la 0111). Si dos guards del mismo flujo cortan igual, borrar uno da VERDE y la fila miente. Por
 fila: nombrar el guard hermano; si existe, el oraculo lo puentea (doble que lo desactiva, escenario donde no llega).
 
+**Y tres chequeos mas por plan de pruebas, antes de cerrar la spec** (caso 2026-10-02, 0139 y 0141, `LECCIONES.md`):
+(1) la RUTA de cada test nuevo cae bajo un proyecto de `vitest.config.ts` (hoy `apps/*` y `tools`: un test en
+`packages/` no lo corre nadie); (2) los centinelas de un test de cableado son distintos de los valores de hoy Y entre si
+cuando la regla compara dos limites; (3) `rg` de que ningun test existente ya fija lo que la fila dice que nadie fija.
+
 ### 2.0-ter El FALSO ROJO, que es mas caro porque se lee como exito (2026-09-21)
 
 **Van TRES specs seguidas** en las que un **doble de test devuelve una fila que la base no puede

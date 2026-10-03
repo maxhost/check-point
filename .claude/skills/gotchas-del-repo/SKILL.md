@@ -195,6 +195,14 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
     hace falta red). Ojo: `rm -rf` esta en el deny de `.claude/settings.json`, usar `rm -f`
     sobre los archivos.
 
+- **`core.fileMode=false` en este repo: git no ve el bit de ejecucion del disco** (medido 2026-10-02). Por eso
+  `.githooks/pre-push` estuvo en git como `100644` y un worktree nuevo IGNORABA el hook sin bloquear el push. Un
+  cambio de modo se commitea con el index (`git update-index --chmod=+x <f>` + `git commit` SIN pathspec: con
+  `-- <path>` git re-lee el archivo y descarta el cambio). Un `pull` no le pone el bit a ningun checkout: cada arbol
+  (y cada worktree nuevo) corre `chmod +x .githooks/pre-push` y lo verifica con `ls -l`.
+- **NO usar `git pull --rebase --autostash` con el arbol sucio:** el stash es COMUN a todos los worktrees y, si el
+  autostash choca, tu cambio queda en el stack compartido (paso 2026-10-02 con `INDEX.md`). Commitea primero, o
+  resolve y borra TU entrada por sha (`git stash list --format='%H %gd'`).
 - **Worktrees en este monorepo: SI para leer y para vitest directo, NO para `pnpm run <script>`.**
   **NI `pnpm run` NI `pnpm exec` son seguros adentro de un worktree con `node_modules`
   symlinkeado al repo real**: los dos disparan `runDepsStatusCheck` → `pnpm install` → **intenta

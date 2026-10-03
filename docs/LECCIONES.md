@@ -1943,3 +1943,27 @@ tag `baseline` y nadie lo vio: no se esperaba la CI y tampoco se la miraba despu
 `pre-push` rechaza numeros duplicados (`tools/check-numbers.ts`) y corre `pnpm verify`; cada sesion empieza con
 `pnpm ci:status`.
 
+
+## 2026-10-02 — dos specs seguidas con el plan de pruebas falso contra el arbol (0139, 0141), las dos del orquestador
+
+**Que paso.** En la 0139, la mutacion M3 («el cierre `no_channel` escribe `status = 'sent'`») midio VERDE: `loadBudget`
+tambien filtra `sent_at > now − 24 h` y la mutacion dejaba `sent_at` nulo — un guard hermano que la fila no nombraba.
+En la 0141, tres errores del mismo tipo: la fila M1 decia que ningun test fijaba los valores del presupuesto
+(`wallet-push-budget.test.ts:35` si los fija); la spec ubicaba `limits.test.ts` en `packages/domain/`, donde **ningun
+proyecto de vitest corre tests** (`vitest.config.ts:5-11` lista `apps/*` y `tools`): un oraculo muerto; y los
+centinelas 1/1 del cableado no distinguian el tope de mostrador del total. Los cazaron el implementador y el revisor.
+
+**Regla (agregada a la skill `protocolo-de-verificacion` §2.0).** Ademas del mecanismo y el guard hermano, cada plan
+de pruebas verifica antes de cerrar: (1) que la RUTA de cada test nuevo cae bajo un proyecto de `vitest.config.ts`;
+(2) que los valores centinela de un test de cableado son distintos de los de hoy Y distintos entre si cuando la regla
+compara dos limites; (3) con `rg`, que ningun test existente ya fija lo que la fila dice que nadie fija.
+
+## 2026-10-02 — `core.fileMode=false` oculto que el hook `pre-push` no era ejecutable en git
+
+**Que paso.** `.githooks/pre-push` estaba en git como `100644`. En `motor` corria porque el bit estaba puesto a mano;
+un worktree nuevo lo ignoraba («hook was ignored because it's not set as executable») y el push pasaba sin chequeos.
+El checkout de GPT tampoco lo tenia: sus pushes se salteaban el hook. Con `core.fileMode=false`, git no ve el bit del
+disco, y `git commit -- <path>` re-lee el archivo y DESCARTA un cambio de modo hecho con `update-index --chmod=+x`.
+
+**Regla.** Arreglado en `2589922`. Un cambio de modo se commitea con el index (sin pathspec). Y un `pull` no le cambia
+el bit al checkout de nadie: cada arbol corre `chmod +x .githooks/pre-push` una vez (gotcha en `gotchas-del-repo`).
