@@ -1,7 +1,7 @@
 ---
 spec: 0139
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Spec 2 del ADR 0115 (+ ADR 0116). Campañas y avisos de mostrador salen SOLO por push de la PWA, nunca por Wallet; sin suscripcion se cierran `suppressed`/`no_channel` sin gastar presupuesto (la campaña igual emite su cupon); el recordatorio sigue Wallet → PWA y es el unico que escribe la «Ultima novedad» del pase. Nuevo `GET /api/public/consumer/notices` con los avisos de mostrador para Actividad (pantalla de GPT), con la migracion 0062 que le da al rol del cliente la lectura de 6 columnas de la cola.
 disjunta: si
 archivos: apps/merchant/src/server/wallet/{push-transports,push}.ts, packages/domain/src/server/consumer/notices.ts (crear), packages/db/drizzle/0062_* + meta (crear, GRANT de lectura), apps/consumer/src/app/api/public/consumer/notices/route.ts (crear), tests de ruteo/worker/presupuesto (reescritura declarada), un test Neon nuevo de avisos
@@ -195,3 +195,16 @@ Formato de `docs/AGENT-WORKFLOW.md`. PASS del revisor independiente antes de mar
 ## Abierto
 
 Nada bloqueante.
+
+## Cierre (2026-10-02)
+
+Codigo `70539b2` (§1-§2), `4908be8` (§3-§4), `8297ae6` (oraculo del hallazgo 1 del revisor). **PASS del revisor
+independiente**: M1-M4 y M6 re-ejecutadas por el revisor con los mismos rojos que el implementador; M5, M7b y M8 del
+implementador (M7a dio 42501 por el GRANT por columnas, no por el oraculo de claves: proteccion doble). Las 11
+reescrituras de tests juzgadas (a)/(b), ninguna debilitamiento. **M9** (agregada por el orquestador): un `reminder`
+suprimido por presupuesto que escribe `latest_message` → ROJO en `wallet-push-budget…` («a reminder is suppressed»).
+
+**Declarado:** el cierre `no_channel` no tiene asercion directa de que no dispare la preempcion (la preempcion vive
+despues del cierre `sent`; `lastPushAt` sin cambio es el hermano); `wallet_push_queue` no tiene RLS, el aislamiento de
+la lista es el `WHERE` (M6). `test:e2e` sin correr (puerto 3000 ocupado por un proceso de otro proyecto; sin UI).
+**La 0062 NO esta aplicada en PROD.**
