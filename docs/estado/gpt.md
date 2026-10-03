@@ -13,9 +13,9 @@ quedó cerrada en `489cdf1`; la UI está implementada localmente en `873ff6d`
 (SHA tras rebase sobre la spec 0138 de Claude).
 Verificación: 7/7 e2e de importación con harness móvil, captura a 390 px vista,
 2 mutaciones rojas y revertidas, build Webpack de merchant, typecheck, lint, formato,
-tests unitarios y Neon related merchant verdes. `pnpm verify` fue rojo por Turbopack
-consumer (`EPERM` al abrir puerto interno) y el e2e global (`:3000` ocupado por otro
-checkout). El push queda pendiente de resolución o autorización explícita del owner;
+tests unitarios y Neon related merchant verdes. Tras liberar `:3000`, el e2e global pasó
+(110 passed, 5 skipped); `pnpm verify` sigue rojo solo por Turbopack consumer (`EPERM`
+al abrir puerto interno). El owner pidió esperar a que el gate pase: sin push;
 falta PASS independiente. La UI admite `sourceFileName` opcional, pero el API actual no
 lo devuelve: `catalog_import_file.original_name` ya está persistido y Claude debe
 exponerlo en el DTO de `GET /api/catalog/imports` y `GET /api/catalog/imports/{id}`.
