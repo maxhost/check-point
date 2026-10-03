@@ -18,10 +18,10 @@
 caso «pase instalado bajo la revision anterior → 200» y lo midio rojo con la fecha vieja (`expected 304 to be 200`).
 `pre-push`: `verify: ok`. La 0145 es de GPT (UI de la venta cruzada).
 
-**Deploy de `5c855c7`:** customer y public `success`; **merchant `failure` por «Deployment rate limited — retry in 24 hours»**
-(limite de builds de Vercel Hobby, no del codigo). Los pases Apple los sirve SOLO customer (`apple.pkpass` y la ruta PassKit
-en `apps/consumer`), asi que la 0146 esta viva; merchant queda en `1adc0d8` (ya con 0143/0144), y solo le falta codigo que no
-usa. Se re-despliega solo con el proximo push despues del limite. **Este commit de estado no se pusheo** para no gastar builds.
+**Deploy (2026-10-03, 22:4x UTC):** merchant `success` con `981662e` (incluye la 0146 y el `e61e3d5` de GPT). customer y
+public `failure` por «rate limited — retry in 24 hours» en `981662e`, pero siguen en `5c855c7`, y desde ahi solo cambiaron
+archivos de merchant y docs: el codigo que sirven es el actual. Rama Neon `bench-clientes-comercio` (4,4 GB) BORRADA con OK
+del owner. Este commit de estado no se pusheo (para no gastar builds de Hobby).
 
 **Pendiente del owner para la 0146:** QA en iPhone (notificacion con el icono nuevo) y OK para el lote `pass_refresh` de
 produccion (muestra primero; excluir pases solo-hash; variables APNs del worker), segun la spec §«Declarado AFUERA».
