@@ -142,6 +142,19 @@ producto): la regla del owner es «si esta apagado no se prueba», no «lo vivo 
 - La API de ventanas de valle del merchant (`apps/merchant/src/app/api/marketing/valley/**`): **404 `not_found`**
   con valle apagado (el owner pidio que el merchant no vea lo apagado). Sus tests se saltean (tema valle).
 
+**Aceptado por el orquestador tras la implementacion (`1236aff`):**
+- Dos casos de §6-bis quedan SALTEADOS en vez de reescritos porque su mecanismo NO existe en lo vivo:
+  `marketing-templates` «excludes exactly the excluded doors…» (`cross`/`welcome` rechazan `excludedLocationIds`
+  con 400, `cross-input.test`) y `marketing-reward` «PATCH foreign» (`updateCampaign` solo edita el compositor;
+  una plantilla da 409 `template_not_editable`). Misma regla: sin fixture vivo, el mecanismo esta apagado.
+- Efecto lateral de §4: con valle apagado, un reclamo CON `locationId` sobre una campaña `cross` da 404
+  `UNAVAILABLE` (antes 400 `fields.locationId`), porque `claimValleyOffer` sale antes de la transaccion. Un cliente
+  no manda `locationId` para la cruzada; se acepta y se declara.
+- El rojo de `pnpm verify --full` (7 suites de billing) fue de ENTORNO: corte de red (`EHOSTUNREACH`) y residuos
+  `cus_dash`/`cus_scoped`/`cus_deriva_*` de esa corrida en `ci-integration`, borrados con OK del owner; las 2 suites
+  que chocaban re-corridas solas: 8/8 verdes. La corrida Neon completa previa con el mismo arbol: 2891 passed /
+  248 skipped / 0 failed (301,99 s).
+
 **Ubicacion del test del modulo:** `packages/` no tiene proyecto de vitest; el test va en
 `apps/merchant/src/server/marketing/enabled-campaigns.test.ts` (donde ya viven los de `templates.ts`).
 
@@ -180,8 +193,9 @@ trabajo del implementador.
 - [ ] La lista de casos salteados (§6), cada uno con su condicion; `git diff` de esas suites muestra solo el
       `skipIf` (ningun `expect` tocado, ningun test borrado).
 - [ ] Ningun test vivo corre el paso 4: sobre el log de la corrida Neon completa,
-      `grep '^marketing_tick ' LOG | grep -vc '"consumers":0,'` → **0**. (Probado que discrimina: sobre el log del
-      2026-10-02, antes de la spec, da 41 de 70 lineas.)
+      `grep '^marketing_tick ' LOG | grep '"consumers"' | grep -vc '"consumers":0,'` → **0** (el `grep
+      '"consumers"'` excluye las lineas `{"skipped":"tick_in_flight"}` del test del lock, que no tienen el campo;
+      corregido tras la implementacion). Probado que discrimina: sobre el log del 2026-10-02, antes de la spec, da 39 (y despues de la spec, sobre el log del verify, 0).
 - [ ] Tiempos de la suite Neon completa antes (~10 min, 2026-10-02) y despues, transcriptos. Es informativo, no un
       umbral.
 - [ ] `pnpm verify` en verde con Node 24, **una sola vez al final** (ADR 0113), con Neon completo (cambian
