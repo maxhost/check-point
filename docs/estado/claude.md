@@ -8,24 +8,18 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 IMPLEMENTADA Y COMMITEADA (`ab5e62e`), SIN PUSHEAR. LA 0063 YA ESTA EN PROD
+## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 EN `main` Y DESPLEGADA (`f3407f3`), 0063 EN PROD. FALTA EL QA DEL OWNER
 
-**Al retomar:** `motor` = `origin/main` (`76ce724`) + `ab5e62e` (codigo de la 0143) + este commit de estado. Nada pusheado.
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `f3407f3` (mas este commit de estado).
 
-**Hecho:** spec 0143 implementada; PASS del revisor independiente (M2, M3, M6 re-ejecutadas rojas). Su mutacion propia
-(F con `count(*)`) sobrevivia → el orquestador sumo `cross-sale-lottery-facts.neon` y la midio roja (`expected 1.25 to be
-close to 1`), revertida con diff vacio. `pnpm verify` del implementador ok (Neon completo); despues del test nuevo, el
-orquestador corrio typecheck, lint, format:check y la suite nueva (2/2). Spec e INDEX en `implementada`. Caso de la fila M3
-falsa en `LECCIONES.md`.
+**Hecho:** spec 0143 implementada (`ab5e62e`); PASS del revisor independiente (M2, M3, M6 rojas); su mutacion propia (F con
+`count(*)`) sobrevivia y el orquestador sumo `cross-sale-lottery-facts.neon` (rojo `expected 1.25 to be close to 1`). Caso de
+la fila M3 falsa en `LECCIONES.md`. **0063 en PROD** (OK del owner, `run_sql_transaction`; verificado por SQL: 64
+migraciones, las dos tablas, `checkpass_consumer` con UPDATE de `clicked_at` y sin SELECT de `order_id`). **Push** con el
+`pre-push` (owner lo pidio): `verify: ok`, Neon completo 2910 passed / 277 skipped. **Deploy:** los 3 proyectos de Vercel en
+`success` con `f3407f3` (statuses del commit).
 
-**0063 en PROD** (OK del owner 2026-10-03, `run_sql_transaction` en `red-violet-38772073`/`br-curly-silence-ax8acywm`):
-verificado por SQL — 64 migraciones (ultima `1791055249624`), `core.cross_decision` y `core.cross_candidate` creadas,
-`checkpass_consumer` con UPDATE de `clicked_at` y SELECT de `id`, sin SELECT de `order_id`.
-
-**Siguiente (en este orden):** (1) push de `motor` a `main` (el clasificador de auto mode lo bloquea como «Production
-Deploy»: lo aprueba el owner); (2) con el `pre-push`; (3) deploy de `checkpass.club` en
-`READY` con el sha; (4) avisar a GPT: C1/C2 → 404, `endsAt` obligatorio en M1; (5) QA manual del owner (spec §«Verificacion
-manual»).
+**Siguiente:** avisar a GPT (C1/C2 → 404, `endsAt` obligatorio en M1); QA manual del owner (spec §«Verificacion manual»).
 
 **Hallazgos a decidir (owner), del revisor:** `R` cuenta solo `issued` (en `coupon_conflict` la campaña tambien salio
 elegida); F/R se cuentan por campaña (si un comercio recrea su campaña a mitad de mes, su atraso vuelve a cero). Bajo
