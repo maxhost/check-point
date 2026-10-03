@@ -81,14 +81,14 @@ conserva un literal numerico de esos limites.** Los docblocks que explican el «
 `push-budget.ts:4-15`, que ademas debe decir que el 3 se conserva por decision del owner, ADR 0115 §5, y ya no se
 deriva del tope de Google) se mudan al modulo.
 
-### 3. Los tests: `packages/domain/src/server/notifications/limits.test.ts` + uno de cableado
+### 3. Los tests: `apps/merchant/src/server/notifications/limits.test.ts` + `limits-wiring.test.ts` (corregido: ningun proyecto de vitest corre tests bajo `packages/`, `vitest.config.ts:5-11`)
 
 - **Valores (oraculo de «los de hoy»):** cada constante contra su **literal** (`toBe(2)`, `toBe(24 * 60 * 60 * 1000)`,
   `toEqual({ min: 1, max: 10000, default: 50 })`, el objeto de proximidad campo por campo). Nunca contra otra
   constante: un test que importa la constante que verifica no ve un cambio de valor.
 - **Cableado (oraculo de «el consumidor lee el modulo»):** con `vi.mock` del modulo devolviendo valores CENTINELA
   distintos de los de hoy, cada lector tiene que reflejarlos:
-  - `decideBudget` con `NOTIFYING_PER_24H = 1` y `COUNTER_NOTICES_PER_24H = 1` suprime al primer envio;
+  - `decideBudget` con `COUNTER_NOTICES_PER_24H = 1` y `NOTIFYING_PER_24H = 2` (corregido: con 1/1 los dos topes no se distinguen) suprime el 2.º mostrador y el 3.º aviso con sonido, un caso por tope;
   - `COOLDOWN_MS` exportado por `push.ts` es el centinela;
   - `decideReminder` con un `REMINDER_CUTOFF_MINUTE` centinela corta en esa hora;
   - `TEMPLATES` (Bienvenida) y la definicion de la cruzada exponen el `monthlyCap` centinela;
@@ -115,7 +115,7 @@ Cada ruta y cada `archivo:linea` del README se **verifica contra el arbol** al e
 | Archivo | Accion |
 |---|---|
 | `packages/domain/src/server/notifications/limits.ts` | crear |
-| `packages/domain/src/server/notifications/limits.test.ts` | crear |
+| `apps/merchant/src/server/notifications/limits.test.ts` y `limits-wiring.test.ts` | crear |
 | test(s) de cableado (§3) | crear |
 | `apps/merchant/src/server/wallet/push-budget.ts`, `push.ts` | editar (importa y re-exporta) |
 | `packages/domain/src/server/wallet/reminder.ts` | editar (idem) |
@@ -176,3 +176,13 @@ antes de marcar `implementada`.
 ## Abierto
 
 Nada.
+
+## Correcciones de la implementacion (2026-10-02, aceptadas por el orquestador)
+
+- **Ruta de los tests:** `apps/merchant/src/server/notifications/`. La de §3 original (`packages/…`) no la corre ningun
+  proyecto de vitest (`vitest.config.ts:5-11` lista `apps/*` y `tools`; 0 tests bajo `packages/`). Error de la spec.
+- **Centinelas del presupuesto:** contador 1, total 2. Con 1/1 el cableado de `COUNTER_NOTICES_PER_24H` no tenia
+  oraculo. Error de la spec.
+- **Barridos:** el primero tambien lista la clave del mock en `limits-wiring.test.ts:46` (no es una definicion); el de
+  `monthlyCap: { min: 1` da vacio porque `limits.ts` usa `WELCOME_MONTHLY_CAP = {…}`. En los dos la propiedad (los
+  literales se fueron de los lectores) se cumple.
