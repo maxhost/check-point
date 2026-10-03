@@ -435,6 +435,13 @@
       "when": 1790900152868,
       "tag": "0061_identidad_del_cliente",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790994584756,
+      "tag": "0062_avisos_del_cliente",
+      "breakpoints": true
     }
   ]
 }
