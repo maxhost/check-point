@@ -78,6 +78,25 @@ valores centinela); no hay que tocarlo para cambiar un valor.
   `MAX_PASS_LOCATIONS` (`packages/domain/src/server/wallet/pass-locations.ts:16`).
 - **El rate limit HTTP del pase**: `packages/domain/src/server/wallet/pass-rate-limit.ts`.
 
+## 5bis. Quien drena la cola (ADR 0118)
+
+El aviso de mostrador sale en el momento (inline, `after()`). Todo lo diferido —campañas detras de la separacion de
+3 min, reintentos, el recordatorio del dia sin compra (se planifica dentro del worker) y el regalo misterio de la
+Venta cruzada— sale cuando corre el worker `GET /api/internal/wallet-push`.
+
+- **Lo llama cron-job.org** (cuenta del owner), modo «Personalizado»: minutos 0, 10, 20, 30, 40, 50; horas 7 a 17
+  (ultima corrida 17:50); zona `America/Guayaquil`; email al desactivarse encendido.
+- URL `https://business.checkpass.club/api/internal/wallet-push`, `GET`, header `Authorization: Bearer <CRON_SECRET>`
+  (el mismo valor que la variable de Vercel; si se rota, cambia tambien en GitHub, que lo usan `marketing-tick.yml` y
+  `catalog-import-reconcile.yml`).
+- **Cambiar el horario:** en la pantalla del job, sin deploy. Hasta las 21:00 = sumar las horas 18, 19 y 20; 24 h =
+  todas. Fuera de horario Neon duerme; cada hora de mas la mantiene despierta.
+- **Consecuencias aceptadas (7 a 18):** lo diferido despues de las 17:50 sale a las 7:00; el recordatorio cuya hora
+  objetivo cae despues de las 17:50 no sale.
+- Si cron-job.org desactiva el job (mas de 25 fallos seguidos), la cola espera hasta reactivarlo a mano. Verificado el
+  2026-10-03: «Run now» → HTTP 200, 7 recordatorios `sent` en la base.
+- Antes lo llamaba `.github/workflows/wallet-push-cron.yml` (borrado): GitHub lo corria cada 2,4–7,8 h.
+
 ## 5. Limites por comercio
 
 **No estan decididos** (ADR 0115 §5: «la idea es que cada comercio tenga su limite»; los valores por comercio no se
