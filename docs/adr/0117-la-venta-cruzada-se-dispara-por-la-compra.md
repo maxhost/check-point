@@ -50,6 +50,18 @@ ahora».
    `packages/domain/src/server/notifications/limits.ts`), asi que un push encolado tras el de mostrador sale a ~3 min sin
    mecanismo nuevo; y suma 2 de los 3 avisos con sonido del dia (`NOTIFYING_PER_24H`).
 
+7. **Criterio de arranque: B (al azar entre las elegibles, ponderado por cercania), registrando datos para aprender**
+   (owner, 2026-10-02, sobre `docs/notificaciones/venta-cruzada-criterio.md`). Textual: «podemos usar la B, pero
+   registrar datos suficicientes para ir aprendiendo? me refiero, a que queremos dar a todos los comercios de la red
+   oportunidades. No queremos que el que mas venda venda mas mientras el que venda menos nunca llegue a mas clientes.
+   comprendes? este es nuestor trabajo y nuestra obsesion. La venta cruzada sirve para volver a traer clientes viejos,
+   pero tambien llegar a clientes que quizas jamas te hubieran conocido. Tenemos que aprender sobre los habitos de cada
+   consumidor, pensar en que le sirve mas, y siempre tener una cuota de azar o de "discoveribilidad" para los comercios
+   que quizas no hubiera aparecido, darles la oportunidad. aqui quizas necesitamos investigar algoritmos o matematicas
+   para tratar de pensar que sistema seria el indicado para algo como esto».
+8. **Exito = el canje del cupon cruzado en B** («Solo el canje»).
+9. **Fraccion de azar inicial:** «Lo decido después».
+
 Canal (ADR 0115 §2 y 0116): push de la PWA si tiene notificaciones; si no, el cupon igual queda en su cuenta y se ve
 en la app.
 
@@ -58,3 +70,8 @@ en la app.
 - **El criterio de eleccion entre B, C, D** (punto 3): investigado en `docs/notificaciones/venta-cruzada-criterio.md`; falta que el owner elija. Insumo ya existente en el repo: el merito por
   LIFT con holdout de la proximidad (ADR 0066), que mide visitas incrementales y no la tasa cruda.
 - **Momento final y copy del push:** se confirman con la investigacion (punto 6).
+- **Grupo de control:** el owner pregunto si hace falta («estas enviando un cupon que solo se obtiene a travez de una
+  oferta cruzada. es decir no podemos saber si esa persona eventualmente compraria, pero si usa el cupon savemos que
+  esa visita se produjo por el cupon»). Pendiente de su respuesta tras el matiz por publico.
+- **El sistema de eleccion a largo plazo** (equidad de exposicion entre comercios, habitos del consumidor, cuota de
+  descubrimiento): segunda investigacion, de algoritmos.
