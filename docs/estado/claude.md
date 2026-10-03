@@ -8,25 +8,23 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, madrugada UTC) — 0138 IMPLEMENTADA (`1236aff`, SIN PUSH); REVISOR VIVO EN ESTE ARBOL
+## ⇥ ESTADO (2026-10-03) — 0138 IMPLEMENTADA Y EN `main` (`aefc21c`, push `07c7a37`). SIGUIENTE: SPEC 2 DEL ADR 0115
 
-**Al retomar:** `ListAgents` PRIMERO — si el `revisor` de la 0138 sigue vivo, no tocar el arbol (puede tener una
-mutacion puesta: la mide y la revierte el). `motor` = `17be382` (docs) sobre `1236aff` (`feat(0138)`), sin push;
-`origin/main` esta en `7e99d5f`.
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `07c7a37` (mas este commit de
+estado). Arbol limpio.
 
-**Hecho:** implementador termino en 2 vueltas (grupo B resuelto por §6-bis). Verificado por el orquestador:
-`1236aff` existe, arbol limpio, `rg MUTATION` vacio; Neon completo con ese arbol = **2891 passed / 248 skipped /
-0 failed, 301,99 s** (antes ~10 min); 9/9 mutaciones muerden segun su bitacora (`scratchpad/bitacora.txt`, M7
-necesito arreglar el seed). Su `pnpm verify --full` dio rojo SOLO en 7 suites de billing por red + residuos
-`cus_dash`/`cus_scoped`/`cus_deriva_*` → **borrados con OK del owner (3 → 0)**, las 2 que chocaban re-corridas:
-8/8. Spec actualizada (`17be382`): criterio del log del tick corregido (`grep '"consumers"'`: 0 despues, 39
-antes), dos desvios aceptados (exclusion de puertas y PATCH del premio: salteados, sin fixture vivo) y el 404 del
-reclamo cruzada+`locationId` con valle apagado. Credenciales de Neon que vitest volco en logs: redactadas en el
-scratchpad; quedan en transcripciones de agentes bajo `~/.claude/projects/` (no editadas; avisado al owner).
+**Hecho:** spec 0138 (solo Bienvenida y Venta cruzada; compositor, valle, reactivacion, saldo y paso 4 apagados
+desde `packages/domain/src/server/marketing/enabled-campaigns.ts`). Codigo `aefc21c` + `f693e08` (revierte
+`next-env.d.ts`). PASS del revisor independiente (5 mutaciones rojas, reescrituras y salteados revisados). Neon
+completo con el arbol de la spec: 2891 passed / 248 skipped / 0 failed en ~5 min (antes ~10). `pre-push` del push:
+`verify: ok` (Neon relacionado; e2e salteado, sin UI). **La #67 queda resuelta** (el paso 4 no corre); falta
+cerrarla en `PARQUEADO.md`. `ci-integration`: borrados los 99 turnos historicos y los 3 residuos de billing (OK
+del owner).
 
-**Siguiente:** con el PASS del revisor (reproducir su evidencia antes de creerla): marcar 0138 `implementada` en
-spec + INDEX, push de `1236aff`+docs (pre-push corre `pnpm verify`), estado con el sha. Con FAIL: llevarlo al owner
-si toca producto; si no, una vuelta del implementador. Despues: specs 2–4 del ADR 0115.
+**Siguiente:** cerrar #67 en PARQUEADO; spec 2 del ADR 0115 (canales: campañas y mostrador por PWA o solo en la app,
+recordatorio por Wallet con respaldo PWA). Pendientes de la 0138 (sin riesgo hoy): `audience-preview` abierto,
+`rewards/results` sin medir, condicion `||` de `balance-push`. Avisado al owner: vitest vuelca la cadena de conexion
+de `ci-integration` en errores (redactada en el scratchpad; queda en transcripciones de agentes en `~/.claude/`).
 
 **Medido en la corrida Neon completa (2026-10-02 22:00 UTC, ~10 min):** 6 failed / 3119 passed — `marketing-valley`
 (timeout, #67), **3 NUEVOS en `marketing-refresh`** (`expected [] to have a length of 1`, causa sin medir) y 2
