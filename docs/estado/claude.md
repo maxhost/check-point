@@ -8,24 +8,22 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02) — SPEC 0139 (spec 2 del ADR 0115) IMPLEMENTADA EN `motor`, REVISOR INDEPENDIENTE EN CURSO
+## ⇥ ESTADO (2026-10-02, noche) — SPEC 0139 IMPLEMENTADA Y EN `main` (`d6368c8`). SIGUIENTE: SPEC 3 DEL ADR 0115
 
-**Al retomar:** `ListAgents` (el revisor puede estar vivo midiendo: no tocar el arbol) + `git status`. `origin/main` =
-`4bd4b58`. Local sin push: `70539b2` (§1-§2), `891213f` (spec + 0062), `468e243` (estado), `4908be8` (§3-§4).
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `d6368c8` (mas este commit).
 
-**Hecho:** ADR 0116. `70539b2`: `campaign`/`transactional` solo Web Push, `no_channel` sin presupuesto,
-`latest_message` solo `reminder`. `4908be8`: `listConsumerNotices` + `GET /api/public/consumer/notices` (test como el
-rol del cliente) + migracion `0062_avisos_del_cliente.sql` (GRANT SELECT de 6 columnas; **aplicada solo en
-`ci-integration`, NO en PROD**: necesita OK aparte del owner, y va despues de 0060/0061). Las 8 mutaciones rojas segun
-el implementador (bitacora `0139-bitacora.md` del scratchpad). `pnpm verify`: todo ok incluido Neon completo (2900
-passed / 248 skipped) **salvo `test:e2e` sin correr**: el puerto 3000 lo ocupa `next-server` de otro proyecto
-(`central-hill`, PID 62922); verificado con `lsof`.
+**Hecho:** ADR 0116 + spec 0139 (spec 2 del 0115). `campaign`/`transactional` solo por Web Push, nunca Wallet; sin
+suscripcion cierran `suppressed`/`no_channel` sin gastar presupuesto; `latest_message` solo del `reminder`;
+`GET /api/public/consumer/notices` + `listConsumerNotices` para Actividad; migracion `0062` (GRANT SELECT de 6
+columnas al rol del cliente). PASS del revisor; M1-M9 rojas (M9 la agrego el orquestador, `8297ae6`). **Push con
+`--no-verify` AUTORIZADO por el owner** (2026-10-02, «Push con --no-verify»): el e2e no podia correr, puerto 3000
+ocupado por el dev server de `central-hill`; `check-numbers` corrido a mano, ok.
 
-**Siguiente:** veredicto del revisor → si PASS: `INDEX` a implementada, push, contrato a GPT (Actividad llama
-`listConsumerNotices`), e2e cuando el 3000 este libre. Hallazgo informado: el aviso de vencimiento de la Bienvenida es
-`campaign` y sin suscripcion cierra `no_channel`. Pendientes de antes: los de la 0138 (`audience-preview`,
-`rewards/results`, `balance-push`), `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`, `.prettierignore` con
-`docs/`, #68.
+**Pendiente:** **la 0062 NO esta en PROD** (OK aparte del owner; despues de 0060/0061). `test:e2e` sin correr en este
+arbol (correrlo cuando el 3000 este libre). **GPT tiene que conectar Actividad** a `listConsumerNotices` (contrato en la
+spec 0139 §3; avisar al owner). Siguiente spec: **3 del ADR 0115 (limites centralizados)**. Pendientes de antes: los de
+la 0138 (`audience-preview`, `rewards/results`, `balance-push`), `AGENT-WORKFLOW.md`/agentes con bitacora a
+`TASKS.md`, `.prettierignore` con `docs/`, #68.
 
 ## ⇥ ESTADO HISTORICO (2026-10-03) — 0138 IMPLEMENTADA Y EN `main` (`aefc21c`, push `07c7a37`). SIGUIENTE: SPEC 2 DEL ADR 0115
 
