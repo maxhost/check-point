@@ -8,7 +8,16 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — SPEC 0139 IMPLEMENTADA Y EN `main` (`d6368c8`). SIGUIENTE: SPEC 3 DEL ADR 0115
+## ⇥ ESTADO (2026-10-02, noche) — SPEC 0141 (spec 3 del ADR 0115, LIMITES) CERRADA; IMPLEMENTADOR EN CURSO
+
+**Al retomar:** `ListAgents` (puede haber un implementador vivo en `motor`: no tocar sus archivos) + `git status`.
+`origin/main` = `001b6f0` (spec 0141 reservada). La spec 3 quedo **0141** porque GPT reservo la **0140** («avisos de
+mostrador en Actividad», `daf9bac`) en paralelo.
+
+**En curso:** spec 0141: limites de notificaciones a `packages/domain/src/server/notifications/limits.ts` sin cambiar
+valores, re-exportados desde los archivos de hoy, + `docs/notificaciones/README.md` (pedido del owner). 6 mutaciones.
+
+## ⇥ ESTADO HISTORICO (2026-10-02, noche) — SPEC 0139 IMPLEMENTADA Y EN `main` (`d6368c8`). SIGUIENTE: SPEC 3 DEL ADR 0115
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `d6368c8` (mas este commit).
 
