@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { dropCrossWorlds } from "./consumer-cross-support";
+import { crossCampaign, dropCrossWorlds } from "./consumer-cross-support";
 import {
   MINUTE,
   candidatesOf,
@@ -9,6 +10,8 @@ import {
   orderAt,
   saleWorld,
 } from "./cross-sale-support";
+import { getDb } from "@mi-pasaporte/db";
+import { campaigns } from "@mi-pasaporte/db/schema";
 import { decideCrossSale } from "@mi-pasaporte/domain/server/marketing/cross-sale";
 
 /**
@@ -17,7 +20,8 @@ import { decideCrossSale } from "@mi-pasaporte/domain/server/marketing/cross-sal
  * them (`loadLotteryHistory`, `gotNewCustomerSince` in `cross-sale-store.ts`): F is the sum
  * of 1/k of the month's decisions (not their count), R counts the chosen ones, and the bonus
  * looks at the business's FIRST-EVER order of each customer. Added after the independent
- * review found a `count(*)` in place of `sum(1/k)` survived every other suite.
+ * review found a `count(*)` in place of `sum(1/k)` survived every other suite. F and R are
+ * counted by BUSINESS, over any of its campaigns (spec 0144).
  */
 afterAll(dropCrossWorlds, 180_000);
 const NOW = new Date();
@@ -73,6 +77,40 @@ describe.skipIf(!integrationEnabled)(
         (await candidatesOf(d.id)).map((r) => [r.campaignId, r.factorBonus]),
       );
       expect(bonus).toEqual({ [w.campaignB]: 1, [w.campaignC]: 1.5 });
+    }, 120_000);
+
+    it("F/R by business (spec 0144): a cross campaign recreated mid-month keeps the count", async () => {
+      const w = await saleWorld("probeR");
+      const first = await enrolled(w.a);
+      const o1 = await orderAt(
+        w.a,
+        first,
+        new Date(NOW.getTime() - 2 * MINUTE),
+      );
+      expect(await decideCrossSale(o1, { now: NOW, random: () => 0 })).toBe(
+        "issued",
+      );
+      const [d1] = await decisionsOf(first.consumerId);
+      const chosenIsB = d1.chosenCampaignId === w.campaignB;
+      // The chosen business ends its campaign and creates another one.
+      await getDb()
+        .update(campaigns)
+        .set({ status: "ended" })
+        .where(eq(campaigns.id, d1.chosenCampaignId!));
+      const fresh = await crossCampaign(chosenIsB ? w.b : w.c);
+      const other = chosenIsB ? w.campaignC : w.campaignB;
+      const second = await enrolled(w.a);
+      const o2 = await orderAt(w.a, second, new Date(NOW.getTime() - MINUTE));
+      expect(await decideCrossSale(o2, { now: NOW, random: () => 0 })).toBe(
+        "issued",
+      );
+      const [d2] = await decisionsOf(second.consumerId);
+      const behind = Object.fromEntries(
+        (await candidatesOf(d2.id)).map((r) => [r.campaignId, r.factorBehind]),
+      );
+      // By business: F = 1/2 + 1/2 = 1, R = 1 → 1. By campaign it would be F = 1/2, R = 0 → 1.5.
+      expect(behind[fresh]).toBeCloseTo(1, 9);
+      expect(behind[other]).toBeCloseTo(2, 9);
     }, 120_000);
   },
 );

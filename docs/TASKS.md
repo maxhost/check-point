@@ -7669,3 +7669,6 @@ next.config.ts hands to Next» como el de merchant costaria unas 10 lineas. M6 y
 - spec 0143, ORQUESTADOR — O-M8: `packages/domain/src/server/marketing/cross-sale-store.ts` (shasum limpio en la linea siguiente), `sum(1.0 / d.candidate_count)` → `count(*)` (F = suma de 1/k), contra `cross-sale-lottery-facts.neon` (nuevo). Resultado: ver abajo.
 34bbcb74c07c88ca9cb77004b4bf43df93b420d0  packages/domain/src/server/marketing/cross-sale-store.ts
   Resultado O-M8: ROJO 1/2 — `expected 1.25 to be close to 1` (F contado como count). Revertida: diff vacio, shasum 34bbcb74… igual al limpio.
+- spec 0144, ORQUESTADOR — M1: `packages/domain/src/server/marketing/cross-sale-store.ts` (shasum limpio 74de39fb…), filtro por la campaña viva en vez de por comercio, contra `cross-sale-lottery-facts.neon`.
+  Resultado 0144-M1: ROJO 1/3 — `expected 1.5 to be close to 1` (caso nuevo); los otros 2 verdes. Revertida: diff vacio, shasum 74de39fb igual al limpio.
+  Revisor 0144: PASS (M1 re-ejecutada ROJA, M2 propia — campaign.id por businessId — ROJA en 2 casos; 11/11 Neon cross-sale*; pnpm verify ok).

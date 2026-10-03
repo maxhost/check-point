@@ -103,3 +103,10 @@ en la app.
 - **Disparador:** «Solo acreditar». Solo una orden nueva del mostrador; canjear un premio o un cupon no dispara.
 - **Demora del push → ADR 0118:** cron-job.org cada 10 min, de 7:00 a 18:00 (Guayaquil), editable sin deploy; se borra
   el GitHub Action. El regalo misterio llega entre 3 y ~13 min despues; de una compra despues de las 17:50, a las 7:00.
+
+## Cerrado despues (owner, 2026-10-03, despues de implementar la spec 0143)
+
+- **El atraso se cuenta por comercio** («si acepto, ajusta caso 2»): `F` y `R` suman las decisiones del mes de
+  cualquier campaña cruzada de B, asi que recrear la campaña a mitad de mes no resetea la cuenta. Spec 0144.
+- **Un `coupon_conflict` no cuenta como ganada**: `R` cuenta solo las decisiones `issued` (B no recibio cliente por esa
+  decision). Era el comportamiento de la 0143; queda confirmado.

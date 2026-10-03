@@ -178,7 +178,11 @@ export async function decideCrossSale(
     for (const entry of eligible) {
       const { campaign } = entry;
       const monthStart = localMonthStart(now, campaign.timeZone);
-      const past = await loadLotteryHistory(tx, campaign.id, monthStart);
+      const past = await loadLotteryHistory(
+        tx,
+        campaign.businessId,
+        monthStart,
+      );
       lottery.push({
         campaignId: campaign.id,
         distanceMeters: entry.distanceMeters,

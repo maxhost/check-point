@@ -82,10 +82,14 @@ export async function lockCampaigns(
     for update`);
 }
 
-/** `F` (without this decision) and `R` of one campaign since `monthStart` (spec 0143 §3). */
+/**
+ * `F` (without this decision) and `R` of one BUSINESS since `monthStart` (spec 0143 §3), over
+ * ANY of its campaigns (spec 0144): recreating the cross campaign mid-month keeps the count.
+ * Filtered by `campaign_id` to use `core_cross_candidate_campaign_idx`.
+ */
 export async function loadLotteryHistory(
   tx: DbTransaction,
-  campaignId: string,
+  businessId: string,
   monthStart: Date,
 ): Promise<{ previousShare: number; received: number }> {
   const [row] = rowsOf<Record<string, unknown>>(
@@ -95,7 +99,8 @@ export async function loadLotteryHistory(
                             and d.outcome = 'issued'))::int as received
       from core.cross_candidate k
       join core.cross_decision d on d.id = k.decision_id
-      where k.campaign_id = ${campaignId}
+      where k.campaign_id in (
+          select c.id from core.campaign c where c.business_id = ${businessId})
         and d.decided_at >= ${monthStart.toISOString()}::timestamptz`),
   );
   return {
