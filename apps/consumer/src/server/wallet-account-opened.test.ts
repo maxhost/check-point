@@ -48,6 +48,15 @@ vi.mock(
   }),
 );
 vi.mock(
+  "@mi-pasaporte/domain/server/consumer/notices",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@mi-pasaporte/domain/server/consumer/notices")
+    >()),
+    listConsumerNotices: vi.fn(async () => []),
+  }),
+);
+vi.mock(
   "@mi-pasaporte/domain/server/push/subscriptions",
   async (importOriginal) => ({
     ...(await importOriginal<
