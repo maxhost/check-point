@@ -43,6 +43,7 @@
  * `0047`, `0048`, `0052`, `0057`, `0058`): adding a template here without a migration makes `enable` die on the check.
  */
 
+import { WELCOME_MONTHLY_CAP } from "../notifications/limits";
 import type { AtRiskRule } from "./at-risk";
 import { CROSS_TEMPLATE, type CrossDefinition } from "./cross-rules";
 import { VALLEY_TEMPLATE, type ValleyDefinition } from "./valley-rules";
@@ -136,7 +137,7 @@ export const TEMPLATES: readonly TemplateDefinition[] = [
     welcome: {
       validDays: { options: [7, 15, 30], default: 15 },
       reminderDays: { options: [1, 3, 7], default: 3 },
-      monthlyCap: { min: 1, max: 10000, default: 50 },
+      monthlyCap: WELCOME_MONTHLY_CAP,
       redeemFrom: { options: ["next_day", "same_visit"], default: "next_day" },
     },
     cross: null,

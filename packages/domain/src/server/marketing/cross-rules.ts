@@ -1,3 +1,4 @@
+import { CROSS_MONTHLY_CAP } from "../notifications/limits";
 import { dormantSince } from "./audience";
 import type { TemplateDefinition } from "./templates";
 import { capAllows } from "./welcome-rules";
@@ -60,7 +61,7 @@ export const CROSS_TEMPLATE: TemplateDefinition = {
       default: "non_members",
     },
     validDays: { options: [7, 15, 30], default: 15 },
-    monthlyCap: { min: 1, max: 10000, default: 50 },
+    monthlyCap: CROSS_MONTHLY_CAP,
   },
   valley: null,
 };

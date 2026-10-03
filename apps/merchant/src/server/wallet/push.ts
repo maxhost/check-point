@@ -23,11 +23,14 @@ import {
   recordCampaignPushSent,
 } from "@mi-pasaporte/domain/server/marketing/push-delivery";
 
-/** Minimum spacing between two pushes to the same consumer (ADR 0037). */
-export const COOLDOWN_MINUTES = Number(
-  process.env.WALLET_PUSH_COOLDOWN_MINUTES ?? 3,
-);
-export const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
+import {
+  COOLDOWN_MINUTES,
+  COOLDOWN_MS,
+} from "@mi-pasaporte/domain/server/notifications/limits";
+
+/** Minimum spacing between two pushes to the same consumer (ADR 0037). The value lives in
+ * `@mi-pasaporte/domain/server/notifications/limits` (spec 0141); re-exported here. */
+export { COOLDOWN_MINUTES, COOLDOWN_MS };
 /** After this many failed attempts a row is parked as `failed` (observability). */
 export const MAX_PUSH_ATTEMPTS = Number(
   process.env.WALLET_PUSH_MAX_ATTEMPTS ?? 5,

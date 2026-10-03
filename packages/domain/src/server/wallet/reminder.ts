@@ -1,3 +1,9 @@
+import {
+  REMINDER_CUTOFF_MINUTE,
+  REMINDER_EARLIEST_MINUTE,
+  REMINDER_LATEST_MINUTE,
+  REMINDER_SPACING_MS,
+} from "../notifications/limits";
 import { ACCOUNT_INVITE } from "./push-text";
 
 /**
@@ -17,14 +23,14 @@ export const DEFAULT_REMINDER_MINUTE = 12 * 60 + 30;
 export const MIN_SCANS_FOR_HABIT = 3;
 /** How far before the usual scan time the reminder goes. */
 export const REMINDER_LEAD_MINUTES = 30;
-/** No reminder at or after 21:00 local (owner, 2026-09-29): it waits for the next day. */
-export const REMINDER_CUTOFF_MINUTE = 21 * 60;
-/** The target is clamped to [9:00, 20:30] local, so it always leaves 30 minutes before
- * the cutoff (the worker runs every 5 min). */
-export const REMINDER_EARLIEST_MINUTE = 9 * 60;
-export const REMINDER_LATEST_MINUTE = REMINDER_CUTOFF_MINUTE - 30;
-/** At most one reminder per consumer in this span (any status). */
-export const REMINDER_SPACING_MS = 20 * HOUR_MS;
+/** The cutoff (21:00), the clamp [9:00, 20:30] and the spacing (one per 20 h) live in
+ * `../notifications/limits` (spec 0141 / ADR 0115 §5); re-exported here. */
+export {
+  REMINDER_CUTOFF_MINUTE,
+  REMINDER_EARLIEST_MINUTE,
+  REMINDER_LATEST_MINUTE,
+  REMINDER_SPACING_MS,
+};
 /** A scan in this span means «bought today»: no reminder. */
 export const SCAN_QUIET_MS = 24 * HOUR_MS;
 /** A coupon expiring within this span counts as «about to expire». */

@@ -1,22 +1,18 @@
+import {
+  BUDGET_WINDOW_MS,
+  COUNTER_NOTICES_PER_24H,
+  NOTIFYING_PER_24H,
+} from "@mi-pasaporte/domain/server/notifications/limits";
 import type { NoticeClass } from "./push-plan";
 
 /**
- * THE 24 H NOTICE BUDGET (spec 0111 / ADR 0103 §3), pure and DB-free. Google Wallet accepts
- * 3 notifying messages per pass every 24 h and the pass is ONE for the whole network, so:
- *
- * - the counter (`transactional`: accredit, redeem a reward, redeem a coupon) rings at most
- *   {@link COUNTER_NOTICES_PER_24H} times; the next ones are credited in silence;
- * - nothing rings more than {@link NOTIFYING_PER_24H} times, adding every class up.
- *
- * «With sound» = a `wallet_push_queue` row `sent` of class `transactional`, `campaign` or
- * `reminder`, in the moving window of {@link BUDGET_WINDOW_MS}. `pass_refresh` is silent: it
- * never counts and is never held back. Web Push counts like Wallet (the owner spoke of
- * notifications, not of a channel).
+ * THE 24 H NOTICE BUDGET (spec 0111 / ADR 0103 §3), pure and DB-free: the counter rings at
+ * most {@link COUNTER_NOTICES_PER_24H} times and nothing rings more than
+ * {@link NOTIFYING_PER_24H} times in {@link BUDGET_WINDOW_MS}. The values, and why they are
+ * what they are, live in `@mi-pasaporte/domain/server/notifications/limits` (spec 0141 /
+ * ADR 0115 §5); re-exported here so no importer changes.
  */
-
-export const COUNTER_NOTICES_PER_24H = 2;
-export const NOTIFYING_PER_24H = 3;
-export const BUDGET_WINDOW_MS = 24 * 60 * 60 * 1000;
+export { BUDGET_WINDOW_MS, COUNTER_NOTICES_PER_24H, NOTIFYING_PER_24H };
 
 /** What was already sent with sound to one consumer in the last 24 h. */
 export type Budget = {

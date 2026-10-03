@@ -10,7 +10,11 @@
  * integration's job (quota inside one run, two overlapping ticks).
  */
 
-import { composeRelevantText, RELEVANT_TEXT_CAP } from "./relevant-text";
+import {
+  DEFAULT_PLACEMENT_LIMITS,
+  type PlacementLimits,
+} from "../notifications/limits";
+import { composeRelevantText } from "./relevant-text";
 import type { CouponReward } from "./coupon-issue";
 
 /** A door. The only geometry the planner knows. */
@@ -84,32 +88,9 @@ export type PlacementPlan = {
   refresh: boolean;
 };
 
-/** Every number of the design is a PARAMETER, so a test can lower it instead of seeding
- * fifty rows. Defaults are the ORQUESTADOR's (spec 0065 / ADR 0066). */
-export type PlacementLimits = {
-  maxActiveTurns: number;
-  businessQuota: number;
-  minSeparationMeters: number;
-  holdoutRate: number;
-  cooldownDays: number;
-  utilitySlots: number;
-  windowDays: number;
-  /** Hard ceiling of the pass: Apple accepts 10 `locations`, Google 10 per object. */
-  maxSlots: number;
-  textCap: number;
-};
-
-export const DEFAULT_PLACEMENT_LIMITS: PlacementLimits = {
-  maxActiveTurns: 5,
-  businessQuota: 50,
-  minSeparationMeters: 400,
-  holdoutRate: 0.1,
-  cooldownDays: 30,
-  utilitySlots: 3,
-  windowDays: 5,
-  maxSlots: 10,
-  textCap: RELEVANT_TEXT_CAP,
-};
+/** The limits of the design (every number a PARAMETER) and their defaults live in
+ * `../notifications/limits` (spec 0141 / ADR 0115 §5); re-exported here. */
+export { DEFAULT_PLACEMENT_LIMITS, type PlacementLimits };
 
 export type PlacementInput = {
   now: Date;

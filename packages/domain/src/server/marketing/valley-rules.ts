@@ -1,3 +1,4 @@
+import { VALLEY_MONTHLY_CAP } from "../notifications/limits";
 import type { TemplateDefinition } from "./templates";
 
 /**
@@ -43,7 +44,7 @@ export const VALLEY_TEMPLATE: TemplateDefinition = {
   atRisk: null,
   welcome: null,
   cross: null,
-  valley: { monthlyCap: { min: 1, max: 10000, default: 50 } },
+  valley: { monthlyCap: VALLEY_MONTHLY_CAP },
 };
 
 /** One window: the hours `[startHour, endHour)` of ISO `weekday` (1 = Monday). */
