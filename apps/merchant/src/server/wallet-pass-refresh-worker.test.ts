@@ -90,6 +90,12 @@ describe("runPushWorker keeps a pass_refresh out of the transactional lane", () 
         },
       ],
       [{ lastPushAt: null }],
+      // Spec 0139: the refresh's two transport reads (`appleTargets`, `googleSerial`), then
+      // the campaign's `hasWebPushSubscription` — a campaign without a subscription has no
+      // channel and would close `no_channel` without sending.
+      [],
+      [],
+      [{ id: "sub-1" }],
     );
     // One claim per send, in plan order: the refresh first, then the campaign.
     claimResponses.push(
@@ -110,16 +116,14 @@ describe("runPushWorker keeps a pass_refresh out of the transactional lane", () 
       skipped: 0,
       planned: 0,
     });
-    // The account writes are the CAMPAIGN's two — its `latest_message` and its
-    // `last_push_at` — and NOTHING else: the refresh contributed none. `queueUpdates`
-    // collects every `update().set()`, so a refresh collapsed to `transactional` would
-    // add its own pair here (and would also have rescheduled the campaign, which the
-    // summary above already rejects). ORQUESTADOR: the assertion this replaces was
-    // `toEqual([])`, which read as «nothing was rescheduled» but also forbade the
-    // campaign's own legitimate writes — it was red against correct code.
-    expect(queueUpdates).toEqual([
-      { latestMessage: "t: b", messageUpdatedAt: NOW, updatedAt: NOW },
-      { lastPushAt: NOW },
-    ]);
+    // The account write is the CAMPAIGN's `last_push_at` and NOTHING else: the refresh
+    // contributed none. `queueUpdates` collects every `update().set()`, so a refresh
+    // collapsed to `transactional` would add its own (and would also have rescheduled the
+    // campaign, which the summary above already rejects). ORQUESTADOR: the assertion this
+    // replaces was `toEqual([])`, which read as «nothing was rescheduled» but also forbade
+    // the campaign's own legitimate writes — it was red against correct code.
+    // Spec 0139: rewritten — it also expected the campaign's `latest_message` write; since
+    // ADR 0116 §3 only a `reminder` writes the pass's «Última novedad».
+    expect(queueUpdates).toEqual([{ lastPushAt: NOW }]);
   });
 });

@@ -5,7 +5,11 @@ import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
-import { enqueue, queueRow } from "./wallet-push-integration-support";
+import {
+  enqueue,
+  queueRow,
+  subscribe,
+} from "./wallet-push-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
@@ -15,15 +19,15 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
 import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
-import { upsertSubscription } from "@mi-pasaporte/domain/server/push/subscriptions";
 import { FakePushChannel } from "./wallet/push-channel";
 import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { consumerHasReachableWallet } from "./wallet/push-transports";
 import { runPushWorker } from "./wallet/push-worker";
 
-// Routing of the transactional by class (spec 0038 / ADR 0040): wallet when the consumer
-// has a reachable pass, Web Push ONLY as fallback — the two never coexist, so the QA
-// duplicate (pass + Web Push on the same event) can no longer happen. Split out of
+// Routing of the counter notice (spec 0139 / ADR 0115 §2): Web Push only, never the
+// wallet — so the QA duplicate (pass + Web Push on the same event) cannot happen either.
+// The no-channel close, the «Última novedad» and the reminder route live in
+// `wallet-push-channels.neon.integration.test.ts`. Split out of
 // `wallet-push-worker.neon.integration.test.ts` to stay under the file-size budget.
 
 const consumerIds: string[] = [];
@@ -34,20 +38,8 @@ async function newConsumer() {
   return consumer;
 }
 
-async function subscribe(consumerId: string): Promise<string> {
-  const endpoint = `https://push.test/${randomUUID()}`;
-  await upsertSubscription({
-    consumerId,
-    endpoint,
-    p256dhKey: "p256dh",
-    authKey: "auth",
-    userAgent: "UA",
-  });
-  return endpoint;
-}
-
 describe.skipIf(!integrationEnabled)(
-  "transactional transport routing by class against Neon (spec 0038)",
+  "transactional transport routing by class against Neon (spec 0038 / 0139)",
   () => {
     afterAll(async () => {
       const db = getDb();
@@ -91,7 +83,10 @@ describe.skipIf(!integrationEnabled)(
       expect(await consumerHasReachableWallet(none.id)).toBe(false);
     }, 30_000);
 
-    it("reachable wallet → delivers ONLY wallet (no Web Push) in one cooldown", async () => {
+    // Spec 0139: rewritten to the new route. It asserted «reachable wallet → wallet only, no
+    // Web Push»; since ADR 0115 §2 a counter notice goes by the PWA and NEVER by wallet.
+    // ORACULO DE M1.
+    it("counter notice with a reachable Apple+Google pass AND a subscription → ONLY Web Push", async () => {
       const consumer = await newConsumer();
       const apple = await ensureWalletPass(consumer.id, "apple");
       await ensureWalletPass(consumer.id, "google");
@@ -100,8 +95,6 @@ describe.skipIf(!integrationEnabled)(
         deviceLibraryId: `dev-${randomUUID()}`,
         pushToken: "route-apns",
       });
-      // The consumer ALSO has a Web Push subscription — routing, not availability, must
-      // keep it silent for the transactional (this is exactly the QA duplicate).
       const endpoint = await subscribe(consumer.id);
       const id = await enqueue(consumer.id, "transactional");
 
@@ -117,17 +110,9 @@ describe.skipIf(!integrationEnabled)(
       // Exactly one queue row sent → the cooldown counts the notice once.
       expect(summary.sent).toBe(1);
       expect((await queueRow(id)).status).toBe("sent");
-
-      // Wallet was hit; Web Push was NOT (no duplicate).
-      expect(
-        walletFake.calls.some(
-          (c) => c.kind === "apple" && c.pushToken === "route-apns",
-        ),
-      ).toBe(true);
-      expect(walletFake.calls.some((c) => c.kind === "google")).toBe(true);
-      expect(webFake.calls).toHaveLength(0);
-      // The endpoint exists, so its silence is the routing decision, not a missing sub.
-      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(false);
+      // Web Push was hit; NO APNs and NO addMessage, although the pass is reachable.
+      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(true);
+      expect(walletFake.calls).toEqual([]);
     }, 30_000);
 
     it("no reachable wallet → falls back to Web Push only (no wallet call)", async () => {

@@ -11,7 +11,12 @@ import {
   type WebPushChannel,
   webPushChannelFromEnv,
 } from "@mi-pasaporte/domain/server/push/webpush-channel";
-import { deliverTransports } from "./push-transports";
+import {
+  deliverTransports,
+  hasNoChannel,
+  resolveTransportPlan,
+} from "./push-transports";
+import { closeNoChannel } from "./push-no-channel";
 import { applyBudget } from "./push-budget-store";
 import {
   gateCampaignPush,
@@ -112,19 +117,17 @@ type DeliverOpts = {
   now: Date;
 };
 
-/** Materializes the notice on the consumer and delivers it over the transports selected
- * by its `class` (ADR 0040: transactional → wallet, else Web Push fallback), then closes
- * the row (`sent`) and preempts pending campaigns — or backs off on failure. It is ONE
- * notice: exactly one queue row closes, so the per-consumer cooldown counts it as a single
- * push (ADR 0038) regardless of how many transports the class selected.
+/** Delivers one claimed notice over the transports its `class` selects (spec 0139 /
+ * ADR 0115 §2: `transactional`/`campaign` → Web Push only; `reminder` → wallet, else Web
+ * Push), then closes the row (`sent`) and preempts pending campaigns — or backs off on
+ * failure. ONE notice: exactly one queue row closes, so the cooldown counts it once.
+ * Without a channel the row closes `suppressed`/`no_channel` before the budget and writes
+ * nothing (`push-no-channel.ts`). Only a `reminder` writes `latest_message` (ADR 0116 §3).
  *
- * A `pass_refresh` (spec 0065) is SILENT, and that is what the two `silent` guards below
- * buy (one before the delivery, one after closing the row): it writes neither
- * `latest_message`/`message_updated_at` (the tick already bumped `message_updated_at`;
- * writing `latest_message` would publish an empty "Última novedad" over the consumer's
- * real one) nor `last_push_at`, and it does NOT preempt a pending `campaign` — so a refresh never spends the consumer's push budget
- * nor delays a campaign. The row still closes as `sent` and a delivery error is still
- * recorded on it, exactly like any other class. */
+ * A `pass_refresh` (spec 0065) is SILENT: it writes no `latest_message` (it is not a
+ * reminder) nor `last_push_at`, and does NOT preempt a pending `campaign` (the `silent`
+ * guard after closing the row) — so a refresh never spends the push budget nor delays a
+ * campaign. The row still closes as `sent` and a delivery error is still recorded. */
 async function deliverClaimed(
   id: string,
   claim: Claim,
@@ -143,9 +146,19 @@ async function deliverClaimed(
       if (gate.kind !== "send") return;
       clickId = gate.clickId;
     }
+    // Spec 0139 / ADR 0116 §2: the channel BEFORE the budget — a notice with nowhere to
+    // ring closes `suppressed`/`no_channel`, writes nothing and never counts as sent.
+    const plan = await resolveTransportPlan(claim.consumerId, claim.class);
+    if (hasNoChannel(plan)) {
+      await closeNoChannel(id);
+      // ADR 0115 D1: a campaign without notifications still gets its coupon.
+      if (clickId) await recordSent(clickId, now);
+      return;
+    }
     // Spec 0111: the 24 h notice budget, BEFORE anything is written (it closes the row).
     if (!(await applyBudget(id, claim, now))) return;
-    if (!silent)
+    // ADR 0116 §3: only the reminder writes the pass's «Última novedad».
+    if (claim.class === "reminder")
       await getDb()
         .update(consumerAccounts)
         .set({ latestMessage: latest, messageUpdatedAt: now, updatedAt: now })
@@ -156,7 +169,7 @@ async function deliverClaimed(
     const deliveryErrors = await deliverTransports(
       claim.consumerId,
       message,
-      claim.class,
+      plan,
       { channel, webPushChannel, clickId },
     );
     const deliveryError = deliveryErrors.length

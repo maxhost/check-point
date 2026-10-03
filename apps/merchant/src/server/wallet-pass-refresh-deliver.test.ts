@@ -67,7 +67,7 @@ vi.mock("@mi-pasaporte/db", () => {
           )
         )
           return Promise.resolve({ rows: claimRows });
-        // `consumerHasReachableWallet` — say yes, so the control transactional takes the
+        // `consumerHasReachableWallet` — say yes, so the control reminder takes the
         // wallet route (Apple + addMessage) instead of the Web Push fallback.
         if (text.includes("AS reachable"))
           return Promise.resolve({ rows: [{ reachable: true }] });
@@ -181,8 +181,8 @@ describe("deliverClaimed for a pass_refresh row (spec 0065)", () => {
     });
   });
 
-  it("CONTROL: a transactional does write the account and preempt campaigns", async () => {
-    claim("transactional");
+  it("CONTROL: a reminder does write the account and preempt campaigns", async () => {
+    claim("reminder");
     const channel = new FakePushChannel();
     await deliverRow("row-2", { channel, webPushChannel: null, now: NOW });
     expect(accountUpdates).toHaveLength(2);
@@ -194,8 +194,9 @@ describe("deliverClaimed for a pass_refresh row (spec 0065)", () => {
     expect(executed.some((e) => e.text.includes("class = 'campaign'"))).toBe(
       true,
     );
-    // The contrast that makes the fake's `google-patch` load-bearing: a transactional
-    // goes out as an `addMessage`, a refresh as a PATCH.
+    // The contrast that makes the fake's `google-patch` load-bearing: a reminder
+    // goes out as an `addMessage`, a refresh as a PATCH. (Spec 0139: the control was a
+    // `transactional`; since ADR 0115 §2 only the `reminder` takes the wallet.)
     expect(channel.calls.map((c) => c.kind)).toEqual(["apple", "google"]);
   });
 });

@@ -13,7 +13,7 @@ import {
   derivePlatform,
   webPushSubscriptionResponse,
 } from "@mi-pasaporte/domain/server/push/subscriptions";
-import { planTransports } from "./wallet/push-transports";
+import { hasNoChannel, planTransports } from "./wallet/push-transports";
 
 /** A raw web-push-style VAPID pair: public = 65-byte uncompressed b64url, private = d b64url. */
 function vapidPair() {
@@ -159,52 +159,74 @@ describe("web push subscription DTO never leaks secrets", () => {
   });
 });
 
-// The pure transport router (ADR 0040). `consumerHasReachableWallet` needs a DB, so the
-// end-to-end fake-channel assertions live in the Neon integration; here we pin the pure
-// class→transport decision that guarantees no transactional ever emits by two transports.
-describe("transport routing by class (spec 0038 / ADR 0040)", () => {
-  it("transactional + reachable wallet → wallet only, NEVER Web Push", () => {
-    expect(planTransports("transactional", true)).toEqual({
-      apple: true,
-      googleAddMessage: true,
-      googlePatch: false,
-      webPush: false,
-    });
-  });
+// The pure transport router (spec 0139 / ADR 0115 §2). The DB-backed facts (wallet
+// reachability, Web Push subscription) are integration-tested in
+// `wallet-push-routing.neon.integration.test.ts`; here we pin the pure class→transport table.
+const WALLET_ONLY = {
+  apple: true,
+  googleAddMessage: true,
+  googlePatch: false,
+  webPush: false,
+};
+const WEB_PUSH_ONLY = {
+  apple: false,
+  googleAddMessage: false,
+  googlePatch: false,
+  webPush: true,
+};
+const NO_CHANNEL = {
+  apple: false,
+  googleAddMessage: false,
+  googlePatch: false,
+  webPush: false,
+};
+const reach = (reachableWallet: boolean, webPushSubscribed: boolean) => ({
+  reachableWallet,
+  webPushSubscribed,
+});
 
-  it("transactional + NO reachable wallet → Web Push fallback only (no wallet)", () => {
-    expect(planTransports("transactional", false)).toEqual({
-      apple: false,
-      googleAddMessage: false,
-      googlePatch: false,
-      webPush: true,
-    });
-  });
-
-  it("wallet and Web Push never coexist for a transactional (no duplicate)", () => {
-    for (const reachable of [true, false]) {
-      const plan = planTransports("transactional", reachable);
-      const wallet = plan.apple || plan.googleAddMessage || plan.googlePatch;
-      expect(wallet && plan.webPush).toBe(false);
+describe("transport routing by class (spec 0139 / ADR 0115 §2)", () => {
+  it("transactional/campaign + reachable wallet + subscription → Web Push only, NEVER wallet", () => {
+    for (const klass of ["transactional", "campaign"]) {
+      expect(planTransports(klass, reach(true, true))).toEqual(WEB_PUSH_ONLY);
+      expect(planTransports(klass, reach(false, true))).toEqual(WEB_PUSH_ONLY);
     }
   });
 
-  // Spec 0103 / ADR 0095 §4: the provisional fan-out is GONE — a `campaign` routes like a
-  // `transactional` (wallet when reachable, else Web Push, never both). This case replaced
-  // «campaign keeps the provisional fan-out regardless of reachability».
-  it("campaign + reachable wallet → wallet only; unreachable → Web Push only", () => {
-    expect(planTransports("campaign", true)).toEqual({
-      apple: true,
-      googleAddMessage: true,
-      googlePatch: false,
-      webPush: false,
-    });
-    expect(planTransports("campaign", false)).toEqual({
-      apple: false,
-      googleAddMessage: false,
-      googlePatch: false,
-      webPush: true,
-    });
+  it("transactional/campaign without a subscription → no channel, even with a reachable wallet", () => {
+    for (const klass of ["transactional", "campaign"]) {
+      expect(planTransports(klass, reach(true, false))).toEqual(NO_CHANNEL);
+      expect(hasNoChannel(planTransports(klass, reach(true, false)))).toBe(
+        true,
+      );
+      expect(planTransports(klass, reach(false, false))).toEqual(NO_CHANNEL);
+    }
+  });
+
+  it("reminder: wallet when reachable, else Web Push — the subscription is not consulted", () => {
+    expect(planTransports("reminder", reach(true, false))).toEqual(WALLET_ONLY);
+    expect(planTransports("reminder", reach(true, true))).toEqual(WALLET_ONLY);
+    expect(planTransports("reminder", reach(false, false))).toEqual(
+      WEB_PUSH_ONLY,
+    );
+    expect(planTransports("reminder", reach(false, true))).toEqual(
+      WEB_PUSH_ONLY,
+    );
+  });
+
+  it("wallet and Web Push never coexist, and only pass_refresh/reminder ever touch the wallet", () => {
+    for (const klass of ["transactional", "campaign", "reminder"])
+      for (const r of [true, false])
+        for (const w of [true, false]) {
+          const plan = planTransports(klass, reach(r, w));
+          const wallet =
+            plan.apple || plan.googleAddMessage || plan.googlePatch;
+          expect(wallet && plan.webPush).toBe(false);
+          if (klass !== "reminder") expect(wallet).toBe(false);
+        }
+    expect(() => planTransports("otra", reach(true, true))).toThrow(
+      "clase desconocida",
+    );
   });
 });
 

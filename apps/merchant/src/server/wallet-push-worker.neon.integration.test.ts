@@ -5,7 +5,11 @@ import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
-import { enqueue, queueRow } from "./wallet-push-integration-support";
+import {
+  enqueue,
+  queueRow,
+  subscribe,
+} from "./wallet-push-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
@@ -16,6 +20,7 @@ import {
 import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
 import { registerDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
 import { FakePushChannel } from "./wallet/push-channel";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { COOLDOWN_MS, dispatchInline, deliverRow } from "./wallet/push";
 import { runPushWorker } from "./wallet/push-worker";
 
@@ -46,7 +51,10 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 30_000);
 
-    it("transactional sends immediately and preempts a queued campaign", async () => {
+    // Spec 0139: rewritten to the new route. It asserted wallet (Apple + Google) and
+    // `latest_message = "La Gringa: +1 sello"`; a counter notice now goes by Web Push only
+    // and never writes the pass's «Última novedad» (ADR 0115 §2, ADR 0116 §3).
+    it("transactional sends immediately (Web Push) and preempts a queued campaign", async () => {
       const consumer = await newConsumer();
       const apple = await ensureWalletPass(consumer.id, "apple");
       await ensureWalletPass(consumer.id, "google");
@@ -55,6 +63,7 @@ describe.skipIf(!integrationEnabled)(
         deviceLibraryId: `dev-${randomUUID()}`,
         pushToken: "apns-live-token",
       });
+      const endpoint = await subscribe(consumer.id);
 
       const campaignId = await enqueue(consumer.id, "campaign", {
         body: "Promo",
@@ -63,8 +72,10 @@ describe.skipIf(!integrationEnabled)(
 
       const now = new Date();
       const fake = new FakePushChannel();
+      const webFake = new FakeWebPushChannel();
       const summary = await runPushWorker({
         channel: fake,
+        webPushChannel: webFake,
         now,
         consumerIds: [consumer.id],
       });
@@ -82,25 +93,24 @@ describe.skipIf(!integrationEnabled)(
         now.getTime() + COOLDOWN_MS - 2000,
       );
 
-      // The consumer's snapshot + cooldown base moved.
+      // The cooldown base moved; the pass's «Última novedad» did NOT.
       const [acc] = await getDb()
         .select()
         .from(consumerAccounts)
         .where(eq(consumerAccounts.id, consumer.id));
-      expect(acc.latestMessage).toBe("La Gringa: +1 sello");
+      expect(acc.latestMessage).toBeNull();
       expect(acc.lastPushAt).not.toBeNull();
 
-      // Both providers were hit for the transactional.
-      expect(
-        fake.calls.some(
-          (c) => c.kind === "apple" && c.pushToken === "apns-live-token",
-        ),
-      ).toBe(true);
-      expect(fake.calls.some((c) => c.kind === "google")).toBe(true);
+      // Web Push carried it; the wallet was never called.
+      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(true);
+      expect(fake.calls).toHaveLength(0);
     }, 30_000);
 
+    // Spec 0139: the consumer now has a Web Push subscription (a `campaign` without one
+    // closes `suppressed`/`no_channel`); what it asserts is unchanged.
     it("cooldown: a campaign within the window is rescheduled, past it it sends", async () => {
       const consumer = await newConsumer();
+      await subscribe(consumer.id);
       const campaignId = await enqueue(consumer.id, "campaign", {
         body: "Promo",
       });
@@ -136,6 +146,7 @@ describe.skipIf(!integrationEnabled)(
       const sendFake = new FakePushChannel();
       const sentRun = await runPushWorker({
         channel: sendFake,
+        webPushChannel: new FakeWebPushChannel(),
         now,
         consumerIds: [consumer.id],
       });
@@ -143,6 +154,8 @@ describe.skipIf(!integrationEnabled)(
       expect((await queueRow(campaignId)).status).toBe("sent");
     }, 30_000);
 
+    // Spec 0139: the next five cases used `transactional` as the VEHICLE of a wallet
+    // mechanic; since ADR 0115 §2 only a `reminder` takes the wallet, so they ride one.
     it("claim is taken exactly once across inline dispatch and the cron worker", async () => {
       const consumer = await newConsumer();
       const apple = await ensureWalletPass(consumer.id, "apple");
@@ -151,7 +164,7 @@ describe.skipIf(!integrationEnabled)(
         deviceLibraryId: `dev-${randomUUID()}`,
         pushToken: "once-token",
       });
-      const id = await enqueue(consumer.id, "transactional");
+      const id = await enqueue(consumer.id, "reminder");
 
       const now = new Date();
       const fake = new FakePushChannel();
@@ -173,7 +186,7 @@ describe.skipIf(!integrationEnabled)(
         deviceLibraryId: `dev-${randomUUID()}`,
         pushToken: "gone-token",
       });
-      const id = await enqueue(consumer.id, "transactional");
+      const id = await enqueue(consumer.id, "reminder");
 
       const now = new Date();
       const fake = new FakePushChannel(new Set(["gone-token"]));
@@ -202,7 +215,7 @@ describe.skipIf(!integrationEnabled)(
         deviceLibraryId: `dev-${randomUUID()}`,
         pushToken: "bad-token",
       });
-      const id = await enqueue(consumer.id, "transactional");
+      const id = await enqueue(consumer.id, "reminder");
 
       const now = new Date();
       const fake = new FakePushChannel(new Set(), new Set(["bad-token"]));
@@ -232,7 +245,7 @@ describe.skipIf(!integrationEnabled)(
         deviceLibraryId: `dev-${randomUUID()}`,
         pushToken: "stale-token",
       });
-      const staleId = await enqueue(stale.id, "transactional", {
+      const staleId = await enqueue(stale.id, "reminder", {
         status: "sending",
         notBefore: new Date(now.getTime() - 60_000),
       });
@@ -269,7 +282,7 @@ describe.skipIf(!integrationEnabled)(
     it("deliverRow re-claims a stale sending row directly (claim guard covers 'sending')", async () => {
       const consumer = await newConsumer();
       const now = new Date();
-      const id = await enqueue(consumer.id, "transactional", {
+      const id = await enqueue(consumer.id, "reminder", {
         status: "sending",
         notBefore: new Date(now.getTime() - 60_000),
       });

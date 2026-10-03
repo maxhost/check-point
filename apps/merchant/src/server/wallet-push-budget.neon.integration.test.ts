@@ -9,7 +9,11 @@ import {
   seedBusiness,
   seedConsumer,
 } from "./counter-integration-support";
-import { enqueue, queueRow } from "./wallet-push-integration-support";
+import {
+  enqueue,
+  queueRow,
+  subscribe,
+} from "./wallet-push-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
@@ -20,6 +24,7 @@ import { resolveScan } from "./counter/resolve";
 import { persistGrant } from "./counter/orders";
 import { ensureWalletPass } from "@mi-pasaporte/domain/server/wallet/core";
 import { FakePushChannel } from "./wallet/push-channel";
+import { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 import { deliverRow } from "./wallet/push";
 
 /**
@@ -99,14 +104,19 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 30_000);
 
+    // Spec 0139: rewritten to the new route. It asserted the Google `addMessage` per
+    // delivery and `latest_message` = the 2nd notice; a counter notice now rings by Web
+    // Push only (the consumer gets a subscription) and never writes «Última novedad».
     it("3 accreditations in a row: 2 ring, the 3rd is credited in silence", async () => {
       const consumer = await consumerWithGooglePass();
+      await subscribe(consumer.id);
+      const before = await account(consumer.id);
       const resolved = await resolveScan(seed.business, consumer.qrToken);
       const membershipId = resolved.membership.id;
       const ids: string[] = [];
       const times: Date[] = [];
       const fakes: FakePushChannel[] = [];
-      // Different units → different texts, so `latest_message` tells the 2nd from the 3rd.
+      const webFakes: FakeWebPushChannel[] = [];
       for (const units of [1, 2, 3]) {
         const granted = await persistGrant({
           businessId: seed.business.id,
@@ -127,34 +137,35 @@ describe.skipIf(!integrationEnabled)(
         expect(granted?.pushQueueId).toBeTruthy();
         const now = clock(units * 1000);
         const fake = new FakePushChannel();
+        const webFake = new FakeWebPushChannel();
         expect(
           await deliverRow(granted!.pushQueueId!, {
             channel: fake,
-            webPushChannel: null,
+            webPushChannel: webFake,
             now,
           }),
         ).toBe(true);
         ids.push(granted!.pushQueueId!);
         times.push(now);
         fakes.push(fake);
+        webFakes.push(webFake);
       }
 
       const rows = await Promise.all(ids.map(queueRow));
       expect(rows.map((r) => r.status)).toEqual(["sent", "sent", "suppressed"]);
       expect(rows[2].lastError).toBe("budget_24h");
       expect(rows[2].sentAt).toBeNull();
-      // The 3rd reached NO transport.
-      expect(fakes[0].calls.map((c) => c.kind)).toEqual(["google"]);
-      expect(fakes[1].calls.map((c) => c.kind)).toEqual(["google"]);
-      expect(fakes[2].calls).toEqual([]);
+      // The first two rang by Web Push, the 3rd reached NO transport, the wallet none.
+      expect(webFakes.map((f) => f.calls.length)).toEqual([1, 1, 0]);
+      expect(fakes.flatMap((f) => f.calls)).toEqual([]);
 
-      // The account shows the 2nd notice, stamped at the 2nd delivery — not the 3rd.
+      // The clock is the 2nd delivery's; the pass's «Última novedad» is untouched.
       const acct = await account(consumer.id);
-      expect(acct.latestMessage).toBe(
-        "La Gringa: Se acreditaron 2 sellos en tu cuenta 🎉 · Revisa tus beneficios en my.checkpass.club",
+      expect(acct.latestMessage).toBe(before.latestMessage);
+      expect(acct.messageUpdatedAt?.getTime()).toBe(
+        before.messageUpdatedAt?.getTime(),
       );
       expect(acct.lastPushAt?.getTime()).toBe(times[1].getTime());
-      expect(acct.messageUpdatedAt?.getTime()).toBe(times[1].getTime());
 
       // The balance DID take all three.
       expect(await readBalances(membershipId)).toEqual({
@@ -163,8 +174,11 @@ describe.skipIf(!integrationEnabled)(
       });
     }, 60_000);
 
+    // Spec 0139: + a Web Push subscription (without one the campaign closes `no_channel`
+    // before the budget is asked); what it asserts is unchanged.
     it("with 3 notifying sent (any mix), a campaign is deferred to oldest + 24 h", async () => {
       const consumer = await consumerWithGooglePass();
+      await subscribe(consumer.id);
       const now = clock();
       const oldest = new Date(now.getTime() - 20 * HOUR);
       await sentRow(consumer.id, "reminder", oldest);
@@ -218,8 +232,11 @@ describe.skipIf(!integrationEnabled)(
       expect(fake.calls.map((c) => c.kind)).toEqual(["google-patch"]);
     }, 60_000);
 
+    // Spec 0139: + a Web Push subscription (without one the counter notice closes
+    // `no_channel`, not `sent`); what it asserts is unchanged.
     it("the window is `sent_at > now − 24 h`: a send exactly 24 h old no longer counts", async () => {
       const consumer = await consumerWithGooglePass();
+      await subscribe(consumer.id);
       const now = clock();
       await sentRow(
         consumer.id,

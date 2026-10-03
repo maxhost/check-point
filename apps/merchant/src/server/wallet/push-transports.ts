@@ -9,7 +9,10 @@ import {
 } from "./push-channel";
 import { googleObjectPatchFor } from "@mi-pasaporte/domain/server/wallet/pass-locations-store";
 import { type WebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
-import { deliverWebPush } from "@mi-pasaporte/domain/server/push/subscriptions";
+import {
+  deliverWebPush,
+  hasWebPushSubscription,
+} from "@mi-pasaporte/domain/server/push/subscriptions";
 
 /** The consumer portal path a notification click opens (served inside the PWA/tab). */
 const NOTICE_URL = "/wallet";
@@ -134,7 +137,7 @@ async function patchGoogle(
  * EITHER an Apple pass has a registered `wallet_push_device` (an APNs token to wake) OR a
  * Google pass exists (Google delivers via `addMessage`, no device row needed). A generated
  * Apple pass with NO device registered is NOT reachable — that is the exact case the
- * transactional fallback must catch to reach the consumer by Web Push instead. Resolved in
+ * reminder fallback must catch to reach the consumer by Web Push instead. Resolved in
  * ONE query (two `EXISTS`, no rows pulled).
  */
 export async function consumerHasReachableWallet(
@@ -163,11 +166,14 @@ export async function consumerHasReachableWallet(
   return rows[0]?.reachable === true;
 }
 
-/** Which transports carry one notice, decided by its class (ADR 0040). Pure so the
- * routing is unit-testable without a DB — the effectful send lives in
- * {@link deliverTransports}. `transactional` goes ONLY by wallet when it is reachable, and
- * falls back to Web Push ONLY when it is not (the two never coexist → never a duplicate).
- * `campaign` (spec 0103) routes exactly like `transactional`; the ADR 0038 fan-out is gone.
+/** Which transports carry one notice, decided by its class. Pure so the routing is
+ * unit-testable without a DB — the effectful send lives in {@link deliverTransports}.
+ *
+ * ADR 0115 §2 / spec 0139 (supersedes ADR 0040/0095 for these two): `transactional` and
+ * `campaign` go ONLY by the PWA's Web Push, and only when the consumer has a subscription —
+ * NEVER by wallet, so the pass's notification budget is not spent on them. `reminder`
+ * (spec 0111) keeps the old route: wallet when reachable, else Web Push (never both).
+ * A plan with the four flags `false` is "no channel" ({@link hasNoChannel}).
  *
  * The two Google transports are SEPARATE flags (spec 0065): `googleAddMessage` notifies
  * (that IS `addMessage`) and `googlePatch` does not. A single `google` flag made the
@@ -179,35 +185,29 @@ export type TransportPlan = {
   googlePatch: boolean;
   webPush: boolean;
 };
-/** `transactional`, `campaign` (spec 0103) and `reminder` (spec 0111) share ONE route:
- * wallet when reachable, else Web Push. */
-function routesLikeTransactional(noticeClass: string): boolean {
-  return (
-    noticeClass === "transactional" ||
-    noticeClass === "campaign" ||
-    noticeClass === "reminder"
-  );
-}
+/** What the router needs to know about the consumer. Each field is only CONSULTED for the
+ * classes that read it (see {@link resolveTransportPlan}); the other is passed as `false`. */
+export type Reach = { reachableWallet: boolean; webPushSubscribed: boolean };
+
+const NONE: TransportPlan = {
+  apple: false,
+  googleAddMessage: false,
+  googlePatch: false,
+  webPush: false,
+};
+
 export function planTransports(
   noticeClass: string,
-  reachableWallet: boolean,
+  reach: Reach,
 ): TransportPlan {
-  // Spec 0103 / ADR 0095 §4: a `campaign` goes exactly like a `transactional`.
-  if (routesLikeTransactional(noticeClass)) {
-    return reachableWallet
-      ? {
-          apple: true,
-          googleAddMessage: true,
-          googlePatch: false,
-          webPush: false,
-        }
-      : {
-          apple: false,
-          googleAddMessage: false,
-          googlePatch: false,
-          webPush: true,
-        };
-  }
+  // ADR 0115 §2: the PWA or nothing — never the wallet.
+  if (noticeClass === "transactional" || noticeClass === "campaign")
+    return { ...NONE, webPush: reach.webPushSubscribed };
+  // Spec 0111: the reminder IS the wallet's notice; Web Push only when there is no pass.
+  if (noticeClass === "reminder")
+    return reach.reachableWallet
+      ? { ...NONE, apple: true, googleAddMessage: true }
+      : { ...NONE, webPush: true };
   // `pass_refresh` (spec 0065): wake the Apple devices so they pull the new pass, and
   // PATCH the Google object. NO `addMessage` and NO Web Push — those two are the ones
   // that would ring the phone, and this class is defined by its silence.
@@ -221,31 +221,52 @@ export function planTransports(
   throw new Error(`planTransports: clase desconocida ${noticeClass}`);
 }
 
+/** A plan that reaches nothing: the notice has nowhere to ring (ADR 0116 §2). */
+export function hasNoChannel(plan: TransportPlan): boolean {
+  return (
+    !plan.apple && !plan.googleAddMessage && !plan.googlePatch && !plan.webPush
+  );
+}
+
 /**
- * Delivers one notice over the transports selected by its `class` (ADR 0040, supersedes
- * the ADR 0038 §3 fan-out). A `transactional` goes by wallet (Apple APNs + Google
- * `addMessage`, spec 0033) when the consumer has a reachable pass, else falls back to Web
- * Push (spec 0037) — never both, so no duplicate. A `pass_refresh` (spec 0065) goes by
- * APNs + the silent Google `PATCH` only. A `campaign` (spec 0103) goes like a
- * `transactional`, and its `clickId` rides the Web Push payload so the service worker can
- * report the click. Each transport is best-effort — one failing transport never blocks the others —
- * and every error is collected so the caller records it on the queue row. This is a SINGLE
- * notice: the per-consumer cooldown counts it once (the caller closes exactly one row).
+ * The plan of one notice with the consumer's state AS IT IS IN THE DB at claim time. Only
+ * the fact the class reads is queried: wallet reachability for `reminder`, the Web Push
+ * subscription for `transactional`/`campaign`, nothing for `pass_refresh`. A dead
+ * subscription is pruned on delivery (410) — "no channel" is decided before that.
+ */
+export async function resolveTransportPlan(
+  consumerId: string,
+  noticeClass: string,
+): Promise<TransportPlan> {
+  const reachableWallet =
+    noticeClass === "reminder"
+      ? await consumerHasReachableWallet(consumerId)
+      : false;
+  const webPushSubscribed =
+    noticeClass === "transactional" || noticeClass === "campaign"
+      ? await hasWebPushSubscription(consumerId)
+      : false;
+  return planTransports(noticeClass, { reachableWallet, webPushSubscribed });
+}
+
+/**
+ * Delivers one notice over an already-resolved {@link TransportPlan} (computed once by the
+ * caller with {@link resolveTransportPlan}, so the DB is not asked twice). A `campaign`'s
+ * `clickId` rides the Web Push payload so the service worker can report the click. Each
+ * transport is best-effort — one failing transport never blocks the others — and every
+ * error is collected so the caller records it on the queue row. This is a SINGLE notice:
+ * the per-consumer cooldown counts it once (the caller closes exactly one row).
  */
 export async function deliverTransports(
   consumerId: string,
   message: PushMessage,
-  noticeClass: string,
+  plan: TransportPlan,
   opts: {
     channel: PushChannel;
     webPushChannel: WebPushChannel | null;
     clickId?: string;
   },
 ): Promise<string[]> {
-  const reachable = routesLikeTransactional(noticeClass)
-    ? await consumerHasReachableWallet(consumerId)
-    : false;
-  const plan = planTransports(noticeClass, reachable);
   const errors: string[] = [];
   if (plan.apple)
     errors.push(...(await sendApple(consumerId, message, opts.channel)));

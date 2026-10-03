@@ -158,7 +158,10 @@ describe.skipIf(!integrationEnabled)(
     // contract is proven in `wallet-push-routing.neon.integration.test.ts`). This case used
     // to read «a campaign fans out by webpush AND wallet»; the row is an ORPHAN `campaign`
     // (no `campaign_push` behind it), which the delivery gate sends as is.
-    it("a campaign with a reachable wallet goes by wallet ONLY and counts as ONE cooldown/queue row", async () => {
+    // Spec 0139 / ADR 0115 §2: rewritten again. It read «a campaign with a reachable wallet
+    // goes by wallet ONLY» (Apple + Google hit, Web Push silent); a campaign now goes by
+    // the PWA's Web Push ONLY and never by wallet, reachable or not.
+    it("a campaign with a reachable wallet goes by Web Push ONLY and counts as ONE cooldown/queue row", async () => {
       const consumer = await newConsumer();
       const apple = await ensureWalletPass(consumer.id, "apple");
       await ensureWalletPass(consumer.id, "google");
@@ -190,14 +193,9 @@ describe.skipIf(!integrationEnabled)(
       expect(summary.sent).toBe(1);
       expect((await queueRow(id)).status).toBe("sent");
 
-      // The wallet transports were hit; Web Push was NOT (no duplicate).
-      expect(
-        walletFake.calls.some(
-          (c) => c.kind === "apple" && c.pushToken === "apns-fanout",
-        ),
-      ).toBe(true);
-      expect(walletFake.calls.some((c) => c.kind === "google")).toBe(true);
-      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(false);
+      // Web Push was hit; the wallet transports were NOT (no duplicate, no wallet spend).
+      expect(webFake.calls.some((c) => c.endpoint === endpoint)).toBe(true);
+      expect(walletFake.calls).toEqual([]);
 
       // The cooldown base moved exactly once.
       const [acc] = await getDb()

@@ -127,7 +127,12 @@ describe("planConsumerDrain with pass_refresh (spec 0065)", () => {
 
 describe("transport fan-out for pass_refresh (spec 0065)", () => {
   it("is Apple + the silent Google PATCH — no addMessage, no Web Push", () => {
-    expect(planTransports("pass_refresh", false)).toEqual({
+    expect(
+      planTransports("pass_refresh", {
+        reachableWallet: false,
+        webPushSubscribed: false,
+      }),
+    ).toEqual({
       apple: true,
       googlePatch: true,
       googleAddMessage: false,
@@ -136,8 +141,16 @@ describe("transport fan-out for pass_refresh (spec 0065)", () => {
   });
 
   it("does not depend on wallet reachability", () => {
-    expect(planTransports("pass_refresh", true)).toEqual(
-      planTransports("pass_refresh", false),
+    expect(
+      planTransports("pass_refresh", {
+        reachableWallet: true,
+        webPushSubscribed: true,
+      }),
+    ).toEqual(
+      planTransports("pass_refresh", {
+        reachableWallet: false,
+        webPushSubscribed: false,
+      }),
     );
   });
 });
