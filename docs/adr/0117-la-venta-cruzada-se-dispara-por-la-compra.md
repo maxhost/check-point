@@ -61,6 +61,12 @@ ahora».
    para tratar de pensar que sistema seria el indicado para algo como esto».
 8. **Exito = el canje del cupon cruzado en B** («Solo el canje»).
 9. **Fraccion de azar inicial:** «Lo decido después».
+10. **Se registra todo desde el dia uno** («Sí, todo»): cada decision con sus candidatos, factores, probabilidad y numero
+    sorteado; el segmento del cliente respecto de cada candidato (nuevo / dormido / habitual); las compras con 0
+    elegibles; y el resultado, incluidas las compras en el comercio elegido aunque no canjee (el exito sigue siendo solo
+    el canje, punto 8). Detalle en `docs/notificaciones/venta-cruzada-algoritmo.md` §4.
+11. **Sin grupo de control por ahora** («Ninguno por ahora»): con el volumen de hoy no mediria nada; como el segmento
+    queda registrado, se puede encender despues para dormidos y habituales.
 
 Canal (ADR 0115 §2 y 0116): push de la PWA si tiene notificaciones; si no, el cupon igual queda en su cuenta y se ve
 en la app.
@@ -70,9 +76,8 @@ en la app.
 - **El criterio de eleccion entre B, C, D** (punto 3): investigado en `docs/notificaciones/venta-cruzada-criterio.md`; falta que el owner elija. Insumo ya existente en el repo: el merito por
   LIFT con holdout de la proximidad (ADR 0066), que mide visitas incrementales y no la tasa cruda.
 - **Momento final y copy del push:** se confirman con la investigacion (punto 6).
-- **Grupo de control:** el owner pregunto si hace falta («estas enviando un cupon que solo se obtiene a travez de una
-  oferta cruzada. es decir no podemos saber si esa persona eventualmente compraria, pero si usa el cupon savemos que
-  esa visita se produjo por el cupon»). Pendiente de su respuesta tras el matiz por publico.
+- **Que es «lo justo» para un comercio:** owner, «No lo se, deberiamos investigar y proponer hipotesis o pensamientos
+  sobre esto». Hipotesis en `docs/notificaciones/venta-cruzada-equidad.md`.
 - **El sistema de eleccion a largo plazo** (equidad de exposicion entre comercios, habitos del consumidor, cuota de
   descubrimiento): investigado en `docs/notificaciones/venta-cruzada-algoritmo.md` (loteria ponderada con piso de
   azar, en tres etapas, y que registrar desde el dia uno); faltan las decisiones del owner de su §3-§5.
