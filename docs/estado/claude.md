@@ -8,7 +8,27 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03) — ADR 0117 ACEPTADA (VENTA CRUZADA). SIGUIENTE: ESCRIBIR LA SPEC 4 DEL ADR 0115
+## ⇥ ESTADO (2026-10-03, tarde) — SPEC 0143 CERRADA Y EN `main` (`4c50397`). SIGUIENTE: IMPLEMENTARLA
+
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `4c50397` (mas este commit).
+
+**Hecho:** push de `0b5073a` (LECCIONES). Spec **0143** (spec 4 del ADR 0115, implementa el 0117): al acreditar en A,
+loteria H4 → un cupon cruzado + push «regalo misterio» encolado a 3 min, registro en `core.cross_decision` /
+`core.cross_candidate` (migracion **0063**, aditiva, va a PROD ANTES del deploy), C1/C2 apagados (404), `cross` exige
+`endsAt`. Owner 2026-10-03: sin ventana horaria, fecha de fin obligatoria, solo acreditar dispara. ADR 0117 corregido:
+el «~3 min sin mecanismo nuevo» era media medicion — **el worker de la cola corre cada 2,4–7,8 h en GitHub** (medido
+por la API de Actions, ultimas 40 corridas).
+
+**Siguiente:** despachar implementador + revisor de la 0143 (presupuesto: 7 mutaciones, en la spec). Avisar a GPT del
+contrato (C1/C2 404, `endsAt` obligatorio en M1). **Pendiente del owner:** cron del worker — externo gratuito
+(cron-job.org verificado: gratis, cada minuto, corte a 30 s, sin puntualidad garantizada) o seguir con GitHub hasta
+Vercel Pro. Sin eso el push cruzado llega horas despues.
+
+**Pendientes:** CI de `main` (en cola en `0b5073a`, no se espero); intermitente de `catalog-import-guard`; los de la
+0138; `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar
+`motor-wt/fix-notices-mock`.
+
+## ⇥ ESTADO HISTORICO (2026-10-03) — ADR 0117 ACEPTADA (VENTA CRUZADA). SIGUIENTE: ESCRIBIR LA SPEC 4 DEL ADR 0115
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `fd971fe` (mas este commit).
 
