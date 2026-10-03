@@ -4,7 +4,7 @@ fecha: 2026-10-03
 estado: cerrada
 resumen: Spec 4 del ADR 0115 (implementa el ADR 0117). Cuando el mostrador acredita en el comercio A, se elige por loteria H4 UNA campaña cruzada elegible, se emite su cupon al cliente y se encola el push «🎁 Tenés un regalo» a la separacion minima (3 min), sin ventana horaria; cada decision queda registrada con sus candidatos, factores, probabilidades y numero sorteado (migracion 0063: `core.cross_decision` + `core.cross_candidate`). La lista «a pedido» (C1/C2) se apaga, y activar una cruzada exige fecha de fin.
 disjunta: si
-archivos: packages/domain/src/server/marketing/{cross-lottery,cross-sale,cross-sale-store,cross-sale-push,enabled-campaigns,push-delivery}.ts, packages/domain/src/server/notifications/limits.ts, packages/db/src/schema/cross-sale.ts (+ barrel), packages/db/drizzle/0063_* + meta, apps/merchant/src/server/counter/{grant,after-grant}.ts, apps/merchant/src/server/marketing/template-input.ts, apps/consumer/src/app/api/public/consumer/cross-offers/** (apagar), tests nuevos y reescritura declarada
+archivos: .github/workflows/wallet-push-cron.yml (borrar), docs/notificaciones/README.md, packages/domain/src/server/marketing/{cross-lottery,cross-sale,cross-sale-store,cross-sale-push,enabled-campaigns,push-delivery}.ts, packages/domain/src/server/notifications/limits.ts, packages/db/src/schema/cross-sale.ts (+ barrel), packages/db/drizzle/0063_* + meta, apps/merchant/src/server/counter/{grant,after-grant}.ts, apps/merchant/src/server/marketing/template-input.ts, apps/consumer/src/app/api/public/consumer/cross-offers/** (apagar), tests nuevos y reescritura declarada
 ---
 
 # 0143 — La Venta cruzada se dispara por la compra
@@ -26,21 +26,21 @@ ADR 0117 §1–§15, y las cerradas el **2026-10-03** al escribir esta spec (van
 - **Ventana horaria:** «No, sale con la compra» — el regalo misterio no espera a la ventana 9–21 del comercio.
 - **Fecha de fin:** «Exigir fecha de fin» — la API rechaza activar una cruzada sin `endsAt`.
 - **Disparador:** «Solo acreditar» — solo una orden nueva del mostrador; canjear un premio o un cupon no dispara.
-- **Demora del push:** medido el 2026-10-03, el worker de la cola (`.github/workflows/wallet-push-cron.yml`, `*/5`)
-  corrio **4 veces desde el 2 de octubre**; en sus ultimas 40 corridas programadas, entre **2,4 y 7,8 horas** de
-  distancia. El «~3 min sin mecanismo nuevo» del 0117 §6 era media medicion (la separacion existe; el que la drena,
-  no). El owner dejo dos caminos sin elegir: un cron externo gratuito y confiable, o **dejarlo como hoy mientras se
-  prueba** y pasar a Vercel Pro mas adelante. **Esta spec no depende de esa eleccion:** encola con `not_before`; el
-  push sale cuando corra el worker. Verificado (FAQ de cron-job.org, 2026-10-03): gratis, hasta cada minuto, sin tope
-  mensual declarado («fair usage»), corta la conexion a los 30 s y no promete puntualidad.
+- **Demora del push → ADR 0118:** el worker de la cola lo dispara **cron-job.org cada 10 min, de 7:00 a 18:00**
+  (`America/Guayaquil`), editable en su pantalla sin deploy; el GitHub Action que lo disparaba (medido cada 2,4–7,8 h)
+  se borra. El regalo misterio llega entre 3 y ~13 min despues de la compra; de una compra despues de las 17:50, a
+  las 7:00. Consecuencia aceptada por el owner (ADR 0118): el recordatorio del dia sin compra con hora objetivo despues
+  de las 17:50 no sale.
 
 ## Alcance
 
 **Entra:** la decision despues de acreditar (loteria H4, cupon, push, registro); la migracion 0063; el gate del push
-cruzado y su clic; las constantes de la loteria en `limits.ts`; apagar C1/C2; `endsAt` obligatorio para `cross`.
+cruzado y su clic; las constantes de la loteria en `limits.ts`; apagar C1/C2; `endsAt` obligatorio para `cross`;
+**borrar `.github/workflows/wallet-push-cron.yml`** y documentar el job de cron-job.org en `docs/notificaciones/README.md`
+(ADR 0118).
 
 **No entra:** pantallas (GPT; la UI ya no consume C1/C2 y `benefits-tab.tsx` ya muestra los cupones cruzados con
-`origin: "cross"`); el cron del worker (decision pendiente del owner, arriba); etapas 2 y 3 del algoritmo (afinidad,
+`origin: "cross"`); crear y configurar el job en cron-job.org (lo hace el owner: cuenta y `CRON_SECRET`, §8); etapas 2 y 3 del algoritmo (afinidad,
 merito, modelo); grupo de control (§11); que el comercio A decida (§4); limpiar campañas cruzadas vivas sin fin (no
 hay usuarios reales; el `check` de la base NO cambia); un deep link a «Mis beneficios» (el push abre `/wallet`, el
 default del service worker); registrar campañas NO elegibles con su motivo (solo se registran las elegibles y las
@@ -161,6 +161,17 @@ corriendo.
 `template-input.ts:220`: `requireEndForCoupon` pasa a aplicarse tambien a `cross` (no a `welcome` ni a `valley`). Un
 `enable` de `cross` sin `endsAt` → 400 con `fields.endsAt = "Una campaña con cupón necesita fecha de fin."`.
 
+### 8. El worker: cron-job.org (ADR 0118)
+
+El job lo crea el owner en cron-job.org: URL `https://<dominio del merchant>/api/internal/wallet-push` (el mismo valor
+que hoy tiene el secreto `WALLET_PUSH_ENDPOINT` del repo), metodo `GET`, header `Authorization: Bearer <CRON_SECRET>`
+(el mismo de Vercel), `minutes` 0,10,20,30,40,50, `hours` 7–17, `timezone` `America/Guayaquil`, email al desactivarse
+encendido. **Orden:** (1) el owner crea el job; (2) el orquestador verifica que corrio (historial del job en
+cron-job.org con HTTP 200, o una fila `pending` vencida de la cola que pasa a `sent` sin otra intervencion); (3) recien
+ahi se borra `.github/workflows/wallet-push-cron.yml` (y los secretos `WALLET_PUSH_ENDPOINT`/`CRON_SECRET` del repo
+dejan de usarse: el owner decide si los borra). `docs/notificaciones/README.md` suma una seccion «Quien drena la cola»
+con esta configuracion y como cambiar el horario. El codigo del endpoint no cambia.
+
 ### Contrato para GPT
 
 - **C1 y C2** (`0136-contratos-de-api.md`) → **404 `not_found`**. La UI de hoy no los llama.
@@ -189,7 +200,8 @@ ADR 0117, 0115 §6, 0116 (canales), 0104/0136 (reglas cruzadas), 0037 (cola y se
 | `apps/merchant/src/server/counter/after-grant.ts` | crear; `grant.ts` editar (una llamada) |
 | `apps/merchant/src/server/marketing/template-input.ts` | editar (§7) |
 | `apps/consumer/src/app/api/public/consumer/cross-offers/route.ts`, `[campaignId]/claim/route.ts` | editar (404) |
-| `docs/notificaciones/README.md` | editar (las constantes nuevas en el mapa) |
+| `docs/notificaciones/README.md` | editar (las constantes nuevas en el mapa; «Quien drena la cola», §8) |
+| `.github/workflows/wallet-push-cron.yml` | borrar, despues de verificar cron-job.org (§8) |
 | tests (abajo) | crear / reescritura declarada |
 
 **Disjunta: si.** La 0142 (GPT, abierta) toca `apps/consumer/public/sw.js` y el `INDEX`; esta spec no toca el service
@@ -208,6 +220,8 @@ worker (el `clickId` y el `/wallet` por defecto ya existen, `sw.js:21,29`). Nada
 - [ ] El worker manda el push cruzado fuera de la ventana horaria de B, con `clickId` = id de la decision; el clic
       escribe `cross_decision.clicked_at` bajo el rol del cliente.
 - [ ] C1 y C2 → 404 con sesion; `enable` de `cross` sin `endsAt` → 400 `fields.endsAt`.
+- [ ] cron-job.org corriendo (verificado como dice §8) y `wallet-push-cron.yml` borrado en el mismo commit que lo
+      documenta en `docs/notificaciones/README.md`.
 - [ ] Migracion 0063 aplicada en la rama efimera de los tests Neon.
 - [ ] `pnpm verify` en verde con Node 24 (ADR 0113), con su tabla final transcripta. Neon relacionado por esquema.
 
@@ -250,13 +264,14 @@ y `apps/consumer/src/server/`.
 Cada fila se ejecuta con el protocolo (`shasum` limpio, bitacora antes de medir, etiqueta, `diff` al revertir) y se
 transcribe el rojo **leyendo la asercion**. Lo que queda afuera, **declarado**: la concurrencia real de dos compras
 simultaneas sobre el mismo tope (se razona por el `for update`, no se mide); la carrera de `after()` en Vercel; la
-demora real del push (depende del worker, decision del owner).
+demora real del push (la pone cron-job.org, ADR 0118; no la mide ningun test).
 
 ### Verificacion manual (owner, despues del deploy)
 
 Con dos comercios de rubros distintos a < 2 km, cruzada activa en B con fecha de fin, y un cliente con notificaciones
-de la PWA: acreditar en A → el cupon de B aparece en «Mis beneficios» al recargar. El push «🎁 Tenés un regalo» llega
-cuando corre el worker (hoy, cada 2–8 h; para no esperar: `Run workflow` de «Wallet push worker» en GitHub a los 3 min).
+de la PWA, entre las 7:00 y las 17:40: acreditar en A → el cupon de B aparece en «Mis beneficios» al recargar, y el
+push «🎁 Tenés un regalo» llega entre 3 y ~13 min despues (para no esperar: «Run now» del job en cron-job.org pasados
+los 3 min).
 
 ## Handoff requerido
 
@@ -265,5 +280,4 @@ Formato de `docs/AGENT-WORKFLOW.md`. Un implementador para toda la spec, un revi
 
 ## Abierto
 
-Nada que bloquee. Pendiente del owner, fuera de esta spec: el cron del worker (externo gratuito o seguir con GitHub
-hasta Vercel Pro).
+Nada que bloquee. Paso del owner antes de cerrar la DoD: crear el job de cron-job.org (§8).

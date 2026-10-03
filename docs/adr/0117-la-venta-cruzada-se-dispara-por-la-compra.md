@@ -101,8 +101,5 @@ en la app.
 - **Fecha de fin:** «Exigir fecha de fin». La API rechaza activar una cruzada sin `endsAt`; el `check` de la base no
   cambia y las vivas sin fin quedan como estan (no hay usuarios reales).
 - **Disparador:** «Solo acreditar». Solo una orden nueva del mostrador; canjear un premio o un cupon no dispara.
-- **Demora del push (sin elegir):** textual, «si usamos un cron externo necesitamos algo que soporte este uso porque si
-  es cada 5 minutos [...] son 8640 al mes. entonces necesitamos un servicio gratuito que admita esa capa y sea
-  confiable. o lo dejamos como hoy mientras probamos, porque si pasaremos a vercel pro mas a dealente». Verificado por
-  el orquestador (FAQ de cron-job.org, 2026-10-03): gratis, hasta cada minuto, sin tope mensual declarado («fair
-  usage»), corta a los 30 s y no promete puntualidad. La spec 0143 encola con `not_before` y no depende de la eleccion.
+- **Demora del push → ADR 0118:** cron-job.org cada 10 min, de 7:00 a 18:00 (Guayaquil), editable sin deploy; se borra
+  el GitHub Action. El regalo misterio llega entre 3 y ~13 min despues; de una compra despues de las 17:50, a las 7:00.
