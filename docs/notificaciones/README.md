@@ -50,7 +50,10 @@ de afuera cambio). Desde `apps/*` se importa como `@mi-pasaporte/domain/server/n
 
 ## 3. Como cambiar uno
 
-1. Editar el valor en `packages/domain/src/server/notifications/limits.ts`. Nada mas en el codigo.
+1. Editar el valor en `packages/domain/src/server/notifications/limits.ts`. En el servidor no hay que tocar nada mas.
+   **Excepcion, en pantalla:** el texto de la proximidad en el backoffice repite a mano la cuota y el holdout
+   («de 50 turnos simultáneos», «Un 10 % al azar», `apps/merchant/src/app/backoffice/marketing/custom-fields.tsx:188-189`).
+   Si se cambian `businessQuota` u `holdoutRate`, ese texto hay que cambiarlo aparte (es UI, zona de GPT).
 2. Actualizar su literal en **`apps/merchant/src/server/notifications/limits.test.ts`**. Si no se actualiza, ese test
    se pone rojo: es a proposito, para que ningun cambio de limite pase en silencio. (Vive en `apps/merchant` porque
    ningun proyecto de vitest corre tests bajo `packages/`.) El presupuesto de 24 h tambien lo fija

@@ -1,7 +1,7 @@
 ---
 spec: 0141
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Spec 3 del ADR 0115 §5. Los limites de notificaciones de hoy (presupuesto de 24 h, separacion de 3 min, horario y espaciado del recordatorio, topes mensuales de Bienvenida y Venta cruzada, topes de la proximidad) pasan a UN modulo, `packages/domain/src/server/notifications/limits.ts`, sin cambiar un solo valor; los modulos de hoy los re-exportan. Mas `docs/notificaciones/README.md`, el mapa para encontrarlos.
 disjunta: si
 archivos: packages/domain/src/server/notifications/limits.ts (crear) + su test, apps/merchant/src/server/wallet/{push-budget,push}.ts, packages/domain/src/server/wallet/reminder.ts, packages/domain/src/server/marketing/{templates,cross-rules,valley-rules,placement-plan}.ts, docs/notificaciones/README.md (crear)
@@ -176,6 +176,18 @@ antes de marcar `implementada`.
 ## Abierto
 
 Nada.
+
+## Cierre (2026-10-02)
+
+Codigo `0e9baad`. **PASS del revisor independiente**: valores comparados campo por campo contra `60acf14`, sin
+diferencias; R-M1, R-M2, R-M4, R-M6 y una propia (R-M7, el tope de mostrador contra un `2` local) ROJAS, cada una solo en
+su caso; M3 y M5 del implementador confiadas (mismas aserciones y shasums). Tests existentes sin editar.
+
+**Declarado despues del revisor:** sin test de cableado (un literal local con el valor de hoy quedaria verde):
+`BUDGET_WINDOW_MS` en `decideBudget` (el `defer` de campaña), `REMINDER_SPACING_MS` en `decideReminder` y
+`REMINDER_EARLIEST/LATEST_MINUTE` en `reminderTargetMinute`. Y la pantalla de proximidad repite a mano la cuota y el
+holdout (`custom-fields.tsx:188-189`): anotado en el README §3. Las lineas de la tabla de mutaciones eran
+`push-budget.ts:41/43` y `reminder.ts:126` (la spec decia 45 y 120).
 
 ## Correcciones de la implementacion (2026-10-02, aceptadas por el orquestador)
 
