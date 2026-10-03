@@ -1,14 +1,17 @@
 import type { ConsumerCoupon } from "@mi-pasaporte/domain/server/consumer/coupons";
+import type { NoticeDTO } from "@mi-pasaporte/domain/server/consumer/notices";
 import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
 
 export function ActivityView({
   coupons,
+  notices,
   programs,
   onBack,
   onShowBenefits,
   onShowPrograms,
 }: {
   coupons: ConsumerCoupon[];
+  notices: NoticeDTO[];
   programs: ConsumerProgramSummary[];
   onBack: () => void;
   onShowBenefits: () => void;
@@ -33,6 +36,14 @@ export function ActivityView({
       action: onShowPrograms,
       icon: "▦",
     })),
+    ...notices.map((notice) => ({
+      key: `notice-${notice.id}`,
+      title: notice.title,
+      detail: notice.body,
+      date: new Date(notice.createdAt),
+      action: onShowPrograms,
+      icon: "✳",
+    })),
   ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
   return (
@@ -43,7 +54,7 @@ export function ActivityView({
       <div className="cp-screen-heading">
         <span className="cp-eyebrow">TUS NOVEDADES</span>
         <h2 id="activity-title">Actividad</h2>
-        <p>Beneficios y programas que ya forman parte de tu cuenta.</p>
+        <p>Beneficios, programas y movimientos en comercios de tu cuenta.</p>
       </div>
       {entries.length ? (
         <div className="cp-activity-list">
@@ -78,8 +89,8 @@ export function ActivityView({
           <span aria-hidden="true">◌</span>
           <h3>Tu actividad va a aparecer acá</h3>
           <p>
-            Cuando te sumes a un programa o recibas un beneficio, vas a
-            encontrarlo en este espacio.
+            Cuando te sumes a un programa, recibas un beneficio o tengas un
+            movimiento en un comercio, vas a encontrarlo en este espacio.
           </p>
         </div>
       )}

@@ -4,7 +4,7 @@ fecha: 2026-10-02
 estado: cerrada
 resumen: Actividad muestra los avisos de mostrador junto con beneficios y programas, usando el contrato de la 0139.
 disjunta: si
-archivos: apps/consumer/src/app/(consumer)/wallet/{page,wallet-shell,activity-view}.tsx, tests/e2e/**
+archivos: apps/consumer/src/app/(consumer)/wallet/{page,wallet-shell,activity-view}.tsx, apps/consumer/src/app/(consumer)/wallet/activity-view.test.ts, tests/e2e/**
 ---
 
 # 0140 — Avisos de mostrador en Actividad
@@ -33,6 +33,7 @@ Cada aviso aporta `key: notice-${notice.id}`, título `notice.title`, detalle `n
 | `apps/consumer/src/app/(consumer)/wallet/page.tsx` | editar |
 | `apps/consumer/src/app/(consumer)/wallet/wallet-shell.tsx` | editar |
 | `apps/consumer/src/app/(consumer)/wallet/activity-view.tsx` | editar |
+| `apps/consumer/src/app/(consumer)/wallet/activity-view.test.ts` | crear |
 | `tests/e2e/**` | editar solo si una prueba existente cubre esta vista y permite una aserción útil |
 
 **Disjunta?** Sí: la 0139 ya entregó el contrato; esta spec toca solo la zona UI de GPT.

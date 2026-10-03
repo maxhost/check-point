@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ConsumerProgramSummary } from "@mi-pasaporte/domain/server/consumer/programs";
 import type { ConsumerCoupon } from "@mi-pasaporte/domain/server/consumer/coupons";
+import type { NoticeDTO } from "@mi-pasaporte/domain/server/consumer/notices";
 import { PushPrompt } from "../push-prompt";
 import { WalletButtons } from "../wallet-cta";
 import { ActivityView } from "./activity-view";
@@ -30,6 +31,7 @@ export function WalletShell({
   phone,
   programs,
   coupons,
+  notices,
   initialTab,
   qrSvg,
   isIos,
@@ -42,6 +44,7 @@ export function WalletShell({
   phone: string | null;
   programs: ConsumerProgramSummary[];
   coupons: ConsumerCoupon[];
+  notices: NoticeDTO[];
   initialTab: WalletTab;
   qrSvg: string;
   isIos: boolean;
@@ -140,6 +143,7 @@ export function WalletShell({
       {showActivity ? (
         <ActivityView
           coupons={coupons}
+          notices={notices}
           programs={programs}
           onBack={() => setShowActivity(false)}
           onShowBenefits={() => {

@@ -10,6 +10,7 @@ import { renderQrSvg } from "@mi-pasaporte/domain/server/wallet/core";
 import { vapidFromEnv } from "@mi-pasaporte/domain/server/push/vapid";
 import { listConsumerPrograms } from "@mi-pasaporte/domain/server/consumer/programs";
 import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
+import { listConsumerNotices } from "@mi-pasaporte/domain/server/consumer/notices";
 import { getEnrollLanding } from "@mi-pasaporte/domain/server/consumer/enrollment";
 import { markAccountOpened } from "@mi-pasaporte/domain/server/wallet/reminder-store";
 import { AuthErrorNotice, ProviderButtons } from "../provider-buttons";
@@ -84,10 +85,11 @@ export default async function WalletPage({
     );
   }
 
-  const [qrSvg, programs, coupons] = await Promise.all([
+  const [qrSvg, programs, coupons, notices] = await Promise.all([
     renderQrSvg(account.qrToken),
     listConsumerPrograms(account.id),
     listConsumerCoupons(account.id),
+    listConsumerNotices(account.id),
     // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
     markAccountOpened(account.id),
   ]);
@@ -103,6 +105,7 @@ export default async function WalletPage({
       phone={account.phoneE164}
       programs={programs}
       coupons={coupons}
+      notices={notices}
       initialTab="benefits"
       qrSvg={qrSvg}
       isIos={isIos}
