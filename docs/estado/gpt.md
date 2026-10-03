@@ -3,7 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-02) — SPEC 0140: AVISOS DE MOSTRADOR EN ACTIVIDAD
+## ⇥ ESTADO (2026-10-03) — SPEC 0142: ICONO DE LA PWA EN WEB PUSH
+
+La [spec 0142](../specs/0142-icono-de-la-pwa-en-web-push.md) quedó reservada
+en `6488227` y el cambio de `sw.js` está publicado en `main` desde `0e055a6`.
+El Web Push usa ahora `/checkpass-icon-192-v2.png`, el mismo PNG de 192 px del
+manifest. El badge monocromo de Android y el comportamiento del click siguen igual.
+`pnpm verify` con Node 24.20.0 pasó completo, incluidos 110 e2e (5 omitidos), y
+el hook ejecutable repitió el gate en verde. [Handoff y tabla](../handoff-0142-icono-web-push-2026-10-03.md).
+
+Wallet: el `icon.png` del pase Apple se genera en paquetes desde
+`wallet-logo-trama-v1.png`; Claude debe revisarlo si se desea usar el icono v2 de
+la PWA en los avisos de Apple. Google controla la presentación de sus avisos y
+su `programLogo` es global para los pases; no se cambió el diseño aprobado.
+Pendientes: QA visual de un push real, decisión sobre el logo global de Google y
+PASS independiente antes de marcar la spec `implementada`.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-02) — SPEC 0140: AVISOS DE MOSTRADOR EN ACTIVIDAD
 
 La [spec 0140](../specs/0140-avisos-de-mostrador-en-actividad.md) quedó
 reservada en `daf9bac`. El cableado UI está publicado en `main` desde `0e76439`:

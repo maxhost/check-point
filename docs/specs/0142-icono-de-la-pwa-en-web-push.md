@@ -37,10 +37,10 @@ La PWA y el service worker comparten el mismo origen. El worker ya está instala
 
 ## Definition of Done
 
-- [ ] El `icon` de Web Push usa `/checkpass-icon-192-v2.png`; coincide con la entrada de 192 px del manifest.
-- [ ] `badge`, texto, click y destino siguen intactos.
-- [ ] `pnpm verify` con Node 24 termina verde y su tabla queda en el handoff.
-- [ ] El diff no toca servidor, API, paquetes ni migraciones.
+- [x] El `icon` de Web Push usa `/checkpass-icon-192-v2.png`; coincide con la entrada de 192 px del manifest (`sw.js:19`, `manifest.webmanifest/route.ts:44`).
+- [x] `badge`, texto, click y destino siguen intactos (diff de `sw.js`; prueba de click existente verde).
+- [x] `pnpm verify` con Node 24 terminó verde; tabla en el [handoff](../handoff-0142-icono-web-push-2026-10-03.md).
+- [x] El diff solo tocó `sw.js` y documentación propia de la spec.
 
 ## Mutaciones — presupuesto: 0
 
