@@ -4,6 +4,27 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0146, REVISOR (2026-10-03)
+
+Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/rev0146/<basename>`;
+restauracion: `cp <copia> <archivo>` y verificar el shasum.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R1 | `packages/domain/src/server/wallet/apple-art.ts` | `3f61dae39daab3d7f940463d0174dbc8c84bf11b` | `icon*` = sharp del PNG v2 de la PWA | las 3 `icon*` reemplazadas por los base64 de `origin/main` (las 6 `logo*`/`strip*` ya eran iguales a origin/main antes de mutar, chequeado por entrada) + `// MUTATION R1` → ROJO 1/9 `wallet.test.ts` «icon comes from the PWA v2 icon…»: `icon.png ← apps/consumer/public/checkpass-icon-192-v2.png: expected false to be true`; el estructural VERDE. (Un primer intento con regex mala NO aplico la mutacion: verde descartado.) Revertida con cp: diff vacio, shasum = limpio |
+| R2 | `packages/domain/src/server/wallet/pass-version.ts` | `b07cb244e702d411db72063eeb0fb61118b3ec6d` | `PASS_BRAND_UPDATED_AT` = `2026-10-03T22:00:00Z` | fecha a `2026-10-02T14:00:00Z` + `// MUTATION R2` → ROJO 1/9 «pins the brand revision…»: `expected '2026-10-02T14:00:00.000Z' to be '2026-10-03T22:00:00.000Z'`; `wallet-pass-locations-wiring.test.ts` VERDE 4/4 (guard hermano). Revertida: diff vacio, shasum = limpio |
+| R3 | `packages/domain/scripts/generate-apple-art.mjs` + `apple-art.ts` regenerado | `9f5b435a6187554b8b64ce837c318049e7da8d1c` / `3f61dae3...` | el generador lee el icono de la PWA | generador `icon` → `source.logo` + `// MUTATION R3`, `node scripts/generate-apple-art.mjs` + prettier: las 9 entradas regeneradas = origin/main → ROJO 1/9 «icon comes from the PWA v2 icon…» `icon.png ← …: expected false to be true`. Ambos archivos restaurados con cp: diff vacio, shasums = limpios. (Antes: el generador sin mutar reproduce `apple-art.ts` byte a byte, shasum 3f61dae3) |
+
+## Bitacora de mutaciones — spec 0146, implementador (2026-10-03)
+
+Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/<basename sin .ts>.clean.ts`;
+restauracion: `cp <copia> <archivo>` y verificar el shasum.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `packages/domain/src/server/wallet/apple-art.ts` (` M`) | `3f61dae39daab3d7f940463d0174dbc8c84bf11b` | `icon*` = bytes de sharp del PNG v2 de la PWA | las 3 entradas `icon*` reemplazadas por los base64 de `origin/main` (Trama; las otras 6 IGUALES, chequeado por entrada) + comentario `// MUTATION M1` → ROJO 1/9 `wallet.test.ts` «icon comes from the PWA v2 icon…»: `icon.png ← apps/consumer/public/checkpass-icon-192-v2.png: expected false to be true`. El test estructural (dimensiones/manifiesto/firma) quedo VERDE bajo la mutacion = guard hermano confirmado. Revertida: diff vacio, shasum = limpio |
+| M2 | `packages/domain/src/server/wallet/pass-version.ts` (` M`) | `b07cb244e702d411db72063eeb0fb61118b3ec6d` | `PASS_BRAND_UPDATED_AT` = `2026-10-03T22:00:00Z` | fecha a `2026-10-02T14:00:00Z` + `// MUTATION M2` → ROJO 1/9 `wallet.test.ts` «pins the brand revision…»: `expected '2026-10-02T14:00:00.000Z' to be '2026-10-03T22:00:00.000Z'`. `wallet-pass-locations-wiring.test.ts` (consumer) VERDE 4/4 bajo la mutacion = importa la constante simbolicamente (guard hermano de la spec, confirmado). Revertida: diff vacio, shasum = limpio |
+
 ## Bitacora de mutaciones — spec 0143, REVISOR (2026-10-03)
 
 Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/clean/<basename>`;
@@ -7672,3 +7693,5 @@ next.config.ts hands to Next» como el de merchant costaria unas 10 lineas. M6 y
 - spec 0144, ORQUESTADOR — M1: `packages/domain/src/server/marketing/cross-sale-store.ts` (shasum limpio 74de39fb…), filtro por la campaña viva en vez de por comercio, contra `cross-sale-lottery-facts.neon`.
   Resultado 0144-M1: ROJO 1/3 — `expected 1.5 to be close to 1` (caso nuevo); los otros 2 verdes. Revertida: diff vacio, shasum 74de39fb igual al limpio.
   Revisor 0144: PASS (M1 re-ejecutada ROJA, M2 propia — campaign.id por businessId — ROJA en 2 casos; 11/11 Neon cross-sale*; pnpm verify ok).
+- spec 0146, ORQUESTADOR — O-M3: `packages/domain/src/server/wallet/pass-version.ts` (shasum limpio b07cb244…), fecha vieja 2026-10-02T14:00Z, contra el caso nuevo de `wallet-pass-locations-wiring.test.ts` (pase instalado bajo la revision anterior).
+  Resultado O-M3: ROJO 1/5 — `expected 304 to be 200` en el caso nuevo; los otros 4 verdes. Revertida: diff vacio, shasum b07cb244 igual al limpio. Revisor 0146: PASS (R1, R2, R3 rojas).

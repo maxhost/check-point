@@ -1,5 +1,5 @@
 /** Bump this whenever a shared Apple pass design changes, so installed passes can pull it. */
-export const PASS_BRAND_UPDATED_AT = new Date("2026-10-02T14:00:00Z");
+export const PASS_BRAND_UPDATED_AT = new Date("2026-10-03T22:00:00Z");
 
 /** PassKit must compare both content and design revisions for conditional GETs. */
 export function passVersionUpdatedAt(messageUpdatedAt: Date | null): Date {

@@ -1,5 +1,7 @@
 import { createHash, createVerify, generateKeyPairSync } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import sharp from "sharp";
 import forge from "node-forge";
 import { unzipSync } from "fflate";
 import {
@@ -17,6 +19,10 @@ import {
   type PassBuildInput,
   walletProviderFromEnv,
 } from "@mi-pasaporte/domain/server/wallet/provider";
+import {
+  PASS_BRAND_UPDATED_AT,
+  passVersionUpdatedAt,
+} from "@mi-pasaporte/domain/server/wallet/pass-version";
 import { generateOpaqueToken } from "@mi-pasaporte/domain/server/consumer/core";
 
 const QR = "QR-TOKEN-abc123_-";
@@ -121,6 +127,64 @@ describe("apple .pkpass builder", () => {
     expect(p7.type).toBe(forge.pki.oids.signedData);
     expect(p7.certificates.length).toBeGreaterThan(0);
   }, 20_000);
+});
+
+describe("apple pass artwork (spec 0146)", () => {
+  // Same pinned sharp as packages/domain/scripts/generate-apple-art.mjs, so the
+  // embedded PNGs must equal what sharp renders from each source today.
+  const repo = new URL("../../../../", import.meta.url);
+  const render = async (source: string, w: number, h: number) =>
+    sharp(await readFile(new URL(source, repo)))
+      .resize(w, h)
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+
+  it("icon comes from the PWA v2 icon; logo and strip keep Trama viva and strip v1", async () => {
+    const bytes = await buildApplePkpass(
+      {
+        ...input,
+        passTypeIdentifier: "pass.com.mipasaporte.test",
+        teamIdentifier: "TEAM123456",
+        authenticationToken: "auth-token-raw",
+      },
+      selfSignedSigner(),
+    );
+    const files = unzipSync(new Uint8Array(bytes));
+    const pwaIcon = "apps/consumer/public/checkpass-icon-192-v2.png";
+    const trama = "apps/consumer/public/wallet-logo-trama-v1.png";
+    const strip = "docs/design-explorations/apple-wallet-trama-strip-v1.svg";
+    const expected: [string, string, number, number][] = [
+      ["icon.png", pwaIcon, 38, 38],
+      ["icon@2x.png", pwaIcon, 76, 76],
+      ["icon@3x.png", pwaIcon, 114, 114],
+      ["logo.png", trama, 50, 50],
+      ["logo@2x.png", trama, 100, 100],
+      ["logo@3x.png", trama, 150, 150],
+      ["strip.png", strip, 375, 144],
+      ["strip@2x.png", strip, 750, 288],
+      ["strip@3x.png", strip, 1125, 432],
+    ];
+    for (const [name, source, w, h] of expected) {
+      const want = await render(source, w, h);
+      expect(Buffer.from(files[name]).equals(want), `${name} ← ${source}`).toBe(
+        true,
+      );
+    }
+  }, 20_000);
+});
+
+describe("apple pass design revision", () => {
+  it("pins the brand revision that decides 200 vs 304 for saved passes", () => {
+    expect(PASS_BRAND_UPDATED_AT.toISOString()).toBe(
+      "2026-10-03T22:00:00.000Z",
+    );
+    expect(passVersionUpdatedAt(null).toISOString()).toBe(
+      "2026-10-03T22:00:00.000Z",
+    );
+    expect(
+      passVersionUpdatedAt(new Date("2026-01-01T00:00:00Z")).toISOString(),
+    ).toBe("2026-10-03T22:00:00.000Z");
+  });
 });
 
 describe("google save JWT", () => {

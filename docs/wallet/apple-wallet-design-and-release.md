@@ -34,7 +34,9 @@ para la respuesta PassKit que descarga un pase instalado. Al actualizar el arte:
    y, si corresponde, el logo compartido
    `apps/consumer/public/wallet-logo-trama-v1.png`. Para una revisión nueva, crear
    fuentes con sufijo `v2` y actualizar las rutas del generador; conservar las fuentes
-   previas para poder reproducir pases antiguos.
+   previas para poder reproducir pases antiguos. El `icon` (el que iOS muestra en las
+   notificaciones del pase) sale del icono de la PWA instalada,
+   `apps/consumer/public/checkpass-icon-192-v2.png` (spec 0146); el `logo` sigue en Trama viva.
 2. Desde `packages/domain/`, ejecutar `node scripts/generate-apple-art.mjs`. El
    generador produce nueve PNG embebidos en `src/server/wallet/apple-art.ts`:
    `icon`, `logo` y `strip`, cada uno a 1x, 2x y 3x. Se embeben para que el bundle del

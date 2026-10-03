@@ -156,6 +156,19 @@ describe("the three emission call-sites fill `passLocations` from pass_placement
     expect(appleInputs).toHaveLength(1);
   });
 
+  it("a pass installed under the previous revision (2026-10-02T14:00Z) pulls the spec 0146 icon: 200, not 304", async () => {
+    const { GET } =
+      await import("../app/api/public/wallet/passkit/v1/passes/[passTypeId]/[serialNumber]/route");
+    const res = await GET(
+      request("https://app.test/api/public/wallet/passkit/v1/passes/pt/s1", {
+        "if-modified-since": "Fri, 02 Oct 2026 14:00:00 GMT",
+      }),
+      { params: Promise.resolve({ serialNumber: "serial-served" }) },
+    );
+    expect(res.status).toBe(200);
+    expect(appleInputs).toHaveLength(1);
+  });
+
   it("apple.pkpass (first install) — by the session's consumer", async () => {
     const { GET } = await import("../app/api/public/wallet/apple.pkpass/route");
     const res = await GET(

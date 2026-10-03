@@ -1,7 +1,7 @@
 ---
 spec: 0146
 fecha: 2026-10-03
-estado: cerrada
+estado: implementada
 resumen: El `icon` del pase de Apple Wallet (el que iOS muestra en las notificaciones del pase) sale del PNG v2 de la PWA (`checkpass-icon-192-v2.png`) en vez del logo Trama viva; logo, strip, QR, identidad y contenido no cambian, y `PASS_BRAND_UPDATED_AT` sube para que los pases guardados puedan recibirlo. Google Wallet no se toca.
 disjunta: si
 archivos: packages/domain/scripts/generate-apple-art.mjs, packages/domain/src/server/wallet/{apple-art,pass-version}.ts, apps/merchant/src/server/wallet.test.ts, docs/wallet/apple-wallet-design-and-release.md
