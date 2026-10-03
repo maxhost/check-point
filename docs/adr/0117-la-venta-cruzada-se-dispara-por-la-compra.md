@@ -67,17 +67,20 @@ ahora».
     el canje, punto 8). Detalle en `docs/notificaciones/venta-cruzada-algoritmo.md` §4.
 11. **Sin grupo de control por ahora** («Ninguno por ahora»): con el volumen de hoy no mediria nada; como el segmento
     queda registrado, se puede encender despues para dormidos y habituales.
+12. **«Lo justo» = H4** (owner, 2026-10-03: «arrancamos con H4»): igual por oportunidad —cada vez que un comercio es
+    candidato cuenta igual; el atrasado recibe mas boletos— mas un bono al comercio que no consiguio ningun cliente
+    nuevo en el mes. Acepta el trade-off medido en la simulacion (`docs/notificaciones/venta-cruzada-equidad.md`): mas
+    alcance de la red a cambio de menos canjes totales que «gana el mejor».
 
 Canal (ADR 0115 §2 y 0116): push de la PWA si tiene notificaciones; si no, el cupon igual queda en su cuenta y se ve
 en la app.
 
 ## Abierto
 
-- **El criterio de eleccion entre B, C, D** (punto 3): investigado en `docs/notificaciones/venta-cruzada-criterio.md`; falta que el owner elija. Insumo ya existente en el repo: el merito por
-  LIFT con holdout de la proximidad (ADR 0066), que mide visitas incrementales y no la tasa cruda.
-- **Momento final y copy del push:** se confirman con la investigacion (punto 6).
-- **Que es «lo justo» para un comercio:** owner, «No lo se, deberiamos investigar y proponer hipotesis o pensamientos
-  sobre esto». Hipotesis en `docs/notificaciones/venta-cruzada-equidad.md`.
-- **El sistema de eleccion a largo plazo** (equidad de exposicion entre comercios, habitos del consumidor, cuota de
-  descubrimiento): investigado en `docs/notificaciones/venta-cruzada-algoritmo.md` (loteria ponderada con piso de
-  azar, en tres etapas, y que registrar desde el dia uno); faltan las decisiones del owner de su §3-§5.
+- **Fraccion de azar inicial** (punto 9): el owner la decide despues; hace falta un valor para la spec.
+- **Momento final y copy del push** (punto 6): la investigacion respalda el aviso a los pocos minutos con el cliente
+  cerca (Luo et al., Management Science 2014); falta el texto.
+- **Filtros extra propuestos por la investigacion, no decididos:** «B abierto dentro de la vigencia del cupon» y «no el
+  mismo B al mismo cliente en 30 dias».
+- Investigaciones: `docs/notificaciones/venta-cruzada-criterio.md`, `venta-cruzada-algoritmo.md` y
+  `venta-cruzada-equidad.md`.
