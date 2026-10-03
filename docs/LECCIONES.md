@@ -1967,3 +1967,15 @@ disco, y `git commit -- <path>` re-lee el archivo y DESCARTA un cambio de modo h
 
 **Regla.** Arreglado en `2589922`. Un cambio de modo se commitea con el index (sin pathspec). Y un `pull` no le cambia
 el bit al checkout de nadie: cada arbol corre `chmod +x .githooks/pre-push` una vez (gotcha en `gotchas-del-repo`).
+
+## 2026-10-03 — «sale a ~3 min sin mecanismo nuevo»: se midio la separacion, no quien drena la cola
+
+**Que paso.** El ADR 0117 §6 decia «Medido: la separacion minima ya es 3 min (`COOLDOWN_MINUTES`), asi que un push
+encolado tras el de mostrador sale a ~3 min sin mecanismo nuevo». La constante existe, pero un push diferido sale
+recien cuando corre el worker, y el worker lo disparaba un GitHub Action `*/5` que GitHub corrio cada **2,4 a 7,8 h**
+(API de Actions, ultimas 40 corridas). Se cazo al escribir la spec 0143, antes de que llegara a un implementador, y
+termino en una decision de infraestructura del owner (ADR 0118: cron-job.org).
+
+**Regla.** Es la tercera de la familia de `CLAUDE.md` (mecanismo «medido» hasta el final). Para una afirmacion de
+TIEMPO, la medicion termina en lo que hace que el evento ocurra (el cron, el `after()`, el worker), no en la constante
+que lo limita. Y un cron externo se mide en sus corridas reales, no en su expresion: `*/5` en GitHub no es cada 5 min.
