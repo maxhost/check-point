@@ -18,7 +18,7 @@ import {
   persistGrant,
   readOrderByRequest,
 } from "./orders";
-import { dispatchGranted } from "../wallet/push";
+import { afterGrant } from "./after-grant";
 import { availableAtCounter } from "./catalog-visibility";
 
 const MAX_MONEY = 9_999_999_999.99;
@@ -284,9 +284,9 @@ export async function grantAccrual(
     );
   }
 
-  // Best-effort inline dispatch of the transactional push (ADR 0037); only fires when
-  // THIS call created the order (retry/reread has no pushQueueId). Non-blocking.
-  dispatchGranted(granted.pushQueueId);
+  // Best-effort, non-blocking: the transactional push (ADR 0037) and the cross sale (spec
+  // 0143) — both only when THIS call created the order (retry/reread has no pushQueueId).
+  afterGrant(granted);
 
   return {
     order: {

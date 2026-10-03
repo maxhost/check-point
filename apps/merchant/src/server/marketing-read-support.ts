@@ -9,6 +9,7 @@ import {
   campaignCoupons,
   campaignPushes,
   couponRedemptions,
+  crossDecisions,
   passPlacements,
   welcomeDevices,
 } from "@mi-pasaporte/db/schema";
@@ -115,6 +116,11 @@ export async function dropCampaigns(businessId: string): Promise<void> {
     .delete(campaignTurns)
     .where(eq(campaignTurns.businessId, businessId));
   if (ids.length > 0) {
+    // Spec 0143: a cross sale's decision points at the campaign it chose (NO ACTION); its
+    // candidates go with it (cascade). Another business's order may have chosen this one.
+    await db
+      .delete(crossDecisions)
+      .where(inArray(crossDecisions.chosenCampaignId, ids));
     await db
       .delete(campaignTickAudiences)
       .where(inArray(campaignTickAudiences.campaignId, ids));

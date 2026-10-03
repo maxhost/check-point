@@ -48,6 +48,11 @@ function liveReward(over: Record<string, unknown> = {}) {
   };
 }
 
+/** Spec 0143 (owner, 2026-10-03: «Exigir fecha de fin»): enabling a cross campaign needs an end. */
+const ENDS = "2099-12-31T00:00:00.000Z";
+const crossReward = (over: Record<string, unknown> = {}) =>
+  liveReward({ endsAt: ENDS, ...over });
+
 function reward(over: Record<string, unknown> = {}) {
   return {
     couponKind: "two_for_one",
@@ -106,7 +111,7 @@ describe.skipIf(!integrationEnabled)(
             mine.business.id,
             mine.userId,
             "cross",
-            liveReward({ couponProductId: foreign }),
+            crossReward({ couponProductId: foreign }),
           ),
         ),
       );
@@ -116,7 +121,7 @@ describe.skipIf(!integrationEnabled)(
         mine.business.id,
         mine.userId,
         "cross",
-        liveReward({ couponProductId: own }),
+        crossReward({ couponProductId: own }),
       );
       const [row] = await getDb()
         .select({
@@ -182,7 +187,7 @@ describe.skipIf(!integrationEnabled)(
             mine.business.id,
             mine.userId,
             "cross",
-            liveReward({ couponProductId: foreign }),
+            crossReward({ couponProductId: foreign }),
           ),
         ),
       );
@@ -198,7 +203,11 @@ describe.skipIf(!integrationEnabled)(
 
       for (const attempt of [
         () => enableTemplate(seed.business.id, seed.userId, "welcome", stamps),
-        () => enableTemplate(seed.business.id, seed.userId, "cross", stamps),
+        () =>
+          enableTemplate(seed.business.id, seed.userId, "cross", {
+            ...stamps,
+            endsAt: ENDS,
+          }),
       ]) {
         const error = await caught(attempt);
         expect(error).toMatchObject({ status: 400, code: "validation" });
@@ -210,7 +219,7 @@ describe.skipIf(!integrationEnabled)(
         seed.business.id,
         seed.userId,
         "cross",
-        liveReward({ couponKind: "extra_points", couponExtraUnits: 5 }),
+        crossReward({ couponKind: "extra_points", couponExtraUnits: 5 }),
       );
       expect(points).toMatchObject({
         couponKind: "extra_points",

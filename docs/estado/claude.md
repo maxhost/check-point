@@ -8,7 +8,33 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, tarde) — SPEC 0143 CERRADA, CRON-JOB.ORG ANDANDO (`459cfd4`). SIGUIENTE: IMPLEMENTAR LA 0143
+## ⇥ ESTADO (2026-10-03, noche) — 0143 IMPLEMENTADA SIN COMMITEAR EN `motor`; REVISOR INDEPENDIENTE CORRIENDO
+
+**Al retomar:** `motor` = `origin/main` en `76ce724` + el trabajo de la 0143 **sin commitear** en el arbol (`git status`:
+~26 ` M` y 13 `??`, migracion `0063_venta_cruzada_por_la_compra.sql`, `cross-sale*.ts`, `after-grant.ts`, tests). Si la
+sesion se cayo: `ListAgents` (el revisor puede seguir midiendo; no tocar mutaciones puestas) y despues re-despachar el
+revisor con el encargo de abajo.
+
+**Hecho:** implementador de la 0143 termino (su reporte): 7 mutaciones rojas y revertidas, `pnpm verify` ok (Neon completo
+2908 ok), 0063 aplicada SOLO en `ci-integration`. Orquestador verifico: arbol = lista del reporte, `after-grant.ts` segun
+§1, sin etiquetas `MUTATION` en `src/`.
+
+**A medias:** revisor independiente despachado: re-ejecuta M2, M3, M6 + 1 mutacion propia; juzga las elecciones del
+implementador (F/R por campaña, R solo `issued`, F con `coupon_conflict`). Sin PASS no se commitea ni se marca.
+
+**Hallazgos del implementador a llevar al owner/LECCIONES:** (1) la fila M3 de la spec era parcialmente falsa —
+`cross_candidate.decision_id NOT NULL` + la transaccion deshacen la 2a cola; el oraculo que distingue es el `toBeNull()`
+(tercera spec con fila falsa del orquestador → caso en `LECCIONES.md`). (2) `recordPushClick` ahora escribe en
+`core.cross_decision`: sin la 0063 en PROD falla el clic de TODO push → migracion a PROD (OK del owner) ANTES del push.
+
+**Siguiente, despues del PASS:** commit del trabajo; 0063 a PROD con OK del owner; push; deploy READY con el sha; avisar a
+GPT (C1/C2 404, `endsAt` obligatorio en M1); QA manual del owner (spec §«Verificacion manual»).
+
+**Pendientes:** CI de `main` en curso en `76ce724` sin mirar el resultado; intermitente de `catalog-import` (otra vez
+visto por el implementador, timeout 5 s); los de la 0138; `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`;
+`.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`; `CRON_SECRET` rotable por el owner.
+
+## ⇥ ESTADO HISTORICO (2026-10-03, tarde, 2) — SPEC 0143 CERRADA, CRON-JOB.ORG ANDANDO (`459cfd4`). SIGUIENTE: IMPLEMENTAR LA 0143
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `459cfd4` (mas este commit).
 

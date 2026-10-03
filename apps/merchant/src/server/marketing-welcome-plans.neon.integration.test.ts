@@ -32,6 +32,8 @@ import {
 afterAll(dropCampaignWorlds, 120_000);
 
 const GIFT = { couponLabel: "Un café gratis", couponCost: "1.20" };
+/** Spec 0143 (owner, 2026-10-03: «Exigir fecha de fin»): enabling a cross campaign needs an end. */
+const CROSS_GIFT = { ...GIFT, endsAt: "2099-12-31T00:00:00.000Z" };
 const ON = new Date("2026-09-01T12:00:00.000Z");
 const NOW = new Date("2026-10-02T15:00:00.000Z");
 
@@ -67,7 +69,7 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
 
     expect(
       await caught(() =>
-        enableTemplate(free.business.id, free.userId, "cross", GIFT),
+        enableTemplate(free.business.id, free.userId, "cross", CROSS_GIFT),
       ),
     ).toMatchObject({ status: 402, code: "plan_not_allowed" });
     expect(await liveTemplateRuns(free.business.id, "cross")).toEqual([]);
@@ -116,7 +118,7 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
       seed.business.id,
       seed.userId,
       "cross",
-      GIFT,
+      CROSS_GIFT,
     );
     await transitionCampaign(seed.business.id, welcome.id, "pause");
     await transitionCampaign(seed.business.id, winBack.id, "pause");
@@ -154,7 +156,7 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
       seed.business.id,
       seed.userId,
       "cross",
-      GIFT,
+      CROSS_GIFT,
     );
 
     const [counted, paused] = await withDbTransaction(async (tx) => [

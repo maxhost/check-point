@@ -39,6 +39,9 @@ afterAll(dropCampaignWorlds, 120_000);
 
 /** Spec 0138: the mechanism runs on `cross`/`welcome` (ON); both demand a coupon. */
 const GIFT = { couponLabel: "10% en tu clase", couponCost: "2.00" };
+/** Spec 0143 (owner, 2026-10-03: «Exigir fecha de fin»): enabling a cross campaign needs an end. */
+const ENDS = "2099-12-31T00:00:00.000Z";
+const CROSS_GIFT = { ...GIFT, endsAt: ENDS };
 
 async function doorsOf(campaignId: string): Promise<string[]> {
   const rows = await getDb()
@@ -87,7 +90,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       seed.business.id,
       seed.userId,
       "cross",
-      GIFT,
+      CROSS_GIFT,
     );
 
     const [row] = await getDb()
@@ -104,7 +107,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       couponLabel: GIFT.couponLabel,
       couponCost: GIFT.couponCost,
       couponMaxRedemptions: null,
-      endsAt: null,
+      endsAt: new Date(ENDS),
       createdByUserId: seed.userId,
     });
     expect(row.activatedAt).toBeInstanceOf(Date);
@@ -157,7 +160,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
     expect(
       await caught(() =>
         enableTemplate(seed.business.id, seed.userId, "cross", {
-          ...GIFT,
+          ...CROSS_GIFT,
           dormantDays: 45,
         }),
       ),
@@ -169,7 +172,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
     const free = await world("free", "Templates free");
     expect(
       await caught(() =>
-        enableTemplate(free.business.id, free.userId, "cross", GIFT),
+        enableTemplate(free.business.id, free.userId, "cross", CROSS_GIFT),
       ),
     ).toMatchObject({ status: 402, code: "plan_not_allowed" });
     expect(await liveRuns(free.business.id, "cross")).toEqual([]);
@@ -177,10 +180,10 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
 
   it("one live run per template: a second enable is 409, and two enables at once leave one run", async () => {
     const seed = await world("plus", "Templates twice");
-    await enableTemplate(seed.business.id, seed.userId, "cross", GIFT);
+    await enableTemplate(seed.business.id, seed.userId, "cross", CROSS_GIFT);
     expect(
       await caught(() =>
-        enableTemplate(seed.business.id, seed.userId, "cross", GIFT),
+        enableTemplate(seed.business.id, seed.userId, "cross", CROSS_GIFT),
       ),
     ).toMatchObject({ status: 409, code: "template_already_live" });
     // The OTHER template is independent.
@@ -188,8 +191,8 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
 
     const race = await world("plus", "Templates race");
     const settled = await Promise.allSettled([
-      enableTemplate(race.business.id, race.userId, "cross", GIFT),
-      enableTemplate(race.business.id, race.userId, "cross", GIFT),
+      enableTemplate(race.business.id, race.userId, "cross", CROSS_GIFT),
+      enableTemplate(race.business.id, race.userId, "cross", CROSS_GIFT),
     ]);
     expect(settled.map((s) => s.status).sort()).toEqual([
       "fulfilled",
@@ -213,7 +216,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
     ).toMatchObject({ status: 404, code: "not_found" });
 
     const first = await enableTemplate(seed.business.id, seed.userId, "cross", {
-      ...GIFT,
+      ...CROSS_GIFT,
       crossValidDays: 7,
     });
     const off = await disableTemplate(seed.business.id, "cross");
@@ -229,7 +232,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       seed.business.id,
       seed.userId,
       "cross",
-      GIFT,
+      CROSS_GIFT,
     );
     const rows = await getDb()
       .select({ id: campaigns.id })
@@ -258,7 +261,7 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       seed.business.id,
       seed.userId,
       "cross",
-      GIFT,
+      CROSS_GIFT,
     );
     await transitionCampaign(seed.business.id, run.id, "pause");
     expect(

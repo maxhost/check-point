@@ -1,7 +1,7 @@
 ---
 spec: 0143
 fecha: 2026-10-03
-estado: cerrada
+estado: implementada
 resumen: Spec 4 del ADR 0115 (implementa el ADR 0117). Cuando el mostrador acredita en el comercio A, se elige por loteria H4 UNA campaña cruzada elegible, se emite su cupon al cliente y se encola el push «🎁 Tenés un regalo» a la separacion minima (3 min), sin ventana horaria; cada decision queda registrada con sus candidatos, factores, probabilidades y numero sorteado (migracion 0063: `core.cross_decision` + `core.cross_candidate`). La lista «a pedido» (C1/C2) se apaga, y activar una cruzada exige fecha de fin.
 disjunta: si
 archivos: .github/workflows/wallet-push-cron.yml (borrar), docs/notificaciones/README.md, packages/domain/src/server/marketing/{cross-lottery,cross-sale,cross-sale-store,cross-sale-push,enabled-campaigns,push-delivery}.ts, packages/domain/src/server/notifications/limits.ts, packages/db/src/schema/cross-sale.ts (+ barrel), packages/db/drizzle/0063_* + meta, apps/merchant/src/server/counter/{grant,after-grant}.ts, apps/merchant/src/server/marketing/template-input.ts, apps/consumer/src/app/api/public/consumer/cross-offers/** (apagar), tests nuevos y reescritura declarada

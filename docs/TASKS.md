@@ -4,6 +4,33 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0143, REVISOR (2026-10-03)
+
+Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/clean/<basename>`;
+restauracion: `cp <copia> <archivo>` y verificar el shasum.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R-M2 | `apps/merchant/src/server/counter/after-grant.ts` (`??`) | `578a0f7b98ab790234bfccd2c254c2abcba900a3` | el reintento (pushQueueId null) no llama a `decideCrossSale` | sin `if (granted.pushQueueId === null) return;` → ROJO 1/5 `cross-sale.neon` en `:159` `expect(spy.calls)`: `expected [ …(2) ]`, el MISMO orderId dos veces; `:156-158` (cuentas de filas) verdes. Revertida: diff vacio, shasum = limpio |
+| R-M3 | `packages/domain/src/server/marketing/cross-sale.ts` (`??`) | `85c154ed959fcb3544617caf14bf243ebcaae7c2` | sin fila nueva de `cross_decision`, la corrida no escribe y devuelve null | sin `if (decisionId === null) return null;` → ROJO 1/2 `cross-sale-races.neon` («ORACULO DE M3»): la 2a corrida RECHAZA con `23502` en `cross_candidate.decision_id`; la fila que falla es la de la campaña C con `k=1`, p=1 (B ya reclamada → la 2a corrida elige la OTRA). Las cuentas de la cola no corren (la asercion `toBeNull` cae antes). Revertida: diff vacio, shasum = limpio |
+| R-M6 | `packages/domain/src/server/marketing/push-delivery.ts` (` M`) | `e0fac8a9a21b4fba3bba527fdb8662bb0c2d0f88` | el gate pregunta a `gateCrossSalePush`: clickId = id de la decision | caida directa a `gateWelcomeReminder` → ROJO 1/1 `cross-sale-push.neon:65` `expect(web.calls)`: el diff es SOLO `- "clickId": "<id decision>"`; titulo/cuerpo/url iguales y `status: sent` (`:62`) verde. Revertida: diff vacio, shasum = limpio |
+| R-M8 | `packages/domain/src/server/marketing/cross-sale-store.ts` (`??`) | `34bbcb74c07c88ca9cb77004b4bf43df93b420d0` | docblock `loadLotteryHistory`: `F` = suma de `1/k` (no cantidad de decisiones) | `sum(1.0/d.candidate_count)` → `count(*)` → **VERDE** 8/8 (`cross-sale*.neon`, 3 archivos) + 6/6 `cross-lottery.test.ts`: ningun test siembra historia del mes; el SQL de F/R no tiene oraculo. Revertida: diff vacio, shasum = limpio |
+
+## Bitacora de mutaciones — spec 0143, implementador (2026-10-03)
+
+Copias limpias en el scratchpad de la sesion (`…/scratchpad/clean/<archivo>`); restauracion de emergencia:
+`cp <copia> <archivo>` y verificar el shasum de esta tabla.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `apps/merchant/src/server/counter/after-grant.ts` (`??`) | `578a0f7b98ab790234bfccd2c254c2abcba900a3` | acreditar dispara `decideCrossSale` (unico disparador) | `decideCrossSale(orderId)` → `Promise.resolve(orderId)` → ROJO 4 de 5 de `cross-sale.neon`: «two eligible» (`expected undefined to match object { …(8) }`: ninguna `cross_decision`), «no_candidates» y «no_origin» (`expected [] to deeply equal [ ObjectContaining{…} ]`), «once per campaign» (`expected undefined to match object { outcome: 'issued', …(2) }`); verde el de canjes (asevera que NO hay decision). Alcance: `cross-sale.neon` (las races y el push llaman a `decideCrossSale` a mano). Revertida: `diff` vacio, shasum = limpio |
+| M2 | `apps/merchant/src/server/counter/after-grant.ts` (`??`) | `578a0f7b98ab790234bfccd2c254c2abcba900a3` | solo la orden NUEVA (`pushQueueId !== null`) decide; el reintento no llama | oraculo = ESPIA de llamadas (`vi.mock` envolviendo el `decideCrossSale` real). Sin la condicion → ROJO 1 de 5 de `cross-sale.neon` en `:159` `expect(spy.calls).toEqual([orderId])`: `expected [ …(2) ] to deeply equal [ Array(1) ]`, el mismo `orderId` dos veces. Las tres cuentas de filas de arriba (`:155-157`) quedaron VERDES bajo la mutacion: el `unique (order_id)` es el guard hermano y ninguna cuenta lo ve. Revertida: `diff` vacio, shasum = limpio |
+| M3 | `packages/domain/src/server/marketing/cross-sale.ts` (`??`) | `85c154ed959fcb3544617caf14bf243ebcaae7c2` | sin fila de `cross_decision` nueva, la corrida termina sin escribir | sin `if (decisionId === null) return null` → ROJO 1 de 2 de `cross-sale-races.neon`, en `:46` (la 2a `decideCrossSale(orderId)` que tiene que dar `null`): RECHAZA con `23502 null value in column "decision_id" of relation "cross_candidate"` — la 2a corrida eligio la OTRA campaña, emitio su cupon y encolo su push, y el `insert` de candidatas (decision_id nulo) tumbo la transaccion. **Sonda temporal (archivo borrado) bajo la misma mutacion, tragando el error: decisions 1 · coupons 1 · campaignRows 1** → la cuenta de la cola NO distingue M3 (guard hermano NO previsto por la spec: `cross_candidate.decision_id NOT NULL` + una sola transaccion); la distingue el `toBeNull()`. Revertida: `diff` vacio, shasum = limpio |
+| M4 | `packages/domain/src/server/marketing/cross-lottery.ts` (`??`) | `b1a754d2d01cbefc557cab28501492bc7af99fec` | el atraso se acota a [0.5, 2] | sin `clamp(…)` → ROJO 4 de `cross-lottery.test.ts`: ejemplo §2 (`expected 0.2701745017880684 to be close to 0.3107`), factores (`expected 3.5 to be 2`, el atraso de D), sorteo `u=0.30` (`expected …c… to be …b…`), bono (`expected 0.2371… to be close to 0.2821`); alcance: `cross-lottery.test.ts` + `notifications/` (15/19 verdes). Revertida: `diff` vacio, shasum = limpio |
+| M5 | `packages/domain/src/server/marketing/cross-lottery.ts` (`??`) | `b1a754d2d01cbefc557cab28501492bc7af99fec` | `F` incluye el `1/k` de la decision actual | `fair = previousShare` → ROJO 3 de `cross-lottery.test.ts`: ejemplo §2 (`expected 0.30970567176300584 to be close to 0.3107`, la B 0,3097 de la spec), factores (`expected 0.5040… to be close to 0.5121…` = 21/41), bono (`expected 0.2808… to be close to 0.2821`); el sorteo y `k=1` quedan verdes (con una sola candidata p=1 igual). Revertida: `diff` vacio, shasum = limpio |
+| M6 | `packages/domain/src/server/marketing/push-delivery.ts` (` M`) | `e0fac8a9a21b4fba3bba527fdb8662bb0c2d0f88` | el gate pregunta a `gateCrossSalePush`: `clickId` = id de la decision | caida directa a `gateWelcomeReminder` → ROJO 1: `cross-sale-push.neon` en `expect(web.calls).toEqual(…)` (`:65`), el diff muestra SOLO `- "clickId": "<id de la decision>"` (el push igual salio: titulo, cuerpo y `/wallet` iguales — el `sent` no distingue, el `clickId` si). Alcance: `cross-sale-push.neon` + `marketing-welcome-reminder.neon` (3/3 verdes). Revertida: `diff` vacio, shasum = limpio |
+| M7 | `apps/merchant/src/server/marketing/template-input.ts` (` M`) | `2678644f5887a09ecafce59801670b0cef1afe0f` | `cross` exige `endsAt` | `!welcome && !offer` → ROJO 1: `cross-input.test.ts` «cross without endsAt → errors.endsAt» con `Error: esperaba errores y el cuerpo paso` (el parse de un cross sin fin ACEPTO: es la propiedad). Alcance: project merchant entero (unit; Neon auto-skip), 2011 verdes. Revertida: `diff` vacio, shasum = limpio |
+
 ## Bitacora de mutaciones — spec 0135, implementador (2026-10-02)
 
 | id | archivo | shasum limpio | invariante | resultado EJECUTADO |
@@ -7638,3 +7665,7 @@ Declarado y NO perseguido: RR3 (el guard de §10 mira 4 rutas literales; con `pr
 Tampoco hay test del CABLEADO de `apps/public/next.config.ts`: `legacyRewrites(consumer, merchant)` con los argumentos
 cambiados tipa (son dos `string`) y ningun test lo ve. El manifest de este build esta bien; sumar un test «is what
 next.config.ts hands to Next» como el de merchant costaria unas 10 lineas. M6 y PROD no son del revisor.
+
+- spec 0143, ORQUESTADOR — O-M8: `packages/domain/src/server/marketing/cross-sale-store.ts` (shasum limpio en la linea siguiente), `sum(1.0 / d.candidate_count)` → `count(*)` (F = suma de 1/k), contra `cross-sale-lottery-facts.neon` (nuevo). Resultado: ver abajo.
+34bbcb74c07c88ca9cb77004b4bf43df93b420d0  packages/domain/src/server/marketing/cross-sale-store.ts
+  Resultado O-M8: ROJO 1/2 — `expected 1.25 to be close to 1` (F contado como count). Revertida: diff vacio, shasum 34bbcb74… igual al limpio.

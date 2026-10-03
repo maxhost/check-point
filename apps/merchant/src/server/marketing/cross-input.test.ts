@@ -7,7 +7,13 @@ const NOW = new Date("2026-09-29T12:00:00.000Z");
 const cross = templateByKey("cross")!;
 const missedYou = templateByKey("missed_you")!;
 const welcome = templateByKey("welcome")!;
-const GIFT = { couponLabel: "10% en tu clase", couponCost: "2.00" };
+/** Spec 0143: an end date is mandatory for a cross campaign since the owner's 2026-10-03. */
+const ENDS = "2026-12-31T00:00:00.000Z";
+const GIFT = {
+  couponLabel: "10% en tu clase",
+  couponCost: "2.00",
+  endsAt: ENDS,
+};
 
 function errorsOf(body: unknown, template = cross) {
   const parsed = parseTemplateInput(template, body, NOW);
@@ -28,7 +34,7 @@ function valueOf(body: unknown) {
  * options with their defaults; `cross*` in another template is a 400.
  */
 describe("parseTemplateInput — cross", () => {
-  it("a coupon alone is the defaults: non_members, 30 dormant days, 15 d, cap 50, no channel, no end", () => {
+  it("a coupon (and its end) alone is the defaults: non_members, 30 dormant days, 15 d, cap 50, no channel", () => {
     const value = valueOf(GIFT);
     expect(value).toMatchObject({
       channelProximity: false,
@@ -45,7 +51,7 @@ describe("parseTemplateInput — cross", () => {
       crossMonthlyCap: 50,
       welcomeValidDays: null,
       startsAt: NOW,
-      endsAt: null,
+      endsAt: new Date(ENDS),
     });
     expect(pickCross(value)).toEqual({
       crossAudience: "non_members",
@@ -145,5 +151,33 @@ describe("parseTemplateInput — cross", () => {
         expect(errorsOf({ ...GIFT, [key]: value }, template)).toHaveProperty(
           key,
         );
+  });
+});
+
+/**
+ * Spec 0143 §7 (owner, 2026-10-03: «Exigir fecha de fin»): `enable` of a cross campaign
+ * without `endsAt` is a 400 on `fields.endsAt`; «Bienvenida» and «Horas valle» still pass
+ * without it (their coupons expire by their own rule). ORACULO DE M7.
+ */
+describe("parseTemplateInput — the end date of a cross campaign (spec 0143)", () => {
+  it("cross without endsAt → errors.endsAt, the coupon message", () => {
+    const withoutEnd = {
+      couponLabel: GIFT.couponLabel,
+      couponCost: GIFT.couponCost,
+    };
+    expect(errorsOf(withoutEnd)).toEqual({
+      endsAt: "Una campaña con cupón necesita fecha de fin.",
+    });
+    expect(errorsOf({ ...withoutEnd, endsAt: null })).toEqual({
+      endsAt: "Una campaña con cupón necesita fecha de fin.",
+    });
+  });
+
+  it("welcome and valley without endsAt still pass", () => {
+    const reward = { couponLabel: "Un café gratis", couponCost: "1.20" };
+    for (const key of ["welcome", "valley"]) {
+      const parsed = parseTemplateInput(templateByKey(key)!, reward, NOW);
+      expect(parsed).toMatchObject({ ok: true, value: { endsAt: null } });
+    }
   });
 });

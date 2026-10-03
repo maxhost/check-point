@@ -5,7 +5,6 @@ import { integrationEnabled } from "./counter-integration-support";
 import {
   base,
   category,
-  claim,
   crossBusiness,
   crossCampaign,
   crossConsumer,
@@ -23,6 +22,7 @@ import {
 import { redeemCoupon } from "./counter/coupon";
 import { resolveScan } from "./counter/resolve";
 import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
+import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offers";
 
 /**
  * Spec 0136 — what happens AFTER the claim, against a real base:
@@ -44,14 +44,11 @@ async function claimed(prefix: string, index: number) {
   const x = await crossBusiness(`Cruz ${prefix}`, cat("gym"), north(here, 300));
   const campaignId = await crossCampaign(x);
   const consumer = await crossConsumer();
-  const answer = await claim(consumer.id, campaignId, here);
-  expect(answer.status).toBe(201);
-  return {
-    x,
-    campaignId,
-    consumer,
-    couponId: String((answer.body.coupon as { id: string }).id),
-  };
+  // Spec 0143: the on-demand route (C2) is OFF (404); the coupon is sown with the SAME
+  // domain call the route made (`claimCrossOffer`), which is what this suite is about.
+  const answer = await claimCrossOffer(consumer.id, campaignId, here);
+  if (answer.status !== 201) throw new Error(`claim → ${answer.status}`);
+  return { x, campaignId, consumer, couponId: answer.coupon.id };
 }
 
 describe.skipIf(!integrationEnabled)(

@@ -15,6 +15,7 @@ import { type CouponReward, pushCouponToIssue } from "./coupon-issue";
 import { toDate } from "./driver-values";
 import { isInPushWindow, nextSendableAt } from "./push-window";
 import { gateWelcomeReminder } from "./welcome-reminder";
+import { gateCrossSalePush, recordCrossSaleClick } from "./cross-sale-push";
 
 export type PushCancelReason =
   | "campaign_inactive"
@@ -138,9 +139,14 @@ export async function gateCampaignPush(
   now: Date,
 ): Promise<CampaignGate> {
   const facts = await loadGateFacts(queueId);
-  // Spec 0107: no `campaign_push` behind the row → it may be a welcome expiry notice,
+  // Spec 0143: no `campaign_push` behind the row → it may be the cross sale's «regalo
+  // misterio» (sent with the decision's click id); spec 0107: else a welcome expiry notice,
   // decided by its coupon; with no coupon either it is still a plain send.
-  if (!facts) return await gateWelcomeReminder(queueId, now);
+  if (!facts)
+    return (
+      (await gateCrossSalePush(queueId)) ??
+      (await gateWelcomeReminder(queueId, now))
+    );
   const gate = decideCampaignGate(facts, now);
   if (gate.kind === "cancel") {
     await withDbTransaction(async (tx) => {
@@ -242,11 +248,13 @@ export async function recordCampaignPushSent(
 /**
  * `POST /api/public/push/click` (spec 0103 §9): the first click of a SENT push wins
  * (`coalesce`); an unknown id, a holdout or a never-sent push change nothing — and the
- * route answers 204 either way, so the endpoint does not reveal which ids exist.
+ * route answers 204 either way, so the endpoint does not reveal which ids exist. Spec 0143:
+ * the id may also be a cross sale's decision (its «regalo misterio»).
  */
 export async function recordPushClick(pushId: string): Promise<void> {
   await getDb().execute(sql`
     update core.campaign_push
     set clicked_at = coalesce(clicked_at, now())
     where id = ${pushId} and sent_at is not null`);
+  await recordCrossSaleClick(pushId);
 }

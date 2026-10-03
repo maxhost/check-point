@@ -71,6 +71,24 @@ export const CROSS_MONTHLY_CAP = { min: 1, max: 10000, default: 50 };
 /** «Horas valle» (spec 0113; turned off by spec 0138). Read by `VALLEY_TEMPLATE` (`valley-rules.ts`). */
 export const VALLEY_MONTHLY_CAP = { min: 1, max: 10000, default: 50 };
 
+// ── Venta cruzada: la loteria (spec 0143 / ADR 0117 §12-§13), read by `cross-lottery.ts` ──
+//
+// After an accreditation in A, ONE eligible cross campaign is drawn with
+// `p_i = ε/k + (1 − ε) · c_i·a_i·b_i / Σ c_j·a_j·b_j` (the formula lives in `cross-lottery.ts`).
+
+/** ε: the share drawn evenly among the eligible ones (owner, ADR 0117 §13: «20 % editable»). */
+export const CROSS_LOTTERY_EPSILON = 0.2;
+/** Closeness `c = e^(−d / DECAY)`, d in meters to B's nearest location (orchestrator's value). */
+export const CROSS_LOTTERY_DECAY_METERS = 1000;
+/** Lower end of the «behind» factor `a = (1 + F) / (1 + R)` (orchestrator's value). */
+export const CROSS_LOTTERY_BEHIND_MIN = 0.5;
+/** Upper end of that clamp (orchestrator's value). */
+export const CROSS_LOTTERY_BEHIND_MAX = 2;
+/** The H4 bonus to a business with no new customer in its local month (orchestrator's value). */
+export const CROSS_LOTTERY_NEW_CUSTOMER_BONUS = 1.5;
+/** The policy's name, recorded in every decision (`core.cross_decision.policy`). */
+export const CROSS_LOTTERY_POLICY = "h4-v1";
+
 // ── Proximity on the pass (spec 0065 / ADR 0066; turned off by spec 0138) ────────────────
 
 /** Every number of the design is a PARAMETER, so a test can lower it instead of seeding

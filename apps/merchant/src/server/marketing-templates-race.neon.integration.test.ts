@@ -28,6 +28,9 @@ import {
 afterAll(dropCampaignWorlds, 120_000);
 
 const GIFT = { couponLabel: "10% en tu clase", couponCost: "2.00" };
+/** Spec 0143 (owner, 2026-10-03: «Exigir fecha de fin»): enabling a cross campaign needs an end. */
+const ENDS = "2099-12-31T00:00:00.000Z";
+const CROSS_GIFT = { ...GIFT, endsAt: ENDS };
 
 async function insertBlockedOnLock(): Promise<boolean> {
   const result = await getDb().execute<{ n: number }>(
@@ -68,7 +71,12 @@ describe.skipIf(!integrationEnabled)("campaign templates — the race", () => {
         createdByUserId: seed.userId,
       });
       // B starts while A's row is uncommitted: its select cannot see it.
-      loser = enableTemplate(seed.business.id, seed.userId, "cross", GIFT).then(
+      loser = enableTemplate(
+        seed.business.id,
+        seed.userId,
+        "cross",
+        CROSS_GIFT,
+      ).then(
         () => "fulfilled",
         (error: unknown) => error,
       );

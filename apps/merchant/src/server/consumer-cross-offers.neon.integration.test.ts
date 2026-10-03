@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { CROSS_ON_DEMAND_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { integrationEnabled } from "./counter-integration-support";
 import {
   DAY,
@@ -29,7 +30,10 @@ afterAll(dropCrossWorlds, 180_000);
 
 const HOUR = 3_600_000;
 
-describe.skipIf(!integrationEnabled)("cross offers — C1", () => {
+// Spec 0143 / ADR 0117 §5: the on-demand list is OFF, so this suite is skipped with the flag.
+const skip = !integrationEnabled || !CROSS_ON_DEMAND_ENABLED;
+
+describe.skipIf(skip)("cross offers — C1", () => {
   it("without GPS and without any geocoded scan: origin none, no offers", async () => {
     const cat = category("none");
     const gym = await crossBusiness("Cruz none gym", cat("gym"), base(1));

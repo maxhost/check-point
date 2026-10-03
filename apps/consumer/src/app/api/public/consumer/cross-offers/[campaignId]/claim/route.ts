@@ -5,6 +5,7 @@ import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offe
 import { claimValleyOffer } from "@mi-pasaporte/domain/server/consumer/valley-offers";
 import { parseGeo } from "@mi-pasaporte/domain/server/consumer/cross-facts";
 import { resolveSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { CROSS_ON_DEMAND_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,6 +34,9 @@ function invalidLocation(fields: Record<string, string>) {
  * of its open window —, a cross offer WITHOUT it; the other way round is a 400 on
  * `fields.locationId` (the domain knows which campaign it is). A `locationId` that is not a
  * UUID is that same 400 before touching the base.
+ *
+ * Spec 0143 / ADR 0117 §5: the on-demand claim is OFF (`CROSS_ON_DEMAND_ENABLED`): with a
+ * session it is a 404 `not_found` that reads nothing; without one it is still a 401.
  */
 export async function POST(
   request: NextRequest,
@@ -47,6 +51,11 @@ export async function POST(
       { status: 401 },
     );
   }
+  if (!CROSS_ON_DEMAND_ENABLED)
+    return NextResponse.json(
+      { error: "No encontrado.", code: "not_found" },
+      { status: 404 },
+    );
   let body: Record<string, unknown> = {};
   const raw = await request.text();
   if (raw.trim() !== "") {

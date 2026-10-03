@@ -7,6 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * taken from the SESSION and never from the request, a non-UUID id answered as the same
  * 404 `offer_unavailable` before touching the base. The flows themselves run against a
  * real base in `consumer-cross-offers*.neon.integration.test.ts`.
+ *
+ * Spec 0143 / ADR 0117 §5: the on-demand list is OFF, so those cases are skipped with the
+ * flag (`CROSS_ON_DEMAND_ENABLED`, like spec 0138) and the last block pins the 404.
  */
 
 const state = vi.hoisted(() => ({
@@ -30,10 +33,13 @@ vi.mock("@mi-pasaporte/domain/server/consumer/valley-offers", () => ({
   claimValleyOffer: state.claimValley,
 }));
 
+import { CROSS_ON_DEMAND_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { GET } from "./route";
 import { POST } from "./[campaignId]/claim/route";
 
 const CAMPAIGN = "0112c1c2-0000-4000-8000-000000000001";
+/** Spec 0143: the on-demand cases run only while the list is ON. */
+const onDemand = describe.skipIf(!CROSS_ON_DEMAND_ENABLED);
 
 function get(query = ""): NextRequest {
   return new NextRequest(
@@ -59,7 +65,7 @@ beforeEach(() => {
   state.claimValley.mockReset().mockResolvedValue({ status: 404 });
 });
 
-describe("GET /api/public/consumer/cross-offers", () => {
+onDemand("GET /api/public/consumer/cross-offers", () => {
   it("without a session is 401 unauthenticated and reads nothing", async () => {
     state.account = null;
     const response = await GET(get());
@@ -103,7 +109,7 @@ describe("GET /api/public/consumer/cross-offers", () => {
   });
 });
 
-describe("POST /api/public/consumer/cross-offers/{campaignId}/claim", () => {
+onDemand("POST /api/public/consumer/cross-offers/{campaignId}/claim", () => {
   it("without a session is 401 unauthenticated and claims nothing", async () => {
     state.account = null;
     const response = await post();
@@ -160,7 +166,10 @@ describe("POST /api/public/consumer/cross-offers/{campaignId}/claim", () => {
   });
 });
 
-describe("POST …/claim — spec 0113: `locationId` makes it a valley claim", () => {
+const VALLEY_CLAIM =
+  "POST …/claim — spec 0113: `locationId` makes it a valley claim";
+
+onDemand(VALLEY_CLAIM, () => {
   const LOCATION = "0113c2c2-0000-4000-8000-000000000002";
 
   it("with `locationId`: the valley claim, for the SESSION's consumer, never the cross one", async () => {
@@ -211,3 +220,34 @@ describe("POST …/claim — spec 0113: `locationId` makes it a valley claim", (
     expect(await response.json()).toMatchObject({ code: "validation", fields });
   });
 });
+
+describe.skipIf(CROSS_ON_DEMAND_ENABLED)(
+  "spec 0143 — the on-demand list is OFF: 404 not_found with a session",
+  () => {
+    it("C1 and C2 without a session are still 401", async () => {
+      state.account = null;
+      expect((await GET(get())).status).toBe(401);
+      expect((await post("{}")).status).toBe(401);
+    });
+
+    it("C1 and C2 with a session are 404 not_found and never reach the domain", async () => {
+      const list = await GET(get("?lat=-34.6&lng=-58.38"));
+      expect(list.status).toBe(404);
+      expect(await list.json()).toEqual({
+        error: "No encontrado.",
+        code: "not_found",
+      });
+      const claim = await post(
+        JSON.stringify({ lat: -34.6, lng: -58.38, locationId: CAMPAIGN }),
+      );
+      expect(claim.status).toBe(404);
+      expect(await claim.json()).toEqual({
+        error: "No encontrado.",
+        code: "not_found",
+      });
+      expect(state.list).not.toHaveBeenCalled();
+      expect(state.claim).not.toHaveBeenCalled();
+      expect(state.claimValley).not.toHaveBeenCalled();
+    });
+  },
+);

@@ -46,7 +46,13 @@ de afuera cambio). Desde `apps/*` se importa como `@mi-pasaporte/domain/server/n
 | `WELCOME_MONTHLY_CAP` (`limits.ts:68`) | `{ min: 1, max: 10000, default: 50 }` | cupones reclamados por mes de la Bienvenida (el comercio elige dentro de min–max) | `TEMPLATES`, `packages/domain/src/server/marketing/templates.ts:140` |
 | `CROSS_MONTHLY_CAP` (`limits.ts:70`) | `{ min: 1, max: 10000, default: 50 }` | idem, Venta cruzada | `CROSS_TEMPLATE`, `packages/domain/src/server/marketing/cross-rules.ts:64` |
 | `VALLEY_MONTHLY_CAP` (`limits.ts:72`) | `{ min: 1, max: 10000, default: 50 }` | idem, Horas valle (apagada, spec 0138) | `VALLEY_TEMPLATE`, `packages/domain/src/server/marketing/valley-rules.ts:47` |
-| `DEFAULT_PLACEMENT_LIMITS` (`limits.ts:92`) | turnos activos 5, cuota por comercio 50, separacion 400 m, holdout 10 %, cooldown 30 dias, 3 slots de utilidad, ventana 5 dias, 10 slots, texto 120 | la proximidad en el pase (spec 0065; apagada, spec 0138) | `planConsumerPlacement` (`packages/domain/src/server/marketing/placement-plan.ts:262`), `apps/merchant/src/server/marketing/tick.ts:208`, `audience-preview.ts:146`, `composer-summary.ts:19` |
+| `CROSS_LOTTERY_EPSILON` (`limits.ts:80`) | `0.2` | la parte de la loteria de la Venta cruzada que se sortea pareja entre las elegibles (owner, ADR 0117 §13: «20 % editable») | `DEFAULT_LOTTERY_LIMITS` (`packages/domain/src/server/marketing/cross-lottery.ts:59`); se registra en cada decision (`cross-sale.ts`) |
+| `CROSS_LOTTERY_DECAY_METERS` (`limits.ts:82`) | `1000` | cercania `c = e^(−d/1000)`, d = metros al local mas cercano de B (spec 0143 §3) | `DEFAULT_LOTTERY_LIMITS` |
+| `CROSS_LOTTERY_BEHIND_MIN` (`limits.ts:84`) | `0.5` | piso del factor de atraso `a = (1 + F)/(1 + R)` | `DEFAULT_LOTTERY_LIMITS` |
+| `CROSS_LOTTERY_BEHIND_MAX` (`limits.ts:86`) | `2` | techo del factor de atraso | `DEFAULT_LOTTERY_LIMITS` |
+| `CROSS_LOTTERY_NEW_CUSTOMER_BONUS` (`limits.ts:88`) | `1.5` | bono H4 al comercio sin clientes nuevos en su mes local | `DEFAULT_LOTTERY_LIMITS` |
+| `CROSS_LOTTERY_POLICY` (`limits.ts:90`) | `"h4-v1"` | nombre de la politica, registrado en cada decision (`core.cross_decision.policy`) | `decideCrossSale` (`packages/domain/src/server/marketing/cross-sale.ts`) |
+| `DEFAULT_PLACEMENT_LIMITS` (`limits.ts:110`) | turnos activos 5, cuota por comercio 50, separacion 400 m, holdout 10 %, cooldown 30 dias, 3 slots de utilidad, ventana 5 dias, 10 slots, texto 120 | la proximidad en el pase (spec 0065; apagada, spec 0138) | `planConsumerPlacement` (`packages/domain/src/server/marketing/placement-plan.ts:262`), `apps/merchant/src/server/marketing/tick.ts:208`, `audience-preview.ts:146`, `composer-summary.ts:19` |
 
 ## 3. Como cambiar uno
 

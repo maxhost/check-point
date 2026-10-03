@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { CROSS_ON_DEMAND_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { integrationEnabled } from "./counter-integration-support";
 import {
   DAY,
@@ -33,7 +34,10 @@ afterAll(dropCrossWorlds, 180_000);
 
 const RACES = 3;
 
-describe.skipIf(!integrationEnabled)("cross offers — C2 claim", () => {
+// Spec 0143 / ADR 0117 §5: the on-demand list is OFF, so this suite is skipped with the flag.
+const skip = !integrationEnabled || !CROSS_ON_DEMAND_ENABLED;
+
+describe.skipIf(skip)("cross offers — C2 claim", () => {
   it("201 issues the coupon WITHOUT membership, valid from now for validDays, with the reward's snapshots; no push", async () => {
     const cat = category("claim");
     const here = base(11);

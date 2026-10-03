@@ -216,8 +216,10 @@ export function parseTemplateInput(
     : when(errors, body.endsAt, "endsAt", "La fecha de fin");
   if (startsAt && endsAt && endsAt <= startsAt)
     errors.endsAt = "La fecha de fin tiene que ser posterior a la de inicio.";
-  // Spec 0107/0136/0113: those coupons expire by their own rule, not by the end.
-  if (!welcome && !offer) requireEndForCoupon(errors, deal, endsAt);
+  // Spec 0107/0113: those coupons expire by their own rule, not by the end. Spec 0143
+  // (owner, 2026-10-03: «Exigir fecha de fin»): a cross campaign needs one — «once per
+  // campaign» (ADR 0117 §15) must not mean «once forever».
+  if (!welcome && !valley) requireEndForCoupon(errors, deal, endsAt);
 
   if (
     Object.keys(errors).length > 0 ||

@@ -261,6 +261,9 @@ export async function dropWorld(): Promise<void> {
   const consumers = [
     ...new Set([...consumerIds, ...accounts.map((row) => String(row.id))]),
   ];
+  // Spec 0143: un pedido sembrado (el clic del regalo misterio) se lleva su `cross_decision` en
+  // cascada, que apunta a la campaña cruzada (NO ACTION) y a la cuenta.
+  await owner`delete from core."order" where business_id = any(${businessIds}::uuid[])`;
   await owner`delete from core.welcome_device where business_id = any(${businessIds}::uuid[])`;
   await owner`delete from core.campaign_coupon where business_id = any(${businessIds}::uuid[])
     or consumer_id = any(${consumers}::uuid[])`;

@@ -25,6 +25,13 @@ export const COMPOSER_ENABLED: boolean = false;
 /** El paso 4 del tick (proximidad del pase de Wallet, ADR 0065). */
 export const PROXIMITY_PLACEMENT_ENABLED: boolean = false;
 
+/**
+ * La lista «a pedido» de la Venta cruzada (C1/C2 de «Mis beneficios», spec 0136). Apagada por
+ * el ADR 0117 §5 («Sí, se apaga»): la cruzada llega sola después de comprar (spec 0143) y las
+ * dos rutas responden 404. `listCrossOffers` y `claimCrossOffer` quedan para reactivarla.
+ */
+export const CROSS_ON_DEMAND_ENABLED: boolean = false;
+
 /** `null` = compositor. Una clave desconocida es `false`. */
 export function campaignKindEnabled(templateKey: string | null): boolean {
   if (templateKey === null) return COMPOSER_ENABLED;

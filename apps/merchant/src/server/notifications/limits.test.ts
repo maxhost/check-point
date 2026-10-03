@@ -4,6 +4,12 @@ import {
   COOLDOWN_MINUTES,
   COOLDOWN_MS,
   COUNTER_NOTICES_PER_24H,
+  CROSS_LOTTERY_BEHIND_MAX,
+  CROSS_LOTTERY_BEHIND_MIN,
+  CROSS_LOTTERY_DECAY_METERS,
+  CROSS_LOTTERY_EPSILON,
+  CROSS_LOTTERY_NEW_CUSTOMER_BONUS,
+  CROSS_LOTTERY_POLICY,
   CROSS_MONTHLY_CAP,
   DEFAULT_PLACEMENT_LIMITS,
   NOTIFYING_PER_24H,
@@ -49,6 +55,15 @@ describe("notification limits — the values of today", () => {
     expect(WELCOME_MONTHLY_CAP).toEqual({ min: 1, max: 10000, default: 50 });
     expect(CROSS_MONTHLY_CAP).toEqual({ min: 1, max: 10000, default: 50 });
     expect(VALLEY_MONTHLY_CAP).toEqual({ min: 1, max: 10000, default: 50 });
+  });
+
+  it("cross sale lottery (spec 0143): ε 20 %, 1 km decay, behind in [0.5, 2], bonus 1.5, h4-v1", () => {
+    expect(CROSS_LOTTERY_EPSILON).toBe(0.2);
+    expect(CROSS_LOTTERY_DECAY_METERS).toBe(1000);
+    expect(CROSS_LOTTERY_BEHIND_MIN).toBe(0.5);
+    expect(CROSS_LOTTERY_BEHIND_MAX).toBe(2);
+    expect(CROSS_LOTTERY_NEW_CUSTOMER_BONUS).toBe(1.5);
+    expect(CROSS_LOTTERY_POLICY).toBe("h4-v1");
   });
 
   it("proximity: the placement defaults, field by field", () => {

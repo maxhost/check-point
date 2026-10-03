@@ -61,7 +61,8 @@ const rank = (offer: CrossOffer | ValleyOffer) =>
 const tieKey = (offer: CrossOffer | ValleyOffer) =>
   `${offer.campaignId}:${offer.type === "valley" ? offer.locationId : ""}`;
 
-function factsFor(
+/** The facts of ONE campaign for `decideCrossOffer` (also the cross sale's, spec 0143). */
+export function factsFor(
   campaign: CrossCampaign,
   locations: CrossLocation[],
   base: Pick<CrossOfferFacts, "now" | "position">,
@@ -84,7 +85,7 @@ function factsFor(
   };
 }
 
-const monthCount = (db: Db, campaign: CrossCampaign, now: Date) =>
+export const monthCount = (db: Db, campaign: CrossCampaign, now: Date) =>
   countMonthCrossCoupons(
     db,
     campaign.id,
@@ -151,7 +152,9 @@ export async function listCrossOffers(
   return { origin: origin.kind, offers: found.map((entry) => entry.offer) };
 }
 
-async function insertCrossCoupon(
+/** The claimed cross coupon (`cross_claimed_at = now`); `null` when the partial unique
+ * refused it. Spec 0143: the cross sale issues its coupon with this SAME insert. */
+export async function insertCrossCoupon(
   tx: DbTransaction,
   campaign: CrossCampaign,
   consumerId: string,

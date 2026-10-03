@@ -23,6 +23,9 @@ import {
 afterAll(dropCampaignWorlds, 120_000);
 
 const GIFT = { couponLabel: "10% en tu clase", couponCost: "2.00" };
+/** Spec 0143 (owner, 2026-10-03: «Exigir fecha de fin»): enabling a cross campaign needs an end. */
+const ENDS = "2099-12-31T00:00:00.000Z";
+const CROSS_GIFT = { ...GIFT, endsAt: ENDS };
 
 function violated(error: unknown): string | null {
   let current: unknown = error;
@@ -84,7 +87,7 @@ describe.skipIf(!integrationEnabled)(
         seed.business.id,
         seed.userId,
         "cross",
-        GIFT,
+        CROSS_GIFT,
       );
       expect(campaign).toMatchObject({
         templateKey: "cross",
@@ -92,7 +95,7 @@ describe.skipIf(!integrationEnabled)(
         channels: [],
         couponLabel: "10% en tu clase",
         couponMaxRedemptions: null,
-        endsAt: null,
+        endsAt: new Date(ENDS),
         welcome: null,
         cross: { audience: "non_members", validDays: 15, monthlyCap: 50 },
       });
@@ -132,13 +135,13 @@ describe.skipIf(!integrationEnabled)(
       const seed = await world("plus", "Cross enable 400");
       for (const [body, field] of [
         [{}, "couponLabel"],
-        [{ ...GIFT, couponMaxRedemptions: 5 }, "couponMaxRedemptions"],
-        [{ ...GIFT, channels: ["push"] }, "channels"],
-        [{ ...GIFT, crossAudience: "members" }, "crossAudience"],
-        [{ ...GIFT, crossValidDays: 10 }, "crossValidDays"],
-        [{ ...GIFT, crossMonthlyCap: 0 }, "crossMonthlyCap"],
-        [{ ...GIFT, dormantDays: 45 }, "dormantDays"],
-        [{ ...GIFT, welcomeValidDays: 15 }, "welcomeValidDays"],
+        [{ ...CROSS_GIFT, couponMaxRedemptions: 5 }, "couponMaxRedemptions"],
+        [{ ...CROSS_GIFT, channels: ["push"] }, "channels"],
+        [{ ...CROSS_GIFT, crossAudience: "members" }, "crossAudience"],
+        [{ ...CROSS_GIFT, crossValidDays: 10 }, "crossValidDays"],
+        [{ ...CROSS_GIFT, crossMonthlyCap: 0 }, "crossMonthlyCap"],
+        [{ ...CROSS_GIFT, dormantDays: 45 }, "dormantDays"],
+        [{ ...CROSS_GIFT, welcomeValidDays: 15 }, "welcomeValidDays"],
       ] as const) {
         const error = await caught(() =>
           enableTemplate(seed.business.id, seed.userId, "cross", body),
