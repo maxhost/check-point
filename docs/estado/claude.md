@@ -8,25 +8,25 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — 0138 EN IMPLEMENTACION (implementador vivo en este arbol, segunda vuelta)
+## ⇥ ESTADO (2026-10-03, madrugada UTC) — 0138 IMPLEMENTADA (`1236aff`, SIN PUSH); REVISOR VIVO EN ESTE ARBOL
 
-**Al retomar:** `ListAgents` PRIMERO — si el implementador de la 0138 sigue vivo, no tocar el arbol. `motor` en
-`7e99d5f` + trabajo SIN COMMITEAR del implementador (`enabled-campaigns.ts`, `template-list.ts`, los stores de
-marketing, `tick.ts`, `cross-offers.ts`, `valley-offers.ts`, `marketing-disabled.neon…`) y la enmienda §6-bis de la
-spec, tambien sin commitear.
+**Al retomar:** `ListAgents` PRIMERO — si el `revisor` de la 0138 sigue vivo, no tocar el arbol (puede tener una
+mutacion puesta: la mide y la revierte el). `motor` = `17be382` (docs) sobre `1236aff` (`feat(0138)`), sin push;
+`origin/main` esta en `7e99d5f`.
 
-**Hecho:** owner dio OK a implementar la 0138 + revisor, y a borrar los turnos de `ci-integration`: **borrados,
-99 → 0** (28 negocios `int-*` via `dropCampaigns`+`dropBusiness`, 0 errores). Primera vuelta del implementador:
-paro por §6 — con el codigo cambiado, Neon completo = 90 failed / 3039 passed en 29 archivos, 367,86 s (verificado
-sobre su log `scratchpad/neon-pre.clean.log`); 63 de tema apagado, 26 de mecanismo VIVO con fixture apagado.
-Decision del orquestador (§6-bis de la spec): los 26 se REESCRIBEN con fixtures `welcome`/`cross` conservando la
-propiedad (salvo 5 cuyo mecanismo solo existe con turnos → se saltean); entran 3 huecos (409 antes de `readJson`,
-`claimCrossOffer` de valle → 404, API de ventanas de valle → 404). Implementador reanudado con eso. **Sigue escribiendo AHORA en este arbol** (tests nuevos/reescritos: `marketing-disabled*.neon…`, `marketing-composer-off-route.test.ts`, `marketing-cross-enable…`); se le sumo `marketing-routes-errors.test.ts:108-111` a la lista de reescritura (el no-JSON → 400 contra una ruta viva). El rojo de ese test en el Stop hook es su trabajo a medias, no se toca. **Ya esta midiendo las mutaciones:** a las ~27 min de la segunda vuelta tenia M9 PUESTA en `packages/domain/src/server/consumer/cross-offers.ts:136` (etiquetada `MUTATION M9`), con el implementador VIVO → no se toca (protocolo: la revierte el con `diff`). Si al retomar el implementador ya no esta en `ListAgents` y la etiqueta sigue, medirla antes de revertir y confirmar con `diff`. Tambien reescribio/salteo `consumer-role-offers`, `consumer-marketing-opt-out` y las `consumer-valley-*`.
+**Hecho:** implementador termino en 2 vueltas (grupo B resuelto por §6-bis). Verificado por el orquestador:
+`1236aff` existe, arbol limpio, `rg MUTATION` vacio; Neon completo con ese arbol = **2891 passed / 248 skipped /
+0 failed, 301,99 s** (antes ~10 min); 9/9 mutaciones muerden segun su bitacora (`scratchpad/bitacora.txt`, M7
+necesito arreglar el seed). Su `pnpm verify --full` dio rojo SOLO en 7 suites de billing por red + residuos
+`cus_dash`/`cus_scoped`/`cus_deriva_*` → **borrados con OK del owner (3 → 0)**, las 2 que chocaban re-corridas:
+8/8. Spec actualizada (`17be382`): criterio del log del tick corregido (`grep '"consumers"'`: 0 despues, 39
+antes), dos desvios aceptados (exclusion de puertas y PATCH del premio: salteados, sin fixture vivo) y el 404 del
+reclamo cruzada+`locationId` con valle apagado. Credenciales de Neon que vitest volco en logs: redactadas en el
+scratchpad; quedan en transcripciones de agentes bajo `~/.claude/projects/` (no editadas; avisado al owner).
 
-**Siguiente:** al volver el implementador, reproducir su evidencia (lista de salteados, 9 mutaciones, tabla de
-`pnpm verify`, `grep '^marketing_tick ' LOG | grep -vc '"consumers":0,'` → 0); despachar UN `revisor` en contexto
-fresco con presupuesto (9 mutaciones, plausibles) y corte; con PASS: commit de la enmienda + marcar `implementada` +
-INDEX + push. Despues, specs 2–4 del ADR 0115.
+**Siguiente:** con el PASS del revisor (reproducir su evidencia antes de creerla): marcar 0138 `implementada` en
+spec + INDEX, push de `1236aff`+docs (pre-push corre `pnpm verify`), estado con el sha. Con FAIL: llevarlo al owner
+si toca producto; si no, una vuelta del implementador. Despues: specs 2–4 del ADR 0115.
 
 **Medido en la corrida Neon completa (2026-10-02 22:00 UTC, ~10 min):** 6 failed / 3119 passed — `marketing-valley`
 (timeout, #67), **3 NUEVOS en `marketing-refresh`** (`expected [] to have a length of 1`, causa sin medir) y 2
