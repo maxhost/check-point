@@ -8,24 +8,23 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 EN `main` Y DESPLEGADA (`f3407f3`), 0063 EN PROD. 0144 COMMITEADA SIN PUSHEAR (`fdb4e42`)
+## ⇥ ESTADO (2026-10-03, noche) — 0143 Y 0144 EN `main` Y DESPLEGADAS; SPEC 0146 (ICONO PWA EN APPLE WALLET) EN IMPLEMENTACION
 
-**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `f3407f3` (mas este commit de estado).
+**Al retomar:** `motor` = `origin/main` en `1adc0d8` (reserva de la 0146). Si la sesion se cayo: `ListAgents` (el
+implementador de la 0146 puede estar midiendo; no tocar mutaciones puestas) y `git status`.
 
-**Hecho:** spec 0143 implementada (`ab5e62e`); PASS del revisor independiente (M2, M3, M6 rojas); su mutacion propia (F con
-`count(*)`) sobrevivia y el orquestador sumo `cross-sale-lottery-facts.neon` (rojo `expected 1.25 to be close to 1`). Caso de
-la fila M3 falsa en `LECCIONES.md`. **0063 en PROD** (OK del owner, `run_sql_transaction`; verificado por SQL: 64
-migraciones, las dos tablas, `checkpass_consumer` con UPDATE de `clicked_at` y sin SELECT de `order_id`). **Push** con el
-`pre-push` (owner lo pidio): `verify: ok`, Neon completo 2910 passed / 277 skipped. **Deploy:** los 3 proyectos de Vercel en
-`success` con `f3407f3` (statuses del commit).
+**Hecho:** 0143 (venta cruzada por la compra) y 0144 (atraso por comercio) en `main`, deploy de Vercel `success` con
+`61c067e`; 0063 en PROD. Las dos decisiones del owner sobre el atraso en ADR 0117 «Cerrado despues».
 
-**Spec 0144 implementada y commiteada (`fdb4e42`), SIN PUSHEAR:** el atraso de la loteria por COMERCIO (owner; y
-`coupon_conflict` no cuenta como ganada — ADR 0117 «Cerrado despues»). PASS del revisor independiente: M1 (campaña viva) y
-M2 propia (`campaign.id` por `businessId`, el typecheck no la ve) ROJAS; Neon `cross-sale*` 11/11; `pnpm verify` ok. Falta el
-push (despliega a prod: lo aprueba el owner).
+**En curso:** spec **0146** (pedido del owner: el `icon` del pase Apple desde `checkpass-icon-192-v2.png`, logo/strip/QR
+igual, `PASS_BRAND_UPDATED_AT` → `2026-10-03T22:00:00Z`, Google sin tocar). La 0145 la reservo GPT antes (UI de la venta
+cruzada); la mia se renumero. Implementador despachado; despues revisor, commit, push y deploy.
 
-**Siguiente:** avisar a GPT (C1/C2 → 404, `endsAt` obligatorio en M1; texto dado al owner); QA manual del owner (spec 0143
-§«Verificacion manual»).
+**Pendiente del owner para la 0146:** QA en iPhone (notificacion con el icono nuevo) y OK para el lote `pass_refresh` de
+produccion (muestra primero; excluir pases solo-hash; variables APNs del worker), segun la spec §«Declarado AFUERA».
+
+**Siguiente (venta cruzada):** avisar a GPT (C1/C2 → 404, `endsAt` obligatorio; la 0145 de GPT ya consume la 0143); QA del
+owner de la 0143.
 
 **Hallazgos a decidir (owner), del revisor:** `R` cuenta solo `issued` (en `coupon_conflict` la campaña tambien salio
 elegida); F/R se cuentan por campaña (si un comercio recrea su campaña a mitad de mes, su atraso vuelve a cero). Bajo
