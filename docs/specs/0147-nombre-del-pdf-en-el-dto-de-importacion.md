@@ -1,7 +1,7 @@
 ---
 spec: 0147
 fecha: 2026-10-03
-estado: cerrada
+estado: implementada
 resumen: El DTO de la importacion con IA (`CatalogImport`) suma `sourceFileName` — el `original_name` del PDF, `null` para imagenes — en TODAS las respuestas que lo devuelven, para que la tarjeta del PDF conserve su nombre al recargar (UI de la 0137). Sin migracion; la allow-list de `toImportDTO` sigue cerrada.
 disjunta: si
 archivos: apps/merchant/src/server/catalog-import/{core,analyze,types}.ts, apps/merchant/src/app/api/catalog/imports/{route,[id]/route}.ts, apps/merchant/src/server/catalog-import-{contract,routes}.test.ts, tests Neon de catalog-import, docs/specs/0090-contratos-de-api.md
@@ -109,6 +109,10 @@ al owner.
 ## Declarado AFUERA (sin oraculo, a proposito)
 
 - El render del nombre en la tarjeta tras recargar: es UI de GPT (la 0137 ya lo prueba con el campo opcional).
+- Las salidas secundarias de `startAnalyze` (`pending_upload` → `queued`, carrera) y de `cancelImport` (terminal, carrera)
+  no tienen oraculo propio del nombre: el revisor paso `null` en la principal de `startAnalyze` y la suite quedo verde (R1).
+  Cubrirla exige pasar el sniff de R2, que en la suite es falso. No es riesgo hoy: en esa sesion la UI tiene el nombre en
+  memoria, y al recargar lo trae la GET, que si esta cubierta (M3).
 
 ## Handoff
 

@@ -7,6 +7,7 @@ import { requireImport, toImportDTO, type ImportRow } from "./core";
 import { SNIFF_BYTES } from "./validation";
 import { sniffKind } from "./sniff";
 import { touch } from "./quota";
+import { importSourceFileName } from "./source-file";
 
 /**
  * Spec 0090 §6 — `POST /imports/{id}/analyze`: **barato y sincronico**.
@@ -30,12 +31,14 @@ export async function startAnalyze(
   importId: string,
 ): Promise<AnalyzeOutcome> {
   const row = await requireImport(business.id, importId);
+  const dto = async (r: ImportRow) =>
+    toImportDTO(r, await importSourceFileName(business.id, r));
   if (
     row.status === "queued" ||
     row.status === "analyzing" ||
     row.status === "ready"
   ) {
-    return { import: toImportDTO(row), queued: false };
+    return { import: await dto(row), queued: false };
   }
   if (row.status !== "pending_upload") {
     throw new CatalogImportError(
@@ -59,11 +62,11 @@ export async function startAnalyze(
   // misma respuesta idempotente de arriba, no un error.
   if (!updated) {
     return {
-      import: toImportDTO(await requireImport(business.id, importId)),
+      import: await dto(await requireImport(business.id, importId)),
       queued: false,
     };
   }
-  return { import: toImportDTO(updated), queued: true };
+  return { import: await dto(updated), queued: true };
 }
 
 /**

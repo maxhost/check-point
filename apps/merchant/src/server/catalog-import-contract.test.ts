@@ -58,8 +58,9 @@ const FILA: ImportRow = {
 };
 
 describe("el DTO del import es una allow-list cerrada (specs 0090 §6 / 0091 §9)", () => {
-  it("devuelve EXACTAMENTE los ocho campos del contrato", () => {
-    expect(toImportDTO(FILA)).toEqual({
+  // Spec 0147 — el contrato crece por pedido del owner: `sourceFileName` es el noveno campo.
+  it("devuelve EXACTAMENTE los nueve campos del contrato", () => {
+    expect(toImportDTO(FILA, null)).toEqual({
       id: "11111111-1111-4111-8111-111111111111",
       status: "accepted",
       sourceKind: "images",
@@ -76,14 +77,16 @@ describe("el DTO del import es una allow-list cerrada (specs 0090 §6 / 0091 §9
         discarded: [{ text: "Milanesa ???", reason: "unreadable_name" }],
       },
       error: null,
+      sourceFileName: null,
     });
-    expect(Object.keys(toImportDTO(FILA)).sort()).toEqual([
+    expect(Object.keys(toImportDTO(FILA, null)).sort()).toEqual([
       "error",
       "expiresAt",
       "fileCount",
       "id",
       "pageCount",
       "result",
+      "sourceFileName",
       "sourceKind",
       "status",
     ]);
@@ -100,17 +103,17 @@ describe("el DTO del import es una allow-list cerrada (specs 0090 §6 / 0091 §9
       "cancelled",
       "expired",
     ] as const) {
-      const dto = toImportDTO({ ...FILA, status });
+      const dto = toImportDTO({ ...FILA, status }, null);
       expect(dto.result).toBeNull();
       expect(JSON.stringify(dto)).not.toContain("Menu crudo del proveedor");
     }
-    expect(JSON.stringify(toImportDTO(FILA))).not.toContain(
+    expect(JSON.stringify(toImportDTO(FILA, null))).not.toContain(
       "Menu crudo del proveedor",
     );
   });
 
   it("NO filtra el job id, el request id, los tokens ni el negocio — ni serializado", () => {
-    const serializado = JSON.stringify(toImportDTO(FILA));
+    const serializado = JSON.stringify(toImportDTO(FILA, null));
     for (const secreto of [
       "resp_secreto",
       "req_secreto",
@@ -128,24 +131,50 @@ describe("el DTO del import es una allow-list cerrada (specs 0090 §6 / 0091 §9
 
   it("en `failed` el error es `{code,message}` saneado; en el resto es null", () => {
     expect(
-      toImportDTO({
-        ...FILA,
-        status: "failed",
-        draft: null,
-        failureCode: "provider_unavailable",
-        failureDetail: "No pudimos analizar el menú.",
-      }).error,
+      toImportDTO(
+        {
+          ...FILA,
+          status: "failed",
+          draft: null,
+          failureCode: "provider_unavailable",
+          failureDetail: "No pudimos analizar el menú.",
+        },
+        null,
+      ).error,
     ).toEqual({
       code: "provider_unavailable",
       message: "No pudimos analizar el menú.",
     });
-    expect(toImportDTO({ ...FILA, status: "accepted" }).error).toBeNull();
+    expect(toImportDTO({ ...FILA, status: "accepted" }, null).error).toBeNull();
   });
 
   it("un `source_kind` inesperado en la base no se propaga crudo", () => {
-    expect(toImportDTO({ ...FILA, sourceKind: "vhs" }).sourceKind).toBe(
+    expect(toImportDTO({ ...FILA, sourceKind: "vhs" }, null).sourceKind).toBe(
       "images",
     );
+  });
+});
+
+/** Spec 0147 — el nombre del PDF. La regla de «imagenes → null» vive en el DTO, no en el
+ * llamador: aunque se le pase un nombre, un import de imagenes no lo devuelve. */
+describe("`sourceFileName` (spec 0147)", () => {
+  it("un import PDF devuelve el nombre que se le pasa, tal cual", () => {
+    expect(
+      toImportDTO({ ...FILA, sourceKind: "pdf" }, "Menú otoño.pdf")
+        .sourceFileName,
+    ).toBe("Menú otoño.pdf");
+  });
+
+  it("un PDF sin archivo (nombre null) devuelve null", () => {
+    expect(
+      toImportDTO({ ...FILA, sourceKind: "pdf" }, null).sourceFileName,
+    ).toBeNull();
+  });
+
+  it("un import de imágenes devuelve null aunque se le pase un nombre", () => {
+    const dto = toImportDTO(FILA, "x.jpg");
+    expect(dto.sourceFileName).toBeNull();
+    expect(JSON.stringify(dto)).not.toContain("x.jpg");
   });
 });
 

@@ -11,13 +11,18 @@ import {
 import {
   CatalogImportError,
   type CatalogImportDTO,
-  type ImportResult,
   type UploadTicket,
 } from "./types";
 import { validateImportFiles } from "./validation";
 import { signTickets } from "./uploads";
 import { assertQuota, entitlementContextOf, touch } from "./quota";
 import { enqueueImportCleanup, purgeImportObjects } from "./cleanup";
+import { importSourceFileName } from "./source-file";
+import { toImportDTO } from "./dto";
+
+// La allow-list del DTO vive en `./dto` (spec 0147, split por el hook `file-size`); se
+// re-exporta para que `from "./core"` siga resolviendo.
+export { toImportDTO };
 
 /** Cuanto vive un import antes de vencer. Ya no se extiende: no hay paso de revision que
  * pueda vencer mientras alguien revisa (ADR 0084 §5). */
@@ -34,40 +39,6 @@ export const notFound = () =>
     "catalog_import_not_found",
     "No encontramos esa importación.",
   );
-
-/**
- * Spec 0090 §6 — EL DTO, ALLOW-LIST CERRADA.
- *
- * Se construye campo por campo **a proposito**: un `...row` con un `delete` de por medio
- * filtra cada columna que la tabla gane en el futuro. No viajan —ni van a viajar— la clave de
- * R2, el `provider_job_id`, el `provider_request_id`, los tokens, el costo ni la respuesta
- * cruda del modelo.
- */
-export function toImportDTO(row: ImportRow): CatalogImportDTO {
-  return {
-    id: row.id,
-    status: row.status as CatalogImportStatus,
-    sourceKind: row.sourceKind === "pdf" ? "pdf" : "images",
-    fileCount: row.fileCount,
-    pageCount: row.pageCount,
-    expiresAt: row.expiresAt.toISOString(),
-    // §9 — `result` es un objeto **solo** en `accepted`. En cualquier otro estado es `null`,
-    // y la extraccion cruda que vive en la columna `draft` **nunca** cruza al cliente.
-    result:
-      row.status === "accepted"
-        ? ((row.acceptedSummary as ImportResult | null) ?? null)
-        : null,
-    error:
-      row.status === "failed"
-        ? {
-            code: row.failureCode ?? "catalog_import_failed",
-            message:
-              row.failureDetail ??
-              "No pudimos analizar el menú. Prueba de nuevo.",
-          }
-        : null,
-  };
-}
 
 /**
  * El unico import ABIERTO del negocio, o `null`. Es **el guard de `createImport`**: solo los
@@ -203,7 +174,9 @@ export async function createImport(
   });
   await getDb().insert(catalogImportFiles).values(fileRows);
   const uploads = await signTickets(fileRows, reserved.sourceKind);
-  return { import: toImportDTO(row), uploads };
+  // El nombre ya saneado esta en mano: es el mismo `original_name` que se acaba de escribir.
+  const name = reserved.files[0]?.name ?? null;
+  return { import: toImportDTO(row, name), uploads };
 }
 
 /** Cierra el abandonado en `cancelled` y borra sus originales. Nunca toca catalogo. */
@@ -236,6 +209,8 @@ export async function cancelImport(
   importId: string,
 ): Promise<{ import: CatalogImportDTO }> {
   const row = await requireImport(business.id, importId);
+  const dto = async (r: ImportRow) =>
+    toImportDTO(r, await importSourceFileName(business.id, r));
   if (row.status === "accepted") {
     throw new CatalogImportError(
       409,
@@ -248,7 +223,7 @@ export async function cancelImport(
     row.status === "failed" ||
     row.status === "expired"
   ) {
-    return { import: toImportDTO(row) };
+    return { import: await dto(row) };
   }
   const [updated] = await getDb()
     .update(catalogImports)
@@ -285,9 +260,9 @@ export async function cancelImport(
         "Esa importación ya se importó al catálogo.",
       );
     }
-    return { import: toImportDTO(current) };
+    return { import: await dto(current) };
   }
   await enqueueImportCleanup(row.id, row.businessId).catch(() => undefined);
   await purgeImportObjects(row.id, row.businessId).catch(() => undefined);
-  return { import: toImportDTO(updated) };
+  return { import: await dto(updated) };
 }

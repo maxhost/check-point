@@ -140,7 +140,7 @@ describe.skipIf(!enabled)(
       expect(nuevo.import.id).not.toBe(primero.import.id);
       expect((await leerImport(primero.import.id))?.status).toBe("cancelled");
       await cancelar(cookieA, nuevo.import.id);
-    });
+    }, 60_000);
 
     /**
      * Spec 0091 §9 — **EL `GET` DE LA LISTA DEVUELVE EL ULTIMO IMPORT, TERMINAL INCLUIDO.**

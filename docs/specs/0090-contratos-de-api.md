@@ -228,12 +228,17 @@ Es la ruta del poll y la de **retomar** al volver a la pantalla.
       "discardedCount": 4,
       "discarded": [{ "text": "Milanesa …", "reason": "unreadable_name" }]
     },
-    "error": null                     // en `failed`: { "code": "...", "message": "..." }
+    "error": null,                    // en `failed`: { "code": "...", "message": "..." }
+    "sourceFileName": null            // spec 0147: el nombre original del PDF; null para imagenes
   }
 }
 ```
 
-**La lista es cerrada, y son esos ocho campos.** No viajan —ni van a viajar— las claves de R2, el id
+**La lista es cerrada, y son esos nueve campos.** `sourceFileName` (spec 0147) viene **siempre**: en
+un import `pdf` es el nombre original del archivo tal como se guardo al reservar (saneado), y `null`
+si por algun motivo no hay archivo; en un import `images` es **siempre** `null`. Es el mismo
+`CatalogImport` en **todas** las respuestas que lo devuelven: `POST /imports` (§2), `analyze` (§3),
+las dos `GET` (§4) y `DELETE` (§7). No viajan —ni van a viajar— las claves de R2, el id
 del trabajo del proveedor, el request id, los tokens, el costo ni **la extraccion cruda del
 modelo**.
 

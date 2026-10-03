@@ -4,6 +4,17 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0147, implementador (2026-10-03)
+
+Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/<basename sin .ts>.clean.ts`;
+restauracion: `cp <copia> <archivo>` y verificar el shasum.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | `apps/merchant/src/server/catalog-import/source-file.ts` (`??`) | `2c7187d960a77e90a738ed502a7c8445e208b7ad` | el lector filtra por `import_id` Y `business_id` | `where` reducido a `and(eq(position, 0))` (sin `import_id` ni `business_id`) + `// MUTATION M1` → `tools/neon-test.sh src/server/catalog-import-source-file.neon.integration.test.ts`: ROJO 3/5. «cada negocio recibe SU nombre…» `expected 'Carta de A.pdf' to be 'Carta de B.pdf'` (linea 156, la LISTA de B trae el nombre de A); «sobrevive a la limpieza…» recibe `"Carta de A.pdf"` en vez de `"Vencido.pdf"`; «analyze y DELETE» `expected 'Carta de A.pdf' to be 'En cola.pdf'`. Alcance medido: SOLO la suite Neon (la unit no se corrio bajo M1; sus filas sembradas son de imagenes y no llegan a la consulta). Revertida con cp: diff vacio, shasum = limpio |
+| M2 | `apps/merchant/src/server/catalog-import/dto.ts` (`??`) | `fd406bae15b5163ecb988f796cae49e2a837182a` | `toImportDTO` devuelve `null` para `images` aunque reciba nombre | `sourceFileName: row.sourceKind === "pdf" ? … : null` → `sourceFileName,` + `// MUTATION M2` → unit `vitest run src/server/catalog-import`: ROJO 1/154 `catalog-import-contract.test.ts` «un import de imágenes devuelve null aunque se le pase un nombre» `expected 'x.jpg' to be null`. Neon (primera corrida, sin el caso POST-imagenes): VERDE 5/5 — las rutas GET/analyze/DELETE resuelven el nombre con el lector, que ya devuelve null para imagenes (guard hermano). Se agrego el caso POST-imagenes a la suite Neon y se RE-MIDIO la misma mutacion: ROJO «POST devuelve el nombre…» `expected 'foto-post.jpg' to be null` (+ «analyze y DELETE» rojo COLATERAL: el POST fallido no llego a cerrar su import y el seed `queued` choca con el unico parcial — no es oraculo). Revertida con cp las dos veces: diff vacio, shasum = limpio |
+| M3 | `apps/merchant/src/app/api/catalog/imports/route.ts` (` M`) | `94f6fb8175afd1352284a1fc079ce915813665b5` | la GET de la lista pasa el nombre leido, no `null` | `toImportDTO(row, name)` → `toImportDTO(row, null)` (+ `void name`) + `// MUTATION M3` → Neon: ROJO 2/5, «cada negocio recibe SU nombre…» `- "sourceFileName": "Carta de A.pdf" / + null` y «sobrevive a la limpieza…» `- "Vencido.pdf" / + null`; detalle, analyze y DELETE VERDES (no pasan por esa linea). Unit: VERDE 154/154 (`catalog-import-routes.test.ts` siembra imagenes: no distingue). Revertida con cp: diff vacio, shasum = limpio |
+
 ## Bitacora de mutaciones — spec 0146, REVISOR (2026-10-03)
 
 Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/rev0146/<basename>`;
@@ -7695,3 +7706,4 @@ next.config.ts hands to Next» como el de merchant costaria unas 10 lineas. M6 y
   Revisor 0144: PASS (M1 re-ejecutada ROJA, M2 propia — campaign.id por businessId — ROJA en 2 casos; 11/11 Neon cross-sale*; pnpm verify ok).
 - spec 0146, ORQUESTADOR — O-M3: `packages/domain/src/server/wallet/pass-version.ts` (shasum limpio b07cb244…), fecha vieja 2026-10-02T14:00Z, contra el caso nuevo de `wallet-pass-locations-wiring.test.ts` (pase instalado bajo la revision anterior).
   Resultado O-M3: ROJO 1/5 — `expected 304 to be 200` en el caso nuevo; los otros 4 verdes. Revertida: diff vacio, shasum b07cb244 igual al limpio. Revisor 0146: PASS (R1, R2, R3 rojas).
+  Revisor 0147: PASS (M1, M3 rojas; R1 — null en la salida principal de startAnalyze — sobrevive, declarado en la spec). Orquestador: timeout 60_000 en catalog-import.neon…:143 (sin tocar aserciones), juzgado legitimo por el revisor.

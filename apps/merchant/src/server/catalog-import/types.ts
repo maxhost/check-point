@@ -132,6 +132,8 @@ export type CatalogImportDTO = {
   /** Un objeto **solo** en `accepted`; en cualquier otro estado es `null` (§9). */
   result: ImportResult | null;
   error: { code: string; message: string } | null;
+  /** Spec 0147 — el `original_name` del PDF; `null` para imagenes. Siempre presente. */
+  sourceFileName: string | null;
 };
 
 export type UploadTicket = {

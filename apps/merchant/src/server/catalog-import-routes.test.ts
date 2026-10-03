@@ -92,6 +92,8 @@ const CLAVES = [
   "id",
   "pageCount",
   "result",
+  // Spec 0147 — el contrato crece por pedido del owner.
+  "sourceFileName",
   "sourceKind",
   "status",
 ];
@@ -119,7 +121,7 @@ beforeEach(() => {
 });
 
 describe("las rutas que serializan un import (contrato §4)", () => {
-  it("`GET /api/catalog/imports` devuelve EXACTAMENTE las ocho claves", async () => {
+  it("`GET /api/catalog/imports` devuelve EXACTAMENTE las nueve claves", async () => {
     estado.filas = [[FILA]];
     const respuesta = await ACTIVO(pedido("/api/catalog/imports"));
     expect(respuesta.status).toBe(200);
@@ -127,7 +129,7 @@ describe("las rutas que serializan un import (contrato §4)", () => {
     expect(Object.keys(cuerpo.import).sort()).toEqual(CLAVES);
   });
 
-  it("`GET /api/catalog/imports/{id}` devuelve EXACTAMENTE las ocho claves", async () => {
+  it("`GET /api/catalog/imports/{id}` devuelve EXACTAMENTE las nueve claves", async () => {
     estado.filas = [[FILA]];
     const respuesta = await POR_ID(
       pedido(`/api/catalog/imports/${IMPORT_ID}`),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   cancelImport,
+  importSourceFileName,
   requireImport,
   toImportDTO,
 } from "../../../../../server/catalog-import";
@@ -17,8 +18,10 @@ export async function GET(request: Request, { params }: Params) {
   if ("response" in auth) return auth.response;
   try {
     const { id } = await params;
+    // `requireImport` primero: lo ajeno corta en 404 antes de leer ningun archivo.
     const row = await requireImport(auth.business.id, id);
-    return NextResponse.json({ import: toImportDTO(row) });
+    const name = await importSourceFileName(auth.business.id, row);
+    return NextResponse.json({ import: toImportDTO(row, name) });
   } catch (error) {
     return importError(error, "No pudimos cargar la importación.");
   }

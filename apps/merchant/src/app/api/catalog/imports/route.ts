@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createImport,
+  importSourceFileName,
   latestImport,
   toImportDTO,
 } from "../../../../server/catalog-import";
@@ -42,7 +43,9 @@ export async function GET(request: Request) {
   if ("response" in auth) return auth.response;
   try {
     const row = await latestImport(auth.business.id);
-    return NextResponse.json({ import: row ? toImportDTO(row) : null });
+    if (!row) return NextResponse.json({ import: null });
+    const name = await importSourceFileName(auth.business.id, row);
+    return NextResponse.json({ import: toImportDTO(row, name) });
   } catch (error) {
     return importError(error, "No pudimos cargar la importación.");
   }

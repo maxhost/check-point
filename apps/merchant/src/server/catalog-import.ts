@@ -15,6 +15,7 @@ export {
   requireImport,
   toImportDTO,
 } from "./catalog-import/core";
+export { importSourceFileName } from "./catalog-import/source-file";
 export { resignUploads } from "./catalog-import/uploads";
 export { startAnalyze } from "./catalog-import/analyze";
 export { runAnalysis } from "./catalog-import/prepare";
