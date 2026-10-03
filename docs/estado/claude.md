@@ -8,7 +8,26 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03) — 0138 IMPLEMENTADA Y EN `main` (`aefc21c`, push `07c7a37`). SIGUIENTE: SPEC 2 DEL ADR 0115
+## ⇥ ESTADO (2026-10-02) — SPEC 0139 (spec 2 del ADR 0115) A MEDIAS: §1-§2 COMMITEADOS, §3-§4 EN CURSO POR EL IMPLEMENTADOR
+
+**Al retomar:** `git status` en `motor` + `ListAgents` (puede haber un implementador vivo: no tocar sus archivos ni
+revertir nada sin medir). `origin/main` = `4bd4b58` (ADR 0116 + spec 0139 reservados). Local sin push: `70539b2`
+(codigo §1-§2) y `891213f` (spec: suma migracion 0062, M3 con `sent_at`, M8).
+
+**Hecho y verificado:** ADR 0116 (owner: avisos de mostrador en Actividad). Spec 0139 `cerrada`. `70539b2`:
+`campaign`/`transactional` solo por Web Push, cierre `suppressed`/`no_channel` sin presupuesto, `latest_message` solo
+`reminder`; `pnpm verify: ok`; M1b, M2, M3b, M4, M5 rojas (bitacora en el scratchpad de la sesion, `0139-bitacora.md`).
+
+**A medias (sin commitear en el arbol, del implementador):** §3 `listConsumerNotices` + `GET
+/api/public/consumer/notices` + test con `roleSuite`, y §4 migracion `0062_avisos_del_cliente.sql` (GRANT SELECT de 6
+columnas al rol del cliente; owner OK para la spec, **NO aplicada a PROD**: necesita OK aparte). M6-M8 sin reporte.
+
+**Siguiente:** recibir el reporte, reproducir evidencia, revisor independiente (8 mutaciones), push, `INDEX` →
+implementada, contrato a GPT (Actividad). Hallazgo informado: el aviso de vencimiento de la Bienvenida es `campaign` y
+sin suscripcion cierra `no_channel`. Pendientes de antes: los de la 0138 (`audience-preview`, `rewards/results`,
+`balance-push`), `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`, `.prettierignore` con `docs/`, #68.
+
+## ⇥ ESTADO HISTORICO (2026-10-03) — 0138 IMPLEMENTADA Y EN `main` (`aefc21c`, push `07c7a37`). SIGUIENTE: SPEC 2 DEL ADR 0115
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `07c7a37` (mas este commit de
 estado). Arbol limpio.
