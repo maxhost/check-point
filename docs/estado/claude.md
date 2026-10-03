@@ -8,7 +8,28 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — SPEC 0141 IMPLEMENTADA Y EN `main` (`d6178b1`). SIGUIENTE: SPEC 4 DEL ADR 0115
+## ⇥ ESTADO (2026-10-03) — ADR 0117 ACEPTADA (VENTA CRUZADA). SIGUIENTE: ESCRIBIR LA SPEC 4 DEL ADR 0115
+
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `fd971fe` (mas este commit).
+
+**Hecho:** ADR 0117 aceptada con 15 decisiones del owner: la cruzada se dispara al escanear en A, UN cupon ya emitido de
+un comercio cercano de otro rubro, push «regalo misterio» ~3 min despues del de mostrador, loteria H4 (igual por
+oportunidad + bono al comercio sin clientes nuevos en el mes) con 20 % de azar editable en `limits.ts`, registro de
+cada decision desde el dia uno, exito = canje, sin grupo de control por ahora, una vez por campaña por cliente, la
+lista «a pedido» se apaga. Investigaciones en `docs/notificaciones/venta-cruzada-{criterio,algoritmo,equidad}.md` +
+`sim_equidad.py`. `.githooks/pre-push` ejecutable en git (`2589922`); **el checkout de GPT lo tiene sin el bit**
+(avisado al owner con el `chmod +x` para GPT).
+
+**Siguiente:** escribir la spec 4 (TEMPLATE grande: migracion de las tablas de decision y candidatos). Medir antes:
+el disparo desde el escaneo (`persistGrant`/`counter/orders.ts`), la emision del cupon cruzado (`claimCrossOffer`),
+el apagado de la lista a pedido (`listCrossOffers` en «Mis beneficios»), y el hallazgo del §«Para la spec» del 0117
+(`ends_at` nulo en `cross`). Contrato HTTP para GPT si cambia «Mis beneficios».
+
+**Pendientes:** CI de `main` con el intermitente de `catalog-import-guard` (sin confirmar); caso de `LECCIONES.md` de
+las filas falsas del plan de pruebas (0139 M3, 0141 M1/ruta/centinelas); los de la 0138; `AGENT-WORKFLOW.md`/agentes con
+bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`.
+
+## ⇥ ESTADO HISTORICO (2026-10-02, noche) — SPEC 0141 IMPLEMENTADA Y EN `main` (`d6178b1`). SIGUIENTE: SPEC 4 DEL ADR 0115
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `d6178b1` (mas este commit).
 
