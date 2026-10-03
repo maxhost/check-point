@@ -14,6 +14,7 @@ import {
 import { GET as listOffers } from "../app/api/public/consumer/cross-offers/route";
 import { POST as claimOffer } from "../app/api/public/consumer/cross-offers/[campaignId]/claim/route";
 import { GET as coupons } from "../app/api/public/consumer/coupons/route";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 useRoleConnection();
 
@@ -23,6 +24,9 @@ useRoleConnection();
  * pedidos, canjes y cupones), reclamar cada una (el `FOR UPDATE` de la campaña exige el
  * `UPDATE (updated_at)` de la 0060, y el cupon es un `INSERT` en `campaign_coupon`) y la
  * lista de cupones. Corre con el reloj REAL: la ventana de valle abre los 7 dias de 0 a 24.
+ *
+ * Spec 0138 / ADR 0115: «Horas valle» esta APAGADO — no se ofrece ni se reclama, asi que el
+ * rol se prueba sobre la cruzada y el reclamo de valle se saltea mientras este apagado.
  */
 
 let world: World;
@@ -47,7 +51,7 @@ const claim = (campaignId: string, body: Record<string, unknown>) =>
   );
 
 roleSuite("rol del cliente — ofertas cruzadas, de valle y cupones", () => {
-  it("GET cross-offers: lista la cruzada y la de valle del mundo", async () => {
+  it("GET cross-offers: lista la cruzada del mundo (la de valle no, apagada)", async () => {
     const response = await listOffers(
       request(
         `/api/public/consumer/cross-offers?lat=${gps.lat}&lng=${gps.lng}`,
@@ -63,7 +67,7 @@ roleSuite("rol del cliente — ofertas cruzadas, de valle y cupones", () => {
     const mine = body.offers.filter((o) =>
       [world.crossId, world.valleyId].includes(o.campaignId),
     );
-    expect(mine.map((o) => o.type).sort()).toEqual(["cross", "valley"]);
+    expect(mine.map((o) => o.type).sort()).toEqual(["cross"]);
   });
 
   it("POST claim (cruzada): 201 con el cupon escrito; el segundo reclamo es 200 con el mismo", async () => {
@@ -81,18 +85,22 @@ roleSuite("rol del cliente — ofertas cruzadas, de valle y cupones", () => {
     ).toBe(rows[0].id);
   });
 
-  it("POST claim (valle): 201 con el cupon atado al local de la ventana abierta", async () => {
-    const response = await claim(world.valleyId, {
-      ...gps,
-      locationId: world.valleyLocation,
-    });
-    expect(response.status).toBe(201);
-    const rows = await owner`select valley_location_id from core.campaign_coupon
+  it.skipIf(!campaignKindEnabled("valley"))(
+    "POST claim (valle): 201 con el cupon atado al local de la ventana abierta",
+    async () => {
+      const response = await claim(world.valleyId, {
+        ...gps,
+        locationId: world.valleyLocation,
+      });
+      expect(response.status).toBe(201);
+      const rows =
+        await owner`select valley_location_id from core.campaign_coupon
       where campaign_id = ${world.valleyId} and consumer_id = ${member.id}`;
-    expect(rows).toEqual([{ valley_location_id: world.valleyLocation }]);
-  });
+      expect(rows).toEqual([{ valley_location_id: world.valleyLocation }]);
+    },
+  );
 
-  it("GET coupons: los dos cupones reclamados, vigentes", async () => {
+  it("GET coupons: el cupon reclamado, vigente", async () => {
     const response = await coupons(
       request("/api/public/consumer/coupons", { token: member.token }),
     );
@@ -103,6 +111,6 @@ roleSuite("rol del cliente — ofertas cruzadas, de valle y cupones", () => {
     const mine = body.coupons.filter((c) =>
       [world.cross, world.valley].includes(c.businessId),
     );
-    expect(mine.map((c) => c.status)).toEqual(["valid", "valid"]);
+    expect(mine.map((c) => c.status)).toEqual(["valid"]);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROXIMITY_PLACEMENT_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   composeRelevantText,
   RELEVANT_TEXT_CAP,
@@ -15,7 +16,7 @@ function occurrences(haystack: string, needle: string): number {
   return haystack.split(needle).length - 1;
 }
 
-describe("composeRelevantText", () => {
+describe.skipIf(!PROXIMITY_PLACEMENT_ENABLED)("composeRelevantText", () => {
   it("fuses balance and message with the business name ONCE when both fit", () => {
     const text = composeRelevantText(BALANCE, CAMPAIGN, RELEVANT_TEXT_CAP);
     expect(text).toBe(

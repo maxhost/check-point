@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMPOSER_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type CampaignInput,
   parseCampaignInput,
@@ -25,117 +26,126 @@ const body = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-describe("parseCampaignInput — coupon needs an end date", () => {
-  it("a coupon without endsAt is refused on endsAt", () => {
-    const parsed = parseCampaignInput(body(COUPON));
-    expect(parsed).toEqual({ ok: false, errors: { endsAt: MESSAGE } });
-    expect(parseCampaignInput(body({ ...COUPON, endsAt: null }))).toEqual({
-      ok: false,
-      errors: { endsAt: MESSAGE },
+describe.skipIf(!COMPOSER_ENABLED)(
+  "parseCampaignInput — coupon needs an end date",
+  () => {
+    it("a coupon without endsAt is refused on endsAt", () => {
+      const parsed = parseCampaignInput(body(COUPON));
+      expect(parsed).toEqual({ ok: false, errors: { endsAt: MESSAGE } });
+      expect(parseCampaignInput(body({ ...COUPON, endsAt: null }))).toEqual({
+        ok: false,
+        errors: { endsAt: MESSAGE },
+      });
     });
-  });
 
-  it("a coupon with endsAt is fine", () => {
-    const parsed = parseCampaignInput(body({ ...COUPON, endsAt: END }));
-    expect(parsed.ok && parsed.value).toMatchObject({
-      couponLabel: "2x1",
+    it("a coupon with endsAt is fine", () => {
+      const parsed = parseCampaignInput(body({ ...COUPON, endsAt: END }));
+      expect(parsed.ok && parsed.value).toMatchObject({
+        couponLabel: "2x1",
+        endsAt: new Date(END),
+      });
+    });
+
+    it("no coupon and no endsAt is fine: only the coupon needs the date", () => {
+      const parsed = parseCampaignInput(body());
+      expect(parsed.ok && parsed.value.endsAt).toBeNull();
+    });
+  },
+);
+
+describe.skipIf(!COMPOSER_ENABLED)(
+  "parseCampaignPatch — coupon needs an end date",
+  () => {
+    const current: CampaignInput & { status: "paused" } = {
+      name: "Vuelvan",
+      message: "Te extrañamos",
+      dormantDays: 30,
+      startsAt: new Date(START),
       endsAt: new Date(END),
-    });
-  });
-
-  it("no coupon and no endsAt is fine: only the coupon needs the date", () => {
-    const parsed = parseCampaignInput(body());
-    expect(parsed.ok && parsed.value.endsAt).toBeNull();
-  });
-});
-
-describe("parseCampaignPatch — coupon needs an end date", () => {
-  const current: CampaignInput & { status: "paused" } = {
-    name: "Vuelvan",
-    message: "Te extrañamos",
-    dormantDays: 30,
-    startsAt: new Date(START),
-    endsAt: new Date(END),
-    locationIds: [DOOR],
-    couponLabel: "2x1",
-    couponCost: "2.00",
-    couponMaxRedemptions: 5,
-    couponProductId: null,
-    couponKind: "free_product",
-    couponDiscountUnit: null,
-    couponDiscountValue: null,
-    couponExtraUnits: null,
-    couponRule: null,
-    status: "paused",
-  };
-
-  it("removing the endsAt of a campaign that carries a coupon is refused", () => {
-    expect(parseCampaignPatch({ endsAt: null }, current)).toEqual({
-      ok: false,
-      errors: { endsAt: MESSAGE },
-    });
-  });
-
-  it("removing the endsAt together with the coupon is fine", () => {
-    const parsed = parseCampaignPatch(
-      { endsAt: null, couponLabel: null, couponCost: null },
-      current,
-    );
-    expect(parsed.ok && parsed.value).toMatchObject({
-      endsAt: null,
-      couponLabel: null,
-    });
-  });
-});
-
-describe("parseCampaignPatch — the reward is replaced WHOLE", () => {
-  const current: CampaignInput & { status: "paused" } = {
-    name: "Vuelvan",
-    message: "Te extrañamos",
-    dormantDays: 30,
-    startsAt: new Date(START),
-    endsAt: new Date(END),
-    locationIds: [DOOR],
-    couponLabel: "2x1 en Café",
-    couponCost: "1.20",
-    couponMaxRedemptions: 5,
-    couponProductId: "22222222-2222-4222-8222-222222222222",
-    couponKind: "two_for_one",
-    couponDiscountUnit: null,
-    couponDiscountValue: null,
-    couponExtraUnits: null,
-    couponRule: "Solo medianos",
-    status: "paused",
-  };
-
-  it("naming ONE new key (couponRule) drops every reward field it did not send", () => {
-    const parsed = parseCampaignPatch({ couponRule: "Otra regla" }, current);
-    // Without the trio the whole reward is gone, so a lone rule is refused.
-    expect(parsed.ok).toBe(false);
-    const whole = parseCampaignPatch(
-      {
-        ...COUPON,
-        couponKind: "discount",
-        couponDiscountUnit: "percent",
-        couponDiscountValue: 15,
-      },
-      current,
-    );
-    expect(whole.ok && whole.value).toMatchObject({
-      couponKind: "discount",
-      couponDiscountValue: "15.00",
-      couponProductId: null,
-      couponRule: null,
+      locationIds: [DOOR],
       couponLabel: "2x1",
-    });
-  });
+      couponCost: "2.00",
+      couponMaxRedemptions: 5,
+      couponProductId: null,
+      couponKind: "free_product",
+      couponDiscountUnit: null,
+      couponDiscountValue: null,
+      couponExtraUnits: null,
+      couponRule: null,
+      status: "paused",
+    };
 
-  it("a PATCH that names no reward key carries the whole current reward", () => {
-    const parsed = parseCampaignPatch({ message: "Otro" }, current);
-    expect(parsed.ok && parsed.value).toMatchObject({
-      couponKind: "two_for_one",
-      couponProductId: "22222222-2222-4222-8222-222222222222",
-      couponRule: "Solo medianos",
+    it("removing the endsAt of a campaign that carries a coupon is refused", () => {
+      expect(parseCampaignPatch({ endsAt: null }, current)).toEqual({
+        ok: false,
+        errors: { endsAt: MESSAGE },
+      });
     });
-  });
-});
+
+    it("removing the endsAt together with the coupon is fine", () => {
+      const parsed = parseCampaignPatch(
+        { endsAt: null, couponLabel: null, couponCost: null },
+        current,
+      );
+      expect(parsed.ok && parsed.value).toMatchObject({
+        endsAt: null,
+        couponLabel: null,
+      });
+    });
+  },
+);
+
+describe.skipIf(!COMPOSER_ENABLED)(
+  "parseCampaignPatch — the reward is replaced WHOLE",
+  () => {
+    const current: CampaignInput & { status: "paused" } = {
+      name: "Vuelvan",
+      message: "Te extrañamos",
+      dormantDays: 30,
+      startsAt: new Date(START),
+      endsAt: new Date(END),
+      locationIds: [DOOR],
+      couponLabel: "2x1 en Café",
+      couponCost: "1.20",
+      couponMaxRedemptions: 5,
+      couponProductId: "22222222-2222-4222-8222-222222222222",
+      couponKind: "two_for_one",
+      couponDiscountUnit: null,
+      couponDiscountValue: null,
+      couponExtraUnits: null,
+      couponRule: "Solo medianos",
+      status: "paused",
+    };
+
+    it("naming ONE new key (couponRule) drops every reward field it did not send", () => {
+      const parsed = parseCampaignPatch({ couponRule: "Otra regla" }, current);
+      // Without the trio the whole reward is gone, so a lone rule is refused.
+      expect(parsed.ok).toBe(false);
+      const whole = parseCampaignPatch(
+        {
+          ...COUPON,
+          couponKind: "discount",
+          couponDiscountUnit: "percent",
+          couponDiscountValue: 15,
+        },
+        current,
+      );
+      expect(whole.ok && whole.value).toMatchObject({
+        couponKind: "discount",
+        couponDiscountValue: "15.00",
+        couponProductId: null,
+        couponRule: null,
+        couponLabel: "2x1",
+      });
+    });
+
+    it("a PATCH that names no reward key carries the whole current reward", () => {
+      const parsed = parseCampaignPatch({ message: "Otro" }, current);
+      expect(parsed.ok && parsed.value).toMatchObject({
+        couponKind: "two_for_one",
+        couponProductId: "22222222-2222-4222-8222-222222222222",
+        couponRule: "Solo medianos",
+      });
+    });
+  },
+);

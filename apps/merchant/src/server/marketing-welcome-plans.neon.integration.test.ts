@@ -22,7 +22,8 @@ import {
  * ADR 0112 / spec 0129 — LA BIENVENIDA EN TODOS LOS PLANES, contra Postgres. Los cuatro
  * puntos donde el freno de plan la decidía con `campaigns.enabled` (activar, reanudar,
  * entregar, la baja de plan) ahora la deciden con `campaigns.welcome`, y cada caso tiene su
- * control: otra plantilla, en el MISMO negocio, sigue recibiendo 402 / siendo pausada.
+ * control: otra plantilla, en el MISMO negocio, sigue recibiendo 402 / siendo pausada (spec
+ * 0138: el contraste es `cross`, la plantilla Plus que sigue encendida).
  * Todo estado se LEE POR SQL (ADR 0054).
  *
  * El negocio free es el de producción: `status='active'` y SIN `stripe_subscription_id`.
@@ -51,7 +52,7 @@ async function liveTemplateRuns(businessId: string, key: string) {
 }
 
 describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
-  it("ORACULO DE M1 Y M2: a FREE business enables welcome, and gets 402 for win_back", async () => {
+  it("ORACULO DE M1 Y M2: a FREE business enables welcome, and gets 402 for cross", async () => {
     const free = await world("free", "Welcome plan free");
     const created = await enableTemplate(
       free.business.id,
@@ -66,10 +67,10 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
 
     expect(
       await caught(() =>
-        enableTemplate(free.business.id, free.userId, "win_back", {}),
+        enableTemplate(free.business.id, free.userId, "cross", GIFT),
       ),
     ).toMatchObject({ status: 402, code: "plan_not_allowed" });
-    expect(await liveTemplateRuns(free.business.id, "win_back")).toEqual([]);
+    expect(await liveTemplateRuns(free.business.id, "cross")).toEqual([]);
   }, 120_000);
 
   it("a business with NO subscription row enables welcome and gets its gift campaign", async () => {
@@ -102,7 +103,7 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
     );
   }, 120_000);
 
-  it("resuming on free: the paused welcome comes back (200), the paused win_back is 402", async () => {
+  it("resuming on free: the paused welcome comes back (200), the paused cross is 402", async () => {
     // A plus that ran both and then landed on free: the shape a downgrade leaves.
     const seed = await world("plus", "Welcome plan resume");
     const welcome = await enableTemplate(
@@ -114,8 +115,8 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
     const winBack = await enableTemplate(
       seed.business.id,
       seed.userId,
-      "win_back",
-      {},
+      "cross",
+      GIFT,
     );
     await transitionCampaign(seed.business.id, welcome.id, "pause");
     await transitionCampaign(seed.business.id, winBack.id, "pause");
@@ -152,8 +153,8 @@ describe.skipIf(!integrationEnabled)("welcome in every plan (ADR 0112)", () => {
     const winBack = await enableTemplate(
       seed.business.id,
       seed.userId,
-      "win_back",
-      {},
+      "cross",
+      GIFT,
     );
 
     const [counted, paused] = await withDbTransaction(async (tx) => [

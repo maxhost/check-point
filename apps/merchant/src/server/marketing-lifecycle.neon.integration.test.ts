@@ -1,4 +1,8 @@
 import { afterAll, describe, expect, it } from "vitest";
+import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { integrationEnabled } from "./counter-integration-support";
 import { breakLocation } from "./marketing-integration-support";
 import { readPlacement, readTurns } from "./marketing-read-support";
@@ -37,7 +41,9 @@ afterAll(async () => {
   await dropWorlds(worlds);
 }, 120_000);
 
-describe.skipIf(!integrationEnabled)("marketing lifecycle", () => {
+describe.skipIf(
+  !integrationEnabled || !COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED,
+)("marketing lifecycle", () => {
   /**
    * R2 — `loadPlacementConsumerIds` (`placement-store.ts`) unions the consumers with a
    * live turn AND the consumers already holding a row in `consumer.pass_placement`. The

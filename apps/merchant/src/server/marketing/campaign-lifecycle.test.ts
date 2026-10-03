@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMPOSER_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   CAMPAIGN_STATUSES,
   type CampaignAction,
@@ -86,7 +87,7 @@ describe("the campaign lifecycle table", () => {
   });
 });
 
-describe("the composer's body", () => {
+describe.skipIf(!COMPOSER_ENABLED)("the composer's body", () => {
   it("accepts the shape the composer sends", () => {
     expect(ok(BASE)).toMatchObject({
       name: "Dormidos de septiembre",
@@ -179,7 +180,7 @@ describe("the composer's body", () => {
   });
 });
 
-describe("the PATCH", () => {
+describe.skipIf(!COMPOSER_ENABLED)("the PATCH", () => {
   const current: CampaignInput & { status: CampaignStatus } = {
     ...ok({
       ...BASE,

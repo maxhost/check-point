@@ -14,6 +14,7 @@ import {
   rowsOf,
 } from "../marketing/cross-store";
 import { loadWindowRows } from "../marketing/valley-store";
+import { campaignKindEnabled } from "../marketing/enabled-campaigns";
 import { readConsumerCoupon } from "./coupons";
 import type { ClaimResult } from "./cross-offers";
 import {
@@ -154,6 +155,9 @@ export async function claimValleyOffer(
   gps: GeoPoint | null,
   now: Date = new Date(),
 ): Promise<ClaimResult> {
+  // Spec 0138 / ADR 0115: valley is OFF — the same 404 as a campaign that does not exist,
+  // answered before opening the transaction.
+  if (!campaignKindEnabled("valley")) return { status: 404 };
   const outcome = await withDbTransaction(async (tx) => {
     const [locked] = rowsOf<{ template_key: string }>(
       await tx.execute(sql`

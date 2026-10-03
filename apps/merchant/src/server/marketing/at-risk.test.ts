@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { isAtRisk } from "@mi-pasaporte/domain/server/marketing/at-risk";
 
 /**
@@ -19,7 +20,7 @@ function habit(days: number[]) {
   };
 }
 
-describe("isAtRisk", () => {
+describe.skipIf(!campaignKindEnabled("at_risk"))("isAtRisk", () => {
   // ORACULO DE M1: 2 visits (rhythm 10, away 30 > 20) — only the minimum keeps it out.
   it("two visits are not a habit, however long the absence", () => {
     expect(isAtRisk(habit([0, 10]), day(40), RULE)).toBe(false);

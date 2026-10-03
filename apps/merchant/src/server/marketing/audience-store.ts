@@ -35,6 +35,7 @@ import {
   toDate,
 } from "@mi-pasaporte/domain/server/marketing/driver-values";
 import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 /** What step 1 needs of a campaign; the message and the coupon are read at ACTIVATION
  * (step 4), from the campaign row, and copied into the turn's snapshots. */
@@ -92,8 +93,11 @@ export async function loadActiveCampaigns(
     );
   const rank = (row: ActiveCampaign) =>
     templateByKey(row.templateKey ?? "")?.rank ?? 0;
+  // Spec 0138: a campaign that is OFF (`enabled-campaigns.ts`) is not run, even `active`.
   // `sort` is stable: equal ranks keep the `dormant_days`, `created_at`, `id` order.
-  return rows.sort((a, b) => rank(b) - rank(a));
+  return rows
+    .filter((row) => campaignKindEnabled(row.templateKey))
+    .sort((a, b) => rank(b) - rank(a));
 }
 
 /**

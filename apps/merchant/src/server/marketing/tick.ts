@@ -1,6 +1,8 @@
 /**
  * The marketing tick (spec 0065): one run of the five steps, in order — enqueue,
- * expire, cancel, place, log. Disparado por `.github/workflows/marketing-tick.yml`
+ * expire, cancel, place, log. Spec 0138 / ADR 0115: what runs is gated by
+ * `enabled-campaigns.ts` — campaigns that are OFF are not loaded by steps 1/1b, the valley
+ * refresh is skipped while valley is off, and step 4 (place) only runs while proximity is on. Disparado por `.github/workflows/marketing-tick.yml`
  * cada 6 horas through `GET /api/internal/marketing-tick`.
  *
  * IDEMPOTENT by construction, not by hope: step 1 leans on the partial unique of
@@ -55,6 +57,10 @@ import { cancelTurns, expireTurns } from "./turn-lifecycle";
 import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 import { enqueueWelcomeReminders } from "@mi-pasaporte/domain/server/marketing/welcome-reminder";
 import { refreshValleyDetections } from "@mi-pasaporte/domain/server/marketing/valley-store";
+import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  campaignKindEnabled,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 export type TickSummary = {
   campaigns: number;
@@ -99,6 +105,9 @@ export type TickOptions = {
    */
   lockNamespace?: string;
 };
+
+/** What step 4 reports on a run where it does not run (spec 0138). */
+const NO_PLACEMENT = { consumers: 0, activated: 0, holdouts: 0, refreshes: 0 };
 
 /** Step 0. The key is derived from a NAME, so nobody has to keep a registry of magic
  * integers. */
@@ -238,21 +247,26 @@ export async function runMarketingTick(
     // …and its expiry notices (spec 0107 §5), after the sweep.
     await enqueueWelcomeReminders(db, now, options.businessIds);
     // Spec 0113 V4: the valley detections that are stale (> 7 days, or new opening hours).
-    await refreshValleyDetections(db, now, options.businessIds);
+    // Spec 0138: only while «Horas valle» is ON (`enabled-campaigns.ts`).
+    if (campaignKindEnabled("valley"))
+      await refreshValleyDetections(db, now, options.businessIds);
 
     const expired = await expireTurns(db, now, options.businessIds);
     const cancelled = Object.values(
       await cancelTurns(db, options.businessIds),
     ).reduce((total, count) => total + count, 0);
 
-    const merit = buildMeritTable(await loadBusinessTurnStats(db));
-    const placement = await placeConsumers(db, {
-      now,
-      random,
-      merit,
-      limits: options.limits,
-      consumerIds: options.consumerIds,
-    });
+    // Step 4 (proximity of the pass, ADR 0065) runs only while it is ON (spec 0138 / ADR
+    // 0115 §4): off, the summary keeps its shape with the four counts at 0.
+    const placement = PROXIMITY_PLACEMENT_ENABLED
+      ? await placeConsumers(db, {
+          now,
+          random,
+          merit: buildMeritTable(await loadBusinessTurnStats(db)),
+          limits: options.limits,
+          consumerIds: options.consumerIds,
+        })
+      : NO_PLACEMENT;
     return {
       campaigns: campaigns.length,
       enqueued,

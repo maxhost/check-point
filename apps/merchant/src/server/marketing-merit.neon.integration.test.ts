@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
@@ -40,7 +44,9 @@ async function world(people: number): Promise<World> {
   return built;
 }
 
-describe.skipIf(!integrationEnabled)("marketing merit", () => {
+describe.skipIf(
+  !integrationEnabled || !COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED,
+)("marketing merit", () => {
   afterEach(async () => {
     await dropWorlds(worlds);
   }, 120_000);

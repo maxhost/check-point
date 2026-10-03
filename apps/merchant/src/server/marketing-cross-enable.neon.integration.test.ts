@@ -78,7 +78,7 @@ describe.skipIf(!integrationEnabled)(
       ]);
     }, 60_000);
 
-    it("enable with a coupon alone → active, no channel, `cross` in the DTO; GET templates lists it (last before «Horas valle»)", async () => {
+    it("enable with a coupon alone → active, no channel, `cross` in the DTO; GET templates lists it (last)", async () => {
       const seed = await world("plus", "Cross enable");
       const campaign = await enableTemplate(
         seed.business.id,
@@ -112,18 +112,18 @@ describe.skipIf(!integrationEnabled)(
         dormantDays: 30,
       });
       const templates = await listTemplates(seed.business.id);
-      // Spec 0113: «Horas valle» went after it; the cross offer is now second to last.
-      expect(templates.at(-2)).toMatchObject({
+      // Spec 0138: the catalog the merchant sees is `[welcome, cross]` (ADR 0115) — the
+      // cross offer is LAST (before 0138 «Horas valle» came after it).
+      expect(templates.at(-1)).toMatchObject({
         key: "cross",
         live: { id: campaign.id },
       });
-      expect(templates.at(-1)).toMatchObject({ key: "valley" });
-      // Another template's DTO says `cross: null`.
+      // Another template's DTO says `cross: null` (spec 0138: a template that is ON).
       const other = await enableTemplate(
         seed.business.id,
         seed.userId,
-        "missed_you",
-        {},
+        "welcome",
+        GIFT,
       );
       expect((await getCampaign(seed.business.id, other.id)).cross).toBeNull();
     }, 120_000);
@@ -146,8 +146,10 @@ describe.skipIf(!integrationEnabled)(
         expect(error).toMatchObject({ status: 400, code: "validation" });
         expect(Object.keys(error.fields ?? {})).toContain(field);
       }
+      // Spec 0138: «another template» is now one that is ON (`welcome`).
       const error = await caught(() =>
-        enableTemplate(seed.business.id, seed.userId, "missed_you", {
+        enableTemplate(seed.business.id, seed.userId, "welcome", {
+          ...GIFT,
           crossMonthlyCap: 5,
         }),
       );

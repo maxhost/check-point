@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type Seed,
   dropBusiness,
@@ -94,53 +95,56 @@ function tick(seed: Seed, now: Date) {
   }) as Promise<TickSummary>;
 }
 
-describe.skipIf(!integrationEnabled)("marketing tick — balance filters", () => {
-  it("ORACULO DE R1: a membership of an INACTIVE program of the business is not a candidate", async () => {
-    const { seed, campaignId } = await stampsBusiness("Saldo programa viejo");
-    const oldProgramId = randomUUID();
-    await getDb()
-      .insert(loyaltyPrograms)
-      .values({
-        id: oldProgramId,
+describe.skipIf(!integrationEnabled || !campaignKindEnabled("near_reward"))(
+  "marketing tick — balance filters",
+  () => {
+    it("ORACULO DE R1: a membership of an INACTIVE program of the business is not a candidate", async () => {
+      const { seed, campaignId } = await stampsBusiness("Saldo programa viejo");
+      const oldProgramId = randomUUID();
+      await getDb()
+        .insert(loyaltyPrograms)
+        .values({
+          id: oldProgramId,
+          businessId: seed.business.id,
+          kind: "stamps",
+          configuration: { target: 10 },
+          status: "inactive",
+          termsMarkdown: "TOS",
+          termsHash: "hash",
+          createdBy: seed.userId,
+          accrualMode: "per_purchase",
+          accrualGrant: 1,
+          createdAt: LONG_AGO,
+        });
+      const stale = await member(seed, oldProgramId, 9);
+      const live = await member(seed, seed.programId, 8);
+
+      expect(await tick(seed, T0)).toMatchObject({ pushDecided: 1 });
+      expect(
+        (await readPushes(seed.business.id)).map((p) => [
+          p.consumerId,
+          p.campaignId,
+        ]),
+      ).toEqual([[live.consumerId, campaignId]]);
+      expect(people).toContain(stale.consumerId);
+    }, 120_000);
+
+    it("ORACULO DE R4: a CANCELLED #7 does not use up the cycle", async () => {
+      const { seed, campaignId } = await stampsBusiness("Saldo cancelado");
+      const who = await member(seed, seed.programId, 8);
+      await seedDecision({
+        campaignId,
         businessId: seed.business.id,
-        kind: "stamps",
-        configuration: { target: 10 },
-        status: "inactive",
-        termsMarkdown: "TOS",
-        termsHash: "hash",
-        createdBy: seed.userId,
-        accrualMode: "per_purchase",
-        accrualGrant: 1,
-        createdAt: LONG_AGO,
+        consumerId: who.consumerId,
+        membershipId: who.membershipId,
+        decidedAt: T0,
+        cancel: { at: T0, reason: "campaign_inactive" },
       });
-    const stale = await member(seed, oldProgramId, 9);
-    const live = await member(seed, seed.programId, 8);
 
-    expect(await tick(seed, T0)).toMatchObject({ pushDecided: 1 });
-    expect(
-      (await readPushes(seed.business.id)).map((p) => [
-        p.consumerId,
-        p.campaignId,
-      ]),
-    ).toEqual([[live.consumerId, campaignId]]);
-    expect(people).toContain(stale.consumerId);
-  }, 120_000);
-
-  it("ORACULO DE R4: a CANCELLED #7 does not use up the cycle", async () => {
-    const { seed, campaignId } = await stampsBusiness("Saldo cancelado");
-    const who = await member(seed, seed.programId, 8);
-    await seedDecision({
-      campaignId,
-      businessId: seed.business.id,
-      consumerId: who.consumerId,
-      membershipId: who.membershipId,
-      decidedAt: T0,
-      cancel: { at: T0, reason: "campaign_inactive" },
-    });
-
-    expect(await tick(seed, new Date(T0.getTime() + DAY))).toMatchObject({
-      pushDecided: 1,
-    });
-    expect(await readPushes(seed.business.id)).toHaveLength(2);
-  }, 120_000);
-});
+      expect(await tick(seed, new Date(T0.getTime() + DAY))).toMatchObject({
+        pushDecided: 1,
+      });
+      expect(await readPushes(seed.business.id)).toHaveLength(2);
+    }, 120_000);
+  },
+);

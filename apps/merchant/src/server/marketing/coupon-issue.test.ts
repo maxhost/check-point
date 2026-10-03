@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  campaignKindEnabled,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   type CouponReward,
   couponToIssue,
   pushCouponToIssue,
@@ -48,7 +52,7 @@ const activation = (
   ...over,
 });
 
-describe("couponToIssue", () => {
+describe.skipIf(!PROXIMITY_PLACEMENT_ENABLED)("couponToIssue", () => {
   it("a placed turn with a coupon issues one valid from the window's start until the campaign's ends_at", () => {
     expect(couponToIssue(activation(), ENDS)).toEqual({
       ...SNAPSHOT,
@@ -88,7 +92,11 @@ describe("couponToIssue", () => {
 
 /** Spec 0103 §7 — the push channel's coupon. PURE; the wiring (the worker issuing it at
  * delivery) is pinned by `marketing-push-delivery.neon.integration.test.ts`. */
-describe("pushCouponToIssue", () => {
+describe.skipIf(
+  !["missed_you", "at_risk", "win_back"].some((key) =>
+    campaignKindEnabled(key),
+  ),
+)("pushCouponToIssue", () => {
   const push = (
     over: Partial<Parameters<typeof pushCouponToIssue>[0]> = {},
   ) => ({

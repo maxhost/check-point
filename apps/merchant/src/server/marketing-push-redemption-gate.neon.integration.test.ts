@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type Seed,
   dropBusiness,
@@ -90,29 +91,32 @@ async function work(consumerId: string) {
   return web;
 }
 
-describe.skipIf(!integrationEnabled)("campaign push gate — redemption", () => {
-  it("CANCEL visited: a redemption between the decision and the delivery", async () => {
-    const built = await world("Gate canje");
-    await built.redeem(new Date(NOON.getTime() - HOUR));
-    const web = await work(built.consumerId);
-    const [row] = await readQueue([built.consumerId]);
-    expect(row).toMatchObject({ status: "cancelled", lastError: "visited" });
-    expect(await readPush(built.pushId)).toMatchObject({
-      cancelReason: "visited",
-      cancelledAt: NOON,
-      sentAt: null,
-    });
-    expect(web.calls).toEqual([]);
-  }, 120_000);
+describe.skipIf(!integrationEnabled || !campaignKindEnabled("missed_you"))(
+  "campaign push gate — redemption",
+  () => {
+    it("CANCEL visited: a redemption between the decision and the delivery", async () => {
+      const built = await world("Gate canje");
+      await built.redeem(new Date(NOON.getTime() - HOUR));
+      const web = await work(built.consumerId);
+      const [row] = await readQueue([built.consumerId]);
+      expect(row).toMatchObject({ status: "cancelled", lastError: "visited" });
+      expect(await readPush(built.pushId)).toMatchObject({
+        cancelReason: "visited",
+        cancelledAt: NOON,
+        sentAt: null,
+      });
+      expect(web.calls).toEqual([]);
+    }, 120_000);
 
-  it("SEND: a redemption BEFORE the decision is not a visit since it", async () => {
-    const built = await world("Gate canje previo");
-    await built.redeem(new Date(NOON.getTime() - 3 * HOUR));
-    const web = await work(built.consumerId);
-    expect(await readPush(built.pushId)).toMatchObject({
-      sentAt: NOON,
-      cancelledAt: null,
-    });
-    expect(web.calls).toHaveLength(1);
-  }, 120_000);
-});
+    it("SEND: a redemption BEFORE the decision is not a visit since it", async () => {
+      const built = await world("Gate canje previo");
+      await built.redeem(new Date(NOON.getTime() - 3 * HOUR));
+      const web = await work(built.consumerId);
+      expect(await readPush(built.pushId)).toMatchObject({
+        sentAt: NOON,
+        cancelledAt: null,
+      });
+      expect(web.calls).toHaveLength(1);
+    }, 120_000);
+  },
+);

@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type Seed,
   dropBusiness,
@@ -29,7 +30,11 @@ afterAll(async () => {
   }
 }, 120_000);
 
-describe.skipIf(!integrationEnabled)("campaign results — push block", () => {
+describe.skipIf(
+  !integrationEnabled ||
+    !campaignKindEnabled("missed_you") ||
+    !campaignKindEnabled("win_back"),
+)("campaign results — push block", () => {
   it("counts every state and the 7-day conversion of sent vs holdout", async () => {
     const seed = await seedBusiness({
       name: `Push results ${Date.now()}`,

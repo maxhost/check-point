@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   dropBusiness,
   integrationEnabled,
@@ -87,17 +88,18 @@ async function overlap(order: readonly TemplateKey[]) {
   return { turns, ids };
 }
 
-describe.skipIf(!integrationEnabled)(
-  "marketing tick — overlapping campaigns",
-  () => {
-    it("missed_you created FIRST, win_back second: the turn is win_back's", async () => {
-      const { turns, ids } = await overlap(["missed_you", "win_back"]);
-      expect(turns).toEqual([{ campaignId: ids.win_back }]);
-    }, 180_000);
+describe.skipIf(
+  !integrationEnabled ||
+    !campaignKindEnabled("missed_you") ||
+    !campaignKindEnabled("win_back"),
+)("marketing tick — overlapping campaigns", () => {
+  it("missed_you created FIRST, win_back second: the turn is win_back's", async () => {
+    const { turns, ids } = await overlap(["missed_you", "win_back"]);
+    expect(turns).toEqual([{ campaignId: ids.win_back }]);
+  }, 180_000);
 
-    it("win_back created FIRST, missed_you second: the turn is still win_back's", async () => {
-      const { turns, ids } = await overlap(["win_back", "missed_you"]);
-      expect(turns).toEqual([{ campaignId: ids.win_back }]);
-    }, 180_000);
-  },
-);
+  it("win_back created FIRST, missed_you second: the turn is still win_back's", async () => {
+    const { turns, ids } = await overlap(["win_back", "missed_you"]);
+    expect(turns).toEqual([{ campaignId: ids.win_back }]);
+  }, 180_000);
+});

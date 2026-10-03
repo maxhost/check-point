@@ -9,6 +9,7 @@ import {
 import { toDate } from "@mi-pasaporte/domain/server/marketing/driver-values";
 import type { DetectionStatus } from "@mi-pasaporte/domain/server/marketing/valley-detect";
 import { parseValleyWindows } from "./valley-input";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type ValleyWindow,
   type WindowSource,
@@ -28,6 +29,9 @@ import {
  * and the heat map that explains the proposal. Scoped by the SESSION's `business_id`: a
  * location of another business —or an id that is not one— is a 404, never a write.
  * Apart from `valley-store.ts` only for the size budget.
+ *
+ * Spec 0138 / ADR 0115: while «Horas valle» is OFF (`enabled-campaigns.ts`) the whole API
+ * is a 404 `not_found` — the merchant does not see what is off.
  */
 
 export type ValleyLocationView = {
@@ -118,11 +122,17 @@ async function views(
   return out;
 }
 
+function assertValleyOn(): void {
+  if (!campaignKindEnabled("valley"))
+    throw new CampaignError(404, "not_found", "No existe esa plantilla.");
+}
+
 /** `GET /api/marketing/valley/locations` — one entry per ACTIVE location. */
 export async function listValleyLocations(
   businessId: string,
   now: Date = new Date(),
 ): Promise<ValleyLocationView[]> {
+  assertValleyOn();
   const db = getDb();
   return await views(db, businessId, await ownLocations(db, businessId), now);
 }
@@ -150,6 +160,7 @@ export async function replaceMerchantWindows(
   body: unknown,
   now: Date = new Date(),
 ): Promise<ValleyLocationView> {
+  assertValleyOn();
   const parsed = parseValleyWindows(body);
   if (!parsed.ok)
     throw new CampaignError(
@@ -172,6 +183,7 @@ export async function clearMerchantWindows(
   businessId: string,
   locationId: string,
 ): Promise<void> {
+  assertValleyOn();
   const db = getDb();
   const location = await requireOwn(db, businessId, locationId);
   await replaceWindows(db, location.id, "merchant", []);

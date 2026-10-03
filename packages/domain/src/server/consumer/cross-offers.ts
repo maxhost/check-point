@@ -29,6 +29,7 @@ import {
   toOffer,
 } from "./cross-facts";
 import { type ValleyOffer, listValleyOffers } from "./valley-offers";
+import { campaignKindEnabled } from "../marketing/enabled-campaigns";
 
 /**
  * «MIS BENEFICIOS» — THE CROSS OFFERS (spec 0136 / ADR 0104; contract C1 and C2 of
@@ -131,9 +132,16 @@ export async function listCrossOffers(
       meters: decision.distanceMeters,
     });
   }
-  found.push(
-    ...(await listValleyOffers(db, consumerId, { now, position }, memberships)),
-  );
+  // Spec 0138 / ADR 0115: valley is OFF, so «Mis beneficios» does not offer it.
+  if (campaignKindEnabled("valley"))
+    found.push(
+      ...(await listValleyOffers(
+        db,
+        consumerId,
+        { now, position },
+        memberships,
+      )),
+    );
   found.sort(
     (a, b) =>
       rank(a.offer) - rank(b.offer) ||
@@ -193,7 +201,10 @@ export async function claimCrossOffer(
         for update`),
     );
     if (!locked) return null;
-    if (locked.template_key === "valley") return { status: 400 as const };
+    // Spec 0138: a valley campaign while valley is OFF does not exist (404, not a 400 that
+    // would reveal it).
+    if (locked.template_key === "valley")
+      return campaignKindEnabled("valley") ? { status: 400 as const } : null;
     const existing = (
       await loadClaimedCrossCoupons(tx, consumerId, campaignId)
     ).get(campaignId);

@@ -27,6 +27,8 @@ import {
 
 afterAll(dropCampaignWorlds, 120_000);
 
+const GIFT = { couponLabel: "10% en tu clase", couponCost: "2.00" };
+
 async function insertBlockedOnLock(): Promise<boolean> {
   const result = await getDb().execute<{ n: number }>(
     sql`select count(*)::int as n from pg_stat_activity
@@ -43,25 +45,30 @@ describe.skipIf(!integrationEnabled)("campaign templates — the race", () => {
     let blocked = false;
 
     await withDbTransaction(async (tx) => {
+      // Spec 0138: the run is a `cross` (a template that is ON), with the shape its
+      // checks demand — coupon, the three parameters and no channel.
       await tx.insert(campaigns).values({
         businessId: seed.business.id,
         kind: "proximity",
-        templateKey: "win_back",
-        name: "Recuperar perdidos",
+        templateKey: "cross",
+        channelProximity: false,
+        channelPush: false,
+        name: "Oferta cruzada",
         status: "active",
-        dormantDays: 90,
-        message: "¡Vuelve! Te estamos esperando.",
+        dormantDays: 30,
+        message: "Te esperamos con un regalo",
+        couponLabel: GIFT.couponLabel,
+        couponCost: GIFT.couponCost,
+        couponKind: "free_product",
+        crossAudience: "non_members",
+        crossValidDays: 15,
+        crossMonthlyCap: 50,
         startsAt: new Date(),
         activatedAt: new Date(),
         createdByUserId: seed.userId,
       });
       // B starts while A's row is uncommitted: its select cannot see it.
-      loser = enableTemplate(
-        seed.business.id,
-        seed.userId,
-        "win_back",
-        {},
-      ).then(
+      loser = enableTemplate(seed.business.id, seed.userId, "cross", GIFT).then(
         () => "fulfilled",
         (error: unknown) => error,
       );
@@ -79,7 +86,7 @@ describe.skipIf(!integrationEnabled)("campaign templates — the race", () => {
     });
     const live = await getDb().execute<{ n: number }>(
       sql`select count(*)::int as n from core.campaign
-          where business_id = ${seed.business.id} and template_key = 'win_back'
+          where business_id = ${seed.business.id} and template_key = 'cross'
             and status in ('draft', 'active', 'paused')`,
     );
     expect(live.rows[0]?.n).toBe(1);

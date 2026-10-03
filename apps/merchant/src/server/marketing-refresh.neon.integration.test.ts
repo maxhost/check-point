@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   type Seed,
   dropBusiness,
   integrationEnabled,
@@ -78,7 +82,9 @@ async function refreshRows(consumerId: string) {
     );
 }
 
-describe.skipIf(!integrationEnabled)("marketing pass_refresh", () => {
+describe.skipIf(
+  !integrationEnabled || !COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED,
+)("marketing pass_refresh", () => {
   let seed: Seed;
   let consumerId: string;
   let doorId: string;

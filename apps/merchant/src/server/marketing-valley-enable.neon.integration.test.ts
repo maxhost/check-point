@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { integrationEnabled } from "./locations-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import { enableTemplate, listTemplates } from "./marketing/template-store";
@@ -17,7 +18,7 @@ import {
 
 afterAll(dropCampaignWorlds, 120_000);
 
-describe.skipIf(!integrationEnabled)(
+describe.skipIf(!integrationEnabled || !campaignKindEnabled("valley"))(
   "valley — migration 0058 and enable",
   () => {
     it("the migration: the three tables, hours_version, the checks and the two partial uniques", async () => {

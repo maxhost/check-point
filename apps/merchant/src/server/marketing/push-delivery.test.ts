@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type GateFacts,
   decideCampaignGate,
@@ -21,7 +22,15 @@ const facts = (over: Partial<GateFacts> = {}): GateFacts => ({
   ...over,
 });
 
-describe("decideCampaignGate", () => {
+describe.skipIf(
+  ![
+    "missed_you",
+    "at_risk",
+    "win_back",
+    "near_reward",
+    "unclaimed_reward",
+  ].some((key) => campaignKindEnabled(key)),
+)("decideCampaignGate", () => {
   it("everything in order sends with the push id as click id; an orphan row sends without", () => {
     expect(decideCampaignGate(facts(), NOON_AR)).toEqual({
       kind: "send",

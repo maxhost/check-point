@@ -5,6 +5,7 @@ import {
 } from "../../../../server/marketing/campaign-store";
 import { allowedCouponKinds } from "../../../../server/marketing/reward-store";
 import { campaignError, readJson, requireMarketingOwner } from "../_auth";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +30,12 @@ export async function POST(request: Request) {
   const auth = await requireMarketingOwner(request);
   if ("response" in auth) return auth.response;
   try {
+    // Spec 0138: while the composer is OFF the body is not even read — `createCampaign`
+    // answers 409 `campaign_disabled` first, so a broken JSON is not a 400 either.
     const campaign = await createCampaign(
       auth.business.id,
       auth.userId,
-      await readJson(request),
+      campaignKindEnabled(null) ? await readJson(request) : undefined,
     );
     return NextResponse.json(
       { campaign, currencyCode: auth.business.currencyCode },

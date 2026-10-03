@@ -16,6 +16,10 @@ import {
 } from "./marketing/template-store";
 import { TEMPLATES } from "@mi-pasaporte/domain/server/marketing/templates";
 import {
+  COMPOSER_ENABLED,
+  campaignKindEnabled,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   campaignBody as body,
   campaignWorld as world,
   caughtCampaignError as caught,
@@ -32,6 +36,9 @@ import {
  */
 
 afterAll(dropCampaignWorlds, 120_000);
+
+/** Spec 0138: the mechanism runs on `cross`/`welcome` (ON); both demand a coupon. */
+const GIFT = { couponLabel: "10% en tu clase", couponCost: "2.00" };
 
 async function doorsOf(campaignId: string): Promise<string[]> {
   const rows = await getDb()
@@ -55,15 +62,17 @@ async function liveRuns(businessId: string, key: string) {
 }
 
 describe.skipIf(!integrationEnabled)("campaign templates", () => {
-  it("lists the two templates with no run on a business that never used them", async () => {
+  it("lists the templates that are ON with no run on a business that never used them", async () => {
     const seed = await world("plus", "Templates list");
     const listed = await listTemplates(seed.business.id);
     expect(listed).toEqual(
-      TEMPLATES.map((template) => ({ ...template, live: null, runs: [] })),
+      TEMPLATES.filter((template) => campaignKindEnabled(template.key)).map(
+        (template) => ({ ...template, live: null, runs: [] }),
+      ),
     );
   }, 120_000);
 
-  it("enable {} creates an ACTIVE run with the defaults on every usable door", async () => {
+  it("enable creates an ACTIVE run with the defaults on every usable door", async () => {
     const seed = await world("plus", "Templates enable");
     const second = await seedExtraLocation(seed.business.id, "Segunda");
     // Not usable: the tick could never place a turn there.
@@ -77,8 +86,8 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
     const created = await enableTemplate(
       seed.business.id,
       seed.userId,
-      "missed_you",
-      {},
+      "cross",
+      GIFT,
     );
 
     const [row] = await getDb()
@@ -87,61 +96,68 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       .where(eq(campaigns.id, created.id));
     expect(row).toMatchObject({
       kind: "proximity",
-      templateKey: "missed_you",
-      name: "Te extrañamos",
+      templateKey: "cross",
+      name: "Oferta cruzada",
       status: "active",
       dormantDays: 30,
-      message: "Hace rato no te vemos. ¡Te esperamos!",
-      couponLabel: null,
-      couponCost: null,
+      message: "Te esperamos con un regalo",
+      couponLabel: GIFT.couponLabel,
+      couponCost: GIFT.couponCost,
       couponMaxRedemptions: null,
       endsAt: null,
       createdByUserId: seed.userId,
     });
     expect(row.activatedAt).toBeInstanceOf(Date);
     expect(await doorsOf(created.id)).toEqual([seed.locationId, second].sort());
-    expect(created.templateKey).toBe("missed_you");
+    expect(created.templateKey).toBe("cross");
   }, 120_000);
 
-  it("excludes exactly the excluded doors; excluding all is 409; a foreign one is 400", async () => {
-    const seed = await world("plus", "Templates exclude");
-    const theirs = await world("plus", "Templates exclude theirs");
-    const second = await seedExtraLocation(seed.business.id, "Segunda");
+  // Spec 0138: excluded doors exist only for PROXIMITY templates (cross/welcome refuse the
+  // field with a 400): this mechanism is off while they are.
+  it.skipIf(!campaignKindEnabled("win_back"))(
+    "excludes exactly the excluded doors; excluding all is 409; a foreign one is 400",
+    async () => {
+      const seed = await world("plus", "Templates exclude");
+      const theirs = await world("plus", "Templates exclude theirs");
+      const second = await seedExtraLocation(seed.business.id, "Segunda");
 
-    expect(
-      await caught(() =>
-        enableTemplate(seed.business.id, seed.userId, "win_back", {
-          excludedLocationIds: [theirs.locationId],
-        }),
-      ),
-    ).toMatchObject({
-      status: 400,
-      code: "validation",
-      fields: { excludedLocationIds: expect.any(String) },
-    });
-    expect(
-      await caught(() =>
-        enableTemplate(seed.business.id, seed.userId, "win_back", {
-          excludedLocationIds: [seed.locationId, second],
-        }),
-      ),
-    ).toMatchObject({ status: 409, code: "no_usable_location" });
-    expect(await liveRuns(seed.business.id, "win_back")).toEqual([]);
+      expect(
+        await caught(() =>
+          enableTemplate(seed.business.id, seed.userId, "win_back", {
+            excludedLocationIds: [theirs.locationId],
+          }),
+        ),
+      ).toMatchObject({
+        status: 400,
+        code: "validation",
+        fields: { excludedLocationIds: expect.any(String) },
+      });
+      expect(
+        await caught(() =>
+          enableTemplate(seed.business.id, seed.userId, "win_back", {
+            excludedLocationIds: [seed.locationId, second],
+          }),
+        ),
+      ).toMatchObject({ status: 409, code: "no_usable_location" });
+      expect(await liveRuns(seed.business.id, "win_back")).toEqual([]);
 
-    const created = await enableTemplate(
-      seed.business.id,
-      seed.userId,
-      "win_back",
-      { excludedLocationIds: [seed.locationId] },
-    );
-    expect(await doorsOf(created.id)).toEqual([second]);
-  }, 120_000);
+      const created = await enableTemplate(
+        seed.business.id,
+        seed.userId,
+        "win_back",
+        { excludedLocationIds: [seed.locationId] },
+      );
+      expect(await doorsOf(created.id)).toEqual([second]);
+    },
+    120_000,
+  );
 
   it("refuses days outside the template's options, and a business without the plan", async () => {
     const seed = await world("plus", "Templates days");
     expect(
       await caught(() =>
-        enableTemplate(seed.business.id, seed.userId, "missed_you", {
+        enableTemplate(seed.business.id, seed.userId, "cross", {
+          ...GIFT,
           dormantDays: 45,
         }),
       ),
@@ -153,27 +169,27 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
     const free = await world("free", "Templates free");
     expect(
       await caught(() =>
-        enableTemplate(free.business.id, free.userId, "missed_you", {}),
+        enableTemplate(free.business.id, free.userId, "cross", GIFT),
       ),
     ).toMatchObject({ status: 402, code: "plan_not_allowed" });
-    expect(await liveRuns(free.business.id, "missed_you")).toEqual([]);
+    expect(await liveRuns(free.business.id, "cross")).toEqual([]);
   }, 120_000);
 
   it("one live run per template: a second enable is 409, and two enables at once leave one run", async () => {
     const seed = await world("plus", "Templates twice");
-    await enableTemplate(seed.business.id, seed.userId, "missed_you", {});
+    await enableTemplate(seed.business.id, seed.userId, "cross", GIFT);
     expect(
       await caught(() =>
-        enableTemplate(seed.business.id, seed.userId, "missed_you", {}),
+        enableTemplate(seed.business.id, seed.userId, "cross", GIFT),
       ),
     ).toMatchObject({ status: 409, code: "template_already_live" });
     // The OTHER template is independent.
-    await enableTemplate(seed.business.id, seed.userId, "win_back", {});
+    await enableTemplate(seed.business.id, seed.userId, "welcome", GIFT);
 
     const race = await world("plus", "Templates race");
     const settled = await Promise.allSettled([
-      enableTemplate(race.business.id, race.userId, "win_back", {}),
-      enableTemplate(race.business.id, race.userId, "win_back", {}),
+      enableTemplate(race.business.id, race.userId, "cross", GIFT),
+      enableTemplate(race.business.id, race.userId, "cross", GIFT),
     ]);
     expect(settled.map((s) => s.status).sort()).toEqual([
       "fulfilled",
@@ -184,25 +200,23 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       status: 409,
       code: "template_already_live",
     });
-    expect(await liveRuns(race.business.id, "win_back")).toHaveLength(1);
+    expect(await liveRuns(race.business.id, "cross")).toHaveLength(1);
   }, 120_000);
 
   it("disable ENDS the run; on → off → on leaves two rows, the new one live and the old in runs", async () => {
     const seed = await world("plus", "Templates cycle");
     expect(
-      await caught(() => disableTemplate(seed.business.id, "missed_you")),
+      await caught(() => disableTemplate(seed.business.id, "cross")),
     ).toMatchObject({ status: 404, code: "template_not_live" });
     expect(
       await caught(() => disableTemplate(seed.business.id, "birthday")),
     ).toMatchObject({ status: 404, code: "not_found" });
 
-    const first = await enableTemplate(
-      seed.business.id,
-      seed.userId,
-      "missed_you",
-      { dormantDays: 14 },
-    );
-    const off = await disableTemplate(seed.business.id, "missed_you");
+    const first = await enableTemplate(seed.business.id, seed.userId, "cross", {
+      ...GIFT,
+      crossValidDays: 7,
+    });
+    const off = await disableTemplate(seed.business.id, "cross");
     expect(off.notice).toBe(TURNS_NOTICE);
     const [ended] = await getDb()
       .select({ status: campaigns.status, endedAt: campaigns.endedAt })
@@ -214,8 +228,8 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
     const second = await enableTemplate(
       seed.business.id,
       seed.userId,
-      "missed_you",
-      {},
+      "cross",
+      GIFT,
     );
     const rows = await getDb()
       .select({ id: campaigns.id })
@@ -223,11 +237,11 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       .where(eq(campaigns.businessId, seed.business.id));
     expect(rows.map((r) => r.id).sort()).toEqual([first.id, second.id].sort());
 
-    // Spec 0107: «Bienvenida» goes first in the catalog.
-    const [, missedYou, atRisk] = await listTemplates(seed.business.id);
-    expect(missedYou.live?.id).toBe(second.id);
-    expect(missedYou.live?.dormantDays).toBe(30);
-    expect(missedYou.runs).toEqual([
+    // Spec 0107: «Bienvenida» goes first in the catalog (spec 0138: `[welcome, cross]`).
+    const [welcome, cross] = await listTemplates(seed.business.id);
+    expect(cross.live?.id).toBe(second.id);
+    expect(cross.live?.cross?.validDays).toBe(15);
+    expect(cross.runs).toEqual([
       {
         id: first.id,
         status: "ended",
@@ -235,16 +249,16 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
         endedAt: expect.any(Date),
       },
     ]);
-    expect(atRisk).toMatchObject({ live: null, runs: [] });
+    expect(welcome).toMatchObject({ live: null, runs: [] });
   }, 180_000);
 
-  it("a template run is never PATCHed, not even paused; a custom POST never carries a template", async () => {
+  it("a template run is never PATCHed, not even paused", async () => {
     const seed = await world("plus", "Templates frozen");
     const run = await enableTemplate(
       seed.business.id,
       seed.userId,
-      "win_back",
-      {},
+      "cross",
+      GIFT,
     );
     await transitionCampaign(seed.business.id, run.id, "pause");
     expect(
@@ -256,17 +270,25 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       .select({ message: campaigns.message })
       .from(campaigns)
       .where(eq(campaigns.id, run.id));
-    expect(kept.message).toBe("¡Vuelve! Te estamos esperando.");
-
-    const custom = await createCampaign(
-      seed.business.id,
-      seed.userId,
-      body(seed, { templateKey: "missed_you" }),
-    );
-    const [row] = await getDb()
-      .select({ templateKey: campaigns.templateKey })
-      .from(campaigns)
-      .where(eq(campaigns.id, custom.id));
-    expect(row.templateKey).toBeNull();
+    expect(kept.message).toBe("Te esperamos con un regalo");
   }, 120_000);
+
+  // Spec 0138: the other half of the case above, split out because the composer is off.
+  it.skipIf(!COMPOSER_ENABLED)(
+    "a custom POST never carries a template",
+    async () => {
+      const seed = await world("plus", "Templates custom");
+      const custom = await createCampaign(
+        seed.business.id,
+        seed.userId,
+        body(seed, { templateKey: "missed_you" }),
+      );
+      const [row] = await getDb()
+        .select({ templateKey: campaigns.templateKey })
+        .from(campaigns)
+        .where(eq(campaigns.id, custom.id));
+      expect(row.templateKey).toBeNull();
+    },
+    120_000,
+  );
 });

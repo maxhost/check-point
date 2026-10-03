@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROXIMITY_PLACEMENT_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   UTILITY_TEXT_CAP,
   utilityText,
@@ -21,7 +22,7 @@ function membership(
 
 const TWO_REWARDS: UtilityReward[] = [{ pointsCost: 200 }, { pointsCost: 50 }];
 
-describe("utilityText — Puntos", () => {
+describe.skipIf(!PROXIMITY_PLACEMENT_ENABLED)("utilityText — Puntos", () => {
   it("announces the redeemable reward when the balance already reaches the cheapest one", () => {
     expect(utilityText(membership(60), POINTS, TWO_REWARDS)).toBe(
       "Café Luis: tenes un premio para canjear",
@@ -47,7 +48,7 @@ describe("utilityText — Puntos", () => {
   });
 });
 
-describe("utilityText — Sellos", () => {
+describe.skipIf(!PROXIMITY_PLACEMENT_ENABLED)("utilityText — Sellos", () => {
   it("announces the reward when the card is complete", () => {
     expect(utilityText(membership(10), STAMPS, [{ pointsCost: null }])).toBe(
       "Café Luis: tenes un premio para canjear",
@@ -79,7 +80,7 @@ describe("utilityText — Sellos", () => {
   });
 });
 
-describe("utilityText — cap", () => {
+describe.skipIf(!PROXIMITY_PLACEMENT_ENABLED)("utilityText — cap", () => {
   it("truncates at 60 characters and marks the cut", () => {
     const long = "Panadería y Confitería La Esquina de San Telmo desde 1904";
     const text = utilityText(membership(3), POINTS, []);

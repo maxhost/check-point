@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
@@ -54,35 +58,43 @@ describe.skipIf(!integrationEnabled)("marketing placement", () => {
     await dropWorlds(worlds);
   }, 120_000);
 
-  it("keeps the holdout OUT of the pass while its turn runs", async () => {
-    const built = await world(1);
-    const summary = (await tick(built, { random: () => 0 })) as TickSummary;
-    expect(summary).toMatchObject({
-      activated: 1,
-      holdouts: 1,
-      // Nothing to write: the pass of a holdout is the pass it already had.
-      refreshes: 0,
-    });
-    const [turn] = await readTurns(built.seed.business.id);
-    expect(turn).toMatchObject({ status: "active", holdout: true });
-    expect(await readPlacement(built.consumerIds[0])).toEqual([]);
-  }, 120_000);
+  it.skipIf(!COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED)(
+    "keeps the holdout OUT of the pass while its turn runs",
+    async () => {
+      const built = await world(1);
+      const summary = (await tick(built, { random: () => 0 })) as TickSummary;
+      expect(summary).toMatchObject({
+        activated: 1,
+        holdouts: 1,
+        // Nothing to write: the pass of a holdout is the pass it already had.
+        refreshes: 0,
+      });
+      const [turn] = await readTurns(built.seed.business.id);
+      expect(turn).toMatchObject({ status: "active", holdout: true });
+      expect(await readPlacement(built.consumerIds[0])).toEqual([]);
+    },
+    120_000,
+  );
 
-  it("holds the business quota INSIDE one run: the excess stays queued", async () => {
-    const built = await world(3);
-    // The quota is a parameter so a test can lower it instead of seeding fifty turns.
-    const summary = (await tick(built, {
-      limits: { businessQuota: 2 },
-    })) as TickSummary;
-    expect(summary).toMatchObject({ enqueued: 3, activated: 2 });
-    const turns = await readTurns(built.seed.business.id);
-    expect(turns.filter((turn) => turn.status === "active")).toHaveLength(2);
-    expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(1);
-    // And it stays queued: the next run reads the quota as full, it does not reset.
-    await tick(built, { limits: { businessQuota: 2 } });
-    const after = await readTurns(built.seed.business.id);
-    expect(after.filter((turn) => turn.status === "queued")).toHaveLength(1);
-  }, 120_000);
+  it.skipIf(!COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED)(
+    "holds the business quota INSIDE one run: the excess stays queued",
+    async () => {
+      const built = await world(3);
+      // The quota is a parameter so a test can lower it instead of seeding fifty turns.
+      const summary = (await tick(built, {
+        limits: { businessQuota: 2 },
+      })) as TickSummary;
+      expect(summary).toMatchObject({ enqueued: 3, activated: 2 });
+      const turns = await readTurns(built.seed.business.id);
+      expect(turns.filter((turn) => turn.status === "active")).toHaveLength(2);
+      expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(1);
+      // And it stays queued: the next run reads the quota as full, it does not reset.
+      await tick(built, { limits: { businessQuota: 2 } });
+      const after = await readTurns(built.seed.business.id);
+      expect(after.filter((turn) => turn.status === "queued")).toHaveLength(1);
+    },
+    120_000,
+  );
 
   /**
    * R4 — the quota counts `active` NON-HOLDOUT turns (`loadBusinessActiveTurns`), which
@@ -104,44 +116,69 @@ describe.skipIf(!integrationEnabled)("marketing placement", () => {
    * `loadBusinessActiveTurns`. Then the two seeded holdouts fill the quota of 2 and the
    * two reachable consumers stay `queued`.
    */
-  it("does NOT let a holdout eat the business quota", async () => {
-    const built = await world(2);
-    for (let index = 0; index < 2; index += 1) {
-      const consumer = await seedConsumer();
-      const membershipId = await seedMembership({
-        consumerId: consumer.id,
-        programId: built.seed.programId,
-        businessId: built.seed.business.id,
-        enrolledAt: new Date(NOW.getTime() - 400 * DAY),
-      });
-      await seedTurn({
-        campaignId: built.campaignId,
-        businessId: built.seed.business.id,
-        consumerId: consumer.id,
-        membershipId,
-        locationId: built.doorId,
-        status: "active",
-        holdout: true,
-        // Window still open: step 2 must not expire them before step 4 reads the quota.
-        windowStart: new Date(NOW.getTime() - DAY),
-        windowEnd: new Date(NOW.getTime() + 4 * DAY),
-      });
-    }
+  it.skipIf(!COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED)(
+    "does NOT let a holdout eat the business quota",
+    async () => {
+      const built = await world(2);
+      for (let index = 0; index < 2; index += 1) {
+        const consumer = await seedConsumer();
+        const membershipId = await seedMembership({
+          consumerId: consumer.id,
+          programId: built.seed.programId,
+          businessId: built.seed.business.id,
+          enrolledAt: new Date(NOW.getTime() - 400 * DAY),
+        });
+        await seedTurn({
+          campaignId: built.campaignId,
+          businessId: built.seed.business.id,
+          consumerId: consumer.id,
+          membershipId,
+          locationId: built.doorId,
+          status: "active",
+          holdout: true,
+          // Window still open: step 2 must not expire them before step 4 reads the quota.
+          windowStart: new Date(NOW.getTime() - DAY),
+          windowEnd: new Date(NOW.getTime() + 4 * DAY),
+        });
+      }
 
-    const summary = (await tick(built, {
-      limits: { businessQuota: 2 },
-    })) as TickSummary;
+      const summary = (await tick(built, {
+        limits: { businessQuota: 2 },
+      })) as TickSummary;
 
-    expect(summary).toMatchObject({ enqueued: 2, activated: 2 });
-    const turns = await readTurns(built.seed.business.id);
-    expect(
-      turns.filter((turn) => turn.status === "active" && !turn.holdout),
-    ).toHaveLength(2);
-    expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(0);
-  }, 120_000);
+      expect(summary).toMatchObject({ enqueued: 2, activated: 2 });
+      const turns = await readTurns(built.seed.business.id);
+      expect(
+        turns.filter((turn) => turn.status === "active" && !turn.holdout),
+      ).toHaveLength(2);
+      expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(0);
+    },
+    120_000,
+  );
 
   it("skips while another run holds the tick lock, and writes nothing", async () => {
-    const built = await world(1);
+    // Spec 0138: the control writes something LIVE — step 2 expiring a turn whose window
+    // closed — instead of queueing/activating (step 1 and step 4 are off).
+    const built = await world(0);
+    const consumer = await seedConsumer();
+    const membershipId = await seedMembership({
+      consumerId: consumer.id,
+      programId: built.seed.programId,
+      businessId: built.seed.business.id,
+    });
+    await seedTurn({
+      campaignId: built.campaignId,
+      businessId: built.seed.business.id,
+      consumerId: consumer.id,
+      membershipId,
+      locationId: built.doorId,
+      status: "active",
+      windowStart: new Date(NOW.getTime() - 6 * DAY),
+      windowEnd: new Date(NOW.getTime() - DAY),
+      messageSnapshot: "2x1 en picadas",
+    });
+    const statuses = async () =>
+      (await readTurns(built.seed.business.id)).map((turn) => turn.status);
     let lockTaken: () => void = () => {};
     let release: () => void = () => {};
     const taken = new Promise<void>((resolve) => (lockTaken = resolve));
@@ -159,71 +196,79 @@ describe.skipIf(!integrationEnabled)("marketing placement", () => {
     await taken;
     const underLock = { lockNamespace: TICK_LOCK_NAMESPACE };
     expect(await tick(built, underLock)).toEqual({ skipped: "tick_in_flight" });
-    expect(await readTurns(built.seed.business.id)).toEqual([]);
+    expect(await statuses()).toEqual(["active"]);
     release();
     await holder;
     // The very same call, with the lock free, does the work: the skip was the lock and
-    // not a seed that could never have produced a turn.
+    // not a seed that could never have produced a write.
     expect((await tick(built, underLock)) as TickSummary).toMatchObject({
-      enqueued: 1,
-      activated: 1,
+      expired: 1,
     });
+    expect(await statuses()).toEqual(["done"]);
   }, 120_000);
-  it("un holdout SORTEADO EN ESTA CORRIDA tampoco come cuota (la otra mitad)", async () => {
-    // LA MITAD QUE FALTABA, y la encontró la revisión independiente de la fase A: el caso
-    // de arriba siembra los holdouts YA `active`, así que ataca `loadBusinessActiveTurns`
-    // —la SIEMBRA del contador— y nunca el avance EN MEMORIA, que es el `continue` de
-    // `placement.ts:163`. Sacarlo dejaba los 13 archivos de marketing en verde mientras el
-    // negocio perdía ~10 % de su cupo: el turno retenido se comía una plaza y una
-    // exposición real quedaba en cola.
-    //
-    // El sorteo se fuerza con un `random` con estado: la primera extracción cae bajo el
-    // `holdoutRate` y las demás no. Es la única forma de tener holdout Y no-holdouts en la
-    // misma corrida sin sembrar el resultado.
-    const built = await world(3);
-    let draws = 0;
-    const summary = (await tick(built, {
-      limits: { businessQuota: 2 },
-      random: () => (draws++ === 0 ? 0 : 1),
-    })) as TickSummary;
+  it.skipIf(!COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED)(
+    "un holdout SORTEADO EN ESTA CORRIDA tampoco come cuota (la otra mitad)",
+    async () => {
+      // LA MITAD QUE FALTABA, y la encontró la revisión independiente de la fase A: el caso
+      // de arriba siembra los holdouts YA `active`, así que ataca `loadBusinessActiveTurns`
+      // —la SIEMBRA del contador— y nunca el avance EN MEMORIA, que es el `continue` de
+      // `placement.ts:163`. Sacarlo dejaba los 13 archivos de marketing en verde mientras el
+      // negocio perdía ~10 % de su cupo: el turno retenido se comía una plaza y una
+      // exposición real quedaba en cola.
+      //
+      // El sorteo se fuerza con un `random` con estado: la primera extracción cae bajo el
+      // `holdoutRate` y las demás no. Es la única forma de tener holdout Y no-holdouts en la
+      // misma corrida sin sembrar el resultado.
+      const built = await world(3);
+      let draws = 0;
+      const summary = (await tick(built, {
+        limits: { businessQuota: 2 },
+        random: () => (draws++ === 0 ? 0 : 1),
+      })) as TickSummary;
 
-    // 3 activados con cuota 2: los dos que SÍ se exponen la llenan, y el retenido no.
-    expect(summary).toMatchObject({ enqueued: 3, activated: 3, holdouts: 1 });
-    const turns = await readTurns(built.seed.business.id);
-    expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(0);
-    expect(turns.filter((turn) => turn.holdout)).toHaveLength(1);
-  }, 180_000);
+      // 3 activados con cuota 2: los dos que SÍ se exponen la llenan, y el retenido no.
+      expect(summary).toMatchObject({ enqueued: 3, activated: 3, holdouts: 1 });
+      const turns = await readTurns(built.seed.business.id);
+      expect(turns.filter((turn) => turn.status === "queued")).toHaveLength(0);
+      expect(turns.filter((turn) => turn.holdout)).toHaveLength(1);
+    },
+    180_000,
+  );
 
-  it("keeps the utility door of a business the consumer opted OUT of", async () => {
-    // The owner's rule (spec 0065): the opt-out silences MARKETING, never the
-    // consumer's own balance — «el opt-out no apaga la utilidad». The bag is loaded by
-    // a query of its own, so nothing but this stops someone from copying the audience's
-    // `marketing_opt_out_at is null` into it, which reads like consistency.
-    const built = await world(1);
-    const other = await world(0);
-    await seedMembership({
-      consumerId: built.consumerIds[0],
-      programId: other.seed.programId,
-      businessId: other.seed.business.id,
-      enrolledAt: new Date(NOW.getTime() - 400 * DAY),
-      // The door they enrolled at: `seedBusiness` already gave this business a second
-      // usable door, so without an attribution there is no single-door fallback and the
-      // bag would be empty for a reason that has nothing to do with the opt-out.
-      originLocationId: other.doorId,
-      stamps: 2,
-      optedOutAt: new Date(NOW.getTime() - DAY),
-    });
-    await tick(built);
-    const placement = await readPlacement(built.consumerIds[0]);
-    expect(
-      placement.map((slot) => [slot.businessId, slot.slotKind]).sort(),
-    ).toEqual(
-      [
-        [built.seed.business.id, "turn"],
-        [other.seed.business.id, "utility"],
-      ].sort(),
-    );
-    const utility = placement.find((slot) => slot.slotKind === "utility");
-    expect(utility?.relevantText).toContain("2 sellos");
-  }, 180_000);
+  it.skipIf(!COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED)(
+    "keeps the utility door of a business the consumer opted OUT of",
+    async () => {
+      // The owner's rule (spec 0065): the opt-out silences MARKETING, never the
+      // consumer's own balance — «el opt-out no apaga la utilidad». The bag is loaded by
+      // a query of its own, so nothing but this stops someone from copying the audience's
+      // `marketing_opt_out_at is null` into it, which reads like consistency.
+      const built = await world(1);
+      const other = await world(0);
+      await seedMembership({
+        consumerId: built.consumerIds[0],
+        programId: other.seed.programId,
+        businessId: other.seed.business.id,
+        enrolledAt: new Date(NOW.getTime() - 400 * DAY),
+        // The door they enrolled at: `seedBusiness` already gave this business a second
+        // usable door, so without an attribution there is no single-door fallback and the
+        // bag would be empty for a reason that has nothing to do with the opt-out.
+        originLocationId: other.doorId,
+        stamps: 2,
+        optedOutAt: new Date(NOW.getTime() - DAY),
+      });
+      await tick(built);
+      const placement = await readPlacement(built.consumerIds[0]);
+      expect(
+        placement.map((slot) => [slot.businessId, slot.slotKind]).sort(),
+      ).toEqual(
+        [
+          [built.seed.business.id, "turn"],
+          [other.seed.business.id, "utility"],
+        ].sort(),
+      );
+      const utility = placement.find((slot) => slot.slotKind === "utility");
+      expect(utility?.relevantText).toContain("2 sellos");
+    },
+    180_000,
+  );
 });

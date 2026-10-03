@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { integrationEnabled } from "./locations-integration-support";
 import { seedConsumer } from "./counter-integration-support";
 import { seedMembership } from "./marketing-integration-support";
@@ -105,7 +106,7 @@ async function detectionOf(locationId: string) {
   return row ?? null;
 }
 
-describe.skipIf(!integrationEnabled)(
+describe.skipIf(!integrationEnabled || !campaignKindEnabled("valley"))(
   "valley — merchant side and migration 0058",
   () => {
     it("the windows API: [] is 400, a foreign location 404, PUT rules, DELETE goes back to the network", async () => {

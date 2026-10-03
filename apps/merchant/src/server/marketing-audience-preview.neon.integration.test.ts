@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { COMPOSER_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   dropBusiness,
   seedBusiness,
@@ -151,92 +152,95 @@ afterAll(async () => {
   }
 }, 120_000);
 
-describe.skipIf(!integrationEnabled)("audience preview", () => {
-  it("counts one consumer per exclusion reason, and the eligible one", async () => {
-    const preview = await previewAudience(
-      world.businessId,
-      { dormantDays: 30, locationIds: [world.doorA, world.doorB] },
-      NOW,
-    );
+describe.skipIf(!integrationEnabled || !COMPOSER_ENABLED)(
+  "audience preview",
+  () => {
+    it("counts one consumer per exclusion reason, and the eligible one", async () => {
+      const preview = await previewAudience(
+        world.businessId,
+        { dormantDays: 30, locationIds: [world.doorA, world.doorB] },
+        NOW,
+      );
 
-    expect(preview).toEqual({
-      quality: "observada",
-      total: 6,
-      // `reachable` is counted off `hasPass`, NOT off where the decision stopped: the
-      // opted-out consumer owns a pass and is still reachable. Only the one without a
-      // pass is missing here.
-      reachable: 5,
-      noLocation: 1,
-      optOut: 1,
-      cooldown: 1,
-      eligible: 1,
-      // Sorted by id, which is the order `usableDoors` now guarantees: without the
-      // `order by` this line flipped between runs.
-      usableLocationIds: [world.doorA, world.doorB].sort(),
-    });
-  }, 120_000);
+      expect(preview).toEqual({
+        quality: "observada",
+        total: 6,
+        // `reachable` is counted off `hasPass`, NOT off where the decision stopped: the
+        // opted-out consumer owns a pass and is still reachable. Only the one without a
+        // pass is missing here.
+        reachable: 5,
+        noLocation: 1,
+        optOut: 1,
+        cooldown: 1,
+        eligible: 1,
+        // Sorted by id, which is the order `usableDoors` now guarantees: without the
+        // `order by` this line flipped between runs.
+        usableLocationIds: [world.doorA, world.doorB].sort(),
+      });
+    }, 120_000);
 
-  it("the dormancy floor moves with the clock, not only with `dormantDays`", async () => {
-    // `dormantDays` and `now` are the two halves of the same rule
-    // (`greatest(last order, enrolled) <= now - dormantDays`), and only one of them can
-    // be varied from the composer. At 365 days the consumer enrolled 400 days ago is
-    // still dormant; read from 300 days EARLIER the same row is not. Nothing else about
-    // the fixture changes, so the count moves for exactly one reason.
-    const preview = await previewAudience(
-      world.businessId,
-      { dormantDays: 365, locationIds: [world.doorA, world.doorB] },
-      NOW,
-    );
+    it("the dormancy floor moves with the clock, not only with `dormantDays`", async () => {
+      // `dormantDays` and `now` are the two halves of the same rule
+      // (`greatest(last order, enrolled) <= now - dormantDays`), and only one of them can
+      // be varied from the composer. At 365 days the consumer enrolled 400 days ago is
+      // still dormant; read from 300 days EARLIER the same row is not. Nothing else about
+      // the fixture changes, so the count moves for exactly one reason.
+      const preview = await previewAudience(
+        world.businessId,
+        { dormantDays: 365, locationIds: [world.doorA, world.doorB] },
+        NOW,
+      );
 
-    expect(preview.total).toBe(6);
-    expect(preview.eligible).toBe(1);
+      expect(preview.total).toBe(6);
+      expect(preview.eligible).toBe(1);
 
-    const stricter = await previewAudience(
-      world.businessId,
-      { dormantDays: 365, locationIds: [world.doorA, world.doorB] },
-      new Date(NOW.getTime() - 300 * DAY),
-    );
-    expect(stricter.eligible).toBe(0);
-  }, 120_000);
+      const stricter = await previewAudience(
+        world.businessId,
+        { dormantDays: 365, locationIds: [world.doorA, world.doorB] },
+        new Date(NOW.getTime() - 300 * DAY),
+      );
+      expect(stricter.eligible).toBe(0);
+    }, 120_000);
 
-  it("choosing NO door leaves everybody without an attributable one", async () => {
-    const preview = await previewAudience(
-      world.businessId,
-      { dormantDays: 30, locationIds: [] },
-      NOW,
-    );
+    it("choosing NO door leaves everybody without an attributable one", async () => {
+      const preview = await previewAudience(
+        world.businessId,
+        { dormantDays: 30, locationIds: [] },
+        NOW,
+      );
 
-    // Not an error and not a blank: the honest answer while the owner is still
-    // choosing. THREE and not five, because the decision is ORDERED and `no_location` is
-    // rule 4: the opted-out consumer and the one without a pass stop before reaching it,
-    // and the one enrolled yesterday is `not_dormant` at rule 3. The consumer in
-    // cooldown DOES land here — rule 5 comes after.
-    expect(preview.usableLocationIds).toEqual([]);
-    expect(preview.eligible).toBe(0);
-    expect(preview.noLocation).toBe(3);
-  }, 120_000);
+      // Not an error and not a blank: the honest answer while the owner is still
+      // choosing. THREE and not five, because the decision is ORDERED and `no_location` is
+      // rule 4: the opted-out consumer and the one without a pass stop before reaching it,
+      // and the one enrolled yesterday is `not_dormant` at rule 3. The consumer in
+      // cooldown DOES land here — rule 5 comes after.
+      expect(preview.usableLocationIds).toEqual([]);
+      expect(preview.eligible).toBe(0);
+      expect(preview.noLocation).toBe(3);
+    }, 120_000);
 
-  it("an archived door, one without coordinates and ANOTHER business's are not usable", async () => {
-    const preview = await previewAudience(
-      world.businessId,
-      {
-        dormantDays: 30,
-        locationIds: [
-          world.doorA,
-          world.archived,
-          world.ungeocoded,
-          world.foreignDoor,
-          randomUUID(),
-        ],
-      },
-      NOW,
-    );
+    it("an archived door, one without coordinates and ANOTHER business's are not usable", async () => {
+      const preview = await previewAudience(
+        world.businessId,
+        {
+          dormantDays: 30,
+          locationIds: [
+            world.doorA,
+            world.archived,
+            world.ungeocoded,
+            world.foreignDoor,
+            randomUUID(),
+          ],
+        },
+        NOW,
+      );
 
-    // The composer marks the difference between what was chosen and what came back.
-    // Finding out at `activate` (409 `no_usable_location`) is finding out too late. The
-    // neighbour's door is the one that matters: it is `active` and geocoded, so the ONLY
-    // thing keeping it out is the `business_id` filter — without it the preview becomes
-    // an oracle telling an owner whether somebody else's location exists and where.
-    expect(preview.usableLocationIds).toEqual([world.doorA]);
-  }, 120_000);
-});
+      // The composer marks the difference between what was chosen and what came back.
+      // Finding out at `activate` (409 `no_usable_location`) is finding out too late. The
+      // neighbour's door is the one that matters: it is `active` and geocoded, so the ONLY
+      // thing keeping it out is the `business_id` filter — without it the preview becomes
+      // an oracle telling an owner whether somebody else's location exists and where.
+      expect(preview.usableLocationIds).toEqual([world.doorA]);
+    }, 120_000);
+  },
+);

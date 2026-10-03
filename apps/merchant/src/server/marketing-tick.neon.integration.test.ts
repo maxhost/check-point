@@ -1,5 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   type Seed,
   dropBusiness,
   integrationEnabled,
@@ -48,7 +52,9 @@ const LATER = new Date(NOW.getTime() + 60_000);
 
 type Person = { consumerId: string; membershipId: string };
 
-describe.skipIf(!integrationEnabled)("marketing tick", () => {
+describe.skipIf(
+  !integrationEnabled || !COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED,
+)("marketing tick", () => {
   let seed: Seed;
   const businessName = `Marketing tick ${Date.now()}`;
   let campaignId: string;

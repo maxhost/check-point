@@ -2,6 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   integrationEnabled,
   seedConsumer,
 } from "./counter-integration-support";
@@ -149,77 +153,81 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 120_000);
 
-    it("apagado POR LA RUTA: el turno se cancela con `opt_out` y la UTILIDAD sobrevive", async () => {
-      // LA SECUENCIA ES LA REAL, y hacen falta DOS ticks: el primero le da su turno y su
-      // ubicación de utilidad (o sea que el pase ya dice algo), el consumidor apaga las
-      // promociones desde la pestaña, y el segundo tick es el que tiene que retirar UNA de
-      // las dos cosas y dejar la otra.
-      //
-      // Medido al escribirlo, y vale escribirlo porque cambió el diseño del caso: con UN
-      // solo tick el consumidor apagado **no aparece en `pass_placement` para nada**
-      // (`loadPlacementConsumerIds` sólo visita a quien tiene turno vivo o placement
-      // previo), así que la mitad «la utilidad sigue» habría quedado aseverada sobre un
-      // conjunto vacío — verde por ausencia, que es exactamente el falso positivo que el
-      // DoD pide evitar.
-      const built = await world(2);
-      const [quiet, other] = built.consumerIds;
-      // El saldo pone al comercio en la bolsa de UTILIDAD; el `origin_location_id` va
-      // JUNTO con él y no es decorativo: el negocio tiene DOS puertas (`seedBusiness` deja
-      // una y `seedWorld` agrega la geocodificada), así que sin atribución no hay puerta
-      // única que mostrar y la bolsa sale vacía.
-      await getDb()
-        .update(programMemberships)
-        .set({ stampsCount: 2, originLocationId: built.doorId })
-        .where(
-          and(
-            eq(programMemberships.consumerId, quiet),
-            eq(programMemberships.programId, built.seed.programId),
+    it.skipIf(!COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED)(
+      "apagado POR LA RUTA: el turno se cancela con `opt_out` y la UTILIDAD sobrevive",
+      async () => {
+        // LA SECUENCIA ES LA REAL, y hacen falta DOS ticks: el primero le da su turno y su
+        // ubicación de utilidad (o sea que el pase ya dice algo), el consumidor apaga las
+        // promociones desde la pestaña, y el segundo tick es el que tiene que retirar UNA de
+        // las dos cosas y dejar la otra.
+        //
+        // Medido al escribirlo, y vale escribirlo porque cambió el diseño del caso: con UN
+        // solo tick el consumidor apagado **no aparece en `pass_placement` para nada**
+        // (`loadPlacementConsumerIds` sólo visita a quien tiene turno vivo o placement
+        // previo), así que la mitad «la utilidad sigue» habría quedado aseverada sobre un
+        // conjunto vacío — verde por ausencia, que es exactamente el falso positivo que el
+        // DoD pide evitar.
+        const built = await world(2);
+        const [quiet, other] = built.consumerIds;
+        // El saldo pone al comercio en la bolsa de UTILIDAD; el `origin_location_id` va
+        // JUNTO con él y no es decorativo: el negocio tiene DOS puertas (`seedBusiness` deja
+        // una y `seedWorld` agrega la geocodificada), así que sin atribución no hay puerta
+        // única que mostrar y la bolsa sale vacía.
+        await getDb()
+          .update(programMemberships)
+          .set({ stampsCount: 2, originLocationId: built.doorId })
+          .where(
+            and(
+              eq(programMemberships.consumerId, quiet),
+              eq(programMemberships.programId, built.seed.programId),
+            ),
+          );
+
+        await tickWorld(built, NS);
+        const first = await readPlacement(quiet);
+        // `both` y no `['turn','utility']`: la puerta de la campaña y la de su saldo son LA
+        // MISMA, y el ADR 0066 decidió fusionarlas en un texto en vez de gastar dos de las
+        // 10 ubicaciones del pase. Por eso el caso vale: lo que el opt-out tiene que hacer
+        // acá no es borrar una fila, es DEGRADAR la que hay.
+        expect(first.map((slot) => slot.slotKind)).toEqual(["both"]);
+        expect(first[0].relevantText).toContain("2x1 en picadas");
+        expect(first[0].relevantText).toContain("2 sellos");
+
+        const response = await POST(
+          request(
+            { programId: built.seed.programId, optOut: true },
+            await issueSession(quiet),
           ),
         );
+        expect(response.status).toBe(200);
 
-      await tickWorld(built, NS);
-      const first = await readPlacement(quiet);
-      // `both` y no `['turn','utility']`: la puerta de la campaña y la de su saldo son LA
-      // MISMA, y el ADR 0066 decidió fusionarlas en un texto en vez de gastar dos de las
-      // 10 ubicaciones del pase. Por eso el caso vale: lo que el opt-out tiene que hacer
-      // acá no es borrar una fila, es DEGRADAR la que hay.
-      expect(first.map((slot) => slot.slotKind)).toEqual(["both"]);
-      expect(first[0].relevantText).toContain("2x1 en picadas");
-      expect(first[0].relevantText).toContain("2 sellos");
+        await tickWorld(built, NS);
 
-      const response = await POST(
-        request(
-          { programId: built.seed.programId, optOut: true },
-          await issueSession(quiet),
-        ),
-      );
-      expect(response.status).toBe(200);
+        // El turno de ESE consumidor queda cancelado con su razón…
+        const turns = await readTurns(built.seed.business.id);
+        expect(
+          turns
+            .filter((turn) => turn.consumerId === quiet)
+            .map((turn) => [turn.status, turn.cancelReason]),
+        ).toEqual([["cancelled", "opt_out"]]);
+        // …y el del vecino, mismo negocio y misma campaña, sigue vivo: el control está
+        // adentro del caso, así que un tick que cancelara todo no pasaría.
+        expect(
+          turns
+            .filter((turn) => turn.consumerId === other)
+            .map((turn) => turn.status),
+        ).toEqual(["active"]);
 
-      await tickWorld(built, NS);
-
-      // El turno de ESE consumidor queda cancelado con su razón…
-      const turns = await readTurns(built.seed.business.id);
-      expect(
-        turns
-          .filter((turn) => turn.consumerId === quiet)
-          .map((turn) => [turn.status, turn.cancelReason]),
-      ).toEqual([["cancelled", "opt_out"]]);
-      // …y el del vecino, mismo negocio y misma campaña, sigue vivo: el control está
-      // adentro del caso, así que un tick que cancelara todo no pasaría.
-      expect(
-        turns
-          .filter((turn) => turn.consumerId === other)
-          .map((turn) => turn.status),
-      ).toEqual(["active"]);
-
-      // El pase del que se dio de baja pierde el turno y CONSERVA su saldo.
-      const after = await readPlacement(quiet);
-      expect(after.map((slot) => slot.slotKind)).toEqual(["utility"]);
-      expect(after[0].relevantText).toContain("2 sellos");
-      // La oferta se fue del texto. Sin esta línea, un slot que siguiera diciendo «2x1 en
-      // picadas» con `slot_kind = 'utility'` pasaría: el `slot_kind` es una etiqueta, el
-      // texto es lo que el consumidor lee en la pantalla bloqueada.
-      expect(after[0].relevantText).not.toContain("2x1 en picadas");
-    }, 180_000);
+        // El pase del que se dio de baja pierde el turno y CONSERVA su saldo.
+        const after = await readPlacement(quiet);
+        expect(after.map((slot) => slot.slotKind)).toEqual(["utility"]);
+        expect(after[0].relevantText).toContain("2 sellos");
+        // La oferta se fue del texto. Sin esta línea, un slot que siguiera diciendo «2x1 en
+        // picadas» con `slot_kind = 'utility'` pasaría: el `slot_kind` es una etiqueta, el
+        // texto es lo que el consumidor lee en la pantalla bloqueada.
+        expect(after[0].relevantText).not.toContain("2x1 en picadas");
+      },
+      180_000,
+    );
   },
 );

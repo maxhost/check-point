@@ -44,6 +44,12 @@ vi.mock("./marketing/campaign-store", async (importOriginal) => ({
   createCampaign: world.createCampaign,
 }));
 
+// Spec 0138: the not-JSON case runs on a LIVE route that reads the body (`enable`).
+vi.mock("./marketing/template-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./marketing/template-store")>()),
+  enableTemplate: world.enableTemplate,
+}));
+
 vi.mock("./marketing/campaign-actions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./marketing/campaign-actions")>()),
   transitionCampaign: world.transitionCampaign,
@@ -51,6 +57,7 @@ vi.mock("./marketing/campaign-actions", async (importOriginal) => ({
 
 import { POST } from "../app/api/marketing/campaigns/route";
 import { POST as ACTIVATE } from "../app/api/marketing/campaigns/[id]/activate/route";
+import { POST as ENABLE } from "../app/api/marketing/templates/[key]/enable/route";
 import { CampaignError } from "./marketing/campaign-store";
 import {
   CAMPAIGN,
@@ -105,10 +112,15 @@ describe("api/marketing — how the domain's error becomes an answer", () => {
   });
 
   it("a body that is not JSON is a 400 `invalid_body` and never reaches the domain", async () => {
-    const response = await POST(request(base, "POST", "{no-json"));
+    // Spec 0138: on `enable` of `cross` — the composer's POST no longer reads the body
+    // while it is off (409 first, `marketing-composer-off-route.test.ts`).
+    const response = await ENABLE(
+      request("/api/marketing/templates/cross/enable", "POST", "{no-json"),
+      { params: Promise.resolve({ key: "cross" }) },
+    );
     expect(response.status).toBe(400);
     expect((await response.json()).code).toBe("invalid_body");
-    expect(world.createCampaign).not.toHaveBeenCalled();
+    expect(world.enableTemplate).not.toHaveBeenCalled();
   });
 
   it("anything else is a 503 that says nothing about the failure", async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type AudienceCandidate,
   type AudienceContext,
@@ -44,7 +45,11 @@ function context(overrides: Partial<AudienceContext> = {}): AudienceContext {
   };
 }
 
-describe("decideTurnEligibility", () => {
+describe.skipIf(
+  ![null, "missed_you", "at_risk", "win_back"].some((key) =>
+    campaignKindEnabled(key),
+  ),
+)("decideTurnEligibility", () => {
   it("queues a dormant, reachable consumer at the door of their last order", () => {
     expect(decideTurnEligibility(candidate(), context())).toEqual({
       kind: "eligible",
@@ -178,76 +183,83 @@ describe("decideTurnEligibility", () => {
  * Spec 0105 / ADR 0097: #4 «Cliente en riesgo» = the dormant floor AND the habitual who
  * broke their rhythm. The rhythm is checked AFTER the floor, which it never skips.
  */
-describe("decideTurnEligibility — at risk (#4)", () => {
-  const AT_RISK = { minVisits: 3, rhythmFactor: 2 };
-  /** Visits on these days (0 = the first), `away` days after the last one. */
-  const habit = (days: number[], away: number) => {
-    const last = NOW.getTime() - away * DAY;
-    const at = (day: number) =>
-      new Date(last - (days[days.length - 1] - day) * DAY);
-    return candidate({
-      enrolledAt: new Date(at(days[0]).getTime() - DAY),
-      visitDays: days.length,
-      firstOrderAt: at(days[0]),
-      lastOrderAt: at(days[days.length - 1]),
+describe.skipIf(!campaignKindEnabled("at_risk"))(
+  "decideTurnEligibility — at risk (#4)",
+  () => {
+    const AT_RISK = { minVisits: 3, rhythmFactor: 2 };
+    /** Visits on these days (0 = the first), `away` days after the last one. */
+    const habit = (days: number[], away: number) => {
+      const last = NOW.getTime() - away * DAY;
+      const at = (day: number) =>
+        new Date(last - (days[days.length - 1] - day) * DAY);
+      return candidate({
+        enrolledAt: new Date(at(days[0]).getTime() - DAY),
+        visitDays: days.length,
+        firstOrderAt: at(days[0]),
+        lastOrderAt: at(days[days.length - 1]),
+      });
+    };
+    const DAILY = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+    // ORACULO DE M8: the daily customer broke their rhythm (12 d > 2 × 1 d) but is 2 days
+    // short of the 14-day floor. Skipping the floor for #4 would queue them.
+    it("a daily customer away 12 days is not_dormant under a 14-day floor, rhythm or not", () => {
+      expect(
+        decideTurnEligibility(
+          habit(DAILY, 12),
+          context({ dormantDays: 14, atRisk: AT_RISK }),
+        ),
+      ).toEqual({ kind: "excluded", reason: "not_dormant" });
     });
-  };
-  const DAILY = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-  // ORACULO DE M8: the daily customer broke their rhythm (12 d > 2 × 1 d) but is 2 days
-  // short of the 14-day floor. Skipping the floor for #4 would queue them.
-  it("a daily customer away 12 days is not_dormant under a 14-day floor, rhythm or not", () => {
-    expect(
-      decideTurnEligibility(
-        habit(DAILY, 12),
-        context({ dormantDays: 14, atRisk: AT_RISK }),
-      ),
-    ).toEqual({ kind: "excluded", reason: "not_dormant" });
-  });
+    it("past the floor, the habitual who broke their rhythm is queued", () => {
+      expect(
+        decideTurnEligibility(
+          habit(DAILY, 20),
+          context({ dormantDays: 14, atRisk: AT_RISK }),
+        ),
+      ).toEqual({ kind: "eligible", locationId: DOOR });
+    });
 
-  it("past the floor, the habitual who broke their rhythm is queued", () => {
-    expect(
-      decideTurnEligibility(
-        habit(DAILY, 20),
-        context({ dormantDays: 14, atRisk: AT_RISK }),
-      ),
-    ).toEqual({ kind: "eligible", locationId: DOOR });
-  });
+    it("past the floor, a steady customer inside 2× their rhythm is not the target", () => {
+      // Every 30 days, away 20: dormant for #4's floor, but 20 ≤ 2 × 30.
+      expect(
+        decideTurnEligibility(
+          habit([0, 30, 60], 20),
+          context({ dormantDays: 14, atRisk: AT_RISK }),
+        ),
+      ).toEqual({ kind: "excluded", reason: "not_dormant" });
+    });
 
-  it("past the floor, a steady customer inside 2× their rhythm is not the target", () => {
-    // Every 30 days, away 20: dormant for #4's floor, but 20 ≤ 2 × 30.
-    expect(
-      decideTurnEligibility(
-        habit([0, 30, 60], 20),
-        context({ dormantDays: 14, atRisk: AT_RISK }),
-      ),
-    ).toEqual({ kind: "excluded", reason: "not_dormant" });
-  });
+    it("without atRisk the old rule is intact: the same steady customer is queued", () => {
+      expect(
+        decideTurnEligibility(
+          habit([0, 30, 60], 20),
+          context({ dormantDays: 14 }),
+        ),
+      ).toEqual({ kind: "eligible", locationId: DOOR });
+      expect(
+        decideTurnEligibility(habit(DAILY, 12), context({ dormantDays: 14 })),
+      ).toEqual({ kind: "excluded", reason: "not_dormant" });
+    });
 
-  it("without atRisk the old rule is intact: the same steady customer is queued", () => {
-    expect(
-      decideTurnEligibility(
-        habit([0, 30, 60], 20),
-        context({ dormantDays: 14 }),
-      ),
-    ).toEqual({ kind: "eligible", locationId: DOOR });
-    expect(
-      decideTurnEligibility(habit(DAILY, 12), context({ dormantDays: 14 })),
-    ).toEqual({ kind: "excluded", reason: "not_dormant" });
-  });
+    // Spec 0105, R3 of the review: the rhythm rule goes AFTER opt_out — the photo counts the reason.
+    it("an opted-out customer who is not a habit is still opt_out", () => {
+      expect(
+        decideTurnEligibility(
+          { ...habit([0], 30), marketingOptOutAt: NOW },
+          context({ dormantDays: 14, atRisk: AT_RISK }),
+        ),
+      ).toEqual({ kind: "excluded", reason: "opt_out" });
+    });
+  },
+);
 
-  // Spec 0105, R3 of the review: the rhythm rule goes AFTER opt_out — the photo counts the reason.
-  it("an opted-out customer who is not a habit is still opt_out", () => {
-    expect(
-      decideTurnEligibility(
-        { ...habit([0], 30), marketingOptOutAt: NOW },
-        context({ dormantDays: 14, atRisk: AT_RISK }),
-      ),
-    ).toEqual({ kind: "excluded", reason: "opt_out" });
-  });
-});
-
-describe("summarizeAudience", () => {
+describe.skipIf(
+  ![null, "missed_you", "at_risk", "win_back"].some((key) =>
+    campaignKindEnabled(key),
+  ),
+)("summarizeAudience", () => {
   it("counts reachable off the pass, not off where the decision stopped", () => {
     const rows = [
       candidate({ consumerId: "c1" }),

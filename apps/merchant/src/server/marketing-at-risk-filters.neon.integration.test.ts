@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type Seed,
   dropBusiness,
@@ -131,44 +132,47 @@ async function turnsOf(seed: Seed) {
     .where(eq(campaignTurns.businessId, seed.business.id));
 }
 
-describe.skipIf(!integrationEnabled)("marketing tick — #4 filters", () => {
-  // ORACULO DE R1: by days alone —or with the composer ranked above— the custom one at
-  // 90 d takes the turn of #3 at 30 d.
-  it("proximity: a template beats the custom composer even with fewer days", async () => {
-    const seed = await business("At risk composer");
-    const custom = await campaign(seed, "missed_you", 90, false);
-    // The composer writes `template_key = null` and never pushes.
-    await getDb()
-      .update(campaigns)
-      .set({ templateKey: null })
-      .where(eq(campaigns.id, custom));
-    const missedYou = await campaign(seed, "missed_you", 30, false);
-    const lost = await ordersAt(seed, [ago(95)]);
+describe.skipIf(!integrationEnabled || !campaignKindEnabled("at_risk"))(
+  "marketing tick — #4 filters",
+  () => {
+    // ORACULO DE R1: by days alone —or with the composer ranked above— the custom one at
+    // 90 d takes the turn of #3 at 30 d.
+    it("proximity: a template beats the custom composer even with fewer days", async () => {
+      const seed = await business("At risk composer");
+      const custom = await campaign(seed, "missed_you", 90, false);
+      // The composer writes `template_key = null` and never pushes.
+      await getDb()
+        .update(campaigns)
+        .set({ templateKey: null })
+        .where(eq(campaigns.id, custom));
+      const missedYou = await campaign(seed, "missed_you", 30, false);
+      const lost = await ordersAt(seed, [ago(95)]);
 
-    expect(await tick(seed)).toMatchObject({ campaigns: 2, enqueued: 1 });
-    expect(await turnsOf(seed)).toEqual([
-      { campaignId: missedYou, consumerId: lost },
-    ]);
-  }, 120_000);
+      expect(await tick(seed)).toMatchObject({ campaigns: 2, enqueued: 1 });
+      expect(await turnsOf(seed)).toEqual([
+        { campaignId: missedYou, consumerId: lost },
+      ]);
+    }, 120_000);
 
-  // ORACULO DE R2, on BOTH loaders: every 5 days at A, away 35 → at risk. An order at B
-  // 200 days ago, if it leaked into `first_order_at`, stretches the rhythm to 82.5 d.
-  it("the rhythm reads only this business's orders", async () => {
-    const seed = await business("At risk here");
-    const elsewhere = await business("At risk elsewhere");
-    const atRisk = await campaign(seed, "at_risk", 14, true);
-    const broke = await ordersAt(seed, [ago(45), ago(40), ago(35)]);
-    await ordersAt(elsewhere, [ago(200)], broke);
+    // ORACULO DE R2, on BOTH loaders: every 5 days at A, away 35 → at risk. An order at B
+    // 200 days ago, if it leaked into `first_order_at`, stretches the rhythm to 82.5 d.
+    it("the rhythm reads only this business's orders", async () => {
+      const seed = await business("At risk here");
+      const elsewhere = await business("At risk elsewhere");
+      const atRisk = await campaign(seed, "at_risk", 14, true);
+      const broke = await ordersAt(seed, [ago(45), ago(40), ago(35)]);
+      await ordersAt(elsewhere, [ago(200)], broke);
 
-    await tick(seed);
-    expect(await turnsOf(seed)).toEqual([
-      { campaignId: atRisk, consumerId: broke },
-    ]);
-    expect(
-      (await readPushes(seed.business.id)).map((push) => ({
-        campaignId: push.campaignId,
-        consumerId: push.consumerId,
-      })),
-    ).toEqual([{ campaignId: atRisk, consumerId: broke }]);
-  }, 120_000);
-});
+      await tick(seed);
+      expect(await turnsOf(seed)).toEqual([
+        { campaignId: atRisk, consumerId: broke },
+      ]);
+      expect(
+        (await readPushes(seed.business.id)).map((push) => ({
+          campaignId: push.campaignId,
+          consumerId: push.consumerId,
+        })),
+      ).toEqual([{ campaignId: atRisk, consumerId: broke }]);
+    }, 120_000);
+  },
+);

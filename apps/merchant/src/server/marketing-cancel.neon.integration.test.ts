@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  PROXIMITY_PLACEMENT_ENABLED,
+  COMPOSER_ENABLED,
+} from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
+import {
   type Seed,
   dropBusiness,
   integrationEnabled,
@@ -188,81 +192,80 @@ describe.skipIf(!integrationEnabled)("marketing cancel", () => {
   });
 });
 
-describe.skipIf(!integrationEnabled)(
-  "pausing does not burn the audience",
-  () => {
-    let seed: Seed;
-    let campaignId: string;
-    let consumerId: string;
+describe.skipIf(
+  !integrationEnabled || !COMPOSER_ENABLED || !PROXIMITY_PLACEMENT_ENABLED,
+)("pausing does not burn the audience", () => {
+  let seed: Seed;
+  let campaignId: string;
+  let consumerId: string;
 
-    beforeAll(async () => {
-      seed = await seedBusiness({
-        name: `Marketing resume ${Date.now()}`,
-        kind: "stamps",
-        mode: "per_purchase",
-        grant: 1,
-        blockAmount: null,
-      });
-      const doorId = await seedLocation({
-        businessId: seed.business.id,
-        ...NEAR,
-      });
-      campaignId = await seedCampaign({
-        businessId: seed.business.id,
-        createdByUserId: seed.userId,
-        locationIds: [doorId],
-      });
-      const consumer = await seedConsumer();
-      consumerId = consumer.id;
-      await seedMembership({
-        consumerId,
-        programId: seed.programId,
-        businessId: seed.business.id,
-        enrolledAt: new Date(NOW.getTime() - 400 * DAY),
-      });
-      await seedWalletPass(consumerId);
-    }, 120_000);
+  beforeAll(async () => {
+    seed = await seedBusiness({
+      name: `Marketing resume ${Date.now()}`,
+      kind: "stamps",
+      mode: "per_purchase",
+      grant: 1,
+      blockAmount: null,
+    });
+    const doorId = await seedLocation({
+      businessId: seed.business.id,
+      ...NEAR,
+    });
+    campaignId = await seedCampaign({
+      businessId: seed.business.id,
+      createdByUserId: seed.userId,
+      locationIds: [doorId],
+    });
+    const consumer = await seedConsumer();
+    consumerId = consumer.id;
+    await seedMembership({
+      consumerId,
+      programId: seed.programId,
+      businessId: seed.business.id,
+      enrolledAt: new Date(NOW.getTime() - 400 * DAY),
+    });
+    await seedWalletPass(consumerId);
+  }, 120_000);
 
-    afterAll(async () => {
-      if (!integrationEnabled) return;
-      await dropCampaigns(seed.business.id);
-      await dropBusiness(seed.business.id);
-    }, 120_000);
+  afterAll(async () => {
+    if (!integrationEnabled) return;
+    await dropCampaigns(seed.business.id);
+    await dropBusiness(seed.business.id);
+  }, 120_000);
 
-    it("re-places after a pause: a cancelled turn does not spend the cooldown", async () => {
-      const run = (now: Date) =>
-        runMarketingTick({
-          now,
-          random: () => 1,
-          lockNamespace: NS,
-          businessIds: [seed.business.id],
-          consumerIds: [consumerId],
-        }) as Promise<TickSummary>;
+  it("re-places after a pause: a cancelled turn does not spend the cooldown", async () => {
+    const run = (now: Date) =>
+      runMarketingTick({
+        now,
+        random: () => 1,
+        lockNamespace: NS,
+        businessIds: [seed.business.id],
+        consumerIds: [consumerId],
+      }) as Promise<TickSummary>;
 
-      expect(await run(NOW)).toMatchObject({ enqueued: 1, activated: 1 });
-      await setCampaignState(campaignId, "paused", "owner");
-      expect(await run(new Date(NOW.getTime() + 60_000))).toMatchObject({
-        cancelled: 1,
-      });
-      const cancelled = await readTurns(seed.business.id);
-      expect(cancelled[0]).toMatchObject({
-        status: "cancelled",
-        cancelReason: "campaign_paused",
-      });
-      // The cancelled turn keeps a `window_end` INSIDE the 30-day cooldown: if the
-      // cooldown query did not filter `status in ('active','done')`, correcting a typo
-      // would lock the whole audience out for a month.
-      expect(cancelled[0].windowEnd!.getTime()).toBeGreaterThan(
-        NOW.getTime() - 30 * DAY,
-      );
-      await setCampaignState(campaignId, "active", null);
-      expect(await run(new Date(NOW.getTime() + 120_000))).toMatchObject({
-        enqueued: 1,
-        activated: 1,
-      });
-      const after = await readTurns(seed.business.id);
-      expect(after.filter((turn) => turn.status === "active")).toHaveLength(1);
-      expect(randomUUID().length).toBeGreaterThan(0);
-    }, 180_000);
-  },
-);
+    expect(await run(NOW)).toMatchObject({ enqueued: 1, activated: 1 });
+    await setCampaignState(campaignId, "paused", "owner");
+    expect(await run(new Date(NOW.getTime() + 60_000))).toMatchObject({
+      cancelled: 1,
+    });
+    const cancelled = await readTurns(seed.business.id);
+    expect(cancelled[0]).toMatchObject({
+      status: "cancelled",
+      cancelReason: "campaign_paused",
+    });
+    // The cancelled turn keeps a `window_end` INSIDE the 30-day cooldown: if the
+    // cooldown query did not filter `status in ('active','done')`, correcting a typo
+    // would lock the whole audience out for a month.
+    expect(cancelled[0].windowEnd!.getTime()).toBeGreaterThan(
+      NOW.getTime() - 30 * DAY,
+    );
+    await setCampaignState(campaignId, "active", null);
+    expect(await run(new Date(NOW.getTime() + 120_000))).toMatchObject({
+      enqueued: 1,
+      activated: 1,
+    });
+    const after = await readTurns(seed.business.id);
+    expect(after.filter((turn) => turn.status === "active")).toHaveLength(1);
+    expect(randomUUID().length).toBeGreaterThan(0);
+  }, 180_000);
+});

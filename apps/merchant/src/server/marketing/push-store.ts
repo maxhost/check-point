@@ -37,6 +37,7 @@ import {
   templateByKey,
   templateKeysAtOrAbove,
 } from "@mi-pasaporte/domain/server/marketing/templates";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 export type PushCampaign = {
   id: string;
@@ -99,7 +100,8 @@ export async function loadPushCampaigns(
     .orderBy(asc(campaigns.createdAt), asc(campaigns.id));
   const known = rows.flatMap(({ templateKey, rewardRepeat, ...row }) => {
     const template = templateByKey(templateKey ?? "");
-    return template
+    // Spec 0138: a template that is OFF (`enabled-campaigns.ts`) does not push, even `active`.
+    return template && campaignKindEnabled(templateKey)
       ? [
           {
             ...row,

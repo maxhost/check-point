@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { parseTemplateInput } from "./template-input";
 import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
 
@@ -28,7 +29,10 @@ function valueOf(body: unknown, template = near) {
 
 /** Spec 0104 §3 — `enable` of the BALANCE templates (#7 «Te falta poco», #8 «Premio sin
  * canjear»): push-only, no coupon, their own parameters and the `{faltan}` marker. */
-describe("parseTemplateInput — balance templates", () => {
+describe.skipIf(
+  !campaignKindEnabled("near_reward") ||
+    !campaignKindEnabled("unclaimed_reward"),
+)("parseTemplateInput — balance templates", () => {
   it("{} is push-only with the owner's defaults", () => {
     expect(valueOf({})).toMatchObject({
       channelProximity: false,

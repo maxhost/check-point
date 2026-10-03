@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import {
   type Seed,
   dropBusiness,
@@ -84,7 +85,11 @@ function tick(seed: Seed, random: () => number = () => 1) {
   }) as Promise<TickSummary>;
 }
 
-describe.skipIf(!integrationEnabled)("marketing tick — push channel", () => {
+describe.skipIf(
+  !integrationEnabled ||
+    !campaignKindEnabled("missed_you") ||
+    !campaignKindEnabled("win_back"),
+)("marketing tick — push channel", () => {
   it("decides ONE push per eligible consumer; the holdout has no queue row; no turns", async () => {
     const seed = await business("Push decide");
     const campaignId = await seedPushCampaign({

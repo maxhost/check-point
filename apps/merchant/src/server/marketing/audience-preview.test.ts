@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMPOSER_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { parseAudiencePreviewQuery } from "./audience-preview";
 import { CampaignError } from "./campaign-store";
 
@@ -20,7 +21,7 @@ function caught(query: string): CampaignError {
   throw new Error("esperaba un CampaignError y no hubo ninguno");
 }
 
-describe("parseAudiencePreviewQuery", () => {
+describe.skipIf(!COMPOSER_ENABLED)("parseAudiencePreviewQuery", () => {
   it("reads the days and the chosen doors", () => {
     expect(parse(`dormantDays=45&locationIds=${A},${B}`)).toEqual({
       dormantDays: 45,

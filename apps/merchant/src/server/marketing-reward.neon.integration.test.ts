@@ -4,6 +4,7 @@ import { integrationEnabled } from "./locations-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import { campaigns, loyaltyPrograms, products } from "@mi-pasaporte/db/schema";
 import { createCampaign, updateCampaign } from "./marketing/campaign-store";
+import { COMPOSER_ENABLED } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { enableTemplate } from "./marketing/template-store";
 import { INVALID_PRODUCT } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { allowedCouponKinds } from "./marketing/reward-store";
@@ -22,6 +23,10 @@ import {
  *
  * The world is a POINTS program (`seedLocationsBusiness`), so `extra_points` fits it and
  * `extra_stamps` does not.
+ *
+ * Spec 0138 / ADR 0115: the composer is OFF, so `createCampaign` and `updateCampaign` no
+ * longer write. The reward checks run through `enable` of `cross`/`welcome` (ON); the PATCH
+ * case (the composer's only editor) is skipped while the composer is off.
  */
 
 afterAll(dropCampaignWorlds, 120_000);
@@ -31,6 +36,17 @@ afterAll(async () => {
 }, 120_000);
 
 const END = "2026-12-31T12:00:00.000Z";
+
+/** Spec 0138: the reward as `cross`/`welcome` take it — no redemption cap, no end. */
+function liveReward(over: Record<string, unknown> = {}) {
+  return {
+    couponKind: "two_for_one",
+    couponLabel: "2x1 en Café",
+    couponCost: "1.20",
+    couponRule: "Solo tamaño mediano",
+    ...over,
+  };
+}
 
 function reward(over: Record<string, unknown> = {}) {
   return {
@@ -76,16 +92,31 @@ function expectForeignProduct(error: {
 describe.skipIf(!integrationEnabled)(
   "the campaign reward against the database",
   () => {
-    it("POST: own product is stored with the whole reward; ANOTHER business's product is 400", async () => {
+    it("enable (cross): own product is stored with the whole reward; ANOTHER business's product is 400", async () => {
       const mine = await world("plus", "Reward post mine");
       const theirs = await world("plus", "Reward post theirs");
       const own = await seedProduct(mine.business.id);
       const foreign = await seedProduct(theirs.business.id);
 
-      const created = await createCampaign(
+      // Spec 0138: the foreign product goes FIRST — a second `enable` of the same template
+      // would be 409 `template_already_live` before the product is ever checked.
+      expectForeignProduct(
+        await caught(() =>
+          enableTemplate(
+            mine.business.id,
+            mine.userId,
+            "cross",
+            liveReward({ couponProductId: foreign }),
+          ),
+        ),
+      );
+      expect(await campaignsOf(mine.business.id)).toEqual([]);
+
+      const created = await enableTemplate(
         mine.business.id,
         mine.userId,
-        body(mine, reward({ couponProductId: own })),
+        "cross",
+        liveReward({ couponProductId: own }),
       );
       const [row] = await getDb()
         .select({
@@ -107,44 +138,38 @@ describe.skipIf(!integrationEnabled)(
         couponExtraUnits: null,
         couponRule: "Solo tamaño mediano",
       });
-
-      expectForeignProduct(
-        await caught(() =>
-          createCampaign(
-            mine.business.id,
-            mine.userId,
-            body(mine, reward({ couponProductId: foreign })),
-          ),
-        ),
-      );
       expect(await campaignsOf(mine.business.id)).toHaveLength(1);
     }, 120_000);
 
-    it("PATCH: ANOTHER business's product is 400 and the campaign keeps its reward", async () => {
-      const mine = await world("plus", "Reward patch mine");
-      const theirs = await world("plus", "Reward patch theirs");
-      const foreign = await seedProduct(theirs.business.id);
-      const created = await createCampaign(
-        mine.business.id,
-        mine.userId,
-        body(mine, reward()),
-      );
+    it.skipIf(!COMPOSER_ENABLED)(
+      "PATCH: ANOTHER business's product is 400 and the campaign keeps its reward",
+      async () => {
+        const mine = await world("plus", "Reward patch mine");
+        const theirs = await world("plus", "Reward patch theirs");
+        const foreign = await seedProduct(theirs.business.id);
+        const created = await createCampaign(
+          mine.business.id,
+          mine.userId,
+          body(mine, reward()),
+        );
 
-      expectForeignProduct(
-        await caught(() =>
-          updateCampaign(
-            mine.business.id,
-            created.id,
-            reward({ couponProductId: foreign }),
+        expectForeignProduct(
+          await caught(() =>
+            updateCampaign(
+              mine.business.id,
+              created.id,
+              reward({ couponProductId: foreign }),
+            ),
           ),
-        ),
-      );
-      const [row] = await getDb()
-        .select({ couponProductId: campaigns.couponProductId })
-        .from(campaigns)
-        .where(eq(campaigns.id, created.id));
-      expect(row.couponProductId).toBeNull();
-    }, 120_000);
+        );
+        const [row] = await getDb()
+          .select({ couponProductId: campaigns.couponProductId })
+          .from(campaigns)
+          .where(eq(campaigns.id, created.id));
+        expect(row.couponProductId).toBeNull();
+      },
+      120_000,
+    );
 
     it("enable: ANOTHER business's product is 400 and no run is created", async () => {
       const mine = await world("plus", "Reward enable mine");
@@ -156,25 +181,24 @@ describe.skipIf(!integrationEnabled)(
           enableTemplate(
             mine.business.id,
             mine.userId,
-            "missed_you",
-            reward({ couponProductId: foreign }),
+            "cross",
+            liveReward({ couponProductId: foreign }),
           ),
         ),
       );
       expect(await campaignsOf(mine.business.id)).toEqual([]);
     }, 120_000);
 
-    it("extras must match the program: extra_stamps on a POINTS program is 400 on couponKind (POST and enable); extra_points passes", async () => {
+    it("extras must match the program: extra_stamps on a POINTS program is 400 on couponKind (enable of cross and of welcome); extra_points passes", async () => {
       const seed = await world("plus", "Reward extras");
-      const stamps = reward({
+      const stamps = liveReward({
         couponKind: "extra_stamps",
         couponExtraUnits: 3,
       });
 
       for (const attempt of [
-        () => createCampaign(seed.business.id, seed.userId, body(seed, stamps)),
-        () =>
-          enableTemplate(seed.business.id, seed.userId, "missed_you", stamps),
+        () => enableTemplate(seed.business.id, seed.userId, "welcome", stamps),
+        () => enableTemplate(seed.business.id, seed.userId, "cross", stamps),
       ]) {
         const error = await caught(attempt);
         expect(error).toMatchObject({ status: 400, code: "validation" });
@@ -185,8 +209,8 @@ describe.skipIf(!integrationEnabled)(
       const points = await enableTemplate(
         seed.business.id,
         seed.userId,
-        "missed_you",
-        reward({ couponKind: "extra_points", couponExtraUnits: 5 }),
+        "cross",
+        liveReward({ couponKind: "extra_points", couponExtraUnits: 5 }),
       );
       expect(points).toMatchObject({
         couponKind: "extra_points",

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { type DbTransaction, getDb, withDbTransaction } from "@mi-pasaporte/db";
 import {
   campaignLocations,
@@ -15,43 +15,32 @@ import { loadRewardCost } from "./balance-store";
 import { parseTemplateInput } from "./template-input";
 import { pickReward } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
-import {
-  TEMPLATES,
-  type TemplateDefinition,
-  templateByKey,
-} from "@mi-pasaporte/domain/server/marketing/templates";
+import { templateByKey } from "@mi-pasaporte/domain/server/marketing/templates";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 import { pickWelcome } from "./welcome-input";
 import { pickCross } from "./cross-input";
 import { pickValley } from "./valley-input";
+import { LIVE_STATUSES } from "./template-list";
+
+export {
+  listTemplates,
+  type TemplateRun,
+  type TemplateView,
+} from "./template-list";
 
 /**
  * The prebuilt campaigns against the database (spec 0101 / ADR 0092). A template run is
  * a plain `core.campaign` with `template_key`: everything downstream —the tick, the
  * results, pause/activate/end/archive— treats it like any campaign. What is new lives
- * here: turning one on (create AND activate in one transaction), turning it off (= `end`)
- * and the list the UI paints as cards.
+ * here: turning one on (create AND activate in one transaction) and turning it off (= `end`);
+ * the list the UI paints as cards is `template-list.ts`.
  *
  * Everything is scoped by the SESSION's `business_id`, as in `campaign-store.ts`.
  */
 
-/** The states that hold `core_campaign_template_live_unique`: one run of these per
- * business and template. */
-const LIVE_STATUSES = ["draft", "active", "paused"] as const;
-const RUNS_SHOWN = 10;
 const LIVE_UNIQUE = "core_campaign_template_live_unique";
 
-export type TemplateRun = {
-  id: string;
-  status: "ended" | "archived";
-  activatedAt: Date | null;
-  endedAt: Date | null;
-};
-
-export type TemplateView = TemplateDefinition & {
-  live: Campaign | null;
-  runs: TemplateRun[];
-};
-
+/** Spec 0138: a key that is OFF (`enabled-campaigns.ts`) does not exist for the merchant. */
 function unknownTemplate(): CampaignError {
   return new CampaignError(404, "not_found", "No existe esa plantilla.");
 }
@@ -148,7 +137,8 @@ export async function enableTemplate(
   now: Date = new Date(),
 ): Promise<Campaign> {
   const template = templateByKey(key);
-  if (!template) throw unknownTemplate();
+  // Spec 0138: BEFORE validating the body and before the plan brake (402).
+  if (!template || !campaignKindEnabled(template.key)) throw unknownTemplate();
   const parsed = parseTemplateInput(template, body, now);
   if (!parsed.ok)
     throw new CampaignError(
@@ -247,7 +237,7 @@ export async function disableTemplate(
   key: string,
 ): Promise<{ campaign: Campaign; notice?: string }> {
   const template = templateByKey(key);
-  if (!template) throw unknownTemplate();
+  if (!template || !campaignKindEnabled(template.key)) throw unknownTemplate();
   const id = await liveRunId(getDb(), businessId, template.key);
   if (id === null)
     throw new CampaignError(
@@ -256,50 +246,4 @@ export async function disableTemplate(
       "Esa campaña no está encendida.",
     );
   return await transitionCampaign(businessId, id, "end");
-}
-
-/** `GET /api/marketing/templates` — the cards, in catalog order. */
-export async function listTemplates(
-  businessId: string,
-): Promise<TemplateView[]> {
-  const rows = await getDb()
-    .select({
-      id: campaigns.id,
-      templateKey: campaigns.templateKey,
-      status: campaigns.status,
-      activatedAt: campaigns.activatedAt,
-      endedAt: campaigns.endedAt,
-    })
-    .from(campaigns)
-    .where(
-      and(
-        eq(campaigns.businessId, businessId),
-        isNotNull(campaigns.templateKey),
-      ),
-    )
-    .orderBy(
-      sql`${campaigns.activatedAt} desc nulls last`,
-      desc(campaigns.createdAt),
-    );
-  return await Promise.all(
-    TEMPLATES.map(async (template) => {
-      const mine = rows.filter((row) => row.templateKey === template.key);
-      const live = mine.find((row) =>
-        (LIVE_STATUSES as readonly string[]).includes(row.status),
-      );
-      return {
-        ...template,
-        live: live ? await getCampaign(businessId, live.id) : null,
-        runs: mine
-          .filter((row) => row.status === "ended" || row.status === "archived")
-          .slice(0, RUNS_SHOWN)
-          .map((row) => ({
-            id: row.id,
-            status: row.status as TemplateRun["status"],
-            activatedAt: row.activatedAt,
-            endedAt: row.endedAt,
-          })),
-      };
-    }),
-  );
 }

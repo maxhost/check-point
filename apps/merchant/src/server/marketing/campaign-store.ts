@@ -26,6 +26,7 @@ import {
   pickReward,
 } from "@mi-pasaporte/domain/server/marketing/reward-input";
 import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
+import { campaignKindEnabled } from "@mi-pasaporte/domain/server/marketing/enabled-campaigns";
 
 /**
  * Every read and write of `core.campaign` the backoffice does (spec 0065 phase B). Two
@@ -38,6 +39,10 @@ import { assertExtrasFitProgram, assertOwnProduct } from "./reward-store";
  *     step 3 of the tick is what writes each live turn's `cancel_reason` on the next run.
  *     The routes say so in their answer, because an owner who reads «pausada» and still
  *     sees the door on their own pass would reasonably think it failed.
+ *  3. **A campaign that is OFF does not exist for the merchant** (spec 0138 / ADR 0115):
+ *     `listCampaigns` drops it and `getCampaign` answers 404, so every action by id
+ *     (`PATCH`, activate, pause, end, archive, results) inherits the 404. What is ON is
+ *     decided only by `enabled-campaigns.ts`.
  */
 
 export { CampaignError };
@@ -157,7 +162,9 @@ export async function listCampaigns(businessId: string): Promise<Campaign[]> {
     .orderBy(desc(campaigns.createdAt));
   const db = getDb();
   return await Promise.all(
-    rows.map(async (row) => toCampaign(row, await doorsOf(db, row.id))),
+    rows
+      .filter((row) => campaignKindEnabled(row.templateKey))
+      .map(async (row) => toCampaign(row, await doorsOf(db, row.id))),
   );
 }
 
@@ -170,7 +177,7 @@ export async function getCampaign(
     .from(campaigns)
     .where(and(eq(campaigns.id, id), eq(campaigns.businessId, businessId)))
     .limit(1);
-  if (!row) throw notFound();
+  if (!row || !campaignKindEnabled(row.templateKey)) throw notFound();
   return toCampaign(row, await doorsOf(getDb(), id));
 }
 
@@ -179,6 +186,14 @@ export async function createCampaign(
   userId: string,
   body: unknown,
 ): Promise<Campaign> {
+  // Spec 0138: the composer is OFF. Before validating the body and before the plan brake
+  // (402): a business without Plus must not hear «upgrade» about something that does not exist.
+  if (!campaignKindEnabled(null))
+    throw new CampaignError(
+      409,
+      "campaign_disabled",
+      "Esta campaña no está disponible por ahora.",
+    );
   const parsed = parseCampaignInput(body);
   if (!parsed.ok)
     throw new CampaignError(
