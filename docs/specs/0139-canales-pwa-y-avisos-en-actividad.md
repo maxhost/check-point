@@ -2,9 +2,9 @@
 spec: 0139
 fecha: 2026-10-02
 estado: cerrada
-resumen: Spec 2 del ADR 0115 (+ ADR 0116). Campañas y avisos de mostrador salen SOLO por push de la PWA, nunca por Wallet; sin suscripcion se cierran `suppressed`/`no_channel` sin gastar presupuesto (la campaña igual emite su cupon); el recordatorio sigue Wallet → PWA y es el unico que escribe la «Ultima novedad» del pase. Nuevo `GET /api/public/consumer/notices` con los avisos de mostrador para Actividad (pantalla de GPT).
+resumen: Spec 2 del ADR 0115 (+ ADR 0116). Campañas y avisos de mostrador salen SOLO por push de la PWA, nunca por Wallet; sin suscripcion se cierran `suppressed`/`no_channel` sin gastar presupuesto (la campaña igual emite su cupon); el recordatorio sigue Wallet → PWA y es el unico que escribe la «Ultima novedad» del pase. Nuevo `GET /api/public/consumer/notices` con los avisos de mostrador para Actividad (pantalla de GPT), con la migracion 0062 que le da al rol del cliente la lectura de 6 columnas de la cola.
 disjunta: si
-archivos: apps/merchant/src/server/wallet/{push-transports,push}.ts, packages/domain/src/server/consumer/notices.ts (crear), apps/consumer/src/app/api/public/consumer/notices/route.ts (crear), tests de ruteo/worker/presupuesto (reescritura declarada), un test Neon nuevo de avisos
+archivos: apps/merchant/src/server/wallet/{push-transports,push}.ts, packages/domain/src/server/consumer/notices.ts (crear), packages/db/drizzle/0062_* + meta (crear, GRANT de lectura), apps/consumer/src/app/api/public/consumer/notices/route.ts (crear), tests de ruteo/worker/presupuesto (reescritura declarada), un test Neon nuevo de avisos
 ---
 
 # 0139 — Campañas y mostrador por la PWA; avisos de mostrador en Actividad
@@ -30,8 +30,9 @@ archivos: apps/merchant/src/server/wallet/{push-transports,push}.ts, packages/do
 reescritura **declarada** de los tests que fijan el ruteo viejo.
 
 **No entra:** la pantalla de Actividad (GPT, zona pantallas: consume el contrato); limites (spec 3 del 0115); el aviso
-de la Venta cruzada (spec 4); detectar PWA instalada sin notificaciones (0115 §7); migraciones (los estados
-`suppressed` y la clase existen: `wallet_push_queue_status_check`, `packages/db/src/schema/wallet-push.ts:103-104`);
+de la Venta cruzada (spec 4); detectar PWA instalada sin notificaciones (0115 §7); migraciones de ESQUEMA (los estados
+`suppressed` y la clase existen: `wallet_push_queue_status_check`, `packages/db/src/schema/wallet-push.ts:103-104`;
+la unica migracion es el GRANT de §4);
 cambiar `pass_refresh`; avisos de campaña en Actividad (ya llegan por su cupon, ADR 0116).
 
 ## Diseño
@@ -97,6 +98,19 @@ type NoticeDTO = {
   `listConsumerCoupons`.
 - Para la pantalla: el texto ya viene redactado; Actividad lo mezcla con cupones y programas ordenando por fecha.
 
+### 4. Migracion 0062: el rol del cliente lee la cola (agregado 2026-10-02, owner: «Sí, sumar la 0062»)
+
+Medido: la `0060` revoca todo a `checkpass_consumer` y le devuelve solo `INSERT` sobre `consumer.wallet_push_queue`
+(`packages/db/drizzle/0060_rol_del_cliente.sql:16,33`); su `:18` pide que «la spec que haga que lo lea […] trae su
+GRANT». Sin esto, §3 da 42501 como el rol del cliente.
+
+- `packages/db/drizzle/0062_*.sql`, a mano como la 0060 (con su entrada en `meta/_journal.json`):
+  `GRANT SELECT (id, consumer_id, class, title, body, created_at) ON consumer.wallet_push_queue TO checkpass_consumer;`
+  Nada mas: ni `status`, ni `last_error`, ni otra tabla.
+- El test Neon de §3 corre **como el rol del cliente** (`roleSuite`, `apps/consumer/src/server/consumer-role-support.ts`,
+  patron de `consumer-role-offers.neon.integration.test.ts`), nunca como dueño: como dueño quedaria verde sin el GRANT.
+- Se aplica a PROD **solo con OK aparte del owner**; esta spec no la aplica.
+
 ### Arquitectura de referencia
 
 ADR 0115 §2, ADR 0116, ADR 0040/0095 (superados en el ruteo de `campaign`/`transactional`), spec 0111 (presupuesto),
@@ -110,6 +124,7 @@ ADR 0070 (contrato), ADR 0114 (zonas).
 | `apps/merchant/src/server/wallet/push.ts` | editar (§2); dividir si pasa 300 lineas |
 | `packages/domain/src/server/consumer/notices.ts` | crear (§3) |
 | `apps/consumer/src/app/api/public/consumer/notices/route.ts` | crear (§3) |
+| `packages/db/drizzle/0062_*.sql` + `meta/_journal.json` | crear / editar (§4) |
 | `apps/merchant/src/server/push.test.ts` | reescribir los 4 casos de `transport routing by class` (`:165-210`) al ruteo nuevo |
 | `apps/merchant/src/server/wallet-push-routing.neon.integration.test.ts` | reescribir al ruteo nuevo |
 | `apps/merchant/src/server/wallet-push-worker.neon.integration.test.ts`, `wallet-push-budget.neon.integration.test.ts` y los que el gate muestre | **reescritura declarada** (ver abajo) |
@@ -145,7 +160,7 @@ Actividad es de GPT y consume §3 despues.
 
 ## Plan de pruebas y verificación
 
-Presupuesto del revisor: las **7 mutaciones** de abajo, mas las reescrituras de tests revisadas una por una. Clase
+Presupuesto del revisor: las **8 mutaciones** de abajo, mas las reescrituras de tests revisadas una por una. Clase
 de error a cazar: **la plausible** — que el mostrador vuelva a salir por Wallet, que el «sin canal» gaste presupuesto
 o escriba la «Ultima novedad», que la lista filtre otro cliente o una columna interna. **Queda afuera, declarado:** el
 cupon de una campaña sin canal (`campaign` no se encola hoy: `welcome`/`cross` no tienen canal por el check
@@ -156,11 +171,12 @@ ADR 0115); la entrega real a un telefono (QA del owner).
 |---|---|---|---|
 | M1 | `planTransports`: `transactional` vuelve a wallet si `reachableWallet` (`push-transports.ts`) | unit de §1 + Neon «mostrador con pase y suscripcion → solo Web Push» | — |
 | M2 | se borra el cierre `no_channel` (la fila sigue y cierra `sent`) (`push.ts`) | Neon: la fila del mostrador sin suscripcion queda `suppressed`/`no_channel` (asercion **directa** sobre `status` y `last_error`) | el presupuesto tambien cierra `suppressed`: el oraculo asevera `last_error = 'no_channel'`, no solo el estado |
-| M3 | el cierre `no_channel` escribe `status = 'sent'` | Neon: con **2 filas `reminder` `sent` sembradas** en las ultimas 24 h, un mostrador sin canal y despues un `reminder` con pase Apple, entregado con `deliverRow` (sin el planificador de cooldown) → el `reminder` **sale** (bajo la mutacion: 3 notificantes → `suppressed`/`budget_24h`) | el tope de mostrador (2) suprime el 3.º mostrador igual: por eso se siembran `reminder`, no mostradores |
+| M3 | el cierre `no_channel` escribe `status = 'sent', sent_at = now` (con `sent_at`: `loadBudget` filtra `sent_at > now − 24 h`, asi que sin `sent_at` la mutacion no cambia el presupuesto — corregido 2026-10-02, la version sin `sent_at` midio VERDE) | Neon: con **2 filas `reminder` `sent` sembradas** en las ultimas 24 h, un mostrador sin canal y despues un `reminder` con pase Apple, entregado con `deliverRow` (sin el planificador de cooldown) → el `reminder` **sale** (bajo la mutacion: 3 notificantes → `suppressed`/`budget_24h`) | el tope de mostrador (2) suprime el 3.º mostrador igual: por eso se siembran `reminder`, no mostradores |
 | M4 | `latest_message` se escribe para toda clase no silenciosa (como hoy) (`push.ts`) | Neon: mostrador entregado → `latest_message` sin cambiar | — |
 | M5 | `reminder` deja de ir por Wallet (`push-transports.ts`) | unit de §1 + Neon del recordatorio con pase | — |
 | M6 | `listConsumerNotices` sin el filtro por cliente (`notices.ts`) | Neon: el aviso del cliente B no aparece en la lista de A | el filtro por `class` no lo tapa: B tiene un `transactional` |
 | M7 | el DTO devuelve la fila entera (`notices.ts`) | test del conjunto **exacto** de claves | — |
+| M8 | se saca el `GRANT` de la 0062 (o se corre la 0062 sin el) | el test de §3 **como el rol del cliente** da 42501 | correr como dueño lo tapa: por eso `roleSuite` |
 
 Cada fila se **ejecuta y transcribe** (protocolo de mutaciones: `shasum` limpio, bitacora antes de medir, etiqueta,
 `diff` al revertir). Ninguna se predice.
