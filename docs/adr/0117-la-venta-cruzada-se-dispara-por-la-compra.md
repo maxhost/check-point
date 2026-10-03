@@ -37,6 +37,19 @@ ahora».
 4. **El comercio A no decide por ahora** («Lo veo después»): que a sus clientes les lleguen ofertas de otros despues
    de comprarle es parte de la red, a revisar mas adelante.
 
+5. **La lista «a pedido» de hoy se apaga** («Sí, se apaga»): solo existe la cruzada que llega despues de comprar;
+   «Mis beneficios» muestra los cupones que el cliente ya tiene, incluidos los cruzados recibidos.
+6. **Momento y texto del push** (preferencia del owner, sujeta a la investigacion): «yo esperaria la investigacion.
+   Pero creo que lo ideal seria Cliente compra en comarcio > Comercio A escanea y asigna lo que tenga que asignar >
+   cliente recibe push sobre los sellos o puntos que obtuvo > si hay una oferta cruzada se dispara en 60 segundos luego
+   de esa notificacion. esto da tiempo entre que la compra finalizo y quizas el cliente abandono el comercio. incluso
+   quizas mas, no 60, si no 120 segundos osea unos 2 a 3 minutos. La notificacion llega con algo como "Gracias por tu
+   compra en Comercio A, recibiste un beneficio especial, abre tu app para descubrirlo" o algo asi, el copy deberia ser
+   mucho mejor y mas corto como para una notificacion push y para incentivar a que el cliente abra el app y vea que
+   gano». Medido: la separacion minima entre dos avisos al mismo cliente ya es 3 min (`COOLDOWN_MINUTES`,
+   `packages/domain/src/server/notifications/limits.ts`), asi que un push encolado tras el de mostrador sale a ~3 min sin
+   mecanismo nuevo; y suma 2 de los 3 avisos con sonido del dia (`NOTIFYING_PER_24H`).
+
 Canal (ADR 0115 §2 y 0116): push de la PWA si tiene notificaciones; si no, el cupon igual queda en su cuenta y se ve
 en la app.
 
@@ -44,6 +57,4 @@ en la app.
 
 - **El criterio de eleccion entre B, C, D** (punto 3): se investiga. Insumo ya existente en el repo: el merito por
   LIFT con holdout de la proximidad (ADR 0066), que mide visitas incrementales y no la tasa cruda.
-- **Que pasa con «Mis beneficios» a pedido** (el modelo de hoy): el owner eligio «Comprar en otro comercio» y no «Las
-  dos»; falta confirmar si la lista a pedido se apaga.
-- **Cuando sale el push** respecto de la compra (inmediato o diferido) y su texto.
+- **Momento final y copy del push:** se confirman con la investigacion (punto 6).
