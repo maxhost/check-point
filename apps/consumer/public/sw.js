@@ -16,7 +16,7 @@ self.addEventListener("push", (event) => {
   const title = data.title || "CheckPass Club";
   const options = {
     body: data.body || "",
-    icon: "/checkpass-icon-192.png",
+    icon: "/checkpass-icon-192-v2.png",
     badge: "/checkpass-badge-96.png",
     data: { url: data.url || "/wallet", clickId: data.clickId || null },
   };
