@@ -3,21 +3,22 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-02) — SPEC 0137: UI IMPLEMENTADA LOCAL, PUSH PENDIENTE
+## ⇥ ESTADO (2026-10-02) — SPEC 0137: UI PUBLICADA, GATE VERDE
 
 El owner pidió tarjetas cuadradas para los archivos elegidos en «Importar con IA» del
 catálogo, con miniatura y X para quitar cada foto. Confirmó que las nuevas fotos se
 agregan a la selección y que el PDF conserva el análisis automático. La
 [spec 0137](../specs/0137-vistas-previas-de-archivos-en-importacion-con-ia.md)
-quedó cerrada en `489cdf1`; la UI está implementada localmente en `873ff6d`
-(SHA tras rebase sobre la spec 0138 de Claude).
+quedó cerrada en `489cdf1`; la UI está publicada en `main` desde `873ff6d`
+y el gate verde está registrado en `9fbe3d8`.
 Verificación: 7/7 e2e de importación con harness móvil, captura a 390 px vista,
 2 mutaciones rojas y revertidas, build Webpack de merchant, typecheck, lint, formato,
-tests unitarios y Neon related merchant verdes. Tras liberar `:3000`, el e2e global pasó
-(110 passed, 5 skipped); `pnpm verify` sigue rojo solo por Turbopack consumer (`EPERM`
-al abrir puerto interno). El owner pidió esperar a que el gate pase: sin push;
-falta PASS independiente. La UI admite `sourceFileName` opcional, pero el API actual no
-lo devuelve: `catalog_import_file.original_name` ya está persistido y Claude debe
+tests unitarios y Neon related merchant verdes. `pnpm verify` pasó completo:
+e2e global 110 passed / 5 skipped y build Turbopack consumer verde. El `EPERM`
+anterior no se reprodujo en la última corrida; la prueba de bind local fuera del
+sandbox también pasó. Falta PASS independiente. La UI admite `sourceFileName`
+opcional, pero el API actual no lo devuelve: `catalog_import_file.original_name`
+ya está persistido y Claude debe
 exponerlo en el DTO de `GET /api/catalog/imports` y `GET /api/catalog/imports/{id}`.
 
 ## ⇥ TRABAJO ANTERIOR DEL OWNER (2026-10-02) — TRAMA VIVA EN EL PASE DE LA PWA
