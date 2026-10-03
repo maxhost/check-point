@@ -37,7 +37,9 @@ investigacion (19 busquedas) y se cita con su nivel. La recomendacion es opinion
 - **Menos es mas:** mandar menos baja desuscripciones 59 % a cambio de 5–8 % menos ingreso de corto plazo (Baek et al.,
   experimento de campo).
 - **Equidad entre comercios:** sin cuidado, los populares se quedan con toda la exposicion. Mercari asigna cupones para
-  maximizar cuantos vendedores logran al menos una venta: 10–15 % mas vendedores exitosos (practica con experimento).
+  maximizar cuantos vendedores logran al menos una venta. **Corregido por la segunda investigacion:** la cifra «10–15 %
+  mas vendedores exitosos» no se pudo confirmar; el paper (KDD 2024, workshop) muestra que supera a las alternativas en
+  evaluaciones sobre datos de experimentos, no que este en produccion.
 - **No se encontro** evidencia primaria sobre «B esta abierto ahora» como factor: es sentido comun, no hallazgo.
 
 ## 3. Opciones, de la mas simple a la mas sofisticada

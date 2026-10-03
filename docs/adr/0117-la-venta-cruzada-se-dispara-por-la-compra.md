@@ -74,4 +74,5 @@ en la app.
   oferta cruzada. es decir no podemos saber si esa persona eventualmente compraria, pero si usa el cupon savemos que
   esa visita se produjo por el cupon»). Pendiente de su respuesta tras el matiz por publico.
 - **El sistema de eleccion a largo plazo** (equidad de exposicion entre comercios, habitos del consumidor, cuota de
-  descubrimiento): segunda investigacion, de algoritmos.
+  descubrimiento): investigado en `docs/notificaciones/venta-cruzada-algoritmo.md` (loteria ponderada con piso de
+  azar, en tres etapas, y que registrar desde el dia uno); faltan las decisiones del owner de su §3-§5.
