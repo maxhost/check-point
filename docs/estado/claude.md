@@ -16,10 +16,15 @@ mostrador en Actividad», `daf9bac`) en paralelo.
 
 **En curso:** spec 0141: limites de notificaciones a `packages/domain/src/server/notifications/limits.ts` sin cambiar
 valores, re-exportados desde los archivos de hoy, + `docs/notificaciones/README.md` (pedido del owner). 6 mutaciones.
-**Arbol sin commitear, del implementador (no tocar):** `push-budget.ts`, `push.ts`, `cross-rules.ts`,
-`placement-plan.ts`, `templates.ts`, `valley-rules.ts`, `reminder.ts` modificados; nuevos
-`packages/domain/src/server/notifications/`, `apps/merchant/src/server/notifications/`, `docs/notificaciones/`.
-Puede haber una mutacion puesta: medirla antes de revertir (skill `protocolo-de-verificacion`).
+**Implementada en `0e9baad` (sin push); spec corregida en `294b497`.** Revisor independiente CORRIENDO en `motor`.
+**MUTACION VIVA DEL REVISOR (no es un bug):** `apps/merchant/src/server/wallet/push-budget.ts:43` `counterSent24h >= 2`
+etiquetada `MUTATION R-M7`; su rojo en `limits-wiring.test.ts` es lo esperado. Si la sesion se cae: `ListAgents`; si el
+revisor murio, medirla y revertirla con `git checkout -- apps/merchant/src/server/wallet/push-budget.ts` (el archivo
+esta limpio en `0e9baad`) y `rg MUTATION` vacio.
+
+**Tambien hoy:** mock de `listConsumerNotices` para la 0140 de GPT en `main` (`0a66bc8`). Hallazgo:
+`.githooks/pre-push` esta en git como `100644`, en un worktree nuevo el hook NO corre; arreglo propuesto al owner
+(`git update-index --chmod=+x`), pendiente de su OK, despues del revisor.
 
 **Siguiente:** reporte del implementador → reproducir evidencia → revisor independiente → push → INDEX implementada.
 Despues: spec 4 del ADR 0115 (aviso de la Venta cruzada; el como lo cierra el owner antes de escribirla).
