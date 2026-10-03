@@ -8,26 +8,26 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — SPEC 0141 (spec 3 del ADR 0115, LIMITES) CERRADA; IMPLEMENTADOR EN CURSO
+## ⇥ ESTADO (2026-10-02, noche) — SPEC 0141 IMPLEMENTADA Y EN `main` (`d6178b1`). SIGUIENTE: SPEC 4 DEL ADR 0115
 
-**Al retomar:** `ListAgents` (puede haber un implementador vivo en `motor`: no tocar sus archivos) + `git status`.
-`origin/main` = `001b6f0` (spec 0141 reservada). La spec 3 quedo **0141** porque GPT reservo la **0140** («avisos de
-mostrador en Actividad», `daf9bac`) en paralelo.
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `d6178b1` (mas este commit).
 
-**En curso:** spec 0141: limites de notificaciones a `packages/domain/src/server/notifications/limits.ts` sin cambiar
-valores, re-exportados desde los archivos de hoy, + `docs/notificaciones/README.md` (pedido del owner). 6 mutaciones.
-**Implementada en `0e9baad` (sin push); spec corregida en `294b497`.** Revisor independiente CORRIENDO en `motor`.
-**MUTACIONES VIVAS DEL REVISOR (no son bugs):** el revisor muta de a una los archivos de la 0141 (`R-M7` en
-`push-budget.ts`, `R-M6` en `placement-plan.ts`, …), etiquetadas `MUTATION R-*`; sus rojos en `limits-wiring.test.ts` son
-lo esperado. Si la sesion se cae: `ListAgents`; si el revisor murio, medir la que quede y revertirla con
-`git checkout -- <archivo>` (todos estan limpios en `0e9baad`) y confirmar `rg MUTATION` vacio.
+**Hecho hoy:** spec 0139 (canales por la PWA + avisos en Actividad, migracion 0062 en PROD) y spec 0141 (limites de
+notificaciones en `packages/domain/src/server/notifications/limits.ts`, sin cambiar valores; mapa en
+`docs/notificaciones/README.md`; PASS del revisor, 7 mutaciones rojas; push con el hook completo, `verify: ok`).
+Mock de `listConsumerNotices` para la 0140 de GPT en `main` (`0a66bc8`).
 
-**Tambien hoy:** mock de `listConsumerNotices` para la 0140 de GPT en `main` (`0a66bc8`). Hallazgo:
-`.githooks/pre-push` esta en git como `100644`, en un worktree nuevo el hook NO corre; arreglo propuesto al owner
-(`git update-index --chmod=+x`), pendiente de su OK, despues del revisor.
-
-**Siguiente:** reporte del implementador → reproducir evidencia → revisor independiente → push → INDEX implementada.
-Despues: spec 4 del ADR 0115 (aviso de la Venta cruzada; el como lo cierra el owner antes de escribirla).
+**Pendiente:**
+- **`.githooks/pre-push` esta en git como `100644`:** en un worktree nuevo el hook NO corre (el push de `0a66bc8` se
+  lo salteo). Arreglo: `git update-index --chmod=+x .githooks/pre-push`. Espera el OK del owner.
+- **CI de `main` roja en `001b6f0`** segun el agente del mock: `catalog-import-guard.neon…:103` (`expected 201 to be 409`),
+  intermitente conocido de `catalog-import`. Sin confirmar por `ci:status`.
+- **LECCIONES:** dos specs seguidas con filas del plan de pruebas falsas contra el arbol (0139 M3 sin `sent_at`; 0141
+  M1, ruta del test en `packages/`, centinelas 1/1). La regla ya existe; falta el caso en `LECCIONES.md`.
+- Spec 4 del ADR 0115 (aviso de la Venta cruzada): el como lo cierra el owner ANTES de escribirla.
+- De antes: los de la 0138 (`audience-preview`, `rewards/results`, `balance-push`), `AGENT-WORKFLOW.md`/agentes con
+  bitacora a `TASKS.md`, `.prettierignore` con `docs/`, #68. Worktree `motor-wt/fix-notices-mock` del agente del mock
+  (borrable).
 
 ## ⇥ ESTADO HISTORICO (2026-10-02, noche) — SPEC 0139 IMPLEMENTADA Y EN `main` (`d6368c8`). SIGUIENTE: SPEC 3 DEL ADR 0115
 
