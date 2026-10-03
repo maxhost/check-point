@@ -19,7 +19,7 @@ columnas al rol del cliente). PASS del revisor; M1-M9 rojas (M9 la agrego el orq
 `--no-verify` AUTORIZADO por el owner** (2026-10-02, «Push con --no-verify»): el e2e no podia correr, puerto 3000
 ocupado por el dev server de `central-hill`; `check-numbers` corrido a mano, ok.
 
-**Pendiente:** **la 0062 NO esta en PROD** (OK aparte del owner; despues de 0060/0061). `test:e2e` sin correr en este
+**La 0062 esta en PROD** (owner, 2026-10-02; verificada por SQL). **Pendiente:** `test:e2e` sin correr en este
 arbol (correrlo cuando el 3000 este libre). **GPT tiene que conectar Actividad** a `listConsumerNotices` (contrato en la
 spec 0139 §3; avisar al owner). Siguiente spec: **3 del ADR 0115 (limites centralizados)**. Pendientes de antes: los de
 la 0138 (`audience-preview`, `rewards/results`, `balance-push`), `AGENT-WORKFLOW.md`/agentes con bitacora a

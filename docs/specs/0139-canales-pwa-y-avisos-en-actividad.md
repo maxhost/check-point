@@ -207,4 +207,4 @@ suprimido por presupuesto que escribe `latest_message` → ROJO en `wallet-push-
 **Declarado:** el cierre `no_channel` no tiene asercion directa de que no dispare la preempcion (la preempcion vive
 despues del cierre `sent`; `lastPushAt` sin cambio es el hermano); `wallet_push_queue` no tiene RLS, el aislamiento de
 la lista es el `WHERE` (M6). `test:e2e` sin correr (puerto 3000 ocupado por un proceso de otro proyecto; sin UI).
-**La 0062 NO esta aplicada en PROD.**
+**La 0062 esta en PROD** (2026-10-02, `run_sql_transaction` + fila de drizzle con el sha256 del archivo; verificado: `checkpass_consumer` lee solo esas 6 columnas, 63 migraciones, `core`/`merchant_auth` intactos).
