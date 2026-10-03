@@ -45,7 +45,10 @@ ahora».
    mucho mejor y mas corto como para una notificacion push y para incentivar a que el cliente abra el app y vea que
    gano». Medido: la separacion minima entre dos avisos al mismo cliente ya es 3 min (`COOLDOWN_MINUTES`,
    `packages/domain/src/server/notifications/limits.ts`), asi que un push encolado tras el de mostrador sale a ~3 min sin
-   mecanismo nuevo; y suma 2 de los 3 avisos con sonido del dia (`NOTIFYING_PER_24H`).
+   mecanismo nuevo; y suma 2 de los 3 avisos con sonido del dia (`NOTIFYING_PER_24H`). **Corregido el 2026-10-03:
+   media medicion.** La separacion existe, pero el push diferido sale cuando corre el worker, y el worker lo dispara
+   `.github/workflows/wallet-push-cron.yml` (`*/5`), que GitHub corrio cada **2,4 a 7,8 horas** (ultimas 40 corridas
+   programadas; 4 desde el 2 de octubre). Ver «Cerrado despues».
 
 7. **Criterio de arranque: B (al azar entre las elegibles, ponderado por cercania), registrando datos para aprender**
    (owner, 2026-10-02, sobre `docs/notificaciones/venta-cruzada-criterio.md`). Textual: «podemos usar la B, pero
@@ -90,4 +93,16 @@ en la app.
   la spec lo trae como hallazgo a decidir, no lo asume.
 - Investigaciones: `docs/notificaciones/venta-cruzada-criterio.md`, `venta-cruzada-algoritmo.md` (que registrar: §4) y
   `venta-cruzada-equidad.md` (H4 y la simulacion).
-- Es la spec 4 del ADR 0115.
+- Es la spec 4 del ADR 0115: **`specs/0143-venta-cruzada-por-la-compra.md`**.
+
+## Cerrado despues (owner, 2026-10-03, al escribir la spec 0143)
+
+- **Ventana horaria:** «No, sale con la compra». El regalo misterio no espera a la ventana 9–21 del comercio B.
+- **Fecha de fin:** «Exigir fecha de fin». La API rechaza activar una cruzada sin `endsAt`; el `check` de la base no
+  cambia y las vivas sin fin quedan como estan (no hay usuarios reales).
+- **Disparador:** «Solo acreditar». Solo una orden nueva del mostrador; canjear un premio o un cupon no dispara.
+- **Demora del push (sin elegir):** textual, «si usamos un cron externo necesitamos algo que soporte este uso porque si
+  es cada 5 minutos [...] son 8640 al mes. entonces necesitamos un servicio gratuito que admita esa capa y sea
+  confiable. o lo dejamos como hoy mientras probamos, porque si pasaremos a vercel pro mas a dealente». Verificado por
+  el orquestador (FAQ de cron-job.org, 2026-10-03): gratis, hasta cada minuto, sin tope mensual declarado («fair
+  usage»), corta a los 30 s y no promete puntualidad. La spec 0143 encola con `not_before` y no depende de la eleccion.
