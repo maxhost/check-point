@@ -9,7 +9,8 @@ El owner pidió tarjetas cuadradas para los archivos elegidos en «Importar con 
 catálogo, con miniatura y X para quitar cada foto. Confirmó que las nuevas fotos se
 agregan a la selección y que el PDF conserva el análisis automático. La
 [spec 0137](../specs/0137-vistas-previas-de-archivos-en-importacion-con-ia.md)
-quedó cerrada en `489cdf1`; la UI está implementada localmente en `c198198`.
+quedó cerrada en `489cdf1`; la UI está implementada localmente en `873ff6d`
+(SHA tras rebase sobre la spec 0138 de Claude).
 Verificación: 7/7 e2e de importación con harness móvil, captura a 390 px vista,
 2 mutaciones rojas y revertidas, build Webpack de merchant, typecheck, lint, formato,
 tests unitarios y Neon related merchant verdes. `pnpm verify` fue rojo por Turbopack
