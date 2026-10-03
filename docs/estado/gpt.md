@@ -3,7 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-02) — SPEC 0137: UI PUBLICADA, GATE VERDE
+## ⇥ ESTADO (2026-10-02) — SPEC 0140: AVISOS DE MOSTRADOR EN ACTIVIDAD
+
+La [spec 0140](../specs/0140-avisos-de-mostrador-en-actividad.md) quedó
+reservada en `daf9bac`. El cableado UI está en `1a3493f` (después del rebase):
+`wallet/page.tsx` lee `listConsumerNotices(account.id)` y pasa los avisos por
+`WalletShell` a Actividad. La vista los mezcla por fecha con cupones y programas,
+muestra comercio, texto y fecha, y abre «Mis programas» al tocarlos. Claude
+agregó el mock del test de servidor en `0a66bc8`; GPT no tocó su zona.
+
+`pnpm verify` con Node 24.20.0 terminó verde: typecheck, lint, formato, test,
+build, e2e y Neon relacionado del consumidor. Tabla y límites en el
+[handoff](../handoff-0140-avisos-de-mostrador-en-actividad-2026-10-02.md).
+El hook local `.githooks/pre-push` quedó ejecutable y el push normal debe repetir
+el gate. Pendientes: QA manual con un cliente que haya sumado un sello y PASS
+independiente antes de marcar la spec `implementada`.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-02) — SPEC 0137: UI PUBLICADA, GATE VERDE
 
 El owner pidió tarjetas cuadradas para los archivos elegidos en «Importar con IA» del
 catálogo, con miniatura y X para quitar cada foto. Confirmó que las nuevas fotos se
