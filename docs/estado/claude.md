@@ -8,7 +8,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 EN `main` Y DESPLEGADA (`f3407f3`), 0063 EN PROD. FALTA EL QA DEL OWNER
+## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 EN `main` Y DESPLEGADA (`f3407f3`), 0063 EN PROD. 0144 COMMITEADA SIN PUSHEAR (`fdb4e42`)
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `f3407f3` (mas este commit de estado).
 
@@ -19,7 +19,13 @@ migraciones, las dos tablas, `checkpass_consumer` con UPDATE de `clicked_at` y s
 `pre-push` (owner lo pidio): `verify: ok`, Neon completo 2910 passed / 277 skipped. **Deploy:** los 3 proyectos de Vercel en
 `success` con `f3407f3` (statuses del commit).
 
-**Siguiente:** avisar a GPT (C1/C2 → 404, `endsAt` obligatorio en M1); QA manual del owner (spec §«Verificacion manual»).
+**Spec 0144 implementada y commiteada (`fdb4e42`), SIN PUSHEAR:** el atraso de la loteria por COMERCIO (owner; y
+`coupon_conflict` no cuenta como ganada — ADR 0117 «Cerrado despues»). PASS del revisor independiente: M1 (campaña viva) y
+M2 propia (`campaign.id` por `businessId`, el typecheck no la ve) ROJAS; Neon `cross-sale*` 11/11; `pnpm verify` ok. Falta el
+push (despliega a prod: lo aprueba el owner).
+
+**Siguiente:** avisar a GPT (C1/C2 → 404, `endsAt` obligatorio en M1; texto dado al owner); QA manual del owner (spec 0143
+§«Verificacion manual»).
 
 **Hallazgos a decidir (owner), del revisor:** `R` cuenta solo `issued` (en `coupon_conflict` la campaña tambien salio
 elegida); F/R se cuentan por campaña (si un comercio recrea su campaña a mitad de mes, su atraso vuelve a cero). Bajo
