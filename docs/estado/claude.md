@@ -17,10 +17,10 @@ mostrador en Actividad», `daf9bac`) en paralelo.
 **En curso:** spec 0141: limites de notificaciones a `packages/domain/src/server/notifications/limits.ts` sin cambiar
 valores, re-exportados desde los archivos de hoy, + `docs/notificaciones/README.md` (pedido del owner). 6 mutaciones.
 **Implementada en `0e9baad` (sin push); spec corregida en `294b497`.** Revisor independiente CORRIENDO en `motor`.
-**MUTACION VIVA DEL REVISOR (no es un bug):** `apps/merchant/src/server/wallet/push-budget.ts:43` `counterSent24h >= 2`
-etiquetada `MUTATION R-M7`; su rojo en `limits-wiring.test.ts` es lo esperado. Si la sesion se cae: `ListAgents`; si el
-revisor murio, medirla y revertirla con `git checkout -- apps/merchant/src/server/wallet/push-budget.ts` (el archivo
-esta limpio en `0e9baad`) y `rg MUTATION` vacio.
+**MUTACIONES VIVAS DEL REVISOR (no son bugs):** el revisor muta de a una los archivos de la 0141 (`R-M7` en
+`push-budget.ts`, `R-M6` en `placement-plan.ts`, …), etiquetadas `MUTATION R-*`; sus rojos en `limits-wiring.test.ts` son
+lo esperado. Si la sesion se cae: `ListAgents`; si el revisor murio, medir la que quede y revertirla con
+`git checkout -- <archivo>` (todos estan limpios en `0e9baad`) y confirmar `rg MUTATION` vacio.
 
 **Tambien hoy:** mock de `listConsumerNotices` para la 0140 de GPT en `main` (`0a66bc8`). Hallazgo:
 `.githooks/pre-push` esta en git como `100644`, en un worktree nuevo el hook NO corre; arreglo propuesto al owner
