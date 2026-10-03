@@ -8,17 +8,20 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — 0143 Y 0144 EN `main` Y DESPLEGADAS; SPEC 0146 (ICONO PWA EN APPLE WALLET) EN IMPLEMENTACION
+## ⇥ ESTADO (2026-10-03, noche) — 0143, 0144 Y 0146 EN `main` (`5c855c7`). PENDIENTES DEL OWNER: QA IPHONE Y LOTE `pass_refresh`
 
-**Al retomar:** `motor` = `origin/main` en `1adc0d8` (reserva de la 0146). Si la sesion se cayo: `ListAgents` (el
-implementador de la 0146 puede estar midiendo; no tocar mutaciones puestas) y `git status`.
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `5c855c7` (mas este commit de estado).
 
-**Hecho:** 0143 (venta cruzada por la compra) y 0144 (atraso por comercio) en `main`, deploy de Vercel `success` con
-`61c067e`; 0063 en PROD. Las dos decisiones del owner sobre el atraso en ADR 0117 «Cerrado despues».
+**Hecho:** 0143 (venta cruzada por la compra) y 0144 (atraso por comercio) desplegadas (`61c067e`); 0063 en PROD. **0146**
+(icono de la PWA en el pase Apple) en `main` (`5c855c7`): solo `icon*` cambia (logo/strip byte a byte iguales),
+`PASS_BRAND_UPDATED_AT` = `2026-10-03T22:00:00Z`, Google sin tocar. PASS del revisor (R1–R3 rojas); el orquestador sumo el
+caso «pase instalado bajo la revision anterior → 200» y lo midio rojo con la fecha vieja (`expected 304 to be 200`).
+`pre-push`: `verify: ok`. La 0145 es de GPT (UI de la venta cruzada).
 
-**En curso:** spec **0146** (pedido del owner: el `icon` del pase Apple desde `checkpass-icon-192-v2.png`, logo/strip/QR
-igual, `PASS_BRAND_UPDATED_AT` → `2026-10-03T22:00:00Z`, Google sin tocar). La 0145 la reservo GPT antes (UI de la venta
-cruzada); la mia se renumero. Implementador despachado; despues revisor, commit, push y deploy.
+**Deploy de `5c855c7`:** customer y public `success`; **merchant `failure` por «Deployment rate limited — retry in 24 hours»**
+(limite de builds de Vercel Hobby, no del codigo). Los pases Apple los sirve SOLO customer (`apple.pkpass` y la ruta PassKit
+en `apps/consumer`), asi que la 0146 esta viva; merchant queda en `1adc0d8` (ya con 0143/0144), y solo le falta codigo que no
+usa. Se re-despliega solo con el proximo push despues del limite. **Este commit de estado no se pusheo** para no gastar builds.
 
 **Pendiente del owner para la 0146:** QA en iPhone (notificacion con el icono nuevo) y OK para el lote `pass_refresh` de
 produccion (muestra primero; excluir pases solo-hash; variables APNs del worker), segun la spec §«Declarado AFUERA».
