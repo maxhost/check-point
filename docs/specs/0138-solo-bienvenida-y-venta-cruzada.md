@@ -1,7 +1,7 @@
 ---
 spec: 0138
 fecha: 2026-10-02
-estado: cerrada
+estado: implementada
 resumen: Spec 1 del ADR 0115. Un solo modulo decide que campañas existen (`welcome` y `cross`), el compositor libre y la proximidad apagados; la API los oculta y rechaza, el tick no corre las apagadas ni el paso 4 (resuelve la #67), y «Mis beneficios» deja de ofrecer valle. Codigo conservado; sus tests se saltean mientras este apagado (`skipIf` atado al mismo modulo), por decision del owner.
 disjunta: si
 archivos: packages/domain/src/server/marketing/enabled-campaigns.ts (crear), apps/merchant/src/server/marketing/{template-store,campaign-store,campaign-actions,audience-store,push-store,tick}.ts, packages/domain/src/server/consumer/{cross-offers,valley-offers}.ts, tests de lo apagado (solo el `skipIf`), un test de integracion nuevo
@@ -193,7 +193,10 @@ trabajo del implementador.
 - [ ] La lista de casos salteados (§6), cada uno con su condicion; `git diff` de esas suites muestra solo el
       `skipIf` (ningun `expect` tocado, ningun test borrado).
 - [ ] Ningun test vivo corre el paso 4: sobre el log de la corrida Neon completa,
-      `grep '^marketing_tick ' LOG | grep '"consumers"' | grep -vc '"consumers":0,'` → **0** (el `grep
+      `sed -E 's/\x1b\[[0-9;]*m//g' LOG | grep '^marketing_tick ' | grep '"consumers"' | grep -vc '"consumers":0,'`
+      → **0**, Y el total `sed … LOG | grep -c '^marketing_tick '` → **> 0** (el log de `pnpm verify` trae escapes
+      ANSI antes de `marketing_tick`: sin el `sed` el grep cuenta 0 lineas y el criterio pasa sin medir — cazado por
+      el revisor). (El `grep
       '"consumers"'` excluye las lineas `{"skipped":"tick_in_flight"}` del test del lock, que no tienen el campo;
       corregido tras la implementacion). Probado que discrimina: sobre el log del 2026-10-02, antes de la spec, da 39 (y despues de la spec, sobre el log del verify, 0).
 - [ ] Tiempos de la suite Neon completa antes (~10 min, 2026-10-02) y despues, transcriptos. Es informativo, no un
@@ -241,6 +244,22 @@ casos de API, para que el freno de plan (402, el guard hermano) no corte antes.
 **UN implementador para toda la spec, UN revisor independiente al final** (ADR 0071). El revisor produce un `PASS`
 con evidencia ejecutada antes de marcar `implementada`. Despues: §7 (con OK del owner) y push.
 
-## Abierto
+## Cierre (2026-10-03)
 
-Nada.
+**Implementada en `1236aff`** (+ `fb88549`, que revierte los `next-env.d.ts` que ese commit dejo apuntando a
+`.next/dev`). **PASS del revisor independiente**, en contexto fresco, con 5 mutaciones (M3, M7, M8 re-medidas y 2
+propias: `claimCrossOffer` sobre valle → 400 y quitar `assertValleyOn()` del PUT de ventanas): las 5 rojas, por la
+asercion correcta. Reescrituras de B revisadas (`welcome-plans`, lock de `placement`, `consumer-role-offers`):
+propiedad conservada, ningun `expect` aflojado. Salteados revisados: solo `skipIf` atado al modulo; ningun tema
+vivo salteado.
+
+**Gates del revisor (`pnpm verify --full`):** typecheck/lint/format/unit/build ok; Neon 2890 passed / 248
+skipped / **1 failed** = `catalog-import-reconcile` (intermitente conocido; sola: 8/8) → entorno; **e2e NO corrio**
+(`EADDRINUSE :3000`, un `next-server` de OTRO repo, `central-hill`). La spec no toca pantallas; el push no dispara
+e2e. Criterio del log del tick (con el `sed` de ANSI): 0 de 10 lineas pasan por el paso 4.
+
+**Pendiente, sin riesgo de produccion hoy (PROD: 1 campaña `welcome`):**
+- `GET /api/marketing/audience-preview` (herramienta del compositor) sigue abierto, y `GET
+  /api/marketing/rewards/results` no se midio si lista resultados de campañas apagadas. La spec no los nombraba.
+- `marketing-balance-push.neon` se saltea con `!near_reward || !unclaimed_reward`: re-encender solo una de las dos
+  no la vuelve a correr.
