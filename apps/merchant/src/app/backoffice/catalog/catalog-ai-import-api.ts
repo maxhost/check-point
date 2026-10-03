@@ -37,6 +37,7 @@ export type CatalogImport = {
   id: string;
   status: ImportStatus;
   sourceKind?: "images" | "pdf";
+  sourceFileName?: string | null;
   fileCount?: number;
   pageCount?: number;
   expiresAt: string;

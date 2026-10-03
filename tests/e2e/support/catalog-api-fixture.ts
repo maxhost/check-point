@@ -37,12 +37,18 @@ export async function catalogApiFixture(page: Page, empty = false) {
       path: string;
       body: Record<string, unknown>;
     }>,
+    uploads: [] as Array<{
+      contentType: string | undefined;
+      bytes: Buffer | null;
+    }>,
     progress: [] as string[],
     failWrite: false,
     failRead: false,
     importing: false,
     failProgress: false,
     importStatus: "analyzing",
+    importSourceKind: "images" as "images" | "pdf",
+    importSourceFileName: null as string | null,
     importId: "import-one",
     cancellations: 0,
   };
@@ -109,6 +115,10 @@ export async function catalogApiFixture(page: Page, empty = false) {
       const imported = {
         id: state.importId,
         status: state.importStatus,
+        sourceKind: state.importSourceKind,
+        ...(state.importSourceFileName
+          ? { sourceFileName: state.importSourceFileName }
+          : {}),
         expiresAt: "2030-01-01T00:00:00Z",
         result: state.importStatus === "accepted" ? result : null,
       };
@@ -119,10 +129,20 @@ export async function catalogApiFixture(page: Page, empty = false) {
       }
       if (method === "POST" && !url.pathname.endsWith("analyze")) {
         state.importing = true;
+        state.importSourceKind = body.files.some(
+          (file: { contentType: string }) =>
+            file.contentType === "application/pdf",
+        )
+          ? "pdf"
+          : "images";
         state.writes.push({ method, path: url.pathname, body });
         return json(
           {
-            import: { ...imported, status: "pending_upload" },
+            import: {
+              ...imported,
+              sourceKind: state.importSourceKind,
+              status: "pending_upload",
+            },
             uploads: body.files.map(
               (file: { contentType: string }, index: number) => ({
                 fileId: String(index),
@@ -143,8 +163,13 @@ export async function catalogApiFixture(page: Page, empty = false) {
             : imported,
       });
     }
-    if (url.pathname.startsWith("/api/qa-upload"))
+    if (url.pathname.startsWith("/api/qa-upload")) {
+      state.uploads.push({
+        contentType: request.headers()["content-type"],
+        bytes: request.postDataBuffer(),
+      });
       return route.fulfill({ status: 200 });
+    }
     if (
       url.pathname.startsWith("/api/catalog/") &&
       ["POST", "PUT", "DELETE"].includes(method)

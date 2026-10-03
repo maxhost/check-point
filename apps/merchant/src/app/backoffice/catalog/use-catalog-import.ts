@@ -34,6 +34,7 @@ export function useCatalogImport({
 }) {
   const [activeImport, setActiveImport] = useState<CatalogImport | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [selectedPdfName, setSelectedPdfName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   /**
@@ -65,6 +66,7 @@ export function useCatalogImport({
     setLoading(true);
     setError(null);
     setResult(null);
+    setSelectedPdfName(null);
     void fetch("/api/catalog/imports")
       .then((response) =>
         json<{ import: CatalogImport | null }>(
@@ -228,13 +230,28 @@ export function useCatalogImport({
       (containsPdf && next.some((file) => file.type !== PDF_CONTENT_TYPE))
     ) {
       setFiles([]);
+      setSelectedPdfName(null);
       setError("Elige un PDF o solamente imágenes, sin mezclarlos.");
       return;
     }
-    setFiles(next);
+    if (containsPdf) {
+      setFiles(next);
+      setSelectedPdfName(next[0].name);
+    } else {
+      setFiles((current) => [
+        ...current.filter((file) => file.type !== PDF_CONTENT_TYPE),
+        ...next,
+      ]);
+      setSelectedPdfName(null);
+    }
     setError(null);
     debug("files:selected", { count: next.length });
     if (containsPdf) void analyze(next);
+  }
+
+  function remove(index: number) {
+    setFiles((current) => current.filter((_, position) => position !== index));
+    setError(null);
   }
 
   async function cancel() {
@@ -260,6 +277,7 @@ export function useCatalogImport({
       pollGenerationRef.current += 1;
       setActiveImport(null);
       setFiles([]);
+      setSelectedPdfName(null);
       onClose();
     } catch (reason) {
       setError(
@@ -275,17 +293,20 @@ export function useCatalogImport({
   return {
     activeImport,
     files,
+    selectedPdfName,
     loading,
     busy,
     cancelling,
     error,
     result,
     choose,
+    remove,
     analyze,
     cancel,
     restart: () => {
       setActiveImport(null);
       setError(null);
+      setSelectedPdfName(null);
     },
   };
 }

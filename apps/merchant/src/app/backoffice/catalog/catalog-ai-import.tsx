@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { Page, Spark } from "iconoir-react";
 import { StaffFormModal } from "../staff/staff-form-modal";
-import { CatalogAiImportPicker } from "./catalog-ai-import-picker";
+import {
+  CatalogAiImportPicker,
+  CatalogPdfTile,
+} from "./catalog-ai-import-picker";
 import { CatalogAiImportResult } from "./catalog-ai-import-result";
 import { statusCopy } from "./catalog-ai-import-api";
 import {
@@ -41,12 +44,14 @@ export function CatalogAiImport({
   const {
     activeImport,
     files,
+    selectedPdfName,
     loading,
     busy,
     cancelling,
     error,
     result,
     choose,
+    remove,
     analyze,
     cancel,
     restart,
@@ -193,6 +198,14 @@ export function CatalogAiImport({
                 )}
               </div>
             </div>
+            {(activeImport.sourceKind === "pdf" || selectedPdfName) &&
+              processing && (
+                <div className="catalog-ai-file-grid is-processing">
+                  <CatalogPdfTile
+                    name={selectedPdfName ?? activeImport.sourceFileName}
+                  />
+                </div>
+              )}
             {/* Mientras se suben los archivos no se ofrece: cancelar ahi competiria con el
                 `analyze()` en vuelo. Aparece cuando el analisis ya esta en el proveedor. */}
             {!busy && (
@@ -213,6 +226,7 @@ export function CatalogAiImport({
             files={files}
             busy={busy}
             onChoose={choose}
+            onRemove={remove}
             onAnalyze={() => void analyze()}
             onCancel={() => void cancel()}
           />
