@@ -1,14 +1,11 @@
 ---
 adr: 0117
 fecha: 2026-10-02
-estado: borrador
-resumen: BORRADOR (decisiones del owner en curso). La Venta cruzada pasa de «a pedido» a disparada por la compra — escanear en el comercio A le entrega al cliente UNA oferta de un comercio cercano de otro rubro, ya emitida como cupon suyo — y el criterio para elegir CUAL (entre B, C, D) se investiga antes de decidirlo, con el objetivo del owner: visitas y ventas incrementales para el comercio local, no envios por enviar.
+estado: aceptada
+resumen: La Venta cruzada deja de ser «a pedido»: escanear en el comercio A le entrega al cliente UNA oferta de un comercio cercano de otro rubro, ya emitida como cupon suyo, con push de la PWA unos 3 min despues del de mostrador («regalo misterio»). Se elige por loteria H4 —igual por oportunidad, bono al comercio sin clientes nuevos en el mes, 20 % de azar editable en limits.ts—, se registra cada decision desde el dia uno, exito = canje, sin grupo de control por ahora, y un cliente recibe una sola vez cada campaña.
 ---
 
-# 0117 — La Venta cruzada se dispara por la compra (BORRADOR)
-
-> **Borrador:** guarda las decisiones del owner del 2026-10-02 mientras se cierran las que faltan. No se escribe
-> ninguna spec ni codigo hasta que este en `aceptada`.
+# 0117 — La Venta cruzada se dispara por la compra
 
 ## Contexto
 
@@ -72,15 +69,25 @@ ahora».
     nuevo en el mes. Acepta el trade-off medido en la simulacion (`docs/notificaciones/venta-cruzada-equidad.md`): mas
     alcance de la red a cambio de menos canjes totales que «gana el mejor».
 
+13. **Azar inicial: 20 %, editable** (owner, 2026-10-03: «20 % editable»): constante en
+    `packages/domain/src/server/notifications/limits.ts`, junto a los demas limites (spec 0141).
+14. **Texto del push: «regalo misterio»** (owner, 2026-10-03). Titulo «🎁 Tenés un regalo»; cuerpo «Por tu compra en
+    {A}. Abrí la app y descubrí qué es.» No dice cual es el beneficio. Sale despues del aviso de mostrador, separado por
+    la separacion minima entre avisos (3 min).
+15. **Un cliente recibe una sola vez cada campaña** (owner, 2026-10-03, en lugar de los dos filtros propuestos):
+    «recuerda que la venta cruzada es una campaña con fecha de inicio y fin. entonces al mismo cliente no le sale otra
+    venta cruzada del mismo comercio de la misma campaña». Ya existe: `claimed` en `decideCrossOffer`
+    (`packages/domain/src/server/marketing/cross-rules.ts:151`). No se suman «B abierto en la vigencia» ni «no repetir B
+    en 30 dias».
+
 Canal (ADR 0115 §2 y 0116): push de la PWA si tiene notificaciones; si no, el cupon igual queda en su cuenta y se ve
 en la app.
 
-## Abierto
+## Para la spec (no son decisiones abiertas del owner)
 
-- **Fraccion de azar inicial** (punto 9): el owner la decide despues; hace falta un valor para la spec.
-- **Momento final y copy del push** (punto 6): la investigacion respalda el aviso a los pocos minutos con el cliente
-  cerca (Luo et al., Management Science 2014); falta el texto.
-- **Filtros extra propuestos por la investigacion, no decididos:** «B abierto dentro de la vigencia del cupon» y «no el
-  mismo B al mismo cliente en 30 dias».
-- Investigaciones: `docs/notificaciones/venta-cruzada-criterio.md`, `venta-cruzada-algoritmo.md` y
-  `venta-cruzada-equidad.md`.
+- **Medido:** hoy una campaña cruzada puede no tener fecha de fin (`core.campaign.ends_at` nulo; el check de
+  `packages/db/src/schema/campaign.ts:185` no lo exige para `cross`). El owner la describe «con fecha de inicio y fin»:
+  la spec lo trae como hallazgo a decidir, no lo asume.
+- Investigaciones: `docs/notificaciones/venta-cruzada-criterio.md`, `venta-cruzada-algoritmo.md` (que registrar: §4) y
+  `venta-cruzada-equidad.md` (H4 y la simulacion).
+- Es la spec 4 del ADR 0115.
