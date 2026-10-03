@@ -55,6 +55,6 @@ en la app.
 
 ## Abierto
 
-- **El criterio de eleccion entre B, C, D** (punto 3): se investiga. Insumo ya existente en el repo: el merito por
+- **El criterio de eleccion entre B, C, D** (punto 3): investigado en `docs/notificaciones/venta-cruzada-criterio.md`; falta que el owner elija. Insumo ya existente en el repo: el merito por
   LIFT con holdout de la proximidad (ADR 0066), que mide visitas incrementales y no la tasa cruda.
 - **Momento final y copy del push:** se confirman con la investigacion (punto 6).
