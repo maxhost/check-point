@@ -215,12 +215,18 @@ describe.skipIf(!integrationEnabled)(
         .update(walletPushQueue)
         .set({ class: "reminder" })
         .where(eq(walletPushQueue.id, reminderId));
+      const before = await account(consumer.id);
       await deliverRow(reminderId, {
         channel: new FakePushChannel(),
         webPushChannel: null,
         now,
       });
       expect((await queueRow(reminderId)).status).toBe("suppressed");
+      // Spec 0139: the reminder is the only class that writes the «Última novedad»; a SUPPRESSED
+      // one must not, or Apple rings with it on the next pass download despite the budget.
+      expect((await account(consumer.id)).latestMessage).toBe(
+        before.latestMessage,
+      );
 
       const refreshId = await enqueue(consumer.id, "pass_refresh", {
         title: "",
