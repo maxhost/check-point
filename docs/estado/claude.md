@@ -8,20 +8,25 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-02, noche) — SPEC 0138 CERRADA Y PUSHEADA (`be9f8c8`, ajuste `90ec4eb`). SIGUIENTE: IMPLEMENTARLA (con OK del owner)
+## ⇥ ESTADO (2026-10-02, noche) — 0138 EN IMPLEMENTACION (implementador vivo en este arbol, segunda vuelta)
 
-**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `be9f8c8` (solo docs desde
-`ef05b1a`, el ultimo con codigo).
+**Al retomar:** `ListAgents` PRIMERO — si el implementador de la 0138 sigue vivo, no tocar el arbol. `motor` en
+`7e99d5f` + trabajo SIN COMMITEAR del implementador (`enabled-campaigns.ts`, `template-list.ts`, los stores de
+marketing, `tick.ts`, `cross-offers.ts`, `valley-offers.ts`, `marketing-disabled.neon…`) y la enmienda §6-bis de la
+spec, tambien sin commitear.
 
-**Hecho hoy:** #67 medida por fase (paso 4 = 87,7 s de ~89 s) → el owner cambio el rumbo → **ADR 0115** (campañas de
-la Wallet a la PWA; solo Bienvenida y Venta cruzada; compositor apagado; paso 4 deja de correr; limites de hoy
-centralizados) → **spec 0138** (spec 1 del ADR: modulo `enabled-campaigns.ts`, API oculta/rechaza lo apagado, tick
-sin lo apagado ni el paso 4, valle fuera de «Mis beneficios», tests de lo apagado SALTEADOS con `skipIf` atado al modulo — owner: «si esta apagado no se prueba»; ultimo ajuste `90ec4eb`). Medido en PROD
-(solo lectura): 1 campaña (`welcome` activa), 0 turnos vivos, 8 negocios → no hay nada que pausar ni migrar.
+**Hecho:** owner dio OK a implementar la 0138 + revisor, y a borrar los turnos de `ci-integration`: **borrados,
+99 → 0** (28 negocios `int-*` via `dropCampaigns`+`dropBusiness`, 0 errores). Primera vuelta del implementador:
+paro por §6 — con el codigo cambiado, Neon completo = 90 failed / 3039 passed en 29 archivos, 367,86 s (verificado
+sobre su log `scratchpad/neon-pre.clean.log`); 63 de tema apagado, 26 de mecanismo VIVO con fixture apagado.
+Decision del orquestador (§6-bis de la spec): los 26 se REESCRIBEN con fixtures `welcome`/`cross` conservando la
+propiedad (salvo 5 cuyo mecanismo solo existe con turnos → se saltean); entran 3 huecos (409 antes de `readJson`,
+`claimCrossOffer` de valle → 404, API de ventanas de valle → 404). Implementador reanudado con eso.
 
-**Siguiente:** despachar UN `implementador` para la 0138 y UN `revisor` al final (ADR 0071). Despues, §7 de la spec:
-borrar los 99 turnos vivos historicos de `ci-integration` **con OK del owner en el momento** (SQL destructivo). Luego
-las specs 2–4 del ADR 0115 (canales, limites, aviso de la cruzada — esta ultima con el owner antes de escribirla).
+**Siguiente:** al volver el implementador, reproducir su evidencia (lista de salteados, 9 mutaciones, tabla de
+`pnpm verify`, `grep '^marketing_tick ' LOG | grep -vc '"consumers":0,'` → 0); despachar UN `revisor` en contexto
+fresco con presupuesto (9 mutaciones, plausibles) y corte; con PASS: commit de la enmienda + marcar `implementada` +
+INDEX + push. Despues, specs 2–4 del ADR 0115.
 
 **Medido en la corrida Neon completa (2026-10-02 22:00 UTC, ~10 min):** 6 failed / 3119 passed — `marketing-valley`
 (timeout, #67), **3 NUEVOS en `marketing-refresh`** (`expected [] to have a length of 1`, causa sin medir) y 2

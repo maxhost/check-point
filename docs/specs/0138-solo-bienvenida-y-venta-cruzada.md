@@ -111,6 +111,40 @@ El dia que se re-encienda algo, sus tests vuelven a correr solos. **Las suites `
 El implementador entrega la **lista de casos salteados**, cada uno con la condicion que lo saltea. Es el unico
 cambio permitido en esas suites: ningun `expect` se toca y ningun test se borra.
 
+### 6-bis. Enmienda del orquestador tras el primer intento (2026-10-02)
+
+El implementador paro donde §6 lo pedia: con el codigo cambiado, la suite Neon completa dio **90 failed / 3039
+passed en 29 archivos (367,86 s)**, verificado por el orquestador sobre su log. 63 son de tema apagado (se saltean).
+**26 prueban un mecanismo VIVO usando como fixture algo apagado.** Decision del orquestador (tecnica, no de
+producto): la regla del owner es «si esta apagado no se prueba», no «lo vivo deja de probarse». Entonces:
+
+- **Se REESCRIBEN con fixtures vivos (`welcome`/`cross`, o sembrando por SQL)**, conservando la PROPIEDAD que
+  pinnean (mismo invariante; cambia el fixture y, si el catalogo cambio, el valor esperado del catalogo):
+  `marketing-cross-enable` (2: orden del catalogo ahora `[welcome, cross]`; la «otra plantilla» pasa a `welcome`),
+  `marketing-templates-race`, `marketing-templates` (7: el mecanismo de plantillas con `welcome`/`cross`; «lists»
+  espera las encendidas), `marketing-welcome-plans` (3: el contraste Plus-only pasa a `cross`), `marketing-reward`
+  (4: la validacion del premio via `enable` de `cross`/`welcome`, no del compositor), `marketing-placement` «skips
+  while another run holds the tick lock» (el control escribe algo VIVO, ej. el barrido de la Bienvenida, en vez de
+  encolar/activar), `consumer-role-offers` (3: el rol sobre lo vivo; la parte de valle sale porque valle no se
+  ofrece). En estos SI se permite tocar cuerpo y `expect`, **solo para cambiar el fixture** — nunca para aflojar la
+  propiedad. Cada uno se lista con «propiedad antes / propiedad despues» en el reporte.
+- **Se SALTEAN (su mecanismo solo existe con turnos, y sin plantillas de turnos esta muerto):**
+  `consumer-marketing-opt-out` «apagado POR LA RUTA…», `marketing-coupon-issue` «the expired turn whose coupon was
+  redeemed…», `consumer-valley-welcome` O-M11, `marketing-lifecycle` «takes the door OUT of the pass…»,
+  `marketing-tick` «logs the run as JSON» (el log vivo ya lo asevera `marketing-disabled`).
+- Las suites **verdes** cuyo tema es apagado (unit y Neon) se saltean con la misma regla del tema.
+
+**Huecos que encontro el implementador, que entran:**
+- `POST /api/marketing/campaigns`: el 409 `campaign_disabled` va **antes de `readJson`** (en la ruta), asi un
+  JSON roto no da 400.
+- `claimCrossOffer` sobre una campaña de valle apagado: **404 `UNAVAILABLE`**, como `claimValleyOffer` (no 400 que
+  revele que existe).
+- La API de ventanas de valle del merchant (`apps/merchant/src/app/api/marketing/valley/**`): **404 `not_found`**
+  con valle apagado (el owner pidio que el merchant no vea lo apagado). Sus tests se saltean (tema valle).
+
+**Ubicacion del test del modulo:** `packages/` no tiene proyecto de vitest; el test va en
+`apps/merchant/src/server/marketing/enabled-campaigns.test.ts` (donde ya viven los de `templates.ts`).
+
 ### 7. Limpieza de `ci-integration`
 
 Los 99 turnos vivos historicos (campañas compositor «Vuelvan» de negocios `int-*`, medidos 2026-10-02): los borra
