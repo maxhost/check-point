@@ -8,22 +8,19 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, tarde) — SPEC 0143 CERRADA + ADR 0118 EN `main` (`15a2808`). SIGUIENTE: IMPLEMENTAR LA 0143
+## ⇥ ESTADO (2026-10-03, tarde) — SPEC 0143 CERRADA, CRON-JOB.ORG ANDANDO (`459cfd4`). SIGUIENTE: IMPLEMENTAR LA 0143
 
-**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `15a2808` (mas este commit).
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `459cfd4` (mas este commit).
 
-**Hecho:** spec **0143** (Venta cruzada por la compra: loteria H4, cupon + push «regalo misterio», registro en
-`core.cross_decision`/`cross_candidate` con la migracion **0063** —aditiva, a PROD ANTES del deploy—, C1/C2 en 404,
-`cross` exige `endsAt`). **ADR 0118** (owner): el worker de la cola lo dispara **cron-job.org cada 10 min de 7:00 a
-18:00 `America/Guayaquil`**, editable en su pantalla; se borra `.github/workflows/wallet-push-cron.yml` (medido: GitHub
-lo corria cada 2,4–7,8 h). Aceptado por el owner: el recordatorio del dia sin compra con hora objetivo despues de las
-17:50 no sale; lo diferido despues de las 17:50 sale a las 7:00. Medido: endpoint 2–4 s; Neon Launch USD 0,106/CU-h,
-`main` despierta 36 % del periodo.
+**Hecho:** spec **0143** (Venta cruzada por la compra; migracion **0063** a PROD ANTES del deploy) y **ADR 0118**. El
+owner creo el job de cron-job.org (cada 10 min, horas 7–17, `America/Guayaquil`); verificado: «Run now» → HTTP 200 y
+**7 `reminder` `sent` en PROD a las 18:24:31 UTC** (SQL). `wallet-push-cron.yml` borrado y el job documentado en
+`docs/notificaciones/README.md` §5bis (`459cfd4`). URL del worker: `https://business.checkpass.club/api/internal/wallet-push`.
 
-**Siguiente:** (1) el owner crea el job en cron-job.org (spec 0143 §8: URL = secreto `WALLET_PUSH_ENDPOINT`, header
-`Authorization: Bearer <CRON_SECRET>`, minutos 0/10/…/50, horas 7–17, zona Guayaquil, email `onDisable`); (2)
-despachar implementador + revisor de la 0143 (7 mutaciones); (3) avisar a GPT del contrato (C1/C2 404, `endsAt`
-obligatorio en M1).
+**Siguiente:** despachar implementador + revisor de la 0143 (7 mutaciones; el item de cron de la DoD ya esta hecho, el
+revisor lo tilda). Avisar a GPT del contrato (C1/C2 404, `endsAt` obligatorio en M1). El owner puede rotar
+`CRON_SECRET` (no lo tiene anotado): si lo hace, Vercel + redeploy, GitHub (lo usan `marketing-tick` y
+`catalog-import-reconcile`) y el header de cron-job.org.
 
 **Pendientes:** CI de `main` sin mirar desde `0b5073a`; intermitente de `catalog-import-guard`; los de la 0138;
 `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`.
