@@ -8,31 +8,28 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — 0143 IMPLEMENTADA SIN COMMITEAR EN `motor`; REVISOR INDEPENDIENTE CORRIENDO
+## ⇥ ESTADO (2026-10-03, noche) — SPEC 0143 IMPLEMENTADA Y COMMITEADA (`ab5e62e`), SIN PUSHEAR. FALTA LA 0063 EN PROD
 
-**Al retomar:** `motor` = `origin/main` en `76ce724` + el trabajo de la 0143 **sin commitear** en el arbol (`git status`:
-~26 ` M` y 13 `??`, migracion `0063_venta_cruzada_por_la_compra.sql`, `cross-sale*.ts`, `after-grant.ts`, tests). Si la
-sesion se cayo: `ListAgents` (el revisor puede seguir midiendo; no tocar mutaciones puestas) y despues re-despachar el
-revisor con el encargo de abajo.
+**Al retomar:** `motor` = `origin/main` (`76ce724`) + `ab5e62e` (codigo de la 0143) + este commit de estado. Nada pusheado.
 
-**Hecho:** implementador de la 0143 termino (su reporte): 7 mutaciones rojas y revertidas, `pnpm verify` ok (Neon completo
-2908 ok), 0063 aplicada SOLO en `ci-integration`. Orquestador verifico: arbol = lista del reporte, `after-grant.ts` segun
-§1, sin etiquetas `MUTATION` en `src/`.
+**Hecho:** spec 0143 implementada; PASS del revisor independiente (M2, M3, M6 re-ejecutadas rojas). Su mutacion propia
+(F con `count(*)`) sobrevivia → el orquestador sumo `cross-sale-lottery-facts.neon` y la midio roja (`expected 1.25 to be
+close to 1`), revertida con diff vacio. `pnpm verify` del implementador ok (Neon completo); despues del test nuevo, el
+orquestador corrio typecheck, lint, format:check y la suite nueva (2/2). Spec e INDEX en `implementada`. Caso de la fila M3
+falsa en `LECCIONES.md`.
 
-**A medias:** revisor independiente despachado: re-ejecuta M2, M3, M6 + 1 mutacion propia; juzga las elecciones del
-implementador (F/R por campaña, R solo `issued`, F con `coupon_conflict`). Sin PASS no se commitea ni se marca.
+**Siguiente (en este orden):** (1) **OK del owner para aplicar la 0063 a PROD** — va ANTES del push: `recordPushClick` escribe
+en `core.cross_decision`, sin la tabla falla el clic de todo push; (2) push con el `pre-push`; (3) deploy de `checkpass.club` en
+`READY` con el sha; (4) avisar a GPT: C1/C2 → 404, `endsAt` obligatorio en M1; (5) QA manual del owner (spec §«Verificacion
+manual»).
 
-**Hallazgos del implementador a llevar al owner/LECCIONES:** (1) la fila M3 de la spec era parcialmente falsa —
-`cross_candidate.decision_id NOT NULL` + la transaccion deshacen la 2a cola; el oraculo que distingue es el `toBeNull()`
-(tercera spec con fila falsa del orquestador → caso en `LECCIONES.md`). (2) `recordPushClick` ahora escribe en
-`core.cross_decision`: sin la 0063 en PROD falla el clic de TODO push → migracion a PROD (OK del owner) ANTES del push.
+**Hallazgos a decidir (owner), del revisor:** `R` cuenta solo `issued` (en `coupon_conflict` la campaña tambien salio
+elegida); F/R se cuentan por campaña (si un comercio recrea su campaña a mitad de mes, su atraso vuelve a cero). Bajo
+riesgo, no bloquean.
 
-**Siguiente, despues del PASS:** commit del trabajo; 0063 a PROD con OK del owner; push; deploy READY con el sha; avisar a
-GPT (C1/C2 404, `endsAt` obligatorio en M1); QA manual del owner (spec §«Verificacion manual»).
-
-**Pendientes:** CI de `main` en curso en `76ce724` sin mirar el resultado; intermitente de `catalog-import` (otra vez
-visto por el implementador, timeout 5 s); los de la 0138; `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`;
-`.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`; `CRON_SECRET` rotable por el owner.
+**Pendientes:** CI de `main` sin mirar en `76ce724`; intermitente de `catalog-import` (timeout 5 s, visto otra vez); los de la
+0138; `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar
+`motor-wt/fix-notices-mock`; `CRON_SECRET` rotable por el owner.
 
 ## ⇥ ESTADO HISTORICO (2026-10-03, tarde, 2) — SPEC 0143 CERRADA, CRON-JOB.ORG ANDANDO (`459cfd4`). SIGUIENTE: IMPLEMENTAR LA 0143
 

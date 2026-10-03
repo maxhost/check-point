@@ -1979,3 +1979,20 @@ termino en una decision de infraestructura del owner (ADR 0118: cron-job.org).
 **Regla.** Es la tercera de la familia de `CLAUDE.md` (mecanismo «medido» hasta el final). Para una afirmacion de
 TIEMPO, la medicion termina en lo que hace que el evento ocurra (el cron, el `after()`, el worker), no en la constante
 que lo limita. Y un cron externo se mide en sus corridas reales, no en su expresion: `*/5` en GitHub no es cada 5 min.
+
+## 2026-10-03 — Spec 0143: la fila M3 nombraba el guard hermano equivocado, y la mutacion del revisor sobrevivio
+
+**Que paso.** La fila M3 de la 0143 (escrita por el orquestador) decia que, sin la salida temprana del `on conflict
+(order_id)`, «el unico parcial del cupon frena el segundo cupon pero no la segunda fila de cola: por eso el oraculo
+cuenta la cola». Medido por el implementador y el revisor: falso en sus dos mitades. La segunda corrida descarta B (ya
+reclamada) y elige C, y lo que deshace todo es `cross_candidate.decision_id NOT NULL` dentro de la misma transaccion
+(`23502`). Contar la cola daba verde; el oraculo que distingue es el `toBeNull()` de la segunda corrida. Ademas, la
+mutacion propia del revisor (F con `count(*)` en vez de `sum(1/k)`, `cross-sale-store.ts`) sobrevivio a todas las
+suites: el unitario de la loteria recibe F/R/bono ya calculados y ningun test sembraba decisiones previas del mes. Se
+sumo `cross-sale-lottery-facts.neon` (rojo `expected 1.25 to be close to 1`, `ab5e62e`).
+
+**Regla.** Ya existe (§2.0 de `protocolo-de-verificacion`: la fila afirma que ningun otro guard produce el mismo
+resultado). Es la tercera spec del orquestador con una fila falsa. Lo nuevo: **un FK o `NOT NULL` de una tabla escrita
+en la misma transaccion es un guard hermano**; al nombrar hermanos, listar tambien las restricciones de las tablas que
+la transaccion escribe despues. Y una funcion pura testeada con sus entradas ya hechas deja sin oraculo al SQL que las
+calcula: el plan de pruebas lleva un caso que siembre esas entradas desde la base.
