@@ -8,7 +8,19 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche) — 0143, 0144 Y 0146 EN `main` (`5c855c7`). PENDIENTES DEL OWNER: QA IPHONE Y LOTE `pass_refresh`
+## ⇥ ESTADO (2026-10-03, noche, 2) — SPEC 0147 IMPLEMENTADA (`a8a66ba`), `sourceFileName` EN EL DTO DE IMPORTACION
+
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `a8a66ba` + este commit de estado.
+
+**Hecho:** spec **0147** (`sourceFileName` en las 9 respuestas de `toImportDTO`: PDF → `original_name`, imagenes → `null`;
+lector `catalog-import/source-file.ts` por `import_id` + `business_id`; DTO en `dto.ts`). PASS del revisor (M1, M3 rojas; R1
+sobrevive → declarado en la spec). El orquestador re-corrio contract/routes 17/17 y la suite Neon nueva 5/5. Timeout 60 s en
+`catalog-import.neon…:143` (el intermitente conocido, sin tocar aserciones).
+
+**Siguiente:** avisar a GPT que `sourceFileName` viene siempre (su UI ya lo acepta; no cambia nada). Pendientes del owner de
+antes: QA en iPhone de la 0146 y el lote `pass_refresh`; QA de la 0143.
+
+## ⇥ ESTADO HISTORICO (2026-10-03, noche) — 0143, 0144 Y 0146 EN `main` (`5c855c7`). PENDIENTES DEL OWNER: QA IPHONE Y LOTE `pass_refresh`
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `5c855c7` (mas este commit de estado).
 
