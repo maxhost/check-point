@@ -8,25 +8,29 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, tarde) — SPEC 0143 CERRADA Y EN `main` (`4c50397`). SIGUIENTE: IMPLEMENTARLA
+## ⇥ ESTADO (2026-10-03, tarde) — SPEC 0143 CERRADA + ADR 0118 EN `main` (`15a2808`). SIGUIENTE: IMPLEMENTAR LA 0143
 
-**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `4c50397` (mas este commit).
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `15a2808` (mas este commit).
 
-**Hecho:** push de `0b5073a` (LECCIONES). Spec **0143** (spec 4 del ADR 0115, implementa el 0117): al acreditar en A,
-loteria H4 → un cupon cruzado + push «regalo misterio» encolado a 3 min, registro en `core.cross_decision` /
-`core.cross_candidate` (migracion **0063**, aditiva, va a PROD ANTES del deploy), C1/C2 apagados (404), `cross` exige
-`endsAt`. Owner 2026-10-03: sin ventana horaria, fecha de fin obligatoria, solo acreditar dispara. ADR 0117 corregido:
-el «~3 min sin mecanismo nuevo» era media medicion — **el worker de la cola corre cada 2,4–7,8 h en GitHub** (medido
-por la API de Actions, ultimas 40 corridas).
+**Hecho:** spec **0143** (Venta cruzada por la compra: loteria H4, cupon + push «regalo misterio», registro en
+`core.cross_decision`/`cross_candidate` con la migracion **0063** —aditiva, a PROD ANTES del deploy—, C1/C2 en 404,
+`cross` exige `endsAt`). **ADR 0118** (owner): el worker de la cola lo dispara **cron-job.org cada 10 min de 7:00 a
+18:00 `America/Guayaquil`**, editable en su pantalla; se borra `.github/workflows/wallet-push-cron.yml` (medido: GitHub
+lo corria cada 2,4–7,8 h). Aceptado por el owner: el recordatorio del dia sin compra con hora objetivo despues de las
+17:50 no sale; lo diferido despues de las 17:50 sale a las 7:00. Medido: endpoint 2–4 s; Neon Launch USD 0,106/CU-h,
+`main` despierta 36 % del periodo.
 
-**Siguiente:** despachar implementador + revisor de la 0143 (presupuesto: 7 mutaciones, en la spec). Avisar a GPT del
-contrato (C1/C2 404, `endsAt` obligatorio en M1). **Pendiente del owner:** cron del worker — externo gratuito
-(cron-job.org verificado: gratis, cada minuto, corte a 30 s, sin puntualidad garantizada) o seguir con GitHub hasta
-Vercel Pro. Sin eso el push cruzado llega horas despues.
+**Siguiente:** (1) el owner crea el job en cron-job.org (spec 0143 §8: URL = secreto `WALLET_PUSH_ENDPOINT`, header
+`Authorization: Bearer <CRON_SECRET>`, minutos 0/10/…/50, horas 7–17, zona Guayaquil, email `onDisable`); (2)
+despachar implementador + revisor de la 0143 (7 mutaciones); (3) avisar a GPT del contrato (C1/C2 404, `endsAt`
+obligatorio en M1).
 
-**Pendientes:** CI de `main` (en cola en `0b5073a`, no se espero); intermitente de `catalog-import-guard`; los de la
-0138; `AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar
-`motor-wt/fix-notices-mock`.
+**Pendientes:** CI de `main` sin mirar desde `0b5073a`; intermitente de `catalog-import-guard`; los de la 0138;
+`AGENT-WORKFLOW.md`/agentes con bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`.
+
+## ⇥ ESTADO HISTORICO (2026-10-03, tarde) — SPEC 0143 CERRADA (`4c50397`)
+
+Reemplazado por el bloque de arriba el mismo dia.
 
 ## ⇥ ESTADO HISTORICO (2026-10-03) — ADR 0117 ACEPTADA (VENTA CRUZADA). SIGUIENTE: ESCRIBIR LA SPEC 4 DEL ADR 0115
 
