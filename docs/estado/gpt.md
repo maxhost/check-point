@@ -3,7 +3,22 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-03) — SPEC 0142: ICONO DE LA PWA EN WEB PUSH
+## ⇥ ESTADO (2026-10-03) — SPEC 0145: VENTA CRUZADA EN MARKETING
+
+La [spec 0145](../specs/0145-venta-cruzada-por-compra-en-marketing.md) quedó
+reservada en `92a464c`. El cambio local de UI exige `endsAt` al activar una
+cruzada y actualiza editor, resumen, detalle y confirmaciones para la entrega
+automática del cupón de la 0143. La prueba `cross-ui.test.ts` pasó 4/4; su
+mutación M1 falló en la aserción esperada y se restauró. `pnpm verify` con Node
+24.20.0 pasó typecheck, lint, formato, tests, e2e y Neon relacionado de
+Marketing; el build Turbopack quedó rojo por `Operation not permitted` al abrir
+un puerto interno del procesador CSS, incluso fuera del sandbox. El build
+Webpack de Merchant pasó. [Tabla y evidencia](../handoff-0145-venta-cruzada-marketing-2026-10-03.md).
+El código está commiteado localmente; el hook impide el push normal mientras
+`pnpm verify` siga rojo. Falta resolver ese límite de entorno o la autorización
+explícita del owner para el escape del hook; no se usó `--no-verify`.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-03) — SPEC 0142: ICONO DE LA PWA EN WEB PUSH
 
 La [spec 0142](../specs/0142-icono-de-la-pwa-en-web-push.md) quedó reservada
 en `6488227` y el cambio de `sw.js` está publicado en `main` desde `0e055a6`.

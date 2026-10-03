@@ -14,4 +14,17 @@ Archivo limpio `template-draft.ts`: SHA-1 `842408fd920b589bd46e20dfca2f8f72785bf
 
 ## Verificación final
 
-Pendiente de `pnpm verify` con Node 24 y e2e.
+`pnpm verify` con Node 24.20.0 se corrió dos veces. Los gates funcionales pasaron, pero el build de Merchant con Turbopack no pudo abrir un puerto interno del procesador CSS (`Operation not permitted`), incluso fuera del sandbox. Es el fallo de entorno documentado antes en este checkout; el build de Merchant con Webpack terminó verde.
+
+| Gate | Resultado | Tiempo de la segunda corrida |
+|---|---|---:|
+| typecheck | ok | 18,9 s |
+| lint | ok | 9,3 s |
+| format:check | ok | 7,8 s |
+| test | ok | 39,6 s |
+| build | ROJO: puerto interno de Turbopack | 2,5 s |
+| test:e2e | ok | 35,9 s |
+| Neon related merchant | ok, 30 tests relacionados | 4,8 s |
+| Neon related consumer | salteado: sin cambios de consumer | — |
+
+`pnpm --filter @mi-pasaporte/merchant exec next build --webpack` terminó verde. La spec permanece `cerrada` y no se considera satisfecha la DoD de `pnpm verify` hasta que el gate de build pase.

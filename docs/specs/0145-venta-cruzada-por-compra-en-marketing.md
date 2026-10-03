@@ -42,9 +42,9 @@ Los textos explican que, tras una compra en otro comercio participante, la loter
 
 ## Definition of Done
 
-- [ ] `cross-ui.test.ts` comprueba que sin `endsAt` hay error, con fecha válida no lo hay y M1 recibe la fecha ISO.
-- [ ] Los textos visibles de Marketing no describen reclamo manual de la Venta cruzada.
-- [ ] `rg -n 'cross-offers|/claim' 'apps/consumer/src/app/(consumer)/wallet'` no encuentra llamadas a C1/C2.
+- [x] `cross-ui.test.ts` comprueba que sin `endsAt` hay error, con fecha válida no lo hay y M1 recibe la fecha ISO (4/4 verdes; M1 roja y restaurada).
+- [x] Los textos visibles de Marketing no describen reclamo manual de la Venta cruzada (`rg` de los textos viejos: solo queda la bienvenida y una aserción negativa del test).
+- [x] `rg -n 'cross-offers|/claim' 'apps/consumer/src/app/(consumer)/wallet'` no encuentra llamadas a C1/C2.
 - [ ] `pnpm verify` en verde con Node 24 y e2e de UI; tabla en el handoff.
 
 ## Mutaciones — presupuesto: 1
