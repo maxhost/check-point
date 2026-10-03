@@ -142,7 +142,7 @@ producto): la regla del owner es «si esta apagado no se prueba», no «lo vivo 
 - La API de ventanas de valle del merchant (`apps/merchant/src/app/api/marketing/valley/**`): **404 `not_found`**
   con valle apagado (el owner pidio que el merchant no vea lo apagado). Sus tests se saltean (tema valle).
 
-**Aceptado por el orquestador tras la implementacion (`1236aff`):**
+**Aceptado por el orquestador tras la implementacion (`aefc21c`):**
 - Dos casos de §6-bis quedan SALTEADOS en vez de reescritos porque su mecanismo NO existe en lo vivo:
   `marketing-templates` «excludes exactly the excluded doors…» (`cross`/`welcome` rechazan `excludedLocationIds`
   con 400, `cross-input.test`) y `marketing-reward` «PATCH foreign» (`updateCampaign` solo edita el compositor;
@@ -246,7 +246,7 @@ con evidencia ejecutada antes de marcar `implementada`. Despues: §7 (con OK del
 
 ## Cierre (2026-10-03)
 
-**Implementada en `1236aff`** (+ `fb88549`, que revierte los `next-env.d.ts` que ese commit dejo apuntando a
+**Implementada en `aefc21c`** (+ `f693e08`, que revierte los `next-env.d.ts` que ese commit dejo apuntando a
 `.next/dev`). **PASS del revisor independiente**, en contexto fresco, con 5 mutaciones (M3, M7, M8 re-medidas y 2
 propias: `claimCrossOffer` sobre valle → 400 y quitar `assertValleyOn()` del PUT de ventanas): las 5 rojas, por la
 asercion correcta. Reescrituras de B revisadas (`welcome-plans`, lock de `placement`, `consumer-role-offers`):
