@@ -54,7 +54,7 @@ archivos: apps/merchant/src/app/backoffice/catalog/catalog-ai-import-picker.tsx,
 - [x] Los botones de quitar son operables con teclado y lector de pantalla; el tamaño táctil es al menos 44 × 44 px. Las tarjetas no provocan desbordamiento horizontal a 390 px.
 - [x] Las URL locales de miniaturas se revocan al retirar archivos y al salir del selector. El archivo enviado conserva bytes, nombre y tipo originales.
 - [x] `pnpm exec playwright test tests/e2e/catalog-tour-import.spec.ts --config=/tmp/spec0137-playwright.config.ts --reporter=dot` pasa con Node 24 y el harness móvil: 7 passed, incluido el campo opcional `sourceFileName`. Se usó config temporal sin `webServer` porque el puerto 3000 estaba ocupado por otro checkout.
-- [ ] `pnpm verify` pasa con Node 24. En la segunda corrida, ya con `:3000` libre, el e2e global pasó (110 tests, 5 omitidos); el único gate rojo fue build Turbopack del consumer (`binding to a port: Operation not permitted`). El build del merchant con `pnpm exec next build --webpack` sí pasó. No publicar hasta que el gate pase, por decisión del owner.
+- [x] `pnpm verify` pasó con Node 24 en la tercera corrida: typecheck, lint, formato, tests, build, e2e global (110 tests, 5 omitidos) y Neon related merchant verdes. El build del merchant con `pnpm exec next build --webpack` también pasó. El fallo previo de Turbopack consumer al abrir un puerto interno no volvió a reproducirse.
 - [x] `rg -n MUTATION apps/merchant/src/app/backoffice/catalog apps/merchant/src/app/globals.css tests/e2e/catalog-tour-import.spec.ts` → vacío tras revertir ambas mutaciones.
 
 ## Mutaciones — presupuesto: 2
@@ -84,6 +84,8 @@ archivos: apps/merchant/src/app/backoffice/catalog/catalog-ai-import-picker.tsx,
 La suite e2e propia pasó 7/7 con un config temporal sin `webServer`; su última corrida y el typecheck/lint dirigidos fueron posteriores al adaptador opcional `sourceFileName`. El build Webpack del merchant pasó. Se vio la captura de las tres tarjetas a 390 px en Chromium; falta QA de cámara real en teléfono y PASS independiente.
 
 **Segunda corrida de `pnpm verify` tras liberar `:3000`:** typecheck 3.6 s, lint 7.0 s, formato 7.8 s, test 40.7 s, e2e 37.0 s (110 passed, 5 skipped) y Neon related merchant 4.0 s, todos verdes. Build rojo en 2.7 s por el mismo `EPERM` interno de Turbopack consumer. `origin/main` tenía CI verde (`7e99d5f`) antes de esta corrida. El owner pidió esperar el gate verde antes del push.
+
+**Tercera corrida de `pnpm verify` (gate verde):** typecheck 0.4 s, lint 6.8 s, formato 6.6 s, tests 40.0 s, build 15.9 s, e2e 36.8 s (110 passed, 5 skipped) y Neon related merchant 4.0 s, todos `ok`. Neon related consumer se salteó porque no se tocó consumer. Se había comprobado antes que el bind local de Node y de un proceso hijo funciona fuera del sandbox; la traza de un build directo de consumer registró dos binds exitosos a `127.0.0.1` con puerto efímero. No hubo una denegación reproducible ni un registro de sandbox que identifique la causa del `EPERM` anterior.
 
 ## Declarado afuera
 
