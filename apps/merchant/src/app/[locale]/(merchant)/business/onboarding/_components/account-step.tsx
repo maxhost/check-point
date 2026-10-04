@@ -10,6 +10,7 @@ import {
   WizardApiError,
 } from "../_lib/onboarding-api";
 import { InlineApiError, StepHeader } from "./wizard-shared";
+import { QaLoginButtons } from "./qa-login-buttons";
 
 export type AccountMode = "signup" | "login";
 
@@ -145,6 +146,7 @@ export function AccountStep({
               : "Continuar"}
         </Button>
       </Form>
+      {mode === "login" ? <QaLoginButtons /> : null}
     </>
   );
 }
