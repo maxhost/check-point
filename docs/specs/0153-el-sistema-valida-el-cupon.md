@@ -1,16 +1,16 @@
 ---
-spec: 0152
+spec: 0153
 fecha: 2026-10-04
 estado: cerrada
-resumen: Implementa el ADR 0120 en el servidor. El escaneo trae el cupon elegido con su veredicto (valido / invalido + motivo); se borran «Validar» (M2) y el estado «validado»; la venta consume el cupon elegido y acredita los sellos/puntos extra; «Quitar» solo borra la eleccion. Contrato `0152-contratos-de-api.md`; las pantallas son de GPT.
+resumen: Implementa el ADR 0120 en el servidor. El escaneo trae el cupon elegido con su veredicto (valido / invalido + motivo); se borran «Validar» (M2) y el estado «validado»; la venta consume el cupon elegido y acredita los sellos/puntos extra; «Quitar» solo borra la eleccion. Contrato `0153-contratos-de-api.md`; las pantallas son de GPT.
 disjunta: no
 archivos: apps/merchant/src/server/counter/{coupon-state,coupon-decision,grant-coupon,coupon-discount,coupon-remove,coupon-extras,coupon-locks,coupon-store,resolve,history}.ts, borra coupon-validate.ts y app/api/counter/coupon-validate/, tests de cupones del mostrador
 ---
 
-# 0152 — El sistema valida el cupon (servidor)
+# 0153 — El sistema valida el cupon (servidor)
 
 Nivel **N2** (dinero en la venta, saldo de sellos/puntos). Decisiones: ADR 0120 (owner, 2026-10-04). Contrato HTTP para
-GPT: `docs/specs/0152-contratos-de-api.md`.
+GPT: `docs/specs/0153-contratos-de-api.md`.
 
 ## Problema
 
@@ -32,7 +32,7 @@ llega a `selected`), cuando el owner quiere verlo en rojo con el motivo.
 - Migrar los tests que usaban `validateCoupon` como forma de canjear (ver Archivos).
 
 **No entra:**
-- Pantallas (GPT, spec de UI aparte sobre el contrato 0152): veredicto verde/rojo, borrar «Validar», `canConfirm`,
+- Pantallas (GPT, spec de UI aparte sobre el contrato 0153): veredicto verde/rojo, borrar «Validar», `canConfirm`,
   agregar el producto al carrito.
 - PWA (P0–P2 sin cambios). Migraciones: ninguna (no hay columna nueva; las filas de canje sin venta no existen en PROD).
 - Cambiar el limite diario, el orden de locks o el calculo del descuento.

@@ -1,4 +1,4 @@
-# 0152 — Contrato de API: el sistema valida el cupon (delta sobre `0148-contratos-de-api.md`)
+# 0153 — Contrato de API: el sistema valida el cupon (delta sobre `0148-contratos-de-api.md`)
 
 > Lo que no se nombra aca queda como en `0148-contratos-de-api.md` (P0–P2 de la PWA sin cambios). Errores y montos con
 > las mismas convenciones: las rutas del mostrador responden la entrada invalida con `422 invalid_input`.
