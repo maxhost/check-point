@@ -3,7 +3,21 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
+## ⇥ ESTADO (2026-10-04) — SPEC 0154: VEREDICTO AUTOMÁTICO DEL CUPÓN EN MOSTRADOR
+
+El owner aprobó el ADR 0120. Leí desde `motor` el
+[contrato HTTP 0153](../specs/0153-contratos-de-api.md) y la spec del servidor;
+la [spec UI 0154](../specs/0154-veredicto-automatico-del-cupon-en-mostrador.md)
+quedó cerrada con su fila en `docs/INDEX.md` en el commit local `06af813`.
+Todavía no se tocó código de la 0154 ni se hizo push. La 0152 sigue en local.
+
+**Esperar el SHA del servidor del owner.** Después: `git fetch origin` y
+`git rebase motor` en `main`, conservar las filas 0153 y 0154 si hay conflicto de
+índice, implementar UI sobre el contrato, `pnpm verify` con Node 24 y un solo
+push conjunto cuando el gate esté verde. No pedir QA hasta deploy `READY` de
+Vercel para ese SHA.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
 
 La [spec 0152](../specs/0152-mostrador-mobile-sin-nav-y-sin-tarjeta.md) quedó
 reservada y publicada en `1ea1e5e`; la UI está en el commit local `35fbdab`.
