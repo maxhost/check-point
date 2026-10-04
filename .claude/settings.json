@@ -83,11 +83,11 @@
   },
   "permissions": {
     "allow": [
-      "Bash(npm run typecheck*)",
-      "Bash(npm run lint*)",
-      "Bash(npm run test*)",
-      "Bash(npm run build*)",
-      "Bash(npm test*)",
+      "Bash(pnpm run typecheck*)",
+      "Bash(pnpm run lint*)",
+      "Bash(pnpm run test*)",
+      "Bash(pnpm run build*)",
+      "Bash(pnpm test*)",
       "Bash(git status*)",
       "Bash(git log*)",
       "Bash(git diff*)",

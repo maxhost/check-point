@@ -71,6 +71,37 @@ fila: nombrar el guard hermano; si existe, el oraculo lo puentea (doble que lo d
 `packages/` no lo corre nadie); (2) los centinelas de un test de cableado son distintos de los valores de hoy Y entre si
 cuando la regla compara dos limites; (3) `rg` de que ningun test existente ya fija lo que la fila dice que nadie fija.
 
+### 2.0-a Mudado de `CLAUDE.md` (spec 0151): mecanismo, ejemplo, tabla, etiqueta, presupuesto
+
+**Y LA TERCERA DE LA FAMILIA: una afirmacion de MECANISMO que una spec presenta como «medido»
+tiene que estar medida HASTA EL FINAL.** Ver el nombre de una funcion NO es medir: hay que abrirla.
+Media medicion presentada como completa es **peor que no medir** — el implementador la copia con
+total obediencia y queda en el arbol con forma de conocimiento verificado (0077, `LECCIONES.md`).
+
+**Y EL EJEMPLO CON EL QUE DESCRIBIS UN INVARIANTE ES UNA AFIRMACION, no una ilustracion.** Si la
+spec dice «cambiar X rompe el caso Y», afirma que **Y distingue X**, y eso se EJECUTA: Y es lo que
+se vuelve mutacion y test. En la 0080 la regla era cierta y el ejemplo falso, la mutacion midio
+21/21 en verde y el invariante real quedo sin oraculo. Caso en `LECCIONES.md`.
+
+**Y CADA FILA DE LA TABLA DE MUTACIONES SE VERIFICA CONTRA EL ARBOL ANTES DE CERRAR LA SPEC** —
+el mecanismo que nombra tiene que existir y hay que poder senalar su archivo y su linea. **Van dos
+specs seguidas con una fila falsa, y las dos las escribio el orquestador** (M5 de la 0085, M6 de
+la 0086). El protocolo esta en la skill `protocolo-de-verificacion`; los casos, en `LECCIONES.md`.
+
+**Toda mutacion se etiqueta con `MUTATION`, se le registra el `shasum` limpio ANTES de mutar, y se
+revierte con un `diff` contra la copia limpia.** Enforced por el hook `no-mutations-left.sh`, que
+**solo ve mutaciones etiquetadas**. Si heredas una puesta: `ListAgents` primero (puede estar
+midiendo), y **medila antes de revertirla**.
+
+**Toda verificacion lleva presupuesto y condicion de corte escritos EN EL ENCARGO**, y el oraculo
+que define es el QA del owner, no la suite: cuantas mutaciones y que clase de error tiene que
+cazar (los plausibles). Lo que quede afuera se **declara**. Si dos vueltas seguidas terminan en
+«el fix abrio la siguiente», es la señal de cortar, no mala suerte. Entre una evidencia mas y una
+pantalla que el owner pueda probar, **gana la pantalla**.
+
+**Presupuesto por defecto del revisor:** en N2 (`CLAUDE.md` §Niveles) el revisor se acota a correctitud
+contra la spec + 1–3 mutaciones sobre las lineas cambiadas (spec 0151), salvo que el encargo diga otro presupuesto.
+
 ### 2.0-ter El FALSO ROJO, que es mas caro porque se lee como exito (2026-09-21)
 
 **Van TRES specs seguidas** en las que un **doble de test devuelve una fila que la base no puede

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Stop — bloquea el fin del turno si tocaste codigo y docs/estado/claude.md quedo viejo.
+# Stop — AVISA (stdout, exit 0) si tocaste codigo y docs/estado/claude.md quedo viejo.
+#
+# Spec 0151: antes bloqueaba (exit 2), y cada turno con codigo forzaba un commit `docs: estado`
+# (46 de 300 commits). Ahora el estado se escribe al cerrar la sesion (skill `handoff`); este
+# hook solo lo recuerda. NO vuelve a bloquear sin una decision nueva del owner.
 #
 # Desde la spec 0135 / ADR 0114 el ESTADO es por agente: Claude escribe el suyo en
 # docs/estado/claude.md (GPT, en docs/estado/gpt.md) y docs/TASKS.md solo los enlaza.
@@ -37,8 +41,8 @@ changed=$(git status --porcelain -- "${srcdirs[@]}" 2>/dev/null |
 
 STATE=docs/estado/claude.md
 if [ ! -f "$STATE" ]; then
-  echo "Tocaste codigo y no existe $STATE. Crealo con el estado actual antes de terminar." >&2
-  exit 2
+  echo "Aviso: tocaste codigo y no existe $STATE. Crealo con el estado actual al cerrar la sesion."
+  exit 0
 fi
 
 # De lo cambiado, cuales son mas nuevos que el estado. Un untracked puede venir como
@@ -60,13 +64,12 @@ done <<< "$changed"
 
 if [ -n "$newer" ]; then
   {
-    echo "$STATE (tu ESTADO) quedo mas viejo que el codigo que tocaste:"
+    echo "Aviso: $STATE (tu ESTADO) quedo mas viejo que el codigo que tocaste:"
     printf '%s' "$newer" | head -5 | sed 's/^/  /'
     echo
-    echo "Actualizalo antes de terminar: que quedo hecho, que esta a medias, que sigue."
-    echo "Es el punto de retorno si esta sesion se cae. Un turno que termina sin"
-    echo "actualizarlo deja el estado solo en el chat, y el chat se compacta."
-  } >&2
-  exit 2
+    echo "Actualizalo al cerrar la sesion (handoff): que quedo hecho, que esta a medias, que sigue."
+    echo "Es el punto de retorno si la sesion se cae."
+  }
+  exit 0
 fi
 exit 0

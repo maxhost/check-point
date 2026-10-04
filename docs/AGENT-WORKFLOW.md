@@ -1,6 +1,6 @@
 # Protocolo de trabajo con agentes
 
-Este protocolo se usa **después** de que una feature haya sido conversada y su spec esté en estado `cerrada`. No sustituye la conversación de producto ni permite empezar código con una spec incompleta.
+Este protocolo se usa **solo para specs N2** (dinero, auth/sesiones, aislamiento entre comercios, migraciones, DTOs con datos internos; niveles en `CLAUDE.md` §Niveles, spec 0151), **después** de que la feature haya sido conversada y su spec esté en estado `cerrada`. No sustituye la conversación de producto ni permite empezar código con una spec incompleta. Un cambio N0 o N1 se hace en la conversación principal, **sin subagentes**.
 
 ## Roles
 
@@ -8,7 +8,7 @@ Este protocolo se usa **después** de que una feature haya sido conversada y su 
 
 Es responsable de la dirección, no de declarar éxito por intuición.
 
-- Lee `docs/INDEX.md`, `docs/TASKS.md`, `docs/ARCHITECTURE.md`, la spec cerrada, ADRs relacionados y el estado/diff del repositorio.
+- Lee la spec cerrada, los ADRs que enlaza, el bloque `⇥ ESTADO` de `docs/estado/claude.md` y el estado/diff del repositorio. `docs/INDEX.md`, `docs/TASKS.md` y `docs/ARCHITECTURE.md` se consultan con `rg`, no se leen enteros.
 - Comprueba que la spec tenga diseño técnico, Definition of Done (DoD), comandos de prueba y archivos previstos.
 - Divide o serializa el trabajo según la sección **Disjunta?** de la spec.
 - Entrega al agente implementador un encargo acotado: número de spec, objetivo, archivos permitidos, contratos, DoD y comandos exigidos.
@@ -51,7 +51,7 @@ Si el revisor responde `FAIL`, vuelve al implementador con hallazgos. No se sust
 
 ## Handoff mínimo
 
-Todo implementador y revisor entrega este bloque:
+Todo implementador y revisor entrega este bloque (la bitácora de mutaciones va aquí, y a un archivo del scratchpad si es larga):
 
 ```md
 ## Handoff — Spec NNNN

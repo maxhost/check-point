@@ -1,199 +1,77 @@
 # CLAUDE.md
 
-> Instalado por GlaDOS (plantilla del arnes v1). Es tuyo: editalo con el uso —
-> cada error observado del agente deberia volverse una linea aca o un hook (mistake→rule).
+> Plantilla del arnes GlaDOS, editada con el uso: cada error observado del agente se vuelve una linea
+> aca, un hook o una skill (mistake→rule). Se carga en CADA request: solo lo que cambia una decision.
 
-Directrices del proyecto. Se cargan siempre y cuestan tokens en cada request — aca va
-solo lo que cambia una decision. Lo derivable del codigo no va: leelo del arbol.
+- **`docs/estado/claude.md`** — TU estado: leé solo su bloque `⇥ ESTADO` de arriba. Es el punto de retorno.
+- **`docs/INDEX.md`** (ADRs y specs) y `docs/TASKS.md`: **buscalos con `rg`, no los leas enteros.**
+- `.claude/settings.json` (hooks + permisos), `docs/PARQUEADO.md` (lo diferido), `docs/LECCIONES.md`
+  (el caso de cada regla; no se lee al arrancar), `docs/TRABAJO-EN-PARALELO.md` (GPT sobre `main`, ADR 0114).
 
-- **`docs/INDEX.md`** — mapa de ADRs y specs. **Empeza aca**, no leas todo.
-- **`docs/estado/claude.md`** — TU estado, el punto de retorno si esta sesion se cae (`docs/TASKS.md` lo enlaza).
-- `.claude/settings.json` — lo que esta enforced (hooks + permisos).
-- **`docs/LECCIONES.md`** — el registro historico de `mistake→rule`, con el caso de cada regla.
-- **`docs/PARQUEADO.md`** — lo diferido/parado. `docs/estado/` es solo lo que esta en ejecucion.
+**Donde va cada cosa (ADR 0069):** regla corta que cambia una decision en toda sesion → aca; chequeable con
+un comando → hook; protocolo o gotcha de dominio → skill en `.claude/skills/`; caso con fecha →
+`docs/LECCIONES.md`. Nunca se referencia `LECCIONES.md` ni una skill con `@`: se cargaria entero.
 
-**Donde va cada cosa (spec 0066 / ADR 0069), para que este archivo no vuelva a crecer:** regla
-operativa corta que cambia una decision en **toda** sesion → aca; chequeable con un comando →
-**hook**; protocolo de verificacion o gotcha de un dominio → **skill** en `.claude/skills/`
-(se carga on demand, cuesta cero cuando no aplica); el caso completo con su fecha y su evidencia
-→ `docs/LECCIONES.md`. **Nunca se referencia `LECCIONES.md` con `@`**: un import `@` se carga
-como si estuviera pegado aca y no ahorraria un solo token.
+## Niveles (spec 0151)
 
-## Flujo de trabajo
+| Nivel | Cuando | Como |
+|---|---|---|
+| **N0 directo** | el diff se describe en una oracion, sin esquema/SQL nuevo, sin auth/dinero | en la conversacion principal, sin spec ni subagentes; typecheck + lint + tests del archivo; commit |
+| **N1 rebanada** | un endpoint o un cambio de servidor acotado | spec CHICA (`TEMPLATE-CHICA.md`) = contrato HTTP para GPT + su test negativo; sin subagentes; `pnpm verify`; push en el dia |
+| **N2 completo** | dinero, auth/sesiones, aislamiento entre comercios, migraciones, DTOs con datos internos | spec (`TEMPLATE.md`), UN implementador, UN revisor (correctitud + 1–3 mutaciones sobre lineas cambiadas); `docs/AGENT-WORKFLOW.md` |
 
-1. **Leer `docs/estado/claude.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr
-   `pnpm ci:status`: si el ultimo `main` esta rojo, se arregla primero. **GPT trabaja en paralelo sobre
-   `main`: zonas, push, numeros y estado por agente en `docs/TRABAJO-EN-PARALELO.md` (ADR 0114).**
-2. **Ninguna tarea toca codigo sin su spec cerrada** (`docs/specs/`). La subespecificacion
-   es el gatillo medido del exito fingido: en tareas resolubles y bien definidas el reward
-   hacking cae a 0%; en tareas vagas, ~50%. **Que plantilla (ADR 0071):** `TEMPLATE-CHICA.md`
-   (~60 lineas) si valen las tres —**un dominio, sin migraciones, sin decision de producto
-   abierta**—; `TEMPLATE.md` si falta alguna. **Y las decisiones del owner se piden ANTES de
-   escribir la prosa**: una spec escrita dos veces porque el alcance cambio despues es el
-   costo que el 0071 vino a cortar.
-3. **Toda decision de diseño genera un ADR** (`docs/adr/`) con fecha y `resumen` de una
-   linea en el frontmatter. El resumen es lo que se lee sin abrir el archivo.
-4. **Agregar la fila a `docs/INDEX.md` en el mismo commit**, de **3 lineas**: que es, por
-   que importa, estado (ADR 0071). El detalle vive en la spec, que es lo que la fila enlaza.
-   Un indice viejo es peor que ninguno; uno de 2.000 palabras por fila se paga en cada sesion.
-5. **Actualizar `docs/estado/claude.md` al terminar.** Hay un hook `Stop` que lo exige si quedo
-   viejo respecto del codigo tocado. **Y el bloque ESTADO se escribe DESPUES del commit del
-   trabajo, no antes**: si lo escribis antes, el commit que sigue lo invalida en el mismo
-   turno y describe un arbol que ya no existe. Son dos commits (el trabajo, y despues el
-   doc con su sha) y esta bien que lo sean. Lo caza `state-uncommitted-lie.sh`, que en una
-   sola sesion disparo **tres** veces — una de ellas sobre una frase escrita como
-   PREDICCION («va a haber trabajo sin commitear»): el bloque ESTADO se lee como el estado
-   ACTUAL, asi que ahi no se pronostica, se describe.
-6. **Marcar `hecho` solo con verificacion real** — test que pasa, comando corrido, cosa
-   vista en pantalla. Nunca "deberia andar".
-7. **Implementar con el protocolo de `docs/AGENT-WORKFLOW.md`: UN implementador para toda
-   la spec y UN revisor independiente al final** (ADR 0071), no un ciclo por paso. Solo un
-   PASS verificable permite marcarla como implementada. **Los gates completos se corren una
-   vez por spec**, no una por agente: medido, una ronda entera cuesta menos de un minuto y el
-   tiempo real se va en contexto re-leido. **Lo que NO se recorta es el protocolo de
-   mutaciones ni la revision independiente** — en la 0068 el revisor cazo un oraculo que no
-   existia y la fuga sobrevivia a 1027 tests.
+Si dudas entre dos niveles, el mas alto. Una feature grande se parte en rebanadas N1 pusheables solas.
+Subagentes (`implementador`, `revisor`) **solo en N2**. Las decisiones del owner se piden ANTES de
+escribir la spec: una spec escrita dos veces porque el alcance cambio es el costo que esto corta.
+
+## Flujo
+
+1. Al arrancar: el bloque ESTADO y `pnpm ci:status`. Si el ultimo `main` esta rojo, se arregla primero.
+2. Toda decision de diseño genera un ADR (`docs/adr/`) con fecha y `resumen` de una linea en el frontmatter.
+3. Fila de 3 lineas en `docs/INDEX.md` (que es, por que importa, estado) en el mismo commit.
+4. Estado: en N1/N2 el bloque ESTADO se reescribe DESPUES del commit del trabajo (dos commits: el trabajo
+   y el doc con su sha) y describe, no pronostica (hook `state-uncommitted-lie.sh`). En N0, al cerrar la sesion.
+5. `hecho` solo con verificacion real: test que pasa, comando corrido, cosa vista en pantalla.
 
 ## Estado
 
-**Lo que tiene que sobrevivir va a un archivo, no a la conversacion.** La compactacion
-borra lo que vive solo en el chat; el disco se re-lee. Un plan que es un mensaje no es
-un plan.
-
-**Handoff SIEMPRE seguido de `/clear`.** El handoff baja el estado a disco pero NO libera
-la ventana de contexto. Orden sagrado: handoff PRIMERO (a disco), clear DESPUES. Nunca
-compact: comprime con perdida.
-
+**Lo que tiene que sobrevivir va a un archivo, no a la conversacion**: la compactacion borra el chat, el
+disco se re-lee. **Handoff SIEMPRE seguido de `/clear`**: handoff primero (a disco), clear despues.
+**Nunca compact**: comprime con perdida.
 
 ## Verificacion
 
-**Ninguna afirmacion de exito vale sin una señal que el modelo no genero** — tests, typecheck,
-exit code, una fila leida por SQL. La auto-revision sin oraculo es negativa neta.
-
-**Y su espejo: una afirmacion de IMPOSIBILIDAD o de COSTO es una afirmacion como cualquier otra.**
-«No se puede testear» y «costaria una migracion / una columna / un refactor grande» se verifican
-igual —**intentandolo**— y ninguna de las dos se le pasa al owner ni se baja a un doc sin eso.
-
-**Y LA TERCERA DE LA FAMILIA: una afirmacion de MECANISMO que una spec presenta como «medido»
-tiene que estar medida HASTA EL FINAL.** Ver el nombre de una funcion NO es medir: hay que abrirla.
-Media medicion presentada como completa es **peor que no medir** — el implementador la copia con
-total obediencia y queda en el arbol con forma de conocimiento verificado (0077, `LECCIONES.md`).
-
-**Toda verificacion lleva presupuesto y condicion de corte escritos EN EL ENCARGO**, y el oraculo
-que define es el QA del owner, no la suite: cuantas mutaciones y que clase de error tiene que
-cazar (los plausibles). Lo que quede afuera se **declara**. Si dos vueltas seguidas terminan en
-«el fix abrio la siguiente», es la señal de cortar, no mala suerte. Entre una evidencia mas y una
-pantalla que el owner pueda probar, **gana la pantalla**.
-
-**Ningun hallazgo de un subagente entra a una spec, a un ADR, al `INDEX` o a un mensaje al owner
-sin que vos hayas reproducido la evidencia.** Una cita no es una verificacion: es un puntero a
-donde verificar. Y el espejo: **lo que le pasas a un subagente como insumo es una afirmacion
-tuya** — re-medí el doc antes de despacharlo. **Esto vale IGUAL cuando el subagente es el REVISOR
-y dice «verificado con una sonda ejecutada»**: en la 0080 esa frase venia de un PASS y el ejemplo
-que traia era falso.
-
-**Y EL EJEMPLO CON EL QUE DESCRIBIS UN INVARIANTE ES UNA AFIRMACION, no una ilustracion.** Si la
-spec dice «cambiar X rompe el caso Y», afirma que **Y distingue X**, y eso se EJECUTA: Y es lo que
-se vuelve mutacion y test. En la 0080 la regla era cierta y el ejemplo falso, la mutacion midio
-21/21 en verde y el invariante real quedo sin oraculo. Caso en `LECCIONES.md`.
-
-**Y CADA FILA DE LA TABLA DE MUTACIONES SE VERIFICA CONTRA EL ARBOL ANTES DE CERRAR LA SPEC** —
-el mecanismo que nombra tiene que existir y hay que poder senalar su archivo y su linea. **Van dos
-specs seguidas con una fila falsa, y las dos las escribio el orquestador** (M5 de la 0085, M6 de
-la 0086). El protocolo esta en la skill `protocolo-de-verificacion`; los casos, en `LECCIONES.md`.
-
-**Toda mutacion se etiqueta con `MUTATION`, se le registra el `shasum` limpio ANTES de mutar, y se
-revierte con un `diff` contra la copia limpia.** Enforced por el hook `no-mutations-left.sh`, que
-**solo ve mutaciones etiquetadas**. Si heredas una puesta: `ListAgents` primero (puede estar
-midiendo), y **medila antes de revertirla**.
-
-**Mistake→rule:** cada error observado del agente se convierte en un fix estructural permanente.
-Si se chequea con un comando es un **hook**; si es advisory, una linea aca; el caso completo va a
-`docs/LECCIONES.md`. Nunca la misma correccion dos veces a mano.
-
-**El protocolo completo —el orden exacto de una mutacion, como se prueba que un oraculo muerde y
-por el motivo correcto, como se declara un limite— esta en la skill
-`protocolo-de-verificacion`.** Cargala antes de encargar una revision o de escribir un plan de
-pruebas. Los casos que originaron cada regla estan en `docs/LECCIONES.md`.
-
-**NO ESPERAR A LA CI DE GITHUB ACTIONS** (instruccion del owner, 2026-09-23): tarda y bloquea el
-turno. Los gates se corren **local antes de pushear** y con eso alcanza; despues del push se sigue
-sin sondear `check-runs` ni armar un monitor. **Antes de pedirle QA al owner igual hay que verificar
-que el DEPLOY tenga el commit** —que es otra cosa y es una sola llamada—: el deploy de Vercel al que
-apunta `checkpass.club` tiene que estar en `READY` con ese sha.
-
-**Lo que el owner no dijo explicitamente NO se escribe como decision suya.** Un efecto lateral que
-nadie acordo va como *hallazgo a decidir*, nunca como «aceptado».
-
-**Y SU ESPEJO: lo que el owner YA dijo no se le vuelve a preguntar.** Antes de subir un «hallazgo a
-decidir» —propio o de un subagente— buscar sus palabras textuales en `TASKS.md`/`PARQUEADO.md` **y en
-el ADR**: si ya lo dijo, es **incumplimiento** y se arregla. **Cuando el codigo y un DOCBLOCK
-difieren manda el ADR, y se lee PRIMERO**: el docblock es una cita, y un titular que promete mas que
-su propia condicion es prosa pasada de largo, no media decision sin implementar — se arregla la prosa
-y se INFORMA, nunca se le arma un menu sobre algo que su ADR ya cerro. Casos en `LECCIONES.md`.
-
-**De un `.env` se imprime la CLAVE y metadatos —largo, huella `sha256[0..12]`, espacios al borde—,
-NUNCA el valor ni un prefijo suyo**: el default es no imprimir, y **recortar una credencial no la
-deja de ser**. Filtrar por nombre de variable es la forma equivocada (`*_URL_UNPOOLED` no matchea
-`*_URL`), y el deny de `Read(**/.env*)` no alcanza a un script que lo lee desde Bash.
-
-**Las reglas verificables van en hooks, no aca.** Los hooks corren fuera del contexto, cuestan
-cero tokens y son deterministas; este archivo es advisory.
+- **Ninguna afirmacion de exito vale sin una señal que el modelo no genero** — test, typecheck, exit code,
+  una fila leida por SQL. **Y su espejo:** «no se puede testear» o «costaria una migracion» se verifican
+  **intentandolo**, antes de pasarselo al owner o a un doc.
+- **Ningun hallazgo de un subagente entra a una spec, ADR, `INDEX` o mensaje al owner sin reproducir su
+  evidencia** — tambien si viene de un revisor con PASS. Lo que le pasas como insumo es afirmacion tuya: re-medilo.
+- Mutaciones, tablas de mutacion, presupuesto y corte, mecanismos «medidos»: skill
+  **`protocolo-de-verificacion`** — cargala antes de encargar una revision o escribir un plan de pruebas.
+- **No esperar la CI de GitHub** (owner, 2026-09-23): gates locales antes de pushear, sin sondear despues.
+  Antes de pedir QA al owner, el deploy de Vercel de `checkpass.club` tiene que estar `READY` con ese sha.
+- **Lo que el owner no dijo no se escribe como decision suya** (va como *hallazgo a decidir*). **Lo que ya
+  dijo no se le vuelve a preguntar**: buscar sus palabras en `TASKS.md`/`PARQUEADO.md` y en el ADR, que
+  manda sobre un docblock.
+- **De un `.env` se imprime la CLAVE y metadatos** (largo, huella `sha256[0..12]`), **nunca el valor ni un
+  prefijo**; filtrar por nombre de variable no alcanza.
 
 ## Codigo
 
-- Si un archivo supera el limite de tamaño (hook `file-size`): dividir, no extender.
-- **El arco del alta (ADR 0070) entrega API y endpoints, NO interfaz: la UI la construye el owner
-  por fuera.** Una spec de ese arco que liste un archivo de pantalla como «crear» o «rediseñar»
-  esta mal alcanzada; lo que falta en su lugar es el **contrato HTTP escrito** que consume quien
-  hace la UI (forma de `specs/0055-contratos-del-orquestador.md`). Caso en `LECCIONES.md`.
-- **Y su contraparte, que SI es trabajo de estas specs: la UI vieja de lo que se refactoriza se
-  BORRA** (decision del owner, ADR 0070 §17) — «no dejar rastros viejos de lo que ya no usaremos».
-  Borrar una pantalla deja enlaces muertos: los `redirect` de un guard apuntando a una ruta borrada
-  convierten un rebote en un **404**, asi que la limpieza de referencias es parte del borrado, no
-  un extra.
+- Zonas (ADR 0114): GPT hace pantallas, estilos y e2e; Claude API, servidor, paquetes y tooling. La frontera
+  es el contrato HTTP escrito.
+- La UI vieja de lo que se refactoriza se BORRA (ADR 0070 §17), con sus referencias: un `redirect` a una
+  ruta borrada es un 404.
 - No editar ni borrar tests para que el gate pase: un test rojo se arregla o se discute.
-- Nada de andamiaje sin su tarea: codigo que no se usa hoy va con su fila en
-  `docs/TASKS.md` que lo va a consumir, o se borra.
-- **Una ruta que devuelve una entidad al navegador NUNCA serializa claves internas de R2**
-  (`*ObjectKey`): devolver un DTO que las omite y expone sólo el `*Path` publico (ver
-  `toClientProgram` en loyalty, `brandResponse` en marca). Blindar con un test por entidad.
-  Un revisor independiente ya cazo esta fuga en marca (spec 0025); no repetirla.
+- Nada de andamiaje: codigo sin uso hoy va con su fila en `docs/TASKS.md` o se borra.
+- Una ruta que devuelve una entidad al navegador NUNCA serializa claves de R2 (`*ObjectKey`): DTO con el
+  `*Path` publico (`toClientProgram`, `brandResponse`) y un test por entidad.
 
+## Gotchas
 
-## Gotchas que rompen el turno en curso
+El resto (`pnpm verify`, suites Neon, scripts de root, zsh, `pnpm install` offline, worktrees, `git push`
+con `GH_TOKEN`, drizzle, Stripe, Vercel, auth, wallet, imagenes) esta en la skill **`gotchas-del-repo`**.
 
-Solo los que arruinan una sesion cualquiera. **Todo el resto —drizzle y SQL crudo, Stripe y sus
-webhooks, Neon, Vercel, better-auth, wallet, formatos de imagen, middleware de Next, Geoapify—
-esta en la skill `gotchas-del-repo`.** Cargala antes de tocar esos dominios.
-
-- **Gates: `pnpm verify` (ADR 0113).** Corre typecheck/lint/format/test/build siempre; e2e si se toco
-  UI (browsers: `pnpm exec playwright install chromium`); Neon solo de las suites que importan lo
-  cambiado, o entero ante esquema/SQL/config. Su tabla final va al handoff. La CI corre todo y no se
-  espera: se mira con `pnpm ci:status`.
-- **Las 105 suites `.neon.integration` se auto-skipean** sin sus dos variables, y vitest no lee `.env.local`:
-  van con `tools/neon-test.sh [archivo]`. **Nunca contra `DATABASE_URL`: es `main`, o sea PROD.** Entera (~20 min) = CI.
-- **Gates: Node 24 + scripts de ROOT.** El shell del agente arranca en Node 22 (es el Node del
-  harness, que se antepone en el `PATH`) y el repo pide 24: correr
-  `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` (**sin argumento**: hay `.nvmrc`)
-  antes de cualquier gate. `lint`, `test`, `format:check` y `build` son scripts de **root**
-  (`pnpm run <script>`), NO del paquete. Para un archivo suelto:
-  `pnpm --filter @mi-pasaporte/merchant exec vitest run <path>`. El Stop hook
-  (`.claude/hooks/verify.sh`) corre typecheck+lint+test de root.
-- **El shell del agente es ZSH, y zsh NO separa en palabras una variable sin comillas.**
-  `FILES="a b c"; cmd $FILES` pasa UN argumento con espacios, y `for f in $FILES` itera UNA vez.
-  Usar arrays (`FILES=(a b c); cmd "${FILES[@]}"`) o `${=FILES}`, y **leer la salida** del comando:
-  asi es como un gate «pasa» sin haber mirado nada.
-- **`pnpm install`/`pnpm add` fallan por DNS bajo sandbox.** El store vive dentro del repo
-  (`.pnpm-store`, via `pnpm-workspace.yaml` — **no** `.npmrc`), asi que `pnpm install --offline`
-  alcanza. **No corras `pnpm fetch` salvo que el lockfile haya cambiado en otro entorno**: purga
-  `node_modules` y despues `--offline` miente con `Already up to date` dejando la raiz vacia
-  (sintoma: `sh: turbo: command not found`). Fix:
-  `rm -f node_modules/.modules.yaml node_modules/.pnpm-workspace-state-v1.json && pnpm install --offline`.
-- **Worktrees: crealos con `tools/worktree-new.sh <nombre>`** (`node_modules` propio offline; uno
-  symlinkeado al repo real hace que `pnpm run`/`exec` intenten purgar las dependencias posta). **Si
-  otro agente escribe en este arbol, vos te vas a un worktree** (hook `foreign-staged.sh`).
-- **`git push` falla con «Invalid username or token» aunque `gh` este logueado**: hay un `GH_TOKEN`
-  invalido en el entorno. `export GH_TOKEN=; gh auth switch --hostname github.com --user maxhost`
-  y despues `GH_TOKEN= git -c credential.helper='!gh auth git-credential' push origin main` — el
-  `GH_TOKEN=` inline va en el MISMO comando (cada Bash es un shell nuevo).
+- **Node 24:** `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use` (sin argumento) antes de
+  cualquier gate: el shell del agente arranca en 22.
+- **Suites Neon: `tools/neon-test.sh [archivo]`. Nunca contra `DATABASE_URL`: es `main`, o sea PROD.**

@@ -16,6 +16,30 @@ Todo lo de aca esta **medido**, no supuesto: cada bloque dice como se verifico. 
 `CLAUDE.md` (spec 0066, ADR 0069) para que no cueste tokens en las sesiones que no tocan ese
 dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 
+## Gates, Neon y arbol de trabajo (mudado de `CLAUDE.md`, spec 0151)
+
+- **Gates: `pnpm verify` (ADR 0113).** Corre typecheck/lint/format/test/build siempre; e2e si se toco
+  UI (browsers: `pnpm exec playwright install chromium`); Neon solo de las suites que importan lo
+  cambiado, o entero ante esquema/SQL/config. Su tabla final va al handoff. La CI corre todo y no se
+  espera: se mira con `pnpm ci:status`.
+- **Las suites `.neon.integration` (168, medido 2026-10-04) se auto-skipean** sin sus dos variables, y vitest no
+  lee `.env.local`: van con `tools/neon-test.sh [archivo]`. **Nunca contra `DATABASE_URL`: es `main`, o sea PROD.**
+  Entera (~20 min) = CI. Detalle mas abajo («Las suites `.neon.integration`…»).
+- **El Stop hook `verify.sh` no re-corre gates si el codigo no cambio** (spec 0151): guarda la huella
+  (`git diff HEAD` + no trackeados bajo `apps/`, `packages/`, `tools/`) del ultimo verde en
+  `$(git rev-parse --git-path verify-last-green)` (dentro de `.git`, uno por worktree). Para forzarlo, borrá ese
+  archivo.
+- **Worktrees: crealos con `tools/worktree-new.sh <nombre>`** (`node_modules` propio offline; uno
+  symlinkeado al repo real hace que `pnpm run`/`exec` intenten purgar las dependencias posta). **Si
+  otro agente escribe en este arbol, vos te vas a un worktree** (hook `foreign-staged.sh`). El bloque «Worktrees en
+  este monorepo» de mas abajo es el caso del `node_modules` symlinkeado, que este script evita.
+- **`pnpm install`/`pnpm add` fallan por DNS bajo sandbox.** El store vive dentro del repo
+  (`.pnpm-store`, via `pnpm-workspace.yaml` — **no** `.npmrc`), asi que `pnpm install --offline`
+  alcanza. **No corras `pnpm fetch` salvo que el lockfile haya cambiado en otro entorno**: purga
+  `node_modules` y despues `--offline` miente con `Already up to date` dejando la raiz vacia
+  (sintoma: `sh: turbo: command not found`). Fix:
+  `rm -f node_modules/.modules.yaml node_modules/.pnpm-workspace-state-v1.json && pnpm install --offline`.
+
 ## Gotchas
 
 - **`typecheck` y `build` NO van en la misma invocacion de turbo.**
