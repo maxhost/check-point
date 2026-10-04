@@ -14,6 +14,10 @@
 el push unico de GPT con la 0148 (Claude) y la 0149 (UI de GPT). **Deploy verificado** (status del commit por la API de
 GitHub, 2026-10-04 14:43 UTC): merchant, customer y public `success` en `3006a2f`. 0064 en PROD desde el 2026-10-03.
 
+**En curso:** spec **0150** (login de QA sin link magico, TEMPORAL; `7d810e4`, decision del owner «Botones en el login»):
+implementador lanzado; despues revisor, y prompt a GPT para los 3 botones. El owner tiene que crear `QA_LOGIN_ENABLED=true` en
+el proyecto merchant de Vercel. Commits locales sin pushear desde `3006a2f`.
+
 **Pendiente:**
 - **QA del owner de 0148/0149** (pasos en la spec 0148 §«QA del owner») y los de antes: 0143, 0146, 0147.
 - **La 0149 no tiene revisor independiente** (su spec lo deja «posterior»; presupuesto de mutaciones 0). Ofrecido al owner.
