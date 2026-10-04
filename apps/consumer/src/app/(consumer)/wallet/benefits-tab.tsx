@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { ConsumerCoupon } from "@mi-pasaporte/domain/server/consumer/coupons";
+import { useEffect, useRef, useState } from "react";
+import type {
+  ConsumerCoupon,
+  ConsumerCouponList,
+} from "@mi-pasaporte/domain/server/consumer/coupons";
 
 function shortDate(value: Date) {
   return new Date(value).toLocaleDateString("es", {
@@ -30,20 +33,103 @@ export function BenefitsTab({
   onShowQr: () => void;
   onShowPrograms: () => void;
 }) {
+  const [list, setList] = useState<ConsumerCouponList>({ here: null, coupons });
   const [selected, setSelected] = useState<ConsumerCoupon | null>(null);
-  const available = coupons.filter((coupon) => coupon.status === "valid");
-  const upcoming = coupons.filter(
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const couponUrl = useRef("/api/public/consumer/coupons");
+  const requestNumber = useRef(0);
+
+  useEffect(() => {
+    let alive = true;
+    async function refresh(coords?: GeolocationCoordinates) {
+      const query = coords
+        ? `?lat=${coords.latitude}&lng=${coords.longitude}`
+        : "";
+      if (coords) couponUrl.current = `/api/public/consumer/coupons${query}`;
+      const sequence = ++requestNumber.current;
+      try {
+        const response = await fetch(couponUrl.current, {
+          cache: "no-store",
+        });
+        if (!response.ok)
+          throw new Error("No pudimos actualizar tus beneficios.");
+        const data = (await response.json()) as ConsumerCouponList;
+        if (alive && sequence === requestNumber.current) setList(data);
+      } catch (cause) {
+        if (alive)
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "No pudimos actualizar tus beneficios.",
+          );
+      }
+    }
+    void refresh();
+    if (navigator.geolocation && navigator.permissions) {
+      void navigator.permissions
+        .query({ name: "geolocation" })
+        .then((permission) => {
+          if (permission.state === "granted") {
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                if (alive) void refresh(position.coords);
+              },
+              () => {},
+              { timeout: 5000, maximumAge: 60000 },
+            );
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function choose(couponId: string | null) {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/public/consumer/coupon-selection", {
+        method: couponId ? "PUT" : "DELETE",
+        headers: couponId ? { "content-type": "application/json" } : undefined,
+        body: couponId ? JSON.stringify({ couponId }) : undefined,
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok)
+        throw new Error(data?.error ?? "No pudimos cambiar tu cupón.");
+      const fresh = await fetch(couponUrl.current, {
+        cache: "no-store",
+      });
+      if (!fresh.ok) throw new Error("No pudimos actualizar tus beneficios.");
+      setList((await fresh.json()) as ConsumerCouponList);
+      setSelected(null);
+      if (couponId) onShowQr();
+    } catch (cause) {
+      setError(
+        cause instanceof Error ? cause.message : "No pudimos cambiar tu cupón.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const current =
+    selected && list.coupons.find((coupon) => coupon.id === selected.id);
+  const available = list.coupons.filter((coupon) => coupon.status === "valid");
+  const upcoming = list.coupons.filter(
     (coupon) =>
       coupon.status === "scheduled" || coupon.status === "unavailable",
   );
-  const history = coupons.filter(
+  const history = list.coupons.filter(
     (coupon) => coupon.status === "redeemed" || coupon.status === "expired",
   );
 
   function card(coupon: ConsumerCoupon, index: number) {
     return (
       <button
-        className="cp-benefit-card"
+        className={`cp-benefit-card ${coupon.selected ? "is-selected" : ""}`}
         type="button"
         key={coupon.id}
         onClick={() => setSelected(coupon)}
@@ -52,7 +138,10 @@ export function BenefitsTab({
           <span className="cp-benefit-icon" aria-hidden="true">
             ✦
           </span>
-          <span>{coupon.businessName}</span>
+          <span>
+            {coupon.businessName}
+            {coupon.selected ? " · Elegido" : ""}
+          </span>
         </span>
         <strong>{coupon.label}</strong>
         <span className="cp-benefit-bottomline">
@@ -62,6 +151,26 @@ export function BenefitsTab({
           </span>
         </span>
       </button>
+    );
+  }
+
+  function groupedCards(items: ConsumerCoupon[]) {
+    return (
+      <div className="cp-benefit-groups">
+        {Array.from(new Set(items.map((coupon) => coupon.businessId))).map(
+          (businessId) => {
+            const group = items.filter(
+              (coupon) => coupon.businessId === businessId,
+            );
+            return (
+              <div className="cp-benefit-group" key={businessId}>
+                <h3>{group[0].businessName}</h3>
+                <div className="cp-benefit-list">{group.map(card)}</div>
+              </div>
+            );
+          },
+        )}
+      </div>
     );
   }
 
@@ -83,8 +192,16 @@ export function BenefitsTab({
           </span>
         </div>
       </div>
+      {list.here && (
+        <p className="cp-benefit-here">Acá · {list.here.businessName}</p>
+      )}
+      {error && !current && (
+        <p role="alert" className="cp-benefit-error">
+          {error}
+        </p>
+      )}
       {available.length > 0 ? (
-        <div className="cp-benefit-list">{available.map(card)}</div>
+        groupedCards(available)
       ) : (
         <div className="cp-empty">
           <span aria-hidden="true">✦</span>
@@ -101,7 +218,7 @@ export function BenefitsTab({
       {upcoming.length > 0 && (
         <div className="cp-benefit-group">
           <h3>Más adelante</h3>
-          <div className="cp-benefit-list">{upcoming.map(card)}</div>
+          {groupedCards(upcoming)}
         </div>
       )}
       {history.length > 0 && (
@@ -109,10 +226,10 @@ export function BenefitsTab({
           <summary>
             Beneficios anteriores <span>{history.length}</span>
           </summary>
-          <div className="cp-benefit-list">{history.map(card)}</div>
+          {groupedCards(history)}
         </details>
       )}
-      {selected && (
+      {current && (
         <div
           className="consumer-modal-backdrop"
           onMouseDown={(event) => {
@@ -133,25 +250,30 @@ export function BenefitsTab({
             >
               ×
             </button>
-            <span className="cp-eyebrow">{selected.businessName}</span>
-            <h2 id="benefit-detail-title">{selected.label}</h2>
-            <p>{statusText(selected)}</p>
-            {selected.rule && (
+            <span className="cp-eyebrow">{current.businessName}</span>
+            <h2 id="benefit-detail-title">{current.label}</h2>
+            <p>{statusText(current)}</p>
+            {error && (
+              <p role="alert" className="cp-benefit-error">
+                {error}
+              </p>
+            )}
+            {current.rule && (
               <div className="cp-benefit-rule">
                 <strong>Condiciones</strong>
-                <p>{selected.rule}</p>
+                <p>{current.rule}</p>
               </div>
             )}
-            {selected.status === "valid" && (
+            {current.status === "valid" && (
               <button
                 className="cp-primary-action"
                 type="button"
-                onClick={() => {
-                  setSelected(null);
-                  onShowQr();
-                }}
+                disabled={busy}
+                onClick={() =>
+                  void choose(current.selected ? null : current.id)
+                }
               >
-                Mostrar mi pase para canjear
+                {current.selected ? "No usar este cupón" : "Usar este cupón"}
               </button>
             )}
           </section>

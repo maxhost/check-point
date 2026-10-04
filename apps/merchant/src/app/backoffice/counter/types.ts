@@ -19,6 +19,32 @@ export type CounterReward = {
   imagePath: string | null;
 };
 
+export type CounterCoupon = {
+  couponId: string;
+  label: string;
+  kind:
+    | "discount"
+    | "free_product"
+    | "two_for_one"
+    | "custom"
+    | "extra_stamps"
+    | "extra_points";
+  rule: string | null;
+  productId: string | null;
+  productName: string | null;
+  discountUnit: "percent" | "amount" | null;
+  discountValue: string | null;
+  currencyCode: string;
+  extraUnits: number | null;
+  validUntil: string;
+};
+
+export type CounterCouponState =
+  | { status: "selected" | "validated"; coupon: CounterCoupon }
+  | { status: "used_today"; label: string }
+  | { status: "hint"; count: number }
+  | { status: "none" };
+
 export type ResolveResponse = {
   consumer: { displayName: string };
   membership: {
@@ -59,6 +85,7 @@ export type ResolveResponse = {
   };
   /** The program's rewards, already ordered by `position` by the server. */
   rewards: CounterReward[];
+  couponState: CounterCouponState;
 };
 
 export type CounterProduct = {
@@ -70,7 +97,14 @@ export type CounterProduct = {
 };
 
 export type GrantResponse = {
-  order: { unitsGranted: number; balanceAfter: number; kind: string };
+  order: {
+    unitsGranted: number;
+    balanceAfter: number;
+    kind: string;
+    total: string;
+    grossTotal: string;
+    coupon: { label: string; discountAmount: string } | null;
+  };
 };
 
 /** `POST /api/counter/redeem` (spec 0055). Mirrors `RedeemResult` in
@@ -127,6 +161,32 @@ export function formatMoney(amount: number, currencyCode: string): string {
 
 export function cartTotal(lines: CartLine[]): number {
   return lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
+}
+
+/** Informational net total for the points preview; grant remains authoritative. */
+export function previewNetTotal(
+  gross: number,
+  state: CounterCouponState,
+  lines: CartLine[],
+  productId: string | null,
+): number {
+  if (state.status !== "selected" && state.status !== "validated") return gross;
+  const coupon = state.coupon;
+  let discount = 0;
+  if (coupon.kind === "discount") {
+    const value = Number(coupon.discountValue) || 0;
+    discount =
+      coupon.discountUnit === "percent"
+        ? Math.round(gross * value) / 100
+        : value;
+  } else if (coupon.kind === "free_product" || coupon.kind === "two_for_one") {
+    const line = lines.find(
+      (item) => item.productId === (coupon.productId ?? productId),
+    );
+    if (line && (coupon.kind !== "two_for_one" || line.quantity >= 2))
+      discount = line.unitPrice;
+  }
+  return Math.max(0, Math.round((gross - discount) * 100) / 100);
 }
 
 /** The kind-specific balance for a membership, given the program kind. */

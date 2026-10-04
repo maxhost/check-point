@@ -6568,8 +6568,7 @@ input.cp-number-input::-webkit-outer-spin-button {
     break-after: auto;
   }
 }
-/* Spec 0065 C — el cupon de campaña en el mostrador. Banner sobre los tres modos: el
-   operador tiene el telefono del cliente en la mano y no puede tener que buscarlo. */
+/* Spec 0149 — estado del cupón elegido dentro de la pantalla del cliente. */
 .counter-coupon {
   display: flex;
   align-items: center;
@@ -6600,6 +6599,46 @@ input.cp-number-input::-webkit-outer-spin-button {
   margin: 0;
   padding: 12px 16px;
   white-space: nowrap;
+}
+.counter-coupon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.counter-coupon-actions .counter-secondary {
+  width: auto;
+  margin: 0;
+  padding: 12px 16px;
+}
+.counter-coupon-product {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.counter-coupon-product select {
+  min-height: 44px;
+  border: 1px solid #9ccbae;
+  border-radius: 8px;
+  padding: 8px;
+}
+.counter-ticket {
+  width: 100%;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #d4d9d2;
+  border-radius: 12px;
+}
+.counter-ticket p {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 6px 0;
+}
+.counter-ticket-total {
+  border-top: 1px solid #d4d9d2;
+  padding-top: 10px;
+  font-weight: 700;
 }
 
 /* Tours y ayuda de Staff — popovers pensados desde 320px. */

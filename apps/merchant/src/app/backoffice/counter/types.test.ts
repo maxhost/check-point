@@ -91,9 +91,7 @@ const resolved = {
       imagePath: null,
     },
   ],
-  // No live campaign coupon: this fixture is about `canRedeem`, and a coupon is a
-  // separate action that never goes through it (spec 0065 phase C).
-  coupon: null,
+  couponState: { status: "none" },
 } as ResolveResponse;
 
 describe("canRedeem — the Confirm button of the Canjear mode", () => {

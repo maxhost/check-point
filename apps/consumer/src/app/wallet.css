@@ -492,6 +492,20 @@
   gap: 11px;
   margin-top: 18px;
 }
+.cp-benefit-here {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #eaf5ed;
+  font-weight: 700;
+}
+.cp-benefit-error {
+  color: #a02b25;
+}
+.consumer-wallet-shell .cp-benefit-card.is-selected {
+  outline: 2px solid #288650;
+  outline-offset: 2px;
+}
 .consumer-wallet-shell .cp-benefit-card {
   display: grid;
   gap: 14px;

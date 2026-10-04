@@ -51,27 +51,34 @@ export function CounterHome({
             // A redemption DEBITS (spec 0055): same row, opposite sign, and it is the
             // only kind that names the reward that was handed over.
             const isRedemption = row.entryKind === "redemption";
+            const isCoupon = row.entryKind === "coupon";
             return (
               <article className="location-card" key={row.id}>
                 <div>
                   <strong>{row.consumer || "Cliente"}</strong>
                   <span>
                     {formatTime(row.createdAt)} ·{" "}
-                    {isRedemption
-                      ? `Canje${row.rewardLabel ? ` · ${row.rewardLabel}` : ""}`
-                      : row.accrualKind === "stamps"
-                        ? "Sellos"
-                        : "Puntos"}
+                    {isCoupon
+                      ? `Cupón${row.rewardLabel ? ` · ${row.rewardLabel}` : ""}`
+                      : isRedemption
+                        ? `Canje${row.rewardLabel ? ` · ${row.rewardLabel}` : ""}`
+                        : row.accrualKind === "stamps"
+                          ? "Sellos"
+                          : "Puntos"}
                   </span>
                   <small>Operó {row.operator}</small>
                 </div>
-                <div
-                  className={`counter-history-units ${isRedemption ? "is-debit" : ""}`}
-                >
-                  {isRedemption ? "−" : "+"}
-                  {row.unitsGranted}{" "}
-                  {unitLabel(row.accrualKind, row.unitsGranted)}
-                </div>
+                {!isCoupon ||
+                row.accrualKind === "stamps" ||
+                row.accrualKind === "points" ? (
+                  <div
+                    className={`counter-history-units ${isRedemption ? "is-debit" : ""}`}
+                  >
+                    {isRedemption ? "−" : "+"}
+                    {row.unitsGranted}{" "}
+                    {unitLabel(row.accrualKind, row.unitsGranted)}
+                  </div>
+                ) : null}
               </article>
             );
           })

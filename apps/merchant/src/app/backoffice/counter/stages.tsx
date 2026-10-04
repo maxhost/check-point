@@ -3,19 +3,19 @@
 import type { ReactNode } from "react";
 import { ModuleHeader, Toast } from "../../components/ui";
 import { DetailedSale, QuickSale } from "./sale-forms";
-import { RedeemDone, RedeemPanel } from "./redeem-panel";
+import { RedeemPanel } from "./redeem-panel";
+import { CouponPanel } from "./coupon-panel";
+import { PointsPreview } from "./points-preview";
+export { LocationGate } from "./location-gate";
 import {
   type CartLine,
-  type CounterLocation,
   type CounterProduct,
-  type GrantResponse,
   type Mode,
-  type RedeemResponse,
   type ResolveResponse,
   balanceFor,
   cartTotal,
   formatMoney,
-  previewUnits,
+  previewNetTotal,
   unitLabel,
 } from "./types";
 
@@ -60,31 +60,6 @@ export function Console({
   );
 }
 
-/** Location gate shown before scanning when the business has >1 location. */
-export function LocationGate({
-  locations,
-  onPick,
-}: {
-  locations: CounterLocation[];
-  onPick: (id: string) => void;
-}) {
-  return (
-    <section className="counter-panel">
-      <h2>¿En qué local estás?</h2>
-      <p className="counter-hint">
-        Elige el local para registrar las ventas ahí.
-      </p>
-      <div className="counter-locations">
-        {locations.map((loc) => (
-          <button key={loc.id} type="button" onClick={() => onPick(loc.id)}>
-            {loc.name}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 export function ResolvedStage({
   resolved,
   currencyCode,
@@ -98,6 +73,10 @@ export function ResolvedStage({
   quick,
   selectedRewardId,
   onSelectReward,
+  couponProductId,
+  onCouponProductId,
+  onValidateCoupon,
+  onRemoveCoupon,
   busy,
   canConfirm,
   onConfirm,
@@ -120,6 +99,10 @@ export function ResolvedStage({
   };
   selectedRewardId: string | null;
   onSelectReward: (rewardId: string) => void;
+  couponProductId: string | null;
+  onCouponProductId: (id: string | null) => void;
+  onValidateCoupon: () => void;
+  onRemoveCoupon: () => void;
   busy: boolean;
   canConfirm: boolean;
   onConfirm: () => void;
@@ -140,6 +123,17 @@ export function ResolvedStage({
           </span>
         )}
       </header>
+
+      <CouponPanel
+        state={resolved.couponState}
+        busy={busy}
+        mode={mode}
+        cart={cart}
+        productId={couponProductId}
+        onProductId={onCouponProductId}
+        onValidate={onValidateCoupon}
+        onRemove={onRemoveCoupon}
+      />
 
       <div className="counter-toggle" role="tablist">
         {MODE_TABS.map((tab) => (
@@ -189,7 +183,12 @@ export function ResolvedStage({
         <PointsPreview
           accrual={resolved.program.accrual}
           kind={resolved.program.kind}
-          total={Number(quick.amount) || 0}
+          total={previewNetTotal(
+            Number(quick.amount) || 0,
+            resolved.couponState,
+            [],
+            null,
+          )}
         />
       )}
 
@@ -199,7 +198,15 @@ export function ResolvedStage({
             <summary>
               <span>
                 {cart.reduce((sum, line) => sum + line.quantity, 0)} artículos ·{" "}
-                {formatMoney(cartTotal(cart), currencyCode)}
+                {formatMoney(
+                  previewNetTotal(
+                    cartTotal(cart),
+                    resolved.couponState,
+                    cart,
+                    couponProductId,
+                  ),
+                  currencyCode,
+                )}
               </span>
               <small>Ver detalle</small>
             </summary>
@@ -215,13 +222,26 @@ export function ResolvedStage({
             </ul>
             <p>
               Total registrado en CheckPass ·{" "}
-              {formatMoney(cartTotal(cart), currencyCode)}
+              {formatMoney(
+                previewNetTotal(
+                  cartTotal(cart),
+                  resolved.couponState,
+                  cart,
+                  couponProductId,
+                ),
+                currencyCode,
+              )}
             </p>
           </details>
           <PointsPreview
             accrual={resolved.program.accrual}
             kind={resolved.program.kind}
-            total={cartTotal(cart)}
+            total={previewNetTotal(
+              cartTotal(cart),
+              resolved.couponState,
+              cart,
+              couponProductId,
+            )}
           />
           <div className="counter-actions">
             <button
@@ -264,74 +284,6 @@ export function ResolvedStage({
           </button>
         </div>
       )}
-    </section>
-  );
-}
-
-/** Read-only reference of what the current sale would grant — helps the operator
- * catch a pricing/catalog mistake before confirming (spec 0030 QA feedback). */
-function PointsPreview({
-  accrual,
-  kind,
-  total,
-}: {
-  accrual: {
-    mode: string | null;
-    grant: number | null;
-    blockAmount: number | null;
-  };
-  kind: string;
-  total: number;
-}) {
-  const units = previewUnits(accrual, total);
-  return (
-    <p className="counter-points-preview">
-      Esta venta otorga <strong>{units}</strong> {unitLabel(kind, units)}
-    </p>
-  );
-}
-
-/** Done screen of the resolved stage. A scan ends in exactly one of the two events of
- * value, so the redemption takes over the whole panel when it is the one that happened. */
-export function DoneStage({
-  result,
-  redeemed,
-  displayName,
-  onNext,
-}: {
-  result: GrantResponse | null;
-  redeemed: RedeemResponse | null;
-  displayName: string;
-  onNext: () => void;
-}) {
-  if (redeemed) {
-    return (
-      <RedeemDone
-        redeemed={redeemed}
-        displayName={displayName}
-        onNext={onNext}
-      />
-    );
-  }
-  if (!result) return null;
-  return (
-    <section className="counter-panel counter-done">
-      <p className="counter-check" aria-hidden>
-        ✓
-      </p>
-      <h2>¡Listo!</h2>
-      <p className="counter-granted">
-        +{result.order.unitsGranted}{" "}
-        {unitLabel(result.order.kind, result.order.unitsGranted)} para{" "}
-        {displayName}
-      </p>
-      <p className="counter-balance">
-        Saldo: {result.order.balanceAfter}{" "}
-        {unitLabel(result.order.kind, result.order.balanceAfter)}
-      </p>
-      <button type="button" className="counter-primary" onClick={onNext}>
-        Escanear siguiente
-      </button>
     </section>
   );
 }
