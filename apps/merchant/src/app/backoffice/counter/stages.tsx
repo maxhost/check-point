@@ -30,32 +30,35 @@ const MODE_TABS: { id: Mode; label: string }[] = [
 /** Shell + header + toasts, shared by every stage. */
 export function Console({
   children,
+  onClose,
   error,
   onDismissError,
   notice,
   onDismissNotice,
 }: {
   children: ReactNode;
+  onClose: () => void;
   error: string | null;
   onDismissError: () => void;
   notice?: string | null;
   onDismissNotice?: () => void;
 }) {
   return (
-    <main className="merchant-shell counter-shell">
+    <main className="merchant-shell counter-shell counter-flow">
       <ModuleHeader
         eyebrow="Mostrador"
         title="Acreditar puntos"
         description="Escanea el QR del cliente y suma su compra."
-        closeHref="/backoffice"
+        closeHref="/backoffice/counter"
+        onClose={onClose}
       />
-      {children}
       {notice && onDismissNotice && (
         <Toast kind="success" message={notice} onDismiss={onDismissNotice} />
       )}
       {error && (
         <Toast kind="error" message={error} onDismiss={onDismissError} />
       )}
+      {children}
     </main>
   );
 }

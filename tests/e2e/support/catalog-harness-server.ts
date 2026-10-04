@@ -50,12 +50,46 @@ export async function startCatalogHarness(
             namespace: "fixture",
           }));
           builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return "loyalty"} export function usePathname(){return "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href}}}`,
+            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return "loyalty"} export function usePathname(){return "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href},refresh(){}}}`,
             loader: "js",
             resolveDir: path.resolve("apps/merchant"),
           }));
         },
       },
+      ...(entryPoint.includes("counter-harness")
+        ? [
+            {
+              name: "counter-scanner-fixture",
+              setup(builder: {
+                onResolve: (
+                  options: { filter: RegExp },
+                  callback: () => { path: string; namespace: string },
+                ) => void;
+                onLoad: (
+                  options: { filter: RegExp; namespace: string },
+                  callback: () => {
+                    contents: string;
+                    loader: string;
+                    resolveDir: string;
+                  },
+                ) => void;
+              }) {
+                builder.onResolve({ filter: /^\.\/qr-scanner$/ }, () => ({
+                  path: "scanner",
+                  namespace: "counter-fixture",
+                }));
+                builder.onLoad(
+                  { filter: /.*/, namespace: "counter-fixture" },
+                  () => ({
+                    contents: `import React from 'react'; export function QrScanner({onDecode}) { React.useEffect(() => { const read = (event) => onDecode(event.detail); window.addEventListener('counter-qr', read); return () => window.removeEventListener('counter-qr', read); }, [onDecode]); return React.createElement('div', {className:'counter-scanner'}, 'Apunta al código QR del cliente'); }`,
+                    loader: "js",
+                    resolveDir: path.resolve("apps/merchant"),
+                  }),
+                );
+              },
+            },
+          ]
+        : []),
     ],
   });
   const from = path.resolve("apps/merchant/src/app/globals.css");

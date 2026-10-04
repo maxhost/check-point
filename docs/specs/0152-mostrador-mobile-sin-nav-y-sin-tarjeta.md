@@ -40,11 +40,11 @@ En móvil, el shell reduce los márgenes laterales y `.counter-panel` pierde fon
 
 ## Definition of Done
 
-- [ ] En 390 px, `idle` muestra navegación; escaneo, venta detallada, rápida y canje la ocultan; X vuelve a `idle`.
-- [ ] En 390 px, el footer detallado muestra resumen, «Cancelar» y «Acreditar compra» sin solaparse con la navegación ni el área segura.
-- [ ] En 390 px, el panel del flujo no añade la tarjeta blanca y usa más ancho; en escritorio conserva su presentación.
+- [x] En 390 px, `idle` muestra navegación; escaneo, venta detallada, rápida y canje la ocultan; X vuelve a `idle`.
+- [x] En 390 px, el footer detallado muestra resumen, «Cancelar» y «Acreditar compra» sin solaparse con la navegación ni el área segura.
+- [x] En 390 px, el panel del flujo no añade la tarjeta blanca y usa más ancho; en escritorio conserva su presentación.
 - [ ] Typecheck, lint y formato pasan; `pnpm verify` con Node 24 se ejecuta una sola vez al final y se registra su resultado.
-- [ ] `rg -n MUTATION apps/merchant/src/app/backoffice/counter apps/merchant/src/app/globals.css` → vacío.
+- [x] `rg -n MUTATION apps/merchant/src/app/backoffice/counter apps/merchant/src/app/globals.css` → vacío.
 
 ## Mutaciones — presupuesto: 0
 

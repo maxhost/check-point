@@ -4897,6 +4897,42 @@ input.cp-number-input::-webkit-outer-spin-button {
 .counter-detailed-footer .counter-actions {
   margin-top: 8px;
 }
+@media (max-width: 959px) {
+  .backoffice-layout:has(.counter-flow) .backoffice-mobile-nav {
+    display: none;
+  }
+  .backoffice-content:has(.counter-flow) {
+    padding-bottom: 0;
+  }
+  .backoffice-content > .counter-flow {
+    min-height: 100svh;
+  }
+  .counter-shell.counter-flow {
+    padding: 16px 14px calc(24px + env(safe-area-inset-bottom));
+  }
+  .counter-flow .module-topline {
+    position: sticky;
+    z-index: 30;
+    top: 0;
+    padding: 8px 0;
+    background: var(--ui-canvas);
+  }
+  .counter-flow .toast {
+    position: static;
+    width: 100%;
+    margin-top: 12px;
+    transform: none;
+  }
+  .counter-flow .counter-panel {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .counter-flow .counter-panel-detailed {
+    padding-bottom: calc(180px + env(safe-area-inset-bottom));
+  }
+}
 @media (max-width: 380px) {
   .counter-product-list {
     grid-template-columns: minmax(0, 1fr);

@@ -286,7 +286,7 @@ export function CounterConsole({
 
   if (locations.length > 1 && !locationId) {
     return (
-      <Console error={error} onDismissError={dismissError}>
+      <Console onClose={reset} error={error} onDismissError={dismissError}>
         <LocationGate locations={locations} onPick={setLocationId} />
       </Console>
     );
@@ -294,6 +294,7 @@ export function CounterConsole({
 
   return (
     <Console
+      onClose={reset}
       error={error}
       onDismissError={dismissError}
       notice={notice}
