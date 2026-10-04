@@ -1,5 +1,7 @@
 # Handoff 0145 — Venta cruzada por compra en Marketing
 
+Publicada en `main`: código `e61e3d5`, handoff `dfa1646`. El owner autorizó el push excepcional con `--no-verify` tras el fallo de Turbopack descrito abajo. El estado de CI de ese SHA no se pudo consultar por un fallo de conexión con GitHub.
+
 ## Cambio
 
 La pantalla de Venta cruzada exige fecha de fin antes de activar y describe la entrega automática del cupón tras una compra. El consumidor mantiene su lista común de beneficios, que ya incluye `origin: "cross"`.

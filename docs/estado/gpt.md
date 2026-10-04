@@ -6,7 +6,8 @@
 ## ⇥ ESTADO (2026-10-03) — SPEC 0145: VENTA CRUZADA EN MARKETING
 
 La [spec 0145](../specs/0145-venta-cruzada-por-compra-en-marketing.md) quedó
-reservada en `92a464c`. El cambio local de UI exige `endsAt` al activar una
+reservada en `92a464c` y publicada en `main` desde `e61e3d5` (handoff
+`dfa1646`). El cambio de UI exige `endsAt` al activar una
 cruzada y actualiza editor, resumen, detalle y confirmaciones para la entrega
 automática del cupón de la 0143. La prueba `cross-ui.test.ts` pasó 4/4; su
 mutación M1 falló en la aserción esperada y se restauró. `pnpm verify` con Node
@@ -14,9 +15,18 @@ mutación M1 falló en la aserción esperada y se restauró. `pnpm verify` con N
 Marketing; el build Turbopack quedó rojo por `Operation not permitted` al abrir
 un puerto interno del procesador CSS, incluso fuera del sandbox. El build
 Webpack de Merchant pasó. [Tabla y evidencia](../handoff-0145-venta-cruzada-marketing-2026-10-03.md).
-El código está commiteado localmente; el hook impide el push normal mientras
-`pnpm verify` siga rojo. Falta resolver ese límite de entorno o la autorización
-explícita del owner para el escape del hook; no se usó `--no-verify`.
+El owner autorizó el push excepcional y se publicó con `--no-verify`; el árbol
+quedó limpio tras el push. La consulta posterior de CI falló por conexión a
+GitHub, así que no se afirmó verde para ese SHA. La spec sigue `cerrada` hasta
+resolver el gate de Turbopack y obtener PASS independiente.
+
+**Al retomar:** el `main` local avanzó después con cuatro commits de Claude
+de la [spec 0148](../specs/0148-cupon-elegido-y-atado-a-la-venta.md),
+hasta `6cc8f47`, todavía sin push (`origin/main` en `afa6e77`). Según el
+[estado de Claude](claude.md), la migración 0064 ya está en PROD y el owner
+decidió que el próximo push de GPT arrastre también esos commits. La UI del
+contrato 0148 está pendiente; este handoff no la implementa. Al iniciar:
+`nvm use`, `git pull --ff-only`, `pnpm ci:status` y revisar el estado del árbol.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-03) — SPEC 0142: ICONO DE LA PWA EN WEB PUSH
 
