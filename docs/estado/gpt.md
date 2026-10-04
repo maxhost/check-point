@@ -3,11 +3,30 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-03) — SPEC 0149: PANTALLAS DEL CUPÓN ELEGIDO
+## ⇥ ESTADO (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
+
+La [spec 0152](../specs/0152-mostrador-mobile-sin-nav-y-sin-tarjeta.md) quedó
+reservada y publicada en `1ea1e5e`; la UI está en el commit local `35fbdab`.
+Las etapas activas de Mostrador ocultan la navegación inferior; la X vuelve a la
+pantalla inicial y sigue visible al desplazarse; el aviso no la tapa; en móvil
+se elimina la tarjeta blanca interior y el footer detallado deja visibles
+«Cancelar» y «Acreditar compra». Escritorio conserva la tarjeta.
+
+Verificación con Node 24.20.0: prueba de navegador a 390 px 1/1, captura vista,
+typecheck, lint, formato y tests unitarios verdes; e2e global 111 pasaron y 5
+omitidos; Neon relacionado de Merchant 9/9; build Webpack de Merchant verde.
+`pnpm verify` quedó **ROJO solo en build**: Turbopack falla al abrir un puerto
+interno de PostCSS en `business/onboarding/onboarding.css` (`Operation not
+permitted`), incluso fuera del sandbox. No se usó `--no-verify`. La UI aún no
+se pusheó. Pendientes: resolver el build o recibir autorización explícita del
+owner para la excepción al hook; después publicar, hacer QA móvil y obtener
+PASS independiente antes de marcar la spec `implementada`.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0149: PANTALLAS DEL CUPÓN ELEGIDO PUBLICADAS
 
 La [spec 0149](../specs/0149-pantallas-de-cupon-elegido.md) quedó cerrada en
-`b4f7f43` y su UI está implementada localmente en `9837a5a`, sobre los commits
-de Claude de la 0148. La PWA usa P0–P2 con «Acá», coordenadas si ya existe
+`b4f7f43` y su UI se publicó en `main` con `3006a2f` (código `9837a5a`),
+sobre los commits de Claude de la 0148. La PWA usa P0–P2 con «Acá», coordenadas si ya existe
 permiso, grupos por comercio y selección visible. El mostrador muestra M0,
 sondea M1 cada 4 s, valida M2, quita M3 y envía M4 con ticket de bruto,
 descuento y neto. El historial distingue los cupones y las unidades extra.
@@ -20,10 +39,12 @@ falla al abrir un puerto interno de PostCSS (`driver.css`, `Operation not
 permitted`) tanto dentro como fuera del sandbox y aun aislado. Los builds
 Webpack de Merchant y Consumer pasaron. El gate reportó: typecheck ok,
 lint ok, format:check ok, test ok, build ROJO, test:e2e ok, neon full ok.
-No se usó `--no-verify`. No se ha pusheado: el owner pidió un solo push para
-arrastrar esta UI y los commits de Claude. **Pendiente:** resolver el build
-Turbopack o recibir OK explícito del owner para una excepción al hook; luego
-push único, registrar el SHA remoto y QA del owner según la 0148 §«QA del owner».
+`pnpm ci:status` reporta verde para el remoto `24ce0df`, que incluye la 0149.
+**Pendiente:** QA del owner según la 0148 §«QA del owner» y PASS independiente
+antes de marcar la spec como implementada. La 0150 (login temporal de QA) ya
+está en producción y la 0151 está tomada por Claude; la próxima spec libre es
+la 0152. Los botones de QA en onboarding deben aparecer solo cuando
+`GET /api/merchant/auth/qa-login` responda 200.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-03) — SPEC 0145: VENTA CRUZADA EN MARKETING
 
