@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QrScanner } from "./qr-scanner";
 import { CounterHome } from "./counter-home";
@@ -8,11 +8,18 @@ import { Console, ResolvedStage } from "./stages";
 import { LocationGate } from "./location-gate";
 import { DoneStage } from "./done-stage";
 import { postRedeem } from "./redeem-panel";
-import { addLine, changeQuantity, setLineUnitPrice } from "./cart";
+import {
+  addCouponProduct,
+  addLine,
+  changeQuantity,
+  setLineUnitPrice,
+} from "./cart";
 import {
   type AccreditationRow,
   type CartLine,
   type CounterLocation,
+  type CounterCouponState,
+  type CounterProduct,
   type GrantResponse,
   type Mode,
   type RedeemResponse,
@@ -63,25 +70,70 @@ export function CounterConsole({
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [redeemed, setRedeemed] = useState<RedeemResponse | null>(null);
   const [couponProductId, setCouponProductId] = useState<string | null>(null);
+  const autoAddedCouponIds = useRef(new Set<string>());
+  const selectedCouponId = useRef<string | null>(null);
+  const activeMembershipId = useRef<string | null>(null);
+  const couponStateVersion = useRef(0);
+
+  const prepareCouponProduct = useCallback(
+    (couponState: CounterCouponState, products: CounterProduct[]) => {
+      if (couponState.status !== "selected" || !couponState.verdict.valid)
+        return;
+      const coupon = couponState.coupon;
+      if (
+        !coupon.productId ||
+        (coupon.kind !== "free_product" && coupon.kind !== "two_for_one") ||
+        autoAddedCouponIds.current.has(coupon.couponId)
+      )
+        return;
+      const product = products.find((item) => item.id === coupon.productId);
+      if (!product) return;
+      autoAddedCouponIds.current.add(coupon.couponId);
+      setCart((lines) =>
+        addCouponProduct(lines, product, coupon.kind === "two_for_one" ? 2 : 1),
+      );
+    },
+    [],
+  );
+
+  const refreshCouponState = useCallback(
+    async (membershipId: string, products: CounterProduct[]) => {
+      const version = couponStateVersion.current;
+      const response = await fetch(
+        `/api/counter/coupon-state?membershipId=${encodeURIComponent(membershipId)}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) return;
+      const data = await response.json().catch(() => null);
+      const couponState = data?.couponState as CounterCouponState | undefined;
+      if (
+        !couponState ||
+        activeMembershipId.current !== membershipId ||
+        couponStateVersion.current !== version
+      )
+        return;
+      const nextId =
+        couponState.status === "selected" ? couponState.coupon.couponId : null;
+      if (selectedCouponId.current !== nextId) setCouponProductId(null);
+      selectedCouponId.current = nextId;
+      setResolved((current) =>
+        current?.membership.id === membershipId
+          ? { ...current, couponState }
+          : current,
+      );
+      prepareCouponProduct(couponState, products);
+    },
+    [prepareCouponProduct],
+  );
 
   useEffect(() => {
     if (stage !== "resolved" || !resolved) return;
     const membershipId = resolved.membership.id;
+    const products = resolved.catalog.products;
     let active = true;
     async function poll() {
       try {
-        const response = await fetch(
-          `/api/counter/coupon-state?membershipId=${encodeURIComponent(membershipId)}`,
-          { cache: "no-store" },
-        );
-        if (!response.ok) return;
-        const data = await response.json();
-        if (active && data.couponState)
-          setResolved((current) =>
-            current?.membership.id === membershipId
-              ? { ...current, couponState: data.couponState }
-              : current,
-          );
+        if (active) await refreshCouponState(membershipId, products);
       } catch {
         /* The next poll retries transient network failures. */
       }
@@ -91,7 +143,7 @@ export function CounterConsole({
       active = false;
       window.clearInterval(timer);
     };
-  }, [stage, resolved?.membership.id]);
+  }, [stage, resolved?.membership.id, refreshCouponState]);
 
   const reset = useCallback(() => {
     setResolved(null);
@@ -106,6 +158,10 @@ export function CounterConsole({
     setMode("detailed");
     setRequestId("");
     setCouponProductId(null);
+    autoAddedCouponIds.current.clear();
+    selectedCouponId.current = null;
+    activeMembershipId.current = null;
+    couponStateVersion.current += 1;
     setStage("idle");
     setScanKey((k) => k + 1);
     // Re-run the server component so the day history reflects the fresh accreditation.
@@ -127,6 +183,14 @@ export function CounterConsole({
           throw new Error(payload?.error ?? "No pudimos resolver el código.");
         }
         const data = payload as ResolveResponse;
+        autoAddedCouponIds.current.clear();
+        couponStateVersion.current += 1;
+        activeMembershipId.current = data.membership.id;
+        selectedCouponId.current =
+          data.couponState.status === "selected"
+            ? data.couponState.coupon.couponId
+            : null;
+        prepareCouponProduct(data.couponState, data.catalog.products);
         setResolved(data);
         setCouponProductId(null);
         setRequestId(crypto.randomUUID());
@@ -144,23 +208,11 @@ export function CounterConsole({
         setBusy(false);
       }
     },
-    [locationId],
+    [locationId, prepareCouponProduct],
   );
 
   const canConfirm =
     !busy &&
-    (mode === "redeem" ||
-      resolved?.couponState.status !== "selected" ||
-      resolved.couponState.coupon.kind === "discount") &&
-    (resolved?.couponState.status === "selected"
-      ? !(
-          mode === "detailed" &&
-          (resolved.couponState.coupon.kind === "free_product" ||
-            resolved.couponState.coupon.kind === "two_for_one") &&
-          !resolved.couponState.coupon.productId &&
-          !couponProductId
-        )
-      : true) &&
     (mode === "redeem"
       ? canRedeem(resolved, selectedRewardId)
       : mode === "detailed"
@@ -184,6 +236,8 @@ export function CounterConsole({
             locationId,
           }),
         );
+        couponStateVersion.current += 1;
+        activeMembershipId.current = null;
         setStage("done");
         return;
       }
@@ -198,6 +252,7 @@ export function CounterConsole({
           note:
             mode === "quick" &&
             resolved.couponState.status === "selected" &&
+            resolved.couponState.verdict.valid &&
             (resolved.couponState.coupon.kind === "free_product" ||
               resolved.couponState.coupon.kind === "two_for_one")
               ? [resolved.couponState.coupon.label, note.trim()]
@@ -206,10 +261,15 @@ export function CounterConsole({
               : note.trim() || undefined,
           locationId,
           coupon:
-            resolved.couponState.status === "selected"
+            resolved.couponState.status === "selected" &&
+            resolved.couponState.verdict.valid
               ? {
                   couponId: resolved.couponState.coupon.couponId,
-                  productId: mode === "detailed" ? couponProductId : null,
+                  productId:
+                    mode === "detailed" &&
+                    !resolved.couponState.coupon.productId
+                      ? couponProductId
+                      : null,
                 }
               : undefined,
           items:
@@ -224,9 +284,22 @@ export function CounterConsole({
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok || !payload || !("order" in payload)) {
+        if (payload?.code === "coupon_not_selected") {
+          try {
+            couponStateVersion.current += 1;
+            await refreshCouponState(
+              resolved.membership.id,
+              resolved.catalog.products,
+            );
+          } catch {
+            /* The next poll retries a failed refresh. */
+          }
+        }
         throw new Error(payload?.error ?? "No pudimos acreditar.");
       }
       setResult(payload as GrantResponse);
+      couponStateVersion.current += 1;
+      activeMembershipId.current = null;
       setStage("done");
     } catch (e) {
       const fallback =
@@ -254,10 +327,12 @@ export function CounterConsole({
       const data = await response.json().catch(() => null);
       if (!response.ok)
         throw new Error(data?.error ?? "No pudimos actualizar el cupón.");
+      couponStateVersion.current += 1;
       setResolved((current) =>
         current ? { ...current, couponState: { status: "none" } } : current,
       );
       setCouponProductId(null);
+      selectedCouponId.current = null;
       setNotice("Cupón quitado");
       router.refresh();
     } catch (cause) {

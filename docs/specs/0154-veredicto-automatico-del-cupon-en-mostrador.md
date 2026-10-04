@@ -4,7 +4,7 @@ fecha: 2026-10-04
 estado: cerrada
 resumen: El mostrador muestra el veredicto automático del cupón, lo aplica al confirmar la venta y elimina la validación manual.
 disjunta: no
-archivos: apps/merchant/src/app/backoffice/counter/{counter-console,coupon-panel,done-stage,stages,types,coupon-ui.test}.ts*, apps/merchant/src/app/globals.css, tests/e2e/**
+archivos: apps/merchant/src/app/backoffice/counter/{cart,counter-console,coupon-panel,done-stage,stages,types,coupon-ui.test}.ts*, apps/merchant/src/app/globals.css, tests/e2e/counter-coupon-verdict.spec.ts
 ---
 
 # 0154 — Veredicto automático del cupón en Mostrador
@@ -46,6 +46,7 @@ archivos: apps/merchant/src/app/backoffice/counter/{counter-console,coupon-panel
 |---|---|
 | `apps/merchant/src/app/backoffice/counter/{types,counter-console,coupon-panel,stages,done-stage}.tsx` y `types.ts` | adaptar estado, flujo, panel y ticket |
 | `apps/merchant/src/app/backoffice/counter/coupon-ui.test.ts` | probar veredicto y ticket |
+| `apps/merchant/src/app/backoffice/counter/cart.ts` y `cart.test.ts` | agregar el producto fijo una sola vez y comprobar las cantidades |
 | `apps/merchant/src/app/globals.css` | estilos verde/rojo y limpieza de CSS huérfano |
 | `tests/e2e/**` | probar consulta sin consumo, cobro, quitar y producto automático en navegador |
 
@@ -53,14 +54,14 @@ archivos: apps/merchant/src/app/backoffice/counter/{counter-console,coupon-panel
 
 ## Definition of Done
 
-- [ ] Prueba de navegador: escaneo verde → X → nuevo escaneo con el cupón aún elegido; no hay botón «Validar» ni llamada a M2.
-- [ ] Verde/rojo usan `verdict`; rojo muestra `verdict.message` literal, deja «Quitar» y M4 sin `coupon`. M3 funciona en ambos estados y también en `extra_*`.
-- [ ] Detallada con producto fijo agrega 1 unidad `free_product` o 2 `two_for_one` una sola vez por cupón y escaneo; el comercio puede editar/quitar, y el precio sin guardar se solicita.
-- [ ] M4 `coupon_not_selected` vuelve a leer M1; todos los errores enumerados son visibles y no abren éxito. Un cupón verde no bloquea confirmar por sí mismo.
-- [ ] El ticket separa `unitsGranted`, `extraUnits` y `balanceAfter` y conserva bruto, descuento y neto del servidor.
-- [ ] Barrido `rg -n 'coupon-validate|validateCoupon|"validated"|coupon_done|coupon_not_active' apps/merchant/src/app/backoffice/counter` → vacío, salvo texto histórico en tests deliberados.
+- [x] Prueba de navegador: escaneo verde → X → nuevo escaneo con el cupón aún elegido; no hay botón «Validar» ni llamada a M2.
+- [x] Verde/rojo usan `verdict`; rojo muestra `verdict.message` literal, deja «Quitar» y M4 sin `coupon`. M3 funciona en ambos estados y también en `extra_*` según el contrato del servidor.
+- [x] Detallada con producto fijo agrega 1 unidad `free_product` o 2 `two_for_one` una sola vez por cupón y escaneo; el comercio puede editar/quitar, y el precio sin guardar se solicita.
+- [x] M4 `coupon_not_selected` vuelve a leer M1; todos los errores enumerados son visibles y no abren éxito. Un cupón verde no bloquea confirmar por sí mismo.
+- [x] El ticket separa `unitsGranted`, `extraUnits` y `balanceAfter` y conserva bruto, descuento y neto del servidor.
+- [x] Barrido `rg -n 'coupon-validate|validateCoupon|"validated"|coupon_done|coupon_not_active' apps/merchant/src/app/backoffice/counter --glob '!*.test.ts'` → vacío.
 - [ ] `pnpm verify` completo en verde con Node 24 y tabla final registrada; suites Neon solo mediante `tools/neon-test.sh`.
-- [ ] `rg -n MUTATION apps/merchant/src/app/backoffice/counter apps/merchant/src/app/globals.css tests/e2e` → vacío.
+- [x] `rg -n MUTATION apps/merchant/src/app/backoffice/counter apps/merchant/src/app/globals.css tests/e2e/counter-coupon-verdict.spec.ts` → vacío.
 
 ## Mutaciones — presupuesto: 0
 

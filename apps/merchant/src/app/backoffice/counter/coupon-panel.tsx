@@ -40,18 +40,25 @@ export function CouponPanel({
     );
   const coupon = state.coupon;
   const needsProduct =
+    state.verdict.valid &&
     mode === "detailed" &&
     !coupon.productId &&
     (coupon.kind === "free_product" || coupon.kind === "two_for_one");
-  const canRemove =
-    coupon.kind !== "extra_points" && coupon.kind !== "extra_stamps";
   return (
-    <div className="counter-coupon">
+    <div className="counter-coupon" data-valid={state.verdict.valid}>
       <div>
-        <p className="eyebrow">Cupón elegido</p>
+        <p className="counter-coupon-verdict">
+          <span aria-hidden="true">{state.verdict.valid ? "✓" : "✗"}</span>
+          {state.verdict.valid ? "Cupón válido" : "Cupón no válido"}
+        </p>
         <strong>{coupon.label}</strong>
+        {!state.verdict.valid && (
+          <span className="counter-coupon-reason" role="status">
+            {state.verdict.message}
+          </span>
+        )}
         {coupon.rule && <span>{coupon.rule}</span>}
-        {coupon.kind === "discount" && (
+        {state.verdict.valid && coupon.kind === "discount" && (
           <span>El descuento se aplica al vender.</span>
         )}
         {needsProduct && cart.length > 0 && (
@@ -72,16 +79,14 @@ export function CouponPanel({
         )}
       </div>
       <div className="counter-coupon-actions">
-        {canRemove && (
-          <button
-            className="counter-secondary"
-            type="button"
-            disabled={busy}
-            onClick={onRemove}
-          >
-            Quitar
-          </button>
-        )}
+        <button
+          className="counter-secondary"
+          type="button"
+          disabled={busy}
+          onClick={onRemove}
+        >
+          Quitar
+        </button>
       </div>
     </div>
   );

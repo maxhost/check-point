@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { addLine, changeQuantity, setLineUnitPrice } from "./cart";
+import {
+  addCouponProduct,
+  addLine,
+  changeQuantity,
+  setLineUnitPrice,
+} from "./cart";
 import type { CartLine, CounterProduct } from "./types";
 
 /**
@@ -69,6 +74,26 @@ describe("changeQuantity", () => {
   it("sube y baja sólo la línea pedida", () => {
     expect(changeQuantity(cart, "p-1", 1)[0].quantity).toBe(3);
     expect(changeQuantity(cart, "p-1", -1)[1].quantity).toBe(1);
+  });
+});
+
+describe("addCouponProduct", () => {
+  it("prepares one free product or two 2x1 units without increasing a larger cart quantity", () => {
+    expect(addCouponProduct([], coffee, 1)[0].quantity).toBe(1);
+    const two = addCouponProduct([], coffee, 2);
+    expect(two[0].quantity).toBe(2);
+    expect(addCouponProduct(two, coffee, 2)).toBe(two);
+    expect(addCouponProduct(addLine([], coffee), coffee, 2)[0].quantity).toBe(
+      2,
+    );
+  });
+
+  it("keeps the normal missing-price requirement on an automatic product", () => {
+    expect(addCouponProduct([], sinPrecio, 2)[0]).toMatchObject({
+      quantity: 2,
+      unitPrice: 0,
+      hasStoredPrice: false,
+    });
   });
 });
 

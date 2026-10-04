@@ -40,9 +40,16 @@ export function DoneStage({
       <h2>¡Listo!</h2>
       <p className="counter-granted">
         +{result.order.unitsGranted}{" "}
-        {unitLabel(result.order.kind, result.order.unitsGranted)} para{" "}
-        {displayName}
+        {unitLabel(result.order.kind, result.order.unitsGranted)} por la venta
+        para {displayName}
       </p>
+      {result.order.coupon?.extraUnits != null && (
+        <p className="counter-granted counter-coupon-extra">
+          +{result.order.coupon.extraUnits}{" "}
+          {unitLabel(result.order.kind, result.order.coupon.extraUnits)} del
+          cupón
+        </p>
+      )}
       <p className="counter-balance">
         Saldo: {result.order.balanceAfter}{" "}
         {unitLabel(result.order.kind, result.order.balanceAfter)}
@@ -61,11 +68,9 @@ export function DoneStage({
               ? " · 1 unidad bonificada"
               : ""}{" "}
             <strong>
-              −
-              {formatMoney(
-                Number(result.order.coupon.discountAmount),
-                currencyCode,
-              )}
+              {result.order.coupon.extraUnits != null
+                ? `+${result.order.coupon.extraUnits} ${unitLabel(result.order.kind, result.order.coupon.extraUnits)}`
+                : `−${formatMoney(Number(result.order.coupon.discountAmount), currencyCode)}`}
             </strong>
           </p>
         )}

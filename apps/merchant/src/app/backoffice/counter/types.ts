@@ -34,13 +34,18 @@ export type CounterCoupon = {
   productName: string | null;
   discountUnit: "percent" | "amount" | null;
   discountValue: string | null;
-  currencyCode: string;
+  currencyCode: string | null;
   extraUnits: number | null;
   validUntil: string;
 };
 
 export type CounterCouponState =
-  | { status: "selected"; coupon: CounterCoupon }
+  | {
+      status: "selected";
+      coupon: CounterCoupon;
+      verdict:
+        { valid: true } | { valid: false; code: string; message: string };
+    }
   | { status: "used_today"; label: string }
   | { status: "hint"; count: number }
   | { status: "none" };
@@ -103,7 +108,11 @@ export type GrantResponse = {
     kind: string;
     total: string;
     grossTotal: string;
-    coupon: { label: string; discountAmount: string } | null;
+    coupon: {
+      label: string;
+      discountAmount: string;
+      extraUnits: number | null;
+    } | null;
   };
 };
 
@@ -170,7 +179,7 @@ export function previewNetTotal(
   lines: CartLine[],
   productId: string | null,
 ): number {
-  if (state.status !== "selected") return gross;
+  if (state.status !== "selected" || !state.verdict.valid) return gross;
   const coupon = state.coupon;
   let discount = 0;
   if (coupon.kind === "discount") {

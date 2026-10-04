@@ -125,15 +125,17 @@ export function ResolvedStage({
         )}
       </header>
 
-      <CouponPanel
-        state={resolved.couponState}
-        busy={busy}
-        mode={mode}
-        cart={cart}
-        productId={couponProductId}
-        onProductId={onCouponProductId}
-        onRemove={onRemoveCoupon}
-      />
+      {mode !== "redeem" && (
+        <CouponPanel
+          state={resolved.couponState}
+          busy={busy}
+          mode={mode}
+          cart={cart}
+          productId={couponProductId}
+          onProductId={onCouponProductId}
+          onRemove={onRemoveCoupon}
+        />
+      )}
 
       <div className="counter-toggle" role="tablist">
         {MODE_TABS.map((tab) => (

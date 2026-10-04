@@ -34,6 +34,24 @@ export function addLine(
   ];
 }
 
+/** Prepare the fixed product of a valid coupon once without increasing a quantity
+ * the operator already chose. Later edits and removals stay under operator control. */
+export function addCouponProduct(
+  lines: CartLine[],
+  product: CounterProduct,
+  minimumQuantity: 1 | 2,
+): CartLine[] {
+  const existing = lines.find((line) => line.productId === product.id);
+  if (existing)
+    return existing.quantity >= minimumQuantity
+      ? lines
+      : changeQuantity(lines, product.id, minimumQuantity - existing.quantity);
+  const withProduct = addLine(lines, product);
+  return minimumQuantity === 2
+    ? changeQuantity(withProduct, product.id, 1)
+    : withProduct;
+}
+
 /** Dropping to zero REMOVES the line: a line of quantity 0 would be an invisible item
  * that still renders in the cart. */
 export function changeQuantity(

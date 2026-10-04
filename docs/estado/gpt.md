@@ -5,17 +5,26 @@
 
 ## ⇥ ESTADO (2026-10-04) — SPEC 0154: VEREDICTO AUTOMÁTICO DEL CUPÓN EN MOSTRADOR
 
-El owner aprobó el ADR 0120. Leí desde `motor` el
-[contrato HTTP 0153](../specs/0153-contratos-de-api.md) y la spec del servidor;
-la [spec UI 0154](../specs/0154-veredicto-automatico-del-cupon-en-mostrador.md)
-quedó cerrada con su fila en `docs/INDEX.md` en el commit local `06af813`.
-Todavía no se tocó código de la 0154 ni se hizo push. La 0152 sigue en local.
+El owner entregó `motor` `8a635b0` con el servidor 0153. Rebasé `main` sobre
+esa rama y resolví el conflicto de `docs/INDEX.md` conservando las specs 0152,
+0153 y 0154. La [spec UI 0154](../specs/0154-veredicto-automatico-del-cupon-en-mostrador.md)
+está implementada en local: veredicto verde/rojo literal en Venta detallada y
+rápida, sin M2; «Quitar» siempre; M4 manda cupón solo si es válido; producto fijo
+agregado una vez por escaneo; y ticket con unidades del cupón separadas. La 0152
+también sigue local y forma parte del mismo `main`.
 
-**Esperar el SHA del servidor del owner.** Después: `git fetch origin` y
-`git rebase motor` en `main`, conservar las filas 0153 y 0154 si hay conflicto de
-índice, implementar UI sobre el contrato, `pnpm verify` con Node 24 y un solo
-push conjunto cuando el gate esté verde. No pedir QA hasta deploy `READY` de
-Vercel para ese SHA.
+Verificación con Node 24.20.0: typecheck, lint, formato, unitarios, e2e
+global (115 pasaron, 5 omitidos), Neon merchant (410 pasaron, 25 omitidos) y
+Neon consumer (60 pasaron) en verde. Las 4 pruebas de navegador de la 0154
+pasaron y revisé las capturas móviles verde y roja. `pnpm verify` quedó
+**ROJO solo en build**: Turbopack falla al abrir un puerto interno al procesar
+`business/onboarding/onboarding.css` (`Operation not permitted`), incluso fuera
+del sandbox. El build Webpack de Merchant se comprobó aparte. No se usó
+`--no-verify`.
+
+**Pendiente:** gate completo verde o autorización explícita del owner para
+sortear solo el hook; `git pull --rebase` y un único push conjunto; comprobar
+deploy `READY` de Vercel para ese SHA antes de pedir QA. No se ha pusheado la 0154.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
 
