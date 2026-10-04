@@ -319,7 +319,14 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   que quedo viejo apuntando a la ruta borrada, no un error del codigo. Fix: `rm -f
   apps/merchant/.next/types/validator.ts` (o borrar `.next`); el proximo `next build`/`dev` lo
   regenera sin la ruta. No editar el archivo generado a mano.
-- **Vercel plan Hobby: MAXIMO 2 cron jobs y SOLO frecuencia diaria.** Un 3er cron en
+- **Vercel Hobby: 100 DEPLOYS POR DIA en la cuenta, y CADA PUSH a `main` son TRES (merchant, customer, public) — tambien
+  los pushes solo-docs** (medido 2026-10-03: 119 deploys en 24 h por la API `repos/maxhost/check-point/deployments`, y desde
+  ahi «Deployment rate limited — retry in 24 hours» en el status del commit). Un dia de specs con reserva + trabajo + estado
+  por spec lo agota (~33 pushes). Mientras siga en Hobby: juntar los commits de docs (estado, reservas) en el push del trabajo,
+  y diagnosticar el deploy por el `description` del status, no solo por `failure`. Pendiente del owner: Pro o «Ignored Build
+  Step» (PARQUEADO #69). Los pases Apple/Google los sirve SOLO customer (`apps/consumer`): un rate limit en merchant no los afecta.
+- **Vercel plan Hobby: crons SOLO de frecuencia diaria** (la doc de 2026-07 ya permite 100 por proyecto; lo que no permite
+  es sub-diario, «Hobby accounts are limited to daily cron jobs»). Antes decia «MAXIMO 2 cron jobs». Un 3er cron en
   `apps/merchant/vercel.json`, o un `schedule` sub-diario (`*/5 * * * *`), hace que Vercel
   **rechace el deploy entero** (Production queda clavado en el commit anterior, el commit status
   de GitHub muestra `Vercel: failure`). Los 2 crons existentes son diarios a propósito. Si una

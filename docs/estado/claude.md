@@ -8,7 +8,60 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche, 2) — SPEC 0147 IMPLEMENTADA (`a8a66ba`), `sourceFileName` EN EL DTO DE IMPORTACION
+## ⇥ ESTADO (2026-10-03, cierre 2) — SPEC 0148 CERRADA Y EN `main` (`afa6e77`). SIGUE: LANZAR EL IMPLEMENTADOR
+
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `afa6e77` (+ el commit de este
+estado). Sin codigo tocado en esta sesion.
+
+**Hecho (sesion del canje de cupones):**
+- El owner probo el canje de cupon en el mostrador y lo declaro inservible. Investigacion (6 notas + informe):
+  `reports/Canje de cupones en mostrador móvil.md` y `research_notes/Canje de cupones en mostrador móvil/`.
+- **ADR 0119** (`c91d989`): las 16 decisiones del owner — el cliente elige el cupon en la PWA, el mostrador lo valida
+  o lo aplica en la venta, se ata a la venta con puntos sobre el neto, quitable, 1 por cliente + comercio + dia.
+- **Spec 0148 `cerrada`** + contrato `specs/0148-contratos-de-api.md` (`afa6e77`), pusheados (`verify: ok`, solo docs).
+
+**Siguiente (Claude):** lanzar UN `implementador` sobre la spec 0148 (migracion 0064 primero, en rama Neon efimera con
+`tools/neon-test.sh`, nunca contra `DATABASE_URL`) y despues UN `revisor` con el presupuesto de la spec (10 mutaciones;
+el lock de `business_customer` declarado sin mutacion). Al PASS: pedir OK del owner para la 0064 en PROD, avisar a GPT
+(contrato 0148: pantallas del mostrador y de la PWA) y al owner que el mostrador queda sin cupones hasta esa UI.
+
+**Prompt para retomar:** «Lee docs/estado/claude.md y lanza el implementador de la spec 0148».
+
+**Siguen abiertos de antes** (bloque de abajo): QA del owner de 0143/0146/0147, lote `pass_refresh`, avisos a GPT,
+PARQUEADO #69 (Vercel Hobby: cada push = 3 deploys).
+
+## ⇥ ESTADO HISTORICO (2026-10-03, cierre) — 0143, 0144, 0146 Y 0147 EN `main` (`e667005`). TOCA QA DEL OWNER
+
+**Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `e667005` (mas el commit de este
+handoff). Arbol limpio (salvo `.pnpm-store`, ignorable).
+
+**Hecho hoy (todo con PASS de revisor independiente y `pre-push` `verify: ok`):**
+- **0143** venta cruzada por la compra (`ab5e62e`) + migracion **0063 en PROD** (verificada por SQL).
+- **0144** atraso de la loteria por comercio (`fdb4e42`); decisiones del owner en ADR 0117 «Cerrado despues».
+- **0146** icono de la PWA en el pase Apple (`5c855c7`); `PASS_BRAND_UPDATED_AT` = `2026-10-03T22:00:00Z`.
+- **0147** `sourceFileName` en el DTO de la importacion con IA (`a8a66ba`), en las 9 respuestas.
+- Rama Neon `bench-clientes-comercio` (4,4 GB) borrada con OK del owner.
+- Deploy: merchant y customer `success` en `e667005`; public con rate limit de Vercel Hobby (no le toca nada de esto).
+
+**QA del owner (lo que hay para probar):**
+1. **0143:** dos comercios de rubros distintos a < 2 km, cruzada activa en B con fecha de fin, cliente con notificaciones
+   de la PWA; acreditar en A entre 7:00 y 17:40 → cupon de B en «Mis beneficios» y push «🎁 Tenés un regalo» 3–13 min
+   despues («Run now» en cron-job.org para no esperar).
+2. **0146:** pase de QA firmado con el certificado real en iPhone → la notificacion del pase muestra la «c» de la PWA;
+   logo, strip, nombre y QR iguales; anotar version de iOS.
+3. **0147:** importar un PDF con IA en el merchant, recargar mientras analiza → la tarjeta conserva el nombre real.
+
+**Siguiente (Claude, despues del QA):**
+- **Lote `pass_refresh` de la 0146 a PROD** (con OK del owner): comprobar las variables APNs del worker de merchant, excluir
+  pases solo-hash, muestra y despues lote una vez (`docs/wallet/apple-wallet-design-and-release.md` §«Pasar a vivo»).
+- **Avisar a GPT**: C1/C2 → 404 y `endsAt` obligatorio (la 0145 de GPT ya lo consume); `sourceFileName` viene siempre.
+- **PARQUEADO #69** (owner): Vercel Pro y/o «Ignored Build Step». Mientras siga en Hobby: juntar los commits de docs en el
+  push del trabajo (cada push = 3 deploys; tope 100/dia, ventana movil).
+
+**Pendientes de antes:** CI de `main` sin mirar con `pnpm ci:status`; los de la 0138; `AGENT-WORKFLOW.md`/agentes con
+bitacora a `TASKS.md`; `.prettierignore` con `docs/`; #68; borrar `motor-wt/fix-notices-mock`; `CRON_SECRET` rotable.
+
+## ⇥ ESTADO HISTORICO (2026-10-03, noche, 2) — SPEC 0147 IMPLEMENTADA (`a8a66ba`), `sourceFileName` EN EL DTO DE IMPORTACION
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `a8a66ba` + este commit de estado.
 
