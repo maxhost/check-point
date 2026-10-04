@@ -6,7 +6,7 @@ el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y 
 
 ## Bitacora de mutaciones — spec 0153, implementador (2026-10-04)
 
-Restauracion: git checkout 3af2aac -- <archivo>  (o cp desde $S/*.clean.ts)
+Restauracion: git checkout 2adc79b -- <archivo>  (o cp desde $S/*.clean.ts)
 
 | id | archivo | shasum limpio | invariante | resultado EJECUTADO |
 |---|---|---|---|---|

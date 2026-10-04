@@ -151,7 +151,7 @@ y la venta sale sin el; la eleccion queda hasta que el comercio la quite.
 
 ## Implementacion (2026-10-04)
 
-`3af2aac` (rama `motor`, sin push: va junto con la UI de GPT, spec 0154). **PASS del revisor independiente.**
+`2adc79b` (rama `motor`, sin push: va junto con la UI de GPT, spec 0154). **PASS del revisor independiente.**
 - `pnpm verify` verde con Node 24 (implementador y revisor); Neon de cupones con `tools/neon-test.sh`. `coupon-verdict.neon` 4/4 re-corrida por el orquestador.
 - Mutaciones: M1, M2/M2b, M3 rojas (implementador); R1 (=M3) y R2 (reintento con `balanceAfter` final) rojas; **R3 sobrevive** (orden lock → `usedToday` sin oraculo de carrera; hoy correcto; pendiente en `TASKS.md`). Bitacoras en `TASKS.md`.
 - **Desvio aceptado por el revisor:** `assertDailyLimit` se borro; el limite diario vive solo en el veredicto (`coupon-verdict.ts`, misma consulta para pintar y para cobrar).
