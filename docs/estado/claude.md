@@ -14,9 +14,13 @@
 el push unico de GPT con la 0148 (Claude) y la 0149 (UI de GPT). **Deploy verificado** (status del commit por la API de
 GitHub, 2026-10-04 14:43 UTC): merchant, customer y public `success` en `3006a2f`. 0064 en PROD desde el 2026-10-03.
 
-**En curso:** spec **0150** (login de QA sin link magico, TEMPORAL; `7d810e4`, decision del owner «Botones en el login»):
-implementador lanzado; despues revisor, y prompt a GPT para los 3 botones. El owner tiene que crear `QA_LOGIN_ENABLED=true` en
-el proyecto merchant de Vercel. Commits locales sin pushear desde `3006a2f`.
+**En curso:** spec **0150** (login de QA sin link magico, TEMPORAL; `7d810e4`, decision del owner «Botones en el login»).
+El implementador esta trabajando: archivos SIN COMMITEAR `server/qa-login{,.test,.neon.integration.test}.ts` y
+`app/api/merchant/auth/qa-login/route{,.test}.ts` (`ListAgents` primero si se retoma). **El owner decidio (2026-10-04)
+que Claude ponga tambien los 3 botones en el login** («simplemente puedes añadir tu los botones en el form login… y luego
+haces el push»): va en `business/onboarding/_components/account-step.tsx` (modo login), zona GPT por decision del owner →
+avisar a GPT. Despues: revisor, push (lleva todo lo local desde `3006a2f`) y deploy `READY`. El owner crea
+`QA_LOGIN_ENABLED=true` en el proyecto merchant de Vercel.
 
 **Pendiente:**
 - **QA del owner de 0148/0149** (pasos en la spec 0148 §«QA del owner») y los de antes: 0143, 0146, 0147.
