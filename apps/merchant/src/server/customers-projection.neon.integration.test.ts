@@ -143,9 +143,9 @@ describe.skipIf(!integrationEnabled)(
       expect(
         (await projectionRow(business, card.consumerId)).lastVisitAt,
       ).toBeNull();
-      // Spec 0148: the consumer chooses it; spec 0153: the counter's sale applies it (the
-      // visit). DECLARED: the sale's order moves the same `last_visit_at` in the same
-      // transaction (same `now()`), so this case no longer tells the coupon's visit apart.
+      // Spec 0148: the consumer chooses it; spec 0153: the counter's sale applies it. The
+      // visit is the ORDER's (same transaction, same `now()` as the redemption row): the
+      // redemption no longer records one of its own.
       await chooseAndSell(coupons, card);
       const at = await originAt("coupon_redemption", business, card.consumerId);
       expect(at).not.toBeNull();

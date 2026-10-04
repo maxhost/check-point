@@ -70,7 +70,6 @@ export {
 export {
   buildTransactionalBody,
   buildRedemptionBody,
-  buildCouponBody,
 } from "@mi-pasaporte/domain/server/wallet/push-text";
 
 type Claim = {

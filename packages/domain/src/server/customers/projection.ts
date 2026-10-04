@@ -53,12 +53,13 @@ export function upsertVisitSql(source: SQL): SQL {
 }
 
 /**
- * A counter redemption, inside ITS transaction: the visit is the `created_at` of the row just
- * inserted in `table` (`core.reward_redemption` or `core.coupon_redemption`).
+ * A reward redemption at the counter, inside ITS transaction: the visit is the `created_at` of
+ * the row just inserted in `table`. (A coupon redemption has none of its own since spec 0153:
+ * it is always tied to an order, and the order records the visit.)
  */
 export async function recordRedemptionVisit(
   tx: DbTransaction,
-  table: "reward_redemption" | "coupon_redemption",
+  table: "reward_redemption",
   redemptionId: string,
 ): Promise<void> {
   await tx.execute(

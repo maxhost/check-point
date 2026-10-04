@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { buildApnsJwt, buildApnsRequest } from "./wallet/apns";
 import {
   type QueueRow,
-  buildCouponBody,
   buildRedemptionBody,
   buildTransactionalBody,
   planConsumerDrain,
@@ -95,12 +94,9 @@ describe("counter notices invite to the account (spec 0111 D1)", () => {
     expect([...body].length).toBe(79);
   });
 
-  it("the redemption and the coupon notices end in the invite too", () => {
+  it("the redemption notice ends in the invite too", () => {
     expect(buildRedemptionBody("Café gratis", "stamps", 1)).toBe(
       `Canjeaste «Café gratis» 🎁 Te queda 1 sello.${INVITE}`,
-    );
-    expect(buildCouponBody("2x1 en picadas")).toBe(
-      `Canjeaste el cupón «2x1 en picadas» 🎁${INVITE}`,
     );
   });
 
@@ -113,12 +109,14 @@ describe("counter notices invite to the account (spec 0111 D1)", () => {
   });
 
   it("exactly at the limit the invite stays", () => {
-    // 120 − len("Canjeaste el cupón «» 🎁" + INVITE) = label length that lands on 120.
-    const base = [...`Canjeaste el cupón «» 🎁${INVITE}`].length;
+    // 120 − len("Canjeaste «» 🎁 Te queda 1 sello." + INVITE) = label length that lands on 120.
+    // (Spec 0153: the coupon notice is gone; the boundary is `withAccountInvite`'s.)
+    const base = [...`Canjeaste «» 🎁 Te queda 1 sello.${INVITE}`].length;
     const label = "x".repeat(120 - base);
-    expect([...buildCouponBody(label)].length).toBe(120);
-    expect(buildCouponBody(label).endsWith(INVITE)).toBe(true);
-    expect(buildCouponBody(`${label}x`).endsWith(INVITE)).toBe(false);
+    const body = (l: string) => buildRedemptionBody(l, "stamps", 1);
+    expect([...body(label)].length).toBe(120);
+    expect(body(label).endsWith(INVITE)).toBe(true);
+    expect(body(`${label}x`).endsWith(INVITE)).toBe(false);
   });
 });
 

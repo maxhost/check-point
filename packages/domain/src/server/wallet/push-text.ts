@@ -75,17 +75,3 @@ export function buildRedemptionBody(
     `Canjeaste «${label}» 🎁 ${verb} ${balanceAfter} ${noun}.`,
   );
 }
-
-/**
- * The coupon notice (spec 0065 phase C), same `transactional` class as the accreditation
- * and the redemption: it is the receipt of something that just happened at the counter.
- *
- * The label is the SNAPSHOT the redemption row stored, never the campaign's label as it
- * reads today — editing a paused campaign's coupon may not rewrite a notice about a
- * coupon already handed over. There is no balance in it: only an `extra_*` coupon (spec
- * 0106) touches `points_balance`/`stamps_count`, and the pass shows the new balance through
- * the refresh this same push triggers — the text stays the label.
- */
-export function buildCouponBody(label: string): string {
-  return withAccountInvite(`Canjeaste el cupón «${label}» 🎁`);
-}

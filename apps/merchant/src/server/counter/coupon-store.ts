@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { DbTransaction } from "@mi-pasaporte/db";
 import { campaignTurns, couponRedemptions } from "@mi-pasaporte/db/schema";
-import { recordRedemptionVisit } from "@mi-pasaporte/domain/server/customers/projection";
 import type { LockedCoupon } from "./coupon-locks";
 
 /**
@@ -17,7 +16,8 @@ import type { LockedCoupon } from "./coupon-locks";
  *  - label, cost, kind and product are SNAPSHOTS of the coupon, never of the campaign as it
  *    reads today: editing a campaign may not restate what the counter already handed over;
  *  - `grant`: what an `extra_*` coupon credited (`grantCouponExtras`), `null` for the rest;
- *  - spec 0108: every coupon redemption at the counter is a visit — same transaction;
+ *  - no visit of its own (spec 0108): the redemption is always tied to its order, and the
+ *    order already moves `last_visit_at` in this same transaction, at the same `now()`;
  *  - when the coupon came from a turn, that turn's outcome (the turn is still proximity's
  *    unit of measurement, ADR 0093 §3). DECLARED: a coupon whose turn was CANCELLED still
  *    marks it `coupon_redeemed` (spec 0102 step 4); results count only `done` turns.
@@ -61,7 +61,6 @@ export async function insertCounterRedemption(
       clientRequestId: input.clientRequestId,
     })
     .returning({ id: couponRedemptions.id });
-  await recordRedemptionVisit(tx, "coupon_redemption", row.id);
   if (coupon.turnId !== null)
     await tx
       .update(campaignTurns)
