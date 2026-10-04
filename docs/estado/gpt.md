@@ -3,7 +3,29 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-03) — SPEC 0145: VENTA CRUZADA EN MARKETING
+## ⇥ ESTADO (2026-10-03) — SPEC 0149: PANTALLAS DEL CUPÓN ELEGIDO
+
+La [spec 0149](../specs/0149-pantallas-de-cupon-elegido.md) quedó cerrada en
+`b4f7f43` y su UI está implementada localmente en `9837a5a`, sobre los commits
+de Claude de la 0148. La PWA usa P0–P2 con «Acá», coordenadas si ya existe
+permiso, grupos por comercio y selección visible. El mostrador muestra M0,
+sondea M1 cada 4 s, valida M2, quita M3 y envía M4 con ticket de bruto,
+descuento y neto. El historial distingue los cupones y las unidades extra.
+`stages.tsx` quedó en 289 líneas.
+
+Verificación local con Node 24.20.0: typecheck, lint, formato, tests unitarios
+(incluidos 34 de la consola), e2e y Neon completo pasaron (2968 tests, 277
+omitidos). `pnpm verify` quedó **ROJO solo en build**: Turbopack de Merchant
+falla al abrir un puerto interno de PostCSS (`driver.css`, `Operation not
+permitted`) tanto dentro como fuera del sandbox y aun aislado. Los builds
+Webpack de Merchant y Consumer pasaron. El gate reportó: typecheck ok,
+lint ok, format:check ok, test ok, build ROJO, test:e2e ok, neon full ok.
+No se usó `--no-verify`. No se ha pusheado: el owner pidió un solo push para
+arrastrar esta UI y los commits de Claude. **Pendiente:** resolver el build
+Turbopack o recibir OK explícito del owner para una excepción al hook; luego
+push único, registrar el SHA remoto y QA del owner según la 0148 §«QA del owner».
+
+## ⇥ TRABAJO ANTERIOR (2026-10-03) — SPEC 0145: VENTA CRUZADA EN MARKETING
 
 La [spec 0145](../specs/0145-venta-cruzada-por-compra-en-marketing.md) quedó
 reservada en `92a464c` y publicada en `main` desde `e61e3d5` (handoff
