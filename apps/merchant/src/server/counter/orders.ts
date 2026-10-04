@@ -1,6 +1,5 @@
-import { and, eq, sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
-import { orders } from "@mi-pasaporte/db/schema";
 import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 import { buildTransactionalBody } from "../wallet/push";
 import { upsertVisitSql } from "@mi-pasaporte/domain/server/customers/projection";
@@ -35,10 +34,17 @@ export type GrantedOrder = {
   unitsGranted: number;
   balanceAfter: number;
   accrualKind: string;
+  /** The order's `total` — the NET of the coupon's discount when it carries one (spec 0148). */
+  total: string;
+  /** Spec 0148: the coupon tied to this order (`coupon_redemption.order_id`), or null. */
+  coupon: { label: string; discountAmount: string } | null;
   /** The `wallet_push_queue` row enqueued in the same tx (spec 0033); null on the
    * idempotent-retry/reread path so no re-dispatch happens. */
   pushQueueId: string | null;
 };
+
+/** `getDb()` or the interactive transaction of the sale with a coupon (spec 0148). */
+export type OrderExecutor = { execute: (query: SQL) => Promise<unknown> };
 
 /** A `(VALUES …)` list for the order items, every column explicitly cast. */
 function itemValuesSql(items: GrantItem[]) {
@@ -57,6 +63,14 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
     unitsGranted: Number(row.units_granted),
     balanceAfter: Number(row.balance_after),
     accrualKind: String(row.accrual_kind),
+    total: String(row.total),
+    coupon:
+      row.coupon_label == null
+        ? null
+        : {
+            label: String(row.coupon_label),
+            discountAmount: String(row.coupon_discount ?? "0.00"),
+          },
     pushQueueId: row.push_queue_id == null ? null : String(row.push_queue_id),
   };
 }
@@ -92,9 +106,14 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
  *
  * When the statement returns no row (sequential retry / idempotent hit), the caller
  * rereads and returns the existing order via {@link readOrderByRequest} — no re-grant.
+ *
+ * Spec 0148: `executor` is `getDb()` (a sale without a coupon: exactly as before, one
+ * statement) or the interactive transaction of a sale WITH a coupon (`grant-coupon.ts`),
+ * which then ties the coupon to the order before committing.
  */
 export async function persistGrant(
   input: PersistGrantInput,
+  executor: OrderExecutor = getDb(),
 ): Promise<GrantedOrder | null> {
   const pointsDelta = input.accrualKind === "points" ? input.units : 0;
   const stampsDelta = input.accrualKind === "stamps" ? input.units : 0;
@@ -110,7 +129,7 @@ export async function persistGrant(
       )`
     : sql``;
 
-  const result = await getDb().execute(sql`
+  const result = await executor.execute(sql`
     WITH bumped AS (
       UPDATE consumer.program_membership
       SET points_balance = points_balance + ${pointsDelta},
@@ -138,7 +157,7 @@ export async function persistGrant(
                    THEN bumped.points_balance ELSE bumped.stamps_count END)::integer,
              ${input.createdByUserId}::text, ${input.clientRequestId}::uuid
       FROM bumped
-      RETURNING id, units_granted, balance_after, accrual_kind,
+      RETURNING id, units_granted, balance_after, accrual_kind, total,
                 business_id, consumer_id, created_at
     )${itemsCte},
     visit AS (${upsertVisitSql(sql`(
@@ -155,7 +174,7 @@ export async function persistGrant(
       RETURNING id
     )
     SELECT ins.id, ins.units_granted, ins.balance_after, ins.accrual_kind,
-           pushq.id AS push_queue_id
+           ins.total, pushq.id AS push_queue_id
     FROM ins LEFT JOIN pushq ON true
   `);
 
@@ -163,25 +182,22 @@ export async function persistGrant(
   return row ? toGrantedOrder(row) : null;
 }
 
-/** Rereads an order by its idempotency key (the retry / concurrent-loser path). */
+/** Rereads an order by its idempotency key (the retry / concurrent-loser path), with the
+ * coupon tied to it (spec 0148). Raw SQL with explicit aliases. */
 export async function readOrderByRequest(
   businessId: string,
   clientRequestId: string,
+  executor: OrderExecutor = getDb(),
 ): Promise<GrantedOrder | null> {
-  const [row] = await getDb()
-    .select({
-      id: orders.id,
-      unitsGranted: orders.unitsGranted,
-      balanceAfter: orders.balanceAfter,
-      accrualKind: orders.accrualKind,
-    })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.businessId, businessId),
-        eq(orders.clientRequestId, clientRequestId),
-      ),
-    )
-    .limit(1);
-  return row ? { ...row, pushQueueId: null } : null;
+  const result = await executor.execute(sql`
+    SELECT o.id, o.units_granted, o.balance_after, o.accrual_kind, o.total,
+           cr.label_snapshot AS coupon_label, cr.discount_amount AS coupon_discount,
+           NULL AS push_queue_id
+    FROM core."order" o
+    LEFT JOIN core.coupon_redemption cr ON cr.order_id = o.id
+    WHERE o.business_id = ${businessId} AND o.client_request_id = ${clientRequestId}
+    LIMIT 1
+  `);
+  const [row] = rowsOf(result) as Record<string, unknown>[];
+  return row ? toGrantedOrder(row) : null;
 }

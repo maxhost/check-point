@@ -19,8 +19,10 @@ import {
   consumerAccounts,
   webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
-import { redeemCoupon } from "./counter/coupon";
+import { validateCoupon } from "./counter/coupon-validate";
+import { grantAccrual } from "./counter/grant";
 import { resolveScan } from "./counter/resolve";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 import { sweepWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offers";
 
@@ -34,6 +36,10 @@ import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offe
  *    holds a cross coupon of that business (ORACULO DE M9 — the WIRING in
  *    `issueWelcomeGiftsIn`; the pure rule has its own case in `welcome-issue.test.ts`),
  *    with a control consumer, identical but without the cross coupon, who DOES get it.
+ *
+ * Spec 0148: the cross coupon is a DISCOUNT, so it is redeemed IN THE SALE (`grantAccrual`
+ * with `coupon`) once the consumer chose it — and without a scan there is no membership to
+ * name at the counter at all.
  */
 
 afterAll(dropCrossWorlds, 180_000);
@@ -56,15 +62,24 @@ describe.skipIf(!integrationEnabled)(
   () => {
     it("ORACULO DE M8 — scan + redeem of a non-member's cross coupon: the redemption carries the auto-enrolled membership", async () => {
       const { x, consumer, couponId } = await claimed("m8", 21);
-      const scan = await resolveScan(x.seed.business, consumer.qrToken);
-      expect(scan.coupon?.couponId).toBe(couponId);
-
-      const result = await redeemCoupon(x.seed.business, x.seed.userId, {
-        clientRequestId: randomUUID(),
-        couponId,
-        locationId: x.seed.locationId,
+      expect(await selectCoupon(consumer.id, couponId)).toMatchObject({
+        status: 200,
       });
-      expect(result.coupon.label).toBe("10% en tu primera clase");
+      const scan = await resolveScan(x.seed.business, consumer.qrToken);
+      expect(scan.couponState).toMatchObject({
+        status: "selected",
+        coupon: { couponId },
+      });
+
+      const result = await grantAccrual(x.seed.business, x.seed.userId, {
+        clientRequestId: randomUUID(),
+        membershipId: scan.membership.id,
+        mode: "quick",
+        total: "20.00",
+        locationId: x.seed.locationId,
+        coupon: { couponId },
+      });
+      expect(result.order.coupon?.label).toBe("10% en tu primera clase");
       const [row] = await getDb()
         .select({ membershipId: couponRedemptions.membershipId })
         .from(couponRedemptions)
@@ -78,15 +93,19 @@ describe.skipIf(!integrationEnabled)(
       expect(coupon.membershipId).toBeNull();
     }, 180_000);
 
-    it("redeeming it without scanning the consumer first is 409 not_enrolled, and nothing is written", async () => {
+    it("without scanning the consumer first there is no membership to name: 404, and nothing is written", async () => {
+      // Spec 0148: the counter's coupon writes name the SCANNED membership; before the scan
+      // auto-enrols, the consumer has none in this business (the old `not_enrolled` of the
+      // redemption stays as the guard of the locks, `coupon-locks.ts`).
       const { x, couponId } = await claimed("enrol", 22);
       await expect(
-        redeemCoupon(x.seed.business, x.seed.userId, {
+        validateCoupon(x.seed.business, x.seed.userId, {
           clientRequestId: randomUUID(),
+          membershipId: randomUUID(),
           couponId,
           locationId: x.seed.locationId,
         }),
-      ).rejects.toMatchObject({ status: 409, code: "not_enrolled" });
+      ).rejects.toMatchObject({ status: 404, code: "not_found" });
       expect(
         await getDb()
           .select({ id: couponRedemptions.id })

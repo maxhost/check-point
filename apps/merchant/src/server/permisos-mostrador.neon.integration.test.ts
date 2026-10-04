@@ -15,7 +15,9 @@ import { memberships, users } from "@mi-pasaporte/db/schema";
 import { POST as RESOLVE } from "../app/api/counter/resolve/route";
 import { POST as GRANT } from "../app/api/counter/grant/route";
 import { POST as REDEEM } from "../app/api/counter/redeem/route";
-import { POST as COUPON } from "../app/api/counter/coupon-redeem/route";
+import { POST as COUPON_VALIDATE } from "../app/api/counter/coupon-validate/route";
+import { POST as COUPON_REMOVE } from "../app/api/counter/coupon-remove/route";
+import { GET as COUPON_STATE } from "../app/api/counter/coupon-state/route";
 
 /**
  * Spec 0086 §6 — **EL MOSTRADOR EXIGE EL PERMISO `counter`, contra la base y con sesiones
@@ -43,9 +45,20 @@ const MOSTRADOR: Array<
   ],
   ["grant", (c) => GRANT(conCookie("/api/counter/grant", "POST", c, {}))],
   ["redeem", (c) => REDEEM(conCookie("/api/counter/redeem", "POST", c, {}))],
+  // Spec 0148: el canje de cupón de la 0065 C se borró; sus tres reemplazos pasan por el guard.
   [
-    "coupon-redeem",
-    (c) => COUPON(conCookie("/api/counter/coupon-redeem", "POST", c, {})),
+    "coupon-validate",
+    (c) =>
+      COUPON_VALIDATE(conCookie("/api/counter/coupon-validate", "POST", c, {})),
+  ],
+  [
+    "coupon-remove",
+    (c) =>
+      COUPON_REMOVE(conCookie("/api/counter/coupon-remove", "POST", c, {})),
+  ],
+  [
+    "coupon-state",
+    (c) => COUPON_STATE(conCookie("/api/counter/coupon-state", "GET", c)),
   ],
 ];
 

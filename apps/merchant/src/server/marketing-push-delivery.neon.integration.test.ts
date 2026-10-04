@@ -33,7 +33,8 @@ import {
   campaigns,
 } from "@mi-pasaporte/db/schema";
 import { recordPushClick } from "@mi-pasaporte/domain/server/marketing/push-delivery";
-import { loadActiveCoupon } from "./counter/coupon-scan";
+import { counterCouponState } from "./counter/coupon-state";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
 import type { FakeWebPushChannel } from "@mi-pasaporte/domain/server/push/webpush-channel";
 
@@ -134,21 +135,23 @@ describe.skipIf(!integrationEnabled || !campaignKindEnabled("win_back"))(
 
       // The business changes its currency AFTER the coupon was issued: an amount means
       // nothing in another currency, so the scan and the consumer's list keep the SNAPSHOT's
-      // (reviewer's P2, `counter/coupon-scan.ts` and `consumer/coupons.ts`).
+      // (reviewer's P2; the counter paints the CHOSEN coupon since spec 0148).
       const later = new Date(NOON.getTime() + HOUR);
       try {
         await getDb()
           .update(businesses)
           .set({ currencyCode: "EUR" })
           .where(eq(businesses.id, built.seed.business.id));
+        const [{ id }] = await coupons(built.consumerId);
+        await selectCoupon(built.consumerId, id, later);
+        const { seed, consumerId } = built;
+        const state = counterCouponState(seed.business.id, consumerId, later);
+        expect(await state).toMatchObject({
+          coupon: { discountUnit: "amount", currencyCode: "ARS" },
+        });
         expect(
-          await loadActiveCoupon(
-            built.seed.business.id,
-            built.consumerId,
-            later,
-          ),
-        ).toMatchObject({ discountUnit: "amount", currencyCode: "ARS" });
-        expect(await listConsumerCoupons(built.consumerId, later)).toEqual([
+          (await listConsumerCoupons(consumerId, null, later)).coupons,
+        ).toEqual([
           expect.objectContaining({ currencyCode: "ARS", status: "valid" }),
         ]);
       } finally {

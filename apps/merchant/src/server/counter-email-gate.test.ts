@@ -87,7 +87,15 @@ describe("el gate de email del mostrador (spec 0082 §2)", () => {
    * sesión por su cuenta quedaría afuera del gate sin que ningún caso de abajo lo note.
    */
   it("las CUATRO rutas del mostrador entran por `requireOperator`", () => {
-    const rutas = ["resolve", "grant", "redeem", "coupon-redeem"];
+    // Spec 0148: el canje de cupón de la 0065 C se borró; sus tres reemplazos entran igual.
+    const rutas = [
+      "resolve",
+      "grant",
+      "redeem",
+      "coupon-validate",
+      "coupon-remove",
+      "coupon-state",
+    ];
     for (const ruta of rutas) {
       const source = readFileSync(
         new URL(`../app/api/counter/${ruta}/route.ts`, import.meta.url),

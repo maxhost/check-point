@@ -6,13 +6,11 @@ import { QrScanner } from "./qr-scanner";
 import { CounterHome } from "./counter-home";
 import { Console, DoneStage, LocationGate, ResolvedStage } from "./stages";
 import { postRedeem } from "./redeem-panel";
-import { postCouponRedeem } from "./coupon-panel";
 import { addLine, changeQuantity, setLineUnitPrice } from "./cart";
 import {
   type AccreditationRow,
   type CartLine,
   type CounterLocation,
-  type CouponRedeemResponse,
   type GrantResponse,
   type Mode,
   type RedeemResponse,
@@ -62,12 +60,6 @@ export function CounterConsole({
   const [result, setResult] = useState<GrantResponse | null>(null);
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [redeemed, setRedeemed] = useState<RedeemResponse | null>(null);
-  const [couponRedeemed, setCouponRedeemed] =
-    useState<CouponRedeemResponse | null>(null);
-  // A SEPARATE id from `requestId`: `(business_id, client_request_id)` is unique per
-  // table, so reusing one key across a sale and a coupon in the same scan would make a
-  // retry of either indistinguishable from the other in the two logs.
-  const [couponRequestId, setCouponRequestId] = useState("");
 
   const reset = useCallback(() => {
     setResolved(null);
@@ -77,8 +69,6 @@ export function CounterConsole({
     setResult(null);
     setSelectedRewardId(null);
     setRedeemed(null);
-    setCouponRedeemed(null);
-    setCouponRequestId("");
     setError(null);
     setNotice(null);
     setMode("detailed");
@@ -106,7 +96,6 @@ export function CounterConsole({
         const data = payload as ResolveResponse;
         setResolved(data);
         setRequestId(crypto.randomUUID());
-        setCouponRequestId(crypto.randomUUID());
         setMode(data.catalog.products.length > 0 ? "detailed" : "quick");
         setStage("resolved");
         setNotice(
@@ -187,31 +176,6 @@ export function CounterConsole({
     }
   }
 
-  /**
-   * The coupon is NOT one of the three modes: it has no cart, no reward to choose and no
-   * balance to debit, so it does not go through `confirm()`. It is its own button, and
-   * `busy` is what makes a double tap harmless on top of the server's locked transaction.
-   */
-  async function confirmCoupon() {
-    if (busy || !resolved?.coupon) return;
-    setBusy(true);
-    setError(null);
-    try {
-      setCouponRedeemed(
-        await postCouponRedeem({
-          clientRequestId: couponRequestId,
-          couponId: resolved.coupon.couponId,
-          locationId,
-        }),
-      );
-      setStage("done");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No pudimos canjear el cupón.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const dismissError = () => setError(null);
   const dismissNotice = () => setNotice(null);
 
@@ -286,7 +250,6 @@ export function CounterConsole({
           canConfirm={canConfirm}
           onConfirm={confirm}
           onCancel={reset}
-          onRedeemCoupon={() => void confirmCoupon()}
         />
       )}
 
@@ -294,7 +257,6 @@ export function CounterConsole({
         <DoneStage
           result={result}
           redeemed={redeemed}
-          couponRedeemed={couponRedeemed}
           displayName={resolved.consumer.displayName}
           onNext={reset}
         />

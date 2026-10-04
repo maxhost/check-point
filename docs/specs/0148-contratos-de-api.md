@@ -2,7 +2,8 @@
 
 > Para quien hace la UI (GPT). Implementa la spec 0148 / ADR 0119. Errores: `{ error, code }` y, en
 > `400 validation`, `fields: { campo: mensaje }` (como `0136-contratos-de-api.md`). Montos: strings decimales
-> (`"10.00"`), como en el resto del mostrador.
+> (`"10.00"`), como en el resto del mostrador. **Las rutas del mostrador (M*) responden la entrada invalida con
+> `422 invalid_input`**, como el resto del mostrador; `400 validation` aplica solo a P0–P2.
 
 ## El flujo, en una linea por pantalla
 
@@ -58,7 +59,7 @@ El campo `coupon` desaparece. En su lugar `couponState`:
 ```json
 { "couponState": { "status": "selected",
   "coupon": { "couponId": "…", "label": "10% en tu compra", "kind": "discount", "rule": null,
-    "productId": null, "productName": null, "discountUnit": "percent", "discountValue": "10",
+    "productId": null, "productName": null, "discountUnit": "percent", "discountValue": "10.00",
     "currencyCode": "USD", "extraUnits": null, "validUntil": "…" } } }
 ```
 
@@ -89,7 +90,8 @@ El comercio **no** puede activar cupones: no hay lista ni boton en `hint`.
 - **409** `coupon_applies_in_sale` (es un descuento: va en la venta) · `coupon_not_selected` (el cliente no lo eligio)
   · `coupon_daily_limit` (ya uso un cupon hoy aca) · `coupon_not_active` · `already_redeemed` · `coupon_cap_reached` ·
   `not_enrolled` · `request_id_reused`.
-- `404 unknown_coupon`, `401`/`403` como el resto del mostrador.
+- `404 unknown_coupon` (cupon de otro comercio o de otro cliente) · `404 not_found` (la membresia no es de este
+  comercio), `401`/`403` como el resto del mostrador.
 
 Despues del 200: **«Continuar con el cliente»** (vuelve a la pantalla del cliente; `couponState` = `validated`) o
 **«Escanear otro»**.
@@ -100,7 +102,9 @@ Despues del 200: **«Continuar con el cliente»** (vuelve a la pantalla del clie
 
 - **200** `{ "removed": "validated" }` — se deshace la validacion; el cupon vuelve a estar disponible para el cliente
   (no elegido). `{ "removed": "selected" }` — se borra la eleccion del cliente.
-- **409 `coupon_not_removable`** — ya se uso en una venta, es de otro dia, o es de sellos/puntos extra.
+- **409 `coupon_not_removable`** — ya se uso en una venta, es de otro dia, es de sellos/puntos extra, o no esta
+  elegido ni validado. `409 not_enrolled`.
+- `404 unknown_coupon` (cupon de otro comercio o de otro cliente) · `404 not_found` (membresia de otro comercio).
 
 Para sacar un descuento de una venta en curso: llamar M3 y no mandar `coupon` en M4.
 
@@ -128,11 +132,15 @@ Puntos/sellos sobre el **neto**.
   "grossTotal": "20.00", "coupon": { "label": "50% en tu compra", "discountAmount": "10.00" } } }` — sin `coupon`,
   `order.coupon` es `null` y `total = grossTotal`.
 - **409** `coupon_not_selected` · `coupon_daily_limit` · `coupon_product_missing` (el producto no esta en el carrito) ·
-  `coupon_quantity` (2x1 con 1 unidad) · `coupon_currency_mismatch` · `coupon_not_active` · `coupon_cap_reached`.
+  `coupon_quantity` (2x1 con 1 unidad) · `coupon_currency_mismatch` · `coupon_not_active` · `coupon_cap_reached` ·
+  `not_enrolled`.
+- `404 unknown_coupon` (cupon de otro comercio o de otro cliente).
 
 ## Historial del dia
 
-Cada entrada suma `entryKind: "coupon"` (ademas de `accrual` y `redemption`), con `rewardLabel` = el label del cupon.
+Cada entrada suma `entryKind: "coupon"` (ademas de `accrual` y `redemption`), con `rewardLabel` = el label del cupon y
+`accrualKind` = `"stamps"`/`"points"` para los extra (`unitsGranted` = lo acreditado) y `"coupon"` para el resto
+(`unitsGranted` = 0).
 
 ## Lo que se borra
 

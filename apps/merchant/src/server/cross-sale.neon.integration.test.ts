@@ -55,9 +55,12 @@ import {
   ungeocode,
 } from "./cross-sale-support";
 import { redeemReward } from "./counter/redeem";
-import { redeemCoupon } from "./counter/coupon";
+import { sql } from "drizzle-orm";
+import { getDb } from "@mi-pasaporte/db";
+import { validateCoupon } from "./counter/coupon-validate";
 import { resolveScan } from "./counter/resolve";
 import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offers";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 
 /**
  * Spec 0143 — THE CROSS SALE TRIGGERED BY THE PURCHASE, through the real counter
@@ -221,10 +224,22 @@ describe.skipIf(!integrationEnabled)("cross sale — by the purchase", () => {
       rewardId,
       locationId: w.a.seed.locationId,
     });
-    // The counter of B scans first (it auto-enrols the non-member, ADR 0033).
-    await resolveScan(w.b.seed.business, who.qrToken);
-    await redeemCoupon(w.b.seed.business, w.b.seed.userId, {
+    // The counter of B scans first (it auto-enrols the non-member, ADR 0033). Spec 0148: a
+    // DISCOUNT is only redeemed inside a sale — which IS an accreditation —, so the coupon is
+    // turned into a free-text one (validated without a sale) to keep measuring «a coupon
+    // redemption does not trigger it»; the consumer chooses it, the counter validates it.
+    await getDb().execute(
+      sql`update core.campaign_coupon set kind_snapshot = 'custom',
+        discount_unit_snapshot = null, discount_value_snapshot = null
+        where id = ${claimed.coupon.id}`,
+    );
+    const atB = await resolveScan(w.b.seed.business, who.qrToken);
+    expect(await selectCoupon(who.consumerId, claimed.coupon.id)).toMatchObject(
+      { status: 200 },
+    );
+    await validateCoupon(w.b.seed.business, w.b.seed.userId, {
       clientRequestId: randomUUID(),
+      membershipId: atB.membership.id,
       couponId: claimed.coupon.id,
       locationId: w.b.seed.locationId,
     });

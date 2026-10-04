@@ -88,7 +88,7 @@ export default async function WalletPage({
   const [qrSvg, programs, coupons, notices] = await Promise.all([
     renderQrSvg(account.qrToken),
     listConsumerPrograms(account.id),
-    listConsumerCoupons(account.id),
+    listConsumerCoupons(account.id).then((list) => list.coupons),
     listConsumerNotices(account.id),
     // Spec 0111 D5: opening the account feeds the reminder (never throws, it logs).
     markAccountOpened(account.id),

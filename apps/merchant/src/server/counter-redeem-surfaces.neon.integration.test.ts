@@ -93,17 +93,16 @@ describe.skipIf(!integrationEnabled)(
       expect(keys(resolved)).toEqual([
         "catalog",
         "consumer",
-        // `coupon` entered in spec 0065 phase C, and this guard is what forced the
-        // deliberate edit — it went red naming the key the moment `resolveScan` started
-        // serving it. Its own key set is asserted below; it is `null` in this world
-        // (no campaign), which is why the shape is pinned in
+        // `coupon` entered in spec 0065 phase C; spec 0148 REPLACED it with `couponState`
+        // (contract M0) — this guard forced both deliberate edits. It is `none` in this
+        // world (no campaign), which is why the coupon's shape is pinned in
         // `counter-coupon.neon.integration.test.ts` instead of here.
-        "coupon",
+        "couponState",
         "membership",
         "program",
         "rewards",
       ]);
-      expect(resolved.coupon).toBeNull();
+      expect(resolved.couponState).toEqual({ status: "none" });
       expect(keys(resolved.consumer)).toEqual(["displayName"]);
       expect(keys(resolved.membership)).toEqual([
         "id",

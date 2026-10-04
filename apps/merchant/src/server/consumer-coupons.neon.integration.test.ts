@@ -4,6 +4,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
 import {
   type CouponWorld,
+  chooseCoupon,
   couponBody,
   dropCouponWorld,
   newCouponCard,
@@ -18,7 +19,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
-import { redeemCoupon } from "./counter/coupon";
+import { validateCoupon } from "./counter/coupon-validate";
 import { resolveScan } from "./counter/resolve";
 import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route";
 
@@ -28,6 +29,10 @@ import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route
  * (ORACULO DE M5), from EVERY business, with the rule and EXACTLY the contract's keys; and
  * since E3b (owner, 2026-09-27) the CALCULATED state — `valid` > `unavailable` (the business
  * is not active, ORACULO DE M5b) > history of `redeemed`/`expired` of the last 90 days.
+ *
+ * Spec 0148: a redemption is the consumer's CHOICE validated at the counter (`redeemSeeded`),
+ * and one coupon per consumer + business + day — so the old redemption is validated and
+ * backdated BEFORE today's. The list says `selected` on each coupon.
  */
 
 const DAY = 86_400_000;
@@ -48,6 +53,19 @@ function request(sessionToken?: string): NextRequest {
     headers: sessionToken
       ? { cookie: `${SESSION_COOKIE}=${sessionToken}` }
       : undefined,
+  });
+}
+
+/** The consumer chooses `couponId` and the counter of `w` validates it (spec 0148). */
+async function redeemSeeded(
+  w: CouponWorld,
+  card: Awaited<ReturnType<typeof newCouponCard>>,
+  couponId: string,
+) {
+  await chooseCoupon({ consumerId: card.consumerId, couponId });
+  await validateCoupon(w.seed.business, w.seed.userId, {
+    ...couponBody(card, w.seed),
+    couponId,
   });
 }
 
@@ -90,7 +108,23 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
         currencyCodeSnapshot: "ARS",
       })
       .where(eq(campaignCoupons.id, discount));
-    // … one redeemed and one expired (history), and two older than 90 days (not shown).
+    // … two older than 90 days (not shown) — the redeemed one validated and backdated FIRST
+    // (spec 0148: one coupon per consumer + business + day) —, then one redeemed and one
+    // expired (history).
+    const oldSpent = await seedCampaignCoupon({
+      campaignId: w1.campaignId,
+      businessId: w1.seed.business.id,
+      consumerId: a.consumerId,
+      membershipId: a.membershipId,
+      turnId: null,
+      validFrom: new Date(now - DAY),
+      validUntil: new Date(now + 5 * DAY),
+    });
+    await redeemSeeded(w1, a, oldSpent);
+    await getDb()
+      .update(couponRedemptions)
+      .set({ createdAt: new Date(now - 100 * DAY) })
+      .where(eq(couponRedemptions.couponId, oldSpent));
     const spent = await seedCampaignCoupon({
       campaignId: w1.campaignId,
       businessId: w1.seed.business.id,
@@ -100,10 +134,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       validFrom: new Date(now - DAY),
       validUntil: new Date(now + 5 * DAY),
     });
-    await redeemCoupon(w1.seed.business, w1.seed.userId, {
-      ...couponBody(a, w1.seed),
-      couponId: spent,
-    });
+    await redeemSeeded(w1, a, spent);
     const expired = await seedCampaignCoupon({
       campaignId: w1.campaignId,
       businessId: w1.seed.business.id,
@@ -122,23 +153,6 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       validFrom: new Date(now - 110 * DAY),
       validUntil: new Date(now - 100 * DAY),
     });
-    const oldSpent = await seedCampaignCoupon({
-      campaignId: w1.campaignId,
-      businessId: w1.seed.business.id,
-      consumerId: a.consumerId,
-      membershipId: a.membershipId,
-      turnId: null,
-      validFrom: new Date(now - DAY),
-      validUntil: new Date(now + 5 * DAY),
-    });
-    await redeemCoupon(w1.seed.business, w1.seed.userId, {
-      ...couponBody(a, w1.seed),
-      couponId: oldSpent,
-    });
-    await getDb()
-      .update(couponRedemptions)
-      .set({ createdAt: new Date(now - 100 * DAY) })
-      .where(eq(couponRedemptions.couponId, oldSpent));
     // B: another consumer with a coupon at the SAME business.
     const b = await newCouponCard(w1);
 
@@ -164,6 +178,8 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
       "reason",
       "redeemedAt",
       "rule",
+      // Spec 0148 P0: the coupon the consumer chose (at most one).
+      "selected",
       "status",
       // Spec 0107: from when it is worth something (`scheduled` until then).
       "validFrom",

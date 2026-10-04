@@ -20,13 +20,15 @@ import {
   valleyCampaign,
 } from "./consumer-valley-support";
 import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offers";
-import { loadActiveCoupon } from "./counter/coupon-scan";
+import { counterCouponState } from "./counter/coupon-state";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 
 /**
  * Spec 0113 C2 (H4) — claiming a valley offer against a real base, INJECTED clock (Tuesday
  * 2026-10-06, Buenos Aires, UTC-3). Every state is READ BY SQL. ORACULO DE M7: the coupon
  * lives until the window closes TODAY — `valid_until` is 20:00Z for a 15–17 window, and the
- * counter's read (`loadActiveCoupon`, the resolve's coupon) no longer offers it at 17:05.
+ * counter's read (`counterCouponState`, the resolve's `couponState` since spec 0148) no
+ * longer shows the chosen coupon at 17:05.
  */
 
 afterAll(dropCrossWorlds, 180_000);
@@ -80,10 +82,18 @@ describe.skipIf(!integrationEnabled || !campaignKindEnabled("valley"))(
         status: "valid",
       });
 
+      // Spec 0148: the consumer chooses it (16:30); the counter shows the choice until the
+      // window closes, and at 17:05 the stale choice paints nothing.
       const counter = (hhmm: string) =>
-        loadActiveCoupon(x.seed.business.id, consumer.id, at(hhmm));
-      expect((await counter("16:30"))?.couponId).toBe(row.id);
-      expect(await counter("17:05")).toBeNull();
+        counterCouponState(x.seed.business.id, consumer.id, at(hhmm));
+      expect(
+        await selectCoupon(consumer.id, row.id, at("16:30")),
+      ).toMatchObject({ status: 200 });
+      expect(await counter("16:30")).toMatchObject({
+        status: "selected",
+        coupon: { couponId: row.id },
+      });
+      expect(await counter("17:05")).toEqual({ status: "none" });
     }, 180_000);
 
     it("idempotent: the same claim again is 200 with the same coupon", async () => {

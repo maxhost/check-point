@@ -3,8 +3,10 @@ import { eq } from "drizzle-orm";
 import { integrationEnabled } from "./counter-integration-support";
 import {
   type CouponWorld,
+  chooseCoupon,
   couponBody,
   dropCouponWorld,
+  forceChoice,
   newCouponCard,
   readCoupons,
   seedCouponWorld,
@@ -14,7 +16,7 @@ import {
   seedCampaign,
   setCampaignState,
 } from "./marketing-integration-support";
-import { redeemCoupon } from "./counter/coupon";
+import { validateCoupon } from "./counter/coupon-validate";
 import { resolveScan } from "./counter/resolve";
 import { getDb } from "@mi-pasaporte/db";
 import { campaignTurns, campaigns } from "@mi-pasaporte/db/schema";
@@ -26,6 +28,9 @@ import { campaignTurns, campaigns } from "@mi-pasaporte/db/schema";
  * world, because these cases move the campaign's state and a shared one would leak.
  *
  * Split from `counter-coupon.neon.integration.test.ts` by the file-size budget.
+ *
+ * Spec 0148: the scan paints the coupon the consumer CHOSE (`couponState: selected`) and the
+ * counter VALIDATES it (`validateCoupon`).
  */
 
 const HOUR = 3_600_000;
@@ -51,11 +56,15 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
       .update(campaignTurns)
       .set({ status: "cancelled", cancelReason: "opt_out" })
       .where(eq(campaignTurns.id, card.turnId));
+    await chooseCoupon(card);
 
     const scan = await resolveScan(w.seed.business, card.qrToken);
-    expect(scan.coupon).toMatchObject({ couponId: card.couponId });
+    expect(scan.couponState).toMatchObject({
+      status: "selected",
+      coupon: { couponId: card.couponId },
+    });
     await expect(
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+      validateCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
     ).resolves.toMatchObject({ coupon: { label: expect.any(String) } });
     expect(await readCoupons(w.campaignId)).toHaveLength(1);
   }, 120_000);
@@ -70,14 +79,15 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
       .update(campaigns)
       .set({ endedAt: new Date() })
       .where(eq(campaigns.id, w.campaignId));
+    await chooseCoupon(card);
 
     const scan = await resolveScan(w.seed.business, card.qrToken);
-    expect(scan.coupon).toMatchObject({
-      couponId: card.couponId,
-      validUntil: w.endsAt,
+    expect(scan.couponState).toMatchObject({
+      status: "selected",
+      coupon: { couponId: card.couponId, validUntil: w.endsAt },
     });
     await expect(
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+      validateCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
     ).resolves.toMatchObject({ coupon: { label: expect.any(String) } });
     expect(await readCoupons(w.campaignId)).toHaveLength(1);
   }, 120_000);
@@ -86,19 +96,25 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
     const w = await world("Cupon campaña pausada");
     const card = await newCouponCard(w);
     await setCampaignState(w.campaignId, "paused", "owner");
+    await chooseCoupon(card);
 
     const scan = await resolveScan(w.seed.business, card.qrToken);
-    expect(scan.coupon).toMatchObject({ couponId: card.couponId });
+    expect(scan.couponState).toMatchObject({
+      status: "selected",
+      coupon: { couponId: card.couponId },
+    });
   }, 120_000);
 
   it("(a'') past the campaign's ends_at: scan paints nothing, redeem is 409 coupon_not_active", async () => {
     const w = await world("Cupon vencido", new Date(Date.now() - HOUR));
     const card = await newCouponCard(w);
+    // A stale choice (made while it was valid): the choice never expires, the coupon does.
+    await forceChoice(card);
 
     const scan = await resolveScan(w.seed.business, card.qrToken);
-    expect(scan.coupon).toBeNull();
+    expect(scan.couponState).toEqual({ status: "none" });
     await expect(
-      redeemCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
+      validateCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
     ).rejects.toMatchObject({ status: 409, code: "coupon_not_active" });
     expect(await readCoupons(w.campaignId)).toEqual([]);
   }, 120_000);
@@ -125,11 +141,12 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
     const mine = await world("Cupon propio");
     const other = await world("Cupon de otro negocio");
     const card = await newCouponCard(other);
+    await chooseCoupon(card);
     expect(
-      (await resolveScan(mine.seed.business, card.qrToken)).coupon,
-    ).toBeNull();
+      (await resolveScan(mine.seed.business, card.qrToken)).couponState,
+    ).toEqual({ status: "none" });
     expect(
-      (await resolveScan(other.seed.business, card.qrToken)).coupon,
-    ).not.toBeNull();
+      (await resolveScan(other.seed.business, card.qrToken)).couponState,
+    ).toMatchObject({ status: "selected" });
   }, 120_000);
 });

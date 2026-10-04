@@ -134,8 +134,9 @@ export const campaignTurns = core.table(
 );
 
 /**
- * One coupon handed over at the counter (spec 0065, phase C; by coupon since spec 0102). Append-only accounting
- * record, same shape as `core.reward_redemption` (ADR 0053): WHAT (`label_snapshot` /
+ * One coupon handed over at the counter (spec 0065 C; by coupon since 0102). Accounting record
+ * (spec 0148: a VALIDATED row — `order_id` null, today — gets its sale or is DELETED when the
+ * counter removes it), same shape as `core.reward_redemption` (ADR 0053): WHAT (`label_snapshot` /
  * `cost_snapshot`, never recomputed from the campaign), WHO claims it
  * (`membership_id` + `consumer_id`), WHO confirmed it (`created_by_user_id`) and
  * WHERE (`business_id` + `location_id`, ADR 0042).
@@ -190,6 +191,9 @@ export const couponRedemptions = core.table(
     }),
     unitsGranted: integer("units_granted"),
     balanceAfter: integer("balance_after"),
+    // Spec 0148: the SALE it was tied to and what it took off (null = validated, no sale).
+    orderId: uuid("order_id").references(() => orders.id),
+    discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }),
     createdByUserId: text("created_by_user_id")
       .notNull()
       .references(() => users.id),
@@ -210,6 +214,22 @@ export const couponRedemptions = core.table(
     check(
       "core_coupon_redemption_units_check",
       sql`(${table.unitsGranted} is not null) = (${table.kindSnapshot} in ('extra_stamps', 'extra_points')) and (${table.balanceAfter} is null) = (${table.unitsGranted} is null) and (${table.unitsGranted} is null or ${table.unitsGranted} between 1 and 1000) and (${table.balanceAfter} is null or ${table.balanceAfter} >= 0)`,
+    ),
+    check(
+      "core_coupon_redemption_discount_check",
+      sql`${table.discountAmount} is null or ${table.discountAmount} >= 0`,
+    ),
+    check(
+      "core_coupon_redemption_discount_order_check",
+      sql`${table.discountAmount} is null or ${table.orderId} is not null`,
+    ),
+    uniqueIndex("core_coupon_redemption_order_unique")
+      .on(table.orderId)
+      .where(sql`${table.orderId} is not null`),
+    index("core_coupon_redemption_daily_idx").on(
+      table.businessId,
+      table.consumerId,
+      table.createdAt,
     ),
     uniqueIndex("core_coupon_redemption_coupon_unique").on(table.couponId),
     uniqueIndex("core_coupon_redemption_business_client_request_unique").on(

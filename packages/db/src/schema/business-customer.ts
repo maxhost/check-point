@@ -54,6 +54,9 @@ export const businessCustomers = core.table(
     phoneE164: text("phone_e164"),
     enrolledAt: timestamp("enrolled_at", { withTimezone: true }).notNull(),
     lastVisitAt: timestamp("last_visit_at", { withTimezone: true }),
+    // Spec 0148 / ADR 0119 §2: the last time this business's counter SCANNED the consumer
+    // (`counter/resolve.ts`). Not a visit. Feeds the PWA's «aca» when there is no GPS.
+    lastScanAt: timestamp("last_scan_at", { withTimezone: true }),
   },
   (table) => [
     primaryKey({ columns: [table.businessId, table.consumerId] }),

@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   check,
   index,
   integer,
@@ -11,6 +12,7 @@ import { sql } from "drizzle-orm";
 import { consumer } from "./_schemas";
 import { loyaltyPrograms } from "./loyalty";
 import { locations } from "./business";
+import { campaignCoupons } from "./campaign-coupon";
 
 /**
  * Platform-level consumer account (spec 0028). Since ADR 0111 the identity is NOT the
@@ -56,6 +58,15 @@ export const consumerAccounts = consumer.table(
     // (`/c/[token]` or `/wallet` with a session). Feeds the reminder's «cupon nuevo»
     // and «2 dias sin actividad». Written with a 15-minute guard, never in a DTO.
     lastOpenedAt: timestamp("last_opened_at", { withTimezone: true }),
+    // Spec 0148 / ADR 0119 §1, §4: the ONE coupon the consumer chose in the PWA (global, not
+    // per business), and when. It does not expire: it is cleared when the counter consumes
+    // it, when the consumer picks another or drops it. Annotated: `campaign_coupon` imports
+    // this file (circular fk pair, like `campaign_turn` ⇄ `coupon_redemption`).
+    selectedCouponId: uuid("selected_coupon_id").references(
+      (): AnyPgColumn => campaignCoupons.id,
+      { onDelete: "set null" },
+    ),
+    couponSelectedAt: timestamp("coupon_selected_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -64,6 +75,13 @@ export const consumerAccounts = consumer.table(
       .defaultNow(),
   },
   (table) => [
+    // A choice always carries its timestamp. ONE-WAY on purpose (spec 0148 asked for «both or
+    // neither»): `on delete set null` nulls only `selected_coupon_id`, and a both-or-neither
+    // check turns every deletion of a chosen coupon into a 23514 (measured on Neon).
+    check(
+      "consumer_account_coupon_selection_check",
+      sql`${table.selectedCouponId} is null or ${table.couponSelectedAt} is not null`,
+    ),
     uniqueIndex("consumer_account_phone_unique").on(table.phoneE164),
     uniqueIndex("consumer_account_qr_token_unique").on(table.qrToken),
     uniqueIndex("consumer_account_web_view_token_unique").on(

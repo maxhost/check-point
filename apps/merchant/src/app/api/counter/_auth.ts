@@ -50,8 +50,8 @@ export async function requireOperator(
    * Va ANTES del gate de email y del eje `status` por el mismo orden del ADR 0073 §1 que
    * usan las otras diez: quien no tiene el permiso no se entera del estado del negocio.
    *
-   * Cubre las CUATRO rutas (`resolve`, `grant`, `redeem`, `coupon-redeem`) porque las cuatro
-   * pasan por acá.
+   * Cubre TODAS las rutas del mostrador (`resolve`, `grant`, `redeem` y, desde la spec 0148,
+   * `coupon-validate`, `coupon-remove`, `coupon-state`) porque todas pasan por acá.
    */
   if (!hasScope(role, operator.permissions, "counter")) {
     return {
@@ -84,8 +84,9 @@ export async function requireOperator(
    * caller». Consecuencia declarada y pinneada: un owner sin verificar sobre un negocio
    * `suspended` recibe `email_not_verified`, no `business_suspended`.
    *
-   * Cubre las CUATRO rutas (`resolve`, `grant`, `redeem`, `coupon-redeem`) porque las cuatro
-   * pasan por acá. `resolve` es una lectura y se gatea igual, a propósito: es el primer paso
+   * Cubre TODAS las rutas del mostrador (`resolve`, `grant`, `redeem` y, desde la spec 0148,
+   * `coupon-validate`, `coupon-remove`, `coupon-state`) porque todas pasan por acá.
+   * `resolve` es una lectura y se gatea igual, a propósito: es el primer paso
    * de acreditar, y la decisión del owner fue «el mostrador» como unidad, no ruta por ruta.
    */
   if (role === "owner" && session.user.emailVerified !== true) {

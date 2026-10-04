@@ -1,7 +1,7 @@
 ---
 spec: 0148
 fecha: 2026-10-03
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0119 (servidor + contrato; pantallas = GPT). El cliente elige UN cupon en la PWA (`consumer_account.selected_coupon_id`), la lista viene con «aca» por GPS ≤ 200 m o por el ultimo comercio que lo escaneo (`business_customer.last_scan_at`); el mostrador lee el estado del cupon (`selected`/`validated`/`used_today`/`hint`/`none`) al escanear y por sondeo; valida 2x1/gratis/texto/extra (fila de canje SIN venta), lo quita (borra la fila, vuelve a disponible), y la venta lo ata (`coupon_redemption.order_id`, `discount_amount`) con total y puntos sobre el NETO. Un cupon por cliente + comercio + dia local, bajo lock. Validado sin venta de un dia anterior = consumido, sin cron. Migracion 0064.
 disjunta: no
 archivos: packages/db/src/schema/{consumer,business-customer,campaign-turn}.ts, packages/db/drizzle/0064_*.sql, packages/domain/src/server/consumer/{coupons,coupon-selection,coupon-here}.ts, apps/consumer/src/app/api/public/consumer/{coupons,coupon-selection}/route.ts, apps/merchant/src/server/counter/{coupon-*,grant,orders,resolve,history}.ts, apps/merchant/src/app/api/counter/{coupon-validate,coupon-remove,coupon-state,coupon-redeem,grant}/route.ts, apps/merchant/src/app/backoffice/counter/* (solo borrado mecanico)
@@ -53,7 +53,7 @@ Medido en el arbol el 2026-10-03:
 
 | Tabla | Cambio | Por que |
 |---|---|---|
-| `consumer.consumer_account` | `selected_coupon_id uuid null references core.campaign_coupon(id) on delete set null`, `coupon_selected_at timestamptz null`; check: los dos nulos o los dos no nulos | UNA eleccion global por cliente (ADR §1, §4) |
+| `consumer.consumer_account` | `selected_coupon_id uuid null references core.campaign_coupon(id) on delete set null`, `coupon_selected_at timestamptz null`; check `selected_coupon_id is null or coupon_selected_at is not null` (**enmendado al implementar**: «los dos nulos o los dos no nulos» choca con el `set null`, que anula solo la columna de la FK — borrar un cupon elegido daba `23514`; reproducido en Neon por el implementador y por el revisor) | UNA eleccion global por cliente (ADR §1, §4) |
 | `core.business_customer` | `last_scan_at timestamptz null` | «el comercio donde lo escanearon» (ADR §2) |
 | `core.coupon_redemption` | `order_id uuid null references core."order"(id)`, `discount_amount numeric(12,2) null` con check `discount_amount is null or discount_amount >= 0`, check `discount_amount is null or order_id is not null`; unique parcial `(order_id) where order_id is not null` | el canje atado a la venta y cuanto bonifico (ADR §7) |
 | `core.coupon_redemption` | indice `(business_id, consumer_id, created_at)` | el limite diario se lee por cliente + comercio |
@@ -300,3 +300,19 @@ Nada que bloquee. Declarado para el owner (no son decisiones suyas, son consecue
 - `extra_*` se consume al validar y no se puede quitar (el credito ya se hizo).
 - Sellos «por compra» (`per_purchase`) dan su sello aunque el neto sea 0.
 - Quitar un cupon no manda push; el push de la validacion ya salio.
+
+## Implementacion (2026-10-03)
+
+PASS del revisor independiente. Codigo SIN la 0064 en PROD hasta el OK del owner (el codigo lee las columnas nuevas:
+la migracion va ANTES del deploy).
+- Mutaciones de la tabla: M1–M10 rojas (implementador); M1, M3, M7, M10 re-ejecutadas rojas por el revisor.
+- **Oraculos agregados despues de la revision** (`counter/coupon-scope.neon.integration.test.ts`; el revisor los encontro
+  sin test y el orquestador los midio rojos contra su mutacion): R1 el scope `consumer_id` de `lockCounterCoupon` (unica
+  guarda de un cupon VALIDADO en la venta y al quitar), R2 un validado de ayer no se ata a la venta de hoy, R3 el
+  historial del dia no trae cupones de otro comercio.
+- **Declarado, sin reproducir:** posible deadlock `40P01` → 503 entre una venta CON cupon (lock de `business_customer` y
+  despues `program_membership`) y una venta SIN cupon simultanea del mismo cliente (orden inverso, `upsertVisitSql`). Sin
+  corrupcion: el reintento es idempotente. Reproducirlo exige pausar una transaccion entre dos locks (el driver HTTP de
+  Neon no mantiene sesion).
+- Para el owner: hasta la UI de GPT, la consola pinta las entradas `coupon` del historial como «Puntos +0 coupon»;
+  quitar un validado no revierte `business_customer.last_visit_at`.

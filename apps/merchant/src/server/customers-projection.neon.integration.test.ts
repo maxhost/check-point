@@ -14,7 +14,7 @@ import {
 import { seedReward, setBalance } from "./counter-integration-support";
 import {
   type CouponWorld,
-  couponBody,
+  chooseAndValidate,
   dropCouponWorld,
   newCouponCard,
   seedCouponWorld,
@@ -25,7 +25,6 @@ import { rowsOf } from "@mi-pasaporte/domain/server/counter/core";
 import { resolveScan } from "./counter/resolve";
 import { grantAccrual } from "./counter/grant";
 import { redeemReward } from "./counter/redeem";
-import { redeemCoupon } from "./counter/coupon";
 import { enrollSeeded as enroll } from "./enroll-account-support";
 import { listCustomers } from "./customers/list";
 
@@ -144,11 +143,8 @@ describe.skipIf(!integrationEnabled)(
       expect(
         (await projectionRow(business, card.consumerId)).lastVisitAt,
       ).toBeNull();
-      await redeemCoupon(
-        coupons.seed.business,
-        coupons.seed.userId,
-        couponBody(card, coupons.seed),
-      );
+      // Spec 0148: the consumer chooses it, the counter validates it (the visit).
+      await chooseAndValidate(coupons, card);
       const at = await originAt("coupon_redemption", business, card.consumerId);
       expect(at).not.toBeNull();
       expect(

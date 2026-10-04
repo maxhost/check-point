@@ -15,8 +15,9 @@ import {
   seedWorld,
   tickWorld,
 } from "./marketing-world-support";
-import { redeemCoupon } from "./counter/coupon";
+import { validateCoupon } from "./counter/coupon-validate";
 import { resolveScan } from "./counter/resolve";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 import { getDb } from "@mi-pasaporte/db";
 import {
   campaignCoupons,
@@ -103,17 +104,23 @@ describe.skipIf(
         validUntil: ENDS_AT,
       });
 
-    // (b) The holdout has no coupon row and the counter paints nothing for it.
+    // (b) The holdout has no coupon row and the counter paints nothing for it. Spec 0148:
+    // the counter paints the coupon the consumer CHOSE (`couponState.selected`).
     const heldIndex = built.consumerIds.indexOf(held[0].consumerId);
     expect(
       (await resolveScan(built.seed.business, built.qrTokens[heldIndex]))
-        .coupon,
-    ).toBeNull();
+        .couponState,
+    ).toEqual({ status: "none" });
     const placedIndex = built.consumerIds.indexOf(placed[0].consumerId);
+    const placedCoupon = coupons.find((c) => c.turnId === placed[0].id)!;
+    await selectCoupon(placed[0].consumerId, placedCoupon.id);
     expect(
       (await resolveScan(built.seed.business, built.qrTokens[placedIndex]))
-        .coupon,
-    ).toMatchObject({ label: LABEL, validUntil: ENDS_AT });
+        .couponState,
+    ).toMatchObject({
+      status: "selected",
+      coupon: { label: LABEL, validUntil: ENDS_AT },
+    });
 
     await tickWorld(built, NS, { random: () => 1 });
     expect(await couponsOf(built.seed.business.id)).toHaveLength(2);
@@ -164,8 +171,15 @@ describe.skipIf(
     expect(coupons).toHaveLength(2);
     const [spent, kept] = coupons;
 
-    await redeemCoupon(built.seed.business, built.seed.userId, {
+    // Spec 0148: the consumer chooses it, the counter (after the scan) validates it.
+    const spentScan = await resolveScan(
+      built.seed.business,
+      built.qrTokens[built.consumerIds.indexOf(spent.consumerId)],
+    );
+    await selectCoupon(spent.consumerId, spent.id);
+    await validateCoupon(built.seed.business, built.seed.userId, {
       clientRequestId: randomUUID(),
+      membershipId: spentScan.membership.id,
       couponId: spent.id,
       locationId: null,
     });

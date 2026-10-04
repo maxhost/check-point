@@ -1,12 +1,8 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
   loyaltyPrograms,
-  orderItems,
-  orders,
-  productCategories,
-  products,
   programMemberships,
 } from "@mi-pasaporte/db/schema";
 import {
@@ -17,9 +13,8 @@ import {
   pgErrorCode,
   programDTO,
 } from "@mi-pasaporte/domain/server/counter/core";
-import { availableAtCounter } from "./catalog-visibility";
-import { personalPicks } from "./personal-picks";
-import { type ActiveCoupon, loadActiveCoupon } from "./coupon-store";
+import { businessCatalog, purchaseShortcuts } from "./resolve-catalog";
+import { type CounterCouponState, counterCouponState } from "./coupon-state";
 import { loadProgramRewards } from "@mi-pasaporte/domain/server/loyalty-program/persistence";
 import { insertMembershipWithProjection } from "@mi-pasaporte/domain/server/customers/projection";
 import {
@@ -68,86 +63,6 @@ export async function accreditableProgram(
   return program;
 }
 
-/** Lean catalog for the detailed-sale cart: id, name, unit price, image path. */
-async function businessCatalog(businessId: string, locationId: string | null) {
-  const rows = await getDb()
-    .select({
-      id: products.id,
-      name: products.name,
-      categoryId: products.categoryId,
-      unitPrice: products.unitPrice,
-      imageObjectKey: products.imageObjectKey,
-      imageVersion: products.imageVersion,
-    })
-    .from(products)
-    .where(
-      and(eq(products.businessId, businessId), availableAtCounter(locationId)),
-    )
-    .orderBy(asc(products.name));
-  const categories = await getDb()
-    .select({ id: productCategories.id, name: productCategories.name })
-    .from(productCategories)
-    .where(eq(productCategories.businessId, businessId))
-    .orderBy(asc(productCategories.name));
-  return {
-    products: rows.map((p) => ({
-      id: p.id,
-      name: p.name,
-      categoryId: p.categoryId,
-      unitPrice: p.unitPrice === null ? null : Number(p.unitPrice),
-      imagePath: p.imageObjectKey
-        ? `/api/public/catalog/${p.id}/image?v=${p.imageVersion}`
-        : null,
-    })),
-    categories,
-  };
-}
-
-async function purchaseShortcuts(
-  businessId: string,
-  consumerId: string,
-  locationId: string | null,
-  catalog: Awaited<ReturnType<typeof businessCatalog>>,
-) {
-  const empty = {
-    habitualProductIds: [] as string[],
-    lastPurchase: null as {
-      items: { productId: string; quantity: number }[];
-    } | null,
-  };
-  if (!locationId) return empty;
-  const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const recent = await getDb()
-    .select({ id: orders.id, createdAt: orders.createdAt })
-    .from(orders)
-    .where(
-      and(
-        eq(orders.businessId, businessId),
-        eq(orders.consumerId, consumerId),
-        eq(orders.locationId, locationId),
-        eq(orders.mode, "detailed"),
-        gte(orders.createdAt, cutoff),
-      ),
-    )
-    .orderBy(desc(orders.createdAt), desc(orders.id))
-    .limit(20);
-  if (recent.length === 0) return empty;
-  const lines = await getDb()
-    .select({
-      orderId: orderItems.orderId,
-      productId: orderItems.productId,
-      quantity: orderItems.quantity,
-    })
-    .from(orderItems)
-    .where(
-      inArray(
-        orderItems.orderId,
-        recent.map((order) => order.id),
-      ),
-    );
-  return personalPicks(recent, lines, catalog.products);
-}
-
 export type ResolveResult = ReturnType<typeof buildResolveResult>;
 
 function buildResolveResult(opts: {
@@ -162,7 +77,7 @@ function buildResolveResult(opts: {
   catalog: Awaited<ReturnType<typeof businessCatalog>> &
     Awaited<ReturnType<typeof purchaseShortcuts>>;
   rewards: RewardDTO[];
-  coupon: ActiveCoupon | null;
+  couponState: CounterCouponState;
 }) {
   return {
     // Allow-list: the consumer's display name only — never the qr_token.
@@ -175,11 +90,10 @@ function buildResolveResult(opts: {
     // Rewards for the Canjear mode (spec 0055), ordered by `position` — the order the
     // owner configured in step 4. Same DTO as the wizard and the wallet: no R2 key.
     rewards: opts.rewards,
-    // The campaign coupon this consumer can be handed right now, or null (spec 0065
-    // phase C). It is a SNAPSHOT for painting: the redemption re-decides under the
-    // campaign's lock, so a coupon that ran out between the scan and the confirmation
-    // is refused by the server, never by this field.
-    coupon: opts.coupon,
+    // Spec 0148 (contract M0): the state of the consumer's coupon at this counter —
+    // `validated` / `used_today` / `selected` / `hint` / `none`. A SNAPSHOT for painting: the
+    // writes re-decide under the locks, and `GET /api/counter/coupon-state` refreshes it.
+    couponState: opts.couponState,
   };
 }
 
@@ -218,6 +132,12 @@ export async function resolveScan(
     program.id,
     business.id,
   );
+  // Spec 0148 / ADR 0119 §2: «the business where they scanned it» — the PWA's «aca» without
+  // GPS. After `resolveMembership`, which guarantees the row (the auto-enrolment writes it).
+  await getDb().execute(sql`
+    update core.business_customer set last_scan_at = now()
+    where business_id = ${business.id} and consumer_id = ${account.id}
+  `);
   const baseCatalog = await businessCatalog(business.id, locationId);
   const catalog = {
     ...baseCatalog,
@@ -229,7 +149,7 @@ export async function resolveScan(
     )),
   };
   const rewards = (await loadProgramRewards(program.id)).map(toRewardDTO);
-  const coupon = await loadActiveCoupon(business.id, account.id);
+  const couponState = await counterCouponState(business.id, account.id);
 
   return buildResolveResult({
     displayName: `${account.firstName} ${account.lastName}`.trim(),
@@ -237,7 +157,7 @@ export async function resolveScan(
     program,
     catalog,
     rewards,
-    coupon,
+    couponState,
   });
 }
 

@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import {
   consumerAccounts,
+  couponRedemptions,
   orders,
   rewardRedemptions,
   users,
@@ -16,6 +17,11 @@ import {
  * DEBITED, with the reward label snapshot). `unitsGranted` and `accrualKind` keep their
  * names so the existing console keeps rendering; a redemption fills `unitsGranted` with
  * what was debited and is the only kind that carries a `rewardLabel`.
+ *
+ * Spec 0148: a coupon redeemed at the counter (validated or tied to a sale) is a third kind,
+ * `coupon`, with its label snapshot as `rewardLabel` and `unitsGranted` = what an `extra_*`
+ * coupon credited (0 for the rest). Its `accrualKind` is `stamps`/`points` for an `extra_*`
+ * and `coupon` otherwise (no balance moved).
  */
 export type AccreditationDTO = {
   id: string;
@@ -24,7 +30,7 @@ export type AccreditationDTO = {
   consumer: string;
   accrualKind: string;
   unitsGranted: number;
-  entryKind: "accrual" | "redemption";
+  entryKind: "accrual" | "redemption" | "coupon";
   rewardLabel: string | null;
 };
 
@@ -53,7 +59,7 @@ function toEntry(
     accrualKind: row.accrualKind,
     unitsGranted: row.units,
     entryKind,
-    rewardLabel: entryKind === "redemption" ? row.rewardLabel : null,
+    rewardLabel: entryKind === "accrual" ? null : row.rewardLabel,
   };
 }
 
@@ -66,10 +72,12 @@ function toEntry(
 export function mergeDayHistory(
   accruals: DayHistoryRow[],
   redemptions: DayHistoryRow[],
+  coupons: DayHistoryRow[] = [],
 ): AccreditationDTO[] {
   return [
     ...accruals.map((row) => toEntry(row, "accrual")),
     ...redemptions.map((row) => toEntry(row, "redemption")),
+    ...coupons.map((row) => toEntry(row, "coupon")),
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
@@ -77,7 +85,10 @@ export function mergeDayHistory(
  * keeps the whole filter inside Postgres. Same notion of "business-local day" that
  * loyalty closing uses. */
 function onBusinessDay(
-  column: typeof orders.createdAt | typeof rewardRedemptions.createdAt,
+  column:
+    | typeof orders.createdAt
+    | typeof rewardRedemptions.createdAt
+    | typeof couponRedemptions.createdAt,
   timezone: string,
   now: Date,
 ) {
@@ -85,7 +96,7 @@ function onBusinessDay(
 }
 
 /**
- * The accreditations AND redemptions of a business that fall on the current
+ * The accreditations, redemptions AND coupons of a business that fall on the current
  * business-local day. Newest first; joined to the operator + consumer names.
  */
 export async function listTodaysAccreditations(
@@ -143,5 +154,36 @@ export async function listTodaysAccreditations(
     )
     .orderBy(desc(rewardRedemptions.createdAt));
 
-  return mergeDayHistory(accruals, redemptions);
+  const coupons = await db
+    .select({
+      id: couponRedemptions.id,
+      createdAt: couponRedemptions.createdAt,
+      units:
+        sql<number>`coalesce(${couponRedemptions.unitsGranted}, 0)`.mapWith(
+          Number,
+        ),
+      accrualKind: sql<string>`case ${couponRedemptions.kindSnapshot}
+        when 'extra_stamps' then 'stamps' when 'extra_points' then 'points'
+        else 'coupon' end`,
+      rewardLabel: couponRedemptions.labelSnapshot,
+      operatorName: users.name,
+      operatorEmail: users.email,
+      consumerFirstName: consumerAccounts.firstName,
+      consumerLastName: consumerAccounts.lastName,
+    })
+    .from(couponRedemptions)
+    .innerJoin(users, eq(users.id, couponRedemptions.createdByUserId))
+    .innerJoin(
+      consumerAccounts,
+      eq(consumerAccounts.id, couponRedemptions.consumerId),
+    )
+    .where(
+      and(
+        eq(couponRedemptions.businessId, businessId),
+        onBusinessDay(couponRedemptions.createdAt, timezone, now),
+      ),
+    )
+    .orderBy(desc(couponRedemptions.createdAt));
+
+  return mergeDayHistory(accruals, redemptions, coupons);
 }

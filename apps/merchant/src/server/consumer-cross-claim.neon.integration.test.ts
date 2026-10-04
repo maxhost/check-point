@@ -74,7 +74,7 @@ describe.skipIf(skip)("cross offers — C2 claim", () => {
     expect(row.validUntil.getTime() - row.validFrom.getTime()).toBe(7 * DAY);
 
     // E3 (C3): it lives in the consumer's own coupons, `origin: "cross"`, unfiltered …
-    const own = await listConsumerCoupons(consumer.id);
+    const own = (await listConsumerCoupons(consumer.id)).coupons;
     expect(own.map((c) => [c.id, c.origin])).toEqual([[row.id, "cross"]]);
     // … and it left the offers (O8).
     expect(offeredBy(await offersOf(consumer.id, here), x)).toEqual([]);

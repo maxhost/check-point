@@ -7,6 +7,8 @@ import {
   type CouponStatus,
   couponStatus,
 } from "./coupon-status";
+import { type CouponHere, resolveCouponHere } from "./coupon-here";
+import type { GeoPoint } from "../marketing/cross-rules";
 
 /**
  * THE CONSUMER'S OWN CAMPAIGN COUPONS (spec 0106 E3/E3b / ADR 0098 §5), across every
@@ -18,8 +20,8 @@ import {
  *  1. `valid`, 2. `scheduled`, 3. `unavailable` — the coupons not expired and unredeemed,
  *     each group by `validUntil` asc (the LIVE read). Since spec 0107 it includes the ones
  *     whose `valid_from` is still AHEAD (`scheduled`, with `validFrom`): the welcome gift
- *     «desde mañana» is shown the day of the enrolment — the counter still hides it
- *     (`counter/coupon-scan.ts`);
+ *     «desde mañana» is shown the day of the enrolment — the consumer cannot choose it yet
+ *     (`coupon-selection.ts`) and the counter does not count it (`counter/coupon-state.ts`);
  *  4. `redeemed` and `expired` of the last 90 days (by `redeemedAt` / `validUntil`), most
  *     recent first, at most 50 (the HISTORY read).
  * The state is CALCULATED (`coupon-status.ts`) from the redemption, the dates and
@@ -32,6 +34,11 @@ import {
  * Spec 0136 (contract C3): every coupon says its `origin` — `cross` when the consumer
  * CLAIMED it from an «Oferta cruzada» (`cross_claimed_at`), `campaign` otherwise. The cross
  * coupon is here because it has the consumer's id; like every own coupon, UNFILTERED.
+ *
+ * Spec 0148 / ADR 0119: every coupon says whether it is the consumer's CHOICE (`selected`,
+ * `consumer_account.selected_coupon_id`; at most one), and the answer carries «aca»
+ * (`coupon-here.ts`): the `valid` coupons of that business go first, the rest keep the order
+ * above. Nothing is filtered out.
  */
 
 export type ConsumerCoupon = {
@@ -52,6 +59,13 @@ export type ConsumerCoupon = {
   reason: CouponReason | null;
   redeemedAt: Date | null;
   origin: "cross" | "campaign";
+  /** Spec 0148: the coupon the consumer chose to use (at most one in the list). */
+  selected: boolean;
+};
+
+export type ConsumerCouponList = {
+  here: CouponHere | null;
+  coupons: ConsumerCoupon[];
 };
 
 const HISTORY_DAYS = 90;
@@ -86,7 +100,11 @@ const COLUMNS = sql`
   join core.business b on b.id = c.business_id
   left join core.coupon_redemption cr on cr.coupon_id = c.id`;
 
-function toCoupon(row: Row, now: Date): ConsumerCoupon {
+function toCoupon(
+  row: Row,
+  now: Date,
+  selectedId: string | null = null,
+): ConsumerCoupon {
   const validFrom = requireDate(row.valid_from);
   const validUntil = requireDate(row.valid_until);
   const redeemedAt = toDate(row.redeemed_at);
@@ -115,13 +133,22 @@ function toCoupon(row: Row, now: Date): ConsumerCoupon {
     }),
     redeemedAt,
     origin: toDate(row.cross_claimed_at) ? "cross" : "campaign",
+    selected: selectedId !== null && row.id === selectedId,
   };
+}
+
+async function selectedCouponId(consumerId: string): Promise<string | null> {
+  const result = await getDb().execute<{ selected_coupon_id: string | null }>(
+    sql`select selected_coupon_id from consumer.consumer_account where id = ${consumerId}`,
+  );
+  return result.rows[0]?.selected_coupon_id ?? null;
 }
 
 export async function listConsumerCoupons(
   consumerId: string,
+  gps: GeoPoint | null = null,
   now: Date = new Date(),
-): Promise<ConsumerCoupon[]> {
+): Promise<ConsumerCouponList> {
   const at = now.toISOString();
   const since = new Date(now.getTime() - HISTORY_DAYS * DAY_MS).toISOString();
   const live = await getDb().execute<Row>(sql`
@@ -143,13 +170,22 @@ export async function listConsumerCoupons(
     order by coalesce(cr.created_at, c.valid_until) desc, c.id asc
     limit ${HISTORY_MAX}
   `);
-  const current = live.rows.map((row) => toCoupon(row, now));
-  return [
-    ...current.filter((coupon) => coupon.status === "valid"),
-    ...current.filter((coupon) => coupon.status === "scheduled"),
-    ...current.filter((coupon) => coupon.status === "unavailable"),
-    ...history.rows.map((row) => toCoupon(row, now)),
-  ];
+  const selectedId = await selectedCouponId(consumerId);
+  const here = await resolveCouponHere(consumerId, gps);
+  const current = live.rows.map((row) => toCoupon(row, now, selectedId));
+  const valid = current.filter((coupon) => coupon.status === "valid");
+  const isHere = (coupon: ConsumerCoupon) =>
+    here !== null && coupon.businessId === here.businessId;
+  return {
+    here,
+    coupons: [
+      ...valid.filter(isHere),
+      ...valid.filter((coupon) => !isHere(coupon)),
+      ...current.filter((coupon) => coupon.status === "scheduled"),
+      ...current.filter((coupon) => coupon.status === "unavailable"),
+      ...history.rows.map((row) => toCoupon(row, now, selectedId)),
+    ],
+  };
 }
 
 /** ONE coupon of the session consumer by id (the claim's answer), or `null`. */

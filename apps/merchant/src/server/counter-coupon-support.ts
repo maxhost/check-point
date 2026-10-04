@@ -13,10 +13,13 @@ import { seedCampaignCoupon } from "./marketing-coupon-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
   campaignTurns,
+  consumerAccounts,
   couponRedemptions,
   walletPushQueue,
 } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
+import { validateCoupon } from "./counter/coupon-validate";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 
 /**
  * The world of the coupon at the counter (spec 0065 phase C): one business with a
@@ -138,9 +141,50 @@ export async function newCouponCard(
 export function couponBody(card: CouponCard, seed: Seed, key?: string) {
   return {
     clientRequestId: key ?? randomUUID(),
+    // Spec 0148: the validation names the scanned membership (the coupon has to be its).
+    membershipId: card.membershipId,
     couponId: card.couponId,
     locationId: seed.locationId,
   };
+}
+
+/** Spec 0148: the consumer CHOOSES the coupon in the PWA (`coupon-selection.ts`); the counter
+ * only validates a chosen one. Asserts the choice took, so a refusal never hides here. */
+export async function chooseCoupon(
+  card: Pick<CouponCard, "consumerId" | "couponId">,
+): Promise<void> {
+  const result = await selectCoupon(card.consumerId, card.couponId);
+  if (result.status !== 200)
+    throw new Error(`chooseCoupon: ${result.status} ${result.code}`);
+}
+
+/** A choice that went STALE — chosen while valid, expired since: the choice never expires
+ * (ADR 0119 §4), so this is a production state the PWA route itself cannot create today. */
+export async function forceChoice(
+  card: Pick<CouponCard, "consumerId" | "couponId">,
+): Promise<void> {
+  await getDb()
+    .update(consumerAccounts)
+    .set({ selectedCouponId: card.couponId, couponSelectedAt: new Date() })
+    .where(eq(consumerAccounts.id, card.consumerId));
+}
+
+/**
+ * What the deleted `redeemCoupon` (spec 0065 C) did in one call is two steps since spec 0148:
+ * the consumer chooses, the counter validates. For the suites whose invariant is the
+ * redemption itself (snapshots, push, cap, races, extras), not the choice.
+ */
+export async function chooseAndValidate(
+  world: { seed: Seed },
+  card: CouponCard,
+  key?: string,
+) {
+  await chooseCoupon(card);
+  return validateCoupon(
+    world.seed.business,
+    world.seed.userId,
+    couponBody(card, world.seed, key),
+  );
 }
 
 /** The redemption rows of a campaign, read by SQL. The API answer is never the oracle

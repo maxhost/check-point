@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { integrationEnabled } from "./counter-integration-support";
-import { loadActiveCoupon } from "./counter/coupon-scan";
+import { counterCouponState } from "./counter/coupon-state";
+import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 import { unregisterDevice } from "@mi-pasaporte/domain/server/wallet/passkit";
 import { issueWelcomeGifts } from "@mi-pasaporte/domain/server/marketing/welcome-issue";
 import { runMarketingTick } from "./marketing/tick";
@@ -47,22 +48,30 @@ describe.skipIf(!integrationEnabled)("welcome gift — delivery (E2)", () => {
       new Date(EVENING.getTime() + 15 * DAY).toISOString(),
     );
     const business = world.seed.business.id;
+    // Spec 0148: the counter shows the coupon the consumer CHOSE, and a coupon that does not
+    // run yet can be neither chosen nor counted.
+    const tonight = new Date("2026-10-02T02:30:00.000Z");
+    const tomorrow = new Date("2026-10-02T15:00:00.000Z");
     // Same night (21:30 local): not yet.
     expect(
-      await loadActiveCoupon(
-        business,
-        person.consumerId,
-        new Date("2026-10-02T02:30:00.000Z"),
-      ),
-    ).toBeNull();
+      await counterCouponState(business, person.consumerId, tonight),
+    ).toEqual({ status: "none" });
+    expect(
+      await selectCoupon(person.consumerId, coupon.id, tonight),
+    ).toMatchObject({ status: 409, code: "coupon_not_selectable" });
     // Next day 10:00 local (15:00Z): there it is.
     expect(
-      await loadActiveCoupon(
-        business,
-        person.consumerId,
-        new Date("2026-10-02T15:00:00.000Z"),
-      ),
-    ).toMatchObject({ couponId: coupon.id, label: "Un café gratis" });
+      await counterCouponState(business, person.consumerId, tomorrow),
+    ).toEqual({ status: "hint", count: 1 });
+    expect(
+      await selectCoupon(person.consumerId, coupon.id, tomorrow),
+    ).toMatchObject({ status: 200 });
+    expect(
+      await counterCouponState(business, person.consumerId, tomorrow),
+    ).toMatchObject({
+      status: "selected",
+      coupon: { couponId: coupon.id, label: "Un café gratis" },
+    });
   }, 120_000);
 
   it("same_visit is worth it right away", async () => {

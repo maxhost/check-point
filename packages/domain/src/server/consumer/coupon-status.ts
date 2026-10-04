@@ -9,8 +9,8 @@
  *  3. `unavailable` — the business is not `active` (suspended/closed): not the consumer's
  *     fault, and the counter would refuse it anyway (`counter/core.ts`);
  *  4. `scheduled` — it does not run YET (`now < validFrom`): the welcome gift «desde mañana»
- *     (spec 0107 / ADR 0099) shown the day of the enrolment so the consumer sees it; the
- *     counter still hides it until `validFrom` (`counter/coupon-scan.ts`);
+ *     (spec 0107 / ADR 0099) shown the day of the enrolment so the consumer sees it; it cannot
+ *     be chosen until `validFrom` (`consumer/coupon-selection.ts`, spec 0148);
  *  5. `valid` — the rest.
  */
 

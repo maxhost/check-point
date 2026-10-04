@@ -9,9 +9,10 @@ import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
  * is issued), and it is NOT a visit: no `core."order"` is created — what was credited stays
  * on the `coupon_redemption` row (`units_granted`, `balance_after`).
  *
- * Called by `persistCouponRedemption` INSIDE its transaction, AFTER the campaign/coupon locks
- * and `decideCouponRedemption`, and BEFORE the redemption insert: if the insert aborts (a
- * `23505` of the idempotency backstop), the credit rolls back with it — so a coupon credits
+ * Called by `validateCoupon` (spec 0148, `coupon-validate.ts`) INSIDE its transaction, AFTER
+ * the campaign/coupon locks and `decideCouponRedemption`, and BEFORE the redemption insert:
+ * if the insert aborts (a `23505` of the idempotency backstop), the credit rolls back with
+ * it — so a coupon credits
  * ONCE. Crediting in another transaction, or before the locks, is how two concurrent
  * redemptions of one coupon would credit twice (`counter-coupon-races`).
  */
