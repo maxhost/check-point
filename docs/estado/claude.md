@@ -9,22 +9,20 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-04) — 0148 + 0149 (UI de GPT) EN PROD (`3006a2f`). TOCA QA DEL OWNER
+## ⇥ ESTADO (2026-10-04, tarde) — 0151 (ARNES) COMMITEADA (`f4c2919`). EN PROD: 0148/0149/0150 (`24ce0df`)
 
-**Al retomar:** `git fetch` + `git merge --ff-only origin/main` (rama `motor` sin upstream). `origin/main` = `3006a2f`:
-el push unico de GPT con la 0148 (Claude) y la 0149 (UI de GPT). **Deploy verificado** (status del commit por la API de
-GitHub, 2026-10-04 14:43 UTC): merchant, customer y public `success` en `3006a2f`. 0064 en PROD desde el 2026-10-03.
+**Al retomar:** `motor` = `origin/main` (`24ce0df`) + commits locales SIN PUSHEAR: skill `delete-user`, investigacion
+«Flujo agil con Claude Code» (`reports/`), spec 0151 y su implementacion `f4c2919`, este estado. Push = el owner (el
+clasificador de auto mode bloquea `git push` a `main`).
 
-**0150 commiteada (`b83134e`), SIN PUSHEAR:** API `qa-login` (implementador, cortado por Claude con la API completa;
-unidad 27/27, typecheck/lint/prettier ok; sin revisor por decision del owner) + botones en el login (Claude, zona GPT por
-decision del owner → avisar a GPT). El push lo bloqueo el clasificador de auto mode: lo corre el owner. Despues: deploy
-`READY` y `QA_LOGIN_ENABLED=true` en el proyecto merchant de Vercel (owner).
+**0151 (arnes proporcional al riesgo):** `CLAUDE.md` 199 → 77 lineas; niveles N0/N1/N2; `verify.sh` con huella
+(reproducido por el orquestador: 46 s → 0 s sin cambios); `tasks-fresh` solo avisa; estado historico aparte. Sin revisor
+todavia. Hallazgos a decidir (owner): bajar `claude-md-size.sh` a 100 lineas/6 KB; la huella no incluye HEAD (un pull no
+re-corre gates); la skill `handoff` desactualizada (`npm`, no mueve el bloque viejo al historico).
 
-**Pendiente:**
-- **QA del owner de 0148/0149** (pasos en la spec 0148 §«QA del owner») y los de antes: 0143, 0146, 0147.
-- **La 0149 no tiene revisor independiente** (su spec lo deja «posterior»; presupuesto de mutaciones 0). Ofrecido al owner.
-- `docs/estado/gpt.md` en `3006a2f` todavia dice «No se ha pusheado» (zona de GPT: avisar).
-- Lote `pass_refresh` de la 0146 (OK del owner); PARQUEADO #69 (Vercel Hobby); build Turbopack rojo en el entorno de GPT.
-- **QA con datos de prueba en PROD** (pedido del owner, 2026-10-04): 17 productos en la categoria «Prueba» de Panaderia,
-  Barberia y Gym, y la skill TEMPORAL `.claude/skills/qa-cupones-prueba/` (habilitar hoy / resetear canjes por MCP).
-  Las dos cosas se borran cuando el owner cierre las pruebas.
+**QA en PROD con datos de prueba (owner):** botones de login de QA (0150, falta `QA_LOGIN_ENABLED=true` en Vercel
+merchant); skills temporales `qa-cupones-prueba`, `qa-cupon-valido`, `delete-user`; productos «Prueba» en Panaderia,
+Barberia, Gym. Todo se borra al cerrar las pruebas.
+
+**Pendientes de antes:** QA de 0143/0146/0147/0148; lote `pass_refresh` (0146); PARQUEADO #69; Postgres local para tests
+(medir antes/despues); revisor de la 0149 (UI de GPT).
