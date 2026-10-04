@@ -8,10 +8,10 @@
 El owner entregó `motor` `8a635b0` con el servidor 0153. Rebasé `main` sobre
 esa rama y resolví el conflicto de `docs/INDEX.md` conservando las specs 0152,
 0153 y 0154. La [spec UI 0154](../specs/0154-veredicto-automatico-del-cupon-en-mostrador.md)
-está implementada en local: veredicto verde/rojo literal en Venta detallada y
+está implementada en el commit `eaa03b3`: veredicto verde/rojo literal en Venta detallada y
 rápida, sin M2; «Quitar» siempre; M4 manda cupón solo si es válido; producto fijo
 agregado una vez por escaneo; y ticket con unidades del cupón separadas. La 0152
-también sigue local y forma parte del mismo `main`.
+y el servidor 0153 forman parte del mismo `main` para el push conjunto.
 
 Verificación con Node 24.20.0: typecheck, lint, formato, unitarios, e2e
 global (115 pasaron, 5 omitidos), Neon merchant (410 pasaron, 25 omitidos) y
@@ -22,14 +22,15 @@ pasaron y revisé las capturas móviles verde y roja. `pnpm verify` quedó
 del sandbox. El build Webpack de Merchant se comprobó aparte. No se usó
 `--no-verify`.
 
-**Pendiente:** gate completo verde o autorización explícita del owner para
-sortear solo el hook; `git pull --rebase` y un único push conjunto; comprobar
-deploy `READY` de Vercel para ese SHA antes de pedir QA. No se ha pusheado la 0154.
+El owner autorizó explícitamente `--no-verify` para este único push por el fallo
+de Turbopack, después de ver el gate y el build Webpack verde. El SHA de UI
+`eaa03b3` se incluye en la publicación conjunta. Comprobar deploy `READY` de
+Vercel para el SHA final antes de pedir QA.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
 
 La [spec 0152](../specs/0152-mostrador-mobile-sin-nav-y-sin-tarjeta.md) quedó
-reservada y publicada en `1ea1e5e`; la UI está en el commit local `35fbdab`.
+reservada y publicada en `1ea1e5e`; la UI quedó en `d30136f` tras el rebase.
 Las etapas activas de Mostrador ocultan la navegación inferior; la X vuelve a la
 pantalla inicial y sigue visible al desplazarse; el aviso no la tapa; en móvil
 se elimina la tarjeta blanca interior y el footer detallado deja visibles
@@ -41,8 +42,8 @@ omitidos; Neon relacionado de Merchant 9/9; build Webpack de Merchant verde.
 `pnpm verify` quedó **ROJO solo en build**: Turbopack falla al abrir un puerto
 interno de PostCSS en `business/onboarding/onboarding.css` (`Operation not
 permitted`), incluso fuera del sandbox. No se usó `--no-verify`. El owner pidió
-dejar la UI local, sin publicar todavía. Pendientes: resolver el build,
-publicar cuando el owner lo indique, hacer QA móvil y obtener PASS independiente
+dejar la UI local en ese momento. La autorización posterior incluye la 0152 en
+el push conjunto. Pendientes: resolver el build, hacer QA móvil y obtener PASS independiente
 antes de marcar la spec `implementada`.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0149: PANTALLAS DEL CUPÓN ELEGIDO PUBLICADAS
