@@ -22,11 +22,13 @@ vivia solo en el chat. Por eso, si el usuario pregunta "compact o clear": la res
 **handoff y despues clear** (nunca compact — comprime con perdida). Y al cerrar el handoff
 (paso 6), SIEMPRE recordarle explicitamente que ahora corresponde `/clear`.
 
-1. **Gate primero** si hubo cambios de codigo: `npm run typecheck && npm run lint &&
-   npm run test`. Reporta evidencia real (N tests, 0 errores), no "parece que anda".
+1. **Gate primero** si hubo cambios de codigo: `pnpm run typecheck && pnpm run lint &&
+   pnpm run test` (Node 24: `nvm use`). Reporta evidencia real (N tests, 0 errores), no "parece que anda".
    No se hace handoff de codigo roto sin decirlo explicitamente en docs/estado/claude.md
    ("gate rojo por X, retomar ahi").
-2. **Actualiza `docs/estado/claude.md`** (nunca `docs/estado/gpt.md`): que quedo hecho (con verificacion real: comando + salida),
+2. **Actualiza `docs/estado/claude.md`** (nunca `docs/estado/gpt.md`). **Queda UN solo bloque `⇥ ESTADO`** (spec
+   0151): el anterior se mueve, sin tocar su texto y renombrado `ESTADO HISTORICO`, arriba de todo en
+   `docs/estado/claude-historico.md`. El bloque nuevo dice que quedo hecho (con verificacion real: comando + salida),
    que quedo a medias y EXACTAMENTE donde (archivo/funcion), que sigue, y cualquier gotcha
    descubierto. Los caminos descartados van a la tabla "Descartado" con su porque — sin
    registro se reintentan.
@@ -35,7 +37,8 @@ vivia solo en el chat. Por eso, si el usuario pregunta "compact o clear": la res
    spec nuevo lleva su fila en `docs/INDEX.md` en el mismo commit.
 4. **Mistake→rule**: si en la sesion hubo un error del agente que una regla habria evitado,
    convertilo en fix estructural AHORA — un hook en `.claude/hooks/` si se chequea con un
-   comando, una linea en `CLAUDE.md` si es advisory. Nunca la misma correccion dos veces a
+   comando, una linea en `CLAUDE.md` solo si cambia una decision en TODA sesion (si no, a la skill
+   del dominio), y el caso con fecha a `docs/LECCIONES.md`. Nunca la misma correccion dos veces a
    mano.
 5. **Propone el commit**: lista los archivos tocados y el mensaje (convencion del repo).
    **No commitees sin confirmacion del usuario.**
