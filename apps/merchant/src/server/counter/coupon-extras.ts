@@ -6,15 +6,16 @@ import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 /**
  * THE EXTRA STAMPS / POINTS OF A CAMPAIGN COUPON (spec 0106 / ADR 0098 §6): the one coupon
  * that credits the program. Credited when the coupon is REDEEMED at the counter (not when it
- * is issued), and it is NOT a visit: no `core."order"` is created — what was credited stays
- * on the `coupon_redemption` row (`units_granted`, `balance_after`).
+ * is issued); since spec 0153 always WITH a sale — what the coupon credited stays on its
+ * `coupon_redemption` row (`units_granted`, `balance_after`), apart from the order's units.
  *
- * Called by `validateCoupon` (spec 0148, `coupon-validate.ts`) INSIDE its transaction, AFTER
- * the campaign/coupon locks and `decideCouponRedemption`, and BEFORE the redemption insert:
- * if the insert aborts (a `23505` of the idempotency backstop), the credit rolls back with
- * it — so a coupon credits
- * ONCE. Crediting in another transaction, or before the locks, is how two concurrent
- * redemptions of one coupon would credit twice (`counter-coupon-races`).
+ * Called by the sale (spec 0153 / ADR 0120 §5, `grant-coupon.ts`) INSIDE its transaction,
+ * AFTER the campaign/coupon/customer locks, the verdict (`decideCouponVerdict`, which already
+ * answers `program_changed` with this same `decideExtraGrant`) and `persistGrant` — the card
+ * is taken by the sale first, then the program — and BEFORE the redemption insert: if
+ * anything after it aborts, the credit rolls back with the sale, so a coupon credits ONCE.
+ * Crediting in another transaction, or before the locks, is how two concurrent sales of one
+ * coupon would credit twice (`counter-coupon-races`).
  */
 
 export type ExtraKind = "extra_stamps" | "extra_points";

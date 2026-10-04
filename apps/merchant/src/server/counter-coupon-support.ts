@@ -18,7 +18,7 @@ import {
   walletPushQueue,
 } from "@mi-pasaporte/db/schema";
 import { resolveScan } from "./counter/resolve";
-import { validateCoupon } from "./counter/coupon-validate";
+import { grantAccrual } from "./counter/grant";
 import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 
 /**
@@ -138,18 +138,44 @@ export async function newCouponCard(
   };
 }
 
-export function couponBody(card: CouponCard, seed: Seed, key?: string) {
+/**
+ * Spec 0153: the body of the SALE that applies the card's coupon (`POST /api/counter/grant`) —
+ * the only counter write that redeems a coupon since «validate» was deleted. A QUICK sale of
+ * `total` (default `0.00`: no units, so a balance assertion measures the coupon alone). It
+ * names the scanned membership (the coupon has to be its consumer's).
+ */
+export function couponSaleBody(
+  card: CouponCard,
+  seed: Seed,
+  key?: string,
+  total = "0.00",
+) {
   return {
     clientRequestId: key ?? randomUUID(),
-    // Spec 0148: the validation names the scanned membership (the coupon has to be its).
     membershipId: card.membershipId,
-    couponId: card.couponId,
     locationId: seed.locationId,
+    mode: "quick",
+    total,
+    coupon: { couponId: card.couponId },
   };
 }
 
+/** The sale with the card's coupon, by the operator of `world` (spec 0153). */
+export function sellCoupon(
+  world: { seed: Seed },
+  card: CouponCard,
+  key?: string,
+  total?: string,
+) {
+  return grantAccrual(
+    world.seed.business,
+    world.seed.userId,
+    couponSaleBody(card, world.seed, key, total),
+  );
+}
+
 /** Spec 0148: the consumer CHOOSES the coupon in the PWA (`coupon-selection.ts`); the counter
- * only validates a chosen one. Asserts the choice took, so a refusal never hides here. */
+ * only applies a chosen one. Asserts the choice took, so a refusal never hides here. */
 export async function chooseCoupon(
   card: Pick<CouponCard, "consumerId" | "couponId">,
 ): Promise<void> {
@@ -171,20 +197,17 @@ export async function forceChoice(
 
 /**
  * What the deleted `redeemCoupon` (spec 0065 C) did in one call is two steps since spec 0148:
- * the consumer chooses, the counter validates. For the suites whose invariant is the
- * redemption itself (snapshots, push, cap, races, extras), not the choice.
+ * the consumer chooses, and (spec 0153) the counter's SALE applies it. For the suites whose
+ * invariant is the redemption itself (snapshots, cap, races, extras), not the choice.
  */
-export async function chooseAndValidate(
+export async function chooseAndSell(
   world: { seed: Seed },
   card: CouponCard,
   key?: string,
+  total?: string,
 ) {
   await chooseCoupon(card);
-  return validateCoupon(
-    world.seed.business,
-    world.seed.userId,
-    couponBody(card, world.seed, key),
-  );
+  return sellCoupon(world, card, key, total);
 }
 
 /** The redemption rows of a campaign, read by SQL. The API answer is never the oracle

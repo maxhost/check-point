@@ -8,11 +8,11 @@ import {
 import {
   type CouponWorld,
   chooseCoupon,
-  couponBody,
   dropCouponWorld,
   newCouponCard,
   readCoupons,
   seedCouponWorld,
+  sellCoupon,
 } from "./counter-coupon-support";
 import { getDb } from "@mi-pasaporte/db";
 import {
@@ -20,7 +20,6 @@ import {
   loyaltyPrograms,
   orders,
 } from "@mi-pasaporte/db/schema";
-import { validateCoupon } from "./counter/coupon-validate";
 import { resolveScan } from "./counter/resolve";
 
 /**
@@ -29,9 +28,11 @@ import { resolveScan } from "./counter/resolve";
  * (`newCouponCard`). Balances and rows are READ BY SQL: the API answer is never the oracle
  * (ADR 0054 §4). The concurrent case lives in `counter-coupon-races` (ORACULO DE M4).
  *
- * Spec 0148: the consumer CHOOSES the coupon (`chooseCoupon`), the scan paints it as
- * `couponState.selected`, and the counter VALIDATES it (`validateCoupon`) — which is where an
- * `extra_*` coupon credits.
+ * Spec 0148: the consumer CHOOSES the coupon (`chooseCoupon`) and the scan paints it as
+ * `couponState.selected`. Spec 0153 / ADR 0120 §5: the counter's SALE applies it
+ * (`sellCoupon`) and that is where an `extra_*` coupon credits — on top of the sale's units,
+ * after the order, in the same transaction. A sale of 0.00 grants 0 units, so the balance
+ * measures the coupon alone; the STAMPS case sells 1.00 to measure both together.
  */
 
 const worlds: CouponWorld[] = [];
@@ -57,7 +58,7 @@ const ordersOf = (consumerId: string) =>
 describe.skipIf(!integrationEnabled)(
   "coupon of extra units (spec 0106 E2)",
   () => {
-    it("the scan shows the reward; redeeming extra POINTS credits once, creates no order, and a retry answers the STORED values", async () => {
+    it("the scan shows the reward; the sale with extra POINTS credits once, on its order, and a retry answers the STORED values", async () => {
       const w = await world("Extras puntos");
       const card = await newCouponCard(w, {
         extra: { kind: "extra_points", units: 5 },
@@ -77,25 +78,28 @@ describe.skipIf(!integrationEnabled)(
           discountValue: null,
           currencyCode: "USD",
         },
+        verdict: { valid: true },
       });
 
-      const body = couponBody(card, w.seed, randomUUID());
-      const first = await validateCoupon(w.seed.business, w.seed.userId, body);
-      expect(first.coupon).toMatchObject({
-        kind: "extra_points",
-        unitsGranted: 5,
+      const key = randomUUID();
+      const first = await sellCoupon(w, card, key);
+      expect(first.order).toMatchObject({
+        unitsGranted: 0,
         balanceAfter: 82,
+        coupon: { discountAmount: "0.00", extraUnits: 5 },
       });
       expect(await readBalances(card.membershipId)).toEqual({
         points: 82,
         stamps: 0,
       });
-      expect(await ordersOf(card.consumerId)).toEqual([]);
+      const [order] = await ordersOf(card.consumerId);
+      expect(await ordersOf(card.consumerId)).toHaveLength(1);
       const [row] = await getDb()
         .select({
           kindSnapshot: couponRedemptions.kindSnapshot,
           unitsGranted: couponRedemptions.unitsGranted,
           balanceAfter: couponRedemptions.balanceAfter,
+          orderId: couponRedemptions.orderId,
         })
         .from(couponRedemptions)
         .where(eq(couponRedemptions.couponId, card.couponId));
@@ -103,15 +107,12 @@ describe.skipIf(!integrationEnabled)(
         kindSnapshot: "extra_points",
         unitsGranted: 5,
         balanceAfter: 82,
+        orderId: order.id,
       });
 
-      // The idempotent retry: same answer, from the stored row, and no second credit.
-      const second = await validateCoupon(w.seed.business, w.seed.userId, body);
-      expect(second.coupon).toMatchObject({
-        kind: "extra_points",
-        unitsGranted: 5,
-        balanceAfter: 82,
-      });
+      // The idempotent retry: same answer, from the stored rows, and no second credit.
+      const second = await sellCoupon(w, card, key);
+      expect(second.order).toEqual(first.order);
       expect((await readBalances(card.membershipId)).points).toBe(82);
     }, 120_000);
 
@@ -123,18 +124,23 @@ describe.skipIf(!integrationEnabled)(
       });
       await chooseCoupon(card);
 
+      // The counter already paints it red, with the same rule the sale applies.
+      expect(
+        (await resolveScan(w.seed.business, card.qrToken)).couponState,
+      ).toMatchObject({
+        status: "selected",
+        coupon: { couponId: card.couponId },
+        verdict: { valid: false, code: "program_changed" },
+      });
       await expect(
-        validateCoupon(
-          w.seed.business,
-          w.seed.userId,
-          couponBody(card, w.seed),
-        ),
+        sellCoupon(w, card, undefined, "1.00"),
       ).rejects.toMatchObject({ status: 409, code: "program_changed" });
       expect(await readBalances(card.membershipId)).toEqual({
         points: 77,
         stamps: 0,
       });
       expect(await readCoupons(w.campaignId)).toEqual([]);
+      expect(await ordersOf(card.consumerId)).toEqual([]);
       // The refusal rolled back whole: the choice is still there, the coupon still chosen.
       expect(
         (await resolveScan(w.seed.business, card.qrToken)).couponState,
@@ -147,19 +153,31 @@ describe.skipIf(!integrationEnabled)(
         .update(loyaltyPrograms)
         .set({ kind: "stamps" })
         .where(eq(loyaltyPrograms.id, w.seed.programId));
-      const redeemed = await validateCoupon(
-        w.seed.business,
-        w.seed.userId,
-        couponBody(card, w.seed),
-      );
-      expect(redeemed.coupon).toMatchObject({
-        kind: "extra_stamps",
-        unitsGranted: 3,
-        balanceAfter: 3,
+      // A sale of 1.00 = 10 stamps (10 per 1.00), plus the coupon's 3: 13 at the end.
+      const redeemed = await sellCoupon(w, card, undefined, "1.00");
+      expect(redeemed.order).toMatchObject({
+        kind: "stamps",
+        unitsGranted: 10,
+        balanceAfter: 13,
+        coupon: { extraUnits: 3 },
       });
       expect(await readBalances(card.membershipId)).toEqual({
         points: 77,
-        stamps: 3,
+        stamps: 13,
+      });
+      const [row] = await getDb()
+        .select({
+          unitsGranted: couponRedemptions.unitsGranted,
+          balanceAfter: couponRedemptions.balanceAfter,
+          orderId: couponRedemptions.orderId,
+        })
+        .from(couponRedemptions)
+        .where(eq(couponRedemptions.couponId, card.couponId));
+      const [order] = await ordersOf(card.consumerId);
+      expect(row).toEqual({
+        unitsGranted: 3,
+        balanceAfter: 13,
+        orderId: order.id,
       });
     }, 120_000);
 
@@ -167,15 +185,10 @@ describe.skipIf(!integrationEnabled)(
       const w = await world("Extras texto");
       const card = await newCouponCard(w);
       await chooseCoupon(card);
-      const result = await validateCoupon(
-        w.seed.business,
-        w.seed.userId,
-        couponBody(card, w.seed),
-      );
-      expect(result.coupon).toMatchObject({
-        kind: "free_product",
-        unitsGranted: null,
-        balanceAfter: null,
+      const result = await sellCoupon(w, card);
+      expect(result.order).toMatchObject({
+        balanceAfter: 77,
+        coupon: { extraUnits: null },
       });
       expect(await readBalances(card.membershipId)).toEqual({
         points: 77,

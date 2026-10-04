@@ -19,7 +19,6 @@ import {
   consumerAccounts,
   webPushSubscriptions,
 } from "@mi-pasaporte/db/schema";
-import { validateCoupon } from "./counter/coupon-validate";
 import { grantAccrual } from "./counter/grant";
 import { resolveScan } from "./counter/resolve";
 import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
@@ -93,19 +92,23 @@ describe.skipIf(!integrationEnabled)(
       expect(coupon.membershipId).toBeNull();
     }, 180_000);
 
-    it("without scanning the consumer first there is no membership to name: 404, and nothing is written", async () => {
+    it("without scanning the consumer first there is no membership to name: the sale is refused, and nothing is written", async () => {
       // Spec 0148: the counter's coupon writes name the SCANNED membership; before the scan
       // auto-enrols, the consumer has none in this business (the old `not_enrolled` of the
-      // redemption stays as the guard of the locks, `coupon-locks.ts`).
+      // redemption stays as the guard of the locks, `coupon-locks.ts`). Spec 0153: the only
+      // write that redeems is the sale, whose membership guard is `foreign_membership`
+      // (`grant-input.ts`: a missing or foreign membership is the same 403).
       const { x, couponId } = await claimed("enrol", 22);
       await expect(
-        validateCoupon(x.seed.business, x.seed.userId, {
+        grantAccrual(x.seed.business, x.seed.userId, {
           clientRequestId: randomUUID(),
           membershipId: randomUUID(),
-          couponId,
+          mode: "quick",
+          total: "20.00",
           locationId: x.seed.locationId,
+          coupon: { couponId },
         }),
-      ).rejects.toMatchObject({ status: 404, code: "not_found" });
+      ).rejects.toMatchObject({ status: 403, code: "foreign_membership" });
       expect(
         await getDb()
           .select({ id: couponRedemptions.id })

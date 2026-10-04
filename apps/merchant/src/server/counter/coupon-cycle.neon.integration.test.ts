@@ -15,10 +15,8 @@ import {
   seedCycleWorld,
   selectionOf,
   sell,
-  validateBody,
   welcomeCoupon,
 } from "./coupon-cycle-support";
-import { validateCoupon } from "./coupon-validate";
 import { getCouponState } from "./coupon-state";
 import { resolveScan } from "./resolve";
 import { listTodaysAccreditations } from "./history";
@@ -28,6 +26,8 @@ import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupon
  * Spec 0148 — THE CHOSEN COUPON, from the PWA to the sale, against Neon (world in
  * `coupon-cycle-support.ts`: production shape). Every assertion that carries weight reads
  * the DATABASE (ADR 0054 §4). Points: 10 per 1.00, so «units over the net» is visible.
+ * Spec 0153: there is no «validate» — the scan paints the choice with its verdict and the
+ * sale applies it.
  */
 
 let world: CycleWorld;
@@ -44,7 +44,7 @@ const state = (membershipId: string) =>
   getCouponState(world.seed.business, membershipId).then((r) => r.couponState);
 
 describe.skipIf(!integrationEnabled)("the chosen coupon (spec 0148)", () => {
-  it("ORACULO DE M10 — choose → scan → validate a 2x1 → detailed sale: the order is the NET and the coupon is tied to it", async () => {
+  it("ORACULO DE M10 — choose → scan (green) → detailed sale: the order is the NET and the coupon is tied to it", async () => {
     const customer = await scannedCustomer(world);
     const couponId = await welcomeCoupon(world, customer, {
       kind: "two_for_one",
@@ -57,33 +57,8 @@ describe.skipIf(!integrationEnabled)("the chosen coupon (spec 0148)", () => {
     expect(scan.couponState).toMatchObject({
       status: "selected",
       coupon: { couponId, kind: "two_for_one", productName: "Medialuna" },
+      verdict: { valid: true },
     });
-
-    const validated = await validateCoupon(
-      world.seed.business,
-      world.seed.userId,
-      validateBody(world, customer, couponId),
-    );
-    expect(validated.coupon).toMatchObject({
-      label: "2x1 en medialunas",
-      kind: "two_for_one",
-      productName: "Medialuna",
-    });
-    expect(await state(customer.membershipId)).toMatchObject({
-      status: "validated",
-      coupon: { couponId },
-    });
-    expect(await selectionOf(customer)).toBeNull();
-    const history = await listTodaysAccreditations(
-      world.seed.business.id,
-      "America/Guayaquil",
-      new Date(),
-    );
-    expect(
-      history.filter((entry) => entry.entryKind === "coupon"),
-    ).toContainEqual(
-      expect.objectContaining({ rewardLabel: "2x1 en medialunas" }),
-    );
 
     // 2 medialunas (7.00) + 1 café (2.00) = 9.00; one medialuna off → 5.50 → 50 points.
     const sold = await sell(
@@ -109,10 +84,21 @@ describe.skipIf(!integrationEnabled)("the chosen coupon (spec 0148)", () => {
       expect.objectContaining({ orderId: order.id, discountAmount: "3.50" }),
     ]);
     expect((await readBalances(customer.membershipId)).points).toBe(50);
+    expect(await selectionOf(customer)).toBeNull();
     expect(await state(customer.membershipId)).toEqual({
       status: "used_today",
       label: "2x1 en medialunas",
     });
+    const history = await listTodaysAccreditations(
+      world.seed.business.id,
+      "America/Guayaquil",
+      new Date(),
+    );
+    expect(
+      history.filter((entry) => entry.entryKind === "coupon"),
+    ).toContainEqual(
+      expect.objectContaining({ rewardLabel: "2x1 en medialunas" }),
+    );
   }, 180_000);
 
   it("ORACULO DE M1 — 50 % off 20.00 in a quick sale: total 10.00 and the units over 10.00 (ADR 0119 §12)", async () => {
@@ -144,7 +130,7 @@ describe.skipIf(!integrationEnabled)("the chosen coupon (spec 0148)", () => {
     ]);
   }, 180_000);
 
-  it("a discount applies in a DETAILED sale too, and is refused by validate (it goes in the sale)", async () => {
+  it("a discount applies in a DETAILED sale too", async () => {
     const customer = await scannedCustomer(world);
     const couponId = await welcomeCoupon(world, customer, {
       kind: "discount",
@@ -153,13 +139,6 @@ describe.skipIf(!integrationEnabled)("the chosen coupon (spec 0148)", () => {
       discountValue: "50",
     });
     await choose(customer, couponId);
-    await expect(
-      validateCoupon(
-        world.seed.business,
-        world.seed.userId,
-        validateBody(world, customer, couponId),
-      ),
-    ).rejects.toMatchObject({ status: 409, code: "coupon_applies_in_sale" });
 
     const sold = await sell(
       world,
@@ -217,20 +196,13 @@ describe.skipIf(!integrationEnabled)("the chosen coupon (spec 0148)", () => {
     expect((await readBalances(customer.membershipId)).points).toBe(100);
   }, 180_000);
 
-  it("ORACULO DE M8 — a coupon the customer did NOT choose: validate and sale are 409 coupon_not_selected, nothing written", async () => {
+  it("ORACULO DE M8 — a coupon the customer did NOT choose: the sale is 409 coupon_not_selected, nothing written", async () => {
     const customer = await scannedCustomer(world);
     const twoForOne = await welcomeCoupon(world, customer, {
       kind: "two_for_one",
       label: "2x1 en medialunas",
       productId: world.medialuna,
     });
-    await expect(
-      validateCoupon(
-        world.seed.business,
-        world.seed.userId,
-        validateBody(world, customer, twoForOne),
-      ),
-    ).rejects.toMatchObject({ status: 409, code: "coupon_not_selected" });
     await expect(
       sell(
         world,

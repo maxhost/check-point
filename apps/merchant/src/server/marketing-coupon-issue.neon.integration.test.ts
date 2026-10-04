@@ -15,7 +15,7 @@ import {
   seedWorld,
   tickWorld,
 } from "./marketing-world-support";
-import { validateCoupon } from "./counter/coupon-validate";
+import { grantAccrual } from "./counter/grant";
 import { resolveScan } from "./counter/resolve";
 import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 import { getDb } from "@mi-pasaporte/db";
@@ -171,17 +171,19 @@ describe.skipIf(
     expect(coupons).toHaveLength(2);
     const [spent, kept] = coupons;
 
-    // Spec 0148: the consumer chooses it, the counter (after the scan) validates it.
+    // Spec 0148 / 0153: the consumer chooses it, the counter (after the scan) sells with it.
     const spentScan = await resolveScan(
       built.seed.business,
       built.qrTokens[built.consumerIds.indexOf(spent.consumerId)],
     );
     await selectCoupon(spent.consumerId, spent.id);
-    await validateCoupon(built.seed.business, built.seed.userId, {
+    await grantAccrual(built.seed.business, built.seed.userId, {
       clientRequestId: randomUUID(),
       membershipId: spentScan.membership.id,
-      couponId: spent.id,
       locationId: null,
+      mode: "quick",
+      total: "0.00",
+      coupon: { couponId: spent.id },
     });
 
     await tickWorld(built, NS, {

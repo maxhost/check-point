@@ -15,19 +15,16 @@ import {
   secondCoupon,
   seedCycleWorld,
   sell,
-  validateBody,
   welcomeCoupon,
 } from "./coupon-cycle-support";
-import { validateCoupon } from "./coupon-validate";
 import { getCouponState } from "./coupon-state";
 import { removeCoupon } from "./coupon-remove";
 import { redeemReward } from "./redeem";
-import { listConsumerCoupons } from "@mi-pasaporte/domain/server/consumer/coupons";
 
 /**
- * Spec 0148 — ONE COUPON PER CUSTOMER + BUSINESS + LOCAL DAY (ADR 0119 §14-§15), the close of
- * the day WITHOUT a cron, and the counter's isolation, against Neon. The business lives in
- * `America/Guayaquil` (UTC-5, no DST): the local day starts at 05:00Z.
+ * Spec 0148 — ONE COUPON PER CUSTOMER + BUSINESS + LOCAL DAY (ADR 0119 §14-§15) and the
+ * counter's isolation, against Neon. The business lives in `America/Guayaquil` (UTC-5, no
+ * DST): the local day starts at 05:00Z. Spec 0153: a coupon is redeemed by the SALE.
  */
 
 const HOUR = 3_600_000;
@@ -55,25 +52,28 @@ afterAll(async () => {
 const free = (label: string) => ({ kind: "free_product" as const, label });
 
 describe.skipIf(!integrationEnabled)("the daily limit (spec 0148)", () => {
-  it("ORACULO DE M2 — a SECOND, different coupon of the same customer the same day is 409 coupon_daily_limit, in validate and in the sale", async () => {
+  it("ORACULO DE M2 (0148) / M3 (0153) — a SECOND, different coupon of the same customer the same day: painted red, and the sale is 409 coupon_daily_limit", async () => {
     const customer = await scannedCustomer(world);
     const a = await welcomeCoupon(world, customer, free("Postre gratis"));
     const b = await secondCoupon(world, customer);
     await choose(customer, a);
-    await validateCoupon(
-      world.seed.business,
-      world.seed.userId,
-      validateBody(world, customer, a),
+    await sell(
+      world,
+      customer,
+      { mode: "quick", total: "5.00" },
+      { couponId: a },
     );
 
     await choose(customer, b);
-    await expect(
-      validateCoupon(
-        world.seed.business,
-        world.seed.userId,
-        validateBody(world, customer, b),
-      ),
-    ).rejects.toMatchObject({ status: 409, code: "coupon_daily_limit" });
+    const { couponState } = await getCouponState(
+      world.seed.business,
+      customer.membershipId,
+    );
+    expect(couponState).toMatchObject({
+      status: "selected",
+      coupon: { couponId: b },
+      verdict: { valid: false, code: "coupon_daily_limit" },
+    });
     await expect(
       sell(world, customer, { mode: "quick", total: "5.00" }, { couponId: b }),
     ).rejects.toMatchObject({ status: 409, code: "coupon_daily_limit" });
@@ -98,23 +98,26 @@ describe.skipIf(!integrationEnabled)("the daily limit (spec 0148)", () => {
     const a = await welcomeCoupon(world, customer, free("Postre gratis"));
     const b = await secondCoupon(world, customer);
     await choose(customer, a);
-    await validateCoupon(
-      world.seed.business,
-      world.seed.userId,
-      validateBody(world, customer, a),
+    await sell(
+      world,
+      customer,
+      { mode: "quick", total: "5.00" },
+      { couponId: a },
     );
     const [row] = await redemptionsOf(a);
     await backdate(row.id, lastNight);
 
     await choose(customer, b);
     await expect(
-      validateCoupon(
-        world.seed.business,
-        world.seed.userId,
-        validateBody(world, customer, b),
+      sell(
+        world,
+        customer,
+        { mode: "quick", total: "5.00" },
+        { couponId: b },
+        randomUUID(),
         now,
       ),
-    ).resolves.toMatchObject({ coupon: { label: "Café gratis" } });
+    ).resolves.toMatchObject({ order: { coupon: { label: "Café gratis" } } });
   }, 180_000);
 
   it("redeeming a REWARD of the program does not count as the visit's coupon (ADR 0119 §15)", async () => {
@@ -134,49 +137,15 @@ describe.skipIf(!integrationEnabled)("the daily limit (spec 0148)", () => {
     const a = await welcomeCoupon(world, customer, free("Postre gratis"));
     await choose(customer, a);
     await expect(
-      validateCoupon(
-        world.seed.business,
-        world.seed.userId,
-        validateBody(world, customer, a),
-      ),
-    ).resolves.toMatchObject({ coupon: { label: "Postre gratis" } });
-  }, 180_000);
-
-  it("validated YESTERDAY and never sold: today it is consumed — not validated at the counter, `redeemed` for the customer, not removable — with no cron", async () => {
-    const customer = await scannedCustomer(world);
-    const a = await welcomeCoupon(world, customer, free("Postre gratis"));
-    await choose(customer, a);
-    await validateCoupon(
-      world.seed.business,
-      world.seed.userId,
-      validateBody(world, customer, a),
-    );
-    const [row] = await redemptionsOf(a);
-    await backdate(row.id, new Date(Date.now() - 24 * HOUR));
-
-    const { couponState } = await getCouponState(
-      world.seed.business,
-      customer.membershipId,
-    );
-    expect(couponState).toEqual({ status: "none" });
-    const { coupons } = await listConsumerCoupons(customer.consumerId);
-    expect(coupons.find((c) => c.id === a)).toMatchObject({
-      status: "redeemed",
-    });
-    await expect(
-      removeCoupon(world.seed.business, {
-        membershipId: customer.membershipId,
-        couponId: a,
-      }),
-    ).rejects.toMatchObject({ status: 409, code: "coupon_not_removable" });
-    expect(await redemptionsOf(a)).toHaveLength(1);
+      sell(world, customer, { mode: "quick", total: "5.00" }, { couponId: a }),
+    ).resolves.toMatchObject({ order: { coupon: { label: "Postre gratis" } } });
   }, 180_000);
 });
 
 describe.skipIf(!integrationEnabled)(
   "the counter's isolation (spec 0148)",
   () => {
-    it("a membership of ANOTHER business is a 404 in coupon-state, validate and remove", async () => {
+    it("a membership of ANOTHER business is a 404 in coupon-state and remove", async () => {
       const other = await seedCycleWorld("Cupon ajeno");
       try {
         const stranger = await scannedCustomer(other);
@@ -184,11 +153,6 @@ describe.skipIf(!integrationEnabled)(
         await choose(stranger, couponId);
         await expect(
           getCouponState(world.seed.business, stranger.membershipId),
-        ).rejects.toMatchObject({ status: 404, code: "not_found" });
-        await expect(
-          validateCoupon(world.seed.business, world.seed.userId, {
-            ...validateBody(world, stranger, couponId),
-          }),
         ).rejects.toMatchObject({ status: 404, code: "not_found" });
         await expect(
           removeCoupon(world.seed.business, {

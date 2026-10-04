@@ -14,8 +14,6 @@ export { grantAccrual } from "./counter/grant";
 export type { GrantResult } from "./counter/grant";
 export { redeemReward } from "./counter/redeem";
 export type { RedeemResult } from "./counter/redeem";
-export { validateCoupon } from "./counter/coupon-validate";
-export type { CouponValidateResult } from "./counter/coupon-validate";
 export { removeCoupon } from "./counter/coupon-remove";
 export type { CouponRemoveResult } from "./counter/coupon-remove";
 export { getCouponState } from "./counter/coupon-state";

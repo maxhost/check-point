@@ -18,7 +18,7 @@ import {
  * names so the existing console keeps rendering; a redemption fills `unitsGranted` with
  * what was debited and is the only kind that carries a `rewardLabel`.
  *
- * Spec 0148: a coupon redeemed at the counter (validated or tied to a sale) is a third kind,
+ * Spec 0148: a coupon redeemed at the counter (since spec 0153, always tied to a sale) is a third kind,
  * `coupon`, with its label snapshot as `rewardLabel` and `unitsGranted` = what an `extra_*`
  * coupon credited (0 for the rest). Its `accrualKind` is `stamps`/`points` for an `extra_*`
  * and `coupon` otherwise (no balance moved).

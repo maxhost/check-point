@@ -18,10 +18,9 @@ import {
   type RedeemResponse,
   type ResolveResponse,
   canRedeem,
-  unitLabel,
 } from "./types";
 
-type Stage = "idle" | "scanning" | "resolved" | "coupon_done" | "done";
+type Stage = "idle" | "scanning" | "resolved" | "done";
 
 const JSON_HEADERS = { "content-type": "application/json" };
 
@@ -57,7 +56,6 @@ export function CounterConsole({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [requestId, setRequestId] = useState("");
-  const [couponRequestId, setCouponRequestId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -65,9 +63,6 @@ export function CounterConsole({
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [redeemed, setRedeemed] = useState<RedeemResponse | null>(null);
   const [couponProductId, setCouponProductId] = useState<string | null>(null);
-  const [validatedLabel, setValidatedLabel] = useState<string | null>(null);
-  const [validatedUnits, setValidatedUnits] = useState<number | null>(null);
-  const [validatedKind, setValidatedKind] = useState<string | null>(null);
 
   useEffect(() => {
     if (stage !== "resolved" || !resolved) return;
@@ -110,11 +105,7 @@ export function CounterConsole({
     setNotice(null);
     setMode("detailed");
     setRequestId("");
-    setCouponRequestId("");
     setCouponProductId(null);
-    setValidatedLabel(null);
-    setValidatedUnits(null);
-    setValidatedKind(null);
     setStage("idle");
     setScanKey((k) => k + 1);
     // Re-run the server component so the day history reflects the fresh accreditation.
@@ -139,7 +130,6 @@ export function CounterConsole({
         setResolved(data);
         setCouponProductId(null);
         setRequestId(crypto.randomUUID());
-        setCouponRequestId(crypto.randomUUID());
         setMode(data.catalog.products.length > 0 ? "detailed" : "quick");
         setStage("resolved");
         setNotice(
@@ -162,8 +152,7 @@ export function CounterConsole({
     (mode === "redeem" ||
       resolved?.couponState.status !== "selected" ||
       resolved.couponState.coupon.kind === "discount") &&
-    (resolved?.couponState.status === "selected" ||
-    resolved?.couponState.status === "validated"
+    (resolved?.couponState.status === "selected"
       ? !(
           mode === "detailed" &&
           (resolved.couponState.coupon.kind === "free_product" ||
@@ -208,8 +197,7 @@ export function CounterConsole({
           total: mode === "quick" ? amount : undefined,
           note:
             mode === "quick" &&
-            (resolved.couponState.status === "selected" ||
-              resolved.couponState.status === "validated") &&
+            resolved.couponState.status === "selected" &&
             (resolved.couponState.coupon.kind === "free_product" ||
               resolved.couponState.coupon.kind === "two_for_one")
               ? [resolved.couponState.coupon.label, note.trim()]
@@ -218,8 +206,7 @@ export function CounterConsole({
               : note.trim() || undefined,
           locationId,
           coupon:
-            resolved.couponState.status === "selected" ||
-            resolved.couponState.status === "validated"
+            resolved.couponState.status === "selected"
               ? {
                   couponId: resolved.couponState.coupon.couponId,
                   productId: mode === "detailed" ? couponProductId : null,
@@ -250,55 +237,28 @@ export function CounterConsole({
     }
   }
 
-  async function couponAction(action: "validate" | "remove") {
-    if (
-      !resolved ||
-      (resolved.couponState.status !== "selected" &&
-        resolved.couponState.status !== "validated")
-    )
-      return;
+  async function removeCoupon() {
+    if (!resolved || resolved.couponState.status !== "selected") return;
     const coupon = resolved.couponState.coupon;
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`/api/counter/coupon-${action}`, {
+      const response = await fetch("/api/counter/coupon-remove", {
         method: "POST",
         headers: JSON_HEADERS,
         body: JSON.stringify({
           membershipId: resolved.membership.id,
           couponId: coupon.couponId,
-          ...(action === "validate"
-            ? { clientRequestId: couponRequestId, locationId }
-            : {}),
         }),
       });
       const data = await response.json().catch(() => null);
       if (!response.ok)
         throw new Error(data?.error ?? "No pudimos actualizar el cupón.");
-      if (action === "validate") {
-        setValidatedLabel(data.coupon?.label ?? coupon.label);
-        setValidatedUnits(data.coupon?.unitsGranted ?? null);
-        setValidatedKind(coupon.kind);
-        setResolved((current) =>
-          current
-            ? {
-                ...current,
-                couponState:
-                  coupon.kind === "extra_stamps" ||
-                  coupon.kind === "extra_points"
-                    ? { status: "used_today", label: coupon.label }
-                    : { status: "validated", coupon },
-              }
-            : current,
-        );
-        setStage("coupon_done");
-      } else {
-        setResolved((current) =>
-          current ? { ...current, couponState: { status: "none" } } : current,
-        );
-        setCouponProductId(null);
-        setNotice("Cupón quitado");
-      }
+      setResolved((current) =>
+        current ? { ...current, couponState: { status: "none" } } : current,
+      );
+      setCouponProductId(null);
+      setNotice("Cupón quitado");
       router.refresh();
     } catch (cause) {
       setError(
@@ -383,44 +343,12 @@ export function CounterConsole({
           onSelectReward={setSelectedRewardId}
           couponProductId={couponProductId}
           onCouponProductId={setCouponProductId}
-          onValidateCoupon={() => void couponAction("validate")}
-          onRemoveCoupon={() => void couponAction("remove")}
+          onRemoveCoupon={() => void removeCoupon()}
           busy={busy}
           canConfirm={canConfirm}
           onConfirm={confirm}
           onCancel={reset}
         />
-      )}
-
-      {stage === "coupon_done" && resolved && (
-        <section className="counter-panel counter-done">
-          <p className="counter-check" aria-hidden>
-            ✓
-          </p>
-          <h2>Oferta válida</h2>
-          <p>{validatedLabel}</p>
-          {validatedUnits !== null && validatedKind && (
-            <p>
-              +{validatedUnits}{" "}
-              {unitLabel(
-                validatedKind === "extra_stamps" ? "stamps" : "points",
-                validatedUnits,
-              )}
-            </p>
-          )}
-          <div className="counter-actions">
-            <button
-              type="button"
-              className="counter-primary"
-              onClick={() => setStage("resolved")}
-            >
-              Continuar con el cliente
-            </button>
-            <button type="button" className="counter-secondary" onClick={reset}>
-              Escanear otro
-            </button>
-          </div>
-        </section>
       )}
 
       {stage === "done" && resolved && (
@@ -430,8 +358,7 @@ export function CounterConsole({
           displayName={resolved.consumer.displayName}
           currencyCode={currencyCode}
           couponKind={
-            resolved.couponState.status === "selected" ||
-            resolved.couponState.status === "validated"
+            resolved.couponState.status === "selected"
               ? resolved.couponState.coupon.kind
               : undefined
           }

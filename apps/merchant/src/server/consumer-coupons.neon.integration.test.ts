@@ -5,7 +5,7 @@ import { integrationEnabled } from "./counter-integration-support";
 import {
   type CouponWorld,
   chooseCoupon,
-  couponBody,
+  couponSaleBody,
   dropCouponWorld,
   newCouponCard,
   seedCouponWorld,
@@ -19,7 +19,7 @@ import {
 } from "@mi-pasaporte/db/schema";
 import { SESSION_COOKIE } from "@mi-pasaporte/domain/server/consumer/core";
 import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
-import { validateCoupon } from "./counter/coupon-validate";
+import { grantAccrual } from "./counter/grant";
 import { resolveScan } from "./counter/resolve";
 import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route";
 
@@ -30,9 +30,9 @@ import { GET } from "../../../consumer/src/app/api/public/consumer/coupons/route
  * since E3b (owner, 2026-09-27) the CALCULATED state — `valid` > `unavailable` (the business
  * is not active, ORACULO DE M5b) > history of `redeemed`/`expired` of the last 90 days.
  *
- * Spec 0148: a redemption is the consumer's CHOICE validated at the counter (`redeemSeeded`),
- * and one coupon per consumer + business + day — so the old redemption is validated and
- * backdated BEFORE today's. The list says `selected` on each coupon.
+ * Spec 0148: a redemption is the consumer's CHOICE applied at the counter (`redeemSeeded`, a
+ * sale since spec 0153), and one coupon per consumer + business + day — so the old redemption
+ * is sold and backdated BEFORE today's. The list says `selected` on each coupon.
  */
 
 const DAY = 86_400_000;
@@ -56,16 +56,16 @@ function request(sessionToken?: string): NextRequest {
   });
 }
 
-/** The consumer chooses `couponId` and the counter of `w` validates it (spec 0148). */
+/** The consumer chooses `couponId` and the counter of `w` applies it in a sale (spec 0153). */
 async function redeemSeeded(
   w: CouponWorld,
   card: Awaited<ReturnType<typeof newCouponCard>>,
   couponId: string,
 ) {
   await chooseCoupon({ consumerId: card.consumerId, couponId });
-  await validateCoupon(w.seed.business, w.seed.userId, {
-    ...couponBody(card, w.seed),
-    couponId,
+  await grantAccrual(w.seed.business, w.seed.userId, {
+    ...couponSaleBody(card, w.seed),
+    coupon: { couponId },
   });
 }
 
@@ -108,7 +108,7 @@ describe.skipIf(!integrationEnabled)("consumer coupons (spec 0106 E3)", () => {
         currencyCodeSnapshot: "ARS",
       })
       .where(eq(campaignCoupons.id, discount));
-    // … two older than 90 days (not shown) — the redeemed one validated and backdated FIRST
+    // … two older than 90 days (not shown) — the redeemed one sold and backdated FIRST
     // (spec 0148: one coupon per consumer + business + day) —, then one redeemed and one
     // expired (history).
     const oldSpent = await seedCampaignCoupon({

@@ -6,22 +6,26 @@ import {
   type OperatorBusiness,
   parseUuid,
 } from "@mi-pasaporte/domain/server/counter/core";
-import {
-  requireDate,
-  toDate,
-} from "@mi-pasaporte/domain/server/marketing/driver-values";
+import { requireDate } from "@mi-pasaporte/domain/server/marketing/driver-values";
 import type {
   CouponKind,
   DiscountUnit,
 } from "@mi-pasaporte/domain/server/marketing/reward-input";
-import {
-  type CouponStatus,
-  couponStatus,
-} from "@mi-pasaporte/domain/server/consumer/coupon-status";
 import { createdToday } from "./coupon-locks";
+import {
+  type CouponVerdict,
+  type VerdictFacts,
+  decideCouponVerdict,
+} from "./coupon-decision";
+import {
+  type VerdictFactsRow,
+  toVerdictFacts,
+  verdictFactsQuery,
+} from "./coupon-verdict";
 
 /**
- * WHAT THE COUNTER SEES OF THE CONSUMER'S COUPON (spec 0148 / ADR 0119 §2-§3, contract M0/M1):
+ * WHAT THE COUNTER SEES OF THE CONSUMER'S COUPON (spec 0148 / ADR 0119 §2-§3; spec 0153 /
+ * ADR 0120: the chosen coupon travels WITH ITS VERDICT, valid or not — contract M0/M1):
  * in `resolve` and in `GET /api/counter/coupon-state` (the poll — the consumer may choose
  * AFTER the scan). The decision is PURE (`decideCounterCouponState`); the facts are read
  * apart. The counter never gets a LIST of coupons: it cannot activate one (§3).
@@ -45,56 +49,54 @@ export type CounterCoupon = {
 };
 
 export type CounterCouponState =
-  | { status: "validated"; coupon: CounterCoupon }
+  | { status: "selected"; coupon: CounterCoupon; verdict: CouponVerdict }
   | { status: "used_today"; label: string }
-  | { status: "selected"; coupon: CounterCoupon }
   | { status: "hint"; count: number }
   | { status: "none" };
 
 export type CounterCouponFacts = {
   /** The operator's business. */
   businessId: string;
-  /** This consumer's redemption rows at this business created TODAY (local day). */
-  today: { kind: CouponKind; orderId: string | null; coupon: CounterCoupon }[];
-  /** The consumer's choice, of ANY business, with its E3 state. */
+  /** The labels of this consumer's redemption rows at this business created TODAY (local
+   * day), newest first. */
+  today: { label: string }[];
+  /** The consumer's choice, of ANY business. `verdictFacts`: read only for a coupon of THIS
+   * business (`null` for another's — the counter never judges a foreign coupon). */
   selection: {
     businessId: string;
-    status: CouponStatus;
     coupon: CounterCoupon;
+    verdictFacts: VerdictFacts | null;
   } | null;
   /** This consumer's `valid` (E3) coupons of this business. */
   validCount: number;
 };
 
-const isExtra = (kind: CouponKind) =>
-  kind === "extra_stamps" || kind === "extra_points";
-
 /**
- * PURE. The first that applies:
- *  1. `validated` — a row of today WITHOUT a sale and not `extra_*` (an `extra_*` is consumed
- *     when validated);
- *  2. `used_today` — any other row of today (sold, or `extra_*`): the daily limit is spent;
- *  3. `selected` — the consumer's choice is a coupon of THIS business, `valid` in E3;
- *  4. `hint` — the consumer has ≥ 1 `valid` coupon of this business (the counter only sees
+ * PURE. The first that applies (contract 0153 M0/M1):
+ *  1. `selected` — the consumer's choice is a coupon of THIS business, valid OR NOT: it
+ *     carries `decideCouponVerdict` — the same rule the sale applies under its locks;
+ *  2. `used_today` — a redemption row of today here: the daily limit is spent;
+ *  3. `hint` — the consumer has ≥ 1 `valid` coupon of this business (the counter only sees
  *     the advice to choose one in the app);
- *  5. `none`.
+ *  4. `none`.
+ * A choice of ANOTHER business is not this counter's: it falls through to 2-4.
  */
 export function decideCounterCouponState(
   facts: CounterCouponFacts,
 ): CounterCouponState {
-  const validated = facts.today.find(
-    (row) => row.orderId === null && !isExtra(row.kind),
-  );
-  if (validated) return { status: "validated", coupon: validated.coupon };
-  const [used] = facts.today;
-  if (used) return { status: "used_today", label: used.coupon.label };
   const { selection } = facts;
   if (
     selection !== null &&
     selection.businessId === facts.businessId &&
-    selection.status === "valid"
+    selection.verdictFacts !== null
   )
-    return { status: "selected", coupon: selection.coupon };
+    return {
+      status: "selected",
+      coupon: selection.coupon,
+      verdict: decideCouponVerdict(selection.verdictFacts),
+    };
+  const [used] = facts.today;
+  if (used) return { status: "used_today", label: used.label };
   if (facts.validCount > 0) return { status: "hint", count: facts.validCount };
   return { status: "none" };
 }
@@ -147,25 +149,22 @@ export async function readCounterCouponFacts(
 ): Promise<CounterCouponFacts> {
   const db = getDb();
   const at = now.toISOString();
-  const today = await db.execute<CouponRow & { order_id: string | null }>(sql`
-    select ${COUPON_COLUMNS}, cr.order_id
+  const today = await db.execute<{ label_snapshot: string }>(sql`
+    select cr.label_snapshot
     from core.coupon_redemption cr
     join core.business b on b.id = cr.business_id
-    join core.campaign_coupon c on c.id = cr.coupon_id
-    left join core.product p on p.id = c.product_id
     where cr.business_id = ${businessId} and cr.consumer_id = ${consumerId}
       and ${createdToday(now)}
     order by cr.created_at desc, cr.id
   `);
   const selected = await db.execute<
-    CouponRow & { business_status: string; redeemed_at: unknown }
+    CouponRow & { campaign_id: string; membership_id: string | null }
   >(sql`
-    select ${COUPON_COLUMNS}, b.status as business_status, cr.created_at as redeemed_at
+    select ${COUPON_COLUMNS}, c.campaign_id, c.membership_id
     from consumer.consumer_account a
     join core.campaign_coupon c on c.id = a.selected_coupon_id
     join core.business b on b.id = c.business_id
     left join core.product p on p.id = c.product_id
-    left join core.coupon_redemption cr on cr.coupon_id = c.id
     where a.id = ${consumerId}
   `);
   const valid = await db.execute<{ n: number }>(sql`
@@ -178,24 +177,38 @@ export async function readCounterCouponFacts(
       and not exists (select 1 from core.coupon_redemption cr where cr.coupon_id = c.id)
   `);
   const [choice] = selected.rows;
+  let verdictFacts: VerdictFacts | null = null;
+  if (choice && choice.business_id === businessId) {
+    const coupon = {
+      id: choice.id,
+      campaignId: choice.campaign_id,
+      kindSnapshot: choice.kind_snapshot,
+      extraUnitsSnapshot:
+        choice.extra_units_snapshot === null
+          ? null
+          : Number(choice.extra_units_snapshot),
+      validFrom: requireDate(choice.valid_from),
+      validUntil: requireDate(choice.valid_until),
+    };
+    const facts = await db.execute<VerdictFactsRow>(
+      verdictFactsQuery({
+        businessId,
+        consumerId,
+        membershipId: choice.membership_id,
+        coupon,
+        now,
+      }),
+    );
+    verdictFacts = toVerdictFacts(facts.rows[0], coupon, now);
+  }
   return {
     businessId,
-    today: today.rows.map((row) => ({
-      kind: row.kind_snapshot,
-      orderId: row.order_id,
-      coupon: toCounterCoupon(row),
-    })),
+    today: today.rows.map((row) => ({ label: row.label_snapshot })),
     selection: choice
       ? {
           businessId: choice.business_id,
-          status: couponStatus({
-            redeemedAt: toDate(choice.redeemed_at),
-            validFrom: requireDate(choice.valid_from),
-            validUntil: requireDate(choice.valid_until),
-            businessStatus: choice.business_status,
-            now,
-          }).status,
           coupon: toCounterCoupon(choice),
+          verdictFacts,
         }
       : null,
     validCount: Number(valid.rows[0]?.n ?? 0),

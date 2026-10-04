@@ -87,12 +87,12 @@ describe("el gate de email del mostrador (spec 0082 §2)", () => {
    * sesión por su cuenta quedaría afuera del gate sin que ningún caso de abajo lo note.
    */
   it("las CUATRO rutas del mostrador entran por `requireOperator`", () => {
-    // Spec 0148: el canje de cupón de la 0065 C se borró; sus tres reemplazos entran igual.
+    // Spec 0148: el canje de cupón de la 0065 C se borró; sus reemplazos entran igual (spec
+    // 0153: `coupon-validate` también se borró).
     const rutas = [
       "resolve",
       "grant",
       "redeem",
-      "coupon-validate",
       "coupon-remove",
       "coupon-state",
     ];

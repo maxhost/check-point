@@ -9,7 +9,6 @@ export function CouponPanel({
   cart,
   productId,
   onProductId,
-  onValidate,
   onRemove,
 }: {
   state: CounterCouponState;
@@ -18,7 +17,6 @@ export function CouponPanel({
   cart: CartLine[];
   productId: string | null;
   onProductId: (id: string | null) => void;
-  onValidate: () => void;
   onRemove: () => void;
 }) {
   if (state.status === "none") return null;
@@ -50,9 +48,7 @@ export function CouponPanel({
   return (
     <div className="counter-coupon">
       <div>
-        <p className="eyebrow">
-          {state.status === "validated" ? "Cupón validado" : "Cupón elegido"}
-        </p>
+        <p className="eyebrow">Cupón elegido</p>
         <strong>{coupon.label}</strong>
         {coupon.rule && <span>{coupon.rule}</span>}
         {coupon.kind === "discount" && (
@@ -76,16 +72,6 @@ export function CouponPanel({
         )}
       </div>
       <div className="counter-coupon-actions">
-        {state.status === "selected" && coupon.kind !== "discount" && (
-          <button
-            className="counter-primary"
-            type="button"
-            disabled={busy}
-            onClick={onValidate}
-          >
-            Validar
-          </button>
-        )}
         {canRemove && (
           <button
             className="counter-secondary"

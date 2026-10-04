@@ -180,19 +180,6 @@ export async function choose(customer: Customer, couponId: string, now?: Date) {
     throw new Error(`choose: ${result.status} ${result.code}`);
 }
 
-export function validateBody(
-  world: CycleWorld,
-  customer: Customer,
-  couponId: string,
-) {
-  return {
-    clientRequestId: randomUUID(),
-    membershipId: customer.membershipId,
-    couponId,
-    locationId: world.seed.locationId,
-  };
-}
-
 export function sell(
   world: CycleWorld,
   customer: Customer,

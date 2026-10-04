@@ -32,7 +32,13 @@ export type GrantResult = {
     total: string;
     /** The sale before the coupon (`total` + `coupon.discountAmount`). */
     grossTotal: string;
-    coupon: { label: string; discountAmount: string } | null;
+    /** Spec 0153: `extraUnits` — the units an `extra_*` coupon added (null for the rest);
+     * `balanceAfter` is then the final balance, the sale's plus those. */
+    coupon: {
+      label: string;
+      discountAmount: string;
+      extraUnits: number | null;
+    } | null;
   };
 };
 

@@ -178,12 +178,13 @@ describe("decideCouponDiscount (spec 0148)", () => {
       ).toEqual({ ok: true, discountCents: 0 });
   });
 
-  it("extra stamps/points never enter a sale → 409 coupon_not_selected", () => {
+  it("extra stamps/points take nothing off the sale: they credit with it (spec 0153)", () => {
     for (const kind of ["extra_stamps", "extra_points"] as const)
-      expect(
-        decideCouponDiscount(
-          input({ kind, discountUnit: null, discountValue: null }),
-        ),
-      ).toMatchObject({ ok: false, code: "coupon_not_selected" });
+      for (const mode of ["detailed", "quick"] as const)
+        expect(
+          decideCouponDiscount(
+            input({ kind, mode, discountUnit: null, discountValue: null }),
+          ),
+        ).toEqual({ ok: true, discountCents: 0 });
   });
 });

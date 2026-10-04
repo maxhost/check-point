@@ -6,15 +6,16 @@ import {
 } from "./counter-integration-support";
 import {
   type CouponWorld,
-  chooseAndValidate,
+  chooseAndSell,
   chooseCoupon,
-  couponBody,
+  couponSaleBody,
   dropCouponWorld,
   newCouponCard,
   readCoupons,
   seedCouponWorld,
+  sellCoupon,
 } from "./counter-coupon-support";
-import { validateCoupon } from "./counter/coupon-validate";
+import { grantAccrual } from "./counter/grant";
 
 /**
  * Spec 0065 phase C — the coupon under REAL concurrency against Neon.
@@ -32,8 +33,8 @@ import { validateCoupon } from "./counter/coupon-validate";
  * A single pair of requests may not interleave, so the same-coupon race repeats over fresh
  * cards; the cap race is deterministic by construction.
  *
- * Spec 0148: the counter VALIDATES (`validateCoupon`) a coupon the consumer CHOSE, so every
- * card is chosen once before its race (`chooseCoupon`).
+ * Spec 0148 / 0153: the counter's SALE applies a coupon the consumer CHOSE, so every card is
+ * chosen once before its race (`chooseCoupon`) and the racers are sales (`grantAccrual`).
  */
 
 const RACES = 4;
@@ -57,12 +58,12 @@ describe.skipIf(!integrationEnabled)(
       it(`race ${attempt}/${RACES}: ${CONCURRENCY} concurrent redemptions of the SAME coupon leave ONE row`, async () => {
         const w = await world(`Carrera mismo cupon ${attempt}`);
         const card = await newCouponCard(w);
-        const body = couponBody(card, w.seed, randomUUID());
+        const body = couponSaleBody(card, w.seed, randomUUID());
         await chooseCoupon(card);
 
         const settled = await Promise.allSettled(
           Array.from({ length: CONCURRENCY }, () =>
-            validateCoupon(w.seed.business, w.seed.userId, body),
+            grantAccrual(w.seed.business, w.seed.userId, body),
           ),
         );
 
@@ -82,29 +83,20 @@ describe.skipIf(!integrationEnabled)(
     it("DOS OPERADORES sobre el mismo cupón: una fila, un 409 con nombre", async () => {
       // LA CARRERA QUE EL DoD PIDE Y QUE NINGUNA DE LAS 4 DE ARRIBA CUBRIA (revisión
       // independiente de la fase C): las cuatro comparten UN `clientRequestId` —el
-      // `couponBody(…, randomUUID())` está FUERA del `Promise.allSettled`—, así que lo que
+      // `couponSaleBody(…, randomUUID())` está FUERA del `Promise.allSettled`—, así que lo que
       // pinnean es la concurrencia del REINTENTO IDEMPOTENTE. Dos mostradores con dos
       // dispositivos mandan DOS identificadores distintos, y ahí el que decide es el unique
       // `coupon_id`: uno entra y el otro tiene que salir con un 409 que se pueda leer, nunca
       // con un 503 ni con una segunda fila.
-      // Spec 0148: the winner spends the consumer's CHOICE in its transaction, so the loser —
-      // serialized behind the locks — is refused with `coupon_not_selected` (the old
-      // `already_redeemed` stays as the `23505` backstop's answer).
+      // Spec 0148 / 0153: the winning SALE spends the consumer's CHOICE in its transaction, so
+      // the loser — serialized behind the locks — is refused with `coupon_not_selected`.
       const w = await world("Carrera dos operadores");
       const card = await newCouponCard(w);
       await chooseCoupon(card);
 
       const settled = await Promise.allSettled([
-        validateCoupon(
-          w.seed.business,
-          w.seed.userId,
-          couponBody(card, w.seed),
-        ),
-        validateCoupon(
-          w.seed.business,
-          w.seed.userId,
-          couponBody(card, w.seed),
-        ),
+        sellCoupon(w, card),
+        sellCoupon(w, card),
       ]);
 
       expect(await readCoupons(w.campaignId)).toHaveLength(1);
@@ -121,7 +113,7 @@ describe.skipIf(!integrationEnabled)(
       // `FOR UPDATE` both readers see `count = 1 < 2` and both insert.
       const w = await world("Carrera cupo", 2);
       const spent = await newCouponCard(w);
-      await chooseAndValidate(w, spent);
+      await chooseAndSell(w, spent);
       expect(await readCoupons(w.campaignId)).toHaveLength(1);
 
       const a = await newCouponCard(w);
@@ -129,8 +121,8 @@ describe.skipIf(!integrationEnabled)(
       await chooseCoupon(a);
       await chooseCoupon(b);
       const settled = await Promise.allSettled([
-        validateCoupon(w.seed.business, w.seed.userId, couponBody(a, w.seed)),
-        validateCoupon(w.seed.business, w.seed.userId, couponBody(b, w.seed)),
+        sellCoupon(w, a),
+        sellCoupon(w, b),
       ]);
 
       const rows = await readCoupons(w.campaignId);
@@ -148,7 +140,7 @@ describe.skipIf(!integrationEnabled)(
       // ORACULO DE M4. The credit happens inside the redemption's transaction, after the
       // locks: the loser is refused (`coupon_not_selected` since spec 0148) before crediting, or its insert
       // aborts and the credit rolls back with it. Crediting in another transaction, or
-      // before the locks, gives 77 + 5 + 5.
+      // before the locks, gives 77 + 5 + 5. Spec 0153: the racers are 0.00 sales (0 units).
       const w = await world("Carrera extras");
       const card = await newCouponCard(w, {
         extra: { kind: "extra_points", units: 5 },
@@ -156,13 +148,7 @@ describe.skipIf(!integrationEnabled)(
       await chooseCoupon(card);
 
       await Promise.allSettled(
-        Array.from({ length: CONCURRENCY }, () =>
-          validateCoupon(
-            w.seed.business,
-            w.seed.userId,
-            couponBody(card, w.seed),
-          ),
-        ),
+        Array.from({ length: CONCURRENCY }, () => sellCoupon(w, card)),
       );
 
       expect(await readCoupons(w.campaignId)).toHaveLength(1);

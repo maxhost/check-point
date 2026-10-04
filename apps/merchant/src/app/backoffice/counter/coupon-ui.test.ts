@@ -56,7 +56,6 @@ describe("coupon UI (0149)", () => {
       cart: [],
       productId: null,
       onProductId: () => {},
-      onValidate: () => {},
       onRemove: () => {},
     };
     const selected = renderToStaticMarkup(

@@ -8,9 +8,9 @@ import {
 import { CounterError } from "@mi-pasaporte/domain/server/counter/core";
 
 /**
- * THE LOCKS AND THE DAY of every counter write over a coupon (spec 0148): validate, remove and
- * the sale with a coupon. ALWAYS in this order — a different order between two writers is a
- * deadlock:
+ * THE LOCKS AND THE DAY of every counter write over a coupon (spec 0148; spec 0153 deleted
+ * «validate»): remove and the sale with a coupon. ALWAYS in this order — a different order
+ * between two writers is a deadlock:
  *
  *  1. `core.campaign` `FOR UPDATE` — serializes every redemption of the campaign (its cap);
  *  2. `core.campaign_coupon` `FOR UPDATE` — this coupon;
@@ -127,40 +127,13 @@ export async function lockBusinessCustomer(
 
 /**
  * «Hoy» is the BUSINESS-LOCAL day (`business.timezone`), the same notion as the counter's
- * history (`history.ts`). `cr` is the redemption, `b` its business. A validated coupon of a
- * previous day is CONSUMED by this condition alone — no cron (spec 0148, «Cierre del dia»).
+ * history (`history.ts`). `cr` is the redemption, `b` its business. It feeds the daily limit
+ * (ADR 0119 §14: one coupon per consumer + business + local day — ANY redemption row of
+ * today counts; a reward of the loyalty program does not, §15) in the verdict's facts
+ * (`coupon-verdict.ts`), and `couponState`'s `used_today`.
  */
 export function createdToday(now: Date) {
   return sql`(cr.created_at at time zone b.timezone)::date = (${now.toISOString()}::timestamptz at time zone b.timezone)::date`;
-}
-
-/**
- * THE DAILY LIMIT (ADR 0119 §14): one coupon per consumer + business + local day — ANY
- * redemption row of today counts (validated, sold or `extra_*`); a reward of the loyalty
- * program (`reward_redemption`) does not (§15). `exceptId`: the coupon's own validated row,
- * when the sale ties it. Runs under the three locks.
- */
-export async function assertDailyLimit(
-  tx: DbTransaction,
-  businessId: string,
-  consumerId: string,
-  now: Date,
-  exceptId: string | null = null,
-): Promise<void> {
-  const result = await tx.execute<{ id: string }>(sql`
-    select cr.id from core.coupon_redemption cr
-    join core.business b on b.id = cr.business_id
-    where cr.business_id = ${businessId} and cr.consumer_id = ${consumerId}
-      and ${createdToday(now)}
-      ${exceptId ? sql`and cr.id <> ${exceptId}` : sql``}
-    limit 1
-  `);
-  if (result.rows.length > 0)
-    throw new CounterError(
-      409,
-      "coupon_daily_limit",
-      "Este cliente ya usó un cupón hoy en tu comercio.",
-    );
 }
 
 /** The consumer's current choice (`consumer_account.selected_coupon_id`). */

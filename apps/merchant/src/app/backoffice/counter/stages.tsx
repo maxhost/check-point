@@ -75,7 +75,6 @@ export function ResolvedStage({
   onSelectReward,
   couponProductId,
   onCouponProductId,
-  onValidateCoupon,
   onRemoveCoupon,
   busy,
   canConfirm,
@@ -101,7 +100,6 @@ export function ResolvedStage({
   onSelectReward: (rewardId: string) => void;
   couponProductId: string | null;
   onCouponProductId: (id: string | null) => void;
-  onValidateCoupon: () => void;
   onRemoveCoupon: () => void;
   busy: boolean;
   canConfirm: boolean;
@@ -131,7 +129,6 @@ export function ResolvedStage({
         cart={cart}
         productId={couponProductId}
         onProductId={onCouponProductId}
-        onValidate={onValidateCoupon}
         onRemove={onRemoveCoupon}
       />
 

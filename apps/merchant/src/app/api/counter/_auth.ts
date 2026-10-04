@@ -51,7 +51,7 @@ export async function requireOperator(
    * usan las otras diez: quien no tiene el permiso no se entera del estado del negocio.
    *
    * Cubre TODAS las rutas del mostrador (`resolve`, `grant`, `redeem` y, desde la spec 0148,
-   * `coupon-validate`, `coupon-remove`, `coupon-state`) porque todas pasan por acá.
+   * `coupon-remove`, `coupon-state`) porque todas pasan por acá.
    */
   if (!hasScope(role, operator.permissions, "counter")) {
     return {
@@ -85,7 +85,7 @@ export async function requireOperator(
    * `suspended` recibe `email_not_verified`, no `business_suspended`.
    *
    * Cubre TODAS las rutas del mostrador (`resolve`, `grant`, `redeem` y, desde la spec 0148,
-   * `coupon-validate`, `coupon-remove`, `coupon-state`) porque todas pasan por acá.
+   * `coupon-remove`, `coupon-state`) porque todas pasan por acá.
    * `resolve` es una lectura y se gatea igual, a propósito: es el primer paso
    * de acreditar, y la decisión del owner fue «el mostrador» como unidad, no ruta por ruta.
    */

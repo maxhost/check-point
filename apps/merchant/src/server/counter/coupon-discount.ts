@@ -15,7 +15,8 @@ import type {
  *    line → 409 `coupon_product_missing`; a 2x1 needs quantity ≥ 2 → 409 `coupon_quantity`;
  *  - `free_product` / `two_for_one` in a QUICK sale, and `custom` always: 0 — the counter
  *    types the value, the label goes as a note (§8);
- *  - `extra_*`: never in a sale (consumed when validated) → 409 `coupon_not_selected`.
+ *  - `extra_*`: 0 — its stamps/points are credited with the sale (spec 0153 / ADR 0120 §5,
+ *    `grantCouponExtras`), nothing is taken off.
  */
 
 export type DiscountLine = {
@@ -52,12 +53,8 @@ export function decideCouponDiscount(
   input: CouponDiscountInput,
 ): CouponDiscountDecision {
   const { kind, totalCents } = input;
-  if (kind === "extra_stamps" || kind === "extra_points")
-    return no(
-      "coupon_not_selected",
-      "Este cupón se canjea al validarlo, no en la venta.",
-    );
-  if (kind === "custom") return { ok: true, discountCents: 0 };
+  if (kind === "custom" || kind === "extra_stamps" || kind === "extra_points")
+    return { ok: true, discountCents: 0 };
   if (kind === "discount") {
     const value = Number(input.discountValue ?? 0);
     if (input.discountUnit === "percent")

@@ -1,6 +1,4 @@
-import { eq, sql } from "drizzle-orm";
 import { withDbTransaction } from "@mi-pasaporte/db";
-import { couponRedemptions } from "@mi-pasaporte/db/schema";
 import { computeAccrual } from "@mi-pasaporte/domain/server/loyalty-program/accrual";
 import type { AccrualInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
 import {
@@ -15,34 +13,35 @@ import {
   readOrderByRequest,
 } from "./orders";
 import {
-  assertDailyLimit,
   clearSelectionIf,
-  createdToday,
   lockBusinessCustomer,
   lockCounterCoupon,
   selectedCouponOf,
 } from "./coupon-locks";
-import {
-  assertCouponRedeemable,
-  insertCounterRedemption,
-} from "./coupon-store";
+import { insertCounterRedemption } from "./coupon-store";
+import { assertCouponVerdict } from "./coupon-verdict";
 import { decideCouponDiscount } from "./coupon-discount";
+import { grantCouponExtras } from "./coupon-extras";
 
 /**
- * THE SALE WITH A COUPON (spec 0148 / ADR 0119 §5-§7, §12-§13; contract M4): `POST
- * /api/counter/grant` with `coupon`. One INTERACTIVE transaction:
+ * THE SALE WITH A COUPON (spec 0148 / ADR 0119 §5-§7, §12-§13; spec 0153 / ADR 0120: the
+ * system validates, not the counter; contract M4): `POST /api/counter/grant` with `coupon`.
+ * One INTERACTIVE transaction:
  *
  *  1. locks in the declared order (`coupon-locks.ts`); idempotency — an order with this
  *     `clientRequestId` is returned as it is, never re-decided;
- *  2. the coupon has to be CHOSEN by the consumer, or VALIDATED today at this business;
- *  3. the daily limit (its own validated row aside) and, when it was only chosen, validity
- *     and cap (`decideCouponRedemption`);
- *  4. the discount (`coupon-discount.ts`, pure), the order's total = the NET, and the units
- *     over the NET (§12: «si el pago deberia ser 20 y el descuento lo deja en 10, se otorgan
- *     10 puntos»);
- *  5. the order (`persistGrant` in this transaction), then the coupon is tied to it: the
- *     validated row gets `order_id`/`discount_amount`, or a chosen one gets its row now —
- *     with its visit and turn outcome, and no coupon push (the order enqueues its own);
+ *  2. the coupon has to be the consumer's CURRENT choice (else 409 `coupon_not_selected`:
+ *     they changed it — the counter re-reads M1);
+ *  3. its VERDICT (`decideCouponVerdict`, the same rule `couponState` paints) over facts
+ *     re-read under the locks: an invalid one is a 409 with the verdict's `code`;
+ *  4. the discount (`coupon-discount.ts`, pure; `extra_*` takes 0 off), the order's total =
+ *     the NET, and the units over the NET (§12: «si el pago deberia ser 20 y el descuento lo
+ *     deja en 10, se otorgan 10 puntos»);
+ *  5. the order (`persistGrant` in this transaction), THEN an `extra_*` coupon credits its
+ *     units (`grantCouponExtras`, ADR 0120 §5) — after the order, so the card is taken by the
+ *     sale first and then the program, like every balance writer; a refusal rolls the whole
+ *     sale back —, then the coupon's row tied to the order, with its visit and turn outcome,
+ *     and no coupon push (the order enqueues its own);
  *  6. the choice is spent.
  */
 
@@ -95,36 +94,13 @@ export async function grantWithCoupon(ctx: {
       );
       if (previous) return previous;
 
-      // (2) Chosen, or validated today here (a row of another day, sold or `extra_*` is
-      // consumed — the same answer: the consumer has nothing to apply).
-      const own = await tx.execute<{
-        id: string;
-        order_id: string | null;
-        kind_snapshot: string;
-        today: boolean;
-      }>(sql`
-        select cr.id, cr.order_id, cr.kind_snapshot, ${createdToday(now)} as today
-        from core.coupon_redemption cr
-        join core.business b on b.id = cr.business_id
-        where cr.coupon_id = ${locked.coupon.id}
-      `);
-      const [row] = own.rows;
-      let validatedId: string | null = null;
-      if (row) {
-        if (
-          row.order_id !== null ||
-          row.today !== true ||
-          row.kind_snapshot === "extra_stamps" ||
-          row.kind_snapshot === "extra_points"
-        )
-          throw new CounterError(409, "coupon_not_selected", NOT_SELECTED);
-        validatedId = row.id;
-      } else if ((await selectedCouponOf(tx, consumerId)) !== locked.coupon.id)
+      // (2) The consumer's CURRENT choice — nothing else applies at the counter.
+      if ((await selectedCouponOf(tx, consumerId)) !== locked.coupon.id)
         throw new CounterError(409, "coupon_not_selected", NOT_SELECTED);
 
-      // (3) One coupon per consumer + business + day; validity and cap if only chosen.
-      await assertDailyLimit(tx, businessId, consumerId, now, validatedId);
-      if (validatedId === null) await assertCouponRedeemable(tx, locked, now);
+      // (3) The verdict, under the locks: dates, redeemed, one a day, cap, program.
+      const membershipId = locked.coupon.membershipId ?? order.membershipId;
+      await assertCouponVerdict(tx, { locked, businessId, membershipId, now });
 
       // (4) Discount, net total, units over the net.
       const grossCents = toCents(ctx.grossTotal);
@@ -150,7 +126,7 @@ export async function grantWithCoupon(ctx: {
       const discountAmount = fromCents(decision.discountCents);
       const units = computeAccrual(ctx.accrual, Number(net));
 
-      // (5) The order, then the coupon tied to it.
+      // (5) The order, then the coupon's extra units, then its row tied to the order.
       const granted = await persistGrant({ ...order, total: net, units }, tx);
       if (!granted)
         throw new CounterError(
@@ -158,30 +134,35 @@ export async function grantWithCoupon(ctx: {
           "grant_failed",
           "No pudimos acreditar. Prueba de nuevo.",
         );
-      if (validatedId !== null)
-        await tx
-          .update(couponRedemptions)
-          .set({ orderId: granted.id, discountAmount })
-          .where(eq(couponRedemptions.id, validatedId));
-      else
-        await insertCounterRedemption(tx, {
-          locked,
-          businessId,
-          membershipId: locked.coupon.membershipId ?? order.membershipId,
-          locationId: order.locationId,
-          createdByUserId: order.createdByUserId,
-          clientRequestId,
-          grant: null,
-          orderId: granted.id,
-          discountAmount,
-          push: false,
-          now,
-        });
+      const extra = await grantCouponExtras(tx, {
+        businessId,
+        membershipId,
+        kindSnapshot: locked.coupon.kindSnapshot,
+        extraUnitsSnapshot: locked.coupon.extraUnitsSnapshot,
+      });
+      await insertCounterRedemption(tx, {
+        locked,
+        businessId,
+        membershipId,
+        locationId: order.locationId,
+        createdByUserId: order.createdByUserId,
+        clientRequestId,
+        grant: extra,
+        orderId: granted.id,
+        discountAmount,
+        now,
+      });
       // (6) The choice is spent.
       await clearSelectionIf(tx, consumerId, locked.coupon.id);
       return {
         ...granted,
-        coupon: { label: locked.coupon.labelSnapshot, discountAmount },
+        // The FINAL balance: the sale's, plus the coupon's extra when there was one.
+        balanceAfter: extra?.balanceAfter ?? granted.balanceAfter,
+        coupon: {
+          label: locked.coupon.labelSnapshot,
+          discountAmount,
+          extraUnits: extra?.unitsGranted ?? null,
+        },
       };
     });
   } catch (error) {

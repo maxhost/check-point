@@ -8,9 +8,9 @@ import {
   COUPON_COST,
   COUPON_LABEL,
   type CouponWorld,
-  chooseAndValidate,
+  chooseAndSell,
   chooseCoupon,
-  couponBody,
+  couponSaleBody,
   dropCouponWorld,
   newCouponCard,
   readCoupons,
@@ -18,7 +18,7 @@ import {
   readTurn,
   seedCouponWorld,
 } from "./counter-coupon-support";
-import { validateCoupon } from "./counter/coupon-validate";
+import { grantAccrual } from "./counter/grant";
 import { resolveScan } from "./counter/resolve";
 import { eq } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
@@ -30,8 +30,9 @@ import { campaigns } from "@mi-pasaporte/db/schema";
  * Every assertion that carries weight reads the DATABASE, never the returned object: an
  * API that reports a state it did not write is the failure ADR 0054 exists about.
  *
- * Spec 0148: the consumer CHOOSES the coupon in the PWA and the counter VALIDATES it
- * (`chooseAndValidate`); the scan paints `couponState` instead of the old single coupon.
+ * Spec 0148: the consumer CHOOSES the coupon in the PWA; the scan paints `couponState` instead
+ * of the old single coupon. Spec 0153: the counter's SALE applies it (`chooseAndSell`, a
+ * quick sale of 0.00 unless a case says otherwise) — there is no «validate».
  */
 describe.skipIf(!integrationEnabled)(
   "coupon redemption (spec 0065 C / 0102)",
@@ -46,7 +47,7 @@ describe.skipIf(!integrationEnabled)(
       await dropCouponWorld(world);
     }, 60_000);
 
-    it("the scan shows the chosen coupon, and then that it was validated", async () => {
+    it("the scan shows the chosen coupon with its verdict, and an exact allow-list", async () => {
       const card = await newCouponCard(world);
 
       // Not chosen yet: the counter only sees the advice (ADR 0119 §3).
@@ -62,6 +63,7 @@ describe.skipIf(!integrationEnabled)(
           label: COUPON_LABEL,
           validUntil: world.endsAt,
         },
+        verdict: { valid: true },
       });
       // EXACT allow-list, the shape `counter-redeem-surfaces` pins for the rest of the DTO
       // and cannot pin here (its world has no campaign). Any new field — whatever it is
@@ -82,28 +84,15 @@ describe.skipIf(!integrationEnabled)(
         "rule",
         "validUntil",
       ]);
-
-      await validateCoupon(
-        world.seed.business,
-        world.seed.userId,
-        couponBody(card, world.seed),
-      );
-
-      // Validated, not consumed: the counter sees it as such until the sale ties it.
-      const after = await resolveScan(world.seed.business, card.qrToken);
-      expect(after.couponState).toMatchObject({
-        status: "validated",
-        coupon: { couponId: card.couponId },
-      });
     }, 120_000);
 
     it("writes the row and the outcome, and does NOT touch points or stamps", async () => {
       const card = await newCouponCard(world);
       const before = await readBalances(card.membershipId);
 
-      const result = await chooseAndValidate(world, card);
+      const result = await chooseAndSell(world, card);
 
-      expect(result.coupon.label).toBe(COUPON_LABEL);
+      expect(result.order.coupon?.label).toBe(COUPON_LABEL);
       const rows = (await readCoupons(world.campaignId)).filter(
         (row) => row.couponId === card.couponId,
       );
@@ -117,7 +106,8 @@ describe.skipIf(!integrationEnabled)(
       expect(turn.outcome).toBe("coupon_redeemed");
       expect(turn.outcomeRedemptionId).toBe(rows[0].id);
       expect(turn.outcomeAt).not.toBeNull();
-      // By SQL, before and after: a coupon is not a redemption of the loyalty balance.
+      // By SQL, before and after: a coupon is not a redemption of the loyalty balance (the
+      // sale is 0.00, so it grants 0 units: what is measured is the coupon alone).
       expect(await readBalances(card.membershipId)).toEqual(before);
       expect(before.points).toBeGreaterThan(0);
     }, 120_000);
@@ -134,9 +124,9 @@ describe.skipIf(!integrationEnabled)(
         .where(eq(campaigns.id, world.campaignId));
 
       try {
-        const result = await chooseAndValidate(world, card);
+        const result = await chooseAndSell(world, card);
 
-        expect(result.coupon.label).toBe(COUPON_LABEL);
+        expect(result.order.coupon?.label).toBe(COUPON_LABEL);
         const [row] = (await readCoupons(world.campaignId)).filter(
           (r) => r.couponId === card.couponId,
         );
@@ -144,9 +134,6 @@ describe.skipIf(!integrationEnabled)(
           labelSnapshot: COUPON_LABEL,
           costSnapshot: COUPON_COST,
         });
-        const pushes = await readPushes(card.consumerId);
-        expect(pushes).toHaveLength(1);
-        expect(pushes[0].body).toContain(COUPON_LABEL);
       } finally {
         // In a `finally` on purpose: the other cases SHARE this world, so a red here must
         // not leave the campaign renamed and turn the next case red for the wrong reason
@@ -158,56 +145,43 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 120_000);
 
-    it("enqueues ONE transactional notice carrying the label snapshot", async () => {
+    it("the same clientRequestId answers 200 with the SAME order and row, never 409", async () => {
       const card = await newCouponCard(world);
-
-      await chooseAndValidate(world, card);
-
-      const pushes = await readPushes(card.consumerId);
-      expect(pushes).toHaveLength(1);
-      // `transactional`, not `campaign`: it is the receipt of something that just
-      // happened at the counter, so it is not subject to the marketing cooldown.
-      expect(pushes[0].class).toBe("transactional");
-      expect(pushes[0].body).toContain(COUPON_LABEL);
-    }, 120_000);
-
-    it("the same clientRequestId answers 200 with the SAME row, never 409", async () => {
-      const card = await newCouponCard(world);
-      const body = couponBody(card, world.seed, randomUUID());
+      const body = couponSaleBody(card, world.seed, randomUUID(), "3.00");
       await chooseCoupon(card);
 
-      const first = await validateCoupon(
+      const first = await grantAccrual(
         world.seed.business,
         world.seed.userId,
         body,
       );
-      const second = await validateCoupon(
+      const second = await grantAccrual(
         world.seed.business,
         world.seed.userId,
         body,
       );
 
-      expect(second.coupon.label).toBe(first.coupon.label);
+      expect(second.order).toEqual(first.order);
       expect(
         (await readCoupons(world.campaignId)).filter(
           (row) => row.couponId === card.couponId,
         ),
       ).toHaveLength(1);
-      // And the retry did NOT re-notify: one push, not two.
+      // And the retry did NOT re-notify: the sale's one push, not two.
       expect(await readPushes(card.consumerId)).toHaveLength(1);
     }, 120_000);
 
-    it("a DIFFERENT clientRequestId over a validated coupon is 409 coupon_not_selected", async () => {
-      // Spec 0148: the validation SPENDS the consumer's choice, so a second request with
-      // another key finds nothing chosen — before the `already_redeemed` of the decision.
+    it("a DIFFERENT clientRequestId over a sold coupon is 409 coupon_not_selected", async () => {
+      // Spec 0148: the sale SPENDS the consumer's choice, so a second request with another
+      // key finds nothing chosen — before the `already_redeemed` of the verdict.
       const card = await newCouponCard(world);
-      await chooseAndValidate(world, card);
+      await chooseAndSell(world, card);
 
       await expect(
-        validateCoupon(
+        grantAccrual(
           world.seed.business,
           world.seed.userId,
-          couponBody(card, world.seed),
+          couponSaleBody(card, world.seed),
         ),
       ).rejects.toMatchObject({ status: 409, code: "coupon_not_selected" });
       expect(
@@ -220,14 +194,14 @@ describe.skipIf(!integrationEnabled)(
     it("(c) a coupon of ANOTHER business is 404 unknown_coupon, never 403", async () => {
       const other = await seedCouponWorld("Cupon ajeno");
       try {
-        // Spec 0148: the validation names a membership of THIS business; the coupon is the
-        // other business's (same consumer would not change it: it is scoped by business).
+        // Spec 0148: the sale names a membership of THIS business; the coupon is the other
+        // business's (same consumer would not change it: it is scoped by business).
         const mine = await newCouponCard(world);
         const card = await newCouponCard(other);
         await expect(
-          validateCoupon(world.seed.business, world.seed.userId, {
-            ...couponBody(mine, world.seed),
-            couponId: card.couponId,
+          grantAccrual(world.seed.business, world.seed.userId, {
+            ...couponSaleBody(mine, world.seed),
+            coupon: { couponId: card.couponId },
           }),
         ).rejects.toMatchObject({ status: 404, code: "unknown_coupon" });
       } finally {

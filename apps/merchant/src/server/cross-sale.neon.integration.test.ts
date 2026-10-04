@@ -55,12 +55,7 @@ import {
   ungeocode,
 } from "./cross-sale-support";
 import { redeemReward } from "./counter/redeem";
-import { sql } from "drizzle-orm";
-import { getDb } from "@mi-pasaporte/db";
-import { validateCoupon } from "./counter/coupon-validate";
-import { resolveScan } from "./counter/resolve";
 import { claimCrossOffer } from "@mi-pasaporte/domain/server/consumer/cross-offers";
-import { selectCoupon } from "@mi-pasaporte/domain/server/consumer/coupon-selection";
 
 /**
  * Spec 0143 — THE CROSS SALE TRIGGERED BY THE PURCHASE, through the real counter
@@ -202,16 +197,11 @@ describe.skipIf(!integrationEnabled)("cross sale — by the purchase", () => {
     expect(await couponsOf(who.consumerId)).toEqual([]);
   }, 120_000);
 
-  it("redeeming a reward or a coupon does NOT trigger it (only accrediting)", async () => {
+  it("redeeming a reward does NOT trigger it (only accrediting)", async () => {
+    // Spec 0153: «or a coupon» went with «validate» — a coupon is only redeemed inside a sale
+    // now, which IS an accreditation, so there is no coupon redemption left that is not one.
     const w = await saleWorld("redeem");
     const who = await enrolled(w.a);
-    // A cross coupon of B to redeem, sown with the domain's claim.
-    const claimed = await claimCrossOffer(
-      who.consumerId,
-      w.campaignB,
-      w.a.point,
-    );
-    if (claimed.status !== 201) throw new Error(`claim → ${claimed.status}`);
     const rewardId = await seedReward({
       programId: w.a.seed.programId,
       businessId: w.a.seed.business.id,
@@ -223,25 +213,6 @@ describe.skipIf(!integrationEnabled)("cross sale — by the purchase", () => {
       membershipId: who.membershipId,
       rewardId,
       locationId: w.a.seed.locationId,
-    });
-    // The counter of B scans first (it auto-enrols the non-member, ADR 0033). Spec 0148: a
-    // DISCOUNT is only redeemed inside a sale — which IS an accreditation —, so the coupon is
-    // turned into a free-text one (validated without a sale) to keep measuring «a coupon
-    // redemption does not trigger it»; the consumer chooses it, the counter validates it.
-    await getDb().execute(
-      sql`update core.campaign_coupon set kind_snapshot = 'custom',
-        discount_unit_snapshot = null, discount_value_snapshot = null
-        where id = ${claimed.coupon.id}`,
-    );
-    const atB = await resolveScan(w.b.seed.business, who.qrToken);
-    expect(await selectCoupon(who.consumerId, claimed.coupon.id)).toMatchObject(
-      { status: 200 },
-    );
-    await validateCoupon(w.b.seed.business, w.b.seed.userId, {
-      clientRequestId: randomUUID(),
-      membershipId: atB.membership.id,
-      couponId: claimed.coupon.id,
-      locationId: w.b.seed.locationId,
     });
     await settle();
     expect(await decisionsOf(who.consumerId)).toEqual([]);

@@ -40,7 +40,7 @@ export type CounterCoupon = {
 };
 
 export type CounterCouponState =
-  | { status: "selected" | "validated"; coupon: CounterCoupon }
+  | { status: "selected"; coupon: CounterCoupon }
   | { status: "used_today"; label: string }
   | { status: "hint"; count: number }
   | { status: "none" };
@@ -132,7 +132,7 @@ export type AccreditationRow = {
   consumer: string;
   accrualKind: string;
   unitsGranted: number;
-  // Spec 0148: `coupon` — a coupon validated or tied to a sale (server contract).
+  // Spec 0148: `coupon` — a coupon tied to a sale (server contract).
   entryKind: "accrual" | "redemption" | "coupon";
   rewardLabel: string | null;
 };
@@ -170,7 +170,7 @@ export function previewNetTotal(
   lines: CartLine[],
   productId: string | null,
 ): number {
-  if (state.status !== "selected" && state.status !== "validated") return gross;
+  if (state.status !== "selected") return gross;
   const coupon = state.coupon;
   let discount = 0;
   if (coupon.kind === "discount") {

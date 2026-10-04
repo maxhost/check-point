@@ -36,8 +36,14 @@ export type GrantedOrder = {
   accrualKind: string;
   /** The order's `total` — the NET of the coupon's discount when it carries one (spec 0148). */
   total: string;
-  /** Spec 0148: the coupon tied to this order (`coupon_redemption.order_id`), or null. */
-  coupon: { label: string; discountAmount: string } | null;
+  /** Spec 0148: the coupon tied to this order (`coupon_redemption.order_id`), or null.
+   * Spec 0153: `extraUnits` — what an `extra_*` coupon credited with the sale (null for the
+   * rest); `balanceAfter` above is then the FINAL balance, the sale's plus the extra. */
+  coupon: {
+    label: string;
+    discountAmount: string;
+    extraUnits: number | null;
+  } | null;
   /** The `wallet_push_queue` row enqueued in the same tx (spec 0033); null on the
    * idempotent-retry/reread path so no re-dispatch happens. */
   pushQueueId: string | null;
@@ -70,6 +76,10 @@ function toGrantedOrder(row: Record<string, unknown>): GrantedOrder {
         : {
             label: String(row.coupon_label),
             discountAmount: String(row.coupon_discount ?? "0.00"),
+            extraUnits:
+              row.coupon_extra_units == null
+                ? null
+                : Number(row.coupon_extra_units),
           },
     pushQueueId: row.push_queue_id == null ? null : String(row.push_queue_id),
   };
@@ -183,16 +193,20 @@ export async function persistGrant(
 }
 
 /** Rereads an order by its idempotency key (the retry / concurrent-loser path), with the
- * coupon tied to it (spec 0148). Raw SQL with explicit aliases. */
+ * coupon tied to it (spec 0148). Raw SQL with explicit aliases. Spec 0153: the balance is
+ * the coupon row's `balance_after` when an `extra_*` coupon credited with the sale — the
+ * FINAL one, as the first answer reported it —, else the order's. */
 export async function readOrderByRequest(
   businessId: string,
   clientRequestId: string,
   executor: OrderExecutor = getDb(),
 ): Promise<GrantedOrder | null> {
   const result = await executor.execute(sql`
-    SELECT o.id, o.units_granted, o.balance_after, o.accrual_kind, o.total,
+    SELECT o.id, o.units_granted,
+           COALESCE(cr.balance_after, o.balance_after) AS balance_after,
+           o.accrual_kind, o.total,
            cr.label_snapshot AS coupon_label, cr.discount_amount AS coupon_discount,
-           NULL AS push_queue_id
+           cr.units_granted AS coupon_extra_units, NULL AS push_queue_id
     FROM core."order" o
     LEFT JOIN core.coupon_redemption cr ON cr.order_id = o.id
     WHERE o.business_id = ${businessId} AND o.client_request_id = ${clientRequestId}

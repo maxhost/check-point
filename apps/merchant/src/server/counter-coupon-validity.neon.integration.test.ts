@@ -4,19 +4,18 @@ import { integrationEnabled } from "./counter-integration-support";
 import {
   type CouponWorld,
   chooseCoupon,
-  couponBody,
   dropCouponWorld,
   forceChoice,
   newCouponCard,
   readCoupons,
   seedCouponWorld,
+  sellCoupon,
 } from "./counter-coupon-support";
 import {
   optOut,
   seedCampaign,
   setCampaignState,
 } from "./marketing-integration-support";
-import { validateCoupon } from "./counter/coupon-validate";
 import { resolveScan } from "./counter/resolve";
 import { getDb } from "@mi-pasaporte/db";
 import { campaignTurns, campaigns } from "@mi-pasaporte/db/schema";
@@ -29,8 +28,9 @@ import { campaignTurns, campaigns } from "@mi-pasaporte/db/schema";
  *
  * Split from `counter-coupon.neon.integration.test.ts` by the file-size budget.
  *
- * Spec 0148: the scan paints the coupon the consumer CHOSE (`couponState: selected`) and the
- * counter VALIDATES it (`validateCoupon`).
+ * Spec 0148: the scan paints the coupon the consumer CHOSE (`couponState: selected`). Spec
+ * 0153: with its VERDICT — an expired choice is painted red, not hidden — and the counter's
+ * SALE applies it (`sellCoupon`).
  */
 
 const HOUR = 3_600_000;
@@ -63,9 +63,9 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
       status: "selected",
       coupon: { couponId: card.couponId },
     });
-    await expect(
-      validateCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
-    ).resolves.toMatchObject({ coupon: { label: expect.any(String) } });
+    await expect(sellCoupon(w, card)).resolves.toMatchObject({
+      order: { coupon: { label: expect.any(String) } },
+    });
     expect(await readCoupons(w.campaignId)).toHaveLength(1);
   }, 120_000);
 
@@ -86,9 +86,9 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
       status: "selected",
       coupon: { couponId: card.couponId, validUntil: w.endsAt },
     });
-    await expect(
-      validateCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
-    ).resolves.toMatchObject({ coupon: { label: expect.any(String) } });
+    await expect(sellCoupon(w, card)).resolves.toMatchObject({
+      order: { coupon: { label: expect.any(String) } },
+    });
     expect(await readCoupons(w.campaignId)).toHaveLength(1);
   }, 120_000);
 
@@ -105,17 +105,22 @@ describe.skipIf(!integrationEnabled)("coupon validity (spec 0102)", () => {
     });
   }, 120_000);
 
-  it("(a'') past the campaign's ends_at: scan paints nothing, redeem is 409 coupon_not_active", async () => {
+  it("(a'') past the campaign's ends_at: scan paints it RED (coupon_expired), the sale is 409 coupon_expired", async () => {
     const w = await world("Cupon vencido", new Date(Date.now() - HOUR));
     const card = await newCouponCard(w);
     // A stale choice (made while it was valid): the choice never expires, the coupon does.
     await forceChoice(card);
 
     const scan = await resolveScan(w.seed.business, card.qrToken);
-    expect(scan.couponState).toEqual({ status: "none" });
-    await expect(
-      validateCoupon(w.seed.business, w.seed.userId, couponBody(card, w.seed)),
-    ).rejects.toMatchObject({ status: 409, code: "coupon_not_active" });
+    expect(scan.couponState).toMatchObject({
+      status: "selected",
+      coupon: { couponId: card.couponId },
+      verdict: { valid: false, code: "coupon_expired" },
+    });
+    await expect(sellCoupon(w, card)).rejects.toMatchObject({
+      status: 409,
+      code: "coupon_expired",
+    });
     expect(await readCoupons(w.campaignId)).toEqual([]);
   }, 120_000);
 

@@ -15,7 +15,6 @@ import { memberships, users } from "@mi-pasaporte/db/schema";
 import { POST as RESOLVE } from "../app/api/counter/resolve/route";
 import { POST as GRANT } from "../app/api/counter/grant/route";
 import { POST as REDEEM } from "../app/api/counter/redeem/route";
-import { POST as COUPON_VALIDATE } from "../app/api/counter/coupon-validate/route";
 import { POST as COUPON_REMOVE } from "../app/api/counter/coupon-remove/route";
 import { GET as COUPON_STATE } from "../app/api/counter/coupon-state/route";
 
@@ -45,12 +44,8 @@ const MOSTRADOR: Array<
   ],
   ["grant", (c) => GRANT(conCookie("/api/counter/grant", "POST", c, {}))],
   ["redeem", (c) => REDEEM(conCookie("/api/counter/redeem", "POST", c, {}))],
-  // Spec 0148: el canje de cupón de la 0065 C se borró; sus tres reemplazos pasan por el guard.
-  [
-    "coupon-validate",
-    (c) =>
-      COUPON_VALIDATE(conCookie("/api/counter/coupon-validate", "POST", c, {})),
-  ],
+  // Spec 0148: el canje de cupón de la 0065 C se borró; sus reemplazos pasan por el guard
+  // (spec 0153: `coupon-validate` también se borró).
   [
     "coupon-remove",
     (c) =>

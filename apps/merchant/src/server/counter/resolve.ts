@@ -90,9 +90,9 @@ function buildResolveResult(opts: {
     // Rewards for the Canjear mode (spec 0055), ordered by `position` — the order the
     // owner configured in step 4. Same DTO as the wizard and the wallet: no R2 key.
     rewards: opts.rewards,
-    // Spec 0148 (contract M0): the state of the consumer's coupon at this counter —
-    // `validated` / `used_today` / `selected` / `hint` / `none`. A SNAPSHOT for painting: the
-    // writes re-decide under the locks, and `GET /api/counter/coupon-state` refreshes it.
+    // Spec 0148 / 0153 (contract M0): the state of the consumer's coupon at this counter —
+    // `selected` (with its verdict) / `used_today` / `hint` / `none`. A SNAPSHOT for painting:
+    // the sale re-decides under the locks, and `GET /api/counter/coupon-state` refreshes it.
     couponState: opts.couponState,
   };
 }

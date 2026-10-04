@@ -14,7 +14,7 @@ import {
 import { seedReward, setBalance } from "./counter-integration-support";
 import {
   type CouponWorld,
-  chooseAndValidate,
+  chooseAndSell,
   dropCouponWorld,
   newCouponCard,
   seedCouponWorld,
@@ -143,8 +143,10 @@ describe.skipIf(!integrationEnabled)(
       expect(
         (await projectionRow(business, card.consumerId)).lastVisitAt,
       ).toBeNull();
-      // Spec 0148: the consumer chooses it, the counter validates it (the visit).
-      await chooseAndValidate(coupons, card);
+      // Spec 0148: the consumer chooses it; spec 0153: the counter's sale applies it (the
+      // visit). DECLARED: the sale's order moves the same `last_visit_at` in the same
+      // transaction (same `now()`), so this case no longer tells the coupon's visit apart.
+      await chooseAndSell(coupons, card);
       const at = await originAt("coupon_redemption", business, card.consumerId);
       expect(at).not.toBeNull();
       expect(
