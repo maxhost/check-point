@@ -17,10 +17,10 @@ typecheck, lint, formato y tests unitarios verdes; e2e global 111 pasaron y 5
 omitidos; Neon relacionado de Merchant 9/9; build Webpack de Merchant verde.
 `pnpm verify` quedó **ROJO solo en build**: Turbopack falla al abrir un puerto
 interno de PostCSS en `business/onboarding/onboarding.css` (`Operation not
-permitted`), incluso fuera del sandbox. No se usó `--no-verify`. La UI aún no
-se pusheó. Pendientes: resolver el build o recibir autorización explícita del
-owner para la excepción al hook; después publicar, hacer QA móvil y obtener
-PASS independiente antes de marcar la spec `implementada`.
+permitted`), incluso fuera del sandbox. No se usó `--no-verify`. El owner pidió
+dejar la UI local, sin publicar todavía. Pendientes: resolver el build,
+publicar cuando el owner lo indique, hacer QA móvil y obtener PASS independiente
+antes de marcar la spec `implementada`.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0149: PANTALLAS DEL CUPÓN ELEGIDO PUBLICADAS
 
