@@ -61,6 +61,7 @@ archivos: apps/merchant/src/app/backoffice/counter/{cart,counter-console,coupon-
 - [x] El ticket separa `unitsGranted`, `extraUnits` y `balanceAfter` y conserva bruto, descuento y neto del servidor.
 - [x] Barrido `rg -n 'coupon-validate|validateCoupon|"validated"|coupon_done|coupon_not_active' apps/merchant/src/app/backoffice/counter --glob '!*.test.ts'` → vacío.
 - [ ] `pnpm verify` completo en verde con Node 24 y tabla final registrada; suites Neon solo mediante `tools/neon-test.sh`.
+- [x] Servidor y UI publicados juntos en `1927742`; el owner confirmó que el deploy de Vercel terminó.
 - [x] `rg -n MUTATION apps/merchant/src/app/backoffice/counter apps/merchant/src/app/globals.css tests/e2e/counter-coupon-verdict.spec.ts` → vacío.
 
 ## Mutaciones — presupuesto: 0
@@ -69,11 +70,11 @@ El contrato y las pruebas de navegador cubren los caminos de UI. La revisión in
 
 ## Declarado AFUERA (sin oráculo, a propósito)
 
-- QA físico con pase real, cámara, Panadería y cupón vencido; lo hará el owner tras deploy `READY` del SHA conjunto.
+- QA físico con pase real, cámara, Panadería y cupón vencido; el deploy ya fue confirmado por el owner y falta su prueba.
 
 ## Handoff
 
-GPT implementa la UI cuando el owner entregue el SHA del servidor. Un solo push con servidor y UI, nunca antes de que ambos estén listos. Revisor independiente y deploy `READY` antes del QA del owner. La 0154 sigue `cerrada` hasta verificar todo.
+La UI y el servidor se publicaron juntos en `1927742`; el owner confirmó el deploy. Faltan QA real y PASS independiente. La 0154 sigue `cerrada` porque `pnpm verify` quedó rojo solo en el build de Turbopack; el owner autorizó la excepción de push.
 
 ## Abierto
 

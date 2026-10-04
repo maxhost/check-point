@@ -43,7 +43,7 @@ En móvil, el shell reduce los márgenes laterales y `.counter-panel` pierde fon
 - [x] En 390 px, `idle` muestra navegación; escaneo, venta detallada, rápida y canje la ocultan; X vuelve a `idle`.
 - [x] En 390 px, el footer detallado muestra resumen, «Cancelar» y «Acreditar compra» sin solaparse con la navegación ni el área segura.
 - [x] En 390 px, el panel del flujo no añade la tarjeta blanca y usa más ancho; en escritorio conserva su presentación.
-- [ ] Typecheck, lint y formato pasan; `pnpm verify` con Node 24 se ejecuta una sola vez al final y se registra su resultado.
+- [x] Typecheck, lint y formato pasan; `pnpm verify` con Node 24 se ejecutó y su resultado rojo solo en build Turbopack quedó registrado en `docs/estado/gpt.md`.
 - [x] `rg -n MUTATION apps/merchant/src/app/backoffice/counter apps/merchant/src/app/globals.css` → vacío.
 
 ## Mutaciones — presupuesto: 0
@@ -56,7 +56,7 @@ Se comprueba el flujo en viewport móvil y las regresiones con los gates del rep
 
 ## Handoff
 
-GPT implementa la UI. QA visual y revisor independiente quedan pendientes antes de marcar `implementada`.
+UI publicada en `1927742`; el owner confirmó el deploy. QA en teléfono y revisor independiente quedan pendientes antes de marcar `implementada`.
 
 ## Abierto
 

@@ -3,7 +3,7 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-04) — SPEC 0154: VEREDICTO AUTOMÁTICO DEL CUPÓN EN MOSTRADOR
+## ⇥ ESTADO (2026-10-04) — SPECS 0152 Y 0154 PUBLICADAS; QA PENDIENTE
 
 El owner entregó `motor` `8a635b0` con el servidor 0153. Rebasé `main` sobre
 esa rama y resolví el conflicto de `docs/INDEX.md` conservando las specs 0152,
@@ -11,7 +11,7 @@ esa rama y resolví el conflicto de `docs/INDEX.md` conservando las specs 0152,
 está implementada en el commit `eaa03b3`: veredicto verde/rojo literal en Venta detallada y
 rápida, sin M2; «Quitar» siempre; M4 manda cupón solo si es válido; producto fijo
 agregado una vez por escaneo; y ticket con unidades del cupón separadas. La 0152
-y el servidor 0153 forman parte del mismo `main` para el push conjunto.
+y el servidor 0153 se publicaron junto con la UI en `origin/main` `1927742`.
 
 Verificación con Node 24.20.0: typecheck, lint, formato, unitarios, e2e
 global (115 pasaron, 5 omitidos), Neon merchant (410 pasaron, 25 omitidos) y
@@ -19,13 +19,12 @@ Neon consumer (60 pasaron) en verde. Las 4 pruebas de navegador de la 0154
 pasaron y revisé las capturas móviles verde y roja. `pnpm verify` quedó
 **ROJO solo en build**: Turbopack falla al abrir un puerto interno al procesar
 `business/onboarding/onboarding.css` (`Operation not permitted`), incluso fuera
-del sandbox. El build Webpack de Merchant se comprobó aparte. No se usó
-`--no-verify`.
+del sandbox. El build Webpack de Merchant se comprobó aparte.
 
-El owner autorizó explícitamente `--no-verify` para este único push por el fallo
-de Turbopack, después de ver el gate y el build Webpack verde. El SHA de UI
-`eaa03b3` se incluye en la publicación conjunta. Comprobar deploy `READY` de
-Vercel para el SHA final antes de pedir QA.
+El owner autorizó explícitamente `--no-verify` para el único push conjunto por
+el fallo de Turbopack. Confirmó que el deploy de Vercel de `1927742` ya terminó.
+Faltan su QA con pase/cupón reales y PASS independiente de la UI; no se marca
+`implementada` mientras el gate completo siga rojo.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
 
@@ -42,8 +41,9 @@ omitidos; Neon relacionado de Merchant 9/9; build Webpack de Merchant verde.
 `pnpm verify` quedó **ROJO solo en build**: Turbopack falla al abrir un puerto
 interno de PostCSS en `business/onboarding/onboarding.css` (`Operation not
 permitted`), incluso fuera del sandbox. No se usó `--no-verify`. El owner pidió
-dejar la UI local en ese momento. La autorización posterior incluye la 0152 en
-el push conjunto. Pendientes: resolver el build, hacer QA móvil y obtener PASS independiente
+dejar la UI local en ese momento. La autorización posterior incluyó la 0152 en
+el push `1927742`, con deploy confirmado por el owner. Pendientes: resolver el build,
+hacer QA móvil y obtener PASS independiente
 antes de marcar la spec `implementada`.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0149: PANTALLAS DEL CUPÓN ELEGIDO PUBLICADAS
