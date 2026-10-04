@@ -157,5 +157,6 @@ y la venta sale sin el; la eleccion queda hasta que el comercio la quite.
 - **Desvio aceptado por el revisor:** `assertDailyLimit` se borro; el limite diario vive solo en el veredicto (`coupon-verdict.ts`, misma consulta para pintar y para cobrar).
 - DoD: el barrido `rg` deja 2 hits de `catalog-import` (`"validated"` es el estado de una importacion, otro dominio).
 - `marketing-coupon-issue.neon` sigue salteado por flags de producto: su migracion (validar → venta de 0.00) solo la cubre el typecheck.
-- Hallazgos a decidir: `buildCouponBody` (`push-text.ts`) quedo sin uso en produccion; `recordRedemptionVisit` en `insertCounterRedemption` es redundante (la orden mueve el mismo `last_visit_at`); el push de la orden no menciona las unidades extra del cupon.
+- `d9f6a88` (pedido del owner): borrados `buildCouponBody` (sin uso; su test de borde paso a `buildRedemptionBody`) y la visita propia del canje en `insertCounterRedemption` (la orden la registra en la misma transaccion). `pnpm verify` verde; `customers-projection.neon` 8/8.
+- Hallazgo a decidir: el push de la orden no menciona las unidades extra del cupon.
 - Hasta la UI de GPT, un cupon no-descuento elegido bloquea la venta salvo «Quitar» (`canConfirm` es de GPT): no se deploya solo.

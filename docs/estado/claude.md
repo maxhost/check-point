@@ -18,7 +18,8 @@ es de GPT en `origin/main`), contrato `docs/specs/0153-contratos-de-api.md`.
 
 **Donde esta:** rama `motor` rebasada sobre `origin/main` (`1ea1e5e`): `526db75` ADR+spec, `432f680` renumeracion,
 `2adc79b` codigo (PASS del revisor; `pnpm verify` verde; R3 sin oraculo de carrera, en `TASKS.md`), `40291da` y
-`f834ac1` docs. **Sin push, a proposito:** sin la UI de GPT un cupon no-descuento elegido bloquea la venta.
+`f834ac1` docs, `d9f6a88` limpieza pedida por el owner (`buildCouponBody` y la visita redundante del canje; `pnpm
+verify` verde). **Sin push, a proposito:** sin la UI de GPT un cupon no-descuento elegido bloquea la venta.
 
 **Siguiente:** el owner le pasa a GPT el sha de `motor` (el ultimo commit de este estado); GPT escribe su spec 0154,
 hace `git rebase motor` en su `main`, implementa la UI y hace UN push con todo. Despues: deploy READY en Vercel y QA
@@ -26,7 +27,7 @@ del owner (Panaderia, «Cafe americano gratis»: verde sin validar → salir sin
 vencido → rojo → «Quitar»). Si `motor` cambia antes, GPT tiene que re-rebasear.
 
 **Hallazgos a decidir (owner), de la 0153:** un cupon en rojo no se aplica y la venta sale sin el (consecuencia de
-diseño, no la dijo el owner); `buildCouponBody` sin uso en produccion; `recordRedemptionVisit` redundante en el canje;
+diseño, no la dijo el owner);
 el push de la orden no menciona las unidades extra del cupon.
 
 **En PROD (`24ce0df`):** 0148 + 0149 + 0150 (falta `QA_LOGIN_ENABLED=true` en Vercel merchant). Skills temporales de
