@@ -9,25 +9,30 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-04, cierre) — 0151 (ARNES NUEVO) COMMITEADA. PUSH PENDIENTE DEL OWNER
+## ⇥ ESTADO (2026-10-04, tarde) — 0153 (EL SISTEMA VALIDA EL CUPON) IMPLEMENTADA EN `motor`, PASS. ESPERA LA UI DE GPT
 
-**Al retomar:** `git fetch && git merge --ff-only origin/main` (rama `motor`, sin upstream). Si `origin/main` no tiene
-todavia `f4c2919`, el push no se hizo: lo corre el owner (`GH_TOKEN= git push origin HEAD:main` desde este worktree; el
-clasificador de auto mode le bloquea el push a Claude). El `main` local de GPT se adelanto por fast-forward hasta el
-commit de este estado: su proximo push tambien lo arrastra.
+**Que paso:** QA del owner sobre la 0148/0149: «el merchant no tiene que validar el cupon manualmente lo tiene que hacer
+el sistema». Decision en el ADR 0120 (sin «Validar»; veredicto verde/rojo al escanear; la venta consume; «Quitar»
+siempre; extras con la venta; producto gratis/2x1 se agrega solo al carrito). Servidor: spec 0153 (renumerada: el 0152
+es de GPT en `origin/main`), contrato `docs/specs/0153-contratos-de-api.md`.
 
-**Desde ahora rige el arnes de la 0151:** niveles N0/N1/N2 de `CLAUDE.md` (N0 directo, sin spec ni subagentes; subagentes
-solo en N2), Stop hook con huella (46 s → 0 s sin cambios, reproducido), `tasks-fresh` solo avisa, un solo bloque de
-estado (el viejo va a `claude-historico.md`; la skill `handoff` ya lo dice).
+**Donde esta:** rama `motor` rebasada sobre `origin/main` (`1ea1e5e`): `526db75` ADR+spec, `432f680` renumeracion,
+`2adc79b` codigo (PASS del revisor; `pnpm verify` verde; R3 sin oraculo de carrera, en `TASKS.md`), `40291da` y
+`f834ac1` docs. **Sin push, a proposito:** sin la UI de GPT un cupon no-descuento elegido bloquea la venta.
 
-**En PROD (`24ce0df`):** 0148 (cupon elegido, Claude) + 0149 (UI, GPT) + 0150 (login de QA: API + botones, decision del
-owner; falta `QA_LOGIN_ENABLED=true` en Vercel merchant). Skills temporales de QA: `qa-cupones-prueba`,
-`qa-cupon-valido`, `delete-user`; productos «Prueba» en Panaderia/Barberia/Gym. Se borran al cerrar las pruebas.
+**Siguiente:** el owner le pasa a GPT el sha de `motor` (el ultimo commit de este estado); GPT escribe su spec 0154,
+hace `git rebase motor` en su `main`, implementa la UI y hace UN push con todo. Despues: deploy READY en Vercel y QA
+del owner (Panaderia, «Cafe americano gratis»: verde sin validar → salir sin consumir → venta con el cafe agregado solo;
+vencido → rojo → «Quitar»). Si `motor` cambia antes, GPT tiene que re-rebasear.
 
-**Hallazgos a decidir (owner), de la 0151:** revisor independiente (no corrido); bajar `claude-md-size.sh` a 100
-lineas/6 KB; la huella no incluye HEAD (un pull no re-corre gates; lo cubren pre-push y CI).
+**Hallazgos a decidir (owner), de la 0153:** un cupon en rojo no se aplica y la venta sale sin el (consecuencia de
+diseño, no la dijo el owner); `buildCouponBody` sin uso en produccion; `recordRedemptionVisit` redundante en el canje;
+el push de la orden no menciona las unidades extra del cupon.
 
-**Pendientes:** QA del owner (0143/0146/0147/0148/0149); lote `pass_refresh` (0146); PARQUEADO #69 (Vercel Hobby);
-Postgres local para tests (medir antes/despues, informe «Flujo agil con Claude Code»); revisor de la 0149.
+**En PROD (`24ce0df`):** 0148 + 0149 + 0150 (falta `QA_LOGIN_ENABLED=true` en Vercel merchant). Skills temporales de
+QA: `qa-cupones-prueba`, `qa-cupon-valido`, `delete-user`.
 
-**Prompt para retomar:** «Lee docs/estado/claude.md y seguimos con el QA».
+**Pendientes:** los de la 0151 (en `claude-historico.md`); QA del owner (0143/0146/0147/0148/0149); lote
+`pass_refresh` (0146); PARQUEADO #69; Postgres local para tests; test de carrera del limite diario (R3, `TASKS.md`).
+
+**Prompt para retomar:** «Lee docs/estado/claude.md: la 0153 espera la UI de GPT».
