@@ -8,28 +8,27 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, noche, 2) — SPEC 0148 IMPLEMENTADA (`b937eb5`, SIN PUSHEAR). ESPERA OK DEL OWNER PARA LA 0064 EN PROD
+## ⇥ ESTADO (2026-10-03, noche, 3) — 0148 IMPLEMENTADA (`b937eb5`) Y 0064 EN PROD. SIN PUSH: LO HACE GPT
 
-**Al retomar:** `motor` = `origin/main` + `9197529` (docs) + **`b937eb5`** (codigo de la 0148) + este commit de estado.
-**Nada pusheado.** Arbol limpio salvo `.pnpm-store`.
+**Al retomar:** `motor` = `origin/main` (`afa6e77`) + `9197529` + **`b937eb5`** (codigo 0148) + commits de estado. **El
+`main` LOCAL (checkout de GPT) se adelanto por fast-forward hasta este commit**: GPT trabaja encima y su push arrastra
+todo (decision del owner, 2026-10-03: «cuando GPT haga el push arrastre todo su trabajo y el tuyo para tener un solo
+push»). **Claude no pushea la 0148.**
 
-**Orden obligatorio:** el codigo lee columnas nuevas (`selected_coupon_id`, `last_scan_at`, `order_id`), asi que la
-**migracion 0064 va a PROD ANTES del push** (el push despliega). Necesita OK explicito del owner. Despues: verificar por
-SQL las columnas/constraints en PROD, push (el `pre-push` corre `pnpm verify`), y deploy `READY` con el sha.
+**0064 en PROD** (owner: «vamos a aplicar la migracion pero no el push», 2026-10-03), por `run_sql_transaction` en la
+rama default `br-curly-silence-ax8acywm`. Verificado por SQL: 5 columnas, 5 constraints (check de una via), 2 indices,
+fila 65 de `drizzle.__drizzle_migrations` con hash `f99cc2b96ca7…` = `shasum -a 256` del `.sql`; `core`/`consumer`/
+`merchant_auth` intactos. Es aditiva: el codigo viejo de PROD sigue andando.
 
-**Hecho y verificado:** PASS del revisor independiente (M1, M3, M7, M10 re-ejecutadas rojas; ~20 suites viejas juzgadas
-«adaptan, ninguna afloja»; contradiccion del check reproducida en Neon). Implementador: `pnpm verify` verde con Neon
-completo. Orquestador: suite nueva `counter/coupon-scope.neon` 3/3 y sus mutaciones R1/R2/R3 ROJAS y revertidas
-(shasum = limpio); typecheck + lint + prettier ok. Contrato ajustado (404/409 faltantes, `422 invalid_input` en el
-mostrador, `discountValue` `"10.00"`, `accrualKind` del historial). Spec enmendada (check en una direccion) y `implementada`.
+**Hecho y verificado (0148):** PASS del revisor independiente; Neon completo verde (implementador); `coupon-scope.neon` 3/3
+y R1–R3 rojas medidas por el orquestador. Contrato y spec ajustados; spec `implementada`.
 
-**Para el owner / GPT:** el mostrador no muestra cupones hasta la UI de GPT (contrato 0148); mientras, el historial pinta
-cupones como «Puntos +0 coupon»; quitar un validado no revierte `last_visit_at`; deadlock posible (503, idempotente)
-declarado en la spec; `stages.tsx` 337 lineas y `.counter-coupon` huerfano en `globals.css` (zona GPT);
-`types.test.ts:96` con `coupon: null` viejo (sin efecto).
+**Siguiente:** cuando GPT pushee: `pnpm ci:status` no se espera; verificar deploy `READY` de merchant y customer con su
+sha. Avisos ya en el prompt de GPT (contrato 0148, «Puntos +0 coupon», `stages.tsx` 337 lineas, `.counter-coupon`
+huerfano, `types.test.ts:96`). Para el owner: deadlock posible declarado en la spec; quitar un validado no revierte
+`last_visit_at`.
 
-**Siguen abiertos de antes** (bloques de abajo): QA del owner de 0143/0146/0147, lote `pass_refresh`, avisos a GPT,
-PARQUEADO #69.
+**Siguen abiertos de antes** (bloques de abajo): QA del owner de 0143/0146/0147, lote `pass_refresh`, PARQUEADO #69.
 
 ## ⇥ ESTADO HISTORICO (2026-10-03, cierre 2) — SPEC 0148 CERRADA Y EN `main` (`afa6e77`). SIGUE: LANZAR EL IMPLEMENTADOR
 
