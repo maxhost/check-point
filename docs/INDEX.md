@@ -282,6 +282,7 @@ desactualizado es peor que no tenerlo.
 | 0149 | 2026-10-03 | **Pantallas del cupón elegido.** PWA con «acá» y selección; mostrador con validación, quitar, venta, ticket neto e historial según la 0148. | **cerrada**; UI local `9837a5a`, gate bloqueado por Turbopack | no | `specs/0149-pantallas-de-cupon-elegido.md` |
 | 0150 | 2026-10-04 | **Login de QA sin link magico (TEMPORAL).** **Que es:** `GET`/`POST /api/merchant/auth/qa-login`, 3 cuentas de prueba fijas (Panaderia, Barberia, Gym), apagado por `QA_LOGIN_ENABLED`; los botones son de GPT. **Por que importa:** el owner cambia de cuenta seguido en el QA de bienvenida/cruzada; se borra al terminar. | **cerrada** | si | `specs/0150-login-de-qa-sin-link-magico.md` |
 | 0151 | 2026-10-04 | **Arnes proporcional al riesgo.** **Que es:** niveles N0/N1/N2, `CLAUDE.md` a ≤100 lineas, Stop hook sin re-correr gates si no hay cambios (~91 s por respuesta medidos), arranque sin INDEX/TASKS enteros, subagentes solo en N2. **Por que importa:** 3 botones tardaban ~10 min. | **cerrada** | si | `specs/0151-arnes-proporcional-al-riesgo.md` |
+| 0152 | 2026-10-04 | **Mostrador móvil sin navegación inferior ni tarjeta interior.** Escaneo y venta muestran la X para volver a Mostrador; el footer detallado deja visibles sus acciones y el contenido usa más ancho. | **cerrada** | si | `specs/0152-mostrador-mobile-sin-nav-y-sin-tarjeta.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
