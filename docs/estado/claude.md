@@ -19,6 +19,9 @@ GitHub, 2026-10-04 14:43 UTC): merchant, customer y public `success` en `3006a2f
 - **La 0149 no tiene revisor independiente** (su spec lo deja «posterior»; presupuesto de mutaciones 0). Ofrecido al owner.
 - `docs/estado/gpt.md` en `3006a2f` todavia dice «No se ha pusheado» (zona de GPT: avisar).
 - Lote `pass_refresh` de la 0146 (OK del owner); PARQUEADO #69 (Vercel Hobby); build Turbopack rojo en el entorno de GPT.
+- **QA con datos de prueba en PROD** (pedido del owner, 2026-10-04): 17 productos en la categoria «Prueba» de Panaderia,
+  Barberia y Gym, y la skill TEMPORAL `.claude/skills/qa-cupones-prueba/` (habilitar hoy / resetear canjes por MCP).
+  Las dos cosas se borran cuando el owner cierre las pruebas.
 
 ## ⇥ ESTADO HISTORICO (2026-10-03, noche, 3) — 0148 IMPLEMENTADA (`b937eb5`) Y 0064 EN PROD. SIN PUSH: LO HACE GPT
 
