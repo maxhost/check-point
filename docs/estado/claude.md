@@ -8,7 +8,30 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-03, cierre 2) — SPEC 0148 CERRADA Y EN `main` (`afa6e77`). SIGUE: LANZAR EL IMPLEMENTADOR
+## ⇥ ESTADO (2026-10-03, noche, 2) — SPEC 0148 IMPLEMENTADA (`b937eb5`, SIN PUSHEAR). ESPERA OK DEL OWNER PARA LA 0064 EN PROD
+
+**Al retomar:** `motor` = `origin/main` + `9197529` (docs) + **`b937eb5`** (codigo de la 0148) + este commit de estado.
+**Nada pusheado.** Arbol limpio salvo `.pnpm-store`.
+
+**Orden obligatorio:** el codigo lee columnas nuevas (`selected_coupon_id`, `last_scan_at`, `order_id`), asi que la
+**migracion 0064 va a PROD ANTES del push** (el push despliega). Necesita OK explicito del owner. Despues: verificar por
+SQL las columnas/constraints en PROD, push (el `pre-push` corre `pnpm verify`), y deploy `READY` con el sha.
+
+**Hecho y verificado:** PASS del revisor independiente (M1, M3, M7, M10 re-ejecutadas rojas; ~20 suites viejas juzgadas
+«adaptan, ninguna afloja»; contradiccion del check reproducida en Neon). Implementador: `pnpm verify` verde con Neon
+completo. Orquestador: suite nueva `counter/coupon-scope.neon` 3/3 y sus mutaciones R1/R2/R3 ROJAS y revertidas
+(shasum = limpio); typecheck + lint + prettier ok. Contrato ajustado (404/409 faltantes, `422 invalid_input` en el
+mostrador, `discountValue` `"10.00"`, `accrualKind` del historial). Spec enmendada (check en una direccion) y `implementada`.
+
+**Para el owner / GPT:** el mostrador no muestra cupones hasta la UI de GPT (contrato 0148); mientras, el historial pinta
+cupones como «Puntos +0 coupon»; quitar un validado no revierte `last_visit_at`; deadlock posible (503, idempotente)
+declarado en la spec; `stages.tsx` 337 lineas y `.counter-coupon` huerfano en `globals.css` (zona GPT);
+`types.test.ts:96` con `coupon: null` viejo (sin efecto).
+
+**Siguen abiertos de antes** (bloques de abajo): QA del owner de 0143/0146/0147, lote `pass_refresh`, avisos a GPT,
+PARQUEADO #69.
+
+## ⇥ ESTADO HISTORICO (2026-10-03, cierre 2) — SPEC 0148 CERRADA Y EN `main` (`afa6e77`). SIGUE: LANZAR EL IMPLEMENTADOR
 
 **Al retomar:** `git pull --ff-only` + `pnpm ci:status`. `motor` = `origin/main` en `afa6e77` (+ el commit de este
 estado). Sin codigo tocado en esta sesion.
