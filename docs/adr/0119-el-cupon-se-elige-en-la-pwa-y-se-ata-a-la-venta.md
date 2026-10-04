@@ -1,7 +1,7 @@
 ---
 adr: 0119
 fecha: 2026-10-03
-estado: aceptada
+estado: aceptada (§6, §7, §9, §11 y §14 reemplazados por el ADR 0120)
 resumen: El canje de cupon deja de ser un evento suelto que cierra el mostrador. El cliente ELIGE el cupon en my.checkpass.club (filtrado por ubicacion o, sin ella, por el comercio que lo escaneo) y el QR del pase lo lleva; el comercio lo VALIDA al pedir (2x1, gratis, texto) o lo aplica en la venta (descuento), y al cobrar se ATA a la venta con su linea de descuento y los puntos/sellos sobre el neto. Ciclo disponible → elegido → validado → consumido; el comercio puede quitarlo (vuelve a disponible); un validado sin venta se consume al cierre del dia. Un cupon por cliente + comercio + dia; el canje de premio del programa no cuenta.
 ---
 
