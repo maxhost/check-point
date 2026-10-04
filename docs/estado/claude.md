@@ -14,12 +14,10 @@
 el push unico de GPT con la 0148 (Claude) y la 0149 (UI de GPT). **Deploy verificado** (status del commit por la API de
 GitHub, 2026-10-04 14:43 UTC): merchant, customer y public `success` en `3006a2f`. 0064 en PROD desde el 2026-10-03.
 
-**En curso:** spec **0150** (login de QA sin link magico, TEMPORAL; `7d810e4`). Owner (2026-10-04): «no pases revisor
-independiente. solo aplica el cambio, crea los botones que hagan el login y push, nada mas». SIN COMMITEAR: la API del
-implementador (`server/qa-login*.ts`, `app/api/merchant/auth/qa-login/route*.ts`; `ListAgents` primero si se retoma) y los
-botones de Claude (`business/onboarding/_components/qa-login-buttons.tsx` + 2 lineas en `account-step.tsx`, zona GPT por
-decision del owner → avisar a GPT). Falta: que termine el implementador, gates, commit, push y deploy `READY`. El owner crea
-`QA_LOGIN_ENABLED=true` en el proyecto merchant de Vercel.
+**0150 commiteada (`b83134e`), SIN PUSHEAR:** API `qa-login` (implementador, cortado por Claude con la API completa;
+unidad 27/27, typecheck/lint/prettier ok; sin revisor por decision del owner) + botones en el login (Claude, zona GPT por
+decision del owner → avisar a GPT). El push lo bloqueo el clasificador de auto mode: lo corre el owner. Despues: deploy
+`READY` y `QA_LOGIN_ENABLED=true` en el proyecto merchant de Vercel (owner).
 
 **Pendiente:**
 - **QA del owner de 0148/0149** (pasos en la spec 0148 §«QA del owner») y los de antes: 0143, 0146, 0147.
