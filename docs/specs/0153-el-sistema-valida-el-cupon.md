@@ -1,7 +1,7 @@
 ---
 spec: 0153
 fecha: 2026-10-04
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0120 en el servidor. El escaneo trae el cupon elegido con su veredicto (valido / invalido + motivo); se borran «Validar» (M2) y el estado «validado»; la venta consume el cupon elegido y acredita los sellos/puntos extra; «Quitar» solo borra la eleccion. Contrato `0153-contratos-de-api.md`; las pantallas son de GPT.
 disjunta: no
 archivos: apps/merchant/src/server/counter/{coupon-state,coupon-decision,grant-coupon,coupon-discount,coupon-remove,coupon-extras,coupon-locks,coupon-store,resolve,history}.ts, borra coupon-validate.ts y app/api/counter/coupon-validate/, tests de cupones del mostrador
@@ -148,3 +148,14 @@ Formato de `docs/AGENT-WORKFLOW.md`. PASS del revisor antes de `implementada`.
 
 Nada que bloquee. Consecuencia de diseño, a confirmar por el owner en el QA (no la dijo): un cupon en rojo no se aplica
 y la venta sale sin el; la eleccion queda hasta que el comercio la quite.
+
+## Implementacion (2026-10-04)
+
+`3af2aac` (rama `motor`, sin push: va junto con la UI de GPT, spec 0154). **PASS del revisor independiente.**
+- `pnpm verify` verde con Node 24 (implementador y revisor); Neon de cupones con `tools/neon-test.sh`. `coupon-verdict.neon` 4/4 re-corrida por el orquestador.
+- Mutaciones: M1, M2/M2b, M3 rojas (implementador); R1 (=M3) y R2 (reintento con `balanceAfter` final) rojas; **R3 sobrevive** (orden lock → `usedToday` sin oraculo de carrera; hoy correcto; pendiente en `TASKS.md`). Bitacoras en `TASKS.md`.
+- **Desvio aceptado por el revisor:** `assertDailyLimit` se borro; el limite diario vive solo en el veredicto (`coupon-verdict.ts`, misma consulta para pintar y para cobrar).
+- DoD: el barrido `rg` deja 2 hits de `catalog-import` (`"validated"` es el estado de una importacion, otro dominio).
+- `marketing-coupon-issue.neon` sigue salteado por flags de producto: su migracion (validar → venta de 0.00) solo la cubre el typecheck.
+- Hallazgos a decidir: `buildCouponBody` (`push-text.ts`) quedo sin uso en produccion; `recordRedemptionVisit` en `insertCounterRedemption` es redundante (la orden mueve el mismo `last_visit_at`); el push de la orden no menciona las unidades extra del cupon.
+- Hasta la UI de GPT, un cupon no-descuento elegido bloquea la venta salvo «Quitar» (`canConfirm` es de GPT): no se deploya solo.

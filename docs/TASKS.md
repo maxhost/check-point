@@ -4,6 +4,29 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0153, implementador (2026-10-04)
+
+Restauracion: git checkout 3af2aac -- <archivo>  (o cp desde $S/*.clean.ts)
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | apps/merchant/src/server/counter/grant-coupon.ts | 0ffcbcbb0ae7e00a18040d90c71483855ca6b259 | la venta solo aplica la eleccion ACTUAL (guarda selectedCouponOf !== locked.coupon.id) | ROJO 4/24 (alcance: coupon-verdict, coupon-cycle, counter-coupon, counter-coupon-races). Por la propiedad: «ORACULO DE M1 — eleccion cambiada» y «ORACULO DE M8 — no elegido» → promise resolved (venta 200) instead of rejecting; «DIFFERENT clientRequestId» y «DOS OPERADORES» → already_redeemed en vez de coupon_not_selected. Revertido: diff solo la mutacion; shasum vuelve a 0ffcbcbb |
+| M2 | apps/merchant/src/server/counter/grant-coupon.ts | 0ffcbcbb0ae7e00a18040d90c71483855ca6b259 | extra_* acredita con la venta (llamada a grantCouponExtras) | ROJO 5/17 (alcance: coupon-verdict, counter-coupon-extras, counter-coupon-races, coupon-remove). LEIDO: el rojo NO es de las aserciones de saldo: es el CHECK de la base core_coupon_redemption_units_check (23514) que rechaza una fila extra_* sin units_granted, y la venta entera falla (races: 0 filas en vez de 1). Guarda hermana real (la base), no un doble. Para medir el oraculo de saldo se corre M2b. Revertido: diff solo la mutacion; shasum vuelve a 0ffcbcbb |
+| M2b | apps/merchant/src/server/counter/grant-coupon.ts | 0ffcbcbb0ae7e00a18040d90c71483855ca6b259 | igual que M2 pero puenteando el CHECK: la fila dice acredito (grant fabricado con el snapshot) y la membresia NO se toca | ROJO 4/17 por la PROPIEDAD (saldo leido por SQL): extras «puntos» 77 en vez de 82; extras «sellos» 10 en vez de 13; races 77 en vez de 82; coupon-verdict 10 en vez de 12. Revertido: diff solo la mutacion; shasum vuelve a 0ffcbcbb |
+| M3 | apps/merchant/src/server/counter/coupon-decision.ts | 869fd94ed0f4460d3c160d16163566855038918f | el veredicto aplica el limite diario (chequeo usedToday) | ROJO. Unidad (coupon-state.test + coupon-decision.test): 3/21 rojos — «ORACULO DE M3 — selected + red» (verdict {valid:true} en vez de coupon_daily_limit), «a redemption of today here is coupon_daily_limit», «ORDER: daily limit wins over the cap» (sale coupon_cap_reached). Neon (coupon-limits): 1/4 rojo, «ORACULO DE M2 (0148) / M3 (0153)», en la asercion de couponState (selected con verdict valido en vez de rojo). La mitad «venta → 409» de ese caso NO se leyo bajo M3 (la asercion del estado corta antes). Sin guarda hermana: assertDailyLimit se borro. Revertido: diff solo la mutacion; shasum vuelve a 869fd94e |
+
+## Bitacora de mutaciones — spec 0153, REVISOR (2026-10-04)
+
+Restauracion: git -C /Users/maxi/Documents/claude-workspace/check-point-wt/motor checkout -- <archivo> (archivos trackeados, limpios al handoff)
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R1 (=M3 impl) | apps/merchant/src/server/counter/coupon-decision.ts | 869fd94ed0f4460d3c160d16163566855038918f | el veredicto aplica el limite diario (usedToday) | ROJO. unidad coupon-decision+coupon-state 3/21 (mismos 3 que la bitacora del impl); neon coupon-limits 1/4 en la asercion de couponState. Revertido, shasum 869fd94e. |
+| R2 | apps/merchant/src/server/counter/orders.ts | 7a3226a62106bf2892d175e792d9eb34786f1ebc | el reintento idempotente reporta el balanceAfter FINAL (COALESCE cr.balance_after) | ROJO 2/7 (counter-coupon-extras + coupon-verdict): «retry answers the STORED values» y «a retry answers the same» (second.order != first.order). Revertido, shasum 7a3226a6. |
+| R3 | apps/merchant/src/server/counter/grant-coupon.ts | 0ffcbcbb0ae7e00a18040d90c71483855ca6b259 | el lock de business_customer se toma ANTES de leer usedToday (punto 1: limite diario serializado entre cupones distintos) | VERDE 22/22 (races, coupon-limits, coupon-verdict, coupon-cycle). SOBREVIVE: ningun test pinnea que el lock 3 preceda a la lectura de usedToday. Revertido, shasum 0ffcbcbb. |
+
+**Pendiente (R3 sobrevive, riesgo bajo, no bloquea):** ningun test pinnea que `lockBusinessCustomer` (`grant-coupon.ts:89`) preceda a la lectura de `usedToday` del veredicto (`:103`). Hoy el orden es correcto (READ COMMITTED, `packages/db/src/client.ts` no fija aislamiento). Falta un test de carrera: dos ventas de cupones de campañas distintas del mismo cliente, cambiando la eleccion entre ambas; exige pausar la venta A entre lock y commit.
+
 ## Bitacora de mutaciones — spec 0147, implementador (2026-10-03)
 
 Copias limpias: `/private/tmp/claude-501/-Users-maxi-Documents-claude-workspace-check-point-wt-motor/0c164b3a-aa3a-4eee-b87e-9bf8e2385558/scratchpad/<basename sin .ts>.clean.ts`;
