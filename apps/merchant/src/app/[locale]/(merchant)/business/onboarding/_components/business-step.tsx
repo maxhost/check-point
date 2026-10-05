@@ -1,151 +1,161 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Form } from "react-aria-components";
+import { useState } from "react";
 import { Button, SelectField, TextField } from "../../../../../../ui";
-import { AddressCombobox } from "./address-combobox";
+import { PlacesSearch } from "../../../../../components/places-search";
 import type {
-  BusinessSummary,
   OnboardingPrefill,
-  SelectedAddress,
+  PlaceSelection,
+  SignupBusiness,
 } from "../_lib/contracts";
-import { createBusiness, WizardApiError } from "../_lib/onboarding-api";
 import { InlineApiError, StepHeader } from "./wizard-shared";
-
-type FieldErrors = Record<string, string | undefined>;
-
-function currencyDescription(currencyCode: string) {
-  return `Moneda: ${currencyCode}`;
-}
+import type { WizardApiError } from "../_lib/onboarding-api";
 
 export function BusinessStep({
   prefill,
   apiError,
-  onError,
+  initialSelection,
+  initialBusiness,
   onComplete,
-  onAlreadyExists,
+  onLogin,
 }: {
   prefill: OnboardingPrefill;
   apiError: WizardApiError | null;
-  onError: (error: WizardApiError | null) => void;
-  onComplete: (business: BusinessSummary, currencyCode: string) => void;
-  onAlreadyExists: () => void;
+  initialSelection?: PlaceSelection | null;
+  initialBusiness?: SignupBusiness | null;
+  onComplete: (business: SignupBusiness, selection: PlaceSelection) => void;
+  onLogin: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<string | null>(null);
-  const [country, setCountry] = useState(
-    prefill.suggestedCountryCode ?? prefill.countries[0]?.code ?? "",
+  const [selection, setSelection] = useState<PlaceSelection | null>(
+    initialSelection ?? null,
   );
-  const [address, setAddress] = useState<SelectedAddress | null>(null);
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const selectAddress = useCallback((value: SelectedAddress | null) => {
-    setAddress(value);
-    if (value) setErrors((current) => ({ ...current, address: undefined }));
-  }, []);
+  const [name, setName] = useState(initialBusiness?.name ?? "");
+  const [category, setCategory] = useState<string | null>(
+    initialBusiness?.categoryGcid ?? null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [searchKey, setSearchKey] = useState(0);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  function choose(value: PlaceSelection) {
+    setSelection(value);
+    setName(
+      value.suggestion.kind === "business" ? value.suggestion.mainText : "",
+    );
+    const suggested = value.place.suggestedCategoryGcid;
+    setCategory(
+      prefill.categories.some((item) => item.gcid === suggested)
+        ? suggested
+        : null,
+    );
+    setError(null);
+  }
+
+  function changePlace() {
+    setSelection(null);
+    setName("");
+    setCategory(null);
+    setSearchKey((key) => key + 1);
+  }
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextErrors: FieldErrors = {};
-    if (!name.trim()) nextErrors.name = "Escribe el nombre de tu negocio.";
-    if (!category) nextErrors.category = "Selecciona una categoría.";
-    if (!country) nextErrors.country = "Selecciona un país.";
-    if (!address) nextErrors.address = "Elige una dirección de la lista.";
-    setErrors(nextErrors);
-    if (Object.values(nextErrors).some(Boolean) || !category || !address)
-      return;
-
-    setIsSubmitting(true);
-    onError(null);
-    try {
-      const created = await createBusiness({
+    if (!selection) return setError("Elige un lugar de la lista.");
+    if (!name.trim() || name.trim().length > 120)
+      return setError("Escribe un nombre de hasta 120 caracteres.");
+    if (!category) return setError("Selecciona una categoría.");
+    setError(null);
+    onComplete(
+      {
         name: name.trim(),
         categoryGcid: category,
-        countryCode: country,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        locationName: "Principal",
-        address,
-      });
-      const selectedCountry = prefill.countries.find(
-        (item) => item.code === country,
-      );
-      onComplete(created, selectedCountry?.currencyCode ?? "USD");
-    } catch (caught) {
-      const requestError =
-        caught instanceof WizardApiError
-          ? caught
-          : new WizardApiError("No pudimos guardar tu negocio.", 503);
-      if (requestError.status === 409) onAlreadyExists();
-      else onError(requestError);
-    } finally {
-      setIsSubmitting(false);
-    }
+        selectionToken: selection.selectionToken,
+      },
+      selection,
+    );
   }
 
   return (
     <>
       <StepHeader
-        step={2}
-        title="Cuéntanos sobre tu negocio"
-        description="Usamos estos datos para crear tu comercio y su primer local. Puedes cambiarlos después."
+        step={1}
+        title="Encuentra tu negocio"
+        description="Busca tu negocio o su dirección y completa los datos básicos."
       />
-      <Form onSubmit={submit} className="grid gap-5">
-        <InlineApiError error={apiError} />
-        <TextField
-          label="Nombre del negocio"
-          name="businessName"
-          placeholder="Ej.: Café del Barrio"
-          value={name}
-          onChange={setName}
-          autoComplete="organization"
-          isRequired
-          isInvalid={Boolean(errors.name)}
-          errorMessage={errors.name}
-          description="El identificador público se generará automáticamente."
-        />
-        <SelectField
-          label="Categoría"
-          selectedKey={category}
-          onSelectionChange={(key) => {
-            if (key !== null) setCategory(String(key));
-            setErrors((current) => ({ ...current, category: undefined }));
-          }}
-          options={prefill.categories.map((item) => ({
-            id: item.gcid,
-            label: item.displayName,
-          }))}
-          placeholder="Elige la categoría"
-          isRequired
-          isInvalid={Boolean(errors.category)}
-          errorMessage={errors.category}
-        />
-        <SelectField
-          label="País"
-          selectedKey={country}
-          onSelectionChange={(key) => {
-            if (key !== null) setCountry(String(key));
-            setErrors((current) => ({ ...current, country: undefined }));
-          }}
-          options={prefill.countries.map((item) => ({
-            id: item.code,
-            label: item.name,
-            description: currencyDescription(item.currencyCode),
-          }))}
-          placeholder="Elige el país"
-          isRequired
-          isInvalid={Boolean(errors.country)}
-          errorMessage={errors.country}
-        />
-        <AddressCombobox
-          countryCode={country}
-          bias={prefill.bias}
-          onSelect={selectAddress}
-          errorMessage={errors.address}
-        />
-        <Button type="submit" fullWidth isLoading={isSubmitting}>
-          {isSubmitting ? "Guardando negocio…" : "Crear negocio y continuar"}
+      <InlineApiError
+        error={
+          apiError?.code === "invalid_business" && apiError.field
+            ? null
+            : apiError
+        }
+      />
+      <form onSubmit={submit} className="grid gap-5">
+        {selection ? (
+          <div className="places-selected">
+            <span>Dirección</span>
+            <strong>{selection.place.addressLabel}</strong>
+            <button type="button" onClick={changePlace}>
+              Cambiar
+            </button>
+          </div>
+        ) : (
+          <PlacesSearch
+            key={searchKey}
+            label="Busca tu negocio o dirección"
+            onSelect={choose}
+          />
+        )}
+        {selection && (
+          <>
+            <TextField
+              label="Nombre del negocio"
+              value={name}
+              onChange={setName}
+              maxLength={120}
+              isRequired
+              isInvalid={apiError?.field === "name"}
+              errorMessage={
+                apiError?.field === "name" ? apiError.message : undefined
+              }
+            />
+            <SelectField
+              label="Categoría"
+              selectedKey={category}
+              onSelectionChange={(key) =>
+                setCategory(key === null ? null : String(key))
+              }
+              options={prefill.categories.map((item) => ({
+                id: item.gcid,
+                label: item.displayName,
+              }))}
+              isRequired
+              isInvalid={apiError?.field === "categoryGcid"}
+              errorMessage={
+                apiError?.field === "categoryGcid"
+                  ? apiError.message
+                  : undefined
+              }
+            />
+          </>
+        )}
+        {error && (
+          <p role="alert" className="text-danger">
+            {error}
+          </p>
+        )}
+        <Button type="submit" fullWidth>
+          Continuar
         </Button>
-      </Form>
+      </form>
+      <p className="mt-8 text-center text-sm text-content-muted">
+        ¿Ya tienes cuenta?{" "}
+        <button
+          type="button"
+          className="font-bold text-primary underline"
+          onClick={onLogin}
+        >
+          Iniciar sesión
+        </button>
+      </p>
     </>
   );
 }

@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  AddressAutofillField,
-  type SelectedAddress,
-} from "../../components/address-autofill";
+import { PlacesSearch } from "../../components/places-search";
+import type { PlaceSelection } from "../../[locale]/(merchant)/business/onboarding/_lib/contracts";
 import { TextField } from "../../../ui";
 import { StaffFormModal } from "../staff/staff-form-modal";
 
@@ -18,10 +16,8 @@ export type Draft = {
   id: string | null;
   name: string;
   addressLabel: string;
-  /** The Geoapify suggestion the owner picked, or null when the address is plain text.
-   * Typing in the address box clears it, so a hand-edited address is NEVER sent with the
-   * coordinates of the suggestion it no longer matches (decision 3 of spec 0061). */
-  selection: SelectedAddress | null;
+  /** Writing an address by hand clears the selected Google place. */
+  selection: PlaceSelection | null;
   /** Whether the address must travel in the PATCH. False on a pure rename, so no
    * verification row is written and `active_verification_id` stays put. */
   addressChanged: boolean;
@@ -43,18 +39,13 @@ export const editDraft = (location: LocationView): Draft => ({
   addressChanged: false,
 });
 
-/** The `address` field of the request body. With a suggestion it carries the provider and
- * its coordinates (the server re-verifies them); without one it carries ONLY the text —
- * no coordinate is invented for it. */
+/** The server derives the coordinates from the signed selection token. */
 export function addressBody(draft: Draft) {
   const { selection } = draft;
   if (selection) {
     return {
-      label: selection.label,
-      provider: selection.provider,
-      longitude: selection.longitude,
-      latitude: selection.latitude,
-      featureId: selection.featureId,
+      label: selection.place.addressLabel,
+      selectionToken: selection.selectionToken,
     };
   }
   return { label: draft.addressLabel.trim() };
@@ -62,14 +53,12 @@ export function addressBody(draft: Draft) {
 
 export function LocationForm({
   draft,
-  countryCode,
   busy,
   onChange,
   onSave,
   onCancel,
 }: {
   draft: Draft;
-  countryCode: string;
   busy: boolean;
   onChange: (draft: Draft) => void;
   onSave: () => void;
@@ -102,21 +91,32 @@ export function LocationForm({
           isRequired
         />
         <div className="location-address-search" data-tour="location-address">
-          <span className="location-form-label">Busca la dirección</span>
-          <p className="field-help">
-            Elige una sugerencia para verificarla automáticamente.
-          </p>
-          <AddressAutofillField
-            countryCode={countryCode}
-            onSelect={(selection) =>
-              onChange({
-                ...draft,
-                selection,
-                addressLabel: selection.label,
-                addressChanged: true,
-              })
-            }
-          />
+          {draft.selection ? (
+            <div className="places-selected">
+              <span>Dirección elegida</span>
+              <strong>{draft.selection.place.addressLabel}</strong>
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({ ...draft, selection: null, addressChanged: true })
+                }
+              >
+                Cambiar
+              </button>
+            </div>
+          ) : (
+            <PlacesSearch
+              label="Busca la dirección"
+              onSelect={(selection) =>
+                onChange({
+                  ...draft,
+                  selection,
+                  addressLabel: selection.place.addressLabel,
+                  addressChanged: true,
+                })
+              }
+            />
+          )}
         </div>
         <TextField
           className="staff-name-field"
@@ -126,6 +126,7 @@ export function LocationForm({
           maxLength={240}
           value={draft.addressLabel}
           placeholder="Ej. Av. Amazonas 123, Quito"
+          isReadOnly={Boolean(draft.selection)}
           onChange={(addressLabel) =>
             onChange({
               ...draft,

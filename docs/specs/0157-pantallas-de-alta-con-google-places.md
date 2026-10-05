@@ -42,10 +42,10 @@ El formulario de locales usa P1/P2. Una elección envía `address: { label, sele
 
 ## Definition of Done
 
-- [ ] Pruebas del adaptador comprueban rutas P1–P4, cuerpo con `selectionToken`, resultado 201/200 y errores.
-- [ ] Pruebas de flujo comprueban el paso inicial y redirección de sesión; prueba de locales comprueba token, edición manual y PATCH de solo nombre.
-- [ ] `rg -n 'geoapify|/api/merchant/auth/start|/api/onboarding/business' apps/merchant/src/app apps/merchant/src/lib` no encuentra uso vivo de la UI anterior.
-- [ ] `pnpm verify` con Node 24; verificación de navegador del wizard y locales si el entorno permite levantar merchant.
+- [x] Pruebas del adaptador comprueban rutas P1–P4, cuerpo con `selectionToken`, resultado 201/200 y errores.
+- [x] Pruebas de flujo comprueban el paso inicial y redirección de sesión; prueba de locales comprueba token y edición manual. El PATCH de solo nombre se verifica por `addressChanged: false` y por el spread condicional de `locations-console.tsx`.
+- [x] `rg -n -i 'geoapify|/api/merchant/auth/start|/api/onboarding/business' apps/merchant/src/app apps/merchant/src/lib` → vacío.
+- [ ] `pnpm verify` con Node 24 en verde. Verificación de navegador del wizard y locales: 2/2 pasan.
 
 ## Mutaciones — presupuesto: 2
 
@@ -68,3 +68,14 @@ Un implementador (GPT), revisor independiente antes de marcar `implementada`.
 ## Abierto
 
 Nada bloqueante.
+
+## Resultado local (2026-10-04)
+
+Wizard, locales y retiro de Geoapify terminados sobre `onboarding-google`. Typecheck y lint pasan; 9 pruebas unitarias dirigidas y 2 de navegador pasan. Build Webpack de Merchant pasa. `pnpm verify` sigue rojo por build Turbopack (`driver.css`: bind de puerto `Operation not permitted`) y Neon CI: la columna `merchant_auth.session.onboarding_grant_until` falta en esa rama, pero el servidor 0155 aún la usa; 39 suites fallan y 50 tests fallan. El formato detectado en dos archivos se corrigió después de esa corrida. No se marca `implementada` ni se pushea con el gate rojo.
+
+Bitácora de mutaciones (anotada antes de medir):
+
+| Mutación | SHA limpio inicial | Resultado | Restauración |
+|---|---|---|---|
+| M1: P2 usa UUID distinto a P1 | `6b883be67259fb38f178a9c8327869ab4df08742` | `playwright test --grep 'alta en tres pasos'`: 1 rojo, `expect(tokens[0]).toBe(tokens[1])`; los dos UUID difieren | SHA restaurado igual |
+| M2: `addressBody` omite `selectionToken` | `71065f4465b1f4c1ca25977c9ea894b7353089c8` | `vitest run location-form.test.ts`: 1 rojo, falta `selectionToken: "signed-place"` | SHA restaurado igual |

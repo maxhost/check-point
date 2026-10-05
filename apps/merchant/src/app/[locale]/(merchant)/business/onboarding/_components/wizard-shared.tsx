@@ -8,9 +8,9 @@ import {
 import type { WizardApiError } from "../_lib/onboarding-api";
 
 export const steps = [
-  { label: "Cuenta" },
   { label: "Negocio" },
-  { label: "Programa" },
+  { label: "Email" },
+  { label: "Confirmación" },
 ];
 
 const gateCodes = new Set<OwnerGateErrorCode>([

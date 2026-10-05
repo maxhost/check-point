@@ -31,7 +31,6 @@ type LocationToast = {
 
 export function LocationsConsole({
   initialLocations,
-  countryCode,
   activeLimit,
 }: {
   initialLocations: LocationView[];
@@ -82,9 +81,7 @@ export function LocationsConsole({
     setBusy(true);
     setError(null);
     setToast({
-      message: draft.id
-        ? "Revisando y guardando cambios"
-        : "Revisando y creando local",
+      message: draft.id ? "Guardando cambios" : "Creando local",
       kind: "info",
       pending: true,
     });
@@ -193,7 +190,6 @@ export function LocationsConsole({
         {draft && (
           <LocationForm
             draft={draft}
-            countryCode={countryCode}
             busy={busy}
             onChange={setDraft}
             onSave={() => void save()}

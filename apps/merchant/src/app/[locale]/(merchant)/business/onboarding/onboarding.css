@@ -122,6 +122,17 @@
   color: var(--ui-danger);
 }
 
+.onboarding-panel-link {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--brand-primary-action);
+  color: var(--brand-on-primary);
+  font-weight: 700;
+}
+
 @media (max-width: 390px) {
   .merchant-onboarding-wordmark {
     font-size: 17px;

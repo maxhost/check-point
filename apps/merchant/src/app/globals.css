@@ -303,50 +303,34 @@ input.cp-number-input::-webkit-outer-spin-button {
   filter: none;
   transform: none;
 }
-.geoapify-place-search {
+.places-search {
   position: relative;
   width: 100%;
+  display: grid;
+  gap: 8px;
 }
-.geoapify-input-wrap {
-  display: flex;
-  align-items: center;
-  min-height: 46px;
+.places-search-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 13px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 11px;
   color: var(--ui-text);
   background: var(--ui-surface);
 }
-.geoapify-input-wrap:focus-within {
+.places-search-input:focus-visible {
   border-color: var(--ui-focus);
   outline: 2px solid var(--ui-focus);
   outline-offset: 2px;
 }
-.geoapify-input-wrap svg {
-  flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
-  margin-left: 13px;
-  color: var(--ui-text-muted);
-}
-.geoapify-input-wrap input {
-  min-height: 44px;
-  padding: 13px 13px 13px 10px;
-  border: 0;
-  color: var(--ui-text);
-  background: transparent;
-  outline: 0;
-}
-.geoapify-input-wrap input::placeholder {
+.places-search-input::placeholder {
   color: var(--ui-text-muted);
   opacity: 1;
 }
-.geoapify-input-wrap input:focus {
-  border: 0;
-  outline: 0;
-}
-.geoapify-results {
+.places-search-results {
   position: absolute;
   z-index: 5;
+  top: 100%;
   width: 100%;
   max-height: 260px;
   margin: 5px 0 0;
@@ -359,10 +343,10 @@ input.cp-number-input::-webkit-outer-spin-button {
   background: var(--ui-surface-raised);
   box-shadow: 0 12px 28px var(--ui-shadow-md);
 }
-.driver-active-element .geoapify-results {
+.driver-active-element .places-search-results {
   position: static;
 }
-.geoapify-results button {
+.places-search-results button {
   width: 100%;
   padding: 11px;
   border-radius: 8px;
@@ -370,15 +354,29 @@ input.cp-number-input::-webkit-outer-spin-button {
   text-align: left;
   background: transparent;
 }
-.geoapify-results button:hover,
-.geoapify-results button:focus-visible {
+.places-search-results button span {
+  display: block;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+.places-search-results button:hover,
+.places-search-results button:focus-visible {
   color: var(--ui-text);
   background: var(--ui-surface-subtle);
 }
-.location-attribution {
-  margin: 8px 0 0;
-  color: var(--ui-text-muted);
-  font-size: 12px;
+.places-selected {
+  display: grid;
+  gap: 5px;
+  padding: 15px;
+  border: 1px solid var(--ui-border);
+  border-radius: 11px;
+  background: var(--ui-surface-subtle);
+}
+.places-selected button {
+  justify-self: start;
+  color: var(--brand-primary-action);
+  font-weight: 700;
+  text-decoration: underline;
 }
 .button {
   width: 100%;

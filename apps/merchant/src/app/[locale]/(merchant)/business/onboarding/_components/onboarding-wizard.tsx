@@ -1,21 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, ApiError, Button } from "../../../../../../ui";
-import { AccountStep, MagicLinkState, type AccountMode } from "./account-step";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Button, TextField } from "../../../../../../ui";
+import { AccountStep, MagicLinkState } from "./account-step";
 import { BusinessStep } from "./business-step";
-import { CompleteStep } from "./complete-step";
-import { ProgramStep } from "./program-step";
-import { gateCode } from "./wizard-shared";
+import { InlineApiError, StepHeader } from "./wizard-shared";
 import type {
   BusinessSummary,
   OnboardingPrefill,
-  ProgramSummary,
+  PlaceSelection,
+  SignupBusiness,
 } from "../_lib/contracts";
 import {
   getOnboardingPrefill,
   getOnboardingState,
   requestVerificationEmail,
+  signupMerchant,
   WizardApiError,
 } from "../_lib/onboarding-api";
 import { restoredStage } from "../_lib/onboarding-flow";
@@ -23,46 +23,42 @@ import { restoredStage } from "../_lib/onboarding-flow";
 type Stage =
   | "loading"
   | "restore-error"
-  | "account"
-  | "magic-link"
   | "business"
-  | "program"
-  | "complete";
-
-type VerificationStatus = "sent" | "failed" | "sending" | null;
+  | "email"
+  | "complete"
+  | "existing"
+  | "login"
+  | "magic-link";
 
 export function OnboardingWizard() {
   const [stage, setStage] = useState<Stage>("loading");
   const [prefill, setPrefill] = useState<OnboardingPrefill | null>(null);
+  const [businessInput, setBusinessInput] = useState<SignupBusiness | null>(
+    null,
+  );
+  const [placeSelection, setPlaceSelection] = useState<PlaceSelection | null>(
+    null,
+  );
   const [business, setBusiness] = useState<BusinessSummary | null>(null);
-  const [program, setProgram] = useState<ProgramSummary | null>(null);
-  const [currencyCode, setCurrencyCode] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [verificationSent, setVerificationSent] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<WizardApiError | null>(null);
-  const [accountMode, setAccountMode] = useState<AccountMode>("signup");
-  const [verificationStatus, setVerificationStatus] =
-    useState<VerificationStatus>(null);
-  const hasShownInitialStage = useRef(false);
-
-  const loadPrefill = useCallback(async () => {
-    const result = await getOnboardingPrefill();
-    setPrefill(result);
-    return result;
-  }, []);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [businessKey, setBusinessKey] = useState(0);
 
   const restore = useCallback(async () => {
     setStage("loading");
     setError(null);
     try {
       const state = await getOnboardingState();
-      const nextStage = restoredStage(state);
-      if (state.authenticated) {
-        setBusiness(state.business);
-        setProgram(state.program);
+      if (restoredStage(state) === "panel") {
+        window.location.assign("/backoffice");
+        return;
       }
-      if (nextStage === "business") {
-        await loadPrefill();
-      }
-      setStage(nextStage);
+      setPrefill(await getOnboardingPrefill());
+      setStage("business");
     } catch (caught) {
       setError(
         caught instanceof WizardApiError
@@ -71,145 +67,220 @@ export function OnboardingWizard() {
       );
       setStage("restore-error");
     }
-  }, [loadPrefill]);
+  }, []);
 
   useEffect(() => {
     void restore();
   }, [restore]);
-
   useEffect(() => {
-    if (stage === "loading") return;
-    if (!hasShownInitialStage.current) {
-      hasShownInitialStage.current = true;
-      return;
-    }
-    document.getElementById("wizard-heading")?.focus();
+    if (stage !== "loading") document.getElementById("wizard-heading")?.focus();
   }, [stage]);
 
-  function resetToAccount() {
+  async function submitEmail(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!businessInput || busy) return;
+    const normalized = email.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalized)) {
+      setEmailError("Escribe un email válido, por ejemplo nombre@negocio.com.");
+      return;
+    }
+    setBusy(true);
     setError(null);
-    setAccountMode("login");
-    setStage("account");
+    setEmailError(null);
+    try {
+      const result = await signupMerchant(normalized, businessInput);
+      if ("sent" in result) {
+        setBusinessInput(null);
+        setPlaceSelection(null);
+        setStage("existing");
+      } else {
+        setBusiness(result.business);
+        setVerificationSent(result.verificationSent);
+        setStage("complete");
+      }
+    } catch (caught) {
+      const requestError =
+        caught instanceof WizardApiError
+          ? caught
+          : new WizardApiError("No pudimos crear tu cuenta.", 503);
+      if (requestError.code === "invalid_selection") {
+        setBusinessInput(null);
+        setPlaceSelection(null);
+        setBusinessKey((key) => key + 1);
+        setError(
+          new WizardApiError(
+            "La selección venció. Busca tu negocio de nuevo.",
+            422,
+          ),
+        );
+        setStage("business");
+      } else if (requestError.code === "invalid_email") {
+        setEmailError(requestError.message);
+      } else if (requestError.code === "invalid_business") {
+        setError(requestError);
+        setStage("business");
+      } else {
+        setError(requestError);
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function retryVerification() {
-    setVerificationStatus("sending");
+    setSending(true);
     try {
       const result = await requestVerificationEmail();
-      setVerificationStatus(
-        result.verified ? null : result.sent ? "sent" : "failed",
-      );
+      setVerificationSent(result.sent || result.verified);
     } catch {
-      setVerificationStatus("failed");
+      setVerificationSent(false);
+    } finally {
+      setSending(false);
     }
   }
 
-  const ownerCode = gateCode(error);
-  if (ownerCode) {
+  if (stage === "loading")
     return (
       <WizardShell>
-        <ApiError
-          code={ownerCode}
-          suspensionReason={error?.suspensionReason}
-          onLogin={resetToAccount}
-          onBack={() => void restore()}
-          onHome={() => window.location.assign("/")}
-          onContact={() =>
-            window.location.assign("mailto:soporte@mipasaporte.app")
-          }
-          onEmailVerified={() => void restore()}
-        />
+        <p role="status">Cargando tu avance…</p>
       </WizardShell>
     );
-  }
-
-  if (stage === "loading") return <LoadingState />;
-
-  if (stage === "restore-error") {
+  if (stage === "restore-error")
     return (
       <WizardShell>
-        <section className="rounded-lg bg-surface p-6 shadow-sm sm:p-8">
-          <h1
-            id="wizard-heading"
-            tabIndex={-1}
-            className="text-2xl font-bold outline-none"
-          >
-            No pudimos recuperar tu avance
-          </h1>
-          <p className="mt-2 leading-6 text-content-muted">
-            {error?.message ?? "Revisa tu conexión y vuelve a intentarlo."}
-          </p>
-          <Button onPress={() => void restore()} className="mt-5">
-            Reintentar
-          </Button>
-        </section>
+        <h1 id="wizard-heading" tabIndex={-1}>
+          No pudimos recuperar tu avance
+        </h1>
+        <InlineApiError error={error} />
+        <Button onPress={() => void restore()}>Reintentar</Button>
       </WizardShell>
     );
-  }
 
   return (
     <WizardShell>
-      {stage === "account" && (
-        <AccountStep
+      {stage === "business" && prefill && (
+        <BusinessStep
+          key={businessKey}
+          prefill={prefill}
           apiError={error}
-          onError={setError}
-          mode={accountMode}
-          onModeChange={setAccountMode}
-          onNewAccount={async (verificationSent) => {
-            setVerificationStatus(verificationSent ? "sent" : "failed");
-            await loadPrefill();
-            setStage("business");
+          initialSelection={placeSelection}
+          initialBusiness={businessInput}
+          onLogin={() => {
+            setError(null);
+            setStage("login");
           }}
-          onMagicLink={() => {
-            setAccountMode("login");
-            setStage("magic-link");
+          onComplete={(value, selection) => {
+            setBusinessInput(value);
+            setPlaceSelection(selection);
+            setError(null);
+            setStage("email");
           }}
         />
       )}
+      {stage === "email" && businessInput && (
+        <>
+          <StepHeader
+            step={2}
+            title="¿Cuál es tu email?"
+            description="Crearemos tu cuenta y tu negocio juntos. Te enviaremos un enlace para verificar el email."
+          />
+          <form
+            className="grid gap-5"
+            onSubmit={(event) => void submitEmail(event)}
+          >
+            <InlineApiError error={error} />
+            <TextField
+              label="Tu email"
+              type="email"
+              name="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              inputMode="email"
+              isRequired
+              isInvalid={Boolean(emailError)}
+              errorMessage={emailError ?? undefined}
+            />
+            <Button type="submit" fullWidth isLoading={busy}>
+              Crear mi cuenta
+            </Button>
+          </form>
+          <button
+            type="button"
+            className="mt-5 font-bold text-primary underline"
+            onClick={() => {
+              setError(null);
+              setStage("business");
+            }}
+          >
+            Volver al negocio
+          </button>
+        </>
+      )}
+      {stage === "complete" && business && (
+        <>
+          <StepHeader
+            step={3}
+            title={`Tu negocio ${business.name} está listo`}
+            description="Ya puedes entrar a tu panel y seguir configurándolo."
+          />
+          {!verificationSent && (
+            <Alert
+              kind="warning"
+              title="No pudimos enviar el enlace de verificación"
+              className="mb-6"
+            >
+              <p>
+                Tu cuenta y tu negocio están creados. Reenvía el enlace para
+                verificar tu email.
+              </p>
+              <Button
+                variant="quiet"
+                isLoading={sending}
+                onPress={() => void retryVerification()}
+              >
+                Reenviar enlace
+              </Button>
+            </Alert>
+          )}
+          {verificationSent && (
+            <Alert kind="info" title="Revisa tu email" className="mb-6">
+              Te enviamos un enlace para verificar tu email.
+            </Alert>
+          )}
+          <a href="/backoffice" className="onboarding-panel-link">
+            Ir a mi panel
+          </a>
+        </>
+      )}
+      {stage === "existing" && (
+        <section>
+          <h1 id="wizard-heading" tabIndex={-1} className="text-2xl font-bold">
+            Ya tienes cuenta
+          </h1>
+          <p className="mt-3 text-content-muted">
+            Te mandamos un link para entrar. Revisa también la carpeta de spam.
+          </p>
+          <Button
+            variant="quiet"
+            className="mt-5"
+            onPress={() => {
+              setBusinessKey((key) => key + 1);
+              setStage("business");
+            }}
+          >
+            Crear otro negocio
+          </Button>
+        </section>
+      )}
+      {stage === "login" && (
+        <AccountStep
+          onBack={() => setStage("business")}
+          onMagicLink={() => setStage("magic-link")}
+        />
+      )}
       {stage === "magic-link" && (
-        <MagicLinkState onUseAnotherEmail={resetToAccount} />
-      )}
-      {stage === "business" && prefill && (
-        <>
-          <VerificationNotice
-            status={verificationStatus}
-            onRetry={retryVerification}
-          />
-          <BusinessStep
-            prefill={prefill}
-            apiError={error}
-            onError={setError}
-            onComplete={(created, createdCurrencyCode) => {
-              setBusiness(created);
-              setCurrencyCode(createdCurrencyCode);
-              setError(null);
-              setStage("program");
-            }}
-            onAlreadyExists={() => void restore()}
-          />
-        </>
-      )}
-      {stage === "program" && (
-        <>
-          <VerificationNotice
-            status={verificationStatus}
-            onRetry={retryVerification}
-          />
-          <ProgramStep
-            business={business}
-            currencyCode={currencyCode}
-            apiError={error}
-            onError={setError}
-            onComplete={(created) => {
-              setProgram(created);
-              setError(null);
-              setStage("complete");
-            }}
-          />
-        </>
-      )}
-      {stage === "complete" && business && program && (
-        <CompleteStep business={business} onGateError={setError} />
+        <MagicLinkState onUseAnotherEmail={() => setStage("login")} />
       )}
     </WizardShell>
   );
@@ -237,61 +308,5 @@ function WizardShell({ children }: { children: React.ReactNode }) {
         <div className="merchant-onboarding-content">{children}</div>
       </div>
     </main>
-  );
-}
-
-function VerificationNotice({
-  status,
-  onRetry,
-}: {
-  status: VerificationStatus;
-  onRetry: () => Promise<void>;
-}) {
-  if (!status) return null;
-  return (
-    <Alert
-      kind={status === "sent" ? "info" : "warning"}
-      title={
-        status === "sent"
-          ? "Revisa tu email"
-          : "No pudimos enviar el enlace de verificación"
-      }
-      className="mb-6"
-    >
-      {status === "sent" ? (
-        <p>
-          Te enviamos un enlace para confirmar tu email. Puedes continuar con el
-          alta mientras tanto.
-        </p>
-      ) : (
-        <div className="grid gap-2">
-          <p>
-            Acabamos de crear tu cuenta con el email del paso anterior, pero no
-            pudimos enviar el enlace de verificación. Puedes continuar con tu
-            negocio y reintentar el envío aquí. Necesitarás verificar el email
-            para obtener tu QR.
-          </p>
-          <Button
-            variant="quiet"
-            onPress={() => void onRetry()}
-            isLoading={status === "sending"}
-          >
-            {status === "sending" ? "Enviando…" : "Reenviar enlace"}
-          </Button>
-        </div>
-      )}
-    </Alert>
-  );
-}
-
-function LoadingState() {
-  return (
-    <WizardShell>
-      <div role="status" className="grid gap-4" aria-label="Cargando tu avance">
-        <div className="h-4 w-24 animate-pulse rounded-full bg-disabled motion-reduce:animate-none" />
-        <div className="h-8 w-3/4 animate-pulse rounded-md bg-disabled motion-reduce:animate-none" />
-        <div className="h-28 animate-pulse rounded-lg bg-disabled motion-reduce:animate-none" />
-      </div>
-    </WizardShell>
   );
 }

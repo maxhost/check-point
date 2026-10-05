@@ -1,73 +1,46 @@
 import type { OwnerGateErrorCode } from "../../../../../../ui";
 
 export type BusinessSummary = { id: string; name: string; slug: string };
-export type ProgramKind = "stamps" | "points";
-export type ProgramSummary = { id: string; kind: ProgramKind };
-
-export type CreateProgramInput =
-  | {
-      kind: "stamps";
-      target: number;
-      rewardLabel: string;
-    }
-  | {
-      kind: "points";
-      pointsGranted: number;
-      purchaseAmount: string;
-      rewardLabel: string;
-      rewardPointsCost: number;
-    };
-
 export type OnboardingState =
   | { authenticated: false }
-  | {
-      authenticated: true;
-      business: BusinessSummary | null;
-      program: ProgramSummary | null;
-      stampImage: boolean;
-    };
-
-export type Country = {
-  code: string;
-  name: string;
-  currencyCode: string;
-};
-
+  | { authenticated: true; business: BusinessSummary | null };
 export type Category = { gcid: string; displayName: string };
+export type OnboardingPrefill = { categories: Category[] };
 
-export type OnboardingPrefill = {
-  countries: Country[];
-  suggestedCountryCode: string | null;
-  bias: { latitude: number; longitude: number } | null;
-  categories: Category[];
+export type PlaceSuggestion = {
+  placeId: string;
+  kind: "business" | "address";
+  mainText: string;
+  secondaryText: string | null;
 };
-
-export type SelectedAddress = {
-  label: string;
-  provider: "geoapify";
-  longitude: number;
-  latitude: number;
-  featureId?: string;
-  snapshot: Record<string, unknown>;
+export type PlaceSelection = {
+  place: {
+    placeId: string;
+    kind: "business" | "address";
+    addressLabel: string;
+    suggestedCategoryGcid: string | null;
+  };
+  selectionToken: string;
+  suggestion: PlaceSuggestion;
 };
-
-export type CreateBusinessInput = {
+export type SignupBusiness = {
   name: string;
   categoryGcid: string;
-  countryCode: string;
-  timezone: string;
-  locationName: string;
-  address: SelectedAddress;
+  selectionToken: string;
 };
+export type SignupResult =
+  | { created: true; verificationSent: boolean; business: BusinessSummary }
+  | { sent: true };
 
 export type WizardApiCode =
   | OwnerGateErrorCode
   | "invalid_body"
+  | "invalid_input"
   | "invalid_email"
-  | "rate_limited"
-  | "auth_unavailable"
-  | "program_exists"
-  | "invalid_program"
-  | "program_unavailable"
-  | "no_program"
-  | "qr_unavailable";
+  | "invalid_business"
+  | "invalid_selection"
+  | "unsupported_country"
+  | "place_not_found"
+  | "places_unavailable"
+  | "signup_unavailable"
+  | "rate_limited";

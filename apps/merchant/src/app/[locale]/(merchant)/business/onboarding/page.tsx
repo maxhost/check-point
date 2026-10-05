@@ -4,7 +4,7 @@ import "./onboarding.css";
 
 export const metadata: Metadata = {
   title: "Crea tu negocio · CheckPass Club",
-  description: "Activa tu programa de fidelización en tres pasos.",
+  description: "Crea tu negocio en tres pasos.",
 };
 
 export default function BusinessOnboardingPage() {

@@ -1,10 +1,10 @@
 import type {
-  BusinessSummary,
-  CreateProgramInput,
-  CreateBusinessInput,
   OnboardingPrefill,
   OnboardingState,
-  ProgramSummary,
+  PlaceSelection,
+  PlaceSuggestion,
+  SignupBusiness,
+  SignupResult,
   WizardApiCode,
 } from "./contracts";
 
@@ -13,6 +13,7 @@ export class WizardApiError extends Error {
     message: string,
     readonly status: number,
     readonly code?: WizardApiCode,
+    readonly field?: string,
     readonly suspensionReason?: string,
   ) {
     super(message);
@@ -44,6 +45,7 @@ async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {
         : "No pudimos completar la solicitud.",
       response.status,
       typeof body.code === "string" ? (body.code as WizardApiCode) : undefined,
+      typeof body.field === "string" ? body.field : undefined,
       typeof body.suspensionReason === "string"
         ? body.suspensionReason
         : undefined,
@@ -52,34 +54,39 @@ async function jsonRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export async function getOnboardingState(): Promise<OnboardingState> {
-  // Spec 0074 — la ruta existe y se llama SIEMPRE, tambien en desarrollo. Hubo un
-  // sustituto de `sessionStorage` mientras la 0074 estaba sin implementar; se retiro
-  // porque hacia que la ruta real no se ejercitara ni una vez fuera de produccion.
-  const response = await fetch("/api/onboarding/state", {
-    credentials: "same-origin",
-  });
-  const body = await responseBody(response);
-  if (!response.ok) {
-    throw new WizardApiError(
-      typeof body.error === "string"
-        ? body.error
-        : "No pudimos recuperar tu avance.",
-      response.status,
-      typeof body.code === "string" ? (body.code as WizardApiCode) : undefined,
-    );
-  }
-  return body as OnboardingState;
+export function getOnboardingState() {
+  return jsonRequest<OnboardingState>("/api/onboarding/state");
 }
 
-export function startMerchantAuth(email: string) {
-  return jsonRequest<{ sent: boolean; verificationSent?: boolean }>(
-    "/api/merchant/auth/start",
+export function getOnboardingPrefill() {
+  return jsonRequest<OnboardingPrefill>("/api/onboarding/prefill");
+}
+
+export function autocompletePlaces(input: string, sessionToken: string) {
+  return jsonRequest<{ suggestions: PlaceSuggestion[] }>(
+    "/api/places/autocomplete",
     {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ input, sessionToken }),
     },
   );
+}
+
+export function selectPlace(placeId: string, sessionToken: string) {
+  return jsonRequest<Omit<PlaceSelection, "suggestion">>(
+    "/api/places/details",
+    {
+      method: "POST",
+      body: JSON.stringify({ placeId, sessionToken }),
+    },
+  );
+}
+
+export function signupMerchant(email: string, business: SignupBusiness) {
+  return jsonRequest<SignupResult>("/api/onboarding/signup", {
+    method: "POST",
+    body: JSON.stringify({ email, business }),
+  });
 }
 
 export function requestMerchantLogin(email: string) {
@@ -94,103 +101,4 @@ export function requestVerificationEmail() {
     "/api/merchant/auth/verify-email",
     { method: "POST" },
   );
-}
-
-export function getOnboardingPrefill() {
-  return jsonRequest<OnboardingPrefill>("/api/onboarding/prefill");
-}
-
-export async function createBusiness(input: CreateBusinessInput) {
-  const result = await jsonRequest<{ businessId: string; slug: string }>(
-    "/api/onboarding/business",
-    { method: "POST", body: JSON.stringify(input) },
-  );
-  const business: BusinessSummary = {
-    id: result.businessId,
-    name: input.name.trim(),
-    slug: result.slug,
-  };
-  return business;
-}
-
-/**
- * Spec 0079 — la ruta unica. `POST /api/onboarding/program` se borro: escribia el mismo
- * programa con el mismo writer, y dos puertas sobre un writer es lo que produjo el bypass
- * de la 0077.
- *
- * El cuerpo sigue siendo el CORTO: lo que el servidor puede completar con seguridad
- * —`unitName`/`unitPlural`, la mecanica «un sello por compra» y las clausulas del pais—
- * es opcional y lo completa `programInput`. Y **sigue sin mandar ids**: el negocio lo
- * resuelve el servidor desde la sesion (ADR 0070 §15.3).
- */
-export async function createProgram(input: CreateProgramInput) {
-  const body =
-    input.kind === "stamps"
-      ? {
-          kind: input.kind,
-          configuration: { target: input.target },
-          rewards: [{ type: "custom", label: input.rewardLabel.trim() }],
-        }
-      : {
-          kind: input.kind,
-          configuration: { unitSingular: "Punto", unitPlural: "Puntos" },
-          rewards: [
-            {
-              type: "custom",
-              label: input.rewardLabel.trim(),
-              pointsCost: input.rewardPointsCost,
-            },
-          ],
-          accrual: {
-            mode: "per_amount",
-            grant: input.pointsGranted,
-            blockAmount: input.purchaseAmount,
-          },
-        };
-  const result = await jsonRequest<{ programId: string; created: boolean }>(
-    "/api/loyalty-program",
-    {
-      method: "PUT",
-      body: JSON.stringify(body),
-    },
-  );
-  const program: ProgramSummary = { id: result.programId, kind: input.kind };
-  return program;
-}
-
-export const qrDownloadPath = "/api/loyalty-program/qr?format=png&download=1";
-
-export async function getQrImage() {
-  const response = await fetch("/api/loyalty-program/qr?format=svg", {
-    credentials: "same-origin",
-  });
-  if (!response.ok) {
-    const body = await responseBody(response);
-    throw new WizardApiError(
-      typeof body.error === "string" ? body.error : "No pudimos generar tu QR.",
-      response.status,
-      typeof body.code === "string" ? (body.code as WizardApiCode) : undefined,
-      typeof body.suspensionReason === "string"
-        ? body.suspensionReason
-        : undefined,
-    );
-  }
-  return response.blob();
-}
-
-export async function getQrPng() {
-  const response = await fetch("/api/loyalty-program/qr?format=png", {
-    credentials: "same-origin",
-  });
-  if (!response.ok) {
-    const body = await responseBody(response);
-    throw new WizardApiError(
-      typeof body.error === "string"
-        ? body.error
-        : "No pudimos preparar el QR para compartir.",
-      response.status,
-      typeof body.code === "string" ? (body.code as WizardApiCode) : undefined,
-    );
-  }
-  return response.blob();
 }
