@@ -1,4 +1,10 @@
 import { defineConfig } from "@playwright/test";
+import {
+  consumerURL,
+  e2ePorts,
+  merchantURL,
+  platformURL,
+} from "./tests/e2e/support/ports";
 
 const isCi = Boolean(process.env.CI);
 
@@ -10,24 +16,24 @@ export default defineConfig({
   workers: isCi ? 1 : undefined,
   reporter: isCi ? "github" : "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: consumerURL,
   },
   webServer: [
     {
-      command: "pnpm --filter @mi-pasaporte/consumer dev",
-      url: "http://127.0.0.1:3000/api/health",
+      command: `pnpm --filter @mi-pasaporte/consumer exec next dev --port ${e2ePorts.consumer}`,
+      url: `${consumerURL}/api/health`,
       reuseExistingServer: !isCi,
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @mi-pasaporte/merchant dev",
-      url: "http://127.0.0.1:3001/api/health",
+      command: `pnpm --filter @mi-pasaporte/merchant exec next dev --port ${e2ePorts.merchant}`,
+      url: `${merchantURL}/api/health`,
       reuseExistingServer: !isCi,
       timeout: 120_000,
     },
     {
-      command: "pnpm --filter @mi-pasaporte/platform dev",
-      url: "http://127.0.0.1:3002/api/health",
+      command: `pnpm --filter @mi-pasaporte/platform exec next dev --port ${e2ePorts.platform}`,
+      url: `${platformURL}/api/health`,
       reuseExistingServer: !isCi,
       timeout: 120_000,
     },

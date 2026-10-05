@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { consumerURL, merchantURL, platformURL } from "./support/ports";
 
 const services = [
-  { name: "consumer", url: "http://127.0.0.1:3000/api/health" },
-  { name: "merchant", url: "http://127.0.0.1:3001/api/health" },
-  { name: "platform", url: "http://127.0.0.1:3002/api/health" },
+  { name: "consumer", url: `${consumerURL}/api/health` },
+  { name: "merchant", url: `${merchantURL}/api/health` },
+  { name: "platform", url: `${platformURL}/api/health` },
 ] as const;
 
 for (const service of services) {

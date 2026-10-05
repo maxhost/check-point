@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { startCatalogHarness } from "./support/catalog-harness-server";
-
-const merchantURL = "http://127.0.0.1:3001";
+import { merchantURL } from "./support/ports";
 
 test("alta en tres pasos comparte la sesión de Places y crea el negocio una vez", async ({
   page,

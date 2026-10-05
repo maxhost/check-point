@@ -21,6 +21,9 @@ Los health checks quedan disponibles en:
 - `http://localhost:3001/api/health` — merchant
 - `http://localhost:3002/api/health` — platform
 
+La e2e (`pnpm test:e2e`) levanta sus propios servidores en 3100/3101/3102
+(`tests/e2e/support/ports.ts`), para no chocar con un `pnpm dev` ni con otros proyectos.
+
 El checklist para desplegar y probar el registro real de Owner está en
 [docs/DEPLOY-OWNER-TEST.md](docs/DEPLOY-OWNER-TEST.md).
 

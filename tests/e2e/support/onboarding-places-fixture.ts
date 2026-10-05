@@ -1,6 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 
-export const merchantURL = "http://127.0.0.1:3001";
+import { merchantURL } from "./ports";
+
+export { merchantURL };
 
 /** Rutas del alta con Places (mismas que onboarding-google-places.spec.ts) hasta el paso 1. */
 export async function onboardingPlacesFixture(page: Page) {

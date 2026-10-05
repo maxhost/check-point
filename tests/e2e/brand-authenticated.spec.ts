@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { brandFixture } from "./support/brand-tour-fixture";
-const merchantURL = process.env.E2E_BRAND_BASE_URL ?? "http://127.0.0.1:3001";
+import { merchantURL as defaultMerchantURL } from "./support/ports";
+const merchantURL = process.env.E2E_BRAND_BASE_URL ?? defaultMerchantURL;
 for (const role of ["owner", "staff"] as const) {
   const storageState =
     process.env[
