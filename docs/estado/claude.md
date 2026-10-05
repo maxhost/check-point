@@ -9,7 +9,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — SPEC 0162 (#76) IMPLEMENTADA Y EN `origin/main` (`deb8cc5`); SIGUE LA 0160
+## ⇥ ESTADO (2026-10-05, noche) — 0162 EN `origin/main` (`deb8cc5`); E2E EN PUERTOS 3100-3102 (`3a79c22`, LOCAL); SIGUE LA 0160
 
 **Hecho (verificado):**
 - **0162** implementada en `deb8cc5`, pusheada a `origin/main` (`464ef0c..deb8cc5`) CON el pre-push: `pnpm verify`
@@ -32,10 +32,17 @@ Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploys de `b1ab
 
 **Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #77 (diferido por el owner); H4 de la 0155.
 
-**Gotchas de esta sesion:** otra sesion (sintetica) ocupa el 3002 y lo relanza: matarlo en el MISMO comando que
-lanza la e2e/el push; `next dev` del `webServer` reescribe los tres `next-env.d.ts` (revertir antes de commitear);
-`rg -n MUTATION` sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`); este commit de estado queda
-local hasta el proximo push (Hobby).
+- **E2E en 3100/3101/3102** (`3a79c22`, N0, owner: «si hacemos que e2e tenga 3100»): `tests/e2e/support/ports.ts`
+  es la unica fuente; `playwright.config.ts` levanta `next dev --port 31xx` por app; health, onboarding y los
+  `*-authenticated` leen de ahi. `pnpm run test:e2e` → `139 passed`, `21 skipped`, exit 0, con el 3002 libre para
+  sintetica. Los `localhost:3001` de `apps/**` son tests con `Request` en memoria (sin servidor): no se tocaron.
+  **Sin pushear** (junto con este estado y `edfa9ee`, al proximo push; Hobby).
+
+**Gotchas de esta sesion:** `next dev` del `webServer` reescribe los tres `next-env.d.ts` (revertir antes de
+commitear); `rg -n MUTATION` sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`); `export { x } from`
+no declara `x` en el modulo (el fixture que lo usa da `ReferenceError`). Visto UNA vez con la suite completa:
+`loyalty-tour-help` «cierre espera confirmación…» → «Tearing down "loyaltyHarness" exceeded 30000ms»; suelto 9/9
+y la suite siguiente verde. Si se repite, va a PARQUEADO.
 
 **Descartado:**
 
@@ -43,5 +50,7 @@ local hasta el proximo push (Hobby).
 |---|---|
 | Caso `server-errors` en la pagina por defecto del harness | cambia las 8 capturas de la 0159; con `?case=` quedan igual |
 | `expect` duro en el bucle de campos | corta en el primero: no muestra el rojo de los cinco |
+
+**Siguiente antes de la 0160:** pushear `edfa9ee`, `3a79c22` y este estado juntos (el pre-push corre la e2e en 31xx).
 
 **Prompt para retomar:** «Lee docs/estado/claude.md: spec 0160».
