@@ -9,7 +9,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — 0162 EN `origin/main` (`deb8cc5`); E2E EN PUERTOS 3100-3102 (`3a79c22`, LOCAL); SIGUE LA 0160
+## ⇥ ESTADO (2026-10-05, noche) — 0162 Y E2E EN 3100-3102 EN `origin/main` (`3177450`); SIGUE LA 0160
 
 **Hecho (verificado):**
 - **0162** implementada en `deb8cc5`, pusheada a `origin/main` (`464ef0c..deb8cc5`) CON el pre-push: `pnpm verify`
@@ -27,8 +27,11 @@
    al empezar, sumando piezas al final de la pagina por defecto de `ui-kit-entry.tsx`. Despues la 0161.
 2. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
 
-**Pendientes del owner:** `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
+**Pendientes del owner:** borrar las dos claves de
 Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploys de `b1ab123` y `d797c21` sin verificar.
+
+**Decidido por el owner (2026-10-05):** `.env.example` queda como esta (todavia lista Geoapify): «dejalo, no hace
+falta sacarlos». La clave real `GOOGLE_MAPS_API_KEY` esta en `apps/merchant/.env.local`. No volver a pedirlo.
 
 **Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #77 (diferido por el owner); H4 de la 0155.
 
@@ -36,7 +39,7 @@ Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploys de `b1ab
   es la unica fuente; `playwright.config.ts` levanta `next dev --port 31xx` por app; health, onboarding y los
   `*-authenticated` leen de ahi. `pnpm run test:e2e` → `139 passed`, `21 skipped`, exit 0, con el 3002 libre para
   sintetica. Los `localhost:3001` de `apps/**` son tests con `Request` en memoria (sin servidor): no se tocaron.
-  **Sin pushear** (junto con este estado y `edfa9ee`, al proximo push; Hobby).
+  Pusheado con `edfa9ee` y su estado: `deb8cc5..3177450`, pre-push `verify: ok` (e2e en 31xx).
 
 **Gotchas de esta sesion:** `next dev` del `webServer` reescribe los tres `next-env.d.ts` (revertir antes de
 commitear); `rg -n MUTATION` sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`); `export { x } from`
@@ -50,7 +53,5 @@ y la suite siguiente verde. Si se repite, va a PARQUEADO.
 |---|---|
 | Caso `server-errors` en la pagina por defecto del harness | cambia las 8 capturas de la 0159; con `?case=` quedan igual |
 | `expect` duro en el bucle de campos | corta en el primero: no muestra el rojo de los cinco |
-
-**Siguiente antes de la 0160:** pushear `edfa9ee`, `3a79c22` y este estado juntos (el pre-push corre la e2e en 31xx).
 
 **Prompt para retomar:** «Lee docs/estado/claude.md: spec 0160».
