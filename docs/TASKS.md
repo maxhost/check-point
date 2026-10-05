@@ -4,6 +4,17 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0155, REVISOR (2026-10-04)
+
+Arbol: worktree `motor-wt/onboarding-google`, commit 07e345e (archivos LIMPIOS y commiteados al medir).
+Restauracion: `git checkout 07e345e -- <archivo>` (o `cp` desde las copias `*.clean.ts` del scratchpad de la sesion 5727d8da).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R1 | apps/merchant/src/app/api/onboarding/signup/route.ts | 6b5cb55201ee42c47b2239cda0d44bbdcdf15645 | un 422 de token NO gasta cupo: `verifySelection` va ANTES de `recordStartAttempt` (contrato P4, paso 4 antes del 5) | ROJO por la propiedad. Mutacion: `verifySelection` movido debajo de `recordStartAttempt`. Unidad (merchant-entry-email): 3/14 — «token ausente/alterado/vencido → 422» con `expected "vi.fn()" to not be called at all` (recibio `{ email, ipHash }`: el limite/intento). Neon (rechazos): 4/13 — los 4 casos de token, status 422 OK pero `nothingFor` linea 74: `expected 1 to be +0` (attemptCount). Revertido con cp: diff vacio, shasum vuelve a 6b5cb552 |
+| R2 | apps/merchant/src/server/places/selection-token.ts | e5ab2a3a47c1b06ffc8cf0dca652f9ea6090a878 | un token VENCIDO (exp pasado, firma valida) → SelectionError / 422 | ROJO por la propiedad. Mutacion: `(false && parsed.exp <= now.getTime())`. Unidad (places/*, places-routes, merchant-entry-email, locations): 2/129 — selection-token «vencido → SelectionError» (expected function to throw) y signup «token vencido → 422» (expected 201 to be 422). Neon (rechazos): 1/13 — «token vencido» (expected 201 to be 422, linea 72). locations.* NO tiene caso de token vencido (comparte `verifySelection`). Revertido con cp: diff vacio, shasum vuelve a e5ab2a3a |
+| R3 | apps/merchant/src/app/api/onboarding/signup/route.ts | 6b5cb55201ee42c47b2239cda0d44bbdcdf15645 | unique violation con el email LIBRE (choque de slug) → 503, no el «ya tenes cuenta» del `start` viejo | ROJO solo en UNIDAD. Mutacion: `if (true \|\| (await findUserIdByEmail(email)))`. Unidad (merchant-entry-email): 1/14 — «unique violation con el email libre (slug) → 503» (expected 200 to be 503). Neon (onboarding-signup): 6/6 VERDE — no hay caso Neon de choque de slug. Sonda Neon temporal del revisor (borrada): slug forzado a uno tomado → 503 real y 0 filas en `user` del 2do email (el batch revirtio el statement 1 al fallar el 3). Revertido con cp: diff vacio, shasum vuelve a 6b5cb552 |
+
 ## Bitacora de mutaciones — spec 0155, implementador (2026-10-04)
 
 Arbol: worktree `motor-wt/onboarding-google` (rama `onboarding-google`, base 38a1fe6), cambios SIN commitear al medir.
