@@ -23,6 +23,10 @@ for (const theme of ["light", "dark"] as const)
     await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
     await brandFixture(page);
     await page.goto(`${harness}?surface=brand`);
+    await page.evaluate(
+      (theme) => (document.documentElement.dataset.theme = theme),
+      theme,
+    );
     await expect(
       page.getByRole("textbox", { name: "Nombre del negocio" }),
     ).toBeVisible();
@@ -33,6 +37,10 @@ for (const theme of ["light", "dark"] as const)
     await page.unroute("**/api/**");
     await catalogApiFixture(page);
     await page.goto(`${harness}?surface=catalog`);
+    await page.evaluate(
+      (theme) => (document.documentElement.dataset.theme = theme),
+      theme,
+    );
     await expect(
       page.getByRole("button", { name: "Importar con IA" }),
     ).toBeVisible();
@@ -54,6 +62,10 @@ for (const theme of ["light", "dark"] as const)
       }),
     );
     await page.goto(`${harness}?surface=staff`);
+    await page.evaluate(
+      (theme) => (document.documentElement.dataset.theme = theme),
+      theme,
+    );
     await page.getByRole("button", { name: /Añadir integrante/ }).click();
     await expect(
       page.getByRole("textbox", { name: "Nombre", exact: true }),
@@ -63,6 +75,10 @@ for (const theme of ["light", "dark"] as const)
       fullPage: true,
     });
     await page.goto(`${harness}?surface=locations`);
+    await page.evaluate(
+      (theme) => (document.documentElement.dataset.theme = theme),
+      theme,
+    );
     await page.getByRole("button", { name: /Añadir local/ }).click();
     await expect(
       page.getByRole("textbox", { name: "Nombre del local" }),

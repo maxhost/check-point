@@ -1,7 +1,7 @@
 ---
 spec: 0158
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: Fase 0a del ADR 0123. El CSS propio de `globals.css` y `onboarding.css` pasa a `@layer legacy` (debajo de las utilidades), la paleta cruda de Tailwind deja de existir (`--color-*: initial`), el onboarding pierde su paleta propia, el oscuro queda en UN bloque de `tokens.css` con claro forzado en `<html>`, el contraste de tokens entra a `pnpm test`, y se publican capturas antes/despues (390 y 1280) para la decision 5 del owner.
 disjunta: no
 archivos: apps/merchant/src/app/globals.css, apps/merchant/src/app/[locale]/(merchant)/business/onboarding/onboarding.css, apps/merchant/src/ui/tokens.css, apps/merchant/src/ui/tokens.test.ts, apps/merchant/src/app/layout.tsx, apps/merchant/scripts/check-design-contrast.mjs, apps/merchant/package.json, tests/e2e/ui-layers.spec.ts, tests/e2e/ui-captures.spec.ts, tests/e2e/support/ui-layers-entry.tsx, tests/e2e/support/catalog-harness-server.ts, tests/e2e/brand-lifecycle.spec.ts, tests/e2e/loyalty-regression.spec.ts, docs/design-system.md, docs/ui-handoff.md
@@ -205,3 +205,72 @@ el owner recibe el link del Artifact para decidir la decision 5 y GPT el sha ant
 ## Abierto
 
 Nada que bloquee. La decision 5 se toma DESPUES, con las capturas; no cambia esta spec.
+
+## Implementacion (2026-10-05, sesion principal, N1)
+
+**Rojo ANTES del cambio** (`ui-layers.spec.ts` sobre el CSS de `87de5ff`, con sonda de valores computados):
+
+| Control | Medido antes | Esperado (kit) |
+|---|---|---|
+| backoffice `TextField` valido | padding 13/13, radio 11, borde `#cbd7ce` | 14/10, 14, `#82998d` |
+| backoffice `TextField` invalido | igual al valido: borde `#cbd7ce` (el rojo del kit no se veia) | borde `#8e2a2a` |
+| backoffice `Button` secundario | borde 0px, peso 400 | 1px, 700 |
+| backoffice `Button` primario | `#176548` (ya pasaba) | `#176548` |
+| onboarding «Nombre del negocio» | padding 13/13, radio 11, borde **`#cbd7ce`** | 14/10, 14, `#82998d` |
+| onboarding «Continuar» | `#1d332c` | `#176548` |
+
+Correccion a lo predicho arriba: el borde del onboarding era `#cbd7ce` (gana `globals.css` sobre `onboarding.css`), no
+`#9eafa3`. El `#9eafa3` reaparece en M3, que lo pone dentro de la capa.
+
+**Mutaciones** (shasum limpio antes, etiqueta en comentario CSS, revertidas con `diff` contra copia limpia):
+
+| # | Resultado ejecutado |
+|---|---|
+| M1 | ROJO `tokens.test` (b): 1219 nodos sin capa; ROJO `ui-layers` backoffice y onboarding (padding 13px) |
+| M2 | ROJO `tokens.test` paleta: `not to contain '.bg-white'` |
+| M3 | ROJO `ui-layers` onboarding: borde `rgb(158, 175, 163)`; backoffice verde y `tokens.test` 5/5 verde (lo esperado) |
+| M4 | ROJO `tokens.test` claro: `ui-text-muted/ui-canvas: 2.81:1 (minimo 4.5:1)` |
+
+**Desvios medidos respecto del diseño:**
+
+- (a) no es «el primer nodo»: Tailwind 4.3.3 emite `@layer properties;` ANTES de la declaracion. El test asevera el
+  orden efectivo (primera aparicion): `properties, theme, base, legacy, components, utilities`.
+- (b) acepta tambien `@property` y `@keyframes` sin capa (los emite Tailwind; no son reglas de estilo). El `@media
+  (prefers-reduced-motion)` de `tokens.css` entra por la regla de `:root` con solo `--*`.
+- `globals.css` reindentado por Prettier (`format:check` lo exige dentro de `@layer`): el diff es de ~15k lineas; con
+  `git diff -w` son 28. Un rebase de GPT sobre este archivo conviene con `-Xignore-space-change`.
+- Comentario de `.confirm-dialog` en `globals.css` actualizado (afirmaba que el merchant no setea `data-theme` y citaba
+  el bloque de media query borrado); sin tocar reglas.
+- Archivo extra: `tests/e2e/support/onboarding-places-fixture.ts` (rutas del alta compartidas por `ui-layers` y
+  `ui-captures`).
+- DoD `rg -n MUTATION apps tools tests` no da vacio: `loyalty-real.spec.ts:6` (`E2E_LOYALTY_MUTATION_TEST`, nombre de
+  variable que ya estaba en `origin/main`). No es una mutacion viva.
+
+- **`driver.css` entro a `@layer base`** (estaba en «No entra», con la afirmacion «solo afecta `.driver-*`», que era
+  falsa): su `.driver-active * { pointer-events: none }` sin capa le ganaba a las excepciones de los tours en `legacy`
+  y el primer `pnpm verify` dio 5 e2e de tours rojos (overlay de driver interceptando el click a la opcion de un
+  Select: `catalog-tour-keyboard`, `loyalty-tour-help` ×2, `brand-tours` ×2). Ahora se importa desde `globals.css` con
+  `layer(base)`; se borro el import de `layout.tsx` y la copia que el harness concatenaba. Con eso: 32/32 e2e de tours.
+  Enmienda en el ADR 0123.
+- **DoD del build:** Lightning CSS borra la declaracion `@layer …;` del build, asi que el `rg` de la DoD da 0 tal como
+  esta escrito. Medido en su lugar: el chunk global (`0jbb97suurpm6.css`) abre las capas en el orden `properties, theme,
+  base, legacy, components, utilities`; el chunk del onboarding (`08ljs7_zz66nq.css`) es un solo `@layer legacy{`, y
+  `onboarding.html` enlaza el global ANTES (el orden por primera aparicion se mantiene).
+
+**`pnpm verify` (Node 24), corrida final:**
+
+| gate | resultado |
+|---|---|
+| typecheck | ok |
+| lint | ok |
+| format:check | ok |
+| test | ok |
+| build | ok |
+| test:e2e | ok |
+| neon (full) | ROJO: `catalog-import-reconcile` «con `cancel_requested_at` cierra en `cancelled`», PARQUEADO #74; suelto con `tools/neon-test.sh` → 8/8 |
+
+La primera corrida (antes del arreglo de driver.css y de los tipos de `tokens.test.ts`) dio typecheck/build/e2e rojos
+y el mismo flake #74 en otro caso (`polls` 1 vs 0).
+
+**Capturas:** 16 parejas, `mostrador` igual byte a byte en los dos anchos (sin controles del kit en reposo); las otras
+14 cambian. Artifact privado: https://claude.ai/artifact/LmvL6MiGUJoWhRvGxFy5Ju

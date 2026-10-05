@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "NODE_ENV=production next build",
     "typecheck": "tsc --noEmit",
-    "typecheck:ui": "tsc --noEmit -p tsconfig.ui.json",
-    "check:design-contrast": "node scripts/check-design-contrast.mjs"
+    "typecheck:ui": "tsc --noEmit -p tsconfig.ui.json"
   },
   "dependencies": {
     "@mapbox/search-js-react": "^1.6.0",

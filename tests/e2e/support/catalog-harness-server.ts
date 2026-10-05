@@ -15,7 +15,10 @@ export async function startCatalogHarness(
   const merchantRequire = createRequire(
     path.resolve("apps/merchant/package.json"),
   );
-  const postcss = merchantRequire("postcss");
+  // postcss no es dependencia directa del merchant: se resuelve desde @tailwindcss/postcss.
+  const postcss = createRequire(
+    merchantRequire.resolve("@tailwindcss/postcss"),
+  )("postcss");
   const tailwind = merchantRequire("@tailwindcss/postcss");
   const compiled = await build({
     entryPoints: [entryPoint],
@@ -96,17 +99,13 @@ export async function startCatalogHarness(
   const css = await postcss([
     tailwind({ base: path.resolve("apps/merchant") }),
   ]).process(await readFile(from, "utf8"), { from });
-  const driverCss = await readFile(
-    merchantRequire.resolve("driver.js/dist/driver.css"),
-    "utf8",
-  );
   const server = createServer((request, response) => {
     if (request.url === "/bundle.js") {
       response.setHeader("content-type", "application/javascript");
       response.end(compiled.outputFiles[0].text);
     } else if (request.url === "/style.css") {
       response.setHeader("content-type", "text/css");
-      response.end(driverCss + css.css);
+      response.end(css.css);
     } else {
       response.setHeader("content-type", "text/html");
       response.end(

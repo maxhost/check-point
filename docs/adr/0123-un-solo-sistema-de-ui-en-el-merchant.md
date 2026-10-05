@@ -173,4 +173,8 @@ hallazgos estan abajo, reproducidos por el orquestador donde dice ✔.
   tienen que mostrar la paleta que queda.
 - **Capturas por pantalla:** `tests/e2e/ui-captures.spec.ts` (se activa con `UI_CAPTURES_DIR`) es la herramienta de
   antes/despues que cada spec de Fase 1 extiende con su pantalla.
+- **CSS de terceros en una capa, no sin capa** (medido en la implementacion de la 0158): `driver.css` sin capa rompia los
+  tours, porque su `.driver-active * { pointer-events: none }` (sin capa) le gana a las excepciones de `legacy` y la
+  listbox de un Select quedaba debajo del overlay (5 e2e de tours rojos). Va con `@import "driver.js/dist/driver.css"
+  layer(base)` en `globals.css`. Regla: todo CSS de terceros entra en `base`, nunca sin capa.
 

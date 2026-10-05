@@ -42,7 +42,7 @@ Entregables:
 - `apps/merchant/src/ui/tokens.css`: único origen de color del sistema nuevo; modos claro/oscuro, roles semánticos, reducción de movimiento y `@theme` de Tailwind.
 - `apps/merchant/src/ui/`: catálogo base con React Aria Components e Iconoir.
 - `docs/design-system.md`: propósito, props, estados y ejemplos.
-- `apps/merchant/scripts/check-design-contrast.mjs`: comprobación automatizada.
+- `apps/merchant/src/ui/tokens.test.ts`: comprobación automatizada de contraste en `pnpm test` (spec 0158).
 - `apps/merchant/postcss.config.mjs`: integración Tailwind/PostCSS.
 
 Componentes disponibles:
@@ -72,7 +72,7 @@ Los rangos declarados en `apps/merchant/package.json` son compatibles y el lockf
 
 Validaciones:
 
-- `pnpm --filter @mi-pasaporte/merchant check:design-contrast`: **38/38 PASS**.
+- Contraste de tokens (hoy `tokens.test.ts`, spec 0158): **38/38 PASS**.
 - El typecheck inicial, antes de regenerar `.next/types`, pasó y confirmó que los componentes nuevos son compatibles con React Aria 1.21.1. Después del intento de build, Next regeneró sus tipos y el comando global queda en rojo por el mismo problema ajeno de billing: `apps/merchant/src/app/api/billing/cancel/route.ts` exporta `downgradeToFree`, algo no admitido por un Route Handler.
 - Build con webpack: compila los assets correctamente y luego falla en un problema ajeno al sistema nuevo: `apps/merchant/src/app/api/billing/cancel/route.ts` exporta `downgradeToFree`, export no admitido por un Route Handler de Next.
 - Build normal/Turbopack en el sandbox: no verificable porque el proceso interno intenta abrir un puerto y recibe `Operation not permitted`.

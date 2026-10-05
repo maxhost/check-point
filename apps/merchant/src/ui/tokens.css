@@ -74,51 +74,6 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --brand-primary-action: #72d0a9;
-    --brand-primary-hover: #56b891;
-    --brand-primary-pressed: #7bcead;
-    --brand-primary-soft: #143a2c;
-    --brand-primary-border: #438d70;
-    --brand-on-primary: #071b13;
-    --brand-complement-action: #60c19c;
-    --brand-complement-soft: #173b2f;
-    --brand-on-complement: #071b13;
-    --brand-accent-hover: #f29b58;
-    --brand-accent-pressed: #f7b47f;
-    --brand-accent-soft: #492a16;
-    --brand-on-accent: #241205;
-    --ui-canvas: #0d1713;
-    --ui-surface: #14221c;
-    --ui-surface-subtle: #1b2c24;
-    --ui-surface-raised: #1d3028;
-    --ui-text: #edf7f1;
-    --ui-text-muted: #b6c8be;
-    --ui-text-disabled: #7f9188;
-    --ui-border: #3b5146;
-    --ui-border-strong: #668074;
-    --ui-disabled: #26372f;
-    --ui-on-disabled: #92a49b;
-    --ui-overlay: #050a08cc;
-    --ui-danger: #ff9c98;
-    --ui-danger-hover: #ffb9b6;
-    --ui-danger-soft: #421f20;
-    --ui-on-danger: #2c0808;
-    --ui-warning: #ffc66d;
-    --ui-warning-soft: #3b2c14;
-    --ui-success: #72d0a9;
-    --ui-success-soft: #143a2c;
-    --ui-info: #80c9e8;
-    --ui-info-soft: #153442;
-    --ui-focus: #72d0a9;
-    --ui-focus-offset: #14221c;
-    --ui-shadow-sm: #0000003d;
-    --ui-shadow-md: #00000066;
-  }
-}
-
 :root[data-theme="dark"] {
   color-scheme: dark;
   --brand-primary-action: #72d0a9;
@@ -160,6 +115,11 @@
   --ui-focus-offset: #14221c;
   --ui-shadow-sm: #0000003d;
   --ui-shadow-md: #00000066;
+}
+
+/* Without Tailwind's raw palette (bg-white, bg-emerald-600…) only the roles below compile. */
+@theme {
+  --color-*: initial;
 }
 
 /* Tailwind v4 theme configuration consumes the semantic variables above. */

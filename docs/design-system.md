@@ -7,10 +7,10 @@ Estado: Fase 2. Este catálogo cubre los componentes base necesarios para constr
 - `apps/merchant/src/ui/tokens.css`: única fuente de colores del sistema nuevo, configuración `@theme` de Tailwind, geometría y movimiento.
 - `apps/merchant/src/ui/*.tsx`: componentes reutilizables. Todo comportamiento interactivo está delegado a React Aria Components.
 - `apps/merchant/src/ui/index.ts`: API pública del catálogo.
-- `apps/merchant/scripts/check-design-contrast.mjs`: validación reproducible de pares de contraste claros y oscuros.
+- `apps/merchant/src/ui/tokens.test.ts` (corre en `pnpm test`): pares de contraste claros y oscuros, orden de capas de CSS y paleta cruda de Tailwind apagada (spec 0158).
 - Iconoir es el único set de iconos.
 
-Los estilos heredados de `/backoffice` permanecen aislados en `globals.css` hasta que esa UI se elimine. Ningún componente nuevo debe agregar un color literal: usa exclusivamente nombres semánticos de Tailwind como `bg-surface`, `text-content` o `border-border`.
+Los estilos heredados de `/backoffice` permanecen en `globals.css` dentro de `@layer legacy`, debajo de las utilidades de Tailwind (spec 0158), hasta que esa UI se elimine. La paleta cruda de Tailwind (`bg-white`, `bg-emerald-600`…) no compila. Ningún componente nuevo debe agregar un color literal: usa exclusivamente nombres semánticos de Tailwind como `bg-surface`, `text-content` o `border-border`.
 
 ## Tokens
 
@@ -24,18 +24,18 @@ La marca no controla errores, foco ni campos del sistema: esos roles siguen sien
 
 ### Claro y oscuro
 
-El modo sigue `prefers-color-scheme` por defecto. `data-theme="light"` o `data-theme="dark"` en `<html>` permite una elección explícita. Los componentes usan los mismos roles semánticos en ambos modos; no duplican clases.
+Claro forzado (ADR 0123, decisión 2): `<html data-theme="light">` y no se sigue `prefers-color-scheme`. El oscuro vive en un solo bloque, `:root[data-theme="dark"]`, que usan los e2e que lo fuerzan y el cierre del ADR 0123. Los componentes usan los mismos roles semánticos en ambos modos; no duplican clases.
 
 ### Contraste
 
 Ejecutar:
 
 ```sh
-pnpm --filter @mi-pasaporte/merchant check:design-contrast
+pnpm vitest run apps/merchant/src/ui/tokens.test.ts
 pnpm --filter @mi-pasaporte/merchant typecheck:ui
 ```
 
-El complementario original no alcanza AA con texto blanco normal. Por eso permanece como valor de marca, pero el rol interactivo `--brand-complement-action` usa un tono más oscuro en claro. El acento tampoco admite texto blanco: `--brand-on-accent` usa texto oscuro. La herramienta exige 4.5:1 para texto y 3:1 para foco y bordes esenciales.
+El complementario original no alcanza AA con texto blanco normal. Por eso permanece como valor de marca, pero el rol interactivo `--brand-complement-action` usa un tono más oscuro en claro. El acento tampoco admite texto blanco: `--brand-on-accent` usa texto oscuro. El test exige 4.5:1 para texto y 3:1 para foco y bordes esenciales.
 
 ## Catálogo
 
@@ -85,7 +85,7 @@ Reglas obligatorias:
 3. No sobrescribir `color`, `background`, `border` ni `::placeholder` de un componente del catálogo. Sus tokens son `text-content`, `text-content-muted`, `bg-surface`, `border-border-strong` y `outline-focus`.
 4. Un control compuesto que todavía no esté en el catálogo debe usar los mismos roles semánticos: label `--ui-text`, valor `--ui-text`, placeholder/ayuda `--ui-text-muted`, superficie `--ui-surface`, borde `--ui-border-strong` y foco `--ui-focus`. Nunca colores hexadecimales.
 5. En modales, usar la misma separación vertical de Staff (`staff-name-field`) hasta que exista un layout de formulario compartido; una clase de pantalla puede definir geometría, pero no colores de campos.
-6. Verificar siempre tema claro y oscuro, valores escritos y placeholders, además de ejecutar `check:design-contrast` y `typecheck:ui`.
+6. Verificar siempre tema claro y oscuro, valores escritos y placeholders, además de ejecutar `tokens.test.ts` y `typecheck:ui`.
 
 Ejemplo para un modal:
 

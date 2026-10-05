@@ -136,6 +136,9 @@ for (const width of [320, 1280])
     await page.emulateMedia({ colorScheme: "dark" });
     await brandFixture(page);
     await page.goto(brandHarness);
+    await page.evaluate(
+      () => (document.documentElement.dataset.theme = "dark"),
+    );
     await help(page, "Cambiar el nombre");
     await expect(title(page)).toHaveText("Completa el nombre");
     await expect(page.locator(".driver-popover")).toHaveCSS("opacity", "1");
