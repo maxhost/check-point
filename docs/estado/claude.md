@@ -9,31 +9,31 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-04, tarde) — 0153 (EL SISTEMA VALIDA EL CUPON) IMPLEMENTADA EN `motor`, PASS. ESPERA LA UI DE GPT
+## ⇥ ESTADO (2026-10-04, noche) — ALTA CON GOOGLE PLACES (0155) + PERMISO DE ALTA BORRADO Y PROGRAMA SIN EMAIL (0156): PASS, ESPERA LA UI DE GPT
 
-**Que paso:** QA del owner sobre la 0148/0149: «el merchant no tiene que validar el cupon manualmente lo tiene que hacer
-el sistema». Decision en el ADR 0120 (sin «Validar»; veredicto verde/rojo al escanear; la venta consume; «Quitar»
-siempre; extras con la venta; producto gratis/2x1 se agrega solo al carrito). Servidor: spec 0153 (renumerada: el 0152
-es de GPT en `origin/main`), contrato `docs/specs/0153-contratos-de-api.md`.
+**Que paso:** el owner rediseño el alta del comercio (ADR 0121): (1) negocio buscado en Google Places, (2) email que
+crea la cuenta, (3) confirmacion; programa y QR salen del wizard; Google reemplaza a Geoapify en todo el merchant
+(Essentials, sin horarios ni Time Zone API). Despues decidio borrar el permiso de alta, forzar emails en minusculas en
+la base y que el programa (ver, crear, editar, sello, plantillas, QR) no exija email verificado (ADR 0122).
 
-**Donde esta:** rama `motor` rebasada sobre `origin/main` (`1ea1e5e`): `526db75` ADR+spec, `432f680` renumeracion,
-`2adc79b` codigo (PASS del revisor; `pnpm verify` verde; R3 sin oraculo de carrera, en `TASKS.md`), `40291da` y
-`f834ac1` docs, `d9f6a88` limpieza pedida por el owner (`buildCouponBody` y la visita redundante del canje; `pnpm
-verify` verde). **Sin push, a proposito:** sin la UI de GPT un cupon no-descuento elegido bloquea la venta.
+**Donde esta:** worktree `motor-wt/onboarding-google`, rama `onboarding-google` desde `origin/main` `1927742` (que ya
+trae la 0153 + UI 0154 de GPT). Spec 0155 `07e345e` (PASS `0c9e151`; smoke contra Google real ok). Spec 0156
+`3411fab` + `931fa2b` (PASS `26f60b6`), docs `5b90b5d`. Migracion `0065_borrar_permiso_de_alta.sql` aplicada SOLO a
+`ci-integration`. **Sin push, a proposito:** la UI vieja llama a `/api/merchant/auth/start` y `/api/onboarding/business`
+(404 desde la 0155).
 
-**Siguiente:** el owner le pasa a GPT el sha de `motor` (el ultimo commit de este estado); GPT escribe su spec 0154,
-hace `git rebase motor` en su `main`, implementa la UI y hace UN push con todo. Despues: deploy READY en Vercel y QA
-del owner (Panaderia, «Cafe americano gratis»: verde sin validar → salir sin consumir → venta con el cafe agregado solo;
-vencido → rojo → «Quitar»). Si `motor` cambia antes, GPT tiene que re-rebasear.
+**Siguiente:** GPT escribe su spec de UI sobre `docs/specs/0155-contratos-de-api.md`, hace `git rebase onboarding-google`
+y UN push con todo. Despues: deploy READY en Vercel; en PROD `select count(*) from merchant_auth."user" where email <>
+lower(email)` → 0; migracion 0065 a PROD (owner aprueba la llamada); **desde ahi no hay rollback de codigo anterior a
+`3411fab` sin reponer la columna**. Probar la regla de Vercel «Places por IP» (61 requests a `/api/places/` → 429) y
+cerrar PARQUEADO #70 con su ADR corto. QA del owner: alta con comercio real, con «santa maria y puerto de palos», con
+email ya registrado, local nuevo en el backoffice, programa con cuenta sin verificar.
 
-**Hallazgos a decidir (owner), de la 0153:** un cupon en rojo no se aplica y la venta sale sin el (consecuencia de
-diseño, no la dijo el owner);
-el push de la orden no menciona las unidades extra del cupon.
+**Pendientes del owner:** `.env.example` (las dos de Geoapify → `GOOGLE_MAPS_API_KEY=`; el agente no tiene permiso
+sobre `.env*`); borrar `GEOAPIFY_API_KEY` y `NEXT_PUBLIC_GEOAPIFY_API_KEY` en Vercel despues del deploy.
 
-**En PROD (`24ce0df`):** 0148 + 0149 + 0150 (falta `QA_LOGIN_ENABLED=true` en Vercel merchant). Skills temporales de
-QA: `qa-cupones-prueba`, `qa-cupon-valido`, `delete-user`.
+**Hallazgos abiertos:** PARQUEADO #74 (flake de catalogo en la Neon completa); H4 de la 0155 (un 400 de Google por clave
+invalida en Details se ve como `place_not_found`). Lo anterior a este arco (0153/0154 en PROD con la UI de GPT, QA del
+owner de 0143–0149, lote `pass_refresh`, PARQUEADO #69) sigue como estaba.
 
-**Pendientes:** los de la 0151 (en `claude-historico.md`); QA del owner (0143/0146/0147/0148/0149); lote
-`pass_refresh` (0146); PARQUEADO #69; Postgres local para tests; test de carrera del limite diario (R3, `TASKS.md`).
-
-**Prompt para retomar:** «Lee docs/estado/claude.md: la 0153 espera la UI de GPT».
+**Prompt para retomar:** «Lee docs/estado/claude.md: 0155 y 0156 con PASS en `onboarding-google`, esperan la UI de GPT».
