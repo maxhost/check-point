@@ -1,7 +1,7 @@
 ---
 spec: 0162
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: PARQUEADO #76. Los cinco campos del kit con `errorMessage` (`TextField`, `SelectField`, `NumberField`, `TextAreaField`, `ChoiceGroup`) dejan de pasar `isInvalid={false}` cuando no hay mensaje propio, para que los `validationErrors` del `Form` (errores del servidor por `name`) se marquen y se anuncien; oraculo nuevo en el harness del kit, un caso por campo, en Chromium y WebKit.
 disjunta: si
 archivos: apps/merchant/src/ui/text-field.tsx, apps/merchant/src/ui/select-field.tsx, apps/merchant/src/ui/number-field.tsx, apps/merchant/src/ui/text-area-field.tsx, apps/merchant/src/ui/choice-group.tsx, tests/e2e/support/ui-kit-entry.tsx, tests/e2e/support/ui-kit-checks.ts, docs/PARQUEADO.md
@@ -117,3 +117,37 @@ N1: sin subagentes (CLAUDE.md §Niveles). Implementa la sesion principal; push e
 ## Abierto
 
 Nada.
+
+## Implementacion
+
+**Rojo primero (Chromium, antes del fix):** «errorMessage marca el campo» verde (fija lo existente);
+«validationErrors del servidor llegan a los campos» rojo con `expect.soft` en los cinco: `Received: ""` en
+`toHaveAccessibleDescription` de Nombre/Rubro/Sellos/Notas/Plan, mensajes `element(s) not found`,
+`aria-invalid` vacio. Con el fix: `ui-kit.spec.ts` + `ui-kit.webkit.spec.ts` → `20 passed`; capturas sin diff.
+
+**Bitacora de mutaciones** (shasum limpio: ver filas; revert con `diff` contra copia limpia en el scratchpad):
+
+| # | Archivo / shasum limpio | Resultado |
+|---|---|---|
+| 1 | `choice-group.tsx` `b50f2bd6…` → `Boolean(errorMessage)` | **ROJA** solo «Plan»: `toHaveAccessibleDescription` `Expected: "Plan no disponible"` `Received: ""`, mensaje `element(s) not found`, `aria-invalid` `Received: ""`; `1 failed`. Revertida: `diff` vacio, shasum `b50f2bd6…` |
+| 2 | `text-field.tsx` `019cbf5e…` → `isInvalid={props.isInvalid}` | **ROJA** «errorMessage marca el campo»: `toHaveAttribute` `Expected: "true"` `Received: ""` en `textbox` Email; `1 failed`. Revertida: `diff` vacio, shasum `019cbf5e…` |
+
+**`pnpm verify` (Node 24.20.0), una vez:**
+
+| gate | corrio/salteado (motivo) | ok/ROJO | segundos |
+|---|---|---|---|
+| typecheck | corrio | ok | 10.9 |
+| lint | corrio | ok | 6.6 |
+| format:check | corrio | ok | 26.6 |
+| test | corrio | ok | 72.3 |
+| build | corrio | ok | 12.0 |
+| test:e2e | corrio | **ROJO** | 3.9 |
+| neon related merchant | corrio | ok | 25.6 |
+| neon related consumer | salteado (nada de consumer) | - | - |
+
+El rojo de `test:e2e` fue de arranque, no de tests: `listen EADDRINUSE :::3002`, ocupado por el `next dev` de
+otro proyecto (`sintetica/apps/panel`), que otra sesion relanzaba. Con OK del owner se mato y se corrio
+`pnpm run test:e2e` sola: **`139 passed`, `21 skipped`, exit 0** (wizard `onboarding-google-places` 2/2,
+`loyalty-*` 58, `ui-kit*` 20; los salteados son las capturas y los «pagina real» opt-in de siempre).
+`rg -nw MUTATION apps tools tests` → vacio. `rg -n "Boolean\(errorMessage\)" apps/merchant/src/ui` → vacio.
+

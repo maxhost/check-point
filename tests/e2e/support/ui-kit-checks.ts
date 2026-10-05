@@ -145,6 +145,38 @@ export function registerKitTests() {
     );
   });
 
+  // Spec 0162: `errorMessage` del campo marca el campo y es su descripcion.
+  test("errorMessage marca el campo", async ({ page }) => {
+    await open(page, 390);
+    const email = page.getByRole("textbox", { name: "Email" });
+    await expect(email).toHaveAttribute("aria-invalid", "true");
+    await expect(email).toHaveAccessibleDescription("Ingresa un email valido");
+  });
+
+  // Spec 0162 (#76): sin `errorMessage`, los `validationErrors` del Form llegan a cada campo.
+  test("Form: validationErrors del servidor llegan a los campos", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(`${harness.url}/?case=server-errors`);
+    const fields = [
+      ["textbox", "Nombre", "Nombre tomado", true],
+      ["button", "Rubro", "Rubro invalido", false],
+      ["textbox", "Sellos", "Minimo 2 sellos", true],
+      ["textbox", "Notas", "Notas muy largas", true],
+      ["radiogroup", "Plan", "Plan no disponible", true],
+    ] as const;
+    // soft: un rojo dice cuales campos fallan, no solo el primero.
+    for (const [role, name, message, ariaInvalid] of fields) {
+      const field = page.getByRole(role, { name });
+      await expect.soft(field, name).toHaveAccessibleDescription(message);
+      await expect.soft(page.getByText(message, { exact: true })).toBeVisible();
+      // El boton del Select no lleva aria-invalid (medido en la spec).
+      if (ariaInvalid)
+        await expect.soft(field, name).toHaveAttribute("aria-invalid", "true");
+    }
+  });
+
   test.describe("capturas de Mac", () => {
     test.skip(
       Boolean(process.env.CI),

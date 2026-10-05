@@ -47,7 +47,7 @@ export function SelectField({
     <Select
       {...props}
       validationBehavior={props.validationBehavior ?? "aria"}
-      isInvalid={props.isInvalid ?? Boolean(errorMessage)}
+      isInvalid={props.isInvalid ?? (errorMessage ? true : undefined)}
       className={cx("grid gap-1.5", className)}
     >
       <Label

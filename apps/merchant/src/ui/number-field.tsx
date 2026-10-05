@@ -41,7 +41,7 @@ export function NumberField({
       minValue={clampOnBlur ? minValue : undefined}
       maxValue={clampOnBlur ? maxValue : undefined}
       validationBehavior={props.validationBehavior ?? "aria"}
-      isInvalid={props.isInvalid ?? Boolean(errorMessage)}
+      isInvalid={props.isInvalid ?? (errorMessage ? true : undefined)}
       className={cx("grid gap-1.5", className)}
     >
       <Label className="cp-field-label text-base font-bold leading-5 text-content">
