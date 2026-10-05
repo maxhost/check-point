@@ -9,40 +9,44 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, tarde) — SPEC 0159 (FASE 0b, REBANADA 1: TIPOGRAFIA, SUPERFICIES, FORMULARIOS) CERRADA, SIN IMPLEMENTAR
+## ⇥ ESTADO (2026-10-05, noche) — SPEC 0159 IMPLEMENTADA EN `motor` (`d797c21`), SIN PUSH
 
 **Hecho (verificado):**
-- **0158** en `origin/main` `b1ab123` (push con `--no-verify`, OK del owner por los flakes #74/#75). Deploy de Vercel
-  sin verificar.
-- Rama `motor` (worktree `check-point-wt/motor`) adelantada por fast-forward a `ui-sistema` `78d1829`; ahora es el
-  punto de trabajo. `764718b`: spec 0159 `cerrada` + enmienda del ADR 0123 (particion de la 0b en 0159/0160/0161;
-  capturas solo de Mac, owner: «no me interesa linux, me interesa que se vean en windows y mac») + fila en INDEX.
-  Sin push.
+- **0159** en `motor` `d797c21` (local, sin push): `Heading`, `Text`, `Card`, `PageHeader`, `Form`/`FormSection`/
+  `FormActions` en `apps/merchant/src/ui`; `BrandTheme`/`resolveBrandTheme` borrados. Harness
+  `tests/e2e/support/ui-kit-entry.tsx` + `ui-kit-checks.ts`; `ui-kit.spec.ts` (Chromium) y `ui-kit.webkit.spec.ts`:
+  16/16 local; `CI=1` → 4 passed / 12 skipped. Referencias 4 + 4 `*-darwin.png` (la spec decia 8 + 8: error de cuenta).
+  Capturas para el owner: https://claude.ai/artifact/L9rd4vPQoGuNNMTkkYSeZ3
+- M1–M3 rojas por la asercion esperada. **M4 sobrevivio** con la tolerancia por defecto → capturas con `threshold: 0`
+  (estable 2/2 sin mutar; M4 8/8 roja). Oraculo de `Form` reescrito (el de la spec era imposible con `aria`): detalle
+  en la seccion «Implementacion» de la spec.
+- `pnpm verify`: todo ok salvo `typecheck` ROJO por cache viejo de `.next/types/validator.ts` (rutas borradas en la
+  0155); el `build` lo regenero y `pnpm typecheck` despues → 6/6. Tabla en la spec.
 
 **Siguiente, en orden:**
-1. **Implementar la 0159** (N1, sesion principal, sin subagentes): `docs/specs/0159-kit-tipografia-superficies-y-formularios.md`.
-   Primero el rojo (harness sin piezas), despues piezas, capturas `--update-snapshots` mirandolas + Artifact para el
-   owner, M1–M4, `pnpm verify` una vez al final. Ojo: el pre-push puede caer por los flakes #74/#75.
-2. 0160 (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link) y 0161 (campos
-   file/color/time/datetime-local/range/search): se escriben al empezar cada una.
-3. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
+1. Push de `motor` a pedido del owner (memoria: no pushear por commit). El pre-push puede caer por #74/#75.
+2. Owner: mirar el Artifact; decidir #76 (`validationErrors` del `Form` no llega a los campos del kit: spec chica o
+   dentro de la 0160) y #77 (`ChoiceGroup` recorta en WebKit 390).
+3. 0160 (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link) y 0161: se
+   escriben al empezar cada una, sumando piezas al final de `ui-kit-entry.tsx`.
+4. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
 
 **Pendientes del owner:** `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
-Geoapify en Vercel; QA del alta/locales/programa sin verificar.
+Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploy de `b1ab123` sin verificar.
 
-**Hallazgos abiertos:** PARQUEADO #74 y #75 (flakes que bloquean el pre-push; spec chica pendiente); H4 de la 0155.
-Rama `ui-sistema` (worktree `motor-wt/onboarding-google`) queda detras de `motor`.
+**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #76, #77; H4 de la 0155.
+
+**Gotchas de esta sesion:** Tailwind del harness solo genera clases usadas en `apps/merchant` (layout del harness
+inline); un `next dev` de otro proyecto en el 3001 cuelga el `webServer` de Playwright (se mato con OK del owner);
+el hook `foreign-staged.sh` exige los paths borrados con `git rm` escritos literales en el `git commit --`.
 
 **Descartado:**
 
 | Camino | Por que |
 |---|---|
-| Trinquete con `tools/ui-baseline.json` | se puentea subiendo el JSON: se compara contra el merge-base con git |
-| Guardias antes de completar el kit | obliga a hacer a mano lo que el kit no tiene (paso con `places-search.tsx`) |
-| Pagina de muestra en `/backoffice/_ui` | en Next una carpeta `_x` no se rutea: va como harness de e2e |
-| `driver.css` sin capa (como decia la spec) | sus reglas sin capa le ganan a `legacy`: rompio los tours |
-| No reindentar `globals.css` | `format:check` lo exige dentro de `@layer` |
-| Capturas de Linux / en CI | owner: sus usuarios usan Windows y Mac; sin Docker no se generan aca |
-| La 0b en una sola spec | ~13 piezas: se parte en tres rebanadas N1 |
+| Tolerancia de captura por defecto | M4 (sombra) pasaba verde |
+| Oraculo «requerido vacio → `aria-invalid`» en `Form` | con `aria` React Aria no lo marca ni frena el envio |
+| Arreglar `isInvalid` de los campos en la 0159 | cambia campos en uso: fuera de alcance (#76) |
+| Capturas de Linux / en CI | owner: sus usuarios usan Windows y Mac |
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: implementar la 0159».
+**Prompt para retomar:** «Lee docs/estado/claude.md: push de la 0159 o escribir la 0160».
