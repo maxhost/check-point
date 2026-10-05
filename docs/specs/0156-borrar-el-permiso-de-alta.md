@@ -1,8 +1,8 @@
 ---
 spec: 0156
 fecha: 2026-10-04
-estado: cerrada
-resumen: (A) Borra el permiso de alta (`onboarding_grant_until`, spec 0077 / ADR 0076 §2) que quedo sin funcion al salir el programa del wizard (ADR 0121). Editar el programa exige email verificado sin excepcion temporal; crear sigue permitido como hoy. Migracion DROP COLUMN despues del deploy. Cierra PARQUEADO #71. (B) CHECK email = lower(email) en merchant_auth.user: el unico de email pasa a ser insensible a mayusculas por garantia de la base. (C) ADR 0122: el programa (ver, crear, editar, sello, plantillas) no exige email verificado; se borra programEditDenied y tres rutas pasan a requireApiPermissionSinGateDeEmail. Cierra PARQUEADO #72 y #73.
+estado: implementada
+resumen: (A) Borra el permiso de alta (`onboarding_grant_until`, spec 0077 / ADR 0076 §2) que quedo sin funcion al salir el programa del wizard (ADR 0121). Sin la regla de email del programa (ver C). Migracion DROP COLUMN despues del deploy. Cierra PARQUEADO #71. (B) CHECK email = lower(email) en merchant_auth.user: el unico de email pasa a ser insensible a mayusculas por garantia de la base. (C) ADR 0122: el programa (ver, crear, editar, sello, plantillas) no exige email verificado; se borra programEditDenied y tres rutas pasan a requireApiPermissionSinGateDeEmail. Cierra PARQUEADO #72 y #73.
 disjunta: no
 archivos: packages/domain/src/server/{onboarding-grant,loyalty-program}.ts, apps/merchant/src/app/api/loyalty-program/route.ts, apps/merchant/src/app/api/onboarding/signup/route.ts, apps/merchant/src/server/{auth,merchant-session,onboarding-grant-support,api-owner-surfaces-support,onboarding-tours-support}.ts, packages/db/src/schema/auth.ts, packages/db/drizzle/<nueva>, tests que nombran el permiso
 ---
@@ -94,7 +94,7 @@ Los del frontmatter. Barrido de cierre: `rg -n "onboardingGrant|onboarding_grant
 ## Definition of Done
 
 - [ ] Barrido de cierre vacio (comando de arriba, corrido).
-- [ ] Migracion nueva generada por drizzle-kit con solo el `DROP COLUMN`; aplicada a la rama de CI por
+- [ ] Migracion nueva generada por drizzle-kit con el `DROP COLUMN` y el `CHECK` de (B); aplicada a la rama de CI por
       `tools/neon-test.sh`; **no** aplicada a PROD (eso va despues del deploy, fuera de esta spec).
 - [ ] **(C)** Owner sin verificar recien creado por `signup`: `GET /api/loyalty-program` 200, crear (`PUT`) 200/201,
       editar (`PUT`) 200, `GET /api/loyalty-terms/templates` 200, `GET .../qr` 200 (o `no_program` antes de crear).
@@ -125,3 +125,23 @@ Formato de `docs/AGENT-WORKFLOW.md`; PASS del revisor antes de `implementada`.
 ## Abierto
 
 Nada bloqueante.
+
+## Resultado (2026-10-04)
+
+- **Implementada:** A+B en `3411fab`, C en `931fa2b` (rama `onboarding-google`, sin push). Migracion
+  `packages/db/drizzle/0065_borrar_permiso_de_alta.sql` (DROP COLUMN + CHECK) aplicada **solo a `ci-integration`**.
+- **Implementador:** M1–M3 (A/B) y C-M1/C-M2, todas rojas y revertidas (bitacora en `docs/TASKS.md`). M3 medida contra
+  `ci-integration` antes de migrar (sin rama efimera: el agente no tenia herramientas de Neon).
+- **Revisor: PASS** (`26f60b6`): `pnpm verify` ok (Neon completo 381 archivos / 3047 tests); R1 (el `PUT` sin el
+  negocio del guard → staff con `loyalty` 403), R2 (stamp-upload con paso 4 → rojo en unidad), R3 (columna repuesta en
+  el esquema = codigo de PROD contra base migrada → signup 503) rojas y revertidas. Sin huecos de aislamiento.
+- **Orquestador:** barrido de cierre vacio; Neon `loyalty-program-sin-email` + `permisos-brand-loyalty` +
+  `onboarding-signup` 19/19. El rojo de `catalog-import-reconcile`/`-guard` en una Neon completa del implementador es el
+  flake conocido de la spec 0092 (PARQUEADO #74), no de esta spec. Docblock de `requireApiPermissionSinGateDeEmail`
+  reescrito (decia «DOS rutas» y que el gate vivia en `saveProgram`).
+- **Declarado:** stamp-upload sin caso Neon (el paso 4 lo fija la unidad, R2); la rama de email conocido del signup
+  queda como defensa en profundidad sin oraculo Neon que la distinga del unico + rollback.
+- **Despliegue (paso del orquestador, con el owner):** (1) deploy de este codigo; (2) `select count(*) from
+  merchant_auth."user" where email <> lower(email)` → 0 en PROD; (3) migracion 0065 a PROD. **Despues del paso 3 no
+  se puede volver a un deploy anterior a `3411fab`**: el codigo viejo inserta `onboarding_grant_until` en cada sesion
+  nueva y el login cae (lo midio R3). Un rollback de codigo exige reponer la columna antes.

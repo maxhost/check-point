@@ -115,23 +115,24 @@ export async function requireApiPermission(
 }
 
 /**
- * Spec 0086 §2 — **la hermana sin el paso 4, y existe para DOS rutas**:
- * `GET /api/loyalty-program/qr` y `PUT /api/loyalty-program`.
+ * Spec 0086 §2 / ADR 0122 — **la hermana sin el paso 4**: la superficie del PROGRAMA de
+ * fidelizacion, que no exige email verificado (decision del owner, 2026-10-04):
+ * `GET` y `PUT /api/loyalty-program`, `POST /api/loyalty-program/stamp-upload`,
+ * `GET /api/loyalty-program/qr` y `GET /api/loyalty-terms/templates`.
  *
- * Es la misma escalera **sin el paso 4** y con los pasos 1, 2, 3 y 5 enteros. Existe como
- * funcion propia y no como flag por la razon de la spec 0075 §D1: *un booleano que apaga un
- * gate de seguridad viaja en un copy-paste entre rutas del mismo dominio y no se puede contar
- * con un `rg`.* Un nombre si.
+ * Es la misma escalera **sin el paso 4** y con los pasos 1, 2, 3 y 5 enteros: sesion, membresia
+ * ACTIVA del negocio de la sesion (un usuario de X no llega al programa de Y), owner o staff con
+ * `loyalty`, y negocio operativo. Existe como funcion propia y no como flag por la razon de la
+ * spec 0075 §D1: *un booleano que apaga un gate de seguridad viaja en un copy-paste entre rutas
+ * del mismo dominio y no se puede contar con un `rg`.* Un nombre si.
  *
- * **⚠️ INVARIANTE DEL INVENTARIO, y cambio de forma en esta spec:** `rg 'SinGateDeEmail' apps`
- * tiene que seguir devolviendo **exactamente TRES rutas**, ahora repartidas en DOS funciones
- * — el QR y el `PUT` del programa en esta, `GET /api/onboarding/checklist` en
- * `requireApiOwnerSinGateDeEmail`. `api-owner-surfaces.test.ts` asevera ese conjunto como
- * CERRADO. **No se extiende a una cuarta sin volver a discutirlo.**
+ * **INVARIANTE DEL INVENTARIO:** el conjunto de superficies sin paso 4 es CERRADO y lo asevera
+ * `api-owner-surfaces.test.ts` contra `NOMBRES_SIN_GATE_DE_EMAIL` (las cinco de arriba mas
+ * `GET /api/onboarding/checklist`, que va por `requireApiOwnerSinGateDeEmail`). Sumar una
+ * superficie es una decision del owner, no un detalle de implementacion.
  *
- * **Y no afloja nada**: desde la spec 0077 el gate de email de la escritura del programa vive
- * en `saveProgram`, que distingue crear de editar. Volver a ponerlo en la puerta dejaria
- * inalcanzable el paso 3 del alta (una cuenta nueva nace con `email_verified = false`).
+ * **El dominio no tiene regla de email** (ADR 0122 §2): `saveProgram` no la evalua. Retirar el
+ * programa y cancelar el retiro (`DELETE`/`PATCH`) siguen con `requireApiOwner` (owner verificado).
  */
 export async function requireApiPermissionSinGateDeEmail(
   request: Request,
