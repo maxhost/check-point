@@ -4,6 +4,18 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0156 (A+B+C), REVISOR (2026-10-04)
+
+Arbol: worktree `motor-wt/onboarding-google`, commit 931fa2b (archivos LIMPIOS y commiteados al medir: restauracion con
+`git checkout -- <archivo>` + `diff`). `ci-integration` ya tiene la 0065 aplicada (por el implementador).
+Presupuesto: 3 mutaciones propias, distintas de M1–M3 y C-M1/C-M2.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| R1 | apps/merchant/src/app/api/loyalty-program/route.ts | 210594c0e1c4f0c870f87b11fe903e0c8e96f5b5 | el `PUT` escribe en el negocio que resolvio el guard (staff con `loyalty` edita; sin el 3er arg `saveProgram` cae a owner-only) | ROJO por la propiedad. Mutacion: `saveProgram(auth.userId, input)` (sin `auth.business.id`, `// MUTATION R1`). Neon (permisos-brand-loyalty + sin-email + ruta-unica): 1/19 — «un STAFF con `loyalty` EDITA el programa» `expected 403 to be 200` (cae al resolvedor owner-only). El owner sin verificar sigue verde (es owner). Unitarios no lo ven (doblan `saveProgram`). Revertido con checkout: diff vacio, shasum vuelve a 210594c0 |
+| R2 | apps/merchant/src/app/api/loyalty-program/stamp-upload/route.ts | 4663b4d99dba7533932a5bf7883de2af3bb21560 | la imagen del sello no exige email verificado (ruta SIN caso Neon: ¿muerde el unitario?) | ROJO por la propiedad, SOLO en unidad (la ruta no tiene caso Neon). Mutacion: import + guard a `requireApiPermission` (`// MUTATION R2`). Unidad (api-owner-surfaces + api-permission-surfaces): 2/146 — «stamp-upload: owner con `emailVerified: false` … → pasa» y «… SIN la clave `emailVerified` → pasa igual», los dos `expected 403 to be 422`. Revertido con checkout: diff vacio, shasum vuelve a 4663b4d9 |
+| R3 | packages/db/src/schema/auth.ts | a9085f4522de5cdf1de500e13063870167c935d5 | ningun codigo lee `onboarding_grant_until` (reponer la columna en el esquema = codigo de PROD contra la base migrada) | ROJO por la propiedad. Mutacion: reponer `onboardingGrantUntil` en `sessions` (`// MUTATION R3`) = el esquema de PROD (1927742) contra `ci-integration` ya migrada. Neon (sin-email + onboarding-signup): 3 failed + sin-email entero caido en `beforeAll` — signup `expected 503 to be 201` (x2) y la carrera `[200, 503]`. Causa medida con sonda temporal (borrada): `information_schema` sin la columna, CHECK `merchant_auth_user_email_lowercase` presente, y `openMerchantSession` → `Failed query: insert into "merchant_auth"."session" (…, "onboarding_grant_until") values (…, default) returning …`. Confirma que el DROP antes del deploy tira el login. Revertido con checkout: diff vacio, shasum vuelve a a9085f45; control sin mutacion: SESSION OK; las 3 suites 19/19 |
+
 ## Bitacora de mutaciones — spec 0156 parte C (ADR 0122), implementador (2026-10-04)
 
 Arbol: worktree `motor-wt/onboarding-google`, encima de 3dd403c, cambios SIN commitear al medir (` M`): `git checkout` NO sirve.
