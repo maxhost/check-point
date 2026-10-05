@@ -63,8 +63,8 @@ export async function GET(request: Request) {
   if (verified.status !== 200 || !cookie) return bounce(FAILED_DESTINATION);
 
   /**
-   * EL CORTE DE `closed` (spec 0072 §D4), y va ACA y no en `auth/start`, que es deliberado:
-   * `start` solo toca `merchant_auth.user` y no resuelve negocio, asi que gatear ahi seria
+   * EL CORTE DE `closed` (spec 0072 §D4), y va ACA y no en `onboarding/signup` (antes `auth/start`), que es deliberado:
+   * su rama del email conocido no resuelve negocio, asi que gatear ahi seria
    * una consulta nueva — y ademas el owner de un negocio `suspended` **si tiene que entrar**,
    * para ver el motivo. **El corte va donde se CREA la sesion.**
    *
@@ -117,7 +117,7 @@ async function verifiedUserId(verified: Response): Promise<string | null> {
  *
  * **Divergencia que queda declarada, no cerrada:** aca se filtra
  * `memberships.status='active'` y `requireBackofficeSession` **no** lo filtra. Con un solo
- * negocio por usuario —lo que hoy garantiza el `409` de `api/onboarding/business`— las dos
+ * negocio por usuario —lo que hoy garantiza `api/onboarding/signup`: crea cuenta y negocio juntos y un email conocido no crea nada (spec 0155)— las dos
  * consultas coinciden; el dia que un user tenga dos, hay que unificarlas en un solo
  * resolvedor. Es la misma familia que la divergencia `asc`/`desc` de `loyalty-program.ts:66`.
  */

@@ -14,6 +14,7 @@
     "@mi-pasaporte/db": "workspace:*",
     "@mi-pasaporte/domain": "workspace:*",
     "@neondatabase/serverless": "^1.1.0",
+    "@photostructure/tz-lookup": "11.7.0",
     "better-auth": "^1.7.6",
     "driver.js": "^1.8.0",
     "drizzle-orm": "^0.45.2",

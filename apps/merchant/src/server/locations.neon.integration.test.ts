@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { dropBusiness } from "./counter-integration-support";
 import {
-  VERIFIED_ADDRESS,
+  CUENCA_PLACE,
   integrationEnabled,
   providerSelection,
   readLocationRow,
@@ -9,36 +9,38 @@ import {
   seedLocationsBusiness,
 } from "./locations-integration-support";
 import { createLocation, listLocations, updateLocation } from "./locations";
+import { TRUJUI_PLACE } from "./places/selection-test-support";
 
-// The Geoapify HTTP call is NOT under test here (it needs the private key and the
-// network); its contract already has `location-providers.test.ts`. What IS under test is
+// The selection token is signed with this secret; nothing calls Google here (spec 0155:
+// `resolveAddress` only verifies what `/api/places/details` signed). What IS under test is
 // what gets PERSISTED for each of the two classes of decision 3, and that is read by SQL.
-vi.mock("./location-providers", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./location-providers")>();
-  return { ...actual, verifyLocation: vi.fn(async () => VERIFIED_ADDRESS) };
-});
+process.env.BETTER_AUTH_SECRET ||= "integration-secret-at-least-32-chars-xx";
 
 describe.skipIf(!integrationEnabled)(
   "locations against Neon (spec 0061)",
   () => {
-    it("a Geoapify selection is stored georeferenced, with its verification", async () => {
+    it("a Google selection is stored georeferenced, provider_verified/google", async () => {
       const seed = await seedLocationsBusiness("Georef", "plus");
       try {
         const created = await createLocation(seed.business, {
-          name: "Sucursal Amazonas",
-          address: providerSelection,
+          name: "Sucursal Remigio",
+          address: providerSelection(),
         });
 
         const row = await readLocationRow(created.id);
-        expect(row.longitude).toBe("-78.4877000");
-        expect(row.latitude).toBe("-0.1807000");
+        expect(row.longitude).toBe("-79.0137000");
+        expect(row.latitude).toBe("-2.9081000");
         expect(row.status).toBe("active");
-        expect(row.addressLabel).toBe(VERIFIED_ADDRESS.label);
+        // The token's label, not the decoy the browser sent.
+        expect(row.addressLabel).toBe(CUENCA_PLACE.label);
+        expect(row.addressSnapshot).toEqual(CUENCA_PLACE.snapshot);
 
         const verifications = await readVerifications(created.id);
         expect(verifications).toHaveLength(1);
         expect(verifications[0].source).toBe("provider_verified");
-        expect(verifications[0].provider).toBe("geoapify");
+        expect(verifications[0].provider).toBe("google");
+        expect(verifications[0].providerPlaceId).toBe(CUENCA_PLACE.placeId);
+        expect(verifications[0].attribution).toBeNull();
         expect(verifications[0].supersededAt).toBeNull();
         expect(row.activeVerificationId).toBe(verifications[0].id);
       } finally {
@@ -46,7 +48,34 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 30_000);
 
-    it("a typed address Geoapify cannot find is stored WITHOUT coordinates", async () => {
+    // ORACULO DE M3: `location.country_code` has no FK or check against the business, so
+    // nothing but `resolveAddress` keeps an AR place out of an EC business.
+    it("a place in another country → 422 address_country_mismatch, nothing written", async () => {
+      const seed = await seedLocationsBusiness("OtroPais", "plus");
+      try {
+        await expect(
+          createLocation(seed.business, {
+            name: "Sucursal Trujui",
+            address: providerSelection(TRUJUI_PLACE),
+          }),
+        ).rejects.toMatchObject({
+          status: 422,
+          code: "address_country_mismatch",
+        });
+        await expect(
+          updateLocation(seed.business, seed.locationId, {
+            address: providerSelection(TRUJUI_PLACE),
+          }),
+        ).rejects.toMatchObject({ code: "address_country_mismatch" });
+        const listed = await listLocations(seed.business.id);
+        expect(listed).toHaveLength(1);
+        expect(await readVerifications(seed.locationId)).toHaveLength(1);
+      } finally {
+        await dropBusiness(seed.business.id);
+      }
+    }, 30_000);
+
+    it("without a token the address is owner_typed, stored WITHOUT coordinates", async () => {
       const seed = await seedLocationsBusiness("Tipeado", "plus");
       try {
         const created = await createLocation(seed.business, {
@@ -79,7 +108,7 @@ describe.skipIf(!integrationEnabled)(
       try {
         const created = await createLocation(seed.business, {
           name: "Sucursal Amazonas",
-          address: providerSelection,
+          address: providerSelection(),
         });
         const listed = await listLocations(seed.business.id);
 
@@ -93,7 +122,7 @@ describe.skipIf(!integrationEnabled)(
             "status",
           ]);
         }
-        expect(JSON.stringify(listed)).not.toContain("place-123");
+        expect(JSON.stringify(listed)).not.toContain(CUENCA_PLACE.placeId);
       } finally {
         await dropBusiness(seed.business.id);
       }

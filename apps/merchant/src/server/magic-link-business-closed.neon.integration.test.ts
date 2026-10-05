@@ -19,13 +19,21 @@ import {
   sessions,
   users,
 } from "@mi-pasaporte/db/schema";
-import { POST as START } from "../app/api/merchant/auth/start/route";
+import { POST as SIGNUP } from "../app/api/onboarding/signup/route";
+import { testSelectionToken } from "./places/selection-test-support";
 import { GET as CONSUME } from "../app/api/merchant/auth/magic-link/route";
+
+/** Un negocio valido para el cuerpo de `signup`: con un email conocido se descarta. */
+const knownEmailBusiness = () => ({
+  name: "Negocio que se descarta",
+  categoryGcid: "gcid:cafe",
+  selectionToken: testSelectionToken(),
+});
 
 /**
  * Spec 0072 §D4 — EL CORTE DE `closed` EN EL CONSUMO DEL LINK MÁGICO.
  *
- * **Por qué acá y no en `auth/start`**: `start` sólo toca `merchant_auth.user` y no resuelve
+ * **Por qué acá y no en `onboarding/signup`** (antes `auth/start`): la rama del email conocido sólo toca `merchant_auth.user` y no resuelve
  * negocio, así que gatear ahí sería una consulta nueva — y además el owner de un negocio
  * `suspended` SÍ tiene que entrar, para ver el motivo. **El corte va donde se CREA la
  * sesión**, que es este consumo.
@@ -104,14 +112,15 @@ describe.skipIf(!enabled)(
         .insert(memberships)
         .values({ businessId, userId, role: "owner" });
 
-      const started = await START(
-        new Request("http://localhost:3001/api/merchant/auth/start", {
+      const started = await SIGNUP(
+        new Request("http://localhost:3001/api/onboarding/signup", {
           method: "POST",
           headers: {
             "content-type": "application/json",
             "x-forwarded-for": "203.0.113.91",
           },
-          body: JSON.stringify({ email }),
+          // Spec 0155: el alta con un email CONOCIDO manda el link y no crea nada.
+          body: JSON.stringify({ email, business: knownEmailBusiness() }),
         }),
       );
       expect(await started.json()).toEqual({ sent: true });
@@ -136,14 +145,15 @@ describe.skipIf(!enabled)(
         .set({ status: "active" })
         .where(eq(businesses.id, businessId));
 
-      await START(
-        new Request("http://localhost:3001/api/merchant/auth/start", {
+      await SIGNUP(
+        new Request("http://localhost:3001/api/onboarding/signup", {
           method: "POST",
           headers: {
             "content-type": "application/json",
             "x-forwarded-for": "203.0.113.92",
           },
-          body: JSON.stringify({ email }),
+          // Spec 0155: el alta con un email CONOCIDO manda el link y no crea nada.
+          body: JSON.stringify({ email, business: knownEmailBusiness() }),
         }),
       );
       const token = await tokenFor(email);

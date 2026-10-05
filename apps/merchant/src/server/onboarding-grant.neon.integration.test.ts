@@ -12,7 +12,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
-import { authStartAttempts, users } from "@mi-pasaporte/db/schema";
+import { authStartAttempts, businesses, users } from "@mi-pasaporte/db/schema";
 import {
   type GrantSeed,
   dropGrantSeed,
@@ -24,7 +24,8 @@ import {
 } from "./onboarding-grant-support";
 import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { createStaff } from "./staff-create";
-import { POST as START } from "../app/api/merchant/auth/start/route";
+import { POST as SIGNUP } from "../app/api/onboarding/signup/route";
+import { testSelectionToken } from "./places/selection-test-support";
 import { POST as STAFF_LOGIN } from "../app/api/merchant/auth/staff/route";
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { GET as CATALOG } from "../app/api/catalog/route";
@@ -45,7 +46,7 @@ import { PATCH as SLUG } from "../app/api/merchant/business/slug/route";
  * Spec 0077 — QUIÉN RECIBE EL PERMISO DE ALTA Y QUIÉN NO, contra Neon.
  *
  * Es el invariante de autorización de la spec, y sólo se puede medir con base: la fila que
- * `auth/start` escribe y la que `auth/staff` escribe son filas distintas de la misma tabla.
+ * `onboarding/signup` escribe y la que `auth/staff` escribe son filas distintas de la misma tabla.
  * Los tres cortes van en `onboarding-grant-cortes.neon.integration.test.ts`.
  */
 const req = (path: string, method: string, cookie: string) =>
@@ -108,20 +109,28 @@ describe.skipIf(!enabled)(
 
     /** La rama del email DESCONOCIDO: el único punto donde el servidor sabe por sí mismo
      * que arranca un alta, porque es el que acaba de crear la cuenta (ADR 0076 §2). */
-    it("`auth/start` con un email desconocido abre la sesión CON el permiso a 60 min", async () => {
+    it("`onboarding/signup` con un email desconocido abre la sesión CON el permiso a 60 min", async () => {
       const email = `alta-${randomUUID()}@example.test`;
-      const response = await START(
-        new Request("http://localhost:3001/api/merchant/auth/start", {
+      const response = await SIGNUP(
+        new Request("http://localhost:3001/api/onboarding/signup", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({
+            email,
+            business: {
+              name: `Alta ${randomUUID().slice(0, 8)}`,
+              categoryGcid: "gcid:cafe",
+              selectionToken: testSelectionToken(),
+            },
+          }),
         }),
       );
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(201);
       // EL PERMISO NO VIAJA: ni en el cuerpo, ni en la cookie (ADR 0076 §2).
       const cookie = response.headers.get("set-cookie") ?? "";
       const text = await response.text();
-      expect(JSON.parse(text).sent).toBe(false);
+      const created = JSON.parse(text);
+      expect(created.created).toBe(true);
       expect(text).not.toContain("onboardingGrant");
       expect(cookie.toLowerCase()).not.toContain("grant");
 
@@ -138,6 +147,8 @@ describe.skipIf(!enabled)(
       expect(minutes).toBeGreaterThan(55);
       expect(minutes).toBeLessThanOrEqual(ONBOARDING_GRANT_MINUTES + 0.5);
 
+      // El negocio cae en cascada con local, verificación, suscripción y membresía.
+      await db.delete(businesses).where(eq(businesses.id, created.business.id));
       await db.delete(users).where(eq(users.id, user.id));
       await db
         .delete(authStartAttempts)

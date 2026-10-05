@@ -2,11 +2,8 @@ import {
   ENTITLEMENTS,
   limitOf,
 } from "@mi-pasaporte/domain/server/entitlements/index";
-import {
-  isSupportedCountryCode,
-  verifyLocation,
-  type LocationSelection,
-} from "../location-providers";
+import { isSupportedCountryCode } from "../supported-countries";
+import { SelectionError, verifySelection } from "../places/selection-token";
 
 /** Typed domain error: HTTP status + stable machine `code` + user message.
  * Mirrors `CounterError` (`counter/core.ts`) and `StaffError` (`staff.ts`). */
@@ -120,10 +117,12 @@ export function parseLocationName(value: unknown): string {
 /**
  * A location's address, already resolved into ONE of the two classes of decision 3.
  * `owner_typed` carries `longitude: null, latitude: null` — never an approximate point.
+ * `provider` is what this code WRITES: `"google"` (spec 0155) or null. Rows written before
+ * the spec keep `provider = 'geoapify'`; no read path types that column.
  */
 export type ResolvedAddress = {
   source: "provider_verified" | "owner_typed";
-  provider: "geoapify" | null;
+  provider: "google" | null;
   providerPlaceId: string | null;
   label: string;
   longitude: string | null;
@@ -133,28 +132,21 @@ export type ResolvedAddress = {
   attribution: string | null;
 };
 
+/** Contrato 0155 «Locales del backoffice»: `selectionToken` = a Google place picked through
+ * `POST /api/places/details`; without it the `label` is typed text. */
 export type AddressInput = {
   label?: unknown;
-  provider?: unknown;
-  longitude?: unknown;
-  latitude?: unknown;
-  featureId?: unknown;
+  selectionToken?: unknown;
 };
 
-const isCoordinate = (value: unknown) =>
-  typeof value === "number" && Number.isFinite(value);
-
 /**
- * True when the body carries a Geoapify SELECTION (a picked suggestion), i.e. a provider
- * plus both coordinates. Anything else — including `provider: "geoapify"` with missing
- * coordinates — is treated as typed text, so a malformed body can never end up with a
- * fabricated georeference. Pure, so the classification has its own oracle.
+ * True when the body carries a picked place (a non-empty `selectionToken`). Its signature
+ * is checked by `resolveAddress`, not here: a token that is present but bad is a 422, never
+ * a silent fall back to typed text. Pure, so the classification has its own oracle.
  */
 export function isProviderSelection(input: AddressInput): boolean {
   return (
-    input.provider === "geoapify" &&
-    isCoordinate(input.longitude) &&
-    isCoordinate(input.latitude)
+    typeof input.selectionToken === "string" && input.selectionToken.length > 0
   );
 }
 
@@ -191,9 +183,10 @@ function typedAddress(input: AddressInput, countryCode: string) {
 }
 
 /**
- * Resolves the address of the request body into one of the two classes. A Geoapify
- * selection is re-verified SERVER-SIDE with the private key (same `verifyLocation` the
- * onboarding uses): the browser's coordinates are a claim, not a fact.
+ * Resolves the address of the request body into one of the two classes. A picked place is
+ * a SIGNED selection (`places/selection-token.ts`): the server trusts only what it signed
+ * itself in `/api/places/details`, so the browser's coordinates and `label` are ignored.
+ * No network call happens here (ADR 0121 §11).
  */
 export async function resolveAddress(
   value: unknown,
@@ -215,15 +208,31 @@ export async function resolveAddress(
   }
   const input = value as AddressInput;
   if (!isProviderSelection(input)) return typedAddress(input, countryCode);
+  let selection;
   try {
-    return await verifyLocation(input as LocationSelection, countryCode);
+    selection = verifySelection(input.selectionToken);
   } catch (error) {
+    if (!(error instanceof SelectionError)) throw error;
+    throw new LocationError(422, "invalid_selection", error.message);
+  }
+  // `location.country_code` has no FK or check against the business: this comparison is
+  // the only thing that keeps a branch in another country out.
+  if (selection.countryCode !== countryCode) {
     throw new LocationError(
-      503,
-      "address_unverified",
-      error instanceof Error
-        ? error.message
-        : "No pudimos validar la dirección.",
+      422,
+      "address_country_mismatch",
+      "Esa dirección está en otro país que tu negocio.",
     );
   }
+  return {
+    source: "provider_verified",
+    provider: "google",
+    providerPlaceId: selection.placeId,
+    label: selection.label,
+    longitude: String(selection.longitude),
+    latitude: String(selection.latitude),
+    countryCode: selection.countryCode,
+    snapshot: selection.snapshot,
+    attribution: null,
+  };
 }

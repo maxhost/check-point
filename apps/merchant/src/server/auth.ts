@@ -57,7 +57,7 @@ export function getMerchantAuth() {
       },
     },
     // Spec 0067 §2 / ADR 0070 §4: la identidad del merchant NO tiene contraseña. El owner
-    // entra escribiendo su email (`POST /api/merchant/auth/start`) y vuelve con un link
+    // se da de alta en `POST /api/onboarding/signup` (spec 0155) y vuelve con un link
     // magico; el staff entra con `handle@slug` + PIN por ruta propia. Sin `emailAndPassword`
     // better-auth deja de montar `/sign-in/email` y `/sign-up/email` —pinneado en
     // `merchant-auth-disabled-paths.test.ts`— y `revokeSessionsOnPasswordReset` deja de
@@ -72,9 +72,9 @@ export function getMerchantAuth() {
         // 15 minutos: el owner abre el mail en el momento. El token se consume una sola
         // vez (`consumeVerificationValue`, better-auth 1.6.26).
         expiresIn: 900,
-        // El alta de cuentas vive en UN solo lugar: `POST /api/merchant/auth/start`. Con
+        // El alta de cuentas vive en UN solo lugar: `POST /api/onboarding/signup`. Con
         // `disableSignUp: false` un token cuyo `user` fue borrado entre el envio y el
-        // click crearia una cuenta por esta puerta, salteando el rate limit de `start`.
+        // click crearia una cuenta por esta puerta, salteando el rate limit del alta.
         disableSignUp: true,
         // El link NO apunta al endpoint de better-auth —esta en `disabledPaths`— sino a
         // nuestra ruta `GET /api/merchant/auth/magic-link`, que es la que consume el

@@ -1,64 +1,21 @@
 import { NextResponse } from "next/server";
-import { getMerchantAuth } from "../../../../server/auth";
-import { SUPPORTED_COUNTRIES } from "../../../../server/location-providers";
-import { currencyForCountry } from "@mi-pasaporte/domain/lib/currencies";
 import { BUSINESS_CATEGORIES } from "../../../../lib/business-categories";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Spec 0069 §D3 / ADR 0070 §8 y §14 — el prellenado de la pantalla 2 del wizard.
+ * GET /api/onboarding/prefill — contrato P3 de la spec 0155: las categorias del paso 1 del
+ * alta.
  *
- * Tres invariantes que son el contrato de esta ruta:
+ * **Es PUBLICA**: el paso 1 (el negocio) va antes que el email, asi que todavia no hay
+ * sesion (ADR 0121 §1). Solo devuelve la lista curada, que no es de nadie.
  *
- * 1. **`countries` va SIEMPRE completa.** La deteccion por IP es una sugerencia, jamas un
- *    filtro: un comerciante detras de una VPN tiene que poder elegir su pais igual. Un
- *    `x-vercel-ip-country` de un pais NO soportado devuelve `suggestedCountryCode: null`
- *    y la lista **intacta**.
- * 2. **El timezone NO sale de aca.** Lo resuelve el cliente con
- *    `Intl.DateTimeFormat().resolvedOptions().timeZone`, que ahi es exacto y en el
- *    servidor seria adivinado. Esta escrito en el contrato para que la UI no lo espere.
- * 3. **NO exige email verificado** (ADR 0070 §11): la verificacion bloquea lo posterior
- *    al wizard, no el wizard. Agregarle el gate dejaria el alta cerrada con llave.
+ * Ya no trae `countries`, `suggestedCountryCode` ni `bias` (spec 0069 §D3): el pais sale
+ * del lugar de Google, la zona de sus coordenadas y el sesgo lo aplica el servidor en
+ * `POST /api/places/autocomplete`.
  */
-const coordinate = (raw: string | null) => {
-  if (!raw) return null;
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : null;
-};
-
-export async function GET(request: Request) {
-  const session = await getMerchantAuth().api.getSession({
-    headers: request.headers,
-  });
-  if (!session) {
-    return NextResponse.json(
-      { error: "No autorizado.", code: "unauthorized" },
-      { status: 401 },
-    );
-  }
-  const countries = SUPPORTED_COUNTRIES.map((country) => ({
-    code: country.code,
-    name: country.name,
-    currencyCode: currencyForCountry(country.code),
-  }));
-  const detected = request.headers
-    .get("x-vercel-ip-country")
-    ?.trim()
-    .toUpperCase();
-  const suggestedCountryCode =
-    detected && countries.some((country) => country.code === detected)
-      ? detected
-      : null;
-  const latitude = coordinate(request.headers.get("x-vercel-ip-latitude"));
-  const longitude = coordinate(request.headers.get("x-vercel-ip-longitude"));
+export async function GET() {
   return NextResponse.json({
-    countries,
-    suggestedCountryCode,
-    // Sesgo para el autocomplete de Geoapify. Las dos coordenadas o ninguna: media
-    // posicion no sesga nada y obligaria a la UI a chequear cada campo por separado.
-    bias:
-      latitude !== null && longitude !== null ? { latitude, longitude } : null,
     categories: BUSINESS_CATEGORIES.map((category) => ({
       gcid: category.gcid,
       displayName: category.displayName,

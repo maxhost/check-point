@@ -128,8 +128,8 @@ export function limitReached(cap: ActiveLocationCap): LocationError {
   );
 }
 
-/** The business country, read BEFORE opening the transaction: resolving a Geoapify
- * selection is a network round-trip and must never happen while holding a row lock. */
+/** The business country, read BEFORE opening the transaction: the address is resolved
+ * (and a selection token checked against this country) before any row lock is taken. */
 export async function businessCountry(businessId: string): Promise<string> {
   const [row] = await getDb()
     .select({ countryCode: businesses.countryCode })

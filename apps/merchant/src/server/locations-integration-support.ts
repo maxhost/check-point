@@ -13,7 +13,12 @@ import {
   subscriptions,
 } from "@mi-pasaporte/db/schema";
 
-export { integrationEnabled };
+import {
+  CUENCA_PLACE,
+  testSelectionToken,
+} from "./places/selection-test-support";
+
+export { integrationEnabled, CUENCA_PLACE };
 
 /**
  * Shared world for the spec 0061 integration tests. Split out of the test files only to
@@ -72,14 +77,14 @@ export async function seedLocationsBusiness(
     id: verificationId,
     locationId: seed.locationId,
     source: "provider_verified",
-    provider: "geoapify",
+    provider: "google",
     providerPlaceId: "seed-place",
     normalizedAddress: "Calle 1",
     longitude: "0",
     latitude: "0",
     countryCode: "EC",
     providerSnapshot: {},
-    attribution: "© OpenStreetMap contributors, © Geoapify",
+    attribution: null,
   });
   await getDb()
     .update(locations)
@@ -129,28 +134,20 @@ export async function readVerifications(locationId: string) {
     .orderBy(asc(locationVerifications.verifiedAt));
 }
 
-/** A Geoapify reverse-geocode result shaped like the real one, for `vi.mock`ing
- * `verifyLocation`. The provider call itself is NOT under test here. */
-export const VERIFIED_ADDRESS = {
-  source: "provider_verified" as const,
-  provider: "geoapify" as const,
-  providerPlaceId: "place-123",
-  label: "Av. Amazonas 123, Quito",
-  longitude: "-78.4877",
-  latitude: "-0.1807",
-  countryCode: "EC",
-  snapshot: { formatted: "Av. Amazonas 123, Quito", place_id: "place-123" },
-  attribution: "© OpenStreetMap contributors, © Geoapify",
-};
-
-/** The body the console sends when the owner PICKED a Geoapify suggestion. */
-export const providerSelection = {
-  label: VERIFIED_ADDRESS.label,
-  provider: "geoapify",
-  longitude: -78.4877,
-  latitude: -0.1807,
-  featureId: "place-123",
-};
+/**
+ * Spec 0155 — the body the console sends when the owner PICKED a Google place: the `label`
+ * it shows plus the signed `selectionToken` of `POST /api/places/details`. The token is a
+ * real one (`signSelection`), so `resolveAddress` runs unmocked; the `label` is a decoy the
+ * server must ignore in favour of the token's.
+ */
+export function providerSelection(
+  overrides: Partial<typeof CUENCA_PLACE> = {},
+) {
+  return {
+    label: "lo que muestra el navegador",
+    selectionToken: testSelectionToken(overrides),
+  };
+}
 
 /**
  * Spec 0064, fase B — LOS DOS CONTADORES de `locations-races.neon.integration.test.ts`,

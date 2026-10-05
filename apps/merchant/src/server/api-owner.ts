@@ -142,7 +142,7 @@ export async function requireApiOwner(
  * lo que venga DESPUES del wizard»* (ADR 0070 §11). Una cuenta nueva llega ahi con el email
  * sin verificar **por construccion** —`openMerchantSession` abre sesion y `email_verified`
  * nace `false`—, asi que aplicarle el paso 3 volvia inalcanzable el resultado del propio
- * alta. Los otros dos pasos del wizard (`POST /api/onboarding/business` y la escritura del
+ * alta. Los otros dos pasos del wizard (el alta, hoy `POST /api/onboarding/signup`, y la escritura del
  * programa) tampoco llevan el gate, y `GET /api/onboarding/state` tampoco (contrato 0074
  * §3): el precedente ya estaba establecido.
  *

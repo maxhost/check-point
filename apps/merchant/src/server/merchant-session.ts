@@ -37,8 +37,8 @@ import { getMerchantAuth } from "./auth";
  *
  * | Llamador | Permiso |
  * |---|---|
- * | `api/merchant/auth/start`, rama del email DESCONOCIDO (crea la cuenta) | SÍ, `now() + 60 min` |
- * | `api/merchant/auth/start`, rama del email conocido | no abre sesión: no aplica |
+ * | `api/onboarding/signup`, rama del email DESCONOCIDO (crea cuenta + negocio; spec 0155) | SÍ, `now() + 60 min` |
+ * | `api/onboarding/signup`, rama del email conocido | no abre sesión: no aplica |
  * | `api/merchant/auth/staff` (login por PIN) | **NUNCA** |
  *
  * La firma real, medida en la fuente (better-auth 1.6.26,

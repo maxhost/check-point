@@ -15,13 +15,21 @@ import { getDb } from "@mi-pasaporte/db";
 import { authStartAttempts, sessions, users } from "@mi-pasaporte/db/schema";
 import { getMerchantAuth } from "./auth";
 import { UNDELIVERABLE_EMAIL_DOMAIN } from "./auth-start";
-import { POST as START } from "../app/api/merchant/auth/start/route";
+import { POST as SIGNUP } from "../app/api/onboarding/signup/route";
+import { testSelectionToken } from "./places/selection-test-support";
 import { GET as CONSUME } from "../app/api/merchant/auth/magic-link/route";
 import { POST as VERIFY_EMAIL } from "../app/api/merchant/auth/verify-email/route";
 import { openMerchantSession } from "./merchant-session";
 
+/** Un negocio valido para el cuerpo de `signup`: con un email conocido se descarta. */
+const knownEmailBusiness = () => ({
+  name: "Negocio que se descarta",
+  categoryGcid: "gcid:cafe",
+  selectionToken: testSelectionToken(),
+});
+
 /**
- * Spec 0067 §2 — EL VIAJE COMPLETO del link mágico, contra Neon: `start` con un email
+ * Spec 0067 §2 — EL VIAJE COMPLETO del link mágico, contra Neon: `signup` (spec 0155; antes `start`) con un email
  * conocido emite el token, y la ruta propia lo consume, abre sesión **y verifica el email**.
  *
  * Por qué importa que sea de punta a punta: las tres piezas viven en archivos distintos
@@ -131,21 +139,22 @@ describe.skipIf(!enabled)(
       }
     }, 30_000);
 
-    it("start → token → consumo: 303 al onboarding si aún no hay negocio, con cookie y email verificado", async () => {
+    it("signup con email conocido → token → consumo: 303 al onboarding si aún no hay negocio, con cookie y email verificado", async () => {
       expect(await verifiedFlag()).toBe(false);
 
-      const started = await START(
-        new Request("http://localhost:3001/api/merchant/auth/start", {
+      const started = await SIGNUP(
+        new Request("http://localhost:3001/api/onboarding/signup", {
           method: "POST",
           headers: {
             "content-type": "application/json",
             "x-forwarded-for": "203.0.113.77",
           },
-          body: JSON.stringify({ email }),
+          // Spec 0155: el alta con un email CONOCIDO manda el link y no crea nada.
+          body: JSON.stringify({ email, business: knownEmailBusiness() }),
         }),
       );
       expect(await started.json()).toEqual({ sent: true });
-      // `start` con email conocido NO abre sesión: la sesión sólo puede nacer del consumo.
+      // `signup` con email conocido NO abre sesión: la sesión sólo puede nacer del consumo.
       expect(started.headers.get("set-cookie")).toBeNull();
 
       const token = await tokenFor(email);

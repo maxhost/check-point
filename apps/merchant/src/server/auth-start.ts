@@ -4,9 +4,10 @@ import { getDb } from "@mi-pasaporte/db";
 import { users } from "@mi-pasaporte/db/schema";
 
 /**
- * Spec 0067 §2 — la decision de la PANTALLA 1 del wizard: el owner escribe su email y el
- * servidor elige entre **abrir sesion en el acto** (email desconocido) y **mandar un link
- * magico** (email conocido).
+ * Spec 0067 §2 — la decision del EMAIL del alta: el servidor elige entre **crear la cuenta y
+ * abrir sesion en el acto** (email desconocido) y **mandar un link magico** (email conocido).
+ * Desde la spec 0155 la usa `POST /api/onboarding/signup`, que crea la cuenta JUNTO con el
+ * negocio (ADR 0121); `auth/start` se borro.
  *
  * **Por que el email conocido NO abre sesion**, que es el invariante portante de este
  * archivo: sin contraseña, escribir el email de otro merchant le entregaria el negocio. Lo
@@ -30,10 +31,10 @@ export class AuthStartError extends Error {
 }
 
 /**
- * Limites del `start`, contados desde `merchant_auth.auth_start_attempt` (o sea desde la
+ * Limites del alta (`onboarding/signup`, antes `start`), contados desde `merchant_auth.auth_start_attempt` (o sea desde la
  * base, no desde memoria: ver el docblock del esquema).
  *
- * `ipPerHour` es el que pide la spec §2. Los dos por email existen porque `start` tambien
+ * `ipPerHour` es el que pide la spec §2. Los dos por email existen porque el alta tambien
  * MANDA MAIL: sin ellos, una sola IP dentro del cupo alcanza para inundar un buzon ajeno.
  * Son deliberadamente holgados — el limite tiene que frenar el abuso, no el alta de un
  * comercio que se equivoco tipeando.
@@ -74,7 +75,7 @@ export const UNDELIVERABLE_EMAIL_DOMAIN = "staff.invalid";
  * links magicos. Lo cazo un revisor independiente (spec 0067, paso 3).
  *
  * Se corta por el dominio y no por el `role` de la membresia a proposito: no agrega una
- * consulta, y no tiene el caso borde del owner recien creado por `start`, que **todavia no
+ * consulta, y no tiene el caso borde de un owner sin membresia, que **todavia no
  * tiene membresia** y con un chequeo de rol habria que dejar pasar igual.
  */
 export function isUndeliverableEmail(email: string): boolean {
@@ -153,25 +154,29 @@ export async function findUserIdByEmail(email: string): Promise<string | null> {
 }
 
 /**
- * Crea la cuenta del owner **sin fila en `merchant_auth.account`**: no hay contraseña que
- * guardar y `emailAndPassword` esta apagado, asi que no existe credencial que verificar.
+ * El `insert` de la cuenta del owner, SIN ejecutar: `signup` lo mete en el mismo `db.batch`
+ * que el negocio (spec 0155, ADR 0121 §12), asi que no existe cuenta sin negocio.
  *
- * `emailVerified: false` a proposito: el wizard se completa sin verificar y lo que bloquea
- * el gate de `requireBackofficeSession` es todo lo POSTERIOR (spec §3 / ADR 0070 §11).
+ * Sin fila en `merchant_auth.account`: no hay contraseña que guardar y `emailAndPassword`
+ * esta apagado, asi que no existe credencial que verificar.
  *
- * El `name` queda vacio: la pantalla 1 pide solo el email (ADR 0070 §1) y el nombre del
- * comercio llega en la pantalla 2.
+ * `emailVerified: false` a proposito: el alta se completa sin verificar y lo que bloquea el
+ * gate de `requireBackofficeSession` es todo lo POSTERIOR (spec 0067 §3 / ADR 0070 §11).
+ *
+ * El `name` queda vacio: el alta pide el email y el nombre del COMERCIO, no el de la persona.
  */
-export async function createOwnerUser(email: string): Promise<string> {
+export function ownerUserInsert(db: ReturnType<typeof getDb>, email: string) {
   const userId = randomUUID();
   const now = new Date();
-  await getDb().insert(users).values({
-    id: userId,
-    name: "",
-    email,
-    emailVerified: false,
-    createdAt: now,
-    updatedAt: now,
-  });
-  return userId;
+  return {
+    userId,
+    query: db.insert(users).values({
+      id: userId,
+      name: "",
+      email,
+      emailVerified: false,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  };
 }

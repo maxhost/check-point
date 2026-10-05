@@ -7,8 +7,15 @@ import {
   parseLocationName,
   resolveAddress,
   toLocationDTO,
+  type AddressInput,
   type LocationRow,
 } from "./locations";
+import {
+  testSelectionToken,
+  TRUJUI_PLACE,
+} from "./places/selection-test-support";
+
+process.env.BETTER_AUTH_SECRET ||= "unit-secret-at-least-32-chars-long-xxxx";
 
 /**
  * Spec 0061 — the decisions of the locations domain that are PURE, with a table of cases
@@ -88,37 +95,59 @@ describe("locations — tope efectivo con baja programada (spec 0063, D2)", () =
   });
 });
 
-describe("locations — address classification (spec 0061, decision 3)", () => {
+describe("locations — address classification (spec 0061 decision 3, spec 0155)", () => {
   it.each([
-    [
-      "a picked suggestion",
-      { provider: "geoapify", longitude: -78.5, latitude: -0.2 },
-      true,
-    ],
-    ["a provider without coordinates", { provider: "geoapify" }, false],
-    [
-      "a provider with only longitude",
-      { provider: "geoapify", longitude: -78.5 },
-      false,
-    ],
-    [
-      "NaN coordinates",
-      { provider: "geoapify", longitude: NaN, latitude: 1 },
-      false,
-    ],
-    [
-      "string coordinates",
-      { provider: "geoapify", longitude: "-78.5", latitude: "-0.2" },
-      false,
-    ],
+    ["a picked place (selection token)", { selectionToken: "abc.def" }, true],
+    ["an empty token", { selectionToken: "" }, false],
+    ["a non-string token", { selectionToken: 42 }, false],
     ["plain typed text", { label: "Av. Amazonas 123" }, false],
     [
-      "another provider",
-      { provider: "mapbox", longitude: 1, latitude: 2 },
+      "the old Geoapify body (no token)",
+      { provider: "geoapify", longitude: -78.5, latitude: -0.2 },
       false,
     ],
   ])("%s → provider selection: %o", (_case, input, expected) => {
-    expect(isProviderSelection(input)).toBe(expected);
+    // The body is untrusted JSON: any shape can arrive, so the test passes it as such.
+    expect(isProviderSelection(input as AddressInput)).toBe(expected);
+  });
+
+  it("a valid token becomes provider_verified/google with the token's data, ignoring the label", async () => {
+    const address = await resolveAddress(
+      {
+        label: "lo que diga el navegador",
+        selectionToken: testSelectionToken(),
+      },
+      "EC",
+    );
+    expect(address).toMatchObject({
+      source: "provider_verified",
+      provider: "google",
+      providerPlaceId: "ChIJ-test-cuenca",
+      label: "Av. Remigio Crespo 4-55, Cuenca, Ecuador",
+      longitude: "-79.0137",
+      latitude: "-2.9081",
+      countryCode: "EC",
+      attribution: null,
+    });
+  });
+
+  it("a token from another country → 422 address_country_mismatch", async () => {
+    await expect(
+      resolveAddress(
+        { selectionToken: testSelectionToken(TRUJUI_PLACE) },
+        "UY",
+      ),
+    ).rejects.toMatchObject({ status: 422, code: "address_country_mismatch" });
+  });
+
+  it("a tampered token → 422 invalid_selection, never a typed fallback", async () => {
+    const [payload] = testSelectionToken().split(".");
+    await expect(
+      resolveAddress(
+        { label: "Calle 1", selectionToken: `${payload}.AAAA` },
+        "EC",
+      ),
+    ).rejects.toMatchObject({ status: 422, code: "invalid_selection" });
   });
 
   it("typed text becomes owner_typed with NO coordinates", async () => {
@@ -139,11 +168,16 @@ describe("locations — address classification (spec 0061, decision 3)", () => {
     });
   });
 
-  it("a body claiming a provider WITHOUT coordinates never fabricates one", async () => {
-    // The dangerous shape: `provider` present, coordinates missing. It must fall to the
-    // typed class, not to an invented point (ADR 0054: a wrong datum is a lie).
+  it("the old Geoapify body is typed text: its coordinates are never stored", async () => {
+    // The dangerous shape: a body that CLAIMS a point. Without a signed token it must fall
+    // to the typed class, not to the browser's coordinates (ADR 0054: a wrong datum is a lie).
     const address = await resolveAddress(
-      { label: "Calle sin número", provider: "geoapify" },
+      {
+        label: "Calle sin número",
+        provider: "geoapify",
+        longitude: 1,
+        latitude: 2,
+      },
       "EC",
     );
     expect(address.source).toBe("owner_typed");

@@ -12,7 +12,7 @@ import { getMerchantAuth } from "./auth";
  *
  * Spec 0067 added the `magicLink` plugin, and the same rule applies to its two endpoints
  * (measured in `dist/plugins/magic-link/index.mjs`): over HTTP they would bypass the
- * per-IP rate limit and the attempt ledger of `POST /api/merchant/auth/start`.
+ * per-IP rate limit and the attempt ledger of `POST /api/onboarding/signup` (spec 0155; was `auth/start`).
  *
  * The 404 comes from the router's `onRequest`, before any endpoint or database work,
  * so this needs no live database.
