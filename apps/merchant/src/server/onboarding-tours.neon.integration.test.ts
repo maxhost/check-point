@@ -10,11 +10,11 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import {
-  type GrantSeed,
-  dropGrantSeed,
+  type OwnerSeed,
+  dropOwnerSeed,
   openSessionCookie,
   seedUnverifiedOwner,
-} from "./onboarding-grant-support";
+} from "./unverified-owner-support";
 import {
   countOf,
   postTour,
@@ -51,27 +51,27 @@ import { POST } from "../app/api/onboarding/tours/[tourId]/route";
  * hay oráculo barato para una carrera de verdad; la idempotencia SECUENCIAL sí está cubierta).
  */
 describe.skipIf(!enabled)("el progreso de los tours (spec 0084)", () => {
-  let seedA: GrantSeed;
-  let seedB: GrantSeed;
+  let seedA: OwnerSeed;
+  let seedB: OwnerSeed;
   let cookieA = "";
   let cookieB = "";
 
   beforeAll(async () => {
     seedA = await seedUnverifiedOwner("tours-a");
     seedB = await seedUnverifiedOwner("tours-b");
-    // Los dos owners nacen con `emailVerified: false` (así nace toda cuenta de `auth/start`);
-    // esta ruta SÍ lleva el paso 3, así que el camino feliz necesita el email verificado.
+    // Los dos owners nacen con `emailVerified: false` (así nace toda cuenta de
+    // `POST /api/onboarding/signup`); esta ruta SÍ lleva el paso 3, así que el camino feliz necesita el email verificado.
     await setVerified(seedA, true);
     await setVerified(seedB, true);
-    cookieA = await openSessionCookie(seedA.ownerId, null);
-    cookieB = await openSessionCookie(seedB.ownerId, null);
+    cookieA = await openSessionCookie(seedA.ownerId);
+    cookieB = await openSessionCookie(seedB.ownerId);
   }, 120_000);
 
   afterAll(async () => {
     await wipeTours(seedA.businessId);
     await wipeTours(seedB.businessId);
-    await dropGrantSeed(seedA);
-    await dropGrantSeed(seedB);
+    await dropOwnerSeed(seedA);
+    await dropOwnerSeed(seedB);
   }, 120_000);
 
   beforeEach(async () => {

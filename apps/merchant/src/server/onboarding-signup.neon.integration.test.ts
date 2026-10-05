@@ -22,17 +22,16 @@ import {
   loyaltyPrograms,
   memberships,
   ownerProfiles,
-  sessions,
   subscriptions,
   users,
 } from "@mi-pasaporte/db/schema";
-import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { getMerchantAuth } from "./auth";
 import { START_RATE_LIMITS } from "./auth-start";
 import {
   businessesNamed,
   dropSignups,
   linkTokenCount,
+  rawUserInsertViolation,
   sessionCount,
   signup,
   signupBody,
@@ -60,9 +59,8 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
   const known = `signup-conocido-${tag}@example.test`;
   const knownId = `signup-int-${tag}`;
   const racing = `signup-carrera-${tag}@example.test`;
-  // Un owner guardado con MAYUSCULAS: `merchant_auth_user_email_unique` es sobre `email`
-  // crudo (no `lower`), asi que ESTE es el caso en que el unico no frena un insert con la
-  // forma normalizada y solo la rama del email conocido protege la cuenta.
+  // Spec 0156 (B): un email con MAYUSCULAS ya no puede guardarse (CHECK
+  // `merchant_auth_user_email_lowercase`), asi que el unico crudo es insensible a mayusculas.
   const mixedStored = `Signup-Mayus-${tag}@Example.test`;
   const mixed = mixedStored.toLowerCase();
   const mixedId = `signup-int-mayus-${tag}`;
@@ -74,14 +72,6 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
       id: knownId,
       name: "Ana Conocida",
       email: known,
-      emailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    await getDb().insert(users).values({
-      id: mixedId,
-      name: "Ana Mayusculas",
-      email: mixedStored,
       emailVerified: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -103,11 +93,8 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
       verificationSent: true,
       business: { name: body.business!.name },
     });
-    // EL PERMISO NO VIAJA: ni en el cuerpo ni en la cookie (ADR 0076 §2).
-    expect(text).not.toContain("onboardingGrant");
     const cookie = response.headers.get("set-cookie") ?? "";
     expect(cookie).toContain("HttpOnly");
-    expect(cookie.toLowerCase()).not.toContain("grant");
 
     const [user] = await userByEmail(fresh);
     expect(user).toMatchObject({
@@ -121,14 +108,7 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
     expect(session?.user.id).toBe(user.id);
 
     const db = getDb();
-    const grants = await db
-      .select({ until: sessions.onboardingGrantUntil })
-      .from(sessions)
-      .where(eq(sessions.userId, user.id));
-    expect(grants).toHaveLength(1);
-    const minutes = (grants[0].until!.getTime() - Date.now()) / 60_000;
-    expect(minutes).toBeGreaterThan(55);
-    expect(minutes).toBeLessThanOrEqual(ONBOARDING_GRANT_MINUTES + 0.5);
+    expect(await sessionCount(user.id)).toBe(1);
 
     const [business] = await db
       .select()
@@ -236,18 +216,17 @@ describe.skipIf(!enabled)("POST /api/onboarding/signup (spec 0155)", () => {
     expect(await linkTokenCount(known)).toBeGreaterThanOrEqual(1);
   }, 60_000);
 
-  // ORACULO DE M2 SIN EL GUARD HERMANO: con el email guardado en mayusculas el unico no
-  // choca, asi que si la rama del email conocido siguiera al paso 7 crearia OTRA cuenta con
-  // negocio y le abriria sesion al que escribio el email ajeno.
-  it("email CONOCIDO guardado con mayusculas: 200 sent, sin cookie, ni cuenta ni negocio nuevos", async () => {
-    const body = signupBody(mixed);
-    const response = await signup(body);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ sent: true });
-    expect(response.headers.get("set-cookie")).toBeNull();
+  // Spec 0156 (B), ORACULO DE M3: la base rechaza un email con mayusculas por el CHECK
+  // (`23514` Y el nombre: un NOT NULL o el unico darian otro rojo), y el CONTROL con la
+  // forma en minusculas entra — el rechazo es por las mayusculas, no por la fila.
+  it("un `user` con email en MAYUSCULAS lo rechaza la base (23514); en minusculas entra", async () => {
+    expect(await rawUserInsertViolation(mixedId, mixedStored)).toEqual({
+      code: "23514",
+      constraint: "merchant_auth_user_email_lowercase",
+    });
+    expect(await userByEmail(mixed)).toEqual([]);
+    expect(await rawUserInsertViolation(mixedId, mixed)).toBeNull();
     expect((await userByEmail(mixed)).map((u) => u.id)).toEqual([mixedId]);
-    expect(await sessionCount(mixedId)).toBe(0);
-    expect(await businessesNamed(body.business!.name as string)).toBe(0);
   }, 60_000);
 
   it("dos altas simultaneas con el mismo email nuevo: una cuenta, el perdedor sin cookie", async () => {

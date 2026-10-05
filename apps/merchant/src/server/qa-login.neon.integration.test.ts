@@ -123,12 +123,6 @@ describe.skipIf(!integrationEnabled)(
         headers: new Headers({ cookie: cookie.split(";")[0] }),
       });
       expect(session?.user.id).toBe(a.userId);
-      // Sin permiso de alta (spec §4: sin `onboardingGrantUntil`), leido por SQL.
-      const [row] = await getDb()
-        .select({ grant: sessions.onboardingGrantUntil })
-        .from(sessions)
-        .where(eq(sessions.id, session!.session.id));
-      expect(row.grant).toBeNull();
     }, 60_000);
 
     it("membresia `disabled` → 403 qa_account_unavailable, sin sesion", async () => {

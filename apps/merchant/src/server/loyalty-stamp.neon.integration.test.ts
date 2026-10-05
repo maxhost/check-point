@@ -27,7 +27,7 @@ import {
  * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
  * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
  */
-const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+const OWNER_VERIFICADO = { emailVerified: true };
 
 describe.skipIf(!enabled)("loyalty stamp columns against Neon", () => {
   const userId = `stamp-${randomUUID()}`;

@@ -2,7 +2,7 @@ import { index, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { merchantAuth } from "./_schemas";
 
 /**
- * Spec 0067 §2 — libro de intentos de `POST /api/merchant/auth/start`, que es la fuente
+ * Spec 0067 §2 — libro de intentos de `POST /api/onboarding/signup` (spec 0155), que es la fuente
  * del rate limit por IP.
  *
  * **Por que una tabla y no memoria:** el ADR 0070 §13 ya midio que el rate limit por

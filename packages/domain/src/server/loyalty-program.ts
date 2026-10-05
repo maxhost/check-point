@@ -17,11 +17,7 @@ import {
   updateWithEvent,
 } from "./loyalty-program/persistence";
 import { validateClosingWindow } from "./loyalty-program/time";
-import {
-  type ProgramCaller,
-  programEditDenied,
-  shortenOnboardingGrant,
-} from "./onboarding-grant";
+import { type ProgramCaller, programEditDenied } from "./program-caller";
 import { renderedTerms } from "./loyalty-program/terms";
 import { programForOwner } from "./loyalty-program/owner";
 import {
@@ -95,7 +91,7 @@ export async function saveProgram(
   // que el eje `status` de arriba —un writer con dos puertas— y en este MISMO orden: después
   // de resolver owner y `status`, porque quien no es owner tiene que recibir `not_owner` y
   // no una pista sobre el email (ADR 0073 §1). La decisión es pura y vive en
-  // `onboarding-grant.ts`; acá sólo se traduce a `LoyaltyError`.
+  // `program-caller.ts`; acá sólo se traduce a `LoyaltyError`.
   const denied = programEditDenied({ isEdit: Boolean(program), ...caller });
   if (denied)
     throw new LoyaltyError(denied.status, denied.message, denied.code);
@@ -152,11 +148,6 @@ export async function saveProgram(
       });
       if (!matched) throw new LoyaltyError(409, STATE_CHANGED);
     } else {
-      // El acortado a 5 min del permiso de alta (spec 0077 §5) viaja en ESTA transacción:
-      // si el insert del programa se cae, la ventana no se toca.
-      const shorten = caller.onboardingGrantActive
-        ? [shortenOnboardingGrant(db, userId)]
-        : [];
       // One transaction: a unique-index clash rolls back the event and rewards too.
       await db.batch([
         db.insert(loyaltyPrograms).values({
@@ -198,7 +189,6 @@ export async function saveProgram(
             position: r.position,
           })),
         ),
-        ...shorten,
       ]);
     }
   } catch (error) {

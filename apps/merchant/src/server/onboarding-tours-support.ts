@@ -1,14 +1,14 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, users } from "@mi-pasaporte/db/schema";
-import type { GrantSeed } from "./onboarding-grant-support";
+import type { OwnerSeed } from "./unverified-owner-support";
 import { POST } from "../app/api/onboarding/tours/[tourId]/route";
 
 /**
  * Soporte de `onboarding-tours.neon.integration.test.ts` (spec 0084). Existe **por el hook
  * `file-size`**: con el montaje adentro, ese archivo medía 333 líneas y el límite es 300 — la
  * regla del repo es dividir, no extender, y no se borra una aserción para hacer lugar. Mismo
- * motivo y misma forma que `onboarding-grant-support.ts`.
+ * motivo y misma forma que `unverified-owner-support.ts`.
  *
  * **Acá no hay ni un `expect`**: los oráculos siguen en el test. Esto es sólo el montaje, y
  * todo lo de acá escribe o lee la base REAL — no dobla nada.
@@ -127,14 +127,14 @@ export const tourTableUserColumns = async () =>
     )
   ).rows;
 
-export const setVerified = (seed: GrantSeed, emailVerified: boolean) =>
+export const setVerified = (seed: OwnerSeed, emailVerified: boolean) =>
   getDb()
     .update(users)
     .set({ emailVerified })
     .where(eq(users.id, seed.ownerId));
 
 export const setBusinessStatus = (
-  seed: GrantSeed,
+  seed: OwnerSeed,
   status: string,
   suspensionReason: string | null,
 ) =>

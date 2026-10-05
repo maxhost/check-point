@@ -56,15 +56,11 @@ export const world = {
 };
 
 /**
- * La fila de la SESIÓN, doblada en un solo lugar y con el permiso de alta en `null` (spec
- * 0077): los casos sólo tocan `world.session.user`, que es lo que ese archivo mide. El permiso
- * con valor tiene sus propios archivos contra Neon.
+ * La fila de la SESIÓN, doblada en un solo lugar: los casos sólo tocan `world.session.user`,
+ * que es lo que ese archivo mide. La sesión no lleva campos propios (spec 0156).
  */
 export const dobleDeSesion = async () =>
-  world.session && {
-    ...world.session,
-    session: { onboardingGrantUntil: null },
-  };
+  world.session && { ...world.session, session: {} };
 
 export const dobleDeOwnerContext = async () => world.ownerRow;
 

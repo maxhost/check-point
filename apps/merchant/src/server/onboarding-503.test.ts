@@ -35,7 +35,7 @@ const FUGA =
 const world = vi.hoisted(() => ({
   session: null as null | {
     user: { id: string; emailVerified: boolean };
-    session: { onboardingGrantUntil: Date | null };
+    session: Record<string, never>;
   },
   checklistFacts: vi.fn(),
   recordTourProgress: vi.fn(),
@@ -100,7 +100,7 @@ beforeEach(() => {
     });
   world.session = {
     user: { id: "user-503", emailVerified: true },
-    session: { onboardingGrantUntil: null },
+    session: {},
   };
 });
 

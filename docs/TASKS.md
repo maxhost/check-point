@@ -4,6 +4,20 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0156, implementador (2026-10-04)
+
+Arbol: worktree `motor-wt/onboarding-google` (rama `onboarding-google`, base 1b43a6a), cambios SIN commitear al medir.
+Restauracion: `cp $S/<archivo>.clean.* <archivo>` con $S = scratchpad de la sesion 5727d8da, subcarpeta `0156/`;
+`program-caller.ts` es un rename staged con cambios (`AM`) y `_journal.json` tiene la entrada nueva sin commitear: `git checkout` NO sirve.
+M3: sin `neonctl` ni herramientas MCP de Neon en el implementador, no se pudo crear la rama efimera; se mide sobre `ci-integration`
+ANTES de aplicarle la 0065 (mutacion = sacar la entrada 0065 del journal, asi `tools/neon-test.sh` no migra nada), y despues se migra.
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| M1 | packages/domain/src/server/program-caller.ts | 11547459d1dd653925e549617ce6d52f0d6e5510 | editar sin email verificado → 403 (sin ventana) | ROJO por la propiedad. Mutacion: `if (true \|\| input.emailVerified === true) return null`. Unidad (program-caller.test): 2/7 — «editar, no verificado, isStaff false/undefined» (esperaba el 403, recibio null). Neon (bypass + ruta-unica + permisos-brand-loyalty + onboarding-program): 2/30 — bypass «PUT #1 → 201; PUT #2 → 403» y «owner recien creado por `signup`: crear → 201, editar → 403», los dos `expected 200 to be 403`. Guard hermano: ninguno, la ruta usa `requireApiPermissionSinGateDeEmail` (route.ts:135). Revertido con cp: diff = solo la linea mutada; shasum vuelve a 11547459 |
+| M2 | packages/domain/src/server/program-caller.ts | 11547459d1dd653925e549617ce6d52f0d6e5510 | crear sin email verificado → 201 | ROJO por la propiedad. Mutacion: `if (!input.isEdit && input.emailVerified === true) return null`. Unidad: 1/7 — «crear, sin verificar». Neon (bypass + onboarding-program + ruta-unica): 4/23, los 4 de bypass con `expected 403 to be 201` en el PUT de CREAR (incluido «owner recien creado por `signup`»); onboarding-program y ruta-unica verdes (siembran owners verificados). Revertido con cp: diff = solo la linea mutada; shasum vuelve a 11547459 |
+| M3 | packages/db/drizzle/meta/_journal.json | 8b251ea1977ab0ef92d9f9c1d49cc1ed75aa4cc2 | la base rechaza un `user.email` con mayusculas (CHECK) | ROJO por la propiedad, despues VERDE. Mutacion: entrada idx 65 fuera de `entries` + clave `MUTATION` en el JSON; `tools/neon-test.sh` corrio el migrate (nada pendiente) contra `ci-integration` SIN la 0065. Neon (onboarding-signup): 1/6 — «un `user` con email en MAYUSCULAS lo rechaza la base» con `expected null to deeply equal { code: 23514, … }` (el INSERT con mayusculas ENTRO). Revertido con cp: diff vacio, shasum vuelve a 8b251ea1. Despues: `tools/neon-test.sh` aplico la 0065 a `ci-integration` → onboarding-signup 6/6 verde (23514 + `merchant_auth_user_email_lowercase`; minusculas entra) |
+
 ## Bitacora de mutaciones — spec 0155, REVISOR (2026-10-04)
 
 Arbol: worktree `motor-wt/onboarding-google`, commit 07e345e (archivos LIMPIOS y commiteados al medir).

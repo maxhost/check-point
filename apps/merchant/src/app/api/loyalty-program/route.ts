@@ -8,10 +8,7 @@ import {
   requireApiPermissionSinGateDeEmail,
 } from "../../../server/api-permission";
 import { getMerchantAuth } from "../../../server/auth";
-import {
-  type ProgramCaller,
-  onboardingGrantActive,
-} from "@mi-pasaporte/domain/server/onboarding-grant";
+import type { ProgramCaller } from "@mi-pasaporte/domain/server/program-caller";
 import { programInput } from "../../../server/onboarding/program-defaults";
 import {
   LoyaltyError,
@@ -82,9 +79,9 @@ async function readJson(request: Request) {
  * Lo que el writer necesita saber del que escribe (spec 0077 §6). **Esta puerta no
  * DECIDE: resuelve y pasa** — el invariante crear ≠ editar vive en `saveProgram`.
  *
- * Los dos datos salen de la fila de la SESION; **nada de esto viaja en el request**
- * (ADR 0076 §2), asi que no hay campo del cuerpo que pueda moverlos. Fail-closed: sin
- * sesion se devuelve el caller mas restrictivo, que deja crear y niega editar.
+ * El dato sale del usuario de la SESION; **nada de esto viaja en el request**, asi que no
+ * hay campo del cuerpo que pueda moverlo. Fail-closed: sin sesion se devuelve el caller mas
+ * restrictivo, que deja crear y niega editar.
  *
  * **Es una SEGUNDA lectura de la sesion en el mismo request** —`requireApiPermissionSinGateDeEmail`
  * ya hizo la suya— y es el costo medido de no tocar `api-owner.ts`, que es el guard de las
@@ -95,14 +92,8 @@ async function callerOf(request: Request): Promise<ProgramCaller> {
   const session = await getMerchantAuth().api.getSession({
     headers: request.headers,
   });
-  if (!session) return { emailVerified: false, onboardingGrantActive: false };
-  return {
-    emailVerified: session.user.emailVerified === true,
-    onboardingGrantActive: onboardingGrantActive({
-      onboardingGrantUntil: session.session.onboardingGrantUntil,
-      emailVerified: session.user.emailVerified,
-    }),
-  };
+  if (!session) return { emailVerified: false };
+  return { emailVerified: session.user.emailVerified === true };
 }
 
 export async function GET(request: Request) {
@@ -132,8 +123,8 @@ export async function GET(request: Request) {
  *
  * **SU GUARD ES `requireApiPermissionSinGateDeEmail` —la escalera sin el paso 4— Y ESO NO AFLOJA
  * NADA:** desde la spec 0077 el paso 3 **ya no vive en la puerta**, vive en `saveProgram`,
- * que distingue crear de editar y exige `emailVerified || onboardingGrantActive` para
- * editar. Volver a poner el gate aca reintroduciria la grieta al reves: una cuenta nueva
+ * que distingue crear de editar y exige `emailVerified` para editar (spec 0156: sin
+ * permiso de alta). Volver a poner el gate aca reintroduciria la grieta al reves: una cuenta nueva
  * —que nace con `email_verified = false`— no podria crear su primer programa, que es
  * justo el paso 3 del alta (ADR 0070 §11). Es la mutacion M1 de la spec.
  *

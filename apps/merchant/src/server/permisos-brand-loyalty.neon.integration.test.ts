@@ -219,9 +219,8 @@ describe.skipIf(!enabled)(
      * DoD §10 ítem 2 — **EDITAR, que es el caso que el gate del writer mataba.**
      *
      * El negocio sembrado ya tiene programa activo, así que `isEdit` es `true` y
-     * `programEditDenied` exigía `emailVerified || onboardingGrantActive`. Un integrante no
-     * tiene ninguno de los dos **por diseño** —su email sintético `@staff.invalid` no se
-     * verifica nunca—, así que sin `isStaff` esto devolvía `403 email_not_verified`. Es el
+     * `programEditDenied` exige `emailVerified`. Un integrante no lo tiene **por diseño**
+     * —su email sintético `@staff.invalid` no se verifica nunca—, así que sin `isStaff` esto devolvía `403 email_not_verified`. Es el
      * oráculo de la mutación M8.
      */
     it("un STAFF con `loyalty` EDITA el programa: 200, no `email_not_verified`", async () => {

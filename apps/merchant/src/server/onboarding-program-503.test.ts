@@ -21,7 +21,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const world = vi.hoisted(() => ({
   session: null as null | {
     user: { id: string; emailVerified: boolean };
-    session: { onboardingGrantUntil: Date | null };
+    session: Record<string, never>;
   },
   programInput: vi.fn(),
   saveProgram: vi.fn(),
@@ -96,7 +96,7 @@ describe("PUT /api/loyalty-program sin plantillas (spec 0078 §3, ruta única 00
     vi.clearAllMocks();
     world.session = {
       user: { id: "user-0078", emailVerified: true },
-      session: { onboardingGrantUntil: null },
+      session: {},
     };
   });
 

@@ -456,6 +456,13 @@
       "when": 1791077431271,
       "tag": "0064_cupon_elegido_y_atado_a_la_venta",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1791163901993,
+      "tag": "0065_borrar_permiso_de_alta",
+      "breakpoints": true
     }
   ]
 }

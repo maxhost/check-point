@@ -31,7 +31,7 @@ import { GET } from "../app/api/loyalty-program/qr/route";
  * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
  * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
  */
-const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+const OWNER_VERIFICADO = { emailVerified: true };
 
 /**
  * Spec 0069 §D6 — `GET /api/loyalty-program/qr` CONTRA LA BASE.

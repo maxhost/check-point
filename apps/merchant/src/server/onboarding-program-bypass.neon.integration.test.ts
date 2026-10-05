@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 process.env.BETTER_AUTH_SECRET ||= "integration-secret-at-least-32-chars-xx";
 process.env.BETTER_AUTH_URL ||= "http://localhost:3001";
+// El caso de `signup` encola el link de verificacion: `console` no entrega nada.
+process.env.EMAIL_PROVIDER = "console";
 
 const url = process.env.NEON_INTEGRATION_DATABASE_URL;
 const enabled =
@@ -12,15 +15,19 @@ if (enabled) process.env.DATABASE_URL = url;
 import { getDb } from "@mi-pasaporte/db";
 import { loyaltyPrograms, users } from "@mi-pasaporte/db/schema";
 import {
-  type GrantSeed,
-  dropGrantSeed,
+  type OwnerSeed,
+  dropOwnerSeed,
   openSessionCookie,
   seedUnverifiedOwner,
   wipePrograms,
   wipeSessions,
-} from "./onboarding-grant-support";
-import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
+} from "./unverified-owner-support";
 import { PUT } from "../app/api/loyalty-program/route";
+import {
+  dropSignups,
+  signup,
+  signupBody,
+} from "./onboarding-signup-integration-support";
 
 /**
  * EL BYPASS DE LA SPEC 0077, con EL MISMO MONTAJE QUE LO ENCONTRÓ (ADR 0076): un solo
@@ -37,10 +44,9 @@ import { PUT } from "../app/api/loyalty-program/route";
  * la 0079 le saca el paso 3 a `PUT /api/loyalty-program` —el gate vive en el writer desde la
  * 0077— y estos casos son EL oráculo de que eso no afloja nada. Es la mutación M1.
  *
- * **La sesión de los casos de bypass NO tiene permiso de alta.** Es el estado de quien
- * vuelve al día siguiente, o de quien ya consumió los 5 minutos posteriores a completar el
- * alta: el permiso es una ventana, no una puerta abierta. Con el permiso VIGENTE la edición
- * sí se permite —y también se mide acá, porque el alta no se puede romper.
+ * **Spec 0156: no hay ventana.** El permiso de alta (60 min sin email verificado) se borró;
+ * editar exige el email verificado aunque la cuenta tenga un minuto. El último caso lo mide
+ * con la cookie que devuelve `POST /api/onboarding/signup`, que es la que lo llevaba.
  *
  * **El oráculo que importa es el de la BASE**: un 403 con la fila ya reescrita sería un
  * falso verde, así que cada caso asevera la `configuration` leída por SQL.
@@ -49,7 +55,7 @@ import { PUT } from "../app/api/loyalty-program/route";
  * ese archivo está en 279 líneas y no admite un `describe` más.
  */
 describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
-  let seed: GrantSeed;
+  let seed: OwnerSeed;
   let cookie = "";
 
   const post = (body: unknown) =>
@@ -92,19 +98,19 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
   }, 60_000);
 
   afterAll(async () => {
-    await dropGrantSeed(seed);
+    await dropOwnerSeed(seed);
   }, 60_000);
 
-  /** Una sesión SIN permiso antes de cada caso: el montaje es el estado por defecto. */
-  const reset = async (minutes: number | null) => {
+  /** Sesión nueva, sin programa y sin verificar antes de cada caso. */
+  const reset = async () => {
     await wipePrograms(seed.businessId);
     await wipeSessions(seed.ownerId);
     await setVerified(false);
-    cookie = await openSessionCookie(seed.ownerId, minutes);
+    cookie = await openSessionCookie(seed.ownerId);
   };
 
   it("PUT #1 → 201; PUT #2 → 403 `email_not_verified` y la fila NO se reescribe", async () => {
-    await reset(null);
+    await reset();
 
     const first = await post(ocho);
     expect(first.status).toBe(201);
@@ -123,10 +129,9 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     expect(await configurationNow()).toEqual(before);
   }, 120_000);
 
-  /** CONTROL POSITIVO — crear SIEMPRE se permite sin verificar (ADR 0070 §11), y no
-   * depende del permiso: esta sesión no lo tiene. */
-  it("sin email verificado y SIN permiso, CREAR el primer programa sigue dando 201", async () => {
-    await reset(null);
+  /** CONTROL POSITIVO — crear SIEMPRE se permite sin verificar (ADR 0070 §11). */
+  it("sin email verificado, CREAR el primer programa sigue dando 201", async () => {
+    await reset();
     const response = await post(ocho);
     expect(response.status).toBe(201);
     expect((await response.json()).created).toBe(true);
@@ -137,25 +142,10 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
     });
   }, 120_000);
 
-  /** EL ALTA NO SE ROMPE — con el permiso vigente el wizard puede volver atrás y corregir,
-   * que es exactamente para lo que el permiso existe. */
-  it("con el permiso VIGENTE, la edición del wizard sigue pasando (200)", async () => {
-    await reset(ONBOARDING_GRANT_MINUTES);
-    expect((await post(ocho)).status).toBe(201);
-    const second = await post(cincuenta);
-    expect(second.status).toBe(200);
-    expect((await second.json()).created).toBe(false);
-    expect(await configurationNow()).toEqual({
-      unitName: "sello",
-      unitPlural: "sellos",
-      target: 50,
-    });
-  }, 120_000);
-
   /** CONTROL NEGATIVO DEL ORÁCULO — con el email verificado la MISMA edición pasa, así que
    * el 403 del primer caso viene del gate de email y no de otra guarda cualquiera. */
   it("con el email VERIFICADO, la misma edición vuelve a dar 200", async () => {
-    await reset(null);
+    await reset();
     expect((await post(ocho)).status).toBe(201);
     await setVerified(true);
     const second = await post(cincuenta);
@@ -166,5 +156,44 @@ describe.skipIf(!enabled)("el bypass del gate de email (spec 0077 §5)", () => {
       unitPlural: "sellos",
       target: 50,
     });
+  }, 120_000);
+
+  /**
+   * ORÁCULO DE M1 y M2 (spec 0156) — EL OWNER RECIÉN CREADO POR `signup`, con SU cookie: es
+   * la sesión que hasta la 0156 llevaba el permiso de alta. Crear → 201; editar con la cuenta
+   * de un minuto → 403 y la fila NO se reescribe.
+   */
+  it("owner recién creado por `signup`: crear → 201, editar → 403 `email_not_verified`", async () => {
+    const email = `bypass-signup-${randomUUID()}@example.test`;
+    let businessId: string | null = null;
+    try {
+      const created = await signup(signupBody(email));
+      expect(created.status).toBe(201);
+      businessId = (await created.json()).business.id as string;
+      const fresh = (created.headers.get("set-cookie") ?? "").split(";")[0];
+      const put = (body: unknown) =>
+        PUT(
+          new Request("http://localhost:3001/api/loyalty-program", {
+            method: "PUT",
+            headers: { "content-type": "application/json", cookie: fresh },
+            body: JSON.stringify(body),
+          }),
+        );
+      const first = await put(ocho);
+      expect(first.status).toBe(201);
+      expect((await first.json()).created).toBe(true);
+      const second = await put(cincuenta);
+      expect(second.status).toBe(403);
+      expect((await second.json()).code).toBe("email_not_verified");
+      const [row] = await getDb()
+        .select({ configuration: loyaltyPrograms.configuration })
+        .from(loyaltyPrograms)
+        .where(eq(loyaltyPrograms.businessId, businessId));
+      expect(row.configuration).toMatchObject({ target: 8 });
+    } finally {
+      // El programa primero: `dropSignups` borra el negocio y el programa no cae en cascada.
+      if (businessId) await wipePrograms(businessId);
+      await dropSignups([email]);
+    }
   }, 120_000);
 });

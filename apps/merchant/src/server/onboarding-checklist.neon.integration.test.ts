@@ -14,11 +14,11 @@ import { getDb } from "@mi-pasaporte/db";
 import { memberships, users } from "@mi-pasaporte/db/schema";
 import { createStaff } from "./staff-create";
 import {
-  type GrantSeed,
-  dropGrantSeed,
+  type OwnerSeed,
+  dropOwnerSeed,
   openSessionCookie,
   seedUnverifiedOwner,
-} from "./onboarding-grant-support";
+} from "./unverified-owner-support";
 import {
   type ChecklistItemJson,
   getChecklist,
@@ -57,10 +57,10 @@ import {
  * positivo y que el `catch` NO filtre el mensaje de la excepcion).
  */
 describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
-  let seed: GrantSeed;
+  let seed: OwnerSeed;
   /** El SEGUNDO negocio, que existe solo para el caso de aislamiento: sus filas de progreso
    * son las que este owner NO tiene que ver. */
-  let seedAjeno: GrantSeed;
+  let seedAjeno: OwnerSeed;
   let cookieOwner = "";
   let cookieStaff = "";
   let staffUserId = "";
@@ -68,7 +68,7 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
   beforeAll(async () => {
     seed = await seedUnverifiedOwner("checklist");
     seedAjeno = await seedUnverifiedOwner("checklist-ajeno");
-    cookieOwner = await openSessionCookie(seed.ownerId, null);
+    cookieOwner = await openSessionCookie(seed.ownerId);
     // El integrante: usuario propio, membresia `role='staff'` del MISMO negocio y su
     // sesion real. Su email es el sintetico `@staff.invalid`, que es justamente el motivo
     // por el que el checklist es owner-only (ADR 0077 §6).
@@ -78,7 +78,7 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       "owner",
     );
     staffUserId = staff.userId;
-    cookieStaff = await openSessionCookie(staffUserId, null);
+    cookieStaff = await openSessionCookie(staffUserId);
   }, 120_000);
 
   afterAll(async () => {
@@ -88,13 +88,13 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
     await getDb().delete(users).where(eq(users.id, staffUserId));
     await wipeTours(seed.businessId);
     await wipeTours(seedAjeno.businessId);
-    await dropGrantSeed(seed);
-    await dropGrantSeed(seedAjeno);
+    await dropOwnerSeed(seed);
+    await dropOwnerSeed(seedAjeno);
   }, 120_000);
 
   /**
    * ORACULO DE M1 — EL CASO CENTRAL. El owner de este seed nace con
-   * `emailVerified: false`, que es como nace toda cuenta de `auth/start`.
+   * `emailVerified: false`, que es como nace toda cuenta de `POST /api/onboarding/signup`.
    */
   it("un owner SIN el email verificado recibe 200 con su item pendiente", async () => {
     await setVerified(seed, false);

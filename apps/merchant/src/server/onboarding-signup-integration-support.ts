@@ -89,6 +89,25 @@ export const attemptCount = (email: string) =>
          WHERE email = ${email}`,
   );
 
+/** Inserta un `user` por SQL crudo —sin pasar por ningun escritor que normalice— y devuelve
+ * `null` si entro o el `code`/`constraint` del rechazo (spec 0156 B). */
+export async function rawUserInsertViolation(
+  id: string,
+  email: string,
+): Promise<{ code?: string; constraint?: string } | null> {
+  try {
+    await getDb().execute(
+      sql`INSERT INTO merchant_auth."user" (id, name, email, email_verified, created_at, updated_at)
+           VALUES (${id}, 'Mayus', ${email}, false, now(), now())`,
+    );
+    return null;
+  } catch (error) {
+    const cause = (error as { cause?: { code?: string; constraint?: string } })
+      .cause;
+    return { code: cause?.code, constraint: cause?.constraint };
+  }
+}
+
 export const businessesNamed = (name: string) =>
   countSql(
     sql`SELECT count(*)::int AS n FROM core.business WHERE name = ${name}`,

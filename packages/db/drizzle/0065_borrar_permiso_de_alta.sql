@@ -1,0 +1,2 @@
+ALTER TABLE "merchant_auth"."session" DROP COLUMN "onboarding_grant_until";--> statement-breakpoint
+ALTER TABLE "merchant_auth"."user" ADD CONSTRAINT "merchant_auth_user_email_lowercase" CHECK ("merchant_auth"."user"."email" = lower("merchant_auth"."user"."email"));

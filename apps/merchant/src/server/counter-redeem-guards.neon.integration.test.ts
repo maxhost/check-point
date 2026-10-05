@@ -32,7 +32,7 @@ import { saveProgram } from "@mi-pasaporte/domain/server/loyalty-program";
  * fuerce a cada puerta a declarar con qué autorización escribe. Estos casos son de DOMINIO,
  * no del gate: escriben como un owner con el email verificado, igual que antes de la spec.
  */
-const OWNER_VERIFICADO = { emailVerified: true, onboardingGrantActive: false };
+const OWNER_VERIFICADO = { emailVerified: true };
 
 /**
  * Spec 0055 — authorization, validation and history guards of the redemption, against

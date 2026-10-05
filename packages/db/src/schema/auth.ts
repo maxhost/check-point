@@ -1,4 +1,11 @@
-import { boolean, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { merchantAuth } from "./_schemas";
 
 export const users = merchantAuth.table(
@@ -12,7 +19,16 @@ export const users = merchantAuth.table(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
   },
-  (table) => [uniqueIndex("merchant_auth_user_email_unique").on(table.email)],
+  (table) => [
+    uniqueIndex("merchant_auth_user_email_unique").on(table.email),
+    // Spec 0156 (B): el unico de arriba es sobre `email` crudo. Este CHECK lo vuelve
+    // insensible a mayusculas por garantia de la base: ningun escritor (better-auth, el
+    // signup, un `UPDATE` a mano) puede guardar `Juan@x.com` al lado de `juan@x.com`.
+    check(
+      "merchant_auth_user_email_lowercase",
+      sql`${table.email} = lower(${table.email})`,
+    ),
+  ],
 );
 
 export const sessions = merchantAuth.table(
@@ -28,23 +44,6 @@ export const sessions = merchantAuth.table(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /**
-     * EL PERMISO DE ALTA (spec 0077 §1, ADR 0076 §2). Un INSTANTE, no un booleano: un
-     * `timestamptz` codifica los dos topes de tiempo en un solo campo y hace que
-     * «caducado» no necesite que nadie escriba nada (un booleano pediría un job).
-     *
-     * **El permiso NO VIAJA**: lo escribe el servidor al crear la cuenta
-     * (`POST /api/merchant/auth/start`) y lo lee de esta misma fila. `input: false` en
-     * `session.additionalFields` (`server/auth.ts`) lo hace no-seteable desde ninguna
-     * entrada de la API.
-     *
-     * **Invariante del dato: MONOTONA HACIA ABAJO.** Se escribe una vez al crear la
-     * sesión y después sólo puede adelantarse — el acortado usa `least(...)`, nunca una
-     * asignación (`shortenOnboardingGrant` en `server/onboarding-grant.ts`).
-     */
-    onboardingGrantUntil: timestamp("onboarding_grant_until", {
-      withTimezone: true,
-    }),
   },
   (table) => [
     uniqueIndex("merchant_auth_session_token_unique").on(table.token),

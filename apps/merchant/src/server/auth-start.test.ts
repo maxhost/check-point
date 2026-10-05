@@ -10,9 +10,9 @@ import {
 } from "./auth-start";
 
 /**
- * Spec 0067 §2 — la parte SIN BASE de `POST /api/merchant/auth/start`. La decisión que
- * importa —email conocido NO abre sesión— no es pura: necesita la base y vive en
- * `auth-start.neon.integration.test.ts`, que es donde muerde la mutación #4.
+ * Spec 0067 §2 — la parte SIN BASE de `POST /api/onboarding/signup` (spec 0155; antes
+ * `auth/start`). La decisión que importa —email conocido NO abre sesión— no es pura:
+ * necesita la base y vive en `onboarding-signup.neon.integration.test.ts`.
  */
 const codeOf = (value: unknown) => {
   try {

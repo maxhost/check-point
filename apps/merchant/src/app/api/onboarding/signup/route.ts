@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ONBOARDING_GRANT_MINUTES } from "@mi-pasaporte/domain/server/onboarding-grant";
 import { getMerchantAuth } from "../../../../server/auth";
 import {
   AuthStartError,
@@ -83,13 +82,9 @@ export async function POST(request: Request) {
       return unavailable();
     }
 
-    // EL PERMISO DE ALTA (spec 0077 §3, ADR 0076 §2): se emite SOLO aca, donde el servidor
-    // acaba de crear la cuenta. La rama del email conocido no abre sesion.
-    const cookie = await openMerchantSession(created.userId, {
-      onboardingGrantUntil: new Date(
-        Date.now() + ONBOARDING_GRANT_MINUTES * 60_000,
-      ),
-    });
+    // La sesion se abre SOLO aca, donde el servidor acaba de crear la cuenta. La rama del
+    // email conocido no abre sesion.
+    const cookie = await openMerchantSession(created.userId);
     // La cuenta queda aunque el mail de verificacion falle: el cliente ofrece reenviarlo
     // con `/verify-email` desde esta misma sesion.
     let verificationSent = false;
