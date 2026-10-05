@@ -9,10 +9,11 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — SPEC 0159 IMPLEMENTADA EN `motor` (`d797c21`), SIN PUSH
+## ⇥ ESTADO (2026-10-05, noche) — SPEC 0159 IMPLEMENTADA (`d797c21`), PUSH A `origin/main` SIN VERIFY; SIGUE LA N1 DE #76
 
 **Hecho (verificado):**
-- **0159** en `motor` `d797c21` (local, sin push): `Heading`, `Text`, `Card`, `PageHeader`, `Form`/`FormSection`/
+- **0159** en `motor` `d797c21`, pusheada a `origin/main` con `--no-verify` (owner: «hacemos el push sin verificar
+  para que no falle», por los flakes #74/#75); deploy de Vercel sin verificar: `Heading`, `Text`, `Card`, `PageHeader`, `Form`/`FormSection`/
   `FormActions` en `apps/merchant/src/ui`; `BrandTheme`/`resolveBrandTheme` borrados. Harness
   `tests/e2e/support/ui-kit-entry.tsx` + `ui-kit-checks.ts`; `ui-kit.spec.ts` (Chromium) y `ui-kit.webkit.spec.ts`:
   16/16 local; `CI=1` → 4 passed / 12 skipped. Referencias 4 + 4 `*-darwin.png` (la spec decia 8 + 8: error de cuenta).
@@ -24,17 +25,20 @@
   0155); el `build` lo regenero y `pnpm typecheck` despues → 6/6. Tabla en la spec.
 
 **Siguiente, en orden:**
-1. Push de `motor` a pedido del owner (memoria: no pushear por commit). El pre-push puede caer por #74/#75.
-2. Owner: mirar el Artifact; decidir #76 (`validationErrors` del `Form` no llega a los campos del kit: spec chica o
-   dentro de la 0160) y #77 (`ChoiceGroup` recorta en WebKit 390).
-3. 0160 (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link) y 0161: se
+1. **Spec chica N1 para #76** (owner: «añade la spec chica N1 antes de 160»): `validationErrors` del `Form` llega a
+   `TextField`, `SelectField`, `NumberField`, `TextAreaField`, `ChoiceGroup` (hoy `isInvalid={props.isInvalid ??
+   Boolean(errorMessage)}` pisa el error del servidor; fix candidato `errorMessage ? true : undefined`). Rojo primero
+   en el harness del kit (`ui-kit-checks.ts`), un caso por campo; correr los e2e de wizard/programa/Staff (usan esos
+   campos). Si cambia el aspecto, regenerar capturas mirandolas.
+2. 0160 (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link) y 0161: se
    escriben al empezar cada una, sumando piezas al final de `ui-kit-entry.tsx`.
-4. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
+3. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
 
 **Pendientes del owner:** `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
 Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploy de `b1ab123` sin verificar.
 
-**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #76, #77; H4 de la 0155.
+**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #76 (siguiente), #77 (diferido por el owner: «quizas lo
+cambiamos»); H4 de la 0155.
 
 **Gotchas de esta sesion:** Tailwind del harness solo genera clases usadas en `apps/merchant` (layout del harness
 inline); un `next dev` de otro proyecto en el 3001 cuelga el `webServer` de Playwright (se mato con OK del owner);
@@ -49,4 +53,4 @@ el hook `foreign-staged.sh` exige los paths borrados con `git rm` escritos liter
 | Arreglar `isInvalid` de los campos en la 0159 | cambia campos en uso: fuera de alcance (#76) |
 | Capturas de Linux / en CI | owner: sus usuarios usan Windows y Mac |
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: push de la 0159 o escribir la 0160».
+**Prompt para retomar:** «Lee docs/estado/claude.md: spec chica N1 de #76».
