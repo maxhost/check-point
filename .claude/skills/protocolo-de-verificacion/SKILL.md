@@ -333,6 +333,9 @@ su nivel (guia / regla aplicada / ley), y la retorica de un sintetizador no es u
 - **Todo numero que va a un doc se RE-MIDE en el momento de escribirlo** (tamaños, conteos de
   tests, `shasum` de baseline). Un baseline podrido hace que la sesion fresca concluya «alguien
   dejo una mutacion puesta» — el sintoma exacto que la auditoria existe para descartar.
+- **Con GPT trabajando en paralelo, un numero que describe `main` se mide sobre `origin/main` (`git fetch`), no sobre
+  tu rama** (caso 2026-10-05, `LECCIONES.md`): el plan de UI se midio en `onboarding-google` mientras GPT ya habia
+  pusheado la 0157 a `main` con un campo hecho a mano que el plan no veia.
 - Para los tamaños se le pregunta **AL HOOK**, no a `wc`:
   `echo '{"tool_input":{"file_path":"<abs>"}}' | .claude/hooks/file-size.sh; echo "EXIT=$?"`, con
   un control sobre un archivo sano para probar que discrimina. El barrido va sobre los ` M` **y**

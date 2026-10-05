@@ -2036,6 +2036,18 @@ operativa corta que cambia una decision en **toda** sesion → aca; chequeable c
 → `docs/LECCIONES.md`. **Nunca se referencia `LECCIONES.md` con `@`**: un import `@` se carga
 como si estuviera pegado aca y no ahorraria un solo token.
 
+## 2026-10-05 — Arco 0155/0156 + plan de UI. Un ESTADO pisado y un plan medido sobre la rama equivocada
+
+**ESTADO pisado.** Al cerrar la 0155/0156 (`1953afe`) el orquestador reescribio el bloque `⇥ ESTADO` de
+`docs/estado/claude.md` reemplazando el de la 0153 en vez de moverlo a `claude-historico.md` (regla de la spec 0151 que
+vivia solo en la skill `handoff`, que no se cargo porque no era un handoff). Se recupero de git (`5b90b5d`) en el
+handoff del 2026-10-05. **Regla:** la linea 4 de `CLAUDE.md` §Flujo ahora lo dice para toda reescritura.
+
+**Plan medido sobre la rama.** El borrador del ADR 0123 se midio en `onboarding-google` mientras GPT ya habia pusheado
+la UI 0157 a `origin/main`, con `places-search.tsx` armado a mano (3 controles nativos): justo la regresion que el plan
+queria impedir, invisible desde la rama. Lo cazo el revisor adversarial (B5). **Regla:** skill
+`protocolo-de-verificacion` §5.
+
 ## Flujo de trabajo
 
 1. **Leer `docs/estado/claude.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr

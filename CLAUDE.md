@@ -31,6 +31,7 @@ escribir la spec: una spec escrita dos veces porque el alcance cambio es el cost
 3. Fila de 3 lineas en `docs/INDEX.md` (que es, por que importa, estado) en el mismo commit.
 4. Estado: en N1/N2 el bloque ESTADO se reescribe DESPUES del commit del trabajo (dos commits: el trabajo
    y el doc con su sha) y describe, no pronostica (hook `state-uncommitted-lie.sh`). En N0, al cerrar la sesion.
+   El bloque anterior se MUEVE a `claude-historico.md`, nunca se pisa (tambien fuera de un handoff).
 5. `hecho` solo con verificacion real: test que pasa, comando corrido, cosa vista en pantalla.
 
 ## Estado
