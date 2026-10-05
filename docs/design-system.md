@@ -14,14 +14,6 @@ Los estilos heredados de `/backoffice` permanecen en `globals.css` dentro de `@l
 
 ## Tokens
 
-### Marca en runtime
-
-Los valores persistidos del comercio entran como `BrandPalette` en `BrandTheme`. El componente asigna las tres variables de marca a un subtree; no recompila Tailwind ni acopla el consumidor al merchant.
-
-`resolveBrandTheme` analiza la luminancia de cada color en runtime, elige texto claro u oscuro según cuál produzca mayor contraste y deriva hover/pressed hacia el extremo que incrementa ese contraste. Cada estado de acción mantiene al menos 4.5:1. Un valor que no tenga el formato de color persistido esperado se ignora individualmente y conserva el fallback validado de `tokens.css`.
-
-La marca no controla errores, foco ni campos del sistema: esos roles siguen siendo propiedad de CheckPass para que una edición de marca no degrade información crítica.
-
 ### Claro y oscuro
 
 Claro forzado (ADR 0123, decisión 2): `<html data-theme="light">` y no se sigue `prefers-color-scheme`. El oscuro vive en un solo bloque, `:root[data-theme="dark"]`, que usan los e2e que lo fuerzan y el cierre del ADR 0123. Los componentes usan los mismos roles semánticos en ambos modos; no duplican clases.
@@ -166,18 +158,6 @@ Estados: completado, actual y pendiente. Expone el actual con `aria-current="ste
 />
 ```
 
-### `BrandTheme`
-
-Propósito: inyectar la marca de un comercio en runtime y limitarla a un subtree.
-
-Props: `palette` con `primary`, `complement` y `accent`; `children`.
-
-Estados: depende de la paleta activa y del modo claro/oscuro. No es interactivo.
-
-```tsx
-<BrandTheme palette={business.brandPalette}>{children}</BrandTheme>
-```
-
 ### `ApiError`
 
 Propósito: traducir en un solo lugar los cinco códigos transversales del gate del owner. Nunca muestra directamente la copia `error` que llega del servidor.
@@ -204,6 +184,76 @@ Mapeo único:
   onContact={openSupport}
 />
 ```
+
+### `Heading` y `Text`
+
+Propósito: la tipografía del kit, con la medida del wizard (ADR 0123, decisión 5). Fijan `margin`, `color`, tamaño, interlineado y peso, así que no heredan los `h1`/`h2`/`p` de `globals.css`. No aceptan props de color ni de tipografía; `className` es solo para layout.
+
+Props de `Heading`: `level` (`1 | 2 | 3`), `id`, `tabIndex` (para mover el foco al título; agrega `outline-none`), `className`.
+
+| `level` | 390 px | desde `sm` |
+| ------- | ------ | ---------- |
+| 1       | 24/30  | 30/37.5    |
+| 2       | 20/28  | 20/28      |
+| 3       | 18/28  | 18/28      |
+
+Props de `Text`: `variant` (`body | muted | small | label`, por defecto `body`), `as` (`p | span`, por defecto `p`), `id`, `className`. `body` 16/24 `text-content`; `muted` 16/24 `text-content-muted` (descripción de pantalla); `small` 14/20 `text-content-muted` (descripción de campo); `label` 16/20 en negrita.
+
+```tsx
+<Heading level={2} id="programa-titulo">Tu programa</Heading>
+<Text variant="muted">Elegí cómo suman puntos tus clientes.</Text>
+```
+
+### `Card`
+
+Propósito: superficie de contenido (la tarjeta del wizard, con borde para separarse del fondo del backoffice). Radio 20 px, padding 24 px y 32 px desde `sm`, borde `border`, fondo `surface`, `shadow-sm`.
+
+Props: `as` (`section | div | article`, por defecto `section`), `aria-labelledby`, `className`. Con `section` y `aria-labelledby` es una región con nombre.
+
+```tsx
+<Card aria-labelledby="datos-titulo">
+  <Heading level={2} id="datos-titulo">Datos del negocio</Heading>
+  …
+</Card>
+```
+
+### `PageHeader`
+
+Propósito: el título de una pantalla, con descripción y acciones opcionales. En móvil las acciones van debajo del título; desde `sm`, a la derecha.
+
+Props: `title`, `description`, `actions` (nodos, normalmente `Button`), `headingId`.
+
+```tsx
+<PageHeader
+  title="Clientes"
+  description="Quiénes tienen tu tarjeta."
+  actions={<Button onPress={exportar}>Exportar</Button>}
+/>
+```
+
+### `Form`, `FormSection` y `FormActions`
+
+Propósito: la estructura de un formulario. `Form` envuelve el `Form` de React Aria con `validationBehavior="aria"` por defecto (el mismo que los campos del kit: el envío no se frena en el navegador, se valida en el código) y una grilla de 20 px entre bloques. `FormSection` es un `fieldset` con `legend` (título `Heading level={2}` y descripción `Text variant="small"`): da el nombre accesible del grupo. `FormActions` pone los botones en fila a la derecha desde `sm`; en móvil los apila a todo el ancho con la acción principal (la última del JSX) arriba.
+
+Props de `Form`: las del `Form` de React Aria (`onSubmit`, `validationBehavior`, `validationErrors`…) más `className`. Props de `FormSection`: `title`, `description`, `children`. `FormActions`: `children`.
+
+Pendiente (hallazgo de la spec 0159): `validationErrors` del `Form` hoy no llega a `TextField` (medido) ni, por el mismo patrón `isInvalid={props.isInvalid ?? Boolean(errorMessage)}`, a `SelectField`, `NumberField`, `TextAreaField` y `ChoiceGroup`: sin `errorMessage` fuerzan `isInvalid={false}`, que pisa el error del servidor. Hasta arreglarlo, el error de API por campo se pasa con `errorMessage`.
+
+```tsx
+<Form onSubmit={guardar}>
+  <FormSection title="Datos del negocio" description="Lo que ven tus clientes">
+    <TextField label="Nombre" name="name" isRequired errorMessage={errors.name} />
+  </FormSection>
+  <FormActions>
+    <Button variant="secondary" onPress={cancelar}>Cancelar</Button>
+    <Button type="submit" isLoading={saving}>Guardar</Button>
+  </FormActions>
+</Form>
+```
+
+### Oráculos del kit
+
+`tests/e2e/support/ui-kit-entry.tsx` muestra todas las piezas dentro del layout del backoffice. `tests/e2e/ui-kit.spec.ts` (Chromium) y `ui-kit.webkit.spec.ts` miden estilos computados (corren también en la CI) y comparan capturas de Mac, claro/oscuro × 390/1280, con `threshold: 0` (no corren en la CI). Una pieza nueva se agrega al final del harness; quien cambia una pieza a propósito regenera las referencias con `--update-snapshots` mirándolas.
 
 ## Convenciones para componentes nuevos
 

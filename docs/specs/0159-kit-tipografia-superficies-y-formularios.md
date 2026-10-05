@@ -1,7 +1,7 @@
 ---
 spec: 0159
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: Fase 0b del ADR 0123, rebanada 1 de 3. El kit suma `Heading`, `Text`, `Card`, `PageHeader`, `Form`, `FormSection` y `FormActions` con la medida del wizard; se borra `BrandTheme` (sin uso); nace el harness del kit (`ui-kit-entry.tsx`) con oraculo de estilos computados (corre en todos lados) y capturas `toHaveScreenshot` de Mac en Chromium y WebKit (claro/oscuro × 390/1280), que corren en `pnpm verify` y se saltean en la CI.
 disjunta: si
 archivos: apps/merchant/src/ui/heading.tsx, apps/merchant/src/ui/text.tsx, apps/merchant/src/ui/card.tsx, apps/merchant/src/ui/page-header.tsx, apps/merchant/src/ui/form.tsx, apps/merchant/src/ui/index.ts, apps/merchant/src/ui/brand-theme.tsx, apps/merchant/src/ui/brand-contrast.ts, apps/merchant/src/ui/brand-contrast.test.ts, tests/e2e/support/ui-kit-entry.tsx, tests/e2e/support/ui-kit-checks.ts, tests/e2e/ui-kit.spec.ts, tests/e2e/ui-kit.webkit.spec.ts, docs/design-system.md, docs/adr/0123-un-solo-sistema-de-ui-en-el-merchant.md
@@ -231,18 +231,74 @@ Barridos corridos contra el arbol al cerrar la spec (2026-10-05): `rg -l 'BrandT
 → vacio; `rg -n toHaveScreenshot tests` → vacio; `ls apps/merchant/src/ui/{heading,text,card,page-header,form}.tsx` →
 no existen.
 
-- [ ] Rojo antes: con `ui-kit-entry.tsx` y `ui-kit.spec.ts` escritos y las piezas SIN crear, el spec no compila el
+- [x] Rojo antes: con `ui-kit-entry.tsx` y `ui-kit.spec.ts` escritos y las piezas SIN crear, el spec no compila el
       harness (import inexistente); se transcribe el error. (No hay valor viejo que medir: las piezas son nuevas.)
-- [ ] `pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` verde (Node 24).
+      → `✘ [ERROR] No matching export in "apps/merchant/src/ui/index.ts" for import "Card"` (idem `Form`,
+      `FormActions`, `FormSection`, `Heading`, `PageHeader`, `Text`).
+- [x] `pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` verde (Node 24) → `16 passed`.
 - [ ] `CI=1 pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` → el oraculo 1 corre
-      y pasa; las capturas y el archivo de WebKit salen `skipped` (se transcribe el conteo).
-- [ ] `ls tests/e2e/ui-kit.spec.ts-snapshots/ tests/e2e/ui-kit.webkit.spec.ts-snapshots/` → 8 + 8 `*-darwin.png`.
-- [ ] Artifact privado con las 16 capturas; link en esta spec.
-- [ ] `rg -n 'BrandTheme|resolveBrandTheme' apps docs/design-system.md` → vacio.
-- [ ] `rg -n 'react-aria-components' apps/merchant/src/ui/{heading,text,card,page-header}.tsx` → vacio (no lo
-      necesitan); `form.tsx` si lo importa.
-- [ ] `pnpm verify` en verde con Node 24, **una sola vez al final** (ADR 0113), con su tabla final transcripta.
-- [ ] `rg -n MUTATION apps tools tests` → vacio.
+      y pasa; las capturas y el archivo de WebKit salen `skipped` (se transcribe el conteo). → `4 passed`, `12 skipped`
+      (4 capturas de Chromium + los 8 tests de WebKit).
+- [x] `ls tests/e2e/ui-kit.spec.ts-snapshots/ tests/e2e/ui-kit.webkit.spec.ts-snapshots/` → ~~8 + 8~~ **4 + 4**
+      `*-darwin.png` (error de cuenta de la spec: {claro, oscuro} × {390, 1280} = 4 por navegador).
+- [x] Artifact privado con las ~~16~~ 8 capturas: https://claude.ai/artifact/L9rd4vPQoGuNNMTkkYSeZ3
+- [x] `rg -n 'BrandTheme|resolveBrandTheme' apps docs/design-system.md` → vacio (exit 1).
+- [x] `rg -n 'react-aria-components' apps/merchant/src/ui/{heading,text,card,page-header}.tsx` → vacio (no lo
+      necesitan); `form.tsx` si lo importa (1).
+- [x] `pnpm verify` con Node 24, una sola vez al final (ADR 0113). Tabla:
+
+      ```
+      typecheck             | corrio                      | ROJO    | 10.9
+      lint                  | corrio                      | ok      | 6.2
+      format:check          | corrio                      | ok      | 6.6
+      test                  | corrio                      | ok      | 43.7
+      build                 | corrio                      | ok      | 21.3
+      test:e2e              | corrio                      | ok      | 50.1   (135 passed)
+      neon related merchant | corrio                      | ok      | 33.3
+      neon related consumer | salteado (nada de consumer) | -       | -
+      ```
+
+      El ROJO de `typecheck` es cache: `apps/merchant/.next/types/validator.ts` de un build anterior nombraba
+      `api/merchant/auth/start/route` y `api/onboarding/business/route`, borradas en `07e345e` (0155). El `build` del
+      mismo `verify` regenero el archivo (ya no las nombra: `grep -c` → 0) y `pnpm typecheck` despues → `6 successful,
+      6 total`. No se repitio el `verify` entero.
+- [x] `rg -n MUTATION apps tools tests` → solo `tests/e2e/loyalty-real.spec.ts:6` (`E2E_LOYALTY_MUTATION_TEST`,
+      preexistente, no es una etiqueta): ninguna etiqueta de esta spec quedo.
+
+## Implementacion (2026-10-05)
+
+**Desvios medidos (el diseño de arriba queda como se cerro; esto manda):**
+
+1. **Oraculo de `Form`.** El escrito («enviar sin Nombre requerido lo deja `aria-invalid`») es imposible: con
+   `validationBehavior="aria"` React Aria no frena el envio ni marca un `isRequired` vacio (eso lo hace `native`).
+   Medido: `Expected "true"`, sin `aria-invalid`. Ademas `TextField` fija su propio `"aria"`, asi que el default del
+   `Form` solo llega a los campos que lo heredan. Oraculo nuevo: «Acepto» (`CheckboxField isRequired`) sin marcar y
+   «Guardar» → el envio llega a `onSubmit` (`data-submitted` en el `form`). Muerde: con default `native` →
+   `Expected "true" / Received ""` (sonda M5, fuera del presupuesto, revertida con shasum identico).
+2. **Hallazgo #76 (PARQUEADO):** `validationErrors` del `Form` no llega a `TextField` (sonda: sin `aria-invalid` ni
+   texto) ni, por el mismo patron, a `SelectField`/`NumberField`/`TextAreaField`/`ChoiceGroup`. Arreglarlo cambia
+   campos en uso: fuera del alcance; `design-system.md` lo declara.
+3. **Capturas con `threshold: 0`** (no la tolerancia por defecto): con el 0.2 de Playwright **M4 sobrevivio** (8/8
+   verdes con `shadow-md`). Con 0: sin mutar, 2 corridas seguidas 8/8 verdes; con M4, 8/8 rojas.
+4. **Layout del harness con estilos inline:** Tailwind solo genera clases que aparecen en `apps/merchant`; `gap-8`
+   del harness no existia (medido: `row-gap: normal`). Se agrega `<aside className="backoffice-sidebar">` vacio: en
+   escritorio `.backoffice-layout` es una grilla de `264px 1fr` y sin barra el contenido caia en la columna de 264 px.
+5. **`brand-contrast.test.ts` borrado entero:** su unico `describe` era `resolveBrandTheme`; los tests de
+   `contrastRatio` viven en `tokens.test.ts`. `brand-contrast.ts` queda con `relativeLuminance` y `contrastRatio`.
+6. `Text` agrega `font-normal` en `body`/`muted`/`small` (fija el peso; dentro de un `legend` o `label` heredaria).
+7. **Hallazgo #77 (PARQUEADO):** en WebKit a 390 px el `ChoiceGroup` recorta «Gratis»/«Pro» (pieza preexistente).
+
+**Bitacora de mutaciones** (de a una, `shasum` antes y despues identico, revertidas copiando el original + `diff`):
+
+| # | shasum | Oraculo | Resultado |
+|---|---|---|---|
+| M1 | `1f08b568a45d` | estilos 1280 | ROJO: `font-size` `Expected "30px" / Received "24px"` |
+| M2 | `1f08b568a45d` | estilos 390 | ROJO: `margin-bottom` `Expected "0px" / Received "8px"` |
+| M3 | `13ba592ac5b1` | estilos 390 | ROJO: `Expected "column-reverse" / Received "column"` |
+| M4 | `1dae40d06fd5` | capturas | con tolerancia por defecto: VERDE (sobrevivio) → `threshold: 0` → ROJO 8/8 (9137–16818 px distintos) |
+
+Las corridas de las mutaciones usaron una config de Playwright sin `webServer` (el puerto 3001 lo ocupaba otro
+proyecto); los specs del kit no usan los servidores.
 
 ## Mutaciones — presupuesto: 4. Clase: los plausibles
 
