@@ -160,3 +160,17 @@ hallazgos estan abajo, reproducidos por el orquestador donde dice ✔.
 - `docs/TRABAJO-EN-PARALELO.md` §5/§6 y las instrucciones de GPT (`AGENTS.md`) se enmiendan con la decision 3 en la
   Fase 0c.
 - Cada fase lleva su spec; la 0a es N1 (CSS + tooling, sin datos), la 0b y la 0c tambien; las de Fase 1 son de GPT.
+
+## Enmienda 2026-10-05 (spec 0158, Fase 0a)
+
+- **Sin `light-dark()` hasta el cierre.** Medido compilando con `@tailwindcss/postcss` 4.3.3 del repo: `light-dark()`
+  dentro de custom properties sale tal cual, tambien con `optimize` (Lightning CSS no lo transpila ahi). En Safari < 17.5
+  / Chrome < 123 la variable queda invalida al usarse y todo color cae a `unset`; el piso de Tailwind v4 es Safari 16.4.
+  Con claro forzado no aporta nada: «una vez por color» se cumple borrando la copia de `prefers-color-scheme` y dejando
+  un solo bloque `:root[data-theme="dark"]`. Como seguir la preferencia del sistema se decide al cierre, con el dato de
+  navegadores de ese momento.
+- **El onboarding adopta la paleta del panel (decision 1) en la 0a**, no en la Fase 1: las capturas de la decision 5
+  tienen que mostrar la paleta que queda.
+- **Capturas por pantalla:** `tests/e2e/ui-captures.spec.ts` (se activa con `UI_CAPTURES_DIR`) es la herramienta de
+  antes/despues que cada spec de Fase 1 extiende con su pantalla.
+
