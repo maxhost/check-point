@@ -3,15 +3,15 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-04) — SPEC 0157 LOCAL SOBRE SERVIDOR 0155; PUSH BLOQUEADO
+## ⇥ ESTADO (2026-10-05) — SPEC 0157 REBASADA SOBRE ONBOARDING-GOOGLE; PUSH BLOQUEADO POR TURBOPACK
 
-El owner entregó `onboarding-google` `1b43a6a` con la spec 0155 implementada y PASS del revisor. Rebasé `main` sobre esa rama; el conflicto de `docs/INDEX.md` conservó las filas 0153–0156 y el estado más reciente de 0153/0154. Cerré la [spec UI 0157](../specs/0157-pantallas-de-alta-con-google-places.md) en `6f7410a` y dejé la UI y sus pruebas en `c1f7eef`. **No hubo push:** el owner pidió uno solo con servidor y UI, y el hook exige `pnpm verify` verde salvo autorización expresa.
+El owner entregó `onboarding-google` `1953afe` con las specs 0155 y 0156 y PASS del revisor. Rebasé los commits locales de la [spec UI 0157](../specs/0157-pantallas-de-alta-con-google-places.md) sobre esa rama; `docs/INDEX.md` conserva el ADR 0122, la fila 0156 implementada y la 0157. La UI y la spec están completas en `e659b86` y `60777dc`. **No hubo push:** el owner pidió uno solo con servidor y UI, y el hook exige `pnpm verify` verde salvo autorización expresa.
 
-La UI tiene wizard negocio → email → confirmación con P1/P2/P3/P4, sesión UUID por búsqueda, login existente, 201/200/422 y reenvío de verificación. Locales envía `address.selectionToken` o solo texto; se retiraron los componentes y el CSS de Geoapify, el programa y el QR del wizard. `rg` de rutas antiguas y Geoapify en `app`/`lib`: vacío.
+La UI tiene wizard negocio → email → confirmación con P1/P2/P3/P4, sesión UUID por búsqueda, login existente, 201/200/422 y reenvío de verificación. Locales envía `address.selectionToken` o solo texto; se retiraron los componentes y el CSS de Geoapify, el programa y el QR del wizard. `rg` de rutas antiguas y Geoapify en `app`/`lib`: vacío. Las dos mutaciones de la spec se pusieron rojas por la aserción esperada y se restauraron con SHA idéntico.
 
-Con Node 24.20.0: typecheck, lint, formato, 9 unitarios dirigidos y 2 e2e de navegador pasan. El e2e del wizard comprueba el mismo UUID en P1/P2 y P4 único; el de locales comprueba el token y el error 422. Las dos mutaciones de la spec se pusieron rojas por la aserción esperada y se restauraron con SHA idéntico. Build Webpack de Merchant pasa. `pnpm verify` pasó typecheck, lint, unitarios y e2e global, pero quedó **ROJO** en formato (dos archivos, ya corregidos), build Turbopack (`driver.css`, `Operation not permitted` al abrir un puerto, también fuera del sandbox) y Neon completo: **39 suites / 50 tests fallaron** porque la rama CI ya no tiene `merchant_auth.session.onboarding_grant_until`, columna que el servidor 0155 todavía usa. La spec 0156 de Claude prevé retirarla, pero su código aún no está en esta rama. Este desajuste no lo corrige la UI.
+Con Node 24.20.0, `pnpm verify` pasó typecheck, lint, formato, unitarios, e2e global (117 pasaron, 5 omitidos) y Neon completo (3043 pasaron, 277 omitidos). La migración 0065 se aplicó a la rama Neon CI. El único gate **ROJO** es build Turbopack (`driver.css`, `Operation not permitted` al abrir un puerto), repetido fuera del sandbox. El build Webpack de Merchant pasó.
 
-**Para publicar en un solo push:** Claude/owner debe integrar el código de la 0156 o restaurar la columna en la rama Neon CI según su plan de migración; luego repetir `pnpm verify` y resolver el bloqueo de Turbopack o autorizar explícitamente la excepción de ese gate. Faltan QA real del alta y locales, PASS independiente de UI y deploy; 0157 sigue `cerrada`.
+**Para publicar en un solo push:** se necesita resolver el fallo de Turbopack o autorización expresa del owner para la excepción del hook. Faltan QA real del alta y locales, PASS independiente de UI y deploy; 0157 sigue `cerrada`.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPECS 0152 Y 0154 PUBLICADAS; QA PENDIENTE
 

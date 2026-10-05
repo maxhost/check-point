@@ -69,9 +69,9 @@ Un implementador (GPT), revisor independiente antes de marcar `implementada`.
 
 Nada bloqueante.
 
-## Resultado local (2026-10-04)
+## Resultado local (2026-10-05)
 
-Wizard, locales y retiro de Geoapify terminados sobre `onboarding-google`. Typecheck y lint pasan; 9 pruebas unitarias dirigidas y 2 de navegador pasan. Build Webpack de Merchant pasa. `pnpm verify` sigue rojo por build Turbopack (`driver.css`: bind de puerto `Operation not permitted`) y Neon CI: la columna `merchant_auth.session.onboarding_grant_until` falta en esa rama, pero el servidor 0155 aún la usa; 39 suites fallan y 50 tests fallan. El formato detectado en dos archivos se corrigió después de esa corrida. No se marca `implementada` ni se pushea con el gate rojo.
+Wizard, locales y retiro de Geoapify terminados y rebasados sobre `onboarding-google` `1953afe`, que incluye la 0156 y el ADR 0122. `pnpm verify` con Node 24.20.0 pasó typecheck, lint, formato, unitarios, 117 e2e (5 omitidos) y Neon completo (3043 tests pasados, 277 omitidos). La migración 0065 se aplicó en la rama Neon CI. El único gate rojo es el build Turbopack: al procesar `driver.css` no puede abrir un puerto interno (`Operation not permitted`), también fuera del sandbox. El build Webpack de Merchant pasó. No se marca `implementada` con el gate rojo.
 
 Bitácora de mutaciones (anotada antes de medir):
 
