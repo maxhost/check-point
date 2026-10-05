@@ -17,9 +17,8 @@ import type { ChecklistFacts } from "./checklist";
  *
  * ### EL COSTO, DECLARADO: son DOS lecturas por pedido de checklist
  *
- * 1. **Una segunda resolucion de la SESION en el mismo request**, igual que `callerOf` en
- *    `app/api/loyalty-program/route.ts` y por el mismo motivo. Sin `cookieCache` configurado
- *    es una consulta mas.
+ * 1. **Una segunda resolucion de la SESION en el mismo request**. Sin `cookieCache`
+ *    configurado es una consulta mas.
  * 2. **UNA consulta a `core.business_onboarding_tour`** — la agrego la spec 0085.
  *
  * **Es UNA sola consulta y no cuatro**: se leen TODAS las filas del negocio (son 4 como mucho,

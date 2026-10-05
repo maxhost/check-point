@@ -30,9 +30,9 @@ import { GET as QR } from "../app/api/loyalty-program/qr/route";
  * resuelto. Medido antes del arreglo: `PUT /api/brand` → `403 «No tienes un negocio como
  * owner»`, `GET /api/loyalty-program` y `…/qr` → `403 not_member`.
  *
- * Y el segundo bloqueo de la misma familia: `programEditDenied` volvía a imponer
- * `emailVerified` **adentro del dominio**, justo después de que el paso 4 de la escalera
- * exceptuó al staff a propósito (ADR 0079 §5).
+ * Y el segundo bloqueo de la misma familia: el dominio volvía a imponer `emailVerified` al
+ * editar, justo después de que el paso 4 de la escalera exceptuó al staff a propósito (ADR
+ * 0079 §5). Desde la spec 0156 C (ADR 0122) el dominio no tiene regla de email.
  *
  * **Este archivo mide las DOS cosas contra la base**, que es donde se ven: con `getDb`
  * doblado el resolvedor owner-only devolvería la misma fila que el del guard y la distinción
@@ -49,7 +49,7 @@ const brandBody = (revision: number, name: string) => ({
 });
 
 /** Cuerpo CORTO de Puntos: lo completa el compositor. Es una EDICIÓN —el negocio sembrado ya
- * tiene programa activo—, que es justo el caso que el gate del writer bloqueaba. */
+ * tiene programa activo—. */
 const programBody = {
   kind: "points",
   configuration: { unitSingular: "punto", unitPlural: "puntos" },
@@ -216,12 +216,8 @@ describe.skipIf(!enabled)(
     );
 
     /**
-     * DoD §10 ítem 2 — **EDITAR, que es el caso que el gate del writer mataba.**
-     *
-     * El negocio sembrado ya tiene programa activo, así que `isEdit` es `true` y
-     * `programEditDenied` exige `emailVerified`. Un integrante no lo tiene **por diseño**
-     * —su email sintético `@staff.invalid` no se verifica nunca—, así que sin `isStaff` esto devolvía `403 email_not_verified`. Es el
-     * oráculo de la mutación M8.
+     * DoD §10 ítem 2 y spec 0156 C — **un integrante con `loyalty` EDITA.** Su email sintético
+     * `@staff.invalid` no se verifica nunca; el programa no exige email (ADR 0122).
      */
     it("un STAFF con `loyalty` EDITA el programa: 200, no `email_not_verified`", async () => {
       const response = await PROGRAM_PUT(
@@ -231,6 +227,16 @@ describe.skipIf(!enabled)(
       expect(body.code).not.toBe("email_not_verified");
       expect(response.status).toBe(200);
       expect(body.created).toBe(false);
+    }, 240_000);
+
+    /** Spec 0156 C — el paso 3 sigue mordiendo: un integrante SIN `loyalty` (tiene `brand`)
+     * no escribe el programa aunque el email ya no se exija. */
+    it("un STAFF SIN `loyalty` no EDITA el programa: 403 `missing_permission`", async () => {
+      const response = await PROGRAM_PUT(
+        conCookie("/api/loyalty-program", "PUT", cookieBrandA, programBody),
+      );
+      expect(response.status).toBe(403);
+      expect((await response.json()).code).toBe("missing_permission");
     }, 240_000);
   },
 );

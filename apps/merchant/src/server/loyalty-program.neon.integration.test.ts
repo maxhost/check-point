@@ -25,10 +25,7 @@ import {
   saveProgram,
 } from "@mi-pasaporte/domain/server/loyalty-program";
 
-/** Spec 0077 §5 — el 3er argumento de `saveProgram`. Estos casos son de DOMINIO, no del
- * gate: escriben como un owner con el email verificado, igual que antes de la spec. */
-const save = (userId: string, input: unknown) =>
-  saveProgram(userId, input, { emailVerified: true });
+const save = (userId: string, input: unknown) => saveProgram(userId, input);
 
 /** A browser datetime-local value in America/Guayaquil (UTC-5, no DST) N days ahead. */
 function guayaquilLocal(daysFromNow: number) {

@@ -4,6 +4,17 @@
 [Claude → `estado/claude.md`](estado/claude.md) · [GPT → `estado/gpt.md`](estado/gpt.md). Cada uno escribe solo
 el suyo. Lo que sigue en este archivo es **historico** (bloques ESTADO viejos y bitacoras de mutaciones).
 
+## Bitacora de mutaciones — spec 0156 parte C (ADR 0122), implementador (2026-10-04)
+
+Arbol: worktree `motor-wt/onboarding-google`, encima de 3dd403c, cambios SIN commitear al medir (` M`): `git checkout` NO sirve.
+Restauracion: `cp $S/<archivo>.clean.ts <archivo>` con $S = scratchpad de la sesion 5727d8da, subcarpeta `0156/`.
+M3 de la tabla de la spec no se repite (medida en la parte A/B, bloque de abajo).
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| C-M1 | apps/merchant/src/app/api/loyalty-program/route.ts | 210594c0e1c4f0c870f87b11fe903e0c8e96f5b5 | owner sin verificar VE su programa (GET sin paso 4) | ROJO por la propiedad. Mutacion: `GET` vuelve a `requireApiPermission` (+ import). Unidad (api-owner-surfaces + api-permission-surfaces): 2/146 — «loyalty-program: owner con `emailVerified: false` … → pasa» y «… SIN la clave `emailVerified` → pasa igual». Neon (sin-email + permisos-brand-loyalty + ruta-unica): 2/19 — sin-email «antes de crear: GET → 200» y «con programa: GET → 200», los dos `expected 403 to be 200`; staff con `loyalty` sigue 200 (el paso 4 no alcanza al staff). Revertido con cp: diff = solo las 2 lineas etiquetadas; shasum vuelve a 210594c0 |
+| C-M2 | packages/domain/src/server/loyalty-program.ts | a3800698573b1bd8f7c882e7837dc58650ac097b | owner sin verificar EDITA su programa (el dominio sin regla de email) | ROJO por la propiedad. Mutacion: en `saveProgram`, si el programa existe y `merchant_auth.user.email_verified` del caller no es true → `LoyaltyError(403, …, "email_not_verified")` (la regla vieja sin la excepcion de staff). Neon (sin-email + permisos-brand-loyalty + ruta-unica + onboarding-program): 3/32 — sin-email «crear → 201 y EDITAR → 200» (`expected 403 to be 200`); permisos-brand-loyalty «STAFF con `loyalty` EDITA» (`email_not_verified`); sin-email «con programa: GET → 200» es COLATERAL (aseveraba `target: 50` que el PUT mutado no escribio: depende del caso anterior). Revertido con cp: diff = solo la linea etiquetada; shasum vuelve a a3800698 |
+
 ## Bitacora de mutaciones — spec 0156, implementador (2026-10-04)
 
 Arbol: worktree `motor-wt/onboarding-google` (rama `onboarding-google`, base 1b43a6a), cambios SIN commitear al medir.

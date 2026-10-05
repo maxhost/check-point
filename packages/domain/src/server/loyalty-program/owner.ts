@@ -10,8 +10,8 @@ import { loadProgramRewards, updateWithEvent } from "./persistence";
 /**
  * LOS DOS RESOLVEDORES del owner en el dominio del programa.
  *
- * Viven acá y no en `loyalty-program.ts` por el hook `file-size` (300 líneas): el
- * invariante crear ≠ editar de la spec 0077 lo pasaba de largo, y la regla del repo es
+ * Viven acá y no en `loyalty-program.ts` por el hook `file-size` (300 líneas): la spec 0077
+ * lo pasaba de largo, y la regla del repo es
  * **dividir, no extender**. Es un movimiento LITERAL —ni una línea de comportamiento
  * cambió— y `loyalty-program.ts` los re-exporta, así que ningún import existente se toca.
  *

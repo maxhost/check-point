@@ -1,15 +1,16 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../../server/api-owner";
-import { requireApiPermission } from "../../../../server/api-permission";
+import { requireApiPermissionSinGateDeEmail } from "../../../../server/api-permission";
 import { getDb } from "@mi-pasaporte/db";
 import { termsScopeCandidates } from "../../../../server/loyalty-program/terms-scope";
 import { termsTemplates } from "@mi-pasaporte/db/schema";
 
 /** Spec 0072 §D3: el guard es el unico, no el resolvedor ad hoc del dominio — que no
  * filtraba `memberships.status='active'` ni miraba el email verificado.
- * **Spec 0086 §3: es `requireApiPermission` con el alcance `loyalty`**, y el `countryCode`
- * sigue saliendo de la MISMA fila que evaluo el guard.
+ * **Spec 0086 §3: es la escalera con el alcance `loyalty`**, y el `countryCode` sigue
+ * saliendo de la MISMA fila que evaluo el guard. **ADR 0122 (spec 0156 C): sin paso 4**
+ * (`requireApiPermissionSinGateDeEmail`) — las plantillas no exigen email verificado.
  *
  * **Spec 0081 §4 — solo los scopes candidatos del negocio de la sesion, y el scope viaja en
  * el DTO.** Antes devolvia TODAS las publicadas: seis filas con titulos repetidos («Cómo se
@@ -19,12 +20,10 @@ import { termsTemplates } from "@mi-pasaporte/db/schema";
  * gatear con uno y filtrar con otro es la divergencia `asc`/`desc` que la 0072 §D3 declara
  * abierta.
  *
- * Su guard y sus `code` **no cambian** (declarado afuera, como la 0079 hizo con
- * `GET`/`DELETE`/`PATCH` del programa). */
+ */
 export async function GET(request: Request) {
-  const auth = await requireApiPermission(request, "loyalty", {
+  const auth = await requireApiPermissionSinGateDeEmail(request, "loyalty", {
     missingPermission: "No tienes permiso para ver las plantillas.",
-    emailNotVerified: "Verifica tu email para ver las plantillas.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const templates = await getDb()

@@ -38,6 +38,7 @@ import {
   filaDeOwner,
   world,
 } from "./api-owner-surfaces-support";
+import { DESENLACE_SIN_GATE } from "./api-owner-surfaces-desenlaces";
 
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({ api: { getSession: () => dobleDeSesion() } }),
@@ -67,58 +68,6 @@ vi.mock("@mi-pasaporte/db", async (importOriginal) => ({
   getDb: () => dobleDeGetDb(),
 }));
 
-/**
- * EL DESENLACE POSITIVO DE CADA EXCEPCIÓN, por fila. Un `not.toBe(403)` diría lo mismo si la
- * ruta se rompiera de cualquier otra forma: acá se exige el desenlace COMPLETO del camino
- * feliz. Es el oráculo de la mutación M1 de la 0079 (y de la M1 de la 0075).
- */
-const DESENLACE_SIN_GATE: Record<
-  string,
-  (response: Response) => Promise<void>
-> = {
-  "loyalty-program/qr": async (response) => {
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toBe("image/svg+xml");
-    const body = await response.text();
-    expect(body).toContain("<svg");
-    expect(body).not.toContain("email_not_verified");
-  },
-  "loyalty-program (PUT)": async (response) => {
-    expect(response.status).toBe(201);
-    expect(await response.json()).toEqual({
-      programId: world.programId,
-      created: true,
-    });
-  },
-  /**
-   * Spec 0083 §D5 — la TERCERA, y su desenlace es EL caso central de esa spec: el owner sin
-   * email verificado recibe 200 con su primer item pendiente.
-   *
-   * **Spec 0085 — y ahora también prueba que la lectura de tours NO rompe la ruta.** El doble
-   * de `./db` devuelve CERO filas de progreso para ese `where()` sin `.limit()`; si el `await`
-   * de esa consulta volviera a devolver un objeto en vez de un array, el `catch` de la ruta
-   * contestaría 503 y este `toBe(200)` sería el primero en verlo.
-   */
-  "onboarding/checklist": async (response) => {
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.locale).toBe("es");
-    // SEIS desde el 2026-09-21: `locations` entro al catalogo (`onboarding/tours.ts`).
-    expect(body.items).toHaveLength(6);
-    expect(body.items[0].id).toBe("verify-email");
-    expect(body.items[0].done).toBe(false);
-    // Sin filas de progreso, los CINCO tours salen pendientes (fail-closed).
-    expect(body.items.map((item: { done: boolean }) => item.done)).toEqual([
-      false,
-      false,
-      false,
-      false,
-      false,
-      false,
-    ]);
-  },
-};
-
 beforeEach(() => {
   world.session = null;
   world.ownerRow = null;
@@ -133,16 +82,19 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
   });
 
   /**
-   * **EL CONJUNTO EXACTO DE TRES, criterio del DoD de la 0079 y de la 0083** — no «al menos
-   * una». El valor del oráculo es que sea CERRADO: con un `toContain` o un `length >= 1`, una
-   * cuarta ruta que se sacara el paso 3 entraría sin que nadie lo vea. La 0075 exigía UNA, la
-   * 0079 lo pasó a DOS y la 0083 a TRES, **cada vez a propósito y con el motivo escrito en
-   * `api-owner-surfaces-support.ts`**: el de la tercera es el auto-gateo.
+   * **EL CONJUNTO EXACTO, criterio del DoD** — no «al menos una». El valor del oráculo es que
+   * sea CERRADO: con un `toContain` o un `length >= 1`, otra ruta que se sacara el gate de email
+   * entraría sin que nadie lo vea. La 0075 exigía UNA, la 0079 DOS, la 0083 TRES y la 0156 C
+   * (ADR 0122) SEIS, **cada vez a propósito y con el motivo escrito en
+   * `api-owner-surfaces-support.ts`**.
    */
-  it("las rutas SIN paso 3 son EXACTAMENTE tres: el QR, la escritura del programa y el checklist", () => {
+  it("las rutas SIN gate de email son EXACTAMENTE seis: las cinco del programa y el checklist", () => {
     expect(SURFACES_SIN_GATE_DE_EMAIL.map(([name]) => name)).toEqual([
+      "loyalty-program",
       "loyalty-program (PUT)",
+      "loyalty-program/stamp-upload",
       "loyalty-program/qr",
+      "loyalty-terms/templates",
       "onboarding/checklist",
     ]);
   });
@@ -150,8 +102,8 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
   it("las dos tablas del email parten las 15 sin perder ni duplicar ninguna", () => {
     // Spec 0075 §D3. Sin estos pisos, mover una fila de una tabla a la otra —o vaciar la de
     // las excepciones— dejaría su `it.each` sin correr NI UNA vez, en verde.
-    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(12);
-    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(3);
+    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(9);
+    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(6);
     expect(
       SURFACES_CON_GATE_DE_EMAIL.length + SURFACES_SIN_GATE_DE_EMAIL.length,
     ).toBe(SURFACES.length);
@@ -225,7 +177,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     },
   );
 
-  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 12
+  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 9
    * (test de arriba), y acá tampoco frena — porque el paso 3 no corre, no porque «pase». */
   it.each(SURFACES_SIN_GATE_DE_EMAIL)(
     "%s: owner SIN la clave `emailVerified` → pasa igual (el paso 3 no corre)",

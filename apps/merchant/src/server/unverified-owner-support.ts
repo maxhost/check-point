@@ -7,7 +7,6 @@ import {
   loyaltyPrograms,
   loyaltyRewards,
   memberships,
-  sessions,
   users,
 } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
@@ -75,9 +74,6 @@ export async function wipePrograms(businessId: string): Promise<void> {
     .delete(loyaltyPrograms)
     .where(eq(loyaltyPrograms.businessId, businessId));
 }
-
-export const wipeSessions = (userId: string) =>
-  getDb().delete(sessions).where(eq(sessions.userId, userId));
 
 /** Abre una sesión real y devuelve el par `nombre=valor` de la cookie. */
 export async function openSessionCookie(userId: string): Promise<string> {

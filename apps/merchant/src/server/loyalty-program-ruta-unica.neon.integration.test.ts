@@ -28,8 +28,8 @@ import { PUT } from "../app/api/loyalty-program/route";
  *
  * `POST /api/onboarding/program` se borró y `PUT /api/loyalty-program` absorbió su cuerpo
  * corto, sus `code` y su guard sin paso 3. Lo que ya existía sigue midiéndose donde estaba
- * (`onboarding-program.neon…` el cuerpo corto de Sellos, `onboarding-program-bypass.neon…`
- * el invariante crear ≠ editar); **acá va lo que la 0079 AGREGA**: la modalidad `points`,
+ * (`onboarding-program.neon…` el cuerpo corto de Sellos, `loyalty-program-sin-email.neon…`
+ * crear y editar sin email verificado, spec 0156 C); **acá va lo que la 0079 AGREGA**: la modalidad `points`,
  * el 422 del dinero que el servidor no inventa, la modalidad que no existe, el cuerpo
  * completo de hoy y el cambio de modalidad.
  *
@@ -260,9 +260,7 @@ describe.skipIf(!enabled)("la ruta única de escritura (spec 0079)", () => {
    * caso NO es el oráculo del `error.code ??` de la ruta. El eje `status` lo corta el PASO 4
    * del guard (`requireApiOwnerSinGateDeEmail` → `apiOwnerFailureResponse`), que emite su
    * `code` sin pasar por `codeForStatus`; el chequeo gemelo de `saveProgram` ya no se
-   * alcanza por HTTP. El único 403 que sí viaja como `LoyaltyError` con `code` propio es el
-   * `email_not_verified` del writer, y su oráculo vive en
-   * `onboarding-program-bypass.neon.integration.test.ts`.
+   * alcanza por HTTP. (Desde la spec 0156 C el writer no tiene regla de email: ADR 0122.)
    */
   it("negocio `suspended` → 403 `business_suspended`, no `not_owner`", async () => {
     await wipePrograms();

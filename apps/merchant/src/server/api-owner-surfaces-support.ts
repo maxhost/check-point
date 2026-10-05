@@ -90,10 +90,9 @@ export const dobleDeProgramForOwner = async () => ({
 });
 
 /**
- * Spec 0079 — el `PUT` de la ruta única es la segunda fila sin paso 3, y su desenlace positivo
- * es un 201. El writer se dobla **a propósito**: ese archivo mide el GUARD, y el invariante
- * crear ≠ editar que `saveProgram` aplica de verdad se mide contra Neon
- * (`onboarding-program-bypass.neon.integration.test.ts`).
+ * Spec 0079 — el `PUT` de la ruta única es una fila sin gate de email, y su desenlace positivo
+ * es un 201. El writer se dobla **a propósito**: ese archivo mide el GUARD; crear y editar
+ * contra la base se miden en `loyalty-program-sin-email.neon.integration.test.ts`.
  */
 export const dobleDeSaveProgram = async () => ({
   programId: world.programId,
@@ -174,15 +173,15 @@ const PROGRAM_BODY = {
 
 /** Las 15 entradas HTTP de las superficies del owner. `qr` y `slug` incluidas: la primera
  * nació con la spec 0069 (por eso la fila 56 de `PARQUEADO` decía 9 y eran 10). La 13ª es el
- * `PUT` de la ruta única (spec 0079), que es la SEGUNDA sin gate de email; la 14ª es el
- * checklist del onboarding (spec 0083 §D5), que es la TERCERA.
+ * `PUT` de la ruta única (spec 0079); la 14ª es el checklist del onboarding (spec 0083 §D5).
+ * Cuáles van sin gate de email: {@link NOMBRES_SIN_GATE_DE_EMAIL}.
  *
  * **La 15ª es la escritura del progreso de un tour (spec 0084), y va del lado CON gate** —
  * es lo contrario del checklist y la asimetría es la decisión de esa spec: el checklist se
  * exime porque se gatearía a sí mismo, y esta ruta no tiene ese problema. `verify-email` es el
  * único `required: true` —y desde la spec 0085 ese campo significa que mientras no esté hecho
  * los de `position` mayor están bloqueados—, así que poner el paso 3 acá es HACER CUMPLIR ese
- * bloqueo en vez de sólo reportarlo. El inventario de exenciones sigue en TRES. */
+ * bloqueo en vez de sólo reportarlo. */
 export const SURFACES: Array<[string, () => Promise<Response>]> = [
   ["billing/checkout", () => CHECKOUT(json("/api/billing/checkout", "POST"))],
   ["catalog", () => CATALOG(json("/api/catalog", "GET"))],
@@ -231,25 +230,19 @@ export const SURFACES: Array<[string, () => Promise<Response>]> = [
 ];
 
 /**
- * **EL CONJUNTO EXACTO DE LAS RUTAS SIN PASO 3, y son TRES desde la spec 0083** — el QR
- * (spec 0075), la escritura del programa (spec 0079) y el checklist del onboarding. No es una
- * lista paralela: sale de `SURFACES` por filtro, así que mover una fila cambia los dos pisos
- * que el test asevera.
+ * **EL CONJUNTO EXACTO DE LAS RUTAS SIN EL GATE DE EMAIL, y son SEIS desde el ADR 0122** (spec
+ * 0156 C). No es una lista paralela: sale de `SURFACES` por filtro, así que mover una fila
+ * cambia los dos pisos que el test asevera.
  *
- * **El motivo de la segunda, escrito acá para que no se lea como un aflojamiento:** después
- * de la spec 0077 el gate de email **ya no vive en la puerta** de la escritura, vive en
- * `saveProgram`, que distingue crear de editar. Crear el primer programa es el paso 3 del
- * alta y una cuenta nueva llega ahí con `email_verified = false` por construcción (ADR 0070
- * §11); editarlo sí exige email verificado o el permiso de alta, y eso lo aplica el WRITER.
- * Poner el paso 3 en esta puerta volvería inalcanzable el alta; sacarlo del writer
- * reabriría el bypass.
- *
- * **El motivo de la tercera (spec 0083 §D5, decisión del owner del 2026-09-20): el
- * AUTO-GATEO.** `GET /api/onboarding/checklist` existe para decirle al owner que le falta
- * verificar el email; con el paso 3 puesto, el único endpoint que reporta ese pendiente
- * quedaría bloqueado justamente por ese pendiente. La pregunta que el docblock de
- * `requireApiOwnerSinGateDeEmail` manda hacer antes de sumar una tercera —«¿está bien que
- * esta ruta se exima?»— se hizo y la respuesta fue sí.
+ * - **Las cinco del programa** (ver, escribir, imagen del sello, QR y plantillas de
+ *   condiciones): decisión del owner (ADR 0122), el programa no exige email verificado. El QR
+ *   ya estaba exento (spec 0075) y la escritura desde la 0079; el dominio tampoco tiene regla
+ *   de email (spec 0156 C). `DELETE`/`PATCH` del programa NO están en esta
+ *   tabla y siguen con owner verificado (ADR 0122 §4).
+ * - **El checklist del onboarding** (spec 0083 §D5, decisión del owner del 2026-09-20): el
+ *   AUTO-GATEO. `GET /api/onboarding/checklist` existe para decirle al owner que le falta
+ *   verificar el email; con el gate puesto, el único endpoint que reporta ese pendiente
+ *   quedaría bloqueado justamente por ese pendiente.
  */
 /**
  * **QUE ALCANCE ABRE CADA SUPERFICIE DELEGABLE** (spec 0086 §3 / ADR 0079 §1). Las entradas
@@ -286,8 +279,11 @@ export const SURFACES_SOLO_OWNER = SURFACES.filter(
 );
 
 export const NOMBRES_SIN_GATE_DE_EMAIL = [
+  "loyalty-program",
   "loyalty-program (PUT)",
+  "loyalty-program/stamp-upload",
   "loyalty-program/qr",
+  "loyalty-terms/templates",
   "onboarding/checklist",
 ] as const;
 

@@ -17,7 +17,6 @@ import {
   updateWithEvent,
 } from "./loyalty-program/persistence";
 import { validateClosingWindow } from "./loyalty-program/time";
-import { type ProgramCaller, programEditDenied } from "./program-caller";
 import { renderedTerms } from "./loyalty-program/terms";
 import { programForOwner } from "./loyalty-program/owner";
 import {
@@ -52,7 +51,6 @@ export { ownerBusiness, programForOwner } from "./loyalty-program/owner";
 export async function saveProgram(
   userId: string,
   rawInput: unknown,
-  caller: ProgramCaller,
   /** Spec 0086 §10: el negocio que el guard ya resolvio. **Opcional a proposito** — sin el,
    * `programForOwner` se comporta exactamente como antes de la enmienda (owner-only), que es
    * lo que conserva a las ~20 llamadas de las suites de integracion sin tocarlas. */
@@ -87,14 +85,9 @@ export async function saveProgram(
       statusFailure.message,
       statusFailure.code,
     );
-  // EL INVARIANTE CREAR ≠ EDITAR (spec 0077 §5, ADR 0076 §1). Va acá por el MISMO motivo
-  // que el eje `status` de arriba —un writer con dos puertas— y en este MISMO orden: después
-  // de resolver owner y `status`, porque quien no es owner tiene que recibir `not_owner` y
-  // no una pista sobre el email (ADR 0073 §1). La decisión es pura y vive en
-  // `program-caller.ts`; acá sólo se traduce a `LoyaltyError`.
-  const denied = programEditDenied({ isEdit: Boolean(program), ...caller });
-  if (denied)
-    throw new LoyaltyError(denied.status, denied.message, denied.code);
+  // ADR 0122 §2 (spec 0156 C): el writer NO tiene regla de email. Crear y editar exigen lo
+  // mismo que la puerta (`requireApiPermissionSinGateDeEmail`: sesion, membresia, owner o
+  // staff con `loyalty`, negocio operativo).
   if (program?.status === "closing") {
     throw new LoyaltyError(
       409,

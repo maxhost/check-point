@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { apiOwnerFailureResponse } from "../../../../server/api-owner";
-import { requireApiPermission } from "../../../../server/api-permission";
+import { requireApiPermissionSinGateDeEmail } from "../../../../server/api-permission";
 import {
   LoyaltyError,
   createStampUpload,
@@ -11,11 +11,11 @@ export const runtime = "nodejs";
 /** Spec 0072 §D3: el negocio sale del guard y no del resolvedor ad hoc del dominio, que
  * devolvia negocio incluso para una membresia `disabled`.
  * **Spec 0086 §3: ese guard es ahora el alcance `loyalty`.** `createStampUpload` recibe el
- * `businessId` que el guard resolvio, asi que esta ruta funciona igual para un integrante. */
+ * `businessId` que el guard resolvio, asi que esta ruta funciona igual para un integrante.
+ * **ADR 0122 (spec 0156 C): sin paso 4** — la imagen del sello no exige email verificado. */
 export async function POST(request: Request) {
-  const auth = await requireApiPermission(request, "loyalty", {
+  const auth = await requireApiPermissionSinGateDeEmail(request, "loyalty", {
     missingPermission: "No tienes permiso para gestionar el programa.",
-    emailNotVerified: "Verifica tu email para gestionar el programa.",
   });
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   let body: unknown;
