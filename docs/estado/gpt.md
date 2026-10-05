@@ -25,6 +25,7 @@ El owner autorizó explícitamente `--no-verify` para el único push conjunto po
 el fallo de Turbopack. Confirmó que el deploy de Vercel de `1927742` ya terminó.
 Faltan su QA con pase/cupón reales y PASS independiente de la UI; no se marca
 `implementada` mientras el gate completo siga rojo.
+[Handoff para retomar después del clear](../handoff-0154-mostrador-cupon-2026-10-04.md).
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-04) — SPEC 0152: MOSTRADOR MÓVIL
 
