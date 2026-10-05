@@ -9,48 +9,41 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05) — 0155/0156 EN `main` CON LA UI 0157 DE GPT; MIGRACION 0065 EN PROD, #70 CERRADO. ADR 0123 (SISTEMA DE UI) ACEPTADO; SPEC 0158 (FASE 0a) CERRADA, SIN IMPLEMENTAR
+## ⇥ ESTADO (2026-10-05, mediodia) — SPEC 0158 (FASE 0a, CAPAS DE CSS) IMPLEMENTADA EN `ui-sistema` (`e4e8d4f`), SIN PUSH. ESPERA LA DECISION 5 DEL OWNER
 
 **Hecho (verificado):**
-- **0155 + 0156** (servidor del alta con Google Places; permiso de alta borrado; email en minusculas; programa sin email
-  verificado, ADR 0122) con PASS de revisor; GPT las integro con su UI 0157 y pusheo: `origin/main` `87de5ff` contiene
-  `1953afe` (`git merge-base --is-ancestor`, corrido 2026-10-05).
-- **PROD (Neon, solo lectura, 2026-10-05):** 0 de 14 `merchant_auth.user` con mayusculas; `session.onboarding_grant_until`
-  todavia existe (la 0065 no se aplico).
-- **ADR 0123** (un solo sistema de UI: Tailwind v4 + React Aria por capas) aceptado con decisiones del owner: una paleta
-  (la del panel), claro forzado hasta el cierre, kit/tokens/guard en zona Claude, modelo hibrido. Paso por revision
-  adversarial; hallazgos centrales reproducidos (`globals.css` sin `@layer` pisa al kit; `onboarding.css` 43 hex; oscuro
-  duplicado en `tokens.css`; `places-search.tsx` de la 0157 armado a mano).
-
-- **Migracion 0065 en PROD** (2026-10-05, tras confirmar el owner el deploy READY de `87de5ff`, cuyo codigo no nombra
-  la columna: `git grep` → 0): 0 emails con mayusculas antes; `run_sql_transaction` con DROP + CHECK + fila del journal
-  (hash `71a2c4af…`, `when` `1791163901993`). Verificado por SQL: columna ausente, `session` con 8 columnas, CHECK
-  presente, journal en la 0065, esquemas intactos; `GET /api/onboarding/state` en PROD → 200. **Desde aca no hay
-  rollback de codigo anterior a `3411fab` sin reponer la columna.**
-- **PARQUEADO #70 cerrado** (ADR 0124): 63 requests a `/api/places/autocomplete` en PROD → 60 × 400, 3 × 429.
+- **0158** en `e4e8d4f` (rama `ui-sistema`, worktree `motor-wt/onboarding-google`, sobre `origin/main` `87de5ff`):
+  `globals.css`/`onboarding.css` en `@layer legacy`, `driver.css` en `@layer base`, `--color-*: initial`, onboarding con
+  la paleta del panel, un solo bloque oscuro + `data-theme="light"`, `tokens.test.ts` (contraste 38 pares, capas,
+  paleta) en `pnpm test`. Rojo de `ui-layers.spec.ts` transcripto ANTES (padding 13, radio 11, borde `#cbd7ce`,
+  «Continuar» `#1d332c`); M1–M4 ejecutadas, las cuatro rojas, revertidas con `diff`. Detalle en la spec.
+- **`pnpm verify` final:** todo ok salvo `neon (full)` = flake PARQUEADO #74 (`catalog-import-reconcile`; suelto 8/8).
+- **Hallazgo medido y arreglado:** `driver.css` sin capa rompia 5 e2e de tours (overlay sobre la listbox); va en `base`
+  (enmienda en ADR 0123: todo CSS de terceros en `base`).
+- **Capturas antes/despues** (8 superficies × 390/1280): https://claude.ai/artifact/LmvL6MiGUJoWhRvGxFy5Ju
 
 **Siguiente, en orden:**
-1. **Implementar la spec 0158** (Fase 0a, N1, cerrada en `00958b2`, sin subagentes): primero el e2e
-   `ui-layers.spec.ts` ROJO sobre el CSS actual y las capturas `antes/`; despues capas, tokens, `data-theme`,
-   `tokens.test.ts`; capturas `despues/` → Artifact para la decision 5 del owner. Enmienda al ADR 0123 en el mismo
-   commit: **sin `light-dark()`** (medido: no se transpila ni con `optimize`; subiria el piso a Safari 17.5).
-2. Despues: Fase 0b (kit: Form/FormSection/FormActions, Dialog, Combobox + migrar `places-search.tsx`,
-   SegmentedControl, Switch, Tabs, ProgressBar, Heading, Text, Card, PageHeader; harness en `tests/e2e/support/`),
-   Fase 0c (guardias `tools/ui-guard.ts` + enmienda de zonas en `TRABAJO-EN-PARALELO.md`/`AGENTS.md`), Fase 1 (GPT).
+1. Owner: **decision 5** con el Artifact (medida del kit vs la de hoy). Si gana «la de hoy», spec aparte que ajusta el
+   KIT (la capa se queda).
+2. Push de `ui-sistema` cuando el owner lo diga (memoria: no pushear cada commit). `globals.css` quedo reindentado por
+   Prettier (~15k lineas de diff, 28 con `-w`): GPT no debe tocarlo antes de rebasear; rebase con `-Xignore-space-change`.
+3. Fase 0b (kit: Form/FormSection/FormActions, Dialog, Combobox + migrar `places-search.tsx`, SegmentedControl, Switch,
+   Tabs, ProgressBar, Heading, Text, Card, PageHeader; harness en `tests/e2e/support/`), Fase 0c (guardias), Fase 1 (GPT).
 
-**Pendientes del owner:** `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las
-dos claves de Geoapify en Vercel; QA del alta/locales/programa sin verificar.
+**Pendientes del owner:** decision 5; `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
+Geoapify en Vercel; QA del alta/locales/programa sin verificar.
 
-**Hallazgos abiertos:** PARQUEADO #74 (flake de catalogo); H4 de la 0155 (400 de Google por clave invalida en Details →
-`place_not_found`). Worktree de trabajo: `motor-wt/onboarding-google`, rama `ui-sistema` (desde `origin/main` `87de5ff`).
+**Hallazgos abiertos:** PARQUEADO #74 (flake de catalogo, aparecio en las dos corridas de hoy); H4 de la 0155. La rama
+`motor` (worktree `check-point-wt/motor`) tiene un estado viejo (0153): no es el punto de retorno.
 
 **Descartado:**
 
 | Camino | Por que |
 |---|---|
-| Trinquete con `tools/ui-baseline.json` | se puentea subiendo el JSON (y el repo empuja a GPT a hacerlo como «arreglo mecanico»): se compara contra el merge-base con git |
+| Trinquete con `tools/ui-baseline.json` | se puentea subiendo el JSON: se compara contra el merge-base con git |
 | Guardias antes de completar el kit | obliga a hacer a mano lo que el kit no tiene (paso con `places-search.tsx`) |
 | Pagina de muestra en `/backoffice/_ui` | en Next una carpeta `_x` no se rutea: va como harness de e2e |
-| Pantallas «solo layout» | el kit crece una pieza por cada combinacion visual; el owner eligio el hibrido |
+| `driver.css` sin capa (como decia la spec) | sus reglas sin capa le ganan a `legacy`: rompio los tours |
+| No reindentar `globals.css` | `format:check` lo exige dentro de `@layer` |
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: implementar la spec 0158».
+**Prompt para retomar:** «Lee docs/estado/claude.md: la 0158 espera la decision 5 del owner».
