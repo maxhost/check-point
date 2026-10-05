@@ -67,8 +67,8 @@ hallazgos estan abajo, reproducidos por el orquestador donde dice ✔.
 3. **Zonas (enmienda ADR 0114):** `apps/merchant/src/ui/**`, `ui/tokens.css`, `eslint.config.mjs` y `tools/ui-guard*`
    son de Claude. GPT pide piezas del kit por spec. Tocarlos nunca es «arreglo mecanico».
 4. **Modelo hibrido** de pantallas (ver capa 4), recomendado y aceptado («vamos con lo hibrido»).
-5. **Pendiente, con capturas:** la medida canonica de los controles (la que declara el kit vs la que se ve hoy por el CSS
-   viejo). Se decide con las capturas antes/despues de la Fase 0a; si gana «la de hoy», se ajusta el KIT a esa medida.
+5. **La medida canonica de los controles es la del KIT** (owner, 2026-10-05, con las capturas antes/despues de la 0158:
+   «usemos las del kit»). No se ajusta el kit a la medida vieja del CSS de `globals.css`.
 
 ## Decision
 

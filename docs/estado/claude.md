@@ -9,7 +9,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, mediodia) — SPEC 0158 (FASE 0a, CAPAS DE CSS) IMPLEMENTADA EN `ui-sistema` (`e4e8d4f`), SIN PUSH. ESPERA LA DECISION 5 DEL OWNER
+## ⇥ ESTADO (2026-10-05, mediodia) — SPEC 0158 (FASE 0a, CAPAS DE CSS) IMPLEMENTADA EN `ui-sistema` (`e4e8d4f`), DECISION 5: MEDIDA DEL KIT
 
 **Hecho (verificado):**
 - **0158** en `e4e8d4f` (rama `ui-sistema`, worktree `motor-wt/onboarding-google`, sobre `origin/main` `87de5ff`):
@@ -23,14 +23,13 @@
 - **Capturas antes/despues** (8 superficies × 390/1280): https://claude.ai/artifact/LmvL6MiGUJoWhRvGxFy5Ju
 
 **Siguiente, en orden:**
-1. Owner: **decision 5** con el Artifact (medida del kit vs la de hoy). Si gana «la de hoy», spec aparte que ajusta el
-   KIT (la capa se queda).
-2. Push de `ui-sistema` cuando el owner lo diga (memoria: no pushear cada commit). `globals.css` quedo reindentado por
-   Prettier (~15k lineas de diff, 28 con `-w`): GPT no debe tocarlo antes de rebasear; rebase con `-Xignore-space-change`.
-3. Fase 0b (kit: Form/FormSection/FormActions, Dialog, Combobox + migrar `places-search.tsx`, SegmentedControl, Switch,
+1. **Decision 5 tomada** (owner, 2026-10-05): la medida del KIT. Push de `ui-sistema` a `main` pedido por el owner.
+   GPT recibe el prompt para empezar la Fase 1 en paralelo SOLO con piezas que el kit ya tiene (`globals.css` quedo
+   reindentado por Prettier: rebase con `-Xignore-space-change`).
+2. Fase 0b (kit: Form/FormSection/FormActions, Dialog, Combobox + migrar `places-search.tsx`, SegmentedControl, Switch,
    Tabs, ProgressBar, Heading, Text, Card, PageHeader; harness en `tests/e2e/support/`), Fase 0c (guardias), Fase 1 (GPT).
 
-**Pendientes del owner:** decision 5; `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
+**Pendientes del owner:** `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
 Geoapify en Vercel; QA del alta/locales/programa sin verificar.
 
 **Hallazgos abiertos:** PARQUEADO #74 (flake de catalogo, aparecio en las dos corridas de hoy); H4 de la 0155. La rama
@@ -46,4 +45,4 @@ Geoapify en Vercel; QA del alta/locales/programa sin verificar.
 | `driver.css` sin capa (como decia la spec) | sus reglas sin capa le ganan a `legacy`: rompio los tours |
 | No reindentar `globals.css` | `format:check` lo exige dentro de `@layer` |
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: la 0158 espera la decision 5 del owner».
+**Prompt para retomar:** «Lee docs/estado/claude.md: escribir la spec de la Fase 0b (kit completo)».

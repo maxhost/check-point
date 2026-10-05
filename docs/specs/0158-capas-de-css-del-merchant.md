@@ -272,5 +272,7 @@ Correccion a lo predicho arriba: el borde del onboarding era `#cbd7ce` (gana `gl
 La primera corrida (antes del arreglo de driver.css y de los tipos de `tokens.test.ts`) dio typecheck/build/e2e rojos
 y el mismo flake #74 en otro caso (`polls` 1 vs 0).
 
+**Decision 5 (owner, 2026-10-05):** «usemos las del kit». Queda la medida del kit; no hay spec de ajuste.
+
 **Capturas:** 16 parejas, `mostrador` igual byte a byte en los dos anchos (sin controles del kit en reposo); las otras
 14 cambian. Artifact privado: https://claude.ai/artifact/LmvL6MiGUJoWhRvGxFy5Ju
