@@ -2,15 +2,17 @@
 spec: 0156
 fecha: 2026-10-04
 estado: cerrada
-resumen: (A) Borra el permiso de alta (`onboarding_grant_until`, spec 0077 / ADR 0076 §2) que quedo sin funcion al salir el programa del wizard (ADR 0121). Editar el programa exige email verificado sin excepcion temporal; crear sigue permitido como hoy. Migracion DROP COLUMN despues del deploy. Cierra PARQUEADO #71. (B) CHECK email = lower(email) en merchant_auth.user: el unico de email pasa a ser insensible a mayusculas por garantia de la base.
+resumen: (A) Borra el permiso de alta (`onboarding_grant_until`, spec 0077 / ADR 0076 §2) que quedo sin funcion al salir el programa del wizard (ADR 0121). Editar el programa exige email verificado sin excepcion temporal; crear sigue permitido como hoy. Migracion DROP COLUMN despues del deploy. Cierra PARQUEADO #71. (B) CHECK email = lower(email) en merchant_auth.user: el unico de email pasa a ser insensible a mayusculas por garantia de la base. (C) ADR 0122: el programa (ver, crear, editar, sello, plantillas) no exige email verificado; se borra programEditDenied y tres rutas pasan a requireApiPermissionSinGateDeEmail. Cierra PARQUEADO #72 y #73.
 disjunta: no
 archivos: packages/domain/src/server/{onboarding-grant,loyalty-program}.ts, apps/merchant/src/app/api/loyalty-program/route.ts, apps/merchant/src/app/api/onboarding/signup/route.ts, apps/merchant/src/server/{auth,merchant-session,onboarding-grant-support,api-owner-surfaces-support,onboarding-tours-support}.ts, packages/db/src/schema/auth.ts, packages/db/drizzle/<nueva>, tests que nombran el permiso
 ---
 
-# 0156 — Borrar el permiso de alta y email en minusculas en la base
+# 0156 — Borrar el permiso de alta, email en minusculas y programa sin email verificado
 
 **Nivel N2** (sesiones + migracion). Decisiones del owner (2026-10-04): (A) «perfecto, borramos», tras la revision de que
-hace el permiso; (B) «Emails con mayusculas corregimos ahora dentro de este arco» (hallazgo del implementador de la 0155).
+hace el permiso; (B) «Emails con mayusculas corregimos ahora dentro de este arco» (hallazgo del implementador de la 0155); (C) ADR 0122 («se puede crear el programa sin verificar email [...] solo
+necesitas una sesion activa y ser owner de la marca de la sesion [...] a no ser que tengas los permisos en staff»; «el
+qr si se podra mostrar y usar sin email verificado»). **(C) se agrego con la spec ya despachada (2026-10-04).**
 
 ## Problema
 
@@ -32,14 +34,18 @@ a mano con `Juan@x.com` crearia un duplicado que el unico deja pasar y que solo 
 ## Alcance
 
 **Entra:**
-1. `packages/domain/src/server/onboarding-grant.ts`: se borran `ONBOARDING_GRANT_MINUTES`,
-   `ONBOARDING_GRANT_AFTER_COMPLETION_MINUTES`, `onboardingGrantActive`, `shortenOnboardingGrant` y el campo
-   `onboardingGrantActive` de `ProgramCaller`. Quedan `ProgramCaller` (`emailVerified`, `isStaff?`) y
-   `programEditDenied`, cuya regla pasa a: crear → permitido; editar → `isStaff === true` o `emailVerified` → permitido;
-   si no, `403 email_not_verified`. Si el modulo queda solo con eso, se renombra a `program-caller.ts` (y se actualizan
-   los imports); el nombre «onboarding-grant» no debe sobrevivir.
-2. `saveProgram` (`loyalty-program.ts`): se borra el acortado (`shorten`) del batch de creacion.
-3. `app/api/loyalty-program/route.ts` `callerOf`: devuelve `{ emailVerified }` (y lo de staff como hoy).
+1. **(A+C)** `packages/domain/src/server/onboarding-grant.ts` **se borra entero**: `ONBOARDING_GRANT_MINUTES`,
+   `ONBOARDING_GRANT_AFTER_COMPLETION_MINUTES`, `onboardingGrantActive`, `shortenOnboardingGrant`, `ProgramCaller` y
+   `programEditDenied` (ADR 0122 §2: el dominio no tiene regla de email). Si `saveProgram` queda sin uso para su 3er
+   argumento `caller`, el argumento se borra y se actualizan todos los llamadores.
+2. `saveProgram` (`loyalty-program.ts`): se borran el acortado (`shorten`) del batch de creacion y la llamada a
+   `programEditDenied`.
+3. `app/api/loyalty-program/route.ts`: se borra `callerOf`. **(C)** `GET` pasa de `requireApiPermission` a
+   `requireApiPermissionSinGateDeEmail` (mismos `MESSAGES` sin `emailNotVerified`). `PUT` ya lo usa. `DELETE` y `PATCH`
+   **no se tocan** (`requireApiOwner`, ADR 0122 §4).
+3b. **(C)** `app/api/loyalty-program/stamp-upload/route.ts` (`POST`) y `app/api/loyalty-terms/templates/route.ts`
+   (`GET`): de `requireApiPermission` a `requireApiPermissionSinGateDeEmail`. El QR no se toca (ya lo usa).
+   `api-owner-surfaces-support.ts` y los tests que listan que superficie lleva paso 4 se actualizan a esto.
 4. `signup` (0155) y `openMerchantSession`: sin la opcion `onboardingGrantUntil`.
 5. `server/auth.ts`: se borra `session.additionalFields.onboardingGrantUntil`.
 6. Esquema: se borra la columna de `packages/db/src/schema/auth.ts` y se genera la migracion con `drizzle-kit generate`
@@ -54,9 +60,9 @@ a mano con `Juan@x.com` crearia un duplicado que el unico deja pasar y que solo 
    ventana; los demas (`loyalty-*.neon`, `permisos-brand-loyalty.neon`, `onboarding-program-*`, supports, etc.) se
    ajustan quitando el campo. **Los casos de crear ≠ editar se conservan** reescritos sin permiso (ver plan de pruebas).
 
-**No entra (hallazgos a decidir del owner, PARQUEADO #72 y #73):**
-- Que crear el programa siga permitido sin email verificado (regla del alta, ADR 0070 §11).
-- Que `GET /api/loyalty-program/qr` siga sin chequeo de email (spec 0075).
+**No entra:**
+- `DELETE`/`PATCH` de `/api/loyalty-program` (retirar y cancelar el retiro): siguen con owner verificado (ADR 0122 §4).
+- El paso 4 del resto de las superficies delegables (staff, locales, marca, campañas, catalogo, billing).
 
 ## Diseño
 
@@ -90,25 +96,24 @@ Los del frontmatter. Barrido de cierre: `rg -n "onboardingGrant|onboarding_grant
 - [ ] Barrido de cierre vacio (comando de arriba, corrido).
 - [ ] Migracion nueva generada por drizzle-kit con solo el `DROP COLUMN`; aplicada a la rama de CI por
       `tools/neon-test.sh`; **no** aplicada a PROD (eso va despues del deploy, fuera de esta spec).
-- [ ] Owner sin verificar: crear programa 200; editar 403 `email_not_verified` **aunque la cuenta tenga 1 minuto**.
-      Owner verificado: editar 200. Staff con `loyalty`: editar 200.
+- [ ] **(C)** Owner sin verificar recien creado por `signup`: `GET /api/loyalty-program` 200, crear (`PUT`) 200/201,
+      editar (`PUT`) 200, `GET /api/loyalty-terms/templates` 200, `GET .../qr` 200 (o `no_program` antes de crear).
+      Staff **sin** `loyalty`: `PUT` 403 `missing_permission`. Staff con `loyalty`: `PUT` 200. Owner sin verificar:
+      `DELETE` 403 `email_not_verified` (sin cambio).
 - [ ] **(B)** `insert` de un `user` con `Juan@X.com` contra la rama de CI → error `23514`; con `juan@x.com` → ok.
 - [ ] `pnpm verify` verde con Node 24 + suites Neon tocadas.
 
 ## Plan de pruebas y verificación
 
-- [ ] Unit (renombrado de `onboarding-grant.test.ts`): tabla de `programEditDenied` — {crear, cualquier caller} → null;
-      {editar, verificado} → null; {editar, staff} → null; {editar, no verificado} → 403; {editar, `isStaff`
-      undefined, no verificado} → 403.
-- [ ] Neon: owner recien creado por `signup` (sin verificar) crea programa → 201/200 y despues editar → 403. Owner
-      verificado edita → 200. (Pueden vivir en `loyalty-program.neon` o en el archivo que absorba los casos de
-      `onboarding-grant.neon`.)
+- [ ] Neon: los casos de la DoD (C). El aislamiento entre comercios no tiene parametro que mutar (el negocio sale de
+      la membresia de la sesion, paso 2); lo fijan los casos `not_member` existentes de `permisos-brand-loyalty.neon` y
+      `api-permission.test`, que se conservan.
 - [ ] **Mutaciones (revisor, presupuesto 3):**
 
   | # | Mutacion | Oraculo esperado | Guard hermano |
   |---|---|---|---|
-  | M1 | `programEditDenied` permite editar sin verificar (borrar la condicion `emailVerified`) | rojo: Neon «recien creado edita → 403» y unit | ninguno: la ruta usa `requireApiPermissionSinGateDeEmail` (sin paso de email); verificar en el archivo al medir |
-  | M2 | `programEditDenied` niega crear a un no verificado | rojo: Neon «recien creado crea → 201/200» | ninguno |
+  | M1 | `GET /api/loyalty-program` vuelve a `requireApiPermission` | rojo: Neon «owner sin verificar ve su programa → 200» | ninguno |
+  | M2 | en `saveProgram`, negar la EDICION a `emailVerified !== true` (reintroducir la regla vieja) | rojo: Neon «owner sin verificar edita → 200» | la puerta `PUT` no tiene paso 4: el unico lugar es el dominio |
   | M3 | sin el `check` (una migracion aplicada a una rama no se «des-muta» editando el `.sql`): correr el caso contra una rama Neon efimera hija de `ci-integration` **antes** de aplicar la migracion nueva | rojo: el insert con mayusculas pasa; despues de migrar, verde con `23514` | ninguno: el unico es sobre `email` crudo |
 
 - [ ] Comandos: `pnpm verify`; `tools/neon-test.sh` con las suites editadas.
