@@ -9,41 +9,39 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — SPEC 0162 (N1, #76) CERRADA (`2cc6071`), SIN IMPLEMENTAR
+## ⇥ ESTADO (2026-10-05, noche) — SPEC 0162 (#76) IMPLEMENTADA Y EN `origin/main` (`deb8cc5`); SIGUE LA 0160
 
 **Hecho (verificado):**
-- **Spec 0162** `docs/specs/0162-errores-del-servidor-en-los-campos-del-kit.md` (`2cc6071`, fila en INDEX): los
-  cinco campos pasan a `isInvalid={props.isInvalid ?? (errorMessage ? true : undefined)}`. Numero 0162 porque la
-  0160 y la 0161 estan reservadas en el ADR 0123.
-- **Medido con harness temporal (Chromium), ya borrado:** codigo actual + `Form validationErrors` → nada en los
-  cinco (sin mensaje, sin `aria-invalid`, descripcion vacia). Con el fix → descripcion accesible = mensaje en los
-  cinco; `aria-invalid` en todos menos el boton del `Select`. Con el fix, `isRequired` vacio y email invalido en
-  modo `aria` siguen sin marcarse y el envio llega (la medicion de la 0159 estaba confundida por este bug, pero
-  la conclusion aguanta). `validationErrors`/`validate` no se usan en pantallas → sin cambio visible esperado.
-- CI de `main` (`464ef0c`) estaba `in_progress` al arrancar; no se sondeo (regla del owner).
+- **0162** implementada en `deb8cc5`, pusheada a `origin/main` (`464ef0c..deb8cc5`) CON el pre-push: `pnpm verify`
+  completo en verde (typecheck, lint, format, test, build, e2e, neon merchant). Los cinco campos pasan a
+  `isInvalid={props.isInvalid ?? (errorMessage ? true : undefined)}`; harness `?case=server-errors` + tests
+  «Form: validationErrors del servidor llegan a los campos» (soft, un caso por campo) y «errorMessage marca el
+  campo», en Chromium y WebKit; capturas de la 0159 sin cambios. Rojo primero en los cinco; M1 (`choice-group`)
+  y M2 (`text-field`) rojas por la asercion esperada y revertidas. Detalle en la seccion «Implementacion».
+  #76 resuelto en PARQUEADO. Deploy de Vercel de `deb8cc5` sin verificar (sin cambio visible esperado).
+- El primer `pnpm verify` dio `test:e2e` ROJO por `EADDRINUSE :3002`: el `next dev` de `sintetica/apps/panel`
+  lo lanza OTRA sesion de Claude y lo relanza a los ~30 s. Con OK del owner se mato (kill pegado al arranque).
 
 **Siguiente, en orden:**
-1. **Implementar la 0162** (N1, sin subagentes): tests rojos primero (`?case=server-errors` + «Email»), fix en
-   los cinco campos, 2 mutaciones, `pnpm verify` una vez, cerrar #76 en PARQUEADO, push.
-2. 0160 (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link) y 0161: se
-   escriben al empezar cada una, sumando piezas al final de `ui-kit-entry.tsx` (pagina por defecto).
-3. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
+1. **0160** (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link): se escribe
+   al empezar, sumando piezas al final de la pagina por defecto de `ui-kit-entry.tsx`. Despues la 0161.
+2. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
 
 **Pendientes del owner:** `.env.example` (Geoapify → `GOOGLE_MAPS_API_KEY=`); borrar las dos claves de
 Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploys de `b1ab123` y `d797c21` sin verificar.
 
-**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #76 (spec 0162), #77 (diferido por el owner);
-H4 de la 0155.
+**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #77 (diferido por el owner); H4 de la 0155.
 
-**Gotchas de esta sesion:** en zsh `for f in $F` no parte la variable (lista literal); `next dev` del
-`webServer` de Playwright reescribe los tres `next-env.d.ts` (revertir antes de commitear); `rg -n MUTATION`
-sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`).
+**Gotchas de esta sesion:** otra sesion (sintetica) ocupa el 3002 y lo relanza: matarlo en el MISMO comando que
+lanza la e2e/el push; `next dev` del `webServer` reescribe los tres `next-env.d.ts` (revertir antes de commitear);
+`rg -n MUTATION` sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`); este commit de estado queda
+local hasta el proximo push (Hobby).
 
 **Descartado:**
 
 | Camino | Por que |
 |---|---|
 | Caso `server-errors` en la pagina por defecto del harness | cambia las 8 capturas de la 0159; con `?case=` quedan igual |
-| Capturas del caso `server-errors` | el oraculo es de accesibilidad; el aspecto ya lo cubre «Email» |
+| `expect` duro en el bucle de campos | corta en el primero: no muestra el rojo de los cinco |
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: implementar la spec 0162».
+**Prompt para retomar:** «Lee docs/estado/claude.md: spec 0160».
