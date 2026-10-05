@@ -1,7 +1,7 @@
 ---
 spec: 0155
 fecha: 2026-10-04
-estado: cerrada
+estado: implementada
 resumen: Servidor del alta en 3 pasos (ADR 0121) — rutas publicas de Google Places (autocomplete + details Essentials, sesgo por IP, token de seleccion firmado), POST /api/onboarding/signup que crea cuenta + negocio + local en una escritura (email conocido → link, sin nada), prefill publico solo con categorias, locales del backoffice con token; borra Geoapify, start y business. Contrato para GPT en 0155-contratos-de-api.md.
 disjunta: no
 archivos: apps/merchant/src/server/places/*, apps/merchant/src/app/api/places/*, apps/merchant/src/app/api/onboarding/{signup,prefill,business}/*, apps/merchant/src/app/api/merchant/auth/start/*, apps/merchant/src/server/{location-providers,supported-countries,auth-start}.ts, apps/merchant/src/server/locations/{core,shared}.ts, apps/merchant/src/lib/location-address*.ts, tests neon/unit listados, apps/merchant/package.json
@@ -270,3 +270,24 @@ Formato de `docs/AGENT-WORKFLOW.md`. PASS independiente del revisor antes de `im
 ## Abierto
 
 Nada bloqueante.
+
+## Resultado (2026-10-04)
+
+- **Implementada** en `07e345e` (rama `onboarding-google`, sin push). Implementador: `pnpm verify` ok (Neon completo 384
+  archivos / 3086 tests); M1–M3 rojas y revertidas (bitacora en `docs/TASKS.md`).
+- **Revisor: PASS** (`0c9e151`, bitacora R1–R3: token 422 no gasta cupo, token vencido, choque de slug → 503; las tres
+  rojas y revertidas). Sonda de atomicidad: slug forzado → 503 y 0 filas en `user` (el limite declarado quedo medido, sin
+  test fijo).
+- **Orquestador:** Neon `onboarding-signup`, `-rechazos`, `locations` re-corridas: 3 archivos / 26 tests verdes. Smoke
+  contra Google real por las rutas locales: P1 con sesgo (Cuenca → 4 de 5 panaderias de Cuenca), P2 de un comercio
+  (BR, `gcid:cafe`, token de 1780 caracteres) y de una interseccion (AR, `kind: address`), P1 de 2 caracteres → 400,
+  `start` y `business` → 404. Para el smoke hizo falta `BETTER_AUTH_SECRET` en el proceso local (el `.env.local` de
+  este arbol no lo tiene; en PROD existe: sin el, `getMerchantAuth` lanza y no habria login).
+- **Desvios aceptados por el revisor:** modulos extra por tamaño; `lib/location-address.ts` se queda hasta que GPT borre
+  `address-autofill-geoapify.tsx`; tras una unique violation se re-consulta el email (email → link, slug → 503); signup
+  rechaza `@staff.invalid`; en locales un token invalido → 422.
+- **Hallazgos no bloqueantes:** H1 la UI vieja llama a `start`/`business` → **la rama no se mergea sin la UI de GPT**;
+  H2 el choque de slug solo tiene test de unidad; H3 docblocks que nombran `auth/start` (se van con la 0156); H4 un
+  400 de Google en Details por clave invalida se ve como `place_not_found` (el autocomplete ya da 503 antes).
+- **Pendiente del owner:** `.env.example` (cambiar las dos de Geoapify por `GOOGLE_MAPS_API_KEY=`; el agente no tiene
+  permiso sobre `.env*`).
