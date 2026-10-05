@@ -178,3 +178,16 @@ hallazgos estan abajo, reproducidos por el orquestador donde dice ✔.
   listbox de un Select quedaba debajo del overlay (5 e2e de tours rojos). Va con `@import "driver.js/dist/driver.css"
   layer(base)` en `globals.css`. Regla: todo CSS de terceros entra en `base`, nunca sin capa.
 
+
+## Enmienda 2026-10-05 (spec 0159, Fase 0b)
+
+- **La Fase 0b se parte en tres rebanadas N1 pusheables solas:** 0159 (tipografia, superficies, formularios y el
+  harness del kit), 0160 (overlays y navegacion: `Dialog`, `Combobox` + `places-search.tsx`, `Tabs`,
+  `SegmentedControl`, `Switch`, `ProgressBar`, `Link`) y 0161 (campos `file`/`color`/`time`/`datetime-local`/`range`/
+  `search`). GPT usa en la Fase 1 lo que cada una deja en `origin/main`.
+- **Capturas del kit solo en Mac** (owner, 2026-10-05: «no me interesa linux, me interesa que se vean en windows y
+  mac, ningun usuario mio usara linux»). La CI corre en Ubuntu y esta Mac no puede generar referencias de Linux: los
+  `toHaveScreenshot` (Chromium y WebKit, claro/oscuro, 390/1280) corren en `pnpm verify`/pre-push y se saltean con
+  `CI`. Lo que corre en todos lados es un oraculo de estilos computados (Chromium = motor de Chrome/Edge en Windows,
+  con Arial en los dos sistemas). El pixel de Windows queda en el QA del owner.
+- **`BrandTheme` se borra** (sin uso en `app/`): el «se usa o se borra» de la 0b.
