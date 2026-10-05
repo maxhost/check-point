@@ -9,7 +9,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05) — 0155/0156 EN `main` CON LA UI 0157 DE GPT; MIGRACION 0065 EN PROD, #70 CERRADO. ADR 0123 (SISTEMA DE UI) ACEPTADO, FASE 0a SIN SPEC
+## ⇥ ESTADO (2026-10-05) — 0155/0156 EN `main` CON LA UI 0157 DE GPT; MIGRACION 0065 EN PROD, #70 CERRADO. ADR 0123 (SISTEMA DE UI) ACEPTADO; SPEC 0158 (FASE 0a) CERRADA, SIN IMPLEMENTAR
 
 **Hecho (verificado):**
 - **0155 + 0156** (servidor del alta con Google Places; permiso de alta borrado; email en minusculas; programa sin email
@@ -30,10 +30,10 @@
 - **PARQUEADO #70 cerrado** (ADR 0124): 63 requests a `/api/places/autocomplete` en PROD → 60 × 400, 3 × 429.
 
 **Siguiente, en orden:**
-1. **Spec de la Fase 0a del ADR 0123** (N1, zona Claude): `@layer legacy` sobre el CSS propio de `globals.css` y
-   `onboarding.css`, `--color-*: initial` antes de los roles, `light-dark()` y borrar duplicados de oscuro, claro forzado
-   (`data-theme="light"` en `app/layout.tsx`), contraste en `verify`, y **capturas antes/despues por pantalla** (claro,
-   390 y 1280) para la decision 5 del owner (medida canonica de los controles). Medir todo sobre `origin/main`.
+1. **Implementar la spec 0158** (Fase 0a, N1, cerrada en `00958b2`, sin subagentes): primero el e2e
+   `ui-layers.spec.ts` ROJO sobre el CSS actual y las capturas `antes/`; despues capas, tokens, `data-theme`,
+   `tokens.test.ts`; capturas `despues/` → Artifact para la decision 5 del owner. Enmienda al ADR 0123 en el mismo
+   commit: **sin `light-dark()`** (medido: no se transpila ni con `optimize`; subiria el piso a Safari 17.5).
 2. Despues: Fase 0b (kit: Form/FormSection/FormActions, Dialog, Combobox + migrar `places-search.tsx`,
    SegmentedControl, Switch, Tabs, ProgressBar, Heading, Text, Card, PageHeader; harness en `tests/e2e/support/`),
    Fase 0c (guardias `tools/ui-guard.ts` + enmienda de zonas en `TRABAJO-EN-PARALELO.md`/`AGENTS.md`), Fase 1 (GPT).
@@ -53,4 +53,4 @@ dos claves de Geoapify en Vercel; QA del alta/locales/programa sin verificar.
 | Pagina de muestra en `/backoffice/_ui` | en Next una carpeta `_x` no se rutea: va como harness de e2e |
 | Pantallas «solo layout» | el kit crece una pieza por cada combinacion visual; el owner eligio el hibrido |
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: escribir la spec de la Fase 0a del ADR 0123».
+**Prompt para retomar:** «Lee docs/estado/claude.md: implementar la spec 0158».
