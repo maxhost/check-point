@@ -9,7 +9,7 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — 0160 IMPLEMENTADA EN `motor` (`c335035`), SIN PUSHEAR; SIGUE LA 0161
+## ⇥ ESTADO (2026-10-05, noche) — 0160 EN `origin/main` (`c2e40ac`); SIGUE LA 0161, DESPUES LA 0c, RECIEN AHI GPT
 
 **Hecho (verificado):**
 - **0160** (Fase 0b, rebanada 2): spec `ca18ef4`, implementacion `c335035`. El kit suma `Dialog`/`ConfirmDialog`,
@@ -22,13 +22,14 @@
   https://claude.ai/artifact/BxFSXFFqCUUd3e8YHxUmy4 . Desvios medidos en la seccion «Implementacion» de la spec
   (lo mas importante: React Aria no abre la lista cuando las opciones llegan async → `OpenWhenItemsArrive`; al elegir
   escribe el texto de la opcion → guardia + test con `details` lento).
-- **Sin pushear** (memoria: no pushear por commit). `origin/main` sigue en `3177450`.
+- **Pusheada** `3177450..c2e40ac` con `--no-verify` (OK explicito del owner, 2026-10-05: «hace el push saltando el
+  verify»); el `verify` completo ya habia dado `ok` sobre `c335035`.
 
 **Siguiente, en orden:**
-1. Push de `ca18ef4..` cuando el owner lo pida (pre-push corre `verify`; ojo flake #78).
-2. **0161** (campos `file`/`color`/`time`/`datetime-local`/`range`/`search`): se escribe al empezar, mismo harness.
-3. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`. Avisar a GPT el sha de la 0160
-   antes de que toque alta o locales (`places-search.tsx` y `globals.css` cambiaron).
+1. **0161** (campos `file`/`color`/`time`/`datetime-local`/`range`/`search`): se escribe al empezar, mismo harness.
+2. **Fase 0c** (guardias).
+3. **Recien despues GPT** (owner, 2026-10-05: «cuando acabemos esto y fase 0c recien pondre a gpt a trabajar»). El
+   prompt para GPT de la 0160 se dio en la sesion; al terminar la 0c se rehace uno solo con 0160 + 0161 + 0c.
 
 **Pendientes del owner:** QA del buscador de lugares en el alta y en locales (aspecto del kit, flechas + Enter), y del
 **tour de locales** paso «Busca la dirección»: escribir y elegir una direccion con el tour abierto (excepcion de CSS sin
