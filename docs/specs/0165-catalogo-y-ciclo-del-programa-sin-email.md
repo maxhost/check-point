@@ -149,3 +149,88 @@ ejecutadas. Para GPT (en el ESTADO de Claude): el copy `email_not_verified` de c
 ## Abierto
 
 Nada.
+
+## Implementacion
+
+> Implementador, 2026-10-05, worktree `check-point-wt/sin-gate-email` (rama `sin-gate-email`), Node 24.20.0.
+> **Sin PASS de revisor todavia**: la spec sigue `cerrada`. M1–M3 son del revisor y no se corrieron.
+
+**Commit:** `8ab9e73` feat(merchant): catalogo y ciclo del programa sin email verificado (0165).
+
+### Rojo previo (oraculos nuevos contra el codigo de hoy, antes de tocar los guards)
+
+- Unidad — `vitest run catalog-sin-email-guard.test.ts api-owner-surfaces.test.ts api-permission-surfaces.test.ts`:
+  `Tests 36 failed | 145 passed (181)`. Las 34 del barrido (17 entradas × 2 estados de sesion) con
+  `AssertionError: expected 'email_not_verified' not to be 'email_not_verified'`; las 2 de la fila `catalog` de
+  la matriz con `AssertionError: expected 403 to be 200`.
+- Neon — `tools/neon-test.sh src/server/catalog-sin-email.neon.integration.test.ts src/server/loyalty-program-sin-email.neon.integration.test.ts`:
+  `Tests 8 failed | 4 passed (12)`. Los 5 pasos del catalogo con
+  `expected '{"error":"Verifica tu email para gest…' not to contain 'email_not_verified'`, el piso con
+  `expected 5 to be 11`, y `DELETE`/`PATCH` del programa con el cuerpo recibido
+  `{ "code": "email_not_verified", "error": "Verifica tu email para gestionar el programa." }`. Los 4 casos que ya
+  pasaban (ver/crear/editar programa, QR, plantillas) siguieron verdes.
+
+### DoD — salida ejecutada
+
+- `rg -l 'SinGateDeEmail' apps/merchant/src/app/api | sort` → 7 archivos: `catalog/_auth.ts`,
+  `catalog/imports/_auth.ts`, `loyalty-program/qr/route.ts`, `loyalty-program/route.ts`,
+  `loyalty-program/stamp-upload/route.ts`, `loyalty-terms/templates/route.ts`, `onboarding/checklist/route.ts`.
+- `rg -n 'await requireApiOwner\(|await requireApiPermission\(' apps/merchant/src/app/api/catalog apps/merchant/src/app/api/loyalty-program` → vacio (rc=1).
+- `git diff origin/main -- …/api-owner.ts …/api-permission.ts` → 18 inserciones / 5 borrados; lineas `+`/`-` que no
+  empiezan con ` *` = 0 (solo docblocks).
+- `pnpm exec vitest run apps/merchant/src/server/api-owner-surfaces.test.ts apps/merchant/src/server/api-permission-surfaces.test.ts` → `Test Files 2 passed`, `Tests 146 passed (146)`.
+- `tools/neon-test.sh` de `catalog-sin-email`, `loyalty-program-sin-email` y `permisos-delegados` → `Test Files 3 passed`,
+  `Tests 16 passed (16)` (incluye «un STAFF con `catalog` recibe 403 `not_owner` en los DOS borrados, y el OWNER no»,
+  sin tocar ese archivo).
+- `pnpm verify` → `verify: ok` (tabla abajo).
+- `rg -n MUTATION apps packages tools` → vacio (rc=1).
+
+### `pnpm verify` (corrida final)
+
+```
+gate                  | corrio/salteado (motivo)    | ok/ROJO | segundos
+typecheck             | corrio                      | ok      | 9.8
+lint                  | corrio                      | ok      | 5.9
+ui-guard              | corrio                      | ok      | 0.5
+format:check          | corrio                      | ok      | 6.4
+test                  | corrio                      | ok      | 35.9
+build                 | corrio                      | ok      | 7.2
+test:e2e              | salteado (no se toco UI)    | -       | -
+neon related merchant | corrio                      | ok      | 89.7
+neon related consumer | salteado (nada de consumer) | -       | -
+verify: ok
+```
+
+`test`: `Tests 2372 passed | 995 skipped (3404)`; `neon related merchant`: `Test Files 61 passed`, `Tests 681 passed`.
+
+### Desvios (con motivo)
+
+1. **`pnpm verify` corrio DOS veces, no una.** La primera dio ROJO por dos errores mios: `format:check` (3 archivos de
+   test sin Prettier) y dos tests con `vi.mock("./api-permission")` que solo exportaban `requireApiPermission`
+   (`catalog-import-routes.test.ts`, 5 rojos en `test`; `catalog-import-guard.neon.integration.test.ts`, 5 rojos en
+   `neon related`), con `No "requireApiPermissionSinGateDeEmail" export is defined on the "./api-permission" mock`.
+   No era PARQUEADO #74. Se corrigio y la segunda dio `verify: ok`.
+2. **Archivos fuera de la lista de la spec:** (a) esos dos `vi.mock` renombran la clave doblada a
+   `requireApiPermissionSinGateDeEmail` — es el montaje que sigue al guard renombrado, ninguna asercion cambia;
+   (b) un comentario en `catalog/product/[id]/route.ts` y `catalog/category/[id]/route.ts` que decia «conserva
+   `requireApiOwner`» (falso tras este cambio), solo comentario.
+3. **Doble de `./db` extendido** (`api-owner-surfaces-support.ts`): `where()` suma `orderBy: async () => []`. Sin
+   el, `listCatalog` revienta y `GET /api/catalog` da 503, y la fila `catalog` no tendria desenlace positivo
+   `200`. El desenlace asevera `products/categories/locations: []` y `currencyCode: "USD"` (de la fila del guard),
+   **no** `importInProgress`, que con este doble sale `true` (la rama `.limit()` devuelve la fila del slug).
+4. **Barrido del punto 3:** archivo nuevo `catalog-sin-email-guard.test.ts` (17 entradas, piso `ENTRADAS.length === 17`),
+   en dos estados (`emailVerified: false` y sin la clave). Asevera `code !== "email_not_verified"` **y** status no
+   401/403.
+5. **`loyalty-program-sin-email`**: el cuerpo se asevera antes que el status en `DELETE`/`PATCH` (un rojo muestra el
+   `code`, no solo un 403). `DELETE` manda una ventana futura (`2099-01-01T10:00` / `2099-02-01T10:00`): con `{}` el
+   dominio contesta 422.
+6. **El worktree no tenia `apps/merchant/.env.local`** (`tools/worktree-new.sh` solo enlaza los `.env*` de la raiz):
+   se enlazo con `ln -s` al del repo principal (gitignored, no se commitea) para correr `tools/neon-test.sh`.
+
+### Hallazgos a decidir
+
+- **El `toEqual` del inventario NO muerde M1.** `SURFACES_SIN_GATE_DE_EMAIL` sale de `NOMBRES_SIN_GATE_DE_EMAIL`, una
+  lista estatica: volver a poner el gate en `requireOwner` no cambia esa lista. Lo que muerde M1 en la matriz es el
+  desenlace positivo de la fila `catalog` (rojo previo medido: `expected 403 to be 200`), mas el punto 1 y el barrido.
+  La tabla de mutaciones de la spec lo nombra como oraculo de M1: es una prediccion que no se cumple.
+- Copy muerto en pantallas (zona GPT): el texto de `email_not_verified` de catalogo/programa ya no puede llegar.
