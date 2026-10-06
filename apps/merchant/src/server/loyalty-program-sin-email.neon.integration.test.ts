@@ -18,6 +18,7 @@ import { wipePrograms } from "./unverified-owner-support";
 import {
   DELETE as PROGRAM_DELETE,
   GET as PROGRAM_GET,
+  PATCH as PROGRAM_PATCH,
   PUT as PROGRAM_PUT,
 } from "../app/api/loyalty-program/route";
 import { GET as QR } from "../app/api/loyalty-program/qr/route";
@@ -33,8 +34,8 @@ import {
  * cookie REAL que devuelve `POST /api/onboarding/signup` (la cuenta tiene segundos y
  * `email_verified = false` por construcción).
  *
- * Ver, crear y editar el programa, leer las plantillas de condiciones y el QR pasan; retirar
- * el programa (`DELETE`) sigue exigiendo owner verificado (ADR 0122 §4). El staff con y sin
+ * Ver, crear y editar el programa, leer las plantillas de condiciones y el QR pasan; desde el
+ * ADR 0125 (spec 0165) también retirarlo (`DELETE`) y cancelar el retiro (`PATCH`). El staff con y sin
  * `loyalty` vive en `permisos-brand-loyalty.neon.integration.test.ts`.
  *
  * **El oráculo de la edición es la BASE**: un 200 con la fila sin reescribir sería un falso
@@ -149,20 +150,43 @@ describe.skipIf(!enabled)(
       expect(Array.isArray((await response.json()).templates)).toBe(true);
     }, 60_000);
 
-    it("RETIRAR (`DELETE`) sigue exigiendo email verificado: 403 y el programa sigue activo", async () => {
-      const response = await call(
-        PROGRAM_DELETE,
-        "/api/loyalty-program",
-        "DELETE",
-        {},
-      );
-      expect(response.status).toBe(403);
-      expect((await response.json()).code).toBe("email_not_verified");
+    const statusNow = async () => {
       const [row] = await getDb()
         .select({ status: loyaltyPrograms.status })
         .from(loyaltyPrograms)
         .where(eq(loyaltyPrograms.businessId, businessId));
-      expect(row.status).toBe("active");
+      return row?.status ?? null;
+    };
+
+    /** Spec 0165 / ADR 0125 — se INVIERTE: hasta el ADR 0125 este caso aseveraba 403
+     * `email_not_verified`. El oráculo es la BASE: la fila pasa a `closing`. */
+    it("ORÁCULO DE M2 (0165) — RETIRAR (`DELETE`) sin verificar → 200 y la fila queda en `closing`", async () => {
+      const response = await call(
+        PROGRAM_DELETE,
+        "/api/loyalty-program",
+        "DELETE",
+        // Ventana futura en la zona del negocio (`datetime-local`, sin offset).
+        {
+          earningEndsAt: "2099-01-01T10:00",
+          redemptionEndsAt: "2099-02-01T10:00",
+        },
+      );
+      // El cuerpo ANTES que el status: un rojo muestra el `code` y no solo un 403.
+      expect(await response.json()).toEqual({ ok: true });
+      expect(response.status).toBe(200);
+      expect(await statusNow()).toBe("closing");
+    }, 60_000);
+
+    it("CANCELAR el retiro (`PATCH cancel-close`) sin verificar → 200 y vuelve a `active`", async () => {
+      const response = await call(
+        PROGRAM_PATCH,
+        "/api/loyalty-program",
+        "PATCH",
+        { action: "cancel-close" },
+      );
+      expect(await response.json()).toEqual({ ok: true });
+      expect(response.status).toBe(200);
+      expect(await statusNow()).toBe("active");
     }, 60_000);
   },
 );

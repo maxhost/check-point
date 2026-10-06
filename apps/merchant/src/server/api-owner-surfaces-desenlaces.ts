@@ -16,6 +16,17 @@ export const DESENLACE_SIN_GATE: Record<
   string,
   (response: Response) => Promise<void>
 > = {
+  /** Spec 0165 (ADR 0125): el catálogo. `./db` doblado → cero filas; la moneda sale de la fila
+   * del negocio que resolvió el guard, así que el 200 prueba que el guard dejó pasar. */
+  catalog: async (response) => {
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      products: [],
+      categories: [],
+      locations: [],
+      currencyCode: "USD",
+    });
+  },
   "loyalty-program/qr": async (response) => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/svg+xml");

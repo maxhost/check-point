@@ -24,8 +24,9 @@ import {
  */
 const sesion = vi.hoisted(() => ({ businessId: "" }));
 
+// Spec 0165 (ADR 0125): los guards de `/api/catalog/*` llaman a la hermana sin gate de email.
 vi.mock("./api-permission", () => ({
-  requireApiPermission: async () => ({
+  requireApiPermissionSinGateDeEmail: async () => ({
     business: {
       id: sesion.businessId,
       slug: "negocio",

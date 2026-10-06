@@ -36,7 +36,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   // Spec 0086 §3 / ADR 0079 §2: el borrado es DURO y no se delega. `requireCatalogOwner`
-  // conserva `requireApiOwner` y su `403 not_owner`, que acá sigue siendo literal.
+  // conserva su `403 not_owner`, que acá sigue siendo literal (sin email desde el ADR 0125).
   const auth = await requireCatalogOwner(request);
   if ("response" in auth) return auth.response;
   const { id } = await params;

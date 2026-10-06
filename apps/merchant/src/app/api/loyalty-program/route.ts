@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   apiOwnerFailureResponse,
-  requireApiOwner,
+  requireApiOwnerSinGateDeEmail,
 } from "../../../server/api-owner";
 import { requireApiPermissionSinGateDeEmail } from "../../../server/api-permission";
 import { programInput } from "../../../server/onboarding/program-defaults";
@@ -35,8 +35,9 @@ import { toClientProgram } from "@mi-pasaporte/domain/server/loyalty-program/cli
  *   el programa). Desde el ADR 0122 (spec 0156 C) los dos usan
  *   `requireApiPermissionSinGateDeEmail`: el programa NO exige email verificado.
  * - `DELETE` (cierra el programa) y `PATCH` (`cancel-close`) son **IRREVERSIBLES** y por eso
- *   **ningun toggle los abre** (ADR 0079 §2, contrato 0086 §2.1): conservan `requireApiOwner`
- *   y su `403 not_owner`, que ahi sigue siendo literal.
+ *   **ningun toggle los abre** (ADR 0079 §2, contrato 0086 §2.1): solo el owner, con su
+ *   `403 not_owner`. Desde el ADR 0125 (spec 0165) van por `requireApiOwnerSinGateDeEmail`:
+ *   siguen siendo SOLO del owner, sin exigirle el email verificado.
  */
 const MESSAGES = {
   missingPermission: "No tienes permiso para gestionar el programa.",
@@ -46,7 +47,6 @@ const MESSAGES = {
  * son distintos y el tipo de las dos funciones lo hace explicito. */
 const OWNER_MESSAGES = {
   notOwner: "Solo la persona propietaria puede cerrar o reabrir el programa.",
-  emailNotVerified: "Verifica tu email para gestionar el programa.",
 };
 
 /**
@@ -144,7 +144,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireApiOwner(request, OWNER_MESSAGES);
+  const auth = await requireApiOwnerSinGateDeEmail(request, OWNER_MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   try {
     await closeProgram(
@@ -169,7 +169,7 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireApiOwner(request, OWNER_MESSAGES);
+  const auth = await requireApiOwnerSinGateDeEmail(request, OWNER_MESSAGES);
   if ("failure" in auth) return apiOwnerFailureResponse(auth.failure);
   const body = (await request.json().catch(() => null)) as {
     action?: string;

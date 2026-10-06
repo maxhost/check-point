@@ -3,16 +3,16 @@ import {
   apiOwnerFailureResponse,
   type ApiOwnerBusiness,
 } from "../../../../server/api-owner";
-import { requireApiPermission } from "../../../../server/api-permission";
+import { requireApiPermissionSinGateDeEmail } from "../../../../server/api-permission";
 import { CatalogImportError } from "../../../../server/catalog-import";
 
 /**
  * Spec 0090 §6 — EL GUARD Y EL RESPONDER DE `/api/catalog/imports/*`.
  *
- * El guard es **el mismo** que el del resto de `/api/catalog/*`: `requireApiPermission(…,
- * "catalog")`, owner siempre e integrante con el toggle, con la escalera completa del
- * contrato 0086 (401 `unauthorized` → 403 `not_member` → `missing_permission` →
- * `email_not_verified` solo al owner → `business_suspended`/`business_closed`).
+ * El guard es **el mismo** que el del resto de `/api/catalog/*`:
+ * `requireApiPermissionSinGateDeEmail(…, "catalog")` desde la spec 0165 (ADR 0125), owner siempre
+ * e integrante con el toggle (401 `unauthorized` → 403 `not_member` → `missing_permission` →
+ * `business_suspended`/`business_closed`). Sin `email_not_verified`: el import no manda emails.
  *
  * **Lo que NO se reusa es `catalogError`** (`api/catalog/_auth.ts:71-77`): devuelve `{error}`
  * pelado y esta feature necesita `code` estable en cada respuesta. Nace este responder y las
@@ -23,9 +23,8 @@ export type ImportCaller = { business: ApiOwnerBusiness; userId: string };
 export async function requireImportAccess(
   request: Request,
 ): Promise<ImportCaller | { response: NextResponse }> {
-  const auth = await requireApiPermission(request, "catalog", {
+  const auth = await requireApiPermissionSinGateDeEmail(request, "catalog", {
     missingPermission: "No tienes permiso para gestionar el catálogo.",
-    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

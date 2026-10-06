@@ -127,6 +127,14 @@ export async function requireApiOwner(
 /**
  * Spec 0075 + spec 0079 + spec 0083 — la excepcion al gate de email.
  *
+ * **SPEC 0165 / ADR 0125 (decision del owner, 2026-10-05) — el inventario de HOY, que manda
+ * sobre los conteos historicos de abajo:** esta funcion la usan `GET /api/onboarding/checklist`,
+ * los dos borrados DUROS del catalogo (`requireCatalogOwner`: `DELETE /api/catalog/product/:id`
+ * y `…/category/:id`) y `DELETE`/`PATCH` de `/api/loyalty-program` (retirar y cancelar el
+ * retiro). Los cuatro de la 0165 siguen siendo SOLO del owner (`403 not_owner` al staff); lo
+ * unico que pierden es el email. `rg -l 'SinGateDeEmail' apps/merchant/src/app/api` = 7
+ * archivos, repartidos entre esta funcion y `requireApiPermissionSinGateDeEmail`.
+ *
  * **⚠️ SPEC 0086: SU UNICO CONSUMIDOR HOY ES `GET /api/onboarding/checklist`.** Las otras dos
  * rutas sin paso 3 —`GET /api/loyalty-program/qr` y `PUT /api/loyalty-program`— migraron a la
  * escalera de PERMISOS y su exencion vive ahora en `requireApiPermissionSinGateDeEmail`. El

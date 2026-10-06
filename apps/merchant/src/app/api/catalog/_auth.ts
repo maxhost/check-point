@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import {
   apiOwnerFailureResponse,
-  requireApiOwner,
+  requireApiOwnerSinGateDeEmail,
 } from "../../../server/api-owner";
-import { requireApiPermission } from "../../../server/api-permission";
+import { requireApiPermissionSinGateDeEmail } from "../../../server/api-permission";
 import {
   CatalogError,
   type OwnerBusiness,
@@ -22,15 +22,19 @@ import {
  * membresia recibe `not_member`; un integrante sin el toggle, `missing_permission`
  * (`0086-contratos-de-api.md` §7).
  *
+ * **Spec 0165 / ADR 0125 — SIN el gate de email** (decision del owner, 2026-10-05): delega en
+ * `requireApiPermissionSinGateDeEmail`, la misma escalera sin el paso 4. Sesion, membresia
+ * activa, alcance `catalog` y negocio operativo siguen enteros; un owner sin verificar ya no
+ * recibe `email_not_verified` en `/api/catalog/*`.
+ *
  * `currencyCode` sale del mismo `innerJoin(businesses)` que ya hacia `ownerContext`, asi que
  * la forma `OwnerBusiness` que el catalogo consume no cambia.
  */
 export async function requireOwner(
   request: Request,
 ): Promise<{ business: OwnerBusiness } | { response: NextResponse }> {
-  const auth = await requireApiPermission(request, "catalog", {
+  const auth = await requireApiPermissionSinGateDeEmail(request, "catalog", {
     missingPermission: "No tienes permiso para gestionar el catálogo.",
-    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
@@ -50,16 +54,16 @@ export async function requireOwner(
  * `deleted_at`— asi que **ningun toggle los abre**: un staff con `catalog` carga y corrige
  * productos, y no puede borrarlos.
  *
- * Conserva `requireApiOwner` y su `403 not_owner`, que ahi **sigue siendo cierto**. El dia
- * que exista el archivado (spec C) esta funcion es lo que se revisa, no el guard de arriba.
+ * Conserva el `403 not_owner`, que ahi **sigue siendo cierto**. Desde la spec 0165 (ADR 0125)
+ * va por `requireApiOwnerSinGateDeEmail`: sigue siendo SOLO del owner, sin exigirle el email.
+ * El dia que exista el archivado (spec C) esta funcion es lo que se revisa.
  */
 export async function requireCatalogOwner(
   request: Request,
 ): Promise<{ business: OwnerBusiness } | { response: NextResponse }> {
-  const auth = await requireApiOwner(request, {
+  const auth = await requireApiOwnerSinGateDeEmail(request, {
     notOwner:
       "Solo la persona propietaria puede eliminar productos del catálogo.",
-    emailNotVerified: "Verifica tu email para gestionar el catálogo.",
   });
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };

@@ -84,12 +84,13 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
   /**
    * **EL CONJUNTO EXACTO, criterio del DoD** — no «al menos una». El valor del oráculo es que
    * sea CERRADO: con un `toContain` o un `length >= 1`, otra ruta que se sacara el gate de email
-   * entraría sin que nadie lo vea. La 0075 exigía UNA, la 0079 DOS, la 0083 TRES y la 0156 C
-   * (ADR 0122) SEIS, **cada vez a propósito y con el motivo escrito en
-   * `api-owner-surfaces-support.ts`**.
+   * entraría sin que nadie lo vea. La 0075 exigía UNA, la 0079 DOS, la 0083 TRES, la 0156 C
+   * (ADR 0122) SEIS y la 0165 (ADR 0125) SIETE, **cada vez a propósito y con el motivo escrito
+   * en `api-owner-surfaces-support.ts`**.
    */
-  it("las rutas SIN gate de email son EXACTAMENTE seis: las cinco del programa y el checklist", () => {
+  it("las rutas SIN gate de email son EXACTAMENTE siete: el catálogo, las cinco del programa y el checklist", () => {
     expect(SURFACES_SIN_GATE_DE_EMAIL.map(([name]) => name)).toEqual([
+      "catalog",
       "loyalty-program",
       "loyalty-program (PUT)",
       "loyalty-program/stamp-upload",
@@ -102,8 +103,8 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
   it("las dos tablas del email parten las 15 sin perder ni duplicar ninguna", () => {
     // Spec 0075 §D3. Sin estos pisos, mover una fila de una tabla a la otra —o vaciar la de
     // las excepciones— dejaría su `it.each` sin correr NI UNA vez, en verde.
-    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(9);
-    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(6);
+    expect(SURFACES_CON_GATE_DE_EMAIL.length).toBe(8);
+    expect(SURFACES_SIN_GATE_DE_EMAIL.length).toBe(7);
     expect(
       SURFACES_CON_GATE_DE_EMAIL.length + SURFACES_SIN_GATE_DE_EMAIL.length,
     ).toBe(SURFACES.length);
@@ -177,7 +178,7 @@ describe("las superficies de API del owner — el gate unificado (spec 0072 §D3
     },
   );
 
-  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 9
+  /** El doble del fail-closed: sin la clave `emailVerified` el paso 3 cierra en las otras 8
    * (test de arriba), y acá tampoco frena — porque el paso 3 no corre, no porque «pase». */
   it.each(SURFACES_SIN_GATE_DE_EMAIL)(
     "%s: owner SIN la clave `emailVerified` → pasa igual (el paso 3 no corre)",

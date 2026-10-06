@@ -126,13 +126,18 @@ export async function requireApiPermission(
  * spec 0075 §D1: *un booleano que apaga un gate de seguridad viaja en un copy-paste entre rutas
  * del mismo dominio y no se puede contar con un `rg`.* Un nombre si.
  *
- * **INVARIANTE DEL INVENTARIO:** el conjunto de superficies sin paso 4 es CERRADO y lo asevera
- * `api-owner-surfaces.test.ts` contra `NOMBRES_SIN_GATE_DE_EMAIL` (las cinco de arriba mas
- * `GET /api/onboarding/checklist`, que va por `requireApiOwnerSinGateDeEmail`). Sumar una
- * superficie es una decision del owner, no un detalle de implementacion.
+ * **Spec 0165 / ADR 0125 (decision del owner, 2026-10-05): y TODO `/api/catalog/*`** con el
+ * alcance `catalog` (`requireOwner` e `requireImportAccess`, import con IA incluido). Los
+ * borrados duros del catalogo y `DELETE`/`PATCH` del programa no pasan por aca: van por
+ * `requireApiOwnerSinGateDeEmail`, solo del owner y tambien sin email.
  *
- * **El dominio no tiene regla de email** (ADR 0122 §2): `saveProgram` no la evalua. Retirar el
- * programa y cancelar el retiro (`DELETE`/`PATCH`) siguen con `requireApiOwner` (owner verificado).
+ * **INVARIANTE DEL INVENTARIO:** el conjunto de superficies sin paso 4 es CERRADO y lo asevera
+ * `api-owner-surfaces.test.ts` contra `NOMBRES_SIN_GATE_DE_EMAIL` (`catalog`, las cinco del
+ * programa y `GET /api/onboarding/checklist`, que va por `requireApiOwnerSinGateDeEmail`).
+ * Sumar una superficie es una decision del owner, no un detalle de implementacion.
+ *
+ * **El dominio no tiene regla de email** (ADR 0122 §2): `saveProgram` no la evalua, y
+ * `closeProgram`/`cancelClose` tampoco.
  */
 export async function requireApiPermissionSinGateDeEmail(
   request: Request,

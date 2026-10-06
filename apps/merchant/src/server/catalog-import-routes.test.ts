@@ -27,8 +27,9 @@ vi.mock("@mi-pasaporte/db", async () => {
   return dbDobleHonesto(estado);
 });
 
+// Spec 0165 (ADR 0125): los guards de `/api/catalog/*` llaman a la hermana sin gate de email.
 vi.mock("./api-permission", () => ({
-  requireApiPermission: async () => ({
+  requireApiPermissionSinGateDeEmail: async () => ({
     business: {
       id: NEGOCIO,
       slug: "negocio",

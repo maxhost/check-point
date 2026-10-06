@@ -124,6 +124,8 @@ export const dobleDeSaveProgram = async () => ({
 const resultadoDelWhere = () =>
   Object.assign(Promise.resolve([] as Array<Record<string, unknown>>), {
     limit: async () => [{ slug: world.slug }],
+    // Spec 0165: `listCatalog` (fila `catalog`, sin gate) ordena; cero filas, sin `.limit()`.
+    orderBy: async () => [] as Array<Record<string, unknown>>,
   });
 
 export const dobleDeGetDb = () => ({
@@ -230,15 +232,14 @@ export const SURFACES: Array<[string, () => Promise<Response>]> = [
 ];
 
 /**
- * **EL CONJUNTO EXACTO DE LAS RUTAS SIN EL GATE DE EMAIL, y son SEIS desde el ADR 0122** (spec
- * 0156 C). No es una lista paralela: sale de `SURFACES` por filtro, así que mover una fila
- * cambia los dos pisos que el test asevera.
+ * **EL CONJUNTO EXACTO DE LAS RUTAS SIN EL GATE DE EMAIL: SIETE desde el ADR 0125** (spec
+ * 0165, que sumó `catalog`: todo `/api/catalog/*` sin email). Sale de `SURFACES` por filtro.
  *
  * - **Las cinco del programa** (ver, escribir, imagen del sello, QR y plantillas de
  *   condiciones): decisión del owner (ADR 0122), el programa no exige email verificado. El QR
  *   ya estaba exento (spec 0075) y la escritura desde la 0079; el dominio tampoco tiene regla
- *   de email (spec 0156 C). `DELETE`/`PATCH` del programa NO están en esta
- *   tabla y siguen con owner verificado (ADR 0122 §4).
+ *   de email (spec 0156 C). `DELETE`/`PATCH` del programa no están en esta tabla y, desde
+ *   el ADR 0125, tampoco exigen email (`catalog-sin-email-guard.test.ts`).
  * - **El checklist del onboarding** (spec 0083 §D5, decisión del owner del 2026-09-20): el
  *   AUTO-GATEO. `GET /api/onboarding/checklist` existe para decirle al owner que le falta
  *   verificar el email; con el gate puesto, el único endpoint que reporta ese pendiente
@@ -279,6 +280,7 @@ export const SURFACES_SOLO_OWNER = SURFACES.filter(
 );
 
 export const NOMBRES_SIN_GATE_DE_EMAIL = [
+  "catalog",
   "loyalty-program",
   "loyalty-program (PUT)",
   "loyalty-program/stamp-upload",
