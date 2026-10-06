@@ -119,9 +119,13 @@ export async function startCatalogHarness(
     throw new Error("fixture address missing");
   return {
     url: `http://127.0.0.1:${address.port}`,
+    // El fixture se cierra ANTES que la pagina (se declara despues de `page`): una conexion
+    // del navegador con un request a medias deja a `server.close()` esperando indefinidamente
+    // y el teardown pasa los 30 s (PARQUEADO #78). Se cortan todas antes de cerrar.
     close: () =>
-      new Promise<void>((resolve, reject) =>
-        server.close((error) => (error ? reject(error) : resolve())),
-      ),
+      new Promise<void>((resolve, reject) => {
+        server.closeAllConnections();
+        server.close((error) => (error ? reject(error) : resolve()));
+      }),
   };
 }

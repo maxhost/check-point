@@ -138,8 +138,9 @@ test("consulta y reescaneo no consumen; el café entra una sola vez y la venta l
     await page.screenshot({
       path: testInfo.outputPath("coupon-green-mobile.png"),
     });
-    await page.waitForTimeout(4300);
-    expect(polls).toBeGreaterThan(0);
+    // El sondeo corre cada 4000 ms; con la suite completa en paralelo el primero puede
+    // llegar tarde (PARQUEADO #75), asi que se espera el sondeo en vez de un tiempo fijo.
+    await expect.poll(() => polls, { timeout: 15_000 }).toBeGreaterThan(0);
     await expect(
       page.locator(".counter-product .counter-qty output"),
     ).toHaveText("1");
