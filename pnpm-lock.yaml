@@ -88,6 +88,9 @@ importers:
 
   apps/merchant:
     dependencies:
+      '@internationalized/date':
+        specifier: 3.12.4
+        version: 3.12.4
       '@mapbox/search-js-react':
         specifier: ^1.6.0
         version: 1.6.0(mapbox-gl@3.28.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

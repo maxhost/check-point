@@ -309,6 +309,26 @@ Propósito: avance de una tarea (checklist de configuración). Props: `label`, `
 
 Propósito: navegar. Envuelve `next/link` (navegación del cliente y prefetch intactos). `variant="inline"` (default) es un link de texto; `primary` y `secondary` tienen el aspecto de `Button` para links que son acciones («Ir a mi panel», «Ver campaña»). Props: las de `next/link` más `variant?`, `tourAnchor?`, `className?` (layout).
 
+### `TimeField` y `DateTimeField`
+
+Propósito: hora (`"HH:mm"`) y fecha+hora (`"YYYY-MM-DDTHH:mm"`) con segmentos de React Aria (decisión del owner, ADR 0123, enmienda 0161). Idioma `es-419` y 24 h fijos, sin depender del navegador. El valor entra y sale como el texto del input nativo que reemplazan (`""` = vacío): las pantallas no cambian su lógica ni su zona horaria. `DateTimeField` suma un botón «Abrir calendario» (el día se elige en el calendario; la hora, en los segmentos) y acepta `min`. `TimeField` acepta `hideLabel` (horarios semanales). Props comunes: `label`, `value`, `onChange`, `description?`, `errorMessage?`, `isDisabled?`, `isRequired?`, `name?`, `tourAnchor?`. En un e2e no se usa `fill`: foco en el segmento (`spinbutton`) y teclado.
+
+### `SearchField`
+
+Propósito: buscar. Lupa a la izquierda y botón «Borrar búsqueda» (solo con texto); Escape vacía. Rol `searchbox`. Props: `label`, `value`, `onChange`, `hideLabel?`, `placeholder?`, `description?`, `errorMessage?`, `onSubmit?`, `autoFocus?`, `maxLength?`, `isDisabled?`, `tourAnchor?`.
+
+### `ColorField`
+
+Propósito: elegir un color de marca. Muestra (abre el selector del sistema) + código hex editable, una sola variante. El hex es texto libre (la pantalla valida); la muestra pinta `value` si es `#RRGGBB` y `#000000` si no, y emite en mayúsculas. El hex se nombra con `label`; la muestra, «Elegir color {label}». Props: `label`, `value`, `onChange`, `description?`, `errorMessage?`, `isDisabled?`, `tourAnchor?`.
+
+### `Slider`
+
+Propósito: un valor numérico continuo (zoom del recorte). Pista con tramo lleno y perilla; flechas mueven por `step`. Props: `label`, `value`, `onChange`, `minValue`, `maxValue`, `step?`, `isDisabled?`, `tourAnchor?`.
+
+### `FileButton`
+
+Propósito: elegir archivos con un botón del kit (el input queda oculto y se vacía antes de cada clic). `onSelect(files)` recibe un array y no se llama si se cancela. `accept?`, `multiple?`, `camera?` (cámara trasera en celulares), `inputLabel?` (`aria-label` del input oculto: el gancho de `setInputFiles` en los e2e), `variant?` (del `Button`, default `secondary`), `icon?`, `isDisabled?`, `tourAnchor?`. «Subir imagen» y «Tomar foto» son dos `FileButton`, el segundo con `camera`.
+
 ### Oráculos del kit
 
 `tests/e2e/support/ui-kit-entry.tsx` muestra todas las piezas dentro del layout del backoffice. `tests/e2e/ui-kit.spec.ts` (Chromium) y `ui-kit.webkit.spec.ts` miden estilos computados (corren también en la CI) y comparan capturas de Mac, claro/oscuro × 390/1280, con `threshold: 0` (no corren en la CI). Una pieza nueva se agrega al final del harness; quien cambia una pieza a propósito regenera las referencias con `--update-snapshots` mirándolas.

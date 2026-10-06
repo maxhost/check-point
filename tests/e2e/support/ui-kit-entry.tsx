@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
+import { Upload } from "iconoir-react";
 import {
   Alert,
   Button,
   Card,
   CheckboxField,
   ChoiceGroup,
+  ColorField,
   Combobox,
   ConfirmDialog,
+  DateTimeField,
   Dialog,
+  FileButton,
   Form,
   FormActions,
   FormSection,
@@ -18,8 +22,10 @@ import {
   PageHeader,
   ProgressBar,
   ProgressIndicator,
+  SearchField,
   SegmentedControl,
   SelectField,
+  Slider,
   Switch,
   Tab,
   TabList,
@@ -28,6 +34,7 @@ import {
   Text,
   TextAreaField,
   TextField,
+  TimeField,
 } from "../../../apps/merchant/src/ui";
 
 /**
@@ -184,11 +191,113 @@ function OverlaysAndNavigation() {
   );
 }
 
+// Spec 0161: campos especiales, al final de la pagina por defecto. «Valor: …» muestra lo ultimo
+// que emitio cada pieza: es lo que miden los oraculos.
+function Emitted({ value }: { value: string }) {
+  return <Text variant="small">Valor: {value}</Text>;
+}
+
+function SpecialFields() {
+  const [time, setTime] = useState("09:00");
+  const [dateTime, setDateTime] = useState("2026-10-15T09:30");
+  const [search, setSearch] = useState("");
+  const [color, setColor] = useState("#176548");
+  const [zoom, setZoom] = useState(1);
+  const [files, setFiles] = useState("");
+  const [photo, setPhoto] = useState("");
+  return (
+    <div style={column(24)}>
+      <div style={column(8)} data-kit="time">
+        <TimeField label="Apertura" value={time} onChange={setTime} />
+        <Emitted value={time} />
+      </div>
+      <div style={column(8)} data-kit="date-time">
+        <DateTimeField
+          label="Inicio de la campaña"
+          value={dateTime}
+          min="2026-10-05T00:00"
+          onChange={setDateTime}
+        />
+        <Emitted value={dateTime} />
+      </div>
+      <div style={column(8)} data-kit="search">
+        <SearchField
+          label="Buscar producto"
+          placeholder="Buscar producto…"
+          value={search}
+          onChange={setSearch}
+        />
+        <Emitted value={search} />
+      </div>
+      <div style={column(8)} data-kit="color">
+        <ColorField
+          label="Color primario"
+          value={color}
+          onChange={setColor}
+          tourAnchor="kit-color"
+        />
+        <Emitted value={color} />
+      </div>
+      <div style={column(8)} data-kit="slider">
+        <Slider
+          label="Zoom"
+          minValue={1}
+          maxValue={4}
+          step={0.5}
+          value={zoom}
+          onChange={setZoom}
+        />
+        <Emitted value={String(zoom)} />
+      </div>
+      <div style={column(8)} data-kit="file">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          <FileButton
+            icon={<Upload />}
+            accept="image/png,image/jpeg"
+            inputLabel="Archivo de prueba"
+            onSelect={(chosen) =>
+              setFiles(chosen.map((file) => file.name).join(", "))
+            }
+          >
+            Subir imagen
+          </FileButton>
+          <FileButton
+            camera
+            inputLabel="Foto de prueba"
+            onSelect={(chosen) => setPhoto(chosen[0]?.name ?? "")}
+          >
+            Tomar foto
+          </FileButton>
+        </div>
+        <Emitted value={files} />
+        <Text variant="small">Foto: {photo}</Text>
+      </div>
+    </div>
+  );
+}
+
+function CalendarCase() {
+  const [value, setValue] = useState("2026-10-15T09:30");
+  return (
+    <main style={column(20, 24)}>
+      <DateTimeField
+        label="Inicio de la campaña"
+        value={value}
+        min="2026-10-05T00:00"
+        onChange={setValue}
+        defaultOpen
+      />
+    </main>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   params.get("case") === "server-errors" ? (
     serverErrors
   ) : params.get("case") === "dialog" ? (
     <ConfirmExample open onClose={() => undefined} />
+  ) : params.get("case") === "calendar" ? (
+    <CalendarCase />
   ) : (
     <div className="backoffice-layout">
       {/* Ocupa la primera columna del layout de escritorio, como la barra real. */}
@@ -285,6 +394,7 @@ createRoot(document.getElementById("root")!).render(
           <Button isDisabled>Deshabilitado</Button>
         </div>
         <OverlaysAndNavigation />
+        <SpecialFields />
       </main>
     </div>
   ),

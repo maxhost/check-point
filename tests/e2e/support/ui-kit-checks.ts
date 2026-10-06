@@ -208,6 +208,9 @@ export function registerKitTests() {
       await expectCss(dialog.locator(".."), {
         "border-top-left-radius": "20px",
       });
+      // Spec 0161: con la pagina mas larga, en 390 el puntero del clic en «Abrir confirmacion»
+      // quedaba sobre «Archivar» (medido: el color de hover, rgb(116, 32, 32)). Se lo saca.
+      await page.mouse.move(0, 0);
       const danger = await page
         .getByRole("button", { name: "Peligro" })
         .evaluate((node) => getComputedStyle(node).backgroundColor);
@@ -326,6 +329,163 @@ export function registerKitTests() {
     await expectCss(panel, { "min-height": "44px", "border-top-width": "1px" });
   });
 
+  // Spec 0161: campos especiales. «Valor: …» es lo ultimo que emitio cada pieza.
+  const emitted = (page: Page, kit: string) =>
+    page.locator(`[data-kit="${kit}"]`).getByText(/^Valor:/);
+
+  // React Aria envuelve los segmentos en marcas de direccion (U+2066..U+2069): se sacan para leer.
+  const plainText = (target: Locator) =>
+    target.evaluate((node) =>
+      (node.textContent ?? "").replace(/[\u2066-\u2069]/g, ""),
+    );
+
+  async function inputReference(page: Page) {
+    return page
+      .getByRole("textbox", { name: "Nombre", exact: true })
+      .evaluate((node) => {
+        const css = getComputedStyle(node);
+        return {
+          "border-top-left-radius": css.borderTopLeftRadius,
+          "border-top-color": css.borderTopColor,
+          "border-top-width": css.borderTopWidth,
+          "min-height": css.minHeight,
+        };
+      });
+  }
+
+  for (const width of widths) {
+    test(`TimeField y DateTimeField en ${width}: formato, valor, calendario`, async ({
+      page,
+    }) => {
+      await open(page, width);
+      const time = page.locator('[data-kit="time"]');
+      const dateTime = page.locator('[data-kit="date-time"]');
+      // Orden dia/mes/año y 24 h fijos aunque Playwright corra en en-US.
+      await expect
+        .poll(() => plainText(time.getByRole("group", { name: "Apertura" })))
+        .toBe("09:00");
+      const group = dateTime.getByRole("group", {
+        name: "Inicio de la campaña",
+        exact: true,
+      });
+      await expect.poll(() => plainText(group)).toBe("15/10/2026, 09:30");
+      await expectCss(
+        dateTime.locator('[data-rac][role="group"]').first(),
+        await inputReference(page),
+      );
+
+      await time.getByRole("spinbutton", { name: /hora/i }).click();
+      await page.keyboard.type("14");
+      await expect(emitted(page, "time")).toHaveText("Valor: 14:00");
+
+      await dateTime.getByRole("spinbutton", { name: /minuto/i }).focus();
+      await page.keyboard.press("ArrowUp");
+      await expect(emitted(page, "date-time")).toHaveText(
+        "Valor: 2026-10-15T09:31",
+      );
+
+      await dateTime.getByRole("button", { name: "Abrir calendario" }).click();
+      const calendar = page.getByRole("dialog");
+      await expect(calendar).toBeVisible();
+      await expect(
+        calendar.getByRole("heading", { name: "octubre de 2026" }),
+      ).toBeVisible();
+      // Nombres de dia como «sábado, 3 de octubre de 2026».
+      await expect(
+        calendar.getByRole("button", { name: /, 3 de octubre/ }),
+      ).toBeDisabled();
+      await calendar.getByRole("button", { name: /, 20 de octubre/ }).click();
+      await expect(calendar).toBeHidden();
+      await expect(emitted(page, "date-time")).toHaveText(
+        "Valor: 2026-10-20T09:31",
+      );
+    });
+
+    test(`SearchField en ${width}: lupa, borrar, Escape`, async ({ page }) => {
+      await open(page, width);
+      const search = page.getByRole("searchbox", { name: "Buscar producto" });
+      const clear = page.getByRole("button", { name: "Borrar búsqueda" });
+      await expectCss(search, await inputReference(page));
+      await expect(clear).toBeHidden();
+      await search.fill("pan");
+      await expect(emitted(page, "search")).toHaveText("Valor: pan");
+      await expect(clear).toBeVisible();
+      await clear.click();
+      await expect(search).toHaveValue("");
+      await expect(emitted(page, "search")).toHaveText("Valor:");
+      await search.fill("pan");
+      await search.press("Escape");
+      await expect(search).toHaveValue("");
+      // La lupa queda a la izquierda del texto.
+      const icon = await box(
+        page.locator('[data-kit="search"] svg[aria-hidden="true"]').first(),
+      );
+      const paddingLeft = await search.evaluate((node) =>
+        parseFloat(getComputedStyle(node).paddingLeft),
+      );
+      expect((await box(search)).x + paddingLeft).toBeGreaterThan(
+        icon.x + icon.width,
+      );
+    });
+  }
+
+  test("ColorField, Slider y FileButton", async ({ page }) => {
+    await open(page, 1280);
+
+    const hex = page.getByRole("textbox", {
+      name: "Color primario",
+      exact: true,
+    });
+    const swatch = page.getByLabel("Elegir color color primario");
+    await expect(hex).toHaveValue("#176548");
+    await expect(page.locator('[data-tour="kit-color"]')).toContainText(
+      "Color primario",
+    );
+    await swatch.fill("#1a2b3c");
+    await expect(emitted(page, "color")).toHaveText("Valor: #1A2B3C");
+    await hex.fill("#12");
+    await expect(emitted(page, "color")).toHaveText("Valor: #12");
+    await expect(swatch).toHaveValue("#000000");
+
+    const zoom = page.getByRole("slider", { name: "Zoom" });
+    // React Aria usa un input range nativo: el valor es `value`, no `aria-valuenow`.
+    await expect(zoom).toHaveValue("1");
+    await zoom.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(zoom).toHaveValue("1.5");
+    await expect(emitted(page, "slider")).toHaveText("Valor: 1.5");
+    // El tramo lleno: el elemento con `style` de ancho que no es el envoltorio oculto del input.
+    const fill = page.locator(
+      '[data-kit="slider"] [style*="width"]:not(:has(input))',
+    );
+    expect(
+      Math.abs(
+        (await box(fill)).width - (await box(fill.locator(".."))).width / 6,
+      ),
+    ).toBeLessThanOrEqual(1);
+
+    const file = page.getByLabel("Archivo de prueba");
+    await expect(file).toHaveAttribute("accept", "image/png,image/jpeg");
+    await expect(page.getByLabel("Foto de prueba")).toHaveAttribute(
+      "capture",
+      "environment",
+    );
+    await file.setInputFiles({
+      name: "prueba.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("png"),
+    });
+    await expect(emitted(page, "file")).toHaveText("Valor: prueba.png");
+    const upload = page.getByRole("button", { name: "Subir imagen" });
+    await expectCss(upload, {
+      "min-height": "44px",
+      "border-top-width": "1px",
+    });
+    const chooser = page.waitForEvent("filechooser");
+    await upload.click();
+    expect((await chooser).isMultiple()).toBe(false);
+  });
+
   test.describe("capturas de Mac", () => {
     test.skip(
       Boolean(process.env.CI),
@@ -356,6 +516,24 @@ export function registerKitTests() {
           await expect(page.getByRole("alertdialog")).toBeVisible();
           await expect(page).toHaveScreenshot(
             `kit-dialog-${theme}-${width}.png`,
+            { animations: "disabled", threshold: 0 },
+          );
+        });
+    // Spec 0161: el calendario del DateTimeField abierto.
+    for (const theme of themes)
+      for (const width of widths)
+        test(`captura calendario ${theme} ${width}`, async ({ page }) => {
+          await page.setViewportSize({ width, height: 900 });
+          await page.emulateMedia({
+            colorScheme: theme,
+            reducedMotion: "reduce",
+          });
+          // Reloj fijo: el calendario marca «hoy» y la captura no puede depender del dia.
+          await page.clock.setFixedTime(new Date("2026-10-08T12:00:00"));
+          await page.goto(`${harness.url}/?case=calendar&theme=${theme}`);
+          await expect(page.getByRole("dialog")).toBeVisible();
+          await expect(page).toHaveScreenshot(
+            `kit-calendar-${theme}-${width}.png`,
             { animations: "disabled", threshold: 0 },
           );
         });

@@ -9,6 +9,7 @@
     "typecheck:ui": "tsc --noEmit -p tsconfig.ui.json"
   },
   "dependencies": {
+    "@internationalized/date": "3.12.4",
     "@mapbox/search-js-react": "^1.6.0",
     "@mi-pasaporte/db": "workspace:*",
     "@mi-pasaporte/domain": "workspace:*",
