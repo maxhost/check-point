@@ -75,14 +75,16 @@ function proveedorQueCuenta(
 
 describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
   let a: SeedImport;
+  let b: SeedImport;
 
   beforeAll(async () => {
     a = await seedNegocio("Reconcile QA");
-  });
+    b = await seedNegocio("Reconcile ajeno");
+  }, 60_000);
 
   afterAll(async () => {
-    await limpiarNegocio(a);
-  });
+    for (const seed of [a, b]) if (seed) await limpiarNegocio(seed);
+  }, 60_000);
 
   const analizando = (overrides: Record<string, unknown> = {}) =>
     seedImport({
@@ -95,14 +97,50 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
       ...overrides,
     });
 
+  /**
+   * PARQUEADO #74: la base de pruebas es compartida y las otras suites siembran imports
+   * abiertos sin lease mientras esta corre. Acotado a su negocio, el reconciliador no se los
+   * roba (el guard veia 201 en vez de 409) ni los cuenta en sus `polls`.
+   */
+  it("acotado a un negocio, no toca los imports abiertos de OTRO", async () => {
+    const ajenoAnalizando = await seedImport({
+      businessId: b.businessId,
+      userId: b.userId,
+      status: "analyzing",
+      providerJobId: "job-ajeno",
+      leaseUntil: null,
+    });
+    const { provider, polls } = proveedorQueCuenta("done");
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
+    expect(polls).not.toContain("job-ajeno");
+    expect((await leerImport(ajenoAnalizando))?.status).toBe("analyzing");
+    await cerrarImport(ajenoAnalizando);
+
+    const ajenoEnCola = await seedImport({
+      businessId: b.businessId,
+      userId: b.userId,
+      status: "queued",
+      leaseUntil: null,
+    });
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
+    expect((await leerImport(ajenoEnCola))?.status).toBe("queued");
+    await cerrarImport(ajenoEnCola);
+  });
+
   /** ORACULO DE M4. */
   it("dos reconciliadores concurrentes reclaman la fila UNA sola vez", async () => {
     const id = await analizando();
     const uno = proveedorQueCuenta("pending");
     const dos = proveedorQueCuenta("pending");
     const [,] = await Promise.all([
-      runCatalogImportReconcile({ provider: uno.provider }),
-      runCatalogImportReconcile({ provider: dos.provider }),
+      runCatalogImportReconcile({
+        businessId: a.businessId,
+        provider: uno.provider,
+      }),
+      runCatalogImportReconcile({
+        businessId: a.businessId,
+        provider: dos.provider,
+      }),
     ]);
     expect(uno.polls.length + dos.polls.length).toBe(1);
     const fila = await leerImport(id);
@@ -117,7 +155,7 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
       leaseUntil: new Date(Date.now() + 10 * 60_000),
     });
     const { provider, polls } = proveedorQueCuenta("pending");
-    await runCatalogImportReconcile({ provider });
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
     expect(polls).toHaveLength(0);
     await cerrarImport(id);
   });
@@ -125,7 +163,10 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
   it("un lease VENCIDO se re-reclama y el `done` IMPORTA el catálogo", async () => {
     const id = await analizando();
     const { provider, polls } = proveedorQueCuenta("done");
-    const resumen = await runCatalogImportReconcile({ provider });
+    const resumen = await runCatalogImportReconcile({
+      businessId: a.businessId,
+      provider,
+    });
     expect(polls).toHaveLength(1);
     expect(resumen.completed).toBe(1);
     const fila = await leerImport(id);
@@ -157,6 +198,7 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
     const starts: string[] = [];
     const { provider } = proveedorQueCuenta("pending");
     const resumen = await runCatalogImportReconcile({
+      businessId: a.businessId,
       provider: {
         ...provider,
         start: async (input) => {
@@ -176,7 +218,7 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
   it("un `analyzing` sin `provider_job_id` se cierra en `failed`, no vuelve a `queued`", async () => {
     const id = await analizando({ providerJobId: null });
     const { provider, polls } = proveedorQueCuenta("pending");
-    await runCatalogImportReconcile({ provider });
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
     expect(polls).toHaveLength(0);
     expect((await leerImport(id))?.status).toBe("failed");
   });
@@ -184,7 +226,7 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
   it("un `failed` del proveedor cierra el import con código saneado", async () => {
     const id = await analizando();
     const { provider } = proveedorQueCuenta("failed");
-    await runCatalogImportReconcile({ provider });
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
     const fila = await leerImport(id);
     expect(fila?.status).toBe("failed");
     expect(fila?.failureCode).toBe("provider_unavailable");
@@ -194,7 +236,7 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
   it("agotados los intentos, se cierra en `failed` — `analyzing` NO es un pozo", async () => {
     const id = await analizando({ attemptCount: 9 });
     const { provider, polls } = proveedorQueCuenta("pending");
-    await runCatalogImportReconcile({ provider });
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
     expect(polls).toHaveLength(0);
     expect((await leerImport(id))?.status).toBe("failed");
   });
@@ -209,7 +251,7 @@ describe.skipIf(!enabled)("reconciliador contra Neon (spec 0091 §8)", () => {
       .set({ cancelRequestedAt: new Date() })
       .where(eq(catalogImports.id, id));
     const { provider, polls } = proveedorQueCuenta("done");
-    await runCatalogImportReconcile({ provider });
+    await runCatalogImportReconcile({ businessId: a.businessId, provider });
     expect(polls).toHaveLength(0);
     const fila = await leerImport(id);
     expect(fila?.status).toBe("cancelled");

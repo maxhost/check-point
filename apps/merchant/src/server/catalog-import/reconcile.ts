@@ -36,9 +36,21 @@ export type ReconcileSummary = {
 const BATCH = 20;
 
 export async function runCatalogImportReconcile(
-  deps: { provider?: CatalogExtractionProvider; now?: Date } = {},
+  deps: {
+    provider?: CatalogExtractionProvider;
+    now?: Date;
+    /**
+     * Solo para las suites Neon (PARQUEADO #74): la base de pruebas es compartida y un
+     * reconciliador global reclama los imports abiertos que otras suites siembran en paralelo.
+     * El cron no lo pasa: en produccion barre todos los negocios.
+     */
+    businessId?: string;
+  } = {},
 ): Promise<ReconcileSummary> {
   const now = deps.now ?? new Date();
+  const delNegocio = deps.businessId
+    ? eq(catalogImports.businessId, deps.businessId)
+    : undefined;
   const summary: ReconcileSummary = {
     polled: 0,
     completed: 0,
@@ -60,6 +72,7 @@ export async function runCatalogImportReconcile(
     .where(
       and(
         eq(catalogImports.status, "queued"),
+        delNegocio,
         or(
           isNull(catalogImports.leaseUntil),
           lte(catalogImports.leaseUntil, now),
@@ -87,6 +100,7 @@ export async function runCatalogImportReconcile(
     .where(
       and(
         eq(catalogImports.status, "analyzing"),
+        delNegocio,
         or(
           isNull(catalogImports.leaseUntil),
           lte(catalogImports.leaseUntil, now),
