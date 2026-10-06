@@ -48,4 +48,4 @@ Geoapify en Vercel.
 `git push … > log 2>&1`). No hay `gh` ni `vercel` en el PATH: el estado del deploy se lee con
 `curl -s https://api.github.com/repos/maxhost/check-point/commits/<sha>/statuses`.
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: QA de la 0166 y despues flake #74».
+**Prompt para retomar:** «Lee docs/estado/claude.md: flake #74» (el owner pidio seguir con #74; QA de la 0166 pendiente de su lado).
