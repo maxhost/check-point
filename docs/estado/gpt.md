@@ -3,7 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-05) — SPEC 0157 REBASADA SOBRE ONBOARDING-GOOGLE; PUSH BLOQUEADO POR TURBOPACK
+## ⇥ ESTADO (2026-10-05) — SPEC 0163: LA RAÍZ MERCHANT ABRE EL ALTA SIN SESIÓN
+
+El owner reportó que `business.checkpass.club/` mostraba la portada vieja. Reservé y publiqué la
+[spec 0163](../specs/0163-raiz-del-merchant-abre-onboarding.md) (`1889b6d`); el cambio UI está en
+`bc8f3fd`, pendiente de push al escribir este bloque. La raíz consulta la cookie de sesión de
+Better Auth: sin ella redirige en servidor a `/es/business/onboarding`; con ella valida la sesión
+y conserva la portada para los rebotes del guard, evitando un ciclo con `/backoffice`.
+
+Prueba e2e de navegador sin sesión: URL exacta del onboarding y título «Encuentra tu negocio».
+Una mutación del destino a `/backoffice` produjo el rojo esperado en `toHaveURL` y se restauró
+con hash idéntico. La primera corrida global falló por formato y una intermitencia en ese e2e;
+tras el ajuste de cookie y formato, `pnpm verify` con Node 24.20.0 pasó: typecheck, lint,
+format:check, unitarios, build, e2e (179 pasan, 21 omitidos) y Neon related merchant (sin tests
+relacionados). La spec sigue `cerrada` hasta PASS independiente; el caso de sesión activa se
+conservó por inspección del código, sin prueba automatizada nueva.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-05) — SPEC 0157 REBASADA SOBRE ONBOARDING-GOOGLE; PUSH BLOQUEADO POR TURBOPACK
 
 El owner entregó `onboarding-google` `1953afe` con las specs 0155 y 0156 y PASS del revisor. Rebasé los commits locales de la [spec UI 0157](../specs/0157-pantallas-de-alta-con-google-places.md) sobre esa rama; `docs/INDEX.md` conserva el ADR 0122, la fila 0156 implementada y la 0157. La UI y la spec están completas en `e659b86` y `60777dc`. **No hubo push:** el owner pidió uno solo con servidor y UI, y el hook exige `pnpm verify` verde salvo autorización expresa.
 
