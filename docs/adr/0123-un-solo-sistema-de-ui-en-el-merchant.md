@@ -191,3 +191,12 @@ hallazgos estan abajo, reproducidos por el orquestador donde dice ✔.
   `CI`. Lo que corre en todos lados es un oraculo de estilos computados (Chromium = motor de Chrome/Edge en Windows,
   con Arial en los dos sistemas). El pixel de Windows queda en el QA del owner.
 - **`BrandTheme` se borra** (sin uso en `app/`): el «se usa o se borra» de la 0b.
+
+## Enmienda 2026-10-05 (spec 0161, Fase 0b rebanada 3) — decisiones del owner
+
+- **Fecha y hora con segmentos de React Aria, no con el control nativo** (owner, 2026-10-05, eligio «React Aria
+  (segmentos)» frente a «nativo con estilo del kit»), **con boton de calendario** en fecha+hora (eligio «Si, boton con
+  calendario»). El kit fija idioma `es-419` y 24 h, y conserva los valores de texto del input nativo (`HH:mm`,
+  `YYYY-MM-DDTHH:mm`) para que las pantallas no cambien su logica ni su manejo de zona horaria.
+- **Color = muestra (selector del sistema) + codigo hex editable, una sola variante** (owner, 2026-10-05).
+- **Busqueda = lupa + boton borrar** (`SearchField` de React Aria; Escape vacia) (owner, 2026-10-05).
