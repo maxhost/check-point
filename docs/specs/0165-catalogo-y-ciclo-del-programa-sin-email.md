@@ -234,3 +234,33 @@ verify: ok
   desenlace positivo de la fila `catalog` (rojo previo medido: `expected 403 to be 200`), mas el punto 1 y el barrido.
   La tabla de mutaciones de la spec lo nombra como oraculo de M1: es una prediccion que no se cumple.
 - Copy muerto en pantallas (zona GPT): el texto de `email_not_verified` de catalogo/programa ya no puede llegar.
+
+## Revision
+
+> Revisor independiente, 2026-10-05, worktree `check-point-wt/sin-gate-email`, Node 24.20.0, sobre `4b1ca46`.
+> Presupuesto: correctitud contra la spec + 3 mutaciones (M1–M3 de la tabla), clase plausible.
+
+### Bitacora de mutaciones (filas abiertas ANTES de medir)
+
+| id | archivo | shasum limpio | invariante | resultado ejecutado |
+|---|---|---|---|---|
+| M1 | `apps/merchant/src/app/api/catalog/_auth.ts` | `06147c02bfc0e4f35669c9726c16fc6a5d80c6b4` | el catalogo no exige email (requireOwner) | ROJO. Unidad (`api-owner-surfaces` + `catalog-sin-email-guard`): `16 failed` = 7 entradas de `requireOwner` x 2 estados con `expected 'email_not_verified' not to be 'email_not_verified'` + fila `catalog` x 2 con `expected 403 to be 200`; las 6 de imports verdes (otro guard, esperado). Neon `catalog-sin-email`: `5 failed`, primero `ORÁCULO DE M1 — crear categoría` con `expected '{"error":"Verifica tu email para gest…' not to contain 'email_not_verified'`; piso `expected 8 to be 11`. Revertida: `diff` contra la copia = solo las lineas MUTATION; shasum vuelve a `06147c02…` |
+| M2 | `apps/merchant/src/app/api/loyalty-program/route.ts` | `56db50bab062231f544ba533e96acc8a8358e6a5` | retirar el programa no exige email | ROJO. Neon `loyalty-program-sin-email`: `2 failed`, RETIRAR con `expected { …(2) } to deeply equal { ok: true }` y `+ "code": "email_not_verified"`; el rojo de `PATCH` es CASCADA (depende de que el DELETE deje `closing`), no cuenta. Unidad `catalog-sin-email-guard`: `2 failed`, solo `DELETE /api/loyalty-program` x 2 con `expected 'email_not_verified' not to be 'email_not_verified'`. Revertida, shasum vuelve a `56db50ba…` |
+| M3 | `apps/merchant/src/app/api/catalog/_auth.ts` | `06147c02bfc0e4f35669c9726c16fc6a5d80c6b4` | el borrado duro sigue solo del owner | ROJO. Neon `permisos-delegados`: `1 failed`, «un STAFF con `catalog` recibe 403 `not_owner` en los DOS borrados» con `expected 200 to be 403` (el staff borro). Revertida, shasum vuelve a `06147c02…` |
+
+### Veredicto: PASS
+
+- Las 17 entradas de §Especificacion leidas en cada `route.ts`/`_auth.ts`: 13 via `requireOwner`/`requireImportAccess`
+  (`requireApiPermissionSinGateDeEmail("catalog")`), 2 borrados via `requireCatalogOwner`
+  (`requireApiOwnerSinGateDeEmail`), `DELETE`/`PATCH` del programa via `requireApiOwnerSinGateDeEmail`.
+- DoD re-ejecutado: inventario = 7 archivos; `rg 'await requireApiOwner\(|await requireApiPermission\('` vacio (rc=1);
+  `api-owner.ts`/`api-permission.ts` contra `origin/main`: 0 lineas `+/-` que no sean comentario; unidad
+  `Tests 186 passed (186)` (4 archivos, incluye `catalog-import-routes`); Neon `Tests 22 passed (22)` (4 archivos,
+  incluye `catalog-import-guard` y `permisos-delegados`). `pnpm verify` no se re-corrio (sin cambios de codigo).
+- Tests fuera de lista (`catalog-import-routes.test.ts`, `catalog-import-guard.neon…`): solo la clave del `vi.mock`
+  y un comentario; ninguna asercion.
+- El caso invertido de `loyalty-program-sin-email` asevera la fila por SQL (`statusNow()` → `closing`, luego `active`).
+
+Hallazgos menores (no riesgo de produccion): el docblock de `permisos-delegados.neon.integration.test.ts:191` sigue
+diciendo «conserva `requireApiOwner`» (falso desde la 0165; archivo fuera de la lista a proposito); el `PATCH` del
+programa en Neon depende del orden del `DELETE` (su guard igual queda pinneado solo por el barrido unitario).
