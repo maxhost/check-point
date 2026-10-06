@@ -72,7 +72,7 @@ La página raíz lee `headers()` y redirige inmediatamente cuando `getSessionCoo
 
 ## Handoff
 
-Implementador: GPT. Revisor independiente: pendiente después de la implementación. `implementada` exige PASS y verificación real.
+Implementador: GPT. [Handoff con evidencia](../handoff-0163-entrada-merchant-2026-10-05.md). Revisor independiente: pendiente después de la implementación. `implementada` exige PASS y verificación real.
 
 ## Abierto
 

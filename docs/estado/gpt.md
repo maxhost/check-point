@@ -20,6 +20,9 @@ relacionados). El hook de push repitió `pnpm verify` en verde. En producción,
 `curl -sSI https://business.checkpass.club/` respondió HTTP 307 con
 `Location: /es/business/onboarding` sin sesión. La spec sigue `cerrada` hasta PASS independiente;
 el caso de sesión activa se conservó por inspección del código, sin prueba automatizada nueva.
+[Handoff para el revisor](../handoff-0163-entrada-merchant-2026-10-05.md), con commits, oráculos
+y límites. `pnpm ci:status` no pudo consultar GitHub al redactarlo (`fetch failed`); el hook
+local de push y la sonda HTTP de producción sí quedaron verificados.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-05) — SPEC 0157 REBASADA SOBRE ONBOARDING-GOOGLE; PUSH BLOQUEADO POR TURBOPACK
 
