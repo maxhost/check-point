@@ -1,7 +1,7 @@
 ---
 spec: 0165
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: ADR 0125. Todo `/api/catalog/*` (import con IA incluido) pasa a `requireApiPermissionSinGateDeEmail(…, "catalog")`; los borrados duros de producto/categoria y `DELETE`/`PATCH cancel-close` de `/api/loyalty-program` pasan a `requireApiOwnerSinGateDeEmail` (siguen solo del owner). Inventario cerrado de exenciones actualizado y oraculos contra Neon con owner sin verificar.
 disjunta: si
 archivos: apps/merchant/src/app/api/catalog/_auth.ts, apps/merchant/src/app/api/catalog/imports/_auth.ts, apps/merchant/src/app/api/loyalty-program/route.ts, apps/merchant/src/server/api-owner.ts, apps/merchant/src/server/api-permission.ts, apps/merchant/src/server/api-owner-surfaces.test.ts, apps/merchant/src/server/api-owner-surfaces-support.ts, apps/merchant/src/server/api-owner-surfaces-desenlaces.ts, apps/merchant/src/server/api-permission-surfaces.test.ts, apps/merchant/src/server/loyalty-program-sin-email.neon.integration.test.ts, apps/merchant/src/server/catalog-sin-email.neon.integration.test.ts, docs/adr/0125-catalogo-y-ciclo-del-programa-sin-email-verificado.md, docs/INDEX.md
@@ -97,17 +97,17 @@ Ninguno con trabajo en curso.
 
 ## Definition of Done
 
-- [ ] `rg -l 'SinGateDeEmail' apps/merchant/src/app/api | sort` → exactamente los 7 archivos de §Inventario.
-- [ ] `rg -n 'await requireApiOwner\(|await requireApiPermission\(' apps/merchant/src/app/api/catalog apps/merchant/src/app/api/loyalty-program`
+- [x] `rg -l 'SinGateDeEmail' apps/merchant/src/app/api | sort` → exactamente los 7 archivos de §Inventario.
+- [x] `rg -n 'await requireApiOwner\(|await requireApiPermission\(' apps/merchant/src/app/api/catalog apps/merchant/src/app/api/loyalty-program`
       → vacio (hoy da 5: `catalog/_auth.ts:31,59`, `imports/_auth.ts:26`, `loyalty-program/route.ts:147,172`).
-- [ ] `git diff origin/main -- apps/merchant/src/server/api-owner.ts apps/merchant/src/server/api-permission.ts` →
+- [x] `git diff origin/main -- apps/merchant/src/server/api-owner.ts apps/merchant/src/server/api-permission.ts` →
       solo lineas de comentario.
-- [ ] `pnpm exec vitest run apps/merchant/src/server/api-owner-surfaces.test.ts apps/merchant/src/server/api-permission-surfaces.test.ts` verde.
-- [ ] `tools/neon-test.sh src/server/catalog-sin-email.neon.integration.test.ts`,
+- [x] `pnpm exec vitest run apps/merchant/src/server/api-owner-surfaces.test.ts apps/merchant/src/server/api-permission-surfaces.test.ts` verde.
+- [x] `tools/neon-test.sh src/server/catalog-sin-email.neon.integration.test.ts`,
       `…/loyalty-program-sin-email.neon.integration.test.ts` y `…/permisos-delegados.neon.integration.test.ts` verdes.
-- [ ] `pnpm verify` en verde con Node 24, una sola vez al final, tabla transcripta (un rojo SOLO por PARQUEADO #74 se
+- [x] `pnpm verify` en verde con Node 24, una sola vez al final, tabla transcripta (un rojo SOLO por PARQUEADO #74 se
       declara con la corrida suelta del archivo).
-- [ ] `rg -n MUTATION apps packages tools` → vacio.
+- [x] `rg -n MUTATION apps packages tools` → vacio.
 
 ## Plan de pruebas y verificación
 

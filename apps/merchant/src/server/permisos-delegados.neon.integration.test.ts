@@ -188,7 +188,8 @@ describe.skipIf(!enabled)(
 
     /** **BORRAR NO, y son los DOS `DELETE`, no uno** (ADR 0079 §2, contrato §2.1). El borrado
      * del catálogo es DURO —`schema/catalog.ts` no tiene `archived_at`— así que ningún toggle
-     * lo abre: conserva `requireApiOwner` y su `not_owner`, que ahí sigue siendo literal.
+     * lo abre: va por `requireApiOwnerSinGateDeEmail` (spec 0165, ADR 0125: sin email, solo owner) y su `not_owner`,
+     * que ahí sigue siendo literal.
      *
      * CONTROL POSITIVO en el mismo vector: el OWNER borra lo mismo y recibe 200. Sin él, un
      * `DELETE` roto para todos pasaría este caso. */
