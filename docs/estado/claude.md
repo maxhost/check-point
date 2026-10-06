@@ -9,41 +9,45 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — 0160 EN `origin/main` (`c2e40ac`); SIGUE LA 0161, DESPUES LA 0c, RECIEN AHI GPT
+## ⇥ ESTADO (2026-10-05, noche) — 0161 IMPLEMENTADA (`fede9d2`), SIN PUSHEAR; SIGUE LA FASE 0c, DESPUES GPT
 
 **Hecho (verificado):**
-- **0160** (Fase 0b, rebanada 2): spec `ca18ef4`, implementacion `c335035`. El kit suma `Dialog`/`ConfirmDialog`,
-  `Combobox`, `Tabs`/`TabList`/`Tab`/`TabPanel`, `SegmentedControl`, `Switch`, `ProgressBar` y `Link`.
-  `places-search.tsx` pasa a `Combobox` (alta y locales): roles `combobox`/`option`, e2e de Places migrados en el
-  mismo commit; 9 reglas `.places-search*` borradas de `globals.css`; excepcion de pointer-events para el popover en el
-  paso de direccion del tour de locales. Rojo primero (harness sin exports; Places sin `combobox`); M1–M4 rojas por la
-  asercion esperada y revertidas. Kit `40 passed`; `CI=1` `12 passed`/`28 skipped`; `pnpm verify` → `verify: ok`
-  (e2e `160 passed`) en la segunda corrida (la primera: Prettier en 3 archivos + flake #78). Capturas (16):
-  https://claude.ai/artifact/BxFSXFFqCUUd3e8YHxUmy4 . Desvios medidos en la seccion «Implementacion» de la spec
-  (lo mas importante: React Aria no abre la lista cuando las opciones llegan async → `OpenWhenItemsArrive`; al elegir
-  escribe el texto de la opcion → guardia + test con `details` lento).
-- **Pusheada** `3177450..c2e40ac` con `--no-verify` (OK explicito del owner, 2026-10-05: «hace el push saltando el
-  verify»); el `verify` completo ya habia dado `ok` sobre `c335035`.
+- **0161** (Fase 0b, rebanada 3, cierra la 0b): spec `8354f93`, implementacion `fede9d2`. Decisiones del owner
+  ANTES de la spec (enmienda del ADR 0123): fecha/hora con **segmentos de React Aria + calendario**, color con
+  **muestra + hex editable**, busqueda con **lupa + borrar**. El kit suma `TimeField`, `DateTimeField`,
+  `SearchField`, `ColorField`, `Slider` y `FileButton`; fecha/hora fijan `es-419` y 24 h y conservan los valores de
+  texto nativos (`HH:mm`, `YYYY-MM-DDTHH:mm`). `@internationalized/date` 3.12.4 como dependencia directa del
+  merchant. Rojo primero (6 exports faltantes); M1–M4 rojas por la asercion esperada y revertidas. Kit `58 passed`;
+  `CI=1` `17 passed`/`41 skipped`. Capturas (16): https://claude.ai/artifact/URDEy2rxoDyLGF8U8ywoo2 . Desvios en la
+  seccion «Implementacion» de la spec (el mas importante: `FileButton` arma su input propio porque `FileTrigger`
+  descarta el `aria-label` que usan los e2e).
+- **`pnpm verify` → ROJO, dos corridas**, solo en `neon (full)`: el flake PARQUEADO #74 (`catalog-import-guard`
+  201 vs 409, `catalog-import-reconcile` polls 1 vs 0). La Neon completa suelta sobre el mismo arbol: `381 passed`,
+  exit 0. Corre `full` porque cambio el lockfile. Todo lo demas `ok`.
 
 **Siguiente, en orden:**
-1. **0161** (campos `file`/`color`/`time`/`datetime-local`/`range`/`search`): se escribe al empezar, mismo harness.
-2. **Fase 0c** (guardias).
-3. **Recien despues GPT** (owner, 2026-10-05: «cuando acabemos esto y fase 0c recien pondre a gpt a trabajar»). El
-   prompt para GPT de la 0160 se dio en la sesion; al terminar la 0c se rehace uno solo con 0160 + 0161 + 0c.
+1. **Push de `fede9d2` + docs**: el pre-push va a dar rojo por #74; **pedir OK del owner** para `--no-verify` (como
+   en la 0160) o reintentar el `verify`.
+2. **Fase 0c** (guardias): spec nueva. Ahi tambien restringir el `type` de `TextField` (hoy 8 `datetime-local` en
+   marketing) o dejarlo a la Fase 1 (anotado en «No entra» de la 0161).
+3. **Recien despues GPT** (owner, 2026-10-05). Al terminar la 0c se rehace un solo prompt con 0160 + 0161 + 0c.
+   Avisarle: los e2e que hoy usan `setInputFiles` por id/etiqueta, `searchbox`, `slider` «Zoom» y el hex de Marca
+   se migran con cada pantalla (lista en «Medido para el diseño» de la 0161); con segmentos no se usa `fill`.
 
-**Pendientes del owner:** QA del buscador de lugares en el alta y en locales (aspecto del kit, flechas + Enter), y del
-**tour de locales** paso «Busca la dirección»: escribir y elegir una direccion con el tour abierto (excepcion de CSS sin
-e2e). Borrar las dos claves de Geoapify en Vercel; QA del alta/locales/programa; deploys de `b1ab123` y `d797c21`.
+**Pendientes del owner:** QA del buscador de lugares (alta y locales) y del tour de locales paso «Busca la
+dirección» (de la 0160). Borrar las dos claves de Geoapify en Vercel; QA del alta/locales/programa; deploys de
+`b1ab123` y `d797c21`.
 
-**Decidido por el owner (2026-10-05):** `.env.example` queda como esta (todavia lista Geoapify). No volver a pedirlo.
+**Decidido por el owner (2026-10-05):** `.env.example` queda como esta. Las tres decisiones de la 0161 (arriba). No
+volver a pedirlas.
 
-**Hallazgos abiertos:** PARQUEADO #74, #75, **#78 (nuevo: teardown de `loyaltyHarness` > 30 s, visto 2 veces)**, #77
-(diferido por el owner); H4 de la 0155. `docs/design-system.md` §Form todavia dice «Pendiente» sobre `validationErrors`
-(lo resolvio la 0162): texto viejo, sin tocar.
+**Hallazgos abiertos:** PARQUEADO #74 (2 veces mas hoy, en `verify`), #75, #78, #77 (diferido); H4 de la 0155.
+`docs/design-system.md` §Form todavia dice «Pendiente» sobre `validationErrors` (texto viejo, sin tocar).
 
-**Gotchas de esta sesion:** en un e2e, `fill`/`click` sobre un `Combobox` lejos en la pagina hace scroll DESPUES de la
-primera tecla y React Aria cierra la lista y repone el texto («cu» → «u»): scroll antes + dos rAF. La `listbox` del
-`Combobox` mide 10 px menos que el input (el ancho es del `Popover`). `rg -nw MUTATION` encuentra la caché de `.next`:
-excluirla. `next dev` del e2e reescribe los `next-env.d.ts` (revertir).
+**Gotchas de esta sesion:** `FileTrigger` de RAC 1.21.1 no pasa `aria-label` al input. Los segmentos de fecha
+llevan marcas U+2066..U+2069 en `textContent`. Un estilo de «hoy» en una captura necesita `page.clock`. El CSS
+`legacy` de `input` se cuela en inputs internos del kit: neutralizar con utilidades. Una pagina del harness mas larga
+puede dejar el puntero sobre un boton de un modal (hover en el oraculo de color). `/private/tmp/x` es un archivo
+ajeno: no tocar.
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: spec 0161».
+**Prompt para retomar:** «Lee docs/estado/claude.md: push de la 0161 y spec de la Fase 0c».

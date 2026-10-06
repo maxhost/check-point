@@ -1,7 +1,7 @@
 ---
 spec: 0161
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: Fase 0b del ADR 0123, rebanada 3 de 3. El kit suma `TimeField`, `DateTimeField` (segmentos de React Aria + calendario), `SearchField` (lupa + borrar), `ColorField` (muestra + hex editable), `Slider` y `FileButton`, con valores de texto iguales a los de los inputs nativos que reemplazan; harness con oraculo de estilos/comportamiento en Chromium/WebKit y capturas de Mac regeneradas. Las pantallas no se migran (Fase 1, GPT).
 disjunta: si (solo `ui/`, el harness del kit, `docs/design-system.md` y la dependencia `@internationalized/date`)
 archivos: apps/merchant/src/ui/time-field.tsx, apps/merchant/src/ui/date-time-field.tsx, apps/merchant/src/ui/search-field.tsx, apps/merchant/src/ui/color-field.tsx, apps/merchant/src/ui/slider.tsx, apps/merchant/src/ui/file-button.tsx, apps/merchant/src/ui/index.ts, apps/merchant/package.json, pnpm-lock.yaml, tests/e2e/support/ui-kit-entry.tsx, tests/e2e/support/ui-kit-checks.ts, tests/e2e/ui-kit.spec.ts-snapshots/, tests/e2e/ui-kit.webkit.spec.ts-snapshots/, docs/design-system.md
@@ -226,15 +226,64 @@ privado antes de commitear.
 
 ## Definition of Done
 
-- [ ] Rojo antes: harness con las piezas y sin crearlas → `No matching export in "apps/merchant/src/ui/index.ts"
-      for import "…"` por cada pieza.
-- [ ] `pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` (Node 24) → todo verde,
-      con la cuenta transcripta.
-- [ ] `CI=1 …` mismo comando → verde, capturas salteadas, cuenta transcripta.
-- [ ] `rg -n '"@internationalized/date"' apps/merchant/package.json` → una linea.
-- [ ] Artifact privado con las capturas nuevas y regeneradas.
-- [ ] `pnpm verify` con Node 24, una vez al final, tabla transcripta.
-- [ ] `rg -nw MUTATION apps tools tests` (sin `.next`) → solo `E2E_LOYALTY_MUTATION_TEST` preexistente.
+- [x] Rojo antes: harness con las piezas y sin crearlas → `ERROR: No matching export in
+      "apps/merchant/src/ui/index.ts" for import "ColorField"` (idem `DateTimeField`, `FileButton`, `SearchField`,
+      `Slider`, `TimeField`).
+- [x] `pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` (Node 24) → `58 passed`.
+- [x] `CI=1 …` mismo comando → `17 passed`, `41 skipped`.
+- [x] `rg -n '"@internationalized/date"' apps/merchant/package.json` → `12:    "@internationalized/date": "3.12.4",`.
+- [x] Artifact privado con las 16 capturas: https://claude.ai/artifact/URDEy2rxoDyLGF8U8ywoo2
+- [x] `pnpm verify` con Node 24 (dos corridas, las dos con el mismo resultado):
+
+      ```
+      typecheck    | corrio | ok   | 11.1
+      lint         | corrio | ok   | 6.6
+      format:check | corrio | ok   | 7.5
+      test         | corrio | ok   | 40.4
+      build        | corrio | ok   | 10.0
+      test:e2e     | corrio | ok   | 60.2
+      neon (full)  | corrio | ROJO | 357.9   (2 failed | 379 passed | 40 skipped)
+      verify: ROJO
+      ```
+
+      Los dos rojos son el flake conocido PARQUEADO #74 (`catalog-import-guard` «expected 201 to be 409» y
+      `catalog-import-reconcile` «expected [ Array(1) ] to have a length of +0»), servidor sin relacion con esta spec;
+      la Neon completa corre `full` porque cambio el lockfile. `tools/neon-test.sh` suelto sobre el mismo arbol →
+      `Test Files 381 passed | 40 skipped`, exit 0. **No es un `verify: ok`**: el push necesita OK del owner.
+- [x] `rg -nw MUTATION apps tools tests` (sin `.next`) → vacio.
+
+## Implementacion (2026-10-05)
+
+**Desvios medidos (el diseño de arriba queda como se cerro; esto manda):**
+
+1. **`FileButton` no usa `FileTrigger`:** `filterDOMProps` se llama sin `labelable` y descarta el `aria-label` del
+   input (medido: `getByLabel("Archivo de prueba")` → `element(s) not found`). Es el plan B de la spec: input propio
+   `hidden` + `tabIndex={-1}`, vaciado antes de cada clic; `accept` pasa tal cual.
+2. **`ui/field-classes.ts`** (interno, no exportado): label, descripcion, error, caja del campo y segmentos, para no
+   copiar las clases de `TextField` en cuatro piezas.
+3. **Segmentos:** los separadores sin padding (`type === "literal"`) y los editables con `px-px`: con `px-0.5` en
+   todos se leia «15 / 10 / 2026 , 09 : 30».
+4. **«Hoy» en el calendario:** `border-transparent` le ganaba a `border-primary` (no se pintaba); va uno u otro. La
+   captura del calendario fija el reloj (`page.clock.setFixedTime`, 2026-10-08) para no depender del dia.
+5. **`ColorField`:** el CSS viejo de `input` (capa `legacy`) le dibujaba un borde al hex dentro de la caja; el `Input`
+   lleva `border-0 p-0 min-h-0 rounded-none shadow-none`.
+6. **Oraculos:** React Aria envuelve los segmentos en marcas de direccion (U+2066..U+2069): el texto se lee sin ellas;
+   el `Slider` es un `input type="range"` nativo (`toHaveValue`, no `aria-valuenow`); los dias del calendario se
+   llaman «sábado, 3 de octubre de 2026» y el deshabilitado es `disabled`.
+7. **Oraculo de `ConfirmDialog` (0160) en 390:** con la pagina mas larga el puntero del clic quedaba sobre
+   «Archivar» y medía el color de hover (`rgb(116, 32, 32)` vs `rgb(142, 42, 42)`, rojo determinista 3/3); el test
+   mueve el mouse a (0, 0) antes de medir. Verificado: pasa en 390 y 1280.
+8. **`DateTimeField` acepta `defaultOpen`** (lo usa el caso `?case=calendar`).
+
+**Bitacora de mutaciones** (de a una, Chromium con `CI=1`, revertidas copiando el original + `diff` vacio, shasum
+igual antes y despues):
+
+| # | shasum | Oraculo | Resultado |
+|---|---|---|---|
+| M1 | `0c30eee4101f` | «Valor:» tras flecha arriba | ROJO: `Expected "Valor: 2026-10-15T09:31" / Received "Valor: 2026-10-15T09:31:00"` |
+| M2 | `8c8c1fb09b88` | boton borrar con el campo vacio | ROJO: `toBeHidden` `Received: visible` |
+| M3 | `6c4c896df9dd` | muestra → hex | ROJO: `Expected "Valor: #1A2B3C" / Received "Valor: #1a2b3c"` |
+| M4 | `0c79963ecd2f` | `capture` de «Foto de prueba» | ROJO: `Expected "environment" / Received ""` |
 
 ## Mutaciones — presupuesto: 4. Clase: los plausibles
 
