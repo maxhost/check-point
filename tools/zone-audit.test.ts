@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { gitEnv } from "./ui-guard.ts";
 import { audit, offenders } from "./zone-audit.ts";
 
 /** Spec 0164: detecta (no impide) commits sobre la zona de Claude sin su trailer. */
@@ -47,7 +48,11 @@ describe("offenders", () => {
 describe("audit (repo git temporal)", () => {
   let root: string;
   const git = (...args: string[]) => {
-    const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    const r = spawnSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      env: gitEnv(),
+    });
     if (r.status !== 0) throw new Error(r.stderr);
   };
   const commit = (path: string, message: string) => {

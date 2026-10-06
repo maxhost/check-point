@@ -2036,6 +2036,25 @@ operativa corta que cambia una decision en **toda** sesion → aca; chequeable c
 → `docs/LECCIONES.md`. **Nunca se referencia `LECCIONES.md` con `@`**: un import `@` se carga
 como si estuviera pegado aca y no ahorraria un solo token.
 
+## 2026-10-05 (noche) — Los tests del guard de UI escribieron en el repo real desde el pre-push
+
+**Que paso:** la 0164 agrego tests que arman repos git temporales (`tools/ui-guard.test.ts`, `zone-audit.test.ts`)
+con `spawnSync("git", …, { cwd: tmp })`. En la sesion y en `pnpm verify` a mano, verdes. Al pushear la 0165, el
+pre-push corrio `pnpm verify` con `GIT_DIR`/`GIT_INDEX_FILE` del worktree en el entorno, y esas variables le ganan a
+`cwd`: `git init` reinicializo el repo real (`core.bare = true`, `core.filemode = true`), `git config user.*` escribio
+`[user] t@t`, los `commit` movieron la rama `sin-gate-email` (14 commits de prueba en el reflog), `checkout -qb work`
+cambio el HEAD del worktree. `origin` no se toco (el push fallo). El primer intento se leyo como «flake de `test`»
+porque la salida del hook estaba cortada; el segundo, con el log entero, mostro `ui-guard ROJO` y los tests de tools.
+
+**Reparacion:** `core.bare false`, `core.filemode false` (el arbol aparecio con 0-line diffs de modo), borrar
+`[user]`, `update-ref` de la rama a su punta del reflog (`bc47df3`) con compare-and-swap, `symbolic-ref` del HEAD
+del worktree, `git reset` (indice desde HEAD, archivos intactos), borrar `work`. Los otros worktrees no se tocaron.
+
+**Regla (gotcha + codigo):** todo `git` sobre otra carpeta va con `env` sin `GIT_*` (`gitEnv()`); oraculo en
+`ui-guard.test.ts` «dentro de un hook de git», que pone un `GIT_DIR` señuelo — sin el `env`, rojo por
+`Not a valid object name main` en el señuelo. **Y su espejo de diagnostico:** un rojo que aparece SOLO dentro del
+hook no es flake hasta haber leido la salida entera.
+
 ## 2026-10-05 — Arco 0155/0156 + plan de UI. Un ESTADO pisado y un plan medido sobre la rama equivocada
 
 **ESTADO pisado.** Al cerrar la 0155/0156 (`1953afe`) el orquestador reescribio el bloque `⇥ ESTADO` de

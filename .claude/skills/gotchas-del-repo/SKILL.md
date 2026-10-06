@@ -29,6 +29,12 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   (`git diff HEAD` + no trackeados bajo `apps/`, `packages/`, `tools/`) del ultimo verde en
   `$(git rev-parse --git-path verify-last-green)` (dentro de `.git`, uno por worktree). Para forzarlo, borrá ese
   archivo.
+- **Todo `git` que un test (o una herramienta de `tools/`) lanza sobre OTRA carpeta va con `env` sin `GIT_*`**
+  (`gitEnv()` de `tools/ui-guard.ts`). Dentro del pre-push git exporta `GIT_DIR`/`GIT_INDEX_FILE`, que le ganan a
+  `cwd`: el 2026-10-05 los tests de `ui-guard`/`zone-audit` corridos por `pnpm verify` desde el hook hicieron
+  `git init`/`commit`/`checkout` sobre el repo REAL (`core.bare=true`, `core.filemode=true`, `[user] t@t`, la rama
+  del worktree movida). Fuera del hook pasan verdes: el sintoma es «rojo solo al pushear». Reparacion: reflog de la
+  rama + `git config --file .git/config` (caso en `docs/LECCIONES.md`).
 - **Worktrees: crealos con `tools/worktree-new.sh <nombre>`** (`node_modules` propio offline; uno
   symlinkeado al repo real hace que `pnpm run`/`exec` intenten purgar las dependencias posta). **Si
   otro agente escribe en este arbol, vos te vas a un worktree** (hook `foreign-staged.sh`). El bloque «Worktrees en

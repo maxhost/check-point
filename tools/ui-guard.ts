@@ -129,10 +129,23 @@ export function compare(
   return violations;
 }
 
+/**
+ * El entorno de `git` SIN las variables `GIT_*`: dentro de un hook (el pre-push corre `pnpm verify`) git exporta
+ * `GIT_DIR`/`GIT_INDEX_FILE`, que le ganan a `cwd`. Heredadas, un `git` lanzado sobre otra carpeta opera sobre el repo
+ * del hook: el 2026-10-05 los tests de este guard, corriendo desde el pre-push, hicieron `git init`/`commit`/
+ * `checkout` sobre el repo real (`core.bare = true`, un `[user]` falso, la rama del worktree movida). Que decida `cwd`.
+ */
+export function gitEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+  );
+}
+
 function git(root: string, args: string[]): string {
   const result = spawnSync("git", args, {
     cwd: root,
     encoding: "utf8",
+    env: gitEnv(),
     maxBuffer: 64 * 1024 * 1024,
   });
   if (result.status !== 0) {

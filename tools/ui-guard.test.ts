@@ -9,7 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { parseChanges, runGuard } from "./ui-guard.ts";
+import { gitEnv, parseChanges, runGuard } from "./ui-guard.ts";
 
 /** Spec 0164: el trinquete contra un repo git de verdad (base en `main`, cambios encima). */
 const A = "apps/merchant/src/app/backoffice/a.tsx";
@@ -21,7 +21,11 @@ const none = "export const A = () => <div>a</div>;\n";
 
 let root: string;
 const git = (...args: string[]) => {
-  const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  const r = spawnSync("git", args, {
+    cwd: root,
+    encoding: "utf8",
+    env: gitEnv(),
+  });
   if (r.status !== 0) throw new Error(r.stderr);
 };
 const write = (path: string, text: string) => {
@@ -116,6 +120,44 @@ describe("runGuard (trinquete)", () => {
     renameSync(join(root, A), join(root, B));
     git("add", "-A");
     expect(guard()).toEqual({ files: 1, violations: [] });
+  });
+});
+
+describe("dentro de un hook de git", () => {
+  /**
+   * ORACULO del incidente del 2026-10-05: el pre-push exporta `GIT_DIR`/`GIT_INDEX_FILE` del repo real. Con un
+   * `GIT_DIR` de otro repo en el entorno, el guard tiene que seguir operando sobre su `root` y no tocar el otro.
+   */
+  it("GIT_DIR/GIT_INDEX_FILE de otro repo no desvian el guard ni lo tocan", () => {
+    const decoy = mkdtempSync(join(tmpdir(), "ui-guard-decoy-"));
+    const saved = {
+      dir: process.env.GIT_DIR,
+      index: process.env.GIT_INDEX_FILE,
+    };
+    try {
+      spawnSync("git", ["init", "-q", "-b", "main"], {
+        cwd: decoy,
+        env: gitEnv(),
+      });
+      process.env.GIT_DIR = join(decoy, ".git");
+      process.env.GIT_INDEX_FILE = join(decoy, ".git", "index");
+      write(B, one);
+      git("add", ".");
+      git("commit", "-qm", "nuevo");
+      expect(categories()).toEqual([`${B} native-element`]);
+      const head = spawnSync("git", ["rev-parse", "--verify", "-q", "HEAD"], {
+        cwd: decoy,
+        encoding: "utf8",
+        env: gitEnv(),
+      });
+      expect(head.stdout).toBe(""); // el repo ajeno sigue sin commits
+    } finally {
+      if (saved.dir === undefined) delete process.env.GIT_DIR;
+      else process.env.GIT_DIR = saved.dir;
+      if (saved.index === undefined) delete process.env.GIT_INDEX_FILE;
+      else process.env.GIT_INDEX_FILE = saved.index;
+      rmSync(decoy, { recursive: true, force: true });
+    }
   });
 });
 

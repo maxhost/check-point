@@ -47,7 +47,11 @@ export function offenders(commits: Commit[]): string[] {
 }
 
 function git(root: string, args: string[]): string | null {
-  const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  // Sin `GIT_*` heredadas de un hook: que decida `cwd` (ver `gitEnv` en `ui-guard.ts`).
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
+  );
+  const r = spawnSync("git", args, { cwd: root, encoding: "utf8", env });
   return r.status === 0 ? r.stdout : null;
 }
 
