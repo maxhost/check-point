@@ -251,6 +251,64 @@ Pendiente (hallazgo de la spec 0159): `validationErrors` del `Form` hoy no llega
 </Form>
 ```
 
+### `Dialog` y `ConfirmDialog`
+
+Propósito: todo modal. `Dialog` es el modal del kit sobre React Aria (foco atrapado, Escape y clic afuera cierran si `isDismissable`, el foco vuelve al disparador): título con la medida de `Heading level={2}`, `description` (acepta `ReactNode`, p. ej. un link) enlazada por `aria-describedby`, y el contenido debajo. `ConfirmDialog` es un `Dialog role="alertdialog"` con «Cancelar» (enfocado al abrir) y la acción `primary` o `danger` en un `FormActions`; con `isBusy` no se puede cerrar y la acción muestra carga.
+
+Props de `Dialog`: `isOpen`, `onOpenChange`, `title`, `description?`, `role?` (`dialog`/`alertdialog`), `isDismissable?` (default `true`), `tourAnchor?`, `children`. Props de `ConfirmDialog`: `isOpen`, `title`, `description`, `confirmLabel`, `cancelLabel?`, `intent?` (`primary`/`danger`), `isBusy?`, `confirmDisabled?`, `tourAnchor?`, `confirmTourAnchor?`, `onCancel`, `onConfirm`.
+
+```tsx
+<ConfirmDialog
+  isOpen={archiving !== null}
+  title="¿Archivar el local?"
+  description="Deja de aparecer en el mostrador."
+  confirmLabel="Archivar"
+  intent="danger"
+  isBusy={saving}
+  onCancel={() => setArchiving(null)}
+  onConfirm={archivar}
+/>
+```
+
+### `Combobox`
+
+Propósito: un campo de texto con lista de opciones (búsqueda de lugares, autocompletar). Mide como `TextField`; la lista es la del `SelectField`, del ancho del campo. Los `items` son controlados: el filtrado o la búsqueda remota los hace quien lo usa. La lista se abre al escribir y también cuando llegan opciones nuevas con el foco en el campo (búsqueda asíncrona). `status` («Buscando…», «Sin resultados») y `errorMessage` se anuncian. Ejemplo real: `app/components/places-search.tsx`.
+
+Props: `label`, `items` (`{ id, label, description? }[]`), `inputValue`, `onInputChange`, `onSelectionChange(id)`, `placeholder?`, `description?`, `status?`, `errorMessage?`, `isDisabled?`, `name?`, `tourAnchor?`, `className?`.
+
+Cuidado: al elegir, React Aria escribe el texto de la opción en el campo (llama a `onInputChange`). Si eso dispara una búsqueda remota, ignorarlo mientras se procesa la elección (ver `places-search.tsx`).
+
+### `Tabs`, `TabList`, `Tab` y `TabPanel`
+
+Propósito: pestañas (catálogo, mostrador). Envoltorios de React Aria con clases fijas; las flechas cambian de pestaña. `TabList` exige `aria-label`; cada `Tab` y su `TabPanel` comparten `id`. `Tab` acepta `tourAnchor`.
+
+```tsx
+<Tabs selectedKey={tab} onSelectionChange={setTab}>
+  <TabList aria-label="Catálogo">
+    <Tab id="products">Productos</Tab>
+    <Tab id="categories">Categorías</Tab>
+  </TabList>
+  <TabPanel id="products">…</TabPanel>
+  <TabPanel id="categories">…</TabPanel>
+</Tabs>
+```
+
+### `SegmentedControl`
+
+Propósito: elegir una opción entre pocas que cambian una vista (buscar por nombre/teléfono, mes/año). Roles `radiogroup`/`radio`. Props: `aria-label`, `options` (`{ id, label }[]`), `selectedKey`, `onSelectionChange`, `isDisabled?`, `tourAnchor?`.
+
+### `Switch`
+
+Propósito: prender o apagar algo con efecto inmediato. Props: las del `Switch` de React Aria (`isSelected`, `onChange`, `isDisabled`, `aria-busy`…) más `tourAnchor?`; el texto visible va como `children`, y sin texto `aria-label` es obligatorio.
+
+### `ProgressBar`
+
+Propósito: avance de una tarea (checklist de configuración). Props: `label`, `value`, `maxValue?` (100), `valueLabel?` («2 de 5»; por defecto el porcentaje), `className?`. Es la única pieza con `style` dinámico (el ancho del relleno, ADR 0123 §2).
+
+### `Link`
+
+Propósito: navegar. Envuelve `next/link` (navegación del cliente y prefetch intactos). `variant="inline"` (default) es un link de texto; `primary` y `secondary` tienen el aspecto de `Button` para links que son acciones («Ir a mi panel», «Ver campaña»). Props: las de `next/link` más `variant?`, `tourAnchor?`, `className?` (layout).
+
 ### Oráculos del kit
 
 `tests/e2e/support/ui-kit-entry.tsx` muestra todas las piezas dentro del layout del backoffice. `tests/e2e/ui-kit.spec.ts` (Chromium) y `ui-kit.webkit.spec.ts` miden estilos computados (corren también en la CI) y comparan capturas de Mac, claro/oscuro × 390/1280, con `threshold: 0` (no corren en la CI). Una pieza nueva se agrega al final del harness; quien cambia una pieza a propósito regenera las referencias con `--update-snapshots` mirándolas.

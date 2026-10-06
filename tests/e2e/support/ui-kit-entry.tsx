@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Alert,
@@ -5,14 +6,25 @@ import {
   Card,
   CheckboxField,
   ChoiceGroup,
+  Combobox,
+  ConfirmDialog,
+  Dialog,
   Form,
   FormActions,
   FormSection,
   Heading,
+  Link,
   NumberField,
   PageHeader,
+  ProgressBar,
   ProgressIndicator,
+  SegmentedControl,
   SelectField,
+  Switch,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs,
   Text,
   TextAreaField,
   TextField,
@@ -61,9 +73,122 @@ const serverErrors = (
   </main>
 );
 
+// Spec 0160: overlays y navegacion, al final de la pagina por defecto.
+const cities = ["Quito", "Cuenca", "Guayaquil", "Loja"].map((city) => ({
+  id: city,
+  label: city,
+}));
+
+function ConfirmExample({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <ConfirmDialog
+      isOpen={open}
+      title="¿Archivar el local?"
+      description="Deja de aparecer en el mostrador."
+      confirmLabel="Archivar"
+      intent="danger"
+      tourAnchor="kit-confirm"
+      onCancel={onClose}
+      onConfirm={onClose}
+    />
+  );
+}
+
+function OverlaysAndNavigation() {
+  const [segment, setSegment] = useState<string | number>("name");
+  const [notifications, setNotifications] = useState(true);
+  const [testMode, setTestMode] = useState(false);
+  const [query, setQuery] = useState("");
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const items = cities.filter((city) =>
+    city.label.toLowerCase().includes(query.trim().toLowerCase()),
+  );
+  return (
+    <div style={column(24)}>
+      <Tabs>
+        <TabList aria-label="Secciones">
+          <Tab id="products">Productos</Tab>
+          <Tab id="categories">Categorias</Tab>
+        </TabList>
+        <TabPanel id="products">
+          <Text>Panel productos</Text>
+        </TabPanel>
+        <TabPanel id="categories">
+          <Text>Panel categorias</Text>
+        </TabPanel>
+      </Tabs>
+      <SegmentedControl
+        aria-label="Buscar por"
+        options={[
+          { id: "name", label: "Nombre" },
+          { id: "phone", label: "Telefono" },
+        ]}
+        selectedKey={segment}
+        onSelectionChange={setSegment}
+      />
+      <div style={column(8)}>
+        <Switch isSelected={notifications} onChange={setNotifications}>
+          Notificaciones
+        </Switch>
+        <Switch isSelected={testMode} onChange={setTestMode}>
+          Modo prueba
+        </Switch>
+      </div>
+      <ProgressBar label="Configuracion" value={40} valueLabel="2 de 5" />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <Link href="#ayuda">Ver ayuda</Link>
+        <Link href="#panel" variant="secondary">
+          Ir al panel
+        </Link>
+      </div>
+      <div style={column(8)}>
+        <Combobox
+          label="Ciudad"
+          placeholder="Escribe una ciudad"
+          items={items}
+          inputValue={query}
+          onInputChange={setQuery}
+          onSelectionChange={(id) => setChosen(id === null ? null : String(id))}
+        />
+        <Text variant="small">Elegida: {chosen ?? "ninguna"}</Text>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <Button variant="secondary" onPress={() => setDialogOpen(true)}>
+          Abrir dialogo
+        </Button>
+        <Button variant="secondary" onPress={() => setConfirmOpen(true)}>
+          Abrir confirmacion
+        </Button>
+      </div>
+      <Dialog
+        isOpen={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="Editar nombre"
+        description="Lo ven tus clientes."
+      >
+        <TextField label="Nombre del dialogo" defaultValue="Panaderia" />
+      </Dialog>
+      <ConfirmExample
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+      />
+    </div>
+  );
+}
+
 createRoot(document.getElementById("root")!).render(
   params.get("case") === "server-errors" ? (
     serverErrors
+  ) : params.get("case") === "dialog" ? (
+    <ConfirmExample open onClose={() => undefined} />
   ) : (
     <div className="backoffice-layout">
       {/* Ocupa la primera columna del layout de escritorio, como la barra real. */}
@@ -159,6 +284,7 @@ createRoot(document.getElementById("root")!).render(
           <Button isLoading>Cargando</Button>
           <Button isDisabled>Deshabilitado</Button>
         </div>
+        <OverlaysAndNavigation />
       </main>
     </div>
   ),

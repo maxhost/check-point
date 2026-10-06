@@ -5,6 +5,7 @@ import { startCatalogHarness } from "./catalog-harness-server";
 // Oraculo 1 (estilos computados) corre en todos lados; oraculo 2 (capturas de Mac) no en la CI.
 const content = "rgb(16, 37, 29)";
 const muted = "rgb(82, 100, 91)";
+const primary = "rgb(23, 101, 72)";
 const mutedDark = "rgb(182, 200, 190)";
 const widths = [390, 1280] as const;
 const themes = ["light", "dark"] as const;
@@ -177,6 +178,154 @@ export function registerKitTests() {
     }
   });
 
+  // Spec 0160: overlays y navegacion.
+  for (const width of widths) {
+    test(`ConfirmDialog en ${width}: foco, estilos, Escape`, async ({
+      page,
+    }) => {
+      await open(page, width);
+      const trigger = page.getByRole("button", { name: "Abrir confirmacion" });
+      await trigger.click();
+      const dialog = page.getByRole("alertdialog", {
+        name: "¿Archivar el local?",
+      });
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toHaveAttribute("data-tour", "kit-confirm");
+      await expect(dialog).toHaveAccessibleDescription(
+        "Deja de aparecer en el mostrador.",
+      );
+      await expect(
+        dialog.getByRole("button", { name: "Cancelar" }),
+      ).toBeFocused();
+      await expectCss(
+        dialog.getByRole("heading", { name: "¿Archivar el local?" }),
+        {
+          "font-size": "20px",
+          "font-weight": "700",
+        },
+      );
+      // La caja es el Modal que envuelve al dialog.
+      await expectCss(dialog.locator(".."), {
+        "border-top-left-radius": "20px",
+      });
+      const danger = await page
+        .getByRole("button", { name: "Peligro" })
+        .evaluate((node) => getComputedStyle(node).backgroundColor);
+      await expect(dialog.getByRole("button", { name: "Archivar" })).toHaveCSS(
+        "background-color",
+        danger,
+      );
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await expect(trigger).toBeFocused();
+    });
+
+    test(`Combobox en ${width}: medida del TextField, lista, teclado`, async ({
+      page,
+    }) => {
+      await open(page, width);
+      const input = page.getByRole("combobox", { name: "Ciudad" });
+      const reference = await page
+        .getByRole("textbox", { name: "Nombre", exact: true })
+        .evaluate((node) => {
+          const css = getComputedStyle(node);
+          return {
+            "padding-left": css.paddingLeft,
+            "padding-top": css.paddingTop,
+            "border-top-left-radius": css.borderTopLeftRadius,
+            "border-top-color": css.borderTopColor,
+            "min-height": css.minHeight,
+            "font-size": css.fontSize,
+          };
+        });
+      await expectCss(input, reference);
+      // Scroll ANTES de escribir: React Aria cierra la lista ante un scroll y repone el texto, y el
+      // scroll de `fill`/`click` llega despues de la primera tecla (medido: «cu» quedaba «u»).
+      await input.scrollIntoViewIfNeeded();
+      await page.evaluate(
+        () =>
+          new Promise((done) =>
+            requestAnimationFrame(() => requestAnimationFrame(done)),
+          ),
+      );
+      await input.click();
+      await page.keyboard.type("cu");
+      const listbox = page.getByRole("listbox");
+      await expect(listbox.getByRole("option")).toHaveCount(1);
+      await expect(
+        listbox.getByRole("option", { name: "Cuenca" }),
+      ).toBeVisible();
+      // La caja es el Popover (padre de la listbox), del ancho del input.
+      expect(
+        Math.abs(
+          (await box(listbox.locator(".."))).width - (await box(input)).width,
+        ),
+      ).toBeLessThanOrEqual(1);
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await expect(page.getByText("Elegida: Cuenca")).toBeVisible();
+    });
+  }
+
+  test("Dialog: nombre y descripcion", async ({ page }) => {
+    await open(page, 1280);
+    await page.getByRole("button", { name: "Abrir dialogo" }).click();
+    const dialog = page.getByRole("dialog", { name: "Editar nombre" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAccessibleDescription("Lo ven tus clientes.");
+  });
+
+  test("Tabs, SegmentedControl, Switch, ProgressBar y Link", async ({
+    page,
+  }) => {
+    await open(page, 1280);
+
+    const products = page.getByRole("tab", { name: "Productos" });
+    const categories = page.getByRole("tab", { name: "Categorias" });
+    await expect(products).toHaveCSS("border-bottom-color", primary);
+    await products.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(categories).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("Panel categorias")).toBeVisible();
+    await expect(categories).toHaveCSS("border-bottom-color", primary);
+
+    await expect(
+      page.getByRole("radiogroup", { name: "Buscar por" }),
+    ).toBeVisible();
+    const byName = page.getByRole("radio", { name: "Nombre" });
+    const byPhone = page.getByRole("radio", { name: "Telefono" });
+    await expect(byName).toHaveAttribute("aria-checked", "true");
+    await byPhone.click();
+    await expect(byPhone).toHaveAttribute("aria-checked", "true");
+    await expect(byPhone).toHaveCSS("background-color", primary);
+    await expect(byName).toHaveAttribute("aria-checked", "false");
+
+    const testMode = page.getByRole("switch", { name: "Modo prueba" });
+    await expect(testMode).not.toBeChecked();
+    await page.getByText("Modo prueba").click();
+    await expect(testMode).toBeChecked();
+    await expect(
+      page.getByRole("switch", { name: "Notificaciones" }),
+    ).toBeChecked();
+
+    const progress = page.getByRole("progressbar", { name: "Configuracion" });
+    await expect(progress).toHaveAttribute("aria-valuenow", "40");
+    // El relleno es el unico elemento con `style` (la excepcion del ADR 0123 §2); la pista, su padre.
+    const fill = progress.locator('[style*="width"]');
+    const track = fill.locator("..");
+    expect(
+      Math.abs((await box(fill)).width - 0.4 * (await box(track)).width),
+    ).toBeLessThanOrEqual(1);
+
+    await expectCss(page.getByRole("link", { name: "Ver ayuda" }), {
+      color: primary,
+      "text-decoration-line": "underline",
+    });
+    const panel = page.getByRole("link", { name: "Ir al panel" });
+    await expect(panel).toHaveAttribute("href", "#panel");
+    await expectCss(panel, { "min-height": "44px", "border-top-width": "1px" });
+  });
+
   test.describe("capturas de Mac", () => {
     test.skip(
       Boolean(process.env.CI),
@@ -193,6 +342,22 @@ export function registerKitTests() {
             animations: "disabled",
             threshold: 0,
           });
+        });
+    // Spec 0160: el ConfirmDialog abierto (caso aparte: la pagina por defecto lo tiene cerrado).
+    for (const theme of themes)
+      for (const width of widths)
+        test(`captura dialogo ${theme} ${width}`, async ({ page }) => {
+          await page.setViewportSize({ width, height: 900 });
+          await page.emulateMedia({
+            colorScheme: theme,
+            reducedMotion: "reduce",
+          });
+          await page.goto(`${harness.url}/?case=dialog&theme=${theme}`);
+          await expect(page.getByRole("alertdialog")).toBeVisible();
+          await expect(page).toHaveScreenshot(
+            `kit-dialog-${theme}-${width}.png`,
+            { animations: "disabled", threshold: 0 },
+          );
         });
   });
 }

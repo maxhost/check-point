@@ -309,67 +309,6 @@
     filter: none;
     transform: none;
   }
-  .places-search {
-    position: relative;
-    width: 100%;
-    display: grid;
-    gap: 8px;
-  }
-  .places-search-input {
-    width: 100%;
-    min-height: 48px;
-    padding: 10px 13px;
-    border: 1px solid var(--ui-border-strong);
-    border-radius: 11px;
-    color: var(--ui-text);
-    background: var(--ui-surface);
-  }
-  .places-search-input:focus-visible {
-    border-color: var(--ui-focus);
-    outline: 2px solid var(--ui-focus);
-    outline-offset: 2px;
-  }
-  .places-search-input::placeholder {
-    color: var(--ui-text-muted);
-    opacity: 1;
-  }
-  .places-search-results {
-    position: absolute;
-    z-index: 5;
-    top: 100%;
-    width: 100%;
-    max-height: 260px;
-    margin: 5px 0 0;
-    padding: 6px;
-    overflow-y: auto;
-    border: 1px solid var(--ui-border);
-    border-radius: 11px;
-    list-style: none;
-    color: var(--ui-text);
-    background: var(--ui-surface-raised);
-    box-shadow: 0 12px 28px var(--ui-shadow-md);
-  }
-  .driver-active-element .places-search-results {
-    position: static;
-  }
-  .places-search-results button {
-    width: 100%;
-    padding: 11px;
-    border-radius: 8px;
-    color: var(--ui-text);
-    text-align: left;
-    background: transparent;
-  }
-  .places-search-results button span {
-    display: block;
-    color: var(--ui-text-muted);
-    font-size: 13px;
-  }
-  .places-search-results button:hover,
-  .places-search-results button:focus-visible {
-    color: var(--ui-text);
-    background: var(--ui-surface-subtle);
-  }
   .places-selected {
     display: grid;
     gap: 5px;
@@ -6853,6 +6792,19 @@
     pointer-events: auto;
   }
   .driver-active:has(.catalog-tour-popover)
+    [data-rac][data-placement]:has([role="listbox"]) {
+    z-index: 1000000001 !important;
+  }
+  /* Spec 0160: el buscador de lugares es un Combobox del kit; su lista va en un popover fuera
+     del elemento activo. En el paso de la direccion del tour de locales tiene que poder usarse. */
+  .driver-active:has([data-tour="location-address"].driver-active-element)
+    [data-rac][data-placement]:has([role="listbox"]),
+  .driver-active:has([data-tour="location-address"].driver-active-element)
+    [data-rac][data-placement]:has([role="listbox"])
+    * {
+    pointer-events: auto;
+  }
+  .driver-active:has([data-tour="location-address"].driver-active-element)
     [data-rac][data-placement]:has([role="listbox"]) {
     z-index: 1000000001 !important;
   }

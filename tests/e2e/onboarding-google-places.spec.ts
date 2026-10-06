@@ -69,9 +69,9 @@ test("alta en tres pasos comparte la sesión de Places y crea el negocio una vez
     page.getByRole("heading", { name: "Encuentra tu negocio" }),
   ).toBeVisible();
   await page
-    .getByRole("searchbox", { name: "Busca tu negocio o dirección" })
+    .getByRole("combobox", { name: "Busca tu negocio o dirección" })
     .fill("cafe platano");
-  await page.getByRole("button", { name: /Café Plátano.*Cuenca/ }).click();
+  await page.getByRole("option", { name: /Café Plátano.*Cuenca/ }).click();
   await expect(page.getByText("Av. Remigio Crespo, Cuenca")).toBeVisible();
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(
@@ -153,9 +153,9 @@ test("local nuevo envía address.selectionToken y conserva el formulario ante er
       .getByRole("textbox", { name: "Nombre del local" })
       .fill("Centro");
     await page
-      .getByRole("searchbox", { name: "Busca la dirección" })
+      .getByRole("combobox", { name: "Busca la dirección" })
       .fill("Av. Amazonas");
-    await page.getByRole("button", { name: /Av. Amazonas.*Quito/ }).click();
+    await page.getByRole("option", { name: /Av. Amazonas.*Quito/ }).click();
     await page.getByRole("button", { name: "Crear local" }).click();
     await expect(
       page.getByText("Esa dirección está en otro país que tu negocio."),
@@ -172,4 +172,56 @@ test("local nuevo envía address.selectionToken y conserva el formulario ante er
   } finally {
     await harness.close();
   }
+});
+
+// Spec 0160: al elegir, React Aria escribe el texto de la opcion en el campo. Con `details` lento
+// (mas que el debounce de 300 ms) eso no puede disparar otro `autocomplete`.
+test("elegir una sugerencia no dispara otra busqueda", async ({ page }) => {
+  const autocompletes: string[] = [];
+  await page.route("**/api/onboarding/state", (route) =>
+    route.fulfill({ json: { authenticated: false } }),
+  );
+  await page.route("**/api/onboarding/prefill", (route) =>
+    route.fulfill({
+      json: { categories: [{ gcid: "gcid:cafe", displayName: "Cafetería" }] },
+    }),
+  );
+  await page.route("**/api/places/autocomplete", async (route) => {
+    autocompletes.push(
+      (route.request().postDataJSON() as { input: string }).input,
+    );
+    await route.fulfill({
+      json: {
+        suggestions: [
+          {
+            placeId: "place-1",
+            kind: "business",
+            mainText: "Café Plátano",
+            secondaryText: "Cuenca, Ecuador",
+          },
+        ],
+      },
+    });
+  });
+  await page.route("**/api/places/details", async (route) => {
+    await new Promise((done) => setTimeout(done, 1000));
+    await route.fulfill({
+      json: {
+        place: {
+          placeId: "place-1",
+          kind: "business",
+          addressLabel: "Av. Remigio Crespo, Cuenca",
+          suggestedCategoryGcid: "gcid:cafe",
+        },
+        selectionToken: "signed-place",
+      },
+    });
+  });
+  await page.goto(`${merchantURL}/es/business/onboarding`);
+  await page
+    .getByRole("combobox", { name: "Busca tu negocio o dirección" })
+    .fill("cafe platano");
+  await page.getByRole("option", { name: /Café Plátano.*Cuenca/ }).click();
+  await expect(page.getByText("Av. Remigio Crespo, Cuenca")).toBeVisible();
+  expect(autocompletes).toEqual(["cafe platano"]);
 });

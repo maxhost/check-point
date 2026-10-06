@@ -49,8 +49,8 @@ export async function onboardingPlacesFixture(page: Page) {
 
 export async function choosePlace(page: Page) {
   await page
-    .getByRole("searchbox", { name: "Busca tu negocio o dirección" })
+    .getByRole("combobox", { name: "Busca tu negocio o dirección" })
     .fill("cafe platano");
-  await page.getByRole("button", { name: /Café Plátano.*Cuenca/ }).click();
+  await page.getByRole("option", { name: /Café Plátano.*Cuenca/ }).click();
   await expect(page.getByText("Av. Remigio Crespo, Cuenca")).toBeVisible();
 }

@@ -1,10 +1,10 @@
 ---
 spec: 0160
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: Fase 0b del ADR 0123, rebanada 2 de 3. El kit suma `Dialog`/`ConfirmDialog`, `Combobox`, `Tabs`, `SegmentedControl`, `Switch`, `ProgressBar` y `Link`; `places-search.tsx` pasa a usar `Combobox` (y se borra su CSS de `globals.css`); el harness del kit suma las piezas al final y un caso `?case=dialog`, con oraculo de estilos y comportamiento en Chromium/WebKit y capturas de Mac regeneradas.
 disjunta: no (toca `places-search.tsx`, `globals.css` y dos e2e de Places)
-archivos: apps/merchant/src/ui/dialog.tsx, apps/merchant/src/ui/combobox.tsx, apps/merchant/src/ui/tabs.tsx, apps/merchant/src/ui/segmented-control.tsx, apps/merchant/src/ui/switch.tsx, apps/merchant/src/ui/progress-bar.tsx, apps/merchant/src/ui/link.tsx, apps/merchant/src/ui/index.ts, apps/merchant/src/app/components/places-search.tsx, apps/merchant/src/app/globals.css, tests/e2e/support/ui-kit-entry.tsx, tests/e2e/support/ui-kit-checks.ts, tests/e2e/onboarding-google-places.spec.ts, tests/e2e/support/onboarding-places-fixture.ts, tests/e2e/ui-kit.spec.ts-snapshots/, tests/e2e/ui-kit.webkit.spec.ts-snapshots/, docs/design-system.md
+archivos: apps/merchant/src/ui/dialog.tsx, apps/merchant/src/ui/combobox.tsx, apps/merchant/src/ui/tabs.tsx, apps/merchant/src/ui/segmented-control.tsx, apps/merchant/src/ui/switch.tsx, apps/merchant/src/ui/progress-bar.tsx, apps/merchant/src/ui/link.tsx, apps/merchant/src/ui/index.ts, apps/merchant/src/app/components/places-search.tsx, apps/merchant/src/app/globals.css, docs/PARQUEADO.md, tests/e2e/support/ui-kit-entry.tsx, tests/e2e/support/ui-kit-checks.ts, tests/e2e/onboarding-google-places.spec.ts, tests/e2e/support/onboarding-places-fixture.ts, tests/e2e/ui-kit.spec.ts-snapshots/, tests/e2e/ui-kit.webkit.spec.ts-snapshots/, docs/design-system.md
 ---
 
 # 0160 — Kit: overlays y navegacion (Fase 0b, rebanada 2)
@@ -241,18 +241,73 @@ sha antes de que toque alta o locales.
 
 ## Definition of Done
 
-- [ ] Rojo antes: (a) el harness con las piezas nuevas y sin crearlas no compila (`No matching export … for import
-      "Combobox"`, etc.); (b) los e2e de Places con los roles nuevos, contra el `places-search.tsx` viejo, rojos
-      porque no hay `combobox` (se transcribe).
-- [ ] `pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` verde (Node 24), conteo.
-- [ ] `CI=1 …` mismo comando: el oraculo 1 corre y pasa; capturas y WebKit `skipped` (conteo).
-- [ ] `pnpm exec playwright test tests/e2e/onboarding-google-places.spec.ts tests/e2e/ui-layers.spec.ts
-      tests/e2e/ui-captures.spec.ts` verde.
-- [ ] `rg -n 'places-search' apps/merchant/src/app/globals.css` → vacio.
-- [ ] `rg -n 'react-aria-components' apps/merchant/src/app/components/places-search.tsx` → vacio.
-- [ ] Artifact privado con las capturas nuevas y regeneradas.
-- [ ] `pnpm verify` con Node 24, una vez al final; tabla transcripta.
-- [ ] `rg -nw MUTATION apps tools tests` → vacio.
+- [x] Rojo antes: (a) harness con las piezas y sin crearlas → `ERROR: No matching export in
+      "apps/merchant/src/ui/index.ts" for import "Combobox"` (idem `ConfirmDialog`, `Dialog`, `Link`, `ProgressBar`,
+      `SegmentedControl`, `Switch`, `Tab`, `TabList`, `TabPanel`, `Tabs`); (b) los e2e de Places con los roles nuevos
+      contra el `places-search.tsx` viejo → 2 rojos, `waiting for getByRole('combobox', { name: 'Busca tu negocio o
+      dirección' })` / `'Busca la dirección'` (`locator.fill: Test timeout of 30000ms exceeded`).
+- [x] `pnpm exec playwright test tests/e2e/ui-kit.spec.ts tests/e2e/ui-kit.webkit.spec.ts` (Node 24) → `40 passed`.
+- [x] `CI=1 …` mismo comando → `12 passed`, `28 skipped` (capturas de Chromium + todo WebKit).
+- [x] `pnpm exec playwright test tests/e2e/onboarding-google-places.spec.ts tests/e2e/ui-layers.spec.ts
+      tests/e2e/ui-captures.spec.ts` → `4 passed`, `16 skipped` (`ui-captures` solo corre con `UI_CAPTURES_DIR`);
+      con el test nuevo de Places (desvio 3), `onboarding-google-places.spec.ts` → `3 passed`.
+- [x] `rg -n 'places-search' apps/merchant/src/app/globals.css` → vacio (exit 1).
+- [x] `rg -n 'react-aria-components' apps/merchant/src/app/components/places-search.tsx` → vacio.
+- [x] Artifact privado con las 16 capturas: https://claude.ai/artifact/BxFSXFFqCUUd3e8YHxUmy4
+- [x] `pnpm verify` con Node 24. Primera corrida ROJA: `format:check` (3 archivos de esta spec sin Prettier) y
+      `test:e2e` 1 rojo ajeno (`loyalty-states.spec.ts:228`, «Tearing down "loyaltyHarness" exceeded the test timeout
+      of 30000ms»; suelto 15/15; PARQUEADO #78). Con Prettier aplicado, segunda corrida:
+
+      ```
+      typecheck             | corrio                      | ok      | 3.1
+      lint                  | corrio                      | ok      | 6.1
+      format:check          | corrio                      | ok      | 6.7
+      test                  | corrio                      | ok      | 42.7
+      build                 | corrio                      | ok      | 11.0
+      test:e2e              | corrio                      | ok      | 51.1   (160 passed)
+      neon related merchant | corrio                      | ok      | 23.4
+      neon related consumer | salteado (nada de consumer) | -       | -
+      verify: ok
+      ```
+- [x] `rg -nw MUTATION apps tools tests` (sin `.next`) → solo `E2E_LOYALTY_MUTATION_TEST` preexistente.
+
+## Implementacion (2026-10-05)
+
+**Desvios medidos (el diseño de arriba queda como se cerro; esto manda):**
+
+1. **`Combobox` abre la lista cuando llegan opciones.** React Aria solo abre el menu cuando cambia el texto
+   (`useComboBoxState.mjs:185`, `inputValue !== lastValue`); con Places las sugerencias llegan 300 ms despues y la
+   lista no se abria (medido: los 3 e2e de Places rojos esperando la `option`). `ComboBox` no acepta `isOpen`
+   (`isOpen: undefined` fijo, `:120`). Pieza interna `OpenWhenItemsArrive` (lee `ComboBoxStateContext`): abre con
+   `state.open(null, "input")` cuando cambian los ids de las opciones y el campo tiene el foco; con las mismas
+   opciones (p. ej. tras Escape) no reabre.
+2. **`Combobox` sin prop `type`** (la spec decia `type?="search"`): con `combobox` el rol no depende del `type`; no
+   tenia uso.
+3. **Guardia en `places-search.tsx` + test nuevo** «elegir una sugerencia no dispara otra busqueda»
+   (`details` con 1 s de demora): el oraculo previsto (`tokens` del alta) no lo ve porque `details` responde al
+   instante y el componente se desmonta antes del debounce. Medido sin guardia: `+ "Café Plátano"` (un
+   `autocomplete` extra con el texto de la opcion). Guardia: `onInputChange` ignora cambios con
+   `status === "selecting"`.
+4. **El kit usa `onChange` del `ComboBox`** (en RAC 1.21 `onSelectionChange` esta deprecado); la API del kit
+   conserva el nombre `onSelectionChange`.
+5. **Oraculo del Combobox: scroll antes de escribir.** React Aria cierra la lista ante un scroll y repone el texto;
+   el scroll de `fill`/`click` llega despues de la primera tecla (medido: «cu» quedaba «u» en Chromium y WebKit).
+   El test hace `scrollIntoViewIfNeeded` + dos `requestAnimationFrame` y despues clic + teclado. El ancho se mide en
+   el `Popover` (la `listbox` interna mide 10 px menos por padding y borde).
+6. **`ProgressBar`**: el oraculo ubica el relleno por `[style*="width"]` (unico elemento con `style`) en vez de
+   atributos de test en el kit.
+7. **`next/link` renderiza fuera del App Router** (harness esbuild sin Next): sin alias.
+8. **CSS borrado:** 9 reglas `.places-search*` (la spec decia 11: conto selectores).
+9. Regiones vivas del `Combobox` con `empty:sr-only`: siempre montadas, sin ocupar lugar vacias.
+
+**Bitacora de mutaciones** (de a una, `shasum` antes y despues identico, revertidas copiando el original + `diff`):
+
+| # | shasum | Oraculo | Resultado |
+|---|---|---|---|
+| M1 | `eb632752983b` | foco en «Cancelar» (390) | ROJO: `toBeFocused` `Received: inactive` |
+| M2 | `70e5222fdd42` | ancho del popover (1280) | ROJO: `Expected <= 1 / Received 876.203125` |
+| M3 | `be103dcb94ce` | test nuevo de Places (desvio 3), sin el `return` del guardia | ROJO: `+ "Café Plátano"` |
+| M4 | `a771e2a79668` | fondo del segmento elegido | ROJO: `Expected "rgb(23, 101, 72)" / Received "rgb(232, 244, 238)"` |
 
 ## Mutaciones — presupuesto: 4. Clase: los plausibles
 
@@ -260,7 +315,7 @@ sha antes de que toque alta o locales.
 |---|---|---|
 | M1 | `dialog.tsx`: sacar `autoFocus` de «Cancelar» | foco inicial en «Cancelar» |
 | M2 | `combobox.tsx`: `Popover` sin `w-[var(--trigger-width)]` | ancho de la listbox = ancho del input |
-| M3 | `places-search.tsx`: sacar el guardia contra la busqueda al elegir (si hace falta uno; si no, se muta el `++request.current` de `choose`) | sesion de Places: `tokens` / cuerpos en `onboarding-google-places.spec.ts` |
+| M3 | `places-search.tsx`: sacar el guardia contra la busqueda al elegir (si hace falta uno; si no, se muta el `++request.current` de `choose`) | sesion de Places: `tokens` / cuerpos en `onboarding-google-places.spec.ts` (implementado: test nuevo, desvio 3) |
 | M4 | `segmented-control.tsx`: seleccionado `bg-primary-soft` en vez de `bg-primary` | `background-color` del segmento elegido |
 
 **Protocolo:** skill `protocolo-de-verificacion` (shasum → bitacora → etiqueta `MUTATION` → medir → revertir con

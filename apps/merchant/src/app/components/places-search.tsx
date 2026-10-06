@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Combobox } from "../../ui";
 import type {
   PlaceSelection,
   PlaceSuggestion,
@@ -81,57 +82,36 @@ export function PlacesSearch({
     }
   }
 
+  const searching = query.trim().length >= 3;
   return (
-    <div className="places-search">
-      <label className="location-form-label" htmlFor="places-search-input">
-        {label}
-      </label>
-      <input
-        id="places-search-input"
-        className="places-search-input"
-        type="search"
-        autoComplete="off"
-        value={query}
-        onChange={(event) => {
-          setQuery(event.target.value);
-          setError(null);
-        }}
-        placeholder="Busca un negocio o una dirección"
-        aria-controls="places-search-results"
-        aria-expanded={suggestions.length > 0}
-      />
-      {status === "loading" && <p role="status">Buscando…</p>}
-      {error && (
-        <p role="alert" className="text-danger">
-          {error}
-        </p>
-      )}
-      {query.trim().length >= 3 &&
-        status === "idle" &&
-        !error &&
-        suggestions.length === 0 && (
-          <p className="field-help">
-            No encontramos resultados. Prueba otra búsqueda.
-          </p>
-        )}
-      {suggestions.length > 0 && (
-        <ul id="places-search-results" className="places-search-results">
-          {suggestions.map((suggestion) => (
-            <li key={suggestion.placeId}>
-              <button
-                type="button"
-                disabled={status === "selecting"}
-                onClick={() => void choose(suggestion)}
-              >
-                <strong>{suggestion.mainText}</strong>
-                {suggestion.secondaryText && (
-                  <span>{suggestion.secondaryText}</span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <Combobox
+      label={label}
+      placeholder="Busca un negocio o una dirección"
+      items={suggestions.map((suggestion) => ({
+        id: suggestion.placeId,
+        label: suggestion.mainText,
+        description: suggestion.secondaryText || undefined,
+      }))}
+      inputValue={query}
+      onInputChange={(value) => {
+        // Al elegir, React Aria escribe el texto de la opcion: no es una busqueda nueva (con
+        // `details` lento disparaba otro `autocomplete`; e2e «elegir una sugerencia…»).
+        if (status === "selecting") return;
+        setQuery(value);
+        setError(null);
+      }}
+      onSelectionChange={(id) => {
+        const suggestion = suggestions.find((item) => item.placeId === id);
+        if (suggestion && status !== "selecting") void choose(suggestion);
+      }}
+      status={
+        status === "loading"
+          ? "Buscando…"
+          : searching && status === "idle" && !error && suggestions.length === 0
+            ? "No encontramos resultados. Prueba otra búsqueda."
+            : undefined
+      }
+      errorMessage={error ?? undefined}
+    />
   );
 }
