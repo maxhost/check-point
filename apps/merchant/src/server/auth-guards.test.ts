@@ -96,10 +96,18 @@ describe("backoffice guards by role (ADR 0044)", () => {
     expect(await destinationOf(requireBackofficeSession)).toBe("/");
   });
 
-  it("session but no membership → /", async () => {
+  // Spec 0166: la raíz manda toda sesión viva sin `?e=` al panel, así que este rebote tiene
+  // que salir SIN sesión o cierra el ciclo `/` ↔ `/backoffice`.
+  it("session but no membership → /, and revokes the session first", async () => {
     sessionValue = { user: { id: "u1", name: "Ana", emailVerified: true } };
     membershipRow = undefined;
     expect(await destinationOf(requireBackofficeSession)).toBe("/");
+
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].table).toBe(sessions);
+    const { sql, params } = new PgDialect().sqlToQuery(deletes[0].where);
+    expect(sql).toContain('"user_id"');
+    expect(params).toEqual(["u1"]);
   });
 
   // ADR 0055 / spec 0057: the bounce says why, and leaves no live session behind.

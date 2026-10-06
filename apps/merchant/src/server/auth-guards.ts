@@ -82,7 +82,8 @@ export type BackofficeSession = {
  * Shared backoffice guard (ADR 0044). Resolves the authenticated merchant_auth user's
  * business + membership (role + status), redirecting when there is no access:
  *  - no session → `/`;
- *  - session but no membership at all → `/` (a brand-new owner);
+ *  - session but no membership at all → revokes the session and sends it to `/` (spec 0166:
+ *    an access that does not belong closes its session);
  *  - membership `status='disabled'` → revokes the session and sends the member to
  *    `/?e=staff_disabled`, so the landing can say why (ADR 0055);
  *  - business `closed` → `/?e=business_closed` (spec 0072 §D4), para CUALQUIER rol;
@@ -101,8 +102,10 @@ export type BackofficeSession = {
  * bounce into a 404, and the `staff_disabled` case of ADR 0055 loses the channel that
  * explains the rejection. Pinned by `auth-guards.test.ts` (mutation #6 of the budget).
  *
- * **And `app/page.tsx` no longer bounces a live session to `/backoffice`**: with these
- * three redirects pointing at `/`, that bounce would close an infinite redirect loop.
+ * **`app/page.tsx` sends a live session WITHOUT `?e=` to `/backoffice`** (spec 0166), so
+ * every bounce of this guard to `/` either carries `?e=` (the page renders the cover and never
+ * redirects) or leaves no session behind (`!session` had none; `!row` revokes it). Breaking
+ * that invariant closes an infinite `/` ↔ `/backoffice` loop.
  *
  * Never returns a disabled or sessionless caller.
  */
@@ -133,7 +136,14 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
     .orderBy(asc(businesses.createdAt))
     .limit(1);
 
-  if (!row) redirect("/");
+  if (!row) {
+    // Spec 0166: una sesión sin negocio no corresponde (hoy no se puede crear: el alta crea
+    // cuenta y negocio en un batch) y se cierra, igual que `staff_disabled` abajo. Sin esto
+    // la raíz, que manda toda sesión viva sin `?e=` a `/backoffice`, cerraría un ciclo.
+    // El await ANTES del `redirect()`, por el mismo motivo que el de abajo.
+    await getDb().delete(sessions).where(eq(sessions.userId, session.user.id));
+    redirect("/");
+  }
   if (row.status !== "active") {
     // ADR 0055 §3: better-auth authenticates against merchant_auth and knows nothing
     // about core.business_membership, so a deactivated member still gets a fresh
