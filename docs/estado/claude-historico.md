@@ -3,6 +3,40 @@
 > Bloques ESTADO viejos, movidos tal cual desde `claude.md` (spec 0151). **No se lee al arrancar**: el estado
 > vigente es el bloque `⇥ ESTADO` de arriba de `claude.md`. Se consulta con `rg` si hace falta un dato viejo.
 
+## ⇥ ESTADO HISTORICO (2026-10-05, noche) — 0164 (FASE 0c) IMPLEMENTADA (`5eb47af`), SIN PUSHEAR: `verify` ROJO SOLO POR #74
+
+**Hecho (verificado):**
+- **0164** (Fase 0c, cierra la parte de Claude antes de la Fase 1): spec `6da1e6d` (pusheada), implementacion `5eb47af`
+  (local). `tools/ui-guard.ts` (+ `ui-guard-counts.ts`, `ui-guard-tsx.ts`): trinquete por archivo cambiado de
+  `apps/merchant/src`, 17 categorias, gate `ui-guard` en `pnpm verify`; `--report` = linea de partida de la Fase 1
+  (257 nativos, 193 handlers, 122 `type-scale`, 1491 selectores y 480 colores en CSS). `tools/zone-audit.ts` en hook
+  `SessionStart`. `postcss` 8.5.26 devDep de la raiz. Docs: AGENTS.md, TRABAJO-EN-PARALELO §5, design-system §Guardia,
+  PARQUEADO #79 (`type` de `TextField`). 37 tests de tools; M1–M3 rojas por la asercion esperada y revertidas. Sobre el
+  repo real: `<button onClick>` temporal en el mostrador → exit 1 con lineas; revertido → exit 0.
+- **`pnpm verify` → ROJO solo en `neon (full)`**: 1 de 3362, `catalog-import-reconcile` = PARQUEADO #74; ese archivo
+  solo → `8 passed`. Todo lo demas ok.
+- Antes, en esta sesion: prompt de Fase 1 para GPT dado (mostrador primero).
+
+**Siguiente, en orden:**
+1. **Push de `5eb47af` + este estado**: pedir OK del owner para `--no-verify` (como en 0160/0161) o reintentar `verify`.
+2. Tras el push: `node tools/zone-audit.ts` → sin salida (el ancla queda en `origin/main`). Avisarle a GPT que el guard
+   ya corre en `verify` (el prompt ya lista las reglas).
+3. **0163 sin PASS independiente** (spec `cerrada`): sesion valida/vencida y rebotes del guard sin ciclo.
+4. Lo que queda del arco ADR 0123: Fase 1 (GPT) → piezas del kit que pida → Cierre (Claude: borrar `@layer legacy`,
+   guard absoluto, oscuro con capturas). PARQUEADO #79 cuando marketing pase a `DateTimeField`.
+
+**Pendientes del owner:** QA del buscador de lugares (alta y locales) y del tour de locales (0160). Borrar las dos claves
+de Geoapify en Vercel; QA del alta/locales/programa.
+
+**Hallazgos abiertos:** PARQUEADO #74 (otra vez hoy), #75, #77, #78, #79; H4 de la 0155. `docs/design-system.md` §Form
+todavia dice «Pendiente» sobre `validationErrors` (resuelto por la 0162).
+
+**Gotchas:** el hook `file-size.sh` corta en 300 lineas (partir antes de escribir). `document.createElement` y los
+selectores `[data-tour=…]` son falsos positivos ya excluidos del guard. `pnpm verify` deja `next-env.d.ts` modificados
+(build): `git checkout` antes de commitear.
+
+**Prompt para retomar:** «Lee docs/estado/claude.md: push de la 0164».
+
 ## ⇥ ESTADO HISTORICO (2026-10-05, noche) — 0161 Y 0163 EN `origin/main` (`42f1516`, CI verde); PROMPT DE FASE 1 PARA GPT DADO; SIGUE LA FASE 0c
 
 **Hecho (verificado):**

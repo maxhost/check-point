@@ -9,36 +9,34 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — 0164 (FASE 0c) IMPLEMENTADA (`5eb47af`), SIN PUSHEAR: `verify` ROJO SOLO POR #74
+## ⇥ ESTADO (2026-10-05, noche) — 0165 IMPLEMENTADA CON PASS (`8ab9e73`), PUSHEADA DESDE LA RAMA `sin-gate-email`; FASE 1 DE UI PARQUEADA (ES DE GPT)
 
 **Hecho (verificado):**
-- **0164** (Fase 0c, cierra la parte de Claude antes de la Fase 1): spec `6da1e6d` (pusheada), implementacion `5eb47af`
-  (local). `tools/ui-guard.ts` (+ `ui-guard-counts.ts`, `ui-guard-tsx.ts`): trinquete por archivo cambiado de
-  `apps/merchant/src`, 17 categorias, gate `ui-guard` en `pnpm verify`; `--report` = linea de partida de la Fase 1
-  (257 nativos, 193 handlers, 122 `type-scale`, 1491 selectores y 480 colores en CSS). `tools/zone-audit.ts` en hook
-  `SessionStart`. `postcss` 8.5.26 devDep de la raiz. Docs: AGENTS.md, TRABAJO-EN-PARALELO §5, design-system §Guardia,
-  PARQUEADO #79 (`type` de `TextField`). 37 tests de tools; M1–M3 rojas por la asercion esperada y revertidas. Sobre el
-  repo real: `<button onClick>` temporal en el mostrador → exit 1 con lineas; revertido → exit 0.
-- **`pnpm verify` → ROJO solo en `neon (full)`**: 1 de 3362, `catalog-import-reconcile` = PARQUEADO #74; ese archivo
-  solo → `8 passed`. Todo lo demas ok.
-- Antes, en esta sesion: prompt de Fase 1 para GPT dado (mostrador primero).
+- **0164** (Fase 0c) en `origin/main` (`5eb47af`, push `--no-verify` con OK del owner por el flake #74).
+- **ADR 0125 + spec 0165** (N2): todo `/api/catalog/*` (IA incluida) y retirar/cancelar el retiro del programa sin
+  email verificado; borrados duros y retiro siguen solo del owner. Implementacion `8ab9e73`; `pnpm verify` ok en la
+  rama; revisor PASS (`8ad441a`) con M1–M3 rojas por la asercion esperada y revertidas. Reproducido por mi: inventario
+  `SinGateDeEmail` = 7 archivos, unidad 181/181, sin `MUTATION`. Riesgo aceptado por el owner: gasto de IA acotado
+  solo por el cupo por comercio.
+- **Prompt de Fase 1 para GPT dado** (sin push: un solo push al final de todas las pantallas; GPT numera specs desde
+  **0170**, Claude usa **0165–0169**).
 
-**Siguiente, en orden:**
-1. **Push de `5eb47af` + este estado**: pedir OK del owner para `--no-verify` (como en 0160/0161) o reintentar `verify`.
-2. Tras el push: `node tools/zone-audit.ts` → sin salida (el ancla queda en `origin/main`). Avisarle a GPT que el guard
-   ya corre en `verify` (el prompt ya lista las reglas).
-3. **0163 sin PASS independiente** (spec `cerrada`): sesion valida/vencida y rebotes del guard sin ciclo.
-4. Lo que queda del arco ADR 0123: Fase 1 (GPT) → piezas del kit que pida → Cierre (Claude: borrar `@layer legacy`,
-   guard absoluto, oscuro con capturas). PARQUEADO #79 cuando marketing pase a `DateTimeField`.
+**Como se trabaja ahora:** GPT commitea la Fase 1 en local sobre `main` del arbol principal, sin pushear. Claude trabaja
+en worktrees desde `origin/main` (`tools/worktree-new.sh`) y pushea con `git push origin <rama>:main`; el `main` local
+de GPT queda atras y rebasa al final. El worktree necesita `apps/merchant/.env.local` enlazado (el script solo enlaza
+los `.env*` de la raiz).
 
-**Pendientes del owner:** QA del buscador de lugares (alta y locales) y del tour de locales (0160). Borrar las dos claves
-de Geoapify en Vercel; QA del alta/locales/programa.
+**Siguiente:**
+1. QA del owner de la 0165 cuando el deploy de Vercel de `checkpass.club` este `READY` con el sha del push: con una
+   cuenta sin verificar, cargar catalogo (manual e IA) y retirar/cancelar el retiro del programa.
+2. Parqueado del arco UI (ADR 0123): piezas del kit que pida GPT; PARQUEADO #79; Cierre (borrar `@layer legacy`, guard
+   absoluto, oscuro). Para GPT: el copy `email_not_verified` de catalogo/programa quedo muerto (0165).
+3. 0163 sin PASS independiente (sesion valida/vencida, rebotes sin ciclo).
 
-**Hallazgos abiertos:** PARQUEADO #74 (otra vez hoy), #75, #77, #78, #79; H4 de la 0155. `docs/design-system.md` §Form
-todavia dice «Pendiente» sobre `validationErrors` (resuelto por la 0162).
+**Pendientes del owner:** QA de la 0165; QA del buscador de lugares y del tour de locales (0160); borrar las dos
+claves de Geoapify en Vercel; QA del alta/locales/programa.
 
-**Gotchas:** el hook `file-size.sh` corta en 300 lineas (partir antes de escribir). `document.createElement` y los
-selectores `[data-tour=…]` son falsos positivos ya excluidos del guard. `pnpm verify` deja `next-env.d.ts` modificados
-(build): `git checkout` antes de commitear.
+**Hallazgos abiertos:** PARQUEADO #74, #75, #77, #78, #79; H4 de la 0155. `docs/design-system.md` §Form dice
+«Pendiente» sobre `validationErrors` (resuelto por la 0162).
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: push de la 0164».
+**Prompt para retomar:** «Lee docs/estado/claude.md: QA de la 0165».
