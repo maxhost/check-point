@@ -1,7 +1,7 @@
 ---
 spec: 0163
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: La raíz del merchant envía al onboarding a quien no tiene sesión.
 disjunta: si
 archivos: apps/merchant/src/app/page.tsx, tests/e2e/merchant-entry.spec.ts
@@ -72,7 +72,7 @@ La página raíz lee `headers()` y redirige inmediatamente cuando `getSessionCoo
 
 ## Handoff
 
-Implementador: GPT. [Handoff con evidencia](../handoff-0163-entrada-merchant-2026-10-05.md). Revisor independiente: pendiente después de la implementación. `implementada` exige PASS y verificación real.
+Implementador: GPT. [Handoff con evidencia](../handoff-0163-entrada-merchant-2026-10-05.md). Revisor independiente (Claude, 2026-10-06): **PASS**. La rama con sesión (DoD 2) queda cubierta por `apps/merchant/src/app/page.neon.integration.test.ts` (4 casos: sin cookie/cookie basura → onboarding; sesión válida con negocio → portada; sesión sin membresía → el guard rebota a `/` y `/` muestra la portada, sin ciclo; cookie firmada con la fila borrada → onboarding). Mutaciones: borrar `if (!session) redirect` → 2 rojos; `redirect("/backoffice")` con sesión → 2 rojos (`expected 'redirect:/backoffice' to be 'portada'`, reproducido por el orquestador); el e2e sigue verde en las dos, solo las mata el test Neon. Sin oráculo, declarado: el atajo `getSessionCookie` (equivalente en todo lo observable). Nota: el SHA-1 de `page.tsx` en `bc8f3fd` es `1d418096…`, no `2d59db5c…`. Hallazgos a decidir: `/?e=<codigo>` sin sesión pierde el motivo (p.ej. `staff_disabled` termina en el alta de dueño); una sesión válida sin negocio que abre el onboarding salta a `/backoffice` y queda en la portada sin salida (previo a esta spec).
 
 ## Abierto
 
