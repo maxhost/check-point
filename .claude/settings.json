@@ -79,6 +79,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && { export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\" >/dev/null 2>&1; nvm use >/dev/null 2>&1; node --no-warnings tools/zone-audit.ts; } || true"
+          }
+        ]
+      }
     ]
   },
   "permissions": {

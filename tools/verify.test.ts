@@ -8,9 +8,21 @@ describe("planVerify", () => {
     expect(planVerify(["docs/x.md"])).toEqual({
       docsOnly: true,
       e2e: false,
+      uiGuard: false,
       neon: { mode: "none", merchant: [], consumer: [] },
       reasons: ["solo docs: solo format:check"],
     });
+  });
+
+  // Spec 0164: el gate `ui-guard` corre si se toco algo de `apps/merchant/src`.
+  it.each([
+    [["apps/merchant/src/app/backoffice/counter/counter-home.tsx"], true],
+    [["apps/merchant/src/server/counter/x.ts"], true],
+    [["packages/db/src/schema/x.ts"], false],
+    [["apps/consumer/src/app/page.tsx"], false],
+    [["tools/ui-guard.ts"], false],
+  ])("%j → uiGuard %s", (files, expected) => {
+    expect(planVerify(files).uiGuard).toBe(expected);
   });
 
   // Spec 0135: un push solo de docs corre solo `format:check`.

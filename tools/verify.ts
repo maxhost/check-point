@@ -9,7 +9,8 @@
  *
  * Solo docs (spec 0135): si TODO lo cambiado es `docs/**` o un `.md` de la raiz, corre SOLO
  * `format:check`.
- * Si no: typecheck, lint, format:check, test (unit), build. Despues e2e si se toco UI, y Neon:
+ * Si no: typecheck, lint, ui-guard (si se toco `apps/merchant/src`, spec 0164), format:check, test
+ * (unit), build. Despues e2e si se toco UI, y Neon:
  * selectivo (`vitest related`) si se toco servidor o `packages/domain`; completo ante lo que el
  * grafo de imports no ve (esquema, SQL, configuracion, lockfile, el propio `neon-test.sh`).
  * NO corta en el primer rojo: corre todo lo planeado y al final imprime la tabla.
@@ -30,6 +31,7 @@ export type NeonMode = "none" | "related" | "full";
 export type VerifyPlan = {
   docsOnly: boolean;
   e2e: boolean;
+  uiGuard: boolean;
   neon: { mode: NeonMode; merchant: string[]; consumer: string[] };
   reasons: string[];
 };
@@ -85,6 +87,7 @@ export function planVerify(files: string[]): VerifyPlan {
   const reasons: string[] = [];
   const docsOnly = files.length > 0 && files.every(isDoc);
   if (docsOnly) reasons.push("solo docs: solo format:check");
+  const uiGuard = files.some((f) => f.startsWith("apps/merchant/src/"));
   const full = files.filter(isFullTrigger);
   const e2eFiles = files.filter(isE2eTrigger);
   for (const file of full) reasons.push(`neon full: ${file}`);
@@ -94,6 +97,7 @@ export function planVerify(files: string[]): VerifyPlan {
     return {
       docsOnly,
       e2e: true,
+      uiGuard,
       neon: { mode: "full", merchant: [], consumer: [] },
       reasons,
     };
@@ -111,6 +115,7 @@ export function planVerify(files: string[]): VerifyPlan {
   return {
     docsOnly,
     e2e: e2eFiles.length > 0,
+    uiGuard,
     neon: { mode, merchant, consumer },
     reasons,
   };
@@ -146,7 +151,7 @@ function changedFiles(base: string): string[] {
 type Gate = { name: string; cmd: string[]; skip?: string };
 type Result = { name: string; ran: string; status: string; seconds: string };
 
-function gates(plan: VerifyPlan): Gate[] {
+function gates(plan: VerifyPlan, base: string): Gate[] {
   const list: Gate[] = [
     "typecheck",
     "lint",
@@ -158,6 +163,15 @@ function gates(plan: VerifyPlan): Gate[] {
     cmd: ["pnpm", "run", script],
     skip: plan.docsOnly && script !== "format:check" ? "solo docs" : undefined,
   }));
+  list.splice(2, 0, {
+    name: "ui-guard",
+    cmd: ["node", "tools/ui-guard.ts", "--base", base],
+    skip: plan.docsOnly
+      ? "solo docs"
+      : plan.uiGuard
+        ? undefined
+        : "no se toco el merchant",
+  });
   list.push({
     name: "test:e2e",
     cmd: ["pnpm", "run", "test:e2e"],
@@ -248,6 +262,7 @@ function main(argv: string[]): number {
     ? {
         docsOnly: false,
         e2e: true,
+        uiGuard: true,
         neon: { mode: "full", merchant: [], consumer: [] },
         reasons: ["--full"],
       }
@@ -258,10 +273,10 @@ function main(argv: string[]): number {
   );
   for (const f of files) console.log(`  ${f}`);
   console.log(
-    `plan: docsOnly=${plan.docsOnly} e2e=${plan.e2e} neon=${plan.neon.mode}`,
+    `plan: docsOnly=${plan.docsOnly} e2e=${plan.e2e} uiGuard=${plan.uiGuard} neon=${plan.neon.mode}`,
   );
   for (const reason of plan.reasons) console.log(`  - ${reason}`);
-  const list = gates(plan);
+  const list = gates(plan, base);
   if (argv.includes("--dry-run")) {
     for (const g of list) {
       console.log(

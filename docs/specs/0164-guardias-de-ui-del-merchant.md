@@ -1,10 +1,10 @@
 ---
 spec: 0164
 fecha: 2026-10-05
-estado: cerrada
+estado: implementada
 resumen: Fase 0c del ADR 0123. `tools/ui-guard.ts` en `pnpm verify` (trinquete sin baseline: por archivo cambiado de `apps/merchant/src`, cada categoria ≤ la base del merge-base con `origin/main`) con ESLint `Linter` (`noInlineConfig`) para TS/TSX y postcss para CSS; `--report` cuenta todo el merchant; `tools/zone-audit.ts` avisa al arrancar sesion de commits sin trailer de Claude sobre el kit y las guardias.
 disjunta: si
-archivos: tools/ui-guard.ts, tools/ui-guard.test.ts, tools/zone-audit.ts, tools/zone-audit.test.ts, tools/verify.ts, tools/verify.test.ts, package.json, pnpm-lock.yaml, .claude/settings.json, AGENTS.md, docs/TRABAJO-EN-PARALELO.md, docs/design-system.md, docs/TASKS.md
+archivos: tools/ui-guard.ts, tools/ui-guard-counts.ts, tools/ui-guard-tsx.ts, tools/ui-guard.test.ts, tools/ui-guard-rules.test.ts, tools/zone-audit.ts, tools/zone-audit.test.ts, tools/verify.ts, tools/verify.test.ts, package.json, pnpm-lock.yaml, .claude/settings.json, AGENTS.md, docs/TRABAJO-EN-PARALELO.md, docs/design-system.md, docs/PARQUEADO.md
 ---
 
 # 0164 — Guardias de UI del merchant (Fase 0c)
@@ -138,18 +138,18 @@ no impide: ADR 0123). Hook `SessionStart` en `.claude/settings.json`.
 
 | Archivo | Accion |
 |---|---|
-| `tools/ui-guard.ts`, `tools/ui-guard.test.ts` | crear |
+| `tools/ui-guard.ts` (trinquete, CLI), `tools/ui-guard-counts.ts` (categorias, clases, CSS), `tools/ui-guard-tsx.ts` (ESLint), `tools/ui-guard.test.ts`, `tools/ui-guard-rules.test.ts` | crear |
 | `tools/zone-audit.ts`, `tools/zone-audit.test.ts` | crear |
 | `tools/verify.ts`, `tools/verify.test.ts` | editar (gate y plan) |
 | `package.json`, `pnpm-lock.yaml` | `postcss` 8.5.26 devDependency |
 | `.claude/settings.json` | hook `SessionStart` |
-| `AGENTS.md`, `docs/TRABAJO-EN-PARALELO.md`, `docs/design-system.md`, `docs/TASKS.md` | editar |
+| `AGENTS.md`, `docs/TRABAJO-EN-PARALELO.md`, `docs/design-system.md`, `docs/PARQUEADO.md` (#79) | editar |
 
 **Disjunta?** Si: GPT trabaja en `apps/merchant/src/app/**` y `tests/e2e/**`.
 
 ## Definition of Done
 
-- [ ] `pnpm exec vitest run --project tools tools/ui-guard.test.ts tools/zone-audit.test.ts tools/verify.test.ts` en
+- [x] `pnpm exec vitest run --project tools tools/ui-guard.test.ts tools/zone-audit.test.ts tools/verify.test.ts` en
       verde, con: un caso por categoria (cuenta 1 en el ejemplo minimo, 0 en su par permitido: `<div>` vs `<button>`,
       `style={{"--x": 1}}` vs `style={{color: "red"}}`, `max-w-[var(--a)]` vs `w-[13px]`, `data-[x]:flex` no cuenta,
       `text-content` no cuenta como `type-scale` ni `raw-palette`, `@media print { a { color: red } }` no cuenta,
@@ -157,15 +157,15 @@ no impide: ADR 0123). Hook `SessionStart` en `.claude/settings.json`.
       donde: archivo nuevo con un `<button>` → exit 1; renombrado sin cambios → exit 0; renombrado con un `<button>`
       mas → exit 1; violacion movida de un archivo a otro nuevo → exit 1; borrar una violacion → exit 0; archivo sin
       seguimiento → contado.
-- [ ] Sobre el repo real, arbol limpio: `node tools/ui-guard.ts` → exit 0. Con un `<button onClick>` temporal en
+- [x] Sobre el repo real, arbol limpio: `node tools/ui-guard.ts` → exit 0. Con un `<button onClick>` temporal en
       `app/backoffice/counter/counter-home.tsx` → exit 1 nombrando `native-element` y `native-handler` con su linea;
       revertido → exit 0. Salidas transcriptas.
-- [ ] `node tools/ui-guard.ts --report` → tabla transcripta en la spec (la linea de partida de la Fase 1).
-- [ ] `node tools/zone-audit.ts` → sin salida tras el commit de esta spec (el ancla es ese commit).
-- [ ] `pnpm verify` en verde con Node 24 con el gate `ui-guard` en la tabla (salteado: no se toco el merchant), una
+- [x] `node tools/ui-guard.ts --report` → tabla transcripta en la spec (la linea de partida de la Fase 1).
+- [x] `node tools/zone-audit.ts` → sin salida tras el commit de esta spec (el ancla es ese commit).
+- [x] `pnpm verify` en verde con Node 24 con el gate `ui-guard` en la tabla (salteado: no se toco el merchant), una
       sola vez al final; tabla transcripta. Si `neon (full)` (cambia el lockfile) da rojo SOLO por PARQUEADO #74, se
       declara y se pide el OK del owner para el push.
-- [ ] `rg -n MUTATION apps tools` → vacio.
+- [x] `rg -n MUTATION apps tools` → vacio.
 
 ## Mutaciones — presupuesto: 3. Clase: los plausibles
 
@@ -185,6 +185,56 @@ no impide: ADR 0123). Hook `SessionStart` en `.claude/settings.json`.
   `tag-variable`, clases armadas por concatenacion de pedazos (`"bg-" + color`): no se detectan.
 - Falsos positivos en strings que no son clases (un texto que diga `leading-x`): con el trinquete solo molestan si se
   agregan; se ven en la linea reportada.
+
+## Implementacion
+
+**Bitacora de mutaciones** (filas abiertas ANTES de medir; copias limpias en el scratchpad de la sesion):
+
+| # | Archivo | shasum limpio | Ataca | Resultado ejecutado |
+|---|---|---|---|---|
+| M1 | `tools/ui-guard.ts:118` | `c2a40462` | `cabeza > base` → `cabeza > base + 1` | **ROJO 4 de 31** (`ui-guard.test.ts`): «un `<button>` mas», «nuevo», «movida», «sin commitear»; `AssertionError: expected [] to deeply equal [ { …(5) } ]`. Revertida: `diff` vacio, shasum `c2a40462` |
+| M2 | `tools/ui-guard.ts:83` | `c2a40462` | renombrado tratado como nuevo (`basePath: null`): la forma plausible del bug; comparar contra la ruta nueva haria lanzar a `git show` (rojo por el motivo equivocado) | **ROJO 3 de 31**: «renombrado sin cambios» y «renombrado sin commitear» (`expected { files: 1, violations: [ { …(5) } ] } to deeply equal { files: 1, violations: [] }`) y `parseChanges`. Revertida: `diff` vacio, shasum `c2a40462` |
+| M3 | `tools/ui-guard-tsx.ts:165` | `1fab4a27` | sin `noInlineConfig: true` | **ROJO 1 de 31**: «`// eslint-disable` no apaga» (`expected +0 to be 1`). Revertida: `diff` vacio, shasum `1fab4a27` |
+
+**Desvios de la spec (decididos al implementar, medidos):**
+
+- `tools/ui-guard.ts` se parte en tres (`ui-guard.ts`, `ui-guard-counts.ts`, `ui-guard-tsx.ts`): el hook
+  `file-size.sh` corta en 300 lineas (el primer borrador tenia 554).
+- El «total por categoria ≤ base» no se implementa aparte: con `cabeza ≤ base` en cada archivo cambiado, la suma lo
+  cumple sola (los no cambiados son iguales; un borrado da 0).
+- `tag-variable` cuenta solo si el string es un nombre de tag HTML: con «cualquier string» contaba toda constante en
+  Mayuscula (`const LABEL = "Guardar"`).
+- `arbitrary-value` con `[` inicial cuenta solo la propiedad arbitraria `[prop:valor]`: los selectores de tours
+  (`'[data-tour="staff-add"]'`, 3 en `staff-tour-definitions.ts` y otros) daban 56 falsos.
+- `create-element` no cuenta `document.createElement` (DOM, `lib/crop-image.ts:152`).
+- El tema de `TextField` va a `PARQUEADO.md` #79 (no hay lista de tareas en `TASKS.md`). Medido: 8 `datetime-local`
+  en 4 archivos de `marketing/` (2 cada uno).
+
+**Linea de partida de la Fase 1** (`node tools/ui-guard.ts --report`, 2026-10-05, 216 archivos):
+
+| Categoria | Total |
+|---|---|
+| `native-element` | 257 |
+| `native-handler` | 193 |
+| `native-style` | 6 |
+| `restricted-import` | 20 |
+| `css-import` | 2 |
+| `type-scale` | 122 |
+| `css-selector` | 1491 |
+| `css-at-rule` | 3 |
+| `css-color` | 480 |
+| `css-kit-selector` | 49 |
+| `dangerous-html`, `native-spread`, `create-element`, `tag-variable`, `raw-palette`, `arbitrary-value`, `css-file` | 0 |
+
+**`pnpm verify` (Node 24.20.0, una vez):** typecheck ok, lint ok, ui-guard salteado (no se toco el merchant),
+format:check ok, test ok, build ok, test:e2e ok, **neon (full) ROJO**: 1 de 3362, solo
+`catalog-import-reconcile.neon.integration.test.ts` «agotados los intentos…» (`expected [ Array(1) ] to have a length
+of +0 but got 1`) = PARQUEADO #74. Ese archivo solo, en seguida: `8 passed`. `full` porque cambio el lockfile.
+
+**Sobre el repo real:** arbol limpio → `ui-guard: 0 archivos, sin aumentos`, exit 0. Con
+`<button onClick={() => undefined}>x</button>` en `counter-home.tsx:30` → exit 1:
+`counter-home.tsx  native-element  3 → 4` (lineas 30, 39, 46, 47) y `native-handler  1 → 2` (30, 42); revertido
+(shasum `94ac0057` igual al limpio) → exit 0. `node tools/zone-audit.ts` → sin salida, exit 0 (sin ancla todavia).
 
 ## Handoff
 

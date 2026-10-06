@@ -48,10 +48,13 @@ en `origin/main`).
 | Servidor | Claude | `apps/*/src/server/**` |
 | Paquetes y migraciones | Claude | `packages/**`, `**/drizzle/**` |
 | Tooling, hooks y CI | Claude | `tools/**`, `.githooks/**`, `.claude/**`, `.github/**` |
+| Kit y guardias de UI (ADR 0123) | Claude | `apps/merchant/src/ui/**` (incluye `tokens.css`), `eslint.config.mjs`, `tools/ui-guard*` |
 
 La frontera es el **contrato HTTP escrito** (ADR 0070): si una pantalla necesita un dato que la API no da, se
 pide en el contrato, no se toca el servidor del otro. El hook no bloquea por zona (git no sabe quién pushea):
-se respeta por regla y se declara en el handoff.
+se respeta por regla y se declara en el handoff. La zona del kit la vigila `tools/zone-audit.ts` al arrancar la
+sesion de Claude (avisa commits sin su trailer; detecta, no impide). Tocar el kit **nunca** es «arreglo mecanico» (§6):
+se pide la pieza.
 
 ## 6. Rotura cruzada
 

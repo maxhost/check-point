@@ -333,6 +333,26 @@ Propósito: elegir archivos con un botón del kit (el input queda oculto y se va
 
 `tests/e2e/support/ui-kit-entry.tsx` muestra todas las piezas dentro del layout del backoffice. `tests/e2e/ui-kit.spec.ts` (Chromium) y `ui-kit.webkit.spec.ts` miden estilos computados (corren también en la CI) y comparan capturas de Mac, claro/oscuro × 390/1280, con `threshold: 0` (no corren en la CI). Una pieza nueva se agrega al final del harness; quien cambia una pieza a propósito regenera las referencias con `--update-snapshots` mirándolas.
 
+## Guardia
+
+`node tools/ui-guard.ts` corre en `pnpm verify` (y por lo tanto en el pre-push) cuando cambia algo de `apps/merchant/src` (spec 0164, ADR 0123 Fase 0c). Es un **trinquete sin baseline**: por cada archivo cambiado contra el merge-base con `origin/main`, ninguna categoría puede contar más que en la base (un renombrado se compara con su ruta vieja; un archivo nuevo parte de 0). No mira `ui/**`, `server/**`, `app/api/**` ni los `*.test.ts(x)`. Un `eslint-disable` no apaga nada.
+
+| Categoría | Qué cuenta | Qué usar en su lugar |
+|---|---|---|
+| `native-element` | elementos nativos fuera de la lista blanca (`button`, `input`, `select`, `textarea`, `label`, `form`, `a`, `dialog`…) | la pieza del kit |
+| `native-handler` | `onX` en un nativo | el `onPress`/`onChange` de la pieza |
+| `native-style` | `style` en un nativo, salvo solo custom properties `--*` | utilidades, o `style={{ "--x": v }}` |
+| `dangerous-html`, `native-spread` | `dangerouslySetInnerHTML`, `{...props}` en un nativo | — |
+| `create-element`, `tag-variable` | `createElement`/`jsx()`, `const Tag = "button"` | — |
+| `restricted-import` | React Aria/Stately o `next/link` fuera de `ui/` | el kit (`Link`) |
+| `css-import` | `import "*.css"` en `app/**` | — |
+| `raw-palette` | `bg-white`, `text-slate-500`… en cualquier string | roles de tokens (`text-content-muted`) |
+| `arbitrary-value` | `w-[13px]`, `bg-[#fff]`, `[prop:valor]` | escala de Tailwind o `w-[var(--token)]` |
+| `type-scale` | `text-sm`, `font-bold`, `leading-6` | `Heading`/`Text` |
+| `css-file`, `css-selector`, `css-at-rule`, `css-color`, `css-kit-selector` | un `.css` nuevo; selectores, `@apply`/`@layer`/`@theme`, colores o selectores del kit en `globals.css`/`onboarding.css` | borrar, no agregar |
+
+`templates/**` de marca y `poster-preview.tsx` (pintan los colores del comercio) quedan exentos de las categorías de color y estilo; `@media print`, de `css-color`. `node tools/ui-guard.ts --report` da los totales de todo el merchant: es la medida de la Fase 1 (el 2026-10-05: 257 nativos fuera de lista, 193 handlers, 122 `type-scale`, 1491 selectores y 480 colores en CSS). Si una pantalla necesita algo que el kit no tiene, se pide la pieza: el kit y el guard son zona de Claude.
+
 ## Convenciones para componentes nuevos
 
 1. Buscar primero en el barrel `src/ui/index.ts` y en este catálogo.

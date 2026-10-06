@@ -13,7 +13,11 @@ Instrucciones para GPT/Codex en este repo. Claude lee `CLAUDE.md`; las reglas co
 - **Tu árbol:** `~/Documents/claude-workspace/check-point/` (checkout de `main`).
 - **Tu zona es la UI:** pantallas (`apps/*/src/app/**` fuera de `app/api/**`), CSS, `apps/*/public/**` y
   `tests/e2e/**`. API, servidor, paquetes, migraciones y tooling son de Claude: lo que necesites de ahí se pide
-  en el contrato HTTP.
+  en el contrato HTTP. **El kit (`apps/merchant/src/ui/**`, con `tokens.css`), `eslint.config.mjs` y
+  `tools/ui-guard*` también son de Claude** (ADR 0123): si falta una pieza, se pide; no se hace a mano.
+- **Guardia de UI del merchant:** `pnpm verify` corre `node tools/ui-guard.ts`; ningún archivo que cambies en
+  `apps/merchant/src` puede sumar nativos, `onX` en nativos, `style`, paleta cruda, `text-sm`/`font-*`/`leading-*`,
+  valores arbitrarios ni CSS (categorías en `docs/design-system.md` §Guardia). `--report` da los totales.
 - **Node 24:** corre `nvm use` (sin argumento; hay `.nvmrc`) antes de cualquier comando.
 - **Al empezar:** `git pull --ff-only` y `pnpm ci:status`. Si `main` está rojo en tu zona, eso va primero.
 - **Antes de pushear:** `git pull --rebase`. El hook `pre-push` corre `pnpm verify` y bloquea si da rojo.
