@@ -1,10 +1,21 @@
-// Spec 0067 §7: la landing queda sin NINGUNA accion y sin rebote a `/backoffice`.
-// Los tres `redirect` del guard apuntan aca (`/`, `/?e=<codigo>`), asi que si esta pagina
-// volviera a mandar una sesion viva al backoffice, un owner sin email verificado —o una
-// sesion sin membresia— entraria en un bucle de redireccion infinito en vez de ver el
-// motivo del rebote. El producto no tiene entrada por navegador hasta que aterrice la UI
-// de afuera: costo aceptado por el owner (ADR 0070 §17).
-export default function MerchantEntryPage() {
+import { getSessionCookie } from "better-auth/cookies";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getMerchantAuth } from "../server/auth";
+
+// Spec 0163: sin sesión, la entrada pública abre el alta. La rama con sesión conserva
+// el destino de rebote del guard del backoffice (spec 0067 §7) para evitar ciclos.
+export default async function MerchantEntryPage() {
+  const requestHeaders = await headers();
+  // Solo la cookie de sesión de Better Auth puede autenticar esta página. Otras
+  // cookies del navegador no requieren inicializar Auth ni consultar la base de datos.
+  if (!getSessionCookie(requestHeaders)) redirect("/es/business/onboarding");
+
+  const session = await getMerchantAuth().api.getSession({
+    headers: requestHeaders,
+  });
+  if (!session) redirect("/es/business/onboarding");
+
   return (
     <main className="merchant-shell">
       <section className="panel login-panel">
