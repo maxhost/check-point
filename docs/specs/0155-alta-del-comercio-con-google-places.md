@@ -288,6 +288,6 @@ Nada bloqueante.
   rechaza `@staff.invalid`; en locales un token invalido → 422.
 - **Hallazgos no bloqueantes:** H1 la UI vieja llama a `start`/`business` → **la rama no se mergea sin la UI de GPT**;
   H2 el choque de slug solo tiene test de unidad; H3 docblocks que nombran `auth/start` (se van con la 0156); H4 un
-  400 de Google en Details por clave invalida se ve como `place_not_found` (el autocomplete ya da 503 antes).
+  400 de Google en Details por clave invalida se ve como `place_not_found` (el autocomplete ya da 503 antes). **H4 resuelto 2026-10-06:** `fail` mapea `reason: API_KEY_INVALID` (forma medida contra Places con una clave falsa) a `places_unavailable` → 503.
 - **Pendiente del owner:** `.env.example` (cambiar las dos de Geoapify por `GOOGLE_MAPS_API_KEY=`; el agente no tiene
   permiso sobre `.env*`).

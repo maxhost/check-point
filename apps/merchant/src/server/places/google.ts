@@ -61,18 +61,33 @@ const stringList = (value: unknown): string[] =>
 const text = (value: unknown): string | null =>
   typeof value === "string" && value.length > 0 ? value : null;
 
-/** Se loguea el status y el `error.status` de Google; nunca la clave ni la URL. */
+/**
+ * Se loguea el status y el `error.status` de Google; nunca la clave ni la URL.
+ *
+ * Una clave rechazada (`API_KEY_INVALID`) es `places_unavailable` aunque el caller pida otro
+ * codigo: Google la contesta con 400, igual que un `placeId` mal formado, y no es culpa del
+ * lugar elegido (spec 0155, H4).
+ */
 async function fail(
   op: "autocomplete" | "details",
   response: Response | null,
   code: PlacesErrorCode = "places_unavailable",
 ): Promise<never> {
   let googleStatus: string | null = null;
+  let keyRejected = false;
   if (response) {
     try {
-      const body = (await response.json()) as { error?: { status?: unknown } };
+      const body = (await response.json()) as {
+        error?: { status?: unknown; details?: unknown };
+      };
       googleStatus =
         typeof body.error?.status === "string" ? body.error.status : null;
+      keyRejected =
+        Array.isArray(body.error?.details) &&
+        body.error.details.some(
+          (detail: { reason?: unknown } | null) =>
+            detail?.reason === "API_KEY_INVALID",
+        );
     } catch {
       googleStatus = null;
     }
@@ -82,7 +97,7 @@ async function fail(
     status: response?.status ?? null,
     googleStatus,
   });
-  throw new PlacesError(code);
+  throw new PlacesError(keyRejected ? "places_unavailable" : code);
 }
 
 function apiKey(): string {

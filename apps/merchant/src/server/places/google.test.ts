@@ -200,6 +200,28 @@ describe("details", () => {
     ).rejects.toMatchObject({ code: "place_not_found" });
   });
 
+  it("Google 400 por clave inválida → places_unavailable, no place_not_found (0155 H4)", async () => {
+    fetchMock.mockResolvedValue(
+      json(400, {
+        error: {
+          code: 400,
+          message: "API key not valid. Please pass a valid API key.",
+          status: "INVALID_ARGUMENT",
+          details: [
+            {
+              "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+              reason: "API_KEY_INVALID",
+              domain: "googleapis.com",
+            },
+          ],
+        },
+      }),
+    );
+    await expect(
+      details({ placeId: "ChIJ1", sessionToken: SESSION }),
+    ).rejects.toMatchObject({ code: "places_unavailable" });
+  });
+
   it("Google 500 → places_unavailable, y el log no lleva la clave ni la URL", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     fetchMock.mockResolvedValue(json(500, { error: { status: "INTERNAL" } }));

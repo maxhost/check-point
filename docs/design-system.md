@@ -237,7 +237,7 @@ Propósito: la estructura de un formulario. `Form` envuelve el `Form` de React A
 
 Props de `Form`: las del `Form` de React Aria (`onSubmit`, `validationBehavior`, `validationErrors`…) más `className`. Props de `FormSection`: `title`, `description`, `children`. `FormActions`: `children`.
 
-Pendiente (hallazgo de la spec 0159): `validationErrors` del `Form` hoy no llega a `TextField` (medido) ni, por el mismo patrón `isInvalid={props.isInvalid ?? Boolean(errorMessage)}`, a `SelectField`, `NumberField`, `TextAreaField` y `ChoiceGroup`: sin `errorMessage` fuerzan `isInvalid={false}`, que pisa el error del servidor. Hasta arreglarlo, el error de API por campo se pasa con `errorMessage`.
+Errores del servidor (spec 0162): `validationErrors` del `Form`, indexado por el `name` de cada campo, marca y anuncia el error en `TextField`, `SelectField`, `NumberField`, `TextAreaField` y `ChoiceGroup`. Precedencia: `isInvalid` del que llama > `errorMessage` > errores del `Form`/`validate`.
 
 ```tsx
 <Form onSubmit={guardar}>
