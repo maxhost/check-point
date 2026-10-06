@@ -3,6 +3,53 @@
 > Bloques ESTADO viejos, movidos tal cual desde `claude.md` (spec 0151). **No se lee al arrancar**: el estado
 > vigente es el bloque `⇥ ESTADO` de arriba de `claude.md`. Se consulta con `rg` si hace falta un dato viejo.
 
+## ⇥ ESTADO HISTORICO (2026-10-05, noche) — 0162 Y E2E EN 3100-3102 EN `origin/main` (`3177450`); SIGUE LA 0160
+
+**Hecho (verificado):**
+- **0162** implementada en `deb8cc5`, pusheada a `origin/main` (`464ef0c..deb8cc5`) CON el pre-push: `pnpm verify`
+  completo en verde (typecheck, lint, format, test, build, e2e, neon merchant). Los cinco campos pasan a
+  `isInvalid={props.isInvalid ?? (errorMessage ? true : undefined)}`; harness `?case=server-errors` + tests
+  «Form: validationErrors del servidor llegan a los campos» (soft, un caso por campo) y «errorMessage marca el
+  campo», en Chromium y WebKit; capturas de la 0159 sin cambios. Rojo primero en los cinco; M1 (`choice-group`)
+  y M2 (`text-field`) rojas por la asercion esperada y revertidas. Detalle en la seccion «Implementacion».
+  #76 resuelto en PARQUEADO. Deploy de Vercel de `deb8cc5` sin verificar (sin cambio visible esperado).
+- El primer `pnpm verify` dio `test:e2e` ROJO por `EADDRINUSE :3002`: el `next dev` de `sintetica/apps/panel`
+  lo lanza OTRA sesion de Claude y lo relanza a los ~30 s. Con OK del owner se mato (kill pegado al arranque).
+
+**Siguiente, en orden:**
+1. **0160** (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link): se escribe
+   al empezar, sumando piezas al final de la pagina por defecto de `ui-kit-entry.tsx`. Despues la 0161.
+2. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
+
+**Pendientes del owner:** borrar las dos claves de
+Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploys de `b1ab123` y `d797c21` sin verificar.
+
+**Decidido por el owner (2026-10-05):** `.env.example` queda como esta (todavia lista Geoapify): «dejalo, no hace
+falta sacarlos». La clave real `GOOGLE_MAPS_API_KEY` esta en `apps/merchant/.env.local`. No volver a pedirlo.
+
+**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #77 (diferido por el owner); H4 de la 0155.
+
+- **E2E en 3100/3101/3102** (`3a79c22`, N0, owner: «si hacemos que e2e tenga 3100»): `tests/e2e/support/ports.ts`
+  es la unica fuente; `playwright.config.ts` levanta `next dev --port 31xx` por app; health, onboarding y los
+  `*-authenticated` leen de ahi. `pnpm run test:e2e` → `139 passed`, `21 skipped`, exit 0, con el 3002 libre para
+  sintetica. Los `localhost:3001` de `apps/**` son tests con `Request` en memoria (sin servidor): no se tocaron.
+  Pusheado con `edfa9ee` y su estado: `deb8cc5..3177450`, pre-push `verify: ok` (e2e en 31xx).
+
+**Gotchas de esta sesion:** `next dev` del `webServer` reescribe los tres `next-env.d.ts` (revertir antes de
+commitear); `rg -n MUTATION` sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`); `export { x } from`
+no declara `x` en el modulo (el fixture que lo usa da `ReferenceError`). Visto UNA vez con la suite completa:
+`loyalty-tour-help` «cierre espera confirmación…» → «Tearing down "loyaltyHarness" exceeded 30000ms»; suelto 9/9
+y la suite siguiente verde. Si se repite, va a PARQUEADO.
+
+**Descartado:**
+
+| Camino | Por que |
+|---|---|
+| Caso `server-errors` en la pagina por defecto del harness | cambia las 8 capturas de la 0159; con `?case=` quedan igual |
+| `expect` duro en el bucle de campos | corta en el primero: no muestra el rojo de los cinco |
+
+**Prompt para retomar:** «Lee docs/estado/claude.md: spec 0160».
+
 ## ⇥ ESTADO HISTORICO (2026-10-05, noche) — 0162 EN `origin/main` (`deb8cc5`); E2E EN PUERTOS 3100-3102 (`3a79c22`, LOCAL); SIGUE LA 0160
 
 **Hecho (verificado):**

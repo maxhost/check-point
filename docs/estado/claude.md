@@ -9,49 +9,40 @@
 > Regla: **marcar `hecho` solo con verificacion real** — tests que pasan, comando corrido, cosa vista en
 > pantalla. El auto-reporte no es evidencia.
 
-## ⇥ ESTADO (2026-10-05, noche) — 0162 Y E2E EN 3100-3102 EN `origin/main` (`3177450`); SIGUE LA 0160
+## ⇥ ESTADO (2026-10-05, noche) — 0160 IMPLEMENTADA EN `motor` (`c335035`), SIN PUSHEAR; SIGUE LA 0161
 
 **Hecho (verificado):**
-- **0162** implementada en `deb8cc5`, pusheada a `origin/main` (`464ef0c..deb8cc5`) CON el pre-push: `pnpm verify`
-  completo en verde (typecheck, lint, format, test, build, e2e, neon merchant). Los cinco campos pasan a
-  `isInvalid={props.isInvalid ?? (errorMessage ? true : undefined)}`; harness `?case=server-errors` + tests
-  «Form: validationErrors del servidor llegan a los campos» (soft, un caso por campo) y «errorMessage marca el
-  campo», en Chromium y WebKit; capturas de la 0159 sin cambios. Rojo primero en los cinco; M1 (`choice-group`)
-  y M2 (`text-field`) rojas por la asercion esperada y revertidas. Detalle en la seccion «Implementacion».
-  #76 resuelto en PARQUEADO. Deploy de Vercel de `deb8cc5` sin verificar (sin cambio visible esperado).
-- El primer `pnpm verify` dio `test:e2e` ROJO por `EADDRINUSE :3002`: el `next dev` de `sintetica/apps/panel`
-  lo lanza OTRA sesion de Claude y lo relanza a los ~30 s. Con OK del owner se mato (kill pegado al arranque).
+- **0160** (Fase 0b, rebanada 2): spec `ca18ef4`, implementacion `c335035`. El kit suma `Dialog`/`ConfirmDialog`,
+  `Combobox`, `Tabs`/`TabList`/`Tab`/`TabPanel`, `SegmentedControl`, `Switch`, `ProgressBar` y `Link`.
+  `places-search.tsx` pasa a `Combobox` (alta y locales): roles `combobox`/`option`, e2e de Places migrados en el
+  mismo commit; 9 reglas `.places-search*` borradas de `globals.css`; excepcion de pointer-events para el popover en el
+  paso de direccion del tour de locales. Rojo primero (harness sin exports; Places sin `combobox`); M1–M4 rojas por la
+  asercion esperada y revertidas. Kit `40 passed`; `CI=1` `12 passed`/`28 skipped`; `pnpm verify` → `verify: ok`
+  (e2e `160 passed`) en la segunda corrida (la primera: Prettier en 3 archivos + flake #78). Capturas (16):
+  https://claude.ai/artifact/BxFSXFFqCUUd3e8YHxUmy4 . Desvios medidos en la seccion «Implementacion» de la spec
+  (lo mas importante: React Aria no abre la lista cuando las opciones llegan async → `OpenWhenItemsArrive`; al elegir
+  escribe el texto de la opcion → guardia + test con `details` lento).
+- **Sin pushear** (memoria: no pushear por commit). `origin/main` sigue en `3177450`.
 
 **Siguiente, en orden:**
-1. **0160** (Dialog, Combobox + `places-search.tsx`, Tabs, SegmentedControl, Switch, ProgressBar, Link): se escribe
-   al empezar, sumando piezas al final de la pagina por defecto de `ui-kit-entry.tsx`. Despues la 0161.
-2. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`.
+1. Push de `ca18ef4..` cuando el owner lo pida (pre-push corre `verify`; ojo flake #78).
+2. **0161** (campos `file`/`color`/`time`/`datetime-local`/`range`/`search`): se escribe al empezar, mismo harness.
+3. Fase 0c (guardias); Fase 1 (GPT) con lo que cada rebanada deje en `origin/main`. Avisar a GPT el sha de la 0160
+   antes de que toque alta o locales (`places-search.tsx` y `globals.css` cambiaron).
 
-**Pendientes del owner:** borrar las dos claves de
-Geoapify en Vercel; QA del alta/locales/programa sin verificar; deploys de `b1ab123` y `d797c21` sin verificar.
+**Pendientes del owner:** QA del buscador de lugares en el alta y en locales (aspecto del kit, flechas + Enter), y del
+**tour de locales** paso «Busca la dirección»: escribir y elegir una direccion con el tour abierto (excepcion de CSS sin
+e2e). Borrar las dos claves de Geoapify en Vercel; QA del alta/locales/programa; deploys de `b1ab123` y `d797c21`.
 
-**Decidido por el owner (2026-10-05):** `.env.example` queda como esta (todavia lista Geoapify): «dejalo, no hace
-falta sacarlos». La clave real `GOOGLE_MAPS_API_KEY` esta en `apps/merchant/.env.local`. No volver a pedirlo.
+**Decidido por el owner (2026-10-05):** `.env.example` queda como esta (todavia lista Geoapify). No volver a pedirlo.
 
-**Hallazgos abiertos:** PARQUEADO #74, #75 (flakes del pre-push), #77 (diferido por el owner); H4 de la 0155.
+**Hallazgos abiertos:** PARQUEADO #74, #75, **#78 (nuevo: teardown de `loyaltyHarness` > 30 s, visto 2 veces)**, #77
+(diferido por el owner); H4 de la 0155. `docs/design-system.md` §Form todavia dice «Pendiente» sobre `validationErrors`
+(lo resolvio la 0162): texto viejo, sin tocar.
 
-- **E2E en 3100/3101/3102** (`3a79c22`, N0, owner: «si hacemos que e2e tenga 3100»): `tests/e2e/support/ports.ts`
-  es la unica fuente; `playwright.config.ts` levanta `next dev --port 31xx` por app; health, onboarding y los
-  `*-authenticated` leen de ahi. `pnpm run test:e2e` → `139 passed`, `21 skipped`, exit 0, con el 3002 libre para
-  sintetica. Los `localhost:3001` de `apps/**` son tests con `Request` en memoria (sin servidor): no se tocaron.
-  Pusheado con `edfa9ee` y su estado: `deb8cc5..3177450`, pre-push `verify: ok` (e2e en 31xx).
+**Gotchas de esta sesion:** en un e2e, `fill`/`click` sobre un `Combobox` lejos en la pagina hace scroll DESPUES de la
+primera tecla y React Aria cierra la lista y repone el texto («cu» → «u»): scroll antes + dos rAF. La `listbox` del
+`Combobox` mide 10 px menos que el input (el ancho es del `Popover`). `rg -nw MUTATION` encuentra la caché de `.next`:
+excluirla. `next dev` del e2e reescribe los `next-env.d.ts` (revertir).
 
-**Gotchas de esta sesion:** `next dev` del `webServer` reescribe los tres `next-env.d.ts` (revertir antes de
-commitear); `rg -n MUTATION` sobre `tests` choca con `E2E_LOYALTY_MUTATION_TEST` (usar `-w`); `export { x } from`
-no declara `x` en el modulo (el fixture que lo usa da `ReferenceError`). Visto UNA vez con la suite completa:
-`loyalty-tour-help` «cierre espera confirmación…» → «Tearing down "loyaltyHarness" exceeded 30000ms»; suelto 9/9
-y la suite siguiente verde. Si se repite, va a PARQUEADO.
-
-**Descartado:**
-
-| Camino | Por que |
-|---|---|
-| Caso `server-errors` en la pagina por defecto del harness | cambia las 8 capturas de la 0159; con `?case=` quedan igual |
-| `expect` duro en el bucle de campos | corta en el primero: no muestra el rojo de los cinco |
-
-**Prompt para retomar:** «Lee docs/estado/claude.md: spec 0160».
+**Prompt para retomar:** «Lee docs/estado/claude.md: spec 0161».
