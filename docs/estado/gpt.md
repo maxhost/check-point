@@ -6,8 +6,8 @@
 ## ⇥ ESTADO (2026-10-05) — SPEC 0163: LA RAÍZ MERCHANT ABRE EL ALTA SIN SESIÓN
 
 El owner reportó que `business.checkpass.club/` mostraba la portada vieja. Reservé y publiqué la
-[spec 0163](../specs/0163-raiz-del-merchant-abre-onboarding.md) (`1889b6d`); el cambio UI está en
-`bc8f3fd`, pendiente de push al escribir este bloque. La raíz consulta la cookie de sesión de
+[spec 0163](../specs/0163-raiz-del-merchant-abre-onboarding.md) (`1889b6d`); el cambio UI `bc8f3fd`
+se publicó en `main` con el estado `37776ae`. La raíz consulta la cookie de sesión de
 Better Auth: sin ella redirige en servidor a `/es/business/onboarding`; con ella valida la sesión
 y conserva la portada para los rebotes del guard, evitando un ciclo con `/backoffice`.
 
@@ -16,8 +16,10 @@ Una mutación del destino a `/backoffice` produjo el rojo esperado en `toHaveURL
 con hash idéntico. La primera corrida global falló por formato y una intermitencia en ese e2e;
 tras el ajuste de cookie y formato, `pnpm verify` con Node 24.20.0 pasó: typecheck, lint,
 format:check, unitarios, build, e2e (179 pasan, 21 omitidos) y Neon related merchant (sin tests
-relacionados). La spec sigue `cerrada` hasta PASS independiente; el caso de sesión activa se
-conservó por inspección del código, sin prueba automatizada nueva.
+relacionados). El hook de push repitió `pnpm verify` en verde. En producción,
+`curl -sSI https://business.checkpass.club/` respondió HTTP 307 con
+`Location: /es/business/onboarding` sin sesión. La spec sigue `cerrada` hasta PASS independiente;
+el caso de sesión activa se conservó por inspección del código, sin prueba automatizada nueva.
 
 ## ⇥ TRABAJO ANTERIOR (2026-10-05) — SPEC 0157 REBASADA SOBRE ONBOARDING-GOOGLE; PUSH BLOQUEADO POR TURBOPACK
 
