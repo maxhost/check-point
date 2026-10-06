@@ -1,7 +1,7 @@
 ---
 spec: 0166
 fecha: 2026-10-06
-estado: cerrada
+estado: implementada
 resumen: La raíz del merchant manda al panel a una sesión válida sin `?e=`, y el guard cierra la sesión sin negocio para que no haya ciclo.
 disjunta: no
 archivos: apps/merchant/src/app/page.tsx, apps/merchant/src/server/auth-guards.ts, apps/merchant/src/server/auth-guards.test.ts, apps/merchant/src/app/page.neon.integration.test.ts, docs/specs/0067-contratos-de-api.md
@@ -51,7 +51,8 @@ acceso que no corresponde cierra su sesión directamente. El `!row` pasa a revoc
 
 `page.tsx` recibe `searchParams` (Next 16: `Promise<Record<string, string | string[] | undefined>>`). Orden:
 
-1. `e` = `searchParams.e`; si es string no vacío (o array con algún elemento) → `return` la portada. Sin tocar Auth.
+1. `e` = `searchParams.e`; si es string no vacío (o array con algún elemento no vacío) → `return` la portada. Sin
+   tocar Auth. `?e=` vacío cuenta como ausente.
 2. Sin cookie de sesión (`getSessionCookie`) → `redirect("/es/business/onboarding")`.
 3. `getSession` con los headers; `null` → `redirect("/es/business/onboarding")`.
 4. Sesión válida → `redirect("/backoffice")`.
@@ -119,6 +120,15 @@ sin cookie y no ve M1–M3 (medido en la revisión de la 0163).
 ## Handoff requerido
 
 Implementador y revisor con el formato de `docs/AGENT-WORKFLOW.md`. `implementada` exige PASS independiente.
+
+**Resultado (2026-10-06).** Implementación `2e45d0f` (`pnpm verify` ok con Node 24; M1–M3 rojas por la propiedad).
+Revisor independiente: **PASS**; barrió todos los `redirect` a `/` del merchant: los que llegan sin `?e=` salen sin
+sesión (`!session`) o la revocan (`!row`). Sus mutaciones: R1 (`DELETE` después del `redirect`) y R3 (`?e=` después de
+Auth) rojas; R2 (`?e=` vacío como presente) quedó verde. El orquestador agregó el caso `?e=` vacío → panel en la suite
+Neon y midió R2: `expected 'portada' to be 'redirect:/backoffice'`, revertida con `shasum` idéntico. También corrigió
+el comentario vencido de `magic-link/route.ts` («owner sin negocio entra normal») y alineó el paso 1 con el código
+(array con algún elemento **no vacío**). Sin oráculo, declarado: cómo llega `searchParams` en Next 16 en el dominio
+real (QA del owner).
 
 ## Abierto
 

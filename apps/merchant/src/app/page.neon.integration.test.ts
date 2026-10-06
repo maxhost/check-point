@@ -141,6 +141,8 @@ describe.skipIf(!integrationEnabled)("app/page.tsx — spec 0166", () => {
 
   it("sesion valida con negocio y sin `?e=`: el panel", async () => {
     expect(await landing(ownerCookie)).toBe("redirect:/backoffice");
+    // `?e=` vacio cuenta como ausente: una sesion viva no se queda en la portada.
+    expect(await landing(ownerCookie, "/?e=")).toBe("redirect:/backoffice");
   });
 
   it("con `?e=`: la portada, con y sin sesion, sin redirect", async () => {

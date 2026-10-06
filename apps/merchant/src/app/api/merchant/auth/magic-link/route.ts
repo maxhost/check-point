@@ -74,8 +74,9 @@ export async function GET(request: Request) {
    * de `requireBackofficeSession` y `setStaffStatus`. Sin eso quedaria una sesion viva en la
    * base — sin cookie hoy, pero viva — y esta ruta no agrega mecanismos de revocacion nuevos.
    *
-   * Un owner SIN negocio (recien registrado, todavia sin pasar el wizard) entra normal: no
-   * hay fila que consultar y el alta es justamente lo que viene despues.
+   * Un usuario SIN negocio hoy no existe: el alta crea cuenta y negocio en un mismo
+   * `db.batch` (spec 0155). Si apareciera, va al alta y el guard de `/backoffice` le cierra
+   * la sesion (spec 0166).
    */
   const userId = await verifiedUserId(verified);
   const status = userId ? await businessStatus(userId) : null;
@@ -83,8 +84,7 @@ export async function GET(request: Request) {
     await getDb().delete(sessions).where(eq(sessions.userId, userId));
     return bounce(CLOSED_DESTINATION);
   }
-  // El email de verificación sale ahora en cuanto se crea la cuenta, antes de que
-  // exista un negocio. Tras confirmar el buzón, el owner debe retomar el wizard.
+  // Sin negocio (hoy imposible, ver arriba) → el alta; con negocio → el panel.
   return bounce(
     userId && !status ? ONBOARDING_DESTINATION : OK_DESTINATION,
     cookie,
