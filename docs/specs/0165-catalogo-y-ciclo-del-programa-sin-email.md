@@ -132,7 +132,7 @@ handlers (patron de `loyalty-program-sin-email`):
 
 | # | Mutacion (con su linea de hoy) | Oraculo que tiene que ponerse ROJO |
 |---|---|---|
-| M1 | `requireOwner` vuelve a `requireApiPermission` (`catalog/_auth.ts:31`) | punto 1 (primer `POST category` → 403) y el `toEqual` del inventario |
+| M1 | `requireOwner` vuelve a `requireApiPermission` (`catalog/_auth.ts:31`) | punto 1 (primer `POST category` → 403), el barrido del punto 3 y el desenlace positivo de la fila `catalog` (`expected 403 to be 200`). **No** el `toEqual` del inventario: sale de la lista estatica `NOMBRES_SIN_GATE_DE_EMAIL` (`api-owner-surfaces-support.ts:282`), hallazgo del implementador reproducido por el orquestador |
 | M2 | `DELETE` del programa vuelve a `requireApiOwner` (`loyalty-program/route.ts:147`) | punto 2, caso RETIRAR |
 | M3 | `requireCatalogOwner` pasa a `requireApiPermissionSinGateDeEmail("catalog")` (abre de mas: staff borra) | `permisos-delegados…:195` |
 
