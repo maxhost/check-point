@@ -1,7 +1,7 @@
 ---
 spec: 0167
 fecha: 2026-10-07
-estado: borrador
+estado: cerrada
 resumen: Implementa el ADR 0126 — Postgres 18 en Docker con roles y collation de PROD + proxy de Neon, migrador de drizzle-orm, `neonConfig` solo con host local, seed ficticio, oraculo de huellas local == PROD, candados contra PROD en `getDb` y `neon-test.sh`, `.env.local` sin servicios de PROD (R2 de desarrollo) y runbook de migracion a PROD.
 disjunta: si
 archivos: tools/local-db/*, packages/db/src/client.ts, packages/db/src/local.ts, packages/db/src/migrate-local.ts, packages/db/src/seed-local.ts, packages/db/package.json, package.json, tools/neon-test.sh, .env.example, docs/runbooks/migrar-prod.md
@@ -49,12 +49,11 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
 - Contenedor `pg`:
   - Imagen `postgres@sha256:fc973eb97c9fd04bfa1840e0f510719a584ccb3be8debfe6a4144637a9dfe8cf` (18.6), puerto `127.0.0.1:55432`, volumen nombrado.
   - `POSTGRES_DB=neondb`; `POSTGRES_USER=postgres` (superusuario del contenedor, solo para el proxy y el bootstrap).
-  - `POSTGRES_INITDB_ARGS` con la collation de PROD.
-  - Collation medida el 2026-10-07: PROD ordena texto por bytes. El hash sin nombre de las restricciones de PROD coincide
-    con el local recalculado con `collate "C"`, y local hoy es `en_US.utf8` (libc). El valor exacto
-    (`datcollate`/`datctype`/`datlocprovider`/`datlocale`) se lee de PROD antes de cerrar (§Abierto 1). Con C (libc)
-    o `builtin`/`C.UTF-8`, el `ORDER BY` da el mismo orden por puntos de codigo; `ctype` cambia `upper()`/`lower()` y `ILIKE`
-    fuera de ASCII, por eso se calca el valor exacto y no «un C cualquiera».
+  - `POSTGRES_INITDB_ARGS="--locale-provider=builtin --builtin-locale=C.UTF-8 --locale=C.UTF-8"`.
+  - Es la collation de PROD, leida el 2026-10-07 por MCP: `datcollate`/`datctype`/`datlocale` = `C.UTF-8` y
+    `datlocprovider` = `b` (builtin). La sonda de orden da `5dbe08e3` y `upper('ñá')` da `ÑÁ`.
+  - Una base local creada con esos parametros da exactamente lo mismo; la imagen `postgres:18` por defecto
+    (`en_US.utf8`, libc) da `2be342dd`. Por eso se explicaba la diferencia de hash de las restricciones (ADR 0126 §Medido).
 - Contenedor `proxy`:
   - Imagen `ghcr.io/timowilhelm/local-neon-http-proxy@sha256:cd2ae14edf2feafbc3330492de5c80506f77274c3bd013154cdef697bdeb768a`,
     puerto `127.0.0.1:4444`.
@@ -139,7 +138,11 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
 - Consumer:
   - `WALLET_PROVIDER=fake` y sin secretos de Apple/Google Wallet (`packages/domain/src/server/wallet/provider.ts`).
   - VAPID: un par nuevo de desarrollo, nunca el de PROD.
-  - R2: **bucket de desarrollo** (decision del owner, 2026-10-07) con su `R2_BUCKET`, claves propias y su `R2_ENDPOINT`.
+- Ambas apps (las dos importan `r2.ts`): R2 del **bucket de desarrollo** (decision del owner, 2026-10-07). El owner
+  deja sus 6 claves (`R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ENDPOINT`, `R2_REGION`, `R2_ACCESS_KEY_ID`,
+  `R2_SECRET_ACCESS_KEY`) en `tools/local-db/.env.r2-dev`, ignorado por `.env.*` (`git check-ignore` verificado).
+  Se copian a los `.env.local` **en el mismo paso** que `DATABASE_URL` pasa a local, nunca antes: con la base de PROD,
+  un logo subido en local dejaria filas de PROD apuntando a objetos del bucket de desarrollo.
 - `DATABASE_URL` de PROD deja de estar en los `.env.local` de las apps. Para el runbook vive en
   `packages/db/.env.prod.local` (ya ignorado por `.env.*`), como `DATABASE_URL_UNPOOLED`.
 - Hallazgo: `CLICKSEND_*`, `TWILIO_*` y `OTP_PROVIDER` estan en `apps/consumer/.env.local`, pero ningun `.ts` de
@@ -230,10 +233,7 @@ Formato de `docs/AGENT-WORKFLOW.md`. `PASS` del revisor antes de `implementada`.
 
 ## Abierto
 
-1. **Collation exacta de PROD** (bloquea el cierre). Leer de PROD por MCP (solo lectura):
-   `select datcollate, datctype, datlocprovider::text, datlocale from pg_database where datname = current_database()`.
-   Correr tambien la sonda de orden: `md5` de `string_agg(x, E'\n' order by x)` sobre `('a_b'),('aB'),('Ab'),('a-b'),('ñ'),('z')`.
-   En local da `2be342dd` con `en_US.utf8` y `5dbe08e3` con `collate "C"`/`ucs_basic`; PROD tiene que dar `5dbe08e3`.
-   El MCP de Neon pidio re-autenticacion el 2026-10-07 y no se llego a leer.
-2. **Bucket R2 de desarrollo:** lo crea el owner en Cloudflare con claves propias. Lo necesita solo la verificacion
-   manual; no bloquea el cierre.
+Nada que bloquee. Resueltos el 2026-10-07:
+- **Collation de PROD:** `builtin` / `C.UTF-8`, leida por MCP y reproducida en local (§Diseño 1).
+- **Bucket R2 de desarrollo:** creado por el owner; sus claves van en `tools/local-db/.env.r2-dev` (§Diseño 7).
+  El implementador verifica que el archivo existe y tiene las 6 claves (solo nombres y largos) antes de usarlo.

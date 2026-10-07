@@ -93,4 +93,5 @@ En Docker local descartable (`postgres:18` = 18.6 + `ghcr.io/timowilhelm/local-n
   coinciden local/PROD; sin nombre (ordenado por la definicion) difieren `c` y `n`, y el local recalculado con
   `collate "C"` da exactamente los de PROD. Local es `en_US.utf8` (libc), PROD ordena por bytes: un `ORDER BY` de texto
   en la app daria otro orden en local. La base local se crea con la collation de PROD y la huella usa `collate "C"`
-  explicito (spec 0167); el valor exacto de PROD queda por leer (spec 0167 §Abierto 1).
+  explicito (spec 0167). PROD: `builtin` / `C.UTF-8` (leido por MCP el 2026-10-07), reproducido en local con
+  `create database ... locale_provider builtin builtin_locale 'C.UTF-8'`, con la misma sonda de orden y el mismo `upper()`.
