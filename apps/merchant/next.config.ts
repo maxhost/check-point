@@ -26,8 +26,13 @@ export function consumerApiRewrites(env: Record<string, string | undefined>) {
 const nextConfig: NextConfig = {
   // `@mi-pasaporte/db` exporta fuente TypeScript (ADR 0107): Next la transpila.
   transpilePackages: ["@mi-pasaporte/db", "@mi-pasaporte/domain"],
-  // Playwright usa 127.0.0.1; la IP LAN permite QA manual desde el teléfono.
-  allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.100.7"],
+  // Playwright usa 127.0.0.1; la IP LAN y el tunel `dev-business.` (ADR 0127) permiten QA desde el teléfono.
+  allowedDevOrigins: [
+    "127.0.0.1",
+    "localhost",
+    "192.168.100.7",
+    "dev-business.checkpass.club",
+  ],
   async rewrites() {
     return consumerApiRewrites(process.env);
   },

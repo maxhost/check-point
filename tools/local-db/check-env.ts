@@ -4,6 +4,8 @@
  *
  * Exit 0 si: ninguna `DATABASE_URL*` de las apps es PROD, las dos apps usan la base local, las 6 claves R2
  * coinciden con `tools/local-db/.env.r2-dev`, y `packages/db/.env.prod.local` tiene la URL directa de PROD.
+ * Spec 0168: ningun origen (`*ORIGIN`, `*ORIGINS`, `*_URL`) de las apps apunta a PROD, y los del tunel
+ * (`dev-business.` / `dev-my.`) estan donde el codigo cae a PROD si faltan. `CHECK_ENV_ROOT` cambia la raiz (test).
  * Autocontenido (Node 24 corre `.ts` quitando tipos, sin resolver imports del repo).
  */
 import { createHash } from "node:crypto";
@@ -12,7 +14,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const ROOT =
+  process.env.CHECK_ENV_ROOT ??
+  join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const PROD_HOSTS = new Set([
+  "checkpass.club",
+  "www.checkpass.club",
+  "business.checkpass.club",
+  "my.checkpass.club",
+]);
+const TUNNEL_MERCHANT = "https://dev-business.checkpass.club";
+const TUNNEL_CONSUMER = "https://dev-my.checkpass.club";
 const LOCAL_HOSTS = new Set(["db.localtest.me", "localhost", "127.0.0.1"]);
 const R2_KEYS = [
   "R2_ACCOUNT_ID",
@@ -76,6 +88,15 @@ for (const app of ["apps/merchant/.env.local", "apps/consumer/.env.local"]) {
   for (const [k, v] of Object.entries(env))
     if (/DATABASE_URL/.test(k) && v)
       check(endpointSha(v) !== PROD_SHA12, `${app} ${k} no es PROD`);
+  for (const [k, v] of Object.entries(env))
+    if (/(ORIGIN|ORIGINS|_URL)$/.test(k) && !/DATABASE/.test(k))
+      check(
+        v.split(",").every((o) => {
+          const h = host(o.trim());
+          return h !== null && !PROD_HOSTS.has(h);
+        }),
+        `${app} ${k} no apunta a PROD`,
+      );
   check(
     LOCAL_HOSTS.has(host(env.DATABASE_URL ?? "") ?? ""),
     `${app} DATABASE_URL es la base local`,
@@ -85,10 +106,24 @@ for (const app of ["apps/merchant/.env.local", "apps/consumer/.env.local"]) {
       !!r2 && env[k] === r2[k],
       `${app} ${k} = el de .env.r2-dev (largo ${env[k]?.length ?? 0})`,
     );
-  if (app.includes("merchant"))
+  if (app.includes("merchant")) {
     check(env.EMAIL_PROVIDER === "console", `${app} EMAIL_PROVIDER=console`);
+    check(
+      env.BETTER_AUTH_URL === TUNNEL_MERCHANT,
+      `${app} BETTER_AUTH_URL = ${TUNNEL_MERCHANT}`,
+    );
+    // Sin ella el rewrite de `/api/public/*` cae a PROD (`apps/merchant/next.config.ts`).
+    check(
+      env.CONSUMER_ORIGIN === TUNNEL_CONSUMER,
+      `${app} CONSUMER_ORIGIN = ${TUNNEL_CONSUMER}`,
+    );
+  }
   if (app.includes("consumer")) {
     check(env.WALLET_PROVIDER === "fake", `${app} WALLET_PROVIDER=fake`);
+    check(
+      env.CONSUMER_ORIGIN === TUNNEL_CONSUMER,
+      `${app} CONSUMER_ORIGIN = ${TUNNEL_CONSUMER}`,
+    );
     for (const k of [
       "APPLE_PASS_CERT_P12",
       "APPLE_WWDR_CERT",
@@ -116,6 +151,6 @@ check(
 console.log(
   failures
     ? `${failures} chequeo(s) MAL`
-    : "ok: variables locales como pide la spec 0167",
+    : "ok: variables locales como piden las specs 0167 y 0168",
 );
 process.exitCode = failures ? 1 : 0;

@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
   // The per-consumer manifest must be in <head> on the first HTML response so
   // Chrome can evaluate installability before the confirmation is interactive.
   htmlLimitedBots: /.*/,
-  // IP LAN de la sesión de QA. Actualizarla si cambia la red Wi-Fi.
-  allowedDevOrigins: ["192.168.100.7"],
+  // IP LAN de la sesión de QA (actualizarla si cambia la red Wi-Fi) y el tunel `dev-my.` (ADR 0127).
+  allowedDevOrigins: ["192.168.100.7", "dev-my.checkpass.club"],
   async redirects() {
     return consumerRedirects();
   },

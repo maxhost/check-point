@@ -13,6 +13,7 @@
     "dev:merchant": "turbo run dev --filter=@mi-pasaporte/merchant",
     "dev:platform": "turbo run dev --filter=@mi-pasaporte/platform",
     "dev:public": "turbo run dev --filter=@mi-pasaporte/public",
+    "dev:tunnel": "tools/tunnel/up.sh",
     "db:migrate": "pnpm --filter @mi-pasaporte/db db:migrate",
     "db:migrate:prod": "tools/local-db/migrate-prod.sh",
     "db:local:up": "tools/local-db/up.sh",

@@ -1,0 +1,10 @@
+# Tunel con nombre de Cloudflare para probar el ambiente local en el telefono (ADR 0127, spec 0168).
+# Sin secretos: las credenciales del tunel viven en ~/.cloudflared/, fuera del repo.
+# Alta unica y uso: docs/runbooks/tunel-dev.md.
+tunnel: checkpass-dev
+ingress:
+  - hostname: dev-business.checkpass.club
+    service: http://localhost:3001
+  - hostname: dev-my.checkpass.club
+    service: http://localhost:3000
+  - service: http_status:404
