@@ -1,7 +1,7 @@
 ---
 spec: 0167
 fecha: 2026-10-07
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0126 — Postgres 18 en Docker con roles y collation de PROD + proxy de Neon, migrador de drizzle-orm, `neonConfig` solo con host local, seed ficticio, oraculo de huellas local == PROD, candados contra PROD en `getDb` y `neon-test.sh`, `.env.local` sin servicios de PROD (R2 de desarrollo) y runbook de migracion a PROD.
 disjunta: si
 archivos: tools/local-db/*, packages/db/src/client.ts, packages/db/src/local.ts, packages/db/src/migrate-local.ts, packages/db/src/seed-local.ts, packages/db/package.json, package.json, tools/neon-test.sh, .env.example, docs/runbooks/migrar-prod.md
@@ -271,3 +271,19 @@ Nada que bloquee. Resueltos el 2026-10-07:
 - **Collation de PROD:** `builtin` / `C.UTF-8`, leida por MCP y reproducida en local (§Diseño 1).
 - **Bucket R2 de desarrollo:** creado por el owner; sus claves van en `tools/local-db/.env.r2-dev` (§Diseño 7).
   El implementador verifica que el archivo existe y tiene las 6 claves (solo nombres y largos) antes de usarlo.
+
+## Cierre (2026-10-07)
+
+- Implementada en `7f08691` + `fef6489`. Revisor: **PASS**, con 5 mutaciones:
+  - las 3 del oraculo (collation, `SUPERUSER`, restriccion renombrada) mueren;
+  - los candados abortan con el host REAL de PROD en sus 6 variantes, sin trafico de red;
+  - el recorte de `-rvr` en bash sobrevivia a las suites.
+- Sus 2 hallazgos se arreglaron en `180c5ac`:
+  - `neon-test.sh` aguanta valores entre comillas y falla cerrado si no reconoce un endpoint `ep-`;
+  - `tools/neon-test-guard.test.ts` (19 casos) muerde con las dos mutaciones (6 y 2 rojos).
+- `pnpm verify` ok: 3131 passed, `neon (full)` contra `ci-integration` en verde.
+- **Pendiente del owner, fuera del codigo:**
+  - Aplicar los `.env` en el orden del runbook §2 y comprobarlos con `node tools/local-db/check-env.ts`.
+  - Recien entonces, QA manual: `pnpm dev` de las dos apps contra la base local y un logo que llegue al bucket de
+    desarrollo.
+  - `.env.example`: el parche esta listo, pero los agentes no tienen permiso para escribirlo.
