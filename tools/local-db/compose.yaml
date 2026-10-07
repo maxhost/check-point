@@ -1,0 +1,58 @@
+# Ambiente local que replica Neon (spec 0167, ADR 0126). Solo desarrollo: nunca toca PROD.
+#
+#   tools/local-db/up.sh      # levanta, migra, siembra (idempotente)
+#   tools/local-db/reset.sh   # borra el volumen y vuelve a levantar desde cero
+#   tools/local-db/compare.sh # oraculo «esquema local == PROD»
+#
+# Las dos imagenes van fijadas por digest: un `:main`/`:18` movedizo cambiaria la base sin commit.
+name: checkpass-local
+
+services:
+  pg:
+    # postgres:18 = 18.6, la version de Neon en PROD (ADR 0126 §Medido).
+    image: postgres@sha256:fc973eb97c9fd04bfa1840e0f510719a584ccb3be8debfe6a4144637a9dfe8cf
+    environment:
+      POSTGRES_DB: neondb
+      # Superusuario del contenedor: solo para el proxy y el bootstrap. La app entra como `neondb_owner`.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local-solo-dev
+      # La collation de PROD (leida por MCP el 2026-10-07): builtin / C.UTF-8. Con el default de la
+      # imagen (`en_US.utf8`, libc) un ORDER BY de texto ordena distinto que en PROD.
+      POSTGRES_INITDB_ARGS: "--locale-provider=builtin --builtin-locale=C.UTF-8 --locale=C.UTF-8"
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # Por TCP: durante el initdb el servidor temporal solo escucha en el socket, asi que un
+      # chequeo por socket daria «listo» antes de que corran los scripts de init.
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-h",
+          "127.0.0.1",
+          "-U",
+          "postgres",
+          "-d",
+          "neondb",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 60
+
+  proxy:
+    # Proxy HTTP (/sql) + WebSocket de Neon para el driver `@neondatabase/serverless` (ADR 0126 §Medido).
+    image: ghcr.io/timowilhelm/local-neon-http-proxy@sha256:cd2ae14edf2feafbc3330492de5c80506f77274c3bd013154cdef697bdeb768a
+    environment:
+      # El proxy lee los secretos SCRAM con esta conexion: va con el superusuario del contenedor.
+      PG_CONNECTION_STRING: postgres://postgres:local-solo-dev@pg:5432/neondb
+    ports:
+      - "127.0.0.1:4444:4444"
+    depends_on:
+      pg:
+        condition: service_healthy
+
+volumes:
+  pgdata:

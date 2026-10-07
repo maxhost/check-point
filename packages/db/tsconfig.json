@@ -1,5 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Los scripts `db:local:*` corren con Node 24 sin bundler, que exige la extension en los
+    // imports relativos (`./local.ts`). Con `noEmit` no cambia ninguna salida (spec 0167).
+    "allowImportingTsExtensions": true
+  },
   "include": ["**/*.ts"],
   "exclude": ["node_modules"]
 }

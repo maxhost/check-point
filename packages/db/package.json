@@ -12,6 +12,9 @@
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:local:migrate": "node src/migrate-local.ts",
+    "db:local:seed": "node src/seed-local.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -7,6 +7,7 @@ export default defineConfig({
       "apps/merchant/vitest.config.ts",
       "apps/platform/vitest.config.ts",
       "apps/public/vitest.config.ts",
+      "packages/db/vitest.config.ts",
       "tools/vitest.config.ts",
     ],
   },

@@ -35,16 +35,32 @@ if [ "${1:-}" = "--related" ]; then
 fi
 
 cd "$(dirname "$0")/.."
-ENV_FILE="apps/merchant/.env.local"
+# `NEON_TEST_ENV_FILE` existe para probar el candado con un archivo temporal (spec 0167).
+ENV_FILE="${NEON_TEST_ENV_FILE:-apps/merchant/.env.local}"
 [ -f "$ENV_FILE" ] || { echo "falta $ENV_FILE"; exit 1; }
 
 leer() { grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- || true; }
 # El host de una URL de Postgres, sin el sufijo `-pooler` (pooled y directa comparten rama).
 host() { printf %s "$1" | sed -e 's|^[^@]*@||' -e 's|/.*$||' -e 's|-pooler||'; }
+# El endpoint de Neon de una URL: el primer segmento DNS del host sin `-pooler` ni `-rvr`, en
+# cualquier orden. Misma regla que `neonEndpointId` de `packages/db/src/local.ts` (spec 0167).
+endpoint_id() {
+  local id
+  id="$(printf %s "$1" | sed -e 's|^[A-Za-z0-9+.-]*://||' -e 's|^[^@/]*@||' -e 's|[/?:].*$||' -e 's|\..*$||' |
+    tr '[:upper:]' '[:lower:]')"
+  while :; do
+    case "$id" in
+      *-pooler) id="${id%-pooler}" ;;
+      *-rvr) id="${id%-rvr}" ;;
+      *) break ;;
+    esac
+  done
+  printf %s "$id"
+}
+sha12() { printf %s "$1" | shasum -a 256 | cut -c1-12; }
 
 CI_POOLED="$(leer NEON_CI_DATABASE_URL)"
 CI_DIRECT="$(leer NEON_CI_DATABASE_URL_UNPOOLED)"
-PROD="$(leer DATABASE_URL)"
 
 for par in "NEON_CI_DATABASE_URL:$CI_POOLED" "NEON_CI_DATABASE_URL_UNPOOLED:$CI_DIRECT"; do
   clave="${par%%:*}"; valor="${par#*:}"
@@ -57,13 +73,25 @@ for par in "NEON_CI_DATABASE_URL:$CI_POOLED" "NEON_CI_DATABASE_URL_UNPOOLED:$CI_
 done
 
 # EL INTERLOCK QUE IMPORTA. Estas suites borran mundos enteros en su teardown: apuntarlas a la
-# base real es perdida de datos, no un test rojo. Se compara el HOST sin `-pooler`, asi que
-# pegar la URL pooled de produccion tampoco pasa.
-if [ -n "$PROD" ] && [ "$(host "$CI_POOLED")" = "$(host "$PROD")" ]; then
-  echo "ABORTADO: NEON_CI_DATABASE_URL apunta a la misma rama que DATABASE_URL."
-  echo "Estas suites BORRAN datos. Usa la rama \`ci-integration\`, nunca \`main\`."
+# base real es perdida de datos, no un test rojo. Spec 0167: ya NO se compara contra
+# `DATABASE_URL` (pasa a ser la base local y dejaria de proteger), sino contra la huella del
+# endpoint de PROD, que vive en `packages/db/src/local.ts` (no se duplica). Se compara el
+# endpoint sin `-pooler`/`-rvr`: ninguna de las cuatro variantes de host de PROD pasa.
+# (Con `sed`, no `rg`: en esta Mac `rg` no es un binario del PATH de bash, medido 2026-10-07.)
+PROD_SHA12="$(sed -nE 's/^export const PROD_DB_ENDPOINT_SHA12 = "([0-9a-f]{12})";$/\1/p' packages/db/src/local.ts 2>/dev/null | head -n1 || true)"
+if ! printf %s "$PROD_SHA12" | grep -Eq '^[0-9a-f]{12}$'; then
+  echo "ABORTADO: no pude leer PROD_DB_ENDPOINT_SHA12 de packages/db/src/local.ts."
   exit 1
 fi
+for par in "NEON_CI_DATABASE_URL:$CI_POOLED" "NEON_CI_DATABASE_URL_UNPOOLED:$CI_DIRECT" \
+  "NEON_CI_CONSUMER_DATABASE_URL:$(leer NEON_CI_CONSUMER_DATABASE_URL)"; do
+  clave="${par%%:*}"; valor="${par#*:}"
+  if [ -n "$valor" ] && [ "$(sha12 "$(endpoint_id "$valor")")" = "$PROD_SHA12" ]; then
+    echo "ABORTADO: $clave apunta a la rama de PROD (\`main\`)."
+    echo "Estas suites BORRAN datos. Usa la rama \`ci-integration\`, nunca \`main\`."
+    exit 1
+  fi
+done
 
 # Spec 0118: el oraculo del rol del cliente se conecta COMO `checkpass_consumer` (la URL de la
 # rama de CI con ese usuario). Opcional para el script —sin ella ese archivo FALLA, no se

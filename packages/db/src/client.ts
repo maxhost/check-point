@@ -1,11 +1,14 @@
 import { neon, neonConfig, Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { drizzle as drizzleWs } from "drizzle-orm/neon-serverless";
+import { assertNotProdOutsideProduction, configureNeonForLocal } from "./local";
 import * as schema from "./schema";
 
 export function getDb() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL no está configurada.");
+  assertNotProdOutsideProduction(connectionString);
+  configureNeonForLocal(connectionString);
   return drizzle(neon(connectionString), { schema });
 }
 
@@ -38,5 +41,7 @@ export async function withDbTransaction<T>(
 ): Promise<T> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL no está configurada.");
+  assertNotProdOutsideProduction(connectionString);
+  configureNeonForLocal(connectionString);
   return drizzleWs(poolFor(connectionString), { schema }).transaction(work);
 }
