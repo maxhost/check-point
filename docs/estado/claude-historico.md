@@ -3,6 +3,97 @@
 > Bloques ESTADO viejos, movidos tal cual desde `claude.md` (spec 0151). **No se lee al arrancar**: el estado
 > vigente es el bloque `⇥ ESTADO` de arriba de `claude.md`. Se consulta con `rg` si hace falta un dato viejo.
 
+## ESTADO HISTORICO (2026-10-07, madrugada) — SALIDA A LIVE: PROD Y R2 VACIOS, LOGIN DE QA BORRADO; SIGUE EL ARCO DEL AMBIENTE LOCAL (ADR 0126)
+
+**Hecho (verificado):**
+- **GLaDOS:** `.glados/` (perfil de calidad + conocimiento del repo) commiteado por el owner en `9dca50c`. El perfil
+  pasa el parser real de GLaDOS (`valid`, 6 checks, 39 areas sensibles, 13 dominios). Baseline medido el 2026-10-06:
+  typecheck, lint, unit (2373), Neon (3136 en 358 s), e2e (179 en 65 s) y build, todo verde.
+- **Login de QA borrado** (`f927d4e`, local): ruta `api/merchant/auth/qa-login`, `server/qa-login.ts`, los botones de
+  `account-step.tsx` y sus tests; spec 0150 → `deprecada`. Medido: typecheck 0, lint 0, ui-guard sin aumentos, unit 2346
+  passed, e2e `merchant-entry` 1/1 (el primer intento fallo por cache de Turbopack con la ruta borrada; reintento limpio).
+  **La variable `QA_LOGIN_ENABLED` de Vercel la saca el owner.**
+- **PROD vaciado** con OK explicito del owner (`tools/wipe-database.sql` reescrito en `3998ad7`, local): snapshot Neon
+  `pre-wipe-2026-10-07` (`snap-square-truth-axs9z3m2`) antes; Stripe sin ids (0); `TRUNCATE` de 56 tablas de
+  `core`/`merchant_auth`/`consumer` en una transaccion con asercion. Despues, por SQL: todo en 0 salvo
+  `core.terms_template` = 11 (TOS semilla); 66 migraciones; roles y 14 politicas RLS intactos. Health 200 en
+  `business.`, `my.` y `www.`. Antes habia 718 filas (12 comercios, 15 usuarios, 10 clientes).
+- **R2 vaciado** (OK del owner): 28 objetos huerfanos (~18,6 MB; `brands/`, `loyalty/`, `products/`) de 7 comercios de
+  agosto/septiembre que ya habian salido en la limpieza del 16/17-09. Relistado despues: 0 objetos. No habia
+  `catalog-imports/` ni objetos fuera de prefijos de comercio. Sin verificar: que el bucket del `.env.local` (huella
+  `369fa6edcd7b`) sea el de Vercel PROD.
+- **ADR 0126** (ambiente local que replica Neon) escrito con las decisiones del owner, fila en INDEX.
+- **Mistake→rule:** hook `env-read-guard.sh` (PreToolUse Bash, registrado en `.claude/settings.json`) tras imprimir dos
+  claves privadas con `cut` sobre un `.env` de valores multilinea; caso en `LECCIONES.md`. Probado: muerde en 4 casos, deja
+  pasar 5 legitimos.
+
+**Siguiente — arco del ambiente local (ADR 0126), N2:**
+1. Spec (`TEMPLATE.md`): `docker compose` con `postgres:18` + proxy `ghcr.io/timowilhelm/local-neon-http-proxy`; script de
+   roles (`neondb_owner` SIN superusuario, `customer_reader`, `checkpass_consumer`) + `drizzle-kit migrate`; seed de datos
+   ficticios; `neonConfig` en `packages/db/src/client.ts` solo con host local; `.env.local` a local (Stripe test, email a
+   consola, push/wallet apagados); el candado contra PROD de `tools/neon-test.sh` (hoy compara contra `DATABASE_URL`)
+   rehecho; runbook local → verify → migracion a PROD explicita → push.
+2. **Medir antes de escribir la spec:** que el proxy ande con PG 18 y SCRAM de `neondb_owner`, y si el WebSocket es `/v1`
+   o `/v2`.
+
+**Decisiones del owner (2026-10-07), no volver a preguntar:** base local en Docker que replica Neon, sin ramas Neon para
+desarrollo y sin preview de Vercel; proxy (mismo driver), no cambiar de driver; esquema + datos de prueba, nunca copia de
+PROD; se queda en Vercel Hobby durante el periodo de pruebas; la rotacion de claves la decide el owner (no recordarla).
+
+**Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos. Las skills
+`qa-cupones-prueba`, `qa-cupon-valido` y `delete-user` apuntan a comercios que ya no existen (ofrecido borrarlas).
+
+**Como se trabaja:** commits LOCALES en `main` del arbol principal; `main` va 3 adelante de `origin/main`
+(`9dca50c`, `f927d4e`, `3998ad7`), sin push (se junta, Hobby). Desde ahora PROD tiene datos reales: cero escrituras sin
+OK explicito.
+
+**Gotchas:** `R2_ENDPOINT` trae el bucket en la ruta (para `ListObjectsV2` usar el origen) y `foreign-staged.sh` exige
+rutas literales en `git commit --`: ambos en la skill `gotchas-del-repo`. El hook nuevo tambien frena un heredoc que
+mencione `.env` + `cut`/`grep`: editar docs con Edit/Write.
+
+**Prompt para retomar:** «Lee docs/estado/claude.md: arco del ambiente local (ADR 0126), empezar midiendo el proxy».
+
+## ESTADO HISTORICO (2026-10-06, tarde) — 0163 Y 0166 EN `origin/main` (`c69751d`, pre-push `verify: ok`); ENCARGO PARA GPT ESCRITO
+
+**Hecho (verificado):**
+- **0163** (GPT): `implementada` con PASS del revisor; la rama con sesion la cubre `page.neon.integration.test.ts`.
+- **0166** (N2, decision del owner: con sesion, `business.checkpass.club/` lleva al panel): `/` sin `?e=` → sesion valida a
+  `/backoffice`, sin sesion al alta; con `?e=` nunca redirige; el guard cierra la sesion sin negocio (`!row`), asi no
+  hay ciclo `/` ↔ `/backoffice`. Implementacion `2e45d0f`; revisor PASS (barrio todos los `redirect` a `/`); R2 (que
+  quedaba verde) cerrada por mi con el caso `?e=` vacio → panel, medida roja y revertida. Reproducido por mi: unitario
+  13/13, Neon 7/7. Comentario vencido de `magic-link/route.ts` corregido.
+- **Push** `17cac99..c69751d` desde `sin-gate-email`, pre-push `verify: ok` (tabla en el hook). El `main` del arbol
+  principal se adelanto con `--ff-only` a `c69751d` (no tenia commits de GPT). **Vercel: sin statuses al consultar justo
+  despues del push** — confirmar `success` antes de pedir QA.
+- **Owner (2026-10-06):** una sesion sin negocio no se puede crear (medido en PROD: 15 usuarios, 15 membresias) y NO va a
+  PARQUEADO; al desactivar un staff su sesion se cierra (ya lo hace `staff.ts:258`).
+- **`docs/encargo-gpt-2026-10-06.md`**: lo que GPT tiene que cerrar — (1) pantalla del motivo de `?e=` (despues de la
+  0166, mismo `page.tsx`), (2) fechas de marketing al `DateTimeField` (#79), (3) estado de la 0157 en INDEX.
+
+**Siguiente, en orden:**
+1. Statuses de Vercel de `c69751d` en `success` → pedir QA al owner: logueado, `business.checkpass.club/` → panel; sin
+   sesion → alta.
+2. Flakes que bloquean pushes: PARQUEADO #74 primero, despues #75 y #78.
+3. Chicos: H4 de la 0155; `docs/design-system.md` §Form «Pendiente» sobre `validationErrors` (resuelto por la 0162).
+4. Cuando GPT pushee la Fase 1 con las fechas migradas: restringir el `type` de `TextField` (#79).
+5. Arco UI (ADR 0123): piezas del kit que pida GPT, #77, Cierre.
+
+**Como se trabaja:** GPT commitea la Fase 1 en local sobre `main` del arbol principal sin pushear. Claude trabaja en
+worktrees desde `origin/main` (`tools/worktree-new.sh <nombre>`; enlazar `apps/merchant/.env.local` a mano) y pushea con
+`git push origin <rama>:main`. El worktree `sin-gate-email` sigue en uso; este commit de estado esta solo ahi.
+
+**Pendientes del owner:** decidir el boton de cada codigo de `?e=` (propuesta en el encargo de GPT) o dejarlo a la spec
+de GPT; QA de la 0165 y de la 0166; QA del buscador en locales y del tour de locales (0160); borrar las dos claves de
+Geoapify en Vercel.
+
+**Hallazgos abiertos:** PARQUEADO #74, #75, #77, #78, #79; H4 de la 0155.
+
+**Gotchas:** un rojo que sale SOLO dentro del pre-push no es flake hasta leer la salida entera (guardarla:
+`git push … > log 2>&1`). No hay `gh` ni `vercel` en el PATH: el estado del deploy se lee con
+`curl -s https://api.github.com/repos/maxhost/check-point/commits/<sha>/statuses`.
+
+**Prompt para retomar:** «Lee docs/estado/claude.md: flake #74» (el owner pidio seguir con #74; QA de la 0166 pendiente de su lado).
+
 ## ⇥ ESTADO HISTORICO (2026-10-06, mañana) — 0163 IMPLEMENTADA CON PASS (`f124e2d`), SIN PUSHEAR, EN LA RAMA `sin-gate-email`
 
 **Hecho (verificado):**
