@@ -130,8 +130,13 @@ describe("assertNotProdOutsideProduction", () => {
 describe("getDb / withDbTransaction", () => {
   const prev = { url: process.env.DATABASE_URL, env: process.env.NODE_ENV };
   afterEach(() => {
-    process.env.DATABASE_URL = prev.url;
-    (process.env as Record<string, string | undefined>).NODE_ENV = prev.env;
+    // Asignar `undefined` a process.env deja la cadena "undefined": se borra.
+    for (const [k, v] of [
+      ["DATABASE_URL", prev.url],
+      ["NODE_ENV", prev.env],
+    ] as const)
+      if (v === undefined) delete process.env[k];
+      else (process.env as Record<string, string>)[k] = v;
     vi.doUnmock("./local");
     vi.doUnmock("@neondatabase/serverless");
     vi.resetModules();
