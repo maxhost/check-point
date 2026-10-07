@@ -10,26 +10,31 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-07, tarde) — SPEC 0167 LISTA PARA EL IMPLEMENTADOR (`1bad053`); IMPLEMENTADOR DESPACHADO
+## ⇥ ESTADO (2026-10-07, noche) — SPEC 0167 IMPLEMENTADA CON PASS (`d244f1c`); FALTAN LOS `.env` DEL OWNER Y SU QA
 
 **Hecho (verificado):**
-- **Collation de PROD:** `builtin` / `C.UTF-8` (MCP), reproducida en local. Restricciones identicas local/PROD.
-- **Bucket R2 de desarrollo** (owner): 6 claves en `tools/local-db/.env.r2-dev` (ignorado). Bucket y claves distintos de
-  PROD, misma cuenta. Probado con el SDK: put/get/delete en el bucket dev; la clave dev recibe 403 en el bucket de PROD.
-- **Huella de PROD:** `PROD_DB_ENDPOINT_SHA12 = bf545fdce7a0` (endpoint `main`, no el host: Neon publica variantes
-  `-rvr` que un candado por host dejaria pasar). La huella del host completo coincide con la del `DATABASE_URL` de los `.env.local`.
-- **Oraculo:** `tools/local-db/huellas.sql` (19 categorias, collate C) + `huellas-prod.txt` (MCP, solo lectura).
-  - Dos diferencias resueltas: `published_at` de los TOS (lo pone `now()`, excluido) y las membresias de PROD
-    (`neon_service`; `pg_maintain`/`pg_signal_autovacuum_worker` con `SET FALSE`), anotadas en la spec §1.
-  - Con eso, el contenedor de medicion solo diferia en `collation` (era `en_US.utf8`); una base builtin `C.UTF-8` da
-    la fila de PROD.
-- Contenedores `proxy-medicion` bajados (`down -v`).
-- **Los `.env` los escribe el owner:** los agentes tienen denegada la escritura (spec §7, orden: `.env.prod.local` primero).
+- **Spec 0167 implementada:** `7f08691` + `fef6489` (implementador) y `180c5ac` (arreglo del orquestador).
+  - Revisor **PASS** con 5 mutaciones. Los candados abortan con el host REAL de PROD en sus 6 variantes, sin red.
+  - Re-medido por el orquestador: `compare.sh` exit 0 (19 categorias); `pnpm --filter @mi-pasaporte/db test` 10 passed;
+    `huellas.sql`/`huellas-prod.txt` intactos; `customer_reader` sin `app.business_id` falla cerrado (psql, spec corregida en `e0209c8`).
+- **Hallazgos del revisor, arreglados en `180c5ac`:**
+  - `neon-test.sh` dejaba pasar PROD con valores entre comillas. Reproducido: el endpoint salia `"postgresql`.
+    Ahora `leer()` saca las comillas y un endpoint que no es `ep-…` se rechaza.
+  - La regla en bash no tenia test: `tools/neon-test-guard.test.ts` (19 casos, huella ficticia via
+    `NEON_TEST_EXTRA_BLOCKED_SHA12`, que solo suma). Muerde: sin `-rvr` 6 rojos, sin comillas 2 rojos.
+- `pnpm verify` ok sobre `180c5ac`: 3131 passed, `neon (full)` en verde.
+- Contenedores `checkpass-local` (pg 55432, proxy 4444) arriba, con 66 migraciones y seed ficticio.
 
-**Siguiente:**
-1. `implementador` (despachado en esta sesion) sobre la spec 0167; leer su handoff y re-medir su evidencia.
-2. `revisor` con las mutaciones del plan de pruebas.
-3. El owner aplica los `.env` segun la checklist del runbook; recien ahi, pruebas manuales.
+**Siguiente (del owner, en este orden; runbook `docs/runbooks/migrar-prod.md` §2):**
+1. `packages/db/.env.prod.local` con `DATABASE_URL_UNPOOLED` = URL directa de PROD.
+2. En el mismo paso, `DATABASE_URL` local + las 6 claves de `tools/local-db/.env.r2-dev` en los dos `.env.local`;
+   `EMAIL_PROVIDER=console` (merchant); `WALLET_PROVIDER=fake`, sin secretos de wallet, VAPID nuevo y sin
+   `CLICKSEND_*`/`TWILIO_*`/`OTP_PROVIDER` (consumer).
+3. `node tools/local-db/check-env.ts` exit 0 (hoy: exit 1, esperado). Lo re-corre Claude.
+4. QA manual: `pnpm dev` de las dos apps contra la base local, login de merchant por consola, alta, sello y un logo
+   que llegue al bucket dev.
+5. `.env.example`: parche listo en el scratchpad (se pierde); el texto esta tambien en el runbook §2. Lo aplica el
+   owner o se ajusta el permiso, que decide el owner.
 
 **Decisiones del owner, no volver a preguntar:** base local en Docker que replica Neon, sin ramas Neon de desarrollo ni
 preview de Vercel; proxy, mismo driver; esquema + datos de prueba, nunca copia de PROD; R2 de desarrollo en local;
@@ -44,7 +49,8 @@ PROD con datos reales: cero escrituras sin OK explicito (esta sesion: solo SELEC
 **Gotchas:**
 - El hook `env-read-guard.sh` bloquea cualquier comando que nombre un `.env` junto a `grep`/`head`/`cut`/`sed`: los
   scripts que leen `.env` se escriben con Write y se corren en un comando aparte.
+- Los agentes no pueden escribir `.env*`, ni siquiera `.env.example`.
 - La API de Neon da 429 con rafagas: reintentar una vez.
-- zsh no parte `$VAR` en palabras.
+- En el bash de los scripts, `rg` no esta en el PATH: usar `sed`/`grep`.
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: seguir la implementacion de la spec 0167».
+**Prompt para retomar:** «Lee docs/estado/claude.md: verificar los `.env` del owner con check-env y acompañar su QA de la spec 0167».
