@@ -10,47 +10,48 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-07, noche) — SPEC 0167 IMPLEMENTADA CON PASS (`d244f1c`); FALTAN LOS `.env` DEL OWNER Y SU QA
+## ⇥ ESTADO (2026-10-07, tarde) — SPEC 0168 (TUNEL PARA EL TELEFONO) CERRADA (`10afff9`), A IMPLEMENTAR
 
 **Hecho (verificado):**
-- **Spec 0167 implementada:** `7f08691` + `fef6489` (implementador) y `180c5ac` (arreglo del orquestador).
-  - Revisor **PASS** con 5 mutaciones. Los candados abortan con el host REAL de PROD en sus 6 variantes, sin red.
-  - Re-medido por el orquestador: `compare.sh` exit 0 (19 categorias); `pnpm --filter @mi-pasaporte/db test` 10 passed;
-    `huellas.sql`/`huellas-prod.txt` intactos; `customer_reader` sin `app.business_id` falla cerrado (psql, spec corregida en `e0209c8`).
-- **Hallazgos del revisor, arreglados en `180c5ac`:**
-  - `neon-test.sh` dejaba pasar PROD con valores entre comillas. Reproducido: el endpoint salia `"postgresql`.
-    Ahora `leer()` saca las comillas y un endpoint que no es `ep-…` se rechaza.
-  - La regla en bash no tenia test: `tools/neon-test-guard.test.ts` (19 casos, huella ficticia via
-    `NEON_TEST_EXTRA_BLOCKED_SHA12`, que solo suma). Muerde: sin `-rvr` 6 rojos, sin comillas 2 rojos.
-- `pnpm verify` ok sobre `180c5ac`: 3131 passed, `neon (full)` en verde.
-- Contenedores `checkpass-local` (pg 55432, proxy 4444) arriba, con 66 migraciones y seed ficticio.
+- `.env` de la spec 0167 aplicados por el owner (script de scratchpad que el corrio): `node tools/local-db/check-env.ts`
+  exit 0. Respaldos de sus valores previos: `apps/*/.env.local.respaldo-2026-10-07` (ignorados por git).
+- `pnpm db:migrate:prod` corrido con OK del owner: exit 0, nada pendiente. SELECT de solo lectura: rol `neondb_owner`,
+  `drizzle.__drizzle_migrations` = 66 = archivos en `packages/db/drizzle`. (Primer intento con la URL del rol
+  `checkpass_consumer`: `permission denied for schema drizzle`, nada escrito.)
+- ADR 0127 + spec 0168 (N1) escritos y commiteados en `10afff9`. Decisiones del owner: tunel con nombre de Cloudflare,
+  subdominios fijos `dev-business.` / `dev-my.checkpass.club`, acceso abierto.
 
-**Siguiente (del owner, en este orden; runbook `docs/runbooks/migrar-prod.md` §2):**
-1. `packages/db/.env.prod.local` con `DATABASE_URL_UNPOOLED` = URL directa de PROD.
-2. En el mismo paso, `DATABASE_URL` local + las 6 claves de `tools/local-db/.env.r2-dev` en los dos `.env.local`;
-   `EMAIL_PROVIDER=console` (merchant); `WALLET_PROVIDER=fake`, sin secretos de wallet, VAPID nuevo y sin
-   `CLICKSEND_*`/`TWILIO_*`/`OTP_PROVIDER` (consumer).
-3. `node tools/local-db/check-env.ts` exit 0 (hoy: exit 1, esperado). Lo re-corre Claude.
-4. QA manual: `pnpm dev` de las dos apps contra la base local, login de merchant por consola, alta, sello y un logo
-   que llegue al bucket dev.
-5. `.env.example`: parche listo en el scratchpad (se pierde); el texto esta tambien en el runbook §2. Lo aplica el
-   owner o se ajusta el permiso, que decide el owner.
+**Hallazgo medido (hueco de la 0167, lo cierra la 0168):** los `.env.local` siguen con origenes de PROD:
+merchant `BETTER_AUTH_URL` = `business.checkpass.club` (el link de login de consola va a PROD), consumer
+`CONSUMER_ORIGIN` = `my.checkpass.club`, merchant sin `CONSUMER_ORIGIN` (rewrite `/api/public/*` → PROD).
+**El QA local del owner NO deberia hacerse antes de arreglar esto.**
 
-**Decisiones del owner, no volver a preguntar:** base local en Docker que replica Neon, sin ramas Neon de desarrollo ni
-preview de Vercel; proxy, mismo driver; esquema + datos de prueba, nunca copia de PROD; R2 de desarrollo en local;
-Vercel Hobby en el periodo de pruebas; rotacion de claves la decide el owner (no recordarla).
+**Siguiente:**
+1. Implementar la spec 0168 en la conversacion principal (N1, sin subagentes): `tools/tunnel/`, merchant :3001,
+   `allowedDevOrigins`, `check-env.ts` + `check-env.test.ts` (5 casos, 2 mutaciones), runbook `tunel-dev.md`.
+2. Owner: alta unica del tunel (runbook §1: `brew install cloudflared`, `tunnel login`, `create`, `route dns` x2) y
+   las 3 variables del §4 (darle un script de scratchpad como en la 0167; los agentes no escriben `.env*`).
+3. DoD con el owner: `dig`, `curl` 200 por el tunel, link de login con `dev-business.`, PWA + push en el telefono
+   (fila en `consumer.web_push_subscription` LOCAL). `pnpm verify` al final.
+4. Despues: QA manual de la 0167 (login, alta, sello, logo en bucket dev) por las direcciones del tunel.
 
-**Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos. Skills
-`qa-cupones-prueba`, `qa-cupon-valido` y `delete-user` apuntan a comercios que ya no existen (ofrecido borrarlas).
+**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo en checkpass.club con
+acceso abierto (ADR 0127); no borra secretos de sus `.env`: se COMENTAN con `#` (wallet, SMS); R2 de desarrollo;
+Vercel Hobby; rotacion de claves la decide el owner (no recordarla). Wallet real en el telefono: decision ABIERTA
+(credenciales de desarrollo de Apple/Google), no entra en la 0168.
+
+**Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
+desarrollo (hoy consumer local usa el de PROD); `.env.example` sin el bloque de la 0167 (agentes sin permiso).
 
 **Como se trabaja:** commits LOCALES en `main`, sin push (Hobby; contar con `git rev-list --count origin/main..main`).
-PROD con datos reales: cero escrituras sin OK explicito (esta sesion: solo SELECT y lecturas de la API de Neon).
+PROD con datos reales: cero escrituras sin OK explicito.
 
 **Gotchas:**
-- El hook `env-read-guard.sh` bloquea cualquier comando que nombre un `.env` junto a `grep`/`head`/`cut`/`sed`: los
-  scripts que leen `.env` se escriben con Write y se corren en un comando aparte.
-- Los agentes no pueden escribir `.env*`, ni siquiera `.env.example`.
-- La API de Neon da 429 con rafagas: reintentar una vez.
-- En el bash de los scripts, `rg` no esta en el PATH: usar `sed`/`grep`.
+- El owner edita con TextEdit: guarda `.rtf` (convertir con `textutil -convert txt`). Darle scripts que hagan el cambio
+  en vez de pasos a mano, y una sola ruta de archivo por paso.
+- El hook `env-read-guard.sh` bloquea todo comando que contenga `.env` (incluso `process.env`) junto a
+  `grep`/`head`/`cut`/`sed`: escribir el script con Write y correrlo aparte.
+- Los agentes no pueden escribir `.env*`. La API de Neon da 429 con rafagas: reintentar una vez.
+- Las dos apps arrancaban en :3000; la 0168 mueve merchant a :3001.
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: verificar los `.env` del owner con check-env y acompañar su QA de la spec 0167».
+**Prompt para retomar:** «Lee docs/estado/claude.md: implementar la spec 0168 (tunel para el telefono)».
