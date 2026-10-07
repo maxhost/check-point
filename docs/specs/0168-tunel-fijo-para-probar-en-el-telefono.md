@@ -1,7 +1,7 @@
 ---
 spec: 0168
 fecha: 2026-10-07
-estado: cerrada
+estado: implementada
 resumen: Implementa el ADR 0127 — Cloudflare Tunnel con nombre (`dev-business.` → merchant :3001, `dev-my.` → consumer :3000), merchant en el puerto 3001, `allowedDevOrigins` con los dos hosts, `check-env.ts` rechaza cualquier origen de PROD en los `.env.local` y exige `CONSUMER_ORIGIN` en merchant, y runbook para el telefono (PWA + push).
 disjunta: si
 archivos: tools/tunnel/config.yml, tools/tunnel/up.sh, package.json, apps/merchant/package.json, apps/merchant/next.config.ts, apps/consumer/next.config.ts, tools/local-db/check-env.ts, tools/local-db/check-env.test.ts, docs/runbooks/tunel-dev.md
@@ -151,3 +151,42 @@ ESTADO con su sha.
 ## Abierto
 
 Nada que bloquee. Pendiente del owner fuera del codigo: §1 del runbook (alta del tunel) y §4 (variables).
+
+## Cierre (2026-10-07)
+
+Implementada en `140f6e9` por el orquestador (N1, sin subagentes).
+
+**Medido:**
+- `pnpm vitest run --project tools tools/local-db/check-env.test.ts` → 5/5 verde.
+- Mutaciones (copia limpia en scratchpad, shasum `9d399360e410…` antes y despues, `diff` vacio al revertir;
+  `rg -n MUTATION apps tools` → vacio):
+
+  | # | Mutacion | Resultado ejecutado |
+  |---|---|---|
+  | 1 | comparar solo el primer elemento de la lista | ROJO solo (d): `expected … to match /^MAL .*BETTER_AUTH_TRUSTED_ORIGINS n…/` |
+  | 2 | quitar la exigencia de `CONSUMER_ORIGIN` en merchant | ROJO solo (c): `expected … to match /^MAL .*apps\/merchant\/\.env…/` |
+
+- `node tools/local-db/check-env.ts` con los `.env` reales, ANTES del §4 → **exit 1**:
+  ```
+  MAL  apps/merchant/.env.local BETTER_AUTH_URL no apunta a PROD
+  MAL  apps/merchant/.env.local BETTER_AUTH_URL = https://dev-business.checkpass.club
+  MAL  apps/merchant/.env.local CONSUMER_ORIGIN = https://dev-my.checkpass.club
+  MAL  apps/consumer/.env.local CONSUMER_ORIGIN no apunta a PROD
+  MAL  apps/consumer/.env.local CONSUMER_ORIGIN = https://dev-my.checkpass.club
+  5 chequeo(s) MAL
+  ```
+  (Barrido previo, solo tipos de host: las unicas claves `*ORIGIN(S)`/`*_URL` de las apps son esas dos.)
+- `PATH=/usr/bin:/bin bash tools/tunnel/up.sh` → `ABORTADO: falta cloudflared (docs/runbooks/tunel-dev.md §1)`, exit 1.
+- `pnpm verify` (Node 24): typecheck, lint, ui-guard, format:check, test, build, test:e2e, neon (full) → todos `ok`;
+  3136 tests pasan. `verify: ok`.
+
+**Desvio menor de la spec:** el test NO copia `packages/db/src/local.ts`: escribe uno con la huella de un endpoint
+ficticio. Con la huella real, el chequeo de `.env.prod.local` solo pasa con la URL de PROD, y el caso (a) seria
+imposible sin ella.
+
+**Login del comercio por el tunel:** la ruta real es `/es/business/onboarding` (leida de `apps/merchant/src/app/page.tsx`).
+
+**Pendiente (owner):** §1 del runbook (alta del tunel; hoy `cloudflared` no esta instalado y no hay `~/.cloudflared/`);
+§4 (variables; script de scratchpad). Despues, con el owner: `dig`, `curl` 200 a `dev-my./wallet` y
+`dev-business./es/business/onboarding`, link de login con `dev-business.`, check-env exit 0, si `cloudflared` necesita
+`credentials-file` explicito, y PWA + push en el telefono (fila en `consumer.web_push_subscription` LOCAL).
