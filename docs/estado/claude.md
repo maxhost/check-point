@@ -14,16 +14,19 @@
 
 **Hecho (verificado):**
 - **Spec 0168 implementada** en `140f6e9` (N1, conversacion principal): `tools/tunnel/{config.yml,up.sh}`,
-  `pnpm dev:tunnel`, merchant en `:3001`, `allowedDevOrigins` con `dev-business.`/`dev-my.`, `check-env.ts` con el
+  `pnpm dev:tunnel`, merchant en `:3001` (despues `:3201`, ver abajo), `allowedDevOrigins` con `dev-business.`/`dev-my.`, `check-env.ts` con el
   candado de origenes + `CHECK_ENV_ROOT`, `check-env.test.ts` (5/5), runbook `docs/runbooks/tunel-dev.md`.
 - 2 mutaciones ejecutadas, cada una ROJO solo en su caso ((d) y (c)); revertidas con `diff` vacio; `rg MUTATION` vacio.
 - `node tools/local-db/check-env.ts` con los `.env` reales: **exit 1** con 5 `MAL` (BETTER_AUTH_URL y CONSUMER_ORIGIN
   de las dos apps), transcripto en el cierre de la spec. `up.sh` sin `cloudflared` → `ABORTADO…`, exit 1.
 - `pnpm verify` con Node 24: los 8 gates `ok` (3136 tests). Commits locales, sin push.
 
+- **Alta del tunel HECHA por el owner:** tunel `checkpass-dev` (`edc1fd88-…`), `dig` de los dos hosts → IPs de
+  Cloudflare; `up.sh` conecta sin `credentials-file` explicito. `:3000` lo ocupaba `GlaDOS/apps/web` y el tunel lo
+  publico en `dev-my.` <1 min (apagado, 530). **Owner: puertos consumer `:3200`, merchant `:3201`** (`853a01e`, ADR 0127).
+
 **Siguiente (owner, en este orden):**
-1. Alta del tunel: runbook §1 (`brew install cloudflared`; `cloudflared tunnel login`; `create checkpass-dev`;
-   `route dns` x2). Hoy `cloudflared` no esta instalado y no existe `~/.cloudflared/`.
+1. ~~Alta del tunel~~ hecha. Levantar SIEMPRE las apps antes que `pnpm dev:tunnel`.
 2. Variables del §4 con el script del scratchpad de esta sesion `aplicar-0168.ts` (si se perdio, rehacerlo: reemplaza
    3 lineas y deja `.env.local.respaldo-0168`, ignorado por git). Despues `node tools/local-db/check-env.ts` → exit 0.
 3. Con el owner (DoD pendiente de la 0168): `dig +short` de los dos hosts; `curl` 200 a
