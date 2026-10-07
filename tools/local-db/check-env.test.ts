@@ -34,6 +34,7 @@ const MERCHANT = {
   DATABASE_URL: LOCAL_DB,
   ...R2,
   EMAIL_PROVIDER: "console",
+  BETTER_AUTH_SECRET: "s".repeat(32),
   BETTER_AUTH_URL: "https://dev-business.checkpass.club",
   CONSUMER_ORIGIN: "https://dev-my.checkpass.club",
   BETTER_AUTH_TRUSTED_ORIGINS: `https://dev-business.checkpass.club,https://${CENTINELA}.example.com`,
@@ -99,6 +100,14 @@ describe("check-env.ts: origenes de las apps (spec 0168)", () => {
     const r = correr({ ...MERCHANT, CONSUMER_ORIGIN: undefined });
     expect(r.out).toMatch(
       /^MAL .*apps\/merchant\/\.env\.local CONSUMER_ORIGIN = /m,
+    );
+    expect(r.code).toBe(1);
+  });
+
+  it("merchant sin BETTER_AUTH_SECRET (getMerchantAuth lanza) → exit 1", () => {
+    const r = correr({ ...MERCHANT, BETTER_AUTH_SECRET: undefined });
+    expect(r.out).toMatch(
+      /^MAL .*BETTER_AUTH_SECRET de 32\+ caracteres \(largo 0\)$/m,
     );
     expect(r.code).toBe(1);
   });

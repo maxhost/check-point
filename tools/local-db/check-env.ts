@@ -108,6 +108,11 @@ for (const app of ["apps/merchant/.env.local", "apps/consumer/.env.local"]) {
     );
   if (app.includes("merchant")) {
     check(env.EMAIL_PROVIDER === "console", `${app} EMAIL_PROVIDER=console`);
+    // `getMerchantAuth()` lanza sin el (500 en toda ruta con sesion, 2026-10-07).
+    check(
+      (env.BETTER_AUTH_SECRET ?? "").length >= 32,
+      `${app} BETTER_AUTH_SECRET de 32+ caracteres (largo ${env.BETTER_AUTH_SECRET?.length ?? 0})`,
+    );
     check(
       env.BETTER_AUTH_URL === TUNNEL_MERCHANT,
       `${app} BETTER_AUTH_URL = ${TUNNEL_MERCHANT}`,
