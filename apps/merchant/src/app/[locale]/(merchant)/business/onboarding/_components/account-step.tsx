@@ -6,7 +6,6 @@ import { Form } from "react-aria-components";
 import { Button, TextField } from "../../../../../../ui";
 import { requestMerchantLogin, WizardApiError } from "../_lib/onboarding-api";
 import { InlineApiError } from "./wizard-shared";
-import { QaLoginButtons } from "./qa-login-buttons";
 
 export function AccountStep({
   onBack,
@@ -66,7 +65,6 @@ export function AccountStep({
       >
         Crear un negocio
       </button>
-      <QaLoginButtons />
     </>
   );
 }

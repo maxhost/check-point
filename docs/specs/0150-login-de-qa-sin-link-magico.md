@@ -1,7 +1,7 @@
 ---
 spec: 0150
 fecha: 2026-10-04
-estado: cerrada
+estado: deprecada
 resumen: TEMPORAL. Login de QA sin link magico para las 3 cuentas de prueba (Panaderia, Barberia, Gym): `GET`/`POST /api/merchant/auth/qa-login`, con lista fija de 3 cuentas en el servidor y apagado por variable (`QA_LOGIN_ENABLED`). Los botones del login los pone GPT. Se borra al terminar las pruebas.
 disjunta: si
 archivos: apps/merchant/src/server/qa-login.ts, apps/merchant/src/app/api/merchant/auth/qa-login/route.ts, tests
