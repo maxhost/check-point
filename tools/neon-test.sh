@@ -39,7 +39,11 @@ cd "$(dirname "$0")/.."
 ENV_FILE="${NEON_TEST_ENV_FILE:-apps/merchant/.env.local}"
 [ -f "$ENV_FILE" ] || { echo "falta $ENV_FILE"; exit 1; }
 
-leer() { grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- || true; }
+# Sin las comillas que envuelven el valor (`vercel env pull` escribe `KEY="..."`): con ellas el
+# candado de abajo no reconocia la URL y la dejaba pasar (revision de la spec 0167).
+leer() {
+  grep -m1 "^$1=" "$ENV_FILE" | cut -d= -f2- | sed -e "s/^\"\(.*\)\"$/\1/" -e "s/^'\(.*\)'$/\1/" || true
+}
 # El host de una URL de Postgres, sin el sufijo `-pooler` (pooled y directa comparten rama).
 host() { printf %s "$1" | sed -e 's|^[^@]*@||' -e 's|/.*$||' -e 's|-pooler||'; }
 # El endpoint de Neon de una URL: el primer segmento DNS del host sin `-pooler` ni `-rvr`, en
@@ -83,10 +87,21 @@ if ! printf %s "$PROD_SHA12" | grep -Eq '^[0-9a-f]{12}$'; then
   echo "ABORTADO: no pude leer PROD_DB_ENDPOINT_SHA12 de packages/db/src/local.ts."
   exit 1
 fi
+# `NEON_TEST_EXTRA_BLOCKED_SHA12` SUMA una huella bloqueada (para que `tools/neon-test-guard.test.ts`
+# pruebe la regla con un host ficticio); nunca reemplaza la de PROD.
+BLOQUEADAS="$PROD_SHA12 ${NEON_TEST_EXTRA_BLOCKED_SHA12:-}"
 for par in "NEON_CI_DATABASE_URL:$CI_POOLED" "NEON_CI_DATABASE_URL_UNPOOLED:$CI_DIRECT" \
   "NEON_CI_CONSUMER_DATABASE_URL:$(leer NEON_CI_CONSUMER_DATABASE_URL)"; do
   clave="${par%%:*}"; valor="${par#*:}"
-  if [ -n "$valor" ] && [ "$(sha12 "$(endpoint_id "$valor")")" = "$PROD_SHA12" ]; then
+  [ -n "$valor" ] || continue
+  id="$(endpoint_id "$valor")"
+  # Falla cerrado: una URL de la que no sale un endpoint de Neon no se compara, se rechaza.
+  if ! printf %s "$id" | grep -Eq '^ep-[a-z0-9-]+$'; then
+    echo "ABORTADO: no reconozco el endpoint de Neon de $clave (largo ${#valor})."
+    exit 1
+  fi
+  case " $BLOQUEADAS " in *" $(sha12 "$id") "*) bloqueada=1 ;; *) bloqueada=0 ;; esac
+  if [ "$bloqueada" -eq 1 ]; then
     echo "ABORTADO: $clave apunta a la rama de PROD (\`main\`)."
     echo "Estas suites BORRAN datos. Usa la rama \`ci-integration\`, nunca \`main\`."
     exit 1
