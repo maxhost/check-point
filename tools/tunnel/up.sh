@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # `pnpm dev:tunnel` — levanta el tunel `checkpass-dev` (ADR 0127, spec 0168):
-# dev-business.checkpass.club → merchant :3001, dev-my.checkpass.club → consumer :3000.
+# dev-business.checkpass.club → merchant :3201, dev-my.checkpass.club → consumer :3200.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 

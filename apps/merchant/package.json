@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "next dev --port 3201",
     "build": "NODE_ENV=production next build",
     "typecheck": "tsc --noEmit",
     "typecheck:ui": "tsc --noEmit -p tsconfig.ui.json"

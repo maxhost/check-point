@@ -4,7 +4,7 @@
 tunnel: checkpass-dev
 ingress:
   - hostname: dev-business.checkpass.club
-    service: http://localhost:3001
+    service: http://localhost:3201
   - hostname: dev-my.checkpass.club
-    service: http://localhost:3000
+    service: http://localhost:3200
   - service: http_status:404

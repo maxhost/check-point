@@ -1,5 +1,5 @@
 /**
- * Puertos propios de la e2e, fuera del 3000-3002 de `pnpm dev`: otros proyectos de la maquina
+ * Puertos propios de la e2e, fuera de los de `pnpm dev`: otros proyectos de la maquina
  * levantan su `next dev` ahi y el `webServer` de Playwright fallaba con EADDRINUSE (2026-10-05).
  */
 export const e2ePorts = {

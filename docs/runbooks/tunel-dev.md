@@ -5,8 +5,8 @@ HTTPS y direccion fija:
 
 | Direccion | App local |
 |---|---|
-| `https://dev-business.checkpass.club` | merchant (`:3001`) |
-| `https://dev-my.checkpass.club` | consumer (`:3000`) |
+| `https://dev-business.checkpass.club` | merchant (`:3201`) |
+| `https://dev-my.checkpass.club` | consumer (`:3200`) |
 
 Acceso abierto (decision del owner): cualquiera con la direccion entra, y lo que ve son los datos FICTICIOS de la
 base local. La config de ingress esta en `tools/tunnel/config.yml`; las credenciales del tunel viven en

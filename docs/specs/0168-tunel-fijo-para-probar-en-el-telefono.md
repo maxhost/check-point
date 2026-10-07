@@ -190,3 +190,10 @@ imposible sin ella.
 §4 (variables; script de scratchpad). Despues, con el owner: `dig`, `curl` 200 a `dev-my./wallet` y
 `dev-business./es/business/onboarding`, link de login con `dev-business.`, check-env exit 0, si `cloudflared` necesita
 `credentials-file` explicito, y PWA + push en el telefono (fila en `consumer.web_push_subscription` LOCAL).
+
+### Actualizacion: puertos 3200/3201 (owner, 2026-10-07)
+
+Medido con el alta del owner hecha: `dig +short` de los dos hosts → IPs de Cloudflare (`172.67.171.114`,
+`104.21.29.105`); `up.sh` conecta SIN `credentials-file` explicito (`Registered tunnel connection` x2; toma
+`~/.cloudflared/<UUID>.json`). Pero `:3000` lo ocupaba `GlaDOS/apps/web` (`lsof`) y `dev-my.` lo sirvio (404) hasta
+que se apago el tunel (despues: 530). Decision del owner: consumer `:3200`, merchant `:3201` (ADR 0127, actualizacion).

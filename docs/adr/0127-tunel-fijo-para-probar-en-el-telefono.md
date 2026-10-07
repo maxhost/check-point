@@ -2,7 +2,7 @@
 adr: 0127
 fecha: 2026-10-07
 estado: aceptada
-resumen: El ambiente local se abre al telefono con un Cloudflare Tunnel con nombre y dos subdominios FIJOS de checkpass.club (`dev-business.` → merchant en :3001, `dev-my.` → consumer en :3000), abierto a cualquiera con la direccion mientras esta prendido. Las variables de origen de los `.env.local` pasan a esas direcciones y ninguna puede apuntar a un host de PROD.
+resumen: El ambiente local se abre al telefono con un Cloudflare Tunnel con nombre y dos subdominios FIJOS de checkpass.club (`dev-business.` → merchant en :3201, `dev-my.` → consumer en :3200), abierto a cualquiera con la direccion mientras esta prendido. Las variables de origen de los `.env.local` pasan a esas direcciones y ninguna puede apuntar a un host de PROD.
 ---
 
 # 0127 — Tunel fijo para probar el ambiente local en el telefono
@@ -22,8 +22,8 @@ Medido el 2026-10-07 al preparar el QA local: los `.env.local` siguen con origen
 ## Decision (owner, 2026-10-07)
 
 1. **Tunel con nombre de Cloudflare** y subdominios fijos de `checkpass.club` (su DNS ya esta en Cloudflare:
-   `hasslo`/`tina.ns.cloudflare.com`). `dev-business.checkpass.club` → merchant (`localhost:3001`),
-   `dev-my.checkpass.club` → consumer (`localhost:3000`). Fijos para que la PWA instalada y la suscripcion de push
+   `hasslo`/`tina.ns.cloudflare.com`). `dev-business.checkpass.club` → merchant (`localhost:3201`),
+   `dev-my.checkpass.club` → consumer (`localhost:3200`). Fijos para que la PWA instalada y la suscripcion de push
    sobrevivan entre sesiones y para poder registrar despues callbacks de OAuth/Wallet de desarrollo.
    Descartado: tunel rapido `*.trycloudflare.com` (direccion nueva cada vez).
 2. **Acceso abierto** a quien tenga la direccion mientras el tunel esta prendido (sin Cloudflare Access). Detras hay
@@ -36,3 +36,9 @@ Medido el 2026-10-07 al preparar el QA local: los `.env.local` siguen con origen
 - Login de merchant y links del cliente necesitan el tunel prendido (el link de la consola apunta a `dev-business.`).
 - La wallet real en el telefono sigue afuera: requiere decidir credenciales de desarrollo de Apple/Google (ADR 0126 §4).
 - La instalacion de `cloudflared` y el `tunnel login` (navegador) son del owner, una vez.
+
+## Actualizacion (2026-10-07, owner): puertos 3200/3201
+
+Al medir el tunel, `:3000` estaba tomado por otro proyecto de la maquina (`GlaDOS/apps/web`) y el tunel lo publico en
+`dev-my.` durante menos de un minuto. El owner decidio sacar las apps del rango 3000-3002 de todo `next dev`:
+consumer `:3200`, merchant `:3201`. Platform (3002) y public (3003) no cambian.
