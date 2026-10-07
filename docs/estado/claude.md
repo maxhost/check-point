@@ -39,7 +39,7 @@ Vercel Hobby en el periodo de pruebas; rotacion de claves la decide el owner (no
 borrar pases/PWA de prueba de los telefonos. Skills `qa-cupones-prueba`, `qa-cupon-valido` y `delete-user` apuntan a
 comercios que ya no existen (ofrecido borrarlas).
 
-**Como se trabaja:** commits LOCALES en `main`; `main` va 6 adelante de `origin/main` sin push (Hobby). PROD con datos
+**Como se trabaja:** commits LOCALES en `main`; `main` va adelante de `origin/main` sin push (Hobby; contar con `git rev-list --count origin/main..main`). PROD con datos
 reales: cero escrituras sin OK explicito (esta sesion: solo SELECT).
 
 **Gotchas:** el hook `env-read-guard.sh` bloquea cualquier comando que nombre un `.env` junto a `grep`/`head`/`cut`
