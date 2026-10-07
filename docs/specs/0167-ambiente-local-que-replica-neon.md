@@ -60,9 +60,15 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
   - `PG_CONNECTION_STRING` con el superusuario `postgres` del contenedor (el proxy lee los secretos SCRAM con esa
     conexion, ADR 0126 §Medido).
 - `tools/local-db/init/01-roles.sql` (lo corre `docker-entrypoint-initdb.d` una sola vez):
-  - `neon_superuser` NOLOGIN con `CREATEROLE CREATEDB BYPASSRLS REPLICATION` y `ADMIN` de `pg_read_all_data`,
-    `pg_write_all_data`, `pg_monitor`, `pg_signal_backend`, `pg_maintain`, `pg_create_subscription` y
-    `pg_signal_autovacuum_worker`.
+  - `neon_superuser` NOLOGIN con `CREATEROLE CREATEDB BYPASSRLS REPLICATION`. Es miembro de estos roles, con las
+    opciones leidas de PROD por MCP el 2026-10-07:
+    - `pg_read_all_data`, `pg_write_all_data`, `pg_monitor`, `pg_signal_backend` y `pg_create_subscription`:
+      `ADMIN TRUE, INHERIT TRUE, SET TRUE`.
+    - `pg_maintain` y `pg_signal_autovacuum_worker`: `ADMIN TRUE, INHERIT TRUE, SET FALSE`.
+  - `neon_service` NOLOGIN (rol interno de Neon), miembro de `neon_superuser` con `INHERIT TRUE, SET TRUE`. Sin
+    privilegios propios; existe para que `membresias` coincida con PROD (13 filas).
+  - Las tres cosas se probaron en el contenedor de medicion: despues de aplicarlas, `huellas.sql` coincide con
+    `huellas-prod.txt` salvo la collation de ese contenedor (`en_US.utf8`).
   - `neondb_owner` LOGIN con contraseña local fija `local-solo-dev`, mismos atributos, **sin SUPERUSER**, miembro de
     `neon_superuser`. Es duenio de `neondb` y del esquema `public`.
   - `customer_reader` y `checkpass_consumer` NO se crean aca: los crean las migraciones, igual que en PROD.
@@ -77,10 +83,16 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
     `wsProxy = "<host>:4444/v2"`, `useSecureWebSocket = false`, `pipelineTLS = false` y `pipelineConnect = false`.
   - Con cualquier otro host no toca `neonConfig`.
 - `assertNotProdOutsideProduction(url, env)`:
-  - Si `env.NODE_ENV !== "production"` y `sha256(host sin -pooler)[0..12]` es igual a la constante `PROD_DB_HOST_SHA12`
-    (huella del host de PROD), tira `Error("DATABASE_URL apunta a PROD fuera de produccion")`.
-  - La constante es una huella, no un secreto. Se calcula una vez desde el `.env.local` actual con el parser de claves
-    (CLAUDE.md §Verificacion) antes de reescribirlo.
+  - `neonEndpointId(url)`: el primer segmento DNS del host, sin los sufijos `-pooler` ni `-rvr`, en cualquier orden.
+    Neon publica cuatro hosts por endpoint (directo, `-pooler`, `-rvr`, `-rvr-pooler`; medido con `list_branch_computes`
+    el 2026-10-07) y todos llegan a la misma base. Una huella del host completo dejaria pasar las variantes `-rvr`.
+  - Si `env.NODE_ENV !== "production"` y `sha256(neonEndpointId(url))[0..12]` es igual a `PROD_DB_ENDPOINT_SHA12 =
+    "bf545fdce7a0"`, tira `Error("DATABASE_URL apunta a PROD fuera de produccion")`.
+  - Calculo de la constante (orquestador, 2026-10-07): el endpoint read-write de la rama `main`, rama default del
+    proyecto `red-violet-38772073`, leido por MCP. La huella del host completo coincide con la del `DATABASE_URL` de los
+    `.env.local` de las dos apps (`90e102ff2973`).
+  - La huella no es un secreto. El repo nunca guarda el host ni el id en claro.
+  - La huella es un parametro opcional de la funcion (por defecto, la constante), para poder testear sin el host real.
   - Con `NODE_ENV=production` (Vercel) no hace nada: el deploy sigue llegando a PROD.
 - `getDb()` y `withDbTransaction()` llaman a las dos funciones antes de crear el cliente o el `Pool`. Su contrato no cambia.
 
@@ -91,11 +103,14 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
 - `pnpm db:migrate` (drizzle-kit, PROD) no se toca.
 
 **4. Oraculo de huellas (`tools/local-db/huellas.sql` + `tools/local-db/huellas-prod.txt`).**
-- `huellas.sql` es una consulta de solo lectura. Devuelve una fila por categoria, con conteo y `md5` del `string_agg`
-  **con `collate "C"` explicito en todo `ORDER BY`**: asi la huella no depende de la collation de la base.
+- **Ya escrito por el orquestador** (`tools/local-db/huellas.sql`, 19 categorias). Es una consulta de solo lectura.
+  Devuelve una fila por categoria, con conteo y `md5` del `string_agg` **con `collate "C"` explicito en todo
+  `ORDER BY`**: asi la huella no depende de la collation de la base. El implementador no la cambia; si encuentra
+  una diferencia legitima, la discute en vez de excluirla.
 - Categorias:
-  - Migraciones: conteo y ultima `created_at`.
-  - TOS semilla.
+  - Migraciones: hash y `created_at` de cada una.
+  - TOS semilla, sin el valor de `published_at`: solo cuenta si es nulo. Lo pone `now()` al migrar; medido el
+    2026-10-07, es la unica columna que difiere.
   - Extensiones con version.
   - Columnas.
   - Indices.
@@ -107,8 +122,10 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
   - Restricciones por `contype`, con nombre.
   - Atributos y membresias de los 4 roles.
   - `datcollate`/`datctype`/`datlocprovider`/`datlocale` de la base.
-- `huellas-prod.txt`: la salida de `huellas.sql` en PROD, leida por el MCP de Neon (solo lectura). Se regenera en el
-  runbook despues de cada migracion a PROD.
+- `huellas-prod.txt`: la salida de `huellas.sql` en PROD, leida por el MCP de Neon (solo lectura). **Ya generado** el
+  2026-10-07 (66 migraciones). Se regenera en el runbook despues de cada migracion a PROD.
+- Medido con el contenedor de medicion, despues de aplicar los roles del §1: difiere solo `collation` (ese contenedor
+  es `en_US.utf8`). Una base `builtin`/`C.UTF-8` da la fila de PROD, `054c7e734b5d`.
 - `tools/local-db/compare.sh`: corre `huellas.sql` en local y hace `diff` contra `huellas-prod.txt`. Exit 0 solo sin
   diferencias. Es el oraculo «local == PROD».
 
@@ -123,8 +140,9 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
 
 **6. `tools/neon-test.sh`.**
 - El candado actual compara contra `DATABASE_URL`, que pasa a ser local, y deja de proteger. Se reemplaza:
-  `sha256(host de NEON_CI_DATABASE_URL sin -pooler)[0..12]` distinto de `PROD_DB_HOST_SHA12` (la misma huella de
-  `local.ts`; el script la lee de ahi con `rg`, sin duplicarla).
+  `sha256(endpoint id de NEON_CI_DATABASE_URL y de NEON_CI_CONSUMER_DATABASE_URL)[0..12]` distinto de
+  `PROD_DB_ENDPOINT_SHA12`. Es la misma regla de `neonEndpointId`. La huella vive en `local.ts` y el script la lee de
+  ahi con `rg`, sin duplicarla. Huella de la rama de CI hoy: `01934af04afa` (host completo).
 - Si son iguales: `ABORTADO` y exit 1, con el mismo mensaje de hoy.
 - El resto del script no cambia.
 
@@ -145,6 +163,13 @@ deja de proteger en cuanto `DATABASE_URL` sea local. No hay base local que se co
   un logo subido en local dejaria filas de PROD apuntando a objetos del bucket de desarrollo.
 - `DATABASE_URL` de PROD deja de estar en los `.env.local` de las apps. Para el runbook vive en
   `packages/db/.env.prod.local` (ya ignorado por `.env.*`), como `DATABASE_URL_UNPOOLED`.
+- **Quien escribe los `.env`:** el owner. Los permisos del repo no dejan a ningun agente escribir archivos `.env*`
+  (medido el 2026-10-07: Write devuelve «covered by a Read deny rule»).
+  - El implementador deja en `.env.example` el bloque exacto a pegar en cada archivo y una checklist en el runbook.
+  - Verifica con un parser de claves (nombres, largos y huellas, nunca valores) que el owner lo aplico, antes de las
+    pruebas manuales.
+  - Orden obligatorio: primero `packages/db/.env.prod.local` con la URL de PROD; despues `DATABASE_URL` local y R2 dev
+    en los `.env.local`. Asi el runbook nunca queda sin la URL de PROD.
 - Hallazgo: `CLICKSEND_*`, `TWILIO_*` y `OTP_PROVIDER` estan en `apps/consumer/.env.local`, pero ningun `.ts` de
   `apps/` ni `packages/` las lee (`rg` del 2026-10-07). Se sacan del `.env.local` local; no se toca codigo.
 
@@ -167,7 +192,8 @@ ADR 0126 (y §Medido), ADR 0113 (Node 24), ADR 0114 (zonas: esto es tooling y se
 
 | Archivo | Accion |
 |---|---|
-| `tools/local-db/compose.yaml`, `init/01-roles.sql`, `up.sh`, `reset.sh`, `huellas.sql`, `huellas-prod.txt`, `compare.sh` | crear |
+| `tools/local-db/compose.yaml`, `init/01-roles.sql`, `up.sh`, `reset.sh`, `compare.sh` | crear |
+| `tools/local-db/huellas.sql`, `huellas-prod.txt` | ya creados por el orquestador; no se tocan |
 | `packages/db/src/local.ts` + `local.test.ts` | crear |
 | `packages/db/src/client.ts` | editar (dos llamadas al principio de `getDb`/`withDbTransaction`) |
 | `packages/db/src/migrate-local.ts`, `seed-local.ts` | crear |
@@ -184,9 +210,9 @@ Si: ninguna spec abierta toca `packages/db/src/client.ts`, `tools/neon-test.sh` 
 
 | Que | Quien lo deja listo | Cuando |
 |---|---|---|
-| `PROD_DB_HOST_SHA12` (huella del host actual de `DATABASE_URL`) | orquestador | antes de despachar |
-| `huellas-prod.txt` (MCP de Neon, solo lectura) | orquestador | antes de despachar |
-| Bucket R2 de desarrollo + claves | owner | antes de la verificacion manual |
+| `PROD_DB_ENDPOINT_SHA12 = "bf545fdce7a0"` (calculada, §Diseño 2) | orquestador | hecho 2026-10-07 |
+| `huellas.sql` + `huellas-prod.txt` (MCP de Neon, solo lectura) | orquestador | hecho 2026-10-07 |
+| Bucket R2 de desarrollo + claves en `tools/local-db/.env.r2-dev` | owner | hecho 2026-10-07. Probado: put/get/delete en el bucket dev; la clave dev recibe 403 en el bucket de PROD |
 
 ## Definition of Done
 
@@ -208,8 +234,11 @@ Si: ninguna spec abierta toca `packages/db/src/client.ts`, `tools/neon-test.sh` 
 - [ ] Unit `packages/db/src/local.test.ts`:
   - `isLocalDbHost`: hosts de Neon → falso; los tres locales → verdadero.
   - `configureNeonForLocal` con host de Neon no modifica `neonConfig`; con host local fija los 5 campos.
-  - `assertNotProdOutsideProduction`: tira con el host de PROD (con y sin `-pooler`) y `NODE_ENV=development`/`test`;
-    no tira con `production` ni con un host local.
+  - `neonEndpointId`: un host ficticio `ep-x-y-123.c-1.region.aws.neon.tech` y sus tres variantes (`-pooler`, `-rvr`,
+    `-rvr-pooler`) dan `ep-x-y-123`.
+  - `assertNotProdOutsideProduction`, con la huella de ese host ficticio inyectada: tira con las 4 variantes y
+    `NODE_ENV=development`/`test`; no tira con `production`, con un host local ni con otro endpoint de Neon.
+  - Un test fija `PROD_DB_ENDPOINT_SHA12 === "bf545fdce7a0"`, para que cambiarla sin querer se vea.
 - [ ] Integracion contra la base local (`up.sh` previo):
   - `checkpass_consumer` por su login recibe `permission denied for schema merchant_auth`.
   - `SET LOCAL ROLE customer_reader` sin `app.business_id` ve 0 filas de clientes.
@@ -219,9 +248,12 @@ Si: ninguna spec abierta toca `packages/db/src/client.ts`, `tools/neon-test.sh` 
   - `neondb_owner` con `SUPERUSER`.
   - Una restriccion renombrada en local.
   - Cada una tiene que dar `diff` no vacio y exit ≠ 0; se revierte y vuelve a 0.
-- [ ] Candados: mutar `PROD_DB_HOST_SHA12` a otra huella → el test de `assertNotProd...` falla en rojo (prueba que el
-      test muerde). `neon-test.sh` con `NEON_CI_DATABASE_URL` = URL de PROD en un `.env` temporal → `ABORTADO`, sin
-      llegar a `pnpm db:migrate`.
+- [ ] Candados con el host real, sin commitearlo:
+  - Script del revisor en el scratchpad: lee `DATABASE_URL` de PROD de `packages/db/.env.prod.local` con el parser de
+    claves y llama a `getDb()` con `NODE_ENV=development`. Tiene que tirar antes de abrir conexion.
+  - Lo mismo con la variante `-rvr` del host.
+  - `neon-test.sh` con `NEON_CI_DATABASE_URL` = URL de PROD en un `.env` temporal → `ABORTADO`, sin llegar a `pnpm db:migrate`.
+  - Mutacion: quitar el recorte de `-rvr` en `neonEndpointId` → el test de las variantes se pone rojo.
 - [ ] Comandos: `tools/local-db/reset.sh`, `tools/local-db/compare.sh`, `pnpm --filter @mi-pasaporte/db test`,
       `tools/neon-test.sh`, `pnpm verify`.
 - [ ] Manual (owner): con su `.env.local` nuevo, subir un logo en local → el objeto aparece en el bucket de desarrollo y
