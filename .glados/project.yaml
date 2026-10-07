@@ -1,0 +1,221 @@
+# GLaDOS Project Quality Profile — CheckPass Club (repo `mi-pasaporte`).
+# Schema: GlaDOS packages/core/src/project-quality-profile.ts (version 1).
+#
+# Every command is an existing root script (package.json) or repo tool. Each one is prefixed
+# with the repo's documented Node 24 recipe (CLAUDE.md §Gotchas, AGENTS.md: `nvm use` with no
+# argument, `.nvmrc` = 24.20.0), because a plain /bin/sh may start on another Node.
+#
+# Worktree requirements (see .glados/project.md §Verification):
+#   - dependencies installed in the worktree itself (`pnpm install --frozen-lockfile`); never
+#     symlink node_modules from the main checkout (tools/worktree-new.sh explains why).
+#   - `integration` needs the gitignored `apps/merchant/.env.local` with the NEON_CI_* keys; it
+#     runs against the `ci-integration` Neon branch and aborts if that equals DATABASE_URL (prod).
+version: 1
+
+quality:
+  typecheck:
+    command: '. "$HOME/.nvm/nvm.sh" && nvm use >/dev/null && pnpm typecheck'
+    timeoutMs: 600000
+  lint:
+    command: '. "$HOME/.nvm/nvm.sh" && nvm use >/dev/null && pnpm lint'
+    timeoutMs: 600000
+  unit:
+    # Vitest across apps/* and tools/. Neon suites (*.neon.integration.test.ts) self-skip here.
+    command: '. "$HOME/.nvm/nvm.sh" && nvm use >/dev/null && pnpm test'
+    timeoutMs: 600000
+  integration:
+    # Migrates the Neon CI branch, then runs the whole vitest suite with Neon enabled.
+    command: '. "$HOME/.nvm/nvm.sh" && nvm use >/dev/null && bash tools/neon-test.sh'
+    timeoutMs: 1800000
+  e2e:
+    # Playwright (chromium); starts consumer/merchant/platform `next dev` on 3100-3102.
+    command: '. "$HOME/.nvm/nvm.sh" && nvm use >/dev/null && pnpm test:e2e'
+    timeoutMs: 1200000
+  build:
+    command: '. "$HOME/.nvm/nvm.sh" && nvm use >/dev/null && pnpm build'
+    timeoutMs: 1200000
+
+sensitiveAreas:
+  # Database schema, migrations, connection, roles
+  - packages/db/drizzle
+  - packages/db/src/schema
+  - packages/db/src/client.ts
+  - packages/db/src/permissions-catalog.ts
+  - packages/db/drizzle.config.ts
+  # Billing / Stripe (money)
+  - apps/merchant/src/server/billing
+  - apps/merchant/src/server/stripe-config.ts
+  - apps/merchant/src/app/api/billing
+  - apps/merchant/src/app/api/stripe
+  - packages/domain/src/server/entitlements
+  # Merchant authentication, sessions, authorization, tenant scoping
+  - apps/merchant/src/server/auth.ts
+  - apps/merchant/src/server/auth-start.ts
+  - apps/merchant/src/server/auth-guards.ts
+  - apps/merchant/src/server/api-owner.ts
+  - apps/merchant/src/server/api-permission.ts
+  - apps/merchant/src/server/merchant-session.ts
+  - apps/merchant/src/server/qa-login.ts
+  - apps/merchant/src/server/staff*.ts
+  - apps/merchant/src/app/api/auth
+  - apps/merchant/src/app/api/merchant/auth
+  - apps/merchant/src/app/api/merchant/session
+  - apps/merchant/src/app/api/staff
+  - apps/merchant/src/app/api/counter/_auth.ts
+  - apps/merchant/src/proxy.ts
+  - packages/domain/src/server/counter/core.ts
+  # Tenant isolation at DB level (customer list RLS)
+  - apps/merchant/src/server/customers
+  # Consumer authentication / sessions / OAuth
+  - packages/domain/src/server/consumer/oauth
+  - packages/domain/src/server/consumer/session.ts
+  - packages/domain/src/server/consumer/core.ts
+  - apps/consumer/src/app/api/public/auth
+  - apps/consumer/src/app/api/public/session
+  # Externally triggered endpoints (cron secret, provider webhooks)
+  - apps/merchant/src/app/api/internal
+  # Wallet pass signing / web service, push crypto
+  - packages/domain/src/server/wallet
+  - apps/consumer/src/app/api/public/wallet
+  - packages/domain/src/server/push
+  # Counter: value-granting operations
+  - apps/merchant/src/server/counter
+  - apps/merchant/src/app/api/counter
+  # Destructive / test-DB tooling
+  - tools/wipe-database.sql
+  - tools/neon-test.sh
+
+architecture:
+  docs:
+    - .glados/architecture/system-overview.md
+    - .glados/architecture/domain-map.md
+    - .glados/architecture/existing-harness.md
+    - .glados/contracts/http-contracts.md
+    - docs/INDEX.md
+
+domains:
+  merchant-entry-onboarding:
+    paths:
+      - apps/merchant/src/server/auth.ts
+      - apps/merchant/src/server/auth-start.ts
+      - apps/merchant/src/server/merchant-session.ts
+      - apps/merchant/src/server/onboarding-signup.ts
+      - apps/merchant/src/server/onboarding
+      - apps/merchant/src/server/places
+      - apps/merchant/src/app/api/onboarding
+      - apps/merchant/src/app/api/merchant
+      - apps/merchant/src/app/api/places
+      - apps/merchant/src/app/backoffice/onboarding
+      - apps/merchant/src/app/[locale]
+    docs:
+      - .glados/architecture/domain-map.md
+  brand:
+    paths:
+      - packages/domain/src/server/brand.ts
+      - packages/domain/src/server/brand
+      - apps/merchant/src/server/brand-kit
+      - apps/merchant/src/app/api/brand
+      - apps/merchant/src/app/backoffice/brand
+    docs:
+      - .glados/architecture/domain-map.md
+  locations:
+    paths:
+      - apps/merchant/src/server/locations
+      - apps/merchant/src/app/api/locations
+      - apps/merchant/src/app/backoffice/locations
+    docs:
+      - .glados/architecture/domain-map.md
+  catalog:
+    paths:
+      - packages/domain/src/server/catalog.ts
+      - packages/domain/src/server/catalog
+      - packages/domain/src/server/stock
+      - apps/merchant/src/server/catalog-import.ts
+      - apps/merchant/src/server/catalog-import
+      - apps/merchant/src/app/api/catalog
+      - apps/merchant/src/app/api/internal/catalog-imports
+      - apps/merchant/src/app/backoffice/catalog
+    docs:
+      - .glados/architecture/domain-map.md
+  loyalty-program:
+    paths:
+      - packages/domain/src/server/loyalty-program.ts
+      - packages/domain/src/server/loyalty-program
+      - packages/domain/src/components/loyalty
+      - apps/merchant/src/app/api/loyalty-program
+      - apps/merchant/src/app/api/loyalty-terms
+      - apps/merchant/src/app/api/internal/loyalty-expiry
+      - apps/merchant/src/app/backoffice/loyalty
+      - apps/consumer/src/app/api/public/loyalty
+    docs:
+      - .glados/architecture/domain-map.md
+  counter:
+    paths:
+      - apps/merchant/src/server/counter.ts
+      - apps/merchant/src/server/counter
+      - packages/domain/src/server/counter
+      - apps/merchant/src/app/api/counter
+      - apps/merchant/src/app/backoffice/counter
+    docs:
+      - .glados/architecture/domain-map.md
+  coupons-campaigns:
+    paths:
+      - packages/domain/src/server/marketing
+      - apps/merchant/src/server/marketing
+      - apps/merchant/src/app/api/marketing
+      - apps/merchant/src/app/api/internal/marketing-tick
+      - apps/merchant/src/app/backoffice/marketing
+    docs:
+      - .glados/architecture/domain-map.md
+      - docs/specs/0101-contratos-de-api.md
+      - docs/notificaciones/README.md
+  consumer-wallet-enrollment:
+    paths:
+      - apps/consumer/src
+      - packages/domain/src/server/consumer
+      - packages/domain/src/server/wallet
+    docs:
+      - .glados/architecture/domain-map.md
+      - docs/wallet-go-live.md
+  push-notifications:
+    paths:
+      - apps/merchant/src/server/wallet
+      - packages/domain/src/server/push
+      - packages/domain/src/server/notifications
+      - apps/merchant/src/app/api/internal/wallet-push
+      - apps/consumer/src/app/api/public/push
+    docs:
+      - .glados/architecture/domain-map.md
+  customers:
+    paths:
+      - apps/merchant/src/server/customers
+      - packages/domain/src/server/customers
+      - apps/merchant/src/app/api/customers
+      - apps/merchant/src/app/backoffice/customers
+    docs:
+      - .glados/architecture/domain-map.md
+  staff-permissions:
+    paths:
+      - apps/merchant/src/server/staff*.ts
+      - apps/merchant/src/server/api-permission.ts
+      - packages/db/src/permissions-catalog.ts
+      - apps/merchant/src/app/api/staff
+      - apps/merchant/src/app/backoffice/staff
+    docs:
+      - .glados/architecture/domain-map.md
+  billing:
+    paths:
+      - apps/merchant/src/server/billing
+      - apps/merchant/src/server/stripe-config.ts
+      - packages/domain/src/server/entitlements
+      - packages/domain/src/server/business-status.ts
+      - apps/merchant/src/app/api/billing
+      - apps/merchant/src/app/api/stripe
+      - apps/merchant/src/app/backoffice/subscription
+    docs:
+      - .glados/architecture/domain-map.md
+  public-site:
+    paths:
+      - apps/public
+    docs:
+      - docs/despliegue-publico.md
