@@ -241,7 +241,9 @@ Si: ninguna spec abierta toca `packages/db/src/client.ts`, `tools/neon-test.sh` 
   - Un test fija `PROD_DB_ENDPOINT_SHA12 === "bf545fdce7a0"`, para que cambiarla sin querer se vea.
 - [ ] Integracion contra la base local (`up.sh` previo):
   - `checkpass_consumer` por su login recibe `permission denied for schema merchant_auth`.
-  - `SET LOCAL ROLE customer_reader` sin `app.business_id` ve 0 filas de clientes.
+  - `SET LOCAL ROLE customer_reader` sin `app.business_id` falla con `unrecognized configuration parameter`: falla
+    cerrado por diseño, `0053_listado_de_clientes.sql:38`. Con un comercio inexistente ve 0 filas. Corregido el
+    2026-10-07: decia «ve 0 filas» sin el parametro, y no es asi (medido por el orquestador con psql).
   - Es lo medido en ADR 0126: prueba que los roles calcados no regalan permisos.
 - [ ] Oraculo: `compare.sh` exit 0. **Mutaciones (revisor, 3):**
   - Base creada con `en_US.utf8`.
