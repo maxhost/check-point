@@ -89,6 +89,8 @@ En Docker local descartable (`postgres:18` = 18.6 + `ghcr.io/timowilhelm/local-n
 - **Esquema local == PROD** con una consulta de huellas corrida en ambos lados: migraciones (66, misma ultima
   `created_at`), TOS (11), extensiones y versiones, columnas (601), indices (149), politicas (14), tablas con RLS (4),
   grants de tabla (48) y de columna (533) de los dos roles, funciones (2) y triggers (1): hash identico. **Restricciones:
-  mismo conteo (724), hash distinto** — sin localizar todavia (la API de Neon devolvio 429); local tiene 412 NOT NULL,
-  142 CHECK, 111 FK, 58 PK, 1 UNIQUE. Sospecha a confirmar: nombres de NOT NULL o restricciones renombradas en la
-  historia de PROD.
+  identicas.** El hash distinto era de la **collation**, no del esquema: agrupado por `contype` con nombre, los 5 hashes
+  coinciden local/PROD; sin nombre (ordenado por la definicion) difieren `c` y `n`, y el local recalculado con
+  `collate "C"` da exactamente los de PROD. Local es `en_US.utf8` (libc), PROD ordena por bytes: un `ORDER BY` de texto
+  en la app daria otro orden en local. La base local se crea con la collation de PROD y la huella usa `collate "C"`
+  explicito (spec 0167); el valor exacto de PROD queda por leer (spec 0167 §Abierto 1).
