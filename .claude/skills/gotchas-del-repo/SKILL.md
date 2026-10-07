@@ -48,6 +48,15 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
 
 ## Gotchas
 
+- **R2: `R2_ENDPOINT` trae el bucket en la ruta** (`https://<cuenta>.r2.cloudflarestorage.com/<bucket>`, medido
+  2026-10-07). `packages/domain/src/server/r2.ts` lo usa tal cual y anda para Put/Get, pero un script propio con
+  `ListObjectsV2` contesta `NoSuchKey`: usar `new URL(R2_ENDPOINT).origin` como endpoint. Todo objeto que escribe la app
+  cuelga de un `businessId` (`brands/`, `brand-uploads/`, `loyalty/`, `stamp-uploads/`, `products/`,
+  `product-uploads/`, `catalog-imports/`); `photos/` en `stock/pexels.ts` es la API de Pexels, no R2.
+- **`foreign-staged.sh` lee el TEXTO del comando**: no expande variables (`"$C/x.tsx"`) ni entiende un directorio como
+  pathspec de un archivo borrado. En `git commit -- <paths>` cada archivo va con su ruta literal completa (medido
+  2026-10-07, tres intentos bloqueados).
+
 - **`typecheck` y `build` NO van en la misma invocacion de turbo.**
   `turbo run typecheck build --force` los corre **concurrentes**, `next build` regenera
   `.next/types/` —que `apps/merchant/tsconfig.json:6` **incluye**— y `tsc` lee `validator.ts` sin

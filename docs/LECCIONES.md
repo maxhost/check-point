@@ -2067,6 +2067,15 @@ la UI 0157 a `origin/main`, con `places-search.tsx` armado a mano (3 controles n
 queria impedir, invisible desde la rama. Lo cazo el revisor adversarial (B5). **Regla:** skill
 `protocolo-de-verificacion` §5.
 
+## 2026-10-07 — Dos claves privadas impresas al listar nombres de variables de un `.env`
+
+Para listar solo los nombres de variables se corrio `cut -d= -f1` sobre `apps/consumer/.env.local`. Ese archivo tiene
+valores de varias lineas (el JSON del service account de Google Wallet y la clave PEM de Sign in with Apple): `cut`
+corta por linea y las continuaciones salieron enteras al chat. `CLAUDE.md` §Verificacion ya decia «filtrar por nombre
+de variable no alcanza» y no alcanzo como texto. **Regla:** hook `env-read-guard.sh` (PreToolUse Bash) bloquea leer un
+`.env` real con cat/head/tail/cut/awk/sed/grep/etc.; la salida es un parser que solo emita clave y largo. Mira el texto
+del comando, asi que tambien frena un heredoc que mencione las dos cosas: los docs se editan con Edit/Write.
+
 ## Flujo de trabajo
 
 1. **Leer `docs/estado/claude.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr
