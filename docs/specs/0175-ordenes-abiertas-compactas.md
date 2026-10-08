@@ -38,3 +38,10 @@ No cambiar Cerradas hoy, importes, contratos ni caché.
 
 No disjunta con consola/pruebas POS. Sin cambios de API, kit o servidor.
 Sin decisiones pendientes. Commits locales dev; sin merge ni push.
+
+## Evidencia
+
+31 pruebas POS verdes (14,0 s), incluida lista móvil con tres mesas y nombre largo,
+solo tres campos y apertura correcta; sin overflow horizontal. Typecheck, lint,
+guardia UI y números verdes. Owner confirmó que probó las filas y funcionan.
+Capturas automatizadas pendientes, se completan junto al siguiente cambio de vista.

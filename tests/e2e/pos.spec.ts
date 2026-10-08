@@ -782,7 +782,7 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
     items: [{ lineId: "line-1", quantity: 2 }],
   });
   await page.getByRole("button", { name: "Volver al historial" }).click();
-  await expect(page.getByText("2 productos · $20,00")).toBeVisible();
+  await expect(page.getByText("$20,00", { exact: true })).toBeVisible();
   await page.clock.install();
   await page.clock.fastForward(60 * 60 * 1000);
   await page.evaluate(() => {
@@ -1307,4 +1307,65 @@ test("POS ofrece X para volver al inicio y no muestra actualización manual", as
   ).toHaveCount(0);
   await close.click();
   await expect(page).toHaveURL(new URL("/backoffice", harness.url).href);
+});
+
+test("órdenes abiertas: filas compactas con mesa, total y Abrir", async ({
+  page,
+}) => {
+  await setup(page);
+  const orders = [
+    baseOrder,
+    { ...baseOrder, id: "order-2", tableLabel: "Terraza", total: "25.00" },
+    {
+      ...baseOrder,
+      id: "order-3",
+      tableLabel: "Mesa junto a la ventana del salón principal",
+      total: "35.00",
+    },
+  ];
+  await page.route("**/api/pos/orders", (route) =>
+    route.fulfill({
+      json: {
+        open: orders.map((order) => ({
+          ...order,
+          itemCount: 1,
+          saleTotal: null,
+        })),
+        closedToday: [],
+      },
+    }),
+  );
+  await page.route("**/api/pos/orders/order-2", (route) =>
+    route.fulfill({ json: orders[1] }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(harness.url);
+  const section = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", { name: "Abiertas", exact: true }),
+    });
+  await expect(section.getByRole("heading", { level: 3 })).toHaveText(
+    orders.map((order) => order.tableLabel),
+  );
+  await expect(section.getByRole("button")).toHaveText([
+    "Abrir",
+    "Abrir",
+    "Abrir",
+  ]);
+  await expect(section.getByText("$25,00", { exact: true })).toBeVisible();
+  await expect(
+    section.getByText(/productos|Sin local|Centro|Abierta$/),
+  ).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await section
+    .getByRole("button", { name: "Abrir Terraza", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Terraza · Precuenta" }),
+  ).toBeVisible();
 });

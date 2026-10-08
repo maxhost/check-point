@@ -362,40 +362,73 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                           No hay órdenes {group.title.toLowerCase()}.
                         </Text>
                       )}
-                      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {group.items.map((item) => (
-                          <Card className="grid gap-3" key={item.id}>
-                            <Heading level={3}>{item.tableLabel}</Heading>
-                            <Text variant="muted">
-                              {item.location?.name ?? "Sin local"} ·{" "}
-                              {item.status === "open"
-                                ? "Abierta"
-                                : item.status === "voided"
-                                  ? "Anulada"
-                                  : "Cerrada"}
-                            </Text>
-                            <Text>
-                              {item.itemCount} productos ·{" "}
-                              {formatMoney(
-                                Number(item.saleTotal ?? item.total),
-                                session.business?.currencyCode ?? "USD",
-                              )}
-                            </Text>
-                            <Text variant="small">
-                              {new Date(
-                                item.closedAt ?? item.createdAt,
-                              ).toLocaleString("es-EC")}
-                            </Text>
-                            <Button
-                              variant="secondary"
-                              isDisabled={busy || refreshing}
-                              isLoading={opening === item.id}
-                              onPress={() => void openOrder(item.id)}
+                      <div
+                        className={
+                          group.title === "Abiertas"
+                            ? "grid gap-2"
+                            : "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                        }
+                      >
+                        {group.items.map((item) =>
+                          group.title === "Abiertas" ? (
+                            <div
+                              className="flex min-w-0 items-center gap-3 rounded-lg border border-border bg-surface px-4 py-2"
+                              key={item.id}
                             >
-                              Abrir {item.tableLabel}
-                            </Button>
-                          </Card>
-                        ))}
+                              <div className="min-w-0 flex-1 break-words">
+                                <Heading level={3}>{item.tableLabel}</Heading>
+                              </div>
+                              <Text className="shrink-0 whitespace-nowrap">
+                                {formatMoney(
+                                  Number(item.total),
+                                  session.business?.currencyCode ?? "USD",
+                                )}
+                              </Text>
+                              <Button
+                                variant="secondary"
+                                className="shrink-0"
+                                aria-label={`Abrir ${item.tableLabel}`}
+                                isDisabled={busy || refreshing}
+                                isLoading={opening === item.id}
+                                onPress={() => void openOrder(item.id)}
+                              >
+                                Abrir
+                              </Button>
+                            </div>
+                          ) : (
+                            <Card className="grid gap-3" key={item.id}>
+                              <Heading level={3}>{item.tableLabel}</Heading>
+                              <Text variant="muted">
+                                {item.location?.name ?? "Sin local"} ·{" "}
+                                {item.status === "open"
+                                  ? "Abierta"
+                                  : item.status === "voided"
+                                    ? "Anulada"
+                                    : "Cerrada"}
+                              </Text>
+                              <Text>
+                                {item.itemCount} productos ·{" "}
+                                {formatMoney(
+                                  Number(item.saleTotal ?? item.total),
+                                  session.business?.currencyCode ?? "USD",
+                                )}
+                              </Text>
+                              <Text variant="small">
+                                {new Date(
+                                  item.closedAt ?? item.createdAt,
+                                ).toLocaleString("es-EC")}
+                              </Text>
+                              <Button
+                                variant="secondary"
+                                isDisabled={busy || refreshing}
+                                isLoading={opening === item.id}
+                                onPress={() => void openOrder(item.id)}
+                              >
+                                Abrir {item.tableLabel}
+                              </Button>
+                            </Card>
+                          ),
+                        )}
                       </div>
                     </section>
                   ))
