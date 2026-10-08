@@ -3,6 +3,24 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0177: JERARQUÍA DE ORDEN ABIERTA
+
+Spec cerrada y reservada en 2e982c5. Orden abierta muestra mesa como título,
+Orden abierta/local como contexto. PosTicket compact opcional oculta encabezados
+repetidos solo en pantalla; impresión conserva comercio, local y mesa. Checkout
+conserva ticket completo. Footer existente de Mostrador, móvil fijo con espacio
+reservado; desde md estático: Editar secundaria y Cobrar primaria de ancho igual,
+48 px mínimo; Imprimir/Anular discretas, Anular danger. X/caché/escrituras sin
+cambios. Kit/Tailwind/tokens; sin CSS, API, servidor, tooling ni dependencias.
+
+33 pruebas POS verdes (14,3 s), incluidos flujo de cobro/conflicto, caché,
+jerarquía, espacio del footer, sin overflow y ticket impreso completo.
+Capturas vistas /private/tmp/pos-0177-mobile.png y pos-0177-desktop.png.
+Typecheck 6 paquetes, ESLint, Prettier, guardia UI sin aumentos (22 archivos),
+números y diff-check verdes. Sin build/global verify (L1, dev activo).
+Owner debe probar pnpm dev:local antes de main. Solo rama dev, sin merge/push;
+staging vacío al entregar, cambios ajenos en gotchas y LECCIONES preservados.
+
 ## ⇥ AJUSTE VIGENTE (2026-10-08) — CABECERA Y X DEL POS
 
 Owner pidió retirar Volver al historial de abiertas, quitar el bloque blanco de
