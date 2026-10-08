@@ -37,6 +37,19 @@ Spec sigue cerrada por QA/entrega pendientes. No build/full verify sobre dev act
 verify global antes de main. ci:status no consultó GitHub (fetch failed, informativo).
 Avisos a cachés de otros operadores son trabajo futuro separado, sin nuevas consultas periódicas.
 
+### Incidente local posterior: Nueva orden y cache undefined
+
+Owner reportó TypeError cache.peek con mapa de fuente apuntando al diálogo en console:515.
+Fuente actual sí pasa cache/catalogRevision; en .next/dev/static/chunks había tres variantes
+PosConsole: dos antiguas sin props de caché y una actual. Eso encaja con mezcla de versiones
+por HMR, no se reprodujo en código actual. Se detuvo dev:local, movió la caché merchant a
+/private/tmp/checkpoint-merchant-next-dev-pos-cache-20261008 y se levantó nuevamente.
+Petición local /backoffice/pos dio 307 (sin sesión, esperado); compiló una única variante de
+PosConsole que pasa ambas props. Dos pruebas de crear/reabrir verdes (3,0 s), log
+/private/tmp/pos-0172-restart-smoke.log. No cambios de código ni fallback de caché.
+Se pidió recarga completa Cmd+Shift+R al owner; confirmación en su pestaña pendiente.
+Mensaje chrome-extension sobre recordConsoleEvents.js corresponde a una extensión.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0171: POS REUTILIZA MOSTRADOR
 
 Owner pidió misma interfaz para añadir productos y confirmó ranking por más vendidos del local.
