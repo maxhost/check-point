@@ -83,6 +83,14 @@ simulada; no existe aún en API real. Typecheck, ESLint, Prettier, ui-guard y n�
 
 Estado y evidencia en docs/estado/gpt.md; commits locales en dev, sin merge ni push.
 
+## Actualización de contrato — 2026-10-08
+
+Owner confirma el campo obligatorio bestSellingProductIds en 0169. Esta continuación cambia
+solo PosCatalog y mocks/pruebas: ranking primero en el orden recibido, restantes alfabéticos,
+y [] equivalente al catálogo alfabético. Mostrador mantiene productOrder opcional y su default.
+No se calcula ranking ni períodos en cliente. Servidor de Claude queda fuera del commit.
+Verificar con e2e POS/Mostrador afectados, tipos, lint, formato y ui-guard (L2).
+
 ## Abierto
 
 Ninguna decisión pendiente para la paridad visual. El ranking pertenece a la dependencia HTTP declarada.
