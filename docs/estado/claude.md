@@ -18,11 +18,13 @@
   apps, tunel y smoke en `200`. Login del comercio por `dev-business.` con `pnpm dev:link`: 1 sesion en
   `merchant_auth.session` LOCAL. `check-env.ts` exit 0 (ahora tambien exige `BETTER_AUTH_SECRET`).
 - Skill `/entorno-local` (estado/arrancar/link/parar/reset-base) y `pnpm dev:local` / `pnpm dev:link`.
+- Rama `dev` creada (ADR 0128, `131bf09`) y niveles L0-L3 (ADR 0129, `d63c957`; tabla en `CLAUDE.md`). Ambiente local
+  arriba en `dev` (`/entorno-local`: todo en 200).
 
 **Parqueado por el owner (PARQUEADO #80):** QA del telefono (PWA + push). El cliente solo crea cuenta con Google/Apple
 y el callback `dev-my.` no esta registrado. Al retomar: preguntar credenciales de PROD vs de desarrollo.
 
-**Siguiente:** lo que el owner pida. QA manual de la 0167 por el tunel (alta, sello, logo en bucket dev) sigue posible
+**Siguiente:** el owner trae «un par de cosas para trabajar»: clasificar cada una L0-L3 (si dudo, preguntarle). QA manual de la 0167 por el tunel (alta, sello, logo en bucket dev) sigue posible
 del lado del comercio.
 
 **Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
