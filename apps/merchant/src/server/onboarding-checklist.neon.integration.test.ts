@@ -139,11 +139,11 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       ]),
     ).toEqual([
       [1, "verify-email", "verify-email", true, false],
-      [2, "locations", "locations", false, false],
-      [3, "staff", "staff", false, false],
-      [4, "catalog", "catalog", false, false],
-      [5, "program", "program", false, false],
-      [6, "brand", "brand", false, false],
+      [2, "catalog", "catalog", false, false],
+      [3, "program", "program", false, false],
+      [4, "brand", "brand", false, false],
+      [5, "locations", "locations", false, false],
+      [6, "staff", "staff", false, false],
     ]);
   }, 120_000);
 
@@ -266,15 +266,15 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       body.items.map((item: ChecklistItemJson) => [item.id, item.done]),
     ).toEqual([
       ["verify-email", false],
-      ["locations", false],
-      ["staff", false],
       ["catalog", true],
       ["program", true],
       ["brand", false],
+      ["locations", false],
+      ["staff", false],
     ]);
     // Y el JSON NO dice cual de los dos fue: la distincion se persiste, no se serializa.
-    // El indice 3 es `catalog`, el `completed` del vector de arriba.
-    expect(Object.keys(body.items[3])).not.toContain("status");
+    // El indice 1 es `catalog`, el `completed` del vector de arriba.
+    expect(Object.keys(body.items[1])).not.toContain("status");
   }, 120_000);
 
   /**
@@ -294,11 +294,11 @@ describe.skipIf(!enabled)("el checklist del onboarding (spec 0085)", () => {
       body.items.map((item: ChecklistItemJson) => [item.id, item.done]),
     ).toEqual([
       ["verify-email", false],
-      ["locations", false],
-      ["staff", false],
       ["catalog", false],
       ["program", false],
       ["brand", true],
+      ["locations", false],
+      ["staff", false],
     ]);
   }, 120_000);
 });

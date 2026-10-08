@@ -20,12 +20,13 @@ import { businessOnboardingTours } from "@mi-pasaporte/db/schema";
  * **Esta pieza es agnostica de la libreria de tours.** El ADR 0078 §5 eligio `driver.js`, que
  * vive del lado de la UI y **no se instala en esta spec**: aca se guarda ESTADO, no pasos.
  */
+// Orden del owner (2026-10-08): email, catalogo, programa, marca; despues locales y equipo.
 export const ONBOARDING_TOURS = [
-  "locations",
-  "staff",
   "catalog",
   "program",
   "brand",
+  "locations",
+  "staff",
 ] as const;
 export type OnboardingTourId = (typeof ONBOARDING_TOURS)[number];
 

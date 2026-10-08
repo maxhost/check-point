@@ -43,11 +43,11 @@ describe("toChecklistView — el catalogo REAL de SEIS (spec 0085 + locales)", (
     expect(view.locale).toBe("es");
     expect(view.items.map((i) => i.id)).toEqual([
       "verify-email",
-      "locations",
-      "staff",
       "catalog",
       "program",
       "brand",
+      "locations",
+      "staff",
     ]);
     expect(view.items.map((i) => i.position)).toEqual([1, 2, 3, 4, 5, 6]);
   });
@@ -86,11 +86,11 @@ describe("toChecklistView — el catalogo REAL de SEIS (spec 0085 + locales)", (
     });
     expect(items.map((i) => [i.id, i.done])).toEqual([
       ["verify-email", false],
-      ["locations", false],
-      ["staff", false],
       ["catalog", true],
       ["program", false],
       ["brand", false],
+      ["locations", false],
+      ["staff", false],
     ]);
   });
 

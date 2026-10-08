@@ -21,14 +21,14 @@ describe("el catálogo de tours del onboarding (spec 0084 §D2)", () => {
    * a nadie hasta que un merchant se trabara en un tour que la API rechaza con 404.
    */
   it("son EXACTAMENTE los cinco ids, y en ese orden", () => {
-    // `locations` entro el 2026-09-21 y va PRIMERO: el orden de esta constante es el que el
-    // checklist publica como `position`.
+    // Orden del owner (2026-10-08): catalogo, programa y marca primero; el orden de esta
+    // constante es el que el checklist publica como `position`.
     expect([...ONBOARDING_TOURS]).toEqual([
-      "locations",
-      "staff",
       "catalog",
       "program",
       "brand",
+      "locations",
+      "staff",
     ]);
   });
 
