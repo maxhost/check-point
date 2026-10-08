@@ -133,6 +133,13 @@ async function open(page: Page) {
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
 }
+async function annul(page: Page) {
+  await page.getByRole("button", { name: "Más acciones", exact: true }).click();
+  await page.getByRole("button", { name: "Anular", exact: true }).click();
+}
+async function editContext(page: Page) {
+  await page.getByRole("button", { name: "Mesa y local", exact: true }).click();
+}
 async function scan(page: Page) {
   await page.getByRole("button", { name: "Escanear pase" }).click();
   await page.getByRole("textbox", { name: "Código del pase" }).fill("qa-token");
@@ -187,7 +194,7 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
   await page.getByRole("button", { name: "Nueva orden" }).click();
   await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Mesa 4");
   await expect(
-    page.getByRole("button", { name: "Guardar orden" }),
+    page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }),
   ).toBeDisabled();
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
@@ -200,23 +207,23 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
   await page
     .getByRole("spinbutton", { name: "Precio unitario de Especial" })
     .press("Tab");
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(createBody).toEqual({
     tableLabel: "Mesa 4",
     locationId: "local-1",
     items: [{ productId: "custom", quantity: 1, unitPrice: "7.50" }],
   });
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.getByRole("button", { name: /Ver detalle/ }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
+  await page.getByRole("radio", { name: /^Pedido/ }).click();
   await expect(
     page.getByText("$10,00 por unidad · Precio guardado"),
   ).toBeVisible();
-  await page.getByRole("button", { name: /Ocultar detalle/ }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
   await page
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
   ).toBeVisible();
@@ -231,11 +238,14 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
       document.documentElement.dataset.printed = "yes";
     };
   });
-  await page.getByRole("button", { name: "Imprimir" }).click();
+  await page.getByRole("button", { name: "Más acciones", exact: true }).click();
+  await page.getByRole("button", { name: "Imprimir precuenta" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-printed", "yes");
   await page.emulateMedia({ media: "print" });
   await expect(page.getByRole("navigation").first()).toBeHidden();
-  await expect(page.getByRole("button", { name: "Imprimir" })).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Imprimir precuenta" }),
+  ).toBeHidden();
   await expect(
     page.getByRole("region", { name: "Ticket de la orden" }),
   ).toBeVisible();
@@ -263,17 +273,19 @@ test("conflicto carga versión vigente y anulación confirmada", async ({
   page,
 }) => {
   await setup(page);
+  let current = baseOrder;
   await page.route("**/api/pos/orders/order-1", (route) =>
     route.request().method() === "PUT"
-      ? route.fulfill({
+      ? ((current = { ...baseOrder, version: 4, tableLabel: "Mesa actual" }),
+        route.fulfill({
           status: 409,
           json: {
             code: "version_conflict",
             error: "Conflicto",
             order: { ...baseOrder, version: 4, tableLabel: "Mesa actual" },
           },
-        })
-      : route.fulfill({ json: baseOrder }),
+        }))
+      : route.fulfill({ json: current }),
   );
   let voided = false;
   await page.route("**/api/pos/orders/order-1/void", (route) => {
@@ -288,17 +300,29 @@ test("conflicto carga versión vigente y anulación confirmada", async ({
     });
   });
   await open(page);
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Agregar un Café", exact: true })
+    .click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(
-    page.getByText(
-      "Otra persona modificó esta orden. Cargamos la versión actual; revísala antes de continuar.",
-    ),
+    page.getByRole("heading", { name: "Mesa 4", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Mesa actual" }),
+    page.getByRole("button", { name: "Guardar cambios", exact: true }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Revisar versión actual" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Tus cambios · Mesa 4" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Anular", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Versión actual · Mesa actual" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Usar versión actual" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Mesa actual", exact: true }),
+  ).toBeVisible();
+  await annul(page);
   expect(voided).toBe(false);
   await page.getByRole("button", { name: "Anular orden", exact: true }).click();
   await expect(
@@ -563,14 +587,14 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
   await catalog
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await expect(page.getByRole("button", { name: /2 artículos/ })).toBeVisible();
+  await expect(page.getByText("2 artículos", { exact: true })).toBeVisible();
   await catalog
     .getByRole("button", { name: "Quitar un Café", exact: true })
     .click();
   await catalog
     .getByRole("button", { name: "Quitar un Café", exact: true })
     .click();
-  await expect(page.getByRole("button", { name: /0 artículos/ })).toBeVisible();
+  await expect(page.getByText("0 artículos", { exact: true })).toBeVisible();
   await expect(
     catalog.getByRole("button", { name: "Quitar un Café", exact: true }),
   ).toHaveCount(0);
@@ -590,10 +614,13 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
     .getByRole("button", { name: "Agregar Zumo", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Guardar orden", exact: true }),
+    page.getByRole("button", {
+      name: /^Guardar (orden|cambios)$/,
+      exact: true,
+    }),
   ).toBeInViewport();
   await expect(
-    page.getByRole("button", { name: "Cancelar", exact: true }),
+    page.getByRole("button", { name: "Ver pedido", exact: true }),
   ).toBeInViewport();
   expect(
     await page.evaluate(
@@ -649,9 +676,7 @@ for (const scenario of [
     await page
       .getByRole("button", { name: "Agregar Agua", exact: true })
       .click();
-    await expect(
-      page.getByRole("button", { name: /1 artículos/ }),
-    ).toBeVisible();
+    await expect(page.getByText("1 artículos", { exact: true })).toBeVisible();
   });
 }
 
@@ -683,22 +708,25 @@ test("el resumen mantiene snapshots duplicados y productos borrados separados al
     return route.fulfill({ json: { ...baseOrder, items, total: "32.00" } });
   });
   await open(page);
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.getByRole("button", { name: /Ver detalle/ }).click();
-  const detail = page.locator("#pos-cart-detail");
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
+  await page.getByRole("radio", { name: /^Pedido/ }).click();
+  const detail = page.getByRole("region", { name: "Productos del pedido" });
   await expect(
     detail.getByText("$10,00 por unidad · Precio guardado"),
   ).toBeVisible();
   await expect(
     detail.getByText("$15,00 por unidad · Precio guardado"),
   ).toBeVisible();
-  await expect(detail.getByText("1 × Producto retirado")).toBeVisible();
+  await expect(
+    detail.getByText("Producto retirado", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
   await page
     .locator(".counter-detailed")
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Guardar orden", exact: true })
+    .getByRole("button", { name: /^Guardar (orden|cambios)$/, exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(body).toMatchObject({
@@ -754,9 +782,9 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
   await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
   const firstReads = [...reads];
   expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(1);
@@ -767,13 +795,13 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
     .getByRole("button", { name: "Volver al listado de órdenes" })
     .click();
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
   await page
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
   expect(body).toMatchObject({
     version: 1,
@@ -804,14 +832,14 @@ test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", 
   const reads = trackedReads(page);
   await open(page);
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Volver al listado de órdenes" })
     .click();
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
   expect(reads.filter((url) => url === "/api/pos/orders/order-1")).toHaveLength(
     1,
@@ -871,23 +899,31 @@ test("caché POS: catálogo por local reutilizado conserva el borrador", async (
     });
   });
   await open(page);
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Agregar un Café", exact: true }),
   ).toBeVisible();
+  await editContext(page);
   await page
     .getByRole("textbox", { name: "Nombre de mesa" })
     .fill("Mesa escrita");
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Norte" }).click();
+  await page
+    .getByRole("button", { name: "Cambiar local", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Agregar Agua Norte", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Agregar Café", exact: true }),
   ).toHaveCount(0);
+  await editContext(page);
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
+  await page
+    .getByRole("button", { name: "Cambiar local", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Agregar un Café", exact: true }),
   ).toBeVisible();
@@ -897,20 +933,22 @@ test("caché POS: catálogo por local reutilizado conserva el borrador", async (
   expect(
     reads.filter((url) => url === "/api/pos/catalog?locationId=local-2"),
   ).toHaveLength(1);
+  await editContext(page);
   await expect(
     page.getByRole("textbox", { name: "Nombre de mesa" }),
   ).toHaveValue("Mesa escrita");
+  await page.getByRole("button", { name: "Listo", exact: true }).click();
   await expect(page.locator(".counter-product-add small")).toHaveText("$15,00");
-  await page.getByRole("button", { name: /Ver detalle/ }).click();
+  await page.getByRole("radio", { name: /^Pedido/ }).click();
   await expect(
     page.getByText("$10,00 por unidad · Precio guardado"),
   ).toBeVisible();
   expect(
     reads.filter((url) => url === "/api/pos/catalog?locationId=local-1"),
   ).toHaveLength(1);
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
   expect(body).toMatchObject({
     version: 1,
@@ -965,7 +1003,7 @@ for (const status of [401, 403, 404, 503, "transport"] as const) {
     await setup(page);
     await open(page);
     await expect(
-      page.getByRole("button", { name: "Editar", exact: true }),
+      page.getByRole("radio", { name: "Productos", exact: true }),
     ).toBeVisible();
     await page.route("**/api/pos/orders/order-1", (route) =>
       status === "transport"
@@ -983,7 +1021,7 @@ for (const status of [401, 403, 404, 503, "transport"] as const) {
             },
           }),
     );
-    await page.getByRole("button", { name: "Anular", exact: true }).click();
+    await annul(page);
     if (status === 503 || status === "transport") {
       await expect(
         page.getByText(
@@ -1070,7 +1108,7 @@ for (const action of ["close", "void"] as const) {
         .click();
       await expect(page.getByText("Venta cerrada sin pase.")).toBeVisible();
     } else {
-      await page.getByRole("button", { name: "Anular", exact: true }).click();
+      await annul(page);
       await page
         .getByRole("button", { name: "Anular orden", exact: true })
         .click();
@@ -1131,7 +1169,7 @@ test("caché POS: anulación relee y exige revisar una orden que cambió", async
     });
   });
   await open(page);
-  await page.getByRole("button", { name: "Anular", exact: true }).click();
+  await annul(page);
   await expect(
     page.getByRole("heading", { name: "Mesa cambiada" }),
   ).toBeVisible();
@@ -1139,7 +1177,7 @@ test("caché POS: anulación relee y exige revisar una orden que cambió", async
     page.getByRole("button", { name: "Anular orden", exact: true }),
   ).toHaveCount(0);
   expect(voided).toBe(false);
-  await page.getByRole("button", { name: "Anular", exact: true }).click();
+  await annul(page);
   await page.getByRole("button", { name: "Anular orden", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Mesa cambiada · Anulada" }),
@@ -1154,7 +1192,8 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
     await setup(page);
     const reads = trackedReads(page);
     await open(page);
-    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await page.getByRole("radio", { name: "Productos", exact: true }).click();
+    await editContext(page);
     await page
       .getByRole("textbox", { name: "Nombre de mesa" })
       .fill("Borrador privado");
@@ -1182,6 +1221,7 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
               },
       }),
     );
+    page.once("dialog", (dialog) => dialog.accept());
     await page.reload();
     await expect(
       page.getByRole("textbox", { name: "Nombre de mesa" }),
@@ -1193,7 +1233,8 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
     await setup(page);
     await page.reload();
     await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
-    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await page.getByRole("radio", { name: "Productos", exact: true }).click();
+    await editContext(page);
     await expect(
       page.getByRole("textbox", { name: "Nombre de mesa" }),
     ).toHaveValue("Mesa 4");
@@ -1269,21 +1310,26 @@ test("caché POS: conflicto sin snapshot bloquea acciones hasta releer la versi�
     });
   });
   await open(page);
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
-  await page.getByRole("button", { name: "Guardar orden" }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Agregar un Café", exact: true })
+    .click();
+  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect.poll(() => typeof release).toBe("function");
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Cobrar", exact: true }),
+    page.getByRole("button", { name: "Guardar cambios", exact: true }),
   ).toBeDisabled();
   release();
+  await page.getByRole("button", { name: "Revisar versión actual" }).click();
+  await page.getByRole("button", { name: "Usar versión actual" }).click();
   await expect(
-    page.getByRole("heading", { name: "Mesa actual" }),
+    page.getByRole("heading", { name: "Mesa actual", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Editar", exact: true }),
+    page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeEnabled();
   expect(reads).toBe(2);
 });
@@ -1368,22 +1414,11 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page);
   const ticket = page.getByRole("region", { name: "Ticket de la orden" });
-  await expect(ticket).toBeVisible();
+  await expect(ticket).toBeHidden();
+  await expect(
+    page.getByRole("region", { name: "Productos del pedido" }),
+  ).toBeVisible();
   await expect(page.locator(".backoffice-mobile-nav")).toBeHidden();
-  const exterior = await ticket.evaluate((el) => {
-    const parent = el.parentElement!;
-    const style = getComputedStyle(parent);
-    return {
-      padding: style.padding,
-      border: style.borderWidth,
-      background: style.backgroundColor,
-    };
-  });
-  expect(exterior).toEqual({
-    padding: "0px 0px 176px",
-    border: "0px",
-    background: "rgba(0, 0, 0, 0)",
-  });
   const main = await page.locator("main").boundingBox();
   expect(main!.width).toBe(390);
   const closeIcon = await page
@@ -1425,9 +1460,9 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.screenshot({ path: "/private/tmp/pos-0175-desktop.png" });
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
-  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.getByRole("radio", { name: "Productos", exact: true }).click();
   await expect(
-    page.getByRole("textbox", { name: "Nombre de mesa" }),
+    page.getByRole("button", { name: "Agregar un Café", exact: true }),
   ).toBeVisible();
   const afterCatalog = [...reads];
   await page
@@ -1459,13 +1494,16 @@ test("orden abierta prioriza mesa y acciones; conserva ticket impreso", async ({
       .locator("main")
       .getByRole("heading", { name: "Café de prueba", exact: true }),
   ).toHaveCount(0);
-  const edit = page.getByRole("button", { name: "Editar", exact: true });
+  const edit = page.getByRole("button", {
+    name: "Añadir productos",
+    exact: true,
+  });
   const pay = page.getByRole("button", { name: "Cobrar", exact: true });
   await expect(pay).toHaveClass(/bg-primary /);
   await expect(edit).toHaveClass(/bg-surface/);
   await expect(
     page.getByRole("button", { name: "Anular", exact: true }),
-  ).toHaveClass(/text-danger!/);
+  ).toHaveCount(0);
   const editBox = (await edit.boundingBox())!;
   const payBox = (await pay.boundingBox())!;
   expect(editBox.width).toBe(payBox.width);

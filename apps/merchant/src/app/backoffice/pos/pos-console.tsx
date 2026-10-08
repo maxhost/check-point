@@ -48,6 +48,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const [opening, setOpening] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [catalogRevision, setCatalogRevision] = useState(0);
+  const [lastLocationId, setLastLocationId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [working, setBusy] = useState(false);
@@ -66,6 +67,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       if (!(cause instanceof PosError)) return;
       if (cause.status === 401 || cause.status === 403) {
         cache.clear();
+        setLastLocationId("");
         navigation.current += 1;
         setHistory(null);
         setOrder(null);
@@ -161,6 +163,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
           !context.membership.permissions.includes("pos")
         ) {
           cache.clear();
+          setLastLocationId("");
           navigation.current += 1;
           setHistory(null);
           setOrder(null);
@@ -174,6 +177,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
         const changed = cache.bind(`${context.user.id}:${context.business.id}`);
         cache.put("session", context);
         if (changed) {
+          setLastLocationId("");
           navigation.current += 1;
           setHistory(null);
           setOrder(null);
@@ -209,8 +213,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     setConfirmVoid(false);
     if (reconcile || result.status !== "open") void refreshHistory(true);
   }
-  async function run(action: () => Promise<PosOrder>) {
-    if (locked.current || !cache.context) return;
+  async function run(
+    action: () => Promise<PosOrder>,
+  ): Promise<PosOrder | null> {
+    if (locked.current || !cache.context) return null;
     locked.current = true;
     setBusy(true);
     setError(null);
@@ -218,9 +224,13 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     const epoch = cache.epoch;
     try {
       const result = await action();
-      if (cache.epoch === epoch) publish(result);
+      if (cache.epoch === epoch) {
+        publish(result);
+        return result;
+      }
+      return null;
     } catch (cause) {
-      if (cache.epoch !== epoch) return;
+      if (cache.epoch !== epoch) return null;
       handleError(cause);
       if (
         cause instanceof PosError &&
@@ -233,6 +243,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
           readError(reason, order.id);
         }
       }
+      return null;
     } finally {
       locked.current = false;
       setBusy(false);
@@ -294,51 +305,51 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     }
   }
   const openDetail = view === "detail" && order?.status === "open";
-  const DetailContainer = openDetail ? "div" : Card;
+  const workspace = openDetail || view === "edit";
   return (
     <main
       className={
-        openDetail
+        workspace
           ? "merchant-shell counter-shell counter-flow w-full print:p-0"
-          : view === "edit"
-            ? "merchant-shell counter-shell counter-flow print:p-0"
-            : "merchant-shell print:p-0"
+          : "merchant-shell print:p-0"
       }
     >
       <div
-        className={`backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0 ${openDetail ? "w-full" : ""}`}
+        className={`backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0 ${workspace ? "w-full" : ""}`}
       >
-        <div className="flex items-start justify-between gap-4 print:hidden">
-          <div className="min-w-0 flex-1">
-            <PageHeader
-              title={openDetail ? order!.tableLabel : "POS"}
-              description={
-                openDetail
-                  ? `Orden abierta${order!.location ? ` · ${order!.location.name}` : ""}`
-                  : "Atiende tus mesas y cierra cada venta cuando el cliente pague."
-              }
-            />
+        {!workspace && (
+          <div className="flex items-start justify-between gap-4 print:hidden">
+            <div className="min-w-0 flex-1">
+              <PageHeader
+                title={openDetail ? order!.tableLabel : "POS"}
+                description={
+                  openDetail
+                    ? `Orden abierta${order!.location ? ` · ${order!.location.name}` : ""}`
+                    : "Atiende tus mesas y cierra cada venta cuando el cliente pague."
+                }
+              />
+            </div>
+            {view === "detail" ? (
+              <Button
+                variant="quiet"
+                aria-label="Volver al listado de órdenes"
+                className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+                isDisabled={busy || refreshing}
+                onPress={back}
+              >
+                <Xmark aria-hidden="true" className="size-6" />
+              </Button>
+            ) : (
+              <Link
+                href="/backoffice"
+                aria-label="Cerrar POS"
+                className="close-module grid size-11 shrink-0 place-items-center rounded-full! bg-primary-soft! p-0! no-underline"
+              >
+                <Xmark aria-hidden="true" className="size-6" />
+              </Link>
+            )}
           </div>
-          {view === "detail" || view === "edit" ? (
-            <Button
-              variant="quiet"
-              aria-label="Volver al listado de órdenes"
-              className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
-              isDisabled={busy || refreshing}
-              onPress={back}
-            >
-              <Xmark aria-hidden="true" className="size-6" />
-            </Button>
-          ) : (
-            <Link
-              href="/backoffice"
-              aria-label="Cerrar POS"
-              className="close-module grid size-11 shrink-0 place-items-center rounded-full! bg-primary-soft! p-0! no-underline"
-            >
-              <Xmark aria-hidden="true" className="size-6" />
-            </Link>
-          )}
-        </div>
+        )}
         {error && (
           <div className="print:hidden">
             <Alert kind="error" title={error} />
@@ -457,83 +468,47 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 )}
               </div>
             )}
-            {view === "edit" && (
-              <div className="print:hidden">
-                <PosEditor
-                  key={order ? `${order.id}:${order.version}` : "new"}
-                  order={order}
-                  cache={cache}
-                  catalogRevision={catalogRevision}
-                  locations={locations}
-                  currencyCode={session.business?.currencyCode ?? "USD"}
-                  busy={busy || refreshing}
-                  onError={handleError}
-                  onCancel={() => (order ? setView("detail") : back())}
-                  onSave={(body) =>
-                    void run(() =>
-                      posRequest<PosOrder>(
-                        order ? orderUrl(order.id) : "/api/pos/orders",
-                        order ? "PUT" : "POST",
-                        body,
-                      ),
-                    )
-                  }
-                />
+            {workspace && (
+              <PosEditor
+                key={order?.id ?? "new"}
+                order={order}
+                cache={cache}
+                catalogRevision={catalogRevision}
+                locations={locations}
+                currencyCode={session.business?.currencyCode ?? "USD"}
+                busy={busy || refreshing}
+                onError={handleError}
+                onCancel={back}
+                lastLocationId={lastLocationId}
+                onLocationChange={setLastLocationId}
+                onCheckout={() => {
+                  setError(null);
+                  setView("checkout");
+                }}
+                onVoid={() => void prepareVoid()}
+                onSave={(body) =>
+                  run(() =>
+                    posRequest<PosOrder>(
+                      order ? orderUrl(order.id) : "/api/pos/orders",
+                      order ? "PUT" : "POST",
+                      body,
+                    ),
+                  )
+                }
+              />
+            )}
+            {workspace && order && (
+              <div className="hidden print:block">
+                <PosTicket order={order} />
               </div>
             )}
-            {order && (view === "detail" || view === "checkout") && (
-              <>
-                <DetailContainer
-                  className={`grid gap-5 print:border-0 print:p-0 print:shadow-none ${openDetail ? "pb-44 md:pb-0" : ""}`}
-                >
-                  <PosResult order={order} />
-                  <PosTicket order={order} compact={openDetail} />
-                  {openDetail ? (
-                    <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0 print:hidden">
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          variant="secondary"
-                          className="min-h-12"
-                          fullWidth
-                          isDisabled={busy || refreshing}
-                          onPress={() => {
-                            setError(null);
-                            setView("edit");
-                          }}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          className="min-h-12"
-                          fullWidth
-                          isDisabled={busy || refreshing || !order.items.length}
-                          onPress={() => {
-                            setError(null);
-                            setView("checkout");
-                          }}
-                        >
-                          Cobrar
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          variant="quiet"
-                          isDisabled={busy || refreshing}
-                          onPress={() => window.print()}
-                        >
-                          Imprimir
-                        </Button>
-                        <Button
-                          variant="quiet"
-                          className="text-danger!"
-                          isDisabled={busy || refreshing}
-                          onPress={() => void prepareVoid()}
-                        >
-                          Anular
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
+            {order &&
+              !workspace &&
+              (view === "detail" || view === "checkout") && (
+                <>
+                  <Card className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
+                    <PosResult order={order} />
+                    <PosTicket order={order} />
                     <div className="flex flex-wrap gap-3 print:hidden">
                       <Button
                         variant="secondary"
@@ -552,25 +527,24 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                         </Button>
                       )}
                     </div>
+                  </Card>
+                  {view === "checkout" && order.status === "open" && (
+                    <PosCheckout
+                      key={`${order.id}:${order.version}`}
+                      order={order}
+                      onClosed={(result) => {
+                        publish(result, true);
+                        setError(null);
+                      }}
+                      onBack={() => {
+                        setView("detail");
+                        setError(null);
+                      }}
+                      onError={handleError}
+                    />
                   )}
-                </DetailContainer>
-                {view === "checkout" && order.status === "open" && (
-                  <PosCheckout
-                    key={`${order.id}:${order.version}`}
-                    order={order}
-                    onClosed={(result) => {
-                      publish(result, true);
-                      setError(null);
-                    }}
-                    onBack={() => {
-                      setView("detail");
-                      setError(null);
-                    }}
-                    onError={handleError}
-                  />
-                )}
-              </>
-            )}
+                </>
+              )}
           </>
         )}
         <ConfirmDialog

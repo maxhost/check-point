@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { Button, Text } from "../../../ui";
+import { Button, NumberField, Text } from "../../../ui";
 import type { CartLine, CounterProduct } from "../counter/types";
 import { formatMoney } from "../counter/types";
 import type { DraftLine } from "./pos-types";
@@ -78,94 +77,74 @@ export function PosCart({
   currencyCode,
   busy,
   onQty,
-  children,
+  onPrice,
 }: {
   lines: DraftLine[];
   currencyCode: string;
   busy: boolean;
   onQty: (key: string, delta: number) => void;
-  children: React.ReactNode;
+  onPrice: (key: string, value: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const count = lines.reduce((sum, line) => sum + line.quantity, 0);
-  const total =
-    lines.reduce(
-      (sum, line) => sum + Math.round(line.unitPrice * 100) * line.quantity,
-      0,
-    ) / 100;
   return (
-    <div className="counter-detailed-footer">
-      <Button
-        variant="quiet"
-        fullWidth
-        className="justify-between"
-        aria-expanded={expanded}
-        aria-controls="pos-cart-detail"
-        onPress={() => setExpanded((current) => !current)}
-      >
-        <Text as="span" variant="label">
-          {count} artículos · {formatMoney(total, currencyCode)}
+    <section aria-label="Productos del pedido" className="grid gap-4">
+      {!lines.length && (
+        <Text variant="muted">
+          El pedido está vacío. Añade productos o guarda la mesa para continuar
+          después.
         </Text>
-        <Text as="span" variant="small">
-          {expanded ? "Ocultar detalle" : "Ver detalle"}
-        </Text>
-      </Button>
-      {expanded && (
-        <div
-          id="pos-cart-detail"
-          className="grid max-h-64 gap-3 overflow-auto py-3"
-        >
-          {!lines.length && (
-            <Text variant="muted">
-              Puedes guardar la mesa y agregar productos después.
-            </Text>
-          )}
-          {lines.map((line) => (
-            <div
-              key={line.key}
-              className="grid gap-1 border-b border-border pb-3"
-            >
-              <div className="flex justify-between gap-3">
-                <Text variant="label">
-                  {line.quantity} × {line.name}
-                </Text>
-                <Text>
-                  {formatMoney(
-                    (Math.round(line.unitPrice * 100) * line.quantity) / 100,
-                    currencyCode,
-                  )}
-                </Text>
-              </div>
+      )}
+      {lines.map((line) => (
+        <div key={line.key} className="grid gap-3 border-b border-border pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 break-words">
+              <Text variant="label">{line.name}</Text>
               <Text variant="small">
                 {formatMoney(line.unitPrice, currencyCode)} por unidad
                 {line.lineId ? " · Precio guardado" : ""}
               </Text>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  isDisabled={busy}
-                  aria-label={`Quitar unidad de ${line.name} a ${line.unitPrice.toFixed(2)}`}
-                  onPress={() => onQty(line.key, -1)}
-                >
-                  −
-                </Button>
-                <Text as="span" variant="label">
-                  {line.quantity}
-                </Text>
-                <Button
-                  variant="secondary"
-                  isDisabled={busy}
-                  aria-label={`Añadir unidad de ${line.name} a ${line.unitPrice.toFixed(2)}`}
-                  onPress={() => onQty(line.key, 1)}
-                >
-                  +
-                </Button>
-              </div>
             </div>
-          ))}
+            <Text variant="label" className="shrink-0 whitespace-nowrap">
+              {formatMoney(
+                (Math.round(line.unitPrice * 100) * line.quantity) / 100,
+                currencyCode,
+              )}
+            </Text>
+          </div>
+          {line.needsPrice && (
+            <NumberField
+              label={`Precio unitario de ${line.name}`}
+              value={line.unitPrice}
+              minValue={0}
+              formatOptions={{ maximumFractionDigits: 2 }}
+              onChange={(value) => onPrice(line.key, value)}
+              isDisabled={busy}
+            />
+          )}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              className="size-11 p-0!"
+              isDisabled={busy}
+              aria-label={`Quitar unidad de ${line.name} a ${line.unitPrice.toFixed(2)}`}
+              onPress={() => onQty(line.key, -1)}
+            >
+              −
+            </Button>
+            <Text as="span" variant="label">
+              {line.quantity}
+            </Text>
+            <Button
+              variant="secondary"
+              className="size-11 p-0!"
+              isDisabled={busy}
+              aria-label={`Añadir unidad de ${line.name} a ${line.unitPrice.toFixed(2)}`}
+              onPress={() => onQty(line.key, 1)}
+            >
+              +
+            </Button>
+          </div>
         </div>
-      )}
-      <div className="flex flex-wrap gap-3 pt-2">{children}</div>
-    </div>
+      ))}
+    </section>
   );
 }

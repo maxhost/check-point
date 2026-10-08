@@ -86,3 +86,20 @@ Pruebas e2e se adaptan a interacción nueva y agregan los casos de transición.
 0 mutaciones nuevas (L2). Sin build/global verify sobre dev activo; verify antes de
 main. QA owner con pnpm dev:local pendiente; no marcar implementada sin gates.
 Solo commits de paths GPT en dev, sin merge ni push. Sin decisiones abiertas.
+
+## Entrega local — 2026-10-08
+
+UI aplicada en dev. Owner probó y confirmó: «listo. parece estar todo funcionando»;
+la siguiente iteración visual queda para después. Luego pidió detener las pruebas
+y dejar los commits preparados para que Claude publique, sin push de GPT.
+
+Verificación realizada antes de detener: typecheck de 6 paquetes, ESLint de las
+pantallas, guardia UI sin aumentos y 5 e2e POS seleccionados verdes (4,7 s): creación,
+edición con snapshot/lineId, impresión/cierre, error de cupón, catálogo compartido,
+ranking parcial y líneas duplicadas/retiradas. Prettier aplicado a los cuatro archivos.
+Después se adaptaron otros escenarios e2e al workspace y se ajustó impresión tras
+cerrar el Dialog y limpieza del último local al revocar contexto. Esa revisión final
+no tuvo ejecución adicional por instrucción del owner. La suite completa y los
+escenarios nuevos de salida/conflicto no se declaran verdes; los checks DoD que
+requieren esa evidencia permanecen abiertos. Claude conserva los gates normales
+antes de publicar. Sin API, kit, servidor, dependencias, merge ni push.
