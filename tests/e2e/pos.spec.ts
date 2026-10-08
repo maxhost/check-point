@@ -1340,11 +1340,9 @@ test("órdenes abiertas: filas compactas con mesa, total y Abrir", async ({
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(harness.url);
-  const section = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", { name: "Abiertas", exact: true }),
-    });
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Abiertas", exact: true }),
+  });
   await expect(section.getByRole("heading", { level: 3 })).toHaveText(
     orders.map((order) => order.tableLabel),
   );
@@ -1368,4 +1366,66 @@ test("órdenes abiertas: filas compactas con mesa, total y Abrir", async ({
   await expect(
     page.getByRole("heading", { name: "Terraza · Precuenta" }),
   ).toBeVisible();
+});
+
+test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
+  page,
+}) => {
+  await setup(page);
+  const reads = trackedReads(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  const ticket = page.getByRole("region", { name: "Ticket de la orden" });
+  await expect(ticket).toBeVisible();
+  await expect(page.locator(".backoffice-mobile-nav")).toBeHidden();
+  const exterior = await ticket.evaluate((el) => {
+    const parent = el.parentElement!;
+    const style = getComputedStyle(parent);
+    return {
+      padding: style.padding,
+      border: style.borderWidth,
+      background: style.backgroundColor,
+    };
+  });
+  expect(exterior).toEqual({
+    padding: "0px",
+    border: "0px",
+    background: "rgba(0, 0, 0, 0)",
+  });
+  const main = await page.locator("main").boundingBox();
+  expect(main!.width).toBe(390);
+  await page.screenshot({ path: "/private/tmp/pos-0176-mobile.png" });
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.screenshot({ path: "/private/tmp/pos-0176-desktop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const firstReads = [...reads];
+  await page
+    .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Abiertas", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".backoffice-mobile-nav")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Cerrar POS", exact: true }),
+  ).toHaveAttribute("href", "/backoffice");
+  await page.screenshot({ path: "/private/tmp/pos-0175-mobile.png" });
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.screenshot({ path: "/private/tmp/pos-0175-desktop.png" });
+  await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toBeVisible();
+  const afterCatalog = [...reads];
+  await page
+    .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Abiertas", exact: true }),
+  ).toBeVisible();
+  expect(reads).toEqual(afterCatalog);
+  expect(
+    reads.filter((url) => url !== "/api/pos/catalog?locationId=local-1"),
+  ).toEqual(firstReads);
 });

@@ -293,29 +293,47 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       setBusy(false);
     }
   }
+  const openDetail = view === "detail" && order?.status === "open";
+  const DetailContainer = openDetail ? "div" : Card;
   return (
     <main
       className={
-        view === "edit"
-          ? "merchant-shell counter-shell counter-flow print:p-0"
-          : "merchant-shell print:p-0"
+        openDetail
+          ? "merchant-shell counter-shell counter-flow w-full print:p-0"
+          : view === "edit"
+            ? "merchant-shell counter-shell counter-flow print:p-0"
+            : "merchant-shell print:p-0"
       }
     >
-      <div className="backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0">
-        <div className="flex items-start justify-between gap-4 print:hidden">
+      <div
+        className={`backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0 ${openDetail ? "w-full" : ""}`}
+      >
+        <div className="module-topline flex items-start justify-between gap-4 print:hidden">
           <div className="min-w-0 flex-1">
             <PageHeader
               title="POS"
               description="Atiende tus mesas y cierra cada venta cuando el cliente pague."
             />
           </div>
-          <Link
-            href="/backoffice"
-            aria-label="Cerrar POS"
-            className="close-module shrink-0 no-underline"
-          >
-            <Xmark aria-hidden="true" />
-          </Link>
+          {view === "detail" || view === "edit" ? (
+            <Button
+              variant="quiet"
+              aria-label="Volver al listado de órdenes"
+              className="close-module size-11 shrink-0 rounded-full bg-primary-soft px-0"
+              isDisabled={busy || refreshing}
+              onPress={back}
+            >
+              <Xmark aria-hidden="true" className="size-6" />
+            </Button>
+          ) : (
+            <Link
+              href="/backoffice"
+              aria-label="Cerrar POS"
+              className="close-module shrink-0 no-underline"
+            >
+              <Xmark aria-hidden="true" className="size-6" />
+            </Link>
+          )}
         </div>
         {error && (
           <div className="print:hidden">
@@ -461,7 +479,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             )}
             {order && (view === "detail" || view === "checkout") && (
               <>
-                <Card className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
+                <DetailContainer className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
                   <PosResult order={order} />
                   <PosTicket order={order} />
                   <div className="flex flex-wrap gap-3 print:hidden">
@@ -512,7 +530,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                       </Button>
                     )}
                   </div>
-                </Card>
+                </DetailContainer>
                 {view === "checkout" && order.status === "open" && (
                   <PosCheckout
                     key={`${order.id}:${order.version}`}

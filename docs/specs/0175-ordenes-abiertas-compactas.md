@@ -44,4 +44,4 @@ Sin decisiones pendientes. Commits locales dev; sin merge ni push.
 31 pruebas POS verdes (14,0 s), incluida lista móvil con tres mesas y nombre largo,
 solo tres campos y apertura correcta; sin overflow horizontal. Typecheck, lint,
 guardia UI y números verdes. Owner confirmó que probó las filas y funcionan.
-Capturas automatizadas pendientes, se completan junto al siguiente cambio de vista.
+Capturas móvil/escritorio vistas junto a 0176, /private/tmp/pos-0175-*.png.

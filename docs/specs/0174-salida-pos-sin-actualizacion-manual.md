@@ -48,4 +48,5 @@ No disjunta con 0172 en consola y pruebas.
 Lecturas de error cubiertas desde Anular; recarga y reutilización de catálogo verdes.
 Typecheck, lint, formato, guardia UI sin aumentos y números verdes. El enlace usa
 Link del kit; no se añadió importación directa de next/link. Owner confirmó que
-la X funciona. Comprobación visual automatizada final sigue pendiente.
+la X funciona. Comprobación visual y salida verificadas junto a 0176;
+la X en detalle/edición ahora vuelve al listado según el nuevo encargo.

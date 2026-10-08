@@ -316,8 +316,8 @@ desactualizado es peor que no tenerlo.
 | 0172 | 2026-10-08 | **Caché en memoria del POS**: órdenes, historial y catálogo reutilizados; sin TTL ni consultas por foco; actualización desde escrituras y botón explícito. | **cerrada**, caché local en dev; 37 pruebas afectadas verdes; QA del owner pendiente | no | `specs/0172-cache-en-memoria-del-pos.md` |
 | 0173 | 2026-10-08 | **Navbar mobile POS**: accesos simples POS y Mostrador con navegación y estilos existentes. | **cerrada**, UI local en dev; navegador móvil/escritorio verificado | no | `specs/0173-navbar-mobile-pos.md` |
 | 0174 | 2026-10-08 | **Salida POS**: X para volver al inicio; se retira Actualizar órdenes. | **cerrada** | no | `specs/0174-salida-pos-sin-actualizacion-manual.md` |
-| 0175 | 2026-10-08 | **Órdenes abiertas compactas**: mesa, total y Abrir en filas. | **cerrada**, mini plan L1 | no | `specs/0175-ordenes-abiertas-compactas.md` |
-| 0176 | 2026-10-08 | **Orden abierta sin tarjeta exterior**: ancho disponible, sin navbar mobile y X vuelve al listado POS. | **cerrada**, mini plan L1 | no | `specs/0176-orden-abierta-sin-tarjeta-exterior.md` |
+| 0175 | 2026-10-08 | **Órdenes abiertas compactas**: mesa, total y Abrir en filas. | **cerrada**, local probado por owner | no | `specs/0175-ordenes-abiertas-compactas.md` |
+| 0176 | 2026-10-08 | **Orden abierta sin tarjeta exterior**: ancho disponible, sin navbar mobile y X vuelve al listado POS. | **cerrada**, UI local; 32 pruebas POS verdes | no | `specs/0176-orden-abierta-sin-tarjeta-exterior.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

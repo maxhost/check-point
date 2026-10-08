@@ -41,3 +41,13 @@ Checkout y órdenes cerradas conservan su presentación y acciones actuales.
 Sin CSS, kit, servidor, API, polling o cambios de importes. No disjunta con POS.
 0 mutaciones; sin build/global verify sobre dev activo. Owner prueba pnpm dev:local;
 commits locales dev, sin merge ni push. Sin decisiones abiertas.
+
+## Evidencia
+
+32 pruebas POS pasan (14,5 s). Nueva prueba: móvil 390 px, navbar oculta,
+contenedor exterior con padding/borde cero y fondo transparente; main ancho
+390 px; X vuelve a Abiertas sin GET adicional, navbar vuelve y edición conserva
+retorno. Capturas móvil/escritorio vistas (390/1100 px) en /private/tmp/pos-0176-*.png.
+Typecheck 6 paquetes, ESLint, formato, guardia sin aumentos y números verdes.
+Se ajustó X a size-6 tras revisión visual y se repitió la prueba específica.
+Owner confirmó QA de X (0174) y listado compacto (0175); falta QA de esta vista.
