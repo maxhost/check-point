@@ -54,3 +54,13 @@ Owner confirmó QA de X (0174) y listado compacto (0175); falta QA de esta vista
 
 Revisión final: padding del botón eliminado con utilidad Tailwind; icono con ancho
 real 24 px verificado por navegador, prueba puntual 1/1 (2,0 s), captura móvil vista.
+
+## Ajuste solicitado por owner — cabecera y retorno
+
+Cerrado antes del código: retirar Volver al historial solo de órdenes abiertas,
+porque la X ya vuelve al listado. Quitar module-topline de la cabecera POS: esa
+clase activa el fondo de canvas en counter-flow móvil y genera el bloque blanco.
+X de POS conserva el aspecto de Marca (fondo suave, color primario, círculo), pero
+fija ancho y alto iguales con utilidades del kit, sin copiar colores ni cambiar Marca.
+Verificar en navegador fondo transparente, botón redundante ausente, ancho/alto
+44 px, icono 24 px y retorno correcto. Adaptar las pruebas a la X.
