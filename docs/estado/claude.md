@@ -25,11 +25,6 @@ y el callback `dev-my.` no esta registrado. Al retomar: preguntar credenciales d
 **Siguiente:** lo que el owner pida. QA manual de la 0167 por el tunel (alta, sello, logo en bucket dev) sigue posible
 del lado del comercio.
 
-**Pregunta abierta al owner, SIN respuesta:** rama por trabajo, solo local, merge a `main` despues de `verify` (el lo
-propuso el 2026-10-08: «si algo sale mal no tengo que mergear a main y contaminar main, simplemente descartar»).
-Si dice que si: ADR + cambiar «Como se trabaja». Cuidado medido: la base local no se descarta con la rama
-(`reset-base`).
-
 **Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
 puertos 3200/3201 (ADR 0127); no borra secretos de sus `.env`: se COMENTAN; R2 de desarrollo; Vercel Hobby; rotacion
 de claves la decide el owner (no recordarla). Wallet real en el telefono: decision ABIERTA.
@@ -37,7 +32,9 @@ de claves la decide el owner (no recordarla). Wallet real en el telefono: decisi
 **Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
 desarrollo; `.env.example` sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
 
-**Como se trabaja:** commits LOCALES en `main`, sin push (Hobby; contar con `git rev-list --count origin/main..main`).
+**Como se trabaja (ADR 0128, owner 2026-10-08):** rama local `dev` (creada desde `main` en `302e208`), sin push.
+Con OK del owner: `verify` → `git switch main && git merge --ff-only dev` → `pnpm dev:local` en main → `git push` →
+`git switch dev`. `main` local tiene 29 commits sin pushear (aprobados antes del ADR; pushearlos tambien pide OK).
 PROD con datos reales: cero escrituras sin OK explicito.
 
 **Gotchas:**

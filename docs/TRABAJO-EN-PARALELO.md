@@ -1,29 +1,35 @@
-# Trabajo en paralelo: Claude y GPT sobre `main`
+# Trabajo en paralelo: Claude y GPT sobre la rama `dev`
 
-Reglas comunes de los dos agentes ([ADR 0114](adr/0114-claude-y-gpt-trabajan-en-paralelo-sobre-main.md)).
+Reglas comunes de los dos agentes ([ADR 0114](adr/0114-claude-y-gpt-trabajan-en-paralelo-sobre-main.md); desde el
+2026-10-08 la rama y el push los manda el [ADR 0128](adr/0128-rama-dev-local-merge-a-main-y-push.md)).
 Las lee GPT desde `AGENTS.md` y Claude desde `CLAUDE.md`. Si algo de acá choca con un prompt, pregúntale al owner.
 
 ## 1. Al empezar
 
 ```sh
-git pull --ff-only
+git branch --show-current   # tiene que decir dev
 pnpm ci:status
 ```
 
+Si no estas en `dev`, `git switch dev` (nunca se trabaja en `main`).
 Si el último `main` está rojo, se arregla **primero**, y lo arregla el dueño de la zona que falla (§5).
 Después lee tu estado: `docs/estado/gpt.md` (GPT) o `docs/estado/claude.md` (Claude).
 
-## 2. Cada uno en su árbol, sobre `main`
+## 2. Una sola rama de trabajo: `dev` (local, no se pushea)
 
-- **GPT:** `~/Documents/claude-workspace/check-point/` (checkout de `main`).
-- **Claude:** su worktree (`tools/worktree-new.sh <nombre>`).
-- Sin ramas de feature ni PR. Commits chicos, push en el día.
+- Los dos trabajan en `~/Documents/claude-workspace/check-point/`, rama `dev`. Sin ramas de feature ni PR.
+- `dev` **no se pushea** (un push de rama es un deploy de preview en Vercel Hobby). Commits chicos en `dev`.
+- El ambiente local (`pnpm dev:local`) corre la rama activa contra la base local en Docker.
 
-## 3. Cómo se pushea
+## 3. Cómo se pasa a live (solo con OK del owner)
 
 ```sh
-git pull --rebase
-git push
+pnpm verify                      # en dev, verde; el owner prueba en local
+git switch main
+git merge --ff-only dev
+pnpm dev:local                   # el owner confirma que main anda en local
+git push                         # desde main
+git switch dev
 ```
 
 El hook `.githooks/pre-push` (común, se instala una vez con `pnpm hooks:install`) corre en todo push a `main`:

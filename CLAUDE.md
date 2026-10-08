@@ -27,6 +27,8 @@ escribir la spec: una spec escrita dos veces porque el alcance cambio es el cost
 ## Flujo
 
 1. Al arrancar: el bloque ESTADO y `pnpm ci:status`. Si el ultimo `main` esta rojo, se arregla primero.
+   **Se trabaja en la rama local `dev`** (ADR 0128): nunca commitear en `main`; `main` recibe `merge --ff-only dev`
+   y se pushea solo con OK del owner, despues de probar `main` en local.
 2. Toda decision de diseño genera un ADR (`docs/adr/`) con fecha y `resumen` de una linea en el frontmatter.
 3. Fila de 3 lineas en `docs/INDEX.md` (que es, por que importa, estado) en el mismo commit.
 4. Estado: en N1/N2 el bloque ESTADO se reescribe DESPUES del commit del trabajo (dos commits: el trabajo

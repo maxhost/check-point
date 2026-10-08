@@ -23,6 +23,7 @@ if [[ -s "$HOME/.nvm/nvm.sh" ]]; then
   set +u; export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use >/dev/null; set -u
 fi
 
+echo "→ rama: $(git branch --show-current) (ADR 0128: se trabaja en dev)"
 echo "→ Docker"
 docker info >/dev/null 2>&1 || abort "Docker no responde: abri Docker Desktop y reintenta"
 
