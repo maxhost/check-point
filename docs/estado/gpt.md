@@ -3,6 +3,28 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0172: CACHÉ POS, SOLO DOCUMENTACIÓN
+
+Owner pidió definir la spec tras diagnosticar lecturas repetidas al volver/abrir/editar mesas.
+[0172](../specs/0172-cache-en-memoria-del-pos.md) cerrada y reservada localmente en **69191fc**,
+con fila INDEX. Rama dev, sin merge ni push; no se implementó caché ni se modificó código.
+
+Owner corrigió la propuesta inicial de 30 segundos: **sin TTL, intervalos ni GET por foco o
+visibilidad**. Leer al montar/primera apertura sin detalle, servir desde memoria las mesas ya
+cargadas, conservar catálogo por local y actualizar caché desde respuestas de escritura.
+Actualizar órdenes sincroniza explícitamente sesión/historial e invalida detalle/catálogo.
+Cerrar/anular permite una lectura de historial para reconciliar Cerradas hoy; Anular fuerza
+lectura previa por carecer de version en 0169. Otros operadores se detectan por actualización
+o conflicto de versión, no automáticamente. Sondeo de cupón en cobro activo queda fuera.
+
+La spec define instancia por visita e identidad, limpieza de autorización, errores y respuestas
+tardías; nunca sobrescribir borrador ni UUID/cuerpo de reintento. API/servidor/kit/CSS quedan
+fuera. L2 sin migraciones/dependencias. Pendiente implementar cuando el owner lo encargue.
+
+Formato, números sin duplicados y git diff --check verdes con Node 24.20.0; no pruebas de
+comportamiento por entrega solo documental. ci:status no consultó GitHub (fetch failed).
+Archivos ajenos .claude/skills/gotchas-del-repo/SKILL.md y docs/LECCIONES.md preservados.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0171: POS REUTILIZA MOSTRADOR
 
 Owner pidió misma interfaz para añadir productos y confirmó ranking por más vendidos del local.
