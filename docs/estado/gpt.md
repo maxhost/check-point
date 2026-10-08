@@ -3,7 +3,45 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-05) — SPEC 0163: LA RAÍZ MERCHANT ABRE EL ALTA SIN SESIÓN
+## ⇥ ESTADO (2026-10-08) — SPEC 0170: PANTALLAS POS LOCALES EN DEV
+
+El owner pidió ejecutar `docs/encargo-gpt-2026-10-08-pos.md` contra la API 0169, exclusivamente
+sobre `dev`, sin merge ni push. Spec 0170 reservada en `4f533dc`; implementación y evidencia
+commiteadas localmente en **`448e285`**. Rama sigue `dev`; no se tocó servidor, API, kit,
+paquetes, migraciones ni tooling del repo. Se conservaron los cambios previos de Claude,
+LECCIONES y ambos next-env.d.ts.
+
+Cuenta → Configuración permite activar/desactivar POS (owner), con modal del número de mesas
+abiertas. POS aparece en Mi negocio/Administración con módulo y permiso; Equipo condiciona el
+toggle. `/backoffice/pos` ofrece Abiertas/Cerradas hoy, local activo, mesa, catálogo con precio
+escrito si falta, snapshots/lineId al editar, conflicto de versión visible, detalle, precuenta,
+anulación confirmada y cobro opcional con pase. Escáner del mostrador, endpoints solo POS,
+sondeo/quitar cupón, calculadora no persistida y resultado/impresión desde sale del servidor.
+Cierre con UUID/cuerpo congelados ante desconexión o 5xx. UI usa kit, Tailwind y tokens; guardia
+sin aumentos. Producto fijo de cupón ausente pide editar la orden, sin alterar una mesa guardada
+silenciosamente. Sin canje de premios.
+
+Verificación con Node 24.20.0: siete e2e POS verdes (4.4 s), dos mutaciones rojas por las
+aserciones correctas y restauradas con bytes idénticos; captura móvil a 390 px vista, sin
+horizontal overflow; impresión por media print y window.print verificada. Typecheck, lint,
+formato, números, unitarios (2395 pasan/1025 omitidos), build Turbopack y Neon relacionado
+(10/10 con runner aislado) verdes. `pnpm ci:status` no pudo consultar GitHub.
+
+**Gate global e2e pendiente:** `pnpm verify --base 4f533dc` corrió una vez: e2e no arrancó por
+Next dev existente en 3200. La repetición de e2e con proxies temporales hacia los servidores
+locales, sin apagarlos ni modificar tooling, dio **172 pasan, 21 omitidos, 14 fallan**; POS 7/7.
+Diez fallos son strict-mode por dos botones Ayuda en los tours de Fidelización (ambos existen en
+la base). Cuatro son onboarding/entrada que no encuentran la pantalla esperada en ese ambiente;
+no se aseguró su causa ni se modificaron esas pantallas o tests. No hay PASS global ni revisión
+independiente: la spec permanece **cerrada**.
+
+[Handoff y tabla](../handoff-0170-pos-2026-10-08.md). **Siguiente paso: owner prueba en local con
+`pnpm dev:local`**, activación, editar/imprimir/anular, cobrar sin pase y con pase/cupón reales,
+resultado y movimiento en Mostrador. Pendientes cámara/impresora físicas, QA e independiente,
+y resolver/aislar los fallos globales antes de pasar a main. El paso a main y push es de Claude
+solo con OK del owner. No usar DATABASE_URL de PROD para tests.
+
+## ⇥ TRABAJO ANTERIOR (2026-10-05) — SPEC 0163: LA RAÍZ MERCHANT ABRE EL ALTA SIN SESIÓN
 
 El owner reportó que `business.checkpass.club/` mostraba la portada vieja. Reservé y publiqué la
 [spec 0163](../specs/0163-raiz-del-merchant-abre-onboarding.md) (`1889b6d`); el cambio UI `bc8f3fd`
