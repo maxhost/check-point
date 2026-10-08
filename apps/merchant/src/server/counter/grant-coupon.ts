@@ -1,4 +1,4 @@
-import { withDbTransaction } from "@mi-pasaporte/db";
+import { type DbTransaction, withDbTransaction } from "@mi-pasaporte/db";
 import { computeAccrual } from "@mi-pasaporte/domain/server/loyalty-program/accrual";
 import type { AccrualInput } from "@mi-pasaporte/domain/server/loyalty-program/core";
 import {
@@ -68,103 +68,22 @@ const NOT_SELECTED = "El cliente no eligió este cupón en su app.";
 const toCents = (value: string) => Math.round(Number(value) * 100);
 const fromCents = (value: number) => (value / 100).toFixed(2);
 
-export async function grantWithCoupon(ctx: {
+export type CouponGrantContext = {
   order: Omit<PersistGrantInput, "total" | "units">;
   accrual: AccrualInput;
   grossTotal: string;
   coupon: CouponRef;
   now: Date;
-}): Promise<GrantedOrder> {
-  const { order, now } = ctx;
-  const { businessId, consumerId, clientRequestId } = order;
+};
+
+/** The counter's sale with a coupon: its OWN transaction, and the concurrent loser of the same
+ * `clientRequestId` rereads the winner (`23505`). The six steps are {@link grantWithCouponInTx}. */
+export async function grantWithCoupon(
+  ctx: CouponGrantContext,
+): Promise<GrantedOrder> {
+  const { businessId, clientRequestId } = ctx.order;
   try {
-    return await withDbTransaction(async (tx) => {
-      // (1) Locks, then idempotency before every guard.
-      const locked = await lockCounterCoupon(
-        tx,
-        businessId,
-        consumerId,
-        ctx.coupon.couponId,
-      );
-      await lockBusinessCustomer(tx, businessId, consumerId);
-      const previous = await readOrderByRequest(
-        businessId,
-        clientRequestId,
-        tx,
-      );
-      if (previous) return previous;
-
-      // (2) The consumer's CURRENT choice — nothing else applies at the counter.
-      if ((await selectedCouponOf(tx, consumerId)) !== locked.coupon.id)
-        throw new CounterError(409, "coupon_not_selected", NOT_SELECTED);
-
-      // (3) The verdict, under the locks: dates, redeemed, one a day, cap, program.
-      const membershipId = locked.coupon.membershipId ?? order.membershipId;
-      await assertCouponVerdict(tx, { locked, businessId, membershipId, now });
-
-      // (4) Discount, net total, units over the net.
-      const grossCents = toCents(ctx.grossTotal);
-      const decision = decideCouponDiscount({
-        kind: locked.coupon.kindSnapshot,
-        discountUnit: locked.coupon.discountUnitSnapshot as
-          "percent" | "amount" | null,
-        discountValue: locked.coupon.discountValueSnapshot,
-        currencyCode: locked.coupon.currencyCodeSnapshot,
-        businessCurrency: order.currencyCode,
-        mode: order.mode,
-        items: order.items,
-        totalCents: grossCents,
-        productId: locked.coupon.productId ?? ctx.coupon.productId,
-      });
-      if (!decision.ok)
-        throw new CounterError(
-          decision.status,
-          decision.code,
-          decision.message,
-        );
-      const net = fromCents(grossCents - decision.discountCents);
-      const discountAmount = fromCents(decision.discountCents);
-      const units = computeAccrual(ctx.accrual, Number(net));
-
-      // (5) The order, then the coupon's extra units, then its row tied to the order.
-      const granted = await persistGrant({ ...order, total: net, units }, tx);
-      if (!granted)
-        throw new CounterError(
-          503,
-          "grant_failed",
-          "No pudimos acreditar. Prueba de nuevo.",
-        );
-      const extra = await grantCouponExtras(tx, {
-        businessId,
-        membershipId,
-        kindSnapshot: locked.coupon.kindSnapshot,
-        extraUnitsSnapshot: locked.coupon.extraUnitsSnapshot,
-      });
-      await insertCounterRedemption(tx, {
-        locked,
-        businessId,
-        membershipId,
-        locationId: order.locationId,
-        createdByUserId: order.createdByUserId,
-        clientRequestId,
-        grant: extra,
-        orderId: granted.id,
-        discountAmount,
-        now,
-      });
-      // (6) The choice is spent.
-      await clearSelectionIf(tx, consumerId, locked.coupon.id);
-      return {
-        ...granted,
-        // The FINAL balance: the sale's, plus the coupon's extra when there was one.
-        balanceAfter: extra?.balanceAfter ?? granted.balanceAfter,
-        coupon: {
-          label: locked.coupon.labelSnapshot,
-          discountAmount,
-          extraUnits: extra?.unitsGranted ?? null,
-        },
-      };
-    });
+    return await withDbTransaction((tx) => grantWithCouponInTx(tx, ctx));
   } catch (error) {
     // A concurrent sale with the same key won → its order (no re-grant).
     if (pgErrorCode(error) !== "23505") throw error;
@@ -172,4 +91,95 @@ export async function grantWithCoupon(ctx: {
     if (!winner) throw error;
     return winner;
   }
+}
+
+/**
+ * The six steps INSIDE a transaction the caller owns (spec 0169 / ADR 0130 §3): the counter
+ * opens its own ({@link grantWithCoupon}); the POS close runs them in the transaction that
+ * already holds its `pos_order` `FOR UPDATE` — lock order pos_order → campaign →
+ * campaign_coupon → business_customer. Same steps, same codes, nothing else changes.
+ */
+export async function grantWithCouponInTx(
+  tx: DbTransaction,
+  ctx: CouponGrantContext,
+): Promise<GrantedOrder> {
+  const { order, now } = ctx;
+  const { businessId, consumerId, clientRequestId } = order;
+  // (1) Locks, then idempotency before every guard.
+  const locked = await lockCounterCoupon(
+    tx,
+    businessId,
+    consumerId,
+    ctx.coupon.couponId,
+  );
+  await lockBusinessCustomer(tx, businessId, consumerId);
+  const previous = await readOrderByRequest(businessId, clientRequestId, tx);
+  if (previous) return previous;
+
+  // (2) The consumer's CURRENT choice — nothing else applies at the counter.
+  if ((await selectedCouponOf(tx, consumerId)) !== locked.coupon.id)
+    throw new CounterError(409, "coupon_not_selected", NOT_SELECTED);
+
+  // (3) The verdict, under the locks: dates, redeemed, one a day, cap, program.
+  const membershipId = locked.coupon.membershipId ?? order.membershipId;
+  await assertCouponVerdict(tx, { locked, businessId, membershipId, now });
+
+  // (4) Discount, net total, units over the net.
+  const grossCents = toCents(ctx.grossTotal);
+  const decision = decideCouponDiscount({
+    kind: locked.coupon.kindSnapshot,
+    discountUnit: locked.coupon.discountUnitSnapshot as
+      "percent" | "amount" | null,
+    discountValue: locked.coupon.discountValueSnapshot,
+    currencyCode: locked.coupon.currencyCodeSnapshot,
+    businessCurrency: order.currencyCode,
+    mode: order.mode,
+    items: order.items,
+    totalCents: grossCents,
+    productId: locked.coupon.productId ?? ctx.coupon.productId,
+  });
+  if (!decision.ok)
+    throw new CounterError(decision.status, decision.code, decision.message);
+  const net = fromCents(grossCents - decision.discountCents);
+  const discountAmount = fromCents(decision.discountCents);
+  const units = computeAccrual(ctx.accrual, Number(net));
+
+  // (5) The order, then the coupon's extra units, then its row tied to the order.
+  const granted = await persistGrant({ ...order, total: net, units }, tx);
+  if (!granted)
+    throw new CounterError(
+      503,
+      "grant_failed",
+      "No pudimos acreditar. Prueba de nuevo.",
+    );
+  const extra = await grantCouponExtras(tx, {
+    businessId,
+    membershipId,
+    kindSnapshot: locked.coupon.kindSnapshot,
+    extraUnitsSnapshot: locked.coupon.extraUnitsSnapshot,
+  });
+  await insertCounterRedemption(tx, {
+    locked,
+    businessId,
+    membershipId,
+    locationId: order.locationId,
+    createdByUserId: order.createdByUserId,
+    clientRequestId,
+    grant: extra,
+    orderId: granted.id,
+    discountAmount,
+    now,
+  });
+  // (6) The choice is spent.
+  await clearSelectionIf(tx, consumerId, locked.coupon.id);
+  return {
+    ...granted,
+    // The FINAL balance: the sale's, plus the coupon's extra when there was one.
+    balanceAfter: extra?.balanceAfter ?? granted.balanceAfter,
+    coupon: {
+      label: locked.coupon.labelSnapshot,
+      discountAmount,
+      extraUnits: extra?.unitsGranted ?? null,
+    },
+  };
 }

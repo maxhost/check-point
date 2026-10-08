@@ -19,7 +19,7 @@
  * **Spec 0086 — el unico import que este archivo tiene es `permissions-catalog.ts`, que
  * tampoco importa nada.** La propiedad que el parrafo de arriba protege es «ningun consumidor
  * de estas formas se arrastra un runtime», y una hoja pura no arrastra ninguno. La
- * alternativa —copiar los siete valores acá— seria una quinta fuente de verdad para el
+ * alternativa —copiar los ocho valores acá— seria una quinta fuente de verdad para el
  * conjunto que el `CHECK` de la base declara cerrado.
  */
 import { permissionsForRole } from "@mi-pasaporte/db/permissions-catalog";
@@ -43,6 +43,9 @@ export type SessionBusiness = {
   suspensionReason: string | null;
   currencyCode: string;
   timezone: string;
+  /** Spec 0169: el modulo POS del comercio. La UI muestra la seccion y el toggle del permiso
+   * `pos` solo si esta encendido (el permiso tampoco se puede dar apagado). */
+  posEnabled: boolean;
 };
 
 export type SessionMembership = {
@@ -51,7 +54,7 @@ export type SessionMembership = {
   /** Spec 0086 §8 — lo que el caller PUEDE hacer, para que la UI pinte la navegacion sin
    * adivinar ni sondear endpoints a ver cual contesta 403.
    *
-   * **Para `role === 'owner'` son los SIETE**, aunque su fila en la base los tenga vacios:
+   * **Para `role === 'owner'` son los OCHO**, aunque su fila en la base los tenga vacios:
    * la API no expone la columna, expone la CAPACIDAD — y el `CHECK 2` de la migracion 0041
    * depende de que esas dos cosas no coincidan. Lo decide `permissionsForRole`. */
   permissions: string[];
@@ -82,6 +85,7 @@ export type SessionRow = {
   suspensionReason: string | null;
   currencyCode: string;
   timezone: string;
+  posEnabled: boolean;
   role: string;
   membershipStatus: string;
   /** La columna cruda de la membresia. Para un owner es `'{}'` y **no es lo que sale por la
@@ -127,6 +131,8 @@ export function toSessionView(
       suspensionReason: row.role === "owner" ? row.suspensionReason : null,
       currencyCode: row.currencyCode,
       timezone: row.timezone,
+      // `=== true`: un `undefined` de una fila vieja se lee apagado (fail-closed).
+      posEnabled: row.posEnabled === true,
     },
     membership: {
       role: row.role,

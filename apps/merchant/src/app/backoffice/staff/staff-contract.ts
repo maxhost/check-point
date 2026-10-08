@@ -1,7 +1,7 @@
 import type { PermissionScope } from "@mi-pasaporte/db/permissions-catalog";
 
 /**
- * LA COPIA DE LOS SIETE PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**
+ * LA COPIA DE LOS OCHO PERMISOS PARA LA PANTALLA. **No es una lista propia de ids.**
  *
  * `@mi-pasaporte/db/permissions-catalog` declara el conjunto CERRADO (el mismo que el `CHECK` de la
  * migracion 0041) y dice explicitamente por que no tiene un solo `import`: para que nadie
@@ -40,6 +40,10 @@ const PERMISSION_COPY: Record<
     label: "Campañas",
     detail: "Crear, editar, pausar y activar campañas.",
   },
+  pos: {
+    label: "POS",
+    detail: "Abrir, editar, cobrar y anular órdenes de mesa.",
+  },
   brand: {
     label: "Marca",
     detail: "Editar la identidad visual del negocio.",
@@ -56,6 +60,7 @@ const PERMISSION_ORDER: readonly PermissionScope[] = [
   "locations",
   "loyalty",
   "marketing",
+  "pos",
   "brand",
   "staff",
 ];

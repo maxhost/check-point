@@ -11,7 +11,11 @@ import {
   StaffError,
   toStaffDTO,
 } from "./staff";
-import { assertGrantable, parsePermissions } from "./staff-permissions";
+import {
+  assertGrantable,
+  assertPosGrantable,
+  parsePermissions,
+} from "./staff-permissions";
 
 /**
  * Spec 0067 §4 — el ALTA del integrante, separada de `staff.ts` porque ese archivo ya
@@ -139,6 +143,8 @@ export async function createStaff(
   // R1 — va ANTES de cualquier escritura: un no-owner que manda `staff` en la lista no puede
   // dejar ni un `user` huerfano detras del rechazo.
   assertGrantable(callerRole, input.permissions);
+  // Spec 0169: `pos` solo con el modulo encendido; tambien antes de escribir nada.
+  await assertPosGrantable(business.id, input.permissions);
   const handle = await freeHandle(business.id, input.name);
   const pin = generatePin();
   const pinHash = await hashPin(pin);

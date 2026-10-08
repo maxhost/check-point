@@ -25,3 +25,4 @@ export * from "./schema/welcome-device";
 export * from "./schema/business-customer";
 export * from "./schema/valley";
 export * from "./schema/cross-sale";
+export * from "./schema/pos";

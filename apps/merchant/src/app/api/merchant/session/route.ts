@@ -49,6 +49,8 @@ export async function GET(request: Request) {
       suspensionReason: businesses.suspensionReason,
       currencyCode: businesses.currencyCode,
       timezone: businesses.timezone,
+      // Spec 0169: el modulo POS, para que la UI pinte la seccion sin sondear `/api/pos/*`.
+      posEnabled: businesses.posEnabled,
       role: memberships.role,
       membershipStatus: memberships.status,
       // Spec 0086 §8: una columna mas en el `innerJoin` que ya existia. Lo que sale por la

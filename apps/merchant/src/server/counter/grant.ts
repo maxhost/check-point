@@ -44,7 +44,7 @@ export type GrantResult = {
 
 const cents = (value: string) => Math.round(Number(value) * 100);
 
-function toResult(granted: GrantedOrder): GrantResult {
+export function toResult(granted: GrantedOrder): GrantResult {
   const discount = granted.coupon?.discountAmount ?? "0.00";
   return {
     order: {
@@ -56,6 +56,28 @@ function toResult(granted: GrantedOrder): GrantResult {
       coupon: granted.coupon,
     },
   };
+}
+
+/**
+ * WHO and WITH WHAT a sale accredits (spec 0030): the membership within the operator's business
+ * (a foreign one → 403 `foreign_membership`), the business's accreditable program — the
+ * membership's own, or 404 `no_program` — and its accrual. Shared by the counter's grant and the
+ * POS close (spec 0169), so the two cannot diverge.
+ */
+export async function accrualContext(businessId: string, membershipId: string) {
+  const membership = await loadMembershipInBusiness(membershipId, businessId);
+  const program = await accreditableProgram(businessId);
+  if (membership.programId !== program.id) {
+    throw new CounterError(
+      404,
+      "no_program",
+      "El programa de esta membresía ya no acredita.",
+    );
+  }
+  const accrual = programAccrual(program);
+  const kind: "points" | "stamps" =
+    program.kind === "stamps" ? "stamps" : "points";
+  return { membership, program, accrual, kind };
 }
 
 /**
@@ -96,17 +118,10 @@ export async function grantAccrual(
           parseUuid(raw.locationId, "locationId"),
         );
 
-  const membership = await loadMembershipInBusiness(membershipId, business.id);
-  const program = await accreditableProgram(business.id);
-  if (membership.programId !== program.id) {
-    throw new CounterError(
-      404,
-      "no_program",
-      "El programa de esta membresía ya no acredita.",
-    );
-  }
-  const accrual = programAccrual(program);
-  const kind = program.kind === "stamps" ? "stamps" : "points";
+  const { membership, program, accrual, kind } = await accrualContext(
+    business.id,
+    membershipId,
+  );
 
   let total: string;
   let items: GrantItem[] = [];

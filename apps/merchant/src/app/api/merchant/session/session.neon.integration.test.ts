@@ -159,6 +159,8 @@ describe.skipIf(!integrationEnabled)(
           suspensionReason: null,
           currencyCode: "USD",
           timezone: "America/Guayaquil",
+          // Spec 0169: el modulo POS nace apagado.
+          posEnabled: false,
         },
         // Spec 0086 §8 / contrato §6: para un OWNER son **los SIETE**, aunque su fila en la
         // base los tenga en `'{}'` (el `CHECK 2` lo exige). La API no expone la columna,
@@ -173,6 +175,7 @@ describe.skipIf(!integrationEnabled)(
             "locations",
             "loyalty",
             "marketing",
+            "pos",
             "staff",
           ],
         },

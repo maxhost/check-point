@@ -1,8 +1,8 @@
 /**
- * EL CATALOGO DE LOS SIETE PERMISOS, PURO — spec 0086 §1 / ADR 0079 §1.
+ * EL CATALOGO DE LOS OCHO PERMISOS, PURO — spec 0086 §1 / ADR 0079 §1 (`pos`: spec 0169).
  *
  * **Este archivo no tiene un solo `import`, y eso es deliberado** (misma forma y mismo motivo
- * que `server/business-status.ts` y `server/session-view.ts`). Los siete valores los necesitan
+ * que `server/business-status.ts` y `server/session-view.ts`). Los ocho valores los necesitan
  * cuatro modulos que no se pueden importar entre si sin arrastrar runtime:
  *
  * - `schema/business.ts` — el `CHECK` de contencion de la migracion 0041;
@@ -16,7 +16,7 @@
  */
 
 /**
- * Los siete alcances por OBJETO (ADR 0079 §1, decision textual del owner:
+ * Los ocho alcances por OBJETO (ADR 0079 §1, decision textual del owner:
  * *«queremos un toggle por cada objeto, no uno por cada CRUD de objeto»*).
  *
  * **Un permiso autoriza LEER, CREAR y EDITAR su objeto. No hay variantes por verbo** — no
@@ -36,12 +36,13 @@ export const PERMISSIONS = [
   "locations",
   "loyalty",
   "marketing",
+  "pos",
   "staff",
 ] as const;
 
 export type PermissionScope = (typeof PERMISSIONS)[number];
 
-/** El conjunto de los siete como `string[]` mutable, que es lo que devuelve la API para un
+/** El conjunto de los ocho como `string[]` mutable, que es lo que devuelve la API para un
  * owner (§8 de la spec: la API **no expone la columna, expone la capacidad**). Se copia en
  * cada llamada: devolver el arreglo congelado dejaria que un consumidor lo mute. */
 export function allPermissions(): string[] {
@@ -72,7 +73,7 @@ export function normalizePermissions(values: readonly string[]): string[] {
 /**
  * Lo que la API devuelve como `permissions` para una membresia.
  *
- * **Para `role === 'owner'` son los SIETE, aunque su fila los tenga en `'{}'`** (spec 0086 §8
+ * **Para `role === 'owner'` son los OCHO, aunque su fila los tenga en `'{}'`** (spec 0086 §8
  * y contrato §6). El owner puede todo por definicion y el `CHECK 2` de la migracion 0041
  * **depende** de que su columna quede vacia: la forma de la API y la forma de la fila no
  * tienen por que coincidir, y aca la diferencia es la que hace posible el invariante.

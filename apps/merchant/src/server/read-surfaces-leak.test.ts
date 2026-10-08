@@ -108,6 +108,8 @@ const BUSINESS_ROW = {
   suspensionReason: "Reclamos de consumidores.",
   currencyCode: "USD",
   timezone: "America/Guayaquil",
+  // Spec 0169: `pos_enabled` es `NOT NULL`; la fila del doble lo trae como la base.
+  posEnabled: false,
   role: "owner",
   membershipStatus: "active",
   logoObjectKey: "brand/leak/logo.png",
@@ -167,6 +169,8 @@ const SURFACES: Surface[] = [
       "business.suspensionReason",
       "business.currencyCode",
       "business.timezone",
+      // Spec 0169: el modulo POS del comercio (un booleano, no una clave interna).
+      "business.posEnabled",
       "membership.role",
       "membership.status",
       // Spec 0086 §8: la CAPACIDAD del caller, para que la UI pinte la navegacion sin
