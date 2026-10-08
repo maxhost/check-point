@@ -3,6 +3,19 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE VIGENTE (2026-10-08) — CABECERA Y X DEL POS
+
+Owner pidió retirar Volver al historial de abiertas, quitar el bloque blanco de
+cabecera y X con aspecto de Marca pero círculo simétrico. Spec 0176 ampliada y
+cerrada antes del código (4ad8ea9). Se retiró module-topline del header POS,
+que activaba fondo canvas en counter-flow móvil. X usa tokens, círculo 44×44,
+icono 24 px y padding cero; solo X devuelve al listado en abiertas. Cerradas
+mantienen retorno inferior. Sin cambios en Marca ni kit/CSS/API.
+32 pruebas POS pasan (14,8 s), incluidos tamaño real, cabecera transparente,
+retorno y ausencia del botón. Captura móvil vista. Typecheck 6 paquetes, lint,
+formato, guardia UI sin aumentos y diff-check verdes. Rama dev, sin merge/push;
+QA owner con pnpm dev:local pendiente. Archivos ajenos preservados.
+
 ## ⇥ ESTADO (2026-10-08) — SPECS 0174–0176: UI POS
 
 0174 en **268b951**: se retiró Actualizar órdenes; X del listado vuelve a

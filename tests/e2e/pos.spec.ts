@@ -767,7 +767,9 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   expect(reads.filter((url) => url === "/api/pos/orders/order-1")).toHaveLength(
     0,
   );
-  await page.getByRole("button", { name: "Volver al historial" }).click();
+  await page
+    .getByRole("button", { name: "Volver al listado de órdenes" })
+    .click();
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page
@@ -781,7 +783,9 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
     version: 1,
     items: [{ lineId: "line-1", quantity: 2 }],
   });
-  await page.getByRole("button", { name: "Volver al historial" }).click();
+  await page
+    .getByRole("button", { name: "Volver al listado de órdenes" })
+    .click();
   await expect(page.getByText("$20,00", { exact: true })).toBeVisible();
   await page.clock.install();
   await page.clock.fastForward(60 * 60 * 1000);
@@ -808,7 +812,9 @@ test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", 
   await expect(
     page.getByRole("button", { name: "Editar", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Volver al historial" }).click();
+  await page
+    .getByRole("button", { name: "Volver al listado de órdenes" })
+    .click();
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect(
     page.getByRole("button", { name: "Editar", exact: true }),
@@ -1089,7 +1095,9 @@ for (const action of ["close", "void"] as const) {
     await expect
       .poll(() => reads.filter((url) => url === "/api/pos/orders").length)
       .toBe(2);
-    await page.getByRole("button", { name: "Volver al historial" }).click();
+    await page
+      .getByRole("button", { name: "Volver al listado de órdenes" })
+      .click();
     await expect(page.getByText("No hay órdenes abiertas.")).toBeVisible();
     const closedGroup = page.locator("section").filter({
       has: page.getByRole("heading", { name: "Cerradas hoy", exact: true }),
@@ -1399,6 +1407,21 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
     .locator("svg")
     .boundingBox();
   expect(closeIcon!.width).toBe(24);
+  const closeButton = page.getByRole("button", {
+    name: "Volver al listado de órdenes",
+    exact: true,
+  });
+  const closeBox = await closeButton.boundingBox();
+  expect(closeBox!.width).toBe(44);
+  expect(closeBox!.height).toBe(44);
+  const headerBackground = await closeButton.evaluate(
+    (el) => getComputedStyle(el.parentElement!).backgroundColor,
+  );
+  expect(headerBackground).toBe("rgba(0, 0, 0, 0)");
+  await expect(
+    page.getByRole("button", { name: "Volver al historial" }),
+  ).toHaveCount(0);
+
   await page.screenshot({ path: "/private/tmp/pos-0176-mobile.png" });
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.screenshot({ path: "/private/tmp/pos-0176-desktop.png" });

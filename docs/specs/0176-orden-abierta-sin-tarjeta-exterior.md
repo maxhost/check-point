@@ -64,3 +64,7 @@ X de POS conserva el aspecto de Marca (fondo suave, color primario, círculo), p
 fija ancho y alto iguales con utilidades del kit, sin copiar colores ni cambiar Marca.
 Verificar en navegador fondo transparente, botón redundante ausente, ancho/alto
 44 px, icono 24 px y retorno correcto. Adaptar las pruebas a la X.
+
+Ajuste verificado: 32 pruebas POS pasan (14,8 s). X 44×44 e icono 24 px,
+cabecera transparente y retorno inferior ausente en abiertas. Captura móvil vista.
+Typecheck, ESLint, formato y guardia sin aumentos verdes.

@@ -308,7 +308,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       <div
         className={`backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0 ${openDetail ? "w-full" : ""}`}
       >
-        <div className="module-topline flex items-start justify-between gap-4 print:hidden">
+        <div className="flex items-start justify-between gap-4 print:hidden">
           <div className="min-w-0 flex-1">
             <PageHeader
               title="POS"
@@ -319,7 +319,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             <Button
               variant="quiet"
               aria-label="Volver al listado de órdenes"
-              className="close-module size-11 shrink-0 rounded-full bg-primary-soft p-0!"
+              className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
               isDisabled={busy || refreshing}
               onPress={back}
             >
@@ -329,7 +329,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             <Link
               href="/backoffice"
               aria-label="Cerrar POS"
-              className="close-module shrink-0 no-underline"
+              className="close-module grid size-11 shrink-0 place-items-center rounded-full! bg-primary-soft! p-0! no-underline"
             >
               <Xmark aria-hidden="true" className="size-6" />
             </Link>
@@ -520,7 +520,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                         </Button>
                       </>
                     )}{" "}
-                    {view === "detail" && (
+                    {view === "detail" && order.status !== "open" && (
                       <Button
                         variant="quiet"
                         isDisabled={busy || refreshing}
