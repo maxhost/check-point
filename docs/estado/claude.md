@@ -10,45 +10,41 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-07, noche) — SPEC 0168 IMPLEMENTADA (`140f6e9`, cierre `772d74a`); FALTA EL ALTA DEL TUNEL DEL OWNER
+## ⇥ ESTADO (2026-10-08) — AMBIENTE LOCAL + TUNEL ANDANDO (`pnpm dev:local`); TELEFONO PARQUEADO (#80)
 
 **Hecho (verificado):**
-- **Spec 0168 implementada** en `140f6e9` (N1, conversacion principal): `tools/tunnel/{config.yml,up.sh}`,
-  `pnpm dev:tunnel`, merchant en `:3001` (despues `:3201`, ver abajo), `allowedDevOrigins` con `dev-business.`/`dev-my.`, `check-env.ts` con el
-  candado de origenes + `CHECK_ENV_ROOT`, `check-env.test.ts` (5/5), runbook `docs/runbooks/tunel-dev.md`.
-- 2 mutaciones ejecutadas, cada una ROJO solo en su caso ((d) y (c)); revertidas con `diff` vacio; `rg MUTATION` vacio.
-- `node tools/local-db/check-env.ts` con los `.env` reales: **exit 1** con 5 `MAL` (BETTER_AUTH_URL y CONSUMER_ORIGIN
-  de las dos apps), transcripto en el cierre de la spec. `up.sh` sin `cloudflared` → `ABORTADO…`, exit 1.
-- `pnpm verify` con Node 24: los 8 gates `ok` (3136 tests). Commits locales, sin push.
+- Spec 0168 implementada y con QA del owner (`140f6e9`, `853a01e` puertos, `b77de14`, `ce177ec`, `653f4bb`):
+  consumer `:3200`, merchant `:3201`, tunel `checkpass-dev` (alta del owner hecha). `pnpm dev:local` del owner: base,
+  apps, tunel y smoke en `200`. Login del comercio por `dev-business.` con `pnpm dev:link`: 1 sesion en
+  `merchant_auth.session` LOCAL. `check-env.ts` exit 0 (ahora tambien exige `BETTER_AUTH_SECRET`).
+- Skill `/entorno-local` (estado/arrancar/link/parar/reset-base) y `pnpm dev:local` / `pnpm dev:link`.
 
-- **Alta del tunel HECHA por el owner:** tunel `checkpass-dev` (`edc1fd88-…`), `dig` de los dos hosts → IPs de
-  Cloudflare; `up.sh` conecta sin `credentials-file` explicito. `:3000` lo ocupaba `GlaDOS/apps/web` y el tunel lo
-  publico en `dev-my.` <1 min (apagado, 530). **Owner: puertos consumer `:3200`, merchant `:3201`** (`853a01e`, ADR 0127).
+**Parqueado por el owner (PARQUEADO #80):** QA del telefono (PWA + push). El cliente solo crea cuenta con Google/Apple
+y el callback `dev-my.` no esta registrado. Al retomar: preguntar credenciales de PROD vs de desarrollo.
 
-**Siguiente (owner, en este orden):**
-1. ~~Alta del tunel~~ hecha. Levantar SIEMPRE las apps antes que `pnpm dev:tunnel`.
-2. Variables del §4 con el script del scratchpad de esta sesion `aplicar-0168.ts` (si se perdio, rehacerlo: reemplaza
-   3 lineas y deja `.env.local.respaldo-0168`, ignorado por git). Despues `node tools/local-db/check-env.ts` → exit 0.
-3. Con el owner (DoD pendiente de la 0168): `dig +short` de los dos hosts; `curl` 200 a
-   `https://dev-my.checkpass.club/wallet` y `https://dev-business.checkpass.club/es/business/onboarding`; link de login
-   en la consola con `dev-business.`; medir si `cloudflared` pide `credentials-file` explicito; PWA + push en el
-   telefono → `select count(*) from consumer.web_push_subscription` en la base LOCAL sube en 1. Anotarlo en el cierre.
-4. Despues: QA manual de la 0167 (login, alta, sello, logo en bucket dev) por las direcciones del tunel.
+**Siguiente:** lo que el owner pida. QA manual de la 0167 por el tunel (alta, sello, logo en bucket dev) sigue posible
+del lado del comercio.
 
-**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo en checkpass.club con
-acceso abierto (ADR 0127); no borra secretos de sus `.env`: se COMENTAN con `#` (wallet, SMS); R2 de desarrollo;
-Vercel Hobby; rotacion de claves la decide el owner (no recordarla). Wallet real en el telefono: decision ABIERTA.
+**Pregunta abierta al owner, SIN respuesta:** rama por trabajo, solo local, merge a `main` despues de `verify` (el lo
+propuso el 2026-10-08: «si algo sale mal no tengo que mergear a main y contaminar main, simplemente descartar»).
+Si dice que si: ADR + cambiar «Como se trabaja». Cuidado medido: la base local no se descarta con la rama
+(`reset-base`).
+
+**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
+puertos 3200/3201 (ADR 0127); no borra secretos de sus `.env`: se COMENTAN; R2 de desarrollo; Vercel Hobby; rotacion
+de claves la decide el owner (no recordarla). Wallet real en el telefono: decision ABIERTA.
 
 **Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
-desarrollo (hoy consumer local usa el de PROD); `.env.example` sin el bloque de la 0167 (agentes sin permiso).
+desarrollo; `.env.example` sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
 
 **Como se trabaja:** commits LOCALES en `main`, sin push (Hobby; contar con `git rev-list --count origin/main..main`).
 PROD con datos reales: cero escrituras sin OK explicito.
 
 **Gotchas:**
-- El owner edita con TextEdit: guarda `.rtf`. Darle scripts que hagan el cambio, una sola ruta de archivo por paso.
-- El hook `env-read-guard.sh` bloquea todo comando que contenga `.env` junto a `grep`/`head`/`cut`/`sed`: escribir el
-  script con Write y correrlo aparte. Los agentes no pueden escribir `.env*`.
-- En zsh el exit de un pipe es `$pipestatus`, no `${PIPESTATUS[0]}` (sale vacio).
+- El owner edita con TextEdit: darle scripts de scratchpad que hagan el cambio. Agentes no escriben `.env*`.
+- `env-read-guard.sh` bloquea cualquier comando cuyo TEXTO tenga `.env` junto a `grep`/`sed`/`head`: poner la edicion
+  en un archivo (Write) y correrlo aparte.
+- La carpeta del repo llega como `Documents` o `documents` (APFS): comparar rutas en minusculas.
+- bash de macOS es 3.2: sin `wait -n`; array vacio + `set -u` revienta.
 
-**Prompt para retomar:** «Lee docs/estado/claude.md: cerrar la DoD de la 0168 con el owner (tunel ya dado de alta)».
+**Prompt para retomar:** «Lee docs/estado/claude.md».
