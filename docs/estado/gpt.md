@@ -3,6 +3,28 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — INVESTIGACIÓN UX POS MOBILE
+
+Owner pidió investigación con agente porque orden abierta y nueva orden siguen
+con UX pobre. Agente pos_mobile_ux ejecutado explícitamente autorizado: auditó
+editor/carrito/flujo y fuentes oficiales; sin modificaciones ni órdenes reales.
+GPT revisó código, capturas y documentación Square, Shopify, Toast y Apple.
+Informe en [investigación UX](../design-explorations/2026-10-08-pos-mobile-ux.md).
+
+Recomendación para revisar, sin spec nueva cerrada: workspace común Pedido/Productos
+para nueva/existente; mesa/local compactos, eliminar modo Editar como paso obligatorio,
+review de carrito con un scroll, estado guardado/dirty, X protegida, acciones contextuales.
+Guardar explícito conservado; no auto-save/polling/TTL, no cambios de API ni tablas
+inventadas. Impresión/anulación según frecuencia real, nunca perder snapshots/precios.
+Captura catálogo 390×844: primer producto≈551, footer≈727, ~176px útiles; evidencia
+heurística, no prueba con operadores ni teclado real. Propuesta tiene escenarios
+para comparar tiempos/toques/errores con 3–5 operadores y dispositivos reales.
+
+Solo docs, formato y diff-check verdes; código del producto intacto. Dev, sin
+merge/push. Siguiente paso propuesto: maqueta navegable de los dos flujos y definir
+salida/guardado/cobro antes de spec funcional. No marcar propuesta implementada.
+Cambios ajenos gotchas/LECCIONES preservados; staging vacío al entregar.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0177: JERARQUÍA DE ORDEN ABIERTA
 
 Spec cerrada y reservada en 2e982c5. Orden abierta muestra mesa como título,
