@@ -287,6 +287,6 @@ chequea al final de la escalera (solo cambia el orden de errores, todos 403); co
 cierre ya usada por otra venta); `PUT` sin `locationId` conserva el local, `null`/`""` lo quita; `version_conflict` lleva
 `order` tambien en el cierre; `itemCount` = suma de cantidades.
 
-Hallazgo a decidir (owner): cerrar con pase una mesa cuyo local se archivo despues de abrirla acredita en ese local
-archivado; el mostrador daria `unknown_location`.
+Cerrar con pase una mesa cuyo local se archivo despues de abrirla acredita en ese local archivado (el mostrador daria
+`unknown_location`). **Owner 2026-10-08: «por ahora lo dejamos asi, opcion A»** — la mesa se cobra igual.
 
