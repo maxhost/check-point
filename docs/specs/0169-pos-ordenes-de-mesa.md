@@ -1,7 +1,7 @@
 ---
 spec: 0169
 fecha: 2026-10-08
-estado: cerrada
+estado: implementada
 resumen: Modulo POS (API; la UI la hace GPT). Ordenes abiertas por mesa en `core.pos_order` (precio fijo al agregar, version optimista), editar, anular, imprimir con datos de la API; cerrar sin pase o con pase, que ejecuta la MISMA acreditacion del mostrador con el cupon elegido y enlaza la `core.order`. Modulo por comercio (`pos_enabled`, no se apaga con ordenes abiertas) y permiso `pos`. Una migracion. Implementa el ADR 0130.
 disjunta: no
 archivos: packages/db/src/schema/pos.ts, packages/db/src/schema/business.ts, packages/db/src/schema/index.ts, packages/db/src/permissions-catalog.ts, packages/db/drizzle/0066_pos_ordenes_de_mesa.sql, apps/merchant/src/server/pos/*, apps/merchant/src/server/counter/grant-coupon.ts, apps/merchant/src/server/counter/grant.ts, apps/merchant/src/server/staff-permissions.ts, apps/merchant/src/server/session-view.ts, apps/merchant/src/app/api/pos/**, apps/merchant/src/app/api/merchant/business/pos/route.ts, apps/merchant/src/app/api/merchant/session/route.ts
@@ -273,3 +273,20 @@ Despues: encargo a GPT con §Contrato.
 
 Nada. El canje de premios queda en el mostrador (owner 2026-10-08). La idea del owner de que el cliente active un
 canje desde `my.checkpass.club` como cupon es otra feature: fila en `docs/PARQUEADO.md`.
+
+## Implementacion (2026-10-08)
+
+`79e3efc` (implementador) + `53fec62` (`/delete-user` borra las mesas cobradas con pase, owner) + el test
+`pos/pos-close-reuse.neon.integration.test.ts` (oraculos R1/R2 del revisor). **PASS del revisor**: POS 35/35, mostrador
+131/131 sin editar, `pnpm verify` ok salvo e2e (puerto 3200 ocupado por el ambiente local). Mutaciones: M1–M4 del
+implementador rojas; del revisor R1 roja, R2 roja solo con su oraculo (ahora permanente; re-medida: «expected 503 to be
+409»), R3 sobrevive (`no_program` por cambio de programa en `accrualContext`, codigo movido tal cual, deuda previa).
+
+Desvios: escalera comun `server/operator-guard.ts` (el mostrador delega con el mismo orden y mensajes); `posEnabled` se
+chequea al final de la escalera (solo cambia el orden de errores, todos 403); codigo nuevo 409 `request_reused` (clave de
+cierre ya usada por otra venta); `PUT` sin `locationId` conserva el local, `null`/`""` lo quita; `version_conflict` lleva
+`order` tambien en el cierre; `itemCount` = suma de cantidades.
+
+Hallazgo a decidir (owner): cerrar con pase una mesa cuyo local se archivo despues de abrirla acredita en ese local
+archivado; el mostrador daria `unknown_location`.
+
