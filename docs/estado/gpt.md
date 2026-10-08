@@ -13,17 +13,21 @@ Resumen expandible mantiene snapshots por lineId, incluso precios duplicados/pro
 Shared DetailedSale recibe disabled y productOrder opcionales; Mostrador conserva defaults.
 No cambios de API, kit, CSS o tooling; cambios ajenos de Claude conservados.
 
-14 e2e afectados verdes (9 POS + 5 Mostrador, 16,1 s). Typecheck, lint, formato,
-ui-guard sin aumentos y números verdes con Node 24.20.0. Capturas móvil 390 px/escritorio
-1100 px vistas. L2 sin mutaciones nuevas; no build sobre dev activo. Pendiente QA owner e
-independiente; 0171 permanece cerrada. Gate global anterior de 0170 sigue documentado abajo.
+Actualización de contrato confirmada por owner: commit local **2810d33** hace obligatorio
+bestSellingProductIds en PosCatalog y actualiza mocks. POS conserva orden recibido, seguido
+por productos sin ranking alfabéticos; [] conserva catálogo alfabético. Mostrador mantiene
+productOrder opcional/default, sin cambios. Sin cálculo de ventas ni fechas en cliente.
 
-**Dependencia Claude:** GET /api/pos/catalog?locationId= debe añadir bestSellingProductIds:
-string[] en orden de más vendidos del local. Definir período y métrica en contrato, incluir
-ventas cerradas con/sin pase y excluir anuladas, evitando doble conteo. UI consume ese campo
-opcional; prueba usa mock, fallback alfabético. Al cerrar apareció trabajo concurrente de Claude
-en route.ts/best-sellers.ts y 0169: unidades POS cerradas del local, últimos 30 días propuestos.
-No se tocó ni verificó ese trabajo de servidor; confirmar entrega y pruebas con Claude.
+16 e2e afectados verdes (11 POS + 5 Mostrador, 18,7 s), incluidos ranking parcial/vacío y
+producto sin ventas visible y añadible. Typecheck, lint, formato, ui-guard sin aumentos y
+números verdes con Node 24.20.0. Capturas vistas en entrega anterior. L2 sin mutaciones
+nuevas ni build sobre dev activo. Pendientes QA owner con pnpm dev:local e independiente;
+0171 permanece cerrada. Gate global anterior de 0170 sigue documentado abajo.
+
+Contrato 0169: unidades de mesas POS cerradas con/sin pase, últimos 30 días por cierre;
+local seleccionado o negocio entero sin locationId; excluye abiertas/anuladas y ventas
+Mostrador. Claude entrega servidor y sus pruebas por separado. GPT no tocó ni commiteó
+archivos de Claude. ci:status no pudo consultar GitHub (fetch failed, informativo).
 
 Settings/hydration anterior: se encontró mezcla de chunks viejos/nuevos en .next/dev; se
 reinició pnpm dev:local con caché merchant renovada, sin cambio fuente. Owner confirmó que
