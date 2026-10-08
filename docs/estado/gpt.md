@@ -3,6 +3,30 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0171: POS REUTILIZA MOSTRADOR
+
+Owner pidió misma interfaz para añadir productos y confirmó ranking por más vendidos del local.
+Reserva local `f640dc9`; implementación `8e19a38`; rama dev, sin merge ni push. POS importa DetailedSale existente de
+Mostrador: carrusel horizontal, búsqueda y cantidades en tarjetas; no copia markup ni CSS.
+Shell usa ancho/padding existentes, con min-w-0 para impedir desbordamiento del carrusel.
+Resumen expandible mantiene snapshots por lineId, incluso precios duplicados/productos borrados.
+Shared DetailedSale recibe disabled y productOrder opcionales; Mostrador conserva defaults.
+No cambios de API, kit, CSS o tooling; cambios ajenos de Claude conservados.
+
+14 e2e afectados verdes (9 POS + 5 Mostrador, 16,1 s). Typecheck, lint, formato,
+ui-guard sin aumentos y números verdes con Node 24.20.0. Capturas móvil 390 px/escritorio
+1100 px vistas. L2 sin mutaciones nuevas; no build sobre dev activo. Pendiente QA owner e
+independiente; 0171 permanece cerrada. Gate global anterior de 0170 sigue documentado abajo.
+
+**Dependencia Claude:** GET /api/pos/catalog?locationId= debe añadir bestSellingProductIds:
+string[] en orden de más vendidos del local. Definir período y métrica en contrato, incluir
+ventas cerradas con/sin pase y excluir anuladas, evitando doble conteo. UI consume ese campo
+opcional; prueba usa mock, API real aún no devuelve ranking, fallback alfabético. Owner avisado.
+
+Settings/hydration anterior: se encontró mezcla de chunks viejos/nuevos en .next/dev; se
+reinició pnpm dev:local con caché merchant renovada, sin cambio fuente. Owner confirmó que
+pudo probar. Próximo paso: probar esta corrección con pnpm dev:local antes de pasar a main.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0170: PANTALLAS POS LOCALES EN DEV
 
 El owner pidió ejecutar `docs/encargo-gpt-2026-10-08-pos.md` contra la API 0169, exclusivamente
