@@ -26,7 +26,7 @@ resumen compacto expandible y acciones de guardar/cancelar; ancho/padding del sh
 precios tipeados, edición de productos borrados y máximos de 200 líneas. Deshabilitar el componente compartido
 mientras guarda (opcional, default false para Mostrador). Sin cambio de CSS o kit.
 
-Dependencia pendiente del encargo completo: ranking de más vendidos exige datos nuevos en el contrato HTTP.
+Dependencia original del encargo completo (resuelta por actualización de contrato abajo): ranking de más vendidos exige datos nuevos en el contrato HTTP.
 No se inventa un ranking a partir del catálogo alfabético ni se consulta la API de counter desde POS.
 Owner confirmó «más vendidos del local». Se entrega la paridad visual ahora y el consumo opcional
 de `bestSellingProductIds: string[]` en `/api/pos/catalog?locationId=`. Claude debe calcularlo
@@ -70,14 +70,14 @@ Rutas del frontmatter. No disjunta con edición simultánea de sale-forms o del 
 
 ## Declarado AFUERA
 
-Ranking comercial: falta dato del contrato HTTP. QA del owner con catálogo real y PASS independiente.
+Cálculo del ranking comercial: corresponde al servidor de Claude. QA del owner con catálogo real y PASS independiente.
 No se ejecuta build sobre el dev local activo para evitar repetir el incidente de caché de la 0170.
 
 ## Evidencia
 
 Node 24.20.0: 14 e2e afectados pasan (9 POS y 5 Mostrador), en 16,1 s.
 Capturas móvil 390 px y escritorio 1100 px vistas. Ranking probado con respuesta HTTP
-simulada; no existe aún en API real. Typecheck, ESLint, Prettier, ui-guard y números verdes.
+simulada; la API se entregó posteriormente según la actualización abajo. Typecheck, ESLint, Prettier, ui-guard y números verdes.
 
 ## Handoff
 
@@ -89,8 +89,10 @@ Owner confirma el campo obligatorio bestSellingProductIds en 0169. Esta continua
 solo PosCatalog y mocks/pruebas: ranking primero en el orden recibido, restantes alfabéticos,
 y [] equivalente al catálogo alfabético. Mostrador mantiene productOrder opcional y su default.
 No se calcula ranking ni períodos en cliente. Servidor de Claude queda fuera del commit.
-Verificar con e2e POS/Mostrador afectados, tipos, lint, formato y ui-guard (L2).
+Verificado: 16 e2e afectados pasan (11 POS + 5 Mostrador, 18,7 s), incluidos ranking
+parcial/vacío y producto sin ventas visible y añadible. Tipos, lint, formato, ui-guard y números
+verdes. Solo se consume el orden HTTP, sin cálculo de ventas o fechas en cliente (L2).
 
 ## Abierto
 
-Ninguna decisión pendiente para la paridad visual. El ranking pertenece a la dependencia HTTP declarada.
+Ninguna decisión pendiente para la paridad visual ni el consumo del contrato de ranking.

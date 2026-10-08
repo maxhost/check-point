@@ -99,6 +99,7 @@ async function setup(page: Page, enabled = true) {
           { ...product, id: "custom", name: "Especial", unitPrice: null },
         ],
         categories: [],
+        bestSellingProductIds: [],
       },
     }),
   );
@@ -590,6 +591,52 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
     path: testInfo.outputPath("pos-catalog-desktop.png"),
   });
 });
+
+for (const scenario of [
+  {
+    name: "ranking parcial conserva los demás productos alfabéticamente",
+    ranking: ["juice"],
+    expected: ["Agregar Zumo", "Agregar Agua", "Agregar Café"],
+  },
+  {
+    name: "ranking vacío conserva todo el catálogo alfabético",
+    ranking: [],
+    expected: ["Agregar Agua", "Agregar Café", "Agregar Zumo"],
+  },
+]) {
+  test(`POS: ${scenario.name}`, async ({ page }) => {
+    await setup(page);
+    await page.route("**/api/pos/catalog**", (route) =>
+      route.fulfill({
+        json: {
+          products: [
+            { ...product, id: "juice", name: "Zumo" },
+            product,
+            { ...product, id: "water", name: "Agua" },
+          ],
+          categories: [],
+          bestSellingProductIds: scenario.ranking,
+        },
+      }),
+    );
+    await page.goto(harness.url);
+    await page.getByRole("button", { name: "Nueva orden" }).click();
+    await page.getByRole("button", { name: /Local/ }).click();
+    await page.getByRole("option", { name: "Centro" }).click();
+    const cards = page.locator(".counter-detailed .counter-product-add");
+    await expect(cards).toHaveCount(scenario.expected.length);
+    for (const [index, name] of scenario.expected.entries()) {
+      await expect(cards.nth(index)).toHaveAccessibleName(name);
+      await expect(cards.nth(index)).toBeVisible();
+    }
+    await page
+      .getByRole("button", { name: "Agregar Agua", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: /1 artículos/ }),
+    ).toBeVisible();
+  });
+}
 
 test("el resumen mantiene snapshots duplicados y productos borrados separados al editar", async ({
   page,
