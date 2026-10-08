@@ -311,8 +311,12 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
         <div className="flex items-start justify-between gap-4 print:hidden">
           <div className="min-w-0 flex-1">
             <PageHeader
-              title="POS"
-              description="Atiende tus mesas y cierra cada venta cuando el cliente pague."
+              title={openDetail ? order!.tableLabel : "POS"}
+              description={
+                openDetail
+                  ? `Orden abierta${order!.location ? ` · ${order!.location.name}` : ""}`
+                  : "Atiende tus mesas y cierra cada venta cuando el cliente pague."
+              }
             />
           </div>
           {view === "detail" || view === "edit" ? (
@@ -479,21 +483,18 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             )}
             {order && (view === "detail" || view === "checkout") && (
               <>
-                <DetailContainer className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
+                <DetailContainer
+                  className={`grid gap-5 print:border-0 print:p-0 print:shadow-none ${openDetail ? "pb-44 md:pb-0" : ""}`}
+                >
                   <PosResult order={order} />
-                  <PosTicket order={order} />
-                  <div className="flex flex-wrap gap-3 print:hidden">
-                    <Button
-                      variant="secondary"
-                      isDisabled={busy || refreshing}
-                      onPress={() => window.print()}
-                    >
-                      Imprimir
-                    </Button>
-                    {order.status === "open" && view === "detail" && (
-                      <>
+                  <PosTicket order={order} compact={openDetail} />
+                  {openDetail ? (
+                    <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0 print:hidden">
+                      <div className="grid grid-cols-2 gap-3">
                         <Button
                           variant="secondary"
+                          className="min-h-12"
+                          fullWidth
                           isDisabled={busy || refreshing}
                           onPress={() => {
                             setError(null);
@@ -503,13 +504,8 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                           Editar
                         </Button>
                         <Button
-                          variant="danger"
-                          isDisabled={busy || refreshing}
-                          onPress={() => void prepareVoid()}
-                        >
-                          Anular
-                        </Button>
-                        <Button
+                          className="min-h-12"
+                          fullWidth
                           isDisabled={busy || refreshing || !order.items.length}
                           onPress={() => {
                             setError(null);
@@ -518,18 +514,45 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                         >
                           Cobrar
                         </Button>
-                      </>
-                    )}{" "}
-                    {view === "detail" && order.status !== "open" && (
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Button
+                          variant="quiet"
+                          isDisabled={busy || refreshing}
+                          onPress={() => window.print()}
+                        >
+                          Imprimir
+                        </Button>
+                        <Button
+                          variant="quiet"
+                          className="text-danger!"
+                          isDisabled={busy || refreshing}
+                          onPress={() => void prepareVoid()}
+                        >
+                          Anular
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-3 print:hidden">
                       <Button
-                        variant="quiet"
+                        variant="secondary"
                         isDisabled={busy || refreshing}
-                        onPress={back}
+                        onPress={() => window.print()}
                       >
-                        Volver al historial
+                        Imprimir
                       </Button>
-                    )}
-                  </div>
+                      {view === "detail" && (
+                        <Button
+                          variant="quiet"
+                          isDisabled={busy || refreshing}
+                          onPress={back}
+                        >
+                          Volver al historial
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </DetailContainer>
                 {view === "checkout" && order.status === "open" && (
                   <PosCheckout

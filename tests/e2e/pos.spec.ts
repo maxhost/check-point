@@ -201,9 +201,7 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
     .getByRole("spinbutton", { name: "Precio unitario de Especial" })
     .press("Tab");
   await page.getByRole("button", { name: "Guardar orden" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(createBody).toEqual({
     tableLabel: "Mesa 4",
     locationId: "local-1",
@@ -298,7 +296,7 @@ test("conflicto carga versión vigente y anulación confirmada", async ({
     ),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Mesa actual · Precuenta" }),
+    page.getByRole("heading", { name: "Mesa actual" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Anular", exact: true }).click();
   expect(voided).toBe(false);
@@ -413,7 +411,7 @@ test("cupón inválido se puede quitar; error al cerrar conserva orden abierta",
     page.getByRole("button", { name: "Cerrar venta", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
+    page.getByRole("heading", { name: "Mesa 4 · Precuenta", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("El cupón venció.").first()).toBeVisible();
 });
@@ -702,9 +700,7 @@ test("el resumen mantiene snapshots duplicados y productos borrados separados al
   await page
     .getByRole("button", { name: "Guardar orden", exact: true })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(body).toMatchObject({
     items: [
       { lineId: "line-1", productId: "coffee", quantity: 1 },
@@ -794,9 +790,7 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
     document.dispatchEvent(new Event("visibilitychange"));
   });
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(reads).toEqual(firstReads);
   await page.reload();
   await expect(page.getByRole("button", { name: "Nueva orden" })).toBeVisible();
@@ -831,7 +825,7 @@ test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", 
   await expect(page.getByRole("button", { name: "Nueva orden" })).toBeVisible();
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect(
-    page.getByRole("heading", { name: "Mesa actual · Precuenta" }),
+    page.getByRole("heading", { name: "Mesa actual" }),
   ).toBeVisible();
   expect(reads.filter((url) => url === "/api/pos/orders/order-1")).toHaveLength(
     2,
@@ -956,18 +950,12 @@ test("caché POS: una respuesta de A no desplaza la mesa B seleccionada", async 
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect.poll(() => typeof release).toBe("function");
   await page.getByRole("button", { name: "Abrir Mesa dos" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Mesa dos · Precuenta" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mesa dos" })).toBeVisible();
   const response = page.waitForResponse("**/api/pos/orders/order-1");
   release();
   await response;
-  await expect(
-    page.getByRole("heading", { name: "Mesa dos · Precuenta" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Mesa dos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Mesa 4" })).toHaveCount(0);
 });
 
 for (const status of [401, 403, 404, 503, "transport"] as const) {
@@ -1002,13 +990,11 @@ for (const status of [401, 403, 404, 503, "transport"] as const) {
           "No pudimos actualizar los datos. Puedes consultar la última versión disponible.",
         ),
       ).toBeVisible();
-      await expect(
-        page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
     } else {
-      await expect(
-        page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Mesa 4" })).toHaveCount(
+        0,
+      );
       if (status === 404)
         await expect(
           page.getByRole("button", { name: "Abrir Mesa 4" }),
@@ -1147,7 +1133,7 @@ test("caché POS: anulación relee y exige revisar una orden que cambió", async
   await open(page);
   await page.getByRole("button", { name: "Anular", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Mesa cambiada · Precuenta" }),
+    page.getByRole("heading", { name: "Mesa cambiada" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Anular orden", exact: true }),
@@ -1294,7 +1280,7 @@ test("caché POS: conflicto sin snapshot bloquea acciones hasta releer la versi�
   ).toBeDisabled();
   release();
   await expect(
-    page.getByRole("heading", { name: "Mesa actual · Precuenta" }),
+    page.getByRole("heading", { name: "Mesa actual" }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Editar", exact: true }),
@@ -1371,9 +1357,7 @@ test("órdenes abiertas: filas compactas con mesa, total y Abrir", async ({
   await section
     .getByRole("button", { name: "Abrir Terraza", exact: true })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Terraza · Precuenta" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Terraza" })).toBeVisible();
 });
 
 test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
@@ -1396,7 +1380,7 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
     };
   });
   expect(exterior).toEqual({
-    padding: "0px",
+    padding: "0px 0px 176px",
     border: "0px",
     background: "rgba(0, 0, 0, 0)",
   });
@@ -1456,4 +1440,55 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   expect(
     reads.filter((url) => url !== "/api/pos/catalog?locationId=local-1"),
   ).toEqual(firstReads);
+});
+
+test("orden abierta prioriza mesa y acciones; conserva ticket impreso", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await expect(
+    page.getByRole("heading", { name: "Mesa 4", level: 1, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.locator("main").getByRole("heading", { name: "POS", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .locator("main")
+      .getByRole("heading", { name: "Café de prueba", exact: true }),
+  ).toHaveCount(0);
+  const edit = page.getByRole("button", { name: "Editar", exact: true });
+  const pay = page.getByRole("button", { name: "Cobrar", exact: true });
+  await expect(pay).toHaveClass(/bg-primary /);
+  await expect(edit).toHaveClass(/bg-surface/);
+  await expect(
+    page.getByRole("button", { name: "Anular", exact: true }),
+  ).toHaveClass(/text-danger!/);
+  const editBox = (await edit.boundingBox())!;
+  const payBox = (await pay.boundingBox())!;
+  expect(editBox.width).toBe(payBox.width);
+  expect(editBox.height).toBeGreaterThanOrEqual(48);
+  expect(payBox.y).toBe(editBox.y);
+  const total = page.getByText("Total: $10,00", { exact: true });
+  const totalBox = (await total.boundingBox())!;
+  expect(totalBox.y + totalBox.height).toBeLessThan(editBox.y);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: "/private/tmp/pos-0177-mobile.png" });
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.screenshot({ path: "/private/tmp/pos-0177-desktop.png" });
+  await page.emulateMedia({ media: "print" });
+  const ticket = page.getByRole("region", { name: "Ticket de la orden" });
+  await expect(
+    ticket.getByRole("heading", { name: "Café de prueba", exact: true }),
+  ).toBeVisible();
+  await expect(
+    ticket.getByRole("heading", { name: "Mesa 4 · Precuenta", exact: true }),
+  ).toBeVisible();
+  await expect(ticket.getByText("Centro", { exact: true })).toBeVisible();
 });

@@ -41,3 +41,13 @@ X y caché conservan comportamiento. Checkout/cerradas no cambian.
 Sin cambios de API, reglas de dinero, kit, CSS o servidor. No disjunta con POS.
 Sin mutaciones nuevas ni build/global verify sobre dev activo. Owner prueba
 pnpm dev:local; solo dev, sin merge ni push. Sin decisiones abiertas.
+
+## Evidencia
+
+33 pruebas POS pasan (14,3 s). Mesa como h1; POS/comercio ausentes del
+contenido visible; Cobrar primaria y Editar secundaria con ancho igual y alto
+48 px; Anular discreta danger. Total por encima del footer, sin overflow.
+Impresión muestra comercio, local y Mesa · Precuenta. Capturas móvil 390 px y
+escritorio 1100 px vistas en /private/tmp/pos-0177-*.png. Typecheck 6 paquetes,
+ESLint, Prettier, guardia UI 22 archivos sin aumentos, números y diff-check verdes.
+Sin build/global verify. Pendiente owner QA local antes de main.

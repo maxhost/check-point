@@ -1,7 +1,13 @@
 import { Heading, Text } from "../../../ui";
 import { formatMoney, unitLabel } from "../counter/types";
 import type { PosOrder } from "./pos-types";
-export function PosTicket({ order }: { order: PosOrder }) {
+export function PosTicket({
+  order,
+  compact = false,
+}: {
+  order: PosOrder;
+  compact?: boolean;
+}) {
   const money = (value: string) =>
     formatMoney(Number(value), order.business.currencyCode);
   return (
@@ -9,9 +15,15 @@ export function PosTicket({ order }: { order: PosOrder }) {
       aria-label="Ticket de la orden"
       className="grid gap-4 print:visible print:absolute print:inset-x-0 print:top-0 print:p-4"
     >
-      <Heading level={2}>{order.business.name}</Heading>
-      {order.location && <Text>{order.location.name}</Text>}
-      <Heading level={3}>
+      <Heading level={2} className={compact ? "hidden print:block" : undefined}>
+        {order.business.name}
+      </Heading>
+      {order.location && (
+        <Text className={compact ? "hidden print:block" : undefined}>
+          {order.location.name}
+        </Text>
+      )}
+      <Heading level={3} className={compact ? "hidden print:block" : undefined}>
         {order.tableLabel} ·{" "}
         {order.status === "open"
           ? "Precuenta"
