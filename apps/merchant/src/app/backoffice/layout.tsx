@@ -8,14 +8,18 @@ export default async function BackofficeLayout({
   const session = await requireBackofficeSession();
 
   return (
-    <div className="backoffice-layout">
+    <div className="backoffice-layout print:block">
       <BackofficeNavigation
         businessName={session.business.name}
         isOwner={session.membership.role === "owner"}
         permissions={session.membership.permissions}
       />
-      {session.membership.role === "owner" && <OnboardingChecklist />}
-      <div className="backoffice-content">{children}</div>
+      {session.membership.role === "owner" && (
+        <div className="contents print:hidden">
+          <OnboardingChecklist />
+        </div>
+      )}
+      <div className="backoffice-content print:m-0 print:p-0">{children}</div>
     </div>
   );
 }

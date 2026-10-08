@@ -97,6 +97,21 @@ export function delegatedLinks(permissions: string[]) {
   ].filter((item) => item.delegado && permissions.includes(item.permission));
 }
 
+const posLink = {
+  href: "/backoffice/pos",
+  label: "POS",
+  icon: Shop,
+  segment: "pos",
+  permission: "pos",
+  delegado: true,
+};
+const settingsLink = {
+  href: "/backoffice/settings",
+  label: "Configuración",
+  icon: Dashboard,
+  segment: "settings",
+};
+
 const loyaltyLinks = [
   {
     href: "/backoffice/customers",
@@ -194,13 +209,42 @@ export function BackofficeNavigation({
   businessName,
   isOwner,
   permissions,
+  posEnabled: initialPosEnabled = false,
 }: {
   businessName: string;
   isOwner: boolean;
   permissions: string[];
+  posEnabled?: boolean;
 }) {
   const segment = useSelectedLayoutSegment();
-  const delegados = delegatedLinks(permissions);
+  const [posEnabled, setPosEnabled] = useState(initialPosEnabled);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void fetch("/api/merchant/session", { cache: "no-store" })
+        .then((response) => response.json())
+        .then((data) => {
+          if (active) setPosEnabled(data.business?.posEnabled === true);
+        })
+        .catch(() => {
+          if (active) setPosEnabled(false);
+        });
+    };
+    refresh();
+    window.addEventListener("pos-module-changed", refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("pos-module-changed", refresh);
+    };
+  }, []);
+  const links =
+    posEnabled && permissions.includes("pos")
+      ? [...businessLinks, posLink]
+      : businessLinks;
+  const delegados =
+    posEnabled && permissions.includes("pos")
+      ? [...delegatedLinks(permissions), posLink]
+      : delegatedLinks(permissions);
   const [openMenu, setOpenMenu] = useState<MenuName | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setOpenMenu(null);
@@ -224,7 +268,7 @@ export function BackofficeNavigation({
 
   return (
     <>
-      <aside className="backoffice-sidebar">
+      <aside className="backoffice-sidebar print:hidden">
         <div className="backoffice-wordmark">
           <span aria-hidden="true">C</span>
           <div>
@@ -247,7 +291,7 @@ export function BackofficeNavigation({
             />
             <div className="backoffice-nav-group">
               <p>Mi negocio</p>
-              {businessLinks.map((item) =>
+              {links.map((item) =>
                 item.href ? (
                   <NavLink
                     {...item}
@@ -279,6 +323,7 @@ export function BackofficeNavigation({
                 segment="subscription"
                 selectedSegment={segment}
               />
+              <NavLink {...settingsLink} selectedSegment={segment} />
               <HelpButton />
             </div>
           </nav>
@@ -315,7 +360,7 @@ export function BackofficeNavigation({
 
       <nav
         aria-label="Navegación principal"
-        className="backoffice-mobile-nav"
+        className="backoffice-mobile-nav print:hidden"
         data-owner={isOwner || undefined}
       >
         {(isOwner || delegados.length > 0) && (
@@ -336,8 +381,7 @@ export function BackofficeNavigation({
                 aria-expanded={openMenu === "business"}
                 className="mobile-nav-trigger"
                 data-active={
-                  businessLinks.some((item) => item.segment === segment) ||
-                  undefined
+                  links.some((item) => item.segment === segment) || undefined
                 }
                 onClick={() => toggleMenu("business")}
                 type="button"
@@ -392,7 +436,11 @@ export function BackofficeNavigation({
               aria-controls="backoffice-mobile-menu"
               aria-expanded={openMenu === "more"}
               className="mobile-nav-trigger"
-              data-active={segment === "subscription" || undefined}
+              data-active={
+                segment === "subscription" ||
+                segment === "settings" ||
+                undefined
+              }
               onClick={() => toggleMenu("more")}
               type="button"
             >
@@ -440,7 +488,7 @@ export function BackofficeNavigation({
             </header>
             <div className="mobile-menu-links">
               {openMenu === "business" &&
-                (isOwner ? businessLinks : delegados).map((item) =>
+                (isOwner ? links : delegados).map((item) =>
                   item.href ? (
                     <NavLink
                       {...item}
@@ -473,6 +521,11 @@ export function BackofficeNavigation({
                     icon={CreditCard}
                     label="Suscripción"
                     segment="subscription"
+                    selectedSegment={segment}
+                    onNavigate={closeMenu}
+                  />
+                  <NavLink
+                    {...settingsLink}
                     selectedSegment={segment}
                     onNavigate={closeMenu}
                   />

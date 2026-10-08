@@ -54,10 +54,10 @@ Rutas del frontmatter. No disjunta con modificaciones simultáneas en navegació
 
 ## Definition of Done
 
-- [ ] e2e: crear, editar sin recalcular snapshot, conflicto de versión, imprimir, anular y cerrar sin pase.
-- [ ] e2e: POS sin counter, resolver y quitar cupón, cierre con pase, error de cupón, UUID estable al reintentar.
-- [ ] e2e: activación, modal por órdenes abiertas y visibilidad del permiso.
-- [ ] ui-guard sin aumentos, typecheck y lint verdes.
+- [x] e2e: crear, editar sin recalcular snapshot, conflicto de versión, imprimir, anular y cerrar sin pase.
+- [x] e2e: POS sin counter, resolver y quitar cupón, cierre con pase, error de cupón, UUID estable al reintentar.
+- [x] e2e: activación, modal por órdenes abiertas y visibilidad del permiso.
+- [x] ui-guard sin aumentos, typecheck y lint verdes.
 - [ ] pnpm verify con Node 24 una vez al final y tabla en handoff.
 - [ ] Revisión independiente; owner prueba pnpm dev:local antes de pasar a main.
 
@@ -80,3 +80,10 @@ Implementador y revisor independiente con evidencia según docs/AGENT-WORKFLOW.m
 ## Abierto
 
 Nada. Configuración bajo Cuenta sigue la ubicación sugerida en el encargo.
+
+## Evidencia de implementación local
+
+UI y tests en dev. [Handoff](../handoff-0170-pos-2026-10-08.md): siete e2e POS verdes,
+M1 y M2 rojas por sus aserciones y restauradas, build y guardia verdes. Gate global e2e pendiente
+(14 fallos fuera del POS al reutilizar servidores locales); no se declara PASS independiente.
+La spec sigue cerrada hasta revisión y QA del owner. Sin merge ni push.

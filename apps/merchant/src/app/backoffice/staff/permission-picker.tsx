@@ -5,11 +5,13 @@ export function PermissionPicker({
   onChange,
   isOwner,
   disabled = false,
+  posEnabled = false,
 }: {
   value: string[];
   onChange: (permissions: string[]) => void;
   isOwner: boolean;
   disabled?: boolean;
+  posEnabled?: boolean;
 }) {
   function toggle(permission: Permission, checked: boolean) {
     onChange(
@@ -23,7 +25,9 @@ export function PermissionPicker({
     <fieldset className="staff-permissions" disabled={disabled}>
       <legend>Permisos</legend>
       <p>Un permiso habilita ver, crear y editar ese módulo.</p>
-      {PERMISSIONS.map((permission) => {
+      {PERMISSIONS.filter(
+        (permission) => permission.id !== "pos" || posEnabled,
+      ).map((permission) => {
         const admin = permission.id === "staff";
         const locked = admin && !isOwner;
         return (

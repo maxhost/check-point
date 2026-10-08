@@ -58,6 +58,7 @@ export function CreateStaffPanel({
   name,
   permissions,
   isOwner,
+  posEnabled,
   busy,
   onName,
   onPermissions,
@@ -68,6 +69,7 @@ export function CreateStaffPanel({
   name: string;
   permissions: string[];
   isOwner: boolean;
+  posEnabled?: boolean;
   busy: boolean;
   onName: (value: string) => void;
   onPermissions: (value: string[]) => void;
@@ -98,6 +100,7 @@ export function CreateStaffPanel({
         value={permissions}
         onChange={onPermissions}
         isOwner={isOwner}
+        posEnabled={posEnabled}
         disabled={busy}
       />
       <button
@@ -174,6 +177,7 @@ export function StaffEditor({
   draft,
   busy,
   isOwner,
+  posEnabled,
   ownId,
   onDraft,
   onClose,
@@ -183,6 +187,7 @@ export function StaffEditor({
   draft: StaffDraft;
   busy: boolean;
   isOwner: boolean;
+  posEnabled?: boolean;
   ownId?: string;
   onDraft: (draft: StaffDraft) => void;
   onClose: () => void;
@@ -229,6 +234,7 @@ export function StaffEditor({
           value={draft.permissions}
           onChange={(permissions) => onDraft({ ...draft, permissions })}
           isOwner={isOwner}
+          posEnabled={posEnabled}
           disabled={busy || own || protectedAdministrator}
         />
       </div>
