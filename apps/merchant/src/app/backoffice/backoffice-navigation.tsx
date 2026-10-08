@@ -19,6 +19,7 @@ import {
 import { useSelectedLayoutSegment } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
+import { Button, Text } from "../../ui";
 import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
 
 type MenuName = "business" | "loyalty" | "more";
@@ -166,17 +167,26 @@ function SoonLink({
 /** Reabre la «Guía de inicio» despues de cerrarla. Solo la ve el owner: el panel es solo suyo. */
 function HelpButton({ onOpen }: { onOpen?: () => void }) {
   return (
-    <button
-      className="backoffice-nav-link"
-      onClick={() => {
+    <Button
+      fullWidth
+      onPress={() => {
         onOpen?.();
         openOnboardingChecklist();
       }}
-      type="button"
+      variant="quiet"
     >
-      <HelpCircle aria-hidden="true" width={21} height={21} strokeWidth={1.8} />
-      <span>Ayuda</span>
-    </button>
+      <span className="flex flex-1 items-center gap-3">
+        <HelpCircle
+          aria-hidden="true"
+          width={21}
+          height={21}
+          strokeWidth={1.8}
+        />
+        <Text as="span" variant="muted">
+          Ayuda
+        </Text>
+      </span>
+    </Button>
   );
 }
 

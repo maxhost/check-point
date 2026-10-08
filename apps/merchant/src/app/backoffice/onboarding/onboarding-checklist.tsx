@@ -11,6 +11,7 @@ import {
 } from "iconoir-react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Button } from "../../../ui";
 import { getOnboardingChecklist, type OnboardingItem } from "./onboarding-api";
 import {
   AVAILABLE_ONBOARDING_ANCHORS,
@@ -146,11 +147,11 @@ export function OnboardingChecklist() {
 
   return (
     <section aria-labelledby="onboarding-title" className="onboarding-zone">
-      <div className="onboarding-header">
+      <div className="flex items-center">
         <button
           aria-controls="onboarding-steps"
           aria-expanded={expanded}
-          className="onboarding-summary"
+          className="onboarding-summary min-w-0 flex-1"
           onClick={() => setExpanded((current) => !current)}
           type="button"
         >
@@ -176,15 +177,14 @@ export function OnboardingChecklist() {
             height={22}
           />
         </button>
-        <button
+        <Button
           aria-label="Cerrar la guía de inicio"
-          className="onboarding-close"
-          onClick={close}
-          title="Cerrar. Puedes volver a abrirla desde Ayuda."
-          type="button"
+          className="mr-1.5 shrink-0"
+          onPress={close}
+          variant="quiet"
         >
           <Xmark aria-hidden="true" width={20} height={20} />
-        </button>
+        </Button>
       </div>
 
       <div
