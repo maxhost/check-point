@@ -54,8 +54,15 @@ export type PosCatalog = {
 };
 export type PosSession = {
   authenticated: boolean;
-  business?: { posEnabled: boolean; currencyCode: string };
-  membership?: { role: string; permissions: string[] } | null;
+  user?: { id: string };
+  business?: {
+    id: string;
+    status: string;
+    timezone: string;
+    posEnabled: boolean;
+    currencyCode: string;
+  } | null;
+  membership?: { role: string; status: string; permissions: string[] } | null;
 };
 export type DraftLine = {
   key: string;

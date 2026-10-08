@@ -10,7 +10,7 @@ archivos: apps/merchant/src/app/backoffice/pos/pos-cache.ts, apps/merchant/src/a
 # 0172 — Caché en memoria del POS
 
 L2, plantilla chica (ADR 0071 y 0129): un dominio, sin migraciones ni decisiones de producto abiertas.
-Encargo de esta sesión: escribir y reservar la spec. La implementación queda para el siguiente encargo.
+Reservada en 69191fc; implementación autorizada por el owner después de cerrar la spec.
 
 ## Problema
 
@@ -101,17 +101,17 @@ Mantener DetailedSale compartido, Tailwind, tokens y componentes del kit. El est
 
 Pruebas de navegador con HTTP simulado, contadores y respuestas retenidas; avance de reloj controlado para demostrar ausencia de TTL, sin esperas reales ni medición arbitraria de FPS:
 
-- [ ] Crear → guardar → historial → abrir: datos visibles correctos y **cero GET adicionales de sesión/historial/detalle** sin pulsar Actualizar órdenes; conservar version/lineId/precios del POST/PUT.
-- [ ] Mesa nunca visitada: primera apertura hace exactamente un GET de detalle; segunda apertura hace cero. Dos solicitudes concurrentes comparten una lectura.
-- [ ] Catálogo se reutiliza al reabrir editor; otro local obtiene su propia lectura; Actualizar órdenes lo actualiza sin borrar precios/borradores y sin mezclar productos de locales.
-- [ ] Avanzar reloj por una hora y disparar foco/visibilidad produce **cero GET**; abrir una orden cacheada después tampoco consulta. Actualizar órdenes produce una lectura de sesión e historial, sin descargar todos los detalles; la copia del historial se ve mientras HTTP está retenido.
-- [ ] GET viejo retenido → PUT exitoso/conflicto → liberar GET: conservar versión nueva. Seleccionar B mientras responde A mantiene B.
-- [ ] Otra persona cambia orden: Actualizar órdenes permite abrir el detalle nuevo; durante edición el borrador permanece y PUT con versión vieja muestra conflicto, sin reenviar. Historial externo detecta estados cambiados y los refleja.
-- [ ] Cerrar/anular retira mesa de Abiertas, cachea respuesta y refresca Cerradas hoy; no reaparece por una lectura anterior. Anulación revalida antes de confirmar.
-- [ ] 5xx/transportes de lectura conserva copia con error, sin resolver la invalidación; 401/403/pérdida de permiso o cambio de identidad vacía datos e ignora respuestas pendientes; 404 retira mesa. Recargar inicia una caché nueva.
-- [ ] Botón Actualizar fuerza lecturas sin perder borrador; lectura en cobro no altera UUID/cuerpo de reintento, descuentos ni resultado monetario. Pruebas POS/Mostrador de 0171 permanecen verdes.
-- [ ] Node 24: pnpm typecheck; pnpm exec eslint sobre archivos tocados; pnpm exec prettier --check sobre archivos tocados; node tools/ui-guard.ts sin aumentos; node tools/check-numbers.ts; git diff --check.
-- [ ] pnpm exec playwright test tests/e2e/pos.spec.ts tests/e2e/counter-mobile.spec.ts tests/e2e/counter-coupon-verdict.spec.ts en ambiente aislado de pruebas/harness. Transcribir salida y conteos de requests en handoff. No ejecutar build sobre dev local activo.
+- [x] Crear → guardar → historial → abrir: datos visibles correctos y **cero GET adicionales de sesión/historial/detalle** sin pulsar Actualizar órdenes; conservar version/lineId/precios del POST/PUT.
+- [x] Mesa nunca visitada: primera apertura hace exactamente un GET de detalle; segunda apertura hace cero. Dos solicitudes concurrentes comparten una lectura.
+- [x] Catálogo se reutiliza al reabrir editor; otro local obtiene su propia lectura; Actualizar órdenes lo actualiza sin borrar precios/borradores y sin mezclar productos de locales.
+- [x] Avanzar reloj por una hora y disparar foco/visibilidad produce **cero GET**; abrir una orden cacheada después tampoco consulta. Actualizar órdenes produce una lectura de sesión e historial, sin descargar todos los detalles; la copia del historial se ve mientras HTTP está retenido.
+- [x] GET viejo retenido → PUT exitoso/conflicto → liberar GET: conservar versión nueva. Seleccionar B mientras responde A mantiene B.
+- [x] Otra persona cambia orden: Actualizar órdenes permite abrir el detalle nuevo; durante edición el borrador permanece y PUT con versión vieja muestra conflicto, sin reenviar. Historial externo detecta estados cambiados y los refleja.
+- [x] Cerrar/anular retira mesa de Abiertas, cachea respuesta y refresca Cerradas hoy; no reaparece por una lectura anterior. Anulación revalida antes de confirmar.
+- [x] 5xx/transportes de lectura conserva copia con error, sin resolver la invalidación; 401/403/pérdida de permiso o cambio de identidad vacía datos e ignora respuestas pendientes; 404 retira mesa. Recargar inicia una caché nueva.
+- [x] Botón Actualizar fuerza lecturas sin perder borrador; lectura en cobro no altera UUID/cuerpo de reintento, descuentos ni resultado monetario. Pruebas POS/Mostrador de 0171 permanecen verdes.
+- [x] Node 24: pnpm typecheck; pnpm exec eslint sobre archivos tocados; pnpm exec prettier --check sobre archivos tocados; node tools/ui-guard.ts sin aumentos; node tools/check-numbers.ts; git diff --check.
+- [x] pnpm exec playwright test tests/e2e/pos.spec.ts tests/e2e/counter-mobile.spec.ts tests/e2e/counter-coupon-verdict.spec.ts en ambiente aislado de pruebas/harness. Transcribir salida y conteos de requests en handoff. No ejecutar build sobre dev local activo.
 - [ ] QA del owner con pnpm dev:local: crear/reabrir/editar/cobrar/anular y dos sesiones con conflicto. pnpm verify completo antes de pasar a main según ADR 0128; sin merge ni push en esta tarea.
 
 ## Mutaciones — presupuesto: 0
@@ -120,6 +120,7 @@ L2 (ADR 0129). Las carreras y versiones se prueban reteniendo respuestas HTTP y 
 
 ## Declarado AFUERA
 
+- Avisos de actualización entre operadores (pedido del owner): trabajo futuro separado. No se añade webhook, canal de eventos ni sondeo como sustituto.
 - No se evita la primera lectura de detalles nunca cargados ni las comprobaciones necesarias para guardar/cobrar/anular.
 - No se garantizan cambios instantáneos desde otro dispositivo, funcionamiento offline ni apertura cacheada tras recarga/salida de POS. Cerradas hoy es la última respuesta del servidor: al cambiar el día o trabajar mucho tiempo, el operador usa Actualizar órdenes para sincronizarla.
 - El sondeo de cupón durante un cobro activo (actualmente cada 4 segundos) sigue fuera del alcance; esta spec no promete ausencia de tráfico de ese flujo.
@@ -131,4 +132,4 @@ Implementación por GPT en dev, commits solo de sus paths. Registrar evidencia e
 
 ## Abierto
 
-Ninguno para implementar dentro de este alcance. API 0169 disponible, sin ampliación de contrato. La reserva actual es documental: no hay implementación ni pruebas de comportamiento ejecutadas aún.
+Ninguno para implementar dentro de este alcance. API 0169 disponible, sin ampliación de contrato. Implementación local verificada: 37 pruebas afectadas pasan (24,7 s), tipos/lint/formato/guardia/números verdes; pendiente QA del owner y revisión de entrega. Evidencia en docs/handoff-0172-cache-pos-2026-10-08.md.

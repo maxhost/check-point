@@ -9,6 +9,7 @@ import {
   Text,
   TextField,
 } from "../../../ui";
+import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
 import { DetailedSale } from "../counter/sale-forms";
 import {
   addProduct,
@@ -19,9 +20,9 @@ import {
   quantityForLine,
 } from "./pos-cart";
 import {
+  PosError,
   draftItems,
   linePayload,
-  posRequest,
   type DraftLine,
   type PosCatalog,
   type PosLocation,
@@ -29,6 +30,8 @@ import {
 } from "./pos-types";
 export function PosEditor({
   order,
+  cache,
+  catalogRevision,
   locations,
   currencyCode,
   busy,
@@ -37,6 +40,8 @@ export function PosEditor({
   onError,
 }: {
   order: PosOrder | null;
+  cache: PosCache;
+  catalogRevision: number;
   locations: PosLocation[];
   currencyCode: string;
   busy: boolean;
@@ -51,29 +56,36 @@ export function PosEditor({
   const [lines, setLines] = useState<DraftLine[]>(
     order ? draftItems(order) : [],
   );
-  const [catalog, setCatalog] = useState<PosCatalog | null>(null);
+  const [catalogSnapshot, setCatalog] = useState<PosCatalog | null>(() =>
+    cache.peek<PosCatalog>(catalogKey(locationId), true),
+  );
+  const [loadedLocation, setLoadedLocation] = useState(locationId);
+  const catalog = loadedLocation === locationId ? catalogSnapshot : null;
   const [catalogError, setCatalogError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    setCatalog(null);
+    setLoadedLocation(locationId);
+    setCatalog(cache.peek<PosCatalog>(catalogKey(locationId), true));
     setCatalogError(null);
     if (locations.length > 1 && !locationId) return;
-    void posRequest<PosCatalog>(
-      `/api/pos/catalog${locationId ? `?locationId=${encodeURIComponent(locationId)}` : ""}`,
-    )
+    void cache
+      .catalog(locationId)
       .then((data) => {
         if (active) setCatalog(data);
       })
       .catch((error) => {
-        if (active) {
-          setCatalogError(error.message);
+        if (error instanceof DiscardedPosRead) return;
+        if (active) setCatalogError(error.message);
+        if (
+          active ||
+          (error instanceof PosError && [401, 403].includes(error.status ?? 0))
+        )
           onError(error);
-        }
       });
     return () => {
       active = false;
     };
-  }, [locationId, locations.length, onError]);
+  }, [cache, catalogRevision, locationId, locations.length, onError]);
   const valid =
     table.trim().length > 0 &&
     table.trim().length <= 60 &&
@@ -113,9 +125,8 @@ export function PosEditor({
         />
       </Card>
       <section className="counter-panel counter-panel-detailed min-w-0">
-        {catalogError ? (
-          <Alert kind="error" title={catalogError} />
-        ) : !catalog ? (
+        {catalogError ? <Alert kind="error" title={catalogError} /> : null}
+        {!catalog ? (
           <Text variant="muted">
             {locations.length > 1 && !locationId
               ? "Elige el local para ver su catálogo."
