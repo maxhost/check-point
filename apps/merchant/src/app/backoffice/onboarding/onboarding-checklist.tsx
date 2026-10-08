@@ -7,6 +7,7 @@ import {
   Mail,
   NavArrowDown,
   Sparks,
+  Xmark,
 } from "iconoir-react";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,6 +21,11 @@ import {
   ONBOARDING_TOUR_STARTED_EVENT,
   ONBOARDING_TOUR_ENDED_EVENT,
 } from "./onboarding-tour";
+import {
+  ONBOARDING_CHECKLIST_OPEN_EVENT,
+  isOnboardingChecklistClosed,
+  setOnboardingChecklistClosed,
+} from "./onboarding-checklist-visibility";
 
 type SendState = "idle" | "sending" | "sent" | "error";
 
@@ -32,6 +38,25 @@ export function OnboardingChecklist() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [hiddenForTour, setHiddenForTour] = useState(false);
+  const [closed, setClosed] = useState(false);
+
+  // Se lee despues del montaje (no en el `useState`) para no desincronizar la hidratacion; el
+  // panel igual no se pinta hasta que llega el checklist, asi que no hay parpadeo.
+  useEffect(() => {
+    setClosed(isOnboardingChecklistClosed());
+    const reopen = () => {
+      setClosed(false);
+      setExpanded(true);
+    };
+    window.addEventListener(ONBOARDING_CHECKLIST_OPEN_EVENT, reopen);
+    return () =>
+      window.removeEventListener(ONBOARDING_CHECKLIST_OPEN_EVENT, reopen);
+  }, []);
+
+  function close() {
+    setOnboardingChecklistClosed(true);
+    setClosed(true);
+  }
 
   useEffect(() => {
     const hide = () => setHiddenForTour(true);
@@ -113,37 +138,54 @@ export function OnboardingChecklist() {
       </section>
     );
 
-  if (hiddenForTour || !items || items.every((item) => item.done)) return null;
+  if (closed || hiddenForTour || !items || items.every((item) => item.done))
+    return null;
 
   const completed = items.filter((item) => item.done).length;
   const percent = Math.round((completed / items.length) * 100);
 
   return (
     <section aria-labelledby="onboarding-title" className="onboarding-zone">
-      <button
-        aria-controls="onboarding-steps"
-        aria-expanded={expanded}
-        className="onboarding-summary"
-        onClick={() => setExpanded((current) => !current)}
-        type="button"
-      >
-        <span className="onboarding-zone-mark">
-          <Sparks aria-hidden="true" width={24} height={24} strokeWidth={1.7} />
-        </span>
-        <span className="onboarding-summary-copy">
-          <small>Guía de inicio</small>
-          <strong id="onboarding-title">Pon tu negocio en marcha</strong>
-        </span>
-        <span className="onboarding-summary-progress">
-          {completed} de {items.length}
-        </span>
-        <NavArrowDown
-          aria-hidden="true"
-          className="onboarding-chevron"
-          width={22}
-          height={22}
-        />
-      </button>
+      <div className="onboarding-header">
+        <button
+          aria-controls="onboarding-steps"
+          aria-expanded={expanded}
+          className="onboarding-summary"
+          onClick={() => setExpanded((current) => !current)}
+          type="button"
+        >
+          <span className="onboarding-zone-mark">
+            <Sparks
+              aria-hidden="true"
+              width={24}
+              height={24}
+              strokeWidth={1.7}
+            />
+          </span>
+          <span className="onboarding-summary-copy">
+            <small>Guía de inicio</small>
+            <strong id="onboarding-title">Pon tu negocio en marcha</strong>
+          </span>
+          <span className="onboarding-summary-progress">
+            {completed} de {items.length}
+          </span>
+          <NavArrowDown
+            aria-hidden="true"
+            className="onboarding-chevron"
+            width={22}
+            height={22}
+          />
+        </button>
+        <button
+          aria-label="Cerrar la guía de inicio"
+          className="onboarding-close"
+          onClick={close}
+          title="Cerrar. Puedes volver a abrirla desde Ayuda."
+          type="button"
+        >
+          <Xmark aria-hidden="true" width={20} height={20} />
+        </button>
+      </div>
 
       <div
         aria-label={`${completed} de ${items.length} pasos completados`}

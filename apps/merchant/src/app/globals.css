@@ -2680,6 +2680,37 @@
     text-align: left;
     background: transparent;
   }
+  .onboarding-header {
+    display: flex;
+    align-items: center;
+  }
+  .onboarding-header > .onboarding-summary {
+    min-width: 0;
+    flex: 1;
+  }
+  .onboarding-close {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    margin-right: 6px;
+    place-items: center;
+    border-radius: 99px;
+    color: var(--ui-text-muted);
+    background: transparent;
+    cursor: pointer;
+  }
+  .onboarding-close:hover {
+    color: var(--ui-text);
+    background: color-mix(in srgb, var(--ui-text) 7%, transparent);
+  }
+  button.backoffice-nav-link {
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    background: transparent;
+    cursor: pointer;
+  }
   .onboarding-zone-mark {
     display: grid;
     width: 48px;

@@ -6,6 +6,7 @@ import {
   Dashboard,
   Gift,
   Group,
+  HelpCircle,
   HomeSimple,
   Megaphone,
   MoreHoriz,
@@ -18,6 +19,7 @@ import {
 import { useSelectedLayoutSegment } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
+import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
 
 type MenuName = "business" | "loyalty" | "more";
 
@@ -161,6 +163,23 @@ function SoonLink({
   );
 }
 
+/** Reabre la «Guía de inicio» despues de cerrarla. Solo la ve el owner: el panel es solo suyo. */
+function HelpButton({ onOpen }: { onOpen?: () => void }) {
+  return (
+    <button
+      className="backoffice-nav-link"
+      onClick={() => {
+        onOpen?.();
+        openOnboardingChecklist();
+      }}
+      type="button"
+    >
+      <HelpCircle aria-hidden="true" width={21} height={21} strokeWidth={1.8} />
+      <span>Ayuda</span>
+    </button>
+  );
+}
+
 export function BackofficeNavigation({
   businessName,
   isOwner,
@@ -250,6 +269,7 @@ export function BackofficeNavigation({
                 segment="subscription"
                 selectedSegment={segment}
               />
+              <HelpButton />
             </div>
           </nav>
         ) : delegados.length > 0 ? (
@@ -446,6 +466,7 @@ export function BackofficeNavigation({
                     selectedSegment={segment}
                     onNavigate={closeMenu}
                   />
+                  <HelpButton onOpen={closeMenu} />
                   <SignOutButton />
                 </>
               )}
