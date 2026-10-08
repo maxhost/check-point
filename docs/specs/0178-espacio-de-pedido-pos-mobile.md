@@ -1,0 +1,88 @@
+---
+spec: 0178
+fecha: 2026-10-08
+estado: cerrada
+resumen: Espacio común Pedido/Productos, guardado explícito y salida protegida para nueva orden y mesas abiertas.
+disjunta: no
+archivos: apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-cart.tsx, tests/e2e/pos.spec.ts
+---
+
+# 0178 — Espacio de pedido POS mobile
+
+L2. Owner autorizó implementar la propuesta de investigación UX 2026-10-08.
+
+## Problema
+
+`pos-editor.tsx:103` antepone Card de contexto al catálogo. `pos-cart.tsx:116`
+revisa líneas en scroll dentro del footer. Consola separa detalle de Editar;
+X desmonta un borrador sin confirmar. Ver informe en design-explorations.
+
+## Diseño cerrado
+
+PosEditor pasa a ser el espacio común de nueva orden y orden abierta. Usa kit,
+Tailwind/tokens, DetailedSale de Mostrador y datos/cache existentes. Sin tarjeta
+exterior ni navbar mobile. Nueva abre Productos; existente abre Pedido. Un único
+borrador, con líneas reales/snapshots. Alternar conserva catálogo montado, búsqueda,
+categoría y posición; no dispara GET/PUT. Pedido tiene un solo scroll del documento,
+cantidad editable por línea y precio escrito cuando corresponde. Retirar el carrito
+expandible dentro del footer. No existe botón Editar ni modo adicional para añadir.
+
+Cabecera única mesa/Nueva orden y X. Nueva muestra mesa/local en una fila compacta,
+sin Card; local único no se pide. Varios locales: último elegido válido del montaje
+y contexto autorizado, o selección explícita (no elegir el primero). Existente
+permite cambiar identificación con Dialog del kit. Cambiar local con líneas pide
+confirmar y explica que conserva líneas/precios; nunca borra ni reprecifica.
+
+Footer con artículos/total y primaria contextual: Guardar orden (nueva), Guardar
+cambios (existente con cambios), Cobrar (existente sin cambios). Nueva vacía sigue
+permitida. Validación visible dice si falta mesa/local/precio o exceso de líneas.
+Cobrar solo usa snapshot confirmado; no combina guardar/cobrar ni auto-save.
+En Pedido, acceso Añadir productos; en Productos, acceso Ver pedido. Más acciones
+abre Dialog del kit: Imprimir precuenta, Anular orden y datos de creación. Imprimir
+y anular disponibles solo con orden guardada sin cambios; anular conserva lectura
+previa/confirmación. Ticket completo separado para impresión. Checkout, resultado
+cerrado y UUID/cuerpo congelados se conservan.
+
+X sin cambios vuelve al listado. Con cambios: Dialog Guardar y salir / Descartar /
+Seguir trabajando. Guardar fallido no sale y conserva borrador. Links internos al
+backoffice se interceptan con la misma decisión; navegación de recarga/cierre usa
+beforeunload mientras hay cambios (limitación del navegador, especialmente móvil).
+No se introduce interceptación de history ni garantía de recuperación tras cierre
+forzado. La salida durante escritura se bloquea. Contexto autorizado/404 limpia
+borrador con las reglas existentes y desmonta el editor.
+
+Escrituras devuelven orden autoritativa; se publica caché y se reinicia baseline
+local solo tras éxito. Error 5xx/transporte/422 conserva borrador y permite reintento
+explícito, sin nuevas estrategias de POST/idempotencia. Conflicto 409 conserva
+intención local visible y versión del servidor: bloquea guardar/cobrar hasta revisar
+y aceptar explícitamente la versión actual; muestra ambos pedidos en Dialog.
+Sin snapshot se relee una vez y se bloquea hasta recuperar, según 0172. Si orden
+ya no está abierta, se muestra estado real; no permite sobrescribir. No mezclar
+líneas por productId cuando tienen distinto lineId/precio.
+
+Contrato HTTP y errores de 0169/0172 sin cambios; auth/aislamiento/cache se conservan.
+No polling, TTL, auto-save, tablas predeterminadas, cocina ni cambios de servidor/kit.
+No disjunta con POS. Mostrador no cambia.
+
+## Archivos
+
+Consola integra editor en abierta/nueva y devuelve resultado al guardar. Editor
+gestiona superficies, borrador y protección. PosCart se reutiliza como listado de
+líneas sin footer/scroll propio; helpers de precios/cantidades permanecen.
+Pruebas e2e se adaptan a interacción nueva y agregan los casos de transición.
+
+## Definition of Done
+
+- [ ] Nueva/existente usan mismo espacio; cantidades/precios/snapshots correctos.
+- [ ] Alternar mantiene búsqueda/filtro/draft y no genera GET/PUT adicionales.
+- [ ] Contexto compacto y último local válido; cambio con consumos confirmado.
+- [ ] X/links: seguir, descartar y guardar-salir; fallo de guardado conserva draft.
+- [ ] Conflicto conserva intención y obliga revisión; auth/404 limpian; cobro
+      sin guardado pendiente, cierre/cupón/UUID conservados.
+- [ ] Impresión con comercio/local/mesa; móvil 360/390 y escritorio vistos,
+      sin overflow ni contenido tapado; teclado real queda para owner.
+- [ ] e2e POS y Mostrador afectados, typecheck, lint, formato, guardia y números verdes.
+
+0 mutaciones nuevas (L2). Sin build/global verify sobre dev activo; verify antes de
+main. QA owner con pnpm dev:local pendiente; no marcar implementada sin gates.
+Solo commits de paths GPT en dev, sin merge ni push. Sin decisiones abiertas.
