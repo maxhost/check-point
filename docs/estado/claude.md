@@ -10,30 +10,24 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-08, noche) — POS (spec 0169) IMPLEMENTADO EN `dev` CON PASS; UI DE GPT Y PROD PENDIENTES
+## ⇥ ESTADO (2026-10-08, noche) — POS EN PRODUCCION (`main` = `3e26701`), MIGRACION 0066 APLICADA EN PROD
 
-**Hecho en `dev` (L3, sin push; `main` intacto):**
-- `656eaa3` spec 0169 + ADR 0130 (decisiones del owner del 2026-10-08 escritas en la spec, no volver a preguntar).
-- `79e3efc` API del POS: migracion `0066` (`core.pos_order`, `core.pos_order_item`, `business.pos_enabled`, `pos` en el
-  CHECK de permisos; aplicada en la base LOCAL y en la rama de CI, **NO en PROD**), rutas `/api/pos/*` y
-  `PUT /api/merchant/business/pos`, `posEnabled` en la sesion, escalera comun `server/operator-guard.ts`.
-- `53fec62` `/delete-user` borra las mesas del POS cobradas con el pase del cliente (owner; medido en la base local).
-- `2e8a159` test `pos-close-reuse` (afterGrant y `request_reused`, oraculos del revisor; muerde: «expected 503 to be 409»).
-- Verificado por Claude: POS 35/35 + 2/2, mostrador/permisos/sesion 142/142, typecheck ok. Revisor: PASS, `pnpm verify` ok
-  salvo e2e (el ambiente local ocupa :3200).
+**Hecho (con OK explicito del owner, que pidio saltar los tests):**
+- Snapshot de PROD antes de migrar: `snap-snowy-silence-ax0a6mn9` (`pre-0066-pos-2026-10-08`).
+- `pnpm db:migrate:prod`: PROD paso de 66 a 67 migraciones; verificado por SQL: `core.pos_order`, `core.pos_order_item`,
+  `business.pos_enabled` y `pos` en el CHECK de permisos. Migracion ANTES del push (el codigo nuevo lee `pos_enabled`).
+- `git push --no-verify origin main` (`7d92027..3e26701`, 47+ commits: onboarding, POS API 0169 + `bestSellingProductIds`
+  `4b1c696`, UI de GPT 0170–0178). Vercel merchant, customer y public: READY con `3e26701`;
+  `business.checkpass.club/api/pos/catalog` → 401 (codigo nuevo), health 200 en business y my.
+- **Sin verificar (owner lo decidio):** `pnpm verify` completo no corrio; los 14 e2e que fallaban (10 tours de
+  Fidelizacion, 4 onboarding/entrada) siguen sin causa. Sin alta de prueba en PROD: el owner prueba con un usuario real.
 
 **Pendiente:**
-- Encargo a GPT: pantallas del POS contra §Contrato de la spec 0169 (interruptor + modal de ordenes abiertas, imprimir,
-  calculadora de cambio, esconder el toggle `pos` en Equipo con el modulo apagado).
-- Hallazgo a decidir (owner): cerrar con pase una mesa cuyo local se archivo despues acredita en el local archivado.
-- Merge a `main` (pedido antes por el owner, sigue pendiente): bajar el ambiente local, `pnpm verify` completo con e2e,
-  `merge --ff-only`, probar `main` en local, push SOLO con OK. La migracion 0066 va a PROD con ese paso y con OK.
+- Alta fallida de «Café Plátano» (intento 2026-10-07 14:58 UTC sin cuenta ni negocio): causa desconocida. Si el usuario
+  real del owner falla al registrarse, leer logs de Vercel dentro de la hora (Hobby retiene 1 h).
+- Staging en proyectos separados: plan en `docs/plan-staging-2026-10-08.md` (PARQUEADO #82).
+- Cloudflare: regla «dev sin cache» puesta por el owner; medido `no-cache` + `DYNAMIC` en `dev-business.`.
 
-**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
-puertos 3200/3201 (ADR 0127); no borra secretos de sus archivos de entorno: se COMENTAN; R2 de desarrollo; Vercel
-Hobby; rotacion de claves la decide el owner. Wallet real en el telefono: decision ABIERTA. Telefono (PWA + push)
-parqueado (#80). POS: todo lo de la spec 0169 §Decisiones; canje de premios solo en el mostrador; canje como cupon
-desde la app = PARQUEADO #81.
-
-**Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
-desarrollo; el ejemplo de entorno sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
+**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo (ADR 0127); POS: todo lo
+de la spec 0169 §Decisiones; canje de premios solo en el mostrador; canje como cupon = PARQUEADO #81; staging en
+proyectos Vercel + Neon SEPARADOS, nunca Preview del proyecto de PROD.
