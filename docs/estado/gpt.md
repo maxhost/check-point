@@ -21,7 +21,9 @@ independiente; 0171 permanece cerrada. Gate global anterior de 0170 sigue docume
 **Dependencia Claude:** GET /api/pos/catalog?locationId= debe añadir bestSellingProductIds:
 string[] en orden de más vendidos del local. Definir período y métrica en contrato, incluir
 ventas cerradas con/sin pase y excluir anuladas, evitando doble conteo. UI consume ese campo
-opcional; prueba usa mock, API real aún no devuelve ranking, fallback alfabético. Owner avisado.
+opcional; prueba usa mock, fallback alfabético. Al cerrar apareció trabajo concurrente de Claude
+en route.ts/best-sellers.ts y 0169: unidades POS cerradas del local, últimos 30 días propuestos.
+No se tocó ni verificó ese trabajo de servidor; confirmar entrega y pruebas con Claude.
 
 Settings/hydration anterior: se encontró mezcla de chunks viejos/nuevos en .next/dev; se
 reinició pnpm dev:local con caché merchant renovada, sin cambio fuente. Owner confirmó que
