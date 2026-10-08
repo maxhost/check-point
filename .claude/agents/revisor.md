@@ -1,7 +1,7 @@
 ---
 name: revisor
 description: >
-  Revisa una spec implementada de nivel N2 de este repo (solo para specs N2 — CLAUDE.md §Niveles) en
+  Revisa una spec implementada de nivel L3 de este repo (solo para specs L3 — CLAUDE.md §Niveles) en
   contexto fresco y devuelve PASS o FAIL con evidencia ejecutada. Usar despues de un implementador,
   nunca en el mismo turno que escribio el codigo. Trae
   adentro el presupuesto y la condicion de corte (ADR 0062): exige que el encargo diga cuantas

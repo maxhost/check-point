@@ -1,6 +1,6 @@
 # Protocolo de trabajo con agentes
 
-Este protocolo se usa **solo para specs N2** (dinero, auth/sesiones, aislamiento entre comercios, migraciones, DTOs con datos internos; niveles en `CLAUDE.md` §Niveles, spec 0151), **después** de que la feature haya sido conversada y su spec esté en estado `cerrada`. No sustituye la conversación de producto ni permite empezar código con una spec incompleta. Un cambio N0 o N1 se hace en la conversación principal, **sin subagentes**.
+Este protocolo se usa **solo para specs L3** (cambios grandes; niveles en `CLAUDE.md` §Niveles, ADR 0129), **después** de que la feature haya sido conversada y su spec esté en estado `cerrada`. No sustituye la conversación de producto ni permite empezar código con una spec incompleta. Un cambio L0, L1 o L2 se hace en la conversación principal, **sin subagentes**.
 
 ## Roles
 

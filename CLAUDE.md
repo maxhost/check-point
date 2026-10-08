@@ -12,17 +12,20 @@
 un comando → hook; protocolo o gotcha de dominio → skill en `.claude/skills/`; caso con fecha →
 `docs/LECCIONES.md`. Nunca se referencia `LECCIONES.md` ni una skill con `@`: se cargaria entero.
 
-## Niveles (spec 0151)
+## Niveles (ADR 0129, owner 2026-10-08)
 
 | Nivel | Cuando | Como |
 |---|---|---|
-| **N0 directo** | el diff se describe en una oracion, sin esquema/SQL nuevo, sin auth/dinero | en la conversacion principal, sin spec ni subagentes; typecheck + lint + tests del archivo; commit |
-| **N1 rebanada** | un endpoint o un cambio de servidor acotado | spec CHICA (`TEMPLATE-CHICA.md`) = contrato HTTP para GPT + su test negativo; sin subagentes; `pnpm verify`; push en el dia |
-| **N2 completo** | dinero, auth/sesiones, aislamiento entre comercios, migraciones, DTOs con datos internos | spec (`TEMPLATE.md`), UN implementador, UN revisor (correctitud + 1–3 mutaciones sobre lineas cambiadas); `docs/AGENT-WORKFLOW.md` |
+| **L0 rapido** | un color, un texto, una imagen, un ajuste puntual | investigar donde va, aplicar, releer el diff (typecheck + lint del paquete). Sin spec, sin ADR, sin tests, sin adversarial |
+| **L1 chico** | una seccion nueva, un cambio de layout, modificar algo existente en la base (no agregar ni borrar) | mini plan en la conversacion (no spec, no ADR); pruebas minimas: lo que corra en menos de 3 minutos |
+| **L2 funcionalidad** | una funcionalidad nueva | spec CHICA (`TEMPLATE-CHICA.md`), ADR solo si hay una decision de diseño; tests especificos, no extensos; sin adversarial salvo que algo se vea raro |
+| **L3 grande** | cambios grandes | la suite entera: spec (`TEMPLATE.md`), ADR, tests, UN `implementador` y UN `revisor` (`docs/AGENT-WORKFLOW.md`) |
 
-Si dudas entre dos niveles, el mas alto. Una feature grande se parte en rebanadas N1 pusheables solas.
-Subagentes (`implementador`, `revisor`) **solo en N2**. Las decisiones del owner se piden ANTES de
-escribir la spec: una spec escrita dos veces porque el alcance cambio es el costo que esto corta.
+- **Piso L2:** dinero, login/sesiones, aislamiento entre comercios y migraciones a PROD nunca bajan de L2.
+- **Si dudo entre dos niveles, le pregunto al owner** con los dos candidatos. Subagentes solo en L3.
+- `pnpm verify` completo corre al pasar a live (hook `pre-push`, ADR 0128), no en cada cambio L0/L1.
+- Las decisiones del owner se piden ANTES de escribir la spec: una spec escrita dos veces porque el alcance cambio
+  es el costo que esto corta.
 
 ## Flujo
 
@@ -31,8 +34,8 @@ escribir la spec: una spec escrita dos veces porque el alcance cambio es el cost
    y se pushea solo con OK del owner, despues de probar `main` en local.
 2. Toda decision de diseño genera un ADR (`docs/adr/`) con fecha y `resumen` de una linea en el frontmatter.
 3. Fila de 3 lineas en `docs/INDEX.md` (que es, por que importa, estado) en el mismo commit.
-4. Estado: en N1/N2 el bloque ESTADO se reescribe DESPUES del commit del trabajo (dos commits: el trabajo
-   y el doc con su sha) y describe, no pronostica (hook `state-uncommitted-lie.sh`). En N0, al cerrar la sesion.
+4. Estado: en L2/L3 el bloque ESTADO se reescribe DESPUES del commit del trabajo (dos commits: el trabajo
+   y el doc con su sha) y describe, no pronostica (hook `state-uncommitted-lie.sh`). En L0/L1, al cerrar la sesion.
    El bloque anterior se MUEVE a `claude-historico.md`, nunca se pisa (tambien fuera de un handoff).
 5. `hecho` solo con verificacion real: test que pasa, comando corrido, cosa vista en pantalla.
 

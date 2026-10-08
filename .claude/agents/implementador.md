@@ -1,9 +1,9 @@
 ---
 name: implementador
 description: >
-  Implementa una spec CERRADA de nivel N2 de este repo (solo para specs N2: dinero, auth/sesiones,
-  aislamiento entre comercios, migraciones, DTOs con datos internos — CLAUDE.md §Niveles). Usar
-  cuando hay una spec N2 en estado `cerrada` con DoD y plan de pruebas, y hay que escribir el codigo. No decide producto, no amplia alcance y no marca la
+  Implementa una spec CERRADA de nivel L3 de este repo (solo para specs L3,
+  cambios grandes — CLAUDE.md §Niveles, ADR 0129). Usar
+  cuando hay una spec L3 en estado `cerrada` con DoD y plan de pruebas, y hay que escribir el codigo. No decide producto, no amplia alcance y no marca la
   spec como implementada. Trae el protocolo de mutaciones del repo adentro: shasum antes de mutar,
   fila de bitacora antes de medir, etiqueta MUTATION, revertir con diff.
 tools: Read, Write, Edit, Bash, Grep, Glob

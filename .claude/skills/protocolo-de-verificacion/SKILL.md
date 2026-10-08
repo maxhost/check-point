@@ -99,7 +99,7 @@ cazar (los plausibles). Lo que quede afuera se **declara**. Si dos vueltas segui
 «el fix abrio la siguiente», es la señal de cortar, no mala suerte. Entre una evidencia mas y una
 pantalla que el owner pueda probar, **gana la pantalla**.
 
-**Presupuesto por defecto del revisor:** en N2 (`CLAUDE.md` §Niveles) el revisor se acota a correctitud
+**Presupuesto por defecto del revisor:** en L3 (`CLAUDE.md` §Niveles) el revisor se acota a correctitud
 contra la spec + 1–3 mutaciones sobre las lineas cambiadas (spec 0151), salvo que el encargo diga otro presupuesto.
 
 ### 2.0-ter El FALSO ROJO, que es mas caro porque se lee como exito (2026-09-21)
