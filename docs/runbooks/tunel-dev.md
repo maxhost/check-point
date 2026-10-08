@@ -34,20 +34,20 @@ Cloudflare. Comprobar: `dig +short dev-my.checkpass.club` y `dig +short dev-busi
 
 ## §2 Uso diario
 
-Cada uno en su terminal, desde la raiz del repo:
+Una sola terminal, desde la raiz del repo (con Docker Desktop abierto):
 
 ```sh
-pnpm db:local:up
-pnpm dev:tunnel
-pnpm dev:merchant
-pnpm dev:consumer
+pnpm dev:local
 ```
+
+Levanta la base, revisa las variables, arranca consumer y merchant, y prende el tunel recien cuando las dos apps
+responden. Ctrl+C apaga apps y tunel (la base queda). Logs en `.dev-local/`. Desde Claude: `/entorno-local`.
 
 Trabajar **siempre** por `https://dev-business.checkpass.club` y `https://dev-my.checkpass.club`, tambien en la
 compu: los links de login, los pases y los QR se arman con esas direcciones, y las cookies son de ese host.
 
-- Login del comercio: `https://dev-business.checkpass.club/es/business/onboarding`. El link magico sale en la
-  terminal de `pnpm dev:merchant` (`EMAIL_PROVIDER=console`).
+- Login del comercio: `https://dev-business.checkpass.club/es/business/onboarding`. El link magico (email local,
+  `EMAIL_PROVIDER=console`) se ve con `pnpm dev:link`.
 - `node tools/local-db/check-env.ts` tiene que dar exit 0: revisa, entre otras cosas, que ningun origen de los
   `.env.local` apunte a PROD y que los del tunel esten puestos (§4).
 

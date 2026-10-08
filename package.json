@@ -14,6 +14,8 @@
     "dev:platform": "turbo run dev --filter=@mi-pasaporte/platform",
     "dev:public": "turbo run dev --filter=@mi-pasaporte/public",
     "dev:tunnel": "tools/tunnel/up.sh",
+    "dev:local": "tools/dev-local/up.sh",
+    "dev:link": "tools/dev-local/link.sh",
     "db:migrate": "pnpm --filter @mi-pasaporte/db db:migrate",
     "db:migrate:prod": "tools/local-db/migrate-prod.sh",
     "db:local:up": "tools/local-db/up.sh",
