@@ -3,27 +3,39 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-08) — SPEC 0172: CACHÉ POS, SOLO DOCUMENTACIÓN
+## ⇥ ESTADO (2026-10-08) — SPEC 0172: CACHÉ POS IMPLEMENTADA LOCALMENTE
 
-Owner pidió definir la spec tras diagnosticar lecturas repetidas al volver/abrir/editar mesas.
-[0172](../specs/0172-cache-en-memoria-del-pos.md) cerrada y reservada localmente en **69191fc**,
-con fila INDEX. Rama dev, sin merge ni push; no se implementó caché ni se modificó código.
+Owner autorizó implementar la spec cerrada y dejó avisos entre operadores para después.
+[0172](../specs/0172-cache-en-memoria-del-pos.md) reservada en 69191fc; implementación y
+handoff en **8a422c3**, solo paths de GPT. Rama dev, sin merge ni push. API/servidor/kit/CSS,
+migraciones, dependencias y tooling intactos; cambios ajenos preservados.
 
-Owner corrigió la propuesta inicial de 30 segundos: **sin TTL, intervalos ni GET por foco o
-visibilidad**. Leer al montar/primera apertura sin detalle, servir desde memoria las mesas ya
-cargadas, conservar catálogo por local y actualizar caché desde respuestas de escritura.
-Actualizar órdenes sincroniza explícitamente sesión/historial e invalida detalle/catálogo.
-Cerrar/anular permite una lectura de historial para reconciliar Cerradas hoy; Anular fuerza
-lectura previa por carecer de version en 0169. Otros operadores se detectan por actualización
-o conflicto de versión, no automáticamente. Sondeo de cupón en cobro activo queda fuera.
+PosCache privado por montaje e identidad user/business, sin TTL, intervalos, listeners de
+foco/visibilidad o persistencia. Reabrir/editar reutiliza detalle y catálogo por local.
+Crear/guardar publica respuesta real y parchea historial sin GET extra. Cerrar/anular relee
+historial una vez para Cerradas hoy; anular lee detalle antes de confirmar. Actualizar órdenes
+sincroniza explícitamente e invalida; conserva borradores durante edición, los destruye al
+cambiar identidad/perder autorización. Cambios de otros operadores: actualización explícita
+o conflicto, no sondeo. Cupón mantiene su polling del cobro activo, fuera de esta spec.
 
-La spec define instancia por visita e identidad, limpieza de autorización, errores y respuestas
-tardías; nunca sobrescribir borrador ni UUID/cuerpo de reintento. API/servidor/kit/CSS quedan
-fuera. L2 sin migraciones/dependencias. Pendiente implementar cuando el owner lo encargue.
+Se deduplican GET y descartan generaciones/respuestas viejas. Cache no sobreescribe snapshots,
+versiones nuevas, otra mesa seleccionada ni UUID/cuerpo de cierre. 401/403 limpian, 404 retira
+mesa, lectura 5xx/transportes conserva copia con error. Conflicto sin snapshot bloquea acciones
+hasta releer; fallo vuelve a historial sin permitir continuar con borrador obsoleto.
 
-Formato, números sin duplicados y git diff --check verdes con Node 24.20.0; no pruebas de
-comportamiento por entrega solo documental. ci:status no consultó GitHub (fetch failed).
-Archivos ajenos .claude/skills/gotchas-del-repo/SKILL.md y docs/LECCIONES.md preservados.
+Node 24.20.0: **37 pruebas afectadas pasan en 24,7 s** (32 POS, incluidas 2 pruebas directas
+sin navegador, + 5 Mostrador). Typecheck, ESLint, formato, guardia (22 archivos sin aumentos),
+números y diff-check verdes. Capturas móvil 390 px/escritorio 1100 px vistas. Aserciones:
+cero GET adicionales al crear/editar/volver/abrir o avanzar 1 h/foco; primera apertura un GET,
+segunda cero; catálogo Centro/Norte una vez cada uno; actualización manual/cierre/anulación
+leen solo lo definido. Tests retienen GET y comprueban carreras contra guardar/conflicto,
+cambio de contexto y autorización. Log /private/tmp/pos-0172-e2e-final.log.
+
+[Handoff y tabla](../handoff-0172-cache-pos-2026-10-08.md). **Owner debe probar con
+pnpm dev:local** antes de pasar a main: recorrido de mesa e interacción de dos operadores.
+Spec sigue cerrada por QA/entrega pendientes. No build/full verify sobre dev activo (L2);
+verify global antes de main. ci:status no consultó GitHub (fetch failed, informativo).
+Avisos a cachés de otros operadores son trabajo futuro separado, sin nuevas consultas periódicas.
 
 ## ⇥ ESTADO (2026-10-08) — SPEC 0171: POS REUTILIZA MOSTRADOR
 
