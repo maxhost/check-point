@@ -197,3 +197,15 @@ Medido con el alta del owner hecha: `dig +short` de los dos hosts → IPs de Clo
 `104.21.29.105`); `up.sh` conecta SIN `credentials-file` explicito (`Registered tunnel connection` x2; toma
 `~/.cloudflared/<UUID>.json`). Pero `:3000` lo ocupaba `GlaDOS/apps/web` (`lsof`) y `dev-my.` lo sirvio (404) hasta
 que se apago el tunel (despues: 530). Decision del owner: consumer `:3200`, merchant `:3201` (ADR 0127, actualizacion).
+
+### DoD con el owner (2026-10-08)
+
+- `pnpm dev:local` (`ce177ec`, agregado a pedido del owner) levanto base, apps, tunel y smoke: `200` en
+  `/api/health` de `dev-my.` y `dev-business.`, `200` en `dev-my./wallet` y `dev-business./api/onboarding/state`.
+- Link de login: `pnpm dev:link` → `https://dev-business.checkpass.club/api/merchant/auth/magic-link?token=…`; el owner
+  entro y la base LOCAL tiene 1 fila en `merchant_auth.session` (14:07 UTC).
+- Hallazgo del QA: merchant sin `BETTER_AUTH_SECRET` en `.env.local` (nunca estuvo) → 500 en `/api/onboarding/state`;
+  `check-env.ts` ahora lo exige (`b77de14`); el owner lo agrego con un script de scratchpad.
+- **PARQUEADO (#80, owner):** PWA + push en el telefono. `consumer.web_push_subscription` LOCAL = 0. Bloqueado porque el
+  cliente solo crea cuenta con Google/Apple y `dev-my.` no esta registrado como callback. La spec queda `implementada`
+  con ese unico punto de la DoD abierto.
