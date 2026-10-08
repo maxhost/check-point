@@ -36,13 +36,22 @@ No disjunta con cambios en la navegación del backoffice.
 
 ## Definition of Done
 
-- [ ] Navegador móvil con Next real: POS y Mostrador visibles, destinos correctos,
+- [x] Navegador móvil con Next real: POS y Mostrador visibles, destinos correctos,
       POS activo y dos columnas iguales; captura vista, sin errores de página.
-- [ ] Escritorio conserva sidebar y oculta barra mobile.
-- [ ] Typecheck, lint del archivo, formato, guardia UI sin aumentos y números verdes.
+- [x] Escritorio conserva sidebar y oculta barra mobile.
+- [x] Typecheck, lint del archivo, formato, guardia UI sin aumentos y números verdes.
 
 ## Mutaciones y límites
 
 0, L1. Sin nueva suite ni build sobre el servidor dev activo. Revisión global antes
 de main; QA del owner con pnpm dev:local. Commits locales en dev, sin merge ni push.
 Sin decisiones abiertas.
+
+## Evidencia
+
+Next real local con sesión de semilla y lecturas POS simuladas: móvil 390 px,
+dos enlaces con destinos correctos, POS aria-current page y columnas 189 px/189 px;
+escritorio 1100 px conserva sidebar y oculta barra mobile. Capturas vistas en
+/private/tmp/pos-0173-mobile.png y pos-0173-desktop.png. Nueva orden y catálogo
+visibles, cero pageErrors. Node 24.20.0: typecheck 6 paquetes, ESLint, Prettier,
+guardia UI 22 archivos sin aumentos, números y diff-check verdes.

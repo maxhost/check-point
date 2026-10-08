@@ -360,93 +360,118 @@ export function BackofficeNavigation({
 
       <nav
         aria-label="Navegación principal"
-        className="backoffice-mobile-nav print:hidden"
+        className={`backoffice-mobile-nav print:hidden ${segment === "pos" ? (permissions.includes("counter") && permissions.includes("pos") ? "grid-cols-2" : "grid-cols-1") : ""}`}
         data-owner={isOwner || undefined}
       >
-        {(isOwner || delegados.length > 0) && (
+        {segment === "pos" ? (
           <>
-            {isOwner && (
+            {permissions.includes("pos") && (
               <NavLink
-                href="/backoffice"
-                icon={HomeSimple}
-                label="Inicio"
-                segment={null}
+                {...posLink}
                 selectedSegment={segment}
                 onNavigate={closeMenu}
               />
             )}
-            {isOwner ? (
-              <button
-                aria-controls="backoffice-mobile-menu"
-                aria-expanded={openMenu === "business"}
-                className="mobile-nav-trigger"
-                data-active={
-                  links.some((item) => item.segment === segment) || undefined
-                }
-                onClick={() => toggleMenu("business")}
-                type="button"
-              >
-                <Dashboard aria-hidden="true" width={22} height={22} />
-                <span>Negocio</span>
-              </button>
-            ) : (
-              <button
-                aria-controls="backoffice-mobile-menu"
-                aria-expanded={openMenu === "business"}
-                className="mobile-nav-trigger"
-                onClick={() => toggleMenu("business")}
-                type="button"
-              >
-                <Dashboard aria-hidden="true" width={22} height={22} />
-                <span>Administración</span>
-              </button>
+            {permissions.includes("counter") && (
+              <NavLink
+                href="/backoffice/counter"
+                icon={QrCode}
+                label="Mostrador"
+                segment="counter"
+                selectedSegment={segment}
+                onNavigate={closeMenu}
+              />
             )}
           </>
-        )}
-        {permissions.includes("counter") && (
-          <Link
-            aria-current={segment === "counter" ? "page" : undefined}
-            className="mobile-counter-access"
-            href="/backoffice/counter"
-            onClick={closeMenu}
-          >
-            <span>
-              <QrCode aria-hidden="true" width={24} height={24} />
-            </span>
-            Mostrador
-          </Link>
-        )}
-        {isOwner && (
+        ) : (
           <>
-            <button
-              aria-controls="backoffice-mobile-menu"
-              aria-expanded={openMenu === "loyalty"}
-              className="mobile-nav-trigger"
-              data-active={
-                loyaltyLinks.some((item) => item.segment === segment) ||
-                undefined
-              }
-              onClick={() => toggleMenu("loyalty")}
-              type="button"
-            >
-              <Gift aria-hidden="true" width={22} height={22} />
-              <span>Fidelización</span>
-            </button>
-            <button
-              aria-controls="backoffice-mobile-menu"
-              aria-expanded={openMenu === "more"}
-              className="mobile-nav-trigger"
-              data-active={
-                segment === "subscription" ||
-                segment === "settings" ||
-                undefined
-              }
-              onClick={() => toggleMenu("more")}
-              type="button"
-            >
-              <MoreHoriz aria-hidden="true" width={22} height={22} />
-              <span>Más</span>
-            </button>
+            {(isOwner || delegados.length > 0) && (
+              <>
+                {isOwner && (
+                  <NavLink
+                    href="/backoffice"
+                    icon={HomeSimple}
+                    label="Inicio"
+                    segment={null}
+                    selectedSegment={segment}
+                    onNavigate={closeMenu}
+                  />
+                )}
+                {isOwner ? (
+                  <button
+                    aria-controls="backoffice-mobile-menu"
+                    aria-expanded={openMenu === "business"}
+                    className="mobile-nav-trigger"
+                    data-active={
+                      links.some((item) => item.segment === segment) ||
+                      undefined
+                    }
+                    onClick={() => toggleMenu("business")}
+                    type="button"
+                  >
+                    <Dashboard aria-hidden="true" width={22} height={22} />
+                    <span>Negocio</span>
+                  </button>
+                ) : (
+                  <button
+                    aria-controls="backoffice-mobile-menu"
+                    aria-expanded={openMenu === "business"}
+                    className="mobile-nav-trigger"
+                    onClick={() => toggleMenu("business")}
+                    type="button"
+                  >
+                    <Dashboard aria-hidden="true" width={22} height={22} />
+                    <span>Administración</span>
+                  </button>
+                )}
+              </>
+            )}
+            {permissions.includes("counter") && (
+              <Link
+                aria-current={segment === "counter" ? "page" : undefined}
+                className="mobile-counter-access"
+                href="/backoffice/counter"
+                onClick={closeMenu}
+              >
+                <span>
+                  <QrCode aria-hidden="true" width={24} height={24} />
+                </span>
+                Mostrador
+              </Link>
+            )}
+            {isOwner && (
+              <>
+                <button
+                  aria-controls="backoffice-mobile-menu"
+                  aria-expanded={openMenu === "loyalty"}
+                  className="mobile-nav-trigger"
+                  data-active={
+                    loyaltyLinks.some((item) => item.segment === segment) ||
+                    undefined
+                  }
+                  onClick={() => toggleMenu("loyalty")}
+                  type="button"
+                >
+                  <Gift aria-hidden="true" width={22} height={22} />
+                  <span>Fidelización</span>
+                </button>
+                <button
+                  aria-controls="backoffice-mobile-menu"
+                  aria-expanded={openMenu === "more"}
+                  className="mobile-nav-trigger"
+                  data-active={
+                    segment === "subscription" ||
+                    segment === "settings" ||
+                    undefined
+                  }
+                  onClick={() => toggleMenu("more")}
+                  type="button"
+                >
+                  <MoreHoriz aria-hidden="true" width={22} height={22} />
+                  <span>Más</span>
+                </button>
+              </>
+            )}
           </>
         )}
       </nav>

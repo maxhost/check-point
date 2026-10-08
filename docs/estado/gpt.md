@@ -3,6 +3,29 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0173: NAVBAR MOBILE POS
+
+Owner confirmó que la caché funciona perfectamente; incidente cache.peek ya no
+se reproduce según su prueba. Configuración Cloudflare del handoff anterior
+sigue siendo una recomendación pendiente de aplicar, sin acceso de GPT.
+
+[0173](../specs/0173-navbar-mobile-pos.md), L1, reservada localmente en ecb19c8.
+En POS la barra mobile usa NavLink existentes: POS y Mostrador en columnas iguales,
+con permisos pos/counter respectivamente. POS activo. Otras vistas y escritorio
+conservan navegación. Sin cambios de kit, CSS, servidor, API ni caché.
+Actualizar órdenes se explicó al owner: sincronización explícita de historial,
+validación de sesión e invalidación de recursos; sin polling para cambios ajenos.
+
+Next real local con sesión ficticia de semilla y lecturas simuladas: mobile 390 px,
+dos enlaces y destinos correctos, aria-current, columnas 189/189; desktop 1100 px
+sidebar visible/barra oculta. Capturas vistas. Nueva orden y catálogo visibles,
+cero pageErrors. Script /private/tmp/checkpoint-pos-0173-live.cjs.
+Typecheck 6 paquetes, ESLint, formato, guardia UI sin aumentos (22 archivos),
+números y diff-check verdes con Node 24.20.0. Sin suite nueva ni build (L1).
+Pendiente owner probar con pnpm dev:local antes de pasar a main. Solo dev, sin
+merge ni push. Archivos ajenos .claude/skills/gotchas-del-repo/SKILL.md y
+LECCIONES preservados fuera del staging.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0172: CACHÉ POS IMPLEMENTADA LOCALMENTE
 
 Owner autorizó implementar la spec cerrada y dejó avisos entre operadores para después.
@@ -57,8 +80,9 @@ habilitación POS y lecturas; no se crearon órdenes. Script temporal
 /private/tmp/checkpoint-pos-next-live.cjs. La pestaña concreta del owner no se inspeccionó.
 [Handoff de configuración](../handoff-2026-10-08-cache-cloudflare-dev.md): bypass edge
 y respetar headers de origen para los dos hosts dev, sin alterar producción.
-Aplicación en Cloudflare y confirmación del owner pendientes; GPT no tiene conector
-a esa cuenta. No nuevos cambios de fuente; no considerar cerrado el incidente.
+Aplicación en Cloudflare pendiente; GPT no tiene conector a esa cuenta.
+Owner posteriormente confirmó que la caché funciona perfectamente. Sin cambios
+de fuente para este incidente.
 Mensaje chrome-extension sobre recordConsoleEvents.js corresponde a una extensión.
 
 ## ⇥ ESTADO (2026-10-08) — SPEC 0171: POS REUTILIZA MOSTRADOR
