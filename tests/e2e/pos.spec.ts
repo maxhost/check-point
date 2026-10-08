@@ -180,10 +180,10 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
     .getByRole("button", { name: "Agregar Especial", exact: true })
     .click();
   await page
-    .getByRole("textbox", { name: "Precio unitario de Especial" })
+    .getByRole("spinbutton", { name: "Precio unitario de Especial" })
     .fill("7.50");
   await page
-    .getByRole("textbox", { name: "Precio unitario de Especial" })
+    .getByRole("spinbutton", { name: "Precio unitario de Especial" })
     .press("Tab");
   await page.getByRole("button", { name: "Guardar orden" }).click();
   await expect(
@@ -195,11 +195,14 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
     items: [{ productId: "custom", quantity: 1, unitPrice: "7.50" }],
   });
   await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.getByRole("button", { name: /Ver detalle/ }).click();
   await expect(
     page.getByText("$10,00 por unidad · Precio guardado"),
   ).toBeVisible();
-  await page.getByRole("textbox", { name: "Cantidad de Café" }).fill("2");
-  await page.getByRole("textbox", { name: "Cantidad de Café" }).press("Tab");
+  await page.getByRole("button", { name: /Ocultar detalle/ }).click();
+  await page
+    .getByRole("button", { name: "Agregar un Café", exact: true })
+    .click();
   await page.getByRole("button", { name: "Guardar orden" }).click();
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
@@ -474,4 +477,173 @@ test("pérdida del permiso retira las acciones y no llama al mostrador", async (
     0,
   );
   expect(calls).toEqual([]);
+});
+
+test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carrusel, búsqueda y cantidades", async ({
+  page,
+}, testInfo) => {
+  await setup(page);
+  const categories = Array.from({ length: 7 }, (_, index) => ({
+    id: `category-${index}`,
+    name: `Categoría de prueba ${index}`,
+  }));
+  const products = [
+    {
+      ...product,
+      id: "juice",
+      name: "Zumo",
+      categoryId: "category-0",
+      unitPrice: 5,
+    },
+    { ...product, categoryId: "category-1" },
+    ...categories.slice(2).map((category, index) => ({
+      ...product,
+      id: `product-${index}`,
+      name: `Producto ${index}`,
+      categoryId: category.id,
+    })),
+  ];
+  await page.route("**/api/pos/catalog**", (route) =>
+    route.fulfill({
+      json: {
+        products,
+        categories,
+        bestSellingProductIds: ["juice", "coffee"],
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Nueva orden" }).click();
+  await page
+    .getByRole("textbox", { name: "Nombre de mesa" })
+    .fill("Mesa prueba");
+  await page.getByRole("button", { name: /Local/ }).click();
+  await page.getByRole("option", { name: "Centro" }).click();
+  const catalog = page.locator(".counter-detailed");
+  await expect(
+    catalog.locator(".counter-product-add").first(),
+  ).toHaveAccessibleName("Agregar Zumo");
+  await expect(
+    catalog.locator(".counter-product-add").nth(1),
+  ).toHaveAccessibleName("Agregar Café");
+  const carousel = page.getByRole("group", { name: "Categorías" });
+  expect(
+    await carousel.evaluate(
+      (element) => element.scrollWidth > element.clientWidth,
+    ),
+  ).toBe(true);
+  await carousel
+    .getByRole("button", { name: "Categoría de prueba 1", exact: true })
+    .click();
+  await expect(
+    catalog.getByRole("button", { name: "Agregar Zumo", exact: true }),
+  ).toHaveCount(0);
+  await catalog
+    .getByRole("button", { name: "Agregar Café", exact: true })
+    .click();
+  await catalog
+    .getByRole("button", { name: "Agregar un Café", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: /2 artículos/ })).toBeVisible();
+  await catalog
+    .getByRole("button", { name: "Quitar un Café", exact: true })
+    .click();
+  await catalog
+    .getByRole("button", { name: "Quitar un Café", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: /0 artículos/ })).toBeVisible();
+  await expect(
+    catalog.getByRole("button", { name: "Quitar un Café", exact: true }),
+  ).toHaveCount(0);
+  await catalog.getByRole("button", { name: "Buscar", exact: true }).click();
+  await page.getByRole("searchbox", { name: "Buscar producto" }).fill("zumo");
+  await expect(
+    catalog.getByRole("button", { name: "Agregar Zumo", exact: true }),
+  ).toBeVisible();
+  await expect(
+    catalog.getByRole("button", { name: "Agregar Café", exact: true }),
+  ).toHaveCount(0);
+  await catalog
+    .getByRole("button", { name: "Cerrar búsqueda", exact: true })
+    .click();
+  await carousel.getByRole("button", { name: "Todos", exact: true }).click();
+  await catalog
+    .getByRole("button", { name: "Agregar Zumo", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Guardar orden", exact: true }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole("button", { name: "Cancelar", exact: true }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("pos-catalog-mobile.png"),
+  });
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.screenshot({
+    path: testInfo.outputPath("pos-catalog-desktop.png"),
+  });
+});
+
+test("el resumen mantiene snapshots duplicados y productos borrados separados al editar", async ({
+  page,
+}) => {
+  await setup(page);
+  const items = [
+    baseOrder.items[0],
+    {
+      ...baseOrder.items[0],
+      lineId: "line-2",
+      unitPrice: "15.00",
+      lineTotal: "15.00",
+    },
+    {
+      ...baseOrder.items[0],
+      lineId: "line-3",
+      productId: null,
+      name: "Producto retirado",
+      unitPrice: "7.00",
+      lineTotal: "7.00",
+    },
+  ];
+  let body: unknown;
+  await page.route("**/api/pos/orders/order-1", (route) => {
+    if (route.request().method() === "PUT")
+      body = route.request().postDataJSON();
+    return route.fulfill({ json: { ...baseOrder, items, total: "32.00" } });
+  });
+  await open(page);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.getByRole("button", { name: /Ver detalle/ }).click();
+  const detail = page.locator("#pos-cart-detail");
+  await expect(
+    detail.getByText("$10,00 por unidad · Precio guardado"),
+  ).toBeVisible();
+  await expect(
+    detail.getByText("$15,00 por unidad · Precio guardado"),
+  ).toBeVisible();
+  await expect(detail.getByText("1 × Producto retirado")).toBeVisible();
+  await page
+    .locator(".counter-detailed")
+    .getByRole("button", { name: "Agregar un Café", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Guardar orden", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
+  ).toBeVisible();
+  expect(body).toMatchObject({
+    items: [
+      { lineId: "line-1", productId: "coffee", quantity: 1 },
+      { lineId: "line-2", productId: "coffee", quantity: 2 },
+      { lineId: "line-3", productId: null, quantity: 1 },
+    ],
+  });
 });

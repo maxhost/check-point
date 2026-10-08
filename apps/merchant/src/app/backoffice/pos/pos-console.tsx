@@ -108,8 +108,14 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     void load();
   }
   return (
-    <main className="merchant-shell print:p-0">
-      <div className="backoffice-home grid gap-6 print:m-0 print:p-0">
+    <main
+      className={
+        view === "edit"
+          ? "merchant-shell counter-shell counter-flow print:p-0"
+          : "merchant-shell print:p-0"
+      }
+    >
+      <div className="backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0">
         <div className="print:hidden">
           <PageHeader
             title="POS"

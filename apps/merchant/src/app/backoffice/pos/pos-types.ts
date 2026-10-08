@@ -48,6 +48,8 @@ export type PosSummary = Pick<
 > & { itemCount: number; saleTotal: string | null };
 export type PosHistory = { open: PosSummary[]; closedToday: PosSummary[] };
 export type PosCatalog = {
+  /** Proposed extension to 0169, pending Claude: rank of closed sales at this location. */
+  bestSellingProductIds?: string[];
   products: CounterProduct[];
   categories: { id: string; name: string }[];
 };

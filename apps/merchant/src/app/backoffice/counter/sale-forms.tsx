@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { type CartLine, type CounterProduct, formatMoney } from "./types";
 
-/** The catalog stays in a stable order; personal picks are a separate shortcut. */
+/** Alphabetical by default; optional server ranking, with personal picks kept separate. */
 export function DetailedSale({
   products,
   categories,
@@ -15,6 +15,8 @@ export function DetailedSale({
   onQty,
   onLinePrice,
   onRepeat,
+  disabled = false,
+  productOrder,
 }: {
   products: CounterProduct[];
   categories: { id: string; name: string }[];
@@ -26,15 +28,25 @@ export function DetailedSale({
   onQty: (productId: string, delta: number) => void;
   onLinePrice: (productId: string, value: number) => void;
   onRepeat: () => void;
+  disabled?: boolean;
+  /** Optional server ranking; the counter keeps its alphabetical default. */
+  productOrder?: string[];
 }) {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [repeatApplied, setRepeatApplied] = useState(false);
-  const sortedProducts = useMemo(
-    () => [...products].sort((a, b) => a.name.localeCompare(b.name, "es")),
-    [products],
-  );
+  const sortedProducts = useMemo(() => {
+    const ranking = new Map(
+      (productOrder ?? []).map((id, index) => [id, index]),
+    );
+    return [...products].sort(
+      (a, b) =>
+        (ranking.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (ranking.get(b.id) ?? Number.MAX_SAFE_INTEGER) ||
+        a.name.localeCompare(b.name, "es"),
+    );
+  }, [products, productOrder]);
   const shown = useMemo(() => {
     if (searchOpen) {
       const q = query.trim().toLocaleLowerCase("es");
@@ -75,6 +87,7 @@ export function DetailedSale({
         <div className="counter-product-main">
           <button
             type="button"
+            disabled={disabled}
             className="counter-product-add"
             onClick={() => onAdd(product)}
             aria-label={`Agregar ${product.name}`}
@@ -93,6 +106,7 @@ export function DetailedSale({
             >
               <button
                 type="button"
+                disabled={disabled}
                 aria-label={`Quitar un ${product.name}`}
                 onClick={() => onQty(product.id, -1)}
               >
@@ -101,6 +115,7 @@ export function DetailedSale({
               <output>{line.quantity}</output>
               <button
                 type="button"
+                disabled={disabled}
                 aria-label={`Agregar un ${product.name}`}
                 onClick={() => onQty(product.id, 1)}
               >
@@ -113,6 +128,7 @@ export function DetailedSale({
           <label className="counter-line-price">
             Precio unitario de {product.name}
             <input
+              disabled={disabled}
               type="number"
               inputMode="decimal"
               min="0.01"
@@ -152,7 +168,7 @@ export function DetailedSale({
           <p>Se usarán los precios actuales del catálogo.</p>
           <button
             type="button"
-            disabled={repeatApplied}
+            disabled={disabled || repeatApplied}
             onClick={() => {
               onRepeat();
               setRepeatApplied(true);
@@ -168,6 +184,7 @@ export function DetailedSale({
         <h3>Catálogo</h3>
         <button
           type="button"
+          disabled={disabled}
           aria-expanded={searchOpen}
           onClick={() => {
             setSearchOpen(!searchOpen);
@@ -180,6 +197,7 @@ export function DetailedSale({
       {searchOpen ? (
         <input
           className="counter-search"
+          disabled={disabled}
           type="search"
           aria-label="Buscar producto"
           placeholder="Buscar producto…"
@@ -195,6 +213,7 @@ export function DetailedSale({
         >
           <button
             type="button"
+            disabled={disabled}
             className={categoryId === null ? "is-active" : ""}
             onClick={() => setCategoryId(null)}
           >
@@ -204,6 +223,7 @@ export function DetailedSale({
             <button
               key={category.id}
               type="button"
+              disabled={disabled}
               className={categoryId === category.id ? "is-active" : ""}
               onClick={() => setCategoryId(category.id)}
             >
@@ -213,6 +233,7 @@ export function DetailedSale({
           {hasOther && (
             <button
               type="button"
+              disabled={disabled}
               className={categoryId === "other" ? "is-active" : ""}
               onClick={() => setCategoryId("other")}
             >
