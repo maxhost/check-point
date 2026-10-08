@@ -47,7 +47,18 @@ por HMR, no se reprodujo en código actual. Se detuvo dev:local, movió la cach�
 Petición local /backoffice/pos dio 307 (sin sesión, esperado); compiló una única variante de
 PosConsole que pasa ambas props. Dos pruebas de crear/reabrir verdes (3,0 s), log
 /private/tmp/pos-0172-restart-smoke.log. No cambios de código ni fallback de caché.
-Se pidió recarga completa Cmd+Shift+R al owner; confirmación en su pestaña pendiente.
+El owner hizo hard refresh y reportó el mismo error: el diagnóstico de caché local
+no fue concluyente. Se comparó el mismo chunk en origen y túnel: Next devuelve
+no-cache/must-revalidate, pero Cloudflare impone max-age=14400/must-revalidate
+(CF-Cache-Status EXPIRED). Después de esa lectura ambos cuerpos coincidieron.
+Prueba con Next real y sesión de semilla local, primero origen y después túnel:
+Nueva orden y catálogo visibles, cero pageErrors en ambos. Se simularon únicamente
+habilitación POS y lecturas; no se crearon órdenes. Script temporal
+/private/tmp/checkpoint-pos-next-live.cjs. La pestaña concreta del owner no se inspeccionó.
+[Handoff de configuración](../handoff-2026-10-08-cache-cloudflare-dev.md): bypass edge
+y respetar headers de origen para los dos hosts dev, sin alterar producción.
+Aplicación en Cloudflare y confirmación del owner pendientes; GPT no tiene conector
+a esa cuenta. No nuevos cambios de fuente; no considerar cerrado el incidente.
 Mensaje chrome-extension sobre recordConsoleEvents.js corresponde a una extensión.
 
 ## ⇥ ESTADO (2026-10-08) — SPEC 0171: POS REUTILIZA MOSTRADOR
