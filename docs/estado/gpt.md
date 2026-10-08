@@ -3,6 +3,24 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0178: ENTREGA A CLAUDE
+
+UI POS commiteada en **eb5a950**, spec reservada en **92c5913**. Nueva orden y
+orden abierta comparten Pedido/Productos, catálogo reutilizado de Mostrador,
+líneas editables, contexto compacto, guardado explícito y salida protegida.
+Footer contextual y Más acciones para imprimir/anular; conflictos preservan
+borrador hasta revisión. Cache sin TTL/polling/autosave; API/servidor/kit intactos.
+[Handoff](../handoff-0178-pos-workspace-2026-10-08.md).
+
+Owner probó: «listo. parece estar todo funcionando», y pidió no ejecutar más
+pruebas, dejar preparado para live y que publique Claude. GPT no hizo merge ni
+push, todo en dev. Verificaciones previas: 5 e2e seleccionados verdes (4,7 s),
+typecheck 6 paquetes, lint de pantallas, guardia sin aumentos y formato aplicado.
+Adaptaciones finales de otros e2e y ajustes de impresión/contexto sin rerun;
+no se declara suite completa verde ni DoD íntegramente cumplido. Claude conserva
+los gates normales de publicación. Próximas mejoras visuales quedan para después.
+Staging vacío al entregar; cambios ajenos gotchas/LECCIONES preservados.
+
 ## ⇥ ESTADO (2026-10-08) — INVESTIGACIÓN UX POS MOBILE
 
 Owner pidió investigación con agente porque orden abierta y nueva orden siguen
