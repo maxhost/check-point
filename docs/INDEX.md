@@ -314,6 +314,7 @@ desactualizado es peor que no tenerlo.
 | 0170 | 2026-10-08 | **Pantallas POS**: configuración, órdenes por mesa, catálogo, cobro con o sin pase e impresión; kit de UI y contrato 0169. | **cerrada**, UI local en dev; 7 e2e POS verdes; gate global, PASS independiente y QA del owner pendientes | no | `specs/0170-pantallas-pos.md` |
 | 0171 | 2026-10-08 | **POS reutiliza carrito de Mostrador**: categorías horizontales, búsqueda y +/− en tarjetas; snapshots conservados. Ranking comercial pendiente del contrato HTTP. | **cerrada**, local en dev | no | `specs/0171-pos-reutiliza-carrito-de-mostrador.md` |
 | 0172 | 2026-10-08 | **Caché en memoria del POS**: órdenes, historial y catálogo reutilizados; sin TTL ni consultas por foco; actualización desde escrituras y botón explícito. | **cerrada**, caché local en dev; 37 pruebas afectadas verdes; QA del owner pendiente | no | `specs/0172-cache-en-memoria-del-pos.md` |
+| 0173 | 2026-10-08 | **Navbar mobile POS**: accesos simples POS y Mostrador con navegación y estilos existentes. | **cerrada**, mini plan L1 | no | `specs/0173-navbar-mobile-pos.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
