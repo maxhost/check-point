@@ -799,7 +799,7 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(2);
 });
 
-test("caché POS: detalle se lee una vez; Actualizar invalida incluso con resumen idéntico", async ({
+test("caché POS: detalle se lee una vez; recargar obtiene la versión actual", async ({
   page,
 }) => {
   await setup(page);
@@ -821,10 +821,8 @@ test("caché POS: detalle se lee una vez; Actualizar invalida incluso con resume
       json: { ...baseOrder, version: 2, tableLabel: "Mesa actual" },
     }),
   );
-  await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-  await expect(
-    page.getByRole("button", { name: "Actualizar órdenes" }),
-  ).toBeEnabled();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Nueva orden" })).toBeVisible();
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect(
     page.getByRole("heading", { name: "Mesa actual · Precuenta" }),
@@ -835,12 +833,12 @@ test("caché POS: detalle se lee una vez; Actualizar invalida incluso con resume
   expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(2);
 });
 
-test("caché POS: catálogo por local y actualización manual conservan el borrador", async ({
+test("caché POS: catálogo por local reutilizado conserva el borrador", async ({
   page,
 }) => {
   await setup(page);
   const reads = trackedReads(page);
-  let price = 15;
+  const price = 15;
   let body: unknown;
   await page.route("**/api/pos/catalog**", (route) =>
     route.fulfill({
@@ -899,22 +897,17 @@ test("caché POS: catálogo por local y actualización manual conservan el borra
   expect(
     reads.filter((url) => url === "/api/pos/catalog?locationId=local-2"),
   ).toHaveLength(1);
-  price = 40;
-  await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-  await expect(
-    page.getByRole("button", { name: "Actualizar órdenes" }),
-  ).toBeEnabled();
   await expect(
     page.getByRole("textbox", { name: "Nombre de mesa" }),
   ).toHaveValue("Mesa escrita");
-  await expect(page.locator(".counter-product-add small")).toHaveText("$40,00");
+  await expect(page.locator(".counter-product-add small")).toHaveText("$15,00");
   await page.getByRole("button", { name: /Ver detalle/ }).click();
   await expect(
     page.getByText("$10,00 por unidad · Precio guardado"),
   ).toBeVisible();
   expect(
     reads.filter((url) => url === "/api/pos/catalog?locationId=local-1"),
-  ).toHaveLength(2);
+  ).toHaveLength(1);
   await page.getByRole("button", { name: "Guardar orden" }).click();
   await expect(
     page.getByRole("button", { name: "Editar", exact: true }),
@@ -971,81 +964,6 @@ test("caché POS: una respuesta de A no desplaza la mesa B seleccionada", async 
   ).toHaveCount(0);
 });
 
-for (const conflict of [false, true]) {
-  test(`caché POS: GET tardío no pisa ${conflict ? "conflicto" : "guardado"}`, async ({
-    page,
-  }) => {
-    await setup(page);
-    const reads = trackedReads(page);
-    await open(page);
-    await expect(
-      page.getByRole("button", { name: "Editar", exact: true }),
-    ).toBeVisible();
-    let release!: () => void;
-    let body: unknown;
-    const current = {
-      ...baseOrder,
-      version: 3,
-      tableLabel: "Mesa nueva",
-      items: [{ ...baseOrder.items[0], quantity: 2, lineTotal: "20.00" }],
-      total: "20.00",
-    };
-    await page.route("**/api/pos/orders/order-1", async (route) => {
-      if (route.request().method() === "PUT") {
-        body = route.request().postDataJSON();
-        return route.fulfill(
-          conflict
-            ? {
-                status: 409,
-                json: {
-                  code: "version_conflict",
-                  error: "Conflicto",
-                  order: current,
-                },
-              }
-            : { json: current },
-        );
-      }
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-      await route.fulfill({ json: baseOrder });
-    });
-    await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-    await expect(
-      page.getByRole("button", { name: "Actualizar órdenes" }),
-    ).toBeEnabled();
-    await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
-    await expect.poll(() => typeof release).toBe("function");
-    await page.getByRole("button", { name: "Editar", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Guardar orden" }),
-    ).toBeEnabled();
-    await page.getByRole("button", { name: "Guardar orden" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Mesa nueva · Precuenta" }),
-    ).toBeVisible();
-    const response = page.waitForResponse("**/api/pos/orders/order-1");
-    release();
-    await response;
-    await expect(
-      page.getByRole("heading", { name: "Mesa nueva · Precuenta" }),
-    ).toBeVisible();
-    expect(body).toMatchObject({
-      version: 1,
-      items: [{ lineId: "line-1", quantity: 1 }],
-    });
-    await page.getByRole("button", { name: "Volver al historial" }).click();
-    await page.getByRole("button", { name: "Abrir Mesa nueva" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Mesa nueva · Precuenta" }),
-    ).toBeVisible();
-    expect(
-      reads.filter((url) => url === "/api/pos/orders/order-1"),
-    ).toHaveLength(2);
-  });
-}
-
 for (const status of [401, 403, 404, 503, "transport"] as const) {
   test(`caché POS: lectura ${status} ${status === 503 || status === "transport" ? "conserva copia" : "retira datos"}`, async ({
     page,
@@ -1071,11 +989,7 @@ for (const status of [401, 403, 404, 503, "transport"] as const) {
             },
           }),
     );
-    await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-    await expect(
-      page.getByRole("button", { name: "Actualizar órdenes" }),
-    ).toBeEnabled();
-    await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
+    await page.getByRole("button", { name: "Anular", exact: true }).click();
     if (status === 503 || status === "transport") {
       await expect(
         page.getByText(
@@ -1100,58 +1014,6 @@ for (const status of [401, 403, 404, 503, "transport"] as const) {
     }
   });
 }
-
-test("caché POS: cambio de identidad descarta detalle pendiente y borrador", async ({
-  page,
-}) => {
-  await setup(page);
-  let release!: () => void;
-  await page.route("**/api/pos/orders/order-1", async (route) => {
-    await new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    await route.fulfill({ json: baseOrder });
-  });
-  await page.goto(harness.url);
-  await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
-  await expect.poll(() => typeof release).toBe("function");
-  await page.route("**/api/merchant/session", (route) =>
-    route.fulfill({
-      json: {
-        authenticated: true,
-        user: { id: "operator-2" },
-        business: {
-          id: "business-2",
-          status: "active",
-          timezone: "UTC",
-          posEnabled: true,
-          currencyCode: "USD",
-        },
-        membership: { role: "owner", status: "active", permissions: ["pos"] },
-      },
-    }),
-  );
-  await page.route("**/api/pos/orders", (route) =>
-    route.fulfill({ json: { open: [], closedToday: [] } }),
-  );
-  await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-  await expect(
-    page.getByRole("button", { name: "Actualizar órdenes" }),
-  ).toBeEnabled();
-  const response = page.waitForResponse("**/api/pos/orders/order-1");
-  release();
-  await response;
-  await expect(page.getByRole("button", { name: "Abrir Mesa 4" })).toHaveCount(
-    0,
-  );
-  await expect(
-    page.getByRole("heading", { name: "Mesa 4 · Precuenta" }),
-  ).toHaveCount(0);
-  await page.getByRole("button", { name: "Nueva orden" }).click();
-  await expect(
-    page.getByRole("textbox", { name: "Nombre de mesa" }),
-  ).toHaveValue("");
-});
 
 test("caché POS: lecturas concurrentes se deduplican y generaciones viejas se descartan", async () => {
   const cache = new PosCache();
@@ -1326,10 +1188,7 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
               },
       }),
     );
-    await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-    await expect(
-      page.getByRole("button", { name: "Actualizar órdenes" }),
-    ).toBeEnabled();
+    await page.reload();
     await expect(
       page.getByRole("textbox", { name: "Nombre de mesa" }),
     ).toHaveCount(0);
@@ -1338,10 +1197,7 @@ for (const context of ["signed-out", "revoked", "other-business"] as const) {
         page.getByRole("heading", { name: "POS no disponible" }),
       ).toBeVisible();
     await setup(page);
-    await page.getByRole("button", { name: "Actualizar órdenes" }).click();
-    await expect(
-      page.getByRole("button", { name: "Actualizar órdenes" }),
-    ).toBeEnabled();
+    await page.reload();
     await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
     await page.getByRole("button", { name: "Editar", exact: true }).click();
     await expect(
@@ -1436,4 +1292,19 @@ test("caché POS: conflicto sin snapshot bloquea acciones hasta releer la versi�
     page.getByRole("button", { name: "Editar", exact: true }),
   ).toBeEnabled();
   expect(reads).toBe(2);
+});
+
+test("POS ofrece X para volver al inicio y no muestra actualización manual", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto(harness.url);
+  const close = page.getByRole("link", { name: "Cerrar POS", exact: true });
+  await expect(close).toBeVisible();
+  await expect(close).toHaveAttribute("href", "/backoffice");
+  await expect(
+    page.getByRole("button", { name: "Actualizar órdenes" }),
+  ).toHaveCount(0);
+  await close.click();
+  await expect(page).toHaveURL(new URL("/backoffice", harness.url).href);
 });

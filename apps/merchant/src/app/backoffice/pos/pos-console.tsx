@@ -1,4 +1,5 @@
 "use client";
+import { Xmark } from "iconoir-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -6,6 +7,7 @@ import {
   Card,
   ConfirmDialog,
   Heading,
+  Link,
   PageHeader,
   Text,
 } from "../../../ui";
@@ -271,17 +273,6 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     setError(null);
     if (!cache.peek(historyKey)) void refreshHistory();
   }
-  function update() {
-    setError(null);
-    setConfirmVoid(false);
-    if (view !== "edit") {
-      navigation.current += 1;
-      setOpening(null);
-      setOrder(null);
-      setView("list");
-    }
-    void load(true);
-  }
   async function prepareVoid() {
     if (!order || locked.current) return;
     locked.current = true;
@@ -311,20 +302,20 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       }
     >
       <div className="backoffice-home grid min-w-0 gap-6 print:m-0 print:p-0">
-        <div className="print:hidden">
-          <PageHeader
-            title="POS"
-            description="Atiende tus mesas y cierra cada venta cuando el cliente pague."
-            actions={
-              <Button
-                variant="secondary"
-                isDisabled={busy || refreshing || view === "checkout"}
-                onPress={update}
-              >
-                Actualizar órdenes
-              </Button>
-            }
-          />
+        <div className="flex items-start justify-between gap-4 print:hidden">
+          <div className="min-w-0 flex-1">
+            <PageHeader
+              title="POS"
+              description="Atiende tus mesas y cierra cada venta cuando el cliente pague."
+            />
+          </div>
+          <Link
+            href="/backoffice"
+            aria-label="Cerrar POS"
+            className="close-module shrink-0 no-underline"
+          >
+            <Xmark aria-hidden="true" />
+          </Link>
         </div>
         {error && (
           <div className="print:hidden">

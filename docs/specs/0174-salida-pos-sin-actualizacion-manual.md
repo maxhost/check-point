@@ -41,3 +41,11 @@ No disjunta con 0172 en consola y pruebas.
 - Pruebas POS afectadas, typecheck, lint, formato, guardia UI y números verdes.
 - Sin build sobre dev activo ni mutaciones nuevas. QA owner con pnpm dev:local
   antes de main; sin merge ni push. Sin decisiones abiertas.
+
+## Evidencia
+
+30 pruebas POS pasan (14,1 s), incluida salida al inicio y ausencia del botón.
+Lecturas de error cubiertas desde Anular; recarga y reutilización de catálogo verdes.
+Typecheck, lint, formato, guardia UI sin aumentos y números verdes. El enlace usa
+Link del kit; no se añadió importación directa de next/link. Owner confirmó que
+la X funciona. Comprobación visual automatizada final sigue pendiente.
