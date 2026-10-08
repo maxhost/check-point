@@ -6,6 +6,78 @@
 
 
 
+## ESTADO HISTORICO (2026-10-08, tarde) — ONBOARDING REORDENADO + GUIA CERRABLE EN `dev`; MERGE A `main` PENDIENTE
+
+**Hecho en `dev` (L1, sin push; `main` intacto):**
+- `501eb95` orden del checklist (owner): email, catalogo, programa, marca, locales, equipo. Sale de
+  `ONBOARDING_TOURS` (`apps/merchant/src/server/onboarding/tours.ts`). Unit de onboarding 89 verdes;
+  `tools/neon-test.sh src/server/onboarding-checklist.neon.integration.test.ts` 11/11.
+- `19e5023` + `0cb9ba8` boton cerrar (X) en la «Guia de inicio» y «Ayuda» en Mas (mobile) y Cuenta (escritorio)
+  que la reabre. Cerrado = `localStorage` del navegador (`onboarding-checklist-visibility.ts`). `0cb9ba8` pasa a
+  `Button`/`Text` del kit: el ui-guard estaba rojo por dos `<button>` nativos y 5 selectores CSS nuevos.
+  Visto en headless 390x844 con un owner de la base LOCAL: cierra, sigue cerrado al recargar, Ayuda la reabre.
+  Backoffice unit 244 verdes, tsc/lint ok, `ui-guard: sin aumentos`.
+- `pnpm verify` (antes de `0cb9ba8`): typecheck, lint, format, test, build y neon full ok; ui-guard ROJO (arreglado
+  en `0cb9ba8`); **e2e NO corrio**: el ambiente local ocupa `:3200` y Next no levanta un segundo dev server.
+
+**Pendiente (owner pidio el merge a `main`):** bajar el ambiente local (lo baja el owner o se le pide a Claude),
+`pnpm verify` completo en `dev`, `git switch main && git merge --ff-only dev`, `pnpm dev:local` en main, push SOLO
+con OK, `git switch dev`. Sin e2e del flujo cerrar/Ayuda (zona GPT; hallazgo a decidir si se agrega).
+
+**Siguiente:** el owner arranca una feature nueva: clasificarla L0-L3 antes de empezar.
+
+**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
+puertos 3200/3201 (ADR 0127); no borra secretos de sus `.env`: se COMENTAN; R2 de desarrollo; Vercel Hobby; rotacion
+de claves la decide el owner. Wallet real en el telefono: decision ABIERTA. Telefono (PWA + push) parqueado (#80).
+Orden del onboarding y guia cerrable con Ayuda: pedidos del owner 2026-10-08.
+
+**Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
+desarrollo; `.env.example` sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
+
+**Como se trabaja (ADR 0128/0129):** rama local `dev`, niveles L0-L3. `main` local tiene 29 commits sin pushear
+(aprobados antes del ADR; pushearlos tambien pide OK). PROD con datos reales: cero escrituras sin OK explicito.
+Responder al owner SIEMPRE en español.
+
+---
+
+## ESTADO HISTORICO (2026-10-08) — AMBIENTE LOCAL + TUNEL ANDANDO (`pnpm dev:local`); TELEFONO PARQUEADO (#80)
+
+**Hecho (verificado):**
+- Spec 0168 implementada y con QA del owner (`140f6e9`, `853a01e` puertos, `b77de14`, `ce177ec`, `653f4bb`):
+  consumer `:3200`, merchant `:3201`, tunel `checkpass-dev` (alta del owner hecha). `pnpm dev:local` del owner: base,
+  apps, tunel y smoke en `200`. Login del comercio por `dev-business.` con `pnpm dev:link`: 1 sesion en
+  `merchant_auth.session` LOCAL. `check-env.ts` exit 0 (ahora tambien exige `BETTER_AUTH_SECRET`).
+- Skill `/entorno-local` (estado/arrancar/link/parar/reset-base) y `pnpm dev:local` / `pnpm dev:link`.
+- Rama `dev` creada (ADR 0128, `131bf09`) y niveles L0-L3 (ADR 0129, `d63c957`; tabla en `CLAUDE.md`). Ambiente local
+  arriba en `dev` (`/entorno-local`: todo en 200).
+
+**Parqueado por el owner (PARQUEADO #80):** QA del telefono (PWA + push). El cliente solo crea cuenta con Google/Apple
+y el callback `dev-my.` no esta registrado. Al retomar: preguntar credenciales de PROD vs de desarrollo.
+
+**Siguiente:** el owner trae «un par de cosas para trabajar»: clasificar cada una L0-L3 (si dudo, preguntarle). QA manual de la 0167 por el tunel (alta, sello, logo en bucket dev) sigue posible
+del lado del comercio.
+
+**Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
+puertos 3200/3201 (ADR 0127); no borra secretos de sus `.env`: se COMENTAN; R2 de desarrollo; Vercel Hobby; rotacion
+de claves la decide el owner (no recordarla). Wallet real en el telefono: decision ABIERTA.
+
+**Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
+desarrollo; `.env.example` sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
+
+**Como se trabaja (ADR 0128, owner 2026-10-08):** rama local `dev` (creada desde `main` en `302e208`), sin push.
+Con OK del owner: `verify` → `git switch main && git merge --ff-only dev` → `pnpm dev:local` en main → `git push` →
+`git switch dev`. `main` local tiene 29 commits sin pushear (aprobados antes del ADR; pushearlos tambien pide OK).
+PROD con datos reales: cero escrituras sin OK explicito.
+
+**Gotchas:**
+- El owner edita con TextEdit: darle scripts de scratchpad que hagan el cambio. Agentes no escriben `.env*`.
+- `env-read-guard.sh` bloquea cualquier comando cuyo TEXTO tenga `.env` junto a `grep`/`sed`/`head`: poner la edicion
+  en un archivo (Write) y correrlo aparte.
+- La carpeta del repo llega como `Documents` o `documents` (APFS): comparar rutas en minusculas.
+- bash de macOS es 3.2: sin `wait -n`; array vacio + `set -u` revienta.
+
+**Prompt para retomar:** «Lee docs/estado/claude.md».
+
 ## ESTADO HISTORICO (2026-10-07, noche, 0168) — SPEC 0168 IMPLEMENTADA (`140f6e9`, cierre `772d74a`); FALTA EL ALTA DEL TUNEL DEL OWNER
 
 **Hecho (verificado):**

@@ -10,40 +10,30 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-08) — AMBIENTE LOCAL + TUNEL ANDANDO (`pnpm dev:local`); TELEFONO PARQUEADO (#80)
+## ⇥ ESTADO (2026-10-08, noche) — POS (spec 0169) IMPLEMENTADO EN `dev` CON PASS; UI DE GPT Y PROD PENDIENTES
 
-**Hecho (verificado):**
-- Spec 0168 implementada y con QA del owner (`140f6e9`, `853a01e` puertos, `b77de14`, `ce177ec`, `653f4bb`):
-  consumer `:3200`, merchant `:3201`, tunel `checkpass-dev` (alta del owner hecha). `pnpm dev:local` del owner: base,
-  apps, tunel y smoke en `200`. Login del comercio por `dev-business.` con `pnpm dev:link`: 1 sesion en
-  `merchant_auth.session` LOCAL. `check-env.ts` exit 0 (ahora tambien exige `BETTER_AUTH_SECRET`).
-- Skill `/entorno-local` (estado/arrancar/link/parar/reset-base) y `pnpm dev:local` / `pnpm dev:link`.
-- Rama `dev` creada (ADR 0128, `131bf09`) y niveles L0-L3 (ADR 0129, `d63c957`; tabla en `CLAUDE.md`). Ambiente local
-  arriba en `dev` (`/entorno-local`: todo en 200).
+**Hecho en `dev` (L3, sin push; `main` intacto):**
+- `656eaa3` spec 0169 + ADR 0130 (decisiones del owner del 2026-10-08 escritas en la spec, no volver a preguntar).
+- `79e3efc` API del POS: migracion `0066` (`core.pos_order`, `core.pos_order_item`, `business.pos_enabled`, `pos` en el
+  CHECK de permisos; aplicada en la base LOCAL y en la rama de CI, **NO en PROD**), rutas `/api/pos/*` y
+  `PUT /api/merchant/business/pos`, `posEnabled` en la sesion, escalera comun `server/operator-guard.ts`.
+- `53fec62` `/delete-user` borra las mesas del POS cobradas con el pase del cliente (owner; medido en la base local).
+- `2e8a159` test `pos-close-reuse` (afterGrant y `request_reused`, oraculos del revisor; muerde: «expected 503 to be 409»).
+- Verificado por Claude: POS 35/35 + 2/2, mostrador/permisos/sesion 142/142, typecheck ok. Revisor: PASS, `pnpm verify` ok
+  salvo e2e (el ambiente local ocupa :3200).
 
-**Parqueado por el owner (PARQUEADO #80):** QA del telefono (PWA + push). El cliente solo crea cuenta con Google/Apple
-y el callback `dev-my.` no esta registrado. Al retomar: preguntar credenciales de PROD vs de desarrollo.
-
-**Siguiente:** el owner trae «un par de cosas para trabajar»: clasificar cada una L0-L3 (si dudo, preguntarle). QA manual de la 0167 por el tunel (alta, sello, logo en bucket dev) sigue posible
-del lado del comercio.
+**Pendiente:**
+- Encargo a GPT: pantallas del POS contra §Contrato de la spec 0169 (interruptor + modal de ordenes abiertas, imprimir,
+  calculadora de cambio, esconder el toggle `pos` en Equipo con el modulo apagado).
+- Hallazgo a decidir (owner): cerrar con pase una mesa cuyo local se archivo despues acredita en el local archivado.
+- Merge a `main` (pedido antes por el owner, sigue pendiente): bajar el ambiente local, `pnpm verify` completo con e2e,
+  `merge --ff-only`, probar `main` en local, push SOLO con OK. La migracion 0066 va a PROD con ese paso y con OK.
 
 **Decisiones del owner, no volver a preguntar:** base local en Docker (ADR 0126); tunel fijo con acceso abierto y
-puertos 3200/3201 (ADR 0127); no borra secretos de sus `.env`: se COMENTAN; R2 de desarrollo; Vercel Hobby; rotacion
-de claves la decide el owner (no recordarla). Wallet real en el telefono: decision ABIERTA.
+puertos 3200/3201 (ADR 0127); no borra secretos de sus archivos de entorno: se COMENTAN; R2 de desarrollo; Vercel
+Hobby; rotacion de claves la decide el owner. Wallet real en el telefono: decision ABIERTA. Telefono (PWA + push)
+parqueado (#80). POS: todo lo de la spec 0169 §Decisiones; canje de premios solo en el mostrador; canje como cupon
+desde la app = PARQUEADO #81.
 
 **Pendientes del owner:** sacar `QA_LOGIN_ENABLED` de Vercel; borrar pases/PWA de prueba de los telefonos; par VAPID de
-desarrollo; `.env.example` sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
-
-**Como se trabaja (ADR 0128, owner 2026-10-08):** rama local `dev` (creada desde `main` en `302e208`), sin push.
-Con OK del owner: `verify` → `git switch main && git merge --ff-only dev` → `pnpm dev:local` en main → `git push` →
-`git switch dev`. `main` local tiene 29 commits sin pushear (aprobados antes del ADR; pushearlos tambien pide OK).
-PROD con datos reales: cero escrituras sin OK explicito.
-
-**Gotchas:**
-- El owner edita con TextEdit: darle scripts de scratchpad que hagan el cambio. Agentes no escriben `.env*`.
-- `env-read-guard.sh` bloquea cualquier comando cuyo TEXTO tenga `.env` junto a `grep`/`sed`/`head`: poner la edicion
-  en un archivo (Write) y correrlo aparte.
-- La carpeta del repo llega como `Documents` o `documents` (APFS): comparar rutas en minusculas.
-- bash de macOS es 3.2: sin `wait -n`; array vacio + `set -u` revienta.
-
-**Prompt para retomar:** «Lee docs/estado/claude.md».
+desarrollo; el ejemplo de entorno sin el bloque de la 0167 ni `BETTER_AUTH_SECRET`/puertos nuevos (agentes sin permiso).
