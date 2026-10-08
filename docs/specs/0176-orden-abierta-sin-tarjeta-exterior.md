@@ -51,3 +51,6 @@ retorno. Capturas móvil/escritorio vistas (390/1100 px) en /private/tmp/pos-017
 Typecheck 6 paquetes, ESLint, formato, guardia sin aumentos y números verdes.
 Se ajustó X a size-6 tras revisión visual y se repitió la prueba específica.
 Owner confirmó QA de X (0174) y listado compacto (0175); falta QA de esta vista.
+
+Revisión final: padding del botón eliminado con utilidad Tailwind; icono con ancho
+real 24 px verificado por navegador, prueba puntual 1/1 (2,0 s), captura móvil vista.

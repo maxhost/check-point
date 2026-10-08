@@ -3,6 +3,36 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPECS 0174–0176: UI POS
+
+0174 en **268b951**: se retiró Actualizar órdenes; X del listado vuelve a
+/backoffice con Link del kit. Owner probó y confirmó. Sin refresh automático;
+recarga/salir y volver monta caché nueva. Tests adaptados a recarga y validación
+previa a anular. Retirados dos escenarios browser de GET tardío contra escritura
+que dependían del flujo manual eliminado y uno de identidad durante refresh;
+pruebas directas de generaciones, versiones y aislamiento permanecen.
+
+0175 en **c3b1d03**: abiertas en filas compactas con mesa, total, Abrir; nombre
+accesible individual, nombres largos permiten salto. Cerradas hoy conserva tarjetas.
+Owner probó y confirmó. 31 pruebas POS verdes (14,0 s).
+
+0176 en **9c9e550**, ajuste de padding/tamaño de la X en el commit siguiente:
+orden abierta usa counter-shell/counter-flow con ancho disponible completo y
+sin Card exterior. Sin navbar mobile, como Venta detallada. Sidebar escritorio
+conservado como Mostrador. X de detalle/edición vuelve al listado con back y caché;
+X de listado sale al inicio. Checkout/órdenes cerradas mantienen presentación.
+No se tocó kit, CSS, API, servidor, tooling ni contratos. Componentes/Tailwind/tokens
+existentes. 32 pruebas POS verdes (14,5 s); prueba puntual final 1/1 (2,0 s).
+Aserciones: padding/borde cero, fondo transparente, ancho móvil 390 px, navbar oculta,
+retorno sin GET extra, edición/listado correctos e icono X con ancho real 24 px.
+Capturas móvil/escritorio vistas en /private/tmp/pos-0176-*.png y pos-0175-*.png.
+Typecheck 6 paquetes, ESLint, Prettier, guardia UI 22 archivos sin aumentos,
+números y diff-check verdes. Sin build/full verify sobre dev activo.
+
+Pendiente QA owner de 0176 con pnpm dev:local antes de main. Todo en dev,
+sin merge ni push. Archivos ajenos .claude/skills/gotchas-del-repo/SKILL.md y
+LECCIONES.md preservados. Los avisos entre operadores siguen para el futuro.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0173: NAVBAR MOBILE POS
 
 Owner confirmó que la caché funciona perfectamente; incidente cache.peek ya no
