@@ -66,14 +66,26 @@ delete from core.campaign_coupon where consumer_id = '<C>' and business_id = any
 delete from core.campaign_turn where consumer_id = '<C>' and business_id = any(<IDS>);
 delete from core.campaign_push where consumer_id = '<C>' and business_id = any(<IDS>);
 delete from core.reward_redemption where consumer_id = '<C>' and business_id = any(<IDS>);
+-- POS (spec 0169, owner 2026-10-08): las mesas cobradas con el pase de este cliente se borran con su venta.
+-- `pos_order.order_id` no cascadea a proposito; el DO salta el paso mientras la migracion 0066 no este en esa base.
+do $$ begin
+  if to_regclass('core.pos_order') is not null then
+    delete from core.pos_order
+      where order_id in (select id from core."order" where consumer_id = '<C>' and business_id = any(<IDS>));
+  end if;
+end $$;
 delete from core."order" where consumer_id = '<C>' and business_id = any(<IDS>);
 delete from consumer.program_membership where consumer_id = '<C>' and business_id = any(<IDS>);
 delete from core.business_customer where consumer_id = '<C>' and business_id = any(<IDS>);
 ```
 
-Lo que cascadea solo: `order_item` (por la venta), `cross_candidate` (por la decision), el contador
+Lo que cascadea solo: `order_item` (por la venta), `pos_order_item` (por la mesa del POS), `cross_candidate` (por la decision), el contador
 `business_customer_count` (trigger). `welcome_device` se borra para que el mismo telefono pueda volver a recibir la
 bienvenida.
+
+Las mesas del POS cerradas SIN pase no tienen cliente y no se tocan. Para mostrarlas en el antes/despues (solo con
+la 0066 en esa base): `select count(*) from core.pos_order where order_id in (select id from core."order" where
+consumer_id = '<C>' and business_id = any(<IDS>));`
 
 **4. Contar despues** (el mismo SQL del paso 2) y mostrarle al owner la tabla antes → despues. Todo en 0 = listo.
 
