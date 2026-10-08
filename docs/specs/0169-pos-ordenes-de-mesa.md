@@ -176,7 +176,7 @@ type PosOrder = {
 
 | Metodo y ruta | Body / query | Respuesta | Errores propios |
 |---|---|---|---|
-| `GET /api/pos/catalog?locationId=` | | `{ products, categories }` (= `businessCatalog`) | |
+| `GET /api/pos/catalog?locationId=` | | `{ products, categories, bestSellingProductIds: string[] }`: `products`/`categories` = `businessCatalog`; `bestSellingProductIds` = ids de `products` por unidades vendidas, mayor a menor (ver abajo) | |
 | `GET /api/pos/orders` | | `{ open: PosOrderSummary[], closedToday: PosOrderSummary[] }`; `closedToday` = cerradas y anuladas en el dia local del negocio; abiertas de cualquier fecha, mas viejas primero | |
 | `POST /api/pos/orders` | `{ tableLabel, locationId?, items: {productId, quantity, unitPrice?}[] }` | `201 PosOrder` | `invalid_table_label`, `too_many_items` |
 | `GET /api/pos/orders/:id` | | `PosOrder` | `unknown_pos_order` |
@@ -290,3 +290,12 @@ cierre ya usada por otra venta); `PUT` sin `locationId` conserva el local, `null
 Cerrar con pase una mesa cuyo local se archivo despues de abrirla acredita en ese local archivado (el mostrador daria
 `unknown_location`). **Owner 2026-10-08: «por ahora lo dejamos asi, opcion A»** — la mesa se cobra igual.
 
+**`bestSellingProductIds` (pedido del owner 2026-10-08, agregado despues del PASS).** Unidades (`quantity`) de las
+ordenes del POS **cerradas, con y sin pase**; anuladas y abiertas no cuentan (decision del owner). **Periodo: los ultimos
+30 dias corridos hasta el momento del pedido, por `closed_at`** (`BEST_SELLERS_WINDOW_DAYS`; el owner pidio que el
+periodo quede en el contrato pero no dio el numero: 30 es propuesta de Claude, se cambia en una constante). Con
+`locationId`, solo las ordenes de ese local; sin el, todo el negocio. Empate: venta mas reciente primero, despues el id.
+Solo ids presentes en `products` de la misma respuesta (borrado, archivado o no disponible en el local no aparece); un
+producto sin ventas no aparece. Solo ventas del POS: las del mostrador no tienen orden del POS. Codigo:
+`server/pos/best-sellers.ts`; oraculo `pos/pos-best-sellers.neon.integration.test.ts` (cada orden que no debe contar
+trae mas unidades que el ganador; quitar el filtro `status = 'closed'` lo pone rojo, medido).
