@@ -1394,6 +1394,11 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   });
   const main = await page.locator("main").boundingBox();
   expect(main!.width).toBe(390);
+  const closeIcon = await page
+    .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
+    .locator("svg")
+    .boundingBox();
+  expect(closeIcon!.width).toBe(24);
   await page.screenshot({ path: "/private/tmp/pos-0176-mobile.png" });
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.screenshot({ path: "/private/tmp/pos-0176-desktop.png" });

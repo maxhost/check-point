@@ -319,7 +319,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             <Button
               variant="quiet"
               aria-label="Volver al listado de órdenes"
-              className="close-module size-11 shrink-0 rounded-full bg-primary-soft px-0"
+              className="close-module size-11 shrink-0 rounded-full bg-primary-soft p-0!"
               isDisabled={busy || refreshing}
               onPress={back}
             >
