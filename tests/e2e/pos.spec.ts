@@ -100,6 +100,9 @@ const resolved: ResolveResponse = {
 };
 async function setup(page: Page, enabled = true) {
   const counterCalls: string[] = [];
+  await page.route("**/api/pos/ticket", (route) =>
+    route.fulfill({ json: { showBusinessName: true, showTable: true } }),
+  );
   await page.route("**/api/counter/**", (route) => {
     counterCalls.push(route.request().url());
     return route.abort();

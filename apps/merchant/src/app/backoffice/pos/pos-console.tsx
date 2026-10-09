@@ -20,6 +20,9 @@ import { PosEditor } from "./pos-editor";
 import { PosCheckout } from "./pos-checkout";
 import { PosScan } from "./pos-scan";
 import { usePosPayment } from "./pos-payment";
+import { usePosPrinting } from "./pos-printing";
+import { PosPrintFeedback } from "./pos-print-feedback";
+import { PosPrintTicket } from "./pos-print-ticket";
 import { PosResult, PosTicket } from "./pos-ticket";
 import {
   orderUrl,
@@ -143,6 +146,14 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     onBeginClose: () => cache.beginWrite(order?.id),
   });
   const paymentBusy = payment.blocked || payment.active;
+  const printing = usePosPrinting({
+    order,
+    context:
+      !unavailable && session?.user?.id && session.business?.id
+        ? `${session.user.id}:${session.business.id}`
+        : null,
+    onError: handleError,
+  });
   const readError = useCallback(
     (cause: unknown, id?: string) => {
       handleError(cause, id);
@@ -598,6 +609,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 payment={payment}
                 onScan={payment.scan}
                 onCheckout={() => void payment.prepare()}
+                printing={printing}
                 onVoid={() => void prepareVoid()}
                 onSave={(body) =>
                   run(() =>
@@ -612,7 +624,11 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             )}
             {workspace && order && (
               <div className="hidden print:block">
-                <PosTicket order={order} />
+                {printing.browserDoc ? (
+                  <PosPrintTicket doc={printing.browserDoc} />
+                ) : (
+                  <PosTicket order={order} />
+                )}
               </div>
             )}
             {order && !workspace && view === "detail" && (
@@ -649,6 +665,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
             <PosCheckout order={order} payment={payment} />
           </>
         )}
+        <PosPrintFeedback printing={printing} />
         <ConfirmDialog
           isOpen={confirmVoid}
           title="¿Anular esta orden?"

@@ -26,6 +26,7 @@ import { DetailedSale } from "../counter/sale-forms";
 import { formatMoney } from "../counter/types";
 import { PosCoupon } from "./pos-coupon";
 import type { PosPayment } from "./pos-payment";
+import type { PosPrinting } from "./pos-printing";
 import {
   addProduct,
   PosCart,
@@ -59,6 +60,7 @@ export function PosEditor({
   onCheckout,
   onScan,
   payment,
+  printing,
   onVoid,
   lastLocationId,
 }: {
@@ -74,6 +76,7 @@ export function PosEditor({
   onCheckout: () => void;
   onScan: () => void;
   payment: PosPayment;
+  printing: PosPrinting;
   onVoid: () => void;
   lastLocationId: string;
 }) {
@@ -772,7 +775,16 @@ export function PosEditor({
                 variant="quiet"
                 aria-label="Imprimir"
                 className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
-                isDisabled={busy}
+                isDisabled={
+                  busy ||
+                  dirty ||
+                  conflict ||
+                  !lines.length ||
+                  !printing.ready ||
+                  printing.busy
+                }
+                isLoading={printing.busy}
+                onPress={printing.print}
               >
                 <Printer aria-hidden="true" className="size-6" />
               </Button>

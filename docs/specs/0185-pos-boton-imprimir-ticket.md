@@ -57,16 +57,25 @@ editar internals. Adaptaciones a oráculos POS solo para precarga nueva explíci
 
 ## Definition of Done
 
-- [ ] Prefetch al abrir POS, ninguno al tocar imprimir; ajuste falso/falso válido.
-- [ ] Bluetooth chooser se ejecuta con userActivation y sin fetch previo.
-- [ ] Éxito, no_printer, not_found→Elegir otra, cancelled/write_failed exactos;
+- [x] Prefetch al abrir POS, ninguno al tocar imprimir; ajuste falso/falso válido.
+- [x] Bluetooth chooser se ejecuta con userActivation y sin fetch previo.
+- [x] Éxito, no_printer, not_found→Elegir otra, cancelled/write_failed exactos;
       serial sin BLE, guard doble toque y mensajes sin escrituras financieras.
-- [ ] Browser print observa DOM TicketDoc publicado, bloques opcionales y
+- [x] Browser print observa DOM TicketDoc publicado, bloques opcionales y
       fecha/hora/unitarios; ausencia de Precuenta/QR.
-- [ ] Settings fallido/retry, auth/contexto y respuestas tardías aisladas.
-- [ ] Typecheck y lint merchant en0; formato/guard UI sin incrementos; e2e
+- [x] Settings fallido/retry, auth/contexto y respuestas tardías aisladas.
+- [x] Typecheck y lint merchant en0; formato/guard UI sin incrementos; e2e
       específicos y regresión POS pertinentes. Gate global solo antes de live.
-- [ ] Estado GPT y handoff con comandos/evidencia/limitaciones.
+- [x] Estado GPT y handoff con comandos/evidencia/limitaciones.
+
+## Cierre local
+
+UI implementada y verificada el 2026-10-09. Quince pruebas específicas verdes
+con transportes simulados; corrida conjunta previa de 14 específicas y 91 de
+regresión POS: 105 verdes. Typecheck y lint de todo merchant en cero; formato,
+diff y guard de cinco archivos UI sin incrementos. Capturas de elección y
+TicketDoc del navegador vistas. Evidencia y QA pendiente en
+`docs/handoff-0185-impresion-pos.md`. Sin cambios en printing/API, sin push.
 
 ## Mutaciones
 
