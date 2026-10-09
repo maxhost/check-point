@@ -3,6 +3,25 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — BADGE DE CLIENTE Y CONFIRMACIÓN
+
+Commit ee2dc5a devlocal. Owner pide cápsula de cliente en Pedido con estilo
+pestañas/mesa: contorno surface, segmento primary con User/nombre y Xmark.
+Nombre largo ajusta con wrap-anywhere; modal confirma retiro. Cancelar/Escape
+conserva cliente/cupón; confirmar removeClient existente, productos intactos.
+ErrorclientError usa mismo modal, busy bloquea; Cobrar y kit/API/CSS intactos.
+Corrida6casos5verdes/1fallo320por nombre sin espacios; corregido. Última2/2verde
+1.6s a390/320. Loading/confirmaciones4verdes previas. Capturasbadge390/320 y
+modal390vistas; lint/typecheck:ui/formato/diff/guardscoped verdes.
+Handoff/spec0183 actualizados. QA/gateglobalprevios pendientes, sinpush.
+
+Incidente staging concurrente: commit inicialc893314 incluyó8eliminaciones de
+Claude. Corregido con índice temporal/amend comprobando HEAD estable: ee2dc5a
+contiene SOLO4archivos previstos; staging real/deletionsClaude intactos.
+En próximos commits compartidos usar commit --only con rutas explícitas para
+no consumir staging ajeno aunque cambie durante aprobación. Cambios0184,
+paquetes/schema/lock/ticket/printer temporales y estadosClaude preservados.
+
 ## ⇥ AJUSTE (2026-10-09) — ACCIONES DE ORDEN SOLO ANULAR
 
 Commitfc07a30 devlocal. Owner retira Imprimir precuenta de modalAcciones;
