@@ -1,11 +1,13 @@
 "use client";
-import { Xmark } from "iconoir-react";
+import { NavArrowDown, Xmark } from "iconoir-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Button,
   Card,
   ConfirmDialog,
+  Dialog,
+  SelectField,
   Heading,
   Link,
   PageHeader,
@@ -49,7 +51,11 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const [opening, setOpening] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [catalogRevision, setCatalogRevision] = useState(0);
-  const [lastLocationId, setLastLocationId] = useState("");
+  const [lastLocationId, setLastLocationId] = useState(locations[0]?.id ?? "");
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const activeLocation =
+    locations.find((location) => location.id === lastLocationId) ??
+    locations[0];
   const [error, setError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [working, setBusy] = useState(false);
@@ -333,37 +339,102 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     >
       <div className="backoffice-home grid w-full min-w-0 gap-6 print:m-0 print:p-0">
         {!workspace && (
-          <div className="flex items-start justify-between gap-4 print:hidden">
-            <div className="min-w-0 flex-1">
-              <PageHeader
-                title={openDetail ? order!.tableLabel : "POS"}
-                description={
-                  openDetail
-                    ? `Orden abierta${order!.location ? ` · ${order!.location.name}` : ""}`
-                    : "Atiende tus mesas y cierra cada venta cuando el cliente pague."
+          <div className="grid gap-2 print:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div
+                className={
+                  view === "list" ? "min-w-0 shrink-0" : "min-w-0 flex-1"
                 }
-              />
+              >
+                {view === "list" ? (
+                  <Heading level={1}>POS</Heading>
+                ) : (
+                  <PageHeader title={openDetail ? order!.tableLabel : "POS"} />
+                )}
+              </div>
+              {view === "list" && (
+                <div className="min-w-0">
+                  {locations.length > 1 ? (
+                    <Button
+                      variant="quiet"
+                      aria-label={`Seleccionar local: ${activeLocation?.name ?? "Sin local"}`}
+                      aria-haspopup="dialog"
+                      aria-expanded={locationPickerOpen}
+                      className="max-w-full rounded-full! border! border-primary! bg-primary-soft! px-4! py-2!"
+                      isDisabled={
+                        busy ||
+                        refreshing ||
+                        !!opening ||
+                        unavailable ||
+                        !session
+                      }
+                      onPress={() => setLocationPickerOpen(true)}
+                    >
+                      <Text
+                        variant="label"
+                        className="min-w-0 truncate text-primary!"
+                      >
+                        {activeLocation?.name ?? "Sin local"}
+                      </Text>
+                      <NavArrowDown
+                        aria-hidden="true"
+                        className="size-5 shrink-0"
+                      />
+                    </Button>
+                  ) : (
+                    <div className="max-w-full rounded-full border border-primary bg-primary-soft px-4 py-2">
+                      <Text variant="label" className="truncate text-primary!">
+                        {activeLocation?.name ?? "Sin local"}
+                      </Text>
+                    </div>
+                  )}
+                </div>
+              )}
+              {view === "detail" ? (
+                <Button
+                  variant="quiet"
+                  aria-label="Volver al listado de órdenes"
+                  className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+                  isDisabled={busy || refreshing}
+                  onPress={back}
+                >
+                  <Xmark aria-hidden="true" className="size-6" />
+                </Button>
+              ) : (
+                <Link
+                  href="/backoffice"
+                  aria-label="Cerrar POS"
+                  className="close-module grid size-11 shrink-0 place-items-center rounded-full! bg-primary-soft! p-0! no-underline"
+                >
+                  <Xmark aria-hidden="true" className="size-6" />
+                </Link>
+              )}
             </div>
-            {view === "detail" ? (
-              <Button
-                variant="quiet"
-                aria-label="Volver al listado de órdenes"
-                className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
-                isDisabled={busy || refreshing}
-                onPress={back}
-              >
-                <Xmark aria-hidden="true" className="size-6" />
-              </Button>
-            ) : (
-              <Link
-                href="/backoffice"
-                aria-label="Cerrar POS"
-                className="close-module grid size-11 shrink-0 place-items-center rounded-full! bg-primary-soft! p-0! no-underline"
-              >
-                <Xmark aria-hidden="true" className="size-6" />
-              </Link>
-            )}
           </div>
+        )}
+        {locations.length > 1 && (
+          <Dialog
+            isOpen={locationPickerOpen}
+            onOpenChange={setLocationPickerOpen}
+            title="Seleccionar local"
+            isDismissable={!busy}
+          >
+            <SelectField
+              label="Local"
+              selectedKey={activeLocation?.id ?? null}
+              options={locations.map((location) => ({
+                id: location.id,
+                label: location.name,
+              }))}
+              isDisabled={busy || refreshing}
+              onSelectionChange={(key) => {
+                const id = String(key ?? "");
+                if (!locations.some((location) => location.id === id)) return;
+                setLastLocationId(id);
+                setLocationPickerOpen(false);
+              }}
+            />
+          </Dialog>
         )}
         {error && (
           <div className="print:hidden">
@@ -394,8 +465,22 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                   <Text>Cargando órdenes…</Text>
                 ) : (
                   [
-                    { title: "Abiertas", items: history.open },
-                    { title: "Cerradas hoy", items: history.closedToday },
+                    {
+                      title: "Abiertas",
+                      items: history.open.filter(
+                        (item) =>
+                          locations.length <= 1 ||
+                          item.location?.id === activeLocation?.id,
+                      ),
+                    },
+                    {
+                      title: "Cerradas hoy",
+                      items: history.closedToday.filter(
+                        (item) =>
+                          locations.length <= 1 ||
+                          item.location?.id === activeLocation?.id,
+                      ),
+                    },
                   ].map((group) => (
                     <section key={group.title} className="grid gap-4">
                       <Heading level={2}>{group.title}</Heading>
@@ -488,8 +573,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 busy={busy || refreshing}
                 onError={handleError}
                 onCancel={back}
-                lastLocationId={lastLocationId}
-                onLocationChange={setLastLocationId}
+                lastLocationId={activeLocation?.id ?? ""}
                 onCheckout={() => {
                   setError(null);
                   setView("checkout");

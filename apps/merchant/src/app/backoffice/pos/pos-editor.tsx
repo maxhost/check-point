@@ -1,14 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { NavArrowLeft, Xmark } from "iconoir-react";
+import { EditPencil as Pen, NavArrowLeft, Xmark } from "iconoir-react";
 import {
   Alert,
   Button,
-  ConfirmDialog,
   Dialog,
   Heading,
-  SelectField,
   SegmentedControl,
   Text,
   TextField,
@@ -50,7 +48,6 @@ export function PosEditor({
   onCheckout,
   onVoid,
   lastLocationId,
-  onLocationChange,
 }: {
   order: PosOrder | null;
   cache: PosCache;
@@ -64,16 +61,15 @@ export function PosEditor({
   onCheckout: () => void;
   onVoid: () => void;
   lastLocationId: string;
-  onLocationChange: (id: string) => void;
 }) {
   const router = useRouter();
-  const initialLocation =
-    order?.location?.id ??
-    (locations.length === 1
+  const initialLocation = order
+    ? (order.location?.id ?? "")
+    : locations.length === 1
       ? locations[0].id
       : locations.some((l) => l.id === lastLocationId)
         ? lastLocationId
-        : "");
+        : "";
   const [table, setTable] = useState(order?.tableLabel ?? "");
   const [locationId, setLocationId] = useState(initialLocation);
   const [lines, setLines] = useState<DraftLine[]>(() =>
@@ -112,9 +108,9 @@ export function PosEditor({
   >([]);
   const [exitTarget, setExitTarget] = useState<string | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
+  const [contextTable, setContextTable] = useState(table);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<string | null>(null);
   const allowExit = useRef(false);
   const scrollPositions = useRef({ table: 0, products: 0, order: 0 });
   const dirty = signature(table, locationId, lines) !== baselineSignature;
@@ -132,7 +128,7 @@ export function PosEditor({
     ? "Escribe el nombre de la mesa."
     : table.trim().length > 60
       ? "El nombre admite hasta 60 caracteres."
-      : locations.length > 1 && !locationId
+      : !order && locations.length > 1 && !locationId
         ? "Elige un local."
         : null;
   const invalid =
@@ -177,7 +173,8 @@ export function PosEditor({
     setLoadedLocation(locationId);
     setCatalog(cache.peek<PosCatalog>(catalogKey(locationId), true));
     setCatalogError(null);
-    if (!catalogStarted || (locations.length > 1 && !locationId)) return;
+    if (!catalogStarted || (!order && locations.length > 1 && !locationId))
+      return;
     void cache
       .catalog(locationId)
       .then((data) => {
@@ -279,16 +276,6 @@ export function PosEditor({
     if (exitAfter) leave();
     else changeSurface("order");
   }
-  function selectLocation(id: string) {
-    if (id === locationId) return;
-    if (lines.length) {
-      setContextOpen(false);
-      setPendingLocation(id);
-    } else {
-      setLocationId(id);
-      onLocationChange(id);
-    }
-  }
   function removeLine(key: string) {
     const index = lines.findIndex((line) => line.key === key);
     if (busy || conflict || index < 0) return;
@@ -313,7 +300,7 @@ export function PosEditor({
         ? "Tomar pedido"
         : "Revisar pedido";
   const contextFields = (
-    <div className={`grid gap-3 ${locations.length > 1 ? "grid-cols-2" : ""}`}>
+    <div className="grid gap-3">
       <TextField
         label="Nombre de mesa"
         value={table}
@@ -323,28 +310,13 @@ export function PosEditor({
         isDisabled={busy || conflict}
         placeholder="Ej.: Mesa 4"
       />
-      {locations.length > 1 ? (
-        <SelectField
-          label="Local"
-          selectedKey={locationId || null}
-          options={locations.map((l) => ({ id: l.id, label: l.name }))}
-          onSelectionChange={(key) => selectLocation(String(key ?? ""))}
-          isDisabled={busy || conflict}
-        />
-      ) : null}
     </div>
   );
   return (
     <div
       className={`grid min-w-0 gap-4 ${order ? "pb-44" : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
     >
-      <div
-        className={
-          order
-            ? "flex items-start justify-between gap-3"
-            : "flex items-center justify-between gap-3"
-        }
-      >
+      <div className="flex items-center justify-between gap-3">
         {!order && surface !== "table" && (
           <Button
             variant="quiet"
@@ -360,16 +332,11 @@ export function PosEditor({
             <NavArrowLeft aria-hidden="true" className="size-6" />
           </Button>
         )}
-        {!order && surface === "table" && (
+        {(order || surface === "table") && (
           <div aria-hidden="true" className="size-11 shrink-0" />
         )}
         <div className="grid min-w-0 flex-1 gap-1">
-          {order && <Heading level={1}>{table}</Heading>}
-          {order ? (
-            <Text variant="muted">
-              Orden abierta{locationName ? ` · ${locationName}` : ""}
-            </Text>
-          ) : (
+          {!order && (
             <>
               <Text variant="small" className="sr-only">
                 Paso {step} de 3: {stepTitle}
@@ -382,19 +349,43 @@ export function PosEditor({
                   />
                 ))}
               </div>
-              <div role="heading" aria-level={1} className="text-center">
-                <Text variant="small">{table.trim() || "Mesa sin nombre"}</Text>
-              </div>
             </>
           )}
-          {order && (
-            <Text variant={dirty ? "label" : "small"}>
-              {conflict
-                ? "Conflicto: revisa la versión actual"
-                : dirty
-                  ? "Cambios sin guardar"
-                  : "Guardada"}
-            </Text>
+          {order ? (
+            <div
+              role="heading"
+              aria-level={1}
+              className="mx-auto w-fit max-w-full text-center break-words"
+            >
+              <Button
+                variant="quiet"
+                aria-label={`Cambiar mesa: ${table.trim() || "Mesa sin nombre"}`}
+                aria-haspopup="dialog"
+                aria-expanded={contextOpen}
+                className="max-w-full rounded-full! border! border-primary! bg-primary-soft! px-4! py-2!"
+                isDisabled={busy || conflict}
+                onPress={() => {
+                  setContextTable(table);
+                  setContextOpen(true);
+                }}
+              >
+                <Text
+                  variant="label"
+                  className="min-w-0 break-words text-primary!"
+                >
+                  {table.trim() || "Mesa sin nombre"}
+                </Text>
+                <Pen aria-hidden="true" className="size-5 shrink-0" />
+              </Button>
+            </div>
+          ) : (
+            <div
+              role="heading"
+              aria-level={1}
+              className="text-center break-words"
+            >
+              <Text variant="small">{table.trim() || "Mesa sin nombre"}</Text>
+            </div>
           )}
         </div>
         <Button
@@ -429,13 +420,6 @@ export function PosEditor({
         ) : null
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="quiet"
-            isDisabled={busy || conflict}
-            onPress={() => setContextOpen(true)}
-          >
-            Mesa y local
-          </Button>
           <Button
             variant="quiet"
             isDisabled={busy}
@@ -573,6 +557,9 @@ export function PosEditor({
       <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0">
         {order ? (
           <>
+            {dirty && !conflict && (
+              <Text variant="small">Cambios sin guardar</Text>
+            )}
             <div className="flex items-center justify-between gap-3">
               <Text variant="small">{count} artículos</Text>
               <Text variant="label">{money}</Text>
@@ -706,28 +693,37 @@ export function PosEditor({
       <Dialog
         isOpen={contextOpen}
         onOpenChange={setContextOpen}
-        title="Mesa y local"
+        title="Cambiar mesa"
         isDismissable={!busy}
       >
-        {contextFields}
-        <div className="mt-4">
-          <Button onPress={() => setContextOpen(false)}>Listo</Button>
+        <TextField
+          label="Nombre de mesa"
+          value={contextTable}
+          onChange={setContextTable}
+          maxLength={60}
+          isRequired
+          isDisabled={busy || conflict}
+          placeholder="Ej.: Mesa 4"
+        />
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onPress={() => setContextOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            isDisabled={busy || conflict || !contextTable.trim()}
+            onPress={() => {
+              setTable(contextTable.trim());
+              setContextOpen(false);
+            }}
+          >
+            Listo
+          </Button>
         </div>
       </Dialog>
-      <ConfirmDialog
-        isOpen={pendingLocation !== null}
-        title="¿Cambiar el local del pedido?"
-        description="Los productos y precios que ya añadiste se conservan. Los próximos productos usarán el catálogo del nuevo local."
-        confirmLabel="Cambiar local"
-        isBusy={busy}
-        onCancel={() => setPendingLocation(null)}
-        onConfirm={() => {
-          const id = pendingLocation!;
-          setLocationId(id);
-          onLocationChange(id);
-          setPendingLocation(null);
-        }}
-      />
       <Dialog
         isOpen={actionsOpen}
         onOpenChange={setActionsOpen}

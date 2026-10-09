@@ -125,6 +125,7 @@
 /* Tailwind v4 theme configuration consumes the semantic variables above. */
 @theme inline {
   --color-canvas: var(--ui-canvas);
+  --color-overlay: var(--ui-overlay);
   --color-surface: var(--ui-surface);
   --color-surface-subtle: var(--ui-surface-subtle);
   --color-surface-raised: var(--ui-surface-raised);
