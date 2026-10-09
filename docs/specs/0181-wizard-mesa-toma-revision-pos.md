@@ -129,3 +129,8 @@ encima de la CTA inferior en Tomar pedido y Revisar; local solo si hay varios.
 En Mesa, local único queda junto al formulario. Orden abierta conserva su cabecera.
 Acciones, protección de salida, borrador y cache intactos. Sin kit/CSS/API nuevos,
 sin suites adicionales ni merge/push; QA visual owner pendiente.
+
+Verificación del ajuste: typecheck 6 paquetes (3,436 s), ESLint del editor,
+Prettier, guardia UI 6 archivos sin aumentos y diff-check verdes. No ejecutadas
+suites ni navegador; QA visual owner pendiente. Cabecera nueva usa flex y huecos
+fijos; semántica heading nivel 1 conservada para etapa pequeña.

@@ -322,11 +322,17 @@ export function PosEditor({
     <div
       className={`grid min-w-0 gap-4 ${order ? "pb-44" : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div
+        className={
+          order
+            ? "flex items-start justify-between gap-3"
+            : "flex items-center justify-between gap-3"
+        }
+      >
         {!order && surface !== "table" && (
           <Button
             variant="quiet"
-            className="size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+            className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
             aria-label={
               surface === "order" ? "Volver a tomar pedido" : "Volver a mesa"
             }
@@ -338,8 +344,11 @@ export function PosEditor({
             <NavArrowLeft aria-hidden="true" className="size-6" />
           </Button>
         )}
+        {!order && surface === "table" && (
+          <div aria-hidden="true" className="size-11 shrink-0" />
+        )}
         <div className="grid min-w-0 flex-1 gap-1">
-          <Heading level={1}>{order ? table : stepTitle}</Heading>
+          {order && <Heading level={1}>{table}</Heading>}
           {order ? (
             <Text variant="muted">
               Orden abierta{locationName ? ` · ${locationName}` : ""}
@@ -349,14 +358,17 @@ export function PosEditor({
               <Text variant="small" className="sr-only">
                 Paso {step} de 3
               </Text>
-              {(surface !== "table" || locationName) && (
-                <Text variant="small">
-                  {surface !== "table" ? table : ""}
-                  {locationName
-                    ? `${surface !== "table" ? " · " : ""}${locationName}`
-                    : ""}
-                </Text>
-              )}
+              <div aria-hidden="true" className="flex justify-center gap-2">
+                {[1, 2, 3].map((stage) => (
+                  <span
+                    key={stage}
+                    className={`h-1 w-6 rounded-full ${stage === step ? "bg-primary" : "bg-disabled"}`}
+                  />
+                ))}
+              </div>
+              <div role="heading" aria-level={1} className="text-center">
+                <Text variant="small">{stepTitle}</Text>
+              </div>
             </>
           )}
           {order && (
@@ -383,6 +395,9 @@ export function PosEditor({
         surface === "table" ? (
           <>
             {contextFields}
+            {locations.length === 1 && locationName && (
+              <Text variant="small">{locationName}</Text>
+            )}
             {catalogError && (
               <Alert kind="error" title={catalogError}>
                 <Button
@@ -521,6 +536,12 @@ export function PosEditor({
         {order && <Text variant="label">Total: {money}</Text>}
       </div>
       <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0">
+        {!order && surface !== "table" && (
+          <Text variant="small">
+            {table}
+            {locations.length > 1 && locationName ? ` · ${locationName}` : ""}
+          </Text>
+        )}
         {order ? (
           <>
             <div className="flex items-center justify-between gap-3">
