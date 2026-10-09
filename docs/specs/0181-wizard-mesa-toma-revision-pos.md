@@ -78,3 +78,15 @@ route.ts excluye unitPrice null antes de construir ranking; no se tocó servidor
 E2e existentes adaptados; escenario de etapas, cantidades, quitar/deshacer, búsqueda,
 precio cero y cero escrituras/lecturas extra agregado, sin ejecución de suites.
 QA visual/teclado owner y gates de publicación pendientes; no declarar PASS completo.
+
+## Ajuste cerrado — precarga del catálogo en Mesa
+
+Owner detectó Cargando al pasar a Tomar pedido. Iniciar catalogStarted para nueva
+orden al montar paso Mesa; si hay varios locales sin selección, esperar al local.
+Local único/recordado precarga inmediatamente; elegir local dispara precarga del mismo.
+Cache existente deduplica lecturas en curso y reutiliza resultados por local/contexto.
+No precargar todos los locales ni refrescar por paso, TTL o polling.
+Tomar pedido habilitado solo con contexto y catálogo disponibles; espera/spinner
+permanece en Mesa, no se avanza a catálogo vacío. Fallo muestra reintento explícito
+local, sin auto-retry. Dialog de salida no salta esa validación. Orden existente
+conserva carga al entrar a Productos. Sin API, cache global, kit ni CSS nuevos.
