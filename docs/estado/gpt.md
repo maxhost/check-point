@@ -3,27 +3,28 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-08) — AJUSTES BUSCADOR POS GUARDADOS
+## ⇥ ESTADO (2026-10-08) — CABECERA Y CONTEXTO DE ORDEN ABIERTA
 
-Owner pidió commit de todos los ajustes menores, explícitamente sin specs/ADR/pruebas.
-UI **5a33777**, rama **dev**, sin merge/push. Commiteados sale-forms, pos-editor
-y components/ui (Toast admite className opcional). Header con mesa ya guardado
-previamente en 19944c0; estado anterior en bc831e1.
+Owner pidió commit. UI **bf026cf**, rama **dev**, sin merge/push. Header de abierta
+centrado, mesa en badge con borde verde e icono EditPencil (alias Pen), sin punto
+verde ni textos Orden abierta/Principal/Guardada. Badge abre Cambiar mesa;
+botón separado retirado. Cambios sin guardar junto a acciones inferiores.
+Márgenes comunes 24 px mobile/48 desktop conservados.
 
-Paso 2: lupa alineada con chips, input en misma fila, alto común 44 px; clear Erase
-de Iconoir, X exterior cierra. Apertura desde derecha y cierre inverso (180 ms),
-respetando movimiento reducido. Paso 3 usa mismo clear. Categorías/buscador en paso 2
-y buscador en paso 3 sticky; fondo canvas aparece solo al pegarse arriba con
-transición 200 ms. Buscar lleva resultados debajo del buscador en ambos pasos.
-Añadir desde revisión muestra Producto añadido 1400 ms con fondo oscuro/texto claro
-y scroll al final del pedido, preservando separación del footer. Defaults Mostrador
-conservados; sin API, kit, CSS nuevo ni cache/escrituras añadidas.
+Modal Cambiar mesa solo cambia nombre; borrador contextTable, Cancelar/Escape
+cierran sin aplicar, Listo aplica al draft para guardado explícito posterior.
+Local fijo de orden conservado incluso null; no reasignación desde el modal.
+Listado POS tiene badge local entre POS y X, chevron/modal solo con varios locales.
+Local activo filtra abiertas/cerradas y se usa en nuevas órdenes; default primer
+local. Selector retirado de Mesa en nueva. Texto Atiende tus mesas… eliminado.
 
-Owner confirmó funcionamiento de scroll/búsqueda y resto de ajustes durante sesión.
-Último pedido es commit, no publicar. diff-check verde; no ejecutadas suites,
-typecheck/lint ni navegador para estos ajustes por instrucción explícita. Sin PASS
-completo nuevo ni marcar spec implementada. Cambios ajenos gotchas/LECCIONES
-preservados fuera del commit. Continuar mejoras POS según indicación del owner.
+Kit: única línea --color-overlay: var(--ui-overlay) añadida en tokens.css para
+hacer visible bg-overlay de Dialog. **Owner autorizó explícitamente esta excepción**
+a zona Claude. Cambia overlay de todos los modales del kit; sin nuevos colores.
+Servidor/API/cache intactos. Sin specs/ADR/suites/typecheck/lint adicionales por
+preferencia vigente del owner; diff-check verde, formato aplicado. QA visual y
+multi-local pendiente; no PASS completo ni marcar spec implementada. Cambios ajenos
+gotchas/LECCIONES preservados fuera del commit. Último pedido es commit, no publicar.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
