@@ -375,10 +375,18 @@ export function BackofficeNavigation({
               />
             )}
             {permissions.includes("pos") && posEnabled && (
-              <Button
-                variant="quiet"
-                className="mobile-counter-access col-start-2 min-h-13 flex-col gap-1 bg-transparent! p-0! shadow-none"
-                onPress={() => {
+              <Link
+                href="/backoffice/pos"
+                role="button"
+                className="mobile-counter-access col-start-2"
+                onKeyDown={(event) => {
+                  if (event.key === " ") {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
                   closeMenu();
                   window.dispatchEvent(new Event(POS_NEW_ORDER_EVENT));
                 }}
@@ -386,10 +394,8 @@ export function BackofficeNavigation({
                 <span>
                   <Plus aria-hidden="true" width={24} height={24} />
                 </span>
-                <Text variant="small" className="text-primary">
-                  Nueva orden
-                </Text>
-              </Button>
+                Nueva orden
+              </Link>
             )}
             {permissions.includes("counter") && (
               <NavLink

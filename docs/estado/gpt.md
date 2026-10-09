@@ -3,6 +3,16 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-08) — TEXTO CENTRAL NAVBAR POS
+
+Owner pidió misma tipografía que Mostrador original. Ajuste 0179 cerrado antes de
+código en f3f9267: acceso central reutiliza Link con texto directo y clase existente
+mobile-counter-access, eliminando Button/Text que imponían 16/14 px. Tamaño original
+10 px, 9 px hasta 380 px, mismo peso/altura de línea, sin CSS ni tokens nuevos.
+Click previene navegación y conserva evento local a consola; permisos y posición
+sin cambios. Sin pruebas de navegador adicionales; QA visual owner pendiente.
+Solo dev, sin merge/push; cambios ajenos preservados.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0179: NAVBAR POS
 
 Owner confirmó POS / Nueva orden destacada / Mostrador. UI local en dev: tres

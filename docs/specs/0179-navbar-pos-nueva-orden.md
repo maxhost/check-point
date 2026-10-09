@@ -69,6 +69,7 @@ Owner observó que Nueva orden era mayor que Mostrador original. Button/Text
 aportaban tipografía del kit sobre la clase legacy: Text small usa 14 px, mientras
 mobile-counter-access original usa 10 px (9 px hasta 380 px). Reutilizar el mismo
 Link y texto directo del acceso Mostrador, con mobile-counter-access y columna 2.
+Semántica de botón (role button), activable por Enter y Espacio.
 Destino /backoffice/pos; click previene navegación y dispara la acción local existente.
 Icono, tokens, permisos y protección de consola conservados. Sin valores arbitrarios,
 CSS, tipografía cruda ni cambios de kit. QA visual del owner pendiente.
