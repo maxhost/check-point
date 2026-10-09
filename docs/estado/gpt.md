@@ -3,6 +3,32 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ 0185 (2026-10-09) — BOTÓN IMPRIMIR POS CONECTADO
+
+Reserva 8264cc5; implementación 9dfd240 en dev local, sin merge/push. Encargo
+2026-10-09 y printing/README leídos completos. Botón circular junto a Cobrar
+consume printing/index de 0184/c264dbf; módulo, API, kit y DB intactos.
+
+GET ajuste al abrir POS autorizado, sin defaults ni fetch al tocar. buildTicket
+y printTicket en gesto; guard síncrono y botón bloqueado durante impresión o
+borrador sin guardar. Éxito con ConfirmationToast compartido. no_printer y
+not_found ofrecen elección/reemplazo BLE o serial en gesto nuevo; reimprimen
+el documento congelado. Mensajes del módulo intactos. Unsupported publica
+TicketDoc antes de window.print, sin Precuenta/QR, nombre/mesa opcionales.
+Orden/contexto invalidan resultados tardíos; error de autorización revoca POS.
+
+Typecheck y lint completos merchant en cero. Corrida conjunta: 105 verdes
+(14 impresión + 91 POS), 21.6s; final específica con caso adicional de revocación:
+15 verdes, 6.7s. Transportes simulados, módulo real. Formato/diff verdes y
+guard de cinco archivos UI sin incrementos. Capturas diálogo desktop y ticket
+con media print vistas. Evidencia en docs/handoff-0185-impresion-pos.md.
+
+QA físico WD-58P1/Chrome Android pendiente del owner: dos tickets seguidos y
+uno tras recargar para comprobar el filtro guardado. No se certifica hardware,
+serial real ni CI remoto (ci:status falló por red); gate global antes de live.
+Commits --only con rutas explícitas preservan gotchas/LECCIONES ajenos.
+Fuera: ajustes dispositivo/papel58/80, pantalla owner, QR, órdenes cerradas.
+
 ## ⇥ AJUSTE (2026-10-09) — ACENTO Y TRASH EN CLIENTE
 
 Commit a7e0bef devlocal. Owner pide borde noverde, precisa1px y papelera roja.
