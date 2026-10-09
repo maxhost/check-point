@@ -49,12 +49,14 @@ export function Toast({
   kind = "success",
   durationMs = 4000,
   onDismiss,
+  className = "",
 }: {
   message: string | null;
   kind?: "success" | "info" | "warning" | "error";
   /** `null` mantiene el toast visible hasta que cambie la operación. */
   durationMs?: number | null;
   onDismiss: () => void;
+  className?: string;
 }) {
   const dismissRef = useRef(onDismiss);
 
@@ -68,7 +70,11 @@ export function Toast({
     return () => window.clearTimeout(timeout);
   }, [durationMs, message]);
   return message ? (
-    <p className={`toast ${kind}`} role="status" aria-live="polite">
+    <p
+      className={`toast ${kind} ${className}`}
+      role="status"
+      aria-live="polite"
+    >
       {message}
     </p>
   ) : null;

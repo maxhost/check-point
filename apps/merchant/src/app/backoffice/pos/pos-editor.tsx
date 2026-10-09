@@ -14,6 +14,7 @@ import {
   TextField,
 } from "../../../ui";
 import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
+import { Toast } from "../../components/ui";
 import { DetailedSale } from "../counter/sale-forms";
 import { formatMoney } from "../counter/types";
 import {
@@ -89,6 +90,21 @@ export function PosEditor({
   const [surface, setSurface] = useState<"table" | "products" | "order">(
     order ? "order" : "table",
   );
+  const [reviewAdded, setReviewAdded] = useState(0);
+  const [addedNotice, setAddedNotice] = useState(false);
+  const reviewListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!reviewAdded) return;
+    const frame = requestAnimationFrame(() => {
+      reviewListRef.current?.scrollIntoView({
+        block: "end",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [reviewAdded]);
   const [catalogStarted, setCatalogStarted] = useState(!order);
   const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [removedLines, setRemovedLines] = useState<
@@ -475,6 +491,7 @@ export function PosEditor({
             showPrices={!!order}
             compactSearch={!order}
             showHeading={!!order}
+            stickyControls={!order}
             allowPriceInput={false}
             onAdd={(p) => setLines((current) => addProduct(current, p))}
             onQty={(id, delta) =>
@@ -485,7 +502,14 @@ export function PosEditor({
           />
         )}
       </div>
-      <div className={surface === "order" ? "grid gap-4" : "hidden"}>
+      <div
+        ref={reviewListRef}
+        className={
+          surface === "order"
+            ? "grid gap-4 scroll-mb-36 md:scroll-mb-4"
+            : "hidden"
+        }
+      >
         {!order && catalog && (
           <DetailedSale
             key={`review-${locationId}`}
@@ -500,7 +524,18 @@ export function PosEditor({
             showPrices={false}
             allowPriceInput={false}
             searchOnly
-            onAdd={(p) => setLines((current) => addProduct(current, p))}
+            stickyControls
+            onAdd={(p) => {
+              if (
+                p.unitPrice === null ||
+                (lines.length >= 200 &&
+                  !lines.some((line) => line.productId === p.id))
+              )
+                return;
+              setLines((current) => addProduct(current, p));
+              setReviewAdded((current) => current + 1);
+              setAddedNotice(true);
+            }}
             onQty={(id, delta) =>
               setLines((current) => productQuantity(current, id, delta))
             }
@@ -608,6 +643,16 @@ export function PosEditor({
           </>
         )}
       </div>
+      {!order && surface === "order" && addedNotice && (
+        <Toast
+          key={reviewAdded}
+          message="Producto añadido"
+          kind="success"
+          durationMs={1400}
+          onDismiss={() => setAddedNotice(false)}
+          className="fixed! top-auto! right-auto! bottom-24 left-1/2! z-50 m-0! w-auto! -translate-x-1/2! rounded-full bg-content! px-4 text-on-primary! pointer-events-none whitespace-nowrap"
+        />
+      )}
       <Dialog
         isOpen={!!exitTarget}
         onOpenChange={(open) => {

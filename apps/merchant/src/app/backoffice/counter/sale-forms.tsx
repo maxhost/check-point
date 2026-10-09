@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search, Xmark } from "iconoir-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Erase, Search, Xmark } from "iconoir-react";
+import { Button } from "../../../ui";
 import { type CartLine, type CounterProduct, formatMoney } from "./types";
 
 /** Alphabetical by default; optional server ranking, with personal picks kept separate. */
@@ -23,6 +24,7 @@ export function DetailedSale({
   searchOnly = false,
   compactSearch = false,
   showHeading = true,
+  stickyControls = false,
 }: {
   products: CounterProduct[];
   categories: { id: string; name: string }[];
@@ -44,9 +46,89 @@ export function DetailedSale({
   searchOnly?: boolean;
   compactSearch?: boolean;
   showHeading?: boolean;
+  stickyControls?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchOpen, setSearchOpen] = useState(searchOnly);
+  const searchRevealRef = useRef<HTMLDivElement>(null);
+  const searchResultsRef = useRef<HTMLUListElement>(null);
+  const stickyToolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarStuck, setToolbarStuck] = useState(false);
+  useEffect(() => {
+    if (!stickyControls) return;
+    let frame = 0;
+    function measure() {
+      frame = 0;
+      const toolbar = stickyToolbarRef.current;
+      setToolbarStuck(
+        !!toolbar &&
+          toolbar.offsetHeight > 0 &&
+          toolbar.getBoundingClientRect().top <= 0,
+      );
+    }
+    function scheduleMeasure() {
+      if (!frame) frame = requestAnimationFrame(measure);
+    }
+    scheduleMeasure();
+    window.addEventListener("scroll", scheduleMeasure, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("resize", scheduleMeasure);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      window.removeEventListener("resize", scheduleMeasure);
+    };
+  }, [stickyControls, searchOpen]);
+  const stickyToolbarClass = `sticky top-0 z-20 py-2 transition-colors duration-200 motion-reduce:transition-none ${toolbarStuck ? "bg-canvas" : "bg-transparent"}`;
+  useEffect(() => {
+    if (!stickyControls || !searchOpen || !query.trim()) return;
+    const frame = requestAnimationFrame(() => {
+      searchResultsRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "instant",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [query, searchOpen, stickyControls]);
+  const [searchClosing, setSearchClosing] = useState(false);
+  const inlineSearch = !showHeading && !searchOnly;
+  useEffect(() => {
+    if (!inlineSearch || !searchOpen) return;
+    searchInputRef.current?.focus();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const animation = searchRevealRef.current?.animate(
+      [{ clipPath: "inset(0 0 0 100%)" }, { clipPath: "inset(0 0 0 0%)" }],
+      { duration: 180, easing: "ease-out" },
+    );
+    return () => animation?.cancel();
+  }, [inlineSearch, searchOpen]);
+  async function toggleSearch() {
+    if (searchClosing) return;
+    if (
+      inlineSearch &&
+      searchOpen &&
+      searchRevealRef.current &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setSearchClosing(true);
+      const animation = searchRevealRef.current.animate(
+        [{ clipPath: "inset(0 0 0 0%)" }, { clipPath: "inset(0 0 0 100%)" }],
+        { duration: 180, easing: "ease-in", fill: "forwards" },
+      );
+      try {
+        await animation.finished;
+      } catch {
+        return;
+      }
+      animation.cancel();
+      setSearchClosing(false);
+    }
+    setSearchOpen(!searchOpen);
+    setQuery("");
+  }
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [repeatApplied, setRepeatApplied] = useState(false);
   const sortedProducts = useMemo(() => {
@@ -167,13 +249,11 @@ export function DetailedSale({
   const searchButton = (
     <button
       type="button"
-      disabled={disabled}
+      disabled={disabled || searchClosing}
+      className={!showHeading ? "h-11 shrink-0" : undefined}
       aria-expanded={searchOpen}
       aria-label={searchOpen ? "Cerrar búsqueda" : "Buscar"}
-      onClick={() => {
-        setSearchOpen(!searchOpen);
-        setQuery("");
-      }}
+      onClick={() => void toggleSearch()}
     >
       {compactSearch ? (
         searchOpen ? (
@@ -225,8 +305,49 @@ export function DetailedSale({
       )}
     </div>
   );
+  const customClear = inlineSearch || searchOnly;
+  const searchInput = (
+    <input
+      ref={searchInputRef}
+      className={`counter-search${inlineSearch ? " h-11 min-w-0 py-0" : ""}${customClear ? " w-full pr-11!" : ""}`}
+      disabled={disabled}
+      type={customClear ? "text" : "search"}
+      aria-label={
+        searchOnly ? "Buscar producto para añadir" : "Buscar producto"
+      }
+      placeholder={
+        searchOnly ? "Buscar producto para añadir…" : "Buscar producto…"
+      }
+      value={query}
+      onChange={(event) => setQuery(event.target.value)}
+      autoFocus={!searchOnly && !inlineSearch}
+    />
+  );
+  const searchField = customClear ? (
+    <div ref={searchRevealRef} className="relative min-w-0 flex-1">
+      {searchInput}
+      {query && (
+        <Button
+          variant="quiet"
+          aria-label="Limpiar búsqueda"
+          className="absolute top-0 right-0 bottom-0 my-auto size-11 border-0! bg-transparent! p-0!"
+          isDisabled={disabled}
+          onPress={() => {
+            setQuery("");
+            searchInputRef.current?.focus();
+          }}
+        >
+          <Erase aria-hidden="true" className="size-5" />
+        </Button>
+      )}
+    </div>
+  ) : (
+    searchInput
+  );
   return (
-    <div className="counter-detailed">
+    <div
+      className={stickyControls && searchOnly ? "contents" : "counter-detailed"}
+    >
       {habitual.length > 0 && !searchOpen && (
         <section
           className="counter-picks"
@@ -263,31 +384,40 @@ export function DetailedSale({
       )}
       {!searchOnly && (
         <div
-          className={`counter-catalog-heading${showHeading ? "" : " gap-2"}${!showHeading && searchOpen ? " justify-end" : ""}`}
+          ref={stickyToolbarRef}
+          className={`counter-catalog-heading${showHeading ? "" : " items-start gap-2"}${stickyControls ? ` ${stickyToolbarClass}` : ""}`}
         >
-          {showHeading ? <h3>Catálogo</h3> : !searchOpen && categoryControls}
+          {showHeading ? (
+            <h3>Catálogo</h3>
+          ) : searchOpen ? (
+            searchField
+          ) : (
+            categoryControls
+          )}
           {searchButton}
         </div>
       )}
-      {searchOpen || searchOnly ? (
-        <input
-          className="counter-search"
-          disabled={disabled}
-          type="search"
-          aria-label={
-            searchOnly ? "Buscar producto para añadir" : "Buscar producto"
-          }
-          placeholder={
-            searchOnly ? "Buscar producto para añadir…" : "Buscar producto…"
-          }
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          autoFocus={!searchOnly}
-        />
-      ) : showHeading ? (
-        categoryControls
-      ) : null}
-      <ul className="counter-product-list">{shown.map(card)}</ul>
+      {searchOpen || searchOnly
+        ? (showHeading || searchOnly) &&
+          (stickyControls && searchOnly ? (
+            <div
+              ref={stickyToolbarRef}
+              className={`grid ${stickyToolbarClass}`}
+            >
+              {searchField}
+            </div>
+          ) : (
+            searchField
+          ))
+        : showHeading
+          ? categoryControls
+          : null}
+      <ul
+        ref={searchResultsRef}
+        className={`counter-product-list${stickyControls ? " scroll-mt-20" : ""}`}
+      >
+        {shown.map(card)}
+      </ul>
       {shown.length === 0 && (!searchOnly || query.trim()) && (
         <p className="counter-empty">
           {products.length
