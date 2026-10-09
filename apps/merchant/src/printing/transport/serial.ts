@@ -44,10 +44,7 @@ export async function printSerial(
 ): Promise<void> {
   const [port] = await serial.getPorts();
   if (!port)
-    throw new PrintError(
-      "no_printer",
-      "Elige la impresora antes de imprimir.",
-    );
+    throw new PrintError("no_printer", "Elige la impresora antes de imprimir.");
   await port.open({ baudRate: BAUD_RATE });
   try {
     const writer = port.writable?.getWriter();

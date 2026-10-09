@@ -26,7 +26,8 @@ const GS_PAREN_K = [0x1d, 0x28, 0x6b];
 
 function contains(bytes: Uint8Array, seq: number[]): boolean {
   outer: for (let i = 0; i + seq.length <= bytes.length; i++) {
-    for (let j = 0; j < seq.length; j++) if (bytes[i + j] !== seq[j]) continue outer;
+    for (let j = 0; j < seq.length; j++)
+      if (bytes[i + j] !== seq[j]) continue outer;
     return true;
   }
   return false;
@@ -53,15 +54,23 @@ describe("encodeTicket (spec 0184)", () => {
   );
 
   it("QR nativo (`GS ( k`) solo cuando hay contenido", () => {
-    expect(contains(encodeTicket(buildTicket(order, all), 58), GS_PAREN_K)).toBe(false);
     expect(
-      contains(encodeTicket(buildTicket(order, all, { qr: "https://x.y/z" }), 58), GS_PAREN_K),
+      contains(encodeTicket(buildTicket(order, all), 58), GS_PAREN_K),
+    ).toBe(false);
+    expect(
+      contains(
+        encodeTicket(buildTicket(order, all, { qr: "https://x.y/z" }), 58),
+        GS_PAREN_K,
+      ),
     ).toBe(true);
   });
 
   it("bloques apagados no llegan a los bytes", () => {
     const text = new TextDecoder("latin1").decode(
-      encodeTicket(buildTicket(order, { showBusinessName: false, showTable: false }), 58),
+      encodeTicket(
+        buildTicket(order, { showBusinessName: false, showTable: false }),
+        58,
+      ),
     );
     expect(text).not.toContain("Cafe");
     expect(text).not.toContain("Senorial");
@@ -70,12 +79,16 @@ describe("encodeTicket (spec 0184)", () => {
 });
 
 describe("layout (spec 0184)", () => {
-  it.each([58, 80] as const)("%s mm: ningun renglon pasa del ancho", (paper) => {
-    const rows = layoutTicket(buildTicket(order, all, { qr: "q" }), paper);
-    for (const row of rows)
-      if (row.kind === "text") expect(row.text.length).toBeLessThanOrEqual(COLUMNS[paper]);
-    expect(rows.some((r) => r.kind === "qr")).toBe(true);
-  });
+  it.each([58, 80] as const)(
+    "%s mm: ningun renglon pasa del ancho",
+    (paper) => {
+      const rows = layoutTicket(buildTicket(order, all, { qr: "q" }), paper);
+      for (const row of rows)
+        if (row.kind === "text")
+          expect(row.text.length).toBeLessThanOrEqual(COLUMNS[paper]);
+      expect(rows.some((r) => r.kind === "qr")).toBe(true);
+    },
+  );
 
   it("wrap parte palabras mas largas que el ancho; twoColumns alinea a la derecha", () => {
     expect(wrap("abcdefghij", 4)).toEqual(["abcd", "efgh", "ij"]);

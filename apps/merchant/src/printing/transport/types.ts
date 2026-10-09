@@ -6,19 +6,17 @@
 export type TransportKind = "ble" | "serial";
 
 export type PrintFailure =
-  | "unsupported"
-  | "no_printer"
-  | "cancelled"
-  | "not_found"
-  | "write_failed";
+  "unsupported" | "no_printer" | "cancelled" | "not_found" | "write_failed";
 
 export type PrintResult =
-  | { ok: true }
-  | { ok: false; reason: PrintFailure; message: string };
+  { ok: true } | { ok: false; reason: PrintFailure; message: string };
 
 /** Falla con causa: los transportes la lanzan, `index.ts` la convierte en `PrintResult`. */
 export class PrintError extends Error {
-  constructor(readonly reason: PrintFailure, message: string) {
+  constructor(
+    readonly reason: PrintFailure,
+    message: string,
+  ) {
     super(message);
   }
 }

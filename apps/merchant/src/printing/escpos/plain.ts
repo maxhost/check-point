@@ -17,9 +17,11 @@ const SYMBOLS: Record<string, string> = {
 };
 
 export function plain(value: string): string {
-  return value
-    // NFD separa la letra de su acento; el acento queda fuera de 0x20–0x7E y lo borra el ultimo paso.
-    .normalize("NFD")
-    .replace(/[\u00a0\u202f\u2007\u2009]/g, " ")
-    .replace(/[^\x20-\x7e]/g, (char) => SYMBOLS[char] ?? "");
+  return (
+    value
+      // NFD separa la letra de su acento; el acento queda fuera de 0x20–0x7E y lo borra el ultimo paso.
+      .normalize("NFD")
+      .replace(/[\u00a0\u202f\u2007\u2009]/g, " ")
+      .replace(/[^\x20-\x7e]/g, (char) => SYMBOLS[char] ?? "")
+  );
 }

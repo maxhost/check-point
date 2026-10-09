@@ -32,7 +32,11 @@ export type {
   TicketSettings,
 } from "./ticket/types";
 export type { Paper } from "./escpos/layout";
-export type { PrintFailure, PrintResult, TransportKind } from "./transport/types";
+export type {
+  PrintFailure,
+  PrintResult,
+  TransportKind,
+} from "./transport/types";
 export type { DevicePrinter } from "./device";
 export { getDevicePaper, getDevicePrinter, setDevicePaper };
 
@@ -82,7 +86,10 @@ export async function printTicket(doc: TicketDoc): Promise<PrintResult> {
     if (!printer) {
       const { ble, serial } = printerSupport();
       if (!ble && !serial) return UNSUPPORTED;
-      throw new PrintError("no_printer", "Elige la impresora antes de imprimir.");
+      throw new PrintError(
+        "no_printer",
+        "Elige la impresora antes de imprimir.",
+      );
     }
     // Sincronico: nada se espera antes de la lista de Chrome (gesto del usuario).
     const bytes = encodeTicket(doc, getDevicePaper());

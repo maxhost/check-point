@@ -49,10 +49,16 @@ describe.skipIf(!posIntegrationEnabled)("Ajuste del ticket (spec 0184)", () => {
   it("sin fila: owner y POS leen los defaults (los dos bloques prendidos) y no se crea fila", async () => {
     const owner = await ticket.ownerRead(world.ownerCookie);
     expect(owner.status).toBe(200);
-    expect(await owner.json()).toEqual({ showBusinessName: true, showTable: true });
+    expect(await owner.json()).toEqual({
+      showBusinessName: true,
+      showTable: true,
+    });
     const posRes = await ticket.posRead(world.ownerCookie);
     expect(posRes.status).toBe(200);
-    expect(await posRes.json()).toEqual({ showBusinessName: true, showTable: true });
+    expect(await posRes.json()).toEqual({
+      showBusinessName: true,
+      showTable: true,
+    });
     const rows = await getDb()
       .select()
       .from(ticketSettings)
@@ -66,7 +72,10 @@ describe.skipIf(!posIntegrationEnabled)("Ajuste del ticket (spec 0184)", () => {
       showTable: false,
     });
     expect(off.status).toBe(200);
-    expect(await off.json()).toEqual({ showBusinessName: false, showTable: false });
+    expect(await off.json()).toEqual({
+      showBusinessName: false,
+      showTable: false,
+    });
     expect(await (await ticket.posRead(world.ownerCookie)).json()).toEqual({
       showBusinessName: false,
       showTable: false,
@@ -76,7 +85,10 @@ describe.skipIf(!posIntegrationEnabled)("Ajuste del ticket (spec 0184)", () => {
       showBusinessName: true,
       showTable: false,
     });
-    expect(await mixed.json()).toEqual({ showBusinessName: true, showTable: false });
+    expect(await mixed.json()).toEqual({
+      showBusinessName: true,
+      showTable: false,
+    });
     const [row] = await getDb()
       .select()
       .from(ticketSettings)

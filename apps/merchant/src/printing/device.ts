@@ -34,7 +34,10 @@ function write(key: string, value: unknown | null): void {
 export function getDevicePrinter(): DevicePrinter | null {
   const v = read(PRINTER_KEY) as Record<string, unknown> | null;
   if (!v || typeof v !== "object") return null;
-  if ((v.transport !== "ble" && v.transport !== "serial") || typeof v.name !== "string")
+  if (
+    (v.transport !== "ble" && v.transport !== "serial") ||
+    typeof v.name !== "string"
+  )
     return null;
   return { transport: v.transport, name: v.name };
 }

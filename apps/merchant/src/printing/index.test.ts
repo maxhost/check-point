@@ -10,7 +10,9 @@ import type { TicketDoc } from "./ticket/types";
 const doc: TicketDoc = {
   businessName: "Cafe",
   table: "Mesa 1",
-  lines: [{ name: "Capuchino", quantity: 2, unitPrice: "$2,50", lineTotal: "$5,00" }],
+  lines: [
+    { name: "Capuchino", quantity: 2, unitPrice: "$2,50", lineTotal: "$5,00" },
+  ],
   total: "$5,00",
   date: "9/10/2026",
   time: "14:05",
@@ -30,8 +32,12 @@ function fakeBle(name = "BlueTooth Printer") {
   const written: Uint8Array[] = [];
   const characteristic = {
     properties: { write: true, writeWithoutResponse: true },
-    writeValueWithResponse: vi.fn(async (v: Uint8Array) => void written.push(v)),
-    writeValueWithoutResponse: vi.fn(async (v: Uint8Array) => void written.push(v)),
+    writeValueWithResponse: vi.fn(
+      async (v: Uint8Array) => void written.push(v),
+    ),
+    writeValueWithoutResponse: vi.fn(
+      async (v: Uint8Array) => void written.push(v),
+    ),
   };
   const disconnect = vi.fn();
   const device = {
@@ -39,14 +45,17 @@ function fakeBle(name = "BlueTooth Printer") {
     gatt: {
       connect: vi.fn(async () => ({
         getPrimaryService: vi.fn(async (uuid: string) => {
-          if (!uuid.startsWith("000018f0")) throw new DOMException("x", "NotFoundError");
+          if (!uuid.startsWith("000018f0"))
+            throw new DOMException("x", "NotFoundError");
           return { getCharacteristics: async () => [characteristic] };
         }),
       })),
       disconnect,
     },
   };
-  const requestDevice = vi.fn(async (options: unknown) => (void options, device));
+  const requestDevice = vi.fn(
+    async (options: unknown) => (void options, device),
+  );
   return { requestDevice, written, disconnect, characteristic };
 }
 
@@ -75,11 +84,17 @@ describe("printing (spec 0184)", () => {
     vi.stubGlobal("navigator", {});
     let m = await freshModule();
     expect(m.printerSupport()).toEqual({ ble: false, serial: false });
-    expect(await m.printTicket(doc)).toMatchObject({ ok: false, reason: "unsupported" });
+    expect(await m.printTicket(doc)).toMatchObject({
+      ok: false,
+      reason: "unsupported",
+    });
 
     vi.stubGlobal("navigator", { bluetooth: fakeBle() });
     m = await freshModule();
-    expect(await m.printTicket(doc)).toMatchObject({ ok: false, reason: "no_printer" });
+    expect(await m.printTicket(doc)).toMatchObject({
+      ok: false,
+      reason: "no_printer",
+    });
   });
 
   it("BLE: elegir guarda el nombre; imprimir otra vez en la misma carga NO abre la lista; trozos ≤ 100 B", async () => {
@@ -88,7 +103,10 @@ describe("printing (spec 0184)", () => {
     const m = await freshModule();
     expect(await m.choosePrinter("ble")).toEqual({ ok: true });
     expect(ble.requestDevice).toHaveBeenCalledTimes(1);
-    expect(m.getDevicePrinter()).toEqual({ transport: "ble", name: "BlueTooth Printer" });
+    expect(m.getDevicePrinter()).toEqual({
+      transport: "ble",
+      name: "BlueTooth Printer",
+    });
 
     expect(await settle(m.printTicket(doc))).toEqual({ ok: true });
     expect(await settle(m.printTicket(doc))).toEqual({ ok: true });
@@ -124,7 +142,9 @@ describe("printing (spec 0184)", () => {
     expect(m.getDevicePrinter()).toBeNull();
     expect(await m.printTicket(doc)).toMatchObject({ reason: "no_printer" });
     await m.choosePrinter("ble");
-    expect(ble.requestDevice.mock.calls[1][0]).toMatchObject({ acceptAllDevices: true });
+    expect(ble.requestDevice.mock.calls[1][0]).toMatchObject({
+      acceptAllDevices: true,
+    });
   });
 
   it("cada falla sale de su causa: cancelar, no encontrada, escritura", async () => {
@@ -132,7 +152,10 @@ describe("printing (spec 0184)", () => {
     vi.stubGlobal("navigator", { bluetooth: ble });
     let m = await freshModule();
     ble.requestDevice.mockRejectedValueOnce(
-      new DOMException("User cancelled the requestDevice() chooser.", "NotFoundError"),
+      new DOMException(
+        "User cancelled the requestDevice() chooser.",
+        "NotFoundError",
+      ),
     );
     expect(await m.choosePrinter("ble")).toMatchObject({ reason: "cancelled" });
 
@@ -187,7 +210,11 @@ describe("printing (spec 0184)", () => {
     const boom = () => {
       throw new DOMException("denied", "SecurityError");
     };
-    vi.stubGlobal("localStorage", { getItem: boom, setItem: boom, removeItem: boom });
+    vi.stubGlobal("localStorage", {
+      getItem: boom,
+      setItem: boom,
+      removeItem: boom,
+    });
     vi.stubGlobal("navigator", { bluetooth: fakeBle() });
     const m = await freshModule();
     expect(await m.choosePrinter("ble")).toEqual({ ok: true });

@@ -43,7 +43,11 @@ describe("buildTicket (spec 0184)", () => {
   );
 
   it("la base: cantidad, unitario y subtotal con moneda; fecha y hora de la impresion", () => {
-    const doc = buildTicket(order, { showBusinessName: true, showTable: true }, { now });
+    const doc = buildTicket(
+      order,
+      { showBusinessName: true, showTable: true },
+      { now },
+    );
     expect(doc.lines[0]).toMatchObject({ name: "Capuchino", quantity: 2 });
     expect(doc.lines[0].unitPrice).toMatch(/\$.*2,50/);
     expect(doc.lines[0].lineTotal).toMatch(/5,00/);
@@ -53,7 +57,10 @@ describe("buildTicket (spec 0184)", () => {
 
   it("orden sin mesa → table null aunque el bloque este prendido", () => {
     for (const tableLabel of [null, "   "]) {
-      const doc = buildTicket({ ...order, tableLabel }, { showBusinessName: true, showTable: true });
+      const doc = buildTicket(
+        { ...order, tableLabel },
+        { showBusinessName: true, showTable: true },
+      );
       expect(doc.table).toBeNull();
     }
   });
@@ -62,8 +69,8 @@ describe("buildTicket (spec 0184)", () => {
     const s = { showBusinessName: true, showTable: true };
     expect(buildTicket(order, s).qr).toBeNull();
     expect(buildTicket(order, s, { qr: "  " }).qr).toBeNull();
-    expect(buildTicket(order, s, { qr: "https://my.checkpass.club/x" }).qr).toBe(
-      "https://my.checkpass.club/x",
-    );
+    expect(
+      buildTicket(order, s, { qr: "https://my.checkpass.club/x" }).qr,
+    ).toBe("https://my.checkpass.club/x");
   });
 });

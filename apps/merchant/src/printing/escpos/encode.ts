@@ -17,7 +17,10 @@ export function encodeTicket(doc: TicketDoc, paper: Paper): Uint8Array {
     } else if (row.kind === "qr") {
       encoder.newline().align("center").qrcode(row.value).newline();
     } else {
-      encoder.align(row.align).bold(row.bold === true).line(row.text);
+      encoder
+        .align(row.align)
+        .bold(row.bold === true)
+        .line(row.text);
     }
   }
   return encoder.align("left").newline(3).cut().encode();

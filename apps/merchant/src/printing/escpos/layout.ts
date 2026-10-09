@@ -18,7 +18,7 @@ export function wrap(text: string, columns: number): string[] {
   const out: string[] = [];
   let current = "";
   for (const word of text.split(/\s+/).filter(Boolean)) {
-    for (let piece = word; piece.length > 0; ) {
+    for (let piece = word; piece.length > 0;) {
       const room = current ? columns - current.length - 1 : columns;
       if (piece.length <= room) {
         current = current ? `${current} ${piece}` : piece;
@@ -37,7 +37,11 @@ export function wrap(text: string, columns: number): string[] {
 }
 
 /** Izquierda y derecha en un renglon; si no entran, la izquierda va sola arriba. */
-export function twoColumns(left: string, right: string, columns: number): string[] {
+export function twoColumns(
+  left: string,
+  right: string,
+  columns: number,
+): string[] {
   const r = right.slice(0, columns);
   if (left.length + 1 + r.length <= columns)
     return [left + " ".repeat(columns - left.length - r.length) + r];

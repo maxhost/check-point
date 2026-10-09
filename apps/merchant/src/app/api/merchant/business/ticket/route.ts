@@ -40,7 +40,8 @@ export async function PUT(request: Request) {
     if (!settings) {
       return NextResponse.json(
         {
-          error: "Indica si el ticket muestra el nombre del comercio y la mesa.",
+          error:
+            "Indica si el ticket muestra el nombre del comercio y la mesa.",
           code: "invalid_input",
         },
         { status: 422 },

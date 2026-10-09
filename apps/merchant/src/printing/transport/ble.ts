@@ -75,7 +75,10 @@ export async function printBle(
       ? remembered
       : await bluetooth.requestDevice(
           savedName
-            ? { filters: [{ name: savedName }], optionalServices: PRINTER_SERVICES }
+            ? {
+                filters: [{ name: savedName }],
+                optionalServices: PRINTER_SERVICES,
+              }
             : { acceptAllDevices: true, optionalServices: PRINTER_SERVICES },
         );
   remembered = device;
@@ -91,7 +94,10 @@ const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 /** Escribe en el primer servicio conocido con una caracteristica escribible y desconecta. */
 async function writeBle(device: BleDevice, bytes: Uint8Array): Promise<void> {
   if (!device.gatt)
-    throw new PrintError("write_failed", "Ese dispositivo no es una impresora.");
+    throw new PrintError(
+      "write_failed",
+      "Ese dispositivo no es una impresora.",
+    );
   const server = await device.gatt.connect();
   try {
     for (const uuid of PRINTER_SERVICES) {

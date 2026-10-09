@@ -125,7 +125,9 @@ describe.skipIf(!enabled)("renderedTerms contra Neon (spec 0078)", () => {
     expect(markdown).toBe("Mi TOS propio, sin plantilla.");
     const resolved = await renderedTerms(
       stampsInput(configuration, [
-        { text: "Hola {{business_legal_name}}: {{program_kind_label}} en {{program_unit_plural}}." },
+        {
+          text: "Hola {{business_legal_name}}: {{program_kind_label}} en {{program_unit_plural}}.",
+        },
       ]),
       business,
     );
