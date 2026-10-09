@@ -401,3 +401,18 @@ reutilizar Toast existente con utilidades de posición fixed explícitas, centra
 arriba del viewport, sin CSS/kit nuevo. Regresión con pedido largo verifica aviso
 realmente dentro del viewport y posición fixed tras volver del escáner. Sin
 cambiar resolve, duración ni mensajes. Lint/typecheck y prueba puntual L1.
+
+### Ajuste L1 — confirmaciones consistentes (2026-10-09)
+
+Owner define misma apariencia que Producto añadido: cápsula oscura, móvil abajo
+al centro y desktop arriba derecha. Mini plan cerrado: extraer presentación a
+`app/components/confirmation-toast.tsx`, adaptador del Toast existente (sin
+modificar kit). Props message/onDismiss/durationMs; sin className para evitar
+variantes por pantalla. Usarlo en pos-editor y pos-scan. Móvil bottom24, desktop
+md top6/right6. Mantener tiempos existentes y anuncio accesible. Documentar en
+design-system que nuevos avisos de confirmación reutilizan ConfirmationToast;
+errores y operaciones pendientes conservan su contrato existente.
+
+Prueba específica compara estilos y posiciones reales de ambos avisos a390/1280,
+además de regresiones loading/cancelación/pedido largo. Lint/typecheck/formato y
+guardia de archivos modificados. Sin dinero/requests/CSS/kit ni suiteglobal.
