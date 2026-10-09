@@ -4,6 +4,7 @@ import {
   SESSION_TTL_DAYS,
 } from "@mi-pasaporte/domain/server/consumer/core";
 import { issueSession } from "@mi-pasaporte/domain/server/consumer/session";
+import { consumerOriginOr } from "@mi-pasaporte/domain/server/hosts";
 import { resolveWebViewToken } from "@mi-pasaporte/domain/server/wallet/core";
 import { markAccountOpened } from "@mi-pasaporte/domain/server/wallet/reminder-store";
 
@@ -33,7 +34,9 @@ export async function GET(
   await markAccountOpened(account.id);
   const token = await issueSession(account.id);
   const response = NextResponse.redirect(
-    new URL("/wallet", request.nextUrl.origin),
+    // `CONSUMER_ORIGIN` primero: detras del tunel de dev, `nextUrl.origin` es
+    // `https://localhost:3200` y el navegador cae en un puerto sin TLS.
+    new URL("/wallet", consumerOriginOr(request.nextUrl.origin)),
     { status: 302 },
   );
   response.cookies.set(SESSION_COOKIE, token, {
