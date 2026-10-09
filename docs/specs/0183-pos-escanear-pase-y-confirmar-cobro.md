@@ -416,3 +416,21 @@ errores y operaciones pendientes conservan su contrato existente.
 Prueba específica compara estilos y posiciones reales de ambos avisos a390/1280,
 además de regresiones loading/cancelación/pedido largo. Lint/typecheck/formato y
 guardia de archivos modificados. Sin dinero/requests/CSS/kit ni suiteglobal.
+
+### Ajuste L1 — descartar edición del pedido (2026-10-09)
+
+Owner define botón rojo X Iconoir inline junto a Guardar cambios en Editar,
+visible cuando hay borrador modificado. Mini plan cerrado antes del código:
+`pos-editor.tsx` usa Button danger existente, tamaño48/circular, nombre accesible
+Descartar cambios. Abre Dialog existente título Descartar cambios. Cancelar o
+Escape cierran y conservan borrador/Editar. Confirmar restaura el snapshot
+actual de order (mesa/local/líneas/precios/lineId), limpia eliminaciones/aviso de
+producto, cierra modal, pasa a Pedido y publica ConfirmationToast Pedido
+actualizado según texto explícito owner. No PUT/POST/GET al descartar; cliente y
+beneficio temporales conservados. Controles bloqueados si busy. Nueva orden y
+salida al listado conservan sus comportamientos. Kit/API/CSS intactos.
+
+Prueba específica móvil: controles inline, cancelar conserva cantidades/tab y
+cero escrituras; confirmar restaura snapshot/tab y toast consistente, ausencia
+de Guardar cambios después. Captura visual, typecheck/lint/formato/guard
+específicos; sin suiteglobal ni subagentes.
