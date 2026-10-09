@@ -134,3 +134,12 @@ Verificación del ajuste: typecheck 6 paquetes (3,436 s), ESLint del editor,
 Prettier, guardia UI 6 archivos sin aumentos y diff-check verdes. No ejecutadas
 suites ni navegador; QA visual owner pendiente. Cabecera nueva usa flex y huecos
 fijos; semántica heading nivel 1 conservada para etapa pequeña.
+
+## Ajuste cerrado — nombre de mesa bajo el progreso
+
+Owner pide sustituir títulos de etapa por nombre de mesa y retirarlo del footer.
+Nueva orden conserva rayas y muestra table.trim() o «Mesa sin nombre» en texto
+pequeño bajo ellas, con semántica heading. Etapa queda solo sr-only con Paso N de 3.
+Retirar bloque de mesa/local encima de CTA inferior. Sin cambios a orden abierta,
+acciones, kit, CSS, API o cache. Ajustar aserciones existentes sin correr suites;
+QA visual pendiente. Solo dev, sin merge/push.
