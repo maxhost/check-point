@@ -62,3 +62,13 @@ Formato aplicado. Fixture POS usa segmento pos para conservar acceso a Nueva ord
 en las pruebas existentes; otros fixtures conservan loyalty por defecto.
 Sin ejecución adicional de suites ni QA visual de GPT; owner debe revisar en
 pnpm dev:local antes de main. La paleta es la misma que el resto del backoffice.
+
+## Ajuste cerrado — tipografía del acceso central
+
+Owner observó que Nueva orden era mayor que Mostrador original. Button/Text
+aportaban tipografía del kit sobre la clase legacy: Text small usa 14 px, mientras
+mobile-counter-access original usa 10 px (9 px hasta 380 px). Reutilizar el mismo
+Link y texto directo del acceso Mostrador, con mobile-counter-access y columna 2.
+Destino /backoffice/pos; click previene navegación y dispara la acción local existente.
+Icono, tokens, permisos y protección de consola conservados. Sin valores arbitrarios,
+CSS, tipografía cruda ni cambios de kit. QA visual del owner pendiente.
