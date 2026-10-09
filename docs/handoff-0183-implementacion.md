@@ -194,3 +194,13 @@ solo después de onSave exitoso/apply(result); fallo conserva Editar y no avisa
 Tres pruebasverdes2.7s: descarte sinaviso390/1280 y guardadofallido→exitoso con
 aviso solamente en éxito. Log/private/tmp/0183-save-notice.log. Typecheck6verde
 3.281s, lint/formato/diff verdes. Local sinpublicación; pendientes0183 intactos.
+
+## Ajuste visual L0 — acciones solo anular
+
+Owner retiró Imprimir precuenta de Acciones de la orden. Modal deja Anular con
+Button danger existente; borrador advierte Guarda los cambios antes de anular.
+Handler y guardas busy/dirty/conflict preservados. Botón Imprimir de Pedido y
+trabajo concurrente0184 intactos. Regresión existente adaptada a ausencia de
+opción y estilo danger; preserva ticket en mediaprint, sin ejecutar navegador
+por L0. Lint y typecheck:ui merchant/diff verdes. Sin kit/API/CSS nuevos,
+sin publicación. Cambios ajenos preservados.

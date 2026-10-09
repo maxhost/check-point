@@ -443,3 +443,12 @@ Mini plan: retirar aviso del descarte y limpiar aviso anterior, publicarlo tras
 onSave exitoso y apply(result) al volver a Pedido; fallo no publica éxito. Nueva
 orden/Guardar y salir conservan flujos existentes. Adaptar oráculo descarte a
 cero avisos y probar guardar fallido/exitoso. Sin kit/API/CSS/dinero nuevos.
+
+### Ajuste visual L0 — acciones de la orden (2026-10-09)
+
+Owner elimina Imprimir precuenta del modal Acciones de la orden. Queda Anular
+con Button danger existente. Texto con borrador pasa a Guarda los cambios antes
+de anular. Handler/confirmación de anulación y bloqueos busy/dirty/conflict
+intactos; no tocar botón Imprimir de Pedido ni trabajo concurrente0184. Adaptar
+regresión que invocaba la opción retirada, conservar render de ticket en media
+print. Lint/typecheck específicos y diff; sin nueva suite global ni kit/API.

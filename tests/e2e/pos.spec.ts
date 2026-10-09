@@ -181,7 +181,7 @@ async function scan(page: Page) {
   });
 }
 
-test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId; imprimir y cerrar sin pase", async ({
+test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId; ticket y cerrar sin pase", async ({
   page,
 }, testInfo) => {
   const calls = await setup(page);
@@ -292,19 +292,22 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
       },
     ],
   });
-  await page.evaluate(() => {
-    window.print = () => {
-      document.documentElement.dataset.printed = "yes";
-    };
-  });
   await page.getByRole("button", { name: "Más acciones", exact: true }).click();
-  await page.getByRole("button", { name: "Imprimir precuenta" }).click();
-  await expect(page.locator("html")).toHaveAttribute("data-printed", "yes");
+  const actions = page.getByRole("dialog", {
+    name: "Acciones de la orden",
+    exact: true,
+  });
+  await expect(
+    actions.getByRole("button", { name: "Imprimir precuenta", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    actions.getByRole("button", { name: "Anular", exact: true }),
+  ).toHaveClass(/bg-danger/);
+  await actions
+    .getByRole("button", { name: "Cerrar acciones de la orden", exact: true })
+    .click();
   await page.emulateMedia({ media: "print" });
   await expect(page.getByRole("navigation").first()).toBeHidden();
-  await expect(
-    page.getByRole("button", { name: "Imprimir precuenta" }),
-  ).toBeHidden();
   await expect(
     page.getByRole("region", { name: "Ticket de la orden" }),
   ).toBeVisible();

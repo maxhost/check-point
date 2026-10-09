@@ -939,23 +939,10 @@ export function PosEditor({
       >
         <div className="grid gap-3">
           {dirty && (
-            <Text variant="muted">
-              Guarda los cambios antes de imprimir o anular.
-            </Text>
+            <Text variant="muted">Guarda los cambios antes de anular.</Text>
           )}
           <Button
-            variant="secondary"
-            isDisabled={busy || dirty || conflict}
-            onPress={() => {
-              setActionsOpen(false);
-              requestAnimationFrame(() => window.print());
-            }}
-          >
-            Imprimir precuenta
-          </Button>
-          <Button
-            variant="quiet"
-            className="text-danger!"
+            variant="danger"
             isDisabled={busy || dirty || conflict}
             onPress={() => {
               setActionsOpen(false);
