@@ -3,18 +3,27 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-08) — MESA BAJO PROGRESO POS
+## ⇥ ESTADO (2026-10-08) — AJUSTES BUSCADOR POS GUARDADOS
 
-Owner pidió retirar títulos de pasos y poner nombre de mesa debajo de rayas,
-eliminando contexto al lado del botón inferior. Spec 0181 cerrada en 919be18,
-UI **19944c0**, solo **dev**, sin merge/push. Nombre mesa pequeño con heading;
-«Mesa sin nombre» antes de escribir. Paso/etapa solo sr-only. Bloque mesa/local
-retirado del footer. Rayas, botones, orden abierta y cache conservados.
+Owner pidió commit de todos los ajustes menores, explícitamente sin specs/ADR/pruebas.
+UI **5a33777**, rama **dev**, sin merge/push. Commiteados sale-forms, pos-editor
+y components/ui (Toast admite className opcional). Header con mesa ya guardado
+previamente en 19944c0; estado anterior en bc831e1.
 
-Typecheck 6 paquetes (3,111 s), ESLint editor/e2e, Prettier, guardia 6 archivos
-sin aumentos y diff-check verdes. Aserciones existentes actualizadas, suites
-sin ejecución por preferencia vigente; QA visual owner pendiente. Sin kit/CSS/API.
-Cambios ajenos gotchas/LECCIONES preservados. Próximo paso: revisión visual owner.
+Paso 2: lupa alineada con chips, input en misma fila, alto común 44 px; clear Erase
+de Iconoir, X exterior cierra. Apertura desde derecha y cierre inverso (180 ms),
+respetando movimiento reducido. Paso 3 usa mismo clear. Categorías/buscador en paso 2
+y buscador en paso 3 sticky; fondo canvas aparece solo al pegarse arriba con
+transición 200 ms. Buscar lleva resultados debajo del buscador en ambos pasos.
+Añadir desde revisión muestra Producto añadido 1400 ms con fondo oscuro/texto claro
+y scroll al final del pedido, preservando separación del footer. Defaults Mostrador
+conservados; sin API, kit, CSS nuevo ni cache/escrituras añadidas.
+
+Owner confirmó funcionamiento de scroll/búsqueda y resto de ajustes durante sesión.
+Último pedido es commit, no publicar. diff-check verde; no ejecutadas suites,
+typecheck/lint ni navegador para estos ajustes por instrucción explícita. Sin PASS
+completo nuevo ni marcar spec implementada. Cambios ajenos gotchas/LECCIONES
+preservados fuera del commit. Continuar mejoras POS según indicación del owner.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
