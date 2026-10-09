@@ -11,8 +11,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /** `GET /api/pos/catalog?locationId=` (spec 0169): el catalogo del mostrador (`businessCatalog`,
- * filtrado por `availableAtCounter`) para cargar la orden, mas `bestSellingProductIds`
- * (`server/pos/best-sellers.ts`). Un local ajeno o archivado → 422. */
+ * filtrado por `availableAtCounter`) SIN los productos sin precio, para cargar la orden, mas
+ * `bestSellingProductIds` (`server/pos/best-sellers.ts`). Un local ajeno o archivado → 422. */
 export async function GET(request: Request) {
   const auth = await requirePosOperator(request);
   if ("response" in auth) return auth.response;
@@ -25,12 +25,17 @@ export async function GET(request: Request) {
         )
       : null;
     const catalog = await businessCatalog(auth.business.id, locationId);
+    // El POS cobra a precio de catalogo: un producto SIN precio (null) no llega; precio 0 si.
+    const products = catalog.products.filter(
+      (product) => product.unitPrice !== null,
+    );
     return NextResponse.json({
       ...catalog,
+      products,
       bestSellingProductIds: await bestSellingProductIds(
         auth.business.id,
         locationId,
-        catalog.products.map((product) => product.id),
+        products.map((product) => product.id),
       ),
     });
   } catch (error) {

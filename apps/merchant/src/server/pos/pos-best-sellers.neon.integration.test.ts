@@ -30,7 +30,7 @@ afterAll(async () => {
 }, 240_000);
 
 async function closeOrder(
-  items: { productId: string; quantity: number }[],
+  items: { productId: string; quantity: number; unitPrice?: string }[],
   membershipId?: string,
 ): Promise<string> {
   const order = await openOrder(a, items);
@@ -98,6 +98,34 @@ describe.skipIf(!posIntegrationEnabled)(
       expect(body.bestSellingProductIds).toEqual([a.medialuna, a.cafe]);
       expect(body.products.length).toBeGreaterThanOrEqual(5);
       expect(Array.isArray(body.categories)).toBe(true);
+    }, 240_000);
+
+    it("sin precio (null) no llega al POS ni al ranking; precio 0 si", async () => {
+      const sinPrecio = await seedProduct(a, "Sin precio", null);
+      const gratis = await seedProduct(a, "Gratis", "0.00");
+      // El mas vendido de todos, cobrado con precio escrito: igual no aparece.
+      await closeOrder([
+        { productId: sinPrecio, quantity: 20, unitPrice: "2.00" },
+        { productId: gratis, quantity: 1 },
+      ]);
+
+      const body = await catalog();
+      const ids = body.products.map((p: { id: string }) => p.id);
+      expect(ids).not.toContain(sinPrecio);
+      expect(ids).toContain(gratis);
+      expect(
+        body.products.find((p: { id: string }) => p.id === gratis).unitPrice,
+      ).toBe(0);
+      expect(
+        body.products.every(
+          (p: { unitPrice: unknown }) => p.unitPrice !== null,
+        ),
+      ).toBe(true);
+      expect(body.bestSellingProductIds).not.toContain(sinPrecio);
+      expect(body.bestSellingProductIds).toContain(gratis);
+      expect(
+        body.bestSellingProductIds.every((id: string) => ids.includes(id)),
+      ).toBe(true);
     }, 240_000);
   },
 );

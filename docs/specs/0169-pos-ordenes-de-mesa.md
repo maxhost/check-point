@@ -176,7 +176,7 @@ type PosOrder = {
 
 | Metodo y ruta | Body / query | Respuesta | Errores propios |
 |---|---|---|---|
-| `GET /api/pos/catalog?locationId=` | | `{ products, categories, bestSellingProductIds: string[] }`: `products`/`categories` = `businessCatalog`; `bestSellingProductIds` = ids de `products` por unidades vendidas, mayor a menor (ver abajo) | |
+| `GET /api/pos/catalog?locationId=` | | `{ products, categories, bestSellingProductIds: string[] }`: `products` = `businessCatalog` **sin los productos con `unitPrice: null`** (precio `0` si llega); `categories` = `businessCatalog`; `bestSellingProductIds` = ids de `products` por unidades vendidas, mayor a menor (ver abajo) | |
 | `GET /api/pos/orders` | | `{ open: PosOrderSummary[], closedToday: PosOrderSummary[] }`; `closedToday` = cerradas y anuladas en el dia local del negocio; abiertas de cualquier fecha, mas viejas primero | |
 | `POST /api/pos/orders` | `{ tableLabel, locationId?, items: {productId, quantity, unitPrice?}[] }` | `201 PosOrder` | `invalid_table_label`, `too_many_items` |
 | `GET /api/pos/orders/:id` | | `PosOrder` | `unknown_pos_order` |
@@ -299,3 +299,10 @@ Solo ids presentes en `products` de la misma respuesta (borrado, archivado o no 
 producto sin ventas no aparece. Solo ventas del POS: las del mostrador no tienen orden del POS. Codigo:
 `server/pos/best-sellers.ts`; oraculo `pos/pos-best-sellers.neon.integration.test.ts` (cada orden que no debe contar
 trae mas unidades que el ganador; quitar el filtro `status = 'closed'` lo pone rojo, medido).
+
+**Sin precio no llega al POS (pedido del owner 2026-10-08, despues del PASS).** `GET /api/pos/catalog` excluye los
+productos con `unitPrice: null` (sin precio de venta); los de precio `0` se conservan. `bestSellingProductIds` se
+calcula sobre esa lista filtrada, asi que sigue siendo subconjunto de `products`. El mostrador no cambia (sigue
+recibiendo los productos sin precio). Crear o editar una orden con un `productId` sin precio y `unitPrice` escrito
+sigue aceptado por la API (ordenes viejas). Oraculo: segundo caso de `pos/pos-best-sellers.neon.integration.test.ts`;
+quitar el filtro lo pone rojo (medido).
