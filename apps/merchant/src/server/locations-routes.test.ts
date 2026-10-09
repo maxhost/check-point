@@ -19,6 +19,11 @@ const world = vi.hoisted(() => ({
   setLocationStatus: vi.fn(),
   getLocationHours: vi.fn(),
   putLocationHours: vi.fn(),
+  // Spec 0182: the tables of a location.
+  listTables: vi.fn(),
+  createTable: vi.fn(),
+  updateTable: vi.fn(),
+  setTableStatus: vi.fn(),
 }));
 
 vi.mock("./auth", () => ({
@@ -41,6 +46,14 @@ vi.mock("./locations", async (importOriginal) => ({
   // Spec 0113: the opening hours.
   getLocationHours: world.getLocationHours,
   putLocationHours: world.putLocationHours,
+}));
+
+vi.mock("./tables/manage", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./tables/manage")>()),
+  listTables: world.listTables,
+  createTable: world.createTable,
+  updateTable: world.updateTable,
+  setTableStatus: world.setTableStatus,
 }));
 
 import {

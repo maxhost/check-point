@@ -7,6 +7,12 @@ import {
   GET as HOURS,
   PUT as HOURS_PUT,
 } from "../app/api/locations/[locationId]/hours/route";
+import {
+  GET as TABLES,
+  POST as TABLES_POST,
+} from "../app/api/locations/[locationId]/tables/route";
+import { PATCH as TABLE_PATCH } from "../app/api/locations/[locationId]/tables/[tableId]/route";
+import { POST as TABLE_STATUS } from "../app/api/locations/[locationId]/tables/[tableId]/status/route";
 
 /**
  * The `HANDLERS` table of `locations-routes.test.ts`, split out when spec 0113 added the
@@ -25,6 +31,10 @@ export type LocationsRoutesWorld = {
   setLocationStatus: Spy;
   getLocationHours: Spy;
   putLocationHours: Spy;
+  listTables: Spy;
+  createTable: Spy;
+  updateTable: Spy;
+  setTableStatus: Spy;
 };
 
 export const CALLER_BUSINESS = "11111111-1111-4111-8111-111111111111";
@@ -39,6 +49,11 @@ export const request = (path: string, method: string, body?: unknown) =>
   });
 
 export const params = Promise.resolve({ locationId: FOREIGN_LOCATION });
+const FOREIGN_TABLE = "44444444-4444-4444-8444-444444444444";
+const tableParams = Promise.resolve({
+  locationId: FOREIGN_LOCATION,
+  tableId: FOREIGN_TABLE,
+});
 
 /**
  * The handlers of `api/locations/**`, each described by how to call it and which
@@ -119,6 +134,61 @@ export function locationHandlers(world: LocationsRoutesWorld) {
           { params },
         ),
       spy: world.putLocationHours,
+      businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
+    },
+    // Spec 0182 — the tables of a location, same guard.
+    {
+      name: "GET /api/locations/:locationId/tables",
+      call: () =>
+        TABLES(
+          request(
+            `/api/locations/${FOREIGN_LOCATION}/tables?b=${FOREIGN_BUSINESS}`,
+            "GET",
+          ),
+          { params },
+        ),
+      spy: world.listTables,
+      businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
+    },
+    {
+      name: "POST /api/locations/:locationId/tables",
+      call: () =>
+        TABLES_POST(
+          request(`/api/locations/${FOREIGN_LOCATION}/tables`, "POST", {
+            name: "Mesa ajena",
+            businessId: FOREIGN_BUSINESS,
+          }),
+          { params },
+        ),
+      spy: world.createTable,
+      businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
+    },
+    {
+      name: "PATCH /api/locations/:locationId/tables/:tableId",
+      call: () =>
+        TABLE_PATCH(
+          request(
+            `/api/locations/${FOREIGN_LOCATION}/tables/${FOREIGN_TABLE}`,
+            "PATCH",
+            { name: "Secuestrada", businessId: FOREIGN_BUSINESS },
+          ),
+          { params: tableParams },
+        ),
+      spy: world.updateTable,
+      businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
+    },
+    {
+      name: "POST /api/locations/:locationId/tables/:tableId/status",
+      call: () =>
+        TABLE_STATUS(
+          request(
+            `/api/locations/${FOREIGN_LOCATION}/tables/${FOREIGN_TABLE}/status`,
+            "POST",
+            { status: "archived", businessId: FOREIGN_BUSINESS },
+          ),
+          { params: tableParams },
+        ),
+      spy: world.setTableStatus,
       businessArg: (args: unknown[]) => (args[0] as { id: string }).id,
     },
   ];
