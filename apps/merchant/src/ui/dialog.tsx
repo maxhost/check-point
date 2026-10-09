@@ -14,6 +14,8 @@ export type DialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
+  /** Full viewport with internal scroll; default remains the centered dialog. */
+  variant?: "default" | "fullscreen";
   headerAction?: ReactNode;
   /** `ReactNode`: la baja de suscripcion lleva un link en la descripcion. */
   description?: ReactNode;
@@ -28,6 +30,7 @@ export function Dialog({
   isOpen,
   onOpenChange,
   title,
+  variant = "default",
   headerAction,
   description,
   role = "dialog",
@@ -42,9 +45,19 @@ export function Dialog({
       onOpenChange={onOpenChange}
       isDismissable={isDismissable}
       isKeyboardDismissDisabled={!isDismissable}
-      className="fixed inset-0 z-50 grid place-items-center bg-overlay p-4"
+      className={
+        variant === "fullscreen"
+          ? "fixed inset-x-0 top-0 z-50 grid h-[var(--visual-viewport-height,100dvh)] place-items-stretch bg-overlay"
+          : "fixed inset-0 z-50 grid place-items-center bg-overlay p-4"
+      }
     >
-      <Modal className="w-full max-w-lg rounded-lg border border-border bg-surface-raised p-6 text-content shadow-lg">
+      <Modal
+        className={
+          variant === "fullscreen"
+            ? "h-full min-h-0 w-full overflow-y-auto overscroll-contain bg-surface-raised p-4 text-content md:p-6"
+            : "w-full max-w-lg rounded-lg border border-border bg-surface-raised p-6 text-content shadow-lg"
+        }
+      >
         <AriaDialog
           role={role}
           data-tour={tourAnchor}

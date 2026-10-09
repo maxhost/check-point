@@ -18,6 +18,8 @@ import { DiscardedPosRead, historyKey, detailKey, PosCache } from "./pos-cache";
 import { POS_NEW_ORDER_EVENT } from "./pos-navigation";
 import { PosEditor } from "./pos-editor";
 import { PosCheckout } from "./pos-checkout";
+import { PosScan } from "./pos-scan";
+import { usePosPayment } from "./pos-payment";
 import { PosResult, PosTicket } from "./pos-ticket";
 import {
   orderUrl,
@@ -38,9 +40,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     selected.current = value;
     setOrderState(value);
   }, []);
-  const [view, setViewState] = useState<
-    "list" | "edit" | "detail" | "checkout"
-  >("list");
+  const [view, setViewState] = useState<"list" | "edit" | "detail">("list");
   const viewRef = useRef(view);
   const setView = useCallback((value: typeof view) => {
     viewRef.current = value;
@@ -84,7 +84,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
         setUnavailable(true);
         return;
       }
-      if (cause.status === 404 || cause.code === "unknown_pos_order") {
+      if (
+        cause.code === "unknown_pos_order" ||
+        (cause.status === 404 && !cause.code)
+      ) {
         const missing = id ?? selected.current?.id;
         if (missing) cache.remove(missing);
         setHistory(cache.peek<PosHistory>(historyKey, true));
@@ -122,6 +125,24 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     },
     [cache, setOrder, setView],
   );
+  const payment = usePosPayment({
+    order,
+    context:
+      !unavailable && session?.user?.id && session.business?.id
+        ? `${session.user.id}:${session.business.id}`
+        : null,
+    onError: handleError,
+    onClosed: (result) => {
+      publish(result, true);
+      setError(null);
+    },
+    onRecovered: (result, message) => {
+      publish(result, result.status !== "open");
+      setError(message);
+    },
+    onBeginClose: () => cache.beginWrite(order?.id),
+  });
+  const paymentBusy = payment.blocked || payment.active;
   const readError = useCallback(
     (cause: unknown, id?: string) => {
       handleError(cause, id);
@@ -215,6 +236,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   const startNewOrder = useCallback(() => {
     if (
       busy ||
+      !payment.canNavigate() ||
       refreshing ||
       unavailable ||
       !session ||
@@ -243,7 +265,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
   async function run(
     action: () => Promise<PosOrder>,
   ): Promise<PosOrder | null> {
-    if (locked.current || !cache.context) return null;
+    if (locked.current || !cache.context || !payment.canNavigate()) return null;
     locked.current = true;
     setBusy(true);
     setError(null);
@@ -277,6 +299,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     }
   }
   async function openOrder(id: string) {
+    if (!payment.canNavigate()) return;
     const ticket = ++navigation.current;
     const cached = cache.peek<PosOrder>(detailKey(id), true);
     setError(null);
@@ -285,10 +308,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     setOpening(id);
     try {
       const result = await cache.order(id);
-      if (
-        navigation.current === ticket &&
-        !["edit", "checkout"].includes(viewRef.current)
-      ) {
+      if (navigation.current === ticket && viewRef.current !== "edit") {
         setOrder(result);
         setView("detail");
       }
@@ -304,6 +324,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     }
   }
   function back() {
+    if (!payment.canNavigate()) return;
     navigation.current += 1;
     setOpening(null);
     setOrder(null);
@@ -312,7 +333,7 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
     if (!cache.peek(historyKey)) void refreshHistory();
   }
   async function prepareVoid() {
-    if (!order || locked.current) return;
+    if (!order || locked.current || !payment.canNavigate()) return;
     locked.current = true;
     setBusy(true);
     setError(null);
@@ -570,14 +591,13 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 catalogRevision={catalogRevision}
                 locations={locations}
                 currencyCode={session.business?.currencyCode ?? "USD"}
-                busy={busy || refreshing}
+                busy={busy || refreshing || paymentBusy}
                 onError={handleError}
                 onCancel={back}
                 lastLocationId={activeLocation?.id ?? ""}
-                onCheckout={() => {
-                  setError(null);
-                  setView("checkout");
-                }}
+                payment={payment}
+                onScan={payment.scan}
+                onCheckout={() => void payment.prepare()}
                 onVoid={() => void prepareVoid()}
                 onSave={(body) =>
                   run(() =>
@@ -595,49 +615,38 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
                 <PosTicket order={order} />
               </div>
             )}
-            {order &&
-              !workspace &&
-              (view === "detail" || view === "checkout") && (
-                <>
-                  <Card className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
-                    <PosResult order={order} />
-                    <PosTicket order={order} />
-                    <div className="flex flex-wrap gap-3 print:hidden">
+            {order && !workspace && view === "detail" && (
+              <>
+                <Card className="grid gap-5 print:border-0 print:p-0 print:shadow-none">
+                  <PosResult order={order} />
+                  <PosTicket order={order} />
+                  <div className="flex flex-wrap gap-3 print:hidden">
+                    <Button
+                      variant="secondary"
+                      isDisabled={busy || refreshing}
+                      onPress={() => window.print()}
+                    >
+                      Imprimir
+                    </Button>
+                    {view === "detail" && (
                       <Button
-                        variant="secondary"
+                        variant="quiet"
                         isDisabled={busy || refreshing}
-                        onPress={() => window.print()}
+                        onPress={back}
                       >
-                        Imprimir
+                        Volver al historial
                       </Button>
-                      {view === "detail" && (
-                        <Button
-                          variant="quiet"
-                          isDisabled={busy || refreshing}
-                          onPress={back}
-                        >
-                          Volver al historial
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
-                  {view === "checkout" && order.status === "open" && (
-                    <PosCheckout
-                      key={`${order.id}:${order.version}`}
-                      order={order}
-                      onClosed={(result) => {
-                        publish(result, true);
-                        setError(null);
-                      }}
-                      onBack={() => {
-                        setView("detail");
-                        setError(null);
-                      }}
-                      onError={handleError}
-                    />
-                  )}
-                </>
-              )}
+                    )}
+                  </div>
+                </Card>
+              </>
+            )}
+          </>
+        )}
+        {workspace && order && (
+          <>
+            <PosScan payment={payment} />
+            <PosCheckout order={order} payment={payment} />
           </>
         )}
         <ConfirmDialog

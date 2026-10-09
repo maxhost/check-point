@@ -8,6 +8,7 @@ export function PosCoupon({
   onProduct,
   onRemove,
   busy,
+  excludedId,
 }: {
   state: CounterCouponState;
   order: PosOrder;
@@ -15,6 +16,7 @@ export function PosCoupon({
   onProduct: (id: string | null) => void;
   onRemove: () => void;
   busy: boolean;
+  excludedId?: string | null;
 }) {
   if (state.status === "none") return null;
   if (state.status === "hint")
@@ -28,6 +30,12 @@ export function PosCoupon({
       <Alert title="Ya usó un cupón hoy en este comercio">{state.label}</Alert>
     );
   const { coupon, verdict } = state;
+  if (excludedId === coupon.couponId)
+    return (
+      <Text variant="muted">
+        Beneficio excluido de esta orden: {coupon.label}
+      </Text>
+    );
   const needsProduct =
     verdict.valid &&
     !coupon.productId &&
@@ -49,7 +57,12 @@ export function PosCoupon({
         title={verdict.valid ? "Cupón válido" : "Cupón no válido"}
       >
         <Text variant="label">{coupon.label}</Text>
-        {!verdict.valid && <Text>{verdict.message}</Text>}
+        {!verdict.valid && (
+          <>
+            <Text>{verdict.message}</Text>
+            <Text>Excluye el beneficio para cobrar sin él.</Text>
+          </>
+        )}
         {coupon.rule && <Text>{coupon.rule}</Text>}
         {verdict.valid && coupon.kind === "discount" && (
           <Text>El descuento se aplica al vender.</Text>
@@ -72,8 +85,8 @@ export function PosCoupon({
             {coupon.productName ?? "el producto de la oferta"}.
           </Text>
         )}
-      <Button variant="secondary" isLoading={busy} onPress={onRemove}>
-        Quitar
+      <Button variant="secondary" isDisabled={busy} onPress={onRemove}>
+        Quitar beneficio
       </Button>
     </div>
   );

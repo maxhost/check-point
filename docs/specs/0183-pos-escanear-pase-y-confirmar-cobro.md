@@ -269,7 +269,7 @@ transversal que requiera un ADR adicional.
 | pos-console.tsx | Propietario de sesión transitoria, navegación, snapshot y resultado |
 | pos-editor.tsx | QR/Cobrar, cliente/beneficio y total en Pedido |
 | pos-payment.ts (nuevo) | Máquina de estados, generación, revalidación y cierre idempotente |
-| pos-scan.tsx (nuevo) | Vista modal scanner, lector manual, errores/foco |
+| pos-scan.tsx (nuevo) | Vista scanner fullscreen por cámara, errores/foco; sin entrada manual |
 | pos-checkout.tsx | Modal de confirmación, calculadora y regla/acreditación |
 | pos-coupon.tsx | Beneficio/requisitos y exclusión local, sin coupon-remove |
 | pos-ticket.tsx | PosResult: acreditación final base + extras separados desde sale, sin cambiar impresión |

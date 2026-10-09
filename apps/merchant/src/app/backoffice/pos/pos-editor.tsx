@@ -22,6 +22,8 @@ import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
 import { Toast } from "../../components/ui";
 import { DetailedSale } from "../counter/sale-forms";
 import { formatMoney } from "../counter/types";
+import { PosCoupon } from "./pos-coupon";
+import type { PosPayment } from "./pos-payment";
 import {
   addProduct,
   PosCart,
@@ -53,6 +55,8 @@ export function PosEditor({
   onCancel,
   onError,
   onCheckout,
+  onScan,
+  payment,
   onVoid,
   lastLocationId,
 }: {
@@ -66,6 +70,8 @@ export function PosEditor({
   onCancel: () => void;
   onError: (error: unknown) => void;
   onCheckout: () => void;
+  onScan: () => void;
+  payment: PosPayment;
   onVoid: () => void;
   lastLocationId: string;
 }) {
@@ -611,6 +617,43 @@ export function PosEditor({
             </Button>
           </div>
         )}
+        {order && payment.resolved && (
+          <div className="grid gap-3">
+            <Text variant="label">{payment.resolved.consumer.displayName}</Text>
+            <PosCoupon
+              state={payment.resolved.couponState}
+              order={order}
+              productId={payment.productId}
+              onProduct={payment.setProduct}
+              onRemove={payment.removeCoupon}
+              busy={busy || dirty || conflict}
+              excludedId={payment.excludedId}
+            />
+            <Button
+              variant="quiet"
+              isDisabled={busy}
+              onPress={payment.removeClient}
+            >
+              Quitar cliente
+            </Button>
+            {payment.preview?.error &&
+              !(
+                payment.resolved.couponState.status === "selected" &&
+                !payment.resolved.couponState.verdict.valid
+              ) && <Alert kind="error" title={payment.preview.error} />}
+          </div>
+        )}
+        {order && payment.clientError && (
+          <Alert kind="error" title={payment.clientError}>
+            <Button
+              variant="quiet"
+              isDisabled={busy}
+              onPress={payment.removeClient}
+            >
+              Quitar cliente
+            </Button>
+          </Alert>
+        )}
         <PosCart
           lines={lines}
           currencyCode={currencyCode}
@@ -646,11 +689,17 @@ export function PosEditor({
         ) : order ? (
           <>
             {dirty && !conflict && (
-              <Text variant="small">Cambios sin guardar</Text>
+              <Text variant="small">
+                Guarda los cambios antes de escanear o cobrar.
+              </Text>
             )}
             <div className="flex items-center justify-between gap-3 pt-2 pb-3">
               <Text variant="label">Total:</Text>
-              <Heading level={3}>{money}</Heading>
+              <Heading level={3}>
+                {!dirty && payment.preview?.netCents != null
+                  ? formatMoney(payment.preview.netCents / 100, currencyCode)
+                  : money}
+              </Heading>
             </div>
             {invalid && <Text variant="small">{invalid}</Text>}
             <div className="flex items-center gap-3">
@@ -675,8 +724,9 @@ export function PosEditor({
               <Button
                 variant="quiet"
                 aria-label="QR"
+                onPress={onScan}
                 className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
-                isDisabled={busy}
+                isDisabled={busy || dirty || conflict || !lines.length}
               >
                 <QrCode aria-hidden="true" className="size-6" />
               </Button>

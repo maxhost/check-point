@@ -86,12 +86,12 @@ export function PosResult({ order }: { order: PosOrder }) {
         <>
           <Text>{sale.consumer}</Text>
           <Text variant="label">
-            +{sale.unitsGranted} {unitLabel(sale.kind, sale.unitsGranted)}{" "}
-            acreditados
+            +{sale.unitsGranted + extra}{" "}
+            {unitLabel(sale.kind, sale.unitsGranted + extra)} acreditados
           </Text>
           {extra > 0 && (
             <Text>
-              {sale.unitsGranted - extra} de la compra + {extra} del cupón
+              {sale.unitsGranted} de la compra + {extra} del cupón
             </Text>
           )}
           <Text>
