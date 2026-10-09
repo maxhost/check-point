@@ -434,3 +434,12 @@ Prueba específica móvil: controles inline, cancelar conserva cantidades/tab y
 cero escrituras; confirmar restaura snapshot/tab y toast consistente, ausencia
 de Guardar cambios después. Captura visual, typecheck/lint/formato/guard
 específicos; sin suiteglobal ni subagentes.
+
+### Corrección L1 — aviso solamente al guardar (2026-10-09)
+
+Owner corrige decisión anterior: descartar vuelve a Pedido sin toast; Pedido
+actualizado corresponde solamente a Guardar cambios exitoso de orden existente.
+Mini plan: retirar aviso del descarte y limpiar aviso anterior, publicarlo tras
+onSave exitoso y apply(result) al volver a Pedido; fallo no publica éxito. Nueva
+orden/Guardar y salir conservan flujos existentes. Adaptar oráculo descarte a
+cero avisos y probar guardar fallido/exitoso. Sin kit/API/CSS/dinero nuevos.
