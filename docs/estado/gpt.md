@@ -3,6 +3,18 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — CONFIRMACIONES UNIFICADAS
+
+Owner define confirmaciones iguales a Producto añadido: cápsula oscura,
+móvil abajo centro, desktop arriba derecha. Mini plan1a8e83d, código59998d2.
+ConfirmationToast en app/components adapta Toast compartido con Tailwind/tokens;
+pos-editor y pos-scan lo reutilizan sin clases propias. Patrón futuro obligatorio
+para confirmaciones documentado en design-system con ejemplo. No kit/CSS/API.
+Cinco pruebas verdes2.8s, comparan cliente/producto a390/1280 y conservan
+loading/cancelación/pedido largo. Capturasmobile/desktop vistas; lint/formato,
+typecheck6/diff y guardscoped3archivos sin incrementos. Handoff0183 actualizado.
+Devlocal sin merge/push, ajenos preservados, QA/gateglobal previos pendientes.
+
 ## ⇥ CORRECCIÓN (2026-10-09) — TOAST POS ALCANZABLE EN VIEWPORT
 
 Owner no veía toast. Regla counter-flow.toast positionstatic lo dejaba después
