@@ -62,6 +62,7 @@ export function usePosPayment({
   identityRef.current = identity;
   const generation = useRef(0);
   const locked = useRef(false);
+  const recoveryRequired = useRef<string | null>(null);
   const attempt = useRef<{
     orderId: string;
     body: Readonly<Record<string, unknown>>;
@@ -77,6 +78,7 @@ export function usePosPayment({
     generation.current += 1;
     locked.current = false;
     attempt.current = null;
+    recoveryRequired.current = null;
     const next = initial();
     current.current = next;
     setState(next);
@@ -290,6 +292,10 @@ export function usePosPayment({
     update({ phase: "preparingPayment", error: null, validated: false });
     const resolved = current.current.resolved;
     try {
+      if (recoveryRequired.current) {
+        await recover(selected.current!, recoveryRequired.current, value);
+        return;
+      }
       if (resolved) {
         const result = await posRequest<{ couponState: CounterCouponState }>(
           `/api/pos/coupon-state?membershipId=${encodeURIComponent(resolved.membership.id)}`,
@@ -332,6 +338,7 @@ export function usePosPayment({
     try {
       const result = await posRequest<PosOrder>(orderUrl(saved.id));
       if (!live(value)) return;
+      recoveryRequired.current = null;
       update({
         phase: current.current.resolved ? "ready" : "idle",
         validated: false,
@@ -347,7 +354,7 @@ export function usePosPayment({
           phase: "paymentOpen",
           validated: false,
           error:
-            "No pudimos recuperar la orden. Cancela y vuelve a abrirla antes de confirmar.",
+            "No pudimos recuperar la orden. Reintenta la revisión antes de confirmar.",
         });
         classify(error, "close");
       }
@@ -356,7 +363,7 @@ export function usePosPayment({
   async function confirm() {
     const saved = selected.current;
     const currentState = current.current;
-    if (!saved || locked.current) return;
+    if (!saved || locked.current || recoveryRequired.current) return;
     const retry = currentState.phase === "closeUncertain";
     if (
       !retry &&
@@ -437,13 +444,11 @@ export function usePosPayment({
           error.code ?? "",
         )
       ) {
-        await recover(
-          saved,
+        recoveryRequired.current =
           error.code === "pos_order_not_open"
             ? "La orden ya fue cerrada o anulada. Mostramos su estado guardado."
-            : "Otra operación modificó la orden. Revisa la versión actual antes de confirmar un nuevo cobro.",
-          value,
-        );
+            : "Otra operación modificó la orden. Revisa la versión actual antes de confirmar un nuevo cobro.";
+        await recover(saved, recoveryRequired.current, value);
       } else {
         classify(error, "close");
         if (error.code?.startsWith("coupon_") && live(value)) {
@@ -514,7 +519,7 @@ export function usePosPayment({
           ...initial(),
           phase:
             current.current.phase === "paymentOpen" ? "paymentOpen" : "idle",
-          validated: true,
+          validated: !recoveryRequired.current,
         });
       }
     },

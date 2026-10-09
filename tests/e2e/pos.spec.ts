@@ -2975,3 +2975,121 @@ test("0183 scanner error conserva cliente; cancelar resolución evita respuestas
     page.getByText("Cliente de prueba", { exact: true }),
   ).toHaveCount(0);
 });
+
+for (const failure of [
+  "request_reused",
+  "version_conflict",
+  "pos_order_not_open",
+]) {
+  for (const via of ["cancel-reopen", "retry-review"]) {
+    test(`0183 recuperación fallida ${failure} ${via} blocks fresh close until snapshot recovered`, async ({
+      page,
+    }) => {
+      await setup(page);
+      await customerRoutes(page, { status: "none" });
+      await open(page);
+      await scanAndPay(page);
+      let gets = 0,
+        closes = 0;
+      let recovered = false;
+      const bodies: Record<string, unknown>[] = [];
+      await page.route(
+        "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        (route) => {
+          gets++;
+          return recovered
+            ? route.fulfill({
+                json: {
+                  ...baseOrder,
+                  version: 4,
+                  total: "20.00",
+                  items: [
+                    { ...baseOrder.items[0], quantity: 2, lineTotal: "20.00" },
+                  ],
+                },
+              })
+            : route.fulfill({
+                status: 503,
+                json: { error: "Temporary recovery failure" },
+              });
+        },
+      );
+      await page.route(
+        "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1/close",
+        (route) => {
+          closes++;
+          bodies.push(route.request().postDataJSON());
+          return route.fulfill({
+            status: 409,
+            json: { code: failure, error: "Rejected" },
+          });
+        },
+      );
+      let dialog = page.getByRole("dialog", { name: "Cobrar Mesa 4" });
+      await dialog
+        .getByRole("button", { name: "Confirmar cobro", exact: true })
+        .click();
+      await expect.poll(() => gets).toBe(1);
+      await expect(
+        dialog.getByRole("button", {
+          name: "Reintentar revisión",
+          exact: true,
+        }),
+      ).toBeVisible();
+      if (via === "cancel-reopen") {
+        await dialog
+          .getByRole("button", { name: "Cancelar", exact: true })
+          .click();
+        await page.getByRole("button", { name: "Cobrar", exact: true }).click();
+      } else
+        await dialog
+          .getByRole("button", { name: "Reintentar revisión", exact: true })
+          .click();
+      dialog = page.getByRole("dialog", { name: "Cobrar Mesa 4" });
+      await expect.poll(() => gets).toBe(2);
+      await expect(
+        dialog.getByRole("button", {
+          name: "Reintentar revisión",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Actualizando beneficio…", { exact: true }),
+      ).toBeHidden();
+      await expect(
+        dialog.getByRole("button", { name: "Confirmar cobro", exact: true }),
+      ).toBeDisabled();
+      await dialog
+        .getByRole("button", { name: "Quitar cliente", exact: true })
+        .click();
+      await expect(
+        dialog.getByRole("button", { name: "Confirmar cobro", exact: true }),
+      ).toBeDisabled();
+      expect(closes).toBe(1);
+      recovered = true;
+      await dialog
+        .getByRole("button", { name: "Reintentar revisión", exact: true })
+        .click();
+      await expect(dialog).toBeHidden();
+      await page.getByRole("button", { name: "Cobrar", exact: true }).click();
+      await expect(
+        dialog.getByRole("heading", { name: "Importe: $20,00", exact: true }),
+      ).toBeVisible();
+      await expect(
+        dialog.getByRole("button", { name: "Confirmar cobro", exact: true }),
+      ).toBeDisabled();
+      await dialog
+        .getByRole("button", {
+          name: "He revisado la actualización",
+          exact: true,
+        })
+        .click();
+      await dialog
+        .getByRole("button", { name: "Confirmar cobro", exact: true })
+        .click();
+      await expect.poll(() => closes).toBe(2);
+      expect(bodies[1].version).toBe(4);
+      expect(bodies[1].clientRequestId).not.toBe(bodies[0].clientRequestId);
+    });
+  }
+}
