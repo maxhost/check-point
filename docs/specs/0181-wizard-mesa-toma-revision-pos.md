@@ -1,0 +1,71 @@
+---
+spec: 0181
+fecha: 2026-10-08
+estado: cerrada
+resumen: Nueva orden en tres etapas Mesa, Tomar pedido y Revisar; sin captura de precio POS y con quitar/deshacer líneas.
+disjunta: no
+archivos: apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-cart.tsx, apps/merchant/src/app/backoffice/counter/sale-forms.tsx, tests/e2e/pos.spec.ts
+---
+
+# 0181 — Mesa, tomar pedido, revisar
+
+Mini plan cerrado antes de código. Owner autorizó implementar concepto tras
+investigación documentada y confirmó API dev sin productos unitPrice null.
+L2 por edición de cantidades/payload de orden; contrato HTTP sin cambios.
+
+## Problema
+
+pos-editor.tsx repite mesa/local junto a selección y revisión; PosCart expone importes
+al confirmar productos. Captura de precio sin catálogo de precio libre ya no corresponde.
+Retirar línea completa obliga a bajar cantidad repetidamente.
+
+## Diseño cerrado
+
+Solo nueva orden usa tres etapas, encabezado indica Paso N de 3 y título de etapa.
+Mesa pide etiqueta/local según reglas actuales (último válido o único automático).
+Tomar pedido se habilita con contexto válido; entonces inicia catálogo del local.
+Tomar pedido muestra categorías/productos con ranking servidor y lupa opcional,
+sin formulario de mesa/local ni importes. Contexto mesa/local compacto, acceso volver
+a Mesa conserva líneas; cambio local con líneas confirma sin reprecificar.
+Revisar pedido contiene producto, cantidad menos/más, Quitar línea completa y
+búsqueda Buscar producto para añadir. Sin precios/subtotales/total. Resultados del
+catálogo solo cuando se escribe consulta; agregar limpia consulta y mantiene revisión.
+Acceso volver a Tomar pedido conserva búsqueda/categoría/posición; un mismo borrador.
+Guardar pedido es la CTA final, no cuarta etapa; admite mesa vacía por contrato.
+
+Quitar opera por key de línea, no productId. Deshacer restaura línea, posición,
+cantidad, precio interno y lineId; historial local de eliminaciones, máximo 200 líneas.
+Nada se escribe hasta guardar. Save exige contexto válido y revisión; en selección
+salida protegida lleva a revisar en vez de guardar; desde Mesa lleva a Tomar pedido
+si contexto válido, o deja seguir corrigiendo. Auth/404 desmontan, conflictos/error
+preservan intención según flujo actual; éxito publica snapshot autoritativo.
+
+No captura de precio en POS, tanto nueva como existente. PosCart elimina NumberField;
+DetailedSale admite props opcionales showPrices/allowPriceInput/searchOnly, por defecto
+true/true/false: Mostrador mantiene precio escrito y UI actual. POS pasa allowPriceInput
+false; nueva pasa showPrices false. No se inventa precio para null: addProduct lo
+rechaza defensivamente; API ya filtra. Precio cero válido, snapshots previos visibles
+en existentes aunque no aparezcan en catálogo. Quitar/deshacer se ofrece en revisión
+nueva; presentación de orden abierta/cobro/ticket conserva precios y lógica vigente.
+No cambiar servidor, kit, CSS, API, polling, ranking, autosave ni dependencias.
+
+## Archivos
+
+Editor gestiona etapas/borrador, carrito permite presentación sin precios y eliminación,
+catálogo compartido añade opciones POS manteniendo defaults Mostrador. Adaptar e2e
+existentes a catálogo de precios definidos y etapas; cobertura de revisión/undo/API cero.
+No disjunta con 0178/0180; la secuencia nueva reemplaza 0180, abierta se conserva.
+
+## Definition of Done
+
+- [ ] Typecheck, lint de archivos, formato, guardia sin aumentos y números verdes.
+- [ ] Owner verifica etapas, búsqueda/add, quitar/deshacer, cero y mesa vacía,
+      save/errores/retorno, Mostrador sin cambio, con pnpm dev:local.
+- [ ] Escenarios e2e adaptados; ejecución se declara pendiente si owner mantiene
+      preferencia de no correr suites adicionales. No declarar PASS completo sin evidencia.
+
+## Límites
+
+Sin build/global verify sobre dev activo ni suites adicionales por preferencia del owner.
+0 mutaciones nuevas; no afirmar implementada sin gates/QA. Dev, commits de paths GPT,
+sin merge/push. API catálogo confirmado en código/contrato de dev. Sin decisiones abiertas.
