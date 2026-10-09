@@ -6,6 +6,92 @@
 
 
 
+## ESTADO HISTORICO (2026-10-09, tarde) — IMPRESION TERMICA: PRUEBA DE CAMPO OK POR WEB BLUETOOTH; SIGUEN LAS SPECS A (L2) Y B (L3)
+
+**En PROD (`main` = `origin/main` = `3e26701`):** sin cambios.
+
+**En `dev`, sin pushear (van con el proximo push, con OK):** todo lo de la nota anterior (mesas `cc1eb17`, 0067 NO
+en PROD, `838a33d`, `8660441`, `802337e`) mas lo de hoy:
+- `97e774f` fix 422 al activar el programa: el panel inserta la plantilla del TOS como TEXTO LIBRE y el renderer le
+  daba allowlist vacio. **ADR 0132**: el texto libre admite las variables que emite `termsVariables`. Medido: Neon
+  `loyalty-terms-render` 3/3, unitarios de terminos 20/20. El owner no confirmo todavia que active el programa.
+- `647e81f` el link `/c/<token>` redirigia a `https://localhost:3200` detras del tunel: ahora usa `consumerOriginOr`.
+  Medido por el tunel: `302 → https://dev-my.checkpass.club/wallet`.
+- `bb04fd4` pagina PUBLICA `/prueba-impresora` (Web Serial + Web Bluetooth) con bitacora publica
+  `/api/prueba-impresora/log` → `[PRUEBA-IMPRESORA]` en `.dev-local/merchant.log`. Investigacion completa en
+  `docs/investigacion-impresoras-termicas-2026-10-09.md`.
+- `4d942ce` PARQUEADO #85 (venta reclamable por QR, decisiones del owner).
+- Gate al cerrar (2026-10-09, con los cambios de GPT sin commitear en el arbol): typecheck 0, lint 0, `pnpm test`
+  2435 passed / 1036 skipped (245 archivos).
+
+**Resultado medido de la prueba de campo (owner, foto del ticket):** la WD-58P1 es **BLE** («BlueTooth Printer»,
+servicio `18f0`, caracteristica escribible con y sin respuesta) e imprimio por **Web Bluetooth** desde Chrome 154 /
+Android 10. Web Serial no la ve (la lista solo muestra vinculados por Bluetooth clasico con SPP; leido en Chromium).
+
+**QUE SIGUE (owner: «cuando volvemos revisamos el spec y luego el plan»). LAS SPECS NO ESTAN ESCRITAS:**
+1. **Spec A — imprimir la orden abierta (L2, `TEMPLATE-CHICA.md`).** Decisiones del owner (2026-10-09, PARQUEADO #84):
+   solo la ORDEN ABIERTA, desde el boton «Imprimir» del detalle del pedido (el de `pos-editor.tsx:733` no hace
+   nada hoy); **BLE y Bluetooth clasico** (Web Bluetooth + Web Serial); papel **58 y 80 mm a elegir**; **Claude el
+   modulo** (ticket ESC/POS con `@point-of-sale/receipt-printer-encoder`, conexion, pruebas, contrato escrito) y
+   **GPT las pantallas** (ajuste «Impresora» por dispositivo + boton). Fallback `window.print()` sin Bluetooth.
+   Lugar reservado para el QR de la spec B. Al cerrarla se borran `/prueba-impresora` y su ruta de log.
+2. **Spec B — venta reclamable por QR (L3: spec completa, ADR, implementador, revisor).** Decisiones en PARQUEADO
+   #85: QR siempre impreso; acredita SOLO una orden **cerrada sin cliente**; orden abierta → no acredita ni
+   asocia (caso cocinero); con cliente → mensaje y redireccion; sin cupones aplicados (si entrega los de
+   campañas); 48 h; una acreditacion por venta por cualquier via.
+- Sin medir: acentos en la WD-58P1, varios tickets seguidos sin volver a elegir, QR impreso (nativo vs imagen).
+
+**Pendiente / abierto (de antes):** PARQUEADO #83 (mesas: UI de GPT, 0067 a PROD, push), #82 (staging), deuda
+`no_program` (R3 0169), `pnpm verify` nunca verde (e2e de tours), Colima antes de `pnpm dev:local`.
+- Arbol: `.claude/skills/gotchas-del-repo/SKILL.md`, `docs/LECCIONES.md`, `docs/specs/0183-*.md` y los archivos del
+  POS (`pos-*.tsx`, `ui/dialog.tsx`, `tests/e2e/pos*`) son de GPT/otra sesion, sin commitear: no tocar.
+- Hallazgo a decidir (zona GPT): `loyalty-api.ts` descarta el `error` del servidor y muestra siempre «Revisa los
+  datos del programa»; el 422 se diagnostico con un log temporal. Tambien: en el cuadro del TOS se ven las `{{llaves}}`.
+- El owner compra un ESP32 WROOM-32 para un puente futuro (iPhone/cualquier impresora); idea, sin spec.
+
+**Descartado (no reintentar sin dato nuevo):**
+| Camino | Por que |
+|---|---|
+| Web Serial para la WD-58P1 | es BLE: no aparece en la lista (medido) |
+| `window.print()` + servicio de impresion de Android | muestra el dialogo en cada ticket |
+| TV box chinos como puente | malware de fabrica BADBOX 2.0 (FBI 2025); Armbian sin Wi-Fi/BT garantizado |
+| Telefonos viejos desarmados | bateria siempre cargando en carcasa cerrada; un modelo distinto por unidad |
+| Cajita MFi propia | chip y programa de Apple; Safari no habla con accesorios MFi; BLE no necesita MFi |
+| Servidor de impresion local en la cajita | una pagina HTTPS no puede llamar a `http://192.168.x.x`; la cajita debe ser cliente de nuestra cola |
+
+**Decisiones del owner, no volver a preguntar:** las de antes, mas: impresion «opcion corta Android»; specs A/B
+arriba; B es L3; ADR 0132 (servidor resuelve las variables del texto libre).
+
+## ⇥ ESTADO HISTORICO (2026-10-08, noche) — MESAS DEL LOCAL (spec 0182, ADR 0131) IMPLEMENTADAS EN `dev` (`cc1eb17`)
+
+**En PROD (`main` = `origin/main` = `3e26701`):** sin cambios desde el handoff anterior (POS con migracion 0066).
+
+**En `dev`, sin pushear (van con el proximo push, con OK):**
+- `cc1eb17` **mesas del local** (L2). Migracion **0067** (`core.dining_table` + `pos_order.dining_table_id` con unico
+  parcial de mesa abierta), CRUD `/api/locations/:id/tables` (permiso `locations`, archivar, nunca borrar),
+  `GET /api/pos/tables` con `openOrderId`, `tableId` en crear/editar orden POS (nombre fotografiado, local de la
+  mesa, 409 `table_occupied`), `tableId` en `PosOrder` y en el listado. Seed local: 4 mesas en el Café.
+  Medido: typecheck/lint 0; Neon `tables` 9/9 + `pos-orders` 7/7 + `pos-close` 6/6; M1/M2 rojas y revertidas.
+  Migracion 0067 aplicada en la base LOCAL y en la rama Neon de CI; **NO en PROD**.
+- `838a33d` (catalogo POS sin productos sin precio) y `8660441` (scripts 100755) siguen sin pushear.
+- GPT: specs 0179–0181 commiteadas; en el arbol hay cambios de GPT sin commitear (`pos-console.tsx`,
+  `pos-editor.tsx`, `ui/tokens.css`): no son de Claude, no tocar.
+
+**Pendiente / abierto:**
+- **Mesas: PARQUEADO #83 (owner 2026-10-09)** — falta UI de GPT (contrato spec 0182 §Diseño), 0067 a PROD con OK
+  (snapshot antes) y push. `802337e` registro las 4 rutas de mesas en el centinela `locations-routes.test.ts`.
+- Staging en proyectos separados: plan en `docs/plan-staging-2026-10-08.md`, PARQUEADO #82.
+- Deuda declarada: test del `no_program` en `accrualContext` (R3 de la 0169). `pnpm verify` completo nunca corrio
+  en verde (14 e2e de tours/onboarding sin causa; `ci:status` del 2026-10-08 sigue rojo por esos e2e).
+- Arbol: `.claude/skills/gotchas-del-repo/SKILL.md` y `docs/LECCIONES.md` de otra sesion, sin commitear.
+- Ambiente local: Colima (no Docker Desktop): `colima start` antes de `pnpm dev:local`. El mensaje de `up.sh`
+  todavia dice «abri Docker Desktop» (ofrecido cambiarlo, sin respuesta).
+
+**Decisiones del owner, no volver a preguntar:** las de antes (ADR 0126/0127, spec 0169 §Decisiones, canje solo en
+mostrador, PARQUEADO #81, staging separado, POS sin productos sin precio) y las de mesas (ADR 0131 §Decisiones:
+POS con texto libre de respaldo, permiso `locations`, solo nombre + plazas + orden, una orden abierta por mesa,
+plazas opcionales).
+
 ## ESTADO HISTORICO (2026-10-09, madrugada) — HANDOFF: POS EN PROD (`3e26701`); `dev` VA ADELANTE SIN PUSHEAR
 
 **En PROD (`main` = `origin/main` = `3e26701`, push del 2026-10-08 con `--no-verify` por OK explicito del owner):**

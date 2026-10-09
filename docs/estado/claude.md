@@ -10,32 +10,43 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-08, noche) — MESAS DEL LOCAL (spec 0182, ADR 0131) IMPLEMENTADAS EN `dev` (`cc1eb17`)
+## ⇥ ESTADO (2026-10-09) — IMPRESION DEL TICKET (spec 0184, ADR 0133) IMPLEMENTADA EN `dev` (`c264dbf`); FALTA LA UI DE GPT
 
-**En PROD (`main` = `origin/main` = `3e26701`):** sin cambios desde el handoff anterior (POS con migracion 0066).
+**En PROD (`main` = `origin/main` = `3e26701`):** sin cambios. CI de `main` rojo por los e2e de tours (conocido:
+`pnpm verify` nunca verde); no se toco esta sesion.
 
-**En `dev`, sin pushear (van con el proximo push, con OK):**
-- `cc1eb17` **mesas del local** (L2). Migracion **0067** (`core.dining_table` + `pos_order.dining_table_id` con unico
-  parcial de mesa abierta), CRUD `/api/locations/:id/tables` (permiso `locations`, archivar, nunca borrar),
-  `GET /api/pos/tables` con `openOrderId`, `tableId` en crear/editar orden POS (nombre fotografiado, local de la
-  mesa, 409 `table_occupied`), `tableId` en `PosOrder` y en el listado. Seed local: 4 mesas en el Café.
-  Medido: typecheck/lint 0; Neon `tables` 9/9 + `pos-orders` 7/7 + `pos-close` 6/6; M1/M2 rojas y revertidas.
-  Migracion 0067 aplicada en la base LOCAL y en la rama Neon de CI; **NO en PROD**.
-- `838a33d` (catalogo POS sin productos sin precio) y `8660441` (scripts 100755) siguen sin pushear.
-- GPT: specs 0179–0181 commiteadas; en el arbol hay cambios de GPT sin commitear (`pos-console.tsx`,
-  `pos-editor.tsx`, `ui/tokens.css`): no son de Claude, no tocar.
+**En `dev`, sin pushear (van con el proximo push, con OK):** lo de antes (mesas `cc1eb17` y 0067 NO en PROD,
+`838a33d`, `8660441`, `802337e`, `97e774f`, `647e81f`, `bb04fd4`, `4d942ce`) mas:
+- `06f7cc4` ADR 0133 + spec 0184 + PARQUEADO #86 (panel instalable como PWA que abre el POS; owner: «retomarlo pronto»).
+- `c264dbf` **spec 0184 implementada** (L2): migracion **0068** `core.ticket_settings` (nombre del comercio y mesa,
+  opcionales por comercio, ninguno obligatorio, defaults `true`); `GET`/`PUT /api/merchant/business/ticket` (owner)
+  y `GET /api/pos/ticket` (permiso `pos`); modulo `apps/merchant/src/printing/` (README con contrato y recetas) en
+  tres capas: `TicketDoc` → ESC/POS 58/80 mm sin acentos → BLE / Web Serial; impresora (por nombre, lista filtrada)
+  y papel en `localStorage`. Bloque QR listo, vacio hasta la spec B. Borrados `/prueba-impresora` y su bitacora.
+  Medido: Neon 7/7 (0068 aplicada en la rama de CI), unitarios `printing` 23/23, merchant 2208 passed / 991 skipped,
+  lint 0, tsc 0; M1, M2, M3b rojas por su motivo; M3 sobrevivio (linea redundante, borrada). Encargo a GPT:
+  `docs/encargo-gpt-2026-10-09-impresion.md`.
 
-**Pendiente / abierto:**
-- **Mesas: PARQUEADO #83 (owner 2026-10-09)** — falta UI de GPT (contrato spec 0182 §Diseño), 0067 a PROD con OK
-  (snapshot antes) y push. `802337e` registro las 4 rutas de mesas en el centinela `locations-routes.test.ts`.
-- Staging en proyectos separados: plan en `docs/plan-staging-2026-10-08.md`, PARQUEADO #82.
-- Deuda declarada: test del `no_program` en `accrualContext` (R3 de la 0169). `pnpm verify` completo nunca corrio
-  en verde (14 e2e de tours/onboarding sin causa; `ci:status` del 2026-10-08 sigue rojo por esos e2e).
-- Arbol: `.claude/skills/gotchas-del-repo/SKILL.md` y `docs/LECCIONES.md` de otra sesion, sin commitear.
-- Ambiente local: Colima (no Docker Desktop): `colima start` antes de `pnpm dev:local`. El mensaje de `up.sh`
-  todavia dice «abri Docker Desktop» (ofrecido cambiarlo, sin respuesta).
+**QUE SIGUE:**
+1. **GPT**: botones, ajuste «Impresora» por dispositivo, pantalla del owner para el ticket (encargo de arriba).
+2. **Prueba de campo** cuando GPT cablee el boton: orden real en la WD-58P1, dos tickets seguidos sin lista, tras
+   recargar la lista muestra solo esa impresora. Sin medir: Web Serial contra impresora real, QR en papel.
+3. **0068 a PROD** con OK del owner, en el proximo pase a live (snapshot antes), junto con la 0067.
+4. **Spec B — venta reclamable por QR** (L3, PARQUEADO #85, decisiones del owner ahi): llena `buildTicket(..., { qr })`.
+- Base local: la 0068 se aplica al levantar el entorno (`/entorno-local arrancar`); no se levanto.
 
-**Decisiones del owner, no volver a preguntar:** las de antes (ADR 0126/0127, spec 0169 §Decisiones, canje solo en
-mostrador, PARQUEADO #81, staging separado, POS sin productos sin precio) y las de mesas (ADR 0131 §Decisiones:
-POS con texto libre de respaldo, permiso `locations`, solo nombre + plazas + orden, una orden abierta por mesa,
-plazas opcionales).
+**Pendiente / abierto (de antes):** PARQUEADO #83 (mesas: UI de GPT, 0067 a PROD, push), #82 (staging), #86 (PWA),
+deuda `no_program` (R3 0169), `pnpm verify` nunca verde (e2e de tours), Colima antes de `pnpm dev:local`.
+- Arbol: `.claude/skills/gotchas-del-repo/SKILL.md` y `docs/LECCIONES.md` modificados por otra sesion, sin
+  commitear: no tocar.
+- Hallazgo a decidir (zona GPT): `loyalty-api.ts` descarta el `error` del servidor; en el cuadro del TOS se ven las `{{llaves}}`.
+- El owner compra un ESP32 WROOM-32 para un puente futuro (seria otro `printing/transport/`); idea, sin spec.
+
+**Descartado (no reintentar sin dato nuevo):** la tabla del bloque historico 2026-10-09 tarde (Web Serial para la
+WD-58P1, `window.print()` de Android, TV box, telefonos desarmados, cajita MFi, servidor local) mas: guardar la
+impresora BLE en nuestra base (Chrome no acepta un dispositivo que el usuario no eligio en su lista).
+
+**Decisiones del owner, no volver a preguntar:** las de antes, mas (2026-10-09): Claude la API y GPT los botones;
+ticket = base fija (items, cantidad, unitario, total, fecha, hora, QR) + nombre y mesa opcionales por comercio
+EN LA BASE con pantalla; sin leyenda de precuenta; sin acentos; impresora recordada por nombre; QR opcion A; PWA
+parqueada; ajuste por comercio, solo el owner lo edita, hora de la impresion (aceptados al cerrar la spec).
