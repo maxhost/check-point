@@ -3,6 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0181: WIZARD DE TOMA DE PEDIDO
+
+Owner confirmó API POS sin productos null y autorizó concepto en pasos. Spec
+reservada en d4d3819 antes de código. Nueva: Mesa / Tomar pedido / Revisar, guardar
+al final; contexto compacto, catálogo reutilizado con lupa opcional, revisión sin
+importes y búsqueda para añadir sin salir, Quitar línea completa y Deshacer.
+Captura de precio retirada de POS, cero conservado, null rechazado sin inventar
+precio. Snapshot/lineId y abiertos/cobro/ticket preservados. Mostrador conserva defaults;
+props compartidas opcionales. Cache sin refresh/polling/autosave ni cambios de API.
+[Handoff](../handoff-0181-wizard-pos-2026-10-08.md).
+
+Typecheck 6 paquetes (3,792 s), ESLint UI/fixture, Prettier, guardia 6 archivos sin
+aumentos, números y diff-check verdes. E2e adaptados y escenario wizard/cero/undo/add/cache
+agregado sin ejecución: owner mantiene preferencia de no más suites. QA visual/teclado
+y gates de publicación pendientes; no declarar implementada ni PASS completo.
+Solo dev, sin merge/push; kit/CSS/servidor/contrato intactos y ajenos preservados.
+
 ## ⇥ INVESTIGACIÓN (2026-10-08) — WIZARD DE NUEVA ORDEN
 
 Owner pidió evidencia antes de avanzar: Mesa / Tomar pedido / Revisar, sin precios

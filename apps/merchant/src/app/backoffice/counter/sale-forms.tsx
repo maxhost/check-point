@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Search, Xmark } from "iconoir-react";
 import { type CartLine, type CounterProduct, formatMoney } from "./types";
 
 /** Alphabetical by default; optional server ranking, with personal picks kept separate. */
@@ -17,6 +18,10 @@ export function DetailedSale({
   onRepeat,
   disabled = false,
   productOrder,
+  showPrices = true,
+  allowPriceInput = true,
+  searchOnly = false,
+  compactSearch = false,
 }: {
   products: CounterProduct[];
   categories: { id: string; name: string }[];
@@ -31,9 +36,15 @@ export function DetailedSale({
   disabled?: boolean;
   /** Optional server ranking; the counter keeps its alphabetical default. */
   productOrder?: string[];
+  /** POS taking an order can hide amounts without changing stored prices. */
+  showPrices?: boolean;
+  allowPriceInput?: boolean;
+  /** Compact catalog search for adding items while reviewing a POS draft. */
+  searchOnly?: boolean;
+  compactSearch?: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(searchOnly);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [repeatApplied, setRepeatApplied] = useState(false);
   const sortedProducts = useMemo(() => {
@@ -48,13 +59,15 @@ export function DetailedSale({
     );
   }, [products, productOrder]);
   const shown = useMemo(() => {
-    if (searchOpen) {
+    if (searchOpen || searchOnly) {
       const q = query.trim().toLocaleLowerCase("es");
       return q
         ? sortedProducts.filter((p) =>
             p.name.toLocaleLowerCase("es").includes(q),
           )
-        : sortedProducts;
+        : searchOnly
+          ? []
+          : sortedProducts;
     }
     return categoryId === null
       ? sortedProducts
@@ -64,7 +77,7 @@ export function DetailedSale({
               !categories.some((category) => category.id === p.categoryId)
             : p.categoryId === categoryId,
         );
-  }, [sortedProducts, searchOpen, query, categoryId, categories]);
+  }, [sortedProducts, searchOpen, searchOnly, query, categoryId, categories]);
   const byId = new Map(products.map((product) => [product.id, product]));
   const habitual = habitualProductIds
     .map((id) => byId.get(id))
@@ -89,17 +102,22 @@ export function DetailedSale({
             type="button"
             disabled={disabled}
             className="counter-product-add"
-            onClick={() => onAdd(product)}
+            onClick={() => {
+              onAdd(product);
+              if (searchOnly) setQuery("");
+            }}
             aria-label={`Agregar ${product.name}`}
           >
             <strong>{product.name}</strong>
-            <small>
-              {product.unitPrice === null
-                ? "Sin precio"
-                : formatMoney(product.unitPrice, currencyCode)}
-            </small>
+            {showPrices && (
+              <small>
+                {product.unitPrice === null
+                  ? "Sin precio"
+                  : formatMoney(product.unitPrice, currencyCode)}
+              </small>
+            )}
           </button>
-          {line && (
+          {line && !searchOnly && (
             <div
               className="counter-qty"
               aria-label={`Cantidad de ${product.name}: ${line.quantity}`}
@@ -124,7 +142,7 @@ export function DetailedSale({
             </div>
           )}
         </div>
-        {line && !line.hasStoredPrice && (
+        {allowPriceInput && line && !line.hasStoredPrice && (
           <label className="counter-line-price">
             Precio unitario de {product.name}
             <input
@@ -180,30 +198,47 @@ export function DetailedSale({
           </button>
         </details>
       )}
-      <div className="counter-catalog-heading">
-        <h3>Catálogo</h3>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-expanded={searchOpen}
-          onClick={() => {
-            setSearchOpen(!searchOpen);
-            setQuery("");
-          }}
-        >
-          {searchOpen ? "Cerrar búsqueda" : "Buscar"}
-        </button>
-      </div>
-      {searchOpen ? (
+      {!searchOnly && (
+        <div className="counter-catalog-heading">
+          <h3>Catálogo</h3>
+          <button
+            type="button"
+            disabled={disabled}
+            aria-expanded={searchOpen}
+            aria-label={searchOpen ? "Cerrar búsqueda" : "Buscar"}
+            onClick={() => {
+              setSearchOpen(!searchOpen);
+              setQuery("");
+            }}
+          >
+            {compactSearch ? (
+              searchOpen ? (
+                <Xmark aria-hidden="true" width={24} height={24} />
+              ) : (
+                <Search aria-hidden="true" width={24} height={24} />
+              )
+            ) : searchOpen ? (
+              "Cerrar búsqueda"
+            ) : (
+              "Buscar"
+            )}
+          </button>
+        </div>
+      )}
+      {searchOpen || searchOnly ? (
         <input
           className="counter-search"
           disabled={disabled}
           type="search"
-          aria-label="Buscar producto"
-          placeholder="Buscar producto…"
+          aria-label={
+            searchOnly ? "Buscar producto para añadir" : "Buscar producto"
+          }
+          placeholder={
+            searchOnly ? "Buscar producto para añadir…" : "Buscar producto…"
+          }
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          autoFocus
+          autoFocus={!searchOnly}
         />
       ) : (
         <div
@@ -243,7 +278,7 @@ export function DetailedSale({
         </div>
       )}
       <ul className="counter-product-list">{shown.map(card)}</ul>
-      {shown.length === 0 && (
+      {shown.length === 0 && (!searchOnly || query.trim()) && (
         <p className="counter-empty">
           {products.length
             ? "No hay productos que coincidan."

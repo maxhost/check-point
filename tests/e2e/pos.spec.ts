@@ -110,7 +110,7 @@ async function setup(page: Page, enabled = true) {
       json: {
         products: [
           product,
-          { ...product, id: "custom", name: "Especial", unitPrice: null },
+          { ...product, id: "custom", name: "Especial", unitPrice: 7.5 },
         ],
         categories: [],
         bestSellingProductIds: [],
@@ -146,7 +146,7 @@ async function scan(page: Page) {
   await page.getByRole("textbox", { name: "Código del pase" }).fill("qa-token");
   await page.getByRole("button", { name: "Leer pase" }).click();
 }
-test("crear con local y precio escrito; editar conserva snapshot y lineId; imprimir y cerrar sin pase", async ({
+test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId; imprimir y cerrar sin pase", async ({
   page,
 }, testInfo) => {
   const calls = await setup(page);
@@ -200,35 +200,29 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
   await expect(
     page.getByRole("button", { name: "Guardar orden", exact: true }),
   ).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Revisar pedido", exact: true })
-    .click();
   await expect(
-    page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }),
+    page.getByRole("button", { name: "Tomar pedido", exact: true }),
   ).toBeDisabled();
-  await page
-    .getByRole("button", { name: "Volver a productos", exact: true })
-    .click();
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
+  await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
   await page
     .getByRole("button", { name: "Agregar Especial", exact: true })
     .click();
-  await page
-    .getByRole("spinbutton", { name: "Precio unitario de Especial" })
-    .fill("7.50");
-  await page
-    .getByRole("spinbutton", { name: "Precio unitario de Especial" })
-    .press("Tab");
+  await expect(
+    page.getByRole("spinbutton", { name: "Precio unitario de Especial" }),
+  ).toHaveCount(0);
   await page
     .getByRole("button", { name: "Revisar pedido", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(createBody).toEqual({
     tableLabel: "Mesa 4",
     locationId: "local-1",
-    items: [{ productId: "custom", quantity: 1, unitPrice: "7.50" }],
+    items: [{ productId: "custom", quantity: 1 }],
   });
   await page.getByRole("radio", { name: "Productos", exact: true }).click();
   await page.getByRole("radio", { name: /^Pedido/ }).click();
@@ -239,7 +233,9 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
   await page
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect(
     page.getByRole("button", { name: "Cobrar", exact: true }),
   ).toBeVisible();
@@ -320,7 +316,9 @@ test("conflicto carga versión vigente y anulación confirmada", async ({
   await page
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Mesa 4", exact: true }),
   ).toBeVisible();
@@ -578,6 +576,7 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
     .fill("Mesa prueba");
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
+  await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
   const catalog = page.locator(".counter-detailed");
   await expect(
     catalog.locator(".counter-product-add").first(),
@@ -631,7 +630,7 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
     .click();
   await expect(
     page.getByRole("button", {
-      name: /^Guardar (orden|cambios)$/,
+      name: /^Guardar (pedido|orden|cambios)$/,
       exact: true,
     }),
   ).toHaveCount(0);
@@ -684,8 +683,14 @@ for (const scenario of [
     );
     await page.goto(harness.url);
     await page.getByRole("button", { name: "Nueva orden" }).click();
+    await page
+      .getByRole("textbox", { name: "Nombre de mesa" })
+      .fill("Mesa ranking");
     await page.getByRole("button", { name: /Local/ }).click();
     await page.getByRole("option", { name: "Centro" }).click();
+    await page
+      .getByRole("button", { name: "Tomar pedido", exact: true })
+      .click();
     const cards = page.locator(".counter-detailed .counter-product-add");
     await expect(cards).toHaveCount(scenario.expected.length);
     for (const [index, name] of scenario.expected.entries()) {
@@ -695,7 +700,9 @@ for (const scenario of [
     await page
       .getByRole("button", { name: "Agregar Agua", exact: true })
       .click();
-    await expect(page.getByText("1 artículos", { exact: true })).toBeVisible();
+    await expect(
+      page.locator(".counter-detailed .counter-qty output"),
+    ).toHaveText("1");
   });
 }
 
@@ -745,7 +752,10 @@ test("el resumen mantiene snapshots duplicados y productos borrados separados al
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
   await page
-    .getByRole("button", { name: /^Guardar (orden|cambios)$/, exact: true })
+    .getByRole("button", {
+      name: /^Guardar (pedido|orden|cambios)$/,
+      exact: true,
+    })
     .click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(body).toMatchObject({
@@ -800,11 +810,14 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Mesa 4");
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
+  await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
   await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
   await page
     .getByRole("button", { name: "Revisar pedido", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect(
     page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
@@ -821,7 +834,9 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   await page
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect(
     page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
@@ -968,7 +983,9 @@ test("caché POS: catálogo por local reutilizado conserva el borrador", async (
   expect(
     reads.filter((url) => url === "/api/pos/catalog?locationId=local-1"),
   ).toHaveLength(1);
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect(
     page.getByRole("radio", { name: "Productos", exact: true }),
   ).toBeVisible();
@@ -1336,7 +1353,9 @@ test("caché POS: conflicto sin snapshot bloquea acciones hasta releer la versi�
   await page
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
+  await page
+    .getByRole("button", { name: /^Guardar (pedido|orden|cambios)$/ })
+    .click();
   await expect.poll(() => typeof release).toBe("function");
   await expect(
     page.getByRole("radio", { name: "Productos", exact: true }),
@@ -1551,4 +1570,136 @@ test("orden abierta prioriza mesa y acciones; conserva ticket impreso", async ({
     ticket.getByRole("heading", { name: "Mesa 4 · Precuenta", exact: true }),
   ).toBeVisible();
   await expect(ticket.getByText("Centro", { exact: true })).toBeVisible();
+});
+
+test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y guardar con precio cero", async ({
+  page,
+}) => {
+  await setup(page);
+  const reads = trackedReads(page);
+  await page.route("**/api/pos/catalog**", (route) =>
+    route.fulfill({
+      json: {
+        products: [
+          product,
+          { ...product, id: "zero", name: "Agua de cortesía", unitPrice: 0 },
+        ],
+        categories: [],
+        bestSellingProductIds: [],
+      },
+    }),
+  );
+  const writes: unknown[] = [];
+  await page.route("**/api/pos/orders", (route) => {
+    if (route.request().method() !== "POST")
+      return route.fulfill({ json: { open: [], closedToday: [] } });
+    const body = route.request().postDataJSON();
+    writes.push(body);
+    return route.fulfill({
+      status: 201,
+      json: {
+        ...baseOrder,
+        tableLabel: body.tableLabel,
+        items: body.items.map(
+          (item: { productId: string; quantity: number }, index: number) => ({
+            lineId: `saved-${index}`,
+            productId: item.productId,
+            name: item.productId === "zero" ? "Agua de cortesía" : "Café",
+            quantity: item.quantity,
+            unitPrice: item.productId === "zero" ? "0.00" : "15.00",
+            lineTotal:
+              item.productId === "zero"
+                ? "0.00"
+                : (item.quantity * 15).toFixed(2),
+          }),
+        ),
+        total: "90.00",
+      },
+    });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(harness.url);
+  await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Mesa", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Tomar pedido", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("textbox", { name: "Nombre de mesa" })
+    .fill("Mesa wizard");
+  await page.getByRole("button", { name: /Local/ }).click();
+  await page.getByRole("option", { name: "Centro" }).click();
+  await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Tomar pedido", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
+  for (let index = 0; index < 4; index++)
+    await page
+      .getByRole("button", { name: "Agregar un Café", exact: true })
+      .click();
+  await page
+    .getByRole("button", { name: "Revisar pedido", exact: true })
+    .click();
+  const lines = page.getByRole("region", { name: "Productos del pedido" });
+  await expect(lines.getByText("5", { exact: true })).toBeVisible();
+  await expect(page.locator("main").getByText(/\$/)).toHaveCount(0);
+  await expect(page.getByRole("spinbutton")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Quitar producto Café", exact: true })
+    .click();
+  await expect(lines.getByText("Café", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Deshacer", exact: true }).click();
+  await expect(lines.getByText("5", { exact: true })).toBeVisible();
+  const search = page.getByRole("searchbox", {
+    name: "Buscar producto para añadir",
+  });
+  await search.fill("café");
+  await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
+  await expect(search).toHaveValue("");
+  await expect(lines.getByText("6", { exact: true })).toBeVisible();
+  await search.fill("agua");
+  await page
+    .getByRole("button", { name: "Agregar Agua de cortesía", exact: true })
+    .click();
+  await expect(
+    lines.getByText("Agua de cortesía", { exact: true }),
+  ).toBeVisible();
+  const firstReads = [...reads];
+  await page
+    .getByRole("button", { name: "Volver a tomar pedido", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Volver a mesa", exact: true })
+    .click();
+  await expect(
+    page.getByRole("textbox", { name: "Nombre de mesa" }),
+  ).toHaveValue("Mesa wizard");
+  await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Revisar pedido", exact: true })
+    .click();
+  expect(reads).toEqual(firstReads);
+  expect(writes).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "Guardar pedido", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Mesa wizard", exact: true }),
+  ).toBeVisible();
+  expect(writes).toEqual([
+    {
+      tableLabel: "Mesa wizard",
+      locationId: "local-1",
+      items: [
+        { productId: "coffee", quantity: 6 },
+        { productId: "zero", quantity: 1 },
+      ],
+    },
+  ]);
 });

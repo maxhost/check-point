@@ -1,5 +1,5 @@
 "use client";
-import { Button, NumberField, Text } from "../../../ui";
+import { Button, Text } from "../../../ui";
 import type { CartLine, CounterProduct } from "../counter/types";
 import { formatMoney } from "../counter/types";
 import type { DraftLine } from "./pos-types";
@@ -15,7 +15,7 @@ export function productCart(lines: DraftLine[]): CartLine[] {
       name: line.name,
       unitPrice: line.unitPrice,
       quantity: (current?.quantity ?? 0) + line.quantity,
-      hasStoredPrice: !line.needsPrice,
+      hasStoredPrice: true,
     });
   }
   return [...grouped.values()];
@@ -24,6 +24,7 @@ export function addProduct(
   lines: DraftLine[],
   product: CounterProduct,
 ): DraftLine[] {
+  if (product.unitPrice === null) return lines;
   const existing = lines.findLast((line) => line.productId === product.id);
   if (existing) return quantityForLine(lines, existing.key, 1);
   if (lines.length >= 200) return lines;
@@ -33,9 +34,9 @@ export function addProduct(
       key: crypto.randomUUID(),
       productId: product.id,
       name: product.name,
-      unitPrice: product.unitPrice ?? 0,
+      unitPrice: product.unitPrice,
       quantity: 1,
-      needsPrice: product.unitPrice === null,
+      needsPrice: false,
     },
   ];
 }
@@ -58,32 +59,20 @@ export function productQuantity(
   const line = lines.findLast((item) => item.productId === productId);
   return line ? quantityForLine(lines, line.key, delta) : lines;
 }
-export function productPrice(
-  lines: DraftLine[],
-  productId: string,
-  value: number,
-) {
-  const line = lines.findLast(
-    (item) => item.productId === productId && item.needsPrice,
-  );
-  return lines.map((item) =>
-    item.key === line?.key
-      ? { ...item, unitPrice: Number.isFinite(value) && value > 0 ? value : 0 }
-      : item,
-  );
-}
 export function PosCart({
   lines,
   currencyCode,
   busy,
   onQty,
-  onPrice,
+  showPrices = true,
+  onRemove,
 }: {
   lines: DraftLine[];
   currencyCode: string;
   busy: boolean;
   onQty: (key: string, delta: number) => void;
-  onPrice: (key: string, value: number) => void;
+  showPrices?: boolean;
+  onRemove?: (key: string) => void;
 }) {
   return (
     <section aria-label="Productos del pedido" className="grid gap-4">
@@ -98,34 +87,28 @@ export function PosCart({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1 break-words">
               <Text variant="label">{line.name}</Text>
-              <Text variant="small">
-                {formatMoney(line.unitPrice, currencyCode)} por unidad
-                {line.lineId ? " · Precio guardado" : ""}
-              </Text>
-            </div>
-            <Text variant="label" className="shrink-0 whitespace-nowrap">
-              {formatMoney(
-                (Math.round(line.unitPrice * 100) * line.quantity) / 100,
-                currencyCode,
+              {showPrices && (
+                <Text variant="small">
+                  {formatMoney(line.unitPrice, currencyCode)} por unidad
+                  {line.lineId ? " · Precio guardado" : ""}
+                </Text>
               )}
-            </Text>
+            </div>
+            {showPrices && (
+              <Text variant="label" className="shrink-0 whitespace-nowrap">
+                {formatMoney(
+                  (Math.round(line.unitPrice * 100) * line.quantity) / 100,
+                  currencyCode,
+                )}
+              </Text>
+            )}
           </div>
-          {line.needsPrice && (
-            <NumberField
-              label={`Precio unitario de ${line.name}`}
-              value={line.unitPrice}
-              minValue={0}
-              formatOptions={{ maximumFractionDigits: 2 }}
-              onChange={(value) => onPrice(line.key, value)}
-              isDisabled={busy}
-            />
-          )}
           <div className="flex items-center gap-3">
             <Button
               variant="secondary"
               className="size-11 p-0!"
               isDisabled={busy}
-              aria-label={`Quitar unidad de ${line.name} a ${line.unitPrice.toFixed(2)}`}
+              aria-label={`Quitar unidad de ${line.name}${showPrices ? ` a ${line.unitPrice.toFixed(2)}` : ""}`}
               onPress={() => onQty(line.key, -1)}
             >
               −
@@ -137,11 +120,22 @@ export function PosCart({
               variant="secondary"
               className="size-11 p-0!"
               isDisabled={busy}
-              aria-label={`Añadir unidad de ${line.name} a ${line.unitPrice.toFixed(2)}`}
+              aria-label={`Añadir unidad de ${line.name}${showPrices ? ` a ${line.unitPrice.toFixed(2)}` : ""}`}
               onPress={() => onQty(line.key, 1)}
             >
               +
             </Button>
+            {onRemove && (
+              <Button
+                variant="quiet"
+                className="ml-auto text-danger!"
+                isDisabled={busy}
+                aria-label={`Quitar producto ${line.name}`}
+                onPress={() => onRemove(line.key)}
+              >
+                Quitar
+              </Button>
+            )}
           </div>
         </div>
       ))}

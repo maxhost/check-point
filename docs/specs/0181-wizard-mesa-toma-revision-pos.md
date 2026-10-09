@@ -41,8 +41,8 @@ si contexto válido, o deja seguir corrigiendo. Auth/404 desmontan, conflictos/e
 preservan intención según flujo actual; éxito publica snapshot autoritativo.
 
 No captura de precio en POS, tanto nueva como existente. PosCart elimina NumberField;
-DetailedSale admite props opcionales showPrices/allowPriceInput/searchOnly, por defecto
-true/true/false: Mostrador mantiene precio escrito y UI actual. POS pasa allowPriceInput
+DetailedSale admite props opcionales showPrices/allowPriceInput/searchOnly/compactSearch, por defecto
+true/true/false/false: Mostrador mantiene precio escrito y UI actual. POS pasa allowPriceInput
 false; nueva pasa showPrices false. No se inventa precio para null: addProduct lo
 rechaza defensivamente; API ya filtra. Precio cero válido, snapshots previos visibles
 en existentes aunque no aparezcan en catálogo. Quitar/deshacer se ofrece en revisión
@@ -58,7 +58,7 @@ No disjunta con 0178/0180; la secuencia nueva reemplaza 0180, abierta se conserv
 
 ## Definition of Done
 
-- [ ] Typecheck, lint de archivos, formato, guardia sin aumentos y números verdes.
+- [x] Typecheck, lint de archivos, formato, guardia sin aumentos y números verdes.
 - [ ] Owner verifica etapas, búsqueda/add, quitar/deshacer, cero y mesa vacía,
       save/errores/retorno, Mostrador sin cambio, con pnpm dev:local.
 - [ ] Escenarios e2e adaptados; ejecución se declara pendiente si owner mantiene
@@ -69,3 +69,12 @@ No disjunta con 0178/0180; la secuencia nueva reemplaza 0180, abierta se conserv
 Sin build/global verify sobre dev activo ni suites adicionales por preferencia del owner.
 0 mutaciones nuevas; no afirmar implementada sin gates/QA. Dev, commits de paths GPT,
 sin merge/push. API catálogo confirmado en código/contrato de dev. Sin decisiones abiertas.
+
+## Entrega local — 2026-10-08
+
+Typecheck 6 paquetes verde (3,792 s), ESLint de pantallas/fixture, Prettier, guardia
+UI 6 archivos sin aumentos, números y diff-check verdes. API de dev confirmada:
+route.ts excluye unitPrice null antes de construir ranking; no se tocó servidor.
+E2e existentes adaptados; escenario de etapas, cantidades, quitar/deshacer, búsqueda,
+precio cero y cero escrituras/lecturas extra agregado, sin ejecución de suites.
+QA visual/teclado owner y gates de publicación pendientes; no declarar PASS completo.

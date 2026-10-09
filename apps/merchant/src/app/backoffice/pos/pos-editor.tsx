@@ -20,7 +20,6 @@ import {
   addProduct,
   PosCart,
   productCart,
-  productPrice,
   productQuantity,
   quantityForLine,
 } from "./pos-cart";
@@ -87,17 +86,20 @@ export function PosEditor({
       order ? draftItems(order) : [],
     ),
   );
-  const [surface, setSurface] = useState<"products" | "order">(
-    order ? "order" : "products",
+  const [surface, setSurface] = useState<"table" | "products" | "order">(
+    order ? "order" : "table",
   );
-  const [catalogStarted, setCatalogStarted] = useState(!order);
+  const [catalogStarted, setCatalogStarted] = useState(false);
+  const [removedLines, setRemovedLines] = useState<
+    { line: DraftLine; index: number }[]
+  >([]);
   const [exitTarget, setExitTarget] = useState<string | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<string | null>(null);
   const allowExit = useRef(false);
-  const scrollPositions = useRef({ products: 0, order: 0 });
+  const scrollPositions = useRef({ table: 0, products: 0, order: 0 });
   const dirty = signature(table, locationId, lines) !== baselineSignature;
   const conflict = !!order && !!baseline && order.version !== baseline.version;
   const count = lines.reduce((sum, line) => sum + line.quantity, 0);
@@ -109,24 +111,26 @@ export function PosEditor({
   const money = formatMoney(total, currencyCode);
   const locationName =
     locations.find((l) => l.id === locationId)?.name ?? order?.location?.name;
-  const invalid = !table.trim()
+  const contextInvalid = !table.trim()
     ? "Escribe el nombre de la mesa."
     : table.trim().length > 60
       ? "El nombre admite hasta 60 caracteres."
       : locations.length > 1 && !locationId
         ? "Elige un local."
-        : lines.length > 200
-          ? "El pedido admite hasta 200 líneas."
-          : lines.some(
-                (line) =>
-                  !Number.isFinite(line.unitPrice) ||
-                  line.unitPrice < 0 ||
-                  (line.needsPrice && line.unitPrice <= 0) ||
-                  !Number.isInteger(line.quantity) ||
-                  line.quantity <= 0,
-              )
-            ? "Revisa las cantidades y los precios pendientes."
-            : null;
+        : null;
+  const invalid =
+    contextInvalid ??
+    (lines.length > 200
+      ? "El pedido admite hasta 200 líneas."
+      : lines.some(
+            (line) =>
+              !Number.isFinite(line.unitPrice) ||
+              line.unitPrice < 0 ||
+              !Number.isInteger(line.quantity) ||
+              line.quantity <= 0,
+          )
+        ? "Revisa las cantidades de los productos."
+        : null);
   const [catalogSnapshot, setCatalog] = useState<PosCatalog | null>(() =>
     cache.peek<PosCatalog>(catalogKey(locationId), true),
   );
@@ -144,6 +148,7 @@ export function PosEditor({
       signature(current.tableLabel, nextLocation, nextLines),
     );
     setReviewOpen(false);
+    setRemovedLines([]);
   }
   // A clean workspace may receive a fresh snapshot from the pre-void check.
   // A modified one keeps its intent until the operator explicitly reviews it.
@@ -228,7 +233,8 @@ export function PosEditor({
     };
   }, [dirty, busy]);
   function changeSurface(next: typeof surface) {
-    if (next === "products") setCatalogStarted(true);
+    if (!order && next !== "table" && contextInvalid) return;
+    if (next === "products" || next === "order") setCatalogStarted(true);
     scrollPositions.current[surface] = window.scrollY;
     setSurface(next);
     requestAnimationFrame(() =>
@@ -268,6 +274,29 @@ export function PosEditor({
       onLocationChange(id);
     }
   }
+  function removeLine(key: string) {
+    const index = lines.findIndex((line) => line.key === key);
+    if (busy || conflict || index < 0) return;
+    setRemovedLines((current) => [...current, { line: lines[index], index }]);
+    setLines((current) => current.filter((line) => line.key !== key));
+  }
+  function undoRemove() {
+    const removed = removedLines.at(-1);
+    if (!removed || busy || conflict || lines.length >= 200) return;
+    setLines((current) => {
+      const next = [...current];
+      next.splice(Math.min(removed.index, next.length), 0, removed.line);
+      return next;
+    });
+    setRemovedLines((current) => current.slice(0, -1));
+  }
+  const step = surface === "table" ? 1 : surface === "products" ? 2 : 3;
+  const stepTitle =
+    surface === "table"
+      ? "Mesa"
+      : surface === "products"
+        ? "Tomar pedido"
+        : "Revisar pedido";
   const contextFields = (
     <div className={`grid gap-3 ${locations.length > 1 ? "grid-cols-2" : ""}`}>
       <TextField
@@ -296,9 +325,10 @@ export function PosEditor({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="grid min-w-0 gap-1">
-          <Heading level={1}>{order ? table : "Nueva orden"}</Heading>
+          <Heading level={1}>{order ? table : stepTitle}</Heading>
           <Text variant="muted">
-            {order ? "Orden abierta" : "Sin guardar"}
+            {order ? "Orden abierta" : `Paso ${step} de 3`}
+            {!order && surface !== "table" ? ` · ${table}` : ""}
             {locationName ? ` · ${locationName}` : ""}
           </Text>
           {order && (
@@ -322,7 +352,19 @@ export function PosEditor({
         </Button>
       </div>
       {!order ? (
-        contextFields
+        surface === "table" ? (
+          contextFields
+        ) : (
+          <Button
+            variant="quiet"
+            isDisabled={busy}
+            onPress={() =>
+              changeSurface(surface === "order" ? "products" : "table")
+            }
+          >
+            {surface === "order" ? "Volver a tomar pedido" : "Volver a mesa"}
+          </Button>
+        )
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -384,27 +426,53 @@ export function PosEditor({
             currencyCode={currencyCode}
             cart={productCart(lines)}
             disabled={busy || conflict}
+            showPrices={!!order}
+            compactSearch={!order}
+            allowPriceInput={false}
             onAdd={(p) => setLines((current) => addProduct(current, p))}
             onQty={(id, delta) =>
               setLines((current) => productQuantity(current, id, delta))
             }
-            onLinePrice={(id, value) =>
-              setLines((current) => productPrice(current, id, value))
-            }
+            onLinePrice={() => {}}
             onRepeat={() => {}}
           />
         )}
       </div>
       <div className={surface === "order" ? "grid gap-4" : "hidden"}>
-        {!order && (
-          <div className="flex items-center justify-between gap-3">
-            <Heading level={2}>Revisar pedido</Heading>
+        {!order && catalog && (
+          <DetailedSale
+            key={`review-${locationId}`}
+            products={catalog.products}
+            productOrder={catalog.bestSellingProductIds}
+            categories={catalog.categories}
+            habitualProductIds={[]}
+            lastPurchase={null}
+            currencyCode={currencyCode}
+            cart={productCart(lines)}
+            disabled={busy}
+            showPrices={false}
+            allowPriceInput={false}
+            searchOnly
+            onAdd={(p) => setLines((current) => addProduct(current, p))}
+            onQty={(id, delta) =>
+              setLines((current) => productQuantity(current, id, delta))
+            }
+            onLinePrice={() => {}}
+            onRepeat={() => {}}
+          />
+        )}
+        {!order && catalogError && <Alert kind="error" title={catalogError} />}
+        {!order && removedLines.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Text variant="small">
+              Quitaste {removedLines.at(-1)!.line.name}.
+            </Text>
             <Button
               variant="quiet"
-              isDisabled={busy}
-              onPress={() => changeSurface("products")}
+              isDisabled={busy || lines.length >= 200}
+              onPress={undoRemove}
             >
-              Volver a productos
+              Deshacer
             </Button>
           </div>
         )}
@@ -415,15 +483,10 @@ export function PosEditor({
           onQty={(key, delta) =>
             setLines((current) => quantityForLine(current, key, delta))
           }
-          onPrice={(key, value) =>
-            setLines((current) =>
-              current.map((line) =>
-                line.key === key ? { ...line, unitPrice: value } : line,
-              ),
-            )
-          }
+          showPrices={!!order}
+          onRemove={order ? undefined : removeLine}
         />
-        <Text variant="label">Total: {money}</Text>
+        {order && <Text variant="label">Total: {money}</Text>}
       </div>
       <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0">
         {order ? (
@@ -464,6 +527,17 @@ export function PosEditor({
               )}
             </div>
           </>
+        ) : surface === "table" ? (
+          <>
+            {contextInvalid && <Text variant="small">{contextInvalid}</Text>}
+            <Button
+              fullWidth
+              isDisabled={busy || !!contextInvalid}
+              onPress={() => changeSurface("products")}
+            >
+              Tomar pedido
+            </Button>
+          </>
         ) : surface === "products" ? (
           <Button
             fullWidth
@@ -481,7 +555,7 @@ export function PosEditor({
               isDisabled={!!invalid}
               onPress={() => void save()}
             >
-              Guardar orden
+              Guardar pedido
             </Button>
           </>
         )}
@@ -494,21 +568,21 @@ export function PosEditor({
         isDismissable={!busy}
         title="¿Salir con cambios sin guardar?"
         description={
-          !order && surface === "products"
-            ? "Revisa el pedido antes de guardar, descarta los cambios o sigue trabajando."
+          !order && surface !== "order"
+            ? "Continúa con los pasos del pedido, descarta los cambios o sigue trabajando."
             : "Guarda el pedido, descarta los cambios o sigue trabajando."
         }
       >
         <div className="grid gap-3">
-          {!order && surface === "products" ? (
+          {!order && surface !== "order" ? (
             <Button
-              isDisabled={busy}
+              isDisabled={busy || !!contextInvalid}
               onPress={() => {
                 setExitTarget(null);
-                changeSurface("order");
+                changeSurface(surface === "table" ? "products" : "order");
               }}
             >
-              Revisar pedido
+              {surface === "table" ? "Tomar pedido" : "Revisar pedido"}
             </Button>
           ) : (
             <Button
