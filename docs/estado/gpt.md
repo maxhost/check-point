@@ -3,6 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ CORRECCIÓN (2026-10-09) — AVISO SOLO TRAS GUARDAR
+
+Owner corrige trigger: Descartar no actualiza pedido, vuelve sin toast.
+Mini plan326183a, códigoa555ce2. Pedido actualizado se publica solo tras
+Guardar cambios exitoso de orden existente. Fallo no avisa éxito y mantiene
+Editar; guardadoysalida/nuevas conservados. Tres pruebasverdes2.7s,
+casosdescarte390/1280 y falloguardado→éxito. Typecheck6/lint/formato/diff verdes.
+Handoff0183 actualizado. Localdev sin merge/push, ajenos preservados,
+pendientesQA/gateglobalprevios intactos. Esta decisión reemplaza aviso al
+confirmar descarte documentado anteriormente.
+
 ## ⇥ AJUSTE (2026-10-09) — DESCARTAR CAMBIOS EN EDITAR
 
 Mini plan2a3c12b, codec7ec4c1, devlocal sin merge/push. Owner pide Xroja junto a
