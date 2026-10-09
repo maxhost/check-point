@@ -1621,7 +1621,7 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
   await page.goto(harness.url);
   await page.getByRole("button", { name: "Nueva orden", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Mesa", exact: true }),
+    page.getByRole("heading", { name: "Mesa sin nombre", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Tomar pedido", exact: true }),
@@ -1644,7 +1644,7 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
     page.getByText("Cargando catálogo…", { exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "Tomar pedido", exact: true }),
+    page.getByRole("heading", { name: "Mesa wizard", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Catálogo", exact: true }),

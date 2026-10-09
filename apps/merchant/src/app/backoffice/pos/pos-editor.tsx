@@ -356,7 +356,7 @@ export function PosEditor({
           ) : (
             <>
               <Text variant="small" className="sr-only">
-                Paso {step} de 3
+                Paso {step} de 3: {stepTitle}
               </Text>
               <div aria-hidden="true" className="flex justify-center gap-2">
                 {[1, 2, 3].map((stage) => (
@@ -367,7 +367,7 @@ export function PosEditor({
                 ))}
               </div>
               <div role="heading" aria-level={1} className="text-center">
-                <Text variant="small">{stepTitle}</Text>
+                <Text variant="small">{table.trim() || "Mesa sin nombre"}</Text>
               </div>
             </>
           )}
@@ -536,12 +536,6 @@ export function PosEditor({
         {order && <Text variant="label">Total: {money}</Text>}
       </div>
       <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0">
-        {!order && surface !== "table" && (
-          <Text variant="small">
-            {table}
-            {locations.length > 1 && locationName ? ` · ${locationName}` : ""}
-          </Text>
-        )}
         {order ? (
           <>
             <div className="flex items-center justify-between gap-3">
