@@ -3,6 +3,20 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ INVESTIGACIÓN (2026-10-08) — WIZARD DE NUEVA ORDEN
+
+Owner pidió evidencia antes de avanzar: Mesa / Tomar pedido / Revisar, sin precios
+habituales y con eliminación de línea completa. Consultadas fuentes NN/g, Toast y
+Apple; [informe](../design-explorations/2026-10-08-pos-wizard-toma-de-pedido.md).
+Tres etapas son candidata razonable, no mejoría medida; wizard tiene costo en tarea
+repetitiva. Eliminación completa respaldada por POS real, con Deshacer propuesto.
+Ocultar importes es inferencia del contexto; sin estudio específico comparativo.
+No evidencia para prohibir búsqueda al tomar pedido: Toast la mantiene; lupa opcional
+recomendada frente a solo búsqueda en revisión. API 0169 requiere precio excepcional
+si catálogo no lo tiene; no ocultar ese requisito ni guardar cero automáticamente.
+Sin implementación ni nueva spec cerrada. Evaluación de campo propuesta, no ejecutada.
+Solo docs en dev; sin merge/push, cambios ajenos preservados.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0180: NUEVA ORDEN CON REVISIÓN
 
 Spec cerrada antes de código en 60b773b. Owner cuestionó tabs/botones duplicados y
