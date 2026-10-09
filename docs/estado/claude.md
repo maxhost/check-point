@@ -10,43 +10,37 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-09) — IMPRESION DEL TICKET (spec 0184, ADR 0133) IMPLEMENTADA EN `dev` (`c264dbf`); FALTA LA UI DE GPT
+## ⇥ ESTADO (2026-10-09) — `dev` LISTO PARA MERGE A `main` (`ef769b6`); 0067 Y 0068 YA APLICADAS EN PROD
 
-**En PROD (`main` = `origin/main` = `3e26701`):** sin cambios. CI de `main` rojo por los e2e de tours (conocido:
-`pnpm verify` nunca verde); no se toco esta sesion.
+**En PROD:** codigo `main` = `origin/main` = `3e26701` (sin cambios). **Base: migraciones 0067 (mesas) y 0068
+(ajuste del ticket) APLICADAS el 2026-10-09** por `run_sql_transaction` (sin connection string en el transcript),
+con snapshot previo `pre-0067-0068-2026-10-09` (`snap-royal-band-ax3tsf2l`). Verificado por SQL: 69 filas en
+`drizzle.__drizzle_migrations` (ultima `1791565939169` = 0068), `core.dining_table`, `core.ticket_settings`,
+`pos_order.dining_table_id` y 3 indices; 3 negocios y 3 ordenes intactos. Aditivas: el codigo viejo no las lee.
 
-**En `dev`, sin pushear (van con el proximo push, con OK):** lo de antes (mesas `cc1eb17` y 0067 NO en PROD,
-`838a33d`, `8660441`, `802337e`, `97e774f`, `647e81f`, `bb04fd4`, `4d942ce`) mas:
-- `06f7cc4` ADR 0133 + spec 0184 + PARQUEADO #86 (panel instalable como PWA que abre el POS; owner: «retomarlo pronto»).
-- `c264dbf` **spec 0184 implementada** (L2): migracion **0068** `core.ticket_settings` (nombre del comercio y mesa,
-  opcionales por comercio, ninguno obligatorio, defaults `true`); `GET`/`PUT /api/merchant/business/ticket` (owner)
-  y `GET /api/pos/ticket` (permiso `pos`); modulo `apps/merchant/src/printing/` (README con contrato y recetas) en
-  tres capas: `TicketDoc` → ESC/POS 58/80 mm sin acentos → BLE / Web Serial; impresora (por nombre, lista filtrada)
-  y papel en `localStorage`. Bloque QR listo, vacio hasta la spec B. Borrados `/prueba-impresora` y su bitacora.
-  Medido: Neon 7/7 (0068 aplicada en la rama de CI), unitarios `printing` 23/23, merchant 2208 passed / 991 skipped,
-  lint 0, tsc 0; M1, M2, M3b rojas por su motivo; M3 sobrevivio (linea redundante, borrada). Encargo a GPT:
-  `docs/encargo-gpt-2026-10-09-impresion.md`.
+**En `dev` (sin pushear):** todo lo de la nota anterior (mesas, impresion 0184 `c264dbf`, UI de GPT 0185 `9dfd240`
+y 0186 `7664df1`, fixes de e2e de GPT `500f8fa`, docs) mas:
+- `ef769b6` Prettier en los 14 archivos de mi zona que marcaba `format:check` (solo formato). Medido: `pnpm
+  format:check` 0, `git diff --check` 0, unitarios `printing` 23/23. Gates previos de GPT sobre `fc83ed2`
+  (typecheck, lint, ui-guard, 2458 unitarios, build, 3256 Neon, e2e 288 passed / 21 skipped): log en
+  `/private/tmp/checkpass-2026-10-09-pre-main-verify.log`, detalle en `docs/preparacion-main-2026-10-09.md`;
+  no los repeti (el cambio fue solo formato).
+- Revision del trabajo de GPT de impresion (0185/0186): respeta el contrato (sin `await` antes de `printTicket`,
+  ajuste cargado al abrir el POS, los 5 resultados, `window.print()` con el `TicketDoc`, ajuste solo owner).
+  **Huecos, hallazgo a decidir:** no hay ajuste «Impresora» por dispositivo → en Android `choose` usa BLE siempre
+  (no se puede elegir una Bluetooth clasica) y el papel queda en 58 mm.
 
 **QUE SIGUE:**
-1. **GPT**: botones, ajuste «Impresora» por dispositivo, pantalla del owner para el ticket (encargo de arriba).
-2. **Prueba de campo** cuando GPT cablee el boton: orden real en la WD-58P1, dos tickets seguidos sin lista, tras
-   recargar la lista muestra solo esa impresora. Sin medir: Web Serial contra impresora real, QR en papel.
-3. **0068 a PROD** con OK del owner, en el proximo pase a live (snapshot antes), junto con la 0067.
-4. **Spec B — venta reclamable por QR** (L3, PARQUEADO #85, decisiones del owner ahi): llena `buildTicket(..., { qr })`.
-- Base local: la 0068 se aplica al levantar el entorno (`/entorno-local arrancar`); no se levanto.
+1. Merge local `dev` → `main` (`--ff-only`), lo completa GPT segun el owner; probar `main` en local.
+2. Push a live con OK del owner (pre-push corre `pnpm verify`), y el deploy de Vercel `READY` con ese sha antes
+   del QA del owner.
+3. Prueba de campo de la impresion en la WD-58P1 cuando este en live o en local por el tunel.
+4. Spec B (venta reclamable por QR, PARQUEADO #85). Ideas de hardware parqueadas: #87–#90; investigacion en
+   `docs/investigacion-esp32-marketing-cercania-2026-10-09.md`.
 
-**Pendiente / abierto (de antes):** PARQUEADO #83 (mesas: UI de GPT, 0067 a PROD, push), #82 (staging), #86 (PWA),
-deuda `no_program` (R3 0169), `pnpm verify` nunca verde (e2e de tours), Colima antes de `pnpm dev:local`.
-- Arbol: `.claude/skills/gotchas-del-repo/SKILL.md` y `docs/LECCIONES.md` modificados por otra sesion, sin
-  commitear: no tocar.
-- Hallazgo a decidir (zona GPT): `loyalty-api.ts` descarta el `error` del servidor; en el cuadro del TOS se ven las `{{llaves}}`.
-- El owner compra un ESP32 WROOM-32 para un puente futuro (seria otro `printing/transport/`); idea, sin spec.
+**Pendiente / abierto (de antes):** PARQUEADO #82 (staging), #86 (PWA), deuda `no_program` (R3 0169), hallazgo
+`loyalty-api.ts` (zona GPT). Local: cupones de prueba de Joyas para `cliente-1` y enlace de sesion
+`https://dev-my.checkpass.club/c/seed-local-web-1` (solo base local).
 
-**Descartado (no reintentar sin dato nuevo):** la tabla del bloque historico 2026-10-09 tarde (Web Serial para la
-WD-58P1, `window.print()` de Android, TV box, telefonos desarmados, cajita MFi, servidor local) mas: guardar la
-impresora BLE en nuestra base (Chrome no acepta un dispositivo que el usuario no eligio en su lista).
-
-**Decisiones del owner, no volver a preguntar:** las de antes, mas (2026-10-09): Claude la API y GPT los botones;
-ticket = base fija (items, cantidad, unitario, total, fecha, hora, QR) + nombre y mesa opcionales por comercio
-EN LA BASE con pantalla; sin leyenda de precuenta; sin acentos; impresora recordada por nombre; QR opcion A; PWA
-parqueada; ajuste por comercio, solo el owner lo edita, hora de la impresion (aceptados al cerrar la spec).
+**Decisiones del owner, no volver a preguntar:** las del bloque historico anterior, mas: Wi-Fi de invitados (#88),
+linea de hardware (#89), aparato de mesa (#90), todas parqueadas.
