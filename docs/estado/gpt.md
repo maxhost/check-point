@@ -3,27 +3,32 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-09) — SPEC 0183 CERRADA, CLEAR Y PLAN PENDIENTE
+## ⇥ ESTADO (2026-10-09) — PLAN 0183 DOCUMENTADO, IMPLEMENTACIÓN PENDIENTE
 
-Owner cerró flujo QR→Pedido→Cobrar modal→Confirmar; pidió cerrar spec y luego clear.
-[Spec0183](../specs/0183-pos-escanear-pase-y-confirmar-cobro.md) cerrada, L3, solo
-documentación; [checkpoint](../handoff-0183-pos-cobro-retomar-2026-10-09.md).
-**Al volver: armar plan de implementación antes del código. No implementar hoy.**
-Rama dev, sin merge/push. Botones inline QR/impresora visuales guardados en
-**31d21b7**; no tienen comportamiento. Cobrar aún usa checkout anterior.
+Owner retomó tras clear con el plan. [Plan de implementación](../plan-0183-pos-cobro.md)
+guardado en **cff973f**, basado en [spec0183](../specs/0183-pos-escanear-pase-y-confirmar-cobro.md)
+cerrada L3 y [checkpoint](../handoff-0183-pos-cobro-retomar-2026-10-09.md).
+Solo documentación en dev, sin merge/push ni implementación. QR/impresora siguen
+visuales (**31d21b7**) y Cobrar mantiene checkout anterior.
 
-Cliente/cupón en memoria, salir pierde contexto, Cancelar conserva; cerrar consume
-/acredita/asocia en una transacción existente con UUID/cuerpo congelados para retry.
-Spec define preview en centavos/snapshots, regla/unidades/extras, modal Recibido/
-cambio, errores/carreras/auth/cupón cambiado y pruebas/independencia L3.
-Hallazgo comunicado: resolve EXISTENTE da alta saldo0 y last_scan_at; no prometer
-cero DB al escanear, solo cero efectos de venta/canje/acreditación antes de confirmar.
-Impresora fuera, API/kit/servidor sin cambios funcionales nuevos. No nuevas specs
-para ajustes visuales; esta spec sí solicitada expresamente por owner.
+Secuencia: baseline/fixtures → preview puro → controlador de sesión en consola →
+scanner/Pedido → modal → cierre/recuperación → gates y revisión independiente.
+Un implementador y luego revisor L3 según AGENT-WORKFLOW; no agentes despachados
+en la etapa de plan. Cliente/cupón en memoria, Cancelar conserva, salir pierde;
+retry incierto mantiene UUID/cuerpo congelados. Scanner no evita alta/visita ya
+existentes de resolve; solo aplaza venta/canje/acreditación/asociación de orden.
 
-Números docs sin duplicados, formato/diff-check verdes; no suites/compilación hoy.
-QA/implementación/gates/PASS pendientes. Cambios ajenos gotchas/LECCIONES preservados.
-No publicar para reservar número (dev local según autorización vigente).
+Hallazgos para implementar: checkout actual sondea y llama coupon-remove (retirar
+en POS); handleError global borra mesa con todo 404 (clasificar por operación);
+fixture resolved carece de accrual (completar). Verificar temprano scroll/altura
+Dialog con teclado: si falta capacidad, pedir a Claude, nunca ampliar kit.
+DTO/tableId de 0182 conservado sin integrar UI de mesas. Impresora fuera.
+
+Node24.20.0, dev confirmada; ci:status sin conexión GitHub, remoto no verificado.
+Puertos observados 3200/3201 y DB local 55432; no prueban conexión correcta de QA.
+Formato/docs/números/diff-check verificados; baseline funcional, suites/build,
+QA owner y PASS independiente pendientes. Cambios ajenos gotchas/LECCIONES
+preservados. No publicar para reservar número; dev local vigente por ADR0128.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
