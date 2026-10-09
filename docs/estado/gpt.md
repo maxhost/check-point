@@ -3,22 +3,18 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-08) — PROGRESO VISUAL EN HEADER POS
+## ⇥ ESTADO (2026-10-08) — MESA BAJO PROGRESO POS
 
-Retomado POS con ajuste solicitado por owner. Spec 0181 ampliada/cerrada en
-f63f479 antes de código. UI **e5de0c8**, rama **dev**, sin merge/push.
-Nueva orden: tres rayas con etapa actual primaria, etiqueta pequeña centrada con
-semántica heading; Paso N de 3 sr-only. Flecha/X comparten close-module, círculo
-44 px, icono 24 px y alineación; hueco izquierdo en Mesa mantiene centro estable.
-Mesa se mueve encima de CTA inferior en selección/revisión; local acompaña solo
-con varios locales, local único junto al formulario inicial. Abiertas intactas.
+Owner pidió retirar títulos de pasos y poner nombre de mesa debajo de rayas,
+eliminando contexto al lado del botón inferior. Spec 0181 cerrada en 919be18,
+UI **19944c0**, solo **dev**, sin merge/push. Nombre mesa pequeño con heading;
+«Mesa sin nombre» antes de escribir. Paso/etapa solo sr-only. Bloque mesa/local
+retirado del footer. Rayas, botones, orden abierta y cache conservados.
 
-Typecheck 6 paquetes (3,436 s), ESLint editor, Prettier, guardia UI 6 archivos sin
-aumentos y diff-check verdes. Sin suites adicionales/navegador por preferencia
-vigente del owner; QA visual pendiente. ci:status no pudo consultar GitHub
-(fetch failed, informativo). Sin kit/CSS/API/cache/escrituras nuevas. Cambios
-ajenos gotchas/LECCIONES preservados. Próximo paso: owner revisa cabecera/contexto
-con pnpm dev:local. No afirmar PASS completo ni spec implementada.
+Typecheck 6 paquetes (3,111 s), ESLint editor/e2e, Prettier, guardia 6 archivos
+sin aumentos y diff-check verdes. Aserciones existentes actualizadas, suites
+sin ejecución por preferencia vigente; QA visual owner pendiente. Sin kit/CSS/API.
+Cambios ajenos gotchas/LECCIONES preservados. Próximo paso: revisión visual owner.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
