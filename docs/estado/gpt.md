@@ -3,18 +3,22 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ PAUSA PARA REINICIO (2026-10-08) — RETOMAR UI POS EN DEV
+## ⇥ ESTADO (2026-10-08) — PROGRESO VISUAL EN HEADER POS
 
-Owner pidió guardar el contexto en disco para reiniciar y retomar POS.
-Último commit UI **9e827b9**, rama **dev**, sin merge/push en esta iteración.
-[Checkpoint de continuación](../handoff-pos-retomar-2026-10-08.md): contiene
-flujo, commits, restricciones, evidencias y cómo levantar local después del reinicio.
+Retomado POS con ajuste solicitado por owner. Spec 0181 ampliada/cerrada en
+f63f479 antes de código. UI **e5de0c8**, rama **dev**, sin merge/push.
+Nueva orden: tres rayas con etapa actual primaria, etiqueta pequeña centrada con
+semántica heading; Paso N de 3 sr-only. Flecha/X comparten close-module, círculo
+44 px, icono 24 px y alineación; hueco izquierdo en Mesa mantiene centro estable.
+Mesa se mueve encima de CTA inferior en selección/revisión; local acompaña solo
+con varios locales, local único junto al formulario inicial. Abiertas intactas.
 
-Próximo foco: **paso 2 Tomar pedido**, revisión visual owner y siguiente ajuste.
-La última simplificación ya está aplicada/commiteada; no hay otro cambio aprobado
-pendiente de implementar. No inventar rediseño nuevo ni ejecutar suites adicionales:
-owner pidió detenerlas. Leer checkpoint antes de actuar. Código y docs en disco;
-solo ajenos gotchas/LECCIONES sin commit, staging propio vacío al pausar.
+Typecheck 6 paquetes (3,436 s), ESLint editor, Prettier, guardia UI 6 archivos sin
+aumentos y diff-check verdes. Sin suites adicionales/navegador por preferencia
+vigente del owner; QA visual pendiente. ci:status no pudo consultar GitHub
+(fetch failed, informativo). Sin kit/CSS/API/cache/escrituras nuevas. Cambios
+ajenos gotchas/LECCIONES preservados. Próximo paso: owner revisa cabecera/contexto
+con pnpm dev:local. No afirmar PASS completo ni spec implementada.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
