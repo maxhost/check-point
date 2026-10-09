@@ -478,3 +478,12 @@ neutral suave y borde discreto; retirar segmento verde seleccionado, icono User
 en círculo neutral y textos Cliente/nombre con Text del kit. X discreta conserva
 confirmación y accesibilidad. No handlers/contratos nuevos. Verificación lint/UI
 typecheck y capturas mediante casos existentes; sin nueva suite global.
+
+### Ajuste visual L0 — borde acento del cliente (2026-10-09)
+
+Owner pide borde destacado sin verde. Usar token accent existente (naranja por
+defecto) con borde1px en contenedor de cliente; fondo neutro/ancho responsive/
+confirmación intactos. No paleta cruda ni kit/CSS nuevos. Lint/UItypecheck/diff.
+
+Owner precisa borde1px y cambia X del cliente a TrashIconoir rojo token danger.
+Confirmación/nombre accesible intactos; mismo ajuste L0.

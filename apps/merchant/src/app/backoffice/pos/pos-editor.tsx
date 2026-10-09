@@ -7,6 +7,7 @@ import {
   NavArrowLeft,
   Printer,
   QrCode,
+  Trash,
   User,
   Xmark,
 } from "iconoir-react";
@@ -630,7 +631,7 @@ export function PosEditor({
             <div
               role="group"
               aria-label="Cliente identificado"
-              className="flex w-full min-w-0 max-w-full items-center gap-3 rounded-xl border border-border bg-surface-subtle p-2 md:w-fit"
+              className="flex w-full min-w-0 max-w-full items-center gap-3 rounded-xl border border-accent bg-surface-subtle p-2 md:w-fit"
             >
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-content-muted">
                 <User aria-hidden="true" className="size-5" />
@@ -646,11 +647,11 @@ export function PosEditor({
                 aria-label="Quitar cliente"
                 aria-haspopup="dialog"
                 aria-expanded={removeClientOpen}
-                className="size-11 shrink-0 rounded-full! p-0! text-content-muted!"
+                className="size-11 shrink-0 rounded-full! p-0! text-danger!"
                 isDisabled={busy}
                 onPress={() => setRemoveClientOpen(true)}
               >
-                <Xmark aria-hidden="true" className="size-5" />
+                <Trash aria-hidden="true" className="size-5" />
               </Button>
             </div>
             <PosCoupon

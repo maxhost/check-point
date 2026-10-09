@@ -231,3 +231,10 @@ Sin cambios de handlers/kit/API/CSS. Cuatro casos existentesverdes3.7s, usados
 para capturas390/320/1280 y regresión de retiro/confirmaciones. Capturas390/1280
 vistas: fullwidth de contenido móvil y compacto desktop. Lint/typecheck:ui,
 formato/diff y scopedguard sin incrementos. Sinpublicación, pendientesprevios.
+
+## Ajuste visual L0 — acento y papelera del cliente
+
+Owner pide borde que destaque sinverde y precisa1px. Contenedor usa border-accent
+(naranja por defecto), fondo neutral/ancho responsive intactos. X reemplazada por
+TrashIconoir rojo token danger; mismo botón44/nombre/confirmación. Sin kit/CSS
+nuevos. ESLint/typecheck:ui/diff verdes; no nueva suite/captura por L0. Local.
