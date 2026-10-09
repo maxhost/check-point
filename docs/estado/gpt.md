@@ -3,6 +3,24 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ PREPARACIÓN MAIN (2026-10-09) — SOLO FORMATO PENDIENTE
+
+Owner autoriza todos los commits y dev→main, live después. Notas ajenas pendientes
+guardadas e1f685a con autorización de todos los cambios. Plan cierre3c4eab9.
+Primera verify completa: typecheck/lint/guard30/unit2458/build/Neon3256 verdes;
+formato14archivosClaude rojo; e2e270/18rojos. Detalle/tabla en
+docs/preparacion-main-2026-10-09.md y log /private/tmp/checkpass-2026-10-09-pre-main-verify.log.
+
+Corregidos los18fallos de navegador en500f8fa: selectorAyuda acotado a main en
+3specs y8referencias Dialog revisadas conoverlay actual, sin tocar kit/relajar
+tolerancias. Gate e2e completo repetido288passed/21skip,1.3m verde. Formato de
+printing/API prohibido por encargo anterior: autorización consultada al owner,
+sin respuesta aún. Main permanece3e26701; no merge/push. No afirmar verifyverde.
+Entorno local detenido para gates y volviendo a levantarse en dev al cierre.
+Al obtener permiso, aplicar soloPrettier a14archivos, correrformat:check y
+registrar evidencia antes de fastforwardmain; no repetir otros gates sin motivo.
+Luego QA main local por owner; live requiere0067/0068PROD y autorización posterior.
+
 ## ⇥ 0186 (2026-10-09) — OPCIONES DEL TICKET EN CONFIGURACIÓN
 
 Incidente owner503 al abrir Configuración: log merchant pos_route_failed42P01

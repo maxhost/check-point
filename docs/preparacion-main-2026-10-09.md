@@ -21,3 +21,29 @@ relacionados; repetir gates fallidos al final. Sin spec nueva para ajusteL1.
 Neonfull en progreso sobre baseCI, nunca producción. Log completo:
 /private/tmp/checkpass-2026-10-09-pre-main-verify.log. Entorno dev local detenido
 temporalmente para gates; restaurar al terminar. Main no movido todavía.
+
+## Resultado de la verificación
+
+Primera corrida completa terminada (Node24.20.0):
+
+| Gate | Resultado | Segundos |
+|---|---|---|
+| typecheck | ok | 0.4 |
+| lint | ok | 7.8 |
+| ui-guard | ok,30archivos sin aumentos | 1.0 |
+| format:check | ROJO,14archivosClaude | 7.9 |
+| unit | ok,2458passed/1043skipped | 41.0 |
+| build | ok | 26.7 |
+| e2e inicial | ROJO,270passed/18failed | 81.4 |
+| neonfull | ok,3256passed/282skipped | 420.5 |
+
+Correcciones L1 en500f8fa: tres specs con Ayuda acotada a main y ocho capturas
+Dialog. Imágenes light390/1280 y dark390/WebKitlight1280 revisadas; mantiene
+contenido/foco/acciones y añade overlay. Sin kit/CSS/API ni tolerancias nuevas.
+Regeneración8/8verde5.6s; gate e2e completo repetido SIN update:288passed/21skipped,
+1.3m en /private/tmp/checkpass-pre-main-e2e-final.log. Dieciocho fallos resueltos.
+
+Solo queda formato: permiso solicitado por restricción del encargo0184, sin
+respuesta todavía. No se ha movido main ni publicado. Entorno dev local se
+vuelve a levantar después de los gates. Migraciones0067/0068 de PROD siguen
+pendientes de preparación/OK antes de publicar; CI sí tiene0068.
