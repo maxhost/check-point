@@ -389,3 +389,25 @@ ayuda/error asociados por id. Es una excepción especializada, sin casts ni date
 validar un entero escrito fuera del rango sin corregirlo silenciosamente al salir:
 los botones siguen deshabilitados en los límites. Loyalty captura el borrador al escribir
 para validar el valor visible en el mismo submit; vacío permanece NaN hasta corregirse.
+
+### Toasts de confirmación — patrón de pantallas
+
+Para confirmar una acción completada se reutiliza `ConfirmationToast` de
+`apps/merchant/src/app/components/confirmation-toast.tsx`. Es un adaptador del
+Toast compartido; no crea una variante del kit. Cápsula oscura con tokens
+`bg-content`/`text-on-primary`, móvil abajo al centro a96px del borde inferior
+para dejar acciones alcanzables; desde md arriba a la derecha a24px. Usa
+posición fija incluso dentro de counter-flow. Las pantallas no sobrescriben
+sus clases ni posición.
+
+Props: `message: string | null`, `onDismiss`, `durationMs?: number` (4000 por
+defecto). Mantiene role status/aria-live polite y descarte automático del Toast.
+Producto añadido conserva1400ms; Cliente identificado usa4000ms. Los nuevos
+avisos de confirmación deben usar este mismo componente. Avisos de error o de
+operación pendiente mantienen Toast con sus contratos específicos.
+
+```tsx
+import { ConfirmationToast } from "../../components/confirmation-toast";
+
+<ConfirmationToast message={notice} onDismiss={() => setNotice(null)} />
+```

@@ -3231,3 +3231,77 @@ test("0183 toast de cliente queda dentro del viewport con pedido largo", async (
     animations: "disabled",
   });
 });
+
+for (const width of [390, 1280]) {
+  test(`0183 confirmaciones comparten estilo y posición responsive a ${width}`, async ({
+    page,
+  }) => {
+    await setup(page);
+    await customerRoutes(page);
+    await page.setViewportSize({ width, height: 844 });
+    await open(page);
+    await scan(page);
+    const customerToast = page.getByText("Cliente identificado", {
+      exact: true,
+    });
+    await expect(customerToast).toBeInViewport();
+    const customer = await customerToast.evaluate((element) => {
+      const style = getComputedStyle(element),
+        rect = element.getBoundingClientRect();
+      return {
+        background: style.backgroundColor,
+        color: style.color,
+        radius: style.borderRadius,
+        position: style.position,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      };
+    });
+    expect(customer.position).toBe("fixed");
+    if (width < 768) {
+      expect(customer.x + customer.width / 2).toBeCloseTo(width / 2, 0);
+      expect(844 - customer.y - customer.height).toBeCloseTo(96, 0);
+    } else {
+      expect(customer.y).toBeCloseTo(24, 0);
+      expect(width - customer.x - customer.width).toBeCloseTo(24, 0);
+    }
+    await page.screenshot({
+      path: `/private/tmp/0183-confirmacion-cliente-${width}.png`,
+      animations: "disabled",
+    });
+    await page.getByRole("radio", { name: "Editar", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Agregar Especial", exact: true })
+      .click();
+    const productToast = page.getByText("Producto añadido", { exact: true });
+    await expect(productToast).toBeInViewport();
+    const product = await productToast.evaluate((element) => {
+      const style = getComputedStyle(element),
+        rect = element.getBoundingClientRect();
+      return {
+        background: style.backgroundColor,
+        color: style.color,
+        radius: style.borderRadius,
+        position: style.position,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      };
+    });
+    expect(product.background).toBe(customer.background);
+    expect(product.color).toBe(customer.color);
+    expect(product.radius).toBe(customer.radius);
+    expect(product.position).toBe(customer.position);
+    expect(product.y).toBeCloseTo(customer.y, 0);
+    if (width < 768)
+      expect(product.x + product.width / 2).toBeCloseTo(width / 2, 0);
+    else expect(width - product.x - product.width).toBeCloseTo(24, 0);
+    await page.screenshot({
+      path: `/private/tmp/0183-confirmacion-producto-${width}.png`,
+      animations: "disabled",
+    });
+  });
+}

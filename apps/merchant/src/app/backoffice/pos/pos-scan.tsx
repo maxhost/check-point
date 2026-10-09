@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Xmark } from "iconoir-react";
 import { Alert, Button, Dialog } from "../../../ui";
-import { Toast } from "../../components/ui";
+import { ConfirmationToast } from "../../components/confirmation-toast";
 import { QrScanner } from "../counter/qr-scanner";
 import type { PosPayment } from "./pos-payment";
 export function PosScan({ payment }: { payment: PosPayment }) {
@@ -14,11 +14,9 @@ export function PosScan({ payment }: { payment: PosPayment }) {
   const cancel = payment.cancelScan;
   return (
     <>
-      <Toast
+      <ConfirmationToast
         message={payment.notice}
-        kind="success"
         onDismiss={payment.dismissNotice}
-        className="fixed! top-6! right-auto! bottom-auto! left-1/2! m-0! w-auto! -translate-x-1/2! whitespace-nowrap"
       />
       <Dialog
         variant="fullscreen"

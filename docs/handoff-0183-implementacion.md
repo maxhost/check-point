@@ -148,3 +148,20 @@ loading/éxito/reducedmotion, cancelar/tardío),0183-toast-after.log. Posición
 computed fixed y aviso dentroviewport verificados. Captura toast-pedido-largo
 vista. ESLint/Prettier/diff y typecheck6verdes3.029s. Local, no publicación;
 pendientes principales0183 conservados.
+
+## Ajuste L1 — patrón único de confirmación
+
+Mini plan1a8e83d anterior al código. ConfirmationToast en app/components adapta
+Toast compartido sin cambios de kit/CSS. Estilo de Producto añadido: cápsula
+oscura tokenizada, mobile bottom24 centrado y desktop md top6/right6. Sin
+className público: nuevos avisos reutilizan presentación única. Cliente y
+Producto consumen el mismo adaptador, conservan4000/1400ms respectivamente.
+Patrón documentado en design-system, con ejemplo de uso y estados accesibles.
+
+Cinco pruebas específicasverdes2.8s: comparación de estilos/geometría cliente
+vsproducto a390/1280, pedido largo, loading/éxito y cancelartardío. Log
+/private/tmp/0183-confirmation-tests.log. Capturas cliente390/1280 vistas;
+producto también capturado. ESLint/Prettier/typecheck6/diff verdes; countFile
+base1a8e83d sin incrementos en los tres archivos de producto (nuevo incluido).
+Cambio L1 local, sin subagentes/gateglobal/push. QA y pendientes anteriores
+conservados.

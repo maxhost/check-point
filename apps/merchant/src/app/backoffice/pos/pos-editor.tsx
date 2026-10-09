@@ -19,7 +19,7 @@ import {
   TextField,
 } from "../../../ui";
 import { catalogKey, DiscardedPosRead, PosCache } from "./pos-cache";
-import { Toast } from "../../components/ui";
+import { ConfirmationToast } from "../../components/confirmation-toast";
 import { DetailedSale } from "../counter/sale-forms";
 import { formatMoney } from "../counter/types";
 import { PosCoupon } from "./pos-coupon";
@@ -777,13 +777,11 @@ export function PosEditor({
       {addedNotice &&
         ((order && surface === "products") ||
           (!order && surface === "order")) && (
-          <Toast
+          <ConfirmationToast
             key={addedNoticeId}
             message="Producto añadido"
-            kind="success"
             durationMs={1400}
             onDismiss={() => setAddedNotice(false)}
-            className="fixed! top-auto! right-auto! bottom-24 left-1/2! z-50 m-0! w-auto! -translate-x-1/2! rounded-full bg-content! px-4 text-on-primary! pointer-events-none whitespace-nowrap"
           />
         )}
       <Dialog
