@@ -330,7 +330,7 @@ desactualizado es peor que no tenerlo.
 | 0183 | 2026-10-09 | **Cobro POS**: QR identifica en Pedido; modal con importe, cambio y acreditación; confirmar cierra con idempotencia. | **cerrada**, solo spec; plan tras clear | no | `specs/0183-pos-escanear-pase-y-confirmar-cobro.md` |
 | 0184 | 2026-10-09 | **Imprimir la orden abierta** (L2, API + DB + modulo; UI de GPT; implementa ADR 0133). **Que es:** migracion 0068 `core.ticket_settings`, `GET`/`PUT /api/merchant/business/ticket` (owner), `GET /api/pos/ticket` (permiso `pos`), modulo `apps/merchant/src/printing/` con API publica para GPT; borra `/prueba-impresora`. **Por que importa:** el boton imprimir del POS sale por Bluetooth a la termica del comercio. | **implementada** (7/7 Neon, 23/23 unitarios, M1–M3b medidas). Falta: UI de GPT, 0068 a PROD con OK del owner, prueba de campo | si | `specs/0184-imprimir-la-orden-abierta.md` |
 | 0185 | 2026-10-09 | **Botón Imprimir POS**: precarga ajuste, Bluetooth con gesto y TicketDoc para navegador; sin ajustes de dispositivo/owner. | **cerrada** L2, UI local verificada; QA físico owner pendiente | no | `specs/0185-pos-boton-imprimir-ticket.md` |
-| 0186 | 2026-10-09 | **Opciones de ticket**: toggle visual revela nombre y mesa en Configuración; guarda por API existente. | **cerrada** L2, autorizada | si | `specs/0186-configuracion-opciones-ticket.md` |
+| 0186 | 2026-10-09 | **Opciones de ticket**: toggle visual revela nombre y mesa en Configuración; guarda por API existente. | **cerrada** L2, UI local verificada | si | `specs/0186-configuracion-opciones-ticket.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

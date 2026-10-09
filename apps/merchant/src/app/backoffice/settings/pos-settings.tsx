@@ -11,6 +11,7 @@ import {
 } from "../../../ui";
 import { useRouter } from "next/navigation";
 import { PosError, posRequest, type PosSession } from "../pos/pos-types";
+import { TicketSettings } from "./ticket-settings";
 export function PosSettings() {
   const router = useRouter();
   const [session, setSession] = useState<PosSession | null>(null);
@@ -97,6 +98,7 @@ export function PosSettings() {
             </div>
           </Card>
         )}
+        {session?.membership?.role === "owner" && <TicketSettings />}
         <Dialog
           isOpen={openCount !== null}
           onOpenChange={(open) => {
