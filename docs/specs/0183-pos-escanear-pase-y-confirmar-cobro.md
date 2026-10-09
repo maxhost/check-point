@@ -4,7 +4,7 @@ fecha: 2026-10-09
 estado: cerrada
 resumen: Escanear pase desde Pedido, conservar cliente y cupón solo en memoria y confirmar cierre y acreditación desde un modal de cobro con cambio y regla del programa.
 disjunta: no
-archivos: apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-checkout.tsx, apps/merchant/src/app/backoffice/pos/pos-coupon.tsx, apps/merchant/src/app/backoffice/pos/pos-scan.tsx, apps/merchant/src/app/backoffice/pos/pos-payment.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.test.ts, tests/e2e/pos.spec.ts, tests/e2e/support/pos-counter-harness.tsx
+archivos: apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-checkout.tsx, apps/merchant/src/app/backoffice/pos/pos-coupon.tsx, apps/merchant/src/app/backoffice/pos/pos-ticket.tsx, apps/merchant/src/app/backoffice/pos/pos-scan.tsx, apps/merchant/src/app/backoffice/pos/pos-payment.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.test.ts, tests/e2e/pos.spec.ts, tests/e2e/support/pos-counter-harness.tsx
 ---
 
 # 0183 — Escanear pase y confirmar cobro en POS
@@ -202,6 +202,9 @@ UUID/cuerpo congelados y relación con order.id, version, membershipId y couponI
 - Éxito: usar PosOrder devuelto, cerrar modal, limpiar contexto y publicar snapshot
   mediante cache/resultado existentes. Mostrar total/acreditación finales de sale,
   con extras separados; no éxito optimista ni saldo calculado localmente.
+  `sale.unitsGranted` es la base y `sale.coupon.extraUnits` el extra: sumar para
+  mostrar el total, nunca restar extras de la base (contrato existente verificado
+  en `server/pos/read.ts` → `counter/grant.ts::toResult`).
 - Red/timeout/5xx: resultado incierto. Mantener modal y contexto bloqueados con
   «Reintentar cobro»; mismo UUID y cuerpo exacto, incluso si cupón cambió fuera.
   No otro intento, nueva orden, edición ni cliente distinto hasta resolver.
@@ -258,6 +261,7 @@ transversal que requiera un ADR adicional.
 | pos-scan.tsx (nuevo) | Vista modal scanner, lector manual, errores/foco |
 | pos-checkout.tsx | Modal de confirmación, calculadora y regla/acreditación |
 | pos-coupon.tsx | Beneficio/requisitos y exclusión local, sin coupon-remove |
+| pos-ticket.tsx | PosResult: acreditación final base + extras separados desde sale, sin cambiar impresión |
 | pos-payment-preview.ts / .test.ts (nuevos) | Preview puro y tablas de dinero/acreditación |
 | tests/e2e/pos.spec.ts | Escenarios observables de flujo, API/errores/regresión |
 | tests/e2e/support/pos-counter-harness.tsx | Fixtures que consumen contrato vigente |
