@@ -1,7 +1,10 @@
 import { expect } from "@playwright/test";
 import { test, loyaltyFixture, pointsReview } from "./support/loyalty-fixture";
 async function create(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "Ayuda", exact: true }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Ayuda", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Crear un programa", exact: true })
     .click();

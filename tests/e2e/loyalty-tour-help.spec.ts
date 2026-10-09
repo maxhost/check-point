@@ -9,7 +9,10 @@ export async function help(
   page: import("@playwright/test").Page,
   name: string,
 ) {
-  await page.getByRole("button", { name: "Ayuda", exact: true }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Ayuda", exact: true })
+    .click();
   await page.getByRole("button", { name, exact: true }).click();
 }
 test("crear acompaña pasos reales y no persiste ayuda", async ({

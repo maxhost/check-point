@@ -31,7 +31,9 @@ for (const existing of [false, true]) {
       expect(api.writes).toHaveLength(0);
       await page.reload();
       await expect(
-        page.getByRole("button", { name: "Ayuda", exact: true }),
+        page
+          .getByRole("main")
+          .getByRole("button", { name: "Ayuda", exact: true }),
       ).toBeVisible();
       await expect(page.locator(".driver-popover")).toHaveCount(0);
       expect(posts).toHaveLength(1);
@@ -50,7 +52,10 @@ test("repetir orientación y staff nunca escriben progreso", async ({
   });
   await page.goto(`${loyaltyHarness}?staff=1&tour=onboarding&no-catalog=1`);
   await expect(page.locator(".driver-popover")).toHaveCount(0);
-  await page.getByRole("button", { name: "Ayuda", exact: true }).click();
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: "Ayuda", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Programar el cierre", exact: true }),
   ).toHaveCount(0);
