@@ -3,6 +3,16 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — ACCIONES DE ORDEN SOLO ANULAR
+
+Commitfc07a30 devlocal. Owner retira Imprimir precuenta de modalAcciones;
+Anular usa Button danger. Copydirty antesdeanular, guardas/handler conservados.
+BotónImprimirPedido y trabajoClaude0184 intactos. L0: lint/typecheck:ui/diff
+verdes, regresión existenteadaptada sin corrernavegador; mediaprint conservada.
+Spec/handoff0183 actualizados antes/cierre. Sin kit/CSS/API/push.
+Ajenos paquetes/schema/lock/ticketservidor/spec0184/estadosClaude preservados.
+QA/gateglobal previospendientes.
+
 ## ⇥ CORRECCIÓN (2026-10-09) — AVISO SOLO TRAS GUARDAR
 
 Owner corrige trigger: Descartar no actualiza pedido, vuelve sin toast.
