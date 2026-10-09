@@ -1,7 +1,7 @@
 ---
 spec: 0184
 fecha: 2026-10-09
-estado: cerrada
+estado: implementada
 resumen: Imprimir la orden abierta del POS a termicas Bluetooth (L2, API + DB + modulo de navegador; botones y pantallas de GPT; implementa ADR 0133). Migracion 0068 `core.ticket_settings` (nombre del comercio y mesa opcionales por comercio); `GET`/`PUT /api/merchant/business/ticket` (owner) y `GET /api/pos/ticket` (permiso `pos`); modulo `apps/merchant/src/printing/` en tres capas (ticket → ESC/POS 58/80 mm sin acentos → BLE / clasico) con impresora y papel por dispositivo. Bloque QR listo, vacio hasta la spec B. Borra `/prueba-impresora`.
 disjunta: si (no toca archivos del POS de GPT; solo agrega)
 archivos: packages/db/src/schema/ticket-settings.ts, packages/db/src/schema/index.ts, packages/db/drizzle/0068_ajuste_del_ticket.sql, packages/db/drizzle/meta/*, apps/merchant/src/server/ticket-settings/*, apps/merchant/src/app/api/merchant/business/ticket/route.ts, apps/merchant/src/app/api/pos/ticket/route.ts, apps/merchant/src/printing/**, apps/merchant/package.json, pnpm-lock.yaml, apps/merchant/src/app/prueba-impresora/** (borrar), apps/merchant/src/app/api/prueba-impresora/** (borrar)
@@ -37,7 +37,8 @@ tickets de cocina.
 
 `core.ticket_settings`: `business_id uuid PK → core.business(id) ON DELETE cascade`, `show_business_name boolean
 NOT NULL DEFAULT true`, `show_table boolean NOT NULL DEFAULT true`, `updated_at timestamptz NOT NULL DEFAULT now()`.
-Sin fila = los defaults (no se crea fila al dar de alta un negocio). Sin grants nuevos: `checkpass_consumer` no lo lee.
+Sin fila = los defaults (no se crea fila al dar de alta un negocio). **Ninguna opcion es obligatoria** (owner
+2026-10-09): las dos son independientes y `false`/`false` es valido; la pantalla de GPT las prende y apaga. Sin grants nuevos: `checkpass_consumer` no lo lee.
 
 ### DTO `TicketSettings` (mismo en las tres rutas)
 
@@ -50,13 +51,13 @@ Sin fila = los defaults (no se crea fila al dar de alta un negocio). Sin grants 
 | Ruta | Guard | Respuesta | Errores propios |
 |---|---|---|---|
 | `GET /api/merchant/business/ticket` | `requireApiOwner` | `200 TicketSettings` | — |
-| `PUT /api/merchant/business/ticket` | `requireApiOwner` | `200 TicketSettings` (lo guardado) | `422 invalid_input` si falta un campo o no es booleano, o el cuerpo no es JSON |
+| `PUT /api/merchant/business/ticket` | `requireApiOwner` | `200 TicketSettings` (lo guardado) | `422 invalid_input` si falta un campo o no es booleano; `400 invalid_body` si el cuerpo no es un objeto JSON (`readPosBody`, como el resto del POS) |
 | `GET /api/pos/ticket` | `requirePosOperator` | `200 TicketSettings` | — |
 
 Los demas errores son los del guard, sin cambios: owner → `apiOwnerFailureResponse` (401 `unauthorized`, 403
 `not_owner` / `email_not_verified` / estado del negocio); POS → los de `requirePosOperator` (403
 `missing_permission`, `pos_disabled`, …). `PUT` es upsert (`ON CONFLICT (business_id) DO UPDATE`, `updated_at = now()`).
-Error inesperado → 500 con el formato `{ error, code }` del dominio, sin mensaje de la base.
+Error inesperado → 503 `{ error }` por `posError`, como el resto del POS, sin mensaje de la base.
 
 ### Modulo `apps/merchant/src/printing/` (solo navegador; `README.md` con el mapa y como extender)
 
@@ -95,7 +96,8 @@ derecha) → linea → TOTAL → fecha y hora → QR (nativo ESC/POS) → avance
 ```ts
 buildTicket(order: TicketOrder, settings: TicketSettings, opts?: { qr?: string; now?: Date }): TicketDoc
 printerSupport(): { ble: boolean; serial: boolean }
-getDevicePrinter(): DevicePrinter | null      // { transport: "ble" | "serial"; name: string; paper: 58 | 80 }
+getDevicePrinter(): DevicePrinter | null      // { transport: "ble" | "serial"; name: string }
+getDevicePaper(): 58 | 80                     // 58 si nunca se eligio (se elige aunque no haya impresora)
 setDevicePaper(paper: 58 | 80): void
 forgetDevicePrinter(): void
 choosePrinter(transport: "ble" | "serial"): Promise<PrintResult>   // abre la lista de Chrome; guarda el nombre
@@ -142,7 +144,7 @@ type PrintFailure = "unsupported" | "no_printer" | "cancelled" | "not_found" | "
 ## Definition of Done
 
 - [ ] `tools/neon-test.sh apps/merchant/src/server/ticket-settings/` en verde, con: sin fila → defaults; `PUT`
-      guarda y `GET` (owner y POS) lo devuelve; `PUT` de A no cambia lo que lee B; staff con `pos` en `PUT` → 403
+      guarda y `GET` (owner y POS) lo devuelve; `PUT { false, false }` se guarda y `buildTicket` sale sin nombre ni mesa; `PUT` de A no cambia lo que lee B; staff con `pos` en `PUT` → 403
       `not_owner`; staff sin `pos` en `GET /api/pos/ticket` → 403 `missing_permission`; POS apagado → 403
       `pos_disabled`; `PUT` con `{ showTable: "si" }` o sin campo → 422 `invalid_input`.
 - [ ] Unitarios de `printing/` en verde: `buildTicket` con las 4 combinaciones del ajuste y orden sin mesa; `qr`
@@ -171,6 +173,15 @@ type PrintFailure = "unsupported" | "no_printer" | "cancelled" | "not_found" | "
 **Protocolo:** el de la skill `protocolo-de-verificacion` (shasum, bitacora antes de medir, etiqueta, revertir con
 diff, leer la asercion del rojo). **Corte:** dos vueltas «el fix abrio la siguiente» → al owner.
 
+### Bitacora (2026-10-09; copias limpias en el scratchpad de la sesion)
+
+| # | Archivo | shasum limpio | Ataca | Resultado ejecutado |
+|---|---|---|---|---|
+| M1 | `server/ticket-settings/settings.ts` | `1a8b0bed9201` | aislamiento: la lectura sin `where business_id` | **ROJO** «ORACULO DE M1»: `expected { showBusinessName: true, …(1) } to deeply equal { showBusinessName: false, …(1) }` (6 passed / 1 failed). Revertida, `diff` limpio |
+| M2 | `printing/ticket/build.ts` | `d4948c794e9c` | `showTable` ignorado | **ROJO** 2 de las 4 combinaciones (`showTable=false`): `expected 'Mesa 4' to be null`, y «bloques apagados no llegan a los bytes». Revertida, `diff` limpio |
+| M3 | `printing/escpos/plain.ts` | `91f0591931ef` | sin quitar diacriticos (`\p{Mn}`) | **SOBREVIVIO** (23/23): equivalente, porque tras `NFD` el acento ya cae fuera de 0x20–0x7E y lo borra el ultimo paso. La linea era redundante y se **borro** (shasum nuevo `331fef44a4bc`) |
+| M3b | `printing/escpos/plain.ts` | `331fef44a4bc` | sin separar acentos (`NFC` en vez de `NFD`) | **ROJO** los 3 «ORACULO DE M3»: `expected 'Caf and pingino' to be 'Cafe Nandu pinguino'`. Revertida, `diff` limpio |
+
 ## Declarado AFUERA (sin oraculo, a proposito)
 
 - Transporte clasico (Web Serial) contra una impresora real: no hay una SPP a mano; solo unitario con fake.
@@ -185,3 +196,16 @@ cerrar: fila del INDEX a `implementada`, ESTADO, y aviso a GPT (`docs/estado/gpt
 ## Abierto
 
 Nada que bloquee.
+
+## Cierre (2026-10-09)
+
+- Neon: `tools/neon-test.sh src/server/ticket-settings/ticket-settings.neon.integration.test.ts` → **7 passed**
+  (migracion 0068 aplicada a la rama de CI por el mismo script).
+- Unitarios `src/printing` → **23 passed**; suite unitaria completa del merchant → 2208 passed / 991 skipped
+  (206 archivos).
+- `pnpm -w run lint` → 0; `tsc --noEmit` merchant y db → 0. `rg -n MUTATION apps tools packages` → vacio.
+- `rg -n "prueba-impresora|PRUEBA-IMPRESORA" apps` → vacio (borradas la pagina y su bitacora).
+- Base local: la 0068 se aplica al levantar el entorno (`/entorno-local arrancar` migra siempre); no se levanto.
+- Hallazgo de la implementacion: `es-EC` da la hora en 12 h («02:05 p. m.»); el ticket usa `hourCycle: "h23"`.
+- Pendiente fuera de esta spec: la 0068 a PROD con OK del owner (proximo pase a live); la prueba de campo
+  cuando GPT cablee el boton.

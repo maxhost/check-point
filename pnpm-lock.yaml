@@ -109,6 +109,9 @@ importers:
       '@photostructure/tz-lookup':
         specifier: 11.7.0
         version: 11.7.0
+      '@point-of-sale/receipt-printer-encoder':
+        specifier: 4.0.1
+        version: 4.0.1
       better-auth:
         specifier: ^1.7.6
         version: 1.7.6(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@neondatabase/serverless@1.1.0)(kysely@0.29.5))(next@16.3.0(@playwright/test@1.63.0)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vitest@4.0.18(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.12))
@@ -440,6 +443,9 @@ packages:
 
   '@better-fetch/fetch@1.3.2':
     resolution: {integrity: sha512-Gs7n99b5tqUC6cQAPbV0uED3IraHB6xQbHLQ/C3l7ZFafHScOx9pQ+DYmP5blbLFShVWLqxNUlI9wi4xU/X+ow==}
+
+  '@canvas/image-data@1.1.0':
+    resolution: {integrity: sha512-QdObRRjRbcXGmM1tmJ+MrHcaz1MftF2+W7YI+MsphnsCrmtyfS0d5qJbk0MeSbUeyM/jCb0hmnkXPsy026L7dA==}
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
@@ -1257,6 +1263,12 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
+  '@point-of-sale/codepage-encoder@3.0.2':
+    resolution: {integrity: sha512-Sx+0sE/XgPtMUNKScHpwTIZiHNd/+Mg0udACQJVwPsxH9kUAgIkRi9kRlmWBMCruwOJadjKLyKs8MO8Bh+VS/A==}
+
+  '@point-of-sale/receipt-printer-encoder@4.0.1':
+    resolution: {integrity: sha512-ALLSmZl0uEH52r9hPffjdxzBBbbjQWPryjXmB0Eb2wsiVE3c2nSvOHEZPNLfgLLSaVAY4F9t1K3ZdI4altPPbQ==}
+
   '@react-types/shared@3.36.1':
     resolution: {integrity: sha512-AzsuD9OfxTOZMMvTRhlN3oHBwOmFN7tDh27LzqmHt4+uOgPhJT7ZM7/kVs/8/o0WxayMUIk3hBmCFRHv1FUoag==}
     peerDependencies:
@@ -1806,6 +1818,12 @@ packages:
 
   caniuse-lite@1.0.30001809:
     resolution: {integrity: sha512-xxWVywk6a6Arlk+hymeycyn/VgqEfLDxupvhH/xiY5SJ/18kmi9o6MiO320DCUzypORHLtvh0I4i04tUhCNHNQ==}
+
+  canvas-dither@1.0.1:
+    resolution: {integrity: sha512-wT1RnV2y9SauibcsfMMCagQTnXmyQq2nJXuX5tTEvo0sXm1vVbJ2r8QxSC3fRQMY3ZgZVq1j54cOvmO4u+Lu/A==}
+
+  canvas-flatten@1.0.1:
+    resolution: {integrity: sha512-UhHeKeWGS23Bm5teZiHk6NEOme1OKCpv6arFovV89dydt0Xz+U4HkPXAKBZS/hmpR15x5U9tDj1ieMQMTwvCAA==}
 
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
@@ -2467,6 +2485,10 @@ packages:
   require-main-filename@2.0.0:
     resolution: {integrity: sha512-NKN5kMDylKuldxYLSUfrbo5Tuzh4hd+2E8NPPX02mZtn1VuREQToYe/ZdlJy+J3uCpfaiGF05e7B8W0iXbQHmg==}
 
+  resize-image-data@0.3.1:
+    resolution: {integrity: sha512-6hVRn2S6W1cdycreA6Vth5XRN2NnGs7/RnVpxNw/1OCK8aCoevRFH2WprmQRZDnnH3e6awLv2tTIPuv7/7xeGg==}
+    engines: {node: '>=8.6.0'}
+
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
@@ -2992,6 +3014,8 @@ snapshots:
 
   '@better-fetch/fetch@1.3.2': {}
 
+  '@canvas/image-data@1.1.0': {}
+
   '@drizzle-team/brocli@0.10.2': {}
 
   '@emnapi/runtime@1.11.3':
@@ -3505,6 +3529,16 @@ snapshots:
     dependencies:
       playwright: 1.63.0
 
+  '@point-of-sale/codepage-encoder@3.0.2': {}
+
+  '@point-of-sale/receipt-printer-encoder@4.0.1':
+    dependencies:
+      '@canvas/image-data': 1.1.0
+      '@point-of-sale/codepage-encoder': 3.0.2
+      canvas-dither: 1.0.1
+      canvas-flatten: 1.0.1
+      resize-image-data: 0.3.1
+
   '@react-types/shared@3.36.1(react@19.2.8)':
     dependencies:
       react: 19.2.8
@@ -3962,6 +3996,10 @@ snapshots:
   camelcase@5.3.1: {}
 
   caniuse-lite@1.0.30001809: {}
+
+  canvas-dither@1.0.1: {}
+
+  canvas-flatten@1.0.1: {}
 
   chai@6.2.2: {}
 
@@ -4544,6 +4582,10 @@ snapshots:
   require-directory@2.1.1: {}
 
   require-main-filename@2.0.0: {}
+
+  resize-image-data@0.3.1:
+    dependencies:
+      '@canvas/image-data': 1.1.0
 
   resolve-from@4.0.0: {}
 

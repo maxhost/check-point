@@ -27,3 +27,4 @@ export * from "./schema/valley";
 export * from "./schema/cross-sale";
 export * from "./schema/dining-table";
 export * from "./schema/pos";
+export * from "./schema/ticket-settings";
