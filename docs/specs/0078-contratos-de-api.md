@@ -112,6 +112,8 @@ codigo nuevo de escritura — ya se acepta hoy.
 
 ### El limite que quien haga la UI tiene que saber
 
+> **Reemplazado por el ADR 0132 (2026-10-09):** el texto libre ahora admite las variables que el programa emite; lo de abajo es historico.
+
 **UNA CLAUSULA DE TEXTO LIBRE NO ADMITE NINGUNA `{{variable}}`.** El renderizador usa el
 allowlist **de la plantilla de esa clausula**, y una clausula sin `templateId` no tiene
 plantilla: su allowlist es **vacia**, asi que cualquier `{{loquesea}}` —incluida

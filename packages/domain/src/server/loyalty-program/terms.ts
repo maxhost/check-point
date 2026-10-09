@@ -151,14 +151,19 @@ export async function renderedTerms(
       }
       const text = clause.text ?? template?.templateMarkdown;
       if (!text) throw new LoyaltyError(422, "Cada cláusula debe tener texto.");
+      // ADR 0132: una clausula de texto libre admite TODAS las variables que este programa
+      // emite (el panel inserta la plantilla como texto y deja sus `{{x}}`). Una variable
+      // que no se emite —desconocida, o de local sin locales— sigue siendo 422.
       return renderTermsText(
         text,
         variables,
-        Array.isArray(template?.variablesAllowlist)
-          ? template.variablesAllowlist.filter(
-              (item): item is string => typeof item === "string",
-            )
-          : [],
+        !template
+          ? Object.keys(variables)
+          : Array.isArray(template.variablesAllowlist)
+            ? template.variablesAllowlist.filter(
+                (item): item is string => typeof item === "string",
+              )
+            : [],
       );
     })
     .join("\n\n");

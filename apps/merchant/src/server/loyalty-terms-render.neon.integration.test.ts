@@ -112,7 +112,7 @@ describe.skipIf(!enabled)("renderedTerms contra Neon (spec 0078)", () => {
     ).rejects.toThrow("La plantilla seleccionada no está disponible.");
   }, 60_000);
 
-  it("texto libre: se guarda tal cual, y con `{{x}}` sigue dando 422", async () => {
+  it("texto libre: se guarda tal cual, resuelve las variables emitidas y una desconocida da 422 (ADR 0132)", async () => {
     const configuration = {
       unitName: "sello",
       unitPlural: "sellos",
@@ -123,11 +123,18 @@ describe.skipIf(!enabled)("renderedTerms contra Neon (spec 0078)", () => {
       business,
     );
     expect(markdown).toBe("Mi TOS propio, sin plantilla.");
+    const resolved = await renderedTerms(
+      stampsInput(configuration, [
+        { text: "Hola {{business_legal_name}}: {{program_kind_label}} en {{program_unit_plural}}." },
+      ]),
+      business,
+    );
+    expect(resolved.markdown).toBe(`Hola ${business.name}: Sellos en sellos.`);
     await expect(
       renderedTerms(
-        stampsInput(configuration, [{ text: "Hola {{business_legal_name}}." }]),
+        stampsInput(configuration, [{ text: "Hola {{no_existe}}." }]),
         business,
       ),
-    ).rejects.toThrow("no está permitida");
+    ).rejects.toThrow("La variable {{no_existe}} no está permitida.");
   }, 60_000);
 });

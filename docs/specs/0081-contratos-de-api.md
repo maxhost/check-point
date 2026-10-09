@@ -190,7 +190,7 @@ minusculas con `_`, entre `{{ }}`:
    el texto usa pero el allowlist no permite es 422, con el mensaje
    `La variable {{x}} no está permitida.`
 3. **Una clausula de TEXTO LIBRE no admite variables**: su allowlist es vacio, asi que
-   cualquier `{{x}}` en un TOS personalizado es 422. Limite declarado desde la 0078.
+   cualquier `{{x}}` en un TOS personalizado es 422. Limite declarado desde la 0078. **Reemplazado por el ADR 0132 (2026-10-09):** el texto libre admite las variables que el programa emite.
 
 ## 7. `GET /api/loyalty-terms/templates` — el DTO cambio
 
