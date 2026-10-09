@@ -325,6 +325,7 @@ desactualizado es peor que no tenerlo.
 | 0180 | 2026-10-08 | **Nueva orden POS**: selección, revisión y guardado sin navegación redundante. | **cerrada** | no | `specs/0180-nueva-orden-revision-pos.md` |
 | 0181 | 2026-10-08 | **Wizard POS**: Mesa, Tomar pedido y Revisar, sin importes al tomar orden. | **cerrada** | no | `specs/0181-wizard-mesa-toma-revision-pos.md` |
 | 0182 | 2026-10-08 | **Mesas del local** (L2, API + DB; UI de GPT; implementa ADR 0131). **Que es:** migracion 0067, `/api/locations/:id/tables` (crear, listar, editar, archivar), `GET /api/pos/tables` con ocupacion, `tableId` en crear/editar orden POS (409 `table_occupied`). **Por que importa:** el POS deja de depender de un texto libre para la mesa. | **implementada** (22/22 Neon, M1/M2 rojas y revertidas). Falta: UI de GPT, migracion a PROD con OK del owner | no | `specs/0182-mesas-del-local.md` |
+| 0183 | 2026-10-09 | **Cobro POS**: QR identifica en Pedido; modal con importe, cambio y acreditación; confirmar cierra con idempotencia. | **cerrada**, solo spec; plan tras clear | no | `specs/0183-pos-escanear-pase-y-confirmar-cobro.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.

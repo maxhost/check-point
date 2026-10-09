@@ -3,34 +3,27 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-08) — DETALLE POS Y BARRA INFERIOR GUARDADOS
+## ⇥ ESTADO (2026-10-09) — SPEC 0183 CERRADA, CLEAR Y PLAN PENDIENTE
 
-Owner pidió commit de todo el trabajo pendiente. UI **25ed581**, rama **dev**,
-sin merge/push. Cabecera abierta: botón MoreVert a izquierda, badge mesa editable
-centro y X derecha. Más acciones textual retirado. Modal acciones sin fecha/autor;
-X de cierre en misma fila del título, mediante headerAction opcional en Dialog.
-SegmentedControl añade fullWidth opcional, activado en POS: Editar / Pedido (N).
-Kit modificado: dialog.tsx y segmented-control.tsx; defaults de otros usos conservados.
+Owner cerró flujo QR→Pedido→Cobrar modal→Confirmar; pidió cerrar spec y luego clear.
+[Spec0183](../specs/0183-pos-escanear-pase-y-confirmar-cobro.md) cerrada, L3, solo
+documentación; [checkpoint](../handoff-0183-pos-cobro-retomar-2026-10-09.md).
+**Al volver: armar plan de implementación antes del código. No implementar hoy.**
+Rama dev, sin merge/push. Botones inline QR/impresora visuales guardados en
+**31d21b7**; no tienen comportamiento. Cobrar aún usa checkout anterior.
 
-Tabs en Pedido sticky con fondo canvas solo al pegarse arriba, transición 200 ms.
-Más separación tabs/listado (+8 px). Pedido compacto: nombre/precio por unidad a
-izquierda, cantidades derecha y subtotal debajo, sin Precio guardado; controles44px.
-Total duplicado al final del listado eliminado. Footer Pedido sin Añadir productos
-ni conteo de artículos: Total: izquierda, importe18px derecha, aire arriba y antes
-de Cobrar; Guardar cambios sustituye Cobrar cuando dirty. Footer Editar solo Guardar
-cambios cuando dirty, oculto si limpio, sin artículos/total/Ver pedido/Cobrar.
+Cliente/cupón en memoria, salir pierde contexto, Cancelar conserva; cerrar consume
+/acredita/asocia en una transacción existente con UUID/cuerpo congelados para retry.
+Spec define preview en centavos/snapshots, regla/unidades/extras, modal Recibido/
+cambio, errores/carreras/auth/cupón cambiado y pruebas/independencia L3.
+Hallazgo comunicado: resolve EXISTENTE da alta saldo0 y last_scan_at; no prometer
+cero DB al escanear, solo cero efectos de venta/canje/acreditación antes de confirmar.
+Impresora fuera, API/kit/servidor sin cambios funcionales nuevos. No nuevas specs
+para ajustes visuales; esta spec sí solicitada expresamente por owner.
 
-Editar comparte apariencia de paso2 nuevo: categorías/búsqueda inline, sticky,
-animaciones, clear Erase, resultados sin precios. Añadir desde listado o búsqueda
-muestra Producto añadido 1400ms, sin saltar al carrito. Nueva revisión conserva su
-toast y scroll al final. Eventos de toast usan clave independiente del scroll.
-Cambio de mesa/local y overlay quedaron en bf026cf; estado anterior35ce469.
-
-Sin specs/ADR/suites/typecheck/lint/navegador adicionales por preferencia vigente;
-formato aplicado, diff-check verde. QA visual de esta iteración pendiente; no PASS
-completo ni spec implementada. API/cache/escrituras intactas. Cambios ajenos
-.claude/skills/gotchas-del-repo/SKILL.md y docs/LECCIONES.md excluidos del commit.
-Última instrucción: commit local, no publicar. Continuar según revisión del owner.
+Números docs sin duplicados, formato/diff-check verdes; no suites/compilación hoy.
+QA/implementación/gates/PASS pendientes. Cambios ajenos gotchas/LECCIONES preservados.
+No publicar para reservar número (dev local según autorización vigente).
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
