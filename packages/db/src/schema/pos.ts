@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import { core } from "./_schemas";
 import { users } from "./auth";
 import { businesses, locations } from "./business";
+import { diningTables } from "./dining-table";
 import { products } from "./catalog";
 import { orders } from "./order";
 
@@ -39,6 +40,11 @@ export const posOrders = core.table(
       onDelete: "set null",
     }),
     tableLabel: text("table_label").notNull(),
+    /** Spec 0182: la mesa elegida, o null con texto libre. Con mesa, `table_label` es la foto
+     * de su nombre. */
+    diningTableId: uuid("dining_table_id").references(() => diningTables.id, {
+      onDelete: "set null",
+    }),
     status: text("status").notNull().default("open"),
     version: integer("version").notNull().default(1),
     createdByUserId: text("created_by_user_id")
@@ -80,6 +86,10 @@ export const posOrders = core.table(
       table.businessId,
       table.closeRequestId,
     ),
+    // Spec 0182: una sola orden abierta por mesa (owner 2026-10-08).
+    uniqueIndex("core_pos_order_open_table_unique")
+      .on(table.diningTableId)
+      .where(sql`${table.status} = 'open'`),
     index("core_pos_order_business_status_idx").on(
       table.businessId,
       table.status,

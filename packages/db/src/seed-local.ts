@@ -3,7 +3,8 @@
  * PROD (owner, ADR 0126: PROD tiene datos personales de clientes reales).
  *
  * - 2 comercios, cada uno con su usuario de merchant (owner, email `@example.test`), un local,
- *   la suscripcion free, 1 programa activo y 3 productos de catalogo.
+ *   la suscripcion free, 1 programa activo y 3 productos de catalogo. El Café tiene 4 mesas
+ *   (spec 0182).
  * - 3 clientes con tarjeta (telefonos de la serie ficticia +54 9 11 5555-0xxx); uno con sellos y
  *   un cupon de bienvenida disponible.
  * - No toca `core.terms_template`: la siembran las migraciones.
@@ -31,6 +32,8 @@ type Business = {
     block: string | null;
   };
   products: [string, string][];
+  /** Spec 0182: nombre y plazas (null = sin plazas). */
+  tables: [string, number | null][];
 };
 
 const BUSINESSES: Business[] = [
@@ -51,6 +54,12 @@ const BUSINESSES: Business[] = [
       ["Medialuna", "1200.00"],
       ["Tostado", "4800.00"],
     ],
+    tables: [
+      ["Mesa 1", 2],
+      ["Mesa 2", 4],
+      ["Mesa 3", 4],
+      ["Barra", null],
+    ],
   },
   {
     n: 2,
@@ -69,16 +78,19 @@ const BUSINESSES: Business[] = [
       ["Factura", "900.00"],
       ["Budín", "5200.00"],
     ],
+    tables: [],
   },
 ];
 
-// Ids fijos por bloque: negocio n → usuario 1n0, local 1n1, programa 1n2, productos 1n3..1n5.
+// Ids fijos por bloque: negocio n → usuario 1n0, local 1n1, programa 1n2, productos 1n3..1n5,
+// mesas 1n6..1n9.
 const ids = (b: Business) => ({
   user: id(100 + b.n * 10),
   business: id(100 + b.n * 10),
   location: id(101 + b.n * 10),
   program: id(102 + b.n * 10),
   products: [id(103 + b.n * 10), id(104 + b.n * 10), id(105 + b.n * 10)],
+  tables: [0, 1, 2, 3].map((i) => id(106 + i + b.n * 10)),
 });
 
 const CONSUMERS = [
@@ -172,6 +184,18 @@ function businessRows(b: Business): Query[] {
         k.business,
         name,
         price,
+      ),
+    ),
+    ...b.tables.map(([name, seats], i) =>
+      q(
+        `insert into core.dining_table (id, business_id, location_id, name, seats, sort_order)
+         values ($1, $2, $3, $4, $5, $6) on conflict do nothing`,
+        k.tables[i],
+        k.business,
+        k.location,
+        name,
+        seats,
+        i,
       ),
     ),
   ];

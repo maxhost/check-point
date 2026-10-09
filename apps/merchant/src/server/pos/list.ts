@@ -25,6 +25,7 @@ export type PosOrderSummary = {
   id: string;
   status: "open" | "closed" | "voided";
   tableLabel: string;
+  tableId: string | null;
   location: { id: string; name: string } | null;
   total: string;
   itemCount: number;
@@ -37,6 +38,7 @@ const summaryColumns = {
   id: posOrders.id,
   status: posOrders.status,
   tableLabel: posOrders.tableLabel,
+  tableId: posOrders.diningTableId,
   locationId: locations.id,
   locationName: locations.name,
   createdAt: posOrders.createdAt,
@@ -102,6 +104,7 @@ export async function listPosOrders(
       id: row.id,
       status: row.status as PosOrderSummary["status"],
       tableLabel: row.tableLabel,
+      tableId: row.tableId,
       location:
         row.locationId && row.locationName !== null
           ? { id: row.locationId, name: row.locationName }

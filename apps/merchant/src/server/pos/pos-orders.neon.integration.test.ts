@@ -50,6 +50,7 @@ describe.skipIf(!posIntegrationEnabled)(
         "location",
         "sale",
         "status",
+        "tableId",
         "tableLabel",
         "total",
         "version",

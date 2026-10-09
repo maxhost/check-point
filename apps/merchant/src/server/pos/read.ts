@@ -49,6 +49,8 @@ export type PosOrderDTO = {
   status: "open" | "closed" | "voided";
   version: number;
   tableLabel: string;
+  /** Spec 0182: la mesa elegida, o null con texto libre. */
+  tableId: string | null;
   location: { id: string; name: string } | null;
   business: { name: string; currencyCode: string };
   items: PosOrderItemDTO[];
@@ -110,6 +112,7 @@ export async function readPosOrder(
       status: posOrders.status,
       version: posOrders.version,
       tableLabel: posOrders.tableLabel,
+      tableId: posOrders.diningTableId,
       locationId: locations.id,
       locationName: locations.name,
       businessName: businesses.name,
@@ -158,6 +161,7 @@ export async function readPosOrder(
     status: row.status as PosOrderDTO["status"],
     version: row.version,
     tableLabel: row.tableLabel,
+    tableId: row.tableId,
     location:
       row.locationId && row.locationName !== null
         ? { id: row.locationId, name: row.locationName }

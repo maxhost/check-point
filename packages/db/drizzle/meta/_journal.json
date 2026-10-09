@@ -470,6 +470,13 @@
       "when": 1791475205307,
       "tag": "0066_pos_ordenes_de_mesa",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1791520042259,
+      "tag": "0067_mesas_del_local",
+      "breakpoints": true
     }
   ]
 }

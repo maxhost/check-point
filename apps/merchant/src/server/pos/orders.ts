@@ -22,6 +22,14 @@ import {
   versionConflict,
 } from "./errors";
 import { assertPosEnabledLocked } from "./module";
+import {
+  type ResolvedTable,
+  locationOfTable,
+  lockTableForOrder,
+  parseTable,
+  resolveTable,
+  translatingOccupied,
+} from "../tables/pos";
 import { type PosOrderDTO, getPosOrder, readPosOrder } from "./read";
 
 /**
@@ -65,30 +73,39 @@ export async function createPosOrder(
   userId: string,
   raw: Record<string, unknown>,
 ): Promise<PosOrderDTO> {
-  const tableLabel = normalizeTableLabel(raw.tableLabel);
-  const locationId = await parseLocation(business.id, raw.locationId);
+  // Spec 0182: con mesa, el local y el nombre salen de la mesa (el `tableLabel` del cuerpo se
+  // ignora); sin mesa, el texto libre de siempre.
+  const table = await parseTable(business.id, raw.tableId);
+  const tableLabel = table ? table.name : normalizeTableLabel(raw.tableLabel);
+  const locationId = table
+    ? await locationOfTable(business.id, table, raw.locationId)
+    : await parseLocation(business.id, raw.locationId);
   // Sin orden todavia no hay lineas existentes: un `lineId` aca es `unknown_line`.
   const { added } = mergeLines([], parseIncomingLines(raw.items));
   const items = await snapshotNewLines(business.id, locationId, added);
 
-  const id = await withDbTransaction(async (tx) => {
-    await assertPosEnabledLocked(tx, business.id);
-    const [row] = await tx
-      .insert(posOrders)
-      .values({
-        businessId: business.id,
-        locationId,
-        tableLabel,
-        createdByUserId: userId,
-      })
-      .returning({ id: posOrders.id });
-    await insertLines(
-      tx,
-      row.id,
-      items.map((item, i) => ({ item, position: added[i].position })),
-    );
-    return row.id;
-  });
+  const id = await translatingOccupied(() =>
+    withDbTransaction(async (tx) => {
+      await assertPosEnabledLocked(tx, business.id);
+      if (table) await lockTableForOrder(tx, business.id, table.id, null);
+      const [row] = await tx
+        .insert(posOrders)
+        .values({
+          businessId: business.id,
+          locationId,
+          tableLabel,
+          diningTableId: table?.id ?? null,
+          createdByUserId: userId,
+        })
+        .returning({ id: posOrders.id });
+      await insertLines(
+        tx,
+        row.id,
+        items.map((item, i) => ({ item, position: added[i].position })),
+      );
+      return row.id;
+    }),
+  );
   return getPosOrder(business.id, id);
 }
 
@@ -131,7 +148,9 @@ export function parseVersion(raw: unknown): number {
 /**
  * `PUT /api/pos/orders/:id` — la lista COMPLETA de lineas (`mergeLines`). Las existentes
  * CONSERVAN su snapshot (precio fijo al agregar): cambiar el local NO re-snapshotea. `locationId`
- * ausente conserva el local; `null`/`""` lo quita; un uuid lo cambia.
+ * ausente conserva el local; `null`/`""` lo quita; un uuid lo cambia. `tableId` (spec 0182) igual:
+ * ausente conserva la mesa, `null` vuelve a texto libre, un uuid la cambia; con mesa, el nombre se
+ * refresca y el local es el de la mesa.
  */
 export async function updatePosOrder(
   business: OperatorBusiness,
@@ -139,12 +158,19 @@ export async function updatePosOrder(
   raw: Record<string, unknown>,
 ): Promise<PosOrderDTO> {
   const version = parseVersion(raw.version);
-  const tableLabel = normalizeTableLabel(raw.tableLabel);
   const incoming = parseIncomingLines(raw.items);
   const current = await readPosOrder(business.id, id);
   if (!current) throw unknownPosOrder();
-  const locationId =
-    raw.locationId === undefined
+  const table: ResolvedTable | null =
+    raw.tableId === undefined
+      ? current.tableId
+        ? await resolveTable(business.id, current.tableId)
+        : null
+      : await parseTable(business.id, raw.tableId);
+  const tableLabel = table ? table.name : normalizeTableLabel(raw.tableLabel);
+  const locationId = table
+    ? await locationOfTable(business.id, table, raw.locationId)
+    : raw.locationId === undefined
       ? (current.location?.id ?? null)
       : await parseLocation(business.id, raw.locationId);
   // Las nuevas se snapshotean ANTES de la transaccion (lectura del catalogo); cuales son nuevas
@@ -159,61 +185,65 @@ export async function updatePosOrder(
   );
 
   try {
-    await withDbTransaction(async (tx) => {
-      const [bumped] = await tx
-        .update(posOrders)
-        .set({
-          tableLabel,
-          locationId,
-          version: sql`${posOrders.version} + 1`,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(posOrders.id, id),
-            eq(posOrders.businessId, business.id),
-            eq(posOrders.status, "open"),
-            eq(posOrders.version, version),
-          ),
-        )
-        .returning({ id: posOrders.id });
-      if (!bumped) throw await whyNotUpdated(tx, business.id, id);
+    await translatingOccupied(() =>
+      withDbTransaction(async (tx) => {
+        if (table) await lockTableForOrder(tx, business.id, table.id, id);
+        const [bumped] = await tx
+          .update(posOrders)
+          .set({
+            tableLabel,
+            diningTableId: table?.id ?? null,
+            locationId,
+            version: sql`${posOrders.version} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(posOrders.id, id),
+              eq(posOrders.businessId, business.id),
+              eq(posOrders.status, "open"),
+              eq(posOrders.version, version),
+            ),
+          )
+          .returning({ id: posOrders.id });
+        if (!bumped) throw await whyNotUpdated(tx, business.id, id);
 
-      const existing = await tx
-        .select({ id: posOrderItems.id })
-        .from(posOrderItems)
-        .where(eq(posOrderItems.posOrderId, id));
-      const merge = mergeLines(
-        existing.map((line) => line.id),
-        incoming,
-      );
-      if (merge.removed.length > 0) {
-        await tx
-          .delete(posOrderItems)
-          .where(
-            and(
-              eq(posOrderItems.posOrderId, id),
-              inArray(posOrderItems.id, merge.removed),
-            ),
-          );
-      }
-      for (const line of merge.kept) {
-        await tx
-          .update(posOrderItems)
-          .set({ quantity: line.quantity, position: line.position })
-          .where(
-            and(
-              eq(posOrderItems.id, line.id),
-              eq(posOrderItems.posOrderId, id),
-            ),
-          );
-      }
-      await insertLines(
-        tx,
-        id,
-        snapshots.map((item, i) => ({ item, position: fresh[i].position })),
-      );
-    });
+        const existing = await tx
+          .select({ id: posOrderItems.id })
+          .from(posOrderItems)
+          .where(eq(posOrderItems.posOrderId, id));
+        const merge = mergeLines(
+          existing.map((line) => line.id),
+          incoming,
+        );
+        if (merge.removed.length > 0) {
+          await tx
+            .delete(posOrderItems)
+            .where(
+              and(
+                eq(posOrderItems.posOrderId, id),
+                inArray(posOrderItems.id, merge.removed),
+              ),
+            );
+        }
+        for (const line of merge.kept) {
+          await tx
+            .update(posOrderItems)
+            .set({ quantity: line.quantity, position: line.position })
+            .where(
+              and(
+                eq(posOrderItems.id, line.id),
+                eq(posOrderItems.posOrderId, id),
+              ),
+            );
+        }
+        await insertLines(
+          tx,
+          id,
+          snapshots.map((item, i) => ({ item, position: fresh[i].position })),
+        );
+      }),
+    );
   } catch (error) {
     await withCurrentOrder(business.id, id, error);
   }
