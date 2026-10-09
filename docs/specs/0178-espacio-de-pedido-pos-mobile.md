@@ -103,3 +103,14 @@ no tuvo ejecución adicional por instrucción del owner. La suite completa y los
 escenarios nuevos de salida/conflicto no se declaran verdes; los checks DoD que
 requieren esa evidencia permanecen abiertos. Claude conserva los gates normales
 antes de publicar. Sin API, kit, servidor, dependencias, merge ni push.
+
+## Ajuste cerrado — márgenes comunes POS
+
+Owner detectó diferencias entre listado, nueva orden y orden abierta. El main
+merchant-shell usa 24 px (48 desde 700 px); counter-shell.counter-flow aplica
+14 px laterales y 16 superiores hasta 959 px; backoffice-home limita listado a
+860 px mientras workspace usa w-full. Unificar main con px-6 pt-6 md:px-12 md:pt-12
+(24 px mobile, 48 desde md), w-full; contenido backoffice-home w-full en todas las
+vistas. Conservar counter-flow solo para comportamiento del pedido, y padding
+inferior existente de navbar/footer/print. Sin CSS, kit ni cambios de navegación,
+API, cache o escrituras. Se revisan formato, lint y guardia; QA visual owner pendiente.
