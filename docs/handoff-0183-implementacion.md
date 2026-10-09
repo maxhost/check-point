@@ -221,3 +221,13 @@ productos/precio/cantidad intacto, ceroescrituras posteriores al escaneo,
 nooverflow y badgeviewport. Capturasbadge390/320 ymodal390 vistas.
 ESLint/typecheck:ui/formato/diff verdes; scopedguard editor increases[].
 Sin publicación, pendientesprincipales0183 conservados.
+
+## Ajuste visual L0 — contexto de cliente discreto
+
+Owner pide fullwidth móvil y diferenciar de tabs. Wrapper w-full/md:w-fit;
+fondo surface-subtle/borde suave, User en círculo neutral, etiqueta Cliente y
+nombre. Se retira segmento verde seleccionado; X discreta y modal conservados.
+Sin cambios de handlers/kit/API/CSS. Cuatro casos existentesverdes3.7s, usados
+para capturas390/320/1280 y regresión de retiro/confirmaciones. Capturas390/1280
+vistas: fullwidth de contenido móvil y compacto desktop. Lint/typecheck:ui,
+formato/diff y scopedguard sin incrementos. Sinpublicación, pendientesprevios.

@@ -630,17 +630,14 @@ export function PosEditor({
             <div
               role="group"
               aria-label="Cliente identificado"
-              className="flex w-fit min-w-0 max-w-full items-center gap-1 rounded-2xl border border-border-strong bg-surface p-1"
+              className="flex w-full min-w-0 max-w-full items-center gap-3 rounded-xl border border-border bg-surface-subtle p-2 md:w-fit"
             >
-              <div className="flex min-w-0 items-center gap-2 rounded-xl bg-primary px-3 py-2">
-                <User
-                  aria-hidden="true"
-                  className="size-5 shrink-0 text-on-primary"
-                />
-                <Text
-                  variant="label"
-                  className="min-w-0 wrap-anywhere text-on-primary!"
-                >
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface text-content-muted">
+                <User aria-hidden="true" className="size-5" />
+              </span>
+              <div className="grid min-w-0 flex-1 gap-1 md:flex-none">
+                <Text variant="small">Cliente</Text>
+                <Text variant="label" className="min-w-0 wrap-anywhere">
                   {payment.resolved.consumer.displayName}
                 </Text>
               </div>
@@ -649,7 +646,7 @@ export function PosEditor({
                 aria-label="Quitar cliente"
                 aria-haspopup="dialog"
                 aria-expanded={removeClientOpen}
-                className="size-11 shrink-0 rounded-xl! bg-primary-soft! p-0!"
+                className="size-11 shrink-0 rounded-full! p-0! text-content-muted!"
                 isDisabled={busy}
                 onPress={() => setRemoveClientOpen(true)}
               >

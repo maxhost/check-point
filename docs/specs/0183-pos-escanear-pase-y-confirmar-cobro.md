@@ -469,3 +469,12 @@ Cobrar conserva su diseño, sin API/kit/CSS ni requests añadidos.
 Pruebas específicas: cliente/cupón conservados al cancelar, retirados juntos al
 confirmar, líneas intactas y cero solicitudes remove/grant/close. Capturas390 y
 320 con nombre largo sin desborde; typecheck/lint/formato/guard de editor.
+
+### Ajuste visual L0 — cliente como contexto, no pestaña (2026-10-09)
+
+Owner pide ancho completo móvil, compacto desktop y menos competencia visual
+con pestañas. Revisión cerrada antes del código: wrapper w-full/md:w-fit, fondo
+neutral suave y borde discreto; retirar segmento verde seleccionado, icono User
+en círculo neutral y textos Cliente/nombre con Text del kit. X discreta conserva
+confirmación y accesibilidad. No handlers/contratos nuevos. Verificación lint/UI
+typecheck y capturas mediante casos existentes; sin nueva suite global.
