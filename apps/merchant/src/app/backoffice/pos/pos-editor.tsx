@@ -5,6 +5,8 @@ import {
   EditPencil as Pen,
   MoreVert,
   NavArrowLeft,
+  Printer,
+  QrCode,
   Xmark,
 } from "iconoir-react";
 import {
@@ -651,10 +653,10 @@ export function PosEditor({
               <Heading level={3}>{money}</Heading>
             </div>
             {invalid && <Text variant="small">{invalid}</Text>}
-            <div className="grid gap-3">
+            <div className="flex items-center gap-3">
               {!order || dirty ? (
                 <Button
-                  fullWidth
+                  className="h-12 min-w-0 flex-1"
                   isLoading={busy}
                   isDisabled={!!invalid || conflict}
                   onPress={() => void save()}
@@ -663,13 +665,29 @@ export function PosEditor({
                 </Button>
               ) : (
                 <Button
-                  fullWidth
+                  className="h-12 min-w-0 flex-1"
                   isDisabled={busy || conflict || !lines.length}
                   onPress={onCheckout}
                 >
                   Cobrar
                 </Button>
               )}
+              <Button
+                variant="quiet"
+                aria-label="QR"
+                className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
+                isDisabled={busy}
+              >
+                <QrCode aria-hidden="true" className="size-6" />
+              </Button>
+              <Button
+                variant="quiet"
+                aria-label="Imprimir"
+                className="close-module size-12 shrink-0 rounded-full! bg-primary-soft! p-0!"
+                isDisabled={busy}
+              >
+                <Printer aria-hidden="true" className="size-6" />
+              </Button>
             </div>
           </>
         ) : surface === "table" ? (
