@@ -1,7 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EditPencil as Pen, NavArrowLeft, Xmark } from "iconoir-react";
+import {
+  EditPencil as Pen,
+  MoreVert,
+  NavArrowLeft,
+  Xmark,
+} from "iconoir-react";
 import {
   Alert,
   Button,
@@ -86,8 +91,41 @@ export function PosEditor({
   const [surface, setSurface] = useState<"table" | "products" | "order">(
     order ? "order" : "table",
   );
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [tabsStuck, setTabsStuck] = useState(false);
+  useEffect(() => {
+    if (!order || surface !== "order") {
+      setTabsStuck(false);
+      return;
+    }
+    let frame = 0;
+    function measure() {
+      frame = 0;
+      const tabs = tabsRef.current;
+      setTabsStuck(
+        !!tabs &&
+          tabs.offsetHeight > 0 &&
+          tabs.getBoundingClientRect().top <= 0,
+      );
+    }
+    function scheduleMeasure() {
+      if (!frame) frame = requestAnimationFrame(measure);
+    }
+    scheduleMeasure();
+    window.addEventListener("scroll", scheduleMeasure, {
+      passive: true,
+      capture: true,
+    });
+    window.addEventListener("resize", scheduleMeasure);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleMeasure, true);
+      window.removeEventListener("resize", scheduleMeasure);
+    };
+  }, [order, surface]);
   const [reviewAdded, setReviewAdded] = useState(0);
   const [addedNotice, setAddedNotice] = useState(false);
+  const [addedNoticeId, setAddedNoticeId] = useState(0);
   const reviewListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!reviewAdded) return;
@@ -314,7 +352,7 @@ export function PosEditor({
   );
   return (
     <div
-      className={`grid min-w-0 gap-4 ${order ? "pb-44" : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
+      className={`grid min-w-0 gap-4 ${order ? (surface === "products" ? (dirty ? "pb-24" : "pb-4") : "pb-44") : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
     >
       <div className="flex items-center justify-between gap-3">
         {!order && surface !== "table" && (
@@ -332,9 +370,21 @@ export function PosEditor({
             <NavArrowLeft aria-hidden="true" className="size-6" />
           </Button>
         )}
-        {(order || surface === "table") && (
+        {order ? (
+          <Button
+            variant="quiet"
+            aria-label="Más acciones"
+            aria-haspopup="dialog"
+            aria-expanded={actionsOpen}
+            className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+            isDisabled={busy}
+            onPress={() => setActionsOpen(true)}
+          >
+            <MoreVert aria-hidden="true" className="size-6" />
+          </Button>
+        ) : surface === "table" ? (
           <div aria-hidden="true" className="size-11 shrink-0" />
-        )}
+        ) : null}
         <div className="grid min-w-0 flex-1 gap-1">
           {!order && (
             <>
@@ -418,17 +468,7 @@ export function PosEditor({
             )}
           </>
         ) : null
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="quiet"
-            isDisabled={busy}
-            onPress={() => setActionsOpen(true)}
-          >
-            Más acciones
-          </Button>
-        </div>
-      )}
+      ) : null}
       {conflict && (
         <Alert kind="error" title="Otra persona modificó este pedido">
           Tus cambios siguen aquí. Revisa ambos pedidos antes de continuar.
@@ -442,18 +482,32 @@ export function PosEditor({
         </Alert>
       )}
       {order && (
-        <SegmentedControl
-          aria-label="Vista del pedido"
-          selectedKey={surface}
-          onSelectionChange={(key) => changeSurface(key as typeof surface)}
-          isDisabled={busy}
-          options={[
-            { id: "products", label: "Productos" },
-            { id: "order", label: `Pedido (${count})` },
-          ]}
-        />
+        <div
+          ref={tabsRef}
+          className={
+            surface === "order"
+              ? `sticky top-0 z-20 py-2 transition-colors duration-200 motion-reduce:transition-none ${tabsStuck ? "bg-canvas" : "bg-transparent"}`
+              : undefined
+          }
+        >
+          <SegmentedControl
+            aria-label="Vista del pedido"
+            fullWidth
+            selectedKey={surface}
+            onSelectionChange={(key) => changeSurface(key as typeof surface)}
+            isDisabled={busy}
+            options={[
+              { id: "products", label: "Editar" },
+              { id: "order", label: `Pedido (${count})` },
+            ]}
+          />
+        </div>
       )}
-      <div className={surface === "products" ? "min-w-0" : "hidden"}>
+      <div
+        className={
+          surface === "products" ? `min-w-0${order ? " pt-2" : ""}` : "hidden"
+        }
+      >
         {catalogError && <Alert kind="error" title={catalogError} />}
         {!catalog ? (
           <Text variant="muted">
@@ -472,12 +526,24 @@ export function PosEditor({
             currencyCode={currencyCode}
             cart={productCart(lines)}
             disabled={busy || conflict}
-            showPrices={!!order}
-            compactSearch={!order}
-            showHeading={!!order}
-            stickyControls={!order}
+            showPrices={false}
+            compactSearch
+            showHeading={false}
+            stickyControls
             allowPriceInput={false}
-            onAdd={(p) => setLines((current) => addProduct(current, p))}
+            onAdd={(p) => {
+              if (
+                p.unitPrice === null ||
+                (lines.length >= 200 &&
+                  !lines.some((line) => line.productId === p.id))
+              )
+                return;
+              setLines((current) => addProduct(current, p));
+              if (order) {
+                setAddedNoticeId((current) => current + 1);
+                setAddedNotice(true);
+              }
+            }}
             onQty={(id, delta) =>
               setLines((current) => productQuantity(current, id, delta))
             }
@@ -490,7 +556,7 @@ export function PosEditor({
         ref={reviewListRef}
         className={
           surface === "order"
-            ? "grid gap-4 scroll-mb-36 md:scroll-mb-4"
+            ? `grid gap-4 scroll-mb-36 md:scroll-mb-4${order ? " pt-2" : ""}`
             : "hidden"
         }
       >
@@ -518,6 +584,7 @@ export function PosEditor({
                 return;
               setLines((current) => addProduct(current, p));
               setReviewAdded((current) => current + 1);
+              setAddedNoticeId((current) => current + 1);
               setAddedNotice(true);
             }}
             onQty={(id, delta) =>
@@ -552,30 +619,39 @@ export function PosEditor({
           showPrices={!!order}
           onRemove={order ? undefined : removeLine}
         />
-        {order && <Text variant="label">Total: {money}</Text>}
       </div>
-      <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0">
-        {order ? (
+      <div
+        className={
+          order && surface === "products" && !dirty
+            ? "hidden"
+            : "counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0"
+        }
+      >
+        {order && surface === "products" ? (
+          dirty && (
+            <>
+              {invalid && <Text variant="small">{invalid}</Text>}
+              <Button
+                fullWidth
+                isLoading={busy}
+                isDisabled={!!invalid || conflict}
+                onPress={() => void save()}
+              >
+                Guardar cambios
+              </Button>
+            </>
+          )
+        ) : order ? (
           <>
             {dirty && !conflict && (
               <Text variant="small">Cambios sin guardar</Text>
             )}
-            <div className="flex items-center justify-between gap-3">
-              <Text variant="small">{count} artículos</Text>
-              <Text variant="label">{money}</Text>
+            <div className="flex items-center justify-between gap-3 pt-2 pb-3">
+              <Text variant="label">Total:</Text>
+              <Heading level={3}>{money}</Heading>
             </div>
             {invalid && <Text variant="small">{invalid}</Text>}
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="secondary"
-                fullWidth
-                isDisabled={busy}
-                onPress={() =>
-                  changeSurface(surface === "order" ? "products" : "order")
-                }
-              >
-                {surface === "order" ? "Añadir productos" : "Ver pedido"}
-              </Button>
+            <div className="grid gap-3">
               {!order || dirty ? (
                 <Button
                   fullWidth
@@ -630,16 +706,18 @@ export function PosEditor({
           </>
         )}
       </div>
-      {!order && surface === "order" && addedNotice && (
-        <Toast
-          key={reviewAdded}
-          message="Producto añadido"
-          kind="success"
-          durationMs={1400}
-          onDismiss={() => setAddedNotice(false)}
-          className="fixed! top-auto! right-auto! bottom-24 left-1/2! z-50 m-0! w-auto! -translate-x-1/2! rounded-full bg-content! px-4 text-on-primary! pointer-events-none whitespace-nowrap"
-        />
-      )}
+      {addedNotice &&
+        ((order && surface === "products") ||
+          (!order && surface === "order")) && (
+          <Toast
+            key={addedNoticeId}
+            message="Producto añadido"
+            kind="success"
+            durationMs={1400}
+            onDismiss={() => setAddedNotice(false)}
+            className="fixed! top-auto! right-auto! bottom-24 left-1/2! z-50 m-0! w-auto! -translate-x-1/2! rounded-full bg-content! px-4 text-on-primary! pointer-events-none whitespace-nowrap"
+          />
+        )}
       <Dialog
         isOpen={!!exitTarget}
         onOpenChange={(open) => {
@@ -728,6 +806,16 @@ export function PosEditor({
         isOpen={actionsOpen}
         onOpenChange={setActionsOpen}
         title="Acciones de la orden"
+        headerAction={
+          <Button
+            variant="quiet"
+            aria-label="Cerrar acciones de la orden"
+            className="close-module size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+            onPress={() => setActionsOpen(false)}
+          >
+            <Xmark aria-hidden="true" className="size-6" />
+          </Button>
+        }
       >
         <div className="grid gap-3">
           {dirty && (
@@ -756,12 +844,6 @@ export function PosEditor({
           >
             Anular
           </Button>
-          {order && (
-            <Text variant="small">
-              {new Date(order.createdAt).toLocaleString("es-EC")} ·{" "}
-              {order.createdBy}
-            </Text>
-          )}
         </div>
       </Dialog>
       <Dialog

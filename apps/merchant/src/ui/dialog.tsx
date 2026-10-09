@@ -14,6 +14,7 @@ export type DialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
+  headerAction?: ReactNode;
   /** `ReactNode`: la baja de suscripcion lleva un link en la descripcion. */
   description?: ReactNode;
   role?: "dialog" | "alertdialog";
@@ -27,6 +28,7 @@ export function Dialog({
   isOpen,
   onOpenChange,
   title,
+  headerAction,
   description,
   role = "dialog",
   isDismissable = true,
@@ -50,13 +52,16 @@ export function Dialog({
           className="outline-none"
         >
           {/* Las clases del `Heading` nivel 2 y del `Text` muted del kit. */}
-          <AriaHeading
-            slot="title"
-            level={2}
-            className="m-0 text-xl font-bold leading-7 text-content"
-          >
-            {title}
-          </AriaHeading>
+          <div className="flex items-center justify-between gap-3">
+            <AriaHeading
+              slot="title"
+              level={2}
+              className="m-0 min-w-0 text-xl font-bold leading-7 text-content"
+            >
+              {title}
+            </AriaHeading>
+            {headerAction}
+          </div>
           {description && (
             <p
               id={descriptionId}

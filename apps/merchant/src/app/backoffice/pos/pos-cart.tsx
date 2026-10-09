@@ -75,7 +75,10 @@ export function PosCart({
   onRemove?: (key: string) => void;
 }) {
   return (
-    <section aria-label="Productos del pedido" className="grid gap-4">
+    <section
+      aria-label="Productos del pedido"
+      className={`grid ${showPrices ? "gap-3" : "gap-4"}`}
+    >
       {!lines.length && (
         <Text variant="muted">
           El pedido está vacío. Añade productos o guarda la mesa para continuar
@@ -83,58 +86,74 @@ export function PosCart({
         </Text>
       )}
       {lines.map((line) => (
-        <div key={line.key} className="grid gap-3 border-b border-border pb-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 break-words">
-              <Text variant="label">{line.name}</Text>
-              {showPrices && (
-                <Text variant="small">
-                  {formatMoney(line.unitPrice, currencyCode)} por unidad
-                  {line.lineId ? " · Precio guardado" : ""}
-                </Text>
+        <div
+          key={line.key}
+          className={
+            showPrices
+              ? "flex items-start gap-3 border-b border-border pb-3"
+              : "grid gap-3 border-b border-border pb-4"
+          }
+        >
+          <div className="min-w-0 flex-1 break-words">
+            <Text variant="label">{line.name}</Text>
+            {showPrices && (
+              <Text variant="small">
+                {formatMoney(line.unitPrice, currencyCode)} por unidad
+              </Text>
+            )}
+          </div>
+          <div
+            className={
+              showPrices ? "grid shrink-0 justify-items-end gap-1" : "contents"
+            }
+          >
+            <div
+              className={`flex items-center ${showPrices ? "gap-2" : "gap-3"}`}
+            >
+              <Button
+                variant="secondary"
+                className="size-11 p-0!"
+                isDisabled={busy}
+                aria-label={`Quitar unidad de ${line.name}${showPrices ? ` a ${line.unitPrice.toFixed(2)}` : ""}`}
+                onPress={() => onQty(line.key, -1)}
+              >
+                −
+              </Button>
+              <Text
+                as="span"
+                variant="label"
+                className={showPrices ? "min-w-6 text-center" : undefined}
+              >
+                {line.quantity}
+              </Text>
+              <Button
+                variant="secondary"
+                className="size-11 p-0!"
+                isDisabled={busy}
+                aria-label={`Añadir unidad de ${line.name}${showPrices ? ` a ${line.unitPrice.toFixed(2)}` : ""}`}
+                onPress={() => onQty(line.key, 1)}
+              >
+                +
+              </Button>
+              {onRemove && (
+                <Button
+                  variant="quiet"
+                  className="ml-auto text-danger!"
+                  isDisabled={busy}
+                  aria-label={`Quitar producto ${line.name}`}
+                  onPress={() => onRemove(line.key)}
+                >
+                  Quitar
+                </Button>
               )}
             </div>
             {showPrices && (
-              <Text variant="label" className="shrink-0 whitespace-nowrap">
+              <Text variant="label" className="whitespace-nowrap text-right">
                 {formatMoney(
                   (Math.round(line.unitPrice * 100) * line.quantity) / 100,
                   currencyCode,
                 )}
               </Text>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              className="size-11 p-0!"
-              isDisabled={busy}
-              aria-label={`Quitar unidad de ${line.name}${showPrices ? ` a ${line.unitPrice.toFixed(2)}` : ""}`}
-              onPress={() => onQty(line.key, -1)}
-            >
-              −
-            </Button>
-            <Text as="span" variant="label">
-              {line.quantity}
-            </Text>
-            <Button
-              variant="secondary"
-              className="size-11 p-0!"
-              isDisabled={busy}
-              aria-label={`Añadir unidad de ${line.name}${showPrices ? ` a ${line.unitPrice.toFixed(2)}` : ""}`}
-              onPress={() => onQty(line.key, 1)}
-            >
-              +
-            </Button>
-            {onRemove && (
-              <Button
-                variant="quiet"
-                className="ml-auto text-danger!"
-                isDisabled={busy}
-                aria-label={`Quitar producto ${line.name}`}
-                onPress={() => onRemove(line.key)}
-              >
-                Quitar
-              </Button>
             )}
           </div>
         </div>

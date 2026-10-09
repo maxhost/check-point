@@ -13,6 +13,7 @@ export type SegmentedControlProps = {
   selectedKey: Key;
   onSelectionChange: (id: Key) => void;
   isDisabled?: boolean;
+  fullWidth?: boolean;
   tourAnchor?: string;
 };
 
@@ -22,6 +23,7 @@ export function SegmentedControl({
   selectedKey,
   onSelectionChange,
   isDisabled,
+  fullWidth = false,
   tourAnchor,
   ...props
 }: SegmentedControlProps) {
@@ -37,7 +39,10 @@ export function SegmentedControl({
       }}
       isDisabled={isDisabled}
       data-tour={tourAnchor}
-      className="inline-flex w-fit gap-1 rounded-md border border-border-strong bg-surface p-1"
+      className={cx(
+        "inline-flex gap-1 rounded-md border border-border-strong bg-surface p-1",
+        fullWidth ? "w-full" : "w-fit",
+      )}
     >
       {options.map((option) => (
         <ToggleButton
@@ -46,6 +51,7 @@ export function SegmentedControl({
           className={({ isSelected, isFocusVisible, isDisabled }) =>
             cx(
               "min-h-10 cursor-pointer rounded-sm px-4 text-base font-bold outline-none transition-colors duration-[var(--duration-fast)]",
+              fullWidth && "min-w-0 flex-1",
               isSelected
                 ? "bg-primary text-on-primary"
                 : "bg-transparent text-content hover:bg-surface-subtle",
