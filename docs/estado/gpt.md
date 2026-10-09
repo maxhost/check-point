@@ -3,6 +3,22 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0179: NAVBAR POS
+
+Owner confirmó POS / Nueva orden destacada / Mostrador. UI local en dev: tres
+columnas, Nueva orden central usa Button del kit e icono Plus con la clase
+mobile-counter-access existente, mismos tokens/paleta del backoffice. Evento local
+compartido abre editor desde listado autorizado sin escrituras ni refresh; botón
+superior permanece solo en escritorio. Navbar sigue oculta dentro del pedido.
+Sin kit, API, servidor, CSS, dependencias, merge ni push. Spec 0179 reservada en
+3da4356; implementación en el commit ui: destacar Nueva orden en navbar mobile POS.
+
+Typecheck 6 paquetes, ESLint UI/fixtures, guardia 3 archivos sin aumentos, formato,
+números y diff-check verdes. Fixture POS ahora selecciona segmento pos; demás
+fixtures conservan loyalty. Sin suites adicionales por preferencia del owner.
+QA visual owner con pnpm dev:local pendiente; no marcar implementada aún.
+Cambios ajenos gotchas/LECCIONES preservados, staging vacío al entregar.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0178: ENTREGA A CLAUDE
 
 UI POS commiteada en **eb5a950**, spec reservada en **92c5913**. Nueva orden y
