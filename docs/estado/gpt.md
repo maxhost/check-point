@@ -3,6 +3,14 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — ACENTO Y TRASH EN CLIENTE
+
+Commit a7e0bef devlocal. Owner pide borde noverde, precisa1px y papelera roja.
+Cliente usa border-accent naranja por defecto y TrashIconoir/text-danger;
+fondo/ancho responsive y confirmación intactos. L0 lint/typecheck:ui/diff verdes,
+sin nueva suite ni captura. Spec/handoff0183 actualizados, sin kit/CSS/API/push.
+Commits --only preservan ajenos; QA/gateglobal previos pendientes.
+
 ## ⇥ AJUSTE (2026-10-09) — CLIENTE COMO CONTEXTO VISUAL
 
 Commit99e56c1 devlocal. Owner pide fullwidth móvil/compactodesktop y menos
