@@ -3,7 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ PREPARACIÓN MAIN (2026-10-09) — SOLO FORMATO PENDIENTE
+## ⇥ MAIN LOCAL (2026-10-09) — MERGE COMPLETADO, SIN PUSH
+
+Owner entrega cierreClaude ef769b6 (Prettier14archivos, format:check/diff0 y
+printing23/23) y estado4c9032b con árbol limpio. Comprobados commits/rutas,
+main ancestro de dev. Merge --ff-only ejecutado: main3e26701→4c9032b, sin
+conflictos ni push. Este registro se commitea en dev y se incorpora también
+por fastforward a main; se deja checkoutmain para QA local antes de live.
+
+Gates acumulados reales: typecheck/lint/guard/unit2458/build/Neon3256 verdes,
+e2e completo final288/21skip verde, formato corregido/verificado por Claude.
+Sin repetir suites por docs/formato; no se afirma segunda verify completa.
+Owner informa0067/0068 YA aplicadas enPROD con snapshot
+pre-0067-0068-2026-10-09 y SQL de integridad: no migrar de nuevo. EstadoClaude
+confirma69migraciones y tablas/columna/índices/datos intactos.
+Publicación no ejecutada: pushmain pendiente de OK y QAowner enmainlocal.
+
+## ⇥ PREPARACIÓN MAIN (2026-10-09) — HISTÓRICO DEL GATE
 
 Owner autoriza todos los commits y dev→main, live después. Notas ajenas pendientes
 guardadas e1f685a con autorización de todos los cambios. Plan cierre3c4eab9.

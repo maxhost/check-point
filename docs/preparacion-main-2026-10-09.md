@@ -1,5 +1,15 @@
 # Preparación de dev para main — 2026-10-09
 
+## Cierre
+
+Claude resolvió formato en ef769b6: format:check y diff en0; printing23/23.
+Estado4c9032b y árbol limpio comprobados por GPT. Merge local --ff-only
+main3e26701→4c9032b ejecutado sin conflictos. Este registro se incorpora también
+a main mediante fastforward. No push ni publicación; QA owner mainlocal pendiente.
+0067/0068 ya aplicadas enPROD por Claude según entrega owner y estadoClaude,
+con snapshot pre-0067-0068-2026-10-09. No ejecutar migraciones otra vez.
+Lo que sigue es el historial de la verificación, con bloqueos ya resueltos.
+
 Owner autoriza guardar todos los cambios y llevar dev a main; live después.
 ADR0128 exige verify verde antes del merge. Commit notas pendientes e1f685a.
 
