@@ -3,6 +3,23 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — IDENTIFICACIÓN POS CON C ANIMADA
+
+Owner pidió pantalla loading intermedia y toast al encontrar cliente.
+Mini plan L1 cerrado en1660b87, código68ab865, dev local sin merge/push.
+pos-scan mantiene fullscreen durante resolve con C oficial centrada/pulso,
+texto solo sr-only, reduced-motion sin animación y Cancelar alcanzable.
+Toast compartido Cliente identificado solo tras éxito vigente; nuevo escaneo
+limpia aviso, cancelar/error/tardío no avisan éxito. No kit/CSS/API ni dinero.
+
+3pruebas específicas verdes2.1s (éxito/loading/reducedmotion, cancelartardío,
+error/auth); typecheck6verde, lint/formato/diff verdes. Dos capturas390px vistas.
+Guardgeneral rojo por nuevos archivos ajenos prueba-impresora; countFile
+antes/después del cambio POS:increases[] ambos. Handoff0183 registra límites.
+QA físico y gateglobal de0183 siguen pendientes; PASSindependiente76ff4ed
+es del flujo anterior, ajuste L1 no usó subagentes ni suiteglobal.
+Cambiosajenos gotchas/LECCIONES/PARQUEADO/prueba-impresora/investigación preservados.
+
 ## ⇥ ESTADO (2026-10-09) — 0183 LOCAL, PASS AUTOMATIZADO INDEPENDIENTE
 
 Código **03fad03**, corrección **76ff4ed**, rama dev sin merge/push.
