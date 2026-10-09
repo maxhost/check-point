@@ -3,6 +3,16 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ CORRECCIÓN (2026-10-09) — TOAST POS ALCANZABLE EN VIEWPORT
+
+Owner no veía toast. Regla counter-flow.toast positionstatic lo dejaba después
+pedido fuera pantalla. Mini plan6b31c78, fixec69ffb: Toast compartido fixed
+arriba centrado por utilidades explícitas, sin CSS/kit ni cambios de resolve.
+Regresión20líneas: rojo antes viewportratio0, verde después positionfixed y
+viewport. Tres pruebas específicasverdes1.9s, typecheck6/lint/formato/diff verdes;
+captura390×600vista. Handoff0183 registra evidencia. Devlocal sin merge/push.
+Cambios ajenos preservados; QA físico/gateglobal previos siguen pendientes.
+
 ## ⇥ AJUSTE (2026-10-09) — IDENTIFICACIÓN POS CON C ANIMADA
 
 Owner pidió pantalla loading intermedia y toast al encontrar cliente.
