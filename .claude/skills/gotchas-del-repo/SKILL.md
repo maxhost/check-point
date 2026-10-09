@@ -22,6 +22,11 @@ dominio. El registro historico de `mistake→rule` vive en `docs/LECCIONES.md`.
   UI (browsers: `pnpm exec playwright install chromium`); Neon solo de las suites que importan lo
   cambiado, o entero ante esquema/SQL/config. Su tabla final va al handoff. La CI corre todo y no se
   espera: se mira con `pnpm ci:status`.
+- **Antes de commitear UI de `apps/merchant/src`, `node tools/ui-guard.ts --base origin/main`** (1 s). Un L1 sin
+  `verify` no lo corre y el rojo aparece recien al salir a live: nada de `<button>`/`onClick` nativos ni selectores
+  nuevos en `globals.css`; `Button` (`variant="quiet"`, `onPress`) y `Text` del kit con utilidades.
+- **`pnpm verify` con el ambiente local arriba (`pnpm dev:local`) deja los e2e sin correr**: Next no levanta un
+  segundo dev server en `:3200`. Bajar el ambiente antes de `verify` y volver a levantarlo despues.
 - **Las suites `.neon.integration` (168, medido 2026-10-04) se auto-skipean** sin sus dos variables, y vitest no
   lee `.env.local`: van con `tools/neon-test.sh [archivo]`. **Nunca contra `DATABASE_URL`: es `main`, o sea PROD.**
   Entera (~20 min) = CI. Detalle mas abajo («Las suites `.neon.integration`…»).

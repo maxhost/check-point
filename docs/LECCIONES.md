@@ -2076,6 +2076,12 @@ de variable no alcanza» y no alcanzo como texto. **Regla:** hook `env-read-guar
 `.env` real con cat/head/tail/cut/awk/sed/grep/etc.; la salida es un parser que solo emita clave y largo. Mira el texto
 del comando, asi que tambien frena un heredoc que mencione las dos cosas: los docs se editan con Edit/Write.
 
+## 2026-10-08 — Un L1 de UI commiteado con nativos que el ui-guard rechaza
+
+El boton cerrar de la guia y «Ayuda» se hicieron con `<button onClick>` y 5 selectores nuevos en `globals.css`. Typecheck,
+lint y unit pasaron; el ui-guard (ADR 0123) recien salto en el `pnpm verify` previo al merge. **Regla:** en la skill
+`gotchas-del-repo`, correr `node tools/ui-guard.ts --base origin/main` antes de commitear UI del merchant.
+
 ## Flujo de trabajo
 
 1. **Leer `docs/estado/claude.md` antes de empezar.** Es el estado real, no lo que diga el chat. Y correr
