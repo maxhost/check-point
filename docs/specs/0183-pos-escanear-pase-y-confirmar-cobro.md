@@ -4,7 +4,7 @@ fecha: 2026-10-09
 estado: cerrada
 resumen: Escanear pase desde Pedido, conservar cliente y cupón solo en memoria y confirmar cierre y acreditación desde un modal de cobro con cambio y regla del programa.
 disjunta: no
-archivos: apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-checkout.tsx, apps/merchant/src/app/backoffice/pos/pos-coupon.tsx, apps/merchant/src/app/backoffice/pos/pos-ticket.tsx, apps/merchant/src/app/backoffice/pos/pos-scan.tsx, apps/merchant/src/app/backoffice/pos/pos-payment.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.test.ts, tests/e2e/pos.spec.ts, tests/e2e/support/pos-counter-harness.tsx
+archivos: apps/merchant/src/ui/dialog.tsx, apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-checkout.tsx, apps/merchant/src/app/backoffice/pos/pos-coupon.tsx, apps/merchant/src/app/backoffice/pos/pos-ticket.tsx, apps/merchant/src/app/backoffice/pos/pos-scan.tsx, apps/merchant/src/app/backoffice/pos/pos-payment.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.ts, apps/merchant/src/app/backoffice/pos/pos-payment-preview.test.ts, tests/e2e/pos.spec.ts, tests/e2e/support/pos-counter-harness.tsx
 ---
 
 # 0183 — Escanear pase y confirmar cobro en POS
@@ -52,7 +52,8 @@ calculadora de cambio, errores, accesibilidad, aislamiento y reintentos.
 **No entra:** acciones de la impresora nueva (sigue visual, modal de acciones
 conserva impresión existente), mesas de 0182, medios de pago, propinas, pagos
 parciales/divididos, fiscalidad, canje de premios, cambios de programa/Mostrador,
-nuevas rutas o migraciones, modificar servidor/paquetes/kit, polling de órdenes,
+nuevas rutas o migraciones, modificar servidor/paquetes, ampliar kit fuera de la
+variante de pantalla completa de Dialog autorizada abajo, polling de órdenes,
 autosave, nuevos colores/dependencias, almacenamiento local o publicación.
 
 ## Contrato existente y límites comprobados
@@ -116,9 +117,11 @@ recuperación de contexto ni de intento tras recarga: no hay persistencia nueva.
 
 QR habilitado con orden guardada, abierta, no vacía, sin dirty/conflicto/cierre en
 curso. No guarda modificaciones implícitamente: si dirty, aviso para guardar.
-Escáner en Dialog del kit, título «Escanear pase», X/Cancelar y QrScanner existente;
-entrada «Código del pase» / «Leer pase» sirve para lector físico o cámara denegada.
-Una lectura por montaje; desmontar cámara al detectar, cancelar, resolver, cambiar
+Escáner en Dialog del kit a pantalla completa, título «Escanear pase», X/Cancelar
+y QrScanner existente. Por decisión del owner del 2026-10-09 se retira la entrada
+manual «Código del pase» / «Leer pase», con su label y ayuda. Si se deniega la
+cámara, explicar el error y permitir cancelar/reabrir tras habilitar el permiso;
+no inventar identificación sin escaneo. Una lectura por montaje; desmontar cámara al detectar, cancelar, resolver, cambiar
 orden o revocar sesión. Un guard evita dobles lecturas simultáneas.
 
 Resolver bien sustituye contexto anterior, limpia selección local del beneficio
@@ -169,6 +172,9 @@ Cambios externos de programa pueden cambiar acreditación final; no ofrecer una
 garantía que el contrato actual no entrega. No añadir rutas de quote en esta spec.
 
 ### Modal Cobrar
+
+Dialog ocupa toda la pantalla, igual que el scanner. El contenido puede
+desplazarse dentro del viewport disponible, también con teclado abierto.
 
 Solo abre sobre snapshot guardado/no vacío/no conflictivo, sin cerrar. Revalidar
 coupon-state al abrir si hay cliente; sin cliente no requiere esa lectura.
@@ -233,7 +239,11 @@ por impresión, abrir modal, cambiar tab o calcular cambio.
 ### Accesibilidad, móvil y compatibilidad
 
 Kit Dialog/NumberField/Button/Text, tokens/Tailwind y headerAction existente;
-no nativos/eventos nativos nuevos ni CSS crudo. Foco dentro del modal, retorno
+no nativos/eventos nativos nuevos ni CSS crudo en pantallas. El owner autorizó
+explícitamente a GPT el 2026-10-09 a añadir esta variante puntual de Dialog en
+el kit (excepción a la zona de Claude); los demás diálogos conservan su default.
+La variante limita altura al viewport disponible y permite scroll; ocupar toda
+la pantalla por sí solo no sustituye ese requisito al aparecer el teclado. Foco dentro del modal, retorno
 al QR/Cobrar al cancelar, estados/errores anunciados sin duplicar anuncios.
 Móvil 390 px y 320 px: sin overflow horizontal, teclado y modal con acciones
 alcanzables mediante scroll. Si falta una capacidad al kit, pedirla a Claude;
@@ -255,6 +265,7 @@ transversal que requiera un ADR adicional.
 
 | Archivo | Acción |
 |---|---|
+| apps/merchant/src/ui/dialog.tsx | Variante fullscreen con scroll/viewport; default conservado, excepción puntual autorizada |
 | pos-console.tsx | Propietario de sesión transitoria, navegación, snapshot y resultado |
 | pos-editor.tsx | QR/Cobrar, cliente/beneficio y total en Pedido |
 | pos-payment.ts (nuevo) | Máquina de estados, generación, revalidación y cierre idempotente |
@@ -267,8 +278,8 @@ transversal que requiera un ADR adicional.
 | tests/e2e/support/pos-counter-harness.tsx | Fixtures que consumen contrato vigente |
 
 Rutas abreviadas arriba son apps/merchant/src/app/backoffice/pos salvo tests;
-frontmatter contiene lista completa. No tocar kit, servidor, API, paquetes,
-migraciones o tooling. **No disjunta** con 0170/0178/0181 (mismos componentes).
+frontmatter contiene lista completa. No tocar servidor, API, paquetes, migraciones o tooling; en el kit únicamente
+Dialog para la variante fullscreen expresamente autorizada por el owner. **No disjunta** con 0170/0178/0181 (mismos componentes).
 0182 servidor ya implementado: preservar DTO; UI de mesas no forma parte del cobro.
 Un implementador para la feature; revisión independiente después, no edición
 concurrente de archivos compartidos. Esta sesión no despacha implementación.

@@ -4,6 +4,16 @@ Fecha: 2026-10-09. Spec [0183](specs/0183-pos-escanear-pase-y-confirmar-cobro.md
 cerrada, L3. Este documento concreta la ejecución; todavía no implementa.
 Trabajo local en `dev`, sin merge ni push, según ADR 0128 y checkpoint vigente.
 
+## Ajuste del owner durante implementación (2026-10-09)
+
+El owner pidió ambos modales a pantalla completa y retiró la entrada manual
+Código del pase (campo, label y ayuda). Autorizó expresamente a GPT añadir la
+variante puntual fullscreen a Dialog, como excepción al ownership del kit.
+Mantener scroll/altura dentro del viewport disponible, incluido teclado; default
+de otros diálogos conservado. Tests de identificación usan cámara simulada con
+getUserMedia/BarcodeDetector y comprueban tracks.stop, sin depender del campo
+manual retirado. Este ajuste reemplaza las referencias al lector manual abajo.
+
 ## Punto de partida comprobado
 
 - HEAD al iniciar: `88ac58c`; botones visuales en `31d21b7`.
@@ -142,8 +152,9 @@ QA contra Docker/Colima local; nunca DATABASE_URL de producción. No leer/loguea
 secrets. Neon solo con tools/neon-test.sh y coordinación Claude/revisor.
 
 La primera comprobación UI debe probar altura y scroll de Dialog con teclado.
-Si el kit no alcanza, documentar la capacidad faltante para Claude; no modificar
-kit ni compensarlo con CSS/nativos fuera de la zona. Esa limitación bloquea el
+El bloqueo de altura se reprodujo antes del ajuste. Resolverlo ahora con la
+variante fullscreen de Dialog autorizada explícitamente; no ampliar otras piezas
+del kit ni compensar el layout con CSS/nativos en pantallas. Esa limitación bloquea el
 criterio de accesibilidad hasta resolverla, no justifica marcarlo cumplido.
 
 Ejecutar los comandos exactos de 0183: preview Vitest, POS y regresiones
