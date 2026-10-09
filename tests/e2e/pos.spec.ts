@@ -3463,3 +3463,92 @@ test("0183 Pedido actualizado aparece solo al guardar edición con éxito", asyn
   ).toBeVisible();
   expect(saves).toBe(2);
 });
+
+for (const width of [390, 320]) {
+  test(`0183 badge de cliente confirma retiro y conserva pedido a ${width}`, async ({
+    page,
+  }) => {
+    await setup(page);
+    await customerRoutes(page);
+    const name =
+      width === 320
+        ? "María Alejandra NombreMuyLargoSinEspaciosParaComprobarElAjusteDelBadge"
+        : "Cliente de prueba";
+    await page.route("**/api/pos/resolve", (route) =>
+      route.fulfill({ json: { ...resolved, consumer: { displayName: name } } }),
+    );
+    await page.setViewportSize({ width, height: 844 });
+    await open(page);
+    await scan(page);
+    const writes: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/") && request.method() !== "GET")
+        writes.push(request.method() + " " + request.url());
+    });
+    const badge = page.getByRole("group", {
+      name: "Cliente identificado",
+      exact: true,
+    });
+    await expect(badge).toBeInViewport();
+    await expect(badge.getByText(name, { exact: true })).toBeVisible();
+    await expect(
+      badge
+        .getByRole("button", { name: "Quitar cliente", exact: true })
+        .locator("svg"),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `/private/tmp/0183-cliente-badge-${width}.png`,
+      animations: "disabled",
+    });
+    await badge
+      .getByRole("button", { name: "Quitar cliente", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "Quitar cliente de la orden",
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+    await page.screenshot({
+      path: `/private/tmp/0183-cliente-quitar-${width}.png`,
+      animations: "disabled",
+    });
+    await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(badge).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Cupón válido", exact: true }),
+    ).toBeVisible();
+    await badge
+      .getByRole("button", { name: "Quitar cliente", exact: true })
+      .click();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(badge).toBeVisible();
+    await badge
+      .getByRole("button", { name: "Quitar cliente", exact: true })
+      .click();
+    await dialog
+      .getByRole("button", { name: "Quitar cliente", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    await expect(badge).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Cupón válido", exact: true }),
+    ).toHaveCount(0);
+    const products = page.getByRole("region", { name: "Productos del pedido" });
+    await expect(products.getByText("Café", { exact: true })).toBeVisible();
+    await expect(
+      products.getByText("$10,00 por unidad", { exact: true }),
+    ).toBeVisible();
+    await expect(products.getByText("1", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Cobrar", exact: true }),
+    ).toBeEnabled();
+    expect(writes).toEqual([]);
+  });
+}

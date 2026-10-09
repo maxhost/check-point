@@ -7,6 +7,7 @@ import {
   NavArrowLeft,
   Printer,
   QrCode,
+  User,
   Xmark,
 } from "iconoir-react";
 import {
@@ -136,6 +137,7 @@ export function PosEditor({
   const [addedNoticeId, setAddedNoticeId] = useState(0);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [updatedNotice, setUpdatedNotice] = useState(false);
+  const [removeClientOpen, setRemoveClientOpen] = useState(false);
   const reviewListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!reviewAdded) return;
@@ -625,7 +627,35 @@ export function PosEditor({
         )}
         {order && payment.resolved && (
           <div className="grid gap-3">
-            <Text variant="label">{payment.resolved.consumer.displayName}</Text>
+            <div
+              role="group"
+              aria-label="Cliente identificado"
+              className="flex w-fit min-w-0 max-w-full items-center gap-1 rounded-2xl border border-border-strong bg-surface p-1"
+            >
+              <div className="flex min-w-0 items-center gap-2 rounded-xl bg-primary px-3 py-2">
+                <User
+                  aria-hidden="true"
+                  className="size-5 shrink-0 text-on-primary"
+                />
+                <Text
+                  variant="label"
+                  className="min-w-0 wrap-anywhere text-on-primary!"
+                >
+                  {payment.resolved.consumer.displayName}
+                </Text>
+              </div>
+              <Button
+                variant="quiet"
+                aria-label="Quitar cliente"
+                aria-haspopup="dialog"
+                aria-expanded={removeClientOpen}
+                className="size-11 shrink-0 rounded-xl! bg-primary-soft! p-0!"
+                isDisabled={busy}
+                onPress={() => setRemoveClientOpen(true)}
+              >
+                <Xmark aria-hidden="true" className="size-5" />
+              </Button>
+            </div>
             <PosCoupon
               state={payment.resolved.couponState}
               order={order}
@@ -635,13 +665,6 @@ export function PosEditor({
               busy={busy || dirty || conflict}
               excludedId={payment.excludedId}
             />
-            <Button
-              variant="quiet"
-              isDisabled={busy}
-              onPress={payment.removeClient}
-            >
-              Quitar cliente
-            </Button>
             {payment.preview?.error &&
               !(
                 payment.resolved.couponState.status === "selected" &&
@@ -654,7 +677,7 @@ export function PosEditor({
             <Button
               variant="quiet"
               isDisabled={busy}
-              onPress={payment.removeClient}
+              onPress={() => setRemoveClientOpen(true)}
             >
               Quitar cliente
             </Button>
@@ -805,6 +828,36 @@ export function PosEditor({
         message={updatedNotice ? "Pedido actualizado" : null}
         onDismiss={() => setUpdatedNotice(false)}
       />
+      <Dialog
+        isOpen={removeClientOpen}
+        onOpenChange={(open) => {
+          if (!busy) setRemoveClientOpen(open);
+        }}
+        isDismissable={!busy}
+        title="Quitar cliente de la orden"
+        description="Se quitarán el cliente y su beneficio de esta orden. Los productos del pedido se conservarán."
+      >
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onPress={() => setRemoveClientOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            isDisabled={busy}
+            onPress={() => {
+              if (busy) return;
+              payment.removeClient();
+              setRemoveClientOpen(false);
+            }}
+          >
+            Quitar cliente
+          </Button>
+        </div>
+      </Dialog>
       <Dialog
         isOpen={discardOpen}
         onOpenChange={(open) => {

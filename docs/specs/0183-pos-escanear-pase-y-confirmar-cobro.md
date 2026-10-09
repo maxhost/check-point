@@ -452,3 +452,20 @@ de anular. Handler/confirmación de anulación y bloqueos busy/dirty/conflict
 intactos; no tocar botón Imprimir de Pedido ni trabajo concurrente0184. Adaptar
 regresión que invocaba la opción retirada, conservar render de ticket en media
 print. Lint/typecheck específicos y diff; sin nueva suite global ni kit/API.
+
+### Ajuste L1 — cápsula de cliente en Pedido (2026-10-09)
+
+Owner pide agrupar cliente identificado en badge similar a mesa/pestañas, con
+icono para quitar y confirmación. Mini plan cerrado: pos-editor sustituye nombre
+suelto/Quitar cliente por cápsula con contorno y fondo seleccionado primary,
+icono User y nombre legible, Xmark en Button del kit con aria-label Quitar
+cliente. Grupo identificado accesible, nombre largo se ajusta sin overflow.
+Dialog Quitar cliente de la orden: Cancelar/Escape conserva asociación y cupón;
+confirmar Quitar cliente llama removeClient existente y cierra. Avisa que también
+retira el beneficio de esta orden, sin alterar productos. Error clientError
+abre la misma confirmación. Busy bloquea retiro. Solo UI detalle/Pedido, modal
+Cobrar conserva su diseño, sin API/kit/CSS ni requests añadidos.
+
+Pruebas específicas: cliente/cupón conservados al cancelar, retirados juntos al
+confirmar, líneas intactas y cero solicitudes remove/grant/close. Capturas390 y
+320 con nombre largo sin desborde; typecheck/lint/formato/guard de editor.

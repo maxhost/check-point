@@ -204,3 +204,20 @@ trabajo concurrente0184 intactos. Regresión existente adaptada a ausencia de
 opción y estilo danger; preserva ticket en mediaprint, sin ejecutar navegador
 por L0. Lint y typecheck:ui merchant/diff verdes. Sin kit/API/CSS nuevos,
 sin publicación. Cambios ajenos preservados.
+
+## Ajuste L1 — cliente identificado en cápsula
+
+Owner pide badge en Pedido similar a mesa/pestañas. Editor agrupa nombre con
+UserIconoir, selección primary en contorno surface, Xmark con botón44/accesible.
+Quitar abre Dialog; Cancelar/Escape conserva cliente/cupón; confirmar llama
+removeClient existente y cierra. Error clientError usa mismo diálogo. Busy
+bloquea. Modal Cobrar intacto, sin kit/API/CSS ni escrituras nuevas.
+
+Primera corrida específica5verdes/1rojo: nombre sin espacios desbordaba320px.
+Se corrigió min-width/overflow-wrap:anywhere; última2/2verdes1.6s a390/320,
+log0183-client-badge-final.log. Cuatro regresiones de loading/confirmaciones
+verdes en corrida inicial. Oráculos: cancel/Escape, retirada conjunta, snapshot
+productos/precio/cantidad intacto, ceroescrituras posteriores al escaneo,
+nooverflow y badgeviewport. Capturasbadge390/320 ymodal390 vistas.
+ESLint/typecheck:ui/formato/diff verdes; scopedguard editor increases[].
+Sin publicación, pendientesprincipales0183 conservados.
