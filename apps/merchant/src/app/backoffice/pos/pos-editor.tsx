@@ -246,7 +246,7 @@ export function PosEditor({
     else onCancel();
   }
   async function save(exitAfter = false) {
-    if (invalid || busy || conflict) return;
+    if (invalid || busy || conflict || (!order && surface !== "order")) return;
     const result = await onSave({
       ...(order ? { version: baseline!.version } : {}),
       tableLabel: table.trim(),
@@ -291,7 +291,9 @@ export function PosEditor({
     </div>
   );
   return (
-    <div className="grid min-w-0 gap-4 pb-44 md:pb-0 print:hidden">
+    <div
+      className={`grid min-w-0 gap-4 ${order ? "pb-44" : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="grid min-w-0 gap-1">
           <Heading level={1}>{order ? table : "Nueva orden"}</Heading>
@@ -351,16 +353,18 @@ export function PosEditor({
           </Button>
         </Alert>
       )}
-      <SegmentedControl
-        aria-label="Vista del pedido"
-        selectedKey={surface}
-        onSelectionChange={(key) => changeSurface(key as typeof surface)}
-        isDisabled={busy}
-        options={[
-          { id: "products", label: "Productos" },
-          { id: "order", label: `Pedido (${count})` },
-        ]}
-      />
+      {order && (
+        <SegmentedControl
+          aria-label="Vista del pedido"
+          selectedKey={surface}
+          onSelectionChange={(key) => changeSurface(key as typeof surface)}
+          isDisabled={busy}
+          options={[
+            { id: "products", label: "Productos" },
+            { id: "order", label: `Pedido (${count})` },
+          ]}
+        />
+      )}
       <div className={surface === "products" ? "min-w-0" : "hidden"}>
         {catalogError && <Alert kind="error" title={catalogError} />}
         {!catalog ? (
@@ -392,6 +396,18 @@ export function PosEditor({
         )}
       </div>
       <div className={surface === "order" ? "grid gap-4" : "hidden"}>
+        {!order && (
+          <div className="flex items-center justify-between gap-3">
+            <Heading level={2}>Revisar pedido</Heading>
+            <Button
+              variant="quiet"
+              isDisabled={busy}
+              onPress={() => changeSurface("products")}
+            >
+              Volver a productos
+            </Button>
+          </div>
+        )}
         <PosCart
           lines={lines}
           currencyCode={currencyCode}
@@ -410,41 +426,65 @@ export function PosEditor({
         <Text variant="label">Total: {money}</Text>
       </div>
       <div className="counter-detailed-footer grid gap-2 bg-surface md:static md:w-full md:translate-x-0">
-        <div className="flex items-center justify-between gap-3">
-          <Text variant="small">{count} artículos</Text>
-          <Text variant="label">{money}</Text>
-        </div>
-        {invalid && <Text variant="small">{invalid}</Text>}
-        <div className="grid grid-cols-2 gap-3">
+        {order ? (
+          <>
+            <div className="flex items-center justify-between gap-3">
+              <Text variant="small">{count} artículos</Text>
+              <Text variant="label">{money}</Text>
+            </div>
+            {invalid && <Text variant="small">{invalid}</Text>}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="secondary"
+                fullWidth
+                isDisabled={busy}
+                onPress={() =>
+                  changeSurface(surface === "order" ? "products" : "order")
+                }
+              >
+                {surface === "order" ? "Añadir productos" : "Ver pedido"}
+              </Button>
+              {!order || dirty ? (
+                <Button
+                  fullWidth
+                  isLoading={busy}
+                  isDisabled={!!invalid || conflict}
+                  onPress={() => void save()}
+                >
+                  {order ? "Guardar cambios" : "Guardar orden"}
+                </Button>
+              ) : (
+                <Button
+                  fullWidth
+                  isDisabled={busy || conflict || !lines.length}
+                  onPress={onCheckout}
+                >
+                  Cobrar
+                </Button>
+              )}
+            </div>
+          </>
+        ) : surface === "products" ? (
           <Button
-            variant="secondary"
             fullWidth
             isDisabled={busy}
-            onPress={() =>
-              changeSurface(surface === "order" ? "products" : "order")
-            }
+            onPress={() => changeSurface("order")}
           >
-            {surface === "order" ? "Añadir productos" : "Ver pedido"}
+            Revisar pedido
           </Button>
-          {!order || dirty ? (
+        ) : (
+          <>
+            {invalid && <Text variant="small">{invalid}</Text>}
             <Button
               fullWidth
               isLoading={busy}
-              isDisabled={!!invalid || conflict}
+              isDisabled={!!invalid}
               onPress={() => void save()}
             >
-              {order ? "Guardar cambios" : "Guardar orden"}
+              Guardar orden
             </Button>
-          ) : (
-            <Button
-              fullWidth
-              isDisabled={busy || conflict || !lines.length}
-              onPress={onCheckout}
-            >
-              Cobrar
-            </Button>
-          )}
-        </div>
+          </>
+        )}
       </div>
       <Dialog
         isOpen={!!exitTarget}
@@ -453,16 +493,32 @@ export function PosEditor({
         }}
         isDismissable={!busy}
         title="¿Salir con cambios sin guardar?"
-        description="Guarda el pedido, descarta los cambios o sigue trabajando."
+        description={
+          !order && surface === "products"
+            ? "Revisa el pedido antes de guardar, descarta los cambios o sigue trabajando."
+            : "Guarda el pedido, descarta los cambios o sigue trabajando."
+        }
       >
         <div className="grid gap-3">
-          <Button
-            isLoading={busy}
-            isDisabled={!!invalid || conflict}
-            onPress={() => void save(true)}
-          >
-            Guardar y salir
-          </Button>
+          {!order && surface === "products" ? (
+            <Button
+              isDisabled={busy}
+              onPress={() => {
+                setExitTarget(null);
+                changeSurface("order");
+              }}
+            >
+              Revisar pedido
+            </Button>
+          ) : (
+            <Button
+              isLoading={busy}
+              isDisabled={!!invalid || conflict}
+              onPress={() => void save(true)}
+            >
+              Guardar y salir
+            </Button>
+          )}
           <Button
             variant="secondary"
             isDisabled={busy}

@@ -49,7 +49,7 @@ No disjunta con 0178. Sin nuevas suites por preferencia del owner.
 
 ## Definition of Done
 
-- [ ] Typecheck, lint, formato, guardia UI y números verdes.
+- [x] Typecheck, lint, formato, guardia UI y números verdes.
 - [ ] Owner verifica selección sin tabs/importe/Guardar, revisión con cantidades,
       total y Guardar; volver conserva catálogo, X protege cambios, fallo no pierde.
 
@@ -58,3 +58,10 @@ No disjunta con 0178. Sin nuevas suites por preferencia del owner.
 0, L1. Sin suites adicionales ni build global; QA owner con pnpm dev:local.
 Spec cerrada hasta evidencia real de QA. Sin merge/push; commits propios dev.
 Sin decisiones abiertas.
+
+## Verificación local
+
+Typecheck 6 paquetes verde (3,59 s), ESLint, formato, guardia UI 4 archivos sin
+aumentos, números sin duplicados y diff-check. Escenarios e2e existentes adaptados
+a revisión previa y ausencia de resumen global; no ejecutados por preferencia del
+owner. Sin nuevas suites ni QA visual de GPT; owner debe probar pnpm dev:local.

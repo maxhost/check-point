@@ -195,8 +195,20 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
   await page.getByRole("button", { name: "Nueva orden" }).click();
   await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Mesa 4");
   await expect(
+    page.getByRole("radio", { name: "Productos", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Guardar orden", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Revisar pedido", exact: true })
+    .click();
+  await expect(
     page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }),
   ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Volver a productos", exact: true })
+    .click();
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
   await page
@@ -208,6 +220,9 @@ test("crear con local y precio escrito; editar conserva snapshot y lineId; impri
   await page
     .getByRole("spinbutton", { name: "Precio unitario de Especial" })
     .press("Tab");
+  await page
+    .getByRole("button", { name: "Revisar pedido", exact: true })
+    .click();
   await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
   expect(createBody).toEqual({
@@ -588,14 +603,14 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
   await catalog
     .getByRole("button", { name: "Agregar un Café", exact: true })
     .click();
-  await expect(page.getByText("2 artículos", { exact: true })).toBeVisible();
+  await expect(catalog.locator(".counter-qty output")).toHaveText("2");
   await catalog
     .getByRole("button", { name: "Quitar un Café", exact: true })
     .click();
   await catalog
     .getByRole("button", { name: "Quitar un Café", exact: true })
     .click();
-  await expect(page.getByText("0 artículos", { exact: true })).toBeVisible();
+  await expect(catalog.locator(".counter-qty output")).toHaveCount(0);
   await expect(
     catalog.getByRole("button", { name: "Quitar un Café", exact: true }),
   ).toHaveCount(0);
@@ -619,9 +634,12 @@ test("POS reutiliza catálogo de Mostrador: ranking HTTP, categorías en carruse
       name: /^Guardar (orden|cambios)$/,
       exact: true,
     }),
-  ).toBeInViewport();
+  ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Ver pedido", exact: true }),
+    page.locator(".counter-detailed-footer").getByText(/artículos|\$/),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Revisar pedido", exact: true }),
   ).toBeInViewport();
   expect(
     await page.evaluate(
@@ -783,6 +801,9 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
   await page.getByRole("button", { name: "Agregar Café", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Revisar pedido", exact: true })
+    .click();
   await page.getByRole("button", { name: /^Guardar (orden|cambios)$/ }).click();
   await expect(
     page.getByRole("radio", { name: "Productos", exact: true }),

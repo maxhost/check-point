@@ -3,6 +3,18 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ ESTADO (2026-10-08) — SPEC 0180: NUEVA ORDEN CON REVISIÓN
+
+Spec cerrada antes de código en 60b773b. Owner cuestionó tabs/botones duplicados y
+resumen fijo durante selección. Nueva orden: catálogo sin tabs ni total/cantidad
+fijos, única CTA Revisar pedido; revisión con líneas editables, Total y Guardar orden.
+Volver a productos conserva catálogo montado/draft. No crea desde selección,
+incluso salida protegida ofrece revisar antes de guardar. Orden abierta conserva
+su UI; cache/contrato/API/Mostrador/kit intactos, sin autosave.
+Typecheck 6 paquetes (3,59 s), ESLint, formato, guardia 4 archivos sin aumentos,
+números y diff-check verdes. E2e existentes adaptados sin ejecución adicional.
+QA visual owner con pnpm dev:local pendiente. Dev, sin merge/push, ajenos preservados.
+
 ## ⇥ AJUSTE (2026-10-08) — MÁRGENES COMUNES POS
 
 Owner pidió alinear listado, nueva orden y orden abierta. Ajuste 0178 cerrado en
