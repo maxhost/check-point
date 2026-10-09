@@ -371,3 +371,23 @@ cerrados: resolve tiene alta/visita existentes; previews no son quote garantizad
 cliente/cupón/intento no se restauran tras recarga; impresora visual fuera del scope.
 Si owner exige consulta estrictamente sin escrituras o quote garantizado, cambia
 el alcance y se solicita contrato HTTP a Claude antes de implementar esa variante.
+
+## Ajuste visual L1 — transición de identificación (2026-10-09)
+
+Pedido por owner después del PASS automatizado. Mini plan cerrado antes del código:
+
+- `pos-scan.tsx` reemplaza texto visible Identificando cliente por pantalla intermedia
+  fullscreen con la C oficial de CheckPass centrada, animación de pulso y
+  `motion-reduce:animate-none`. Estado anunciado solo a lectores de pantalla.
+  Cancelar sigue alcanzable; resolución permanece en modal hasta terminar.
+- `pos-payment.ts` publica aviso Cliente identificado únicamente tras resolve exitoso
+  vigente. Aviso temporal con Toast existente, descartable; nuevo escaneo limpia aviso.
+  Errores y cancelaciones no generan aviso exitoso ni consumen respuestas tardías.
+- Prueba puntual en `tests/e2e/pos.spec.ts`: mantener resolve pendiente, observar
+  logo/loading sin texto visible ni toast prematuro; al resolver vuelve a Pedido y
+  muestra toast. Cancelar sigue protegido por generaciones existentes.
+- Verificar typecheck, lint/formato y guard de archivos tocados, pruebas específicas
+  de transición/cancelación, captura visual. Sin suite global ni subagentes (ADR0129).
+
+Solo presentación y aviso; sin retraso mínimo artificial, cambios de dinero,
+contratos, kit, persistencia o permisos. La spec principal conserva sus pendientes.
