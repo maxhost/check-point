@@ -18,6 +18,7 @@ export function PosScan({ payment }: { payment: PosPayment }) {
         message={payment.notice}
         kind="success"
         onDismiss={payment.dismissNotice}
+        className="fixed! top-6! right-auto! bottom-auto! left-1/2! m-0! w-auto! -translate-x-1/2! whitespace-nowrap"
       />
       <Dialog
         variant="fullscreen"

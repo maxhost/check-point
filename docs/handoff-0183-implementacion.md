@@ -133,3 +133,18 @@ ESLint y Prettier específicos/diff verdes. Guardglobal contra1660b87 rojo por
 archivos ajenos prueba-impresora; countFile antes/después de pos-scan y
 pos-payment registra increases:[] en ambos. Espec principal conserva
 QA físico/gateglobal pendiente; no nueva revisión independiente exigida L1.
+
+## Corrección L1 — toast fuera de pantalla
+
+Owner vio loading pero no aviso. Regla globals.css4366 counter-flow.toast hacía
+estático el Toast de PosScan al final del pedido. La prueba anterior comprobaba
+visibilidad CSS, insuficiente para viewport. Mini plan6b31c78 antes del código.
+pos-scan usa utilidades fixed explícitas y posición superior centrada; mismo
+Toast, mensaje/duración/resolve intactos. Sin CSS/kit nuevos.
+
+Regresión pedido20líneas/390×600 antes:ROJO viewport ratio0,
+/private/tmp/0183-toast-before.log. Después:3/3verdes1.9s (pedido largo,
+loading/éxito/reducedmotion, cancelar/tardío),0183-toast-after.log. Posición
+computed fixed y aviso dentroviewport verificados. Captura toast-pedido-largo
+vista. ESLint/Prettier/diff y typecheck6verdes3.029s. Local, no publicación;
+pendientes principales0183 conservados.

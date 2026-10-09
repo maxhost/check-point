@@ -3197,3 +3197,37 @@ test("0183 cancelar loading de identificación ignora éxito tardío sin toast",
     page.getByText("Cliente de prueba", { exact: true }),
   ).toHaveCount(0);
 });
+
+test("0183 toast de cliente queda dentro del viewport con pedido largo", async ({
+  page,
+}) => {
+  await setup(page);
+  await customerRoutes(page);
+  await page.route(
+    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    (route) =>
+      route.fulfill({
+        json: {
+          ...baseOrder,
+          items: Array.from({ length: 20 }, (_, index) => ({
+            ...baseOrder.items[0],
+            lineId: `line-${index}`,
+            name: `Café ${index + 1}`,
+          })),
+          total: "200.00",
+        },
+      }),
+  );
+  await page.setViewportSize({ width: 390, height: 600 });
+  await open(page);
+  await scan(page);
+  const toast = page.getByText("Cliente identificado", { exact: true });
+  await expect(toast).toBeInViewport();
+  expect(
+    await toast.evaluate((element) => getComputedStyle(element).position),
+  ).toBe("fixed");
+  await page.screenshot({
+    path: "/private/tmp/0183-toast-pedido-largo.png",
+    animations: "disabled",
+  });
+});
