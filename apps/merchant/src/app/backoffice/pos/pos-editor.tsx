@@ -313,6 +313,7 @@ export function PosEditor({
   }
   async function save(exitAfter = false) {
     if (invalid || busy || conflict || (!order && surface !== "order")) return;
+    setUpdatedNotice(false);
     const result = await onSave({
       ...(order ? { version: baseline!.version } : {}),
       tableLabel: table.trim(),
@@ -322,7 +323,10 @@ export function PosEditor({
     if (!result) return;
     apply(result);
     if (exitAfter) leave();
-    else changeSurface("order");
+    else {
+      changeSurface("order");
+      if (order) setUpdatedNotice(true);
+    }
   }
   function removeLine(key: string) {
     const index = lines.findIndex((line) => line.key === key);
@@ -827,7 +831,7 @@ export function PosEditor({
               setAddedNotice(false);
               setDiscardOpen(false);
               changeSurface("order");
-              setUpdatedNotice(true);
+              setUpdatedNotice(false);
             }}
           >
             Descartar cambios

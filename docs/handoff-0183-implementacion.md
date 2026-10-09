@@ -184,3 +184,13 @@ restaurado, producto nuevo eliminado, cero escrituras, tab y toastviewport.
 Capturasinline/modal390px vistas;1280 también capturado. Typecheck6/lint/formato,
 diff y guardscoped de editor sin incrementos. Sin kit/CSS/API, sin publicación;
 QA/gateglobal principal pendientes.
+
+## Corrección L1 — Pedido actualizado solamente al guardar
+
+Owner corrigió copy/trigger anterior; mini plan326183a. Descartar limpia aviso
+y vuelve a Pedido sin toast. Guardar edición existente publica ConfirmationToast
+solo después de onSave exitoso/apply(result); fallo conserva Editar y no avisa
+éxito. Guardar y salir/nueva orden siguen iguales. Sin contratos/kit nuevos.
+Tres pruebasverdes2.7s: descarte sinaviso390/1280 y guardadofallido→exitoso con
+aviso solamente en éxito. Log/private/tmp/0183-save-notice.log. Typecheck6verde
+3.281s, lint/formato/diff verdes. Local sinpublicación; pendientes0183 intactos.

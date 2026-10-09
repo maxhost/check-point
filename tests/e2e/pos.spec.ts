@@ -3387,7 +3387,7 @@ for (const width of [390, 1280]) {
     ).toBeEnabled();
     await expect(
       page.getByText("Pedido actualizado", { exact: true }),
-    ).toBeInViewport();
+    ).toHaveCount(0);
     expect(writes).toEqual([]);
     await page.screenshot({
       path: `/private/tmp/0183-descartar-pedido-${width}.png`,
@@ -3395,3 +3395,68 @@ for (const width of [390, 1280]) {
     });
   });
 }
+
+test("0183 Pedido actualizado aparece solo al guardar edición con éxito", async ({
+  page,
+}) => {
+  await setup(page);
+  let saves = 0;
+  await page.route(
+    "**/api/pos/orders/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+    (route) => {
+      if (route.request().method() !== "PUT")
+        return route.fulfill({ json: baseOrder });
+      saves++;
+      if (saves === 1)
+        return route.fulfill({
+          status: 422,
+          json: {
+            code: "invalid_items",
+            error: "No se pudo guardar el pedido.",
+          },
+        });
+      return route.fulfill({
+        json: {
+          ...baseOrder,
+          version: 2,
+          items: [{ ...baseOrder.items[0], quantity: 2, lineTotal: "20.00" }],
+          total: "20.00",
+        },
+      });
+    },
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await page.getByRole("radio", { name: "Editar", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Agregar un Café", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: "No se pudo guardar el pedido.",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Pedido actualizado", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("radio", { name: "Editar", exact: true }),
+  ).toBeChecked();
+  await page
+    .getByRole("button", { name: "Guardar cambios", exact: true })
+    .click();
+  await expect(page.getByRole("radio", { name: /^Pedido/ })).toBeChecked();
+  await expect(
+    page.getByText("Pedido actualizado", { exact: true }),
+  ).toBeInViewport();
+  await expect(
+    page
+      .getByRole("region", { name: "Productos del pedido" })
+      .getByText("2", { exact: true }),
+  ).toBeVisible();
+  expect(saves).toBe(2);
+});
