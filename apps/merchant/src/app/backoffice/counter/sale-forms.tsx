@@ -22,6 +22,7 @@ export function DetailedSale({
   allowPriceInput = true,
   searchOnly = false,
   compactSearch = false,
+  showHeading = true,
 }: {
   products: CounterProduct[];
   categories: { id: string; name: string }[];
@@ -42,6 +43,7 @@ export function DetailedSale({
   /** Compact catalog search for adding items while reviewing a POS draft. */
   searchOnly?: boolean;
   compactSearch?: boolean;
+  showHeading?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(searchOnly);
@@ -162,6 +164,67 @@ export function DetailedSale({
     );
   }
 
+  const searchButton = (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-expanded={searchOpen}
+      aria-label={searchOpen ? "Cerrar búsqueda" : "Buscar"}
+      onClick={() => {
+        setSearchOpen(!searchOpen);
+        setQuery("");
+      }}
+    >
+      {compactSearch ? (
+        searchOpen ? (
+          <Xmark aria-hidden="true" width={24} height={24} />
+        ) : (
+          <Search aria-hidden="true" width={24} height={24} />
+        )
+      ) : searchOpen ? (
+        "Cerrar búsqueda"
+      ) : (
+        "Buscar"
+      )}
+    </button>
+  );
+  const categoryControls = (
+    <div
+      className={`counter-categories${showHeading ? "" : " min-w-0 flex-1"}`}
+      role="group"
+      aria-label="Categorías"
+    >
+      <button
+        type="button"
+        disabled={disabled}
+        className={categoryId === null ? "is-active" : ""}
+        onClick={() => setCategoryId(null)}
+      >
+        Todos
+      </button>
+      {visibleCategories.map((category) => (
+        <button
+          key={category.id}
+          type="button"
+          disabled={disabled}
+          className={categoryId === category.id ? "is-active" : ""}
+          onClick={() => setCategoryId(category.id)}
+        >
+          {category.name}
+        </button>
+      ))}
+      {hasOther && (
+        <button
+          type="button"
+          disabled={disabled}
+          className={categoryId === "other" ? "is-active" : ""}
+          onClick={() => setCategoryId("other")}
+        >
+          Otros
+        </button>
+      )}
+    </div>
+  );
   return (
     <div className="counter-detailed">
       {habitual.length > 0 && !searchOpen && (
@@ -199,30 +262,11 @@ export function DetailedSale({
         </details>
       )}
       {!searchOnly && (
-        <div className="counter-catalog-heading">
-          <h3>Catálogo</h3>
-          <button
-            type="button"
-            disabled={disabled}
-            aria-expanded={searchOpen}
-            aria-label={searchOpen ? "Cerrar búsqueda" : "Buscar"}
-            onClick={() => {
-              setSearchOpen(!searchOpen);
-              setQuery("");
-            }}
-          >
-            {compactSearch ? (
-              searchOpen ? (
-                <Xmark aria-hidden="true" width={24} height={24} />
-              ) : (
-                <Search aria-hidden="true" width={24} height={24} />
-              )
-            ) : searchOpen ? (
-              "Cerrar búsqueda"
-            ) : (
-              "Buscar"
-            )}
-          </button>
+        <div
+          className={`counter-catalog-heading${showHeading ? "" : " gap-2"}${!showHeading && searchOpen ? " justify-end" : ""}`}
+        >
+          {showHeading ? <h3>Catálogo</h3> : !searchOpen && categoryControls}
+          {searchButton}
         </div>
       )}
       {searchOpen || searchOnly ? (
@@ -240,43 +284,9 @@ export function DetailedSale({
           onChange={(event) => setQuery(event.target.value)}
           autoFocus={!searchOnly}
         />
-      ) : (
-        <div
-          className="counter-categories"
-          role="group"
-          aria-label="Categorías"
-        >
-          <button
-            type="button"
-            disabled={disabled}
-            className={categoryId === null ? "is-active" : ""}
-            onClick={() => setCategoryId(null)}
-          >
-            Todos
-          </button>
-          {visibleCategories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              disabled={disabled}
-              className={categoryId === category.id ? "is-active" : ""}
-              onClick={() => setCategoryId(category.id)}
-            >
-              {category.name}
-            </button>
-          ))}
-          {hasOther && (
-            <button
-              type="button"
-              disabled={disabled}
-              className={categoryId === "other" ? "is-active" : ""}
-              onClick={() => setCategoryId("other")}
-            >
-              Otros
-            </button>
-          )}
-        </div>
-      )}
+      ) : showHeading ? (
+        categoryControls
+      ) : null}
       <ul className="counter-product-list">{shown.map(card)}</ul>
       {shown.length === 0 && (!searchOnly || query.trim()) && (
         <p className="counter-empty">

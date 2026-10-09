@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Xmark } from "iconoir-react";
+import { NavArrowLeft, Xmark } from "iconoir-react";
 import {
   Alert,
   Button,
@@ -323,13 +323,42 @@ export function PosEditor({
       className={`grid min-w-0 gap-4 ${order ? "pb-44" : surface === "products" ? "pb-24" : "pb-36"} md:pb-0 print:hidden`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-1">
+        {!order && surface !== "table" && (
+          <Button
+            variant="quiet"
+            className="size-11 shrink-0 rounded-full! bg-primary-soft! p-0!"
+            aria-label={
+              surface === "order" ? "Volver a tomar pedido" : "Volver a mesa"
+            }
+            isDisabled={busy}
+            onPress={() =>
+              changeSurface(surface === "order" ? "products" : "table")
+            }
+          >
+            <NavArrowLeft aria-hidden="true" className="size-6" />
+          </Button>
+        )}
+        <div className="grid min-w-0 flex-1 gap-1">
           <Heading level={1}>{order ? table : stepTitle}</Heading>
-          <Text variant="muted">
-            {order ? "Orden abierta" : `Paso ${step} de 3`}
-            {!order && surface !== "table" ? ` · ${table}` : ""}
-            {locationName ? ` · ${locationName}` : ""}
-          </Text>
+          {order ? (
+            <Text variant="muted">
+              Orden abierta{locationName ? ` · ${locationName}` : ""}
+            </Text>
+          ) : (
+            <>
+              <Text variant="small" className="sr-only">
+                Paso {step} de 3
+              </Text>
+              {(surface !== "table" || locationName) && (
+                <Text variant="small">
+                  {surface !== "table" ? table : ""}
+                  {locationName
+                    ? `${surface !== "table" ? " · " : ""}${locationName}`
+                    : ""}
+                </Text>
+              )}
+            </>
+          )}
           {order && (
             <Text variant={dirty ? "label" : "small"}>
               {conflict
@@ -366,17 +395,7 @@ export function PosEditor({
               </Alert>
             )}
           </>
-        ) : (
-          <Button
-            variant="quiet"
-            isDisabled={busy}
-            onPress={() =>
-              changeSurface(surface === "order" ? "products" : "table")
-            }
-          >
-            {surface === "order" ? "Volver a tomar pedido" : "Volver a mesa"}
-          </Button>
-        )
+        ) : null
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -440,6 +459,7 @@ export function PosEditor({
             disabled={busy || conflict}
             showPrices={!!order}
             compactSearch={!order}
+            showHeading={!!order}
             allowPriceInput={false}
             onAdd={(p) => setLines((current) => addProduct(current, p))}
             onQty={(id, delta) =>

@@ -1647,6 +1647,15 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
     page.getByRole("heading", { name: "Tomar pedido", exact: true }),
   ).toBeVisible();
   await expect(
+    page.getByRole("heading", { name: "Catálogo", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("button", { name: "Volver a mesa", exact: true })
+      .locator("svg"),
+  ).toBeVisible();
+
+  await expect(
     page.getByRole("textbox", { name: "Nombre de mesa" }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Agregar Café", exact: true }).click();

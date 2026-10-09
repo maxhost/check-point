@@ -3,6 +3,18 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
+
+Owner pidió menos texto en paso 2. Ajuste 0181 cerrado en d739938 antes de código:
+progreso Paso N de 3 solo sr-only; título de etapa y contexto mesa/local pequeño.
+Volver a mesa/tomar pedido pasa a flecha circular junto al título (aria-label
+conservado); X protegida sigue a derecha. Catálogo ya no tiene título/fila adicional
+en nueva: categorías y lupa en una fila. DetailedSale showHeading true por defecto
+conserva Mostrador/abiertas. Sin CSS, kit, API ni cambios de cache/escrituras.
+Typecheck 6 paquetes (4,348 s), lint, formato, guardia 6 archivos sin aumentos,
+diff-check verdes. E2e existente adaptado sin ejecución, QA visual owner pendiente.
+Dev, sin merge/push, cambios ajenos preservados.
+
 ## ⇥ AJUSTE (2026-10-08) — PRECARGA POS EN MESA
 
 Owner pidió catálogo listo antes de Tomar pedido. Ajuste 0181 cerrado en a179fcc:

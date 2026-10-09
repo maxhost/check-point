@@ -111,3 +111,7 @@ cuando false une categorías/lupa, manteniendo búsqueda/filtro/draft y ranking.
 Mostrador y orden existente conservan header/comportamiento actual. Revisión searchOnly
 conservada. Sin CSS, kit, API, cache ni escrituras. Lint/guardia/typecheck, QA owner
 pendiente; no nuevas suites ni merge/push.
+
+Ajuste de cabecera aplicado: typecheck 6 paquetes (4,348 s), ESLint, formato,
+guardia 6 archivos sin aumentos y diff-check verdes. Aserción e2e existente para
+Catálogo ausente y flecha accesible añadida sin ejecución. QA visual owner pendiente.
