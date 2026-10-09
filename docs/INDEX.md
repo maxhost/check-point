@@ -321,6 +321,7 @@ desactualizado es peor que no tenerlo.
 | 0177 | 2026-10-08 | **Jerarquía de orden abierta**: mesa como título y acciones cómodas con Cobrar principal. | **cerrada**, UI local; 33 pruebas POS verdes | no | `specs/0177-jerarquia-de-orden-abierta.md` |
 | 0178 | 2026-10-08 | **Espacio de pedido POS**: Pedido/Productos compartidos, guardado explícito y salida protegida. | **cerrada**, UI local validada por owner; entrega a Claude | no | `specs/0178-espacio-de-pedido-pos-mobile.md` |
 | 0179 | 2026-10-08 | **Navbar POS**: Nueva orden central destacada entre POS y Mostrador. | **cerrada** | no | `specs/0179-navbar-pos-nueva-orden.md` |
+| 0180 | 2026-10-08 | **Nueva orden POS**: selección, revisión y guardado sin navegación redundante. | **cerrada** | no | `specs/0180-nueva-orden-revision-pos.md` |
 
 **"Disjunta?"** = si el trabajo no comparte archivos con otra spec abierta. Es lo que
 habilita paralelizar. Lo decide la spec, no el orquestador en runtime.
