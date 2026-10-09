@@ -3,7 +3,7 @@
 Implementación local dev. Reserva de spec d4d3819. Sin merge/push.
 
 Nueva orden usa Mesa / Tomar pedido / Revisar pedido; Guardar pedido es acción final.
-Mesa valida contexto antes de catálogo; siguientes pasos muestran contexto compacto,
+Mesa precarga catálogo al conocer local; siguientes pasos muestran contexto compacto,
 sin formulario repetido. Catálogo compartido de Mostrador, categorías/ranking servidor,
 lupa opcional. Revisión sin precios/total, búsqueda para añadir sin salir del pedido,
 cantidad menos/más, Quitar por key y Deshacer con línea/posición/cantidad original.
@@ -22,3 +22,9 @@ owner de no más suites. No afirmar suite verde ni QA visual comprobado. Owner d
 probar pnpm dev:local: etapas, teclado/búsqueda, regreso, quitar/deshacer, error de
 save, cero/mesa vacía; comprobar Mostrador en local antes de pasar a main.
 Cambios ajenos gotchas/LECCIONES preservados; staging vacío al entregar.
+
+## Continuación tras reinicio
+
+Ajustes posteriores: 625daaf precarga en Mesa, 9e827b9 cabecera/flecha y categorías
+con lupa sin título Catálogo. Contexto completo y pendientes de revisión visual en
+[checkpoint POS](handoff-pos-retomar-2026-10-08.md). Retomar dev, paso 2.
