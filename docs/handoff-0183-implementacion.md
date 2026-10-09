@@ -1,6 +1,6 @@
 # Handoff — Spec 0183
 
-Estado: código implementado en dev, revisión independiente y QA pendientes.
+Estado: código local con PASS automatizado independiente; QA físico y gate global pendientes.
 Spec cerrada: [0183](specs/0183-pos-escanear-pase-y-confirmar-cobro.md).
 Plan: [plan 0183](plan-0183-pos-cobro.md). No merge ni push.
 
@@ -81,10 +81,36 @@ Flujo, dinero, errores, carreras, cámara simulada y regresiones: evidencia en
 0183-pedido-390, cobro-390, cobro-320 y dialog-320-keyboard; capturas posteriores
 con animaciones desactivadas eliminan estado de transición de botones.
 
-- [ ] Revisor independiente: spec/diff, comandos propios, seguridad/aislamiento,
+- [x] Revisor independiente: spec/diff, comandos propios, seguridad/aislamiento,
       dos mutaciones (UUID nuevo en retry; close en Cancelar), hashes/restauración.
 - [ ] QA owner con pase/cupón local ficticio o real, cámara y teclado físicos.
 - [ ] Resolver gates globales antes de live; no estado implementada ni PASS total.
 
 Cambios ajenos gotchas/LECCIONES y ruta consumer c/[webViewToken] preservados;
 otros commits de Claude durante sesión conservados. No incluirlos en staging.
+
+## Cierre de revisión y corrección
+
+Implementación03fad03 y corrección76ff4ed, solo dev local.
+[Revisión independiente](revision-0183-pos-cobro.md): PASS automatizado.
+El FAIL inicial comprobó seis vías de recuperación incompleta tras GET503:
+request_reused/version_conflict/pos_order_not_open por Cancelar→Cobrar o
+Reintentar revisión. Root agregó barrera persistente hasta recuperar snapshot;
+Quitar cliente tampoco permite omitirla. GET exitoso requiere revisión antes de
+nuevo intento. Seis regresiones permanentes comprueban versión4, importe20 y
+UUID nuevo solamente después de recuperación/revisión.
+
+Revisor:86/86e2e,6/6reproducer, checks y buildMerchant final verdes;
+28preview y11Neon independientes previos. Las dos mutaciones previstas
+fallaron en sus oráculos y se restauraron con hashes idénticos.
+Root:6regresiones verdes, typecheck6/lint/formato de fuentes/diff verdes.
+Su corrida81tests dio80verdes/1fallo wizard en nombre accesible de heading;
+repetición puntual pasó1/1, mismo caso pasó en86independientes. Intermitencia
+registrada sin causa demostrada; no ocultar ni llamar verde a aquella corrida.
+Logs0183-final-e2e.log y0183-wizard-final.log bajo/private/tmp.
+
+Root repetición global limitada: unitarios2435verdes/1036skip con4workers,
+sin errores de arranque; lint global verde. Formato global sigue rojo en el
+archivo servidor ajeno señalado. Estos resultados actualizan los respectivos
+fallos previos de verify; no convierten gateglobal en PASS. Pendientes físicos
+y de publicación conservados; spec sigue cerrada.

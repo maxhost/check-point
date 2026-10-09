@@ -3,32 +3,43 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-09) — PLAN 0183 DOCUMENTADO, IMPLEMENTACIÓN PENDIENTE
+## ⇥ ESTADO (2026-10-09) — 0183 LOCAL, PASS AUTOMATIZADO INDEPENDIENTE
 
-Owner retomó tras clear con el plan. [Plan de implementación](../plan-0183-pos-cobro.md)
-guardado en **cff973f**, basado en [spec0183](../specs/0183-pos-escanear-pase-y-confirmar-cobro.md)
-cerrada L3 y [checkpoint](../handoff-0183-pos-cobro-retomar-2026-10-09.md).
-Solo documentación en dev, sin merge/push ni implementación. QR/impresora siguen
-visuales (**31d21b7**) y Cobrar mantiene checkout anterior.
+Código **03fad03**, corrección **76ff4ed**, rama dev sin merge/push.
+[Spec 0183](../specs/0183-pos-escanear-pase-y-confirmar-cobro.md) sigue cerrada:
+QA físico y gate global pendientes. [Handoff](../handoff-0183-implementacion.md)
+y [revisión independiente](../revision-0183-pos-cobro.md).
 
-Secuencia: baseline/fixtures → preview puro → controlador de sesión en consola →
-scanner/Pedido → modal → cierre/recuperación → gates y revisión independiente.
-Un implementador y luego revisor L3 según AGENT-WORKFLOW; no agentes despachados
-en la etapa de plan. Cliente/cupón en memoria, Cancelar conserva, salir pierde;
-retry incierto mantiene UUID/cuerpo congelados. Scanner no evita alta/visita ya
-existentes de resolve; solo aplaza venta/canje/acreditación/asociación de orden.
+QR por cámara identifica desde Pedido; cliente/beneficio temporal. Cobrar y
+Escanear fullscreen; Código del pase retirado por decisión owner. Dialog es
+única excepción de kit autorizada expresamente antes del código (03b9306).
+Preview en centavos/base+extras, Cancelar sin close, cierre incierto conserva
+UUID/cuerpo y bloquea navegación. Ningún servidor/API/tooling modificado.
 
-Hallazgos para implementar: checkout actual sondea y llama coupon-remove (retirar
-en POS); handleError global borra mesa con todo 404 (clasificar por operación);
-fixture resolved carece de accrual (completar). Verificar temprano scroll/altura
-Dialog con teclado: si falta capacidad, pedir a Claude, nunca ampliar kit.
-DTO/tableId de 0182 conservado sin integrar UI de mesas. Impresora fuera.
+Revisor encontró FAIL real: GET de recuperación503 tras409 permitía reabrir
+con snapshot anterior. Root corrigió barrera persistente recoveryRequired:
+Cancelar, reintentar o Quitar cliente no permiten confirmar hasta GET exitoso
+más revisión. Seis regresiones nuevas verifican ambas vías, exclusión de cliente,
+versión recuperada y nuevo UUID después de revisar.
+Revisor **PASS automatizado76ff4ed**:86e2e+6reproducer,28preview,11Neon,
+checks y Merchant Webpack verdes. Dos mutaciones rojas y fuentes restauradas.
+Root6regresiones/typecheck6/lint/format/diff verdes. Corrida root81tests:
+80pasan/1wizard falla por nombre accesible de heading; rerun puntual1/1verde,
+y mismo wizard verde en suite86independiente. Se registra intermitencia,
+no se afirma causa ni PASSglobal.
 
-Node24.20.0, dev confirmada; ci:status sin conexión GitHub, remoto no verificado.
-Puertos observados 3200/3201 y DB local 55432; no prueban conexión correcta de QA.
-Formato/docs/números/diff-check verificados; baseline funcional, suites/build,
-QA owner y PASS independiente pendientes. Cambios ajenos gotchas/LECCIONES
-preservados. No publicar para reservar número; dev local vigente por ADR0128.
+Root unitarios globales con4workers2435pasan/1036skip, lintglobal verde.
+Verifyglobal previo rojo: formato servidor ajeno, tours10, referenciaskit8,
+TurbopackEPERM incluso escalado. Kitbaseline03b9306==actual por8hashes;
+no referencias regeneradas. QA cámara/teclado físico pendiente; viewport320x400
+con scroll/foco pasa simulado. No marcar spec implementada ni publicar.
+
+Dev local owner3200/3201 intacto. Copia aislada build:
+/private/tmp/check-point-0183-build-_w_xmqt_, envlocal validada.
+No DATABASE_URL producción. Owner preguntó solo cómo probar sin usuario real:
+seed define Carla Ficticia/Café de bienvenida, pase dev-my /c/seed-local-web-1,
+condicional a base sembrada; no ejecutar seed por esa consulta.
+Cambios ajenos gotchas/LECCIONES y commits concurrentes de Claude preservados.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
