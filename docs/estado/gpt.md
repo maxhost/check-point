@@ -3,28 +3,34 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ ESTADO (2026-10-08) — CABECERA Y CONTEXTO DE ORDEN ABIERTA
+## ⇥ ESTADO (2026-10-08) — DETALLE POS Y BARRA INFERIOR GUARDADOS
 
-Owner pidió commit. UI **bf026cf**, rama **dev**, sin merge/push. Header de abierta
-centrado, mesa en badge con borde verde e icono EditPencil (alias Pen), sin punto
-verde ni textos Orden abierta/Principal/Guardada. Badge abre Cambiar mesa;
-botón separado retirado. Cambios sin guardar junto a acciones inferiores.
-Márgenes comunes 24 px mobile/48 desktop conservados.
+Owner pidió commit de todo el trabajo pendiente. UI **25ed581**, rama **dev**,
+sin merge/push. Cabecera abierta: botón MoreVert a izquierda, badge mesa editable
+centro y X derecha. Más acciones textual retirado. Modal acciones sin fecha/autor;
+X de cierre en misma fila del título, mediante headerAction opcional en Dialog.
+SegmentedControl añade fullWidth opcional, activado en POS: Editar / Pedido (N).
+Kit modificado: dialog.tsx y segmented-control.tsx; defaults de otros usos conservados.
 
-Modal Cambiar mesa solo cambia nombre; borrador contextTable, Cancelar/Escape
-cierran sin aplicar, Listo aplica al draft para guardado explícito posterior.
-Local fijo de orden conservado incluso null; no reasignación desde el modal.
-Listado POS tiene badge local entre POS y X, chevron/modal solo con varios locales.
-Local activo filtra abiertas/cerradas y se usa en nuevas órdenes; default primer
-local. Selector retirado de Mesa en nueva. Texto Atiende tus mesas… eliminado.
+Tabs en Pedido sticky con fondo canvas solo al pegarse arriba, transición 200 ms.
+Más separación tabs/listado (+8 px). Pedido compacto: nombre/precio por unidad a
+izquierda, cantidades derecha y subtotal debajo, sin Precio guardado; controles44px.
+Total duplicado al final del listado eliminado. Footer Pedido sin Añadir productos
+ni conteo de artículos: Total: izquierda, importe18px derecha, aire arriba y antes
+de Cobrar; Guardar cambios sustituye Cobrar cuando dirty. Footer Editar solo Guardar
+cambios cuando dirty, oculto si limpio, sin artículos/total/Ver pedido/Cobrar.
 
-Kit: única línea --color-overlay: var(--ui-overlay) añadida en tokens.css para
-hacer visible bg-overlay de Dialog. **Owner autorizó explícitamente esta excepción**
-a zona Claude. Cambia overlay de todos los modales del kit; sin nuevos colores.
-Servidor/API/cache intactos. Sin specs/ADR/suites/typecheck/lint adicionales por
-preferencia vigente del owner; diff-check verde, formato aplicado. QA visual y
-multi-local pendiente; no PASS completo ni marcar spec implementada. Cambios ajenos
-gotchas/LECCIONES preservados fuera del commit. Último pedido es commit, no publicar.
+Editar comparte apariencia de paso2 nuevo: categorías/búsqueda inline, sticky,
+animaciones, clear Erase, resultados sin precios. Añadir desde listado o búsqueda
+muestra Producto añadido 1400ms, sin saltar al carrito. Nueva revisión conserva su
+toast y scroll al final. Eventos de toast usan clave independiente del scroll.
+Cambio de mesa/local y overlay quedaron en bf026cf; estado anterior35ce469.
+
+Sin specs/ADR/suites/typecheck/lint/navegador adicionales por preferencia vigente;
+formato aplicado, diff-check verde. QA visual de esta iteración pendiente; no PASS
+completo ni spec implementada. API/cache/escrituras intactas. Cambios ajenos
+.claude/skills/gotchas-del-repo/SKILL.md y docs/LECCIONES.md excluidos del commit.
+Última instrucción: commit local, no publicar. Continuar según revisión del owner.
 
 ## ⇥ AJUSTE (2026-10-08) — CABECERA LIMPIA EN TOMAR PEDIDO
 
