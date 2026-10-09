@@ -165,3 +165,22 @@ producto también capturado. ESLint/Prettier/typecheck6/diff verdes; countFile
 base1a8e83d sin incrementos en los tres archivos de producto (nuevo incluido).
 Cambio L1 local, sin subagentes/gateglobal/push. QA y pendientes anteriores
 conservados.
+
+## Ajuste L1 — descartar borrador desde Editar
+
+Mini plan2a3c12b anterior al código. Cuando hay cambios en Editar, footer
+muestra Guardar cambios y botón danger circular48 con Xmark Iconoir/nombre
+accesible Descartar cambios. Modal confirma o cancela. Cancelar/Escape mantienen
+borrador/tab; confirmar apply(order) restaura snapshot mesa/local/líneas/precios,
+limpia historial de eliminaciones y aviso de producto, cierra modal, pasa a
+Pedido y muestra ConfirmationToast Pedido actualizado (copy explícito owner).
+No requests adicionales ni modificación de cliente/cupón. Busy bloquea botones.
+
+Pruebas específicas5/5verdes4.5s (dos anchos descarte/cancelar, conflicto y
+consistencia de confirmaciones), log0183-discard-tests.log. Último ajuste de
+clases important mantiene círculo/icono y repite2/2verdes en discard-final.log.
+Verifica controles inline, cantidades conservadas al cancelar, snapshot precio10
+restaurado, producto nuevo eliminado, cero escrituras, tab y toastviewport.
+Capturasinline/modal390px vistas;1280 también capturado. Typecheck6/lint/formato,
+diff y guardscoped de editor sin incrementos. Sin kit/CSS/API, sin publicación;
+QA/gateglobal principal pendientes.

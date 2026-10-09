@@ -3305,3 +3305,93 @@ for (const width of [390, 1280]) {
     });
   });
 }
+
+for (const width of [390, 1280]) {
+  test(`0183 descartar edición confirma restaura pedido; cancelar conserva borrador a ${width}`, async ({
+    page,
+  }) => {
+    await setup(page);
+    const writes: string[] = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/api/") && request.method() !== "GET")
+        writes.push(request.method() + " " + request.url());
+    });
+    await page.setViewportSize({ width, height: 844 });
+    await open(page);
+    await page.getByRole("radio", { name: "Editar", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Agregar un Café", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Agregar Especial", exact: true })
+      .click();
+    const save = page.getByRole("button", {
+      name: "Guardar cambios",
+      exact: true,
+    });
+    const discard = page.getByRole("button", {
+      name: "Descartar cambios",
+      exact: true,
+    });
+    await expect(save).toBeEnabled();
+    await expect(discard.locator("svg")).toBeVisible();
+    await expect(discard).toBeInViewport();
+    const saveRect = await save.boundingBox(),
+      discardRect = await discard.boundingBox();
+    expect(saveRect).not.toBeNull();
+    expect(discardRect).not.toBeNull();
+    expect(saveRect!.y + saveRect!.height / 2).toBeCloseTo(
+      discardRect!.y + discardRect!.height / 2,
+      0,
+    );
+    expect(discardRect!.x).toBeGreaterThan(saveRect!.x + saveRect!.width);
+    await page.screenshot({
+      path: `/private/tmp/0183-descartar-inline-${width}.png`,
+      animations: "disabled",
+    });
+    await discard.click();
+    const dialog = page.getByRole("dialog", {
+      name: "Descartar cambios",
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(
+      page.getByRole("radio", { name: "Editar", exact: true }),
+    ).toBeChecked();
+    await expect(save).toBeEnabled();
+    await expect(
+      page.locator(".counter-detailed .counter-qty output").first(),
+    ).toHaveText("2");
+    expect(writes).toEqual([]);
+    await discard.click();
+    await page.screenshot({
+      path: `/private/tmp/0183-descartar-modal-${width}.png`,
+      animations: "disabled",
+    });
+    await dialog
+      .getByRole("button", { name: "Descartar cambios", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("radio", { name: /^Pedido/ })).toBeChecked();
+    await expect(save).toHaveCount(0);
+    const order = page.getByRole("region", { name: "Productos del pedido" });
+    await expect(order.getByText("Especial", { exact: true })).toHaveCount(0);
+    await expect(
+      order.getByText("$10,00 por unidad", { exact: true }),
+    ).toBeVisible();
+    await expect(order.getByText("1", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Cobrar", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      page.getByText("Pedido actualizado", { exact: true }),
+    ).toBeInViewport();
+    expect(writes).toEqual([]);
+    await page.screenshot({
+      path: `/private/tmp/0183-descartar-pedido-${width}.png`,
+      animations: "disabled",
+    });
+  });
+}

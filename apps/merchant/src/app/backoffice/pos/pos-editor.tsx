@@ -134,6 +134,8 @@ export function PosEditor({
   const [reviewAdded, setReviewAdded] = useState(0);
   const [addedNotice, setAddedNotice] = useState(false);
   const [addedNoticeId, setAddedNoticeId] = useState(0);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [updatedNotice, setUpdatedNotice] = useState(false);
   const reviewListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!reviewAdded) return;
@@ -676,14 +678,25 @@ export function PosEditor({
           dirty && (
             <>
               {invalid && <Text variant="small">{invalid}</Text>}
-              <Button
-                fullWidth
-                isLoading={busy}
-                isDisabled={!!invalid || conflict}
-                onPress={() => void save()}
-              >
-                Guardar cambios
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  className="h-12 min-w-0 flex-1"
+                  isLoading={busy}
+                  isDisabled={!!invalid || conflict}
+                  onPress={() => void save()}
+                >
+                  Guardar cambios
+                </Button>
+                <Button
+                  variant="danger"
+                  aria-label="Descartar cambios"
+                  className="size-12 shrink-0 rounded-full! p-0!"
+                  isDisabled={busy}
+                  onPress={() => setDiscardOpen(true)}
+                >
+                  <Xmark aria-hidden="true" className="size-6" />
+                </Button>
+              </div>
             </>
           )
         ) : order ? (
@@ -784,6 +797,43 @@ export function PosEditor({
             onDismiss={() => setAddedNotice(false)}
           />
         )}
+      <ConfirmationToast
+        message={updatedNotice ? "Pedido actualizado" : null}
+        onDismiss={() => setUpdatedNotice(false)}
+      />
+      <Dialog
+        isOpen={discardOpen}
+        onOpenChange={(open) => {
+          if (!busy) setDiscardOpen(open);
+        }}
+        isDismissable={!busy}
+        title="Descartar cambios"
+        description="Se eliminarán los cambios sin guardar y volverás al pedido guardado."
+      >
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            variant="secondary"
+            isDisabled={busy}
+            onPress={() => setDiscardOpen(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            isDisabled={busy}
+            onPress={() => {
+              if (busy || !order) return;
+              apply(order);
+              setAddedNotice(false);
+              setDiscardOpen(false);
+              changeSurface("order");
+              setUpdatedNotice(true);
+            }}
+          >
+            Descartar cambios
+          </Button>
+        </div>
+      </Dialog>
       <Dialog
         isOpen={!!exitTarget}
         onOpenChange={(open) => {
