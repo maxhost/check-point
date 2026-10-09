@@ -114,3 +114,22 @@ sin errores de arranque; lint global verde. Formato global sigue rojo en el
 archivo servidor ajeno señalado. Estos resultados actualizan los respectivos
 fallos previos de verify; no convierten gateglobal en PASS. Pendientes físicos
 y de publicación conservados; spec sigue cerrada.
+
+## Ajuste visual L1 — identificar cliente
+
+Mini plan anterior al código1660b87. Durante resolve el modal mantiene pantalla
+intermedia con C oficial (path de consumer/public/checkpass-icon.svg), pulso
+suave y motion-reduce; anuncio Identificando cliente solo sr-only. Cancelar
+permanece disponible. Sin demora artificial ni cambios de kit/dinero/contrato.
+Resolve exitoso vigente publica Toast compartido Cliente identificado; siguiente
+escaneo limpia aviso, cancelar/error/respuesta tardía no publican éxito.
+
+Pruebas específicas3/3,2.1s (loading/éxito, cancelar+tardío, error/auth).
+Log/private/tmp/0183-loading-tests.log. Verificación incluye animación pulse,
+reduced-motion none, logo y Cancelar dentroviewport, ausencia de toastprematuro.
+Capturas390px vistas:0183-identificando-cliente.png y
+0183-cliente-identificado-toast.png. Typecheck6paquetes verde3.177s,
+ESLint y Prettier específicos/diff verdes. Guardglobal contra1660b87 rojo por
+archivos ajenos prueba-impresora; countFile antes/después de pos-scan y
+pos-payment registra increases:[] en ambos. Espec principal conserva
+QA físico/gateglobal pendiente; no nueva revisión independiente exigida L1.

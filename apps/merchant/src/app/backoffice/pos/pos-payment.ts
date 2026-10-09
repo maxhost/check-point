@@ -22,6 +22,7 @@ type PaymentState = {
   receivedError: string | null;
   error: string | null;
   clientError: string | null;
+  notice: string | null;
   review: boolean;
   validated: boolean;
 };
@@ -34,6 +35,7 @@ const initial = (): PaymentState => ({
   receivedError: null,
   error: null,
   clientError: null,
+  notice: null,
   review: false,
   validated: false,
 });
@@ -272,6 +274,7 @@ export function usePosPayment({
           received: null,
           receivedError: null,
           clientError: null,
+          notice: "Cliente identificado",
           error: null,
           review: false,
           validated: false,
@@ -470,7 +473,7 @@ export function usePosPayment({
     scan: () => {
       if (!locked.current && !denyNavigation()) {
         ticket();
-        update({ phase: "scanning", error: null });
+        update({ phase: "scanning", error: null, notice: null });
       }
     },
     retryScan: () => {
@@ -480,6 +483,7 @@ export function usePosPayment({
       }
     },
     cancelScan,
+    dismissNotice: () => update({ notice: null }),
     cancelPayment,
     resolve,
     prepare,

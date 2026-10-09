@@ -3093,3 +3093,107 @@ for (const failure of [
     });
   }
 }
+
+test("0183 identificación muestra C animada y toast solo al encontrar cliente", async ({
+  page,
+}) => {
+  await setup(page);
+  await customerRoutes(page);
+  let release!: () => void;
+  await page.route("**/api/pos/resolve", async (route) => {
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await route.fulfill({ json: resolved });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await page.evaluate(() => {
+    (window as unknown as { posCameraToken: string | null }).posCameraToken =
+      "qa-token";
+  });
+  const dialog = page.getByRole("dialog", {
+    name: "Escanear pase",
+    exact: true,
+  });
+  const loading = dialog.getByRole("status", {
+    name: "Identificando cliente",
+    exact: true,
+  });
+  await expect(loading).toBeVisible();
+  await expect(loading).toHaveAttribute("aria-busy", "true");
+  const logo = loading.locator("svg");
+  await expect(logo).toBeInViewport();
+  expect(
+    await logo.evaluate((element) => getComputedStyle(element).animationName),
+  ).toBe("pulse");
+  await expect(loading.locator("span")).toHaveClass("sr-only");
+  await expect(
+    page.getByText("Cliente identificado", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Cancelar", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: "/private/tmp/0183-identificando-cliente.png",
+    animations: "disabled",
+  });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect(
+    await logo.evaluate((element) => getComputedStyle(element).animationName),
+  ).toBe("none");
+  release();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByText("Cliente de prueba", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Cliente identificado", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "/private/tmp/0183-cliente-identificado-toast.png",
+    animations: "disabled",
+  });
+  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await expect(
+    page.getByText("Cliente identificado", { exact: true }),
+  ).toHaveCount(0);
+});
+
+test("0183 cancelar loading de identificación ignora éxito tardío sin toast", async ({
+  page,
+}) => {
+  await setup(page);
+  let release!: () => void;
+  await page.route("**/api/pos/resolve", async (route) => {
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await route.fulfill({ json: resolved });
+  });
+  await open(page);
+  await page.getByRole("button", { name: "QR", exact: true }).click();
+  await page.evaluate(() => {
+    (window as unknown as { posCameraToken: string | null }).posCameraToken =
+      "qa-token";
+  });
+  const dialog = page.getByRole("dialog", {
+    name: "Escanear pase",
+    exact: true,
+  });
+  await expect(
+    dialog.getByRole("status", { name: "Identificando cliente", exact: true }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();
+  const response = page.waitForResponse("**/api/pos/resolve");
+  release();
+  await response;
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByText("Cliente identificado", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Cliente de prueba", { exact: true }),
+  ).toHaveCount(0);
+});
