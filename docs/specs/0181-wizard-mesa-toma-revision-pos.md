@@ -115,3 +115,17 @@ pendiente; no nuevas suites ni merge/push.
 Ajuste de cabecera aplicado: typecheck 6 paquetes (4,348 s), ESLint, formato,
 guardia 6 archivos sin aumentos y diff-check verdes. Aserción e2e existente para
 Catálogo ausente y flecha accesible añadida sin ejecución. QA visual owner pendiente.
+
+## Ajuste cerrado — progreso visual y contexto fuera de cabecera
+
+Owner pide tres rayas con etapa pequeña y controles coherentes. Solo nueva orden:
+cabecera de tres columnas, extremos de 44 px y centro flexible. Flecha y X usan
+la misma clase existente close-module, geometría circular, tokens e iconos de 24 px.
+Mesa reserva el hueco izquierdo para no mover el centro entre etapas. Centro con
+tres rayas no interactivas: actual primaria y anteriores/futuras neutras; etiqueta
+pequeña con semántica heading nivel 1 y Paso N de 3 para lectores de pantalla.
+No título grande ni mesa/local en esa cabecera. Mesa/local se muestran pequeños
+encima de la CTA inferior en Tomar pedido y Revisar; local solo si hay varios.
+En Mesa, local único queda junto al formulario. Orden abierta conserva su cabecera.
+Acciones, protección de salida, borrador y cache intactos. Sin kit/CSS/API nuevos,
+sin suites adicionales ni merge/push; QA visual owner pendiente.
