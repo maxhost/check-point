@@ -5,6 +5,14 @@
 
 ## ⇥ 0186 (2026-10-09) — OPCIONES DEL TICKET EN CONFIGURACIÓN
 
+Incidente owner503 al abrir Configuración: log merchant pos_route_failed42P01
+en GETticket; consulta Docker confirmó core.ticket_settings ausente y68
+migraciones (hasta0067). Aplicado migrador local existente con URL Docker fija,
+sin seed/reset ni PROD. Exit0:69migraciones; to_regclass ahora devuelve tabla y
+SELECTshow_business_name/show_table exitoso (sin filas, defaultsAPI). No cambios
+UI/API/DBfuentes. Owner debe recargar para confirmar GET autenticado en navegador;
+no se afirma HTTP200 sin su sesión. ImpresiónPOS fallaba por la misma tabla.
+
 Reserva b2d4f89; UI7664df1 en dev local sin merge/push. Owner aclaró que
 impresión siempre activa: toggle Imprimir tickets solo abre/cierra opciones,
 sin persistir ese estado visual. Propuesta de ampliar API/DB descartada.
