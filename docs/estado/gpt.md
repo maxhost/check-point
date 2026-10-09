@@ -3,6 +3,20 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — DESCARTAR CAMBIOS EN EDITAR
+
+Mini plan2a3c12b, codec7ec4c1, devlocal sin merge/push. Owner pide Xroja junto a
+Guardar cambios cuando Editar dirty. Button danger circular48/IconoirXmark y
+Dialog Descartar cambios reutilizan kit. Cancelar/Escape conserva borrador/tab;
+confirmar restaura apply(order), limpia eliminaciones/aviso producto, vuelve a
+Pedido con ConfirmationToast Pedido actualizado (copy owner). Sinrequests,
+cliente/cupón intactos, busy bloquea. Nueva orden/salida previas intactas.
+5pruebas específicasverdes4.5s y2descarte finalesverdes1.8s trasajuste círculo;
+verifican inline, cancelar, snapshotrestaurado, ceroescrituras, tab y toast.
+Capturasinline/modal390vistas;1280capturado. Typecheck6/lint/formato/diff y
+scopedguardeditor sinincrementos. Handoff0183 actualizado. QA/gateglobalprevios
+pendientes; ajenosgotchas/LECCIONES/estadosClaude preservados.
+
 ## ⇥ AJUSTE (2026-10-09) — CONFIRMACIONES UNIFICADAS
 
 Owner define confirmaciones iguales a Producto añadido: cápsula oscura,
