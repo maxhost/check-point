@@ -3,6 +3,26 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ 0186 (2026-10-09) — OPCIONES DEL TICKET EN CONFIGURACIÓN
+
+Reserva b2d4f89; UI7664df1 en dev local sin merge/push. Owner aclaró que
+impresión siempre activa: toggle Imprimir tickets solo abre/cierra opciones,
+sin persistir ese estado visual. Propuesta de ampliar API/DB descartada.
+
+Tarjeta owner junto a POS consume GET/PUT existente de0184. Switch del kit
+para nombre y mesa; cambios guardados automáticamente, ambos falsos válido.
+Éxito ConfirmationToast compartido; fallo conserva configuración confirmada,
+lectura fallida ofrece reintento, bloqueo síncrono durante PUT evita concurrencia.
+Abrir/cerrar no escribe, desmontaje ignora respuestas tardías. Sin owner no
+consulta ticket. Sin cambios POS/printing/API/DB/kit ni ajustes de impresora.
+
+Typecheck/lint merchant completos en0; formato/diff verdes; guard2archivos sin
+incrementos. E2e3tickets+regresiónPOS4verdes2.5s, final3verdes2.8s con capturas
+390/1280 vistas. Harness API simulado; PUT persistente real ya probado por Claude
+0184, sin DB real ni migraciones en esta tarea. Evidencia/comando en spec0186.
+QA owner pendiente; sin gate global/live ni CI remoto declarado (red falla).
+Commits --only preservan cambios ajenos gotchas/LECCIONES.
+
 ## ⇥ 0185 (2026-10-09) — BOTÓN IMPRIMIR POS CONECTADO
 
 Reserva 8264cc5; implementación 9dfd240 en dev local, sin merge/push. Encargo
