@@ -3,6 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-08) — MÁRGENES COMUNES POS
+
+Owner pidió alinear listado, nueva orden y orden abierta. Ajuste 0178 cerrado en
+fa86d77 antes de código: main común w-full px-6 pt-6 md:px-12 md:pt-12; contenido
+backoffice-home w-full en todos los estados. Padding lateral/superior 24 px mobile,
+48 px desde md; ya no alterna 24/14 px ni ancho máximo del listado contra workspace.
+Padding inferior/navbar/footer/print mantienen comportamiento existente.
+Sin CSS, kit, API ni escrituras. Formato, lint y guardia sin aumentos verificados;
+QA visual owner en pnpm dev:local pendiente, sin suites adicionales.
+Solo dev, sin merge/push; archivos ajenos preservados.
+
 ## ⇥ AJUSTE (2026-10-08) — TEXTO CENTRAL NAVBAR POS
 
 Owner pidió misma tipografía que Mostrador original. Ajuste 0179 cerrado antes de
