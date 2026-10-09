@@ -26,8 +26,8 @@
   `pos-editor.tsx`, `ui/tokens.css`): no son de Claude, no tocar.
 
 **Pendiente / abierto:**
-- UI de mesas (administrarlas y elegirlas en el POS): es de GPT, contrato en la spec 0182 §Diseño.
-- Migracion 0067 a PROD: con OK del owner, en el proximo pase a live (snapshot antes).
+- **Mesas: PARQUEADO #83 (owner 2026-10-09)** — falta UI de GPT (contrato spec 0182 §Diseño), 0067 a PROD con OK
+  (snapshot antes) y push. `802337e` registro las 4 rutas de mesas en el centinela `locations-routes.test.ts`.
 - Staging en proyectos separados: plan en `docs/plan-staging-2026-10-08.md`, PARQUEADO #82.
 - Deuda declarada: test del `no_program` en `accrualContext` (R3 de la 0169). `pnpm verify` completo nunca corrio
   en verde (14 e2e de tours/onboarding sin causa; `ci:status` del 2026-10-08 sigue rojo por esos e2e).
