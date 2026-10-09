@@ -391,3 +391,13 @@ Pedido por owner después del PASS automatizado. Mini plan cerrado antes del có
 
 Solo presentación y aviso; sin retraso mínimo artificial, cambios de dinero,
 contratos, kit, persistencia o permisos. La spec principal conserva sus pendientes.
+
+### Corrección L1 — toast visible al volver (2026-10-09)
+
+Owner observa toast ausente. `globals.css:4366` hace estático todo Toast bajo
+counter-flow: pos-scan está al final del pedido, por lo que el aviso queda después
+del contenido y fuera del viewport con pedidos largos. Corrección acordada:
+reutilizar Toast existente con utilidades de posición fixed explícitas, centrado
+arriba del viewport, sin CSS/kit nuevo. Regresión con pedido largo verifica aviso
+realmente dentro del viewport y posición fixed tras volver del escáner. Sin
+cambiar resolve, duración ni mensajes. Lint/typecheck y prueba puntual L1.
