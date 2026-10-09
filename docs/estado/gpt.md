@@ -3,6 +3,17 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-09) — CLIENTE COMO CONTEXTO VISUAL
+
+Commit99e56c1 devlocal. Owner pide fullwidth móvil/compactodesktop y menos
+competencia con tabs. Cardneutral surface-subtle/bordersuave con iconocírculo,
+etiqueta Cliente/nombre; retirado segmentoverde. X discreta/modal intactos.
+Cuatro casos existentesverdes3.7s usados para capturas320/390/1280; capturas
+390/1280vistas confirman anchomóvil y compactodesktop. Lint/typecheck:ui,
+formato/diff/guardscoped verdes. Sin kit/CSS/API ni handlers nuevos.
+Spec/handoff0183 actualizados. Commits --only rutas explícitas preservan ajenos;
+sin merge/push, pendientesQA/gateglobalprevios conservados.
+
 ## ⇥ AJUSTE (2026-10-09) — BADGE DE CLIENTE Y CONFIRMACIÓN
 
 Commit ee2dc5a devlocal. Owner pide cápsula de cliente en Pedido con estilo
