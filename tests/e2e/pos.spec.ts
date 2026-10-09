@@ -11,6 +11,7 @@ let harness: Awaited<ReturnType<typeof startCatalogHarness>>;
 test.beforeAll(async () => {
   harness = await startCatalogHarness(
     "tests/e2e/support/pos-counter-harness.tsx",
+    "pos",
   );
 });
 test.afterAll(async () => {

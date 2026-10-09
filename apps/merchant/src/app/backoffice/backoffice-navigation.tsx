@@ -12,6 +12,7 @@ import {
   MoreHoriz,
   Package,
   Palette,
+  Plus,
   QrCode,
   Shop,
   Xmark,
@@ -20,6 +21,7 @@ import { useSelectedLayoutSegment } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { SignOutButton } from "../components/sign-out-button";
 import { Button, Text } from "../../ui";
+import { POS_NEW_ORDER_EVENT } from "./pos/pos-navigation";
 import { openOnboardingChecklist } from "./onboarding/onboarding-checklist-visibility";
 
 type MenuName = "business" | "loyalty" | "more";
@@ -360,7 +362,7 @@ export function BackofficeNavigation({
 
       <nav
         aria-label="Navegación principal"
-        className={`backoffice-mobile-nav print:hidden ${segment === "pos" ? (permissions.includes("counter") && permissions.includes("pos") ? "grid-cols-2" : "grid-cols-1") : ""}`}
+        className={`backoffice-mobile-nav print:hidden ${segment === "pos" ? "grid-cols-3" : ""}`}
         data-owner={isOwner || undefined}
       >
         {segment === "pos" ? (
@@ -371,6 +373,23 @@ export function BackofficeNavigation({
                 selectedSegment={segment}
                 onNavigate={closeMenu}
               />
+            )}
+            {permissions.includes("pos") && posEnabled && (
+              <Button
+                variant="quiet"
+                className="mobile-counter-access col-start-2 min-h-13 flex-col gap-1 bg-transparent! p-0! shadow-none"
+                onPress={() => {
+                  closeMenu();
+                  window.dispatchEvent(new Event(POS_NEW_ORDER_EVENT));
+                }}
+              >
+                <span>
+                  <Plus aria-hidden="true" width={24} height={24} />
+                </span>
+                <Text variant="small" className="text-primary">
+                  Nueva orden
+                </Text>
+              </Button>
             )}
             {permissions.includes("counter") && (
               <NavLink

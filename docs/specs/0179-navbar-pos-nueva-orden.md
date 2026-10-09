@@ -35,12 +35,15 @@ actual. Cache y API sin cambios. Barra general y sidebar conservadas.
 ## Archivos
 
 Editar navegación y consola; crear pos-navigation.ts con nombre del evento.
+Adaptar fixture e2e existente (catalog-harness-server.ts y pos.spec.ts) para que
+use segmento pos; antes simulaba loyalty y ocultaría el acceso mobile nuevo.
+No se añade una suite ni se ejecuta el navegador.
 No disjunta con 0173/0178. Sin kit, servidor, API, CSS ni dependencias.
 
 ## Definition of Done
 
-- [ ] Typecheck, lint y guardia de archivos cambiados sin aumentos.
-- [ ] Formato y números de specs correctos.
+- [x] Typecheck, lint y guardia de archivos cambiados sin aumentos.
+- [x] Formato y números de specs correctos.
 - [ ] Owner verifica mobile POS / Nueva orden / Mostrador; centro abre editor,
       X vuelve a listado, sin cambiar navegación general/escritorio.
 
@@ -50,3 +53,12 @@ No disjunta con 0173/0178. Sin kit, servidor, API, CSS ni dependencias.
 pruebas durante entrega anterior; QA visual local a cargo del owner.
 Spec sigue cerrada hasta evidencia real de QA; no marcar implementada por inferencia.
 Commits propios en dev, sin merge ni push. Sin decisiones abiertas.
+
+## Evidencia de entrega
+
+Typecheck 6 paquetes verde (4,618 s); ESLint de 3 archivos de UI sin errores;
+guardia UI 3 archivos sin aumentos; números sin duplicados y diff-check limpio.
+Formato aplicado. Fixture POS usa segmento pos para conservar acceso a Nueva orden
+en las pruebas existentes; otros fixtures conservan loyalty por defecto.
+Sin ejecución adicional de suites ni QA visual de GPT; owner debe revisar en
+pnpm dev:local antes de main. La paleta es la misma que el resto del backoffice.

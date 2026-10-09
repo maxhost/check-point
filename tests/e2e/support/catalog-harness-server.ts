@@ -6,6 +6,7 @@ import path from "node:path";
 /** Component browser fixture: real UI/Driver/CSS, mocked Next navigation, no server guard. */
 export async function startCatalogHarness(
   entryPoint = "tests/e2e/support/catalog-harness.tsx",
+  selectedSegment = "loyalty",
 ) {
   const vitestRequire = createRequire(
     path.resolve("node_modules/vitest/package.json"),
@@ -53,7 +54,7 @@ export async function startCatalogHarness(
             namespace: "fixture",
           }));
           builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return "loyalty"} export function usePathname(){return "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href},refresh(){}}}`,
+            contents: `import React from 'react'; export default function Link({href,children,...props}) { return React.createElement('a',{href,...props},children); } export function useSelectedLayoutSegment(){return ${JSON.stringify(selectedSegment)}} export function usePathname(){return "/backoffice/loyalty"} export function useRouter(){return {push(href){window.location.href=href},refresh(){}}}`,
             loader: "js",
             resolveDir: path.resolve("apps/merchant"),
           }));

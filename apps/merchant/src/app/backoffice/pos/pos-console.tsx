@@ -13,6 +13,7 @@ import {
 } from "../../../ui";
 import { formatMoney } from "../counter/types";
 import { DiscardedPosRead, historyKey, detailKey, PosCache } from "./pos-cache";
+import { POS_NEW_ORDER_EVENT } from "./pos-navigation";
 import { PosEditor } from "./pos-editor";
 import { PosCheckout } from "./pos-checkout";
 import { PosResult, PosTicket } from "./pos-ticket";
@@ -205,6 +206,26 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
       loading.current += 1;
     };
   }, [cache, load]);
+  const startNewOrder = useCallback(() => {
+    if (
+      busy ||
+      refreshing ||
+      unavailable ||
+      !session ||
+      !cache.context ||
+      viewRef.current !== "list"
+    )
+      return;
+    navigation.current += 1;
+    setOpening(null);
+    setOrder(null);
+    setView("edit");
+    setError(null);
+  }, [busy, refreshing, unavailable, session, cache, setOrder, setView]);
+  useEffect(() => {
+    window.addEventListener(POS_NEW_ORDER_EVENT, startNewOrder);
+    return () => window.removeEventListener(POS_NEW_ORDER_EVENT, startNewOrder);
+  }, [startNewOrder]);
   function publish(result: PosOrder, reconcile = false) {
     if (!cache.context) return;
     setOrder(cache.accept(result));
@@ -367,16 +388,10 @@ export function PosConsole({ locations }: { locations: PosLocation[] }) {
           <>
             {view === "list" && (
               <div className="grid gap-6 print:hidden">
-                <div>
+                <div className="hidden md:block">
                   <Button
                     isDisabled={busy || refreshing}
-                    onPress={() => {
-                      navigation.current += 1;
-                      setOpening(null);
-                      setOrder(null);
-                      setView("edit");
-                      setError(null);
-                    }}
+                    onPress={startNewOrder}
                   >
                     Nueva orden
                   </Button>
