@@ -96,3 +96,18 @@ diff-check. Escenario wizard incluye catálogo cargado en Mesa y ninguna lectura
 pasar, sin ejecutar suites. QA visual owner pendiente. Fallo de catálogo ordinario
 se presenta localmente para permitir retry sin alerta global obsoleta; auth sigue
 en onError para revocar caché/editor.
+
+## Ajuste cerrado — cabecera y catálogo del paso 2
+
+Owner pidió retirar ruido textual. Nueva orden oculta visualmente Paso N de 3
+(conservado para lectores de pantalla), mantiene título de etapa y contexto Mesa/local
+con Text small. Volver deja de ser fila de texto: Button circular del kit con NavArrowLeft
+a la izquierda del título, aria-label descriptivo, misma acción anterior; X a derecha
+conserva salida protegida. Aplicar flecha también en revisión para coherencia del wizard.
+
+En Tomar pedido, categorías y lupa comparten fila; quitar título Catálogo y fila
+separada de toolbar. DetailedSale recibe showHeading opcional, true por defecto;
+cuando false une categorías/lupa, manteniendo búsqueda/filtro/draft y ranking.
+Mostrador y orden existente conservan header/comportamiento actual. Revisión searchOnly
+conservada. Sin CSS, kit, API, cache ni escrituras. Lint/guardia/typecheck, QA owner
+pendiente; no nuevas suites ni merge/push.
