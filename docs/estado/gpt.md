@@ -3,6 +3,18 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
+## ⇥ AJUSTE (2026-10-08) — PRECARGA POS EN MESA
+
+Owner pidió catálogo listo antes de Tomar pedido. Ajuste 0181 cerrado en a179fcc:
+nueva orden inicia catálogo en Mesa, inmediatamente con local único/recordado o
+al seleccionarlo. Cache reutiliza/deduplica por local; no se precargan todos los
+locales. Tomar pedido espera contexto/catalogo; spinner y reintento local explícito
+en Mesa. Errores ordinarios de catálogo locales, auth 401/403 sigue limpiando contexto.
+Navegar al paso 2 no hace otra lectura; abiertas mantienen carga al entrar Productos.
+Typecheck, lint, formato, guardia sin aumentos y diff-check verdes. Aserción e2e
+existente adaptada para lectura en Mesa y sin lectura/cargando al pasar; no ejecutada.
+QA owner pnpm dev:local pendiente. Solo dev, sin merge/push, ajenos preservados.
+
 ## ⇥ ESTADO (2026-10-08) — SPEC 0181: WIZARD DE TOMA DE PEDIDO
 
 Owner confirmó API POS sin productos null y autorizó concepto en pasos. Spec

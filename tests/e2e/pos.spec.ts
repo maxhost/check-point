@@ -1631,7 +1631,18 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
     .fill("Mesa wizard");
   await page.getByRole("button", { name: /Local/ }).click();
   await page.getByRole("option", { name: "Centro" }).click();
+  await expect(
+    page.getByRole("button", { name: "Tomar pedido", exact: true }),
+  ).toBeEnabled();
+  expect(
+    reads.filter((url) => url === "/api/pos/catalog?locationId=local-1"),
+  ).toHaveLength(1);
+  const beforeTaking = [...reads];
   await page.getByRole("button", { name: "Tomar pedido", exact: true }).click();
+  expect(reads).toEqual(beforeTaking);
+  await expect(
+    page.getByText("Cargando catálogo…", { exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Tomar pedido", exact: true }),
   ).toBeVisible();

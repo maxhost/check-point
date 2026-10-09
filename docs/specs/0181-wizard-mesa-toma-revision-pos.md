@@ -90,3 +90,9 @@ Tomar pedido habilitado solo con contexto y catálogo disponibles; espera/spinne
 permanece en Mesa, no se avanza a catálogo vacío. Fallo muestra reintento explícito
 local, sin auto-retry. Dialog de salida no salta esa validación. Orden existente
 conserva carga al entrar a Productos. Sin API, cache global, kit ni CSS nuevos.
+
+Verificación del ajuste: typecheck 6 paquetes, ESLint, Prettier, guardia sin aumentos,
+diff-check. Escenario wizard incluye catálogo cargado en Mesa y ninguna lectura al
+pasar, sin ejecutar suites. QA visual owner pendiente. Fallo de catálogo ordinario
+se presenta localmente para permitir retry sin alerta global obsoleta; auth sigue
+en onError para revocar caché/editor.

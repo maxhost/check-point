@@ -89,7 +89,8 @@ export function PosEditor({
   const [surface, setSurface] = useState<"table" | "products" | "order">(
     order ? "order" : "table",
   );
-  const [catalogStarted, setCatalogStarted] = useState(false);
+  const [catalogStarted, setCatalogStarted] = useState(!order);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [removedLines, setRemovedLines] = useState<
     { line: DraftLine; index: number }[]
   >([]);
@@ -169,10 +170,7 @@ export function PosEditor({
       .catch((error) => {
         if (error instanceof DiscardedPosRead) return;
         if (active) setCatalogError(error.message);
-        if (
-          active ||
-          (error instanceof PosError && [401, 403].includes(error.status ?? 0))
-        )
+        if (error instanceof PosError && [401, 403].includes(error.status ?? 0))
           onError(error);
       });
     return () => {
@@ -182,6 +180,7 @@ export function PosEditor({
     cache,
     catalogRevision,
     catalogStarted,
+    catalogAttempt,
     locationId,
     locations.length,
     onError,
@@ -233,7 +232,7 @@ export function PosEditor({
     };
   }, [dirty, busy]);
   function changeSurface(next: typeof surface) {
-    if (!order && next !== "table" && contextInvalid) return;
+    if (!order && next !== "table" && (contextInvalid || !catalog)) return;
     if (next === "products" || next === "order") setCatalogStarted(true);
     scrollPositions.current[surface] = window.scrollY;
     setSurface(next);
@@ -353,7 +352,20 @@ export function PosEditor({
       </div>
       {!order ? (
         surface === "table" ? (
-          contextFields
+          <>
+            {contextFields}
+            {catalogError && (
+              <Alert kind="error" title={catalogError}>
+                <Button
+                  variant="secondary"
+                  isDisabled={busy}
+                  onPress={() => setCatalogAttempt((attempt) => attempt + 1)}
+                >
+                  Reintentar carga del catálogo
+                </Button>
+              </Alert>
+            )}
+          </>
         ) : (
           <Button
             variant="quiet"
@@ -532,7 +544,8 @@ export function PosEditor({
             {contextInvalid && <Text variant="small">{contextInvalid}</Text>}
             <Button
               fullWidth
-              isDisabled={busy || !!contextInvalid}
+              isDisabled={busy || !!contextInvalid || !catalog}
+              isLoading={!contextInvalid && !catalog && !catalogError}
               onPress={() => changeSurface("products")}
             >
               Tomar pedido
@@ -576,7 +589,7 @@ export function PosEditor({
         <div className="grid gap-3">
           {!order && surface !== "order" ? (
             <Button
-              isDisabled={busy || !!contextInvalid}
+              isDisabled={busy || !!contextInvalid || !catalog}
               onPress={() => {
                 setExitTarget(null);
                 changeSurface(surface === "table" ? "products" : "order");
