@@ -1,7 +1,7 @@
 ---
 spec: 0188
 fecha: 2026-10-10
-estado: cerrada
+estado: implementada
 resumen: Landing del comercio centrada en red, campañas y POS, con propuesta de planes para QA local.
 disjunta: si
 archivos: apps/public/src/app/page.tsx, apps/public/src/app/negocios/preview.tsx, apps/public/src/app/negocios/campaign-section.tsx, apps/public/src/app/negocios/closing-sections.tsx, apps/public/src/app/negocios/negocios.css, tests/e2e/landing.spec.ts
@@ -44,14 +44,22 @@ Disjunta de 0187 y de cambios de Claude en API/billing. Reserva local por instru
 
 ## Definition of Done
 
-- [ ] Typecheck public y lint de public/prueba en salida 0 con Node 24.
-- [ ] Formato de archivos cambiados y git diff --check en 0.
-- [ ] E2E landing: 390/1440 px × claro/oscuro, sin overflow horizontal, planes y CTA correctos, FAQ y enlace a red; `/negocios` redirige.
-- [ ] Capturas inspeccionadas en las cuatro combinaciones, incluyendo planes y POS.
-- [ ] Handoff GPT con evidencia y dependencias de publicación, precios finales y POS.
+- [x] Typecheck public y lint de public/prueba en salida 0 con Node 24.
+- [x] Formato de archivos cambiados y git diff --check en 0.
+- [x] E2E landing: 390/1440 px × claro/oscuro, sin overflow horizontal, planes y CTA correctos, FAQ y enlace a red; `/negocios` redirige.
+- [x] Capturas inspeccionadas en las cuatro combinaciones, incluyendo planes y POS.
+- [x] Handoff GPT con evidencia y dependencias de publicación, precios finales y POS.
 
 Pruebas específicas de L2; verify completo reservado al pase a live (ADR 0128/0129). Sin presupuesto adversarial: contenido estático reversible, sin acceso a dinero ni datos. No se modifica lógica de alta o suscripción.
 
 ## Abierto
 
 Fuera del alcance local: Claude debe implementar prueba de tres meses y Venta cruzada en plan base antes de publicar, salvo excepción explícita del owner. Owner confirma precio superior, adicional y plan de POS. Esto no bloquea la propuesta local solicitada.
+
+## Evidencia ejecutada — 2026-10-10
+
+Implementación L2 en `84df923`, reserva previa `b101434`. Typecheck public, lint public/prueba, formato y diff en salida 0 con Node 24. E2E final con servidor autónomo: **4 passed (5.1 s)**, salida 0 (`/tmp/0188-landing-autonomous.log`). Matriz 390/1440 × claro/oscuro; capturas de hero, red, POS y planes inspeccionadas. CTA, propuestas de planes, preguntas desplegables, anclas y redirect `/negocios` comprobados sin DB.
+
+La inspección visual descubrió dos columnas en móvil y recorte oculto por overflow. Antes del fix, el nuevo oráculo falló: ancho 183.921875, esperado mayor que 292.5 (`/tmp/0188-mobile-regression-red.log`). Después: una columna con separación fija, previews completos y las cuatro pruebas verdes. Contraste secundario oscuro corregido. No se afirma CI remoto verde ni publicación.
+
+La reparación prioritaria del CI existente está en `4f37e70`: capturas POS/mesas de `/private/tmp` a `/tmp`, 116/116 E2E verdes localmente. No modifica lógica ni afloja oráculos. La ejecución remota queda para un push posterior autorizado.

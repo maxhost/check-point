@@ -3,7 +3,49 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ MAIN LOCAL (2026-10-10) — MESAS MERGEADAS, SIN PUSH
+## ⇥ 0188 (2026-10-10) — LANDING EN DEV, QA LOCAL
+
+Trabajo del owner implementado en `84df923`, después de reservar spec cerrada en
+`b101434`. Rama dev; sin merge a main, push, publicación ni cambios de billing.
+Se conserva el lenguaje visual de la landing y se reordena: hero, red, campañas,
+POS/mostrador, tres pasos, cliente, planes, FAQ y CTA. SEO alineado con red en
+Cuenca; enlace a /explorar y redirect /negocios conservados. Previews de red y POS
+son ilustrativos; no inventan métricas, clientes reales ni QR de tickets.
+
+Hero recomendado «Más clientes nuevos. Más razones para volver.»; antes de código
+se propusieron también «Tu negocio de barrio, con herramientas de gran cadena» y
+«Que te descubran. Que vuelvan. Que tu negocio crezca», con bajadas y copy completo.
+Planes recomendados Conecta/Impulso; alternativas Club/Club Pro y Esencial/Crece.
+Propuesta visual $20 (1 local), $45 (hasta 3), $12/local adicional, todos USD/mes,
+con nota referencial. CTA «Pruébalo gratis 3 meses», todo incluido; sin prometer
+que no requiere tarjeta. POS fuera de columnas; no se decide su asignación.
+
+Verificación real: typecheck public, lint public/prueba, formato de cambios y
+git diff --check en 0 con Node 24. E2E 4/4 a 390 y 1440 px, claro/oscuro;
+última corrida con servidor Next levantado/cerrado por la propia suite, 5.1 s,
+log /tmp/0188-landing-autonomous.log. Capturas hero/red/POS/planes inspeccionadas.
+La revisión visual detectó columnas móviles heredadas y recorte oculto: oráculo
+nuevo rojo por ancho 183.921875 < 292.5 y luego verde con una columna y gap fijo;
+log /tmp/0188-mobile-regression-red.log. Contraste secundario oscuro corregido.
+No se corrió verify completo ni se afirma CI remoto verde; gates específicos L2
+según encargo y ADR 0129. Artefactos en test-results/landing-*.
+
+Antes de landing se arregló CI de nuestra zona en `4f37e70`: capturas POS,
+impresión y mesas pasan de ruta macOS /private/tmp a /tmp portable. E2E 116/116,
+20.8 s, lint/formato/diff en 0; log /tmp/0187-ci-portable.log. Pendiente confirmar
+Linux en CI cuando exista push autorizado; no se tocaron tooling ni tests de API.
+
+QA del owner: abrir http://localhost:3003 (pnpm dev:public). El modo oscuro sigue
+el esquema del sistema. Los CTA conservan onboardingUrl; esta tarea no cambia
+el alta real ni concede un trial. El ambiente merchant/consumer continúa aparte.
+
+**Antes de live:** Claude debe implementar la prueba de 3 meses y Venta cruzada en
+el plan base (hoy alta free y campañas plus), salvo excepción explícita del owner.
+Owner debe confirmar nombres, $45, $12/local y en qué plan va POS. Precios finales,
+cobro y publicación son dependencias externas; aquí solo propuesta local. Kit,
+API, servidor y DB intactos. QA visual del owner pendiente.
+
+## ⇥ MAIN LOCAL — HISTÓRICO: MESAS MERGEADAS, SIN PUSH
 
 Owner autorizó merge a main. Árbol limpio; fetch confirmó main/origin main
 9405c93 como ancestros de dev. Fast-forward local ejecutado hasta 869e65c,
