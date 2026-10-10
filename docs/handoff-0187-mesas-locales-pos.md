@@ -1,5 +1,19 @@
 # 0187 — Mesas en Locales y POS
 
+## Ajuste visual posterior del owner
+
+Selector compartido con chips redondeados, nombre/estado inline y borde de
+selección de 1 px; sin ring exterior, listado con espacio para foco y hover.
+En Cambiar mesa se eliminan «Mesa seleccionada» y «Usar nombre de mesa».
+El paso inicial conserva texto libre; una orden ya libre conserva su input
+al editar. Ya no se ofrece desligar una mesa registrada desde este modal.
+
+Verificación posterior: 9/9 E2E de mesas, typecheck merchant, lint de los
+archivos cambiados, formato global y guardia de dos pantallas en 0. Capturas
+del modal móvil/desktop vistas: `/private/tmp/0187-mesas-chips-mobile.png`
+y `/private/tmp/0187-mesas-chips-desktop.png`. Log `/private/tmp/0187-chips.log`.
+Las 99 pruebas de abajo corresponden al cierre anterior a este ajuste.
+
 Implementación local en `dev`, encargo del 2026-10-09. Sin merge ni push.
 API 0182, migración 0067 y producción no se modificaron.
 

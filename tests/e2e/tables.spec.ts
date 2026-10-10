@@ -338,7 +338,7 @@ test("Locales: duplicado y mesa ocupada muestran error literal y conservan entra
   ).toHaveCount(0);
 });
 
-test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id y texto libre manda null", async ({
+test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id", async ({
   page,
 }) => {
   const state = await setup(page);
@@ -385,6 +385,14 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id 
   await expect(
     change.getByRole("button", { name: "Mesa 1 · En esta orden", exact: true }),
   ).toBeEnabled();
+  await expect(change.getByText(/Mesa seleccionada:/)).toHaveCount(0);
+  await expect(
+    change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({ path: "/private/tmp/0187-mesas-chips-mobile.png" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: "/private/tmp/0187-mesas-chips-desktop.png" });
+  await page.setViewportSize({ width: 390, height: 844 });
   await change
     .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
     .click();
@@ -410,10 +418,35 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id 
   await page
     .getByRole("button", { name: "Cambiar mesa: Mesa 2", exact: true })
     .click();
-  await change
-    .getByRole("button", { name: "Usar nombre de mesa", exact: true })
+  await expect(change.getByText(/Mesa seleccionada:/)).toHaveCount(0);
+  await expect(
+    change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
+  ).toHaveCount(0);
+  await change.getByRole("button", { name: "Cancelar", exact: true }).click();
+  expect(state.writes).toHaveLength(2);
+  expect(state.tables[0].openOrderId).toBeNull();
+});
+
+test("POS: una orden con nombre libre conserva el input al cambiar mesa y guarda null", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  await newOrder(page);
+  await page.getByRole("textbox", { name: "Nombre de mesa" }).fill("Barra");
+  await review(page);
+  await page
+    .getByRole("button", { name: "Guardar pedido", exact: true })
     .click();
-  await change.getByRole("textbox", { name: "Nombre de mesa" }).fill("Mesa 2");
+  await page
+    .getByRole("button", { name: "Cambiar mesa: Barra", exact: true })
+    .click();
+  const change = page.getByRole("dialog", {
+    name: "Cambiar mesa",
+    exact: true,
+  });
+  await change
+    .getByRole("textbox", { name: "Nombre de mesa" })
+    .fill("Barra norte");
   await change.getByRole("button", { name: "Listo", exact: true }).click();
   await page
     .getByRole("button", { name: "Guardar cambios", exact: true })
@@ -423,10 +456,9 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id 
   ).toBeVisible();
   expect(state.writes.at(-1)?.body).toMatchObject({
     tableId: null,
-    tableLabel: "Mesa 2",
-    version: 2,
+    tableLabel: "Barra norte",
+    version: 1,
   });
-  expect(state.tables[0].openOrderId).toBeNull();
 });
 
 for (const code of ["table_occupied", "unknown_table"]) {

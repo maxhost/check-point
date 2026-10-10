@@ -74,12 +74,14 @@ export function PosTablePicker({
   tables,
   error,
   retry,
+  showSelectionDetails = true,
 }: {
   tableId: string | null;
   name: string;
   onChange: (id: string | null, name: string) => void;
   orderId?: string;
   disabled: boolean;
+  showSelectionDetails?: boolean;
 } & ReturnType<typeof usePosTables>) {
   return (
     <div className="grid gap-3">
@@ -94,7 +96,7 @@ export function PosTablePicker({
       ) : tables.length ? (
         <>
           <Text variant="label">Mesas del local</Text>
-          <div className="grid max-h-64 grid-cols-2 gap-3 overflow-y-auto md:grid-cols-3">
+          <div className="flex max-h-64 flex-wrap items-start gap-2 overflow-y-auto p-1">
             {tables.map((table) => {
               const occupied = !!(
                 table.openOrderId && table.openOrderId !== orderId
@@ -108,14 +110,18 @@ export function PosTablePicker({
                 <Button
                   key={table.id}
                   variant="secondary"
-                  className={`min-w-0 flex-col break-words ${tableId === table.id ? "border-primary! bg-primary-soft! ring-2 ring-primary" : ""}`}
+                  className={`max-w-full rounded-full! px-4! py-2! ${tableId === table.id ? "border-primary! bg-primary-soft! text-primary!" : ""}`}
                   aria-pressed={tableId === table.id}
                   aria-label={`${table.name} · ${status}`}
                   isDisabled={disabled || occupied}
                   onPress={() => onChange(table.id, table.name)}
                 >
-                  {table.name}
-                  <Text variant="small">{status}</Text>
+                  <Text variant="label" className="min-w-0 break-words">
+                    {table.name}
+                  </Text>
+                  <Text variant="small" className="shrink-0">
+                    · {status}
+                  </Text>
                 </Button>
               );
             })}
@@ -132,7 +138,7 @@ export function PosTablePicker({
           title="La mesa seleccionada ya no está disponible. Elige otra o escribe un nombre."
         />
       )}
-      {tableId ? (
+      {tableId && showSelectionDetails && (
         <div className="grid gap-2">
           <Text variant="label">Mesa seleccionada: {name}</Text>
           <div>
@@ -145,7 +151,8 @@ export function PosTablePicker({
             </Button>
           </div>
         </div>
-      ) : (
+      )}
+      {!tableId && (
         <TextField
           label="Nombre de mesa"
           value={name}

@@ -992,6 +992,7 @@ export function PosEditor({
           {...tableOptions}
           tableId={contextTableId}
           name={contextTable}
+          showSelectionDetails={false}
           orderId={order?.id}
           disabled={busy || conflict}
           onChange={(id, name) => {
