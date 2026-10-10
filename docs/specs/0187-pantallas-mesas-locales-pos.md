@@ -4,7 +4,7 @@ fecha: 2026-10-09
 estado: cerrada
 resumen: Administrar mesas en modal propio de Locales y elegir mesa registrada con ocupación en POS, conservando texto libre y API0182.
 disjunta: no
-archivos: apps/merchant/src/app/backoffice/locations/locations-console.tsx, apps/merchant/src/app/backoffice/locations/location-tables.tsx, apps/merchant/src/app/backoffice/pos/pos-tables.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-types.ts, tests/e2e/tables.spec.ts, tests/e2e/support/tables-harness.tsx, tests/e2e/pos.spec.ts
+archivos: apps/merchant/src/app/backoffice/locations/locations-console.tsx, apps/merchant/src/app/backoffice/locations/location-tables.tsx, apps/merchant/src/app/backoffice/pos/pos-tables.tsx, apps/merchant/src/app/backoffice/pos/pos-editor.tsx, apps/merchant/src/app/backoffice/pos/pos-console.tsx, apps/merchant/src/app/backoffice/pos/pos-types.ts, tests/e2e/tables.spec.ts, tests/e2e/support/tables-harness.tsx, tests/e2e/pos.spec.ts, tests/e2e/pos-printing.spec.ts
 ---
 
 # 0187 — Mesas en Locales y POS
@@ -116,6 +116,11 @@ del selector en el paso 1. El local de la orden y la selección no cambian.
 El owner pide quitar «Mesa seleccionada» también en el paso 1. Se elimina ese
 detalle del selector compartido y su prop; el chip elegido usa borde de 1 px
 con `accent` y fondo `accent-soft` del kit para indicar selección, sin ring.
+
+Preparación del merge: la fixture de impresión debe simular GET de mesas y
+esperar esa lectura inicial antes de tomar el baseline de red. Se conserva
+la igualdad estricta de lecturas para los dos toques de impresión: imprimir
+no debe añadir fetch. Solo cambia la prueba E2E, no el módulo de impresión.
 
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una

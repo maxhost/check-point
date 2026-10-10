@@ -230,6 +230,9 @@ async function setup(
   await page.route("**/api/pos/ticket", (route) =>
     route.fulfill({ json: settings }),
   );
+  await page.route("**/api/pos/tables**", (route) =>
+    route.fulfill({ json: { tables: [] } }),
+  );
   return { reads, writes };
 }
 async function open(page: Page) {
@@ -252,6 +255,9 @@ test("0185 precarga ajuste; BLE desde gesto, doble toque bloqueado y segunda imp
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
   const print = page.getByRole("button", { name: "Imprimir", exact: true });
   await expect(print).toBeEnabled();
+  await expect
+    .poll(() => calls.reads.filter((url) => url === "/api/pos/tables").length)
+    .toBe(1);
   const before = [...calls.reads];
   await print.click();
   await expect.poll(async () => (await readQA(page)).writes).toBe(1);
