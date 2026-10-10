@@ -100,6 +100,9 @@ const resolved: ResolveResponse = {
 };
 async function setup(page: Page, enabled = true) {
   const counterCalls: string[] = [];
+  await page.route("**/api/pos/tables**", (route) =>
+    route.fulfill({ json: { tables: [] } }),
+  );
   await page.route("**/api/pos/ticket", (route) =>
     route.fulfill({ json: { showBusinessName: true, showTable: true } }),
   );
@@ -284,6 +287,7 @@ test("crear en pasos con precio de catálogo; editar conserva snapshot y lineId;
     page.getByRole("button", { name: "Cobrar", exact: true }),
   ).toBeVisible();
   expect(editBody).toEqual({
+    tableId: null,
     version: 1,
     tableLabel: "Mesa 4",
     locationId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
@@ -895,7 +899,7 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   await expect(
     page.getByRole("radio", { name: "Editar", exact: true }),
   ).toBeVisible();
-  const firstReads = [...reads];
+  const firstReads = reads.filter((url) => !url.startsWith("/api/pos/tables?"));
   expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(1);
   expect(
     reads.filter(
@@ -932,7 +936,13 @@ test("caché POS: crear, editar, volver y abrir no repite GET ni por reloj/foco"
   });
   await page.getByRole("button", { name: "Abrir Mesa 4" }).click();
   await expect(page.getByRole("heading", { name: "Mesa 4" })).toBeVisible();
-  expect(reads).toEqual(firstReads);
+  expect(reads.filter((url) => !url.startsWith("/api/pos/tables?"))).toEqual(
+    firstReads,
+  );
+  // Occupancy is fresh on each workspace; cached order/catalog reads stay unchanged.
+  expect(
+    reads.filter((url) => url.startsWith("/api/pos/tables?")),
+  ).toHaveLength(4);
   await page.reload();
   await expect(page.getByRole("button", { name: "Nueva orden" })).toBeVisible();
   expect(reads.filter((url) => url === "/api/pos/orders")).toHaveLength(2);
@@ -1603,7 +1613,7 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.screenshot({ path: "/private/tmp/pos-0176-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  const firstReads = [...reads];
+  const firstReads = reads.filter((url) => !url.startsWith("/api/pos/tables?"));
   await page
     .getByRole("button", { name: "Volver al listado de órdenes", exact: true })
     .click();
@@ -1633,10 +1643,14 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   expect(
     reads.filter(
       (url) =>
+        !url.startsWith("/api/pos/tables?") &&
         url !==
-        "/api/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+          "/api/pos/catalog?locationId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
     ),
   ).toEqual(firstReads);
+  expect(
+    reads.filter((url) => url.startsWith("/api/pos/tables?")),
+  ).toHaveLength(2);
 });
 
 test("orden abierta prioriza mesa y acciones; conserva ticket impreso", async ({
@@ -1834,7 +1848,10 @@ test("wizard POS: tres pasos, revisión sin importes, añadir, quitar/deshacer y
     .getByRole("button", { name: "Guardar pedido", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Mesa wizard", exact: true }),
+    page.getByRole("heading", {
+      name: "Cambiar mesa: Mesa wizard",
+      exact: true,
+    }),
   ).toBeVisible();
   expect(writes).toEqual([
     {

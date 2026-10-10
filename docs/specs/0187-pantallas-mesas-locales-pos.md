@@ -9,62 +9,81 @@ archivos: apps/merchant/src/app/backoffice/locations/locations-console.tsx, apps
 
 # 0187 — Mesas en Locales y POS
 
-L2 (ADR0129), sesión principal sin subagentes. Encargo2026-10-09 leído entero,
-contrato0182 y ADR0131 completos. Dev local, sin merge/push. Un dominio mesas.
+L2 (ADR 0129), sesión principal sin subagentes. Encargo del 2026-10-09,
+contrato 0182 y ADR 0131 leídos completos. Dev local, sin merge ni push.
+Un dominio: mesas. Sin decisiones de producto abiertas ni migraciones.
 
 ## Problema
 
-LocationsConsole tiene Editar/Archivar pero ninguna UI para API de mesas.
-PosEditor contexto usa solo tableLabel y payloadsin tableId; tiposUI no exponen
-tableId del DTO0182. API/DB ya implementadas y live, no se editan.
+Locales permite editar y archivar locales, pero no administrar sus mesas.
+El editor POS usa únicamente el nombre libre; falta enlazar `tableId` y mostrar
+la ocupación disponible en la API 0182, que ya está en live.
 
 ## Diseño y alcance
 
-Locales consulta sesión, failclosed para business.posEnabled; botón Mesas junto
-a Editar en locales activos; archivados también pueden administrarse por API y
-tienen botón Mesas junto a Reactivar. Modal independiente Mesas · local, GET
-filtraactive; creación POST{name}, renombre PATCH{name}, quitar POSTstatusarchived.
-Input1..60 con trim, Confirmar guarda inmediatamente, cancelar abandona input;
-cerrar solo cierra modal, sin guardado general. Quitar requiere confirmación en
-el mismo modal. Busy bloquea cierre/acciones y ref evita doble write. Respuesta
-actualiza lista; éxito ConfirmationToast compartido; errores HTTPerror literales.
-Carga/reintento, aislamiento por local con montaje keyed y cleanup de respuestas.
-Modal Editar intacto; ni plazas ni orden ni archivadas ni reactivación de mesas.
+Locales consulta la sesión y muestra Mesas solo si `business.posEnabled` es
+verdadero. El botón queda junto a Editar; para locales archivados queda junto
+a Reactivar. El modal independiente «Mesas · local» filtra mesas activas.
+Crear usa POST con `{ name }`; renombrar PATCH con `{ name }`; quitar POST de
+status con `{ status: "archived" }`, previa confirmación. El nombre admite de
+1 a 60 caracteres después de trim. Cada Confirmar guarda inmediatamente;
+Cancelar no escribe y Cerrar únicamente cierra. Busy y una referencia síncrona
+impiden dobles escrituras y cierre durante la solicitud. Se actualiza la lista
+con la respuesta y se usa el toast de confirmación compartido. Montaje por id
+de local y cleanup excluyen respuestas tardías. Editar no cambia. Sin plazas,
+reordenamiento, vista de archivadas ni reactivación de mesas.
 
-POS GET/api/pos/tables?locationId durante contexto editor, sinpoll. Lista de
-botones nombre/Libre u Ocupada; ocupada por otraorden deshabilitada, propiaorden
-elegible. Selección almacena tableId y nombre; texto libre siempre disponible.
-Dirty/baseline/discard/conflict incluyen tableId. Cambiar mesa en orden abierta
-usa mismo selector dentro de modalCambiar mesa y aplica borrador solo conListo;
-PUTguardar confirma. POSTmesa registrada manda tableId; libre omiteid enPOST,
-PUTlibre manda null explícito para desligar. Enlace guardado sobrevivereaperturas.
+POS consulta GET `/api/pos/tables?locationId=...` al abrir el editor, sin polling.
+El selector muestra nombre y Libre/Ocupada/En esta orden; una mesa ocupada por
+otra orden no se puede elegir. La seleccionada se destaca con borde y fondo
+semánticos del kit. Seleccionar conserva id y nombre; siempre hay alternativa
+de texto libre. POST registrado manda `tableId`; POST libre lo omite y exige
+`tableLabel`. PUT libre manda `tableId: null` explícitamente para desligar.
+La firma de cambios, baseline, descarte y resolución de conflictos incluyen
+el id; pasar a texto libre con el mismo nombre también es un cambio.
 
-Console incrementa revisión de mesas ante table_occupied/unknown_table para
-refrescar lista; errorliteral mostrado, borrador/productos conservados. Selector
-indica seleccionada no disponible y bloquea avance/guardar si mesa desapareció
-o está ocupada porotra. Carga/error de mesas no impide texto libre; auth401/403
-usa onError existente del POS. Sinlocal no consulta. Cleanup/contexto evita
-respuesta local anterior. DTOtablesUi conserva id/name/openOrderId; no seatsUI.
+Cambiar mesa en una orden abierta usa el mismo selector y un borrador separado:
+Cancelar no aplica, Listo aplica al editor, Guardar cambios persiste.
+`table_occupied` y `unknown_table` refrescan las mesas sin perder productos ni
+el error literal. Una mesa seleccionada ausente u ocupada bloquea guardar;
+permite volver al paso Mesa y elegir otra o escribir un nombre. Un fallo de
+lectura ofrece reintento y permite texto libre. 401/403 siguen el manejo de
+sesión existente. Sin local no se consulta; cleanup aísla contextos anteriores.
 
-Permisos mismos de0182: owner locales según encargo; POSoperator. Todo id en
-URL/cuerpo es selección del usuario; negocio deriva de sesión servidor. Errores
-400/401/403/404/409/422/503 por posRequest, error literal; códigos solo refresco.
-table_name_taken/table_has_open_order/too_many_tables/invalid_input no borran
-input/lista. No endpoints nuevos, DB/servidor/API/kit/printing/reservas fuera.
+Se consume el contrato 0182 sin tocar servidor, API, DB, kit ni impresión.
+Owner administra mesas con el permiso existente de Locales; el operador elige
+mesas con POS. El servidor deriva el negocio de la sesión. Todos los errores
+HTTP muestran el campo `error` literalmente; `code` solo decide el refresco.
+Duplicado, mesa ocupada, límite e input inválido conservan borrador y lista.
+Reservas quedan fuera del alcance.
 
 ## Definition of Done
 
-- [ ] CRUDmodal e2e: filtraarchivadas, confirma guarda; cancela no escribe;
-      duplicado/ocupada conservan estado; POSoff oculta Mesas; Editar intacto.
-- [ ] POSe2e: elige libre, ocupadas bloqueadas; POSTtableId, releer ocupación;
-      PUTcambio y null a libre; ocupado/archivado refresca y muestra errorliteral.
-- [ ] Respuestas tardías/contextos aislados; dobles acciones bloqueadas.
-- [ ] Typecheck/lint/ui-guard/format:check y e2e dosflujos en0; capturas vistas.
-- [ ] Handoff/estadoGPT, dev commits chicos, sin merge/push/zonasClaude.
+- [x] CRUD modal e2e: filtra archivadas, Confirmar guarda, Cancelar no escribe;
+      duplicado/ocupada conservan estado, POS desactivado oculta Mesas y Editar sigue intacto.
+- [x] POS e2e: elegir libre, bloquear ocupadas, POST con id y posterior ocupación;
+      PUT de cambio y retorno a null; errores refrescan y conservan productos.
+- [x] Respuestas tardías aisladas por local y acciones bloqueadas durante escritura.
+- [x] Typecheck, lint, ui-guard, format:check y e2e de ambos flujos en 0; capturas vistas.
+- [x] Handoff y estado GPT; commits en dev sin merge, push ni zonas de Claude.
+
+## Cierre local — 2026-10-09
+
+Ocho casos de mesas y 91 regresiones POS: 99/99 verdes. Se verifica también
+el retorno a texto libre con el mismo nombre, reintento y aislamiento entre
+locales. Los oráculos previos de caché conservan los endpoints originales y
+cuentan aparte las nuevas lecturas de mesas. El wizard ahora espera el pedido
+ya guardado: su anterior heading podía coincidir antes de terminar el POST.
+
+Typecheck de seis paquetes, lint y formato globales, ui-guard de seis archivos
+sin aumentos, check-numbers y diff --check en 0. Capturas de Locales 390/1280 y
+POS 390 inspeccionadas. Comando y evidencia en
+`docs/handoff-0187-mesas-locales-pos.md`.
 
 ## Mutaciones y límites
 
-L2sin adversariales; API0182 tiene oráculos previos. Suitee2e con API simulada,
-QA owner y gateglobal antesdelive pendientes. No escrituras DBreal ni migraciones.
-Disjunta no: tocaPOS0183-0186 implementados, solo sesiónprincipal esta tarea.
-Abierto: nada.
+L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
+UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
+corrida de verify global. QA owner y publicación pendientes. Sin DB real ni
+migraciones. No disjunta: toca POS 0183–0186 implementados. El encargo sin push
+prevalece sobre la reserva remota. Abierto: nada.
