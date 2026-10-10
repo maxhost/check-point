@@ -1612,9 +1612,9 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
     page.getByRole("button", { name: "Volver al historial" }),
   ).toHaveCount(0);
 
-  await page.screenshot({ path: "/private/tmp/pos-0176-mobile.png" });
+  await page.screenshot({ path: "/tmp/pos-0176-mobile.png" });
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.screenshot({ path: "/private/tmp/pos-0176-desktop.png" });
+  await page.screenshot({ path: "/tmp/pos-0176-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
   const firstReads = reads.filter((url) => !url.startsWith("/api/pos/tables?"));
   await page
@@ -1627,9 +1627,9 @@ test("orden abierta ocupa el ancho y X vuelve al listado con caché", async ({
   await expect(
     page.getByRole("link", { name: "Cerrar POS", exact: true }),
   ).toHaveAttribute("href", "/backoffice");
-  await page.screenshot({ path: "/private/tmp/pos-0175-mobile.png" });
+  await page.screenshot({ path: "/tmp/pos-0175-mobile.png" });
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.screenshot({ path: "/private/tmp/pos-0175-desktop.png" });
+  await page.screenshot({ path: "/tmp/pos-0175-desktop.png" });
   await page.getByRole("button", { name: "Abrir Mesa 4", exact: true }).click();
   await page.getByRole("radio", { name: "Editar", exact: true }).click();
   await expect(
@@ -1699,9 +1699,9 @@ test("orden abierta prioriza mesa y acciones; conserva ticket impreso", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.screenshot({ path: "/private/tmp/pos-0177-mobile.png" });
+  await page.screenshot({ path: "/tmp/pos-0177-mobile.png" });
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.screenshot({ path: "/private/tmp/pos-0177-desktop.png" });
+  await page.screenshot({ path: "/tmp/pos-0177-desktop.png" });
   await page.emulateMedia({ media: "print" });
   const ticket = page.getByRole("region", { name: "Ticket de la orden" });
   await expect(
@@ -1897,7 +1897,7 @@ test("0183 Dialog móvil: contenido largo y acciones alcanzables con teclado", a
   const dialog = page.getByRole("dialog", { name: "Cobrar Mesa 4" });
   await expect(dialog).toBeVisible();
   await page.screenshot({
-    path: "/private/tmp/0183-dialog-320-keyboard.png",
+    path: "/tmp/0183-dialog-320-keyboard.png",
     animations: "disabled",
   });
   const geometry = await dialog.evaluate((element) => ({
@@ -2299,7 +2299,7 @@ test("0183 capturas de Pedido y modal de cobro normales", async ({ page }) => {
   await open(page);
   await scan(page);
   await page.screenshot({
-    path: "/private/tmp/0183-pedido-390.png",
+    path: "/tmp/0183-pedido-390.png",
     animations: "disabled",
   });
   await page.getByRole("button", { name: "Cobrar", exact: true }).click();
@@ -2320,12 +2320,12 @@ test("0183 capturas de Pedido y modal de cobro normales", async ({ page }) => {
       .getByRole("button", { name: "Quitar cliente", exact: true }),
   ).toBeEnabled();
   await page.screenshot({
-    path: "/private/tmp/0183-cobro-390.png",
+    path: "/tmp/0183-cobro-390.png",
     animations: "disabled",
   });
   await page.setViewportSize({ width: 320, height: 568 });
   await page.screenshot({
-    path: "/private/tmp/0183-cobro-320.png",
+    path: "/tmp/0183-cobro-320.png",
     animations: "disabled",
   });
   const confirm320 = page
@@ -2334,7 +2334,7 @@ test("0183 capturas de Pedido y modal de cobro normales", async ({ page }) => {
   await confirm320.focus();
   await expect(confirm320).toBeInViewport();
   await page.screenshot({
-    path: "/private/tmp/0183-cobro-320-actions.png",
+    path: "/tmp/0183-cobro-320-actions.png",
     animations: "disabled",
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -2363,7 +2363,7 @@ test("0183 capturas de Pedido y modal de cobro normales", async ({ page }) => {
       .getByRole("button", { name: "Confirmar cobro", exact: true }),
   ).toBeEnabled();
   await page.screenshot({
-    path: "/private/tmp/0183-extra-390.png",
+    path: "/tmp/0183-extra-390.png",
     animations: "disabled",
   });
 });
@@ -3162,7 +3162,7 @@ test("0183 identificación muestra C animada y toast solo al encontrar cliente",
     dialog.getByRole("button", { name: "Cancelar", exact: true }),
   ).toBeInViewport();
   await page.screenshot({
-    path: "/private/tmp/0183-identificando-cliente.png",
+    path: "/tmp/0183-identificando-cliente.png",
     animations: "disabled",
   });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -3178,7 +3178,7 @@ test("0183 identificación muestra C animada y toast solo al encontrar cliente",
     page.getByText("Cliente identificado", { exact: true }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/private/tmp/0183-cliente-identificado-toast.png",
+    path: "/tmp/0183-cliente-identificado-toast.png",
     animations: "disabled",
   });
   await page.getByRole("button", { name: "QR", exact: true }).click();
@@ -3253,7 +3253,7 @@ test("0183 toast de cliente queda dentro del viewport con pedido largo", async (
     await toast.evaluate((element) => getComputedStyle(element).position),
   ).toBe("fixed");
   await page.screenshot({
-    path: "/private/tmp/0183-toast-pedido-largo.png",
+    path: "/tmp/0183-toast-pedido-largo.png",
     animations: "disabled",
   });
 });
@@ -3294,7 +3294,7 @@ for (const width of [390, 1280]) {
       expect(width - customer.x - customer.width).toBeCloseTo(24, 0);
     }
     await page.screenshot({
-      path: `/private/tmp/0183-confirmacion-cliente-${width}.png`,
+      path: `/tmp/0183-confirmacion-cliente-${width}.png`,
       animations: "disabled",
     });
     await page.getByRole("radio", { name: "Editar", exact: true }).click();
@@ -3326,7 +3326,7 @@ for (const width of [390, 1280]) {
       expect(product.x + product.width / 2).toBeCloseTo(width / 2, 0);
     else expect(width - product.x - product.width).toBeCloseTo(24, 0);
     await page.screenshot({
-      path: `/private/tmp/0183-confirmacion-producto-${width}.png`,
+      path: `/tmp/0183-confirmacion-producto-${width}.png`,
       animations: "disabled",
     });
   });
@@ -3372,7 +3372,7 @@ for (const width of [390, 1280]) {
     );
     expect(discardRect!.x).toBeGreaterThan(saveRect!.x + saveRect!.width);
     await page.screenshot({
-      path: `/private/tmp/0183-descartar-inline-${width}.png`,
+      path: `/tmp/0183-descartar-inline-${width}.png`,
       animations: "disabled",
     });
     await discard.click();
@@ -3393,7 +3393,7 @@ for (const width of [390, 1280]) {
     expect(writes).toEqual([]);
     await discard.click();
     await page.screenshot({
-      path: `/private/tmp/0183-descartar-modal-${width}.png`,
+      path: `/tmp/0183-descartar-modal-${width}.png`,
       animations: "disabled",
     });
     await dialog
@@ -3416,7 +3416,7 @@ for (const width of [390, 1280]) {
     ).toHaveCount(0);
     expect(writes).toEqual([]);
     await page.screenshot({
-      path: `/private/tmp/0183-descartar-pedido-${width}.png`,
+      path: `/tmp/0183-descartar-pedido-${width}.png`,
       animations: "disabled",
     });
   });
@@ -3525,7 +3525,7 @@ for (const width of [390, 320]) {
       ),
     ).toBe(true);
     await page.screenshot({
-      path: `/private/tmp/0183-cliente-badge-${width}.png`,
+      path: `/tmp/0183-cliente-badge-${width}.png`,
       animations: "disabled",
     });
     await badge
@@ -3537,7 +3537,7 @@ for (const width of [390, 320]) {
     });
     await expect(dialog).toBeVisible();
     await page.screenshot({
-      path: `/private/tmp/0183-cliente-quitar-${width}.png`,
+      path: `/tmp/0183-cliente-quitar-${width}.png`,
       animations: "disabled",
     });
     await dialog.getByRole("button", { name: "Cancelar", exact: true }).click();

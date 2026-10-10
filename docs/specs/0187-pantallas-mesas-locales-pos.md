@@ -122,6 +122,10 @@ esperar esa lectura inicial antes de tomar el baseline de red. Se conserva
 la igualdad estricta de lecturas para los dos toques de impresión: imprimir
 no debe añadir fetch. Solo cambia la prueba E2E, no el módulo de impresión.
 
+CI de main reporta ENOENT en capturas con `/private/tmp`, exclusivo de macOS.
+Se usan rutas `/tmp` en las suites POS, impresión y mesas para funcionar también
+en Linux; se verifica la regresión local sin atribuir un PASS remoto todavía.
+
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
 corrida de verify global. QA owner y publicación pendientes. Sin DB real ni

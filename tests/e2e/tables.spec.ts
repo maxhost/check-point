@@ -257,7 +257,7 @@ test("Locales: crear, renombrar y quitar guarda inmediatamente; Editar y cerrar 
     .getByRole("button", { name: "Confirmar", exact: true })
     .click();
   await expect(modal(page).getByText("Terraza", { exact: true })).toBeVisible();
-  await page.screenshot({ path: "/private/tmp/0187-mesas-local-mobile.png" });
+  await page.screenshot({ path: "/tmp/0187-mesas-local-mobile.png" });
   await modal(page)
     .getByRole("button", { name: "Quitar Terraza", exact: true })
     .click();
@@ -359,7 +359,7 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
     page.getByRole("button", { name: "Tomar pedido", exact: true }),
   ).toBeEnabled();
   await page.screenshot({
-    path: "/private/tmp/0187-mesas-pos-mobile.png",
+    path: "/tmp/0187-mesas-pos-mobile.png",
     animations: "disabled",
   });
   await review(page);
@@ -408,9 +408,9 @@ test("POS: mesa libre viaja como tableId; orden ocupa mesa; cambiar conserva id"
   await expect(
     change.getByRole("button", { name: "Usar nombre de mesa", exact: true }),
   ).toHaveCount(0);
-  await page.screenshot({ path: "/private/tmp/0187-mesas-chips-mobile.png" });
+  await page.screenshot({ path: "/tmp/0187-mesas-chips-mobile.png" });
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.screenshot({ path: "/private/tmp/0187-mesas-chips-desktop.png" });
+  await page.screenshot({ path: "/tmp/0187-mesas-chips-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
   await change
     .getByRole("button", { name: "Mesa 2 · Libre", exact: true })
@@ -686,7 +686,7 @@ test("Locales: respuesta tardía de Centro no cambia el modal de Norte", async (
   release!();
   await expect(north.getByText("Mesa tardía", { exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.screenshot({ path: "/private/tmp/0187-mesas-local-desktop.png" });
+  await page.screenshot({ path: "/tmp/0187-mesas-local-desktop.png" });
 });
 
 test("POS: mesas pertenecen al local elegido; texto libre solo tras confirmar que no hay mesas", async ({

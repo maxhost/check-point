@@ -304,7 +304,7 @@ for (const mode of ["ble", "serial"] as const) {
     expect((await readQA(page)).requests).toEqual([]);
     if (mode === "ble")
       await page.screenshot({
-        path: "/private/tmp/0185-elegir-impresora.png",
+        path: "/tmp/0185-elegir-impresora.png",
         animations: "disabled",
       });
     await dialog
@@ -416,7 +416,7 @@ for (const showBusinessName of [false, true])
       await expect(ticket.locator("svg, img, canvas")).toHaveCount(0);
       if (!showBusinessName && !showTable)
         await page.screenshot({
-          path: "/private/tmp/0185-ticket-navegador.png",
+          path: "/tmp/0185-ticket-navegador.png",
           animations: "disabled",
         });
       expect(calls.writes).toEqual([]);
