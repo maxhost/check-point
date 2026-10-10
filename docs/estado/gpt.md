@@ -5,6 +5,18 @@
 
 ## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
 
+Regla vigente del owner en d3fe5c4: Nombre de mesa solo cuando la consulta del
+local confirma cero mesas, tanto nueva orden como Cambiar mesa. Sin input con
+mesas configuradas, todas ocupadas o carga/error. Sin mesas, edición libre
+conserva Guardar directo. Nueva orden con mesas requiere id; una orden antigua
+libre no necesita reasignarse para editar productos, pero al cambiar mesa en
+local configurado debe elegir una registrada. Eliminada alternativa Usar nombre.
+Verificado: 101/101 E2E (10 mesas + 91 POS), 17.1 s; typecheck merchant,
+lint de archivos cambiados, guardia de dos pantallas, formato global y diff
+en 0. Log /private/tmp/0187-configured-tables.log. Casos todas ocupadas y error
+sin fallback hasta confirmar lista vacía incluidos. Dev, sin merge/push;
+API, kit y DB intactos. Los registros siguientes son históricos.
+
 Último ajuste del owner implementado en fe5803b: modal Cambiar mesa muestra
 libres y la propia, oculta las ocupadas por otras órdenes. Guardar reemplaza
 Listo; deshabilitado sin cambios o selección inválida. PUT directo de mesa con
