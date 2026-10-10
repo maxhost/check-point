@@ -166,3 +166,89 @@ Borrados junto con su feature (la baja inmediata del ADR 0063 y `settle-free`, r
 ## Bloqueos
 
 Ninguno.
+
+## Ronda 2 — correcciones de la revision (`docs/revision-0189.md`: FAIL por H1)
+
+Commits: `e19c526` (H1), `d111746` (H2), `b1fe965` (#6). Nada mas tocado.
+
+### H1 (bloqueante) — el owner sin acceso entraba en bucle en `/backoffice/subscription`
+
+`apps/merchant/src/app/backoffice/layout.tsx` (envuelve TODAS las paginas de `/backoffice`, tambien la de suscripcion):
+
+```diff
+-  const session = await requireBackofficeSession();
++  const session = await requireBackofficeSession({ allowBlocked: true });
+```
+
+Seguro porque el corte vive en cada pagina. Verificado: las 18 `page.tsx` bajo `app/backoffice` llaman a
+`requireOwner(` o `requireBackofficeSession(`, y solo `subscription/page.tsx` con `allowBlocked`.
+
+Test nuevo `apps/merchant/src/app/backoffice/layout-guard.test.ts` (unit, `auth-guards` REAL, acceso doblado a `blocked`):
+- CONTROL: el guard sin `allowBlocked` lanza `redirect("/backoffice/subscription")`.
+- (a) el layout NO redirige al owner bloqueado (`resolves`, `redirect` no llamado).
+- (b) barrido estatico (PROXY, etiquetado): piso de >= 18 `page.tsx` escaneados, todos llaman a su guard, y el
+  conjunto con `allowBlocked` es exactamente `["subscription/page.tsx"]`.
+
+### H2 — un evento `incomplete` antes del `active` dejaba las campañas en `plan_downgraded` para siempre
+
+`apps/merchant/src/server/marketing/plan-brake.ts`, al principio de `resumeCampaignsAfterBilling`:
+
+```diff
++  if (effectivePlan(row === null ? null : { ...row, now }) === null) return 0;
+```
+
+Con el plan efectivo de FALLBACK (suscripcion viva sobre una fila cuyo plan todavia no es pago) no se decide nada: las
+campañas quedan `billing_blocked` y vuelven cuando llega el `active` + plan pago.
+
+Test nuevo `apps/merchant/src/server/billing-incomplete.neon.integration.test.ts` (la sonda del revisor, convertida):
+prueba vencida → barrido pausa la Bienvenida → `applySubscriptionState(incomplete)` → sigue `paused/billing_blocked` →
+`applySubscriptionState(active, base)` → `active/null` → barrido `{0, 0}`.
+
+### #6 — el `trial_end` entra en la clave de idempotencia del checkout
+
+`apps/merchant/src/app/api/billing/checkout/route.ts`:
+
+```diff
+-      { idempotencyKey: `checkout:${businessId}:${plan}:${interval}` },
++      {
++        idempotencyKey: `checkout:${businessId}:${plan}:${interval}:${trialEndSeconds ?? "now"}`,
++      },
+```
+
+Tests: `billing.neon` (en prueba la clave lleva los segundos del fin de la prueba; vencida, `:now`) y
+`billing-checkout-guards.neon` (la clave fija con plan, intervalo y `trial_end`). Nota: `from` sigue fuera de la clave
+(el mismo defecto ya existia antes de la spec, segun la revision); no se toco.
+
+### Bitacora (ronda 2)
+
+| id | archivo | shasum limpio | invariante | resultado EJECUTADO |
+|---|---|---|---|---|
+| MH1 | apps/merchant/src/app/backoffice/layout.tsx | 5fe78186d93d053a5c2e68c765d376b8331b8061 | el layout de /backoffice NO aplica el rebote de cobro (allowBlocked) | ROJO. Mutacion: `requireBackofficeSession({ allowBlocked: true })` → `requireBackofficeSession()`. Alcance: los 35 archivos de `src/app/backoffice` (unit). `layout-guard.test.ts > ORACULO DE LA MUTACION H1: el layout NO redirige` → `AssertionError: promise rejected "Error: REDIRECT:/backoffice/subscription" instead of resolving`. 1 failed / 276 passed. Revertida: `diff` vacio, shasum 5fe78186… |
+| MH2 | apps/merchant/src/server/marketing/plan-brake.ts | a46a12f8cee62de8fa328f566d0f6076e1b75c09 | con plan efectivo de FALLBACK la reanudacion no toca las campañas `billing_blocked` | ROJO. Mutacion: se borro `if (effectivePlan(…) === null) return 0;`. Alcance: `billing-incomplete.neon` + `billing-sweep.neon`. `× incomplete → la Bienvenida queda billing_blocked; active + base → vuelve` → `expected 'paused/plan_downgraded' to be 'paused/billing_blocked'` (linea 78, la asercion intermedia tras el evento `incomplete`: corta antes que la final `active/null`, que es la que midio el revisor sobre el codigo sin arreglo). `billing-sweep.neon` 3/3 verde. 1 failed / 3 passed. Revertida: `diff` vacio, shasum a46a12f8… |
+
+### Suites corridas (ronda 2)
+
+- `vitest run src/app/backoffice` (35 archivos): verde (y rojo 1/277 bajo MH1).
+- `tools/neon-test.sh billing-incomplete billing-sweep billing-webhook-campaign-brake`: 9/9.
+- `tools/neon-test.sh billing billing-checkout-guards billing-dead-state`: 10/10.
+
+### `pnpm verify` (Node 24, una vez al final, sobre `b1fe965`) — ok
+
+```
+gate         | corrio/salteado (motivo) | ok/ROJO | segundos
+typecheck    | corrio                   | ok      | 2.6
+lint         | corrio                   | ok      | 6.2
+ui-guard     | corrio                   | ok      | 0.8
+format:check | corrio                   | ok      | 7.3
+test         | corrio                   | ok      | 40.7
+build        | corrio                   | ok      | 9.6
+test:e2e     | corrio                   | ok      | 71.5
+neon (full)  | corrio                   | ok      | 415.7
+
+verify: ok
+```
+
+- `test`: 250 archivos pasados / 200 skipped; 2462 tests pasados / 1067 skipped.
+- `test:e2e`: 298 pasados / 21 skipped.
+- `neon (full)`: 409 archivos pasados / 41 skipped; 3284 tests pasados / 282 skipped.
+- `rg -n MUTATION apps packages tools` → vacio.
