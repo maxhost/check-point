@@ -90,8 +90,13 @@ describe.skipIf(!integrationEnabled)(
       vi.unstubAllEnvs();
     });
 
-    it("la `idempotencyKey` del Checkout es FIJA por negocio + plan + intervalo", async () => {
-      const seed = await seedBillingBusiness("trial", {});
+    it("la `idempotencyKey` del Checkout es FIJA por negocio + plan + intervalo + `trial_end`", async () => {
+      // El fin de la prueba con segundos enteros: entra en la clave como unix SECONDS.
+      const trialEndsAt = new Date(
+        Math.floor((Date.now() + 30 * 86_400_000) / 1000) * 1000,
+      );
+      const end = trialEndsAt.getTime() / 1000;
+      const seed = await seedBillingBusiness("trial", { trialEndsAt });
       world.businessId = seed.business.id;
       // El customer que devuelve el fake se ESCRIBE en `core.subscription`, y ese unique es
       // GLOBAL: con el literal por defecto este archivo chocaría con el `checkout` de
@@ -107,8 +112,8 @@ describe.skipIf(!integrationEnabled)(
         // DOS intentos del MISMO plan reusan la MISMA clave: es lo que impide que queden dos
         // sesiones de pago abiertas a la vez (§Decisiones del orquestador, 3).
         expect(fake.sessionKeys).toEqual([
-          `checkout:${seed.business.id}:base:month`,
-          `checkout:${seed.business.id}:base:month`,
+          `checkout:${seed.business.id}:base:month:${end}`,
+          `checkout:${seed.business.id}:base:month:${end}`,
         ]);
 
         // …y el PLAN y el INTERVALO sí forman parte de la clave: son otro pago, y tienen que
@@ -120,8 +125,8 @@ describe.skipIf(!integrationEnabled)(
           200,
         );
         expect(fake.sessionKeys.slice(2)).toEqual([
-          `checkout:${seed.business.id}:base:year`,
-          `checkout:${seed.business.id}:plus:month`,
+          `checkout:${seed.business.id}:base:year:${end}`,
+          `checkout:${seed.business.id}:plus:month:${end}`,
         ]);
       } finally {
         await dropBusiness(seed.business.id);

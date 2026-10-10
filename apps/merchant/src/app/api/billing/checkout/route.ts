@@ -28,8 +28,11 @@ import { NextResponse } from "next/server";
  *     ([R2-I10]): con la `idempotencyKey` fija, un fallback al `request.url` clavaría las
  *     `*_url` en el dominio de la primera sesión durante 24 h.
  *
- * LA `idempotencyKey` ES FIJA POR PLAN E INTERVALO (`checkout:${businessId}:${plan}:${interval}`)
- * para que no haya varias sesiones abiertas del mismo plan. A cambio, antes de redirigir se
+ * LA `idempotencyKey` ES FIJA POR PLAN, INTERVALO Y `trial_end`
+ * (`checkout:${businessId}:${plan}:${interval}:${trial_end | "now"}`) para que no haya varias
+ * sesiones abiertas del mismo plan. El `trial_end` entra en la clave (#6 de la revisión): Stripe
+ * rechaza una clave reusada con OTROS params, y el `trial_end` cambia si la prueba cruza el
+ * umbral de 48 h o se extiende a mano dentro de las 24 h de la clave (→ 503 hasta que venza). A cambio, antes de redirigir se
  * verifica que la sesión esté ABIERTA; si no, 409 `checkout_session_stale` (mandar al owner a
  * una sesión completada es un FALSO ÉXITO).
  */
@@ -69,6 +72,9 @@ export async function POST(request: Request) {
     const customer = customerId ?? (await createCustomer(businessId, gateway));
 
     const metadata = { businessId, plan, interval };
+    // Unix SECONDS (las fechas de Stripe); sin `* 1000` al revés, cae en 1970.
+    const trialEndSeconds =
+      trialEnd === null ? null : Math.floor(trialEnd.getTime() / 1000);
     const session = await gateway.checkout.sessions.create(
       {
         mode: "subscription",
@@ -80,15 +86,14 @@ export async function POST(request: Request) {
         metadata,
         subscription_data: {
           metadata,
-          // Unix SECONDS (las fechas de Stripe); sin `* 1000` al revés, cae en 1970.
-          ...(trialEnd === null
-            ? {}
-            : { trial_end: Math.floor(trialEnd.getTime() / 1000) }),
+          ...(trialEndSeconds === null ? {} : { trial_end: trialEndSeconds }),
         },
         success_url: `${origin}${landing(from)}?checkout=success`,
         cancel_url: `${origin}${landing(from)}?checkout=cancelled`,
       },
-      { idempotencyKey: `checkout:${businessId}:${plan}:${interval}` },
+      {
+        idempotencyKey: `checkout:${businessId}:${plan}:${interval}:${trialEndSeconds ?? "now"}`,
+      },
     );
     if (session.status !== "open" || session.url === null) {
       throw new BillingError(

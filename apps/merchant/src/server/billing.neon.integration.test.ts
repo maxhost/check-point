@@ -132,7 +132,7 @@ describe.skipIf(!integrationEnabled)(
           success_url: "https://checkpass.test/backoffice?checkout=success",
         });
         expect(fake.sessionKeys).toEqual([
-          `checkout:${seed.business.id}:base:month`,
+          `checkout:${seed.business.id}:base:month:${trialEndsAt.getTime() / 1000}`,
         ]);
         // El customer se PERSISTE (sin esto la reconciliación es un no-op, [R2-6]).
         expect(
@@ -151,7 +151,7 @@ describe.skipIf(!integrationEnabled)(
             "https://checkpass.test/backoffice/subscription?checkout=success",
         });
         expect(fake.sessionKeys[1]).toBe(
-          `checkout:${seed.business.id}:plus:year`,
+          `checkout:${seed.business.id}:plus:year:${trialEndsAt.getTime() / 1000}`,
         );
         expect(fake.customerKeys).toEqual([
           `billing:customer:${seed.business.id}`,
@@ -171,10 +171,15 @@ describe.skipIf(!integrationEnabled)(
       await withSeed(
         "none",
         { trialEndsAt: new Date(Date.now() - DAY) },
-        async () => {
+        async (seed) => {
           expect(
             (await post(CHECKOUT, { plan: "plus", interval: "month" })).status,
           ).toBe(200);
+          // #6 de la revision: sin `trial_end`, la clave lo dice (`now`), asi no choca con la
+          // de una sesion del mismo plan que SI lo llevaba.
+          expect(fake.sessionKeys[0]).toBe(
+            `checkout:${seed.business.id}:plus:month:now`,
+          );
           expect(fake.sessionParams[0]?.line_items).toEqual([
             { price: MONTHLY_PRICE, quantity: 1 },
           ]);
