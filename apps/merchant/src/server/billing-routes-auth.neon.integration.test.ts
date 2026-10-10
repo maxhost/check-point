@@ -41,7 +41,7 @@ import { POST as RESUME } from "../app/api/billing/resume/route";
 
 /**
  * Spec 0063, D6 — EL GATE DE LAS 5 RUTAS POST CON SESIONES REALES (spec 0189: se fue
- * `settle-free`, llegaron `plan` y `resume`). Existe porque
+ * la ruta de saldar el plan gratis, llegaron `plan` y `resume`). Existe porque
  * `billing-routes.test.ts` NO PUEDE VER LA DISTINCIÓN que el DoD exige: con `ownerContext`
  * doblado, un staff ACTIVO y uno DESACTIVADO son el mismo `null`, así que un gate que hubiera
  * perdido el filtro `status='active'` pasaría el unit en verde. Acá la sesión se abre con

@@ -24,7 +24,7 @@ import { integrationEnabled } from "./locations-integration-support";
  * el lock del negocio tomado.
  *
  * Los guards de la baja INMEDIATA del ADR 0063 (el revert ante un rechazo determinista, el
- * reintento que no borra la baja ya pedida, `settle-free` sobre una suscripción viva) se fueron
+ * reintento que no borra la baja ya pedida, saldar a gratis una suscripción viva) se fueron
  * con esa baja: el ADR 0134 §8 la revirtió a «al fin del periodo» y `cancel` ya no escribe nada
  * antes de que Stripe confirme. Sus tests se borraron con su feature (declarado en el handoff).
  */

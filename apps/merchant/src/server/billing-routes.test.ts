@@ -269,7 +269,7 @@ describe("every handler under api/billing/** is covered by HANDLERS", () => {
       .filter((f) => basename(f) === "route.ts")
       .sort();
     // PISO: un barrido que no ve nada no puede quedar verde. Sube a 6 con la spec 0189
-    // (`settle-free` se fue; `plan` y `resume` llegaron): un piso SUBE con las rutas.
+    // (se fue la ruta de saldar el plan gratis; llegaron `plan` y `resume`): un piso SUBE con las rutas.
     expect(files.length).toBeGreaterThanOrEqual(6);
 
     const expected = new Set<string>();

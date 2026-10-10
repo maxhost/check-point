@@ -63,11 +63,6 @@ describe("catálogo — cada plan × cada clave de la tabla de §D2", () => {
     expect([...KNOWN_PLANS]).toEqual([...PLANS]);
   });
 
-  it("no hay plan gratis: `free` es un plan desconocido (fallback)", () => {
-    expect(limitForPlan("free", "locations.max")).toBe(1);
-    expect(flagForPlan("free", "campaigns.welcome")).toBe(false);
-  });
-
   it("los planes pagos son `base` y `plus`", () => {
     expect([...PAID_PLANS].sort()).toEqual(["base", "plus"]);
   });

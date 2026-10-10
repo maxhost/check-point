@@ -74,7 +74,7 @@ const serverErrors = (
       <ChoiceGroup
         label="Plan"
         name="plan"
-        options={[{ value: "free", label: "Gratis" }]}
+        options={[{ value: "trial", label: "Gratis" }]}
       />
     </Form>
   </main>
@@ -355,9 +355,9 @@ createRoot(document.getElementById("root")!).render(
               />
               <ChoiceGroup
                 label="Plan"
-                defaultValue="free"
+                defaultValue="trial"
                 options={[
-                  { value: "free", label: "Gratis" },
+                  { value: "trial", label: "Gratis" },
                   { value: "pro", label: "Pro" },
                 ]}
               />

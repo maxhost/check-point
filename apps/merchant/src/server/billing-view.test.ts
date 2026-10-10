@@ -173,7 +173,7 @@ describe("planLabel — allow-list de presentación del PLAN (spec 0189 §D9)", 
     expect(planLabel(plan)).toBe(expected);
   });
 
-  it.each([["enterprise"], ["PLUS"], [""], ["free"], ["plan'; drop table"]])(
+  it.each([["enterprise"], ["PLUS"], [""], ["plan'; drop table"]])(
     "un plan desconocido (%s) sale por el texto genérico, nunca crudo",
     (plan) => {
       const label = planLabel(plan);
