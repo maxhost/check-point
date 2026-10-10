@@ -10,39 +10,32 @@
 > pantalla. El auto-reporte no es evidencia.
 
 
-## ⇥ ESTADO (2026-10-09) — EN LIVE: `main` = `origin/main` = `9405c93` (MESAS + IMPRESION + POS); VERCEL READY
+## ⇥ ESTADO (2026-10-10) — SPEC 0189 (PLANES PAGOS, PRUEBA 90 DIAS) IMPLEMENTADA EN `dev` (`327016f`); PROD sin cambios
 
-**En PROD:** `9405c93` pusheado 2026-10-09 con `--no-verify` **con OK explicito del owner**: el pre-push corrio
-`pnpm verify` y dio verde en typecheck, lint, ui-guard, format:check, test, build y Neon completo (400 archivos /
-3256 passed / 282 skipped); el unico rojo fue `test:e2e`, que NO arranco porque el entorno local ocupaba el puerto
-3200 («Another next dev server is already running», PID del consumer local). Los e2e completos los habia corrido GPT
-verdes sobre `fc83ed2` (288 passed / 21 skipped); despues solo formato y docs. Vercel: merchant, customer y public
-`READY` con `9405c93`. Humo en live: `/api/health` 200 en business y my; `GET /api/pos/ticket` y
-`/api/merchant/business/ticket` sin sesion → 401; `/prueba-impresora` → 404 (borrada). **Base:** 0067 y 0068
-aplicadas antes del push (snapshot `pre-0067-0068-2026-10-09`, `snap-royal-band-ax3tsf2l`; 69 migraciones).
-Leccion para el proximo push: parar el entorno local antes (el e2e necesita los puertos 3200/3201).
+**En PROD:** sin cambios, `main` = `origin/main` = `9405c93`. **La migracion 0069 NO esta aplicada en PROD.**
 
-**Lo que entro en este pase (antes en `dev`):** todo lo de la nota anterior (mesas, impresion 0184 `c264dbf`, UI de GPT 0185 `9dfd240`
-y 0186 `7664df1`, fixes de e2e de GPT `500f8fa`, docs) mas:
-- `ef769b6` Prettier en los 14 archivos de mi zona que marcaba `format:check` (solo formato). Medido: `pnpm
-  format:check` 0, `git diff --check` 0, unitarios `printing` 23/23. Gates previos de GPT sobre `fc83ed2`
-  (typecheck, lint, ui-guard, 2458 unitarios, build, 3256 Neon, e2e 288 passed / 21 skipped): log en
-  `/private/tmp/checkpass-2026-10-09-pre-main-verify.log`, detalle en `docs/preparacion-main-2026-10-09.md`;
-  no los repeti (el cambio fue solo formato).
-- Revision del trabajo de GPT de impresion (0185/0186): respeta el contrato (sin `await` antes de `printTicket`,
-  ajuste cargado al abrir el POS, los 5 resultados, `window.print()` con el `TicketDoc`, ajuste solo owner).
-  **Huecos, hallazgo a decidir:** no hay ajuste «Impresora» por dispositivo → en Android `choose` usa BLE siempre
-  (no se puede elegir una Bluetooth clasica) y el papel queda en 58 mm.
+**En `dev` (sin pushear):**
+- `327016f` merge de la rama `spec-0189` (ADR 0134, spec 0189 `implementada`, `7b6e91d`). Muere `free`; alta en
+  `trial` con `trial_ends_at` +90 d; planes `base` ($20/$200) y `plus` ($49/$490); eje de acceso que bloquea con
+  402 panel, mostrador, POS, login del personal, inscripcion, Bienvenida y Venta cruzada; barrido diario
+  `/api/internal/billing-sweep`; skill `/extender-prueba`.
+- Verificacion: implementador `pnpm verify` ok (Neon 409 archivos); revisor FAIL ronda 1 (H1 bucle del layout de
+  `/backoffice` para el owner bloqueado; H2 campañas en `plan_downgraded` tras un evento `incomplete`), corregidos;
+  PASS ronda 2 con `pnpm verify` ok sobre `1ba7ef7`. Reproducido por mi: unit acceso/catalogo/plan-change 31/31,
+  M1 y MH1 rojas, `billing-incomplete.neon` 1/1, `layout-guard` 5/5. N1 del revisor (hueco de cobertura) cerrado
+  por mi en `f5daf5e`: `billing-sweep.neon` 3/3 limpio y rojo bajo R4 («expected {paused:0,resumed:0} to deeply
+  equal {paused:0,resumed:1}»). `pnpm verify` NO se corrio sobre el merge con `dev` (sin solapamiento de archivos
+  con la landing de GPT, `merge-tree` sin conflictos): lo corre el pre-push.
+- GPT: landing 0188 en `dev` (`84df923`, `b34e6bd`) y cambios suyos sin commitear en `apps/public`.
+- Worktree `check-point-wt/spec-0189` todavia existe (borrar cuando no haga falta).
 
-**QUE SIGUE:**
-1. QA del owner en live.
-2. Prueba de campo de la impresion en la WD-58P1 cuando este en live o en local por el tunel.
-3. Spec B (venta reclamable por QR, PARQUEADO #85). Ideas de hardware parqueadas: #87–#90; investigacion en
-   `docs/investigacion-esp32-marketing-cercania-2026-10-09.md`.
+**QUE SIGUE (para salir a live, todo con OK del owner):**
+1. Owner: 4 precios de Stripe (test y live) y las 8 env `STRIPE_PRICE_{BASE,PLUS}_{MONTHLY,YEARLY}_{TEST,LIVE}`.
+2. GPT: UI de cobro con el contrato §D10 (la consola actual llama a checkout sin `plan` → 400) y textos «Free».
+3. Snapshot + migracion 0069 a PROD justo antes del push; `merge --ff-only dev` a `main`, probar local, push.
 
-**Pendiente / abierto (de antes):** PARQUEADO #82 (staging), #86 (PWA), deuda `no_program` (R3 0169), hallazgo
-`loyalty-api.ts` (zona GPT). Local: cupones de prueba de Joyas para `cliente-1` y enlace de sesion
-`https://dev-my.checkpass.club/c/seed-local-web-1` (solo base local).
+**Hallazgos a decidir (owner):** regla de `/extender-prueba +N` (hoy: desde el fin actual o desde hoy si vencio,
+la puso el implementador); #3 transitorio (pago `incomplete` → 1 local sin campañas hasta el `active`). Resto de
+hallazgos menores en `docs/handoff-0189-implementacion.md` y `docs/revision-0189.md`.
 
-**Decisiones del owner, no volver a preguntar:** las del bloque historico anterior, mas: Wi-Fi de invitados (#88),
-linea de hardware (#89), aparato de mesa (#90), todas parqueadas.
+**Decisiones del owner, no volver a preguntar:** las del ADR 0134 (2026-10-10).
