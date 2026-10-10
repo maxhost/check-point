@@ -3,7 +3,28 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
+## ⇥ MAIN LOCAL (2026-10-10) — MESAS MERGEADAS, SIN PUSH
+
+Owner autorizó merge a main. Árbol limpio; fetch confirmó main/origin main
+9405c93 como ancestros de dev. Fast-forward local ejecutado hasta 869e65c,
+incluyendo 0187 y ajustes del owner. Sin conflictos, push ni publicación.
+Este registro se commitea en dev y se incorpora por fast-forward de docs;
+se deja checkout main para QA del owner y se restaura el ambiente local.
+
+Gates acumulados reales: typecheck/lint/guard/formato/unit2458/build verdes;
+Neon related merchant 4/4, consumer omitido sin cambios; E2E final 298 passed
+y 21 skipped, 1.3 min, salida 0. Verify inicial devolvió ROJO porque el ambiente
+local impedía levantar otros Next; se detuvo temporalmente para repetir E2E.
+La corrida real encontró un oráculo de impresión sin la nueva lectura de mesas;
+869e65c añade mock y espera esa lectura antes del baseline, manteniendo la
+igualdad estricta de fetch durante impresión. Printing15/15 y E2E completo
+posterior verdes; lint/formato de prueba en 0. Sin modificar printing ni API.
+
+Detalle, tabla y logs en docs/preparacion-main-2026-10-10.md. No se afirma
+una segunda corrida de verify completa ni CI remoto verde. Sin migración PROD:
+0067/0068 ya aplicadas. QA main local por owner y push live quedan pendientes.
+
+## ⇥ 0187 (2026-10-09) — HISTÓRICO: MESAS EN DEV LOCAL
 
 Ajuste visual en 8cdb050: eliminado «Mesa seleccionada» del paso 1 y prop
 redundante del selector. Chip elegido con borde accent de 1 px y accent-soft,
