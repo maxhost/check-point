@@ -82,6 +82,16 @@ POS 390 inspeccionadas. Comando y evidencia en
 
 ## Mutaciones y límites
 
+### Ajuste visual autorizado — selector en chips
+
+El owner pide reemplazar las tarjetas de selección por chips como el badge del
+topbar y corregir el borde recortado por el scroll. El selector compartido usará
+una fila flexible con salto de línea, botones redondeados y nombre/estado inline.
+La selección se indica con borde de 1 px y fondo suave; se elimina el ring exterior
+y se añade espacio interior al listado para foco y hover. Sin cambios de lógica,
+contrato ni kit. Validación: E2E de mesas existente y capturas del modal móvil y
+desktop, más typecheck, lint, formato y ui-guard.
+
 L2 sin adversariales; API 0182 tiene oráculos previos. E2e con HTTP simulado,
 UI y CSS reales. No acredita nuevas pruebas de persistencia real ni una
 corrida de verify global. QA owner y publicación pendientes. Sin DB real ni
