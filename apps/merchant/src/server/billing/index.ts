@@ -8,9 +8,12 @@
 // «fase C» es la D.
 export {
   DEAD_STRIPE_STATUS,
+  checkoutTrialEnd,
   decidePlanChange,
   hasLiveSubscription,
 } from "./plan-change";
+export { isOurPrice, matchPrice } from "./prices";
+export type { BillingInterval, PaidPlan, PriceIds } from "./prices";
 export type {
   BlockCode,
   PlanChangeDecision,
@@ -65,8 +68,7 @@ export {
   applySubscriptionState,
   clearPendingPlan,
   readSubscription,
-  scheduleDowngrade,
-  settleToFree,
+  scheduleCancel,
 } from "./store";
 // D8 salió de `store.ts` al entrar el freno defensivo de la spec 0065 (límite de 300
 // líneas). Sigue saliendo por este barrel: sus consumidores no cambiaron.

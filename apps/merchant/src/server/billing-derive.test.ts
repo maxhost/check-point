@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { planFromSubscription, type SubscriptionWrite } from "./billing";
 import {
+  BASE_MONTHLY_PRICE,
+  BASE_YEARLY_PRICE,
   CANCEL_AT_SECONDS,
   CANCEL_AT_YEAR,
   DELETED_EVENT,
@@ -14,9 +16,9 @@ import {
 } from "./billing-derive-support";
 
 /**
- * Spec 0063, D5.d-f — `planFromSubscription`. El principio del archivo entero: el payload
- * es un DISPARADOR, no una fuente de datos; `subscription` acá es siempre lo que devuelve
- * `subscriptions.retrieve(...)`.
+ * Spec 0063, D5.d-f + spec 0189 §D5 / T6 — `planFromSubscription`. El principio del archivo
+ * entero: el payload es un DISPARADOR, no una fuente de datos; `subscription` acá es siempre lo
+ * que devuelve `subscriptions.retrieve(...)`.
  */
 
 const derive = (args: {
@@ -53,7 +55,7 @@ describe("planFromSubscription — los 8 status conocidos + uno inventado", () =
     ["unpaid", { status: "unpaid", ...NO_PENDING }],
     ["incomplete", { status: "incomplete", ...NO_PENDING }],
     ["paused", { status: "paused", ...NO_PENDING }],
-    // Terminales sobre un plan PAGO sin baja pedida por nosotros → `none`, nunca `free`.
+    // Terminales sobre un plan PAGO → `none` (spec 0189: no hay plan gratis al que caer).
     [
       "canceled",
       {
@@ -74,7 +76,7 @@ describe("planFromSubscription — los 8 status conocidos + uno inventado", () =
         clearDowngradeRequest: true,
       },
     ],
-    // Desconocido: no otorga `plus` (allow-list POSITIVA) y deja el motivo escrito.
+    // Desconocido: no otorga un plan pago (allow-list POSITIVA) y deja el motivo escrito.
     [
       "future_status",
       {
@@ -90,67 +92,53 @@ describe("planFromSubscription — los 8 status conocidos + uno inventado", () =
   });
 });
 
-describe("planFromSubscription — `deleted` y el discriminante de intención [R2-1]", () => {
-  it("SIN `downgrade_requested_at` (baja hecha desde el dashboard) → `none`", () => {
-    // Es el bloqueante peor de la spec: `cancel_at_period_end` sigue en `true` en un
-    // `deleted`, así que leerlo como «esto lo pedimos nosotros» clasificaba la baja del
-    // dashboard como esperada y aterrizaba en `free` con 3 locales activos.
+describe("planFromSubscription — eventos terminales (spec 0189 §D5)", () => {
+  it.each([null, new Date("2026-09-01T00:00:00Z")])(
+    "un `deleted` sobre un plan pago → `none` (downgrade_requested_at = %s: es auditoría, no decide)",
+    (downgradeRequestedAt) => {
+      // `cancel_at_period_end` sigue en `true` en un `deleted` («will … or DID cancel»).
+      expect(
+        derive({
+          event: DELETED_EVENT,
+          subscription: subscriptionFake({
+            status: "canceled",
+            cancel_at_period_end: true,
+          }),
+          row: subscriptionRow({ plan: "plus", downgradeRequestedAt }),
+        }),
+      ).toEqual({
+        plan: "none",
+        status: "canceled",
+        pendingPlan: null,
+        pendingPlanAt: null,
+        clearDowngradeRequest: true,
+      });
+    },
+  );
+
+  it("una tarjeta rechazada EN LA PRUEBA no quita la prueba: `trial` sin `plan` [R2-7]", () => {
     expect(
       derive({
-        event: DELETED_EVENT,
-        subscription: subscriptionFake({
-          status: "active",
-          cancel_at_period_end: true,
-        }),
-        row: subscriptionRow({ plan: "plus", downgradeRequestedAt: null }),
+        subscription: subscriptionFake({ status: "incomplete_expired" }),
+        row: subscriptionRow({ plan: "trial" }),
       }),
     ).toEqual({
-      plan: "none",
-      status: "active",
+      status: "incomplete_expired",
       pendingPlan: null,
       pendingPlanAt: null,
       clearDowngradeRequest: true,
     });
   });
 
-  it("CON `downgrade_requested_at` (la pedimos nosotros) → `free`, sin pendiente", () => {
-    expect(
-      derive({
-        event: DELETED_EVENT,
-        subscription: subscriptionFake({
-          status: "canceled",
-          cancel_at_period_end: true,
+  it("el mismo `incomplete_expired` sobre un plan PAGO → `none` (base y plus)", () => {
+    for (const plan of ["base", "plus"]) {
+      expect(
+        derive({
+          subscription: subscriptionFake({ status: "incomplete_expired" }),
+          row: subscriptionRow({ plan }),
         }),
-        row: subscriptionRow({
-          plan: "plus",
-          downgradeRequestedAt: new Date("2026-09-01T00:00:00Z"),
-        }),
-      }),
-    ).toEqual({
-      plan: "free",
-      status: "canceled",
-      pendingPlan: null,
-      pendingPlanAt: null,
-      clearDowngradeRequest: true,
-    });
-  });
-
-  it("un negocio `free` cuya primera factura expira SIGUE en `free` [R2-7]", () => {
-    expect(
-      derive({
-        subscription: subscriptionFake({ status: "incomplete_expired" }),
-        row: subscriptionRow({ plan: "free" }),
-      }),
-    ).toMatchObject({ plan: "free" });
-  });
-
-  it("el mismo `incomplete_expired` sobre un plan PAGO → `none`", () => {
-    expect(
-      derive({
-        subscription: subscriptionFake({ status: "incomplete_expired" }),
-        row: subscriptionRow({ plan: "plus" }),
-      }),
-    ).toMatchObject({ plan: "none" });
+      ).toMatchObject({ plan: "none" });
+    }
   });
 });
 
@@ -190,18 +178,33 @@ describe("planFromSubscription — price, pausa e intervalo", () => {
       derive({
         event: DELETED_EVENT,
         subscription: subscriptionFake({ items: [{ priceId: "price_otro" }] }),
-        row: subscriptionRow({
-          plan: "plus",
-          downgradeRequestedAt: new Date("2026-09-01T00:00:00Z"),
-        }),
+        row: subscriptionRow({ plan: "plus" }),
       }),
     ).toEqual({
-      plan: "free",
+      plan: "none",
       status: "active",
       pendingPlan: null,
       pendingPlanAt: null,
       clearDowngradeRequest: true,
     });
+  });
+
+  it("los CUATRO precios → plan + intervalo del que matcheó (spec 0189 §D5)", () => {
+    const cases: Array<[string, string, string]> = [
+      [BASE_MONTHLY_PRICE, "base", "month"],
+      [BASE_YEARLY_PRICE, "base", "year"],
+      [MONTHLY_PRICE, "plus", "month"],
+      [YEARLY_PRICE, "plus", "year"],
+    ];
+    for (const [priceId, plan, interval] of cases) {
+      expect(
+        derive({
+          subscription: subscriptionFake({ items: [{ priceId }] }),
+          row: subscriptionRow({ plan: "trial" }),
+        }),
+        priceId,
+      ).toEqual({ plan, interval, status: "active", ...NO_PENDING });
+    }
   });
 
   it("el intervalo sale del price que MATCHEÓ, no de `data[0]`", () => {
@@ -224,8 +227,8 @@ describe("planFromSubscription — price, pausa e intervalo", () => {
 
 describe("planFromSubscription — jerarquía de `pending_plan` (D5.f)", () => {
   it("un `deleted` con `cancel_at_period_end: true` deja `pending_plan` en NULL", () => {
-    // Rama 1, INCONDICIONAL. Sin ella la fila quedaba `plan='free'` Y
-    // `pending_plan='free'`: la UI diciendo «tu plan baja a Free el …» estando ya en free.
+    // Rama 1, INCONDICIONAL. Sin ella la fila quedaba `plan='none'` Y `pending_plan='none'`:
+    // la UI diciendo «tu suscripción termina el …» con la suscripción ya terminada.
     expect(
       derive({
         event: DELETED_EVENT,
@@ -248,7 +251,7 @@ describe("planFromSubscription — jerarquía de `pending_plan` (D5.f)", () => {
         cancel_at_period_end: false,
       }),
     });
-    expect(write).toMatchObject({ plan: "plus", pendingPlan: "free" });
+    expect(write).toMatchObject({ plan: "plus", pendingPlan: "none" });
     expect(write.pendingPlanAt?.getUTCFullYear()).toBe(CANCEL_AT_YEAR);
   });
 
@@ -256,7 +259,7 @@ describe("planFromSubscription — jerarquía de `pending_plan` (D5.f)", () => {
     const write = derive({
       subscription: subscriptionFake({ cancel_at_period_end: true }),
     });
-    expect(write).toMatchObject({ pendingPlan: "free" });
+    expect(write).toMatchObject({ pendingPlan: "none" });
     // La aserción del AÑO es la que caza el bug de 1970 (`new Date(x)` sin `* 1000`).
     expect(write.pendingPlanAt?.getUTCFullYear()).toBe(PERIOD_END_YEAR);
   });
@@ -268,7 +271,7 @@ describe("planFromSubscription — jerarquía de `pending_plan` (D5.f)", () => {
     expect(write).toEqual({
       status: "active",
       ignoredReason: "unknown_price",
-      pendingPlan: "free",
+      pendingPlan: "none",
       pendingPlanAt: null,
       clearDowngradeRequest: false,
     });

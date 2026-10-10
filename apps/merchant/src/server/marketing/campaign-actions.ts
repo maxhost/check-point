@@ -67,9 +67,8 @@ export async function transitionCampaign(
   await withDbTransaction(async (tx) => {
     if (action === "activate") {
       // El gate de plan (402) vive en `plan-gate.ts` y lo comparte con `createCampaign`:
-      // componer y activar exigen lo mismo. La versión de B1 que vivía acá miraba sólo
-      // `plan === 'plus'`; ver el docblock de `campaignsAllowedFor` por qué eso no alcanza.
-      // ADR 0112: decide POR PLANTILLA — reanudar una Bienvenida no exige Plus.
+      // componer y activar exigen lo mismo. Decide POR PLANTILLA sobre el plan EFECTIVO
+      // (spec 0189 §D3): Bienvenida y Venta cruzada van en el base; el resto, en plus/prueba.
       if (!(await planAllowsCampaign(tx, businessId, current.templateKey)))
         throw new CampaignError(
           402,
@@ -112,7 +111,7 @@ export async function transitionCampaign(
       .set({
         status: next,
         // `pause_reason` is cleared on the way IN to `active` and written on the way out
-        // by the owner's own hand. The other two values (`plan_downgraded`,
+        // by the owner's own hand. The other values (`plan_downgraded`, `billing_blocked`,
         // `no_active_locations`) are written by billing and by the tick, never here.
         pauseReason:
           action === "activate"

@@ -13,6 +13,7 @@ export const permisosIntegrationEnabled =
 if (permisosIntegrationEnabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "./merchant-session";
 
@@ -43,6 +44,7 @@ export async function seedOwnerDeNegocio(
     countryCode: "EC",
     timezone: "America/Guayaquil",
   });
+  await seedTrialSubscription(businessId);
   await db
     .insert(memberships)
     .values({ businessId, userId, role: "owner", status: "active" });

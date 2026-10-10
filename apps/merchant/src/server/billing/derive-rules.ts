@@ -23,7 +23,7 @@ export const KNOWN_STRIPE_STATUS: ReadonlySet<string> = new Set([
   "unpaid",
 ]);
 
-/** Allow-list POSITIVA: sólo estos status otorgan `plus`. Polaridad OPUESTA a la de
+/** Allow-list POSITIVA: sólo estos status otorgan un plan pago. Polaridad OPUESTA a la de
  * `DEAD_STRIPE_STATUS` (`plan-change.ts`) y a propósito — acá lo desconocido no debe
  * otorgar plan pago; allá lo desconocido debe contar como suscripción viva. */
 export const GRANTING_STATUS: ReadonlySet<string> = new Set([
@@ -37,8 +37,8 @@ export const TERMINAL_STATUS: ReadonlySet<string> = new Set([
   "incomplete_expired",
 ]);
 
-/** Sólo un plan PAGO puede caer a `none` ([R2-7]): un negocio `free` cuya primera factura
- * expira sigue en `free`, nunca queda «sin plan» por haber intentado pagar.
+/** Sólo un plan PAGO puede caer a `none` ([R2-7], spec 0189 §D5): un negocio en `trial` cuya
+ * primera factura expira sigue en `trial` —no pierde la prueba por haber intentado pagar.
  *
  * Spec 0072 §P1: la lista ya NO se declara acá. «Qué plan es pago» era el tercer lugar
  * donde el conocimiento de plan estaba copiado, y vive en el catálogo de entitlements
@@ -52,9 +52,13 @@ export function fromUnixSeconds(value: number | null | undefined): Date | null {
 }
 
 /**
- * Ramas 2 y 3 de la jerarquía de `pendingPlan` (D5.f). La rama 1 —plan derivado en
- * `free`/`none` → todo a null, incondicional— vive en `planFromSubscription`, porque
- * depende del plan derivado y no de la suscripción.
+ * Ramas 2 y 3 de la jerarquía de `pendingPlan` (D5.f). La rama 1 —evento terminal → todo a
+ * null, incondicional— vive en `planFromSubscription`.
+ *
+ * Spec 0189 §D5: una cancelación programada escribe `pendingPlan='none'` (ADR 0134 §8: corta al
+ * fin del periodo pagado, no hay plan menor al que caer). `pending_plan` ya no baja ningún
+ * tope: es el dato que la UI muestra («tu suscripción termina el …») y el que habilita
+ * `resume`.
  */
 export function pendingPlanFor(
   subscription: Stripe.Subscription,
@@ -77,7 +81,7 @@ export function pendingPlanFor(
   // `data[0]` pelado con la lista vacía tira `TypeError` DENTRO de la transacción →
   // rollback → reintento → mismo `TypeError`. «Sin fecha» es un caso válido.
   return {
-    pendingPlan: "free",
+    pendingPlan: "none",
     pendingPlanAt:
       fromUnixSeconds(subscription.cancel_at) ??
       fromUnixSeconds(subscription.items?.data?.[0]?.current_period_end),

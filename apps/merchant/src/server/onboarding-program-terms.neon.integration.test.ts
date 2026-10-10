@@ -11,6 +11,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   loyaltyProgramEvents,
@@ -85,6 +86,7 @@ describe.skipIf(!enabled)("el TOS por país contra Neon (spec 0078)", () => {
       countryCode,
       timezone,
     });
+    await seedTrialSubscription(id);
     await db
       .insert(memberships)
       .values({ businessId: id, userId, role: "owner" });

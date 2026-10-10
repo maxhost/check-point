@@ -6,7 +6,10 @@ import { businesses, memberships } from "@mi-pasaporte/db/schema";
 import {
   NOT_AUTHENTICATED,
   toSessionView,
+  type SessionBilling,
 } from "../../../../server/session-view";
+import { readBusinessBilling } from "../../../../server/billing-gate";
+import { trialDaysLeft } from "@mi-pasaporte/domain/server/billing-access";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +78,19 @@ export async function GET(request: Request) {
         emailVerified: session.user.emailVerified === true,
       },
       row,
+      row ? await sessionBilling(row.id) : null,
     ),
   );
+}
+
+/** Spec 0189 §D10: `billing` de la sesión. NO pasa por ningún guard de acceso — este endpoint
+ * reporta el estado, así que un negocio bloqueado lo lee con 200 y `access: "blocked"`. */
+async function sessionBilling(businessId: string): Promise<SessionBilling> {
+  const now = new Date();
+  const { access, trialEndsAt } = await readBusinessBilling(businessId, now);
+  return {
+    access,
+    trialEndsAt: trialEndsAt === null ? null : trialEndsAt.toISOString(),
+    trialDaysLeft: trialDaysLeft(access, trialEndsAt, now),
+  };
 }

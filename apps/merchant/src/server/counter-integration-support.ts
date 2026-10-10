@@ -19,6 +19,7 @@ import {
   orders,
   programMemberships,
   rewardRedemptions,
+  subscriptions,
   users,
 } from "@mi-pasaporte/db/schema";
 import type { OperatorBusiness } from "./counter";
@@ -33,7 +34,30 @@ export type Seed = {
   slug: string;
 };
 
-/** Seeds a business with an owner, a location, and an accreditable loyalty program. */
+/**
+ * Spec 0189 §D8 — LA FILA DE SUSCRIPCIÓN QUE TODO NEGOCIO TIENE EN PRODUCCIÓN: el alta nace en
+ * la prueba de 90 días (`plan='trial'` + `trial_ends_at`). Sin esta fila el eje de acceso es
+ * FAIL-CLOSED (bloqueado → 402 en los guards, sin inscripción ni Bienvenida), así que un seed sin
+ * ella describiría un negocio que producción no tiene. El default es la forma de producción; lo
+ * excepcional (vencida, paga) se pide con `overrides`.
+ */
+export async function seedTrialSubscription(
+  businessId: string,
+  overrides: Partial<typeof subscriptions.$inferInsert> = {},
+): Promise<void> {
+  await getDb()
+    .insert(subscriptions)
+    .values({
+      businessId,
+      plan: "trial",
+      status: "active",
+      trialEndsAt: new Date(Date.now() + 90 * 86_400_000),
+      ...overrides,
+    });
+}
+
+/** Seeds a business with an owner, a location, an accreditable loyalty program and the trial
+ * subscription every new business has (spec 0189). */
 export async function seedBusiness(opts: {
   name: string;
   kind: "points" | "stamps";
@@ -69,6 +93,7 @@ export async function seedBusiness(opts: {
     timezone: "America/Guayaquil",
     currencyCode: "USD",
   });
+  await seedTrialSubscription(businessId);
   await db.insert(memberships).values({ businessId, userId, role: "owner" });
   await db.insert(locations).values({
     id: locationId,

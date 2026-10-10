@@ -20,30 +20,21 @@ import type { SubscriptionRow } from "./billing";
 const MONTHLY = STRIPE_TEST_ENV.STRIPE_PRICE_PLUS_MONTHLY_TEST;
 
 /**
- * Spec 0063, D6 — LA CAPA HTTP de las 5 rutas de billing, con el dominio doblado. Calcado de
- * `locations-routes.test.ts`, incluido el motivo: el dominio ya está scopeado por negocio, pero
- * ese scope SÓLO corre con el negocio que le pasa la RUTA — si un handler perdiera su gate,
- * todo el dominio seguiría verde mientras el endpoint le contesta a cualquiera (spec 0046: una
- * puerta con candado al lado de una pared abierta). Lo que este archivo NO PUEDE VER, y por eso
- * existe `billing-routes-auth.neon.integration.test.ts`: con `ownerContext` doblado, un staff
- * ACTIVO y uno DESACTIVADO son el mismo `null`.
+ * Spec 0063 D6 + spec 0189 §D7 — LA CAPA HTTP de las rutas de billing, con el dominio doblado.
+ * Calcado de `locations-routes.test.ts`, incluido el motivo: el dominio está scopeado por
+ * negocio, pero ese scope SÓLO corre con el negocio que le pasa la RUTA. Lo que este archivo NO
+ * PUEDE VER (staff activo vs desactivado: con `ownerContext` doblado son el mismo `null`) lo ve
+ * `billing-routes-auth.neon.integration.test.ts`.
  */
 const world = vi.hoisted(() => ({
-  /**
-   * Spec 0072: `emailVerified` entra al doble de la sesión porque `requireApiOwner` —el
-   * resolvedor único de las 10 superficies del owner— ahora corre el gate de email también
-   * acá. Es una edición del FIXTURE, no de una aserción: cada `it` sigue aseverando lo
-   * mismo que aseveraba.
-   */
   session: null as null | { user: { id: string; emailVerified: boolean } },
   ownerContext: vi.fn(),
   readSubscription: vi.fn(),
   activeLocationCount: vi.fn(),
-  activeCampaignCount: vi.fn(),
+  activeCampaignsOutsideBase: vi.fn(),
   lockBusiness: vi.fn(),
-  scheduleDowngrade: vi.fn(),
+  scheduleCancel: vi.fn(),
   clearPendingPlan: vi.fn(),
-  settleToFree: vi.fn(),
 }));
 
 let fake: FakeStripe = fakeStripe();
@@ -57,8 +48,7 @@ vi.mock("./staff", async (importOriginal) => ({
   ownerContext: world.ownerContext,
 }));
 
-/** El `tx` no se usa de verdad —el store va doblado— salvo por la escritura del
- * `stripe_customer_id` del checkout, que arma un builder de drizzle sobre él. */
+/** El `tx` sólo lo usa la escritura del `stripe_customer_id` del checkout. */
 vi.mock("@mi-pasaporte/db", async (importOriginal) => {
   const chain = {
     set: () => chain,
@@ -77,23 +67,18 @@ vi.mock("./locations/shared", async (importOriginal) => ({
   activeLocationCount: world.activeLocationCount,
 }));
 
-// Spec 0065, fase D: el `tx` de acá sólo sabe hacer `update` (ver el doble de `./db`), así
-// que el conteo de campañas va doblado por el mismo motivo que el de locales. Sin esto las
-// 4 rutas contestaban 503 — y el 503 se leía como «la ruta se rompió», no como «el doble no
-// sabe contar».
+// El `tx` sólo sabe hacer `update`: el conteo de campañas va doblado como el de locales.
 vi.mock("./marketing/plan-brake", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./marketing/plan-brake")>()),
-  activeCampaignCount: world.activeCampaignCount,
+  activeCampaignsOutsideBase: world.activeCampaignsOutsideBase,
 }));
 
-// `decidePlanChange` y `toSubscriptionView` quedan REALES: son la decisión que la ruta tiene
-// que respetar, y doblarlas sería testear el doble.
+// `decidePlanChange` y `toSubscriptionView` quedan REALES: doblarlas sería testear el doble.
 vi.mock("./billing", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./billing")>()),
   readSubscription: world.readSubscription,
-  scheduleDowngrade: world.scheduleDowngrade,
+  scheduleCancel: world.scheduleCancel,
   clearPendingPlan: world.clearPendingPlan,
-  settleToFree: world.settleToFree,
 }));
 
 vi.mock("./stripe-config", async (importOriginal) => {
@@ -105,7 +90,8 @@ vi.mock("./stripe-config", async (importOriginal) => {
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
 import { POST as INTERVAL } from "../app/api/billing/interval/route";
-import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
+import { POST as PLAN } from "../app/api/billing/plan/route";
+import { POST as RESUME } from "../app/api/billing/resume/route";
 import { GET as STATE } from "../app/api/billing/state/route";
 
 const request = (path: string, body?: unknown) =>
@@ -119,20 +105,16 @@ const request = (path: string, body?: unknown) =>
   );
 
 /**
- * Las 5 rutas, cada una con el estado de fila que la deja LLEGAR al dominio. Toda llamada
- * grita un negocio AJENO en el query string Y en el body: el punto es que ninguno de los dos
- * pueda torcer el handler.
- *
- * `GET /api/billing/state` (spec 0074 §D2) entra a la MISMA lista y no a un bloque propio: es
- * una superficie del owner como las otras cuatro, pasa por el mismo `requireBillingOwner` y
- * tiene que emitir los mismos `code`. Un `GET` no lleva cuerpo, así que su negocio ajeno lo
- * grita sólo el query string — ver {@link call}.
+ * Las rutas, cada una con el estado de fila que la deja LLEGAR al dominio. Toda llamada grita
+ * un negocio AJENO en el query string Y en el body: ninguno de los dos puede torcer el handler.
+ * Un `GET` no lleva cuerpo: su negocio ajeno lo grita sólo el query string ({@link call}).
  */
 const HANDLERS = [
-  ["POST", "checkout", CHECKOUT, { interval: "month" }, row()],
+  ["POST", "checkout", CHECKOUT, { plan: "base", interval: "month" }, row()],
   ["POST", "cancel", CANCEL, {}, LIVE_ROW],
   ["POST", "interval", INTERVAL, { to: "year" }, LIVE_ROW],
-  ["POST", "settle-free", SETTLE_FREE, {}, row({ plan: "none" })],
+  ["POST", "plan", PLAN, { to: "base" }, LIVE_ROW],
+  ["POST", "resume", RESUME, {}, { ...LIVE_ROW, pendingPlan: "none" }],
   ["GET", "state", STATE, {}, LIVE_ROW],
 ].map(([method, path, handler, body, seeded]) => ({
   name: `${method as string} /api/billing/${path as string}`,
@@ -162,14 +144,12 @@ function signedInOwner(seeded: SubscriptionRow, activeLocations = 1) {
     id: CALLER_BUSINESS,
     slug: "caller",
     currencyCode: "USD",
-    // Spec 0072: `ownerContext` selecciona el eje `status`, y el guard es fail-closed —
-    // una fila sin `status` NO opera. Es la forma que devuelve la función real.
-    status: "active",
+    status: "active", // fail-closed: una fila sin `status` NO opera (spec 0072)
     suspensionReason: null,
   });
   world.readSubscription.mockResolvedValue(seeded);
   world.activeLocationCount.mockResolvedValue(activeLocations);
-  world.activeCampaignCount.mockResolvedValue(0);
+  world.activeCampaignsOutsideBase.mockResolvedValue(0);
 }
 
 describe("api/billing — owner-only guard (spec 0063, D6)", () => {
@@ -177,13 +157,10 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
     vi.clearAllMocks();
     world.session = null;
     world.activeLocationCount.mockResolvedValue(1);
-    world.activeCampaignCount.mockResolvedValue(0);
+    world.activeCampaignsOutsideBase.mockResolvedValue(0);
     world.lockBusiness.mockResolvedValue({ id: CALLER_BUSINESS });
-    world.scheduleDowngrade.mockResolvedValue({
-      downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
-    });
+    world.scheduleCancel.mockResolvedValue(undefined);
     world.clearPendingPlan.mockResolvedValue(undefined);
-    world.settleToFree.mockResolvedValue(undefined);
     fake = fakeStripe();
     fake.subscriptions.set(
       "sub_caller",
@@ -217,11 +194,7 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
       world.ownerContext.mockResolvedValue(null);
       const response = await call(h);
       expect(response.status).toBe(403);
-      // El `code` es NUEVO y es la decisión del owner del 2026-09-17 que la spec 0072 §D3
-      // implementa («si a los `code`»): los 401/403 de las 10 superficies del owner los
-      // llevan normalizados. Ésta es la ÚNICA aserción preexistente que esta spec cambia,
-      // y cambia porque el contrato cambió — el status sigue siendo 403 y el `error` sigue
-      // siendo la copia de billing.
+      // Spec 0072 §D3: los 401/403 de las superficies del owner llevan `code` normalizado.
       expect(await response.json()).toEqual({
         error: "Solo la persona propietaria puede gestionar la suscripción.",
         code: "not_owner",
@@ -246,12 +219,13 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
     },
   );
 
-  /** LA FORMA DEL FALLO del contrato de D6: `{ error, code }` exacto, sin nada más. El
-   * `archiveCount` de `downgrade_blocked` lo pinnea la integración, con 3 locales de verdad. */
+  /** LA FORMA DEL FALLO: `{ error, code }` exacto, sin nada más. */
   it("sin `MERCHANT_PUBLIC_ORIGIN`, `checkout` responde 503 `origin_not_configured` y NO cae al request.url", async () => {
     signedInOwner(row());
     vi.stubEnv("MERCHANT_PUBLIC_ORIGIN", "");
-    const response = await CHECKOUT(request("checkout", { interval: "month" }));
+    const response = await CHECKOUT(
+      request("checkout", { plan: "plus", interval: "month" }),
+    );
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       error: "El pago no está configurado todavía. Escríbenos y lo resolvemos.",
@@ -266,28 +240,27 @@ describe("api/billing — owner-only guard (spec 0063, D6)", () => {
     const invalido = await INTERVAL(request("interval", {}));
     expect(invalido.status).toBe(400);
     expect(await invalido.json()).toMatchObject({ code: "invalid_input" });
-    // `readBody` tolera la AUSENCIA de body (decisión 7): sin el `try`, `request.json()` tira
-    // y la ruta contesta 503. El oráculo TIENE que ser una ruta que llame a `readBody`: con
-    // `cancel` —que no lee el body— este caso queda verde con y sin el guard (verificado).
+    // `readBody` tolera la AUSENCIA de body: sin el `try` la ruta contesta 503. Tiene que ser
+    // una ruta que llame a `readBody` (`cancel` no lo lee: quedaría verde con y sin el guard).
     const sinBody = await INTERVAL(
       new NextRequest("https://merchant.test/api/billing/interval", {
         method: "POST",
       }),
     );
     expect(sinBody.status).toBe(400);
+    // Spec 0189 §D7: el checkout exige `plan` (base|plus); con solo `interval`, 400.
+    signedInOwner(row());
+    const sinPlan = await CHECKOUT(request("checkout", { interval: "month" }));
+    expect([sinPlan.status, fake.calls]).toEqual([400, []]);
   });
 });
 
 /**
- * Tarea 52 — `HANDLERS` está escrita a mano, así que una 5.ª ruta bajo `api/billing/**`
- * nacería SIN gate con este archivo en verde (la lección de la spec 0046 y la del barrido de
- * MIME). Este bloque deriva `MÉTODO /ruta` del FILESYSTEM y exige que sea igual al cubierto.
- *
- * PROXY, y etiquetado como tal: pinnea que cada handler esté LISTADO, no que su gate sea
- * correcto — eso lo hacen los `it.each`. Se leen LAS DOS ortografías de un handler de Next
- * (`export async function POST` y `export const POST =`), que acá no es teórico:
- * `settle-free/route.ts` usa la segunda. Y se asevera un piso de archivos para que un barrido
- * que no ve nada no pueda pasar en verde.
+ * Tarea 52 — `HANDLERS` está escrita a mano, así que una ruta nueva bajo `api/billing/**`
+ * nacería SIN gate con este archivo en verde. Este bloque deriva `MÉTODO /ruta` del FILESYSTEM
+ * y exige que sea igual al cubierto. PROXY, y etiquetado como tal: pinnea que cada handler esté
+ * LISTADO, no que su gate sea correcto. Lee las DOS ortografías de un handler de Next
+ * (`export async function POST` y `export const POST =`) y asevera un piso de archivos.
  */
 describe("every handler under api/billing/** is covered by HANDLERS", () => {
   it("the filesystem and the list agree exactly", () => {
@@ -295,11 +268,9 @@ describe("every handler under api/billing/** is covered by HANDLERS", () => {
     const files = readdirSync(root, { recursive: true, encoding: "utf8" })
       .filter((f) => basename(f) === "route.ts")
       .sort();
-    // PISO, para que un barrido que no ve nada no pueda quedar verde. Bajó de 5 a 4 porque
-    // `resume` dejó de existir (spec 0064 §4), no para tapar un barrido roto: el `toEqual` de
-    // abajo sigue exigiendo igualdad EXACTA entre el filesystem y la lista. Vuelve a 5 con
-    // `state` (spec 0074 §D2) — un piso SUBE cuando llega una ruta, nunca baja para que pase.
-    expect(files.length).toBeGreaterThanOrEqual(5);
+    // PISO: un barrido que no ve nada no puede quedar verde. Sube a 6 con la spec 0189
+    // (se fue la ruta de saldar el plan gratis; llegaron `plan` y `resume`): un piso SUBE con las rutas.
+    expect(files.length).toBeGreaterThanOrEqual(6);
 
     const expected = new Set<string>();
     for (const file of files) {

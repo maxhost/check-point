@@ -1,263 +1,286 @@
 import { describe, expect, it } from "vitest";
-import { decidePlanChange, type PlanChangeInput } from "./billing";
+import {
+  checkoutTrialEnd,
+  decidePlanChange,
+  type PlanChangeInput,
+} from "./billing";
 
 /**
- * Spec 0063, D4 — los casos NOMBRADOS, con la salida escrita LITERAL. Cada uno mató una
- * versión anterior de alguna regla, así que son el oráculo que de verdad pinnea; la matriz
- * completa del dominio vive en `billing-plan-change.test.ts` (archivo aparte por el límite
- * de 300 líneas del repo, no por otra razón).
+ * Spec 0189 §D6 / T5 — los casos NOMBRADOS, con la salida escrita LITERAL; la matriz completa
+ * vive en `billing-plan-change.test.ts` (archivo aparte por el límite de 300 líneas).
  */
 
-const base: PlanChangeInput = {
-  currentPlan: "free",
+const NOW = new Date("2026-10-10T12:00:00.000Z");
+const H48 = 48 * 3_600_000;
+const TRIAL_END = new Date(NOW.getTime() + 60 * 86_400_000);
+
+/** Un negocio en prueba, sin Stripe, con 1 local y nada fuera del base. */
+const trial: PlanChangeInput = {
+  currentPlan: "trial",
   currentInterval: null,
   pendingPlan: null,
   status: "active",
   stripeSubscriptionId: null,
+  trialEndsAt: TRIAL_END,
+  now: NOW,
   activeLocations: 1,
-  activeCampaigns: 0,
-  intent: { kind: "upgrade", interval: "month" },
+  activeCampaignsOutsideBase: 0,
+  intent: { kind: "subscribe", plan: "base", interval: "month" },
 };
 
-/** Cada fila mató una versión anterior de alguna regla; la salida va literal. */
-describe("decidePlanChange — las filas que mataron una regla (spec 0063)", () => {
-  it("los 9 `free` de prod (active, sin id) pasan el gate de checkout", () => {
-    expect(decidePlanChange(base)).toEqual({
+/** Un negocio pagando plus mensual, con la prueba ya vencida. */
+const plus: PlanChangeInput = {
+  ...trial,
+  currentPlan: "plus",
+  currentInterval: "month",
+  stripeSubscriptionId: "sub_x",
+  trialEndsAt: new Date(NOW.getTime() - 1),
+};
+
+describe("checkoutTrialEnd — el `trial_end` del Checkout (ORÁCULO DE M5)", () => {
+  it("a 48 h − 1 ms del fin de la prueba se cobra en el acto (`null`)", () => {
+    expect(checkoutTrialEnd(new Date(NOW.getTime() + H48 - 1), NOW)).toBeNull();
+  });
+
+  it("a 48 h exactas la fecha va al Checkout", () => {
+    const end = new Date(NOW.getTime() + H48);
+    expect(checkoutTrialEnd(end, NOW)).toEqual(end);
+  });
+
+  it("con la prueba vencida o sin prueba, `null`", () => {
+    expect(checkoutTrialEnd(new Date(NOW.getTime() - 1), NOW)).toBeNull();
+    expect(checkoutTrialEnd(null, NOW)).toBeNull();
+  });
+});
+
+describe("decidePlanChange — subscribe (checkout)", () => {
+  it("en prueba, el primer cobro cae el día del fin de la prueba", () => {
+    expect(decidePlanChange(trial)).toEqual({
       kind: "checkout",
+      plan: "base",
       interval: "month",
+      trialEnd: TRIAL_END,
+    });
+  });
+
+  it("bloqueado (prueba vencida, sin Stripe) contrata con cobro en el acto", () => {
+    expect(
+      decidePlanChange({
+        ...trial,
+        currentPlan: "none",
+        trialEndsAt: new Date(NOW.getTime() - 1),
+        intent: { kind: "subscribe", plan: "plus", interval: "year" },
+      }),
+    ).toEqual({
+      kind: "checkout",
+      plan: "plus",
+      interval: "year",
+      trialEnd: null,
     });
   });
 
   it("un status DESCONOCIDO con id bloquea el checkout: lo no muerto cuenta como vivo", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "plus",
+        ...plus,
         status: "future_status",
-        stripeSubscriptionId: "sub_x",
+        intent: trial.intent,
       }),
     ).toMatchObject({ kind: "blocked", code: "subscription_live" });
   });
 
-  it("`incomplete_expired` sobre un negocio free NO bloquea un checkout nuevo", () => {
+  it("una suscripción `incomplete_expired` NO bloquea un checkout nuevo", () => {
     expect(
       decidePlanChange({
-        ...base,
+        ...trial,
         status: "incomplete_expired",
         stripeSubscriptionId: "sub_x",
       }),
-    ).toEqual({ kind: "checkout", interval: "month" });
+    ).toMatchObject({ kind: "checkout" });
   });
 
-  it("desde `none`, con 1 activo, bajar a free se salda SIN tocar Stripe", () => {
+  it("PRECEDENCIA: con 2 locales Y campañas fuera del base gana el bloqueo de LOCALES", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "none",
-        intent: { kind: "downgrade" },
-      }),
-    ).toEqual({ kind: "settle_to_free" });
-  });
-
-  it("A1 (`plus` sin suscripción) con 1 activo también se salda local", () => {
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        intent: { kind: "downgrade" },
-      }),
-    ).toEqual({ kind: "settle_to_free" });
-  });
-
-  it("`plus` vivo con 1 activo programa la baja contra Stripe", () => {
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
-        intent: { kind: "downgrade" },
-      }),
-    ).toEqual({ kind: "schedule_downgrade" });
-  });
-
-  it("`plus` con `interval` NULL (A1) puede pasar a anual", () => {
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
-        intent: { kind: "change_interval", to: "year" },
-      }),
-    ).toEqual({ kind: "change_interval", to: "year" });
-  });
-
-  it("anual → mensual está fuera de alcance por diseño (D9, tarea 55)", () => {
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        currentInterval: "year",
-        stripeSubscriptionId: "sub_x",
-        intent: { kind: "change_interval", to: "month" },
-      }),
-    ).toMatchObject({
-      kind: "blocked",
-      code: "interval_downgrade_unsupported",
-    });
-  });
-
-  it("PRECEDENCIA declarada: con 2 activos y plan free gana `downgrade_blocked`", () => {
-    // La guarda 1 va ANTES que la 2. Es el orden DECLARADO, no el intuitivo (lo intuitivo
-    // sería `already_on_plan`: el negocio ya está en free).
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "free",
+        ...trial,
         activeLocations: 2,
-        intent: { kind: "downgrade" },
-      }),
-    ).toMatchObject({
-      kind: "blocked",
-      code: "downgrade_blocked",
-      archiveCount: 1,
-    });
-  });
-
-  it("con 1 campaña activa la baja queda BLOQUEADA, con el conteo en el mensaje", () => {
-    // Spec 0065, fase D. El texto va LITERAL: es el que el modal muestra y el que devuelve
-    // el 409, y salen de la misma llamada.
-    expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
-        activeCampaigns: 1,
-        intent: { kind: "downgrade" },
+        activeCampaignsOutsideBase: 3,
       }),
     ).toEqual({
       kind: "blocked",
-      code: "downgrade_blocked_campaigns",
-      message:
-        "Para volver a Free no puedes tener campañas activas; hoy tienes 1. Desactiva 1.",
-      deactivateCount: 1,
+      code: "downgrade_blocked",
+      message: "El plan Base admite 1 local activo; hoy tienes 2. Archiva 1.",
+      archiveCount: 1,
     });
   });
 
-  it("sin campañas activas la baja PROCEDE: la guarda no bloquea de más", () => {
+  it("con campañas fuera del base no se contrata el base; el plus sí", () => {
+    const input = { ...trial, activeCampaignsOutsideBase: 2 };
+    expect(decidePlanChange(input)).toEqual({
+      kind: "blocked",
+      code: "downgrade_blocked_campaigns",
+      message:
+        "El plan Base solo incluye Bienvenida y Venta cruzada; hoy tienes 2 campañas activas fuera de eso. Desactiva 2.",
+      deactivateCount: 2,
+    });
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
-        activeCampaigns: 0,
-        intent: { kind: "downgrade" },
+        ...input,
+        intent: { kind: "subscribe", plan: "plus", interval: "month" },
       }),
-    ).toEqual({ kind: "schedule_downgrade" });
+    ).toMatchObject({ kind: "checkout", plan: "plus" });
   });
 
-  it("PRECEDENCIA declarada: con 2 locales Y 3 campañas gana el bloqueo de LOCALES", () => {
-    // La guarda de locales va ANTES que la de campañas, y la spec lo declara junto con su
-    // consecuencia: el owner archiva primero y recién en la segunda vuelta ve las campañas.
-    // Son DOS vueltas, aceptado y escrito.
+  it("3 locales caben en plus; 4 no", () => {
+    const intent = {
+      kind: "subscribe",
+      plan: "plus",
+      interval: "month",
+    } as const;
     expect(
-      decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
-        activeLocations: 2,
-        activeCampaigns: 3,
-        intent: { kind: "downgrade" },
-      }),
+      decidePlanChange({ ...trial, activeLocations: 3, intent }),
+    ).toMatchObject({ kind: "checkout" });
+    expect(
+      decidePlanChange({ ...trial, activeLocations: 4, intent }),
     ).toMatchObject({
       kind: "blocked",
       code: "downgrade_blocked",
       archiveCount: 1,
     });
   });
+});
 
-  it("PRECEDENCIA declarada: con 1 campaña Y plan free gana `downgrade_blocked_campaigns`", () => {
-    // La guarda de campañas va ANTES que `already_on_plan`, igual que la de locales. Lo
-    // intuitivo sería «ya estás en free»; el orden declarado dice otra cosa.
+describe("decidePlanChange — change_plan", () => {
+  it("subir de base a plus cobra la diferencia en el acto", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "free",
-        activeCampaigns: 1,
-        intent: { kind: "downgrade" },
+        ...plus,
+        currentPlan: "base",
+        intent: { kind: "change_plan", to: "plus" },
       }),
-    ).toMatchObject({
-      kind: "blocked",
-      code: "downgrade_blocked_campaigns",
-      deactivateCount: 1,
-    });
+    ).toEqual({ kind: "change_plan", to: "plus", proration: "always_invoice" });
   });
 
-  it("las campañas activas NO frenan un upgrade ni un cambio de intervalo", () => {
-    // La guarda vive en `decideDowngrade` y en ningún otro intent: una campaña activa no
-    // puede impedirle a un negocio PAGAR más.
-    expect(decidePlanChange({ ...base, activeCampaigns: 3 })).toEqual({
-      kind: "checkout",
-      interval: "month",
-    });
+  it("bajar de plus a base rige desde la próxima factura", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        currentInterval: "month",
-        stripeSubscriptionId: "sub_x",
-        activeCampaigns: 3,
-        intent: { kind: "change_interval", to: "year" },
+        ...plus,
+        intent: { kind: "change_plan", to: "base" },
       }),
-    ).toEqual({ kind: "change_interval", to: "year" });
+    ).toEqual({ kind: "change_plan", to: "base", proration: "none" });
   });
 
-  it("`archiveCount` sale del tope de free, no de un número inventado", () => {
+  it("bajar a base con locales de más → `downgrade_blocked`", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        stripeSubscriptionId: "sub_x",
+        ...plus,
         activeLocations: 3,
-        intent: { kind: "downgrade" },
+        activeCampaignsOutsideBase: 1,
+        intent: { kind: "change_plan", to: "base" },
       }),
     ).toMatchObject({ code: "downgrade_blocked", archiveCount: 2 });
   });
 
-  /**
-   * HALLAZGO — CONTRADICCIÓN DENTRO DE LA SPEC, resuelta a favor de la lista de guardas.
-   *
-   * El §Plan de pruebas de la 0063 pide dos filas que la propia D4 no puede producir:
-   * «`plus`/`canceled`/con id/upgrade → checkout» y «`plus`/`incomplete_expired`/upgrade →
-   * checkout». Con las guardas declaradas, la 1 no dispara (la suscripción está MUERTA,
-   * así que no hay `subscription_live`) pero la 2 sí: `currentPlan === 'plus'` →
-   * `already_on_plan`. Los dos tests de abajo transcriben lo que la LISTA ORDENADA dice,
-   * que es la fuente de verdad declarada en el contrato y en la propia D4.
-   *
-   * No es un callejón: D10 da la salida en dos pasos —`downgrade` sobre ese mismo estado
-   * devuelve `settle_to_free` (limpia plan e id) y después `checkout` procede— y así lo
-   * dice D10 literalmente («con el id limpio, `hasLiveSubscription` es falso»). Queda como
-   * hallazgo para el orquestador: si el owner quiere el checkout en UN paso, cambia la
-   * guarda 2, y eso es un cambio de contrato, no algo que se arregle acá.
-   */
-  it("HALLAZGO: `plus` + `canceled` + upgrade → `already_on_plan` (guarda 2), no checkout", () => {
+  it("sin suscripción viva no se cambia de plan: se contrata", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        status: "canceled",
-        stripeSubscriptionId: "sub_x",
+        ...trial,
+        intent: { kind: "change_plan", to: "plus" },
       }),
-    ).toMatchObject({ kind: "blocked", code: "already_on_plan" });
+    ).toMatchObject({ kind: "blocked", code: "plan_needs_subscription" });
   });
 
-  it("HALLAZGO: `plus` + `incomplete_expired` + upgrade → `already_on_plan` (guarda 2)", () => {
+  it("con la cancelación programada, primero se reanuda", () => {
     expect(
       decidePlanChange({
-        ...base,
-        currentPlan: "plus",
-        status: "incomplete_expired",
-        stripeSubscriptionId: "sub_x",
+        ...plus,
+        pendingPlan: "none",
+        intent: { kind: "change_plan", to: "base" },
       }),
-    ).toMatchObject({ kind: "blocked", code: "already_on_plan" });
+    ).toEqual({
+      kind: "blocked",
+      code: "cancel_scheduled",
+      message: "Reanuda tu suscripción para cambiar de plan.",
+    });
+  });
+
+  it("ya en ese plan → `already_on_plan`, con la etiqueta del plan", () => {
+    expect(
+      decidePlanChange({
+        ...plus,
+        intent: { kind: "change_plan", to: "plus" },
+      }),
+    ).toEqual({
+      kind: "blocked",
+      code: "already_on_plan",
+      message: "Ya estás en el plan Plus.",
+    });
+  });
+});
+
+describe("decidePlanChange — change_interval, cancel y resume", () => {
+  it("un plan pago con `interval` NULL puede pasar a anual", () => {
+    expect(
+      decidePlanChange({
+        ...plus,
+        currentInterval: null,
+        intent: { kind: "change_interval", to: "year" },
+      }),
+    ).toEqual({ kind: "change_interval", to: "year" });
+  });
+
+  it("anual → mensual está fuera de alcance (tarea 55)", () => {
+    expect(
+      decidePlanChange({
+        ...plus,
+        currentInterval: "year",
+        intent: { kind: "change_interval", to: "month" },
+      }),
+    ).toMatchObject({ code: "interval_downgrade_unsupported" });
+  });
+
+  it("cancelar programa la baja al fin del periodo; dos veces no", () => {
+    expect(decidePlanChange({ ...plus, intent: { kind: "cancel" } })).toEqual({
+      kind: "schedule_cancel",
+    });
+    expect(
+      decidePlanChange({
+        ...plus,
+        pendingPlan: "none",
+        intent: { kind: "cancel" },
+      }),
+    ).toMatchObject({ code: "cancel_scheduled" });
+    expect(
+      decidePlanChange({ ...trial, intent: { kind: "cancel" } }),
+    ).toMatchObject({ code: "no_subscription" });
+  });
+
+  it("reanudar exige suscripción viva Y cancelación programada", () => {
+    expect(
+      decidePlanChange({
+        ...plus,
+        pendingPlan: "none",
+        intent: { kind: "resume" },
+      }),
+    ).toEqual({ kind: "resume" });
+    expect(
+      decidePlanChange({ ...plus, intent: { kind: "resume" } }),
+    ).toMatchObject({ code: "nothing_to_resume" });
+    // Un `pending_plan` VACÍO no es una cancelación programada ([R1-N8]).
+    expect(
+      decidePlanChange({
+        ...plus,
+        pendingPlan: "",
+        intent: { kind: "resume" },
+      }),
+    ).toMatchObject({ code: "nothing_to_resume" });
+    expect(
+      decidePlanChange({
+        ...plus,
+        status: "canceled",
+        pendingPlan: "none",
+        intent: { kind: "resume" },
+      }),
+    ).toMatchObject({ code: "nothing_to_resume" });
   });
 });

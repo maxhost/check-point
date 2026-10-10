@@ -56,7 +56,12 @@ export async function seedCampaign(opts: {
   message?: string;
   name?: string;
   status?: "draft" | "active" | "paused" | "ended" | "archived";
-  pauseReason?: "owner" | "plan_downgraded" | "no_active_locations" | null;
+  pauseReason?:
+    | "owner"
+    | "plan_downgraded"
+    | "no_active_locations"
+    | "billing_blocked"
+    | null;
   dormantDays?: number;
   startsAt?: Date;
   endsAt?: Date | null;

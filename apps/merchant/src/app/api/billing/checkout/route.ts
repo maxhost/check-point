@@ -12,30 +12,29 @@ import {
 import { NextResponse } from "next/server";
 
 /**
- * Spec 0063, D6 — `POST /api/billing/checkout`. Antes de esta spec era la ÚNICA ruta de
- * billing y su único llamador era el onboarding; ahora la comparte con la sección de
- * suscripción, y cambia en cuatro cosas:
+ * Spec 0063 D6 + spec 0189 §D7 — `POST /api/billing/checkout` `{plan, interval, from?}`: abrir
+ * Stripe Checkout para CONTRATAR un plan pago (`base`|`plus`, mensual|anual).
  *
- *  1. EL `businessId` NO VIENE DEL BODY. Antes lo tomaba del body y verificaba membresía
- *     sobre ESE negocio (cualquier miembro, incluido un staff, y sin mirar `status`). Ahora
- *     sale de `ownerContext`, igual que en locales. Mutación M6.
- *  2. GATE DE PLAN: `decidePlanChange` con `intent: "upgrade"` — un negocio con suscripción
- *     viva recibe 409 `subscription_live` en vez de abrir un segundo Checkout y COBRAR DOS
- *     VECES.
- *  3. EL CUSTOMER SE CREA Y SE PERSISTE ACÁ (decisión 5 del orquestador), no cuando llega un
- *     evento: es lo que hace que la reconciliación de D8 no sea un no-op, y de paso deja de
- *     crear un customer nuevo por intento ([R1-N2]).
- *  4. LOS `*_url` SALEN DE `MERCHANT_PUBLIC_ORIGIN`, no de `new URL(request.url).origin`
- *     ([R2-I10]). Si falta: **503 `origin_not_configured`**. Un fallback silencioso al
- *     `request.url` devuelve el bug por la puerta de atrás — con la `idempotencyKey` FIJA,
- *     una primera sesión creada desde `www.` deja las `*_url` clavadas en ese dominio para
- *     las 24 h siguientes.
+ *  1. EL `businessId` NO VIENE DEL BODY: sale de `ownerContext` (vía `requireBillingOwner`).
+ *  2. GATE: `decidePlanChange({kind: "subscribe"})` bajo el lock — con suscripción viva, 409
+ *     `subscription_live` en vez de COBRAR DOS VECES; con locales o campañas de más para el
+ *     plan elegido, 409 `downgrade_blocked*` con su contador.
+ *  3. LA PRUEBA SE RESPETA (ADR 0134 §6): si a la prueba le quedan 48 h o más, la suscripción
+ *     nace con `subscription_data.trial_end` = el fin de la prueba y el primer cobro cae ese
+ *     día. Con menos, Stripe no acepta `trial_end` en Checkout y se cobra en el acto.
+ *  4. EL CUSTOMER SE CREA Y SE PERSISTE ACÁ (no cuando llega un evento): es lo que hace que la
+ *     reconciliación no sea un no-op y que no nazca un customer por intento ([R1-N2]).
+ *  5. LOS `*_url` SALEN DE `MERCHANT_PUBLIC_ORIGIN`; si falta, 503 `origin_not_configured`
+ *     ([R2-I10]): con la `idempotencyKey` fija, un fallback al `request.url` clavaría las
+ *     `*_url` en el dominio de la primera sesión durante 24 h.
  *
- * LA `idempotencyKey` SE CONSERVA FIJA (`checkout:${businessId}:${interval}`): cambiarla
- * permitiría varias sesiones abiertas a la vez. A cambio, antes de redirigir se verifica que
- * la sesión esté ABIERTA (`status === "open"` y `url !== null`); si no, 409
- * `checkout_session_stale`, porque mandar al owner a una sesión ya completada es un FALSO
- * ÉXITO que termina en «pagué y sigo en free».
+ * LA `idempotencyKey` ES FIJA POR PLAN, INTERVALO Y `trial_end`
+ * (`checkout:${businessId}:${plan}:${interval}:${trial_end | "now"}`) para que no haya varias
+ * sesiones abiertas del mismo plan. El `trial_end` entra en la clave (#6 de la revisión): Stripe
+ * rechaza una clave reusada con OTROS params, y el `trial_end` cambia si la prueba cruza el
+ * umbral de 48 h o se extiende a mano dentro de las 24 h de la clave (→ 503 hasta que venza). A cambio, antes de redirigir se
+ * verifica que la sesión esté ABIERTA; si no, 409 `checkout_session_stale` (mandar al owner a
+ * una sesión completada es un FALSO ÉXITO).
  */
 export async function POST(request: Request) {
   const gate = await requireBillingOwner(request);
@@ -43,50 +42,58 @@ export async function POST(request: Request) {
   const businessId = gate.business.id;
   try {
     const body = await readBody(request);
+    const plan =
+      body.plan === "base" ? "base" : body.plan === "plus" ? "plus" : null;
     const interval =
       body.interval === "year"
         ? "year"
         : body.interval === "month"
           ? "month"
           : null;
-    if (interval === null) {
+    if (plan === null || interval === null) {
       throw new BillingError(400, "invalid_input", "Solicitud inválida.");
     }
-    // `from` decide a dónde vuelve Stripe ([R2-I8]): sin esto, el que paga en el ALTA
-    // aterriza en una pantalla que no pidió. El default es `onboarding` porque hoy el único
-    // llamador es el alta y no manda el campo; la consola de D2 manda `subscription`.
+    // `from` decide a dónde vuelve Stripe ([R2-I8]). El default es `onboarding`; la consola
+    // de suscripción manda `subscription`.
     const from = body.from === "subscription" ? "subscription" : "onboarding";
     const origin = publicOrigin();
     const { gateway, priceIds } = stripeContext();
 
-    const customerId = await withDbTransaction(async (tx) => {
-      const { row } = await decideUnderLock(tx, businessId, {
-        kind: "upgrade",
+    const { customerId, trialEnd } = await withDbTransaction(async (tx) => {
+      const { row, decision } = await decideUnderLock(tx, businessId, {
+        kind: "subscribe",
+        plan,
         interval,
       });
-      return row.stripeCustomerId;
+      // Con `intent: subscribe`, lo único que no es `blocked` es `checkout`.
+      if (decision.kind !== "checkout") throw new Error(decision.kind);
+      return { customerId: row.stripeCustomerId, trialEnd: decision.trialEnd };
     });
     const customer = customerId ?? (await createCustomer(businessId, gateway));
 
+    const metadata = { businessId, plan, interval };
+    // Unix SECONDS (las fechas de Stripe); sin `* 1000` al revés, cae en 1970.
+    const trialEndSeconds =
+      trialEnd === null ? null : Math.floor(trialEnd.getTime() / 1000);
     const session = await gateway.checkout.sessions.create(
       {
         mode: "subscription",
-        line_items: [
-          {
-            price: interval === "month" ? priceIds.monthly : priceIds.yearly,
-            quantity: 1,
-          },
-        ],
+        line_items: [{ price: priceIds[plan][interval], quantity: 1 }],
         customer,
         // `client_reference_id` SÓLO lo escribe nuestro checkout: es el discriminante
         // legítimo con el que el webhook resuelve el negocio de la sesión (m1-b).
         client_reference_id: businessId,
-        metadata: { businessId, interval },
-        subscription_data: { metadata: { businessId, interval } },
+        metadata,
+        subscription_data: {
+          metadata,
+          ...(trialEndSeconds === null ? {} : { trial_end: trialEndSeconds }),
+        },
         success_url: `${origin}${landing(from)}?checkout=success`,
         cancel_url: `${origin}${landing(from)}?checkout=cancelled`,
       },
-      { idempotencyKey: `checkout:${businessId}:${interval}` },
+      {
+        idempotencyKey: `checkout:${businessId}:${plan}:${interval}:${trialEndSeconds ?? "now"}`,
+      },
     );
     if (session.status !== "open" || session.url === null) {
       throw new BillingError(

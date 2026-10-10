@@ -27,12 +27,6 @@ vi.mock("./stripe-config", async (importOriginal) => {
   return stripeConfigDouble(actual, () => fake);
 });
 
-vi.mock("./auth-guards", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./auth-guards")>();
-  const { authGuardsDouble } = await import("./billing-pages-support");
-  return authGuardsDouble(actual);
-});
-
 vi.mock("./auth", () => ({
   getMerchantAuth: () => ({
     api: {
@@ -51,35 +45,30 @@ vi.mock("./staff", async (importOriginal) => {
   return staffDouble(actual);
 });
 
-import { routeOwner, useBusiness } from "./billing-pages-support";
-import SubscriptionPage from "../app/backoffice/subscription/page";
-import { POST as CANCEL } from "../app/api/billing/cancel/route";
+import { routeOwner } from "./billing-pages-support";
+import { BASE_MONTHLY_PRICE } from "./billing-integration-support";
+import { POST as PLAN } from "../app/api/billing/plan/route";
 
 /**
- * Spec 0065, fase D — EL BLOQUEO DURO POR CAMPAÑAS, DEL LADO DEL COMPORTAMIENTO.
+ * Spec 0065 fase D + spec 0189 §D6 — EL BLOQUEO DURO POR CAMPAÑAS, DEL LADO DEL COMPORTAMIENTO:
+ * bajar de plus a base (`POST /api/billing/plan {to: "base"}`) exige apagar antes las campañas
+ * que el base no incluye (todas menos Bienvenida y Venta cruzada, ADR 0134 §4/§9). Con la
+ * campaña sembrada de verdad: la ruta contesta 409 con el `code`, el conteo y el mensaje
+ * literal, y no toca nada; con las campañas apagadas procede.
  *
- * ARCHIVO NUEVO PORQUE ESTE ORACULO NO EXISTIA, y lo encontró la revisión independiente de
- * la fase D con dos mutaciones que quedaron VERDES: `activeCampaignCount` devolviendo
- * siempre 0 (53/53) y sacar `downgrade_blocked_campaigns` de `BLOCKS_WITH_ACTION` (21/21).
- * Lo que había pinneaba otra cosa — la matriz de 14580 puntos prueba la DECISIÓN pura, el
- * test del modal prueba que elige bien el destino DADO el `code`, y `billing-routes.test.ts`
- * **dobla `activeCampaignCount` a 0**, así que ni por la ruta se ejercía. Es la lección de
- * la tarea 38: extraer la decisión deja el CABLEADO sin oráculo.
- *
- * Las dos mitades que faltaban, y las dos con la campaña sembrada de verdad:
- *  1. la RUTA contesta 409 con el `code`, el conteo y el mensaje literal, y no toca nada;
- *  2. la PÁGINA cruza ese mismo `code` a la consola, que es lo que decide a dónde manda el
- *     modal.
- *
- * Va en su archivo y no en `billing.neon` / `billing-pages-props` porque los dos están a
- * menos de 40 líneas del límite de 300 (medido con el hook, no con `wc`).
+ * La mitad de la PÁGINA (que cruzaba el `code` de campañas a la consola) se fue con la baja a
+ * Free: la consola de hoy solo cancela, y cancelar ya no bloquea por campañas. La pantalla de
+ * cambio de plan es de GPT (contrato §D10).
  */
 
-const post = (body: unknown = {}) => CANCEL(billingRequest(body));
+const post = (body: unknown = { to: "base" }) => PLAN(billingRequest(body));
 
-/** Un `plus` vivo con N campañas `active` y una puerta usable. */
+/** Un `plus` vivo (la prueba vencida) con N campañas propias `active` y una puerta usable. */
 async function seedWithCampaigns(tag: string, count: number): Promise<Seed> {
-  const seed = await seedBillingBusiness("plus", livePlusState(fake, tag));
+  const seed = await seedBillingBusiness("plus", {
+    ...livePlusState(fake, tag),
+    trialEndsAt: new Date(Date.now() - 86_400_000),
+  });
   // La puerta es la que el seed ya trae: agregar una SEGUNDA haría que la guarda de
   // LOCALES —que va primero por diseño— se lleve el 409 y el caso mediría otra cosa.
   // Medido: con `seedExtraLocation` la ruta contesta `downgrade_blocked` / `archiveCount: 1`.
@@ -104,7 +93,7 @@ async function drop(seed: Seed): Promise<void> {
 }
 
 describe.skipIf(!integrationEnabled)(
-  "el bloqueo duro por campañas (spec 0065, fase D)",
+  "el bloqueo duro por campañas al bajar a base (spec 0189 §D6)",
   () => {
     beforeEach(() => {
       fake = fakeStripe();
@@ -127,7 +116,7 @@ describe.skipIf(!integrationEnabled)(
         // `decidePlanChange` que el 409.
         expect(await response.json()).toEqual({
           error:
-            "Para volver a Free no puedes tener campañas activas; hoy tienes 2. Desactiva 2.",
+            "El plan Base solo incluye Bienvenida y Venta cruzada; hoy tienes 2 campañas activas fuera de eso. Desactiva 2.",
           code: "downgrade_blocked_campaigns",
           deactivateCount: 2,
         });
@@ -153,13 +142,16 @@ describe.skipIf(!integrationEnabled)(
           .where(eq(campaigns.businessId, seed.business.id));
         const response = await post();
         expect(response.status).toBe(200);
-        expect((await readSubscriptionRow(seed.business.id)).plan).toBe("free");
+        // El cambio se le pide a Stripe; el plan de la fila lo escribe el webhook.
+        expect(fake.updateParams[0]?.items).toEqual([
+          { id: "si_0", price: BASE_MONTHLY_PRICE },
+        ]);
       } finally {
         await drop(seed);
       }
     }, 60_000);
 
-    it("ADR 0112 §3: la Bienvenida NO cuenta — con ella y otra bloquea por 1, y sola no bloquea", async () => {
+    it("ADR 0134 §4: la Bienvenida NO cuenta (está en el base) — con ella y otra bloquea por 1, y sola no bloquea", async () => {
       const seed = await seedWithCampaigns("campwelcome", 1);
       routeOwner.businessId = seed.business.id;
       const welcome = { activatedAt: new Date("2026-09-01T12:00:00.000Z") };
@@ -172,7 +164,7 @@ describe.skipIf(!integrationEnabled)(
           deactivateCount: 1,
         });
 
-        // Sólo queda la Bienvenida activa: la baja procede y ella sigue activa.
+        // Sólo queda la Bienvenida activa: el cambio procede y ella sigue activa.
         await getDb()
           .update(campaigns)
           .set({ status: "paused", pauseReason: "owner" })
@@ -184,30 +176,11 @@ describe.skipIf(!integrationEnabled)(
           );
         const response = await post();
         expect(response.status).toBe(200);
-        expect((await readSubscriptionRow(seed.business.id)).plan).toBe("free");
         const [kept] = await getDb()
           .select({ status: campaigns.status })
           .from(campaigns)
           .where(eq(campaigns.id, welcomeId));
         expect(kept.status).toBe("active");
-      } finally {
-        await drop(seed);
-      }
-    }, 60_000);
-
-    it("la PÁGINA cruza el `code` de campañas a la consola, no el genérico", async () => {
-      const seed = await seedWithCampaigns("campprops", 3);
-      useBusiness(seed);
-      try {
-        const element = (await SubscriptionPage({
-          searchParams: Promise.resolve({}),
-        })) as { props: Record<string, unknown> };
-        expect(element.props.canCancel).toBe(false);
-        expect(element.props.downgradeBlock).toEqual({
-          code: "downgrade_blocked_campaigns",
-          message:
-            "Para volver a Free no puedes tener campañas activas; hoy tienes 3. Desactiva 3.",
-        });
       } finally {
         await drop(seed);
       }

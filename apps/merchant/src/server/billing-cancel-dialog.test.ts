@@ -28,11 +28,12 @@ import { SubscriptionConsole } from "../app/backoffice/subscription/subscription
  */
 
 const view = (o: Partial<SubscriptionView> = {}): SubscriptionView => ({
-  plan: "free",
+  plan: "trial",
   status: "active",
   interval: null,
   pendingPlan: null,
   pendingPlanAt: null,
+  trialEndsAt: null,
   ...o,
 });
 
@@ -83,7 +84,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
       createElement(SubscriptionConsole, consoleProps() as never),
     );
     expect(dialogProps.last).toMatchObject({
-      title: "Bajar a Free",
+      title: "Cancelar suscripción",
       block: {
         message:
           "Para volver a Free necesitas 1 local activo; hoy tienes 3. Archiva 2.",
@@ -125,7 +126,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
     const html = renderToStaticMarkup(
       createElement(CancelDialog, {
         open: true,
-        title: "Bajar a Free",
+        title: "Cancelar suscripción",
         block: {
           message:
             "Para volver a Free necesitas 1 local activo; hoy tienes 3. Archiva 2.",
@@ -157,7 +158,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
     const html = renderToStaticMarkup(
       createElement(CancelDialog, {
         open: true,
-        title: "Bajar a Free",
+        title: "Cancelar suscripción",
         block: {
           message:
             "Para volver a Free no puedes tener campañas activas; hoy tienes 2. Desactiva 2.",
@@ -187,7 +188,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
     const html = renderToStaticMarkup(
       createElement(CancelDialog, {
         open: true,
-        title: "Bajar a Free",
+        title: "Cancelar suscripción",
         block: {
           message: "Esta baja no está disponible para tu plan actual.",
           code: null,
@@ -210,7 +211,7 @@ describe("el modal de la baja (spec 0063, D7 / ADR 0058 §8)", () => {
     const html = renderToStaticMarkup(
       createElement(CancelDialog, {
         open: true,
-        title: "Bajar a Free",
+        title: "Cancelar suscripción",
         block: null,
         busy: false,
         renewalAt: null,
@@ -251,7 +252,7 @@ describe("el aviso de cuándo conviene bajar (spec 0064, ADR 0063)", () => {
     renderToStaticMarkup(
       createElement(await realDialog(), {
         open: true,
-        title: "Bajar a Free",
+        title: "Cancelar suscripción",
         block: null,
         busy: false,
         renewalAt,

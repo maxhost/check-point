@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   billingRequest,
   livePlusState,
-  readSubscriptionRow,
   subId,
 } from "./billing-integration-support";
 import { fakeStripe, type FakeStripe } from "./billing-stripe-fake";
@@ -20,29 +19,14 @@ import { withDbTransaction } from "@mi-pasaporte/db";
 import { integrationEnabled } from "./locations-integration-support";
 
 /**
- * Spec 0063 D6/D10 + spec 0064 A2 — LOS GUARDS DE `cancel`: lo que impide que una baja
- * legítima se destruya. Nacen de FAILs de revisor, y son la misma forma: estaban escritos en
- * la spec o en un docblock y NINGÚN test los pinneaba — el ADR 0054, un documento afirmando un
- * invariante que nadie verifica.
+ * Spec 0189 §D7 — LOS GUARDS DE LAS RUTAS QUE HABLAN CON STRIPE (`cancel`, `plan`): que el
+ * fallo de Stripe deje la CAUSA en el log sin secretos, y que la llamada de red NUNCA ocurra con
+ * el lock del negocio tomado.
  *
- *  1. (decisión 3) El revert de `cancel` ante un error determinista corre SÓLO si ESTA
- *     petición creó el estado. Los tests de `billing.neon.integration.test.ts` que parecen
- *     cubrirlo son PRIMEROS pedidos (`createdNow === true`), así que dan idéntico con y sin el
- *     guard. Mutación MUT-A.
- *  2. (decisión 1) `settle-free` es el mismo handler que `cancel`, así que sobre una
- *     suscripción VIVA la cancela EN STRIPE en vez de settlear en local. Ningún test llamaba a
- *     `settle-free` con una suscripción viva. El daño es de plata: settlear en local deja de
- *     cobrarle al negocio un plan que Stripe le sigue facturando. Mutación MUT-D.
- *
- * EL TERCER GUARD ERA DE `resume` Y SE FUE CON LA RUTA (spec 0064 §4: la baja diferida no
- * existe, «no hay reanudar»). Borrar su test está autorizado por esa sección y declarado en el
- * handoff: no es un test que se saca para poner un gate en verde, es el test de una feature
- * que dejó de existir. Lo que ese test protegía —que una baja ajena con `cancel_at` explícito
- * no aterrice en `none`— sigue cubierto por el lado del webhook (`billing-derive.test.ts` y
- * `billing-webhook-writes…`), que es donde vive el discriminante del ADR 0060.
- *
- * Archivo propio por naturaleza, y porque `billing.neon.integration.test.ts` no tiene margen
- * (medido con el hook `file-size`). El corte lo decidió el orquestador.
+ * Los guards de la baja INMEDIATA del ADR 0063 (el revert ante un rechazo determinista, el
+ * reintento que no borra la baja ya pedida, saldar a gratis una suscripción viva) se fueron
+ * con esa baja: el ADR 0134 §8 la revirtió a «al fin del periodo» y `cancel` ya no escribe nada
+ * antes de que Stripe confirme. Sus tests se borraron con su feature (declarado en el handoff).
  */
 let fake: FakeStripe = fakeStripe();
 const world = { businessId: "" };
@@ -82,10 +66,10 @@ vi.mock("./stripe-config", async (importOriginal) => {
 });
 
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
-import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
+import { POST as PLAN } from "../app/api/billing/plan/route";
 
-const post = (handler: (r: NextRequest) => Promise<Response>) =>
-  handler(billingRequest({}));
+const post = (handler: (r: NextRequest) => Promise<Response>, body = {}) =>
+  handler(billingRequest(body));
 
 /** Siembra un `plus` mensual VIVO con literales únicos por corrida —los ids de Stripe son
  * uniques GLOBALES y vitest paraleliza archivos— y limpia siempre. */
@@ -94,7 +78,10 @@ async function withLivePlus(
   body: (seed: Seed, tag: string) => Promise<void>,
 ): Promise<void> {
   const tag = `${prefix}${randomUUID().slice(0, 8)}`;
-  const seed = await seedBillingBusiness("plus", livePlusState(fake, tag));
+  const seed = await seedBillingBusiness("plus", {
+    ...livePlusState(fake, tag),
+    trialEndsAt: new Date(Date.now() - 86_400_000),
+  });
   world.businessId = seed.business.id;
   try {
     await body(seed, tag);
@@ -104,7 +91,7 @@ async function withLivePlus(
 }
 
 describe.skipIf(!integrationEnabled)(
-  "api/billing — los guards de `cancel` (spec 0063 D6/D10 + spec 0064 A2)",
+  "api/billing — los guards de las rutas que llaman a Stripe (spec 0189 §D7)",
   () => {
     beforeEach(() => {
       fake = fakeStripe();
@@ -116,100 +103,6 @@ describe.skipIf(!integrationEnabled)(
     afterEach(() => {
       vi.unstubAllEnvs();
     });
-
-    /**
-     * MUT-A. `cancel` es idempotente y es EL CAMINO DE REPARACIÓN: el owner reintenta el mismo
-     * pedido. Si ese reintento falla con un error determinista, revertir borraría una baja que
-     * Stripe YA tiene confirmada → el tope vuelve a 3 con la cancelación viva → `free` con 3
-     * locales activos al cerrar el periodo. Es el daño que [R1-B3] existe para impedir,
-     * alcanzado por el otro camino.
-     */
-    it("un REINTENTO de `cancel` que falla determinista NO borra la baja ya pedida", async () => {
-      await withLivePlus("repar", async (seed) => {
-        // 1.er pedido: deja la marca puesta y se cae en la RED, que no prueba nada — el
-        // estado queda PUESTO ([R1-B3]) y la suscripción puede estar cancelada en Stripe.
-        fake.cancelError = new Stripe.errors.StripeConnectionError({
-          message: "network",
-        });
-        expect((await post(CANCEL)).status).toBe(503);
-        const pedido = await readSubscriptionRow(seed.business.id);
-        expect(pedido.plan).toBe("plus");
-        expect(pedido.pendingPlan).toBe("free");
-        expect(pedido.downgradeRequestedAt).not.toBeNull();
-
-        // 2.º pedido (el reintento de reparación): Stripe lo rechaza con un 4xx, que SÍ prueba
-        // que no aplicó nada… pero de ESTE pedido, no del anterior. Sin el guard `createdNow`
-        // el revert corre acá y borra una baja que Stripe puede tener confirmada → el tope
-        // vuelve a 3 con la cancelación viva → `free` con 3 locales activos.
-        fake.cancelError = new Stripe.errors.StripeInvalidRequestError({
-          message: "no such subscription",
-          statusCode: 400,
-        });
-        expect((await post(CANCEL)).status).toBe(503);
-
-        const despues = await readSubscriptionRow(seed.business.id);
-        expect(despues.pendingPlan).toBe("free");
-        expect(despues.downgradeRequestedAt).toEqual(
-          pedido.downgradeRequestedAt,
-        );
-      });
-    }, 60_000);
-
-    /**
-     * MUT-D. `settle-free` y `cancel` son el MISMO handler, así que lo que decide es la FILA y
-     * nunca la URL: sobre una suscripción viva no se settlea en local, se programa la baja en
-     * Stripe. El barrido del filesystem de `billing-routes.test.ts` no ve esto — mira que
-     * exista el `export POST`, no el cuerpo.
-     */
-    it("`settle-free` sobre una suscripción VIVA la CANCELA en Stripe, no settlea en local", async () => {
-      await withLivePlus("vivo", async (seed, tag) => {
-        expect((await post(SETTLE_FREE)).status).toBe(200);
-
-        // Se lo pidió a Stripe: settlear en local dejaría de cobrarle al negocio un plan que
-        // Stripe le sigue facturando. Es el ORÁCULO de MUT-D — las dos ramas terminan con la
-        // fila en `free`, así que lo único que las distingue es la llamada.
-        expect(fake.calls).toContain(`subscriptions.cancel:${subId(tag)}`);
-        // SIN `prorate` ni `invoice_now`: los dos son `false` por default, que es literalmente
-        // lo que el owner pidió (ADR 0063, «sin reembolso, no devolvemos plata»).
-        expect(fake.cancelParams[0]).toBeUndefined();
-
-        // Y la fila quedó settleada DESPUÉS de la cancelación, no antes.
-        const row = await readSubscriptionRow(seed.business.id);
-        expect(row.plan).toBe("free");
-        expect(row.stripeSubscriptionId).toBeNull();
-        expect(row.pendingPlan).toBeNull();
-        expect(row.downgradeRequestedAt).toBeNull();
-      });
-    }, 60_000);
-
-    /**
-     * S9 — LA CLASIFICACIÓN DEL ERROR NO MIRA SÓLO `type`. El docblock de
-     * `isDeterministicRejection` justifica mirar `type`, `rawType` y `statusCode` en vez de un
-     * `instanceof` (que se rompe si el que construyó el error cargó otra copia del módulo),
-     * pero los únicos errores que la suite construía traían `type`, así que las otras dos ramas
-     * eran INALCANZABLES y el barrido las encontró verdes. Acá se les pasa un error PLANO con
-     * `rawType` y otro sólo con `statusCode`, que es lo que llega si el SDK cambia de forma.
-     */
-    it("el revert clasifica un 4xx por `rawType` y por `statusCode`, no sólo por `type`", async () => {
-      const plano = (extra: Record<string, unknown>) =>
-        Object.assign(new Error("no such subscription"), extra);
-
-      await withLivePlus("rawtype", async (seed) => {
-        fake.cancelError = plano({ rawType: "invalid_request_error" });
-        expect((await post(CANCEL)).status).toBe(503);
-        const row = await readSubscriptionRow(seed.business.id);
-        expect(row.pendingPlan).toBeNull();
-        expect(row.downgradeRequestedAt).toBeNull();
-      });
-
-      await withLivePlus("statuscode", async (seed) => {
-        fake.cancelError = plano({ statusCode: 400 });
-        expect((await post(CANCEL)).status).toBe(503);
-        const row = await readSubscriptionRow(seed.business.id);
-        expect(row.pendingPlan).toBeNull();
-        expect(row.downgradeRequestedAt).toBeNull();
-      });
-    }, 60_000);
 
     /**
      * Spec 0064 — EL `catch` REGISTRA LA CAUSA. Pedido explícito de la spec: hoy el `catch`
@@ -224,7 +117,7 @@ describe.skipIf(!integrationEnabled)(
       await withLivePlus("log", async (seed, tag) => {
         const spy = vi.spyOn(console, "error").mockImplementation(() => {});
         try {
-          fake.cancelError = new Stripe.errors.StripeConnectionError({
+          fake.updateError = new Stripe.errors.StripeConnectionError({
             message: "boom-de-stripe",
           });
           expect((await post(CANCEL)).status).toBe(503);
@@ -261,26 +154,33 @@ describe.skipIf(!integrationEnabled)(
      * tomado, Postgres tira `55P03` en vez de esperar, y el fallo queda como
      * `expected false to be true`.
      */
-    it("la llamada a Stripe NO ocurre con el lock del negocio tomado", async () => {
-      await withLivePlus("sinlock", async (seed) => {
-        let lockLibre: boolean | null = null;
-        fake.beforeCancel = async () => {
-          // Sólo la PRIMERA llamada de red: si una mutación agregara otra fuera del lock, la
-          // segunda observación taparía a la primera y el test quedaría verde.
-          if (lockLibre !== null) return;
-          lockLibre = await withDbTransaction(async (tx) => {
-            await tx.execute(
-              sql`select id from core.business where id = ${seed.business.id} for update nowait`,
-            );
-            return true;
-          }).catch(() => false);
-        };
+    it.each([
+      ["cancel", CANCEL, {}],
+      ["plan", PLAN, { to: "base" }],
+    ] as const)(
+      "`%s`: la llamada a Stripe NO ocurre con el lock del negocio tomado",
+      async (_name, handler, body) => {
+        await withLivePlus("sinlock", async (seed) => {
+          let lockLibre: boolean | null = null;
+          const probe = async () => {
+            // Sólo la PRIMERA llamada de red: si una mutación agregara otra fuera del lock,
+            // la segunda observación taparía a la primera y el test quedaría verde.
+            if (lockLibre !== null) return;
+            lockLibre = await withDbTransaction(async (tx) => {
+              await tx.execute(
+                sql`select id from core.business where id = ${seed.business.id} for update nowait`,
+              );
+              return true;
+            }).catch(() => false);
+          };
+          fake.beforeUpdate = probe;
 
-        expect((await post(CANCEL)).status).toBe(200);
-        // DURANTE el `subscriptions.cancel`, otro pudo tomar el lock del negocio: la red no
-        // corrió adentro de la transacción.
-        expect(lockLibre).toBe(true);
-      });
-    }, 60_000);
+          expect((await post(handler, body)).status).toBe(200);
+          // DURANTE el `subscriptions.update`, otro pudo tomar el lock del negocio.
+          expect(lockLibre).toBe(true);
+        });
+      },
+      60_000,
+    );
   },
 );

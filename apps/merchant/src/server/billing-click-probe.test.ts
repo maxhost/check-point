@@ -183,11 +183,12 @@ afterEach(() => {
 });
 
 const view = (overrides: Partial<SubscriptionView> = {}): SubscriptionView => ({
-  plan: "free",
+  plan: "trial",
   status: "active",
   interval: null,
   pendingPlan: null,
   pendingPlanAt: null,
+  trialEndsAt: null,
   ...overrides,
 });
 
@@ -204,9 +205,9 @@ const consoleProps = (subscription: SubscriptionView) => ({
 });
 
 describe("el click en la consola de suscripción (spec 0063, D7)", () => {
-  it('«Mejorar a Plus» postea el `from: "subscription"` que decide el aterrizaje', async () => {
+  it('«Elegir un plan» postea el `from: "subscription"` que decide el aterrizaje', async () => {
     const tree = invoke(SubscriptionConsole, consoleProps(view()));
-    click(button(expand(child(tree, "UpgradeCard")), "Mejorar a Plus"));
+    click(button(expand(child(tree, "UpgradeCard")), "Elegir un plan"));
     await flush();
 
     expect(fetchCalls.map((call) => call.url)).toEqual([
@@ -229,7 +230,7 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
     const tree = invoke(SubscriptionConsole, consoleProps(view()), {
       0: "year",
     });
-    click(button(expand(child(tree, "UpgradeCard")), "Mejorar a Plus"));
+    click(button(expand(child(tree, "UpgradeCard")), "Elegir un plan"));
 
     expect(fetchCalls[0].body).toEqual({
       interval: "year",
@@ -237,7 +238,7 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
     });
   });
 
-  it("apretar «Bajar a Free» ABRE el modal de condiciones", () => {
+  it("apretar «Cancelar suscripción» ABRE el modal de condiciones", () => {
     const subscription = view({ plan: "plus", interval: "month" });
     const tree = invoke(SubscriptionConsole, consoleProps(subscription));
     // CONTROL que hace discriminar a la aserción de abajo: en la carga el modal está CERRADO
@@ -246,7 +247,7 @@ describe("el click en la consola de suscripción (spec 0063, D7)", () => {
       tree.find((element) => element.type === CancelDialog)?.props.open,
     ).toBe(false);
 
-    click(button(tree, "Bajar a Free"));
+    click(button(tree, "Cancelar suscripción"));
     // El click no re-renderiza nada por sí solo: se toma lo que escribió y se vuelve a
     // invocar la consola con ese estado, que es lo que React haría.
     const after = invoke(

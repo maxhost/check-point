@@ -169,13 +169,8 @@ describe.skipIf(!integrationEnabled)("campaign templates", () => {
       code: "validation",
       fields: { dormantDays: expect.any(String) },
     });
-    const free = await world("free", "Templates free");
-    expect(
-      await caught(() =>
-        enableTemplate(free.business.id, free.userId, "cross", CROSS_GIFT),
-      ),
-    ).toMatchObject({ status: 402, code: "plan_not_allowed" });
-    expect(await liveRuns(free.business.id, "cross")).toEqual([]);
+    // El 402 de la cruzada SIN ACCESO vive en `marketing-welcome-plans…` (spec 0189: el base
+    // la incluye, así que el negocio sin campañas de este caso dejó de existir).
   }, 120_000);
 
   it("one live run per template: a second enable is 409, and two enables at once leave one run", async () => {

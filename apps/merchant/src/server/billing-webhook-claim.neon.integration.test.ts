@@ -85,7 +85,7 @@ describe.skipIf(!integrationEnabled)(
       // un `UPDATE` idempotente, así que aplicarlo dos veces deja la misma fila y un test de
       // estado final quedaría VERDE sin el lease. Lo que se asevera es el PAR DE STATUS
       // (200 + 409) y que hubo UN SOLO `retrieve` contra Stripe.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_solape",
       });
       try {
@@ -134,7 +134,7 @@ describe.skipIf(!integrationEnabled)(
       // muere en el `retrieve` (500): queda fila con `processed_at IS NULL` y `received_at`
       // recién puesto. Si el reintento in-window contestara 200 `{duplicate:true}`, Stripe
       // daría el evento por entregado y NO LO MANDARÍA NUNCA MÁS: el evento se perdería.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_muerta",
       });
       try {
@@ -164,7 +164,7 @@ describe.skipIf(!integrationEnabled)(
         // Y el 409 no es un 2xx disfrazado: el evento sigue SIN procesar y nada se escribió.
         expect((await readWebhookEvent(spec.id)).processedAt).toBeNull();
         expect((await readSubscriptionRow(seeded.business.id)).plan).toBe(
-          "free",
+          "trial",
         );
       } finally {
         await dropBusiness(seeded.business.id);
@@ -176,7 +176,7 @@ describe.skipIf(!integrationEnabled)(
       // test de arriba y el evento quedaría clavado hasta que Stripe se rinda y desactive el
       // endpoint. La fila se envejece por SQL (D12.f), que es el estado real de un evento
       // viejo.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_vencido",
       });
       try {
@@ -225,7 +225,7 @@ describe.skipIf(!integrationEnabled)(
       // puede rechazar el claim es `processed_at IS NULL`, y el 200 no puede venir «de
       // rebote» por el lease. Sin esto, este test quedaría verde aunque el clasificador
       // confundiera los dos motivos de rechazo.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_reentrega",
       });
       try {

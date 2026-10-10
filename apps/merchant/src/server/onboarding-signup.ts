@@ -9,6 +9,7 @@ import {
   subscriptions,
 } from "@mi-pasaporte/db/schema";
 import { currencyForCountry } from "@mi-pasaporte/domain/lib/currencies";
+import { TRIAL_DAYS } from "@mi-pasaporte/domain/server/entitlements/catalog";
 import { isBusinessCategory } from "../lib/business-categories";
 import { ownerUserInsert } from "./auth-start";
 import { slugForNewBusiness } from "./business-slug";
@@ -138,10 +139,13 @@ export async function createOwnerWithBusiness(input: {
       providerSnapshot: selection.snapshot,
       attribution: null,
     }),
+    // Spec 0189 §D8 / ADR 0134 §2: el alta nace en la prueba de 90 dias, sin tarjeta. La
+    // fecha de fin SE GUARDA (el owner la extiende a mano), no se recalcula.
     db.insert(subscriptions).values({
       businessId,
-      plan: "free",
+      plan: "trial",
       status: "active",
+      trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
     }),
   ]);
   return { userId: owner.userId, businessId, slug };

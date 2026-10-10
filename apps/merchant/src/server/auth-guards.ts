@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { getMerchantAuth } from "./auth";
+import { readBusinessBilling } from "./billing-gate";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, sessions } from "@mi-pasaporte/db/schema";
 import { permissionsForRole } from "@mi-pasaporte/db/permissions-catalog";
@@ -37,6 +38,10 @@ export const BUSINESS_CLOSED = "business_closed";
  * rebote de `closed` y este no le tocan.
  */
 export const BUSINESS_SUSPENDED = "business_suspended";
+
+/** Spec 0189 §D4: el rebote del INTEGRANTE de un negocio sin acceso (prueba vencida, sin
+ * suscripcion viva). El owner no lo recibe: va a `/backoffice/subscription`, donde paga. */
+export const PAYMENT_REQUIRED = "payment_required";
 
 /** The business the current backoffice session operates on (its first business). */
 export type GuardBusiness = {
@@ -87,7 +92,11 @@ export type BackofficeSession = {
  *  - membership `status='disabled'` → revokes the session and sends the member to
  *    `/?e=staff_disabled`, so the landing can say why (ADR 0055);
  *  - business `closed` → `/?e=business_closed` (spec 0072 §D4), para CUALQUIER rol;
- *  - business no-`active` y caller no-owner → `/?e=business_suspended` (spec 0086 §8).
+ *  - business no-`active` y caller no-owner → `/?e=business_suspended` (spec 0086 §8);
+ *  - business `active` SIN ACCESO (spec 0189 §D4): el owner → `/backoffice/subscription`
+ *    (salvo `{ allowBlocked: true }`, que es esa misma página), el integrante →
+ *    `/?e=payment_required` (no puede pagar, y mandarlo a la página del owner cerraría un
+ *    ciclo con el rebote de `requireOwner` a `/backoffice/counter`).
  *
  * **NO gatea por email verificado, y es una decisión del owner** (spec 0082 / ADR 0070 §11,
  * textual): *«Entra a su cuenta directamente al terminar el wizard y ve el onboarding»*, y el
@@ -109,7 +118,9 @@ export type BackofficeSession = {
  *
  * Never returns a disabled or sessionless caller.
  */
-export async function requireBackofficeSession(): Promise<BackofficeSession> {
+export async function requireBackofficeSession(
+  options: { allowBlocked?: boolean } = {},
+): Promise<BackofficeSession> {
   const session = await getMerchantAuth().api.getSession({
     headers: await headers(),
   });
@@ -192,6 +203,19 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
     redirect(`/?e=${BUSINESS_SUSPENDED}`);
   }
 
+  // EL EJE DE ACCESO (spec 0189 §D4), DESPUES del eje `status`: un owner suspendido conserva
+  // su pantalla de cuenta suspendida (el motivo manda sobre el cobro).
+  if (row.businessStatus === "active" && !options.allowBlocked) {
+    const billing = await readBusinessBilling(row.id);
+    if (billing.access === "blocked") {
+      redirect(
+        row.role === "owner"
+          ? "/backoffice/subscription"
+          : `/?e=${PAYMENT_REQUIRED}`,
+      );
+    }
+  }
+
   return {
     userId: session.user.id,
     userName: session.user.name,
@@ -218,8 +242,10 @@ export async function requireBackofficeSession(): Promise<BackofficeSession> {
  * Owner-only guard: a staff member is redirected to the counter console (never to
  * onboarding). Used by every owner-only page (brand, loyalty, catalog, staff, home).
  */
-export async function requireOwner(): Promise<BackofficeSession> {
-  const ctx = await requireBackofficeSession();
+export async function requireOwner(
+  options: { allowBlocked?: boolean } = {},
+): Promise<BackofficeSession> {
+  const ctx = await requireBackofficeSession(options);
   if (ctx.membership.role !== "owner") redirect("/backoffice/counter");
   return ctx;
 }

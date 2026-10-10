@@ -40,20 +40,18 @@ export type SeededSubscription = {
   pendingPlanAt?: Date | null;
   downgradeRequestedAt?: Date | null;
   lastEventAt?: Date | null;
+  /** Spec 0189: la fecha de fin de la prueba. Ausente = la del alta (`seedBusiness`, +90 d). */
+  trialEndsAt?: Date | null;
 };
 
 export async function seedLocationsBusiness(
   name: string,
-  plan: "free" | "plus" | "none",
+  plan: "trial" | "base" | "plus" | "none",
   /**
-   * Spec 0063 [R2-I7]: EL SEED ACEPTA EL ESTADO COMPLETO DE LA SUSCRIPCIÓN, no sólo el plan.
-   * Sin esto no se pueden sembrar los estados que la spec tiene que cubrir —A1 (`plus` SIN
-   * `stripe_subscription_id`, `interval` NULL), una baja ya programada
-   * (`pending_plan='free'` + `downgrade_requested_at`), un `last_event_at` anterior— y el
-   * test tendría que construirlos con el código bajo prueba, que es el pre-chequeo
-   * circular. `plan` queda como 2.º posicional para no tocar a los llamadores de la spec
-   * 0061; todo lo demás entra por acá y el default es el de prod (`status='active'`, el
-   * resto NULL).
+   * Spec 0063 [R2-I7]: EL SEED ACEPTA EL ESTADO COMPLETO DE LA SUSCRIPCIÓN, no sólo el plan,
+   * para sembrar los estados que el test tiene que cubrir sin construirlos con el código bajo
+   * prueba. Spec 0189: `seedBusiness` ya deja la fila de prueba del alta; esto la REESCRIBE con
+   * el plan y el estado pedidos (default de prod: `status='active'`, la prueba del alta).
    */
   subscription: SeededSubscription = {},
 ): Promise<Seed> {
@@ -65,13 +63,9 @@ export async function seedLocationsBusiness(
     blockAmount: "1.00",
   });
   await getDb()
-    .insert(subscriptions)
-    .values({
-      businessId: seed.business.id,
-      plan,
-      status: "active",
-      ...subscription,
-    });
+    .update(subscriptions)
+    .set({ plan, status: "active", ...subscription })
+    .where(eq(subscriptions.businessId, seed.business.id));
   const verificationId = randomUUID();
   await getDb().insert(locationVerifications).values({
     id: verificationId,

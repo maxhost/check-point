@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { and, count, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { dropBusiness } from "./counter-integration-support";
@@ -28,6 +29,12 @@ async function countByStatus(businessId: string, status: string) {
   return Number(row.value);
 }
 
+/** Spec 0189: el plan BASE pagando (suscripción viva, la prueba vencida) es el de 1 local. */
+const basePagando = () => ({
+  stripeSubscriptionId: `sub_base_${randomUUID().slice(0, 8)}`,
+  trialEndsAt: new Date(Date.now() - 86_400_000),
+});
+
 const typed = (name: string) => ({
   name,
   address: { label: `${name} 100` },
@@ -36,8 +43,8 @@ const typed = (name: string) => ({
 describe.skipIf(!integrationEnabled)(
   "locations — plan cap, last location and isolation (spec 0061)",
   () => {
-    it("free with one active location cannot open a second", async () => {
-      const seed = await seedLocationsBusiness("Free", "free");
+    it("base with one active location cannot open a second", async () => {
+      const seed = await seedLocationsBusiness("Base", "base", basePagando());
       try {
         expect(await countByStatus(seed.business.id, "active")).toBe(1);
         await expect(
@@ -118,8 +125,12 @@ describe.skipIf(!integrationEnabled)(
 
     it("reactivating obeys the same cap, so archive→create→reactivate cannot walk past it", async () => {
       // Derived consequence, flagged in the handoff: the owner decided the cap counts
-      // ACTIVE locations; if reactivating ignored it, a `free` business could hold two.
-      const seed = await seedLocationsBusiness("Reactivar", "free");
+      // ACTIVE locations; if reactivating ignored it, a `base` business could hold two.
+      const seed = await seedLocationsBusiness(
+        "Reactivar",
+        "base",
+        basePagando(),
+      );
       try {
         const spare = await seedExtraLocation(seed.business.id, "Sur");
         await setLocationStatus(seed.business, spare, "archived");

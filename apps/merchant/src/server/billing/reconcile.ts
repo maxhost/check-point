@@ -6,6 +6,7 @@ import { assessEventApplicability } from "./applicability";
 import { planFromSubscription } from "./derive";
 import { DEAD_STRIPE_STATUS } from "./plan-change";
 import type { StripeGateway } from "./gateway";
+import type { PriceIds } from "./prices";
 import { applySubscriptionState, readSubscription } from "./store";
 
 /**
@@ -60,7 +61,7 @@ export async function reconcileFromStripe(
   args: {
     businessId: string;
     stripeCustomerId: string | null;
-    priceIds: { monthly: string; yearly: string };
+    priceIds: PriceIds;
   },
 ): Promise<ReconcileOutcome> {
   if (args.stripeCustomerId === null) {

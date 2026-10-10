@@ -5,6 +5,7 @@ import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { openMerchantSession } from "../../../../../server/merchant-session";
 import { staffError } from "../../../staff/_auth";
 import { businessStatusFailure } from "../../../../../server/api-owner";
+import { businessBillingFailure } from "../../../../../server/billing-gate";
 import {
   isValidPin,
   lockedFor,
@@ -120,11 +121,12 @@ async function staffLogin(request: Request): Promise<NextResponse> {
    *
    * El `suspension_reason` NO viaja: el motivo se serializa sólo al owner (§D4).
    */
-  const businessFailure = businessStatusFailure(
-    row.businessStatus,
-    null,
-    false,
-  );
+  const businessFailure =
+    businessStatusFailure(row.businessStatus, null, false) ??
+    // EL EJE DE ACCESO (spec 0189 §D4 / ADR 0134 §7): sin suscripcion viva y con la prueba
+    // vencida el personal tampoco obtiene sesion. DESPUES del eje `status` y del PIN, por el
+    // mismo motivo que este: no publicar el estado de un negocio a quien tipea un `handle@slug`.
+    (await businessBillingFailure(row.businessId));
   if (businessFailure) {
     return NextResponse.json(
       { error: businessFailure.message, code: businessFailure.code },

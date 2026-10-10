@@ -34,21 +34,23 @@ export type QuotaDecision = {
   retryAfterSeconds: number;
 };
 
-/** La fila de `core.subscription` del negocio, o el contexto vacio si no hay ninguna. */
+/** La fila de `core.subscription` del negocio con el reloj, o `null` si no hay ninguna (la
+ * capa de entitlements la trata como sin acceso: fail-closed). */
 export async function entitlementContextOf(
   businessId: string,
-): Promise<EntitlementContext> {
+  now: Date = new Date(),
+): Promise<EntitlementContext | null> {
   const [row] = await getDb()
     .select({
       plan: subscriptions.plan,
-      pendingPlan: subscriptions.pendingPlan,
       status: subscriptions.status,
       stripeSubscriptionId: subscriptions.stripeSubscriptionId,
+      trialEndsAt: subscriptions.trialEndsAt,
     })
     .from(subscriptions)
     .where(eq(subscriptions.businessId, businessId))
     .limit(1);
-  return row ?? { plan: null };
+  return row ? { ...row, now } : null;
 }
 
 /** Cuantas filas cuentan para esa clave en la ventana vigente. */
@@ -92,7 +94,7 @@ export async function usedInWindow(
 export async function assertQuota(
   businessId: string,
   key: LimitKey,
-  ctx: EntitlementContext,
+  ctx: EntitlementContext | null,
   now: Date = new Date(),
 ): Promise<QuotaDecision> {
   const window = windowOf(key);
@@ -127,7 +129,7 @@ export async function withinAttemptBudget(
   businessId: string,
   now: Date = new Date(),
 ): Promise<boolean> {
-  const ctx = await entitlementContextOf(businessId);
+  const ctx = await entitlementContextOf(businessId, now);
   const limit = limitOf(ctx, "catalog.imports.attempts");
   const used = await usedInWindow(businessId, "catalog.imports.attempts", now);
   return used < limit;

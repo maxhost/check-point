@@ -8,7 +8,7 @@ import {
   activeLocationCount,
   lockBusiness,
 } from "../../../server/locations/shared";
-import { activeCampaignCount } from "../../../server/marketing/plan-brake";
+import { activeCampaignsOutsideBase } from "../../../server/marketing/plan-brake";
 import {
   asStripeGateway,
   decidePlanChange,
@@ -17,6 +17,7 @@ import {
   type PlanChangeDecision,
   type PlanChangeInput,
   type PlanIntent,
+  type PriceIds,
   type StripeGateway,
   type SubscriptionRow,
 } from "../../../server/billing";
@@ -24,6 +25,11 @@ import {
   getStripeClient,
   getStripeConfiguration,
 } from "../../../server/stripe-config";
+import {
+  billingAccess,
+  trialDaysLeft,
+} from "@mi-pasaporte/domain/server/billing-access";
+import { PLAN_PRICES_USD } from "@mi-pasaporte/domain/server/entitlements/index";
 
 /**
  * Spec 0063, D6 — EL GATE Y LAS PIEZAS COMPARTIDAS de `api/billing/**`. Calcado de
@@ -34,7 +40,7 @@ import {
  * EL `businessId` NO VIENE DEL BODY. Hoy `checkout` lo tomaba del body y verificaba membresía
  * sobre ESE negocio; la propiedad que `locations-routes.test.ts` ya pinnea para locales
  * —«actúa sobre el negocio del CALLER, nunca sobre uno nombrado en el request»— vale para las
- * cinco rutas. Lo que hace SEGURO usar `ownerContext` (que devuelve el negocio más viejo,
+ * rutas. Lo que hace SEGURO usar `ownerContext` (que devuelve el negocio más viejo,
  * `staff.ts:33`) es que el onboarding rechaza un segundo negocio por usuario
  * (la ruta del alta del negocio contesta 409 al segundo) — [R2-M6].
  */
@@ -60,18 +66,24 @@ export class BillingError extends Error {
 }
 
 /**
- * **Desde la spec 0072 delega en `requireApiOwner`**, el resolvedor unico de las 10
- * superficies del owner. Lo que esta superficie gana con eso: el gate de email verificado
- * —sin el, un owner con el email sin verificar abria un checkout de Stripe— y el eje
- * `core.business.status`. Los 401/403 pasan a llevar `code`, que antes no llevaban.
+ * **Desde la spec 0072 delega en `requireApiOwner`**, el resolvedor unico de las superficies
+ * del owner: gate de email verificado y eje `core.business.status`.
+ *
+ * **`allowBlocked: true` (spec 0189 §D4)**: es la UNICA superficie de API que un negocio sin
+ * acceso (prueba vencida, sin suscripcion viva) sigue usando — el owner bloqueado entra, ve su
+ * suscripcion y paga. Sin esto, el 402 `payment_required` le cerraria justo la puerta de pago.
  */
 export async function requireBillingOwner(
   request: Request,
 ): Promise<{ business: { id: string } } | { response: NextResponse }> {
-  const auth = await requireApiOwner(request, {
-    notOwner: "Solo la persona propietaria puede gestionar la suscripción.",
-    emailNotVerified: "Verifica tu email para gestionar la suscripción.",
-  });
+  const auth = await requireApiOwner(
+    request,
+    {
+      notOwner: "Solo la persona propietaria puede gestionar la suscripción.",
+      emailNotVerified: "Verifica tu email para gestionar la suscripción.",
+    },
+    { allowBlocked: true },
+  );
   if ("failure" in auth) {
     return { response: apiOwnerFailureResponse(auth.failure) };
   }
@@ -110,8 +122,8 @@ export function billingErrorResponse(
  * 400 ni un 503. Los campos que sí importan los valida cada ruta, así que la tolerancia no
  * tapa nada.
  *
- * SUS ÚNICOS LLAMADORES SON `checkout` (lee `interval` y `from`) E `interval` (lee `to`).
- * `cancel`, `resume` y `settle-free` NO lo llaman: reciben `{}` y no leen el body. La
+ * SUS ÚNICOS LLAMADORES SON `checkout` (lee `plan`, `interval` y `from`), `plan` e `interval`
+ * (leen `to`). `cancel` y `resume` NO lo llaman: no leen el body. La
  * distinción no es trivia — una versión anterior de este docblock las nombraba a las tres, y
  * eso hizo que la primera sonda de la mutación MUT-B se escribiera contra `cancel` y saliera
  * VERDE por el motivo equivocado. El oráculo real vive en `billing-routes.test.ts` y tiene que
@@ -131,26 +143,23 @@ export async function readBody(
   }
 }
 
-/** El cliente de Stripe como `StripeGateway` + los price ids. Una configuración incompleta es
- * 503 y no 500: no es culpa del request. */
+/** El cliente de Stripe como `StripeGateway` + los cuatro price ids (spec 0189 §D5). Una
+ * configuración incompleta es 503 y no 500: no es culpa del request. */
 export function stripeContext(): {
   gateway: StripeGateway;
-  priceIds: { monthly: string; yearly: string };
+  priceIds: PriceIds;
 } {
   try {
     const configuration = getStripeConfiguration();
     return {
       gateway: asStripeGateway(getStripeClient(configuration)),
-      priceIds: {
-        monthly: configuration.monthlyPriceId,
-        yearly: configuration.yearlyPriceId,
-      },
+      priceIds: configuration.priceIds,
     };
   } catch {
     throw new BillingError(
       503,
       "stripe_not_configured",
-      "El plan Plus aún no está configurado.",
+      "Los planes aún no están configurados.",
     );
   }
 }
@@ -170,13 +179,13 @@ export async function requireRow(
   return row;
 }
 
-/** La fila + el conteo, en la forma que `decidePlanChange` espera. UNA sola construcción para
- * las dos superficies que deciden (la ruta y el `canCancel` de la respuesta): con dos, un
- * campo puesto distinto haría que la UI ofreciera lo que el servidor rechaza. */
+/** La fila + los conteos, en la forma que `decidePlanChange` espera. UNA sola construcción
+ * para todas las rutas que deciden. */
 function planInput(
   row: SubscriptionRow,
-  counts: { activeLocations: number; activeCampaigns: number },
+  counts: { activeLocations: number; activeCampaignsOutsideBase: number },
   intent: PlanIntent,
+  now: Date,
 ): PlanChangeInput {
   return {
     currentPlan: row.plan,
@@ -184,24 +193,27 @@ function planInput(
     pendingPlan: row.pendingPlan,
     status: row.status,
     stripeSubscriptionId: row.stripeSubscriptionId,
+    trialEndsAt: row.trialEndsAt,
+    now,
     activeLocations: counts.activeLocations,
-    activeCampaigns: counts.activeCampaigns,
+    activeCampaignsOutsideBase: counts.activeCampaignsOutsideBase,
     intent,
   };
 }
 
 /**
- * LOCK → LEER → CONTAR → DECIDIR, en ese orden y dentro de la MISMA transacción. Es el
- * read-modify-write de D6: el conteo de locales que alimenta `downgrade_blocked` tiene que
- * leerse bajo el lock del negocio, o entre la verificación y la escritura cabe un
- * desarchivado (ADR 0054 §2).
+ * LOCK → LEER → CONTAR → DECIDIR, en ese orden y dentro de la MISMA transacción. Los conteos
+ * que alimentan `downgrade_blocked*` se leen bajo el lock del negocio, o entre la verificación
+ * y la escritura cabe un desarchivado o una activación (ADR 0054 §2).
  *
  * Un `blocked` sale como `BillingError` 409 con su `code` — los 402/503 los produce la ruta.
+ * Las llamadas a Stripe ocurren DESPUÉS, fuera de esta transacción (regla de `shared.ts`).
  */
 export async function decideUnderLock(
   tx: DbTransaction,
   businessId: string,
   intent: PlanIntent,
+  now = new Date(),
 ): Promise<{
   row: SubscriptionRow;
   activeLocations: number;
@@ -210,11 +222,14 @@ export async function decideUnderLock(
   await lockBusiness(tx, businessId);
   const row = await requireRow(tx, businessId);
   const activeLocations = await activeLocationCount(tx, businessId);
-  // El conteo de campañas va bajo el MISMO lock y por el mismo motivo que el de locales
-  // (spec 0065, fase D): entre contar y escribir el plan cabe una activación.
-  const activeCampaigns = await activeCampaignCount(tx, businessId);
+  const outside = await activeCampaignsOutsideBase(tx, businessId);
   const decision = decidePlanChange(
-    planInput(row, { activeLocations, activeCampaigns }, intent),
+    planInput(
+      row,
+      { activeLocations, activeCampaignsOutsideBase: outside },
+      intent,
+      now,
+    ),
   );
   if (decision.kind === "blocked") {
     throw new BillingError(
@@ -229,35 +244,31 @@ export async function decideUnderLock(
 }
 
 /**
- * El cuerpo de éxito del contrato de D6: `{ subscription, activeLocations, canCancel }`.
- * `subscription` pasa SIEMPRE por `toSubscriptionView` — la allow-list positiva de D7 — así
- * que `stripeCustomerId`, `stripeSubscriptionId` y `downgradeRequestedAt` no pueden viajar.
- *
- * `canCancel` sale de `decidePlanChange`, NO de una segunda regla de conteo que pueda
- * divergir del servidor. Ojo (ADR 0058 §8): `false` no deshabilita el botón en la UI; el
- * bloqueo duro es el 409 de acá.
+ * Spec 0189 §D10 — EL ESTADO DE COBRO: el cuerpo de `GET /api/billing/state` y el de éxito de
+ * `plan`/`interval`/`cancel`/`resume`. `subscription` pasa SIEMPRE por `toSubscriptionView` —la
+ * allow-list positiva— así que `stripeCustomerId`, `stripeSubscriptionId` y
+ * `downgradeRequestedAt` no pueden viajar. Los precios son de EXHIBICIÓN (el cobro es de
+ * Stripe). Se lee bajo `lockBusiness`, igual que las decisiones.
  */
 export async function billingStateResponse(
   businessId: string,
+  now = new Date(),
 ): Promise<NextResponse> {
   const state = await withDbTransaction(async (tx) => {
     await lockBusiness(tx, businessId);
     const row = await requireRow(tx, businessId);
-    const activeLocations = await activeLocationCount(tx, businessId);
-    const activeCampaigns = await activeCampaignCount(tx, businessId);
-    const decision = decidePlanChange(
-      planInput(
-        row,
-        { activeLocations, activeCampaigns },
-        { kind: "downgrade" },
-      ),
-    );
+    const access = billingAccess(row, now);
     return {
       subscription: toSubscriptionView(row),
-      activeLocations,
-      canCancel:
-        decision.kind === "schedule_downgrade" ||
-        decision.kind === "settle_to_free",
+      access,
+      trialDaysLeft: trialDaysLeft(access, row.trialEndsAt, now),
+      activeLocations: await activeLocationCount(tx, businessId),
+      activeCampaignsOutsideBase: await activeCampaignsOutsideBase(
+        tx,
+        businessId,
+      ),
+      prices: PLAN_PRICES_USD,
+      currency: "USD",
     };
   });
   return NextResponse.json(state);

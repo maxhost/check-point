@@ -27,13 +27,13 @@ import {
   seedBillingBusiness,
   stripeEnvEntries,
 } from "./billing-webhook-support";
-import { clearPendingPlan, reconcileFromStripe, settleToFree } from "./billing";
+import { clearPendingPlan, reconcileFromStripe } from "./billing";
 import { dropBusiness } from "./counter-integration-support";
 import { withDbTransaction } from "@mi-pasaporte/db";
 import { integrationEnabled } from "./locations-integration-support";
 
 /**
- * Spec 0063, D6 / D8 / D10 — `billing/store.ts` contra Postgres de verdad: lo que el unit
+ * Spec 0063 D6/D8 + spec 0189 §D7 — `billing/store.ts` contra Postgres de verdad: lo que el unit
  * (`billing-store.test.ts`) NO puede cubrir con su doble del `tx`. El `coalesce` que conserva
  * la marca, el `where` por `businessId`, la reconciliación completa (abre su propia
  * transacción) y la CARRERA contra el webhook, oráculo de la mutación M4.
@@ -69,83 +69,67 @@ describe.skipIf(!integrationEnabled)(
       await dropWebhookEvents(events.ids);
     }, 30_000);
 
-    it("`scheduleDowngrade` CONSERVA `downgrade_requested_at` entre pedidos repetidos", async () => {
-      // De esto cuelga la `idempotencyKey` de D6
-      // (`billing:cancel:${id}:${downgradeRequestedAt}`): el segundo `cancel` tiene que reusar
-      // la MISMA clave para que Stripe reconozca el reintento — es el camino de reparación. Con
-      // una asignación en vez del `coalesce`, cada reintento estrenaría clave.
+    it("`scheduleCancel` CONSERVA `downgrade_requested_at` entre pedidos repetidos", async () => {
+      // El `coalesce`: la marca de auditoría dice CUÁNDO pidió el owner la primera vez. Un
+      // `resume` la limpia, y la cancelación siguiente estrena marca.
       const seeded = await seedBillingBusiness("plus", {
         stripeSubscriptionId: subId("idem"),
         stripeCustomerId: custId("idem"),
       });
       try {
-        const first = await cancelStepUnderLock(
+        await cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 11)),
         );
-        const second = await cancelStepUnderLock(
+        await cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 12)),
         );
-        expect(second.downgradeRequestedAt).toEqual(first.downgradeRequestedAt);
         const row = await readSubscriptionRow(seeded.business.id);
-        expect(row.pendingPlan).toBe("free");
+        expect(row.pendingPlan).toBe("none");
         expect(row.downgradeRequestedAt).toEqual(
           new Date(Date.UTC(2026, 8, 11)),
         );
 
-        // Cuando la marca se LIMPIA —el revert del rechazo determinista, o el `settleToFree`
-        // del paso 4—, la cancelación siguiente SÍ estrena clave y por lo tanto SÍ llega a
-        // Stripe en vez de comerse la respuesta cacheada de 24 h.
         await withDbTransaction((tx) =>
           clearPendingPlan(tx, seeded.business.id),
         );
-        const third = await cancelStepUnderLock(
+        await cancelStepUnderLock(
           seeded.business.id,
           new Date(Date.UTC(2026, 8, 13)),
         );
-        expect(third.downgradeRequestedAt).toEqual(
-          new Date(Date.UTC(2026, 8, 13)),
-        );
+        expect(
+          (await readSubscriptionRow(seeded.business.id)).downgradeRequestedAt,
+        ).toEqual(new Date(Date.UTC(2026, 8, 13)));
       } finally {
         await dropBusiness(seeded.business.id);
       }
     }, 60_000);
 
-    it("`settleToFree` escribe el `SET` de D10 y CONSERVA el customer", async () => {
-      // Si dejara el `stripe_subscription_id` puesto, `hasLiveSubscription` sería true y el
-      // negocio recibiría `subscription_live` 409 PARA SIEMPRE. Y si borrara el customer, D8 se
-      // quedaría sin llave para detectar deriva.
-      const seeded = await seedBillingBusiness("none", {
-        status: "canceled",
-        interval: "month",
-        stripeSubscriptionId: subId("muerta"),
-        stripeCustomerId: custId("conservado"),
-        pendingPlan: "free",
-        downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
+    it("`scheduleCancel` y `clearPendingPlan` escriben SÓLO la fila de su negocio", async () => {
+      // El `where` por `businessId`, que el doble del unit no puede ver.
+      const seeded = await seedBillingBusiness("plus", {
+        stripeSubscriptionId: subId("mio"),
+        stripeCustomerId: custId("mio"),
       });
       const otro = await seedBillingBusiness("plus", {
         stripeSubscriptionId: subId("del_otro"),
         stripeCustomerId: custId("del_otro"),
+        pendingPlan: "none",
+        downgradeRequestedAt: new Date(Date.UTC(2026, 8, 1)),
       });
       try {
-        await withDbTransaction((tx) => settleToFree(tx, seeded.business.id));
-        const row = await readSubscriptionRow(seeded.business.id);
-        expect([row.plan, row.status, row.interval]).toEqual([
-          "free",
-          "active",
-          null,
-        ]);
-        expect(row.stripeSubscriptionId).toBeNull();
-        expect(row.stripeCustomerId).toBe(custId("conservado"));
-        expect(row.pendingPlan).toBeNull();
-        expect(row.downgradeRequestedAt).toBeNull();
-        // El `where` por `businessId`, que el doble del unit no puede ver: el otro negocio
-        // quedó intacto.
+        await cancelStepUnderLock(
+          seeded.business.id,
+          new Date(Date.UTC(2026, 8, 11)),
+        );
+        await withDbTransaction((tx) =>
+          clearPendingPlan(tx, seeded.business.id),
+        );
         const vecino = await readSubscriptionRow(otro.business.id);
-        expect([vecino.plan, vecino.stripeSubscriptionId]).toEqual([
-          "plus",
-          subId("del_otro"),
+        expect([vecino.pendingPlan, vecino.downgradeRequestedAt]).toEqual([
+          "none",
+          new Date(Date.UTC(2026, 8, 1)),
         ]);
       } finally {
         await dropBusiness(seeded.business.id);
@@ -182,10 +166,10 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("`reconcileFromStripe` arregla una fila divergente y elige la NO MUERTA más reciente", async () => {
-      // El caso motivador de D8: el webhook se perdió el evento, la DB dice `free` sin id y
+      // El caso motivador de D8: el webhook se perdió el evento, la DB dice `trial` sin id y
       // Stripe tiene una suscripción viva — con esa divergencia, `checkout` crearía una SEGUNDA
       // suscripción viva (doble cobro).
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: custId("deriva"),
       });
       try {
@@ -227,13 +211,11 @@ describe.skipIf(!integrationEnabled)(
     }, 60_000);
 
     it("un `cancel` concurrente con el webhook NO pierde ninguna de las dos escrituras", async () => {
-      // MUTACIÓN M4, y el motivo REAL del `lockBusiness` del webhook ([R2-B4]): no es el tope de
-      // locales (el lock serializa, no ordena) sino el READ-MODIFY-WRITE de `core.subscription`.
-      // `planFromSubscription` decide `free` vs `none` leyendo `downgrade_requested_at` DE LA
-      // FILA; sin el lock, el webhook lee ANTES de que el `cancel` commitee, ve NULL, y escribe
-      // `plan='none'` además de LIMPIAR la marca — la baja que el owner sí pidió se pierde. El
-      // entrelazado se fuerza a mano para que sea determinista: el `cancel` toma el lock y
-      // retiene el commit; el webhook llega después y tiene que esperarlo.
+      // MUTACIÓN M4, y el motivo REAL del `lockBusiness` del webhook ([R2-B4]): el
+      // READ-MODIFY-WRITE de `core.subscription`. Sin el lock, el `deleted` escribe ANTES de que
+      // el `cancel` commitee y el `cancel` deja después `pending_plan='none'` sobre una
+      // suscripción MUERTA (una cancelación «programada» de algo que ya terminó). El entrelazado
+      // se fuerza a mano: el `cancel` toma el lock y retiene el commit; el webhook espera.
       const seeded = await seedBillingBusiness("plus", {
         stripeSubscriptionId: subId("carrera"),
         stripeCustomerId: custId("carrera"),
@@ -271,10 +253,11 @@ describe.skipIf(!integrationEnabled)(
         expect((await webhook).status).toBe(200);
 
         const row = await readSubscriptionRow(seeded.business.id);
-        // El webhook vio la marca del `cancel`: la baja fue NUESTRA, así que `free` y no `none`.
-        expect(row.plan).toBe("free");
+        // El webhook escribió DESPUÉS del `cancel`: plan pago muerto → `none`, sin pendiente.
+        expect(row.plan).toBe("none");
         expect(row.status).toBe("canceled");
         expect(row.pendingPlan).toBeNull();
+        expect(row.downgradeRequestedAt).toBeNull();
       } finally {
         await dropBusiness(seeded.business.id);
       }

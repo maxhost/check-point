@@ -112,7 +112,7 @@ describe.skipIf(!integrationEnabled)(
       // «lo tomamos y falló» (fila con `processed_at IS NULL`) de «lo ignoramos a propósito»
       // (`ignored_reason`). Y el reintento NO contesta `{duplicate:true}`, que es el bug del
       // §Problema-4: la versión vieja marcaba el evento recibido ANTES de procesarlo.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_retry",
       });
       try {
@@ -136,7 +136,7 @@ describe.skipIf(!integrationEnabled)(
         expect(failed.status).toBe(500);
         expect((await readWebhookEvent(spec.id)).processedAt).toBeNull();
         expect((await readSubscriptionRow(seeded.business.id)).plan).toBe(
-          "free",
+          "trial",
         );
 
         // [fase C, D12] El reintento va FUERA de la ventana del lease. La PROPIEDAD que este
@@ -168,7 +168,7 @@ describe.skipIf(!integrationEnabled)(
       // exactamente la misma fila y un test del estado final quedaría VERDE con el guard
       // roto. Lo que se asevera es que la segunda entrega NO GANA EL CLAIM, y que por lo
       // tanto no vuelve a pedirle nada a Stripe.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_dup",
       });
       try {
@@ -209,7 +209,7 @@ describe.skipIf(!integrationEnabled)(
       // Stripe se llama UNA sola vez, lo pinnea `billing-webhook-claim.neon.integration.test.ts`
       // (mutaciones M20-M23); acá se conserva lo que este archivo aporta y aquél no: que el
       // estado FINAL del negocio queda correcto y la fila del evento es una sola.
-      const seeded = await seedBillingBusiness("free", {
+      const seeded = await seedBillingBusiness("trial", {
         stripeCustomerId: "cus_race",
       });
       try {

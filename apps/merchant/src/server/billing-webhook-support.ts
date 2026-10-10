@@ -63,7 +63,7 @@ export function deliver(
 /** Un negocio con su suscripción en el estado pedido ([R2-I7]). El nombre es único para que
  * dos tests concurrentes no colisionen. */
 export function seedBillingBusiness(
-  plan: "free" | "plus" | "none",
+  plan: "trial" | "base" | "plus" | "none",
   state: SeededSubscription = {},
 ) {
   return seedLocationsBusiness(
@@ -73,7 +73,7 @@ export function seedBillingBusiness(
   );
 }
 
-/** Las 5 env de Stripe, puestas con el `vi.stubEnv` del test (no se importa `vitest` acá). */
+/** Las env de Stripe, puestas con el `vi.stubEnv` del test (no se importa `vitest` acá). */
 export function stripeEnvEntries(): [string, string][] {
   return Object.entries(STRIPE_TEST_ENV);
 }

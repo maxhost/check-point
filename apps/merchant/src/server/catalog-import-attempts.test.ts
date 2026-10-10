@@ -140,7 +140,7 @@ beforeEach(() => {
  * transcribe a mano —y se pinnea— en `entitlements-window.test.ts`. Escribirlo dos veces hacia
  * que subirlo a 100 para las pruebas pusiera en rojo tres casos que no hablan del valor.
  */
-const TOPE = limitOf({ plan: null }, "catalog.imports.attempts");
+const TOPE = limitOf(null, "catalog.imports.attempts");
 
 describe("la REGLA: conteo vs tope (spec 0090 §8)", () => {
   it("con el conteo por DEBAJO del tope, hay presupuesto", async () => {

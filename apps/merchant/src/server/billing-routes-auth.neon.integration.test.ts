@@ -23,7 +23,10 @@ import {
   stripeEnvEntries,
 } from "./billing-webhook-support";
 import { dropBusiness, type Seed } from "./counter-integration-support";
-import { integrationEnabled } from "./locations-integration-support";
+import {
+  integrationEnabled,
+  seedExtraLocation,
+} from "./locations-integration-support";
 import { getDb } from "@mi-pasaporte/db";
 import { businesses, memberships, users } from "@mi-pasaporte/db/schema";
 import { setStaffStatus } from "./staff";
@@ -33,31 +36,33 @@ import { openMerchantSession } from "./merchant-session";
 import { POST as CHECKOUT } from "../app/api/billing/checkout/route";
 import { POST as CANCEL } from "../app/api/billing/cancel/route";
 import { POST as INTERVAL } from "../app/api/billing/interval/route";
-import { POST as SETTLE_FREE } from "../app/api/billing/settle-free/route";
+import { POST as PLAN } from "../app/api/billing/plan/route";
+import { POST as RESUME } from "../app/api/billing/resume/route";
 
 /**
- * Spec 0063, D6 — EL GATE DE LAS 4 RUTAS CON SESIONES REALES (eran 5 hasta que la spec 0064
- * borró `resume`). Existe porque
+ * Spec 0063, D6 — EL GATE DE LAS 5 RUTAS POST CON SESIONES REALES (spec 0189: se fue
+ * la ruta de saldar el plan gratis, llegaron `plan` y `resume`). Existe porque
  * `billing-routes.test.ts` NO PUEDE VER LA DISTINCIÓN que el DoD exige: con `ownerContext`
  * doblado, un staff ACTIVO y uno DESACTIVADO son el mismo `null`, así que un gate que hubiera
  * perdido el filtro `status='active'` pasaría el unit en verde. Acá la sesión se abre con
  * `signInEmail` de verdad, la cookie viaja en el request y `ownerContext` corre contra las
  * `memberships` posta.
  *
- * EL NEGOCIO ESTÁ SEMBRADO COMO A1 (`plus` SIN `stripe_subscription_id`): así ninguna de las
- * 4 rutas necesita llamar a Stripe ni siquiera en el camino feliz, y este archivo puede
- * probar el GATE sin doblar el gateway. Las env de Stripe igual se stubbean porque `checkout`
- * valida la configuración antes de decidir.
+ * EL NEGOCIO ESTÁ SEMBRADO SIN SUSCRIPCIÓN VIVA Y CON 2 LOCALES: así ninguna de las rutas
+ * llega a Stripe ni siquiera en el camino feliz (todas cortan con un 409 de dominio —el
+ * `checkout` del base por los locales—), y este archivo puede probar el GATE sin doblar el
+ * gateway. Las env de Stripe igual se stubbean porque las rutas validan la configuración.
  */
 const ROUTES: [
   string,
   (r: ReturnType<typeof billingRequest>) => Promise<Response>,
   unknown,
 ][] = [
-  ["checkout", CHECKOUT, { interval: "month" }],
+  ["checkout", CHECKOUT, { plan: "base", interval: "month" }],
   ["cancel", CANCEL, {}],
   ["interval", INTERVAL, { to: "year" }],
-  ["settle-free", SETTLE_FREE, {}],
+  ["plan", PLAN, { to: "base" }],
+  ["resume", RESUME, {}],
 ];
 
 /**
@@ -145,6 +150,7 @@ describe.skipIf(!integrationEnabled)(
 
     beforeAll(async () => {
       seed = await seedBillingBusiness("plus", { interval: "month" });
+      await seedExtraLocation(seed.business.id, "Sucursal 2");
     }, 60_000);
 
     afterAll(async () => {

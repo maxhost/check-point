@@ -67,7 +67,7 @@ vi.mock("./locations/shared", async (importOriginal) => ({
 
 vi.mock("./marketing/plan-brake", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./marketing/plan-brake")>()),
-  activeCampaignCount: async () => 0,
+  activeCampaignsOutsideBase: async () => 0,
 }));
 
 import { GET as SESSION } from "../app/api/merchant/session/route";
@@ -96,6 +96,7 @@ const LEAKY_ROW: SubscriptionRow = {
   pendingPlan: null,
   pendingPlanAt: null,
   downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
+  trialEndsAt: null,
   lastEventAt: new Date(Date.UTC(2026, 8, 10)),
 };
 
@@ -177,9 +178,13 @@ const SURFACES: Surface[] = [
       // sondear endpoints. No es la columna: para un owner son los SIETE aunque su fila este
       // vacia.
       "membership.permissions",
+      // Spec 0189 §D10, sin datos de Stripe (doble sin fila: bloqueado, hojas `null`).
+      "billing.access",
+      "billing.trialEndsAt",
+      "billing.trialDaysLeft",
     ],
     run: () => {
-      world.rows = [[BUSINESS_ROW]];
+      world.rows = [[BUSINESS_ROW], []]; // 2.a: `core.subscription` (billing-gate)
       return SESSION(request("/api/merchant/session"));
     },
   },
@@ -191,8 +196,15 @@ const SURFACES: Surface[] = [
       "subscription.interval",
       "subscription.pendingPlan",
       "subscription.pendingPlanAt",
+      "subscription.trialEndsAt", // spec 0189 §D10, de acá a `currency`
+      "access",
+      "trialDaysLeft",
       "activeLocations",
-      "canCancel",
+      "activeCampaignsOutsideBase",
+      ...["base.month", "base.year", "plus.month", "plus.year"].map(
+        (k) => `prices.${k}`,
+      ),
+      "currency",
     ],
     run: () => {
       world.ownerContext.mockResolvedValue({

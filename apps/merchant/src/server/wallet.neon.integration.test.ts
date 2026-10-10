@@ -10,6 +10,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   consumerAccounts,
@@ -51,6 +52,7 @@ describe.skipIf(!enabled)("wallet passes against Neon", () => {
       countryCode: "EC",
       timezone: "America/Guayaquil",
     });
+    await seedTrialSubscription(businessId);
     await db.insert(loyaltyPrograms).values({
       id: programId,
       businessId,

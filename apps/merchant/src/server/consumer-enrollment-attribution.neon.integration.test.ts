@@ -9,6 +9,7 @@ const enabled =
 if (enabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   consumerAccounts,
@@ -64,6 +65,9 @@ describe.skipIf(!enabled)(
           timezone: "America/Guayaquil",
         },
       ]);
+      // Spec 0189: la fila de prueba del alta (sin ella, el alta es 404 por falta de acceso).
+      for (const id of [businessMain, businessOther])
+        await seedTrialSubscription(id);
       await db.insert(loyaltyPrograms).values({
         id: program,
         businessId: businessMain,

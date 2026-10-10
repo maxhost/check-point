@@ -15,29 +15,22 @@ import { CampaignError } from "./marketing/campaign-store";
 export const campaignWorlds: string[] = [];
 
 /**
- * A business with its plan AND —when it is `plus`— a LIVE subscription.
- *
- * The live id is not decoration (spec 0065 phase D): the campaign plan gate is
- * `plan === 'plus'` AND `hasLiveSubscription`, so a `plus` row with a null
- * `stripe_subscription_id` (the A1 shape of spec 0063) is refused with 402. Seeding it
- * random keeps the two unique indexes of `core.subscription` happy across parallel worlds.
+ * A business PAYING `base` or `plus` with a LIVE subscription and its trial over (spec 0189):
+ * the plan, not the trial, decides. `base` includes only «Bienvenida» and «Venta cruzada», so
+ * every other campaign is refused with 402 — the role the `free` world played before 0189.
+ * Random ids keep the two unique indexes of `core.subscription` happy across parallel worlds.
  */
 export async function campaignWorld(
-  plan: "free" | "plus",
+  plan: "base" | "plus",
   label: string,
 ): Promise<Seed> {
   const live = randomUUID().slice(0, 8);
-  const seed = await seedLocationsBusiness(
-    `${label} ${Date.now()}`,
-    plan,
-    plan === "plus"
-      ? {
-          interval: "month",
-          stripeCustomerId: `cus_${live}`,
-          stripeSubscriptionId: `sub_${live}`,
-        }
-      : {},
-  );
+  const seed = await seedLocationsBusiness(`${label} ${Date.now()}`, plan, {
+    interval: "month",
+    stripeCustomerId: `cus_${live}`,
+    stripeSubscriptionId: `sub_${live}`,
+    trialEndsAt: new Date(Date.now() - 86_400_000),
+  });
   campaignWorlds.push(seed.business.id);
   return seed;
 }

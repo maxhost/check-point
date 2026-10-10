@@ -12,6 +12,7 @@ import {
   countMonthGifts,
   loadWelcomeCampaign,
 } from "../marketing/welcome-store";
+import { businessHasAccessSql } from "../billing-access";
 import { pgErrorCode } from "./core";
 
 export type EnrollLanding = {
@@ -110,6 +111,9 @@ export async function getEnrollLanding(
           // `businessStatusFailure`. Un cuarto estado que nadie le enseñó a este guard tiene que
           // ocultar el formulario, no mostrarlo.
           eq(businesses.status, "active"),
+          // Spec 0189 §D4 / ADR 0134 §7: un comercio SIN ACCESO (sin suscripcion viva y con la
+          // prueba vencida) tampoco: la landing dice «no disponible», igual que suspendido.
+          businessHasAccessSql(businesses.id, now),
         ),
       )
       .limit(1);

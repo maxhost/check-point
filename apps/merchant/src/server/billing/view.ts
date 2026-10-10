@@ -1,5 +1,8 @@
 import type { SubscriptionRow } from "./derive";
-import { DEAD_STRIPE_STATUS } from "./plan-change";
+// Del dominio y no de `./plan-change`: ese módulo importa `planLabel` de acá (spec 0189 §D9,
+// los mensajes de bloqueo nombran el plan con esta allow-list) y el import inverso cerraría
+// un ciclo.
+import { DEAD_STRIPE_STATUS } from "@mi-pasaporte/domain/server/entitlements/live-subscription";
 
 /**
  * Spec 0063, D7 — CONTRATO. Lo dejó el orquestador antes de despachar; el implementador
@@ -8,7 +11,7 @@ import { DEAD_STRIPE_STATUS } from "./plan-change";
 
 /**
  * LA ÚNICA forma de una suscripción que llega al navegador. Es una allow-list POSITIVA, no
- * un filtro: estas cinco claves y ninguna más. Nunca `stripeCustomerId`,
+ * un filtro: estas seis claves y ninguna más (spec 0189 §D10 sumó `trialEndsAt`). Nunca `stripeCustomerId`,
  * `stripeSubscriptionId` ni `downgradeRequestedAt`.
  *
  * Mismo patrón que `toClientProgram` (loyalty) y `brandResponse` (marca): un revisor
@@ -25,6 +28,8 @@ export type SubscriptionView = {
   interval: string | null;
   pendingPlan: string | null;
   pendingPlanAt: string | null;
+  /** Spec 0189 §D10: fin de la prueba, STRING ISO como `pendingPlanAt`. */
+  trialEndsAt: string | null;
 };
 
 export type ToSubscriptionView = (row: SubscriptionRow) => SubscriptionView;
@@ -70,15 +75,12 @@ export type SubscriptionSectionProps = {
  * crudo al DOM. El ejemplo canónico vivía en la pantalla de acceso vieja, que la spec
  * 0067 §7 borró; la allow-list se mudó al contrato.
  *
- * Vive acá y no en la página porque hoy la home hace
- * `Plan {plan === "plus" ? "Plus" : "Free"} · {status === "active" ? "activo" :
- * "confirmando pago"}` (`backoffice/page.tsx:62-63`), o sea que con esta spec `none` se
- * mostraría como «PLAN FREE» —justo lo que `none` existe para no hacer (ADR 0058 §12)— y un
- * `free` con `status='canceled'` diría «confirmando pago» PARA SIEMPRE. Dos copias de esta
- * traducción es cómo las dos superficies divergen.
+ * Vive acá y no en la página porque la home tenía su propio ternario de plan y status, y dos
+ * copias de esta traducción es cómo las dos superficies divergen (un plan sin suscripción
+ * con `status='canceled'` decía «confirmando pago» PARA SIEMPRE).
  *
- * Lo que el DoD asevera: `none` → «Sin plan»; `free` + `canceled` → NO «confirmando pago»;
- * status desconocido → texto genérico.
+ * Lo que el unit asevera: `none` → «Sin plan»; `canceled` → NO «confirmando pago»; status
+ * desconocido → texto genérico.
  */
 export type PlanLabel = (plan: string) => string;
 export type StatusLabel = (status: string) => string;
@@ -92,14 +94,18 @@ export const toSubscriptionView: ToSubscriptionView = (row) => ({
   // serializa distinto según el camino, y el test de claves no ve la diferencia.
   pendingPlanAt:
     row.pendingPlanAt === null ? null : row.pendingPlanAt.toISOString(),
+  trialEndsAt: row.trialEndsAt === null ? null : row.trialEndsAt.toISOString(),
 });
 
-/** Traducción del PLAN. `none` NO dice «Free»: es justo lo que el estado existe para no
- * hacer (ADR 0058 §12). Un plan que no conocemos tampoco se muestra crudo. */
+/** Traducción del PLAN (spec 0189 §D9). **ETIQUETAS PROVISORIAS**: cuando GPT proponga los
+ * nombres comerciales se cambian ESTAS líneas, y con ellas los mensajes de bloqueo de
+ * `plan-change.ts`, que las leen de acá. Un plan que no conocemos no se muestra crudo. */
 export const planLabel: PlanLabel = (plan) => {
   switch (plan) {
-    case "free":
-      return "Free";
+    case "trial":
+      return "Prueba gratis";
+    case "base":
+      return "Base";
     case "plus":
       return "Plus";
     case "none":
@@ -141,104 +147,75 @@ export const statusLabel: StatusLabel = (status) => {
  * «Plan Plus · activo» no dice si lo que se le cobra es mensual o anual, y ése es el dato con
  * el que decide si le conviene pasar a anual o bajar.
  *
- * Se compone sobre `planLabel` en vez de repetir la traducción: un segundo `switch` con
- * «Plus»/«Free»/«Sin plan» es exactamente cómo las dos superficies divergen (el motivo por el
- * que `planLabel` existe y vive acá y no en la página).
+ * Se compone sobre `planLabel` en vez de repetir la traducción: un segundo `switch` es
+ * exactamente cómo las dos superficies divergen.
  *
- * SÓLO `plus` LLEVA INTERVALO. `free` y `none` no tienen suscripción, así que «Free mensual»
- * sería una invención. Y un `plus` con `interval` NULL —el negocio A1 de prod, que existe— se
- * queda en «Plus» pelado: NO se adivina «mensual» por ser el caso más común, porque una
- * etiqueta inventada sobre la plata del merchant es peor que una etiqueta incompleta.
+ * SÓLO LOS PLANES PAGOS (`base`, `plus`) LLEVAN INTERVALO. `trial` y `none` no tienen
+ * suscripción, así que «Prueba mensual» sería una invención. Un plan pago con `interval` NULL
+ * se queda pelado: NO se adivina «mensual», porque una etiqueta inventada sobre la plata del
+ * merchant es peor que una etiqueta incompleta.
  */
 export function planWithInterval(
   plan: string,
   interval: string | null,
 ): string {
   const label = planLabel(plan);
-  if (plan !== "plus") return label;
+  if (plan !== "base" && plan !== "plus") return label;
   if (interval === "month") return `${label} mensual`;
   if (interval === "year") return `${label} anual`;
   return label;
 }
 
 /**
- * LA TABLA DE 12 FILAS DE D7, COMO FUNCIÓN PURA — no como `if`s repartidos por el JSX.
+ * LAS OFERTAS DE LA SECCIÓN DE SUSCRIPCIÓN, COMO FUNCIÓN PURA — no como `if`s repartidos por
+ * el JSX (la lección de `choosePushPromptView`, tarea 38). La consume la pantalla actual
+ * (`backoffice/subscription/page.tsx`, zona GPT) hasta que llegue la del contrato de la spec
+ * 0189 §D10; se reescribió sobre los planes nuevos para que esa pantalla no ofrezca rutas
+ * borradas ni un plan gratis que ya no existe.
  *
- * Es la lección de `choosePushPromptView` (tarea 38): tres guards sintácticos escritos por
- * tres revisores fueron evadidos con los 5 gates en verde, y lo que funcionó fue extraer la
- * DECISIÓN a una función pura con una tabla de casos como oráculo.
- *
- * PERO ESO NO CIERRA LA PROPIEDAD, Y ACÁ SE DICE QUÉ QUEDA AFUERA (misma tarea 38: extraer
- * convierte «el usuario ve X» en «la decisión dice X» y deja el CABLEADO sin oráculo — un
- * revisor reintrodujo el bug exacto en el llamador, con los 5 gates verdes). Lo que esta
- * función NO prueba:
- *  - que la página la llame y que la consola respete lo que devuelve. Eso lo pinnea el
- *    RENDER del HTML (`billing-pages.neon.integration.test.ts`), no este módulo.
- *  - que el servidor acepte lo que se ofrece. La autoridad es `decidePlanChange`; acá se
- *    decide sólo qué se MUESTRA. Que un botón exista no es una promesa: el 409 manda
- *    (ADR 0058 §8).
- *
- * `activeLocations` y `canCancel` NO entran: no cambian QUÉ se ofrece, sólo qué dice el
- * modal. Meterlos acá haría que la tabla tuviera que multiplicarse por el conteo de locales
- * sin que ninguna fila cambiara.
+ * Lo que esta función NO prueba: que la página la llame y que la consola respete lo que
+ * devuelve, ni que el servidor acepte lo que se ofrece — la autoridad es `decidePlanChange`
+ * (ADR 0058 §8: el 409 manda).
  */
 export type SubscriptionOffers = {
-  /** Ya traducido por la allow-list, y CON EL INTERVALO si el plan es `plus` (spec 0064,
-   * F2-1: la sección decía «Plan activo» a secas y el owner no podía saber si pagaba mensual
-   * o anual). Nunca el string crudo de Stripe. */
+  /** Ya traducido por la allow-list, y CON EL INTERVALO si el plan es pago. */
   plan: string;
   status: string;
-  /** `past_due`/`unpaid`: se avisa el cobro y NO se ofrece plan ni intervalo (DoD). */
+  /** `past_due`/`unpaid`: se avisa el cobro y NO se ofrece plan ni intervalo. */
   paymentPending: boolean;
-  /** Los DOS estados de baja programada de D7; «sin fecha» es válido y está GARANTIZADO
-   * entre el 200 de `cancel` y el paso 4 de D6. */
+  /** Cancelación programada (spec 0189: corta al fin del periodo); «sin fecha» es válido. */
   pendingDowngrade: "with_date" | "without_date" | null;
-  /** El estado `none` de D10: su texto, y sus DOS salidas (`upgrade` + `downgrade`). */
+  /** `plan='none'`: el negocio no tiene plan y tiene que elegir uno. */
   noPlan: boolean;
   /** La etiqueta del botón de Checkout, o `null` si no se ofrece. */
   upgrade: string | null;
-  /** El botón de bajar a Free, con la ruta que le corresponde al estado. NUNCA se
-   * deshabilita (ADR 0058 §8): `canCancel` decide el contenido del MODAL, no si el botón
-   * existe. */
+  /** El botón de cancelar la suscripción, o `null`. NUNCA se deshabilita (ADR 0058 §8). */
   downgrade: { label: string; endpoint: string } | null;
-  /** D9, un solo sentido: mensual → anual. El inverso es la tarea 55. */
+  /** Un solo sentido: mensual → anual. El inverso es la tarea 55. */
   intervalUpgrade: boolean;
 };
 
-/** Los dos status del DoD que avisan cobro pendiente. Se declaran acá y no se derivan de
- * `statusLabel` —que los colapsa al mismo texto— porque son dos hechos distintos: uno es
- * cómo se LEE el status, el otro es qué se OFRECE. */
+/** Los dos status que avisan cobro pendiente. Se declaran acá y no se derivan de
+ * `statusLabel` —que los colapsa al mismo texto— porque son dos hechos distintos. */
 const PAYMENT_PENDING_STATUS = new Set(["past_due", "unpaid"]);
 
+const CHOOSE_PLAN = "Elegir un plan";
+
 /**
- * GUARDAS EN ORDEN, PRIMER MATCH GANA. ES NORMATIVO, y cada fila tiene su caso en
- * `billing-offers.test.ts` — 15 filas de `it.each` más las dos de PRECEDENCIA (el orden
- * declarado no es el intuitivo) y la anti-degeneración de la salida 2 de D10. El corte a un
- * sibling es porque con el bloque adentro `billing-view.test.ts` daba 370 líneas contra el
- * límite de 300, medido al hook:
+ * GUARDAS EN ORDEN, PRIMER MATCH GANA (cada fila tiene su caso en `billing-offers.test.ts`):
  *
- * 1. cobro pendiente (`past_due`/`unpaid`) → se avisa y no se ofrece cambio de plan ni de
- *    intervalo.
- * 2. baja programada → se INFORMA (con fecha o al fin del periodo) y nada más. Desde la spec
- *    0064 este estado ya NO lo crea nuestro flujo —la baja es inmediata (ADR 0063)— y sólo
- *    puede llegar del botón de cancelar del dashboard de Stripe, vía webhook. Por eso no hay
- *    nada que ofrecer: reanudar no existe (decisión n.º 1 de la spec 0064: se registra el
- *    hecho y se muestra como información), y ofrecer un upgrade acá es el 409
- *    `subscription_live`.
- * 3. `plan='none'` (D10) → las DOS salidas: «Volver a Plus» (Checkout) y «Ajustarme y bajar
- *    a Free» (`settle-free`). Sin las dos, el estado es un callejón.
- * 4. `plan='plus'` → bajar a Free por `cancel`, y «Pasar a anual» sólo si el intervalo no es
- *    ya anual Y el status no es de los MUERTOS. Ojo: con el status muerto el botón de bajar
- *    SIGUE ahí, y es load-bearing — es la salida 2 de D10 sobre «plus con la suscripción
- *    muerta», el estado del que `already_on_plan` sería un callejón.
- * 5. resto (`free` y cualquier plan desconocido) → sólo «Mejorar a Plus». Un plan que no
- *    conocemos se ofrece igual porque la autoridad es el servidor, y su guarda 2
- *    (`currentPlan === 'plus'`) es la única que lo rechazaría.
+ * 1. cobro pendiente (`past_due`/`unpaid`) → se avisa y no se ofrece nada más.
+ * 2. cancelación programada → se INFORMA (con fecha o al fin del periodo) y nada más.
+ * 3. `plan='none'` → «Elegir un plan» (Checkout).
+ * 4. plan pago (`base`/`plus`) con un status que no es de los MUERTOS → cancelar
+ *    (`/api/billing/cancel`, al fin del periodo) y «Pasar a anual» si el intervalo no es ya
+ *    anual. Un plan pago solo lo escribe el webhook, que escribe el id en el mismo `SET`: el
+ *    DTO no lleva el id (no cruza al navegador) y el status alcanza.
+ * 5. resto (`trial`, un plan pago con la suscripción muerta, un plan desconocido) → «Elegir un
+ *    plan». La autoridad es el servidor: su guarda `subscription_live` es la que rechazaría.
  *
- * El criterio de «hay baja programada» es el MISMO que `effectiveLocationLimit` [R1-N8]: un
- * string vacío no es una baja programada. Con `Boolean(pendingPlan)` bastaría hoy, pero el
- * tope de locales y lo que la UI dice tienen que coincidir o el owner lee «tu plan baja» con
- * el tope sin caer.
+ * El criterio de «hay cancelación programada» es el de `decidePlanChange` [R1-N8]: un string
+ * vacío no lo es.
  */
 export function subscriptionOffers(view: SubscriptionView): SubscriptionOffers {
   const base: SubscriptionOffers = {
@@ -264,23 +241,18 @@ export function subscriptionOffers(view: SubscriptionView): SubscriptionOffers {
     };
   }
   if (view.plan === "none") {
+    return { ...base, noPlan: true, upgrade: CHOOSE_PLAN };
+  }
+  const paid = view.plan === "base" || view.plan === "plus";
+  if (paid && !DEAD_STRIPE_STATUS.has(view.status)) {
     return {
       ...base,
-      noPlan: true,
-      upgrade: "Volver a Plus",
       downgrade: {
-        label: "Ajustarme y bajar a Free",
-        endpoint: "/api/billing/settle-free",
+        label: "Cancelar suscripción",
+        endpoint: "/api/billing/cancel",
       },
+      intervalUpgrade: view.interval !== "year",
     };
   }
-  if (view.plan === "plus") {
-    return {
-      ...base,
-      downgrade: { label: "Bajar a Free", endpoint: "/api/billing/cancel" },
-      intervalUpgrade:
-        view.interval !== "year" && !DEAD_STRIPE_STATUS.has(view.status),
-    };
-  }
-  return { ...base, upgrade: "Mejorar a Plus" };
+  return { ...base, upgrade: CHOOSE_PLAN };
 }

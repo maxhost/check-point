@@ -1,25 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Spec 0086 §2 — **LA ESCALERA DE `requireApiPermission`, PASO POR PASO Y EN SU ORDEN.**
- *
- * `api-permission-surfaces.test.ts` mide la escalera **a través de las once rutas**, que es lo
- * que hace visible el día que una se quede atrás. Este archivo mide **el guard solo**, y su
- * valor es distinto: acá se pueden producir los estados que ninguna ruta real alcanza —un
- * `emailVerified` ausente, un `status` que el guard no conoce, un rol desconocido— y se puede
- * aseverar el ORDEN entre pasos que en una ruta se confunden con el desenlace del dominio.
- *
- * **El ORDEN es contrato, no detalle de implementación** (ADR 0073 §1). Cada caso de acá pone
- * al caller en DOS estados de falla a la vez y exige el `code` del paso MÁS TEMPRANO: así es
- * como se prueba un orden, y no con casos que fallan por un motivo solo.
- *
- * Se doblan la sesión y `membershipContext` —las dos únicas dependencias del guard— y se
- * verifica sobre el objeto que devuelve, sin HTTP: `businessStatusFailure` queda REAL, porque
- * el paso 5 es literalmente esa hoja y un doble mediría el doble.
+ * Spec 0086 §2 — LA ESCALERA DE `requireApiPermission`, PASO POR PASO Y EN SU ORDEN (el guard
+ * solo; `api-permission-surfaces.test.ts` la mide a través de las rutas). El ORDEN es contrato
+ * (ADR 0073 §1): cada caso pone al caller en DOS estados de falla y exige el `code` del paso MÁS
+ * TEMPRANO. Se doblan la sesión, `membershipContext` y la LECTURA del eje de acceso
+ * (`billing-gate`, spec 0189: su decisión tiene oráculo en T1/T7); `businessStatusFailure` REAL.
  */
 const world = vi.hoisted(() => ({
   session: null as null | { user: { id: string; emailVerified?: boolean } },
   membership: null as null | Record<string, unknown>,
+  billing: null as null | { status: number; code: string; message: string },
+}));
+
+vi.mock("./billing-gate", () => ({
+  businessBillingFailure: async () => world.billing,
 }));
 
 vi.mock("./auth", () => ({
@@ -79,7 +74,14 @@ async function resultado(
 beforeEach(() => {
   world.session = null;
   world.membership = null;
+  world.billing = null;
 });
+
+const PAYMENT = {
+  status: 402,
+  code: "payment_required",
+  message: "Tu prueba terminó.",
+};
 
 describe("requireApiPermission — la escalera (spec 0086 §2)", () => {
   it("PASO 1: sin sesión → 401 `unauthorized`, y ni siquiera resuelve membresía", async () => {
@@ -138,11 +140,8 @@ describe("requireApiPermission — la escalera (spec 0086 §2)", () => {
   });
 
   /**
-   * PASO 4 — **EL GATE DE EMAIL NO ALCANZA AL STAFF, y es la mutación M3.** El integrante
-   * tiene un email sintético `@staff.invalid` que nunca se entrega y **ninguna acción con la
-   * que verificar nada**: un gate que lo alcanzara dejaría sus once superficies muertas para
-   * siempre. Los dos casos —clave en `false` y clave AUSENTE— porque el segundo es el
-   * fail-closed del dato y sólo se puede producir acá.
+   * PASO 4 — **EL GATE DE EMAIL NO ALCANZA AL STAFF (mutación M3):** su email sintético
+   * `@staff.invalid` nunca se entrega. Clave en `false` y clave AUSENTE (fail-closed del dato).
    */
   it.each([false, undefined])(
     "PASO 4: un STAFF con `emailVerified: %s` PASA",
@@ -192,9 +191,8 @@ describe("requireApiPermission — la escalera (spec 0086 §2)", () => {
     });
   });
 
-  /** El `suspensionReason` es una nota interna sobre la CUENTA y se serializa **sólo al
-   * owner** (spec 0072 §D4). El integrante recibe el mismo `code` y el 403 mudo — lo mismo
-   * que ya hacen `auth-guards.ts` y `session-view.ts` sobre esta misma fila. */
+  /** El `suspensionReason` se serializa **sólo al owner** (spec 0072 §D4): el integrante
+   * recibe el mismo `code` y el 403 mudo. */
   it("PASO 5: un STAFF con el permiso recibe `business_suspended` SIN el motivo", async () => {
     world.session = { user: { id: "u-staff", emailVerified: false } };
     world.membership = fila({
@@ -219,11 +217,28 @@ describe("requireApiPermission — la escalera (spec 0086 §2)", () => {
     expect(r.reason).toBeUndefined();
   });
 
-  /** Fail-CLOSED: un `status` que nadie le enseñó al guard no opera. El `CHECK` de la columna
-   * hoy admite tres valores; el día que admita un cuarto, no se pasa de largo. */
+  /** Fail-CLOSED: un `status` que nadie le enseñó al guard no opera. */
   it("PASO 5: un `status` desconocido no opera", async () => {
     world.session = { user: { id: "u-owner", emailVerified: true } };
     world.membership = fila({ status: "frozen" });
+    expect(await resultado()).toMatchObject({ code: "business_suspended" });
+  });
+
+  it("PASO 6 (spec 0189): sin acceso → 402 `payment_required`, al owner y al staff", async () => {
+    world.billing = PAYMENT;
+    world.session = { user: { id: "u-owner", emailVerified: true } };
+    world.membership = fila();
+    expect(await resultado()).toMatchObject({
+      status: 402,
+      code: "payment_required",
+    });
+    world.membership = fila({ role: "staff", permissions: ["catalog"] });
+    expect(await resultado()).toMatchObject({
+      status: 402,
+      code: "payment_required",
+    });
+    // DESPUÉS del eje `status`: suspendido y sin acceso sigue diciendo `business_suspended`.
+    world.membership = fila({ status: "suspended" });
     expect(await resultado()).toMatchObject({ code: "business_suspended" });
   });
 
@@ -241,9 +256,7 @@ describe("requireApiPermission — la escalera (spec 0086 §2)", () => {
 });
 
 describe("requireApiPermissionSinGateDeEmail — la misma escalera sin el paso 4", () => {
-  /** LO ÚNICO que la distingue de su hermana. Un owner sin verificar pasa acá y no allá, con
-   * el MISMO estado del mundo: es el par que prueba que la diferencia es el paso 4 y no otra
-   * cosa. */
+  /** LO ÚNICO que la distingue de su hermana: un owner sin verificar pasa acá y no allá. */
   it.each([false, undefined])(
     "un OWNER con `emailVerified: %s` PASA acá y NO pasa con el gate",
     async (emailVerified) => {

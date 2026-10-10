@@ -7,8 +7,8 @@ import type Stripe from "stripe";
  * Hoy `getStripeClient()` se llama DENTRO de las rutas (`checkout/route.ts:48`,
  * `stripe/webhook/route.ts:17`). Sin esta costura, la mitad del plan de pruebas de la spec
  * no se puede escribir: no hay forma de que un test haga que `subscriptions.update` tire
- * `StripeConnectionError` y aseverar que el estado QUEDA PUESTO, ni de contar que
- * `settle_to_free` hace CERO llamadas a Stripe.
+ * `StripeConnectionError` y aseverar que el estado QUEDA PUESTO, ni de contar las llamadas
+ * que hace cada ruta.
  *
  * [R2-B7] EL PARÁMETRO INYECTADO ES `StripeGateway`, UNA INTERFAZ MÍNIMA PROPIA, NO LA
  * CLASE `Stripe`. Con la clase concreta todo fake necesita `as unknown as Stripe`, y ese
@@ -23,15 +23,11 @@ import type Stripe from "stripe";
  */
 export type StripeGateway = {
   /**
-   * `cancel` entra con la spec 0064 (ADR 0063): la baja a Free es INMEDIATA, así que la ruta
-   * ya no programa con `update({cancel_at_period_end:true})` sino que termina la suscripción
-   * en el acto. Se pide el método ENTERO del SDK (`Pick`), así que `prorate` e `invoice_now`
-   * quedan tipados con su default `false` — no hay que escribir nada para «sin devolución».
+   * Spec 0189 §D7: `cancel` y `resume` vuelven a ser `update({cancel_at_period_end})` (ADR 0134
+   * §8: cancelar corta al fin del periodo pagado), así que el `subscriptions.cancel` de la baja
+   * inmediata del ADR 0063 salió de la costura junto con su ruta.
    */
-  subscriptions: Pick<
-    Stripe["subscriptions"],
-    "retrieve" | "update" | "list" | "cancel"
-  >;
+  subscriptions: Pick<Stripe["subscriptions"], "retrieve" | "update" | "list">;
   /**
    * `invoices.list` entra con la spec 0064, F2-4: el importe cobrado y el link al recibo salen
    * de la última factura PAGADA (respuesta literal del owner). Es la primera vez que este

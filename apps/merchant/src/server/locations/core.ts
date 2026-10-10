@@ -1,6 +1,7 @@
 import {
   ENTITLEMENTS,
   limitOf,
+  type EntitlementContext,
 } from "@mi-pasaporte/domain/server/entitlements/index";
 import { isSupportedCountryCode } from "../supported-countries";
 import { SelectionError, verifySelection } from "../places/selection-token";
@@ -54,13 +55,8 @@ export function toLocationDTO(row: LocationRow): LocationDTO {
 }
 
 /**
- * Spec 0072 §D2.5 — ENVOLTORIOS FINOS sobre la capa de entitlements. Los topes por plan ya
- * NO viven acá: la fuente es `server/entitlements/catalog.ts`, entrada `locations.max`.
- *
- * Conservan su firma porque tienen 30+ llamadores y tests propios, y cambiarlos a todos es
- * alcance que la 0072 no compra. el mapa de topes que vivía acá se borró: si
- * sobreviviera, la unificación sería decorativa — y fue esa copia la que dejó a `enterprise` cayendo al tope
- * más restrictivo en silencio (ahora el catálogo lo pone en rojo en la suite, ADR 0073 §3).
+ * Spec 0072 §D2.5 + spec 0189 §D2 — ENVOLTORIOS FINOS sobre la capa de entitlements. Los topes
+ * por plan NO viven acá: la fuente es `entitlements/catalog.ts`, entrada `locations.max`.
  *
  * Sigue enforced en el SERVER mientras se sostiene el lock del negocio, nunca escondiendo
  * un botón (spec 0061, decisión 2).
@@ -68,29 +64,33 @@ export function toLocationDTO(row: LocationRow): LocationDTO {
 export const FALLBACK_LOCATION_LIMIT: number =
   ENTITLEMENTS["locations.max"].fallback;
 
-export function locationLimitForPlan(plan: string | null | undefined): number {
-  return limitOf({ plan }, "locations.max");
-}
-
 /**
- * Spec 0063, D2 — el tope EFECTIVO: el menor entre el plan vigente y el plan destino.
- *
- * El agujero que cierra: con una baja ya programada el negocio sigue en `plus` hasta el
- * fin del período, así que comparar contra el plan VIGENTE deja desarchivar hasta 3
- * locales — y al cerrar el período queda `free` con 3 activos, el estado que la spec
- * entera existe para prohibir.
- *
- * Es `min` y no «el pendiente gana»: un futuro upgrade programado no debe SUBIR el tope
- * antes de que el pago esté confirmado. La regla vive ahora en el catálogo
- * (`pendingRule: "min"`), incluido el detalle de que un string vacío NO es una baja
- * programada ([R1-N8]).
+ * El tope EFECTIVO de locales (spec 0189 §D2): el del PLAN EFECTIVO de la fila — `trial` con
+ * la prueba vigente, el plan pago con suscripción viva, `none` (1) sin acceso o sin fila. La
+ * cancelación programada (`pending_plan='none'`) ya NO baja el tope: el negocio usa lo pagado
+ * hasta el fin del periodo (ADR 0134 §8). Acepta la fila de un `leftJoin` (columnas
+ * nulas = sin fila de suscripción → fail-closed).
  */
 export function effectiveLocationLimit(
-  plan: string | null | undefined,
-  pendingPlan: string | null | undefined,
+  row: NullableRow<Omit<EntitlementContext, "now">> | null | undefined,
+  now: Date,
 ): number {
-  return limitOf({ plan, pendingPlan }, "locations.max");
+  if (!row || row.plan == null || row.status == null) {
+    return limitOf(null, "locations.max");
+  }
+  return limitOf(
+    {
+      plan: row.plan,
+      status: row.status,
+      stripeSubscriptionId: row.stripeSubscriptionId ?? null,
+      trialEndsAt: row.trialEndsAt ?? null,
+      now,
+    },
+    "locations.max",
+  );
 }
+
+type NullableRow<T> = { [K in keyof T]: T[K] | null };
 
 const MAX_NAME_LENGTH = 120;
 const MAX_ADDRESS_LENGTH = 240;

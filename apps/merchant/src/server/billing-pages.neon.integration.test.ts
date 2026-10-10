@@ -123,7 +123,7 @@ describe.skipIf(!integrationEnabled)(
         interval: "month",
         stripeCustomerId: custId("fuga"),
         stripeSubscriptionId: subId("fuga"),
-        pendingPlan: "free",
+        pendingPlan: "none",
         pendingPlanAt: new Date(Date.UTC(2026, 11, 1)),
         downgradeRequestedAt: requestedAt,
       });
@@ -136,16 +136,14 @@ describe.skipIf(!integrationEnabled)(
       expect(html).not.toContain("sub_");
       expect(html).not.toContain(requestedAt.toISOString());
       // PISO DE LA ASERCIÓN: las cinco negativas de arriba no pasan por haber renderizado
-      // una página vacía o un error. El estado sembrado es «baja programada CON fecha».
+      // una página vacía o un error. El estado sembrado es «cancelación programada CON fecha»
+      // (la copy «baja a Free» es de la consola de GPT, que todavía no se rehízo).
       expect(html).toContain("Suscripción");
       expect(html).toContain("Tu plan baja a Free el");
-      // Acá decía además `toContain("Reanudar suscripción")`. Ese botón dejó de existir con la
-      // spec 0064 §4 («no hay reanudar»): una baja programada que ya no creamos se INFORMA, no
-      // se ofrece deshacer. El piso de la aserción lo sostienen las otras tres líneas.
       expect(html.length).toBeGreaterThan(800);
     }, 60_000);
 
-    it("la home dice «Sin plan» para `none` y NUNCA «confirmando pago» para un free cancelado", async () => {
+    it("la home dice «Sin plan» para `none` y NUNCA «confirmando pago» para un plan cancelado", async () => {
       // Los DOS ítems del DoD sobre la home, que son los dos ternarios que había:
       // `plan === "plus" ? "Plus" : "Free"` mostraba `none` como «Free».
       seed = await seedBillingBusiness("none", { status: "canceled" });
@@ -158,11 +156,12 @@ describe.skipIf(!integrationEnabled)(
       expect(sinPlan).not.toContain("/backoffice/demo/subscription");
 
       await dropBusiness(seed.business.id);
-      seed = await seedBillingBusiness("free", { status: "canceled" });
-      useBusiness(seed, "Negocio free cancelado");
-      const freeCancelado = await renderHome();
-      expect(freeCancelado).not.toContain("confirmando pago");
-      expect(freeCancelado).toContain("cancelada");
+      seed = await seedBillingBusiness("trial", { status: "canceled" });
+      useBusiness(seed, "Negocio en prueba cancelado");
+      const cancelado = await renderHome();
+      expect(cancelado).toContain("Prueba gratis");
+      expect(cancelado).not.toContain("confirmando pago");
+      expect(cancelado).toContain("cancelada");
     }, 90_000);
 
     it("el aviso de la query string sale por ALLOW-LIST: un `done` inventado no imprime nada", async () => {
@@ -170,7 +169,7 @@ describe.skipIf(!integrationEnabled)(
       // `params.done` crudo desde `noticeFor` dejaba los 67 tests en verde. El docblock de
       // esa función dice que la lista es una allow-list «porque es entrada del atacante», y
       // eso era un invariante declarado que nada pinneaba.
-      seed = await seedBillingBusiness("free");
+      seed = await seedBillingBusiness("trial");
       useBusiness(seed);
 
       const inventado = await renderSubscription({
@@ -181,12 +180,11 @@ describe.skipIf(!integrationEnabled)(
       // CONTROL POSITIVO, o sea lo que hace que la negativa de arriba discrimine: un valor
       // de la lista SÍ imprime su texto.
       const valido = await renderSubscription({ done: "cancel" });
-      // EL TEXTO CAMBIÓ CON LA SPEC 0064, y no es cosmético: decía «Programamos la baja a
-      // Free», que bajo el ADR 0063 es FALSO — la baja se aplica en el acto y no queda nada
-      // programado. Se actualiza la aserción porque cambió la COPY del producto, no para
-      // tapar un rojo: lo que este `it` pinnea es la ALLOW-LIST (que un `done` inventado no
-      // imprima nada), y eso sigue intacto arriba y abajo de esta línea.
-      expect(valido).toContain("Diste de baja tu plan: ya estás en Free.");
+      // EL TEXTO CAMBIÓ CON LA SPEC 0189 (ADR 0134 §8: cancelar corta al fin del periodo). Lo
+      // que este `it` pinnea es la ALLOW-LIST, y eso sigue intacto.
+      expect(valido).toContain(
+        "Cancelaste tu suscripción: sigue activa hasta el final del periodo.",
+      );
       // Y el aterrizaje de Stripe Checkout, que es el otro consumidor de la lista.
       expect(await renderSubscription({ checkout: "success" })).toContain(
         "Recibimos tu pago",
@@ -223,7 +221,8 @@ describe.skipIf(!integrationEnabled)(
       const downgrade = parse(html)
         .querySelectorAll("button")
         .filter(
-          (button: { text: string }) => button.text.trim() === "Bajar a Free",
+          (button: { text: string }) =>
+            button.text.trim() === "Cancelar suscripción",
         );
       expect(downgrade).toHaveLength(1);
       expect(downgrade[0].getAttribute("type")).toBe("button");

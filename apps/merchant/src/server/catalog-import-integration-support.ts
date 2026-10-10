@@ -9,6 +9,7 @@ export const importIntegrationEnabled =
 if (importIntegrationEnabled) process.env.DATABASE_URL = url;
 
 import { getDb } from "@mi-pasaporte/db";
+import { seedTrialSubscription } from "./counter-integration-support";
 import {
   businesses,
   catalogImportCleanups,
@@ -57,6 +58,7 @@ export async function seedNegocio(nombre: string): Promise<SeedImport> {
     timezone: "America/Guayaquil",
     currencyCode: "USD",
   });
+  await seedTrialSubscription(businessId);
   await db
     .insert(memberships)
     .values({ businessId, userId, role: "owner", status: "active" });

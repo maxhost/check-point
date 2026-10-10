@@ -12,9 +12,16 @@ import type { SubscriptionRow } from "./billing";
  * de la `Subscription` (decenas de campos que la derivación no lee).
  */
 
+/** Los precios de PLUS (los nombres son de antes de la spec 0189, cuando había un solo plan). */
 export const MONTHLY_PRICE = "price_plus_monthly";
 export const YEARLY_PRICE = "price_plus_yearly";
-export const PRICE_IDS = { monthly: MONTHLY_PRICE, yearly: YEARLY_PRICE };
+/** Spec 0189 §D5: los dos precios del plan BASE. */
+export const BASE_MONTHLY_PRICE = "price_base_monthly";
+export const BASE_YEARLY_PRICE = "price_base_yearly";
+export const PRICE_IDS = {
+  base: { month: BASE_MONTHLY_PRICE, year: BASE_YEARLY_PRICE },
+  plus: { month: MONTHLY_PRICE, year: YEARLY_PRICE },
+};
 
 /** Unix SECONDS, con año propio: sin el `* 1000` la fecha cae en 1970 y el unit lo caza. */
 export const PERIOD_END_SECONDS = Date.UTC(2027, 0, 15) / 1000;
@@ -74,6 +81,7 @@ export function subscriptionRow(
     pendingPlan: null,
     pendingPlanAt: null,
     downgradeRequestedAt: null,
+    trialEndsAt: null,
     lastEventAt: null,
     ...overrides,
   };

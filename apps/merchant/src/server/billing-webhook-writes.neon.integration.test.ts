@@ -62,10 +62,9 @@ describe.skipIf(!integrationEnabled)(
       await dropWebhookEvents(events.ids);
     }, 30_000);
 
-    it("una cancelación hecha desde el DASHBOARD termina en `none`, no en `free`", async () => {
-      // EL BLOQUEANTE R2-1, por SQL. Stripe setea `cancel_at_period_end` igual que nuestra
-      // ruta, así que `pending_plan` NO sirve de discriminante: lo que decide es
-      // `downgrade_requested_at`, que sólo escribe nuestro código y acá está en NULL.
+    it("una cancelación hecha desde el DASHBOARD termina en `none`", async () => {
+      // Spec 0189 §D5: un evento terminal sobre un plan PAGO aterriza en `none`, sin importar
+      // quién canceló (no hay plan gratis al que caer).
       const seeded = await seedBillingBusiness("plus", {
         stripeSubscriptionId: "sub_dash",
         stripeCustomerId: "cus_dash",
@@ -93,10 +92,9 @@ describe.skipIf(!integrationEnabled)(
         const row = await readSubscriptionRow(seeded.business.id);
         expect(row.plan).toBe("none");
         expect(row.status).toBe("canceled");
-        // La rama 1 de la jerarquía es INCONDICIONAL: en un `deleted`
-        // `cancel_at_period_end` sigue en `true` («will … or DID cancel»), y sin ella la fila
-        // quedaba `plan='free'` Y `pending_plan='free'` a la vez, con la UI ofreciendo
-        // un botón «Reanudar» (que existía entonces) sobre una suscripción muerta.
+        // La rama 1 de la jerarquía es INCONDICIONAL: en un `deleted` `cancel_at_period_end`
+        // sigue en `true` («will … or DID cancel»), y sin ella la fila quedaba con una
+        // cancelación «programada» y un botón «Reanudar» sobre una suscripción muerta.
         expect(row.pendingPlan).toBeNull();
         expect(row.pendingPlanAt).toBeNull();
         expect(row.lastEventAt).toEqual(new Date(created * 1000));
@@ -105,13 +103,13 @@ describe.skipIf(!integrationEnabled)(
       }
     }, 60_000);
 
-    it("un `deleted` CON `downgrade_requested_at` deja `free` y limpia la marca", async () => {
-      // La otra mitad del par: el owner que canceló bien no termina en `none`.
+    it("un `deleted` CON `downgrade_requested_at` (cancelación nuestra) TAMBIÉN deja `none` y limpia la marca", async () => {
+      // Spec 0189 §D5: la marca es auditoría y `derive` no la lee.
       const seeded = await seedBillingBusiness("plus", {
         stripeSubscriptionId: "sub_ok",
         stripeCustomerId: "cus_ok",
         interval: "month",
-        pendingPlan: "free",
+        pendingPlan: "none",
         pendingPlanAt: new Date(Date.UTC(2026, 9, 1)),
         downgradeRequestedAt: new Date(Date.UTC(2026, 8, 11)),
       });
@@ -132,7 +130,7 @@ describe.skipIf(!integrationEnabled)(
           object: { id: "sub_ok" },
         });
         const row = await readSubscriptionRow(seeded.business.id);
-        expect(row.plan).toBe("free");
+        expect(row.plan).toBe("none");
         expect(row.pendingPlan).toBeNull();
         expect(row.downgradeRequestedAt).toBeNull();
       } finally {

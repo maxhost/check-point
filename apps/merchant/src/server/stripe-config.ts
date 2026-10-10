@@ -2,12 +2,21 @@ import Stripe from "stripe";
 
 export type StripeEnvironment = "test" | "live";
 
+/**
+ * Spec 0189 §D5 / ADR 0134 §4-§5: los CUATRO precios de Stripe — plan base y superior, mensual
+ * y anual. Falta cualquiera → la configuracion falla (las rutas contestan 503
+ * `stripe_not_configured`), igual que antes con los dos de Plus.
+ */
+export type PriceIds = {
+  base: { month: string; year: string };
+  plus: { month: string; year: string };
+};
+
 type StripeConfiguration = {
   environment: StripeEnvironment;
   secretKey: string;
   webhookSecret?: string;
-  monthlyPriceId: string;
-  yearlyPriceId: string;
+  priceIds: PriceIds;
 };
 
 function readEnvironment(): StripeEnvironment {
@@ -33,8 +42,16 @@ export function getStripeConfiguration(): StripeConfiguration {
     environment,
     secretKey,
     webhookSecret: process.env[`STRIPE_WEBHOOK_SECRET_${suffix}`],
-    monthlyPriceId: readRequired(`STRIPE_PRICE_PLUS_MONTHLY_${suffix}`),
-    yearlyPriceId: readRequired(`STRIPE_PRICE_PLUS_YEARLY_${suffix}`),
+    priceIds: {
+      base: {
+        month: readRequired(`STRIPE_PRICE_BASE_MONTHLY_${suffix}`),
+        year: readRequired(`STRIPE_PRICE_BASE_YEARLY_${suffix}`),
+      },
+      plus: {
+        month: readRequired(`STRIPE_PRICE_PLUS_MONTHLY_${suffix}`),
+        year: readRequired(`STRIPE_PRICE_PLUS_YEARLY_${suffix}`),
+      },
+    },
   };
 }
 

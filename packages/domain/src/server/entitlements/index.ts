@@ -1,8 +1,10 @@
-import { hasLiveSubscription } from "./live-subscription";
+import { billingAccess } from "../billing-access";
 import {
   ENTITLEMENTS,
+  PAID_PLANS,
   type EntitlementDef,
   type FlagKey,
+  type KnownPlan,
   type LimitKey,
 } from "./catalog";
 
@@ -13,9 +15,12 @@ export {
 } from "./live-subscription";
 
 export {
+  BASE_TEMPLATE_KEYS,
   ENTITLEMENTS,
   KNOWN_PLANS,
   PAID_PLANS,
+  PLAN_PRICES_USD,
+  TRIAL_DAYS,
   type EntitlementDef,
   type EntitlementKey,
   type EntitlementWindow,
@@ -27,7 +32,8 @@ export {
 export { retryAfterSeconds, windowEnd, windowOf, windowStart } from "./window";
 
 /**
- * Spec 0072 §D2.4 — LA CAPA DE ENTITLEMENTS: `can()` y `limitOf()` sobre el catalogo.
+ * Spec 0072 §D2.4 + spec 0189 §D2 — LA CAPA DE ENTITLEMENTS: `can()` y `limitOf()` sobre el
+ * catalogo, por el PLAN EFECTIVO.
  *
  * La firma recibe **la fila de `core.subscription`, no un `businessId`**, y es deliberado:
  * el gate de campañas se resuelve DENTRO de la transaccion que escribe (ADR 0054 §2), asi
@@ -39,23 +45,39 @@ export { retryAfterSeconds, windowEnd, windowOf, windowStart } from "./window";
  */
 
 /**
- * Lo minimo de `core.subscription` con lo que se decide — la misma forma que ya leen los
- * dos call-sites (`CampaignPlanRow`, `PlanChangeInput`).
- *
- * `status` y `stripeSubscriptionId` son OPCIONALES porque las entradas con
- * `requiresLiveSubscription: false` no los miran, y sus envoltorios historicos
- * (`locationLimitForPlan(plan)`) no los tienen. Ausentes cuentan como **sin suscripcion
- * viva**: fail-closed, igual que el `!== true` del gate de email.
+ * Lo minimo de `core.subscription` con lo que se decide, mas el reloj. Todo obligatorio: un
+ * contexto sin `trialEndsAt` o sin `status` no puede decidir el acceso, y un default en la capa
+ * seria una decision escondida. Una fila AUSENTE se pasa como `null` a `can`/`limitOf`.
  */
 export type EntitlementContext = {
-  plan: string | null | undefined;
-  pendingPlan?: string | null | undefined;
-  status?: string | null | undefined;
-  stripeSubscriptionId?: string | null | undefined;
+  plan: string;
+  status: string;
+  stripeSubscriptionId: string | null;
+  trialEndsAt: Date | null;
+  now: Date;
 };
 
-/** El valor declarado para ese plan, o el `fallback` si el plan no tiene fila. Un plan que
- * no es `string` (NULL en la base, fila ausente) tambien cae al `fallback`. */
+/**
+ * EL PLAN EFECTIVO (spec 0189 §D2), sobre el eje de acceso de `billing-access.ts`:
+ *  - `subscribed` → el plan de la fila si es pago (`base`/`plus`); si no, `null` (= `fallback`:
+ *    una suscripcion viva sobre una fila que todavia no tiene plan pago no regala nada).
+ *  - `trial` → `"trial"` (todo incluido, ADR 0134 §2), sea cual sea el plan escrito.
+ *  - `blocked` → `"none"`. Una fila ausente es `blocked` (fail-closed).
+ *
+ * `pending_plan` NO influye: solo toma `'none'` (cancelacion programada) y el ADR 0134 §8 dice
+ * que se usa lo pagado hasta el final del periodo.
+ */
+export function effectivePlan(
+  ctx: EntitlementContext | null,
+): KnownPlan | null {
+  if (ctx === null) return "none";
+  const access = billingAccess(ctx, ctx.now);
+  if (access === "blocked") return "none";
+  if (access === "trial") return "trial";
+  return PAID_PLANS.has(ctx.plan) ? (ctx.plan as KnownPlan) : null;
+}
+
+/** El valor de un plan LITERAL, o el `fallback` si el plan no tiene fila (o es `null`). */
 function valueForPlan(
   def: EntitlementDef,
   plan: string | null | undefined,
@@ -67,58 +89,34 @@ function valueForPlan(
     : def.fallback;
 }
 
-/** El menor de dos valores del MISMO tipo: `Math.min` para limites, `AND` para flags. */
-function minOf(a: number | boolean, b: number | boolean): number | boolean {
-  if (typeof a === "boolean" || typeof b === "boolean") {
-    return Boolean(a) && Boolean(b);
-  }
-  return Math.min(a, b);
+/** El tope efectivo de una entrada `kind: "limit"`. */
+export function limitOf(ctx: EntitlementContext | null, key: LimitKey): number {
+  return limitForPlan(effectivePlan(ctx), key);
+}
+
+/** Si el plan efectivo permite una entrada `kind: "flag"`. NUNCA mira `core.business.status`. */
+export function can(ctx: EntitlementContext | null, key: FlagKey): boolean {
+  return flagForPlan(effectivePlan(ctx), key);
 }
 
 /**
- * EL VALOR EFECTIVO. Dos reglas, en este orden:
- *
- *  1. `pendingRule: "min"` (ADR 0063 D2) — el menor entre el plan vigente y el destino.
- *     Un `pending_plan` **vacio NO es una baja programada** ([R1-N8] de la spec 0063: sin
- *     ese detalle el tope caia a 1 sin que nadie hubiera programado nada).
- *  2. `requiresLiveSubscription` — sin suscripcion viva la entrada cae a su `fallback`,
- *     que es el valor declarado para lo desconocido y el mas restrictivo. Es lo que impide
- *     que un `plus` forma A1 (sin `stripe_subscription_id`) active campañas.
+ * El tope de un plan DESTINO literal, sin contexto: para los bloqueos de bajada («¿cuantos
+ * locales admite `base`?»), donde la pregunta no es por el acceso de hoy.
  */
-function effectiveValue(
-  def: EntitlementDef,
-  ctx: EntitlementContext,
-): number | boolean {
-  let value = valueForPlan(def, ctx.plan);
-  const pending = ctx.pendingPlan;
-  if (
-    def.pendingRule === "min" &&
-    typeof pending === "string" &&
-    pending !== ""
-  ) {
-    value = minOf(value, valueForPlan(def, pending));
-  }
-  if (
-    def.requiresLiveSubscription &&
-    !hasLiveSubscription({
-      status: typeof ctx.status === "string" ? ctx.status : "",
-      stripeSubscriptionId: ctx.stripeSubscriptionId ?? null,
-    })
-  ) {
-    return def.fallback;
-  }
-  return value;
-}
-
-/** El tope efectivo de una entrada `kind: "limit"`. */
-export function limitOf(ctx: EntitlementContext, key: LimitKey): number {
-  const value = effectiveValue(ENTITLEMENTS[key], ctx);
+export function limitForPlan(
+  plan: string | null | undefined,
+  key: LimitKey,
+): number {
+  const value = valueForPlan(ENTITLEMENTS[key], plan);
   // La firma del catalogo ya garantiza `number` para una `LimitKey`; el guard existe para
   // que un catalogo mal escrito no devuelva `NaN` silencioso al conteo de locales.
   return typeof value === "number" ? value : 0;
 }
 
-/** Si el plan permite una entrada `kind: "flag"`. NUNCA mira `core.business.status`. */
-export function can(ctx: EntitlementContext, key: FlagKey): boolean {
-  return effectiveValue(ENTITLEMENTS[key], ctx) === true;
+/** El flag de un plan DESTINO literal, sin contexto (mismo uso que `limitForPlan`). */
+export function flagForPlan(
+  plan: string | null | undefined,
+  key: FlagKey,
+): boolean {
+  return valueForPlan(ENTITLEMENTS[key], plan) === true;
 }
