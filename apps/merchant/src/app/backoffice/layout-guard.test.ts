@@ -74,7 +74,7 @@ describe("el layout de /backoffice con un owner SIN acceso (H1)", () => {
     );
   });
 
-  it("ORACULO DE LA MUTACION H1: el layout NO redirige (si no, bucle en /backoffice/subscription)", async () => {
+  it("ORACULO DE H1: el layout NO redirige (si no, bucle en /backoffice/subscription)", async () => {
     redirect.mockClear();
     await expect(BackofficeLayout({ children: null })).resolves.toBeTruthy();
     expect(redirect).not.toHaveBeenCalled();

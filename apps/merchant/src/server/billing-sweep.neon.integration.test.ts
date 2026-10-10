@@ -133,7 +133,9 @@ describe.skipIf(!integrationEnabled)(
       const where = eq(subscriptions.businessId, seed.business.id);
       await getDb()
         .update(subscriptions)
-        .set({ stripeSubscriptionId: null })
+        // Un comercio real en prueba: `plan='trial'` y sin suscripcion (revision 0189, N1: con
+        // `plus` sembrado, un reanudar que exigiera plan pago pasaba en verde).
+        .set({ plan: "trial", stripeSubscriptionId: null })
         .where(where);
       const sweep = () => runBillingSweep(new Date(), [seed.business.id]);
       expect(await sweep()).toEqual({ paused: 1, resumed: 0 });
