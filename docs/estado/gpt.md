@@ -5,6 +5,16 @@
 
 ## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
 
+Ajuste posterior del owner: reserva 227a798, implementación 6851d7a.
+Selector con chips como el badge, borde de 1 px y sin ring exterior recortado.
+Cambiar mesa elimina «Mesa seleccionada» y «Usar nombre de mesa»; texto libre
+se conserva en el paso inicial y al editar una orden que ya tiene nombre libre.
+Ya no se ofrece desligar una mesa registrada desde ese modal. E2E actual
+9/9 verdes, 4.4 s; typecheck merchant, lint de archivos cambiados, guardia de
+dos pantallas y formato global en 0. Capturas nuevas del modal móvil/desktop
+vistas; log /private/tmp/0187-chips.log. Sin cambios API/kit ni merge/push.
+La evidencia de 99/99 más abajo corresponde al cierre previo al ajuste.
+
 Encargo del owner leído completo, contrato 0182 y ADR 0131 completos. L2,
 sin subagentes. Reserva local 5b4bb99; Locales eb54d1c, POS 550fab1,
 pruebas y cierre 8a944ff. Checkout dev, sin merge ni push por instrucción
