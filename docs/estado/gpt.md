@@ -5,6 +5,11 @@
 
 ## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
 
+Ajuste de texto en 3b1f37f: quitado el nombre del único local («Principal»)
+debajo del selector del paso 1. Typecheck merchant, lint del archivo, guardia
+sin aumentos, formato del archivo y diff --check en 0. Solo se eliminó copy;
+no se repitieron E2E. Dev local, sin merge ni push.
+
 Regla vigente del owner en d3fe5c4: Nombre de mesa solo cuando la consulta del
 local confirma cero mesas, tanto nueva orden como Cambiar mesa. Sin input con
 mesas configuradas, todas ocupadas o carga/error. Sin mesas, edición libre
