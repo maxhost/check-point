@@ -3,7 +3,40 @@
 > Lo escribe **solo GPT** (ADR 0114, `docs/TRABAJO-EN-PARALELO.md`). Es su punto de retorno: lo vigente arriba,
 > reescrito entero al cerrar cada sesion. El estado de Claude esta en `claude.md`.
 
-## ⇥ MAIN LOCAL (2026-10-09) — MERGE COMPLETADO, SIN PUSH
+## ⇥ 0187 (2026-10-09) — MESAS EN LOCALES Y POS, DEV LOCAL
+
+Encargo del owner leído completo, contrato 0182 y ADR 0131 completos. L2,
+sin subagentes. Reserva local 5b4bb99; Locales eb54d1c, POS 550fab1,
+pruebas y cierre 8a944ff. Checkout dev, sin merge ni push por instrucción
+del encargo. API y migración 0067 ya en live: no se migró de nuevo.
+
+Locales: Mesas junto a Editar con POS activo según sesión. Modal independiente,
+solo activas, crear/renombrar/quitar con guardado inmediato y confirmación de
+archivo. Busy impide dobles escrituras y cierre; respuestas tardías aisladas
+por local; errores HTTP literales, toast compartido. Editar intacto.
+
+POS: selección de mesas del local con ocupación; propia mesa elegible al editar.
+POST con tableId, PUT con id o null explícito para texto libre. Dirty, descarte
+y conflicto incluyen id; cambio a texto libre con igual nombre se detecta.
+Ocupada/archivada refresca sin perder productos y permite volver a Mesa.
+Fallo de lectura ofrece reintento o texto libre. Mesa elegida con borde y fondo
+semánticos; no hubo cambios en el kit ni CSS.
+
+Checks reales finales: typecheck seis paquetes en 0, lint global en 0,
+format:check global en 0, ui-guard seis archivos sin aumentos, check-numbers
+y diff --check en 0. E2e final 99/99 verdes (8 mesas + 91 POS), 17.4 s.
+Los oráculos previos de caché siguen comparando sus endpoints originales y
+cuentan aparte las lecturas nuevas. Corregido el heading posterior al POST del
+wizard para esperar el pedido guardado, evitando pasar en la pantalla previa.
+
+Capturas Locales 390/1280 y POS 390 vistas; evidencia, comando y QA en
+docs/handoff-0187-mesas-locales-pos.md. HTTP simulado con UI/CSS reales:
+persistencia real y QA owner pendientes. No se afirma verify global ni CI
+remoto verde (ci:status al inicio no accedió por red). PARQUEADO #83 punto (1)
+cerrado localmente; publicación pendiente. Server/API/kit/printing/DB/tooling
+intactos. Cambio previo en apps/merchant/next-env.d.ts dejado fuera de commits.
+
+## ⇥ MAIN LOCAL (2026-10-09) — HISTÓRICO: MERGE COMPLETADO, SIN PUSH
 
 Owner entrega cierreClaude ef769b6 (Prettier14archivos, format:check/diff0 y
 printing23/23) y estado4c9032b con árbol limpio. Comprobados commits/rutas,
